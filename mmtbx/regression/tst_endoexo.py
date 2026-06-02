@@ -1,0 +1,471 @@
+"""Regression test: ``mmtbx.development.endoexo`` produces a stable
+QM region around two contrasting Fe sites:
+
+* **1BQ8** (Pyrococcus rubredoxin, P 21 21 21).  All four Cys ligands
+  live inside the ASU, so symmetry plays no role.  Exercises the
+  baseline BFS + capping pipeline.
+
+* **2C2U** (Halobacterium ferritin core, P 2 3).  The Fe sits on a
+  3-fold special position; three symmetry-related copies of Asp 93 and
+  HOH 2154 from the ASU map onto the metal.  Exercises:
+
+  - symmetry-aware adjacency (the BFS picks up the Asp 93 / HOH 2154
+    symmetry images even though the parent atoms are far from the
+    metal in the ASU);
+  - special-position deduplication (three sym_ops put Fe at the same
+    physical point; only one Fe atom survives in the materialized
+    region);
+  - per-sym_op chain IDs (the identity copy stays in chain "A"; the
+    two extra images land in single-character chain IDs).
+"""
+
+from __future__ import absolute_import, division, print_function
+
+import io
+
+import iotbx.pdb
+import libtbx.phil
+from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
+
+import mmtbx.model
+from iotbx.data_manager import DataManager
+from mmtbx.programs.endoexo import Program as EndoexoProgram
+from scitbx import matrix
+
+
+# 8 A sphere around the Fe of 1BQ8 (29 residues, 154 atoms).  Slightly
+# larger than the QM region endoexo extracts (72 atoms) so the BFS has
+# scaffold to cap into.
+_1BQ8_FE_SPHERE_PDB = """\
+CRYST1   33.823   34.705   43.204  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.029566  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.028814  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.023146        0.00000
+ATOM     37  N   VAL A   5      16.394   5.495   0.266  1.00  3.20           N
+ATOM     38  CA  VAL A   5      15.980   6.892   0.493  1.00  3.49           C
+ATOM     39  C   VAL A   5      14.480   7.032   0.278  1.00  2.98           C
+ATOM     40  O   VAL A   5      13.922   6.570  -0.728  1.00  3.30           O
+ATOM     41  CB  VAL A   5      16.763   7.863  -0.366  1.00  3.68           C
+ATOM     42  CG1 VAL A   5      16.514   7.724  -1.870  1.00  4.62           C
+ATOM     43  CG2 VAL A   5      16.523   9.338   0.046  1.00  5.32           C
+ATOM     44  N   CYS A   6      13.876   7.840   1.115  1.00  2.56           N
+ATOM     45  CA  CYS A   6      12.515   8.342   0.910  1.00  2.77           C
+ATOM     46  C   CYS A   6      12.644   9.458  -0.142  1.00  2.56           C
+ATOM     47  O   CYS A   6      13.271  10.473   0.122  1.00  3.23           O
+ATOM     48  CB  CYS A   6      11.937   8.897   2.187  1.00  2.83           C
+ATOM     49  SG  CYS A   6      10.256   9.599   1.876  1.00  3.04           S
+ATOM     50  N   LYS A   7      12.120   9.227  -1.346  1.00  2.98           N
+ATOM     51  CA  LYS A   7      12.260  10.201  -2.421  1.00  3.51           C
+ATOM     52  C   LYS A   7      11.541  11.504  -2.103  1.00  3.88           C
+ATOM     53  O   LYS A   7      11.857  12.540  -2.672  1.00  5.65           O
+ATOM     54  CB  LYS A   7      11.742   9.650  -3.758  1.00  5.11           C
+ATOM     55  CG  LYS A   7      12.524   8.451  -4.265  1.00  6.96           C
+ATOM     56  CD  LYS A   7      11.938   7.989  -5.583  1.00  8.84           C
+ATOM     57  CE  LYS A   7      10.500   7.483  -5.529  1.00  9.73           C
+ATOM     58  NZ  LYS A   7      10.079   6.961  -6.833  1.00 11.95           N
+ATOM     59  N   ILE A   8      10.572  11.487  -1.162  1.00  3.53           N
+ATOM     60  CA  ILE A   8       9.858  12.717  -0.799  1.00  3.44           C
+ATOM     61  C   ILE A   8      10.661  13.609   0.123  1.00  3.26           C
+ATOM     62  O   ILE A   8      10.797  14.826  -0.111  1.00  5.13           O
+ATOM     63  CB  ILE A   8       8.487  12.375  -0.162  1.00  5.11           C
+ATOM     64  CG1 ILE A   8       7.671  11.360  -0.956  1.00  5.47           C
+ATOM     65  CG2 ILE A   8       7.719  13.652   0.102  1.00  5.65           C
+ATOM     66  CD1 ILE A   8       7.349  11.801  -2.358  1.00  8.43           C
+ATOM     67  N   CYS A   9      11.210  13.074   1.223  1.00  3.35           N
+ATOM     68  CA  CYS A   9      11.769  13.851   2.272  1.00  3.49           C
+ATOM     69  C   CYS A   9      13.219  13.660   2.581  1.00  3.53           C
+ATOM     70  O   CYS A   9      13.796  14.406   3.390  1.00  3.48           O
+ATOM     71  CB  CYS A   9      10.948  13.686   3.564  1.00  3.16           C
+ATOM     72  SG  CYS A   9      11.311  12.173   4.470  1.00  3.34           S
+ATOM     73  N   GLY A  10      13.879  12.653   2.014  1.00  2.95           N
+ATOM     74  CA  GLY A  10      15.282  12.416   2.247  1.00  2.72           C
+ATOM     75  C   GLY A  10      15.614  11.546   3.426  1.00  2.73           C
+ATOM     76  O   GLY A  10      16.820  11.254   3.626  1.00  3.00           O
+ATOM     77  N   TYR A  11      14.667  11.081   4.202  1.00  2.81           N
+ATOM     78  CA  TYR A  11      14.915  10.112   5.274  1.00  2.91           C
+ATOM     79  C   TYR A  11      15.553   8.845   4.649  1.00  2.90           C
+ATOM     80  O   TYR A  11      15.159   8.433   3.551  1.00  3.10           O
+ATOM     81  CB  TYR A  11      13.580   9.729   5.930  1.00  2.88           C
+ATOM     82  CG  TYR A  11      13.703   8.536   6.859  1.00  2.57           C
+ATOM     83  CD1 TYR A  11      14.232   8.652   8.139  1.00  3.41           C
+ATOM     84  CD2 TYR A  11      13.305   7.275   6.410  1.00  3.49           C
+ATOM     85  CE1 TYR A  11      14.336   7.547   8.970  1.00  4.29           C
+ATOM     86  CE2 TYR A  11      13.427   6.178   7.235  1.00  3.09           C
+ATOM     87  CZ  TYR A  11      13.946   6.307   8.493  1.00  3.73           C
+ATOM     88  OH  TYR A  11      14.053   5.156   9.266  1.00  4.47           O
+ATOM     89  N   ILE A  12      16.530   8.325   5.360  1.00  2.50           N
+ATOM     90  CA  ILE A  12      17.176   7.071   4.961  1.00  2.77           C
+ATOM     91  C   ILE A  12      16.631   5.931   5.778  1.00  2.84           C
+ATOM     92  O   ILE A  12      16.815   5.923   6.989  1.00  3.43           O
+ATOM     93  CB  ILE A  12      18.702   7.193   5.103  1.00  3.75           C
+ATOM     94  CG1 ILE A  12      19.290   8.421   4.373  1.00  4.12           C
+ATOM     95  CG2 ILE A  12      19.388   5.922   4.674  1.00  4.75           C
+ATOM     96  CD1 ILE A  12      19.194   8.339   2.859  1.00  6.27           C
+ATOM    279  N   TRP A  37       3.798  -0.020   6.436  1.00  4.44           N
+ATOM    280  CA  TRP A  37       4.860   0.808   7.049  1.00  3.68           C
+ATOM    281  C   TRP A  37       5.032   2.052   6.206  1.00  3.09           C
+ATOM    282  O   TRP A  37       4.931   2.011   5.003  1.00  4.07           O
+ATOM    283  CB  TRP A  37       6.150  -0.001   7.149  1.00  3.69           C
+ATOM    284  CG  TRP A  37       7.317   0.766   7.681  1.00  3.57           C
+ATOM    285  CD1 TRP A  37       7.768   0.734   8.982  1.00  3.65           C
+ATOM    286  CD2 TRP A  37       8.215   1.617   6.994  1.00  3.73           C
+ATOM    287  NE1 TRP A  37       8.896   1.532   9.118  1.00  3.98           N
+ATOM    288  CE2 TRP A  37       9.187   2.061   7.896  1.00  3.73           C
+ATOM    289  CE3 TRP A  37       8.319   2.027   5.639  1.00  3.78           C
+ATOM    290  CZ2 TRP A  37      10.240   2.931   7.536  1.00  3.88           C
+ATOM    291  CZ3 TRP A  37       9.358   2.853   5.292  1.00  4.00           C
+ATOM    292  CH2 TRP A  37      10.308   3.297   6.238  1.00  4.03           C
+ATOM    293  N   VAL A  38       5.270   3.185   6.882  1.00  2.88           N
+ATOM    294  CA  VAL A  38       5.473   4.448   6.200  1.00  3.57           C
+ATOM    295  C   VAL A  38       6.750   5.130   6.648  1.00  3.48           C
+ATOM    296  O   VAL A  38       7.242   4.891   7.767  1.00  3.30           O
+ATOM    297  CB  VAL A  38       4.286   5.394   6.306  1.00  4.43           C
+ATOM    298  CG1 VAL A  38       3.017   4.799   5.695  1.00  5.23           C
+ATOM    299  CG2 VAL A  38       4.031   5.795   7.745  1.00  5.51           C
+ATOM    300  N   CYS A  39       7.214   6.059   5.822  1.00  3.08           N
+ATOM    301  CA  CYS A  39       8.351   6.911   6.228  1.00  3.01           C
+ATOM    302  C   CYS A  39       8.015   7.538   7.573  1.00  2.69           C
+ATOM    303  O   CYS A  39       6.957   8.180   7.696  1.00  2.90           O
+ATOM    304  CB  CYS A  39       8.518   8.006   5.167  1.00  2.63           C
+ATOM    305  SG  CYS A  39       9.909   9.101   5.614  1.00  3.02           S
+ATOM    306  N   PRO A  40       8.872   7.421   8.563  1.00  3.42           N
+ATOM    307  CA  PRO A  40       8.561   7.954   9.916  1.00  3.79           C
+ATOM    308  C   PRO A  40       8.613   9.480   9.954  1.00  3.62           C
+ATOM    309  O   PRO A  40       8.148  10.060  10.929  1.00  5.67           O
+ATOM    310  CB  PRO A  40       9.655   7.382  10.800  1.00  4.40           C
+ATOM    311  CG  PRO A  40      10.750   7.051   9.885  1.00  5.10           C
+ATOM    312  CD  PRO A  40      10.139   6.613   8.599  1.00  3.49           C
+ATOM    313  N   ILE A  41       9.158  10.104   8.922  1.00  3.58           N
+ATOM    314  CA  ILE A  41       9.257  11.549   8.867  1.00  3.55           C
+ATOM    315  C   ILE A  41       8.095  12.177   8.150  1.00  3.59           C
+ATOM    316  O   ILE A  41       7.399  13.021   8.678  1.00  4.62           O
+ATOM    317  CB  ILE A  41      10.614  11.965   8.241  1.00  3.97           C
+ATOM    318  CG1 ILE A  41      11.762  11.284   8.954  1.00  4.60           C
+ATOM    319  CG2 ILE A  41      10.737  13.460   8.152  1.00  5.47           C
+ATOM    320  CD1 ILE A  41      11.735  11.381  10.447  1.00  7.33           C
+ATOM    321  N   CYS A  42       7.817  11.737   6.928  1.00  3.39           N
+ATOM    322  CA  CYS A  42       6.813  12.362   6.092  1.00  2.32           C
+ATOM    323  C   CYS A  42       5.546  11.599   5.836  1.00  2.80           C
+ATOM    324  O   CYS A  42       4.605  12.109   5.233  1.00  3.24           O
+ATOM    325  CB  CYS A  42       7.416  12.822   4.772  1.00  3.36           C
+ATOM    326  SG  CYS A  42       7.709  11.447   3.585  1.00  3.47           S
+ATOM    327  N   GLY A  43       5.529  10.292   6.224  1.00  2.45           N
+ATOM    328  CA  GLY A  43       4.397   9.433   6.041  1.00  3.04           C
+ATOM    329  C   GLY A  43       4.241   8.817   4.697  1.00  3.00           C
+ATOM    330  O   GLY A  43       3.225   8.146   4.401  1.00  4.16           O
+ATOM    331  N   ALA A  44       5.237   8.944   3.824  1.00  3.45           N
+ATOM    332  CA  ALA A  44       5.165   8.344   2.481  1.00  3.40           C
+ATOM    333  C   ALA A  44       5.111   6.836   2.552  1.00  3.56           C
+ATOM    334  O   ALA A  44       5.790   6.203   3.365  1.00  3.89           O
+ATOM    335  CB  ALA A  44       6.378   8.747   1.654  1.00  3.81           C
+ATOM    336  N   PRO A  45       4.346   6.215   1.643  1.00  3.69           N
+ATOM    337  CA  PRO A  45       4.298   4.754   1.585  1.00  4.02           C
+ATOM    338  C   PRO A  45       5.576   4.171   1.101  1.00  3.00           C
+ATOM    339  O   PRO A  45       6.468   4.880   0.549  1.00  3.12           O
+ATOM    340  CB  PRO A  45       3.135   4.457   0.624  1.00  5.15           C
+ATOM    341  CG  PRO A  45       2.917   5.686  -0.103  1.00  6.41           C
+ATOM    342  CD  PRO A  45       3.406   6.842   0.655  1.00  4.15           C
+ATOM    358  N   GLU A  48       7.481   4.933  -2.272  1.00  2.79           N
+ATOM    359  CA  GLU A  48       8.221   6.151  -2.488  1.00  3.20           C
+ATOM    360  C   GLU A  48       9.676   6.047  -2.095  1.00  2.89           C
+ATOM    361  O   GLU A  48      10.378   7.082  -2.151  1.00  3.92           O
+ATOM    362  CB  GLU A  48       7.533   7.364  -1.863  1.00  3.74           C
+ATOM    363  CG  GLU A  48       6.066   7.505  -2.237  1.00  3.93           C
+ATOM    364  CD  GLU A  48       5.870   7.509  -3.737  1.00  3.85           C
+ATOM    365  OE1 GLU A  48       6.135   8.569  -4.357  1.00  5.88           O
+ATOM    366  OE2 GLU A  48       5.533   6.437  -4.316  1.00  4.39           O
+ATOM    367  N   PHE A  49      10.156   4.875  -1.748  1.00  2.54           N
+ATOM    368  CA  PHE A  49      11.543   4.634  -1.421  1.00  3.16           C
+ATOM    369  C   PHE A  49      12.287   4.035  -2.598  1.00  3.23           C
+ATOM    370  O   PHE A  49      11.739   3.260  -3.399  1.00  4.57           O
+ATOM    371  CB  PHE A  49      11.623   3.646  -0.221  1.00  3.07           C
+ATOM    372  CG  PHE A  49      11.333   4.340   1.105  1.00  2.65           C
+ATOM    373  CD1 PHE A  49      10.072   4.713   1.442  1.00  2.91           C
+ATOM    374  CD2 PHE A  49      12.383   4.683   1.940  1.00  2.86           C
+ATOM    375  CE1 PHE A  49       9.830   5.384   2.660  1.00  3.94           C
+ATOM    376  CE2 PHE A  49      12.152   5.386   3.132  1.00  3.21           C
+ATOM    377  CZ  PHE A  49      10.853   5.721   3.494  1.00  3.61           C
+TER
+HETATM  422 FE    FE A  55       9.794  10.608   3.873  1.00  2.90          FE
+HETATM  429  O   HOH A 107       5.079   8.927   9.538  1.00 12.57           O
+HETATM  445  O   HOH A 123       9.120  16.310   5.902  1.00 10.75           O
+HETATM  446  O   HOH A 124      12.913  16.679   4.634  1.00  5.39           O
+HETATM  470  O   HOH A 148      13.863  16.664   0.689  1.00 19.89           O
+HETATM  480  O   HOH A 158      13.763  14.830  -1.239  1.00 16.61           O
+HETATM  486  O   HOH A 164       8.536  15.979   3.044  1.00  8.33           O
+HETATM  505  O   HOH A 183      11.838  17.652   2.302  1.00 20.40           O
+HETATM  559  O   HOH A 307       9.914  17.434   0.789  0.66 11.76           O
+HETATM  604  O   HOH A 422       9.389  18.060   1.780  0.34  9.73           O
+"""
+
+
+def _run_endoexo_on_string(pdb_str):
+  """Drive ``mmtbx.programs.endoexo.Program`` in-memory on a PDB string
+  with default settings (metal scan, radius=5.0, depth=3).  Parses the
+  string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
+  the single result dict produced for the Fe seed."""
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  dm = DataManager(["model"])
+  dm.add_model("fe_sphere", model)
+  dm.set_default_model("fe_sphere")
+
+  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  params = master.extract()
+  params.write_files = False
+
+  prog = EndoexoProgram(dm, params, master_phil=master, logger=io.StringIO())
+  prog.validate()
+  prog.run()
+  results = prog.get_results()
+  assert len(results) == 1, (
+    f"expected 1 submodel (1 Fe atom in input); got {len(results)}")
+  return results[0]
+
+
+def exercise_submodel_shape():
+  """Lock in the structural shape of the submodel: total atom count,
+  element distribution, seed and cap iseq counts."""
+  result = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+
+  atoms = list(result["model"].get_hierarchy().atoms())
+  assert len(atoms) == 72, (
+    f"submodel atom count drifted: expected 72, got {len(atoms)}")
+
+  elements = {}
+  for a in atoms:
+    el = a.element.strip().upper()
+    elements[el] = elements.get(el, 0) + 1
+  expected_elements = {"C": 40, "FE": 1, "H": 10, "N": 8, "O": 9, "S": 4}
+  assert elements == expected_elements, (
+    f"submodel element distribution drifted:\n"
+    f"  expected: {expected_elements}\n"
+    f"  got     : {elements}")
+
+  assert len(result["seed_iseqs"]) == 1
+  assert len(result["cap_iseqs"]) == 10
+  seed_iseq = result["seed_iseqs"][0]
+  assert atoms[seed_iseq].element.strip().upper() == "FE"
+
+
+def exercise_cys_coordination():
+  """Verify the chemistry: the four Cys side chains coordinate the Fe
+  with Sg atoms within 3 A of the seed."""
+  result = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  hier = result["model"].get_hierarchy()
+  atoms = list(hier.atoms())
+
+  cys_residues = [
+    ag for ag in hier.atom_groups()
+    if ag.resname.strip().upper() == "CYS"]
+  assert len(cys_residues) == 4, (
+    f"expected 4 Cys residues in submodel; got {len(cys_residues)}")
+
+  seed_iseq = result["seed_iseqs"][0]
+  fe_xyz = matrix.col(atoms[seed_iseq].xyz)
+  sg_distances = []
+  for ag in cys_residues:
+    sg = next((a for a in ag.atoms()
+               if a.name.strip().upper() == "SG"), None)
+    assert sg is not None, (
+      f"Cys residue {ag.parent().resseq.strip()} has no SG atom")
+    d = (matrix.col(sg.xyz) - fe_xyz).length()
+    sg_distances.append(d)
+    assert d < 3.0, (
+      f"Cys-SG -> Fe distance {d:.2f} A is outside coordination range")
+
+  mean_d = sum(sg_distances) / len(sg_distances)
+  assert approx_equal(mean_d, 2.27, eps=0.1)
+
+
+# Asp 93 / Arg 89 / Arg 92 / Phe 90 + Fe 1210 + three Fe-shell waters
+# from 2C2U (HsFt-like ferritin core, P 2 3, a=b=c=90.369).  Fe sits on
+# a 3-fold special position: three symmetry operators (1_555, 6_566 and
+# 12_665) map ASU Asp 93 / HOH 2154 onto the metal at 2.5-2.6 A, so the
+# materialized QM region must contain three Asp 93 copies and three HOH
+# 2154 copies plus a single deduplicated Fe.  Fe occupancy is 0.5 in
+# 2C2U; bumped to 1.00 here so the BFS metal-detection threshold (which
+# uses crystallographic occupancy) is not the thing being exercised.
+_2C2U_FE_SPHERE_PDB = """\
+CRYST1   90.369   90.369   90.369  90.00  90.00  90.00 P 2 3
+SCALE1      0.011066  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.011066  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.011066        0.00000
+ATOM    481  N   ARG A  89      29.832  67.632  19.953  1.00  6.64           N
+ATOM    482  CA  ARG A  89      29.359  67.682  21.326  1.00  7.99           C
+ATOM    483  C   ARG A  89      29.123  66.317  21.969  1.00  8.16           C
+ATOM    484  O   ARG A  89      28.978  66.252  23.181  1.00  8.85           O
+ATOM    485  CB  ARG A  89      28.123  68.590  21.438  1.00  8.08           C
+ATOM    486  CG  ARG A  89      26.860  67.986  20.809  1.00  9.06           C
+ATOM    487  CD  ARG A  89      25.899  69.081  20.404  1.00  9.62           C
+ATOM    488  NE  ARG A  89      24.608  68.586  19.936  1.00  9.83           N
+ATOM    489  CZ  ARG A  89      24.381  68.082  18.723  1.00  9.19           C
+ATOM    490  NH1 ARG A  89      25.372  68.013  17.839  1.00 10.52           N
+ATOM    491  NH2 ARG A  89      23.190  67.671  18.374  1.00 11.31           N
+ATOM    492  N   PHE A  90      29.143  65.230  21.179  1.00  7.41           N
+ATOM    493  CA  PHE A  90      29.067  63.858  21.670  1.00  8.07           C
+ATOM    494  C   PHE A  90      30.440  63.196  21.800  1.00  6.75           C
+ATOM    495  O   PHE A  90      30.528  62.012  22.041  1.00  6.99           O
+ATOM    496  CB  PHE A  90      28.107  63.005  20.854  1.00  9.51           C
+ATOM    497  CG  PHE A  90      26.747  63.660  20.727  1.00  9.88           C
+ATOM    498  CD1 PHE A  90      25.917  63.757  21.804  1.00 12.35           C
+ATOM    499  CD2 PHE A  90      26.356  64.247  19.523  1.00 11.28           C
+ATOM    500  CE1 PHE A  90      24.652  64.408  21.670  1.00 13.72           C
+ATOM    501  CE2 PHE A  90      25.134  64.895  19.415  1.00 13.59           C
+ATOM    502  CZ  PHE A  90      24.329  64.988  20.488  1.00 12.95           C
+ATOM    514  N   ARG A  92      32.664  63.114  24.285  1.00  6.21           N
+ATOM    515  CA  ARG A  92      32.906  62.301  25.482  1.00  8.24           C
+ATOM    516  C   ARG A  92      32.082  61.069  25.480  1.00  7.94           C
+ATOM    517  O   ARG A  92      32.550  59.985  25.866  1.00 10.38           O
+ATOM    518  CB AARG A  92      32.838  63.133  26.771  0.50  8.24           C
+ATOM    519  CB BARG A  92      32.507  63.088  26.731  0.50  8.15           C
+ATOM    520  CG AARG A  92      33.908  64.231  26.908  0.50  8.00           C
+ATOM    521  CG BARG A  92      33.428  64.191  27.114  0.50  7.60           C
+ATOM    522  CD AARG A  92      35.345  63.768  27.104  0.50  8.06           C
+ATOM    523  CD BARG A  92      34.674  63.668  27.784  0.50  8.27           C
+ATOM    524  NE AARG A  92      35.471  63.103  28.390  0.50  7.84           N
+ATOM    525  NE BARG A  92      34.344  63.138  29.101  0.50  7.94           N
+ATOM    526  CZ AARG A  92      36.586  62.621  28.904  0.50  9.02           C
+ATOM    527  CZ BARG A  92      35.190  62.540  29.954  0.50  8.28           C
+ATOM    528  NH1AARG A  92      37.706  62.705  28.233  0.50 14.66           N
+ATOM    529  NH1BARG A  92      36.484  62.428  29.633  0.50  7.37           N
+ATOM    530  NH2AARG A  92      36.555  62.048  30.101  0.50 11.64           N
+ATOM    531  NH2BARG A  92      34.767  62.156  31.175  0.50  6.81           N
+ATOM    532  N   ASP A  93      30.815  61.167  25.066  1.00  7.08           N
+ATOM    533  CA  ASP A  93      29.930  59.993  25.026  1.00  7.52           C
+ATOM    534  C   ASP A  93      30.579  58.852  24.237  1.00  6.59           C
+ATOM    535  O   ASP A  93      30.664  57.719  24.694  1.00  8.25           O
+ATOM    536  CB  ASP A  93      28.578  60.370  24.419  1.00  9.20           C
+ATOM    537  CG  ASP A  93      27.912  61.536  25.111  1.00 11.51           C
+ATOM    538  OD1 ASP A  93      27.283  61.299  26.128  1.00 18.61           O
+ATOM    539  OD2 ASP A  93      28.068  62.711  24.724  1.00 16.53           O
+TER
+HETATM 1512 FE   FE  A1210      26.685  63.748  26.686  1.00  8.65          FE
+HETATM 1665  O   HOH A2153      30.815  65.185  24.984  1.00 16.78           O
+HETATM 1666  O   HOH A2154      26.856  65.362  24.718  1.00 13.80           O
+HETATM 1674  O   HOH A2162      28.848  59.920  28.597  1.00 33.42           O
+END
+"""
+
+
+def exercise_2c2u_symmetry_materialization():
+  """Lock in the symmetry-expanded shape of the 2C2U Fe region.
+
+  Asserts:
+
+  * exactly one Fe in the materialized model (the three sym_ops put the
+    metal at the same point; only one survives deduplication);
+  * three Asp 93 atom groups, one per coordinating sym_op;
+  * three HOH 2154 oxygens, one per coordinating sym_op;
+  * chain IDs are all single character (PDB-compatible) and include
+    the parent "A" plus at least two additional chains for the
+    symmetry images.
+  """
+  result = _run_endoexo_on_string(_2C2U_FE_SPHERE_PDB)
+  hier = result["model"].get_hierarchy()
+
+  fe_atoms = 0
+  asp93_groups = 0
+  hoh2154_groups = 0
+  chain_ids = set()
+  for ch in hier.chains():
+    chain_ids.add(ch.id.strip())
+    assert len(ch.id.strip()) == 1, (
+      f"chain id {ch.id!r} is not a single character; this would "
+      f"overflow the PDB chain field and break downstream restraint "
+      f"reconstruction")
+    for rg in ch.residue_groups():
+      for ag in rg.atom_groups():
+        rn = ag.resname.strip().upper()
+        if rn == "FE":
+          fe_atoms += len(list(ag.atoms()))
+        elif rn == "ASP" and rg.resseq.strip() == "93":
+          asp93_groups += 1
+        elif rn == "HOH" and rg.resseq.strip() == "2154":
+          hoh2154_groups += 1
+
+  assert fe_atoms == 1, (
+    f"expected 1 Fe atom after special-position dedup; got {fe_atoms}")
+  assert asp93_groups == 3, (
+    f"expected 3 Asp 93 atom groups (one per sym_op); got {asp93_groups}")
+  assert hoh2154_groups == 3, (
+    f"expected 3 HOH 2154 atom groups (one per sym_op); got "
+    f"{hoh2154_groups}")
+
+  assert "A" in chain_ids, (
+    f"parent chain 'A' missing from materialized region: {chain_ids}")
+  assert len(chain_ids) >= 3, (
+    f"expected >=3 chain ids (identity + two sym images); got "
+    f"{sorted(chain_ids)}")
+
+
+def exercise_2c2u_fe_coordination_distances():
+  """The three Asp 93 OD1/OD2 and three HOH 2154 oxygens that survive
+  materialization should all be within Fe coordination range
+  (<= 3.0 A from the deduplicated Fe)."""
+  result = _run_endoexo_on_string(_2C2U_FE_SPHERE_PDB)
+  hier = result["model"].get_hierarchy()
+  atoms = list(hier.atoms())
+
+  seed_iseq = result["seed_iseqs"][0]
+  fe_xyz = matrix.col(atoms[seed_iseq].xyz)
+  assert atoms[seed_iseq].element.strip().upper() == "FE"
+
+  asp_o_distances = []
+  hoh_o_distances = []
+  for a in atoms:
+    rn = a.parent().resname.strip().upper()
+    rg = a.parent().parent()
+    name = a.name.strip().upper()
+    if rn == "ASP" and rg.resseq.strip() == "93" and name in ("OD1", "OD2"):
+      asp_o_distances.append((matrix.col(a.xyz) - fe_xyz).length())
+    elif rn == "HOH" and rg.resseq.strip() == "2154":
+      hoh_o_distances.append((matrix.col(a.xyz) - fe_xyz).length())
+
+  # 3 Asp93 * (OD1 + OD2) = 6 carboxylate oxygens; at least 3 of them
+  # (one per Asp93 image) coordinate the Fe.
+  close_asp_o = [d for d in asp_o_distances if d < 3.0]
+  assert len(close_asp_o) >= 3, (
+    f"expected >=3 Asp 93 oxygens within 3 A of Fe; got "
+    f"{sorted(asp_o_distances)}")
+
+  assert len(hoh_o_distances) == 3
+  for d in hoh_o_distances:
+    assert d < 3.0, (
+      f"HOH 2154 O-Fe distance {d:.2f} A outside coordination range")
+
+
+def exercise_residue_composition():
+  """The default buffer (radius=5, depth=3) pulls in a stable scaffold
+  around the four coordinating Cys.  Pin the residue type counts."""
+  result = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  hier = result["model"].get_hierarchy()
+
+  resname_counts = {}
+  for ag in hier.atom_groups():
+    rn = ag.resname.strip().upper()
+    resname_counts[rn] = resname_counts.get(rn, 0) + 1
+
+  expected = {
+    "ALA": 1, "CYS": 4, "FE": 1, "GLY": 2,
+    "ILE": 2, "TYR": 1, "VAL": 2,
+  }
+  assert resname_counts == expected, (
+    f"residue composition drifted:\n"
+    f"  expected: {expected}\n"
+    f"  got     : {resname_counts}")
+
+
+def run():
+  exercise_submodel_shape()
+  exercise_cys_coordination()
+  exercise_residue_composition()
+  exercise_2c2u_symmetry_materialization()
+  exercise_2c2u_fe_coordination_distances()
+  print(format_cpu_times())
+  print("OK")
+
+
+if __name__ == "__main__":
+  run()
