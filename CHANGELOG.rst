@@ -1,3 +1,11 @@
+2026.5
+======
+
+* Added qttbx PySide2 and PySide6 widgets for editing PHIL parameters with validation
+* Migrated wxtbx and gltbx to wxPython 4.2 and dropped wxPython 3 support
+* Added reference-model hydrogen-bond restraints and a Ramachandran target override
+* Added CONST dihedral restraints and parameterization of riding hydrogens when a torsion is missing
+
 2026.4
 ======
 
