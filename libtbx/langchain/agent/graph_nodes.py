@@ -3794,9 +3794,17 @@ def _build_with_new_builder(state):
             pre_postprocess = command
             directives = state.get("directives", {})
             user_advice = state.get("user_advice", "")
-            # bad_inject_params is {program: [param_names]} — extract set for this program
-            all_bad = state.get("bad_inject_params", {})
-            bad_set = set(all_bad.get(program, []))
+            # bad_inject_params is {program: [param_names]} — extract set for
+            # this program.  Be defensive about types: after a JSON round-trip
+            # across the REST boundary the value could arrive as None (missing
+            # key deserialized to null) or a per-program value could be null;
+            # json.loads never produces tuples, but None is a real possibility.
+            # Coerce so .get()/set() can never raise.
+            all_bad = state.get("bad_inject_params") or {}
+            if not isinstance(all_bad, dict):
+                all_bad = {}
+            _prog_bad = all_bad.get(program) or []
+            bad_set = set(_prog_bad)
 
             # Collect postprocess log messages for graph debug log
             _pp_logs = []

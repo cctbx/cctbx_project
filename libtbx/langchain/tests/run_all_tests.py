@@ -294,6 +294,16 @@ def main():
         print(f"⚠️  Could not import tst_llm_unavailable_notice: {e}")
         results.append(("LLM-unavailable notice", "tst_llm_unavailable_notice", False, 0))
 
+    # --- resolve_cryo_em ncs_file never-inject ---
+    try:
+        from tests.tst_resolve_cryo_em_ncs_inject import run_all_tests as run_resolve_ncs_tests
+        success, elapsed = run_test_module(
+            "tst_resolve_cryo_em_ncs_inject", run_resolve_ncs_tests, args.verbose)
+        results.append(("resolve_cryo_em ncs_file", "tst_resolve_cryo_em_ncs_inject", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_resolve_cryo_em_ncs_inject: {e}")
+        results.append(("resolve_cryo_em ncs_file", "tst_resolve_cryo_em_ncs_inject", False, 0))
+
     # --- Best Files Tracker Tests ---
     try:
         from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests

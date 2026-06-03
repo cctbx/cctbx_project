@@ -1477,6 +1477,12 @@ blacklisted so `inject_user_params` never re-injects it. Recognized error patter
   components ≥ 6 characters (catches `wavelength` when PHIL resolves it to
   `autosol.wavelength.added_wavelength`)
 
+**Static (proactive) blacklist (v120):** the above is *reactive* (learned only
+after a failure). `AgentSession._STATIC_BAD_INJECT_PARAMS` seeds known-invalid
+pairs so they are skipped on the FIRST command — e.g. `ncs_file` for
+`phenix.resolve_cryo_em`. `get_all_bad_inject_params()` merges static ∪ learned
+and is what the client transmits to the server. See ARCHITECTURE §45.
+
 ### User Request Invalid
 
 When user requests an unavailable program:

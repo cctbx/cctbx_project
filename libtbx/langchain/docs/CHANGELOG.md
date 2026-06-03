@@ -224,6 +224,59 @@ continuations follow different rules and need no leading space).  The full rule,
 the empirical verification method, and authoring guidance are documented in
 ARCHITECTURE §44.
 
+### `phenix.resolve_cryo_em` never receives `ncs_file`
+
+In a cryo-EM half-map density-modification workflow, a stray `.ncs_spec` file
+produced by an earlier map-symmetry/segmentation step was auto-mapped to
+`ncs_file=` and passed to `phenix.resolve_cryo_em`, which does not accept a
+top-level `ncs_file` ("Some PHIL parameters are not recognized" / "Unknown
+command line parameter definition: ncs_file = ..."), failing the cycle.  The
+existing `bad_inject_params` blacklist is *reactive* -- it only learned to skip
+the param after one failed cycle.
+
+NOTE / correction of an earlier entry: the v119.H14.2 entry below stated
+"resolve_cryo_em DOES accept `ncs_file=`".  That is WRONG (verified against
+`phenix.resolve_cryo_em --show_defaults`: there is NO `ncs_file` parameter in
+any scope).  Symmetry, when wanted, is passed as
+`input_files.symmetry_file=my_ncs.ncs_spec`.  In the failing run the `.ncs_spec`
+was a stray auto-discovered file, not part of the plan (the LLM's reasoning
+targeted "optimized full map from half-maps" and never mentioned symmetry), so
+STRIPPING it is the correct behavior — not remapping it to `symmetry_file`.  The
+blacklist matches `ncs_file` only and does not touch the legitimate
+`input_files.symmetry_file` (verified against the real `sanitize_command`).
+
+Fix (proactive, layered):
+- `agent/session.py` gains a static `_STATIC_BAD_INJECT_PARAMS` map
+  (`phenix.resolve_cryo_em -> ncs_file`), unioned into
+  `get_bad_inject_params()`, so the param is excluded on the FIRST command with
+  no failed cycle required.  A new `get_all_bad_inject_params()` returns the
+  full merged `{program: [keys]}` dict.
+- `programs/ai_agent.py` now sends the **merged** set to the server via
+  `session_info["bad_inject_params"] = session.get_all_bad_inject_params()`
+  (was `session.data.get("bad_inject_params", {})`, learned-only -- which would
+  have missed the static entry in SERVER mode, the mode the failing run used).
+  The LLM guidelines and the client-side `_inject_missing_required_files` guard
+  also honor the merged set.
+- Server path verified end-to-end against real source: `run_ai_agent.py` ->
+  graph `build` node extracts the per-program set -> `command_postprocessor`
+  `sanitize_command` Rule A STRIPS the blacklisted token (so an LLM-emitted
+  `ncs_file=` is removed, not just un-injected).
+
+External-review (Gemini) hardening:
+- `agent/graph_nodes.py` build-node extraction hardened against a JSON
+  round-trip yielding `None`/non-dict (`state.get("bad_inject_params") or {}`,
+  `isinstance` guard, `or []`).
+- `_STATIC_BAD_INJECT_PARAMS` carries a WARNING that `sanitize_command` matches
+  both full and short keys, so future entries that could collide with a valid
+  nested PHIL scope must use the full dotted path.
+
+Regression suite `tst_resolve_cryo_em_ncs_inject.py` (11 tests) covers: static
+entry present; proactive blacklist on a fresh session; other programs
+unaffected; learned params still union; required-file injector honors the
+blacklist; merged dict for the server; client sends the merged set; real
+`sanitize_command` strips the token; JSON-round-trip integration gate; null
+payload safety; build-node hardening source-scan.  See ARCHITECTURE §45.
+
 ### Tests
 
 | File | Tests | Covers |
@@ -2105,7 +2158,13 @@ The H14.2 ship is the one-line config fix only.
     it's NOT a consumer)
   - §C (1): sibling regression guard — resolve_cryo_em's ncs_spec
     entry remains intact (predict_and_build is the only program
-    being corrected; resolve_cryo_em DOES accept `ncs_file=`)
+    being corrected)
+    [v120 CORRECTION: the original wording here claimed "resolve_cryo_em
+    DOES accept `ncs_file=`".  That is WRONG (verified against
+    `phenix.resolve_cryo_em --show_defaults`: no `ncs_file` parameter in any
+    scope).  resolve_cryo_em has NO `ncs_file`; symmetry is passed as
+    `input_files.symmetry_file=...ncs_spec`.  See the v120
+    "resolve_cryo_em never receives ncs_file" entry and ARCHITECTURE §45.]
 
 `knowledge/programs.yaml` (3 surgical edits),
 `tests/tst_predict_and_build_no_ncs.py` (NEW, 5 tests),

@@ -885,12 +885,14 @@ request = build_request_v2(
 )
 ```
 
-**`bad_inject_params` flow** (added in v112.66): Parameters that previously
-caused PHENIX errors are blacklisted and propagated to BUILD for stripping:
+**`bad_inject_params` flow** (added in v112.66; static-seed in v120, see §45):
+Parameters that previously caused PHENIX errors (learned) — plus
+statically-known-invalid pairs (v120) — are blacklisted and propagated to BUILD
+for stripping:
 
 ```
-ai_agent.py: session.data["bad_inject_params"]
-    → session_info["bad_inject_params"]
+ai_agent.py: session.get_all_bad_inject_params()   # v120: merged static ∪ learned
+    → session_info["bad_inject_params"]            # (was session.data[...], learned-only)
     → build_session_state() → session_state
     → build_request_v2() → normalized_session_state
     → transport encode/decode
@@ -4844,6 +4846,97 @@ ends in `<non-space>\` to catch latent failures the parser has not
 yet reached.  This is exactly how the v120 fix was confirmed
 complete (zero remaining unquoted `<non-space>\` continuations in
 either file).
+
+### 45. Static Never-Inject Params: Proactive `bad_inject_params` (v120)
+
+**Problem.** The `bad_inject_params` mechanism (§ "bad_inject_params flow")
+was purely *reactive*: a parameter is added to the per-program blacklist by
+`record_bad_inject_param()` only AFTER PHENIX rejects it once.  So the first
+command for a program always included a known-bad param, failed, and only then
+taught the agent to skip it.  Concretely (log `ai_agent_503`): a stray
+`.ncs_spec` from an earlier map-symmetry/segmentation step was auto-mapped to
+`ncs_file=` for `phenix.resolve_cryo_em`, which does not accept a top-level
+`ncs_file` — the cycle failed before the reactive blacklist kicked in.
+
+**Fix — seed the same mechanism with known-invalid pairs.** Rather than add a
+parallel system, `AgentSession` gains a static table:
+
+```python
+_STATIC_BAD_INJECT_PARAMS = {
+    "phenix.resolve_cryo_em": ["ncs_file"],
+}
+```
+
+- `get_bad_inject_params(program)` returns `learned | static`, so the param is
+  blacklisted on the FIRST command (no failed cycle needed).
+- `get_all_bad_inject_params()` (NEW) returns the full merged
+  `{program: [keys]}` dict (static ∪ learned, all programs) for transmission.
+
+**The server-path subtlety (why two changes, not one).** The failing run was a
+**server-mode** run; the command was built server-side before reaching any
+client injector.  The server only sees what the client transmits.  The client
+was sending `session.data["bad_inject_params"]` (learned-only), so the static
+entry never crossed the wire and the first fix (local `get_bad_inject_params`
+alone) would NOT have prevented the failure.  The send-site in `ai_agent.py`
+was changed to transmit `session.get_all_bad_inject_params()`.  The end-to-end
+chain, verified against real source:
+
+```
+client: session_info["bad_inject_params"] = get_all_bad_inject_params()   # merged
+  → run_ai_agent.py: create_initial_state(bad_inject_params=...)           # dict in state
+  → graph_nodes.py BUILD: all_bad.get(program) → set                       # per-program set
+  → command_postprocessor.sanitize_command Rule A: STRIPS blacklisted token
+```
+
+`sanitize_command` Rule A *strips* an existing `key=value` whose key (full OR
+short) is blacklisted — it does not merely decline to inject — so an
+LLM-emitted `ncs_file=` is removed, not just left un-added.
+
+**Defense in depth.** The merged set is honored at four layers: LLM decision
+guidance (`ai_agent.py` guidelines), server build (`postprocess_command` via
+`session_info`), local build (`postprocess_command` via `get_bad_inject_params`),
+and the client required-file injector (`_inject_missing_required_files`, which
+now fetches the blacklist and skips matching slots).
+
+**Robustness (external-review hardening).** The BUILD-node extraction is
+defensive against a JSON round-trip that yields `None`/non-dict:
+`all_bad = state.get("bad_inject_params") or {}`; `isinstance` guard;
+`set(all_bad.get(program) or [])`.  And because `sanitize_command` matches both
+the full dotted key and the short key, `_STATIC_BAD_INJECT_PARAMS` carries a
+WARNING: future entries that could collide with a *valid* nested PHIL parameter
+of the same program must blacklist the full dotted path, not the short name.
+(`ncs_file`/`resolve_cryo_em` is safe — the program has no valid `ncs_file` in
+any scope.)
+
+**Why not scope the LLM guidance to the active program** (a reasonable
+suggestion): at guidelines-construction time the agent has not yet chosen a
+program — that is the LLM's job for the cycle — so there is no active program to
+filter to.  The ban list is necessarily global.  With a one-entry static map
+plus the small learned set the prompt cost is negligible; if the static map ever
+grows large, cap/relevance-filter the *combined* list rather than scope per
+active program.
+
+**Extending.** New known-invalid pairs are a one-line addition to
+`_STATIC_BAD_INJECT_PARAMS`.  Tests: `tst_resolve_cryo_em_ncs_inject.py`
+(11 tests), including a `json.dumps`/`loads` integration gate that drives the
+hardened extraction and the real `sanitize_command`.
+
+**Strip, not remap.** resolve_cryo_em has NO `ncs_file` parameter (verified
+against `phenix.resolve_cryo_em --show_defaults` — no `ncs_file` token in any
+scope); the correct way to pass symmetry is `input_files.symmetry_file=...ncs_spec`.
+One could imagine *remapping* a stray `ncs_file=` to `symmetry_file=`, but that
+would be wrong here: in the failing run the `.ncs_spec` was an auto-discovered
+stray, not part of the plan (the decision targeted "optimized full map from
+half-maps" and never mentioned symmetry), and resolve_cryo_em estimates symmetry
+internally.  So the intended behavior is to DROP the stray param, which the
+blacklist does.  The blacklist matches `ncs_file` only — the legitimate
+`input_files.symmetry_file` is a distinct key (full and short) and is preserved
+(verified against the real `sanitize_command`).
+
+NOTE: an earlier CHANGELOG entry (v119.H14.2) asserted "resolve_cryo_em DOES
+accept `ncs_file=`".  That is WRONG (per `--show_defaults`) — there is no
+`ncs_file` parameter; symmetry is `input_files.symmetry_file`.  The H14.2 entry
+has been corrected in CHANGELOG.
 
 ## Workflow States
 
