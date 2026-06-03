@@ -32,6 +32,12 @@ import mmtbx.model
 from iotbx.data_manager import DataManager
 from mmtbx.programs.endoexo import Program as EndoexoProgram
 from scitbx import matrix
+from cctbx import sgtbx
+
+from mmtbx.geometry_restraints.endoexo.util import _canon_op
+from mmtbx.geometry_restraints.endoexo.capping import HydrogenCapper
+from mmtbx.geometry_restraints.endoexo.cutting import BondCutDetector
+from mmtbx.geometry_restraints.endoexo.graph import AtomGraphBuilder
 
 
 # 8 A sphere around the Fe of 1BQ8 (29 residues, 154 atoms).  Slightly
@@ -457,12 +463,225 @@ def exercise_residue_composition():
     f"  got     : {resname_counts}")
 
 
+# ===========================================================================
+# Engine unit tests
+#
+# These drive the pure engine pieces directly (no metal scan, no full
+# Program pipeline) and cover the subtle logic -- symmetry-op
+# canonicalisation, cap placement, bond-cut heuristics, and adjacency
+# construction -- that the count-based integration tests above do not.
+# ===========================================================================
+
+def _atoms_by_name(pdb_str):
+  """Parse *pdb_str* and return ``{atom_name: atom}`` with i_seqs reset to
+  positional order."""
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  hier = pdb_in.construct_hierarchy()
+  atoms = hier.atoms()
+  atoms.reset_i_seq()
+  return {a.name.strip(): a for a in atoms}
+
+
+def exercise_canon_op():
+  """``_canon_op`` must give a canonical, hash-stable representative: two
+  rt_mx values that compare equal (same xyz) must hash equal and satisfy
+  set membership after canonicalisation, regardless of how they were
+  built.  This is the contract the symmetry-aware BFS relies on when it
+  keys ``visited`` / ``cap_candidates`` on ``(i_seq, rt_mx)`` nodes."""
+  op = sgtbx.rt_mx("x,y,z+1")
+  # Same operation reached via composition with the identity -- this can
+  # leave a different internal denominator / representation.
+  op_composed = op.multiply(sgtbx.rt_mx())
+  assert op.as_xyz() == op_composed.as_xyz()
+
+  c1 = _canon_op(op)
+  c2 = _canon_op(op_composed)
+
+  # canonical form preserves the operation ...
+  assert c1.as_xyz() == op.as_xyz()
+  # ... is idempotent ...
+  assert _canon_op(c1).as_xyz() == c1.as_xyz()
+  # ... and is hash-stable: equal ops hash equal and live as one set member.
+  assert c1 == c2
+  assert hash(c1) == hash(c2)
+  assert c2 in {c1}
+
+  # The inverse of a pure translation negates it; canonicalisation must
+  # survive that too (the reverse-edge case in build_adjacency).
+  inv = _canon_op(op.inverse())
+  assert inv.as_xyz() == sgtbx.rt_mx("x,y,z-1").as_xyz()
+
+
+_CAP_PDB = """\
+ATOM      1  C1  XXX A   1       0.000   0.000   0.000  1.00  0.00           C
+ATOM      2  C2  XXX A   1       1.500   0.000   0.000  1.00  0.00           C
+"""
+
+
+def exercise_hydrogen_capper():
+  """``cap_atom`` retypes the cap to hydrogen and moves it to 1.1 A along
+  the anchor->cap direction; ``None`` arguments are a no-op."""
+  capper = HydrogenCapper(log=io.StringIO())
+
+  by_name = _atoms_by_name(_CAP_PDB)
+  anchor, cap = by_name["C1"], by_name["C2"]
+  capper.cap_atom(anchor, cap)
+
+  assert cap.element.strip().upper() == "H"
+  d = (matrix.col(cap.xyz) - matrix.col(anchor.xyz)).length()
+  assert approx_equal(d, 1.1, eps=1e-6), d
+  # cap lies on the original +x direction from the anchor
+  assert approx_equal(cap.xyz, (1.1, 0.0, 0.0), eps=1e-6), cap.xyz
+
+  # None on either side is a no-op (must not raise / must not mutate).
+  fresh = _atoms_by_name(_CAP_PDB)
+  before = fresh["C2"].xyz
+  capper.cap_atom(None, fresh["C2"])
+  capper.cap_atom(fresh["C1"], None)
+  assert fresh["C2"].xyz == before
+  assert fresh["C2"].element.strip().upper() == "C"
+
+
+# Lysine fragment: backbone N-CA-C plus the CD-CE sidechain bond that is a
+# PREFERRED_CUTS site for LYS.  Geometry is only nominal; the preferred /
+# backbone checks are name + adjacency based.
+_LYS_PDB = """\
+ATOM      1  N   LYS A   1       0.000   0.000   0.000  1.00  0.00           N
+ATOM      2  CA  LYS A   1       1.450   0.000   0.000  1.00  0.00           C
+ATOM      3  C   LYS A   1       2.000   1.400   0.000  1.00  0.00           C
+ATOM      4  CD  LYS A   1       3.000   0.000   0.000  1.00  0.00           C
+ATOM      5  CE  LYS A   1       4.500   0.000   0.000  1.00  0.00           C
+"""
+
+# Two sp3 carbons 1.54 A apart for the geometric C-C heuristic branch.
+_CC_PDB = """\
+ATOM      1  CA  XXX A   1       0.000   0.000   0.000  1.00  0.00           C
+ATOM      2  CB  XXX A   1       1.540   0.000   0.000  1.00  0.00           C
+"""
+
+
+def _edge(adj, i, j):
+  """Add an undirected bare edge (the sym_op is irrelevant to the cut
+  checks, which drop it via _neighbour_iseqs)."""
+  adj.setdefault(i, set()).add((j, None))
+  adj.setdefault(j, set()).add((i, None))
+
+
+def exercise_bond_cut_preferred():
+  """With ``use_preferred_cuts=True`` the PREFERRED_CUTS table decides:
+  LYS CD-CE is a cut site, LYS CA-CD is not."""
+  by_name = _atoms_by_name(_LYS_PDB)
+  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+
+  adj = {}
+  _edge(adj, by_name["CD"].i_seq, by_name["CE"].i_seq)
+  _edge(adj, by_name["CA"].i_seq, by_name["CD"].i_seq)
+
+  assert det.is_cc_single_sp3_bond(
+    "LYS", by_name["CD"], by_name["CE"], adj) is True
+  # CA is not in LYS's preferred {CD, CE} set.
+  assert det.is_cc_single_sp3_bond(
+    "LYS", by_name["CA"], by_name["CD"], adj) is False
+
+
+def exercise_bond_cut_heuristic():
+  """For a residue absent from PREFERRED_CUTS the geometric heuristic
+  applies: two degree-4 sp3 carbons 1.42-1.68 A apart are a cut site;
+  shifting the distance out of range disqualifies the bond."""
+  by_name = _atoms_by_name(_CC_PDB)
+  ca, cb = by_name["CA"], by_name["CB"]
+  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+
+  # Degree-4 carbons: the real C-C bond plus three dummy neighbours each.
+  adj = {}
+  _edge(adj, ca.i_seq, cb.i_seq)
+  for d in (101, 102, 103):
+    _edge(adj, ca.i_seq, d)
+  for d in (201, 202, 203):
+    _edge(adj, cb.i_seq, d)
+
+  # 'XXX' is not in PREFERRED_CUTS -> heuristic branch; 1.54 A is in range.
+  assert det.is_cc_single_sp3_bond("XXX", ca, cb, adj) is True
+
+  # Move CB out to 2.0 A: now outside the 1.42-1.68 A window.
+  cb.set_xyz((2.0, 0.0, 0.0))
+  assert det.is_cc_single_sp3_bond("XXX", ca, cb, adj) is False
+
+
+def exercise_bond_cut_backbone():
+  """``is_ca_c_bond`` / ``is_ca_n_bond`` fire only on a genuine, bonded
+  CA->C and CA->N pair (direction and adjacency both matter)."""
+  by_name = _atoms_by_name(_LYS_PDB)
+  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+
+  adj = {}
+  _edge(adj, by_name["CA"].i_seq, by_name["C"].i_seq)
+  _edge(adj, by_name["CA"].i_seq, by_name["N"].i_seq)
+
+  assert det.is_ca_c_bond(by_name["CA"], by_name["C"], adj) is True
+  assert det.is_ca_n_bond(by_name["CA"], by_name["N"], adj) is True
+  # Wrong direction / wrong names.
+  assert det.is_ca_c_bond(by_name["C"], by_name["CA"], adj) is False
+  assert det.is_ca_n_bond(by_name["CA"], by_name["C"], adj) is False
+  # Right names but not adjacent -> not a bond.
+  assert det.is_ca_c_bond(by_name["CA"], by_name["C"], {}) is False
+
+
+class _SimpleProxy(object):
+  def __init__(self, i, j):
+    self.i_seqs = (i, j)
+
+
+class _AsuProxy(object):
+  def __init__(self, i, j):
+    self.i_seq = i
+    self.j_seq = j
+
+
+class _AsuMappings(object):
+  def __init__(self, op):
+    self._op = op
+
+  def get_rt_mx_ji(self, proxy):
+    return self._op
+
+
+def exercise_build_adjacency():
+  """Intra-ASU bonds carry the identity op on both directed edges;
+  symmetry-crossing bonds carry the rt_mx forward and its inverse on the
+  reverse edge."""
+  builder = AtomGraphBuilder()
+  identity = _canon_op(sgtbx.rt_mx())
+
+  # Intra-ASU bond 0-1: identity op both ways.
+  adj = builder.build_adjacency([_SimpleProxy(0, 1)], [], None)
+  assert (1, identity) in adj[0]
+  assert (0, identity) in adj[1]
+
+  # Symmetry-crossing bond 0-1 under a unit z-translation: forward edge
+  # carries the op, reverse edge carries its inverse.
+  op = sgtbx.rt_mx("x,y,z+1")
+  adj = builder.build_adjacency([], [_AsuProxy(0, 1)], _AsuMappings(op))
+  assert (1, _canon_op(op)) in adj[0]
+  assert (0, _canon_op(op.inverse())) in adj[1]
+  # The reverse edge is the negative translation.
+  rev_ops = {o.as_xyz() for (j, o) in adj[1] if j == 0}
+  assert sgtbx.rt_mx("x,y,z-1").as_xyz() in rev_ops
+
+
 def run():
   exercise_submodel_shape()
   exercise_cys_coordination()
   exercise_residue_composition()
   exercise_2c2u_symmetry_materialization()
   exercise_2c2u_fe_coordination_distances()
+  # engine unit tests
+  exercise_canon_op()
+  exercise_hydrogen_capper()
+  exercise_bond_cut_preferred()
+  exercise_bond_cut_heuristic()
+  exercise_bond_cut_backbone()
+  exercise_build_adjacency()
   print(format_cpu_times())
   print("OK")
 
