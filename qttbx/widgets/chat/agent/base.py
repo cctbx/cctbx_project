@@ -21,8 +21,11 @@ class AgentCapabilities(IntFlag):
 
 @dataclass
 class ToolSpec:
-  """Provider-agnostic tool specification. Agents convert to/from their
-  provider's tool shape at the API boundary."""
+  """Provider-agnostic tool specification.
+
+  Agents convert to and from their provider's tool shape at the API
+  boundary.
+  """
   name: str
   description: str
   input_schema: dict           # JSON Schema
@@ -80,15 +83,17 @@ class Agent(ABC):
 
   @abstractmethod
   def credentials_dialog_class(self):
-    """Return the Qt dialog class to prompt for this provider's
-    credentials. Each provider gets its own dialog matching its auth
-    model."""
+    """Return the Qt dialog class to prompt for this provider's credentials.
+
+    Each provider gets its own dialog matching its auth model.
+    """
 
   def submit_approval(self, response):
-    """Forward a user approval decision to the agent if it owns the
-    request. Default implementation returns ``False`` -- the agent
-    didn't originate the request, so the runner should fall through
-    to the session's approval queue.
+    """Forward a user approval decision to the agent if it owns the request.
+
+    The default implementation returns ``False`` -- the agent didn't
+    originate the request, so the runner should fall through to the
+    session's approval queue.
 
     Backends that gate tool execution via a provider-side callback
     (e.g. the Claude Code SDK's ``can_use_tool``) override this to
@@ -111,9 +116,10 @@ class Agent(ABC):
     return False
 
   def submit_question_answer(self, request_id, answers):
-    """Forward the user's answers to a question the agent asked via
-    ``AskUserQuestionRequested``. Default returns ``False`` -- the
-    agent never asks structured questions.
+    """Forward the user's answers to a question asked by the agent.
+
+    The question was asked via ``AskUserQuestionRequested``. The default
+    returns ``False`` -- the agent never asks structured questions.
 
     Backends that expose an "ask the user" MCP tool override this to
     fulfill the pending future when ``request_id`` matches one they

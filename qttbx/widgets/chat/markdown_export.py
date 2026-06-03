@@ -11,28 +11,45 @@ import json
 def conversation_to_markdown(conv, storage=None):
   """Return a markdown string representing ``conv``.
 
-  Layout:
-    # <title>
-    *<created_at> · model: <model> · profile: <profile>*
+  The layout is::
 
-    ---
+      # <title>
+      *<created_at> · model: <model> · profile: <profile>*
 
-    ## You
-    <text content>
+      ---
 
-    ## Claude
-    <text content, possibly multiple paragraphs>
+      ## You
+      <text content>
+
+      ## Claude
+      <text content, possibly multiple paragraphs>
 
   Each role block stitches the message's content blocks in order:
-    text         -> emitted verbatim (already markdown from claude)
-    image        -> ![caption](path)  or placeholder when storage absent
-    thinking     -> skipped (extended-thinking is internal, not the chat)
-    tool_use     -> fenced code block tagged 'tool-use' with JSON input
-    tool_result  -> fenced code block tagged 'tool-result' with the text
-                    content; nested image blocks render as image links
+
+  - text -> emitted verbatim (already markdown from claude)
+  - image -> ``![caption](path)`` or placeholder when storage absent
+  - thinking -> skipped (extended-thinking is internal, not the chat)
+  - tool_use -> fenced code block tagged 'tool-use' with JSON input
+  - tool_result -> fenced code block tagged 'tool-result' with the text
+    content; nested image blocks render as image links
 
   Errors / malformed blocks fall back to a one-line ``*[unknown]*``
-  placeholder so a single bad block doesn't sink the export."""
+  placeholder so a single bad block doesn't sink the export.
+
+  Parameters
+  ----------
+  conv : Conversation
+      The conversation to serialize.
+  storage : ConversationStorage, optional
+      Attachment store used so image cells resolve to real on-disk
+      paths the rendered markdown can link to. Without it, image cells
+      fall back to a sha256-tagged placeholder.
+
+  Returns
+  -------
+  str
+      The conversation rendered as markdown, ending with a newline.
+  """
   meta = conv.meta
   out = []
   out.append("# %s" % (meta.title or "Conversation"))

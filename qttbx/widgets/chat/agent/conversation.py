@@ -11,7 +11,10 @@ from datetime import datetime, timezone
 
 
 def now():
-  """UTC datetime; the canonical timestamp for messages and meta."""
+  """Return the current UTC datetime.
+
+  This is the canonical timestamp for messages and meta.
+  """
   return datetime.now(timezone.utc)
 
 
@@ -65,7 +68,7 @@ class Message:
 
 @dataclass
 class Attachment:
-  """Content-addressed binary stored under <conv_dir>/attachments/."""
+  """Content-addressed binary stored under ``<conv_dir>/attachments/``."""
   sha256: str
   mime: str
   path: str                          # relative to attachments/, e.g. 'sha256-abc.png'
@@ -74,8 +77,10 @@ class Attachment:
 @dataclass
 class SubagentRecord:
   """Persisted sub-conversation under ``<conv_dir>/subagents/<sub_id>.json``.
-  Loaded on demand when the user inspects the parent's subagent
-  tool-use cell."""
+
+  Loaded on demand when the user inspects the parent's subagent tool-use
+  cell.
+  """
   sub_id: str
   parent_conversation_id: str
   parent_tool_use_id: str
@@ -105,8 +110,11 @@ class ConversationMeta:
 
 @dataclass
 class Conversation:
-  """Runtime conversation. Persisted by ConversationStorage as a directory
-  containing meta.json, messages.json, attachments/, subagents/."""
+  """Runtime conversation.
+
+  Persisted by ``ConversationStorage`` as a directory containing
+  ``meta.json``, ``messages.json``, ``attachments/``, and ``subagents/``.
+  """
   meta: ConversationMeta
   messages: list = field(default_factory=list)        # list[Message]
   attachments: dict = field(default_factory=dict)     # sha256 -> Attachment
@@ -114,6 +122,7 @@ class Conversation:
 
   @classmethod
   def new(cls, profile_name, model, title=""):
+    """Create an empty conversation with freshly generated meta."""
     ts = now()
     meta = ConversationMeta(
       id=_new_id(),
@@ -126,5 +135,6 @@ class Conversation:
     return cls(meta=meta)
 
   def append(self, message):
+    """Append a message and refresh the conversation's update timestamp."""
     self.messages.append(message)
     self.meta.updated_at = now()

@@ -18,9 +18,11 @@ class TextDelta(AgentEvent):
 
 @dataclass
 class Thinking(AgentEvent):
-  """Claude extended-thinking block. signature is preserved on the block
-  and sent back on subsequent turns (Anthropic requirement for tool-use
-  continuation)."""
+  """Claude extended-thinking block.
+
+  ``signature`` is preserved on the block and sent back on subsequent
+  turns (an Anthropic requirement for tool-use continuation).
+  """
   text: str = ""
   signature: str = ""
 
@@ -34,11 +36,14 @@ class ToolUseRequested(AgentEvent):
 
 @dataclass
 class ServerToolUsed(AgentEvent):
-  """Claude invoked a server-side tool (e.g. ``web_search``,
-  ``web_fetch``, ``code_execution``). The Anthropic API runs these on
-  the model's behalf — no client dispatch is needed; the corresponding
-  ``ServerToolResult`` arrives later in the same assistant turn.
-  Surfaced to the UI so the user can see what the model ran."""
+  """Claude invoked a server-side tool.
+
+  Examples include ``web_search``, ``web_fetch``, and
+  ``code_execution``. The Anthropic API runs these on the model's behalf
+  — no client dispatch is needed; the corresponding ``ServerToolResult``
+  arrives later in the same assistant turn. Surfaced to the UI so the
+  user can see what the model ran.
+  """
   id: str = ""
   name: str = ""
   input: dict = field(default_factory=dict)
@@ -46,9 +51,11 @@ class ServerToolUsed(AgentEvent):
 
 @dataclass
 class ServerToolResult(AgentEvent):
-  """Result payload of a server-side tool call. ``content`` is the raw
-  API dict (opaque at this layer); ``tool_use_id`` pairs the result
-  with a prior ``ServerToolUsed`` event."""
+  """Result payload of a server-side tool call.
+
+  ``content`` is the raw API dict (opaque at this layer); ``tool_use_id``
+  pairs the result with a prior ``ServerToolUsed`` event.
+  """
   tool_use_id: str = ""
   content: dict = field(default_factory=dict)
 
@@ -84,21 +91,23 @@ class TurnDone(AgentEvent):
 
 @dataclass
 class ToolResultsBatched(AgentEvent):
-  """Emitted by the session after dispatching the tool_use blocks from one
-  assistant turn. Carries the list of tool_result ContentBlocks the session
-  appended as the next user message. The UI uses this to render the batch
-  as a single visual unit."""
+  """Emitted after dispatching the tool_use blocks from one assistant turn.
+
+  Carries the list of ``tool_result`` ``ContentBlock`` instances the
+  session appended as the next user message. The UI uses this to render
+  the batch as a single visual unit.
+  """
   blocks: list = field(default_factory=list)
 
 
 @dataclass
 class AskUserQuestionRequested(AgentEvent):
-  """The agent needs the user to answer one or more multiple-choice
-  questions. Emitted by the backend's in-process MCP tool handler when
-  the model calls the question-asking tool; the GUI renders a
-  QuestionCard for the user. The answers come back via the runner's
-  ``submit_question_answer`` which the agent fulfills the matching
-  pending future.
+  """The agent needs the user to answer one or more multiple-choice questions.
+
+  Emitted by the backend's in-process MCP tool handler when the model
+  calls the question-asking tool; the GUI renders a QuestionCard for the
+  user. The answers come back via the runner's ``submit_question_answer``,
+  with which the agent fulfills the matching pending future.
 
   ``questions`` is a list of dicts shaped like the model's tool input::
 

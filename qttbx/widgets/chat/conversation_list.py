@@ -4,6 +4,7 @@ from qttbx.qt import QtCore, QtWidgets
 
 
 class ConversationList(QtWidgets.QWidget):
+  """Sidebar widget listing saved conversations with new/rename/delete."""
 
   selected = QtCore.Signal(str)                    # conv_id
   new_requested = QtCore.Signal()
@@ -72,9 +73,11 @@ class ConversationList(QtWidgets.QWidget):
     self.new_requested.emit()
 
   def click_rename(self):
-    """Start the in-place editor on the currently selected row. The
-    actual rename is emitted from ``_on_item_changed`` once the user
-    commits (Enter / focus-out)."""
+    """Start the in-place editor on the currently selected row.
+
+    The actual rename is emitted from ``_on_item_changed`` once the
+    user commits (Enter / focus-out).
+    """
     item = self._list.currentItem()
     if item is None:
       return
@@ -96,11 +99,14 @@ class ConversationList(QtWidgets.QWidget):
     self.selected.emit(item.data(QtCore.Qt.UserRole))
 
   def _on_item_changed(self, item):
-    """The list item's text changed -- either the user committed an
-    in-place rename (Enter / focus-out) or set_conversations was
-    called without blocking signals. The blockSignals wrapper around
-    set_conversations means this slot only fires for real user
-    commits."""
+    """Handle a committed in-place rename of a list item.
+
+    The list item's text changed -- either the user committed an
+    in-place rename (Enter / focus-out) or ``set_conversations`` was
+    called without blocking signals. The ``blockSignals`` wrapper
+    around ``set_conversations`` means this slot only fires for real
+    user commits.
+    """
     cid = item.data(QtCore.Qt.UserRole)
     if not cid:
       return

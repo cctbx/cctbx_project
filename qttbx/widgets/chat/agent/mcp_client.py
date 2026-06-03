@@ -21,6 +21,12 @@ from qttbx.widgets.chat.agent.conversation import ContentBlock
 
 @dataclass
 class McpToolItem:
+  """One content item from an MCP tool result.
+
+  Which fields are populated depends on ``type``: ``text`` uses ``text``;
+  ``image`` uses ``sha256``, ``mime``, and optional ``caption``;
+  ``resource`` uses ``uri`` and optional ``text_excerpt``.
+  """
   type: str                        # "text" | "image" | "resource"
   text: str = None                 # for text and resource excerpts
   uri: str = None                  # for resource
@@ -33,13 +39,27 @@ class McpToolItem:
 
 @dataclass
 class McpToolResult:
+  """Result of an MCP tool call: content items plus an error flag."""
   content: list = field(default_factory=list)         # list[McpToolItem]
   is_error: bool = False
 
 
 def error_result(message):
-  """Construct an McpToolResult that the dispatch loop will surface as
-  tool_result is_error=true content."""
+  """Construct an ``McpToolResult`` flagged as an error.
+
+  The dispatch loop surfaces it as ``tool_result`` content with
+  ``is_error=True``.
+
+  Parameters
+  ----------
+  message : str
+      Error text to wrap as the single text item of the result.
+
+  Returns
+  -------
+  McpToolResult
+      A result with ``is_error=True`` carrying ``message``.
+  """
   return McpToolResult(
     content=[McpToolItem(type="text", text=message)],
     is_error=True)
@@ -58,11 +78,29 @@ def _derive_risk(raw):
 
 
 def _mcp_item_to_block(item, storage, conv_id):
-  """Translate one MCP content item into a canonical ContentBlock. Image
-  bytes were already stored by McpServerConnection._convert_result, which
-  populated item.sha256 — we just reference it here. The storage and
-  conv_id arguments are kept for symmetry with future paths that may need
-  to write at conversion time."""
+  """Translate one MCP content item into a canonical ``ContentBlock``.
+
+  Image bytes were already stored by
+  ``McpServerConnection._convert_result``, which populated ``item.sha256``
+  -- we just reference it here.
+
+  Parameters
+  ----------
+  item : McpToolItem
+      The MCP content item to translate.
+  storage : object
+      Attachment store. Kept for symmetry with future paths that may need
+      to write at conversion time.
+  conv_id : str
+      Conversation id. Kept for symmetry with future paths that may need
+      to write at conversion time.
+
+  Returns
+  -------
+  ContentBlock
+      The canonical block; a text block describing the type for
+      unsupported content types.
+  """
   if item.type == "text":
     return ContentBlock(type="text", data={"text": item.text or ""})
   if item.type == "image":
@@ -92,6 +130,20 @@ class McpServerConnection:
   ``AgentSession`` (which calls ``call_tool``) is sync. A dedicated
   daemon thread runs an asyncio event loop; calls are dispatched via
   ``asyncio.run_coroutine_threadsafe``.
+
+  Parameters
+  ----------
+  config : McpServerConfig
+      Server entry (name, command, args, env) from the profile.
+  project_dir : str or pathlib.Path
+      Project directory; exported to the subprocess as
+      ``PHENIX_PROJECT_DIR``.
+  storage : object
+      Attachment store used to persist image content from tool results.
+  conv_id : str
+      Conversation id under which attachments are stored.
+  log : file-like, optional
+      Destination for status messages. Defaults to ``sys.stdout``.
   """
 
   STATE_STOPPED = "stopped"
@@ -118,8 +170,16 @@ class McpServerConnection:
   # ---- public API ----------------------------------------------------------
 
   def start(self):
-    """Spawn the subprocess (or use the injected in-process app for tests),
-    list tools, and mark READY. Raises Sorry on hard failures."""
+    """Spawn the subprocess, list tools, and mark the server ready.
+
+    Uses the injected in-process app instead of a subprocess when one was
+    set via ``_inject_in_process_app`` (tests).
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        On hard start failures (e.g. missing command, connection error).
+    """
     self.state = self.STATE_STARTING
     self._start_loop()
     try:
@@ -136,6 +196,10 @@ class McpServerConnection:
                   (self.config.name, exc))
 
   def stop(self):
+    """Close the client, stop the event loop, and mark the server stopped.
+
+    Best-effort: a subprocess that has already exited does not raise.
+    """
     if self._client_cm is not None:
       try:
         self._run_async(self._client_cm.__aexit__(None, None, None))
@@ -148,9 +212,28 @@ class McpServerConnection:
     self.state = self.STATE_STOPPED
 
   def call_tool(self, name, input, cancel, timeout=60.0):
-    """Returns McpToolResult. On failure (server down, tool raised,
-    cancel) the result has is_error=True so the dispatch loop in
-    AgentSession surfaces it to the model rather than aborting the turn."""
+    """Invoke an MCP tool and return its converted result.
+
+    On failure (server down, tool raised, cancel) the result has
+    ``is_error=True`` so the dispatch loop in ``AgentSession`` surfaces it
+    to the model rather than aborting the turn.
+
+    Parameters
+    ----------
+    name : str
+        Tool name as exposed by the server.
+    input : dict
+        Tool arguments matching the tool's input schema.
+    cancel : CancelToken
+        Polled while the call is in flight; cancels the task when set.
+    timeout : float, optional
+        Per-call timeout in seconds. Defaults to ``60.0``.
+
+    Returns
+    -------
+    McpToolResult
+        The converted result, possibly flagged ``is_error=True``.
+    """
     if self.state != self.STATE_READY:
       return error_result("MCP server '%s' not ready" % self.config.name)
     try:
@@ -163,13 +246,29 @@ class McpServerConnection:
   # ---- test hooks ----------------------------------------------------------
 
   def _inject_in_process_app(self, app):
-    """Test seam: swap in a FastMCP app to be served via FastMCPTransport
-    instead of spawning a subprocess. Used by unit tests only."""
+    """Swap in a FastMCP app served via ``FastMCPTransport`` (test seam).
+
+    Avoids spawning a subprocess. Used by unit tests only.
+
+    Parameters
+    ----------
+    app : object
+        A FastMCP app instance to serve in-process.
+    """
     self._in_process_app = app
 
   # ---- async surface -------------------------------------------------------
 
   async def _async_start(self):
+    """Open the client connection and populate ``self.tools``.
+
+    Validates the resolved command and raises before connecting.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When the command is empty or not found on ``PATH``.
+    """
     from fastmcp import Client
     if self._in_process_app is not None:
       from fastmcp.client.transports import FastMCPTransport
@@ -197,9 +296,34 @@ class McpServerConnection:
     self.tools = [self._tool_to_spec(t) for t in raw_tools]
 
   async def _async_call(self, name, input, timeout, cancel):
-    """Run the call as a Task so we can cancel it when the chat cancels.
-    raise_on_error=False makes fastmcp return CallToolResult with
-    is_error=True instead of raising ToolError on tool-raised exceptions."""
+    """Run the tool call as a cancellable asyncio task.
+
+    Runs the call as a ``Task`` so it can be cancelled when the chat
+    cancels. ``raise_on_error=False`` makes fastmcp return a
+    ``CallToolResult`` with ``is_error=True`` instead of raising
+    ``ToolError`` on tool-raised exceptions.
+
+    Parameters
+    ----------
+    name : str
+        Tool name.
+    input : dict
+        Tool arguments.
+    timeout : float
+        Per-call timeout in seconds.
+    cancel : CancelToken
+        Polled while the task runs; cancels it when set.
+
+    Returns
+    -------
+    object
+        The raw ``CallToolResult`` from fastmcp.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When ``cancel`` is set before the call completes.
+    """
     coro = self._client.call_tool(
       name, input, timeout=timeout, raise_on_error=False)
     task = asyncio.ensure_future(coro)
@@ -220,13 +344,23 @@ class McpServerConnection:
   # ---- conversion ----------------------------------------------------------
 
   def _expanded_command(self):
-    # Preserve the leading element even when empty so callers can detect
-    # the "command unset" case (a previous filter dropped it and silently
-    # promoted args[0] to the command slot). _async_start validates.
+    """Build the command vector, preserving a possibly-empty command slot.
+
+    The leading element is kept even when empty so callers can detect the
+    "command unset" case; ``_async_start`` validates it.
+
+    Returns
+    -------
+    list of str
+        ``[command] + args`` with ``command`` coerced to ``""`` if unset.
+    """
+    # An empty leading element guards against a previous filter dropping it
+    # and silently promoting args[0] to the command slot.
     cmd = [self.config.command or ""] + list(getattr(self.config, "args", []))
     return cmd
 
   def _tool_to_spec(self, raw):
+    """Build a ``ToolSpec`` from a raw MCP tool and record its risk."""
     name = raw.name
     self._risk_by_name[name] = _derive_risk(raw)
     return ToolSpec(
@@ -236,9 +370,21 @@ class McpServerConnection:
         or getattr(raw, "input_schema", {}) or {})
 
   def risk_for(self, name):
+    """Return the risk class for ``name`` (``"write"`` if unknown)."""
     return self._risk_by_name.get(name, "write")
 
   def _convert_result(self, raw):
+    """Convert a raw fastmcp result into an ``McpToolResult``.
+
+    Text and resource items are copied through; image items are
+    base64-decoded and persisted via ``self.storage``, with the resulting
+    sha256 referenced on the item.
+
+    Returns
+    -------
+    McpToolResult
+        The converted result, preserving the raw ``is_error`` flag.
+    """
     items = []
     is_error = bool(getattr(raw, "is_error", False))
     content = getattr(raw, "content", None) or []

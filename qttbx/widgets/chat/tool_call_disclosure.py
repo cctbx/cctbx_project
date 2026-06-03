@@ -1,11 +1,11 @@
-"""Single-line collapsible row used inside MessageBubble for tool
-calls and tool-approval prompts.
+"""Single-line collapsible row used inside MessageBubble for tool calls.
 
-Header: `▸ tool_name (status)` -- click to expand to `▾`.
-Body (hidden by default): pretty-printed JSON args on top, plain-text
-result below. Status text and color are settable so the runner can
-transition running → finished/failed/cancelled without restructuring
-the widget."""
+Used for tool calls and tool-approval prompts. Header:
+``▸ tool_name (status)`` -- click to expand to ``▾``. Body (hidden by
+default): pretty-printed JSON args on top, plain-text result below.
+Status text and color are settable so the runner can transition
+running → finished/failed/cancelled without restructuring the widget.
+"""
 
 import json
 
@@ -27,6 +27,18 @@ _COLORS = {
 
 
 class ToolCallDisclosure(QtWidgets.QFrame):
+  """Collapsible disclosure row for a single tool call.
+
+  Parameters
+  ----------
+  name : str
+      Tool name shown in the header.
+  status : str
+      Initial status text shown in the header parenthetical. A status
+      of ``'running'`` starts the header in the italic running style.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  """
 
   def __init__(self, name, status, parent=None):
     super().__init__(parent)
@@ -94,15 +106,30 @@ class ToolCallDisclosure(QtWidgets.QFrame):
   # ---- public API ---------------------------------------------------------
 
   def set_status(self, status, color=None):
-    """Update the header status text. color is one of None/'default',
-    'running', 'error', 'muted'. None preserves the current color."""
+    """Update the header status text.
+
+    Parameters
+    ----------
+    status : str
+        New status text shown in the header parenthetical.
+    color : str or None, optional
+        One of ``None``, ``'default'``, ``'running'``, ``'error'``, or
+        ``'muted'``. ``None`` preserves the current color.
+    """
     self._status = status
     if color is not None:
       self._color = color
     self._refresh_header()
 
   def set_args(self, args):
-    """args: dict (typical for MCP tools). Rendered as pretty JSON."""
+    """Set the tool arguments, rendered as pretty-printed JSON.
+
+    Parameters
+    ----------
+    args : dict or None
+        Tool arguments (typically a dict for MCP tools). ``None`` clears
+        and hides the args view.
+    """
     if args is None:
       self.args_view.setPlainText("")
       self.args_view.hide()
@@ -115,6 +142,14 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     self.args_view.show()
 
   def set_result(self, text):
+    """Set the tool result text shown below the args.
+
+    Parameters
+    ----------
+    text : str
+        Plain-text result. An empty value clears and hides the result
+        view.
+    """
     if not text:
       self.result_view.setPlainText("")
       self.result_view.hide()

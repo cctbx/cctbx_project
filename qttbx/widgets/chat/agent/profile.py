@@ -33,12 +33,13 @@ _KNOWN_BACKENDS = ("anthropic", "claude_code")
 
 @dataclass
 class McpServerConfig:
-  """One MCP server entry from a profile's mcp_servers list.
+  """One MCP server entry from a profile's ``mcp_servers`` list.
 
-  Built by _build_profile from the raw JSON dict so downstream consumers
-  (ChatWindow, McpServerConnection) can use attribute access rather than
-  hunting through nested dicts. Optional fields default to safe values so
-  shorter JSON declarations still work."""
+  Built by ``_build_profile`` from the raw JSON dict so downstream
+  consumers (``ChatWindow``, ``McpServerConnection``) can use attribute
+  access rather than hunting through nested dicts. Optional fields default
+  to safe values so shorter JSON declarations still work.
+  """
   name: str
   command: str = None
   args: list = field(default_factory=list)
@@ -49,17 +50,24 @@ class McpServerConfig:
 
 @dataclass
 class ClaudeProfileOptions:
-  """Backend-specific knobs for the claude_code backend.
+  """Backend-specific knobs for the ``claude_code`` backend.
 
-  Only consulted when Profile.backend == 'claude_code'. Exposed with
-  safe defaults on every Profile so call sites can read attributes
-  unconditionally without `hasattr`/`getattr` guards."""
+  Only consulted when ``Profile.backend == 'claude_code'``. Exposed with
+  safe defaults on every ``Profile`` so call sites can read attributes
+  unconditionally without ``hasattr``/``getattr`` guards.
+  """
   cli_path: str = None              # Override PATH lookup of `claude`
   sdk_options: dict = field(default_factory=dict)  # ClaudeAgentOptions kwargs
 
 
 @dataclass
 class Profile:
+  """A fully resolved agent profile.
+
+  Produced by ``ProfileLoader.load`` after cascading override, one level
+  of ``based_on`` inheritance, and ``${VAR}`` expansion. File-backed
+  fields (e.g. ``system_prompt``) are inlined as resolved content.
+  """
   name: str
   model: str
   description: str = ""
@@ -83,7 +91,22 @@ class Profile:
 
 
 class ProfileLoader:
-  """Resolve and load profiles with cascading override and inheritance."""
+  """Resolve and load profiles with cascading override and inheritance.
+
+  Directories are searched in the order project > user > built-in, so a
+  same-named profile in an earlier directory overrides a later one.
+
+  Parameters
+  ----------
+  builtin_dir : str or pathlib.Path
+      Directory of profiles shipped with the application.
+  user_dir : str or pathlib.Path, optional
+      User-level profile directory; overrides ``builtin_dir``.
+  project_dir : str or pathlib.Path, optional
+      Project-level profile directory; overrides ``user_dir``.
+  log : file-like, optional
+      Destination for warnings. Defaults to ``sys.stdout``.
+  """
 
   def __init__(self, builtin_dir, user_dir=None, project_dir=None, log=None):
     # Search order: project > user > built-in.
@@ -91,10 +114,32 @@ class ProfileLoader:
     self.log = log if log is not None else sys.stdout
 
   def load(self, name):
-    """Resolve, parse, validate, expand. Raises Sorry on critical errors."""
+    """Resolve, parse, validate, and expand a profile by name.
+
+    Parameters
+    ----------
+    name : str
+        Profile name (without the ``.json`` extension).
+
+    Returns
+    -------
+    Profile
+        The fully resolved profile.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        On critical errors: profile not found, parse error, inheritance
+        cycle, missing required field, or unknown backend.
+    """
     return self._load_with_chain(name, _seen=())
 
   def _load_with_chain(self, name, _seen):
+    """Recursively load ``name``, resolving ``based_on`` inheritance.
+
+    ``_seen`` carries the chain of already-visited names so an inheritance
+    cycle raises rather than recursing forever.
+    """
     if name in _seen:
       raise Sorry("Profile inheritance cycle: %s -> %s"
                   % (" -> ".join(_seen), name))
@@ -141,6 +186,7 @@ class ProfileLoader:
     return _build_profile(data, source_path=path)
 
   def _resolve_path(self, name):
+    """Return the first ``<dir>/<name>.json`` that exists, else ``None``."""
     for d in self.search_dirs:
       candidate = Path(d) / ("%s.json" % name)
       if candidate.exists():
@@ -151,6 +197,31 @@ class ProfileLoader:
 # ---- helpers ---------------------------------------------------------------
 
 def _build_profile(data, source_path):
+  """Construct a ``Profile`` from a merged, validated profile dict.
+
+  Flattens nested subtrees (``thinking``, ``skills``, ``subagents``,
+  ``claude``) into ``Profile`` fields and inlines ``system_prompt_file``
+  content with ``${VAR}`` expansion.
+
+  Parameters
+  ----------
+  data : dict
+      Merged profile data (parent overlaid by child for inheritance).
+  source_path : str or pathlib.Path
+      File the data came from; used for ``${PROFILE_DIR}`` expansion and
+      error messages.
+
+  Returns
+  -------
+  Profile
+      The constructed profile.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      When ``system_prompt`` and ``system_prompt_file`` are both set, or
+      when ``system_prompt_file`` cannot be found.
+  """
   thinking = data.get("thinking", {}) or {}
   skills = data.get("skills", {}) or {}
   subagents = data.get("subagents", {}) or {}
@@ -204,8 +275,21 @@ def _build_profile(data, source_path):
 
 
 def _profile_to_dict(p):
-  """Reverse of _build_profile for inheritance merging. Only emits the
-  fields we expose; helpers / resolved file content stays inlined."""
+  """Serialize a ``Profile`` back to a dict for inheritance merging.
+
+  The inverse of ``_build_profile``. Only emits the fields we expose;
+  helper state and resolved file content stay inlined.
+
+  Parameters
+  ----------
+  p : Profile
+      The parent profile being merged into a child.
+
+  Returns
+  -------
+  dict
+      Nested profile data suitable for overlaying with child values.
+  """
   return {
     "name": p.name,
     "description": p.description,
@@ -242,6 +326,25 @@ _VAR_RE = re.compile(r"\$\{([^}]+)\}")
 
 
 def _expand_str(value, source_path):
+  """Expand ``${VAR}`` tokens in a single string.
+
+  Recognized tokens: ``${env:NAME}`` (environment variable, empty if
+  unset), ``${PROFILE_DIR}`` (the profile file's directory),
+  ``${PROJECT_DIR}`` (``PHENIX_PROJECT_DIR``), and ``${CHAT_ROOT}``
+  (``PHENIX_CHAT_HOME``). Unknown tokens are left untouched.
+
+  Parameters
+  ----------
+  value : str
+      The string to expand.
+  source_path : str or pathlib.Path
+      Profile file path, used to resolve ``${PROFILE_DIR}``.
+
+  Returns
+  -------
+  str
+      The expanded string.
+  """
   def _sub(m):
     token = m.group(1)
     if token.startswith("env:"):
@@ -257,6 +360,10 @@ def _expand_str(value, source_path):
 
 
 def _expand_in_obj(obj, source_path):
+  """Recursively expand ``${VAR}`` tokens in all strings within ``obj``.
+
+  Walks strings, lists, and dicts; other types are returned unchanged.
+  """
   if isinstance(obj, str):
     return _expand_str(obj, source_path)
   if isinstance(obj, list):
@@ -267,6 +374,28 @@ def _expand_in_obj(obj, source_path):
 
 
 def _expand_mcp_servers(servers, source_path):
+  """Expand ``${VAR}`` tokens and normalize entries to ``McpServerConfig``.
+
+  Entries already of type ``McpServerConfig`` (e.g. carried through
+  inheritance) pass through unchanged.
+
+  Parameters
+  ----------
+  servers : list
+      Raw ``mcp_servers`` entries (dicts or ``McpServerConfig``).
+  source_path : str or pathlib.Path
+      Profile file path, used for expansion and error messages.
+
+  Returns
+  -------
+  list of McpServerConfig
+      The normalized server configs.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      When an entry is not an object or is missing a ``name``.
+  """
   out = []
   for raw in servers:
     expanded = _expand_in_obj(raw, source_path)

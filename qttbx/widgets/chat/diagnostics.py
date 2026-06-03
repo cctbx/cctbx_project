@@ -9,6 +9,27 @@ import sys
 
 
 def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
+  """Build a human-readable diagnostics report as a single string.
+
+  Collects timestamp, platform, Python and dependency versions, profile
+  and storage details, and optionally a tail of a log file.
+
+  Parameters
+  ----------
+  profile : object
+      Active profile; ``name`` and ``model`` attributes are reported.
+  storage : object
+      Storage object; ``project_dir`` and ``chat_root`` are reported.
+  log_path : str or pathlib.Path, optional
+      Log file to tail. When ``None``, no log section is included.
+  log_tail_lines : int, optional
+      Number of trailing log lines to include.
+
+  Returns
+  -------
+  str
+      The assembled diagnostics report, terminated by a newline.
+  """
   lines = []
   lines.append("PhenixChat diagnostics")
   lines.append("=" * 40)

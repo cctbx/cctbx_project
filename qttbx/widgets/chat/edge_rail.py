@@ -20,6 +20,19 @@ _ARROWS = {
 
 
 class EdgeRail(QtWidgets.QFrame):
+  """Thin vertical rail with a single panel-toggle button.
+
+  Parameters
+  ----------
+  side : str
+      Which edge the rail sits on; ``"left"`` or ``"right"``.
+  tooltip_show : str
+      Button tooltip shown while the adjacent panel is collapsed.
+  tooltip_hide : str
+      Button tooltip shown while the adjacent panel is expanded.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  """
 
   toggled = QtCore.Signal(bool)  # True = user wants panel expanded.
 
@@ -49,15 +62,23 @@ class EdgeRail(QtWidgets.QFrame):
     layout.addStretch(1)
 
   def set_expanded(self, expanded):
-    """Source-of-truth flip: ChatWindow calls this whenever the
-    adjacent panel's actual width crosses the zero/non-zero boundary,
-    keeping the arrow consistent with reality regardless of who
-    triggered the change (rail / menu / shortcut / splitter drag).
+    """Update the arrow/tooltip to reflect the panel's expanded state.
 
-    Does NOT emit toggled() -- that signal is for user-initiated
+    Source-of-truth flip: ChatWindow calls this whenever the adjacent
+    panel's actual width crosses the zero/non-zero boundary, keeping
+    the arrow consistent with reality regardless of who triggered the
+    change (rail / menu / shortcut / splitter drag).
+
+    Does NOT emit ``toggled()`` -- that signal is for user-initiated
     rail clicks only; a feedback loop would otherwise form when
-    ChatWindow calls set_expanded() in response to handling
-    toggled()."""
+    ChatWindow calls ``set_expanded()`` in response to handling
+    ``toggled()``.
+
+    Parameters
+    ----------
+    expanded : bool
+        Whether the adjacent panel is currently expanded.
+    """
     self._expanded = bool(expanded)
     state = "expanded" if self._expanded else "collapsed"
     self.button.setText(_ARROWS[self._side][state])

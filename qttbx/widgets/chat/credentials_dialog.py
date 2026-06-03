@@ -10,8 +10,23 @@ from qttbx.qt import QtWidgets
 
 
 class CredentialsDialog(QtWidgets.QDialog):
-  """Parent-agnostic credentials prompt. Subclass and configure via
-  constructor args."""
+  """Parent-agnostic credentials prompt.
+
+  Provides the common UX (instructions, masked input, show/hide toggle,
+  save-to-keychain checkbox, save and cancel buttons). Subclass and
+  configure via constructor args.
+
+  Parameters
+  ----------
+  title : str
+      Window title.
+  instructions : str
+      Instruction text shown above the input; may contain HTML.
+  field_label : str
+      Label for the credential input field.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  """
 
   def __init__(self, title, instructions, field_label, parent=None):
     super().__init__(parent)
@@ -60,14 +75,21 @@ class CredentialsDialog(QtWidgets.QDialog):
   # ---- public API used by callers ------------------------------------------
 
   def set_value(self, value):
-    """Pre-populate (e.g., for an 'Update key' flow)."""
+    """Pre-populate the input field (e.g., for an 'Update key' flow).
+
+    Parameters
+    ----------
+    value : str
+        The value to place in the input field.
+    """
     self._value_edit.setText(value)
 
   def result_value(self):
-    """Returns the saved value, or None if cancelled or save not invoked."""
+    """Return the saved value, or ``None`` if cancelled or not saved."""
     return self._result_value
 
   def save_to_keychain_checked(self):
+    """Return whether the save-to-keychain checkbox is checked."""
     return self._save_to_keychain.isChecked()
 
   # ---- slots ---------------------------------------------------------------

@@ -12,20 +12,27 @@ from qttbx.qt import QtCore, QtWidgets
 
 
 def set_auto_height(widget, min_lines=1):
-  """Configure a QTextEdit / QPlainTextEdit / QTextBrowser to grow
-  with its content instead of scrolling.
+  """Configure a text widget to grow with its content instead of scrolling.
 
-  Effects:
-    - Both scrollbars disabled (the outer scroll area handles it).
-    - Vertical size policy = Fixed, horizontal = Expanding.
-    - Any existing maximumHeight constraint is lifted.
-    - On document changes, the widget's height is set to the
-      document's current rendered height (plus the frame chrome).
-    - On viewport resize (wrap width changes), the height is
-      recomputed because long lines may re-wrap.
+  Applies to ``QTextEdit`` / ``QPlainTextEdit`` / ``QTextBrowser``. The
+  effects are:
 
-  min_lines clamps the minimum rendered height to N text lines so an
-  empty widget doesn't collapse to zero pixels mid-stream.
+  - Both scrollbars disabled (the outer scroll area handles it).
+  - Vertical size policy = Fixed, horizontal = Expanding.
+  - Any existing maximumHeight constraint is lifted.
+  - On document changes, the widget's height is set to the document's
+    current rendered height (plus the frame chrome).
+  - On viewport resize (wrap width changes), the height is recomputed
+    because long lines may re-wrap.
+
+  Parameters
+  ----------
+  widget : QtWidgets.QTextEdit
+      The text widget to reconfigure (also accepts ``QPlainTextEdit``
+      and ``QTextBrowser``).
+  min_lines : int, optional
+      Clamps the minimum rendered height to N text lines so an empty
+      widget doesn't collapse to zero pixels mid-stream.
   """
   widget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
   widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)

@@ -13,11 +13,21 @@ from pathlib import Path
 def resolve_project_dir(cli_arg=None, embedded_arg=None):
   """Resolve the active project directory.
 
-  Order:
-    1. CLI --project-dir argument (passed by the launcher).
-    2. embedded_arg passed by an embedding GUI's constructor.
-    3. PHENIX_PROJECT_DIR env var.
-    4. Current working directory (default — cwd-as-project).
+  Resolution order: the CLI ``--project-dir`` argument, then
+  ``embedded_arg``, then the ``PHENIX_PROJECT_DIR`` env var, then the
+  current working directory (default — cwd-as-project).
+
+  Parameters
+  ----------
+  cli_arg : str, optional
+      The CLI ``--project-dir`` argument passed by the launcher.
+  embedded_arg : str, optional
+      A directory passed by an embedding GUI's constructor.
+
+  Returns
+  -------
+  pathlib.Path
+      The resolved (absolute) active project directory.
   """
   if cli_arg is not None:
     return Path(cli_arg).resolve()
@@ -32,13 +42,22 @@ def resolve_project_dir(cli_arg=None, embedded_arg=None):
 def chat_root_for(project_dir):
   """Resolve the chat-data root inside a project directory.
 
-  Order:
-    1. PHENIX_CHAT_HOME env var (test/debug override).
-    2. <project_dir>/.phenix_chat/
+  Resolution order: the ``PHENIX_CHAT_HOME`` env var (test/debug
+  override), then ``<project_dir>/.phenix_chat/``.
 
   The directory is NOT created here. Storage code creates it lazily on the
   first persistence write so cwd-as-project doesn't leave a hidden dir
   behind for chats that never sent a message.
+
+  Parameters
+  ----------
+  project_dir : str or pathlib.Path
+      The active project directory.
+
+  Returns
+  -------
+  pathlib.Path
+      The chat-data root (which may not yet exist on disk).
   """
   override = os.environ.get("PHENIX_CHAT_HOME")
   if override:

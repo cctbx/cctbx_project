@@ -1,5 +1,6 @@
-"""Multi-line chat input with attachments, drag-drop, paste, and a
-button row (Save chat / Auto-approve / attach / Send).
+"""Multi-line chat input with attachments, drag-drop, paste, and buttons.
+
+The button row holds Save chat / Auto-approve / attach / Send.
 
 The Send button's label flips to 'Stop' when ``set_busy(True)`` is
 called; ``click_send`` emits ``stop`` in that mode. Attachments are
@@ -9,12 +10,15 @@ as a ``list[dict]`` of ``{"bytes": bytes, "mime": str, "filename":
 str}``. ``auto_approve_changed`` carries the auto-approve toggle's
 checked state; ``save_chat`` is a parameterless signal the chat window
 listens to so it can prompt for a destination and write the
-markdown export."""
+markdown export.
+"""
 
 from qttbx.qt import QtCore, QtGui, QtWidgets
 
 
 class MessageInput(QtWidgets.QWidget):
+  """Multi-line chat input with attachments and a button row."""
+
   send = QtCore.Signal(str, list)                  # text, attachments (list)
   stop = QtCore.Signal()
   attachment_rejected = QtCore.Signal(str)
@@ -147,8 +151,25 @@ class MessageInput(QtWidgets.QWidget):
   # ---- attachments ---------------------------------------------------------
 
   def attach_bytes(self, data, mime, filename=""):
-    """Add bytes to the pending list. Validates mime + size; emits
-    attachment_rejected on failure (returns False)."""
+    """Add bytes to the pending attachment list.
+
+    Validates mime type and size; emits ``attachment_rejected`` on
+    failure.
+
+    Parameters
+    ----------
+    data : bytes
+        Raw image bytes to attach.
+    mime : str
+        MIME type; must be one of the allowed image types.
+    filename : str, optional
+        Display name for the attachment. Defaults to ``"image"``.
+
+    Returns
+    -------
+    bool
+        ``True`` if the attachment was accepted, ``False`` if rejected.
+    """
     if mime not in self._ALLOWED_MIMES:
       self.attachment_rejected.emit(
         "Unsupported attachment type: %s" % mime)
@@ -172,9 +193,24 @@ class MessageInput(QtWidgets.QWidget):
       self._refresh_chip_bar()
 
   def _maybe_resample(self, data, mime):
-    """Repeatedly halve dimensions until under the byte cap, up to 5
-    iterations. Returns the smaller bytes (or original if Qt can't read
-    them, which lets the size check catch it later)."""
+    """Shrink an oversized image to fit under the byte cap.
+
+    Repeatedly halves dimensions until under the byte cap, up to 5
+    iterations.
+
+    Parameters
+    ----------
+    data : bytes
+        Raw image bytes.
+    mime : str
+        MIME type; selects the re-encode format (PNG vs JPG).
+
+    Returns
+    -------
+    bytes
+        The smaller bytes, or the original if Qt can't read them
+        (which lets the size check catch it later).
+    """
     if len(data) <= self._max_image_bytes:
       return data
     img = QtGui.QImage()
@@ -224,19 +260,25 @@ class MessageInput(QtWidgets.QWidget):
   # ---- auto-approve --------------------------------------------------------
 
   def _on_auto_approve_toggled(self, checked):
-    """Reflect the toggled state in the button's label and propagate
+    """Reflect the toggled state and propagate it.
+
+    Reflects the toggled state in the button's label and propagates it
     via the public ``auto_approve_changed`` signal. The button is
     checkable; Qt's native pressed-in 'checked' rendering plus the
     label flip ('Auto-approve' -> 'Auto-approve: ON') signals the
     state without a colour override (a hardcoded colour would read
-    poorly on one theme or the other)."""
+    poorly on one theme or the other).
+    """
     self._auto_approve_btn.setText(
       "Auto-approve: ON" if checked else "Auto-approve")
     self.auto_approve_changed.emit(bool(checked))
 
   def set_auto_approve(self, on):
-    """Programmatic sync (for tests and direct callers). Avoids a
-    feedback loop by checking the button's state before re-toggling."""
+    """Programmatically sync the auto-approve toggle state.
+
+    For tests and direct callers. Avoids a feedback loop by checking
+    the button's state before re-toggling.
+    """
     on = bool(on)
     if self._auto_approve_btn.isChecked() != on:
       self._auto_approve_btn.setChecked(on)

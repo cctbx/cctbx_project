@@ -5,6 +5,15 @@ from qttbx.qt import QtCore, QtWidgets
 
 
 class ImageLightbox(QtWidgets.QDialog):
+  """Modal full-size image viewer; click anywhere or press Esc to close.
+
+  Parameters
+  ----------
+  pixmap : QtGui.QPixmap
+      The image to display, scaled to fit the screen.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  """
 
   def __init__(self, pixmap, parent=None):
     super().__init__(parent)
@@ -30,6 +39,7 @@ class ImageLightbox(QtWidgets.QDialog):
     # Esc closes for free (default QDialog behavior).
 
   def mousePressEvent(self, event):
+    """Close the dialog on any mouse press."""
     # Click anywhere closes. Don't pre-filter by button -- any press
     # ends the modal.
     self._on_clicked()

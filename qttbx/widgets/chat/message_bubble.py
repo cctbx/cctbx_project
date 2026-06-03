@@ -49,14 +49,34 @@ class _ThinkingCell(QtWidgets.QFrame):
 
 
 class _ImageCell(QtWidgets.QFrame):
-  """Inline image cell. Holds a QPixmap, renders it as a height-capped
-  thumbnail (aspect-preserved), and opens ImageLightbox on click.
-  Caption is rendered below the image when present; hidden when absent.
+  """Inline image cell rendering a QPixmap as a thumbnail.
+
+  Holds a QPixmap, renders it as a height-capped thumbnail
+  (aspect-preserved), and opens ImageLightbox on click. The caption is
+  rendered below the image when present; hidden when absent.
 
   ``clicked(conv_id, sha256)`` is the only public signal -- it
   propagates up through MessageBubble.image_clicked and
   ConversationView.image_clicked to ChatWindow._on_image_clicked, which
-  uses the two strings to look up the artifact in the side panel."""
+  uses the two strings to look up the artifact in the side panel.
+
+  Parameters
+  ----------
+  pixmap : QtGui.QPixmap
+      The full-resolution image; thumbnailed for display and shown
+      at full size in the lightbox.
+  caption : str, optional
+      Text rendered below the thumbnail; the caption is hidden when
+      absent.
+  sha256 : str, optional
+      Attachment hash; travels with the ``clicked`` signal.
+  mime : str, optional
+      Attachment MIME type; stored as metadata.
+  conv_id : str, optional
+      Conversation id; travels with the ``clicked`` signal.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  """
 
   MAX_HEIGHT = 240
 
@@ -98,8 +118,10 @@ class _ImageCell(QtWidgets.QFrame):
       self.caption_label.hide()
 
   def click(self):
-    """Programmatic click for tests. Fires `clicked` without opening
-    the lightbox so the assertion can run synchronously."""
+    """Fire ``clicked`` programmatically without opening the lightbox.
+
+    Used by tests so the assertion can run synchronously.
+    """
     self.clicked.emit(self.conv_id or "", self.sha256 or "")
 
   def _thumb_clicked(self, _event):
@@ -123,13 +145,42 @@ _ROLE_LABELS = {"user": "You", "assistant": "Claude"}
 
 
 class MessageBubble(QtWidgets.QFrame):
-  """Visually one chat turn (user or assistant). The bubble accumulates
-  child cells in vertical order matching ``message.content``.
+  """One chat turn (user or assistant) rendered as a widget.
+
+  The bubble accumulates child cells in vertical order matching
+  ``message.content``.
 
   Flattened layout: no QFrame border / background; the role word is
   bold-prefixed onto the first text cell (e.g. ``<b>You:</b> refine
   1yjp``) rather than rendered as a separate header label. Turn
-  separation comes from the 12 px top margin."""
+  separation comes from the 12 px top margin.
+
+  The bubble has two construction modes: pass ``message`` (the legacy
+  ConversationView path, with content blocks rendered immediately), or
+  pass ``role`` (the lightweight path for tests and future direct
+  callers, with no Message wired in until needed). Exactly one of the
+  two must be supplied.
+
+  Parameters
+  ----------
+  message : Message, optional
+      The message to render. Mutually exclusive with ``role``.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  storage : object, optional
+      Attachment store used to decode image blocks; without it image
+      cells fall back to a placeholder pixmap.
+  conv_id : str, optional
+      Conversation id used to resolve image attachments.
+  role : str, optional
+      ``"user"`` or ``"assistant"`` to build an empty bubble. Mutually
+      exclusive with ``message``.
+
+  Raises
+  ------
+  TypeError
+      If neither ``message`` nor ``role`` is supplied.
+  """
 
   image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
 
@@ -271,8 +322,10 @@ class MessageBubble(QtWidgets.QFrame):
     return _ROLE_LABELS.get(self._role, self._role.title())
 
   def _append_text_markdown(self, text):
-    """Internal: append markdown to the shared text view, prepending the
-    bold role marker on the first text cell."""
+    """Append markdown to the shared text view.
+
+    Prepends the bold role marker on the first text cell.
+    """
     self._ensure_text_view()
     if not self._first_text_cell_added:
       prefix = "**%s:** " % self._role_label_text()
@@ -282,10 +335,18 @@ class MessageBubble(QtWidgets.QFrame):
       self._text_view.append_markdown(text or "")
 
   def add_text(self, text):
-    """Public convenience: append a text block to the bubble. The first
-    call gets the bold-prefixed role marker (``You:`` / ``Claude:``);
-    subsequent calls render as plain markdown. Also mirrors into
-    ``message.content`` so combined_text() stays consistent."""
+    """Append a text block to the bubble.
+
+    The first call gets the bold-prefixed role marker (``You:`` /
+    ``Claude:``); subsequent calls render as plain markdown. Also
+    mirrors into ``message.content`` so ``combined_text()`` stays
+    consistent.
+
+    Returns
+    -------
+    MarkdownView
+        The shared text view the block was appended to.
+    """
     self._append_text_markdown(text)
     last = self.message.content[-1] if self.message.content else None
     if last is not None and last.type == "text":
@@ -296,8 +357,15 @@ class MessageBubble(QtWidgets.QFrame):
     return self._text_view
 
   def first_text_cell_html(self):
-    """Return the HTML of the first text cell (used by tests and any
-    future inline assertions). Empty string if no text yet."""
+    """Return the HTML of the first text cell.
+
+    Used by tests and any future inline assertions.
+
+    Returns
+    -------
+    str
+        The first text cell's HTML, or an empty string if no text yet.
+    """
     if self._first_text_cell is None:
       return ""
     if hasattr(self._first_text_cell, "toHtml"):
@@ -308,11 +376,32 @@ class MessageBubble(QtWidgets.QFrame):
 
   def add_image_cell(self, pixmap, caption=None, sha256=None, mime=None,
                      conv_id=None):
-    """Insert an inline image cell. The cell renders a height-capped
-    thumbnail and opens ImageLightbox on click. The sha256/mime/conv_id
-    kwargs travel with the cell's `clicked(conv_id, sha256)` signal so
-    the ConversationView can re-emit them to the chat window's
-    artifact-focus handler."""
+    """Insert an inline image cell.
+
+    The cell renders a height-capped thumbnail and opens ImageLightbox
+    on click. The ``sha256`` / ``mime`` / ``conv_id`` kwargs travel
+    with the cell's ``clicked(conv_id, sha256)`` signal so the
+    ConversationView can re-emit them to the chat window's
+    artifact-focus handler.
+
+    Parameters
+    ----------
+    pixmap : QtGui.QPixmap
+        The image to render as a thumbnail.
+    caption : str, optional
+        Text rendered below the thumbnail.
+    sha256 : str, optional
+        Attachment hash; travels with the cell's ``clicked`` signal.
+    mime : str, optional
+        Attachment MIME type.
+    conv_id : str, optional
+        Conversation id; travels with the cell's ``clicked`` signal.
+
+    Returns
+    -------
+    _ImageCell
+        The inserted image cell.
+    """
     cell = _ImageCell(
       pixmap=pixmap, caption=caption,
       sha256=sha256, mime=mime, conv_id=conv_id, parent=self)
@@ -325,9 +414,25 @@ class MessageBubble(QtWidgets.QFrame):
   # ---- tool cells ---------------------------------------------------------
 
   def add_tool_use_cell(self, tool_id, name, args):
-    """Insert a collapsed ToolCallDisclosure row keyed by tool_id. The
-    runner calls set_tool_use_finished(tool_id, ...) to transition the
-    cell to a terminal state once the tool returns."""
+    """Insert a collapsed ToolCallDisclosure row keyed by ``tool_id``.
+
+    The runner calls ``set_tool_use_finished(tool_id, ...)`` to
+    transition the cell to a terminal state once the tool returns.
+
+    Parameters
+    ----------
+    tool_id : str
+        Identifier the cell is keyed by for later finishing.
+    name : str
+        Tool name shown in the disclosure header.
+    args : dict
+        Tool input arguments; shown in the disclosure when non-empty.
+
+    Returns
+    -------
+    ToolCallDisclosure
+        The inserted disclosure row.
+    """
     from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
     cell = ToolCallDisclosure(name=name, status="running", parent=self)
     if args:
@@ -343,9 +448,24 @@ class MessageBubble(QtWidgets.QFrame):
 
   def set_tool_use_finished(self, tool_id, elapsed=None, result=None,
                             error=None, cancelled=False):
-    """Transition a previously-added tool cell to a terminal state. No-op
-    for unknown tool_id (so the runner can call this safely even if it
-    never added the cell)."""
+    """Transition a previously-added tool cell to a terminal state.
+
+    No-op for an unknown ``tool_id`` (so the runner can call this
+    safely even if it never added the cell).
+
+    Parameters
+    ----------
+    tool_id : str
+        Identifier of the cell to finish.
+    elapsed : optional
+        Elapsed-time suffix appended to the finished status when set.
+    result : optional
+        Result payload rendered into the cell when set.
+    error : optional
+        Error message; transitions the cell to a failed state when set.
+    cancelled : bool, optional
+        When true, transitions the cell to a cancelled state.
+    """
     cell = self._tool_cells_by_id.get(tool_id)
     if cell is None:
       return
@@ -362,6 +482,7 @@ class MessageBubble(QtWidgets.QFrame):
   # ---- streaming -----------------------------------------------------------
 
   def append_text_delta(self, text):
+    """Append a streamed text delta to the bubble and message content."""
     self._append_text_markdown(text)
     # Keep message.content in sync so combined_text() reflects what was
     # streamed in (the bubble is the source of truth for on-screen content).
@@ -373,6 +494,7 @@ class MessageBubble(QtWidgets.QFrame):
         ContentBlock(type="text", data={"text": text or ""}))
 
   def append_thinking_delta(self, text):
+    """Append a streamed thinking delta to the bubble and message content."""
     if self._thinking_cell is None:
       self._thinking_cell = _ThinkingCell("", self)
       self._layout.addWidget(self._thinking_cell)
@@ -387,16 +509,30 @@ class MessageBubble(QtWidgets.QFrame):
         ContentBlock(type="thinking", data={"text": text or ""}))
 
   def append_block(self, block):
-    """Append a new ContentBlock to the in-progress bubble (post-stream
-    tool_use and tool_result blocks land here)."""
+    """Append a new ContentBlock to the in-progress bubble.
+
+    Post-stream tool_use and tool_result blocks land here.
+
+    Parameters
+    ----------
+    block : ContentBlock
+        The content block to render and mirror into ``message.content``.
+    """
     self.message.content.append(block)
     self._add_block(block)
 
   # ---- introspection (for tests + sidebar previews) -----------------------
 
   def combined_text(self):
-    """Flat-text representation; the bubble is the source of truth for the
-    on-screen content."""
+    """Return a flat-text representation of the bubble's content.
+
+    The bubble is the source of truth for the on-screen content.
+
+    Returns
+    -------
+    str
+        The content blocks flattened to newline-joined text.
+    """
     parts = []
     for block in self.message.content:
       if block.type == "text":
@@ -446,7 +582,8 @@ def _format_server_tool_result(content):
   The Anthropic API returns an opaque dict per server tool. Pretty-print
   it as JSON; for ``web_search`` specifically, extract the result list
   into a more readable bullet list so the disclosure isn't a wall of
-  JSON for the most common case."""
+  JSON for the most common case.
+  """
   if not isinstance(content, dict):
     return str(content)
   # web_search: content has "content": [{"type":"web_search_result", ...}, ...]

@@ -1,5 +1,4 @@
-"""``ToolApprovalCard`` — inline card requesting approval for one or
-more tool calls.
+"""Inline card requesting approval for one or more tool calls.
 
 For a single ``ToolApprovalRequest`` the card shows the tool and four
 buttons: Approve / Deny / Always allow / Stop. For a batch (multiple
@@ -29,9 +28,12 @@ _RISK_STYLES = {
 
 
 class ToolApprovalCard(QtWidgets.QFrame):
-  """Single or batched approval card. The card emits one decided(list) per
-  click; the list always contains one ToolApprovalResponse per
-  ToolApprovalRequest, in dispatch order."""
+  """Single or batched approval card.
+
+  The card emits one ``decided(list)`` per click; the list always
+  contains one ``ToolApprovalResponse`` per ``ToolApprovalRequest``, in
+  dispatch order.
+  """
 
   decided = QtCore.Signal(list)                  # list[ToolApprovalResponse]
 
@@ -60,10 +62,17 @@ class ToolApprovalCard(QtWidgets.QFrame):
     self._remember_server = bool(value)
 
   def is_decided(self):
-    """True once a decision has been emitted (the card is then hidden and
-    its buttons disabled). ConversationView consults this so it never
-    appends a newly arrived same-batch request to an already-answered
-    card."""
+    """Report whether a decision has already been emitted.
+
+    Once decided, the card is hidden and its buttons disabled.
+    ``ConversationView`` consults this so it never appends a newly
+    arrived same-batch request to an already-answered card.
+
+    Returns
+    -------
+    bool
+        ``True`` once a decision has been emitted.
+    """
     return self._decided
 
   def click_approve_all(self):

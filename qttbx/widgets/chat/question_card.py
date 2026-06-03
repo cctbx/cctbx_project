@@ -1,20 +1,23 @@
-"""``QuestionCard`` -- inline card asking the user one or more
-multiple-choice questions.
+"""Inline card asking the user one or more multiple-choice questions.
 
 Triggered when the agent calls the ``phenix_ask_user_question`` tool.
 The card renders each question with its options as radio buttons (or
 checkboxes when ``multiSelect`` is True), an optional ``Other`` textbox
 for free-form answers, and a Submit button. On submit it emits
 ``answered(request_id, answers)`` -- a dict keyed by question text with
-the selected label (or list of labels)."""
+the selected label (or list of labels).
+"""
 
 from qttbx.qt import QtCore, QtWidgets
 
 
 class QuestionCard(QtWidgets.QFrame):
-  """Single card carrying one or more questions; one Submit click
-  emits all answers at once. Pattern mirrors ``ToolApprovalCard`` so
-  the chat infrastructure can render it the same way."""
+  """Single card carrying one or more questions.
+
+  One Submit click emits all answers at once. Pattern mirrors
+  ``ToolApprovalCard`` so the chat infrastructure can render it the
+  same way.
+  """
 
   answered = QtCore.Signal(str, dict)            # request_id, answers
 
@@ -41,8 +44,11 @@ class QuestionCard(QtWidgets.QFrame):
     self._rebuild()
 
   def click_submit(self):
-    """Programmatic submit (tests use this; the Submit button calls
-    the same path). Collects answers from every question and emits."""
+    """Collect answers from every question and emit them.
+
+    Programmatic submit (tests use this; the Submit button calls the
+    same path). Emits ``answered(request_id, answers)``.
+    """
     answers = {}
     for q, state in zip(self._questions, self._question_state):
       text = q.get("question", "")
@@ -95,9 +101,24 @@ class QuestionCard(QtWidgets.QFrame):
     return box
 
   def _build_one_question(self, q, parent):
-    """Build one question block. Records per-question state in
-    ``self._question_state`` so ``click_submit`` can read the
-    selections back."""
+    """Build one question block.
+
+    Records per-question state in ``self._question_state`` so
+    ``click_submit`` can read the selections back.
+
+    Parameters
+    ----------
+    q : dict
+        Question spec with ``header``, ``question``, ``multiSelect``,
+        and ``options`` keys.
+    parent : QtWidgets.QWidget
+        Parent widget for the constructed block.
+
+    Returns
+    -------
+    QtWidgets.QFrame
+        The frame holding the rendered question.
+    """
     frame = QtWidgets.QFrame(parent)
     frame.setFrameShape(QtWidgets.QFrame.NoFrame)
     v = QtWidgets.QVBoxLayout(frame)

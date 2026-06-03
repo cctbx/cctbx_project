@@ -18,6 +18,27 @@ from libtbx.utils import Sorry
 
 @dataclass
 class Skill:
+  """A loaded skill: metadata plus its ``SKILL.md`` body.
+
+  Parameters
+  ----------
+  name : str
+      Skill name (from frontmatter); unique within a session.
+  path : pathlib.Path
+      Absolute path to the skill directory.
+  description : str
+      Short description surfaced in the system prompt.
+  mode : str, optional
+      ``"always"`` (body inlined in the prompt) or ``"on_demand"``
+      (body fetched via the ``load_skill`` tool). Defaults to
+      ``"always"``.
+  body : str, optional
+      The ``SKILL.md`` body with frontmatter stripped.
+  requires : list, optional
+      MCP server names the skill depends on.
+  version : str, optional
+      Skill version string.
+  """
   name: str
   path: Path                                    # absolute path to skill dir
   description: str
@@ -28,6 +49,23 @@ class Skill:
 
 
 class SkillLoader:
+  """Discover, load, and surface skills for an agent session.
+
+  Built-in skills auto-load; user / project skills are opt-in. Built-in
+  wins on name collision. Also provides the skill-source tools that let
+  the agent read and list files inside a loaded skill's directory.
+
+  Parameters
+  ----------
+  builtin_path : str or pathlib.Path
+      Directory of auto-loading built-in skills.
+  project_path : str or pathlib.Path, optional
+      Project-level skill search path.
+  user_path : str or pathlib.Path, optional
+      User-level skill search path.
+  log : file-like, optional
+      Stream for diagnostic messages. Defaults to ``sys.stdout``.
+  """
 
   def __init__(self, builtin_path, project_path=None, user_path=None, log=None):
     self.builtin_path = Path(builtin_path)
@@ -135,10 +173,23 @@ class SkillLoader:
     return skill
 
   def _requires_satisfied(self, skill, available_servers):
-    """True when the skill can usefully run. None means "caller opted
-    out of the check" (typically: caller doesn't know which servers
-    will be available, e.g., test setup); we then load every skill
-    regardless of its `requires` declaration."""
+    """Report whether the skill's required MCP servers are available.
+
+    Parameters
+    ----------
+    skill : Skill
+        The skill whose ``requires`` declaration is checked.
+    available_servers : frozenset of str or None
+        Names of available MCP servers. ``None`` means the caller opted
+        out of the check (typically because it does not know which
+        servers will be available, e.g., test setup), in which case
+        every skill loads regardless of its ``requires`` declaration.
+
+    Returns
+    -------
+    bool
+        True when the skill can usefully run.
+    """
     if available_servers is None:
       return True
     if not skill.requires:
@@ -328,9 +379,25 @@ class SkillLoader:
     return skill.body
 
   def _resolve_safe(self, skill, relative_path):
-    """Reject absolute paths; resolve via realpath and verify
+    """Resolve a skill-relative path, rejecting any escape from the dir.
+
+    Rejects absolute paths, then resolves via realpath and verifies
     containment under ``realpath(skill.path)``. Catches ``..``,
-    absolute, and symlink-escape uniformly."""
+    absolute, and symlink-escape uniformly.
+
+    Parameters
+    ----------
+    skill : Skill
+        The skill whose directory bounds the resolved path.
+    relative_path : str
+        Path supplied relative to the skill directory.
+
+    Returns
+    -------
+    str or None
+        The validated absolute path, or ``None`` if it escapes the
+        skill directory.
+    """
     if os.path.isabs(relative_path):
       return None
     skill_root = os.path.realpath(str(skill.path))
@@ -344,8 +411,24 @@ class SkillLoader:
 
 
 def _parse_skill_md(path):
-  """Parse YAML frontmatter + markdown body. Use PyYAML; bail with Sorry
-  on malformed frontmatter."""
+  """Parse a ``SKILL.md`` into YAML frontmatter and markdown body.
+
+  Parameters
+  ----------
+  path : pathlib.Path
+      Path to the ``SKILL.md`` file.
+
+  Returns
+  -------
+  tuple of (dict, str)
+      The parsed frontmatter mapping and the markdown body.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      If the frontmatter is missing, unterminated, not a mapping, or
+      malformed, or if PyYAML is not installed.
+  """
   text = path.read_text()
   if not text.startswith("---"):
     raise Sorry("SKILL.md %s missing YAML frontmatter" % path)

@@ -1,11 +1,15 @@
-"""Thin horizontal strip above the conversation: title / model / debug
-log path. No interactive elements -- ChatWindow updates the labels as
-the conversation, profile, or debug-log state changes."""
+"""Thin horizontal strip above the conversation.
+
+Shows the title / model / debug log path. No interactive elements --
+ChatWindow updates the labels as the conversation, profile, or
+debug-log state changes.
+"""
 
 from qttbx.qt import QtCore, QtWidgets
 
 
 class ChatTopBar(QtWidgets.QFrame):
+  """Non-interactive header strip showing title, model, and debug log."""
 
   def __init__(self, parent=None):
     super().__init__(parent)
@@ -32,13 +36,21 @@ class ChatTopBar(QtWidgets.QFrame):
     self.debug_label.hide()
 
   def set_title(self, text):
+    """Set the title label text."""
     self.title_label.setText(text or "")
 
   def set_model(self, text):
+    """Set the model label text."""
     self.model_label.setText(text or "")
 
   def set_debug_log_path(self, path):
-    """path may be a str, pathlib.Path, or None. None hides the slot."""
+    """Show the debug log path, or hide the slot when there is none.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path or None
+        The debug log path to display. ``None`` hides the slot.
+    """
     if not path:
       self.debug_label.setText("")
       self.debug_label.hide()

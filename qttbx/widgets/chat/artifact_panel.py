@@ -2,7 +2,8 @@
 
 Holds a history of ``Artifact`` instances and renders the current one
 via the renderer registry in ``artifact.py``. Ships with an image
-renderer; other kinds can be added via ``register_renderer``."""
+renderer; other kinds can be added via ``register_renderer``.
+"""
 
 from qttbx.qt import QtCore, QtGui, QtWidgets
 
@@ -12,6 +13,15 @@ from qttbx.widgets.chat.image_cache import get_image
 
 
 class ArtifactPanel(QtWidgets.QWidget):
+  """Side panel showing a navigable history of artifacts.
+
+  Parameters
+  ----------
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  storage : object, optional
+      Attachment store used to load and save artifact payloads.
+  """
 
   def __init__(self, parent=None, storage=None):
     super().__init__(parent)
@@ -60,7 +70,13 @@ class ArtifactPanel(QtWidgets.QWidget):
     self._storage = storage
 
   def add_artifact(self, artifact):
-    """Append; advance to it if the user hasn't navigated away."""
+    """Append an artifact, advancing to it unless the user navigated away.
+
+    Parameters
+    ----------
+    artifact : Artifact
+        The artifact to append to the history.
+    """
     self._artifacts.append(artifact)
     if not self._user_navigated:
       self._index = len(self._artifacts) - 1
@@ -69,8 +85,18 @@ class ArtifactPanel(QtWidgets.QWidget):
       self._update_controls()
 
   def show_image(self, conv_id, sha256):
-    """Focus an image (already in history if previously seen, else add
-    a fresh Artifact)."""
+    """Focus an image, adding a fresh ``Artifact`` if not already shown.
+
+    If the image was previously seen it is reused from history;
+    otherwise a fresh ``Artifact`` is appended.
+
+    Parameters
+    ----------
+    conv_id : str
+        Conversation id the image belongs to.
+    sha256 : str
+        Content hash identifying the image.
+    """
     for i, art in enumerate(self._artifacts):
       payload = art.payload or {}
       if art.kind == "image" and payload.get("sha256") == sha256 \
@@ -109,6 +135,7 @@ class ArtifactPanel(QtWidgets.QWidget):
       self._refresh()
 
   def current_artifact(self):
+    """Return the currently selected ``Artifact``, or ``None`` if empty."""
     if 0 <= self._index < len(self._artifacts):
       return self._artifacts[self._index]
     return None
@@ -155,6 +182,7 @@ class ArtifactPanel(QtWidgets.QWidget):
   # ---- buttons -------------------------------------------------------------
 
   def save_current(self):
+    """Prompt for a path and save the current image artifact to disk."""
     art = self.current_artifact()
     if art is None or self._storage is None:
       return
@@ -178,6 +206,7 @@ class ArtifactPanel(QtWidgets.QWidget):
         self, "Save failed", str(exc))
 
   def copy_current(self):
+    """Copy the current image artifact to the system clipboard."""
     art = self.current_artifact()
     if art is None or self._storage is None or art.kind != "image":
       return
@@ -192,8 +221,23 @@ class ArtifactPanel(QtWidgets.QWidget):
 
 
 def _image_renderer(artifact, storage):
-  """Default renderer for kind='image'. Loads via image cache; scales to
-  panel width on resize via the wrapper widget."""
+  """Render an ``image`` artifact as a width-scaling label.
+
+  Loads the image via the image cache and scales it to the panel width
+  on resize through the wrapper widget.
+
+  Parameters
+  ----------
+  artifact : Artifact
+      Artifact whose ``payload`` carries ``conv_id`` and ``sha256``.
+  storage : object
+      Attachment store the image is loaded from.
+
+  Returns
+  -------
+  QtWidgets.QWidget
+      A label widget that rescales the image on resize.
+  """
   payload = artifact.payload or {}
   conv_id = payload.get("conv_id", "")
   sha = payload.get("sha256", "")

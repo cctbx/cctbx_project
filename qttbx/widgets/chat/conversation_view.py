@@ -1,5 +1,4 @@
-"""Scrollable list of MessageBubbles + inline ToolApprovalCards +
-QuestionCards.
+"""Scrollable list of message bubbles, approval cards, and question cards.
 
 The view is the streaming target for the runner:
   - add_message(m)              - append a finalized Message bubble
@@ -11,7 +10,8 @@ The view is the streaming target for the runner:
 
 It does NOT own the AgentSession or QtAgentRunner; the chat window wires
 runner signals to view methods, and the view emits approval_decided /
-question_answered so the window can push responses through the runner."""
+question_answered so the window can push responses through the runner.
+"""
 
 from qttbx.qt import QtCore, QtWidgets
 
@@ -22,6 +22,17 @@ from qttbx.widgets.chat.tool_approval import ToolApprovalCard
 
 
 class ConversationView(QtWidgets.QScrollArea):
+  """Scrollable streaming view of bubbles, approval cards, and questions.
+
+  Parameters
+  ----------
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  storage : object, optional
+      Attachment store passed to each ``MessageBubble`` for image lookup.
+  conv_id : str, optional
+      Identifier of the conversation being displayed.
+  """
 
   approval_decided = QtCore.Signal(list)         # list[ToolApprovalResponse]
   question_answered = QtCore.Signal(str, dict)   # request_id, answers
@@ -122,8 +133,11 @@ class ConversationView(QtWidgets.QScrollArea):
     self._maybe_scroll_to_bottom()
 
   def append_block_to_current(self, block):
-    """For ToolUseRequested or post-stream tool_use cells the agent
-    materializes onto the current bubble."""
+    """Append a content block to the in-progress assistant bubble.
+
+    For ToolUseRequested or post-stream tool_use cells the agent
+    materializes onto the current bubble.
+    """
     if self._in_progress is None:
       self.start_assistant_bubble()
     self._in_progress.append_block(block)
@@ -141,7 +155,14 @@ class ConversationView(QtWidgets.QScrollArea):
     request 2 arrives only after request 1's card has been decided and
     hidden. That card is skipped here and a fresh, visible card is
     created; appending to the hidden card would strand the request and
-    hang the turn."""
+    hang the turn.
+
+    Parameters
+    ----------
+    req : ToolApprovalRequest
+        The approval request to render. Its ``batch_id`` drives the
+        coalescing behaviour described above.
+    """
     existing = (self._approval_by_batch.get(req.batch_id)
                 if req.batch_id else None)
     if existing is not None and not existing.is_decided():
@@ -162,9 +183,16 @@ class ConversationView(QtWidgets.QScrollArea):
   # ---- question API --------------------------------------------------------
 
   def add_question_request(self, req):
-    """Render a QuestionCard for an ``AskUserQuestionRequested``. One
-    card per request -- there's no batching since the model groups its
-    questions into a single tool call already."""
+    """Render a QuestionCard for an ``AskUserQuestionRequested``.
+
+    One card per request -- there's no batching since the model groups
+    its questions into a single tool call already.
+
+    Parameters
+    ----------
+    req : AskUserQuestionRequested
+        The question request, carrying ``request_id`` and ``questions``.
+    """
     card = QuestionCard(self._container)
     card.set_request(req.request_id, req.questions)
     card.answered.connect(self._on_question_answered)
@@ -216,10 +244,12 @@ class ConversationView(QtWidgets.QScrollArea):
     self._layout.insertWidget(count - 1, w)
 
   def _on_user_scroll_action(self, action):
-    """Re-evaluate follow-mode after a real user scroll action. Qt
-    fires actionTriggered for drag / wheel / pageup / etc., but NOT
+    """Re-evaluate follow-mode after a real user scroll action.
+
+    Qt fires actionTriggered for drag / wheel / pageup / etc., but NOT
     for programmatic setValue calls -- so layout-driven scrollbar
-    updates (auto_height growing a bubble) never flip the flag."""
+    updates (auto_height growing a bubble) never flip the flag.
+    """
     if action == QtWidgets.QAbstractSlider.SliderNoAction:
       return
     # Defer until after Qt updates value() for the action.
@@ -249,9 +279,12 @@ class ConversationView(QtWidgets.QScrollArea):
     bar.setValue(bar.maximum())
 
   def _on_range_changed(self, _min, _max):
-    """Fires whenever the scrollbar range changes -- i.e. whenever
-    the contained content grows or shrinks. If we're following the
-    bottom, snap to the new maximum now that the layout has settled."""
+    """Snap to the bottom when content grows, if following.
+
+    Fires whenever the scrollbar range changes -- i.e. whenever the
+    contained content grows or shrinks. If we're following the bottom,
+    snap to the new maximum now that the layout has settled.
+    """
     if self._follow_bottom:
       bar = self.verticalScrollBar()
       bar.setValue(bar.maximum())
