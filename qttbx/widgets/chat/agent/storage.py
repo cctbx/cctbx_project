@@ -33,10 +33,18 @@ _SCHEMA_VERSION = "1.0"
 
 
 class ConversationStorage:
-  """Reads and writes conversations under a project's .phenix_chat/ dir.
+  """Read and write conversations under a project's ``.phenix_chat/`` dir.
 
   Construction does not touch the filesystem. Directories appear lazily on
-  first write."""
+  first write.
+
+  Parameters
+  ----------
+  project_dir : str or pathlib.Path
+      Project directory whose chat root holds the conversations.
+  log : file-like, optional
+      Stream for diagnostic messages. Defaults to ``sys.stdout``.
+  """
 
   def __init__(self, project_dir, log=None):
     self.project_dir = Path(project_dir)
@@ -46,8 +54,16 @@ class ConversationStorage:
   # ---- conversations -------------------------------------------------------
 
   def list_conversations(self):
-    """Read the cached index, or rebuild from on-disk conversations if
-    missing/corrupt."""
+    """Return conversation metadata, rebuilding the index if needed.
+
+    Reads the cached ``index.json``, or rebuilds it from the on-disk
+    conversations when the index is missing or corrupt.
+
+    Returns
+    -------
+    list of ConversationMeta
+        Metadata for the stored conversations.
+    """
     index_path = self.root / "index.json"
     if index_path.exists():
       try:
@@ -60,6 +76,27 @@ class ConversationStorage:
     return self._rebuild_index()
 
   def load(self, conv_id):
+    """Load a conversation's meta and messages.
+
+    Attachments and subagents are loaded on demand, not here.
+
+    Parameters
+    ----------
+    conv_id : str
+        Identifier of the conversation to load.
+
+    Returns
+    -------
+    Conversation
+        The conversation with ``meta`` and ``messages`` populated and
+        empty ``attachments`` / ``subagents``.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        If the conversation directory does not exist, or a document's
+        ``schema_version`` is unsupported.
+    """
     conv_dir = self._conv_dir(conv_id)
     if not conv_dir.exists():
       from libtbx.utils import Sorry
@@ -75,7 +112,13 @@ class ConversationStorage:
                         attachments={}, subagents=[])
 
   def save(self, conv):
-    """Write meta.json + messages.json atomically, then update index."""
+    """Write ``meta.json`` and ``messages.json`` atomically, then reindex.
+
+    Parameters
+    ----------
+    conv : Conversation
+        The conversation to persist.
+    """
     self._ensure_root()
     conv_dir = self._conv_dir(conv.meta.id)
     conv_dir.mkdir(parents=True, exist_ok=True)
@@ -89,9 +132,24 @@ class ConversationStorage:
   # ---- attachments ---------------------------------------------------------
 
   def store_attachment(self, conv_id, data, mime):
-    """Content-addressed store. Returns an Attachment referencing the
-    sha256 of the bytes. Idempotent: writing the same bytes twice
-    produces one file."""
+    """Store attachment bytes content-addressed by their sha256.
+
+    Idempotent: writing the same bytes twice produces one file.
+
+    Parameters
+    ----------
+    conv_id : str
+        Conversation the attachment belongs to.
+    data : bytes
+        The attachment bytes.
+    mime : str
+        MIME type, used to choose the file extension.
+
+    Returns
+    -------
+    Attachment
+        Reference to the stored bytes, keyed by their sha256.
+    """
     self._ensure_root()
     sha = hashlib.sha256(data).hexdigest()
     ext = mimetypes.guess_extension(mime) or ".bin"
@@ -107,8 +165,32 @@ class ConversationStorage:
     return Attachment(sha256=sha, mime=mime, path=fname)
 
   def load_attachment(self, conv_id, sha256):
+    """Load attachment bytes by their sha256.
+
+    Parameters
+    ----------
+    conv_id : str
+        Conversation the attachment belongs to.
+    sha256 : str
+        Hex sha256 of the attachment bytes.
+
+    Returns
+    -------
+    bytes
+        The stored attachment bytes.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        If ``sha256`` is unsafe as a path segment, or no matching
+        attachment exists.
+    """
+    import glob as _glob
+    sha256 = _safe_segment(sha256, "attachment")
     att_dir = self._conv_dir(conv_id) / "attachments"
-    matches = sorted(att_dir.glob("sha256-%s.*" % sha256))
+    # _glob.escape neutralizes any glob metacharacters in the (validated)
+    # sha so it is matched literally, not as a pattern.
+    matches = sorted(att_dir.glob("sha256-%s.*" % _glob.escape(sha256)))
     if not matches:
       from libtbx.utils import Sorry
       raise Sorry("Attachment not found: sha256=%s" % sha256)
@@ -118,14 +200,35 @@ class ConversationStorage:
   # ---- subagents -----------------------------------------------------------
 
   def store_subagent(self, conv_id, record):
+    """Write a subagent record atomically under the conversation."""
     self._ensure_root()
     sub_dir = self._conv_dir(conv_id) / "subagents"
     sub_dir.mkdir(parents=True, exist_ok=True)
-    path = sub_dir / ("%s.json" % record.sub_id)
+    path = sub_dir / ("%s.json" % _safe_segment(record.sub_id, "subagent"))
     _atomic_write_json(path, _subagent_to_dict(record))
 
   def load_subagent(self, conv_id, sub_id):
-    path = self._conv_dir(conv_id) / "subagents" / ("%s.json" % sub_id)
+    """Load a subagent record by its id.
+
+    Parameters
+    ----------
+    conv_id : str
+        Conversation the subagent belongs to.
+    sub_id : str
+        Identifier of the subagent record.
+
+    Returns
+    -------
+    SubagentRecord
+        The loaded subagent record.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        If ``sub_id`` is unsafe as a path segment, or no record exists.
+    """
+    path = (self._conv_dir(conv_id) / "subagents"
+            / ("%s.json" % _safe_segment(sub_id, "subagent")))
     if not path.exists():
       from libtbx.utils import Sorry
       raise Sorry("Subagent record not found: %s" % sub_id)
@@ -138,11 +241,14 @@ class ConversationStorage:
     (self.root / "conversations").mkdir(exist_ok=True)
 
   def _conv_dir(self, conv_id):
-    return self.root / "conversations" / conv_id
+    return self.root / "conversations" / _safe_segment(conv_id, "conversation")
 
   def _refresh_index(self):
-    """Re-derive the index from on-disk conversations and write atomically.
-    Simpler than incremental update; index is small enough."""
+    """Re-derive the index from on-disk conversations and write it.
+
+    Done as a full rewrite rather than an incremental update; the index
+    is small enough that this is simpler.
+    """
     self._ensure_root()
     metas = self._scan_conversation_metas()
     _atomic_write_json(self.root / "index.json", {
@@ -179,6 +285,46 @@ class ConversationStorage:
 
 # ---- serialization helpers -------------------------------------------------
 
+def _safe_segment(value, kind):
+  """Validate an externally-supplied identifier before joining it into a path.
+
+  Conversation ids, attachment sha256s and subagent ids are normally
+  uuids / hex, but they reach storage from on-disk conversation files that
+  may have been shared or hand-edited. Rejecting empty / ``.`` / ``..`` /
+  path separators / drive markers / absolute paths keeps a crafted id from
+  escaping the chat root (``pathlib`` resolves ``..`` and drops the left
+  operand entirely when the right operand is absolute).
+
+  Parameters
+  ----------
+  value : str
+      Identifier to validate (a conversation id, attachment sha256, or
+      subagent id).
+  kind : str
+      Human-readable category used in the error message, e.g.
+      ``"conversation"``, ``"attachment"``, or ``"subagent"``.
+
+  Returns
+  -------
+  str
+      ``str(value)`` unchanged, once validated as a single safe path
+      segment.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      If ``value`` is empty, ``.`` / ``..``, absolute, or contains a path
+      separator, drive marker, or embedded NUL byte.
+  """
+  s = str(value)
+  if (not s or s in (".", "..")
+      or "/" in s or "\\" in s or ":" in s or "\x00" in s
+      or os.path.isabs(s) or s != os.path.basename(s)):
+    from libtbx.utils import Sorry
+    raise Sorry("Unsafe %s identifier: %r" % (kind, value))
+  return s
+
+
 def _read_json(path):
   with open(path) as fh:
     return json.load(fh)
@@ -205,9 +351,23 @@ def _parse_dt(s):
 
 
 def _check_schema_version(doc, source):
-  """Raise Sorry if the document's schema_version is from a future version
-  we don't know how to migrate. Currently v1 only (no migrations needed);
-  this is the seam future migrations plug into."""
+  """Validate a document's ``schema_version`` against the supported one.
+
+  Currently v1 only (no migrations needed); this is the seam future
+  migrations plug into.
+
+  Parameters
+  ----------
+  doc : dict
+      The loaded JSON document. Non-dict values are accepted and skipped.
+  source : str
+      Path or label of the document, used in the error message.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      If ``schema_version`` is from a version this client cannot migrate.
+  """
   if not isinstance(doc, dict):
     return
   version = doc.get("schema_version", _SCHEMA_VERSION)

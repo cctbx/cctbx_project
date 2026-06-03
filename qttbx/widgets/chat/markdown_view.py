@@ -22,9 +22,18 @@ th, td { border: 1px solid #ccc; padding: 3px 6px; }
 
 
 class MarkdownView(QtWidgets.QTextBrowser):
+  """Read-only QTextBrowser that renders accumulated markdown text."""
+
   def __init__(self, parent=None):
     super().__init__(parent)
-    self.setOpenExternalLinks(True)
+    # The rendered markdown is assistant-controlled, so we must NOT let Qt
+    # auto-open whatever URL a link points at (a model could emit
+    # file:///... or another local-resource scheme). Disable auto-open and
+    # route clicks through _on_anchor_clicked, which only forwards safe
+    # web/mail schemes to the OS handler.
+    self.setOpenLinks(False)
+    self.setOpenExternalLinks(False)
+    self.anchorClicked.connect(self._on_anchor_clicked)
     self.setReadOnly(True)
     self.setFrameStyle(QtWidgets.QFrame.NoFrame)
     mono_family = QtGui.QFontDatabase.systemFont(
@@ -37,13 +46,39 @@ class MarkdownView(QtWidgets.QTextBrowser):
     set_auto_height(self)
 
   def set_markdown(self, text):
+    """Replace the document with ``text`` rendered as markdown."""
     self._raw = text or ""
     self.setMarkdown(self._raw)
 
   def append_markdown(self, text):
+    """Append ``text`` to the accumulated markdown and re-render."""
     self._raw = (self._raw or "") + (text or "")
     self.setMarkdown(self._raw)
 
+  def _on_anchor_clicked(self, url):
+    """Open a clicked link only if it uses a safe scheme.
+
+    The rendered markdown is assistant-controlled, so link targets are
+    untrusted. Only ``http`` / ``https`` / ``mailto`` are forwarded to the
+    OS handler; ``file://``, ``smb://`` and custom app schemes are ignored
+    so a click cannot open a local file or trigger an external handler.
+    In-document anchors (empty scheme with a fragment) scroll within the
+    view rather than opening anything.
+
+    Parameters
+    ----------
+    url : QtCore.QUrl
+        The anchor URL emitted by ``QTextBrowser.anchorClicked``.
+    """
+    scheme = (url.scheme() or "").lower()
+    if scheme in ("http", "https", "mailto"):
+      QtGui.QDesktopServices.openUrl(url)
+    elif not scheme and url.hasFragment():
+      # In-document anchor (e.g. a markdown TOC link): scroll within the
+      # view instead of opening anything externally.
+      self.scrollToAnchor(url.fragment())
+
   def clear(self):                                       # noqa: A003
+    """Reset the view to empty."""
     self._raw = ""
     self.setMarkdown("")

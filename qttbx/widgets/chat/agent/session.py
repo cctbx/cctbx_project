@@ -31,7 +31,33 @@ class AgentSession:
 
   Reusable in any context (UI thread, worker thread, headless subagent).
   Wrappers (Qt or otherwise) add transport / signaling but don't change
-  the loop semantics."""
+  the loop semantics.
+
+  Parameters
+  ----------
+  agent : Agent
+      Backend that streams turns and exposes tool specs.
+  conversation : Conversation
+      Conversation this session appends messages to.
+  storage : object
+      Attachment store used to persist emitted images.
+  tools : object
+      Tool registry providing specs and dispatch (builtin/skill/MCP).
+  policy : object
+      Approval policy resolving each tool name to allow/deny/ask.
+  profile : object
+      Active profile/configuration for the session.
+  depth : int, optional
+      Nesting depth; ``0`` is the top-level session, ``> 0`` a subagent.
+  on_event : callable, optional
+      Callback invoked with each emitted event. Defaults to a no-op.
+  log : file-like, optional
+      Stream for log output. Defaults to ``sys.stdout``.
+  approval_queue : queue.Queue, optional
+      Queue the worker parks on during the ``ask`` policy. External
+      callers (the GUI runner) inject a queue they also push to; tests
+      inject a ``queue.Queue``. A fresh queue is created when omitted.
+  """
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
@@ -90,6 +116,24 @@ class AgentSession:
         The final assistant message of the turn.
     """
     self.cancel = cancel
+    # Drop any stale _Cancelled sentinel left in this (shared, long-lived)
+    # approval queue by a Stop clicked during a PREVIOUS turn's streaming:
+    # the runner pushes the sentinel while nobody is parked on
+    # approval_queue.get(), so it is never consumed, and left in place it
+    # would be picked up by this turn's first tool approval and cancel a
+    # tool the user never denied. Real ToolApprovalResponses are preserved
+    # and re-queued in order — a synchronous caller may legitimately
+    # pre-seed an approval before run_turn.
+    kept = []
+    while True:
+      try:
+        item = self.approval_queue.get_nowait()
+      except queue.Empty:
+        break
+      if not isinstance(item, _Cancelled):
+        kept.append(item)
+    for item in kept:
+      self.approval_queue.put(item)
     self.conv.append(user_message)
     iterations = 0
     while True:
@@ -208,9 +252,26 @@ class AgentSession:
     return response.decision
 
   def _await_approval(self, req):
-    """Park the worker on the approval queue. Wakes on either a real
-    ``ToolApprovalResponse`` or a ``_Cancelled`` sentinel pushed by the
-    GUI's cancel handler."""
+    """Park the worker on the approval queue until a decision arrives.
+
+    Wakes on either a real ``ToolApprovalResponse`` or a ``_Cancelled``
+    sentinel pushed by the GUI's cancel handler.
+
+    Parameters
+    ----------
+    req : ToolApprovalRequest
+        Request surfaced to the UI before blocking.
+
+    Returns
+    -------
+    ToolApprovalResponse
+        The user's approval decision.
+
+    Raises
+    ------
+    TurnCancelled
+        If a ``_Cancelled`` sentinel is received instead of a response.
+    """
     self.on_event(req)                              # surface to UI
     response = self.approval_queue.get()
     if isinstance(response, _Cancelled):
@@ -252,7 +313,15 @@ class AgentSession:
   # ---- nested-session rollup -----------------------------------------------
 
   def add_subagent_usage(self, sub_id, usage):
-    """Record token usage from a nested session keyed by ``sub_id``."""
+    """Record token usage from a nested session.
+
+    Parameters
+    ----------
+    sub_id : str
+        Identifier of the nested session the usage belongs to.
+    usage : TokenUsage
+        Token usage rolled up from that nested session.
+    """
     self._subagent_usage_by_id[sub_id] = usage
 
 
@@ -311,8 +380,20 @@ def _append_thinking(msg, text, signature):
 
 
 def _summarize_call(call):
-  """Short human-readable summary for the approval card. Best-effort; the
-  UI shows the full input when expanded."""
+  """Build a short human-readable summary for the approval card.
+
+  Best-effort; the UI shows the full input when expanded.
+
+  Parameters
+  ----------
+  call : ToolUseRequested
+      The tool-use request to summarize.
+
+  Returns
+  -------
+  str
+      A ``name(arg=value, ...)`` rendering with truncated values.
+  """
   return "%s(%s)" % (call.name, ", ".join(
     "%s=%s" % (k, _short(v)) for k, v in call.input.items()))
 

@@ -168,11 +168,13 @@ def exercise_cancel_when_idle_does_not_poison_next_turn():
 
 
 def exercise_submit_approval_routes_to_agent_when_agent_owns_request_id():
-  """When the agent owns a request_id (e.g. Claude Code's
-  can_use_tool callback emitted it), runner.submit_approval must
-  forward to agent.submit_approval and NOT push to the session
-  queue. The session might be parked on its own unrelated approval,
-  and grabbing the SDK-side response would mis-route."""
+  """When the agent owns a request_id (e.g. Claude Code's can_use_tool
+  callback emitted it), runner.submit_approval forwards to
+  agent.submit_approval and does NOT push to the session queue (the
+  session might be parked on its own unrelated approval). A non-owned
+  response submitted while no turn is in flight is dropped, so a late
+  click after the turn ended can't leak into the next turn's first
+  approval."""
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   init_default_app_font(app)
   tmp = tempfile.mkdtemp()
@@ -197,12 +199,101 @@ def exercise_submit_approval_routes_to_agent_when_agent_owns_request_id():
     assert session.approval_queue.empty(), \
       "agent-owned response should NOT land in session queue"
     assert _OwningAgent.received[-1].request_id == "agent_owned"
-    # request_id the agent doesn't own -> falls through to session.
+    # request_id the agent doesn't own AND no turn in flight -> dropped
+    # (queueing it would leak into the next turn's first approval).
     runner.submit_approval(ToolApprovalResponse(
       request_id="session_owned", decision="approve"))
-    assert not session.approval_queue.empty()
-    pulled = session.approval_queue.get_nowait()
-    assert pulled.request_id == "session_owned", pulled
+    assert session.approval_queue.empty(), \
+      "non-owned response submitted while idle must be dropped"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_submit_approval_queues_for_session_while_turn_in_flight():
+  """While a turn IS running, a non-owned response is queued for the
+  session worker -- the normal GUI approval path (the worker is parked on
+  approval_queue.get() waiting for it)."""
+  import threading
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
+
+    class _BlockingAgent(Agent):
+      name = "blocking"
+      model = "blocking-1"
+      capabilities = AgentCapabilities.STREAMING
+
+      def __init__(self):
+        self.release = threading.Event()
+
+      def stream_turn(self, conversation, tools, cancel):
+        # Hold the turn open (runner stays busy) until released.
+        self.release.wait(timeout=5)
+        yield TurnDone(stop_reason="end_turn")
+
+      def resolve_credentials(self, cli_override=None):
+        return "blocking-key"
+
+      def credentials_dialog_class(self):
+        return object
+
+    storage = ConversationStorage(project_dir=tmp, log=null_out())
+    conv = Conversation.new(profile_name="t", model="blocking-1")
+    agent = _BlockingAgent()
+    session = AgentSession(
+      agent=agent, conversation=conv, storage=storage,
+      tools=ToolRegistry(log=null_out()),
+      policy=ToolPolicy(default="ask"), profile=None, log=null_out())
+    runner = QtAgentRunner(session)
+    runner.start_turn(Message(
+      role="user", timestamp=now(),
+      content=[ContentBlock(type="text", data={"text": "hi"})]))
+    # Wait until the worker thread is actually running.
+    deadline = QtCore.QElapsedTimer()
+    deadline.start()
+    while not runner.is_busy() and deadline.elapsed() < 2000:
+      _pump(app, 20)
+    assert runner.is_busy(), "runner should be busy during the blocked turn"
+    runner.submit_approval(ToolApprovalResponse(
+      request_id="session_owned", decision="approve"))
+    assert not session.approval_queue.empty(), \
+      "non-owned response while a turn is in flight should be queued"
+    assert session.approval_queue.get_nowait().request_id == "session_owned"
+    agent.release.set()
+    runner.wait_for_idle(timeout_ms=5000)
+    _pump(app, 50)
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_worker_finish_drains_stray_approval_response():
+  """A response left in the approval queue when the turn ends (e.g. a late
+  click during teardown, submitted while is_busy() was still true) is
+  drained, so it can't leak into the next turn's first approval."""
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
+    session, _ = _make_session([TurnDone(stop_reason="end_turn")], tmp)
+    runner = QtAgentRunner(session)
+    # Stray response with no consumer: run_turn's start drain keeps real
+    # responses, so only the turn-end drain in _on_worker_finished removes
+    # it.
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="stray", decision="approve"))
+    runner.start_turn(Message(
+      role="user", timestamp=now(),
+      content=[ContentBlock(type="text", data={"text": "hi"})]))
+    deadline = QtCore.QElapsedTimer()
+    deadline.start()
+    while runner.is_busy() and deadline.elapsed() < 5000:
+      _pump(app, 20)
+    assert not runner.is_busy(), "turn should have finished"
+    assert session.approval_queue.empty(), \
+      "a stray approval response must be drained when the turn finishes"
   finally:
     shutil.rmtree(tmp)
 
@@ -213,6 +304,8 @@ def exercise():
   exercise_error_event_emits_error_signal()
   exercise_cancel_when_idle_does_not_poison_next_turn()
   exercise_submit_approval_routes_to_agent_when_agent_owns_request_id()
+  exercise_submit_approval_queues_for_session_while_turn_in_flight()
+  exercise_worker_finish_drains_stray_approval_response()
 
 
 if __name__ == "__main__":
