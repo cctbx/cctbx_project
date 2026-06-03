@@ -731,25 +731,27 @@ class place_hydrogens():
           continue
         elif (self.n_terminal_charge == 'first_in_chain'):
           pass
+        # SAC in 5xdq, 5zcp. Never needs propeller. Also AYA
+        n = None
         for ag in rgs.atom_groups():
-          # SAC in 5xdq, 5zcp. Never needs propeller. Also AYA
-          for ag in rgs.atom_groups():
-            n=ag.get_atom('N') # assumes atom name "N"
-            if n: break
-          if not n: continue
-          bonds=bonds_in_restraints(n, exclude_hydrogens=True)
-          heavies=2
-          if ag.resname in ['PRO']: # needs a PRO child lookup
-            heavies=3
-          if len(bonds)>=heavies: continue
-          if (get_class(name=ag.resname) in
-              ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-            if ag.get_atom('H'):
-              ag.remove_atom(ag.get_atom('H'))
-          # TODO make the function below smart, so it
-          # 1) knows when to add H1H2H3 or not
-          # 2) renames H to H1 (so no need to remove it beforehand)
-          rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
+          n = ag.get_atom('N') # assumes atom name "N"
+          if n: break
+        if not n: continue
+        bonds = bonds_in_restraints(n, exclude_hydrogens=True)
+        heavies = 2
+        if ag.resname in ['PRO']: # needs a PRO child lookup
+          heavies = 3
+        if len(bonds) >= heavies: continue
+        if (get_class(name=ag.resname) in
+            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+          for ag_h in rgs.atom_groups():
+            h = ag_h.get_atom('H')
+            if h:
+              ag_h.remove_atom(h)
+        # TODO make the function below smart, so it
+        # 1) knows when to add H1H2H3 or not
+        # 2) renames H to H1 (so no need to remove it beforehand)
+        rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
 
   # ----------------------------------------------------------------------------
 
