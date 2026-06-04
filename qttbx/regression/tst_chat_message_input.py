@@ -202,6 +202,121 @@ def exercise_auto_approve_button_is_checkable_and_emits_signal():
   assert w._auto_approve_btn.text() == "Auto-approve"
 
 
+def _press(w, key):
+  """Send a plain key press through MessageInput's event filter, the way
+  Qt delivers it. If the filter does not consume it, let the edit handle
+  it (so a non-history Up/Down still moves the cursor)."""
+  from qttbx.qt import QtCore, QtGui
+  ev = QtGui.QKeyEvent(QtCore.QEvent.KeyPress, key, QtCore.Qt.NoModifier)
+  if not w.eventFilter(w._edit, ev):
+    w._edit.keyPressEvent(ev)
+
+
+def _new_input():
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  return MessageInput()
+
+
+def exercise_up_arrow_recalls_previous_inputs():
+  """Up at the top line walks back through the supplied history, newest
+  first, and stops at the oldest entry."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  w.set_history(["first", "second", "third"])
+  _press(w, QtCore.Qt.Key_Up)
+  assert w.text() == "third", w.text()
+  _press(w, QtCore.Qt.Key_Up)
+  assert w.text() == "second", w.text()
+  _press(w, QtCore.Qt.Key_Up)
+  assert w.text() == "first", w.text()
+  _press(w, QtCore.Qt.Key_Up)              # already oldest -> stays
+  assert w.text() == "first", w.text()
+
+
+def exercise_down_arrow_walks_forward_and_restores_draft():
+  """Down walks toward newer entries and, past the newest, restores the
+  in-progress draft that was being typed when navigation began."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  w.set_history(["a", "b", "c"])
+  w.set_text("draft")
+  _press(w, QtCore.Qt.Key_Up)              # save draft, -> newest "c"
+  assert w.text() == "c", w.text()
+  _press(w, QtCore.Qt.Key_Up)              # -> "b"
+  assert w.text() == "b", w.text()
+  _press(w, QtCore.Qt.Key_Down)            # -> "c"
+  assert w.text() == "c", w.text()
+  _press(w, QtCore.Qt.Key_Down)            # past newest -> restore draft
+  assert w.text() == "draft", w.text()
+  _press(w, QtCore.Qt.Key_Down)            # not navigating -> no-op
+  assert w.text() == "draft", w.text()
+
+
+def exercise_sent_message_is_appended_to_history():
+  """A sent message becomes the newest recall entry immediately."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  w.set_history(["earlier"])
+  w.set_text("hello world")
+  w.click_send()
+  assert w.text() == ""                    # cleared on send
+  _press(w, QtCore.Qt.Key_Up)
+  assert w.text() == "hello world", w.text()
+  _press(w, QtCore.Qt.Key_Up)
+  assert w.text() == "earlier", w.text()
+
+
+def exercise_up_arrow_below_first_line_moves_cursor_not_history():
+  """In a multi-line draft, Up only recalls history when the cursor is
+  on the first line; elsewhere it is a normal cursor move."""
+  from qttbx.qt import QtCore, QtGui
+  w = _new_input()
+  w.set_history(["old"])
+  w.set_text("line1\nline2")
+  cur = w._edit.textCursor()
+  cur.movePosition(QtGui.QTextCursor.End)   # cursor on last line (line2)
+  w._edit.setTextCursor(cur)
+  _press(w, QtCore.Qt.Key_Up)               # not first line -> no recall
+  assert w.text() == "line1\nline2", w.text()
+  cur = w._edit.textCursor()
+  cur.movePosition(QtGui.QTextCursor.Start)  # cursor on first line
+  w._edit.setTextCursor(cur)
+  _press(w, QtCore.Qt.Key_Up)               # first line -> recall
+  assert w.text() == "old", w.text()
+
+
+def exercise_set_history_swaps_recall_list_and_resets_navigation():
+  """Switching conversations replaces the recall list AND resets the
+  navigation pointer and draft. Uses a longer new list and a fresh draft
+  so a stale _history_index would land on the wrong entry, and a stale
+  _history_draft would resurface foreign text -- a non-reset
+  implementation fails here rather than passing vacuously."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  w.set_history(["a1", "a2"])
+  w.set_text("draftA")
+  _press(w, QtCore.Qt.Key_Up)               # save draftA, index 2->1 -> "a2"
+  assert w.text() == "a2", w.text()
+  # Switch to a longer conversation's history with a new draft.
+  w.set_history(["n1", "n2", "n3"])
+  w.set_text("draftB")
+  _press(w, QtCore.Qt.Key_Up)               # must start at the newest, "n3"
+  assert w.text() == "n3", w.text()
+  _press(w, QtCore.Qt.Key_Down)             # past newest -> restore draftB
+  assert w.text() == "draftB", w.text()
+
+
+def exercise_set_history_drops_blank_entries():
+  """set_history honors its contract: empty and whitespace-only entries
+  are dropped so a blank, invisible line never surfaces during recall."""
+  w = _new_input()
+  w.set_history(["", "  ", "\n", "real"])
+  assert w._history == ["real"], w._history
+
+
 def exercise():
   exercise_send_signal_carries_text_and_empty_attachments()
   exercise_empty_send_is_no_op()
@@ -213,6 +328,12 @@ def exercise():
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()
+  exercise_up_arrow_recalls_previous_inputs()
+  exercise_down_arrow_walks_forward_and_restores_draft()
+  exercise_sent_message_is_appended_to_history()
+  exercise_up_arrow_below_first_line_moves_cursor_not_history()
+  exercise_set_history_swaps_recall_list_and_resets_navigation()
+  exercise_set_history_drops_blank_entries()
 
 
 if __name__ == "__main__":

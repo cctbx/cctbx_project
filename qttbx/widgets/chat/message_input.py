@@ -39,6 +39,14 @@ class MessageInput(QtWidgets.QWidget):
     self._busy = False
     self._attachments = []          # list[dict]
     self._max_image_bytes = self._MAX_IMAGE_BYTES
+    # Up/Down input history. The recall list is supplied per conversation
+    # by the chat window (set_history) and appended to on every send.
+    # _history_index is None while editing live text, else an index into
+    # _history while navigating; _history_draft preserves the live text so
+    # Down can restore it past the newest entry.
+    self._history = []
+    self._history_index = None
+    self._history_draft = ""
     self.setAcceptDrops(True)
     self._build_ui()
 
@@ -106,6 +114,69 @@ class MessageInput(QtWidgets.QWidget):
 
   def clear(self):                                       # noqa: A003
     self._edit.clear()
+
+  # ---- input history (Up / Down recall) ------------------------------------
+
+  def set_history(self, texts):
+    """Replace the Up/Down recall list and reset navigation.
+
+    Called by the chat window when a conversation is loaded or switched,
+    with that conversation's user-message texts (oldest first), so recall
+    is per-conversation and survives a reload.
+
+    Parameters
+    ----------
+    texts : iterable of str
+        Previously-sent input texts, oldest first. Empty or
+        whitespace-only entries are dropped.
+    """
+    self._history = [t for t in texts if t and t.strip()]
+    self._history_index = None
+    self._history_draft = ""
+
+  def _history_recall_prev(self):
+    """Step one entry back (older). Returns ``True`` when handled."""
+    if not self._history:
+      return False
+    if self._history_index is None:
+      self._history_draft = self.text()
+      self._history_index = len(self._history)
+    if self._history_index > 0:
+      self._history_index -= 1
+      self._set_edit_text(self._history[self._history_index])
+    return True
+
+  def _history_recall_next(self):
+    """Step one entry forward (newer), restoring the saved draft past the
+    newest entry. Returns ``True`` only when we were navigating."""
+    if self._history_index is None:
+      return False
+    self._history_index += 1
+    if self._history_index >= len(self._history):
+      self._history_index = None
+      self._set_edit_text(self._history_draft)
+    else:
+      self._set_edit_text(self._history[self._history_index])
+    return True
+
+  def _set_edit_text(self, text):
+    """Replace the edit contents and put the cursor at the end."""
+    self._edit.setPlainText(text or "")
+    cursor = self._edit.textCursor()
+    cursor.movePosition(QtGui.QTextCursor.End)
+    self._edit.setTextCursor(cursor)
+
+  def _cursor_at_first_line(self):
+    """True when the cursor is on the first visual line -- the only place
+    Up recalls history instead of moving the cursor (wrap-aware)."""
+    probe = QtGui.QTextCursor(self._edit.textCursor())
+    return not probe.movePosition(QtGui.QTextCursor.Up)
+
+  def _cursor_at_last_line(self):
+    """True when the cursor is on the last visual line -- the only place
+    Down walks history forward instead of moving the cursor."""
+    probe = QtGui.QTextCursor(self._edit.textCursor())
+    return not probe.movePosition(QtGui.QTextCursor.Down)
 
   def set_placeholder(self, text, dim=True):
     """Update the edit's placeholder text.
@@ -297,6 +368,12 @@ class MessageInput(QtWidgets.QWidget):
     self._refresh_chip_bar()
     self.send.emit(msg, atts)
     self.clear()
+    # Record the sent text for Up/Down recall; reset navigation so the
+    # next Up starts from this newest entry.
+    if msg:
+      self._history.append(msg)
+    self._history_index = None
+    self._history_draft = ""
 
   # ---- drag-drop / paste / file picker ------------------------------------
 
@@ -352,6 +429,19 @@ class MessageInput(QtWidgets.QWidget):
       if key in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
         if mods & (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier):
           self.click_send()
+          return True
+      # Plain Up / Down recall the input history (shell-style), but only at
+      # the first / last line so multi-line editing and Shift-selection are
+      # left alone.
+      nav_mods = mods & (QtCore.Qt.ShiftModifier | QtCore.Qt.ControlModifier
+                         | QtCore.Qt.AltModifier | QtCore.Qt.MetaModifier)
+      if key == QtCore.Qt.Key_Up and not nav_mods \
+         and self._cursor_at_first_line():
+        if self._history_recall_prev():
+          return True
+      if key == QtCore.Qt.Key_Down and not nav_mods \
+         and self._cursor_at_last_line():
+        if self._history_recall_next():
           return True
       if key == QtCore.Qt.Key_V and \
          (mods & (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier)):
