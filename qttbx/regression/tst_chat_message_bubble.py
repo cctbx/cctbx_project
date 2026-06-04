@@ -420,11 +420,38 @@ def exercise_disclosure_no_hardcoded_color_on_args_view():
   assert "color:" not in ss.replace(" ", "").lower(), ss
 
 
+def exercise_untrusted_text_labels_use_plain_text_format():
+  """Tool-result text, thinking text, and image captions are
+  model/tool-controlled. Their QLabels must use PlainText format so an
+  embedded ``<img src="file://...">`` is shown literally rather than
+  rendered as rich text (which would load the local file at paint time)."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  evil = '<img src="file:///etc/passwd">'
+  m = Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": evil}),
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "", "is_error": False,
+      "content": [ContentBlock(type="text", data={"text": evil})]}),
+    ContentBlock(type="image", data={
+      "attachment_sha256": "", "mime": "image/png", "caption": evil})])
+  b = MessageBubble(m)
+  hits = [lbl for lbl in b.findChildren(QtWidgets.QLabel)
+          if "<img" in lbl.text()]
+  # thinking cell, tool-result body, and image caption each carry it.
+  assert len(hits) >= 3, [lbl.text() for lbl in b.findChildren(QtWidgets.QLabel)]
+  for lbl in hits:
+    assert lbl.textFormat() == QtCore.Qt.PlainText, lbl.text()
+
+
 def exercise():
   exercise_renders_user_text()
   exercise_renders_tool_use_cell()
   exercise_renders_thinking_block()
   exercise_image_block_renders_as_placeholder()
+  exercise_untrusted_text_labels_use_plain_text_format()
   exercise_streaming_append()
   exercise_thinking_delta_after_text_starts_new_block()
   exercise_image_cell_renders_real_image()

@@ -62,6 +62,45 @@ def exercise_auto_height_no_scrollbar():
   assert v.horizontalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
 
 
+def exercise_raw_html_in_markdown_is_not_rendered_as_rich_text():
+  """Assistant/tool text is untrusted. Embedded raw HTML (e.g.
+  ``<img src="file:///etc/passwd">``) must NOT be parsed into live rich
+  text -- otherwise QTextBrowser loads the local resource at paint time.
+  With HTML disabled the tag survives as literal text instead."""
+  from qttbx.widgets.chat.markdown_view import MarkdownView
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  v = MarkdownView()
+  v.set_markdown('look <img src="file:///etc/passwd"> here')
+  assert "<img" in v.toPlainText(), repr(v.toPlainText())
+
+
+def exercise_loadresource_refuses_local_file():
+  """Even a markdown image (``![](file:///...)``) -- which is plain
+  markdown, not raw HTML -- must not read a local file. loadResource is
+  overridden to refuse every external resource; inline chat images go
+  through ImageCell, not this view."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.markdown_view import MarkdownView
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  v = MarkdownView()
+  d = tempfile.mkdtemp()
+  try:
+    secret = os.path.join(d, "secret.txt")
+    with open(secret, "w") as fh:
+      fh.write("TOP-SECRET")
+    res = v.loadResource(int(QtGui.QTextDocument.ImageResource),
+                         QtCore.QUrl.fromLocalFile(secret))
+    assert not res, res
+    data = bytes(res) if res else b""
+    assert b"TOP-SECRET" not in data, data
+  finally:
+    shutil.rmtree(d)
+
+
 # ---- conversation_to_markdown export -------------------------------------
 
 
@@ -213,6 +252,8 @@ def exercise():
   exercise_set_and_append_markdown()
   exercise_clear()
   exercise_auto_height_no_scrollbar()
+  exercise_raw_html_in_markdown_is_not_rendered_as_rich_text()
+  exercise_loadresource_refuses_local_file()
   exercise_header_renders_title_meta_and_separator()
   exercise_user_and_assistant_text_blocks_alternate()
   exercise_thinking_blocks_are_skipped()

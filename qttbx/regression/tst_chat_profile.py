@@ -235,6 +235,81 @@ def exercise_profile_backend_unknown_raises():
     shutil.rmtree(tmp)
 
 
+def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
+  """A profile may be project-supplied (untrusted). Its per-server env
+  must not override PATH / dynamic-loader / PHENIX_* vars and thereby
+  redirect which binary runs or escape the project sandbox. Legitimate
+  per-server vars are preserved."""
+  from qttbx.widgets.chat.agent.profile import sanitize_server_env
+  out = sanitize_server_env({
+    "PATH": "/tmp/evil", "PHENIX_PROJECT_DIR": "/elsewhere",
+    "LD_PRELOAD": "/tmp/x.so", "API_TOKEN": "keep"})
+  assert out == {"API_TOKEN": "keep"}, out
+  # Broader runtime-loader / interpreter families are stripped too,
+  # including PHENIX_TRUST_OTHER_ENV (which would disable the dispatcher
+  # env scrub). A harmless var (PYTHONUNBUFFERED) and a server's own
+  # token survive -- we strip the dangerous keys, not all PYTHON*.
+  out2 = sanitize_server_env({
+    "PYTHONPATH": "/evil", "PYTHONHOME": "/evil",
+    "NODE_OPTIONS": "--require /evil.js", "NODE_PATH": "/evil",
+    "BASH_ENV": "/evil.sh", "ENV": "/evil.sh", "IFS": " ",
+    "LD_AUDIT": "/evil.so", "DYLD_FRAMEWORK_PATH": "/evil",
+    "PERL5OPT": "-M", "RUBYOPT": "-r/evil",
+    "BASH_FUNC_x%%": "() { :; }", "PHENIX_TRUST_OTHER_ENV": "1",
+    "PYTHONUNBUFFERED": "1", "MY_SERVER_TOKEN": "keep"})
+  assert out2 == {"PYTHONUNBUFFERED": "1", "MY_SERVER_TOKEN": "keep"}, out2
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {
+      "name": "p", "model": "m",
+      "mcp_servers": [{
+        "name": "x", "command": "phenix.mcp_server",
+        "env": {"PATH": "/tmp/evil", "PHENIX_PROJECT_DIR": "/x",
+                "API_TOKEN": "keep"}}]})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load("p")
+    env = p.mcp_servers[0].env
+    assert "PATH" not in env, env
+    assert "PHENIX_PROJECT_DIR" not in env, env
+    assert env.get("API_TOKEN") == "keep", env
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_system_prompt_file_outside_profile_dir_rejected():
+  """system_prompt_file is inlined into the system prompt, so a project-
+  supplied (untrusted) profile must not point it at an arbitrary file via
+  an absolute path or a '..' escape (which would exfiltrate e.g.
+  ~/.ssh/id_rsa). Both must raise Sorry."""
+  tmp = tempfile.mkdtemp()
+  secret_dir = tempfile.mkdtemp()
+  try:
+    secret = os.path.join(secret_dir, "secret.txt")
+    with open(secret, "w") as fh:
+      fh.write("PRIVATE KEY MATERIAL")
+    _write_profile(tmp, "abs", {
+      "name": "abs", "model": "m", "system_prompt_file": secret})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    try:
+      loader.load("abs")
+    except Sorry as e:
+      assert "system_prompt_file" in str(e), str(e)
+    else:
+      raise Exception_expected
+    rel = os.path.relpath(secret, tmp)
+    _write_profile(tmp, "rel", {
+      "name": "rel", "model": "m", "system_prompt_file": rel})
+    try:
+      loader.load("rel")
+    except Sorry as e:
+      assert "system_prompt_file" in str(e), str(e)
+    else:
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+    shutil.rmtree(secret_dir)
+
+
 def exercise():
   exercise_minimal_profile_loads()
   exercise_missing_required_field_raises()
@@ -247,6 +322,8 @@ def exercise():
   exercise_profile_backend_defaults_to_claude_code()
   exercise_profile_backend_claude_code_parsed()
   exercise_profile_backend_unknown_raises()
+  exercise_mcp_server_env_cannot_override_path_or_phenix_vars()
+  exercise_system_prompt_file_outside_profile_dir_rejected()
 
 
 if __name__ == "__main__":

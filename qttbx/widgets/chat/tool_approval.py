@@ -104,10 +104,15 @@ class ToolApprovalCard(QtWidgets.QFrame):
       r = self._requests[0]
       title = "%s requests: %s" % (r.tool_source, r.tool_name)
       head = QtWidgets.QLabel(title, box)
+      # tool name/source are externally supplied: render literally.
+      head.setTextFormat(QtCore.Qt.PlainText)
       f = head.font(); f.setBold(True); head.setFont(f)
       head.setStyleSheet(_RISK_STYLES.get(r.risk, ""))
       layout.addWidget(head)
+      # The input preview is untrusted tool-argument data shown on the
+      # security-decision surface: PlainText so it can't inject rich text.
       preview = QtWidgets.QLabel(_short_json(r.input, 200), box)
+      preview.setTextFormat(QtCore.Qt.PlainText)
       preview.setWordWrap(True)
       layout.addWidget(preview)
     else:
@@ -118,6 +123,7 @@ class ToolApprovalCard(QtWidgets.QFrame):
       for r in self._requests:
         line = QtWidgets.QLabel(
           "  - %s - %s" % (r.tool_name, _short_json(r.input, 120)), box)
+        line.setTextFormat(QtCore.Qt.PlainText)
         line.setWordWrap(True)
         line.setStyleSheet(_RISK_STYLES.get(r.risk, ""))
         layout.addWidget(line)

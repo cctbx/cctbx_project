@@ -286,9 +286,14 @@ class McpServerConnection:
         raise Sorry("MCP server '%s': command not found: %s" %
                     (self.config.name, cmd[0]))
       env = dict(os.environ)
-      env["PHENIX_PROJECT_DIR"] = str(self.project_dir)
       if getattr(self.config, "env", None):
-        env.update(self.config.env)
+        # Defense in depth: the profile parser already strips these, but
+        # never let a per-server env override PATH / PHENIX_* and escape
+        # the project sandbox.
+        from qttbx.widgets.chat.agent.profile import sanitize_server_env
+        env.update(sanitize_server_env(self.config.env))
+      # Pin the project dir AFTER merging so it is always authoritative.
+      env["PHENIX_PROJECT_DIR"] = str(self.project_dir)
       transport = StdioTransport(command=cmd[0], args=cmd[1:], env=env)
     self._client_cm = Client(transport)
     self._client = await self._client_cm.__aenter__()

@@ -6,7 +6,7 @@ markdown-stitched (re-set the whole document with the accumulated text)
 because Qt's incremental markdown support is limited — the cost is
 negligible at typical chat message sizes."""
 
-from qttbx.qt import QtGui, QtWidgets
+from qttbx.qt import QtCore, QtGui, QtWidgets
 
 # Stylesheet template; %s is filled with the platform's fixed-pitch
 # family at instance-construction time (when a QApplication exists). The
@@ -19,6 +19,18 @@ pre { background: #f4f4f4; padding: 6px; border-radius: 4px; }
 table { border-collapse: collapse; }
 th, td { border: 1px solid #ccc; padding: 3px 6px; }
 """
+
+# Markdown features used for every render. The streamed text is
+# assistant/tool-controlled, so we disable raw HTML: Qt's default GitHub
+# dialect parses embedded <img>/<a> HTML into live rich text, and
+# QTextBrowser then loads the referenced local file (e.g.
+# file:///etc/passwd) at paint time. MarkdownNoHTML keeps any raw HTML as
+# literal text. getattr-guarded so an older Qt without the flag still
+# imports (loadResource below is the second, independent line of defense).
+_MD_FEATURES = QtGui.QTextDocument.MarkdownDialectGitHub
+_MD_NO_HTML = getattr(QtGui.QTextDocument, "MarkdownNoHTML", None)
+if _MD_NO_HTML is not None:
+  _MD_FEATURES = _MD_FEATURES | _MD_NO_HTML
 
 
 class MarkdownView(QtWidgets.QTextBrowser):
@@ -48,12 +60,15 @@ class MarkdownView(QtWidgets.QTextBrowser):
   def set_markdown(self, text):
     """Replace the document with ``text`` rendered as markdown."""
     self._raw = text or ""
-    self.setMarkdown(self._raw)
+    # Render via the document so the MarkdownNoHTML feature flag takes
+    # effect -- the QTextBrowser-level setMarkdown() binding drops the
+    # features argument, but QTextDocument.setMarkdown() honors it.
+    self.document().setMarkdown(self._raw, _MD_FEATURES)
 
   def append_markdown(self, text):
     """Append ``text`` to the accumulated markdown and re-render."""
     self._raw = (self._raw or "") + (text or "")
-    self.setMarkdown(self._raw)
+    self.document().setMarkdown(self._raw, _MD_FEATURES)
 
   def _on_anchor_clicked(self, url):
     """Open a clicked link only if it uses a safe scheme.
@@ -81,4 +96,27 @@ class MarkdownView(QtWidgets.QTextBrowser):
   def clear(self):                                       # noqa: A003
     """Reset the view to empty."""
     self._raw = ""
-    self.setMarkdown("")
+    self.document().setMarkdown("", _MD_FEATURES)
+
+  def loadResource(self, resource_type, name):
+    """Refuse to load any external resource.
+
+    The document is assistant/tool-controlled, so a markdown image
+    (``![](file:///...)``) or any other embedded reference must never
+    read a local file or fetch a URL at render time. Inline chat images
+    are rendered separately by ``ImageCell`` (not through this view), so
+    blocking every resource load here is safe.
+
+    Parameters
+    ----------
+    resource_type : int
+        The ``QTextDocument.ResourceType`` Qt is requesting.
+    name : QtCore.QUrl
+        The resource URL embedded in the document.
+
+    Returns
+    -------
+    QtCore.QByteArray
+        Always empty, so nothing is loaded.
+    """
+    return QtCore.QByteArray()

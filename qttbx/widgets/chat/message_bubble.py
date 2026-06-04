@@ -27,6 +27,9 @@ class _ToolResultCell(QtWidgets.QFrame):
     text = _flatten_result_text(content_blocks)
     if text:
       body = QtWidgets.QLabel(text, self)
+      # Tool-result text is model/tool-controlled: render literally so an
+      # embedded <img src="file://..."> can't load a local file.
+      body.setTextFormat(QtCore.Qt.PlainText)
       body.setWordWrap(True)
       layout.addWidget(body)
 
@@ -38,6 +41,8 @@ class _ThinkingCell(QtWidgets.QFrame):
     layout = QtWidgets.QVBoxLayout(self)
     layout.setContentsMargins(6, 2, 6, 2)
     label = QtWidgets.QLabel("[thinking] %s" % (text or ""), self)
+    # Thinking text is model-controlled: render literally (no rich text).
+    label.setTextFormat(QtCore.Qt.PlainText)
     label.setWordWrap(True)
     label.setStyleSheet("color: palette(mid); font-style: italic;")
     layout.addWidget(label)
@@ -110,6 +115,8 @@ class _ImageCell(QtWidgets.QFrame):
     self.thumbnail.mousePressEvent = self._thumb_clicked
     layout.addWidget(self.thumbnail)
     self.caption_label = QtWidgets.QLabel(caption or "", self)
+    # Caption text is model/tool-controlled: render literally.
+    self.caption_label.setTextFormat(QtCore.Qt.PlainText)
     self.caption_label.setStyleSheet(
       "color: palette(mid); font-style: italic;")
     self.caption_label.setWordWrap(True)

@@ -30,6 +30,65 @@ _KNOWN_KEYS = {
 # typos surface before the chat window opens.
 _KNOWN_BACKENDS = ("anthropic", "claude_code")
 
+# Environment keys a profile-supplied MCP-server ``env`` block must not be
+# able to set. A profile can be project-scoped (and therefore untrusted),
+# so it must not control which binary or libraries load into the spawned
+# subprocess (code execution) or override Phenix's own scoping. Two layers:
+#   * the exact keys below -- executable lookup (PATH), shell startup-code
+#     injection, and the per-interpreter module/loader hijacks for
+#     python / node / perl / ruby; and
+#   * the prefix families in _BLOCKED_SERVER_ENV_PREFIXES.
+# Anything else (per-server API tokens, PYTHONUNBUFFERED, ...) passes
+# through untouched -- this is a blocklist, not an allowlist, so that
+# legitimate per-server configuration still works.
+_BLOCKED_SERVER_ENV = frozenset([
+  "PATH",                                        # which binary / helpers resolve
+  "BASH_ENV", "ENV", "IFS",                      # shell startup-code injection
+  "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",   # python module / loader hijack
+  "NODE_OPTIONS", "NODE_PATH",                   # node --require / module hijack
+  "PERL5LIB", "PERL5OPT",                        # perl module path / -M code
+  "RUBYLIB", "RUBYOPT",                          # ruby load path / -r code
+])
+
+# Prefix families stripped wholesale -- no legitimate per-server env sets
+# these: every dynamic-loader control (LD_PRELOAD, LD_AUDIT, LD_LIBRARY_PATH,
+# DYLD_INSERT_LIBRARIES, DYLD_*_PATH, ...), exported shell functions
+# (BASH_FUNC_*), and Phenix's own namespace (PHENIX_*, which includes
+# PHENIX_PROJECT_DIR -- the project sandbox -- and PHENIX_TRUST_OTHER_ENV,
+# which would otherwise switch off the dispatcher's inherited-env scrub).
+_BLOCKED_SERVER_ENV_PREFIXES = ("LD_", "DYLD_", "BASH_FUNC_", "PHENIX_")
+
+
+def sanitize_server_env(env):
+  """Strip security-sensitive keys from an MCP-server ``env`` dict.
+
+  Removes keys that would let an untrusted profile control which binary or
+  libraries load into the spawned MCP-server subprocess (code execution)
+  or override Phenix's own scoping. See ``_BLOCKED_SERVER_ENV`` and
+  ``_BLOCKED_SERVER_ENV_PREFIXES`` for the exact set.
+
+  Parameters
+  ----------
+  env : dict or None
+      Raw per-server environment from a profile.
+
+  Returns
+  -------
+  dict
+      A new dict with the blocked keys removed; all other entries
+      preserved.
+  """
+  if not env:
+    return {}
+  out = {}
+  for k, v in env.items():
+    if k in _BLOCKED_SERVER_ENV:
+      continue
+    if any(k.startswith(p) for p in _BLOCKED_SERVER_ENV_PREFIXES):
+      continue
+    out[k] = v
+  return out
+
 
 @dataclass
 class McpServerConfig:
@@ -242,7 +301,16 @@ def _build_profile(data, source_path):
     # system_prompt_file goes through the same ${VAR} expansion as
     # mcp_servers fields. E.g., "${PROFILE_DIR}/prompt.md".
     expanded = _expand_str(system_prompt_file, source_path)
-    file_path = (Path(source_path).parent / expanded).resolve()
+    base = Path(source_path).parent.resolve()
+    file_path = (base / expanded).resolve()
+    # Containment: a profile may be project-supplied (untrusted), so an
+    # absolute path or ".." escape in system_prompt_file could inline an
+    # arbitrary file (e.g. ~/.ssh/id_rsa) into the system prompt. Require
+    # the resolved path to stay within the profile's own directory.
+    if base not in file_path.parents:
+      raise Sorry(
+        "Profile %s: system_prompt_file escapes the profile directory: %s"
+        % (source_path, system_prompt_file))
     if not file_path.exists():
       raise Sorry("Profile %s: system_prompt_file not found: %s"
                   % (source_path, file_path))
@@ -414,7 +482,7 @@ def _expand_mcp_servers(servers, source_path):
       name=name,
       command=expanded.get("command"),
       args=list(expanded.get("args") or []),
-      env=dict(expanded.get("env") or {}),
+      env=sanitize_server_env(expanded.get("env")),
       tool_policy=dict(expanded.get("tool_policy") or {}),
       auto_start=bool(expanded.get("auto_start", True)),
     ))

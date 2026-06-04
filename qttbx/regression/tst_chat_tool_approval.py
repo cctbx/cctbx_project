@@ -135,6 +135,43 @@ def exercise_is_decided_reflects_decision_state():
   assert card.is_decided()
 
 
+def exercise_untrusted_input_rendered_as_plain_text():
+  """The approval card shows untrusted tool input (and tool name/source)
+  -- the very surface the user reads to decide. Its labels must use
+  PlainText so a tool argument containing HTML can't inject rich text
+  (e.g. a clickable file:// link) into the decision prompt."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  from qttbx.widgets.chat.tool_approval import ToolApprovalCard
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  evil = "<a href='file:///etc/passwd'>ok</a>"
+  # Single-request card: the input preview label.
+  card = ToolApprovalCard()
+  card.set_requests([ToolApprovalRequest(
+    request_id="r1", tool_name="phenix_start_job", tool_source="mcp:phenix",
+    input={"path": evil}, risk="write", summary=None, batch_id=None)])
+  hits = [l for l in card.findChildren(QtWidgets.QLabel)
+          if "file:///" in l.text()]
+  assert hits, [l.text() for l in card.findChildren(QtWidgets.QLabel)]
+  for l in hits:
+    assert l.textFormat() == QtCore.Qt.PlainText, l.text()
+  # Batched card: the per-request line labels.
+  card2 = ToolApprovalCard()
+  card2.set_requests([
+    ToolApprovalRequest(request_id="a", tool_name="t1", tool_source="s",
+                        input={"p": evil}, risk="write", summary=None,
+                        batch_id="B"),
+    ToolApprovalRequest(request_id="b", tool_name="t2", tool_source="s",
+                        input={"p": "ok"}, risk="write", summary=None,
+                        batch_id="B")])
+  hits2 = [l for l in card2.findChildren(QtWidgets.QLabel)
+           if "file:///" in l.text()]
+  assert hits2, [l.text() for l in card2.findChildren(QtWidgets.QLabel)]
+  for l in hits2:
+    assert l.textFormat() == QtCore.Qt.PlainText, l.text()
+
+
 def exercise():
   exercise_single_card_approve_emits_response()
   exercise_single_card_deny_and_stop()
@@ -143,6 +180,7 @@ def exercise():
   exercise_remember_tool_checkbox_sets_remember_field()
   exercise_card_hides_and_disables_buttons_after_click()
   exercise_is_decided_reflects_decision_state()
+  exercise_untrusted_input_rendered_as_plain_text()
 
 
 if __name__ == "__main__":
