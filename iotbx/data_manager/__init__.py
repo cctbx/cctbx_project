@@ -586,7 +586,7 @@ data_manager
       raise AssertionError('Please provide a text string for writing.')
 
     try:
-      with open(filename, 'w') as f:
+      with open(filename, 'w', encoding='utf-8') as f:
         f.write(text_str)
     except IOError as err:
       raise Sorry('There was an error with writing %s.\n%s' %
