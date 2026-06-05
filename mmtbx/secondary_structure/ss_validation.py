@@ -184,11 +184,11 @@ class validate(object):
     if number_of_empty_helices > 0:
       print("Helices without corresponding atoms in the model (%d):" % number_of_empty_helices, file=self.log)
       for h in empty_annots.helices:
-        print("  ", h.as_pdb_str(), file=self.log)
+        print("  ", h.as_pdb_or_mmcif_str(), file=self.log)
     if number_of_empty_sheets > 0:
       print("Sheets without corresponding atoms in the model (%d):" % number_of_empty_sheets, file=self.log)
       for sh in empty_annots.sheets:
-        print("  ", sh.as_pdb_str(), file=self.log)
+        print("  ", sh.as_pdb_or_mmcif_str(), file=self.log)
 
     print("Checking annotations thoroughly, use nproc=<number> if it is too slow...", file=self.log)
 
@@ -243,7 +243,7 @@ class validate(object):
         if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
           # this is bad annotation, printing it to log with separate stats:
           print("Bad annotation found:", file=self.log)
-          print("%s" % ss_elem.as_pdb_str(), file=self.log)
+          print("%s" % ss_elem.as_pdb_or_mmcif_str(), file=self.log)
           print("  Total hb: %d, mediocre: %d, bad: %d, Rama outliers: %d, Rama wrong %d" % (
               n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region), file=self.log)
           print("-"*80, file=self.log)
@@ -288,7 +288,7 @@ class validate(object):
     if self.params.filter_annotation:
       filtered_ann = ss_annot.filter_annotation(hierarchy=pdb_h)
       print("Filtered annotation:", file=self.log)
-      print(filtered_ann.as_pdb_str(), file=self.log)
+      print(filtered_ann.as_pdb_or_mmcif_str(), file=self.log)
     self.results = group_args(
       n_total_helix_sheet_records = n_total_helix_sheet_records,
       n_bad_helix_sheet_records   = n_bad_helix_sheet_records,
