@@ -40,6 +40,26 @@ def normalize_none_string(value):
   return value
 
 
+def _safe_float(val):
+  """Convert val to float, or return None if it cannot be converted.
+
+  JSON round-tripping (and parsing program output) can turn float values into
+  strings, e.g. 0.385 -> "0.385".  All numeric metrics from history dicts must
+  be coerced before arithmetic or formatting, or expressions like
+  ``curr - prev`` and ``f"{x:.3f}"`` raise TypeError on the string form.
+
+  Returns None for None, non-numeric strings, or any non-convertible type
+  (never raises).  Single shared definition for the whole langchain package
+  (previously duplicated across several agent modules).
+  """
+  if val is None:
+    return None
+  try:
+    return float(val)
+  except (ValueError, TypeError):
+    return None
+
+
 def load_log_text(file_name, debug_log=None, out=sys.stdout):
   """
   Load log text from a file.

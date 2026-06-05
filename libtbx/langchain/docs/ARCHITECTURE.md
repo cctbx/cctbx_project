@@ -735,7 +735,7 @@ params.communication.provider = "<provider>"
 | `core/llm.py` | `get_llm_and_embeddings()`, `get_expensive_llm()`, `get_cheap_llm()` — model creation |
 | `agent/graph_nodes.py` | `get_planning_llm()` — cached LLM for PLAN node decisions |
 | `agent/api_client.py` | `call_llm_simple()` — lightweight direct calls (directive extraction) |
-| `utils/run_utils.py` | `setup_llms()` — creates all three LLM roles for analysis |
+| `utils/run_utils.py` | `setup_llms()` — creates all three LLM roles for analysis; also the shared `_safe_float()` metric-coercion helper (v120) |
 | `phenix_ai/local_agent.py` | Reads provider from `params.communication.provider`, passes to request |
 | `phenix_ai/run_ai_agent.py` | Reads provider from settings, passes to `create_initial_state()` |
 
@@ -4938,6 +4938,54 @@ accept `ncs_file=`".  That is WRONG (per `--show_defaults`) — there is no
 `ncs_file` parameter; symmetry is `input_files.symmetry_file`.  The H14.2 entry
 has been corrected in CHANGELOG.
 
+### 46. `_safe_float` Consolidation + sanity_checker String-Metric Fix (v120)
+
+**Two related issues.**
+
+*Bug.* When model placement is unnecessary, `phenix.ai_agent` skips model
+rebuilding and runs `phenix.model_vs_data`.  On that branch metric values reach
+`metrics_history` as strings (parsed from program output / JSON round-trip), and
+`sanity_checker._check_metric_anomalies` did raw arithmetic on them —
+`change = curr_rfree - prev_rfree` (and `f"{x:.3f}"` formatting) — crashing with
+`TypeError: unsupported operand type(s) for -: 'str' and 'str'` (reported at
+sanity_checker line ~500).  There are TWO vulnerable blocks, not one: the R-free
+spike check and the Map CC drop check; both now coerce.
+
+Fix in `sanity_checker._check_metric_anomalies`:
+- `prev_rfree/curr_rfree/prev_cc/curr_cc = _safe_float(prev.get(...))` before any
+  arithmetic or formatting.
+- Guards changed from `if prev and curr:` to `if prev is not None and curr is
+  not None:`.  The old truthiness test had a latent bug: a legitimate metric
+  value of `0.0` is falsy and would wrongly skip the check.
+
+*Consolidation.* `_safe_float()` had been **duplicated** in five agent modules
+(`validation_history`, `metric_evaluator`, `metrics_analyzer`, `structure_model`,
+`display_data_model`) — all logically identical (`def _safe_float(val)`: return
+`float(val)`, or `None` on `None`/`ValueError`/`TypeError`).  Five copies are a
+drift hazard.  v120 collapses them to a single definition in
+`utils/run_utils.py` (the shared-helpers home alongside `setup_llms`,
+`validate_api_keys`, `normalize_none_string`).  All five former definers plus
+`sanity_checker` now `from libtbx.langchain.utils.run_utils import _safe_float`.
+
+**Why `run_utils.py` and not a new agent module.** `run_utils` is the
+established home for cross-cutting helpers and — importantly — imports nothing
+from the `agent` package, so `agent.* → utils.run_utils` introduces no import
+cycle.  (An interim `agent/metric_utils.py` was prototyped and discarded in
+favor of the existing utils module.)
+
+**Call-site safety.** Removing a module-level `def` and replacing it with an
+`import` keeps every bare `_safe_float(...)` call working (the import binds the
+same name in the module namespace).  Verified: per-file call-site counts are
+unchanged from the originals (3/7/12/45/16 across the five modules), and the
+imported object is identity-equal to `run_utils._safe_float`.
+
+Tests: `tst_safe_float_consolidation.py` (5 tests) — exactly one definition;
+no agent module re-defines it; each consumer imports the canonical one; behavior
+(string `"0.385"`, `None`, `0.0`, non-numeric → `None`, no raise); and
+sanity_checker coerces both metric blocks with the `is not None` guard.  A
+negative control confirmed the "no duplicate definitions" test fails if a copy
+is re-introduced.
+
 ## Workflow States
 
 
@@ -6982,12 +7030,15 @@ Called by PERCEIVE on every graph invocation.
   refinement conditions. Routes to `_analyze_xray_trend()` (R-free) or
   `_analyze_cryoem_trend()` (map-model CC) based on experiment type.
 
-**Numeric coercion (v115.07):** All numeric values extracted from history
-are coerced via `_safe_float()` at read time. JSON round-tripping between
-client and server can turn floats into strings (e.g. `0.385` → `"0.385"`).
-Without coercion, `previous - latest_r_free` crashes with TypeError.
-This was initially diagnosed as the Bug 4 root cause, but see
-MetricEvaluator below for the true production crash site.
+**Numeric coercion (v115.07; consolidated v120):** All numeric values
+extracted from history are coerced via `_safe_float()` at read time. JSON
+round-tripping between client and server can turn floats into strings (e.g.
+`0.385` → `"0.385"`). Without coercion, `previous - latest_r_free` crashes with
+TypeError. This was initially diagnosed as the Bug 4 root cause, but see
+MetricEvaluator below for the true production crash site.  As of v120
+`_safe_float()` is a single shared definition in `utils/run_utils.py` (see
+"`_safe_float` consolidation" below); this module imports it rather than
+defining its own copy.
 
 ### Metric Evaluator (`agent/metric_evaluator.py`)
 
@@ -7005,9 +7056,12 @@ Active when `USE_YAML_METRICS=True` (the default since v115).
 for Bug 4. Since `USE_YAML_METRICS=True`, `analyze_metrics_trend()` in
 `metrics_analyzer.py` routes to `analyze_refinement_trend()` which calls
 `MetricEvaluator.analyze_trend()`. The evaluator re-reads raw values from
-`metrics_history` without coercion — `_safe_float()` was added at all 5
-arithmetic entry points: r_free extraction, CC extraction,
+`metrics_history` without coercion — `_safe_float()` was added at all five
+arithmetic entry points *within this module*: r_free extraction, CC extraction,
 `is_significant_improvement`, `calculate_improvement_rate`, `is_plateau`.
+(The `_safe_float()` helper itself is shared as of v120 — see
+"`_safe_float` consolidation" below. Not to be confused with the five copies
+of the *function* that v120 collapsed into one.)
 
 ### Plan Schema (`knowledge/plan_schema.py`)
 

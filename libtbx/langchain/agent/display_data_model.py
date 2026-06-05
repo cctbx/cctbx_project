@@ -142,14 +142,8 @@ def _fmt_float(val, decimals=1):
     return None
 
 
-def _safe_float(val):
-  """Convert to float or return None."""
-  if val is None:
-    return None
-  try:
-    return float(val)
-  except (ValueError, TypeError):
-    return None
+# _safe_float is shared; see libtbx/langchain/utils/run_utils.py
+from libtbx.langchain.utils.run_utils import _safe_float
 
 
 def _format_metric_value(name, value):

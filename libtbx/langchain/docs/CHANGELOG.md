@@ -337,6 +337,27 @@ ACCIDENTALLY ping a public LLM (prevent-mistakes level, not a hard guarantee).
   branch on the env var rather than disabling a drawn widget.
 - Tests: `tst_provider_lock.py` (9 tests).
 
+### sanity_checker string-metric crash + _safe_float consolidation
+
+Bug: when model placement is unnecessary, `phenix.ai_agent` skips model
+rebuilding and runs `phenix.model_vs_data`; on that branch metric values arrive
+as strings, and `sanity_checker._check_metric_anomalies` did `curr - prev`
+(and `f"{x:.3f}"`) on strings -> TypeError (reported at line ~500).
+
+- Both metric blocks (R-free spike, Map CC drop) now coerce via `_safe_float`
+  before arithmetic/formatting, and guard with `is not None` instead of the
+  old truthiness test `if prev and curr:` (which also wrongly skipped a
+  legitimate 0.0).
+- Consolidation: `_safe_float` was duplicated in 5 agent modules
+  (validation_history, metric_evaluator, metrics_analyzer, structure_model,
+  display_data_model).  All now import a single definition added to
+  `utils/run_utils.py` (the shared-helpers home, dependency-free -> no import
+  cycle); sanity_checker imports it too.  One definition, six importers.
+- Tests: `tst_safe_float_consolidation.py` (5 tests) — single definition, no
+  agent module re-defines it, consumers import the canonical one, behavior
+  (string/None/0.0/non-numeric), and sanity_checker coercion.  Negative-control
+  confirmed the "no duplicate" test fails if a copy is re-introduced.
+
 ### Tests
 
 | File | Tests | Covers |

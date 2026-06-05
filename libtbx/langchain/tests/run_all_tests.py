@@ -324,6 +324,16 @@ def main():
         print(f"⚠️  Could not import tst_provider_lock: {e}")
         results.append(("provider lock", "tst_provider_lock", False, 0))
 
+    # --- _safe_float consolidation + sanity_checker metric coercion ---
+    try:
+        from tests.tst_safe_float_consolidation import run_all_tests as run_safe_float_tests
+        success, elapsed = run_test_module(
+            "tst_safe_float_consolidation", run_safe_float_tests, args.verbose)
+        results.append(("safe_float consolidation", "tst_safe_float_consolidation", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_safe_float_consolidation: {e}")
+        results.append(("safe_float consolidation", "tst_safe_float_consolidation", False, 0))
+
     # --- Best Files Tracker Tests ---
     try:
         from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests
