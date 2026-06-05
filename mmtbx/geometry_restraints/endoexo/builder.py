@@ -479,9 +479,7 @@ class QMRegionBuilder(object):
       visited_iseqs_by_op.setdefault(op.as_xyz(), set()).add(iseq)
 
     # Collect water residues once per *parent model*: ``_add_hull_waters``
-    # is called per seed but the water set is the same every call, and on
-    # large structures (e.g. ~12k waters across 12 seeds) the list-comp
-    # over alt-confed atoms dominated the per-call cost.
+    # is called per seed but the water set is the same every call.
     if (getattr(self, '_waters_cache', None) is None
         or self._waters_cache_model_id != id(model)):
       cached = []
@@ -528,7 +526,7 @@ class QMRegionBuilder(object):
       rep_cart = uc.orthogonalize(rep_frac_sym - shifts_vec)
 
       # Batched hull test: one flex dot product per hull plane over all
-      # waters, executed in C.
+      # waters.
       inside = flex.bool(n_waters, True)
       for eq in hull.equations:
         d = rep_cart.dot((float(eq[0]), float(eq[1]), float(eq[2]))) \
