@@ -2775,10 +2775,10 @@ class QRBuilder(PhenixBuilder):
     pip_installs = ['ase==3.22.1',]
     instructions = []
     # versioning
-    cmd = [os.path.join('..', self.python_base),
-           os.path.join('utils', 'make_version.py'),
-           ]
-    instructions.append(['Versioning', cmd, ['modules/qrefine']])
+    #cmd = [os.path.join('..', self.python_base),
+    #       os.path.join('utils', 'make_version.py'),
+    #       ]
+    #instructions.append(['Versioning', cmd, ['modules/qrefine']])
     for pi in pip_installs:
       instructions.append(['Q|R pip %s' % pi,
                            [self.python_base,
