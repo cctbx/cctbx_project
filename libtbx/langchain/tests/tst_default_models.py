@@ -510,7 +510,9 @@ def test_baseline_values_unchanged():
       "google":    "gemini-embedding-001",
       "openai":    "text-embedding-3-small",
       "ollama":    "nomic-embed-text",
-      "portkey":   "text-embedding-3-small",
+      # v120: portkey/Azure DEPLOYMENT name carries a trailing "-1"; the bare
+      # name silently fell back to a chat model on the gateway.
+      "portkey":   "text-embedding-3-small-1",
     }
     expected_expensive = {
       "google":    "gemini-2.5-pro",

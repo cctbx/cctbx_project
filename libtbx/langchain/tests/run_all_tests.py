@@ -304,6 +304,26 @@ def main():
         print(f"⚠️  Could not import tst_resolve_cryo_em_ncs_inject: {e}")
         results.append(("resolve_cryo_em ncs_file", "tst_resolve_cryo_em_ncs_inject", False, 0))
 
+    # --- portkey embedding model name + silent-fallback guard ---
+    try:
+        from tests.tst_portkey_embedding_model import run_all_tests as run_portkey_embed_tests
+        success, elapsed = run_test_module(
+            "tst_portkey_embedding_model", run_portkey_embed_tests, args.verbose)
+        results.append(("portkey embedding model", "tst_portkey_embedding_model", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_portkey_embedding_model: {e}")
+        results.append(("portkey embedding model", "tst_portkey_embedding_model", False, 0))
+
+    # --- provider lock (provider-specific install) ---
+    try:
+        from tests.tst_provider_lock import run_all_tests as run_provider_lock_tests
+        success, elapsed = run_test_module(
+            "tst_provider_lock", run_provider_lock_tests, args.verbose)
+        results.append(("provider lock", "tst_provider_lock", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_provider_lock: {e}")
+        results.append(("provider lock", "tst_provider_lock", False, 0))
+
     # --- Best Files Tracker Tests ---
     try:
         from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests

@@ -72,8 +72,32 @@ RAG_EMBEDDING_DEFAULTS = {
   "openai":    "text-embedding-3-small",
   "ollama":    "nomic-embed-text",
   # portkey embeddings route through the same Azure gateway using an
-  # OpenAI-compatible embedding deployment.
-  "portkey":   "text-embedding-3-small",
+  # OpenAI-compatible embedding deployment.  NOTE: the Azure DEPLOYMENT name
+  # carries a trailing "-1" ("text-embedding-3-small-1"), which is NOT the same
+  # as the bare OpenAI model id "text-embedding-3-small" used for the direct
+  # openai provider above.  Using the bare name here causes the Azure gateway
+  # to silently fall back to a default chat deployment (gpt-5-mini) instead of
+  # erroring, which corrupts the embeddings.  Keep the "-1".
+  "portkey":   "text-embedding-3-small-1",
+}
+
+# Expected embedding vector dimension, per embedding MODEL NAME, used to detect
+# a silent provider/gateway fallback to the wrong model.  Only models whose
+# dimension is FIXED and reliable are listed:
+#   - The OpenAI text-embedding-3-small family is always 1536.  This is the
+#     important one: when the portkey/Azure gateway is given an unknown
+#     embedding deployment name it silently falls back to a chat deployment
+#     (e.g. gpt-5-mini), which does NOT return a 1536-vector -- a dimension
+#     check catches that.
+# gemini-embedding-001 (default 3072 but truncatable to 768/1536 via MRL) and
+# nomic-embed-text (varies by build) are deliberately OMITTED: their dimension
+# is configurable/ambiguous, so a strict equality check would risk FALSE
+# failures.  Absence here means "known vector, dimension not asserted".
+EMBEDDING_EXPECTED_DIM = {
+  "text-embedding-3-small":   1536,
+  "text-embedding-3-small-1": 1536,   # portkey/Azure deployment alias
+  "text-embedding-3-large":   3072,
+  "text-embedding-ada-002":   1536,
 }
 
 EXPENSIVE_MODEL_DEFAULTS = {
@@ -851,6 +875,113 @@ def get_llm_and_embeddings(
       " Choose 'ollama', 'google', 'openai', 'anthropic', or 'portkey'.")
 
   return llm, embeddings
+
+
+def verify_embeddings(embeddings, embedding_model_name=None, provider=None,
+                      log=None):
+  """Preflight a freshly-constructed embeddings object with ONE real call, to
+  surface a silent fallback to the wrong model BEFORE building an entire vector
+  database with corrupt vectors.
+
+  Motivating failure: the portkey/Azure gateway, given an unknown embedding
+  DEPLOYMENT name, does not error -- it silently routes to a default chat
+  deployment (e.g. gpt-5-mini).  The embeddings object constructs fine (lazy,
+  no network) and only the actual embed call reveals the problem.  Building the
+  database would then "succeed" with meaningless vectors.
+
+  This helper embeds a short probe string and prints a LOUD multi-line WARNING
+  (it does NOT raise / does NOT abort the build) when something looks wrong:
+    * the embed call failed, or returned nothing usable (gateway-fallback /
+      no-access), or
+    * the model has a known fixed dimension (EMBEDDING_EXPECTED_DIM -- the
+      OpenAI 1536 family) and the returned dimension does not match (the
+      gpt-5-mini-fallback case).
+  Models with configurable/ambiguous dimensions (gemini, nomic) are checked
+  only for "returned a non-empty numeric vector", never for an exact size, so
+  this never warns spuriously for them.
+
+  Warn-don't-fail is deliberate: a hard failure here could block a legitimate
+  build if the expected-dimension table is ever stale or a provider changes
+  dimensions.  The warning is loud enough to catch the eye in the build log
+  without ever stopping a good run.
+
+  Args:
+    embeddings: a constructed embeddings object (LangChain Embeddings API).
+    embedding_model_name: the requested model name (for the message and the
+      dimension lookup).  If None, the dimension check is skipped.
+    provider: provider name, for the message only.
+    log: optional callable(str) for the success line (defaults to print).
+
+  Returns:
+    (ok, observed_dim): ok is False if a warning was emitted, True otherwise;
+    observed_dim is the observed dimension or None if the call failed.
+  """
+  _emit = log if callable(log) else print
+
+  def _warn(msg):
+    bar = "!" * 70
+    _emit("\n" + bar)
+    _emit("WARNING: EMBEDDING SELF-CHECK (%s)" % who)
+    for line in msg.splitlines():
+      _emit("  " + line)
+    _emit(bar + "\n")
+
+  who = "provider=%s model=%s" % (provider or "?", embedding_model_name or "?")
+  try:
+    vec = embeddings.embed_query("phenix embedding self-check")
+  except Exception as e:
+    _warn(
+      "The embedding call raised: %s: %s\n"
+      "This usually means the embedding model/deployment name is wrong or not "
+      "available on this endpoint.\n"
+      "For portkey/Azure the DEPLOYMENT name must match EXACTLY -- e.g. "
+      "'text-embedding-3-small-1' (with the trailing -1).\n"
+      "If the build continues, the database may be empty or corrupt."
+      % (type(e).__name__, e))
+    return (False, None)
+
+  # Validate we got a usable numeric vector.  Accept any non-string sequence
+  # (list, tuple, or e.g. a numpy array) of numbers -- some embedding backends
+  # return numpy arrays, and rejecting those would be a FALSE warning.  We probe
+  # length and the first few elements defensively.
+  bad_vector = False
+  try:
+    n = len(vec)
+    if isinstance(vec, (str, bytes)) or n == 0:
+      bad_vector = True
+    else:
+      head = list(vec[:8])
+      try:
+        # Coerce rather than isinstance: numpy scalars (np.float32) are not
+        # Python int/float but are valid embedding components.
+        for x in head:
+          float(x)
+      except (TypeError, ValueError):
+        bad_vector = True
+  except Exception:
+    bad_vector = True   # not sequence-like at all
+  if bad_vector:
+    _warn(
+      "The embedding call returned no usable vector (got: %r...).\n"
+      "This is the signature of a SILENT gateway fallback to a non-embedding "
+      "model.\nCheck the embedding model/deployment name before trusting the "
+      "database." % (str(vec)[:80],))
+    return (False, None)
+
+  observed = len(vec)
+  expected = EMBEDDING_EXPECTED_DIM.get(embedding_model_name)
+  if expected is not None and observed != expected:
+    _warn(
+      "Expected a %d-dimensional vector for '%s' but got %d.\n"
+      "This STRONGLY indicates the request silently fell back to a DIFFERENT "
+      "model\n(e.g. the portkey/Azure gateway routing an unknown embedding "
+      "deployment to a\nchat model such as gpt-5-mini).\n"
+      "Verify the embedding model/deployment name before trusting the database."
+      % (expected, embedding_model_name, observed))
+    return (False, observed)
+
+  _emit("Embedding self-check OK (%s, dim=%d)" % (who, observed))
+  return (True, observed)
 
 # Get expensive or cheap LLMs
 

@@ -277,6 +277,66 @@ blacklist; merged dict for the server; client sends the merged set; real
 `sanitize_command` strips the token; JSON-round-trip integration gate; null
 payload safety; build-node hardening source-scan.  See ARCHITECTURE §45.
 
+### Portkey embedding model name + silent-fallback guard
+
+Two field-reported issues:
+
+1. **Wrong portkey embedding name.** The portkey/Azure embedding DEPLOYMENT name
+   is `text-embedding-3-small-1` (trailing `-1`), not the bare OpenAI id
+   `text-embedding-3-small`.  With the bare name the Azure gateway did NOT error
+   — it silently routed to a default chat deployment (gpt-5-mini), so
+   `rebuild_ai_database` "succeeded" while writing meaningless vectors.  One-line
+   fix in `core/llm.py` `RAG_EMBEDDING_DEFAULTS["portkey"]`.  (The direct
+   `openai` provider keeps the bare `text-embedding-3-small` — that name is
+   correct off-gateway.)
+
+2. **Silent-fallback guard.** New `core/llm.py::verify_embeddings(embeddings,
+   model, provider, log)` preflights a freshly-constructed embeddings object
+   with one real `embed_query` and prints a LOUD multi-line WARNING (it does NOT
+   raise / does NOT abort the build) when the call fails, returns no usable
+   vector, or returns the wrong dimension for a known fixed-size model.  A new
+   `EMBEDDING_EXPECTED_DIM` table lists only reliably-fixed sizes (the OpenAI
+   1536 family); configurable-dimension models (gemini 768/1536/3072, nomic) are
+   deliberately omitted so the check never warns spuriously.  Warn-don't-fail is
+   intentional: a stale dimension table must never block a legitimate build.
+   `rebuild_ai_database.py` calls the guard right before building (warn and
+   continue on any preflight problem).  Placement: the guard runs inside
+   `run_build_db.py` (after embeddings construction, before
+   `create_and_persist_db`), so EVERY caller -- `rebuild_ai_database`,
+   `update_ai_database`, or any future entry point -- is covered at one
+   canonical point.
+
+Tests: `tst_portkey_embedding_model.py` (8 tests) — name correct/with-`-1`,
+direct-openai name unchanged, verify OK on 1536, warns on dim mismatch, does not
+raise on failure, warns on empty vector, no false warning for variable-dim
+models, and run_build_db calls verify between construction and persist.  The H1
+baseline assertion in `tst_default_models.py` was updated to the corrected
+portkey name (it had been pinning the buggy value).
+
+### Provider-specific install ("provider lock")
+
+Internal users can restrict an install to a single provider so they do not
+ACCIDENTALLY ping a public LLM (prevent-mistakes level, not a hard guarantee).
+
+- `phenix.install_ai_tools <provider>` now REQUIRES a provider argument:
+  no-arg fails with usage; `all` reproduces historical behavior and CLEARS any
+  lock; a single provider (`portkey`/`google`/`openai`/`anthropic`/`ollama`)
+  installs and writes a lock.  The hardcoded GOOGLE_API_KEY check became a
+  provider-specific key check (portkey -> PORTKEY_AZURE_API_KEY + PORTKEY_BASE_URL,
+  etc.).
+- Lock persisted in `phenix_ai/ai_config.json`; helpers in `phenix_ai/utilities.py`
+  (`get_locked_provider`, `write_ai_config`, `load_ai_config`, `get_ai_config_path`).
+  Corrupt/missing/unknown -> no lock (fail-open; never bricks a run).
+- CLI: `ai_analysis.py` and `ai_agent.py` steer `communication.provider` to the
+  lock at the existing FORCE_NO_AI_SERVER override point (correct-and-continue
+  with a NOTE, not a hard fail).
+- `.csh`: accepts the provider arg and builds THAT provider's database
+  (`phenix.rebuild_ai_database <provider>`); `all` keeps the default build.
+- GUI: when `FORCE_NO_AI_SERVER=1`, both `AIAgent.py` and `AIAnalysis.py` OMIT
+  the "run on server" control (it is forced local anyway).  Implemented as a
+  branch on the env var rather than disabling a drawn widget.
+- Tests: `tst_provider_lock.py` (9 tests).
+
 ### Tests
 
 | File | Tests | Covers |
