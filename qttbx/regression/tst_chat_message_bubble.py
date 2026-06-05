@@ -312,6 +312,40 @@ def exercise_server_tool_use_then_result_folds_into_same_disclosure():
   assert "phenix-online.org" in body, body
 
 
+def exercise_orphan_tool_result_renders_collapsed_disclosure():
+  """A tool_result whose matching tool_use is NOT in this bubble (an
+  'orphan' -- the normal shape when a stored conversation is reloaded,
+  since the tool_use lives in the assistant message and the tool_result
+  in the following user message) must render as a collapsed
+  ToolCallDisclosure, not a full-text label. Large Phenix tool output
+  (phenix_get_phil can exceed 50K chars) is hidden behind the disclosure
+  and shown only when the user clicks to expand."""
+  os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+  _qapp()
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  marker = "PHIL_SCOPE_MARKER_" + ("x" * 8000)        # stand-in for bulk output
+  m = Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "toolu_orphan", "is_error": False,
+      "content": [ContentBlock(type="text", data={"text": marker})]})])
+  b = MessageBubble(m)
+  discs = b.findChildren(ToolCallDisclosure)
+  assert len(discs) == 1, "orphan tool_result must render one disclosure"
+  disc = discs[0]
+  # Collapsed by default: the bulk output is NOT visible until clicked.
+  assert disc.body.isHidden(), "orphan result disclosure must start collapsed"
+  # The bulk text must NOT be dumped into a wrapped QLabel (the old
+  # _ToolResultCell behavior that showed 50K chars in full).
+  assert not any(marker in lbl.text()
+                 for lbl in b.findChildren(QtWidgets.QLabel)), \
+    "bulk tool output must not be shown in a full-text label"
+  # The text is held in the disclosure result view, revealed on expand.
+  disc.header_button.click()
+  assert not disc.body.isHidden(), "click expands the disclosure"
+  assert marker in disc.result_view.toPlainText()
+
+
 # ---- ToolCallDisclosure (the widget bubbles use for tool cells) ---------
 # Tests live here because every tool cell rendered inside a MessageBubble
 # is a ToolCallDisclosure; pinning the disclosure contract alongside the
@@ -421,12 +455,15 @@ def exercise_disclosure_no_hardcoded_color_on_args_view():
 
 
 def exercise_untrusted_text_labels_use_plain_text_format():
-  """Tool-result text, thinking text, and image captions are
-  model/tool-controlled. Their QLabels must use PlainText format so an
-  embedded ``<img src="file://...">`` is shown literally rather than
-  rendered as rich text (which would load the local file at paint time)."""
+  """Thinking text, image captions, and tool-result text are
+  model/tool-controlled, so an embedded ``<img src="file://...">`` must
+  be shown literally rather than rendered as rich text (which would load
+  the local file at paint time). Thinking and caption render in PlainText
+  QLabels; tool-result text renders in the disclosure's QPlainTextEdit,
+  which has no rich-text path at all."""
   from qttbx.qt import QtCore
   from qttbx.widgets.chat.message_bubble import MessageBubble
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   init_default_app_font(app)
   evil = '<img src="file:///etc/passwd">'
@@ -438,12 +475,19 @@ def exercise_untrusted_text_labels_use_plain_text_format():
     ContentBlock(type="image", data={
       "attachment_sha256": "", "mime": "image/png", "caption": evil})])
   b = MessageBubble(m)
+  # Thinking cell and image caption carry the literal text in PlainText
+  # QLabels.
   hits = [lbl for lbl in b.findChildren(QtWidgets.QLabel)
           if "<img" in lbl.text()]
-  # thinking cell, tool-result body, and image caption each carry it.
-  assert len(hits) >= 3, [lbl.text() for lbl in b.findChildren(QtWidgets.QLabel)]
+  assert len(hits) >= 2, [lbl.text() for lbl in b.findChildren(QtWidgets.QLabel)]
   for lbl in hits:
     assert lbl.textFormat() == QtCore.Qt.PlainText, lbl.text()
+  # Tool-result text is carried by the disclosure's QPlainTextEdit, which
+  # renders only plain text -- there is no HTML/rich-text path through
+  # which the embedded file:// reference could be loaded.
+  discs = b.findChildren(ToolCallDisclosure)
+  assert len(discs) == 1, discs
+  assert evil in discs[0].result_view.toPlainText()
 
 
 def exercise():
@@ -464,6 +508,7 @@ def exercise():
   exercise_image_cell_renders_inline_thumbnail_with_click_to_lightbox()
   exercise_image_cell_without_caption_hides_caption_label()
   exercise_server_tool_use_then_result_folds_into_same_disclosure()
+  exercise_orphan_tool_result_renders_collapsed_disclosure()
   exercise_disclosure_starts_collapsed_with_running_status()
   exercise_disclosure_click_expands_and_re_click_collapses()
   exercise_disclosure_set_status_updates_header_text_and_color()

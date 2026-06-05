@@ -13,27 +13,6 @@ from qttbx.widgets.chat.agent.conversation import ContentBlock, Message, now
 from qttbx.widgets.chat.markdown_view import MarkdownView
 
 
-class _ToolResultCell(QtWidgets.QFrame):
-  def __init__(self, tool_use_id, content_blocks, is_error, parent=None):
-    super().__init__(parent)
-    self.setFrameShape(QtWidgets.QFrame.StyledPanel)
-    layout = QtWidgets.QVBoxLayout(self)
-    layout.setContentsMargins(6, 4, 6, 4)
-    header = QtWidgets.QLabel(
-      "result%s" % (" (error)" if is_error else ""), self)
-    if is_error:
-      header.setStyleSheet("color: #c0392b;")
-    layout.addWidget(header)
-    text = _flatten_result_text(content_blocks)
-    if text:
-      body = QtWidgets.QLabel(text, self)
-      # Tool-result text is model/tool-controlled: render literally so an
-      # embedded <img src="file://..."> can't load a local file.
-      body.setTextFormat(QtCore.Qt.PlainText)
-      body.setWordWrap(True)
-      layout.addWidget(body)
-
-
 class _ThinkingCell(QtWidgets.QFrame):
   def __init__(self, text, parent=None):
     super().__init__(parent)
@@ -267,11 +246,17 @@ class MessageBubble(QtWidgets.QFrame):
           self.set_tool_use_finished(
             tool_id=tool_use_id, result=result_text)
       else:
-        cell = _ToolResultCell(
-          tool_use_id,
-          block.data.get("content", []),
-          is_error,
-          self)
+        # Orphan: the matching tool_use cell is not in this bubble (the
+        # usual shape on reload -- the tool_use is in the assistant
+        # message, this tool_result in the following user message). Render
+        # it through the same collapsed ToolCallDisclosure the live path
+        # uses so bulk Phenix output (phenix_get_phil can exceed 50K
+        # chars) stays hidden behind a click rather than dumped in full.
+        from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+        status = "error" if is_error else "finished"
+        cell = ToolCallDisclosure(name="result", status=status, parent=self)
+        cell.set_status(status, color="error" if is_error else "muted")
+        cell.set_result(result_text)
         self._text_view = None
         self._layout.addWidget(cell)
     elif block.type == "server_tool_use":
