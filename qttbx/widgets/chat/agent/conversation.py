@@ -64,6 +64,8 @@ class Message:
   timestamp: datetime
   stop_reason: str = None            # assistant only
   usage: TokenUsage = None           # assistant only
+  model: str = None                  # assistant only: model that produced it
+  backend: str = None                # assistant only: backend that produced it
 
 
 @dataclass
@@ -102,6 +104,7 @@ class ConversationMeta:
   model: str
   created_at: datetime
   updated_at: datetime
+  backend: str = ""                  # backend of the most recent turn
   archived: bool = False
   pinned: bool = False
   summary: str = ""
@@ -121,7 +124,7 @@ class Conversation:
   subagents: list = field(default_factory=list)       # list[SubagentRecord]
 
   @classmethod
-  def new(cls, profile_name, model, title=""):
+  def new(cls, profile_name, model, title="", backend=""):
     """Create an empty conversation with freshly generated meta."""
     ts = now()
     meta = ConversationMeta(
@@ -131,6 +134,7 @@ class Conversation:
       model=model,
       created_at=ts,
       updated_at=ts,
+      backend=backend,
     )
     return cls(meta=meta)
 

@@ -11,8 +11,8 @@ from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, TokenUsage, now)
 from qttbx.widgets.chat.agent.errors import CancelToken, TurnCancelled
 from qttbx.widgets.chat.agent.events import (
-  ServerToolResult, ServerToolUsed, TextDelta, ToolUseRequested,
-  TurnDone, TokenUsage as TokenUsageEvent)
+  AskUserQuestionRequested, ServerToolResult, ServerToolUsed, TextDelta,
+  ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.profile import Profile
 from qttbx.widgets.chat.agent.session import AgentSession
 from qttbx.widgets.chat.agent.storage import ConversationStorage
@@ -88,6 +88,52 @@ def exercise_simple_text_turn():
     assert assistant.stop_reason == "end_turn"
     assert assistant.content[0].type == "text"
     assert "Hello, world." in assistant.content[0].data["text"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_assistant_messages_stamped_with_model_and_backend():
+  """Each assistant message records the model (from the agent) and the
+  backend (from the profile) that produced it, so a reloaded conversation
+  shows what generated each turn."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    session.profile.backend = "anthropic"          # distinct from default
+    cancel = CancelToken()
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, cancel)
+    assistants = [m for m in session.conv.messages if m.role == "assistant"]
+    assert assistants, "expected an assistant message"
+    for m in assistants:
+      assert m.model == "fake", m.model            # FakeAgent.model
+      assert m.backend == "anthropic", m.backend   # profile.backend
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_reconciles_meta_model_and_backend_on_continue():
+  """Continuing a conversation under a different model/backend updates the
+  conversation meta to the active one (the per-message stamp preserves the
+  full per-turn history)."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    # A conversation created earlier under a different model/backend.
+    session.conv.meta.model = "old-model"
+    session.conv.meta.backend = "old-backend"
+    session.profile.backend = "anthropic"          # the active backend now
+    cancel = CancelToken()
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, cancel)
+    assert session.conv.meta.model == "fake", session.conv.meta.model
+    assert session.conv.meta.backend == "anthropic", session.conv.meta.backend
   finally:
     shutil.rmtree(tmp)
 
@@ -349,6 +395,167 @@ def exercise_server_tool_events_accumulate_without_dispatch():
     shutil.rmtree(tmp)
 
 
+# ---- phenix_ask_user_question (API-backend ask-user parity) --------------
+# Mirrors the approval-queue parking pattern: the builtin handler emits an
+# AskUserQuestionRequested and parks the worker on question_queue until the
+# GUI delivers the answers via submit_question_answer (or a _Cancelled
+# sentinel on cancel).
+
+
+def exercise_await_question_answer_returns_preseeded_answers():
+  """_await_question_answer emits the request and returns the answers the
+  GUI delivered (here pre-seeded so the call doesn't actually block)."""
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    events = []
+    session.on_event = lambda ev: events.append(ev)
+    session.question_queue.put({"Q": "A"})
+    answers = session._await_question_answer(
+      "q1", [{"question": "Q", "options": [{"label": "A"}, {"label": "B"}]}])
+    assert answers == {"Q": "A"}, answers
+    asks = [e for e in events if isinstance(e, AskUserQuestionRequested)]
+    assert len(asks) == 1, events
+    assert asks[0].request_id == "q1", asks[0].request_id
+    assert asks[0].questions[0]["question"] == "Q"
+    # The in-flight id is cleared once the answer arrives.
+    assert session._pending_question_id is None
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_await_question_answer_cancel_raises_turn_cancelled():
+  """A _Cancelled sentinel in the question queue raises TurnCancelled and
+  clears the in-flight id (the finally block runs)."""
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    session.question_queue.put(_Cancelled())
+    raised = False
+    try:
+      session._await_question_answer("q1", [])
+    except TurnCancelled:
+      raised = True
+    assert raised, "TurnCancelled was not raised on a _Cancelled sentinel"
+    assert session._pending_question_id is None
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_submit_question_answer_routes_only_matching_id():
+  """submit_question_answer accepts an answer only for the in-flight id and
+  puts it on the queue; a non-matching id is rejected without queuing."""
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    session._pending_question_id = "q1"
+    ans = {"Q": ["A", "B"]}
+    assert session.submit_question_answer("q1", ans) is True
+    assert session.question_queue.get_nowait() == ans
+    # Wrong id -> rejected, nothing queued.
+    assert session.submit_question_answer("other", ans) is False
+    assert session.question_queue.empty()
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_ask_user_question_tool_loop_round_trips_answers():
+  """Integration: the model calls phenix_ask_user_question on turn 1; the
+  registered builtin parks the worker; the GUI delivers answers; the
+  tool_result message carries the answers JSON; turn 2 ends the turn."""
+  from qttbx.widgets.chat.agent.tools import register_ask_user_question
+  session, tmp = _new_test_session([
+    # Turn 1: the model asks the user a question.
+    [ToolUseRequested(
+      id="t1", name="phenix_ask_user_question",
+      input={"questions": [
+        {"question": "Pick one", "multiSelect": False,
+         "options": [{"label": "X"}, {"label": "Y"}]}]}),
+     TurnDone(stop_reason="tool_use")],
+    # Turn 2: final text after seeing the answers.
+    [TextDelta(text="Thanks."),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    register_ask_user_question(session.tools)
+    # Deliver the answers up front so the parked get() returns immediately.
+    session.question_queue.put({"Pick one": "X"})
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
+    final = session.run_turn(user_msg, cancel)
+    assert final.stop_reason == "end_turn"
+    tr_msg = session.conv.messages[2]
+    assert tr_msg.content[0].type == "tool_result"
+    assert tr_msg.content[0].data["tool_use_id"] == "t1"
+    assert tr_msg.content[0].data["is_error"] is False
+    # The answers JSON is the tool result the model reads.
+    text = tr_msg.content[0].data["content"][0].data["text"]
+    assert "Pick one" in text and "X" in text, text
+    import json as _json
+    assert _json.loads(text) == {"Pick one": "X"}
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_ask_user_question_registered_as_builtin():
+  """register_ask_user_question surfaces phenix_ask_user_question as a
+  read-risk builtin with the questions input schema."""
+  from qttbx.widgets.chat.agent.tools import register_ask_user_question
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    register_ask_user_question(session.tools)
+    reg = session.tools
+    assert reg.source_of("phenix_ask_user_question") == "builtin"
+    assert reg.risk_of("phenix_ask_user_question") == "read"
+    spec = next(s for s in reg.specs()
+                if s.name == "phenix_ask_user_question")
+    props = spec.input_schema["properties"]
+    assert "questions" in props
+    assert spec.input_schema["required"] == ["questions"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_run_turn_drains_stale_cancelled_from_question_queue():
+  """A _Cancelled left in question_queue by a previous turn's cancel must
+  be drained at run_turn start, so the next turn's first question isn't
+  aborted by the stale sentinel."""
+  from qttbx.widgets.chat.agent.tools import register_ask_user_question
+  session, tmp = _new_test_session([
+    [ToolUseRequested(
+      id="t1", name="phenix_ask_user_question",
+      input={"questions": [
+        {"question": "Q", "options": [{"label": "A"}, {"label": "B"}]}]}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="ok"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    register_ask_user_question(session.tools)
+    # Stale sentinel from a previous turn's cancel.
+    session.question_queue.put(_Cancelled())
+    # Real answer for this turn's question.
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
+
+    # Pre-seed the real answer only AFTER run_turn has drained the stale
+    # sentinel. Because the answer is delivered before the question is
+    # asked, we instead deliver it via on_event when the ask is surfaced.
+    def _on_event(ev):
+      if isinstance(ev, AskUserQuestionRequested):
+        session.question_queue.put({"Q": "A"})
+    session.on_event = _on_event
+
+    final = session.run_turn(user_msg, cancel)
+    assert final.stop_reason == "end_turn", final.stop_reason
+    tr_msg = session.conv.messages[2]
+    # If the stale sentinel had NOT been drained, the handler would have
+    # raised TurnCancelled and is_error would be True.
+    assert tr_msg.content[0].data["is_error"] is False
+    text = tr_msg.content[0].data["content"][0].data["text"]
+    assert "Q" in text and "A" in text, text
+  finally:
+    shutil.rmtree(tmp)
+
+
 # ---- MCP result conversion -----------------------------------------------
 # AgentSession._to_canonical_content_blocks is the seam between
 # McpToolResult (the MCP client's typed payload) and ContentBlock (the
@@ -446,6 +653,8 @@ def exercise_non_mcp_results_still_handled():
 
 def exercise():
   exercise_simple_text_turn()
+  exercise_assistant_messages_stamped_with_model_and_backend()
+  exercise_reconciles_meta_model_and_backend_on_continue()
   exercise_tool_use_loop_completes()
   exercise_tool_denied_returns_is_error()
   exercise_cancel_while_awaiting_approval()
@@ -453,6 +662,12 @@ def exercise():
   exercise_add_subagent_usage_aggregates()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()
+  exercise_await_question_answer_returns_preseeded_answers()
+  exercise_await_question_answer_cancel_raises_turn_cancelled()
+  exercise_submit_question_answer_routes_only_matching_id()
+  exercise_ask_user_question_tool_loop_round_trips_answers()
+  exercise_ask_user_question_registered_as_builtin()
+  exercise_run_turn_drains_stale_cancelled_from_question_queue()
   exercise_mcp_text_item_round_trips()
   exercise_mcp_image_item_uses_sha256_directly()
   exercise_mcp_resource_item_renders_as_text()

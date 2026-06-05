@@ -23,12 +23,13 @@ _KNOWN_KEYS = {
   "system_prompt", "system_prompt_file",
   "skills", "mcp_servers", "tool_policy_default",
   "subagents",
-  "backend", "claude",
+  "server_tools",
+  "backend", "claude", "portkey",
 }
 
 # Backends supported by the agent factory. Validated at load time so
 # typos surface before the chat window opens.
-_KNOWN_BACKENDS = ("anthropic", "claude_code")
+_KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
 
 # Environment keys a profile-supplied MCP-server ``env`` block must not be
 # able to set. A profile can be project-scoped (and therefore untrusted),
@@ -105,6 +106,10 @@ class McpServerConfig:
   env: dict = field(default_factory=dict)
   tool_policy: dict = field(default_factory=dict)
   auto_start: bool = True
+  # Phenix-aware servers (default) receive PHENIX_PROJECT_DIR /
+  # PHENIX_CHAT_HOME in their subprocess env; foreign servers (e.g. the
+  # Coot bridge) set this False so no Phenix scoping leaks into them.
+  inject_phenix_env: bool = True
 
 
 @dataclass
@@ -139,6 +144,12 @@ class Profile:
   skills_disabled: set = field(default_factory=set)
   mcp_servers: list = field(default_factory=list)      # list[McpServerConfig]; expanded
   tool_policy_default: str = "ask"
+  # Provider-side tools the user opts into (canonical names, e.g.
+  # "web_search", "web_fetch", "code_execution"). Empty by default so an
+  # existing profile that omits the key gets pure-passthrough behavior --
+  # the backend declares nothing extra. Only the anthropic backend
+  # currently consults this; other backends carry the default empty list.
+  server_tools: list = field(default_factory=list)
   subagents_enabled: bool = True
   subagents_max_depth: int = 1
   subagents_default_max_turns: int = 25
@@ -146,6 +157,11 @@ class Profile:
   subagents_default_profile: str = None
   backend: str = "claude_code"                         # "anthropic" | "claude_code"
   claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
+  # Backend-specific knobs for the "portkey" backend; only consulted when
+  # backend == "portkey". Default None on every Profile so call sites can
+  # read them unconditionally (the launcher falls back to these).
+  portkey_virtual_key: str = None
+  portkey_config: str = None
   source_path: Path = None                             # which file this came from
 
 
@@ -292,6 +308,11 @@ def _build_profile(data, source_path):
     cli_path=claude_data.get("cli_path"),
     sdk_options=dict(claude_data.get("sdk_options") or {}))
 
+  # The portkey subtree is parsed on every load (cheap), but only the
+  # portkey backend will consult it; for other backends it just yields
+  # None defaults so attribute access on the Profile is always safe.
+  portkey_data = data.get("portkey", {}) or {}
+
   # System prompt: inline xor file (file content inlined here if present).
   system_prompt = data.get("system_prompt", "") or ""
   system_prompt_file = data.get("system_prompt_file")
@@ -330,6 +351,7 @@ def _build_profile(data, source_path):
     mcp_servers=_expand_mcp_servers(
       data.get("mcp_servers", []), source_path=source_path),
     tool_policy_default=data.get("tool_policy_default", "ask"),
+    server_tools=list(data.get("server_tools") or []),
     subagents_enabled=bool(subagents.get("enabled", True)),
     subagents_max_depth=int(subagents.get("max_depth", 1)),
     subagents_default_max_turns=int(subagents.get("default_max_turns", 25)),
@@ -338,6 +360,8 @@ def _build_profile(data, source_path):
     subagents_default_profile=subagents.get("default_profile"),
     backend=data.get("backend", "claude_code"),
     claude=claude_opts,
+    portkey_virtual_key=portkey_data.get("virtual_key"),
+    portkey_config=portkey_data.get("config"),
     source_path=source_path,
   )
 
@@ -375,6 +399,7 @@ def _profile_to_dict(p):
     },
     "mcp_servers": list(p.mcp_servers),
     "tool_policy_default": p.tool_policy_default,
+    "server_tools": list(p.server_tools),
     "subagents": {
       "enabled": p.subagents_enabled,
       "max_depth": p.subagents_max_depth,
@@ -386,6 +411,10 @@ def _profile_to_dict(p):
     "claude": {
       "cli_path": p.claude.cli_path,
       "sdk_options": dict(p.claude.sdk_options),
+    },
+    "portkey": {
+      "virtual_key": p.portkey_virtual_key,
+      "config": p.portkey_config,
     },
   }
 
@@ -485,5 +514,6 @@ def _expand_mcp_servers(servers, source_path):
       env=sanitize_server_env(expanded.get("env")),
       tool_policy=dict(expanded.get("tool_policy") or {}),
       auto_start=bool(expanded.get("auto_start", True)),
+      inject_phenix_env=bool(expanded.get("inject_phenix_env", True)),
     ))
   return out

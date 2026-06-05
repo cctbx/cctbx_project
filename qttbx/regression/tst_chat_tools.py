@@ -76,6 +76,20 @@ def exercise_registry_invoke_skill():
   assert result == b"file bytes"
 
 
+def exercise_register_ask_user_question_builtin():
+  """register_ask_user_question adds phenix_ask_user_question as a
+  read-risk builtin carrying the questions input schema."""
+  from qttbx.widgets.chat.agent.tools import register_ask_user_question
+  reg = ToolRegistry(log=null_out())
+  register_ask_user_question(reg)
+  assert reg.source_of("phenix_ask_user_question") == "builtin"
+  assert reg.risk_of("phenix_ask_user_question") == "read"
+  spec = next(s for s in reg.specs()
+              if s.name == "phenix_ask_user_question")
+  assert "questions" in spec.input_schema["properties"]
+  assert spec.input_schema["required"] == ["questions"]
+
+
 def exercise_approval_request_response_dataclasses():
   req = ToolApprovalRequest(
     request_id="r1",
@@ -110,6 +124,7 @@ def exercise():
   exercise_registry_register_skill_tool()
   exercise_registry_invoke_builtin()
   exercise_registry_invoke_skill()
+  exercise_register_ask_user_question_builtin()
   exercise_approval_request_response_dataclasses()
   exercise_approval_request_is_agent_event()
 

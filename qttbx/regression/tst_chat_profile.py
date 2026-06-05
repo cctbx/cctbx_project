@@ -216,6 +216,67 @@ def exercise_profile_backend_claude_code_parsed():
     shutil.rmtree(tmp)
 
 
+def exercise_openai_is_known_backend():
+  """The openai backend must validate at load time (it is a real agent
+  backend now), mirroring the claude_code/anthropic known-backend cases."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p",
+                   {"name": "p", "model": "gpt-x", "backend": "openai"})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    prof = loader.load("p")
+    assert prof.backend == "openai", prof.backend
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_portkey_is_known_backend():
+  """portkey validates at load time, like the other real backends."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "gpt-x", "backend": "portkey"})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.backend == "portkey", prof.backend
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_google_is_known_backend():
+  """google validates at load time, like the other real backends."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "gemini-x", "backend": "google"})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.backend == "google", prof.backend
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_portkey_block_parsed():
+  """A `portkey` JSON sub-block populates portkey_virtual_key / portkey_config."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "gpt-x", "backend": "portkey",
+                              "portkey": {"virtual_key": "vk", "config": "cfg"}})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.portkey_virtual_key == "vk", prof.portkey_virtual_key
+    assert prof.portkey_config == "cfg", prof.portkey_config
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_portkey_block_absent_defaults_none():
+  """No `portkey` block -> the two attrs default to None (not missing/crash)."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "gpt-x", "backend": "portkey"})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert getattr(prof, "portkey_virtual_key", "MISSING") is None
+    assert getattr(prof, "portkey_config", "MISSING") is None
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_profile_backend_unknown_raises():
   """Unknown backend values must fail at load time, not at runtime, so
   the user gets the error before they wait for the chat window."""
@@ -231,6 +292,21 @@ def exercise_profile_backend_unknown_raises():
       assert "bogus" in str(e), str(e)
     else:
       raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_server_tools_parsed_and_defaults_empty():
+  """An opt-in `server_tools` list parses into Profile.server_tools; a
+  profile that omits it gets an empty list (pure no-op default)."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "m",
+                              "server_tools": ["web_search", "code_execution"]})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.server_tools == ["web_search", "code_execution"], prof.server_tools
+    _write_profile(tmp, "q", {"name": "q", "model": "m"})
+    assert ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("q").server_tools == []
   finally:
     shutil.rmtree(tmp)
 
@@ -272,6 +348,28 @@ def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
     assert "PATH" not in env, env
     assert "PHENIX_PROJECT_DIR" not in env, env
     assert env.get("API_TOKEN") == "keep", env
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_mcp_server_inject_phenix_env_default_true():
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "m",
+      "mcp_servers": [{"name": "phenix", "command": "x"}]})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.mcp_servers[0].inject_phenix_env is True
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_mcp_server_inject_phenix_env_parsed_false():
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "m",
+      "mcp_servers": [{"name": "ext", "command": "x", "inject_phenix_env": False}]})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.mcp_servers[0].inject_phenix_env is False
   finally:
     shutil.rmtree(tmp)
 
@@ -321,8 +419,16 @@ def exercise():
   exercise_system_prompt_file_with_expansion()
   exercise_profile_backend_defaults_to_claude_code()
   exercise_profile_backend_claude_code_parsed()
+  exercise_openai_is_known_backend()
+  exercise_portkey_is_known_backend()
+  exercise_google_is_known_backend()
+  exercise_portkey_block_parsed()
+  exercise_portkey_block_absent_defaults_none()
   exercise_profile_backend_unknown_raises()
+  exercise_server_tools_parsed_and_defaults_empty()
   exercise_mcp_server_env_cannot_override_path_or_phenix_vars()
+  exercise_mcp_server_inject_phenix_env_default_true()
+  exercise_mcp_server_inject_phenix_env_parsed_false()
   exercise_system_prompt_file_outside_profile_dir_rejected()
 
 

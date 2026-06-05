@@ -77,6 +77,14 @@ class AgentSession:
     # tests inject a queue.Queue.
     self.approval_queue = approval_queue or queue.Queue()
 
+    # The question queue is the worker's blocking point while a
+    # phenix_ask_user_question builtin is in flight (the API-backend
+    # equivalent of ClaudeCodeAgent's SDK ask-user tool). It mirrors
+    # approval_queue: the GUI runner flushes a _Cancelled sentinel into it
+    # on cancel, and delivers the user's answers via submit_question_answer.
+    self.question_queue = queue.Queue()
+    self._pending_question_id = None
+
     # Set when run_turn starts; consulted by tool handlers.
     self.cancel = None
     self.sub_id = _new_id("sa_") if depth > 0 else None
@@ -134,7 +142,34 @@ class AgentSession:
         kept.append(item)
     for item in kept:
       self.approval_queue.put(item)
+    # Same stale-_Cancelled drain for the question queue: a Stop clicked
+    # during a previous turn's streaming flushes a sentinel here too, and
+    # left in place it would abort this turn's first phenix_ask_user_question
+    # the user never cancelled. Real pre-seeded answers are preserved.
+    kept_q = []
+    while True:
+      try:
+        item = self.question_queue.get_nowait()
+      except queue.Empty:
+        break
+      if not isinstance(item, _Cancelled):
+        kept_q.append(item)
+    for item in kept_q:
+      self.question_queue.put(item)
     self.conv.append(user_message)
+    # Reconcile the conversation meta to the model/backend actually running
+    # this turn. A conversation continued under a different model/backend
+    # (e.g. relaunched with a new --model or --backend) then reflects the
+    # current one; the per-message stamp preserves the full per-turn history.
+    # Top-level only -- a subagent (depth>0) must not stamp the parent meta
+    # with its own (possibly different) model/backend.
+    if self.depth == 0:
+      active_model = getattr(self.agent, "model", None)
+      if active_model:
+        self.conv.meta.model = active_model
+      active_backend = getattr(self.profile, "backend", None)
+      if active_backend:
+        self.conv.meta.backend = active_backend
     iterations = 0
     while True:
       iterations += 1
@@ -166,7 +201,13 @@ class AgentSession:
         return assistant_msg
 
   def _collect_one_response(self, cancel):
-    msg = Message(role="assistant", content=[], timestamp=now())
+    # Stamp each assistant message with the model (from the agent) and the
+    # backend (from the profile) that produced it. getattr guards keep this
+    # robust for agents without a public .model (handled by exposing one)
+    # and for sessions built without a profile (synchronous tests).
+    msg = Message(role="assistant", content=[], timestamp=now(),
+                  model=getattr(self.agent, "model", None),
+                  backend=getattr(self.profile, "backend", None))
     tool_calls = []
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
       self.on_event(event)
@@ -277,6 +318,68 @@ class AgentSession:
     if isinstance(response, _Cancelled):
       raise TurnCancelled()
     return response
+
+  def _await_question_answer(self, request_id, questions):
+    """Emit an ``AskUserQuestionRequested`` and park the worker for answers.
+
+    The API-backend counterpart of ``ClaudeCodeAgent``'s SDK ask-user
+    tool. Mirrors ``_await_approval``: surface the request to the UI, then
+    block on ``question_queue`` until the GUI delivers the user's answers
+    (via ``submit_question_answer``) or pushes a ``_Cancelled`` sentinel.
+
+    Parameters
+    ----------
+    request_id : str
+        Identifier correlating this request with the answers delivered
+        back through ``submit_question_answer``.
+    questions : list of dict
+        The model's question specs (``question`` / ``options`` / ...).
+
+    Returns
+    -------
+    object
+        The answers object the GUI delivered.
+
+    Raises
+    ------
+    TurnCancelled
+        If a ``_Cancelled`` sentinel is received instead of answers.
+    """
+    from qttbx.widgets.chat.agent.events import AskUserQuestionRequested
+    self._pending_question_id = request_id
+    try:
+      self.on_event(AskUserQuestionRequested(
+        request_id=request_id, questions=list(questions or [])))
+      answers = self.question_queue.get()
+      if isinstance(answers, _Cancelled):
+        raise TurnCancelled()
+      return answers
+    finally:
+      self._pending_question_id = None
+
+  def submit_question_answer(self, request_id, answers):
+    """Deliver the user's answers to a parked ``phenix_ask_user_question``.
+
+    Called from the GUI thread (via the runner) when the user submits a
+    QuestionCard. Wakes the worker parked in ``_await_question_answer``.
+
+    Parameters
+    ----------
+    request_id : str
+        Identifier of the in-flight question.
+    answers : object
+        The user's answers to deliver to the parked handler.
+
+    Returns
+    -------
+    bool
+        ``True`` iff a question with this id is currently in flight (so the
+        answers were queued); ``False`` otherwise.
+    """
+    if request_id != self._pending_question_id:
+      return False
+    self.question_queue.put(answers)
+    return True
 
   def _invoke_tool(self, call, cancel):
     source = self.tools.source_of(call.name) or ""

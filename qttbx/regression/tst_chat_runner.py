@@ -268,6 +268,106 @@ def exercise_submit_approval_queues_for_session_while_turn_in_flight():
     shutil.rmtree(tmp)
 
 
+def exercise_submit_question_answer_falls_through_to_session():
+  """When the agent has no submit_question_answer (the API backends),
+  runner.submit_question_answer routes the answers to the session's
+  submit_question_answer. The agent path wins when it owns the id; the
+  session path is the fallback the API agents rely on."""
+  import queue as _queue
+
+  class _AgentWithoutQuestions:
+    """An API-style agent: no submit_question_answer override at all (it
+    is not even an Agent subclass, so getattr returns None)."""
+
+  class _AgentOwning:
+    """A claude_code-style agent that owns the id."""
+    def submit_question_answer(self, request_id, answers):
+      return request_id == "agent_owned"
+
+  class _FakeSession:
+    def __init__(self, agent):
+      self.agent = agent
+      self.approval_queue = _queue.Queue()
+      self.question_queue = _queue.Queue()
+      self.routed = []
+    def submit_question_answer(self, request_id, answers):
+      self.routed.append((request_id, answers))
+      return True
+
+  # Agent lacks the method -> falls through to the session.
+  sess = _FakeSession(_AgentWithoutQuestions())
+  runner = QtAgentRunner(sess)
+  assert runner.submit_question_answer("q1", {"Q": "A"}) is True
+  assert sess.routed == [("q1", {"Q": "A"})], sess.routed
+
+  # Agent owns the id -> handled by the agent, session not consulted.
+  sess2 = _FakeSession(_AgentOwning())
+  runner2 = QtAgentRunner(sess2)
+  assert runner2.submit_question_answer("agent_owned", {"Q": "A"}) is True
+  assert sess2.routed == [], sess2.routed
+
+  # Agent has the method but doesn't own the id -> falls through to session.
+  sess3 = _FakeSession(_AgentOwning())
+  runner3 = QtAgentRunner(sess3)
+  assert runner3.submit_question_answer("session_owned", {"Q": "B"}) is True
+  assert sess3.routed == [("session_owned", {"Q": "B"})], sess3.routed
+
+
+def exercise_cancel_flushes_question_queue():
+  """cancel() must push a _Cancelled into the session's question_queue too,
+  so a worker parked on a pending phenix_ask_user_question wakes up."""
+  import threading
+  from qttbx.widgets.chat.agent.tools import _Cancelled
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+
+  class _BlockingAgent(Agent):
+    name = "blocking-q"
+    model = "blocking-q-1"
+    capabilities = AgentCapabilities.STREAMING
+
+    def __init__(self):
+      self.release = threading.Event()
+
+    def stream_turn(self, conversation, tools, cancel):
+      self.release.wait(timeout=5)
+      yield TurnDone(stop_reason="end_turn")
+
+    def resolve_credentials(self, cli_override=None):
+      return "k"
+
+    def credentials_dialog_class(self):
+      return object
+
+  tmp = tempfile.mkdtemp()
+  try:
+    storage = ConversationStorage(project_dir=tmp, log=null_out())
+    conv = Conversation.new(profile_name="t", model="blocking-q-1")
+    agent = _BlockingAgent()
+    session = AgentSession(
+      agent=agent, conversation=conv, storage=storage,
+      tools=ToolRegistry(log=null_out()),
+      policy=ToolPolicy(default="ask"), profile=None, log=null_out())
+    runner = QtAgentRunner(session)
+    runner.start_turn(Message(
+      role="user", timestamp=now(),
+      content=[ContentBlock(type="text", data={"text": "hi"})]))
+    deadline = QtCore.QElapsedTimer()
+    deadline.start()
+    while not runner.is_busy() and deadline.elapsed() < 2000:
+      _pump(app, 20)
+    assert runner.is_busy()
+    runner.cancel()
+    # The cancel must have flushed a sentinel into the question queue.
+    item = session.question_queue.get_nowait()
+    assert isinstance(item, _Cancelled)
+    agent.release.set()
+    runner.wait_for_idle(timeout_ms=5000)
+    _pump(app, 50)
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_worker_finish_drains_stray_approval_response():
   """A response left in the approval queue when the turn ends (e.g. a late
   click during teardown, submitted while is_busy() was still true) is
@@ -305,6 +405,8 @@ def exercise():
   exercise_cancel_when_idle_does_not_poison_next_turn()
   exercise_submit_approval_routes_to_agent_when_agent_owns_request_id()
   exercise_submit_approval_queues_for_session_while_turn_in_flight()
+  exercise_submit_question_answer_falls_through_to_session()
+  exercise_cancel_flushes_question_queue()
   exercise_worker_finish_drains_stray_approval_response()
 
 

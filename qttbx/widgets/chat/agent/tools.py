@@ -258,3 +258,67 @@ class ToolRegistry:
   def tool_to_source_map(self):
     """Return a name-to-source snapshot for ``ToolPolicy`` construction."""
     return {name: e.source for name, e in self._entries.items()}
+
+
+# ---- builtin: phenix_ask_user_question -------------------------------------
+
+def register_ask_user_question(registry):
+  """Register the ``phenix_ask_user_question`` builtin on ``registry``.
+
+  The API-backend equivalent of ``ClaudeCodeAgent``'s SDK ask-user tool
+  (claude_code runs its own loop and owns its own copy; this is for the
+  anthropic / openai / portkey / google backends that drive
+  ``AgentSession``'s tool loop). The handler emits an
+  ``AskUserQuestionRequested`` and parks the ``AgentSession`` worker on its
+  ``question_queue`` until the user answers, then returns the user's
+  selections as the tool result the model reads on its next turn.
+
+  Parameters
+  ----------
+  registry : ToolRegistry
+      Registry the builtin is added to.
+  """
+  import json
+  import uuid
+  from qttbx.widgets.chat.agent.base import ToolSpec
+
+  description = (
+    "Ask the user one or more multiple-choice questions. Use this whenever "
+    "you need user input to disambiguate, pick between options, or confirm a "
+    "destructive choice. Returns the user's selections as JSON keyed by "
+    "question text: single-select -> a string (chosen label or free-form "
+    "'Other' text); multi-select -> a list of strings.")
+  input_schema = {
+    "type": "object",
+    "properties": {
+      "questions": {
+        "type": "array", "minItems": 1,
+        "items": {
+          "type": "object",
+          "properties": {
+            "question": {"type": "string"},
+            "header": {"type": "string"},
+            "multiSelect": {"type": "boolean"},
+            "options": {
+              "type": "array", "minItems": 2,
+              "items": {
+                "type": "object",
+                "properties": {"label": {"type": "string"},
+                               "description": {"type": "string"}},
+                "required": ["label"]}}},
+          "required": ["question", "options"]}}},
+    "required": ["questions"]}
+
+  def _handler(name, input, cancel, session, tool_use_id):
+    request_id = "q_" + uuid.uuid4().hex[:12]
+    questions = (input or {}).get("questions", [])
+    answers = session._await_question_answer(request_id, questions)
+    # Return a plain JSON string: AgentSession._to_canonical_content_blocks
+    # renders a str as a single text block, so the model reads exactly this
+    # JSON. (A dict would be re-wrapped via json.dumps, which is also fine
+    # but adds no value here.)
+    return json.dumps(answers, indent=2, default=str)
+
+  spec = ToolSpec(name="phenix_ask_user_question", description=description,
+                  input_schema=input_schema)
+  registry.register_builtin(spec=spec, handler=_handler, risk="read")

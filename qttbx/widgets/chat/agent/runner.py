@@ -5,8 +5,8 @@ The runner owns:
 - the ``AgentSession`` (no Qt dependency itself)
 - a worker ``QThread`` that runs ``session.run_turn``
 - the ``CancelToken`` for the current turn
-- the approval queue (shared with the session) so the GUI Stop button can
-  flush a ``_Cancelled`` sentinel into it
+- the approval queue and the question queue (both shared with the session)
+  so the GUI Stop button can flush a ``_Cancelled`` sentinel into each
 """
 
 import queue
@@ -135,9 +135,12 @@ class QtAgentRunner(QtCore.QObject):
     self._thread = None
     self._worker = None
     self._cancel = CancelToken()
-    # Approval queues parked on by the session worker — the GUI flushes
-    # _Cancelled sentinels into these on cancel.
-    self._pending_approval_queues = [self.session.approval_queue]
+    # Queues the session worker parks on — the GUI flushes _Cancelled
+    # sentinels into these on cancel so a parked get() wakes up. The
+    # approval queue (tool approval) and the question queue
+    # (phenix_ask_user_question) are both blocking points.
+    self._pending_approval_queues = [self.session.approval_queue,
+                                     self.session.question_queue]
 
   # ---- public API ----------------------------------------------------------
 
@@ -216,10 +219,14 @@ class QtAgentRunner(QtCore.QObject):
       self._cancel.set()
 
   def submit_question_answer(self, request_id, answers):
-    """Forward the user's answers to an in-flight question to the agent.
+    """Route the user's answers to whoever asked the question.
 
-    Routes answers for an ``AskUserQuestionRequested`` straight to the
-    agent. Backends that don't own the request silently no-op.
+    Tries ``agent.submit_question_answer`` first: the Claude Code backend
+    runs its own loop and owns its own ask-user futures, so it resolves
+    them itself. If the agent lacks the method (the API backends) or
+    doesn't own ``request_id``, the answers go to the session's
+    ``submit_question_answer`` (the path a ``phenix_ask_user_question``
+    builtin parks on).
 
     Must be called from the GUI thread.
 
@@ -233,10 +240,14 @@ class QtAgentRunner(QtCore.QObject):
     Returns
     -------
     bool
-        ``True`` if the agent owned and handled the request, ``False``
-        otherwise.
+        ``True`` if either the agent or the session owned and handled the
+        request, ``False`` otherwise.
     """
-    return self.session.agent.submit_question_answer(request_id, answers)
+    agent = self.session.agent
+    handler = getattr(agent, "submit_question_answer", None)
+    if handler is not None and handler(request_id, answers):
+      return True
+    return self.session.submit_question_answer(request_id, answers)
 
   def is_busy(self):
     return self._thread is not None and self._thread.isRunning()

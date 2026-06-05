@@ -58,6 +58,40 @@ def exercise_save_then_load_roundtrip():
     shutil.rmtree(tmp)
 
 
+def exercise_meta_backend_and_per_turn_stamp_roundtrip():
+  """The conversation meta carries a backend; each assistant message
+  carries the model + backend that produced it. Both survive a
+  save/load round-trip (older files without the fields load with empty
+  defaults -- covered by the other round-trip tests)."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="phenix_expert",
+                            model="claude-opus-4-8",
+                            backend="anthropic",
+                            title="Backends")
+    conv.append(Message(role="user",
+                        content=[ContentBlock(type="text",
+                                              data={"text": "hi"})],
+                        timestamp=now()))
+    conv.append(Message(role="assistant",
+                        content=[ContentBlock(type="text",
+                                              data={"text": "hello"})],
+                        timestamp=now(), stop_reason="end_turn",
+                        model="claude-opus-4-8", backend="anthropic"))
+    storage.save(conv)
+    loaded = storage.load(conv.meta.id)
+    assert loaded.meta.backend == "anthropic"
+    last = loaded.messages[-1]
+    assert last.role == "assistant"
+    assert last.model == "claude-opus-4-8", last.model
+    assert last.backend == "anthropic", last.backend
+    # The user message has no stamp; the fields default to None.
+    assert loaded.messages[0].model is None
+    assert loaded.messages[0].backend is None
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_atomic_write_interruption_leaves_prior_intact():
   """If a save is interrupted mid-write, the prior version stays valid.
   We simulate by writing once, then writing a tmp file that we leave behind
@@ -306,6 +340,7 @@ def exercise_chat_root_for_env_override():
 def exercise():
   exercise_lazy_directory_creation()
   exercise_save_then_load_roundtrip()
+  exercise_meta_backend_and_per_turn_stamp_roundtrip()
   exercise_atomic_write_interruption_leaves_prior_intact()
   exercise_attachment_dedup_by_sha256()
   exercise_index_listing()

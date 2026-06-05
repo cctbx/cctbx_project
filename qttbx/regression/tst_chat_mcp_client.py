@@ -194,6 +194,45 @@ def exercise_risk_derived_from_annotations():
     shutil.rmtree(tmp)
 
 
+def exercise_subprocess_env_injects_phenix_when_opted_in():
+  from qttbx.widgets.chat.agent.mcp_client import McpServerConnection
+  from qttbx.widgets.chat.agent.profile import McpServerConfig
+  cfg = McpServerConfig(name="phenix", command="x")  # inject_phenix_env defaults True
+  conn = McpServerConnection(config=cfg, project_dir="/tmp/proj",
+                             storage=None, conv_id="c1", log=null_out())
+  env = conn._subprocess_env()
+  assert env["PHENIX_PROJECT_DIR"] == "/tmp/proj"
+  assert "PHENIX_CHAT_HOME" in env and env["PHENIX_CHAT_HOME"]
+
+
+def exercise_subprocess_env_omits_phenix_for_foreign_server():
+  """A foreign server (inject_phenix_env=False, e.g. Coot) must not receive the
+  Phenix scoping vars -- even when they are EXPORTED in the parent environment
+  they are stripped from the subprocess env, so Phenix scoping never leaks. The
+  export also makes the test hermetic: it can't pass vacuously on a machine that
+  happens not to export them, nor fail spuriously on one that does."""
+  import os
+  from qttbx.widgets.chat.agent.mcp_client import McpServerConnection
+  from qttbx.widgets.chat.agent.profile import McpServerConfig
+  saved = {k: os.environ.get(k)
+           for k in ("PHENIX_PROJECT_DIR", "PHENIX_CHAT_HOME")}
+  os.environ["PHENIX_PROJECT_DIR"] = "/exported/proj"
+  os.environ["PHENIX_CHAT_HOME"] = "/exported/home"
+  try:
+    cfg = McpServerConfig(name="coot", command="x", inject_phenix_env=False)
+    conn = McpServerConnection(config=cfg, project_dir="/tmp/proj",
+                               storage=None, conv_id="c1", log=null_out())
+    env = conn._subprocess_env()
+    assert "PHENIX_PROJECT_DIR" not in env, env.get("PHENIX_PROJECT_DIR")
+    assert "PHENIX_CHAT_HOME" not in env, env.get("PHENIX_CHAT_HOME")
+  finally:
+    for k, v in saved.items():
+      if v is None:
+        os.environ.pop(k, None)
+      else:
+        os.environ[k] = v
+
+
 def exercise():
   exercise_start_lists_tools()
   exercise_call_tool_text_round_trips()
@@ -201,6 +240,8 @@ def exercise():
   exercise_call_tool_when_not_ready_returns_error()
   exercise_empty_command_raises_clear_sorry()
   exercise_risk_derived_from_annotations()
+  exercise_subprocess_env_injects_phenix_when_opted_in()
+  exercise_subprocess_env_omits_phenix_for_foreign_server()
 
 
 if __name__ == "__main__":

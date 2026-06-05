@@ -385,6 +385,7 @@ def _meta_to_dict(m):
     "title": m.title,
     "profile_name": m.profile_name,
     "model": m.model,
+    "backend": m.backend,
     "created_at": m.created_at,
     "updated_at": m.updated_at,
     "archived": m.archived,
@@ -400,6 +401,7 @@ def _meta_from_dict(d):
     title=d.get("title", ""),
     profile_name=d.get("profile_name", ""),
     model=d.get("model", ""),
+    backend=d.get("backend", ""),
     created_at=_parse_dt(d["created_at"]),
     updated_at=_parse_dt(d["updated_at"]),
     archived=d.get("archived", False),
@@ -440,6 +442,10 @@ def _message_to_dict(m):
     out["stop_reason"] = m.stop_reason
   if m.usage is not None:
     out["usage"] = asdict(m.usage)
+  if m.model is not None:
+    out["model"] = m.model
+  if m.backend is not None:
+    out["backend"] = m.backend
   return out
 
 
@@ -459,6 +465,8 @@ def _message_from_dict(d):
     timestamp=_parse_dt(d["timestamp"]),
     stop_reason=d.get("stop_reason"),
     usage=usage,
+    model=d.get("model"),
+    backend=d.get("backend"),
   )
 
 

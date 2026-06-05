@@ -1,8 +1,8 @@
 """Agent ABC and supporting types.
 
-Provider-agnostic. ``phenix.gui.chat.anthropic_agent.AnthropicAgent``
-and ``phenix.gui.chat.claude_code_agent.ClaudeCodeAgent`` are the two
-concrete backends; both are selected by
+Provider-agnostic. The concrete backends all live in ``phenix.gui.chat``
+(``AnthropicAgent``, ``ClaudeCodeAgent``, ``OpenAIAgent``, ``PortkeyAgent``,
+``GeminiAgent``); each is selected by
 ``phenix.gui.chat.agent_factory.build_agent``.
 """
 
@@ -130,9 +130,10 @@ class Agent(ABC):
     request_id : str
         The same id the agent put on the ``AskUserQuestionRequested``.
     answers : dict
-        ``{question_text: selected_label}`` (single-select) or
-        ``{question_text: [labels...]}`` (multi-select), plus an
-        optional ``"_notes"`` sub-dict for free-form additions.
+        ``{question_text: label}`` (single-select; ``label`` is the
+        chosen option or the user's free-form "Other" text) or
+        ``{question_text: [labels...]}`` (multi-select; any "Other"
+        text is appended to the list).
 
     Returns
     -------
@@ -140,3 +141,34 @@ class Agent(ABC):
         ``True`` if the agent owned ``request_id``, else ``False``.
     """
     return False
+
+  def close(self):
+    """Release any resources the agent holds (HTTP client connection
+    pools, a subprocess, an asyncio loop).
+
+    Default no-op. Backends holding a closable client or process override
+    this. Called once at window teardown (``ChatWindow.closeEvent``); it
+    must be safe to call even if the agent never opened anything, and safe
+    to call more than once.
+    """
+
+
+def close_client(client):
+  """Best-effort close of an HTTP/SDK client, releasing its connection pool.
+
+  Safe to pass ``None`` or a client without a ``close()`` method, and
+  swallows any error ``close()`` raises -- teardown and key-rotation paths
+  must never fail on cleanup. Shared by the HTTP-client agents' ``close()``
+  and ``set_api_key`` methods.
+
+  Parameters
+  ----------
+  client : object or None
+      The provider client to close.
+  """
+  closer = getattr(client, "close", None)
+  if callable(closer):
+    try:
+      closer()
+    except Exception:
+      pass

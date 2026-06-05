@@ -7,7 +7,6 @@ touch the SDK.
 """
 
 import asyncio
-import os
 import shutil
 import sys
 import threading
@@ -17,6 +16,29 @@ from libtbx.utils import Sorry
 
 from qttbx.widgets.chat.agent.base import ToolSpec
 from qttbx.widgets.chat.agent.conversation import ContentBlock
+
+
+def phenix_server_env(project_dir):
+  """The PHENIX_* env a phenix-aware MCP server subprocess should receive.
+
+  Centralizes the project/chat-home env so the launcher's claude_code SDK
+  loop and McpServerConnection inject identical values.
+
+  Parameters
+  ----------
+  project_dir : str or pathlib.Path
+      The active project directory.
+
+  Returns
+  -------
+  dict
+      ``{"PHENIX_PROJECT_DIR": ..., "PHENIX_CHAT_HOME": ...}``.
+  """
+  from qttbx.widgets.chat.agent.paths import chat_root_for
+  return {
+    "PHENIX_PROJECT_DIR": str(project_dir),
+    "PHENIX_CHAT_HOME": str(chat_root_for(project_dir)),
+  }
 
 
 @dataclass
@@ -136,8 +158,9 @@ class McpServerConnection:
   config : McpServerConfig
       Server entry (name, command, args, env) from the profile.
   project_dir : str or pathlib.Path
-      Project directory; exported to the subprocess as
-      ``PHENIX_PROJECT_DIR``.
+      Project directory. Exported to the subprocess as
+      ``PHENIX_PROJECT_DIR`` only for phenix-aware servers
+      (``config.inject_phenix_env`` True); foreign servers do not see it.
   storage : object
       Attachment store used to persist image content from tool results.
   conv_id : str
@@ -259,6 +282,34 @@ class McpServerConnection:
 
   # ---- async surface -------------------------------------------------------
 
+  def _subprocess_env(self):
+    """Build the subprocess environment for this server.
+
+    Starts from os.environ, merges the server's own sanitized env, then --
+    only when the server opts in via inject_phenix_env (default True) --
+    overlays the authoritative PHENIX_PROJECT_DIR / PHENIX_CHAT_HOME.
+
+    Returns
+    -------
+    dict
+        The environment to hand to the spawned MCP-server subprocess.
+    """
+    import os
+    env = dict(os.environ)
+    if getattr(self.config, "env", None):
+      from qttbx.widgets.chat.agent.profile import sanitize_server_env
+      env.update(sanitize_server_env(self.config.env))
+    if getattr(self.config, "inject_phenix_env", True):
+      env.update(phenix_server_env(self.project_dir))
+    else:
+      # A foreign server (inject_phenix_env=False, e.g. Coot) must not see the
+      # Phenix scoping vars. The flag skips the overlay above, but they can
+      # still leak in from os.environ if the user exported them -- strip those
+      # so scoping never reaches a non-Phenix subprocess.
+      for k in phenix_server_env(self.project_dir):
+        env.pop(k, None)
+    return env
+
   async def _async_start(self):
     """Open the client connection and populate ``self.tools``.
 
@@ -285,15 +336,7 @@ class McpServerConnection:
       if not shutil.which(cmd[0]):
         raise Sorry("MCP server '%s': command not found: %s" %
                     (self.config.name, cmd[0]))
-      env = dict(os.environ)
-      if getattr(self.config, "env", None):
-        # Defense in depth: the profile parser already strips these, but
-        # never let a per-server env override PATH / PHENIX_* and escape
-        # the project sandbox.
-        from qttbx.widgets.chat.agent.profile import sanitize_server_env
-        env.update(sanitize_server_env(self.config.env))
-      # Pin the project dir AFTER merging so it is always authoritative.
-      env["PHENIX_PROJECT_DIR"] = str(self.project_dir)
+      env = self._subprocess_env()
       transport = StdioTransport(command=cmd[0], args=cmd[1:], env=env)
     self._client_cm = Client(transport)
     self._client = await self._client_cm.__aenter__()
