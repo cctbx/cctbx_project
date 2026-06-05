@@ -21,6 +21,36 @@ import libtbx.load_env
 from six.moves import zip
 boost_version = libtbx.env.boost_version
 
+def exercise_split_lines_unicode():
+  samples = [
+    "",
+    "abc",
+    "abc\n",
+    "alpha = α\nlast = final_value\n",
+    "name = résumé\ntrailing_keyword = ok\n",
+    "日本語\nlast line\n",
+    "emoji = 😀\nlast = complete\n",
+    "α",
+    "α\n",
+    "aαb\ntrailing\n",
+    "one\r\ntwo\r\n",
+    "one\rtwo\r",
+  ]
+
+  for count_lines_first in (False, True):
+    for s in samples:
+      result = list(flex.split_lines(
+        s,
+        keep_ends=True,
+        count_lines_first=count_lines_first))
+      assert "".join(result) == s, (
+        repr(s),
+        result,
+        count_lines_first)
+
+  assert list(flex.split_lines("α\nβ\n")) == ["α", "β"]
+  assert list(flex.split_lines("α\r\nβ\rγ\n")) == ["α", "β", "γ"]
+
 def exercise_flex_grid():
   g = flex.grid()
   assert g.nd() == 0
@@ -3742,6 +3772,7 @@ def exercise_numpy_conversions():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_split_lines_unicode()
     exercise_flex_sum_axis()
     exercise_nd_slicing()
     exercise_set_nd_slicing()
