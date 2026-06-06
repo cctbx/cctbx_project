@@ -51,6 +51,25 @@ def exercise_split_lines_unicode():
   assert list(flex.split_lines("α\nβ\n")) == ["α", "β"]
   assert list(flex.split_lines("α\r\nβ\rγ\n")) == ["α", "β", "γ"]
 
+def exercise_from_byte_str_unicode():
+  # flex.*_from_byte_str re-encodes a unicode argument as UTF-8, so the result
+  # must equal passing the UTF-8 bytes directly. Regression for a code-point
+  # vs byte-count mismatch in the unicode branch of shared_from_byte_str:
+  # for non-ASCII input the code-point count is smaller than the byte buffer,
+  # which truncated the array. uint8 has element size 1, so any byte length
+  # is valid.
+  for u in ["", "abc", "aα本", "résumé", "α😀z"]:
+    utf8 = u.encode("utf-8")
+    from_bytes = list(flex.uint8_from_byte_str(utf8))
+    from_str = list(flex.uint8_from_byte_str(u))
+    assert from_str == from_bytes, (repr(u), from_str, from_bytes)
+    assert len(from_str) == len(utf8), (repr(u), len(from_str), len(utf8))
+  # element size > 1: "αβγδ" is 8 UTF-8 bytes, i.e. exactly one double.
+  u = "αβγδ"
+  assert len(u.encode("utf-8")) == 8
+  assert (list(flex.double_from_byte_str(u))
+          == list(flex.double_from_byte_str(u.encode("utf-8"))))
+
 def exercise_flex_grid():
   g = flex.grid()
   assert g.nd() == 0
@@ -3773,6 +3792,7 @@ def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
     exercise_split_lines_unicode()
+    exercise_from_byte_str_unicode()
     exercise_flex_sum_axis()
     exercise_nd_slicing()
     exercise_set_nd_slicing()
