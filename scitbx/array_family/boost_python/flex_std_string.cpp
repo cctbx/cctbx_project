@@ -23,14 +23,19 @@ namespace {
     bool count_lines_first=true)
   {
     PyObject* str_ptr = multi_line_string.ptr();
-    return misc::split_lines(
 #ifdef IS_PY3K
-      PyUnicode_AsUTF8(str_ptr),
-      PyUnicode_GetLength(str_ptr),
+    // split_lines() works on the raw byte buffer, so size must be the number
+    // of UTF-8 bytes. PyUnicode_AsUTF8AndSize gives both the buffer and its
+    // byte length together.
+    Py_ssize_t size = 0;
+    const char* data = PyUnicode_AsUTF8AndSize(str_ptr, &size);
 #else
-      PyString_AS_STRING(str_ptr),
-      PyString_GET_SIZE(str_ptr),
+    const char* data = PyString_AS_STRING(str_ptr);
+    Py_ssize_t size = PyString_GET_SIZE(str_ptr);
 #endif
+    return misc::split_lines(
+      data,
+      size,
       keep_ends,
       count_lines_first);
   }
