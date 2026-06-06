@@ -722,7 +722,7 @@ class write_ccp4_map:
 
     mrc.header.nlabl=len(output_labels)
     for i in range(min(10,len(output_labels))):
-      mrc.header.label[i]=output_labels[i]
+      mrc.header.label[i] = output_labels[i].encode("ascii", "replace")[:80]
     mrc.update_header_from_data() # don't move this later as we overwrite values
 
     # Unit cell parameters and space group
