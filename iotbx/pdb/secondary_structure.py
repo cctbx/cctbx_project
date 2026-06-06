@@ -356,11 +356,21 @@ def get_amide_isel(asc, ss_element_string_selection):
 
 class structure_base(object):
 
+  def fits_in_pdb_format(self):
+    return True
+
   def as_pdb_str(self):
     return None
 
-  def as_pdb_or_mmcif_str(self):
+  def as_mmcif_str(self):
     return None
+
+  def as_pdb_or_mmcif_str(self, target_format='pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
 
   def __str__(self):
     return self.as_pdb_or_mmcif_str()
@@ -1278,13 +1288,6 @@ class annotation(structure_base):
       records.append(sheet.as_pdb_str())
     return "\n".join(records)
 
-  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
-    # Return str in target format if possible, otherwise in mmcif
-    if target_format == 'pdb' and self.fits_in_pdb_format():
-      return self.as_pdb_str()
-    else:
-      return self.as_mmcif_str()
-
   def as_restraint_groups(self, log=sys.stdout, prefix_scope="",
       add_segid=None):
     phil_strs = []
@@ -2155,13 +2158,6 @@ class pdb_helix(structure_base):
     result['pdbx_PDB_helix_length'] = self.length
     return result
 
-  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
-    # Return str in target format if possible, otherwise in mmcif
-    if target_format == 'pdb' and self.fits_in_pdb_format():
-      return self.as_pdb_str()
-    else:
-      return self.as_mmcif_str()
-
   def fits_in_pdb_format(self):
     if len(self.start_resname.strip()) > 3: return False
     if len(self.end_resname.strip()) > 3: return False
@@ -2889,13 +2885,6 @@ class pdb_sheet(structure_base):
     if self.hbond_list is not None:
       return len(self.hbond_list)
     return 0
-
-  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
-    # Return str in target format if possible, otherwise in mmcif
-    if target_format == 'pdb' and self.fits_in_pdb_format():
-      return self.as_pdb_str()
-    else:
-      return self.as_mmcif_str()
 
   def fits_in_pdb_format(self):
     for strand in self.strands:
