@@ -126,13 +126,27 @@ def exercise_header_renders_title_meta_and_separator():
   assert "\n---\n" in md, md
 
 
+def exercise_assistant_label_reflects_backend_stamp():
+  """The assistant section is labelled by the backend that produced the turn
+  (google -> '## Gemini'); an unstamped message falls back to '## Assistant'."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="assistant", timestamp=now(), backend="google",
+    content=[ContentBlock(type="text", data={"text": "rendered a plot"})]))
+  conv.append(Message(role="assistant", timestamp=now(),
+    content=[ContentBlock(type="text", data={"text": "no stamp here"})]))
+  md = conversation_to_markdown(conv)
+  assert "## Gemini\n\nrendered a plot\n" in md, md
+  assert "## Assistant\n\nno stamp here\n" in md, md
+
+
 def exercise_user_and_assistant_text_blocks_alternate():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
   conv.append(Message(role="user", timestamp=now(), content=[
     ContentBlock(type="text", data={"text": "hello claude"})]))
-  conv.append(Message(role="assistant", timestamp=now(), content=[
-    ContentBlock(type="text", data={"text": "hi! how can i help?"})]))
+  conv.append(Message(role="assistant", timestamp=now(), backend="anthropic",
+    content=[ContentBlock(type="text", data={"text": "hi! how can i help?"})]))
   md = conversation_to_markdown(conv)
   assert "## You\n\nhello claude\n" in md, md
   assert "## Claude\n\nhi! how can i help?\n" in md, md
@@ -255,6 +269,7 @@ def exercise():
   exercise_raw_html_in_markdown_is_not_rendered_as_rich_text()
   exercise_loadresource_refuses_local_file()
   exercise_header_renders_title_meta_and_separator()
+  exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()
   exercise_thinking_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()

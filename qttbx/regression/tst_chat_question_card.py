@@ -129,6 +129,18 @@ def exercise_multiple_questions_in_one_card():
   assert fired == [("q_5", {"A?": "a1", "B?": "b2"})], fired
 
 
+def exercise_header_uses_assistant_label():
+  """The card header names the active assistant ('GPT needs an answer:'),
+  not a hard-coded 'Claude', so it matches the chosen backend."""
+  from qttbx.widgets.chat.question_card import QuestionCard
+  _qapp()
+  card = QuestionCard(assistant_label="GPT")
+  card.set_request("q_h", _single_select_question("anthropic"))
+  labels = [w.text() for w in card.findChildren(QtWidgets.QLabel)]
+  assert any("GPT needs an answer" in t for t in labels), labels
+  assert not any("Claude needs an answer" in t for t in labels), labels
+
+
 def exercise_submit_disables_buttons_and_hides_card():
   """After submit, the buttons are disabled and the card is hidden so
   a stray re-click can't re-emit. Same UX contract as
@@ -149,6 +161,7 @@ def exercise():
   exercise_multi_select_collects_all_checked()
   exercise_multi_select_other_is_appended()
   exercise_multiple_questions_in_one_card()
+  exercise_header_uses_assistant_label()
   exercise_submit_disables_buttons_and_hides_card()
 
 

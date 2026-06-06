@@ -296,6 +296,23 @@ def exercise_profile_backend_unknown_raises():
     shutil.rmtree(tmp)
 
 
+def exercise_server_tools_string_raises_clear_sorry():
+  """A bare string `server_tools` (a common mistake) raises a clear Sorry
+  rather than silently splitting into single characters ('w', 'e', 'b', ...)
+  that then warn as ~10 unknown tools and enable none."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "m",
+                              "server_tools": "web_search"})
+    try:
+      ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+      raise Exception_expected
+    except Sorry as e:
+      assert "server_tools" in str(e) and "list" in str(e), str(e)
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_server_tools_parsed_and_defaults_empty():
   """An opt-in `server_tools` list parses into Profile.server_tools; a
   profile that omits it gets an empty list (pure no-op default)."""
@@ -426,10 +443,25 @@ def exercise():
   exercise_portkey_block_absent_defaults_none()
   exercise_profile_backend_unknown_raises()
   exercise_server_tools_parsed_and_defaults_empty()
+  exercise_server_tools_string_raises_clear_sorry()
   exercise_mcp_server_env_cannot_override_path_or_phenix_vars()
   exercise_mcp_server_inject_phenix_env_default_true()
   exercise_mcp_server_inject_phenix_env_parsed_false()
   exercise_system_prompt_file_outside_profile_dir_rejected()
+  exercise_backend_display_name_maps_each_backend()
+
+
+def exercise_backend_display_name_maps_each_backend():
+  """backend_display_name turns a backend id into a user-facing assistant name
+  (Claude / GPT / Gemini / …); unknown or empty falls back to 'Assistant'."""
+  from qttbx.widgets.chat.agent.profile import backend_display_name
+  assert backend_display_name("claude_code") == "Claude"
+  assert backend_display_name("anthropic") == "Claude"
+  assert backend_display_name("openai") == "GPT"
+  assert backend_display_name("google") == "Gemini"
+  assert backend_display_name("portkey") == "Assistant"
+  assert backend_display_name("") == "Assistant"
+  assert backend_display_name(None) == "Assistant"
 
 
 if __name__ == "__main__":

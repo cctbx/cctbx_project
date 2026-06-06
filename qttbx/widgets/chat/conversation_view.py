@@ -38,10 +38,15 @@ class ConversationView(QtWidgets.QScrollArea):
   question_answered = QtCore.Signal(str, dict)   # request_id, answers
   image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
 
-  def __init__(self, parent=None, storage=None, conv_id=None):
+  def __init__(self, parent=None, storage=None, conv_id=None,
+               assistant_label="Assistant"):
     super().__init__(parent)
     self._storage = storage
     self._conv_id = conv_id
+    # Current backend's assistant display name; the fallback for bubbles /
+    # question cards with no per-message backend stamp. ChatWindow sets it
+    # via set_assistant_label().
+    self._assistant_label = assistant_label or "Assistant"
     self.setWidgetResizable(True)
     self._container = QtWidgets.QWidget(self)
     self._layout = QtWidgets.QVBoxLayout(self._container)
@@ -84,9 +89,18 @@ class ConversationView(QtWidgets.QScrollArea):
 
   # ---- bubble API ----------------------------------------------------------
 
+  def set_assistant_label(self, name):
+    """Set the fallback assistant display name for new bubbles / cards.
+
+    Stamped messages still show their own backend; this name is used only
+    when a message carries no backend stamp (live streaming, legacy data).
+    """
+    self._assistant_label = name or "Assistant"
+
   def add_message(self, message):
     bubble = MessageBubble(message, parent=self._container,
-                           storage=self._storage, conv_id=self._conv_id)
+                           storage=self._storage, conv_id=self._conv_id,
+                           assistant_label=self._assistant_label)
     bubble.image_clicked.connect(self.image_clicked)
     self._insert_widget(bubble)
     self._bubbles.append(bubble)
@@ -102,7 +116,8 @@ class ConversationView(QtWidgets.QScrollArea):
       return self._in_progress
     msg = Message(role="assistant", content=[], timestamp=now())
     bubble = MessageBubble(msg, parent=self._container,
-                           storage=self._storage, conv_id=self._conv_id)
+                           storage=self._storage, conv_id=self._conv_id,
+                           assistant_label=self._assistant_label)
     bubble.image_clicked.connect(self.image_clicked)
     self._insert_widget(bubble)
     self._bubbles.append(bubble)
@@ -193,7 +208,8 @@ class ConversationView(QtWidgets.QScrollArea):
     req : AskUserQuestionRequested
         The question request, carrying ``request_id`` and ``questions``.
     """
-    card = QuestionCard(self._container)
+    card = QuestionCard(self._container,
+                        assistant_label=self._assistant_label)
     card.set_request(req.request_id, req.questions)
     card.answered.connect(self._on_question_answered)
     self._insert_widget(card)

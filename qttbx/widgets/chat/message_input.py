@@ -25,10 +25,13 @@ class MessageInput(QtWidgets.QWidget):
   save_chat = QtCore.Signal()                      # 'Save chat' button click
   auto_approve_changed = QtCore.Signal(bool)       # checked state
 
-  # Idle placeholder text. Exposed as a class constant so callers
-  # (ChatWindow) can swap to a cycling 'Thinking...' style placeholder
-  # while a turn is in flight and restore the default on turn_done.
-  DEFAULT_PLACEHOLDER = "Message Claude...  (Ctrl/Cmd+Enter to send)"
+  # Idle placeholder text. The assistant name defaults to "Claude" but is
+  # rewritten per session by ChatWindow via set_assistant_name() so the box
+  # names the active backend (GPT / Gemini / …). ChatWindow also swaps in a
+  # cycling 'Thinking...' placeholder while a turn is in flight and restores
+  # the idle one on turn_done.
+  _PLACEHOLDER_FMT = "Message %s...  (Ctrl/Cmd+Enter to send)"
+  DEFAULT_PLACEHOLDER = _PLACEHOLDER_FMT % "Claude"
 
   _MAX_IMAGE_BYTES = 20 * 1024 * 1024
   _ALLOWED_MIMES = frozenset((
@@ -61,7 +64,9 @@ class MessageInput(QtWidgets.QWidget):
     # Text edit gets the full width; the VBox owns horizontal expansion
     # so the edit grows with the panel automatically.
     self._edit = QtWidgets.QPlainTextEdit(self)
-    self._edit.setPlaceholderText(self.DEFAULT_PLACEHOLDER)
+    # Per-session idle placeholder; set_assistant_name() rewrites it.
+    self._idle_placeholder = self.DEFAULT_PLACEHOLDER
+    self._edit.setPlaceholderText(self._idle_placeholder)
     self._edit.installEventFilter(self)
     # Cache the theme's stock placeholder colour (dim grey on most
     # palettes). set_placeholder(..., dim=False) swaps in the regular
@@ -207,8 +212,25 @@ class MessageInput(QtWidgets.QWidget):
     self._edit.viewport().update()
 
   def reset_placeholder(self):
-    """Restore the idle placeholder (default text + dim colour)."""
-    self.set_placeholder(self.DEFAULT_PLACEHOLDER, dim=True)
+    """Restore the idle placeholder (per-session text + dim colour)."""
+    self.set_placeholder(self._idle_placeholder, dim=True)
+
+  def set_assistant_name(self, name):
+    """Set the assistant display name shown in the idle placeholder.
+
+    ChatWindow calls this with the active backend's display name (Claude /
+    GPT / Gemini / …). Applied immediately when the box is idle; the
+    'Thinking...' verb cycle reverts to it via :meth:`reset_placeholder`.
+
+    Parameters
+    ----------
+    name : str
+        The assistant display name. Empty / ``None`` falls back to a
+        generic label.
+    """
+    self._idle_placeholder = self._PLACEHOLDER_FMT % (name or "the assistant")
+    if not getattr(self, "_busy", False):
+      self.set_placeholder(self._idle_placeholder, dim=True)
 
   # ---- busy / button state -------------------------------------------------
 

@@ -21,12 +21,12 @@ def conversation_to_markdown(conv, storage=None):
       ## You
       <text content>
 
-      ## Claude
+      ## <assistant>
       <text content, possibly multiple paragraphs>
 
   Each role block stitches the message's content blocks in order:
 
-  - text -> emitted verbatim (already markdown from claude)
+  - text -> emitted verbatim (already markdown from the model)
   - image -> ``![caption](path)`` or placeholder when storage absent
   - thinking -> skipped (extended-thinking is internal, not the chat)
   - tool_use -> fenced code block tagged 'tool-use' with JSON input
@@ -61,7 +61,7 @@ def conversation_to_markdown(conv, storage=None):
   out.append("---")
   out.append("")
   for msg in conv.messages or []:
-    role = _role_label(msg.role)
+    role = _role_label(msg)
     out.append("## %s" % role)
     out.append("")
     for block in msg.content or []:
@@ -78,12 +78,20 @@ def conversation_to_markdown(conv, storage=None):
 
 _ROLE_LABELS = {
   "user": "You",
-  "assistant": "Claude",
   "system": "System",
 }
 
 
-def _role_label(role):
+def _role_label(msg):
+  """Section label for a message: the backend's display name for an assistant
+  turn (so each section names what produced it), else the role word."""
+  role = getattr(msg, "role", None)
+  if role == "assistant":
+    backend = getattr(msg, "backend", None)
+    if backend:
+      from qttbx.widgets.chat.agent.profile import backend_display_name
+      return backend_display_name(backend)
+    return "Assistant"
   return _ROLE_LABELS.get(role, (role or "?").title())
 
 

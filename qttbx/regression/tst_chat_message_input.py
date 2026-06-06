@@ -171,6 +171,23 @@ def exercise_placeholder_dim_flag_controls_palette_role():
     dim_color
 
 
+def exercise_set_assistant_name_updates_placeholder():
+  """set_assistant_name rewrites the idle placeholder to name the active
+  backend's assistant (e.g. 'Message GPT...'), not a hard-coded 'Claude', and
+  the 'Thinking...' verb cycle reverts to that name via reset_placeholder."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  w.set_assistant_name("GPT")
+  assert "GPT" in w._edit.placeholderText(), w._edit.placeholderText()
+  assert "Claude" not in w._edit.placeholderText()
+  w.set_placeholder("Thinking...", dim=False)
+  w.reset_placeholder()
+  assert "GPT" in w._edit.placeholderText(), w._edit.placeholderText()
+
+
 def exercise_auto_approve_button_is_checkable_and_emits_signal():
   """The centred 'Auto-approve' button is a checkable QPushButton.
   Clicking it flips the checked state and emits
@@ -328,6 +345,7 @@ def exercise():
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()
+  exercise_set_assistant_name_updates_placeholder()
   exercise_up_arrow_recalls_previous_inputs()
   exercise_down_arrow_walks_forward_and_restores_draft()
   exercise_sent_message_is_appended_to_history()

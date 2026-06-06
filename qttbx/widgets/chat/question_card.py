@@ -21,9 +21,12 @@ class QuestionCard(QtWidgets.QFrame):
 
   answered = QtCore.Signal(str, dict)            # request_id, answers
 
-  def __init__(self, parent=None):
+  def __init__(self, parent=None, assistant_label="Assistant"):
     super().__init__(parent)
     self.setFrameShape(QtWidgets.QFrame.StyledPanel)
+    # Active assistant display name, used in the header ("<name> needs an
+    # answer:"); supplied by ConversationView from the current backend.
+    self._assistant_label = assistant_label or "Assistant"
     self._request_id = ""
     self._questions = []
     # Per-question state: list of dicts with:
@@ -93,7 +96,7 @@ class QuestionCard(QtWidgets.QFrame):
     box = QtWidgets.QWidget(self)
     layout = QtWidgets.QVBoxLayout(box)
     layout.setContentsMargins(0, 0, 0, 0)
-    head = QtWidgets.QLabel("Claude needs an answer:", box)
+    head = QtWidgets.QLabel("%s needs an answer:" % self._assistant_label, box)
     f = head.font(); f.setBold(True); head.setFont(f)
     layout.addWidget(head)
     for q in self._questions:

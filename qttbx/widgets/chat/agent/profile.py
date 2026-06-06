@@ -31,6 +31,35 @@ _KNOWN_KEYS = {
 # typos surface before the chat window opens.
 _KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
 
+# User-facing assistant name per backend, for the chat UI (response label,
+# input placeholder, question card). Portkey is a gateway whose underlying
+# model varies, so it -- and anything unmapped -- gets the generic "Assistant".
+_BACKEND_DISPLAY_NAMES = {
+  "claude_code": "Claude",
+  "anthropic": "Claude",
+  "openai": "GPT",
+  "google": "Gemini",
+  "portkey": "Assistant",
+}
+
+
+def backend_display_name(backend):
+  """Return the user-facing assistant name for a backend id.
+
+  Parameters
+  ----------
+  backend : str or None
+      A backend id (e.g. ``"openai"``). Unknown / empty / ``None`` map to
+      ``"Assistant"``.
+
+  Returns
+  -------
+  str
+      The display name (``"Claude"``, ``"GPT"``, ``"Gemini"``, or
+      ``"Assistant"``).
+  """
+  return _BACKEND_DISPLAY_NAMES.get(backend or "", "Assistant")
+
 # Environment keys a profile-supplied MCP-server ``env`` block must not be
 # able to set. A profile can be project-scoped (and therefore untrusted),
 # so it must not control which binary or libraries load into the spawned
@@ -155,7 +184,7 @@ class Profile:
   subagents_default_max_turns: int = 25
   subagents_default_model: str = "claude-opus-4-7"
   subagents_default_profile: str = None
-  backend: str = "claude_code"                         # "anthropic" | "claude_code"
+  backend: str = "claude_code"  # anthropic|claude_code|openai|portkey|google
   claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
   # Backend-specific knobs for the "portkey" backend; only consulted when
   # backend == "portkey". Default None on every Profile so call sites can
@@ -271,6 +300,22 @@ class ProfileLoader:
 
 # ---- helpers ---------------------------------------------------------------
 
+def _server_tools_list(value, source_path):
+  """Validate a profile's ``server_tools`` field as a list of tool names.
+
+  A bare string (e.g. ``"web_search"``) is a common mistake that plain
+  ``list()`` would silently split into single characters -- yielding ~10 bogus
+  tool names that each warn as unknown and enable nothing. Raise a clear Sorry
+  instead.
+  """
+  if value is None:
+    return []
+  if not isinstance(value, list):
+    raise Sorry("Profile %s: server_tools must be a list of tool names "
+                "(e.g. [\"web_search\"]), not %r" % (source_path, value))
+  return list(value)
+
+
 def _build_profile(data, source_path):
   """Construct a ``Profile`` from a merged, validated profile dict.
 
@@ -351,7 +396,7 @@ def _build_profile(data, source_path):
     mcp_servers=_expand_mcp_servers(
       data.get("mcp_servers", []), source_path=source_path),
     tool_policy_default=data.get("tool_policy_default", "ask"),
-    server_tools=list(data.get("server_tools") or []),
+    server_tools=_server_tools_list(data.get("server_tools"), source_path),
     subagents_enabled=bool(subagents.get("enabled", True)),
     subagents_max_depth=int(subagents.get("max_depth", 1)),
     subagents_default_max_turns=int(subagents.get("default_max_turns", 25)),

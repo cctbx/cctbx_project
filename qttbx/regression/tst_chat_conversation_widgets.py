@@ -72,6 +72,34 @@ def exercise_add_bubble_then_streaming_then_finalize():
   assert "there" in v.bubbles()[-1].combined_text()
 
 
+def exercise_set_assistant_label_flows_to_new_bubbles():
+  """set_assistant_label provides the fallback name for new assistant bubbles
+  that carry no per-message backend stamp (the live streaming case)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  v.set_assistant_label("Gemini")
+  bubble = v.start_assistant_bubble()
+  bubble.add_text("hello")
+  assert "Gemini" in bubble.first_text_cell_html()
+
+
+def exercise_question_card_uses_assistant_label():
+  """A question card rendered by the view names the active assistant."""
+  from qttbx.widgets.chat.agent.events import AskUserQuestionRequested
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  v.set_assistant_label("Gemini")
+  v.add_question_request(AskUserQuestionRequested(
+    request_id="r1",
+    questions=[{"question": "Which?",
+                "options": [{"label": "a"}, {"label": "b"}]}]))
+  card = v._question_cards[-1]
+  labels = [w.text() for w in card.findChildren(QtWidgets.QLabel)]
+  assert any("Gemini needs an answer" in t for t in labels), labels
+
+
 def exercise_batched_approval_coalesces_by_batch_id():
   from qttbx.widgets.chat.conversation_view import ConversationView
   _qapp()
@@ -399,6 +427,8 @@ def exercise_list_rename_button_with_no_selection_is_no_op():
 
 def exercise():
   exercise_add_bubble_then_streaming_then_finalize()
+  exercise_set_assistant_label_flows_to_new_bubbles()
+  exercise_question_card_uses_assistant_label()
   exercise_batched_approval_coalesces_by_batch_id()
   exercise_two_batches_two_cards()
   exercise_solo_request_without_batch_id_gets_own_card()

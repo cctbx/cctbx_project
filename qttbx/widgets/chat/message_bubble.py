@@ -127,7 +127,7 @@ class _ImageCell(QtWidgets.QFrame):
     dlg.open()
 
 
-_ROLE_LABELS = {"user": "You", "assistant": "Claude"}
+_ROLE_LABELS = {"user": "You"}
 
 
 class MessageBubble(QtWidgets.QFrame):
@@ -171,7 +171,7 @@ class MessageBubble(QtWidgets.QFrame):
   image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
 
   def __init__(self, message=None, parent=None, storage=None, conv_id=None,
-               role=None):
+               role=None, assistant_label=None):
     super().__init__(parent)
     # Two construction modes:
     #   * legacy: MessageBubble(message=<Message>) -- ConversationView path,
@@ -187,6 +187,10 @@ class MessageBubble(QtWidgets.QFrame):
     self.storage = storage
     self.conv_id = conv_id
     self._role = message.role
+    # Fallback assistant name (the current backend's display name, supplied
+    # by ConversationView) used when the message carries no per-turn backend
+    # stamp -- e.g. a live streaming bubble, or a legacy unstamped message.
+    self._assistant_label = assistant_label
     # Flattened: no frame styling, no background.
     self.setFrameStyle(QtWidgets.QFrame.NoFrame)
     self._layout = QtWidgets.QVBoxLayout(self)
@@ -311,6 +315,15 @@ class MessageBubble(QtWidgets.QFrame):
         self._first_text_cell = self._text_view
 
   def _role_label_text(self):
+    if self._role == "assistant":
+      # Prefer this message's own backend stamp (so a reloaded conversation
+      # shows what produced each turn); else the supplied fallback name; else
+      # the generic "Assistant".
+      backend = getattr(self.message, "backend", None)
+      if backend:
+        from qttbx.widgets.chat.agent.profile import backend_display_name
+        return backend_display_name(backend)
+      return self._assistant_label or "Assistant"
     return _ROLE_LABELS.get(self._role, self._role.title())
 
   def _append_text_markdown(self, text):
@@ -329,8 +342,9 @@ class MessageBubble(QtWidgets.QFrame):
   def add_text(self, text):
     """Append a text block to the bubble.
 
-    The first call gets the bold-prefixed role marker (``You:`` /
-    ``Claude:``); subsequent calls render as plain markdown. Also
+    The first call gets the bold-prefixed role marker (``You:`` for user
+    turns, the backend's display name -- e.g. ``Claude:`` / ``GPT:`` -- for
+    assistant turns); subsequent calls render as plain markdown. Also
     mirrors into ``message.content`` so ``combined_text()`` stays
     consistent.
 
