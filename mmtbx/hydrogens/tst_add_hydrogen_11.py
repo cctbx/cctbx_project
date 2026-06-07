@@ -9,6 +9,7 @@ from libtbx.utils import null_out
 
 def run():
   test_000()
+  test_001()
 
 # ------------------------------------------------------------------------------
 
@@ -58,6 +59,44 @@ def test_000():
 
 # ------------------------------------------------------------------------------
 
+def test_001():
+  '''
+    N-terminal propeller H atoms (H1/H2/H3) must inherit the hetero flag of
+    their parent residue. For a modified amino acid written as HETATM (e.g.
+    N-terminal MSE), the terminal hydrogens were emitted as ATOM while the rest
+    of the residue stayed HETATM, producing a residue with mixed ATOM/HETATM
+    records that breaks downstream parsers (e.g. Biopython mmCIF).
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_001.split("\n"), source_info=None)
+  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model_initial.set_stop_for_unknowns(False)
+
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    model = model_initial,
+    stop_for_unknowns = False)
+  reduce_add_h_obj.run()
+  model_h_added = reduce_add_h_obj.get_model()
+  ph = model_h_added.get_hierarchy()
+
+  # Collect the MSE residue atoms.
+  mse_atoms = {}
+  for a in ph.atoms():
+    if a.parent().resname.strip() == 'MSE':
+      mse_atoms[a.name.strip()] = a
+
+  # Sanity: propeller H were placed.
+  for name in ('H1', 'H2', 'H3'):
+    assert(name in mse_atoms), 'expected propeller H %s not placed' % name
+
+  # The parent residue is HETATM, so every atom (including the propeller H)
+  # must carry hetero=True. No mixing of ATOM/HETATM within one residue.
+  heteros = set(a.hetero for a in mse_atoms.values())
+  assert(heteros == set([True])), \
+    'mixed ATOM/HETATM within MSE: ' + \
+    ', '.join('%s=%s' % (n, a.hetero) for n, a in sorted(mse_atoms.items()))
+
+# ------------------------------------------------------------------------------
+
 pdb_str_000 = """
 CRYST1  100.667  101.210  170.826  90.00  90.00  90.00 P 21 21 21
 ATOM      1  N   LEU A 482     114.924  99.962 -27.431  1.00 10.00           N
@@ -76,6 +115,26 @@ HETATM   12  N1  FCO A 601     107.159  97.752 -27.314  1.00 10.00           N
 HETATM   13  N2  FCO A 601     108.687  98.106 -23.190  1.00 10.00           N
 HETATM   14  O3  FCO A 601     109.639 101.050 -25.723  1.00 10.00           O
 HETATM   15 FE   FCO A 601     107.039  99.845 -25.099  1.00 10.00          FE
+END
+"""
+
+# ------------------------------------------------------------------------------
+
+pdb_str_001 = """
+CRYST1   80.000   80.000   80.000  90.00  90.00  90.00 P 1
+HETATM    1  N   MSE A   1      36.554 -26.382 -54.813  1.00129.74           N
+HETATM    2  CA  MSE A   1      37.413 -25.165 -54.854  1.00129.96           C
+HETATM    3  C   MSE A   1      38.272 -25.033 -53.595  1.00128.03           C
+HETATM    4  O   MSE A   1      37.746 -24.824 -52.499  1.00128.43           O
+HETATM    5  CB  MSE A   1      36.535 -23.924 -55.017  1.00133.18           C
+HETATM    6  CG  MSE A   1      37.311 -22.627 -55.097  1.00137.42           C
+HETATM    7 SE   MSE A   1      36.236 -21.220 -55.847  1.00142.16          SE
+HETATM    8  CE  MSE A   1      36.573 -21.565 -57.723  1.00140.74           C
+ATOM      9  N   ALA A   2      39.580 -25.160 -53.700  1.00128.00           N
+ATOM     10  CA  ALA A   2      40.450 -25.050 -52.540  1.00128.00           C
+ATOM     11  C   ALA A   2      41.900 -25.250 -52.950  1.00128.00           C
+ATOM     12  O   ALA A   2      42.250 -25.100 -54.120  1.00128.00           O
+ATOM     13  CB  ALA A   2      40.050 -26.080 -51.500  1.00128.00           C
 END
 """
 

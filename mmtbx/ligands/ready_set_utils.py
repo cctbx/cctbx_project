@@ -157,6 +157,9 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     atom.occ = n.occ
     atom.b = n.b
     atom.segid = ' '*4
+    # Inherit the hetero flag from the parent residue so terminal H atoms on a
+    # HETATM residue (e.g. N-terminal MSE) are not emitted as ATOM records.
+    atom.hetero = ag.atoms()[0].hetero
     if verbose: print('adding', atom.quote())
     if append_to_end_of_model and i+1==number_of_hydrogens:
       rg = _add_atom_to_chain(atom,
