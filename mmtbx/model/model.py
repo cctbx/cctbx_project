@@ -2098,7 +2098,12 @@ class manager(object):
       for ab in additional_blocks:
         cif_block.update(ab)
     cif_block.sort(key=category_sort_function)
+
+    # CIF block names must be ASCII with no whitespace (CIF spec).
+    cif_block_name = "_".join(
+      str(cif_block_name).encode("ascii", "replace").decode("ascii").split())
     cif[cif_block_name] = cif_block
+
 
     if not skip_restraints and self.restraints_manager_available():
       restraints = self.extract_restraints_as_cif_blocks()
