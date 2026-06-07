@@ -534,6 +534,11 @@ class place_hydrogens():
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
     self.site_labels_no_para    = list()
+    # Names of restraint dictionaries auto-generated for unknown ligands during
+    # placement; these are throwaway (purpose-built for H placement) and are
+    # removed from the model before returning so they don't leak into
+    # downstream geometry validation.
+    self.auto_restraint_names   = list()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     self.n_H_initial            = 0
@@ -551,6 +556,26 @@ class place_hydrogens():
       self.time_reset              = None
       self.time_idealize           = None
       self.time_remove_H_on_links  = None
+
+# ------------------------------------------------------------------------------
+
+  def remove_auto_restraint_objects(self):
+    '''
+    Remove the placeholder restraint dictionaries that were auto-generated for
+    unknown ligands during H placement (see add_missing_H_atoms_at_bogus_position).
+
+    The grm has already been built at this point, so the placement restraints
+    have served their purpose. We assign self.model._restraint_objects directly
+    instead of calling set_restraint_objects(): the latter unsets the restraints
+    manager, and we need the already-built grm (and riding-H manager) to remain
+    intact for the rest of run() and for callers that reuse it.
+    '''
+    if not self.auto_restraint_names: return
+    ro = self.model.get_restraint_objects()
+    if not ro: return
+    self.model._restraint_objects = [
+      (name, obj) for name, obj in ro
+      if name not in self.auto_restraint_names]
 
 # ------------------------------------------------------------------------------
 
@@ -622,6 +647,11 @@ class place_hydrogens():
                        )
 
     self.time_make_grm = round(time.time()-t0, 2)
+    # Drop the throwaway auto-generated ligand restraints now that the grm has
+    # been built. They were only needed to place H on unknown ligands; keeping
+    # them on the model would leak idealized placement-only geometry (0.9x
+    # bonds, esd=1/period=1 torsions) into any downstream re-interpretation.
+    self.remove_auto_restraint_objects()
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -800,8 +830,11 @@ class place_hydrogens():
             if cif_object:
               ro = self.model.get_restraint_objects()
               if ro is None: ro=[]
-              ro.append(('auto_%s' % ag.resname, cif_object))
+              auto_name = 'auto_%s' % ag.resname
+              ro.append((auto_name, cif_object))
               self.model.set_restraint_objects(ro)
+              if auto_name not in self.auto_restraint_names:
+                self.auto_restraint_names.append(auto_name)
 
             expected_h = []
             #expected_ha = []
