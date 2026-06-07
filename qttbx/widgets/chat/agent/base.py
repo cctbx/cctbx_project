@@ -146,11 +146,32 @@ class Agent(ABC):
     """Release any resources the agent holds (HTTP client connection
     pools, a subprocess, an asyncio loop).
 
-    Default no-op. Backends holding a closable client or process override
-    this. Called once at window teardown (``ChatWindow.closeEvent``); it
-    must be safe to call even if the agent never opened anything, and safe
-    to call more than once.
+    Default: best-effort close of ``self.client`` -- the HTTP/SDK client
+    every API backend stores there -- via ``close_client``; a no-op for
+    agents without one. Backends holding more than a client (subprocess,
+    asyncio loop) override. Called once at window teardown
+    (``ChatWindow.closeEvent``); it must be safe to call even if the agent
+    never opened anything, and safe to call more than once.
     """
+    close_client(getattr(self, "client", None))
+
+  def _write_debug_request_record(self, label, count, tool_names):
+    """One-line redacted request record to ``self._debug_log``, if set.
+
+    Logs only the backend name, model, item count, and tool names --
+    never api keys, never message content (which can carry image bytes).
+    Shared by the API backends' ``_write_debug_request`` wrappers so the
+    redaction policy lives in one place; must never break a turn.
+    """
+    log = getattr(self, "_debug_log", None)
+    if log is None:
+      return
+    try:
+      log.write("[%s] request model=%s %s=%d tools=[%s]\n" % (
+        self.name, self.model, label, count, ",".join(tool_names)))
+      log.flush()
+    except Exception:
+      pass
 
 
 def close_client(client):

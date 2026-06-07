@@ -26,6 +26,28 @@ def _new_id(prefix=""):
   return prefix + uuid.uuid4().hex[:12]
 
 
+def _drain_stale_cancelled(q):
+  """Drop stale ``_Cancelled`` sentinels from ``q``, keeping real items.
+
+  A Stop clicked during a PREVIOUS turn's streaming pushes a sentinel
+  while nobody is parked on the (shared, long-lived) queue, so it is
+  never consumed; left in place it would cancel this turn's first park
+  (a tool approval or a ``phenix_ask_user_question``) that the user
+  never denied. Real items are preserved and re-queued in order -- a
+  synchronous caller may legitimately pre-seed one before ``run_turn``.
+  """
+  kept = []
+  while True:
+    try:
+      item = q.get_nowait()
+    except queue.Empty:
+      break
+    if not isinstance(item, _Cancelled):
+      kept.append(item)
+  for item in kept:
+    q.put(item)
+
+
 class AgentSession:
   """Pure-Python orchestrator for the chat tool loop.
 
@@ -124,38 +146,10 @@ class AgentSession:
         The final assistant message of the turn.
     """
     self.cancel = cancel
-    # Drop any stale _Cancelled sentinel left in this (shared, long-lived)
-    # approval queue by a Stop clicked during a PREVIOUS turn's streaming:
-    # the runner pushes the sentinel while nobody is parked on
-    # approval_queue.get(), so it is never consumed, and left in place it
-    # would be picked up by this turn's first tool approval and cancel a
-    # tool the user never denied. Real ToolApprovalResponses are preserved
-    # and re-queued in order — a synchronous caller may legitimately
-    # pre-seed an approval before run_turn.
-    kept = []
-    while True:
-      try:
-        item = self.approval_queue.get_nowait()
-      except queue.Empty:
-        break
-      if not isinstance(item, _Cancelled):
-        kept.append(item)
-    for item in kept:
-      self.approval_queue.put(item)
-    # Same stale-_Cancelled drain for the question queue: a Stop clicked
-    # during a previous turn's streaming flushes a sentinel here too, and
-    # left in place it would abort this turn's first phenix_ask_user_question
-    # the user never cancelled. Real pre-seeded answers are preserved.
-    kept_q = []
-    while True:
-      try:
-        item = self.question_queue.get_nowait()
-      except queue.Empty:
-        break
-      if not isinstance(item, _Cancelled):
-        kept_q.append(item)
-    for item in kept_q:
-      self.question_queue.put(item)
+    # Drop any stale _Cancelled sentinel a previous turn's Stop left in
+    # the shared queues (see _drain_stale_cancelled).
+    _drain_stale_cancelled(self.approval_queue)
+    _drain_stale_cancelled(self.question_queue)
     self.conv.append(user_message)
     # Reconcile the conversation meta to the model/backend actually running
     # this turn. A conversation continued under a different model/backend
@@ -403,8 +397,7 @@ class AgentSession:
     from qttbx.widgets.chat.agent.mcp_client import (
       McpToolResult, _mcp_item_to_block)
     if isinstance(result, McpToolResult):
-      return [_mcp_item_to_block(item, self.storage, self.conv.meta.id)
-              for item in result.content]
+      return [_mcp_item_to_block(item) for item in result.content]
     if isinstance(result, bytes):
       return [ContentBlock(type="text", data={
         "text": result.decode("utf-8", errors="replace")})]

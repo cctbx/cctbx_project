@@ -132,9 +132,6 @@ class ConversationView(QtWidgets.QScrollArea):
       self._in_progress = None
     self._approval_by_batch.clear()                # batches don't carry over
 
-  def in_progress_bubble(self):
-    return self._in_progress
-
   def append_text_delta_to_current(self, text):
     if self._in_progress is None:
       self.start_assistant_bubble()
@@ -218,12 +215,6 @@ class ConversationView(QtWidgets.QScrollArea):
 
   def _on_question_answered(self, request_id, answers):
     self.question_answered.emit(request_id, answers)
-
-  def question_cards(self):
-    return list(self._question_cards)
-
-  def question_card_count(self):
-    return len(self._question_cards)
 
   # ---- clear ---------------------------------------------------------------
 

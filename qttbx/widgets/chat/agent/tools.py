@@ -126,6 +126,34 @@ class ToolPolicy:
     """Remember ``allow`` for this server for the rest of the session."""
     self.per_server[server_name] = "allow"
 
+  @classmethod
+  def from_server_configs(cls, configs, default="ask", tool_to_source=None):
+    """Build a policy from per-server profile ``tool_policy`` dicts.
+
+    Each config carries ``name`` and a ``tool_policy`` mapping of tool
+    name -> decision, where the ``"*"`` key applies to the whole server.
+    Shared by the launcher (claude_code path) and ChatWindow (API-backend
+    path) so both derive identical policy from one profile.
+
+    Parameters
+    ----------
+    configs : iterable
+        Server config objects (``McpServerConfig`` or equivalent).
+    default : str, optional
+        Fallback decision; defaults to ``'ask'``.
+    tool_to_source : dict, optional
+        Forwarded to the constructor (resolves per-server entries).
+    """
+    per_tool, per_server = {}, {}
+    for cfg in (configs or []):
+      for tool_name, decision in (getattr(cfg, "tool_policy", {}) or {}).items():
+        if tool_name == "*":
+          per_server[getattr(cfg, "name", "")] = decision
+        else:
+          per_tool[tool_name] = decision
+    return cls(default=default, per_tool=per_tool, per_server=per_server,
+               tool_to_source=tool_to_source)
+
 
 # ---- registry --------------------------------------------------------------
 
@@ -262,6 +290,32 @@ class ToolRegistry:
 
 # ---- builtin: phenix_ask_user_question -------------------------------------
 
+# Input schema for the phenix_ask_user_question tool. Module-level so the
+# Claude Code backend (which registers its own SDK copy of the tool) imports
+# the SAME schema: the GUI QuestionCard renders these fields, so the two
+# backends' ask-user contracts must not drift.
+ASK_USER_QUESTION_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "questions": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {"type": "string"},
+          "header": {"type": "string"},
+          "multiSelect": {"type": "boolean"},
+          "options": {
+            "type": "array", "minItems": 2,
+            "items": {
+              "type": "object",
+              "properties": {"label": {"type": "string"},
+                             "description": {"type": "string"}},
+              "required": ["label"]}}},
+        "required": ["question", "options"]}}},
+  "required": ["questions"]}
+
+
 def register_ask_user_question(registry):
   """Register the ``phenix_ask_user_question`` builtin on ``registry``.
 
@@ -288,27 +342,6 @@ def register_ask_user_question(registry):
     "destructive choice. Returns the user's selections as JSON keyed by "
     "question text: single-select -> a string (chosen label or free-form "
     "'Other' text); multi-select -> a list of strings.")
-  input_schema = {
-    "type": "object",
-    "properties": {
-      "questions": {
-        "type": "array", "minItems": 1,
-        "items": {
-          "type": "object",
-          "properties": {
-            "question": {"type": "string"},
-            "header": {"type": "string"},
-            "multiSelect": {"type": "boolean"},
-            "options": {
-              "type": "array", "minItems": 2,
-              "items": {
-                "type": "object",
-                "properties": {"label": {"type": "string"},
-                               "description": {"type": "string"}},
-                "required": ["label"]}}},
-          "required": ["question", "options"]}}},
-    "required": ["questions"]}
-
   def _handler(name, input, cancel, session, tool_use_id):
     request_id = "q_" + uuid.uuid4().hex[:12]
     questions = (input or {}).get("questions", [])
@@ -320,5 +353,5 @@ def register_ask_user_question(registry):
     return json.dumps(answers, indent=2, default=str)
 
   spec = ToolSpec(name="phenix_ask_user_question", description=description,
-                  input_schema=input_schema)
+                  input_schema=ASK_USER_QUESTION_SCHEMA)
   registry.register_builtin(spec=spec, handler=_handler, risk="read")

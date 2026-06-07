@@ -66,9 +66,6 @@ class ArtifactPanel(QtWidgets.QWidget):
 
   # ---- data ----------------------------------------------------------------
 
-  def set_storage(self, storage):
-    self._storage = storage
-
   def add_artifact(self, artifact):
     """Append an artifact, advancing to it unless the user navigated away.
 

@@ -22,10 +22,31 @@ _REDACT_PATTERNS = (
 )
 
 
+def _log_path(chat_root, prefix):
+  """Return a timestamped ``<prefix>-*.log`` path under ``chat_root/logs``."""
+  ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
+  return chat_root / "logs" / ("%s-%s.log" % (prefix, ts))
+
+
+def _open_log(chat_root, prefix):
+  """Open a redacting ``<prefix>-*.log``, creating the dir, pruning old logs.
+
+  Shared body of :func:`open_session_log` / :func:`open_debug_log`; the two
+  log families differ only in filename prefix and rotate independently
+  (same ``LOG_KEEP``, separate globs). The caller owns the returned handle.
+  """
+  log_dir = chat_root / "logs"
+  log_dir.mkdir(parents=True, exist_ok=True)
+  # Prune before creating today's log so LOG_KEEP counts only pre-existing
+  # files; the new log we're about to open is excluded from the count.
+  _prune_old_logs(log_dir, "%s-*.log" % prefix)
+  path = _log_path(chat_root, prefix)
+  return _RedactingLog(open(path, "w", buffering=1)), path
+
+
 def session_log_path(chat_root):
   """Return a timestamped session log path under ``chat_root/logs``."""
-  ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
-  return chat_root / "logs" / ("chat-%s.log" % ts)
+  return _log_path(chat_root, "chat")
 
 
 def open_session_log(chat_root):
@@ -43,19 +64,12 @@ def open_session_log(chat_root):
   tuple of (_RedactingLog, pathlib.Path)
       The open, line-buffered, redacting log handle and its path.
   """
-  log_dir = chat_root / "logs"
-  log_dir.mkdir(parents=True, exist_ok=True)
-  # Prune before creating today's log so LOG_KEEP counts only pre-existing
-  # files; the new log we're about to open is excluded from the count.
-  _prune_old_logs(log_dir, "chat-*.log")
-  path = session_log_path(chat_root)
-  return _RedactingLog(open(path, "w", buffering=1)), path
+  return _open_log(chat_root, "chat")
 
 
 def debug_log_path(chat_root):
   """Return a timestamped debug log path under ``chat_root/logs``."""
-  ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
-  return chat_root / "logs" / ("debug-%s.log" % ts)
+  return _log_path(chat_root, "debug")
 
 
 def open_debug_log(chat_root):
@@ -81,11 +95,7 @@ def open_debug_log(chat_root):
   tuple of (_RedactingLog, pathlib.Path)
       The open, line-buffered, redacting log handle and its path.
   """
-  log_dir = chat_root / "logs"
-  log_dir.mkdir(parents=True, exist_ok=True)
-  _prune_old_logs(log_dir, "debug-*.log")
-  path = debug_log_path(chat_root)
-  return _RedactingLog(open(path, "w", buffering=1)), path
+  return _open_log(chat_root, "debug")
 
 
 def redact_secrets(text):

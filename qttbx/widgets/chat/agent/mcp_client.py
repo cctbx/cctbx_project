@@ -99,7 +99,7 @@ def _derive_risk(raw):
   return "write"
 
 
-def _mcp_item_to_block(item, storage, conv_id):
+def _mcp_item_to_block(item):
   """Translate one MCP content item into a canonical ``ContentBlock``.
 
   Image bytes were already stored by
@@ -110,12 +110,6 @@ def _mcp_item_to_block(item, storage, conv_id):
   ----------
   item : McpToolItem
       The MCP content item to translate.
-  storage : object
-      Attachment store. Kept for symmetry with future paths that may need
-      to write at conversion time.
-  conv_id : str
-      Conversation id. Kept for symmetry with future paths that may need
-      to write at conversion time.
 
   Returns
   -------
