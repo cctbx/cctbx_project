@@ -40,7 +40,7 @@ master_phil_str = '''
 approach = *add remove optimize
   .type = choice
   .short_caption = Add (and optimize), remove, or optimize Hydrogens
-  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model
+  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model. Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision).
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
