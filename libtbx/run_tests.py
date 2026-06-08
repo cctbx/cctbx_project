@@ -6,6 +6,7 @@ import libtbx.load_env
 
 
 tst_list_base = [
+  "$D/tst_citation_encoding.py",
   "$D/metric_prefixes.py",
   "$D/tst_utils.py",
   "$D/tst_word_index_generator.py",
