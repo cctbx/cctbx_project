@@ -1346,6 +1346,10 @@ class StreamingSentinel(Thread):
           self.orchestrator.add_group(n)
         elif cmd == 'remove':
           self.orchestrator.remove_group(n)
+        elif cmd == 'display':
+          # Images-only window: suppress the strong/indexed time-series canvas so
+          # the display shows only the diffraction image.
+          self.orchestrator.spawn_display(extra_args=['display.show_spots=False'])
 
       # Poll orchestrator status
       try:
@@ -1746,6 +1750,7 @@ class MainWindow(wx.Frame):
     self.toolbar.SetToolShortHelp(self.tb_btn_streaming.Id, 'Stop streaming')
     self.run_window.streaming_tab.btn_add_node.Enable()
     self.run_window.streaming_tab.btn_remove_node.Enable()
+    self.run_window.streaming_tab.btn_display.Enable()
 
   def stop_streaming(self, block=True):
     # The sentinel owns the Orchestrator and calls shutdown() on its own thread when
@@ -1771,6 +1776,7 @@ class MainWindow(wx.Frame):
       self.toolbar.SetToolShortHelp(self.tb_btn_streaming.Id, 'Start streaming')
       self.run_window.streaming_tab.btn_add_node.Disable()
       self.run_window.streaming_tab.btn_remove_node.Disable()
+      self.run_window.streaming_tab.btn_display.Disable()
 
   def onTabChange(self, e):
     name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
@@ -4343,24 +4349,28 @@ class StreamingTab(BaseTab):
     self.main_sizer.Add(self.status_text, flag=wx.ALL, border=5)
 
     # Node controls row
-    node_sizer = wx.FlexGridSizer(1, 4, 0, 10)
+    node_sizer = wx.FlexGridSizer(1, 5, 0, 10)
     node_label = wx.StaticText(self, label='Nodes:')
     self.node_spin = wx.SpinCtrl(self, value='1', min=1, max=32, size=(60, -1))
     self.btn_add_node = wx.Button(self, label='Add Node(s)')
     self.btn_remove_node = wx.Button(self, label='Remove Node(s)')
+    self.btn_display = wx.Button(self, label='Open Display')
     node_sizer.Add(node_label, flag=wx.ALIGN_CENTER_VERTICAL)
     node_sizer.Add(self.node_spin, flag=wx.ALIGN_CENTER_VERTICAL)
     node_sizer.Add(self.btn_add_node, flag=wx.ALIGN_CENTER_VERTICAL)
     node_sizer.Add(self.btn_remove_node, flag=wx.ALIGN_CENTER_VERTICAL)
+    node_sizer.Add(self.btn_display, flag=wx.ALIGN_CENTER_VERTICAL)
     self.main_sizer.Add(node_sizer, flag=wx.ALL, border=5)
 
     # Buttons disabled until orchestrator is running
     self.btn_add_node.Disable()
     self.btn_remove_node.Disable()
+    self.btn_display.Disable()
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddNode, self.btn_add_node)
     self.Bind(wx.EVT_BUTTON, self.onRemoveNode, self.btn_remove_node)
+    self.Bind(wx.EVT_BUTTON, self.onDisplay, self.btn_display)
     self.Bind(EVT_STREAMING_UPDATE, self.onStreamingUpdate)
 
   def onAddNode(self, e):
@@ -4374,6 +4384,13 @@ class StreamingTab(BaseTab):
       return
     n = self.node_spin.GetValue()
     self.main.streaming_cmd_queue.put(('remove', n))
+
+  def onDisplay(self, e):
+    # Hand off to the sentinel thread, which owns the Orchestrator and launches an
+    # images-only display against the running ControlHub.
+    if self.main.streaming_sentinel is None:
+      return
+    self.main.streaming_cmd_queue.put(('display', None))
 
   def onStreamingUpdate(self, e):
     status = e.GetValue()
