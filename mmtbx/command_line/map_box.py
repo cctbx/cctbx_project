@@ -358,6 +358,7 @@ master_phil = libtbx.phil.parse("""
 
   wrapping = None
     .type = bool
+    .style = tribool
     .help = If wrapping is set to True, map wraps around at map boundaries.\
             Wrapping will default to True if the input map allows wrapping.,\
             and False if the input map does not allow wrapping.
@@ -547,8 +548,23 @@ def get_map_manager_objects(
 
   # Check and warn if wrapping is not compatible with map
   if ccp4_map and (ccp4_map.wrapping() == False) and (params.wrapping == True):
-    print("\nWarning: map does not support wrapping but wrapping was applied because wrapping was set to True.\n",
-       file = log)
+    wrapping_warning = (
+      "Warning: map does not support wrapping but wrapping "
+      "was applied because wrapping was set to True.")
+    print("\n%s\n" % wrapping_warning, file = log)
+    # Surface this warning live in the PHENIX GUI's run-tab "Warnings" panel.
+    # libtbx.call_back(message="warn", data=<str>) is dispatched by the GUI
+    # framework (RunPanel.warn / ProcessNotebook.warn) to a red warning
+    # banner; it is a harmless no-op when run from the command line.
+    # Wrapped so that a callback failure can never break the run.
+    # (The GUI Results panel cannot read this directly because the map_box
+    # GUI result object is an int; the Results panel instead reads this same
+    # warning back from the job .log -- see wxGUI2/Programs/MapBox.py.)
+    try:
+      from libtbx import call_back
+      call_back(message = "warn", data = wrapping_warning)
+    except Exception:
+      pass
 
   if mask_data and (not mask_as_map_manager):
     mask_as_map_manager = map_manager(map_data = mask_data.as_double(),
