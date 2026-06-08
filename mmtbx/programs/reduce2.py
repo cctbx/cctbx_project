@@ -37,10 +37,10 @@ import csv
 version = "2.15.0"
 
 master_phil_str = '''
-approach = *add remove
+approach = *add remove optimize
   .type = choice
-  .short_caption = Add or remove Hydrogens
-  .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+  .short_caption = Add (and optimize), remove, or optimize Hydrogens
+  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
@@ -1266,12 +1266,14 @@ NOTES:
     # about the original model for use by Kinemages.
     initialModel = self.model.deep_copy()
 
-    if self.params.approach == 'add':
-      # Add Hydrogens to the model
-      make_sub_header('Adding Hydrogens', out=self.logger)
-      startAdd = time.time()
-      self._AddHydrogens()
-      doneAdd = time.time()
+    if self.params.approach == 'add' or self.params.approach == 'optimize':
+
+      if self.params.approach == 'add':
+        # Add Hydrogens to the model
+        make_sub_header('Adding Hydrogens', out=self.logger)
+        startAdd = time.time()
+        self._AddHydrogens()
+        doneAdd = time.time()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
