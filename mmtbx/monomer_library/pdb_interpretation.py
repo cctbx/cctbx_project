@@ -2212,9 +2212,10 @@ class add_angle_proxies(object):
               origin_id=origin_id,
               ),
             replace_in_place=replace_in_place)
-          evaluate_registry_process_result(
-            proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
-            registry_process_result=registry_process_result)
+          if not replace_in_place:
+            evaluate_registry_process_result(
+              proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
+              registry_process_result=registry_process_result)
 
 class add_dihedral_proxies(object):
 
