@@ -2397,93 +2397,81 @@ def map_values_along_line_connecting_two_points(map_data, points_cart,
 
 class MapPeakLocator(object):
 
+  """
+  map_data: flex.double 3D array of the real space map.
+  unit_cell: cctbx.uctbx.unit_cell object.
+  is_periodic: bool, True for periodic maps, False for cryoEM.
+  threshold: float, cutoff for peak search. Defaults to None (returns all
+  peaks).
+
+  NOTE: THIS IS AI GENERATE CODE IN RESPONSE TO THE FOLLOWING PROMPT:
+
+  Write code that takes a real space map (flex array) and a point in space
+  (target point, Cartesian coordinates) and locates all map peaks within the
+  distance R from this target point. Needless to say, crystallographic map
+  can be in any unit cell box (orthogonal or not, any space group).
+
+  My map can be extra-huge (zillions of peaks) and I may have thousands of
+  target points. This means the implementation needs to be a class, where
+  the constructor does all the pre-calcs, and the member function takes
+  target point and returns peaks.
+
+  The map can be cryoEM map (no periodicity, no symmetry, no wrapping) or
+  crystallographic map (needs wrapping, has crystallographic symmetry).
+
+  For crystallographic map, I always pass full unit cell of map (not the
+  asymetric unit).
+
+  Target points can be close to the border which means symmetry/periodicity
+  needs to be taken care of if it is crystallography or the search volume
+  truncated at the border (cryoEM). Also, target points can be exactly on
+  the border or outside the border, both directions, including negative
+  coordinates. Target point can be an origin, [0,0,0] and this needs to work
+  for both kinds of maps.
+
+  I can tell upfront if the map is crystallographic or cryoEM (no need to
+  guess periodicity etc just make it a parameter).
+
+  I need this as robust and reliable as possible. So make sure you check
+  each and every line of the code you make, for both, bugs and performance.
+  """
+
   def __init__(self, map_data, unit_cell, is_periodic, threshold=None):
-    """
-    map_data: flex.double 3D array of the real space map.
-    unit_cell: cctbx.uctbx.unit_cell object.
-    is_periodic: bool, True for periodic maps, False for cryoEM.
-    threshold: float, cutoff for peak search. Defaults to None (returns all
-    peaks).
-
-    NOTE: THIS IS AI GENERATE CODE IN RESPONSE TO THE FOLLOWING PROMPT:
-
-    Write code that takes a real space map (flex array) and a point in space
-    (target point, Cartesian coordinates) and locates all map peaks within the
-    distance R from this target point. Needless to say, crystallographic map
-    can be in any unit cell box (orthogonal or not, any space group).
-
-    My map can be extra-huge (zillions of peaks) and I may have thousands of
-    target points. This means the implementation needs to be a class, where
-    the constructor does all the pre-calcs, and the member function takes
-    target point and returns peaks.
-
-    The map can be cryoEM map (no periodicity, no symmetry, no wrapping) or
-    crystallographic map (needs wrapping, has crystallographic symmetry).
-
-    For crystallographic map, I always pass full unit cell of map (not the
-    asymetric unit).
-
-    Target points can be close to the border which means symmetry/periodicity
-    needs to be taken care of if it is crystallography or the search volume
-    truncated at the border (cryoEM). Also, target points can be exactly on
-    the border or outside the border, both directions, including negative
-    coordinates. Target point can be an origin, [0,0,0] and this needs to work
-    for both kinds of maps.
-
-    I can tell upfront if the map is crystallographic or cryoEM (no need to
-    guess periodicity etc just make it a parameter).
-
-    I need this as robust and reliable as possible. So make sure you check
-    each and every line of the code you make, for both, bugs and performance.
-    """
     self.map_data = map_data
     self.unit_cell = unit_cell
     self.is_periodic = is_periodic
-    # Shift map to 0-based if necessary, to ensure peak_list parses
-    # coordinates correctly
     if not self.map_data.is_0_based():
       self.origin_grid = self.map_data.origin()
       self.map_data_0 = self.map_data.shift_origin()
     else:
       self.origin_grid = (0, 0, 0)
       self.map_data_0 = self.map_data
-    # Setup symmetry tags
+    # Setup symmetry tags (unconditionally P 1)
     self.space_group_info = sgtbx.space_group_info("P 1")
     self.tags = grid_tags(self.map_data_0.focus())
     self.tags.build(self.space_group_info.type(), use_space_group_symmetry)
-    # Extract peaks natively in C++
+    # Extract all viable peaks natively in C++ once
     self.peaks = peak_list(
-      data              = self.map_data_0,
-      tags              = self.tags.tag_array(),
-      peak_search_level = 1,
-      max_peaks         = 0, # find all peaks
-      peak_cutoff       = threshold,
-      interpolate       = True)
+      data=self.map_data_0,
+      tags=self.tags.tag_array(),
+      peak_search_level=1,
+      max_peaks=0,
+      peak_cutoff=threshold,
+      interpolate=True)
     self.peak_sites_frac_0 = self.peaks.sites()
     self.peak_heights = self.peaks.heights()
     n_peaks = self.peak_sites_frac_0.size()
-    # Add origin shift to fractional coordinates if map was shifted
     grid_all = self.map_data_0.all()
     self.origin_frac = (
       self.origin_grid[0] / grid_all[0],
       self.origin_grid[1] / grid_all[1],
       self.origin_grid[2] / grid_all[2])
-    # Explicit broadcast array constructor to ensure perfect type compatibility
     origin_frac_array = flex.vec3_double(n_peaks, self.origin_frac)
     self.peak_sites_frac = self.peak_sites_frac_0 + origin_frac_array
     # Convert directly to Cartesian space exactly once
     self.peak_sites_cart = self.unit_cell.orthogonalize(self.peak_sites_frac)
 
-  def get_peaks_within_radius(self, target_cart, R):
-    """
-    Locates all map peaks within distance R from the target point.
-    target_cart: tuple or list of 3 floats (x, y, z) in Cartesian coordinates.
-    R: float, search radius.
-
-    Returns:
-      nearby_peaks_cart: flex.vec3_double Cartesian coordinates of the peaks.
-      nearby_peaks_heights: flex.double heights of the corresponding peaks.
-    """
+  def get_peaks_within_radius(self, target_cart, R, threshold=None):
     target_cart = tuple(target_cart)
     R_sq = R * R
     nearby_peaks_cart = flex.vec3_double()
@@ -2492,34 +2480,28 @@ class MapPeakLocator(object):
     if n_peaks == 0: return nearby_peaks_cart, nearby_peaks_heights
     if not self.is_periodic:
       # CRYO-EM: Strict Euclidean distance check.
-      # Points outside the map are natively excluded as their distance to
-      # valid peaks exceeds R.
       target_array = flex.vec3_double(n_peaks, target_cart)
       diffs = self.peak_sites_cart - target_array
       dist_sq = diffs.dot()
+      # 1. Filter by distance
       sel = dist_sq <= R_sq
+      # 2. Filter dynamically by the target-specific threshold
+      if threshold is not None: sel &= (self.peak_heights >= threshold)
       nearby_peaks_cart = self.peak_sites_cart.select(sel)
       nearby_peaks_heights = self.peak_heights.select(sel)
     else:
       # CRYSTALLOGRAPHY: Periodic wrapping using unit cell boundaries
-      # Find min/max fractional coordinates of the search sphere boundaries
       frac_min, frac_max = self.unit_cell.box_frac_around_sites(
-        sites_cart = flex.vec3_double([target_cart]),
-        buffer     = R)
-      # Convert to integer lattice translation limits by unpacking
-      # individual coordinates
-      min_h = ifloor(frac_min[0])
-      max_h = iceil(frac_max[0])
-      min_k = ifloor(frac_min[1])
-      max_k = iceil(frac_max[1])
-      min_l = ifloor(frac_min[2])
-      max_l = iceil(frac_max[2])
+        sites_cart=flex.vec3_double([target_cart]), buffer=R)
+      min_h, min_k, min_l = \
+        ifloor(frac_min[0]), ifloor(frac_min[1]), ifloor(frac_min[2])
+      max_h, max_k, max_l = \
+        iceil(frac_max[0]), iceil(frac_max[1]), iceil(frac_max[2])
       for h in range(min_h, max_h + 1):
         for k in range(min_k, max_k + 1):
           for l in range(min_l, max_l + 1):
             T_frac = (float(h), float(k), float(l))
             T_cart = self.unit_cell.orthogonalize(T_frac)
-            # Shift target into the native "base" cell frame for distance check
             v_target_cart = (
               target_cart[0] - T_cart[0],
               target_cart[1] - T_cart[1],
@@ -2527,12 +2509,14 @@ class MapPeakLocator(object):
             v_target_array = flex.vec3_double(n_peaks, v_target_cart)
             diffs = self.peak_sites_cart - v_target_array
             dist_sq = diffs.dot()
+            # 1. Filter by distance
             sel = dist_sq <= R_sq
+            # 2. Filter dynamically by the target-specific threshold
+            if threshold is not None:
+              sel &= (self.peak_heights >= threshold)
             n_found = sel.count(True)
             if n_found > 0:
               selected_peaks_cart = self.peak_sites_cart.select(sel)
-              # Translate found peaks to their true spatial position near
-              # the target
               T_cart_array = flex.vec3_double(n_found, T_cart)
               shifted_peaks_cart = selected_peaks_cart + T_cart_array
               nearby_peaks_cart.extend(shifted_peaks_cart)

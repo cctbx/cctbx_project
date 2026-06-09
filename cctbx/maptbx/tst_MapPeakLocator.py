@@ -265,6 +265,88 @@ def call_test_13():
   # The periodic engine should translate the (0,0,0) peak to sit near the target
   assert approx_equal(sites_xtal[0], (10.0, 10.0, 10.0), eps=1e-2)
 
+def call_test_14():
+  print(inspect.currentframe().f_code.co_name)
+  # 1. Setup a standard 10x10x10 unit cell
+  uc = crystal.symmetry(
+    unit_cell=(10.0, 10.0, 10.0, 90.0, 90.0, 90.0),
+    space_group_symbol="P1").unit_cell()
+  # 2. Initialize map and place 3 peaks of varying heights
+  md = flex.double(flex.grid(10, 10, 10), 0)
+  md[(0, 0, 0)] = 100.0  # Big peak at the origin boundary
+  md[(5, 5, 5)] = 50.0   # Medium peak right in the center
+  md[(9, 9, 9)] = 20.0   # Small peak at the far boundary
+  # 3. Instantiate "Base" locators caching ALL peaks (global threshold = 0.0)
+  loc_cryo_base = maptbx.MapPeakLocator(md, uc, is_periodic=False,threshold=0.0)
+  loc_xtal_base = maptbx.MapPeakLocator(md, uc, is_periodic=True, threshold=0.0)
+  # 4. Instantiate "Strict" locators caching ONLY the biggest peak (global
+  # threshold = 80.0)
+  loc_cryo_strict=maptbx.MapPeakLocator(md, uc, is_periodic=False, threshold=80)
+  loc_xtal_strict=maptbx.MapPeakLocator(md, uc, is_periodic=True,  threshold=80)
+  # =========================================================================
+  # TEST A: GLOBAL VS. LOCAL EQUIVALENCE
+  # =========================================================================
+  target_center = [5.0, 5.0, 5.0]
+  R_large = 20.0 # Large enough to encompass the entire map
+  # Query base locator with dynamic threshold = 80.0
+  sites_local, heights_local = loc_cryo_base.get_peaks_within_radius(
+      target_center, R_large, threshold=80.0)
+  # Query strict locator with NO dynamic threshold
+  sites_global, heights_global = loc_cryo_strict.get_peaks_within_radius(
+      target_center, R_large, threshold=None)
+  assert sites_local.size() == 1, \
+    "Dynamic threshold failed to drop the smaller peaks!"
+  assert sites_global.size() == 1, "Global constructor threshold failed!"
+  assert approx_equal(sites_local, sites_global), \
+    "Sites differ between local and global filtering!"
+  assert approx_equal(heights_local, heights_global), \
+    "Heights differ between local and global filtering!"
+  # =========================================================================
+  # TEST B: MULTI-QUERY DYNAMIC FILTERING ON THE SAME CACHE
+  # =========================================================================
+  # Query the exact same `loc_cryo_base` three times with different criteria
+  # Query 1: threshold = 10.0 -> Should find all 3 peaks
+  s1, h1 = loc_cryo_base.get_peaks_within_radius(
+    target_center, R_large, threshold=10.0)
+  assert s1.size() == 3, "Failed to find all 3 peaks with low threshold."
+  # Query 2: threshold = 40.0 -> Should find 2 peaks (100.0 and 50.0)
+  s2, h2 = loc_cryo_base.get_peaks_within_radius(target_center, R_large,
+    threshold=40.0)
+  assert s2.size() == 2, "Failed to filter out the small peak."
+  # Query 3: threshold = 80.0 -> Should find 1 peak (100.0)
+  s3, h3 = loc_cryo_base.get_peaks_within_radius(target_center, R_large,
+    threshold=80.0)
+  assert s3.size() == 1, "Failed to filter out the medium peak."
+  # =========================================================================
+  # TEST C: DISTANCE + THRESHOLD DUAL BOUNDARY TRAP
+  # =========================================================================
+  # Target the far corner. We want a peak >= 80.0, but only within R=2.0.
+  # The only peak >= 80.0 is at (0,0,0).
+  target_corner = [9.9, 9.9, 9.9]
+  R_small = 2.0
+  # 1. Periodic (Crystallographic): Wrapped distance is ~0.17 A (< 2.0).
+  # It meets the distance criteria AND the threshold criteria. MUST be found.
+  sites_xtal, heights_xtal = loc_xtal_base.get_peaks_within_radius(
+      target_corner, R_small, threshold=80.0)
+  assert sites_xtal.size() == 1, \
+    "Periodic locator missed the thresholded, wrapped peak!"
+  assert heights_xtal[0] == 100.0
+  # 2. Non-periodic (Cryo-EM): Cartesian distance is ~17.15 A (> 2.0).
+  # It meets the threshold criteria, but FAILS the distance criteria.
+  # MUST NOT be found.
+  sites_cryo, heights_cryo = loc_cryo_base.get_peaks_within_radius(
+      target_corner, R_small, threshold=80.0)
+  assert sites_cryo.size() == 0, \
+    "Cryo-EM locator ignored distance and found an aliased ghost peak!"
+  # 3. Final sanity check: Can the Non-periodic locator still find the small
+  # local peak?
+  # Distance to (9,9,9) is ~1.55 A (< 2.0). Threshold=10 allows the 20.0 height
+  #peak.
+  sites_cryo_small, heights_cryo_small = loc_cryo_base.get_peaks_within_radius(
+      target_corner, R_small, threshold=10.0)
+  assert sites_cryo_small.size() == 1, "Cryo-EM locator missed the genuine local peak!"
+  assert heights_cryo_small[0] == 20.0
+
 if(__name__ == "__main__"):
   call_test_01()
   call_test_02()
@@ -279,3 +361,4 @@ if(__name__ == "__main__"):
   call_test_11()
   call_test_12()
   call_test_13()
+  call_test_14()
