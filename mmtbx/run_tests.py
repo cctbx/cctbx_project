@@ -175,6 +175,7 @@ general_tests = [
   "$D/hydrogens/tst_add_hydrogen_11.py",
   "$D/hydrogens/tst_add_hydrogen_12.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
+  "$D/hydrogens/tst_water_protonation.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_const_dihedral.py",
