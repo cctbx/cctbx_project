@@ -271,6 +271,7 @@ if(__name__ == "__main__"):
   call_test_03()
   call_test_04()
   call_test_05()
+  call_test_06()
   call_test_07()
   call_test_08()
   call_test_09()
