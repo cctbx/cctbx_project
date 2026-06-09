@@ -22,6 +22,7 @@ QM region around two contrasting Fe sites:
 from __future__ import absolute_import, division, print_function
 
 import io
+from collections import defaultdict
 
 import iotbx.pdb
 import libtbx.phil
@@ -38,6 +39,7 @@ from mmtbx.geometry_restraints.endoexo.util import _canon_op
 from mmtbx.geometry_restraints.endoexo.capping import HydrogenCapper
 from mmtbx.geometry_restraints.endoexo.cutting import BondCutDetector
 from mmtbx.geometry_restraints.endoexo.graph import AtomGraphBuilder
+from mmtbx.geometry_restraints.endoexo.grow import QMRegionGrower
 
 
 # 8 A sphere around the Fe of 1BQ8 (29 residues, 154 atoms).  Slightly
@@ -627,6 +629,193 @@ def exercise_bond_cut_backbone():
   assert det.is_ca_c_bond(by_name["CA"], by_name["C"], {}) is False
 
 
+# Real 1RYO chain-A LYS 296 (heavy atoms + the CD/CG hydrogens).  CD and
+# NZ are 4.8 / 4.3 A from the Fe in the full structure; CE is 5.0 A out.
+# The CD/CG hydrogens give those carbons covalent degree 4 so the
+# geometric C-C heuristic (used by the fallback) accepts the CD-CG bond;
+# CD-CG is 1.52 A apart, inside the 1.42-1.68 A sp3 window.
+_LYS_296_PDB = """\
+CRYST1   44.092   57.252  135.988  90.00  90.00  90.00 P 21 21 21
+ATOM      1  N   LYS A 296      46.335  42.452  48.863  1.00  4.54           N
+ATOM      2  CA  LYS A 296      47.390  42.927  47.971  1.00  4.20           C
+ATOM      3  C   LYS A 296      48.088  41.772  47.253  1.00  4.42           C
+ATOM      4  O   LYS A 296      48.337  40.715  47.847  1.00  4.42           O
+ATOM      5  CB  LYS A 296      48.426  43.737  48.755  1.00  5.02           C
+ATOM      6  CG  LYS A 296      47.999  45.167  49.009  1.00  4.18           C
+ATOM      7  CD  LYS A 296      48.823  45.848  50.096  1.00  4.88           C
+ATOM      8  CE  LYS A 296      50.305  45.946  49.760  1.00  5.79           C
+ATOM      9  NZ  LYS A 296      50.995  46.848  50.737  1.00  7.00           N
+ATOM     10  HD2 LYS A 296      48.728  45.278  51.020  1.00  4.88           H
+ATOM     11  HD3 LYS A 296      48.447  46.860  50.242  1.00  4.88           H
+ATOM     12  HG2 LYS A 296      48.116  45.741  48.090  1.00  4.18           H
+ATOM     13  HG3 LYS A 296      46.955  45.175  49.324  1.00  4.18           H
+"""
+
+
+def exercise_preferred_cut_fallback():
+  """Reproduce the 1RYO Fe / LYS A 296 case: the radius search seeds CD
+  and NZ (4.8 / 4.3 A from the Fe) while CE sits just outside (5.0 A), so
+  the LYS preferred cut CD-CE ends up with both endpoints interior and can
+  no longer be made.
+
+  Baseline ``grow_by_depth`` then walks inward past CD into the backbone
+  (CG, CB, CA, N pulled in; C capped).  ``grow_region`` with
+  ``preferred_cut_fallback=True`` detects the consumed cut and re-cuts at
+  CD-CG with the geometric heuristic, trimming the region to just the
+  {CD, CE, NZ} tip with CG as the cap."""
+  pdb_in = iotbx.pdb.input(
+    source_info=None, lines=_LYS_296_PDB.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  atoms = model.get_hierarchy().atoms()
+  atoms.reset_i_seq()
+  iseq = {a.name.strip(): a.i_seq for a in atoms}
+  name_of = {a.i_seq: a.name.strip() for a in atoms}
+  elem_of = {a.i_seq: a.element.strip().upper() for a in atoms}
+
+  # Tagged adjacency must carry a real rt_mx on each edge (the BFS
+  # composes ops); the identity stands in for an intra-ASU bond.
+  identity = _canon_op(sgtbx.rt_mx())
+  adjacency = defaultdict(set)
+  def _bond(a, b):
+    adjacency[iseq[a]].add((iseq[b], identity))
+    adjacency[iseq[b]].add((iseq[a], identity))
+  for a, b in [("N", "CA"), ("CA", "C"), ("C", "O"), ("CA", "CB"),
+               ("CB", "CG"), ("CG", "CD"), ("CD", "CE"), ("CE", "NZ"),
+               ("CD", "HD2"), ("CD", "HD3"), ("CG", "HG2"), ("CG", "HG3")]:
+    _bond(a, b)
+
+  # CD and NZ are the atoms the radius search would seed.
+  seeds = {iseq["CD"], iseq["NZ"]}
+
+  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  grower = QMRegionGrower(det, log=io.StringIO())
+
+  def _split(visited, caps):
+    cap_iseqs = {c[0] for c in caps}
+    interior = {name_of[i] for (i, _op) in visited
+                if i not in cap_iseqs and elem_of[i] not in ("H", "D")}
+    return interior, {name_of[i] for i in cap_iseqs}
+
+  # Baseline: preferred cut consumed -> overgrowth into the backbone.
+  v0, c0 = grower.grow_by_depth(seeds, adjacency, model)
+  interior0, _caps0 = _split(v0, c0)
+  assert {"N", "CA", "CB", "CG"} <= interior0, (
+    f"baseline should pull the backbone in; interior={sorted(interior0)}")
+
+  # Fallback: re-cut at CD-CG, trimming everything inward of it.
+  v1, c1 = grower.grow_region(
+    seeds, adjacency, model, preferred_cut_fallback=True)
+  interior1, caps1 = _split(v1, c1)
+  assert interior1 == {"CD", "CE", "NZ"}, (
+    f"fallback interior drifted: expected {{CD, CE, NZ}}, got "
+    f"{sorted(interior1)}")
+  assert caps1 == {"CG"}, (
+    f"fallback cap drifted: expected {{CG}}, got {sorted(caps1)}")
+
+
+# Real 1RYO chain-A LEU 62 - ASP 63 dipeptide (peptide bond LEU62 C - ASP63
+# N).  In the full structure ASP 63 coordinates the Fe (it is radius-seeded)
+# while LEU 62 is >6 A away -- it only enters the region as backbone
+# overgrowth off ASP 63.
+_LEU62_ASP63_PDB = """\
+CRYST1   44.092   57.252  135.988  90.00  90.00  90.00 P 21 21 21
+ATOM    867  N   LEU A  62      42.072  46.636  54.794  1.00  4.17           N
+ATOM    868  CA  LEU A  62      42.362  48.055  54.653  1.00  4.15           C
+ATOM    869  C   LEU A  62      43.824  48.433  54.764  1.00  4.47           C
+ATOM    870  O   LEU A  62      44.579  47.852  55.543  1.00  4.55           O
+ATOM    871  CB  LEU A  62      41.613  48.852  55.726  1.00  5.28           C
+ATOM    872  CG  LEU A  62      40.088  48.813  55.774  1.00  5.85           C
+ATOM    873  CD1 LEU A  62      39.590  49.620  56.961  1.00  6.23           C
+ATOM    874  CD2 LEU A  62      39.523  49.367  54.480  1.00  5.86           C
+ATOM    875  H   LEU A  62      42.395  46.287  55.502  1.00  4.17           H
+ATOM    876  HA  LEU A  62      42.047  48.357  53.787  1.00  4.15           H
+ATOM    877  HB2 LEU A  62      41.924  48.540  56.590  1.00  5.28           H
+ATOM    878  HB3 LEU A  62      41.862  49.783  55.624  1.00  5.28           H
+ATOM    886  N   ASP A  63      44.202  49.436  53.978  1.00  4.55           N
+ATOM    887  CA  ASP A  63      45.538  50.008  54.033  1.00  4.24           C
+ATOM    888  C   ASP A  63      45.620  50.561  55.466  1.00  4.40           C
+ATOM    889  O   ASP A  63      44.602  50.957  56.042  1.00  4.34           O
+ATOM    890  CB  ASP A  63      45.644  51.143  53.015  1.00  4.42           C
+ATOM    891  CG  ASP A  63      46.806  52.071  53.293  1.00  4.13           C
+ATOM    892  OD1 ASP A  63      47.954  51.770  52.885  1.00  4.01           O
+ATOM    893  OD2 ASP A  63      46.556  53.112  53.936  1.00  4.67           O
+ATOM    895  HA  ASP A  63      46.214  49.346  53.894  1.00  4.24           H
+ATOM    896  HB2 ASP A  63      45.767  50.764  52.131  1.00  4.42           H
+ATOM    897  HB3 ASP A  63      44.829  51.668  53.041  1.00  4.42           H
+"""
+
+
+def exercise_overgrowth_geometric_cut():
+  """A residue with no seed (radius) atom is pure backbone overgrowth and,
+  under preferred_cut_fallback, defers to the geometric C-C heuristic.
+
+  ASP 63 is the radius-seeded ligand; LEU 62 enters only via the peptide
+  bond.  Baseline (preferred cuts) trims LEU at its preferred CB-CG site,
+  keeping CB.  With the overgrowth rule LEU is cut at the first sp3 C-C
+  bond instead -- CA-CB -- so CB becomes the cap and the rest of the
+  sidechain (CG, CD1, CD2) is dropped."""
+  pdb_in = iotbx.pdb.input(
+    source_info=None, lines=_LEU62_ASP63_PDB.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  atoms = model.get_hierarchy().atoms()
+  atoms.reset_i_seq()
+
+  by_res = {}
+  for a in atoms:
+    resseq = a.parent().parent().resseq.strip()
+    by_res.setdefault(resseq, {})[a.name.strip()] = a.i_seq
+  leu, asp = by_res["62"], by_res["63"]
+  name_of = {a.i_seq: a.name.strip() for a in atoms}
+  resseq_of = {a.i_seq: a.parent().parent().resseq.strip() for a in atoms}
+  elem_of = {a.i_seq: a.element.strip().upper() for a in atoms}
+
+  identity = _canon_op(sgtbx.rt_mx())
+  adjacency = defaultdict(set)
+  def _bond(i, j):
+    adjacency[i].add((j, identity))
+    adjacency[j].add((i, identity))
+  for a, b in [("N", "CA"), ("CA", "C"), ("C", "O"), ("CA", "CB"),
+               ("CB", "CG"), ("CG", "CD1"), ("CG", "CD2"), ("N", "H"),
+               ("CA", "HA"), ("CB", "HB2"), ("CB", "HB3")]:
+    _bond(leu[a], leu[b])
+  for a, b in [("N", "CA"), ("CA", "C"), ("C", "O"), ("CA", "CB"),
+               ("CB", "CG"), ("CG", "OD1"), ("CG", "OD2"),
+               ("CA", "HA"), ("CB", "HB2"), ("CB", "HB3")]:
+    _bond(asp[a], asp[b])
+  _bond(leu["C"], asp["N"])  # peptide bond
+
+  # ASP 63 is the radius-seeded ligand; LEU 62 carries no seed atom.
+  seeds = set(asp.values())
+
+  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  grower = QMRegionGrower(det, log=io.StringIO())
+
+  def _leu_atoms(visited, caps):
+    cap_iseqs = {c[0] for c in caps}
+    present = {name_of[i] for (i, _o) in visited if resseq_of[i] == "62"}
+    caps_leu = {name_of[i] for i in cap_iseqs if resseq_of[i] == "62"}
+    interior = {n for n in present
+                if n not in caps_leu and elem_of[leu[n]] not in ("H", "D")}
+    return interior, caps_leu, present
+
+  # Baseline: LEU keeps CB and caps CG (its preferred CB-CG cut).
+  v0, c0 = grower.grow_by_depth(seeds, adjacency, model)
+  interior0, caps0, _present0 = _leu_atoms(v0, c0)
+  assert "CB" in interior0 and "CG" in caps0, (
+    f"baseline LEU should cut at CB-CG; interior={sorted(interior0)} "
+    f"caps={sorted(caps0)}")
+
+  # Overgrowth rule: LEU defers to the geometric heuristic and cuts CA-CB.
+  v1, c1 = grower.grow_region(
+    seeds, adjacency, model, preferred_cut_fallback=True)
+  interior1, caps1, present1 = _leu_atoms(v1, c1)
+  assert "CB" in caps1, (
+    f"overgrowth LEU should cap CB (CA-CB cut); caps={sorted(caps1)}")
+  assert not ({"CG", "CD1", "CD2"} & present1), (
+    f"overgrowth LEU sidechain beyond CB should be dropped; "
+    f"present={sorted(present1)}")
+
+
 class _SimpleProxy(object):
   def __init__(self, i, j):
     self.i_seqs = (i, j)
@@ -681,6 +870,8 @@ def run():
   exercise_bond_cut_preferred()
   exercise_bond_cut_heuristic()
   exercise_bond_cut_backbone()
+  exercise_preferred_cut_fallback()
+  exercise_overgrowth_geometric_cut()
   exercise_build_adjacency()
   print(format_cpu_times())
   print("OK")
