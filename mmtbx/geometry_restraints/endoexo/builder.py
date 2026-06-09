@@ -113,6 +113,14 @@ class QMRegionBuilder(object):
     self.model_name = model_name
     self.default_output_filename = default_output_filename
 
+    if self.params.preferred_cut_fallback and not self.params.use_preferred_cuts:
+      print(
+        'Note: preferred_cut_fallback=True has no effect because '
+        'use_preferred_cuts=False (the geometric heuristic already applies '
+        'to every bond).',
+        file=self.logger,
+      )
+
     model.process(
       pdb_interpretation_params=model.get_current_pdb_interpretation_params(),
       make_restraints=True,
@@ -351,8 +359,10 @@ class QMRegionBuilder(object):
         ``seed_iseqs``, ``cap_iseqs``, ``selection_string``.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
-    visited_nodes, cap_nodes = self._region_grower.grow_by_depth(
-      qm_atoms, adjacency, model, max_depth=self.params.max_depth
+    visited_nodes, cap_nodes = self._region_grower.grow_region(
+      qm_atoms, adjacency, model, max_depth=self.params.max_depth,
+      preferred_cut_fallback=(
+        self.params.use_preferred_cuts and self.params.preferred_cut_fallback),
     )
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
