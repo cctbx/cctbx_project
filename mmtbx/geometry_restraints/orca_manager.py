@@ -123,9 +123,11 @@ class orca_manager(base_qm_manager.base_qm_manager):
         rc.append((float(tmp[1]), float(tmp[2]), float(tmp[3])))
     return rc
 
-  def get_cmd(self):
+  def get_cmd(self, env='PHENIX_ORCA'):
+    if not os.environ.get(env, False):
+      raise Sorry(f'Shell Environment Variable "{env}" not set to point to Orca exe')
     cmd = '%s orca_%s.in' % (
-      os.environ['PHENIX_ORCA'],
+      os.environ[env],
       self.preamble,
       )
     return cmd
@@ -148,22 +150,24 @@ class orca_manager(base_qm_manager.base_qm_manager):
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
 
 end
+%maxcore 2048
 '''
     addiotnal_options=''
     ptr=1
     if gradients_only:
       ptr=2
-    outl = '%s\n! %s %s %s %s %s\n\n' % (standard_options,
+    outl = '%s\n! %s %s %s %s %s\n%s\n' % (standard_options,
                                        self.method,
                                        self.basis_set,
                                        self.solvent_model,
                                        ['Opt', 'LooseOpt', 'EnGrad'][ptr],
                                        addiotnal_options,
+                                       '',
                                        )
     return outl
 
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
+    outl = '* xyz %s %s\n' % (self.get_charge(), self.get_multiplicity())
     for i, atom in enumerate(self.atoms):
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,
@@ -244,7 +248,7 @@ end
           name, ext = os.path.splitext(filename)
           if ext in most_keepers: continue
         if verbose: print('  removing',filename)
-        os.remove(filename)
+        # os.remove(filename)
 
   def view(self, cmd, ext='.xyz'):
     # /Applications/Avogadro.app/Contents/MacOS/Avogadro

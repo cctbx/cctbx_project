@@ -115,7 +115,7 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * `libtbx.find_clutter` primarily checks for a few common errors:
 
-    * No `from __future__ import division`. Use `libtbx.add_from_future_import_division` to fix. Important: always use the `//` operator to indicate integer division; the `/` operator is exclusively for floating point division.
+    * Integer vs. floating-point division: always use the `//` operator to indicate integer division; the `/` operator is exclusively for floating point division.
 
     * Tabs or trailing whitespace: use `libtbx.clean_clutter` to fix.
 

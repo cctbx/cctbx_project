@@ -25,7 +25,7 @@ from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 import scitbx.math
-from cctbx.maptbx.bcr import bcr
+from libtbx.math_utils import ifloor, iceil
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1597,6 +1597,7 @@ Fourier image of specified resolution, etc.
                  kpres = 1,
                  kprot = 112,
                  ):
+    from cctbx.maptbx.bcr import bcr
     b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
 
     im = self.image(
@@ -2393,3 +2394,131 @@ def map_values_along_line_connecting_two_points(map_data, points_cart,
         point_max = p[:]
     vals.append(mv)
   return group_args(dist = dist, vals = vals, point_max = point_max)
+
+class MapPeakLocator(object):
+
+  """
+  map_data: flex.double 3D array of the real space map.
+  unit_cell: cctbx.uctbx.unit_cell object.
+  is_periodic: bool, True for periodic maps, False for cryoEM.
+  threshold: float, cutoff for peak search. Defaults to None (returns all
+  peaks).
+
+  NOTE: THIS IS AI GENERATE CODE IN RESPONSE TO THE FOLLOWING PROMPT:
+
+  Write code that takes a real space map (flex array) and a point in space
+  (target point, Cartesian coordinates) and locates all map peaks within the
+  distance R from this target point. Needless to say, crystallographic map
+  can be in any unit cell box (orthogonal or not, any space group).
+
+  My map can be extra-huge (zillions of peaks) and I may have thousands of
+  target points. This means the implementation needs to be a class, where
+  the constructor does all the pre-calcs, and the member function takes
+  target point and returns peaks.
+
+  The map can be cryoEM map (no periodicity, no symmetry, no wrapping) or
+  crystallographic map (needs wrapping, has crystallographic symmetry).
+
+  For crystallographic map, I always pass full unit cell of map (not the
+  asymetric unit).
+
+  Target points can be close to the border which means symmetry/periodicity
+  needs to be taken care of if it is crystallography or the search volume
+  truncated at the border (cryoEM). Also, target points can be exactly on
+  the border or outside the border, both directions, including negative
+  coordinates. Target point can be an origin, [0,0,0] and this needs to work
+  for both kinds of maps.
+
+  I can tell upfront if the map is crystallographic or cryoEM (no need to
+  guess periodicity etc just make it a parameter).
+
+  I need this as robust and reliable as possible. So make sure you check
+  each and every line of the code you make, for both, bugs and performance.
+  """
+
+  def __init__(self, map_data, unit_cell, is_periodic, threshold=None):
+    self.map_data = map_data
+    self.unit_cell = unit_cell
+    self.is_periodic = is_periodic
+    if not self.map_data.is_0_based():
+      self.origin_grid = self.map_data.origin()
+      self.map_data_0 = self.map_data.shift_origin()
+    else:
+      self.origin_grid = (0, 0, 0)
+      self.map_data_0 = self.map_data
+    # Setup symmetry tags (unconditionally P 1)
+    self.space_group_info = sgtbx.space_group_info("P 1")
+    self.tags = grid_tags(self.map_data_0.focus())
+    self.tags.build(self.space_group_info.type(), use_space_group_symmetry)
+    # Extract all viable peaks natively in C++ once
+    self.peaks = peak_list(
+      data=self.map_data_0,
+      tags=self.tags.tag_array(),
+      peak_search_level=1,
+      max_peaks=0,
+      peak_cutoff=threshold,
+      interpolate=True)
+    self.peak_sites_frac_0 = self.peaks.sites()
+    self.peak_heights = self.peaks.heights()
+    n_peaks = self.peak_sites_frac_0.size()
+    grid_all = self.map_data_0.all()
+    self.origin_frac = (
+      self.origin_grid[0] / grid_all[0],
+      self.origin_grid[1] / grid_all[1],
+      self.origin_grid[2] / grid_all[2])
+    origin_frac_array = flex.vec3_double(n_peaks, self.origin_frac)
+    self.peak_sites_frac = self.peak_sites_frac_0 + origin_frac_array
+    # Convert directly to Cartesian space exactly once
+    self.peak_sites_cart = self.unit_cell.orthogonalize(self.peak_sites_frac)
+
+  def get_peaks_within_radius(self, target_cart, R, threshold=None):
+    target_cart = tuple(target_cart)
+    R_sq = R * R
+    nearby_peaks_cart = flex.vec3_double()
+    nearby_peaks_heights = flex.double()
+    n_peaks = self.peak_sites_cart.size()
+    if n_peaks == 0: return nearby_peaks_cart, nearby_peaks_heights
+    if not self.is_periodic:
+      # CRYO-EM: Strict Euclidean distance check.
+      target_array = flex.vec3_double(n_peaks, target_cart)
+      diffs = self.peak_sites_cart - target_array
+      dist_sq = diffs.dot()
+      # 1. Filter by distance
+      sel = dist_sq <= R_sq
+      # 2. Filter dynamically by the target-specific threshold
+      if threshold is not None: sel &= (self.peak_heights >= threshold)
+      nearby_peaks_cart = self.peak_sites_cart.select(sel)
+      nearby_peaks_heights = self.peak_heights.select(sel)
+    else:
+      # CRYSTALLOGRAPHY: Periodic wrapping using unit cell boundaries
+      frac_min, frac_max = self.unit_cell.box_frac_around_sites(
+        sites_cart=flex.vec3_double([target_cart]), buffer=R)
+      min_h, min_k, min_l = \
+        ifloor(frac_min[0]), ifloor(frac_min[1]), ifloor(frac_min[2])
+      max_h, max_k, max_l = \
+        iceil(frac_max[0]), iceil(frac_max[1]), iceil(frac_max[2])
+      for h in range(min_h, max_h + 1):
+        for k in range(min_k, max_k + 1):
+          for l in range(min_l, max_l + 1):
+            T_frac = (float(h), float(k), float(l))
+            T_cart = self.unit_cell.orthogonalize(T_frac)
+            v_target_cart = (
+              target_cart[0] - T_cart[0],
+              target_cart[1] - T_cart[1],
+              target_cart[2] - T_cart[2])
+            v_target_array = flex.vec3_double(n_peaks, v_target_cart)
+            diffs = self.peak_sites_cart - v_target_array
+            dist_sq = diffs.dot()
+            # 1. Filter by distance
+            sel = dist_sq <= R_sq
+            # 2. Filter dynamically by the target-specific threshold
+            if threshold is not None:
+              sel &= (self.peak_heights >= threshold)
+            n_found = sel.count(True)
+            if n_found > 0:
+              selected_peaks_cart = self.peak_sites_cart.select(sel)
+              T_cart_array = flex.vec3_double(n_found, T_cart)
+              shifted_peaks_cart = selected_peaks_cart + T_cart_array
+              nearby_peaks_cart.extend(shifted_peaks_cart)
+              nearby_peaks_heights.extend(self.peak_heights.select(sel))
+    return nearby_peaks_cart, nearby_peaks_heights

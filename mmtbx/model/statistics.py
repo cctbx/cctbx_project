@@ -426,19 +426,23 @@ class geometry(object):
     if include_rmsd_details:
       from cctbx.geometry_restraints.linking_class import linking_class
       origin_ids = linking_class()
-      result += '%sDetails of bonding type rmsd' % (prefix)
+      result += '%s\n%s\n%sDetails of bonding type rmsd/Z' % (prefix, prefix, prefix)
       for key, i in origin_ids.items():
         bond_rc=self.bond(origin_id=-i)
         angle_rc=self.angle(origin_id=-i)
+        bond_z_rc=self.bond(origin_id=-i, return_rmsZ=True)
+        angle_z_rc=self.angle(origin_id=-i, return_rmsZ=True)
         if bond_rc.n:
-          result += '\n%s  %-20s : bond   %12.5f (%5d)' % (prefix,
+          result += '\n%s  %-20s : bond   %12.5f / %5.2f (%5d)' % (prefix,
                                                            key,
                                                            bond_rc.mean,
+                                                           bond_z_rc.mean,
                                                            bond_rc.n)
         if angle_rc.n:
-          result += '\n%s  %-20s : angle  %12.5f (%5d)' % (prefix,
+          result += '\n%s  %-20s : angle  %12.5f / %5.2f (%5d)' % (prefix,
                                                            key,
                                                            angle_rc.mean,
+                                                           angle_z_rc.mean,
                                                            angle_rc.n)
     #
     if( uppercase ):

@@ -256,7 +256,23 @@ predict_and_build_output:
     - "*PredictAndBuild*overall_best*.pdb"
   excludes:
     - "*_predicted_model*"  # stop_after_predict outputs are predictions, not built models
+    - "*_final_refine_*"    # Bug C fix: internal autobuild refinement outputs inside p&b
+                            # (e.g. overall_best_final_refine_001.pdb) are multi-model
+                            # intermediates — never pass directly to phenix.refine.
   notes: "Output from phenix.predict_and_build - fully built model from prediction workflow"
+
+predict_build_refine_internal:
+  description: "Internal refinement outputs from predict_and_build autobuild pipeline"
+  parent_category: intermediate
+  extensions: [".pdb"]
+  patterns:
+    - "*overall_best*final_refine*.pdb"
+    - "*overall_best*refine_[0-9][0-9][0-9]*.pdb"
+  notes: "Bug C fix: predict_and_build copies its internal autobuild refinement outputs
+    (e.g. overall_best_final_refine_001.pdb) to the top-level working directory.
+    These are multi-model PDBs and must never be used as phenix.refine input.
+    By routing them to intermediate they are stripped from the model category
+    by the post-processing step in _categorize_files_yaml."
 
 refined:
   description: "X-ray refined models"
@@ -269,6 +285,10 @@ refined:
     - "*real_space*"
     - "*rsr*"
     - "*predict*"
+    - "*overall_best*"  # predict_and_build / autobuild internal outputs.
+                        # Basename matching: *PredictAndBuild* would not match
+                        # overall_best_final_refine_001.pdb, but *overall_best*
+                        # does. Standalone phenix.refine never uses this prefix.
     - "*EDITED*"      # Edited intermediates
     - "*reference*"   # Reference models
     - "*TEMP*"        # Temporary files

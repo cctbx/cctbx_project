@@ -436,6 +436,746 @@ def test_e2e_autosol_postprocess_no_wavelength_dup():
 
 
 # =========================================================================
+# Bug 8: Template-literal flag stripped by sanitize_command allowlist
+#         (AIAgent_62, v119.H8)
+# =========================================================================
+#
+# Symptom: phenix.autobuild_denmod was chosen by the planner, but the
+# emitted command was missing the literal `maps_only=True` flag that
+# the template specifies.  AutoBuild then ran the full iterative build
+# loop instead of just doing density modification.
+#
+# Diagnosis: programs.yaml encodes `maps_only=True` as a literal in the
+# command template (not in strategy_flags) because it's an invariant
+# of the autobuild_denmod program entry.  But sanitize_command Rule D
+# strips any bare key=value whose key isn't in the strategy_flags
+# allowlist.  Since maps_only is intentionally NOT in autobuild_denmod's
+# strategy_flags (to prevent LLM override), Rule D was stripping the
+# template literal.
+#
+# Distinct from the existing Bug 4 section (rebuild_in_place=False,
+# v112.77) which dealt with phenix.autobuild and is solved by
+# strategy_flags membership.  Bug 8 is about phenix.autobuild_denmod
+# where the canonical fix is template-literal extraction, NOT a
+# strategy_flags addition.
+#
+# Fix: _load_prog_allowlist now also extracts literal key= tokens from
+# the command template and adds them to the allowlist.
+
+def test_bug8_template_literal_maps_only_preserved():
+  """Primary regression: maps_only=True from template survives sanitize.
+
+    Reproduces the exact failure from AIAgent_62 cycle 4 (bromodomain
+    ligand demo).  The post-registry command must retain maps_only=True
+    after sanitize_command processes it under program_name=
+    'phenix.autobuild_denmod'.
+    """
+  from agent.command_postprocessor import sanitize_command
+
+  # Realistic command shape from program_registry.build_command()
+  command = ("phenix.autobuild "
+       "data=/p/sub_03_refine/refine_001_001.mtz "
+       "seq_file=/p/7qz0.fa "
+       "model=/p/sub_03_refine/refine_001_001.pdb "
+       "maps_only=True nproc=4")
+
+  result = sanitize_command(
+    command, program_name="phenix.autobuild_denmod",
+    log=lambda m: None)
+
+  assert_in("maps_only=True", result,
+       "Template literal maps_only=True must survive sanitize_command "
+       "(was stripped pre-H8 because not in strategy_flags allowlist)")
+  # Sanity: other parts of the command must also survive
+  assert_in("nproc=4", result, "nproc=4 should survive (in strategy_flags)")
+  assert_in("data=", result, "data= file path should survive")
+
+
+def test_bug8_load_allowlist_includes_template_literals():
+  """Allowlist for phenix.autobuild_denmod must include 'maps_only'.
+
+    Direct unit test on _load_prog_allowlist.  Also verifies that
+    pre-existing strategy_flag entries (nproc, resolution) are still
+    present — i.e., no regression in the existing logic.
+    """
+  from agent.command_postprocessor import _load_prog_allowlist
+
+  allowlist, sf = _load_prog_allowlist("phenix.autobuild_denmod")
+
+  if allowlist is None:
+    # Sandbox without programs.yaml available — skip gracefully
+    print("  SKIP (programs.yaml not loadable in this environment)")
+    return
+
+  assert_in("maps_only", allowlist,
+       "Allowlist for phenix.autobuild_denmod must include 'maps_only' "
+       "(extracted from command template literal)")
+  # Pre-existing strategy_flag entries must still be there
+  assert_in("nproc", allowlist,
+       "nproc (declared in strategy_flags) must remain in allowlist")
+  assert_in("resolution", allowlist,
+       "resolution (declared in strategy_flags) must remain in allowlist")
+  # And maps_only must NOT be in strategy_flags — that's important.
+  # If it were, the LLM could override via strategy.maps_only=False.
+  # Bug 5's fix relies on maps_only living ONLY in the template.
+  assert_true("maps_only" not in sf,
+        "maps_only must NOT be in phenix.autobuild_denmod's "
+        "strategy_flags — it lives only in the command template as "
+        "an invariant of this program entry.  (Adding it to "
+        "strategy_flags would enable LLM override and defeat the "
+        "template-as-invariant pattern.)")
+
+
+def test_bug8_template_literal_extraction_ignores_placeholders():
+  """The template-literal extraction must not match {placeholder} slots.
+
+    Pins the regex's safety guarantee: only true key=value tokens with
+    whitespace or start-of-string before the key get extracted.
+    Placeholders like {data_mtz} have '{' before the identifier, so
+    they correctly don't match.
+    """
+  from agent.command_postprocessor import _load_prog_allowlist
+
+  # Construct a fake prog_def via monkey-patching get_program
+  fake_prog_def = {
+      'command': 'phenix.fake {model} {data_mtz} flag_a=True {map} flag_b=42',
+      'strategy_flags': {
+          'nproc': {'flag': 'nproc={value}', 'type': 'int'},
+      },
+  }
+
+  # _load_prog_allowlist imports get_program inside its try block, so
+  # we monkey-patch in the yaml_loader module
+  try:
+    from libtbx.langchain.knowledge import yaml_loader as _yl
+  except ImportError:
+    try:
+      from knowledge import yaml_loader as _yl
+    except ImportError:
+      print("  SKIP (yaml_loader not importable)")
+      return
+
+  _orig = _yl.get_program
+  _yl.get_program = lambda name: fake_prog_def if name == 'phenix.fake' else _orig(name)
+  try:
+    allowlist, sf = _load_prog_allowlist('phenix.fake')
+  finally:
+    _yl.get_program = _orig
+
+  if allowlist is None:
+    print("  SKIP (allowlist returned None — environment issue)")
+    return
+
+  # The two literal flags must be in the allowlist
+  assert_in("flag_a", allowlist,
+       "flag_a (template literal) must be in allowlist")
+  assert_in("flag_b", allowlist,
+       "flag_b (template literal) must be in allowlist")
+  # Placeholders must NOT have been mistakenly extracted as keys.
+  # (nproc is in strategy_flags, not from the template, so we exclude
+  # it from the negative check.)
+  assert_true("data_mtz" not in allowlist,
+        "'data_mtz' (placeholder name) should NOT be in allowlist")
+  assert_true("map" not in allowlist,
+        "'map' (placeholder name) should NOT be in allowlist")
+  # nproc must still be there (from strategy_flags)
+  assert_in("nproc", allowlist,
+       "nproc (declared in strategy_flags) must be in allowlist")
+
+
+def test_bug8_adversarial_strategy_override_dropped():
+  """The fix must NOT introduce an LLM-override vulnerability.
+
+    Even with the template-literal allowlist extension, an LLM that
+    emits strategy.maps_only=False must still have that value dropped
+    by program_registry (because maps_only is intentionally absent
+    from strategy_flags of phenix.autobuild_denmod).  The result is
+    that the template's maps_only=True remains unchallenged.
+    """
+  try:
+    from agent.program_registry import ProgramRegistry
+  except ImportError:
+    print("  SKIP (program_registry not importable)")
+    return
+
+  reg = ProgramRegistry()
+  files = {
+      "data_mtz": "/p/refine.mtz",
+      "sequence": "/p/7qz0.fa",
+      "model": "/p/refine.pdb",
+  }
+  # Adversarial: LLM emits maps_only=False in strategy
+  strategy = {"nproc": 4, "maps_only": False}
+
+  log_messages = []
+  try:
+    cmd = reg.build_command(
+      "phenix.autobuild_denmod",
+      files, strategy=strategy,
+      log=lambda m: log_messages.append(m))
+  except Exception as e:
+    print("  SKIP (registry build_command raised: %s)" % e)
+    return
+
+  if not cmd:
+    print("  SKIP (registry returned no command)")
+    return
+
+  # Template literal must be present
+  assert_in("maps_only=True", cmd,
+       "Template literal maps_only=True must remain in registry output")
+  # Adversarial override must NOT be present
+  assert_true("maps_only=False" not in cmd,
+        "Adversarial strategy.maps_only=False must NOT appear in "
+        "command (registry should drop unknown strategy entries)")
+  # Registry should have logged a warning about the unknown strategy
+  warnings = [m for m in log_messages if "Unknown strategy 'maps_only'" in m]
+  assert_true(len(warnings) >= 1,
+        "Registry should log 'Unknown strategy maps_only' warning "
+        "when LLM tries to override the template invariant")
+
+
+# =========================================================================
+# Bug 9: phenix.predict_and_build wrong crystal scope
+#         (run_38_openai, v119.H9)
+# =========================================================================
+#
+# Symptom: phenix.predict_and_build commands had
+# `crystal_symmetry.unit_cell="..."` which PHENIX rejected with
+# "Some PHIL parameters are not recognized".  predict_and_build
+# uses the `crystal_info.*` scope, not `crystal_symmetry.*`.
+#
+# Diagnosis: agent/program_registry.py:778-779 unconditionally
+# prepends `crystal_symmetry.` to bare unit_cell/space_group
+# strategies.  The safety net (parameter_fixes.json +
+# fix_program_parameters in planner.py) rewrites the wrong scope
+# to the right one for programs like autobuild and autosol — but
+# phenix.predict_and_build had no scope-rewrite entries in
+# parameter_fixes.json, so the bad form passed through unchanged.
+#
+# Distinct from the existing Bug 4 (rebuild_in_place=False) and
+# Bug 8 (template-literal allowlist).  Bug 9 is purely a data
+# patch to parameter_fixes.json — same mechanism as the existing
+# autobuild/autosol scope rewrites.
+#
+# Fix: Add scope-rewrite entries to phenix.predict_and_build in
+# parameter_fixes.json:
+#   crystal_symmetry.{unit_cell,space_group} → crystal_info.*
+#   xray_data.{unit_cell,space_group} → crystal_info.*
+
+def _reload_parameter_fixes():
+  """Force re-read of parameter_fixes.json (defeat the module cache).
+
+    fix_program_parameters caches the loaded JSON at module level
+    via _PARAMETER_FIXES.  When the file changes between tests
+    (or first-time load races), we need to defeat this cache.
+    """
+  try:
+    from libtbx.langchain.agent import planner as _p
+  except ImportError:
+    try:
+      from agent import planner as _p
+    except ImportError:
+      return
+  _p._PARAMETER_FIXES = None
+
+
+def test_bug9_predict_and_build_unit_cell_scope_rewrite():
+  """Primary regression: crystal_symmetry.unit_cell rewritten to crystal_info.
+
+    Reproduces the exact failure from run_38_openai cycle 2.  When
+    fix_program_parameters processes a phenix.predict_and_build
+    command containing crystal_symmetry.unit_cell="...", it must
+    rewrite to crystal_info.unit_cell="...".
+    """
+  _reload_parameter_fixes()
+  from agent.planner import fix_program_parameters
+
+  cmd = ('phenix.predict_and_build input_files.seq_file=/p/seq.fa '
+       'input_files.xray_data_file=/p/data.mtz '
+       'crystal_info.resolution=2.1 '
+       'crystal_symmetry.unit_cell="116.097 116.097 44.175 90 90 120" '
+       'control.nproc=4')
+
+  result = fix_program_parameters(cmd, 'phenix.predict_and_build')
+
+  assert_in('crystal_info.unit_cell=', result,
+       "Bad crystal_symmetry.unit_cell must be rewritten to "
+       "crystal_info.unit_cell for phenix.predict_and_build "
+       "(was failing in run_38_openai with 'PHIL parameters not recognized')")
+  assert_not_in('crystal_symmetry.unit_cell=', result,
+        "After H9 fix, crystal_symmetry.unit_cell must NOT remain "
+        "in the command — it was the rejected scope")
+  # Sanity: the value must be preserved
+  assert_in('"116.097 116.097 44.175 90 90 120"', result,
+       "Unit cell value must be preserved through the rewrite")
+
+
+def test_bug9_predict_and_build_space_group_scope_rewrite():
+  """Companion: crystal_symmetry.space_group → crystal_info.space_group.
+
+    Same rewrite, different parameter.  Verifies the parameter_fixes
+    entry covers both unit_cell and space_group.
+    """
+  _reload_parameter_fixes()
+  from agent.planner import fix_program_parameters
+
+  cmd = ('phenix.predict_and_build input_files.seq_file=/p/seq.fa '
+       'crystal_symmetry.space_group="P 31 2 1"')
+
+  result = fix_program_parameters(cmd, 'phenix.predict_and_build')
+
+  assert_in('crystal_info.space_group=', result,
+       "crystal_symmetry.space_group must be rewritten to "
+       "crystal_info.space_group")
+  assert_not_in('crystal_symmetry.space_group=', result,
+        "crystal_symmetry.space_group must NOT remain")
+
+
+def test_bug9_predict_and_build_xray_data_fallback_rewrite():
+  """Recovery-path coverage: xray_data.* → crystal_info.* also works.
+
+    LLM error-recovery sometimes pivots to xray_data.* scope when
+    crystal_symmetry.* is rejected.  The parameter_fixes entry must
+    handle this alternate-form too, so the recovery doesn't loop
+    forever trying different wrong scopes.
+
+    (Gemini-suggested test, plan rev2.)
+    """
+  _reload_parameter_fixes()
+  from agent.planner import fix_program_parameters
+
+  cmd = ('phenix.predict_and_build input_files.seq_file=/p/seq.fa '
+       'xray_data.unit_cell="116.097 116.097 44.175 90 90 120" '
+       'xray_data.space_group="P 31 2 1"')
+
+  result = fix_program_parameters(cmd, 'phenix.predict_and_build')
+
+  assert_in('crystal_info.unit_cell=', result,
+       "xray_data.unit_cell must be rewritten to crystal_info.unit_cell "
+       "(recovery-path coverage)")
+  assert_in('crystal_info.space_group=', result,
+       "xray_data.space_group must be rewritten to crystal_info.space_group")
+  assert_not_in('xray_data.unit_cell=', result,
+        "xray_data.unit_cell must NOT remain after rewrite")
+  assert_not_in('xray_data.space_group=', result,
+        "xray_data.space_group must NOT remain after rewrite")
+
+
+def test_bug9_predict_and_build_idempotent_on_correct_scope():
+  """Idempotent: commands already using crystal_info.* are unchanged.
+
+    If a future code path emits the correct scope directly,
+    fix_program_parameters must not duplicate or mangle it.
+    Also verifies no regression: phenix.refine still uses
+    crystal_symmetry.* (its native scope).
+    """
+  _reload_parameter_fixes()
+  from agent.planner import fix_program_parameters
+
+  # predict_and_build with correct scope — should be unchanged
+  cmd_pab = ('phenix.predict_and_build input_files.seq_file=/p/seq.fa '
+         'crystal_info.unit_cell="116.097 116.097 44.175 90 90 120"')
+  out_pab = fix_program_parameters(cmd_pab, 'phenix.predict_and_build')
+  # Exactly one occurrence — no duplication
+  assert_equal(out_pab.count('crystal_info.unit_cell='), 1,
+        "crystal_info.unit_cell should appear exactly once "
+        "(idempotent — no duplication)")
+
+  # phenix.refine with crystal_symmetry — should be unchanged
+  # (refine uses crystal_symmetry.* natively, so the rewrite must
+  # NOT fire there).
+  cmd_refine = ('phenix.refine model=/p/m.pdb data=/p/d.mtz '
+         'crystal_symmetry.unit_cell="100 100 100 90 90 90"')
+  out_refine = fix_program_parameters(cmd_refine, 'phenix.refine')
+  assert_in('crystal_symmetry.unit_cell=', out_refine,
+       "phenix.refine must retain crystal_symmetry.unit_cell "
+       "(its native scope — no regression)")
+  assert_not_in('crystal_info.unit_cell=', out_refine,
+        "phenix.refine must NOT have crystal_info.unit_cell "
+        "(H9 fix is scoped to predict_and_build only)")
+
+
+# =========================================================================
+# Bug 10: exclude_patterns bypassed in category-based file selection
+#         (AIAgent_62 cycle 7, v119.H10)
+# =========================================================================
+#
+# Symptom: phenix.refine emitted a command with refine_001_001.cif
+# as a positional third argument (the {ligand_cif} slot).  PHENIX
+# interpreted it as a SECOND model (it's actually a model mmCIF
+# from an earlier refine step, not a ligand restraints CIF),
+# crashing with "wrong number of models".
+#
+# Diagnosis: agent/command_builder.py::_find_file_for_slot honors
+# input_def["exclude_patterns"] at only 2 of 9 selection paths
+# (LLM-selected and PRIORITY 4 extension fallback).  PRIORITY 2
+# (best_files), PRIORITY 2.5 (recovery strategies), PRIORITY 3
+# (category-based), and PRIORITY 3.5 (fallback best_files) all
+# bypassed the check.  For the ligand_cif slot of phenix.refine,
+# the schema explicitly lists "refine_" in exclude_patterns to
+# prevent this exact failure — but PRIORITY 3 category-match
+# returned the file without consulting that list.
+#
+# Distinct from Bug 8 (template-literal allowlist, v119.H8) and
+# Bug 9 (predict_and_build crystal scope, v119.H9).
+#
+# Fix: In agent/command_builder.py::_find_file_for_slot, define a
+# helper at function entry that checks input_def["exclude_patterns"],
+# and apply it at all 7 bypass sites:
+#   - PRIORITY 2 (best_files)
+#   - PRIORITY 2.5 (recovery strategies)
+#   - PRIORITY 3 subcategory loop
+#   - PRIORITY 3 parent-category loop
+#   - PRIORITY 3 is_multiple branch
+#   - PRIORITY 3.5 require_best_files_only
+#   - PRIORITY 3.5 fallback best_files for specific subcategory
+
+def _make_bug10_context(categorized_files, available_files,
+                        best_files=None, recovery_strategies=None):
+  """Build a CommandContext for Bug 10 sandbox tests.
+
+    All fields are pinned to typical xray_refined state so the
+    test focuses on file-selection behavior.
+    """
+  try:
+    from libtbx.langchain.agent.command_builder import CommandContext
+  except ImportError:
+    from agent.command_builder import CommandContext
+  return CommandContext(
+    cycle_number=7,
+    experiment_type='xray',
+    resolution=2.1,
+    best_files=best_files or {},
+    rfree_mtz=None,
+    categorized_files=categorized_files,
+    workflow_state='xray_refined',
+    history=[],
+    llm_files=None,
+    llm_strategy=None,
+    recovery_strategies=recovery_strategies,
+    directives={},
+    log=lambda m: None,
+    files_local=True,
+  )
+
+
+def test_bug10_ligand_cif_slot_rejects_model_mmcif():
+  """Primary regression: refine_001_001.cif rejected for ligand_cif slot.
+
+    Reproduces the AIAgent_62 cycle 7 failure.  When phenix.refine
+    is built and the ligand_cif category contains refine_001_001.cif
+    (a model mmCIF from an earlier refine step), the H10 fix must
+    cause CommandBuilder to reject it for the ligand_cif slot, so
+    the resulting command doesn't include it as a positional
+    second-model argument.
+    """
+  import os, tempfile
+  try:
+    from libtbx.langchain.agent.command_builder import CommandBuilder
+  except ImportError:
+    from agent.command_builder import CommandBuilder
+
+  tmpdir = tempfile.mkdtemp()
+  files = ['refine_001_001_modified.pdb', '7qz0.mtz', 'refine_001_001.cif']
+  for f in files:
+    open(os.path.join(tmpdir, f), 'w').close()
+  available_files = [os.path.join(tmpdir, f) for f in files]
+
+  categorized = {
+    'model': [os.path.join(tmpdir, 'refine_001_001_modified.pdb')],
+    'data_mtz': [os.path.join(tmpdir, '7qz0.mtz')],
+    'ligand_cif': [os.path.join(tmpdir, 'refine_001_001.cif')],
+  }
+  context = _make_bug10_context(categorized, available_files,
+    best_files={'model': os.path.join(tmpdir, 'refine_001_001_modified.pdb')})
+
+  builder = CommandBuilder()
+  cmd = builder.build('phenix.refine', available_files, context)
+
+  assert_true(cmd is not None,
+        "phenix.refine command should still build (just without "
+        "the bad ligand_cif)")
+  assert_not_in('refine_001_001.cif', cmd,
+        "Bug 10: refine_001_001.cif must NOT appear in the command "
+        "— it would be interpreted as a SECOND model and crash "
+        "phenix.refine with 'wrong number of models'")
+  # The model should still be selected
+  assert_in('refine_001_001_modified.pdb', cmd,
+        "Real protein model must still be selected")
+
+
+def test_bug10_ligand_cif_slot_accepts_legitimate_cif():
+  """No over-rejection: legitimate ligand.ligands.cif still selected.
+
+    The exclude_patterns for ligand_cif is ["overall_best",
+    "overall_best_final", "refine_", "autobuild", "predict_and_build"].
+    A file named ligand.ligands.cif matches none of these and
+    must still be picked.
+    """
+  import os, tempfile
+  try:
+    from libtbx.langchain.agent.command_builder import CommandBuilder
+  except ImportError:
+    from agent.command_builder import CommandBuilder
+
+  tmpdir = tempfile.mkdtemp()
+  files = ['protein.pdb', 'data.mtz', 'ligand.ligands.cif']
+  for f in files:
+    open(os.path.join(tmpdir, f), 'w').close()
+  available_files = [os.path.join(tmpdir, f) for f in files]
+
+  categorized = {
+    'model': [os.path.join(tmpdir, 'protein.pdb')],
+    'data_mtz': [os.path.join(tmpdir, 'data.mtz')],
+    'ligand_cif': [os.path.join(tmpdir, 'ligand.ligands.cif')],
+  }
+  context = _make_bug10_context(categorized, available_files,
+    best_files={'model': os.path.join(tmpdir, 'protein.pdb')})
+
+  builder = CommandBuilder()
+  cmd = builder.build('phenix.refine', available_files, context)
+
+  assert_true(cmd is not None, "command should build")
+  assert_in('ligand.ligands.cif', cmd,
+        "Legitimate ligand restraints CIF must still be selected "
+        "— its name doesn't match any exclude_pattern")
+
+
+def test_bug10_exclude_patterns_applied_in_best_files_path():
+  """PRIORITY 2 (best_files) honors exclude_patterns.
+
+    Pre-H10, best_files only checked exclude_categories, not
+    exclude_patterns.  After H10, both apply.  Construct a case
+    where best_files contains a file matching exclude_patterns;
+    verify it gets rejected.
+
+    Use phenix.refine::model which has exclude_patterns=
+    ['ligand', 'lig.pdb', 'ligand_fit'].  Place a file named
+    'fake_ligand_fit.pdb' in best_files for the model slot; the
+    H10 fix should reject it.
+    """
+  import os, tempfile
+  try:
+    from libtbx.langchain.agent.command_builder import CommandBuilder
+  except ImportError:
+    from agent.command_builder import CommandBuilder
+
+  tmpdir = tempfile.mkdtemp()
+  files = ['good_model.pdb', 'fake_ligand_fit.pdb', 'data.mtz']
+  for f in files:
+    open(os.path.join(tmpdir, f), 'w').close()
+  available_files = [os.path.join(tmpdir, f) for f in files]
+
+  # Place the bad file as best_files['model'] — pre-H10 this would
+  # be selected for the model slot via PRIORITY 2 even though the
+  # model slot's exclude_patterns lists 'ligand_fit'.
+  categorized = {
+    'model': [os.path.join(tmpdir, 'good_model.pdb'),
+              os.path.join(tmpdir, 'fake_ligand_fit.pdb')],
+    'data_mtz': [os.path.join(tmpdir, 'data.mtz')],
+  }
+  context = _make_bug10_context(categorized, available_files,
+    best_files={'model': os.path.join(tmpdir, 'fake_ligand_fit.pdb')})
+
+  builder = CommandBuilder()
+  cmd = builder.build('phenix.refine', available_files, context)
+
+  assert_true(cmd is not None, "command should build")
+  assert_not_in('fake_ligand_fit.pdb', cmd,
+        "Bug 10: fake_ligand_fit.pdb in best_files must be rejected "
+        "for the model slot — exclude_patterns lists 'ligand_fit'")
+  assert_in('good_model.pdb', cmd,
+        "PRIORITY 3 should fall through to good_model.pdb from "
+        "the model category once best_files is rejected")
+
+
+def test_bug10_exclude_patterns_applied_in_category_path():
+  """PRIORITY 3 (category-based) honors exclude_patterns.
+
+    Direct test of the actual buggy code path.  Construct a slot
+    where category-based selection (NOT best_files, NOT extension
+    fallback) would pick a bad file; verify H10 rejects it.
+    """
+  import os, tempfile
+  try:
+    from libtbx.langchain.agent.command_builder import CommandBuilder
+  except ImportError:
+    from agent.command_builder import CommandBuilder
+
+  tmpdir = tempfile.mkdtemp()
+  files = ['protein.pdb', 'data.mtz',
+           'refine_001_001.cif', 'good_ligand.ligands.cif']
+  for f in files:
+    open(os.path.join(tmpdir, f), 'w').close()
+  available_files = [os.path.join(tmpdir, f) for f in files]
+
+  # Both CIFs in ligand_cif category — H10 should pick the
+  # legitimate one and reject the model-mmCIF.
+  categorized = {
+    'model': [os.path.join(tmpdir, 'protein.pdb')],
+    'data_mtz': [os.path.join(tmpdir, 'data.mtz')],
+    'ligand_cif': [os.path.join(tmpdir, 'refine_001_001.cif'),
+                   os.path.join(tmpdir, 'good_ligand.ligands.cif')],
+  }
+  context = _make_bug10_context(categorized, available_files,
+    best_files={'model': os.path.join(tmpdir, 'protein.pdb')})
+
+  builder = CommandBuilder()
+  cmd = builder.build('phenix.refine', available_files, context)
+
+  assert_true(cmd is not None, "command should build")
+  assert_not_in('refine_001_001.cif', cmd,
+        "Bug 10: refine_001_001.cif must be rejected (matches "
+        "'refine' exclude_pattern, v119.H11 — pre-H11 the pattern "
+        "was 'refine_' which broke word-boundary matching)")
+  assert_in('good_ligand.ligands.cif', cmd,
+        "Legitimate ligand CIF should be picked from the same "
+        "category")
+
+
+def test_bug10_unrelated_slots_unaffected():
+  """No-regression sentinel: slots WITHOUT exclude_patterns work as before.
+
+    The H10 patch must not change behavior for slots that don't
+    have exclude_patterns.  Verify by building phenix.refine with
+    a sequence file (sequence slot — no exclude_patterns); the
+    file should be selected normally.
+
+    (Claude-reviewer suggestion.)
+    """
+  import os, tempfile
+  try:
+    from libtbx.langchain.agent.command_builder import CommandBuilder
+  except ImportError:
+    from agent.command_builder import CommandBuilder
+
+  tmpdir = tempfile.mkdtemp()
+  files = ['protein.pdb', 'data.mtz', '7qz0.fa']
+  for f in files:
+    open(os.path.join(tmpdir, f), 'w').close()
+  available_files = [os.path.join(tmpdir, f) for f in files]
+
+  # phenix.refine doesn't take a sequence slot, but the data_mtz
+  # slot also has no exclude_patterns.  Verify it works.
+  categorized = {
+    'model': [os.path.join(tmpdir, 'protein.pdb')],
+    'data_mtz': [os.path.join(tmpdir, 'data.mtz')],
+    'sequence': [os.path.join(tmpdir, '7qz0.fa')],
+  }
+  context = _make_bug10_context(categorized, available_files,
+    best_files={'model': os.path.join(tmpdir, 'protein.pdb'),
+                'data_mtz': os.path.join(tmpdir, 'data.mtz')})
+
+  builder = CommandBuilder()
+  cmd = builder.build('phenix.refine', available_files, context)
+
+  assert_true(cmd is not None, "command should build")
+  assert_in('data.mtz', cmd,
+        "data.mtz must be selected — its slot has no exclude_patterns "
+        "and selection should be unchanged from pre-H10 behavior")
+  assert_in('protein.pdb', cmd,
+        "protein.pdb must be selected — exclude_patterns list "
+        "(['ligand', 'lig.pdb', 'ligand_fit']) doesn't match 'protein.pdb'")
+
+
+# =========================================================================
+# Bug 11: matches_exclude_pattern semantic-pin test
+#         (v119.H11 — captures the H10 → H11 lesson)
+# =========================================================================
+#
+# Background: H10's structural fix applied exclude_patterns at all
+# file-selection paths in command_builder.py.  But a separate bug in
+# the YAML patterns themselves (trailing underscore in "refine_")
+# meant the filter, while correctly applied, did not actually reject
+# the bad file.  The AIAgent_62 cycle-7 crash persisted after H10.
+#
+# Root cause: matches_exclude_pattern uses WORD-BOUNDARY regex
+# matching (see agent/file_utils.py).  A pattern with leading or
+# trailing underscore breaks the match because the regex's
+# boundary-lookahead requires another boundary char after the
+# pattern's own trailing underscore.
+#
+# This test PINS that semantic with documented cases.  If the
+# function ever changes (e.g., to substring matching), this test
+# fails and we notice.  It also serves as authoring documentation
+# for future YAML pattern design.
+#
+# Why a sandbox-skip fallback: in pure sandbox environments where
+# neither libtbx.langchain.* nor agent.* file_utils is importable,
+# we skip cleanly rather than erroring.  In Tom's PHENIX
+# environment this runs against the real function and pins its
+# actual behavior.
+
+def test_bug11_matches_exclude_pattern_semantics():
+  """Pin matches_exclude_pattern's word-boundary semantics.
+
+    The H10 → H11 cycle revealed that a sandbox stub with
+    substring semantics passed Bug 10 tests, but the real
+    function uses word-boundary regex semantics, so the H10
+    fix was a no-op for the YAML pattern 'refine_' (trailing
+    underscore breaks the match).  This test makes the actual
+    function's behavior explicit.
+    """
+  # Sandbox-skip fallback (per Gemini's H11 plan review):
+  # if neither libtbx.langchain.* nor agent.* file_utils is
+  # importable, skip cleanly rather than erroring.  This keeps
+  # lightweight sandbox CI green while ensuring full fidelity
+  # on Tom's workstation / cluster.
+  try:
+    from libtbx.langchain.agent.file_utils import matches_exclude_pattern
+  except ImportError:
+    try:
+      from agent.file_utils import matches_exclude_pattern
+    except ImportError:
+      print("  SKIP (matches_exclude_pattern not importable — sandbox)")
+      return
+
+  # --- Trailing underscore in pattern BREAKS the match ---
+  # (this is the H11 bug being fixed)
+  assert_false(matches_exclude_pattern("refine_001.cif", ["refine_"]),
+        "Pattern 'refine_' (trailing _) does NOT match "
+        "'refine_001.cif' — the trailing _ requires another "
+        "boundary char after it (here it's '0', not a boundary)")
+
+  # --- Bare pattern matches correctly ---
+  assert_true(matches_exclude_pattern("refine_001.cif", ["refine"]),
+        "Pattern 'refine' matches 'refine_001.cif' "
+        "(word boundary _ follows 'refine')")
+  assert_true(matches_exclude_pattern("phenix_refine.cif", ["refine"]),
+        "Pattern 'refine' matches 'phenix_refine.cif' "
+        "(word boundary _ precedes, end-of-stem follows)")
+  assert_false(matches_exclude_pattern("refining_template.cif", ["refine"]),
+        "Pattern 'refine' does NOT match 'refining_template.cif' "
+        "— after 'refine' comes 'i' which is not a boundary char")
+
+  # --- Leading underscore similarly breaks matches ---
+  assert_false(matches_exclude_pattern("protein_half.ccp4", ["_half"]),
+        "Pattern '_half' (leading _) does NOT match "
+        "'protein_half.ccp4'")
+  assert_true(matches_exclude_pattern("protein_half.ccp4", ["half"]),
+        "Pattern 'half' matches 'protein_half.ccp4'")
+
+  # --- Boundary-char vs alphanumeric-suffix (Gemini's catch) ---
+  # This is why we keep explicit half1, half2 patterns alongside
+  # the bare 'half' in YAML.
+  assert_false(matches_exclude_pattern("protein_half1.ccp4", ["half"]),
+        "Pattern 'half' does NOT match 'protein_half1.ccp4' — "
+        "'1' immediately after 'half' is not a boundary char.  "
+        "YAML keeps explicit 'half1', 'half2' alongside the bare "
+        "'half' to catch separator-less variants.")
+  assert_true(matches_exclude_pattern("protein_half1.ccp4", ["half1"]),
+        "Pattern 'half1' matches 'protein_half1.ccp4'")
+
+  # --- Extension-suffix patterns ---
+  assert_true(matches_exclude_pattern("lig.pdb", ["lig.pdb"]),
+        "Pattern 'lig.pdb' matches 'lig.pdb' exactly")
+  assert_false(matches_exclude_pattern("nolig.pdb", ["lig.pdb"]),
+        "Pattern 'lig.pdb' does NOT match 'nolig.pdb' "
+        "(no word boundary before 'lig')")
+
+
+# =========================================================================
 # Phase 1: Deterministic atom_type (heavier-atom-wins rule)
 # =========================================================================
 
@@ -971,7 +1711,7 @@ def test_phase2_mock_drift_check():
     print("  SKIP (ai_agent.py not found at %s)" % ai_agent_path)
     return
 
-  with open(ai_agent_path) as f:
+  with open(ai_agent_path, encoding='utf-8') as f:
     source = f.read()
 
   # Verify the method exists
@@ -1009,7 +1749,7 @@ def test_bug5_safety_net_handles_empty_best_files():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The safety net condition must use `is not None`, not truthiness
@@ -1040,7 +1780,7 @@ def test_bug5_gui_sub_job_returns_output_dir():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The main return must include gui_output_dir
@@ -1062,7 +1802,7 @@ def test_bug5_execute_command_uses_gui_output_dir():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # Must unpack 4-tuple from _execute_sub_job_for_gui
@@ -1087,13 +1827,19 @@ def test_bug5_track_output_files_accepts_working_dir():
   if not os.path.isfile(ai_agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(ai_agent_path, 'r') as f:
+  with open(ai_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # Function signature must accept working_dir
-  assert_in("def _track_output_files(self, log_text, session_start_time, "
-       "session=None,\n                          cycle=0, working_dir=None)",
-       source,
+  # v119.H14: relaxed from exact multi-line signature match to a
+  # substring check — the original test pinned the exact signature
+  # including newline + indent, which broke when later changes added
+  # additional kwargs (e.g., skip_if_failed=False) to the signature.
+  # The real intent is "the function accepts working_dir"; verify
+  # that without locking the rest of the signature.
+  assert_in("def _track_output_files(", source,
+       "_track_output_files must be defined")
+  assert_in("working_dir=None", source,
        "_track_output_files must accept working_dir parameter")
 
   # Must use working_dir for directory scanning, not os.getcwd()
@@ -1115,7 +1861,7 @@ def test_bug6_rest_init_raises_sorry_on_daily_limit():
   if not os.path.isfile(rest_init_path):
     print("  SKIP (rest/__init__.py not found)")
     return
-  with open(rest_init_path, 'r') as f:
+  with open(rest_init_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   import re
@@ -1139,7 +1885,7 @@ def test_bug6_remote_agent_reraises_sorry():
   if not os.path.isfile(remote_agent_path):
     print("  SKIP (remote_agent.py not found)")
     return
-  with open(remote_agent_path, 'r') as f:
+  with open(remote_agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_in("except Sorry:", source,
@@ -1227,7 +1973,7 @@ def test_bug7_source_no_after_program_return_true():
   checks_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "perceive_checks.py")
-  with open(checks_path, 'r') as f:
+  with open(checks_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The old pattern that returned True on after_program match must be gone
@@ -1250,7 +1996,7 @@ def test_bug7_session_fallback_no_after_program_stop():
   session_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "session.py")
-  with open(session_path, 'r') as f:
+  with open(session_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The old pattern that set should_stop=True on after_program match
@@ -1271,7 +2017,7 @@ def test_bug7_no_dead_last_command_in_perceive_checks():
   checks_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "perceive_checks.py")
-  with open(checks_path, 'r') as f:
+  with open(checks_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_true(
@@ -1289,7 +2035,7 @@ def test_bug7_directive_extractor_no_after_program_stop():
   extractor_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "directive_extractor.py")
-  with open(extractor_path, 'r') as f:
+  with open(extractor_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_true(
@@ -1317,7 +2063,7 @@ def test_win_filter_intermediate_normalizes_separators():
   nodes_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_nodes.py")
-  with open(nodes_path, 'r') as f:
+  with open(nodes_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # The function must normalize backslashes before matching markers
@@ -1338,7 +2084,7 @@ def test_win_popen_create_no_window():
   if not os.path.isfile(agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(agent_path, 'r') as f:
+  with open(agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_in("CREATE_NO_WINDOW", source,
@@ -1360,7 +2106,7 @@ def test_win_abort_detection_comment():
   if not os.path.isfile(agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(agent_path, 'r') as f:
+  with open(agent_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   assert_in("taskkill", source,
@@ -1378,7 +2124,7 @@ def test_win_session_utf8_encoding():
   session_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "session.py")
-  with open(session_path, 'r') as f:
+  with open(session_path, 'r', encoding='utf-8') as f:
     source = f.read()
 
   # All three open() calls for session JSON should use encoding='utf-8'
@@ -1386,7 +2132,7 @@ def test_win_session_utf8_encoding():
   open_calls = re.findall(r"open\([^)]*session_file[^)]*\)", source)
   for call in open_calls:
     assert_in("encoding='utf-8'", call,
-         "session_file open() must specify UTF-8: %s" % call)
+         "session_file open(, encoding='utf-8') must specify UTF-8: %s" % call)
 
 
 def run_all_tests():

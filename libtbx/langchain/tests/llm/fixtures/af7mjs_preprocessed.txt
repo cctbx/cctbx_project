@@ -1,0 +1,22 @@
+1. **Input Files Found**: 7mjs_23883_H.fa, 7mjs_23883_H_1.ccp4, 7mjs_23883_H_2.ccp4, 7mjs_23883_H_full.ccp4, 7mjs_23883_H.pdb
+
+2. **Experiment Type**: cryo-EM (PredictAndBuild with half-maps)
+
+3. **Primary Goal**: Run PredictAndBuild for the Fab heavy chain using the sequence and cryo-EM half-maps, with PDB templates disabled, to trim/dock the predicted model, rebuild the mispredicted loop (residues ~100-120), and refine the model.
+
+4. **Key Parameters**:
+   - Wavelength: None
+   - Resolution limit: Not explicitly given (auto-detected from maps)
+   - Number of expected sites: N/A
+   - Heavy atom type: N/A
+   - Space group: N/A
+
+5. **Program Parameters**:
+alphafold.use_templates=False
+
+6. **Special Instructions**:
+- Input should be the Fab heavy chain sequence (7mjs_23883_H.fa) and the two half-maps.
+- In the GUI, uncheck "Include templates from the PDB" before running.
+- If running offline with supplied predicted models, enable the "carry_on" option.
+
+7. **Stop Condition**: None

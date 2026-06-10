@@ -224,7 +224,7 @@ def _is_valid_file(path):
     # Layer 3: PDB/CIF structural validity check
     elif ext in _MODEL_EXTENSIONS:
         try:
-            with open(path, 'r', errors='replace') as fh:
+            with open(path, 'r', encoding='utf-8', errors='replace') as fh:
                 content = fh.read()
             if ext == '.cif':
                 # CIF must have at least one data_ block or loop
@@ -236,13 +236,14 @@ def _is_valid_file(path):
                     return False
             else:  # .pdb
                 # PDB must contain at least one ATOM or HETATM record.
-                # We scan up to 500 lines rather than checking only the first
-                # line, because ligand files often start with COMPND/REMARK/etc.
-                # before the coordinate records.
+                # We scan up to 2000 lines rather than checking only the first
+                # line, because PDB files can have very long headers (REMARK,
+                # COMPND, SEQRES, etc.) before the coordinate records.
+                # 3dnd.pdb has 546 header lines before the first ATOM record.
                 lines = content.splitlines()
                 has_coords = any(
                     len(l) >= 6 and l[:6].upper() in ('ATOM  ', 'HETATM')
-                    for l in lines[:500]
+                    for l in lines[:2000]
                 )
                 if not has_coords:
                     print("WARNING: %s contains no ATOM/HETATM records "
@@ -311,7 +312,7 @@ def _pdb_is_small_molecule(path, max_bytes=32768):
     try:
         atom_count = 0
         hetatm_count = 0
-        with open(path, 'r', errors='replace') as fh:
+        with open(path, 'r', encoding='utf-8', errors='replace') as fh:
             for line in fh.read(max_bytes).splitlines():
                 if line.startswith('ATOM  ') or line.startswith('ATOM '):
                     atom_count += 1
@@ -364,7 +365,7 @@ def _pdb_is_protein_model(path, max_bytes=32768):
     try:
         atom_count = 0
         hetatm_count = 0
-        with open(path, 'r', errors='replace') as fh:
+        with open(path, 'r', encoding='utf-8', errors='replace') as fh:
             for line in fh.read(max_bytes).splitlines():
                 if line.startswith('ATOM  ') or line.startswith('ATOM '):
                     atom_count += 1
@@ -430,6 +431,111 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
 
     # Bubble up subcategories to their parent semantic categories
     files = _bubble_up_to_parents(files, category_rules)
+
+    # Post-processing: Rescue "no_ligand" / "noligand" PDB files that
+    # were misclassified as ligand_pdb.  Filenames like 1J4R_no_ligand.pdb
+    # contain the word "ligand" but are protein models with the ligand
+    # omitted — the opposite of a ligand file.  Move them from ligand
+    # categories to model.  Runs after both YAML and hardcoded paths.
+    #
+    # Also handles the case where the hardcoded exclusion prevented the
+    # file from entering ligand_pdb at all — in that case the file is
+    # in pdb but not in model (no subcategory was matched).  Promote
+    # it to model so BUILD can find it.
+    _anti_ligand_patterns = [
+        'no_ligand', 'noligand', 'sans_ligand',
+        'without_ligand', 'apo_ligand',
+    ]
+    # Path 1: file got INTO ligand_pdb (YAML path) — rescue it
+    for f in list(files.get("ligand_pdb", [])):
+        bn = os.path.basename(f).lower()
+        if any(pat in bn for pat in _anti_ligand_patterns):
+            files["ligand_pdb"].remove(f)
+            if f in files.get("ligand", []):
+                files["ligand"].remove(f)
+            for cat in ("model", "pdb"):
+                if cat not in files:
+                    files[cat] = []
+                if f not in files[cat]:
+                    files[cat].append(f)
+
+    # Path 2: Promote orphaned PDB files in "pdb" to "model".
+    #
+    # The hardcoded categorizer puts all PDB files in "pdb", then
+    # sorts them into subcategories (refined, phaser_output, etc.)
+    # which bubble up to "model" or "search_model".  User-supplied
+    # input files like 1aba.pdb, myprotein.pdb don't match any
+    # subcategory — they stay in "pdb" alone and has_model=False
+    # in PERCEIVE, so refine is never offered.
+    #
+    # The YAML categorizer has a "*" catch-all for unclassified_pdb
+    # that bubbles to model, but the hardcoded path lacks this.
+    #
+    # Fix: any PDB file in "pdb" that's NOT in a model/search_model
+    # subcategory AND NOT in ligand_pdb should be promoted to model.
+    _all_model_subcats = set()
+    for subcat, parent in SUBCATEGORY_TO_PARENT.items():
+        if parent in ("model", "search_model"):
+            _all_model_subcats.add(subcat)
+    _ligand_set = set(files.get("ligand_pdb", []))
+    _intermediate_set = set(files.get("intermediate", [])
+                            + files.get("intermediate_mr", []))
+    for f in list(files.get("pdb", [])):
+        bn = os.path.basename(f).lower()
+        if not bn.endswith('.pdb'):
+            continue
+        if f in _ligand_set:
+            continue  # genuinely a ligand — don't promote
+        if f in _intermediate_set:
+            continue  # intermediate output — don't promote
+        _in_subcat = any(
+            f in files.get(sc, [])
+            for sc in _all_model_subcats
+        )
+        if not _in_subcat:
+            if "model" not in files:
+                files["model"] = []
+            if f not in files["model"]:
+                files["model"].append(f)
+
+    # Post-processing: Map file safety net (common path).
+    #
+    # Ensure ALL .ccp4/.mrc/.map files appear in at least one map
+    # category.  The YAML categorizer may not match simple filenames
+    # like "map.mrc" if patterns are too specific.  The hardcoded
+    # categorizer has its own safety net (line ~852), but this runs
+    # for BOTH YAML and hardcoded paths.
+    try:
+        _all_maps = set()
+        for _mcat in ("full_map", "half_map",
+                       "optimized_full_map", "sharpened",
+                       "map"):
+            for f in files.get(_mcat, []):
+                _all_maps.add(f)
+
+        for f in available_files:
+            if not f:
+                continue
+            _, _ext = os.path.splitext(f.lower())
+            if _ext not in _MAP_EXTENSIONS:
+                continue
+            if f in _all_maps:
+                continue
+            # Uncategorized map file — rescue it
+            _bn = os.path.basename(f).lower()
+            if "half" in _bn:
+                _dest = "half_map"
+            else:
+                _dest = "full_map"
+            if _dest not in files:
+                files[_dest] = []
+            files[_dest].append(f)
+            if "map" not in files:
+                files["map"] = []
+            if f not in files["map"]:
+                files["map"].append(f)
+    except Exception:
+        pass  # Safety net must not break categorization
 
     # Post-processing: Cross-check MTZ categorization against file_utils.
     #
@@ -541,12 +647,33 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
         ligand_keep = []
         ligand_rescued = []
         for f in files["ligand_pdb"]:
-            if f.lower().endswith('.pdb') and _pdb_is_protein_model(f):
+            if not f.lower().endswith('.pdb'):
+                ligand_keep.append(f)
+                continue
+            if _pdb_is_protein_model(f):
                 ligand_rescued.append(f)
             else:
-                ligand_keep.append(f)
+                # File-size fallback: small-molecule ligands are typically
+                # <5 KB (10-100 atoms × ~80 bytes/line).  A PDB file >10 KB
+                # in ligand_pdb is almost certainly a protein model that
+                # _pdb_is_protein_model failed to detect (e.g., unusual
+                # formatting, large header, or read error).
+                try:
+                    fsize = os.path.getsize(f)
+                    if fsize > 10000:
+                        print("INFO: Rescuing '%s' from ligand_pdb "
+                              "(file size %d > 10 KB, likely protein model)"
+                              % (os.path.basename(f), fsize))
+                        ligand_rescued.append(f)
+                    else:
+                        ligand_keep.append(f)
+                except OSError:
+                    ligand_keep.append(f)
         if ligand_rescued:
             files["ligand_pdb"] = ligand_keep
+            print("INFO: Rescued %d protein model(s) from ligand_pdb: %s"
+                  % (len(ligand_rescued),
+                     ", ".join(os.path.basename(f) for f in ligand_rescued)))
             # Remove from ligand parent
             for f in ligand_rescued:
                 if f in files.get("ligand", []):
@@ -558,6 +685,43 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
                 for f in ligand_rescued:
                     if f not in files[dest]:
                         files[dest].append(f)
+
+    # Post-processing: Detect reference model PDB files among models.
+    #
+    # When 2+ PDB files are categorized as "model", one may be a
+    # high-resolution reference model for restraints (not a model to
+    # refine).  If auto-fill picks both as primary model inputs,
+    # phenix.refine crashes with "Wrong number of models".
+    #
+    # Heuristic: if a model file's basename (excluding agent outputs)
+    # matches keywords like "reference", "homolog", "template",
+    # "restraint", "high_res", reclassify it to "reference_model".
+    # The command builder won't use it as a primary model, but it
+    # remains available for reference_model.file= via strategy flags.
+    #
+    # Guard: skip filenames that look like agent outputs (refine_*,
+    # autobuild_*, etc.) to avoid false positives.
+    model_files = files.get("model", [])
+    if len(model_files) >= 2:
+        _REF_KEYWORDS = re.compile(
+            r'(reference|homolog|template|restraint|high.res)',
+            re.IGNORECASE)
+        _AGENT_OUTPUT_PREFIXES = (
+            'refine_', 'autobuild_', 'autosol_', 'phaser_',
+            'resolve_', 'predict_', 'real_space_', 'dock_',
+            'map_to_model_', 'pdbtools_', 'molprobity_', 'rsr_',
+        )
+        for f in list(model_files):  # copy for safe removal
+            bn = os.path.basename(f).lower()
+            if any(bn.startswith(p) for p in _AGENT_OUTPUT_PREFIXES):
+                continue
+            if _REF_KEYWORDS.search(bn):
+                model_files.remove(f)
+                files.setdefault("reference_model", []).append(f)
+                print("INFO: Reclassified '%s' from model "
+                      "to reference_model (filename keyword)"
+                      % os.path.basename(f))
+                break  # Only reclassify one file
 
     # Post-processing: Validate half-map classification.
     #
@@ -589,6 +753,53 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
             for f in reclassified:
                 if f not in files["map"]:
                     files["map"].append(f)
+
+    # Post-processing: Detect half-map pairs among full_map files.
+    #
+    # Some cryo-EM half-maps are named with _1/_2 suffixes instead of
+    # containing 'half' (e.g. 7mjs_23883_H_1.ccp4, 7mjs_23883_H_2.ccp4,
+    # 7n8i_24237_box_1.ccp4, 7n8i_24237_box_2.ccp4).
+    # The strict 'half'-in-name check (above) correctly avoids false
+    # positives on segmented maps, but misses these legitimate pairs.
+    #
+    # Two-tier heuristic:
+    # Tier 1: exactly 2 full_map files whose basenames differ only by
+    #   a trailing _1/_2 before the extension, AND no half_maps.
+    #   When these are the ONLY map files, they're almost certainly
+    #   half-maps (no companion full map to lose).
+    # Tier 2: >= 3 full_map files with a _1/_2 pair AND at least one
+    #   other map remaining after removing the pair (the companion
+    #   full map guard prevents false positives on segmented outputs).
+    if not files.get("half_map"):
+        _pair_re = re.compile(
+            r'^(.+)[_-]([12])\.(\w+)$', re.IGNORECASE)
+        _by_prefix = {}
+        for f in files.get("full_map", []):
+            m = _pair_re.match(os.path.basename(f))
+            if m:
+                prefix = m.group(1).lower()
+                _by_prefix.setdefault(prefix, []).append(f)
+
+        n_full = len(files.get("full_map", []))
+        for prefix, pair in _by_prefix.items():
+            if len(pair) != 2:
+                continue
+            # Tier 1: exactly 2 full_map files that form a pair
+            # (no companion full map needed — these ARE the only maps)
+            if n_full == 2:
+                for f in pair:
+                    files["full_map"].remove(f)
+                    files["half_map"].append(f)
+                break  # Only one pair possible with 2 files
+            # Tier 2: pair + companion full map
+            elif n_full >= 3:
+                remaining = [
+                    f for f in files["full_map"]
+                    if f not in pair]
+                if remaining:
+                    for f in pair:
+                        files["full_map"].remove(f)
+                        files["half_map"].append(f)
 
     # Post-processing: If we have exactly one half-map and no full maps,
     # treat it as a full map. Half-maps only make sense in pairs for FSC.
@@ -720,7 +931,71 @@ def _categorize_files(available_files, ligand_hints=None, files_local=True):
     except Exception:
         pass  # Safety net must not break categorization
 
+    # Post-processing: Promote orphan map files to full_map.
+    #
+    # Mirrors the orphan-PDB → model promotion above.  Map files that
+    # end up in the "map" parent category but NOT in any subcategory
+    # (full_map, half_map, optimized_full_map) are invisible to the
+    # workflow engine's has_full_map check, so real_space_refine and
+    # other programs with requires_full_map=true are never offered.
+    #
+    # Root cause: the YAML excludes list for full_map has "*_a.*" and
+    # "*_b.*" (intended for half-map suffixes) which false-positive on
+    # filenames like "emd-20026_auto_sharpen_A.ccp4" (the "_A" matches
+    # "*_a.*" case-insensitively).  Rather than fix every exclude
+    # pattern, promote any orphan to full_map — if it's not a half-map
+    # or optimized map, it's a full map by elimination.
+    _map_subcats = {"full_map", "half_map", "optimized_full_map"}
+    _in_subcat = set()
+    for sc in _map_subcats:
+        for f in files.get(sc, []):
+            _in_subcat.add(f)
+    for f in list(files.get("map", [])):
+        if f not in _in_subcat:
+            if "full_map" not in files:
+                files["full_map"] = []
+            if f not in files["full_map"]:
+                files["full_map"].append(f)
+
+    # ── Post-categorization: phased_data_mtz (v115.08) ─────
+    # Content-based promotion: check ALL data_mtz files for phase
+    # columns (iotbx Tier 1 + ASCII heuristic Tier 2).  Promoted
+    # files are moved from data_mtz to phased_data_mtz atomically
+    # (no file exists in both categories).  Runs after BOTH the
+    # YAML and hardcoded paths to handle:
+    #   - YAML path: pattern-matched files need removal from data_mtz
+    #   - Hardcoded path: content-based detection + promotion
+    _resolve_phased_promotions(files)
+
+    # ── Post-categorization: ignored_formats (v115.08) ─────────
+    # Detect known file formats that the agent recognizes but
+    # cannot use for auto-fill.  Surfaces a non-actionable WARNING
+    # so the LLM and user are aware without triggering false
+    # recovery attempts.
+    _ignored = []
+    for f in available_files:
+        ext = os.path.splitext(f)[1].lower()
+        if ext in _IGNORED_FORMATS:
+            _ignored.append({
+                'file': os.path.basename(f),
+                'extension': ext,
+                'note': _IGNORED_FORMATS[ext],
+            })
+    if _ignored:
+        files['ignored_formats'] = _ignored
+
     return files
+
+
+# ── Known but unsupported file formats (v115.08) ──────────────
+# Extensions that the agent recognizes but cannot use for auto-fill.
+# Kept at module level (like _PHASE_LABEL_TOKENS) to avoid
+# re-creating the dict on every call.
+_IGNORED_FORMATS = {
+    '.cv': ('CNS cross-validation file — not supported for '
+            'auto-fill in current version. Proceeding with '
+            'other available data.'),
+}
 
 
 # Mapping from subcategory to parent semantic category
@@ -1062,6 +1337,17 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
                 files["phaser_output"].append(f)
                 _is_program_output = True
 
+            # MR solution files: names like mup_mr_solution.pdb
+            # indicate an already-placed MR model.  Classify as
+            # phaser_output so _has_placed_model recognizes them.
+            # Boundary-aware: require _ before mr_solution (or at
+            # start of name) so nmr_solution.pdb doesn't match.
+            if ('_mr_solution' in basename or
+                basename.startswith('mr_solution')):
+                if f not in files["phaser_output"]:
+                    files["phaser_output"].append(f)
+                _is_program_output = True
+
             if 'refine' in basename and 'real_space' not in basename and 'rsr' not in basename:
                 files["refined"].append(f)
                 _is_program_output = True
@@ -1082,7 +1368,12 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
                 files["with_ligand"].append(f)
                 _is_program_output = True
             if 'ligand_fit' in basename or 'ligandfit' in basename:
-                files["ligand_fit_output"].append(f)
+                # Exclude individual pose files — only the final
+                # combined model (ligand_fit_1.pdb) should be used.
+                # Pose files (ligand_fit_1_pose_5.pdb) are intermediate
+                # results with individual conformations.
+                if '_pose' not in basename:
+                    files["ligand_fit_output"].append(f)
                 _is_program_output = True
 
             if 'predict' in basename or 'alphafold' in basename or 'colabfold' in basename:
@@ -1136,7 +1427,11 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
                 re.search(r'(^|[_\-\.])ligand([_\-\.]|\.pdb$|$)', basename)
             )
             if _is_ligand_name:
-                if not any(x in basename for x in ['ligand_fit', 'ligandfit', 'with_ligand']):
+                if not any(x in basename for x in [
+                    'ligand_fit', 'ligandfit', 'with_ligand',
+                    'no_ligand', 'noligand', 'sans_ligand',
+                    'without_ligand', 'apo_ligand',
+                ]):
                     files["ligand_pdb"].append(f)
             elif not _is_program_output:
                 # Content-based detection: HETATM-only files whose names don't
@@ -1167,38 +1462,16 @@ def _categorize_files_hardcoded(available_files, ligand_hints=None, files_local=
             if 'refine' in basename:
                 files["pdb"].append(f)
                 files["refined"].append(f)
+            elif any(pat in basename for pat in (
+                    'overall_best', 'autobuild', 'predict_and_build',
+                    'autosol', 'model_cif')):
+                # Whole-model mmCIF from autobuild/predict_and_build:
+                # geometry restraints for the full protein, NOT a ligand.
+                # Putting these in ligand_cif causes them to be injected
+                # positionally into phenix.refine → "wrong number of models".
+                files["pdb"].append(f)
             else:
                 files["ligand_cif"].append(f)
-
-    # ── Post-categorization: phased_data_mtz (Fix I3) ─────
-    # Detect autosol/resolve output MTZs that contain
-    # experimental phases (PHIB/FOM).  These should be
-    # preferred by autobuild over the original data MTZ.
-    if "phased_data_mtz" not in files:
-        files["phased_data_mtz"] = []
-    _phased_markers = (
-        'phased', 'resolve', '_ha_', '_denmod',
-        'overall_best_denmod', 'autosol',
-        'overall_best',   # AutoSol: overall_best_refine_data.mtz, etc.
-                          # Safe: no plain refine output uses 'overall_best'
-    )
-    for f in files.get("data_mtz", []):
-        bn = os.path.basename(f).lower()
-        if any(m in bn for m in _phased_markers):
-            # Verify the file actually contains phase columns (PHIB/HL).
-            # A correctly-named file with wrong content would otherwise
-            # replace one crash (missing file) with another (missing labels).
-            if _mtz_has_phase_columns(f):
-                if f not in files["phased_data_mtz"]:
-                    files["phased_data_mtz"].append(f)
-            else:
-                try:
-                    import logging as _log_tmp
-                    _log_tmp.getLogger(__name__).debug(
-                        "CATEGORIZE: %s matches phased marker but has no "
-                        "phase columns (PHIB/HL) -- keeping as data_mtz", bn)
-                except Exception:
-                    pass
 
     # ── Post-categorization: MTZ array detection (Fix I1) ──
     # Detect MTZ files with multiple observation arrays.
@@ -1281,6 +1554,181 @@ def _mtz_has_phase_columns(filepath):
         pass
 
     return False
+
+
+# ── Module-level cache for phase-column detection (v115.08) ────────
+# Persists across cycles within the same process.  Same pattern as
+# _load_done_tracking_configs() which caches YAML parsing at module
+# level.  Key: (absolute_path, mtime) — absolute path prevents
+# cross-directory collisions in long-running processes; mtime ensures
+# re-check when programs overwrite files (e.g. phenix.refine produces
+# a new MTZ each cycle).
+_PHASE_COLUMN_CACHE = {}
+
+
+def _has_phase_columns_cached(filepath):
+    """Cached wrapper for _mtz_has_phase_columns().
+
+    Cache key: (os.path.abspath(filepath), mtime).  Returns cached
+    result on hit; calls _mtz_has_phase_columns() on miss and stores
+    the result.
+
+    Never raises.
+    """
+    try:
+        abs_path = os.path.abspath(filepath)
+        mtime = os.path.getmtime(abs_path)
+    except (OSError, TypeError):
+        return False
+    key = (abs_path, mtime)
+    if key in _PHASE_COLUMN_CACHE:
+        return _PHASE_COLUMN_CACHE[key]
+    result = _mtz_has_phase_columns(abs_path)
+    _PHASE_COLUMN_CACHE[key] = result
+    return result
+
+
+# ── Tier 2: ASCII header heuristic for .hkl/.sca files (v115.08) ──
+# When iotbx cannot resolve column types (e.g. .hkl files without a
+# .def file), fall back to scanning the first 100 lines for known
+# phase column label tokens.
+
+_PHASE_LABEL_TOKENS = frozenset({
+    'PHIB', 'PHIM', 'FOM', 'FOMM',
+    'HLA', 'HLB', 'HLC', 'HLD',
+})
+
+_COMMENT_CHARS = ('#', '!', '*', ';')
+
+
+def _ascii_phase_heuristic(filepath):
+    """Check ASCII reflection file header for phase column labels.
+
+    Reads first 100 lines.  Skips blank and comment lines (starting
+    with #, !, *, ;).  Tokenizes remaining lines and checks for
+    known phase column labels as exact whitespace-separated tokens.
+    This avoids false-positives from comments containing phase-related
+    words.
+
+    Never raises.
+    """
+    if not filepath or not os.path.isfile(filepath):
+        return False
+    try:
+        with open(filepath, 'r', encoding='utf-8') as fh:
+            for i, line in enumerate(fh):
+                if i >= 100:
+                    break
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                # Skip comment lines
+                if stripped[0] in _COMMENT_CHARS:
+                    continue
+                tokens = stripped.upper().split()
+                if _PHASE_LABEL_TOKENS & set(tokens):
+                    return True
+    except Exception:
+        pass  # Binary file or encoding issue — not ASCII phases
+    return False
+
+
+def _resolve_phased_promotions(files):
+    """Promote data_mtz files with phase columns to phased_data_mtz.
+
+    Replaces the old marker-gated promotion loop (v115.07 Fix I3).
+    Now content-based: every file in data_mtz is checked for actual
+    phase columns, regardless of filename.
+
+    Two-tier detection:
+      Tier 1: iotbx column-type check (P or A types) — cached
+      Tier 2: ASCII header heuristic (for .hkl without iotbx headers)
+
+    Atomic: each promoted file is added to phased_data_mtz AND removed
+    from data_mtz in a single pass.  No file exists in both categories
+    after this function returns.
+
+    Never raises.
+    """
+    if "phased_data_mtz" not in files:
+        files["phased_data_mtz"] = []
+
+    to_promote = []
+    for f in files.get("data_mtz", []):
+        # Tier 1: iotbx content check (cached)
+        if _has_phase_columns_cached(f):
+            to_promote.append(f)
+            continue
+        # Tier 2: ASCII header heuristic (for .hkl/.sca files)
+        if _ascii_phase_heuristic(f):
+            to_promote.append(f)
+
+    # Atomic: promote + remove in one pass.
+    # IMPORTANT: only remove from data_mtz when OTHER data files
+    # remain.  A phased file (e.g. nsf-d2_phases.hkl) contains
+    # BOTH Fobs AND phases — it IS valid data for refinement.
+    # Programs like phenix.refine/phaser/autosol do NOT check
+    # phased_data_mtz (only data_mtz/original_data_mtz).  If we
+    # remove the only data file, those programs can't find data.
+    # When a separate scale/data file exists (like rab3a_scale.hkl),
+    # removal is correct — it prevents ambiguous file selection.
+    _non_promoted_data = [
+        f for f in files.get("data_mtz", [])
+        if f not in to_promote
+    ]
+    _can_remove = len(_non_promoted_data) > 0
+
+    for f in to_promote:
+        if f not in files["phased_data_mtz"]:
+            files["phased_data_mtz"].append(f)
+        if _can_remove and f in files["data_mtz"]:
+            files["data_mtz"].remove(f)
+            try:
+                logger.debug(
+                    "CATEGORIZE: Promoted %s to phased_data_mtz "
+                    "(removed from data_mtz; other data files "
+                    "remain)", os.path.basename(f))
+            except Exception:
+                pass  # Logging unavailable in test environments
+        elif not _can_remove and f in files["data_mtz"]:
+            try:
+                logger.debug(
+                    "CATEGORIZE: Promoted %s to phased_data_mtz "
+                    "(kept in data_mtz — only data file, needed "
+                    "by refine/phaser/autosol)",
+                    os.path.basename(f))
+            except Exception:
+                pass  # Logging unavailable in test environments
+
+    # ── Category exclusivity enforcement ──────────────────────
+    # When the YAML categorizer placed a file in BOTH data_mtz
+    # (by extension) and phased_data_mtz (by *phases* pattern),
+    # and the content check didn't fire (e.g. iotbx can't parse
+    # the .hkl), enforce exclusivity — but ONLY when other data
+    # files remain.  Same rationale as above: programs like
+    # phenix.refine only look in data_mtz.
+    _phased_set = set(files.get("phased_data_mtz", []))
+    if _phased_set:
+        _data_after_removal = [
+            f for f in files.get("data_mtz", [])
+            if f not in _phased_set
+        ]
+        if len(_data_after_removal) > 0:
+            _before = len(files.get("data_mtz", []))
+            files["data_mtz"] = _data_after_removal
+            _removed = _before - len(files["data_mtz"])
+            if _removed > 0:
+                try:
+                    logger.debug(
+                        "CATEGORIZE: Exclusivity enforcement "
+                        "removed %d file(s) from data_mtz "
+                        "(other data files remain)", _removed)
+                except Exception:
+                    pass  # Logging unavailable in test envs
+        # else: all data_mtz files are phased — keep them in
+        # both categories so refine/phaser can find data.
+
+    return files
 
 
 def _detect_mtz_arrays(data_mtz_files):
@@ -1588,6 +2036,13 @@ def _analyze_history(history):
     # =========================================================================
     info = {
         "programs_run": set(),
+        # Programs that have at least one SUCCESSFUL completion in history.
+        # Distinct from programs_run, which counts any attempt regardless of
+        # outcome.  Used by workflow_engine._apply_directives to verify that
+        # an after_program directive's target was actually met, not just
+        # attempted-and-failed.  A program is counted as successful here
+        # whenever an entry's result does NOT match _is_failed_result.
+        "successful_programs": set(),
         # predict_and_build flags — no history_detection (Python-only cascade)
         "predict_done": False,
         "predict_full_done": False,
@@ -1644,28 +2099,59 @@ def _analyze_history(history):
             # NOTE: history from session has 'analysis' key, but after transport has 'metrics'
             analysis = entry.get("analysis", entry.get("metrics", {}))
             if isinstance(analysis, dict):
+                # Coerce numeric values — JSON round-tripping can
+                # turn floats into strings (e.g. 0.385 → "0.385").
+                def _sf(v):
+                    if v is None:
+                        return None
+                    try:
+                        return float(v)
+                    except (ValueError, TypeError):
+                        return None
                 if analysis.get("r_free"):
-                    info["last_r_free"] = analysis["r_free"]
+                    info["last_r_free"] = _sf(analysis["r_free"])
                 if analysis.get("map_cc"):
-                    info["last_map_cc"] = analysis["map_cc"]
+                    info["last_map_cc"] = _sf(analysis["map_cc"])
                 if analysis.get("clashscore"):
-                    info["last_clashscore"] = analysis["clashscore"]
+                    info["last_clashscore"] = _sf(analysis["clashscore"])
                 if analysis.get("tfz"):
-                    info["last_tfz"] = analysis["tfz"]
+                    info["last_tfz"] = _sf(analysis["tfz"])
                 if analysis.get("resolution"):
-                    info["resolution"] = analysis["resolution"]
+                    info["resolution"] = _sf(analysis["resolution"])
                 if analysis.get("anomalous_resolution"):
-                    info["anomalous_resolution"] = analysis["anomalous_resolution"]
-                    info["has_anomalous"] = True
-                elif analysis.get("has_anomalous"):
+                    _ar = _sf(analysis["anomalous_resolution"])
+                    info["anomalous_resolution"] = _ar
+                    # anomalous_resolution is the estimated d-spacing limit of
+                    # useful anomalous signal from xtriage.  A value > 6 Å means
+                    # signal is only present at very low angles (essentially noise
+                    # from Friedel pair differences) and is NOT useful for phasing.
+                    # Example: anomalous_resolution=9.8 with measurability=0.032
+                    # is negligible and must NOT gate autosol availability.
+                    if _ar is not None and _ar < 6.0:
+                        info["has_anomalous"] = True
+                # Independent 'if' (not elif): has_anomalous from analysis
+                # must be checked even when anomalous_resolution is present
+                # but >= 6.0.  The old 'elif' silently skipped this when
+                # anomalous_resolution was set.  (v115.03 fix)
+                if analysis.get("has_anomalous"):
                     info["has_anomalous"] = analysis["has_anomalous"]
                 # Store anomalous measurability for decision making
-                if analysis.get("anomalous_measurability"):
+                if analysis.get("anomalous_measurability") is not None:
                     info["anomalous_measurability"] = analysis["anomalous_measurability"]
                     # Strong anomalous signal if measurability > 0.10
                     if analysis["anomalous_measurability"] > 0.10:
                         info["has_anomalous"] = True
                         info["strong_anomalous"] = True
+                    elif analysis["anomalous_measurability"] >= 0.06:
+                        info["has_anomalous"] = True  # weak signal (v115.03)
+                    elif analysis["anomalous_measurability"] < 0.06:
+                        # Negligible signal — clear unless protected
+                        if info.get("strong_anomalous"):
+                            pass  # Don't clear strong signal
+                        elif analysis.get("has_anomalous"):
+                            pass  # Trust explicit flag (v115.03)
+                        else:
+                            info["has_anomalous"] = False
                 # Twinning threshold (0.20) from workflows.yaml shared section
                 if analysis.get("twin_law") and analysis.get("twin_fraction"):
                     twin_frac = analysis["twin_fraction"]
@@ -1689,19 +2175,41 @@ def _analyze_history(history):
         # =====================================================================
         result = entry.get("result", "") if isinstance(entry, dict) else ""
 
+        # Bug 3 fix: track which programs have at least one SUCCESSFUL
+        # entry.  Used downstream by _apply_directives to distinguish
+        # "after_program ran (success or failure)" from "after_program
+        # actually completed".  Without this, a failed refine that
+        # incremented refine_count would satisfy an
+        # after_program=phenix.refine directive and wipe valid_programs
+        # to [STOP], locking the workflow on first failure.
+        if prog and not _is_failed_result(result):
+            info["successful_programs"].add(prog)
+            # Also record the dotted name (e.g. "phenix.refine") since
+            # directives reference programs with the prefix while
+            # programs_run normalizes; both lookups should work.
+            if not prog.startswith("phenix."):
+                info["successful_programs"].add("phenix." + prog)
+
         # Handles: set_flag, run_once, and count strategies.
         # Covers all programs with history_detection in programs.yaml.
         _set_done_flags(info, combined, result)
 
         # The ONE remaining Python-only case: predict_and_build cascade.
-        # When predict runs fully, it also sets refine_done + refine_count.
+        # When predict runs fully, it sets predict_full_done.
+        # We intentionally do NOT set refine_done here: predict_and_build
+        # performs internal refinement passes, but those are not the same as
+        # a standalone phenix.refine run on the final output model.  Setting
+        # refine_done=True here caused the LOOP WARNING (refine_done=True but
+        # phenix.refine still in valid_programs) and also triggered the file
+        # selector to pick intermediate multi-model PDBs from PredictAndBuild
+        # subdirectories instead of the correct overall_best output.
         if "predict_and_build" in combined:
             if not _is_failed_result(result):
                 info["predict_done"] = True
                 if "stop_after_predict=true" not in combined and "stop_after_predict=True" not in combined:
                     info["predict_full_done"] = True
-                    info["refine_done"] = True
-                    info["refine_count"] += 1
+                    # refine_count is NOT incremented here; the agent should
+                    # run a separate phenix.refine step on the p&b output.
 
         # Track whether refinement is needed after ligandfit.
         # After ligandfit adds a ligand, the complex always needs re-refinement.
@@ -1972,13 +2480,14 @@ _ZOMBIE_CHECK_TABLE = [
     # accept_any_pdb=True: generic names like "refined_model.pdb" are valid evidence
     ("rsr_done",             _re.compile(r"real_space_refin.*\.pdb$", _re.IGNORECASE),
      None, True),
-    # map_sharpening: output is *_sharpened*.ccp4 or *_sharpened*.mrc.
+    # map_sharpening: output filenames vary: *_sharpened*.ccp4, *auto_sharpen*.ccp4,
+    # *sharpen_A*.ccp4, etc.  Match "sharpen" (covers "sharpened" too).
     # The 'Sorry:' failure mode IS caught by _is_failed_result (has PHIB/FOM
     # pattern matches SORRY:).  This entry is a backstop for any graceful
     # failure mode that does not produce SORRY:/FAILED in the result string
     # (P5 fix, log-confirmed 2026-03-09).
     ("map_sharpening_done",  _re.compile(
-        r"sharpened.*\.(ccp4|mrc)$|.*sharpened.*\.(ccp4|mrc)$",
+        r"sharpen.*\.(ccp4|mrc)$|.*sharpen.*\.(ccp4|mrc)$",
         _re.IGNORECASE),
      None, False),
 ]
@@ -2212,6 +2721,24 @@ def validate_program_choice(chosen_program, workflow_state):
                         context.get("autosol_done", False),
                     )
                     return False, error
+        # P6 fix: predict_and_build guard for autosol.
+        # If a sequence file + model are present and predict_and_build has not
+        # yet run, the correct workflow is predict_and_build (MR with a predicted
+        # model), not autosol (SAD/MAD experimental phasing).  Block autosol
+        # unless the user explicitly requested MR-SAD via use_mr_sad.
+        if chosen_program == "phenix.autosol":
+            context = workflow_state.get("context", {})
+            if (context.get("has_sequence") and
+                    context.get("has_model_for_mr") and
+                    not context.get("predict_full_done") and
+                    not context.get("use_mr_sad")):
+                return False, (
+                    "predict_and_build workflow detected: a sequence file and "
+                    "model are present and predict_and_build has not yet run. "
+                    "Use phenix.predict_and_build (MR with predicted model) "
+                    "instead of phenix.autosol (SAD/MAD experimental phasing). "
+                    "To override, set use_mr_sad=true in workflow_preferences."
+                )
         return True, None
 
     try:

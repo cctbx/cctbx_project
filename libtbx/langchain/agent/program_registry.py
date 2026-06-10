@@ -98,7 +98,7 @@ class ProgramRegistry:
             )
 
         if os.path.exists(self._template_path):
-            with open(self._template_path, 'r') as f:
+            with open(self._template_path, 'r', encoding='utf-8') as f:
                 self._json_templates = json.load(f)
         else:
             self._json_templates = {}
@@ -691,8 +691,80 @@ class ProgramRegistry:
                     % (old_key, new_key,
                        strategy[new_key]))
 
+            # Pre-pass: resolve strategy values that look like
+            # file paths.  The LLM writes e.g. reference_model.file=4pf4.pdb
+            # (relative filename), but PHENIX needs the absolute path.
+            # Detect by file extension, then resolve using basename matching
+            # against known files, or by joining with the working directory.
+            _PATH_EXTENSIONS = frozenset({
+                '.pdb', '.cif', '.mtz', '.params', '.eff',
+                '.dat', '.fa', '.fasta', '.seq', '.phil',
+                '.param', '.ncs_spec',
+            })
+            # Build a basename → absolute path lookup from all
+            # files passed to this command + their directory siblings.
+            _basename_map = {}
+            _work_dir = None
+            for _fp in files.values():
+                _fps = _fp if isinstance(_fp, list) else [_fp]
+                for _f in _fps:
+                    _f = str(_f)
+                    if os.path.isfile(_f):
+                        _basename_map[os.path.basename(_f)] = _f
+                        if _work_dir is None:
+                            _work_dir = os.path.dirname(_f)
+            # Also scan the working directory for additional files
+            if _work_dir and os.path.isdir(_work_dir):
+                try:
+                    for _fn in os.listdir(_work_dir):
+                        if _fn not in _basename_map:
+                            _full = os.path.join(_work_dir, _fn)
+                            if os.path.isfile(_full):
+                                _basename_map[_fn] = _full
+                except OSError:
+                    pass
+
+            for key in list(strategy.keys()):
+                val = strategy[key]
+                if not isinstance(val, str) or not val:
+                    continue
+                val_lower = val.lower()
+                if not any(val_lower.endswith(ext)
+                           for ext in _PATH_EXTENSIONS):
+                    continue
+                # Value looks like a file path — try to resolve
+                basename = os.path.basename(val)
+                if basename in _basename_map:
+                    resolved = _basename_map[basename]
+                    if resolved != val:
+                        strategy[key] = resolved
+                        log("PATH_RESOLVE: %s=%s → %s"
+                            % (key, basename,
+                               os.path.basename(resolved)))
+                elif os.path.isabs(val) and os.path.isfile(val):
+                    pass  # Already absolute and exists
+                elif _work_dir:
+                    candidate = os.path.join(_work_dir, val)
+                    if os.path.isfile(candidate):
+                        strategy[key] = os.path.abspath(
+                            candidate)
+                        log("PATH_RESOLVE: %s=%s → %s"
+                            % (key, val,
+                               os.path.abspath(candidate)))
+
             for key, value in strategy.items():
                 if key not in strategy_defs:
+                    # Programs with strict_strategy_flags: true only allow
+                    # defined strategy_flags — no KNOWN_PHIL_SHORT_NAMES
+                    # passthrough.  This prevents the LLM from injecting
+                    # crystal_symmetry params into programs that don't
+                    # accept them (e.g. process_predicted_model).
+                    if prog.get("strict_strategy_flags"):
+                        log("STRICT: Skipping '%s' for %s "
+                            "(strict_strategy_flags=true, "
+                            "only defined flags allowed)"
+                            % (key, program_name))
+                        continue
                     # Allow known short PHIL names (nproc, twin_law, etc.) that
                     # are not program-specific and don't need to be in strategy_flags.
                     if key in KNOWN_PHIL_SHORT_NAMES or '=' in key:

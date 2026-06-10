@@ -36,6 +36,7 @@ any_file_type = {
 # reverse dictionary to map any_file types to DataManager datatypes
 data_manager_type = {value:key for key, value in any_file_type.items()}
 data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
+data_manager_type['mtz'] = 'miller_array'   # accept the legacy file_type:mtz token
 
 # build list of supported datatypes
 # datatypes have corresponding modules in iotbx/data_manager
@@ -585,7 +586,7 @@ data_manager
       raise AssertionError('Please provide a text string for writing.')
 
     try:
-      with open(filename, 'w') as f:
+      with open(filename, 'w', encoding='utf-8') as f:
         f.write(text_str)
     except IOError as err:
       raise Sorry('There was an error with writing %s.\n%s' %

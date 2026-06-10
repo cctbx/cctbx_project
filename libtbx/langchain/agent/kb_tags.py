@@ -249,9 +249,17 @@ def _trend_tags(r_free_trend):
   """Tags from R-free trend analysis."""
   tags = []
   last3 = r_free_trend[-3:]
-  # Guard against None values that could slip in
-  if any(v is None for v in last3):
-    return tags
+  # Guard against None and string values that could slip in
+  # from JSON round-tripping
+  coerced = []
+  for v in last3:
+    if v is None:
+      return tags
+    try:
+      coerced.append(float(v))
+    except (ValueError, TypeError):
+      return tags
+  last3 = coerced
   diffs = [
     round(abs(last3[i] - last3[i + 1]), 4)
     for i in range(len(last3) - 1)
@@ -264,6 +272,11 @@ def _trend_tags(r_free_trend):
   if len(r_free_trend) >= 2:
     first = r_free_trend[0]
     last = r_free_trend[-1]
+    try:
+      first = float(first) if first is not None else None
+      last = float(last) if last is not None else None
+    except (ValueError, TypeError):
+      first = last = None
     if first is not None and last is not None:
       total_drop = first - last
       if total_drop > 0.10:

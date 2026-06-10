@@ -27,13 +27,26 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 # Import YAML loader
-from libtbx.langchain.knowledge.yaml_loader import (
-    get_metric_threshold,
-    get_metric_direction,
-    is_metric_good,
-    is_metric_acceptable,
-    load_metrics,
-)
+try:
+    from libtbx.langchain.knowledge.yaml_loader import (
+        get_metric_threshold,
+        get_metric_direction,
+        is_metric_good,
+        is_metric_acceptable,
+        load_metrics,
+    )
+except ImportError:
+    from knowledge.yaml_loader import (
+        get_metric_threshold,
+        get_metric_direction,
+        is_metric_good,
+        is_metric_acceptable,
+        load_metrics,
+    )
+
+
+# _safe_float is shared; see libtbx/langchain/utils/run_utils.py
+from libtbx.langchain.utils.run_utils import _safe_float
 
 
 class MetricEvaluator:
@@ -215,6 +228,8 @@ class MetricEvaluator:
         Returns:
             bool: True if significant improvement
         """
+        old_value = _safe_float(old_value)
+        new_value = _safe_float(new_value)
         if old_value is None or new_value is None:
             return False
 
@@ -242,6 +257,8 @@ class MetricEvaluator:
         Returns:
             float: Percentage improvement (positive = better)
         """
+        old_value = _safe_float(old_value)
+        new_value = _safe_float(new_value)
         if old_value is None or new_value is None or old_value == 0:
             return 0.0
 
@@ -272,7 +289,11 @@ class MetricEvaluator:
             return False
 
         # Calculate improvements for last N cycles
-        recent = values[-(cycles_needed + 1):]
+        # Coerce to float — values may be strings from JSON roundtrip
+        recent = [_safe_float(v) for v in values[-(cycles_needed + 1):]]
+        recent = [v for v in recent if v is not None]
+        if len(recent) < cycles_needed + 1:
+            return False
         improvements = []
 
         direction = self.get_direction(metric_name) if metric_name else "minimize"
@@ -349,7 +370,7 @@ class MetricEvaluator:
         # Extract R-free values
         r_free_values = []
         for m in metrics_history:
-            r_free = m.get("r_free")
+            r_free = _safe_float(m.get("r_free"))
             if r_free is not None:
                 prog = (m.get("program") or "").lower()
                 if "refine" in prog or prog == "unknown":
@@ -448,7 +469,7 @@ class MetricEvaluator:
         # Extract CC values
         cc_values = []
         for m in metrics_history:
-            cc = m.get("map_cc")
+            cc = _safe_float(m.get("map_cc"))
             if cc is not None:
                 prog = (m.get("program") or "").lower()
                 if "real_space" in prog:
@@ -465,11 +486,29 @@ class MetricEvaluator:
         # Get target from YAML
         target = self.get_target("map_cc") or 0.70
 
+        # Check for validation (v116.13 - mirror X-ray pattern at line 403).
+        # Pre-v116.13, the cryo-EM SUCCESS branch unconditionally set
+        # should_stop=True when CC > target, skipping the validation stage
+        # even when phenix.molprobity / phenix.validation_cryoem hadn't run.
+        # The X-ray equivalent (line 403-419) already checks validation_done;
+        # this restores symmetry.  Accepts both phenix.molprobity (general
+        # cryo-EM validation) and phenix.validation_cryoem (cryo-EM-specific).
+        validation_done = any(
+            m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+            for m in metrics_history
+        )
+
         # SUCCESS check
         if latest_cc > target:
-            result["should_stop"] = True
-            result["reason"] = "SUCCESS: Map-model CC (%.3f) above target (%.2f)" % (latest_cc, target)
-            result["recommendation"] = "stop"
+            if validation_done:
+                result["should_stop"] = True
+                result["reason"] = "SUCCESS: Map-model CC (%.3f) above target (%.2f)" % (latest_cc, target)
+                result["recommendation"] = "stop"
+            else:
+                result["should_stop"] = False
+                result["reason"] = "Map-model CC (%.3f) above target - recommend validation" % latest_cc
+                result["recommendation"] = "validate"
+                result["suggest_validation"] = True
             result["trend_summary"] = "Map CC: %.3f - TARGET REACHED" % latest_cc
             return result
 

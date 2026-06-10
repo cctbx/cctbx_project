@@ -182,9 +182,7 @@ def test_addition_scatterers():
     special_position_settings = xrs,
     scatterers                = new_scatterers)
   model.add_solvent(
-    solvent_xray_structure = new_xrs,
-    refine_occupancies     = False,
-    refine_adp             = "isotropic")
+    solvent_xray_structure = new_xrs)
 
   pnps = pnp.manager(model = model)
   clashes = pnps.get_clashes()
@@ -210,19 +208,16 @@ def test_show():
   clashes.show(log=string_io)
   lines = string_io.getvalue().split('\n')
 
-# Disabled because this case does not result in sorry any more.
-# We use some reasonable default for unknown types, see associated changes
-# in pdb_interpretation.
-# def test_unknown_pair_type():
-#   '''
-#   Make sure unknown pair types are not processed
-#   '''
-#   sorry = None
-#   try:
-#     clashes = get_clashes_result(raw_records=raw_records_6)
-#   except Sorry as e:
-#     sorry = e
-#   assert(sorry is not None)
+def test_unknown_pair_type():
+  '''
+  Make sure unknown pair types are not processed
+  '''
+  sorry = None
+  try:
+    clashes = get_clashes_result(raw_records=raw_records_6)
+  except Sorry as e:
+    sorry = e
+  assert(sorry is not None)
 
 
 def test_running_from_command_line():
@@ -235,6 +230,7 @@ def test_running_from_command_line():
     #self.file_to_delete.append(self.file_name)
   cmd = 'mmtbx.nonbonded_overlaps {}'
   cmd = cmd.format(file_name)
+  print(cmd)
   r = easy_run.go(cmd, join_stdout_stderr=False)
   assert(not bool(r.stderr_lines))
 
@@ -796,7 +792,7 @@ if (__name__ == "__main__"):
   test_atom_selection()
   test_addition_scatterers()
   test_show()
-  # test_unknown_pair_type()
+  test_unknown_pair_type()
   test_running_from_command_line()
   #test_file_with_unknown_pair_type()
   test_small_cell()

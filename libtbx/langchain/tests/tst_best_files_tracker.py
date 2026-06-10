@@ -1314,10 +1314,10 @@ def test_session_rfree_mtz_locking():
 
         # Test persistence (save and reload)
         session_file = os.path.join(temp_dir, "session.json")
-        with open(session_file, 'w') as f:
+        with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session_data, f)
 
-        with open(session_file, 'r') as f:
+        with open(session_file, 'r', encoding='utf-8') as f:
             reloaded = json.load(f)
 
         assert_equal(reloaded.get("rfree_mtz"), "/path/to/refine_001_data.mtz",

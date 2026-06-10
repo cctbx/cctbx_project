@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from cctbx import factor_ev_angstrom
 from cctbx.crystal import symmetry
+from dials.array_family import flex
+from dxtbx.model.experiment_list import ExperimentList
 from libtbx import Auto
 
 class experiment_filter(worker):
@@ -15,6 +17,7 @@ class experiment_filter(worker):
     filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
     filter_by_energy = 'energy' in self.params.filter.algorithm
+    filter_by_experiment_prefix = 'experiment_prefix' in self.params.filter.algorithm
     if filter_by_unit_cell:
       assert self.params.filter.unit_cell.value.target_space_group is not None, \
         'Space group is required for unit cell filtering'
@@ -33,6 +36,9 @@ class experiment_filter(worker):
       assert self.params.filter.energy.min_eV is not None or \
         self.params.filter.energy.max_eV is not None, \
         'Specify either min_eV or max_eV for energy filtering'
+    if filter_by_experiment_prefix:
+      assert self.params.filter.experiment_prefix.prefix is not None, \
+        'Specify prefix'
 
   def __repr__(self):
     return 'Filter experiments'
@@ -89,8 +95,10 @@ class experiment_filter(worker):
     filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
     filter_by_energy = 'energy' in self.params.filter.algorithm
-    # only unit_cell, n_obs, resolution, and energy algorithms are supported
-    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy):
+    filter_by_bootstrap = 'bootstrap' in self.params.filter.algorithm
+    filter_by_experiment_prefix = 'experiment_prefix' in self.params.filter.algorithm
+    # only unit_cell, n_obs, resolution, energy, and experiment_prefix algorithms are supported
+    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy) and not (filter_by_bootstrap) and not (filter_by_experiment_prefix):
       return experiments, reflections
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
@@ -117,20 +125,27 @@ class experiment_filter(worker):
       experiment_ids_to_remove += experiment_ids_to_remove_energy
     else:
       removed_for_energy = 0
+    if filter_by_experiment_prefix:
+      experiment_ids_to_remove_experiment_prefix, removed_for_experiment_prefix = self.run_filter_by_experiment_prefix(experiments, reflections)
+      experiment_ids_to_remove += experiment_ids_to_remove_experiment_prefix
+    else:
+      removed_for_experiment_prefix = 0
     experiment_ids_to_remove = list(set(experiment_ids_to_remove))
 
     input_len_expts = len(experiments)
     input_len_refls = len(reflections)
     new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, experiment_ids_to_remove)
+    len_new_experiments = len(new_experiments)
 
     removed_reflections = input_len_refls - len(new_reflections)
-    assert len(experiment_ids_to_remove) == input_len_expts - len(new_experiments)
+    assert len(experiment_ids_to_remove) == input_len_expts - len_new_experiments
 
     self.logger.log("Experiments rejected because of unit cell dimensions: %d"%removed_for_unit_cell)
     self.logger.log("Experiments rejected because of space group %d"%removed_for_space_group)
     self.logger.log("Experiments rejected because of n_obs %d"%removed_for_n_obs)
     self.logger.log("Experiments rejected because of resolution %d"%removed_for_resolution)
     self.logger.log("Experiments rejected because of energy %d"%removed_for_energy)
+    self.logger.log("Experiments rejected because of experiment_prefix %d"%removed_for_experiment_prefix)
     self.logger.log("Reflections rejected because of rejected experiments: %d"%removed_reflections)
 
     # MPI-reduce total counts
@@ -141,6 +156,7 @@ class experiment_filter(worker):
     total_removed_for_n_obs = comm.reduce(removed_for_n_obs, MPI.SUM, 0)
     total_removed_for_resolution = comm.reduce(removed_for_resolution, MPI.SUM, 0)
     total_removed_for_energy = comm.reduce(removed_for_energy, MPI.SUM, 0)
+    total_removed_for_experiment_prefix = comm.reduce(removed_for_experiment_prefix, MPI.SUM, 0)
     total_reflections_removed = comm.reduce(removed_reflections, MPI.SUM, 0)
 
     # rank 0: log total counts
@@ -150,7 +166,58 @@ class experiment_filter(worker):
       self.logger.main_log("Total experiments rejected because of n_obs %d"%total_removed_for_n_obs)
       self.logger.main_log("Total experiments rejected because of resolution %d"%total_removed_for_resolution)
       self.logger.main_log("Total experiments rejected because of energy %d"%total_removed_for_energy)
+      self.logger.main_log("Total experiments rejected because of experiment_prefix %d"%total_removed_for_experiment_prefix)
       self.logger.main_log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
+
+    if filter_by_bootstrap:
+      # keep track of which rank has which experiment by creating a list of tuples (rank, expt_id)
+      rank_experiment_tuples = comm.gather(tuple((self.mpi_helper.rank, i) for i in range(len_new_experiments)), root=0)
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("Performing random bootstrap method, randomly selecting with replacement")
+        # unpack into single list
+        rank_experiment_tuples = [t for sublist in rank_experiment_tuples for t in sublist]
+        total_experiments = len(rank_experiment_tuples)
+        mt = flex.mersenne_twister(seed = self.params.filter.bootstrap.random_seed)
+        # random selection with replacement
+        selected = mt.random_size_t(total_experiments, modulus=total_experiments)
+        # for each rank, send a list of expt_ids to keep and/or duplicate
+        experiment_ids_by_rank = [[] for i in range(self.mpi_helper.size)]
+        for i in range(total_experiments):
+          rank, expt_id = rank_experiment_tuples[selected[i]]
+          experiment_ids_by_rank[rank].append(expt_id)
+      else:
+        experiment_ids_by_rank = None
+      bootstrapped_expt_ids = list(sorted(self.mpi_helper.comm.scatter(experiment_ids_by_rank, root=0)))
+      #self.logger.log('Experiment ids after bootstrapping: %s'%', '.join([str(i) for i in bootstrapped_expt_ids]))
+      bootstrapped_expts = ExperimentList()
+      bootstrapped_refls = []
+      counter = 0
+      root_ident = ""
+      duplications = 0
+      for i, expt_id in enumerate(bootstrapped_expt_ids):
+        new_expt = new_experiments[expt_id]
+        new_refls = new_reflections.select(new_reflections['id'] == expt_id)
+
+        # check if previous entry is the same as this one indicating the data is a duplication
+        if i-1 >= 0 and bootstrapped_expt_ids[i-1] == expt_id:
+          counter += 1
+        else:
+          duplications += counter
+          counter = 0
+          root_ident = new_expt.identifier
+
+        # handle duplications by tagging the identifier with a counter
+        ident = root_ident + f"_{counter}"
+        new_expt.identifier = ident
+        new_refls.experiment_identifiers()[expt_id] = ident
+        bootstrapped_expts.append(new_expt)
+        bootstrapped_refls.append(new_refls)
+      duplications += counter
+      new_experiments = bootstrapped_expts
+      new_reflections = flex.reflection_table.concat(bootstrapped_refls)
+      total_duplications = comm.reduce(duplications, MPI.SUM, 0)
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("Total duplications during bootstrapping: %d"%total_duplications)
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
 
@@ -261,6 +328,15 @@ class experiment_filter(worker):
         experiment_ids_to_remove.append(expt.identifier)
         removed_for_energy += 1
     return experiment_ids_to_remove, removed_for_energy
+
+  def run_filter_by_experiment_prefix(self, experiments, reflections):
+    experiment_ids_to_remove = []
+    removed_for_experiment_prefix = 0
+    for expt_index, expt in enumerate(experiments):
+      if not expt.identifier.startswith(self.params.filter.experiment_prefix.prefix):
+        experiment_ids_to_remove.append(expt.identifier)
+        removed_for_experiment_prefix += 1
+    return experiment_ids_to_remove, removed_for_experiment_prefix
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

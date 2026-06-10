@@ -92,7 +92,7 @@ class DialsProcessorWithLogging(Processor):
   def log_frame(self, experiments, reflections, run, n_strong, timestamp = None,
                 two_theta_low = None, two_theta_high = None, db_event = None):
     # update an existing db_event if db_event is not None
-    if self.params.experiment_tag is None:
+    if self.params.experiment_tag is None or timestamp is None:
       return
     self.queries.append((experiments, reflections, run, n_strong, timestamp,
                          two_theta_low, two_theta_high,
@@ -107,16 +107,21 @@ class DialsProcessorWithLogging(Processor):
     imageset = sets[0]
     assert len(imageset) == 1
     format_obj = imageset.data().reader().format_class._current_instance_ # XXX
-    try: # XTC specific version
-      import psana
-      run = str(format_obj.get_run_from_index(imageset.indices()[0]).run())
-      timestamp = format_obj.get_psana_timestamp(imageset.indices()[0])
-      evt = format_obj._get_event(imageset.indices()[0])
-      if evt:
-        fid = evt.get(psana.EventId).fiducials()
-        timestamp += ", fid:" + str(fid)
-      return run, timestamp
-    except (ImportError, AttributeError, TypeError): # General version
+    if hasattr(format_obj, 'get_run_from_index'): # XTC specific version
+      try:
+        import psana
+        run = str(format_obj.get_run_from_index(imageset.indices()[0]).run())
+        timestamp = format_obj.get_psana_timestamp(imageset.indices()[0])
+        evt = format_obj._get_event(imageset.indices()[0])
+        if evt:
+          fid = evt.get(psana.EventId).fiducials()
+          timestamp += ", fid:" + str(fid)
+        return run, timestamp
+      except AttributeError: # I think we need a psana2 implementation here
+        run = self.params.input.run_num
+        timestamp = self.tag
+        return run, timestamp
+    else: # General version
       run = self.params.input.run_num
       timestamp = self.tag
       return run, timestamp

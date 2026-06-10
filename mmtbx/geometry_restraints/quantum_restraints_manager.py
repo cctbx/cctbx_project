@@ -628,6 +628,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
 
 def qm_restraints_initialisation(params, log=StringIO()):
   for i, qmr in enumerate(params.qi.qm_restraints):
+    if qmr.selection is None: continue
     if not i: print('  QM restraints selections', file=log)
     print('    %s - buffer %s (%s)' % (qmr.selection,
                                        qmr.buffer,

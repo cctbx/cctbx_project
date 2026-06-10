@@ -50,7 +50,7 @@ phenix.ai_agent original_files="data.mtz seq.fa" \
 # Rules-only mode (deterministic, no LLM, auto-discovers files)
 phenix.ai_agent use_rules_only=True input_directory=/path/to/data/
 
-# Without strategic planning (advanced reasoning only)
+# Without strategic planning (advanced reasoning only, no plan/gates)
 phenix.ai_agent thinking_level=advanced \
     original_files="data.mtz sequence.fa"
 
@@ -70,18 +70,403 @@ phenix.ai_agent input_directory=/path/to/tutorial/
 
 ## Active Development
 
-The v115 cycle addresses two categories of work.
+The v119 cluster is the active cycle; see [CHANGELOG.md
+v119](CHANGELOG.md) for the per-ship breakdown.
 
-**Infrastructure fixes** — 22 items identified from dual-run evaluation
-of 21 tutorials, tracked in [`PLAN.md`](../PLAN.md) at the repo root.
-20 of 22 are complete; I6 (unsupported programs) and I7 (tar.gz input)
-are deferred pending workflow engine expansion.
+**Scope** — Twenty-one ships stacked over v118 in three phases.
+First, an operational-hardening + Phase 2A/B sub-cluster
+(`v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1
+→ H6 → H6.1 → H7`): centralized LLM model defaults (H1), a
+server-to-client build metadata channel (H2), skip_programs
+promotion (H2.1), a startup-canary infrastructure (H3/H3b),
+preprocessor telemetry markers with golden-master corpus pinning
+(H4/H4.1), a uniform diagnostic-messages relay channel (H5/H5.1)
+with two latent-bug cleanups (H5.1.1), the planning-suite
+reliability testing framework (H6/H6.1), and Phase 2B's
+scanner-first file extraction activation (H7).  Second, a
+production-bug sub-cluster (`H7 → H8 → H9 → H10 → H11`) fixing
+four bugs surfaced by AIAgent_62 and run_38 batch testing:
+template-literal allowlist gap (H8), `predict_and_build` PHIL
+scope mismatch (H9), and a paired structural + data fix for
+`exclude_patterns` (H10 closes a gap where 7 of 9 selection paths
+didn't honor the filter; H11 corrects three YAML patterns that
+had been authored with substring semantics in mind despite the
+function using word-boundary matching).  Third, three follow-up
+ships (`H11 → H12 → H13 → H14`): H12 refactors H10's closure into
+a module-level helper and adds a categorizer semantic-pin suite
+generalizing the H11 lesson to all of `agent/file_utils.py`; H13
+fixes two Ollama-provider bugs surfaced by Tom's `run_39a_ollama`
+failure (URL `/v1` suffix not normalized on env-var override,
+`OLLAMA_LLM_MODEL` env-var ignored by two consumer sites) and
+completes the v118 §3.5 retired-model classification work with
+a three-way 404 sub-categorization (RETIRED vs UNAVAILABLE vs
+FAILED); H14 fixes three independent regressions surfaced by
+`run_39_openai` batch analysis — a phaser false-positive from
+goal phrases in `_ACTION_TABLE["solve"]` (the 1029B-sad case),
+a duplicate `diagnostic_messages` relay causing `[STEP_1F]`
+markers to be emitted twice (60.6% of runs), and a
+`space_group` validation gap that let prose phrases through.
 
-**Bug fixes** — five issues found during v115 test suite review:
-see [CHANGELOG.md v115.03](CHANGELOG.md).
+Total v119 cluster tests: **189 K-tests + 30 live LLM tests +
+14 production-bug K-tests** (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug
+11) **+ 8 categorizer semantic-pin K-tests** (H12) **+ 13
+provider-error classification K-tests** (H13) **+ 62 H14+H14.1+H14.2
+K-tests** (13 solve-keywords, 8 STEP_1F single-emit, 24 space_group
+validation including 230/230 official Hermann-Mauguin symbols and
+all alternative cell/origin settings, 12 simple-extractor validation
+closure, 5 predict_and_build no-NCS config fix).  All ships verified
+through act → review → Gemini-critique → ship → production-verify
+cadence.
 
-Contributors should read `PLAN.md` before starting new v115 work to
-avoid duplicating completed items or conflicting with deferred ones.
+**v119 lessons surfaced** — Seven patterns from the cluster
+that generalize:
+
+1. **Sandbox stubs for non-obvious-semantics functions need
+   semantic-pin tests.**  H10's sandbox stub for
+   `matches_exclude_pattern` did substring matching while the
+   real function uses word-boundary matching.  H10's K-suite
+   passed in sandbox but the cycle-7 bug remained in production
+   because the YAML patterns assumed substring semantics.  H11
+   added `test_bug11_matches_exclude_pattern_semantics` — 10
+   named cases against the real function — as the template for
+   catching such divergences.  H12 then generalized the pattern
+   to all of `agent/file_utils.py` via `tst_file_categorizer.py`
+   (8 tests, ~75 assertions covering `classify_mtz_type`,
+   `is_model_file`, `get_category_for_extension`, and the other
+   public functions).  Documented in `DEVELOPER_GUIDE.md` §10.3
+   ("Test adequacy").
+
+2. **Configuration grammar must be authored to function
+   semantics.**  The `exclude_patterns` YAML grammar requires
+   word-boundary-correct patterns: no leading or trailing
+   underscores; explicit numeric variants alongside bare patterns
+   when alphanumeric suffixes are expected (`half`, `half1`,
+   `half2`).  H11 embeds a `DESIGN NOTE` block at the top of
+   `programs.yaml` documenting these rules so future YAML authors
+   don't repeat the substring-style authoring mistake.
+
+3. **Centralization happens in stages — data first, rules
+   second.**  H1 centralized the LLM `DEFAULT_MODELS` table but
+   not the env-var precedence rule over it.  Two consumer sites
+   that read the table directly didn't honor `OLLAMA_LLM_MODEL`,
+   while a third site DID — silently inconsistent.  Tom's
+   `run_39a_ollama` exposed this when his `OLLAMA_LLM_MODEL=qwen2.5:72b`
+   was ignored.  H13 added `resolve_model_for_provider()` to
+   centralize the precedence rule, then routed all three consumer
+   sites through it.  Forward policy: when centralizing a data
+   table, also centralize the access patterns or expect the
+   patterns to diverge across consumers over time.
+
+4. **Error categories should map to operator actions, not just
+   error types.**  Pre-H13, all 404s from LLM providers were
+   classified as RETIRED, hint "update DEFAULT_MODELS".  Tom's
+   actual failure was MODEL_UNAVAILABLE (model not pulled on
+   local Ollama) — the right hint is "run `ollama pull X`".
+   H13's `_classify_provider_error` splits 404 into three
+   operationally-distinct sub-classes (RETIRED, UNAVAILABLE,
+   FAILED) plus AUTH_FAILED for 401-class errors, with each
+   tag carrying an actionable hint.  Co-occurrence rule
+   ("model" word must appear within 80 chars of retirement
+   phrase) defends against false-positives from edge-proxy 404
+   pages mentioning "endpoint deprecated".
+
+5. **Goal phrases and method requests live in different
+   layers.**  H14 surfaced a conflation in
+   `_ACTION_TABLE["solve"]`: keyword lists conflated GOAL
+   phrasings (`"solve the structure"`) with METHOD requests
+   (`"phaser"`, `"molecular replacement"`).  The goal phrase
+   matching forced phaser into workflows on SAD datasets where
+   autosol is the right method — a regression invisible until
+   batch analysis showed 24 phaser-composition failures across
+   5 datasets in run_39.  Forward policy: each
+   `_ACTION_TABLE` keyword must represent an UNAMBIGUOUS method
+   request; goal phrasings belong in `classify_intent` or in
+   workflow rules that key on data type, not in method-action
+   keyword lists.  The H14 investigation method itself was
+   replicable: a controlled three-way log comparison
+   (same README ± one line) isolated the trigger to a
+   single-line README diff, converting a statistical signal
+   from `scan_batch_runs.py` into a mechanistic root cause.
+
+6. **Positive shape checks must validate against the FULL
+   domain, not a hand-picked sample.**  H14's `_HM_FORM_RE`
+   regex went through two review passes before reaching its
+   final form.  The first draft was tested against ~15
+   well-known protein space groups and all passed — but
+   running it against the full 230 International Tables
+   symbols showed only 71 matched (31%).  The missing 159
+   included all monoclinic slash forms, all orthorhombic
+   mirror/glide groups, and all cubic high-symmetry groups.
+   Hand-picked test sets give false confidence; the authoritative
+   list is the right benchmark.  Gemini's subsequent external
+   review then caught that even the 230/230-matching regex
+   rejected alternative cell/origin settings (`R3:H`, `P4/n:2`,
+   `P21/c:b`) that appear in real PDB/mmCIF metadata.  Forward
+   policy: when authoring a positive shape check for a
+   well-defined domain (Hermann-Mauguin symbols, ISO dates,
+   semver numbers), enumerate the full canonical set as a
+   K-test regression guard, and explicitly consider what
+   alternative forms exist beyond the canonical.  The
+   `test_hm_form_accepts_all_230_space_groups` test pins
+   this with the explicit 230-symbol list inline.
+
+7. **Validators must converge from every producer path.**
+   H14.1 surfaced a gap H14 missed: `directive_extractor.py`
+   had TWO producers of the directives dict — the LLM-success
+   path (validated) and the `extract_directives_simple`
+   fallback path (NOT validated).  Tom's 2026-05-26 ollama
+   production run exposed the gap when the bogus value
+   `space_group=Not explicitly mentio` survived to the agent
+   even with H14 installed.  The fix: rather than duplicate
+   the validator inline at each producer, make the validator
+   the canonical final-sanity step that ALL producers
+   converge through — extract → validate, always.  Forward
+   policy: when adding a validator for a class of bugs, grep
+   for ALL producers of the value being validated; ensure
+   each one calls the same validator before returning.
+   Concurrent latent-bug audit: check that the validator's
+   allow-list contains EVERY key the producers legitimately
+   set (H14.1 caught a missing `start_with_program` entry in
+   `VALID_STOP_CONDITIONS` this way — pre-existing latent bug
+   that the converged-validator pattern would have surfaced
+   as a regression in Item 1's behavior).  The lesson
+   beneath the technical fix: sandbox K-tests that hit the
+   validator directly aren't enough — K-tests must reproduce
+   the production entry point with the same provider/failure
+   modes (empty LLM response, malformed JSON, `use_rules_only=True`)
+   to catch bypass paths.
+
+The v118 cycle is complete; see [CHANGELOG.md
+v118](CHANGELOG.md) for the full per-section breakdown.
+
+**v118 scope** — Twelve layers stacked over v117.3 addressing
+preprocessor resilience, LLM-shape variability across providers,
+operational hardening, and bug-class elimination:
+`v117.3 → A → C-prime → B → E → F → 5.1 → G → 6.1–6.7 → 8 → 9 → 10`.
+Total sandbox: 204/204 tests passing.
+
+**Categories of work** — Four themes across the twelve layers:
+
+1. **Pipeline diagnostics** (Sections E, C-prime) — adds
+   `[DIRECTIVE_EXTRACTION_FAILED]` / `[ADVICE_PREPROCESSING_FAILED]`
+   stderr markers and splits the displayed directives diagnostic
+   into `directives_user_intent` vs `directives_effective_runtime`.
+   These layers proved essential for diagnosing Section 8 (the
+   gemini-2.0-flash retirement) — the marker name itself was the
+   search key.
+2. **Content-shape normalization** (Sections B, 9, 10) — static
+   `PHIL_NAMESPACE_TRANSLATIONS` for LLM-emitted PHIL paths;
+   `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE` for cryo-EM-vs-X-ray
+   density-modification disambiguation; `_coerce_setting_value`
+   for list-vs-scalar JSON shape mismatch between OpenAI and
+   Google.  All three follow the same pattern: declarative table
+   consumed by a generic validator, with `_corrected_from`-style
+   provenance preserved through transformations.
+3. **Operational hardening** (Sections A, F, G, 6.7, 8) — file-
+   list preservation across preprocessor round-trips; cycle-1
+   experiment_type threading + R-free auto-fill in
+   `command_builder`; chromadb load resilience against protobuf
+   `TypeError`; environment-readiness runtime probe in
+   `tst_dependencies.py`; default-model bumps across all three
+   hardcoded sites.  Section G was the first verified on both
+   Mac and Linux production environments.
+4. **Server-side deployment discipline** (Sections F, 8, 9, 10) —
+   four server-side sections in v118 (vs zero in v117) require
+   file deployment AND server process restart for the fix to
+   take effect.
+
+**Principles surfaced** — Three patterns from v118 that
+generalize beyond it:
+
+1. **Whole-tree grep before declaring a string-replacement done.**
+   Section 8 rev 1 missed `api_client.py`; rev 2 needed a patch
+   script; rev 3 shipped the full files.  v119 cadence convention:
+   every string-replacement starts with `grep -rn 'STRING'` across
+   the full langchain tree.
+
+2. **Stub-module isolation for K-tests.**  Section F established
+   the pattern, extended to G and 9/10: K-tests synthesize stub
+   modules for `agent.program_registry`,
+   `agent.intent_classifier`, etc.  Runs in seconds without the
+   full PHENIX conda env; deterministic; no real LLM calls.
+
+3. **Gemini-reviewed plan rev cycles.**  Sections G, 9, and 10
+   each cycled through 2–4 plan revs against Gemini critique
+   before implementation.  Each revision caught a real concern.
+   v118.10 rev 3 in particular caught the `bool([False]) == True`
+   truthiness trap that rev 2 would have shipped.
+
+**Architectural watchpoint triggered.**  At v118.10 the project
+is at 10 iterations in the preprocessor → extractor → planner →
+BUILD pipeline (original threshold was 6).  v119 will pursue
+operational hardening (centralized model defaults, server
+`/version` endpoint, startup canary, server-stderr-to-client
+diagnostic echo) and prompt consolidation; v120 may pursue
+Direction A (single structured-extraction LLM call replacing the
+three-LLM chain).  See
+`v118_next_steps_consolidated_rev4.md` for the full v119+ plan.
+
+### v117 cycle (preceding v118)
+
+The v117 cycle (v117 → v117.1 → v117.2 → v117.3) reworked the
+directive-extraction pipeline to make it robust against
+preprocessor mangling of user stop intent:
+
+- **v117 Step 1**: `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` —
+  extractor LLM now receives raw advice alongside processed
+  advice via an AUTHORITY paragraph stating raw is the source
+  of truth for intent.  Eliminates the entire class of
+  "preprocessor changed `Stop Condition: None` into `Stop
+  Condition: None`" bugs.
+- **v117.1**: grounding ∧ `stop_after_requested` interaction —
+  v116.19a's grounding guardrail conflicted with v117 Step 1
+  when both `after_program` and `stop_after_requested=True`
+  were set; v117.1 exempts the grounding check in this case.
+- **v117.2**: fill `after_program` from raw advice when LLM
+  omits it — closes the C1 LLM-test gap where openai sometimes
+  failed to set `after_program` even when raw advice was
+  explicit.
+- **v117.3**: extended stop-intent phrasing recognition —
+  adds 5 imperative markers and 2 regex patterns to recognize
+  "stop the workflow", "is the last step", etc.
+
+See ARCHITECTURE.md §§9–13 for the v117 architectural changes
+and CHANGELOG.md for the per-version details.
+
+### v116.10 cycle (Pre-v117)
+
+The v116.10 cleanup cycle addressed six bugs in advice
+parsing, LLM prompting, program selection, and plan
+classification, plus drift-detection machinery for the wire
+contract and the client's plan-generation logic.  Five files
+modified, 89 new tests across 7 new test files plus one
+augmented file (`tst_contract_compliance.py`).
+
+**Categories of work** — The fixes operate at four layers:
+mechanical filters (Phase 4b strips programs whose inputs aren't
+present), prompt engineering (Phase 6a reframes the LLM's
+`after_program` directive), state-machine routing (Phase 6b
+recognizes sessions that can't analyze), and plan-generation
+classification (Phases 1, 3a, 3d fix the user-advice filter and
+the `_initialize_plan_inner` standalone-programs classification).
+Phase 2 (protocol hygiene) sits alongside and enforces wire-contract
+invariants that the existing `tst_contract_compliance.py` suite
+couldn't previously catch.
+
+**Principles surfaced** — Three patterns from this cleanup that
+generalize beyond v116.10:
+
+1. **Filter before adding to `valid_programs`.** Phase 4b strips
+   programs whose inputs aren't present before they reach the LLM,
+   which is more robust than relying on the LLM to notice missing
+   inputs from the prompt. Any program with hard input requirements
+   should be filterable at the workflow_engine layer.
+
+2. **Refactor means no behavior change, period.** Phase 3 was
+   initially delivered as a single phase that bundled the
+   de-duplication refactor with two new programs added to
+   `_STANDALONE_PROGRAMS` (silently changing behavior). Self-review
+   caught this. The fix was to split into Phase 3a (pure refactor,
+   verified by 51 program×intent trace-equivalence checks) and
+   Phase 3d (explicit behavior change, with `tst_dock_and_stop.py`
+   including a 48-trace blast-radius regression guard).
+
+3. **Drift catchers belong in the existing test suite.** Phase 2
+   added `validate_contract()` to `agent/contract.py`, but its
+   drift-detection power came from adding a one-line call to it
+   in the existing `tst_contract_compliance.py`. The same pattern
+   in Phase 3a: the consistency test imports `_ACTION_TABLE` from
+   the source-of-truth module rather than maintaining a duplicate.
+
+**Known gaps** (deferred to future work):
+
+- Phase 3d behavior change is verified by decision-tree traces;
+  no tutorial currently exercises "dock and stop with sequence +
+  map". Rollback is one line if a regression appears.
+- Phase 4b only filters xtriage and mtriage. A systematic
+  "every program declares its inputs" audit is unfinished.
+- The v116.10 prediction-only allowance in
+  `_check_program_prerequisites` is mostly redundant after Phase
+  6b but retained as defense in depth.
+
+**Post-Phase-5 additions.** Three user-reported issues, one
+internally-discovered fix during integration testing, and two
+test suites closing planned verification gaps were patched after
+the Phase 5 docs shipped:
+
+- **CC key extraction (S20).** A successful cryo-EM workflow
+  displayed the misleading "SESSION STOPPED - INCOMPLETE" banner
+  because `_generate_structure_report` looked up the CC metric
+  under `map_model_cc` (the form programs print in logs) instead
+  of `model_map_cc` (the canonical storage key). The fix is a
+  defensive multi-key lookup that accepts both forms. This adds
+  a fourth principle to the cycle's collection:
+  **when fixing bugs that cross the print/store boundary,
+  accept both forms rather than picking the "correct" one.**
+
+- **File encoding (S21).** A Chinese-locale Windows user
+  reported a `UnicodeDecodeError` at PHENIX startup because
+  Python's `open()` without explicit `encoding=` falls back to
+  the system code page. An audit found **305 additional sites**
+  across the codebase with the same vulnerability; all were
+  patched to specify `encoding='utf-8'` explicitly. The
+  regression test uses directory-scan tests that walk the
+  production and test trees automatically, so new files are
+  covered without test updates. This adds a fifth principle:
+  **cross-platform code requires explicit encoding everywhere
+  text files are opened; relying on defaults assumes a locale
+  the user may not have.**
+
+- **Ligand workflow restart (S22, Phase 6c).** The nsf-d2-ligand
+  tutorial restarted its reasoning at cycle 3, with the LLM
+  declaring *"As this is the first refinement step"* even after
+  successful refinement and ligand fitting had completed. Two
+  interacting bugs: `_detect_xray_step` returned "analyze" any
+  time `xtriage_done=False` regardless of downstream progress;
+  `best_files_tracker` scored `ligand_fit_output` (105) below
+  `refined` (≈122) so the agent's "best model" pointer stayed on
+  the unliganded refined model. Both fixes mirror existing
+  in-codebase patterns: the `past_analysis` check copies
+  `_detect_cryoem_step`; the inheritance fix extends the
+  existing `with_ligand` machinery to also cover
+  `ligand_fit_output`. This adds a sixth principle: **when
+  fixing analogous bugs in parallel code paths (X-ray vs cryo-EM,
+  with_ligand vs ligand_fit_output), check whether the fix
+  pattern already exists nearby.** Both bugs had close analogs
+  that simply hadn't been extended to cover the affected case.
+
+- **Tier 1 follow-up tests (S23 + S24).** Two test suites that
+  close verification gaps flagged in the v116.10 review:
+  `tst_initialize_plan_smoke.py` (9 tests) asserts on
+  `_initialize_plan_inner`'s observable side effects — directive
+  rewrites, plan-generation gating — for each branch of its
+  decision tree, complementing the trace-only tests in
+  `tst_dock_and_stop.py`; and
+  `tst_phase3d_motivating_tutorial.py` (3 tests) provides
+  decision-tree, YAML format, and skip-aware session-based
+  verification for the dock-and-stop motivating case. With these
+  tests, all four Tier 1 items from the v116.10 follow-up plan
+  are now complete (1.1 done in earlier amendment cycles; 1.2
+  handled by Tom directly; 1.3 = S23; 1.4 = S24).
+
+- **GUI tutorial override fix.** Discovered during integration
+  testing of Phase 6c. When running a tutorial whose README
+  mentioned a phenix program not yet supported by the AI Agent,
+  the GUI blocked Run with a `Sorry` dialog even when the user
+  provided their own files and advice. The fix in
+  `wxGUI2/Programs/AIAgent.py`: guard the blocking dialog with
+  `not has_files and not has_advice` so it only fires when the
+  user is actually relying on the README. The informational
+  banner stays. User-confirmed working.
+
+### Prior cycle
+
+The v115 cycle addressed 22 infrastructure items identified from
+dual-run evaluation of 21 tutorials plus 5 bug fixes from test
+suite review. 20 of 22 infrastructure items completed; I6
+(unsupported programs) and I7 (tar.gz input) are deferred pending
+workflow engine expansion. See [`PLAN.md`](../PLAN.md) at the
+repo root for status.
 
 ### Success Metrics
 
@@ -92,6 +477,18 @@ avoid duplicating completed items or conflicting with deferred ones.
 | Terminal failure pivots firing | 0% (no pivot logic) | > 90% | `tst_error_classifier.py` |
 | PHIL rejections causing halt | untracked | 0 | `tst_phil_validation.py` |
 | Intent misclassification | untracked | < 5% on tutorial set | `tst_intent_classifier.py` |
+| "X and stop" sessions | AUTO-STOPs (Bug 1) | preserves valid_programs | `tst_user_advice_filter.py` (v116.10) |
+| xtriage offered without .mtz | yes (Bug 3) | filtered | `tst_data_input_filter.py` (v116.10) |
+| `_ACTION_TABLE` target drift | manual | automated | `tst_standalone_consistency.py` (v116.10) |
+| `CURRENT_PROTOCOL_VERSION` drift | manual | automated | `validate_contract()` + `tst_contract_compliance.py` (v116.10) |
+| Cryo-EM runs reported INCOMPLETE | yes (CC bug) | fixed | `tst_cc_key_extraction.py` (v116.10) |
+| Non-UTF-8 Windows startup crash | yes | fixed | `tst_file_encoding.py` (v116.10) |
+| Text-mode `open()` without `encoding=` | ungoverned | automated | `tst_file_encoding.py` directory-scan tests (v116.10) |
+| Workflow state stuck at `xray_initial` post-ligandfit | yes (restart at cycle 3) | advances correctly | `tst_ligand_workflow_restart.py` Section A (v116.10 Phase 6c) |
+| `ligand_fit_output` not selected as best model | yes (scored below refined) | inherits metrics, becomes best | `tst_ligand_workflow_restart.py` Section C (v116.10 Phase 6c) |
+| `_initialize_plan_inner` side effects untested | only trace-tested | behavioral tests | `tst_initialize_plan_smoke.py` (v116.10 Tier 1 follow-up) |
+| Phase 3d dock-and-stop tutorial verification | trace-only | tutorial integration test | `tst_phase3d_motivating_tutorial.py` (v116.10 Tier 1 follow-up) |
+| GUI tutorial Run blocked despite user input | yes (bug) | guarded on user input | manual verification + scenario tracing |
 
 ---
 
@@ -278,6 +675,13 @@ Semantic file classification using rules from `file_categories.yaml`:
   models (>150 atoms, majority ATOM records) → rescued to `model`.  Catches
   false positives from broad YAML patterns matching names like `1aba.pdb`.
 - **MTZ safety net**: Cross-checks all MTZ files against `classify_mtz_type()` regex
+- **Pose file exclusion** (v115.09b): LigandFit individual pose files
+  (`ligand_fit_1_pose_5.pdb`) are excluded from `ligand_fit_output` category
+  at categorization time. Only the final combined model (`ligand_fit_1.pdb`)
+  is categorized. Additionally, `session.get_available_files()` filters
+  `_pose_`/`_pose.` from the returned file list — this is the primary
+  defense, catching pose files that enter through `_discover_cycle_outputs`
+  glob scans.
 
 ### 6. Best Files Tracker (`agent/best_files_tracker.py`)
 
@@ -326,6 +730,37 @@ can only name one program in `after_program`.  For multi-goal requests like
 `after_program` triggered an immediate stop.  By letting the LLM decide, all
 goals in the user's advice are honored.
 
+**Ligand-fit exception (v115.09b):** When ligand-fit signals are detected
+("fit ATP", "fit ligand", etc.), `after_program` is cleared entirely. Ligand
+fitting is a multi-step workflow (refine → ligandfit → pdbtools → refine →
+polder → validate) driven by the `refine_placed_ligand` plan template (6
+stages). The LLM sets `after_program` to a different program each run
+(ligandfit, refine, or polder), and each choice blocks a different
+intermediate step. Clearing `after_program` lets the plan gates advance
+through all stages naturally.
+
+**General `after_program` resolver (v115.10):** Replaces per-workflow
+overlays with a single mechanism.  Uses `_ACTION_TABLE` (14 actions)
+to detect program mentions in the user's advice, then applies rules
+based on action count and explicit "stop":
+- 2+ actions, no stop → clear `after_program` (plan drives)
+- 2+ actions + stop → `after_program` = last mentioned
+- 1 action + stop → set `after_program` if LLM missed it
+- 1 action, no stop → leave as-is
+
+Handles all workflows: MR, cryo-EM density modification, ligand
+fitting, predict/build, etc.  Includes negation detection ("don't
+build") and predict+build compound rule.
+
+**Parameter requests** ("set resolution to 3", "run 4 cycles") use
+a different, three-layer architecture: (1) the LLM extracts the
+concept and value, (2) ``strategy_flags`` in programs.yaml maps
+concepts to program-specific PHIL paths, (3) the command builder
+applies them.  Unlike stop/continue (where the LLM is systematically
+unreliable), the LLM handles parameter extraction well.  When a
+parameter request fails, the fix is to add a ``strategy_flags``
+entry in programs.yaml, not new Python code.
+
 ### 8. Safety Checks (`agent/sanity_checker.py`, `agent/directive_extractor.py`)
 
 Multiple layers of validation to prevent errors:
@@ -366,25 +801,115 @@ The reranking retriever is created in `rag/retriever.py` via
 `create_reranking_retriever()` and used by both log analysis
 (`analysis/analyzer.py`) and documentation queries (`utils/query.py`).
 
-### 10. Strategic Planner (v114)
+### 10. Thinking Levels and the Strategic Planner
 
-The goal-directed layer sits above the reactive agent and communicates
-through the directives system — the same interface a human user would
-use. The reactive agent is unchanged; every safety check still applies.
+The `thinking_level` parameter controls how much intelligence the
+agent applies to each cycle. It is a PHIL choice parameter with four
+values: `none`, `basic`, `advanced`, and `expert` (default). Each
+level is additive — higher levels include everything from lower levels
+plus additional capabilities.
 
-Activated by `thinking_level=expert`. The four thinking levels are:
+A separate parameter, `use_rules_only=True`, is orthogonal to
+`thinking_level`. It replaces the LLM call in the PLAN node with
+deterministic first-valid-program selection. Everything else — PERCEIVE,
+THINK, BUILD, VALIDATE, safety checks, error recovery — runs identically
+regardless of `use_rules_only`. The two axes are independent: you can
+run `thinking_level=advanced use_rules_only=True` to get structural
+validation and expert KB without any LLM calls in PLAN.
 
-| Level | THINK node | Structure Model | Planning layer |
-|-------|-----------|-----------------|---------------|
-| `none` | off | off | off |
-| `basic` | log analysis + LLM | off | off |
-| `advanced` (default) | validation + KB + LLM | updated | off |
-| `expert` | validation + KB + LLM | updated | **on** |
+#### Capability Matrix
 
-The Structure Model is updated at both `advanced` and `expert`
-levels (it feeds the expert assessment display). The planning
-layer (plan generation, gate evaluation, hypothesis testing,
-reports) only activates at `expert`.
+| Capability | `none` | `basic` | `advanced` | `expert` (default) |
+|---|---|---|---|---|
+| **Inside the LangGraph pipeline (per-cycle)** | | | | |
+| PERCEIVE: file categorization, workflow state, metrics, sanity checks | ✓ | ✓ | ✓ | ✓ |
+| THINK: LLM call with log analysis | — | ✓ | ✓ | ✓ |
+| THINK: strategy memory (persists across cycles) | — | ✓ | ✓ | ✓ |
+| THINK: structural validation (Ramachandran, clashscore, rotamers) | — | — | ✓ | ✓ |
+| THINK: Structure Model (accumulated structural knowledge) | — | — | ✓ | ✓ |
+| THINK: Validation History (per-cycle snapshots, trend analysis) | — | — | ✓ | ✓ |
+| THINK: file metadata tracking | — | — | ✓ | ✓ |
+| THINK: expert knowledge base (56 rules, IDF-weighted) | — | — | ✓ | ✓ |
+| THINK: hypothesis extraction from LLM response | — | — | ✓ | ✓ |
+| PLAN: LLM program selection (or rules-only fallback) | ✓ | ✓ | ✓ | ✓ |
+| BUILD: deterministic command assembly | ✓ | ✓ | ✓ | ✓ |
+| VALIDATE: workflow, file, and duplicate checks | ✓ | ✓ | ✓ | ✓ |
+| **Outside the graph (between cycles, in ai_agent.py)** | | | | |
+| Plan generation at session start (17 templates) | — | — | — | ✓ |
+| Plan-to-directives merging before each cycle | — | — | — | ✓ |
+| Gate evaluation after each cycle (advance/retreat/skip/stop) | — | — | — | ✓ |
+| Strategy blacklisting on retreat | — | — | — | ✓ |
+| Hypothesis lifecycle management (confirm/refute/abandon) | — | — | — | ✓ |
+| Cycle commentary (template-based, no LLM) | — | — | — | ✓ |
+| Plan enforcement (suppress premature STOP) | — | — | — | ✓ |
+| Model placement gate | — | — | — | ✓ |
+| **At session end** | | | | |
+| Structure report (HTML with SVG trajectory) | — | — | — | ✓ |
+| Session summary JSON | — | — | — | ✓ |
+| Final/stopped report (template-based, no LLM) | — | — | — | ✓ |
+| Failure diagnosis (LLM-generated, on terminal error) | — | — | — | ✓ |
+
+#### Per-Level Behavior
+
+**`none`** — Minimum viable agent. The THINK node is a complete
+pass-through. The pipeline is effectively PERCEIVE → PLAN → BUILD →
+VALIDATE → OUTPUT. PLAN still calls the LLM for program selection
+(unless `use_rules_only=True`), so there is one LLM call per cycle.
+No between-cycle operations beyond basic stop checks.
+
+**`basic`** — Adds a second LLM call in the THINK node. The thinking
+context includes log sections extracted from the last program's output
+(program-specific keyword extraction), current metrics, R-free trend
+across history, a brief history summary (last 5 cycles), recent
+failures, and strategy memory. The LLM produces an assessment with
+an action, confidence, analysis, and guidance. If guidance is produced,
+it is prepended to `user_advice` as `[Expert assessment] ...` so the
+PLAN node's LLM sees it when selecting a program. Strategy memory
+is updated and persisted. The `should_think()` gate applies: THINK
+only engages after strategic programs (analysis, model-building,
+refinement, ligand), after failures, or when R-free is stalled. It
+skips on the first cycle and on routine steps.
+
+**`advanced`** — Adds four subsystems to the THINK node's context:
+(A) structural validation via headless `run_validation()` on the
+current best model, producing Ramachandran, clashscore, rotamer
+analysis, and model contents; (B) a Structure Model that accumulates
+cross-cycle knowledge from ground-truth validation results — data
+characteristics, model state, R-free trajectory with annotations,
+and a strategy blacklist — plus a Validation History with per-cycle
+snapshots; (C) file metadata entries for validated models; and
+(D) expert knowledge base queries with IDF-weighted tag matching
+against 56 crystallographic rules. The LLM call receives all of this
+richer context. The between-cycle loop in `ai_agent.py` is unchanged
+from `none`/`basic` — no plan, no gate evaluation, no reports.
+
+**`expert`** (default) — Everything from `advanced`, plus the entire
+Strategic Planner layer activates in `ai_agent.py`. Inside the graph,
+the THINK node runs identically to `advanced` (the value `expert`
+is mapped to `advanced` for graph execution, since all planning
+operations live outside the graph). The additions are all in the
+between-cycle loop, described in Sections 10a–10h below.
+
+#### How `expert` Maps to `advanced` in the Graph
+
+The LangGraph pipeline only knows three thinking levels: `none`,
+`basic`, and `advanced`. When the user sets `thinking_level=expert`,
+`create_initial_state()` maps it to `advanced` for graph execution.
+This is deliberate: the graph nodes (PERCEIVE, THINK, PLAN, BUILD,
+VALIDATE) behave identically at `advanced` and `expert`. Everything
+that distinguishes `expert` from `advanced` — plan generation, gate
+evaluation, hypothesis lifecycle, stage summaries, reports — lives
+in the outer loop in `ai_agent.py`, gated on the original
+`thinking_level == "expert"` check.
+
+The subsections below (10a–10h) describe the components of the
+strategic planner in detail.
+
+Note: The Structure Model (10a) and Validation History are updated
+at both `advanced` and `expert` levels inside the THINK node. The
+remaining components (10b–10h: Plan Generator, Gate Evaluator,
+Hypothesis Engine, Explanation Engine, Model Placement Gate, Plan
+Enforcement, Display Data Model, HTML Report) only run at `expert`.
 
 #### 10a. Structure Model (`agent/structure_model.py`)
 
@@ -471,8 +996,12 @@ Produces crystallographer-level commentary at three detail levels:
 |----------|------|------|
 | `generate_cycle_commentary()` | Every cycle | No (template) |
 | `generate_stage_summary()` | Stage transitions | No (template) |
-| `generate_final_report()` | Session completion | Yes |
-| `generate_stopped_report()` | Early stop | Yes |
+| `generate_final_report()` | Session completion | No (template from Structure Model) |
+| `generate_stopped_report()` | Early stop | No (template from Structure Model) |
+
+The failure diagnosis (`ai_failure_diagnosis.html`) is separate from the
+Explanation Engine — it is LLM-generated and produced by `failure_diagnoser.py`
+when the agent detects a terminal error (see ARCHITECTURE.md).
 
 Note: `generate_stage_summary()` no longer includes the "Next:"
 line — that information is shown separately in the GUI's stage
@@ -526,11 +1055,59 @@ Eliminates duplication across three display views:
 - `timeline`: compact cycle entries
 - `format_cycle_compact()`: one-line-per-cycle formatting
 
-#### 10h. HTML Report Generator (`knowledge/html_report_template.py`)
+#### 10h. Session Reports
 
-Template-based HTML report using DisplayDataModel. No LLM call.
-Includes inline SVG R-free/CC trajectory chart with retreat markers.
-Generated at session completion for all modes (not just expert).
+At session completion, the agent produces up to four output files.
+All reports except the failure diagnosis are template-based with no
+LLM call.
+
+**Structure Determination Report** (`structure_determination_report.txt`):
+Text report generated by `generate_final_report()` or
+`generate_stopped_report()` in `knowledge/explanation_prompts.py`.
+Uses data from the Structure Model (ground truth, not LLM reasoning).
+Contains: data characteristics (resolution, space group, twinning,
+MR/phasing metrics), final model stats (R-free, R-work, clashscore,
+Ramachandran, chains, ligands, waters), plan stage outcomes, and
+(for stopped sessions) a strategies-that-failed section with metrics
+at retreat, outstanding issues, and actionable recommendations.
+
+**HTML Structure Report** (`structure_report.html`):
+Template-based HTML report generated by `generate_html_report()` in
+`knowledge/html_report_template.py`. Uses the `DisplayDataModel` as
+its data source. Includes:
+- Title with outcome status icon (✅ determined, ⚠ stopped, ● incomplete)
+- Final metrics table (R-free, R-work, CC, clashscore, geometry)
+- Inline SVG R-free/CC trajectory chart with retreat markers
+- Workflow stage table with status icons (✓ complete, ✗ failed, — skipped)
+- Per-cycle timeline (cycle, program, status, key metric)
+- Output file paths (model, map)
+The GUI provides an "Open Structure Report" button that opens this file.
+
+**Session Summary JSON** (`session_summary.json`):
+Machine-readable summary for the evaluation harness and downstream
+tools. Generated by `_write_session_summary_json()` in `ai_agent.py`.
+Contains: outcome (complete/stopped/incomplete/aborted/reactive),
+stop_reason, stop_reason_code, final metrics, data characteristics,
+stage outcomes with cycles and metrics, hypothesis outcomes (if any),
+strategy blacklist, and R-free/CC metric trajectory.
+
+**Failure Diagnosis** (`ai_failure_diagnosis.html`):
+LLM-generated diagnosis produced by `_diagnose_terminal_failure()` in
+`ai_agent.py` when the agent detects a terminal program error (e.g.,
+crystal symmetry mismatch, missing data columns, PHIL parse failure).
+The `DiagnosisDetector` identifies the error type from
+`diagnosable_errors.yaml`, reads the failing program's log tail, and
+sends both to the LLM (via the server's `failure_diagnosis` analysis
+mode). Error types include crystal symmetry mismatch, model outside
+map, SHELX not installed, unknown PHIL parameter, polymer special
+position, and missing crystal symmetry (v115.09b — covers xtriage
+with .sca data lacking unit cell info). The response is structured as three sections: "What went wrong,"
+"Most likely cause," and "How to fix it." The HTML report opens
+automatically in the user's browser. If the LLM is unavailable
+(rules-only mode or API failure), a deterministic fallback uses the
+YAML hint text instead. When a failure diagnosis is produced, the
+normal structure report is skipped — the diagnosis is the user's
+primary output.
 
 ---
 
@@ -588,6 +1165,15 @@ phenix.refine:
       type: float
       display_name: "Angles RMSD"
 ```
+
+**Future: structured results.** The `log_parsing` regex approach
+works but is fragile — log format changes silently break extraction.
+Newer PHENIX programs built on `ProgramTemplate` expose a
+`results_as_json()` method that returns metrics as structured JSON.
+As programs adopt this, the agent can read JSON results directly
+instead of parsing logs, with `log_parsing` as a fallback for older
+programs. See ARCHITECTURE.md "Potential improvements" for the
+migration plan.
 
 ### workflows.yaml
 
@@ -793,6 +1379,11 @@ metrics:
 
 ## Execution Modes
 
+The agent's behavior is controlled by two independent axes:
+`thinking_level` (how much intelligence per cycle) and
+`use_rules_only` (LLM vs deterministic program selection).
+The combinations below are the most common configurations.
+
 ### Goal-Directed Mode (v114, default)
 
 ```bash
@@ -806,6 +1397,7 @@ phenix.ai_agent original_files="data.mtz seq.fa"
   suppresses destructive programs (phaser, autosol)
 - Hypothesis testing with verification latency
 - Per-cycle expert assessment and stage transition summaries
+- Two LLM calls per cycle when THINK engages (expert reasoning + program selection)
 - `structure_report.html`, `structure_determination_report.txt`,
   and `session_summary.json` at completion
 
@@ -815,11 +1407,25 @@ phenix.ai_agent original_files="data.mtz seq.fa"
 phenix.ai_agent thinking_level=advanced original_files="data.mtz seq.fa"
 ```
 
-- LLM makes program selection decisions
-- Structural validation and expert KB
-- Rules engine validates all choices
-- Full reasoning captured in events
-- No strategic plan or gate evaluation
+- `thinking_level=advanced`: THINK node runs with full context
+  (structural validation, expert KB, Structure Model) but no
+  strategic planning layer
+- LLM makes program selection decisions in PLAN
+- Two LLM calls per cycle when THINK engages
+- No plan generation, gate evaluation, or between-cycle reports
+- Useful when the planning overhead is unnecessary or when
+  debugging the reactive engine in isolation
+
+### Minimal LLM Mode
+
+```bash
+phenix.ai_agent thinking_level=none original_files="data.mtz seq.fa"
+```
+
+- THINK node is a pass-through (no expert reasoning)
+- One LLM call per cycle (PLAN only)
+- Lowest LLM cost; suitable for simple workflows or constrained
+  API budgets
 
 ### Rules-Only Mode
 
@@ -827,11 +1433,14 @@ phenix.ai_agent thinking_level=advanced original_files="data.mtz seq.fa"
 phenix.ai_agent use_rules_only=True original_files="data.mtz seq.fa"
 ```
 
-- Deterministic program selection (first valid program)
-- No LLM calls
-- Faster, reproducible for testing
-- Auto-discovers files from input_directory (no README
-  parsing needed)
+- Deterministic program selection (first valid program from
+  workflow engine) — no LLM call in PLAN
+- `use_rules_only` only affects PLAN; `thinking_level` still
+  controls the THINK node independently. At the default
+  `thinking_level=expert`, THINK will attempt its LLM call.
+  To suppress all LLM calls, also set `thinking_level=none`.
+- Faster, fully reproducible for testing (with `thinking_level=none`)
+- Auto-discovers files from input_directory
 
 ### Dry-Run Mode
 
@@ -867,6 +1476,12 @@ blacklisted so `inject_user_params` never re-injects it. Recognized error patter
   scope.path.param=value found" — blacklists the full PHIL path and all
   components ≥ 6 characters (catches `wavelength` when PHIL resolves it to
   `autosol.wavelength.added_wavelength`)
+
+**Static (proactive) blacklist (v120):** the above is *reactive* (learned only
+after a failure). `AgentSession._STATIC_BAD_INJECT_PARAMS` seeds known-invalid
+pairs so they are skipped on the FIRST command — e.g. `ncs_file` for
+`phenix.resolve_cryo_em`. `get_all_bad_inject_params()` merges static ∪ learned
+and is what the client transmits to the server. See ARCHITECTURE §45.
 
 ### User Request Invalid
 
@@ -925,6 +1540,7 @@ The agent runs on macOS, Linux, and Windows. Key platform-specific handling:
 | Path quoting | `shlex.quote()` (POSIX single-quotes) | Double-quote with escaped inner `"` |
 | File encoding | UTF-8 default on modern systems | Locale-dependent; explicit `encoding='utf-8'` on all `open()` |
 | `os.path.relpath` | Always works | `ValueError` across drives; caught with `try/except` |
+| JSON transport | No issues | v115.05: removed `json_str.replace('\\t', ' ')` from `transport.py` and `api_client.py` — it corrupted paths like `C:\tutorials\test.mtz` (the `\t` matched as tab escape). Tab handling is done correctly by `text_as_simple_string()`. |
 
 ---
 
@@ -982,7 +1598,7 @@ and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Testing
 
-### Test Suites (42+ files, 40+ in runner)
+### Test Suites (55+ files, 50+ in runner)
 
 **Standalone (no PHENIX required):**
 - API Schema, Best Files Tracker, Transport, State Serialization
@@ -1001,6 +1617,28 @@ and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 - Workflow State, YAML Config, Sanity Checker
 - Metrics Analyzer, Dry Run, Integration, Directives Integration
 
+**Systematic Testing Framework (v115.08 — 10 phases, ~14s):**
+
+Bottom-up testing of system boundaries where bugs hide. Exercises real
+production code paths end-to-end. Designed after code reviews found 5
+critical bugs that existing unit tests missed.
+
+| Suite | Phase | Tests | What It Tests |
+|-------|-------|-------|---------------|
+| S0 | Static Audit | 5 | Parse check, bare except scan, import fallbacks |
+| S1 | Contract Gaps | 128 | AST coverage map — 4 modules, boundary gap detection |
+| S2 | Path Consistency | 10 | YAML vs hardcoded categorization diff (whitelisted) |
+| S3 | Session Round-Trip | 28 | JSON symmetry + AgentSession save/load/pipeline |
+| S4 | History Flags | 8 | Flag writer/reader consistency, dead flag audit |
+| S5 | Category-Consumer | 14 | input_priorities + fallback_categories alignment |
+| S6 | Routing Simulation | 32 | 3-cycle routing through detect_step + get_valid_programs |
+| S7 | Command Building | 15 | CommandBuilder.build() with real file combinations |
+| S8 | Error Classification | 7 | 3 classifiers × 30+ patterns, overlap + severity |
+| S9 | LLM Perturbation | 17 | Filename/program/parameter/truncation/empty resilience |
+
+Phases S6–S8 are skipped in `--quick` mode. All phases produce machine-readable
+findings in `findings/`. See `docs/PHASE_REVIEW_REPORT.md` for review details.
+
 **Additional test files (not in run_all_tests.py):**
 - tst_template.py (template builder), tst_utils.py (assert helpers)
 
@@ -1008,8 +1646,9 @@ and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ```bash
 python3 tests/run_all_tests.py        # All tests
-python3 tests/run_all_tests.py --quick  # Standalone only
+python3 tests/run_all_tests.py --quick  # Standalone only (skips S6-S8)
 python3 tests/tst_event_system.py    # Single suite
+python3 tests/tst_phase7_routing_simulation.py  # Single phase
 ```
 
 ---
@@ -1018,6 +1657,21 @@ python3 tests/tst_event_system.py    # Single suite
 
 | Version | Key Changes |
 |---------|-------------|
+| v120 | **New providers (Portkey + Claude) + `FORCE_NO_AI_SERVER`** (three phases P1–P3): **P1** adds the `FORCE_NO_AI_SERVER=1` environment override in `programs/ai_agent.py::run()` that forces `communication.run_on_server=False` (local execution) without changing the shipped PHIL default — no effect on `predict_and_build`/`predict_model` run separately; **P2** centralizes `SUPPORTED_PROVIDERS` as a single source of truth in `core/llm.py` (was duplicated literals in `graph_nodes.py` and `ai_agent.py` that could drift), with both consumers importing it; **P3** adds **portkey** (the Portkey gateway fronting Azure OpenAI, via the Portkey SDK with `provider="azure-openai"`; env `PORTKEY_AZURE_API_KEY`/`PORTKEY_BASE_URL`/`PHENIX_PORTKEY_MODEL`) and **anthropic** (Claude; env `ANTHROPIC_API_KEY`) as provider choices, wired through every routing point: `core/llm.py` factory + `get_expensive_llm` + new helpers (`portkey_langchain_config`, `sanitize_llm_kwargs`, `_delegate_embeddings_for_nonnative`), `api_client._call_portkey_llm`, `directive_extractor` (`_call_llm` + fallback), `rate_limit_handler.get_portkey_handler`, `graph_nodes.validate_provider` + handler site, `thinking_agent`, the embeddings/RAG DB path (`run_utils`, `summarizer`, `run_query_docs`, `rebuild_ai_database`, `update_ai_database`), PHIL enums, and `install_ai_tools.csh`. `sanitize_llm_kwargs` resolves the asymmetric-args trap (portkey drops `temperature` + remaps to `max_completion_tokens`; anthropic keeps both, which `ChatAnthropic` requires). Embeddings degrade gracefully for non-native providers (delegate or `None`, never raise on construction). Provider travels in request `settings` so local and server run identical code. Derived from a user proof-of-concept patch, hardened for production (no PHIL-default flip, clear `ValueError` over bare `KeyError`, dedicated rate handler). 36 new K-tests across three suites. |
+| v119 | **Operational hardening + production-bug cluster** (twenty-eight ships H1–H18.2): H1 centralizes LLM model defaults in `core/llm.DEFAULTS`; H2 adds the server→client `agent_build` metadata channel with version+fingerprint injection; H3/H3b add a startup canary that detects wrong-build deploys and unhealthy LLM environments; H4/H4.1 add the `[STEP_1F]` preprocessing-telemetry marker pinned by a golden-master corpus; H5/H5.1 establish a uniform `diagnostic_messages` relay surfacing server-side stderr markers to the client transparently; H5.1.1 cleans up two latent v118.9 bugs; H6/H6.1 add the planning-suite reliability testing framework; H7 activates Phase 2B scanner-first file extraction; H8–H11 fix four production bugs (template-literal allowlist, predict_and_build PHIL scope, `exclude_patterns` application gap, YAML pattern semantics); H12 refactors the exclude_patterns helper to module level with semantic-pin tests; H13 fixes two Ollama-provider bugs (`OLLAMA_BASE_URL` path construction, `OLLAMA_LLM_MODEL` honored only in `core/llm`) and refines retired-model 404 classification into three actionable sub-categories; H14/H14.1/H14.2 close three independent regressions from `run_39_openai` batch (phaser false-positive in `_ACTION_TABLE["solve"]`, duplicate `[STEP_1F]` emission, space_group `Hermann-Mauguin`-shape validation) and a one-line `programs.yaml` fix (`predict_and_build` does not accept `ncs_spec`); **H15** Tom's bromodomain resume failure (run 144) — `reopen_stages_for_directives` targeted single-stage reopen with O(1) blast radius via the LATEST-stage rule; **H16/H16.1** obs_labels auto-fill for multi-array MTZ via new `agent/mtz_inspector` module + `auto_fill_obs_labels` invariant in `programs.yaml` (closes 88 TIER-1 "Multiple equally suitable arrays" failures across run_25/run_39); **H17/H17.1** `phenix.autobuild` PHIB-required recovery — YAML `recoverable_errors.yaml` entry + new `strip_parameter` resolution in `error_analyzer` + executor-side strip_flags wiring in `programs/ai_agent.py` (Tom's lysozyme-MRSAD cycle-5 reactive recovery); **H18** file-based experiment-type detection — new public helper `agent/file_utils.infer_experiment_type_from_files()` used as PRIMARY signal in BOTH `_apply_experiment_type_program_reprints` AND `_resolve_after_program` (files-win on conflict with text; `[DIRECTIVE_CORRECTION]` marker enriched with `source=files\|text` and `OVERRIDDEN` annotations; Pitfall 1 `[DIRECTIVE_CORRECTION_MIXED]` telemetry for accumulated-files drift; fixes AF_7mjs "density modify and stop" regression where terse advice + cryo-EM files silently produced `phenix.autobuild_denmod` instead of `phenix.resolve_cryo_em`); **H18.1** PHIL declaration deploy-gap hotfix — adds the missing `original_files_for_directives` PHIL declaration to `programs/ai_agent.py`'s `master_params` string (H18 had added it only to `programs/ai_analysis.py`, but `directive_params = copy.deepcopy(self.params)` copies the agent's params which use the agent's schema — production crashed with `AttributeError`, directive extraction silently returned `{}`, and the agent ran the default plan template through to predict_and_build); new `tst_h18_1_phil_roundtrip.py` (6 K-tests) exercises the full PHIL parse → extract → deep-copy → assign path the production code uses, catching the deploy-gap class of bug at sandbox time; **H18.2** third `_resolve_after_program` callsite missed in H18 audit — when the LLM emits `stop_after_requested=True` with NO `after_program` field, a v117.2 fallback at `directive_extractor.py:783` fires to fill in the missing program by parsing raw advice, but pre-H18.2 it called `_resolve_after_program` WITHOUT `original_files` (the H18 audit grepped for sites billed as "experiment-type detection" and missed this site billed as "fill in missing field"); the resolver defaulted `_exp="xray"` via text-only fallback and mapped `denmod` → `phenix.autobuild_denmod` even for cryo-EM file inventories; H18 site 2 (`_apply_workflow_intent_fallback`) couldn't fix it because preprocessed advice's "Stop Condition: None" pushed the resolver into the "leave as-is" branch; H18.2 adds `original_files=original_files` to the v117.2 callsite (one line) plus 3 new K-tests (K21/K22/K23) extending `tst_density_modify_experiment_type.py` to 23 tests including the AF_7mjs production reproduction (K21 mocks the LLM with the exact directives shape Tom's production LLM produced and asserts the full pipeline produces `phenix.resolve_cryo_em`). Total cluster: **249+ K-tests added**. All ships verified through act → review → Gemini-critique → ship cadence. |
+| v118 | **Preprocessor resilience + operational hardening** (12 layers stacked over v117.3): Section A file-list preservation (UNION text+context, `_ensure_file_list_in_processed_advice`); Section C-prime diagnostic split (`directives_user_intent` vs `directives_effective_runtime`); Section B PHIL namespace healing (`PHIL_NAMESPACE_TRANSLATIONS` static table); Section E LLM-failure diagnostic markers (`[DIRECTIVE_EXTRACTION_FAILED]`, `[ADVICE_PREPROCESSING_FAILED]` stderr); Section F **server-side** BUILD `experiment_type` threading + R-free auto-fill in `command_builder._select_files` (first v118 section touching server); Section 5.1 PHIL `.help` hyphen/semicolon hotfix; Section G optional dep resilience (`except Exception` not `except ImportError` for chromadb/protobuf chain) + 6.7 environment-readiness runtime probe `tst_dependencies.py` (first v118 verified Mac + Linux); Section 8 model bump `gemini-2.0-flash` → `gemini-2.5-flash-lite` (THREE hardcoded sites in `core/llm.py`, `agent/api_client.py`, `agent/directive_extractor.py` — first v118 requiring server restart for deploy); Section 9 cryo-EM vs X-ray density-mod canonicalization via `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE` table + `_apply_experiment_type_program_reprints` validator + `[DIRECTIVE_CORRECTION]` log marker + `_corrected_from` sidecar (Tom's "density modify and stop" bug); Section 10 list-to-string coercion via `_coerce_setting_value` helper (single-element unpack type-preserving; multi-element space-join for str-typed fields) applied at TWO call sites in `validate_directives` — fixes Google's `additional_atom_types=["S"]` producing `"['S']"` AND latent silent-drop for list-shaped `after_program`. 9 new test suites, 204/204 sandbox tests pass. Architectural watchpoint triggered (10 iterations); v119 will pursue operational hardening + prompt consolidation. |
+| v117.3 | **Extended stop-intent phrasing recognition**: 5 new entries in `_IMPERATIVE_STOP_MARKERS` ("stop the workflow", "immediately after", etc.), 2 new regex patterns in `_POSITIVE_STOP_AFTER_PATTERNS` ("\\bstop\\s+the\\s+workflow\\b", "\\bis\\s+the\\s+last\\s+step\\b"), 4 new phrasings in `DIRECTIVE_EXTRACTION_PROMPT` schema docs. Closes the C1 LLM-test `explicit_stop_after_phaser` failure where openai's extractor produced `after_program=phenix.phaser` but failed to set `stop_after_requested=True`. Asymmetric placement: imperative markers are 300-char window-bounded so safer there than as global regex. Bare addition to existing data structures — no new pipeline steps or state fields. |
+| v117.2 | **Fill `after_program` from raw advice when LLM omits it**: in `extract_directives()`, after existing layers run, if `stop_after_requested=True` but `after_program` is missing, scan raw advice for a program name with `_POSITIVE_STOP_AFTER_PATTERNS` and fill. Closes the C1 LLM-test gap where openai sometimes failed to set `after_program` even when raw advice was explicit. |
+| v117.1 | **Grounding ∧ `stop_after_requested` interaction fix**: v116.19a's grounding guardrail conflicted with v117 Step 1 — when LLM set BOTH `after_program` and `stop_after_requested=True`, grounding's Failure 2 dropped the directive. v117.1 exempts the grounding check when `stop_after_requested=True` (the user explicitly requested stop; the after_program is the stop target, not a fabricated program assertion). |
+| v117 | **Extraction reliability — raw-advice-authoritative directive extraction**: new `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` with AUTHORITY paragraph stating raw advice is the source of truth for intent. Extractor LLM now receives raw advice alongside processed advice. Eliminates the entire class of "preprocessor changed `Stop Condition: None`" bugs that motivated the cycle. Falls back gracefully to single-input form when raw == processed. |
+| v116.10 | **Cleanup cycle**: 6 bugs in advice parsing, LLM prompting, program selection, plan classification + drift detection. Phase 4b filter (strip programs whose inputs aren't present), Phase 6a prompt reframe (after_program), Phase 6b state-machine routing (can't-analyze sessions), Phases 1/3a/3d plan classification (`_initialize_plan_inner` standalone-programs), Phase 2 wire-contract drift catcher. S20-S24 post-Phase-5: CC key extraction (`map_model_cc` vs `model_map_cc`); file encoding (305 sites + directory-scan test); ligand workflow restart (`_detect_xray_step` past_analysis check + `with_ligand` extension to `ligand_fit_output`). 89 new tests across 7 new files + augmented `tst_contract_compliance.py`. Three principles: filter before adding to `valid_programs`; refactor means no behavior change; drift catchers belong in the existing test suite. |
+| v115.10 | **General `after_program` resolver**: Replaces per-workflow overlays (ligand-fit clearing, denmod stop/clear, continuation_indicators, downstream_tasks, multi_program_patterns) with a single `_ACTION_TABLE`-based mechanism. 14 actions with keywords mapped to xray/cryoem programs. Rules: multiple actions + stop → after_program = last; multiple + no stop → clear; single + stop → set. Features: word-boundary matching, action-specific negation detection ("don't build"), predict+build compound rule, cryo-EM experiment type inference. 33 old regex patterns removed, replaced by keyword-based action detection. 20 unit tests (91 assertions). 1 file modified (`directive_extractor.py`). |
+| v115.09b | **GUI Fixes + Ligand Workflow + Production Bugs**: (1) `explicit_program` done-flag guard prevents LLM-driven program loops (bgal_denmod, hipip-refine). (2) Ligand-fitting workflow: `after_program` clearing for multi-step workflows; `combine_ligand` guard forces pdbtools-only; post-ligandfit exemption defers `after_program_done` during combine/refine; `model_is_placed=True` for ligand-fit signals. (3) Pose file exclusion at three levels: `session.get_available_files()` basename filter (primary), `workflow_state.py` categorization, `programs.yaml` `exclude_patterns`. (4) `phaser_sad.atom_type` interception → `additional_atom_types` conversion in autosol. (5) Polder `requires_resolution` invariant with `auto_fill_resolution` + `xray_data.high_resolution` strategy flag. (6) Preprocessing stop override with `_has_explicit_stop` regex. (7) GUI auto-discovery skip for user-selected files. (8) `missing_crystal_symmetry` diagnosable error for xtriage with .sca data. 8 files modified. |
+| v115.09 | **Tutorial Routing Fixes**: (1) Cryo-EM `past_analysis` gate: added `map_sharpening_done`, `map_symmetry_done`, `has_optimized_full_map` — unblocks bgal_denmod, apoferritin_denmod, ion_channel_denmod after map_sharpening; regex broadened to match actual output filenames. (2) `.sca-only` data detection in `perceive()` — deferred, needs reactive approach. (3) Validation-only routing: `wants_validation_only` directive extracted via LLM prompt + rules-based fallback + post-LLM overlay → validation shortcut in `_detect_xray_step` → `validate_existing` plan template; PDB scan limit 500→2000 in `_is_valid_file` (3dnd.pdb has 546 header lines); `has_phased_data_mtz` added. (4) MR-SAD routing: `force_mr` flag when `use_mr_sad` + model not categorized as search_model → phaser offered; MR-SAD guard updated. Critical deployment fix: rules-based intent patterns moved to shared `_apply_workflow_intent_fallback()` called as post-LLM overlay. 7 files modified. |
+| v115.08 | **Phased File Detection + Systematic Testing Framework**: 4 critical fixes for phased file detection (content-based iotbx+ASCII heuristic replacing filename markers; shared post-processing; category exclusivity; conditional data_mtz removal). 1 additional bug fix (B1: last_program missing from build_context). `[GATE]` diagnostic logging for routing debugging. 10-phase systematic testing framework (S0–S9): static audit, contract gap coverage map, YAML/hardcoded path consistency, AgentSession round-trip, history flag consistency, category-consumer alignment, 32-tutorial routing simulation, command building, error classification, LLM perturbation resilience. 12 new test files, 42 unit tests + ~260 phase checks. Framework reviewed across multiple rounds — 54 issues found and fixed in test scripts (5 can't-fail gates, 3 tautological assertions, 5 wrong best_files keys, etc.). |
+| v115.07 | **Run 15b Bug Fixes — Phase 3**: 4 bugs from 371-run analysis. Numeric coercion (`_safe_float` at 6 sites). Two-tier half-map detection. PHIL blocked params for resolve_cryo_em. Terminal diagnosis for unknown chemical elements. Reference model restraint support (hierarchical prefix whitelist, path resolution, strategy rewrites). |
+| v115.05 | **Guard Fixes + Polder + Templates**: (1) `_is_at_target` hopeless R-free (> 0.50) now requires `autobuild_done` — prevents premature stop on incomplete models (p9-SAD fix). (2) `_is_at_target` clashscore path requires `refine_count >= 1` (X-ray only; cryo-EM path is theoretical-only gap). (3) Bug F `obtain_model` routing requires `autobuild_done` — gives autobuild a chance before concluding MR is wrong. (4) Negligible-anomalous guard: removes autosol from `valid_programs` when measurability < 0.05 and `has_anomalous=False`. (5) `wants_polder` context flag + polder override fires despite "solve" keyword in advice. (6) `refine_placed_polder` template added (17 templates total). (7) Early rebuild gate: `r_free > 0.50 after 1 cycles → try_rebuilding`; `gate_evaluator` now advances to `model_rebuilding` stage. (8) Phaser copies injection reads `log_analysis["n_copies"]` same-cycle (not 1-cycle delay). (9) `_anti_ligand_patterns` excludes `no_ligand` from ligand file classification; orphaned PDB files promoted to `model` (fixes user-supplied input PDBs like `1aba.pdb` not being recognized). (10) Unregistered `explicit_program` downgrades to warning (no Sorry). (11) `_preprocessing_programs` / `_needs_plan_programs` ensure polder etc. get full plans. (12) Failed programs skip output file tracking. (13) Metrics-based report selection overrides INCOMPLETE status when R-free/CC targets are met. 15 fix-verification tests (`tst_fix_verification.py`). (14) Ligand PDB plan selection: `_build_context()` now checks ligand name hints before setting `has_search_model`, and removes the `len(pdb_files) >= 2` guard — fixes AF_bromodomain_ligand tutorial selecting `mr_refine` (no ligandfit) instead of `predict_refine_ligand`. (15) Windows transport fix: removed `json_str.replace('\\t', ' ')` from `transport.py` and `api_client.py` — the replace corrupted Windows file paths containing `\t` sequences (e.g. `C:\tutorials\test.mtz`), causing "Failed to parse request JSON" on Windows clients. |
+| v115 | **Infrastructure Audit + Failure Recovery**: Dual-run evaluation framework across 21 tutorials (41% baseline cycle waste identified). Intent classifier (4-way: solve/solve_constrained/task/tutorial). Tiered error recovery (`error_classifier.py`). PHIL strategy validation. Thinking agent context forwarding. Session bug fixes (resolution contract, intent low-confidence guard, pipeline classification, skip_validation stop trigger). |
 | v114.1 | **Model Placement Gate + Display + Evaluation Harness**: Default `thinking_level` changed from `advanced` to `expert`. **Placement gate**: detects when model fits data (model_vs_data CC > 0.3 or refine R-free < 0.50) and locks `model_is_placed` in session — suppresses phaser/autosol/predict_and_build, fast-forwards plan past MR/phasing stages, logs conflict warning when user advice contradicts. **Display**: DisplayDataModel unified data layer for Results/Progress/HTML; HTML structure report with SVG trajectory chart; "Open Structure Report" button in GUI; expert assessments now stored in session JSON; DDM scans all cycles for best metrics. **Templates**: `mr_sad` requires explicit MR-SAD intent (`wants_mr_sad`); predict_and_build in MR stage programs; polder moved to post-ligandfit phase only with `has: ligand_fit` YAML condition; SAD templates require sequence. **Files**: auto-discover from `input_directory`; HETATM ligand detection in input PDBs; ligand PDB filename hints. **GUI**: restart_mode as plain wx.Choice (survives session management reset); stage display "cycle X, up to Y". **Safety**: sanity check threshold 3→4; recent failures injected into THINK prompt; STOP not counted as cycle. **Testing**: 57 scenario tracer tests (PG1-PG5 placement gate, L1-L10 mock LLM, C1-C3 cycle counting); tutorial run analyzer for 5 modes. 31 files modified. |
 | v114 | **Goal-Directed Agent** (`thinking_level=expert`): Strategic planner layer with Structure Model (running structural knowledge + strategy blacklist), Plan Generator (12 templates, strategy hash), Gate Evaluator (success hysteresis, 5 anti-oscillation safeguards), Hypothesis Engine (single-budget, verification latency, re-validation), Explanation Engine (cycle/phase/final commentary), GUI stage display (plan header, transition blocks, per-cycle stage context), `session_summary.json` output. 12 new files, 13 modified, 251 tests. Reactive agent unchanged; `advanced` (default) continues to work without planning overhead. |
 | v113.10 | **Thinking Level + Validation + Expert KB**: Replaces boolean `use_thinking_agent` with `thinking_level` parameter (`none`/`basic`/`advanced`; v114 adds `expert`). Advanced mode adds structural validation (Ramachandran, clashscore, rotamers, model contents), 56-entry expert knowledge base with IDF-weighted tag matching, file metadata tracking, R-free trend display, and user-facing Expert Assessment block in event formatter. 7 new files, 25 tests. Backward compatible. |
@@ -1038,8 +1692,6 @@ python3 tests/tst_event_system.py    # Single suite
 | v36-37 | Event system Phases 2-3: instrumentation and transport |
 | v34 | Event system Phase 1: EventLog and EventFormatter |
 | v30-33 | YAML centralization, BestFilesTracker, CommandBuilder unification |
-
-| v115 | **Infrastructure Audit + Failure Recovery**: Dual-run evaluation framework across 21 tutorials (41% baseline cycle waste identified). Intent classifier (4-way: solve/solve_constrained/task/tutorial). Tiered error recovery (`error_classifier.py`). PHIL strategy validation. Thinking agent context forwarding. Session bug fixes (resolution contract, intent low-confidence guard, pipeline classification, skip_validation stop trigger). |
 
 ---
 
@@ -1083,12 +1735,71 @@ installation. Install via `phenix.python -m pip install <package>` or via the
 | `langchain-core`, `langchain-community` | LLM orchestration core and community integrations | Server and local |
 | `langchain-google-genai` | Google Gemini LLM provider | Server and local |
 | `langchain-openai` | OpenAI LLM provider | Server and local |
+| `langchain-anthropic`, `anthropic` | Anthropic (Claude) LLM provider | Server and local |
+| `portkey-ai` | Portkey gateway SDK (Azure-OpenAI upstream); optional — a manual fallback path works without it | Server and local |
 | `langchain-chroma` | Chroma vector store for document retrieval | Server and local |
 | `flashrank` | Local cross-encoder reranking (no API key needed) | Server, or local if `run_on_server=False` |
 | `markdown-it-py` | HTML rendering of analysis output | Server and local |
 
 **Note:** `flashrank` downloads its model (~34MB) automatically on first use.
 No Cohere API key is required — reranking runs entirely locally.
+
+### LLM Providers and Environment Variables
+
+The `communication.provider` PHIL parameter selects the LLM backend.
+Supported values: `ollama` (local), `google` (default), `openai`,
+`anthropic` (Claude), `portkey` (Portkey gateway fronting Azure OpenAI).
+Each provider reads its credentials from the environment at call time
+(only the selected provider's keys are checked):
+
+| Provider | Required environment variables | Optional |
+|----------|--------------------------------|----------|
+| `google` | `GOOGLE_API_KEY` | — |
+| `openai` | `OPENAI_API_KEY` | — |
+| `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_LLM_MODEL` (model override) |
+| `ollama` | (reachable Ollama server) | `OLLAMA_BASE_URL`, `OLLAMA_LLM_MODEL`, `OLLAMA_EMBED_MODEL` |
+| `portkey` | `PORTKEY_AZURE_API_KEY`, `PORTKEY_BASE_URL` | `PHENIX_PORTKEY_MODEL` (upstream model, default `gpt-5`) |
+
+**`FORCE_NO_AI_SERVER`** — set to `1` to force local execution
+(`communication.run_on_server=False`) regardless of the PHIL default.
+Useful for running entirely on one machine (e.g. the Portkey local-only
+deployment).  It applies to both `phenix.ai_agent` and `phenix.ai_analysis`
+(all analysis_modes); it does not affect `predict_and_build` / `predict_model`
+when those are run separately.  The flag is **absolute**: it never contacts
+the Phenix server.  If local execution is impossible — `standard` analysis
+mode needs a local RAG database and none exists for the chosen provider — the
+job errors out with actionable guidance (build the database with
+`phenix.rebuild_ai_database <provider>`, use an LLM-only mode, or unset the
+flag) rather than silently falling back to the server.  The LLM-only modes
+(directive_extraction, advice_preprocessing, failure_diagnosis, agent_session)
+never need the database, so they always run local under the flag.  Behaviour
+is otherwise identical to server mode; only the locus of execution changes.
+
+**Embeddings note:** `anthropic` has no native embeddings endpoint and
+`portkey` requires an embeddings-capable deployment.  Chat works for
+both regardless; the standalone `phenix.ai_analysis` RAG tool
+(`standard` mode) is the only path that needs a working embeddings
+backend.  For `anthropic`, embeddings transparently delegate to OpenAI
+or Google when a key is available.  `anthropic` is intentionally not
+offered by the database-build tools (`rebuild_ai_database` /
+`update_ai_database`) since it cannot produce embeddings.
+
+**LLM-unavailable notice:** if the requested provider cannot be reached, the
+agent falls back to RULES-BASED program selection (deterministic workflow
+rules, no LLM) rather than stopping outright.  This used to be silent.  It is
+now surfaced clearly, in both CLI and GUI and on both local and server runs:
+- **Per cycle**, each cycle that falls back prints a `NOTICE: LLM PROVIDER
+  UNAVAILABLE` line naming the provider and stating that rules-based selection
+  is in use for that cycle.  (Shown every affected cycle, so a long run never
+  *looks* like the LLM quietly recovered.)
+- **At the end of the run**, an `IMPORTANT: THIS RUN DID NOT USE THE LLM`
+  banner is printed, the Results-tab summary is prefixed with the same warning,
+  and the result object carries an `llm_ever_unavailable` flag.
+
+This is observability only — it does not change which program the agent
+selects, only how visibly the rules-fallback is reported.  (Setting
+`use_rules_only=True` explicitly is a separate, already-announced mode; the
+notice covers the *unintended* fallback when a provider is down.)
 
 **Note:** The `langchain-classic` package is **not required**. The agent implements
 document chain and compression retriever functionality directly using `langchain-core`

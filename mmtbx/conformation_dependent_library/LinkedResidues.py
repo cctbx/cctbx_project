@@ -20,6 +20,7 @@ class LinkedResidues(list):
     self.end = None
     self.include_non_linked = include_non_linked
     self.allow_poly_ca = allow_poly_ca
+    self.conformer = None
 
   def __repr__(self):
     if 1: return self.show()
@@ -78,3 +79,12 @@ class LinkedResidues(list):
     rc = list(filter(None,rc))
     assert rc
     return rc[0]
+
+  def get_residue_group_from_hierarchy(self, hierarchy, index):
+    atom = self[index].atoms()[0]
+    for i in range(atom.i_seq, len(hierarchy.atoms())):
+      tmp = hierarchy.atoms()[i]
+      if tmp.id_str()==atom.id_str(): break
+    atom = hierarchy.atoms()[i]
+    return atom.parent().parent()
+

@@ -38,7 +38,7 @@ def _load_yaml(filename):
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "knowledge", filename
     )
-    with open(yaml_path, 'r') as f:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 

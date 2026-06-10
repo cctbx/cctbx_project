@@ -40,7 +40,7 @@ from mmtbx.refinement import print_statistics
 from mmtbx.twinning import twin_f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
-import mmtbx.restraints
+import mmtbx.restraints # import dependency
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel

@@ -135,7 +135,8 @@ def evt_wavelength(evt, delta_k=0):
       gamma = ebeam.ebeamL3Energy() / 0.510998910
     elif hasattr(ebeam, 'raw'):
       # psana2
-      return factor_ev_angstrom / ebeam.raw.ebeamPhotonEnergy(evt)
+      en = ebeam.raw.ebeamPhotonEnergy(evt)
+      return factor_ev_angstrom / en if en else None
     else:
       return None
     K = 3.5 + delta_k

@@ -110,7 +110,7 @@ KNOWLEDGE_DIR = os.path.join(
 
 
 def _load_programs():
-    with open(os.path.join(KNOWLEDGE_DIR, "programs.yaml")) as f:
+    with open(os.path.join(KNOWLEDGE_DIR, "programs.yaml"), encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 
@@ -612,10 +612,20 @@ def test_i1_max_refine_cycles_cryoem_uses_rsr_count():
 
 
 def test_i2_after_program_beats_quality_gate():
-    """I2: after_program → STOP only; validate programs NOT injected.
+    """I2: at_target gate at refine step removes refine programs and adds STOP
+    when the after_program target has run AND quality target is reached.
 
     Distinguishes max_refine_cycles (controlled landing: validate + STOP)
-    from after_program (unconditional stop: STOP only).
+    from after_program at_target + done.
+
+    Note (v116.x v112.78 restoration): pre-v116.x, after_program produced
+    STOP-only via the now-removed wipe in `_apply_directives`.  Under the
+    restored v112.78 semantics, after_program is a min-run guarantee
+    rather than a hard stop, so this assertion is now upheld by the
+    at_target gate (which removes refine programs when quality target is
+    reached) rather than by the wipe.  In this specific scenario the
+    observable outcome is the same; the docstring is updated to reflect
+    the actual mechanism.
     """
     print("Test: i2_after_program_beats_quality_gate")
     if not _IMPORTS_OK:
@@ -633,7 +643,7 @@ def test_i2_after_program_beats_quality_gate():
     context = {
         "refine_count": 0,
         "rsr_count": 1,
-        "map_cc": 0.30,      # poor — quality gate would normally continue
+        "map_cc": 0.75,      # acceptable — above quality override threshold (0.70)
         "r_free": None,
         "validation_done": False,
         "last_program": "phenix.real_space_refine",
@@ -657,6 +667,229 @@ def test_i2_after_program_beats_quality_gate():
                  "Got: %s" % valid)
 
     print("  PASSED")
+
+
+def test_i2_v112_78_after_program_min_run_not_hard_stop():
+    """v116.x: plan-injected after_program (no user stop) does NOT trigger
+    stop analysis.  Workflow advances naturally; ligandfit remains available.
+
+    This is the regression-prevention test for Tom's nsf-d2-ligand
+    ligandfit case.  User advice: "Refine the model and fit ATP using
+    LigandFit. Stop Condition: None."  The plan emits
+    after_program=phenix.refine for the refine stage (a min-run hint).
+    No user stop is requested.  After refine succeeds, valid_programs
+    at step=refine should contain ligandfit and STOP should NOT be
+    added — the workflow continues to ligandfit naturally.
+
+    Setup is chosen to bypass the at_target gate (R-free not at target)
+    so the test directly exercises the new
+    _apply_directives `stop_after_requested` gating.
+
+    See ARCHITECTURE.md "Stop-after directive routing (v116.x)" for
+    the design rationale.
+    """
+    print("Test: i2_v112_78_after_program_min_run_not_hard_stop")
+    if not _IMPORTS_OK:
+        print("  SKIP (imports unavailable)")
+        return
+
+    try:
+        from agent.workflow_engine import WorkflowEngine
+    except ImportError:
+        print("  SKIP (WorkflowEngine unavailable)")
+        return
+
+    engine = WorkflowEngine()
+
+    # X-ray scenario, refine done but NOT at target (R-free 0.40 > 0.30):
+    # ensures at_target=False, so the at_target gate doesn't pre-empt the
+    # _apply_directives path.  User wants ligandfit (Tom's case).
+    context = {
+        "refine_count": 1,
+        "rsr_count": 0,
+        "r_free": 0.40,           # not at target
+        "map_cc": None,
+        "clashscore": None,
+        "validation_done": False,
+        "last_program": "phenix.refine",
+        "has_model": True, "has_placed_model": True, "has_refined_model": True,
+        "has_data_mtz": True, "has_sequence": False, "has_ligand_file": True,
+        "has_full_map": False, "has_half_map": False,
+        "user_wants_ligandfit": True,
+        "ligandfit_done": False,
+        "has_ligand_fit": False,
+        "resolution": 2.0,
+        # successful_programs must include phenix.refine so the Bug 3
+        # failure override does NOT fire — we want to exercise the
+        # after_program_done branch (which is what v116.x gates).
+        "successful_programs": {"phenix.refine"},
+    }
+    # No stop_after_requested → plan-progression hint only.
+    directives = {"stop_conditions": {"after_program": "phenix.refine"}}
+
+    valid = engine.get_valid_programs(
+        experiment_type="xray",
+        step_info={"step": "refine"},
+        context=context,
+        directives=directives,
+    )
+
+    assert_in("phenix.ligandfit", valid,
+              "ligandfit must remain available so the LLM can choose "
+              "it per user advice — this is Tom's ligandfit case "
+              "the old wipe was breaking.  Got: %s" % valid)
+    assert_false(valid == ["STOP"],
+                 "valid_programs must NOT be wiped to [STOP] "
+                 "(no stop_after_requested → no stop analysis).  "
+                 "Got: %s" % valid)
+    assert_false("STOP" in valid,
+                 "STOP must NOT be added when no user stop requested — "
+                 "the workflow should advance naturally per plan "
+                 "progression.  Got: %s" % valid)
+
+    print("  PASSED")
+
+
+def test_i2_v112_78_user_explicit_stop_still_offers_STOP():
+    """v116.x: user-explicit "X and stop" (stop_after_requested=True) wipes
+    valid_programs to [STOP] once X completes.  Clean structural stop.
+
+    Complementary case to
+    test_i2_v112_78_after_program_min_run_not_hard_stop: when the user
+    explicitly requested a stop, the workflow_engine enforces it
+    structurally rather than relying on the LLM to interpret the prompt.
+
+    Pre-v116.x relied on the LLM picking STOP based on a "Stop target: X"
+    prompt directive (v112.78 append-STOP semantics).  Under v116.x,
+    when the directive extractor flagged user-explicit intent via
+    stop_after_requested, we wipe to [STOP] — no ambiguity, no risk
+    of the LLM running molprobity instead of stopping.
+    """
+    print("Test: i2_v112_78_user_explicit_stop_still_offers_STOP")
+    if not _IMPORTS_OK:
+        print("  SKIP (imports unavailable)")
+        return
+
+    try:
+        from agent.workflow_engine import WorkflowEngine
+    except ImportError:
+        print("  SKIP (WorkflowEngine unavailable)")
+        return
+
+    engine = WorkflowEngine()
+
+    context = {
+        "refine_count": 1,
+        "rsr_count": 0,
+        "r_free": 0.40,           # not at target — exercise _apply_directives path
+        "map_cc": None,
+        "clashscore": None,
+        "validation_done": False,
+        "last_program": "phenix.refine",
+        "has_model": True, "has_placed_model": True, "has_refined_model": True,
+        "has_data_mtz": True, "has_sequence": False, "has_ligand_file": False,
+        "has_full_map": False, "has_half_map": False,
+        "user_wants_ligandfit": False,  # NOT a ligandfit case
+        "resolution": 2.0,
+        # successful_programs must include phenix.refine so the Bug 3
+        # failure override does NOT fire.
+        "successful_programs": {"phenix.refine"},
+    }
+    # User-explicit stop pattern: directive extractor sets
+    # stop_after_requested=True alongside skip_validation=True (per
+    # its "ALWAYS set" rule).
+    directives = {
+        "stop_conditions": {
+            "after_program": "phenix.refine",
+            "skip_validation": True,
+            "stop_after_requested": True,
+        }
+    }
+
+    valid = engine.get_valid_programs(
+        experiment_type="xray",
+        step_info={"step": "refine"},
+        context=context,
+        directives=directives,
+    )
+
+    assert_equal(valid, ["STOP"],
+                 "User-explicit stop should wipe valid_programs to "
+                 "[STOP] for clean structural stop.  Got: %s" % valid)
+
+    print("  PASSED")
+
+
+def test_is_stop_after_requested_helper():
+    """v116.x: _is_stop_after_requested() correctly classifies advice text.
+
+    This is the foundation of the v116.x stop-after architecture.  The
+    helper distinguishes user-explicit stop intent from absence of stop
+    intent (including the pre-existing bare-`\\bstop\\b` false positive on
+    "Stop Condition: None" that caused Tom's nsf-d2-ligand bug).
+
+    Covers positive patterns (stop after X / X and stop / only run X /
+    just do X / stop when|once|if|at / Stop Condition: <real value>),
+    negative patterns (do not stop / never stop), and the explicit
+    "Stop Condition: None" / "not specified" no-signal cases.
+    """
+    print("Test: is_stop_after_requested_helper")
+    if not _IMPORTS_OK:
+        print("  SKIP (imports unavailable)")
+        return
+
+    try:
+        from agent.directive_extractor import _is_stop_after_requested
+    except ImportError:
+        print("  SKIP (_is_stop_after_requested unavailable)")
+        return
+
+    cases = [
+        # Positive cases — explicit stop-after intent
+        ("Stop after refine.", True),
+        ("Refine and stop.", True),
+        ("Refine, then stop.", True),
+        ("Refine, stop.", True),
+        ("Stop when R-free < 0.25", True),
+        ("Stop once xtriage completes", True),
+        ("Stop if convergence", True),
+        ("Stop at cycle 3", True),
+        ("Only run refine.", True),
+        ("Just run refine.", True),
+        ("Just do refine.", True),
+        ("Stop Condition: after refine.", True),
+
+        # Negative cases — explicit no-stop or absent stop intent
+        ("Refine the model.", False),
+        ("Stop Condition: None", False),
+        ("**Stop Condition**: None", False),
+        ("Stop Condition: not specified", False),
+        ("Stop Condition: N/A", False),
+        ("**Stop Conditions**:", False),       # heading only
+        ("Refine and don't stop.", False),
+        ("Do refine. Never stop.", False),
+        ("Just refine.", False),               # no "do"/"run" → no positive match
+
+        # Tom's exact case
+        ("Primary Goal: Refine the model and fit ATP using LigandFit. "
+         "Stop Condition: None.", False),
+    ]
+
+    failed = []
+    for advice, expected in cases:
+        actual = _is_stop_after_requested(advice)
+        if actual != expected:
+            failed.append((advice, expected, actual))
+
+    if failed:
+        for advice, expected, actual in failed:
+            print("  FAIL: %r → expected %r, got %r"
+                  % (advice[:60], expected, actual))
+        raise AssertionError(
+            "_is_stop_after_requested: %d/%d cases failed"
+            % (len(failed), len(cases)))
+
+    print("  PASSED (%d/%d cases)" % (len(cases), len(cases)))
 
 
 # =============================================================================
@@ -1092,17 +1325,18 @@ def test_k1_command_builder_best_files_list_does_not_crash():
 
 
 def test_k2_mtriage_keeps_half_maps_with_full_map():
-    """K2: mtriage must receive both full_map AND half_maps when both are available.
+    """K2: mtriage must prefer half-maps and drop full_map when both available.
 
-    Root cause: the post-selection validation in command_builder.py had a blanket
-    rule that dropped half_maps whenever a full_map was also selected.  For programs
-    like mtriage the half maps are NOT redundant — they provide FSC-based resolution
-    measurement that full-map-only mode cannot.
+    Half-map FSC is the gold standard for resolution — mtriage computes
+    resolution from half-map pairs.  When both half-maps and a full_map are
+    present, the full_map is dropped (prefers_half_maps: true) to avoid
+    "Maps have different dimensions" errors when the full_map was
+    post-processed with a different grid.
 
-    Fix: keep_half_maps_with_full_map: true in programs.yaml for mtriage and
-    map_to_model. Both genuinely use full_map + half_maps together.
-    predict_and_build takes EITHER 2 half-maps OR 1 full map — not both —
-    so it does NOT have this flag and must drop half_maps when full_map is present.
+    The command should be:
+        phenix.mtriage half_map=half1.ccp4 half_map=half2.ccp4
+    NOT:
+        phenix.mtriage half_map=half1.ccp4 full_map=sharpened.ccp4
     """
     print("Test: k2_mtriage_keeps_half_maps_with_full_map")
     try:
@@ -1139,20 +1373,27 @@ def test_k2_mtriage_keeps_half_maps_with_full_map():
     cmd = cb.build("phenix.mtriage", available, ctx)
 
     assert_not_none(cmd, "mtriage must produce a command when map files are available")
+    # Both half-maps must be present
     assert_true("half_map=" in cmd,
                 "mtriage command must include half_map= when half maps are present. Got: %s" % cmd)
-    assert_true(sharpened in cmd or "sharpened" in cmd,
-                "mtriage command must include the full/sharpened map. Got: %s" % cmd)
+    assert_true("half_map_1" in cmd and "half_map_2" in cmd,
+                "mtriage must include both half-maps. Got: %s" % cmd)
+    # Full map must be DROPPED (prefers_half_maps)
+    assert_false(sharpened in cmd,
+                 "mtriage must drop full_map when half-maps present (prefers_half_maps). Got: %s" % cmd)
 
     print("  PASSED")
 
 
 def test_k2_map_sharpening_uses_half_maps_when_no_full_map():
-    """K2: map_sharpening must use half_map= mode when only half maps are available.
+    """K2: map_sharpening must use half maps as positional args when only half maps
+    are available.
 
-    When the input set contains ONLY half maps (no full map yet), map_sharpening
-    should run in mode 3: half_map=map1 half_map=map2.  It must NOT select a
-    half map as the positional full_map argument.
+    When the input set contains ONLY half maps (no full map), map_sharpening
+    should run with both half maps as bare positional arguments:
+        phenix.map_sharpening half1.ccp4 half2.ccp4 seq_file=seq.dat
+    This matches the confirmed working command format.
+    It must NOT select only one half map or use the half_map= flag.
     """
     print("Test: k2_map_sharpening_uses_half_maps_when_no_full_map")
     try:
@@ -1188,22 +1429,16 @@ def test_k2_map_sharpening_uses_half_maps_when_no_full_map():
     available = [half1, half2, seq]
     cmd = cb.build("phenix.map_sharpening", available, ctx)
 
-    # Command must include half_map= flag (mode 3)
+    # Command must be produced
     assert_not_none(cmd, "map_sharpening must produce a command with half maps available")
-    assert_true("half_map=" in cmd,
-                "map_sharpening must use half_map= mode when no full map exists. Got: %s" % cmd)
-    # Neither half map should appear as a bare positional argument (full_map slot)
-    # The positional full_map slot has flag="" so it appears without a prefix.
-    # If a half map is used as full_map it will appear without "half_map=" prefix.
-    cmd_tokens = cmd.split()
-    bare_map_tokens = [t for t in cmd_tokens
-                       if (t.endswith(".ccp4") or t.endswith(".mrc") or t.endswith(".map"))
-                       and not t.startswith("half_map=")
-                       and not t.startswith("seq_file=")
-                       and not t.startswith("phenix.")]
-    assert_equal(len(bare_map_tokens), 0,
-                 "No half map should appear as bare positional (full_map) arg. "
-                 "Bare map tokens: %s\nFull command: %s" % (bare_map_tokens, cmd))
+    # Both half maps must appear in the command (positional, no flag prefix)
+    assert_true("half_map_1.ccp4" in cmd,
+                "map_sharpening must include half_map_1. Got: %s" % cmd)
+    assert_true("half_map_2.ccp4" in cmd,
+                "map_sharpening must include half_map_2. Got: %s" % cmd)
+    # Must NOT use half_map= flag (positional is correct)
+    assert_false("half_map=" in cmd,
+                 "map_sharpening must use positional args, not half_map= flag. Got: %s" % cmd)
 
     print("  PASSED")
 
@@ -2227,7 +2462,7 @@ def test_r3_build_context_overrides_has_placed_model():
         pdb = os.path.join(tmpdir, "model.pdb")
         mtz = os.path.join(tmpdir, "data.mtz")
         for p in (pdb, mtz):
-            open(p, "w").close()
+            open(p, "w", encoding='utf-8').close()
 
         files = {"model": [pdb], "data_mtz": [mtz]}
         history_info = _analyze_history(history)
@@ -2649,7 +2884,7 @@ def test_s2_short_circuit_uses_from_history_not_directive():
     print("Test: s2_short_circuit_uses_from_history_not_directive")
     sys.path.insert(0, _PROJECT_ROOT)
     src_path = os.path.join(_PROJECT_ROOT, "agent", "workflow_engine.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
 
     # The short-circuit must reference has_placed_model_from_history, not has_placed_model
@@ -2675,7 +2910,7 @@ def test_s2_directive_prompt_stronger_do_not_set():
     print("Test: s2_directive_prompt_stronger_do_not_set")
     sys.path.insert(0, _PROJECT_ROOT)
     src_path = os.path.join(_PROJECT_ROOT, "agent", "directive_extractor.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
 
     # Must explicitly say "solve the structure" is a DO NOT case
@@ -2775,7 +3010,7 @@ def test_s1_yaml_validator_no_if_placed_warnings():
     from agent.yaml_tools import _validate_workflows
 
     wf_path = os.path.join(_PROJECT_ROOT, "knowledge", "workflows.yaml")
-    with open(wf_path) as f:
+    with open(wf_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
     issues = _validate_workflows(data)
@@ -2797,7 +3032,7 @@ def test_s1_yaml_validator_if_placed_is_in_valid_set():
 
     # Read source to verify the constants are present (not just that no warnings fired)
     src_path = os.path.join(_PROJECT_ROOT, "agent", "yaml_tools.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
 
     assert "'if_placed'" in src, (
@@ -2815,7 +3050,7 @@ def test_s1_no_redundant_import_re_in_probe_block():
     sys.path.insert(0, _PROJECT_ROOT)
 
     src_path = os.path.join(_PROJECT_ROOT, "agent", "workflow_state.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
 
     # The probe detection block should use the module-level `re`, not `_re2`
@@ -2864,7 +3099,7 @@ def test_s1_local_import_fallback_in_check_cell_mismatch():
     sys.path.insert(0, _PROJECT_ROOT)
 
     src_path = os.path.join(_PROJECT_ROOT, "agent", "workflow_engine.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
 
     assert "from agent.placement_checker import" in src, (
@@ -3004,7 +3239,7 @@ def test_s1_short_circuit_order_before_probe_override():
     sys.path.insert(0, _PROJECT_ROOT)
 
     src_path = os.path.join(_PROJECT_ROOT, "agent", "workflow_engine.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
 
     # The short-circuit block must appear before the probe-result override block
@@ -3106,7 +3341,7 @@ def test_s2b_placement_uncertain_formula_uses_from_history_key():
     print("Test: s2b_placement_uncertain_formula_uses_from_history_key")
     sys.path.insert(0, _PROJECT_ROOT)
     src_path = os.path.join(_PROJECT_ROOT, "agent", "workflow_engine.py")
-    with open(src_path) as f:
+    with open(src_path, encoding='utf-8') as f:
         src = f.read()
     start = src.index('context["placement_uncertain"] = (')
     # Grab ~600 chars which covers the multi-line tuple
@@ -3731,7 +3966,7 @@ def test_s2h_validation_cryoem_in_dm_to_data_manager_phil():
         print("  SKIP (ai_agent.py not found)")
         return
 
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         src = f.read()
 
     assert_true("dm_programs_to_data_manager_phil" in src,
@@ -3757,7 +3992,7 @@ def test_s2i_stop_alone_is_valid_command():
     if not os.path.isfile(ai_agent_path):
         print("  SKIP (ai_agent.py not found)")
         return
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         src = f.read()
     assert_true('program == "STOP"' in src or "program == 'STOP'" in src,
                 "_is_valid_command must explicitly allow STOP as first token")
@@ -3772,7 +4007,7 @@ def test_s2i_stop_with_trailing_tokens_detected():
     if not os.path.isfile(ai_agent_path):
         print("  SKIP (ai_agent.py not found)")
         return
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         src = f.read()
     assert_true('.split()[0] == "STOP"' in src or ".split()[0] == 'STOP'" in src,
                 "STOP detection must use first-token check (.split()[0]) "
@@ -3789,7 +4024,7 @@ def test_s2i_plan_sets_stop_true_when_program_is_stop():
     if not os.path.isfile(graph_path):
         print("  SKIP (graph_nodes.py not found)")
         return
-    with open(graph_path) as f:
+    with open(graph_path, encoding='utf-8') as f:
         src = f.read()
     # The fix: after intent["program"] = "STOP", also set intent["stop"] = True
     assert_true('intent["stop"] = True' in src or "intent['stop'] = True" in src,
@@ -3805,7 +4040,7 @@ def test_s2i_build_short_circuits_on_program_stop():
     if not os.path.isfile(graph_path):
         print("  SKIP (graph_nodes.py not found)")
         return
-    with open(graph_path) as f:
+    with open(graph_path, encoding='utf-8') as f:
         src = f.read()
     assert_true('intent.get("program") == "STOP"' in src or
                 "intent.get('program') == 'STOP'" in src,
@@ -3902,7 +4137,7 @@ def test_s2k_inject_user_params_skips_stop():
     if not os.path.isfile(ai_agent_path):
         print("  SKIP (ai_agent.py not found)")
         return
-    with open(ai_agent_path) as f:
+    with open(ai_agent_path, encoding='utf-8') as f:
         src = f.read()
     # The guard must be at the call site, not just inside _inject_user_params
     assert_true("split()[0] != 'STOP'" in src or 'split()[0] != "STOP"' in src,
@@ -3918,7 +4153,7 @@ def test_s2k_inject_user_params_filters_wrong_program_scope():
     if not os.path.isfile(pp_path):
         print("  SKIP (command_postprocessor.py not found)")
         return
-    with open(pp_path) as f:
+    with open(pp_path, encoding='utf-8') as f:
         src = f.read()
     assert_true("def inject_user_params" in src,
                 "inject_user_params must exist in command_postprocessor.py")
@@ -4476,7 +4711,7 @@ def test_s3a_diagnose_returns_true_no_sorry():
     """
     print("  Test: s3a_diagnose_returns_true_no_sorry")
 
-    ai_agent_src = open(_find_ai_agent_path()).read()
+    ai_agent_src = open(_find_ai_agent_path(), encoding='utf-8').read()
 
     # 1. The old deferred-Sorry pattern must be gone
     assert_true('_pending_sorry' not in ai_agent_src,
@@ -4606,7 +4841,7 @@ def test_pdb_is_small_molecule_helper():
     with tempfile.TemporaryDirectory() as d:
         def write(name, content):
             p = os.path.join(d, name)
-            with open(p, 'w') as f: f.write(content)
+            with open(p, 'w', encoding='utf-8') as f: f.write(content)
             return p
 
         # Protein (200 ATOM, >150) → NOT a small molecule
@@ -4668,7 +4903,7 @@ def test_hetcode_ligand_not_used_as_refine_model():
             _bubble_up_to_parents,
         )
         rules_path = os.path.join(_PROJECT_ROOT, 'knowledge', 'file_categories.yaml')
-        with open(rules_path) as f:
+        with open(rules_path, encoding='utf-8') as f:
             category_rules = yaml.safe_load(f)
     except Exception as e:
         print("  SKIPPED: could not load YAML rules:", e)
@@ -4703,7 +4938,7 @@ def test_hetcode_ligand_not_used_as_refine_model():
     with tempfile.TemporaryDirectory() as d:
         def write(name, content):
             p = os.path.join(d, name)
-            with open(p, 'w') as f: f.write(content)
+            with open(p, 'w', encoding='utf-8') as f: f.write(content)
             return p
 
         protein_path = write('model.pdb',   protein_pdb)
@@ -4829,7 +5064,7 @@ def test_is_ligand_file_noligand_false_positive():
     with tempfile.TemporaryDirectory() as d:
         def write(name, content):
             p = os.path.join(d, name)
-            open(p, 'w').write(content)
+            open(p, 'w', encoding='utf-8').write(content)
             return p
 
         atp_path      = write('atp.pdb',              hetatm_pdb)
@@ -4951,7 +5186,7 @@ def test_s4a_inject_crystal_symmetry_into_model_vs_data():
         postprocessor_path = os.path.join(_PROJECT_ROOT, "agent",
                                           "command_postprocessor.py")
 
-        pp_src = open(postprocessor_path).read()
+        pp_src = open(postprocessor_path, encoding='utf-8').read()
         assert_true("def inject_crystal_symmetry" in pp_src,
                     "inject_crystal_symmetry function must exist in command_postprocessor.py")
         assert_true("def postprocess_command" in pp_src,
@@ -4962,14 +5197,14 @@ def test_s4a_inject_crystal_symmetry_into_model_vs_data():
         # --- Verify BUILD calls postprocess_command ---
         graph_nodes_path = os.path.join(os.path.dirname(postprocessor_path),
                                          "graph_nodes.py")
-        gn_src = open(graph_nodes_path).read()
+        gn_src = open(graph_nodes_path, encoding='utf-8').read()
         assert_true("postprocess_command" in gn_src,
                     "postprocess_command must be called in graph_nodes.py BUILD")
 
         # --- Verify dead code cleanup: class method removed (Phase 4) ---
         # inject_crystal_symmetry now lives only in command_postprocessor.py
         ai_agent_path = _find_ai_agent_path()
-        src = open(ai_agent_path).read()
+        src = open(ai_agent_path, encoding='utf-8').read()
         assert_true("def _inject_crystal_symmetry" not in src,
                     "_inject_crystal_symmetry class method must be removed from "
                     "ai_agent.py (Phase 4 dead code cleanup)")
@@ -5133,7 +5368,7 @@ def test_s4b_program_registry_uses_crystal_symmetry_scope():
     print("  Test: s4b_program_registry_uses_crystal_symmetry_scope")
     import os
     pr_path = os.path.join(os.path.dirname(__file__), '..', 'agent', 'program_registry.py')
-    src = open(pr_path).read()
+    src = open(pr_path, encoding='utf-8').read()
 
     # Find the PASSTHROUGH block that handles KNOWN_PHIL_SHORT_NAMES
     passthrough_idx = src.find("PASSTHROUGH")
@@ -5166,7 +5401,7 @@ def test_s4b_inject_crystal_symmetry_uses_scoped_form():
     pp_path = os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(os.path.isfile(pp_path),
         "command_postprocessor.py must exist")
-    src = open(pp_path).read()
+    src = open(pp_path, encoding='utf-8').read()
 
     # Find the inject_crystal_symmetry function body
     method_start = src.find("def inject_crystal_symmetry")
@@ -5282,7 +5517,7 @@ def test_s4c_model_vs_data_not_in_symmetry_programs():
     pp_path = os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(os.path.isfile(pp_path),
         "command_postprocessor.py must exist")
-    src = open(pp_path).read()
+    src = open(pp_path, encoding='utf-8').read()
 
     block_start = src.find("_XRAY_SYMMETRY_PROGRAMS = frozenset")
     assert_true(block_start >= 0,
@@ -5377,7 +5612,7 @@ def test_s4d_inject_user_params_skips_blacklisted():
     pp_path = os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(os.path.isfile(pp_path),
         "command_postprocessor.py must exist")
-    src = open(pp_path).read()
+    src = open(pp_path, encoding='utf-8').read()
 
     # Source must contain the blacklist check in inject_user_params
     assert_true("bad_inject_params" in src,
@@ -5416,7 +5651,7 @@ def test_s4d_generate_program_eff_reports_rejected_args():
     print("  Test: s4d_generate_program_eff_reports_rejected_args")
 
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     # generate_program_eff must accept a rejected_args parameter
     assert_true("def generate_program_eff" in src,
@@ -5500,7 +5735,7 @@ def test_s4e_space_group_placeholder_not_injected():
     postprocessor_path = _os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(_os.path.exists(postprocessor_path),
         "command_postprocessor.py must exist at %s" % postprocessor_path)
-    src = open(postprocessor_path).read()
+    src = open(postprocessor_path, encoding='utf-8').read()
 
     assert_true("_INVALID_SG_PATTERNS" in src or "_is_placeholder" in src,
         "inject_crystal_symmetry must have a placeholder guard for space_group")
@@ -5547,7 +5782,7 @@ def test_s4e_sanitize_command_removes_placeholder_space_group():
     """
     print("  Test: s4e_sanitize_command_removes_placeholder_space_group")
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     # Phase 4: dead class method must be removed
     assert_true("def _sanitize_command" not in src,
@@ -5556,13 +5791,13 @@ def test_s4e_sanitize_command_removes_placeholder_space_group():
     pp_path = os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(os.path.exists(pp_path),
         "command_postprocessor.py must exist in agent/")
-    pp_src = open(pp_path).read()
+    pp_src = open(pp_path, encoding='utf-8').read()
     assert_true("def sanitize_command" in pp_src,
         "sanitize_command must be defined in command_postprocessor.py")
     assert_true("def postprocess_command" in pp_src,
         "postprocess_command must be defined in command_postprocessor.py")
     gn_path = os.path.join(_PROJECT_ROOT, "agent", "graph_nodes.py")
-    gn_src = open(gn_path).read()
+    gn_src = open(gn_path, encoding='utf-8').read()
     assert_true("postprocess_command" in gn_src,
         "postprocess_command must be called in graph_nodes.py BUILD")
     # Phase 3: directive stop + consecutive cap now in PERCEIVE
@@ -5663,7 +5898,7 @@ def test_s4e_sanitize_command_removes_placeholder_space_group():
     """
     print("  Test: s4e_blacklist_warning_appended_to_guidelines")
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     assert_true("bad_inject_params" in src and "INVALID PARAMETERS" in src,
         "_query_agent_for_command must inject a warning about bad params into guidelines")
@@ -5731,7 +5966,7 @@ def test_s5a_explicit_refine_suppresses_probe():
     """
     print("  Test: s5a_explicit_refine_suppresses_probe")
     we_path = os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py')
-    src = open(we_path).read()
+    src = open(we_path, encoding='utf-8').read()
 
     assert_true("_PROBE_SKIP_PROGRAMS" in src,
         "build_context must define _PROBE_SKIP_PROGRAMS for explicit_program check")
@@ -5756,7 +5991,7 @@ def test_s5a_inconclusive_probe_routes_to_refine_not_phaser():
     """
     print("  Test: s5a_inconclusive_probe_routes_to_refine_not_phaser")
 
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py'), encoding='utf-8').read()
 
     # The placement_probed block must set has_placed_model=True for
     # non-needs_mr results (covers both "placed" and None/inconclusive)
@@ -5783,7 +6018,7 @@ def test_s5a_inconclusive_probe_routes_to_refine_not_phaser():
     """
     print("  Test: s5a_probe_symmetry_mismatch_not_terminal")
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     assert_true("_is_probe_inconclusive" in src,
         "Must have _is_probe_inconclusive guard in cycle loop")
@@ -5812,7 +6047,7 @@ def test_s5b_pkl_free_programs_not_marked_failed():
     """
     print("  Test: s5b_pkl_free_programs_not_marked_failed")
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     assert_true("_PKL_FREE_PROGRAMS" in src,
         "_PKL_FREE_PROGRAMS whitelist must exist in ai_agent.py")
@@ -5841,7 +6076,7 @@ def test_s5c_ligandfit_removed_from_valid_programs_when_no_ligand_file():
     PDB whose name may not match categorization patterns (e.g. atp.pdb).
     """
     print("  Test: s5c_ligandfit_removed_from_valid_programs_when_no_ligand_file")
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py'), encoding='utf-8').read()
 
     # The old hard filter on has_ligand_file must be gone
     assert_true(
@@ -5861,7 +6096,7 @@ def test_s5c_autostop_with_no_ligand_file_message():
     auto-categorized.  The old block-on-missing-file logic was removed.
     """
     print("  Test: s5c_autostop_with_no_ligand_file_message")
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'graph_nodes.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'graph_nodes.py'), encoding='utf-8').read()
 
     # Old blocking variables must be gone
     assert_true("_has_ligand_file" not in src,
@@ -5881,7 +6116,7 @@ def test_s5d_user_wants_ligandfit_stays_in_refine_phase():
     the 'refine' step so ligandfit is available, regardless of has_ligand_file.
     """
     print("  Test: s5d_user_wants_ligandfit_stays_in_refine_phase")
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py'), encoding='utf-8').read()
 
     assert_true("user_wants_ligandfit" in src,
         "build_context must set user_wants_ligandfit flag")
@@ -5917,7 +6152,7 @@ def test_s5d_validate_phase_does_not_block_ligandfit():
     case by either raising the threshold or re-adding ligandfit to valid_programs.
     """
     print("  Test: s5d_validate_phase_does_not_block_ligandfit")
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'workflow_engine.py'), encoding='utf-8').read()
 
     # The r_free threshold must be conditional on user_wants_ligandfit
     assert_true("_rfree_threshold" in src,
@@ -5939,7 +6174,7 @@ def test_s5e_notice_emitted_when_ligandfit_impossible():
     The old blocking logic was removed.
     """
     print("  Test: s5e_notice_emitted_when_ligandfit_impossible")
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'graph_nodes.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'graph_nodes.py'), encoding='utf-8').read()
 
     # Old blocking variables must be gone
     assert_true("_ligandfit_missing_notice_sent" not in src,
@@ -5958,8 +6193,8 @@ def test_s5e_notice_event_type_exists_and_formatted():
     renders clearly in the output at QUIET verbosity (always shown).
     """
     print("  Test: s5e_notice_event_type_exists_and_formatted")
-    event_log_src = open(os.path.join(_PROJECT_ROOT, 'agent', 'event_log.py')).read()
-    formatter_src = open(os.path.join(_PROJECT_ROOT, 'agent', 'event_formatter.py')).read()
+    event_log_src = open(os.path.join(_PROJECT_ROOT, 'agent', 'event_log.py'), encoding='utf-8').read()
+    formatter_src = open(os.path.join(_PROJECT_ROOT, 'agent', 'event_formatter.py'), encoding='utf-8').read()
 
     assert_true('NOTICE = "notice"' in event_log_src,
         "EventType.NOTICE must be defined in event_log.py")
@@ -5978,7 +6213,7 @@ def test_s5e_plan_node_emits_notice_on_missing_ligand_stop():
     works without a separately-categorized file.  The old stop was removed.
     """
     print("  Test: s5e_plan_node_emits_notice_on_missing_ligand_stop")
-    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'graph_nodes.py')).read()
+    src = open(os.path.join(_PROJECT_ROOT, 'agent', 'graph_nodes.py'), encoding='utf-8').read()
 
     assert_true("Ligand fitting requested but cannot proceed" not in src,
         "PLAN node must NOT emit old missing-ligand NOTICE (logic removed)")
@@ -6047,7 +6282,7 @@ def test_s5g_natural_language_macro_cycles_injected():
     postprocessor_path = _os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(_os.path.exists(postprocessor_path),
         "command_postprocessor.py must exist")
-    pp_src = open(postprocessor_path).read()
+    pp_src = open(postprocessor_path, encoding='utf-8').read()
     assert_true("extract_nl_params" in pp_src,
         "inject_user_params must call extract_nl_params from nl_to_phil")
     assert_true("nl_to_phil" in pp_src,
@@ -6154,7 +6389,7 @@ def test_s5h_sanitize_strips_out_of_scope_params():
     # that could bleed into model_vs_data (verify the prompt fix too).
     import os
     _prompt_path = os.path.join(_PROJECT_ROOT, 'knowledge', 'prompts_hybrid.py')
-    prompt_src = open(_prompt_path).read()
+    prompt_src = open(_prompt_path, encoding='utf-8').read()
     assert_true("rebuilding_strategy" not in prompt_src,
         "prompts_hybrid.py must NOT mention rebuilding_strategy "
         "(it is not a real PHIL param and causes cross-program contamination)")
@@ -6181,7 +6416,7 @@ def test_s5h_sanitize_strips_out_of_scope_params():
     import os as _os
     _pp_path = _os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(_os.path.exists(_pp_path), "command_postprocessor.py must exist")
-    ai_src = open(_pp_path).read()
+    ai_src = open(_pp_path, encoding='utf-8').read()
     assert_true("_prog_allowlist" in ai_src,
         "sanitize_command must build _prog_allowlist from programs.yaml")
     assert_true("Rule C" in ai_src,
@@ -6273,7 +6508,7 @@ def test_s5h_rule_d_strips_bare_hallucinated_params():
     # Verify Rule D exists in source
     import os as _os
     _pp_path = _os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
-    src = open(_pp_path).read()
+    src = open(_pp_path, encoding='utf-8').read()
     assert_true("Rule D" in src,
         "sanitize_command must have Rule D comment")
 
@@ -6285,37 +6520,35 @@ def test_s5h_inject_program_defaults():
     """inject_program_defaults must append defaults from programs.yaml when
     they are missing from the command, and must not double-add when present.
 
-    Concrete case: xray_data.r_free_flags.generate=True must be appended
-    for phenix.refine when the LLM omits it.
+    Note: xray_data.r_free_flags.generate was moved from unconditional
+    defaults to a conditional strategy_flag (generate_rfree_flags) in v115.05.
+    It is now injected by the BUILD node's _apply_invariants based on
+    rfree_mtz state, NOT by inject_program_defaults. This test verifies
+    that generate is NOT in defaults (would cause the old bug) and IS
+    in strategy_flags (conditional path).
     """
     print("  Test: s5h_inject_program_defaults")
     import sys as _sys
     _sys.path.insert(0, _PROJECT_ROOT)
 
-    from agent.command_postprocessor import inject_program_defaults
     from knowledge.yaml_loader import get_program
 
-    # Verify phenix.refine has r_free_flags.generate default
+    # Verify phenix.refine does NOT have r_free_flags.generate in defaults
+    # (removed in v115.05 to fix 3tpp-ensemble-refine crash)
     refine = get_program("phenix.refine")
-    defaults = refine.get("defaults", {})
-    assert_true("xray_data.r_free_flags.generate" in defaults,
-        "phenix.refine must have r_free_flags.generate default; got: %s"
-        % list(defaults.keys()))
+    defaults = refine.get("defaults") or {}
+    assert_false("xray_data.r_free_flags.generate" in defaults,
+        "phenix.refine must NOT have r_free_flags.generate in defaults "
+        "(was removed in v115.05); got: %s" % list(defaults.keys()))
 
-    # Missing → injected
-    cmd = "phenix.refine model.pdb data.mtz output.prefix=refine_001"
-    result = inject_program_defaults(cmd, "phenix.refine")
-    assert_true("r_free_flags.generate" in result,
-        "inject_program_defaults must add r_free_flags.generate; got: %s" % result)
+    # Verify it IS in strategy_flags (conditional path via BUILD invariants)
+    sf = refine.get("strategy_flags") or {}
+    assert_true("generate_rfree_flags" in sf,
+        "phenix.refine must have generate_rfree_flags in strategy_flags; "
+        "got: %s" % list(sf.keys()))
 
-    # Already present → no duplicate
-    cmd2 = ("phenix.refine model.pdb data.mtz "
-            "xray_data.r_free_flags.generate=True output.prefix=refine_001")
-    result2 = inject_program_defaults(cmd2, "phenix.refine")
-    assert_true(result2.count("r_free_flags") == 1,
-        "inject_program_defaults must not double-add; got: %s" % result2)
-
-    print("  PASSED: inject_program_defaults adds missing defaults, skips existing")
+    print("  PASSED: refine has no unconditional generate default, "
+          "has conditional generate_rfree_flags strategy_flag")
 
 
 def test_s5h_predict_and_build_has_no_rebuilding_strategy():
@@ -6454,7 +6687,7 @@ def test_s6a_failure_context_stored_on_cycle():
 
     _ai_agent_path = _find_ai_agent_path()
     assert_true(_ai_agent_path is not None, "Could not locate ai_agent.py")
-    ai_src = open(_ai_agent_path).read()
+    ai_src = open(_ai_agent_path, encoding='utf-8').read()
 
     # ── Helper method present ─────────────────────────────────────────────────
     assert_true("_input_basenames_from_command" in ai_src,
@@ -6785,7 +7018,7 @@ def test_s6d_prompt_has_superseded_instruction():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     prompt_path = _os.path.join(_PROJECT_ROOT, "knowledge", "prompts_hybrid.py")
-    prompt_src = open(prompt_path).read()
+    prompt_src = open(prompt_path, encoding='utf-8').read()
     m = _re.search(
         r'AGENT_SESSION_ASSESSMENT_PROMPT\s*=\s*"""(.*?)"""',
         prompt_src, _re.DOTALL)
@@ -6815,7 +7048,7 @@ def test_s6e_no_circular_import_in_files_overlap():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     session_path = _os.path.join(_PROJECT_ROOT, "agent", "session.py")
-    src = open(session_path).read()
+    src = open(session_path, encoding='utf-8').read()
 
     # The circular import must be gone
     assert_true("from agent.session import AgentSession" not in src,
@@ -6915,7 +7148,7 @@ def test_s6g_markdown_table_superseded_footnote():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     session_path = _os.path.join(_PROJECT_ROOT, "agent", "session.py")
-    src = open(session_path).read()
+    src = open(session_path, encoding='utf-8').read()
 
     # Source must contain the ✗* symbol logic
     assert_true('"\\u2717*"' in src or "'✗*'" in src or '"✗*"' in src,
@@ -7044,7 +7277,7 @@ def test_s7c_phaser_valid_for_conventional_model():
             return
 
     wf_path = _os.path.join(_PROJECT_ROOT, "knowledge", "workflows.yaml")
-    wf = _yaml.safe_load(open(wf_path))
+    wf = _yaml.safe_load(open(wf_path, encoding='utf-8'))
     steps = wf.get("xray", {}).get("steps") or wf.get("xray", {}).get("phases") or {}
     mr_programs = steps.get("molecular_replacement", {}).get("programs", [])
 
@@ -7116,7 +7349,7 @@ def test_s7d_phaser_condition_in_workflows_yaml():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     wf_path = _os.path.join(_PROJECT_ROOT, "knowledge", "workflows.yaml")
-    src = open(wf_path).read()
+    src = open(wf_path, encoding='utf-8').read()
 
     assert_true("has_any: [processed_model, model_for_mr]" in src,
         "workflows.yaml phaser condition must use has_any: [processed_model, model_for_mr]")
@@ -7219,7 +7452,7 @@ def test_s7g_retry_feedback_distinguishes_failure_from_success():
 
     ai_agent_path = _find_ai_agent_path()
     assert_true(ai_agent_path is not None, "Could not locate ai_agent.py")
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     # _build_duplicate_feedback must exist and accept prev_was_failure
     assert_true("def _build_duplicate_feedback" in src,
@@ -7270,7 +7503,7 @@ def test_s7h_molecular_replacement_phase_description_updated():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     wf_path = _os.path.join(_PROJECT_ROOT, "knowledge", "workflows.yaml")
-    src = open(wf_path).read()
+    src = open(wf_path, encoding='utf-8').read()
 
     # Find the molecular_replacement section
     mr_idx = src.find("    molecular_replacement:")
@@ -7356,7 +7589,7 @@ def _get_injector():
         return _shlex.quote(s) if ' ' in s else s
 
     # Extract just the two method bodies from source.
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     def _extract_method(method_name):
         import textwrap as _tw
@@ -8002,7 +8235,7 @@ def test_s8i_retry_duplicate_injection():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     # Old _retry_duplicate must be gone (parallel path removed)
     assert_true("def _retry_duplicate(" not in src,
@@ -8098,7 +8331,7 @@ def test_s10a_no_param_inject_into_probe_programs():
     pp_path = os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(os.path.isfile(pp_path),
         "command_postprocessor.py must exist")
-    src = open(pp_path).read()
+    src = open(pp_path, encoding='utf-8').read()
 
     # The guard must exist in inject_user_params
     inject_start = src.find("def inject_user_params(")
@@ -8149,7 +8382,7 @@ def test_s10b_probe_failure_continues_workflow():
     _sys.path.insert(0, _PROJECT_ROOT)
 
     ai_agent_path = _find_ai_agent_path()
-    src = open(ai_agent_path).read()
+    src = open(ai_agent_path, encoding='utf-8').read()
 
     # Find the run_failed block — the _PROBE_PROGRAMS guard must be inside it
     # and must appear BEFORE the _analyze_for_recovery call.
@@ -8206,7 +8439,7 @@ def test_s10c_sanitize_strips_params_from_probe_programs():
     pp_path = os.path.join(_PROJECT_ROOT, "agent", "command_postprocessor.py")
     assert_true(os.path.isfile(pp_path),
         "command_postprocessor.py must exist")
-    src = open(pp_path).read()
+    src = open(pp_path, encoding='utf-8').read()
 
     sanitize_start = src.find("def sanitize_command(")
     assert_true(sanitize_start >= 0,
@@ -8228,7 +8461,7 @@ def test_s10c_sanitize_strips_params_from_probe_programs():
 
     # Phase 4: class method must be gone from ai_agent.py
     ai_agent_path = _find_ai_agent_path()
-    ai_src = open(ai_agent_path).read()
+    ai_src = open(ai_agent_path, encoding='utf-8').read()
     assert_true("def _sanitize_command" not in ai_src,
         "_sanitize_command class method must be removed from ai_agent.py (Phase 4)")
 
@@ -8567,7 +8800,7 @@ def test_s10g_crystal_symmetry_per_program_format():
         print("  SKIP (command_postprocessor.py not found)")
         return
 
-    with open(pp_path) as _f:
+    with open(pp_path, encoding='utf-8') as _f:
         src = _f.read()
 
     # ── structural checks ────────────────────────────────────────────────────
@@ -8595,7 +8828,7 @@ def test_s10g_crystal_symmetry_per_program_format():
 
     # Phase 4: class method must be gone from ai_agent.py
     ai_agent_path = _find_ai_agent_path()
-    ai_src = open(ai_agent_path).read()
+    ai_src = open(ai_agent_path, encoding='utf-8').read()
     assert_true("def _inject_crystal_symmetry" not in ai_src,
         "_inject_crystal_symmetry class method must be removed from ai_agent.py (Phase 4)")
 
@@ -8832,7 +9065,7 @@ def test_s5j_content_guard_ligand_and_model_slots():
     try:
         # Create a protein PDB (has many ATOM records — realistic refined model)
         protein_pdb = os.path.join(test_dir, 'refine_001.pdb')
-        with open(protein_pdb, 'w') as f:
+        with open(protein_pdb, 'w', encoding='utf-8') as f:
             # Real protein models have hundreds to thousands of atoms
             for i in range(200):
                 f.write("ATOM  %5d  CA  ALA A %3d       1.000   2.000   3.000  1.00 10.00           C\n" % (i+1, i+1))
@@ -8840,7 +9073,7 @@ def test_s5j_content_guard_ligand_and_model_slots():
 
         # Create a small-molecule PDB (HETATM only)
         ligand_pdb = os.path.join(test_dir, 'atp.pdb')
-        with open(ligand_pdb, 'w') as f:
+        with open(ligand_pdb, 'w', encoding='utf-8') as f:
             f.write("HETATM    1  PG  ATP A   1       1.000   2.000   3.000  1.00 10.00           P\n")
             f.write("HETATM    2  O1G ATP A   1       2.000   3.000   4.000  1.00 10.00           O\n")
             f.write("END\n")
@@ -8933,10 +9166,10 @@ def test_s5j_session_rebuild_map_coeffs():
         refine_mtz = os.path.join(test_dir, 'refine_001.mtz')
 
         for path in [model_path, data_path]:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write('ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00  0.00\n')
         for path in [refine_pdb, refine_mtz]:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write('MOCK')
 
         # Create session with one successful refine cycle
@@ -8951,7 +9184,7 @@ def test_s5j_session_rebuild_map_coeffs():
                 "output_files": [refine_pdb, refine_mtz],
             }],
         }
-        with open(session_file, 'w') as f:
+        with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session_data, f)
 
         from agent.session import AgentSession
@@ -8995,10 +9228,10 @@ def test_s5j_session_rebuild_supplemental_map_coeffs():
         refine_map_mtz = os.path.join(test_dir, 'refine_001.mtz')
 
         for path in [model_path, data_path]:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write('ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00  0.00\n')
         for path in [refine_pdb, refine_data_mtz, refine_map_mtz]:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write('MOCK')
 
         # Create session where output_files only has _data.mtz and .pdb
@@ -9015,7 +9248,7 @@ def test_s5j_session_rebuild_supplemental_map_coeffs():
                 # Note: refine_001.mtz deliberately NOT included
             }],
         }
-        with open(session_file, 'w') as f:
+        with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session_data, f)
 
         from agent.session import AgentSession
@@ -9061,10 +9294,10 @@ def test_s5j_record_result_discovers_supplemental_map_coeffs():
         refine_map_mtz = os.path.join(test_dir, 'refine_001.mtz')  # on disk, not in output_files
 
         for path in [model_path, data_path]:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write('ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00  0.00\n')
         for path in [refine_pdb, refine_data_mtz, refine_map_mtz]:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write('MOCK')
 
         # Create fresh session (no cycles yet)
@@ -9073,7 +9306,7 @@ def test_s5j_record_result_discovers_supplemental_map_coeffs():
             "original_files": [model_path, data_path],
             "cycles": [],
         }
-        with open(session_file, 'w') as f:
+        with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session_data, f)
 
         from agent.session import AgentSession
@@ -9145,7 +9378,7 @@ def test_s5j_duplicate_detection_different_model_not_duplicate():
                 },
             ],
         }
-        with open(session_file, 'w') as f:
+        with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session_data, f)
 
         from agent.session import AgentSession
@@ -9195,7 +9428,7 @@ def test_s5k_best_files_fallback_for_specific_subcategory():
     print("  Test: s5k_best_files_fallback_for_specific_subcategory")
 
     cb_path = os.path.join(_PROJECT_ROOT, "agent", "command_builder.py")
-    with open(cb_path) as f:
+    with open(cb_path, encoding='utf-8') as f:
         src = f.read()
 
     # The fallback must exist between "uses_specific_subcategory" guard and
@@ -9291,7 +9524,7 @@ def test_s5m_build_failure_includes_missing_slots():
     print("  Test: s5m_build_failure_includes_missing_slots")
 
     gn_path = os.path.join(_PROJECT_ROOT, "agent", "graph_nodes.py")
-    with open(gn_path) as f:
+    with open(gn_path, encoding='utf-8') as f:
         src = f.read()
 
     # BUILD node must check _last_missing_slots and include them in error

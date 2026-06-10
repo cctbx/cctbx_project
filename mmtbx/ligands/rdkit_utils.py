@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
+
 from libtbx.utils import Sorry
 
 from rdkit import Chem
@@ -28,6 +30,13 @@ Functions:
   match_mol_indices: Match atom indices of different mols
 """
 # ------------------------------------------------------------------------------
+def get_atom_element(atom):
+  pse = Chem.GetPeriodicTable()
+  return pse.GetElementSymbol(atom.GetAtomicNum())
+
+def is_hydrogen(molecule, i):
+  atom=molecule.GetAtomWithIdx(i)
+  return get_atom_element(atom) in ['H', 'D', 'T']
 
 def get_rdkit_bond_type(cif_order, elements=None):
   """
@@ -220,12 +229,30 @@ def get_cctbx_isel_for_rigid_components(atom_group,
   mol, rdkit_to_cctbx = get_rdkit_mol_from_atom_group_and_cif_obj(
     atom_group = atom_group,
     cif_object = cif_object)
-  cctbx_rigid_components = get_rigid_components(
+  cctbx_rigid_components, _mol, _frags = get_rigid_components(
     mol, rdkit_to_cctbx, filter_lone_linkers, filename)
 
   return cctbx_rigid_components
 
 # ------------------------------------------------------------------------------
+
+# Common non-metal atomic numbers (metalloids Si/As/Te included so they
+# aren't treated as metals). Any atom outside this set is treated as a
+# metal for fragmentation purposes: coordination-style bonds to metals
+# aren't rotatable in the crystallographic sense, so we don't cut across
+# them (e.g. Fe-O in an oFo ligand must stay a single rigid fragment).
+_NON_METAL_Z = frozenset([
+  1, 2,               # H, He
+  5, 6, 7, 8, 9, 10,  # B, C, N, O, F, Ne
+  14, 15, 16, 17, 18, # Si, P, S, Cl, Ar
+  33, 34, 35, 36,     # As, Se, Br, Kr
+  52, 53, 54,         # Te, I, Xe
+  85, 86,             # At, Rn
+])
+
+def _bond_touches_metal(bond):
+  return (bond.GetBeginAtom().GetAtomicNum() not in _NON_METAL_Z
+       or bond.GetEndAtom().GetAtomicNum()   not in _NON_METAL_Z)
 
 def get_rigid_components(mol,
                          rdkit_to_cctbx,
@@ -238,7 +265,8 @@ def get_rigid_components(mol,
     matches = mol.GetSubstructMatches(rotatable_pattern)
   except Exception as e:
     print('Failed to fragment the molecule.')
-    return [flex.size_t(list(rdkit_to_cctbx.values()))]
+    frags = Chem.GetMolFrags(mol, asMols=False)
+    return [flex.size_t(list(rdkit_to_cctbx.values()))], mol, list(frags)
 
   candidate_cut_bonds = []
   min_heavy_atoms = 2
@@ -252,6 +280,7 @@ def get_rigid_components(mol,
     if bond is None: continue
 
     if is_amide_bond(mol, bond): continue
+    if _bond_touches_metal(bond): continue
 
     bidx = bond.GetIdx()
 
@@ -295,17 +324,17 @@ def get_rigid_components(mol,
 
   # Fragment
   if not final_bonds_to_cut:
-    draw_colored_fragments(mol, Chem.GetMolFrags(mol, asMols=False), filename=filename)
-    return [flex.size_t(list(rdkit_to_cctbx.values()))]
+    rdkit_frags = list(Chem.GetMolFrags(mol, asMols=False))
+    draw_colored_fragments(mol, rdkit_frags, filename=filename)
+    return [flex.size_t(list(rdkit_to_cctbx.values()))], mol, rdkit_frags
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
-  raw_fragments = Chem.GetMolFrags(fragmented_mol, asMols=False)
+  raw_fragments = list(Chem.GetMolFrags(fragmented_mol, asMols=False))
 
   # Convert to CCTBX format
   cctbx_rigid_components = []
 
-  merged_fragments = raw_fragments
-  for frag in merged_fragments:
+  for frag in raw_fragments:
     component_indices = flex.size_t()
     for rd_idx in frag:
       global_idx = rdkit_to_cctbx[rd_idx]
@@ -314,7 +343,7 @@ def get_rigid_components(mol,
 
   draw_colored_fragments(mol, raw_fragments, filename=filename)
 
-  return cctbx_rigid_components
+  return cctbx_rigid_components, mol, raw_fragments
 
 # ------------------------------------------------------------------------------
 
@@ -407,11 +436,14 @@ def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
 
 # ------------------------------------------------------------------------------
 
-def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False):
+def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
+                           frag_ccs=None):
   """
   1. Removes all H atoms.
   2. Strips all charges and implicit H properties (forces clean drawing).
   3. Maps colors from the original fragmented indices to the new clean molecule.
+  frag_ccs: optional list of CC floats, one per fragment in rdkit_frags order.
+            When provided, each CC value is drawn at the centroid of its fragment.
   """
   if filename is None: return
 
@@ -454,6 +486,17 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False):
     (0.4, 0.8, 0.8), (0.8, 0.8, 0.8)
   ]
 
+  # Per-fragment color: traffic-light by CC when provided, else rainbow palette.
+  frag_colors = {}
+  for i in range(len(rdkit_frags)):
+    if frag_ccs is not None and i < len(frag_ccs):
+      cc = frag_ccs[i]
+      if   cc >= 0.8: frag_colors[i] = (0.6, 1.0, 0.6)
+      elif cc >= 0.6: frag_colors[i] = (1.0, 1.0, 0.6)
+      else:           frag_colors[i] = (1.0, 0.6, 0.6)
+    else:
+      frag_colors[i] = palette[i % len(palette)]
+
   # Map: Original_Index -> Fragment_ID
   old_idx_to_frag_id = {}
   for frag_idx, frag_atoms in enumerate(rdkit_frags):
@@ -471,7 +514,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False):
 
       if old_idx in old_idx_to_frag_id:
         frag_id = old_idx_to_frag_id[old_idx]
-        color = palette[frag_id % len(palette)]
+        color = frag_colors[frag_id]
 
         new_idx = atom.GetIdx()
         new_atom_highlights[new_idx] = color
@@ -487,11 +530,27 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False):
         new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
 
   # 8. Draw
-  width, height = 500, 500
+  # Base size scales with molecule complexity; canvas then stretches to match
+  # the molecule's 2D aspect ratio so long/thin ligands don't end up drawn
+  # in a narrow strip of a square canvas.
+  n_heavy = mol_viz.GetNumHeavyAtoms()
+  if   n_heavy > 40: base_px = 800
+  elif n_heavy > 20: base_px = 650
+  else:              base_px = 500
+  conf = mol_viz.GetConformer()
+  xs = [conf.GetAtomPosition(i).x for i in range(mol_viz.GetNumAtoms())]
+  ys = [conf.GetAtomPosition(i).y for i in range(mol_viz.GetNumAtoms())]
+  bb_w = max(xs) - min(xs) if xs else 1.0
+  bb_h = max(ys) - min(ys) if ys else 1.0
+  aspect = max(0.33, min(3.0, (bb_w + 1e-6) / (bb_h + 1e-6)))
+  import math
+  width  = max(400, int(base_px * math.sqrt(aspect)))
+  height = max(400, int(base_px / math.sqrt(aspect)))
   drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
 
   opts = drawer.drawOptions()
   opts.fillHighlights = True
+  opts.padding = 0.05  # tight fit; badges + legend are added via PIL below
 
   drawer.DrawMolecule(
     mol_viz,
@@ -500,11 +559,163 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False):
     highlightBonds=list(new_bond_highlights.keys()),
     highlightBondColors=new_bond_highlights
   )
-  drawer.FinishDrawing()
 
-  # 9. Save
+  # Collect pixel-space centroids of each fragment so we can place numbered
+  # badges. GetDrawCoords must be called after DrawMolecule but before
+  # FinishDrawing.
+  frag_pixel_centroids = {}
+  if frag_ccs is not None:
+    from rdkit.Geometry import rdGeometry
+    conf = mol_viz.GetConformer()
+    frag_mol_pts = {}
+    for new_idx, frag_id in new_idx_to_frag_id.items():
+      pos = conf.GetAtomPosition(new_idx)
+      frag_mol_pts.setdefault(frag_id, []).append((pos.x, pos.y))
+    for frag_id, pts in frag_mol_pts.items():
+      cx = sum(x for x, y in pts) / len(pts)
+      cy = sum(y for x, y in pts) / len(pts)
+      canvas_pt = drawer.GetDrawCoords(rdGeometry.Point2D(cx, cy))
+      frag_pixel_centroids[frag_id] = (canvas_pt.x, canvas_pt.y)
+
+  drawer.FinishDrawing()
+  png_bytes = drawer.GetDrawingText()
+
+  # 9. Composite numbered badges at each fragment centroid and a wrapped
+  #    legend below the molecule, so every CC stays linked to its fragment
+  #    regardless of molecule shape or fragment count.
+  if frag_ccs is not None and frag_pixel_centroids:
+    try:
+      from PIL import Image, ImageDraw as PILDraw, ImageFont
+      import io as _io
+
+      legend_font_size = 20
+      badge_font_size = 16
+      badge_r = 13
+      badge_text_gap = 6
+      try:
+        legend_font = ImageFont.load_default(size=legend_font_size)
+      except TypeError:
+        legend_font = ImageFont.load_default()
+      try:
+        badge_font = ImageFont.load_default(size=badge_font_size)
+      except TypeError:
+        badge_font = ImageFont.load_default()
+
+      def cc_text_rgb(cc):
+        if cc >= 0.8: return (40, 140, 40)
+        if cc >= 0.6: return (180, 110, 0)
+        return (180, 40, 40)
+
+      tmp_draw = PILDraw.Draw(Image.new('RGBA', (1, 1)))
+      def text_size(s, font):
+        try:
+          bb = tmp_draw.textbbox((0, 0), s, font=font)
+          return bb[2] - bb[0], bb[3] - bb[1]
+        except AttributeError:
+          return tmp_draw.textsize(s, font=font)
+
+      def draw_badge(d, cx, cy, n):
+        d.ellipse(
+          (cx - badge_r, cy - badge_r, cx + badge_r, cy + badge_r),
+          fill=(255, 255, 255, 235), outline=(40, 40, 40), width=2)
+        try:
+          d.text((cx, cy), str(n), fill=(0, 0, 0),
+                 font=badge_font, anchor='mm')
+        except TypeError:
+          tw, th = text_size(str(n), badge_font)
+          d.text((cx - tw // 2, cy - th // 2), str(n),
+                 fill=(0, 0, 0), font=badge_font)
+
+      # Number fragments 1..N left-to-right by centroid x.
+      sorted_frag_ids = sorted(
+        frag_pixel_centroids,
+        key=lambda fid: frag_pixel_centroids[fid][0])
+      frag_id_to_n = {fid: i + 1 for i, fid in enumerate(sorted_frag_ids)}
+
+      # Legend entries in the same left-to-right order.
+      entries = []
+      for fid in sorted_frag_ids:
+        if fid >= len(frag_ccs):
+          continue
+        cc = frag_ccs[fid]
+        cc_str = '%.2f' % cc
+        cc_w, _ = text_size(cc_str, legend_font)
+        entry_w = 2 * badge_r + badge_text_gap + cc_w
+        entries.append((frag_id_to_n[fid], cc_str, cc_text_rgb(cc), entry_w))
+
+      prefix = 'RSCC  '
+      sep = '   '
+      prefix_w, _ = text_size(prefix, legend_font)
+      sep_w, _ = text_size(sep, legend_font)
+      row_h = max(legend_font_size, 2 * badge_r) + 6
+
+      # Wrap entries into rows.
+      max_row_w = width - 20
+      rows = []
+      cur_row = []
+      cur_w = prefix_w
+      for i, (_, _, _, entry_w) in enumerate(entries):
+        add_w = entry_w + (sep_w if cur_row else 0)
+        if cur_row and cur_w + add_w > max_row_w:
+          rows.append(cur_row)
+          cur_row = [i]
+          cur_w = entry_w
+        else:
+          cur_row.append(i)
+          cur_w += add_w
+      if cur_row: rows.append(cur_row)
+
+      legend_pad_top = 8
+      legend_pad_bot = 6
+      legend_h = legend_pad_top + row_h * len(rows) + legend_pad_bot
+      canvas_h = height + legend_h
+
+      img = Image.open(_io.BytesIO(png_bytes)).convert('RGBA')
+      new_img = Image.new('RGBA', (width, canvas_h), (255, 255, 255, 255))
+      new_img.paste(img, (0, 0))
+      draw = PILDraw.Draw(new_img)
+
+      # Badges on the molecule.
+      for fid, (cx, cy) in frag_pixel_centroids.items():
+        if fid >= len(frag_ccs):
+          continue
+        draw_badge(draw, int(cx), int(cy), frag_id_to_n[fid])
+
+      # Legend: same badge graphic + tier-coloured CC value.
+      y_row = height + legend_pad_top
+      for row_i, row in enumerate(rows):
+        x = 10
+        row_mid = y_row + row_h // 2
+        if row_i == 0:
+          try:
+            draw.text((x, row_mid), prefix, fill=(80, 80, 80),
+                      font=legend_font, anchor='lm')
+          except TypeError:
+            draw.text((x, y_row), prefix, fill=(80, 80, 80), font=legend_font)
+          x += prefix_w
+        for j, idx in enumerate(row):
+          n, cc_str, color, entry_w = entries[idx]
+          if j > 0:
+            x += sep_w
+          draw_badge(draw, x + badge_r, row_mid, n)
+          tx = x + 2 * badge_r + badge_text_gap
+          try:
+            draw.text((tx, row_mid), cc_str, fill=color,
+                      font=legend_font, anchor='lm')
+          except TypeError:
+            draw.text((tx, y_row), cc_str, fill=color, font=legend_font)
+          x += entry_w
+        y_row += row_h
+
+      out = _io.BytesIO()
+      new_img.save(out, format='PNG')
+      png_bytes = out.getvalue()
+    except ImportError:
+      pass  # PIL not available; save without annotations
+
+  # 10. Save
   with open(filename, 'wb') as f:
-    f.write(drawer.GetDrawingText())
+    f.write(png_bytes)
 
   print(f"PNG saved to {filename}")
 
@@ -532,10 +743,59 @@ def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal', ignor
                )
       rc.append(xyz)
       if not ignore_question_mark and '?' in xyz[-1]: return None
-  # print(rc)
   return rc
 
-def read_chemical_component_filename(filename):
+def overlay_two_molecules(mol1, mol2):
+  from rdkit.Chem import rdFMCS
+
+  params = rdFMCS.MCSParameters()
+  params.AtomTyper = rdFMCS.AtomCompare.CompareElements
+  params.BondTyper = rdFMCS.BondCompare.CompareOrder
+  params.BondCompareParameters.RingMatchesRingOnly = True
+  params.BondCompareParameters.CompleteRingsOnly = True
+
+  res = rdFMCS.FindMCS([mol1, mol2], params)
+
+  highlightAtoms_mol1 = mol1.GetSubstructMatch(res.queryMol)
+  print(highlightAtoms_mol1)
+  highlightAtoms_mol2 = mol2.GetSubstructMatch(res.queryMol)
+  print(highlightAtoms_mol2)
+
+  return list(zip(highlightAtoms_mol1, highlightAtoms_mol2))
+
+
+def read_chemical_component_smiles(filename):
+  from iotbx import cif
+  ccd = cif.reader(filename).model()
+  for i, (code, monomer) in enumerate(ccd.items()):
+    # molecule = Chem.Mol()
+    desc = monomer.get_loop_or_row('_pdbx_chem_comp_descriptor')
+    for j, tmp in enumerate(desc.iterrows()):
+      smiles_type = tmp.get('_pdbx_chem_comp_descriptor.type')
+      if smiles_type=='SMILES_CANONICAL':
+        smiles = tmp.get('_pdbx_chem_comp_descriptor.descriptor')
+        return smiles
+
+def read_chemical_component_filename_new(filename):
+  smiles=read_chemical_component_smiles(filename)
+  print('smiles',smiles)
+  mol1=mol_from_smiles(smiles)
+  print(mol1)
+  mol2=read_chemical_component_filename_old(filename)
+  print(mol2)
+  print(Chem.FindMolChiralCenters(mol1, includeUnassigned=True))
+  print(Chem.FindMolChiralCenters(mol2, includeUnassigned=True))
+
+  matches = overlay_two_molecules(mol1, mol2)
+  print(matches)
+
+  for k, (i, j) in enumerate(matches):
+    # print(dir(mol1.GetAtomWithIdx(i)))
+    print(k,i,j,mol1.GetAtomWithIdx(i).GetSymbol(), mol2.GetAtomWithIdx(j).GetSymbol())
+
+  assert 0
+
+def read_chemical_component_filename(filename, verbose=False):
   from iotbx import cif
   bond_order_ccd = {
     1.5:Chem.rdchem.BondType.AROMATIC,
@@ -590,22 +850,17 @@ def read_chemical_component_filename(filename):
         order = bond_order_ccd[order]
         rwmol.AddBond(atom1, atom2, order)
   rwmol.AddConformer(conformer)
-  # Chem.SanitizeMol(rwmol)
+  Chem.SanitizeMol(rwmol)
   # from rdkit.Chem.PropertyMol import PropertyMol
-  molecule = rwmol.GetMol()
   # molecule = PropertyMol(molecule)
-#  print(dir(molecule))
-#  print(desc)
-#  print(dir(desc))
-#  for key, item in desc.items():
-#    key = key.split('.')[1]
-#    print(key,list(item))
-#    molecule.SetProp(key,item[0])
-#    print(molecule.HasProp(key))
-#    print(molecule.GetProp(key))
-#  print(dir(molecule.GetPropNames()))
-#  print(molecule.GetPropsAsDict())
-  # print(dir(rwmol))
+  molecule = rwmol.GetMol()
+  for key, item in desc.items():
+    key = key.split('.')[1]
+    molecule.SetProp(key,item[0])
+  molecule.SetProp('id', code.upper())
+  if verbose:
+    for atom in molecule.GetAtoms():
+      print(atom, atom.GetPropsAsDict())
   return molecule
 
 def get_molecule_from_resname(resname):
@@ -620,7 +875,7 @@ def get_molecule_from_resname(resname):
     return None
   return molecule
 
-def mol_from_chemical_component(code):
+def molecule_from_chemical_component(code):
   from mmtbx.chemical_components import get_cif_filename
   rc = get_cif_filename(code)
   molecule = read_chemical_component_filename(rc)
@@ -765,22 +1020,39 @@ def enumerate_torsions(mol):
 
 def mol_to_3d(mol):
   """
-  Convert and rdkit mol to 3D coordinates
+  Convert a rdkit mol to 3D coordinates
   """
   assert len(mol.GetConformers())==0, "mol already has conformer"
   param = rdDistGeom.ETKDGv3()
-  conf_id = rdDistGeom.EmbedMolecule(mol,clearConfs=True)
+  conf_id = rdDistGeom.EmbedMolecule(mol, clearConfs=True)
   return mol
 
 def mol_to_2d(mol):
   """
-  Convert and rdkit mol to 2D coordinates
+  Convert a rdkit mol to 2D coordinates
   """
   mol = Chem.Mol(mol) # copy to preserve original coords
   ret = Chem.rdDepictor.Compute2DCoords(mol)
   return mol
 
-def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False, verbose=False):
+def molecule_to_image(molecule, file_name, size=(2000,1500), draw2d=True):
+  from rdkit.Chem import AllChem
+  from rdkit.Chem import Draw
+  molecule=copy.deepcopy(molecule)
+  if draw2d: AllChem.Compute2DCoords(molecule)
+  image = Draw.MolToImage(molecule, size=size)
+  return image
+
+def print_coordinates(mol):
+  conformer = mol.GetConformer()
+  positions=conformer.GetPositions()
+  print("Atomic coordinates (x, y, z): %s" % conformer.Is3D())
+  for i, atom in enumerate(mol.GetAtoms()):
+    position = conformer.GetAtomPosition(i)
+    new_xyz=positions[i]
+    print(f"{atom.GetSymbol()} {position.x:.4f} {position.y:.4f} {position.z:.4f}")
+
+def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=False):
   """
   Convert a smiles string to rdkit mol
   """
@@ -788,7 +1060,9 @@ def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False, verbose=F
   ps.removeHs=removeHs
   rdmol = Chem.MolFromSmiles(smiles, ps)
   if verbose: print('rdmol',rdmol)
-  if rdmol is None: return rdmol
+  if rdmol is None:
+    raise Sorry(f'invalid SMILES {smiles}')
+    # return rdmol
   if verbose: print('rdmol',rdmol.Debug())
   if addHs: rdmol = Chem.AddHs(rdmol)
   if verbose: print('rdmol',rdmol.Debug())
@@ -800,6 +1074,14 @@ def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False, verbose=F
   if verbose: print('rdmol',rdmol.Debug())
   rdmol.UpdatePropertyCache()
   if verbose: print('rdmol',rdmol.Debug())
+  if embed3d:
+    conf_id = AllChem.EmbedMolecule(rdmol, AllChem.ETKDG())
+    if conf_id == -1:
+      raise Sorry("Could not generate 3D coordinates")
+      # return None
+    AllChem.MMFFOptimizeMolecule(rdmol, confId=conf_id)
+    if verbose:
+      print_coordinates(rdmol)
   return rdmol
 
 def match_mol_indices(mol_list):

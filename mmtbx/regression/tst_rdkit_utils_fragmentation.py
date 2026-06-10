@@ -33,6 +33,7 @@ def run():
   run_test_09()
   run_test_10()
   run_test_11()
+  run_test_12()
 
 # ------------------------------------------------------------------------------
 
@@ -197,6 +198,31 @@ def run_test_11():
 
   #print(len(cctbx_rigid_components))
   assert len(cctbx_rigid_components) == 3
+
+# ------------------------------------------------------------------------------
+
+def run_test_12():
+  # OFO cofactor from 1A7E: FE1-O-FE2-OH-H. The metal-oxo bonds must not
+  # be treated as rotatable, so a single rigid component is expected.
+  print('test12...')
+  from rdkit import Chem
+  rw = Chem.RWMol()
+  for el in ['Fe', 'O', 'Fe', 'O', 'H']:
+    rw.AddAtom(Chem.Atom(el))
+  rw.AddBond(0, 1, Chem.BondType.SINGLE)
+  rw.AddBond(1, 2, Chem.BondType.SINGLE)
+  rw.AddBond(2, 3, Chem.BondType.SINGLE)
+  rw.AddBond(3, 4, Chem.BondType.SINGLE)
+  mol = rw.GetMol()
+  Chem.SanitizeMol(
+    mol,
+    sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL
+                ^ Chem.SanitizeFlags.SANITIZE_PROPERTIES)
+  rdkit_to_cctbx = {i: i for i in range(mol.GetNumAtoms())}
+  components, _mol, _frags = rdkit_utils.get_rigid_components(
+    mol, rdkit_to_cctbx)
+  assert len(components) == 1, len(components)
+
 # ------------------------------------------------------------------------------
 
 def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
@@ -223,15 +249,22 @@ def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
     cif_object = cif_object,
     filter_lone_linkers = filter_lone_linkers)
 
-#  print(len(cctbx_rigid_components))
-#
-#  ph =  model.get_hierarchy()
-#  atoms = ph.atoms()
-#  for rigid_comp in cctbx_rigid_components:
-#    print('fragment')
-#    print(list(rigid_comp))
-#    for idx in rigid_comp:
-#      print(atoms[idx].name)
+  #print(len(cctbx_rigid_components))
+
+  if 0:
+    ph =  model.get_hierarchy()
+    print(dir(model))
+    print(dir(ph))
+    ph.write_mmcif_file('test.cif')
+    atoms = ph.atoms()
+    for rigid_comp in cctbx_rigid_components:
+      print('fragment')
+      print(list(rigid_comp))
+      for idx in rigid_comp:
+        print(atoms[idx].name)
+  if 0:
+    import os
+    os.system('phenix.start_coot --no-guano')
 
   assert len(cctbx_rigid_components) == expected
 

@@ -15,9 +15,9 @@ class StatusPanel(wx.Panel):
     self._btns = {}
     self._current_status = None
     self._status_warn = False
-    self._std_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.NORMAL,wx.NORMAL)
-    self._warn_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD)
-    self._btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.NORMAL,wx.NORMAL)
+    self._std_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+    self._warn_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
+    self._btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     self.btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.sizer.Add(self.btn_sizer)
     s2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -51,11 +51,11 @@ class StatusPanel(wx.Panel):
 
   def CreateErrorBox(self):
     error_txt = wx.StaticText(self, -1, "Errors:")
-    error_txt.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD))
+    error_txt.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
     self.sizer.Add(error_txt, 0, wx.TOP|wx.LEFT|wx.RIGHT|wx.ALIGN_LEFT, 5)
     self.errors = wx.TextCtrl(self, -1, size=(400,120),
       style=wx.TE_MULTILINE|wx.TE_READONLY|wx.NO_BORDER)
-    self.errors.SetFont(wx.Font(9, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    self.errors.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
     self.sizer.Add(self.errors, 1, wx.ALL|wx.EXPAND|wx.ALIGN_LEFT, 5)
 
   def UpdateErrors(self, errors):

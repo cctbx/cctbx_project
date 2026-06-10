@@ -64,7 +64,7 @@ def load_learned_memory(memory_file="phenix_learned_memory.json"):
     """
     if os.path.exists(memory_file):
         try:
-            with open(memory_file, 'r') as f:
+            with open(memory_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
             pass
@@ -79,7 +79,7 @@ def save_learned_memory(memory, memory_file="phenix_learned_memory.json"):
         memory: Dictionary of program -> tips
         memory_file: Path to save to
     """
-    with open(memory_file, 'w') as f:
+    with open(memory_file, 'w', encoding='utf-8') as f:
         json.dump(memory, f, indent=2)
 
 
@@ -261,7 +261,7 @@ def get_run_history(log_directory, max_history=5):
     history = []
     for fpath in files:
         try:
-            with open(fpath, 'r') as f:
+            with open(fpath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 history.append(data)
         except Exception as e:

@@ -390,6 +390,8 @@ def process_predicted_model(
   p = params.process_predicted_model
   set_defaults(p, pae_matrix = pae_matrix)
 
+  # initialize variable
+  selection_for_b_factor_filtering_no_chain_id = None
 
   # Determine if input plddt is fractional and get b values
 
@@ -497,8 +499,6 @@ def process_predicted_model(
       selection_for_b_factor_filtering_no_chain_id = \
         get_selection_string_from_model(
       hierarchy = new_ph, skip_chain_id = True)
-    else:
-      selection_for_b_factor_filtering_no_chain_id = None
     print("\nSelection string for B-factor filtering: %s" %(
       selection_for_b_factor_filtering), file = log)
     keep_all = False

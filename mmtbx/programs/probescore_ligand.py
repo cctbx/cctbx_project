@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function
 from libtbx.program_template import ProgramTemplate
 from cctbx.array_family import flex
 import mmtbx.model
-import iotbx.pdb
 from libtbx.utils import Sorry
 
 from mmtbx.validation.molprobity import probescore_ligand

@@ -1,103 +1,5549 @@
-# CHANGELOG — PHENIX AI Agent
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120
 
-Active development: v112–current.
-Historical versions (v30–v111): see [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+## Version 120 (New Providers: Portkey + Claude, and FORCE_NO_AI_SERVER — P1, P2, P3)
+
+### Summary
+
+v120 is a three-phase feature cluster that (1) adds an environment
+override, `FORCE_NO_AI_SERVER`, for forcing local execution, and
+(2) adds two new LLM providers — **portkey** (the Portkey gateway
+fronting Azure OpenAI) and **anthropic** (Claude) — wired through
+every provider-routing decision point in the agent.  The phases are
+independent and ship-self-contained:
+
+```
+v119 → P1 (FORCE_NO_AI_SERVER) → P2 (single-source SUPPORTED_PROVIDERS) → P3 (portkey + anthropic providers)
+```
+
+The work originated from a user request to run the agent against the
+Portkey access platform, accompanied by a working proof-of-concept
+patch (`add_portkey_support.patch`).  That patch was the authoritative
+source for the deployment specifics (Portkey SDK with
+`provider="azure-openai"`, env vars `PORTKEY_AZURE_API_KEY` /
+`PORTKEY_BASE_URL` / `PHENIX_PORTKEY_MODEL`, the Azure gpt-5 call shape
+of `max_completion_tokens` with no `temperature`), but its structure
+was re-targeted onto current code and hardened for production.  Claude
+(anthropic) was added in the same pass because it was already
+half-scaffolded and shares every touch-point portkey needed.
+
+Three deliberate departures from the proof-of-concept patch: (a) the
+patch flipped the `run_on_server` PHIL default `True → False` in both
+program files, silently changing behaviour for every user — v120 keeps
+the `True` default and provides `FORCE_NO_AI_SERVER=1` for the same
+local-only effect without a baseline change; (b) the patch read env
+vars with `os.environ[...]` (bare `KeyError` on a missing var) — v120
+checks at call time and raises a clear `ValueError` naming the missing
+variable; (c) the patch reused `get_openai_handler()` for portkey —
+v120 adds a dedicated `get_portkey_handler()` so rate-limit metrics and
+failure logging stay unpolluted.
+
+### P1 — FORCE_NO_AI_SERVER
+
+`programs/ai_agent.py::run()` gained a single override, placed after
+`set_defaults()` and before session-management dispatch so it covers
+the v2-API, `iterate_agent`, and `run_job_on_server_or_locally` paths:
+when `FORCE_NO_AI_SERVER=1` (literal, whitespace-stripped), it forces
+`communication.run_on_server = False` and logs the override via
+`self.vlog.normal`.  Any other value, or unset, is a no-op.  The same
+override is mirrored in `programs/ai_analysis.py::run()` (placed before
+its `run_job_on_server_or_locally` dispatch), so the env var forces local
+execution for `phenix.ai_analysis` too, across every analysis_mode
+(standard, agent_session, advice_preprocessing, directive_extraction,
+failure_diagnosis).  It does not affect `predict_and_build` /
+`predict_model` when those are run separately.  Behaviour is otherwise
+identical to server mode — only the locus of execution changes.
+
+### P2 — single-source SUPPORTED_PROVIDERS
+
+Before v120, `SUPPORTED_PROVIDERS` existed as two independent literals
+(`agent/graph_nodes.py` and a hardcoded fallback in
+`programs/ai_agent.py`) that could drift silently.  P2 centralizes the
+canonical list in `core/llm.py`; both consumers now import it (with the
+standard two-path `try/except ImportError` fallback).  The hardcoded
+literal in `ai_agent.py` was removed — but because its consumer is an
+*error-advice* helper, an import failure degrades to the
+provider-agnostic rules-only suggestion rather than raising a second
+exception over the original error.  This eliminates the dual-literal
+drift hazard at the root; a runtime import-identity test replaces the
+regex source-scan originally planned.
+
+### P3 — portkey + anthropic providers
+
+`core/llm.py`: portkey + anthropic added to the model-default tables;
+`PHENIX_PORTKEY_MODEL` and `ANTHROPIC_LLM_MODEL` added to the env-var
+override map; three new helpers — `portkey_langchain_config()` (call-time
+env check, clear `ValueError`), `sanitize_llm_kwargs(provider, kwargs)`
+(dict-driven per-provider kwarg reshaping), and
+`_delegate_embeddings_for_nonnative()` (the embeddings policy below);
+factory branches for both providers; `get_expensive_llm` branches.
+`SUPPORTED_PROVIDERS` activated to the five-provider set.
+
+The **asymmetric-args** trap is handled in `sanitize_llm_kwargs`:
+portkey (Azure gpt-5) renames `max_tokens → max_completion_tokens` and
+drops `temperature`; anthropic always keeps `max_tokens` (`ChatAnthropic`
+requires it) but its `temperature` handling is **model-dependent**.  The
+Claude 4.6/4.7+ reasoning family (e.g. `claude-sonnet-4-6`,
+`claude-opus-4-7`) rejects `temperature`/`top_p`/`top_k` with HTTP 400
+("temperature is deprecated for this model" — adaptive thinking took over
+sampling control), so `sanitize_llm_kwargs` and the `ChatAnthropic`
+constructor drop those params for that family, detected by
+`anthropic_model_rejects_sampling_params()` (model-name based, so future
+4.8+ models are covered).  Older Claude models (Sonnet 4 / Opus 4 dated,
+3.x) still accept `temperature` and keep it.  (This was tightened after a
+live anthropic reliability run surfaced the 400; the original assumption
+that all Claude models accept `temperature` held only for the pre-4.6
+models v120 was first written against.)
+
+The **embeddings policy** (anthropic has no native embeddings endpoint;
+the user's Portkey key can reach the embeddings deployment, but their
+current key lacks access): `get_llm_and_embeddings` always returns a
+working chat LLM; the embeddings object is constructed lazily (no
+network call) so the agent's end-of-run `agent_session` assessment —
+which constructs but never queries embeddings — is safe even with a
+no-access key.  For anthropic, embeddings delegate to a default provider
+(OpenAI/Google) when a key is present, else return `None`, emitting a
+`[PROVIDER_DELEGATION]` marker; the helper never raises on construction.
+An actual embeddings *query* failure (only reachable via
+`phenix.ai_analysis standard`/RAG, never the agent) surfaces a clear
+execution-time error echoing the raw upstream message rather than
+matching on `"Unauthorized"`.
+
+Call sites updated to route portkey/anthropic: `agent/api_client.py`
+(`_call_portkey_llm` + dispatch), `agent/directive_extractor.py`
+(`_call_llm` handler-select + `_call_llm_fallback`),
+`agent/rate_limit_handler.py` (`get_portkey_handler`),
+`agent/graph_nodes.py` (`validate_provider` key-checks + second handler
+site), `agent/thinking_agent.py` (`_get_rate_handler`).  The embeddings/
+RAG database path was completed end-to-end: `utils/run_utils.py`
+(`validate_api_keys` gates both providers; `get_db_dir_for_provider`
+gained `docs_db_portkey`), `analysis/summarizer.py` (portkey chunk
+sizes), `run_query_docs.py` (accepts both), and the database-build tools
+`command_line/rebuild_ai_database.py` + `update_ai_database.py` (accept
+`portkey` from argv with key-check).  Anthropic is intentionally **not**
+a database-build provider (no native embeddings).  `get_ai_db_dir` /
+`have_ai_database` in `phenix_ai/utilities.py` are provider-agnostic
+(string interpolation → `docs_db_<provider>`) and needed no change.
+
+PHIL `provider` enums in `programs/ai_agent.py` and
+`programs/ai_analysis.py` extended to `ollama *google openai anthropic
+portkey` (the GUI dropdown regenerates automatically).  `install_ai_tools.csh`
+adds `anthropic`, `langchain-anthropic`, `portkey-ai`.
+
+The supplied server dispatcher (`phenix_ai/run_ai_agent.py`), GUI
+(`wxGUI2/Programs/AIAgent.py`), and contract (`agent/contract.py`)
+needed no changes: provider travels in the request `settings` and is
+consumed only in shared `agent/`+`core/` code, so local and server run
+identical branches — the server only additionally needs the keys in its
+environment (deployment, not code).  The user's deployment is local-only
+with `PORTKEY_AZURE_API_KEY` set on the workstation.
+
+### LLM-unavailable observability
+
+Previously, when the requested LLM provider could not be reached, the
+agent silently degraded to rules-based program selection (`_mock_plan`
+→ `RulesSelector`) and a run could complete on rules without the user
+realizing the LLM never contributed.  Now the condition is made obvious
+in two places, visible in both CLI and GUI, on both the local and the
+server execution paths.
+
+The signal travels through the `events` list, which is already part of the
+server→client response contract (`agent/contract.py` `RESPONSE_FIELDS`) and is
+preserved by every graph node (verified: `events` is a plain `List[Dict]` in
+`graph_state.py` with no reducer, and `build`/`validate`/`fallback`/`output`
+all return `{**state}` or never clobber it).  Using the existing carrier means
+**no change to `contract.py`, `api_schema.py`, `run_ai_agent.py`,
+`event_log.py`, `event_formatter.py`, or `session.py`** — the fix is confined
+to `graph_nodes.py` and `ai_agent.py`.
+
+- **Per cycle (graph):** `agent/graph_nodes.py::_handle_llm_failure` emits a
+  structured `EventType.NOTICE` event carrying a machine-readable
+  discriminator `notice_kind="llm_unavailable"` (plus `provider` and a
+  human `message`), and also logs the human line to `debug_log` (shown at
+  every verbosity, independent of the event formatter).  Emission is guarded
+  once per `graph.invoke` by `llm_notice_emitted_this_invoke` — a key scoped
+  to the single invoke (the `validate→plan` retry edge can call the handler
+  more than once per cycle), deliberately *not* named like the driver's
+  run-level key to avoid scope confusion.  Graph state is per-cycle (each
+  cycle is a fresh `graph.invoke`), so there is no run-level flag in graph
+  state; the NOTICE is emitted each cycle the LLM is unavailable (honest
+  per-cycle reporting).
+- **Per run (driver):** `programs/ai_agent.py::print_history_record` →
+  `_detect_llm_unavailable_from_events` scans each cycle's
+  `history_record["events"]` for the discriminator and, on first sight, sets
+  the run-level `session.data["llm_ever_unavailable"]` (and provider).
+  `session.data` persists across cycles, unlike graph state, so this is the
+  durable run-level signal.  The detection hook is guarded `if session is not
+  None` (the display-only/replay path calls `print_history_record` without a
+  session) and never raises.  `_finalize_session` shows an end-of-run banner
+  ("IMPORTANT: THIS RUN DID NOT USE THE LLM") via
+  `session_data_flag_llm_unavailable`; the Results-tab summary is prefixed
+  with a one-line warning and the result object exposes
+  `llm_ever_unavailable` for programmatic/GUI use.
+
+**Per-run flag reset (false-positive fix).** The run-level
+`llm_ever_unavailable` flag lives in `session.data`, which is persisted to
+`agent_session.json` and reloaded on the next run.  It must describe whether
+the LLM was unavailable during THIS run, so `iterate_agent` (and the
+`display_and_stop` finalize path) clear it right after loading the session;
+the per-cycle detection re-sets it only if a cycle in this run actually
+attempts the LLM and fails.  Without the reset, re-running in a directory
+whose prior run hit an LLM outage would falsely print the end-of-run
+"DID NOT USE THE LLM" banner even when the current run made no LLM attempt at
+all — e.g. when the gate stops immediately because all stages are already
+complete.  Deleting the agent directory also avoided it (no saved flag to
+inherit), which is how the issue was originally spotted.
+
+This is observability only — it does not change which program the agent
+selects, only how clearly the rules-fallback is reported.  (The explicit
+`use_rules_only=True` mode was already announced clearly; this covers the
+*unintended* fallback when a provider is down.)  Known gap, documented for a
+later follow-up: a pure display-only replay of a saved session that never
+re-runs cycles will not show the end-of-run banner, because the session cycle
+records do not persist `events`; fixing that would require a `session.py`
+schema change and is out of scope here.
+
+### PHIL multi-line `.help` continuation fix
+
+The v120 `provider` enum gained a multi-line `.help` description, written as an
+unquoted continuation where the first line ended `...quickest,\` — a backslash
+with no preceding space.  PHIL requires a **space before the continuation
+backslash** in an unquoted value; without it the continuation is not joined and
+the next line is re-lexed as a new statement, producing
+`Syntax error: expected "=", found "is"`.  This broke
+`tst_h18_1_phil_roundtrip.py`'s parse tests in BOTH
+`programs/ai_agent.py` and `programs/ai_analysis.py` (dual schemas, see
+ARCHITECTURE §42).  Fixing the provider help then surfaced two pre-existing
+helps with the same flaw (`url`, `port`, continued `...server\` then
+`Normally set automatically` → `found "set"`).
+
+Fix: add a single space before the backslash on the three broken helps
+(`provider`, `url`, `port`) in each file.  The sibling `url_type`/`token` helps
+were already correct (they ended `. \`) and were left untouched, as were the
+~30 other multi-line helps and the quoted multi-line scope `.caption` (quoted
+continuations follow different rules and need no leading space).  The full rule,
+the empirical verification method, and authoring guidance are documented in
+ARCHITECTURE §44.
+
+### `phenix.resolve_cryo_em` never receives `ncs_file`
+
+In a cryo-EM half-map density-modification workflow, a stray `.ncs_spec` file
+produced by an earlier map-symmetry/segmentation step was auto-mapped to
+`ncs_file=` and passed to `phenix.resolve_cryo_em`, which does not accept a
+top-level `ncs_file` ("Some PHIL parameters are not recognized" / "Unknown
+command line parameter definition: ncs_file = ..."), failing the cycle.  The
+existing `bad_inject_params` blacklist is *reactive* -- it only learned to skip
+the param after one failed cycle.
+
+NOTE / correction of an earlier entry: the v119.H14.2 entry below stated
+"resolve_cryo_em DOES accept `ncs_file=`".  That is WRONG (verified against
+`phenix.resolve_cryo_em --show_defaults`: there is NO `ncs_file` parameter in
+any scope).  Symmetry, when wanted, is passed as
+`input_files.symmetry_file=my_ncs.ncs_spec`.  In the failing run the `.ncs_spec`
+was a stray auto-discovered file, not part of the plan (the LLM's reasoning
+targeted "optimized full map from half-maps" and never mentioned symmetry), so
+STRIPPING it is the correct behavior — not remapping it to `symmetry_file`.  The
+blacklist matches `ncs_file` only and does not touch the legitimate
+`input_files.symmetry_file` (verified against the real `sanitize_command`).
+
+Fix (proactive, layered):
+- `agent/session.py` gains a static `_STATIC_BAD_INJECT_PARAMS` map
+  (`phenix.resolve_cryo_em -> ncs_file`), unioned into
+  `get_bad_inject_params()`, so the param is excluded on the FIRST command with
+  no failed cycle required.  A new `get_all_bad_inject_params()` returns the
+  full merged `{program: [keys]}` dict.
+- `programs/ai_agent.py` now sends the **merged** set to the server via
+  `session_info["bad_inject_params"] = session.get_all_bad_inject_params()`
+  (was `session.data.get("bad_inject_params", {})`, learned-only -- which would
+  have missed the static entry in SERVER mode, the mode the failing run used).
+  The LLM guidelines and the client-side `_inject_missing_required_files` guard
+  also honor the merged set.
+- Server path verified end-to-end against real source: `run_ai_agent.py` ->
+  graph `build` node extracts the per-program set -> `command_postprocessor`
+  `sanitize_command` Rule A STRIPS the blacklisted token (so an LLM-emitted
+  `ncs_file=` is removed, not just un-injected).
+
+External-review (Gemini) hardening:
+- `agent/graph_nodes.py` build-node extraction hardened against a JSON
+  round-trip yielding `None`/non-dict (`state.get("bad_inject_params") or {}`,
+  `isinstance` guard, `or []`).
+- `_STATIC_BAD_INJECT_PARAMS` carries a WARNING that `sanitize_command` matches
+  both full and short keys, so future entries that could collide with a valid
+  nested PHIL scope must use the full dotted path.
+
+Regression suite `tst_resolve_cryo_em_ncs_inject.py` (11 tests) covers: static
+entry present; proactive blacklist on a fresh session; other programs
+unaffected; learned params still union; required-file injector honors the
+blacklist; merged dict for the server; client sends the merged set; real
+`sanitize_command` strips the token; JSON-round-trip integration gate; null
+payload safety; build-node hardening source-scan.  See ARCHITECTURE §45.
+
+### Portkey embedding model name + silent-fallback guard
+
+Two field-reported issues:
+
+1. **Wrong portkey embedding name.** The portkey/Azure embedding DEPLOYMENT name
+   is `text-embedding-3-small-1` (trailing `-1`), not the bare OpenAI id
+   `text-embedding-3-small`.  With the bare name the Azure gateway did NOT error
+   — it silently routed to a default chat deployment (gpt-5-mini), so
+   `rebuild_ai_database` "succeeded" while writing meaningless vectors.  One-line
+   fix in `core/llm.py` `RAG_EMBEDDING_DEFAULTS["portkey"]`.  (The direct
+   `openai` provider keeps the bare `text-embedding-3-small` — that name is
+   correct off-gateway.)
+
+2. **Silent-fallback guard.** New `core/llm.py::verify_embeddings(embeddings,
+   model, provider, log)` preflights a freshly-constructed embeddings object
+   with one real `embed_query` and prints a LOUD multi-line WARNING (it does NOT
+   raise / does NOT abort the build) when the call fails, returns no usable
+   vector, or returns the wrong dimension for a known fixed-size model.  A new
+   `EMBEDDING_EXPECTED_DIM` table lists only reliably-fixed sizes (the OpenAI
+   1536 family); configurable-dimension models (gemini 768/1536/3072, nomic) are
+   deliberately omitted so the check never warns spuriously.  Warn-don't-fail is
+   intentional: a stale dimension table must never block a legitimate build.
+   `rebuild_ai_database.py` calls the guard right before building (warn and
+   continue on any preflight problem).  Placement: the guard runs inside
+   `run_build_db.py` (after embeddings construction, before
+   `create_and_persist_db`), so EVERY caller -- `rebuild_ai_database`,
+   `update_ai_database`, or any future entry point -- is covered at one
+   canonical point.
+
+Tests: `tst_portkey_embedding_model.py` (8 tests) — name correct/with-`-1`,
+direct-openai name unchanged, verify OK on 1536, warns on dim mismatch, does not
+raise on failure, warns on empty vector, no false warning for variable-dim
+models, and run_build_db calls verify between construction and persist.  The H1
+baseline assertion in `tst_default_models.py` was updated to the corrected
+portkey name (it had been pinning the buggy value).
+
+### Provider-specific install ("provider lock")
+
+Internal users can restrict an install to a single provider so they do not
+ACCIDENTALLY ping a public LLM (prevent-mistakes level, not a hard guarantee).
+
+- `phenix.install_ai_tools <provider>` now REQUIRES a provider argument:
+  no-arg fails with usage; `all` reproduces historical behavior and CLEARS any
+  lock; a single provider (`portkey`/`google`/`openai`/`anthropic`/`ollama`)
+  installs and writes a lock.  The hardcoded GOOGLE_API_KEY check became a
+  provider-specific key check (portkey -> PORTKEY_AZURE_API_KEY + PORTKEY_BASE_URL,
+  etc.).
+- Lock persisted in `phenix_ai/ai_config.json`; helpers in `phenix_ai/utilities.py`
+  (`get_locked_provider`, `write_ai_config`, `load_ai_config`, `get_ai_config_path`).
+  Corrupt/missing/unknown -> no lock (fail-open; never bricks a run).
+- CLI: `ai_analysis.py` and `ai_agent.py` steer `communication.provider` to the
+  lock at the existing FORCE_NO_AI_SERVER override point (correct-and-continue
+  with a NOTE, not a hard fail).
+- `.csh`: accepts the provider arg and builds THAT provider's database
+  (`phenix.rebuild_ai_database <provider>`); `all` keeps the default build.
+- GUI: when `FORCE_NO_AI_SERVER=1`, both `AIAgent.py` and `AIAnalysis.py` OMIT
+  the "run on server" control (it is forced local anyway).  Implemented as a
+  branch on the env var rather than disabling a drawn widget.
+- Tests: `tst_provider_lock.py` (9 tests).
+
+### sanity_checker string-metric crash + _safe_float consolidation
+
+Bug: when model placement is unnecessary, `phenix.ai_agent` skips model
+rebuilding and runs `phenix.model_vs_data`; on that branch metric values arrive
+as strings, and `sanity_checker._check_metric_anomalies` did `curr - prev`
+(and `f"{x:.3f}"`) on strings -> TypeError (reported at line ~500).
+
+- Both metric blocks (R-free spike, Map CC drop) now coerce via `_safe_float`
+  before arithmetic/formatting, and guard with `is not None` instead of the
+  old truthiness test `if prev and curr:` (which also wrongly skipped a
+  legitimate 0.0).
+- Consolidation: `_safe_float` was duplicated in 5 agent modules
+  (validation_history, metric_evaluator, metrics_analyzer, structure_model,
+  display_data_model).  All now import a single definition added to
+  `utils/run_utils.py` (the shared-helpers home, dependency-free -> no import
+  cycle); sanity_checker imports it too.  One definition, six importers.
+- Tests: `tst_safe_float_consolidation.py` (5 tests) — single definition, no
+  agent module re-defines it, consumers import the canonical one, behavior
+  (string/None/0.0/non-numeric), and sanity_checker coercion.  Negative-control
+  confirmed the "no duplicate" test fails if a copy is re-introduced.
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_force_no_ai_server.py` | 10 (new) | P1: env-value truth table (`1`/`0`/`true`/empty/whitespace), quiet-when-already-false, + source-scan drift guards (block present, placed after set_defaults / before session dispatch, literal-`"1"` contract) |
+| `tests/tst_supported_providers_single_source.py` | 5 (new) | P2: runtime import-identity (graph_nodes re-exports core.llm's list), source scans that both consumers import from core.llm and no literal survives outside core.llm |
+| `tests/tst_v120_providers.py` | 21 (new) | P3: `sanitize_llm_kwargs` both directions (portkey remaps/drops, anthropic keeps), `portkey_langchain_config` clear-ValueError, SUPPORTED_PROVIDERS + PHIL-enum coverage, embeddings delegation None-without-keys + never-raises, dummy-key lazy construction with no network (mocked SDK), embeddings-query clear-error contract, `validate_api_keys` gates new providers, per-call-site source scans |
+| `tests/tst_default_models.py` | (updated) | Exact-baseline dicts updated for portkey/anthropic table entries |
+| `tests/tst_llm_unavailable_notice.py` | 10 (new) | LLM-unavailable observability: structured NOTICE event shape + discriminator, emit-once-per-invoke guard, **events list not mutated in place**, **propagation (event → driver detection → `session.data` flag)** — the check the prior implementation lacked — idempotent across cycles, ignores unrelated events, `session=None` safe, + source scans that graph_nodes emits the NOTICE with the scoped guard key (and does NOT use the run-level key name), ai_agent detects by discriminator + banners + guards `session is not None`, and `run_ai_agent.py` still passes `events` into the response builders (server path) |
+
+All three new suites registered in `tests/run_all_tests.py`.  Standalone
+suites run under plain `python3`; live Portkey/Anthropic round-trips
+remain in the keyed `tests/llm/` suite (real keys + network).
+
+### Files changed (cumulative)
+
+| File | Phase |
+|---|---|
+| `core/llm.py` | P2 (canonical `SUPPORTED_PROVIDERS`), P3 (tables, env-overrides, `portkey_langchain_config`/`sanitize_llm_kwargs`/`_delegate_embeddings_for_nonnative`, portkey+anthropic factory & expensive branches) |
+| `agent/graph_nodes.py` | P2 (import `SUPPORTED_PROVIDERS`), P3 (`validate_provider` key-checks + second handler site) |
+| `agent/api_client.py` | P3 (`_call_portkey_llm` + dispatch) |
+| `agent/directive_extractor.py` | P3 (portkey in `_call_llm` + `_call_llm_fallback`) |
+| `agent/rate_limit_handler.py` | P3 (`get_portkey_handler`) |
+| `agent/thinking_agent.py` | P3 (`_get_rate_handler` portkey) |
+| `analysis/summarizer.py` | P3 (portkey chunk sizes) |
+| `utils/run_utils.py` | P3 (`validate_api_keys` + `get_db_dir_for_provider`) |
+| `run_query_docs.py` | P3 (accepts portkey + anthropic) |
+| `programs/ai_agent.py` | P1 (`FORCE_NO_AI_SERVER`), P2 (import `SUPPORTED_PROVIDERS`, remove literal), P3 (PHIL enum) |
+| `programs/ai_analysis.py` | P1 (`FORCE_NO_AI_SERVER`), P3 (PHIL enum) |
+| `command_line/rebuild_ai_database.py` | P3 (accepts portkey) |
+| `command_line/update_ai_database.py` | P3 (accepts portkey) |
+| `phenix_ai/install_ai_tools.csh` | P3 (anthropic, langchain-anthropic, portkey-ai) |
+| `tests/tst_force_no_ai_server.py` | P1 (new) |
+| `tests/tst_supported_providers_single_source.py` | P2 (new) |
+| `tests/tst_v120_providers.py` | P3 (new) |
+| `tests/tst_default_models.py` | P3 (baseline dicts updated) |
+| `tests/run_all_tests.py` | P1/P2/P3 (register three suites) |
+
+**Verified no change:** `phenix_ai/run_ai_agent.py`,
+`wxGUI2/Programs/AIAgent.py`, `agent/contract.py`,
+`phenix_ai/utilities.py`.
 
 ---
 
-## Version 115.03 (Test Suite Bug Fixes)
 
-**Analysis date:** 2026-03-09
-**Source:** Code review of v115 test suite failures and directive logic
+## Version 119 (Operational Hardening + Phase 2A + Phase 2B + Production Bug Cluster — H1, H2, H2.1, H3, H3b, H4, H4.1, H5, H5.1, H5.1.1, H6, H6.1, H7, H8, H9, H10, H11, H12, H13, H14, H14.1, H14.2, H15, H16, H16.1, H17, H17.1, H18, H18.1, H18.2)
 
-### Fix 1 — map_sharpening resolution source (`graph_nodes.py`)
+### Summary
 
-`CommandContext` for `phenix.map_sharpening` was reading
-`session_info.get("resolution")`, but `resolution` is not a
-`session_info` contract field. Contract violation surfaced by
-`tst_contract_compliance.py :: test_all_accessed_fields_in_contract`.
+v119 is a twenty-ship cluster pursuing the operational-hardening
+agenda from `v118_next_steps_consolidated_rev4.md` §4.7B plus
+the Phase 2A planning-suite framework (H6/H6.1), the Phase 2B
+preprocessor activation (H7), a four-ship production-bug
+sub-cluster (H8–H11) surfaced by AIAgent_62 and run_38 batch
+testing, a follow-up cleanup pass for the exclude_patterns
+mechanism + categorizer semantic pinning (H12), and an
+Ollama-provider robustness pass with retired-model 404 detection
+surfaced by Tom's `run_39a_ollama` failure (H13).  The ships are
+independent and ship-self-contained:
 
-**Fix:** Changed to `state.get("session_resolution") or
-workflow_state.get("resolution")`, matching the pattern used by every
-other `CommandContext` construction in the same function.
-`session_resolution` is the locked authoritative value;
-`workflow_state.get("resolution")` is the legitimate server-side
-fallback (populated by xtriage/mtriage output parsing).
+```
+v118 → H1 → H2 → H2.1 → H3 → H3b → H4 → H4.1 → H5 → H5.1 → H5.1.1 → H6 → H6.1 → H7 → H8 → H9 → H10 → H11 → H12 → H13 → H14 → H14.1 → H14.2 → H15 → H16 → H16.1 → H17 → H17.1 → H18 → H18.1 → H18.2
+```
 
-### Fix 2a — Low-confidence intent guard, simple path (`directive_extractor.py`)
+Together they establish: a single source of truth for LLM model
+defaults (H1), a build-metadata channel from server to client
+(H2), promotion of LLM-emitted skip flags to the workflow layer
+(H2.1), a startup-canary infrastructure for detecting wrong-
+build deploys and unhealthy LLM environments (H3/H3b), a
+preprocessing-telemetry marker ([STEP_1F]) with golden-master
+corpus pinning (H4/H4.1), a uniform diagnostic-messages
+relay channel that surfaces server-side stderr markers to the
+client transparently (H5 + H5.1), two latent-bug cleanups in
+the directive extractor (H5.1.1), the planning-suite reliability
+testing framework (H6) with per-scenario failure-count reporting
+(H6.1), and the Phase 2B scanner-first file extraction activation
+that completes the preprocessor deprecation trigger first set
+up in H4 (H7).  The H8–H11 sub-cluster fixes four production
+bugs surfaced during batch testing: template-literal allowlist
+gap (H8), `predict_and_build` PHIL scope mismatch (H9), structural
+gap in `exclude_patterns` application across selection paths
+(H10), and YAML pattern authoring vs function-semantics mismatch
+that prevented H10's filters from rejecting their intended targets
+(H11).  H12 is a follow-up cleanup pass: it refactors H10's
+closure into a module-level helper (8 application sites
+consolidated to 1 helper) and adds a semantic-pin test file for
+every public function in `agent/file_utils.py` (the
+`tst_file_categorizer.py` suite — pre-emptive defense against
+sandbox-stub drift, the lesson H11 surfaced).  H13 fixes two
+Ollama-provider bugs surfaced by Tom's `run_39a_ollama` failure
+on cci-gpu-01: `OLLAMA_BASE_URL` env-var override silently
+broke the OpenAI-SDK path construction when the user-set value
+omitted `/v1`, and `OLLAMA_LLM_MODEL` env-var was inconsistently
+honored (only `core/llm.get_llm_and_embeddings` honored it; both
+`directive_extractor` and `api_client` ignored it).  H13 also
+completes the v118 §3.5 retired-model 404 detection work,
+refining the classification into three sub-categories
+(MODEL_RETIRED vs MODEL_UNAVAILABLE vs FAILED) so the operator
+sees actionable hints rather than opaque "404 page not found".
 
-`extract_directives_simple` stored the result of `classify_intent()`
-with only `if intent_result:` as a guard. Because `classify_intent`
-always returns a dict (defaulting to `{"intent": "solve",
-"confidence": "low"}` when no pattern matches), every plain-text
-message received `intent: solve` in its directives even when no real
-intent was detected.
+H14/H14.1/H14.2 close three independent regressions surfaced by
+`run_39_openai` batch analysis: a phaser false-positive in
+`_ACTION_TABLE["solve"]` (24 occurrences across 5 datasets where
+the multi-action branch forced phaser into SAD/MAD workflows), a
+duplicate `[STEP_1F]` emission, and a permissive space_group
+regex producing "Not explicitly mentio" truncations that bypassed
+the v118.9 validator on the rules-only path.  H14.2 is a one-line
+config fix removing `ncs_spec` from `predict_and_build`'s strategy_flags.
 
-**Fix:** Guard changed to `if intent_result and
-intent_result.get("confidence") != "low":`. Low-confidence is the
-default-fallback signal and must not be stored.
+H15 closes Tom's bromodomain resume failure (run 144).  When new
+advice was provided on resume, `gate_stop` was cleared but
+per-stage statuses were not — the gate immediately re-fired
+"all stages complete" and the LLM saw STATE=complete, choosing
+polder against user intent.  H15 adds `reopen_stages_for_directives`
+to `plan_generator.py`: a TARGETED single-stage reopen that finds
+the LATEST completed stage whose `programs` list contains a program
+named in `directives.program_settings` and resets ONLY that stage
+to PENDING.  Per Gemini's critique of the original H15 plan, the
+blast radius is O(1) regardless of plan size — no cascade-resets,
+no downstream stages reopened.
 
-### Fix 2b — Low-confidence intent guard, LLM path (`directive_extractor.py`)
+H16/H16.1 closes 88 TIER-1 failures across run_25 and run_39
+matching "Sorry: Multiple equally suitable arrays of observed
+xray data found", concentrated in AF_exoV_MRSAD and lysozyme-MRSAD
+tutorials.  H16 adds the new `agent/mtz_inspector` module:
+`inspect_mtz()` reads MTZ column structure via cctbx,
+`select_obs_labels_for(program, info)` applies a per-program
+preference policy (merged for MR, anomalous for SAD), and a new
+`auto_fill_obs_labels` invariant in `programs.yaml` triggers the
+builder to inject the chosen labels into xtriage, autosol,
+phaser, and predict_and_build commands.  H16.1 bumps the scanner
+version pin and adjusts `[STEP_1F]` telemetry.
 
-Identical bug existed on the LLM extraction path (the `if
-intent_result:` storage guard at the `# Store intent classification
-in directives (v115)` comment). Found during review of Fix 2a —
-the LLM path was missed when Fix 2a was originally applied.
+H17/H17.1 closes Tom's lysozyme-MRSAD cycle-5 reactive recovery
+gap.  The LLM passed `lyso2001_scala1.mtz` (raw anomalous MTZ
+without phase columns) as `map_file=` to `phenix.autobuild`,
+which requires `PHIB` phase columns; autobuild crashed with
+"Sorry, PHIB is required for input_map_file"; the agent halted
+after 4 retries.  H17 adds:
+- A new `missing_phib_input_map_file` entry in
+  `recoverable_errors.yaml` with strict conjunction detection
+  (matches the exact PHIB-required error text, not just any "PHIB"
+  mention).
+- A new `strip_parameter` resolution kind in `error_analyzer.py`
+  alongside the existing `add_parameter` and `select_value` kinds.
+- A new `strip_flags` field on the `ErrorRecovery` dataclass.
 
-**Fix:** Same guard applied to LLM path.
+H17 shipped the analyzer side but exposed Scenario B: detection
+fires and `[NOTICE]` prints, but the executor never strips the
+flag from the retry command.  H17.1 closes that gap with three
+edits to `programs/ai_agent.py`: `_handle_recovery` stashes
+`strip_flags` into `session.data["pending_strip_recoveries"]`;
+`_execute_command` pops the entry at the top of each cycle and
+applies a robust regex (per Gemini's critique: handles
+quoted-with-spaces, PHIL spacing, and single/double quote
+variants); `_print_recovery_notice` shows
+"Action: Stripping [flags]" instead of the awkward "Selecting ''"
+for strip recoveries.  Validated end-to-end on lysozyme-MRSAD:
+cycle 5 detection + cycle 6 [STRIP] line + autobuild SUCCESS.
 
-### Fix 3 — AgentState field count (`tests/tst_thinking_defense.py`)
+H18 closes the AF_7mjs density-modify-and-stop regression
+(separate from §20's bug, surfaced after H17.1 deployed): user
+wrote "density modify and stop" with cryo-EM half-map inputs; the
+extractor produced `after_program=phenix.autobuild_denmod` (X-ray
+density-modification); the §20 correction failed to fire because
+its text-only `_detect_experiment_type_signals` returned None
+(terse user text has neither cryo-EM nor X-ray tokens); the LLM
+downstream bypassed the failed stop check and ran
+`phenix.predict_and_build`, overriding user intent.  H18 adds a
+new public helper `agent/file_utils.infer_experiment_type_from_files()`
+that uses file extensions as the deterministic primary signal,
+and rewires BOTH `_apply_experiment_type_program_reprints` AND
+`_resolve_after_program` (the v115.10 post-LLM overlay) to use
+files-first detection with text-based detection as fallback.
+Files-win policy on conflict per Gemini's H18 review.  Enriched
+`[DIRECTIVE_CORRECTION]` telemetry records `source=files|text`
+and `OVERRIDDEN` annotations; new `[DIRECTIVE_CORRECTION_MIXED]`
+marker fires on accumulated-files drift (Pitfall 1).
+`agent/plan_generator._build_context` was also refactored to use
+the shared helper, establishing a single source of truth for
+file-based experiment-type inference.
 
-`test_H02_graph_state_field_count` expected 35 fields; v115 added
-`error_classification` and `failure_count`, making the count 37.
-Test was not updated when the fields were added.
+H18.1 closes a PHIL declaration deploy-gap surfaced when Tom
+deployed H18 and re-ran AF_7mjs.  All 20 H18 K-tests passed in
+the sandbox; production still ran `predict_and_build` on cycle 3.
+The log showed `AttributeError: Assignment to non-existing
+attribute "ai_analysis.original_files_for_directives"` at
+`ai_agent.py` line 8513.  H18 had added the PHIL declaration to
+`programs/ai_analysis.py` but not to `programs/ai_agent.py`'s
+OWN `master_params` string — and `directive_params =
+copy.deepcopy(self.params)` copies the AGENT's params object,
+which is parsed against the agent's `master_params`.  The
+assignment crashed; the surrounding try/except swallowed it
+silently; directive extraction returned `{}`; the agent ran the
+default plan template.  H18.1 adds the missing PHIL declaration
+(14 lines) to `ai_agent.py`'s `master_params`, plus a new
+`tst_h18_1_phil_roundtrip.py` (6 K-tests) that exercises the
+full parse → extract → deep-copy → assign path the production
+code uses.  Source-grep K-test runs in sandbox without PHENIX;
+live-PHIL K-tests skip gracefully there.  No code logic
+changed.
 
-**Fix:** `expected = 35` → `expected = 37`.
+H18.2 closes a THIRD `_resolve_after_program` callsite that H18
+missed.  After H18.1 deployed cleanly, Tom re-ran AF_7mjs with a
+runtime tracer installed (`h18_install_runtime_tracer.py` —
+patches the deployed `directive_extractor.py` in-place with
+`[H18_TRACE]` markers at every key decision point).  The trace
+revealed that the LLM was emitting
+`{"stop_conditions": {"stop_after_requested": true}}` — note: no
+`after_program` field at all.  H18's site 1
+(`_apply_experiment_type_program_reprints`) correctly took its
+"no after_prog → early return" branch.  Then a v117.2 fallback at
+`directive_extractor.py:783` fired (its raison d'être: fill in
+`after_program` when the LLM sets `stop_after_requested=True` but
+omits the program field), calling `_resolve_after_program` on the
+raw advice "density modify and stop" — but **without
+`original_files`**.  Pre-H18.2, that callsite was a third site
+the H18 audit missed.  The resolver defaulted `_exp="xray"` via
+the text-only heuristic (raw advice has no
+cryo-EM/X-ray tokens) and mapped `denmod` →
+`phenix.autobuild_denmod`.  H18's site 2
+(`_apply_workflow_intent_fallback`) DOES pass `original_files`,
+but the preprocessed advice contains "Stop Condition: None" so
+`_is_stop_after_requested` returned False, pushing the resolver
+into "n==1, no stop → leave as-is" — and the buggy after_program
+from the v117.2 path persisted.  H18.2 adds `original_files=
+original_files` to the v117.2 callsite (one line in
+`agent/directive_extractor.py:796`) plus 3 new K-tests
+(K21/K22/K23) extending the suite to 23 tests.  K21 is the exact
+AF_7mjs production reproduction (mocked LLM returns the same
+shape the production LLM did).
 
-### Fix 4 — Pipeline advice misclassified as single-program task (`agent/intent_classifier.py`)
+Total K-test additions across the cluster: **189 v119-cluster
+K-tests** plus **30 live LLM tests** (directive_extraction +
+planning) plus **14 production-bug K-tests** in the H8–H11
+sub-cluster (4 Bug 8, 4 Bug 9, 5 Bug 10, 1 Bug 11), plus
+**8 categorizer semantic-pin K-tests** added by H12, plus
+**13 provider-error classification K-tests** added by H13, plus
+**45 K-tests** in H14 (13 keyword + 8 single-emit + 24
+space_group), plus **14 K-tests** in H14.1 (validate_directives
+closure), plus **7 K-tests** in H15 (resume reopen), plus
+**8 K-tests** in H16 (obs_labels auto-fill), plus **16 K-tests**
+in H17/H17.1 (7 detection + 9 strip executor), plus **7 K-tests**
+in H18 (experiment-type-from-files), merged into the existing 13
+§20 tests to extend `tst_density_modify_experiment_type.py` to a
+20-test suite, plus **6 K-tests** in H18.1 (PHIL round-trip
+deploy-gap defense), plus **3 K-tests** in H18.2 (v117.2 fallback
+threads files; merged into `tst_density_modify_experiment_type.py`
+extending it to a 23-test suite).  See the per-suite breakdown in
+`next_steps_post_v119.md` "Test totals" section.
 
-`classify_intent` returned `task/high/phenix.map_sharpening` for
-"Sharpen the map, then build a model into the map" because it found
-the `sharpen` trigger without checking for downstream pipeline steps.
-This caused `after_program=phenix.map_sharpening` to be set, stopping
-the workflow before model building ran.
+All ships verified through act → review → Gemini-critique → ship
+cadence.
 
-**Fix:** Added `_PIPELINE_INDICATORS` constant (four regex patterns:
-`followed by`, `after that/this/which`, `subsequently`, and
-`then <action-verb>`). When `_detect_task` fires but a pipeline
-indicator is also present, the function falls through to `solve`
-classification.
+### Per-ship breakdown
 
-**Pattern excluded:** `\bnext[,\s]` was initially considered but
-removed — it fires on "the next step is xtriage" where `next` is a
-prefix noun, not a sequencing connector. The remaining four patterns
-are formal enough to appear only as genuine sequencing connectors.
+**H1 (client+server) — Default Model Centralization**
+`core/llm.py`, `agent/api_client.py`, `agent/directive_extractor.py`,
+`tests/test_api_keys.py`, `tests/tst_default_models.py`.  Replaces
+scattered per-call-site model defaults (`"gpt-4o-mini"`,
+`"gemini-2.5-flash-lite"`, etc.) with five centralized DEFAULTS
+tables in `core/llm.py`: `DECISION`, `RAG`, `RAG_EMBEDDING`,
+`EXPENSIVE`, `CHEAP`.  Adds `default_model_for_provider(provider,
+role="DECISION")` helper.  Adds `RETIRED_MODELS` frozenset and
+emits `[DIRECTIVE_EXTRACTION_MODEL_RETIRED]` stderr marker when
+a request specifies a retired model name (defense-in-depth
+against the v118.8 server-404 class of incident).  +22 tests
+(K_H1).
 
-**Tests affected:** `tst_directive_extractor.py ::
-test_multi_step_sharpen_then_build`,
-`test_multi_step_symmetry_then_build`
+**H2 (client+server) — Server Build Metadata Channel**
+`VERSION` (new at langchain/ root), `core/_version.py` (new),
+`core/_build_info.py` (new, with `get_agent_build_info()` and
+`inject_agent_build()`), `core/llm.py` (+`compute_defaults_fingerprint()`
+which excludes `RETIRED_MODELS`), `knowledge/api_schema.py`
+(+`agent_build` schema entry), `phenix_ai/run_ai_agent.py`
+(injection at top of `_build_group_args_response`),
+`tests/tst_agent_build_info.py`.  Every server response now
+carries `response["agent_build"] = {version, defaults_fingerprint,
+started_at}` in strict UTC ISO 8601.  Baseline fingerprint at
+H2 ship: `sha256:77bf7421...`.  The `defaults_fingerprint`
+deliberately excludes `RETIRED_MODELS` so retirement updates
+don't trigger fingerprint drift.  +24 tests (K_H2).  Also updates
+`docs/DEVELOPER_GUIDE.md` §8 to reflect `CURRENT_PROTOCOL_VERSION = 5`
+(was stale at `3`).
 
-### Fix 5 — `skip_validation` incorrectly treated as stop trigger (`agent/directive_validator.py`)
+**H2.1 (client) — skip_programs Promotion (micro-ship)**
+`agent/directive_extractor.py`, `tests/tst_skip_promotion.py`.
+Closes a pre-existing bug surfaced by the
+`tst_directive_extraction.py::skip_programs` scenario: the LLM
+emits `program_settings[X].skip=true` (a natural reading of the
+prompt schema), but downstream code reads
+`workflow_preferences.skip_programs`.  Fix: a new
+`_promote_skip_settings_to_skip_programs()` helper at the top of
+`validate_directives`, BEFORE per-setting validation.  Includes
+all four Gemini guardrails: truthy-value acceptance (12 forms via
+`_SKIP_TRUE_VALUES` constant), `.pop()` instead of read+leave,
+empty-sub-dict pruning, deduplication.  +11 tests (K_H2.1).
 
-`_check_stop_conditions` contained a block that returned `True`
-(stop immediately) whenever `stop_conditions.get("skip_validation")`
-was set. Because `skip_validation` is always set alongside
-`after_program` directives (e.g., for "stop after first refinement"),
-this caused `_check_stop_conditions` to fire on every cycle check —
-including the "before the program runs" check that should return False.
+**H3 (test infrastructure) — Startup Canary**
+`tests/canary_expected.json` (new pinned config), `tests/canary_utils.py`
+(new shared loader), `tests/tst_canary.py` (K_H3a, ~280 lines),
+`tests/llm/tst_directive_extraction.py` (+canary Scenario),
+`tests/llm/canary_check.py` (H3b orchestrator).  Two independent
+canaries that consume the H2 metadata channel:
 
-`skip_validation` is consumed by `workflow_engine._apply_directives`
-(adds STOP to the valid-programs list — a permissive hint) and is not
-a hard-stop signal.
+- **H3a (metadata canary, K-suite)** sends an intentionally
+  wrong-typed request through `run()` (specifically `files` as
+  string instead of list — necessary because schema defaults
+  would silently repair simple missing-field probes).  The error
+  path returns immediately with H2's `agent_build` injected.
+  K_H3a (10 tests) asserts: agent_build matches
+  `canary_expected.json` (hard fail on version mismatch, soft
+  warn on fingerprint drift per Tom's graduated severity), VERSION
+  file matches the JSON's `agent_version` (catches operator
+  drift), probe is fast (<3s — catches accidental LLM leak into
+  error path).
+- **H3b (LLM smoke canary, operator-invoked)** combines the
+  metadata check with a one-shot directive-extraction probe
+  ("Run phenix.refine on the model") via the framework's
+  production-faithful `call_directive_extractor` entry point.
+  Wraps the LLM call in a `ThreadPoolExecutor` with a 30-second
+  strict timeout (sized for two LLM round-trips: intent
+  classification + main extraction).  Google→OpenAI provider
+  preference.  Probe runs through the same Scenario registered in
+  `tst_directive_extraction.build_scenarios()`, so it can also
+  be invoked via the standard CLI for debugging:
+  `phenix.python tests/llm/run_llm_tests.py --scenario canary`.
+  +10 tests (K_H3a; H3b is operator-invoked, not in K-suite).
 
-**Fix:** Removed the three offending lines. Added comment:
-`# Note: skip_validation is NOT a stop trigger. It is a hint to
-_apply_directives to add STOP as a valid-programs option.`
+VERSION bumped to `119.H3`.  `defaults_fingerprint` unchanged
+from H1 baseline because H3 doesn't touch `core/llm.py`.
 
-**Test:** `tst_directives_integration.py :: test_stop_after_first_refinement`
+**H4 (server) — [STEP_1F] Preprocessing Metrics Marker**
+`phenix_ai/run_ai_analysis.py`, `agent/raw_advice_scanner.py`
+(new), `tests/tst_raw_advice_scanner.py`, `tests/step_1f_corpus.json`
+(new), `tests/run_all_tests.py`.  Adds a `[STEP_1F]` stderr
+marker emitted by `run_advice_preprocessing` after a successful
+preprocessing call.  The marker compares LLM-extracted file
+mentions against a regex-based scanner's extraction
+(`raw_advice_scanner.py`) on the SAME advice text, capturing
+the symmetric difference for telemetry: `llm_files`,
+`regex_files`, `in_llm_only`, `in_regex_only`.  Companion
+`[STEP_1F_FAILED]` marker fires if the metric block itself
+raises.  Includes `scanner_version` field (read from VERSION
+at runtime) so telemetry can be segmented by scanner generation
+in aggregation.  +31 tests (K_H4).  No `defaults_fingerprint`
+drift.  VERSION bumped to `119.H4`.
 
+**H4.1 (server) — [STEP_1F] Golden-Master Corpus Pinning**
+`agent/raw_advice_scanner.py`, `tests/step_1f_corpus.json`,
+`tests/tst_raw_advice_scanner.py`.  Adds a 31-document corpus
+(`step_1f_corpus.json`) with hand-labeled file mentions per
+document, and pins the scanner's measured recall at
+**0.9810** against this corpus.  K_H4's golden-master test
+fails if scanner edits drift recall.  This unblocks Phase 2B
+activation (replacing the LLM preprocessor with the scanner)
+because recall ≥ 0.90 was the trigger threshold from H4 plan
+rev 1 §6.  No marker semantics change.  VERSION bumped to
+`119.H4.1`.
+
+**H5 (client+server) — diagnostic_messages Relay Channel**
+`phenix_ai/run_ai_analysis.py`, `programs/ai_analysis.py`,
+`tests/tst_diagnostic_messages.py` (new), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`.  Closes the
+observability gap diagnosed during H4 deployment: H4's
+`[STEP_1F]` markers emit to the SERVER's stderr when the call
+dispatches to `ai.phenix-online.org`, but the server's stderr
+isn't relayed to the client.  H5 adds a `diagnostic_messages`
+list field to `working_results` and threads it end-to-end
+through both dispatch modes (local in-memory passing AND
+remote REST round-trip).  Engine-side `_emit_marker(list, str)`
+helper appends markers to the list during processing.  Client
+re-emits at a single uniform site
+(`_relay_diagnostic_messages_to_stderr` called from
+`run_job_on_server_or_locally`).  The operator sees identical
+`[STEP_1F]`/`[STEP_1F_FAILED]` output regardless of where
+analysis ran.
+
+Key design decisions, locked across all H5.x work:
+- **Total Initialization Policy**: every `working_results`
+  from `get_results_from_all` gets `diagnostic_messages=[]`
+  regardless of mode — defensive against
+  add-marker-but-forget-to-init regressions.
+- **Centralized re-emit**: single site in
+  `programs/ai_analysis.py::run_job_on_server_or_locally`.
+  Adding new markers requires NO client-side changes.
+- **Uniformity criterion** (introduced in H5 plan rev 5 after
+  Tom flagged rev 4's dispatch-mode branch): local and remote
+  modes produce identical operator-visible output; no
+  dispatch-mode branches in client behavior.
+- **Helper safety**: `_emit_marker` is a pure list-append with
+  `isinstance(list)` guard; never writes to stderr; never
+  raises.  Wrapped at call sites in `try/except: pass` for
+  defense against `"%s" % e` format failures.
+- **Server-client compatibility**: defensive unpack handles
+  missing field, non-list payloads, and corrupted JSON.
+  Verified by K_H5 §C `test_old_server_response_handled_defensively`
+  and `test_corrupted_payload_decoded_defensively`.
+
+K_H5 organized into 5 sections at H5 ship: §A helper unit
+tests (4), §B field-in-return tests (4, libtbx-dependent), §C
+backward compatibility (3), §D uniform client re-emit (6), §E
+production encode/decode integration (4).  +21 tests at H5
+ship.  VERSION bumped to `119.H5`.
+
+**H5.1 (client+server) — Channel Extended to 3 More Markers**
+`phenix_ai/run_ai_analysis.py`, `programs/ai_analysis.py`,
+`tests/tst_diagnostic_messages.py`, `tests/llm/canary_check.py`,
+`tests/llm/tst_directive_extraction.py`, `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.  Instruments
+three more engine-level exception handlers to flow through the
+H5 channel:
+
+| Marker | Engine site |
+|---|---|
+| `[ADVICE_PREPROCESSING_FAILED]` | `run_advice_preprocessing` main exception handler |
+| `[DIRECTIVE_EXTRACTION_FAILED]` (outer) | `run_directive_extraction` main exception handler |
+| `[FAILURE_DIAGNOSIS_FAILED]` | `run_failure_diagnosis` main exception handler |
+
+These markers fire only on UNEXPECTED exceptions (library
+bugs, programmer errors).  Configuration mistakes (invalid
+provider, missing API key) are handled gracefully upstream by
+`validate_api_keys` and `setup_llms` and don't trigger these
+markers.
+
+Two Gemini-mandated guardrails apply uniformly:
+1. **No mutable default arguments**: all three functions use
+   function-local `diagnostic_messages = []`, fresh per call.
+   K_H5 §F field-in-return tests pin this via mutate-then-
+   call-again checks.
+2. **Emit before return, no new returns in except**: exception
+   handlers append the marker then fall through to the main
+   return.  Prevents accidental control-flow forks.
+
+Tests use deterministic monkey-patching (patching
+`validate_api_keys` or `setup_llms` to raise) plus Gemini Q2
+dual-assertion (marker present AND debug_log evidence of
+exception path) for robustness against future upstream
+graceful-handling refactors.
+
+Also folded in: **canary probe-text fix**.  The H3b live-LLM
+canary used input `"Run phenix.refine on the model"` which
+OpenAI faithfully extracted as `{"program_settings":
+{"phenix.refine": {}}}` — semantically correct (no parameters
+mentioned) but stripped to `{}` by `validate_directives`
+because the inner dict is empty.  Google over-extracted and
+returned non-empty, hiding the issue.  Probe updated to `"Run
+phenix.refine with resolution 2.5"`; the concrete parameter
+ensures non-empty validation across providers without changing
+the canary's purpose (provider reachability, not extraction
+quality).
+
+K_H5 extended with §F (5 new tests), bringing K_H5 to **26
+tests**.  VERSION bumped to `119.H5.1`.  No `defaults_fingerprint`
+drift.
+
+**H5.1.1 (client) — §2.1 v118.9 leftover cleanups (micro-ship)**
+`agent/directive_extractor.py`, `tests/tst_directive_validation.py`
+(new K_H5_1_1, 23 tests), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.  Two
+latent bugs in `agent/directive_extractor.py` surfaced
+during the §2.1 review of v118.9 leftovers:
+
+**Item 3 — `_corrected_from` sidecar protection in
+`merge_directives`**.  The sidecar describes the CURRENT
+value of `after_program` after an
+experiment-type-mismatch correction.  Pre-fix, the
+default override-wins dict-merge had two pathologies:
+
+1. *Correction reverted*: if override's `after_program`
+   matched `_corrected_from.from`, the LLM correction was
+   silently un-corrected by simple-extraction merge.
+2. *Zombie metadata* (caught during Gemini plan review):
+   if override set `after_program` to a third value (not
+   matching `_corrected_from.from`), the sidecar's `to`
+   field became stale — pointing at a transition that no
+   longer described the current value.
+
+Fix: detect both cases inside `merge_directives`:
+- Override matches `_corrected_from.from` → strip from
+  override (preserve correction, keep sidecar)
+- Override is a third value AND has no own sidecar →
+  let override win, clear base's stale sidecar
+- Override brings own sidecar → standard dict-merge
+  (override's wins)
+- Override doesn't touch `after_program` → standard
+  dict-merge
+
+`programs/ai_agent.py` is NOT modified.  Both production
+callers (`phenix_ai/run_ai_analysis.py:1276` and
+`programs/ai_agent.py:8376`) inherit the fix automatically.
+
+**Item 4 — Boolean list-wrap defense in
+`validate_directives`**.  `bool([False])` returns `True`
+in Python (non-empty list is truthy) — silently flipping
+semantics if the LLM emitted a list-wrapped boolean.  Two
+sites had this:
+- `prefer_anomalous`, `prefer_unmerged`, `prefer_merged`
+  in `file_preferences`
+- `use_experimental_phasing`, `use_molecular_replacement`,
+  `use_mr_sad`, `model_is_placed`,
+  `wants_validation_only` in `workflow_preferences`
+
+Fix: explicit type-gated inline pattern at both sites.
+Only unwraps `[bool]` (not `[int]`/`[str]`/etc.) — bounded
+blast radius even against future maintenance error
+(adding a list-typed key to either boolean tuple would
+trigger drop+log rather than silent flattening).
+Explicit pattern chosen over the existing
+`_coerce_setting_value` helper to bound the unwrap to
+genuine `[bool]` only.
+
+Items 1 and 2 from §2.1 deferred (Item 1:
+`_detect_experiment_type_signals` vs
+`_resolve_after_program` aren't actually duplicates —
+different regex breadth + ambiguity handling; unification
+would be behavioural change.  Item 2:
+`directives.get("stop_conditions") or {}` is idiomatic
+safe read-only fallback, not a bug.).  See §1 of
+`next_steps_post_v119.md` for the closure record.
+
+Pre-existing wrongness NOT fixed by this ship:
+`bool("false")` returns `True` in Python — a separate
+string-truthy quirk preserved for non-list inputs.
+K_H5_1_1's `test_validate_bool_bare_string_legacy_quirk`
+pins the existing behaviour so a future fix catches it
+deliberately.
+
++23 tests (K_H5_1_1 — 7 §A merge-protection + 16 §B
+list-wrap-defense, including no-mutation-of-inputs
+invariants for both branches).  VERSION bumped to
+`119.H5.1.1`.  No `defaults_fingerprint` drift.
+
+**H6 (test infrastructure) — Phase 2A planning-suite framework**
+`tests/llm/framework.py`, `tests/tst_planning_framework.py`
+(new K_H6, 18 tests), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H6 replaces four stubs in `tests/llm/framework.py` with
+real implementations, unblocking the 8-scenario planning
+LLM reliability suite that has been queued since H3b:
+
+- **`is_stop_intent(intent)`** — production-parity STOP
+  detection.  Matches both signals production checks at
+  `graph_nodes.py:~2168`: `program == "STOP"` OR
+  `stop is True` (strict equality, not truthy).
+- **`validate_planning_state(state)`** — 9-key structural
+  validation per PHASE2_PLAN_v2.md §4.1.  Raises
+  ValueError on missing keys.  Called from
+  `tst_planning.py::build_scenarios()` at load time.
+- **`call_planning_llm(state_inputs, provider)`** —
+  production-faithful invocation mirroring
+  `graph_nodes.py::plan()` lines 1992-2090, including the
+  rate-limit handler.  Critical Gemini rev-3 fix:
+  `raw_output` is hoisted outside the try block so that
+  if `parse_intent_json` raises, the exception handler
+  returns the LLM's malformed text for diagnosis.
+- **`make_planning_run_fn(call_fn=...)`** — factory mirroring
+  `make_directive_extraction_run_fn`, simplified since
+  `parse_intent_json` never returns None (it either returns
+  dict or raises).
+
+K_H6's 18 tests cover all four implementations across 4
+sections: §A `is_stop_intent` (6), §B `validate_planning_state`
+(5), §C `make_planning_run_fn` (5), §D `call_planning_llm`
+raw_output preservation (2).  §D tests SKIP gracefully
+under PHENIX where the libtbx import path bypasses the
+sandbox `sys.modules` fakes — sandbox tests pin the
+mechanic; live planning runs exercise it in production.
+
+Mac verification: 8 planning scenarios × 2 providers
+(google, openai) = **16 PASS live LLM tests**, all
+early-stopping at threshold.  This is the first time the
+planning LLM has had reliability testing analogous to
+directive_extraction.
+
+VERSION bumped to `119.H6`.  No `defaults_fingerprint`
+drift.  Plan: `v119_H6_PLAN_rev3.md`.
+
+**H6.1 (micro-ship) — Per-scenario fail/err suffix**
+`tests/llm/framework.py`, `VERSION`,
+`tests/canary_expected.json`, `README.md`.
+
+PHASE2_PLAN_v2.md §5 part 1: per-scenario output line
+in `run_scenario_against_providers` gains a `[N fail]` /
+`[N err]` suffix when nonzero.  Helps surface failures
+that a reliability test tolerated by passing on threshold
+(e.g., "PASS 4/5" — what did the 1 failure look like?).
+
+Byte-identical to H6 output when both counts are zero,
+which is the current observed reality across all 30
+PASS scenarios from the H6 Mac run.
+
+PHASE2_PLAN §5 part 2 (summary parenthetical) was
+already implemented in `tests/llm/run_llm_tests.py`
+lines 248-280 — no edit needed there.
+
+Single edit in `framework.py` (~10 net lines).  No new
+K-tests (purely cosmetic output formatting).  VERSION
+bumped to `119.H6.1`.  No `defaults_fingerprint` drift.
+
+**H7 (production code) — Phase 2B activation: scanner-first file extraction**
+`phenix_ai/run_ai_analysis.py`, `tests/tst_phase2b_activation.py`
+(new K_H7, 15 tests), `tests/run_all_tests.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H7 activates Phase 2B's first scope (Scope B per plan):
+**scanner is the primary source for `extracted_files`**,
+replacing the LLM preprocessor's
+`extract_files_from_processed_advice` as the default path.
+Unblocked since H4.1 measured scanner recall = 0.9810
+against the LLM extraction (well above the 0.90
+deprecation threshold from PHASE2_PLAN).
+
+Two edits to `phenix_ai/run_ai_analysis.py`:
+
+**Edit 1 — Scanner-first extraction (lines 1009-1069):**
+- Scanner runs unconditionally on `raw_advice` (was gated
+  on `processed_advice` existing pre-H7).  Net file
+  detection improves when LLM preprocessing fails.
+- Q2-strict: scanner called with `None` hint (NOT
+  `file_list`).  Preserves the existing consumer contract
+  at `programs/ai_agent.py:8128-8174` — the consumer's
+  own comment names the field "Files mentioned in advice"
+  (line 8142) and auto-promotes extracted files to the
+  agent's `original_files`.  Passing `file_list` would
+  silently inflate `original_files` with workspace files
+  the user never mentioned.
+- Fallback to LLM extraction preserved inside try/except,
+  using the libtbx → relative import pattern (Gemini
+  rev-2 critical fix: a bare libtbx import in the
+  fallback would silently fail in sandbox and be
+  swallowed by the outer except handler).
+- Double-failure path explicitly logs the second exception
+  (not swallowed by `except Exception: pass`).
+
+**Edit 2 — Inline recall metrics in [STEP_1F] (lines 1155-1208):**
+- Two new fields added to the existing [STEP_1F] marker:
+  `scanner_recall_against_llm` (|intersection|/|llm_files|,
+  the per-request equivalent of H4.1's 0.9810 corpus
+  measurement) and `llm_recall_against_scanner`
+  (|intersection|/|regex_files|, signals scanner-regex
+  extension needs).  Both formatted as `%.4f`.
+- Both metrics zero-division-guarded: empty denominator →
+  1.0 (mathematically sound for recall, avoids
+  ZeroDivisionError on advice with no file mentions).
+- Purely additive change.  No existing [STEP_1F] fields
+  modified.  No dashboard pollution risk (no existing
+  inline `recall` field to displace).
+
+**Subtle correction caught during implementation review:**
+Post-H7, `extracted_files` is scanner-derived, so the
+[STEP_1F] block can't use it as the LLM-comparison axis
+(would compare scanner-to-scanner, defeating telemetry).
+Fix: the block now calls
+`extract_files_from_processed_advice` separately to obtain
+the LLM view for comparison.  Fault-isolated: any failure
+yields empty list; outer [STEP_1F_FAILED] catches
+exceptions.  K_H7's
+`test_telemetry_independence_from_extracted_files` pins
+this property at the source level.
+
+K_H7 (15 tests across 4 sections): §A scanner contract
+(4), §B fallback semantics (3), §C recall metrics with
+zero-div guards (3), §D integration smoke including
+source-level regression pins (5).
+
+Mac verification: **30/30 live LLM tests PASS**
+(14 directive_extraction + 16 planning), **135/135
+K-suite modules PASS** including K_H7's 15 new tests.
+Scenarios that reference specific files
+(`resolution_and_space_group`, `skip_programs`) still
+pass — Q2-strict preserved the consumer contract.
+
+`programs/ai_agent.py` NOT modified.  `core/llm.py` NOT
+modified (`defaults_fingerprint` unchanged at
+`sha256:77bf7421...`).
+
+VERSION bumped to `119.H7`.  Plan:
+`v119_H7_PLAN_rev2_2.md` (final, post-Gemini-rev-2,
+post-baseline-correction).
+
+**H8 (production code) — Template-literal allowlist fix
+(production bug sub-cluster begins)**
+`agent/command_postprocessor.py`, `tests/tst_autosol_bugs.py`
+(new K_H8, 4 tests), `tests/canary_expected.json`, `VERSION`,
+`README.md`.
+
+H8 closes a production bug surfaced in AIAgent_62 cycle 4
+(bromodomain ligand demo) where `phenix.autobuild_denmod` was
+being emitted WITHOUT its `maps_only=True` flag.  Without that
+flag, `autobuild_denmod` tries to rebuild the model rather than
+just producing density-modified maps — wrong program semantics
+for the cycle's intent.
+
+**Root cause**: `agent/command_postprocessor.py::sanitize_command`
+applies Rule D ("strip unknown program-specific parameters") using
+a per-program allowlist built by `_load_prog_allowlist`.  The
+allowlist was constructed only from the program's `strategy_flags`
+dictionary — entries the LLM is permitted to set.  But
+`programs.yaml` command templates also contain **literal key=value
+tokens** baked into the template itself, like
+`phenix.autobuild_denmod ... maps_only=True`.  These literal
+parameters are program invariants, not LLM-tunable strategies, so
+they were absent from `strategy_flags` and therefore absent from
+the allowlist.  When sanitize_command processed the realized
+command, Rule D treated `maps_only=True` as an "unknown parameter"
+and stripped it.
+
+**The fix — one new block of code in `_load_prog_allowlist`**
+(lines 406–432, marked v119.H8):
+
+After building the strategy_flags-derived allowlist, the code
+now walks the program's command template (`prog_def.get('command', '')`)
+and adds every literal `key=` parameter found:
+
+```python
+_cmd_template = prog_def.get('command', '')
+if _cmd_template:
+    for _m in re.finditer(
+            r'(?:^|\s)([a-zA-Z_][a-zA-Z0-9_.]*)=',
+            _cmd_template):
+        _bare = _m.group(1).split('.')[-1].lower()
+        if _bare:
+            allowlist.add(_bare)
+```
+
+Three properties of the regex are load-bearing:
+
+1. **`(?:^|\s)` prefix**: requires start-of-string or whitespace
+   before the identifier.  This is what makes `{placeholder}`-style
+   substitution targets NOT match — the `{` character is neither.
+   So `{data_mtz}` doesn't pollute the allowlist with `data_mtz`
+   the way it would if any `[a-zA-Z_]=` were accepted.
+2. **`[a-zA-Z_][a-zA-Z0-9_.]*=` pattern**: matches dotted PHIL
+   paths like `xray_data.r_free_flags.generate=True` as a single
+   token, then takes the leaf via `split('.')[-1]`.  This handles
+   both bare and scoped parameters uniformly.
+3. **Leaf-only addition**: the allowlist contains bare leaves
+   (e.g., `maps_only`), so the post-PHIL-flattening sanitization
+   step (which compares leaves) works correctly.
+
+K_H8 (4 tests in `tst_autosol_bugs.py`):
+
+- `test_bug8_template_literal_maps_only_preserved` — primary
+  regression.  Builds a realistic post-registry command for
+  `phenix.autobuild_denmod` and asserts `maps_only=True` survives
+  `sanitize_command`.
+- `test_bug8_load_allowlist_includes_template_literals` — unit
+  test on `_load_prog_allowlist` directly.  Confirms the allowlist
+  for `phenix.autobuild_denmod` includes `maps_only` AND retains
+  pre-existing entries (`nproc`, `resolution`) — i.e., no
+  regression in the existing strategy_flags logic.
+- `test_bug8_template_literal_extraction_ignores_placeholders` —
+  pins the `(?:^|\s)` regex anchor's safety guarantee.  Verifies
+  that `{data_mtz}` and similar placeholder syntax do NOT extract
+  into the allowlist.
+- `test_bug8_adversarial_strategy_override_dropped` — defense-in-
+  depth.  Confirms that if an LLM emits `strategy.maps_only=False`
+  to override the template invariant, `program_registry.build_command`
+  drops the unknown strategy entry (logs "Unknown strategy
+  'maps_only'") and the template's `maps_only=True` remains
+  authoritative.  This was Claude-reviewer-suggested to ensure
+  the fix doesn't accidentally allow LLM override of program
+  invariants.
+
+`agent/planner.py` NOT modified.  `agent/command_builder.py`
+NOT modified.  `core/llm.py` NOT modified (`defaults_fingerprint`
+unchanged).  `knowledge/programs.yaml` NOT modified — the
+allowlist content (in `strategy_flags`) is correct; the template
+literals just had to be discovered too.
+
+VERSION bumped to `119.H8`.
+
+**H9 (data + tests) — `phenix.predict_and_build` PHIL scope
+rewrite**
+`knowledge/parameter_fixes.json`, `tests/tst_autosol_bugs.py`
+(new K_H9, 4 tests), `tests/canary_expected.json`, `VERSION`,
+`README.md`.
+
+H9 closes a production bug surfaced in run_38_openai cycle 2:
+`phenix.predict_and_build` was emitting parameters like
+`crystal_symmetry.unit_cell=...` and `crystal_symmetry.space_group=...`,
+but the `phenix.predict_and_build` program expects
+`crystal_info.unit_cell=...` and `crystal_info.space_group=...`.
+PHENIX rejected the command with "Some PHIL parameters are not
+recognized".
+
+**Root cause** — a 3-layer pipeline gap:
+
+- **Layer 1** (`agent/program_registry.py`, around line 778):
+  when a bare unit_cell or space_group parameter is built into a
+  command, the registry unconditionally prepends the
+  `crystal_symmetry.` scope:
+
+  ```python
+  if key in ('unit_cell', 'space_group'):
+      cmd_key = 'crystal_symmetry.%s' % key
+  ```
+
+  This is correct for most programs.
+- **Layer 2** (`agent/planner.py::fix_program_parameters`,
+  consuming `knowledge/parameter_fixes.json`): for programs whose
+  PHIL scope differs from `crystal_symmetry`, the parameter
+  name is rewritten.  Pre-H9, the existing `parameter_fixes.json`
+  had rewrite entries for `phenix.refine` (which goes the other
+  direction: `crystal_info.*` → `crystal_symmetry.*` for the
+  refine-specific scope handling) but **no scope-rewrite entries
+  for `phenix.predict_and_build`**.  The program's existing entry
+  in the JSON had only `data_file`, `input_files.data_file`,
+  `control.nproc`, `prediction.nproc` mappings.
+
+So when Layer 1 produced `crystal_symmetry.unit_cell=...` for
+`phenix.predict_and_build`, Layer 2 had no rewrite rule for that
+parameter, the wrong-scope parameter survived to the command line,
+and PHENIX rejected it.
+
+**The fix — 4 new rewrite entries plus 1 annotation in
+`knowledge/parameter_fixes.json` under `phenix.predict_and_build`:**
+
+```json
+"phenix.predict_and_build": {
+  "data_file": "xray_data_file",                              // pre-existing
+  "input_files.data_file": "input_files.xray_data_file",      // pre-existing
+  "control.nproc": null,                                       // pre-existing
+  "prediction.nproc": null,                                    // pre-existing
+  "_comment_cs": "predict_and_build uses crystal_info.* scope (v119.H9)",  // NEW
+  "crystal_symmetry.space_group": "crystal_info.space_group",  // NEW
+  "crystal_symmetry.unit_cell":   "crystal_info.unit_cell",    // NEW
+  "xray_data.space_group":        "crystal_info.space_group",  // NEW
+  "xray_data.unit_cell":          "crystal_info.unit_cell"     // NEW
+}
+```
+
+The `xray_data.*` fallback entries handle the case where an LLM
+might emit `xray_data.unit_cell` (a different incorrect scope)
+— Gemini's review suggested covering this for robustness.  The
+`_comment_cs` key is skipped by `fix_program_parameters` (which
+ignores keys starting with `_`), so it functions as inline
+documentation.
+
+**K_H9 testing wrinkle**: `parameter_fixes.json` is loaded once
+on first call and cached at module scope in `agent/planner.py`
+via `_PARAMETER_FIXES = None` (lazily populated by
+`get_parameter_fixes()`).  K_H9's tests need to invalidate this
+cache between runs so they exercise the JSON file's current
+state.  Solution: a module-local `_reload_parameter_fixes()`
+helper in the test file that simply sets the planner module's
+cache back to `None`:
+
+```python
+def _reload_parameter_fixes():
+    """Force re-read of parameter_fixes.json (defeat the module cache)."""
+    try:
+        from libtbx.langchain.agent import planner as _p
+    except ImportError:
+        try:
+            from agent import planner as _p
+        except ImportError:
+            return
+    _p._PARAMETER_FIXES = None
+```
+
+All four K_H9 tests call this at the top.  This pattern
+generalizes: any K-test that depends on JSON-or-YAML-loaded
+data with module-level lazy caching needs an explicit
+invalidation hook.
+
+K_H9 (4 tests in `tst_autosol_bugs.py`):
+`test_bug9_predict_and_build_unit_cell_scope_rewrite`,
+`test_bug9_predict_and_build_space_group_scope_rewrite`,
+`test_bug9_predict_and_build_xray_data_fallback_rewrite`
+(Gemini-suggested coverage),
+`test_bug9_predict_and_build_idempotent_on_correct_scope`
+(no double-rewrite when input is already correct).
+
+`agent/program_registry.py` NOT modified — Layer 1 is correct
+as the default behavior; Layer 2's rewrite table is the
+extensibility point for per-program exceptions.  `agent/planner.py`
+NOT modified — the consumer of `parameter_fixes.json` already
+applied entries uniformly.  `defaults_fingerprint` unchanged at
+`sha256:77bf7421...`.
+
+VERSION bumped to `119.H9`.  Plan: `v119_H9_PLAN.md`
+(Gemini-reviewed, green light).
+
+**H10 (production code) — `exclude_patterns` structural fix
+(prerequisite for H11)**
+`agent/command_builder.py`, `tests/tst_autosol_bugs.py` (new
+K_H10, 5 tests), `tests/canary_expected.json`, `VERSION`,
+`README.md`.
+
+H10 closes a structural gap surfaced in AIAgent_62 cycle 7:
+`phenix.refine` emitted a command with `refine_001_001.cif` (a
+model mmCIF from an earlier refine step) as a positional third
+argument.  PHENIX interpreted it as a SECOND model and crashed
+with "wrong number of models".  The `phenix.refine::ligand_cif`
+slot has an `exclude_patterns` filter specifically to prevent
+this, but the filter wasn't being applied at the relevant
+selection path.
+
+**Root cause** — `agent/command_builder.py`'s file-selection
+algorithm has multiple paths through `_find_file_for_slot` plus
+a pre-population step in `_select_files`.  The in-code H10
+comment (line 1279-1283) summarizes the gap:
+
+> Pre-H10, `exclude_patterns` was only consulted at PRIORITY 4
+> (extension fallback).  PRIORITY 2 (best_files), PRIORITY 2.5
+> (recovery strategies), PRIORITY 3 (category-based), and
+> PRIORITY 3.5 (fallback best_files) all bypassed it.
+
+(The LLM-selected path at line 963 in `_select_files` had its
+own exclude_patterns check; whether this predated H10 is not
+marked.  The bug class was the auto-fill paths inside
+`_find_file_for_slot`, which is what H10's helper covers.)
+
+The AIAgent_62 cycle-7 build picked `refine_001_001.cif` via
+**PRIORITY 3 (category-based)** — one of the paths that
+bypassed the filter.  Since the cycle-7 LLM did not specify a
+ligand_cif file, auto-fill ran, hit PRIORITY 3, and picked the
+wrong file from the `ligand_cif` category.
+
+**The fix — helper + 8 application sites, 9 markers:**
+
+A closure `_matches_exclude_patterns_h10(f)` defined at the
+entry of `_find_file_for_slot` (line 1292):
+
+```python
+_exclude_patterns_h10 = input_def.get("exclude_patterns", [])
+def _matches_exclude_patterns_h10(f):
+    if not _exclude_patterns_h10:
+        return False
+    return matches_exclude_pattern(
+        os.path.basename(f), _exclude_patterns_h10)
+```
+
+Applied as an additional filter clause at every auto-fill site:
+
+- 7 sites inside `_find_file_for_slot` (lines 1333, 1359, 1406,
+  1417, 1437, 1472, 1513): PRIORITY 2 best_files, PRIORITY 2.5
+  recovery_strategies, PRIORITY 3 category subcat / parent /
+  multiple variants, PRIORITY 3.5 `require_best_files_only`,
+  PRIORITY 3.5 fallback best_files.
+- 1 site inside `_select_files` (line 698): refinement pre-
+  population.  `best_files["model"]` was being injected without
+  honoring the model slot's exclude_patterns; the patch adds the
+  check inline (using `matches_exclude_pattern` directly rather
+  than via the closure, since `_select_files` doesn't have one).
+
+Total: 9 `v119.H10` markers in the file (1 helper definition
+comment block + 7 closure-application sites + 1 in `_select_files`).
+
+**Implementation lesson** — the 8th patch site (refinement pre-
+population in `_select_files`) was discovered during act/verify
+when Test 3 (`test_bug10_exclude_patterns_applied_in_best_files_path`)
+failed initially.  The diagnostic revealed that
+`_find_file_for_slot` was never called for the model slot when
+pre-population had already injected `best_files["model"]`.  Fix:
+extend the patch to `_select_files`.  This is the
+"act/verify catches missed sites" pattern that justifies
+running each test as it's written rather than batching them.
+
+K_H10 (5 tests in `tst_autosol_bugs.py`):
+`test_bug10_ligand_cif_slot_rejects_model_mmcif` (primary
+regression),
+`test_bug10_ligand_cif_slot_accepts_legitimate_cif` (no
+over-rejection),
+`test_bug10_exclude_patterns_applied_in_best_files_path` (pins
+pre-population fix),
+`test_bug10_exclude_patterns_applied_in_category_path` (pins
+PRIORITY 3 category fix — this was the test that failed on
+Tom's real PHENIX and surfaced the H11 follow-on),
+`test_bug10_unrelated_slots_unaffected` (no-regression sentinel,
+Claude-reviewer suggested).
+
+**Important caveat — H10's tarball README is INCORRECT** about
+fully fixing the AIAgent_62 cycle-7 bug.  H10 IS code-correct
+(all patches fire), but a pre-existing bug in the YAML
+`exclude_patterns` data (substring-style authoring of
+`"refine_"` despite the function using word-boundary semantics)
+prevented the filter from rejecting `refine_001_001.cif`.  H10
+provides the structural prerequisite; **H11 is required to
+actually fix the bug**.  See H11 below.
+
+`agent/file_utils.py` NOT modified — the `matches_exclude_pattern`
+function's semantics are correct and intentional (word-boundary
+regex matching).  `core/llm.py` NOT modified.  `defaults_fingerprint`
+unchanged.
+
+VERSION bumped to `119.H10`.  Plan: `v119_H10_PLAN_rev2.md`
+(Gemini-reviewed).
+
+**H11 (data) — exclude_patterns YAML word-boundary fix
+(completes H10)**
+`knowledge/programs.yaml`, `tests/tst_autosol_bugs.py`,
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H11 completes the H10 fix.  When Tom installed H10 and ran
+`tst_autosol_bugs.py`, Test 4
+(`test_bug10_exclude_patterns_applied_in_category_path`) failed
+on his machine while it had passed in the sandbox.  A diagnostic
+script (`h10_diagnostic.py`) called `matches_exclude_pattern`
+directly on representative cases and revealed that the function
+uses **word-boundary regex matching**, not substring matching:
+
+```python
+# agent/file_utils.py
+re.search(
+    r'(?:^|[_\-\.])' + re.escape(pat_stem) + r'(?=[_\-\.]|$)',
+    stem)
+```
+
+A pattern matches if it appears in the stem preceded by start-of-
+string or one of `_`/`-`/`.`, AND followed by one of `_`/`-`/`.`/
+end-of-stem.  Under this semantics, three YAML patterns authored
+with substring intent did NOT match their intended targets:
+
+| Slot | Pattern | Why broken |
+|---|---|---|
+| `phenix.refine::ligand_cif` | `"refine_"` | Trailing `_` requires another boundary char after; in `refine_001_001.cif` the next char is `0`, not a boundary.  **THE bug — broke AIAgent_62 cycle 7.** |
+| `phenix.mtriage::full_map` | `"_half"` | Leading `_` consumed by boundary-prefix regex group; mismatch with stem position. |
+| `phenix.real_space_refine::map` | `"_half"` | Same as above. |
+
+The sandbox stub for `matches_exclude_pattern` used substring
+matching, so H10's tests passed in sandbox but failed against
+the real function.  H10 packaged as "fixes the cycle-7 bug" —
+it didn't; H10's filter fired but `matches_exclude_pattern` returned
+False on every file because of the YAML pattern bug.
+
+**The fix — three independent edits:**
+
+1. **YAML pattern corrections (3 lines):**
+   - `phenix.refine::ligand_cif`: `"refine_"` → `"refine"`
+   - `phenix.mtriage::full_map`: `"_half"` → `"half"`
+   - `phenix.real_space_refine::map`: `"_half"` → `"half"`
+
+   Word-boundary `"refine"` correctly matches `refine_001.cif`,
+   `phenix_refine.cif`, `pre_refine_template.cif`; correctly
+   skips `refining_template.cif`.  Word-boundary `"half"`
+   correctly matches `protein_half.ccp4` (un-numbered case).
+   The numeric patterns `half_1`, `half_2`, `half1`, `half2` are
+   preserved alongside the bare `"half"` because Gemini's plan
+   review caught that bare `"half"` fails on `protein_half1.ccp4`
+   (the `1` immediately after `half` is not a boundary char).
+
+2. **YAML authoring docstring (~25 lines in `programs.yaml`):**
+   A `DESIGN NOTE (exclude_patterns)` block near the top of the
+   file documenting the word-boundary semantics, with worked GOOD
+   and BAD examples for both trailing-underscore and leading-
+   underscore traps.  Inlined per Gemini's plan-review recommendation
+   to maximize contextual freshness for future YAML authors.
+
+3. **Bug 11 semantic-pin test (1 new test, 10 named cases):**
+   `test_bug11_matches_exclude_pattern_semantics` calls the real
+   `matches_exclude_pattern` and asserts its actual behavior on
+   10 documented cases, including the trailing-underscore bug
+   (`"refine_"` does NOT match `refine_001.cif`), the bare-pattern
+   correctness (`"refine"` does match), the alphanumeric-boundary
+   subtlety (`"half"` does NOT match `protein_half1.ccp4`), and
+   extension-suffix patterns.  Includes a graceful sandbox-skip
+   fallback so lightweight CI environments don't error.
+
+K_H11 (1 test): `tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics`.
+
+**Cluster regression check post-H11:** All 9 v119-cluster K-suites
+PASS (160 PASS, 0 FAIL).  Bug 8 (4), Bug 9 (4), Bug 10 (5), Bug
+11 (1): all PASS in sandbox against word-boundary-correct stub.
+**VERSION/canary lockstep verified.**  `defaults_fingerprint`
+unchanged at `sha256:77bf7421...`.
+
+`agent/command_builder.py` NOT modified (all 9 H10 markers
+preserved).  `agent/file_utils.py` NOT modified (word-boundary
+semantics are intentional and now documented in the YAML
+authoring guide).  `core/llm.py` NOT modified.
+
+**The load-bearing verification** — H11's actual proof of correctness
+is Tom rerunning the AIAgent_62 bromodomain demo on the Mac.
+Cycle 7's `phenix.refine` command must NOT include
+`refine_001_001.cif` as a positional argument.  Pre-H11 (with
+H10 installed) this still fails; H10 + H11 together should fix it.
+
+VERSION bumped to `119.H11`.  Plan: `v119_H11_PLAN_rev2.md`
+(final, post-Gemini-rev-2).
+
+**Lesson captured (H10 → H11 sandbox cycle):**
+
+The H10 → H11 transition surfaced a sandboxing failure mode worth
+remembering as policy:
+
+- The H10 sandbox stub for `matches_exclude_pattern` did substring
+  matching.  The real PHENIX function does word-boundary matching.
+- The stub was wrong but no test caught the divergence.  H10's
+  sandbox K-suite passed.
+- H10 was packaged and presented as "fixes the AIAgent_62 cycle-7
+  bug" — it didn't.  H10's filter fired but the YAML pattern
+  didn't match.
+- The divergence was discovered at install-time when Tom's `phenix.python
+  tst_autosol_bugs.py` Test 4 failed against the real function.
+- The `h10_diagnostic.py` script that called `matches_exclude_pattern`
+  directly with representative cases revealed the semantics.
+
+Forward policy (also captured in `DEVELOPER_GUIDE.md` §10.3 "Test
+adequacy"): sandbox stubs for functions with non-obvious semantics
+(regex, parsing, escaping, etc.) should be accompanied by a
+semantic-pin test that calls the real function with documented
+expected behavior.  `test_bug11_matches_exclude_pattern_semantics`
+is the template — when a test that uses the real function asserts
+documented behavior, any future stub-vs-real divergence is caught
+the moment a sandbox test runs against the real function.
+
+**H12 (production code) — `exclude_patterns` helper DRY refactor +
+categorizer semantic-pin suite (deferred follow-up cluster from H11)**
+`agent/command_builder.py`, `tests/tst_file_categorizer.py`
+(NEW, ~75 cases across 8 tests), `tests/canary_expected.json`,
+`VERSION`, `README.md`.
+
+H12 closes three deferred items from `v119_H11_PLAN_rev2.md`
+(items 2.2, 2.3, 2.4) bundled into a single follow-up ship.  The
+items are independent in scope but share file area and zero
+behavioral change:
+
+**Item 2.3 — helper DRY refactor in `agent/command_builder.py`**:
+
+H10 introduced a closure `_matches_exclude_patterns_h10(f)`
+defined at the entry of `_find_file_for_slot` and applied at
+7 sites there, plus a direct call to `matches_exclude_pattern`
+in `_select_files` (line 698) where the closure wasn't in
+scope.  H12 consolidates these into a single module-level
+helper near the top of `command_builder.py`:
+
+```python
+def _file_passes_exclude_patterns(file_path, exclude_patterns):
+    """Return True if file_path is NOT rejected by exclude_patterns."""
+    if not exclude_patterns:
+        return True
+    return not matches_exclude_pattern(
+        os.path.basename(file_path), exclude_patterns)
+```
+
+Three design choices per Gemini's H12 plan review:
+
+1. **Signature takes `exclude_patterns: list`, not `input_def: dict`**.
+   Decouples the helper from the program-registry schema; lets
+   `_select_files`'s call site (which has the list, not a
+   wrapping dict in scope) pass it directly.  Within
+   `_find_file_for_slot`, the list is extracted once at the top
+   of the function — preserving the closure's micro-perf
+   property (one dict lookup, not 7).
+2. **Sense-inversion**.  The closure returned True if the file
+   MATCHED (i.e., should be rejected).  The helper returns True
+   if the file PASSES (i.e., is NOT rejected).  Call sites read
+   more naturally as `if not _file_passes_exclude_patterns(f, p): continue`.
+3. **Marker convention**: each refactored call site is marked
+   `# v119.H10/H12` rather than dropping the H10 history.  Clean
+   audit trail: the BEHAVIOR comes from H10's bug fix; the
+   present STRUCTURAL form belongs to H12.
+
+Total: 8 application sites consolidated to 1 helper, 9
+`v119.H10/H12` markers in `command_builder.py`.
+
+**Items 2.2 + 2.4 — `tests/tst_file_categorizer.py` (NEW)**:
+
+Semantic-pin tests for every public function in
+`agent/file_utils.py`.  Generalizes the discipline that
+`test_bug11_matches_exclude_pattern_semantics` applied to one
+function — pre-emptive defense against the kind of
+sandbox-stub-vs-real drift that masked the AIAgent_62 cycle-7
+bug for one ship.
+
+Functions covered (8 tests, ~75 documented assertions):
+- `classify_mtz_type` — 12 cases across 5 rules + ordering
+  invariant comment
+- `get_mtz_stage` — 9 cases (data_mtz, map_coeffs_mtz subcategories,
+  unrecognized-category passthrough)
+- `get_category_for_extension` — 19 cases including
+  case-insensitivity, multi-dot filenames (`model.backup.pdb`),
+  no-extension files (`README`, `LOCAL_MAP`), unknown extensions,
+  trailing-dot edge case
+- `is_mtz_file` — 8 cases including case-insensitivity, trailing-
+  suffix discrimination
+- `is_model_file` — 12 cases pinning the load-bearing quirk that
+  `.pdb` extension overrides the `'ligand'`-in-name filter (so
+  `ligand_fit.pdb` IS a model file but `my_ligand.cif` is not)
+- `is_map_file`, `is_sequence_file` — 7 cases each
+- Cross-function consistency — 4 integration cases verifying
+  `is_mtz_file` + `classify_mtz_type` + `get_mtz_stage` agree
+  and that `is_X_file` / `get_category_for_extension` are
+  internally consistent
+
+`matches_exclude_pattern` is NOT re-pinned here —
+`test_bug11_matches_exclude_pattern_semantics` already covers
+it canonically.
+
+Gemini-suggested cases folded in: multi-dot (`model.backup.pdb`,
+`data.processed.mtz`), no-extension (`README`, `LOCAL_MAP`,
+`file.`), `is_model_file` boundary (`ligand_fit.pdb` vs
+`co_crystallized_ligand_structure.cif`), and a rule-ordering
+invariant comment in `test_classify_mtz_type_semantics`.
+
+**Why these bundle as 2.2 + 2.4**: Gemini's original 2.4
+proposal was a "differential parity test" comparing real
+function vs sandbox stub.  Reframed in H12 as "broaden the
+semantic-pin discipline to ALL of `agent/file_utils.py`" —
+because (a) sandbox stubs aren't a real artifact in the PHENIX
+tree, (b) `test_bug11_*` already provides the canonical parity
+check for the one function with documented divergence problems,
+and (c) generalizing the pattern to the other functions in
+`file_utils.py` is the more useful generalization.
+
+K_categorizer: 8 tests, all PASS in sandbox.  All 6 K_Bug 10
++ K_Bug 11 tests still PASS unchanged after the H12 refactor,
+providing the strong assurance that behavior is preserved.
+`defaults_fingerprint` unchanged.
+
+`agent/file_utils.py` NOT modified — its functions are the
+SUBJECT of pinning, not the subject of change.  All H1–H11
+changes carried forward.
+
+VERSION bumped to `119.H12`.  Plan: `v119_H12_PLAN.md`
+(Gemini-reviewed).
+
+**H13 (production code) — Ollama provider robustness + retired-
+model 404 detection (v118 §3.5 closed; AIAgent_run_39a_ollama bugs
+fixed)**
+`core/llm.py`, `agent/directive_extractor.py`, `agent/api_client.py`,
+`tests/tst_provider_error_classification.py` (NEW, 13 tests),
+`tests/tst_default_models.py` (+8 H13 tests),
+`tests/canary_expected.json`, `VERSION`, `README.md`.
+
+H13 closes a production bug surfaced by Tom's
+`phenix.ai_agent provider=ollama ...` run on cci-gpu-01.  The
+failure mode was `[DIRECTIVE_EXTRACTION_FAILED]: 404 page not
+found, falling back to rules-only resolver` — opaque and
+non-actionable.  Diagnostic surfaced two stacked bugs PLUS an
+opportunity to complete the v118 §3.5 retired-model classification
+work that was deferred through H1–H12.
+
+**Root cause — TWO bugs, each duplicated at 2 sites:**
+
+- **Bug A — URL mismatch.**  `agent/directive_extractor.py:1226`
+  and `agent/api_client.py:735` had:
+  ```python
+  base_url = os.environ.get(
+      "OLLAMA_BASE_URL", "http://localhost:11434/v1")
+  ```
+  When the user set `OLLAMA_BASE_URL=http://localhost:11434`
+  (no `/v1`), the env-var completely overrode the `/v1`-suffixed
+  default.  The OpenAI Python SDK appends `/chat/completions`
+  to the base URL, so the actual request went to
+  `http://localhost:11434/chat/completions`.  Ollama exposes
+  the OpenAI-compat API only at `/v1/chat/completions`; for
+  any other path it returns the HTML literal `404 page not
+  found`.  Tom's user-facing behavior (matching `OLLAMA_HOST`
+  which is the bare host) silently broke.
+
+- **Bug B — env-var override ignored.**  `directive_extractor.py:1219`
+  and `api_client.py:734` called `default_model_for_provider("ollama")`
+  unconditionally — ignoring `OLLAMA_LLM_MODEL` even when the
+  user set it.  This is inconsistent with
+  `core/llm.py:get_llm_and_embeddings` which DID honor the
+  env-var ("Env-var overrides take precedence; fall back to
+  the central default tables when the env vars are unset").
+  H1 centralized the table; it missed centralizing the
+  precedence rule.
+
+**The fix — three new helpers in `core/llm.py`:**
+
+```python
+def normalize_ollama_openai_base_url(base_url):
+    """Idempotently append /v1.  Empty string and None pass through."""
+    if not base_url:
+        return base_url
+    stripped = base_url.rstrip('/')
+    if stripped.endswith('/v1'):
+        return stripped
+    return stripped + '/v1'
+
+_PROVIDER_MODEL_ENV_OVERRIDES = {"ollama": "OLLAMA_LLM_MODEL"}
+
+def resolve_model_for_provider(provider, role="decision"):
+    """Env-var precedence: env-var wins, central default falls back."""
+    env_var = _PROVIDER_MODEL_ENV_OVERRIDES.get(
+        (provider or "").lower().strip())
+    if env_var:
+        env_value = os.getenv(env_var)
+        if env_value:
+            return env_value
+    return default_model_for_provider(provider, role=role)
+```
+
+Plus a unified provider-error classifier
+`_classify_provider_error(exc, model_name)` (also in `core/llm.py`)
+that distinguishes four error classes:
+
+| Marker tag | Trigger | Operator action |
+|---|---|---|
+| `DIRECTIVE_EXTRACTION_MODEL_RETIRED` | 404 + retirement phrase ("deprecated"/"no longer available"/"retired") near the word "model" | Update `DEFAULT_MODELS` |
+| `DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE` | 404 + `model '...' not found` regex match (Tom's case) | Pull the model, or check env-var typo |
+| `DIRECTIVE_EXTRACTION_AUTH_FAILED` | 401 or "unauthorized" or "invalid api key" | Check provider API key |
+| `DIRECTIVE_EXTRACTION_FAILED` | Anything else | Investigate manually |
+
+Defense-in-depth design (Gemini's H13 plan review):
+
+1. **Programmatic property interrogation** — reads
+   `status_code`, `.response.status_code` (chained), `.body`
+   (dict), `.message` attributes BEFORE falling back to
+   `str(exc)`.  Defends against SDK exceptions that hide HTTP
+   details behind opaque `__str__` representations.
+2. **Co-occurrence rule for RETIRED** — the retirement phrase
+   must appear within 80 chars of the word "model".
+   Distinguishes legitimate retirement ("The model X has been
+   deprecated") from edge-proxy 404 pages with similar
+   language ("This endpoint is deprecated; see new path").
+3. **UNAVAILABLE regex** — `model\s+['"]X['"]\s+not\s+found`
+   matches Tom's exact error pattern from ollama
+   (`{"error":{"message":"model 'llama3.2' not found"}}`).
+
+**Where the helpers are applied:**
+
+- `agent/directive_extractor.py` ollama block (the
+  `_call_llm_fallback` path): URL via
+  `normalize_ollama_openai_base_url`, model via
+  `resolve_model_for_provider`, classifier dispatch in the
+  exception handler with two emit helpers
+  (`_emit_retired_model_marker` from v119.H1 +
+  `_emit_unavailable_model_marker` NEW in H13).
+- `agent/api_client.py::_call_ollama_llm` (the primary path):
+  same URL and model fixes.  Classifier dispatch happens at
+  the OUTER catch in `extract_directives` line 876 — see H13.1
+  fix in the README for details.
+- `core/llm.py::get_llm_and_embeddings` (the native-`/api/chat`
+  path via `langchain-ollama`): NOT modified.  That path uses
+  ChatOllama with the native endpoint and DOES NOT need `/v1`;
+  applying `normalize_ollama_openai_base_url` would break it.
+  An explicit comment at the call site documents the asymmetry.
+  Env-var precedence already worked correctly here (it was the
+  inconsistency-source for H13).
+
+**K_provider_error (13 tests in
+`tst_provider_error_classification.py`)**:
+
+- 3 RETIRED cases: Google verbose 404, OpenAI clean 404,
+  Anthropic `model_not_found`
+- 3 UNAVAILABLE cases: Tom's exact error verbatim (primary
+  regression), variant with `qwen2.5:72b`, double-quoted
+  format
+- 3 FAILED cases (negative): edge-proxy "endpoint deprecated"
+  (LOAD-BEARING co-occurrence sentinel), bare 404, empty
+  exception
+- 2 AUTH cases: 401, "invalid api key" without status code
+- 2 class-attribute defense cases (Gemini's review): mock
+  exception with `status_code=404`, mock with `.response.status_code`
+  chained
+
+**K_default_models extension** (`tst_default_models.py`, +8 tests):
+- 4 `resolve_model_for_provider` tests: unset env-var falls
+  through, set env-var overrides, empty env-var falls through,
+  unknown provider raises
+- 4 `normalize_ollama_openai_base_url` tests: appends `/v1`,
+  idempotent, None passthrough, empty-string passthrough
+  (added in H13.1 after self-review found the original helper
+  produced `'/v1'` from an empty input — see H13.1 notes)
+
+Also updates 2 existing source-scan tests
+(`test_api_client_ollama_uses_central_default`,
+`test_directive_extractor_fallback_uses_central_defaults`) to
+accept BOTH `default_model_for_provider` AND
+`resolve_model_for_provider` references — the centralization
+invariant is "every provider resolves via a central helper",
+not "every provider uses the exact same helper name".
+
+**Refined v118 §3.5 scope**:
+
+Pre-H13 the existing `_looks_like_retired_model_error` (from
+v119.H1) lumped "model not found" together with retirement
+phrases, which would have misclassified Tom's case as
+retirement (the operator hint would say "update
+DEFAULT_MODELS" — wrong action; the right action is `ollama
+pull`).  H13's classifier separates these into RETIRED vs
+UNAVAILABLE so the hint matches the operator action.
+
+**Known limitation** (NOT fixed in H13): the H1-era
+`_looks_like_retired_model_error` + `_emit_retired_model_marker`
+path is still used by google/openai/anthropic exception
+handlers in `_call_llm_fallback`.  Only the ollama path was
+migrated to the unified classifier.  Migrating the other three
+providers is candidate work for H14 (scope deferred since the
+immediate bug was ollama-specific).
+
+VERSION bumped to `119.H13` (then `119.H13.1` after the
+self-review surfaced two issues — see "H13.1 post-review fixes"
+in the ship README).  Plans: `v119_H13_PLAN_rev3.md` (rev3,
+post-Ollama-diagnosis; rev1 and rev2 covered the broader
+§3.5 + §4.9 scope before run_39a_ollama narrowed the focus).
+
+`defaults_fingerprint` unchanged at
+`sha256:77bf7421...` — H13 added new functions but didn't
+modify the `DEFAULT_MODELS` tables that feed the fingerprint.
+
+**Deferred to H14** (per H13's rev3 plan): §4.9
+prompt-consolidation refactor of `DIRECTIVE_EXTRACTION_PROMPT`.
+Medium risk, needs multi-pass approach + Gemini review +
+LLM-roundtrip verification.  Was bundled with §3.5 in H13's
+rev1/rev2 plans; rev3 split to keep H13's blast radius small
+after Tom's bug took priority.
+
+**H14 (production code) — Three independent regressions surfaced by
+run_39_openai batch analysis**
+`agent/directive_extractor.py`, `programs/ai_agent.py`,
+`tests/tst_solve_action_keywords.py` (NEW, 13 tests),
+`tests/tst_step1f_single_emit.py` (NEW, 8 tests),
+`tests/tst_space_group_validation.py` (NEW, 24 tests),
+`tests/tst_utils.py` (NEW — restored sandbox helper, enables
+3 previously-shipped K-tests to run in sandbox),
+`tests/tst_autosol_bugs.py` (1 test relaxed from exact-signature
+match to substring — was brittle to additive kwargs),
+`tests/canary_expected.json`, `VERSION`.
+
+H14 closes three independent regressions surfaced by post-H13 batch
+analysis of `run_39_openai` (520 runs, May 2026) compared against
+`run_25_openai` (720 runs, March 2026 baseline).  The investigation
+was made possible by `scan_batch_runs.py` (a new
+operations-side scanner that triages run logs into Tier-1 crashes,
+Tier-2 diagnostic markers, Tier-3 state anomalies, and Tier-4 soft
+anomalies) and a controlled three-way log comparison of the
+1029B-sad dataset across run_25-solve, run_39-solve, and
+run_39-stop variants.  The three items are independent; they ship
+together because they were diagnosed in one investigation pass.
+
+**Item 1 — Phaser false-positive in `_ACTION_TABLE["solve"]`
+(operationally biggest win):**
+
+The rules-only directive extractor's `_ACTION_TABLE["solve"]`
+entry treated the goal phrase "solve the structure" as a synonym
+for "do molecular replacement with phaser."  When a README
+contained BOTH that goal phrase AND another action (e.g., the
+"Stop after refinement" suffix), the multi-action branch in
+`_apply_workflow_intent_fallback` (`n > 1` case) set
+`start_with_program = phenix.phaser` — forcing phaser into the
+workflow even on SAD/MAD datasets where the correct method is
+autosol.  Once phaser was in the workflow, it ran on a model that
+autosol had already refined to a multi-chain ASU; phaser's
+composition check then errored with `composition will not fit in
+the unit cell volume`.  24 occurrences across 5 datasets in
+run_39 (1029B-sad, 1J4R-ligand, 1aba-polder, 3tpp-ensemble-refine,
+7rpq_AF_reference_model).
+
+The controlled comparison confirmed the trigger:
+  - `run_25/1029B-sad__rules_only_solve` (README without "stop"):
+    workflow xtriage→autosol→autobuild→molprobity→refine.  SUCCESS.
+  - `run_39/1029B-sad__rules_only_solve` (same README): IDENTICAL
+    workflow.  SUCCESS.
+  - `run_39/1029B-sad__rules_only_stop` (README with "Stop after
+    refinement" added): xtriage→autosol→refine→phaser×4.  FAILED.
+
+The only input that differed was the README — adding one line
+that the rules-only extractor turned into a stop directive AND
+a phaser start_with directive.
+
+**Fix:** Remove the goal phrases `"solve the structure"` and
+`"solve structure"` from the `solve` action's keyword list.
+Explicit method keywords (`"molecular replacement"`, `"phaser"`,
+`"mr "`) remain — only the ambiguous goal phrasing is removed.
+This restores the semantic: `solve` action means "user explicitly
+asked for MR," not "user expressed a goal of solving the
+structure."  When the goal phrase appears alone, no action fires
+and `RulesSelector` picks the right method based on data type.
+
+The `asu_copies` → `phaser.search_copies` injection in
+`graph_nodes.py` (originally Item 2 of the H14 plan, also surfaced
+by this investigation) was DROPPED from H14 after Tom's domain
+input: "the value from xtriage is usually pretty good, keep it as
+is."  When phaser legitimately runs (with a single-chain search
+model), `search_copies=N` from xtriage's Matthews `Best guess` is
+the correct value.  The problem in run_39 was not the injection —
+it was that phaser shouldn't have been running at all on
+already-phased SAD data.  Item 1 prevents that, eliminating the
+24/24 phaser failures.  Defensive instrumentation for the
+multi-chain-search-model case is deferred to a candidate H15
+item.
+
+**Item 2 — STEP_1F preprocessor double-emit (cosmetic but
+high-volume):**
+
+`[STEP_1F] preprocessing_metrics` lines were being emitted twice
+per advice preprocessing call.  60.6% of run_39_openai runs (315
+of 520) had adjacent duplicate STEP_1F lines.  The cause: TWO
+sites both iterated `diagnostic_messages` and wrote to stderr:
+
+  1. `phenix.programs.ai_analysis._relay_diagnostic_messages_to_stderr`
+     (the v119.H5.1 dispatcher-level relay; called inside
+     `run_job_on_server_or_locally` at 4 return paths)
+  2. `programs/ai_agent.py:8087-8103` (a client-side relay block
+     from v119.H5 §2.9 that survived the H5.1 refactor)
+
+The H5 §2.9 comment at site 2 claimed it was "the SINGLE, uniform
+site where operators see them."  That claim was correct at the
+time H5 shipped, but the H5.1 refactor moved the relay INTO the
+dispatcher (the architecturally correct location, since the
+dispatcher is the single place that handles all dispatch paths
+uniformly).  Site 2 was never deleted, became dead duplicate code,
+and survived undetected because the duplicate emit doesn't break
+anything functionally — operators just saw each marker twice.
+
+**Fix:** Delete the client-side relay block in `ai_agent.py`,
+replace with a marker comment explaining the H14 deletion and
+referencing the dispatcher's relay as the canonical site.  Source
+scan tests pin the absence of `for _msg in _diagnostics` in
+`ai_agent.py` and the continued presence of
+`_relay_diagnostic_messages_to_stderr` (with 4 call sites) in
+`ai_analysis.py`.
+
+**Item 3 — `space_group` validation extensions (defensive
+cleanup):**
+
+The pre-H14 validator at `validate_directives()` already dropped
+LLM-emitted `space_group` placeholder values via the
+`_SYMMETRY_SENTINELS` frozenset (`"Not specified"`, `"Not
+provided"`, etc.) plus negative structural checks (must start
+with a letter; length <= 25).  Two gaps remained:
+
+  1. The sentinel set did not include the "Not explicitly *"
+     family.  Tom's qwen2.5:72b xtriage tutorial verification of
+     H13.1 surfaced the truncated value `"Not explicitly mentio"`
+     — LLM output hit a length cap mid-phrase and emitted a
+     partial sentinel that wasn't in the set.  The H13.1 ship's
+     plan-side override prevented downstream harm in that case,
+     but the value was still passed through `validate_directives`
+     unchanged.
+
+  2. The negative structural checks let multi-word English
+     phrases through if they happened to start with a letter
+     and fit in 25 chars — e.g., `"Solve the structure"` passed
+     all three checks.  Such values then reached PHENIX as
+     bogus PHIL params and produced obscure errors.
+
+**Fix (two additive parts):**
+
+(a) Extended `_SYMMETRY_SENTINELS` with the "not explicitly
+{mentioned,stated,given,specified,defined,listed,noted}" family
+including truncated forms.  Frozenset is additive — pre-H14
+sentinel behavior is preserved (regression tested).
+
+(b) Added a positive Hermann-Mauguin shape check
+`_looks_like_space_group(value)` that accepts standard space-group
+symbols and rejects prose phrases.  Wired into
+`validate_directives()` as an additional invalid-value condition.
+
+**Regex evolution — two review passes shaped the final pattern:**
+
+*Initial draft* (matched 71/230 official symbols — 31%):
+
+```python
+r'^[PFICRHAB]\s*-?\d{0,3}(?:\s*[-/_]?\s*\d{0,3}){0,4}'
+r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$'
+```
+
+This too-strict pattern rejected 159 valid space groups: all
+monoclinic slash forms (P21/c, P21/n, C2/c), all orthorhombic
+mirror/glide groups (Pmma, Pnma, Pbca, Fdd2), all tetragonal
+forms with mirrors (P4mm, P4/mmm, I41/amd), all cubic
+high-symmetry groups (Pm-3m, Im-3m, Fd-3m, Ia-3d).  Self-review
+against the full 230-symbol list (per Tom's "must admit all 240
+space groups correctly" instruction) caught this before ship.
+
+*After self-review* (matched 230/230 canonical but rejected
+alternative settings):
+
+```python
+r'^[PFICRHAB][0-9mcndabe\s/_\-]{0,24}'
+r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$'
+```
+
+The `e` letter was required for the 2002-ITA renamings of the
+centered orthorhombic groups (Aem2, Aea2, Cmce, Cmme, Ccce).
+
+*Gemini external review (Risk A)* identified that this regex
+rejected alternative cell/origin settings.  International Tables
+Vol. A defines colon-suffixed forms used in real PDB/mmCIF
+metadata and cctbx tool output:
+
+  - `R3:H` vs `R3:R` — rhombohedral axis choice (7 space groups)
+  - `:1` vs `:2` — origin choice (24 centrosymmetric groups,
+    mostly cubic + some tetragonal)
+  - `:a` / `:b` / `:c` — unique-axis cell choice (monoclinic
+    groups #3–15)
+
+These would have been silently dropped as malformed prose.
+Gemini's fix: add `:` to the interior alphabet.  Additional
+finding during implementation: the axis-spec letters `h` and `r`
+(in `R3:H`, `R3:R`) also weren't in the alphabet, so they had
+to be added too.
+
+*Final regex* (admits all 230 + all alternative settings):
+
+```python
+_HM_FORM_RE = re.compile(
+    r'^[PFICRHAB]'
+    r'[0-9mcndabehr\s/_\-:]{0,24}'
+    r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$',
+    re.IGNORECASE
+)
+```
+
+Alphabet rationale:
+
+  - `[PFICRHAB]` — the 8 Bravais lattice letters (P primitive,
+    F face-centered, I body-centered, C base-centered, R
+    rhombohedral, H hexagonal-centered, A and B alternative
+    base-centerings)
+  - `0-9` — symmetry-element orders, screw-axis subscripts,
+    IUCr number digits
+  - `m c n d a b e` — mirror plane (m), glide planes (c, n, d, a, b),
+    double glide (e — 2002 ITA)
+  - `h r` — axis-spec suffix letters for rhombohedral hexagonal /
+    rhombohedral settings (e.g., `R3:H`, `R3:R`)
+  - `space / _ - :` — separators (slash for `P21/c`, dash for
+    `P-1`, underscore for mmCIF, colon for alternative settings)
+
+*Gemini Risk B* (acknowledged as known limitation, pinned with
+a K-test): the permissive alphabet still admits short English
+words that happen to use only HM-alphabet characters — `Panda`,
+`Fame`, `Bad`, `Cab`, `Bed`, `Acme` all match.  This is not a
+realistic LLM output for `space_group`, and the pre-H14 negative
+checks already let these through.  Closing this gap fully would
+require enumerating the 230 canonical symbols via `cctbx.sgtbx`,
+which is beyond a directive sanity check's scope.  The test
+`test_hm_form_known_limitation_short_words` pins the limitation
+so future contributors don't think "Panda accepts" is a bug; the
+test `test_hm_form_rejects_words_with_non_alphabet_chars` pins
+the positive guarantee that words with non-alphabet letters
+(`Phaser`, `Pizza`, `Place`, `Process`) ARE rejected.
+
+**Test coverage** for Item 3 — 24 K-tests:
+
+  - §A: 3 new sentinel coverage (including truncated forms)
+  - §B: 1 existing-sentinel regression
+  - §C: 6 HM-shape checks (standard symbols, 230/230 official,
+    spaced variants, parenthetical numbers, prose rejection,
+    empty/None rejection)
+  - §D: 5 end-to-end through `validate_directives`
+  - §E: 4 equivalence-class tests (case-insensitive,
+    spacing, 1-placeholder, setting variants)
+  - §F: 3 alternative-setting tests (rhombohedral, origin
+    choice, unique axis) — per Gemini Risk A
+  - §G: 2 limitation documentation tests — per Gemini Risk B
+
+`hallucinated_param_value` rate in run_39 was 71 (down from 148
+in run_25 — already trending down before H14), of which most
+were `space_group=*` variants.  H14 should drive this further
+down without affecting valid values.
+
+**Plans:** `v119_H14_PLAN_rev1.md` (rev1).  Rev0 (an internal
+draft) contained four items; Item 2 (`asu_copies` injection) was
+dropped after Tom's domain call.
+
+VERSION bumped to `119.H14`.  `defaults_fingerprint` unchanged at
+`sha256:77bf7421...` — H14 did not touch the `DEFAULT_MODELS`
+tables.
+
+**Additional housekeeping:**
+
+  - Added `tests/tst_utils.py` (sandbox helper for
+    `run_tests_with_fail_fast()`).  H13.1 shipped three K-test
+    files (`tst_autosol_bugs.py`, `tst_file_categorizer.py`,
+    `tst_provider_error_classification.py`) that depended on this
+    helper but the helper itself wasn't in the ship — those tests
+    couldn't run in sandbox.  Now they can.
+  - Relaxed `tst_autosol_bugs.py` Bug 5 test from exact-multi-line
+    signature match to substring check.  The original test pinned
+    the exact `def _track_output_files(...)` signature including
+    indentation; a later addition of `skip_if_failed=False` to
+    that signature broke the test.  The test's intent ("function
+    accepts working_dir") is preserved with the substring form.
+
+### v119.H14.1 — Ollama-fallback bypass closure for space_group validation
+
+**Trigger**: Tom's 2026-05-26 ollama xtriage tutorial verification of
+H14 (the gate-C test for Item 3) showed `space_group=Not explicitly
+mentio` still appearing in the extracted directives, despite H14
+being installed (the `[STEP_1F]` line confirmed
+`scanner_version=119.H14`).  Gate C failed in production.
+
+**Root cause** — two cooperating issues:
+
+(a) `directive_extractor.py` has TWO space-group extraction paths:
+
+  | Path                              | Validates? |
+  |-----------------------------------|------------|
+  | LLM-JSON success → `extract_directives` line 714 calls `validate_directives` | ✓ |
+  | LLM fallback → `extract_directives_simple` returns directly (no validation) | ✗ |
+
+  When ollama's LLM fails to return parseable JSON (small local
+  models frequently fail JSON discipline), `extract_directives` falls
+  back to `extract_directives_simple`.  This simple extractor has its
+  OWN space_group regex at line ~4350:
+
+  ```python
+  _sg_pattern = (
+      r'space[_ ]group'
+      r'(?:\s*[=:]\s*|\s+(?:is|of|=|:)?\s*)'
+      r'([A-Za-z][A-Za-z0-9 /_-]{1,20})'
+  )
+  ```
+
+  This regex matched `"Space group: Not explicitly mentioned"` in
+  Tom's preprocessed advice and captured the first 21 chars
+  (`{1,20}` quantifier + initial letter): `"Not explicitly mentio"`.
+  The dict was returned directly, bypassing the H14 sentinel
+  (`_SYMMETRY_SENTINELS`) and shape check (`_looks_like_space_group`)
+  that lived inside `validate_directives`.
+
+  Correction to H14's CHANGELOG attribution: the H14 entry said the
+  truncation came from "LLM hitting a length cap mid-phrase".  The
+  diagnosis was wrong — the LLM passed `"Space group: Not explicitly
+  mentioned"` through fully (visible in Tom's session summary at
+  line 197 of `ollama_xtriage.log`).  The truncation came from the
+  `{1,20}` quantifier in the simple extractor's regex.  The H14
+  sentinel set still correctly catches the truncated form, but the
+  validator was never invoked on the simple-extractor path.
+
+(b) Latent `VALID_STOP_CONDITIONS` gap: the key `start_with_program`
+is set by `_resolve_after_program` (called from
+`_apply_workflow_intent_fallback`) when advice contains multiple
+actions plus a stop intent (the Item 1 path).  It's consumed
+downstream by `workflow_engine.py` (line ~2288), `ai_agent.py`
+(~2816, ~3004, ~4555), and `ai_analysis.py` (~160).  But the key
+was missing from `VALID_STOP_CONDITIONS`, so `validate_directives`
+would log `Unknown stop condition start_with_program` and DROP it.
+Pre-H14.1 this was invisible because validate_directives ran
+BEFORE `_apply_workflow_intent_fallback` (the order:
+extract → validate → fallback-overlay).  The key was added
+post-validation in the LLM path.  But once H14.1 added
+validate_directives to the END of the simple extractor (where the
+fallback overlay runs INSIDE extract_directives_simple before
+returning), `start_with_program` would have been stripped without
+this fix — breaking H14 Item 1.
+
+**Fix (two parts)**:
+
+(a) Added `start_with_program: str` to `VALID_STOP_CONDITIONS`
+(`agent/directive_extractor.py`, line ~1555).  Latent-bug fix: the
+key was already consumed widely downstream; pre-H14.1 it just never
+hit `validate_directives` so the gap went unnoticed.
+
+(b) Modified `extract_directives_simple` signature to take an
+optional `log=None` parameter (backward-compatible with the four
+external callers in `ai_agent.py` and `run_ai_analysis.py` that
+pass single-arg).  Added a final
+`directives = validate_directives(directives, log)` call before
+the return.  This closes the ollama-fallback bypass and makes
+`validate_directives` the canonical final-sanity step for both
+extraction paths — future validator extensions automatically apply
+to both.
+
+**Investigation method**: the gap was discovered by direct
+reproduction.  Given Tom's preprocessed advice text and the
+observed `space_group=Not explicitly mentio` symptom, calling
+`extract_directives_simple(tom_advice)` reproduced the bug; calling
+`validate_directives(simple_result)` on the result dropped the
+value correctly.  The two-step trace pinpointed the missing wiring.
+A broad audit of `extract_directives_simple` output against
+`validate_directives` then surfaced the `start_with_program` issue
+before H14.1 could ship — running validate_directives on results
+from `multi_action_with_stop`, `polder_selection`, and other Item 1
+patterns showed `start_with_program` being silently stripped.
+Without the latent-bug audit, H14.1 would have fixed Item 3 while
+breaking Item 1.
+
+**Test coverage** — 12 K-tests in
+`tests/tst_simple_extractor_validation.py`:
+
+  - §A (2): Tom's exact ollama xtriage case (gate C closure) — verifies
+    `space_group=Not explicitly mentio` is dropped with the canonical
+    `DIRECTIVES: Dropping invalid space_group value` log line, and
+    that other extracted values (resolution=1.7) survive intact
+  - §B (2): Item 1 preservation through validation — explicit MR + stop
+    must set `start_with_program=phenix.phaser` and have it survive
+    validate_directives; the 1029B-sad pattern (goal phrase + stop,
+    no MR keyword) must NOT set start_with_program (n=1 branch)
+  - §C (2): VALID_STOP_CONDITIONS now includes start_with_program;
+    direct validate_directives call preserves the key without the
+    "Unknown stop condition" log line
+  - §D (4): other simple-extractor outputs survive validation —
+    atom_type, max_refine_cycles, skip_programs, valid space_group
+  - §E (1): backward compat — the four external callers in
+    ai_agent.py / run_ai_analysis.py that pass single-arg continue
+    to work
+  - §F (1): validate_directives is idempotent (external code may
+    call validate_directives on results; running it twice must be
+    a no-op)
+
+`tests/tst_simple_extractor_validation.py` (NEW, 12 tests),
+`agent/directive_extractor.py` (VALID_STOP_CONDITIONS extension +
+extract_directives_simple final-validate),
+`tests/canary_expected.json` (agent_version: 119.H14.1),
+`tests/run_all_tests.py` (registers tst_simple_extractor_validation).
+
+VERSION bumped to `119.H14.1`.  `defaults_fingerprint` unchanged at
+`sha256:77bf7421...`.
+
+**What this changes for production**:
+
+  - Gate C now passes for ollama runs: `space_group=Not explicitly
+    mentio` (and any other invalid value the simple extractor's
+    permissive regex captures) is dropped before reaching downstream
+    code.  Tom should re-run his ollama xtriage tutorial to verify;
+    expected log line: `DIRECTIVES: Dropping invalid space_group
+    value: 'Not explicitly mentio'`.
+  - Item 1 fix unchanged (the latent bug fix preserves
+    start_with_program through validation).
+  - Item 2 unchanged.
+  - The MR-SAD-hallucination bug surfaced in Tom's 1029B-sad ollama
+    run (LLM set `use_mr_sad=True` for a SAD-only README) is a
+    SEPARATE issue, candidate for H15.  It's an LLM-prompt-engineering
+    or post-LLM-validation problem, not an H14 problem.
+
+### v119.H14.2 — programs.yaml: predict_and_build does not accept ncs_spec
+
+**Trigger**: Tom's 2026-05-26 1029B-sad ollama production verification
+of H14.1 (run after removing the PDB file from the input directory)
+hit a different failure mode.  With no PDB present, the workflow
+correctly routed to `phenix.predict_and_build` instead of phaser.
+The agent's file auto-discovery found a leftover `find_ncs.ncs_spec`
+file from a previous run and looked up the documented PHIL flag in
+`knowledge/programs.yaml`:
+
+```yaml
+phenix.predict_and_build:
+  inputs:
+    optional:
+      ncs_spec:
+        extensions: [.ncs_spec]
+        flag: "map_model.ncs_file="     # ← stale documentation
+```
+
+The agent emitted that flag, and predict_and_build rejected it
+with `Some PHIL parameters are not recognized by
+phenix.predict_and_build`.  Cycle-level retry re-emitted the same
+bad parameter and the workflow looped.
+
+**Root cause**: per Tom's domain confirmation, predict_and_build
+does NOT accept any NCS-file PHIL parameter (it runs NCS detection
+internally if needed).  The yaml entry was either stale (PHIL
+grammar changed) or never quite right.  No code change was needed,
+only a configuration fix.
+
+**Fix** (purely in `knowledge/programs.yaml`):
+
+  1. Removed the `ncs_spec` block from
+     `phenix.predict_and_build.inputs.optional`
+  2. Removed `{ncs_spec}` from the command template
+  3. Updated `phenix.map_symmetry`'s downstream-consumer hint to
+     drop predict_and_build from the list of programs that consume
+     `.ncs_spec` output
+
+**No code changes.**  The agent's file auto-discovery and PHIL
+emission machinery already does the right thing given the
+configuration — once the yaml stops declaring predict_and_build
+as an ncs_spec consumer, the agent stops trying to pass one.
+
+**Defensive consideration noted but NOT shipped**: a generic
+PHIL-validation-at-command-build-time pass (look up the program's
+master_phil, drop unknown keys with a `DIRECTIVES: Dropping unknown
+PHIL key for <program>` log line) would catch this entire class of
+programs.yaml drift bug at the point of emission rather than at
+program execution time.  Scoped as a candidate for H15 or later.
+The H14.2 ship is the one-line config fix only.
+
+**Test coverage** — 5 K-tests in
+`tests/tst_predict_and_build_no_ncs.py`:
+
+  - §A (3): predict_and_build's inputs.optional no longer contains
+    ncs_spec; command template no longer references {ncs_spec};
+    command template regression guard (sequence/data_mtz/full_map/half_map
+    placeholders still present)
+  - §B (1): map_symmetry's hint no longer advertises predict_and_build
+    as a downstream consumer of .ncs_spec output (or explicitly says
+    it's NOT a consumer)
+  - §C (1): sibling regression guard — resolve_cryo_em's ncs_spec
+    entry remains intact (predict_and_build is the only program
+    being corrected)
+    [v120 CORRECTION: the original wording here claimed "resolve_cryo_em
+    DOES accept `ncs_file=`".  That is WRONG (verified against
+    `phenix.resolve_cryo_em --show_defaults`: no `ncs_file` parameter in any
+    scope).  resolve_cryo_em has NO `ncs_file`; symmetry is passed as
+    `input_files.symmetry_file=...ncs_spec`.  See the v120
+    "resolve_cryo_em never receives ncs_file" entry and ARCHITECTURE §45.]
+
+`knowledge/programs.yaml` (3 surgical edits),
+`tests/tst_predict_and_build_no_ncs.py` (NEW, 5 tests),
+`tests/canary_expected.json` (agent_version: 119.H14.2),
+`tests/run_all_tests.py` (registers tst_predict_and_build_no_ncs).
+
+VERSION bumped to `119.H14.2`.  `defaults_fingerprint` unchanged
+at `sha256:77bf7421...`.
+
+**What this changes for production**: when the 1029B-sad README
+runs with no PDB in the input directory, the workflow no longer
+loops on a rejected PHIL parameter.  Tom can confirm by re-running
+his 1029B-sad ollama test1 directory (after `rm 1029B.pdb*`); the
+predict_and_build command should now omit any `map_model.ncs_file=`
+parameter.
+
+**H15 (production code) — Resume reopen targeted stages**
+`agent/plan_generator.py` (new `reopen_stages_for_directives`
+and `_reopen_stages_inner` helpers),
+`tests/tst_resume_reopen_stages.py` (NEW, 7 tests),
+`tests/canary_expected.json` (agent_version: 119.H15),
+`tests/run_all_tests.py` (registers tst_resume_reopen_stages),
+VERSION.
+
+Trigger: Tom's bromodomain resume failure (run 144).  Three
+compounding causes formed the failure mode:
+1. Bug 1 corrupted `final_refinement.status` to COMPLETE
+2. Resume cleared `gate_stop` but NOT per-stage statuses
+3. Gate immediately re-fired "all stages complete" → LLM
+   saw STATE=complete → chose polder against user intent
+
+H15 Item 1 prevents the corruption going forward.  Item 2
+is the resume safety net: when new advice is provided on
+resume, walk the directives and reopen affected stages.
+
+**Targeted single-stage reopen design** (per Gemini's critique
+of the original blast-radius proposal): rather than reopen
+every stage downstream of the matched program, find the
+LATEST completed stage whose `programs` list contains a
+program named in `directives.program_settings`, and reset
+ONLY that stage to PENDING.  Reset `cycles_used → 0` and
+clear runtime fields (started_at, completed_at, last_result).
+Don't cascade-reset stages downstream; don't reopen earlier
+stages with the same program; skipped stages stay skipped.
+
+This keeps blast radius O(1) regardless of plan size.
+
+The 7 K-tests pin the design contract:
+- §A: Tom's exact scenario
+- §B: No advice change → no-op
+- §C: Directive for unmatched program → no reopen
+- §D: Multiple programs in directives → still O(1)
+- §E: Skipped stages stay skipped
+- §F: Empty plan / empty directives → no-op, no exception
+- §G: Stage's strategy already honors directive — H15 design
+  says reopen anyway (semantic: "user re-asserted intent")
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: when Tom resumes a
+completed bromodomain run with new advice mentioning a
+program inside an earlier stage, only that stage is
+reopened; the rest of the plan stays intact.  The gate no
+longer immediately re-fires "all complete" because at least
+one stage is now PENDING.
+
+**H16 (production code) — MTZ obs_labels auto-fill for
+multi-array MTZ files**
+`agent/mtz_inspector.py` (NEW: `inspect_mtz()`,
+`select_obs_labels_for(program, info)`,
+`has_ambiguous_arrays()`, `_PROGRAM_PREFERENCES` table),
+`knowledge/programs.yaml` (new `auto_fill_obs_labels`
+invariant on xtriage, autosol, phaser, predict_and_build),
+`agent/command_builder.py` (consumer of the new invariant),
+`tests/tst_obs_labels_auto_fill.py` (NEW, 8 tests across
+four layers: policy unit tests, MTZ inspector, builder
+integration simulation, YAML config validation),
+`tests/canary_expected.json` (agent_version: 119.H16),
+VERSION.
+
+Trigger: 88 TIER-1 failures across two batch scans
+(run_25, run_39) matching "Sorry: Multiple equally suitable
+arrays of observed xray data found", concentrated in
+AF_exoV_MRSAD and lysozyme-MRSAD tutorials.  The failure
+mode: the MTZ contains multiple legitimate observation
+arrays (e.g., merged Iobs AND anomalous I(+)/I(-)) and
+PHENIX programs error out unless the user disambiguates
+via `scaling.input.xray_data.obs_labels=` (or equivalent
+per-program PHIL path).  Pre-H16, the LLM had to know to
+inject this parameter manually for every multi-array MTZ;
+when it forgot, the program crashed and the agent treated
+it as an unrecoverable error.
+
+**Three-layer mechanism**:
+
+1. **MTZ inspector** (`agent/mtz_inspector.py`):
+   `inspect_mtz(path)` reads the MTZ via `iotbx.mtz` (cctbx)
+   and returns a dict describing each column group (anomalous
+   intensities, anomalous amplitudes, merged intensities,
+   merged amplitudes, R-free flags, etc.).  Side-effect-free;
+   never raises (returns `{"error": ...}` on file-read
+   failures so the caller can decide).
+
+2. **Per-program preference policy**:
+   `select_obs_labels_for(program, mtz_info)` reads the
+   `_PROGRAM_PREFERENCES` table (e.g., `phenix.phaser` prefers
+   merged for MR; `phenix.autosol` prefers anomalous for SAD)
+   and returns the program-specific obs_labels string to
+   inject.  Returns `None` when no ambiguity exists.
+
+3. **YAML invariant + builder hook**: `programs.yaml` declares
+   `auto_fill_obs_labels: true` on xtriage, autosol, phaser,
+   and predict_and_build.  `command_builder._apply_invariants()`
+   reads the flag, calls `inspect_mtz()` on the relevant
+   `data_mtz` input, calls `select_obs_labels_for()`, and
+   injects the result into the command before execution.
+
+The 8 K-tests cover all four layers: policy unit tests
+(pure functions, no I/O); MTZ inspector tests (cctbx-dependent,
+gracefully skip in sandbox); builder integration simulation
+(mirrors the actual `_apply_invariants()` branch); YAML
+config validation.
+
+H16.1 follow-up (no code change): bumped the scanner version
+pin in `[STEP_1F]` telemetry to `119.H16.1` so production logs
+clearly indicate the obs_labels auto-fill is active.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: the 88 TIER-1
+"Multiple equally suitable arrays" failures no longer fire.
+PHENIX programs receive an explicit obs_labels parameter
+appropriate to their use case (merged for MR, anomalous for
+SAD).  Programs that previously crashed on cycle 1 with the
+ambiguity error now run normally on the user's first attempt.
+
+**H17 (production code) — autobuild PHIB-required reactive
+recovery (analyzer side)**
+`knowledge/recoverable_errors.yaml` (NEW
+`missing_phib_input_map_file` entry),
+`agent/error_analyzer.py` (NEW `strip_flags` field on
+`ErrorRecovery` dataclass; NEW generic `_resolve_strip_parameter`
+handler alongside existing `_resolve_add_parameter` and
+`_resolve_select_value`; `_extract_error_info` returns marker
+dict for strip_parameter errors),
+`tests/tst_error_analyzer.py` (7 new K-tests covering H17
+detection + retroactive resolution of the latent
+`rfree_flags_mismatch` resolution that had been declared in
+YAML but never wired in the analyzer),
+`tests/canary_expected.json` (agent_version: 119.H17),
+VERSION.
+
+Trigger: Tom's lysozyme-MRSAD tutorial cycle 5.  The LLM
+correctly identified MR-SAD as the workflow and ran xtriage
+→ phaser → autosol successfully (Bayes CC 74.20); on cycle 5
+it then called `phenix.autobuild` with the user-supplied
+`lyso2001_scala1.mtz` (raw anomalous MTZ without phases) as
+`map_file=`.  autobuild requires `PHIB` phase columns in
+`input_map_file`/`map_file`; the program crashed with "Sorry,
+PHIB is required for input_map_file"; the agent had no
+recovery template; the workflow halted after four retries.
+
+**The right fix is reactive, not proactive**.  The user-supplied
+`map_coeffs.mtz` is a legitimate input in many workflows (any
+post-phasing build).  Pre-emptively rejecting `map_file=` on
+all autobuild calls would break the legitimate case.  H17
+detects the specific PHIB-required error AFTER it fires and
+strips the offending parameter on retry.
+
+**Strict conjunction detection**: the YAML pattern requires
+BOTH the literal phrase "PHIB is required for input_map_file"
+AND the column-spec context.  Without the conjunction, generic
+"PHIB" mentions in unrelated error messages would false-positive.
+
+**New `strip_parameter` resolution kind**: alongside the
+existing `add_parameter` (adds a flag) and `select_value`
+(disambiguates an enum), H17 introduces `strip_parameter`
+for the case where the right fix is to REMOVE an inappropriate
+flag entirely.  The `strip_parameters` YAML list names the
+PHIL paths to strip (e.g., `[map_file, input_map_file,
+input_files.map_file]` — three aliases for the same input
+slot).
+
+**Retroactive side benefit**: `rfree_flags_mismatch` had been
+declared in `recoverable_errors.yaml` for months but never
+wired in the analyzer (it would never trigger).  H17's
+generic `_resolve_strip_parameter` handler retroactively
+resolves that error type too.
+
+Gemini's critique on the H17 plan recommended a robust regex
+for the strip operation: `r'(?:^|\s)' + re.escape(flag_prefix)
++ r'\s*=\s*(?:"[^"]*"|\'[^\']*\'|\S+)'` to handle
+quoted-with-spaces and PHIL spacing.  H17 plan adopted; H17.1
+implements the regex in the executor.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**H17.1 (production code) — Executor-side strip_flags wiring
+(completes H17)**
+`programs/ai_agent.py` (three edits: `_handle_recovery` stashes
+strip_flags; `_execute_command` pops and applies; new helper
+`_print_recovery_notice` shows "Action: Stripping [...]"),
+`tests/tst_h17_strip_executor.py` (NEW, 9 tests pinning the
+regex pattern against PHIL/quoted/end-of-line variants),
+`tests/canary_expected.json` (agent_version: 119.H17.1),
+VERSION.
+
+Pre-deploy review of H17 surfaced Scenario B: the analyzer
+emits ErrorRecovery with `strip_flags` populated and the
+`[NOTICE]` log fires, but the executor never actually strips
+the flag from the retry command.  H17 was analyzer-side only;
+H17.1 closes the executor gap.
+
+Three edits to `programs/ai_agent.py`:
+
+1. **`_handle_recovery`** (~line 3602): when `recovery.strip_flags`
+   is non-empty, stash the entry in
+   `session.data["pending_strip_recoveries"]` keyed by program
+   name.  Preserves the existing `set_recovery_strategy` call
+   for backward compat with `add_parameter` recoveries (which
+   don't need executor support — they're injected via the
+   existing strategy mechanism).
+
+2. **`_execute_command`** (~line 5694): at the top of the method,
+   pop any pending entry for the current program.  If present,
+   apply the robust regex (per Gemini's critique) to strip
+   each flag prefix.  Emit `[STRIP]` log line.  One-shot via
+   `pop()` — the entry is consumed on use so a subsequent
+   retry doesn't re-strip.
+
+3. **`_print_recovery_notice`** (~line 3783): show "Action:
+   Stripping [map_file, input_map_file, input_files.map_file]"
+   instead of the awkward "Selecting ''" for strip recoveries.
+
+The 9 K-tests in `tst_h17_strip_executor.py` pin the regex
+pattern itself.  If the pattern is changed in `ai_agent.py`,
+the test file's reference implementation must be updated
+in lockstep.  The tests cover: basic, PHIL spacing (spaces
+around `=`), double-quoted, single-quoted, end-of-line
+(no trailing whitespace), the exact lysozyme command, all
+three PHIL variants in sequence, a false-positive guard
+(substring of a different flag name), and idempotence
+(running the strip twice doesn't corrupt the command).
+
+Validated end-to-end on Tom's lysozyme-MRSAD:
+- Cycle 1: xtriage `ambiguous_data_labels` recovery (pre-H17
+  mechanism, still works)
+- Cycle 2: xtriage SUCCESS
+- Cycles 3-4: phaser SUCCESS (LLG 95.0), autosol SUCCESS
+  (Bayes CC 74.20)
+- Cycle 5: autobuild FAILED with PHIB error → H17 fires
+  `[NOTICE] DETECTED RECOVERABLE ERROR` with "Action:
+  Stripping [map_file, input_map_file, input_files.map_file]"
+- Cycle 6: `[STRIP] phenix.autobuild: removed 'map_file=...'
+  from retry command (recovery: missing_phib_input_map_file)`
+  followed by `Running:` (no map_file= in command), autobuild
+  SUCCESS.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+(Note: cycles 7-10 then thrashed on a separate post-autobuild
+issue — bad metrics parsing "Residues Built: 5220629854239855"
+and state-machine over-reaction to R-free=0.52.  Booked as
+separate issue, not H17.)
+
+**What this changes for production**: the lysozyme-MRSAD
+tutorial completes through autobuild without halting at the
+PHIB error.  The reactive recovery infrastructure (YAML +
+analyzer + executor) now supports three resolution kinds:
+add_parameter, select_value, strip_parameter.
+
+**H18 (production code) — File-based experiment-type
+detection as primary signal**
+`agent/file_utils.py` (NEW public helper
+`infer_experiment_type_from_files()`),
+`agent/directive_extractor.py` (files-first detection in BOTH
+`_apply_experiment_type_program_reprints` AND
+`_resolve_after_program`; `extract_directives()` accepts
+`original_files` kwarg; `_apply_workflow_intent_fallback()`
+threads files through),
+`agent/plan_generator.py` (`_build_context` delegates to
+shared helper for single source of truth),
+`programs/ai_agent.py` (passes file inventory to extraction
+via new PHIL param),
+`programs/ai_analysis.py` (NEW PHIL param
+`original_files_for_directives`; threaded through
+`_run_directive_extraction_locally` and the args-builder),
+`phenix_ai/run_ai_analysis.py` (`run_directive_extraction()`
+accepts `original_files`; passes to `extract_directives()`),
+`tests/tst_density_modify_experiment_type.py` (extended 13 →
+20 tests; K14-K20 cover H18 surface),
+`tests/canary_expected.json` (agent_version: 119.H18),
+VERSION.
+
+Trigger: Tom's AF_7mjs density-modify-and-stop regression
+(distinct from the v118.9 §20 bug, surfaced after H17.1
+deployed).  User wrote literally "density modify and stop"
+with cryo-EM half-map inputs (`.ccp4` files, no `.mtz`); the
+extractor produced `after_program=phenix.autobuild_denmod`
+(the X-ray density-modification program); the §20 correction
+was supposed to map this to `phenix.resolve_cryo_em` for
+cryo-EM data but its text-only
+`_detect_experiment_type_signals` returned None ("ambiguous,
+decline to act") because the terse user text "density modify
+and stop" has neither cryo-EM nor X-ray tokens.  The LLM
+downstream then saw the wrong `after_program` in VALID
+PROGRAMS, recognized it couldn't actually run (cryo-EM has
+no MTZ), and selected `phenix.predict_and_build` as "the
+next logical step" — overriding the user's explicit "stop"
+instruction.
+
+**Root cause**: §20's correction relied on text-based
+detection alone.  For terse advice, text gives no signal,
+and the file inventory (the unambiguous evidence) was never
+inspected.  ARCHITECTURE.md §17 documents that
+`session.set_experiment_type()` only locks AFTER the first
+program returns — so at directive-extraction time, the
+locked experiment_type is None and the validator had to
+infer one.  ARCHITECTURE.md §3.3 already proposed inferring
+experiment type from file extensions at session creation;
+H18 is the smallest first step in that direction.
+
+**New public helper**: `agent/file_utils.py` gains
+`infer_experiment_type_from_files(files) -> (type,
+evidence_dict)`.  Returns "xray" for files with `.mtz/.sca/.hkl`
+extensions alone, "cryoem" for `.mrc/.ccp4/.map` alone, and
+None for mixed or empty inputs.  The asymmetric semantics
+match the existing `_detect_experiment_type_signals` policy.
+Evidence dict carries the unique extensions seen and an
+`is_mixed` flag for telemetry.
+
+**Detection priority (locked policy)** — applied identically
+in both correction sites:
+```python
+target_type = None
+if original_files:
+    file_type, evidence = infer_experiment_type_from_files(original_files)
+    target_type = file_type   # files-win on conflict
+
+if target_type is None:
+    text_type = _detect_experiment_type_signals(combined_advice)
+    target_type = text_type
+
+if target_type is None:
+    return directives  # decline to act
+```
+
+Files-win is the policy per Gemini's H18 review: file
+extensions are the hard physical boundary (passing `.ccp4`
+to an X-ray-only program crashes at parse time regardless
+of what the user wrote); text-based detection has known
+false-positive vectors ("mad" in "modify", "sad" in
+arbitrary sentences).
+
+**Two correction sites needed the fix**.  H18 rev 1
+implemented files-first only in
+`_apply_experiment_type_program_reprints` (§20's site).
+During the merge into Tom's existing
+`tst_density_modify_experiment_type.py` suite, K14 (the
+exact AF_7mjs failing case) revealed a second silent-revert
+site: `_resolve_after_program` (the v115.10 post-LLM
+overlay) had its own text-only experiment-type heuristic
+that defaulted `_exp="xray"` for terse advice and
+unconditionally overrode `after_program`.  H18 rev 2 fixes
+both sites identically.
+
+**Telemetry (Pitfall 2 — Silent Override Hazard)**: the
+enriched `[DIRECTIVE_CORRECTION]` marker records
+`source=files|text`, `evidence=['.ccp4', ...]`, and
+`text_signal=xray, OVERRIDDEN` (when files override
+contrary text).  Example:
+```
+[DIRECTIVE_CORRECTION] Mapped after_program=phenix.autobuild_denmod
+  to phenix.resolve_cryo_em (source=files, target_type=cryoem,
+  evidence=['.ccp4'], text_signal=xray, OVERRIDDEN)
+```
+
+**Telemetry (Pitfall 1 — Dirty Directory Poisoning)**:
+long-running sessions that MERGE files across cycles (per
+`Session.set_project_info` documented in session.py:494-510)
+could accumulate both `.mtz` and `.ccp4`, pushing detection
+into "mixed → None" state.  A new
+`[DIRECTIVE_CORRECTION_MIXED]` log marker fires when both
+types are detected, making accumulated-files drift visible
+in audit logs.  In practice this is a non-issue for the
+AF_7mjs bug path because directive extraction is gated by
+`directives_extracted=True` (only fires on initial
+extraction, before any cycle has run), but the telemetry
+is there defensively.
+
+**Single source of truth**: `agent/plan_generator._build_context`
+was refactored to call the new shared helper.  Previously
+it had its own private file-extension mapping at lines
+232-236; H18 routes it through `infer_experiment_type_from_files`
+so plan_generator and directive_extractor cannot drift
+apart on detection behavior.
+
+The 7 new K-tests in `tst_density_modify_experiment_type.py`
+(K14-K20) extend the existing 13 §20 tests to a 20-test
+suite covering both v118.9 §20 and v119.H18:
+- K14: AF_7mjs failure verbatim — terse advice + cryo-EM
+  files → corrected via files (source=files)
+- K15: Mirror — terse advice + X-ray files
+- K16: Backward compat — no files → text fallback still
+  corrects (source=text)
+- K17: Pre-H18 bug path — no files + terse text → declines
+  (proves H18 requires file threading)
+- K18: Files-win on conflict + OVERRIDDEN telemetry
+- K19: Mixed input → defers to text + emits
+  `[..._MIXED]` marker
+- K20: plan_generator delegates to shared helper
+
+All 20 tests pass.  Full sandbox sweep: 227 PASS, 22 SKIP,
+no regressions.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**Backward compatibility**: `original_files` parameter is
+optional with default `None` at every signature change
+(`extract_directives`, `_apply_experiment_type_program_reprints`,
+`_resolve_after_program`, `_apply_workflow_intent_fallback`,
+`run_directive_extraction`).  Pre-H18 callsites without files
+get exact pre-H18 behavior — text-only detection.
+
+**What this changes for production**: AF_7mjs "density
+modify and stop" + cryo-EM files now correctly:
+1. Files detector identifies cryoem from `.ccp4`
+2. After_program is corrected to `phenix.resolve_cryo_em`
+3. `[DIRECTIVE_CORRECTION]` log shows `source=files`
+4. Stop check fires after `resolve_cryo_em` completes
+5. Agent halts honoring user intent; no `predict_and_build`
+
+**H18.1 (production code) — PHIL declaration deploy-gap hotfix**
+`programs/ai_agent.py` (+14 lines: new `original_files_for_directives`
+declaration in `master_params` after `user_advice_raw`),
+`tests/tst_h18_1_phil_roundtrip.py` (NEW, 6 K-tests),
+`tests/run_all_tests.py` (registers the new test),
+`tests/canary_expected.json` (agent_version: 119.H18.1),
+VERSION.
+
+Trigger: Tom re-ran AF_7mjs with H18 deployed.  All sandbox
+tests passed.  Production still ran `predict_and_build` on
+cycle 3 instead of stopping after `resolve_cryo_em`.  The log
+showed:
+
+```
+DIRECTIVES: Extraction failed - Assignment to non-existing
+  attribute "ai_analysis.original_files_for_directives"
+  File ".../programs/ai_agent.py", line 8513, in _extract_directives
+    directive_params.ai_analysis.original_files_for_directives = (
+```
+
+**Root cause**: H18 added the PHIL parameter declaration to
+`programs/ai_analysis.py` (the analysis server's master_phil)
+and added the assignment site at `programs/ai_agent.py:8513`,
+but DID NOT add the PHIL declaration to `programs/ai_agent.py`'s
+OWN `master_params` string (defined at line 144).
+`directive_params = copy.deepcopy(self.params)` copies the
+agent's params, which are parsed against the agent's
+master_params — so the assignment failed.  The crash was
+caught by the surrounding try/except in `_extract_directives`
+and directive extraction silently returned `{}`.  The agent
+then ran with no user-supplied `after_program`, no
+`stop_after_requested`, falling back to the default cryo-EM
+plan template: cycle 1 mtriage, cycle 2 resolve_cryo_em,
+cycle 3 `phenix.predict_and_build` (Stage 3 of the plan).
+
+**Why H18's 20 K-tests passed despite the production failure**:
+the existing tests in `tst_density_modify_experiment_type.py`
+call helpers directly with Python dicts.  They never exercise
+the PHIL parse → deep-copy → assign path.  The bug was
+entirely in the PHIL layer, which the tests bypassed.
+
+**The fix**: add the missing PHIL declaration to
+`programs/ai_agent.py`'s `master_params` string, mirroring
+the declaration already in `programs/ai_analysis.py`.  No
+code logic changes.
+
+**Preventive K-test pattern**:
+`tests/tst_h18_1_phil_roundtrip.py` adds 6 K-tests:
+
+1. **Source-grep verification** (sandbox-safe): confirms the
+   PHIL declaration is present in `ai_agent.py`'s
+   `master_params` region.  Runs anywhere, no libtbx
+   required.
+2. **PHIL parse + extract** (PHENIX-only, skips in sandbox):
+   actually calls `libtbx.phil.parse()` on the extracted
+   master_params and confirms `extract()` produces an object
+   with the new attribute.
+3. **Assignment reproduction** (PHENIX-only): deep-copies the
+   extracted params and performs the exact assignment that
+   crashed in production.  Must succeed.
+4. **Server-side definition present**: confirms
+   `programs/ai_analysis.py` still has the matching PHIL
+   declaration.  Guards against fixing one side and
+   accidentally regressing the other.
+5. **Assignment site anchor**: confirms the assignment is
+   still at the expected location in `ai_agent.py`.
+   Catches refactors that would move the call site without
+   updating the test.
+6. **Cross-file consistency**: same parameter name in both
+   files.  Catches typo divergence.
+
+Validated by temporarily reverting H18.1's PHIL block and
+confirming test 1 fails with a clear message identifying
+the deploy gap.  Restored — all 6 pass.
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: AF_7mjs is finally
+fixed.  The PHIL assignment in `_extract_directives` succeeds,
+`original_files_for_directives` is threaded to the directive
+extractor, the experiment-type correction fires, and the
+agent stops after `resolve_cryo_em` as the user requested.
+
+**Lesson** (in DEVELOPER_GUIDE.md §3j + new lesson section):
+this codebase has two independent master_params blocks
+(`programs/ai_agent.py` and `programs/ai_analysis.py`).
+Adding a parameter to one does NOT propagate to the other.
+For any new PHIL parameter that flows client → server, BOTH
+declarations must be added in the same commit, with mirroring
+`.help` comments, and the PHIL-roundtrip K-test pattern
+applied to catch the deploy gap at sandbox time.
+
+**H18.2 (production code) — third `_resolve_after_program`
+callsite missed in H18 audit**
+`agent/directive_extractor.py` (+13 lines: pass
+`original_files=original_files` to the v117.2 fallback
+callsite at line 796, plus comment explaining the H18.2
+rationale),
+`tests/tst_density_modify_experiment_type.py` (+200 lines: K21
+production reproduction, K22 X-ray mirror, K23 backward-compat
+no-files path),
+`tests/canary_expected.json` (agent_version: 119.H18.2),
+VERSION.
+
+Trigger: Tom re-ran AF_7mjs with the H18.1 hotfix deployed and
+a runtime tracer installed (`h18_install_runtime_tracer.py`
+patches the deployed `directive_extractor.py` in-place with
+`[H18_TRACE]` markers at every key decision point in the
+pipeline).  The trace revealed the exact failure mode:
+
+```
+[H18_TRACE] extract_directives ENTRY:
+  raw_advice='User instructions:\ndensity modify and stop'
+  original_files=['7mjs_23883_H_1.ccp4', '7mjs_23883_H_2.ccp4',
+                  '7mjs_23883_H.fa']
+[H18_TRACE] CALLING _apply_experiment_type_program_reprints:
+  after_prog=None
+[H18_TRACE] _apply_reprints: after_prog=None
+  stop_cond={'stop_after_requested': True}
+[H18_TRACE] _apply_reprints EARLY RETURN: no after_prog
+[H18_TRACE] AFTER _apply_experiment_type_program_reprints:
+  after_prog=None
+[H18_TRACE] before _apply_workflow_intent_fallback:
+  stop_conds={'stop_after_requested': True,
+              'after_program': 'phenix.autobuild_denmod',
+              'skip_validation': True}
+```
+
+`after_program` was None when H18's first site ran (correct,
+since the LLM didn't emit it), then was SET to the wrong value
+by the time the second site ran.  Something BETWEEN the two
+H18 sites was setting `phenix.autobuild_denmod`.
+
+**Root cause**: a v117.2 fallback path at
+`directive_extractor.py:783` fires when the LLM emits
+`stop_after_requested=True` but omits `after_program`.  It calls
+`_resolve_after_program` to fill in the missing field by parsing
+the raw advice:
+
+```python
+# Pre-H18.2:
+_resolve_after_program(directives, _v172_source.lower())
+#                                                       ↑
+#                                       MISSING: original_files
+```
+
+Without `original_files`, `_resolve_after_program` defaulted
+`_exp="xray"` via the text-only heuristic (raw advice "density
+modify and stop" has no cryo-EM/X-ray tokens) and mapped
+`denmod` → `phenix.autobuild_denmod`.
+
+The downstream `_apply_workflow_intent_fallback` DOES pass
+`original_files` (H18 site 2 was correctly updated).  But at
+that point the preprocessed advice contains "Stop Condition:
+None", so `_is_stop_after_requested(advice)` returned False.
+This pushed the resolver into the
+"n==1, no stop → leave as-is" branch — the buggy
+`after_program` from the v117.2 path persisted.
+
+**Why H18's audit missed this**: H18 identified TWO callsites
+billed as "experiment-type detection" sites
+(`_apply_experiment_type_program_reprints` and
+`_apply_workflow_intent_fallback`).  The v117.2 fallback was
+billed differently — as a "fill in the missing field" site.
+Internally it called the same `_resolve_after_program` function
+with the same files-win contract, but the label was different,
+so the H18 grep audit didn't include it.
+
+**The fix is one line** at the v117.2 callsite:
+
+```python
+# Post-H18.2:
+_resolve_after_program(directives, _v172_source.lower(),
+                       original_files=original_files)
+```
+
+Plus a comment explaining the H18.2 rationale.
+
+**After H18.2, all three `_resolve_after_program` callsites in
+`extract_directives` pass `original_files`**:
+
+```
+$ grep -n "_resolve_after_program(" agent/directive_extractor.py \
+       | grep -v "^.*def "
+796:  _resolve_after_program(directives, _v172_source.lower(),
+                            original_files=original_files)  # ← H18.2
+4371: _resolve_after_program(directives, advice_lower,
+                            original_files=original_files)  # ← H18 (workflow_intent)
+```
+
+The fourth callsite in `extract_directives_simple` (line 4920)
+doesn't take files by design (rules-only path).  Out of scope.
+
+**Preventive K-tests**:
+
+- **K21**: AF_7mjs production reproduction.  Mocked LLM returns
+  the exact directive shape Tom's production LLM produced
+  (`{"stop_conditions": {"stop_after_requested": true}}` — no
+  `after_program`).  Cryo-EM files.  Expected:
+  `after_program=phenix.resolve_cryo_em` via the v117.2 fallback
+  using H18.2's `original_files` threading.
+- **K22**: X-ray mirror.  LLM omits `after_program`; X-ray files
+  (.mtz).  Expected: `after_program=phenix.autobuild_denmod`
+  (the correct X-ray choice).
+- **K23**: Backward compat.  `original_files=None`; text-only
+  cryo-em signal in raw advice.  Expected:
+  `phenix.resolve_cryo_em` via the text-fallback branch of
+  `_resolve_after_program`.
+
+All 23 tests in `tst_density_modify_experiment_type.py` pass
+(13 original §20 tests + 7 H18 tests + 3 H18.2 tests).
+
+`defaults_fingerprint` unchanged at `sha256:77bf7421...`.
+
+**What this changes for production**: AF_7mjs "density modify and
+stop" with cryo-EM files finally works correctly:
+- Cycle 1: mtriage → SUCCESS
+- Cycle 2: resolve_cryo_em → SUCCESS
+- Cycle 3: **STOP** (after_program=phenix.resolve_cryo_em matched,
+  stop_after_requested=True)
+
+NO predict_and_build in cycle 3.
+
+**Lesson** (in DEVELOPER_GUIDE.md): when adding an optional
+parameter to a function, grep for ALL callsites of that function
+regardless of what the surrounding code is "doing".  The
+parameter's contract is part of the function's identity; every
+caller must opt in or the bug travels through the callers that
+didn't.  H18 grepped for two billed-as-"experiment-type-detection"
+sites and missed a third site billed as
+"fill-in-missing-field" — same function, same parameter, same
+contract, different label.
+
+The K-test pattern that catches this class of bug is
+production-faithful end-to-end: mock the LLM with the exact shape
+production emits, run the full `extract_directives()` pipeline,
+assert on the final state.  This catches every internal site that
+touches the parameter because it tests behavior at the
+entry-point contract, not at any individual function.  K21 follows
+this pattern.
+
+### Architectural notes
+
+**Zero modifications to existing production code paths in H1–H3.**
+H1 centralizes; H2 channels; H2.1 promotes; H3 observes.  None of
+those four ships touches the workflow_engine, the metric_evaluator,
+the LangGraph pipeline, or any other component on the live
+decision path.  The K-suites for H2/H2.1/H3 explicitly verify
+this with regression assertions against H1.
+
+**H4 onwards: server-side instrumentation only, no decision-path
+changes.**  H4 adds `[STEP_1F]` emission inside
+`run_advice_preprocessing` after preprocessing completes — pure
+telemetry, doesn't alter what advice is produced.  H5 and H5.1
+add the `diagnostic_messages` list to `working_results` and
+thread it through return paths; the list never feeds back into
+any decision.  K_H5 §B `test_*_field_in_return_path` tests pin
+that the field has no side effect on `directives`,
+`processed_advice`, or `diagnosis_text`.
+
+**The "graceful skip" pattern, generalized.**  K_H1 introduced
+`_try_import_*()` helpers that return `(value, None)` on success
+or `(None, error_msg)` on ImportError, letting tests skip
+cleanly in sandbox while running fully under PHENIX.  K_H2/H2.1/H3/H4/H5
+all adopt this pattern.  Sandbox runs report mixed PASS/SKIP;
+PHENIX runs report all PASS.  This makes pre-ship verification
+possible without requiring a PHENIX environment for every
+edit-cycle.
+
+**Gemini-reviewed plan rev cycles.**  Each ship went through
+2–5 plan revs incorporating Gemini critique before
+implementation.  H3 in particular: Gemini contributed the
+shared loader factoring (Q5), the dedicated `CANARY_PING`
+marker (Q2), the "stay loose" assertion threshold for the LLM
+probe (Q3), and the strict client-side timeout recommendation
+(later relaxed from 5s to 30s after Tom observed false-positive
+timeouts on real network latency).  H5 hit 5 plan revs; rev 5
+corrected a uniformity-criterion violation in rev 4 (removed
+dispatch-mode branch in client behavior).  H5.1 plan rev 2
+centralized the re-emit (backported to H5 since H5 hadn't
+deployed to server yet) — the centralization saved the planned
+H5.1 client-side edits entirely.
+
+**Self-review on fresh extract.**  H2/H2.1/H3 reviews caught
+stale line-number references, unused imports, and an incorrect
+import path (`phenix_ai.X` vs the correct
+`phenix.phenix_ai.X` — phenix_ai lives in the phenix-project
+source tree, not the langchain tree).  H5.1 review after the
+`run_utils.py` audit changed the test strategy: invalid-provider
+injection wouldn't trigger the new markers because
+`validate_api_keys` silently passes unknown providers and
+`setup_llms` swallows its own exceptions.  Switched to
+deterministic monkey-patching with the Gemini Q2 dual-assertion
+mitigation.
+
+### Files changed (cumulative)
+
+| File | Ship |
+|---|---|
+| `VERSION` | H2 (new), H3 (→119.H3), H4 (→119.H4), H4.1 (→119.H4.1), H5 (→119.H5), H5.1 (→119.H5.1), H5.1.1 (→119.H5.1.1) |
+| `core/_version.py` | H2 (new) |
+| `core/_build_info.py` | H2 (new) |
+| `core/llm.py` | H1 (DEFAULTS tables + helpers), H2 (+fingerprint) |
+| `agent/api_client.py` | H1 (uses default_model_for_provider) |
+| `agent/directive_extractor.py` | H1 (uses defaults), H2.1 (+skip promotion), H5.1.1 (+sidecar protection in merge_directives, +type-gated bool unwrap at two validate_directives sites) |
+| `agent/raw_advice_scanner.py` | H4 (new), H4.1 (pinned vs corpus) |
+| `knowledge/api_schema.py` | H2 (+agent_build schema) |
+| `phenix_ai/run_ai_agent.py` | H2 (+inject_agent_build) |
+| `phenix_ai/run_ai_analysis.py` | H4 (+[STEP_1F] emission), H5 (+_emit_marker helper, diagnostic_messages in run_advice_preprocessing), H5.1 (+diagnostic_messages in run_directive_extraction and run_failure_diagnosis), H7 (+scanner-first extraction + recall metrics + telemetry-independent LLM call for [STEP_1F]) |
+| `programs/ai_analysis.py` | H5 (+ encode/decode, Total Init, _relay helper, centralized re-emit, local-mode passthroughs), H5.1 (+passthroughs in directive_extraction_locally and failure_diagnosis_locally) |
+| `tests/test_api_keys.py` | H1 (uses defaults) |
+| `tests/tst_default_models.py` | H1 (new) |
+| `tests/tst_agent_build_info.py` | H2 (new) |
+| `tests/tst_skip_promotion.py` | H2.1 (new) |
+| `tests/canary_expected.json` | H3 (new), H4/H4.1/H5/H5.1/H5.1.1/H6/H6.1/H7 (version sync each ship) |
+| `tests/canary_utils.py` | H3 (new) |
+| `tests/tst_canary.py` | H3 (new) |
+| `tests/step_1f_corpus.json` | H4 (new), H4.1 (frozen at 31 docs) |
+| `tests/tst_raw_advice_scanner.py` | H4 (new), H4.1 (+golden-master test) |
+| `tests/tst_diagnostic_messages.py` | H5 (new, 21 tests across 5 sections), H5.1 (+§F, →26 tests) |
+| `tests/tst_directive_validation.py` | H5.1.1 (new, 23 tests across §A merge protection + §B list-wrap defense) |
+| `tests/llm/framework.py` | H3b (initial framework with stubs), H6 (4 stubs replaced with real implementations + raw_output preservation fix), H6.1 (+ per-scenario fail/err suffix) |
+| `tests/tst_planning_framework.py` | H6 (new K_H6, 18 tests across §A is_stop_intent + §B validate_planning_state + §C make_planning_run_fn + §D call_planning_llm raw_output preservation) |
+| `tests/tst_phase2b_activation.py` | H7 (new K_H7, 15 tests across §A scanner contract + §B fallback semantics + §C recall metrics + §D integration smoke incl. source-level regression pins) |
+| `tests/llm/tst_directive_extraction.py` | H3 (+canary Scenario), H5.1 (probe text fix) |
+| `tests/llm/canary_check.py` | H3 (new), H5.1 (probe text fix) |
+| `tests/run_all_tests.py` | H1, H2, H2.1, H3, H4, H5, H5.1, H5.1.1, H6, H7 (K-suite registrations) |
+| `docs/DEVELOPER_GUIDE.md` | H2 (§8 protocol version 3→5) |
+
+Note on `programs/ai_agent.py`: **never modified** in the v119
+cluster.  Two architectural properties confirm this:
+- For H5/H5.1: the centralized re-emit in
+  `programs/ai_analysis.py::run_job_on_server_or_locally`
+  means adding new markers to engine functions requires NO
+  client-side changes.  H5.1 added three new markers without
+  touching `ai_agent.py`.
+- For H5.1.1: the sidecar-protection fix lives inside the
+  shared `merge_directives` helper; both callers
+  (`run_ai_analysis.py:1276` and `ai_agent.py:8376`) inherit
+  the fix automatically.
+
+### Verification
+
+Under PHENIX (verified on Tom's Mac, end of H7):
+- K_H1 (Default Models): 22 PASS (+1 SKIP under sandbox; 23 under PHENIX)
+- K_H2 (Agent Build Info): 24 PASS
+- K_H2.1 (skip_programs Promotion): 11 PASS
+- K_H3a (Startup Canary): 3 PASS (+7 SKIP under sandbox; 10 under PHENIX — VERSION reads 119.H7; lockstep verified)
+- K_H4 (Raw Advice Scanner + STEP_1F): 31 PASS (golden-master recall 0.9810 preserved through H7's scanner-first switch)
+- K_H5 (Diagnostic Messages Channel): 13 PASS (+13 SKIP under sandbox; 26 under PHENIX)
+- K_H5_1_1 (Directive Validation Cleanups): 23 PASS
+- K_H6 (Planning Framework): 18 PASS (sandbox-side §D mock tests SKIP under PHENIX where libtbx import wins the race; same mechanic pinned by sandbox version)
+- K_H7 (Phase 2B Activation): 15 PASS
+
+Total v119-cluster K-tests after v119.H7: **181 PASS under
+PHENIX** (sandbox runs report mixed PASS/SKIP; PHENIX runs
+report all PASS).
+
+Plus the 126 pre-v119 K-suite modules in `run_all_tests.py`,
+all continuing to PASS as regression checks.  Total module
+count: **135 modules, 135 PASS, 0 FAIL** on Mac end-of-H7.
+
+**Test-count correction note:** Earlier ship docs (through
+H5.1.1 and H6) reported cumulative v119-cluster counts with
+a ~7-test arithmetic drift (155 post-H5.1.1, 173 post-H6,
+188 first-draft post-H7).  The verified-correct counts
+above sum to 181; this is the authoritative number going
+forward.
+
+Operator-invoked / live LLM tests verified on Mac (end of H7):
+- `tests/llm/canary_check.py` (H3b orchestrator) — verified
+  end-to-end with both Google AND OpenAI providers.
+- `tests/llm/tst_directive_extraction.py` — all 7 scenarios ×
+  2 providers = **14 PASS**.  File-detection-sensitive
+  scenarios (`resolution_and_space_group`, `skip_programs`)
+  pass after H7's scanner-first switch — Q2-strict preserved
+  the consumer contract.
+- `tests/llm/tst_planning.py` (NEW, exercised via H6's
+  framework implementations) — 8 scenarios × 2 providers =
+  **16 PASS**.  Early-stopping at threshold; no failures
+  observed.  First reliability testing of the planning LLM.
+
+**Cumulative live LLM test count after H7: 30 PASS
+(14 directive_extraction + 16 planning), 0 FAIL, 86 LLM
+calls, ~12 minutes wall-clock.**
+
+### Deployment status
+
+| Ship | Server (ai.phenix-online.org) | Mac (development) |
+|---|---|---|
+| H1, H2, H2.1, H3, H4, H4.1 | Deployed | Installed and verified |
+| **H5** | Not yet deployed | Verified end-to-end |
+| **H5.1** | Not yet deployed | Verified (K-suite + 14/14 directive_extraction live) |
+| **H5.1.1** | Not yet deployed | Verified (+23/23 K_H5_1_1) |
+| **H6** (test-only) | N/A (no server-visible changes) | Verified (+18/18 K_H6 + 16/16 planning live) |
+| **H6.1** (test-only) | N/A (no server-visible changes) | Verified (output formatting only) |
+| **H7** | Not yet deployed | **Verified (+15/15 K_H7 + 30/30 live LLM still PASS, 135/135 K-modules)** |
+
+Recommended sequencing for server deployment of the
+production-code ships:
+H5 → H5.1 → H5.1.1 → H7 (each independent and rollback-safe;
+combined deploy also safe).  H6 and H6.1 affect only `tests/`
+files and don't need server deployment.
+
+H5/H5.1/H5.1.1 are in `tests/` and `phenix_ai/` (plus
+`programs/ai_analysis.py` for the relay channel).  H7 is
+entirely in `phenix_ai/run_ai_analysis.py` (production
+code) plus its K-suite.  Different code paths, safe to
+combine or sequence in any order.
+
+### v120 outlook
+
+The v119 cluster completes the operational-hardening agenda from
+`v118_next_steps_consolidated_rev4.md` §4.7B with the addition of
+the H4 telemetry-marker, H5 relay-channel, H5.1.1 directive-
+extractor cleanups, H6 planning-suite framework, and H7
+Phase 2B scanner-first activation that weren't in the original
+§4.7B list.  Deferred §14 items: auto-startup canary in
+production (§14.1), Anthropic RAG branch (§14.3),
+history_record propagation of agent_build (§14.5).
+
+**Major v119 outcomes (now done):**
+- ✓ **Phase 2A** (H6): planning-LLM reliability testing
+  framework.  16 planning scenarios PASS across both providers.
+- ✓ **Phase 2B Scope B** (H7): scanner-first file extraction
+  with LLM fallback.  Deterministic file detection for the
+  consumer at `programs/ai_agent.py:8128`.
+
+**Outstanding for v119.H5.x or v120:**
+- **H5.2 (queued, not started)** — extend the diagnostic_messages
+  channel to three more stderr-only markers in
+  `agent/directive_extractor.py`:
+  `[DIRECTIVE_EXTRACTION_FAILED]` (inner — fires on transient
+  LLM-call exceptions caught and returning `{}`),
+  `[DIRECTIVE_EXTRACTION_MODEL_RETIRED]`, and
+  `[DIRECTIVE_CORRECTION]`.  Per Tom's choice, let H5/H5.1 bake
+  in production first to validate the channel design with real
+  failures before extending.
+- **Phase 2B Scope C** — kill the LLM preprocessor entirely.
+  H7 captured most of Phase 2B's value (deterministic file
+  detection); Scope C's primary value is latency reduction
+  (~5-15s per request saved).  Needs corpus testing that
+  directive extraction quality is preserved when fed raw
+  advice instead of structured-section advice.
+- **Pre-existing libtbx-only imports** (§3.11 in next_steps) —
+  consistency sweep across the codebase for the libtbx →
+  relative fallback pattern that H5+ / H6 / H7 uniformly use.
+
+v120 is also expected to pursue prompt consolidation for
+directive extraction (the natural pair to H1's model-name
+centralization) and possibly Direction A (the single-call
+structured extraction that would collapse preprocessor +
+extractor + planner — referenced at the end of the v118
+entry).  Specific direction TBD; scope shrinks if Phase 2B
+Scope C succeeds.
 
 ---
+
+## Version 118 (Preprocessor resilience + operational hardening)
+
+### Summary
+
+v118 is a 12-layer cumulative release addressing a class of bugs
+surfaced in the 2026-05-19 production logs (AIAgent_240/241/243/245)
+and follow-up reports through 2026-05-21.  The layers are
+independent fixes that share the architectural pattern
+"strengthen the directive pipeline against LLM-shape and
+provider-asymmetry variance":
+
+```
+v117.3 → A → C-prime → B → E → F → 5.1 → G → 6.1-6.7 → 8 → 9 → 10
+```
+
+Each layer ships with its own test suite using the mock-LLM
+pattern from `tst_after_program_fill_from_raw.py`.  Total
+sandbox tests after v118.10: 204/204 passing.
+
+### Per-layer breakdown
+
+**Section A (client) — File-list preservation**
+`agent/advice_preprocessor.py`,
+`programs/ai_agent.py`,
+`tests/tst_preprocessor_file_override.py`.  Preserves the input
+file list across the preprocessor's text-vs-context round-trip
+via UNION semantics in
+`_ensure_file_list_in_processed_advice()`.  +12 tests.
+
+**Section C-prime (client) — Diagnostic split**
+`programs/ai_agent.py`,
+`tests/tst_directive_layer_diagnostics.py`.  Splits the previously-
+overloaded "directives" diagnostic output into
+`directives_user_intent` (what the LLM extracted) vs
+`directives_effective_runtime` (what the runtime actually
+applied after grounding / fallback overlays).  Makes provider-
+asymmetry symptoms diagnosable from logs alone.  +7 tests.
+
+**Section B (client) — PHIL namespace healing**
+`agent/advice_preprocessor.py`,
+`agent/directive_extractor.py`,
+`tests/tst_phil_namespace_cleaner.py`.  Static translation
+table `PHIL_NAMESPACE_TRANSLATIONS` rewrites known-bad PHIL
+paths (e.g. `data_manager.r_free_flags.generate` →
+`xray_data.r_free_flags.generate` → bare
+`generate_rfree_flags`).  Drops with log line when path can't
+be healed.  +14 tests.
+
+**Section E (client) — LLM-failure diagnostic markers**
+`agent/advice_preprocessor.py`,
+`agent/directive_extractor.py`,
+`tests/tst_extraction_failure_visibility.py`.  Adds
+`[DIRECTIVE_EXTRACTION_FAILED]` and
+`[ADVICE_PREPROCESSING_FAILED]` stderr markers with the
+exception text when an LLM call fails (network error, JSON
+parse failure, retired model 404, etc.).  Section E proved
+essential for diagnosing v118.8 — without it, the server
+404 would have been buried in the server-side stderr with
+no marker for client-side log search.  +11 tests.
+
+**Section F (SERVER) — BUILD experiment_type + R-free auto-fill**
+`agent/command_builder.py`,
+`tests/tst_build_experiment_type_and_rfree.py`.  First v118
+section that touches server-side code.  Threads
+`experiment_type` through `_select_files` (was hardcoded
+"xray" in the cycle-1 fast path → cryo-EM cycle-1 BUILD
+selected wrong file slots when xtriage hadn't run yet).
+Adds R-free generate-flag auto-fill for first-refinement-with-
+no-rfree-mtz cases (was the AIAgent_245 reproducer:
+phenix.refine ... xray_data.r_free_flags.generate=True).
++9 tests.
+
+**Section 5.1 (client) — PHIL .help hyphen/semicolon hotfix**
+`agent/advice_preprocessor.py`.  Drops hyphen-prefix and
+semicolon-suffix forms from `[--help]` patterns that occasionally
+make it through advice quoting.
+
+**Section G (client) — Optional dependency resilience**
+`rag/vector_store.py`,
+`tests/tst_optional_dep_resilience.py`,
+plus 6.x test-infrastructure cleanups.  Wraps the optional
+chromadb → langchain_chroma chain in
+`except Exception` (not `except ImportError`), because
+protobuf version conflicts surface as `TypeError`, not
+`ImportError`.  Adds environment-readiness test
+`tst_dependencies.py` (v118.6.7 rev 3) that runs a true
+runtime probe (`from langchain_chroma import Chroma`) rather
+than just attempting to import.  +11 + 11 = +22 tests.
+First v118 section verified on both Mac and Linux production
+environments.
+
+**Section 8 rev 3 (client + SERVER) — Model bump**
+`agent/directive_extractor.py`,
+`agent/api_client.py`.  Bumps the default Google model from
+`gemini-2.0-flash` (retired by Google 2026-05-20) to
+`gemini-2.5-flash-lite` in TWO files.  Without Section 8 the
+server's directive extraction silently 404'd; Section E's
+diagnostic surfaced the root cause in seconds.  First v118
+section that required server-side deployment + process
+restart for the fix to take effect.  No new tests (string
+replacement only); confirmed server-verified via Section E
+markers vanishing on retry.
+
+**Section 9 rev 2 (SERVER) — Experiment-type-conditional program canonicalization**
+`agent/directive_extractor.py`,
+`tests/tst_density_modify_experiment_type.py`.  After Section 8
+fixed the 404, runs 237/239 (Tom's "density modify and stop"
+on cryo-EM half-maps) showed the LLM still picking
+`phenix.autobuild_denmod` (X-ray) instead of
+`phenix.resolve_cryo_em` (cryo-EM).  Section 9 adds three
+layers:
+
+  1. Decision-tree prompt restructure at lines 443-462 of
+     `DIRECTIVE_EXTRACTION_PROMPT`: replaces two parallel
+     cryo-EM/X-ray rules with an explicit "CHECK THE
+     EXPERIMENT TYPE FIRST" decision tree.
+  2. Module-level `PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE`
+     table (2 entries, symmetric) consumed by a new
+     `_apply_experiment_type_program_reprints()` validator.
+     Validator runs AFTER `_validate_after_program_grounded`
+     by design (grounding bypasses on
+     `stop_after_requested=True`, so the wrong program
+     survives intact for correction).  Emits
+     `[DIRECTIVE_CORRECTION]` log line + stores
+     `_corrected_from` sidecar field in `stop_conditions`
+     for traceability.
+  3. K_DENMOD test suite (13 tests) covering the bug case,
+     mirror case, no-change cases, ambiguous cases, grounding-
+     bypass interaction, and diagnostic emission verification.
+
++13 tests.
+
+**Section 10 (SERVER) — List-to-string coercion**
+`agent/directive_extractor.py`,
+`tests/tst_settings_list_coercion.py`.  Provider-specific JSON
+shape mismatch: OpenAI emits `"additional_atom_types": "S"`
+(string); Google's `gemini-2.5-flash-lite` emits
+`"additional_atom_types": ["S"]` (list).  Validation loop
+called `str(["S"])` which produced `"['S']"` (Python repr,
+with brackets) — autosol rejected the malformed string.
+Section 10 adds `_coerce_setting_value()` helper that:
+
+  - Unpacks single-element lists/tuples of any type
+    (`[False]` → `False`, fixing the Python truthiness
+    trap `bool([False]) == True`).
+  - Space-joins multi-element list/tuples for str-typed
+    fields (PHIL multi-value-string syntax).
+  - Raises ValueError for unsupported coercions (dict→str,
+    multi-element list to non-str), caught by outer
+    try/except and logged.
+
+Helper applied at TWO call sites: `program_settings`
+validation (Tom's bug) and `stop_conditions` validation
+(latent bug — list-shaped `after_program` raised
+`TypeError("unhashable type: 'list'")` from the
+`value not in VALID_PROGRAMS` check, silently swallowed
+and the directive dropped).  K_LIST test suite (12 tests)
+includes K11 verifying the v118.10 + v118.9 interaction
+chain end-to-end.  +12 tests.
+
+### Process notes from v118
+
+**Whole-tree grep before declaring a string-replacement done.**
+Section 8 rev 1 fixed the model string in
+`agent/directive_extractor.py` only.  The server kept
+failing because `agent/api_client.py` also hardcoded the
+retired model name at two locations.  Rev 2 needed a patch
+script; rev 3 had the full file with both occurrences
+updated.  v119 cadence convention (per consolidated
+next_steps): every string-replacement starts with
+`grep -rn 'STRING' $PHENIX/modules/cctbx_project/libtbx/langchain/`.
+
+**Stub-module isolation for K-tests.** Section F established
+the pattern of K-tests using stub modules for
+`agent.program_registry` and `agent.intent_classifier` so
+tests run in seconds without the full PHENIX conda env.
+Sections G and 10 reused this pattern.
+
+**Gemini-reviewed plan rev cycles.** Sections G, 9, and 10
+each went through 2–4 plan revs incorporating Gemini critique
+before implementation.  Each revision caught a real concern:
+v118.G's annotation issue (rev 2), v118.9's table-driven
+design (rev 2), v118.10's bool-truthiness trap (rev 3).
+
+### Files changed (cumulative)
+
+| File | Sections that touched it |
+|---|---|
+| `agent/directive_extractor.py` | B, E, 8, 9, 10 |
+| `agent/advice_preprocessor.py` | A, B, E, 5.1 |
+| `agent/api_client.py` | 8 |
+| `agent/command_builder.py` | F |
+| `programs/ai_agent.py` | A, C-prime |
+| `rag/vector_store.py` | G |
+| `tests/tst_preprocessor_file_override.py` | A (new) |
+| `tests/tst_directive_layer_diagnostics.py` | C-prime (new) |
+| `tests/tst_phil_namespace_cleaner.py` | B (new) |
+| `tests/tst_extraction_failure_visibility.py` | E (new) |
+| `tests/tst_build_experiment_type_and_rfree.py` | F (new) |
+| `tests/tst_optional_dep_resilience.py` | G (new) |
+| `tests/tst_dependencies.py` | 6.7 (new) |
+| `tests/tst_density_modify_experiment_type.py` | 9 (new) |
+| `tests/tst_settings_list_coercion.py` | 10 (new) |
+| `tests/run_all_tests.py` | A, C-prime, B, E, F, G, 6.7, 9, 10 (registrations) |
+
+### Verification
+
+Sandbox: 204/204 passing.
+
+Production verified:
+- Section G: Mac and Linux production envs
+- Section 8: server stderr clean of
+  `[DIRECTIVE_EXTRACTION_FAILED]` markers after deploy
+- v117.3 + Section A + Section C-prime: confirmed via prior
+  production runs
+
+Production awaiting:
+- Section 9: rerun "density modify and stop" on cryo-EM
+- Section 10: rerun P9 SAD with Google provider
+
+### Architectural watchpoint triggered
+
+At v118.10 the project is at **10 iterations** in the
+preprocessor → extractor → planner → BUILD pipeline (original
+threshold was 6).  Specific signs that have appeared:
+
+- New sections added for yet-another-LLM-emission-shape failure
+  modes (v118.9 wrong canonical name; v118.10 list-wrapping)
+- Defensive logic at one layer compensating for upstream
+  limits (v118.9 validator, v118.10 helper)
+- Cross-section coupling: v118.10's K11 explicitly tests the
+  v118.10 → v118.9 chain
+
+v119 will pursue operational hardening (centralized model
+defaults, server `/version` endpoint, startup canary, server→
+client diagnostic echo) and prompt consolidation; v120 may
+pursue Direction A (single structured-extraction LLM call
+replacing preprocessor + extractor + planner).  See
+`v118_next_steps_consolidated_rev4.md` for the full v119+ plan.
+
+---
+
+## Version 117.3 (Extended stop-intent phrasing recognition)
+
+### Summary
+
+A C1 LLM test run after v117.2 surfaced one remaining openai failure
+in the existing `tst_directive_extraction.py::explicit_stop_after_phaser`
+scenario (0/5 on openai, 1/1 on google).  The fixture's user-side
+phrasing is `"Stop the workflow immediately after phaser completes"`
+in its Special Instructions section.
+
+Diagnosis: this phrasing is a clear user-stop directive, but neither
+the v117.2 LLM prompt schema documentation nor the regex backstops
+(`_IMPERATIVE_STOP_MARKERS`, `_POSITIVE_STOP_AFTER_PATTERNS`) had any
+entry that recognized it.  Result: the LLM extracted
+`after_program=phenix.phaser` correctly, but did NOT set
+`stop_after_requested=True`, so v117.1's flag-exemption couldn't fire,
+and the v116.19a grounding guardrail's Failure 2 path dropped the
+directive as "fabricated."
+
+### The fix — three independent additions
+
+**Change 1 — `_IMPERATIVE_STOP_MARKERS`.**  Added 5 new substring
+markers used by the grounding guardrail's window-bounded
+imperative-check (300 chars near program name):
+`"stop the workflow"`, `"immediately after"`, `"after it completes"`,
+`"after it finishes"`, `"is the last step"`.
+
+**Change 2 — `_POSITIVE_STOP_AFTER_PATTERNS`.**  Added 2 new
+contiguous-phrase regex patterns: `\bstop\s+the\s+workflow\b` and
+`\bis\s+the\s+last\s+step\b`.  Two over-permissive patterns
+(`\bafter\s+\w+\s+completes?\b`, `\bafter\s+\w+\s+(?:finishes|is\s+done)\b`)
+were considered during planning and dropped after the K5 false-positive
+verification — they would have fired on descriptive prose like
+"validation runs after refinement completes."
+
+**Change 3 — `DIRECTIVE_EXTRACTION_PROMPT` schema docs.**  Extended
+the `stop_after_requested` documentation with 4 new recognized
+phrasings and 2 program-neutral few-shot examples (using "refinement"
+and `<program>` placeholder to avoid biasing extraction toward
+specific Phenix tools).  The dual-input prompt
+`DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` inherits the change via the
+existing `.replace()` mechanism.
+
+### How the fix works end-to-end
+
+Two paths now correctly recognize the new phrasings:
+
+1. **Via the LLM (preferred):** the schema docs + examples teach the
+   LLM to emit `stop_after_requested=True` alongside `after_program`
+   when the user says "stop the workflow after X" / "X is the last
+   step" / etc.  v117.1's grounding-flag exemption then keeps
+   `after_program` intact.
+
+2. **Via the regex backstops (safety net):** even when the LLM
+   misses the flag (as openai did pre-v117.3), the new regex
+   patterns in `_POSITIVE_STOP_AFTER_PATTERNS` cause
+   `_is_stop_after_requested(stripped_advice)` to return True.  The
+   downstream `_apply_workflow_intent_fallback` then sets the flag
+   via `_resolve_after_program`.  Meanwhile, the new imperative
+   markers cause the grounding guardrail's `_imperative_marker_nearby`
+   check to succeed, so `after_program` is preserved through Failure 2.
+
+The end-to-end test simulation confirms both paths.  In the C1 failure
+scenario where the LLM emits `after_program=phenix.phaser` but no
+flag, v117.3 produces:
+
+```json
+{
+  "after_program": "phenix.phaser",
+  "stop_after_requested": true,
+  "skip_validation": true
+}
+```
+
+### What changes for users
+
+For `explicit_stop_after_phaser`-class workflows (preprocessed
+advice containing "stop the workflow immediately after X" or similar
+phrasings), the production workflow now correctly stops after the
+user's intended program completes.  Pre-v117.3, the openai provider
+would silently continue past the user's stop.
+
+For all other scenarios, behavior is unchanged.  The new patterns
+and markers are additive; no existing patterns are modified or
+removed.
+
+### Tests
+
+New unit test file `tests/tst_extended_stop_phrasings.py` with 9
+boundary tests (K1, K2, K4, K5, K6, K7a, K7b, K8a, K8b):
+
+| Test | Purpose |
+|------|---------|
+| K1 | `_is_stop_after_requested` recognizes "stop the workflow" phrasing |
+| K2 | `_is_stop_after_requested` recognizes "X is the last step" |
+| K4 | AF_7mjs preservation — stripped advice still returns False |
+| K5 | Descriptive "validation runs after refinement completes" → False (false-positive guard) |
+| K6 | `_imperative_marker_nearby` fires on the explicit_stop_after_phaser fixture |
+| K7a, K7b | Existing C1 phrasings ("density modify and stop", "refine and stop") still recognized |
+| K8a, K8b | Negation guards ("do not stop", "Stop Condition: None") still suppress |
+
+K3 was considered and dropped from the test plan because the existing
+`,\s*stop\b` pattern already catches "after phaser completes, stop".
+K9 and K10 (cross-sentence safety) were dropped because the
+pre-existing v117.2 behavior of `\bstop\s+if\b` matching within
+single sentences is a separately tracked issue, not v117.3 scope.
+
+The v117.2 sandbox suite (106 tests) plus the 9 new K-tests gives
+115/115 passing on v117.3.
+
+### Expected LLM test results after applying
+
+| Test | v117.2 | v117.3 |
+|------|--------|--------|
+| `explicit_stop_after_phaser` openai | 0/5 | expected ≥4/5 |
+| `explicit_stop_after_phaser` google | 1/1 | maintained |
+| C1 suite | 6/6 | maintained |
+| B1 suite | 10/10 | maintained |
+| A1 suite | 6/6 | maintained |
+| Other 5 `tst_directive_extraction.py` scenarios | passing | maintained |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `agent/directive_extractor.py` | 34 lines added across 3 blocks; no removals |
+| `tests/tst_extended_stop_phrasings.py` | **NEW** — 9 unit tests |
+
+### Architectural notes
+
+**Pipeline ordering unchanged.**  v117.3 does not add a new pipeline
+step.  The accumulated post-LLM processing order from v117.2 stays:
+
+1. `_validate_after_program_grounded` (v116.19a + v117.1 flag exemption)
+2. `_apply_crystal_symmetry_fallback`
+3. v117.2 fill_in_from_raw
+4. Ollama empty-directives retry
+5. Intent classification merge
+6. Intent override block
+7. `_apply_workflow_intent_fallback` (calls `_resolve_after_program`)
+
+v117.3 extends the regex sets and marker tuples consumed by steps 1,
+3, and 7.  No new pipeline step; no new state fields.
+
+**Plan revisions during implementation.**  The plan in
+`v117_3_PLAN.md` was revised twice during implementation:
+
+- Revision 2: absorbed Gemini's review feedback (bounding discipline
+  in Change 2, few-shot examples in Change 3, rejection of auto-
+  healing alternative documented in §9).
+- During Step 2 (TDD baseline check): K3 was discovered to already
+  pass on v117.2 (redundant) and K9/K10 were discovered to surface a
+  pre-existing `\bstop\s+if\b` issue not introduced by v117.3.
+  Both adjustments narrowed test scope without weakening coverage.
+- During Step 2 (K5 false-positive verification): the over-permissive
+  patterns in Change 2 were dropped (Option 3).
+
+### Process note — fourth pipeline augmentation
+
+This is the fourth iterative behavior augmentation to `extract_directives`
+and its helpers in six days (Step 1 / v117.1 / v117.2 / v117.3).  Per
+the v117.2 CHANGELOG flag, a fifth such gap should trigger a
+consolidation discussion rather than a fifth additive patch.
+
+v117.3's scope was kept narrow specifically because of this concern:
+the change is purely additive to existing data structures (5 entries
+added to a tuple, 2 entries added to another tuple, 4 + 2 lines added
+to a docstring).  No new helpers, no new pipeline step.
+
+---
+
+## Version 117.2 (Fill in after_program from raw advice when LLM omits it)
+
+### Summary
+
+A C1 LLM test run after the v117.1 grounding fix surfaced a remaining
+gap on openai: for the input `"refine and stop"` (raw) with processed
+advice ending in `"Stop Condition: None"`, openai's extractor
+occasionally emits `stop_after_requested=True` but omits
+`after_program` entirely.
+
+Without `after_program`, `workflow_engine._apply_directives`' gated
+wipe code is unreachable — the wipe is gated on `if after_program:`.
+The user's stop intent is signaled but cannot be acted on; the
+workflow continues past where the user wanted it to stop.
+
+### The fix
+
+In `extract_directives()`, after the existing LLM extraction and
+validation flow but before the intent-override block, add a small
+fallback: when `stop_after_requested=True` and `after_program` is
+unset, run the existing `_resolve_after_program()` regex resolver
+against the raw advice to fill in `after_program` via `_ACTION_TABLE`.
+
+Guards:
+- Only fires when the LLM left `after_program` unset (does not
+  override LLM choices)
+- Only fires when raw advice contains stop intent per
+  `_is_stop_after_requested` (does not amplify hallucinated flags)
+- Uses `raw_advice` if available; falls back to `user_advice` for
+  callers using the single-input path
+
+### What changes for users
+
+For the affected scenarios — openai + `"refine and stop"` /
+`"run xtriage and stop"` / `"density modify and stop"` against
+preprocessor-mangled processed advice — the production workflow now
+correctly stops after the user's intended program completes, where
+it previously continued past it.
+
+For all other scenarios (LLM emits both fields correctly; or raw
+advice has no stop intent; or flag is unset), behavior is unchanged.
+
+### Tests
+
+New unit test file `tests/tst_after_program_fill_from_raw.py` with
+6 boundary cases (K1-K6):
+- K1: flag True + after_program missing + raw has stop intent →
+  after_program filled in (the C1 fix case)
+- K2: flag True + after_program already set → no change (LLM choice
+  wins)
+- K3: flag True + after_program missing + raw has NO stop intent →
+  no change (guard prevents amplifying hallucination)
+- K4: flag absent → no change
+- K5: raw_advice None → falls back to user_advice (single-input
+  compatibility)
+- K6: `"run xtriage and stop"` → after_program=phenix.xtriage
+  (confirms resolver handles other action verbs)
+
+The v117.1 sandbox suite still passes 100/100.  With v117.2 added:
+106/106.
+
+### Expected LLM test results after applying
+
+| Suite | Pre-v117.1 | v117.1 | v117.2 |
+|-------|------------|--------|--------|
+| A1 (smoke) | 4/6 | 6/6 | 6/6 |
+| B1 (stop_after_requested) | 8/10 | 10/10 | 10/10 |
+| C1 (raw authority) | 0/6 | 5/6 | 6/6 (expected) |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `agent/directive_extractor.py` | 30-line addition in `extract_directives()` |
+| `tests/tst_after_program_fill_from_raw.py` | **NEW** — 6 unit tests |
+
+### Architectural note
+
+This is a third behavior-augmentation in three days touching
+`extract_directives()`.  The accumulated post-LLM processing path now
+runs (in order):
+
+1. `_validate_after_program_grounded` (v116.19a, with v117.1 flag
+   exemption)
+2. `_apply_crystal_symmetry_fallback`
+3. **v117.2 fill_in_from_raw** (new)
+4. Ollama empty-directives retry
+5. Intent classification merge
+6. Intent override block (solve / solve_constrained / task)
+7. `_apply_workflow_intent_fallback` (calls
+   `_resolve_after_program` on processed advice)
+
+The v117.2 fill-in is positioned after grounding (so it can't be
+undone by it) and before the intent block (so it doesn't accidentally
+clear a flag the resolver just confirmed).  See DEVELOPER_GUIDE.md
+§3i for the full design rationale.
+
+### Process note
+
+Like v117.1, v117.2 was surfaced by the C1 LLM test — the test's
+remaining single failure after v117.1 produced exactly the diagnostic
+log needed to identify the gap.  The pattern of "ship the fix, run
+the LLM tests, examine remaining failures with the same surgical
+discipline" is working.
+
+---
+
+## Version 117.1 (Grounding ∧ stop_after_requested Interaction Fix)
+
+### Summary
+
+The C1 LLM test (raw-authority end-to-end) surfaced an architectural
+conflict between v116.19a's grounding guardrail and v117 Step 1's
+raw-advice extraction.  Both were correct in isolation but collided
+in production.
+
+**The conflict:** when the user typed `"density modify and stop"`,
+v117 Step 1's AUTHORITY paragraph correctly led the LLM to produce
+`after_program=phenix.resolve_cryo_em, stop_after_requested=True` —
+mapping the action verb to the cryo-EM density-modification program
+even though "resolve_cryo_em" doesn't appear literally in the advice.
+
+Then v116.19a's grounding guardrail dropped `after_program` because
+the program name was "absent from user advice (pure fabrication)" by
+its literal-substring test.  The user-stop intent was retained as
+the flag, but the target program was lost.
+
+### The fix
+
+When the LLM sets BOTH `after_program` AND `stop_after_requested=True`
+on the same `stop_conditions` block, the literal-name grounding check
+is skipped.  The flag IS the grounding signal — the LLM made an
+explicit user-stop assertion based on the raw advice and the
+AUTHORITY paragraph, which is strictly stronger evidence than the
+heuristic substring check.
+
+The fix is 11 lines in `_validate_after_program_grounded`
+(`agent/directive_extractor.py`) with the new behavior gated on the
+`stop_after_requested` flag presence.  No other production code
+changes.
+
+### Behavior preservation
+
+- **AF_7mjs case** (the case v116.19a was originally written for):
+  preserved.  AF_7mjs's preprocessed advice has no positive stop
+  signal, so `stop_after_requested` is not set and the guardrail
+  fires as before.
+- **Pure fabrication** (program name absent, no flag): still dropped.
+- **Flag explicitly False**: still dropped (flag must be True to
+  trigger the skip).
+- **Grounded program with no flag**: still kept (existing v116.19a
+  behavior unchanged).
+
+### Tests
+
+New unit test file `tests/tst_grounding_stop_after_requested.py` with
+5 boundary cases:
+- K1: LLM sets both signals → after_program preserved (the C1 case)
+- K2: LLM sets only after_program (no flag) → dropped (AF_7mjs case)
+- K3: pure fabrication, no flag → dropped
+- K4: flag explicitly False → dropped
+- K5: grounded program, no flag → kept (sanity baseline)
+
+The v117 sandbox suite still passes 95/95.  With the new file the
+total is 100/100.
+
+### LLM test results expected after applying
+
+| Suite | Pre-v117.1 | Post-v117.1 |
+|-------|------------|-------------|
+| A1 (smoke) | 4/6 | 6/6 |
+| B1 (stop_after_requested) | 8/10 | 10/10 |
+| C1 (raw authority) | 0/6 | 6/6 |
+
+The c1_density_modify_raw_authority scenario also has a relaxed
+assertion accepting any density-modification-family program
+(resolve_cryo_em / resolve / density_modification / parrot /
+solvent_modify), since the raw input `"density modify and stop"`
+doesn't specify cryo-EM vs X-ray context.  Strict assertions remain
+on c1_refine_raw_authority and c1_xtriage_raw_authority where the
+program name appears in the raw input itself.
+
+### Files changed
+
+| File | Change | md5 (pre → post) |
+|------|--------|------------------|
+| `agent/directive_extractor.py` | 11-line addition to `_validate_after_program_grounded` | (v117 → v117.1) |
+| `tests/tst_grounding_stop_after_requested.py` | **NEW** — 5 unit tests | — |
+| `tests/llm/tst_c1_raw_authority.py` | relaxed C1.1 assertion | — |
+| `tests/llm/tst_b1_stop_after_requested.py` | relaxed B1.1 assertion | — |
+| `tests/llm/tst_a1_extractor_smoke.py` | relaxed A1.1 assertion | — |
+
+### Process note
+
+The C1 test was correctly designed and produced exactly the failure
+it should have: the LLM-layer behavior was right, but a downstream
+guardrail dropped its output.  The test "failing" surfaced the
+architectural conflict.  This is the second time in v117 that a
+test failure surfaced a real finding — the first was the baseline
+drift caught in Step B by
+`test_af7mjs_no_start_with_program_for_preprocessed`.
+
+---
+
+## Version 117 (Extraction Reliability — Step 1: Raw-Advice-Authoritative Directive Extraction)
+
+### Summary
+
+The LLM advice preprocessor occasionally mangles short imperative user
+input.  The most reproducible failure: when the user writes
+`"density modify and stop"` and the preprocessor is run with the openai
+provider, the preprocessed output expands the request into a multi-step
+Primary Goal and writes `Stop Condition: None` — the user's stop intent
+is silently dropped.  Because the downstream directive extractor only
+sees the preprocessed text, the LLM-extracted directives miss the stop
+signal entirely; recovery depends on the v116.x regex stop-condition
+backstops in `workflow_engine.py::_apply_directives` and the simple
+pattern-extractor fallback in `extract_directives_simple`.  Those
+backstops have their own gaps (the markdown-bold/numbered preprocessor
+output formats — see `EXTRACTOR_BUGS_FINDING.md` Finding 2 — slip
+through some of the strip regexes), so reliance on them is fragile.
+
+Step 1 fixes this at the source by giving the LLM directive extractor
+**both** inputs (raw user text and preprocessed advice) with an explicit
+authority rule: **raw wins for intent** (`after_program`,
+`start_with_program`, `stop_after_requested`); processed fills gaps for
+files, parameters, and experiment type the raw is silent on; on
+disagreement, raw is the source of truth.
+
+The change is purely additive — old clients that don't send raw advice
+get identical behavior to today.  New clients (which set
+`user_advice_raw` alongside `user_advice_for_directives`) get the
+dual-input prompt and the more reliable stop-intent extraction.
+
+### Modified Files
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `agent/directive_extractor.py` | +112 | Add `_RAW_INPUT_BLOCK` and `_SINGLE_INPUT_BLOCK` named template fragments. Derive `DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW` from `DIRECTIVE_EXTRACTION_PROMPT` via `str.replace()` with an import-time `assert` guarding single-match. `extract_directives()` gains `raw_advice=None` parameter and a selector that picks dual-input only when raw is provided and differs from processed. `stop_after_requested` schema doc added to the prompt with recognized phrasings (`"stop after X"`, `"X and stop"`, `"X, then stop"`). |
+| `phenix_ai/run_ai_analysis.py` | +57 | `run_directive_extraction` gains `raw_user_advice=None` parameter (sub-step 1B); plumbs to `extract_directives(raw_advice=...)`. `run_advice_preprocessing` gains Step 1F metric instrumentation — emits one greppable `PP_FILE_METRIC` line per call, comparing the LLM-derived `extracted_files` against a regex baseline run on the raw advice.  Gated to fire only when the LLM produced a distinct output; a `PP_FILE_METRIC: skipped` marker covers the alternative so log data is unambiguous. |
+| `agent/session.py` | +28 | `AgentSession.extract_directives()` gains `raw_advice=None` parameter with default-source from `self.data["raw_advice"]` (CCTBX None-safe), plumbs to the module-level `extract_directives()`. |
+| `agent/advice_preprocessor.py` | +95 | New "RAW-ADVICE FILE DETECTION (STEP 1F METRICS)" section. `extract_files_from_raw_advice(raw_advice)` runs a conservative regex over raw text and returns deduplicated lowercase basenames.  `_summarize_file_detection_metric(llm_files, regex_files)` builds the `PP_FILE_METRIC` summary line. |
+| `phenix/programs/ai_analysis.py` | +30 | New PHIL param `user_advice_raw = None` next to `user_advice_for_directives`. `_build_server_args` encodes `user_advice_raw` for transport when set. `_run_directive_extraction_locally` reads, decodes, and plumbs as `raw_user_advice=` to `run_directive_extraction`. |
+| `phenix/programs/ai_agent.py` | +19 | New PHIL param `user_advice_raw = None` mirroring `ai_analysis.py`. `_extract_directives` sets `directive_params.ai_analysis.user_advice_raw = session.data.get("raw_advice") or None` after the existing `user_advice_for_directives` setter. |
+| `tests/tst_extract_raw_advice.py` | +675 (new file) | 20-test module across 8 sections: prompt structure, signature/selector, Tom's openai case (structural), plumbing source-scans for run_directive_extraction / session.py / ai_analysis.py / ai_agent.py, and 1F behavioral tests for the file-detection regex and metric summary plus a source-scan for the run_advice_preprocessing emission point. |
+| `tests/run_all_tests.py` | +10 | Register the new test module after `tst_directive_extractor`. |
+
+### Backward compatibility
+
+Old clients send `user_advice_for_directives` only (the processed text).
+New server reads `user_advice_raw` as `None` (PHIL default), passes
+`None` through to `extract_directives`, which falls back to the
+single-input prompt — identical to old behavior.  Deployment story:
+server-first.  No "new client + old server" scenario exists because
+clients always lag the server.
+
+### Pre-existing bugs found while implementing Step 1
+
+Two bugs that predate Step 1 were uncovered during sub-step 1A and are
+documented separately in `EXTRACTOR_BUGS_FINDING.md`:
+
+1. **Brace bug (medium severity)** —
+   `DIRECTIVE_EXTRACTION_PROMPT.format()` raises
+   `KeyError('"program_settings"')` because the unit_cell example in the
+   prompt body contains unescaped JSON braces.  The crash is caught by
+   a broad `except` at `run_ai_analysis.py:1020` and silently logged to
+   `debug_log`, returning an empty directives dict.  **The LLM
+   directive extractor has been dark in production.**  The
+   google-vs-openai differences Tom investigated turn out to be
+   preprocessor LLM differences, not extractor LLM differences.  Fix is
+   5 characters (double every `{` and `}` in the JSON example).  Step
+   1's value isn't observable until this is fixed.
+
+2. **Stripper regex bug (low severity)** —
+   `_strip_preprocessor_stop_condition()` regex
+   `r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$'` only matches plain
+   `"Stop Condition:"` lines, not the markdown-bold forms
+   (`**Stop Condition**: None`) or numbered forms
+   (`7. Stop Condition: None`) the preprocessor actually emits.
+   Currently benign because the downstream `_STOP_CONDITION_NONE`
+   regex DOES handle markdown forms, but worth fixing for
+   consistency.
+
+### Why the existing v116.x regex backstops are still in play
+
+The v116.x stop-after refactor (`stop_conditions.stop_after_requested`
+flag, workflow_engine wiping `valid_programs` to `[STOP]`) remains as
+defense-in-depth.  Step 1 makes the LLM extractor's output more
+reliable, but the regex backstops in
+`workflow_engine.py::_apply_directives` continue to catch any case the
+LLM extractor still misses.  Belt and braces.
+
+### Testing
+
+| Test module | Tests | Result |
+|-------------|-------|--------|
+| `tst_extract_raw_advice.py` (new) | 20 | 20/20 pass |
+| End-to-end extractor cases (existing) | 12 | 12/12 pass |
+| Workflow engine integration (existing) | 11 | 11/11 pass |
+| Audit-fixes i2 (existing) | 3 | 3/3 pass |
+
+The new test module verifies the same 20 invariants both pass on
+post-Step-1 code AND fail on pre-Step-1 code with diagnostic messages,
+giving anyone running the suite against an older checkout an immediate
+checklist of what needs to be done.
+
+### Sub-step inventory (for review and roll-back)
+
+The change landed as 8 sub-steps with checkpoints between each.  Diffs
+per sub-step are stored alongside the production files:
+
+- **1A** — `agent/directive_extractor.py` (prompt + signature)
+- **1B** — `phenix_ai/run_ai_analysis.py::run_directive_extraction`
+- **1B-bis** — `agent/session.py::AgentSession.extract_directives`
+- **1C** — `phenix/programs/ai_analysis.py` (PHIL + dispatcher)
+- **1D** — `phenix/programs/ai_agent.py` (PHIL + client touch)
+- **1E** — `tests/tst_extract_raw_advice.py` + registration
+- **1F** — `agent/advice_preprocessor.py` regex + metric in `run_advice_preprocessing`
+- **1G** — this CHANGELOG entry plus ARCHITECTURE.md and DEVELOPER_GUIDE.md updates
+
+
+## Version 116.13 (Cryo-EM Validation Check in metric_evaluator.py)
+
+### Summary
+
+The real fix for the AF_7mjs Stage 5 (validation) skip bug. v116.12
+patched `agent/metrics_analyzer.py` but missed that
+`agent/graph_nodes.py` sets `USE_YAML_METRICS = True` (the default).
+With that flag set, `analyze_metrics_trend()` delegates immediately
+to `analyze_refinement_trend()` in `agent/metric_evaluator.py` —
+**a parallel implementation v116.12 never patched.** The v116.12
+fix was applied to dead code; the production path retained the
+same asymmetry (X-ray branch checks validation_done, cryo-EM branch
+doesn't).
+
+v116.13 patches the live code path: adds the validation_done check
+to `MetricEvaluator.analyze_trend()` cryo-EM SUCCESS branch
+(line ~500), mirroring the existing X-ray pattern at line 403.
+
+### Modified Files (1 production file)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `agent/metric_evaluator.py` | +20 / -3 | Mirror X-ray validation_done check in the cryo-EM `latest_cc > target` branch. Recognizes `phenix.molprobity` and `phenix.validation_cryoem`. |
+
+### Why v116.12 didn't work
+
+`agent/graph_nodes.py` line 103:
+```python
+USE_YAML_METRICS = True      # Use metrics.yaml for trend analysis
+```
+
+`agent/metrics_analyzer.py` line 271-276:
+```python
+if use_yaml_evaluator and analyze_refinement_trend is not None:
+    try:
+        return analyze_refinement_trend(metrics_history, ...)
+    except Exception as e:
+        print("Warning: YAML evaluator failed, using hardcoded: %s" % e, ...)
+```
+
+When `USE_YAML_METRICS = True`, `analyze_metrics_trend` delegates
+the entire trend analysis to `analyze_refinement_trend()` in
+`metric_evaluator.py` and returns immediately. The hardcoded code
+(where v116.12 Fix #1 was applied) only runs as a fallback when
+the YAML evaluator raises an exception.
+
+Verification: both v116.12 deployed files were byte-identical to
+the patched versions, but behavior was unchanged. The fix was in
+dead code.
+
+### Three-place asymmetry that should have been spotted
+
+| Path | File | Line | Has validation_done check? |
+|------|------|------|----------------------------|
+| YAML evaluator (active) | `metric_evaluator.py` | ~500 cryo-EM | **NO** (fixed by v116.13) |
+| YAML evaluator (active) | `metric_evaluator.py` | ~403 X-ray | YES (pre-existing) |
+| Hardcoded fallback | `metrics_analyzer.py` | ~505 cryo-EM | NO (fixed by v116.12 in dead code) |
+| Hardcoded fallback | `metrics_analyzer.py` | ~365 X-ray | YES (pre-existing) |
+
+After v116.13, all four paths have the validation_done check.
+
+### Code change
+
+```python
+# Get target from YAML
+target = self.get_target("map_cc") or 0.70
+
+# v116.13: Mirror X-ray validation_done check at line 403.
+validation_done = any(
+    m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+    for m in metrics_history
+)
+
+# SUCCESS check
+if latest_cc > target:
+    if validation_done:
+        result["should_stop"] = True
+        result["reason"] = "SUCCESS: Map-model CC (%.3f) above target (%.2f)" % (latest_cc, target)
+        result["recommendation"] = "stop"
+    else:
+        result["should_stop"] = False
+        result["reason"] = "Map-model CC (%.3f) above target - recommend validation" % latest_cc
+        result["recommendation"] = "validate"
+        result["suggest_validation"] = True
+    result["trend_summary"] = "Map CC: %.3f - TARGET REACHED" % latest_cc
+    return result
+```
+
+The trend_summary `"Map CC: X.XXX - TARGET REACHED"` format is
+preserved exactly, so the cycle box display doesn't change.
+
+### Tests (1 new file, 15 tests)
+
+| File | Tests | Pre-fix | Post-fix |
+|------|-------|---------|----------|
+| `tst_cryoem_metric_evaluator_validation.py` (S29) | 15 (22 assertions) | 6 fail (9 pass) | 15 / 15 pass |
+
+Test coverage:
+
+- **`test_af7mjs_regression`**: exact AF_7mjs metrics history (cycle 4 RSR, CC=0.827) → should_stop=False
+- **`test_cc_above_target_with_molprobity_done`** / **`_with_validation_cryoem_done`**: both validation programs recognized
+- **`test_phenix_model_vs_data_not_cryoem_validation`**: X-ray validation program doesn't count for cryo-EM
+- **`test_validation_earlier_in_history_counts`**: validation mid-history still counts (any() over full history)
+- **`test_cc_above_target_validation_not_done`**: defer to validation when not done
+- **`test_reason_mentions_validation`**: reason hints at validation
+- **`test_trend_summary_format_preserved`**: TARGET REACHED display preserved
+- **`test_cc_just_above_threshold`** / **`_exactly_at_threshold_no_success`** / **`_below_target_no_success_suggestion`**: boundary conditions (strict `>`)
+- **`test_xray_path_unchanged_validation_done`** / **`_not_done`**: X-ray path regression guard
+- **`test_using_evaluator_class_directly`**: fix is at the MetricEvaluator class level, not just a wrapper
+- **`test_consecutive_field_still_set`**: existing result fields preserved
+
+Registered in `tests/run_all_tests.py` as suite S29.
+
+### Lesson from the v116.12 miss
+
+When patching a function: **before writing the patch, search the
+module for early-return paths, delegation, and alternative
+implementations.** The function signature and first 30 lines tell
+you whether you're patching live code.
+
+A simple grep would have caught this:
+```bash
+grep -n "use_yaml\|analyze_refinement_trend" agent/metrics_analyzer.py
+```
+
+When a deployed fix doesn't change behavior: **look at the
+message format first.** If the printed strings don't match the
+patched code, the patch is in dead code. The session output had
+`"above target (0.70)"` but v116.12 produced `"above 0.70 target"`
+— I noticed but explained it away as a deployment lag instead of
+treating it as definitive evidence.
+
+### Compatibility
+
+- X-ray workflows unchanged (X-ray path already had this check)
+- Workflows with validation already done: no behavior change
+- Workflows below CC target: no behavior change (SUCCESS branch doesn't fire)
+- No directive or contract changes
+- Trend summary format unchanged
+
+### Relation to v116.12
+
+v116.12's `metrics_analyzer.py` patch remains in place but is
+dead code (only runs when YAML evaluator raises an exception).
+Leaving it provides correct behavior in the unlikely fallback case.
+
+v116.12's `graph_nodes.py` Fix #2 (defense-in-depth elif +
+diagnostic context dump) remains valuable: now genuinely
+defense-in-depth rather than necessary, and the diagnostic logging
+will help if any other `should_stop=True` source (PLATEAU,
+EXCESSIVE) ever fires with a pending validation stage.
+
+### Known limitations
+
+| Limitation | Impact |
+|------------|--------|
+| **Two parallel stop-logic implementations** | `metrics_analyzer.py` and `metric_evaluator.py` both implement cryo-EM stop logic. v116.12 + v116.13 has both fixed, but future drift is a real risk. Code review for any change to one should require updating the other. |
+| **PLATEAU and EXCESSIVE paths don't check validation** | Currently neither X-ray nor cryo-EM PLATEAU/EXCESSIVE branches gate on validation_done. v116.13 doesn't change this. If a workflow PLATEAUs at CC=0.72 without validation, stop still fires. Pre-existing semantic question. |
+| **Cosmetic `'unknown'` in F7 fallback** | Unchanged from v116.12. When stop intent sets `decision_info["program"] = None`, F7's fallback prints `'unknown'`. Session correctly ends; only display text is wrong. |
+| **`plan_has_pending_stages` mystery** | Still unresolved why v116.12 Fix #2's earlier `plan_has_pending_stages` elif didn't suppress AF_7mjs. v116.13 makes this moot for the SUCCESS path (we don't reach the PLAN auto-stop chain), but a future PLATEAU/EXCESSIVE stop with a pending validation stage could resurface the same issue. |
+
+---
+
+## Version 116.12 (Cryo-EM Validation-Aware Auto-Stop)
+
+### Summary
+
+Two coordinated fixes for the AF_7mjs Stage 5 (validation) skip
+bug. The agent ran the correct 5-stage plan but auto-stopped after
+Stage 4 (refinement, CC=0.78) without running validation
+(phenix.molprobity).
+
+Root cause: asymmetry between X-ray and cryo-EM stop logic in
+`agent/metrics_analyzer.py`. The X-ray path correctly defers
+auto-stop until validation runs; the cryo-EM path didn't. The two
+paths drifted out of sync.
+
+### Modified Files (2 production files)
+
+| File | Phases | Changes |
+|------|--------|---------|
+| `agent/metrics_analyzer.py` | Fix #1 | +25 / -4 lines. Mirror the X-ray validation_done check in the cryo-EM `latest_cc > 0.70` branch. Recognizes `phenix.molprobity` and `phenix.validation_cryoem`. When validation isn't done, sets `should_stop=False` and `suggest_validation=True` instead of stopping immediately. |
+| `agent/graph_nodes.py` | Fix #2 | +41 / -0 lines. Two additions in the PLAN node's auto-stop chain: (a) new `elif` between `plan_has_pending_stages` and the final `else` — suppresses AUTO-STOP when `workflow_state.step_info.step == "validate"` AND `validation_done == False`; (b) diagnostic context dump in the AUTO-STOP path logging `plan_has_pending_stages`, `step`, `validation_done`, `after_program`, `experiment_type` to `debug_log`. |
+
+### Bug Details
+
+#### Symptom
+
+```
+[STATE]  cryoem_refined
+  Model refined, need validation - Goal: Ensure model meets quality standards (CC: 0.783)
+[STOP]
+  SUCCESS: Map-model CC (0.783) above target (0.70)
+No command was generated for program 'unknown'. Ending session.
+```
+
+AF_7mjs (cryo-EM, half-maps + sequence, PredictAndBuild) had a
+plan with 5 stages. After Stage 4 (`phenix.real_space_refine`)
+produced `map_cc=0.7832`, the agent should have advanced to Stage
+5 (`phenix.molprobity`). Instead it auto-stopped. The state
+machine even reported "Model refined, need validation" but the
+threshold-based stop fired anyway.
+
+Session JSON confirmed:
+- Plan had 5 stages (correct)
+- Stages 1-3 complete (correct)
+- Stage 4 active, `cycles_used=2`, `success_criteria: model_map_cc > 0.7` met
+- Stage 5 `status="pending"`, `programs=["phenix.molprobity"]`, **never ran**
+- Cycle 5 reasoning: `"Automatically stopping: SUCCESS: Map-model CC (0.783) above target (0.70). Map CC: 0.783 - TARGET REACHED"`
+- Cycle 5 program: empty (None); F7 fallback printed `'unknown'`
+
+#### Root cause analysis
+
+The X-ray and cryo-EM stop paths in `analyze_metrics_trend` should
+be symmetric on the "success → validation" question. They were
+not.
+
+**X-ray path (lines 365-385) — correct:**
+```python
+if latest_r_free < success_threshold:
+    validation_done = any(
+        m.get("program") in ("phenix.molprobity", "phenix.model_vs_data")
+        for m in metrics_history
+    )
+    if validation_done:
+        result["should_stop"] = True
+    else:
+        result["should_stop"] = False
+        result["suggest_validation"] = True
+```
+
+**Cryo-EM path (lines 506-511) — bug:**
+```python
+if latest_cc > 0.70:
+    result["should_stop"] = True   # No validation check
+    return result
+```
+
+The cryo-EM path was probably written first and the validation_done
+check was added to the X-ray path later. The two paths drifted.
+
+### Three logical changes
+
+| Change | Location | What |
+|--------|----------|------|
+| **Fix #1: validation_done check** | `metrics_analyzer.py` `_analyze_cryoem_trend`, `latest_cc > 0.70` branch | Mirror X-ray pattern. When validation not done, `should_stop=False` + `suggest_validation=True` + trend_summary `"Map-model CC: X.XXX - TARGET REACHED, VALIDATE BEFORE STOPPING"`. Accepts `phenix.molprobity` and `phenix.validation_cryoem` as valid cryo-EM validation programs. |
+| **Fix #2a: validate-step suppression elif** | `graph_nodes.py` `plan()` auto-stop chain, between `plan_has_pending_stages` and `else` | Defense-in-depth. Suppresses AUTO-STOP when `workflow_state.step_info.step == "validate"` AND `not validation_done`. Catches cases where `plan_has_pending_stages` doesn't fire. |
+| **Fix #2b: diagnostic context dump** | `graph_nodes.py` `plan()` else (AUTO-STOP) branch | Logs `plan_has_pending_stages`, `step`, `validation_done`, `after_program`, `experiment_type` to `debug_log` before stopping. Makes future regressions debuggable. |
+
+### Priority order in the elif chain (after Fix #2)
+
+```
+1. advice_changed       (user provided new advice on resume)
+2. after_program        (user-specified stop target)
+3. user_wants_ligandfit (ligandfit prerequisite pending)
+4. plan_has_pending_stages (expert plan has pending stages)
+5. step=="validate" AND !validation_done  ← NEW (defense-in-depth)
+6. else AUTO-STOP (now with diagnostic context dump)
+```
+
+Rationale: user/plan intent (1-4) wins over engine-derived intent
+(5). The new check is the last line of defense.
+
+### Tests (2 new files, 27 new test cases)
+
+| File | Phase | Cases | Covers |
+|------|-------|-------|--------|
+| `tst_cryoem_stop_validation.py` (S27) | Fix #1 | 16 (31 assertions) | AF_7mjs regression, both validation programs recognized, X-ray validation programs explicitly don't count, CC just-above threshold, CC exactly at threshold (strict `>`), validation_done with EXCESSIVE / PLATEAU paths, X-ray path unchanged |
+| `tst_plan_autostop_validation_suppression.py` (S28) | Fix #2 | 11 (28 assertions) | New elif fires when step=="validate" + !validation_done; doesn't fire when validation_done=True; doesn't fire when step != "validate"; priority order with other suppressors; diagnostic dump appears only on AUTO-STOP; dump records correct values |
+
+Both test files use the libtbx-stub pattern so they run standalone
+without a PHENIX install.
+
+Registered in `tests/run_all_tests.py` as suites S27 and S28.
+
+### Verification
+
+```
+=== Fix #1 tests ===          (pre-fix:)
+31 passed, 0 failed           18 passed, 13 failed
+
+=== Fix #2 tests ===          (pre-fix:)
+28 passed, 0 failed           10 passed, 13 failed
+
+=== Regression check (existing v116.11 suites) ===
+tst_stop_condition_false_positive: 15 passed, 0 failed
+tst_general_resolver:              21 passed, 0 failed
+tst_dock_and_stop:                  5 passed, 0 failed
+tst_standalone_consistency:         8 passed, 0 failed
+tst_initialize_plan_smoke:          9 passed, 0 failed
+tst_file_encoding:                  7 passed, 0 failed
+tst_program_requirements:          40 passed, 0 failed
+```
+
+### Why TWO fixes if Fix #1 is the primary
+
+Fix #1 alone should prevent the bug (don't set `should_stop=True`
+until validation is done). Fix #2 adds:
+
+1. **Unsolved-mystery insurance.** We could not determine from the
+   AF_7mjs session JSON why `plan_has_pending_stages` didn't
+   suppress the AUTO-STOP. The function should have returned True
+   against the final plan state. Fix #2's diagnostic logging is
+   specifically designed to catch this on future runs.
+
+2. **Defense-in-depth on a class of bugs.** Other code paths
+   might set `should_stop=True` outside `_analyze_cryoem_trend`
+   (PLATEAU, EXCESSIVE, future additions). Fix #2 protects
+   against any future "stop fires while validate is pending"
+   regression.
+
+3. **No cost.** Fix #2's new elif only fires when the existing
+   chain would have stopped AND `step="validate"` AND
+   `validation_done=False`. If Fix #1 works, Fix #2's new elif
+   never fires in practice.
+
+### Compatibility
+
+- **X-ray workflows unchanged.** Fix #1 only modifies the cryo-EM
+  branch. The X-ray pattern it mirrors was already there.
+- **Workflows with validation already done**: `should_stop=True`
+  fires as before. No behavior change.
+- **No directives or contract changes.** No client protocol updates.
+- **AF_7mjs and similar cryo-EM tutorials**: workflow now correctly
+  advances to validation stage instead of stopping prematurely.
+
+### Known limitations (not blocking AF_7mjs)
+
+| Limitation | Impact |
+|------------|--------|
+| **Cosmetic 'unknown' in F7 fallback** | "No command was generated for program 'unknown'" comes from `_run_single_cycle`: `decision_info.get('program', '') or 'unknown'`. When `program=None` (stop intent), `None or 'unknown'` = `'unknown'`. Cleaner: show `'STOP'` or `stop_reason`. Not blocking; session correctly ends. |
+| **Unknown why `plan_has_pending_stages` didn't suppress** | Function should return True against AF_7mjs session JSON. Possibilities: stale session.data at check time, transport-layer propagation issue, or deployed version differs from analyzed version. Fix #2's diagnostic logging will surface this on future occurrences. |
+| **Map-CC trend_summary format change** | Before: `"Map-model CC: 0.620 → 0.780 (+25.8% last cycle)"`. After (validation done): `"Map-model CC: 0.780 - ABOVE TARGET"`. After (validation not done): `"Map-model CC: 0.780 - TARGET REACHED, VALIDATE BEFORE STOPPING"`. UI log parsers that match the trend format may need to be updated. Mirrors X-ray's pre-existing pattern. |
+| **MTZ warning in cryo-EM workflows** | Pre-existing diagnostic: `"WARNING: Refinement completed but best_files[map_coeffs_mtz] is EMPTY"`. Cryo-EM doesn't produce MTZ — the slot doesn't apply. Should be gated on `experiment_type == "xray"`. Not blocking. |
+
+## Version 116.11 (AF_7mjs Stop Condition Fix + Test Cleanup)
+
+### Summary
+
+Two coordinated changes shipped together:
+
+1. **Directive extractor fix** for an AF_7mjs (and likely other
+   cryo-EM tutorial) regression: the preprocessor-inserted
+   `**Stop Condition**: None` header was being misinterpreted as
+   real user stop intent, causing the planner to skip prerequisite
+   stages and produce wrong plans.
+
+2. **Test file cleanup** — removed `libtbx.find_unused_imports`
+   warnings from 5 test files by switching to real symbol references
+   (no `# noqa` shortcuts).
+
+The directive extractor fix was the trigger; the test cleanup
+shipped in the same cycle since it was in flight.
+
+### Modified Files (1 production file, 5 test files)
+
+| File | Changes |
+|------|---------|
+| `agent/directive_extractor.py` | +98 / -17 lines. Three logical changes (see Bug Details below): (1) strengthened the regex used at all three places that detect preprocessor formatting — handles markdown bold (`**Header**:`), numbered list prefixes (`7. Header:`), and bullet markers (`- Header:`); (2) defense-in-depth Stop Condition strip inside `_resolve_after_program` before the `\bstop\b` check; (3) suppression of `start_with_program` writes from `_resolve_after_program` when advice is preprocessor output, since multi-action signals in descriptive Primary Goal prose are not user prescription. |
+| `tests/tst_file_encoding.py` | Switched from `from yaml_loader import _load_yaml_file` to `from knowledge import yaml_loader` + `hasattr(yaml_loader, '_load_yaml_file')` availability probe. Real symbol reference, no `# noqa`. |
+| `tests/tst_general_resolver.py` | Removed unused `import re` (was at top, never referenced). |
+| `tests/tst_skip_to_program.py` | Removed unused `STAGE_FAILED` from the plan_schema import tuple. |
+| `tests/tst_standalone_consistency.py` | Switched from importing `_ACTION_TABLE` directly to importing the `directive_extractor` module and checking `directive_extractor is not None` as an availability probe. The actual symbol is loaded later by `_load_action_table()` which has its own fallback chain. |
+| `tests/tst_user_advice_filter.py` | Merged the two import attempts (libtbx and local) into a single try/except chain. Eliminated the dead `_real` alias that existed only to satisfy the linter. |
+
+### Bug Details
+
+#### v116.11 root cause: latent strip-regex weakness
+
+`_strip_preprocessor_stop_condition` at line 44 of
+`directive_extractor.py` exists specifically to remove
+preprocessor-inserted headers at the entry of both extraction
+paths (`extract_directives` and `extract_directives_simple`). Its
+regex required headers to start with the literal word:
+
+```python
+r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$'
+```
+
+But the advice-preprocessor LLM produces output with **markdown
+bold and numbered list prefixes** like:
+
+```
+7. **Stop Condition**: None
+```
+
+The strip never matched this format. Before v115.10, no code
+path did a bare `\bstop\b` search on the un-stripped text, so the
+bug was latent. v115.10's new `_resolve_after_program` introduced
+the first sensitive consumer.
+
+#### Symptom: AF_7mjs three-stage plan
+
+When the agent ran AF_7mjs with the v115.10 directive extractor,
+the resolver matched `\bstop\b` against the un-stripped
+`**Stop Condition**` header, set `_has_stop=True`, and combined
+with the multi-action detection in the Primary Goal text
+("Run PredictAndBuild ... rebuild ... refine") produced
+directives like:
+
+```yaml
+after_program: phenix.real_space_refine
+skip_validation: True
+start_with_program: phenix.predict_and_build
+```
+
+The planner interpreted `start_with_program` as a skip-prerequisites
+directive and produced a 3-stage plan starting at Stage 3 instead
+of the correct 5-stage cryo-EM plan starting with `mtriage`. The
+March 30, 2026 working run produced the correct 5-stage output;
+something between then and May 11 (v115.10 deployment) exposed
+the latent bug.
+
+#### Three logical changes in directive_extractor.py
+
+| Change | Locations | What |
+|--------|-----------|------|
+| **Strengthen preprocessor-format regex** | `_strip_preprocessor_stop_condition` (Stop Condition strip, Primary Goal strip, and `_PREPROCESSOR_SIGNATURES` detection) + the pre-existing `_is_preprocessed` check at line 2860 in `extract_directives_simple` | Adds optional numbered list prefix (`[\d]+\.`), bullet markers (`[-*]`), and markdown bold (`\**`) wrappers around the header keyword. Three locations, identical pattern, for consistency. |
+| **Defense-in-depth Stop Condition strip** | Top of `_resolve_after_program`, before the `\bstop\b` check | Strips the Stop Condition header again before computing `_has_stop`. Under normal flow this is redundant with the upstream strip, but catches future code paths that bypass `_strip_preprocessor_stop_condition`. |
+| **Suppress `start_with_program` for preprocessed advice** | Multi-action branch of `_resolve_after_program` | New `_is_preprocessed` check inside the resolver. When the advice is detected as preprocessor output, the multi-action branch no longer writes `start_with_program`. Reasoning: in preprocessed advice, multi-action mentions come from descriptive Primary Goal prose ("Run PredictAndBuild ... dock/trim ... rebuild ... refine"), not user prescription. Setting `start_with_program` from descriptive prose makes the planner skip prerequisite stages. Real user prose like "run phaser and refine" is unaffected — no preprocessor signatures, so `start_with_program=phenix.phaser` still gets set as before. |
+
+### Tests (1 new file, 15 tests)
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tst_stop_condition_false_positive.py` (S26) | 15 | Primary AF_7mjs regression; markdown header variants (5); upstream-strip preserves user prose (3); Primary Goal strip strengthened; `_resolve_after_program` directly for resolver-isolated behavior (negation, legitimate stop, multi-action with/without stop, real user prose for start_with); start_with suppression for preprocessed advice. |
+
+Registered in `tests/run_all_tests.py` as suite S26.
+
+The test file uses the libtbx-stub pattern so it runs without a
+real PHENIX install. Tests that target specific resolver behavior
+call `_resolve_after_program` directly to isolate from
+`intent_classifier`, which is a separate, legitimate extraction
+path that can also write `after_program` through its own
+mechanism.
+
+### Verification
+
+- **Reproducer**: full AF_7mjs processed advice now produces empty
+  or minimal directives (matching the March 30 working behavior).
+  No `after_program` write, no `start_with_program` write.
+- **Real PHENIX**: 15/15 tests pass via `phenix.python
+  tst_stop_condition_false_positive.py` after the test-environment
+  sensitivity fix (`test_only_primary_goal_extracted_no_stop` was
+  initially too strict — it didn't account for `intent_classifier`
+  legitimately writing `after_program` for simple "Refine the
+  model." advice; rewrote the test to call `_strip_preprocessor_stop_condition`
+  in isolation).
+- **No regressions**: all existing test suites pass
+  (`tst_general_resolver` 21/21, `tst_dock_and_stop` 5/5,
+  `tst_program_requirements` 40/40, `tst_standalone_consistency`
+  8/8, `tst_initialize_plan_smoke` 9/9, `tst_file_encoding` 7/7).
+
+### Self-Review Findings
+
+The fix went through five review iterations before settling on the
+current shape. Each iteration found a problem with the previous
+diagnosis:
+
+1. **First diagnosis (wrong shape):** Strip the header inside
+   `_resolve_after_program` only. This is a symptom fix — it
+   treats the bug at the consumer, not the cause. The right fix
+   point was the upstream `_strip_preprocessor_stop_condition`.
+
+2. **Second diagnosis (incomplete):** Mark resolver writes with
+   `_set_by_pattern=True` so the intent-driven clearing block
+   could remove them. But the clearing block only handles
+   `after_program`, not `start_with_program`. The actual
+   problematic write on AF_7mjs was `start_with_program`.
+
+3. **Third diagnosis (right shape):** Suppress `start_with_program`
+   writes when advice is preprocessed. Simpler than mark-and-clear;
+   addresses the root semantic confusion (descriptive prose ≠ user
+   prescription).
+
+4. **Fourth iteration:** Found that the pre-existing
+   `_is_preprocessed` regex at line 2860 of `extract_directives_simple`
+   was inconsistent with my upstream fix — it still used the old
+   regex that didn't handle markdown. Strengthened for consistency.
+
+5. **Fifth iteration:** Test failure in real PHENIX revealed that
+   `intent_classifier` writes `after_program` through a separate
+   path. Rewrote affected tests to use `_resolve_after_program`
+   directly when targeting resolver-specific behavior.
+
+### Known limitations (not blocking AF_7mjs)
+
+| Limitation | Impact |
+|------------|--------|
+| **Conditional stop in Special Instructions** | Text like "Stop the analysis if R-free > 0.5" in Special Instructions could still false-positive `_has_stop=True`. AF_7mjs's actual Special Instructions don't contain stop words. Pre-existing fragility. |
+| **DRY violation across 3 `_PREPROC_SIGS` locations** | Same signature list and regex appears at three locations in `directive_extractor.py`. Cosmetic; future refactor should extract to a module-level helper. |
+| **Line 2860 `_is_preprocessed` covered only indirectly** | My test suite verifies the strengthened regex via the strip function (which uses the same pattern). The line 2860 instance is mechanically a copy of tested code, but a direct test would be cleaner. |
+
+### Test Cleanup Details
+
+The unused-imports fix used **real symbol references**, not
+`# noqa: F401` suppression. The `libtbx.find_unused_imports`
+tool requires that imported names actually be referenced; a
+`noqa` comment doesn't satisfy it.
+
+The general pattern was: where a test imports a symbol only to
+verify the module is available, switch to importing the module
+itself and using `hasattr()` or `is not None` as the availability
+probe. This is both more honest about what the test depends on
+and less brittle if the symbol gets renamed.
+
+---
+
+## Version 116.10 (Reliability and Classification Cleanup)
+
+### Summary
+
+Six bugs in advice parsing, LLM prompting, program selection, and
+plan classification, plus drift-detection machinery for the wire
+contract and the client's plan-generation logic. The cleanup was
+scoped from a single batch-tutorial finding ("predict and stop"
+sessions were AUTO-STOPping) and grew as adjacent bugs surfaced
+during investigation. Five files modified, 89 new tests across
+7 new test files plus one augmented file. Rollout order in
+testing: 1 → 6a → 4b → 2 → 6b → 3a → 3d.
+
+### Modified Files (5 production files)
+
+| File | Phases | Changes |
+|------|--------|---------|
+| `agent/rules_selector.py` | 1 | `_apply_user_advice` `stop_condition_patterns` extended with `"and stop"`, `"then stop"`, `", stop"` so "predict and stop" stops being collapsed to `["STOP"]`. |
+| `agent/workflow_engine.py` | 4b, 6b | Phase 4b: new `_filter_programs_missing_data_inputs` strips `xtriage` when `not has_data_mtz and not has_phased_data_mtz`, strips `mtriage` when no map; matching guards added to `_check_program_prerequisites` for defense in depth. Phase 6b: top of `_detect_xray_step` routes sequence-only sessions directly to `obtain_model` (state becomes `xray_analyzed`). |
+| `agent/contract.py` | 2 | `CURRENT_PROTOCOL_VERSION` 3 → 5 (matches highest field version after silent drift). New `validate_contract()` returns `(ok, errors)` enforcing three invariants: CURRENT ≥ max field version, MIN ≤ CURRENT, MIN ≥ 1. |
+| `knowledge/prompts_hybrid.py` | 6a | `_format_directives_for_prompt` after-program lines replaced: "CRITICAL: You MUST run X" → "Stop target: X. If in VALID PROGRAMS choose it; if not, choose an appropriate prerequisite. Never pick outside VALID PROGRAMS." |
+| `phenix/programs/ai_agent.py` | 2, 3a, 3d | Phase 2: `_get_protocol_version()` fallback `return 3` → `return 5`. Phase 3a: `_STANDALONE_PROGRAMS` and `_NEEDS_PLAN_PROGRAMS` extracted as module-level frozensets near line 815; three call sites in `_initialize_plan_inner` updated to reference them (pure refactor, 51 program×intent traces verified identical). Phase 3d: `phenix.map_symmetry` and `phenix.dock_in_map` added to `_STANDALONE_PROGRAMS` (behavior change: skips plan generation, routes through workflow_engine state machine instead). |
+
+### Bug Details
+
+| Bug | Phase | Symptom | Root Cause | Fix |
+|-----|-------|---------|------------|-----|
+| 1 | 1 | "predict and stop" sessions immediately AUTO-STOP at session start | `_apply_user_advice` saw `stop` keyword without matching any of `stop after / stop when / stop once / stop if / stop condition / stop at` → fell through to "treat as immediate stop" → `valid_programs` collapsed to `["STOP"]` | Extended `stop_condition_patterns` with `"and stop"`, `"then stop"`, `", stop"` |
+| 2 | 6a | LLM picks `predict_and_build` before `xtriage` has run, hitting prerequisite failure | Prompt told LLM "CRITICAL: You MUST run X before stopping. If it's in VALID PROGRAMS, choose it NOW." — overrode prerequisite logic | Reframed as "Stop target: X. If in VALID PROGRAMS choose it; if not, choose an appropriate prerequisite" |
+| 3 | 4b | xtriage offered as valid program even when no `.mtz` is uploaded; session stalls | YAML lists xtriage at analyze step unconditionally; no data-input filter | New `_filter_programs_missing_data_inputs` strips xtriage when no .mtz, mtriage when no map; matching prereq guard in `_check_program_prerequisites` for defense in depth |
+| 4 | 2 | New v3/v4/v5 fields added to `SESSION_INFO_FIELDS` while `CURRENT_PROTOCOL_VERSION` stuck at 3 — silent drift | No invariant check between `CURRENT_PROTOCOL_VERSION` and registered field versions | Bumped CURRENT to 5; added `validate_contract()` invariant function; augmented existing `tst_contract_compliance.py` with drift-detection test |
+| 5 | 6b | Sequence-only X-ray sessions stuck at `xray_initial` (analyze step); xtriage filtered, no fallback | `_detect_xray_step` returned analyze for `not xtriage_done` regardless of whether xtriage could even run | Routing branch at top of `_detect_xray_step`: when no .mtz and has sequence → `obtain_model` (state becomes `xray_analyzed`); `predict_and_build` available via YAML `has: sequence` condition |
+| 6 | 3a | `_initialize_plan_inner` standalone-programs list duplicated inline at two call sites; comment admitted the duplication; classification couldn't be tested | Original implementation kept the two tuples in sync by hand | Extracted `_STANDALONE_PROGRAMS` and `_NEEDS_PLAN_PROGRAMS` as module-level frozensets; new `tst_standalone_consistency.py` enforces alignment with `directive_extractor._ACTION_TABLE` |
+| 7 | 3d | "dock and stop" with sequence + map (no model) generates a plan, `skip_to_program(dock_in_map)` marks predict_and_build SKIPPED, dock_in_map then fails at runtime | `dock_in_map` was a "full-plan target" (caught by the v116.10 elif); skip_to_program incorrectly removed the predict prerequisite | Reclassified `phenix.dock_in_map` and `phenix.map_symmetry` as `_STANDALONE_PROGRAMS`; `_initialize_plan_inner` now skips plan generation, lets `workflow_engine` handle prerequisites via state machine (analyze → predict → dock) |
+
+### Tests (7 new files, 1 augmented, 89 new test cases)
+
+| File | Phase | Cases | Covers |
+|------|-------|-------|--------|
+| `tst_user_advice_filter.py` | 1 (S13) | 16 | "X and stop" / "X then stop" / "X, stop" preserved; recognized stop-conditions still respected |
+| `tst_after_program_prompt.py` | 6a (S14) | 12 | Prompt uses target-not-now framing; aggressive "MUST" language removed |
+| `tst_data_input_filter.py` | 4b (S15) | 22 | xtriage filtered when no .mtz; mtriage filtered when no map; prereq guard handles directive re-injection |
+| `tst_protocol_version.py` | 2 (S16) | 15 | `validate_contract()` invariants via synthetic probes (drift detection, bounds checking) |
+| `tst_contract_compliance.py` | 2 (augmented) | +1 | New `test_contract_validate_passes` adds drift-detection entry point |
+| `tst_sequence_only_routing.py` | 6b (S17) | 10 | Sequence-only sessions route to `obtain_model`; doesn't fire when data is present or sequence absent |
+| `tst_standalone_consistency.py` | 3a (S18) | 8 | `_STANDALONE_PROGRAMS` aligned with `_ACTION_TABLE`; drift detection for new actions |
+| `tst_dock_and_stop.py` | 3d (S19) | 5 | Phase 3d behavior change documented; blast-radius regression guard (48 unrelated traces unchanged) |
+
+Registered in `tests/run_all_tests.py` as suites S13–S19.
+
+Run with: `python3 tests/run_all_tests.py` or individually
+`python3 tests/tst_user_advice_filter.py`, etc.
+
+### Verification
+
+| Fix | Verification |
+|-----|--------------|
+| Bug 1 (user advice "X and stop") | ✅ 16 unit tests pass; 6/16 fail on pre-fix code |
+| Bug 2 (after-program prompt) | ✅ 12 unit tests pass; 6/12 fail on pre-fix |
+| Bug 3 (data-input filter) | ✅ 22 unit tests pass; 18/22 fail on pre-fix; integration smoke test confirms xtriage absent from valid_programs when no .mtz |
+| Bug 4 (protocol hygiene) | ✅ 15 + 1 unit tests pass; 8/15 fail on pre-fix; verified `tst_contract_compliance.py:test_protocol_version_consistency` now passes (was failing because fallback `return 3` ≠ CURRENT `5`) |
+| Bug 5 (sequence-only routing) | ✅ 10 unit tests pass; 4/10 fail on pre-fix; end-to-end integration test confirms state becomes `xray_analyzed` with `valid_programs=[phenix.predict_and_build]` |
+| Bug 6 (Phase 3a refactor) | ✅ 8 consistency tests pass; behavioral equivalence verified by 51 (program × intent) decision-tree traces — all identical pre/post |
+| Bug 7 (Phase 3d behavior change) | ✅ 5 unit tests pass; 3/5 fail on pre-fix; blast-radius check confirms 48 unrelated traces unchanged. ⏳ Integration test against tutorial corpus pending. |
+
+### Self-Review Finding (Phase 3a/3d split)
+
+Phase 3 was initially delivered as a single phase that bundled the
+de-duplication refactor with two new programs added to
+`_STANDALONE_PROGRAMS` (silently changing behavior). Self-review
+caught this:
+
+- Refactor PRs that change behavior should be split. "Cleaner"
+  behavior is still a behavior change.
+- The fix was to split into Phase 3a (verified by 51 trace-equivalence
+  checks) and Phase 3d (explicit behavior change, with `tst_dock_and_stop.py`
+  including a 48-trace blast-radius regression guard).
+
+This is recorded in `OVERVIEW.md` under Active Development as a
+principle for future cleanups.
+
+### Known Issues (deferred to future work)
+
+| Issue | Description |
+|-------|-------------|
+| Phase 3d integration verification | Decision-tree traces verified, but no tutorial currently exercises "dock and stop with sequence + map". A tutorial that does would close the verification gap. Rollback is one line if a regression appears. |
+| Systematic input-availability audit | Phase 4b only filters xtriage and mtriage. A systematic "every program declares its inputs" audit is unfinished. The next program added with hard input requirements should be added to the filter at the same time. |
+| Phase 6a "appropriate prerequisite" language | Shipped Option A (ship as-is) over Options B (add hint) and C (surface `rules_priority`). If integration testing shows the LLM picks the wrong prerequisite, revisit. |
+| Redundant prediction-only allowance | The v116.10 allowance in `_check_program_prerequisites` is mostly redundant after Phase 6b but retained as defense in depth. A future cleanup could remove it if edge cases (e.g., `xtriage_done=True` with no data) are verified to reach `predict_and_build` through other paths. |
+
+### Post-Phase-5 Addition: CC Key Extraction Fix (S20)
+
+#### Summary
+
+A successful cryo-EM workflow that produced metrics and a structure
+model displayed the misleading banner "SESSION STOPPED -
+INCOMPLETE / No structure model available." Root-caused to a key
+naming inconsistency in `_generate_structure_report` and patched
+with a defensive multi-key lookup.
+
+#### Bug Details
+
+| Symptom | Successful cryo-EM run reports "SESSION STOPPED - INCOMPLETE" |
+| Root Cause | `_generate_structure_report` looked up CC under `map_model_cc` (the form programs PRINT in logs), but the cycle metrics dict stores it under `model_map_cc` (the canonical storage key, see schema at `ai_agent.py:9083-9088`). The v115.05 author wrote the lookup against the printed form. For cryo-EM workflows without R-free, this meant `_best_cc=None` → `_metrics_good=False` → stopped-report path fires despite success. |
+| Fix | Defensive multi-key lookup at lines 8794-8797 and 8822-8823: checks `model_map_cc` (canonical), `map_model_cc` (legacy/unnormalized), `map_cc` (workflow_engine variant), `cc_mask` (real_space_refine output). Works regardless of which form actually appears in the dict. |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `phenix/programs/ai_agent.py` | 8794-8797, 8822-8823 | Two surgical edits adding `model_map_cc` to lookup lists |
+
+#### Tests
+
+`tst_cc_key_extraction.py` (11 tests, suite S20): 2 source-level
+invariants, 5 behavioral key-variant tests, 3 edge cases, 1
+motivating-case test reproducing the Tom-reported scenario.
+
+#### Self-Review Note
+
+Initially framed as "an open-and-shut typo." That was sloppy.
+`map_model_cc` is a legitimate spelling — it appears as a phenix
+program name and in regex-captured raw log lines. The bug is real
+but it's "wrong form of the name" not "typo": the author used the
+printed form rather than the stored form. The fix's defensive
+multi-key lookup handles both forms regardless.
+
+### Post-Phase-5 Addition: File Encoding Fix (S21)
+
+#### Summary
+
+A user on Chinese-locale Windows reported a `UnicodeDecodeError:
+'gbk' codec can't decode byte 0x94` crash at startup while loading
+`programs.yaml`. Root cause: Python's `open()` without explicit
+`encoding=` falls back to the system code page (`gbk` for
+Chinese-locale Windows, `cp1252` for English, `cp932` for
+Japanese), which crashes on any non-ASCII content in a UTF-8 file.
+
+The fix was applied in two passes: initially to the 4 files
+directly implicated by the crash trace, then to the **entire
+v116.10 codebase** (63 additional files surfaced by a recursive
+grep audit).
+
+#### Bug Details
+
+| Symptom | `UnicodeDecodeError: 'gbk' codec can't decode byte 0x94 in position 987` on PHENIX startup, Chinese-locale Windows |
+| Root Cause | `open(path)` without `encoding=` uses `locale.getpreferredencoding()`. On non-UTF-8 Windows locales, any UTF-8 file with non-ASCII content (curly quotes, em dashes, accented letters) crashes the read. |
+| Fix | Add `encoding='utf-8'` to every text-mode `open()` call. YAML, JSON, PDB, and report files are all UTF-8 by spec, so this is correct behavior, not a workaround. |
+
+#### Files Modified
+
+**First pass (the reported crash site + immediate neighbors):**
+
+| File | Sites |
+|------|-------|
+| `knowledge/yaml_loader.py` | 1 (the reported crash) |
+| `phenix/programs/ai_agent.py` | 3 |
+| `agent/directive_validator.py` | 1 |
+| 4 test files | 11 |
+
+**Second pass (codebase-wide audit, 305 sites across 63 files):**
+
+| Subdirectory | Offenders | Files |
+|--------------|-----------|-------|
+| `agent/` | 53 | 22 |
+| `knowledge/` | 3 | 3 |
+| `utils/` | 1 | 1 |
+| `tests/` | 248 | 37 |
+
+Patches applied: `open(path)` → `open(path, encoding='utf-8')`;
+`open(path, 'r')` → `open(path, 'r', encoding='utf-8')`;
+`open(path, errors='X')` → `open(path, encoding='utf-8',
+errors='X')`. Binary opens, `Popen`, `urlopen`, and `.open()`
+method calls were correctly excluded.
+
+#### Tests
+
+`tst_file_encoding.py` (7 tests, suite S21):
+
+- 3 per-file source scans (`yaml_loader`, `ai_agent`, `directive_validator`)
+- 2 directory-scan tests (`test_all_production_code_uses_utf8`,
+  `test_all_test_code_uses_utf8`) — walk the entire production and
+  test trees automatically, so new files added in the future are
+  covered without test updates
+- 2 empirical tests (write/read UTF-8, the user's exact byte pattern)
+
+The scanner uses Python's `tokenize` module rather than regex
+heuristics, so docstrings and string-literal occurrences of
+`open(` are correctly excluded.
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Re-audit of patched files (tokenize-based) | 0 offenders |
+| Python syntax (all 63 files) | All parse |
+| Line-count drift | 0 (every patch is in-place) |
+| 1:1 substitution (added = removed) | 306 = 306 |
+| `tst_file_encoding.py` on patched | 7/7 pass |
+| `tst_file_encoding.py` on unpatched | Correctly flags 302 |
+
+#### User Workaround (No Code Change)
+
+If a user can't deploy the patched files immediately, setting
+`PYTHONUTF8=1` in their shell before launching phenix forces
+Python 3.7+ to use UTF-8 for all file I/O regardless of system
+locale.
+
+#### Self-Review Note
+
+The 305 patches are mechanically uniform but lack per-patch
+explanatory comments (the first encoding fix added a 5-line
+comment to each file; the automated patcher for the codebase-wide
+pass did not). The rationale lives in this CHANGELOG entry rather
+than per-patch comments. Future maintainers cleaning up the
+codebase should know the `encoding='utf-8'` convention is
+load-bearing for non-UTF-8 Windows locales.
+
+### Post-Phase-5 Addition: Ligand Workflow Restart Fix (Phase 6c, S22)
+
+#### Summary
+
+The nsf-d2-ligand tutorial restarted its reasoning at cycle 3:
+after a successful refinement (cycle 1) and a successful ligand
+fit (cycle 2), cycle 3 reported `STATE: xray_initial / Need to
+analyze data quality first` and the LLM produced the reasoning
+*"As this is the first refinement step, I will set
+'generate_rfree_flags=true'."* The same pattern repeated at
+cycles 4 and 5. Three interacting issues were diagnosed; two
+fixes resolve all three.
+
+#### Bug Details
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|------------|-----|
+| **1** | Every cycle reports `STATE: xray_initial` even after refine and ligandfit succeeded | `_detect_xray_step` returns "analyze" any time `xtriage_done=False`, regardless of downstream progress. When the user supplies a pre-placed model + `start_with_program=phenix.refine` (which skips xtriage), the state never advances | Added a `past_analysis` check that mirrors `_detect_cryoem_step`: if any downstream program has completed (`refine_done`, `ligandfit_done`, `phaser_done`, etc.) or a positioned model exists on disk, advance past analyze |
+| **2** | After ligandfit succeeds, the "best model" pointer stays on the previous unliganded refined model | `best_files_tracker` scores `ligand_fit_output` (stage 105) below `refined` (stage 100 + R-free contribution ~22 = ~122). LigandFit's output (no R-free metrics) loses the scoring contest, so the LLM is told the model is still the unliganded one | Extended the existing `with_ligand` metric inheritance to also cover `ligand_fit_output`. One-condition change: `stage == "with_ligand"` → `stage in ("with_ligand", "ligand_fit_output")` |
+| **3** | LLM mechanically re-applies first-cycle directives (`generate_rfree_flags=true`) at cycles 3, 4, 5 | Observable consequence of Bugs 1 and 2 — when the agent presents a stale worldview (state=xray_initial + unliganded model as "current"), the LLM correctly applies first-cycle directives because the worldview says we're at cycle 1 | No separate fix needed; resolves automatically once the LLM sees correct state (Bug 1) and current model (Bug 2) |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `agent/workflow_engine.py` | 1040-1086 | Replaced 3-line early return with 45-line `past_analysis` check (mirrors `_detect_cryoem_step` at lines 1283-1299) |
+| `agent/best_files_tracker.py` | 564-583 | Extended condition `stage == "with_ligand"` to `stage in ("with_ligand", "ligand_fit_output")`; existing inheritance machinery handles the rest |
+
+#### Tests
+
+`tst_ligand_workflow_restart.py` (14 tests, suite S22):
+
+- **Section A** (8 tests): `past_analysis` check — verifies each
+  downstream flag (`refine_done`, `ligandfit_done`,
+  `phaser_done`, etc.) correctly advances past analyze; verifies
+  fresh cycle 1 still routes to analyze; reproduces the exact
+  nsf-d2-ligand cycle 3 context and confirms it returns
+  `combine_ligand`.
+- **Section B** (2 tests): regression — Phase 6b sequence-only
+  precedence still fires; fresh data+model upload still goes to
+  analyze first.
+- **Section C** (4 tests): `ligand_fit_output` metric
+  inheritance — ligand_fit_1.pdb becomes best with inherited
+  R-free; existing `with_ligand` inheritance still works;
+  explicit metrics on ligand_fit_output are respected (no
+  inheritance); end-to-end refine→ligandfit→refine tracks correctly.
+
+Uses the same libtbx-stub pattern as `tst_sequence_only_routing.py`
+(Phase 6b tests), so workflow_engine routing tests run without a
+real PHENIX install.
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Python syntax (both patched files) | Parses |
+| `tst_ligand_workflow_restart.py` (14 new tests) | 14/14 pass |
+| `tst_sequence_only_routing.py` (Phase 6b, 10 tests) | 10/10 pass (regression) |
+| `tst_data_input_filter.py` (Phase 4b, 22 tests) | 22/22 pass (regression) |
+| Empirical bug reproduction | Pre-fix: ligand_fit_1.pdb does NOT become best (score 122 stays on refined). Post-fix: ligand_fit_1.pdb becomes best (score 127 = stage 105 + inherited R-free 22) |
+| nsf-d2-ligand cycle 3 routing | Returns `combine_ligand` (correct flow through pdbtools) |
+
+#### Workflow Shape Change
+
+A behavioral change worth flagging: the workflow shape is
+different after this fix.
+
+| Before | After |
+|--------|-------|
+| refine → ligandfit → refine → refine → refine (3 refines without progress until guard fires) | refine → ligandfit → combine_ligand (pdbtools) → refine (canonical flow) |
+
+Both reach acceptable R-free, but the post-fix flow is the
+canonical sequence with the combine_ligand step properly
+executing. Tutorial expectations that encode the old shape
+("expect 3 refine cycles after ligandfit") would need updating.
+
+#### Self-Review Note
+
+Both fixes are non-novel — each mirrors a proven pattern already
+in the codebase:
+
+- Fix 1 mirrors `_detect_cryoem_step`'s `past_analysis` exactly.
+  The cryo-EM version has a comment explaining why the check
+  exists: *"This handles tutorials that skip mtriage and also
+  prevents the workflow from getting stuck in 'analyze' if
+  mtriage's done flag wasn't set."* The X-ray version simply
+  lacked the equivalent.
+- Fix 2 extends an existing two-line metric-inheritance pattern
+  to one additional stage. A one-character-ish change.
+
+A new principle surfaced from this round: **when fixing
+analogous bugs in parallel code paths (X-ray vs cryo-EM,
+with_ligand vs ligand_fit_output), check whether the fix
+pattern already exists nearby**. Both bugs had close analogs
+that simply hadn't been extended to cover the affected case.
+
+The highest residual risk is that this delivery was tested at
+source level but not via a live tutorial run. Tom should re-run
+the nsf-d2-ligand tutorial to confirm: (a) R-free still reaches
+~0.21 or better, (b) the reasoning report no longer shows "first
+refinement step" 4 times, (c) no tutorial expectations break.
+
+### Post-Phase-5 Addition: Tier 1 Follow-Up Tests (S23 + S24)
+
+#### Summary
+
+Two new test suites that close verification gaps flagged in the
+v116.10 review. Both are pure tests (no production code changes);
+they verify existing behavior that previously had only indirect
+coverage.
+
+#### Tests Added
+
+**S23 — `tst_initialize_plan_smoke.py` (9 tests)**
+
+`_initialize_plan_inner` had decision-tree traces in
+`tst_dock_and_stop.py` and `tst_standalone_consistency.py`, but
+neither test actually CALLED the function. A future refactor
+could change side effects (directive rewrites, stop_after
+clearing, plan-generation gating) without tripping any existing
+test.
+
+The new tests assert on the function's observable side effects
+for 9 scenarios covering each branch of the decision tree:
+
+| Case | Scenario | Expected outcome |
+|------|----------|------------------|
+| A | standalone (non-preprocessing) + task | single_program_skip; no rewrite |
+| B | preprocessing + task (no explicit stop) | rewrite intent; clear stop_after; proceed |
+| C | preprocessing + task + "and stop" advice | preprocessing_explicit_stop_skip; preserve directive |
+| D | needs_plan + task | rewrite intent; KEEP stop_after; proceed |
+| E | v116.10 elif full-plan target | rewrite intent; preserve stop_after; proceed |
+| F | task intent + no stop_after | single_program_skip (else branch) |
+| G | solve intent + no stop_after | proceed_to_generate_plan |
+| H | Phase 3d dock_in_map + task | single_program_skip (post-Phase-3d) |
+| Extra | xtriage + explicit_stop | preprocessing_explicit_stop_skip (xtriage is BOTH preprocessing and standalone — preprocessing branch fires first) |
+
+The "extra" case surfaced from a test development misclassification
+that was caught by the actual control-flow trace — exactly the
+kind of subtlety this layer of testing is meant to catch.
+
+The harness parses `_STANDALONE_PROGRAMS` and `_NEEDS_PLAN_PROGRAMS`
+from source (same pattern as `tst_dock_and_stop.py`), then replays
+the decision tree in a minimal harness. The full function can't
+be imported because of PHENIX dependencies; the harness mirrors
+the control flow exactly so a refactor that changes side effects
+requires the test to be updated in parallel.
+
+**S24 — `tst_phase3d_motivating_tutorial.py` (3 tests)**
+
+Closes the **highest-priority verification gap** from the v116.10
+review: Phase 3d's behavior change was verified only by
+decision-tree traces; no tutorial exercised the dock-and-stop
+path with sequence + map.
+
+Three layers:
+
+1. **Decision-tree** (unconditional): asserts dock_in_map + task
+   routes to `single_program_skip` (Phase 3d post-fix).
+2. **YAML expectations format** (unconditional):
+   `get_expectations_yaml_entry()` returns the snippet to add to
+   `tutorial_expectations.yaml`; test verifies it parses and
+   contains the expected program ordering.
+3. **Session-based** (skip-aware): given a real session.json
+   fixture (via `DOCK_AND_STOP_FIXTURE` env var or
+   `tests/fixtures/dock_and_stop_session.json`), asserts on
+   actual program ordering and the absence of the anti-pattern
+   `"no model file found"`.
+
+A `docs/PHASE_3D_TUTORIAL_README.md` walks through wiring up the
+synthetic tutorial data (sequence + map) and the session fixture.
+
+#### Files Modified
+
+| File | Lines |
+|------|-------|
+| `tests/tst_initialize_plan_smoke.py` (new) | 631 |
+| `tests/tst_phase3d_motivating_tutorial.py` (new) | 367 |
+| `tests/run_all_tests.py` (S23 + S24 registered) | +58 |
+| `docs/PHASE_3D_TUTORIAL_README.md` (new) | ~100 |
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Both new test files: Python syntax | Parses |
+| `tst_initialize_plan_smoke.py` | 9/9 pass |
+| `tst_phase3d_motivating_tutorial.py` | 3/3 pass (one skip-aware) |
+| `tst_dock_and_stop.py` (existing, regression) | 5/5 pass |
+
+#### Tier 1 status
+
+With S23 and S24 shipped, all four Tier 1 items from the
+v116.10 follow-up plan are now complete:
+
+| Item | Status |
+|------|--------|
+| 1.1 Phase 5 docs amendment for CC key fix | Done (covered by prior CHANGELOG amendments) |
+| 1.2 Multi-clause stop test cases | Handled by Tom directly |
+| 1.3 Phase 3a behavioral smoke test | Done (S23) |
+| 1.4 Phase 3d motivating-case tutorial | Done (S24) |
+
+### Post-Phase-5 Addition: GUI Tutorial Override Fix
+
+#### Summary
+
+When running a tutorial whose README mentions phenix programs
+not yet available in the AI Agent (e.g., `groel-dock-refine`
+mentions a currently-unsupported program), the GUI was blocking
+Run with a `Sorry` dialog even after the user provided their own
+files and advice that overrode the README.
+
+#### Bug Details
+
+| Symptom | "This tutorial requires programs not yet available" dialog blocks Run, even when user has provided their own files and instructions |
+| Root Cause | `AIAgent.py:validate_params()` has two consecutive checks. The first correctly distinguishes user-provided input from README fallback. The second (the tutorial-blocking block) fires unconditionally based on `tut.can_run` regardless of whether the user was using the README at all. |
+| Fix | One condition added to the tutorial-blocking guard: only fire when `not has_files and not has_advice`. The banner at the top of the page still shows the informational "tutorial requires X" warning — that's fine and was kept. |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `wxGUI2/Programs/AIAgent.py` | 69-86 | Added `and not has_files and not has_advice` to the blocking guard |
+
+#### Scenario Verification
+
+| Scenario | files | advice | tut.can_run | Pre-fix | Post-fix |
+|----------|-------|--------|-------------|---------|----------|
+| Tutorial, no own input | No | No | False | BLOCKED ✓ | BLOCKED ✓ |
+| Tutorial + own files (bug case) | Yes | No | False | BLOCKED (bug) | PROCEEDS ✓ |
+| Tutorial + own advice | No | Yes | False | BLOCKED (bug) | PROCEEDS ✓ |
+| Tutorial + both | Yes | Yes | False | BLOCKED (bug) | PROCEEDS ✓ |
+| Non-tutorial, no input | No | No | n/a | First block raises | First block raises ✓ |
+| Tutorial with supported programs | any | any | True | PROCEEDS ✓ | PROCEEDS ✓ |
+
+Three pre-fix bug scenarios fixed; no correct behavior changed.
+
+#### Verification
+
+GUI code (wxPython, requires a display to run). Verified by:
+- Python syntax check
+- Manual scenario tracing through 7 user paths
+
+User-confirmed working: Tom retested groel-dock-refine after
+deploying the fix and the dialog no longer blocks Run.
+
+#### Self-Review Note
+
+This fix was discovered during integration testing of Phase 6c
+(ligand workflow restart), not from a planned cycle item. The
+banner display (informational) was deliberately left in place so
+users still see what the README is asking for; only the
+blocking dialog was conditioned on user-override.
+
+### Post-Phase-5 Addition: Declarative Program Requirements (Tier 2.1, S25)
+
+#### Summary
+
+Added an optional `requirements:` block to entries in
+`programs.yaml`. When present, the block is evaluated by a new
+filter pass inside `_filter_programs_missing_data_inputs`.
+Programs without the block are unaffected. Initial scope: one
+declaration (`phenix.autobuild`) to plug a known gap where the
+program could be picked and crash at runtime with `MTZ lacks
+phase/FOM columns`.
+
+This is the result of Tier 2.1 design work, reviewed externally
+by Gemini and refined in the `PATH_Y_DESIGN.md` document.
+
+#### Bug Details
+
+| Symptom | LLM picks `phenix.autobuild` in sessions without phase information; command runs and fails with `MTZ lacks phase/FOM columns` after building setup. One wasted cycle plus a confusing runtime error. |
+| Root Cause | Autobuild had an explanation path (`explain_unavailable_program`) telling the LLM why it shouldn't pick autobuild, but no actual filter. The LLM could ignore the explanation. The state machine alone didn't gate autobuild because the relevant step has multiple valid programs and the conditions in `workflows.yaml` weren't expressive enough. |
+| Fix | Declarative `requirements:` block on `phenix.autobuild` evaluated by new `_check_requirements()` parser. Filter integrates inside `_filter_programs_missing_data_inputs` after the existing xtriage/mtriage checks. |
+
+#### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `agent/workflow_engine.py` | +135 | New method `_check_requirements()` (~100 lines including grammar docs); new clause-keyword set `_KNOWN_REQUIREMENT_CLAUSES`; integration block inside `_filter_programs_missing_data_inputs` (~22 lines) |
+| `knowledge/programs.yaml` | +4 | `requirements:` block on `phenix.autobuild` entry |
+| `tests/run_all_tests.py` | +22 | Register S25 (Program Requirements) |
+
+#### Declarative Schema (v1)
+
+```yaml
+phenix.<program>:
+  # ... existing fields ...
+  requirements:    # NEW — optional
+    requires:
+      - <clause>
+      - <clause>
+```
+
+Grammar (closed, boolean-only):
+
+| Clause | Semantics |
+|--------|-----------|
+| `has: <name>` | `context["has_<name>"]` truthy |
+| `has_any: [<name>, ...]` | At least one `context["has_<n>"]` truthy |
+| `not_has: <name>` | Not `context["has_<name>"]` |
+| `done: <name>` | `context["<name>_done"]` truthy |
+| `not_done: <name>` | Not `context["<name>_done"]` |
+
+The grammar is intentionally closed. No `if/then`, no nested
+logic, no metric comparisons. Per Pitfall 10 of the design
+doc: if a requirement needs control flow, it goes in Python
+(Mechanism 3 or 4), not here.
+
+#### autobuild Declaration
+
+```yaml
+phenix.autobuild:
+  requirements:
+    requires:
+      - has_any: [data_mtz, phased_data_mtz]
+      - has_any: [model, placed_model, phased_data_mtz]
+```
+
+`has_phased_data_mtz` appears in both clauses because a phased
+MTZ satisfies both "x-ray data" and "phase information"
+independently. So a phased MTZ alone is sufficient. Other
+qualifying scenarios: raw data + model, raw data + placed
+model (after phaser). Filtered scenarios: data alone, model
+alone, empty session.
+
+#### Tests (30 new test cases)
+
+| Section | Tests | Description |
+|---------|-------|-------------|
+| A. Parser unit tests | 17 | Each clause type evaluated in isolation; AND of clauses; malformed input handling; unknown-keyword warning + strict-mode raise |
+| B. Filter integration | 6 | autobuild scenarios: phased alone (keep), data+model (keep), data+placed_model (keep), data alone (filter), model alone (filter), empty session (filter) |
+| C. Backward compat | 7 | Programs without `requirements:` unaffected; existing xtriage/mtriage filters still work; order of operations correct; mixed program lists handled |
+
+Run with `phenix.python tests/tst_program_requirements.py`.
+
+#### Order of Operations
+
+The new filter integrates into the existing pipeline at step 4:
+
+1. State machine (Mechanism 1) — decides current step
+2. YAML step conditions (Mechanism 2) — filters programs within step
+3. `_filter_programs_missing_data_inputs` — existing xtriage/mtriage checks
+4. **`_check_requirements` — NEW declarative filter (this delivery)**
+5. `_check_program_prerequisites` (Mechanism 4) — runs for directive additions
+
+`requirements:` can only remove programs from `valid_programs`,
+never add them.
+
+#### Forward-Looking Guidance
+
+Per the design doc, `requirements:` is **the preferred path
+for new program filtering rules going forward**. The four
+existing hand-coded mechanisms aren't being grown.
+Documentation rules:
+
+- Add `requirements:` ONLY when the existing mechanisms don't
+  cover the filtering need (avoid duplication)
+- The grammar is closed; extension requires documented
+  justification per Pitfall 10
+- The block is boolean-only; file-content checks (e.g., "MTZ
+  has FOM columns") must be exposed as context flags elsewhere
+  (per Pitfall 16)
+- Before adding a new declaration, complete the context-flag
+  audit checklist (per Pitfall 15)
+
+See `PATH_Y_DESIGN.md` in the design package for the full
+rationale, 16 pitfalls with mitigations, and three rejected
+alternatives.
+
+#### Verification
+
+| Check | Result |
+|-------|--------|
+| Python syntax (workflow_engine.py, run_all_tests.py) | parse OK |
+| New test suite (40 tests) | 40 passed, 0 failed |
+| Backward-compat: existing `tst_data_input_filter` regression | xtriage/mtriage filters still pass |
+| Context-flag audit for autobuild's 4 referenced flags | All set in `_build_context()` before filter runs |
+| `tst_scenario_tracer.py` (S5A) | Passes after Tier 2.1.1 fix below |
+| `tst_phase4_history_flags.py` (all_read_flags_are_written) | Passes after Tier 2.1.1 fix below |
+
+#### Post-Deployment Fix (Tier 2.1.1): `any_of` clause + phantom flag
+
+After initial deployment, two test failures surfaced that required
+the Tier 2.1 implementation to be revised:
+
+**Failure 1 — S5A in `tst_scenario_tracer.py`:**
+
+The simulator reported `autobuild not available after autosol`. The
+v1 rule required `has_any: [model, placed_model, phased_data_mtz]`
+in its second clause, but in the simulator (and some real session
+paths) `autosol_done=True` is set without `has_phased_data_mtz` being
+updated on the same cycle. The existing explanation code at
+`explain_unavailable_program` uses `phaser_done OR autosol_done OR
+has_placed_model_from_history` as the gate; my v1 rule diverged from
+this and was stricter.
+
+**Failure 2 — phantom `has_` flag in `tst_phase4_history_flags.py`:**
+
+The static flag scanner regex matches `context.get("has_X")` to
+extract flag names. The v1 implementation had `context.get("has_" +
+clause["has"])` patterns, which the regex extracted as just `has_`
+(captured up to the first closing quote). This produced a false
+"flag read but not written" warning.
+
+**Fixes shipped in Tier 2.1.1:**
+
+1. **Grammar extension: `any_of` clause type** (Pitfall 10 justification
+   provided in workflow_engine.py docstring). Where `has_any: [...]`
+   takes a list of names and auto-prefixes `has_`, `any_of: [...]`
+   takes a list of sub-clauses (each is itself a clause: `has`,
+   `done`, `not_has`, `has_any`, or nested `any_of`). This allows
+   mixing flag families:
+
+   ```yaml
+   - any_of:
+       - has: phased_data_mtz
+       - done: autosol
+       - done: phaser
+   ```
+
+2. **Refactor key construction in `_check_requirements`** to use
+   intermediate variables (matching the pattern already used in
+   `_check_conditions`). Replaces `context.get("has_" + name)` with
+   `key = "has_" + name; context.get(key)` so the static scanner
+   doesn't trip on a literal `"has_"` inside a `context.get(...)`.
+
+3. **Update `phenix.autobuild` requirements**: replace the
+   inline-only `has_any` second clause with an `any_of` covering
+   both flag families:
+
+   ```yaml
+   requirements:
+     requires:
+       - has_any: [data_mtz, phased_data_mtz]
+       - any_of:
+           - has: phased_data_mtz
+           - has: model
+           - has: placed_model
+           - has: placed_model_from_history
+           - done: phaser
+           - done: autosol
+   ```
+
+   This now exactly mirrors the existing explanation pattern.
+
+4. **Test suite expanded from 30 → 40**: added 6 tests for the
+   new `any_of` clause type (positive/negative/nested/empty/malformed/
+   AND-combined), plus 4 regression tests for the S5A scenario
+   (autobuild kept after autosol_done, phaser_done,
+   has_placed_model_from_history; still filtered when no history at all).
+
+## Version 115.09b (GUI Fixes + Ligand Workflow + Bug 1)
+
+### Summary
+
+Production fixes from GUI testing and run 25 analysis. Three categories:
+explicit_program loop guard, ligand-fitting workflow (6 fixes), and
+GUI-mode corrections. 7 files modified.
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `agent/graph_nodes.py` | Bug 1: explicit_program done-flag guard prevents LLM-driven program loops. Removed dead .sca-only proactive check (replaced by diagnosable error). |
+| `agent/directive_extractor.py` | Ligand-fit placement: `model_is_placed=True` for "fit ligand" advice. Ligand-fit `after_program` clearing: removes LLM-set `after_program` for multi-step ligand workflows. |
+| `agent/workflow_engine.py` | Post-ligandfit exemption: defers `after_program_done` during combine/refine steps. Combine_ligand guard: forces pdbtools-only in combine step. Debug tracing for combine_ligand routing. |
+| `agent/command_builder.py` | `phaser_sad.atom_type` interception: converts to `additional_atom_types`, prevents Se→S override in autosol. |
+| `knowledge/programs.yaml` | Polder: `requires_resolution` invariant with `auto_fill_resolution` + `xray_data.high_resolution` strategy flag. Pdbtools: `exclude_patterns: [pose]` for ligand input (prevents selecting pose files over final model). Merged duplicate hints blocks. |
+| `knowledge/diagnosable_errors.yaml` | `missing_crystal_symmetry`: "No unit cell info available" + "Cell and/or symmetry not specified" patterns for xtriage with .sca data. |
+| `phenix/programs/ai_agent.py` | Fix A: `_has_explicit_stop` regex guard on preprocessing stop override (xtriage/mtriage). GUI auto-discovery skip: in GUI mode with user-selected files, skip supplement to prevent PHENIX artifacts from changing workflow intent. |
+
+### Bug Details
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|------------|-----|
+| Bug 1 (explicit_program loop) | bgal_denmod 3x resolve_cryo_em, hipip-refine 3x refine, emd_6123 3x map_to_model | `explicit_program` injection at graph_nodes.py line 691 bypasses done-flag check | Check done flag before injecting; skip if program already completed |
+| Fix A (preprocessing stop) | "run mtriage and stop" generates full 5-stage plan | `_preprocessing_programs` unconditionally clears `after_program` | `_has_explicit_stop` regex check before clearing |
+| Fix B (p9-xtriage) | xtriage fails twice on .sca without cell | Proactive file-type check can't distinguish p9 from gene-5-mad | Reactive: diagnosable_errors.yaml entry for "No unit cell" |
+| GUI discovery | nsf-d2-ligand picks up pdb_sequences.fa → predict_and_build | Auto-discovery supplements with PHENIX project artifacts | Skip supplement in GUI mode with user-selected files |
+| Ligand placement | "fit ATP" advice → predict_and_build instead of ligandfit | `model_is_placed` not set; model treated as unplaced | Rules overlay sets `model_is_placed=True` for ligand-fit signals |
+| Ligand after_program | Ligandfit→pdbtools→refine→polder workflow blocked at each step | LLM sets `after_program` to different program each run (ligandfit/refine/polder); each choice blocks a different step | Clear `after_program` when ligand-fit signals detected; plan template drives workflow |
+| Combine_ligand stuck | `combine_ligand` step gets STOP instead of pdbtools | `_apply_directives` wipes valid_programs via `after_program_done` | Post-ligandfit exemption + combine_ligand guard forces pdbtools-only |
+| Post-ligandfit refine | LLM picks molprobity instead of refine after pdbtools | `_apply_directives` re-adds ligandfit or polder to front of list | Three-way branch: combine→pdbtools-only; refine→prioritize refine; done→STOP |
+| phaser_sad.atom_type | Autosol uses S instead of Se | LLM adds `phaser_sad.atom_type=S` which overrides primary atom_type | Intercept and convert to `additional_atom_types` |
+| Polder resolution | Polder crashes without resolution limit | No `auto_fill_resolution` invariant for polder | Added `requires_resolution` invariant + `xray_data.high_resolution` strategy flag |
+| Pdbtools pose file | Pdbtools uses `ligand_fit_1_pose_5.pdb` instead of `ligand_fit_1.pdb` | `prefer_patterns: [ligand_fit]` matches both final and pose files | `exclude_patterns: [pose]` on ligand input slot |
+
+### Verification
+
+| Fix | Status |
+|-----|--------|
+| Bug 1 (bgal_denmod/rules_only) | ✅ mtriage→resolve_cryo_em→predict_and_build→RSR, CC=0.68 |
+| Bug 1 (hipip-refine/rules_only) | ✅ refine→xtriage→molprobity→auto-stop, R-free=0.223 |
+| Fix A (xtriage and stop) | ✅ Stops after xtriage in GUI |
+| Fix B (p9-xtriage) | ✅ 1 cycle, clean diagnosis with helpful message |
+| GUI discovery skip | ✅ Deployed, prevents pdb_sequences.fa pickup |
+| Ligand workflow | ✅ xtriage→refine→ligandfit→pdbtools→refine→polder→molprobity |
+| Polder resolution | ⏳ Deployed to server, awaiting verification |
+| Pdbtools pose exclusion | ⏳ Deployed, awaiting verification |
+
+
+## Version 115.09 (Tutorial Routing Fixes)
+
+### Summary
+
+Four routing bugs that prevented tutorials from completing. Fixes span
+cryo-EM workflow progression, data-limitation detection, validation-only
+routing, and MR-SAD intent recognition. Intent detection lives in the
+directive extractor layer (LLM prompt + rules-based fallback); the
+routing engine stays deterministic.
+
+### Modified Files (5 production files)
+
+| File | Fixes | Changes |
+|------|-------|---------|
+| `agent/workflow_engine.py` | 1, 3, 4 | Fix 1: `map_sharpening_done`, `map_symmetry_done`, `has_optimized_full_map` added to `past_analysis` gate in `_detect_cryoem_step`. Fix 3: `wants_validation_only` read from directives in `build_context`; validation shortcut in `_detect_xray_step` (guarded by `has_model` AND `has_data_mtz`). Fix 4: `force_mr` flag set in `build_context` when `use_mr_sad` + `has_model` + `not has_search_model` + `not phaser_done`; routing override in `_detect_xray_step` before placement probes; MR-SAD guard in `get_valid_programs` updated to check `force_mr`. |
+| `agent/graph_nodes.py` | 2 | `.sca/.hkl`-only data detection in `perceive()` with abort_message. Guarded by `not _has_model` AND `not _has_sequence` AND no `unit_cell` in directives. Follows established early-stop pattern (stop + stop_reason + abort_message + intent dict). |
+| `agent/directive_extractor.py` | 3, 4 | LLM prompt: `wants_validation_only` added to `workflow_preferences` schema with extraction guidance. MR-SAD prompt strengthened with concrete examples. `_validate_directives`: `wants_validation_only` added to allowed boolean keys. `extract_directives_simple`: rules-based fallback for 6 validation signals and 6 MR-SAD patterns. |
+| `agent/plan_generator.py` | 3 | `wants_validation_only` added to `_build_context` initial dict and propagated from `workflow_preferences` to template selection context. |
+| `knowledge/plan_templates.yaml` | 3 | `validate_existing` template: `applicable_when` requires xray + `wants_validation_only` + `has_search_model` + `model_is_placed` (priority 60, beats `refine_placed_ligand` at 55). Two stages: data_assessment (xtriage) + validation (model_vs_data, molprobity). |
+
+### Bug Details
+
+| Bug | Tutorial | Symptom | Root Cause | Fix |
+|-----|----------|---------|------------|-----|
+| 1 | bgal_denmod, apoferritin_denmod, ion_channel_denmod | Cryo-EM stops after 1 cycle (map_sharpening or resolve_cryo_em) | `map_sharpening_done` missing from `past_analysis` gate → `detect_step` returns "analyze" → no programs → STOP | 3 new flags in `past_analysis` including file-presence fallback |
+| 2 | p9-xtriage | xtriage fails on unmerged .sca without cell dimensions | Data limitation: unmerged scalepack needs unit cell + space group provided interactively | Early detection in `perceive()` with helpful abort message |
+| 3 | pka-validate | Runs predict_and_build instead of molprobity despite "Analysis only" advice | No validation-only routing path; directive extractor doesn't capture validation intent | `wants_validation_only` directive + validation shortcut + plan template |
+| 4 | lysozyme-MRSAD | R-free stuck at 0.54; phaser never runs despite "MR-SAD" advice | PDB classified as `model` not `search_model`; LLM ignores `use_mr_sad` prompt; no rules-based MR-SAD fallback | `force_mr` flag + MR-SAD rules fallback + prompt strengthening |
+
+### Review Fixes (2 bugs found during review)
+
+| Issue | Fix |
+|-------|-----|
+| Fix 2 false positive: gene-5-mad (merged .sca + sequence) falsely aborted | Added `not _has_sequence` guard to `.sca-only` condition |
+| Fix 3 false positive: "analysis only" matched xtriage-only and cryo-EM tutorials | Removed from rules-based signals; LLM prompt handles the nuance |
+
+### Deployment Fix (discovered via run 19 verification)
+
+Run 19 (OpenAI, post-deployment) showed all four fixes not firing: directives
+contained no `wants_validation_only` or `use_mr_sad` despite code being
+deployed and bytecache cleared.
+
+**Root cause**: The rules-based intent patterns were only in
+`extract_directives_simple()` — the fallback path. OpenAI runs use the
+LLM path in `extract_directives()`, which calls the LLM, gets directives
+without these flags, and returns. The rules-based patterns never execute.
+
+**Fix**: Extracted patterns into `_apply_workflow_intent_fallback()` shared
+helper. Called as **post-LLM overlay** in `extract_directives()` (after LLM
+returns, before final return) AND from `extract_directives_simple()`.
+Rules always run last and always win for routing flags. The LLM cannot
+override them because it never sets them (0/240 extractions).
+
+**Future**: Replace overlay with centralized `_DIRECTIVE_SCHEMA` and
+registry-driven `_merge_tiered` merge (v115.10, see `docs/directive_merge_plan.md`).
+
+### Production Verification Fixes (runs 20-22)
+
+| Issue | Discovery | Root Cause | Fix |
+|-------|-----------|------------|-----|
+| Fix 3: `_is_valid_file` rejects valid 3dnd.pdb | Run 21 `[GATE]` output: `has_model=False` despite 3225 ATOM records | PDB scan limit of 500 lines; 3dnd.pdb has 546 header lines before first ATOM record | `workflow_state.py`: increased scan limit to 2000 |
+| Fix 3: `has_data_mtz=False` for phased MTZ | Run 20 analysis: completed structures with phase columns go to `phased_data_mtz` | Validation shortcut only checked `has_data_mtz` | `workflow_engine.py`: added `has_phased_data_mtz` to context + validation shortcut |
+| Fix 1: `map_sharpening_done` regex wrong | Diagnostic: regex matches "sharpened" but output is `auto_sharpen_A.ccp4` | Zombie check table regex too narrow | `workflow_state.py`: broadened regex from "sharpened" to "sharpen" |
+| Fix 2: `.sca-only` check blocked by sequence guard | Run 19: p9-xtriage has `seq.dat` like gene-5-mad | Proactive file-type approach can't distinguish the two | **Deferred** — needs reactive approach (diagnosable_errors.yaml) |
+
+### Additional files modified (production verification)
+
+| File | Changes |
+|------|---------|
+| `agent/workflow_state.py` | `_is_valid_file`: PDB scan limit 500→2000. `_ZOMBIE_CHECK_TABLE`: map_sharpening regex "sharpened"→"sharpen". |
+| `agent/workflow_engine.py` | `has_phased_data_mtz` added to `build_context` initial dict + validation shortcut condition. |
+
+### Known Issues (deferred to v115.10)
+
+| Issue | Description |
+|-------|-------------|
+| Preprocessing stop override | `ai_agent.py` line 2761 unconditionally clears `after_program` for xtriage/mtriage even when user explicitly says "stop". Fix: check `_has_explicit_stop` regex before clearing. |
+| CIF model categorization | `model.cif` files go to generic `cif` category, not `model`. Affects model-dependent routing for CIF-format structures. |
+| Fix 2 redesign | p9-xtriage `.sca-only` proactive check fails (has sequence like gene-5-mad). Need reactive: xtriage "no unit cell" failure as diagnosable terminal error. |
+| Directive extraction refactor | Replace post-LLM overlay with `_DIRECTIVE_SCHEMA` registry + `_merge_tiered`. See `docs/directive_merge_plan.md`. |
+
+
+## Version 115.08 (Phased File Detection + Systematic Testing Framework)
+
+### Summary
+
+Four critical fixes for phased file detection (F1–F4) that caused rab3a-refine
+and nsf-d2-refine to fail across all 5 modes. One additional bug fix (B1:
+last_program) found by the testing framework. A 10-phase systematic testing
+framework exercising file categorization, routing, command building, error
+classification, and LLM resilience across 32 tutorials.
+
+### Modified Files (main code — 3 files)
+
+| File | Change | Details |
+|------|--------|---------|
+| `agent/workflow_state.py` | F1–F4 | Content-based phased detection replacing filename markers. New: `_PHASE_COLUMN_CACHE` (iotbx column-type check cached by abspath+mtime), `_ascii_phase_heuristic()` (ASCII header check for .hkl files), `_has_phase_columns_cached()` (cached wrapper). `_resolve_phased_promotions()` moved from hardcoded-only to shared post-processing (F2). Category-exclusivity enforcement — files appear in one of `data_mtz` or `phased_data_mtz`, not both (F3). Conditional removal from `data_mtz` only when other non-phased data files remain (F4). `_IGNORED_FORMATS` dict for .cv/.xplor/.param/.eff extensions. |
+| `agent/workflow_engine.py` | B1, diagnostics | B1 fix: added `"last_program": history_info.get("last_program")` to `build_context()` dict literal — the `after_program` directive check at line 1799 previously always saw None. `[GATE]` diagnostic logging controlled by `PHENIX_AGENT_DIAG_VALID_PROGRAMS=1` env var — prints context flags, detect_step result, and STOP reasons to aid routing debugging. |
+| `agent/graph_nodes.py` | WARNING event | WARNING event emitted for each ignored format file in `perceive()` — informs user that .cv/.xplor files are not supported for auto-fill. |
+
+### New Test Files (12 files)
+
+| File | Phase | Tests | Purpose |
+|------|-------|-------|---------|
+| `tst_file_categorization.py` | — | 42 | Unit tests for v115.08 phased detection fixes |
+| `tst_phase0_static_audit.py` | S0 | 5 | Parse check, bare except scan, import fallback check |
+| `tst_phase1_contract_gaps.py` | S1 | 128 | AST-based coverage map of 4 key modules |
+| `tst_phase2_path_consistency.py` | S2 | 10 | YAML vs hardcoded categorization path diff |
+| `tst_phase3_serialization_symmetry.py` | S3 | 28 | JSON symmetry + invariants + AgentSession round-trip |
+| `tst_phase4_history_flags.py` | S4 | 8 | Flag writer/reader consistency, B1 fix verification |
+| `tst_phase5_error_classification.py` | S8 | 7 | 3 error classifiers, pattern overlap, self-detection |
+| `tst_phase6_category_consumer.py` | S5 | 3 | input_priorities + fallback_categories alignment |
+| `tst_phase7_routing_simulation.py` | S6 | 32 | 3-cycle routing simulation with real production code |
+| `tst_phase8_command_building.py` | S7 | 15 | CommandBuilder.build() for 7 tutorials + 2 edge cases |
+| `tst_phase9_llm_perturbation.py` | S9 | 17 | Filename/program/parameter/truncation/empty perturbation |
+| `run_all_tests.py` | — | — | Updated with S0–S9 registration |
+
+### New Documentation
+
+| File | Purpose |
+|------|---------|
+| `docs/PHASE_REVIEW_REPORT.md` | Detailed report of 54 review fixes across all 10 phases |
+
+### Bug Details
+
+| Bug | Severity | Description | Fix |
+|-----|----------|-------------|-----|
+| F1 | CRITICAL | Filename-marker detection checked 'phased' but files were named 'phases' | Content-based detection (iotbx + ASCII heuristic) |
+| F2 | CRITICAL | `_resolve_phased_promotions()` only ran on hardcoded path, not YAML (production) | Moved to shared post-processing |
+| F3 | CRITICAL | YAML put files in both `data_mtz` and `phased_data_mtz` | Exclusivity enforcement |
+| F4 | CRITICAL | Removing from `data_mtz` could delete the only data file | Conditional removal (only when alternatives exist) |
+| B1 | LOW | `last_program` never transferred from `_analyze_history()` to `build_context()` | 1-line addition to `build_context()` dict |
+
+### Test Framework Review (54 fixes across 9 phases)
+
+The testing framework itself was reviewed across multiple rounds. Key
+classes of defects found and fixed in the test scripts:
+
+- **5 tests that could never fail** (Phases 2, 6, 7, 9) — status was always
+  PASS/PARTIAL but raise checked for FAIL. Fixed with whitelist patterns.
+- **3 tautological assertions** (Phases 3, 9) — `assert True`, `assert X or True`.
+- **6 phantom/wrong names** in boundary function sets (Phase 1).
+- **5 missing exception isolation** patterns (Phases 2, 6, 7, 8) — one crash
+  killed all remaining tutorials.
+- **5 wrong `best_files` keys** (Phases 8, 9) — `'data'` should be `'data_mtz'`.
+- **9 new AgentSession round-trip tests** (Phase 3) — replaced 18 tautological
+  JSON identity tests with real production code exercise.
+
+See `docs/PHASE_REVIEW_REPORT.md` for full details.
+
+
+## Version 115.07 (Run 15b Bug Fixes — Phase 3)
+
+### Summary
+
+Four bugs identified from analysis of run 15b (OpenAI, 371 runs, 42
+tutorials). Fixes address a graph crash from uncoerced JSON metrics, a
+cryo-EM half-map pair detection gap, a terminal crash loop, and an LLM
+hallucination pattern. Two issues deferred as known limitations.
+
+**Run 15b headline:** 9→18 GOOD tutorials (doubled), failure rate 39%→34%.
+Phase 3 targets remaining failures: lysozyme-refine (77%), apoferritin
+denmod_dock (57%), 7rpq (never refines), AF_7n8i (5/10 fail).
+
+### Modified files (4)
+
+| File | Bug | Changes |
+|------|-----|---------|
+| `agent/structure_model.py` | 4 | **Numeric coercion**: added `_coerce_numerics()` function — coerces all float/int fields after `from_dict()` deserialization. Added `_safe_float()` guards at all 6 arithmetic and formatting sites in `_detect_problems()`, `get_summary()`, and `_format_report()`. Progress entries also coerced. Prevents `TypeError: unsupported operand type(s) for -: 'str' and 'float'` when model_vs_data stores metrics as strings in session JSON. |
+| `agent/workflow_state.py` | 6 | **Two-tier half-map pair detection**: relaxed `_categorize_files()` heuristic. Tier 1 (new): when exactly 2 `full_map` files form a `_1/_2` pair, promote to `half_map` without requiring a companion full map. Tier 2 (existing): when ≥3 `full_map` files include a pair, promote only if a companion remains. Fixes AF_7n8i where `box_1.ccp4`/`box_2.ccp4` were the only maps. |
+| `agent/phil_validator.py` | 3 | **Blocked params**: added `phenix.resolve_cryo_em` to `_BLOCKED_PARAMS` with 4 entries: `mask_atoms`, `output.prefix`, `d_min`, `main.number_of_macro_cycles`. These are LLM-hallucinated params copied from mtriage log output that cause RuntimeError. |
+| `knowledge/diagnosable_errors.yaml` | 1 | **Terminal diagnosis**: added `unknown_chemical_element` — detects "Unknown chemical element type" errors (bad PDB columns 77-78) and stops immediately with actionable hint instead of crash-looping. |
+
+Also modified (config):
+
+| File | Bug | Changes |
+|------|-----|---------|
+| `knowledge/programs.yaml` | 3 | Removed `mask_atoms` from `phenix.resolve_cryo_em` `strategy_flags` whitelist. Only `resolution` passes through. |
+
+### Bug details
+
+| Bug | Tutorial | Symptom | Root cause | Fix |
+|-----|----------|---------|-----------|-----|
+| 1 | lysozyme-refine | 77% fail, no metric | PDB has AU atom missing element columns → refine crashes → agent retries 5× | Terminal diagnosis: stop with hint |
+| 3 | apoferritin_denmod_dock | 57% fail (LLM modes) | LLM copies `mask_atoms=True` from mtriage log → `strategy.mask_atoms_atom_radius="True"` RuntimeError | Whitelist removes it; `_BLOCKED_PARAMS` double-blocks it |
+| 4 | 7rpq_AF_reference | 0% fail but stops at R=0.386 | model_vs_data stores `r_work="0.385"` (string) → cycle 3 graph crashes on `r_free - r_work` | `_safe_float()` at 5 sites in metric_evaluator (true root cause: USE_YAML_METRICS=True); belt-and-suspenders in metrics_analyzer (7 sites), structure_model, graph_nodes, event_formatter, kb_tags, workflow_state._analyze_history |
+| 5 | lowres_restraints | 75% fail (restraint params stripped) | PHIL validator strips `reference_model.file`, `ncs.*`, `secondary_structure.*`, `ramachandran_restraints` — 7 of 8 params lost | Hierarchical prefix whitelist + path resolution + reference model exclusion |
+| 6 | AF_7n8i | 5/10 modes fail at mtriage | `box_1.ccp4`/`box_2.ccp4` not recognized as half-maps (old heuristic required ≥3 full_map files) | Tier 1: exactly 2 matching files → promote |
+| 7 | 1aba-polder | polder fails (missing: model) | Protein model with ligand atoms misclassified as `ligand_pdb` → polder can't find `model` slot | File-size fallback: PDB >10KB in ligand_pdb rescued to model |
+| 8 | apoferritin_denmod_dock (rules_only) | dock_in_map loops 3x, RSR never offered | `emd-20026_auto_sharpen_A.ccp4` excluded from `full_map` by `*_a.*` pattern → `has_full_map=False` → RSR blocked | Orphan-map promotion: map files not in any subcategory → promoted to full_map |
+
+### Bug 5 details — Reference model restraints for phenix.refine
+
+**Problem:** phenix.refine has a massive PHIL parameter tree, but the
+strategy_flags whitelist had only 13 entries. Advanced crystallographic
+restraint parameters (reference model, NCS, secondary structure, Ramachandran)
+were correctly extracted by the LLM from the README but stripped by PHIL
+validation. The tutorial requires all of these to produce a meaningful result.
+
+**Fix A — Hierarchical prefix whitelist** (`programs.yaml` + `phil_validator.py`):
+Added `allowed_phil_prefixes` to phenix.refine: `reference_model.`,
+`secondary_structure`, `ncs.`, `ramachandran`. The PHIL validator now allows
+any strategy key containing one of these as a case-insensitive substring.
+This covers both short forms (`ncs.type`) and full PHIL paths
+(`refinement.pdb_interpretation.ncs.type`). Added `ramachandran_restraints`
+as an individual strategy_flag (standalone param, not under a namespace).
+
+**Fix B — Path resolution** (`program_registry.py`):
+Added a pre-pass in `build_command()` that detects strategy values ending
+in file extensions (`.pdb`, `.cif`, `.params`, `.eff`, etc.) and resolves
+them to absolute paths. Builds a basename→path lookup from the command's
+input files and the working directory. Handles the LLM writing
+`reference_model.file=4pf4.pdb` (relative) by resolving to the full path.
+
+**Fix C — Reference model exclusion** (3-tier):
+- Tier 1 (`command_builder.py`): When `reference_model.file` is in the strategy,
+  exclude that file from primary model selection. Already existed (lines 380-394),
+  but was blocked because Fix A wasn't in place — now unblocked.
+- Tier 2 (`workflow_state.py`): When ≥2 PDB files are in the `model` category
+  and one matches `reference|homolog|template|restraint|high.res` (but NOT
+  agent output prefixes like `refine_`, `autobuild_`), reclassify to
+  `reference_model`.
+- Tier 3: LLM extraction of `reference_model.file=` from README feeds Tier 1.
+
+**Fix D — Strategy rewrites** (`graph_nodes.py`):
+5 new `_STRATEGY_REWRITES` entries normalize verbose PHIL paths to shortest
+valid forms (e.g. `refinement.pdb_interpretation.ncs.type` → `ncs.type`).
+
+### Deferred issues
+
+| Tutorial | Symptom | Why deferred |
+|----------|---------|-------------|
+| lysozyme-MRSAD | 72% fail (multi-wavelength label confusion) | Needs wavelength selection feature (Phase 4) |
+
+### Other changes this session
+
+| File | Change |
+|------|--------|
+| `agent/metrics_analyzer.py` | Added `_safe_float()` at all 7 numeric read sites in `derive_metrics_from_history()`, `_analyze_xray_trend()`, `_analyze_cryoem_trend()`, `get_latest_resolution()`, `get_best_r_free()`, `get_latest_r_free()`, `get_latest_map_cc()`. Root cause of Bug 4 crash: JSON round-tripping turns floats to strings. |
+| `agent/metric_evaluator.py` | Added `_safe_float()` at 5 arithmetic sites: `_analyze_xray_trend()` r_free extraction, `_analyze_cryoem_trend()` CC extraction, `is_significant_improvement()`, `calculate_improvement_rate()`, `is_plateau()`. TRUE root cause of Bug 4: `USE_YAML_METRICS=True` routes through this file, not `metrics_analyzer.py`. Added import fallback for standalone testing. |
+| `agent/event_formatter.py` | Wrapped compact metrics formatting (L920-935) with float coercion + try/except. Prevents `str - float` crash in METRICS_EXTRACTED event rendering. |
+| `agent/kb_tags.py` | `_trend_tags()` now coerces all R-free trend values to float via try/except before arithmetic (diffs, total_drop). |
+| `agent/workflow_state.py` | `_analyze_history()` L1841-1850: all metric reads coerced via local `_sf()` helper. Orphan-map promotion: map files in parent `map` but not in any subcategory (`full_map`, `half_map`, `optimized_full_map`) promoted to `full_map`. Fixes apoferritin_denmod_dock rules_only. |
+| `agent/graph_nodes.py` | Removed stale `strategy.mask_atoms` → `mask_atoms` rewrite for resolve_cryo_em (now a no-op since mask_atoms is in `_BLOCKED_PARAMS`). |
+| `knowledge/plan_schema.py` | `record_stage_cycle()` catch-up: when agent runs ahead of plan tracker (e.g. ligandfit during refine stage), advance through intermediate stages. Overshoot guard: verify `new_curr` matches program before counting. |
+| `phenix_ai/local_agent.py` | Added `client_version=self._get_client_version()` + `_get_client_version()` method for parity with RemoteAgent. |
+| `phenix_ai/remote_agent.py` | Added `request["settings"]["verbosity"]` and `events=parsed.get("events", [])` for parity with LocalAgent. |
+| `tests/tst_phase3_bug5.py` | 38 test functions / 104 assertions covering all Phase 3 + Bug 5 + Bug 8 fixes, metric_evaluator coercion, orphan-map promotion, kb_tags string handling. |
+| `tests/tst_phil_validation.py` | Fixed stale `test_rewrite_resolve_cryo_em_mask_atoms` (mask_atoms now blocked, not allowed). |
+| `tests/tst_audit_fixes.py` | 3 stale tests updated: `test_k2_mtriage` (prefers_half_maps), `test_k2_map_sharpening` (positional), `test_s5h_inject_program_defaults` (generate not in defaults). |
+| `tests/tst_backward_compat.py` | 3 new parity tests (26 total): `test_local_remote_agent_settings_parity`, `test_local_remote_agent_return_parity`, `test_local_agent_full_roundtrip`. |
+| `docs/ARCHITECTURE.md` | Updated PHIL validation section (prefix whitelist + path resolution), added half-map Tier 1, reference model categorizer, `_coerce_numerics`, plan_schema catch-up documentation. |
+| `docs/DEVELOPER_GUIDE.md` | RULE 4 expanded (prefix whitelist guidance), RULE 9 added (numeric type safety in StructureModel). |
+
+### Test results
+
+| Suite | Tests |
+|-------|-------|
+| `tst_structure_model.py` | 77/77 |
+| `tst_plan_schema.py` | 53/53 |
+| `tst_backward_compat.py` | 26/26 |
+| `tst_command_builder.py` | 22/22 |
+| `tst_event_system.py` | 13/13 |
+| `tst_phase3_bug5.py` | 104/104 |
+| `tst_phil_validation.py` | 15/15 |
+| **Total** | **310** |
+| **Total** | **191/191** |
+
+
+## Version 115.06 (Cryo-EM Half-Map Handling — Phase 2)
+
+### Summary
+
+Three interconnected fixes addressing the #1 failure source in cryo-EM
+tutorials: programs receiving only 1 half-map instead of 2. Root cause was
+that the LLM assigns one half-map to a `multiple:true` slot, marking it as
+"filled", so auto-fill skips it. Affected mtriage (109 failures),
+resolve_cryo_em (49), and map_sharpening (46) — totaling ~200 wasted cycles.
+
+### Modified files (3)
+
+| File | Changes |
+|------|---------|
+| `agent/command_builder.py` | **Supplement logic**: after LLM files + auto-fill, a new loop checks every `multiple:true` slot. If the LLM filled it with 1 file but the category has 2+, missing files are backfilled using `_find_file_for_slot()`. Uses `os.path.realpath()` for symlink robustness. |
+| `knowledge/programs.yaml` | **mtriage**: changed from `keep_half_maps_with_full_map: true` to `prefers_half_maps: true` — drops full_map when half-maps present (eliminates "Maps have different dimensions" error from mismatched grids). **map_sharpening**: added `prefers_half_maps: true` + changed half_map flag from `"half_map="` to `""` (positional args, matching the working command `phenix.map_sharpening h1.ccp4 h2.ccp4 seq_file=seq.fa`). |
+| `knowledge/workflows.yaml` | **map_sharpening**: reverted all 4 entries from `has: full_map` to `has_any: [full_map, half_map]` — map_sharpening works with either input type. |
+
+### Data flow: half-map supplement
+
+```
+LLM: {half_map=file2.ccp4}         ← one file
+Corrector: → half_map_1.ccp4       ← still one file
+selected_files["half_map"] = "half_map_1.ccp4"
+
+Auto-fill: half_map already filled → SKIP
+
+NEW SUPPLEMENT:
+  half_map is multiple:true AND in selected_files
+  _find_file_for_slot returns [half_map_1.ccp4, half_map_2.ccp4]
+  len(2) > len(1) → supplement fires
+  selected_files["half_map"] = ["half_map_1.ccp4", "half_map_2.ccp4"]
+
+Dedup: prefers_half_maps → drop full_map, keep both half-maps
+Command: phenix.mtriage half_map=h1.ccp4 half_map=h2.ccp4  ← SUCCESS
+```
+
+### Expected impact
+
+- mtriage: gets 2 half-maps (no full_map) → no dimension mismatch
+- resolve_cryo_em: gets 2 half-maps (supplemented) → "Need 2 half maps" eliminated
+- map_sharpening: gets 2 half-maps positionally → "use b-factor" error eliminated
+- Affects all 9 cryo-EM tutorials that were failing in run 14
+
+
+## Version 115.05 (Run 13/14 Bug Fixes — Phase 1)
+
+### Summary
+
+Ten bugs identified from analysis of run 13 (expanded tutorial set: 33
+README + 35 SOLVE across 25+ tutorials) and verified in run 14 (253 OpenAI
++ 52 Ollama runs). Fixes address R-free flag mismatches, cryo-EM half-map
+dedup, map_sharpening workflow routing, docking for unplaced models, space
+group parsing, PHIL parameter passthrough, and data label selection.
+
+### Modified files (8)
+
+| File | Bugs | Changes |
+|------|------|---------|
+| `knowledge/programs.yaml` | 4/5, 2/3, 7, 10 | Removed `generate=True` from refine template+defaults; added `generate_rfree_flags` strategy flag; added `prefers_half_maps: true` to resolve_cryo_em; added `fallback_categories: [model]` to dock_in_map; added `strict_strategy_flags: true` to process_predicted_model |
+| `knowledge/workflows.yaml` | 1, 2/3, 7 | resolve_cryo_em: added `has: half_map` to optimize_map entry; dock_in_map: added `model` to has_any in dock_model+refine steps; added dock_in_map to cryo-EM refine step |
+| `knowledge/recoverable_errors.yaml` | 9 | Added `phenix.model_vs_data` to data_label_parameters |
+| `knowledge/prompts_hybrid.py` | 4/5 | Updated R-free error recovery prompt (was telling LLM "command already includes generate=True") |
+| `agent/command_builder.py` | 2/3, 6 | `prefers_half_maps` dedup branch; `multiple:true` append logic with normalization; cctbx-first space group validation with prefix shortening |
+| `agent/program_registry.py` | 10 | `strict_strategy_flags` check before KNOWN_PHIL_SHORT_NAMES passthrough |
+| `agent/graph_nodes.py` | 7 | Unplaced model guard: redirects to dock_in_map when CC<0.10 and dock_done=False; quality floor prefers dock_in_map for unplaced models |
+| `docs/RUN_13_BUG_ANALYSIS_AND_PLAN.md` | — | Analysis document |
+
+### Bug details
+
+| Bug | Issue | Fix | Verified |
+|-----|-------|-----|----------|
+| 1 | map_sharpening offered with only half-maps → crash | `has: full_map` condition (later reverted in v115.06 to `has_any`) | ✓ bgal, actin_sharpen eliminated |
+| 2/3 | resolve_cryo_em gets 1 half-map (dedup drops second) | `prefers_half_maps` flag + append logic | ✓ apoferritin_dock CC=0.496 |
+| 4/5 | R-free generate=True on every refinement | Removed from template; conditional via strategy flag | ✓ 3tpp R=0.167 (was CRASH) |
+| 6 | Space group "P4 for refinement wit" | cctbx.sgtbx progressive prefix shortening | ✓ |
+| 7 | groel: dock_in_map never offered | fallback_categories + refine step + CC guard | ✓ dock_in_map now runs |
+| 8 | beta-blip hard MR case | No fix needed | — |
+| 9 | "Multiple equally suitable arrays" | model_vs_data added to data_label_parameters | ✓ |
+| 10 | process_predicted_model PHIL error | strict_strategy_flags blocks passthrough | ✓ b-CA-mr 0 failures |
+
+### Ollama vs OpenAI (run 14)
+
+Both providers use the same server-side code. Key finding: Ollama achieves
+comparable quality (36% vs 39% fail rate) and dramatically outperforms OpenAI
+on AF_POMGNT2 (R=0.287 vs 0.553) because Ollama's LLM correctly runs
+process_predicted_model before molecular replacement.
+
+
+## Version 115.04 (ASU Copy Count Tracking)
+
+### Summary
+
+Tracks the number of copies of the search model in the asymmetric unit (ASU)
+and passes this automatically to Phaser as `search_copies` each cycle.
+Copies are sourced from user directives (always wins) or xtriage log analysis.
+
+### Modified files (5)
+
+| File | Changes |
+|------|---------|
+| `programs/ai_agent.py` | `_extract_copies_from_directives()` method added; copies injected in all 3 directive extraction paths (rules-only, LLM, fallback); xtriage n_copies update from `history_record` |
+| `agent/api_client.py` | `asu_copies` added to both `build_session_state()` and `build_request_v2()` whitelists so value survives client→server round-trip |
+| `agent/graph_nodes.py` | `_fallback_extract_metrics()` extracts `n_copies` from xtriage log; BUILD node reads `session_info["asu_copies"]` and injects `component_copies` into strategy (skipped if LLM already set it); sanity bound 1–30 enforced |
+| `phenix_ai/run_ai_agent.py` | `asu_copies` forwarded from `session_state` → `session_info` each cycle; serialized into `metadata` for persistence |
+| `tests/tst_copies_tracking.py` | New test: directive path, xtriage path, priority (directive wins), range clamping, integration with `run_ai_agent` metadata |
+
+### Data flow
+
+**Directive path** (user says "4 copies in the ASU"):
+```
+_extract_copies_from_directives() → session.data["asu_copies"] = 4
+  → session_info["asu_copies"] → api_client whitelists
+    → run_ai_agent session_state → BUILD node → phaser.search_copies=4
+```
+
+**Xtriage path** (xtriage log: "Best guess : 4 copies"):
+```
+_fallback_extract_metrics() → log_analysis["n_copies"] = 4
+  → history_record["asu_copies"] → session.data["asu_copies"]
+    (only if not already set by directive)
+      → next cycle: session_info → BUILD → phaser.search_copies=4
+```
+
+### Tests
+
+| File | Tests | Covers |
+|------|-------|--------|
+| `tests/tst_copies_tracking.py` | New | Directive extraction, xtriage extraction, priority, bounds |
+
+
+## Version 115.03 (Tutorial Run Bug Fixes: Bugs A–F + Anomalous Signal)
+
+### Summary
+
+Six bugs identified from log analysis of 16 tutorial runs across CASP7,
+a2u-globulin-mr, a2u-globulin-rebuild, and advanced-xtriage.  The most
+impactful fixes are: the `_has_placed_model` MR-keyword guard (Bug E)
+that prevented search models from being misrouted to `xray_refined`; the
+hopeless R-free retry path (Bug F) that recovered from failed MR solutions
+instead of stopping; and the anomalous signal detection fix that correctly
+handles weak signal (xtriage `has_anomalous=True` with `measurability` in
+`[0.05, 0.10]`) without overwriting it with a measurability-based clear.
+Bugs A, B, C (cascade), and D were already present in the tree.
+
+### Modified files (4)
+
+| File | Bug | Changes |
+|------|-----|---------|
+| `agent/workflow_state.py` | Anomalous | `has_anomalous` detection: `elif has_anomalous` promoted to independent `if` (was silently skipped when `anomalous_resolution` present but ≥ 6.0); `>= 0.06` weak-signal branch added; `< 0.06` clear no longer fires when `analysis["has_anomalous"]` is explicitly `True` |
+| `agent/workflow_engine.py` | Bug E | `_has_placed_model`: `_wants_mr_first` guard scans constraints for MR keywords (`"molecular replacement"`, `"phaser"`, `" mr "`, etc.); if found, skips placement-keyword inference so search models are not misidentified as placed |
+| `agent/workflow_engine.py` | Bug F | `_detect_xray_step` Step 2e: when `r_free >= 0.45` after MR + ≥1 refinement cycle, routes to `obtain_model` instead of falling through to `validate`/`complete` → STOP |
+| `knowledge/file_categories.yaml` | Bug C (yaml) | New `predict_build_refine_internal` intermediate category matching `*overall_best*final_refine*.pdb` and `*overall_best*refine_[0-9][0-9][0-9]*.pdb`; excludes `*_final_refine_*` from `predict_and_build_output` |
+
+### AgentState TypedDict (graph_state.py)
+
+Eight fields added to `AgentState` to support thinking-mode features.
+`create_initial_state` gains one new parameter (`session_blocked_programs`).
+Server-side test `tst_thinking_defense.py` expected counts updated:
+H02 `37` → `45` (field count), H03 `19` → `20` (param count).
+Run `patch_server_tests.py <langchain_root>` to apply.
+
+### Tests
+
+| File | Tests added | Covers |
+|------|-------------|--------|
+| `tests/tst_p1_to_p5_fixes.py` | +2 | Weak anomalous detection; negligible anomalous clear |
+| `patch_server_tests.py` | — | Updates `tst_thinking_defense.py` H02/H03 expected counts |
+
+### Bugs confirmed already in tree (no new code needed)
+
+| Bug | Root cause | Fix location |
+|-----|-----------|--------------|
+| Bug A | `event_formatter.py` `fmt % value` TypeError on string metrics | `agent/event_formatter.py` try/except guard |
+| Bug B | `_auto_discover_files` skipped when `original_files` non-empty | `programs/ai_agent.py` supplement-mode discovery |
+| Bug C (cascade) | `predict_and_build` cascade set `refine_done=True` prematurely | `agent/workflow_state.py` cascade comment + guard |
+| Bug D | autosol deprioritized when `anomalous_measurability < 0.05` | `agent/workflow_engine.py` deprioritization logic |
 
 
 ## Version 115.02 (Report Analysis Fixes & GUI Update)
@@ -221,4386 +5667,3 @@ Run with: `python3 tests/tst_stop_condition_fix.py && python3 tests/tst_phil_val
 | Fix 7: CASP7 MTZ recognition | Partially mitigated — auto-discover finds files |
 | Enhancement B: Model upgrade | ✓ Done (v115.02) — error context forwarded in thinking_agent.py |
 | advice_preprocessor.py | ✓ Done (v115.01) — solve-mode bypass |
-
----
-
-
-## Version 114.2 (Plan Enforcement + Cryo-EM Fixes + GUI Polish)
-
-### Summary
-
-Addresses LLM mode regressions exposed by 21-tutorial evaluation:
-expert mode now matches or beats rules_only on most tutorials
-instead of losing on 4/9.  Core improvements: plan enforcement
-(suppresses premature STOP), placement gate hardening (result
-text parsing, symmetry mismatch recovery), cryo-EM routing
-fixes, and a general fix for dotted PHIL parameters being
-silently dropped.
-
-Also adds tutorial auto-detection in the GUI, cleans up the
-Agent Progress panel, and fixes autobuild MTZ file selection.
-
-### Plan Enforcement (STOP Suppression)
-
-When the LLM or auto-stop mechanism wants to stop but the plan
-has pending stages with valid programs, the stop is suppressed:
-
-1. **AUTO-STOP suppression**: `plan_has_pending_stages` flag in
-   session_info prevents metrics-based auto-stop when the plan
-   still has work to do (e.g., after resolve_cryo_em completes
-   but model building and refinement remain).
-2. **LLM STOP override**: If the LLM returns `program=STOP` but
-   `plan_has_pending_stages` is True, the BUILD node selects
-   the best program from `prefer_programs` in the plan's current
-   stage directives.
-
-**Data flow:** `ai_agent._plan_has_pending_stages()` →
-`session_info` → `api_client.build_session_state` →
-`run_ai_agent` → `graph_nodes.plan_node` (auto-stop chain) +
-`graph_nodes.build` (LLM STOP override).
-
-**Contract:** Added `plan_has_pending_stages` to
-`agent/contract.py` (v4 field, default False).
-
-**Files:** `phenix/programs/ai_agent.py`, `agent/api_client.py`,
-`phenix/phenix_ai/run_ai_agent.py`, `agent/graph_nodes.py`,
-`agent/contract.py`
-
-### Placement Gate Hardening
-
-Extended the v114.1 placement gate with deeper detection:
-
-1. **Result text parsing**: `_detect_model_placement` now parses
-   R-free/R-work from the result text when the metrics dict is
-   empty (common for model_vs_data which doesn't populate
-   structured metrics).
-2. **model_rebuilding skip**: When placement evidence shows
-   R-free < 0.35, the `model_rebuilding` plan stage is also
-   skipped (prevents autobuild from damaging a well-refined
-   model).
-3. **RSR symmetry mismatch**: Failed real_space_refine with
-   "Symmetry and/or box dimensions mismatch" sets
-   `placement_probe_result = "needs_dock"` so the next cycle
-   routes to dock_in_map.
-4. **Dock keywords**: Words like "dock", "docking",
-   "dock_in_map", "place the model" in user advice cancel the
-   "refine" → "model is placed" assumption. READMEs that say
-   "dock the model then refine" no longer suppress the placement
-   probe.
-5. **Session → plan generator**: `model_is_placed` from session
-   data flows into the plan generator via data_characteristics,
-   enabling correct `refine_placed` template selection.
-
-**Files:** `phenix/programs/ai_agent.py`,
-`agent/workflow_engine.py`, `agent/workflow_state.py`,
-`agent/plan_generator.py`
-
-### Cryo-EM Workflow Fixes
-
-1. **dock_in_map in template**: Added `phenix.dock_in_map` to
-   `cryoem_refine` template's model_building stage.
-2. **map_symmetry gating**: Added `not: model` condition on
-   map_symmetry in analyze and obtain_model workflow steps.
-   Prevents the LLM from choosing map_symmetry over dock_in_map
-   when an atomic model is available.
-3. **resolve_cryo_em params**: Added `strategy_flags`
-   (resolution, mask_atoms, nproc) and `defaults`
-   (`strategy.mask_atoms=True`, `nproc=4`). The `_PARAM_REWRITES`
-   dict in command_postprocessor rewrites bare `mask_atoms` to
-   `strategy.mask_atoms` to avoid PHIL ambiguity with
-   `strategy.mask_atoms_atom_radius`.
-
-**Files:** `knowledge/plan_templates.yaml`,
-`knowledge/workflows.yaml`, `knowledge/programs.yaml`,
-`agent/command_postprocessor.py`
-
-### Dotted PHIL Passthrough (General Fix)
-
-Dotted PHIL paths (e.g., `refinement.reference_model.enabled`)
-in the LLM's strategy dict were silently dropped by
-`program_registry.build_command` because they didn't match any
-`strategy_flags` entry. This contradicted the sanitizer's
-contract which intentionally passes scoped PHIL paths through
-for PHIL validation at runtime.
-
-**Fix:** Changed `DROPPED` → `PASSTHROUGH` for dotted PHIL keys
-in `program_registry.py`. Bare unknown keys still get WARNING.
-PHENIX's PHIL interpreter validates at runtime; wrong paths
-produce clear errors that the error-recovery system handles.
-
-**Files:** `agent/program_registry.py`
-
-### Command Building Fixes
-
-1. **Model chaining**: Added model override in
-   `_build_with_new_builder` — refinement now uses the most
-   recent refined model from categorized_files, not the LLM's
-   stale choice of the original model.
-2. **Resolution injection**: Added `auto_fill_resolution`
-   invariant to `phenix.refine` in programs.yaml.
-3. **reference_model support**: Added `reference_model`,
-   `reference_model_enabled`, `reference_model_use_starting` to
-   phenix.refine strategy_flags plus optional input slot.
-4. **Strategy key rewriting**: `_STRATEGY_REWRITES` in
-   graph_nodes maps LLM's dotted keys to canonical
-   strategy_flag names. `_PARAM_REWRITES` in
-   command_postprocessor catches them on the command line.
-5. **LLM file exclusion validation**: `_build_with_new_builder`
-   now validates LLM file assignments against
-   input_priorities.exclude_categories before passing them to
-   the CommandBuilder (catches half-map assigned to full_map).
-
-**Files:** `agent/graph_nodes.py`, `knowledge/programs.yaml`,
-`agent/command_postprocessor.py`
-
-### Autobuild MTZ Fix
-
-AutoSol produces `overall_best_final_refine_001.mtz` (map
-coefficients, no PHIB/FOM) and `overall_best_refine_data.mtz`
-(original data). The LLM picks the wrong one for autobuild's
-`data=` slot → PHIB/FOM error.
-
-1. **Classifier fix**: `_data.mtz` suffix check runs before
-   `overall_best` marker scan in fallback MTZ classifier.
-2. **exclude_categories**: `[refine_map_coeffs, map_coeffs_mtz]`
-   on autobuild's data_mtz input_priorities.
-3. **exclude_patterns**: Added `_refine_001`, `_refine_002`,
-   `final_refine_001` patterns.
-
-**Files:** `agent/workflow_state.py`, `knowledge/programs.yaml`
-
-### Template Selection Fixes
-
-1. **MR-SAD auto-inference**: When both `has_anomalous_atoms`
-   and `has_search_model` are True, `wants_mr_sad` is
-   automatically set (no need for explicit "mr-sad" keyword).
-   Fixes 1029B-sad selecting `mr_refine` instead of `mr_sad`.
-
-**Files:** `agent/plan_generator.py`
-
-### GUI: Tutorial Banner
-
-When the working directory is a Phenix tutorial:
-- Blue banner at top of Configure panel with tutorial name
-- "View README file" button
-- Green text if tutorial is AI-Agent compatible
-- Orange text if it requires unsupported programs
-- `validate_params` blocks Run on unsupported tutorials
-
-Detection: matches CWD basename against `tutorials.phil` from
-`phenix_examples` (longest-match-first, requires README file).
-
-**Files:** `wxGUI2/Programs/AIAgent.py`
-
-### GUI: Progress Panel Cleanup
-
-**Cycle display** (before → after):
-```
-Cycle 1: phenix.xtriage          Cycle 1: phenix.xtriage
-  Running...                       Running phenix.xtriage ... [OK]
-  >> Sub-job: [OK] phenix.xtriage  ────────────────────────────────
-Cycle 1: phenix.xtriage -> COMPLETE
-  Result: OK
-  ——————————————————————————————
-```
-
-**Stage transition** (before → after):
-```
- stage exhausted (1/1 cycles)    All steps completed (1/1 cycles)
- → ADVANCING TO: ...              Stage 'x' completed in 1 cycle(s).
-   Stage 'x' completed ...      → ADVANCING TO: ...
-   Next: 'y' (description).
-```
-
-Changes: inline [OK]/[FAILED], remove redundant sub-job/status
-lines, stage header only on first cycle of each new stage,
-Unicode separators throughout.
-
-**Files:** `wxGUI2/Programs/AIAgent.py`,
-`agent/gate_evaluator.py`, `knowledge/explanation_prompts.py`
-
-### Error Propagation
-
-1. **Remote Sorry**: `remote_agent.py` now re-raises fatal
-   server errors (quota exceeded, API key) as client-side Sorry
-   instead of silently returning None.
-2. **Phaser pkl**: Stub result created when no pkl found for
-   successful jobs (prevents History restore crash).
-
-**Files:** `phenix/phenix_ai/remote_agent.py`,
-`phenix/programs/ai_agent.py`, `wxGUI2/Programs/AIAgent.py`
-
-### Test Updates
-
-- `tst_gate_evaluator`: Updated "exhausted" → "All steps completed"
-- `tst_explanation_prompts`: Removed "Next:" assertion
-- `tst_audit_fixes`: Updated S2j test for PASSTHROUGH behavior
-
----
-
-## Version 114.1 (Model Placement Gate + Display + Evaluation)
-
-### Summary
-
-Fixes the class of bugs where LLM modes underperform rules_only by
-running destructive programs (phaser, autosol) on models that already
-fit the data. The core fix is the **Model Placement Gate**: a single
-mechanism that detects when a model is placed, locks it in the session,
-and filters out destructive programs before the LLM sees them.
-
-Also adds the display data layer, HTML structure reports, auto-file
-discovery, and a 57-test scenario tracer for pre-deployment validation.
-
-Default `thinking_level` changed from `advanced` to `expert`.
-
-### Model Placement Gate
-
-When `model_vs_data` or `refine` confirms the model fits the data:
-1. `session.data["model_is_placed"] = True` — locked, survives resume
-2. `valid_programs` filtered: phaser, autosol, predict_and_build removed
-3. Plan fast-forward: MR/phasing stages marked "skipped" (⊘)
-4. Conflict warning when user advice mentions MR but model is placed
-5. HETATM scan: input PDB files checked for pre-existing ligands
-
-Detection thresholds: CC > 0.3 for model_vs_data, R-free < 0.50 for
-refine, map_cc > 0.3 for real_space_refine.
-
-**Files:** `programs/ai_agent.py`, `agent/workflow_engine.py`,
-`agent/api_client.py`, `phenix_ai/run_ai_agent.py`
-
-### Display Data Model
-
-Unified data provider for Results tab, Progress tab, and HTML report:
-- `DisplayDataModel.from_session()` — never raises
-- Scans ALL successful cycles for best metrics (not just last)
-- Handles STOP program correctly in outcome_status
-- Ligand CC, resolution fallback from cycle scan
-- HTML report with SVG trajectory chart and "Open Structure Report" button
-
-**Files:** `agent/display_data_model.py`, `knowledge/html_report_template.py`,
-`wxGUI2/Programs/AIAgent.py`
-
-### Template Fixes
-
-- `mr_sad` requires explicit MR-SAD intent (`wants_mr_sad` flag)
-- `predict_and_build` added to MR stage programs
-- Polder moved to dedicated `ligand_validation` phase (after ligandfit)
-- Polder YAML conditions: requires `has: ligand_fit` + `not_done: polder`
-- SAD templates require `has_sequence: true`
-- `has_ligand_code` from advice alone removed; requires file evidence
-- Ligand PDB filename hints (e.g., `1J4R_random.pdb` → ligand detected)
-
-**Files:** `knowledge/plan_templates.yaml`, `knowledge/workflows.yaml`,
-`agent/plan_generator.py`
-
-### Auto-File Discovery
-
-When `original_files` is empty (rules_only mode, or LLM preprocessing
-failed), scans `input_directory` for crystallographic files (.mtz, .pdb,
-.cif, .sca, .mrc, etc.) and adds them automatically. Also scans input
-PDBs for HETATM records to detect pre-existing ligands.
-
-**Files:** `programs/ai_agent.py`
-
-### Expert Assessments in Session
-
-`record_decision()` now accepts `expert_assessment` parameter. Thinking
-agent output is stored in `agent_session.json` cycles, enabling the
-analyzer to extract expert reasoning from completed runs.
-
-**Files:** `agent/session.py`, `programs/ai_agent.py`
-
-### GUI Improvements
-
-- Restart mode: plain `wx.Choice` widget (survives session management
-  reset — auto-switches to "resume" after display/remove)
-- Phase display: "cycle X, up to Y" instead of "step X of Y"
-- "Open Structure Report" button in Results tab
-- Structure report text preview in Outcome section
-
-**Files:** `wxGUI2/Programs/AIAgent.py`
-
-### Safety
-
-- Sanity check `repeated_failures` threshold raised from 3 to 4
-- Recent failures injected into THINK prompt with explicit "try different approach"
-- STOP program not counted as a cycle in phase tracking
-
-**Files:** `agent/sanity_checker.py`, `agent/thinking_agent.py`,
-`knowledge/thinking_prompts.py`, `knowledge/plan_schema.py`
-
-### Testing
-
-- Scenario tracer: 57 tests (S1-S15, C1-C3, G1-G4, M1-M2, P1-P6,
-  L1-L10, PG1-PG5) — registered in `run_all_tests.py` as suite #53
-- Tutorial run analyzer: 5-mode comparison (rules_only, llm, llm_think,
-  llm_think_advanced, llm_think_expert)
-- Updated tests: polder conditions, sanity check threshold, plan generator
-  ligand detection
-
-**Files:** `tests/tst_scenario_tracer.py`, `tests/analyze_tutorial_runs.py`,
-`tests/run_all_tests.py`, `tests/tst_audit_fixes.py`,
-`tests/tst_sanity_checker.py`, `tests/tst_plan_generator.py`
-
-### 31 files modified
-
-```
-agent/api_client.py
-agent/display_data_model.py (NEW)
-agent/plan_generator.py
-agent/sanity_checker.py
-agent/session.py
-agent/structure_model.py
-agent/thinking_agent.py
-agent/workflow_engine.py
-knowledge/explanation_prompts.py
-knowledge/html_report_template.py (NEW)
-knowledge/plan_schema.py
-knowledge/plan_templates.yaml
-knowledge/programs.yaml
-knowledge/thinking_prompts.py
-knowledge/workflows.yaml
-phenix_ai/run_ai_agent.py
-programs/ai_agent.py
-wxGUI2/Programs/AIAgent.py
-docs/USER_GUIDE.md
-docs/OVERVIEW.md
-docs/DEVELOPER_GUIDE.md
-docs/SAFETY_CHECKS.md
-docs/project/CHANGELOG.md
-tests/analyze_tutorial_runs.py (NEW)
-tests/run_all_tests.py
-tests/tst_audit_fixes.py
-tests/tst_display_data_model.py (NEW)
-tests/tst_plan_generator.py
-tests/tst_sanity_checker.py
-tests/tst_scenario_tracer.py (NEW)
-tests/tst_thinking_defense.py
-```
-
-## Version 114.00 (Goal-Directed Structure Determination Agent)
-
-### Summary
-
-Transforms the reactive single-step agent into a goal-directed
-strategic planner. Five new components — Structure Model, Plan
-Generator, Gate Evaluator, Hypothesis Engine, and Explanation
-Engine — sit above the existing reactive loop and communicate
-through the directives system. The reactive agent is unchanged;
-every safety check still applies. The new layer is additive,
-not a rewrite.
-
-Activated by `thinking_level=expert`. The existing `advanced`
-level continues to run the THINK node with structural validation
-and expert KB but without the planning overhead. The `expert`
-level adds plan generation, gate evaluation, hypothesis testing,
-and session reports on top of the full `advanced` pipeline.
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│              STRATEGIC PLANNER (v114)                │
-│                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
-│  │  Plan     │  │ Evaluate │  │ Structure Model  │  │
-│  │ Generator │  │  Gate    │  │ (running state)  │  │
-│  └────┬─────┘  └────┬─────┘  └────────┬─────────┘  │
-│       │              │                 │            │
-│       └──────────────┼─────────────────┘            │
-│                      │                              │
-│              directives + advice                    │
-│                      │                              │
-└──────────────────────┼──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│          EXISTING REACTIVE AGENT (unchanged)         │
-│                                                     │
-│  PERCEIVE → THINK → PLAN → BUILD → VALIDATE → OUT  │
-└─────────────────────────────────────────────────────┘
-```
-
-### New capabilities
-
-**Phase 1 — Structure Model** (`agent/structure_model.py`):
-maintains a running understanding of the specific structure
-being solved. Updated every cycle from validation results (ground
-truth, not LLM reasoning). Tracks data characteristics, model
-state (chains, ligands, waters, problem regions), progress
-history, and a strategy blacklist for anti-oscillation.
-
-- `StructureModel` class with `update_from_validation()`,
-  `update_from_xtriage()`, `update_from_phaser()`,
-  `get_summary(detail_level=)`, `get_current_problems()`,
-  `blacklist_strategy()`, `is_blacklisted()`
-- `Hypothesis` data class with lifecycle tracking (proposed →
-  testing → pending → confirmed/refuted/abandoned),
-  `test_cycles_remaining` countdown, `revalidation_reason`
-- `ValidationHistory` (`agent/validation_history.py`): per-cycle
-  validation snapshots with `get_metric_series()`,
-  `get_phase_start_metrics()` for the monotonic progress gate
-- Difference density peaks (F2): `_find_diff_peaks()` in
-  `validation_inspector.py` using `mmtbx.find_peaks_holes`,
-  KD-tree caching keyed on `(path, mtime, size, space_group,
-  unit_cell)` with symmetry-change invalidation
-- Ligand RSCC (F1): `_validate_data_model()` with resolution-
-  dependent Z-score normalization
-- Per-chain completeness: `_chain_completeness()` with gap
-  detection and disordered-fraction calculation
-- Session persistence via `AgentState` TypedDict fields
-  `structure_model` and `validation_history`
-
-**Phase 2 — Plan Generator** (`agent/plan_generator.py`):
-produces a multi-phase strategy at session start by selecting
-and customizing pre-defined templates.
-
-- `StructurePlan` and `StageDef` data classes
-  (`knowledge/plan_schema.py`) with `advance()`, `retreat_to()`,
-  `skip_stage()`, `to_directives()`, `compute_hash()`,
-  `cycles_used` tracking, and serialization round-trip
-- 12 plan templates (`knowledge/plan_templates.yaml`):
-  `mr_refine`, `mr_refine_ligand`, `mr_refine_lowres`,
-  `mr_refine_highres`, `mr_refine_twinned`,
-  `predict_refine`, `predict_refine_ligand`,
-  `mr_sad`, `sad_phasing`, `sad_phasing_ligand`,
-  `cryoem_refine`, `cryoem_refine_ligand`
-- Template selection is deterministic (rule-based on experiment
-  type, available files, resolution); LLM only customizes
-  parameters within template bounds
-- `plan_to_directives()` translates plan stages into reactive
-  agent directives (prefer_programs, after_program,
-  program_settings)
-- Strategy Hash (`compute_hash()`) fingerprints current phase +
-  directives; hash change triggers `advice_changed` in reactive
-  agent via `check_plan_revision()`
-- Plan Repair (`repair_plan()`): when user directives break plan
-  prerequisites, substitutes alternative data sources where
-  possible and logs `[Plan Repair]` / `[Plan Conflict]` messages
-- Wired into `ai_agent.py` session start (generates plan before
-  first cycle) and resume (restores plan from session)
-
-**Phase 3 — Gate Evaluator** (`agent/gate_evaluator.py`):
-evaluates phase progress after each cycle. Purely deterministic
-(no LLM). Compares Structure Model metrics against plan criteria
-using threshold logic.
-
-- `GateEvaluator.evaluate()` returns `GateResult` with actions:
-  continue, advance, retreat, fallback, skip, stop
-- Success criteria evaluation with comparison operators
-  (`<`, `>`, `<=`, `>=`, `==`) and success hysteresis (1.5%
-  buffer to prevent oscillation on noisy metrics)
-- Skip-if pre-entry checks and within-phase fallback conditions
-- Retreat logic with 5 anti-oscillation safeguards:
-  1. Strategy Blacklist — consults `StructureModel.is_blacklisted()`
-  2. Retreat counter — max 2 per phase
-  3. Monotonic progress gate — only retreats if metrics are worse
-     than phase start (via `ValidationHistory`)
-  4. Retreat cooldown — at least 2 cycles since last retreat
-  5. Retreat depth limit — max 1 phase backwards (unless template
-     explicitly overrides)
-- Stage transitions logged via `vlog.normal("[GATE]...")` with
-  `generate_stage_summary()` at each transition
-- Hypothesis evaluation integrated: calls
-  `evaluate_hypotheses()` and `revalidate_confirmed()` each cycle
-
-**Phase 4 — Hypothesis Engine** (`agent/hypothesis_evaluator.py`):
-structured hypothesis formation, testing, and resolution.
-
-- Single active hypothesis budget (max 1 testing/pending at a
-  time) to prevent confounded multi-variable changes
-- Verification latency via `test_cycles_remaining` countdown —
-  prevents premature refutation on unstabilized models
-- `revalidate_confirmed()` checks confirmed hypotheses each
-  cycle (B-factor drift, RSCC drop, R-free spike) and demotes
-  to re-examination when evidence weakens
-- `build_hypothesis_prompt()` generates structured hypothesis
-  section for THINK node prompt, constrained to propose ONE
-  hypothesis with explicit test program, confirm/refute criteria
-- Wired into gate evaluator (evaluation after test cycles) and
-  thinking agent (prompt generation)
-
-**Phase 5 — Explanation Engine** (`knowledge/explanation_prompts.py`):
-crystallographer-level commentary at three detail levels.
-
-- `generate_cycle_commentary()`: template-based per-cycle
-  summary (no LLM), slots filled from Structure Model
-- `generate_stage_summary()`: LLM-generated narrative at phase
-  transitions (3-5 sentences synthesizing multiple cycles)
-- `generate_final_report()`: comprehensive completion report
-  with model contents, phase timeline, hypothesis outcomes
-- `generate_stopped_report()`: explains what was tried and why
-  it failed, with actionable recommendations (critical — a bare
-  "STOP" with no explanation is unacceptable)
-
-### New files (12)
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `agent/structure_model.py` | 1951 | Structure Model + Hypothesis class |
-| `agent/validation_history.py` | 629 | Per-cycle validation snapshots |
-| `agent/plan_generator.py` | 558 | Plan generation, repair, hash |
-| `agent/gate_evaluator.py` | 862 | Phase gate evaluation + retreat |
-| `agent/hypothesis_evaluator.py` | 564 | Hypothesis lifecycle + prompts |
-| `knowledge/plan_schema.py` | 832 | StageDef + StructurePlan classes |
-| `knowledge/plan_templates.yaml` | 605 | 12 plan templates |
-| `knowledge/explanation_prompts.py` | 829 | Commentary/report generators |
-| `tests/tst_structure_model.py` | 1626 | 77 tests |
-| `tests/tst_validation_history.py` | 1059 | 56 tests |
-| `tests/tst_plan_generator.py` | 766 | 39 tests |
-| `tests/tst_gate_evaluator.py` | 957 | 54 tests |
-
-### Modified files (13)
-
-| File | Changes |
-|------|---------|
-| `programs/ai_agent.py` | `thinking_level=expert` PHIL choice; `_use_planning` gating on plan init, plan-to-directives, gate eval, hypothesis eval, cycle commentary, structure report; `_get_plan_context()` helper; enriched `agent_cycle` callbacks with plan context; `agent_gate_transition` callback; plan header on resume; `session_summary.json` output; diagnostic logging at NORMAL level; None-safety fixes |
-| `agent/graph_state.py` | `structure_model` and `validation_history` fields in AgentState TypedDict; `create_initial_state()` maps `"expert"` → `"advanced"` for graph |
-| `agent/thinking_agent.py` | StructureModel creation/update from validation, xtriage, phaser results; hypothesis prompt integration; `_summarize_history()` enhanced with file provenance (Input/Output per cycle) |
-| `agent/workflow_engine.py` | Logger added; "Preferred not available" diagnostic when plan directives name unavailable programs; None-safety fixes on `.get().lower()` pattern |
-| `agent/graph_nodes.py` | None-safety fix on history `.get("program")` |
-| `agent/sanity_checker.py` | None-safety fix on history `.get("program")` |
-| `agent/workflow_state.py` | None-safety fixes on `.get("command").lower()` |
-| `agent/session.py` | Structure Model and ValidationHistory persistence |
-| `knowledge/thinking_prompts.py` | FILE PROVENANCE paragraph in SYSTEM_PROMPT; hypothesis_prompt slot in user message builder |
-| `phenix_ai/run_ai_agent.py` | Updated comment documenting four thinking levels |
-| `agent/event_formatter.py` | `structure_model_summary` in expert assessment display |
-| `agent/validation_inspector.py` | `_find_diff_peaks()` (F2), `_validate_data_model()` (F1 with Z-score), `_chain_completeness()` implementations with KD-tree caching |
-| `wxGUI2/Programs/AIAgent.py` | `agent_plan` callback handler (plan header at session start); `agent_gate_transition` callback handler (stage transition blocks); stage context line per cycle |
-
-### Tests
-
-251 new tests across 5 files (77 + 56 + 39 + 54 + 25). All tests
-are standalone (no PHENIX required). Run with:
-
-```bash
-python3 tests/run_all_tests.py  # includes all new suites
-```
-
-### Activation
-
-The planning layer is controlled by the `thinking_level` PHIL
-parameter, which now accepts four values:
-
-| Level | THINK node | Structure Model | Planning | Cost |
-|-------|-----------|-----------------|----------|------|
-| `none` | off | off | off | 0 LLM calls/cycle |
-| `basic` | log analysis | off | off | 1 LLM call/cycle |
-| `advanced` | validation + KB | updated | off | 1-2 LLM calls/cycle |
-| `expert` | validation + KB | updated | full | 1-2 LLM calls/cycle + plan at start |
-
-```bash
-# Default: advanced (no planning)
-phenix.ai_agent data.mtz model.pdb
-
-# Enable planning layer
-phenix.ai_agent data.mtz model.pdb thinking_level=expert
-```
-
-The `expert` level maps to `advanced` inside the LangGraph
-pipeline — the THINK node sees `advanced` and runs the full
-validation/KB/Structure Model pipeline. The planning layer
-(plan generation, gate evaluation, hypothesis testing, reports)
-is gated in `ai_agent.py` around the cycle loop, not in the
-graph.
-
-### Design principles
-
-- **Additive, not rewrite**: the reactive agent loop is unchanged.
-  The strategic planner communicates through directives only —
-  the same interface a human user would use.
-- **Ground truth, not hallucination**: the Structure Model is
-  derived from validation results, not LLM reasoning. The LLM
-  proposes; the gate evaluator (deterministic) decides.
-- **Plans are advisory**: the reactive agent's safety checks
-  always have final authority. If the plan says "run phaser" but
-  files are missing, the reactive agent's fallback logic takes
-  over.
-- **One variable at a time**: single active hypothesis budget
-  prevents confounded experiments.
-- **No oscillation**: strategy blacklist + retreat counter +
-  monotonic progress gate + cooldown + depth limit.
-
-### Not yet implemented
-
-- `tests/evaluation/` harness with 10-15 real-structure test
-  cases and dry-run replay (Phase 0 from the planning doc)
-- GUI pinned plan header (requires replacing `wx.TextCtrl` with
-  composite `wx.Panel`; currently the plan header is rendered
-  as text in the append stream at session start)
-
-
-## Version 113.10 (Thinking Level Parameter, Validation, Expert KB)
-
-### Summary
-
-Replaces the boolean `use_thinking_agent=True/False` with a three-level
-`thinking_level` choice parameter (`none`/`basic`/`advanced`). Adds
-structural validation, file metadata tracking, expert knowledge base
-lookup, and user-facing display of expert assessments.
-
-Backward compatible: `use_thinking_agent=True` maps to
-`thinking_level=basic` automatically.
-
-### New capabilities (advanced mode)
-
-- **Structural validation:** headless Ramachandran, rotamer, clashscore,
-  bonds/angles, model contents (chains, ligands, waters, ions)
-- **Expert knowledge base:** 56 focused entries addressing specific LLM
-  mistakes about PHENIX, with IDF-weighted tag matching
-- **File metadata:** content-aware model queries (`find_best_model()`,
-  `find_latest_model_with_ligand()`) replacing filename pattern matching
-- **R-free trend tracking:** multi-cycle trajectory visible to the expert
-- **User-facing display:** Expert Assessment block in event formatter at
-  NORMAL verbosity showing validation, analysis, guidance, and concerns;
-  stop events visible even at QUIET verbosity
-
-### New files (7)
-
-| File | Purpose |
-|------|---------|
-| `agent/validation_inspector.py` | Headless structural validation (never raises) |
-| `agent/format_validation.py` | Compact text formatter for validation results |
-| `agent/file_metadata.py` | Per-file metadata tracking and queries |
-| `agent/kb_tags.py` | Context tag derivation for KB lookup |
-| `agent/tst_agent_enhancements.py` | 25 integration tests |
-| `knowledge/kb_loader.py` | YAML-based KB loader with IDF-weighted matching |
-| `knowledge/expert_knowledge_base_v2.yaml` | 56 expert-reviewed entries |
-
-### Modified files (10)
-
-| File | Changes |
-|------|---------|
-| `agent/thinking_agent.py` | `thinking_level` dispatch, validation/KB/metadata integration, enriched event emission, stop_decision event for expert stops |
-| `agent/graph_state.py` | `thinking_level` in TypedDict + `create_initial_state()`, backward compat |
-| `agent/graph_nodes.py` | `think()` checks `thinking_level` instead of `use_thinking_agent` |
-| `agent/event_formatter.py` | `_format_expert_assessment()` method, expert stop in quiet mode |
-| `knowledge/thinking_prompts.py` | Validation, KB, metadata, R-free trend in prompt |
-| `programs/ai_agent.py` | `thinking_level` PHIL parameter |
-| `phenix_ai/local_agent.py` | `thinking_level` in request settings |
-| `phenix_ai/remote_agent.py` | `thinking_level` in request settings |
-| `phenix_ai/run_ai_agent.py` | `thinking_level` state creation |
-| `agent/event_log.py` | `EXPERT_ASSESSMENT` event type (already present from 113.00) |
-
-### User-facing display
-
-At NORMAL verbosity, each expert assessment shows:
-
-```
-Expert Assessment (high confidence)
-  Structural validation:
-    R-work=0.210 R-free=0.248 (prev: 0.265, start: 0.421)
-    Bonds=0.0065 Angles=1.12
-    Rama: 97.2% fav, 0.3% outlier
-    Clashscore: 4.1
-    Ligands: ATP (A/501)
-    Waters: 187
-  R-free trend: 0.421 -> 0.350 -> 0.295 -> 0.248
-  Analysis: R-free continues to improve with good geometry...
-  Guidance: Enable ordered solvent in next refinement cycle.
-  Concerns: Rotamer outliers slightly elevated at 3.2%
-  [mode=advanced, KB rules consulted]
-```
-
-At QUIET verbosity, expert stops show:
-`CYCLE 8: STOP (expert: R-free stuck at 0.52 for 5 cycles...)`
-
-### Usage
-
-```bash
-phenix.ai_agent data.mtz model.pdb thinking_level=advanced
-phenix.ai_agent data.mtz model.pdb thinking_level=basic
-phenix.ai_agent data.mtz model.pdb use_thinking_agent=True  # backward compat
-```
-
-### Testing
-
-25 passed, 0 failed, 1 skipped (real validation requires PHENIX).
-
-```bash
-libtbx.python libtbx/langchain/agent/tst_agent_enhancements.py
-```
-
-## Version 113.00 (Thinking Agent — Expert Crystallographer Reasoning)
-
-### Summary
-
-Optional second LLM call that analyzes PHENIX program logs with domain
-expertise and provides strategic guidance to the planning node. Adds a
-THINK node between PERCEIVE and PLAN in the LangGraph pipeline.
-
-### Motivation
-
-The planning LLM selects programs from a structured prompt optimized for
-decision-making. It does not see raw program logs or have the context
-to recognize crystallographic phenomena — twinning detected by xtriage,
-weak MR solutions from phaser, stalled refinement R-free values. A
-human expert would scan the terminal output and adjust strategy
-accordingly. The thinking agent fills this gap.
-
-### New Files (Phase B)
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `agent/thinking_agent.py` | 340 | Core module: `should_think()`, `run_think_node()`, LLM call |
-| `agent/strategy_memory.py` | 138 | Persistent memory across cycles (JSON-serializable) |
-| `agent/log_section_extractor.py` | 187 | Priority-ordered keyword extraction from program logs |
-| `knowledge/thinking_prompts.py` | 234 | Expert persona prompt builder + JSON response parser |
-| `tests/tst_strategy_memory.py` | 160 | 14 tests for memory serialization, stall detection |
-| `tests/tst_log_extractor.py` | 185 | 14 tests for per-program extraction, budget, fallback |
-| `tests/tst_thinking_agent.py` | 210 | 22 tests for should_think, run_think_node, parse |
-
-### Modified Files (Phase A — plumbing)
-
-| File | Changes |
-|------|---------|
-| `agent/graph_state.py` | 3 new fields (`use_thinking_agent`, `expert_assessment`, `strategy_memory`), 2 new params, history copy bug fix |
-| `agent/graph_nodes.py` | `think()` node with import-guarded call to `run_think_node()` |
-| `agent/graph.py` | Import, node registration, perceive→think→plan routing |
-| `agent/api_client.py` | `strategy_memory` in `build_session_state()` whitelist |
-| `agent/event_log.py` | `EXPERT_ASSESSMENT` event type |
-| `phenix_ai/run_ai_agent.py` | Extract `use_thinking_agent` setting, pass to state, return metadata |
-| `phenix_ai/local_agent.py` | Settings passthrough |
-| `phenix_ai/remote_agent.py` | Settings passthrough |
-| `programs/ai_agent.py` | PHIL param, session plumbing, callback data |
-| `wxGUI2/Programs/AIAgent.py` | Checkbox, `[Expert]` progress display |
-
-### Design Decisions
-
-1. **Guidance, not commands.** The expert LLM presents evidence and
-   reasoning ("Strong anomalous signal to 3.0 Å, consider SAD"). It
-   does NOT issue parameter settings or directives. PLAN makes the
-   final decision, keeping the existing validation pipeline intact.
-
-2. **Advice channel injection.** Expert guidance is prepended to
-   `user_advice` as `[Expert assessment] ...`. This flows through
-   existing channels — PLAN and BUILD both see it without any new
-   interface.
-
-3. **Selective engagement.** The thinking LLM is only called at
-   strategic decision points (after xtriage, phaser, autosol,
-   autobuild, failures, R-free stalling). Routine refinement steps
-   pass through without an extra LLM call.
-
-4. **Graceful degradation.** If the thinking LLM fails for any reason,
-   the THINK node logs the error and returns state unchanged. PLAN
-   runs normally. The workflow never crashes due to a thinking failure.
-
-5. **Budget-aware log extraction.** Per-program keyword tables extract
-   the most scientifically relevant sections first (3500-char budget).
-   Twinning before Wilson, R-factors before geometry, MR scores before
-   packing. Unknown programs fall back to the last 100 lines.
-
-### How to Enable
-
-GUI: Check "Use expert crystallographer reasoning" in the AI Agent
-Settings panel.
-
-Command line:
-```bash
-phenix.ai_agent ai_analysis.use_thinking_agent=True \
-    original_files="data.mtz seq.fa"
-```
-
-### Testing
-
-103 thinking-related tests across 4 test files, all passing.
-53 defensive tripwire tests verify plumbing correctness.
-Full suite: 38 passed, 3 pre-existing failures (libtbx-dependent).
-
-## Version 112.80 (Block bare wavelength= on autosol commands)
-
-### Problem
-
-For MAD experiments, autosol commands were generated with bare
-`wavelength=0.9000 wavelength=0.9794 wavelength=0.9797` instead
-of the correct PHIL form `autosol.lambda=0.9792`.  Multiple
-issues:
-
-1. `wavelength` is not a valid PHIL parameter for autosol — PHIL
-   interprets it as `autosol.wavelength.added_wavelength`
-   (a boolean), causing a type-mismatch crash
-2. Three values were injected (peak, inflection, high-remote)
-   when only the peak wavelength should be used
-3. The strategy system correctly maps `wavelength` →
-   `autosol.lambda={value}`, but `inject_user_params` could
-   re-inject bare `wavelength=xxx` from user advice, and
-   `sanitize_command` allowed it through
-
-### Root cause
-
-`_load_prog_allowlist()` added both the strategy key name AND
-the PHIL leaf to the command-line allowlist.  For aliases where
-the key differs from the leaf (e.g. `wavelength` → `lambda`),
-the bare alias was incorrectly whitelisted, allowing it to
-survive sanitization and be injected from user advice.
-
-### Fix
-
-1. **`_load_prog_allowlist()`** (command_postprocessor.py) —
-   When a strategy_flags key maps to a different PHIL leaf,
-   only add the PHIL leaf to the allowlist.  The bare alias
-   is no longer whitelisted.  Affects all programs with
-   aliased strategy flags (autosol, refine, phaser, etc.)
-
-2. **`_build_strategy()`** (command_builder.py) — For autosol,
-   if the LLM provides wavelength as a list (multiple MAD
-   wavelengths), keep only the first (peak) value.
-
-3. **wavelength hint** (programs.yaml) — Updated to tell the
-   LLM to provide only the peak wavelength for MAD data,
-   not inflection or high-remote values.
-
-### Tests
-
-- `test_bug1a_wavelength_not_in_allowlist` — verifies bare
-  `wavelength` is excluded from the allowlist
-- `test_bug1a_sanitize_strips_bare_wavelength` — verifies
-  `sanitize_command` strips all bare `wavelength=xxx` tokens
-- `test_bug1a_inject_skips_wavelength_without_lambda` —
-  verifies `inject_user_params` won't inject `wavelength=xxx`
-  even when `autosol.lambda` is absent from command
-
-### Files changed
-
-- `agent/command_postprocessor.py` — `_load_prog_allowlist()`
-  alias-aware allowlist logic
-- `agent/command_builder.py` — `_build_strategy()` autosol
-  wavelength list sanitization
-- `knowledge/programs.yaml` — improved wavelength hint to
-  guide LLM toward single peak value
-- `tests/tst_autosol_bugs.py` — 3 new regression tests
-- `docs/project/CHANGELOG.md` — This entry
-
-## Version 112.79 (Remove directory scanning from graph perceive node)
-
-### Problem
-
-The `perceive()` node in `graph_nodes.py` called
-`_discover_companion_files()`, which scanned the directories of ALL
-files in `available_files` — including user-supplied input files —
-to look for companion outputs (e.g., map coefficients MTZ alongside
-a `_data.mtz`).  This meant the agent could pick up unintended files
-from user input directories without being told to.
-
-### Root cause
-
-`_discover_companion_files()` was introduced when the session did not
-have comprehensive output file discovery.  Since then,
-`session.get_available_files()` gained three layers of output
-discovery:
-
-1. `_discover_cycle_outputs()` — tries stored paths, then scans the
-   expected `sub_NN_program/` output directory
-2. `_find_missing_outputs()` — finds companion refine/autobuild files
-   from known output paths
-3. Step 3 catch-all — scans agent sub-directories for any missed
-   output files
-
-These session-side mechanisms are scoped to agent output directories
-only, making the graph-side `_discover_companion_files()` both
-redundant and overly broad.
-
-### Fix
-
-Removed the `_discover_companion_files()` function from
-`graph_nodes.py` entirely.  The `perceive()` node no longer performs
-any directory scanning.  It still:
-- Injects output files from history entries
-- Filters intermediate/temp files via `_filter_intermediate_files()`
-
-### Tests
-
-- Removed 5 companion file discovery tests (tested the deleted
-  function)
-- Added `test_perceive_no_input_dir_scanning` — verifies the
-  perceive pipeline does NOT pick up files from user input
-  directories
-- Added `test_history_injection_still_works` — verifies output
-  files from history entries are still injected
-
-### Documentation
-
-- Updated `ARCHITECTURE.md` companion file discovery layers:
-  removed Layer 1 (`_discover_companion_files`), renumbered
-  Layers 2-6 to 1-5
-- Updated intermediate file filtering description
-
-### Files changed
-
-- `agent/graph_nodes.py` — Removed `_discover_companion_files`
-  function and its call from `perceive()`
-- `tests/tst_v112_13_fixes.py` — Replaced companion file tests
-  with perceive-pipeline tests
-- `docs/reference/ARCHITECTURE.md` — Updated layer numbering
-- `docs/project/CHANGELOG.md` — This entry
-
----
-
-## Version 112.78 (GUI mode: map_coeffs_mtz empty after refine; daily usage Sorry; after_program premature stop)
-
-### Problem 1 — map_coeffs_mtz empty after refine
-
-After phenix.refine completes in GUI mode, `best_files["map_coeffs_mtz"]` stays
-empty, causing the server to fail when building the ligandfit command
-("missing required input: map_coeffs_mtz").
-
-### Root cause
-
-Two compounding bugs:
-
-| # | Location | Bug |
-|---|----------|-----|
-| 1 | `_execute_command` | Uses `os.getcwd()` as `working_dir`, but the OldStyle runner restores CWD to the parent agent directory. Output files are in `sub_03_refine/` but `extract_output_files` and `scan_directory_for_output_files` look in the parent. Result: `output_files` passed to `record_result` is empty/incomplete, so `best_files` stays `{}`. |
-| 2 | Safety net (line ~3233) | Condition `if best_files and not best_files.get("map_coeffs_mtz")` short-circuits when `best_files` is `{}` (empty dict = falsy in Python), skipping the safety net entirely. |
-
-The files DO appear in `active_files` (via `get_available_files` step-3 catch-all
-directory scan), but they never pass through `evaluate_file`, so the best_files
-tracker has no entries.
-
-### Fix
-
-**Bug 1 — return output_dir from sub-job runner:**
-`_execute_sub_job_for_gui` now returns a 4-tuple `(log_text, error_text,
-executed_command, gui_output_dir)`.  `_execute_command` uses `gui_output_dir`
-as `working_dir` instead of `os.getcwd()` when in GUI mode.  The agent's own
-log file is still written to `os.getcwd()` (`log_dir`) — only file scanning
-uses the sub-job directory.
-
-**Bug 2 — safety net condition:**
-Changed `if best_files and not best_files.get("map_coeffs_mtz")` to
-`if best_files is not None and not best_files.get("map_coeffs_mtz")`.
-
-**Bug 3 — `_track_output_files` same wrong directory:**
-`_track_output_files` also used `os.getcwd()` for its directory scan.  Now
-accepts `working_dir` parameter and uses it when provided.
-
-**Diagnostic enhancement:** The MAP_COEFFS_MTZ diagnostic now prints the
-`best_files` entry count.  `0 entries` → `record_result` never processed the
-output files (working_dir bug); `>0 entries` → MTZ classification mismatch.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | `_execute_sub_job_for_gui`: return 4-tuple with `gui_output_dir` (3 return paths) |
-| `programs/ai_agent.py` | `_execute_command`: unpack 4-tuple, separate `log_dir` from `working_dir` |
-| `programs/ai_agent.py` | `_track_output_files`: accept and use `working_dir` param |
-| `programs/ai_agent.py` | Safety net: `is not None` instead of truthiness check |
-| `programs/ai_agent.py` | Diagnostic: show entry count, differentiate two failure modes |
-| `tests/tst_autosol_bugs.py` | +4 tests (Bug 5), total 48 |
-
-### Problem 2 — Daily usage limit not raised as Sorry
-
-When the server returns `daily_usage_reached`, `rest/__init__.py` printed
-"Skipping..." and returned `success=False`.  RemoteAgent treated this as
-"no response" and returned None.  The cycle loop saw None as "no command
-generated" and ended silently, producing a confusing summary that said
-xtriage "failed."
-
-Even after `rest/__init__.py` was fixed to raise Sorry, RemoteAgent's
-generic `except Exception` around `_send_request()` caught it (Sorry
-inherits from Exception), logged it as `"Error calling server: ..."`,
-and returned None — swallowing the fatal error.
-
-### Fix — three files
-
-**`rest/__init__.py`:** Raise `Sorry` on `daily_usage_reached` at both
-detection points (~lines 784 and 1133) instead of silently returning.
-Consistent with how other auth failures are already handled.
-
-**`phenix_ai/remote_agent.py`:** Add `except Sorry: raise` before the
-generic `except Exception` handler around `_send_request()`.  This lets
-Sorry propagate while still catching transient network errors.
-
-**`programs/ai_agent.py`:** No changes needed — Sorry propagates
-naturally up from `decide_next_step()` through the cycle loop.
-
-### Additional files changed
-
-| File | Change |
-|------|--------|
-| `rest/__init__.py` | Both `daily_usage_reached` paths: raise Sorry (was silent return/break) |
-| `phenix_ai/remote_agent.py` | `except Sorry: raise` before generic handler + import Sorry |
-| `tests/tst_autosol_bugs.py` | +2 tests (Bug 6), total 50 |
-
-### Problem 3 — `after_program` premature stop on multi-goal requests
-
-When user advice contains multiple goals (e.g., *"improve a map, get symmetry
-and map correlation"*), the directive extractor sets `after_program` to a
-single program (whichever it recognizes last).  `check_directive_stop()` in
-**PERCEIVE** fired immediately when that program completed — before the LLM
-ran — short-circuiting the entire cycle and preventing the remaining goals.
-
-Example: mtriage (correlation) ✓ → map_symmetry (symmetry) ✓ → **STOP** ✗
-(map improvement never ran).
-
-### Fix
-
-Removed `after_program` hard stop from `check_directive_stop()` in
-`agent/perceive_checks.py` (12 lines).  `after_program` is now only used in
-the **PLAN** node as a minimum-run guarantee: *"don't auto-stop until at
-least this program has run."*  The LLM always runs and decides whether
-all goals are met.
-
-`after_cycle` and metrics targets (`r_free_target`, `map_cc_target`) remain
-as hard stops — those are explicit numeric limits, not inferred from advice.
-
-**Trade-off:** Single-goal focused tasks ("evaluate these data") now use one
-extra LLM call (the LLM runs on the next cycle and decides to stop itself).
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/perceive_checks.py` | Removed `after_program` hard stop block + dead `last_command` variable, added explanatory comment |
-| `agent/session.py` | Removed parallel `after_program` hard stop from `check_directive_stop_conditions` fallback |
-| `agent/directive_extractor.py` | Removed `after_program` hard stop from `check_stop_conditions` (server-side) |
-| `agent/graph_nodes.py` | Improved PLAN log message when `after_program` completed + auto-stop |
-| `tests/tst_autosol_bugs.py` | +7 tests (Bug 7): functional + regression guards + all 3 parallel implementations + dead code, total 57 |
-
-### Windows compatibility (v112.78)
-
-Four cross-platform issues identified and fixed:
-
-| Issue | File | Fix |
-|-------|------|-----|
-| Temp-dir filter missed backslash paths | `agent/graph_nodes.py` | Normalize `\\` → `/` before matching `/TEMP`, `/TEMP0/`, `/scratch/` markers |
-| Console window flash in GUI | `programs/ai_agent.py` | `CREATE_NO_WINDOW` creationflag on `Popen` when `os.name == 'nt'` |
-| Abort detection assumed negative return codes | `programs/ai_agent.py` | Documented that `return_code < 0` is Unix-only; STOPWIZARD is the cross-platform indicator |
-| Session JSON used locale encoding | `agent/session.py` | All 3 `open()` calls now specify `encoding='utf-8'` |
-
-+4 Windows tests, total 61.
-
-## Version 112.77 (Autobuild rebuild_in_place stripped by Rule D)
-
-### Problem
-
-The LLM correctly identifies `rebuild_in_place=False` as the fix for a sequence
-mismatch error in autobuild, but Rule D in `sanitize_command` strips it.  Rule D
-removes bare key=value params not in the program's strategy_flags allowlist.
-Autobuild had only 3 flags (quick, nproc, resolution).
-
-### Fix
-
-Added `rebuild_in_place`, `n_cycle_build_max`, and `maps_only` to autobuild's
-strategy_flags in programs.yaml.  Added hint about `rebuild_in_place=False`
-for sequence mismatch recovery.
-
-### Files changed
-
-| File | Changes |
-|------|---------|
-| `knowledge/programs.yaml` | +15 lines: 3 new strategy_flags for autobuild + recovery hint |
-| `tests/tst_autosol_bugs.py` | +70 lines: 7 new tests (Bug 4), total 44 |
-
-### Broader concern — Rule D is too aggressive
-
-Most programs have only 1–4 strategy_flags but accept dozens of PHIL params.
-Rule D strips anything not pre-enumerated, meaning the agent can only use params
-that were anticipated at configuration time.  This is safe against hallucination
-but blocks legitimate error recovery when the LLM discovers the correct fix.
-
-The v112.76 catch-all blacklist handles the reverse case (bad params that *cause*
-errors).  But Rule D has no feedback loop: a stripped correct param never generates
-an error, so nothing learns that stripping was wrong.
-
-A future "warn but keep" mode for Rule D could log a warning but preserve unknown
-bare params, relying on PHIL validation + catch-all blacklist (N=2 threshold) to
-handle bad ones.  Trade-off: at most 2 wasted cycles for a hallucinated param vs
-potentially infinite wasted cycles when the agent keeps proposing a correct param
-that keeps getting stripped.
-
-Programs most affected: phenix.phaser (2 flags), phenix.autobuild_denmod (2),
-phenix.ligandfit (1), phenix.dock_in_map (1).
-
-## Version 112.76 (Catch-all injection blacklist + deterministic atom_type)
-
-Follow-up improvements from the v112.75 autosol bugs analysis.
-
-### Deterministic atom_type — heavier atom wins
-
-**Problem:** LLM directive extraction non-deterministically assigns which
-element goes to `atom_type` vs `additional_atom_types`.  Run 109 picked
-`atom_type=S` instead of `Se` — the weaker scatterer at 0.9792 Å.
-
-**Design rationale:** Rather than trying to fix the LLM's non-determinism,
-apply a deterministic physical rule: the element with higher atomic number (Z)
-always provides stronger anomalous signal at typical synchrotron wavelengths.
-This is applied as a post-validation swap, not a pre-extraction constraint,
-so it catches errors from both LLM and simple-fallback extraction paths.
-
-**Fix:** After the v112.75 dedup check, a new validation compares atomic
-numbers (Z) of `atom_type` and `mad_ha_add_list`.  If the primary scatterer
-has lower Z, the values are swapped.  This is scientifically correct: heavier
-atoms provide stronger anomalous signal in SAD/MAD experiments.
-
-- `_ANOMALOUS_Z` table: 27 common anomalous scatterers (Big 5: S, Se, Zn,
-  Fe, Hg, plus Pt, Au, and others from Z=16 to Z=92)
-- Handles multi-element `mad_ha_add_list` (e.g., `Se+Zn`)
-- Do-no-harm: skips swap when either element is unknown
-
-### Catch-all injection blacklist — supervisor pattern
-
-**Problem:** `bad_inject_params` learning only fires on recognized PHIL error
-patterns.  Any unrecognized format causes the agent to loop indefinitely
-(9 wasted cycles in run 107).
-
-**Design rationale:** Pattern-based error recognition is inherently fragile
-against PHIL's open-ended error space.  Instead of adding patterns one by one,
-implement a supervisor that tracks what was injected and correlates it with
-failures — no pattern matching required.  The threshold N=2 balances between
-transient failures (filesystem/network rarely produce identical fingerprints
-twice) and wasted cycles (N=3 would waste an extra cycle on what is almost
-certainly deterministic).  The "innocent bystander" trade-off is accepted:
-harmless params like `nproc=8` may be blacklisted alongside the real offender,
-but breaking the loop outweighs losing a harmless optimization.
-
-**Fix:** Track consecutive same-program failures via error fingerprint.  After
-N=2 failures with the same fingerprint, blacklist whatever `inject_user_params`
-appended — no pattern matching required.
-
-- `postprocess_command`: new `return_injected=False` kwarg surfaces the list of
-  params added by inject_* steps.  Default False for backward compatibility
-  with 10+ existing call sites
-- `_update_inject_fail_streak()`: streak tracker on ai_agent.py.  Computes
-  error fingerprint (first 120 chars, normalized), increments on match, resets
-  on mismatch or success, blacklists at threshold
-- Recovery retries (`force_retry_program`) excluded — they have their own loop
-  guard (v112.74)
-- "Innocent bystander" trade-off accepted: harmless params like `nproc=8` may
-  be blacklisted alongside the real offender, but breaking the loop outweighs
-  losing a harmless optimization
-
-### Files changed
-
-| File | Changes |
-|------|---------|
-| `agent/command_postprocessor.py` | +120 lines: `_ANOMALOUS_Z` table, `_ensure_primary_scatterer_is_heavier()`, step 2c call, `return_injected` kwarg with injected-list collection |
-| `agent/graph_nodes.py` | BUILD + FALLBACK nodes: call `postprocess_command(return_injected=True)`, store `last_injected_params` in graph state |
-| `agent/session.py` | +60 lines: `_fix_autosol_atom_type_order()` validates atom_type at directive extraction time (both LLM and simple-fallback paths) |
-| `programs/ai_agent.py` | +90 lines: `_update_inject_fail_streak()`, streak call in `_record_command_result`, `last_injected_params` init/extraction in `_get_command_for_cycle` and `_query_agent_for_command` |
-| `tests/tst_autosol_bugs.py` | +270 lines: 23 new tests (10 Phase 1 + 9 Phase 2 + 3 directive-level + 1 mock drift), total 37 |
-
-## Version 112.75 (Autosol/autobuild process bugs)
-
-Three process bugs diagnosed from runs 107 and 109, all involving autosol/autobuild
-SAD phasing workflows.
-
-### Root cause summary
-
-All three bugs stemmed from gaps in the injection/validation pipeline:
-
-| Bug | Wasted cycles | Root cause category |
-|-----|---------------|---------------------|
-| 1. wavelength duplication | 9 | Alias-blind duplicate check + unlearnable error pattern |
-| 2. atom_type swap | 1 | LLM non-determinism with no post-validation |
-| 3. autosol re-run | 1 | `_is_program_already_done` only checked `run_once` strategy |
-
-The `wavelength → autosol.lambda` mapping is uniquely treacherous: it is the only
-strategy_flag where the flag leaf (`lambda`) differs completely from the
-natural-language key (`wavelength`).  All other mappings have the key as a
-substring of the flag.  Bugs 2 and 3 compounded in run 109 — wrong atom type
-(S instead of Se) plus unnecessary re-run after both autosol and autobuild had
-already succeeded.
-
-### Problem 1 — Duplicate `wavelength=` crashes PHIL (9 wasted cycles)
-
-**Symptom:** Every autosol attempt in run 107 crashes with "One True or False
-value expected, autosol.wavelength.added_wavelength=0.9792 found". Repeats 9
-times with no self-correction.
-
-**Root cause:** `inject_user_params` extracts `wavelength=0.9792` from user
-advice ("wavelength is 0.9792") and appends it to the command even though
-`autosol.lambda=0.9792` is already present.  The duplicate check searches for
-"wavelength" in the command string but finds only "autosol.lambda" — the
-strategy_flags mapping (`wavelength → autosol.lambda={value}`) creates an alias
-that the check doesn't know about.  PHIL resolves bare `wavelength=` to
-`autosol.wavelength.added_wavelength` (a boolean) → type error.  The error
-message doesn't match the `bad_inject_params` learning patterns ("unknown
-parameter" / "no such parameter"), so the system never learns to stop.
-
-**Fixes:**
-- `command_postprocessor.py`: Build alias map from strategy_flags (`wavelength →
-  lambda`) and check alias leaves in duplicate detection before injecting
-- `command_postprocessor.py`: Autosol-specific dedup — strip `mad_ha_add_list`
-  when identical to `atom_type` (prevents secondary scatterer loss)
-- `ai_agent.py`: Add "True or False value expected" to `bad_inject_params`
-  error learning patterns, extracting and blacklisting the offending PHIL path
-  components
-
-### Problem 2 — `atom_type=S` instead of `Se` (wrong primary scatterer)
-
-**Symptom:** Run 109 extracts `atom_type=S` from "use Se and S as anomalous
-atoms" — selenium (the stronger scatterer at 0.9792 Å) is entirely lost from
-cycle 2's command (`atom_type=S mad_ha_add_list=S`, both sulfur).
-
-**Root cause:** LLM-based directive extraction is non-deterministic.  Run 107
-got `atom_type=Se` (correct); run 109 got `atom_type=S` (wrong).  No validation
-catches the case where both parameters are set to the same element.
-
-**Fixes:**
-- `command_postprocessor.py`: Post-assembly validation — if `atom_type` and
-  `mad_ha_add_list` have the same value, strip the duplicate `mad_ha_add_list`
-- `programs.yaml`: Improved hint text explicitly states the heavier element
-  (higher Z) should be `atom_type`, and that it must differ from
-  `additional_atom_types`
-
-### Problem 3 — Autosol re-runs after autosol+autobuild both succeeded
-
-**Symptom:** Run 109 cycle 4 runs autosol again after both autosol (cycle 2)
-and autobuild (cycle 3) succeeded.  Should have proceeded to refinement.
-
-**Root cause:** `_apply_directives` re-adds `phenix.autosol` from
-`program_settings` in directives (extracted from user advice mentioning autosol
-parameters).  It calls `_is_program_already_done` which only checked `run_once`
-programs — autosol uses `set_flag` strategy, so it returned False.  Autosol
-gets inserted at position 0 in `valid_programs` and the LLM picks it.  The
-belt-and-suspenders filter in `get_valid_programs` runs before
-`_apply_directives`, so it can't catch the re-addition.
-
-**Fix:**
-- `workflow_engine.py`: Extend `_is_program_already_done` to check non-count
-  programs with program-specific done flags (mirrors the existing
-  belt-and-suspenders filter).  This prevents `_apply_directives` from
-  re-adding any completed non-count program.
-
-### Files changed
-
-| File | Changes |
-|------|---------|
-| `agent/command_postprocessor.py` | +37 lines: strategy-flag alias map, alias duplicate check, autosol atom_type dedup |
-| `agent/workflow_engine.py` | +21 lines: `_is_program_already_done` extended for non-count programs |
-| `programs/ai_agent.py` | +35 lines: "True or False" error pattern in `bad_inject_params` learning (both branches) |
-| `knowledge/programs.yaml` | Improved `atom_type` and `additional_atom_types` hints |
-| `tests/tst_autosol_bugs.py` | +240 lines: 14 regression tests covering all fixes |
-
-## Version 112.74 (Xtriage recovery + ligand misclassification)
-
-### Problem 1 — Xtriage obs_labels recovery never reaches command line
-
-**Symptom:** Xtriage fails with "Multiple equally suitable arrays", recovery
-correctly selects I(+) labels, but the retry command is identical to the
-failed command — obs_labels is missing.  Agent loops until fallback STOPs.
-
-**Root cause (4-layer failure chain):**
-1. `registry.build_command()` silently drops recovery params that don't match
-   `strategy_flags` keys in programs.yaml.  Xtriage only has `unit_cell` and
-   `space_group` — the fully-qualified `scaling.input.xray_data.obs_labels`
-   is ignored.
-2. Probe-only sanitizer strips obs_labels (not a file path).
-3. Duplicate check consumes `force_retry_program` on identical command.
-4. No guard against re-triggering the same failed recovery.
-
-**Fixes:**
-- `command_builder.py`: After `_assemble_command`, append any recovery-sourced
-  strategy entry missing from the command.
-- `command_postprocessor.py`: Whitelist data-label params (`obs_labels`,
-  `labels`, `data_labels`, `anomalous_labels`, `r_free_flags_labels`) in
-  probe-only sanitizer.
-- `ai_agent.py`: Skip duplicate check when `forced_retry` is set.  Guard
-  against re-triggering recovery when strategy already exists for file.
-- `graph_nodes.py`: Propagate `forced_retry` to top-level BUILD output.
-
-### Problem 2 — Protein PDB files misclassified as ligand
-
-**Symptom:** `1aba.pdb` (729 ATOM + 20 HETATM records) rejected by BUILD:
-"LLM file rejected (in excluded category 'ligand'): model=1aba.pdb"
-
-**Root cause:** YAML categorizer patterns for `ligand_pdb` are broad enough
-to match protein PDB filenames.  Existing post-processing only validates
-`unclassified_pdb` files — files directly placed into `ligand_pdb` were
-never content-checked.
-
-**Fix:** `workflow_state.py`: Added post-processing guard in
-`_categorize_files()`.  Iterates `ligand_pdb` entries; any PDB file where
-`_pdb_is_protein_model()` returns True (>150 atoms, majority ATOM records)
-is moved to `unclassified_pdb`/`pdb`/`model`.  Same pattern as existing
-half-map validation guard.
-
-### Files modified
-
-| File | Changes |
-|---|---|
-| `command_builder.py` | Append recovery-sourced strategy entries after build_command |
-| `command_postprocessor.py` | Label param exception in probe-only sanitizer |
-| `ai_agent.py` | Skip duplicate check for recovery; recovery loop guard |
-| `graph_nodes.py` | Propagate forced_retry to top-level BUILD output |
-| `workflow_state.py` | Ligand_pdb content validation guard |
-
----
-
-## Version 112.73 (Output files and best_files lost on restart)
-
-### Problem 1 — Available files empty on restart
-
-After refinement completes and the agent stops then restarts, ligandfit fails
-with "missing inputs: map_coeffs_mtz" even though refine output files exist
-on disk.  The log shows only 3 available files — refine outputs are absent.
-
-Root cause: `get_available_files()` Step 3 infers `agent_dirs` from tracked
-file paths.  With only original inputs tracked (no `sub_*` in paths),
-`agent_dirs` is empty and the supplemental scan never runs.
-
-Fix: Seed `agent_dirs` from `_get_session_dir()` — always known from the
-session file path.
-
-### Problem 2 — best_files stale after restart (wrong model for refine)
-
-After ligandfit and pdbtools succeed, refine uses the original input model
-instead of the `*_with_ligand.pdb` from pdbtools.  Also uses original data
-MTZ instead of the R-free-locked MTZ from the first refinement.
-
-Root cause: `_rebuild_best_files_from_cycles()` uses `_discover_cycle_outputs()`
-which constructs directory names as `sub_{cycle_num}_{program}*`.  After a
-restart, session cycle numbers diverge from GUI directory numbers (e.g.,
-session says cycle 2 but GUI created `sub_04_pdbtools`).  The scan finds
-nothing, `best_files` stays at originals, and PRIORITY 2 in the command
-builder returns the stale model.
-
-Fix: `_discover_cycle_outputs()` now has five strategies:
-
-1. Try stored `output_files` paths as-is
-2. Resolve relative paths against session directory
-3. Use stored `output_dir` from cycle data (new: set by `record_result`)
-4. Scan `sub_{NN}_{program}*` (exact cycle-number match)
-5. Scan `sub_*_{program}*` (broad match — handles number mismatch)
-
-### Problem 3 — Directory scan finds files but best_files ignores them
-
-Even after fixes 1-2, polder (and refine) still selects the ligand-free model.
-The with_ligand PDBs ARE in `available_files` (13 files), but `best_files`
-still shows `model=refine_001_001.pdb`.
-
-Root cause: Architectural gap — `get_available_files()` Step 3 (directory scan)
-adds files to the available list, but `_rebuild_best_files_from_cycles()` only
-evaluates files from known cycles.  Files discovered only by Step 3 are
-invisible to `best_files`.
-
-Fix: New Step 3.5 in `get_available_files()` — after the directory scan,
-evaluate all newly discovered files through `best_files.evaluate_file()`.
-Uses `highest_cycle` from session data for recency.  Safe because the `seen`
-set ensures no double evaluation of files already processed by Steps 1-2.
-
-### Companion fixes (defense-in-depth)
-
-- `_import_mtz_utils()` always returns working functions (workflow_state.py)
-- `_should_exclude()` for dual-categorization (command_builder.py)
-
-### Files to deploy
-
-| File | What changed | Role |
-|------|-------------|------|
-| `agent/session.py` | All 3 fixes above | **Critical** |
-| `agent/workflow_state.py` | Self-contained `_import_mtz_utils()` | Defense-in-depth |
-| `agent/command_builder.py` | `_should_exclude()` at 4 check points | Defense-in-depth |
-| `agent/file_utils.py` | Contains `get_mtz_stage` | Defense-in-depth |
-
----
-
-## Version 112.72 (Invalid space_group directive injection)
-
-The LLM directive extractor sometimes misinterprets workflow descriptions as
-parameter values. User advice mentioning "space group determination" caused
-`space_group=determination` to be extracted into `program_settings.default`,
-then injected verbatim into `phenix.refine` commands where it caused errors.
-
-### Root cause
-
-The LLM parsed "space group determination" as `space_group = determination`,
-treating the workflow description word as a space group symbol. No validation
-existed to distinguish real space group symbols (P1, P 21 21 21, C2221) from
-English words.
-
-### Fix: Four-layer defense
-
-**Layer 1 — Don't extract it** (`session.py`): New `_sanitize_directives()`
-method runs after directive extraction. Validates `space_group` values in all
-`program_settings` scopes using `_is_valid_space_group()`. Invalid values are
-removed before storage. Logs removal.
-
-**Layer 2 — Don't inject via strategy** (`command_builder.py`): `_build_strategy()`
-now validates any `space_group` key in the strategy dict before it reaches
-`_assemble_command()`. Invalid values are stripped with a log message.
-
-**Layer 3 — Don't inject via crystal symmetry** (`command_postprocessor.py`):
-`inject_crystal_symmetry()` now uses `_is_valid_space_group()` instead of the
-weak `_INVALID_SG_PATTERNS` substring check.
-
-**Layer 4 — Strip if already in command** (`command_postprocessor.py`):
-`sanitize_command()` Rule B2 validates `space_group=` values in the command
-string and strips invalid ones.
-
-### Space group validation (`_is_valid_space_group`)
-
-New validator in `command_postprocessor.py` checks:
-- Known placeholder phrases (extended: "determination", "detection", "analysis", "auto", etc.)
-- Length limit (>20 chars rejected)
-- Space group numbers (1-230 accepted)
-- First character must be a crystal system letter (P/I/C/F/R/A/B/H) or digit
-- Single English words >6 chars rejected (catches "determination", "monoclinic", etc.)
-- Short symbols like "Pnma", "Pbca" correctly accepted
-
-### Files Changed
-- `agent/command_postprocessor.py` — New `_is_valid_space_group()`, updated
-  `inject_crystal_symmetry()`, new Rule B2 in `sanitize_command()`
-- `agent/command_builder.py` — Space group validation in `_build_strategy()`
-- `agent/session.py` — New `_sanitize_directives()` method, called after extraction
-
----
-
-## Version 112.71 (MTZ categorization safety net + dual-categorization fix)
-
-After running `phenix.refine`, the agent could not find `refine_001_001.mtz` as
-map coefficients for `phenix.ligandfit`, stopping with `missing inputs:
-map_coeffs_mtz`. Three independent categorization gaps caused the failure.
-
-### Bug 1 — Hardcoded categorizer skipped MTZ subcategories
-
-**Root cause:** `_categorize_files_hardcoded()` called `classify_mtz_type()` to
-place `refine_001_001.mtz` in the parent `map_coeffs_mtz` category but never
-populated the `refine_map_coeffs` subcategory. When the command builder searched
-subcategories first via `priority_categories` (denmod → predict_build → refine →
-parent), it found nothing in the subcategories and sometimes missed the parent.
-
-**Fix:** After `classify_mtz_type()` returns `map_coeffs_mtz`, now also calls
-`get_mtz_stage()` to populate the correct subcategory (`refine_map_coeffs`,
-`denmod_map_coeffs`, or `predict_build_map_coeffs`).
-
-### Bug 2 — Dual-categorization caused exclude_categories rejection
-
-**Root cause:** The YAML categorizer's two-step process could place a file in
-BOTH `data_mtz` (Step 1: extension match when exclude patterns didn't fire) AND
-`map_coeffs_mtz` (Step 2: pattern match → subcategory → bubble-up to parent).
-The command builder's `exclude_categories: [data_mtz]` for ligandfit then
-rejected the file even though it was correctly in `map_coeffs_mtz`.
-
-**Fix:** Post-categorization safety net now detects files in both `data_mtz` and
-`map_coeffs_mtz` and removes them from `data_mtz`.
-
-### Bug 3 — No post-categorization cross-check
-
-**Root cause:** There was no safety net after categorization to catch cases where
-YAML patterns and the authoritative regex classifier disagreed. If the server's
-`file_categories.yaml` had stale patterns, files could be silently misclassified.
-
-**Fix:** Added a post-categorization safety net at the end of `_categorize_files()`
-that cross-checks ALL MTZ files against the authoritative `classify_mtz_type()`
-regex. If any file is in the wrong category, it is moved to the correct one with
-appropriate subcategory assignment. Logs `WARNING` when corrections are made.
-
-### Diagnostic logging improvements
-
-Added two levels of diagnostic logging to make future occurrences immediately
-identifiable:
-
-1. **perceive() node** (`graph_nodes.py`): Logs all MTZ category contents after
-   categorization. Emits a WARNING when refinement is in history but
-   `map_coeffs_mtz` is empty.
-
-2. **Safety net** (`workflow_state.py`): Logs `WARNING` via Python logger when it
-   corrects a misclassification, e.g.:
-   `MTZ safety net: moved refine_001_001.mtz from data_mtz to refine_map_coeffs/map_coeffs_mtz`
-
-### Files Changed
-- `agent/workflow_state.py` — Added `import logging`, MTZ safety net post-processing
-  in `_categorize_files()`, subcategory population in `_categorize_files_hardcoded()`
-- `agent/graph_nodes.py` — Added MTZ category diagnostic logging in `perceive()`
-
----
-
-## Version 112.70 (Ligandfit missing data file + model/ligand swap)
-
-After running `phenix.refine`, the agent tried to run `phenix.ligandfit` with
-no data file, swapped model and ligand, and used `atp.pdb` (the small molecule)
-as the protein model. Three independent bugs:
-
-### Bug 1 — `refine_001.mtz` classified as `data_mtz` instead of `map_coeffs_mtz`
-
-**Root cause:** `session._rebuild_best_files_from_cycles` had a hardcoded regex
-`refine_\d+_001\.mtz$` that only matched two-level serial output
-(`refine_001_001.mtz`), NOT the standard single-serial output (`refine_001.mtz`).
-So `best_files["map_coeffs_mtz"]` was never populated after refinement, and
-ligandfit's `require_best_files_only: true` on `map_coeffs_mtz` meant neither
-BUILD nor the safety net could find the data file.
-
-**Fix:** Updated regex to `(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$` — matches
-all four patterns: `refine_001.mtz`, `refine_001_001.mtz`, `7qz0_refine_001.mtz`,
-`7qz0_refine_001_001.mtz`. Applied in three locations:
-- `session._rebuild_best_files_from_cycles` (session load path)
-- `session.record_result` (live cycle recording path)
-- `file_utils.classify_mtz_type` (shared classifier used by BestFilesTracker)
-
-**Secondary fix:** Added `refine_map_coeffs`, `denmod_map_coeffs`,
-`predict_build_map_coeffs`, `original_data_mtz`, and `phased_data_mtz` to
-`BestFilesTracker.STAGE_TO_PARENT`. Without these, passing `stage="refine_map_coeffs"`
-to `evaluate_file()` caused the category to be inferred from the filename instead
-of the stage, creating a silent mismatch.
-
-### Bug 2 — `exclude_patterns` used substring matching
-
-The model slot's `exclude_patterns: [ligand, ...]` used substring matching
-(`pat in basename`), so `nsf-d2_noligand.pdb` was incorrectly excluded from the
-model slot because "noligand" contains "ligand". This caused the safety net to
-skip the protein model and pick `atp.pdb` instead.
-
-**Fix:** New `matches_exclude_pattern()` function in `agent/file_utils.py` uses
-word-boundary matching: patterns must appear at the start of the name or after a
-separator (`_`, `-`, `.`). Applied in both `CommandBuilder._find_file_for_slot`
-(server) and `_inject_missing_required_files._find_candidate_for_slot` (client).
-Also applied to `prefer_patterns` for consistency.
-
-### Bug 3 — No content-based small-molecule guard for model slots
-
-Even after fixing exclude_patterns, `atp.pdb` (HETATM-only small molecule) could
-still be selected as a "model" because its filename has no ligand-like pattern.
-
-**Fix:** Both `CommandBuilder._find_file_for_slot` and
-`_inject_missing_required_files._find_candidate_for_slot` now call
-`_pdb_is_small_molecule()` (reads first 8KB, checks for HETATM-only) when filling
-model/protein/pdb_file slots. Small-molecule PDB files are rejected from model
-slots and left for the ligand slot.
-
-### Bug 4 — Protein model PDB assigned to ligand slot
-
-The LLM assigned `refine_001_001.pdb` (the protein model) to both the `model` and
-`ligand` slots of `phenix.ligandfit`, causing it to try fitting the protein as a
-ligand instead of the actual ATP file.
-
-**Fix:** Added inverse content-based guard using new `_pdb_is_protein_model()`
-function. When filling the `ligand` slot, PDB files positively identified as
-protein models (contain ATOM records) are rejected. Applied in three locations:
-- `CommandBuilder` LLM file hint validation (rejects LLM's wrong assignment)
-- `CommandBuilder._find_file_for_slot` (auto-fill path)
-- `_inject_missing_required_files._find_candidate_for_slot` (safety net)
-
-Uses `_pdb_is_protein_model()` (positive protein check) rather than
-`not _pdb_is_small_molecule()` because the latter returns False for non-existent
-files, which would incorrectly reject valid candidates.
-
-### Bug 5 — `inject_user_params` re-injects stripped bare params
-
-`sanitize_command` (Rule D) correctly stripped hallucinated bare params like
-`d_min=2.5` and `elements='Se S'` from autosol/autobuild commands, but
-`inject_user_params` re-added them from user advice text.
-
-**Fix:** `inject_user_params` now validates bare (undotted) keys against the
-program's strategy_flags allowlist before injection, mirroring Rule D's check.
-
-### Bug 6 — Refinement restraints CIF used as ligand
-
-After the protein PDB guard correctly rejected `refine_001_001.pdb` from the
-ligand slot, auto-fill grabbed `refine_001_001.cif` (refinement geometry
-restraints) as the ligand instead of the actual ATP file.
-
-**Fix:** Three changes:
-1. Added `refine` to `exclude_patterns` for ligandfit ligand slot in programs.yaml.
-   Word-boundary matching catches `refine_001_001.cif`, `refine_001.cif`,
-   `7qz0_refine_001.cif` but NOT `atp_refined.cif`.
-2. LLM-selected files now checked against slot `exclude_patterns` before acceptance
-   (previously only auto-fill applied exclude_patterns).
-3. New `_pdb_is_protein_model()` in `workflow_state.py` provides positive protein
-   detection for ligand slot guard (safe for non-existent files).
-
-### Bug 7 — Agent stops with misleading "all_commands_duplicate" on resume
-
-When resuming after refinement, the agent stopped with `Workflow complete:
-all_commands_duplicate` instead of running ligandfit. Two independent issues:
-
-**Root cause A:** `_rebuild_best_files_from_cycles` only evaluated files listed in
-the cycle's `output_files`. If the client didn't track the map coefficients MTZ
-(e.g. `refine_001.mtz`), then `best_files["map_coeffs_mtz"]` was never populated.
-Ligandfit's `require_best_files_only: true` then caused its build to fail.
-
-**Fix A:** Both `_rebuild_best_files_from_cycles` (session load) and `record_result`
-(live path) now call `_find_missing_outputs` and evaluate supplemental files through
-the best_files tracker. On the live path, discovered files are also appended to the
-cycle's `output_files` so `get_available_files` picks them up immediately.
-All three file-discovery paths now share the same supplemental logic:
-- `get_available_files` → already called `_find_missing_outputs`
-- `_rebuild_best_files_from_cycles` → now calls it (session load)
-- `record_result` → now calls it (live cycle completion)
-
-**Root cause B:** Fallback reported `all_commands_duplicate` whether the failure was
-duplication or inability to build (missing inputs). Misleading stop reason.
-
-**Fix B:** Fallback now distinguishes `cannot_build_any_program`, 
-`build_failures_and_duplicates`, and `all_commands_duplicate`. The `abort_message`
-includes per-program diagnostics showing which input slots couldn't be filled.
-`CommandBuilder.build()` now stores `_last_missing_slots` for diagnostics.
-
-### Bug 8 — Iterative refinement flagged as duplicate command
-
-When the user asked for additional refinement cycles, the duplicate detector
-flagged the new `phenix.refine` command as "similar to cycle 1" even though the
-input model file changed (e.g. `refine_002.pdb` vs `model.pdb`). The 80%
-token-overlap heuristic was comparing basenames of all command tokens, so commands
-with many shared params (nproc, macro_cycles, same data file) exceeded the 80%
-threshold even when the model file was different.
-
-**Fix:** Before applying the overlap heuristic, extract file tokens (basenames with
-crystallographic extensions like .pdb, .mtz, .cif, .sca) from both commands. If the
-file token sets differ, the commands are NOT duplicates regardless of overall overlap.
-Running `phenix.refine` with a different model is a fundamentally different
-computation.
-
-### Bug 9 — `best_files` skipped for slots with specific subcategories
-
-Even after Bugs 1+7 correctly populated `best_files["map_coeffs_mtz"]` from
-supplemental file discovery, ligandfit's `map_coeffs_mtz` slot still failed to
-build. The `_find_file_for_slot` method skips `best_files` entirely when a slot's
-`input_priorities.categories` contains a "specific subcategory" (like
-`refine_map_coeffs`). When the category-based lookup also failed (because
-`categorized_files` didn't have the file in `refine_map_coeffs`), the extension
-fallback was blocked by `require_best_files_only`, and the slot returned None.
-
-**Fix:** Added a `best_files_fallback` path: when both category-based lookup and
-extension fallback are exhausted for a specific-subcategory slot, try `best_files`
-as a last resort with `exclude_categories` validation. This ensures the
-supplemental-discovered map coefficients MTZ is used even when the PERCEIVE node's
-file categorizer didn't place it in the specific subcategory.
-
-### Bug 10 — Advice display at verbose level
-
-User advice (`project_advice`) was displayed at `verbose` level in
-`_print_iterate_agent_header`, invisible at the default `normal` verbosity.
-
-**Fix:** Changed to `normal` level so users always see their advice in the log.
-
-### Bug 11 — `set_project_info` replaces `original_files` on resume
-
-When resuming a session, `set_project_info(original_files=...)` **replaced** the
-existing `original_files` list with whatever files the user supplied on this run.
-If the user initially provided `data.mtz model.pdb atp.pdb` but resumed with only
-`refine_001_data.mtz refine_001_001.pdb`, the ligand file (`atp.pdb`) was lost.
-This caused ligandfit to fail because no ligand file was available.
-
-**Fix:** `set_project_info` now **merges** new files into the existing list on
-resume (deduplicating by basename). Original files from the first run are preserved
-even if the user doesn't re-supply them.
-
-### Bug 12 — BUILD failure message lacks missing-slot detail
-
-When `CommandBuilder.build()` returned None (missing required inputs), the BUILD
-node's `validation_error` was just `"Failed to build command"`. This became the
-fallback reasoning shown to the user: `"Fallback: phenix.ligandfit could not be
-built (Failed to build command; Failed to build command)"` — no indication of
-*which* files were missing.
-
-**Fix:** BUILD node now checks `builder._last_missing_slots` and includes slot
-names in the error message: `"Failed to build command (missing: ligand,
-map_coeffs_mtz)"`. The fallback reasoning also includes its own `build_failures`
-diagnostics (from Bug 7's per-program tracking) when they differ from the BUILD
-node errors.
-
-### Bug 13 — Protein guard too aggressive for ligand slot
-
-`_pdb_is_protein_model` returned True if ANY `ATOM` record existed, which
-rejected legitimate ligand files (e.g., `atp.pdb` — an ATP nucleotide file
-that may include a few ATOM records from extracted protein context). This was
-the **root cause** of the `missing inputs: ligand` failure: `atp.pdb` was
-present in available files but got excluded by the over-aggressive guard.
-
-**Fix:** `_pdb_is_protein_model` now uses size-based detection:
-- Counts total coordinate records (ATOM + HETATM) in first 32 KB
-- Small files (≤ 150 coordinate records) → **not protein**, regardless of
-  record type (ligands like ATP only have ~31 atoms; smallest crystallographic
-  protein has ~500+ atoms)
-- Larger files with majority ATOM → protein model (rejected from ligand slot)
-- Increased read buffer from 8 KB to 32 KB (~400 lines) for reliable counting
-- Also added detailed logging ("Ligand guard passed/excluded") for diagnostics
-
-Additional diagnostic improvements:
-- Fallback node logs available .pdb/.cif files and best_files for debugging
-- Fallback build logs per program are captured and forwarded to debug_log
-- FALLBACK debug logs displayed alongside BUILD/PLAN/PERCEIVE in client
-
-### Bug 14 — `wavelength=` instead of `autosol.lambda=` for autosol
-
-The LLM generated `wavelength=0.9792` (sometimes alongside the correct
-`autosol.lambda=0.9792`). Autosol requires `autosol.lambda=`, not bare
-`wavelength=`.
-
-**Fix:** Added `wavelength → autosol.lambda` rename in `parameter_fixes.json`.
-Also fixed `fix_program_parameters` logic: when the correct parameter already
-exists in the command, the wrong parameter is now **removed** (previously it
-was just skipped, leaving both in the command).
-
-### Bug 15 — Working directory shows server path in summary
-
-The final session summary displayed the server's temporary working directory
-(e.g., `/net/cci-gpu-01/.../rest/c65be5a5-...`) instead of the client's
-actual working directory. Both `generate_log_for_summary` and
-`_get_working_directory_path` fell back to `os.getcwd()` which is wrong
-on the server.
-
-**Fix:** The client now stores `client_working_directory` in session data at
-startup. `_get_working_directory_path()` checks this first (before
-`input_directory`, session file inference, or `os.getcwd()`).
-`generate_log_for_summary()` now calls `_get_working_directory_path()` instead
-of raw `os.getcwd()`. `_get_run_name()` also uses `client_working_directory`
-as fallback.
-
-### Bug 16 — Advice preprocessor leaks instructions into LLM output
-
-The `advice_preprocessor.py` prompt template contained section headers with
-system instructions like `(CRITICAL — translate natural language to PHIL
-key=value pairs)`. The LLM echoed these back verbatim in its output, making
-them appear in the summary analysis shown to users.
-
-**Fix:** Removed instruction language from section headers. The PHIL translation
-guidance remains in the body text but is no longer in a position where the LLM
-treats it as content to reproduce.
-
-### Bug 17 — Agent stops prematurely when user provides already-refined model
-
-When the user provides a pre-refined model (e.g., `7qz0.pdb` with R-free=0.204)
-and asks for ligand fitting, the agent runs `xtriage` → `model_vs_data` and then
-stops, even though ligand fitting was explicitly requested.
-
-**Root causes:**
-1. `model_vs_data` as a placement probe set `validation_done=True` (from YAML
-   done_tracking), tricking the workflow into thinking validation was complete
-2. The model was "at target" (good R-free), so `_is_at_target` returned True,
-   causing refinement programs to be removed and STOP to be added
-3. The ligandfit YAML condition `refine_count > 0` failed because no refinement
-   was done in this session (the model came pre-refined)
-4. `_apply_directives` `prefer_programs` only reorders existing valid programs
-   — it couldn't add ligandfit since it wasn't in the list
-
-**Fixes:**
-- **`_is_at_target` returns False when refinement is a ligandfit prerequisite**:
-  When `user_wants_ligandfit=True`, `ligandfit_done=False`, and `refine_count==0`,
-  `_is_at_target()` returns False even if R-free is below target. This is the
-  primary mechanism: it keeps `phenix.refine` in valid_programs so the YAML
-  workflow naturally flows: refine (produces map_coeffs) → ligandfit (YAML
-  conditions pass once refine_count > 0).
-- **`_apply_directives` defers ligandfit injection until refine runs**: Previously,
-  `_apply_directives` injected `phenix.ligandfit` into valid_programs even when
-  `refine_count==0`, bypassing YAML conditions. This caused the LLM to pick
-  ligandfit prematurely (which would fail in BUILD due to missing map_coeffs_mtz).
-  Now, injection is deferred until `refine_count > 0`, letting the YAML conditions
-  gate ligandfit correctly.
-- **`_get_valid_programs_for_phase` safety net**: Defense-in-depth check that keeps
-  refine when ligandfit needs it, in case `_is_at_target` logic changes.
-- `_analyze_history`: When `model_vs_data` ran as a placement probe (before any
-  refinement), unset `validation_done` to prevent premature workflow completion
-- **`require_best_files_only` implemented**: Ligandfit's `map_coeffs_mtz` slot
-  has `require_best_files_only: true` in YAML to prevent the raw Fobs MTZ from
-  being used. This flag was defined but not honored. Now, slots with this flag
-  skip extension-based fallback and only accept files from `best_files`.
-
-### Bug 18 — String metric crash in YAML condition evaluation
-
-Metric values from log analysis can arrive as strings (e.g., `"0.204"` instead of
-`0.204`). This caused `'<' not supported between instances of 'str' and 'float'`
-in `_check_metric_condition` when evaluating YAML workflow conditions.
-
-**Fixes:**
-- `_get_metric()` now casts return values to `float()` — this is the source of all
-  metric values in the context, so all downstream comparisons are safe
-- `_check_metric_condition()` also casts the value (defense-in-depth for metrics
-  that bypass `_get_metric`)
-
-### Bug 19 — `atp.pdb` miscategorized as model instead of ligand
-
-When the user provides a hetcode-named ligand file (e.g., `atp.pdb`) that uses
-ATOM records instead of HETATM, the file categorizer classified it as a protein
-model. This caused three cascading problems: `has_ligand_file=False`, ligandfit
-reported as unavailable ("missing required file: ligand_file"), and `best_files`
-selected `atp.pdb` as the model for refinement/validation.
-
-**Root cause:** `_pdb_is_small_molecule()` used a strict HETATM-only test. Some
-ligand PDB files (especially those exported from crystal structures) use ATOM
-records for all atoms instead of HETATM.
-
-**Fix:** `_pdb_is_small_molecule()` now uses size-based detection aligned with
-`_pdb_is_protein_model()`:
-- ≤150 total coordinate records → small molecule (regardless of ATOM vs HETATM)
-- >150 and HETATM-only → small molecule
-- >150 with ATOM records → NOT small molecule (protein)
-
-Both `_categorize_files()` (workflow_state) and `best_files_tracker._is_ligand_file()`
-call `_pdb_is_small_molecule()`, so the fix cascades through both code paths.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/session.py` | Fixed regex (2 locations); supplemental file evaluation in `_rebuild_best_files_from_cycles` and `record_result`; duplicate detection respects different input files; `set_project_info` merges original_files on resume; working directory uses `client_working_directory` from session data |
-| `agent/file_utils.py` | Fixed `classify_mtz_type` regex; new `matches_exclude_pattern()` |
-| `agent/best_files_tracker.py` | Added MTZ/data stage mappings to `STAGE_TO_PARENT` |
-| `agent/command_builder.py` | Content guards for model/ligand slots; exclude_patterns on LLM selections; `_last_missing_slots`; `best_files_fallback` for specific-subcategory slots; detailed ligand guard logging; `require_best_files_only` guard |
-| `agent/command_postprocessor.py` | `inject_user_params` validates bare keys against strategy_flags allowlist |
-| `agent/workflow_state.py` | `_pdb_is_small_molecule()` size-based detection (≤150 atoms = ligand); `_pdb_is_protein_model()` size-based (≤150 atoms = not protein); increased read buffer to 32 KB; placement probe no longer sets `validation_done` |
-| `agent/workflow_engine.py` | Ligandfit allowed with pre-refined models; `_apply_directives` defers ligandfit injection until refine runs; refine kept as ligandfit prerequisite; `_get_metric()` casts to float; `_check_metric_condition()` casts to float |
-| `agent/advice_preprocessor.py` | Removed instruction leakage from PHIL translation section header |
-| `agent/graph_nodes.py` | Fallback diagnostics: per-program build failure tracking, specific stop reasons; BUILD error includes missing slot names; fallback build log capture |
-| `agent/planner.py` | `fix_program_parameters` now removes wrong param when target already exists (instead of skipping) |
-| `knowledge/parameter_fixes.json` | Added `wavelength → autosol.lambda` for autosol |
-| `knowledge/programs.yaml` | Added `refine` to ligandfit ligand slot exclude_patterns |
-| `programs/ai_agent.py` | Content guards for model and ligand slots in safety net; advice display at normal level; FALLBACK debug log display; stores `client_working_directory` in session |
-| `tests/tst_audit_fixes.py` | 12 new tests (234 total) |
-
----
-
-## Version 112.69 (Rule D: strip hallucinated bare params + inject_program_defaults)
-
-Two bugs found during integration testing of the `nsf-d2-ligand` scenario.
-
-### Bug 1: `map_type=pre_calculated` not stripped
-
-The LLM hallucinated `map_type=pre_calculated` on a `phenix.refine` command.
-The parameter is ambiguous (maps to 5 different PHIL scopes) and causes a
-runtime error. The existing Rule C in `sanitize_command` only stripped bare
-params for programs with *zero* strategy_flags. `phenix.refine` has 10
-strategy_flags, so Rule C didn't fire and bare hallucinated params slipped
-through.
-
-**Fix — Rule D:** For programs WITH strategy_flags, strip bare (unscoped, no
-dots) `key=value` params not in the program's allowlist. Scoped PHIL params
-(e.g., `xray_data.r_free_flags.generate=True`) are preserved because they
-contain dots and go through PHIL validation downstream.
-
-### Bug 2: `r_free_flags.generate=True` not reliably present
-
-If the LLM omits `xray_data.r_free_flags.generate=True`, `phenix.refine` runs
-without generating R-free flags, which is always wrong for the first refinement
-cycle.
-
-**Fix — `inject_program_defaults()`:** New step 4 in the `postprocess_command`
-pipeline. Reads `defaults` from `programs.yaml` and appends any missing ones.
-If the LLM already includes the parameter, no duplicate is added. Added
-`xray_data.r_free_flags.generate: True` as a default for `phenix.refine`.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/command_postprocessor.py` | Added Rule D in `sanitize_command`; added `inject_program_defaults()` function; wired as step 4 in `postprocess_command` |
-| `knowledge/programs.yaml` | Added `defaults: {xray_data.r_free_flags.generate: True}` to `phenix.refine` |
-| `tests/tst_audit_fixes.py` | Added `test_s5h_rule_d_strips_bare_hallucinated_params` and `test_s5h_inject_program_defaults` (222 total) |
-
----
-
-## Version 112.68 (Phase 4: Clean execution loop + post-phase cleanup)
-
-Extracted the 200-line post-execution block from `_run_single_cycle` into two
-focused methods, and applied cleanup fixes.
-
-### Structural changes
-
-**`_run_single_cycle`** (92 lines, down from 283): Now a clean orchestrator —
-start cycle, get command from graph, handle duplicates, record decision, handle
-STOP/empty, execute, delegate to `_handle_execution_result`.
-
-**`_handle_execution_result`** (new, 49 lines): Routes to failure or success
-path. Success path updates actual program, clears `advice_changed`.
-
-**`_handle_failed_execution`** (new, 150 lines): Full failure pipeline — probe
-programs → auto recovery → terminal diagnosis → annotate as recoverable.
-
-### Post-phase cleanup
-
-1. **17 bare `print("[DEBUG ...")` removed** from `ai_agent.py` — development
-   debug aids printing unconditionally to stdout on every cycle. Removed from
-   `set_defaults` (9 prints), `iterate_agent` (4 prints), `_get_command_for_cycle`
-   (4 prints). Replay notification merged into existing `self.vlog.verbose()` call.
-
-2. **SyntaxWarning in session.py** (line 3739): `"_\* Failure..."` had invalid
-   escape sequence `\*`. Fixed to `"_\\* Failure..."`.
-
-3. **Redundant `import os as _os_rf`** in `_get_command_for_cycle` → uses
-   module-level `os`.
-
-4. **Test path resolution fix** — three tests navigating to
-   `command_postprocessor.py` via relative paths broke when
-   `_find_ai_agent_path()` resolved via importlib in the PHENIX build tree.
-   Fixed to use `_PROJECT_ROOT` directly.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | Extracted `_handle_execution_result` and `_handle_failed_execution` from `_run_single_cycle`; removed 17 debug prints; removed redundant import (5,971 lines) |
-| `agent/session.py` | Fixed SyntaxWarning |
-| `tests/tst_audit_fixes.py` | Updated 3 structural tests for moved code |
-
----
-
-## Version 112.67 (Phase 3: Consolidate stop logic & duplicate retries)
-
-The graph's PERCEIVE node is now the sole authority for all stop decisions.
-Duplicate retries now route through the normal graph path instead of a parallel
-bypass.
-
-### Phase 3a & 3b: Client-side stop checks (already removed)
-
-Both the consecutive-program cap and the directive stop check were already
-removed from `_run_single_cycle` in a prior session. The graph's PERCEIVE
-already has both:
-- `check_directive_stop()` — fires at start of cycle N+1
-- `check_consecutive_program_cap()` — fires at start of cycle N+1
-
-**Behavior change:** Directive stop now fires at the START of cycle N+1 instead
-of the END of cycle N. This is better — the workflow engine is consulted before
-the stop decision, preventing premature stops (e.g. the predict_and_build bug).
-
-### Phase 3c: Duplicate retries through graph
-
-**Problem:** `_retry_duplicate` was a parallel path that rebuilt `session_info`,
-gathered files, and called `decide_next_step` directly — duplicating ~80 lines
-of `_query_agent_for_command`. Any new field added to `session_info` had to be
-added in both places.
-
-**Fix:**
-
-1. Added `duplicate_feedback` parameter to `_query_agent_for_command` — when set,
-   feedback string is appended to guidelines before calling `decide_next_step`
-
-2. Refactored `_handle_duplicate_check` — on duplicate detection, builds feedback
-   via `_build_duplicate_feedback` (extracted static helper), calls
-   `_query_agent_for_command(duplicate_feedback=...)` through the full graph path,
-   then applies `_inject_missing_required_files` to the retry command
-
-3. Deleted `_retry_duplicate` method — 82 lines of parallel-path code eliminated
-
-4. Removed `_last_log_content` — was only saved for `_retry_duplicate` to reuse
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | Added `duplicate_feedback` param; refactored `_handle_duplicate_check`; added `_build_duplicate_feedback`; deleted `_retry_duplicate` and `_last_log_content` (6,601 → 6,532 lines) |
-| `agent/session.py` | Updated docstring reference from `_retry_duplicate` to `_build_duplicate_feedback` |
-| `tests/tst_audit_fixes.py` | Updated `test_s7g` and `test_s8i` for new duplicate retry path |
-
----
-
-## Version 112.66 (Phases 1–2: Command post-processing migration to BUILD)
-
-Extracted all command post-processing transforms from `ai_agent.py` into
-standalone functions in a new `agent/command_postprocessor.py` module, then
-migrated them into the graph's BUILD node as the single source of truth. Uses
-the Strangler Fig pattern: Phase 1 ran new path alongside old path in shadow
-mode; Phase 2 removed old path after validation.
-
-### New module: `agent/command_postprocessor.py`
-
-Four server-safe transforms as standalone functions (no `self`/class
-dependencies):
-
-| Function | Purpose |
-|----------|---------|
-| `sanitize_command()` | Strip placeholder values, blacklisted params, cross-program hallucinations |
-| `inject_user_params()` | Append user key=value params missing from command (with scope matching) |
-| `inject_crystal_symmetry()` | Append unit_cell/space_group from directives |
-| `postprocess_command()` | Single entry point calling all transforms in order |
-
-Each function takes explicit data arguments, making them callable from both the
-graph (server-side) and `ai_agent.py` (client-side).
-
-### Phase 2 cutover
-
-Removed all 5 client-side transforms from `_get_command_for_cycle`. Only
-`_inject_missing_required_files` remains (needs `os.path.exists()`, client-only).
-
-### Issues found and fixed during implementation
-
-1. **Wrong import path** — `libtbx.langchain.command_postprocessor` →
-   `libtbx.langchain.agent.command_postprocessor`
-
-2. **`_retry_duplicate` missing `bad_inject_params`** — retry path built its own
-   `session_info` without this field
-
-3. **Transport normalization gap (pre-existing)** — `build_request_v2` allowlist
-   was missing `advice_changed`, `unplaced_model_cell`, and `bad_inject_params`.
-   All three were silently dropped during transport encoding.
-
-4. **Probe-program file-path stripping (pre-existing)** — `sanitize_command` for
-   probe programs stripped ALL `key=value` tokens, including legitimate file
-   assignments like `half_map=/path/to/map.mrc`. Fixed by preserving tokens where
-   the value contains `/` or has a crystallographic extension.
-
-5. **History replay regression** — replay path bypasses graph; replayed commands
-   would get no sanitize/inject. Fixed by calling `postprocess_command` directly
-   for replayed commands (detected via `_from_replay` flag).
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/command_postprocessor.py` | NEW — 537 lines at Phase 2 cutover |
-| `programs/ai_agent.py` | Removed client-side transforms; replay postprocess; `bad_inject_params` in `session_info` |
-| `agent/graph_nodes.py` | Added `postprocess_command()` call in `_build_with_new_builder` and `_fallback_with_new_builder` |
-| `agent/api_client.py` | Added `bad_inject_params` to `build_session_state`; fixed transport normalization allowlist |
-| `agent/graph_state.py` | Added `bad_inject_params: Dict` to `AgentState` and `create_initial_state` |
-| `phenix_ai/run_ai_agent.py` | Passes `bad_inject_params` to `create_initial_state` |
-
----
-
-## Version 112.65 (Systematic audit: file categorization and YAML integrity)
-
-Ran 22 systematic checks across YAML configs and Python code. Found and fixed 5
-structural bugs affecting file categorization, category references, and
-intermediate file handling.
-
-### Bug 1 — CRITICAL: `parent_category` bubble-up never implemented
-**File:** `agent/workflow_state.py`
-
-The YAML defines parent-child relationships (`refined` → `model`,
-`refine_map_coeffs` → `map_coeffs_mtz`, `ligand_cif` → `ligand`) but the code
-never propagated files from subcategories to their semantic parents. This caused
-`model`, `map_coeffs_mtz`, and `ligand` to be permanently empty.
-
-**Fix:** Added bubble-up logic in `_categorize_files_yaml` that propagates files
-from child categories to their `parent_category`.
-
-### Bug 2 — `intermediate` category patterns were dead code
-**File:** `knowledge/file_categories.yaml`
-
-`intermediate` was marked `is_semantic_parent: true`, which causes both step 1
-(extension matching) and step 2 (pattern matching) to skip it entirely.
-
-**Fix:** Removed erroneous `is_semantic_parent` flag.
-
-### Bug 3 — Intermediate files leaked into `model` via `unclassified_pdb`
-**Files:** `knowledge/file_categories.yaml`, `agent/workflow_state.py`
-
-Files matching intermediate patterns also match `unclassified_pdb`'s `*`
-catch-all, which bubbles up to `model`.
-
-**Fix:** Added missing excludes to `unclassified_pdb` AND added post-processing
-that removes any file in `intermediate` from `model`/`search_model`/`pdb`.
-
-### Bug 4 — `phaser_output` lacked extension filter
-**File:** `knowledge/file_categories.yaml`
-
-`PHASER*.mtz` matched `phaser_output` (parent: `model`), causing Phaser MTZ
-files to bubble up into `model`.
-
-**Fix:** Added `extensions: [".pdb"]` to restrict to PDB files only.
-
-### Bug 5 — Broken category reference
-**File:** `knowledge/programs.yaml`
-
-`phenix.phaser.model.exclude_categories` referenced `ligand_fit` which doesn't
-exist. Fixed to `ligand_fit_output`.
-
-### Audits that passed clean
-
-All command template `{slot}` placeholders match defined inputs; all workflow
-stage transitions reference valid phases; all strategy_flags have proper type
-declarations; all invariant `has_strategy` checks have corresponding sources;
-all hardcoded `categorized_files.get("xxx")` references in Python match YAML;
-no sibling subcategories have overlapping patterns; no category/exclude overlaps
-in `input_priorities`; all program output patterns categorize correctly; all
-`also_in` and `parent_category` references point to existing categories.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/workflow_state.py` | Implemented `parent_category` bubble-up; intermediate exclusion post-processing |
-| `knowledge/file_categories.yaml` | Fixed `intermediate` flag; added `phaser_output` extension filter; added `unclassified_pdb` excludes |
-| `knowledge/programs.yaml` | Fixed `ligand_fit` → `ligand_fit_output` reference |
-| `tests/tst_audit_fixes.py` | Comprehensive categorization tests |
-
----
-
-## Version 112.64 (Unit cell / space group reliably propagated to commands)
-
-When the user specifies a unit cell or space group in their advice (e.g.
-`"The specified unit cell (116.097, 116.097, 44.175, 90, 90, 120) must be
-used for the procedure"`), the value was previously silently ignored — it
-never appeared in the command sent to `phenix.model_vs_data` or any other
-program.
-
-### Root cause (two independent bugs)
-
-**Bug 1 — LLM returns empty directives despite the correct schema being present.**
-The LLM prompt already listed `unit_cell` and `space_group` as extractable
-`program_settings` parameters, but when the advice mixes crystal symmetry with
-stop-conditions and file preferences, the LLM sometimes returns `{}` for the
-entire directive dict (logged as "No actionable directives found"). The
-`extract_directives_simple` regex fallback was only called for the ollama
-provider, not for the main Google/OpenAI path.
-
-**Bug 2 — Wrong PHIL scope in emitted commands.**
-Two code paths (`_inject_crystal_symmetry` in `ai_agent.py`, and the
-`KNOWN_PHIL_SHORT_NAMES` PASSTHROUGH in `program_registry.py`) appended bare
-`unit_cell="..."` and `space_group=...`, which PHENIX programs may not accept
-without the fully-scoped `crystal_symmetry.unit_cell=` form.
-
-### Fix — three layers
-
-**1. Deterministic regex fallback** (`agent/directive_extractor.py`) — New
-`_apply_crystal_symmetry_fallback()` function is called inside
-`extract_directives()` immediately after `validate_directives()`. It runs the
-same regex patterns as `extract_directives_simple` but only fills in fields
-that the LLM left empty — it never overwrites a value the LLM extracted
-correctly. This means the unit cell is captured even when the LLM returns
-`{}`.
-
-**2. Scoped PHIL form in `_inject_crystal_symmetry`** (`programs/ai_agent.py`)
-— Changed both append statements from `unit_cell="..."` and `space_group=...`
-to `crystal_symmetry.unit_cell="..."` and `crystal_symmetry.space_group=...`.
-The fully-scoped form is accepted by all X-ray PHENIX programs.
-
-**3. Scoped PHIL form in `program_registry.py`** — The `KNOWN_PHIL_SHORT_NAMES`
-PASSTHROUGH block now maps `unit_cell` and `space_group` to
-`crystal_symmetry.unit_cell` / `crystal_symmetry.space_group` before appending
-to the command string.
-
-### End-to-end result for the nsf-d2 example
-
-After the fix, even when the LLM returns empty directives, the deterministic
-fallback extracts the unit cell and the command becomes:
-
-```
-phenix.model_vs_data nsf-d2_noligand.pdb nsf-d2.mtz \
-    crystal_symmetry.unit_cell="116.097 116.097 44.175 90 90 120"
-```
-
-The same symmetry is also injected into subsequent programs:
-`phenix.ligandfit`, `phenix.refine`, `phenix.xtriage`, etc.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/directive_extractor.py` | New `_apply_crystal_symmetry_fallback()` function; called at end of `extract_directives()` after `validate_directives()` |
-| `agent/program_registry.py` | `KNOWN_PHIL_SHORT_NAMES` PASSTHROUGH uses `crystal_symmetry.unit_cell=` / `crystal_symmetry.space_group=` scoped form |
-| `programs/ai_agent.py` | `_inject_crystal_symmetry()` uses `crystal_symmetry.unit_cell=` and `crystal_symmetry.space_group=` scoped form |
-| `tests/tst_audit_fixes.py` | 6 new `test_s4b_*` tests: fallback behavior, non-overwrite, partial fill, source-inspection checks for scoped form |
-
----
-
-## Version 112.62 (Remove Results page on fatal diagnosis)
-
-When `_diagnose_terminal_failure` fires, `_finalize_session` now skips the
-Results summary page entirely.  The diagnosis HTML is already open in the
-user's browser — a second Results window saying "1 cycle, 1 failure" adds no
-value and risks burying the actionable diagnosis.
-
-### How it works
-
-`_diagnose_terminal_failure` writes `session.data["failure_diagnosis_path"]`
-before returning.  `_finalize_session` checks this key:
-
-```python
-has_fatal_diagnosis = bool(session.data.get("failure_diagnosis_path"))
-if (session.get_num_cycles() > 0
-    and not skip_summary
-    and not has_fatal_diagnosis   # ← new guard
-    and not dry_run):
-    self._generate_ai_summary(session)
-```
-
-When the key is present, `_generate_ai_summary` (and therefore
-`display_results`) is skipped.  The session is still saved to disk and
-`self.result` is still populated — only the browser window is suppressed.
-A one-line note is printed to the log: `Skipping Results summary — error
-diagnosis report already shown. See: <path>`.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | `_finalize_session`: `has_fatal_diagnosis` guard skips summary |
-| `tests/tst_audit_fixes.py` | Updated `test_s3a_diagnose_returns_true_no_sorry` and `test_s3a_finalize_runs_after_diagnosis` to verify suppression |
-
----
-
-## Version 112.61 (Remove Sorry from terminal failure path)
-
-The `_diagnose_terminal_failure` method no longer raises `Sorry`.  Previously
-the PHENIX GUI showed a blocking modal error dialog that could end up behind
-other windows, preventing the user from proceeding.  The ai_agent job is now
-considered successful when it correctly identifies and diagnoses a sub-job
-failure.
-
-### Changes
-
-**`_diagnose_terminal_failure`** — Steps 1–4 unchanged.  Step 5 replaced:
-- Old: `raise Sorry(short_sorry)` — blocking modal, potentially hidden
-- New: `return True` — signals `_run_single_cycle` to break the loop
-
-**`_run_single_cycle`** — Changed from discarding the return value to
-propagating it: `return self._diagnose_terminal_failure(...)`.
-
-**`iterate_agent` cycle loop** — Removed the entire `_pending_sorry`
-try/except/re-raise scaffold (12 lines).  The loop is now:
-
-```python
-for cycle in range(start_cycle, start_cycle + max_cycles):
-    should_break = self._run_single_cycle(cycle, session, session_start_time)
-    if should_break:
-        break
-self._finalize_session(session)    # always runs regardless
-```
-
-`_finalize_session` remains unconditional.
-
-### User experience
-
-Fatal sub-job failure: diagnosis HTML opens in browser → agent finishes
-cleanly → one window, no modals, no buried dialogs.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | `_diagnose_terminal_failure` returns `True`; `_run_single_cycle` propagates it; `iterate_agent` drops `_pending_sorry` |
-| `tests/tst_audit_fixes.py` | Replaced `test_s3a_html_write_failure_produces_full_sorry` and `test_s3a_sorry_deferred_until_finalize` with `test_s3a_diagnose_returns_true_no_sorry` and `test_s3a_finalize_runs_after_diagnosis` |
-
----
-
-## Version 112.60 (Error page and Results page improvements)
-
-Five UX improvements to the terminal error and Results pages.
-
-### Changes
-
-**(1) Heading rename** — `failure_diagnoser.py`: "Terminal Error Diagnosis" →
-"Error diagnosis".  Tab title also updated.
-
-**(2) File location on error page** — `build_diagnosis_html` now shows the
-full path of the saved HTML file in the footer: `Saved to: <path>`.
-
-**(3) Job context on error page** — `build_diagnosis_html` now accepts
-`job_name` and `working_dir`; these appear in the meta bar alongside Program
-and Cycle.  `_diagnose_terminal_failure` derives them from `log_dir`.
-
-**(4) Working directory on Results page** — `_extract_summary_data` now
-includes the working directory via `_get_working_directory_path()`.
-`_format_summary_markdown` shows it as
-`**Working directory:** \`/full/path\`` on every run, immediately below the
-Session/Cycles line.
-
-**(5) Failure diagnosis reference on Results page** — When a fatal diagnosis
-fires, `session.data["failure_diagnosis_path"]` is set and appears in a
-"Failure Diagnosis" section of the Results markdown, just above Assessment,
-with the full path to `ai_failure_diagnosis.html`.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/failure_diagnoser.py` | `build_diagnosis_html` gains `html_path`, `job_name`, `working_dir` params; heading renamed |
-| `programs/ai_agent.py` | `_diagnose_terminal_failure` passes new params; stores `failure_diagnosis_path` in session |
-| `agent/session.py` | `_extract_summary_data` adds `working_dir` and `failure_diagnosis_path`; `_format_summary_markdown` renders them |
-| `tests/tst_audit_fixes.py` | `test_s3a_build_html_new_fields` verifies heading, path, job name, working dir |
-
----
-
-## Version 112.59 (Noligand false-positive fix)
-
-Fixes `nsf-d2_noligand.pdb` (a protein structure explicitly lacking a ligand)
-being classified as a ligand file due to substring matching: `'ligand.pdb' in
-'noligand.pdb'` evaluates to `True`.
-
-### Root cause
-
-`BestFilesTracker._is_ligand_file()` used `any(p in basename for p in
-ligand_patterns)` where `ligand_patterns` included `'ligand.pdb'`.  Substring
-matching has no concept of word boundaries.
-
-### Fix — word-boundary regex
-
-Replaced substring matching with a regex that requires `ligand` or `lig` to
-appear at a word boundary (start of name, or after `_`, `-`, or `.`):
-
-```python
-WORD_SEP = r'(?:^|[_\-\.])'
-AFTER    = r'(?=[_\-\.]|\.(?:pdb|cif)$|$)'
-word_boundary_ligand = re.search(
-    r'(?:' + WORD_SEP + r'lig' + AFTER + r'|'
-           + WORD_SEP + r'ligand' + AFTER + r')',
-    basename
-)
-```
-
-Matches: `lig.pdb`, `lig_001.pdb`, `ligand.pdb`, `my_ligand.pdb`
-Rejects: `nsf-d2_noligand.pdb`, `noligand_model.pdb`
-
-The same pattern was applied to `workflow_state.py`'s hardcoded categorizer
-and to `file_categories.yaml`'s `unclassified_pdb` exclude list.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/best_files_tracker.py` | `_is_ligand_file` rewritten with word-boundary regex |
-| `agent/workflow_state.py` | `_categorize_files_hardcoded` updated to match |
-| `knowledge/file_categories.yaml` | `unclassified_pdb` excludes use specific patterns; `*noligand*` added as positive |
-| `tests/tst_audit_fixes.py` | `test_is_ligand_file_noligand_false_positive` (15 cases) |
-
----
-
-## Version 112.58 (Test path fix)
-
-Fixed `test_s3a_sorry_deferred_until_finalize` using a hard-coded path
-(`_PROJECT_ROOT/programs/ai_agent.py`) instead of calling `_find_ai_agent_path()`.
-All other tests already used the helper; this was the only outlier.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `tests/tst_audit_fixes.py` | `test_s3a_sorry_deferred_until_finalize`: use `_find_ai_agent_path()` |
-
----
-
-## Version 112.57 (HETATM-based ligand detection)
-
-Fixes `atp.pdb`, `gdp.pdb`, and similar hetcode-named files being classified as
-protein models rather than ligands.  Previously, files named after their PDB
-hetcode had no keyword-based ligand signal, so they fell through to the model
-category.
-
-### Fix — content-based detection
-
-Added `_pdb_is_small_molecule(path)` which reads the PDB file and returns
-`True` when all coordinate records are `HETATM` (no `ATOM` records).  This is
-applied as a post-processing pass in three locations:
-
-1. `best_files_tracker.py` `_is_ligand_file()` — content fallback after
-   keyword checks
-2. `workflow_state.py` YAML categorizer post-processing pass
-3. `workflow_state.py` hardcoded categorizer post-processing pass
-
-A file that passes the HETATM test is re-assigned from `model` / `unclassified_pdb`
-to `ligand_pdb`, preventing it from being selected as the refinement model.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/workflow_state.py` | `_pdb_is_small_molecule()` helper; post-processing in YAML and hardcoded categorizers |
-| `agent/best_files_tracker.py` | HETATM content fallback in `_is_ligand_file()` |
-| `tests/tst_audit_fixes.py` | `test_pdb_is_small_molecule_helper`, `test_hetcode_ligand_not_used_as_refine_model` |
-
----
-
-
-
-Fixes the apoferritin AIAgent_165 scenario where the placement probe
-(`phenix.map_correlations`) crashed with "model is entirely outside map",
-ran a second time with the same result, then caused the agent to quit —
-never routing to `dock_in_map`.
-
-### Root cause analysis — three independent failures
-
-**Failure 1 — Tier 1 (cell mismatch) is non-functional in production.**
-`_check_cell_mismatch` calls `check_cryoem_cell_mismatch(pdb_path, map_path)`
-which immediately calls `os.path.exists(pdb_path)`. On the server, `pdb_path`
-is `/Users/terwill/.../1aew_A.pdb` — a client-side path. `os.path.exists`
-returns `False`. Function returns `False` (fail-safe). The 4× unit cell
-mismatch (184 Å F432 crystal vs 32.5 × 39.65 × 36.4 Å P1 sub-box) is never
-detected. **Tier 1 has been silently broken for all RemoteAgent users.**
-
-**Failure 2 — The crash itself carries the answer, but the code discards it.**
-The probe runs correctly. `map_correlations` raises:
-
-```
-Sorry: Stopping as model is entirely outside map and wrapping=False
-```
-
-This is a stronger signal than a low CC — it's categorical proof the model
-is not placed. But `_analyze_history` has this at the top of the probe loop:
-
-```python
-if _is_failed_result(_result):
-    continue   # Ignore failed cycles for probe detection
-```
-
-The entire entry is discarded. `placement_probed` stays `False`.
-
-**Failure 3 — The loop.**
-With `placement_probed=False`, `placement_uncertain` is still `True` on the
-next cycle. The agent runs `map_correlations` again → same crash → same discard
-→ eventually the LLM consecutive-failure counter trips and the run stops with
-no docking ever attempted.
-
-### Fix 1 — Probe crash detection in `_analyze_history` (workflow_state.py)
-
-Before the `continue`, inspect failed `map_correlations` entries that occurred
-before any refine/dock cycle:
-
-```python
-if _is_failed_result(_result):
-    if "map_correlations" in _ecomb and not _seen_refine_or_dock:
-        _rl = (_result or "").lower()
-        _outside_signals = [
-            "entirely outside map", "outside map", "model is outside",
-            "model entirely outside", "stopping as model",
-        ]
-        if any(s in _rl for s in _outside_signals):
-            # Hard evidence: model is not in the map at all
-            info["placement_probed"] = True
-            info["placement_probe_result"] = "needs_dock"
-        elif not info.get("placement_probed"):
-            # Unknown failure — prevent infinite probe retry
-            info["placement_probed"] = True
-            # Leave placement_probe_result as None (inconclusive)
-    continue
-```
-
-Three outcomes:
-- **"outside map" crash** → `placement_probed=True, result="needs_dock"` → routes to `dock_model`
-- **Other crash** → `placement_probed=True, result=None` → inconclusive, falls through to `obtain_model`
-- **Second failed probe** → `placement_probed` already set, no overwrite; guard on `not info.get("placement_probed")` prevents the inconclusive case from clobbering an earlier definitive result
-
-### Fix 2 — Client-side model cell transport (S2L-b)
-
-The client reads the model's CRYST1 cell (which it has access to) and transmits
-it in `session_state["unplaced_model_cell"]`. The server uses this pre-read cell
-in `_check_cell_mismatch` instead of trying to open the file:
-
-**Client side** (`programs/ai_agent.py`): Before assembling `session_info`,
-read the CRYST1 cell from the first unplaced PDB in `active_files` and add it
-to `session_info["unplaced_model_cell"]`. Only populated when placement hasn't
-been confirmed by history (no `dock_done`, no `refine_done`).
-
-**Transport** (`agent/api_client.py`): `build_session_state` passes
-`unplaced_model_cell` through to `session_state`.
-
-**Server receipt** (`phenix_ai/run_ai_agent.py`): Maps `unplaced_model_cell`
-from `session_state` into `session_info`.
-
-**Server use** (`agent/workflow_engine.py`): `build_context` passes
-`session_info` down to `_check_cell_mismatch(files, model_cell=...)`.
-`_check_cell_mismatch` uses the pre-read cell for comparison against the map
-(which the server **can** read — it was just created by `resolve_cryo_em`
-on the server). Tier 1 now fires correctly in production:
-
-```
-model cell  = (184, 184, 184, 90, 90, 90)   # F432 crystal
-map cell    = (32.5, 39.65, 36.4, 90, 90, 90)  # P1 sub-box
-→ mismatch > 5% on all three axes → cell_mismatch=True → dock_model
-```
-
-### Also fixed: `optimized_full_map` not checked by `_check_cell_mismatch`
-
-After `resolve_cryo_em`, the output `denmod_map.ccp4` is categorized as
-`optimized_full_map` (not `full_map`). The original code only checked
-`files.get("full_map") or files.get("map")`. Added `optimized_full_map`
-as a priority-2 fallback so the freshly-generated density-modified map is
-always found.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/workflow_state.py` | `_analyze_history`: probe-crash handler before `continue`; `detect_workflow_state` gains `session_info` parameter |
-| `agent/workflow_engine.py` | `_check_cell_mismatch` rewritten with `model_cell` parameter and S2L fast-path; `optimized_full_map` added to map search; `build_context` accepts `session_info`; `get_workflow_state` accepts `session_info` |
-| `agent/api_client.py` | `build_session_state` passes `unplaced_model_cell` through |
-| `phenix_ai/run_ai_agent.py` | Maps `unplaced_model_cell` from `session_state` → `session_info` |
-| `programs/ai_agent.py` | Reads CRYST1 cell client-side, adds to `session_info["unplaced_model_cell"]` |
-| `agent/graph_nodes.py` | Passes `session_info=state.get("session_info",{})` to `detect_workflow_state` |
-| `tests/tst_audit_fixes.py` | 8 new S2L tests (131 total) |
-
-### Corrected cycle trace for AIAgent_165
-
-| Cycle | Program | Why (after fix) |
-|-------|---------|-----------------|
-| 1 | `phenix.mtriage` | Map analysis |
-| 2 | `phenix.resolve_cryo_em` | Half-maps → denmod_map |
-| **3** | **`phenix.dock_in_map`** | **Tier 1: cell_mismatch=True (client cell + server map) → dock_model** |
-| 4 | `phenix.real_space_refine` | Model docked, refine |
-
-Without the fix, cycle 3 ran `map_correlations` twice (probe crash not interpreted), then stopped.
-
-### Note on test coverage
-
-Tests 5 and 6 (api_client and workflow_engine) are marked SKIP in non-PHENIX
-environments because they require the production libtbx import path. They pass
-fully in a PHENIX installation. Tests 1–4, 7–8 pass in all environments.
-
----
-
-## Version 112.48 (S2k — _inject_user_params Empty Program Guard)
-
-Fixes a subtle Python truth-value bug introduced in v112.47 where the
-program-scope filter silently passed all dotted keys through when
-`prog_base` was an empty string.
-
-### Problem
-
-```python
-# Python: "refinement".startswith("") is True — every string starts with ""
-scope_matches = leading_scope.startswith(prog_base) or prog_base.startswith(leading_scope)
-```
-
-When `program_name` was not passed to `_inject_user_params`, `prog_base`
-defaulted to `""`, so `leading_scope.startswith("")` was always `True` and
-every dotted key bypassed the filter — exactly the bug the fix was meant to prevent.
-
-### Fix
-
-Added three guards to the scope-matching expression:
-
-```python
-scope_matches = (
-    bool(prog_base) and len(prog_base) >= 4 and
-    (leading_scope == prog_base or
-     (leading_scope.startswith(prog_base) and len(prog_base) >= 4) or
-     (prog_base.startswith(leading_scope) and len(leading_scope) >= 4))
-)
-```
-
-- `bool(prog_base)` — empty string immediately fails; no keys injected
-- `len(prog_base) >= 4` — prevents one- or two-character accidental prefix matches
-- Prefix matching handles `refine` ↔ `refinement` in both directions
-
-**Decision table:**
-
-| Program | Key | Result |
-|---|---|---|
-| `phenix.refine` | `refinement.main.number_of_macro_cycles` | **INJECT** (`refine` ⊂ `refinement`) |
-| `phenix.ligandfit` | `refinement.main.number_of_macro_cycles` | **SKIP** (no overlap) |
-| `phenix.autosol` | `autosol.atom_type` | **INJECT** (exact match) |
-| any | `general.nproc` | **INJECT** (universal scope) |
-| (empty string) | `refinement.*` | **SKIP** (`bool("")` fails immediately) |
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | `_inject_user_params`: three-part guard on scope-matching expression |
-| `tests/tst_audit_fixes.py` | 1 new S2k guard test (123 total) |
-
----
-
-## Version 112.47 (S2k — _inject_user_params Program-Scoped Filtering)
-
-Extends `_inject_user_params` to accept a `program_name` parameter and filter
-dotted PHIL keys to only inject parameters that belong to the target program's
-scope.
-
-### Problem
-
-After the server correctly built `phenix.ligandfit ... general.nproc=4`, the
-client's `_inject_user_params` scanned the guidelines string, found
-`refinement.main.number_of_macro_cycles=2` (from an earlier user directive),
-and appended it unconditionally:
-
-```
-[inject_user_params] appended: refinement.main.number_of_macro_cycles=2
-Final command: phenix.ligandfit ... general.nproc=4 refinement.main.number_of_macro_cycles=2
-```
-
-The command was clean when it left the server; the client contaminated it.
-
-### Fix
-
-`_inject_user_params(self, command, guidelines, program_name='')` now
-classifies each extracted dotted key before injecting:
-
-```python
-_UNIVERSAL_SCOPES = {'general', 'output', 'job', 'data_manager', 'nproc'}
-prog_base = program_name.replace('phenix.', '').lower()
-
-for key in extracted_keys:
-    if '.' in key:
-        leading_scope = key.split('.')[0].lower()
-        if leading_scope not in _UNIVERSAL_SCOPES and not scope_matches(leading_scope, prog_base):
-            skipped.append(key)
-            continue
-    inject(key)
-```
-
-Universal scopes (`general`, `output`, etc.) are always injected. All other
-dotted keys are only injected when their leading scope matches the program name.
-
-**Note:** v112.47 contained the empty-`prog_base` bug fixed in v112.48.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | `_inject_user_params` rewritten with `program_name` parameter and scope filter; call site updated to pass `program_name` |
-| `tests/tst_audit_fixes.py` | 1 new S2k test (122 total) |
-
----
-
-## Version 112.46 (S2k — _inject_user_params STOP Guard)
-
-Prevents `_inject_user_params` from running at all when the command is `STOP`.
-
-### Problem
-
-The `_inject_user_params` call site had no guard for STOP commands. A user
-directive containing `refinement.main.number_of_macro_cycles=2` would cause
-the function to emit `STOP refinement.main.number_of_macro_cycles=2`, which
-then failed command validation.
-
-### Fix
-
-```python
-if command and command != 'No command generated.' and \
-        command.strip().split()[0] != 'STOP':
-    command = self._inject_user_params(command, guidelines, program_name)
-```
-
-STOP commands bypass `_inject_user_params` entirely.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `programs/ai_agent.py` | Guard added at `_inject_user_params` call site |
-
----
-
-## Version 112.45 (S2j — program_registry Passthrough Removal)
-
-Removes the dotted-key passthrough in `program_registry.py` that allowed
-LLM strategy parameters to leak across program boundaries.
-
-### Problem
-
-`_build_command_from_registry` had a catchall passthrough: any key in the
-LLM strategy dict that contained a dot was appended to the command verbatim.
-This meant `refinement.main.number_of_macro_cycles=2` from the LLM's strategy
-for one program was silently included in the command for any program.
-
-### Fix
-
-Replaced the unconditional passthrough with an allowlist. A strategy key
-is now accepted only when it:
-
-1. Appears in `strategy_flags` for this specific program, or
-2. Is in `KNOWN_PHIL_SHORT_NAMES` (`nproc`, `twin_law`, `unit_cell`, etc.), or
-3. Contains a literal `=` sign (already a complete PHIL assignment)
-
-Dotted-path keys that pass none of these tests are logged as `DROPPED` and
-discarded. User-supplied dotted overrides reach the command through
-`_inject_user_params` instead (subject to the program-scope filter added in
-v112.47/v112.48).
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/program_registry.py` | Passthrough logic replaced with allowlist; dropped keys logged |
-| `tests/tst_audit_fixes.py` | 1 new S2j code test (121 total) |
-
----
-
-## Version 112.44 (S2j — Cross-Program Strategy Contamination: Prompt Fix)
-
-Fixes the LLM prompt so the model only emits strategy parameters that apply to
-the program it is currently selecting.
-
-### Root cause
-
-Three places in the prompt instructed the LLM to extract user parameters into
-the `strategy` field with no program-specificity qualifier. The LLM obediently
-included refinement parameters (`refinement.main.number_of_macro_cycles=2`) in
-the strategy for every program it selected — including `phenix.ligandfit` and
-even `STOP`.
-
-### Fixes (knowledge/prompts_hybrid.py)
-
-**User advice extraction block** (was "Extract any specific parameters from the
-user advice and include them in your strategy field"):
-
-> Extract parameters **ONLY when they apply to the program you are currently
-> selecting.** Do NOT include parameters for a different program. For example,
-> if selecting `phenix.ligandfit` and the user mentioned
-> `refinement.main.number_of_macro_cycles`, do NOT include that parameter —
-> it applies to `phenix.refine`, not `phenix.ligandfit`.
-
-**OUTPUT FORMAT strategy field** — Added CRITICAL STRATEGY RULE block:
-
-> Strategy keys must ONLY contain parameters valid for the selected program.
-> NEVER include parameters from a different program. When stop=true, strategy
-> must be empty {}.
-
-**IMPORTANT RULES** — Added rule 6:
-
-> Strategy is program-specific: never put parameters for program X in a
-> strategy for program Y.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `knowledge/prompts_hybrid.py` | User advice extraction, OUTPUT FORMAT strategy, IMPORTANT RULES rule 6 |
-| `tests/tst_audit_fixes.py` | 1 new S2j prompt test (120 total) |
-
----
-
-## Version 112.43 (S2i — STOP Command Normalization, Root Cause Fix)
-
-Fixes the root cause of `STOP refinement.main.number_of_macro_cycles=2` being
-generated as a command.
-
-### Root cause analysis
-
-The LLM's OUTPUT FORMAT schema has no `command` field — only `program`,
-`strategy`, `files`, `stop`. When the LLM returned:
-
-```json
-{"program": "STOP", "strategy": {"refinement.main.number_of_macro_cycles": 2}, "stop": false}
-```
-
-The PLAN node normalized `program` to `"STOP"` but never set
-`intent["stop"] = True`. The BUILD node then saw `stop=False`, fell through the
-STOP guard, and assembled the strategy flags onto the command as normal
-arguments, producing `STOP refinement.main.number_of_macro_cycles=2`, which
-then failed validation as "not a recognized phenix program."
-
-### Fix 1 — PLAN node (agent/graph_nodes.py)
-
-When `chosen_program == "STOP"`, explicitly set `intent["stop"] = True`:
-
-```python
-if chosen_program == "STOP" or (intent.get("stop") and
-        chosen_program not in valid_programs):
-    chosen_program = "STOP"
-    intent["program"] = "STOP"
-    intent["stop"] = True        # NEW: always set stop=True when program is STOP
-```
-
-### Fix 2 — BUILD node (defence in depth)
-
-Both `_build_with_new_builder` and the legacy `build()` function now short-circuit
-when either `intent["stop"]` is True or `intent["program"]` is `"STOP"`:
-
-```python
-if intent.get("stop") or intent.get("program") == "STOP":
-    state = _log(state, "BUILD: Stop requested, no command needed")
-    return {**state, "command": "STOP"}
-```
-
-This means the BUILD node never sees strategy flags for STOP, regardless of
-how the LLM filled the `stop` boolean.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/graph_nodes.py` | PLAN: `intent["stop"] = True` when program is STOP; BUILD: early-exit guard in both build paths |
-| `tests/tst_audit_fixes.py` | 4 new S2i tests (119 total) |
-
----
-
-## Version 112.42 (S2h — validation_cryoem DataManager PHIL Fix)
-
-Resolves a PHIL argument error in `phenix.validation_cryoem` when run with
-DataManager-style file arguments.
-
-### Problem
-
-`phenix.validation_cryoem` expected PHIL-scoped arguments
-(`input.pdb.file_name=model.pdb`) but the command builder was emitting
-positional DataManager style (`model.pdb map.ccp4`), causing a PHIL parse
-error on launch.
-
-### Fix
-
-Added the correct PHIL argument template to `programs.yaml` for
-`phenix.validation_cryoem`, matching the argument style the program actually
-accepts. The command builder picks this up automatically through the standard
-invariants pipeline.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `knowledge/programs.yaml` | `phenix.validation_cryoem`: correct PHIL argument template |
-| `tests/tst_audit_fixes.py` | 2 new S2h tests (115 total) |
-
----
-
-## Version 112.41 (S2g — map_correlations Conditional Resolution)
-
-Fixes `phenix.map_correlations` being handed a `resolution=` argument it does
-not accept when running in map-vs-map mode.
-
-### Problem
-
-The command builder always injected `resolution=` from the session context
-into `map_correlations` commands. In model-vs-map mode this is harmless; in
-map-vs-map mode (used by the placement probe) the program does not accept a
-resolution argument and exits with an error.
-
-### Fix
-
-Added a conditional resolution invariant to `map_correlations` in
-`programs.yaml`: resolution is only included when a model file is present
-in the command's file list.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `knowledge/programs.yaml` | `phenix.map_correlations`: conditional resolution invariant |
-| `tests/tst_audit_fixes.py` | 2 new S2g tests (113 total) |
-
----
-
-## Version 112.40 (S2f — validation_cryoem Auto-Resolution)
-
-Adds automatic resolution filling for `phenix.validation_cryoem`, which
-requires an explicit `resolution=` argument and previously had to rely on the
-user supplying it.
-
-### Problem
-
-`phenix.validation_cryoem` exited with "resolution not provided" when the
-agent did not include a resolution argument. The session always has the
-resolution from a prior `mtriage` run, but no invariant was wiring it through.
-
-### Fix
-
-Added a `requires_resolution` invariant to `phenix.validation_cryoem` in
-`programs.yaml`. The command builder already handles this invariant for other
-programs; the fix was purely a YAML addition.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `knowledge/programs.yaml` | `phenix.validation_cryoem`: `requires_resolution: true` invariant |
-| `tests/tst_audit_fixes.py` | 2 new S2f tests (111 total) |
-
----
-
-## Version 112.36 (S2e — after_program Directive Correctly Suppresses Placement Probe)
-
-Fixes a regression introduced by S2b (v112.33). The S2b fix made
-`placement_uncertain` immune to the `model_is_placed` workflow preference
-(which can be hallucinated by the LLM). However, it also inadvertently made
-it immune to `after_program` directives, which are a reliable signal.
-
-### Problem
-
-`tst_workflow_state.py::test_model_placement_inferred_from_model_vs_data_directive`
-failed with `AssertionError: Expected NOT xray_analyzed when model_vs_data requested`.
-
-Scenario: user uploads `1aba.pdb + 1aba.mtz`, requests
-`after_program=phenix.model_vs_data`. After S2b, `placement_uncertain=True`
-because `has_placed_model_from_history=False` (no dock/refine in history).
-This routes to `probe_placement → xray_analyzed` instead of the expected
-`refine → xray_refine`.
-
-### Root cause
-
-S2b correctly distinguished two types of "placed" evidence:
-
-| Source | Reliable? | Used by S2b |
-|--------|-----------|-------------|
-| `model_is_placed: True` (workflow_preferences) | No — LLM hallucination | Ignored by `placement_uncertain` ✓ |
-| History/file evidence (dock_done, refined PDB, etc.) | Yes | `has_placed_model_from_history` ✓ |
-| `after_program` in programs_requiring_placed | Yes — explicit user request | **Not distinguished — treated as unreliable** ✗ |
-
-### Fix
-
-Added a third placement signal: `has_placed_model_from_after_program`.
-
-New method `_has_placed_model_from_after_program(files, directives)`:
-- Returns True when `after_program` is in `programs_requiring_placed`
-  (`phenix.refine`, `phenix.model_vs_data`, `phenix.polder`, etc.) AND a
-  non-ligand, non-search-model PDB is present
-- Returns False for all other cases (no directive, non-placement program, no PDB)
-
-Added to `build_context()` as `context["has_placed_model_from_after_program"]`.
-
-Added to `placement_uncertain` formula:
-```python
-context["placement_uncertain"] = (
-    not context["has_placed_model_from_history"] and
-    not context["has_placed_model_from_after_program"] and   # NEW
-    not context["cell_mismatch"] and
-    ...
-)
-```
-
-### What is and isn't suppressed
-
-| Directive | Suppresses probe? | Why |
-|-----------|-------------------|-----|
-| `workflow_preferences: {model_is_placed: True}` | No | LLM hallucination risk (S2b) |
-| `stop_conditions: {after_program: phenix.model_vs_data}` | Yes | Explicit program request |
-| `stop_conditions: {after_program: phenix.predict_and_build}` | No | Not in programs_requiring_placed |
-| History: dock_done / refine_done | Yes | Objective evidence |
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/workflow_engine.py` | New `_has_placed_model_from_after_program()` method; `"has_placed_model_from_after_program"` added to `build_context()`; added to `placement_uncertain` formula |
-| `tests/tst_audit_fixes.py` | 3 new S2e tests (110 total) |
-
----
-
-## Version 112.35 (S2d — skip_map_model_overlap_check for real_space_refine)
-
-Adds `skip_map_model_overlap_check=True` as a permanent default for every
-`phenix.real_space_refine` run.
-
-### Problem
-
-`phenix.real_space_refine` performs a box/symmetry compatibility check before
-refining. When a docked model's CRYST1 record does not match the cryo-EM map
-box (common for crystal-structure templates that have been docked), this check
-raises a hard error and aborts the run before refinement even begins.
-
-### Fix
-
-Added to `knowledge/programs.yaml` under `phenix.real_space_refine`:
-
-```yaml
-defaults:
-  skip_map_model_overlap_check: True
-```
-
-The `defaults` section maps directly to `key=value` arguments appended to every
-command. This flag suppresses the overlap check for all RSR runs — no code
-changes required.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `knowledge/programs.yaml` | `defaults: skip_map_model_overlap_check: True` added to `phenix.real_space_refine` |
-| `tests/tst_audit_fixes.py` | 1 new S2d test (107 total) |
-
----
-
-## Version 112.34 (S2c — Crystal PDB to search_model Promotion for Cryo-EM Docking)
-
-Fixes the second stage of the apoferritin AIAgent_104 crash. After S2b (v112.33)
-correctly routes unplaced crystal-structure PDBs to `dock_model`, the agent was
-immediately stuck because `phenix.dock_in_map` was blocked by a condition that
-required AlphaFold post-processing output (`processed_model`). This version
-makes the complete path from detection → docking → refinement work.
-
-### Background
-
-The live failure had two stages:
-
-1. **Stage 1 (S2b):** A hallucinated `model_is_placed: True` directive suppressed
-   both the cell-mismatch check and the placement-uncertainty probe, allowing
-   `phenix.real_space_refine` to run directly against an unplaced model →
-   symmetry/box mismatch crash. Fixed in v112.33.
-
-2. **Stage 2 (S2c, this version):** After S2b, detection fires correctly and
-   routes to `dock_model`. But `dock_in_map` requires `has_search_model=True`,
-   and `1aew_A.pdb` (a plain crystal-structure PDB) is categorised as
-   `unclassified_pdb → model` — never `search_model`. Three layered problems
-   block docking from ever running.
-
-### Three problems fixed
-
-**Problem 1 — Wrong YAML condition in `dock_model` phase (`knowledge/workflows.yaml`)**
-
-The `dock_model` phase was designed exclusively for the AlphaFold stepwise path
-(`predict_and_build → process_predicted_model → dock_in_map`). Its condition
-required `processed_model`, which is never set for a plain crystal-structure PDB.
-
-```yaml
-# Before:
-- has: processed_model
-
-# After:
-- has_any: [search_model, processed_model]
-```
-
-`has_any` was already supported by `_check_conditions`; no engine changes needed.
-The AlphaFold path is unaffected: `processed_predicted` bubbles to `search_model`,
-so `has_search_model=True` still holds.
-
-**Problem 2 — File never in `search_model` (`agent/workflow_engine.py`)**
-
-The filename-based categoriser runs at session start with no workflow context. A
-plain PDB like `1aew_A.pdb` cannot be distinguished from a positioned model by
-name alone, so it lands in `unclassified_pdb → model`. At runtime, once context
-confirms docking is needed, the new `_promote_unclassified_for_docking()` method
-copies the file into `files["search_model"]`.
-
-Promotion fires when **all** of these hold:
-- `experiment_type == "cryoem"` (X-ray unaffected)
-- `files["unclassified_pdb"]` non-empty
-- `not has_placed_model_from_history` (no dock/refine in session history)
-- `not has_search_model` (already populated → no-op)
-- Any one of: `placement_uncertain` (Tier 3 pre-probe), `placement_probed AND
-  needs_dock` (Tier 3 post-probe), or `cell_mismatch AND not from_history` (Tier 1)
-
-The method never mutates its input dicts. `files["model"]` and
-`files["unclassified_pdb"]` are left intact.
-
-**Problem 3 — Promoted files discarded before reaching command builder (`agent/workflow_state.py`)**
-
-`get_workflow_state()` returned the promoted `files` dict, but
-`detect_workflow_state()` immediately overwrote `state["categorized_files"]`
-with the original pre-promotion `files`. All downstream consumers (PLAN, BUILD,
-`CommandContext`) read from `workflow_state["categorized_files"]` and would have
-seen an empty `search_model` even after the fix to Problem 2.
-
-```python
-# Before (always overwrites with original):
-state["categorized_files"] = files
-
-# After (respects promoted files when present; falls back only when key absent):
-state["categorized_files"] = state.get("categorized_files", files)
-```
-
-Note: `... or files` would be wrong here — Python treats `{}` as falsy and would
-overwrite a legitimately empty dict. `.get(key, default)` only falls back when the
-key is strictly absent from the dict.
-
-### Data flow after fix
-
-```
-detect_workflow_state()
-  files = _categorize_files()           # unclassified_pdb=[1aew_A.pdb], search_model=[]
-  engine.get_workflow_state()
-      build_context(files, ...)          # placement_uncertain=True OR cell_mismatch=True
-      _promote_unclassified_for_docking  # files["search_model"]=[1aew_A.pdb]
-      detect_step()                     # dock_model (Tier 1 or Tier 3)
-      get_valid_programs()               # dock_in_map: has_any([search_model✓]) + full_map✓
-      return {"categorized_files": files, ...}   # promoted files in return dict
-  state["categorized_files"] = state.get("categorized_files", files)  # kept ✓
-→ PLAN reads categorized_files["search_model"] = [1aew_A.pdb]
-→ BUILD / CommandContext: find_in_categories("search_model") → 1aew_A.pdb ✓
-→ phenix.dock_in_map 1aew_A.pdb denmod_map.ccp4 resolution=1.9
-```
-
-### Complete cycle trace (apoferritin scenario)
-
-| Cycle | Program | How |
-|-------|---------|-----|
-| 1 | `phenix.mtriage` | Map quality analysis |
-| 2 | `phenix.resolve_cryo_em` | Phase 1.5: half-maps → full map |
-| 3A | `phenix.dock_in_map` | Tier 1: cell mismatch (production, libtbx available); S2c 5c |
-| 3B | `phenix.map_correlations` | Tier 3: no libtbx fallback, probe fires; S2c 5a |
-| 4B | `phenix.dock_in_map` | Post-probe needs_dock; S2c 5b |
-| 4A/5B | `phenix.real_space_refine` | Model docked, ready to refine ✓ |
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `knowledge/workflows.yaml` | `dock_model` `dock_in_map`: `has: processed_model` → `has_any: [search_model, processed_model]` |
-| `agent/workflow_engine.py` | New `_promote_unclassified_for_docking()` method; call site after `build_context`; `"categorized_files"` added to return dict |
-| `agent/workflow_state.py` | Line 1187: `.get("categorized_files", files)` |
-| `agent/graph_nodes.py` | PERCEIVE log for S2c promotion (shows which files were promoted) |
-| `tests/tst_audit_fixes.py` | 6 new S2c tests; missing `__main__` runner block restored; SKIP guards added to 32 pre-existing tests that lacked them (no behaviour change, prevents false failures in non-PHENIX environments) |
-
-### Tests
-
-6 new tests in `tst_audit_fixes.py` (106 total, all passing):
-
-| Test | Verifies |
-|------|----------|
-| `test_s2c_promotion_fires_when_placement_uncertain` | Condition 5a: Tier 3 pre-probe path |
-| `test_s2c_promotion_fires_when_probe_says_needs_dock` | Condition 5b: Tier 3 post-probe path |
-| `test_s2c_promotion_fires_when_cell_mismatch` | Condition 5c: Tier 1 production path |
-| `test_s2c_no_promotion_when_placed_by_history` | Guard: `has_placed_model_from_history` blocks promotion |
-| `test_s2c_no_promotion_for_xray` | Guard: X-ray experiment type blocked |
-| `test_s2c_categorized_files_propagates_through_get_workflow_state` | Structural fix: promoted files reach command builder |
-
----
-
-## Version 112.33 (S2b — Directive-Immune Placement Uncertainty)
-
-Fixes the first stage of the apoferritin AIAgent_104 crash. The directive
-extractor hallucinated `model_is_placed: True` for "solve the structure",
-which triggered a suppression cascade that bypassed both the Tier 1 cell-mismatch
-check and the Tier 3 placement probe — allowing `phenix.real_space_refine` to
-run directly against an unplaced crystal model in a cryo-EM map.
-
-### Root cause
-
-Two expressions in `workflow_engine.py` used `has_placed_model` (which respects
-the `model_is_placed` directive) where they should have used
-`has_placed_model_from_history` (directive-immune):
-
-1. **S1 short-circuit** — skips the expensive `phenix.show_map_info` subprocess
-   once placement is known. A wrong directive zeroed out `cell_mismatch` before
-   Tier 1 could act on it.
-
-2. **`placement_uncertain` formula** — the Tier 3 probe gate. A wrong directive
-   set this to `False`, suppressing the probe entirely.
-
-### Fix
-
-Both expressions changed from `has_placed_model` to
-`has_placed_model_from_history`. The S1 short-circuit and the probe gate are now
-immune to directive mistakes. Only history/file evidence (dock/refine completed,
-docked PDB present) can suppress these safety checks.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `agent/workflow_engine.py` | S1 short-circuit: `has_placed_model` → `has_placed_model_from_history`; `placement_uncertain` formula: same change |
-
-### Tests
-
-Covered by existing S2 and R2/R3 tests in `tst_audit_fixes.py`.
-
----
-
-## Version 112.32 (Probe-Based Model Placement Detection)
-
-Adds a three-tier decision framework that determines whether a supplied atomic
-model is already placed in the unit cell / map before choosing between
-refinement and MR/docking.  Previously the agent had a blind spot for generic
-PDB files with no history and no positioning metadata.
-
-### Background
-
-When a user supplies `model.pdb + data.mtz` (or `model.pdb + map.ccp4`) with
-no session history, the agent must decide: is the model already placed (→
-refine) or does it need to be placed first (→ MR / docking)?  The old
-heuristics relied on file subcategory (`positioned`) or history flags —
-neither of which are set for a freshly uploaded PDB.
-
-### Three-tier framework
-
-**Tier 1 — Unit cell comparison (free, instant)**
-- Reads CRYST1 from PDB (`read_pdb_unit_cell`) and cell from MTZ/map
-  (`read_mtz_unit_cell`, `read_map_unit_cells`)
-- Compatible within 5% → falls through to Tier 2
-- Incompatible → model cannot be placed here → immediately routes to MR / docking
-- Fail-safe: any parse failure returns `False` (no mismatch declared)
-
-**Tier 2 — Existing heuristics (`_has_placed_model`)**
-- History flags, file subcategory, user directive
-- Clear evidence → done; still ambiguous → Tier 3
-
-**Tier 3 — Diagnostic probe (one program cycle)**
-- X-ray: runs `phenix.model_vs_data`; R-free < 0.50 → placed
-- Cryo-EM: runs `phenix.map_correlations`; CC > 0.15 → placed
-- Probe never repeats: `placement_probed` flag persists in history
-- Probe result is detected positionally (first occurrence before any
-  refine/dock cycle) with no schema change to history entries
-
-### New module: `agent/placement_checker.py`
-
-Public API:
-
-| Function | Purpose |
-|---|---|
-| `read_pdb_unit_cell(path)` | Parse CRYST1 line → 6-tuple or None |
-| `read_mtz_unit_cell(path)` | iotbx.mtz → 6-tuple, falls back to mtzdump |
-| `read_map_unit_cells(path)` | `phenix.show_map_info` → full-map and present-portion cells |
-| `cells_are_compatible(a, b, tolerance=0.05)` | Fractional comparison; None → True |
-| `check_xray_cell_mismatch(pdb, mtz)` | True only when both readable AND incompatible |
-| `check_cryoem_cell_mismatch(pdb, map)` | True only when both readable AND model matches neither map cell |
-
-### Changes to `agent/workflow_engine.py`
-
-- `build_context()` gains four keys: `cell_mismatch`, `placement_probed`,
-  `placement_probe_result`, `placement_uncertain`
-- `placement_uncertain` is `True` when: model + data present, no history evidence,
-  no directive, not predicted, no cell mismatch, probe not yet run
-- When `placement_probe_result == "placed"`, `build_context` overrides
-  `has_placed_model = True` so normal refine routing takes over
-- `_check_cell_mismatch()` private method wires Tier 1 into context building
-- `_detect_xray_phase()` / `_detect_cryoem_phase()` each gain three routing
-  blocks: Tier 1 mismatch → MR/dock, Tier 3 result → MR/dock or fall-through,
-  Tier 3 uncertain → `probe_placement` phase
-- `probe_placement` added to both `XRAY_STATE_MAP` and `CRYOEM_STATE_MAP`
-
-### Changes to `agent/workflow_state.py`
-
-- `_analyze_history` initialises `placement_probed=False` and
-  `placement_probe_result=None`
-- Post-loop pass detects probe by position: `model_vs_data` or
-  `map_correlations` found before the first refine/dock cycle
-- Only successful cycles contribute (failed runs ignored)
-- `cc_volume` used as fallback if `cc_mask` absent
-
-### Changes to `knowledge/workflows.yaml`
-
-- `probe_placement` phase added to both `xray` and `cryoem` workflows
-  (positioned between `analyze` and `obtain_model`)
-- X-ray probe: `phenix.model_vs_data`, transitions `if_placed → refine`,
-  `if_not_placed → molecular_replacement`
-- Cryo-EM probe: `phenix.map_correlations`, transitions `if_placed → refine`,
-  `if_not_placed → dock_model`
-
-### Changes to `knowledge/programs.yaml`
-
-- `phenix.map_correlations`: added `done_tracking` (was missing entirely —
-  pre-existing bug where running it in the validate phase never set
-  `validation_done`)
-- `phenix.model_vs_data`: added clarifying comment explaining phase-aware
-  override (flag unchanged: `validation_done`)
-
-### New tests (34 across all steps, in `tests/tst_audit_fixes.py`)
-
-| Category | Count | What they verify |
-|---|---|---|
-| R1 | 11 | `placement_checker.py` unit cell parsing and comparison |
-| R2 | 11 | `workflow_engine.build_context()` new keys and `placement_uncertain` logic |
-| R3 | 12 | Phase routing: probe offered, Tier 1 mismatch bypass, probe results route correctly, probe not re-run |
-| R3-extra | 10 | Edge cases: failed probe ignored, CC fallback fields, cryo-EM paths, `build_context` override, `placement_uncertain` clears |
-
-### Directive override protection (S2 fixes — applied after log analysis)
-
-**Root cause identified from runtime log:** the directive extractor LLM set
-`model_is_placed: True` from the advice "solve the structure" — a case the
-prompt explicitly said should NOT trigger that flag. This cascaded:
-`_has_placed_model()` returned True → Tier 1 routing checked
-`cell_mismatch AND NOT has_placed_model` → False (model "appeared placed") →
-skipped docking → `phenix.real_space_refine` failed with
-"Symmetry and/or box (unit cell) dimensions mismatch".
-
-**S2 Fix A — Directive extractor prompt (`agent/directive_extractor.py`)**
-- `model_is_placed` is now labelled HIGH-PRECISION: when in doubt, do NOT set it.
-- Explicit DO NOT list expanded: "solve the structure", "refine this model",
-  "run refinement", "fit a ligand", PDB + cryo-EM map without explicit placement
-  confirmation, generic/ambiguous goals.
-- Added prominent note: a PDB alongside cryo-EM maps always requires docking first.
-
-**S2 Fix B — `has_placed_model_from_history` context key (`agent/workflow_engine.py`)**
-- New `_has_placed_model_from_history()` method — identical logic to
-  `_has_placed_model()` but intentionally ignores directives; returns True only
-  from history flags (`dock_done`, `phaser_done`, `autobuild_done`,
-  `predict_full_done`, `refine_done`) and positioned file subcategories.
-- New `has_placed_model_from_history` key in `build_context()` output.
-  `has_placed_model` remains the directive-inclusive version for program gating.
-
-**S2 Fix C — Tier 1 routing uses `has_placed_model_from_history`**
-- Both `_detect_xray_phase` (MR) and `_detect_cryoem_phase` (dock) changed from
-  `not context["has_placed_model"]` to `not context.get("has_placed_model_from_history")`.
-- A directive claiming the model is placed cannot override a definitive cell-dimension
-  mismatch. Only concrete history evidence (dock ran, phaser ran, etc.) suppresses the check.
-
-**S2 Fix D — S1 short-circuit also uses `has_placed_model_from_history`**
-- The subprocess short-circuit (skip `phenix.show_map_info` after placement resolved)
-  now checks `has_placed_model_from_history` instead of `has_placed_model`.
-  A wrong directive no longer suppresses the check on subsequent cycles either.
-
-### New tests (S2 category, 10 tests in `tests/tst_audit_fixes.py`)
-
-| Test | What it covers |
-|---|---|
-| `s2_has_placed_model_from_history_method_exists` | Method present on WorkflowEngine |
-| `s2_from_history_false_when_only_directive` | Directive cannot fool `_has_placed_model_from_history` |
-| `s2_from_history_true_when_dock_done` | `dock_done` history → True |
-| `s2_context_has_placed_from_history_key` | Key present in `build_context()` output |
-| `s2_directive_model_is_placed_does_not_suppress_cell_mismatch` | Core routing fix: cell_mismatch → dock despite directive |
-| `s2_history_placed_does_suppress_cell_mismatch` | `dock_done` history legitimately suppresses re-dock |
-| `s2_xray_tier1_uses_from_history` | X-ray MR routing: directive cannot block Tier 1 |
-| `s2_short_circuit_uses_from_history_not_directive` | Source-level: short-circuit references correct key |
-| `s2_directive_prompt_stronger_do_not_set` | Prompt contains explicit DO NOT cases |
-| `s2_full_cryoem_stack_routes_to_dock_not_rsr` | **Regression test for the apoferritin bug** |
-
-### Polish fixes (applied after initial implementation review)
-
-Four issues discovered during code review and corrected before release.
-
-**S1 Fix 1 — YAML validator warnings (`agent/yaml_tools.py`)**
-- `if_placed` and `if_not_placed` were not in `valid_transition_fields`, generating
-  4 spurious "unknown transition field" warnings every time `_validate_workflows()` ran.
-- Added both keys to the set.
-
-**S1 Fix 2 — Redundant import (`agent/workflow_state.py`)**
-- The probe detection block used `import re as _re2` inside the loop body.
-  `re` is already imported at module level.
-- Replaced `_re2.search(...)` with `re.search(...)`.
-
-**S1 Fix 3 — Missing local import fallback (`agent/workflow_engine.py`)**
-- `_check_cell_mismatch` only tried the `libtbx.langchain.agent.placement_checker`
-  import path; any environment without the libtbx namespace (tests, local dev) would
-  silently return `False` without trying the bare `agent.placement_checker` path.
-- Added a second `except ImportError` branch matching the pattern used everywhere
-  else in the codebase.
-
-**S1 Fix 4 — Subprocess per cycle (`agent/workflow_engine.py`)**
-- `_check_cell_mismatch` ran `phenix.show_map_info` as a subprocess on every
-  `build_context()` call.  For cryo-EM workflows with many cycles this is wasteful:
-  once placement is resolved the check can never change the outcome.
-- Added a post-processing short-circuit in `build_context`: after the context dict
-  is fully built, if `has_placed_model=True` **or** `placement_probed=True`,
-  `cell_mismatch` is forced to `False`.  The check still runs on the first cycle
-  when placement is genuinely unknown.  The routing conditions
-  (`cell_mismatch AND not has_placed_model`) provide a second safety net.
-
-### New tests (S1 category, 10 tests in `tests/tst_audit_fixes.py`)
-
-| Test | Fix covered |
-|---|---|
-| `s1_yaml_validator_no_if_placed_warnings` | Fix 1: no warnings from probe_placement transitions |
-| `s1_yaml_validator_if_placed_is_in_valid_set` | Fix 1: if_placed/if_not_placed in source |
-| `s1_no_redundant_import_re_in_probe_block` | Fix 2: no _re2 alias, module-level re used |
-| `s1_probe_re_fallback_still_works` | Fix 2: regex fallback still parses r_free from result text |
-| `s1_local_import_fallback_in_check_cell_mismatch` | Fix 3: local path fallback present |
-| `s1_placement_checker_importable_locally` | Fix 3: all public functions importable without libtbx |
-| `s1_cell_mismatch_short_circuits_when_placed` | Fix 4: False when has_placed_model=True |
-| `s1_cell_mismatch_short_circuits_when_probed` | Fix 4: False when placement_probed=True |
-| `s1_cell_mismatch_not_short_circuited_first_cycle` | Fix 4: check active on first cycle |
-| `s1_short_circuit_order_before_probe_override` | Fix 4: short-circuit before probe-result override |
-
-### Files modified
-
-- `agent/placement_checker.py` — **NEW**
-- `agent/workflow_engine.py` — plus S1 fix 3 (import fallback), fix 4 (short-circuit)
-- `agent/workflow_state.py` — plus S1 fix 2 (import cleanup)
-- `agent/yaml_tools.py` — S1 fix 1 (transition field set)
-- `knowledge/workflows.yaml`
-- `knowledge/programs.yaml`
-- `tests/tst_audit_fixes.py`
-
----
-
-## Version 112.31 (Session Management, Resume Enhancement, Completed-Workflow Extension)
-
-### P1: Session management keywords populate `self.result` (Fix 27)
-
-**`display_and_stop` / `remove_last_n` left `self.result` unset — GUI calls failed**
-- When the agent exited via `_handle_session_management()`, it returned without
-  populating `self.result`. Any downstream call to `get_results()` or
-  `get_results_as_JSON()` raised `AttributeError`.
-- Fix: After session_tools operations complete, `_handle_session_management()`
-  now loads the `AgentSession`, calls `_finalize_session(skip_summary=True)`,
-  and builds a standard `group_args` result identical to a normal run's result.
-  The GUI receives session history, cycle count, and summary with no special cases.
-- `_finalize_session` gained a `skip_summary` kwarg (default `False`) that
-  suppresses the `_generate_ai_summary()` LLM call — unnecessary since no new
-  cycles ran during a display/remove operation.
-- Files: `programs/ai_agent.py`
-
-### P3: `get_results()` safe before `run()` (Fix 28)
-
-**`AttributeError: 'Program' object has no attribute 'result'`**
-- Any code path that called `get_results()` before `run()` completed — or on
-  any early-exit path that bypassed result assignment — raised AttributeError.
-- Fix: `run()` assigns `self.result = None` as its very first statement;
-  `get_results()` uses `getattr(self, 'result', None)` as a defensive fallback.
-- Files: `programs/ai_agent.py`
-
-### P4: `restart_mode` auto-set on session management params (Fix 29)
-
-**`display_and_stop` / `remove_last_n` required explicit `restart_mode=resume`**
-- Both session management parameters operate on an existing session directory,
-  which requires resume semantics. Forgetting `restart_mode=resume` silently
-  cleared the session's log_directory instead of reusing it.
-- Fix: At the start of `run()`, before `set_defaults()`, if either parameter
-  is set, `restart_mode` is automatically forced to `'resume'`. The
-  `display_and_stop` Phil choice default `'None'` (string) is handled
-  correctly — the guard checks `!= 'None'` rather than Python truthiness.
-- Files: `programs/ai_agent.py`
-
-### Q1: Extending a completed workflow with new `project_advice` (Fix 30)
-
-**Resuming after workflow completion with new advice was silently ignored**
-
-**Scenario:** Agent finishes a ligand-protein complex (xtriage → phaser → refine ×3 →
-ligandfit → pdbtools → molprobity). User resumes with
-`project_advice="also run polder on the ligand chain B residue 100"`.
-Previously the agent replied "workflow complete, nothing to do" and stopped
-immediately — the new advice was never acted on.
-
-**Root cause — two walls:**
-1. **Wall 1 — AUTO-STOP in PLAN** (already fixed before this version):
-   `metrics_trend.should_stop` would terminate before the LLM planned.
-   The `advice_changed` flag (set by `_preprocess_user_advice` on hash
-   mismatch) suppressed this for one cycle.
-2. **Wall 2 — `valid_programs = ['STOP']` in PERCEIVE** (this fix):
-   Once the workflow step was `complete`, `detect_phase` returned the
-   terminal phase, and `get_valid_programs` immediately returned `['STOP']`
-   before Wall 1's suppression logic ran. The LLM was handed a program
-   menu that only said STOP, so it couldn't choose polder even with
-   Wall 1 down.
-
-**Fix** (`agent/graph_nodes.py`, PERCEIVE node — 20 lines):
-```python
-# When advice_changed=True and phase='complete', step back to 'validate'
-if (session_info.get("advice_changed") and
-        workflow_state.get("phase_info", {}).get("phase") == "complete"):
-    _new_valid = engine.get_valid_programs(exp, {"phase": "validate"}, ctx)
-    workflow_state["valid_programs"] = _new_valid
-    workflow_state["phase_info"] = {"phase": "validate", "reason": "advice_changed"}
-```
-
-The `validate` phase contains exactly the right program menu for
-post-completion follow-up: `phenix.polder`, `phenix.molprobity`,
-`phenix.model_vs_data`, `phenix.map_correlations`, plus `STOP` so the
-LLM can still exit if the advice requires no action. After one successful
-cycle, `advice_changed` is cleared and normal AUTO-STOP behaviour resumes.
-
-**Complete event flow on resume with new advice:**
-```
-1. _preprocess_user_advice()
-     new hash ≠ stored hash → session.data["advice_changed"] = True
-
-2. PERCEIVE (Q1 fix)
-     phase == 'complete' AND advice_changed
-     → valid_programs = ['phenix.polder', 'phenix.molprobity',
-                         'phenix.model_vs_data', 'phenix.map_correlations',
-                         'STOP']
-     → phase_info['phase'] set to 'validate'
-
-3. PLAN (Wall 1 fix, pre-existing)
-     metrics_trend.should_stop AND advice_changed
-     → AUTO-STOP suppressed for this cycle
-
-4. LLM
-     sees new advice + validate-phase program menu → chooses phenix.polder
-
-5. Post-cycle cleanup
-     advice_changed = False
-     → next cycle: normal termination logic resumes
-```
-
-**Notable behaviour:** `phenix.polder` intentionally lacks `strategy: run_once`
-in `programs.yaml` — different residues and ligands may each need separate
-omit maps. `polder_done=True` therefore does NOT block polder from reappearing
-in `valid_programs`, allowing additional selections on subsequent resumes.
-
-- Files: `agent/graph_nodes.py`
-
-### Tests added (`tests/tst_audit_fixes.py`)
-
-**P1/P3/P4 tests (20 tests)** covering session_tools functions, real method
-extraction via `_build_agent_stub`, `get_results()` safety, and restart_mode
-auto-set. See previous session-management context for full list.
-
-**Q1 tests (9 tests):**
-- `test_q1_complete_phase_has_only_stop`: baseline — `complete` phase → `['STOP']`
-- `test_q1_validate_phase_includes_polder`: validate phase contains `phenix.polder`
-- `test_q1_advice_changed_steps_back_to_validate`: core logic — step-back adds polder
-- `test_q1_no_step_back_when_advice_unchanged`: unchanged advice keeps `complete` phase
-- `test_q1_polder_reruns_allowed_when_already_done`: `polder_done=True` does NOT block re-run
-- `test_q1_cryoem_complete_phase_steps_back`: logic is experiment-type agnostic
-- `test_q1_graph_nodes_perceive_mutates_state`: end-to-end state mutation test
-- `test_q1_advice_cleared_after_one_cycle`: `advice_changed` clears after one cycle
-- `test_q1_step_back_does_not_apply_outside_complete`: guard only fires on `complete` phase
-
-**Total tests: 74 (was 65 in v112_30)**
-
----
-
-## Version 112.14 (Systematic Audit — Categories I, J, E, G, H)
-
-### I1: max_refine_cycles produces bare STOP instead of controlled landing (Fix 21)
-
-**`_apply_directives` returned `["STOP"]` when refinement limit reached**
-- When `max_refine_cycles` was reached, the workflow engine stripped
-  refinement programs and returned `["STOP"]`, terminating the workflow
-  without validation. This left the user with no quality report.
-- Fix: After removing refinement programs, `_apply_directives` now
-  injects the validate-phase programs appropriate to the experiment type
-  (`phenix.molprobity`, `phenix.model_vs_data`, `phenix.map_correlations`
-  for X-ray; `phenix.molprobity`, `phenix.validation_cryoem`,
-  `phenix.map_correlations` for cryo-EM), then appends STOP so the user
-  can still exit immediately if desired.
-- Also fixed: cryoem path was reading `context["refine_count"]` to check
-  the limit, but cryo-EM refinement is counted in `context["rsr_count"]`.
-  Now uses `rsr_count` for cryoem, `refine_count` for xray.
-- Design note: `after_program` continues to produce STOP only (it is an
-  explicit, unconditional stop). The validate-injection only applies to
-  `max_refine_cycles` (a "limit" directive, not a "stop here" directive).
-- Files: `agent/workflow_engine.py`
-
-### J2: `_is_failed_result` false-positives on bare ERROR variants (Fix 22)
-
-**Patterns `'ERROR '`, `': ERROR'`, `'ERROR:'` matched non-fatal log text**
-- Phenix logs routinely contain strings like "Error model parameter",
-  "Expected errors: 0", "No ERROR detected". All of these matched the
-  broad `ERROR ` / `ERROR:` / `: ERROR` patterns, causing legitimate
-  runs to be classified as failed and their done flags suppressed.
-- Priority order for failure detection (per spec J2):
-  1. Exit code (handled at the shell layer, before `_is_failed_result`)
-  2. Output file check
-  3. Log text with specific Phenix terminal phrases
-- Fix: Removed the three generic `ERROR` patterns. Retained the seven
-  Phenix-specific terminal failure signatures: `FAILED`, `SORRY:`,
-  `SORRY `, `*** ERROR`, `FATAL:`, `TRACEBACK`, `EXCEPTION`.
-  These cover all real Phenix failure modes without matching non-fatal text.
-- Files: `agent/workflow_state.py`
-
-### J5: Zombie state detection — stale done flags block re-execution (Fix 23)
-
-**Missing output files left done flags True, preventing re-run**
-- When the agent crashed mid-cycle or the user deleted output files, the
-  history record retained `done_flag=True`. The phase detector saw
-  `done=True` and skipped the program, but file-based flags
-  (`has_full_map`, `has_placed_model`) were False because no file was
-  found. The workflow became stuck.
-- Fix: `_clear_zombie_done_flags(history_info, available_files)` checks
-  each done flag against its expected output file pattern. If the flag
-  is True but no matching file exists in `available_files`, it clears
-  the flag (and associated file flags) in-memory without modifying
-  history. Diagnostic messages are emitted to PERCEIVE.
-- Programs covered:
-  - `resolve_cryo_em_done` → `denmod_map.ccp4` → also clears `has_full_map`
-  - `predict_full_done` → `*_overall_best.pdb` → also clears `has_placed_model`
-  - `dock_done` → `*_docked.pdb` → also clears `has_placed_model`
-  - `refine_done` → `*_refine_001.pdb` → decrements `refine_count`
-  - `rsr_done` → `*_real_space_refined*.pdb` → decrements `rsr_count`
-- Files: `agent/workflow_state.py`
-
-### E1: xtriage resolution regex extracts 50.0 instead of 2.3 (Fix 24)
-
-**Dash separator in "50.00 - 2.30" format not handled by skip group**
-- The pattern `(?:[0-9.]+\s+)?` was designed to skip the low-resolution
-  limit and capture the high-resolution limit. But xtriage formats the
-  range as `50.00 - 2.30` (space-dash-space), not `50.00 2.30` (space
-  only). With the dash present the optional skip group backtracks, and
-  the capture group then matches `50.00` — the wrong value. `pick_min`
-  across all lines then returned 50.0 instead of 2.3.
-- Fix: Changed `(?:[0-9.]+\s+)?` to `(?:[0-9.]+\s*[-]\s*)?`. The skip
-  group now explicitly handles the dash separator. The pattern still
-  handles `Resolution: 1.80` (no range, skip group does not fire).
-  The negative lookbehind anchors prevent "Completeness in resolution
-  range: 1" from matching (J2-era fix retained).
-- Files: `knowledge/programs.yaml` (`phenix.xtriage` `resolution` pattern)
-
-### E1: real_space_refine map_cc returns first cycle instead of final (Fix 25)
-
-**`extract: first` (default) captured the initial, worst map_cc value**
-- RSR emits one `CC_mask =` line per macro-cycle. With `extract: first`
-  the initial (lowest) map_cc was reported rather than the final (best).
-  This caused the agent to incorrectly judge model quality as poor and
-  over-refine.
-- Also fixed: the pattern `CC_mask\s*[=:]\s*([0-9.]+)` was narrower
-  than the standard map_cc pattern used by all other programs. Broadened
-  to `(?:CC_mask|Map-CC|Model vs map CC)\s*[:=]?\s*([0-9.]+)` for
-  consistency.
-- Files: `knowledge/programs.yaml` (`phenix.real_space_refine` `map_cc` spec)
-
-### G1: holton_geometry_validation defined but not in any workflow step (Verified)
-
-`phenix.holton_geometry_validation` is registered in `programs.yaml`
-with `done_tracking` but deliberately not in any `workflows.yaml` phase.
-Added an audit comment to clarify the intentional status and document
-how to activate it (add to the validate phase in `workflows.yaml`).
-Files: `knowledge/programs.yaml`
-
-### H1/H3: STATE_MAP comments clarified (Documentation)
-
-- `cryoem_has_model`: The state string assigned to `check_map` and
-  `optimize_map` is a legacy misnomer — no model exists at that point.
-  No behavioral code gates on this string; `phase_info["phase"]` is
-  used for all internal decisions. Comment added.
-- `validate` shares state string with `refine` (`xray_refined` /
-  `cryoem_refined`): This is intentional for external API compatibility.
-  Internal code always uses `phase_info["phase"]` to distinguish them.
-  Comment added.
-- Files: `agent/workflow_engine.py`
-
-### J5d: Zombie state diagnostics silently discarded (Fix 26)
-
-**`_clear_zombie_done_flags()` return value was ignored**
-- `detect_workflow_state()` called `_clear_zombie_done_flags()` but did not
-  capture the return value. The done-flag clearing worked correctly (in-memory
-  modification), but the diagnostic messages explaining *why* a previously
-  "done" program reappeared in `valid_programs` were silently lost.
-- Without these diagnostics, users and developers had no way to know that a
-  zombie state was detected and resolved — making crash/restart scenarios very
-  confusing to debug.
-- Fix: captured the return value as `zombie_diagnostics` and added it to the
-  state dict under key `"zombie_diagnostics"` (present only when non-empty).
-  The PERCEIVE node now logs each diagnostic prefixed with
-  `"PERCEIVE: ZOMBIE STATE — "`.
-- Files: `agent/workflow_state.py`, `agent/graph_nodes.py`
-
-### Regression tests added: `tests/tst_audit_fixes.py`
-
-27 tests covering all bugs found and fixed in this audit session:
-
-- **J2** (3 tests): `_is_failed_result` true positives, false positive
-  elimination, done-flag blocking on failure
-- **J5** (5 tests): Zombie detection for resolve_cryo_em, refine, dock;
-  preservation when output exists; rsr_count decrement
-- **E1/E2** (6 tests): xtriage resolution dash-separator, completeness
-  anchor, simple format, multiple ranges; RSR map_cc last-cycle and
-  pattern variants
-- **I1** (2 tests): X-ray controlled landing (validate + STOP injected);
-  cryo-EM rsr_count used (not refine_count)
-- **I2** (1 test): after_program → STOP only (no validate injection)
-- **I1b** (2 tests): xray and cryoem complete phase → [STOP] after validation_done=True (clean-termination path)
-- **J5 zombie surfacing** (2 tests): `zombie_diagnostics` present in state when zombie cleared; absent for clean state
-- **YAML spec** (4 tests): xtriage pick_min, RSR map_cc extract:last,
-  RSR clashscore extract:last, polder requires_selection invariant
-
-Tests registered in `tests/run_all_tests.py` as "Audit Fix Regressions".
-
-
-
-### Explicit program injection overrides multi-step directives (Fix 19)
-
-**`_detect_explicit_program_request` hijacks multi-step workflows**
-- When user says "run mtriage, resolve_cryo_em, map_symmetry", the
-  directive system correctly parses ordering (start_with_program,
-  after_program). But `_detect_explicit_program_request` scans the raw
-  text, returns ONE program (e.g., map_symmetry), and injects
-  "**IMPORTANT: run phenix.map_symmetry**" into guidelines — overriding
-  the directive ordering. The LLM then picks map_symmetry instead of
-  resolve_cryo_em (the correct next step).
-- This cascades: map_symmetry fails (no full_map, only half maps),
-  then resolve_cryo_em runs as a fallback without LLM-guided parameters.
-- Fix: Skip explicit program injection when directives contain
-  multi-step workflow info (`start_with_program`, `after_program`, or
-  `prefer_programs` with 2+ entries). Applied to both the main
-  `_query_agent_for_command` path and the retry/duplicate handler.
-- Files: `programs/ai_agent.py`
-
-### resolve_cryo_em missing input_priorities (Fix 19b)
-
-**Category-based file selection for half_map slot**
-- `phenix.resolve_cryo_em` had empty `input_priorities`, forcing the
-  command builder to use extension-only matching for the `half_map`
-  slot. This could select sharpened or optimized maps instead of actual
-  half maps when multiple .ccp4 files are available.
-- Added `input_priorities.half_map` with `categories: [half_map]` and
-  `exclude_categories: [full_map, optimized_full_map]`.
-- Files: `knowledge/programs.yaml`
-
-### run_once strategy check fix (Fix 17)
-
-**Three broken `tracking.get("run_once")` checks in workflow_engine.py**
-- The YAML uses `strategy: "run_once"` but all three checks in
-  `workflow_engine.py` used `tracking.get("run_once")` which always
-  returned None. This meant run_once programs (map_symmetry, mtriage,
-  xtriage) were never filtered from valid_programs.
-- Fixed all three locations to check
-  `tracking.get("strategy") == "run_once" or tracking.get("run_once")`
-  for backward compatibility.
-- Additionally, `_apply_directives` could re-add already-done programs
-  via `start_with_program`, `program_settings`, and `after_program`
-  directives. Added `_is_program_already_done()` helper that checks
-  the YAML done_tracking config. All three directive paths now skip
-  programs whose done flag is already set.
-- Files: `agent/workflow_engine.py`
-
-### Sharpened map mis-categorized as half_map (Fix 18)
-
-**half_map excludes for sharpened/optimized maps**
-- `emd_XXXXX_half_map_N_box_sharpened.ccp4` (output of map_sharpening)
-  matched `half_map` pattern `*half*`, causing mtriage to use it as
-  `half_map=` instead of `full_map=`.
-- Added excludes `*sharpened*`, `*sharpen*`, `*optimized*` to the
-  `half_map` category in `file_categories.yaml`. Sharpened maps now
-  fall through to `full_map` via the map parent category, where
-  mtriage's `input_priorities.full_map.categories: [full_map, map]`
-  picks them up correctly.
-- Files: `knowledge/file_categories.yaml`
-
-### forced_program not enforced in plan node (Fix 19)
-
-**LLM could override multi-step workflow ordering**
-- `workflow_engine` sets `forced_program` from `after_program` directive
-  (e.g., for "run mtriage, resolve_cryo_em, and map_symmetry"), but the
-  plan node never enforced it. The LLM could freely pick any valid
-  program, ignoring the directive ordering.
-- Added forced_program enforcement block in plan node: when
-  `forced_program` is set and valid, the LLM's choice is overridden.
-- Also fixed explicit_program injection in perceive: when
-  `forced_program` is set from directives, `explicit_program` (from
-  `_detect_explicit_program_request` text scanning) is no longer
-  injected into valid_programs, preventing conflicting LLM hints.
-- Files: `agent/graph_nodes.py`
-
-### map_symmetry offered without full map (Fix 20)
-
-**map_symmetry should not be valid when only half maps exist**
-- map_symmetry's input_priorities exclude half_map from the map slot,
-  so it always fails to build when only half maps are available. But
-  its workflow condition only checked `not_done: map_symmetry`, so it
-  appeared in valid_programs and the LLM would pick it.
-- Added `has: non_half_map` condition to map_symmetry in workflows.yaml.
-- Added composite context key `has_non_half_map` in workflow_engine.py
-  that checks `set(map files) - set(half_map files)`. This correctly
-  becomes True after map_sharpening produces a sharpened map (which is
-  in `map` but not `half_map`), even though the sharpened filename
-  contains "half" and doesn't match `full_map`.
-- Files: `agent/workflow_engine.py`, `knowledge/workflows.yaml`
-
-### File discovery and filtering (Fixes 14-15)
-
-**Companion file discovery** (REMOVED in v112.79)
-*`graph_nodes._discover_companion_files` was removed because it
-scanned directories of user-supplied files, picking up unintended
-files.  All companion discovery is now handled by the session layer
-(`_find_missing_outputs` and `get_available_files` Step 3 scan),
-which is scoped to agent output directories only.*
-- After `phenix.refine`: discovers map coefficients (`refine_NNN.mtz`) and
-  refined model (`refine_NNN.pdb`) from `_data.mtz` prefix. Handles both
-  bare (`refine_001.mtz`) and `_001` (`refine_001_001.mtz`) naming.
-- After `phenix.autobuild`: discovers `overall_best.pdb` when only
-  `overall_best_refine_data.mtz` is tracked by the client.
-- After `phenix.pdbtools`: scans sibling `sub_*_pdbtools/` directories in
-  the agent directory for `*_with_ligand.pdb` output files.
-- Defense-in-depth: also added `session._find_missing_outputs()` as a
-  second discovery layer for session-tracked output files.
-
-**Intermediate file filtering** (`graph_nodes._filter_intermediate_files`)
-- Filters files from ligandfit's internal `TEMP0/` directories and files
-  with `EDITED_` or `TEMP_` prefixes before categorization.
-- Prevents intermediate files from being selected as model inputs.
-- Also added `EDITED*` and `TEMP*` exclusions to `unclassified_pdb`
-  category in `file_categories.yaml`.
-- Files: `agent/graph_nodes.py`, `agent/session.py`,
-  `knowledge/file_categories.yaml`
-
-### Refinement loop enforcement (Fix 13)
-
-**At-target actively removes refine from valid programs**
-- When `_is_at_target` returns True (hopeless R-free > 0.50 after 1+ cycles,
-  or hard limit of 3+ cycles), `phenix.refine` and `phenix.real_space_refine`
-  are now explicitly **removed** from valid programs in both `validate` and
-  `refine` phases. Previously only prevented adding as supplement.
-- `STOP` added to valid programs when at target.
-- Exception: `needs_post_ligandfit_refine` always allows refinement (model
-  changed after ligand fitting, re-refinement is scientifically required).
-- Files: `agent/workflow_engine.py`
-
-### Command validation fix (Fix 15)
-
-**Output file arguments excluded from input validation**
-- `output.file_name=X.pdb`, `output.prefix=Y`, etc. are now stripped from
-  commands before extracting file references for validation. Previously
-  `output.file_name=model_with_ligand.pdb` was treated as an input file
-  reference and rejected as "not found in available_files".
-- Files: `agent/graph_nodes.py`
-
-### best_files excluded category check (Fix 16)
-
-**Prevents ligand fragments from being used as refine model input**
-- `best_files["model"]` is now checked against the program's
-  `exclude_categories` before being applied as a model override. If the
-  best model (e.g., `ligand_fit_1.pdb`) is in an excluded category
-  (e.g., `ligand_fit_output` → `ligand`), it is skipped with a log message.
-- Applied to both pre-population and LLM override paths in
-  `command_builder.py`.
-- Files: `agent/command_builder.py`
-
-### MR-SAD phaser condition (Fix 11)
-
-**Composite `has_model_for_mr` context key**
-- Added `has_model_for_mr` in `workflow_engine.py` that checks both `model`
-  and `search_model` file categories. Phaser condition in `workflows.yaml`
-  changed from `has: model` to `has: model_for_mr`.
-- Ensures phaser is available when user provides a dedicated search model
-  (`search_model.pdb`) that categorizes as `search_model`, not `model`.
-- Files: `agent/workflow_engine.py`, `knowledge/workflows.yaml`
-
-### Cryo-EM experiment type inference (Fix 12)
-
-**Advice preprocessor now infers experiment type from file extensions**
-- Added experiment type inference rules to the advice preprocessing LLM
-  prompt: `.mtz/.sca/.hkl` → X-ray, `.map/.mrc/.ccp4` → cryo-EM,
-  half-maps → cryo-EM, `.pdb + .map` → cryo-EM refinement.
-- Cosmetic fix only: actual workflow engine already correctly detected
-  cryo-EM from file categories. This fixes the user-facing advice text.
-- Files: `agent/advice_preprocessor.py`
-
-### Input priority improvements
-
-- `phenix.pdbtools` protein: added `autobuild_output` to
-  `prefer_subcategories`, `EDITED` to `exclude_patterns`,
-  `overall_best` to `priority_patterns`.
-- `phenix.refine` model: `with_ligand` is first in `prefer_subcategories`,
-  ensuring the combined protein+ligand model is selected for post-pdbtools
-  refinement.
-- Files: `knowledge/programs.yaml`
-
-### Test coverage
-
-- 30 tests in `tests/tst_v112_13_fixes.py` covering perceive
-  pipeline safety (2, v112.79), intermediate filtering (3),
-  file categorization (5), phaser model_for_mr (3), output
-  validation (3), program priorities (4), end-to-end
-  post-pdbtools selection (2), combine_ligand phase (1),
-  sharpened map categorization (2), run_once done-flag
-  config (2), map_symmetry condition (1),
-  non_half_map context key (2).
-- Total: 29/35 passing (6 pre-existing libtbx import failures).
-
-## Version 112.12 (February 2025)
-
-### Done-tracking strategy enum (Fix 10C)
-
-**Replaced `run_once: true` with `strategy` enum; unified detection to one system**
-
-- Added `strategy: "set_flag" | "run_once" | "count"` to done_tracking in
-  programs.yaml. `set_flag` is the default (simple done flag), `run_once`
-  replaces the old boolean, `count` handles programs that need run counting.
-- Added `count_field` and `exclude_markers` to history_detection schema.
-  `count_field` specifies the counter name (e.g., "refine_count");
-  `exclude_markers` rejects matches (checked BEFORE markers).
-- Moved 4 remaining Python-only blocks to YAML: validation (4 programs
-  share one flag via markers), phaser (count), refine (count + exclude),
-  real_space_refine (count). Only predict_and_build cascade stays in Python.
-- Added `ALLOWED_COUNT_FIELDS` whitelist validated at load time — prevents
-  typos in YAML count_field from silently creating garbage attributes.
-- Removed 3 dead success flags: `refine_success`, `rsr_success`,
-  `phaser_success` (set but never read anywhere).
-- Unified `_set_simple_done_flags()` → `_set_done_flags()` handling all
-  strategies. Removed redundant `detect_programs_in_history()` calls.
-- Counter fields initialized dynamically from YAML configs (single source
-  of truth) instead of hardcoded in info dict.
-- 36 conformance tests passing (was 33): added test_strategy_enum_values,
-  test_count_field_validation, test_exclude_markers_prevent_false_matches.
-- Files: `knowledge/programs.yaml`, `agent/workflow_state.py`,
-  `knowledge/program_registration.py`, `tests/tst_hardcoded_cleanup.py`
-
-## Version 112.11 (February 2025)
-
-### Phase 3: Final hardcoded cleanup (Fixes 6, 8, 10B)
-
-#### Stop-directive patterns → YAML (Fix 8)
-
-**Moved 18 regex patterns from `directive_extractor.py` to `programs.yaml`**
-- 9 programs now have `stop_directive_patterns` in YAML (phenix.mtriage,
-  xtriage, phaser, ligandfit, refine, autobuild, map_to_model, dock_in_map,
-  map_symmetry)
-- `_get_stop_directive_patterns()` loads from YAML with length-based sorting
-  (longest patterns match first — handles map_to_model vs dock_in_map safely)
-- Density modification branching stays in Python (requires experiment-type context)
-- Hardcoded fallback with DeprecationWarning if YAML unavailable
-- Files: `knowledge/programs.yaml`, `agent/directive_extractor.py`
-
-#### Rules-selector priority lists → YAML (Fix 6)
-
-**Moved 5 priority lists from `rules_selector.py` to `workflows.yaml`**
-- `shared/rules_config` section has `default_priority`, `ligand_priority`,
-  and `state_aliases`
-- Per-phase `rules_priority` lists in workflow step definitions
-- `_load_rules_config()` and `_get_phase_rules_priority()` load from YAML
-- r_free/map_cc validation logic stays in Python (behavioral, not config)
-- Files: `knowledge/workflows.yaml`, `agent/rules_selector.py`
-
-#### Simple done-flag detection → YAML (Fix 10B)
-
-**Moved 10 simple if/elif blocks from `_analyze_history()` to YAML**
-- 10 programs now have `history_detection` in `done_tracking` with markers,
-  alt_markers/alt_requires (AND logic), and optional success_flag
-- Programs: process_predicted_model, autobuild, autobuild_denmod, autosol,
-  ligandfit, pdbtools, dock_in_map, map_to_model, resolve_cryo_em, map_sharpening
-- New `_set_simple_done_flags()` replaces ~40 lines of if/elif blocks
-- Complex cases stay in Python: validation (3 programs share flag), phaser
-  (count + TFZ check), predict_and_build (cascade), refine/rsr (counts)
-- Fixed process_predicted_model flag name: YAML now uses `process_predicted_done`
-  to match actual usage in workflow_engine.py
-- Added design note in programs.yaml: `strategy: "run_once" | "count" | "success_gate"`
-  is a cleaner generalization of the current `run_once: true` boolean — noted as
-  future consideration, not required now since Fix 10A already nests run_once
-  correctly inside done_tracking
-- Files: `knowledge/programs.yaml`, `agent/workflow_state.py`
-
-### Test coverage
-
-- 33 conformance tests in tst_hardcoded_cleanup.py (was 30)
-- New tests: test_history_detection_coverage, test_history_detection_behavioral,
-  test_no_simple_done_flags_in_analyze_history
-
-## Version 112.10 (February 2025)
-
-### Dead code removal in planner.py (Fix 7)
-
-**Removed ~1300 lines of dead code from `agent/planner.py`**
-- Investigation confirmed `generate_next_move()`, `construct_command_mechanically()`,
-  `get_required_params()`, `extract_clean_command()`, `get_relative_path()`,
-  `get_program_keywords()`, and `fix_multiword_parameters()` are never called externally
-- All were superseded by the YAML-driven CommandBuilder + rules_selector pipeline
-- Retained only `fix_program_parameters()` (called by graph_nodes.py) and
-  `extract_output_files()` (called by run_ai_analysis.py)
-- Removed heavy imports: langchain_core, phenix_knowledge, validation, memory
-- File: `agent/planner.py` (1436 → ~130 lines)
-
-### GUI app_id fallback in programs.yaml (Fix 9)
-
-**Added `gui_app_id` fields to programs.yaml as fallback for headless environments**
-- 20 programs now have `gui_app_id` in YAML (3 without GUI windows excluded)
-- 3 programs have `gui_app_id_cryoem` for cryo-EM variant windows:
-  predict_and_build, map_correlations, map_sharpening
-- `_build_program_to_app_id()` falls back to YAML when GUI PHIL is unavailable
-- `get_app_id_for_program()` cryo variants now loaded from YAML (with hardcoded baseline)
-- Added `gui_app_id`, `gui_app_id_cryoem` to yaml_tools valid fields
-- Files: `knowledge/programs.yaml`, `programs/ai_agent.py`, `agent/yaml_tools.py`
-
-### Unified done flag tracking in programs.yaml (Fix 10 Step A)
-
-**Eliminated `_MANUAL_DONE_FLAGS` dict and top-level `run_once` field**
-- All done flags now defined in `done_tracking` blocks in programs.yaml
-- `run_once` moved from top-level field into `done_tracking.run_once`
-- `get_program_done_flag_map()` reads directly from YAML — no hardcoded dict
-- Added `done_tracking` to 4 previously missing programs (holton_geometry_validation,
-  model_vs_data, validation_cryoem, map_correlations removed stale `run_once: false`)
-- `workflow_engine.py` now reads `done_tracking.flag` instead of deriving flag names
-- Updated ADDING_PROGRAMS.md, ARCHITECTURE.md, OVERVIEW.md docs
-- Files: `knowledge/programs.yaml`, `knowledge/program_registration.py`,
-  `agent/workflow_engine.py`, `agent/yaml_tools.py`
-
-## Version 112.8 (February 2025)
-
-### Prerequisite mechanism for resolution-dependent programs
-
-**Programs that need resolution (RSR, dock_in_map, map_to_model) now auto-trigger mtriage**
-- When a program's resolution invariant can't be satisfied, the command builder
-  detects a `prerequisite: phenix.mtriage` declaration and automatically builds
-  the mtriage command instead
-- Next cycle: resolution is available from mtriage output → original program
-  builds successfully
-- Respects `skip_programs`: if user skipped mtriage, returns clear error instead
-  of silently failing
-- Files: `knowledge/programs.yaml` (prerequisite declarations),
-  `agent/command_builder.py` (prerequisite tracking),
-  `agent/graph_nodes.py` (prerequisite build logic)
-
-### LLM resolution hallucination guard
-
-**Strip unverified resolution values from LLM strategy**
-- LLMs frequently hallucinate resolution values (e.g., "resolution": 3.1)
-  which bypassed the prerequisite mechanism
-- `_build_strategy()` now checks whether resolution came from the LLM AND
-  whether `context.resolution` (verified source) is None — if so, strips it
-- Log: `BUILD: Stripped LLM-hallucinated resolution=3.1 (no verified source)`
-- File: `agent/command_builder.py`
-
-### Fixed false exclude_pattern matches in file selection
-
-**`_2` pattern in exclude_patterns matched PDB codes like `_23883`**
-- Changed mtriage and RSR exclude_patterns from `[half, _1, _2, _a, _b]` to
-  `[half_1, half_2, half1, half2, _half]`
-- Added `input_priorities` to mtriage for category-based file selection
-  (bypasses extension fallback entirely)
-- File: `knowledge/programs.yaml`
-
-### Fixed half-map misuse as full_map in mtriage
-
-**Two half maps → one used as full_map → wrong resolution**
-- Root cause: half-maps bubbled up to `map` parent category, then selected for
-  `full_map` slot via category fallback. Post-selection validation then deleted
-  the legitimate half_maps as "redundant"
-- Fix 1: Added `exclude_categories: [half_map]` to mtriage's full_map priorities
-- Fix 2: Post-selection validation now checks if the "full_map" is actually a
-  categorized half-map — if so, removes the mis-selected full_map instead
-- Files: `knowledge/programs.yaml`, `agent/command_builder.py`
-
-### Fixed autosol atom_type crash from multi-atom values
-
-**`atom_type="Se, S"` → bare `S` on command line → crash**
-- LLMs put multiple atom types in `atom_type` field (e.g., "Se, S") even when
-  `additional_atom_types` is correctly set separately
-- `_build_strategy()` now sanitizes: splits on comma/space, keeps first atom in
-  `atom_type`, moves extras to `additional_atom_types` (if not already set)
-- File: `agent/command_builder.py`
-
-### Fixed predict_and_build intermediate file tracking
-
-**Internal `working_model_full_docked.pdb` was tracked as valid output**
-- Root cause: `docked` in filename matched `valuable_output_patterns` which
-  overrode all intermediate exclusions
-- Removed overly broad `(\S*docked\S*\.pdb)` from log parser known_patterns
-- Added exclusions for `/local_dock_and_rebuild`, `/local_rebuild` paths
-- Added `intermediate_basename_prefixes` for `working_model` (always excluded,
-  even if matching a "valuable" pattern)
-- Added `working_model*` to `docked` category excludes in file_categories.yaml
-- Files: `phenix_ai/log_parsers.py`, `phenix_ai/utilities.py`,
-  `programs/ai_agent.py`, `knowledge/file_categories.yaml`
-
-### Fixed .eff file generation for old-style programs
-
-**phenix.refine .eff had `generate=False` despite command saying `generate=True`**
-- Root cause: `master_phil.fetch()` requires exact scope paths, but agent uses
-  short-form like `xray_data.r_free_flags.generate=True` (full path is
-  `refinement.input.xray_data.r_free_flags.generate`)
-- Fix: Use `master_phil.command_line_argument_interpreter()` to resolve short
-  paths before `fetch()` — same mechanism phenix.refine's own CLI uses
-- File: `programs/ai_agent.py`
-
-### Fixed skip_programs causing workflow deadlock
-
-**Skipping xtriage → stuck in "analyze" phase → STOP**
-- Root cause: Phase detection checked `xtriage_done` before allowing progression;
-  `_apply_directives` removed xtriage from programs but couldn't change the phase
-- Fix: Skipped programs are treated as "done" in `build_context()` — their done
-  flags are set before phase detection runs
-- Done flag mapping now auto-generated via `get_program_done_flag_map()` in
-  `program_registration.py` (combines run_once auto-flags with manual mappings)
-- Files: `agent/workflow_engine.py`, `knowledge/program_registration.py`
-
-### RSR GUI reload crash fix
-
-**TypeError on `get_output_dir()` after successful RSR execution**
-- Status mismatch: native execution returns "complete" but guard checked for
-  "success" / "completed" — pkl_path never sent to GUI
-- Added "complete" to status check, plus pkl validation before sending
-- File: `programs/ai_agent.py`
-
-### Bare command rejection
-
-**`phenix.mtriage` with no arguments hung waiting for input**
-- Added explicit bare command check after assembly: commands with fewer than
-  2 parts (just the program name) are rejected
-- File: `agent/command_builder.py`
-
-## Version 112.3 (February 2025)
-
-### Removed langchain-classic dependency
-
-**Direct implementation replaces deprecated langchain chains/retrievers**
-- Replaced `create_stuff_documents_chain` (from `langchain.chains`) with 4-line
-  direct implementation: concatenate docs → format prompt → call LLM
-- Replaced `ContextualCompressionRetriever` (from `langchain.retrievers`) with
-  minimal `_CompressionRetriever(BaseRetriever)` class using `langchain_core`
-- Zero `from langchain.` imports remain; all code uses `langchain_core`,
-  `langchain_community`, and provider-specific packages only
-- Files: `analysis/summarizer.py`, `rag/retriever.py`, `docs/README.md`
-
-### Added phenix.map_correlations support
-
-**New program in YAML registry with multi-mode input support**
-- Supports 5 input modes: model+map, model+mtz, map+map, mtz+mtz, map+mtz
-- Uses flag-based file assignment (`input_files.model=`, `input_files.map_in_1=`, etc.)
-- `map2` and `map_coeffs_2` slots set `auto_fill: false` to prevent the command
-  builder from duplicating the same file into both map slots
-- Log parsing extracts: `cc_mask`, `cc_volume`, `cc_peaks`, `cc_box`, `map_map_cc`
-- Added to both xray and cryoem `validate` phases in `workflows.yaml`
-- Added step_metrics entry (`CC_mask: {cc_mask:.3f}`) in `metrics.yaml`
-- Added quality_table row with CC_volume detail and assessment in `metrics.yaml`
-- Added `cc_mask_assessment` using same thresholds as `map_cc_assessment`
-- Files: `knowledge/programs.yaml`, `knowledge/workflows.yaml`,
-  `knowledge/metrics.yaml`, `agent/session.py`
-
-### Explicit program request handling
-
-**Hard stop for unregistered `phenix.X` requests, graceful fallback for bare names**
-- When user writes `phenix.some_program` explicitly and the program is not in
-  the YAML registry, raise Sorry with a clear message
-- When a bare name match (e.g., "anomalous signal" matching
-  `phenix.anomalous_signal`) refers to an unregistered program, silently ignore
-  the match — it's likely a false positive from natural language, not a deliberate
-  program request. The agent proceeds with its normal workflow.
-- File: `programs/ai_agent.py`
-
-**Explicit program injection into valid_programs**
-- Registered explicit programs are injected into `valid_programs` regardless of
-  workflow step, so the LLM can select them even in early phases (e.g.,
-  `map_correlations` during `cryoem_initial`)
-- File: `agent/graph_nodes.py`
-
-**STOP override for unfulfilled explicit requests**
-- If the LLM chooses STOP but the user's explicitly requested program hasn't
-  run yet, the plan step overrides STOP and forces the explicit program
-- Checks `session_info["explicit_program"]` against history of programs run
-- File: `agent/graph_nodes.py`
-
-### Transport pipeline: explicit_program passthrough
-
-**Added `explicit_program` to three transport whitelists**
-- `build_session_state()` in `agent/api_client.py`
-- `build_request_v2()` normalization in `agent/api_client.py`
-- `session_state → session_info` mapping in `phenix_ai/run_ai_agent.py`
-- Without these, `explicit_program` was silently dropped during transport
-  from client to server, preventing injection and STOP override from working
-
-### Program name resolution fixes
-
-**Bare name ↔ `phenix.` prefix lookup fallback**
-- `get_program()` in `yaml_loader.py` now tries `phenix.` + bare_name if
-  the initial lookup returns None
-- `_resolve_program_patterns()` helper in `metric_patterns.py` does the same
-  for metric pattern lookups (used by all 3 lookup functions)
-- Root cause: `ai_agent.py` strips the prefix at line 2077
-  (`command.split()[0].replace("phenix.", "")`) before passing to metric
-  extraction, so lookups against YAML keys (which use full names) failed
-- Files: `knowledge/yaml_loader.py`, `knowledge/metric_patterns.py`
-
-### Metric display pattern fixes
-
-**Regex patterns match both raw log and reformatted report formats**
-- `format_metrics_report()` transforms `cc_mask` → `Cc Mask` via
-  `.replace("_", " ").title()`, so result text stored in cycles uses
-  the reformatted form
-- Updated all CC patterns in `_extract_final_metrics()` to use
-  `CC[_ ]?mask` with `re.IGNORECASE` to match both formats
-- Updated `map_cc` pattern in `_extract_metrics_from_result()` similarly
-- File: `agent/session.py`
-
-### Minor fixes
-
-**Reasoning truncation increased**
-- Main reasoning: 500 → 1000 chars
-- Session summary reasoning: 300 → 600 chars
-- Files: `programs/ai_agent.py`, `agent/session.py`
-
-**False input_directory warning fixed**
-- When user supplies `original_files` directly, no longer warns
-  "No input_directory to look for files" if files already present
-- File: `programs/ai_agent.py`
-
-**Unused import removed**
-- Removed `from langchain_core.documents import Document as LCDocument`
-  from `rag/retriever.py`
-
-## Version 112.2 (February 2025)
-
-### Cohere → FlashRank Migration
-
-**Dependency removal - Replace Cohere API with local FlashRank reranker**
-- Replaced `CohereRerank` (cloud API) with `FlashrankRerank` (local cross-encoder)
-- Model: `ms-marco-MiniLM-L-12-v2` (~34MB, runs on CPU, no API key needed)
-- Same `ContextualCompressionRetriever` pattern — callers unchanged
-- Removed `COHERE_API_KEY` environment variable requirement
-- Removed `CohereApiError` exception handling (local inference has no API errors)
-- Updated privacy disclaimers (Cohere no longer contacted)
-- Files: `rag/retriever.py`, `analysis/analyzer.py`, `utils/run_utils.py`,
-  `programs/ai_agent.py`, `programs/ai_analysis.py`
-- Install: `pip install flashrank` (replaces `cohere` + `langchain-cohere`)
-
-**Script cleanup**
-- `run_inspect_db.py`: Removed debug print and hardcoded scratch path
-- `run_query_docs.py`: Replaced duplicated API key validation with shared
-  `validate_api_keys()` from `utils/run_utils.py`
-
-**Usability - Early exit when no inputs provided**
-- Agent now stops with a helpful message if launched with no original_files,
-  no project_advice, and no README in the input_directory
-- Skipped when resuming an existing session (has previous cycles)
-- File: `programs/ai_agent.py`
-
-**Fix - Quote multi-word PHIL parameter values in commands**
-- `unit_cell=114 114 32.5 90 90 90` was passed unquoted, causing shell/PHIL
-  to split the values into separate arguments → crash
-- Added `fix_multiword_parameters()` in `agent/planner.py` (LLM command path)
-  and inline regex in `agent/program_registry.py` (registry command path)
-- Now produces `unit_cell="114 114 32.5 90 90 90"` and `space_group="P 2 21 21"`
-- Also handles prefixed forms like `xray_data.unit_cell=...`
-
-**Fix - Strategy passthrough dropping known PHIL short names (HIGH IMPACT)**
-- `unit_cell`, `space_group`, etc. from directives were silently dropped
-  in `program_registry.py` because the passthrough required a dot in the key
-- Server LLM returned `unit_cell=...` (no prefix) vs local returning
-  `xray_data.unit_cell=...`, so the bug only manifested on the server
-- Added `KNOWN_PHIL_SHORT_NAMES` set to the passthrough check so common
-  parameters like `unit_cell`, `space_group`, `resolution`, `nproc`,
-  `ncopies`, `twin_law` are accepted without their full PHIL scope prefix
-- File: `agent/program_registry.py`
-
-**Fix - Polder has no resolution keyword**
-- Polder has no resolution keyword of any kind
-- Removed `high_resolution` and `resolution` strategy flags and the
-  `auto_fill_rfree_resolution` fix from polder's YAML
-- Removed `resolution` (and `high_resolution`, `low_resolution`) from
-  `KNOWN_PHIL_SHORT_NAMES` passthrough set in `program_registry.py` —
-  these should only go through explicit strategy_flags, not blindly
-  passed through to programs that don't support them
-- Added polder entry to `parameter_fixes.json` to strip resolution/
-  high_resolution/low_resolution/d_min as a safety net
-- Added `has_strategy: selection` invariant to block polder if no
-  selection is provided, forcing LLM retry
-- Added hints telling LLM that selection is required and no resolution
-  exists
-- Files: `knowledge/programs.yaml`, `agent/program_registry.py`,
-  `knowledge/parameter_fixes.json`
-
-**Fix - Anomalous Resolution incorrectly reported as Resolution**
-- In xtriage logs with anomalous data, "Anomalous Resolution: 9.80" was
-  matched by the generic resolution regex before "Resolution: 2.50"
-- Added negative lookbehind `(?<!nomalous )` to all resolution patterns:
-  `agent/session.py` (hardcoded fallback), `agent/session_tools.py`,
-  `knowledge/patterns.yaml` (centralized pattern)
-- Updated xtriage YAML `log_parsing` to use `extract: last` so the summary
-  "Resolution: 2.50" at the end of the log is preferred over earlier matches
-- Added explicit `anomalous_resolution` pattern to xtriage YAML log_parsing
-- Files: `agent/session.py`, `agent/session_tools.py`,
-  `knowledge/programs.yaml`, `knowledge/patterns.yaml`
-
-**Fix - AutoSol using Phaser output data instead of original data**
-- After Phaser MR, `best_files['data_mtz']` was set to PHASER.1.mtz which
-  has lost anomalous signal — useless for SAD phasing
-- Added `input_priorities` for `data_mtz` in autosol YAML:
-  `categories: [original_data_mtz, data_mtz]`,
-  `exclude_categories: [phased_data_mtz]`,
-  `skip_rfree_lock: true`
-- AutoSol doesn't need rfree handling — added `skip_rfree_lock` support
-  to `command_builder.py` PRIORITY 1 so autosol gets original data
-- CRITICAL: LLM file choices were bypassing input_priorities entirely.
-  Added `exclude_categories` check to the LLM hint acceptance path in
-  `_select_files()` — now rejects LLM-chosen files in excluded categories
-  (with both full-path and basename matching for robustness)
-- Added prompt guidance telling LLM that autosol needs original data
-- Files: `knowledge/programs.yaml`, `agent/command_builder.py`,
-  `knowledge/prompts_hybrid.py`
-
-**Fix - Wavelength mistakenly extracted as resolution in directives**
-- Text like "data collected far from the iron edge (1.1158 Å)" was being
-  extracted as `resolution=1.1158` by the directive extractor LLM
-- Three fixes applied:
-  1. LLM prompt: Added explicit "Do NOT confuse wavelength with resolution"
-     warning with guidelines for distinguishing them
-  2. Validation: Added post-extraction check that removes resolution values
-     < 1.2 Å (wavelength range) or matching any extracted wavelength value
-  3. Simple extractor: Removed overly broad patterns like "X Å" standalone;
-     added wavelength cross-check; raised minimum from 0.5 to 1.0
-- File: `agent/directive_extractor.py`
-
-**Fix - AutoSol getting obs_labels from recovery strategy**
-- Recovery strategy from xtriage was applying `autosol.input.xray_data.obs_labels=I(+)`
-  to autosol commands — autosol handles labels internally
-- Removed autosol from `DATA_LABEL_PARAMETERS` in command_builder.py
-- Changed fallback behavior: programs NOT in `DATA_LABEL_PARAMETERS` now skip
-  label recovery entirely (instead of using default `obs_labels` parameter)
-- Safety net in `parameter_fixes.json` also strips obs_labels from autosol
-- Files: `agent/command_builder.py`, `knowledge/parameter_fixes.json`,
-  `tests/tst_command_builder.py`
-
-**Fix - MR-SAD workflow skipping phaser and going straight to autosol**
-- `after_program=phenix.autosol` directive was forcing autosol immediately,
-  even before xtriage or phaser had run
-- Root cause TWO-FOLD:
-  1. `use_mr_sad` handling only removed autosol from `obtain_model` phase
-  2. AutoSol was in YAML `obtain_model` phase with `has: anomalous` condition,
-     entering valid_programs through the base path BEFORE `_apply_directives`
-- Four fixes:
-  1. `get_valid_programs()`: Added MR-SAD guard that removes autosol when
-     has_search_model + has_anomalous + not phaser_done — runs BEFORE
-     `_apply_directives` so autosol can't leak through the YAML path
-  2. `_check_program_prerequisites()`: autosol requires xtriage_done, and
-     for implicit MR-SAD (has_search_model + has_anomalous), also phaser_done
-  3. `_apply_directives()`: use_mr_sad now removes autosol from ALL phases
-     when phaser hasn't run (not just obtain_model)
-  4. Directive extraction prompt: Added "CRITICAL: MR-SAD workflow" guidance
-- Standalone SAD (no search model) unaffected by the guard
-- Files: `agent/workflow_engine.py`, `agent/directive_extractor.py`
-
-### Dependency Cleanup
-
-**Fix - Directive extractor inferring use_experimental_phasing from data**
-- LLM was setting `use_experimental_phasing: True` before xtriage ran,
-  based on data characteristics (wavelength, atom types) rather than
-  explicit user request
-- This caused `predict_and_build` to be deprioritized even when the case
-  needed AlphaFold to generate a model
-- Added CRITICAL guidance to LLM prompt: only set `use_experimental_phasing`
-  and `use_mr_sad` when user EXPLICITLY requests SAD/MAD/experimental phasing
-- The system already auto-detects anomalous signal via xtriage and adjusts
-  the workflow through the `has_anomalous` context flag
-- File: `agent/directive_extractor.py`
-
-**Removed langchain-classic dependency**
-- In langchain 1.0+, `langchain.chains` and `langchain.retrievers` were
-  removed and moved to `langchain_classic`. Rather than depending on the
-  legacy package, implemented the functionality directly:
-- `analysis/summarizer.py`: Replaced `create_stuff_documents_chain` with
-  direct document concatenation + LLM invoke (the function just joins
-  document text and passes it through a prompt template)
-- `rag/retriever.py`: Replaced `ContextualCompressionRetriever` with
-  `_CompressionRetriever`, a minimal `BaseRetriever` subclass that
-  retrieves docs then reranks via the compressor — uses `langchain_core`
-  which is still maintained
-- All `from langchain.` imports eliminated — code now only uses
-  `langchain_core`, `langchain_community`, and provider packages
-- Removed from README dependencies table
-- `langchain-classic` package can now be uninstalled
-
-### Test Infrastructure Fixes
-
-**Fix - Unconditional mock modules breaking PHENIX environment tests**
-- Five test files unconditionally overwrote real `libtbx` modules with mocks
-- Added `if 'libtbx' not in sys.modules` guards to all mock blocks
-- Set `__path__` on mock modules pointing to actual local directories so
-  submodule imports (e.g. `libtbx.langchain.agent.utils`) resolve automatically
-- Files: `tst_state_serialization.py`, `tst_command_builder.py`,
-  `tst_file_categorization.py`, `tst_session_directives.py`
-
-**Fix - `tst_advice_preprocessing.py` import failure in PHENIX**
-- `sys.path.insert` was inside `except ImportError` block, so `from tests.tst_utils`
-  was unfindable when libtbx imports succeeded
-- Moved to top level
-
-**Cleanup - Stale docstring run instructions**
-- Updated `Run with: python tests/test_...` → `tst_...` across 21 files
-
-## Version 112.1 (February 2025)
-
-### Cryo-EM State Fix & MR-SAD Workflow Support
-
-**Fix 1 - Cryo-EM workflow stuck at cryoem_initial (HIGH IMPACT)**
-- `_detect_cryoem_phase()` gated all progress behind `mtriage_done` check
-- Tutorials that skip mtriage (going straight to resolve_cryo_em) got permanently stuck
-- Fix: "past analysis" check now also considers `resolve_cryo_em_done`, `dock_done`, `rsr_done`
-- Files: `agent/workflow_engine.py`
-
-**Feature 1 - MR-SAD experimental phasing workflow (NEW)**
-- Added `experimental_phasing` phase to X-ray workflow for MR-SAD
-- Workflow: xtriage → phaser (place model) → autosol (with partpdb_file=PHASER.pdb) → autobuild
-- Added `partpdb_file` optional input to autosol (auto-filled from phaser_output category)
-- Added `xray_mr_sad` state mapping and detection in workflow engine
-- Phase detection: triggered when `phaser_done AND (has_anomalous OR use_mr_sad)`
-- Added `use_mr_sad` directive to workflow_preferences
-- Directive extractor: "MR-SAD" keywords set `use_mr_sad=true`, do NOT set `after_program=autosol`
-- In obtain_model phase with use_mr_sad: phaser prioritized, autosol removed
-- Files: `agent/workflow_engine.py`, `knowledge/programs.yaml`, `knowledge/workflows.yaml`,
-  `agent/decision_config.json`, `agent/directive_extractor.py`
-
-**Tests: 765 total (+8 new)**
-- `test_mr_sad_after_phaser_with_anomalous` - MR-SAD state detection
-- `test_mr_sad_not_triggered_without_anomalous` - No false positives
-- `test_mr_sad_not_triggered_when_autosol_done` - Skip if already done
-- `test_mr_sad_directive_prioritizes_phaser` - Directive removes autosol from obtain_model
-- `test_normal_sad_still_works` - Normal SAD pathway unaffected
-- `test_autosol_has_partial_model_config` - YAML config correctness
-- `test_mr_sad_directive_overrides_no_anomalous` - Directive triggers without has_anomalous
-- `test_experimental_phasing_yaml_structure` - YAML phase structure validation
-
-**Documentation updated:**
-- ARCHITECTURE.md: State diagram with MR-SAD path, state table
-- USER_DIRECTIVES.md: use_mr_sad field, MR-SAD example (Example 5)
-- TESTING.md: Test counts (757→765)
-
-## Version 112 (February 2025)
-
-### Summary Quality Improvements: Steps Table Metrics & Consistency Fixes
-
-Seven issues identified and fixed through codebase-wide audit:
-
-**Fix 1 - Steps Performed table shows actual metrics (HIGH IMPACT)**
-- `_get_key_metric_for_step()` now uses pre-parsed `cycle["metrics"]` as primary source
-- YAML patterns only match raw log format (e.g., `R-free =`) but result text has reformatted
-  metrics (e.g., `R Free:`) — caused all YAML pattern extraction to fail silently
-- Steps table now shows "R-free: 0.258" instead of fallback text like "Analyzed" or "Built model"
-- Files: `agent/session.py`
-
-**Fix 2 - Benign warnings no longer drop metrics (MODERATE)**
-- `extract_metrics_from_log()` now called for ALL success paths, not just clean success
-- Previously, benign warnings (e.g., "No array of R-free flags found") triggered a code path
-  that skipped metrics extraction entirely
-- First refinement run (which often recreates R-free flags) could lose all R-factor metrics
-- Files: `programs/ai_agent.py`
-
-**Fix 3 - Ligandfit output typed as "ligand" not "model" (MINOR)**
-- `_describe_output_file()` now returns `type: "ligand"` for `ligand_fit_*.pdb` files
-- Previously typed as "model", so `best_by_type["ligand"]` was never populated in fallback path
-- Files: `agent/session.py`
-
-**Fix 4 - Removed dead `ligand_fit_output` from `categories_to_show` (COSMETIC)**
-- `ligand_fit_output` is a stage under `"model"` in best_files, not a top-level category key
-- Entry could never match anything; ligandfit output found via cycle-scanning (added in v111)
-- Files: `agent/session.py`
-
-**Fix 5 - `_is_intermediate_file` case-sensitive patterns fixed (MINOR)**
-- `"carryOn"` and `"CarryOn"` compared against `basename_lower` could never match
-- Replaced with lowercase `"carryon"`
-- Files: `agent/session.py`
-
-**Fix 6 - `detect_program` distinguishes `autobuild_denmod` (MINOR)**
-- Added `autobuild_denmod` / `maps_only` detection before generic `autobuild` match
-- Also added separate branch in `extract_all_metrics` to prevent autobuild_denmod from
-  running autobuild's metrics extractor (which would report misleading R-factors)
-- Files: `phenix_ai/log_parsers.py`
-
-**Fix 7 - Added missing YAML `log_parsing` sections (TECH DEBT)**
-- Six programs declared `outputs.metrics` but had no `log_parsing` patterns:
-  autobuild, autosol, dock_in_map, map_to_model, validation_cryoem, holton_geometry_validation
-- Two programs had partial coverage: predict_and_build (missing map_cc),
-  real_space_refine (missing clashscore)
-- All now have matching YAML patterns, same type of gap that caused v111's predict_and_build issue
-- Files: `knowledge/programs.yaml`
-
-

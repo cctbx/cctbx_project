@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
-import mmtbx.geometry_restraints.torsion_restraints.torsion_ncs
 
 global_ncs_params = iotbx.phil.parse("""\
   ncs

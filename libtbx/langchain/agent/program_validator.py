@@ -48,7 +48,7 @@ def get_code_dirs():
 
 def load_yaml_file(filepath):
   """Load a YAML file."""
-  with open(filepath, 'r') as f:
+  with open(filepath, 'r', encoding='utf-8') as f:
     return yaml.safe_load(f)
 
 
@@ -144,7 +144,7 @@ def check_log_parsers(program_name, code_dirs):
   if not os.path.exists(filepath):
     return ["log_parsers.py not found"], info
 
-  with open(filepath, 'r') as f:
+  with open(filepath, 'r', encoding='utf-8') as f:
     content = f.read()
 
   # Get short name (e.g., "map_symmetry" from "phenix.map_symmetry")
@@ -190,7 +190,7 @@ def check_workflow_state(program_name, code_dirs):
   if not os.path.exists(filepath):
     return ["workflow_state.py not found"], info
 
-  with open(filepath, 'r') as f:
+  with open(filepath, 'r', encoding='utf-8') as f:
     content = f.read()
 
   short_name = program_name.replace("phenix.", "").replace(".", "_")
@@ -218,14 +218,14 @@ def check_workflow_engine(program_name, code_dirs):
   if not os.path.exists(filepath):
     return [], info
 
-  with open(filepath, 'r') as f:
+  with open(filepath, 'r', encoding='utf-8') as f:
     content = f.read()
 
   short_name = program_name.replace("phenix.", "").replace(".", "_")
   done_flag = f"{short_name}_done"
 
   # Only warn if tracked in workflow_state but not in engine
-  if done_flag in open(os.path.join(agent_dir, "workflow_state.py")).read():
+  if done_flag in open(os.path.join(agent_dir, "workflow_state.py"), encoding='utf-8').read():
     if done_flag not in content:
       issues.append(f"'{done_flag}' tracked in workflow_state but not in workflow_engine context (may be fine)")
       info["optional_warning"] = True
@@ -246,7 +246,7 @@ def check_session_summary(program_name, code_dirs):
   if not os.path.exists(filepath):
     return ["session.py not found"], info
 
-  with open(filepath, 'r') as f:
+  with open(filepath, 'r', encoding='utf-8') as f:
     content = f.read()
 
   short_name = program_name.replace("phenix.", "").replace(".", "_")
@@ -271,7 +271,7 @@ def check_directive_extractor(program_name, code_dirs):
   if not os.path.exists(filepath):
     return [], info
 
-  with open(filepath, 'r') as f:
+  with open(filepath, 'r', encoding='utf-8') as f:
     content = f.read()
 
   # This is optional - only note if missing

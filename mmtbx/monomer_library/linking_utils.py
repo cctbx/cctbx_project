@@ -91,9 +91,14 @@ def get_volume(centre, atom1, atom2, atom3):
   #  abc.append(xyzClass(atom3.xyz)-xyzClass(centre.xyz))
   #  volume = abc[0].DotProduct(abc[1].CrossProduct(abc[2]))
   abc = []
-  abc.append(flex.double(atom1.xyz)-flex.double(centre.xyz))
-  abc.append(flex.double(atom2.xyz)-flex.double(centre.xyz))
-  abc.append(flex.double(atom3.xyz)-flex.double(centre.xyz))
+  if hasattr(atom1, 'xyz'):
+    abc.append(flex.double(atom1.xyz)-flex.double(centre.xyz))
+    abc.append(flex.double(atom2.xyz)-flex.double(centre.xyz))
+    abc.append(flex.double(atom3.xyz)-flex.double(centre.xyz))
+  else:
+    abc.append(flex.double(atom1)-flex.double(centre))
+    abc.append(flex.double(atom2)-flex.double(centre))
+    abc.append(flex.double(atom3)-flex.double(centre))
   a = flex.vec3_double(abc[1])
   b = flex.vec3_double(abc[2])
   volume = abc[0].dot(flex.double(a.cross(b)[0]))
@@ -254,7 +259,9 @@ def get_classes(atom, verbose=False):
     "unknown",
     'd_amino_acid',
     ]
-  redirect = {"modified_amino_acid" : "other",
+  redirect = {
+              # "modified_amino_acid" : "uncommon_amino_acid",
+              "modified_amino_acid" : "other",
               "modified_rna_dna" : "other",
               }
   atom_group = atom.parent()

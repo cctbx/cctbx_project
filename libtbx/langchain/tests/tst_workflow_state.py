@@ -34,6 +34,16 @@ except ImportError:
         _analyze_history
     )
 
+# Wrap detect_workflow_state to default files_local=False.
+# All tests in this file use hypothetical filenames that don't exist
+# on disk.  files_local=True (the production default) runs _is_valid_file
+# which can reject hypothetical map files if a same-named file exists
+# in the working directory with invalid headers.
+_real_detect_workflow_state = detect_workflow_state
+def detect_workflow_state(*args, **kwargs):
+    kwargs.setdefault('files_local', False)
+    return _real_detect_workflow_state(*args, **kwargs)
+
 
 # =============================================================================
 # FILE CATEGORIZATION TESTS
@@ -44,7 +54,7 @@ def test_dat_sequence_file_recognition():
     print("Test: dat_sequence_file_recognition")
 
     files = ["seq.dat", "data.mtz"]
-    categories = _categorize_files(files)
+    categories = _categorize_files(files, files_local=False)
 
     assert "seq.dat" in categories["sequence"], ".dat file should be in 'sequence' category"
 
@@ -74,7 +84,7 @@ def test_scalepack_file_recognition():
     print("Test: scalepack_file_recognition")
 
     files = ["p9.sca", "sequence.fa"]
-    categories = _categorize_files(files)
+    categories = _categorize_files(files, files_local=False)
 
     assert "p9.sca" in categories["data_mtz"], "Scalepack file should be in 'mtz' category"
     assert categories["sequence"] == ["sequence.fa"]
@@ -87,7 +97,7 @@ def test_hkl_file_recognition():
     print("Test: hkl_file_recognition")
 
     files = ["data.hkl", "model.pdb"]
-    categories = _categorize_files(files)
+    categories = _categorize_files(files, files_local=False)
 
     assert "data.hkl" in categories["data_mtz"], "HKL file should be in 'mtz' category"
 
@@ -809,7 +819,7 @@ def test_file_categorization():
         "map.mrc"
     ]
 
-    categorized = _categorize_files(files)
+    categorized = _categorize_files(files, files_local=False)
 
     assert "data.mtz" in categorized["data_mtz"]
     assert "PHASER.1.pdb" in categorized["phaser_output"]
@@ -830,38 +840,38 @@ def test_file_categorization_edge_cases():
 
     # Test 1: predict_and_build outputs should be 'predicted', not 'autobuild'
     files1 = ["PredictAndBuild_0_predicted_model.pdb", "predict_model.pdb"]
-    cat1 = _categorize_files(files1)
+    cat1 = _categorize_files(files1, files_local=False)
     for f in files1:
         assert f in cat1["predicted"], "%s should be in predicted" % f
         assert f not in cat1["autobuild_output"], "%s should NOT be in autobuild" % f
 
     # Test 2: real_space_refine should NOT be 'refined' (X-ray category)
     files2 = ["real_space_refine_001.pdb", "rsr_cycle_5.pdb"]
-    cat2 = _categorize_files(files2)
+    cat2 = _categorize_files(files2, files_local=False)
     for f in files2:
         assert f not in cat2["refined"], "%s should NOT be in refined" % f
 
     # Test 3: X-ray refine SHOULD be 'refined'
     files3 = ["refine_001.pdb", "model_refine_5.pdb"]
-    cat3 = _categorize_files(files3)
+    cat3 = _categorize_files(files3, files_local=False)
     for f in files3:
         assert f in cat3["refined"], "%s should be in refined" % f
 
     # Test 4: autobuild variations
     files4 = ["autobuild_best.pdb", "buccaneer_model.pdb", "buccaneer_built.pdb"]
-    cat4 = _categorize_files(files4)
+    cat4 = _categorize_files(files4, files_local=False)
     for f in files4:
         assert f in cat4["autobuild_output"], "%s should be in autobuild_output" % f
 
     # Test 5: dock_in_map output
     files5 = ["dock_in_map_001.pdb"]
-    cat5 = _categorize_files(files5)
+    cat5 = _categorize_files(files5, files_local=False)
     assert "dock_in_map_001.pdb" in cat5["docked"]
 
     # Test 6: processed predicted model should be in processed_predicted and search_model
     # Note: With semantic categories, processed_predicted is distinct from predicted
     files6 = ["processed_predicted_model.pdb"]
-    cat6 = _categorize_files(files6)
+    cat6 = _categorize_files(files6, files_local=False)
     assert "processed_predicted_model.pdb" in cat6["processed_predicted"]
     assert "processed_predicted_model.pdb" in cat6["search_model"]  # Parent category
 
@@ -869,7 +879,7 @@ def test_file_categorization_edge_cases():
     # Note: Ligand CIFs need to match ligand patterns (lig*, ligand*, restraint*, etc.)
     # Generic 3-letter codes like ATP.cif don't auto-classify as ligand
     files7 = ["ligand.cif", "lig_ATP.cif", "refine_001.cif", "PHASER.1_refine.cif"]
-    cat7 = _categorize_files(files7)
+    cat7 = _categorize_files(files7, files_local=False)
     # Ligand CIFs (explicitly named)
     assert "ligand.cif" in cat7["ligand_cif"]
     assert "lig_ATP.cif" in cat7["ligand_cif"]
@@ -895,7 +905,7 @@ def test_rsr_output_categorization():
         "model_rsr_001.pdb",
     ]
 
-    cat = _categorize_files(files)
+    cat = _categorize_files(files, files_local=False)
 
     # All should be in rsr_output
     for f in files:
@@ -907,7 +917,7 @@ def test_rsr_output_categorization():
 
     # Test that X-ray refine outputs are NOT in rsr_output
     xray_files = ["refine_001.pdb", "model_refine_5.pdb"]
-    cat2 = _categorize_files(xray_files)
+    cat2 = _categorize_files(xray_files, files_local=False)
     for f in xray_files:
         assert f not in cat2["rsr_output"], "%s should NOT be in rsr_output" % f
         assert f in cat2["refined"], "%s should be in refined" % f
@@ -1610,7 +1620,7 @@ def test_autosol_has_partial_model_config():
     import yaml
     yaml_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "knowledge", "programs.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         programs = yaml.safe_load(f)
 
     autosol = programs["phenix.autosol"]
@@ -1668,7 +1678,7 @@ def test_experimental_phasing_yaml_structure():
     import yaml
     yaml_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "knowledge", "workflows.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         workflows = yaml.safe_load(f)
 
     steps = workflows["xray"].get("steps") or workflows["xray"].get("phases") or {}

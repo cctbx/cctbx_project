@@ -3,7 +3,6 @@ from dxtbx.model.experiment_list import DetectorComparison
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
-import numpy as np
 import copy
 from dials.array_family import flex
 from cctbx import uctbx
@@ -44,8 +43,9 @@ class Spotfinder_radial_average:
     i_bin = int(
         n_bins * (res_inv - d_max_inv ) / (d_min_inv - d_max_inv)
         )
-    if i_bin < 0 or i_bin >= n_bins: return
-    self.current_panelsums[i_panel][i_bin] += value
+    if 0 <= i_bin < n_bins:
+      self.current_panelsums[i_panel][i_bin] += value
+    return res
 
   def _nearest_peak(self, x, xvalues, yvalues):
     i = np.searchsorted(xvalues, x, side="left")
@@ -115,32 +115,28 @@ class Spotfinder_radial_average:
       else:
         self.use_current_expt = True
       if i % 1000 == 0: print("experiment ", i)
+      if self.params.n_max is not None and i >= self.params.n_max:
+        break
       s0 = expt.beam.get_s0()
       sel = refls['id'] == i
       refls_sel = refls.select(sel)
       xyzobses = refls_sel['xyzobs.px.value']
       intensities = refls_sel['intensity.sum.value']
       panels = refls_sel['panel']
-      shoeboxes = refls_sel['shoebox']
 
       for i_refl in range(len(refls_sel)):
         self.expt_count += 1
         i_panel = panels[i_refl]
         panel = expt.detector[i_panel]
 
-        peak_height = intensities[i_refl]
         if params.peak_position=="xyzobs":
           xy = xyzobses[i_refl][0:2]
           if params.peak_weighting == "intensity":
             value = intensities[i_refl]
           else:
             value = 1
-          self._process_pixel(i_panel, s0, panel, xy, value)
-        if params.peak_position=="shoebox":
-          sb = shoeboxes[i_refl]
-          sbpixels = zip(sb.coords(), sb.values())
-          for (x,y,_), value in sbpixels:
-            self._process_pixel(i_panel, s0, panel, (x,y), value)
+          res = self._process_pixel(i_panel, s0, panel, xy, value)
+
       for i in range(len(self.panelsums)):
         self.panelsums[i] = self.panelsums[i] + self.current_panelsums[i]
       if self.params.filter.enable and self.params.filter.select_mode=='any':
@@ -167,7 +163,7 @@ class Spotfinder_radial_average:
     d_max_inv = 1/params.d_max
     d_min_inv = 1/params.d_min
     xvalues = np.linspace(d_max_inv, d_min_inv, params.n_bins)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 3))
 
     ps_maxes = [max(ps) for ps in self.panelsums]
     ps_max = max(ps_maxes)
@@ -178,6 +174,8 @@ class Spotfinder_radial_average:
         yvalues = np.array(sums)
         plt.plot(xvalues, yvalues+0.5*i_sums*offset)
     elif params.filter.enable and params.filter.plot_mode=="ratio":
+      print('filtered: ', self.filtered_expt_count)
+      print('antifiltered: ', self.antifiltered_expt_count)
       for x in self.filtered_panelsums:
         x /= self.filtered_expt_count
       for x in self.antifiltered_panelsums:
@@ -200,8 +198,10 @@ class Spotfinder_radial_average:
 
     if params.output.xy_file:
       with open(params.output.xy_file, 'w') as f:
+        use_q = getattr(params.output, 'xy_file_units', 'd') == 'q'
         for x,y in zip(xvalues, yvalues):
-          f.write("{:.6f}\t{}\n".format(1/x, y))
+          xout = x if use_q else 1/x
+          f.write("{:.6f}\t{}\n".format(xout, y))
 
     # Now plot the predicted peak positions if requested
     if params.unit_cell or params.space_group:
@@ -211,18 +211,21 @@ class Spotfinder_radial_average:
       )
       hkl_list = cctbx.miller.build_set(sym, False, d_min=params.d_min)
       dspacings = params.unit_cell.d(hkl_list.indices())
+#      for hkl, d in sorted(zip(hkl_list.indices(), dspacings), key=lambda x:x[1]):
+#        print('{:.3f}: {}'.format(d, hkl))
       dspacings_inv = 1/dspacings
-      pplot_min = -.05*ps_max
+      pplot_min = -.05*max(yvalues)
       for d in dspacings_inv:
         plt.plot((d,d),(pplot_min,0), 'r-', linewidth=1)
 
     if params.output.plot_file:
+      fig.tight_layout()
       plt.savefig(params.output.plot_file)
 
     if params.plot.interactive and params.output.peak_file:
       backend_list = ["TkAgg","QtAgg"]
       assert (plt.get_backend() in backend_list), """Matplotlib backend not compatible with interactive peak picking.
-You can set the MPLBACKEND environment varibale to change this.
+You can set the MPLBACKEND environment variable to change this.
 Currently supported options: %s""" %backend_list
       #If a peak list output file is specified, do interactive peak picking:
       with open(params.output.peak_file, 'w') as f:
@@ -231,7 +234,7 @@ Currently supported options: %s""" %backend_list
         def onmove(event):
           if fig.canvas.toolbar.mode: return
           x = event.xdata
-          vertical_line.set_xdata(x)
+          vertical_line.set_xdata([x])
           if plt.getp(vertical_line, 'visible'):
             ax.figure.canvas.draw()
         def onclick(event):
@@ -277,6 +280,7 @@ class Center_scan:
     assert len(self.experiments.detectors())==1
 
     self.net_origin_shift = np.array([0.,0.,0.])
+    self.net_distance_shift = 0.0
     self.centroid_px_mm_done = False
     self.px_size = self.experiments.detectors()[0][0].get_pixel_size()
     self.target_refl_count = 0
@@ -325,6 +329,16 @@ class Center_scan:
       print(f'width {result:.5f} from {sel.count(True)} dvals')
       return result
 
+  def mean_squared_error_from_target(self, d_target):
+    """Calculate mean squared difference between d-spacings and target d-spacing"""
+    if len(self.dvals) < 3: return 999
+    dvals_array = flex.double(self.dvals)
+    differences = dvals_array - d_target
+    mse = flex.mean(differences * differences)
+    rmse = np.sqrt(mse)
+    print(f'RMSE from target {d_target:.5f}: {rmse:.5f} from {len(self.dvals)} dvals')
+    return mse
+
   def search_step(self, step_px, nsteps=3, update=True):
     step_size_mm = np.array(self.px_size + (0.,)) * step_px
     assert nsteps%2 == 1, "nsteps should be odd"
@@ -365,6 +379,74 @@ class Center_scan:
     print(f'end: {width_end:.5f}')
     print(f'net shift: {self.net_origin_shift}')
     return width_start, width_end, self.net_origin_shift
+
+  def search_step_z(self, step_um, d_target, nsteps=3, update=True, min_refl_fraction=0.8):
+    """Search along detector z-axis (distance) to minimize MSE from d_target
+
+    Args:
+      step_um: step size in microns
+      d_target: target d-spacing value
+      nsteps: number of steps to search (default 3: -1, 0, +1)
+      update: whether to update the geometry with the best result
+      min_refl_fraction: reject steps if reflection count drops below this fraction (default 0.8)
+    """
+    step_size_mm = step_um / 1000.0  # convert microns to mm
+    assert nsteps % 2 == 1, "nsteps should be odd"
+    step_min = -1 * (nsteps // 2)
+    step_max = nsteps // 2 + 1e-6  # make the range inclusive
+    step_arange = np.arange(step_min, step_max)
+
+    detector = self.experiments.detectors()[0]
+    hierarchy = detector.hierarchy()
+    fast = hierarchy.get_local_fast_axis()
+    slow = hierarchy.get_local_slow_axis()
+    origin = hierarchy.get_local_origin()
+
+    # Compute detector normal (z-axis direction)
+    # Normal points from sample toward detector
+    normal = np.cross(fast, slow)
+    normal = normal / np.linalg.norm(normal)
+
+    results = []
+    self.update_dvals()
+    initial_count = len(self.dvals)
+    mse_start = self.mean_squared_error_from_target(d_target)
+    print(f'Z-axis search start (MSE): {mse_start:.5f}, n_refl: {initial_count}')
+
+    for step_idx in step_arange:
+      step_mm = step_idx * step_size_mm
+      # Shift along normal direction
+      origin_shift = normal * step_mm
+      new_origin = origin + origin_shift
+      hierarchy.set_local_frame(fast, slow, new_origin)
+      self.update_dvals()
+      current_count = len(self.dvals)
+
+      # Reject if reflection count dropped by more than (1 - min_refl_fraction)
+      if current_count < min_refl_fraction * initial_count:
+        result = 999  # penalty value
+        print(f'  Step {step_mm:.6f} mm: rejected (n_refl={current_count}, {100*current_count/initial_count:.1f}%)')
+      else:
+        result = self.mean_squared_error_from_target(d_target)
+      results.append(result)
+
+    mse_end = min(results)
+    i_best = results.index(mse_end)
+    distance_shift = step_arange[i_best] * step_size_mm
+    if update:
+      origin_shift = normal * distance_shift
+      new_origin = origin + origin_shift
+      self.net_origin_shift += origin_shift
+      self.net_distance_shift += distance_shift
+    else:
+      new_origin = origin
+    hierarchy.set_local_frame(fast, slow, new_origin)
+    self.update_dvals()
+    final_count = len(self.dvals)
+    print(f'Z step: {distance_shift:.6f} mm')
+    print(f'Z end (MSE): {mse_end:.5f}, n_refl: {final_count}')
+    print(f'net distance shift: {self.net_distance_shift:.6f} mm')
+    return mse_start, mse_end, self.net_distance_shift
 
 def augment(expts, refls, d_min, d_max):
   """ Add pairwise 3D spot distances to the d-spacing histogram """

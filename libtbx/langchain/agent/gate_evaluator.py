@@ -341,6 +341,28 @@ class GateEvaluator(object):
 
     # Is plan already complete?
     if plan.is_complete():
+      # v119.H15 H1 fix: distinguish a clean completion
+      # from one where stages were abandoned via deviation
+      # (now marked STAGE_FAILED per H15 Item 1).  Pre-fix
+      # the gate always said "all stages complete," hiding
+      # the failure from human-readable logs.  hasattr
+      # guard preserves graceful degradation on a
+      # deployment skew where gate_evaluator.py is post-H15
+      # but plan_schema.py is pre-H15.
+      _failed_ids = []
+      if hasattr(plan, "get_failed_stage_ids"):
+        try:
+          _failed_ids = plan.get_failed_stage_ids() or []
+        except Exception:
+          _failed_ids = []
+      if _failed_ids:
+        return GateResult(
+          action="stop",
+          reason=(
+            "plan exhausted with %d failed stage(s): %s"
+            % (len(_failed_ids), ", ".join(_failed_ids))
+          ),
+        )
       return GateResult(
         action="stop",
         reason="all stages complete",
@@ -377,6 +399,49 @@ class GateEvaluator(object):
           reason="success criteria met",
           details=details,
         )
+
+    # --- Anomalous signal guard (v115.05) ──────────
+    # After the first autosol attempt in
+    # experimental_phasing, verify that anomalous
+    # signal was actually usable.  Without this, the
+    # agent wastes cycles running autosol on noise
+    # when anomalous_measurability is negligible.
+    #
+    # Placed AFTER success criteria: if autosol
+    # somehow succeeded, let the advance happen.
+    # Uses cycles_used <= 1 (not == 0) because the
+    # gate evaluates AFTER each cycle, so the first
+    # evaluation of this stage has cycles_used == 1.
+    if (stage.id == "experimental_phasing"
+        and stage.cycles_used <= 1
+        and structure_model):
+      _anom_m = _get_metric_value(
+        structure_model,
+        "anomalous_measurability",
+      )
+      _has_anom = _get_metric_value(
+        structure_model, "has_anomalous",
+      )
+      # Block only when has_anomalous is not explicitly
+      # True.  When the user genuinely has anomalous data,
+      # allow autosol even with weak measurability.
+      if (_anom_m is not None
+          and _has_anom is not True):
+        try:
+          _anom_f = float(_anom_m)
+        except (ValueError, TypeError):
+          _anom_f = None
+        if _anom_f is not None and _anom_f < 0.05:
+          return GateResult(
+            action="stop",
+            reason=(
+              "Anomalous measurability %.3f "
+              "< 0.05 — signal too weak for "
+              "SAD phasing. Consider "
+              "predict_and_build or MR "
+              "instead." % _anom_f
+            ),
+          )
 
     # --- Check gate conditions ---
     # Gates must fire BEFORE exhaustion check,
@@ -588,8 +653,23 @@ class GateEvaluator(object):
         )
 
       if action_str == "try_rebuilding":
-        # Not a retreat — suggest the gate evaluator
-        # continue but with a fallback hint
+        # Advance to the model_rebuilding stage if it
+        # exists in the plan.  This is stronger than a
+        # fallback hint — it skips remaining refine
+        # cycles and goes straight to autobuild.
+        rebuild_stage = None
+        for s in plan.stages:
+          if s.id == "model_rebuilding":
+            rebuild_stage = s
+            break
+        if rebuild_stage is not None:
+          return GateResult(
+            action="advance",
+            reason="gate: %s → advancing to "
+              "model_rebuilding (autobuild)"
+              % condition_str,
+          )
+        # No model_rebuilding stage — fall back to hint
         return GateResult(
           action="fallback",
           reason="gate suggests rebuilding: %s"

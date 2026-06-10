@@ -166,7 +166,7 @@ class RunSentinel(Thread):
         time.sleep(10)
       except Exception as e:
         print(e)
-        self.parent.run_window.run_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.run_light.change_status, 'alert')
         break
 
 
@@ -200,10 +200,10 @@ class CalibWorker(Thread):
     from xfel.command_line.fee_calibration import fee_phil_string
     from libtbx.phil import parse
     self.fee_params = parse(notch_phil_string + fee_phil_string).extract()
-    self.energy_tab.refresh_runs()
+    wx.CallAfter(self.energy_tab.refresh_runs)
 
     while self.active:
-      self.parent.run_window.calib_light.change_status('idle') # yellow -- actually means working
+      wx.CallAfter(self.parent.run_window.calib_light.change_status, 'idle') # yellow -- actually means working
       try:
         if self.energy_tab.fee_calib_stale:
           self.run_fee_calib()
@@ -211,11 +211,11 @@ class CalibWorker(Thread):
         if self.energy_tab.ebeam_calib_stale:
           self.run_ebeam_calib()
           self.post_refresh_energy()
-        self.parent.run_window.calib_light.change_status('on') # green-- actually means idle
+        wx.CallAfter(self.parent.run_window.calib_light.change_status, 'on') # green-- actually means idle
         time.sleep(1)
       except Exception as e:
         print(e)
-        self.parent.run_window.calib_light.change_status('alert') # red -- means crashed
+        wx.CallAfter(self.parent.run_window.calib_light.change_status, 'alert') # red -- means crashed
         break
 
   def run_fee_calib(self):
@@ -232,22 +232,26 @@ class CalibWorker(Thread):
                           self.fee_params.baseline_cutoff)
               for data in rundata]
 
-    plot_notches(runs,
-                 rundata,
-                 notches,
-                 per_run_plots=False,
-                 use_figure=self.energy_tab.spectra_figure)
-    offset, per_px = calibrate_energy(notches,
-                                      energies,
-                                      use_figure=self.energy_tab.trendline_figure)
-    self.energy_tab.spectra_figure.canvas.draw_idle()
-    self.energy_tab.trendline_figure.canvas.draw_idle()
-
-    self.energy_tab.fee_eV_offset = offset
-    self.energy_tab.fee_eV_per_pixel = per_px
-    self.energy_tab.eV_offset_text.SetLabel(f'{offset:.4f} eV')
-    self.energy_tab.eV_per_px_text.SetLabel(f'{per_px:.4f} eV')
-    self.energy_tab.fee_calib_stale = False
+    spectra_fig = self.energy_tab.spectra_figure
+    trendline_fig = self.energy_tab.trendline_figure
+    energy_tab = self.energy_tab
+    def _draw_fee():
+      offset, per_px = calibrate_energy(notches,
+                                        energies,
+                                        use_figure=trendline_fig)
+      plot_notches(runs,
+                   rundata,
+                   notches,
+                   per_run_plots=False,
+                   use_figure=spectra_fig)
+      spectra_fig.canvas.draw_idle()
+      trendline_fig.canvas.draw_idle()
+      energy_tab.fee_eV_offset = offset
+      energy_tab.fee_eV_per_pixel = per_px
+      energy_tab.eV_offset_text.SetLabel(f'{offset:.4f} eV')
+      energy_tab.eV_per_px_text.SetLabel(f'{per_px:.4f} eV')
+      energy_tab.fee_calib_stale = False
+    wx.CallAfter(_draw_fee)
 
   def run_ebeam_calib(self, source='loc'):
     from xfel.ui.components.ebeam_plotter import compare_ebeams_with_fees
@@ -310,21 +314,26 @@ class CalibWorker(Thread):
       print('No runs to compare.')
       return
 
-    self.energy_tab.ebeam_figure.clear()
-    ebeam_eV_offset, ebeam_wavelength_offset = compare_ebeams_with_fees(
-      locfiles,
-      runs=reordered_run_strings,
-      plot=True,
-      use_figure=self.energy_tab.ebeam_figure,
-      max_events=self.energy_tab.max_events)
-    self.energy_tab.ebeam_figure.canvas.draw_idle()
-
-    if ebeam_eV_offset is not None:
-      self.energy_tab.ebeam_eV_offset = ebeam_eV_offset
-      self.energy_tab.ebeam_wavelength_offset = ebeam_wavelength_offset
-      ang = u'\u212b' # Angstrom
-      self.energy_tab.ebeam_offset_text.SetLabel(f'{ebeam_eV_offset:.2f} eV ({ebeam_wavelength_offset:.6f} {ang})')
-      self.energy_tab.ebeam_calib_stale = False
+    ebeam_fig = self.energy_tab.ebeam_figure
+    energy_tab = self.energy_tab
+    _locfiles = locfiles
+    _runs = reordered_run_strings
+    def _draw_ebeam():
+      ebeam_fig.clear()
+      ebeam_eV_offset, ebeam_wavelength_offset = compare_ebeams_with_fees(
+        _locfiles,
+        runs=_runs,
+        plot=True,
+        use_figure=ebeam_fig,
+        max_events=energy_tab.max_events)
+      ebeam_fig.canvas.draw_idle()
+      if ebeam_eV_offset is not None:
+        energy_tab.ebeam_eV_offset = ebeam_eV_offset
+        energy_tab.ebeam_wavelength_offset = ebeam_wavelength_offset
+        ang = u'\u212b' # Angstrom
+        energy_tab.ebeam_offset_text.SetLabel(f'{ebeam_eV_offset:.2f} eV ({ebeam_wavelength_offset:.6f} {ang})')
+        energy_tab.ebeam_calib_stale = False
+    wx.CallAfter(_draw_ebeam)
 
     #try:
     #  locfile = os.path.join(db.params.output_folder, f'r{run.run:04d}', f'{trial.trial:03d}_rg{rg.rungroup_id:03d', 'data.loc')
@@ -372,7 +381,7 @@ class JobMonitor(Thread):
 
     while self.active:
       try:
-        self.parent.run_window.jmn_light.change_status('idle')
+        wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'idle')
 
         trials = db.get_all_trials()
         jobs = db.get_all_jobs(active = self.only_active_jobs)
@@ -388,11 +397,11 @@ class JobMonitor(Thread):
             job.status = new_status
 
         self.post_refresh(trials, jobs)
-        self.parent.run_window.jmn_light.change_status('on')
+        wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'on')
         time.sleep(5)
       except Exception as e:
         print(e)
-        self.parent.run_window.jmn_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'alert')
         break
 
 
@@ -435,7 +444,7 @@ class JobSentinel(Thread):
         time.sleep(2)
       except Exception as e:
         print(e)
-        self.parent.run_window.job_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.job_light.change_status, 'alert')
         break
 
 # ----------------------------- Progress Sentinel ---------------------------- #
@@ -481,7 +490,7 @@ class ProgressSentinel(Thread):
 
     while self.active:
       try:
-        self.parent.run_window.prg_light.change_status('idle')
+        wx.CallAfter(self.parent.run_window.prg_light.change_status, 'idle')
 
         if len(db.get_all_trials()) > 0:
           trial = db.get_trial(
@@ -587,11 +596,11 @@ class ProgressSentinel(Thread):
             self.info['noiso'] = noiso_entry
         self.post_refresh()
         self.info = {}
-        self.parent.run_window.prg_light.change_status('on')
+        wx.CallAfter(self.parent.run_window.prg_light.change_status, 'on')
         time.sleep(5)
       except Exception as e:
         print(e)
-        self.parent.run_window.prg_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.prg_light.change_status, 'alert')
         break
 
 # ----------------------------- Run Stats Sentinel ---------------------------- #
@@ -637,17 +646,17 @@ class RunStatsSentinel(Thread):
 
     while self.active:
       try:
-        self.parent.run_window.runstats_light.change_status('idle')
+        wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'idle')
         self.plot_stats()
         self.fetch_timestamps(indexed=True)
         self.fetch_timestamps(indexed=False)
         self.post_refresh()
         self.info = {}
-        self.parent.run_window.runstats_light.change_status('on')
+        wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'on')
         time.sleep(5)
       except Exception as e:
         print(e)
-        self.parent.run_window.runstats_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'alert')
         break
 
   def refresh_stats(self):
@@ -753,25 +762,38 @@ class RunStatsSentinel(Thread):
   def plot_stats(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
-    sizex, sizey = self.parent.run_window.runstats_tab.runstats_panelsize
-    figure = self.parent.run_window.runstats_tab.figure
-    figure.clear()
-    plot_multirun_stats(
-      self.stats, self.run_numbers,
-      d_min=self.parent.run_window.runstats_tab.d_min,
-      n_multiples=self.parent.run_window.runstats_tab.n_multiples,
-      interactive=True,
-      ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
-      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
-      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
-      run_tags=self.run_tags,
-      run_statuses=self.run_statuses,
-      minimalist=self.parent.run_window.runstats_tab.entire_expt,
-      xsize=(sizex-25)/85, ysize=(sizey-25)/95,
-      high_vis=self.parent.high_vis,
-      figure=figure)
-      # convert px to inches with fudge factor for scaling inside borders
-    figure.canvas.draw_idle()
+    tab = self.parent.run_window.runstats_tab
+    sizex, sizey = tab.runstats_panelsize
+    figure = tab.figure
+    stats = list(self.stats)
+    run_numbers = list(self.run_numbers)
+    run_tags = list(self.run_tags)
+    run_statuses = list(self.run_statuses)
+    d_min = tab.d_min
+    n_multiples = tab.n_multiples
+    ratio = tab.ratio
+    n_strong = tab.n_strong
+    i_sigi = tab.i_sigi
+    entire_expt = tab.entire_expt
+    high_vis = self.parent.high_vis
+    def _draw():
+      figure.clear()
+      plot_multirun_stats(
+        stats, run_numbers,
+        d_min=d_min,
+        n_multiples=n_multiples,
+        interactive=True,
+        ratio_cutoff=ratio,
+        n_strong_cutoff=n_strong,
+        i_sigi_cutoff=i_sigi,
+        run_tags=run_tags,
+        run_statuses=run_statuses,
+        minimalist=entire_expt,
+        xsize=(sizex-25)/85, ysize=(sizey-25)/95,  # convert px to inches with fudge factor
+        high_vis=high_vis,
+        figure=figure)
+      figure.canvas.draw_idle()
+    wx.CallAfter(_draw)
 
 # ----------------------------- Spotfinder Sentinel ---------------------------- #
 
@@ -820,15 +842,15 @@ class SpotfinderSentinel(Thread):
 
     while self.active:
       try:
-        self.parent.run_window.spotfinder_light.change_status('idle')
+        wx.CallAfter(self.parent.run_window.spotfinder_light.change_status, 'idle')
         self.plot_stats_static()
         self.post_refresh()
         self.info = {}
-        self.parent.run_window.spotfinder_light.change_status('on')
+        wx.CallAfter(self.parent.run_window.spotfinder_light.change_status, 'on')
         time.sleep(5)
       except Exception as e:
         print(e)
-        self.parent.run_window.spotfinder_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.spotfinder_light.change_status, 'alert')
         break
 
   def refresh_stats(self):
@@ -958,7 +980,7 @@ class UnitCellSentinel(Thread):
 
     while self.active:
       try:
-        self.parent.run_window.unitcell_light.change_status('idle')
+        wx.CallAfter(self.parent.run_window.unitcell_light.change_status, 'idle')
         trial = self.parent.run_window.unitcell_tab.trial
         tag_sets = self.parent.run_window.unitcell_tab.tag_sets
         sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panelsize
@@ -988,14 +1010,23 @@ class UnitCellSentinel(Thread):
         plotter = pltr.PopUpCharts(interactive=True, figure=figure)
 
         if not self.parent.run_window.unitcell_tab.plot_clusters:
-          figure.clear()
-          plotter.plot_uc_histogram(
-            info_list=info_list,
-            legend_list=legend_list,
-            xsize=(sizex-115)/82, ysize=(sizey-115)/82,
-            high_vis=self.parent.high_vis,
-            iqr_ratio=iqr_ratio)
-          figure.canvas.draw_idle()
+          _info_list = info_list
+          _legend_list = legend_list
+          _xsize = (sizex-115)/82
+          _ysize = (sizey-115)/82
+          _high_vis = self.parent.high_vis
+          _iqr_ratio = iqr_ratio
+          def _draw_uc():
+            figure.clear()
+            _plotter = pltr.PopUpCharts(interactive=True, figure=figure)
+            _plotter.plot_uc_histogram(
+              info_list=_info_list,
+              legend_list=_legend_list,
+              xsize=_xsize, ysize=_ysize,
+              high_vis=_high_vis,
+              iqr_ratio=_iqr_ratio)
+            figure.canvas.draw_idle()
+          wx.CallAfter(_draw_uc)
         elif len(info_list) > 0:
           from uc_metrics.clustering.step1 import phil_scope
           from uc_metrics.clustering.step_dbscan3d import dbscan_plot_manager
@@ -1021,10 +1052,10 @@ class UnitCellSentinel(Thread):
           else:
             assert False, 'Iterable already populated'
           params.file_name = None
-          params.cluster.dbscan.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
+          params.cluster.dbscan.eps = self.parent.run_window.unitcell_tab.eps
           params.show_plot = True
           params.plot.legend = legend_list[0]
-          reject_outliers = self.parent.run_window.unitcell_tab.chk_reject_outliers.GetValue()
+          reject_outliers = self.parent.run_window.unitcell_tab.reject_outliers
           params.plot.outliers = not reject_outliers
 
           sginfo = space_group_info(params.input.space_group)
@@ -1033,10 +1064,13 @@ class UnitCellSentinel(Thread):
 
           if params.input.feature_vector:
             figure = self.parent.run_window.unitcell_tab.figure
-            figure.clear()
-            plots = dbscan_plot_manager(params)
-            plots.wrap_3D_features(fig = figure, embedded = True)
-            figure.canvas.draw_idle()
+            _params = params
+            def _draw_cluster():
+              figure.clear()
+              plots = dbscan_plot_manager(_params)
+              plots.wrap_3D_features(fig=figure, embedded=True)
+              figure.canvas.draw_idle()
+            wx.CallAfter(_draw_cluster)
             cluster_dir = os.path.join(self.parent.params.output_folder, "cluster")
             if not os.path.isdir(cluster_dir):
               os.makedirs(cluster_dir)
@@ -1054,11 +1088,11 @@ class UnitCellSentinel(Thread):
             print("Unsupported crystal system", cs)
 
         self.post_refresh()
-        self.parent.run_window.unitcell_light.change_status('on')
+        wx.CallAfter(self.parent.run_window.unitcell_light.change_status, 'on')
         time.sleep(15)
       except Exception as e:
         print(e)
-        self.parent.run_window.unitcell_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.unitcell_light.change_status, 'alert')
         break
 
 # ------------------------------- Frames Sentinel ------------------------------- #
@@ -1094,8 +1128,10 @@ class FramesSentinel(Thread):
 
     while self.active:
       try:
-        trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
-        runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
+        # Read from cached Python attributes maintained by the parent's event handlers
+        # rather than calling wx widget methods directly from this background thread.
+        trial = db.get_trial(trial_number=int(self.parent.selected_trial_number))
+        runs = [db.get_run(run_number=int(r)) for r in list(self.parent.selected_run_numbers)]
         print("Total events in trial", trial.trial, end=' ')
         if len(runs) == 0:
           runs = None
@@ -1106,7 +1142,7 @@ class FramesSentinel(Thread):
         time.sleep(2)
       except Exception as e:
         print(e)
-        #self.parent.run_window.frames_light.change_status('alert')
+        #wx.CallAfter(self.parent.run_window.frames_light.change_status, 'alert')
         break
 
 # ------------------------------- Clustering --------------------------------- #
@@ -1248,14 +1284,14 @@ class MergingStatsSentinel(Thread):
 
     while self.active:
       try:
-        self.parent.run_window.mergingstats_light.change_status('idle')
+        wx.CallAfter(self.parent.run_window.mergingstats_light.change_status, 'idle')
         self.plot_stats_static()
         self.post_refresh()
-        self.parent.run_window.mergingstats_light.change_status('on')
+        wx.CallAfter(self.parent.run_window.mergingstats_light.change_status, 'on')
         time.sleep(5)
       except Exception as e:
         print(e)
-        self.parent.run_window.mergingstats_light.change_status('alert')
+        wx.CallAfter(self.parent.run_window.mergingstats_light.change_status, 'alert')
         break
 
   def plot_stats_static(self):
@@ -2617,9 +2653,17 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    for job in self.all_jobs:
+    # self.all_jobs contains objects created by the JobMonitor thread's own
+    # DB connection. Calling job.delete() on them from the main thread while
+    # the monitor concurrently uses that same connection segfaults the MySQL
+    # C connector. Fetch fresh objects via the main app's connection instead.
+    jobs_to_delete = set(jobs_to_delete)
+    for job in self.main.db.get_all_jobs():
       if job.id in jobs_to_delete:
-        job.delete()
+        try:
+          job.delete()
+        except Exception as e:
+          print("Error deleting job %d: %s" % (job.id, e))
 
   def onRestartJob(self, e):
     if self.all_jobs is None:
@@ -2642,9 +2686,14 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    for job in self.all_jobs:
+    jobs_to_restart = set(jobs_to_restart)
+    for job in self.main.db.get_all_jobs():
       if job.id in jobs_to_restart:
-        job.delete()
+        try:
+          job.delete()
+        except Exception as e:
+          print("Error deleting job %d: %s" % (job.id, e))
+          continue
         if job.status != "DELETED":
           print("Couldn't restart job", job.id, "job is not deleted")
           continue
@@ -3482,6 +3531,7 @@ class UnitCellTab(BaseTab):
     self.tags = []
     self.tag_sets = []
     self.reject_outliers = True
+    self.eps = 0.8
     self.plot_clusters = False
     self.auto_update = True
 
@@ -3628,6 +3678,7 @@ class UnitCellTab(BaseTab):
     self.Bind(wx.EVT_CHECKBOX, self.onChkRejectOutliers, self.chk_reject_outliers)
     self.Bind(wx.EVT_CHECKBOX, self.onChkPlotClusters, self.chk_plot_clusters)
     self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onEpsChange, self.plot_eps.eps)
     self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -3707,6 +3758,12 @@ class UnitCellTab(BaseTab):
     self.tag_set_checklist.ctr.Clear()
     self.tag_sets = []
     self.selected_tag_sets = []
+
+  def onEpsChange(self, e):
+    try:
+      self.eps = float(self.plot_eps.eps.GetValue())
+    except ValueError:
+      pass
 
   def onChkRejectOutliers(self, e):
     self.reject_outliers = self.chk_reject_outliers.GetValue()

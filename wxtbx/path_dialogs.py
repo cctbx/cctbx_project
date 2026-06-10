@@ -164,26 +164,27 @@ class ConfirmCleanupDialog(wx.Dialog):
       "paths once they have been deleted!") % (cleanup_obj.n_files,
         cleanup_obj.n_dirs, cleanup_obj.get_freed_space()))
     txt.Wrap(480)
-    szr.Add(txt, 0, std_sizer_flags, 5)
-    list_font = wx.Font(10, wx.FONTFAMILY_MODERN, wx.NORMAL, wx.NORMAL)
+    szr.Add(txt, 0, wx.ALL, 5)
+    list_font = wx.Font(10, wx.FONTFAMILY_MODERN,
+      wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     if (cleanup_obj.n_dirs > 0):
       szr.Add(wx.StaticText(self, label="Directories to remove:"), 0,
-        std_sizer_flags, 5)
+        wx.ALL, 5)
       dir_box = wx.TextCtrl(self,
         style=wx.TE_MULTILINE|wx.TE_READONLY|wx.TE_DONTWRAP,
         size=(480, 200))
       dir_box.SetFont(list_font)
-      szr.Add(dir_box, 0, std_sizer_flags, 5)
+      szr.Add(dir_box, 0, wx.ALL, 5)
       for dir_name in cleanup_obj.dir_paths :
         dir_box.AppendText(dir_name + "\n")
     if (cleanup_obj.n_files > 0):
       szr.Add(wx.StaticText(self, label="Files to remove:"), 0,
-        std_sizer_flags, 5)
+        wx.ALL, 5)
       file_box = wx.TextCtrl(self,
         style=wx.TE_MULTILINE|wx.TE_READONLY|wx.TE_DONTWRAP,
         size=(480, 200))
       file_box.SetFont(list_font)
-      szr.Add(file_box, 0, std_sizer_flags, 5)
+      szr.Add(file_box, 0, wx.ALL, 5)
       for file_name in cleanup_obj.file_paths :
         file_box.AppendText(file_name + "\n")
     add_ok_cancel_buttons(self, szr)

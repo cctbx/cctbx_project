@@ -252,9 +252,11 @@ def test_invariants_rfree():
     assert strategy.get('generate_rfree_flags') == True
 
     # Second refinement should NOT add R-free flags
+    # (rfree_mtz is locked after the first successful refine)
     ctx2 = CommandContext(
         cycle_number=3,
         experiment_type='xray',
+        rfree_mtz='/path/to/refine_001.mtz',
         history=[
             {'cycle_number': 2, 'program': 'phenix.refine', 'result': 'SUCCESS'},
         ],
@@ -373,7 +375,7 @@ def test_graph_nodes_feature_flag():
         print("  SKIPPED - graph_nodes.py not found")
         return
 
-    with open(graph_nodes_path, 'r') as f:
+    with open(graph_nodes_path, 'r', encoding='utf-8') as f:
         source = f.read()
 
     # Check feature flag is defined
@@ -440,7 +442,7 @@ def test_llm_data_slot_used_for_mtz():
         mtz_wrong = os.path.join(temp_dir, "PredictAndBuild_0_refinement_cycle_2.extended_r_free.mtz")
 
         for f in [model_file, mtz_correct, mtz_wrong]:
-            with open(f, 'w') as fh:
+            with open(f, 'w', encoding='utf-8') as fh:
                 fh.write("test")
 
         available_files = [model_file, mtz_correct, mtz_wrong]
@@ -501,7 +503,7 @@ def test_auto_fill_false_prevents_model_injection():
         seq_file = os.path.join(temp_dir, "seq.dat")
         pdb_file = os.path.join(temp_dir, "model.pdb")
         for f in [map_file, seq_file, pdb_file]:
-            open(f, 'w').close()
+            open(f, 'w', encoding='utf-8').close()
 
         available = [map_file, seq_file, pdb_file]
         builder = CommandBuilder()
@@ -557,7 +559,7 @@ def test_fuzzy_slot_match_map_to_full_map():
         map_file = os.path.join(temp_dir, "map.ccp4")
         seq_file = os.path.join(temp_dir, "seq.dat")
         for f in [map_file, seq_file]:
-            open(f, 'w').close()
+            open(f, 'w', encoding='utf-8').close()
 
         available = [map_file, seq_file]
         builder = CommandBuilder()
@@ -786,9 +788,9 @@ def test_invariant_blocks_missing_resolution():
         # Create minimal files
         map_file = os.path.join(temp_dir, "map.ccp4")
         seq_file = os.path.join(temp_dir, "seq.dat")
-        with open(map_file, 'w') as f:
+        with open(map_file, 'w', encoding='utf-8') as f:
             f.write("mock")
-        with open(seq_file, 'w') as f:
+        with open(seq_file, 'w', encoding='utf-8') as f:
             f.write("mock")
 
         builder = CommandBuilder()
@@ -844,7 +846,7 @@ def test_autosol_partpdb_file_in_command():
         phaser_pdb = os.path.join(temp_dir, "PHASER.1.pdb")
 
         for f in [mtz_file, seq_file, phaser_pdb]:
-            with open(f, 'w') as fh:
+            with open(f, 'w', encoding='utf-8') as fh:
                 fh.write("test")
 
         available_files = [mtz_file, seq_file, phaser_pdb]

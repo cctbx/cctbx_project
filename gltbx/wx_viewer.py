@@ -47,7 +47,7 @@ def v3distsq(a, b):
   for x,y in zip(a,b): result += (x-y)**2
   return result
 
-VIEWER_UPDATE_ID = wx.NewId()
+VIEWER_UPDATE_ID = wx.NewEventType()
 class ViewerUpdateEvent(wx.PyEvent):
   def __init__(self, data=None, recenter=False):
     wx.PyEvent.__init__(self)
@@ -979,43 +979,43 @@ class App(wx.App):
 
     tb.Bind(wx.EVT_TOOL, self.OnToolClick)
 
-    self.mcs_center_id = wx.NewId()
-    tb.AddSimpleTool(self.mcs_center_id,
-      images.mcs_img.as_wx_Bitmap(),
-      "Rotate around MCS center",
-      "Object are to be rotated around the Minimum Covering Sphere (MCS)"
+    self.mcs_center_id = wx.NewIdRef()
+    tb.AddTool(self.mcs_center_id, "",
+      images.mcs_img.as_wx_Bitmap(), wx.NullBitmap,
+      shortHelp="Rotate around MCS center",
+      longHelp="Object are to be rotated around the Minimum Covering Sphere (MCS)"
       "centre."
       " Keyboard shortcut: m")
 
-    self.center_on_screen_id = wx.NewId()
-    tb.AddSimpleTool(self.center_on_screen_id,
-      images.centre_img.as_wx_Bitmap(),
-      "Center in window",
-      "Shifts object so that centre of rotation is centered in window."
+    self.center_on_screen_id = wx.NewIdRef()
+    tb.AddTool(self.center_on_screen_id, "",
+      images.centre_img.as_wx_Bitmap(), wx.NullBitmap,
+      shortHelp="Center in window",
+      longHelp="Shifts object so that centre of rotation is centered in window."
       " Keyboard shortcut: c")
 
-    self.fit_on_screen_id = wx.NewId()
-    tb.AddSimpleTool(self.fit_on_screen_id,
-      images.fit_img.as_wx_Bitmap(),
-      "Fit in window",
-      "Resizes and shifts object to fit into window."
+    self.fit_on_screen_id = wx.NewIdRef()
+    tb.AddTool(self.fit_on_screen_id, "",
+      images.fit_img.as_wx_Bitmap(), wx.NullBitmap,
+      shortHelp="Fit in window",
+      longHelp="Resizes and shifts object to fit into window."
       " Keyboard shortcut: f")
 
-    self.mark_snap_back_id = wx.NewId()
-    tb.AddSimpleTool(self.mark_snap_back_id,
-      images.mark_snap_back_img.as_wx_Bitmap(),
-      "Mark orientation for snap-back",
-      "Marks object orientation as the target of a subsequent snap-back."
+    self.mark_snap_back_id = wx.NewIdRef()
+    tb.AddTool(self.mark_snap_back_id, "",
+      images.mark_snap_back_img.as_wx_Bitmap(), wx.NullBitmap,
+      shortHelp="Mark orientation for snap-back",
+      longHelp="Marks object orientation as the target of a subsequent snap-back."
       " Keyboard shortcut: k")
 
-    self.snap_back_id = wx.NewId()
-    tb.AddSimpleTool(self.snap_back_id,
-      images.snap_back_img.as_wx_Bitmap(),
-      "Snap back orientation",
-      "Rotates object back to the last marked orientation."
+    self.snap_back_id = wx.NewIdRef()
+    tb.AddTool(self.snap_back_id, "",
+      images.snap_back_img.as_wx_Bitmap(), wx.NullBitmap,
+      shortHelp="Snap back orientation",
+      longHelp="Rotates object back to the last marked orientation."
       " Keyboard shortcut: a")
 
-    self.toggle_spin_id = wx.NewId()
+    self.toggle_spin_id = wx.NewIdRef()
     tb.AddCheckTool(self.toggle_spin_id, 'label',
       images.spin_img.as_wx_Bitmap(),
       shortHelp="Spin on/off",

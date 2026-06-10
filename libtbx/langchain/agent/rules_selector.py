@@ -473,6 +473,19 @@ class RulesSelector:
                 "stop if",
                 "stop condition",
                 "stop at",
+                # v116.10: phrasings where "stop" follows another action.
+                # These are stop-target requests ("do X, then stop"),
+                # not immediate-stop requests.  Without these, advice
+                # like "predict and stop" was treated as immediate stop,
+                # which truncated valid_programs to [STOP] and prevented
+                # the user's actual target program from running.
+                # The resolver in directive_extractor.py:_resolve_after_program
+                # has already extracted the stop target by the time this
+                # runs — we just need to recognise the phrasing here so
+                # the filter doesn't strip valid_programs.
+                "and stop",
+                "then stop",
+                ", stop",
             ]
             is_stop_condition = any(pattern in advice_lower for pattern in stop_condition_patterns)
 

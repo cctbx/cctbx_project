@@ -93,7 +93,7 @@ def _load_yaml_config():
     for yaml_path in yaml_paths:
         if os.path.exists(yaml_path):
             try:
-                with open(yaml_path, 'r') as f:
+                with open(yaml_path, 'r', encoding='utf-8') as f:
                     return yaml.safe_load(f)
             except Exception as e:
                 import sys
@@ -752,8 +752,10 @@ def prepare_request_for_transport(request, do_encode=True):
     # Step 2: Serialize to JSON
     json_str = json.dumps(sanitized, indent=None, separators=(',', ':'))
 
-    # Final safety: replace any remaining tab escape sequences
-    json_str = json_str.replace('\\t', ' ')
+    # NOTE: Do NOT post-process json_str with replace('\\t', ' ')
+    # or similar — this corrupts Windows file paths containing \t
+    # (e.g. C:\Users\terwill\tutorials\).  Tab handling is done
+    # by text_as_simple_string in encode_for_rest (Step 3).
 
     # Step 3: Encode if requested
     if do_encode:
@@ -821,8 +823,8 @@ def prepare_response_for_transport(response, do_encode=True):
     # Step 2: Serialize to JSON
     json_str = json.dumps(sanitized, indent=None, separators=(',', ':'))
 
-    # Final safety: replace any remaining tab escape sequences
-    json_str = json_str.replace('\\t', ' ')
+    # NOTE: Do NOT post-process json_str with replace('\\t', ' ')
+    # or similar — this corrupts Windows paths containing \t.
 
     # Step 3: Encode if requested
     if do_encode:

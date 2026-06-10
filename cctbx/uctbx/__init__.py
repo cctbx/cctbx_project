@@ -191,8 +191,11 @@ class _():
     return gruber_parameterization(self, relative_epsilon).is_niggli_cell()
 
   def niggli_reduction(self, relative_epsilon=None, iteration_limit=None):
-    from cctbx.uctbx import krivy_gruber_1976
-    return krivy_gruber_1976.reduction(self, relative_epsilon, iteration_limit)
+    if relative_epsilon is None:
+      relative_epsilon = 1.e-5
+    if iteration_limit is None:
+      iteration_limit = 1000
+    return ext.niggli_reduction(self, relative_epsilon, iteration_limit)
 
   def niggli_cell(self,
         relative_epsilon=None,
@@ -296,6 +299,7 @@ class _():
       h, u_star, exp_arg_limit, truncate_exp_arg)
 
   debye_waller_factor = debye_waller_factors
+
 
 def non_crystallographic_buffer_layer(
       sites_cart_min,

@@ -364,7 +364,7 @@ this is a FOCUSED TASK, not full structure determination. In such cases:
 
 Your response MUST include these sections:
 
-1. **Input Files Found**: List ANY data files mentioned in the user input that should be loaded. Use the exact filenames from the text. Format as a comma-separated list. If no files mentioned, write "None".
+1. **Input Files Found**: List input data files for this run.  Use the UNION of: (a) files mentioned in the user input text above, AND (b) files supplied in the "Already loaded files" context.  Use exact filenames.  Format as a comma-separated list.  Write "None" ONLY when both sources are empty.
 
 2. **Experiment Type**: What type of experiment is this? (SAD, MAD, MR, cryo-EM, refinement only, analysis only, etc.)
 
@@ -378,14 +378,32 @@ Your response MUST include these sections:
    - Space group (if mentioned)
 
 5. **Program Parameters**:
-   Translate any program settings expressed in plain English to exact PHIL key=value pairs
-   that can be appended to PHENIX commands.
+   Translate any program settings expressed in plain English to bare PHIL
+   key=value pairs that can be appended to PHENIX commands.
+
+   **CRITICAL — emit only short bare key names. NEVER emit full PHIL
+   namespace paths.** The downstream system resolves namespaces per
+   program. Emitting full paths will cause command-build failures.
+
+   Good (bare keys):                 Bad (namespaced — DO NOT USE):
+     resolution=2.0                    xray_data.high_resolution=2.0
+     d_min=2.0                         refinement.target_weights.wxc=...
+     generate_rfree_flags=True         data_manager.r_free_flags.generate=True
+     number_of_macro_cycles=3          main.number_of_macro_cycles=3
+     atom_type=Se                      autosol.atom_type=Se
+     wavelength=0.9792                 phenix.autosol.input.wavelength=0.9792
+
+   Even if the user's text contains a full PHIL path like
+   `data_manager.r_free_flags.generate=True`, you MUST emit only the bare
+   parameter name (e.g. `generate_rfree_flags=True`).
+
    Common translations:
    - "one macro-cycle" / "1 macro-cycle" / "run only N macro-cycle(s)" → `main.number_of_macro_cycles=1` (or N)
    - "N macro-cycles of refinement" → `main.number_of_macro_cycles=N`
    - "superquick" refinement → `superquick=True`
    - "N cycles of real-space refinement" → `macro_cycles=N`
    - "resolution limit X Å" → `d_min=X`
+   - "generate R-free flags" / "create new R-free flags" → `generate_rfree_flags=True`
    Format each as a bare `key=value` line (one per line). If none, write "None".
 
 6. **Special Instructions**: Any specific requirements like:
@@ -539,6 +557,143 @@ def _neutralize_fabricated_stop_condition(processed_advice, raw_advice):
 
 
 
+def _ensure_file_list_in_processed_advice(
+        processed_advice, file_list_hint, log=None):
+    """
+    Ensure section 1 (Input Files Found) reflects the authoritative
+    file list supplied to the agent.
+
+    v118.A2: the preprocessor LLM sometimes emits "Input Files Found:
+    None" even when the agent was given files via file_list_hint
+    (e.g., user typed "refine and stop" with model.pdb and data.mtz
+    on the command line — observed in production run AIAgent_210).
+    The LLM follows the prompt literally and only lists files
+    mentioned in the user input text, ignoring the context block.
+
+    This deterministic override enforces the architectural invariant
+    that the disk reality (file_list_hint) is authoritative.  The
+    override never *removes* files the LLM mentioned, but it always
+    *adds* files the agent has on disk.  Specifically:
+
+      - If section 1 is "None"/"none"/"N/A" AND file_list_hint is
+        non-empty, replace section 1 with the file list.
+      - If section 1 has files AND file_list_hint has additional
+        files, replace section 1 with the union.
+      - If section 1 already contains all of file_list_hint, no change.
+      - If both are empty/None, no change.
+
+    Args:
+        processed_advice: Preprocessor LLM output (7-section format)
+        file_list_hint: List of file paths (absolute or basenames)
+            supplied to the agent.  May be None or empty.
+        log: Optional logger (callable accepting a string).
+
+    Returns:
+        str: Processed advice with section 1 enforced.  Returns the
+        original advice unchanged if processed_advice is empty/None
+        or if section 1 cannot be located in the expected format.
+    """
+    if not processed_advice:
+        return processed_advice
+
+    # Normalize file_list_hint to a list of basenames.  Production
+    # callers pass absolute paths; we want to emit basenames in the
+    # section-1 listing.
+    if not file_list_hint:
+        return processed_advice
+
+    import os as _os
+    hint_basenames = []
+    for f in file_list_hint:
+        if not f:
+            continue
+        bn = _os.path.basename(f) if isinstance(f, str) else str(f)
+        if bn and bn not in hint_basenames:
+            hint_basenames.append(bn)
+
+    if not hint_basenames:
+        return processed_advice
+
+    # Locate section 1.  Matches:
+    #   "1. **Input Files Found**: ..."
+    #   "1. Input Files Found: ..."
+    # Capture group 1 is the header, group 2 is the body up to the
+    # next section (line starting with "2.") or end of advice.
+    section1_re = re.compile(
+        r'(1\.\s*\*?\*?Input\s+Files\s+Found\*?\*?\s*:?)'
+        r'(.*?)'
+        r'(?=\n\s*2\.\s|\Z)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    m = section1_re.search(processed_advice)
+    if not m:
+        # Section 1 not found in expected format.  Don't try to
+        # rewrite a structure we don't understand — log and return
+        # unchanged.
+        if log:
+            log("PREPROCESSOR_OVERRIDE: section 1 not found in "
+                "processed advice; skipping file-list override")
+        return processed_advice
+
+    header = m.group(1)
+    body = m.group(2).strip()
+
+    # Determine what the LLM listed
+    body_lower = body.lower().strip().rstrip('.').strip()
+    is_none = (
+        not body
+        or body_lower in ("none", "n/a", "null", "")
+        or body_lower.startswith("none ")
+        or body_lower.startswith("n/a ")
+    )
+
+    if is_none:
+        # Override entirely with file_list_hint
+        new_body = " " + ", ".join(hint_basenames)
+        new_section = header + new_body + "\n"
+        if log:
+            log("PREPROCESSOR_OVERRIDE: section 1 was 'None' but "
+                "file_list_hint has %d file(s); rewriting to: %s"
+                % (len(hint_basenames), ", ".join(hint_basenames)))
+        return (processed_advice[:m.start()] + new_section
+                + processed_advice[m.end():])
+
+    # Section 1 has some files.  Extract them and union with hint.
+    # Split on commas, semicolons, or newlines.
+    existing = []
+    for token in re.split(r'[,;\n]', body):
+        token = token.strip().strip('`').strip('"').strip("'").strip()
+        # Remove markdown bullet markers
+        if token.startswith('- '):
+            token = token[2:].strip()
+        if token and token.lower() not in ("none", "n/a", "null"):
+            existing.append(token)
+
+    # Build union, preserving order: existing first, then hint additions
+    seen_lower = {e.lower() for e in existing}
+    union = list(existing)
+    additions = []
+    for bn in hint_basenames:
+        if bn.lower() not in seen_lower:
+            union.append(bn)
+            additions.append(bn)
+            seen_lower.add(bn.lower())
+
+    if not additions:
+        # All hint files were already listed; no change needed
+        return processed_advice
+
+    new_body = " " + ", ".join(union)
+    new_section = header + new_body + "\n"
+    if log:
+        log("PREPROCESSOR_OVERRIDE: section 1 had %d file(s); "
+            "adding %d from file_list_hint: %s"
+            % (len(existing), len(additions), ", ".join(additions)))
+    return (processed_advice[:m.start()] + new_section
+            + processed_advice[m.end():])
+
+
+
 def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
                       llm=None, timeout=60, out=sys.stdout, use_rules_only=False):
     """
@@ -621,4 +776,27 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
 
     except Exception as e:
         print(f"Advice preprocessing failed: {e}", file=out)
+        # v118.E (Q3+Q4 per Gemini): developer-visibility log line
+        # for the silent-fallback case.  Mirrors the equivalent
+        # diagnostic in directive_extractor.extract_directives.
+        # The preprocessor and extractor use the same network
+        # client wrappers, credentials, and API endpoints — any
+        # environmental failure (credentials, quota, network)
+        # that hits the extractor typically hits the preprocessor
+        # first.  Don't leave the preprocessor blind.
+        print("CRITICAL_FALLBACK: LLM preprocessing failed; "
+              "falling back to raw advice.", file=out)
+        # v118.E: operator-visibility stderr marker, parallel to
+        # the [DIRECTIVE_EXTRACTION_FAILED] marker in
+        # extract_directives.  Wrapped in try/except so the
+        # diagnostic can never break the existing fallback path.
+        try:
+            import sys
+            sys.stderr.write(
+                "[ADVICE_PREPROCESSING_FAILED] LLM preprocessing "
+                "call did not complete: %s. Falling back to raw "
+                "advice.\n" % str(e))
+            sys.stderr.flush()
+        except Exception:
+            pass
         return raw_advice

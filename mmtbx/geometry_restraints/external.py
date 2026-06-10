@@ -93,7 +93,7 @@ if schrodinger_installed:
     import sys
     sys.path.append(paths[0])
   try:
-    import phenix_schrodinger
+    import phenix_schrodinger # import dependency
     external_energy_params_str += """
     schrodinger
       .help = Parameters for using Schrodinger's force fields.

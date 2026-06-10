@@ -23,9 +23,9 @@ else :
   leap_enabled = True
   #from Leap import CircleGesture, KeyTapGesture, ScreenTapGesture, SwipeGesture
 
-LEAP_TRANSLATE_ID = wx.NewId()
-LEAP_ROTATE_ID = wx.NewId()
-LEAP_SCALE_ID = wx.NewId()
+LEAP_TRANSLATE_ID = wx.NewEventType()
+LEAP_ROTATE_ID = wx.NewEventType()
+LEAP_SCALE_ID = wx.NewEventType()
 
 class LeapMotionEvent(wx.PyEvent):
   event_id = None

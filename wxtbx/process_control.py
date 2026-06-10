@@ -16,16 +16,16 @@ import math
 import os
 from six.moves import range
 
-JOB_START_ID = wx.NewId()
-LOG_UPDATE_ID = wx.NewId()
-CALLBACK_ID = wx.NewId()
-JOB_EXCEPTION_ID = wx.NewId()
-JOB_KILLED_ID = wx.NewId()
-JOB_COMPLETE_ID = wx.NewId()
-JOB_PAUSE_ID = wx.NewId()
-JOB_RESUME_ID = wx.NewId()
-DOWNLOAD_COMPLETE_ID = wx.NewId()
-DOWNLOAD_INCREMENT_ID = wx.NewId()
+JOB_START_ID = wx.NewEventType()
+LOG_UPDATE_ID = wx.NewEventType()
+CALLBACK_ID = wx.NewEventType()
+JOB_EXCEPTION_ID = wx.NewEventType()
+JOB_KILLED_ID = wx.NewEventType()
+JOB_COMPLETE_ID = wx.NewEventType()
+JOB_PAUSE_ID = wx.NewEventType()
+JOB_RESUME_ID = wx.NewEventType()
+DOWNLOAD_COMPLETE_ID = wx.NewEventType()
+DOWNLOAD_INCREMENT_ID = wx.NewEventType()
 
 class SubprocessEvent(wx.PyEvent):
   event_id = None

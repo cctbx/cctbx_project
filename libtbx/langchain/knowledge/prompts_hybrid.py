@@ -385,11 +385,17 @@ reconstruct it when the correct program runs.
 ### STOP CONDITIONS
 
 Set "stop": true when:
-- **X-ray**: R-free < 0.25 (or dynamic target based on resolution)
-- **Cryo-EM**: Map-model CC > 0.70
+- **X-ray**: R-free < 0.25 (or dynamic target based on resolution) AND validation has been run
+- **Cryo-EM**: Map-model CC > 0.70 AND validation has been run
 - **Plateau**: Metrics trend shows <0.3% improvement for 3+ cycles
 - **Stuck**: Same error repeated 3+ times with no progress
 - **No valid programs**: Workflow state shows only STOP is valid
+
+**CRITICAL**: Reaching the quality target (R-free or map-model CC) is NOT by itself
+sufficient to stop. If validation programs (phenix.molprobity, phenix.validation_cryoem,
+phenix.map_correlations, phenix.model_vs_data) appear in VALID PROGRAMS and validation
+has not yet been run, you MUST choose a validation program rather than STOP.
+Hitting the metric target means it is time to validate, not time to quit.
 
 ### SPECIAL CASES
 
@@ -399,9 +405,13 @@ Set "stop": true when:
 **HIGH RESOLUTION** (< 1.5Å): Consider anisotropic_adp=true in refine
 
 **VALIDATION**: Run validation programs when:
-  - R-free target reached (to confirm model quality)
+  - **X-ray**: R-free target reached (to confirm model quality)
+  - **Cryo-EM**: Map-model CC > 0.70 reached (to confirm model quality)
   - After 3+ refine cycles (to check for problems)
-  - If R-free is good but model looks wrong
+  - If metrics are good but model looks wrong
+  When the workflow state is "validate" (X-ray: xray_refined; cryo-EM: cryoem_refined)
+  and VALID PROGRAMS contains a validation program, run it. Do NOT set stop=true
+  in preference to running an available validation program.
 
 ### IMPORTANT RULES
 
@@ -411,6 +421,7 @@ Set "stop": true when:
 4. **Always set resolution for predict_and_build** if building
 5. **Files must exist** - only use files from the inventory
 6. **Strategy is program-specific** - never put parameters for program X in a strategy for program Y; when stop=true, strategy must be empty
+7. **Validate before stopping** - if validation programs are in VALID PROGRAMS and no validation has been run this session, choose a validation program rather than STOP, even when the quality target has been reached
 """
 
 
@@ -447,26 +458,74 @@ def _format_directives_for_prompt(directives):
         lines.append("")
 
     # Stop conditions
+    #
+    # v116.x: build the body lines first, then emit the header only if
+    # we have non-empty content.  Under the new architecture,
+    # `after_program` without `stop_after_requested=True` is a plan-
+    # progression hint that produces no prompt content — without this
+    # restructuring, we would emit a "**Stop Conditions:**" header
+    # followed by nothing.
     stop_cond = directives.get("stop_conditions", {})
     if stop_cond:
-        lines.append("**Stop Conditions:**")
+        _stop_body = []
         if "after_cycle" in stop_cond:
-            lines.append("- Stop after cycle %d" % stop_cond["after_cycle"])
+            _stop_body.append("- Stop after cycle %d" % stop_cond["after_cycle"])
         if "after_program" in stop_cond:
             after_prog = stop_cond["after_program"]
-            lines.append("- Stop after %s completes" % after_prog)
-            # Add explicit guidance to run the program - make it very clear
-            lines.append("- **CRITICAL: You MUST run %s before stopping. If it's in VALID PROGRAMS, choose it NOW.**" % after_prog)
-            lines.append("- Do NOT keep running refinement cycles - run %s instead!" % after_prog)
+            stop_after_requested = bool(
+                stop_cond.get("stop_after_requested"))
+
+            if stop_after_requested:
+                # User explicitly requested stop after this program.
+                # Tell the LLM clearly.
+                _stop_body.append("- Stop after %s completes" % after_prog)
+                # v116.10 Phase 6a: target-not-now framing.
+                #
+                # The previous wording said "CRITICAL: You MUST run X.
+                # Do NOT keep running refinement cycles - run X instead!"
+                # which caused the LLM to pick after_program even when
+                # it was not in VALID PROGRAMS (e.g. predict_and_build at
+                # xray_initial), triggering the after_program_not_available
+                # STOP defense.
+                #
+                # The new wording aligns with the authoritative VALID
+                # PROGRAMS guidance later in the prompt ("You MUST choose
+                # from the valid programs above, or set 'stop': true."):
+                #   - after_program is a STOP TARGET, not a now-directive
+                #   - When the target is in VALID PROGRAMS, pick it
+                #   - When the target is not in VALID PROGRAMS, pick a
+                #     prerequisite from VALID PROGRAMS
+                #   - Never pick a program outside VALID PROGRAMS
+                _stop_body.append("- **Stop target: %s.** The agent will stop once this program completes." % after_prog)
+                _stop_body.append("- If %s is in VALID PROGRAMS this cycle, choose it." % after_prog)
+                _stop_body.append("- If %s is NOT in VALID PROGRAMS, choose the appropriate prerequisite from VALID PROGRAMS. The workflow will reach %s when its inputs become available." % (after_prog, after_prog))
+                _stop_body.append("- Never pick a program outside VALID PROGRAMS. Programs outside the list cannot run this cycle.")
+            else:
+                # v116.x: after_program is a plan-progression hint only
+                # (e.g. emitted per-stage by plan_to_directives).  No
+                # user stop is implied.  Telling the LLM "stop after X"
+                # in this case would be misleading — the workflow is
+                # meant to continue to the next plan stage after X runs.
+                #
+                # We skip the "Stop target" lines entirely.  The
+                # workflow_engine's min-run guarantee already
+                # prioritizes X to the front of VALID PROGRAMS, so the
+                # LLM will pick X naturally without being told to stop
+                # afterward.
+                pass
         if "max_refine_cycles" in stop_cond:
-            lines.append("- Maximum %d refinement cycles" % stop_cond["max_refine_cycles"])
+            _stop_body.append("- Maximum %d refinement cycles" % stop_cond["max_refine_cycles"])
         if "r_free_target" in stop_cond:
-            lines.append("- Target R-free: %.3f" % stop_cond["r_free_target"])
+            _stop_body.append("- Target R-free: %.3f" % stop_cond["r_free_target"])
         if "map_cc_target" in stop_cond:
-            lines.append("- Target map CC: %.2f" % stop_cond["map_cc_target"])
+            _stop_body.append("- Target map CC: %.2f" % stop_cond["map_cc_target"])
         if stop_cond.get("skip_validation"):
-            lines.append("- Validation can be skipped before stopping")
-        lines.append("")
+            _stop_body.append("- Validation can be skipped before stopping")
+
+        if _stop_body:
+            lines.append("**Stop Conditions:**")
+            lines.extend(_stop_body)
+            lines.append("")
 
     # Workflow preferences
     workflow_prefs = directives.get("workflow_preferences", {})
@@ -890,11 +949,13 @@ You MUST choose a DIFFERENT program or approach.
 Program: %s
 Error: "%s"
 
-THIS IS AN R-FREE FLAG ERROR. Try to fix it:
-The refinement command already includes xray_data.r_free_flags.generate=True
-which should auto-generate R-free flags. Retry refinement - it should work now.
-If using a different MTZ file, ensure it has reflection data.
-If the error persists, switch to a different program.
+THIS IS AN R-FREE FLAG ERROR.
+The system handles R-free flag generation automatically based on whether the
+MTZ already has R-free flags.  Do NOT set generate_rfree_flags=True — the
+BUILD node will add it only when needed.
+If the error persists, the MTZ may already have R-free flags from a previous
+refinement or the input data.  Try re-running without generate_rfree_flags.
+If the error still persists, switch to a different program.
 """ % (safe_program, safe_error)
 
         elif is_resolution_error and consecutive_same_failures >= 2:

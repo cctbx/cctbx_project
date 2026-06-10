@@ -43,6 +43,27 @@ assert sanitize_request is not None
 assert sanitize_response is not None
 assert get_transport_config is not None
 
+# v119.H1: central per-provider default models.  All four _call_*_llm
+# functions below resolve their model defaults via this helper rather
+# than hardcoding strings.  Fallback import path supports both PHENIX
+# and standalone-tests invocation per AI Agent guideline section 3.
+# v119.H13: also brings in helpers for ollama URL normalization,
+# env-var precedence, and provider-error classification.
+try:
+    from libtbx.langchain.core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+    )
+except ImportError:
+    from core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+    )
+
 
 # =============================================================================
 # SESSION STATE BUILDING
@@ -128,6 +149,19 @@ def build_session_state(session_info, session_resolution=None):
         if session_info.get("plan_has_pending_stages"):
             session_state[
                 "plan_has_pending_stages"] = True
+
+        # P4: session-blocked programs — programs that have failed too many
+        # times this session.  Persisted client-side and re-injected each
+        # cycle so the server can filter them from valid_programs.
+        if session_info.get("session_blocked_programs"):
+            session_state["session_blocked_programs"] = (
+                session_info["session_blocked_programs"])
+
+        # ASU copy count (copies feature): known after xtriage or from user
+        # directives.  Forwarded each cycle so BUILD can inject
+        # phaser.search_copies without re-parsing xtriage output.
+        if session_info.get("asu_copies"):
+            session_state["asu_copies"] = session_info["asu_copies"]
 
     return session_state
 
@@ -233,6 +267,13 @@ def build_request_v2(
         # Parameter blacklist for command post-processing
         if session_state.get("bad_inject_params"):
             normalized_session_state["bad_inject_params"] = session_state["bad_inject_params"]
+        # P4: session-blocked programs
+        if session_state.get("session_blocked_programs"):
+            normalized_session_state["session_blocked_programs"] = (
+                session_state["session_blocked_programs"])
+        # ASU copy count (copies feature)
+        if session_state.get("asu_copies"):
+            normalized_session_state["asu_copies"] = session_state["asu_copies"]
 
     # Build settings
     settings = {
@@ -479,9 +520,10 @@ def serialize_request(request):
         str: JSON-encoded request
     """
     json_str = json.dumps(request, indent=None, separators=(',', ':'))
-    # Final safety: replace any remaining JSON tab escape sequences with spaces
-    # The transport module should have removed tabs, but this catches edge cases
-    json_str = json_str.replace('\\t', ' ')
+    # NOTE: Do NOT post-process json_str with replace('\\t', ' ')
+    # — this corrupts Windows paths containing \t (e.g. \tutorials).
+    # Tab handling is done by text_as_simple_string in the REST
+    # encoding layer.
     return json_str
 
 
@@ -600,7 +642,7 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
 
     Args:
         prompt: The prompt text to send
-        provider: LLM provider ("google", "openai", "anthropic", "ollama")
+        provider: LLM provider ("google", "openai", "anthropic", "ollama", "portkey")
         model: Model name (uses provider default if None)
         temperature: Sampling temperature (default 0.1 for consistency)
         max_tokens: Maximum tokens in response
@@ -616,6 +658,8 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
         return _call_anthropic_llm(prompt, model, temperature, max_tokens)
     elif provider == "ollama":
         return _call_ollama_llm(prompt, model, temperature, max_tokens)
+    elif provider == "portkey":
+        return _call_portkey_llm(prompt, model, temperature, max_tokens)
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
@@ -626,12 +670,17 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
 
+    # v119.H1: central default; both google.genai paths share it.
+    if model is None:
+        model_name = default_model_for_provider("google")
+    else:
+        model_name = model
+
     # Try new google.genai package first
     try:
         from google import genai
         from google.genai import types
 
-        model_name = model or "gemini-2.0-flash"
         client = genai.Client(api_key=api_key)
 
         response = client.models.generate_content(
@@ -649,7 +698,6 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         import google.generativeai as genai_old
 
         genai_old.configure(api_key=api_key)
-        model_name = model or "gemini-2.0-flash"
         gen_model = genai_old.GenerativeModel(model_name)
 
         response = gen_model.generate_content(
@@ -666,7 +714,7 @@ def _call_openai_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     """Call OpenAI's API."""
     import openai
 
-    model_name = model or "gpt-4o-mini"
+    model_name = model or default_model_for_provider("openai")
     client = openai.OpenAI()  # Uses OPENAI_API_KEY env var
 
     response = client.chat.completions.create(
@@ -682,7 +730,7 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     """Call Anthropic's API."""
     import anthropic
 
-    model_name = model or "claude-sonnet-4-20250514"
+    model_name = model or default_model_for_provider("anthropic")
     client = anthropic.Anthropic()  # Uses ANTHROPIC_API_KEY env var
 
     response = client.messages.create(
@@ -693,12 +741,58 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     return response.content[0].text
 
 
+def _call_portkey_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
+    """Call Azure OpenAI via the Portkey SDK (OpenAI-compatible gateway).
+
+    v120: matches the deployment in add_portkey_support.patch -- the Portkey
+    SDK with provider="azure-openai".  Azure gpt-5 uses max_completion_tokens
+    (not max_tokens) and rejects temperature, so neither is forwarded.  Env
+    vars are read at call time; a missing one raises a clear ValueError
+    (via portkey_langchain_config-style checks) rather than a bare KeyError.
+
+    The `temperature` parameter is accepted for dispatch-signature parity but
+    intentionally not sent to the Azure-OpenAI upstream.
+    """
+    from portkey_ai import Portkey
+
+    api_key = os.environ.get("PORTKEY_AZURE_API_KEY")
+    base_url = os.environ.get("PORTKEY_BASE_URL")
+    missing = [n for n, v in (
+        ("PORTKEY_AZURE_API_KEY", api_key),
+        ("PORTKEY_BASE_URL", base_url)) if not v]
+    if missing:
+        raise ValueError(
+            "Provider 'portkey' requires environment variable(s): %s."
+            % ", ".join(missing))
+
+    model_name = model or resolve_model_for_provider("portkey", role="decision")
+    client = Portkey(
+        api_key=api_key,
+        base_url=base_url,
+        provider="azure-openai",
+    )
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        max_completion_tokens=max_tokens,
+    )
+    return response.choices[0].message.content
+
+
 def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
-    """Call Ollama API (OpenAI-compatible)."""
+    """Call Ollama API (OpenAI-compatible).
+
+    v119.H13:
+      - Item A: normalize OLLAMA_BASE_URL to guarantee /v1 suffix
+      - Item B: honor OLLAMA_LLM_MODEL env-var via
+        resolve_model_for_provider (parity with directive_extractor
+        and core/llm.py).
+    """
     import openai
 
-    model_name = model or "llama3.2"
-    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    model_name = model or resolve_model_for_provider("ollama")  # v119.H13/B
+    base_url = normalize_ollama_openai_base_url(                  # v119.H13/A
+        os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"))
 
     client = openai.OpenAI(
         base_url=base_url,

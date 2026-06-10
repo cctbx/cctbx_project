@@ -443,10 +443,11 @@ def get_chunk_size(provider: str = None):
     provider = os.getenv("LLM_PROVIDER", "ollama")
 
   provider = provider.lower()
-  if provider == "openai":
+  if provider == "openai" or provider == "portkey":
+    # portkey fronts Azure OpenAI -- use the same chunking as OpenAI.
     chunk_size = 100000
     chunk_overlap = 10000
-    debug_print(f"OpenAI: chunk_size={chunk_size}, overlap={chunk_overlap}")
+    debug_print(f"OpenAI/Portkey: chunk_size={chunk_size}, overlap={chunk_overlap}")
   elif provider == "google":
     chunk_size = 750000
     chunk_overlap = 50000

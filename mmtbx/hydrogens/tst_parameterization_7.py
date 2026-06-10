@@ -24,9 +24,9 @@ def prepare_inputs(pdb_str, cif_str):
   return model
 
 #-----------------------------------------------------------------------------
-# For this ligand, three H cannot be parameterized
-# NH2 group is planar, but there are no dihedral restraints
-# no dihedral restraint for H11
+# For this ligand, one H cannot be parameterized
+# H101 and H102 (NH2 group) are parameterized via CONST torsions (alg1a)
+# H11 (hydroxyl) remains un-parameterized: no dihedral restraint
 #-----------------------------------------------------------------------------
 
 def exercise1(pdb_str, cif_str):
@@ -46,12 +46,9 @@ def exercise1(pdb_str, cif_str):
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-  assert (number_h_para == number_h-3), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
 
   for ih in h_distances:
-    # One atom is expected to be moved
-    if (ih == 16):
-      continue
     labels = atoms[ih].fetch_labels()
     assert (h_distances[ih] < 0.1), \
       'distance too large: %s  atom: %s (%s) residue: %s ' \
@@ -59,7 +56,6 @@ def exercise1(pdb_str, cif_str):
 
   for type1, type2 in zip(type_list, type_list_known1):
     assert (type1 == type2)
-    #print "'%s'," % type1,
 
 def exercise2(pdb_str, cif_str):
   model = prepare_inputs(pdb_str, cif_str)
@@ -81,8 +77,6 @@ def exercise2(pdb_str, cif_str):
   assert (number_h_para == 0), 'Not all H atoms are parameterized'
 
 pdb_str1 = """\
-REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "02.updated.nomin..pdb"
-REMARK Date 2017-07-10 Time 12:11:01 PDT -0700 (1499713861.46 s)
 CRYST1   15.938   15.073   11.550  90.00  90.00  90.00 P 1
 SCALE1      0.062743  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.066344  0.000000        0.00000
@@ -98,13 +92,12 @@ HETATM    8  N10 3HA   401       7.463   5.583   5.793  1.00 82.31           N
 HETATM    9  O11 3HA   401      10.183   5.752   5.619  1.00 82.09           O
 HETATM   10  O8  3HA   401       5.197   6.868   6.174  1.00 81.05           O
 HETATM   11  O9  3HA   401       5.000   8.734   5.190  1.00 78.80           O
-HETATM   12  H1  3HA   401       7.315   9.910   5.134  1.00 83.17           H
-HETATM   13  H11 3HA   401      10.719   5.854   6.276  1.00 82.09           H
-HETATM   14  H5  3HA   401      10.938   8.151   5.134  1.00 83.82           H
-HETATM   15  H6  3HA   401       9.630  10.073   5.000  1.00 84.24           H
-HETATM   16 H101 3HA   401       7.572   5.175   6.550  1.00 82.31           H
-HETATM   17 H102 3HA   401       7.435   5.000   5.152  1.00 82.31           H
-TER
+HETATM   12  H1  3HA   401       7.298   9.893   5.136  1.00 83.17           H
+HETATM   13  H11 3HA   401       9.740   5.161   6.040  1.00 82.09           H
+HETATM   14  H5  3HA   401      10.939   8.139   5.188  1.00 83.82           H
+HETATM   15  H6  3HA   401       9.630  10.060   4.959  1.00 84.24           H
+HETATM   16 H101 3HA   401       6.580   5.685   5.836  1.00 82.31           H
+HETATM   17 H102 3HA   401       8.100   4.963   5.839  1.00 82.31           H
 END
 """
 
@@ -267,9 +260,7 @@ _chem_comp_plane_atom.dist_esd
 3HA plan-3  C2     0.020
 """
 
-#type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
-#  'alg1a', 'alg1a']
-type_list_known1 = ['flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs']
+type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs', 'alg1a', 'alg1a']
 
 # Zundelion ( [H2O -- H -- OH2]+)
 

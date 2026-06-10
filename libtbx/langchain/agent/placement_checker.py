@@ -67,7 +67,7 @@ def read_pdb_unit_cell(pdb_path):
         the record cannot be found or parsed.
     """
     try:
-        with open(pdb_path) as fh:
+        with open(pdb_path, encoding='utf-8') as fh:
             for line in fh:
                 if line.startswith("CRYST1"):
                     # Columns 7-54 contain a b c alpha beta gamma

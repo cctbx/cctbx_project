@@ -1,0 +1,21 @@
+1. **Input Files Found**: data.mtz, model.pdb, sequence.fa
+
+2. **Experiment Type**: X-ray crystallography
+
+3. **Primary Goal**: Run phenix.phaser for molecular replacement on the provided data. Stop after running phaser; I will look at the output before continuing.
+
+4. **Key Parameters**:
+   - Wavelength: 1.0
+   - Resolution limit: 2.5
+   - Number of expected sites: N/A
+   - Heavy atom type: N/A
+   - Space group: P 21 21 21
+
+5. **Program Parameters**:
+phaser.search_method=fast
+
+6. **Special Instructions**:
+- Use sequence.fa as the sequence file.
+- Stop the workflow immediately after phaser completes.
+
+7. **Stop Condition**: Stop after running phenix.phaser

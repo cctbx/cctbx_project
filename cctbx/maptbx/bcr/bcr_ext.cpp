@@ -11,6 +11,8 @@
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 
+#include <boost/python/reference_existing_object.hpp>
+
 namespace cctbx { namespace maptbx { namespace boost_python {
 
   boost::python::tuple
@@ -31,8 +33,9 @@ namespace {
 
    {
       typedef return_value_policy<return_by_value> rbv;
+      typedef return_value_policy<reference_existing_object> reo;
       class_<bcr_scatterer<> >("bcr_scatterer", no_init)
-        .def(init<cctbx::xray::scatterer<> const&,
+        .def(init<cctbx::xray::scatterer<> &,
                   double,
                   double,
                   af::shared<double>,
@@ -47,7 +50,7 @@ namespace {
                                         arg("nu"),
                                         arg("musq"),
                                         arg("kappi"))))
-        .add_property("scatterer",  make_function(&bcr_scatterer<>::get_scatterer, rbv()))
+        .add_property("scatterer",  make_function(&bcr_scatterer<>::get_scatterer, reo()))
         .add_property("radius",     make_getter(&bcr_scatterer<>::radius,     rbv()))
         .add_property("resolution", make_getter(&bcr_scatterer<>::resolution, rbv()))
         .add_property("mu",         make_getter(&bcr_scatterer<>::mu,         rbv()))

@@ -6,6 +6,7 @@ import libtbx.load_env
 
 
 tst_list_base = [
+  "$D/tst_citation_encoding.py",
   "$D/metric_prefixes.py",
   "$D/tst_utils.py",
   "$D/tst_word_index_generator.py",
@@ -44,6 +45,9 @@ tst_list_base = [
   "$D/tst_program_template.py",
   "$D/tst_version.py",
   '$D/tst_easy_mp_multicore.py',
+  "$D/tst_run_tests_parallel_unique_dirs.py",
+  "$D/tst_run_tests_parallel_retry.py",
+  "$D/tst_conda_dispatcher.py",
   ]
 
 try:

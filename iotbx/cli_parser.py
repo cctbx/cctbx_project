@@ -6,8 +6,6 @@ command-line as well as have standard command-line flags for showing the
 PHIL scope and citations for a program.
 
 '''
-from __future__ import absolute_import, division, print_function
-
 import argparse, getpass, logging, os, sys, textwrap, time
 
 from six.moves import cStringIO as StringIO
@@ -339,13 +337,7 @@ Also, specifying this flag implies that --json is also specified.'''
       self.exit()
 
     # parse arguments
-    if sys.version_info >= (3, 7):
-      # https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.parse_intermixed_args
-      # https://bugs.python.org/issue9338
-      # https://bugs.python.org/issue15112
-      self.namespace = super(CCTBXParser, self).parse_intermixed_args(args)
-    else:
-      self.namespace = super(CCTBXParser, self).parse_args(args)
+    self.namespace = super(CCTBXParser, self).parse_intermixed_args(args)
 
     # process command-line options
     if self.namespace.attributes_level is not None:
@@ -884,7 +876,7 @@ def run_pyside_check():
   Function for checking if PySide2 is available
   '''
   try:
-    import PySide2
+    import PySide2 # import dependency
   except ImportError:
     msg = '''
 ------------------------------------------------------------------------
@@ -1005,6 +997,9 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
   # output JSON
   if namespace.json or namespace.json_filename:
     result = task.get_results_as_JSON()
+    if isinstance(result, dict):
+      import json as js
+      result = js.dumps(result, indent=2)
     if result is not None:
       json_filename = '.'.join([task.get_default_output_filename(), 'json'])
       if namespace.json_filename is not None:

@@ -21,11 +21,13 @@ from langchain_core.prompts import PromptTemplate
 from google.api_core import exceptions as google_exceptions
 
 from libtbx import group_args
-from libtbx.langchain.rag.retriever import (
-  load_persistent_db,
-  create_reranking_retriever,
-  create_log_analysis_chain,
-)
+# v118.G2: retriever functions moved to function-body scope below.
+# rag.retriever imports langchain_chroma which has known protobuf
+# version conflicts in some envs.  Eager top-level import here would
+# crash this module entirely (including prompt-only functions like
+# get_log_analysis_prompt), so the imports are deferred to
+# analyze_log_summary() where they are actually used.
+# See docs/DEVELOPER_GUIDE.md "Optional dependency handling".
 
 
 # =============================================================================
@@ -125,6 +127,13 @@ async def analyze_log_summary(log_info, llm, embeddings,
       print(result.analysis)
   """
   try:
+    # v118.G2: lazy retriever import — see module-level note above.
+    from libtbx.langchain.rag.retriever import (
+      load_persistent_db,
+      create_reranking_retriever,
+      create_log_analysis_chain,
+    )
+
     vectorstore = load_persistent_db(embeddings, db_dir=db_dir)
     analysis_prompt = get_log_analysis_prompt()
     retriever = create_reranking_retriever(vectorstore, llm, timeout=timeout)
@@ -171,9 +180,14 @@ async def analyze_log_summary(log_info, llm, embeddings,
     )
 
   except google_exceptions.ResourceExhausted as e:
+    # Log full details for debugging, return clean user message.
+    # No period before the action text — contains_sorry() in rest/__init__.py
+    # truncates at the first '.' or '\n' and appends "Please wait a minute"
+    # unless "please" already appears in the first chunk.
+    print(f"Google API quota exceeded. Full error: {e}")
     error_message = (
-      "ERROR: Google AI API quota exceeded. "
-      f"Details: {e}"
+      "Google API quota exceeded, please try another provider "
+      "(eg provider=openai) or wait for quota reset"
     )
     print(error_message)
     return group_args(
@@ -183,9 +197,26 @@ async def analyze_log_summary(log_info, llm, embeddings,
     )
 
   except Exception as e:
-    error_message = (
-      "Reranking failed - try again in a"
-      " couple minutes..." + str(e))
+    e_str = str(e)
+    e_lower = e_str.lower()
+    # Langchain wraps google quota errors as generic exceptions with
+    # "RESOURCE_EXHAUSTED" in the message — the ResourceExhausted branch
+    # above only catches the raw google exception.
+    _is_quota = (
+      "resource_exhausted" in e_lower or
+      ("quota" in e_lower and "exceeded" in e_lower)
+    )
+    if _is_quota:
+      # Log full details for debugging, return clean user message.
+      print(f"Google API quota exceeded. Full error: {e_str}")
+      error_message = (
+        "Google API quota exceeded, please try another provider "
+        "(eg provider=openai) or wait for quota reset"
+      )
+    else:
+      error_message = (
+        "Reranking failed - try again in a"
+        " couple minutes..." + e_str)
     print(error_message)
     return group_args(
       group_args_type='answer',

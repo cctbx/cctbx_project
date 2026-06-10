@@ -72,7 +72,7 @@ def test_yaml_config():
         "knowledge", "programs.yaml"
     )
 
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
         programs = yaml.safe_load(f)
 
     phaser = programs.get("phenix.phaser", {})

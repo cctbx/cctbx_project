@@ -182,6 +182,8 @@ def _build_context(data_characteristics=None,
     "has_ligand_code": False,
     "has_anomalous_atoms": False,
     "wants_mr_sad": False,
+    "wants_polder": False,
+    "wants_validation_only": False,
     "model_is_placed": False,
     "resolution": None,
     "is_twinned": None,
@@ -192,24 +194,62 @@ def _build_context(data_characteristics=None,
   pdb_files = []
   cif_files = []
   files = available_files or []
+
+  # Ligand PDB hints, split into two tiers:
+  #
+  # Tier 1 (unambiguous): These words in a PDB filename
+  # always mean a ligand coordinate file, never a protein
+  # model.  Safe to skip has_search_model.
+  _ligand_pdb_certain = ("ligand", "lig_", "lig.")
+  #
+  # Tier 2 (ambiguous): These MIGHT indicate a ligand
+  # file but also appear in protein model names (e.g.
+  # drug_resistant_mutant.pdb, kinase_inhibitor_complex.pdb).
+  # These set _has_ligand_pdb for the advice-based check
+  # below but do NOT block has_search_model on their own.
+  _ligand_pdb_broad = (
+    "random", "compound", "drug", "inhibitor",
+  )
+
   for f in files:
     ext = os.path.splitext(f)[1].lower()
     bn = os.path.basename(f).lower()
     if ext in (".pdb", ".ent"):
-      ctx["has_search_model"] = True
       has_pdb = True
       pdb_files.append(bn)
+      # Check if this PDB is unambiguously a ligand file.
+      # Only the "certain" hints (ligand, lig_, lig.) are
+      # safe to use here — broader hints like "drug" or
+      # "inhibitor" can appear in protein model filenames
+      # (drug_resistant_mutant.pdb, inhibitor_complex.pdb).
+      if any(h in bn for h in _ligand_pdb_certain):
+        ctx["has_ligand_code"] = True
+        # Don't set has_search_model for ligand PDBs
+      else:
+        ctx["has_search_model"] = True
     elif ext == ".cif":
       cif_files.append(bn)
-    elif ext in (".mtz", ".sca", ".hkl"):
-      if ctx["experiment_type"] is None:
-        ctx["experiment_type"] = "xray"
-    elif ext in (".mrc", ".ccp4", ".map"):
-      ctx["experiment_type"] = "cryoem"
     elif ext in (
       ".seq", ".fa", ".fasta", ".pir", ".dat",
     ):
       ctx["has_sequence"] = True
+
+  # v119.H18: delegate experiment-type inference to the shared
+  # helper in file_utils so plan_generator and directive_extractor
+  # use a single source of truth.  Behavioral note: the helper
+  # returns None for "mixed input" (both .mtz and .ccp4 present),
+  # which is semantically tighter than the previous last-write-wins
+  # logic.  In practice plan-generation inputs are never mixed;
+  # a K-test pins this case.
+  if ctx["experiment_type"] is None:
+    try:
+      from libtbx.langchain.agent.file_utils import (
+        infer_experiment_type_from_files)
+    except ImportError:
+      from agent.file_utils import infer_experiment_type_from_files
+    inferred_type, _ = infer_experiment_type_from_files(files)
+    if inferred_type:
+      ctx["experiment_type"] = inferred_type
 
   # Classify CIF files after scanning all files
   # so we know whether a PDB model is present.
@@ -219,22 +259,33 @@ def _build_context(data_characteristics=None,
     else:
       ctx["has_search_model"] = True
 
-  # Detect potential ligand PDB files.
-  # When multiple PDBs exist and one has a name
-  # suggesting it's a ligand model (not the main
-  # protein), mark has_ligand_code. This handles
-  # cases where ligands are provided as PDB instead
-  # of CIF (common in tutorials).
-  _ligand_pdb_hints = (
-    "ligand", "lig_", "lig.", "random",
-    "compound", "drug", "inhibitor",
+  # Detect placed-model signals from filenames.
+  # PDB files named *_mr_solution* are already-placed
+  # MR models (not search models).  Boundary-aware:
+  # require _ before mr_solution (or at start of name)
+  # so nmr_solution.pdb doesn't match.
+  for bn in pdb_files:
+    if ('_mr_solution' in bn or
+        bn.startswith('mr_solution')):
+      ctx["model_is_placed"] = True
+      break
+
+  # Track whether any PDB matched ligand hints (used
+  # below by the advice-based ligand detection).
+  # Certain hints match regardless; broad hints only
+  # match when there are 2+ PDB files (the original
+  # guard — prevents "drug_resistant_mutant.pdb" alone
+  # from triggering ligand detection, while still
+  # catching model.pdb + drug.pdb as model + ligand).
+  _has_ligand_pdb = any(
+    any(h in pbn for h in _ligand_pdb_certain)
+    for pbn in pdb_files
   )
-  _has_ligand_pdb = False
-  if len(pdb_files) >= 2:
-    for pbn in pdb_files:
-      if any(h in pbn for h in _ligand_pdb_hints):
-        _has_ligand_pdb = True
-        break
+  if not _has_ligand_pdb and len(pdb_files) >= 2:
+    _has_ligand_pdb = any(
+      any(h in pbn for h in _ligand_pdb_broad)
+      for pbn in pdb_files
+    )
 
   # --- From directives ---
   d = directives or {}
@@ -344,7 +395,7 @@ def _build_context(data_characteristics=None,
 
   # Model placement from advice: if user says
   # "refine", "fit ligand", etc. WITHOUT mentioning
-  # "molecular replacement", "phaser", or "solve",
+  # "molecular replacement", "phaser", "solve", etc.,
   # the model is already placed.
   _mr_keywords = (
     "molecular replacement", "phaser", "solve",
@@ -372,6 +423,15 @@ def _build_context(data_characteristics=None,
   )
   if _mentions_placed and not _mentions_mr:
     ctx["model_is_placed"] = True
+
+  # Polder override (v115.05): polder ALWAYS implies
+  # the model is placed (you need a placed model to
+  # compute omit maps).  Override even when "solve"
+  # is present, because "Solve omit maps with polder"
+  # is a task request, not an MR request.
+  if "polder" in advice:
+    ctx["model_is_placed"] = True
+    ctx["wants_polder"] = True
 
   # Also check directives for placement signals
   d = directives or {}
@@ -401,6 +461,16 @@ def _build_context(data_characteristics=None,
     "phenix.molprobity",
   ):
     ctx["model_is_placed"] = True
+
+  # Polder intent from after_program directive.
+  # (The advice-based detection already happened above
+  # in the polder override block.)
+  if "polder" in _after:
+    ctx["wants_polder"] = True
+
+  # v115.09: Validation-only intent from directives
+  if wf.get("wants_validation_only"):
+    ctx["wants_validation_only"] = True
 
   # --- From data characteristics ---
   dc = data_characteristics or {}
@@ -693,3 +763,156 @@ def _repair_plan_inner(plan, user_directives):
         % (prog_str, provides_str)
       )
   return messages
+
+
+# ── Resume reopen (v119.H15 Item 2) ─────────────────
+
+def reopen_stages_for_directives(plan, directives,
+                                 structure_model=None):
+  """Reopen plan stages whose strategy is contradicted
+  by new directives provided on resume.
+
+  Tom's bromodomain session (run 135 → 144) exposed a
+  gap on resume: when the user provided new advice
+  ("refine the protein-ligand complex with generating
+  r-free flags"), the directives were re-extracted
+  correctly, but the per-stage statuses (corrupted by
+  the H15 Item 1 bug — every stage stamped COMPLETE)
+  were not re-evaluated.  Result: gate immediately
+  re-fired "all stages complete" and the LLM picked
+  polder.
+
+  This function targets the LATEST completed stage
+  whose `programs` contains a program named in
+  directives.program_settings AND whose recorded
+  strategy/result_metrics don't already honor the new
+  directive.  That stage is reopened (status → PENDING,
+  cycles_used → 0, runtime fields cleared).  Earlier
+  stages with the same program are NOT reopened — their
+  output isn't invalidated by a contract change that
+  only affects the FINAL refinement, for example.
+
+  This is a deliberate departure from the broader
+  "reopen everything matching" rule the H15 plan
+  considered: Gemini's review pointed out that the
+  broader rule wipes out legitimate intermediate work
+  in any non-trivial multi-stage pipeline.  Targeted
+  single-stage reopen keeps blast radius O(1).
+
+  The function does NOT cascade-reset stages AFTER the
+  reopened one.  Pre-H15 retreat_to() did that; here,
+  stages downstream of the reopened one will simply
+  re-evaluate naturally on the next cycle and the
+  catch-up logic in record_stage_cycle (now strict per
+  H15 Item 1) handles any remaining sequencing.
+
+  Args:
+    plan: StructurePlan.  Mutated in place.
+    directives: dict with optional "program_settings"
+      key (the standard extracted-directives shape).
+    structure_model: optional, reserved for future
+      contract-matching extensions (e.g. comparing
+      directives against actual recorded result_metrics).
+      Currently unused — Rule 3 from the original H15
+      plan was dropped per Gemini critique.
+
+  Returns:
+    list of stage ids that were reopened (for logging).
+    Empty list if no reopens needed.
+
+  Never raises.
+  """
+  if plan is None or not isinstance(directives, dict):
+    return []
+  try:
+    return _reopen_stages_inner(plan, directives)
+  except Exception:
+    logger.debug(
+      "reopen_stages_for_directives failed",
+      exc_info=True,
+    )
+    return []
+
+
+def _reopen_stages_inner(plan, directives):
+  """Inner reopen logic.  May raise."""
+  try:
+    try:
+      from libtbx.langchain.knowledge.plan_schema \
+        import STAGE_PENDING, STAGE_COMPLETE
+    except ImportError:
+      from knowledge.plan_schema import (
+        STAGE_PENDING, STAGE_COMPLETE,
+      )
+  except ImportError:
+    # plan_schema unavailable — caller will degrade
+    # gracefully via empty list.
+    return []
+
+  ps = directives.get("program_settings", {}) or {}
+  # Pull program names from directives.  We accept BOTH
+  # full names ("phenix.refine") and bare names
+  # ("refine"); _program_matches_phase handles variant
+  # matching downstream.  Skip the "default" key — it
+  # applies to every program, not a specific one.
+  target_progs = set()
+  for prog_key in ps.keys():
+    if prog_key and prog_key != "default":
+      target_progs.add(prog_key)
+  if not target_progs:
+    return []
+
+  reopened = []
+  # For each target program, find the LATEST completed
+  # stage that contains it, and reopen ONLY that one.
+  # "Latest" = highest index, since stages execute in
+  # plan order.  Targeted reopen avoids the cascade
+  # problem Gemini flagged.
+  for prog in target_progs:
+    target_idx = None
+    for i in range(len(plan.stages) - 1, -1, -1):
+      s = plan.stages[i]
+      if s.status != STAGE_COMPLETE:
+        continue
+      if not s.programs:
+        continue
+      # Use program-matching helper if available
+      try:
+        try:
+          from libtbx.langchain.knowledge.plan_schema \
+            import _program_matches_phase
+        except ImportError:
+          from knowledge.plan_schema import (
+            _program_matches_phase,
+          )
+        if _program_matches_phase(prog, s.programs):
+          target_idx = i
+          break
+      except ImportError:
+        # Fallback: exact match
+        if prog in s.programs:
+          target_idx = i
+          break
+    if target_idx is None:
+      continue
+    # Reopen the target stage in place.  Reset runtime
+    # state to mirror retreat_to() semantics (cycles_used
+    # → 0, runtime fields cleared, failure_reason
+    # cleared if previously set by H15 Item 1).
+    target = plan.stages[target_idx]
+    target.status = STAGE_PENDING
+    target.cycles_used = 0
+    target.start_cycle = None
+    target.end_cycle = None
+    target.result_metrics = {}
+    target.failure_reason = None
+    target.entered_via = None
+    reopened.append(target.id)
+    # Adjust current_stage_index: if it's PAST the
+    # reopened stage, pull it back so the next gate
+    # eval sees the reopened stage as the current
+    # active one (after mark_stage_started).
+    if plan.current_stage_index > target_idx:
+      plan.current_stage_index = target_idx
+
+  return reopened

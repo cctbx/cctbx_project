@@ -1,7 +1,6 @@
 """Construct ribbons representing a model"""
 from __future__ import absolute_import, division, print_function
 from libtbx.program_template import ProgramTemplate
-import iotbx.pdb
 import mmtbx.secondary_structure
 from pathlib import Path
 import numpy as np

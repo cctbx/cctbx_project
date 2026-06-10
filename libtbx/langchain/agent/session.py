@@ -1389,6 +1389,40 @@ class AgentSession:
         self.data["ignored_commands"] = {}
         self.save()
 
+    # Parameters that must NEVER be injected into specific programs, known
+    # ahead of time (independent of any runtime "learned" failure).  These are
+    # params that are either not accepted by the program at all, or that the
+    # agent's workflow must not pass even though the program nominally accepts
+    # them.  Unioned into get_bad_inject_params() so the very FIRST command for
+    # the program is already correct -- without this, the agent would inject
+    # the param, the program would reject it ("Unknown command line parameter"
+    # / "Some PHIL parameters are not recognized"), the cycle would fail, and
+    # only THEN would record_bad_inject_param() learn to skip it.  Proactive,
+    # not reactive.
+    #   - phenix.resolve_cryo_em does not accept a top-level ncs_file, and the
+    #     agent's cryo-EM density-modification workflow must not supply one
+    #     (a stray .ncs_spec from an earlier map-symmetry/segmentation step was
+    #     being auto-mapped to ncs_file=, breaking the run).
+    #     NOTE: resolve_cryo_em has NO ncs_file parameter at all (verified
+    #     against `phenix.resolve_cryo_em --show_defaults`: no `ncs_file` token
+    #     in any scope).  Symmetry, when actually wanted, is passed as
+    #     input_files.symmetry_file=my_ncs.ncs_spec -- a DISTINCT key that this
+    #     blacklist does not touch.  Stripping the stray ncs_file (rather than
+    #     remapping it to symmetry_file) is intended: the stray .ncs_spec was
+    #     not part of the plan, and resolve_cryo_em estimates symmetry itself.
+    #
+    # WARNING (for future entries): command_postprocessor.sanitize_command
+    # matches entries against BOTH the full dotted key and the short (last
+    # component) key.  So an entry like "ncs_file" will strip ANY token whose
+    # short key is "ncs_file" (e.g. "some.scope.ncs_file=...") for that program.
+    # That is safe for resolve_cryo_em (it has no valid ncs_file in any scope),
+    # but when adding new entries make sure the name cannot collide with a
+    # VALID nested PHIL parameter of the same program -- if it can, blacklist
+    # the FULL dotted path, not the short name.
+    _STATIC_BAD_INJECT_PARAMS = {
+        "phenix.resolve_cryo_em": ["ncs_file"],
+    }
+
     def record_bad_inject_param(self, program_name, param_key):
         """Record a parameter name that caused an 'Unknown command line parameter'
         failure for a specific program.
@@ -1412,6 +1446,12 @@ class AgentSession:
     def get_bad_inject_params(self, program_name):
         """Return the set of parameter keys blacklisted for *program_name*.
 
+        Combines the statically-known never-inject params
+        (_STATIC_BAD_INJECT_PARAMS) with any learned at runtime via
+        record_bad_inject_param().  The static set means a program with a
+        known-invalid param is handled correctly on its FIRST command, with no
+        failed cycle required to learn it.
+
         Args:
             program_name: e.g. "phenix.refine"
 
@@ -1419,7 +1459,32 @@ class AgentSession:
             set of str — parameter keys to skip during injection
         """
         bad = self.data.get("bad_inject_params", {})
-        return set(bad.get(program_name, []))
+        learned = set(bad.get(program_name, []))
+        static = set(self._STATIC_BAD_INJECT_PARAMS.get(program_name, []))
+        return learned | static
+
+    def get_all_bad_inject_params(self):
+        """Return the FULL blacklist as a {program_name: [keys]} dict, merging
+        the statically-known never-inject params with everything learned at
+        runtime, across all programs.
+
+        This is what must be sent to the server (session_info), because the
+        server-side command builder does its own injection and only sees what
+        the client transmits.  Sending the raw self.data["bad_inject_params"]
+        (learned only) would omit the static entries, so a server-mode run
+        would still inject a statically-blacklisted param (e.g. ncs_file into
+        phenix.resolve_cryo_em) on the first command.
+        """
+        merged = {}
+        learned = self.data.get("bad_inject_params", {}) or {}
+        for prog, keys in learned.items():
+            merged[prog] = list(keys)
+        for prog, keys in self._STATIC_BAD_INJECT_PARAMS.items():
+            existing = merged.setdefault(prog, [])
+            for k in keys:
+                if k not in existing:
+                    existing.append(k)
+        return merged
 
     # =========================================================================
     # BEST FILES TRACKING
@@ -2836,6 +2901,19 @@ FINAL REPORT:"""
             files = [f for f in files if _is_valid_file(f)]
         except Exception:
             pass  # Non-critical — if import fails, skip validation
+
+        # 5. Filter out intermediate output files that should never be
+        #    used as inputs to subsequent programs.  These files enter
+        #    available_files through _discover_cycle_outputs (glob scan
+        #    of output directories) and record_result (output_files list).
+        #    Matching on basename only to avoid directory-name false
+        #    positives.
+        _intermediate_substrings = ['_pose_', '_pose.']
+        files = [
+            f for f in files
+            if not any(sub in os.path.basename(f).lower()
+                       for sub in _intermediate_substrings)
+        ]
 
         return files
 

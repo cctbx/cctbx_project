@@ -5,7 +5,8 @@ from __future__ import division
 import os
 import shutil  # <--- Added for cleanup
 
-from libtbx.langchain.core.llm import get_llm_and_embeddings
+from libtbx.langchain.core.llm import (
+  get_llm_and_embeddings, verify_embeddings, default_model_for_provider)
 # Import the chunker explicitly
 from libtbx.langchain.rag.document_loader import (
   load_all_docs_from_folder, _custom_chunker)
@@ -70,6 +71,27 @@ def run(docs_folder_path_list=["./data_docs/"], db_dir=None,
   except ValueError as e:
     print(e)
     raise ValueError("Sorry, unable to set up LLM with %s" % (provider))
+
+  # Preflight the embedding model with one real call BEFORE building the
+  # database.  Catches the silent-fallback failure where a wrong embedding
+  # deployment name (notably on the portkey/Azure gateway) is routed to a chat
+  # model (e.g. gpt-5-mini) instead of erroring -- which would otherwise build
+  # a database of meaningless vectors.  Prints a LOUD warning but does NOT
+  # abort (a stale expected-dimension table must never block a legitimate
+  # build).  Placed here so EVERY caller (rebuild, update, ...) is covered.
+  try:
+    # Prefer the model name actually built into the embeddings object (LangChain
+    # OpenAI/Ollama/Google embeddings all expose `.model`), so the check matches
+    # what will really be used -- including any env override (e.g.
+    # OLLAMA_EMBED_MODEL) that a re-derived default would miss.  Fall back to the
+    # provider default only if the object does not expose it.
+    _emodel = getattr(embeddings, "model", None) \
+        or default_model_for_provider(provider, role="rag_embedding")
+    verify_embeddings(embeddings, embedding_model_name=_emodel,
+                      provider=provider, log=print)
+  except Exception as _e:
+    print("WARNING: embedding preflight could not run (%s: %s); continuing."
+          % (type(_e).__name__, _e))
 
   # Pass the CHUNKED docs, not the raw docs
   create_and_persist_db(chunked_docs, embeddings, db_dir)

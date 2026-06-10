@@ -327,6 +327,37 @@ def point_H_from_A_X_d_angle(A, X, d, ang_deg):
   H = v_add(X, v_mul(d, direction))
   return H
 
+def find_H1_H2(X, d, angle_deg):
+  """
+  AI generated code.
+
+  Prompt: In 3D. Find coordinates of point H1 and H2, if we know both are
+  distanced by
+  d from point X, we know the angle (H1,X,H2). Coordinates of
+  point X are known. Need a function in python. Angle is in degrees. Only
+  inputs are: coordinates X, distance d and angle H1XH2.
+  Use pure python. If solution is not unique, just pick any one.
+  Return one pair (H1, H2) in 3D such that:
+    |H1 - X| = d
+    |H2 - X| = d
+    angle(H1, X, H2) = angle_deg  (in degrees)
+
+  Picks a convenient solution in the XY-plane.
+  """
+  x, y, z = map(float, X)
+  d = float(d)
+  if d < 0: raise ValueError("d must be non-negative")
+  # If d == 0, both points must coincide with X
+  if d == 0: return (x, y, z), (x, y, z)
+  theta = math.radians(angle_deg)
+  # Choose direction for H1 along +x axis from X
+  H1 = (x + d, y, z)
+  # Place H2 at the requested angle from H1 around X in the XY-plane
+  H2 = (x + d * math.cos(theta),
+        y + d * math.sin(theta),
+        z)
+  return H1, H2
+
 def workaround_001(model, selection, log=None):
   if selection.size()==0: return None
   atoms = model.get_hierarchy().atoms()
@@ -372,7 +403,7 @@ def workaround_001(model, selection, log=None):
         L = [x for x in i_seqs if x != h_to_opt[j].bond and
              x not in set(selection)]
         if len(L)==0: continue
-        if len(L)>1: raise ValueError("It should really be 1.")
+        #if len(L)>1: raise ValueError("It should really be 1.")
         h_to_opt[j].angle = L[0]
         h_to_opt[j].a = ap.angle_ideal
   # Look in planes
@@ -441,6 +472,26 @@ def workaround_001(model, selection, log=None):
   # Return list of what was not built
   return flex.size_t(list(set(selection) - set(sel_built)))
 
+def workaround_002(model, selection):
+  h = model.get_hierarchy()
+  atoms = h.atoms()
+  for m in h.models():
+    for c in m.chains():
+      for con in c.conformers():
+        for r in con.residues():
+          if not get_class(name=r.resname) == "common_water": continue
+          three = r.atoms().extract_i_seq()
+          #assert three in selection
+          ij=[]
+          for atom in r.atoms():
+            e = atom.element.strip().upper()
+            if e == "O": X = atom.xyz
+            else:        ij.append(atom.i_seq)
+          if len(ij)!=2: continue
+          p1, p2 = find_H1_H2(X=X, d=0.85, angle_deg=103.91)
+          atoms[ij[0]].xyz = p1
+          atoms[ij[1]].xyz = p2
+
 class place_hydrogens():
   '''
   Add H atoms to a model
@@ -470,7 +521,6 @@ class place_hydrogens():
                keep_existing_H       = False,
                validate_e            = False,
                print_time            = False):
-
     self.model                 = model
     self.use_neutron_distances = use_neutron_distances
     self.n_terminal_charge     = n_terminal_charge
@@ -484,6 +534,11 @@ class place_hydrogens():
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
     self.site_labels_no_para    = list()
+    # Names of restraint dictionaries auto-generated for unknown ligands during
+    # placement; these are throwaway (purpose-built for H placement) and are
+    # removed from the model before returning so they don't leak into
+    # downstream geometry validation.
+    self.auto_restraint_names   = list()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     self.n_H_initial            = 0
@@ -501,6 +556,26 @@ class place_hydrogens():
       self.time_reset              = None
       self.time_idealize           = None
       self.time_remove_H_on_links  = None
+
+# ------------------------------------------------------------------------------
+
+  def remove_auto_restraint_objects(self):
+    '''
+    Remove the placeholder restraint dictionaries that were auto-generated for
+    unknown ligands during H placement (see add_missing_H_atoms_at_bogus_position).
+
+    The grm has already been built at this point, so the placement restraints
+    have served their purpose. We assign self.model._restraint_objects directly
+    instead of calling set_restraint_objects(): the latter unsets the restraints
+    manager, and we need the already-built grm (and riding-H manager) to remain
+    intact for the rest of run() and for callers that reuse it.
+    '''
+    if not self.auto_restraint_names: return
+    ro = self.model.get_restraint_objects()
+    if not ro: return
+    self.model._restraint_objects = [
+      (name, obj) for name, obj in ro
+      if name not in self.auto_restraint_names]
 
 # ------------------------------------------------------------------------------
 
@@ -543,10 +618,6 @@ class place_hydrogens():
     pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position(
       exclude_water = self.exclude_water)
     self.time_add_missing_H = round(time.time()-t0, 2)
-    # DEBUG
-    #print(pdb_hierarchy.composition().n_hd)
-    #f = open("intermediate1.pdb","w")
-    #f.write(self.model.model_as_pdb())
 
     # Place N-terminal propeller hydrogens
     # TODO double check N-terminal position for PRO residues
@@ -558,11 +629,6 @@ class place_hydrogens():
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
-
-    # DEBUG
-    #f = open("intermediate2.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
     # Make new model obj and get restraints manager
     # ---------------------------------------------
     p = get_reduce_pdb_interpretation_params(self.use_neutron_distances)
@@ -579,13 +645,13 @@ class place_hydrogens():
                        make_restraints=True,
                        # retain_zero_dihedrals=True,
                        )
-    #self.model.idealize_h_minimization()
-    #STOP()
+
     self.time_make_grm = round(time.time()-t0, 2)
-
-    #f = open("intermediate3.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
+    # Drop the throwaway auto-generated ligand restraints now that the grm has
+    # been built. They were only needed to place H on unknown ligands; keeping
+    # them on the model would leak idealized placement-only geometry (0.9x
+    # bonds, esd=1/period=1 torsions) into any downstream re-interpretation.
+    self.remove_auto_restraint_objects()
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -605,9 +671,6 @@ class place_hydrogens():
 
     sel_h = self.model.get_hd_selection()
 
-    #f = open("intermediate3a.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
     # Setup riding H manager
     # ----------------------
     t0 = time.time()
@@ -616,7 +679,6 @@ class place_hydrogens():
     if riding_h_manager is None:
       return
     self.time_riding_manager = round(time.time()-t0, 2)
-
     # Remove H that could not be parameterized
     # ----------------------------------------
     t0 = time.time()
@@ -626,29 +688,26 @@ class place_hydrogens():
 
     # XXX DEAL WITH WATER IN ANOTHER workaround_00x
     water_selection = self.model.solvent_selection()
-    sel_h_not_in_para = workaround_001(
-      model     = self.model,
-      selection = (sel_h_not_in_para.select(~water_selection)).iselection())
-    sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
+    # workaround_001 is now superseded by the corrected no-dihedral handling
+    # in mmtbx/hydrogens/connectivity.py::process_a0_angles_and_third_neighbors_without_dihedral.
+    # sel_h_not_in_para = workaround_001(
+    #   model     = self.model,
+    #   selection = (sel_h_not_in_para.select(~water_selection)).iselection())
+    # sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
 
+    if not self.exclude_water and water_selection.count(True)>0:
+      workaround_002(
+        model     = self.model,
+        selection = water_selection.iselection())
+      water_selection = self.model.solvent_selection()
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
       for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para_but_not_lone)]
     if not sel_h_not_in_para.all_eq(False):
+      sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
-
-    #f = open("intermediate4.pdb","w")
-    #f.write(self.model.model_as_pdb())
-
-# to be removed; was for curiosity only
-#    if self.validate_e:
-#      t0 = time.time()
-#      self.validate_electrons()
-#      if self.print_time:
-#        print("validate electrons:", round(time.time()-t0, 2))
-
     # Reset occupancies, ADPs and idealize H atom positions
     # -----------------------------------------------------
     t0 = time.time()
@@ -702,25 +761,27 @@ class place_hydrogens():
           continue
         elif (self.n_terminal_charge == 'first_in_chain'):
           pass
+        # SAC in 5xdq, 5zcp. Never needs propeller. Also AYA
+        n = None
         for ag in rgs.atom_groups():
-          # SAC in 5xdq, 5zcp. Never needs propeller. Also AYA
-          for ag in rgs.atom_groups():
-            n=ag.get_atom('N') # assumes atom name "N"
-            if n: break
-          if not n: continue
-          bonds=bonds_in_restraints(n, exclude_hydrogens=True)
-          heavies=2
-          if ag.resname in ['PRO']: # needs a PRO child lookup
-            heavies=3
-          if len(bonds)>=heavies: continue
-          if (get_class(name=ag.resname) in
-              ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-            if ag.get_atom('H'):
-              ag.remove_atom(ag.get_atom('H'))
-          # TODO make the function below smart, so it
-          # 1) knows when to add H1H2H3 or not
-          # 2) renames H to H1 (so no need to remove it beforehand)
-          rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
+          n = ag.get_atom('N') # assumes atom name "N"
+          if n: break
+        if not n: continue
+        bonds = bonds_in_restraints(n, exclude_hydrogens=True)
+        heavies = 2
+        if ag.resname in ['PRO']: # needs a PRO child lookup
+          heavies = 3
+        if len(bonds) >= heavies: continue
+        if (get_class(name=ag.resname) in
+            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+          for ag_h in rgs.atom_groups():
+            h = ag_h.get_atom('H')
+            if h:
+              ag_h.remove_atom(h)
+        # TODO make the function below smart, so it
+        # 1) knows when to add H1H2H3 or not
+        # 2) renames H to H1 (so no need to remove it beforehand)
+        rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
 
   # ----------------------------------------------------------------------------
 
@@ -769,8 +830,11 @@ class place_hydrogens():
             if cif_object:
               ro = self.model.get_restraint_objects()
               if ro is None: ro=[]
-              ro.append(('auto_%s' % ag.resname, cif_object))
+              auto_name = 'auto_%s' % ag.resname
+              ro.append((auto_name, cif_object))
               self.model.set_restraint_objects(ro)
+              if auto_name not in self.auto_restraint_names:
+                self.auto_restraint_names.append(auto_name)
 
             expected_h = []
             #expected_ha = []

@@ -136,6 +136,10 @@ public:
 
   void compute_gradients(af::ref<FloatType, af::c_grid<3> > map_data) {
 
+    af::c_grid<3> a1 = map.accessor();
+    af::c_grid<3> a2 = map_data.accessor();
+    for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
+
     target = 0.;
     for (int iz = 0; iz < Nz; ++iz) {
       for (int iy = 0; iy < Ny; ++iy) {

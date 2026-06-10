@@ -66,7 +66,11 @@ if (libtbx.env.build_options.enable_boost_threads and
   # This environment is to be used latter to build Boost libraries
   # So we need a clean one without extra library linking.
   env_boost_shlibs_base = env_base.Clone()
-  libs = ['boost_thread', 'boost_system']
+  libs = ['boost_thread']
+  # starting with Boost 1.89, Boost.System is a header only library
+  # https://www.boost.org/releases/1.89.0/
+  if env_etc.boost_version < 108900:
+    libs.append('boost_system')
   if boost_thread_uses_winthreads:
     libs.append('boost_chrono')
   # In case env_base specifies LIBS already, don't override but instead

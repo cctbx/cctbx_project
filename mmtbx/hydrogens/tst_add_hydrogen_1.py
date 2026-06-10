@@ -20,6 +20,19 @@ def run():
   test_009()
 
 # ------------------------------------------------------------------------------
+def write_models(model_initial, model_h_added):
+  f = open("m_initial.pdb","w")
+  f.write(model_initial.model_as_pdb())
+  f.close()
+  f = open("m_initial.cif","w")
+  f.write(model_initial.model_as_mmcif())
+  f.close()
+  f = open("m_added.pdb","w")
+  f.write(model_h_added.model_as_pdb())
+  f.close()
+  f = open("m_added.cif","w")
+  f.write(model_h_added.model_as_mmcif())
+  f.close()
 
 def compare_models(pdb_str,
                    contains     = None,
@@ -59,21 +72,12 @@ def compare_models(pdb_str,
 
   # For debugging
   if 0:
-    f = open("m_initial.pdb","w")
-    f.write(model_initial.model_as_pdb())
-    f.close()
-    f = open("m_initial.cif","w")
-    f.write(model_initial.model_as_mmcif())
-    f.close()
-    f = open("m_added.pdb","w")
-    f.write(model_h_added.model_as_pdb())
-    f.close()
-    f = open("m_added.cif","w")
-    f.write(model_h_added.model_as_mmcif())
-    f.close()
+    write_models(model_initial, model_h_added)
 
   ph_h_added = model_h_added.get_hierarchy()
-  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
+  if not ph_initial.is_similar_hierarchy(other=ph_h_added):
+    write_models(model_initial, model_h_added)
+  assert ph_initial.is_similar_hierarchy(other=ph_h_added), 'Diffs\n%s\n====\n%s' % (ph_initial.show(),ph_h_added.show())
 
   number_h_added = hd_sel_h_added.count(True)
   assert(number_h_expected == number_h_added)
@@ -186,9 +190,9 @@ ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
 ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
-ATOM      5  H1  GLY A   1      -8.818   5.479   6.162  1.00 16.77           H
-ATOM      6  H2  GLY A   1      -9.801   4.456   6.477  1.00 16.77           H
-ATOM      7  H3  GLY A   1      -8.383   4.140   6.523  1.00 16.77           H
+ATOM      5  H1  GLY A   1      -8.200   4.928   6.298  1.00 16.77           H
+ATOM      6  H2  GLY A   1      -9.618   5.243   6.252  1.00 16.77           H
+ATOM      7  H3  GLY A   1      -9.183   3.904   6.613  1.00 16.77           H
 ATOM      8  HA3 GLY A   1      -9.929   3.858   4.426  1.00 16.57           H
 ATOM      9  HA2 GLY A   1      -8.861   4.970   4.084  1.00 16.57           H
 ATOM     10  N   ASN A   2      -7.656   2.923   3.155  1.00 15.02           N

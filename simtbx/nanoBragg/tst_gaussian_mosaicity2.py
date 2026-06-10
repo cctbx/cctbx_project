@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.matrix import sqr,col
-from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
 import math
 from libtbx.test_utils import approx_equal

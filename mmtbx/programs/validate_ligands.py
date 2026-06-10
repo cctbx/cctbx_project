@@ -31,6 +31,23 @@ save_reduce2_model = False
   .type = bool
 verbose = False
   .type = bool
+gui
+  .help = GUI-specific parameters
+{
+  output_dir = None
+    .type = path
+    .style = output_dir
+
+  data_column_label = None
+    .type = str
+    .style = noauto renderer:draw_any_label_widget
+    .input_size = 200
+
+  free_column_label = None
+    .type = str
+    .style = noauto renderer:draw_any_label_widget
+    .input_size = 200
+}
 """
 
 # =============================================================================
@@ -176,6 +193,7 @@ RSCC.
     self.model_fn_reduce2 = None
     #
     model_fn = self.data_manager.get_default_model_name()
+    self._original_model_fn = model_fn
     data_fn = self.data_manager.get_default_miller_array_name()
     map_fn = self.data_manager.get_default_real_map_name()
 
@@ -189,9 +207,10 @@ RSCC.
 
     # get model object from input file
     m = self.data_manager.get_model()
+    m.set_log(log = null_out())
     if self.data_manager.has_restraints():
       m.set_stop_for_unknowns(False)
-      m.set_log(log = null_out())
+      #m.set_log(log = null_out())
       m.process(make_restraints=False)
 
     # stop if multi-model file
@@ -255,20 +274,9 @@ RSCC.
     #  print(_ro[0])
     #  print(_ro[1]['comp_list']['_chem_comp.three_letter_code'][0])
 
-    self.working_model.set_restraint_objects(ro_no_duplicates)
-    self.working_model.set_stop_for_unknowns(False)
-    pi = self.working_model.get_current_pdb_interpretation_params()
-    pi.pdb_interpretation.allow_polymer_cross_special_position = True
-    try:
-      self.working_model.process(
-        make_restraints=True,
-        pdb_interpretation_params = pi)
-    except Exception as e:
-      print(e, file=self.logger)
-      print('Could not process model to create restraints.', file=self.logger)
-      return
 
-    _m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
+
+    #_m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
 
     # get fmodel object if reflection data were provided
     if has_miller:
@@ -289,15 +297,29 @@ RSCC.
     #self.data_manager.write_real_map_file(map_manager,filename="my_map.map")
     #self.data_manager.write_model_file(self.working_model,filename="my_model.pdb")
 
+    self.working_model.set_restraint_objects(ro_no_duplicates)
+    self.working_model.set_stop_for_unknowns(False)
+    pi = self.working_model.get_current_pdb_interpretation_params()
+    pi.pdb_interpretation.allow_polymer_cross_special_position = True
+    try:
+      self.working_model.process(
+        make_restraints=True,
+        pdb_interpretation_params = pi)
+    except Exception as e:
+      print(e, file=self.logger)
+      print('Could not process model to create restraints.', file=self.logger)
+      return
+
+
     basename = os.path.splitext(os.path.basename(model_fn))[0]
     self.model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
     if self.params.save_reduce2_model:
       self.data_manager.set_overwrite(True)
-      self.data_manager.write_model_file(_m,filename=self.model_fn_reduce2, format='cif')
+      self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
 
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
-      model = _m,
+      model = self.working_model,
       fmodel = fmodel,
       map_manager = map_manager,
       params = self.params.validate_ligands,
@@ -314,6 +336,17 @@ RSCC.
   # ---------------------------------------------------------------------------
 
   def get_results(self):
+    if (self.params.run_reduce2
+        and self.params.save_reduce2_model
+        and self.model_fn_reduce2 is not None):
+      model_to_open = os.path.abspath(self.model_fn_reduce2)
+    else:
+      model_to_open = getattr(self, '_original_model_fn', None)
+    ligand_results = None
+    if self.ligand_manager is not None:
+      ligand_results = [lr.as_picklable_snapshot()
+                        for lr in self.ligand_manager]
     return group_args(
-      working_model_fn = self.model_fn_reduce2,
-      ligand_manager   = self.ligand_manager)
+      working_model_fn = model_to_open,
+      ligand_manager   = self.ligand_manager,
+      ligand_results   = ligand_results)

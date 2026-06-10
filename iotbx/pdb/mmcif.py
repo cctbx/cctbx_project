@@ -661,6 +661,12 @@ class _cif_get_r_rfree_sigma_object(object):
   def __init__(self, cif_block, file_name):
     self.file_name = file_name
     self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_R_work'))
+    # Older entries (e.g. 1ab1) store the working-set R as ls_R_factor_obs or
+    # ls_R_factor_all instead of ls_R_factor_R_work.
+    if self.r_work is None:
+      self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_obs'))
+    if self.r_work is None:
+      self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_all'))
     self.r_free = _float_or_None(cif_block.get('_refine.ls_R_factor_R_free'))
     self.sigma = _float_or_None(cif_block.get('_refine.pdbx_ls_sigma_F'))
     self.high = _float_or_None(cif_block.get('_refine.ls_d_res_high'))

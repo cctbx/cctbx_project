@@ -40,6 +40,26 @@ def normalize_none_string(value):
   return value
 
 
+def _safe_float(val):
+  """Convert val to float, or return None if it cannot be converted.
+
+  JSON round-tripping (and parsing program output) can turn float values into
+  strings, e.g. 0.385 -> "0.385".  All numeric metrics from history dicts must
+  be coerced before arithmetic or formatting, or expressions like
+  ``curr - prev`` and ``f"{x:.3f}"`` raise TypeError on the string form.
+
+  Returns None for None, non-numeric strings, or any non-convertible type
+  (never raises).  Single shared definition for the whole langchain package
+  (previously duplicated across several agent modules).
+  """
+  if val is None:
+    return None
+  try:
+    return float(val)
+  except (ValueError, TypeError):
+    return None
+
+
 def load_log_text(file_name, debug_log=None, out=sys.stdout):
   """
   Load log text from a file.
@@ -115,6 +135,17 @@ def validate_api_keys(provider, debug_log=None):
   elif provider == 'openai':
     if not os.getenv("OPENAI_API_KEY"):
       return "OPENAI_API_KEY environment variable not set."
+  elif provider == 'anthropic':
+    if not os.getenv("ANTHROPIC_API_KEY"):
+      return "ANTHROPIC_API_KEY environment variable not set."
+  elif provider == 'portkey':
+    # portkey fronts Azure OpenAI via the Portkey gateway; both the gateway
+    # key and base URL are required.  Reported here (clear message) rather
+    # than failing late at the API call.
+    missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+               if not os.getenv(n)]
+    if missing:
+      return "%s environment variable(s) not set." % ", ".join(missing)
 
   return None
 
@@ -146,6 +177,9 @@ def get_db_dir_for_provider(provider, db_dir=None, debug_log=None):
     'google': "./docs_db_google",
     'openai': "./docs_db_openai",
     'ollama': "./docs_db_ollama",
+    # portkey fronts Azure OpenAI; its embeddings DB is distinct from the
+    # direct-openai one (different deployment/keying), so give it its own dir.
+    'portkey': "./docs_db_portkey",
   }
 
   db_dir = defaults.get(provider, "./docs_db_ollama")
@@ -330,7 +364,7 @@ def save_history_to_json(history_record, log_directory, job_id=None, debug_log=N
     json_path = os.path.join(log_directory, json_filename)
 
     import json
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
       json.dump(history_record, f, indent=2)
 
     debug_log.append(f"Saved run history to: {json_path}")

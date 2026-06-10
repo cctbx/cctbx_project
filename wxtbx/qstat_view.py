@@ -178,7 +178,7 @@ class queue_list_frame(wx.Frame):
     ]
     for (icon_class, icon_name, fname, label) in commands :
       bmp = wxtbx.bitmaps.fetch_icon_bitmap(icon_class, icon_name, 32)
-      tool_button = self.toolbar.AddLabelTool(-1, label, bmp,
+      tool_button = self.toolbar.AddTool(-1, label, bmp,
         shortHelp=label, kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
     self.toolbar.Realize()

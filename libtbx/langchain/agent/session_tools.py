@@ -31,14 +31,14 @@ def load_session(session_dir):
         print("No session file found at: %s" % session_file)
         return None, session_file
 
-    with open(session_file, 'r') as f:
+    with open(session_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
     return data, session_file
 
 
 def save_session(data, session_file):
     """Save session to file."""
-    with open(session_file, 'w') as f:
+    with open(session_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2)
     print("Session saved to: %s" % session_file)
 
@@ -394,7 +394,7 @@ def rebuild_active_files(data, session_dir):
     # Write to active_files.json
     active_files_path = os.path.join(session_dir, "active_files.json")
     try:
-        with open(active_files_path, 'w') as f:
+        with open(active_files_path, 'w', encoding='utf-8') as f:
             json.dump(files, f, indent=2)
         print("Rebuilt active_files.json with %d files" % len(files))
     except Exception as e:

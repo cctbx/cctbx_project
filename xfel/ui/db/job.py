@@ -70,7 +70,7 @@ class Job(db_proxy):
 
   def get_log_path(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run)
-    return os.path.join(run_path, "stdout", "out.log")
+    return os.path.join(run_path, "stdout", "log.out") if run_path else None
 
   def submit(self, previous_job = None):
     raise NotImplementedError("Override me!")

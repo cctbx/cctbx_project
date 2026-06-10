@@ -27,6 +27,15 @@ def run(query_text=None, output_file_path=None, db_dir=None,
   elif provider == 'openai':
     if not os.getenv("OPENAI_API_KEY"):
       raise ValueError("OPENAI_API_KEY environment variable not set.")
+  elif provider == 'anthropic':
+    if not os.getenv("ANTHROPIC_API_KEY"):
+      raise ValueError("ANTHROPIC_API_KEY environment variable not set.")
+  elif provider == 'portkey':
+    missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+               if not os.getenv(n)]
+    if missing:
+      raise ValueError(
+        "%s environment variable(s) not set." % ", ".join(missing))
   elif provider == 'ollama':
     pass # ok
   else:

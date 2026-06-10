@@ -108,7 +108,7 @@ def _get_strategic_programs():
       "..", "knowledge", "programs.yaml",
     )
     if os.path.isfile(yaml_path):
-      with open(yaml_path) as f:
+      with open(yaml_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
       if isinstance(data, dict):
         names = set()
@@ -239,9 +239,7 @@ def run_think_node(state):
     # user sees what the agent's "eyes" found (or
     # why they didn't run), BEFORE the LLM call.
     # This ensures visibility even if the LLM fails.
-    if thinking_level == "advanced":
-      diag_parts = []
-      model_path = context.get("validated_model_path")
+    if thinking_level in ("advanced", "expert"):
       skip_reason = context.get(
         "validation_skip_reason", ""
       )
@@ -300,8 +298,8 @@ def run_think_node(state):
         state, "THINK: Validation: %s" % summary
       )
 
-    # Build file metadata (Phase C) — advanced only
-    if thinking_level == "advanced":
+    # Build file metadata (Phase C) — advanced/expert only
+    if thinking_level in ("advanced", "expert"):
       state = _update_file_metadata(state, context)
       # Sync context so the prompt reflects the
       # current cycle's metadata, not the previous.
@@ -313,7 +311,11 @@ def run_think_node(state):
     # to state BEFORE the LLM call so structural
     # knowledge survives even if the LLM fails.
     # (v114: goal-directed agent)
-    if thinking_level == "advanced":
+    # Fix: was "advanced" only — expert mode also builds SM
+    # so it must persist here too, otherwise session.data
+    # never gets structure_model and the Results panel
+    # shows "No structure model available / INCOMPLETE".
+    if thinking_level in ("advanced", "expert"):
       sm = context.get("structure_model")
       if sm is not None:
         state = {
@@ -345,7 +347,7 @@ def run_think_node(state):
       sm_summary = context.get(
         "structure_model_summary", ""
       )
-      if thinking_level == "advanced" and (
+      if thinking_level in ("advanced", "expert") and (
         vr or sm_summary
       ):
         vr_lines_clean = []
@@ -440,7 +442,7 @@ def run_think_node(state):
     # structural validation alongside the LLM analysis.
     # The GUI reads expert_assessment from the callback
     # data, which comes from state["expert_assessment"].
-    if thinking_level == "advanced":
+    if thinking_level in ("advanced", "expert"):
       assessment["validation_summary"] = (
         validation_summary)
       assessment["validation_skip_reason"] = (
@@ -466,10 +468,25 @@ def run_think_node(state):
       # Emit stop_decision so the event formatter
       # shows it (plan() will short-circuit and
       # never get to emit its own stop_decision).
-      stop_reason = (
-        "expert: %s"
-        % assessment["analysis"][:200]
-      )
+      #
+      # P1B: use classified stop_reason_code when
+      # available; fall back to freeform analysis.
+      _src = assessment.get("stop_reason_code")
+      if _src:
+        stop_reason = _src
+      else:
+        stop_reason = (
+          "expert: %s"
+          % assessment["analysis"][:200]
+        )
+      # P1B: build think_stop_override for output_node
+      _think_stop_override = None
+      if _src:
+        _think_stop_override = {
+          "code": _src,
+          "analysis": assessment.get(
+            "analysis", "")[:300],
+        }
       events = list(state.get("events", []))
       events.append({
         "type": "stop_decision",
@@ -484,6 +501,7 @@ def run_think_node(state):
         "stop_reason": stop_reason,
         "abort_message": abort_msg,
         "expert_assessment": assessment,
+        "think_stop_override": _think_stop_override,
         "strategy_memory": _update_memory(
           memory_dict, assessment, cycle),
       }
@@ -497,11 +515,19 @@ def run_think_node(state):
     else:
       enriched_advice = state.get("user_advice", "")
 
+    # P1B: forward file_overrides from expert assessment
+    # to BUILD node via think_file_overrides state key.
+    _file_overrides = assessment.get(
+      "file_overrides", {})
+    if not isinstance(_file_overrides, dict):
+      _file_overrides = {}
+
     cycle = state.get("cycle_number", 1)
     return {
       **state,
       "user_advice": enriched_advice,
       "expert_assessment": assessment,
+      "think_file_overrides": _file_overrides,
       "strategy_memory": _update_memory(
         memory_dict, assessment, cycle),
     }
@@ -527,10 +553,10 @@ def _build_thinking_context(state, thinking_level="advanced"):
 
   Args:
     state: Graph state dict.
-    thinking_level: "basic" or "advanced".
+    thinking_level: "basic", "advanced", or "expert".
       basic: log sections, metrics, history, r_free_trend
-      advanced: all of the above plus validation, KB,
-        and file metadata.
+      advanced/expert: all of the above plus validation,
+        KB, file metadata, and StructureModel.
   """
   history = state.get("history", [])
   last = history[-1] if history else {}
@@ -602,7 +628,48 @@ def _build_thinking_context(state, thinking_level="advanced"):
     "validated_model_path": None,
     "file_metadata": {},
     "kb_rules_text": "",
+    "file_inventory": "",
   }
+
+  # File inventory: give the expert a category-grouped
+  # view of available files so it can see what inputs
+  # exist without guessing from filenames alone.
+  _cat_files = workflow_state_dict.get(
+    "categorized_files", {})
+  if _cat_files:
+    # Group into meaningful labels, skip empty categories
+    _inv_map = [
+      ("Models", [
+        "model", "refined", "phaser_output",
+        "rsr_output", "predicted",
+        "autobuild_output"]),
+      ("Sequences", ["sequence"]),
+      ("Reflection data", [
+        "data_mtz", "phased_data_mtz"]),
+      ("Map coefficients", [
+        "map_coeffs_mtz", "refine_map_coeffs",
+        "denmod_map_coeffs"]),
+      ("Maps", [
+        "full_map", "half_map"]),
+      ("Ligands", [
+        "ligand_pdb", "ligand_cif"]),
+    ]
+    _inv_lines = []
+    for label, cats in _inv_map:
+      fnames = []
+      for cat in cats:
+        for fpath in _cat_files.get(cat, []):
+          bn = os.path.basename(fpath)
+          tag = cat.replace("_", " ")
+          entry = "%s (%s)" % (bn, tag)
+          if entry not in fnames:
+            fnames.append(entry)
+      if fnames:
+        _inv_lines.append(
+          "  %s: %s" % (label, ", ".join(fnames)))
+    if _inv_lines:
+      context["file_inventory"] = (
+        "\n".join(_inv_lines))
 
   # Plan phase and directives (so guidance aligns
   # with what the agent is trying to accomplish)
@@ -634,8 +701,12 @@ def _build_thinking_context(state, thinking_level="advanced"):
     context["plan_goal"] = (
       _plan_data.get("goal", ""))
 
-  # --- Advanced mode additions ---
-  if thinking_level == "advanced":
+  # ASU copy count (copies feature): expose so THINK prompt can reason
+  # about whether Phaser found the expected number of copies.
+  _asu_copies = (session_info or {}).get("asu_copies")
+  if _asu_copies:
+    context["asu_copies"] = _asu_copies
+  if thinking_level in ("advanced", "expert"):
     # Structural validation (Phase A)
     validation_report, validation_result, model_path, \
       validation_skip = (
@@ -1561,10 +1632,12 @@ def _get_rate_handler(provider):
   try:
     try:
       from libtbx.langchain.agent.rate_limit_handler import (
-        get_google_handler, get_openai_handler, get_anthropic_handler)
+        get_google_handler, get_openai_handler, get_anthropic_handler,
+        get_portkey_handler)
     except ImportError:
       from agent.rate_limit_handler import (
-        get_google_handler, get_openai_handler, get_anthropic_handler)
+        get_google_handler, get_openai_handler, get_anthropic_handler,
+        get_portkey_handler)
 
     if provider == "google":
       return get_google_handler()
@@ -1572,6 +1645,8 @@ def _get_rate_handler(provider):
       return get_openai_handler()
     elif provider == "anthropic":
       return get_anthropic_handler()
+    elif provider == "portkey":
+      return get_portkey_handler()
   except ImportError:
     pass
   return None

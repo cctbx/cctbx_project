@@ -6,7 +6,6 @@ import cctbx.sgtbx.cosets
 from cctbx.crystal import reindex
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
-import mmtbx.scaling
 from scitbx.python_utils import robust_statistics
 import sys, math
 import scitbx.lbfgs

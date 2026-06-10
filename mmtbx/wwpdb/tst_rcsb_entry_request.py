@@ -9,11 +9,27 @@ def exercise_1():
   Exercise 1, experimental:
   """
   info = rcsb_entry_request.get_info(pdb_ids=['1ucs'])
+  # print(info[0].data)
+  # STOP()
   assert len(info) == 1
   assert info[0].get_rwork() == 0.133, info[0].get_rwork()
   assert info[0].get_rama_outliers() == 0
-  assert info[0].get_rota_outliers() == 1.82
-  assert info[0].get_clashscore() == 19.44
+  assert info[0].get_rota_outliers() == 0, info[0].get_rota_outliers()
+  assert info[0].get_clashscore() == 9.72, info[0].get_clashscore()
+  assert not info[0].is_computational()
+
+def exercise_11():
+  """
+  Exercise 1, experimental, cryoem, actually with outliers:
+  """
+  info = rcsb_entry_request.get_info(pdb_ids=['9SKV'])
+  # print(info[0].data)
+  # STOP()
+  assert len(info) == 1
+  assert info[0].get_rwork() == None, info[0].get_rwork()
+  assert info[0].get_rama_outliers() == 0.74, info[0].get_rama_outliers()
+  assert info[0].get_rota_outliers() == 3.53, info[0].get_rota_outliers()
+  assert info[0].get_clashscore() == 4.87, info[0].get_clashscore()
   assert not info[0].is_computational()
 
 def exercise_2():
@@ -45,12 +61,12 @@ def exercise_4():
   assert len(info) == 2
   assert info[0].get_rwork() == 0.133, info[0].get_rwork()
   assert info[0].get_rama_outliers() == 0
-  assert info[0].get_rota_outliers() == 1.82
-  assert info[0].get_clashscore() == 19.44
+  assert info[0].get_rota_outliers() == 0
+  assert info[0].get_clashscore() == 9.72
   assert not info[0].is_computational()
 
   assert info[1].is_computational()
-  assert info[1].get_plddt() == 97.37, info[1].get_plddt()
+  assert info[1].get_plddt() == 97.49, info[1].get_plddt()
   assert info[1].get_rwork() == None, info[1].get_rwork()
 
 if (__name__ == "__main__"):
@@ -64,6 +80,7 @@ if (__name__ == "__main__"):
     exception_occured = True
   if not exception_occured and r.ok and len(r.text) > 100:
     exercise_1()
+    exercise_11()
     exercise_2()
     exercise_3()
     exercise_4()

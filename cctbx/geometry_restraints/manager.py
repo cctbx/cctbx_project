@@ -73,6 +73,7 @@ class manager(Base_geometry):
         nonbonded_buffer=1,
         angle_proxies=None,
         dihedral_proxies=None,
+        const_dihedral_proxies=None,
         reference_coordinate_proxies=None,
         reference_dihedral_manager=None,
         ncs_dihedral_manager=None,
@@ -370,6 +371,7 @@ class manager(Base_geometry):
       nonbonded_buffer=self.nonbonded_buffer,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      const_dihedral_proxies=self.const_dihedral_proxies,
       reference_coordinate_proxies=self.reference_coordinate_proxies,
       reference_dihedral_manager=self.reference_dihedral_manager,
       ramachandran_manager=self.ramachandran_manager,
@@ -427,8 +429,9 @@ class manager(Base_geometry):
 
     n_seq = get_n_seq()
 
-    selected_proxies = [None]*11
+    selected_proxies = [None]*12
     for i, proxies in enumerate([self.angle_proxies, self.dihedral_proxies,
+        self.const_dihedral_proxies,
         self.reference_coordinate_proxies, self.reference_dihedral_manager,
         self.ncs_dihedral_manager, self.den_manager, self.chirality_proxies,
         self.planarity_proxies, self.parallelity_proxies,
@@ -453,14 +456,15 @@ class manager(Base_geometry):
       nonbonded_buffer=self.nonbonded_buffer,
       angle_proxies=selected_proxies[0],
       dihedral_proxies=selected_proxies[1],
-      reference_coordinate_proxies=selected_proxies[2],
-      reference_dihedral_manager=selected_proxies[3],
-      ramachandran_manager=selected_proxies[9],
-      ncs_dihedral_manager=selected_proxies[4],
-      den_manager=selected_proxies[5],
-      chirality_proxies=selected_proxies[6],
-      planarity_proxies=selected_proxies[7],
-      parallelity_proxies=selected_proxies[8],
+      const_dihedral_proxies=selected_proxies[2],
+      reference_coordinate_proxies=selected_proxies[3],
+      reference_dihedral_manager=selected_proxies[4],
+      ramachandran_manager=selected_proxies[10],
+      ncs_dihedral_manager=selected_proxies[5],
+      den_manager=selected_proxies[6],
+      chirality_proxies=selected_proxies[7],
+      planarity_proxies=selected_proxies[8],
+      parallelity_proxies=selected_proxies[9],
       plain_pairs_radius=self.plain_pairs_radius,
       max_reasonable_bond_distance=self.max_reasonable_bond_distance)
     result.set_source(source = self.get_source())
@@ -492,6 +496,7 @@ class manager(Base_geometry):
       nonbonded_buffer=self.nonbonded_buffer,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      const_dihedral_proxies=self.const_dihedral_proxies,
       reference_coordinate_proxies=self.reference_coordinate_proxies,
       reference_dihedral_manager=self.reference_dihedral_manager,
       ramachandran_manager=self.ramachandran_manager,
@@ -572,6 +577,9 @@ class manager(Base_geometry):
     if self.dihedral_proxies is not None:
       return self.dihedral_proxies.proxy_remove(origin_id=specific_origin_id)
     return None
+
+  def get_const_dihedral_proxies(self):
+    return self.const_dihedral_proxies
 
   def get_planarity_proxies_without_user_supplied(self):
     specific_origin_id = origin_ids.get_origin_id('edits')
@@ -805,6 +813,10 @@ class manager(Base_geometry):
   def get_n_reference_dihedral_proxies(self):
     if self.reference_dihedral_manager is not None:
       return self.reference_dihedral_manager.get_n_proxies()
+
+  def get_n_reference_hbond_proxies(self):
+    return self._get_n_bond_proxies_origin(
+      origin_id=origin_ids.get_origin_id('reference hydrogen bonds'))
 
   def sync_reference_dihedral_with_ncs(self, log):
     if (self.reference_dihedral_manager is not None and
@@ -1900,26 +1912,6 @@ class manager(Base_geometry):
                                      ),
             file=f)
 
-# This should be in model class?
-#  def nb_overlaps_info(
-#    self,
-#    sites_cart,
-#    hd_sel,
-#    macro_mol_sel=None,
-#    site_labels=None):
-#    """ non-bonded overlaps information """
-#    from cctbx.geometry_restraints.nonbonded_overlaps import info
-#    if not macro_mol_sel:
-#      from cctbx.geometry_restraints.nonbonded_overlaps import get_macro_mol_sel
-#      macro_mol_sel = get_macro_mol_sel(pdb_processed_file=self)
-#
-#    return info(
-#      geometry_restraints_manager=self,
-#      macro_molecule_selection=macro_mol_sel,
-#      sites_cart=sites_cart,
-#      hd_sel=hd_sel,
-#      site_labels=site_labels).result
-
   def _bond_generator(self):
     simple, asu = self.get_all_bond_proxies()
     simple = simple.get_proxies_without_origin_id(0)
@@ -2029,6 +2021,7 @@ class manager(Base_geometry):
       elif key in mon_lib_srv.link_link_id_dict:
         links['link_%s' % key] = mon_lib_srv.link_link_id_dict[key].as_cif_block()
       elif origin_id_info[0] in ['hydrogen bonds',
+                                 'reference hydrogen bonds',
                                  'edits',
                                  'metal coordination',
                                  'glycosidic custom',

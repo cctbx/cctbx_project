@@ -142,8 +142,12 @@ builder = TemplateBuilder()
 _llm = None
 _llm_provider = None
 
-# Supported providers
-SUPPORTED_PROVIDERS = ["google", "openai", "ollama"]
+# Supported providers -- imported from the single source of truth in
+# core/llm.py so this layer can never drift from ai_agent.py's view.
+try:
+    from libtbx.langchain.core.llm import SUPPORTED_PROVIDERS
+except ImportError:
+    from core.llm import SUPPORTED_PROVIDERS
 
 
 # =============================================================================
@@ -191,6 +195,24 @@ def validate_provider(provider):
                 "  2. Set OLLAMA_BASE_URL to point to your server\n"
                 "  3. Use a different provider: provider='google' or provider='openai'"
             ) % ollama_url
+    elif provider == "anthropic":
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            return False, (
+                "Provider 'anthropic' requires ANTHROPIC_API_KEY environment variable.\n"
+                "Set it with: export ANTHROPIC_API_KEY='your-key-here'"
+            )
+    elif provider == "portkey":
+        # portkey fronts Azure OpenAI via the Portkey gateway; both the
+        # gateway key and base URL are required (checked here at validation
+        # time, friendly message -- not a bare KeyError at call time).
+        _missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+                    if not os.getenv(n)]
+        if _missing:
+            return False, (
+                "Provider 'portkey' requires environment variable(s): %s.\n"
+                "Set them with: export PORTKEY_AZURE_API_KEY='...' "
+                "PORTKEY_BASE_URL='...'"
+            ) % ", ".join(_missing)
 
     return True, None
 
@@ -642,6 +664,37 @@ def perceive(state):
         files_local=files_local,
     )
 
+    # v116.16 DIAG: dump workflow_state right after detect_workflow_state
+    # returns, BEFORE any PERCEIVE post-processing.  Gated on env var so
+    # it's a no-op for normal runs.  Enabled with PHENIX_AGENT_DIAG_PLAN=1.
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        import json as _diag_json
+        print("=" * 70)
+        print("[DIAG_PLAN] AFTER detect_workflow_state (PERCEIVE node)")
+        print("=" * 70)
+        print("[DIAG_PLAN]   state         = %r"
+              % workflow_state.get("state"))
+        print("[DIAG_PLAN]   step_info     = %r"
+              % workflow_state.get("step_info"))
+        print("[DIAG_PLAN]   valid_programs= %r"
+              % workflow_state.get("valid_programs"))
+        print("[DIAG_PLAN]   reason        = %r"
+              % (workflow_state.get("reason") or "")[:200])
+        try:
+            print("[DIAG_PLAN]   directives    = %s"
+                  % _diag_json.dumps(state.get("directives", {}), indent=2))
+        except Exception:
+            print("[DIAG_PLAN]   directives    = %r"
+                  % state.get("directives", {}))
+        _si = state.get("session_info", {}) or {}
+        print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
+              % _si.get("plan_has_pending_stages", False))
+        print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
+              % _si.get("plan_next_stage_programs", None))
+        print("[DIAG_PLAN]   advice_changed            = %r"
+              % _si.get("advice_changed", False))
+        print("=" * 70, flush=True)
+
     # Q1: When the user provides new advice on resume and the workflow is
     # already in the 'complete' phase, the valid_programs list is just
     # ["STOP"], which means the LLM never gets to act on the new advice.
@@ -649,13 +702,14 @@ def perceive(state):
     # molprobity, model_vs_data, and refine, giving the LLM the right
     # menu to respond to follow-up instructions.
     session_info = state.get("session_info", {})
-    # Q1 step-back: fire on advice_changed (new/different advice this resume)
-    # OR simply on any non-empty user_advice.  The latter covers stale sessions
-    # where the hash was already stored before this fix, and the general rule
-    # that "complete + user instructions" should never hard-STOP.
-    _user_advice = (state.get("user_advice") or "").strip()
+    # Q1 step-back: fire ONLY on advice_changed (new/different advice this resume).
+    # Previously this also triggered on any non-empty user_advice, causing the
+    # step-back to repeat every cycle when README/instructions were present and
+    # preventing the workflow from ever completing normally.  Fix: only step back
+    # when advice_changed is True (set once on resume, cleared by ai_agent.py
+    # after the first successful post-resume cycle).
     if (workflow_state.get("step_info", {}).get("step") == "complete" and
-            (session_info.get("advice_changed", False) or _user_advice)):
+            session_info.get("advice_changed", False)):
         try:
             from libtbx.langchain.agent.workflow_engine import WorkflowEngine as _WE
             _eng = _WE()
@@ -670,10 +724,9 @@ def perceive(state):
                 "step": "validate",
                 "reason": "advice_changed: stepped back from complete step",
             }
-            _trigger = "advice_changed" if session_info.get("advice_changed", False) else "user_advice present"
             state = _log(state,
-                "PERCEIVE: %s — stepped back from 'complete' to 'validate' "
-                "step. valid_programs: %s" % (_trigger, _new_valid))
+                "PERCEIVE: advice_changed — stepped back from 'complete' to 'validate' "
+                "step. valid_programs: %s" % _new_valid)
         except Exception as _qe:
             state = _log(state,
                 "PERCEIVE: complete-step step-back failed (%s) — "
@@ -684,17 +737,73 @@ def perceive(state):
     # BUT: Don't inject if a forced_program is set from directives — the
     # directive system (after_program) understands multi-step ordering while
     # explicit_program is a simple text scan that would conflict.
+    # v115.09b: Also don't inject if the program's done flag is already set.
+    # The LLM may re-request a completed program (e.g. resolve_cryo_em after
+    # it succeeded) — the done flag prevents useless re-runs that cause loops.
+    # Legitimate re-runs with different parameters go through prefer_programs
+    # or after_program directives, which use a different path.
     explicit_prog = session_info.get("explicit_program")
     forced_prog = workflow_state.get("forced_program")
     if explicit_prog and not forced_prog:
-        valid_progs = workflow_state.get("valid_programs", [])
-        if explicit_prog not in valid_progs:
-            valid_progs.append(explicit_prog)
-            workflow_state["valid_programs"] = valid_progs
-            state = _log(state, "PERCEIVE: Injected explicit program request: %s" % explicit_prog)
+        # Check if the program is already done
+        _already_done = False
+        _done_flag_name = None
+        try:
+            from libtbx.langchain.knowledge.program_registration import (
+                get_program_done_flag_map)
+            _flag_map = get_program_done_flag_map()
+            _done_flag_name = _flag_map.get(explicit_prog)
+        except ImportError:
+            try:
+                from knowledge.program_registration import (
+                    get_program_done_flag_map)
+                _flag_map = get_program_done_flag_map()
+                _done_flag_name = _flag_map.get(explicit_prog)
+            except ImportError:
+                pass
+        if _done_flag_name:
+            _ctx = workflow_state.get("context", {})
+            _already_done = bool(_ctx.get(_done_flag_name))
+
+        if _already_done:
+            state = _log(state,
+                "PERCEIVE: Skipped explicit_program %s "
+                "(already done: %s=True)" % (
+                    explicit_prog, _done_flag_name))
+        else:
+            valid_progs = workflow_state.get("valid_programs", [])
+            if explicit_prog not in valid_progs:
+                valid_progs.append(explicit_prog)
+                workflow_state["valid_programs"] = valid_progs
+                state = _log(state,
+                    "PERCEIVE: Injected explicit program "
+                    "request: %s" % explicit_prog)
     elif explicit_prog and forced_prog and explicit_prog != forced_prog:
         state = _log(state, "PERCEIVE: Skipped explicit_program %s (forced_program %s takes precedence)" % (
             explicit_prog, forced_prog))
+
+    # v115.05: Inject plan-stage programs when the plan has
+    # pending stages but the workflow engine only offers STOP.
+    # This happens when the plan calls for polder or ligandfit
+    # after refine — the xray_refined step doesn't include
+    # these programs, so the workflow engine returns [STOP].
+    # The plan knows better: it was generated from the user's
+    # README/advice and has the full pipeline.
+    if session_info.get("plan_has_pending_stages", False):
+        _valid = workflow_state.get("valid_programs", [])
+        _non_stop = [p for p in _valid if p != "STOP"]
+        if not _non_stop:
+            _plan_progs = session_info.get(
+                "plan_next_stage_programs", [])
+            if _plan_progs:
+                for p in _plan_progs:
+                    if p not in _valid:
+                        _valid.append(p)
+                workflow_state["valid_programs"] = _valid
+                state = _log(state,
+                    "PERCEIVE: Injected plan-stage programs "
+                    "(plan has pending stages): %s"
+                    % _plan_progs)
 
     # J5: Log zombie state corrections so users know why a previously-run
     # program is being offered again (helps debug crash/restart scenarios).
@@ -740,6 +849,22 @@ def perceive(state):
                      "data_mtz=%s" % [os.path.basename(f)
                                       for f in categorized.get("data_mtz", [])])
 
+    # Surface ignored-but-recognized file formats as WARNING events
+    # so the LLM and user are aware.  Message is deliberately
+    # non-actionable to prevent hallucinated recovery attempts.
+    for _ig in categorized.get("ignored_formats", []):
+        state = _emit(state, EventType.WARNING,
+            message="%s: %s" % (_ig.get("file", "?"),
+                                _ig.get("note", "unrecognized format")))
+
+    # v115.09b: Removed proactive .sca-only detection (was v115.09 Fix 2).
+    # Replaced by reactive detection: xtriage's "No unit cell info available"
+    # error is now in diagnosable_errors.yaml as missing_crystal_symmetry.
+    # The DiagnosisDetector fires on the failed result and stops with a
+    # helpful diagnosis.  The proactive check couldn't distinguish
+    # p9-xtriage (needs cell) from gene-5-mad (works fine) because both
+    # have .sca + sequence files.
+
     # Override detected experiment_type with locked session experiment_type if available
     session_info = state.get("session_info", {})
     session_experiment_type = session_info.get("experiment_type", "")
@@ -761,11 +886,22 @@ def perceive(state):
     metrics_event_data = {}
     if analysis:
         for key in ["r_free", "r_work", "resolution", "map_cc", "tfz", "llg", "clashscore"]:
-            if analysis.get(key) is not None:
-                metrics_event_data[key] = analysis[key]
+            val = analysis.get(key)
+            if val is not None:
+                # Coerce to float — event_formatter does arithmetic
+                # (e.g. r_free - r_free_prev) and crashes on strings.
+                try:
+                    val = float(val)
+                except (ValueError, TypeError):
+                    continue
+                metrics_event_data[key] = val
                 # Add previous value if available
                 if prev_metrics and prev_metrics.get(key) is not None:
-                    metrics_event_data[key + "_prev"] = prev_metrics[key]
+                    try:
+                        metrics_event_data[key + "_prev"] = float(
+                            prev_metrics[key])
+                    except (ValueError, TypeError):
+                        pass
     if metrics_event_data:
         state = _emit(state, EventType.METRICS_EXTRACTED, **metrics_event_data)
 
@@ -1247,6 +1383,21 @@ def _fallback_extract_metrics(log_text):
     if resolution is not None:
         analysis["resolution"] = resolution
 
+    # ASU copy count from Matthews coefficient analysis.
+    # Xtriage prints: "Best guess :    4 copies in the ASU"
+    # Guard: only accept a plain integer (1-30) to avoid "2 or 3"-style
+    # strings and unrealistic values.
+    _copies_m = re.search(
+        r'Best\s+guess\s*:\s*(\d+)\s+cop',
+        log_text, re.IGNORECASE)
+    if _copies_m:
+        try:
+            _nc = int(_copies_m.group(1))
+            if 1 <= _nc <= 30:
+                analysis["n_copies"] = _nc
+        except (ValueError, TypeError):
+            pass
+
     # Error detection using patterns
     if patterns.has_pattern("system.phenix_failed"):
         error_match = patterns.search("system.phenix_failed", log_text)
@@ -1453,29 +1604,52 @@ def plan(state):
                 state = _log(state, "PLAN: Suppressing AUTO-STOP because after_program=%s hasn't run yet" % after_program)
                 # Continue to LLM planning instead of stopping
             else:
-                # after_program has run AND metrics say stop — allow auto-stop.
-                # (after_program alone no longer triggers PERCEIVE hard stop
-                # as of v112.78 Bug 7; only PLAN auto-stop respects it.)
-                state = _log(state, "PLAN: AUTO-STOP triggered: %s (after_program=%s completed)" % (reason, after_program))
-                # Emit STOP_DECISION event
-                state = _emit(state, EventType.STOP_DECISION,
-                    stop=True,
-                    reason=reason)
-                return {
-                    **state,
-                    "intent": {
-                        "program": None,
+                # after_program has run AND metrics say stop.
+                # BUT: if the plan still has pending stages
+                # (e.g. ligandfit, polder after refine),
+                # suppress AUTO-STOP and let the plan drive
+                # the workflow forward.  The per-stage
+                # after_program was injected by the plan to
+                # force a specific program for THIS stage —
+                # it doesn't mean the whole session is done.
+                if session_info.get(
+                        "plan_has_pending_stages", False):
+                    state = _log(state,
+                        "PLAN: Suppressing AUTO-STOP — "
+                        "after_program=%s completed but "
+                        "plan has pending stages (%s)"
+                        % (after_program, reason))
+                    metrics_trend = dict(metrics_trend)
+                    metrics_trend["should_stop"] = False
+                    metrics_trend["reason"] = (
+                        "Suppressed: plan has pending "
+                        "stages after %s" % after_program)
+                    state = {**state,
+                             "metrics_trend": metrics_trend}
+                else:
+                    # (after_program alone no longer triggers
+                    # PERCEIVE hard stop as of v112.78 Bug 7;
+                    # only PLAN auto-stop respects it.)
+                    state = _log(state, "PLAN: AUTO-STOP triggered: %s (after_program=%s completed)" % (reason, after_program))
+                    # Emit STOP_DECISION event
+                    state = _emit(state, EventType.STOP_DECISION,
+                        stop=True,
+                        reason=reason)
+                    return {
+                        **state,
+                        "intent": {
+                            "program": None,
+                            "stop": True,
+                            "stop_reason": reason,
+                            "reasoning": "Automatically stopping: %s. %s" % (
+                                reason, metrics_trend.get("trend_summary", "")
+                            ),
+                            "files": {},
+                            "strategy": {},
+                        },
                         "stop": True,
                         "stop_reason": reason,
-                        "reasoning": "Automatically stopping: %s. %s" % (
-                            reason, metrics_trend.get("trend_summary", "")
-                        ),
-                        "files": {},
-                        "strategy": {},
-                    },
-                    "stop": True,
-                    "stop_reason": reason,
-                }
+                    }
 
         # Suppress AUTO-STOP when user wants ligandfit but it hasn't run yet.
         # The advice preprocessor may extract prefer_programs=['phenix.ligandfit']
@@ -1514,8 +1688,50 @@ def plan(state):
             state = {**state,
                      "metrics_trend": metrics_trend}
 
+        # v116.12 Fix #2 (defense-in-depth): Suppress AUTO-STOP when
+        # workflow_engine.detect_step returned step="validate", which
+        # means validation_done=False AND we've reached refinement
+        # targets.  Without this, an upstream metrics_trend.should_stop
+        # (e.g. cryo-EM CC>0.70 — see metrics_analyzer.py Fix #1) would
+        # bypass the validation stage.  This is a second line of
+        # defense in case plan_has_pending_stages is unset (no expert
+        # plan, or the flag wasn't propagated through session_info).
+        # Together with Fix #1 in metrics_analyzer.py, this ensures
+        # validation runs before the workflow auto-stops.
+        elif (state.get("workflow_state", {}).get("step_info", {}).get("step") == "validate"
+              and not _ws_context.get("validation_done", False)):
+            state = _log(state,
+                "PLAN: Suppressing AUTO-STOP — "
+                "workflow_engine says validate next, "
+                "validation_done=False (%s)" % reason)
+            metrics_trend = dict(metrics_trend)
+            metrics_trend["should_stop"] = False
+            metrics_trend["reason"] = (
+                "Suppressed: validation step pending")
+            state = {**state,
+                     "metrics_trend": metrics_trend}
+
         else:
             # No after_program directive and no pending ligandfit, allow auto-stop
+            # v116.12: Diagnostic dump before stopping — helps debug
+            # cases where a stop fired despite a pending validation
+            # stage. Captures the values that gated the elif chain.
+            _step_info = state.get("workflow_state", {}).get("step_info", {})
+            state = _log(state,
+                "PLAN: AUTO-STOP context: "
+                "plan_has_pending_stages=%r, "
+                "step=%r, "
+                "validation_done=%r, "
+                "after_program=%r, "
+                "experiment_type=%r" % (
+                    session_info.get("plan_has_pending_stages", False),
+                    _step_info.get("step"),
+                    _ws_context.get("validation_done"),
+                    state.get("directives", {})
+                         .get("stop_conditions", {})
+                         .get("after_program"),
+                    state.get("workflow_state", {}).get("experiment_type"),
+                ))
             state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
             # Emit STOP_DECISION event
             state = _emit(state, EventType.STOP_DECISION,
@@ -1620,6 +1836,64 @@ def plan(state):
         except Exception:
             pass  # error_classifier not available
 
+    # ── Consecutive-failure guard ─────────────────────────────────
+    # If ANY program has failed 2+ consecutive times (the most
+    # recent N entries for that program are all failures), remove
+    # it from valid_programs.  This prevents autobuild/refine
+    # cascade failures (e.g. AF_exoV_MRSAD: 4 consecutive
+    # autobuild failures).  The pivot handler above only excludes
+    # the *last* failed program for one cycle; this catches
+    # repeated failures across multiple cycles.
+    try:
+        _history = state.get("history", [])
+        if _history and len(_history) >= 2:
+            try:
+                from libtbx.langchain.agent \
+                    .error_classifier \
+                    import count_consecutive_failures
+            except ImportError:
+                from agent.error_classifier \
+                    import count_consecutive_failures
+
+            workflow_state = state.get(
+                "workflow_state", {})
+            vp = workflow_state.get(
+                "valid_programs", [])
+            _excluded = []
+            for _prog in list(vp):
+                if _prog == "STOP":
+                    continue
+                _consec = count_consecutive_failures(
+                    _history, _prog)
+                if _consec >= 2:
+                    _excluded.append(_prog)
+            if _excluded:
+                filtered = [
+                    p for p in vp
+                    if p not in _excluded]
+                if not filtered:
+                    # All non-STOP programs excluded —
+                    # add STOP so agent stops gracefully
+                    # instead of spinning on failures.
+                    filtered = ["STOP"]
+                workflow_state = dict(
+                    workflow_state)
+                workflow_state[
+                    "valid_programs"] = filtered
+                state = {
+                    **state,
+                    "workflow_state":
+                        workflow_state}
+                state = _log(state,
+                    "PLAN: CONSEC-FAIL guard — "
+                    "excluded %s (2+ consecutive "
+                    "failures), remaining: %s"
+                    % (_excluded, filtered))
+    except Exception as _cfe:
+        state = _log(state,
+            "PLAN: CONSEC-FAIL error — %s"
+            % str(_cfe))
+
     # 2. Check for rules-only mode (no LLM)
     use_rules_only = state.get("use_rules_only", False) or state.get("use_yaml_mode", USE_RULES_SELECTOR)
     if use_rules_only:
@@ -1700,6 +1974,43 @@ def plan(state):
             "PLAN: Injected error context for "
             "self-correction (%s)" % _err_cat)
 
+    # v116.16 DIAG: dump exactly what's being given to get_planning_prompt
+    # — i.e. what the LLM will see for valid_programs and directives.
+    # Gated on env var so it's a no-op for normal runs.
+    # Enabled with PHENIX_AGENT_DIAG_PLAN=1.
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        import json as _diag_json
+        print("=" * 70)
+        print("[DIAG_PLAN] BEFORE get_planning_prompt (PLAN node, LLM call)")
+        print("=" * 70)
+        print("[DIAG_PLAN]   state         = %r"
+              % workflow_state.get("state"))
+        print("[DIAG_PLAN]   step_info     = %r"
+              % workflow_state.get("step_info"))
+        print("[DIAG_PLAN]   valid_programs= %r"
+              % workflow_state.get("valid_programs"))
+        print("[DIAG_PLAN]   reason        = %r"
+              % (workflow_state.get("reason") or "")[:200])
+        try:
+            print("[DIAG_PLAN]   directives    = %s"
+                  % _diag_json.dumps(directives, indent=2))
+        except Exception:
+            print("[DIAG_PLAN]   directives    = %r" % directives)
+        print("[DIAG_PLAN]   metrics_trend.should_stop = %r"
+              % metrics_trend.get("should_stop"))
+        print("[DIAG_PLAN]   metrics_trend.reason      = %r"
+              % metrics_trend.get("reason"))
+        print("[DIAG_PLAN]   metrics_trend.trend_summary = %r"
+              % metrics_trend.get("trend_summary"))
+        _si2 = state.get("session_info", {}) or {}
+        print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
+              % _si2.get("plan_has_pending_stages", False))
+        print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
+              % _si2.get("plan_next_stage_programs", None))
+        print("[DIAG_PLAN]   user_advice (first 200ch) = %r"
+              % (user_advice or "")[:200])
+        print("=" * 70, flush=True)
+
     system_msg, user_msg = get_planning_prompt(
         history=state.get("history", []),
         analysis=state.get("log_analysis", {}),
@@ -1711,6 +2022,15 @@ def plan(state):
         directives=directives,
         best_files=best_files
     )
+
+    # v116.16 DIAG: dump the assembled user_msg so we see literally what
+    # the LLM reads (VALID PROGRAMS line, Stop Conditions block, etc.).
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        print("=" * 70)
+        print("[DIAG_PLAN] ASSEMBLED PROMPT (user_msg, first 4000 chars)")
+        print("=" * 70)
+        print(user_msg[:4000] if user_msg else "<empty>")
+        print("=" * 70, flush=True)
 
     # 4. Get LLM (with validation)
     llm, error = get_planning_llm(provider)
@@ -1734,7 +2054,8 @@ def plan(state):
         handler = None
         try:
             from libtbx.langchain.agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
             if provider == "google":
                 handler = get_google_handler()
@@ -1742,11 +2063,14 @@ def plan(state):
                 handler = get_openai_handler()
             elif provider == "anthropic":
                 handler = get_anthropic_handler()
+            elif provider == "portkey":
+                handler = get_portkey_handler()
         except ImportError:
             try:
                 # Try relative import for standalone testing
                 from agent.rate_limit_handler import (
-                    get_google_handler, get_openai_handler, get_anthropic_handler
+                    get_google_handler, get_openai_handler, get_anthropic_handler,
+                    get_portkey_handler
                 )
                 if provider == "google":
                     handler = get_google_handler()
@@ -1754,6 +2078,8 @@ def plan(state):
                     handler = get_openai_handler()
                 elif provider == "anthropic":
                     handler = get_anthropic_handler()
+                elif provider == "portkey":
+                    handler = get_portkey_handler()
             except ImportError:
                 pass  # No rate limit handler available
 
@@ -1930,29 +2256,166 @@ def plan(state):
                         "Running %s. [LLM wanted STOP]"
                         % pick)
 
+        # Quality floor: reject LLM STOP when metrics are
+        # clearly below acceptable thresholds and there are
+        # runnable programs.  This catches cases where the
+        # expert assessment or LLM incorrectly concludes the
+        # run is done (e.g. cryo-EM CC 0.67 with resolve_cryo_em
+        # and real_space_refine still available).
+        if chosen_program == "STOP":
+            non_stop = [
+                p for p in valid_programs if p != "STOP"]
+            if non_stop:
+                _ws = state.get("workflow_state", {})
+                _ctx = _ws.get("context", {})
+                _exp = _ws.get("experiment_type", "")
+                _reject = False
+                _floor_reason = ""
+
+                if _exp == "cryoem":
+                    _cc = _ctx.get("map_cc")
+                    if _cc is not None and _cc < 0.70:
+                        _reject = True
+                        _floor_reason = (
+                            "cryo-EM CC=%.3f < 0.70 "
+                            "acceptable threshold"
+                            % _cc)
+                elif _exp == "xray":
+                    _rf = _ctx.get("r_free")
+                    _ab_done = _ctx.get(
+                        "autobuild_done", False)
+                    if (_rf is not None
+                            and _rf > 0.50
+                            and not _ab_done):
+                        _reject = True
+                        _floor_reason = (
+                            "R-free=%.3f > 0.50 and "
+                            "autobuild not yet attempted"
+                            % _rf)
+
+                if _reject:
+                    # Prefer dock_in_map when model isn't placed
+                    _dock_done = _ctx.get("dock_done", False)
+                    if (_exp == "cryoem"
+                            and _cc is not None and _cc < 0.10
+                            and not _dock_done
+                            and "phenix.dock_in_map" in non_stop):
+                        pick = "phenix.dock_in_map"
+                    else:
+                        pick = non_stop[0]
+                    state = _log(
+                        state,
+                        "PLAN: QUALITY FLOOR — "
+                        "rejecting LLM STOP (%s). "
+                        "Selecting %s"
+                        % (_floor_reason, pick))
+                    chosen_program = pick
+                    intent["program"] = pick
+                    intent["stop"] = False
+                    intent["reasoning"] = (
+                        "Quality floor: %s. "
+                        "Running %s. "
+                        "[LLM wanted STOP]"
+                        % (_floor_reason, pick))
+
+        # Unplaced model guard (cryo-EM): if CC < 0.10 and docking
+        # hasn't been done, the model is clearly not placed in the
+        # map.  Redirect to dock_in_map if available, regardless of
+        # what the LLM/rules chose.  This catches cases like
+        # groel_dock_refine where map_symmetry advances the state
+        # past the dock_model step, and real_space_refine runs on
+        # an unplaced model (CC ≈ 0.01).
+        if chosen_program and chosen_program != "STOP":
+            _ws = state.get("workflow_state", {})
+            _ctx = _ws.get("context", {})
+            _exp = _ws.get("experiment_type", "")
+            if _exp == "cryoem":
+                _cc = _ctx.get("map_cc")
+                _dock_done = _ctx.get("dock_done", False)
+                if (_cc is not None and _cc < 0.10
+                        and not _dock_done
+                        and chosen_program != "phenix.dock_in_map"
+                        and "phenix.dock_in_map" in valid_programs):
+                    _orig_program = chosen_program
+                    state = _log(state,
+                        "PLAN: UNPLACED MODEL — "
+                        "CC=%.3f < 0.10 and dock_done=False. "
+                        "Redirecting from %s to "
+                        "phenix.dock_in_map"
+                        % (_cc, _orig_program))
+                    chosen_program = "phenix.dock_in_map"
+                    intent["program"] = "phenix.dock_in_map"
+                    intent["reasoning"] = (
+                        "Unplaced model: CC=%.3f, "
+                        "docking not done. Must dock "
+                        "before refining. "
+                        "[was: %s]"
+                        % (_cc, _orig_program))
+
         # Simple validation: is the chosen program in valid_programs?
         if chosen_program is None or chosen_program not in valid_programs:
             if valid_programs:
                 # If the LLM chose the after_program target but it's not yet in
-                # valid_programs, do NOT fall through to an arbitrary program —
-                # that would silently skip the user-requested sequence step.
-                # Instead, log a clear warning and stop so the configuration
-                # problem surfaces rather than the workflow running off-script.
+                # valid_programs, the right response depends on whether the plan
+                # can drive the workflow there via prerequisites:
+                #
+                # - Plan has pending stages → fall through to override (pick a
+                #   valid program).  The workflow will progress through the
+                #   prerequisite states until after_program becomes valid.
+                #   This matches the architecture's intent for `after_program`
+                #   as a "minimum-run guarantee" (per OVERVIEW.md §327,
+                #   ARCHITECTURE.md §546–551, v112.78).
+                #
+                # - No plan / no pending stages → STOP with a clear error.
+                #   Without a plan to drive the workflow, falling through to an
+                #   arbitrary program would silently skip the user-requested
+                #   sequence step.  This is the original v115 safety check
+                #   (genuine config error or typo'd program name).
+                #
+                # v116.10: bug fix — previously, this STOP fired unconditionally
+                # whenever the LLM picked the after_program target while it was
+                # out of valid_programs.  On a fresh "predict and stop" request
+                # at xray_initial, the LLM picks predict_and_build (the user's
+                # target) but valid_programs=[xtriage] because xtriage hasn't
+                # run yet.  The STOP fired at cycle 1 before xtriage could run,
+                # producing the "not available at the current workflow step"
+                # error.  The plan WAS pending — the fix is to let it drive.
                 after_prog = (state.get("directives", {})
                               .get("stop_conditions", {})
                               .get("after_program"))
                 if chosen_program and after_prog and chosen_program == after_prog:
-                    state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
-                        "valid_programs %s — stopping to avoid running off-script. "
-                        "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
-                        chosen_program, valid_programs, chosen_program))
-                    return {
-                        **state,
-                        "command": "STOP",
-                        "stop": True,
-                        "stop_reason": "after_program_not_available",
-                        "validation_error": None,
-                    }
+                    if not session_info.get(
+                            "plan_has_pending_stages", False):
+                        # No plan-driven path to the target — genuine config
+                        # error.  Surface it rather than running off-script.
+                        _apna_msg = (
+                            "Agent stopped: the program '%s' requested by the "
+                            "stop_after directive is not available at the current "
+                            "workflow step. Check that the program name is spelled "
+                            "correctly and that the required input files are present."
+                            % chosen_program
+                        )
+                        state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
+                            "valid_programs %s — stopping to avoid running off-script. "
+                            "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
+                            chosen_program, valid_programs, chosen_program))
+                        return {
+                            **state,
+                            "command": "STOP",
+                            "stop": True,
+                            "stop_reason": "after_program_not_available",
+                            "abort_message": _apna_msg,
+                            "validation_error": None,
+                        }
+                    # Plan has pending stages: log the situation but fall
+                    # through to the override below.  The workflow will reach
+                    # after_program via prerequisites — no need to STOP here.
+                    state = _log(state,
+                        "PLAN: LLM chose after_program '%s' but it is not in "
+                        "valid_programs %s — plan has pending stages, falling "
+                        "through to override (workflow will progress through "
+                        "prerequisites until %s becomes valid)" % (
+                            chosen_program, valid_programs, chosen_program))
 
                 # Override to first valid program (or first non-STOP if available)
                 override_program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
@@ -2055,7 +2518,7 @@ def plan(state):
         }
 
 
-def _check_fatal_llm_error(error_msg):
+def _check_fatal_llm_error(error_msg, provider=None):
     """
     Check if an LLM error is fatal (won't resolve by retrying).
 
@@ -2064,39 +2527,60 @@ def _check_fatal_llm_error(error_msg):
     import re
 
     error_lower = error_msg.lower() if error_msg else ""
+    prov = provider or "google"
+    others = [p for p in SUPPORTED_PROVIDERS if p != prov]
+    alt_provider = others[0] if others else None
 
-    # Google API key IP address restriction
+    def _alt_suggestion():
+        lines = []
+        if alt_provider:
+            lines.append(
+                "Try a different provider:  --provider=%s" % alt_provider
+            )
+        lines.append(
+            "Or run rules-only mode:    --use_rules_only=True"
+        )
+        return "\n".join(lines)
+
+    # API key IP address restriction
     if "ip address restriction" in error_lower or "API_KEY_IP_ADDRESS_BLOCKED" in error_msg:
-        # Extract the IP address if present
         ip_match = re.search(r'originating IP address.*?(\d+\.\d+\.\d+\.\d+)', error_msg)
         ip_addr = ip_match.group(1) if ip_match else "unknown"
         return (
-            "Your Google API key has an IP address restriction. "
-            "Your current IP address (%s) is not in the allowed list.\n\n"
-            "To fix this:\n"
-            "  1. Go to https://console.cloud.google.com/apis/credentials\n"
-            "  2. Edit your API key's IP restrictions\n"
-            "  3. Add your IP address (%s) to the allowed list\n"
-            "  4. Or remove IP restrictions entirely for testing\n\n"
-            "Alternatively, run with use_llm=False for rules-only mode."
-        ) % (ip_addr, ip_addr)
+            "Your %s API key has an IP address restriction "
+            "(blocked IP: %s).\n\n"
+            "Fix: https://console.cloud.google.com/apis/credentials\n"
+            "Add %s to the allowed list, or remove IP restrictions.\n\n"
+            "%s"
+        ) % (prov, ip_addr, ip_addr, _alt_suggestion())
 
     # Invalid API key
     if "api_key_invalid" in error_lower or "api key not valid" in error_lower:
+        env_var = "%s_API_KEY" % prov.upper()
         return (
-            "Your API key is not valid. Please check that you have copied it correctly.\n\n"
-            "To fix this:\n"
-            "  1. Verify your GOOGLE_API_KEY environment variable\n"
-            "  2. Generate a new key at https://console.cloud.google.com/apis/credentials\n\n"
-            "Alternatively, run with use_llm=False for rules-only mode."
-        )
+            "Your %s API key is not valid. "
+            "Check the %s environment variable.\n\n"
+            "%s"
+        ) % (prov, env_var, _alt_suggestion())
 
-    # Quota exceeded (not really fatal but user needs to know)
-    if "quota" in error_lower and "exceeded" in error_lower:
-        return (
-            "Your API quota has been exceeded. You may need to wait or upgrade your plan.\n\n"
-            "In the meantime, you can run with use_llm=False for rules-only mode."
-        )
+    # Quota / rate limit exceeded
+    if (("quota" in error_lower and "exceeded" in error_lower) or
+            "resource_exhausted" in error_lower or
+            "rate_limit_exceeded" in error_lower):
+        # No periods or newlines before the action text — contains_sorry() in
+        # rest/__init__.py truncates at the first '.' or '\n' and only skips
+        # its "Please wait" suffix when "please" appears in the first chunk.
+        if alt_provider:
+            return (
+                "Your %s API quota has been exceeded, "
+                "please try another provider: --provider=%s "
+                "or run with --use_rules_only=True"
+            ) % (prov, alt_provider)
+        else:
+            return (
+                "Your %s API quota has been exceeded, "
+                "please run with --use_rules_only=True"
+            ) % prov
 
     return None  # Retryable error
 
@@ -2121,8 +2605,16 @@ def _handle_llm_failure(state, error_msg):
     """
     MAX_LLM_FAILURES = 3  # Stop after this many consecutive failures
 
+    # Defensive: this is a failure handler and must never itself raise.
+    # Callers pass str(e) or a string error today, but normalize here so a
+    # None/non-string error can't turn a handled LLM failure into a crash
+    # (which would abort the whole run -- worse than the degradation we report).
+    if not isinstance(error_msg, str):
+        error_msg = "unknown error" if error_msg is None else str(error_msg)
+
     # Check for FATAL errors that won't resolve by retrying
-    fatal_error = _check_fatal_llm_error(error_msg)
+    provider = state.get("provider", "google")
+    fatal_error = _check_fatal_llm_error(error_msg, provider=provider)
     if fatal_error:
         state = _log(state, "PLAN: FATAL LLM error - %s" % fatal_error)
         from libtbx.utils import Sorry
@@ -2133,6 +2625,40 @@ def _handle_llm_failure(state, error_msg):
     state = {**state, "llm_consecutive_failures": failures}
 
     state = _log(state, "PLAN: LLM failure %d/%d" % (failures, MAX_LLM_FAILURES))
+
+    # LLM-unavailable observability.  Graph state is per-cycle (each cycle is a
+    # fresh graph.invoke), so this CANNOT be a run-level flag here -- the
+    # run-level aggregation lives on the driver (ai_agent.py via session.data).
+    # What we do here, once per invoke, is:
+    #   (1) emit a structured EventType.NOTICE event carrying a machine-readable
+    #       discriminator (notice_kind="llm_unavailable").  This rides the
+    #       `events` list, which is preserved by every downstream node and
+    #       crosses the REST boundary identically for local and server runs;
+    #       the driver detects it to set its run-level session.data flag.
+    #   (2) log a human-readable line to debug_log (formatter-independent, shown
+    #       at every verbosity), so the per-cycle notice is always user-visible.
+    # The guard key is scoped to THIS invoke (route_after_validate can loop
+    # validate->plan, calling this handler more than once per cycle); it is
+    # deliberately NOT named like the driver's run-level key to avoid scope
+    # confusion.
+    if not state.get("llm_notice_emitted_this_invoke"):
+        _prov = state.get("provider", "unknown")
+        _human = (
+            "LLM PROVIDER UNAVAILABLE -- provider '%s' could not be "
+            "reached. This cycle is using RULES-BASED program selection (no "
+            "LLM); decisions come from deterministic workflow rules, not the "
+            "LLM, so results may differ from an LLM-driven run. Last error: %s"
+        ) % (_prov, error_msg[:160])
+        # (1) structured event for machine detection by the driver
+        state = _emit(
+            state, EventType.NOTICE,
+            notice_kind="llm_unavailable",
+            provider=_prov,
+            message=_human,
+        )
+        # (2) human-readable line (debug_log; shown at all verbosities)
+        state = _log(state, _human)
+        state = {**state, "llm_notice_emitted_this_invoke": True}
 
     # Check if we should stop gracefully
     if failures >= MAX_LLM_FAILURES:
@@ -2217,6 +2743,21 @@ def _mock_plan(state):
 
         state = _log(state, "PLAN: RulesSelector chose %s" % intent.get("program"))
 
+        # F5 (v115): when the workflow reaches the 'complete' step and
+        # RulesSelector fires a stop, use stop_reason='workflow_complete'
+        # instead of whatever generic reason RulesSelector returned
+        # (typically 'no_valid_programs').  This lets ai_agent.py F1 and
+        # the Results tab show a success message rather than an error.
+        _step_name = workflow_state.get("step_info", {}).get("step", "")
+        if intent.get("stop") and _step_name == "complete":
+            _success_msg = "Workflow complete — structure determination finished successfully."
+            intent = {
+                **intent,
+                "stop_reason": "workflow_complete",
+                "abort_message": _success_msg,
+                "reasoning": intent.get("reasoning") or _success_msg,
+            }
+
         # === EMIT PROGRAM_SELECTED EVENT ===
         state = _emit(state, EventType.PROGRAM_SELECTED,
             program=intent.get("program"),
@@ -2232,7 +2773,8 @@ def _mock_plan(state):
             **state,
             "intent": intent,
             "stop": intent.get("stop", False),
-            "stop_reason": intent.get("stop_reason")
+            "stop_reason": intent.get("stop_reason"),
+            "abort_message": intent.get("abort_message") or state.get("abort_message"),
         }
     except Exception as e:
         state = _log(state, "PLAN: RulesSelector failed: %s, using simple fallback" % e)
@@ -2240,18 +2782,25 @@ def _mock_plan(state):
     # Simple fallback if rules selector fails
     if not valid_programs:
         state = _log(state, "PLAN: No workflow state, cannot determine valid programs")
+        _no_ws_msg = (
+            "Agent stopped: the workflow engine could not determine a current "
+            "state. Check that the expected input files are present in the "
+            "working directory, then re-run."
+        )
         return {
             **state,
             "intent": {
                 "program": None,
-                "reasoning": "Fallback: No workflow state available, stopping.",
+                "reasoning": _no_ws_msg,
                 "files": {},
                 "strategy": {},
                 "stop": True,
-                "stop_reason": "no_workflow_state"
+                "stop_reason": "no_workflow_state",
+                "abort_message": _no_ws_msg,
             },
             "command": "STOP",
-            "stop_reason": "no_workflow_state"
+            "stop_reason": "no_workflow_state",
+            "abort_message": _no_ws_msg,
         }
 
     # Pick first valid program (excluding STOP unless it's the only option)
@@ -2261,14 +2810,46 @@ def _mock_plan(state):
         program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
 
     if program == "STOP":
-        mock_intent = {
-            "program": None,
-            "reasoning": "Fallback: No valid programs available, stopping.",
-            "files": {},
-            "strategy": {},
-            "stop": True,
-            "stop_reason": "no_valid_programs"
-        }
+        # F5 (v115): distinguish genuine workflow completion from a stuck state.
+        # If the workflow engine reached the 'complete' step, this is success —
+        # use stop_reason='workflow_complete' and a positive message.
+        _step_name = workflow_state.get("step_info", {}).get("step", "")
+        if _step_name == "complete":
+            _stop_reasoning = (
+                "Workflow complete — structure determination finished successfully."
+            )
+            mock_intent = {
+                "program": None,
+                "reasoning": _stop_reasoning,
+                "files": {},
+                "strategy": {},
+                "stop": True,
+                "stop_reason": "workflow_complete",
+                "abort_message": _stop_reasoning,
+            }
+        else:
+            # Build an informative message that names any session-blocked programs
+            # so the user knows why no programs are available (v115 F4).
+            _blocked = state.get("session_blocked_programs", [])
+            if _blocked:
+                _blocked_str = ", ".join(_blocked)
+                _stop_reasoning = (
+                    "No valid programs remain. "
+                    "The following programs were blocked after repeated failures: %s. "
+                    "Check the log for details or restart with different settings."
+                    % _blocked_str
+                )
+            else:
+                _stop_reasoning = "Fallback: No valid programs available, stopping."
+            mock_intent = {
+                "program": None,
+                "reasoning": _stop_reasoning,
+                "files": {},
+                "strategy": {},
+                "stop": True,
+                "stop_reason": "no_valid_programs",
+                "abort_message": _stop_reasoning,
+            }
     else:
         mock_intent = {
             "program": program,
@@ -2296,7 +2877,10 @@ def _mock_plan(state):
         **state,
         "intent": mock_intent,
         "stop": mock_intent.get("stop", False),
-        "stop_reason": mock_intent.get("stop_reason")
+        "stop_reason": mock_intent.get("stop_reason"),
+        # Propagate abort_message to state top-level so run_ai_agent.py
+        # picks it up via final_state["abort_message"] (v115 F4).
+        "abort_message": mock_intent.get("abort_message") or state.get("abort_message"),
     }
 
 
@@ -2555,17 +3139,31 @@ def _build_with_new_builder(state):
     # names that the CommandBuilder recognizes.
     _STRATEGY_REWRITES = {
         "phenix.refine": {
+            # Existing: map to strategy_flag names (exact match)
             "reference_model.enabled":
                 "reference_model_enabled",
             "reference_model.use_starting_model":
                 "reference_model_use_starting",
+            # New: normalize full PHIL paths to shortest valid
+            # forms.  These pass via allowed_phil_prefixes
+            # (substring match), not strategy_flags.
+            "refinement.pdb_interpretation."
+            "secondary_structure.enabled":
+                "secondary_structure.enabled",
+            "refinement.pdb_interpretation."
+            "secondary_structure.protein.remove_outliers":
+                "secondary_structure.protein.remove_outliers",
+            "refinement.pdb_interpretation."
+            "secondary_structure.input.file_name":
+                "secondary_structure.input.file_name",
+            "refinement.pdb_interpretation.ncs.type":
+                "ncs.type",
+            "refinement.pdb_interpretation.ncs.constraints":
+                "ncs.constraints",
         },
-        "phenix.resolve_cryo_em": {
-            # strategy.mask_atoms prefix-matches to
-            # mask_atoms_atom_radius in PHIL. Use
-            # the bare form "mask_atoms" instead.
-            "strategy.mask_atoms": "mask_atoms",
-        },
+        # phenix.resolve_cryo_em: no rewrites needed.
+        # mask_atoms was removed (v115.07) — it's now in
+        # _BLOCKED_PARAMS and stripped before rewrites run.
     }
     _s_rewrites = _STRATEGY_REWRITES.get(
         program, {})
@@ -2576,6 +3174,30 @@ def _build_with_new_builder(state):
                 state = _log(state,
                     "BUILD: Rewrite strategy key "
                     "'%s' → '%s'" % (_old, _new))
+
+    # === REFERENCE MODEL FILE EXCLUSION (Fix C, Tier 1) ===
+    # When the strategy contains reference_model.file=FILENAME,
+    # that file must NOT be used as the primary model input —
+    # it's a restraint source, not a model to refine.  Without
+    # this, the command builder may select it as the model,
+    # giving "Wrong number of models" (two PDBs as positional
+    # args) or wrong crystal symmetry.
+    #
+    # Inject the filename into file_preferences.exclude so the
+    # command builder skips it during auto-fill.
+    _ref_file = (strategy.get("reference_model.file")
+                 or strategy.get("reference_model_file"))
+    if _ref_file and isinstance(_ref_file, str):
+        _ref_basename = os.path.basename(_ref_file)
+        # Inject into directives.file_preferences.exclude
+        _directives = session_info.setdefault("directives", {})
+        _fprefs = _directives.setdefault("file_preferences", {})
+        _excl = _fprefs.setdefault("exclude", [])
+        if _ref_basename not in _excl:
+            _excl.append(_ref_basename)
+            state = _log(state,
+                "BUILD: Excluding %s from primary model "
+                "(reference_model.file)" % _ref_basename)
 
     if (workflow_state.get("automation_path") == "stepwise" and
         program == "phenix.predict_and_build"):
@@ -2632,6 +3254,26 @@ def _build_with_new_builder(state):
                 "BUILD: Force rebuild_in_place=False"
                 " (R-free=%.3f > 0.45, poor MR model)"
                 % _last_rfree)
+
+        # Fix: When autobuild runs after autosol, the
+        # refined MTZ has HL coefficients (HLA/HLB/HLC/HLD)
+        # but no PHIB/FOM columns.  Autobuild crashes with
+        # "Please either specify PHIB and HL coeffs or
+        # neither".  Inject use_hl_if_present=False so
+        # autobuild ignores the HL columns and uses the
+        # map coefficients directly.
+        if "use_hl_if_present" not in strategy:
+            history = state.get("history", [])
+            _after_autosol = any(
+                "autosol" in str(
+                    h.get("program", "")).lower()
+                for h in history
+            )
+            if _after_autosol:
+                strategy["use_hl_if_present"] = False
+                state = _log(state,
+                    "BUILD: Set use_hl_if_present=False"
+                    " (autosol MTZ lacks PHIB/FOM)")
 
     # === MTZ LABEL INJECTION (Fix I1, v115) ===
     # When MTZ has multiple observation arrays, inject
@@ -2763,6 +3405,54 @@ def _build_with_new_builder(state):
                 "BUILD: Applying default polder "
                 "selection='hetero and not water'")
 
+    # === PHASER COPIES INJECTION ===
+    # Inject ASU copy count as phaser.search_copies when known.
+    # Sources (in priority order):
+    #   1. session_info["asu_copies"] — persisted from user directive or xtriage
+    #   2. log_analysis["n_copies"] — same-cycle extraction from xtriage log
+    #      (v115.05: fixes 1-cycle delay where session_info hasn't been
+    #       updated yet because ai_agent.py post-processing hasn't run)
+    #   3. directives program_settings.default.copies
+    #   4. directives program_settings.phenix.phaser.copies
+    if (program == "phenix.phaser"
+            and "component_copies" not in strategy):
+        _copies = session_info.get("asu_copies")
+        if not _copies:
+            # Same-cycle: PERCEIVE extracted n_copies from the
+            # xtriage log THIS cycle, but session_info hasn't
+            # been updated yet (round-trip through ai_agent.py).
+            _copies = state.get(
+                "log_analysis", {}).get("n_copies")
+        if not _copies:
+            _dir_c = state.get("directives", {})
+            _ps_c = _dir_c.get("program_settings", {})
+            _copies = (
+                _ps_c.get("default", {}).get("copies")
+                or _ps_c.get("phenix.phaser", {}).get("copies")
+            )
+        if _copies:
+            try:
+                _copies_int = int(_copies)
+                if 1 <= _copies_int <= 30:
+                    strategy["component_copies"] = _copies_int
+                    _src = ("session" if session_info.get("asu_copies")
+                            else "log_analysis" if state.get(
+                                "log_analysis", {}).get("n_copies")
+                            else "directives")
+                    state = _log(state,
+                        "BUILD: Injecting component_copies=%d "
+                        "for phaser (source: %s)"
+                        % (_copies_int, _src))
+                else:
+                    state = _log(state,
+                        "BUILD: Skipping component_copies — "
+                        "value %d is outside sane range 1-30"
+                        % _copies_int)
+            except (ValueError, TypeError):
+                state = _log(state,
+                    "BUILD: Skipping component_copies — "
+                    "non-integer value %r" % (_copies,))
+
     # === PHIL STRATEGY VALIDATION (Fix 4, v115) ===
     # Strip LLM-injected params that aren't valid for this
     # program.  Must run AFTER all strategy rewrites/defaults
@@ -2869,16 +3559,92 @@ def _build_with_new_builder(state):
                         % (os.path.basename(_best),
                            _src))
 
+    # P1B: apply think_file_overrides → patch categorized_files for this build.
+    # Each key is a category name (e.g. "data_mtz"); value is an absolute path.
+    # One-cycle lifetime: consume (clear) after reading so it doesn't persist.
+    # The copy of categorized_files is only made when there are overrides to
+    # apply, avoiding an unnecessary dict copy on the common (no-override) path.
+    _think_overrides = state.get("think_file_overrides") or {}
+    if _think_overrides:
+        _categorized_files = dict(workflow_state.get("categorized_files", {}))
+        for _cat, _path in _think_overrides.items():
+            if _path:
+                state = _log(state,
+                    "BUILD: think_file_override category=%s -> %s"
+                    % (_cat, os.path.basename(str(_path))))
+                _categorized_files[_cat] = (
+                    _path if isinstance(_path, list) else [_path]
+                )
+        # Clear so next cycle starts clean
+        state = {**state, "think_file_overrides": {}}
+    else:
+        # No overrides — pass the original dict directly.
+        # CommandContext reads categorized_files but never mutates it,
+        # confirmed by the fact that workflow_state (which holds the
+        # same dict) persists unmodified across cycles.
+        _categorized_files = workflow_state.get("categorized_files", {})
+
     # Create CommandContext
     _ws_res = workflow_state.get(
         "resolution")  # from xtriage/mtriage
+
+    # === PHASER COPIES INJECTION (new builder path) ===
+    # Inject ASU copy count into strategy for phaser.
+    # Mirrors the injection in the old build() path.
+    # Sources: session_info > log_analysis > directives.
+    if (program == "phenix.phaser"
+            and "component_copies" not in strategy):
+        _copies = session_info.get("asu_copies")
+        if not _copies:
+            _copies = state.get(
+                "log_analysis", {}).get("n_copies")
+        if not _copies:
+            _dir_c = state.get("directives", {})
+            _ps_c = _dir_c.get("program_settings", {})
+            _copies = (
+                _ps_c.get("default", {}).get("copies")
+                or _ps_c.get(
+                    "phenix.phaser", {}).get("copies")
+            )
+        if _copies:
+            try:
+                _copies_int = int(_copies)
+                if 1 <= _copies_int <= 30:
+                    strategy["component_copies"] = (
+                        _copies_int)
+                    _src = (
+                        "session"
+                        if session_info.get("asu_copies")
+                        else "log_analysis"
+                        if state.get(
+                            "log_analysis", {}).get(
+                            "n_copies")
+                        else "directives")
+                    state = _log(state,
+                        "BUILD: Injecting "
+                        "component_copies=%d for phaser "
+                        "(source: %s)"
+                        % (_copies_int, _src))
+                else:
+                    state = _log(state,
+                        "BUILD: Skipping "
+                        "component_copies — value %d "
+                        "outside range 1-30"
+                        % _copies_int)
+            except (ValueError, TypeError):
+                state = _log(state,
+                    "BUILD: Skipping "
+                    "component_copies — "
+                    "non-integer value %r"
+                    % (_copies,))
+
     context = CommandContext(
         cycle_number=state.get("cycle_number", 1),
         experiment_type=session_info.get("experiment_type", ""),
         resolution=state.get("session_resolution") or _ws_res,
         best_files=session_info.get("best_files", {}),
         rfree_mtz=session_info.get("rfree_mtz"),
-        categorized_files=workflow_state.get("categorized_files", {}),
+        categorized_files=_categorized_files,
         workflow_state=workflow_state.get("state", ""),
         history=state.get("history", []),
         llm_files=corrected_files if corrected_files else None,
@@ -3028,9 +3794,17 @@ def _build_with_new_builder(state):
             pre_postprocess = command
             directives = state.get("directives", {})
             user_advice = state.get("user_advice", "")
-            # bad_inject_params is {program: [param_names]} — extract set for this program
-            all_bad = state.get("bad_inject_params", {})
-            bad_set = set(all_bad.get(program, []))
+            # bad_inject_params is {program: [param_names]} — extract set for
+            # this program.  Be defensive about types: after a JSON round-trip
+            # across the REST boundary the value could arrive as None (missing
+            # key deserialized to null) or a per-program value could be null;
+            # json.loads never produces tuples, but None is a real possibility.
+            # Coerce so .get()/set() can never raise.
+            all_bad = state.get("bad_inject_params") or {}
+            if not isinstance(all_bad, dict):
+                all_bad = {}
+            _prog_bad = all_bad.get(program) or []
+            bad_set = set(_prog_bad)
 
             # Collect postprocess log messages for graph debug log
             _pp_logs = []
@@ -3201,7 +3975,10 @@ def build(state):
                         key, recommended_value, reason[:60] if reason else "recommended"))
 
     # === LEGACY: APPLY REFINE_HINTS (backward compatibility) ===
-    # This handles cases where recommended_strategy might not be populated
+    # NOTE: This block only runs when USE_NEW_COMMAND_BUILDER is False.
+    # With USE_NEW_COMMAND_BUILDER=True (default), the build() function
+    # delegates to _build_with_new_builder() and this code is not reached.
+    # R-free flag logic for the new path is in command_builder.py.
     if program == "phenix.refine" and not recommended_strategy:
         refine_hints = workflow_state.get("refine_hints", [])
 
@@ -3295,6 +4072,20 @@ def build(state):
                 state = _log(state,
                     "BUILD: Set rebuild_in_place=False"
                     " (model already exists)")
+
+        # Fix: use_hl_if_present=False after autosol
+        if "use_hl_if_present" not in strategy:
+            history = state.get("history", [])
+            _after_autosol = any(
+                "autosol" in str(
+                    h.get("program", "")).lower()
+                for h in history
+            )
+            if _after_autosol:
+                strategy["use_hl_if_present"] = False
+                state = _log(state,
+                    "BUILD: Set use_hl_if_present=False"
+                    " (autosol MTZ lacks PHIB/FOM)")
 
     # === APPLY RESOLUTION FOR PROGRAMS THAT NEED IT ===
     # Helper to find resolution from various sources (priority order)
@@ -3739,6 +4530,7 @@ def validate(state):
     Checks:
     1. Command is not empty
     2. Program is valid for current workflow state (STRICT)
+    2a. think_file_overrides paths exist in available_files (P1B)
     3. Referenced files exist in available_files
     4. Command is not a duplicate of previous cycle
     """
@@ -3779,6 +4571,38 @@ def validate(state):
     available_files = state.get("available_files", [])
     available_set = set(available_files)
     available_basenames = {os.path.basename(f): f for f in available_set}
+
+    # === 2a. FILE OVERRIDE VALIDATION (P1B) ===
+    # If THINK suggested file_overrides, verify the paths exist before BUILD
+    # consumes them.  An unresolvable override is cleared from state and the
+    # cycle retried with a hint so THINK can self-correct.
+    _think_overrides = state.get("think_file_overrides") or {}
+    if _think_overrides:
+        _bad_overrides = {}
+        for _cat, _path in _think_overrides.items():
+            if not _path:
+                continue
+            # Normalise to a list the same way BUILD does
+            _paths = _path if isinstance(_path, list) else [_path]
+            for _p in _paths:
+                _bn = os.path.basename(_p)
+                if _p not in available_set and _bn not in available_basenames:
+                    _bad_overrides[_cat] = _p
+                    break  # one bad path per category is enough to flag it
+        if _bad_overrides:
+            _detail = "; ".join(
+                "category '%s' -> '%s'" % (c, p)
+                for c, p in sorted(_bad_overrides.items())
+            )
+            error = (
+                "THINK suggested file_override(s) not found in available_files: "
+                "%s. Verify the path is correct and the file has been produced "
+                "by a previous step." % _detail
+            )
+            state = _log(state, "VALIDATE: FILE OVERRIDE ERROR - %s" % error)
+            # Clear the bad overrides so BUILD does not use them on fallback
+            state = {**state, "think_file_overrides": {}, "validation_error": error}
+            return _increment_attempt(state)
 
     # Debug: log file counts for troubleshooting
     state = _log(state, "VALIDATE: Checking against %d available files" % len(available_files))

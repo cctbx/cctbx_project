@@ -31,15 +31,15 @@ jobs:
       - name: Check out cctbx_project
         uses: actions/checkout@v6
         with:
-          path: ./modules/cctbx_project
+          path: ./modules/cctbx_project_checkout
 
       - name: Update other sources and keep cctbx_project checkout
         run: |
           set -xe
           pwd
           ls
-          cp -a ./modules/cctbx_project ~/tmp
-          ln -s ~/tmp/cctbx_project/libtbx/auto_build/bootstrap.py .
+          mv ./modules/cctbx_project_checkout ~/tmp/cctbx_project
+          cp ~/tmp/cctbx_project/libtbx/auto_build/bootstrap.py .
           python bootstrap.py hot update
           cd modules
           rm -fr cctbx_project
@@ -85,7 +85,7 @@ jobs:
             ${{ runner.os }}-build
 
       - name: Setup conda
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           miniforge-version: latest
           channels: conda-forge
@@ -127,6 +127,13 @@ jobs:
           ls ./modules
           df -h
 
+      - name: Skip build cache, if requested
+        if: contains(github.event.head_commit.message, '[skip cache]')
+        run: |
+          set -xe
+          rm -fr ./build
+          ls
+
       - name: Run bootstrap.py
         run: |
           set -xe
@@ -137,6 +144,7 @@ jobs:
           libtbx.configure \
             cma_es \
             fable \
+            qttbx \
             rstbx \
             spotfinder \
             cbflib_adaptbx \
@@ -147,7 +155,6 @@ jobs:
           libtbx.scons -j 4
 
       - name: Run tests
-        continue-on-error: true
         run: |
           set -xe
           pwd
@@ -171,8 +178,11 @@ jobs:
             module=rstbx \
             module=scitbx \
             module=crys3d \
+            module=qttbx \
             module=smtbx \
             module=spotfinder \
+            module=xcif \
+            max_retries=2 \
             nproc=4
 
 # -----------------------------------------------------------------------------
@@ -215,7 +225,7 @@ jobs:
             ${{ runner.os }}-build
 
       - name: Setup conda
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           miniforge-version: latest
           channels: conda-forge
@@ -268,33 +278,56 @@ jobs:
           dir ${{ github.workspace }}
           dir ${{ github.workspace }}\modules
 
+      - name: Fix broken cache
+        continue-on-error: true
+        shell: cmd
+        run: |
+          del /S /Q .\build\lib\_pycbf.pyd 2> nul
+
+      - name: Skip build cache, if requested
+        if: contains(github.event.head_commit.message, '[skip cache]')
+        shell: cmd
+        run: |
+          rmdir /s /q .\build
+          dir
+
       - name: Run bootstrap.py
         shell: cmd
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          if exist "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+            call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          )
+          if exist "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+            call "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          )
           call %CONDA%\condabin\activate.bat base
           copy .\modules\cctbx_project\libtbx\auto_build\bootstrap.py .
           python .\modules\cctbx_project\libtbx\auto_build\bootstrap.py base build --nproc=4
           if %errorlevel% neq 0 exit /b %errorlevel%
           call .\build\setpaths.bat
-          libtbx.configure ^
+          call libtbx.configure ^
             cma_es ^
             fable ^
+            qttbx ^
             rstbx ^
             spotfinder ^
             cbflib_adaptbx
           if %errorlevel% neq 0 exit /b %errorlevel%
           cd build
-          libtbx.scons -j 4
+          call libtbx.scons -j 4
           if %errorlevel% neq 0 exit /b %errorlevel%
-          libtbx.scons -j 4
+          call libtbx.scons -j 4
           if %errorlevel% neq 0 exit /b %errorlevel%
 
       - name: Run tests
-        continue-on-error: true
         shell: cmd
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          if exist "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+            call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          )
+          if exist "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+            call "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          )
           call .\build\setpaths.bat
           rmdir /S /Q tests
           mkdir tests
@@ -315,7 +348,10 @@ jobs:
             module=rstbx ^
             module=scitbx ^
             module=crys3d ^
+            module=qttbx ^
             module=smtbx ^
             module=spotfinder ^
+            module=xcif ^
+            max_retries=2 ^
             nproc=4
           if %errorlevel% neq 0 exit /b %errorlevel%

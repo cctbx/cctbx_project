@@ -86,7 +86,7 @@ def load_templates(yaml_path=None):
 def _load_templates_inner(yaml_path):
   """Inner loader. May raise."""
   import yaml
-  with open(yaml_path, "r") as f:
+  with open(yaml_path, "r", encoding='utf-8') as f:
     raw = yaml.safe_load(f)
   if not raw or not isinstance(raw, dict):
     return {}

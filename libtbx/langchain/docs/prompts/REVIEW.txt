@@ -1,0 +1,8 @@
+Gemini, you are a senior engineer tasked with **critically reviewing this plan**. Your goal is to find every potential flaw, unclear assumption, or workflow violation. Be specific and constructive; do not give generic praise.
+
+For each step:
+1. Identify issues or risks
+2. Explain why it is a problem
+3. Suggest improvements or alternatives
+
+Limit to 1–2 paragraphs per step. Do not provide general compliments.

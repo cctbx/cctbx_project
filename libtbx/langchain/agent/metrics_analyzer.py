@@ -16,7 +16,13 @@ from __future__ import absolute_import, division, print_function
 import re
 
 # Import YAML-driven evaluator
-from libtbx.langchain.agent.metric_evaluator import analyze_refinement_trend
+try:
+    from libtbx.langchain.agent.metric_evaluator import analyze_refinement_trend
+except ImportError:
+    try:
+        from agent.metric_evaluator import analyze_refinement_trend
+    except ImportError:
+        analyze_refinement_trend = None
 
 
 # =============================================================================
@@ -66,27 +72,39 @@ def derive_metrics_from_history(history):
             }
 
             # Extract from analysis dict if present
+            # Coerce via _safe_float: JSON round-tripping can turn
+            # floats into strings (e.g. 0.385 → "0.385"), which
+            # causes TypeError in downstream arithmetic.
             analysis = entry.get("analysis", {})
             if isinstance(analysis, dict):
-                metrics["r_free"] = analysis.get("r_free")
-                metrics["r_work"] = analysis.get("r_work")
-                metrics["tfz"] = analysis.get("tfz")
-                metrics["llg"] = analysis.get("llg")
-                metrics["resolution"] = analysis.get("resolution")
-                metrics["map_cc"] = analysis.get("map_cc")
+                metrics["r_free"] = _safe_float(analysis.get("r_free"))
+                metrics["r_work"] = _safe_float(analysis.get("r_work"))
+                metrics["tfz"] = _safe_float(analysis.get("tfz"))
+                metrics["llg"] = _safe_float(analysis.get("llg"))
+                metrics["resolution"] = _safe_float(analysis.get("resolution"))
+                metrics["map_cc"] = _safe_float(analysis.get("map_cc"))
 
-            # Also check result/summary for metrics (fallback)
+            # Also check result/summary/analysis for metrics (fallback)
             result_text = str(entry.get("result", "") or entry.get("summary", ""))
+            # analysis may be a text string (FINAL QUALITY METRICS REPORT format)
+            # or a dict — include it in the search text either way
+            _analysis = entry.get("analysis", "")
+            if isinstance(_analysis, str) and _analysis:
+                result_text = result_text + "\n" + _analysis
 
-            # Only fill in missing values from result text
+            # Broad r_free pattern: matches "R-free:", "R Free:", "R_Free:", "R Free ="
+            _RFREE_PAT = r"R[- _][Ff]ree[:\s=]+([0-9.]+)"
+            _RWORK_PAT = r"R[- _][Ww]ork[:\s=]+([0-9.]+)"
+
+            # Only fill in missing values from result/analysis text
             if not metrics["r_free"]:
-                metrics["r_free"] = _extract_float(result_text, r"R-free[:\s=]+([0-9.]+)")
+                metrics["r_free"] = _extract_float(result_text, _RFREE_PAT)
             # Try autobuild table format: "SOLUTION  CYCLE     R        RFREE"
             # followed by data row like "1         1      0.21        0.25"
             if not metrics["r_free"]:
                 metrics["r_free"] = _extract_autobuild_rfree(result_text)
             if not metrics["r_work"]:
-                metrics["r_work"] = _extract_float(result_text, r"R-work[:\s=]+([0-9.]+)")
+                metrics["r_work"] = _extract_float(result_text, _RWORK_PAT)
             if not metrics["tfz"]:
                 metrics["tfz"] = _extract_float(result_text, r"TFZ[=:\s]+([0-9.]+)")
             if not metrics["llg"]:
@@ -123,6 +141,10 @@ def _extract_float(text, pattern):
         except (ValueError, IndexError):
             pass
     return None
+
+
+# _safe_float is shared; see libtbx/langchain/utils/run_utils.py
+from libtbx.langchain.utils.run_utils import _safe_float
 
 
 def _extract_autobuild_rfree(text):
@@ -235,7 +257,7 @@ def analyze_metrics_trend(metrics_history, resolution=None, experiment_type="xra
         }
     """
     # Use YAML-driven evaluator
-    if use_yaml_evaluator:
+    if use_yaml_evaluator and analyze_refinement_trend is not None:
         try:
             return analyze_refinement_trend(metrics_history, experiment_type, resolution)
         except Exception as e:
@@ -297,7 +319,7 @@ def _analyze_xray_trend(metrics_history, resolution, result):
     r_free_values = []
     for m in metrics_history:
         prog = (m.get("program") or "").lower()
-        r_free = m.get("r_free")
+        r_free = _safe_float(m.get("r_free"))
         if r_free is None:
             continue
 
@@ -443,7 +465,9 @@ def _analyze_cryoem_trend(metrics_history, result):
         m for m in metrics_history
         if "real_space" in (m.get("program") or "").lower()
     ]
-    cc_values = [m["map_cc"] for m in rsr_metrics if m.get("map_cc") is not None]
+    cc_values = [_safe_float(m["map_cc"]) for m in rsr_metrics
+                 if m.get("map_cc") is not None]
+    cc_values = [v for v in cc_values if v is not None]
     result["map_cc_trend"] = cc_values[-5:]
 
     if len(cc_values) < 1:
@@ -469,11 +493,33 @@ def _analyze_cryoem_trend(metrics_history, result):
     # === STOP CONDITIONS ===
 
     # 1. SUCCESS: CC above target (was 0.75, now 0.70)
+    #
+    # v116.12: Mirror the X-ray validation_done check so we don't auto-stop
+    # before running validation (phenix.molprobity / phenix.validation_cryoem).
+    # Pre-v116.12, this auto-stopped immediately when CC > 0.70, skipping
+    # the validation stage even when the plan had one pending.  See the
+    # X-ray path above (line ~365) for the symmetric pattern.
     if latest_cc > 0.70:
-        result["should_stop"] = True
-        result["reason"] = "SUCCESS: Map-model CC (%.3f) above 0.70 target" % latest_cc
-        result["recommendation"] = "stop"
-        return result
+        # Check if validation has been done - don't auto-stop without validation
+        validation_done = any(
+            m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+            for m in metrics_history
+        )
+
+        if validation_done:
+            result["should_stop"] = True
+            result["reason"] = "SUCCESS: Map-model CC (%.3f) above 0.70 target" % latest_cc
+            result["recommendation"] = "stop"
+            result["trend_summary"] = "Map-model CC: %.3f - ABOVE TARGET" % latest_cc
+            return result
+        else:
+            # Success reached but validation not done - recommend validation, not stop
+            result["should_stop"] = False
+            result["reason"] = "Map-model CC (%.3f) above target - recommend validation before stopping" % latest_cc
+            result["recommendation"] = "validate"
+            result["trend_summary"] = "Map-model CC: %.3f - TARGET REACHED, VALIDATE BEFORE STOPPING" % latest_cc
+            result["suggest_validation"] = True
+            return result
 
     # 2. PLATEAU: Less than 0.3% improvement for 3+ cycles (more patience)
     if len(cc_values) >= 4:
@@ -519,8 +565,9 @@ def get_latest_resolution(metrics_history):
         float or None: Resolution in Angstroms
     """
     for m in reversed(metrics_history):
-        if m.get("resolution"):
-            return m["resolution"]
+        res = _safe_float(m.get("resolution"))
+        if res is not None:
+            return res
     return None
 
 
@@ -534,7 +581,9 @@ def get_best_r_free(metrics_history):
     Returns:
         float or None: Best R-free value
     """
-    r_free_values = [m["r_free"] for m in metrics_history if m.get("r_free") is not None]
+    r_free_values = [_safe_float(m["r_free"]) for m in metrics_history
+                     if m.get("r_free") is not None]
+    r_free_values = [v for v in r_free_values if v is not None]
     if r_free_values:
         return min(r_free_values)
     return None
@@ -551,8 +600,9 @@ def get_latest_r_free(metrics_history):
         float or None: Latest R-free value
     """
     for m in reversed(metrics_history):
-        if m.get("r_free"):
-            return m["r_free"]
+        val = _safe_float(m.get("r_free"))
+        if val is not None:
+            return val
     return None
 
 
@@ -567,8 +617,9 @@ def get_latest_map_cc(metrics_history):
         float or None: Latest CC value
     """
     for m in reversed(metrics_history):
-        if m.get("map_cc"):
-            return m["map_cc"]
+        val = _safe_float(m.get("map_cc"))
+        if val is not None:
+            return val
     return None
 
 

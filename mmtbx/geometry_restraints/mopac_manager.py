@@ -42,24 +42,28 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       nproc_str=''
     else:
       nproc_str='THREADS=%s' % self.nproc
-    multiplicity_str=''
-    if self.multiplicity not in [None, Auto, 1]:
-      multiplicity_str=[None,
-                        'singlet', # - 0 unpaired electrons
-                        'doublet', # - 1 unpaired electrons
-                        'triplet', # - 2 unpaired electrons
-                        'quartet', # - 3 unpaired electrons
-                        'quintet', # - 4 unpaired electrons
-                        'sextet', # - 5 unpaired electrons
-                        ][self.multiplicity]
+    multiplicity=self.get_multiplicity()
+    multiplicity_str=[None,
+                      'singlet', # - 0 unpaired electrons
+                      'doublet', # - 1 unpaired electrons
+                      'triplet', # - 2 unpaired electrons
+                      'quartet', # - 3 unpaired electrons
+                      'quintet', # - 4 unpaired electrons
+                      'sextet', # - 5 unpaired electrons
+                      'septet',
+                      ][multiplicity] + ' UHF'
     additional_options=''
     if gradients_only:
       additional_options+=' 1SCF GRAD ANALYT'
+    charge=self.get_charge()
+    if charge in [Auto]:
+      self.charge=0
+      charge=self.charge
     outl = '%s %s %s %s DISP %s %s\n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
-     'CHARGE=%s %s' % (self.charge, nproc_str),
+     'CHARGE=%s %s' % (charge, nproc_str),
      multiplicity_str,
      additional_options,
      self.preamble,
@@ -174,9 +178,15 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       )
     return cmd
 
-  def run_cmd(self, redirect_output=False, log=None):
+  def run_cmd(self, redirect_output=False, verbose=False, log=None):
     t0=time.time()
     cmd = self.get_cmd()
+    if verbose: print(cmd)
+    self.error_lines=[
+      'THE SCF CALCULATION FAILED.',
+      'UNABLE TO ACHIEVE SELF-CONSISTENCE',
+      'Error and normal termination messages reported in this calculation',
+    ]
     base_qm_manager.run_qm_cmd(cmd,
                                'mopac_%s.out' % self.preamble,
                                error_lines=self.error_lines,

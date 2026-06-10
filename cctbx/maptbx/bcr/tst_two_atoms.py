@@ -9,6 +9,7 @@ from cctbx.maptbx.bcr import bcr
 from libtbx import group_args
 import bisect
 import libtbx
+import cctbx.maptbx.bcr
 
 def get_xrs_and_cg(sites_cart, b_iso, occ, uc_params, n_real, table = "wk1995"):
   cs = crystal.symmetry(uc_params, "P 1")
@@ -78,7 +79,7 @@ def get_formula_map(fc, mask):
 def get_formula12_or_89_map(n_real, xrs, r_image, radii=None, image=None, approx=None,
                             m12c=None, m12f=None, m89c=None, m89f=None):
   assert [m12c, m12f, m89c, m89f].count(True) == 1
-  o = qmap.load_table(element="C", table="wk1995")
+  o = cctbx.maptbx.bcr.load_table(element="C", table="wk1995")
   oim = maptbx.atom_curves(scattering_type="C", scattering_table="wk1995")
   d = o["1.0"] ### XXX HARD WIRED VALUE
   B = d["B"]
@@ -203,7 +204,7 @@ def get_image():
   return image, radii
 
 def get_approx(radii):
-  t = qmap.load_table(element="C", table="wk1995")
+  t = cctbx.maptbx.bcr.load_table(element="C", table="wk1995")
   d = t["1.0"]
   B = d["B"]
   C = d["C"]

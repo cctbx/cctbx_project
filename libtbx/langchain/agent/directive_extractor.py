@@ -14,7 +14,7 @@ Usage:
     directives = extract_directives(
         user_advice="use resolution 3 in autosol but 2.5 in refine",
         provider="google",
-        model="gemini-2.0-flash"
+        model="gemini-2.5-flash-lite"   # or None for the agent default
     )
 
     # Result:
@@ -32,6 +32,28 @@ import json
 import os
 import re
 import warnings
+
+
+# v119.H1: central per-provider default models for the fallback LLM
+# path.  Resolves model defaults via core/llm.py rather than
+# hardcoding strings.  Fallback import path supports both PHENIX and
+# standalone-tests invocation per AI Agent guideline section 3.
+try:
+    from libtbx.langchain.core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+        _classify_provider_error,
+    )
+except ImportError:
+    from core.llm import (
+        default_model_for_provider,
+        # v119.H13
+        normalize_ollama_openai_base_url,
+        resolve_model_for_provider,
+        _classify_provider_error,
+    )
 
 
 # =============================================================================
@@ -73,8 +95,21 @@ def _strip_preprocessor_stop_condition(user_advice):
 
     # 'Stop Condition:' is ALWAYS safe to strip — real users
     # write 'stop after X', not 'Stop Condition: stop after X'.
+    #
+    # v116.11: Updated regex to handle:
+    #   - Markdown bold wrapping: '**Stop Condition**: ...'
+    #   - Numbered list prefix:   '7. **Stop Condition**: ...'
+    #   - Bullet list prefix:     '- Stop Condition: ...'
+    # All variations are produced by the advice preprocessor LLM on
+    # different runs; the original regex (anchored at line-start with
+    # optional whitespace only) missed all but the plainest form.
     cleaned = re.sub(
-        r'^[ \t]*stop\s+condition\s*:\s*[^\n]*$',
+        # Optional leading whitespace, list markers (1., 7., -, *),
+        # markdown bold (**), then 'stop condition', then optional
+        # close-bold and arbitrary punctuation before the colon.
+        r'^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*'
+        r'stop\s+condition'
+        r'\**\s*:\s*[^\n]*$',
         '', user_advice,
         flags=re.IGNORECASE | re.MULTILINE,
     )
@@ -83,6 +118,9 @@ def _strip_preprocessor_stop_condition(user_advice):
     # preprocessor output (indicated by other signature headers).
     # This avoids stripping raw user input like 'Goal: R-free
     # below 0.25' when preprocess_advice=False.
+    #
+    # v116.11: Updated regex to handle markdown bold + numbered
+    # list prefix, same as the Stop Condition strip above.
     _PREPROCESSOR_SIGNATURES = (
         r'input\s+files?\s+found',
         r'experiment\s+type',
@@ -90,13 +128,16 @@ def _strip_preprocessor_stop_condition(user_advice):
         r'special\s+instructions?',
     )
     is_preprocessed = any(
-        re.search(r'(?i)^[ \t]*%s\s*:' % sig, cleaned,
+        re.search(r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                  % sig, cleaned,
                   re.MULTILINE)
         for sig in _PREPROCESSOR_SIGNATURES
     )
     if is_preprocessed:
         cleaned = re.sub(
-            r'^[ \t]*(?:primary\s+)?goal\s*:\s*[^\n]*$',
+            r'^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*'
+            r'(?:primary\s+)?goal'
+            r'\**\s*:\s*[^\n]*$',
             '', cleaned,
             flags=re.IGNORECASE | re.MULTILINE,
         )
@@ -203,7 +244,8 @@ Output a JSON object with these sections. Include ONLY sections that have releva
      * riding_hydrogens: bool
      * unit_cell: string — space-separated "a b c alpha beta gamma" (e.g., "116.097 116.097 44.175 90 90 120")
      * space_group: string (e.g., "P 32 2 1", "P 1", "C 2 2 21")
-   - IMPORTANT: unit_cell and space_group apply to ALL programs — always place them under "default", not under a specific program
+     * copies: int (number of copies of the search model in the ASU, e.g. 4 — place under "default")
+   - IMPORTANT: unit_cell, space_group, and copies apply to ALL programs — always place them under "default", not under a specific program
    - unit_cell FORMAT: always convert the user's value to a space-separated string of 6 numbers in order a b c alpha beta gamma
      * "(116.097, 116.097, 44.175, 90, 90, 120)" → "116.097 116.097 44.175 90 90 120"
      * "116 116 44 90 90 120" → "116 116 44 90 90 120"
@@ -221,6 +263,30 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "skip_validation": bool - If true, allow stopping without running molprobity
    - "r_free_target": float - Stop when R-free reaches this value
    - "map_cc_target": float - Stop when map correlation reaches this value
+   - "stop_after_requested": bool, optional
+     Set to true when the user's RAW INSTRUCTION explicitly says to stop
+     after a specific program. Recognized phrasings:
+       - "stop after X" / "X and stop" / "X, then stop"
+       - "stop when ..." / "stop once ..." / "stop if ..." / "stop at ..."
+       - "only run X" / "just run X" / "just do X"
+       - "Stop Condition: <concrete value>" (a real condition, not "None")
+       - "stop the workflow [immediately] after X" / "stop X after it completes"
+       - "after X completes/finishes, stop" / "after X is done, stop"
+       - "X is the last step" (X is the user-intended terminal program)
+       - Any user phrasing that names a target program followed by a
+         clear signal that no further programs should run after that one.
+     Set false or omit when:
+       - No such phrasing in the raw instruction
+       - Raw says "don't stop" / "never stop" / "continue past X"
+       - Stop Condition reads "None" / "not specified" / "N/A"
+     The raw instruction is the authority. If raw says "X and stop" but
+     preprocessed says "Stop Condition: None", set this true.
+     Examples:
+       - "stop the workflow immediately after refinement completes" →
+         after_program=phenix.refine, stop_after_requested=true,
+         skip_validation=true
+       - "<program> is the last step" → after_program=<program>,
+         stop_after_requested=true, skip_validation=true
 
 3. "file_preferences": Specific files to use or avoid
    - "model": string - Preferred model file name
@@ -236,6 +302,7 @@ Output a JSON object with these sections. Include ONLY sections that have releva
    - "use_molecular_replacement": bool - Prefer MR over experimental phasing
    - "use_mr_sad": bool - MR-SAD workflow: run phaser first to place model, then autosol with placed model
    - "model_is_placed": bool - The user's model is already positioned in the unit cell (skip MR)
+   - "wants_validation_only": bool - User's PRIMARY goal is validation/analysis of an existing model (MolProbity), NOT refinement or MR. Only set when the user explicitly wants validation as the main task, NOT when validation is a final step after refinement.
 
 **CRITICAL: use_experimental_phasing and use_mr_sad**
 - ONLY set these if the user EXPLICITLY requests SAD, MAD, experimental phasing, anomalous phasing, or MR-SAD.
@@ -244,6 +311,16 @@ Output a JSON object with these sections. Include ONLY sections that have releva
 - If the user just provides data + sequence/model without mentioning phasing method, leave these unset.
 - Examples of when to set: "use SAD phasing", "run MR-SAD", "experimental phasing with Fe", "anomalous phasing"
 - Examples of when NOT to set: user provides wavelength/atom_type but doesn't mention SAD/phasing method
+- EXAMPLES that MUST set use_mr_sad=true:
+  - "MR-SAD using intrinsic sulfur (S-SAD)"
+  - "molecular replacement using X.pdb, then run MR-SAD phasing"
+  - "molecular replacement followed by SAD/anomalous phasing"
+  - "perform molecular replacement, then AutoSol with placed model"
+
+**CRITICAL: wants_validation_only**
+- Set wants_validation_only=true ONLY when the user's PRIMARY GOAL is validation or analysis of an existing model.
+- Examples of when to set: "model validation", "comprehensive validation", "analysis only", "run MolProbity on this structure", "structure validation and correction"
+- Examples of when NOT to set: "refine and then validate", "solve the structure", any tutorial that mentions validation as a FINAL STEP after refinement
 
 5. "constraints": list of strings - Other instructions that don't fit above categories
    - Keep these as clear, actionable statements
@@ -266,7 +343,7 @@ IMPORTANT GUIDELINES:
 **CRITICAL: unit_cell and space_group — always use "default" scope**
 - When the user specifies a unit cell or space group, put it under "default" so it applies to all programs:
   ```json
-  {"program_settings": {"default": {"unit_cell": "116.097 116.097 44.175 90 90 120"}}}
+  {{"program_settings": {{"default": {{"unit_cell": "116.097 116.097 44.175 90 90 120"}}}}}}
   ```
 - Convert any parenthesized comma-separated tuple to a plain space-separated string: strip `(`, `)`, and replace `,` with spaces.
 - Example triggers: "use unit cell (a, b, c, α, β, γ)", "the specified unit cell is ...", "space group P 32 2 1"
@@ -385,10 +462,21 @@ An unplaced PDB + cryo-EM map always requires phenix.dock_in_map before refineme
 - Setting after_program="phenix.autosol" would skip phaser, which breaks MR-SAD.
 - Only set after_program="phenix.autosol" if the user explicitly says to skip molecular replacement and run autosol standalone.
   (Note: phenix.map_sharpening is the dedicated map sharpening tool - use this for sharpening requests)
-- For cryo-EM density modification (NOT sharpening): "density modification", "denmod", "resolve_cryo_em" → after_program="phenix.resolve_cryo_em", skip_validation=true
-  (Note: phenix.resolve_cryo_em is for density modification, NOT for map sharpening - use phenix.map_sharpening for sharpening)
-- For X-ray: "density modification", "improve phases", "denmod" → after_program="phenix.autobuild_denmod", skip_validation=true
-  (Note: X-ray density modification uses phenix.autobuild with maps_only=True)
+- For "density modification", "denmod", or "density modify":
+  CHECK THE EXPERIMENT TYPE in the preprocessed advice FIRST.
+  * If experiment type is cryo-EM, OR input mentions half-maps, .ccp4, .mrc,
+    mtriage, or resolve_cryo_em:
+    → after_program="phenix.resolve_cryo_em", skip_validation=true
+    (phenix.resolve_cryo_em is the cryo-EM density modification program;
+     do NOT confuse with phenix.map_sharpening which is for sharpening)
+  * If experiment type is X-ray, OR input mentions .mtz, .hkl, xtriage,
+    phaser, autosol, SAD, MAD, or "improve phases":
+    → after_program="phenix.autobuild_denmod", skip_validation=true
+    (X-ray density modification uses phenix.autobuild with maps_only=True)
+  * If experiment type is not explicitly stated and inputs are ambiguous:
+    default to phenix.resolve_cryo_em.  Cryo-EM is the more common case
+    for half-map inputs; X-ray density modification requires explicit
+    X-ray-only signals like .mtz files.
 - "MR-SAD", "MR SAD", "MRSAD", "molecular replacement SAD" → Set use_mr_sad=true in workflow_preferences AND use_experimental_phasing=true. Do NOT set after_program="phenix.autosol" because phaser must run first to place the model. The workflow is: phaser → autosol with the phaser output as partpdb_file.
   If user says "stop after autosol" or similar, set after_program="phenix.autosol" AND skip_validation=true.
 - "dock in map", "fit model to map" → after_program="phenix.dock_in_map", skip_validation=true
@@ -397,6 +485,7 @@ An unplaced PDB + cryo-EM map always requires phenix.dock_in_map before refineme
   (Note: phenix.polder calculates polder omit maps to evaluate ligand/residue placement in density)
 - "fit ligand", "ligandfit", "place ligand" → after_program="phenix.ligandfit", skip_validation=true
 - If the stop condition mentions generating a specific output file, set skip_validation=true.
+- "model validation", "comprehensive validation", "analysis only", "validate this structure", "run MolProbity", "structure validation and correction" → Set wants_validation_only=true in workflow_preferences. Do NOT set after_program. Do NOT set this when validation is mentioned as a final step after refinement.
 
 **CRITICAL: WORKFLOW CONTINUATION INDICATORS**:
 Do NOT set after_program stop conditions if the user indicates they want additional steps AFTER a program:
@@ -433,21 +522,85 @@ Examples of what NOT to do:
 Output ONLY valid JSON. No explanation, no markdown code blocks, just the JSON object."""
 
 
+# v117 Step 1: dual-input prompt for raw-advice-authoritative extraction.
+#
+# Derived from DIRECTIVE_EXTRACTION_PROMPT by swapping the USER ADVICE
+# block for a dual-input block (raw + processed) plus an AUTHORITY
+# paragraph telling the LLM that raw is authoritative for intent
+# (after_program, start_with_program, stop_after_requested).
+#
+# Used by extract_directives() when raw_advice is provided and differs
+# from the processed advice — i.e., when the preprocessor's transformation
+# may have lost or distorted the user's intent. Single-input behavior
+# (backward compat) is preserved when raw_advice is None or matches
+# user_advice.
+_DUAL_INPUT_BLOCK = """=== USER'S RAW INSTRUCTION (authoritative for intent) ===
+{raw_advice}
+=== END RAW INSTRUCTION ===
+
+=== PREPROCESSED ADVICE (for file mentions, parameters, experiment type) ===
+{processed_advice}
+=== END PREPROCESSED ADVICE ===
+
+AUTHORITY:
+The RAW INSTRUCTION is the source of truth for the user's intent.
+This includes which program(s) the user wants to run (after_program,
+start_with_program) and whether the user wants the workflow to stop
+after a specific program (stop_after_requested).
+
+When the raw and preprocessed advice disagree about intent — for
+example, raw says "X and stop" but preprocessed says
+"Stop Condition: None", or raw mentions one action but preprocessed
+expands to multiple — defer to the raw instruction. The preprocessor
+sometimes loses stop signals or hallucinates additional steps when
+expanding short commands.
+
+Use the PREPROCESSED ADVICE for fields the raw instruction is silent
+on: specific filenames, numeric parameters, experiment type, and
+crystallographic details."""
+
+_SINGLE_INPUT_BLOCK = """=== USER ADVICE ===
+{user_advice}
+=== END USER ADVICE ==="""
+
+DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW = (
+    DIRECTIVE_EXTRACTION_PROMPT.replace(
+        _SINGLE_INPUT_BLOCK,
+        _DUAL_INPUT_BLOCK,
+    ))
+
+
 # =============================================================================
 # EXTRACTION FUNCTION
 # =============================================================================
 
 def extract_directives(user_advice, provider="google", model=None, log_func=None,
-                       use_rules_only=False):
+                       use_rules_only=False, raw_advice=None,
+                       original_files=None):
     """
     Extract structured directives from user advice using LLM.
 
     Args:
-        user_advice: Natural language user instructions
+        user_advice: Natural language user instructions (typically the
+            preprocessed advice when called from the server).
         provider: LLM provider ("google", "openai", "anthropic")
         model: Specific model to use (optional, uses default for provider)
         log_func: Optional logging function
         use_rules_only: If True, skip LLM and use simple pattern extraction
+        raw_advice: Optional raw user instruction (pre-preprocessing).
+            When provided and different from user_advice, the LLM sees
+            both: raw is authoritative for intent (after_program,
+            start_with_program, stop_after_requested); processed is the
+            source for file mentions, parameters, and experiment type.
+            When None or equal to user_advice, falls back to the
+            single-input prompt (backward compat).
+        original_files: optional list of input file paths/basenames
+            from the user's inventory.  When provided, used as the
+            PRIMARY signal for experiment-type-based after_program
+            correction (v119.H18).  Files-win policy on conflict
+            with text-derived signals.  When None or empty, falls
+            back to text-only detection (backward compat with
+            pre-H18 callsites).
 
     Returns:
         dict: Extracted directives, or empty dict if extraction fails
@@ -506,7 +659,30 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         return extract_directives_simple(user_advice)
 
     # Build the prompt
-    prompt = DIRECTIVE_EXTRACTION_PROMPT.format(user_advice=user_advice)
+    # v116.20: use .replace() instead of .format() because the prompt template
+    # contains unescaped JSON examples like {"program_settings": {...}} whose
+    # braces would be misinterpreted as format placeholders, causing
+    # KeyError when extract_directives is called standalone (e.g. from tests
+    # or debug scripts).  Production avoids this because directive extraction
+    # routes through the ai_analysis server, but standalone callers trip on
+    # it.  .replace() does the same single substitution without invoking
+    # str.format()'s placeholder mini-language; behavior-preserving for the
+    # production path.
+    #
+    # v117 Step 1: dual-input form when raw_advice differs from
+    # user_advice — gives the extractor LLM the raw user instruction
+    # alongside the preprocessed advice, with an AUTHORITY paragraph
+    # telling it that raw is authoritative for intent fields.  Falls
+    # back to single-input when raw_advice is None or matches
+    # user_advice (backward compat).
+    if (raw_advice and raw_advice.strip()
+            and raw_advice != user_advice):
+        prompt = (DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW
+                  .replace("{raw_advice}", raw_advice)
+                  .replace("{processed_advice}", user_advice))
+    else:
+        prompt = DIRECTIVE_EXTRACTION_PROMPT.replace(
+            "{user_advice}", user_advice)
 
     # Call LLM
     try:
@@ -545,11 +721,85 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
         # Validate and clean directives
         directives = validate_directives(directives, log)
 
+        # v116.19a (Option A): narrow grounding guardrail — drop
+        # LLM-fabricated after_program / prefer_programs in two cases:
+        #   (1) the program name doesn't appear anywhere in the advice
+        #       (pure fabrication, e.g. AF_7mjs's
+        #       after_program=phenix.real_space_refine where neither
+        #       "real_space_refine" nor any spelling variant appears in
+        #       the README); or
+        #   (2) the advice came through the preprocessor AND has no
+        #       explicit stop intent AND no imperative marker near the
+        #       program name (AF_7mjs's misextraction of
+        #       phenix.predict_and_build would also fall here, since
+        #       "PredictAndBuild" is in the advice but no "stop after"
+        #       or "only" or "just" appears near it and the user said
+        #       Stop Condition: None).
+        # Bare user input like "run xtriage on my data" passes the
+        # guardrail (program name is present, advice is not
+        # preprocessed) so the directive extractor's documented
+        # bare-imperative mappings continue to work.
+        directives = _validate_after_program_grounded(
+            directives, user_advice, log)
+
+        # v118.9: correct LLM-emitted after_program when it's
+        # canonical for the wrong experiment type (e.g., picked
+        # autobuild_denmod for cryo-EM data).  See module-level
+        # PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE for the mapping table
+        # and `_apply_experiment_type_program_reprints` for placement
+        # rationale (runs AFTER grounding by design).
+        # v119.H18: pass original_files so the validator can use
+        # file extensions as the primary signal (files-win policy).
+        directives = _apply_experiment_type_program_reprints(
+            directives, user_advice, raw_advice, log,
+            original_files=original_files)
+
         # Regex fallback: ensure unit_cell and space_group are always captured.
         # The LLM sometimes returns an empty dict (or only stop_conditions) even
         # when the advice contains an explicit unit cell.  This pass is
         # deterministic and only fills in fields the LLM left empty.
         directives = _apply_crystal_symmetry_fallback(directives, user_advice, log)
+
+        # v117.2: when the LLM set stop_after_requested=True but did NOT
+        # set after_program, fall back to the regex resolver on the raw
+        # advice to fill in after_program.  This closes a gap surfaced
+        # by C1 c1_refine_raw_authority on openai: the LLM occasionally
+        # signals user-stop intent without specifying the target program,
+        # which leaves workflow_engine's gated wipe code unreachable
+        # (the wipe path is gated on `if after_program:`).  The resolver
+        # uses _ACTION_TABLE to map verbs in the raw advice (refine,
+        # xtriage, density modify, ...) to programs.
+        #
+        # Guards:
+        #  - Only fires when the LLM left after_program unset.
+        #  - Only fires when raw advice contains stop intent (per
+        #    _is_stop_after_requested), preventing the resolver from
+        #    amplifying a possibly-hallucinated flag.
+        #  - Uses raw_advice if available; falls back to user_advice
+        #    for callers that don't pass raw_advice (single-input path).
+        _sc_v172 = directives.get("stop_conditions") or {}
+        if (_sc_v172.get("stop_after_requested") is True
+                and not _sc_v172.get("after_program")):
+            _v172_source = raw_advice if raw_advice else user_advice
+            if _v172_source and _is_stop_after_requested(_v172_source):
+                _v172_before = dict(_sc_v172)
+                # v119.H18.2: pass original_files here too.  Without
+                # it, this v117.2 fallback path (LLM emitted
+                # stop_after_requested=True but no after_program)
+                # called _resolve_after_program with no file
+                # signal, causing _exp to default to "xray" and
+                # mapping denmod → phenix.autobuild_denmod for
+                # cryo-EM inputs.  This was the THIRD
+                # _resolve_after_program callsite (the other two
+                # were already H18-aware via _apply_workflow_intent_fallback).
+                # The AF_7mjs production failure path.
+                _resolve_after_program(directives, _v172_source.lower(),
+                                       original_files=original_files)
+                _sc_v172_after = directives.get("stop_conditions") or {}
+                if _sc_v172_after.get("after_program"):
+                    log("DIRECTIVES: Filled in after_program=%s from raw "
+                        "advice (LLM set stop_after_requested but omitted "
+                        "after_program)" % _sc_v172_after["after_program"])
 
         # If validation stripped everything for ollama, try simple extraction
         if not directives and provider == "ollama":
@@ -570,11 +820,10 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
             directives.get("intent") or {}).get("intent")
 
         # Check if user EXPLICITLY said "stop after X"
-        # (preserve explicit stops regardless of intent)
-        _has_explicit_stop = bool(re.search(
-            r'\bstop\s+after\b|\bonly\s+run\b'
-            r'|\bjust\s+(?:do|run)\b',
-            user_advice, re.IGNORECASE))
+        # (preserve explicit stops regardless of intent).
+        # v116.x: use the centralized helper that handles
+        # "Stop Condition: None" correctly.
+        _has_explicit_stop = _is_stop_after_requested(user_advice)
 
         if _intent == "task":
             _task_prog = (
@@ -587,6 +836,11 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     "after_program"] = _task_prog
                 directives["stop_conditions"][
                     "skip_validation"] = True
+                # v116.x: intent="task" is a user-explicit single-
+                # program request.  Flag the stop_after_requested so
+                # the workflow engine treats it correctly.
+                directives["stop_conditions"][
+                    "stop_after_requested"] = True
         elif _intent == "solve":
             sc = directives.get("stop_conditions", {})
             if ("after_program" in sc
@@ -596,6 +850,7 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     % sc["after_program"])
                 del sc["after_program"]
                 sc.pop("skip_validation", None)
+                sc.pop("stop_after_requested", None)
                 if not sc:
                     directives.pop(
                         "stop_conditions", None)
@@ -608,6 +863,7 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     % sc["after_program"])
                 del sc["after_program"]
                 sc.pop("skip_validation", None)
+                sc.pop("stop_after_requested", None)
                 if not sc:
                     directives.pop(
                         "stop_conditions", None)
@@ -629,10 +885,75 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
 
         log("DIRECTIVES: Extracted %d directive sections"
             % len(directives))
+
+        # v115.09: Post-LLM overlay — apply deterministic workflow
+        # intent patterns.  The LLM often ignores wants_validation_only
+        # and use_mr_sad even when the advice clearly requests them.
+        # This ensures the critical routing flags are always set.
+        # v119.H18: pass original_files so the resolver's experiment-
+        # type detection uses files as the primary signal (files-win),
+        # preventing it from reverting H18's earlier correction.
+        _apply_workflow_intent_fallback(
+            directives, user_advice.lower(),
+            original_files=original_files)
+
         return directives
 
     except Exception as e:
         log("DIRECTIVES: Extraction failed - %s" % str(e))
+        # v118.E (Q3 per Gemini): developer-visibility log line for
+        # the silent-fallback case.  Without this, a developer
+        # debugging a strange run might assume the LLM extracted
+        # the parameters when it was actually the regex backstop
+        # saving the cycle.
+        log("CRITICAL_FALLBACK: LLM extraction failed; falling "
+            "back to rule-based directive extractor.")
+        # v118.E (Q1 per Gemini): operator-visibility stderr marker.
+        # log_func may be filtered or unwired in some deployments;
+        # stderr is always visible.  Wrapped in try/except so the
+        # diagnostic can never break the existing fallback path
+        # (same safety pattern as C-prime's [DIRECTIVE_LAYERS]
+        # diagnostic emission).
+        #
+        # v119.H13: route through _classify_provider_error so the
+        # operator sees one of:
+        #   [DIRECTIVE_EXTRACTION_MODEL_RETIRED]      (action: update DEFAULT_MODELS)
+        #   [DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE]  (action: pull/rename — Tom's case)
+        #   [DIRECTIVE_EXTRACTION_AUTH_FAILED]        (action: check API key)
+        # instead of an opaque [DIRECTIVE_EXTRACTION_FAILED] for the
+        # primary api_client path.  The fallback _call_llm_fallback
+        # path also classifies (at the per-provider exception block);
+        # H13 makes the primary path match.
+        try:
+            # Resolve the model name we attempted, matching the same
+            # precedence the api_client path uses, so the marker's
+            # hint mentions the actual model name (not a placeholder).
+            try:
+                attempted_model = (
+                    model
+                    or resolve_model_for_provider(provider))
+            except Exception:
+                attempted_model = model or "<unknown>"
+            tag, hint = _classify_provider_error(e, attempted_model)
+            import sys
+            if tag == 'DIRECTIVE_EXTRACTION_MODEL_RETIRED':
+                _emit_retired_model_marker(
+                    provider, attempted_model, log)
+            elif tag == 'DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE':
+                _emit_unavailable_model_marker(
+                    provider, attempted_model, hint, log)
+            # Always also emit the legacy generic FAILED marker so
+            # existing log-grep pipelines (which Tom's machine relies
+            # on) still see the v118.E format.  The richer marker
+            # appears IN ADDITION to FAILED, not in place of it.
+            sys.stderr.write(
+                "[DIRECTIVE_EXTRACTION_FAILED] LLM extraction "
+                "call did not complete (provider=%s): %s. "
+                "Falling back to rules-only resolver.\n"
+                % (provider, str(e)))
+            sys.stderr.flush()
+        except Exception:
+            pass
         return {}
 
 
@@ -650,7 +971,8 @@ def _call_llm(prompt, provider, model, log):
         handler = None
         try:
             from libtbx.langchain.agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
 
             # Select handler based on provider
@@ -660,10 +982,13 @@ def _call_llm(prompt, provider, model, log):
                 handler = get_openai_handler()
             elif provider == "anthropic":
                 handler = get_anthropic_handler()
+            elif provider == "portkey":
+                handler = get_portkey_handler()
         except ImportError:
             try:
                 from agent.rate_limit_handler import (
-                    get_google_handler, get_openai_handler, get_anthropic_handler
+                    get_google_handler, get_openai_handler, get_anthropic_handler,
+                    get_portkey_handler
                 )
                 if provider == "google":
                     handler = get_google_handler()
@@ -671,6 +996,8 @@ def _call_llm(prompt, provider, model, log):
                     handler = get_openai_handler()
                 elif provider == "anthropic":
                     handler = get_anthropic_handler()
+                elif provider == "portkey":
+                    handler = get_portkey_handler()
             except ImportError:
                 pass  # No retry logic available
 
@@ -697,25 +1024,157 @@ def _call_llm(prompt, provider, model, log):
         return _call_llm_fallback(prompt, provider, model, log)
 
 
+def _looks_like_retired_model_error(err_str, model_name):
+    """Best-effort detection of 'model no longer exists' API responses.
+
+    v119.H1: distinguishes retired-model 404s from generic API
+    failures so operators see exactly which file to edit
+    (core/llm.py) when a provider drops a model.
+
+    Matches on either:
+      - a strong retirement phrase ("no longer available",
+        "has been deprecated", "is deprecated", "model not found"),
+        which is unambiguous regardless of HTTP status, OR
+      - a 404/NOT_FOUND signature combined with the model name or
+        a weaker "is not found" phrase.
+
+    False-negatives are fine -- the generic [DIRECTIVE_EXTRACTION_FAILED]
+    still fires.  False-positives would mis-route a transient error
+    as a retired model -- noisy but recoverable.
+
+    Args:
+      err_str: the exception message (str) from a failed API call
+      model_name: the model name passed to the failing call
+
+    Returns:
+      bool
+    """
+    if not err_str:
+        return False
+    lower = err_str.lower()
+
+    # Strong retirement phrases match regardless of HTTP status.
+    # Real APIs report retirement variously: 404 with body, 400
+    # with message, 200 OK with error in JSON.
+    strong_phrases = (
+        "no longer available",
+        "has been deprecated",
+        "is deprecated",
+        "model not found",
+    )
+    for phrase in strong_phrases:
+        if phrase in lower:
+            return True
+
+    # 404/NOT_FOUND class -- requires extra evidence to avoid false
+    # positives on URL typos and similar generic 404s.
+    has_404 = (
+        ("404" in lower)
+        or ("not_found" in lower)
+        or ("not found" in lower))
+    if has_404:
+        if model_name and model_name.lower() in lower:
+            return True
+        if "is not found" in lower:
+            return True
+    return False
+
+
+def _emit_retired_model_marker(provider, model_name, log):
+    """Emit a [DIRECTIVE_EXTRACTION_MODEL_RETIRED] stderr marker.
+
+    v119.H1.  Parallel to v118.E's [DIRECTIVE_EXTRACTION_FAILED] /
+    [ADVICE_PREPROCESSING_FAILED] markers.  Tells the operator
+    exactly which file to edit (core/llm.py) and which constants.
+
+    Args:
+      provider: the provider string ("google", "openai", ...)
+      model_name: the retired model that was attempted
+      log: the existing log function passed through _call_llm_fallback
+
+    Never raises -- the stderr write is wrapped in try/except so a
+    broken stderr can never break the fallback path.
+    """
+    try:
+        import sys
+        sys.stderr.write(
+          "[DIRECTIVE_EXTRACTION_MODEL_RETIRED] "
+          "provider=%s model=%r appears to be retired.  "
+          "Update the relevant table in "
+          "libtbx/langchain/core/llm.py "
+          "(DECISION_MODEL_DEFAULTS / RAG_MODEL_DEFAULTS / "
+          "RAG_EMBEDDING_DEFAULTS / EXPENSIVE_MODEL_DEFAULTS / "
+          "CHEAP_MODEL_DEFAULTS) to a current model and add "
+          "%r to RETIRED_MODELS.\n" % (
+            provider, model_name, model_name))
+        sys.stderr.flush()
+    except Exception:
+        # Stderr write must never break the fallback path.
+        pass
+    log("DIRECTIVES: model %s appears retired - see "
+        "[DIRECTIVE_EXTRACTION_MODEL_RETIRED] in stderr"
+        % model_name)
+
+
+def _emit_unavailable_model_marker(provider, model_name, hint, log):
+    """Emit a [DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE] stderr marker.
+
+    v119.H13.  Parallel to _emit_retired_model_marker.  Distinct
+    operational meaning: the model name is unknown to THIS server
+    (e.g., not pulled on Ollama, or a typo in OLLAMA_LLM_MODEL).
+    The action is to pull/rename, not to update DEFAULT_MODELS.
+
+    Args:
+      provider: the provider string
+      model_name: the model name that was attempted
+      hint: a short operator-action string from
+        _classify_provider_error
+      log: the existing log function
+
+    Never raises -- the stderr write is wrapped in try/except.
+    """
+    try:
+        import sys
+        sys.stderr.write(
+          "[DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE] "
+          "provider=%s model=%r is unknown to this server.  "
+          "%s\n" % (provider, model_name, hint or ""))
+        sys.stderr.flush()
+    except Exception:
+        pass
+    log("DIRECTIVES: model %s unavailable on this server - see "
+        "[DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE] in stderr"
+        % model_name)
+
+
 def _call_llm_fallback(prompt, provider, model, log):
     """
     Fallback LLM call when main infrastructure not available.
     Includes retry logic for rate limit errors with exponential backoff and decay.
+
+    Property (v119.H1): on any exception from the API call, this
+    function emits at most one [DIRECTIVE_EXTRACTION_MODEL_RETIRED]
+    marker (when the failure matches a retired-model signature) and
+    returns None -- no model-family variant cycling.  Preserve this
+    single-call property in future refactors.
     """
     # Import rate limit handler - try multiple paths
     get_google_handler = None
     get_openai_handler = None
     get_anthropic_handler = None
+    get_portkey_handler = None
 
     try:
         from libtbx.langchain.agent.rate_limit_handler import (
-            get_google_handler, get_openai_handler, get_anthropic_handler
+            get_google_handler, get_openai_handler, get_anthropic_handler,
+            get_portkey_handler
         )
     except ImportError:
         try:
             # Try relative import for standalone testing
             from agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
         except ImportError:
             pass  # No retry logic available
@@ -724,13 +1183,16 @@ def _call_llm_fallback(prompt, provider, model, log):
         log("DIRECTIVES: %s" % msg)
 
     if provider == "google":
+        # v119.H1: resolve default once; both SDK paths below share it.
+        if model is None:
+            model_name = default_model_for_provider("google")
+        else:
+            model_name = model
         try:
             # Try new google.genai package first (recommended)
             try:
                 from google import genai
                 from google.genai import types
-
-                model_name = model or "gemini-2.0-flash"
 
                 # Get API key from environment
                 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -768,7 +1230,6 @@ def _call_llm_fallback(prompt, provider, model, log):
                     return None
                 genai_old.configure(api_key=api_key)
 
-                model_name = model or "gemini-2.0-flash"
                 gen_model = genai_old.GenerativeModel(model_name)
 
                 def make_call():
@@ -788,14 +1249,24 @@ def _call_llm_fallback(prompt, provider, model, log):
                     return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: Google API call failed - %s" % str(e))
+            err_str = str(e)
+            # v119.H1: distinguish retired-model 404 from generic
+            # API failures so operators see exactly which file to
+            # edit.  Property: at most one marker per fallback call,
+            # then return None -- no model-family variant cycling.
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("google", model_name, log)
+            log("DIRECTIVES: Google API call failed - %s" % err_str)
             return None
 
     elif provider == "openai":
+        if model is None:
+            model_name = default_model_for_provider("openai")
+        else:
+            model_name = model
         try:
             import openai
 
-            model_name = model or "gpt-4o-mini"
             client = openai.OpenAI()
 
             def make_call():
@@ -814,14 +1285,20 @@ def _call_llm_fallback(prompt, provider, model, log):
                 return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: OpenAI API call failed - %s" % str(e))
+            err_str = str(e)
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("openai", model_name, log)
+            log("DIRECTIVES: OpenAI API call failed - %s" % err_str)
             return None
 
     elif provider == "anthropic":
+        if model is None:
+            model_name = default_model_for_provider("anthropic")
+        else:
+            model_name = model
         try:
             import anthropic
 
-            model_name = model or "claude-sonnet-4-20250514"
             client = anthropic.Anthropic()
 
             def make_call():
@@ -839,16 +1316,81 @@ def _call_llm_fallback(prompt, provider, model, log):
                 return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: Anthropic API call failed - %s" % str(e))
+            err_str = str(e)
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("anthropic", model_name, log)
+            log("DIRECTIVES: Anthropic API call failed - %s" % err_str)
+            return None
+
+    elif provider == "portkey":
+        # Azure OpenAI via the Portkey SDK (provider="azure-openai").
+        # gpt-5 upstream: max_completion_tokens, no temperature.  Env vars
+        # are read at call time; missing ones are reported, not KeyError'd.
+        if model is None:
+            model_name = resolve_model_for_provider("portkey", role="decision")
+        else:
+            model_name = model
+        try:
+            from portkey_ai import Portkey
+
+            api_key = os.environ.get("PORTKEY_AZURE_API_KEY")
+            base_url = os.environ.get("PORTKEY_BASE_URL")
+            _missing = [n for n, v in (
+                ("PORTKEY_AZURE_API_KEY", api_key),
+                ("PORTKEY_BASE_URL", base_url)) if not v]
+            if _missing:
+                raise ValueError(
+                    "Provider 'portkey' requires environment variable(s): %s."
+                    % ", ".join(_missing))
+
+            client = Portkey(
+                api_key=api_key,
+                base_url=base_url,
+                provider="azure-openai",
+            )
+
+            def make_call():
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_completion_tokens=2000,
+                )
+                return response.choices[0].message.content
+
+            if get_portkey_handler:
+                handler = get_portkey_handler()
+                return handler.call_with_retry(make_call, log_wrapper)
+            else:
+                return make_call()
+
+        except Exception as e:
+            err_str = str(e)
+            if _looks_like_retired_model_error(err_str, model_name):
+                _emit_retired_model_marker("portkey", model_name, log)
+            log("DIRECTIVES: Portkey API call failed - %s" % err_str)
             return None
 
     elif provider == "ollama":
+        # v119.H13 Item B: honor OLLAMA_LLM_MODEL env-var override.
+        # Previously called default_model_for_provider("ollama")
+        # unconditionally, which ignored the env-var contract that
+        # core/llm.py:get_llm_and_embeddings has always honored.
+        if model is None:
+            model_name = resolve_model_for_provider("ollama")
+        else:
+            model_name = model
         try:
             # Ollama uses OpenAI-compatible API
             import openai
 
-            model_name = model or "llama3.2"
-            base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            # v119.H13 Item A: normalize the base URL.  Setting
+            # OLLAMA_BASE_URL=http://localhost:11434 (no /v1 suffix)
+            # is reasonable but previously broke OpenAI-SDK path
+            # construction → "404 page not found".  The helper
+            # idempotently appends /v1.  Default fallback is also
+            # the bare host now; the helper supplies /v1 uniformly.
+            base_url = normalize_ollama_openai_base_url(
+                os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"))
 
             client = openai.OpenAI(
                 base_url=base_url,
@@ -868,7 +1410,19 @@ def _call_llm_fallback(prompt, provider, model, log):
             return make_call()
 
         except Exception as e:
-            log("DIRECTIVES: Ollama API call failed - %s" % str(e))
+            # v119.H13 Item C: route through unified classifier.
+            # Three sub-classes: MODEL_RETIRED (update DEFAULT_MODELS),
+            # MODEL_UNAVAILABLE (pull/rename), AUTH_FAILED (key issue),
+            # FAILED (generic).  Backwards-compatible with v119.H1's
+            # _emit_retired_model_marker path.
+            err_str = str(e)
+            tag, hint = _classify_provider_error(e, model_name)
+            if tag == 'DIRECTIVE_EXTRACTION_MODEL_RETIRED':
+                _emit_retired_model_marker("ollama", model_name, log)
+            elif tag == 'DIRECTIVE_EXTRACTION_MODEL_UNAVAILABLE':
+                _emit_unavailable_model_marker(
+                    "ollama", model_name, hint, log)
+            log("DIRECTIVES: Ollama API call failed - %s" % err_str)
             return None
 
     else:
@@ -959,7 +1513,126 @@ VALID_SETTINGS = {
     "selection": str,
     "unit_cell": str,    # space-separated "a b c alpha beta gamma"
     "space_group": str,  # e.g. "P 32 2 1"
+    "copies": int,       # ASU copy count (e.g. "4 copies of the search model")
 }
+
+
+# v118.B2a: Translation map for known semantic near-misses
+# (information-conservation per v118 master plan).
+#
+# When the preprocessor LLM emits a recognizable INTENT under a wrong
+# PHIL namespace, we HEAL it to the bare strategy form rather than
+# dropping it.  The bare form is what the planner/BUILD pipeline
+# already knows how to translate to the correct namespace per program
+# (see knowledge/prompts_hybrid.py:316, Strategy schema).
+#
+# The most common near-miss observed in production (AIAgent_211,
+# testit fresh-run 2026-05-18) is r_free_flags.generate emitted under
+# data_manager. or xray_data. namespace prefixes.
+#
+# Add new entries here as new near-miss patterns are observed in
+# production logs.  Conservative by design: only translate when the
+# semantic intent CERTAINLY matches the target bare name.
+PHIL_NAMESPACE_TRANSLATIONS = {
+    # All forms of "generate R-free flags" → bare strategy hint
+    "data_manager.r_free_flags.generate":  "generate_rfree_flags",
+    "xray_data.r_free_flags.generate":     "generate_rfree_flags",
+    "r_free_flags.generate":               "generate_rfree_flags",
+}
+
+
+# v118.B2b: Bad PHIL namespace prefixes.
+#
+# Any program_settings key starting with one of these prefixes is a
+# PHIL namespace identifier that does not belong in program-agnostic
+# program_settings.  The cleaner drops them with a log message.
+#
+# IMPORTANT — program-specific prefixes are NOT included here:
+#   autosol.   ligandfit.   phaser.   xtriage.   polder.   etc.
+# Those programs are routinely orchestrated and their parameter
+# namespaces (e.g. "autosol.atom_type=Se") must be allowed through.
+BAD_PHIL_NAMESPACE_PREFIXES = (
+    "data_manager.",      # iotbx data_manager scope
+    "refinement.",        # internal phenix.refine scope
+    "miller_array.",      # data_manager subfield
+    "fmodel.",            # data_manager subfield
+    "scaling.input.",     # xtriage internal
+)
+
+
+def _heal_namespaced_phil_keys(settings, prog_name, log_func):
+    """Heal or drop namespaced PHIL keys in a program_settings dict.
+
+    For each key in `settings`:
+
+      Rule 1 (HEAL): if the key is in PHIL_NAMESPACE_TRANSLATIONS,
+        replace it with the bare strategy form.  Preserves the
+        user's semantic intent across a near-miss namespace error.
+
+      Rule 2 (DROP): if the key starts with a known-bad PHIL prefix,
+        drop it with a log message.  These prefixes identify scopes
+        that don't belong in program-agnostic program_settings.
+
+      Rule 3 (KEEP): everything else passes through unchanged.
+        Preserves both known params and forward compatibility for
+        future bare-name params we don't know about yet.  Also lets
+        program-specific dotted keys (e.g. "autosol.atom_type")
+        pass through for orchestration.
+
+    Conflict policy: if a translated key would overwrite an existing
+    bare key (i.e. both "data_manager.r_free_flags.generate" and
+    "generate_rfree_flags" present), the EXISTING bare form is
+    authoritative; the translation is logged but does not overwrite.
+
+    Returns a NEW dict with healed/dropped keys applied.  Logs
+    every translation and every drop with program name, key,
+    value, and reason.
+    """
+    if not isinstance(settings, dict):
+        return settings
+
+    cleaned = {}
+    for key, value in settings.items():
+        # Rule 1: known semantic translation (heal)
+        if key in PHIL_NAMESPACE_TRANSLATIONS:
+            new_key = PHIL_NAMESPACE_TRANSLATIONS[key]
+            if new_key in settings:
+                # Bare form already present; preserve it, don't overwrite.
+                log_func(
+                    "DIRECTIVES: Discarding namespaced PHIL key in %s: "
+                    "%s=%s (bare form %s already present)"
+                    % (prog_name, key, value, new_key))
+            elif new_key in cleaned:
+                # Already translated something else to this bare key.
+                log_func(
+                    "DIRECTIVES: Skipping duplicate namespaced PHIL "
+                    "key in %s: %s=%s (bare form %s already set "
+                    "this pass)" % (prog_name, key, value, new_key))
+            else:
+                log_func(
+                    "DIRECTIVES: Healed namespaced PHIL key in %s: "
+                    "%s=%s -> %s=%s (bare form is correct strategy "
+                    "hint)" % (prog_name, key, value, new_key, value))
+                cleaned[new_key] = value
+            continue
+
+        # Rule 2: known-bad PHIL namespace prefix (drop)
+        bad_prefix = None
+        for prefix in BAD_PHIL_NAMESPACE_PREFIXES:
+            if key.startswith(prefix):
+                bad_prefix = prefix
+                break
+        if bad_prefix is not None:
+            log_func(
+                "DIRECTIVES: Dropping namespaced PHIL key from %s: "
+                "%s=%s (prefix %r - emit bare name instead)"
+                % (prog_name, key, value, bad_prefix))
+            continue
+
+        # Rule 3: keep everything else (existing behavior).
+        cleaned[key] = value
+
+    return cleaned
 
 # Valid stop condition keys
 VALID_STOP_CONDITIONS = {
@@ -969,6 +1642,63 @@ VALID_STOP_CONDITIONS = {
     "skip_validation": bool,
     "r_free_target": float,
     "map_cc_target": float,
+    # v116.x: gate for stop analysis in
+    # workflow_engine._apply_directives.  True iff the directive
+    # extractor detected an explicit user-stop intent.  Plan-injected
+    # after_program (per-stage hint) does NOT set this flag.
+    "stop_after_requested": bool,
+    # v119.H14.1: start_with_program — set by _resolve_after_program
+    # (called from _apply_workflow_intent_fallback) when the user's
+    # advice contains multiple actions plus a stop intent.  Downstream
+    # consumers in workflow_engine.py (line ~2288), ai_agent.py
+    # (~2816, ~3004), and ai_analysis.py (~160) read this key.
+    # Pre-H14.1 it was a latent bug: present everywhere in the codebase
+    # but not in VALID_STOP_CONDITIONS, so validate_directives would
+    # log "Unknown stop condition start_with_program" and drop it
+    # whenever validate_directives was called on a dict that already
+    # had it set.  This didn't break the LLM path (the resolver runs
+    # AFTER validate, so the key is added post-validation), but it
+    # broke when H14.1 added validate_directives at the end of
+    # extract_directives_simple — Tom's run_39 rules-only-stop case
+    # for 1029B-sad would have its start_with_program=phenix.phaser
+    # silently dropped by validate.
+    "start_with_program": str,
+}
+
+
+# v118.9: experiment-type-conditional program canonicalization.
+#
+# Some Phenix programs are canonical for a specific experiment type
+# but have a counterpart for the other type that does roughly the
+# equivalent thing.  The LLM directive extractor occasionally picks
+# the wrong one — e.g. "density modify" on cryo-EM data gets mapped
+# to `phenix.autobuild_denmod` (X-ray) instead of
+# `phenix.resolve_cryo_em` (cryo-EM).
+#
+# This table declares known LLM-mistake mappings.  Keys are
+# `(target_experiment_type, wrong_program)`; values are the right
+# program for that experiment type.
+#
+# Detection logic lives in `_apply_experiment_type_program_reprints`.
+# Adding new entries requires no code changes beyond adding a row
+# here and a corresponding K-test in
+# `tst_density_modify_experiment_type.py`.
+#
+# Be conservative when extending: include only pairs that are
+# truly canonical-equivalents in different experiment types
+# (same operation, different program).  Pairs that do
+# semantically-different things (e.g. xtriage vs mtriage — data
+# triage vs map triage) should NOT be in this table.
+PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE = {
+    # Cryo-EM data + LLM picked X-ray density-modification program.
+    # Observed in production: runs 237/239 with raw advice
+    # "density modify and stop" on half-map cryo-EM data.
+    ("cryoem", "phenix.autobuild_denmod"): "phenix.resolve_cryo_em",
+
+    # Mirror case: X-ray data + LLM picked cryo-EM density-modification
+    # program.  Not yet observed in production but the validator handles
+    # both directions symmetrically.
+    ("xray", "phenix.resolve_cryo_em"): "phenix.autobuild_denmod",
 }
 
 
@@ -1002,6 +1732,704 @@ def _normalize_unit_cell(value):
         return None
     # Reconstruct with minimal precision (strip trailing zeros)
     return ' '.join(('%g' % f) for f in floats)
+
+
+# v116.15: Sentinel values that the advice preprocessor LLM emits when
+# the user did NOT specify a value.  The preprocessor uses a standardized
+# template ("Space group: None", "Unit cell: Not specified", etc.) and
+# these placeholders must never be stored as real directives — they
+# pollute every session with meaningless values and confuse the planner.
+#
+# Used by BOTH `_apply_crystal_symmetry_fallback` (regex path) AND
+# `validate_directives` (LLM-extracted path) so the rules cannot drift.
+_SYMMETRY_SENTINELS = frozenset([
+    "none", "not mentioned", "not specified", "not given", "not provided",
+    "not applicable", "unknown", "n/a", "na", "null", "tbd",
+    "to be determined", "see above", "auto", "automatic", "default",
+    "identification",  # historical: seen in some preprocessor outputs
+    "false", "true",   # the preprocessor sometimes outputs literal booleans
+    # v119.H14: extended sentinel set for "Not explicitly ..." patterns.
+    # The run_39_openai batch (and Tom's xtriage tutorial verification
+    # for H13.1) showed qwen2.5:72b and other LLMs emitting these as
+    # space_group values when the README didn't specify one.  Includes
+    # truncated forms (LLM output sometimes hits length caps mid-phrase,
+    # e.g., "Not explicitly mentio").
+    "not explicitly mentioned", "not explicitly mentio",
+    "not explicitly stated", "not explicitly state",
+    "not explicitly given", "not explicitly giv",
+    "not explicitly specified", "not explicitly specif",
+    "not explicitly defined", "not explicitly defin",
+    "not explicitly listed", "not explicitly list",
+    "not explicitly noted", "not explicitly not",
+])
+
+
+def _is_symmetry_sentinel(value):
+    """Return True when `value` is one of the standardized placeholder
+    strings that mean "the user did not specify a value" rather than a
+    real crystallographic value.
+
+    Compares case-insensitively against the trimmed value.  Returns
+    False for None and non-strings (caller is expected to have
+    a string already).
+    """
+    if not isinstance(value, str):
+        return False
+    return value.strip().lower() in _SYMMETRY_SENTINELS
+
+
+# v119.H14: Hermann-Mauguin space-group pattern.
+#
+# Accepts (case-insensitively): any short token starting with a lattice
+# letter [PFICRHAB] followed by characters from the Hermann-Mauguin
+# alphabet (digits, m, c, n, d, a, b, e, h, r, spaces, slashes, dashes,
+# underscores, colons), with optional trailing "(No. N)" annotation.
+#
+# All 230 official space groups (International Tables Vol A) match.
+#
+# Alternative cell/origin settings (via colon-prefixed suffix) also
+# match: R3:H vs R3:R (rhombohedral hexagonal-axes vs rhombohedral-axes
+# settings — note the 'h' and 'r' in the alphabet), P4/n:1 vs P4/n:2
+# (origin choices 1 and 2 for centrosymmetric groups), P21/c:b
+# (unique-axis cell choice for monoclinic).  Per Gemini H14 review:
+# these appear in PDB/mmCIF metadata and cctbx tool output; rejecting
+# them as malformed would drop legitimate user input.
+#
+# The 'e' letter is required for the 2002-ITA renamings of the
+# centered orthorhombic groups Aem2, Aea2, Cmce, Cmme, Ccce.
+# The 'h' and 'r' letters are required for rhombohedral axis
+# specifiers (R3:H, R3:R) — they don't appear in any of the 230
+# standard symbols themselves.
+#
+# Examples rejected: "Not explicitly mentioned", "Solve the
+# structure", "garbage value 42", "" — multi-word prose phrases
+# that the pre-H14 negative checks let through.
+#
+# Acknowledged limitation: the regex is permissive within the
+# space-group alphabet — short English words that happen to start
+# with a lattice letter and use only alphabet characters would
+# technically match: Panda, Fame, Bad, Cab, Can, Bed, Acme, etc.
+# These are not realistic LLM outputs for space_group (LLMs emit
+# either a valid HM symbol or an obviously-prose sentinel), and
+# the pre-H14 negative checks already let them through.  The H14
+# regex closes the LARGE class of prose leaks (multi-word, contains
+# characters outside the alphabet) without trying to be a full
+# space-group validator — that would require knowing the 230
+# official symbols, which is beyond the scope of a directive
+# sanity check.  See test_hm_form_known_limitation_short_words.
+_HM_FORM_RE = re.compile(
+    r'^[PFICRHAB]'
+    r'[0-9mcndabehr\s/_\-:]{0,24}'
+    r'(?:\s*\(\s*no\.?\s*\d+\s*\))?$',
+    re.IGNORECASE
+)
+
+
+def _looks_like_space_group(value):
+    """Return True if `value` resembles a Hermann-Mauguin space-group
+    symbol.  Used by validate_directives() to catch LLM-emitted prose
+    (e.g., "Solve the structure") that survives the sentinel check.
+
+    All 230 official Hermann-Mauguin space-group symbols return True.
+    Multi-word English phrases and tokens containing characters outside
+    the HM alphabet return False.
+
+    Pre-H14 the validator relied on negative checks (sentinel set +
+    starts-with-letter + length<=25), which let multi-word phrases
+    through if they started with a letter.  This positive shape check
+    closes that gap while preserving all real space groups.
+    """
+    if not isinstance(value, str):
+        return False
+    return bool(_HM_FORM_RE.match(value.strip()))
+
+
+# =============================================================================
+# v116.19a — Narrow Grounding Guardrail (Option A) for LLM-extracted
+#             after_program / prefer_programs
+# =============================================================================
+#
+# The directive-extraction LLM occasionally fabricates a stop_conditions.
+# after_program or workflow_preferences.prefer_programs entry from goal
+# text alone — e.g. extracting after_program=phenix.real_space_refine
+# from "rebuild the loop and refine the model" in a multi-stage tutorial
+# whose Stop Condition: field is literally "None".
+#
+# Observed rate is low (~7% across mixed evidence) but produces
+# spurious directives that pollute every subsequent prompt and bias
+# the planner.  v116.17 ensures the misextraction is non-fatal at the
+# validate-step chokepoint; v116.19a prevents the bad directive from
+# being emitted in the first place by validating LLM output against
+# the source text.
+#
+# OPTION A — Narrow guardrail.  Drops a directive only when EITHER:
+#   (1) The program name is COMPLETELY absent from user_advice in any
+#       canonical spelling variant.  This catches pure fabrications
+#       like AF_7mjs's after_program=phenix.real_space_refine (the
+#       string "real_space_refine" never appears in the advice).
+#       Rule (1) fires regardless of whether the advice came from a
+#       preprocessor.
+#
+#   (2) BOTH of:
+#       (a) The advice came through the preprocessor (we detect this
+#           by signature headers like "Input Files Found",
+#           "Experiment Type", etc.) AND lacks any explicit "stop after"
+#           imperative anywhere, indicating the user did not request a
+#           stop; AND
+#       (b) No imperative marker appears within 300 chars of the
+#           program-name occurrence in user_advice.
+#
+# Rule (2) catches the AF_7mjs class where the program name IS in the
+# preprocessed advice ("PredictAndBuild" is part of the Primary Goal)
+# but no stop was requested.  It also catches LLM hallucinations where
+# a different program name was confabulated.
+#
+# Both rules deliberately DO NOTHING for raw (non-preprocessed) user
+# advice that doesn't fail rule (1).  This preserves the directive
+# extractor prompt's documented mappings for bare imperatives like
+# "run xtriage" → after_program=phenix.xtriage.  Those phrases never
+# arrive in preprocessed form, so rule (2)(a) fails and rule (1) is
+# satisfied (program name IS in advice).
+
+# Imperative phrases that indicate the user is scoping or stopping
+# the workflow at a specific program.  Case-insensitive substring
+# match on a window around the program-name occurrence.
+_IMPERATIVE_STOP_MARKERS = (
+    "stop after",
+    "stop_after",
+    "only run",
+    "just run",
+    "just do",
+    "after running",
+    "nothing else",
+    "skip the rest",
+    "skip everything",
+    "and then stop",
+    "and stop",
+    "stop when",
+    "stop_condition: stop",  # advice preprocessor sometimes uses this form
+    "stop condition: stop",
+    # v117.3: phrasings surfaced by the explicit_stop_after_phaser
+    # openai failure (0/5 on v117.2).  All are window-bounded substring
+    # matches near the program-name occurrence in preprocessed advice.
+    # AF_7mjs verified clean against all five (none of these phrases
+    # appear in AF_7mjs's stripped advice, so K2 grounding test
+    # remains green).  See v117.3 plan §4 for the false-positive
+    # analysis.
+    "stop the workflow",
+    "immediately after",
+    "after it completes",
+    "after it finishes",
+    "is the last step",
+)
+
+
+# Signature headers produced by the advice preprocessor LLM.  When any
+# of these appears as a top-of-line header in the advice text, we
+# conclude the advice came through the preprocessor (and thus may
+# contain a fabricated Stop Condition: None line that was stripped
+# before extraction).  Matches the _PREPROC_SIGS list in
+# _resolve_after_program (which sees the post-strip advice).
+_PREPROCESSOR_SIGNATURE_PATTERNS = (
+    r'input\s+files?\s+found',
+    r'experiment\s+type',
+    r'key\s+parameters?',
+    r'special\s+instructions?',
+)
+
+
+def _advice_came_from_preprocessor(user_advice):
+    """Return True if user_advice has the structural signature of
+    advice-preprocessor output.
+
+    Used by the v116.19a guardrail as gate (2)(a): the narrow rule
+    only fires for preprocessed advice, leaving raw user input
+    (e.g. ``"run xtriage on my data"``) untouched.
+    """
+    if not isinstance(user_advice, str) or not user_advice:
+        return False
+    advice_lower = user_advice.lower()
+    for sig in _PREPROCESSOR_SIGNATURE_PATTERNS:
+        if re.search(
+                r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                % sig, advice_lower, re.MULTILINE):
+            return True
+    return False
+
+
+def _advice_has_explicit_stop_intent(user_advice):
+    """Return True if user_advice anywhere contains an imperative stop
+    intent.
+
+    This is the global check that distinguishes "user wanted a stop"
+    (in which case we trust the LLM's after_program even on preprocessed
+    advice) from "user wanted no stop" (in which case any after_program
+    is likely a fabrication from goal verbs).
+
+    The check looks for ``\\bstop after\\b`` and a small set of
+    related global imperatives.  More forgiving than the per-program
+    window check because we don't need to tie the imperative to a
+    specific program name — we only need to know if the user ever
+    said "stop".
+    """
+    if not isinstance(user_advice, str) or not user_advice:
+        return False
+    advice_lower = user_advice.lower()
+    # Use word boundaries to avoid substring matches like
+    # "after running into trouble".
+    patterns = (
+        r'\bstop\s+after\b',
+        r'\bstop_after\b',
+        r'\bonly\s+run\b',
+        r'\bjust\s+run\b',
+        r'\bjust\s+do\b',
+        r'\bnothing\s+else\b',
+        r'\band\s+stop\b',
+        r'\bstop\s+when\b',
+    )
+    for pattern in patterns:
+        if re.search(pattern, advice_lower):
+            return True
+    return False
+
+
+def _program_name_variants(program):
+    """Return all spelling variants of `program` to search for in advice.
+
+    For ``"phenix.real_space_refine"`` returns 5 variants:
+        "phenix.real_space_refine"   — canonical
+        "real_space_refine"           — bare suffix
+        "real space refine"           — underscores → spaces
+        "real-space-refine"           — underscores → hyphens
+        "RealSpaceRefine"             — CamelCase
+
+    For ``"phenix.predict_and_build"`` returns:
+        "phenix.predict_and_build", "predict_and_build",
+        "predict and build", "predict-and-build", "PredictAndBuild"
+
+    Returns an empty tuple for None / empty / non-string input.
+    """
+    if not isinstance(program, str) or not program:
+        return ()
+    suffix = program
+    if suffix.lower().startswith("phenix."):
+        suffix = suffix[len("phenix."):]
+    variants = [program]
+    if suffix != program:
+        variants.append(suffix)
+    # underscored → spaces
+    spaced = suffix.replace("_", " ")
+    if spaced != suffix and spaced not in variants:
+        variants.append(spaced)
+    # underscored → hyphens
+    hyphened = suffix.replace("_", "-")
+    if hyphened != suffix and hyphened not in variants:
+        variants.append(hyphened)
+    # underscored → camelcased (e.g. predict_and_build → PredictAndBuild)
+    if "_" in suffix:
+        camel = "".join(part.capitalize() for part in suffix.split("_"))
+        if camel and camel not in variants:
+            variants.append(camel)
+    return tuple(variants)
+
+
+def _find_variant_in_text(variants, text, log=None):
+    """Find the first (variant, position) pair where `variant` appears
+    in `text` on a word boundary.  Case-insensitive.  Returns
+    (None, -1) if no variant matches.
+
+    Word-boundary matching avoids matching "refine" inside the
+    longer token "real_space_refine".
+    """
+    text_lower = text.lower()
+    for variant in variants:
+        # Build a word-boundary pattern.  re.escape handles dots and
+        # other regex metacharacters in the variant text.  Word
+        # boundaries are anchored at non-word transitions.
+        pattern = r'(?<![A-Za-z0-9_])' + re.escape(variant.lower()) + \
+                  r'(?![A-Za-z0-9_])'
+        match = re.search(pattern, text_lower)
+        if match:
+            return (variant, match.start())
+    return (None, -1)
+
+
+def _imperative_marker_nearby(text, position, window=300):
+    """Return True iff any phrase in `_IMPERATIVE_STOP_MARKERS`
+    appears in `text` within `window` characters before or after
+    `position`.  Case-insensitive substring match.
+
+    Substring matching (not word-boundary) means ``"just run"`` would
+    match ``"just running"``.  This is intentional — false positives
+    here cause the guardrail to KEEP a directive that arguably should
+    be dropped (a benign failure), while false negatives would DROP a
+    legitimate user-requested stop (which we want to avoid).
+    """
+    if position < 0:
+        return False
+    lo = max(0, position - window)
+    hi = position + window
+    window_text = text[lo:hi].lower()
+    for marker in _IMPERATIVE_STOP_MARKERS:
+        if marker in window_text:
+            return True
+    return False
+
+
+def _is_program_grounded(program, user_advice, log=None):
+    """v116.19a Option A grounding check.
+
+    Returns True (= keep the directive) UNLESS one of the failure modes
+    fires:
+
+      Failure 1 — Pure fabrication: the program name (any variant) is
+                  not present in user_advice.  Drop the directive.
+
+      Failure 2 — Preprocessed + no-stop-intent + no imperative near
+                  program: the advice came from the preprocessor,
+                  the user did NOT request a stop, and no imperative
+                  appears near the program name.  Drop the directive.
+
+    Otherwise return True.
+
+    This is the Option A narrow variant of the original v116.19 helper.
+    Compared with the original (broad) version:
+
+      * Both versions drop on Failure 1 (pure fabrication).
+      * The original ALSO dropped on "program name in advice but no
+        imperative nearby", regardless of preprocessor.  Option A
+        does NOT drop in that case for raw (non-preprocessed) advice,
+        so the directive-extractor's documented bare-imperative
+        mappings ("run xtriage" → after_program=phenix.xtriage)
+        continue to work.
+    """
+    if not program or not user_advice:
+        # Defensive: if either input is empty, can't make a judgment.
+        # Return True (keep) — let other layers handle.
+        return True
+    variants = _program_name_variants(program)
+    if not variants:
+        return True
+    variant, position = _find_variant_in_text(variants, user_advice, log)
+
+    # Failure 1: pure fabrication — program name absent from advice.
+    if variant is None:
+        if log:
+            log("DIRECTIVES: %s not grounded — program name absent "
+                "from user advice (pure fabrication)" % program)
+        return False
+
+    # Failure 2: preprocessed + no global stop intent + no imperative
+    # marker near the program.
+    if (_advice_came_from_preprocessor(user_advice) and
+            not _advice_has_explicit_stop_intent(user_advice) and
+            not _imperative_marker_nearby(user_advice, position)):
+        if log:
+            log("DIRECTIVES: %s not grounded — preprocessed advice "
+                "with no stop intent and no imperative marker within "
+                "300 chars of %r" % (program, variant))
+        return False
+
+    return True
+
+
+def _validate_after_program_grounded(directives, user_advice, log):
+    """Drop stop_conditions.after_program and workflow_preferences.
+    prefer_programs entries that the LLM fabricated from goal text.
+
+    See `_is_program_grounded` for the grounding criteria (v116.19a
+    Option A: drops on pure fabrication OR on preprocessed advice
+    with no stop intent and no nearby imperative).
+
+    Returns the (possibly modified) directives dict.  Logs each drop.
+    """
+    if not isinstance(directives, dict) or not user_advice:
+        return directives
+
+    # after_program
+    stop_cond = directives.get("stop_conditions")
+    if isinstance(stop_cond, dict) and stop_cond.get("after_program"):
+        after_prog = stop_cond["after_program"]
+        # v117 Step 1 interaction: if the LLM also set
+        # stop_after_requested=True on the same stop_conditions block,
+        # that flag *is* the grounding signal — the LLM made an
+        # explicit user-stop assertion based on the raw advice and the
+        # AUTHORITY paragraph in DIRECTIVE_EXTRACTION_PROMPT_WITH_RAW.
+        # In that case, skip the literal-name grounding check that
+        # would otherwise drop after_program as "fabrication".  The
+        # AF_7mjs case is preserved: AF_7mjs's preprocessed advice has
+        # no positive stop signal, so stop_after_requested would NOT
+        # be set, and the grounding check fires as before.
+        if stop_cond.get("stop_after_requested") is True:
+            if log:
+                log("DIRECTIVES: Keeping after_program=%s "
+                    "(stop_after_requested=True confirms user stop "
+                    "intent; grounding check skipped)" % after_prog)
+        elif not _is_program_grounded(after_prog, user_advice, log):
+            log("DIRECTIVES: Dropping fabricated "
+                "stop_conditions.after_program=%s" % after_prog)
+            del stop_cond["after_program"]
+            # Clean up empty stop_conditions
+            if not stop_cond:
+                del directives["stop_conditions"]
+
+    # prefer_programs
+    wf_prefs = directives.get("workflow_preferences")
+    if isinstance(wf_prefs, dict) and wf_prefs.get("prefer_programs"):
+        prefer = wf_prefs["prefer_programs"]
+        if isinstance(prefer, list):
+            kept = []
+            for prog in prefer:
+                if _is_program_grounded(prog, user_advice, log):
+                    kept.append(prog)
+                else:
+                    log("DIRECTIVES: Dropping fabricated "
+                        "workflow_preferences.prefer_programs "
+                        "entry %s" % prog)
+            if kept:
+                wf_prefs["prefer_programs"] = kept
+            else:
+                del wf_prefs["prefer_programs"]
+                if not wf_prefs:
+                    del directives["workflow_preferences"]
+
+    return directives
+
+
+# v118.9: helpers for experiment-type-conditional program canonicalization.
+# See PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE module-level table for the
+# mapping data.  See v118_9_PLAN_rev2.md for design rationale and
+# the analysis of why this validator runs AFTER
+# _validate_after_program_grounded (Gemini's Gap A critique reviewed
+# in detail).
+
+def _detect_experiment_type_signals(combined_advice):
+    """Return one of 'cryoem', 'xray', or None based on signals in
+    the given advice text.
+
+    Uses the same regex as the rules-only resolver in
+    extract_directives_simple (around line ~3700).  Factored out so
+    the LLM-path validator and the rules-only fallback share one
+    canonical detector.
+
+    The cryo-EM signals are: cryo-em, half-map (any spacing/hyphen),
+    .ccp4 / .mrc file extensions, mtriage, resolve_cryo_em, full-map.
+
+    The X-ray signals are: x-ray, .mtz / .hkl file extensions,
+    xtriage, phaser, autosol, sad, mad, molecular replacement,
+    autobuild_denmod.
+
+    Returns None when signals are ambiguous (both fire) or absent
+    (neither fires).  The caller MUST handle None as "decline to act".
+    """
+    if not combined_advice:
+        return None
+    advice_lower = combined_advice.lower()
+    is_cryoem = bool(re.search(
+        r'cryo-?em|half.?map|\.mrc\b|\.ccp4\b|mtriage|'
+        r'resolve_cryo_em|full.?map',
+        advice_lower))
+    is_xray = bool(re.search(
+        r'x-?ray|\.mtz\b|\.hkl\b|xtriage|phaser|autosol|'
+        r'sad|mad|molecular.?replacement|autobuild_denmod',
+        advice_lower))
+    if is_cryoem and not is_xray:
+        return "cryoem"
+    if is_xray and not is_cryoem:
+        return "xray"
+    return None  # ambiguous (both or neither)
+
+
+def _apply_experiment_type_program_reprints(
+        directives, user_advice, raw_advice, log,
+        original_files=None):
+    """Correct after_program when the LLM picked a program that's
+    canonical for the wrong experiment type.
+
+    Reads PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE (module-level table).
+    For each (target_type, wrong_program) -> right_program mapping,
+    if:
+      - directives' after_program matches wrong_program AND
+      - experiment-type detection identifies target_type unambiguously
+
+    ...then replaces with right_program.  Logs every correction via
+    the [DIRECTIVE_CORRECTION] marker to both log_func and stderr
+    (mirrors Section E's diagnostic safety pattern), and records a
+    `_corrected_from` sidecar in the stop_conditions dict.
+
+    v119.H18: detection now uses file extensions as the PRIMARY
+    signal, falling back to text-based detection when files are
+    unavailable or inconclusive.  See "Detection priority" below.
+
+    Placement note: this validator runs AFTER
+    _validate_after_program_grounded.  Why:
+
+      - In the observed-bug case (Tom's runs 237/239), the LLM
+        emits stop_after_requested=True alongside the wrong
+        after_program.  The grounding check bypasses entirely in
+        that case (see _validate_after_program_grounded:1697-1712),
+        leaving the wrong program intact for us to correct.
+
+      - In the no-user-intent case (stop_after_requested=False), the
+        grounding check fires.  Since the LLM-fabricated wrong
+        program name typically doesn't appear in the user advice
+        either (user said "density modify", not "autobuild_denmod"),
+        grounding drops the after_program.  Our validator then has
+        nothing to correct — which is the safer outcome (no
+        after_program is better than a wrong one).
+
+      - Reversing the order would create a different bug: our
+        validator would correct autobuild_denmod -> resolve_cryo_em,
+        then grounding would notice that "resolve_cryo_em" also
+        isn't in user_advice (user said "density modify") and
+        drop it as fabrication.
+
+    Detection priority (v119.H18, files-win policy):
+      1. Try file-based detection on original_files.  If
+         unambiguous, use it (and log if it overrode a contrary
+         text signal).
+      2. Fall back to text-based detection if files are absent,
+         empty, or mixed.
+      3. Decline to act if both signals are None.
+
+    When file inventory contains BOTH types (e.g. accumulated across
+    a multi-cycle session — Pitfall 1 from Gemini's H18 review), the
+    file signal returns None and we defer to text.  A
+    [DIRECTIVE_CORRECTION_MIXED] line is logged so any future drift
+    is visible in audit logs.
+
+    No-op when:
+      - directives has no stop_conditions or no after_program
+      - after_program is not a key in the reprints table
+      - both file-based and text-based detection return None
+
+    Args:
+        directives: post-LLM directives dict (may be modified in
+            place)
+        user_advice: the preprocessed advice (may contain
+            Experiment Type, file extensions)
+        raw_advice: the raw user advice (may be None for
+            single-input path).  When present, combined with
+            user_advice for experiment-type detection to maximize
+            signal coverage.
+        log: log_func
+        original_files: optional list of file paths/basenames from
+            the user's input inventory.  When provided, used as the
+            PRIMARY signal for experiment-type detection.  When None
+            or empty, falls back to text-based detection (v119.H18).
+
+    Returns:
+        the (possibly modified) directives dict
+    """
+    if not isinstance(directives, dict):
+        return directives
+    stop_cond = directives.get("stop_conditions") or {}
+    after_prog = stop_cond.get("after_program")
+    if not after_prog:
+        return directives
+
+    # v119.H18: PRIMARY signal — file extensions.  Deterministic
+    # and unambiguous.  Used in preference to text-based detection
+    # because the AF_7mjs failure case ("density modify and stop"
+    # with cryo-EM files) produces empty text signals.
+    file_type = None
+    evidence = {"xray_exts": [], "cryoem_exts": [], "is_mixed": False}
+    if original_files:
+        try:
+            try:
+                from libtbx.langchain.agent.file_utils import (
+                    infer_experiment_type_from_files)
+            except ImportError:
+                from agent.file_utils import (
+                    infer_experiment_type_from_files)
+            file_type, evidence = infer_experiment_type_from_files(
+                original_files)
+        except Exception:
+            # Defensive: if file_utils import fails for any reason,
+            # fall through to text-based detection.  Never let the
+            # helper break the correction path.
+            file_type = None
+            evidence = {"xray_exts": [], "cryoem_exts": [],
+                        "is_mixed": False}
+
+    # FALLBACK signal — text-based detection on combined advice.
+    # Combine raw + preprocessed to maximize signal coverage.
+    # raw_advice may contain file mentions ("half-maps", ".ccp4")
+    # that user_advice has already paraphrased; preprocessed
+    # advice contains the explicit "Experiment Type: cryo-EM"
+    # field.  Both are useful.
+    combined = " ".join(filter(None, [raw_advice or "",
+                                        user_advice or ""]))
+    text_type = None
+    if combined.strip():
+        text_type = _detect_experiment_type_signals(combined)
+
+    # Pitfall 1 telemetry: log mixed-input drift so accumulating
+    # original_files in long sessions is visible in audit logs.
+    if evidence.get("is_mixed") and log:
+        try:
+            log("[DIRECTIVE_CORRECTION_MIXED] Both X-ray (%s) and "
+                "cryo-EM (%s) files present in inventory; "
+                "deferring to text-based detection (text=%s)"
+                % (evidence["xray_exts"],
+                   evidence["cryoem_exts"], text_type))
+        except Exception:
+            pass
+
+    # POLICY: files win on conflict.  Files are the hard physical
+    # boundary — passing a .ccp4 to an X-ray-only program crashes
+    # at runtime regardless of what the user wrote.
+    target_type = file_type if file_type is not None else text_type
+    if target_type is None:
+        return directives  # ambiguous: decline to act
+
+    key = (target_type, after_prog)
+    right_prog = PROGRAM_REPRINTS_BY_EXPERIMENT_TYPE.get(key)
+    if right_prog is None:
+        return directives  # not a known incorrect choice for this type
+
+    # Perform correction
+    source = "files" if file_type else "text"
+    text_overridden = (text_type if (file_type and text_type
+                                     and text_type != file_type)
+                       else None)
+    stop_cond["after_program"] = right_prog
+    stop_cond["_corrected_from"] = {
+        "from": after_prog,
+        "to": right_prog,
+        "reason": "experiment_type_mismatch",
+        "experiment_type": target_type,
+        "source": source,
+        "evidence": evidence if file_type else None,
+        "text_signal_overridden": text_overridden,
+    }
+
+    # Pitfall 2 telemetry: enriched [DIRECTIVE_CORRECTION] marker
+    # so file-based overrides of explicit text are auditable.
+    extra = ""
+    if file_type:
+        ev_list = (evidence["cryoem_exts"]
+                   if target_type == "cryoem"
+                   else evidence["xray_exts"])
+        extra = ", evidence=%s" % (ev_list,)
+        if text_overridden:
+            extra += (", text_signal=%s, OVERRIDDEN"
+                      % text_overridden)
+    diag_msg = (
+        "[DIRECTIVE_CORRECTION] Mapped after_program=%s to %s "
+        "(source=%s, target_type=%s%s)"
+        % (after_prog, right_prog, source, target_type, extra))
+    if log:
+        log(diag_msg)
+    # Also write to stderr.  Mirrors Section E's safety pattern:
+    # try/except so the diagnostic can never break the correction.
+    try:
+        import sys
+        sys.stderr.write(diag_msg + "\n")
+        sys.stderr.flush()
+    except Exception:
+        pass
+    return directives
 
 
 def _apply_crystal_symmetry_fallback(directives, user_advice, log):
@@ -1081,12 +2509,244 @@ def _apply_crystal_symmetry_fallback(directives, user_advice, log):
         sg_match = re.search(_sg_pat, user_advice, re.IGNORECASE)
         if sg_match:
             sg_str = sg_match.group(1).strip().rstrip('.')
-            if sg_str:
+            # v116.15: Reject sentinel values that mean "not specified".
+            # The advice preprocessor LLM emits a standardized template
+            # that always includes lines like "Space group: None".  The
+            # raw regex above happily matches these and stored the literal
+            # sentinel string as a directive, polluting every session
+            # with a meaningless space_group="None" entry.  Real space-
+            # group symbols (P 32 2 1, P63, C2, etc.) never collide with
+            # these natural-language placeholders.
+            if sg_str and not _is_symmetry_sentinel(sg_str):
                 _ensure_default()["space_group"] = sg_str
                 log("DIRECTIVES: Regex fallback extracted "
                     "space_group=%s" % sg_str)
+            elif sg_str:
+                log("DIRECTIVES: Regex fallback ignored space_group=%r "
+                    "(sentinel value, not a real space group)" % sg_str)
 
     return directives
+
+
+def _coerce_setting_value(value, expected_type):
+    """Convert a directive setting value to its expected type,
+    handling LLM-shape variability across providers.
+
+    Google's directive-extraction LLM tends to wrap scalar values
+    in lists (e.g. ``["S"]`` for ``additional_atom_types``).
+    OpenAI emits the same content as a bare scalar (``"S"``).
+    Naive ``str(["S"])`` produces ``"['S']"`` — the original
+    v118.10 bug.  This helper normalizes both shapes.
+
+    Behavior:
+
+    * value is list/tuple, length 0:
+      - expected_type is str → return ``""``
+      - non-str expected_type → raise ValueError
+    * value is list/tuple, length 1:
+      Unpack the single element and recurse with expected_type.
+      Handles ``[False]`` → ``False``, ``[5]`` → ``5``,
+      ``["S"]`` → ``"S"`` all correctly (no Python truthiness
+      trap from ``bool([False]) == True``).
+    * value is list/tuple, length 2+:
+      - expected_type is str → join elements with `" "` (PHIL
+        multi-value string syntax), strip outer whitespace
+      - non-str expected_type → raise ValueError (no sensible
+        scalar coercion)
+    * value is dict + expected_type is str:
+      raise ValueError (no sensible coercion).
+    * all other cases:
+      apply ``expected_type(value)`` as before (backward-compat).
+
+    Future-proofing convention: this helper coerces lists to
+    scalar (str via space-join, others via single-element unpack)
+    ONLY for non-list expected_types.  If a future setting
+    legitimately needs to be a list, declare it with
+    ``expected_type=list`` in VALID_SETTINGS — this function will
+    then pass-through the list unchanged.
+
+    Known limitation: deeply nested lists (e.g. ``[["S"]]``)
+    unpack to ``["S"]``, then space-join produces ``"['S']"`` —
+    back to the original bug shape.  This is accepted because
+    LLMs emitting nested lists for flat PHIL parameters is
+    genuinely malformed output.
+
+    Quote-stripping NOT performed: LLMs occasionally emit
+    elements with internal quotes like ``["'xtriage'"]``.
+    Stripping outer quotes would damage legitimate PHIL content
+    like ``["O5'"]`` (sugar atom with prime mark) or selection
+    strings with internal quotes.  Whitespace stripping is done
+    only on the joined multi-element result.
+
+    Args:
+        value: the raw LLM-emitted value
+        expected_type: one of str, int, float, bool from
+            VALID_SETTINGS or VALID_STOP_CONDITIONS
+
+    Returns:
+        the value coerced to expected_type
+
+    Raises:
+        ValueError or TypeError if coercion isn't sensible
+    """
+    if isinstance(value, (list, tuple)):
+        if len(value) == 0:
+            if expected_type is str:
+                return ""
+            raise ValueError(
+                "empty list cannot coerce to %s"
+                % expected_type.__name__)
+        if len(value) == 1:
+            # Single-element: unpack and recurse.  Type-preserving
+            # for bool/int/float/str.
+            return _coerce_setting_value(value[0], expected_type)
+        # Multi-element: only str can absorb (space-join is the
+        # canonical PHIL multi-value-string syntax)
+        if expected_type is str:
+            return " ".join(str(x) for x in value).strip()
+        raise ValueError(
+            "multi-element list cannot coerce to %s: %r"
+            % (expected_type.__name__, value))
+    if expected_type is str and isinstance(value, dict):
+        raise ValueError(
+            "dict cannot coerce to str: %r" % (value,))
+    return expected_type(value)
+
+
+# v119.H2.1: values that count as "skip this program" at the
+# program_settings level.  LLMs fluctuate between native JSON bool
+# and string variants depending on provider/temperature/token-
+# boundary effects; this list catches the common permutations so
+# Google's "skip": true and OpenAI's "skip": "true" both promote
+# deterministically.  Per Gemini guardrail A.
+#
+# Note on equality semantics: Python treats 1.0 == 1 == True, so
+# any of these compare-equal forms also match this membership
+# check.  That's fine -- float 1.0 from an LLM still means "truthy".
+_SKIP_TRUE_VALUES = (True, "true", "True", "TRUE",
+                     "yes", "Yes", "YES",
+                     1, "1",
+                     "skip", "Skip", "SKIP")
+
+
+def _promote_skip_settings_to_skip_programs(directives, log=None):
+    """Promote program_settings[X].skip=truthy to skip_programs.
+
+    v119.H2.1.  Fixes a pre-existing gap where the LLM correctly
+    encodes "don't run X" as program_settings[X].skip=true but the
+    downstream consumer reads skip_programs from
+    workflow_preferences.
+
+    In-place mutation.  Modifies `directives`.
+
+    For each program_settings entry whose settings dict contains a
+    'skip' key with a value in _SKIP_TRUE_VALUES:
+      1. Append the program name to workflow_preferences.skip_programs
+         (creating the list if needed; de-duplicates).
+      2. Pop the 'skip' key from the program's settings dict (so the
+         downstream per-setting validation does NOT log "Unknown
+         setting skip=True (keeping)").
+      3. If the program's settings dict is now empty, remove the
+         program entry entirely (matches what the regex fallback
+         in extract_directives_simple produces for the same input,
+         keeps output tidy).
+
+    IMPORTANT -- call order in validate_directives:
+      This helper MUST run BEFORE the per-setting validation loop
+      iterates settings.items().  The wiring at the top of
+      validate_directives ensures this.  Without that ordering,
+      the "Unknown setting skip=True (keeping)" log line would
+      fire even when the value gets promoted, polluting logs and
+      breaking the no-leftover-log K_H2.1 assertion.
+
+    Defensive bail policy:
+      If workflow_preferences or skip_programs exist on the input
+      but have unexpected types (workflow_preferences not a dict,
+      skip_programs not a list), this helper leaves ALL
+      program_settings entries unchanged (including their skip
+      keys).  The downstream per-setting validation will then log
+      the legacy "Unknown setting skip=True (keeping)" line, which
+      is the right signal that the LLM emitted malformed
+      workflow_preferences.  Partial processing would be worse
+      than no processing in this corner case.
+
+    Liberal on input acceptance, strict on output shape: any value
+    in _SKIP_TRUE_VALUES counts as truthy; the promoted result is
+    always a list of strings under workflow_preferences.skip_programs.
+
+    Args:
+        directives: dict.  Modified in place.
+        log: optional logging callable (signature: log(msg_str))
+
+    Returns:
+        None.  The mutation is the side effect.
+    """
+    def _log(msg):
+        if log:
+            log(msg)
+
+    if not isinstance(directives, dict):
+        return
+    prog_settings = directives.get("program_settings")
+    if not isinstance(prog_settings, dict):
+        return
+
+    # Collect promotions first.  Don't mutate prog_settings while
+    # iterating its keys.
+    to_promote = []  # list of program names whose skip-flag we will pop
+    for prog, settings in prog_settings.items():
+        if not isinstance(settings, dict):
+            continue
+        # Filter empty / non-string program names.  If the LLM
+        # somehow emits program_settings[""] = {"skip": true},
+        # promoting "" to skip_programs would put junk through
+        # the downstream pipeline.
+        if not prog or not isinstance(prog, str):
+            continue
+        if "skip" not in settings:
+            continue
+        if settings["skip"] in _SKIP_TRUE_VALUES:
+            to_promote.append(prog)
+
+    if not to_promote:
+        return
+
+    # Ensure workflow_preferences.skip_programs exists.  Defensive
+    # bail: if either is present but malformed, return without
+    # popping any skip keys.  Leaves the LLM's malformed output
+    # visible to downstream validation.
+    if "workflow_preferences" not in directives:
+        directives["workflow_preferences"] = {}
+    wf = directives["workflow_preferences"]
+    if not isinstance(wf, dict):
+        _log("DIRECTIVES: workflow_preferences is not a dict; "
+             "skip-promotion skipped (input was malformed)")
+        return
+    if "skip_programs" not in wf:
+        wf["skip_programs"] = []
+    elif not isinstance(wf["skip_programs"], list):
+        _log("DIRECTIVES: skip_programs is not a list; "
+             "skip-promotion skipped (input was malformed)")
+        return
+
+    for prog in to_promote:
+        settings = prog_settings[prog]
+        # Pop (not delete-after-read): cleaner idiomatic mutation,
+        # guarantees the key is gone before any downstream code
+        # sees it.
+        settings.pop("skip", None)
+        # Add to skip_programs (de-duplicated).
+        if prog not in wf["skip_programs"]:
+            wf["skip_programs"].append(prog)
+            _log("DIRECTIVES: Promoted %s from program_settings.skip "
+                 "to workflow_preferences.skip_programs" % prog)
+        else:
+            _log("DIRECTIVES: Dropped redundant program_settings.skip "
+                 "for %s (already in skip_programs)" % prog)
+        # If the program's settings dict is now empty, remove the
+        # program entry.
+        if not settings:
+            del prog_settings[prog]
 
 
 def validate_directives(directives, log=None):
@@ -1108,6 +2768,15 @@ def validate_directives(directives, log=None):
 
     if not directives or not isinstance(directives, dict):
         return {}
+
+    # v119.H2.1: Promote LLM-emitted program_settings[X].skip=true
+    # to workflow_preferences.skip_programs[X] BEFORE per-setting
+    # validation runs.  Must run before the per-setting validation
+    # loop below so the popped 'skip' key never reaches the
+    # "Unknown setting skip=True (keeping)" log line later in this
+    # function.  See _promote_skip_settings_to_skip_programs for
+    # full rationale.
+    _promote_skip_settings_to_skip_programs(directives, log=_log)
 
     validated = {}
 
@@ -1131,12 +2800,46 @@ def validate_directives(directives, log=None):
                 if not isinstance(settings, dict):
                     continue
 
+                # v118.B2: Heal/drop namespaced PHIL keys BEFORE
+                # type-validation.  Translates known near-misses
+                # (e.g. data_manager.r_free_flags.generate ->
+                # generate_rfree_flags) and drops keys in bad-PHIL
+                # namespace prefixes.  Program-specific dotted keys
+                # like "autosol.atom_type" pass through.
+                settings = _heal_namespaced_phil_keys(
+                    settings, prog, _log)
+
                 valid_settings = {}
                 for key, value in settings.items():
                     if key in VALID_SETTINGS:
                         try:
                             expected_type = VALID_SETTINGS[key]
-                            valid_settings[key] = expected_type(value)
+                            # v118.10: coerce list/tuple shapes
+                            # (Google emits lists where OpenAI emits
+                            # scalars) BEFORE the type cast.  Bare
+                            # `expected_type(value)` would call
+                            # ``str(["S"])`` which produces
+                            # ``"['S']"`` — the original bug.
+                            coerced = _coerce_setting_value(
+                                value, expected_type)
+                            if isinstance(value, (list, tuple)):
+                                # Distinct log lines per content:
+                                # single-element = JSON-shape artifact;
+                                # multi-element = content-ambiguity
+                                # signal.  Both worth visibility.
+                                if len(value) <= 1:
+                                    _log(
+                                        "DIRECTIVES: Unpacked "
+                                        "single-element list for "
+                                        "%s: %r → %r"
+                                        % (key, value, coerced))
+                                else:
+                                    _log(
+                                        "DIRECTIVES: Joined "
+                                        "multi-element list for "
+                                        "%s: %r → %r"
+                                        % (key, value, coerced))
+                            valid_settings[key] = coerced
                         except (ValueError, TypeError):
                             _log("DIRECTIVES: Invalid value for %s: %s" % (key, value))
                     else:
@@ -1156,6 +2859,41 @@ def validate_directives(directives, log=None):
                     else:
                         _log("DIRECTIVES: Dropping malformed unit_cell %r (need 6 numbers)" % raw_uc)
                         del valid_settings["unit_cell"]
+
+                # Validate space_group: reject placeholder/non-crystallographic values
+                # v116.15: Use the shared _is_symmetry_sentinel helper so the
+                # sentinel set stays in sync with _apply_crystal_symmetry_fallback.
+                # Structural checks (must start with a letter, length) remain here
+                # because they are LLM-output specific (the regex path already
+                # guarantees the shape by construction).
+                #
+                # v119.H14: Added positive Hermann-Mauguin check (_HM_FORM_RE).
+                # The pre-H14 negative checks (sentinel + first-letter +
+                # length<=25) let multi-word phrases like "Solve the
+                # structure" or "From data file" through, since they start
+                # with a letter and are <=25 chars.  Such values then reached
+                # PHENIX as bogus PHIL params and produced obscure errors.
+                # The HM check positively confirms the value looks like a
+                # space-group symbol (lattice letter + digits/spaces) before
+                # accepting it.  Forms accepted: "P 1 21 1", "P21", "P212121",
+                # "P-1", "F222", "P 1 21 1 (No. 4)".  Truly exotic forms
+                # (e.g., "R 3 :H" with axis hint) will be dropped — those
+                # are rare; PHENIX can usually detect from data.
+                if "space_group" in valid_settings:
+                    raw_sg = str(valid_settings["space_group"]).strip()
+                    _sg_invalid = (
+                        not raw_sg
+                        or _is_symmetry_sentinel(raw_sg)
+                        # Must start with a letter (space group symbol)
+                        or not raw_sg[0].isalpha()
+                        # Must be short enough to be a real symbol
+                        or len(raw_sg) > 25
+                        # v119.H14: must match Hermann-Mauguin shape
+                        or not _looks_like_space_group(raw_sg)
+                    )
+                    if _sg_invalid:
+                        _log("DIRECTIVES: Dropping invalid space_group value: %r" % raw_sg)
+                        del valid_settings["space_group"]
 
                 if valid_settings:
                     valid_prog_settings[prog] = valid_settings
@@ -1212,16 +2950,38 @@ def validate_directives(directives, log=None):
                 if key in VALID_STOP_CONDITIONS:
                     try:
                         expected_type = VALID_STOP_CONDITIONS[key]
+                        # v118.10: coerce list/tuple shapes BEFORE
+                        # the `value not in VALID_PROGRAMS` check
+                        # below — that check raises TypeError on a
+                        # list input ("unhashable type: 'list'"),
+                        # which the outer except would swallow,
+                        # silently dropping the directive.
+                        coerced = _coerce_setting_value(
+                            value, expected_type)
+                        if isinstance(value, (list, tuple)):
+                            if len(value) <= 1:
+                                _log(
+                                    "DIRECTIVES: Unpacked "
+                                    "single-element list for "
+                                    "%s: %r → %r"
+                                    % (key, value, coerced))
+                            else:
+                                _log(
+                                    "DIRECTIVES: Joined "
+                                    "multi-element list for "
+                                    "%s: %r → %r"
+                                    % (key, value, coerced))
                         if key == "after_program":
-                            # Validate program name
-                            if value not in VALID_PROGRAMS:
-                                fixed = _fix_program_name(value)
+                            # Validate program name (now safe — the
+                            # coerced value is a string).
+                            if coerced not in VALID_PROGRAMS:
+                                fixed = _fix_program_name(coerced)
                                 if fixed:
-                                    value = fixed
+                                    coerced = fixed
                                 else:
-                                    _log("DIRECTIVES: Invalid stop program %s" % value)
+                                    _log("DIRECTIVES: Invalid stop program %s" % coerced)
                                     continue
-                        valid_stop[key] = expected_type(value)
+                        valid_stop[key] = coerced
                     except (ValueError, TypeError):
                         _log("DIRECTIVES: Invalid stop condition %s: %s" % (key, value))
                 else:
@@ -1250,8 +3010,36 @@ def validate_directives(directives, log=None):
                     if isinstance(value, list):
                         valid_prefs[key] = [str(v) for v in value if v]
                 elif key in ("prefer_anomalous", "prefer_unmerged", "prefer_merged"):
-                    # Boolean data type preferences
-                    valid_prefs[key] = bool(value)
+                    # Boolean data type preferences.
+                    # v119.H5.1.1: defend against LLM emitting
+                    # list-wrapped booleans (e.g. [False] which
+                    # bare bool() would incorrectly treat as
+                    # truthy because non-empty list is truthy).
+                    # Type-gated by isinstance(v[0], bool) so
+                    # adding a list-typed key to this tuple in
+                    # the future wouldn't trigger silent
+                    # flattening — only genuine [bool] unwraps.
+                    _v = value
+                    if (isinstance(_v, list) and len(_v) == 1
+                            and isinstance(_v[0], bool)):
+                        _v = _v[0]
+                    if isinstance(_v, bool):
+                        valid_prefs[key] = _v
+                    elif isinstance(_v, int) and not isinstance(_v, bool):
+                        # Bare int 0/1 preserved (existing
+                        # behaviour).  bool is a subclass of int
+                        # in Python, but the case above already
+                        # caught it.
+                        valid_prefs[key] = bool(_v)
+                    elif isinstance(_v, str):
+                        # Bare string preserved (existing
+                        # behaviour, including the legacy quirk
+                        # that bool("false") == True; intentional
+                        # — separate bug class, separate ship).
+                        valid_prefs[key] = bool(_v)
+                    else:
+                        _log("DIRECTIVES: Invalid value for "
+                             "%s: %r" % (key, value))
 
             if valid_prefs:
                 validated["file_preferences"] = valid_prefs
@@ -1277,8 +3065,24 @@ def validate_directives(directives, log=None):
                         if valid_list:
                             valid_wf[key] = valid_list
                 elif key in ("use_experimental_phasing", "use_molecular_replacement",
-                             "use_mr_sad", "model_is_placed"):
-                    valid_wf[key] = bool(value)
+                             "use_mr_sad", "model_is_placed",
+                             "wants_validation_only"):
+                    # v119.H5.1.1: same list-wrap defense as the
+                    # file_preferences boolean block above — see
+                    # there for full rationale.
+                    _v = value
+                    if (isinstance(_v, list) and len(_v) == 1
+                            and isinstance(_v[0], bool)):
+                        _v = _v[0]
+                    if isinstance(_v, bool):
+                        valid_wf[key] = _v
+                    elif isinstance(_v, int) and not isinstance(_v, bool):
+                        valid_wf[key] = bool(_v)
+                    elif isinstance(_v, str):
+                        valid_wf[key] = bool(_v)
+                    else:
+                        _log("DIRECTIVES: Invalid value for "
+                             "%s: %r" % (key, value))
 
             if valid_wf:
                 validated["workflow_preferences"] = valid_wf
@@ -1352,8 +3156,12 @@ def _fix_ligand_workflow_conflict(directives, log):
         log("DIRECTIVES: Clearing after_program=phenix.refine due to ligand workflow in constraints")
         log("DIRECTIVES: (User wants full ligand fitting workflow, not to stop at first refinement)")
 
-        # Remove the conflicting after_program
+        # v116.x: clear stop_after_requested and skip_validation
+        # since the user-stop intent is being overridden by the
+        # ligand-workflow conflict.
         del directives["stop_conditions"]["after_program"]
+        directives["stop_conditions"].pop("stop_after_requested", None)
+        directives["stop_conditions"].pop("skip_validation", None)
 
         # If stop_conditions is now empty, remove it
         if not directives["stop_conditions"]:
@@ -1480,6 +3288,10 @@ def _fix_multi_step_workflow_conflict(directives, log):
         log("DIRECTIVES: Constraints: %s" % constraints_text[:200])
 
         del directives["stop_conditions"]["after_program"]
+        # v116.x: clear stop_after_requested too — the user-stop
+        # intent is being overridden because the constraints
+        # contradict it (they describe work AFTER the named program).
+        directives["stop_conditions"].pop("stop_after_requested", None)
 
         # If stop_conditions is now empty (or only has skip_validation), clean up
         remaining = {k: v for k, v in directives["stop_conditions"].items()
@@ -1596,6 +3408,10 @@ def _fix_skip_after_program_conflict(directives, log):
         log("DIRECTIVES: Removing after_program (user explicitly said don't run this program)")
 
         del directives["stop_conditions"]["after_program"]
+        # v116.x: clear stop_after_requested too — the user-stop
+        # intent is being overridden because the user also said
+        # don't run this program.
+        directives["stop_conditions"].pop("stop_after_requested", None)
 
         # Try to infer correct stop: if user wanted refinement, set max_refine_cycles
         # Look for refinement-related terms in constraints, program_settings, or
@@ -1803,6 +3619,32 @@ def merge_directives(base, override):
     base_stop = base.get("stop_conditions", {})
     over_stop = override.get("stop_conditions", {})
     if base_stop or over_stop:
+        # v119.H5.1.1: protect after_program corrections.
+        # The _corrected_from sidecar describes the CURRENT
+        # value of after_program. If override changes
+        # after_program:
+        #   - to the same value the correction reverted away
+        #     from (over_stop[after_program] ==
+        #     _corrected_from.from): prevent the un-correction
+        #     by stripping from override; sidecar stays valid.
+        #   - to any other value, AND override doesn't bring
+        #     its own sidecar: let override win for
+        #     after_program but clear base's now-stale sidecar
+        #     (Gemini blanket-wipe).  Otherwise the dict-merge
+        #     would leave a "zombie" sidecar whose `to` field
+        #     no longer describes the result.
+        # The dict comprehension rebuilds preserve the
+        # merge_directives no-mutation-of-inputs invariant
+        # (same pattern as the program_settings deep-merge
+        # above uses dict()).
+        base_cf = base_stop.get("_corrected_from")
+        if base_cf and "after_program" in over_stop:
+            if over_stop["after_program"] == base_cf.get("from"):
+                over_stop = {k: v for k, v in over_stop.items()
+                             if k != "after_program"}
+            elif "_corrected_from" not in over_stop:
+                base_stop = {k: v for k, v in base_stop.items()
+                             if k != "_corrected_from"}
         merged["stop_conditions"] = {**base_stop, **over_stop}
 
     # Merge file_preferences (override wins)
@@ -1942,10 +3784,19 @@ def format_directives_for_display(directives):
     lines = ["Extracted Directives:"]
 
     if "program_settings" in directives:
-        lines.append("\n  Program Settings:")
-        for prog, settings in directives["program_settings"].items():
-            settings_str = ", ".join("%s=%s" % (k, v) for k, v in settings.items())
-            lines.append("    %s: %s" % (prog, settings_str))
+        _ps = directives["program_settings"]
+        if isinstance(_ps, dict):
+            lines.append("\n  Program Settings:")
+            for prog, settings in _ps.items():
+                if isinstance(settings, dict):
+                    settings_str = ", ".join(
+                        "%s=%s" % (k, v)
+                        for k, v in settings.items())
+                    lines.append(
+                        "    %s: %s" % (prog, settings_str))
+                else:
+                    lines.append(
+                        "    %s: %s" % (prog, settings))
 
     if "stop_conditions" in directives:
         lines.append("\n  Stop Conditions:")
@@ -1974,7 +3825,611 @@ def format_directives_for_display(directives):
 # SIMPLE EXTRACTION (NO LLM FALLBACK)
 # =============================================================================
 
-def extract_directives_simple(user_advice):
+# =====================================================================
+# General after_program resolver (v115.10)
+#
+# Maps user language to workflow actions, then resolves after_program
+# based on how many actions the user mentioned and whether they said
+# "stop."  Replaces per-workflow overlays (ligand, denmod) with one
+# unified mechanism.
+# =====================================================================
+
+# Action → (xray_program, cryoem_program, keywords)
+# Keywords are matched longest-first.  Single-word keywords use word-
+# boundary matching; multi-word use substring matching.
+_ACTION_TABLE = {
+    "analyze": {
+        "xray": "phenix.xtriage",
+        "cryoem": "phenix.mtriage",
+        "keywords": [
+            "analyze data", "data quality", "data analysis",
+            "analyze map", "xtriage", "mtriage", "map quality",
+            "map triage",
+        ],
+    },
+    "solve": {
+        "xray": "phenix.phaser",
+        "cryoem": None,
+        "keywords": [
+            # v119.H14: removed "solve the structure" and
+            # "solve structure" — these are goal phrases, not method
+            # requests.  When a README says "Solve the structure..."
+            # combined with another action (e.g., "...and stop after
+            # refinement"), the multi-action branch was setting
+            # start_with_program=phenix.phaser, which forced phaser
+            # into the workflow even on SAD/MAD datasets where the
+            # correct method is autosol.  The remaining keywords
+            # still match explicit method requests ("molecular
+            # replacement", "phaser", "mr "), which is the intended
+            # semantic of the `solve` action.  See run_39_openai
+            # batch analysis (1029B-sad and similar datasets).
+            "molecular replacement", "phaser", "mr ",
+        ],
+    },
+    "phase": {
+        "xray": "phenix.autosol",
+        "cryoem": None,
+        "keywords": [
+            "experimental phasing", "sad phasing",
+            "mad phasing", "autosol", "anomalous phasing",
+        ],
+    },
+    "predict_build": {
+        "xray": "phenix.predict_and_build",
+        "cryoem": "phenix.predict_and_build",
+        "keywords": [
+            "predict and build", "predict, build",
+            "predict then build", "predict_and_build",
+        ],
+    },
+    "predict": {
+        "xray": "phenix.predict_and_build",
+        "cryoem": "phenix.predict_and_build",
+        "keywords": [
+            "predict a model", "predict model", "predict",
+        ],
+    },
+    "build": {
+        "xray": "phenix.autobuild",
+        "cryoem": "phenix.predict_and_build",
+        "keywords": [
+            "build a model", "build model", "build the model",
+            "model building", "autobuild", "map to model",
+            "map_to_model", "build",
+        ],
+    },
+    "denmod": {
+        "xray": "phenix.autobuild_denmod",
+        "cryoem": "phenix.resolve_cryo_em",
+        "keywords": [
+            "density modif", "density-modif", "density mod",
+            "denmod", "resolve_cryo_em", "resolve cryo",
+            "improve map", "improve the map", "improve phases",
+        ],
+    },
+    "sharpen": {
+        "xray": None,
+        "cryoem": "phenix.map_sharpening",
+        "keywords": [
+            "map sharpening", "auto-sharpen", "autosharpen",
+            "sharpen",
+        ],
+    },
+    "refine": {
+        "xray": "phenix.refine",
+        "cryoem": "phenix.real_space_refine",
+        "keywords": [
+            "real_space_refine", "refinement", "refine",
+            "pick water", "add water",
+        ],
+    },
+    "ligandfit": {
+        "xray": "phenix.ligandfit",
+        "cryoem": None,
+        "keywords": [
+            "ligand fit", "fit ligand", "ligandfit",
+            "place ligand", "fit the ligand",
+            "place the ligand", "fit atp", "fit nad",
+            "fit fad", "fit heme", "add ligand",
+            "add the ligand", "dock ligand",
+        ],
+    },
+    "validate": {
+        "xray": "phenix.molprobity",
+        "cryoem": "phenix.molprobity",
+        "keywords": [
+            "validation", "validate", "molprobity",
+        ],
+    },
+    "polder": {
+        "xray": "phenix.polder",
+        "cryoem": None,
+        "keywords": [
+            "polder map", "omit map", "polder",
+        ],
+    },
+    "dock": {
+        "xray": None,
+        "cryoem": "phenix.dock_in_map",
+        "keywords": [
+            "dock in map", "dock into map", "dock_in_map",
+        ],
+    },
+    "symmetry": {
+        "xray": None,
+        "cryoem": "phenix.map_symmetry",
+        "keywords": [
+            "map symmetry", "find symmetry",
+            "determine symmetry", "apply symmetry",
+            "apply ncs", "ncs", "oligomer",
+        ],
+    },
+}
+
+# Pre-compiled negation pattern — checks text immediately
+# before a keyword match for negation words.
+_NEGATION_BEFORE_RE = re.compile(
+    r"(?:don'?t|do\s+not|never|skip|no)\s*$",
+    re.IGNORECASE)
+
+
+def _detect_actions(advice_lower):
+    """Detect workflow action mentions in advice, ordered by
+    position of first appearance.
+
+    Uses _ACTION_TABLE keywords.  Longest keywords are checked
+    first to avoid partial matches ("predict and build" before
+    "predict" and "build").  Single-word keywords use word-boundary
+    matching to avoid false positives ("solve" inside "resolve").
+    Negated actions ("don't build", "skip refinement") are excluded.
+
+    Compound rule: if both "predict" and "build" are detected
+    separately, they merge into a single "predict_build" action.
+
+    Returns:
+        list of (action_name, position) sorted by position.
+    """
+    # Build (keyword, action) pairs, longest first
+    _all_kw = []
+    for action, info in _ACTION_TABLE.items():
+        for kw in info["keywords"]:
+            _all_kw.append((kw, action))
+    _all_kw.sort(key=lambda x: -len(x[0]))
+
+    # Find first non-negated occurrence of each action
+    found = {}  # action → position
+    for kw, action in _all_kw:
+        if action in found:
+            continue
+        if " " not in kw and "-" not in kw:
+            # Single-word: word-boundary matching
+            m = re.search(
+                r'\b' + re.escape(kw) + r'\b', advice_lower)
+            if m:
+                before = advice_lower[:m.start()]
+                if _NEGATION_BEFORE_RE.search(before):
+                    continue  # Negated
+                found[action] = m.start()
+        else:
+            # Multi-word: substring matching
+            pos = advice_lower.find(kw)
+            if pos >= 0:
+                before = advice_lower[:pos]
+                if _NEGATION_BEFORE_RE.search(before):
+                    continue
+                found[action] = pos
+
+    # Compound rule: predict + build → predict_build
+    if "predict" in found and "build" in found:
+        pos = found["predict"]
+        del found["predict"]
+        del found["build"]
+        if "predict_build" not in found:
+            found["predict_build"] = pos
+    # If predict_build matched directly, remove individuals
+    if "predict_build" in found:
+        found.pop("predict", None)
+        found.pop("build", None)
+
+    return sorted(found.items(), key=lambda x: x[1])
+
+
+# ── Stop-after detection ──────────────────────────────────────────
+# v116.x: distinguish USER-explicit "stop after X" from plan-injected
+# `after_program` per-stage hints.  Used as the gate for stop-analysis
+# in workflow_engine._apply_directives.  See ARCHITECTURE.md
+# "Stop-after directive routing" for the design rationale.
+
+_POSITIVE_STOP_AFTER_PATTERNS = (
+    re.compile(r'\bstop\s+after\b', re.IGNORECASE),
+    re.compile(r'\band\s+stop\b', re.IGNORECASE),
+    re.compile(r'\bthen\s+stop\b', re.IGNORECASE),
+    re.compile(r',\s*stop\b', re.IGNORECASE),
+    re.compile(r'\.\s+stop\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+when\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+once\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+if\b', re.IGNORECASE),
+    re.compile(r'\bstop\s+at\b', re.IGNORECASE),
+    re.compile(r'\bonly\s+run\b', re.IGNORECASE),
+    re.compile(r'\bjust\s+(?:do|run)\b', re.IGNORECASE),
+    # v117.3: contiguous-phrase patterns for phrasings that
+    # _IMPERATIVE_STOP_MARKERS catches near the program name but
+    # that ALSO deserve global recognition (so _is_stop_after_requested
+    # returns True and the v117.1 grounding-flag exemption fires
+    # even when the LLM doesn't set stop_after_requested itself).
+    # Both patterns are contiguous multi-word phrases that cannot
+    # span sentence boundaries by construction.  Over-permissive
+    # "after X completes/finishes" patterns were considered and
+    # rejected during v117.3 plan review — see plan §3 Change 2.
+    re.compile(r'\bstop\s+the\s+workflow\b', re.IGNORECASE),
+    re.compile(r'\bis\s+the\s+last\s+step\b', re.IGNORECASE),
+)
+
+_NEGATIVE_STOP_PATTERN = re.compile(
+    r"(?:don'?t|do\s+not|never)\s+stop", re.IGNORECASE)
+
+# "Stop Condition: None" / "Stop Condition: not specified" / heading-
+# only — explicit NO-stop-condition signal in README/preprocessed
+# advice.  Must be stripped before pattern matching so the bare word
+# "stop" inside this phrase doesn't trigger a false positive.
+_STOP_CONDITION_NONE = re.compile(
+    r'\*?\*?stop\s+conditions?\*?\*?\s*[:=]\s*'
+    r'(?:none|not\s+specified|n/?a|null|\s*$)',
+    re.IGNORECASE)
+
+# "Stop Condition: <real value>" — explicit YES-stop-condition signal.
+_STOP_CONDITION_VALUE = re.compile(
+    r'\*?\*?stop\s+conditions?\*?\*?\s*[:=]\s*'
+    r'(?!none\b|not\s+specified\b|n/?a\b|null\b|\s*$)\S',
+    re.IGNORECASE)
+
+
+def _is_stop_after_requested(advice):
+    """Return True iff the user explicitly requested a stop-after condition.
+
+    True iff the raw user advice (or README content) contains an
+    explicit stop-after phrasing.  False for the absence of any stop
+    signal, for explicit "Stop Condition: None", and for explicit
+    negations like "do not stop".
+
+    The bare word "stop" is not sufficient; it must match one of the
+    recognised positive patterns.  This is distinct from plan-injected
+    `after_program` hints — those do NOT invoke this function and
+    therefore stop_after_requested stays False under plan progression.
+
+    Args:
+        advice: raw user advice string (may include README content,
+                preprocessed sections, etc.).
+
+    Returns:
+        True if the advice contains an explicit stop-after directive.
+    """
+    if not advice:
+        return False
+
+    # Explicit negation overrides everything else.
+    if _NEGATIVE_STOP_PATTERN.search(advice):
+        return False
+
+    # Strip "Stop Condition: None" patterns so they don't trigger
+    # bare-"stop" false positives downstream.
+    text = _STOP_CONDITION_NONE.sub(' ', advice)
+
+    # Positive: "Stop Condition: <real value>".
+    if _STOP_CONDITION_VALUE.search(text):
+        return True
+
+    # Positive: recognised stop-after phrasings.
+    for pat in _POSITIVE_STOP_AFTER_PATTERNS:
+        if pat.search(text):
+            return True
+
+    return False
+
+
+def _resolve_after_program(directives, advice_lower, original_files=None):
+    """General after_program resolver.
+
+    Corrects after_program based on how many workflow actions the
+    user mentioned and whether they said "stop."
+
+    Rules:
+      Multiple actions + stop  → after_program = last mentioned
+      Multiple actions + no stop → clear after_program (plan drives)
+      Single action + stop     → set after_program if not set
+      Otherwise                → leave as-is
+
+    Also sets start_with_program to the first action when multiple
+    actions are detected (helps the workflow engine prioritize).
+
+    Called from _apply_workflow_intent_fallback (both LLM and
+    rules-only paths).
+
+    v119.H18: optional ``original_files`` parameter.  When provided,
+    experiment-type detection uses file extensions as the PRIMARY
+    signal (files-win policy, mirrors the policy in
+    ``_apply_experiment_type_program_reprints``).  This fixes the
+    case where the resolver previously defaulted ``_exp="xray"`` for
+    terse advice with no experiment-type tokens, causing it to
+    silently revert a correct H18 correction.  When None or empty,
+    falls back to the pre-H18 text-only heuristic (backward compat).
+    """
+    # If this is preprocessed text (has "Primary Goal:" header),
+    # extract just that line for action detection.  The full
+    # preprocessed text contains sections like
+    # "Special Instructions: Do not proceed to refinement"
+    # that cause false positive action detection — the negation
+    # "Do not" is too far from "refinement" for the immediate-
+    # predecessor check to catch.
+    _action_text = advice_lower
+    _goal_match = re.search(
+        r'primary\s+goal\s*:\s*(.+?)(?:\n|$)',
+        advice_lower)
+    if _goal_match:
+        _action_text = _goal_match.group(1).strip()
+
+    actions = _detect_actions(_action_text)
+    if not actions:
+        return  # No actions detected — leave directives as-is
+
+    # Detect stop intent.  Use the dedicated helper that handles
+    # "Stop Condition: None" / "not specified" correctly — the
+    # bare \bstop\b check used previously had a false positive on
+    # advice containing "Stop Condition: None" (e.g. Tom's
+    # nsf-d2-ligand case, where the user explicitly said "no stop"
+    # but the regex matched the word "Stop" in the heading).
+    _has_stop = _is_stop_after_requested(advice_lower)
+
+    # v119.H18: PRIMARY signal — file extensions when supplied.
+    # Mirrors the files-win policy in
+    # _apply_experiment_type_program_reprints.  Without this, terse
+    # advice without explicit cryo-EM/X-ray tokens caused the
+    # text heuristic below to default _exp="xray", silently
+    # reverting a correct H18 correction made earlier in the
+    # extract_directives pipeline.
+    _exp = None
+    if original_files:
+        try:
+            try:
+                from libtbx.langchain.agent.file_utils import (
+                    infer_experiment_type_from_files)
+            except ImportError:
+                from agent.file_utils import (
+                    infer_experiment_type_from_files)
+            _file_exp, _ = infer_experiment_type_from_files(
+                original_files)
+            _exp = _file_exp
+        except Exception:
+            _exp = None
+
+    # FALLBACK signal — text heuristic.  Used only when files
+    # weren't supplied OR are mixed (helper returned None).
+    if _exp is None:
+        _is_cryoem = bool(re.search(
+            r'cryo-?em|half.?map|\.mrc|\.map|full.?map|mtriage'
+            r'|sharpen|map.sharpening|auto.sharpen'
+            r'|resolve.cryo|dock.in.map|map.to.model'
+            r'|density.modif\w*\s+map',
+            advice_lower))
+        _is_xray = bool(re.search(
+            r'x-?ray|\.mtz|\.hkl|xtriage|phaser|autosol|'
+            r'sad|mad|molecular.?replacement',
+            advice_lower))
+        if _is_cryoem and not _is_xray:
+            _exp = "cryoem"
+        else:
+            _exp = "xray"  # Default to xray
+
+    # Detect preprocessed advice — used below to suppress
+    # start_with_program writes when the multi-action signal
+    # comes from descriptive preprocessor prose rather than
+    # imperative user advice.
+    #
+    # v116.11: AF_7mjs regression — the preprocessor produces
+    # Primary Goal text like "Run PredictAndBuild ... rebuild
+    # the loop and refine the model" describing a workflow.
+    # _detect_actions finds multiple actions (predict_build,
+    # refine), and pre-fix the resolver set start_with_program=
+    # phenix.predict_and_build.  The planner then treats that
+    # as a skip-prerequisites directive and skips Stage 1
+    # (mtriage) + Stage 2 (denmod), giving a 3-stage plan
+    # instead of the correct 5-stage plan.  When the advice
+    # is preprocessed, descriptive multi-action prose is the
+    # norm, not user prescription; don't infer start_with.
+    _PREPROC_SIGS = (
+        r'input\s+files?\s+found',
+        r'experiment\s+type',
+        r'key\s+parameters?',
+        r'special\s+instructions?',
+    )
+    _is_preprocessed = any(
+        re.search(r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                  % sig, advice_lower, re.MULTILINE)
+        for sig in _PREPROC_SIGS
+    )
+
+    _sc = directives.get("stop_conditions", {})
+    n = len(actions)
+
+    if n > 1:
+        if _has_stop:
+            # "do A, B and stop" → after_program = B (last)
+            last_action = actions[-1][0]
+            last_prog = _ACTION_TABLE[last_action].get(
+                _exp) or _ACTION_TABLE[last_action].get(
+                "xray")
+            if last_prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "after_program"] = last_prog
+                directives["stop_conditions"][
+                    "skip_validation"] = True
+                # v116.x: flag user-explicit stop so the consumer
+                # (workflow_engine._apply_directives) knows to apply
+                # the after_program_done stop analysis.  Plan-injected
+                # after_program does NOT set this flag, which is what
+                # lets multi-stage plans progress without being cut
+                # short at each stage boundary.
+                directives["stop_conditions"][
+                    "stop_after_requested"] = True
+        else:
+            # "do A and B" → clear, plan drives
+            _sc.pop("after_program", None)
+            _sc.pop("skip_validation", None)
+            _sc.pop("stop_after_requested", None)
+        # Set start_with_program to first action.
+        #
+        # v116.11: Skip this for preprocessed advice — the
+        # multi-action signal there comes from descriptive
+        # prose (Primary Goal summary), not user prescription.
+        # Setting start_with would cause the planner to skip
+        # prerequisite stages (AF_7mjs regression).  Real user
+        # prose like "run phaser and refine" still gets
+        # start_with=phaser (preprocessed=False).
+        if not _is_preprocessed:
+            first_action = actions[0][0]
+            first_prog = _ACTION_TABLE[first_action].get(
+                _exp) or _ACTION_TABLE[first_action].get(
+                "xray")
+            if first_prog:
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                directives["stop_conditions"][
+                    "start_with_program"] = first_prog
+    elif n == 1 and _has_stop:
+        # "do A and stop" → set after_program to the detected
+        # action's program.  Always override — the LLM often
+        # sets the wrong program (e.g., real_space_refine instead
+        # of resolve_cryo_em for "density modify and stop").
+        action_name = actions[0][0]
+        prog = _ACTION_TABLE[action_name].get(
+            _exp) or _ACTION_TABLE[action_name].get(
+            "xray")
+        if prog:
+            if "stop_conditions" not in directives:
+                directives["stop_conditions"] = {}
+            directives["stop_conditions"][
+                "after_program"] = prog
+            directives["stop_conditions"][
+                "skip_validation"] = True
+            # v116.x: see comment above on stop_after_requested.
+            directives["stop_conditions"][
+                "stop_after_requested"] = True
+    # n == 1, no stop → leave as-is
+    # n == 0 → leave as-is
+
+    # Special: "predict" action (not predict_build) implies
+    # stop_after_predict=True — the user wants prediction only,
+    # not the full predict-and-build workflow.
+    # Nested under program name so command_builder merges it
+    # into strategy (line 1645: prog_settings[program]).
+    # NOTE: must re-read stop_conditions after resolver modified it.
+    _final_sc = directives.get("stop_conditions", {})
+    if (n >= 1 and actions[-1][0] == "predict"
+            and _final_sc.get("after_program")):
+        if "program_settings" not in directives:
+            directives["program_settings"] = {}
+        _pab = "phenix.predict_and_build"
+        if _pab not in directives["program_settings"]:
+            directives["program_settings"][_pab] = {}
+        directives["program_settings"][_pab][
+            "stop_after_predict"] = True
+
+
+def _apply_workflow_intent_fallback(directives, advice_lower,
+                                    original_files=None):
+    """Apply deterministic workflow intent patterns to directives.
+
+    v115.09: Shared by both LLM and rules-based paths.  When the LLM
+    extracts directives, it may miss ``wants_validation_only`` or
+    ``use_mr_sad`` even when the advice clearly requests them.  This
+    function overlays the deterministic pattern matches on top of
+    whatever the LLM returned, ensuring critical routing flags are
+    always set when the advice text contains unambiguous signals.
+
+    Called from:
+      - ``extract_directives`` (post-LLM overlay)
+      - ``extract_directives_simple`` (rules-only path)
+
+    Args:
+        directives: dict — modified in place.
+        advice_lower: str — lowercased user advice text.
+        original_files: optional list of input file paths.  When
+            provided, threaded through to ``_resolve_after_program``
+            so its experiment-type heuristic uses file extensions
+            as the primary signal (v119.H18 files-win policy).
+            Backward-compat: defaults to None for callsites that
+            don't have file information.
+    """
+    # Validation-only intent.
+    # NOTE: "analysis only" deliberately omitted — it matches
+    # data-quality analysis (xtriage-only) tutorials, not just
+    # model validation.  The LLM prompt handles that nuance.
+    _validation_signals = [
+        "model validation",
+        "structure validation", "comprehensive validation",
+        "run molprobity", "validate this structure",
+        "validation and correction",
+    ]
+    if any(sig in advice_lower for sig in _validation_signals):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"][
+            "wants_validation_only"] = True
+
+    # MR-SAD intent.
+    _mr_sad_patterns = [
+        "mr-sad", "mr sad", "mrsad",
+        "molecular replacement sad",
+        "molecular replacement followed by sad",
+        "mr followed by sad",
+    ]
+    if any(pat in advice_lower for pat in _mr_sad_patterns):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"]["use_mr_sad"] = True
+        directives["workflow_preferences"][
+            "use_experimental_phasing"] = True
+
+    # Ligand-fitting implies model is placed.
+    # You can't fit a ligand into an unplaced model.  When the user
+    # says "fit ATP" or "fit ligand", the model must already be in
+    # the correct position — no MR or docking needed.
+    # Guard: only set model_is_placed when the advice does NOT also
+    # mention molecular replacement, phaser, solving, or docking
+    # (those indicate the model still needs placement first).
+    _ligand_fit_signals = [
+        "fit ligand", "fit the ligand", "ligandfit",
+        "fit atp", "fit nad", "fit fad", "fit heme",
+        "place ligand", "place the ligand",
+        "add ligand", "add the ligand",
+        "dock ligand", "dock the ligand",
+    ]
+    _mr_signals = [
+        "molecular replacement", "phaser", "solve",
+        "mr ", "autosol", "predict",
+        "dock in map", "dock_in_map", "dock into",
+    ]
+    if (any(sig in advice_lower for sig in _ligand_fit_signals) and
+            not any(sig in advice_lower for sig in _mr_signals)):
+        if "workflow_preferences" not in directives:
+            directives["workflow_preferences"] = {}
+        directives["workflow_preferences"][
+            "model_is_placed"] = True
+
+    # ── General after_program resolver (v115.10) ──────────
+    # Replaces per-workflow overlays (ligand after_program
+    # clearing, denmod stop/clear) with a single mechanism
+    # that counts distinct action mentions and checks for
+    # "stop" to determine the correct after_program.
+    # v119.H18: pass original_files so files-win experiment-type
+    # detection extends here too.
+    _resolve_after_program(directives, advice_lower,
+                           original_files=original_files)
+
+
+def extract_directives_simple(user_advice, log=None):
     """
     Extract directives using simple pattern matching (no LLM).
 
@@ -1983,9 +4438,17 @@ def extract_directives_simple(user_advice):
 
     Args:
         user_advice: User advice string
+        log: optional log function (e.g., ``print`` or a custom
+            logger).  Forwarded to ``validate_directives`` at the
+            end so sanity-check drops are visible to operators.
+            v119.H14.1: defaults to None (silent) for backward
+            compatibility with the four external callers in
+            ai_agent.py and run_ai_analysis.py that didn't pass
+            a logger pre-H14.1.
 
     Returns:
-        dict: Extracted directives (limited)
+        dict: Extracted directives (limited), passed through
+        ``validate_directives`` for sanity-check normalization.
     """
     if not user_advice:
         return {}
@@ -2107,6 +4570,39 @@ def extract_directives_simple(user_advice):
             if "default" not in directives["program_settings"]:
                 directives["program_settings"]["default"] = {}
             directives["program_settings"]["default"]["space_group"] = sg_str
+
+    # ==========================================================================
+    # ASU COPY COUNT EXTRACTION
+    # ==========================================================================
+    # Match forms like:
+    #   "4 copies of the search model"        "there are 4 copies in the ASU"
+    #   "search for 4 copies"                 "4 copies in the asymmetric unit"
+    #   "copies=4"  "copies: 4"               "find 4 copies"
+    #   "place 4 copies"                      "4 molecules in the ASU"
+    # Guard: only accept integers 1-30 (same sanity bound as xtriage path).
+    _copies_patterns = [
+        # Explicit number before "copies" or "molecules" with context keywords
+        r'(\d+)\s+cop(?:y|ies)\s+(?:of|in)',          # "4 copies of/in"
+        r'(\d+)\s+molecules?\s+in\s+(?:the\s+)?asu',  # "4 molecules in the ASU"
+        r'(?:search|find|place|look)\s+(?:for\s+)?(\d+)\s+cop',  # "search for 4 copies"
+        r'cop(?:y|ies)\s*[=:]\s*(\d+)',               # "copies=4" / "copies: 4"
+        r'(?:there\s+are|has?)\s+(\d+)\s+cop',        # "there are 4 copies"
+        r'asu\s+(?:contains?|has?)\s+(\d+)\s+cop',    # "ASU contains 4 copies"
+    ]
+    for _cp_pat in _copies_patterns:
+        _cp_m = re.search(_cp_pat, user_advice, re.IGNORECASE)
+        if _cp_m:
+            try:
+                _cp_v = int(_cp_m.group(1))
+                if 1 <= _cp_v <= 30:
+                    if "program_settings" not in directives:
+                        directives["program_settings"] = {}
+                    if "default" not in directives["program_settings"]:
+                        directives["program_settings"]["default"] = {}
+                    directives["program_settings"]["default"]["copies"] = _cp_v
+                    break
+            except (ValueError, IndexError):
+                pass
 
     # Check for macro_cycles / number of refinement cycles
     cycle_patterns = [
@@ -2247,6 +4743,8 @@ def extract_directives_simple(user_advice):
         # "stop after first/one refinement" - also accept "stop after refinement"
         if re.search(r'stop\s+after\s+(?:the\s+)?(?:first|one|1|a\s+single)?\s*refine', advice_lower):
             directives["stop_conditions"]["after_program"] = "phenix.refine"
+            # v116.x: this regex matches "stop after" — an explicit user stop.
+            directives["stop_conditions"]["stop_after_requested"] = True
             # Only set max_refine_cycles=1 if explicitly "first" or "one"
             if re.search(r'(?:first|one|1|single)\s*refine', advice_lower):
                 directives["stop_conditions"]["max_refine_cycles"] = 1
@@ -2273,197 +4771,146 @@ def extract_directives_simple(user_advice):
     # Condition:" lines are now stripped by
     # _strip_preprocessor_stop_condition() at entry.
 
-    # Check for workflow continuation indicators that mean we should NOT set early stops
-    # Words like "then", "later", "afterwards" indicate multi-step workflows
-    continuation_indicators = [
-        r'\bthen\b',
-        r'\blater\b',
-        r'\bafterwards?\b',
-        r'\band\s+then\b',
-        r'\bcontinue\b',
-        r'\bnext\b',
-        r'\bfollowed\s+by\b',
-        r'\bafter\s+(?:that|this|which)\b',
-        r'\bsubsequent',
+    # v115.10: continuation_indicators, downstream_tasks, and
+    # multi_program_patterns removed — replaced by the general
+    # after_program resolver in _apply_workflow_intent_fallback
+    # which counts distinct action mentions via _ACTION_TABLE.
+
+    # Detect tutorial/procedure patterns that imply stop after
+    # specific program.  These provide initial after_program
+    # extraction; the general resolver in
+    # _apply_workflow_intent_fallback overrides when wrong
+    # (e.g., multi-step detected).
+    #
+    # GUARD (Fix 2, v115): Skip this section when the advice
+    # is preprocessor output.  Preprocessor text contains
+    # descriptive phrases like "Density modification of
+    # cryo-EM map" that match tutorial_patterns but are NOT
+    # user commands.  Preprocessor output is identified by
+    # signature headers (Input Files Found, Experiment Type,
+    # Key Parameters, Special Instructions).
+    #
+    # v116.11: Updated regex to handle markdown bold + numbered
+    # list prefix, matching the strengthening in
+    # _strip_preprocessor_stop_condition.  Pre-fix, this regex
+    # required headers to start with the literal signature word
+    # (no list marker, no markdown), so AF_7mjs-style preprocessor
+    # output with "1. **Input Files Found**:" was NOT detected as
+    # preprocessed, causing tutorial_patterns to run on
+    # descriptive prose.
+    _PREPROC_SIGS = (
+        r'input\s+files?\s+found',
+        r'experiment\s+type',
+        r'key\s+parameters?',
+        r'special\s+instructions?',
+    )
+    _is_preprocessed = any(
+        re.search(r'(?i)^[ \t]*(?:[\d]+\.\s*|[-*]\s*)?\**\s*%s\**\s*:'
+                  % sig, user_advice, re.MULTILINE)
+        for sig in _PREPROC_SIGS
+    )
+
+    tutorial_patterns = [
+        # Xtriage/twinning analysis
+        (r'(?:run|check|analyze).*(?:xtriage|twinning)', 'phenix.xtriage'),
+        (r'(?:check|look)\s+for\s+twin', 'phenix.xtriage'),
+        (r'analyze.*(?:data\s+quality|reflection)', 'phenix.xtriage'),
+        # Phaser/MR testing
+        (r'(?:run|try|test).*(?:phaser|molecular\s+replacement|MR)', 'phenix.phaser'),
+        (r'(?:test|check).*MR\s+solution', 'phenix.phaser'),
+        # Mtriage analysis
+        (r'(?:run|check).*mtriage', 'phenix.mtriage'),
+        (r'analyze.*map\s+quality', 'phenix.mtriage'),
+        # Map symmetry analysis
+        (r'(?:run|check|find|determine|detect).*(?:map\s*symmetry|symmetry)', 'phenix.map_symmetry'),
+        (r'(?:symmetry|ncs).*(?:map|cryo)', 'phenix.map_symmetry'),
+        # Map to model (automated model building into cryo-EM maps)
+        # Check BEFORE dock_in_map patterns
+        (r'map\s*to\s*model', 'phenix.map_to_model'),
+        (r'maptomodel', 'phenix.map_to_model'),
+        (r'(?:use|run|try).*map\s*to\s*model', 'phenix.map_to_model'),
+        (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?(?:cryo[- ]?em\s+)?(?:density\s+)?map', 'phenix.map_to_model'),
+        (r'build.*model.*(?:into|in)\s*(?:the\s*)?(?:density\s+)?map', 'phenix.map_to_model'),
+        # Map sharpening
+        (r'map\s*sharpening', 'phenix.map_sharpening'),
+        (r'sharpen.*(?:the\s+)?map', 'phenix.map_sharpening'),
+        (r'(?:run|use|try).*map\s*sharpening', 'phenix.map_sharpening'),
+        # Polder omit maps
+        (r'polder', 'phenix.polder'),
+        (r'polder\s*map', 'phenix.polder'),
+        (r'omit\s*map', 'phenix.polder'),
+        (r'(?:evaluate|check|verify).*ligand.*(?:placement|density)', 'phenix.polder'),
+        (r'(?:evaluate|check|verify).*(?:placement|density).*ligand', 'phenix.polder'),
+        # Dock in map (rigid body fitting)
+        (r'dock.*(?:in|into)\s+map', 'phenix.dock_in_map'),
+        (r'(?:rigid\s+body\s+)?fit.*model.*(?:to|into)\s+map', 'phenix.dock_in_map'),
+        # Ligand fitting
+        (r'(?:run|try).*ligand\s*fit', 'phenix.ligandfit'),
+        (r'(?:fit|place|add).*ligand', 'phenix.ligandfit'),
+        (r'ligand\s*fitting', 'phenix.ligandfit'),
     ]
 
-    # Downstream task indicators - if user mentions these, don't stop early
-    downstream_tasks = [
-        r'ligand\s+(?:fit|fitting|place|placement)',
-        r'fit\s+(?:the\s+)?ligand',
-        r'add\s+(?:the\s+)?ligand',
-        r'place\s+(?:the\s+)?ligand',
-        r'validate|validation|molprobity',
-        r'refine.*(?:further|more|additional)',
-        r'additional\s+refine',
-        r'water\s+(?:pick|add|place)',
-        # Cryo-EM downstream tasks (indicate steps AFTER an earlier program)
-        r'build\s+(?:a\s+)?model',
-        r'model\s+building',
-        r'map[\s_]to[\s_]model',
-        r'apply\s+(?:ncs|symmetry)',
-        r'generate\s+(?:the\s+)?(?:full|complete)',
-        r'(?:full|complete)\s+(?:complex|assembly|oligomer|multimer)',
-        r'(?:real[- ]space\s+)?refine.*(?:model|structure)',
-        r'extract\s+(?:the\s+)?(?:unique|asymmetric)',
+    # Density modification patterns - need to determine experiment type
+    denmod_patterns = [
+        r'density\s+modif',
+        r'denmod',
+        r'(?:improve).*(?:map|phases)',  # Removed 'sharpen' - now goes to map_sharpening
+        r'one\s+cycle.*(?:density|denmod|map\s+improv)',
     ]
 
-    has_continuation = any(re.search(p, advice_lower) for p in continuation_indicators)
-    has_downstream_task = any(re.search(p, advice_lower) for p in downstream_tasks)
+    _allow_patterns = (
+        not _is_preprocessed
+        or (intent_result
+            and intent_result.get("intent")
+            == "tutorial"))
 
-    # Also detect multi-step workflows by counting distinct program mentions
-    # If multiple programs are referenced, this is a pipeline, not a single-step task
-    multi_program_patterns = [
-        (r'(?:auto[- ]?sharpen|map[\s_]sharpening|sharpen\s+(?:the\s+)?map)', 'sharpening'),
-        (r'(?:map[\s_]symmetry|find\s+symmetry|determine\s+symmetry|ncs\s+(?:from|in))', 'symmetry'),
-        (r'(?:map[\s_]to[\s_]model|build.*model.*(?:into|in)\s+(?:the\s+)?map)', 'build'),
-        (r'(?:dock.*(?:in|into)\s+map|fit\s+model\s+to\s+map)', 'dock'),
-        (r'(?:refine|refinement)', 'refine'),
-        (r'(?:ligand\s*fit|fit.*ligand|place.*ligand)', 'ligand'),
-        (r'(?:density\s+modif|resolve_cryo_em)', 'denmod'),
-        (r'(?:apply\s+(?:ncs|symmetry)|generate.*(?:complex|assembly))', 'apply_ncs'),
-    ]
-    distinct_steps = set()
-    for pattern, step_name in multi_program_patterns:
-        if re.search(pattern, advice_lower, re.IGNORECASE):
-            distinct_steps.add(step_name)
-    has_multi_step = len(distinct_steps) >= 2
+    if _allow_patterns:
+        for pattern, program in tutorial_patterns:
+            if re.search(pattern, advice_lower,
+                         re.IGNORECASE):
+                if "stop_conditions" not in directives:
+                    directives["stop_conditions"] = {}
+                if "after_program" not in directives.get(
+                    "stop_conditions", {}):
+                    directives["stop_conditions"][
+                        "after_program"] = program
+                    directives["stop_conditions"][
+                        "skip_validation"] = True
+                    # v116.x: tutorial pattern match = explicit
+                    # stop intent.  Tentative — intent classifier
+                    # processing below will pop it along with
+                    # after_program if the intent classifier
+                    # disagrees.
+                    directives["stop_conditions"][
+                        "stop_after_requested"] = True
+                    # Internal flag: this was inferred
+                    # from patterns, not user command
+                    directives["stop_conditions"][
+                        "_set_by_pattern"] = True
+                break
 
-    # If there are continuation indicators, downstream tasks, or multiple distinct
-    # program steps, this is a multi-step workflow - don't set after_program
-    if has_continuation or has_downstream_task or has_multi_step:
-        # This is a multi-step workflow - extract the first program to start with
-        # Common patterns: "run X then Y", "calculate X and then refine"
-        first_program_patterns = [
-            (r'(?:calculate|run|compute)\s+(?:a\s+)?polder', 'phenix.polder'),
-            (r'polder\s+(?:map|omit)', 'phenix.polder'),
-            (r'(?:run|do)\s+xtriage', 'phenix.xtriage'),
-            (r'(?:run|try)\s+phaser', 'phenix.phaser'),
-            (r'(?:run|do)\s+mtriage', 'phenix.mtriage'),
-            (r'dock.*(?:in|into)\s+(?:the\s+)?map', 'phenix.dock_in_map'),
-            (r'map\s*to\s*model', 'phenix.map_to_model'),
-        ]
-
-        for pattern, program in first_program_patterns:
+    # Handle density modification separately
+    if _allow_patterns and "after_program" not in directives.get("stop_conditions", {}):
+        for pattern in denmod_patterns:
             if re.search(pattern, advice_lower, re.IGNORECASE):
                 if "stop_conditions" not in directives:
                     directives["stop_conditions"] = {}
-                # Set as start_with_program - workflow should run this first
-                directives["stop_conditions"]["start_with_program"] = program
-                break  # Only extract the first matching program
-    else:
-        # Detect tutorial/procedure patterns that imply stop after
-        # specific program.
-        #
-        # GUARD (Fix 2, v115): Skip this section when the advice
-        # is preprocessor output.  Preprocessor text contains
-        # descriptive phrases like "Density modification of
-        # cryo-EM map" that match tutorial_patterns but are NOT
-        # user commands.  Preprocessor output is identified by
-        # signature headers (Input Files Found, Experiment Type,
-        # Key Parameters, Special Instructions).
-        _PREPROC_SIGS = (
-            r'input\s+files?\s+found',
-            r'experiment\s+type',
-            r'key\s+parameters?',
-            r'special\s+instructions?',
-        )
-        _is_preprocessed = any(
-            re.search(r'(?i)^[ \t]*%s\s*:' % sig,
-                      user_advice, re.MULTILINE)
-            for sig in _PREPROC_SIGS
-        )
-
-        tutorial_patterns = [
-            # Xtriage/twinning analysis
-            (r'(?:run|check|analyze).*(?:xtriage|twinning)', 'phenix.xtriage'),
-            (r'(?:check|look)\s+for\s+twin', 'phenix.xtriage'),
-            (r'analyze.*(?:data\s+quality|reflection)', 'phenix.xtriage'),
-            # Phaser/MR testing
-            (r'(?:run|try|test).*(?:phaser|molecular\s+replacement|MR)', 'phenix.phaser'),
-            (r'(?:test|check).*MR\s+solution', 'phenix.phaser'),
-            # Mtriage analysis
-            (r'(?:run|check).*mtriage', 'phenix.mtriage'),
-            (r'analyze.*map\s+quality', 'phenix.mtriage'),
-            # Map symmetry analysis
-            (r'(?:run|check|find|determine|detect).*(?:map\s*symmetry|symmetry)', 'phenix.map_symmetry'),
-            (r'(?:symmetry|ncs).*(?:map|cryo)', 'phenix.map_symmetry'),
-            # Map to model (automated model building into cryo-EM maps)
-            # Check BEFORE dock_in_map patterns
-            (r'map\s*to\s*model', 'phenix.map_to_model'),
-            (r'maptomodel', 'phenix.map_to_model'),
-            (r'(?:use|run|try).*map\s*to\s*model', 'phenix.map_to_model'),
-            (r'(?:automated?\s+)?model\s+building.*(?:into|in)\s*(?:the\s*)?(?:cryo[- ]?em\s+)?(?:density\s+)?map', 'phenix.map_to_model'),
-            (r'build.*model.*(?:into|in)\s*(?:the\s*)?(?:density\s+)?map', 'phenix.map_to_model'),
-            # Map sharpening
-            (r'map\s*sharpening', 'phenix.map_sharpening'),
-            (r'sharpen.*(?:the\s+)?map', 'phenix.map_sharpening'),
-            (r'(?:run|use|try).*map\s*sharpening', 'phenix.map_sharpening'),
-            # Polder omit maps
-            (r'polder', 'phenix.polder'),
-            (r'polder\s*map', 'phenix.polder'),
-            (r'omit\s*map', 'phenix.polder'),
-            (r'(?:evaluate|check|verify).*ligand.*(?:placement|density)', 'phenix.polder'),
-            (r'(?:evaluate|check|verify).*(?:placement|density).*ligand', 'phenix.polder'),
-            # Dock in map (rigid body fitting)
-            (r'dock.*(?:in|into)\s+map', 'phenix.dock_in_map'),
-            (r'(?:rigid\s+body\s+)?fit.*model.*(?:to|into)\s+map', 'phenix.dock_in_map'),
-            # Ligand fitting
-            (r'(?:run|try).*ligand\s*fit', 'phenix.ligandfit'),
-            (r'(?:fit|place|add).*ligand', 'phenix.ligandfit'),
-            (r'ligand\s*fitting', 'phenix.ligandfit'),
-        ]
-
-        # Density modification patterns - need to determine experiment type
-        denmod_patterns = [
-            r'density\s+modif',
-            r'denmod',
-            r'(?:improve).*(?:map|phases)',  # Removed 'sharpen' - now goes to map_sharpening
-            r'one\s+cycle.*(?:density|denmod|map\s+improv)',
-        ]
-
-        _allow_patterns = (
-            not _is_preprocessed
-            or (intent_result
-                and intent_result.get("intent")
-                == "tutorial"))
-
-        if _allow_patterns:
-            for pattern, program in tutorial_patterns:
-                if re.search(pattern, advice_lower,
-                             re.IGNORECASE):
-                    if "stop_conditions" not in directives:
-                        directives["stop_conditions"] = {}
-                    if "after_program" not in directives.get(
-                        "stop_conditions", {}):
-                        directives["stop_conditions"][
-                            "after_program"] = program
-                        directives["stop_conditions"][
-                            "skip_validation"] = True
-                        # Internal flag: this was inferred
-                        # from patterns, not user command
-                        directives["stop_conditions"][
-                            "_set_by_pattern"] = True
-                    break
-
-        # Handle density modification separately
-        if _allow_patterns and "after_program" not in directives.get("stop_conditions", {}):
-            for pattern in denmod_patterns:
-                if re.search(pattern, advice_lower, re.IGNORECASE):
-                    if "stop_conditions" not in directives:
-                        directives["stop_conditions"] = {}
-                    # Determine program based on experiment type
-                    if is_cryoem and not is_xray:
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
-                    elif is_xray and not is_cryoem:
-                        directives["stop_conditions"]["after_program"] = "phenix.autobuild_denmod"
-                    else:
-                        # Ambiguous or unknown - default to cryo-EM as it's more commonly requested
-                        # The LLM extraction will do better with context
-                        directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
-                    directives["stop_conditions"]["skip_validation"] = True
-                    directives["stop_conditions"]["_set_by_pattern"] = True
-                    break
+                # Determine program based on experiment type
+                if is_cryoem and not is_xray:
+                    directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
+                elif is_xray and not is_cryoem:
+                    directives["stop_conditions"]["after_program"] = "phenix.autobuild_denmod"
+                else:
+                    # Ambiguous or unknown - default to cryo-EM as it's more commonly requested
+                    # The LLM extraction will do better with context
+                    directives["stop_conditions"]["after_program"] = "phenix.resolve_cryo_em"
+                directives["stop_conditions"]["skip_validation"] = True
+                # v116.x: denmod pattern match = explicit "density
+                # modify and stop" intent.  Tentative — intent
+                # classifier may override.
+                directives["stop_conditions"]["stop_after_requested"] = True
+                directives["stop_conditions"]["_set_by_pattern"] = True
+                break
 
     # ── Intent-driven stop behavior (v115) ──────────────────────
     # Override or set stop conditions based on classified intent.
@@ -2483,6 +4930,10 @@ def extract_directives_simple(user_advice):
                 "after_program"] = _task_prog
             directives["stop_conditions"][
                 "skip_validation"] = True
+            # v116.x: intent="task" = user explicitly wants a
+            # single program then stop.
+            directives["stop_conditions"][
+                "stop_after_requested"] = True
 
     elif _intent == "solve":
         # Solve: no artificial stops.  Remove any
@@ -2492,6 +4943,7 @@ def extract_directives_simple(user_advice):
                 "_set_by_pattern"):
             del sc["after_program"]
             sc.pop("skip_validation", None)
+            sc.pop("stop_after_requested", None)
             sc.pop("_set_by_pattern", None)
             if not sc:
                 directives.pop("stop_conditions", None)
@@ -2504,6 +4956,7 @@ def extract_directives_simple(user_advice):
                 "_set_by_pattern"):
             del sc["after_program"]
             sc.pop("skip_validation", None)
+            sc.pop("stop_after_requested", None)
             sc.pop("_set_by_pattern", None)
             if not sc:
                 directives.pop("stop_conditions", None)
@@ -2519,6 +4972,10 @@ def extract_directives_simple(user_advice):
     # intent=tutorial: keep whatever patterns set
     # (after_program from tutorial_patterns is correct)
 
+    # v115.09 Fix 3+4: Detect validation-only and MR-SAD intent
+    # Calls shared helper (also used as post-LLM overlay).
+    _apply_workflow_intent_fallback(directives, advice_lower)
+
     # Extract unit_cell and space_group if mentioned
     _extract_crystal_symmetry_simple(user_advice, directives)
 
@@ -2533,6 +4990,35 @@ def extract_directives_simple(user_advice):
     _intent_dict = directives.get("intent")
     if isinstance(_intent_dict, dict):
         directives["intent"] = _intent_dict.get("intent")
+
+    # v119.H14.1: apply validate_directives as a final sanity pass.
+    #
+    # Pre-H14.1, extract_directives_simple returned its result without
+    # going through validate_directives.  The H14 Item 3 fix
+    # (sentinel + Hermann-Mauguin shape check on space_group) lived in
+    # validate_directives, so it was BYPASSED in the ollama-fallback
+    # path: when the ollama LLM failed to return parseable JSON,
+    # extract_directives fell back to extract_directives_simple, whose
+    # OWN space-group regex at line ~4350 captured the literal
+    # "Not explicitly mentio" (truncated by the regex's {1,20}
+    # quantifier from "Not explicitly mentioned" in the preprocessed
+    # advice), then returned that dict directly to the agent.  Tom's
+    # ollama xtriage tutorial run on 2026-05-26 (gate C) confirmed
+    # the bug — the bogus space_group value reached the displayed
+    # directives even with H14 installed.
+    #
+    # The fix is to ensure validate_directives runs on ALL paths,
+    # not just the LLM-extracted-JSON path.  This makes
+    # validate_directives the canonical "final-sanity" step for every
+    # consumer of extract_directives* — future validator extensions
+    # automatically apply to both paths.
+    #
+    # Prerequisite: VALID_STOP_CONDITIONS must include
+    # start_with_program (added in H14.1 above) — extract_directives_simple
+    # legitimately sets that key via _resolve_after_program when the
+    # advice has multiple actions + stop intent, and pre-H14.1
+    # validate_directives would have stripped it.
+    directives = validate_directives(directives, log)
 
     return directives
 

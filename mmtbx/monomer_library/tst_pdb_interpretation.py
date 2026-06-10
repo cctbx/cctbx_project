@@ -1392,6 +1392,16 @@ _chem_comp_angle.value_angle_esd   3.000
   geo_file.close()
   assert "Bond angle | covalent geometry | restraints: 1" in geo_file_str
 
+  pdb_string = pdb_string.replace('HOH', 'H!H')
+  pdb_file = open_tmp_file(suffix="HOH.pdb")
+  pdb_file.write(pdb_string)
+  pdb_file.close()
+  cmd = "phenix.pdb_interpretation %s" % (pdb_file.name)
+  result = easy_run.fully_buffered(cmd).raise_if_errors()
+  std_lines='\n'.join(result.stdout_lines)
+  msg='Number of atoms with unknown nonbonded energy type symbols: 3'
+  assert std_lines.find(msg)!=-1, 'error msg "%s" missing' % msg
+
 def exercise_do_not_link(mon_lib_srv, ener_lib):
   """
   Do not attempt to link two residues below.
@@ -2012,6 +2022,161 @@ END
   assert grm.angle_proxies.size() == 21
   assert grm.get_dihedral_proxies().size() == 5, \
     "dihedrals %d" % grm.get_dihedral_proxies().size()
+
+def exercise_const_dihedral_proxies(mon_lib_srv, ener_lib):
+  # Synthetic 4-atom monomer (X-Y-Z-HX) carrying both a CONST torsion
+  # (value_angle_esd=0, period=0) and a Var torsion (value_angle_esd>0)
+  # on the same H. Verifies that add_dihedral_proxies routes the CONST
+  # into const_dihedral_proxies and the Var into dihedral_proxies, and
+  # that proxy_select on the CONST list filters and remaps i_seqs in the
+  # same way it does for the Var list. Echoes the dihedral-proxy
+  # assertions in exercise_ss_bond_angles (line ~1977) for layout.
+  cif_str = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZZ7 ZZ7 test_const_routing non-polymer 4 3 .
+
+data_comp_ZZ7
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ ZZ7 X  C  CH1  0.00
+ ZZ7 Y  C  C    0.00
+ ZZ7 Z  C  CH3  0.00
+ ZZ7 HX H  H    0.00
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZZ7 X  Y   single 1.520 0.020
+ ZZ7 Y  Z   single 1.520 0.020
+ ZZ7 X  HX  single 0.970 0.020
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ ZZ7 Y  X  HX  109.500 1.500
+ ZZ7 X  Y  Z   111.000 1.500
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ ZZ7 CONST_01 HX X Y Z  60.000  0.000  0
+ ZZ7 Var_01   HX X Y Z 180.000 10.000  1
+"""
+  # Two residues -> 2 CONST proxies and 2 Var proxies. Lets proxy_select
+  # actually filter (drop residue 1, keep residue 2) and remap i_seqs,
+  # mirroring exercise_ss_bond_angles' proxy_select at line 1978.
+  raw_records = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  X   ZZ7 A   1       0.000   0.000   0.000  1.00 20.00           C
+HETATM    2  Y   ZZ7 A   1       1.520   0.000   0.000  1.00 20.00           C
+HETATM    3  Z   ZZ7 A   1       2.064   1.434   0.000  1.00 20.00           C
+HETATM    4  HX  ZZ7 A   1      -0.314   0.769   0.583  1.00 20.00           H
+HETATM    5  X   ZZ7 A   2      10.000   0.000   0.000  1.00 20.00           C
+HETATM    6  Y   ZZ7 A   2      11.520   0.000   0.000  1.00 20.00           C
+HETATM    7  Z   ZZ7 A   2      12.064   1.434   0.000  1.00 20.00           C
+HETATM    8  HX  ZZ7 A   2       9.686   0.769   0.583  1.00 20.00           H
+END
+""".splitlines()
+  cif_path = "tmp_const_dihedral.cif"
+  with open(cif_path, "w") as f:
+    f.write(cif_str)
+  try:
+    mon_lib_srv.process_cif(file_name=cif_path)
+    log = StringIO()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      log=log)
+    grm = processed_pdb_file.geometry_restraints_manager()
+
+    # Routing: CONST (ESD=0) goes to const_dihedral_proxies, Var (ESD>0)
+    # goes to dihedral_proxies. One of each per residue across two residues.
+    assert grm.get_const_dihedral_proxies().size() == 2, \
+      "const dihedrals %d" % grm.get_const_dihedral_proxies().size()
+    assert grm.get_dihedral_proxies().size() == 2, \
+      "dihedrals %d" % grm.get_dihedral_proxies().size()
+
+    # CONST proxies are stored with the period=0 / weight=0 marker that
+    # add_dihedral_proxies' CONST branch sets — confirms the proxy was
+    # built via that branch and not the Var branch.
+    for cdp in grm.get_const_dihedral_proxies():
+      assert cdp.periodicity == 0
+      assert abs(cdp.weight) < 1.e-12
+
+    # proxy_select on residue 2's atoms only. Mirrors line 1978: filter
+    # plus i_seq remap. Both buckets must filter independently.
+    selected_const = grm.get_const_dihedral_proxies().proxy_select(
+      n_seq=8, iselection=flex.size_t([4, 5, 6, 7]))
+    assert selected_const.size() == 1, \
+      "selected const dihedrals %d" % selected_const.size()
+    selected_var = grm.dihedral_proxies.proxy_select(
+      n_seq=8, iselection=flex.size_t([4, 5, 6, 7]))
+    assert selected_var.size() == 1, \
+      "selected dihedrals %d" % selected_var.size()
+
+    # i_seqs of the surviving CONST proxy must be remapped into [0, 4),
+    # not stale 4-7 values from the full model.
+    for i in selected_const[0].i_seqs:
+      assert 0 <= i < 4, \
+        "remapped i_seq %d outside selected [0,4)" % i
+
+    # angle_ideal round-trip. The dihedral_proxy_registry canonicalises
+    # by outer-swapping i1<->i4, which negates angle_ideal; abs() is
+    # used so the test does not depend on the canonicalisation direction.
+    assert approx_equal(abs(selected_const[0].angle_ideal), 60.0)
+    assert approx_equal(abs(selected_var[0].angle_ideal), 180.0)
+
+    # Same filter via grm.select(selection=...) with a string-based
+    # selection, exercising the grm-level threading of
+    # const_dihedral_proxies through manager.select() (cctbx
+    # geometry_restraints/manager.py line ~434). proxy_select above
+    # tests the registry directly; this tests the integration layer.
+    sel_resseq2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy \
+      .atom_selection_cache().selection("resseq 2")
+    assert sel_resseq2.count(True) == 4, \
+      "resseq 2 should pick 4 atoms; got %d" % sel_resseq2.count(True)
+    grm_sel = grm.select(selection=sel_resseq2)
+    assert grm_sel.get_const_dihedral_proxies().size() == 1, \
+      "selected const dihedrals %d" % grm_sel.get_const_dihedral_proxies().size()
+    assert grm_sel.get_dihedral_proxies().size() == 1, \
+      "selected dihedrals %d" % grm_sel.get_dihedral_proxies().size()
+    for i in grm_sel.get_const_dihedral_proxies()[0].i_seqs:
+      assert 0 <= i < 4, \
+        "grm.select() left stale i_seq %d outside [0,4)" % i
+    assert approx_equal(
+      abs(grm_sel.get_const_dihedral_proxies()[0].angle_ideal), 60.0)
+  finally:
+    if os.path.exists(cif_path):
+      os.remove(cif_path)
 
 def exercise_bad_water(mon_lib_srv, ener_lib):
   raw_records = """\
@@ -2647,6 +2812,7 @@ def run(args):
   exercise_rna_dna_synonyms()
   exercise_ss_bond_angles(mon_lib_srv, ener_lib)
   exercise_ss_bond_angles_alt_loc(mon_lib_srv, ener_lib)
+  exercise_const_dihedral_proxies(mon_lib_srv, ener_lib)
   exercise_edits_parallelity(mon_lib_srv, ener_lib)
   exercise_edits_planarity(mon_lib_srv, ener_lib)
   exercise_edits_bond(mon_lib_srv, ener_lib)

@@ -28,7 +28,19 @@ loop_
   try:
     r = iotbx.cif.reader(input_string=cif_txt_1+cif_txt_2)
   except Sorry as e:
-    assert not show_diff(str(e), "Loop containing tags _geom_bond_atom_site_label_1, _geom_bond_atom_site_label_2, _geom_bond_distance, _geom_bond_site_symmetry_2 appears repeated")
+    # Both wordings are accepted so the test stays valid regardless of
+    # which parser iotbx.cif.reader uses underneath:
+    # - ucif raises at cif_model_builder.add_loop time with the full
+    #   tag list;
+    # - xcif raises at parse time when the second loop's first tag is
+    #   seen as a duplicate. xcif messages are prefixed "<source>:line:col: ".
+    accepted = (
+      "Loop containing tags _geom_bond_atom_site_label_1, _geom_bond_atom_site_label_2, _geom_bond_distance, _geom_bond_site_symmetry_2 appears repeated",
+      "duplicate tag '_geom_bond_atom_site_label_1'",
+    )
+    err = str(e)
+    assert any(err == m or err.endswith(": " + m) for m in accepted), \
+      "got: %r" % err
   else:
     assert 0, "Sorry must be raised above."
 
@@ -53,7 +65,16 @@ loop_
   try:
     r = iotbx.cif.reader(input_string=cif_txt_1)
   except Sorry as e:
-    assert not show_diff(str(e), "Loop containing tags _atom_site_label, _atom_site_U_iso_or_equiv appears repeated")
+    # See test_repeated_loop_1 for the rationale on accepting both
+    # wordings. xcif catches the duplicate at parse time when the
+    # second loop redeclares `_atom_site_label`.
+    accepted = (
+      "Loop containing tags _atom_site_label, _atom_site_U_iso_or_equiv appears repeated",
+      "duplicate tag '_atom_site_label'",
+    )
+    err = str(e)
+    assert any(err == m or err.endswith(": " + m) for m in accepted), \
+      "got: %r" % err
   else:
     assert 0, "Sorry must be raised above."
 
@@ -97,7 +118,18 @@ _diffrn_ambient_temperature 300
   try:
     r = iotbx.cif.reader(input_string=cif_txt_1)
   except Sorry as e:
-    assert not show_diff(str(e), "Data item _diffrn_ambient_temperature received multiple values")
+    # Both wordings accepted:
+    # - ucif raises at cif_model_builder.add_data_item when the tag
+    #   repeats within a block;
+    # - xcif raises at parse time when parse_pair sees the duplicate
+    #   tag. xcif messages are prefixed "<source>:line:col: ".
+    accepted = (
+      "Data item _diffrn_ambient_temperature received multiple values",
+      "duplicate tag '_diffrn_ambient_temperature'",
+    )
+    err = str(e)
+    assert any(err == m or err.endswith(": " + m) for m in accepted), \
+      "got: %r" % err
   else:
     assert 0, "Sorry must be raised above."
 

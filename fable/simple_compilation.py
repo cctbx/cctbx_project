@@ -88,7 +88,7 @@ class environment(object):
     else:
       if (not link): opt_c = "-c "
       else:          opt_c = ""
-      if (disable_warnings or O.gcc_version < 30400):
+      if (disable_warnings or (O.gcc_version is not None and O.gcc_version < 30400)):
         opt_w = "-w"
       else:
         opt_w = "-Wall -Wno-sign-compare -Winvalid-pch -Wno-deprecated-declarations"

@@ -149,7 +149,8 @@ def _load_programs_from_yaml_directly():
     if not yaml_path:
         raise FileNotFoundError("Could not find programs.yaml")
 
-    with open(yaml_path, 'r') as f:
+    # v116.10: Force UTF-8 (see yaml_loader.py).
+    with open(yaml_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
     programs = {}
@@ -183,7 +184,8 @@ def _get_fallback_programs():
     return {
         "phenix.xtriage": {"strategy_flags": [], "description": "Data analysis"},
         "phenix.mtriage": {"strategy_flags": ["resolution"], "description": "Map analysis"},
-        "phenix.phaser": {"strategy_flags": [], "description": "Molecular replacement"},
+        "phenix.phaser": {"strategy_flags": ["component_copies", "obs_labels"],
+                          "description": "Molecular replacement"},
         "phenix.refine": {"strategy_flags": ["resolution", "cycles", "anisotropic_adp", "add_waters"],
                         "description": "Refinement"},
         "phenix.real_space_refine": {"strategy_flags": ["resolution", "cycles"], "description": "Real-space refinement"},
@@ -595,13 +597,26 @@ def validate_directives(
             if normalized not in available_set:
                 if normalized not in unavailable_programs:
                     unavailable_programs.append(normalized)
+                    # v116.10: add "did you mean?" suggestions for typos,
+                    # matching the user-advice-text branch above.  The
+                    # after_program directive is BLOCKING (an issue, not a
+                    # warning) so users especially benefit from a hint.
+                    suggestions = _suggest_similar_programs(
+                        normalized, available_set)
+                    suggestion_text = (
+                        f" Did you mean: {', '.join(suggestions)}?"
+                        if suggestions else ""
+                    )
                     if normalized in all_phenix:
                         issues.append(
-                            f"Requested stop program '{after_prog}' is not available in the agent workflow."
+                            f"Requested stop program '{after_prog}' is not "
+                            f"available in the agent workflow."
+                            f"{suggestion_text}"
                         )
                     else:
                         issues.append(
-                            f"Requested stop program '{after_prog}' is not recognized."
+                            f"Requested stop program '{after_prog}' is not "
+                            f"recognized.{suggestion_text}"
                         )
 
         # Check workflow_preferences
@@ -696,19 +711,29 @@ def validate_directives(
 def _suggest_similar_programs(prog: str, available: Set[str]) -> List[str]:
     """
     Suggest similar program names for typos.
+
+    Uses difflib.SequenceMatcher (ratio-based string similarity) with a
+    moderate cutoff to detect close matches.  This replaces the older
+    substring+character-overlap heuristic, which produced too many false
+    positives on programs with long names (e.g. typing
+    'phenix.predict_and_buld' suggested 'phenix.real_space_refine' because
+    they share many characters by chance).
+
+    Returns up to 3 suggestions ranked by similarity, in full
+    'phenix.NAME' form.  Returns empty list when no candidate is similar
+    enough — better to suggest nothing than to suggest noise.
     """
+    import difflib
     prog_lower = prog.lower().replace("phenix.", "")
-    suggestions = []
-
-    for avail in available:
-        avail_short = avail.replace("phenix.", "")
-        # Simple similarity: shared prefix or substring
-        if prog_lower in avail_short or avail_short in prog_lower:
-            suggestions.append(avail)
-        elif len(set(prog_lower) & set(avail_short)) > len(prog_lower) * 0.5:
-            suggestions.append(avail)
-
-    return suggestions[:3]
+    # Map short-name → full-name so we can match on the short form
+    # (which avoids the "phenix." prefix inflating similarity scores)
+    # but return the canonical 'phenix.NAME'.
+    candidates = {
+        avail.replace("phenix.", ""): avail for avail in available
+    }
+    matches = difflib.get_close_matches(
+        prog_lower, candidates.keys(), n=3, cutoff=0.6)
+    return [candidates[m] for m in matches]
 
 
 # =============================================================================

@@ -26,7 +26,12 @@
     "data_file": "xray_data_file",
     "input_files.data_file": "input_files.xray_data_file",
     "control.nproc": null,
-    "prediction.nproc": null
+    "prediction.nproc": null,
+    "_comment_cs": "predict_and_build uses crystal_info.* scope (v119.H9)",
+    "crystal_symmetry.space_group": "crystal_info.space_group",
+    "crystal_symmetry.unit_cell": "crystal_info.unit_cell",
+    "xray_data.space_group": "crystal_info.space_group",
+    "xray_data.unit_cell": "crystal_info.unit_cell"
   },
   "phenix.refine": {
     "nproc": "main.nproc",

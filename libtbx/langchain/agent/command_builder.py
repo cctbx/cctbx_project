@@ -39,6 +39,51 @@ from libtbx.langchain.agent.program_registry import ProgramRegistry
 
 
 # =============================================================================
+# EXCLUDE PATTERNS HELPER (v119.H12 — consolidation of H10's closure)
+# =============================================================================
+# H10 introduced a closure `_matches_exclude_patterns_h10` defined inside
+# `_find_file_for_slot` and applied at 7 sites there, plus a direct call
+# in `_select_files` (line 698) using `matches_exclude_pattern` because
+# the closure wasn't in scope.  H12 consolidates these into a single
+# module-level helper for consistency and DRY.
+#
+# Design choice (per Gemini's H12 plan review): the helper accepts the
+# raw exclude_patterns list, not the input_def dict.  This decouples
+# the helper from the program-registry schema and seamlessly handles
+# `_select_files`'s call site (which has the list, not a wrapping dict
+# in scope).  Within `_find_file_for_slot` the list is extracted once
+# at the top of the function, restoring the closure's micro-perf
+# property (one dict lookup, not seven).
+#
+# Sense-inversion: the closure returned True if the file MATCHED the
+# patterns (i.e., should be rejected).  This helper returns True if
+# the file PASSES (i.e., is NOT rejected).  Call-site reads more
+# naturally as `if not _file_passes_exclude_patterns(f, excl): continue`.
+
+def _file_passes_exclude_patterns(file_path, exclude_patterns):
+  """Return True if file_path is NOT rejected by exclude_patterns.
+
+  An empty patterns list always returns True (nothing to reject).
+  Patterns are matched against the basename via the word-boundary
+  semantics in agent/file_utils.py::matches_exclude_pattern; see
+  tests/tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics
+  for the pinned behavior of that function.
+
+  Args:
+    file_path: path or basename of the candidate file
+    exclude_patterns: list of pattern strings (may be empty)
+
+  Returns:
+    bool: True if the file passes (should NOT be rejected),
+      False if any pattern matches the basename.
+  """
+  if not exclude_patterns:
+    return True
+  return not matches_exclude_pattern(
+    os.path.basename(file_path), exclude_patterns)
+
+
+# =============================================================================
 # COMMAND CONTEXT
 # =============================================================================
 
@@ -93,6 +138,22 @@ class CommandContext:
   # Logging callback
   log: Any = None  # Callable for logging, or None
 
+  # v119.H16.2: MTZ column structure for the currently-selected data MTZ.
+  # Populated by inspect_mtz() (see agent/mtz_inspector.py).  Consumed
+  # by the auto_fill_obs_labels invariant branch in _apply_invariants().
+  # Shape: {"merged_intensities": [...], "merged_amplitudes": [...],
+  #         "anomalous_intensities": [...], "anomalous_amplitudes": [...],
+  #         "rfree_label": str|None, "is_multi_array": bool}
+  # None when cctbx is unavailable, MTZ isn't readable, or the data MTZ
+  # hasn't been selected yet.
+  #
+  # IMPORTANT: this field is appended at the END of the dataclass field
+  # list to preserve POSITIONAL construction compatibility for any code
+  # that builds CommandContext with positional args.  Inserting in the
+  # middle of the field list breaks such callers — see the H16 → H16.2
+  # bug-fix history.
+  mtz_inspection: Optional[Dict[str, Any]] = None
+
   def file_preferences(self) -> Dict[str, Any]:
     """Return directives.file_preferences dict (empty dict if not set)."""
     return self.directives.get("file_preferences", {}) if self.directives else {}
@@ -122,9 +183,51 @@ class CommandContext:
       workflow_state.get("resolution")
     )
 
+    # v118.F1: prefer session-locked experiment_type (set after first
+    # successful program; see programs/ai_agent.py:5009).  Fall back
+    # to the workflow-state-inferred value, which is populated for
+    # cycle 1 based on input file extensions and workflow context.
+    # Without this fallback, cycle-1 BUILD sees experiment_type=""
+    # and downstream guards like the R-free auto-fill (line ~2144)
+    # would silently skip.  Mirrors the resolution-fallback pattern
+    # immediately above.
+    experiment_type = (
+      session_info.get("experiment_type", "")
+      or workflow_state.get("experiment_type", "")
+    )
+
+    # v119.H16: Inspect the selected data MTZ for column structure.
+    # When the MTZ contains multiple suitable observation arrays, the
+    # auto_fill_obs_labels invariant uses this info to inject the
+    # correct obs_labels= flag.  A precomputed value cached on `state`
+    # (same-request memoization) takes precedence; otherwise we run
+    # cctbx inspection lazily from the selected data MTZ.
+    # All failure paths return None (no inspection → no injection).
+    #
+    # Note: mtz_inspection is SERVER-COMPUTED data, derived here from
+    # the selected data MTZ.  It is intentionally NOT read from the
+    # client session_info dict and is therefore NOT a registered field
+    # in the client/server contract (agent/contract.py).  The only
+    # cache source is `state` (set by a prior call within the same
+    # request); absent that, we compute it fresh below.
+    mtz_inspection = state.get("mtz_inspection")
+    if mtz_inspection is None:
+      try:
+        data_mtz = (session_info.get("best_files", {})
+                    .get("data_mtz"))
+        if data_mtz:
+          try:
+            from libtbx.langchain.agent.mtz_inspector \
+              import inspect_mtz
+          except ImportError:
+            from agent.mtz_inspector import inspect_mtz
+          mtz_inspection = inspect_mtz(data_mtz)
+      except Exception:
+        mtz_inspection = None
+
     return cls(
       cycle_number=state.get("cycle_number", 1),
-      experiment_type=session_info.get("experiment_type", ""),
+      experiment_type=experiment_type,
       resolution=resolution,
       best_files=session_info.get("best_files", {}),
       rfree_mtz=session_info.get("rfree_mtz"),
@@ -138,6 +241,7 @@ class CommandContext:
       directives=state.get("directives", {}),
       model_hetatm_residues=session_info.get("model_hetatm_residues"),
       files_local=state.get("files_local", True),
+      mtz_inspection=mtz_inspection,
     )
 
   def _log(self, msg: str):
@@ -371,6 +475,28 @@ class CommandBuilder:
 
     self._log(context, "BUILD: Starting command generation for %s" % program)
 
+    # 0.5 Reference model exclusion (Fix C, Tier 1).
+    # When the strategy contains reference_model.file=FILENAME, that
+    # file is a RESTRAINT source (not a model to refine).  Exclude it
+    # from primary model selection so the command builder doesn't pick
+    # it as the positional model argument alongside the real model.
+    # This prevents "Wrong number of models" from phenix.refine.
+    if context.llm_strategy:
+      _ref_file = (context.llm_strategy.get("reference_model.file")
+                   or context.llm_strategy.get("reference_model_file"))
+      if _ref_file:
+        _ref_basename = os.path.basename(str(_ref_file))
+        # Inject into the exclude list (context is per-build, safe to modify)
+        if context.directives is None:
+          context.directives = {}
+        _fp = context.directives.setdefault("file_preferences", {})
+        _excl = _fp.setdefault("exclude", [])
+        if _ref_basename not in _excl:
+          _excl.append(_ref_basename)
+          self._log(context,
+            "BUILD: Excluding reference model '%s' from primary model selection"
+            % _ref_basename)
+
     # 1. Select files
     files = self._select_files(program, available_files, context)
     if files is None:
@@ -442,6 +568,44 @@ class CommandBuilder:
       files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)))
                    for k, v in files.items())
       self._log(context, "BUILD: Final files: {%s}" % files_summary)
+
+    # 3.7 Resolve file paths in strategy values.
+    # Strategy entries like reference_model.file=4pf4.pdb or
+    # secondary_structure.input.file_name=curated_ss.param contain
+    # relative filenames that need absolute paths for PHENIX.
+    # Detect values that look like filenames (by extension) and resolve
+    # via the same basename → full-path lookup used for file selection.
+    _FILE_EXTENSIONS = frozenset({
+      '.pdb', '.cif', '.mtz', '.params', '.eff',
+      '.dat', '.fa', '.fasta', '.seq', '.phil',
+      '.ncs_spec', '.param',
+    })
+    if strategy:
+      _basename_to_path = {
+        os.path.basename(f): f for f in available_files if f}
+      for key in list(strategy.keys()):
+        val = str(strategy[key])
+        val_lower = val.lower()
+        if any(val_lower.endswith(ext) for ext in _FILE_EXTENSIONS):
+          # Looks like a filename — try to resolve
+          resolved = self._correct_single_path(
+            val, _basename_to_path, available_files)
+          if resolved:
+            strategy[key] = resolved
+            self._log(context,
+              "BUILD: Resolved strategy path %s=%s"
+              % (key, os.path.basename(resolved)))
+          elif os.path.isfile(val):
+            strategy[key] = os.path.abspath(val)
+          elif os.path.isfile(
+              os.path.join(
+                os.path.dirname(available_files[0])
+                if available_files else ".",
+                val)):
+            strategy[key] = os.path.abspath(
+              os.path.join(
+                os.path.dirname(available_files[0]),
+                val))
 
     # 4. Assemble final command (provenance is logged inside registry.build_command)
     command = self._assemble_command(program, files, strategy,
@@ -621,6 +785,22 @@ class CommandBuilder:
                   best_bn, cat))
                 best_model_excluded = True
                 break
+
+        # v119.H10/H12: also honor exclude_patterns from the model slot definition.
+        # The model slot in phenix.refine has exclude_patterns
+        # ['ligand', 'lig.pdb', 'ligand_fit'] specifically to prevent
+        # promoted ligand-fit outputs from being injected here.  Without
+        # this check, a stale best_files['model'] pointing at e.g.
+        # `something_ligand_fit.pdb` would override correct selection.
+        if not best_model_excluded:
+          _model_def = inputs.get("required", {}).get("model",
+              inputs.get("optional", {}).get("model", {}))
+          _model_excl = _model_def.get("exclude_patterns", [])
+          if not _file_passes_exclude_patterns(best_model_path, _model_excl):
+            self._log(context,
+              "BUILD: best_model %s matches model slot exclude_patterns, skipping" % (
+                os.path.basename(best_model_path)))
+            best_model_excluded = True
 
         if not best_model_excluded:
           for slot in ["model", "pdb", "pdb_file"]:
@@ -876,8 +1056,32 @@ class CommandBuilder:
                     canonical_slot, os.path.basename(corrected_str)))
                 continue
 
-          selected_files[canonical_slot] = corrected
-          self._record_selection(canonical_slot, corrected_str, "llm_selected")
+          # For inputs with multiple: true (e.g. half_map for resolve_cryo_em),
+          # append to a list rather than overwriting.  This handles the case
+          # where the LLM assigns half_map_1=file1, half_map_2=file2 — both
+          # fuzzy-match to "half_map" and would otherwise overwrite each other.
+          slot_def = (inputs.get("required", {}).get(canonical_slot) or
+                      inputs.get("optional", {}).get(canonical_slot) or {})
+          if slot_def.get("multiple") and canonical_slot in selected_files:
+            existing = selected_files[canonical_slot]
+            if isinstance(existing, list):
+              existing.append(corrected_str)
+            else:
+              # existing might be a string or a one-element list from
+              # _correct_file_path — normalize to a flat string first
+              prev = existing[0] if isinstance(existing, list) else existing
+              selected_files[canonical_slot] = [prev, corrected_str]
+            self._record_selection(canonical_slot, corrected_str, "llm_selected_append")
+          else:
+            # For multiple:true slots, store the first value as a string
+            # (the append branch above will convert to list when the second
+            # value arrives).  Use corrected_str, not corrected, to ensure
+            # we always store a plain string — never a one-element list.
+            if slot_def.get("multiple"):
+              selected_files[canonical_slot] = corrected_str
+            else:
+              selected_files[canonical_slot] = corrected
+            self._record_selection(canonical_slot, corrected_str, "llm_selected")
         else:
           self._log(context, "BUILD: LLM file rejected (not found): %s=%s" % (
             llm_slot, os.path.basename(str(filepath))))
@@ -997,18 +1201,63 @@ class CommandBuilder:
         else:
           self._record_selection(slot, filepath, "auto_selected")
 
+    # SUPPLEMENT: For multiple:true slots, the LLM often assigns only one
+    # file (e.g. half_map=file2.ccp4).  The slot is now "filled", so
+    # auto-fill above skips it.  But programs like resolve_cryo_em and
+    # mtriage need ALL matching files (both half-maps).  Backfill from the
+    # category to collect any files the LLM missed.
+    all_input_defs = {}
+    all_input_defs.update(inputs.get("required", {}))
+    all_input_defs.update(inputs.get("optional", {}))
+    for input_name, input_def in all_input_defs.items():
+      if not input_def.get("multiple"):
+        continue
+      if input_name not in selected_files:
+        continue  # truly empty — auto-fill already handled it
+      existing = selected_files[input_name]
+      existing_list = existing if isinstance(existing, list) else [existing]
+      # Use _find_file_for_slot to collect ALL category matches
+      all_found = self._find_file_for_slot(
+        program, input_name, input_def,
+        available_files, context, basename_to_path)
+      if not isinstance(all_found, list):
+        continue  # single file or None — nothing to supplement
+      if len(all_found) <= len(existing_list):
+        continue  # no extra files available
+      # Merge: add files not already selected.
+      # Use os.path.realpath to handle symlinks robustly.
+      existing_real = set(os.path.realpath(f) for f in existing_list)
+      added = []
+      for f in all_found:
+        if os.path.realpath(f) not in existing_real:
+          existing_list.append(f)
+          existing_real.add(os.path.realpath(f))
+          added.append(os.path.basename(f))
+      if added:
+        selected_files[input_name] = existing_list
+        self._log(context,
+          "BUILD: Supplemented %s with %d file(s): %s"
+          % (input_name, len(added), ", ".join(added)))
+
     # POST-SELECTION VALIDATION: Remove redundant half_map if full_map is present
-    # Programs like map_to_model and resolve_cryo_em only need half-maps when
-    # no full map is available. Having both causes confusion.
+    # Programs like map_to_model only need half-maps when no full map is available.
+    # Having both causes confusion.
     # EXCEPTION 1: If the "full_map" is actually a categorized half_map (mis-selected
     # via generic 'map' category fallback), remove it instead and keep the half_maps.
-    # EXCEPTION 2: Programs with keep_half_maps_with_full_map: true (e.g. mtriage,
-    # predict_and_build, map_to_model) genuinely need both simultaneously.
+    # EXCEPTION 2: Programs with keep_half_maps_with_full_map: true (e.g. map_to_model)
+    # genuinely need both simultaneously.
+    # EXCEPTION 3: Programs with prefers_half_maps: true (e.g. resolve_cryo_em,
+    # mtriage, map_sharpening) need half-maps as source truth — drop the full_map.
     if "full_map" in selected_files and "half_map" in selected_files:
       prog_def = self._registry.get_program(program)
       if prog_def and prog_def.get("keep_half_maps_with_full_map"):
         # Program explicitly needs both — don't remove either
         self._log(context, "BUILD: Keeping half_maps alongside full_map (%s uses both)" % program)
+      elif prog_def and prog_def.get("prefers_half_maps"):
+        # Program needs half-maps as source truth (e.g. resolve_cryo_em)
+        # Drop the full_map, keep the half-maps
+        self._log(context, "BUILD: Keeping half_maps, removing full_map (%s prefers half-maps)" % program)
+        del selected_files["full_map"]
       else:
         full_map_path = selected_files["full_map"]
         if isinstance(full_map_path, list):
@@ -1115,6 +1364,22 @@ class CommandBuilder:
     extensions = input_def.get("extensions", [])
     is_multiple = input_def.get("multiple", False)
 
+    # v119.H10/H12: honor exclude_patterns from input_def at every
+    # selection path inside _find_file_for_slot.
+    # Pre-H10, exclude_patterns was only consulted at PRIORITY 4
+    # (extension fallback).  PRIORITY 2 (best_files), PRIORITY 2.5
+    # (recovery strategies), PRIORITY 3 (category-based), and
+    # PRIORITY 3.5 (fallback best_files) all bypassed it.
+    # The AIAgent_62 cycle-7 crash ("wrong number of models" when
+    # refine_001_001.cif was passed as a positional second model
+    # to phenix.refine) was caused by PRIORITY 3 category-match
+    # picking a model mmCIF for the ligand_cif slot, even though
+    # the slot's exclude_patterns explicitly listed "refine_".
+    # H12: consolidated H10's closure into a module-level helper
+    # (_file_passes_exclude_patterns).  We extract the list once
+    # here so the per-site checks below are a single function call.
+    _exclude_patterns = input_def.get("exclude_patterns", [])
+
     # PRIORITY 1: Locked R-free data_mtz (X-ray refinement only)
     # Some programs (e.g., autosol) need original data, not rfree-locked MTZ
     priorities = self._registry.get_input_priorities(program, input_name)
@@ -1149,6 +1414,11 @@ class CommandBuilder:
           excluded = self._should_exclude(
             best_path, exclude_categories, priority_categories,
             context.categorized_files)
+          # v119.H10/H12: also honor exclude_patterns from input_def
+          if not excluded and not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: Skipping best_%s (matches exclude_patterns: %s)" %
+                (best_category, os.path.basename(best_path)))
+            excluded = True
           if not excluded:
             self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
             self._record_selection(input_name, best_path, "best_files")
@@ -1170,6 +1440,11 @@ class CommandBuilder:
         for avail in available_files:
           if (os.path.basename(avail) == recovery_base and
               any(avail.lower().endswith(ext) for ext in extensions)):
+            # v119.H10/H12: honor exclude_patterns even for recovery files
+            if not _file_passes_exclude_patterns(avail, _exclude_patterns):
+              self._log(context, "BUILD: Recovery file rejected (matches exclude_patterns): %s" %
+                  recovery_base)
+              continue
             self._log(context, "BUILD: Using file with recovery strategy for %s: %s" %
                 (input_name, recovery_base))
             self._record_selection(input_name, avail, "recovery_preferred")
@@ -1212,7 +1487,8 @@ class CommandBuilder:
           subcat_files = context.categorized_files.get(subcat, [])
           valid_files = [f for f in subcat_files
                  if not is_excluded(f)
-                 and any(f.lower().endswith(ext) for ext in extensions)]
+                 and any(f.lower().endswith(ext) for ext in extensions)
+                 and _file_passes_exclude_patterns(f, _exclude_patterns)]  # v119.H10/H12
           if valid_files:
             self._log(context, "BUILD: Found file in preferred subcategory '%s'" % subcat)
             return self._get_most_recent_file(valid_files)
@@ -1222,7 +1498,8 @@ class CommandBuilder:
         cat_files = context.categorized_files.get(cat, [])
         valid_files = [f for f in cat_files
                if not is_excluded(f)
-               and any(f.lower().endswith(ext) for ext in extensions)]
+               and any(f.lower().endswith(ext) for ext in extensions)
+               and _file_passes_exclude_patterns(f, _exclude_patterns)]  # v119.H10/H12
         if valid_files:
           self._log(context, "BUILD: Found file in category '%s'" % cat)
           return self._get_most_recent_file(valid_files)
@@ -1240,7 +1517,9 @@ class CommandBuilder:
         for cat in priority_categories:
           cat_files = context.categorized_files.get(cat, [])
           for f in cat_files:
-            if f not in seen and not is_excluded(f) and                                 any(f.lower().endswith(ext) for ext in extensions):
+            if (f not in seen and not is_excluded(f)
+                and any(f.lower().endswith(ext) for ext in extensions)
+                and _file_passes_exclude_patterns(f, _exclude_patterns)):  # v119.H10/H12
               all_valid.append(f)
               seen.add(f)
         if all_valid:
@@ -1274,6 +1553,11 @@ class CommandBuilder:
       best_path = self._best_path(context.best_files.get(best_category))
       if best_path and self._file_is_available(best_path):
         if any(best_path.lower().endswith(ext) for ext in extensions):
+          # v119.H10/H12: honor exclude_patterns even on require_best_files_only path
+          if not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: require_best_files_only: best_%s rejected "
+                "(matches exclude_patterns): %s" % (best_category, os.path.basename(best_path)))
+            return None
           self._log(context, "BUILD: require_best_files_only: using best_%s for %s" %
               (best_category, input_name))
           self._record_selection(input_name, best_path, "best_files_required")
@@ -1310,6 +1594,11 @@ class CommandBuilder:
           excluded = self._should_exclude(
             best_path, exclude_categories_check, priority_categories,
             context.categorized_files)
+          # v119.H10/H12: also honor exclude_patterns at the fallback best_files path
+          if not excluded and not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: best_%s fallback rejected (matches exclude_patterns): %s" %
+                (best_category, os.path.basename(best_path)))
+            excluded = True
           if not excluded:
             self._log(context, "BUILD: Using best_%s as fallback for %s "
                 "(category lookup found no files)" % (best_category, input_name))
@@ -1537,26 +1826,81 @@ class CommandBuilder:
 
     # Validate space_group: LLM sometimes extracts
     # workflow descriptions (e.g. "determination")
-    # as if they were actual space group symbols.
+    # or trailing prose (e.g. "P4 for refinement wit",
+    # "C2 from phaser") as space group symbols.
+    #
+    # Strategy:
+    # 1. Try cctbx.sgtbx on the full value (authoritative)
+    # 2. If that fails, try progressive prefix shortening
+    # 3. If cctbx unavailable, fall back to heuristic check
     if "space_group" in strategy:
+      sg_val = str(strategy["space_group"]).strip()
+      _sg_resolved = False
       try:
+        from cctbx import sgtbx
+        # Try the full value first
         try:
-          from libtbx.langchain.agent \
-            .command_postprocessor \
-            import _is_valid_space_group
-        except ImportError:
-          from agent.command_postprocessor \
-            import _is_valid_space_group
-        sg_val = strategy["space_group"]
-        if not _is_valid_space_group(sg_val):
-          del strategy["space_group"]
-          self._log(context,
-            "BUILD: Stripped invalid "
-            "space_group=%r from strategy "
-            "(not a valid space group symbol)"
-            % str(sg_val))
+          sgi = sgtbx.space_group_info(sg_val)
+          _ = sgi.group()
+          # Valid — use canonical form
+          canonical = str(sgi)
+          if canonical != sg_val:
+            self._log(context,
+              "BUILD: Canonicalized space_group "
+              "%r -> %r (cctbx.sgtbx)"
+              % (sg_val, canonical))
+          strategy["space_group"] = canonical
+          _sg_resolved = True
+        except (ValueError, RuntimeError):
+          # Full value invalid — try prefix shortening
+          # "P4 for refinement wit" -> "P4 for" -> "P4"
+          # "C2 from phaser" -> "C2 from" -> "C2"
+          salvaged = None
+          tokens = sg_val.split()
+          for i in range(len(tokens) - 1, 0, -1):
+            candidate = " ".join(tokens[:i])
+            try:
+              sgi = sgtbx.space_group_info(candidate)
+              _ = sgi.group()
+              salvaged = str(sgi)
+              break
+            except (ValueError, RuntimeError):
+              continue
+          if salvaged:
+            strategy["space_group"] = salvaged
+            self._log(context,
+              "BUILD: Salvaged space_group=%r "
+              "from invalid %r (cctbx.sgtbx)"
+              % (salvaged, sg_val))
+            _sg_resolved = True
+          else:
+            del strategy["space_group"]
+            self._log(context,
+              "BUILD: Stripped invalid "
+              "space_group=%r (cctbx rejects "
+              "all prefixes)" % sg_val)
+            _sg_resolved = True
       except ImportError:
-        pass
+        pass  # cctbx not available
+
+      # Fallback: heuristic check when cctbx unavailable
+      if not _sg_resolved:
+        try:
+          try:
+            from libtbx.langchain.agent \
+              .command_postprocessor \
+              import _is_valid_space_group
+          except ImportError:
+            from agent.command_postprocessor \
+              import _is_valid_space_group
+          if not _is_valid_space_group(sg_val):
+            del strategy["space_group"]
+            self._log(context,
+              "BUILD: Stripped invalid "
+              "space_group=%r from strategy "
+              "(heuristic, no cctbx)" % sg_val)
+        except ImportError:
+          pass
 
     # Auto-fill output_prefix for refinement programs
     if program in (
@@ -1613,6 +1957,40 @@ class CommandBuilder:
             "BUILD: Cleaned atom_type "
             "'%s' -> '%s'"
             % (raw, valid_atoms[0]))
+
+    # v115.09b: Intercept phaser_sad.atom_type for
+    # autosol.  The LLM uses this dotted PHIL path to
+    # tell autosol's internal phaser to search for a
+    # secondary atom, but it overrides the primary
+    # atom_type, causing autosol to use S instead of Se.
+    # Convert to additional_atom_types (the correct
+    # way) and strip the dotted path.
+    if program == "phenix.autosol":
+      _phaser_at = strategy.pop(
+          "phaser_sad.atom_type", None)
+      if _phaser_at:
+        _primary = strategy.get("atom_type", "")
+        _phaser_at_str = str(_phaser_at).strip()
+        if (_phaser_at_str
+                and _phaser_at_str != _primary
+                and "additional_atom_types"
+                    not in strategy):
+          strategy["additional_atom_types"] = (
+              _phaser_at_str)
+          self._log(context,
+            "BUILD: Converted "
+            "phaser_sad.atom_type=%s -> "
+            "additional_atom_types=%s "
+            "(prevents override of primary "
+            "atom_type=%s)"
+            % (_phaser_at_str,
+               _phaser_at_str, _primary))
+        else:
+          self._log(context,
+            "BUILD: Stripped "
+            "phaser_sad.atom_type=%s "
+            "(conflicts with atom_type=%s)"
+            % (_phaser_at_str, _primary))
 
     # Sanitize autosol wavelength: for MAD the LLM
     # sometimes provides multiple wavelengths (peak,
@@ -1878,6 +2256,72 @@ class CommandBuilder:
         if isinstance(prefix, str):
           strategy["output_prefix"] = self._generate_output_prefix(program, context)
 
+      # v119.H16: Auto-fill obs_labels for multi-array MTZ.
+      #
+      # When the data MTZ contains multiple equally-suitable observation
+      # arrays (typical for MRSAD / SAD tutorials carrying both anomalous
+      # pairs and merged intensities), PHENIX refuses to guess and
+      # aborts with "Multiple equally suitable arrays of observed xray
+      # data found".  This branch injects a deterministic per-program
+      # choice based on the MTZ structure inspected by cctbx.
+      #
+      # See agent/mtz_inspector.py for:
+      #   - inspect_mtz(): MTZ → structured label dict
+      #   - select_obs_labels_for(): per-program preference policy
+      #
+      # The injection fires only when ALL of:
+      #   1. invariant declares auto_fill_obs_labels: true (YAML)
+      #   2. obs_labels NOT already in strategy (user/LLM didn't set it)
+      #   3. context.mtz_inspection populated with is_multi_array=True
+      #   4. the policy returns a non-None label string for this program
+      #
+      # All four gates must pass.  Single-array MTZs skip silently.
+      # Missing inspection context (pre-H16 resume, or cctbx
+      # unavailable) skips silently.  Telemetry logs both injection
+      # firing AND fall-through so production can monitor coverage.
+      if fix.get("auto_fill_obs_labels") and "obs_labels" not in strategy:
+        try:
+          try:
+            from libtbx.langchain.agent.mtz_inspector import (
+              select_obs_labels_for, has_ambiguous_arrays,
+            )
+          except ImportError:
+            from agent.mtz_inspector import (
+              select_obs_labels_for, has_ambiguous_arrays,
+            )
+          mtz_info = getattr(context, "mtz_inspection", None)
+          if has_ambiguous_arrays(mtz_info):
+            labels = select_obs_labels_for(program, mtz_info)
+            if labels:
+              strategy["obs_labels"] = labels
+              self._log(
+                context,
+                "[OBS_LABELS] injected: %s '%s' "
+                "(from multi-array MTZ inspection)"
+                % (program, labels),
+              )
+            else:
+              self._log(
+                context,
+                "[OBS_LABELS] no suitable labels for %s "
+                "(available categories: %s)"
+                % (program,
+                   [k for k, v in mtz_info.items()
+                    if isinstance(v, list) and v]),
+              )
+          # else: single-array or no inspection — silent no-op.
+          # PHENIX picks the only option unambiguously when there's
+          # only one suitable array set, so no injection needed.
+        except ImportError:
+          # mtz_inspector not deployed (pre-H16 server) — skip silently.
+          pass
+        except Exception as _e:
+          self._log(
+            context,
+            "[OBS_LABELS] auto-fill raised %s — proceeding "
+            "without injection" % _e,
+          )
+
     # Check for programs that need R-free resolution matching
     # If R-free flags were generated at a limited resolution, certain programs
     # (like polder) MUST use the same resolution limit or they will crash
@@ -1913,16 +2357,42 @@ class CommandBuilder:
             except KeyError as e:
               self._log(context, "BUILD: Warning - could not format output_name: %s" % e)
 
-    # X-ray specific: R-free flags on first refinement
-    if program == "phenix.refine" and context.experiment_type == "xray":
-      refine_count = sum(1 for h in context.history
-               if isinstance(h, dict) and
-               h.get("program") == "phenix.refine" and
-               str(h.get("result", "")).startswith("SUCCESS"))
-      if refine_count == 0:
+    # X-ray specific: R-free flags — only generate when no R-free
+    # MTZ has been locked in the session.  The rfree_mtz field is set
+    # by the client after the first successful refinement.  Using it
+    # instead of refine_count avoids two bugs:
+    #   1. Input MTZ has pre-existing R-free flags (3tpp-ensemble-refine)
+    #      → rfree_mtz is locked from the input, generate=True is skipped
+    #   2. First refine succeeds, second refine gets generate=True
+    #      (AF_POMGNT2) → rfree_mtz is locked after cycle 1, skipped
+    # When rfree_mtz is NOT set, this is either the first refinement
+    # or all previous refinements failed — generate=True is correct.
+    #
+    # v118.F2: removed `context.experiment_type == "xray"` guard.
+    # phenix.refine is intrinsically an xray-only program; no cryoem
+    # code path invokes it.  The previous guard combined with cycle-1
+    # timing (experiment_type empty until first program returns)
+    # caused production failure AIAgent_245: OpenAI's planner picked
+    # phenix.refine directly in cycle 1 with no prior xtriage, the
+    # guard skipped the auto-fill, the command was emitted without
+    # generate_rfree_flags=True, and refinement failed on the missing
+    # R-free flags.  F1 also addresses the root cycle-1 threading
+    # issue; F2 removes this redundant guard as defense-in-depth.
+    if program == "phenix.refine":
+      if not context.rfree_mtz:
         if "generate_rfree_flags" not in strategy:
           strategy["generate_rfree_flags"] = True
-          self._log(context, "BUILD: First refinement - will generate R-free flags")
+          self._log(context,
+              "BUILD: First refinement - will generate "
+              "R-free flags (no rfree_mtz locked)")
+      else:
+        # R-free MTZ already locked — strip generate if LLM set it
+        if strategy.get("generate_rfree_flags"):
+          del strategy["generate_rfree_flags"]
+          self._log(context,
+              "BUILD: Stripped generate_rfree_flags "
+              "(rfree_mtz locked: %s)"
+              % os.path.basename(str(context.rfree_mtz)))
 
     # predict_and_build: resolution is required for building (stop_after_predict=False)
     # If no resolution available, must use stop_after_predict=True (prediction only)
@@ -2033,7 +2503,7 @@ class CommandBuilder:
     # Primary: read from file (works on client where files are on disk)
     if model_path and context.files_local and self._file_is_available(model_path):
       try:
-        with open(str(model_path), 'r', errors='replace') as fh:
+        with open(str(model_path), 'r', errors='replace', encoding='utf-8') as fh:
           for line in fh:
             if not line.startswith("HETATM"):
               continue

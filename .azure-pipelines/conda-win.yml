@@ -211,6 +211,7 @@ jobs:
       call libtbx.configure ^
         cma_es ^
         fable ^
+        qttbx ^
         rstbx ^
         spotfinder ^
         cbflib_adaptbx ^
@@ -254,6 +255,7 @@ jobs:
       call libtbx.run_tests_parallel ^
         module=boost_adaptbx ^
         module=cctbx ^
+        module=xcif ^
         module=cctbx_website ^
         module=cma_es ^
         module=fable ^
@@ -267,6 +269,8 @@ jobs:
         module=annlib_adaptbx ^
         module=cbflib_adaptbx ^
         module=crys3d ^
+        module=qttbx ^
+        max_retries=2 ^
         nproc=4
     failOnStderr: false
     displayName: Test

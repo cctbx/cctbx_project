@@ -7,8 +7,6 @@ external reduce and probe programs.
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation.clashscore import clash
-from mmtbx.hydrogens import reduce_hydrogen
-from mmtbx.reduce import Optimizers
 from mmtbx.programs import probe2
 from mmtbx.validation import validation, atoms, atom_info
 from libtbx.utils import Sorry, null_out
@@ -627,53 +625,21 @@ def check_and_add_hydrogen(
 
   # add hydrogen if needed
   if not keep_hydrogens:
-    # Remove hydrogens and add them back in
+    # Delegate to the central reduce2 engine
+    # (mmtbx.hydrogens.place_and_optimize_hydrogens): the same place_hydrogens +
+    # Optimizer + reprocess sequence, now in one place so the reduce1/reduce2 switch
+    # and refinement can share it. (Imported lazily to avoid an import cycle.)
+    from mmtbx.hydrogens import place_and_optimize_hydrogens
     if verbose:
-      print("\nTrimming and adding hydrogens...\n")
-    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
-      model = data_manager_model,
-      use_neutron_distances=nuclear,
-      n_terminal_charge="residue_one",
-      exclude_water=True,
-      stop_for_unknowns=False,
-      keep_existing_H=False
-    )
-    reduce_add_h_obj.run()
-    reduce_add_h_obj.show(log)
-    missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
-    if len(missed_residues) > 0:
-      bad = ""
-      for res in missed_residues:
-        bad += " " + res
-      raise Sorry("Restraints were not found for the following residues:"+bad)
-    data_manager_model = reduce_add_h_obj.get_model()
-
-    # Optimize H atoms with mmtbx.reduce
-    if verbose:
-      print("\nOptimizing H atoms with mmtbx.reduce2:Optimizer...\n")
-    opt = Optimizers.Optimizer(probe_parameters, do_flips, data_manager_model, modelIndex=None,
-      fillAtomDump = False)
-
-    # Re-process the model because we have removed some atoms that were previously
-    # bonded.  Don't make restraints during the reprocessing.
-    # We had to do this to keep from crashing on a call to pair_proxies when generating
-    # mmCIF files, so we always do it for safety.
-    data_manager_model.get_hierarchy().sort_atoms_in_place()
-    data_manager_model.get_hierarchy().atoms().reset_serial()
-    #data_manager_model.update_xrs(data_manager_model.get_hierarchy())
-    p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
-    # We need to turn this on because without it 1zz0.txt kept flipping the ring
-    # in A TYR 214 every time we re-interpreted. The original interpretation done
-    # by Hydrogen placement will have flipped them, so we don't need to do it again.
-    p.pdb_interpretation.flip_symmetric_amino_acids=False
-    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    #p.pdb_interpretation.sort_atoms=True
-    data_manager_model.set_stop_for_unknowns(stop_for_unknowns)
-    data_manager_model.process(make_restraints=False, pdb_interpretation_params=p)
-
+      print("\nTrimming and adding hydrogens with mmtbx.reduce2...\n")
+    data_manager_model = place_and_optimize_hydrogens(
+      model           = data_manager_model,
+      do_flips        = do_flips,
+      nuclear         = nuclear,
+      keep_existing_H = False,
+      probe_phil      = probe_parameters,
+      stop_for_unknowns = stop_for_unknowns,
+      log             = log)
     return data_manager_model, True
   else:
     if verbose:

@@ -569,19 +569,19 @@ class RestraintsFrame(wx.Frame):
     tb = wx.ToolBar(self, style=wx.TB_TEXT)
     tb.SetToolBitmapSize((32,32))
     self.SetToolBar(tb)
-    btn1 = tb.AddLabelTool(-1,
+    btn1 = tb.AddTool(-1,
       label="Update and exit",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "button_ok"),
       kind=wx.ITEM_NORMAL)
-    btn2 = tb.AddLabelTool(-1,
+    btn2 = tb.AddTool(-1,
       label="Update settings",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "redo"),
       kind=wx.ITEM_NORMAL)
-    btn3 = tb.AddLabelTool(-1,
+    btn3 = tb.AddTool(-1,
       label="Cancel",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "cancel"),
       kind=wx.ITEM_NORMAL)
-    btn4 = tb.AddLabelTool(-1,
+    btn4 = tb.AddTool(-1,
       label="Delete all",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete"),
       kind=wx.ITEM_NORMAL)

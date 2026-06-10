@@ -120,6 +120,7 @@ def get_bonds_as_dict(geometry_restraints_manager, include_non_zero_origin_id=Tr
 
 def guess_atom_charges(ph, bonds):
   from mmtbx.ligands.chemistry import get_valences
+  results=[]
   possibilities = {
     'N' : [0,1],
     }
@@ -128,18 +129,18 @@ def guess_atom_charges(ph, bonds):
     if atom.parent().resname in ['HOH']: continue
     number_of_bonds = len(bonds.get(atom.i_seq, None))
     v = get_valences(atom.element, charge=atom.charge_as_int())
-    print(v, number_of_bonds)
     assert len(v)==1
     charge=number_of_bonds-v[0]
     poss=possibilities.get(atom.element.strip(), [0])
-    print(poss)
-    print(charge, type(charge))
     if charge in poss:
-      print(dir(atom))
       atom.set_charge('%2d' % charge)
     else:
-      print(atom.quote())
-      assert 0
+      comment='ERROR: Atom %s has a charge of %d which is not possible - %s' % (
+        atom.quote(),
+        charge,
+        poss)
+      results.append(comment)
+  return results
 
 def get_used_valence(atom_group):
   from mmtbx import monomer_library
@@ -189,7 +190,7 @@ def get_used_valences(ph):
       uv.update(rc)
   return uv
 
-def simple_valence_check(ph, geometry_restraints_manager):
+def simple_valence_check(ph, geometry_restraints_manager, max_print=10):
   from mmtbx.ligands.chemistry import get_valences
   bonds = get_bonds_as_dict(geometry_restraints_manager.geometry)
   from time import time
@@ -208,13 +209,17 @@ def simple_valence_check(ph, geometry_restraints_manager):
     # print(atom.quote(), number_of_bonds, get_valences(atom.element, atom.charge_as_int()))
     print('"%s"' % atom.charge)
     if atom.charge in ['']:
-      print(dir(ph))
-      print('-'*80)
-      print(dir(geometry_restraints_manager))
-      print('-'*80)
-      print(dir(geometry_restraints_manager.geometry))
-      guess_atom_charges(ph, bonds)
-      assert 0
+      efos=guess_atom_charges(ph, bonds)
+      if efos:
+        print('Possible atomic charge errors')
+        for j, efo in enumerate(efos):
+          if j==max_print: break
+          print(f'  {j+1:5} : {efo}')
+        more=len(efos)-j
+        if more:
+          print(f'  More errors : {more}')
+      # diagnose
+
     v = get_valences(atom.element, charge=atom.charge_as_int())
     print(v,atom.charge_as_int(),number_of_bonds)
     if number_of_bonds not in v:

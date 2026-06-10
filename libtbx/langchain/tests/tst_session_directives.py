@@ -147,7 +147,7 @@ def test_directives_persist_after_save_load():
         session_file = os.path.join(temp_dir, "agent_session.json")
         session.data["best_files"] = {}
         session.data["best_files_history"] = []
-        with open(session_file, 'w') as f:
+        with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session.data, f, indent=2)
 
         # Verify file was saved
@@ -155,7 +155,7 @@ def test_directives_persist_after_save_load():
             f"Session file should exist at {session_file}")
 
         # Load manually and verify directives
-        with open(session_file, 'r') as f:
+        with open(session_file, 'r', encoding='utf-8') as f:
             loaded_data = json.load(f)
 
         assert_equal(

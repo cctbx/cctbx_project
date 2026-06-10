@@ -33,6 +33,44 @@ _refine.ls_R_factor_R_free                     0.2238
   assert approx_equal(constants.r_work, 0.1690)
   assert approx_equal(constants.r_free, 0.2238)
 
+def exercise_get_r_rfree_sigma_r_work_fallback():
+  def _r_work_from(cif_input):
+    cif_block = iotbx.cif.reader(input_string=cif_input).model()["test"]
+    return mmcif._cif_get_r_rfree_sigma_object(cif_block, None).r_work
+  # modern field used when present
+  modern = """\
+data_test
+_refine.ls_R_factor_R_work 0.1690
+_refine.ls_R_factor_obs    0.1801
+_refine.ls_R_factor_all    0.1912
+"""
+  assert approx_equal(_r_work_from(modern), 0.1690)
+  # fall back to ls_R_factor_obs when ls_R_factor_R_work is absent
+  obs_only = """\
+data_test
+_refine.ls_R_factor_obs 0.1801
+"""
+  assert approx_equal(_r_work_from(obs_only), 0.1801)
+  # fall back to ls_R_factor_all when both earlier fields are absent
+  all_only = """\
+data_test
+_refine.ls_R_factor_all 0.1912
+"""
+  assert approx_equal(_r_work_from(all_only), 0.1912)
+  # '?' in earlier fields shouldn't block the fallback
+  qmark_then_obs = """\
+data_test
+_refine.ls_R_factor_R_work ?
+_refine.ls_R_factor_obs    0.1801
+"""
+  assert approx_equal(_r_work_from(qmark_then_obs), 0.1801)
+  # none of the three present -> None
+  none_present = """\
+data_test
+_refine.ls_R_factor_R_free 0.2238
+"""
+  assert _r_work_from(none_present) is None
+
 def exercise_extract_header_misc():
   cif_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3orl.cif",
@@ -118,6 +156,7 @@ A CE  1
 
 def run():
   exercise_extract_f_model_core_constants()
+  exercise_get_r_rfree_sigma_r_work_fallback()
   exercise_extract_header_misc()
   exercise_rows_splitted_by_newline()
 

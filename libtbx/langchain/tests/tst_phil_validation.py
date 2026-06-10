@@ -260,11 +260,12 @@ def test_rewrite_refine_reference_model():
 
 
 def test_rewrite_resolve_cryo_em_mask_atoms():
-  """mask_atoms from _STRATEGY_REWRITES must survive validation.
+  """mask_atoms must be BLOCKED for phenix.resolve_cryo_em.
 
-  graph_nodes.py rewrites 'strategy.mask_atoms' →
-  'mask_atoms' for phenix.resolve_cryo_em.  The validator
-  must not strip the rewritten key.
+  Phase 3 Bug 3: mask_atoms=True was interpreted by PHENIX as
+  strategy.mask_atoms_atom_radius="True" (numeric field) causing
+  RuntimeError.  mask_atoms was removed from strategy_flags and
+  added to _BLOCKED_PARAMS.  The validator must strip it.
   """
   _STRATEGY_FLAGS_CACHE.clear()
   strategy = {
@@ -273,12 +274,13 @@ def test_rewrite_resolve_cryo_em_mask_atoms():
   }
   cleaned, stripped = validate_phil_strategy(
     "phenix.resolve_cryo_em", strategy)
-  assert_true("mask_atoms" in cleaned,
-    "mask_atoms is a valid rewritten param")
+  assert_false("mask_atoms" in cleaned,
+    "mask_atoms must be BLOCKED (causes RuntimeError)")
   assert_true("resolution" in cleaned,
     "resolution is a valid param")
-  assert_equal(len(stripped), 0,
-    "No params should be stripped")
+  stripped_keys = [k for k, v in stripped]
+  assert_true("mask_atoms" in stripped_keys,
+    "mask_atoms must appear in stripped list")
 
 
 def test_plan_case_rmsd_ambiguity():

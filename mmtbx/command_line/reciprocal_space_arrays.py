@@ -8,7 +8,6 @@ import mmtbx.model
 from iotbx import reflection_file_utils
 from iotbx import file_reader
 import iotbx.phil
-import iotbx.pdb
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
 from six.moves import cStringIO as StringIO

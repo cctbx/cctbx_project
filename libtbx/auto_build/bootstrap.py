@@ -1420,6 +1420,47 @@ class Builder(object):
     else:
       raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
+    # add git-lfs steps if needed (should move into Toolbox class)
+    git_lfs_modules = ['phenix_examples', 'phenix_regression', 'chem_data', 'phasertng']
+    if module in git_lfs_modules:
+      # prepend path for check
+      dev_env = os.path.join('.', 'dev_env', 'bin')
+      if sys.platform == 'win32':
+        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
+        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
+      else:
+        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
+
+      git_lfs_is_available = False
+
+      # check if git-lfs and svn are available
+      log = open(os.devnull, 'w')
+
+      try:
+        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          git_lfs_is_available = True
+      except Exception:
+        pass
+
+      log.close()
+
+      # set if dev_env will be created in base step
+      self.install_dev_env = not git_lfs_is_available
+
+      # get lfs files
+      if self.install_dev_env:
+        print('*'*79)
+        print("""\
+An environment containing git-lfs and/or svn will be installed during the "base"
+step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
+files for {module} will be downloaded.""".format(module=module))
+        print('*'*79)
+      else:
+        workdir = ['modules', module]
+        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
+
   def _add_rsync(self, module, url, workdir=None, module_directory=None):
     """Add packages not in source control."""
     # rsync the hot packages.
@@ -2017,6 +2058,7 @@ class CCIBuilder(Builder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'xcif',
     'cctbx_website',
     'cbflib',
     'dxtbx',
@@ -2446,64 +2488,6 @@ class PhenixBuilder(CCIBuilder):
         command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
         workdir=workdir))
 
-  def add_module(self, module, workdir=None, module_directory=None):
-    """
-    Add git-lfs command for phenix_examples and phenix_regression
-    If the dev_env directory already exists, it is assumed that git-lfs
-    is available in that directory
-    """
-    super(PhenixBuilder, self).add_module(module, workdir, module_directory)
-
-    # update phenix_regression and phenix_examples with git-lfs
-    if module == 'phenix_examples' or module == 'phenix_regression' or module == 'chem_data':
-      # prepend path for check
-      dev_env = os.path.join('.', 'dev_env', 'bin')
-      if sys.platform == 'win32':
-        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
-        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
-      else:
-        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
-
-      svn_is_available = False
-      git_lfs_is_available = False
-
-      # check if git-lfs and svn are available
-      log = open(os.devnull, 'w')
-
-      try:
-        returncode = subprocess.call(['svn', '--version'], stdout=log, stderr=log)
-        if returncode == 0:
-          svn_is_available = True
-      except Exception:
-        pass
-
-      try:
-        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
-        if returncode == 0:
-          git_lfs_is_available = True
-      except Exception:
-        pass
-
-      log.close()
-
-      # set if dev_env will be created in base step
-      self.install_dev_env = False
-      if not svn_is_available or not git_lfs_is_available:
-        self.install_dev_env = True
-
-      # get lfs files
-      if self.install_dev_env:
-        print('*'*79)
-        print("""\
-An environment containing git-lfs and/or svn will be installed during the "base"
-step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
-files for {module} will be downloaded.""".format(module=module))
-        print('*'*79)
-      else:
-        workdir = ['modules', module]
-        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
-        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
-
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
       extra_opts=['--phenix',
@@ -2791,10 +2775,10 @@ class QRBuilder(PhenixBuilder):
     pip_installs = ['ase==3.22.1',]
     instructions = []
     # versioning
-    cmd = [os.path.join('..', self.python_base),
-           os.path.join('utils', 'make_version.py'),
-           ]
-    instructions.append(['Versioning', cmd, ['modules/qrefine']])
+    #cmd = [os.path.join('..', self.python_base),
+    #       os.path.join('utils', 'make_version.py'),
+    #       ]
+    #instructions.append(['Versioning', cmd, ['modules/qrefine']])
     for pi in pip_installs:
       instructions.append(['Q|R pip %s' % pi,
                            [self.python_base,

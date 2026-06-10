@@ -7,6 +7,11 @@ from scitbx.array_family import flex
 from scitbx.math import dihedral_angle
 from six.moves import zip,range
 
+# Staggered default dihedrals applied when the cif provides no torsion for a
+# solo H but the parent atom is structurally complete.
+STAGGERED_DEFAULT_1H = 180.0       # alg1b: solo H on a complete parent
+STAGGERED_DEFAULT_2H_ABS = 60.0    # alg1a NH2 fallback when no plane proxy
+
 class neighbors(object):
   def __init__(self,
       ih = None,
@@ -39,16 +44,21 @@ class determine_connectivity(object):
   :rtype: list[]"""
   def __init__(self,
       pdb_hierarchy,
-      geometry_restraints):
+      geometry_restraints,
+      mon_lib_srv=None):
     geometry = geometry_restraints
     self.atoms = pdb_hierarchy.atoms()
+    self.mon_lib_srv = mon_lib_srv
+    self._expected_count_cache = {}
     self.sites_cart = self.atoms.extract_xyz()
     bond_proxies_simple, asu = \
       geometry.get_all_bond_proxies(sites_cart = self.sites_cart)
     angle_proxies = geometry.get_all_angle_proxies()
     dihedral_proxies = geometry.dihedral_proxies # this should be function in GRM, like previous
+    const_dihedral_proxies = getattr(geometry, 'const_dihedral_proxies', None) or []
     planarity_proxies = geometry.planarity_proxies
-    fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
+    self.fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
+    fsc0 = self.fsc0  # keep local alias to avoid touching all uses below
     self.n_atoms = pdb_hierarchy.atoms_size()
     self.hd_sel = self.hd_selection()
     self.h_connectivity = [None]*self.n_atoms
@@ -68,7 +78,9 @@ class determine_connectivity(object):
     self.process_second_neighbors()
 
     # 5. Find third neighbors via dihedral proxies
-    self.find_third_neighbors(dihedral_proxies = dihedral_proxies)
+    self.find_third_neighbors(
+      dihedral_proxies = dihedral_proxies,
+      const_dihedral_proxies = const_dihedral_proxies)
 
     # 6. Find angles involving a0 and covalently bound non-H atoms and
     #    find preliminary list of third neighbors in cases where no dihedral
@@ -229,7 +241,12 @@ class determine_connectivity(object):
             self.third_neighbors_raw[i_third].append(i_parent)
 
   def process_a0_angles_and_third_neighbors_without_dihedral(self):
-    """Process raw list of third neighbors withouth ideal dihedral proxy."""
+    """For solo-H atoms whose cif provides no torsion proxy, populate
+    b1.iseq and b1.dihedral_ideal with a staggered default - unless the
+    parent has lost an expected heavy neighbor (e.g. heavy atom missing
+    in the model), in which case wipe the connectivity entry so the H is
+    not parameterized.
+    """
     for neighbor_obj in self.h_connectivity:
       if (neighbor_obj is None): continue
       ih = neighbor_obj.ih
@@ -248,17 +265,37 @@ class determine_connectivity(object):
           alt_conf_neighbors.append(i_third)
       third_neighbors_reduced.extend(self.process_alternate_neighbors(
         alt_conf_neighbors = alt_conf_neighbors))
-      # If there is no dihedral ideal angle, use randomly first atom
-      # in list of third neighbors
-      if third_neighbors_reduced:
-        if (neighbor_obj.number_h_neighbors == 2):
-          self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
-        else:
-          self.h_connectivity[ih] = neighbors(
-            ih = ih,
-            number_non_h_neighbors = 0)
-        #self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
-        #self.check_for_plane_proxy(ih)
+
+      if not third_neighbors_reduced:
+        # No anchor for a dihedral; can't parameterize.
+        self.h_connectivity[ih] = neighbors(
+          ih = ih, number_non_h_neighbors = 0)
+        continue
+
+      if self._parent_lost_heavy_neighbor(i_parent):
+        # Heavy atom missing in the model; refuse to parameterize.
+        self.h_connectivity[ih] = neighbors(
+          ih = ih, number_non_h_neighbors = 0)
+        continue
+
+      i_third = third_neighbors_reduced[0]
+      if (neighbor_obj.number_h_neighbors == 2):
+        # NH2-like: try planarity-derived dihedral first; if no plane
+        # proxy applies, fall back to staggered +/- 60.
+        self.h_connectivity[ih].b1 = {'iseq': i_third}
+        self.check_for_plane_proxy(ih)
+        if 'dihedral_ideal' not in self.h_connectivity[ih].b1:
+          sibling = neighbor_obj.h1.get('iseq') if neighbor_obj.h1 else None
+          if sibling is not None and ih < sibling:
+            self.h_connectivity[ih].b1['dihedral_ideal'] = STAGGERED_DEFAULT_2H_ABS
+          else:
+            self.h_connectivity[ih].b1['dihedral_ideal'] = -STAGGERED_DEFAULT_2H_ABS
+      else:
+        # Solo H: alg1b
+        self.h_connectivity[ih].b1 = {
+          'iseq': i_third,
+          'dihedral_ideal': STAGGERED_DEFAULT_1H,
+        }
 
   def process_plane_proxies(self, planarity_proxies):
     self.plane_h = {}
@@ -324,33 +361,69 @@ class determine_connectivity(object):
             number_non_h_neighbors = 0)
 
 
-  def find_third_neighbors(self, dihedral_proxies):
-    """ Loop through dihedral angle proxies to find third neighbor
-    Fill in neighbors.b1 with iseq and angle proxy"""
+  def find_third_neighbors(self, dihedral_proxies, const_dihedral_proxies):
+    """Loop through dihedral angle proxies to find third neighbor.
+    Fill in neighbors.b1 with iseq and angle proxy.
+
+    CONST dihedrals are processed first; Var dihedrals override via last-write
+    semantics (a Var entry on the same H wins because find sets b1 unconditionally).
+    """
+    # Process CONST first - their value_angle IS the ideal (no periodicity correction).
+    for dp in const_dihedral_proxies:
+      self._set_b1_from_const_proxy(dp)
+    # Process Var second - last-write wins, so Var overrides CONST.
     for dp in dihedral_proxies:
-      for i_test in dp.i_seqs:
-        if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
-          continue
-        ih = i_test
-        i1, i2, i3, i4 = dp.i_seqs
-        if (ih == i1):
-          i_third = i4
-        if (ih == i4):
-          i_third = i1
-        dihedral = dihedral_angle(
-              sites = [self.sites_cart[i1], self.sites_cart[i2],
-              self.sites_cart[i3],self.sites_cart[i4]])
-        if dihedral is None:
-          return
-        dihedral_id = dp.angle_ideal
-        delta = geometry_restraints.angle_delta_deg(
-          angle_1 = math.degrees(dihedral),
-          angle_2 = dihedral_id,
-          periodicity = dp.periodicity)
-        dihedral_ideal = math.degrees(dihedral) + delta
-        b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
-        self.h_connectivity[ih].b1 = b1
-        self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
+      self._set_b1_from_var_proxy(dp)
+
+  def _set_b1_from_const_proxy(self, dp):
+    for i_test in dp.i_seqs:
+      if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
+        continue
+      ih = i_test
+      i1, i2, i3, i4 = dp.i_seqs
+      if (ih == i1):
+        i_third = i4
+        dihedral_ideal = dp.angle_ideal
+      elif (ih == i4):
+        i_third = i1
+        # dihedral_proxy_registry canonicalizes by outer-swapping i1<->i4 when
+        # needed (keeping i2,i3 fixed), which negates the stored angle_ideal
+        # because dihedral(a,b,c,d) == -dihedral(d,b,c,a). Negating here
+        # recovers the original cif value_angle.
+        dihedral_ideal = -dp.angle_ideal
+      else:
+        # H is in the middle of the dihedral (i2 or i3) - cannot use as third-neighbor source
+        continue
+      b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
+      self.h_connectivity[ih].b1 = b1
+      self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
+
+  def _set_b1_from_var_proxy(self, dp):
+    for i_test in dp.i_seqs:
+      if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
+        continue
+      ih = i_test
+      i1, i2, i3, i4 = dp.i_seqs
+      if (ih == i1):
+        i_third = i4
+      elif (ih == i4):
+        i_third = i1
+      else:
+        continue
+      dihedral = dihedral_angle(
+            sites = [self.sites_cart[i1], self.sites_cart[i2],
+            self.sites_cart[i3],self.sites_cart[i4]])
+      if dihedral is None:
+        return
+      dihedral_id = dp.angle_ideal
+      delta = geometry_restraints.angle_delta_deg(
+        angle_1 = math.degrees(dihedral),
+        angle_2 = dihedral_id,
+        periodicity = dp.periodicity)
+      dihedral_ideal = math.degrees(dihedral) + delta
+      b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
+      self.h_connectivity[ih].b1 = b1
+      self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
 
   def assign_b1_for_H_atom_groups(self, ih, i_third):
     """ For atom groups (such as propeller), only one H atom has dihedral proxy
@@ -466,6 +539,68 @@ class determine_connectivity(object):
       self.h_connectivity[ih] = neighbors(
         ih = ih,
         number_non_h_neighbors = 0)
+
+  def _expected_heavy_neighbor_count(self, i_parent):
+    """Look up the parent atom's heavy-neighbor count from the monomer
+    library cif. Returns None when no info is available (mon_lib_srv is
+    None, comp not registered, or atom name not found in the comp's atom
+    dict). Caches per-resname maps on the instance."""
+    if self.mon_lib_srv is None:
+      return None
+    resname = self.atoms[i_parent].parent().resname.strip()
+    if resname not in self._expected_count_cache:
+      self._expected_count_cache[resname] = self._build_expected_count_map(resname)
+    counts = self._expected_count_cache[resname]
+    if counts is None:
+      return None
+    parent_atom_name = self.atoms[i_parent].name.strip()
+    return counts.get(parent_atom_name)
+
+  def _build_expected_count_map(self, resname):
+    """Build a dict mapping atom_id -> heavy-neighbor count for a resname.
+    Returns None if the comp is not registered in mon_lib_srv."""
+    comp = self.mon_lib_srv.get_comp_comp_id_direct(resname)
+    if comp is None:
+      return None
+    atom_dict = comp.atom_dict()
+    counts = {}
+    for atom_id in atom_dict:
+      counts[atom_id.strip()] = 0
+    for bond in comp.bond_list:
+      a1_id = bond.atom_id_1
+      a2_id = bond.atom_id_2
+      atom1 = atom_dict.get(a1_id)
+      atom2 = atom_dict.get(a2_id)
+      if atom1 is None or atom2 is None:
+        continue
+      if atom1.type_symbol != "H":
+        counts[a2_id.strip()] = counts.get(a2_id.strip(), 0) + 1
+      if atom2.type_symbol != "H":
+        counts[a1_id.strip()] = counts.get(a1_id.strip(), 0) + 1
+    return counts
+
+  def _actual_heavy_neighbor_count(self, i_parent):
+    """Count logical (deduplicated by atom name) heavy neighbors of the
+    parent in the model. Altloc-aware: a heavy neighbor with multiple
+    altloc versions still counts once."""
+    parent_altloc = self.atoms[i_parent].parent().altloc
+    seen_names = set()
+    for j in self.fsc0[i_parent]:
+      if self.hd_sel[j]:
+        continue
+      j_altloc = self.atoms[j].parent().altloc
+      if parent_altloc and j_altloc and parent_altloc != j_altloc:
+        continue
+      seen_names.add(self.atoms[j].name.strip())
+    return len(seen_names)
+
+  def _parent_lost_heavy_neighbor(self, i_parent):
+    """True iff the cif declares more heavy neighbors than the model has."""
+    expected = self._expected_heavy_neighbor_count(i_parent)
+    if expected is None:
+      return False
+    actual = self._actual_heavy_neighbor_count(i_parent)
+    return actual < expected
 
   def get_diagnostics(self):
     h_in_connectivity = []

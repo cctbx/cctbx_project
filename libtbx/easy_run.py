@@ -145,7 +145,8 @@ class fully_buffered_subprocess(fully_buffered_base):
         stdin_lines=None,
         join_stdout_stderr=False,
         stdout_splitlines=True,
-        bufsize=-1):
+        bufsize=-1,
+        cwd=None):
     def target(process, lines, result):
       o, e = process.communicate(input=lines)
       result[0] = o
@@ -202,6 +203,7 @@ class fully_buffered_subprocess(fully_buffered_base):
       stdout=subprocess.PIPE,
       stderr=stderr,
       env=run_env, # <--- PASSING NONE IS IDENTICAL TO LEGACY
+      cwd=cwd,
       universal_newlines=True,
       close_fds=(sys.platform != 'win32'),
       preexec_fn=os.setsid if sys.platform != 'win32' else None)

@@ -19,6 +19,35 @@
 #   which would generalize tracking behavior. Fix 10A already has run_once
 #   correctly nested inside done_tracking, so this works fine — the strategy
 #   enum is a future consideration if more tracking modes are needed.
+#
+# -----------------------------------------------------------------------------
+# DESIGN NOTE (exclude_patterns) — v119.H11
+# -----------------------------------------------------------------------------
+# exclude_patterns: list of strings used to exclude files from a slot by name.
+#
+# SEMANTICS: WORD-BOUNDARY matching against the filename stem (extension
+# stripped).  A pattern matches if it appears in the stem preceded by
+# start-of-string or one of [_, -, .], AND followed by one of [_, -, .]
+# or end-of-stem.  See agent/file_utils.py::matches_exclude_pattern.
+#
+# IMPORTANT: Do NOT use leading or trailing underscore in patterns.
+#   GOOD:  "refine"   matches refine_001.cif, phenix_refine.cif
+#   BAD:   "refine_"  does NOT match refine_001.cif — the trailing _ in
+#                     the pattern requires another boundary char after it,
+#                     and '0' is not a boundary char
+#   BAD:   "_half"    does NOT match protein_half.ccp4 — the leading _ in
+#                     the pattern requires a boundary char before it that
+#                     is also consumed by the regex's boundary-prefix group
+#
+# IMPORTANT: To catch alphanumeric-suffix variants (e.g., 'something_half1'
+# where a digit immediately follows the pattern with no separator), include
+# explicit suffix patterns alongside the bare pattern:
+#   GOOD:  [half, half1, half2, half_1, half_2]
+# The bare "half" catches the un-numbered case (protein_half.ccp4); the
+# numerics catch the no-separator cases that "half" cannot.
+#
+# Authoring tests: tests/tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics
+# documents the exact behavior with 10 named cases.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -155,7 +184,10 @@ phenix.mtriage:
       full_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "full_map="
-        exclude_patterns: [half_1, half_2, half1, half2, _half]
+        # v119.H11: was "_half" — leading _ broke word-boundary match;
+        # "half" catches the un-numbered case (protein_half.ccp4) while the
+        # numeric patterns (half1, half2) catch the no-separator variants.
+        exclude_patterns: [half_1, half_2, half1, half2, half]
       half_map:
         extensions: [.mrc, .ccp4, .map]
         flag: "half_map="
@@ -181,8 +213,12 @@ phenix.mtriage:
       - resolution
       - map_cc
 
-  # Half-maps provide FSC-based resolution; keep them even when full_map is also provided
-  keep_half_maps_with_full_map: true
+  # Half-map FSC is the gold standard for resolution estimation.
+  # When both half-maps and a full_map are present, prefer half-maps
+  # and drop the full_map.  This avoids "Maps have different dimensions"
+  # errors when the full_map was post-processed (auto-sharpened, boxed)
+  # with a different grid than the original half-maps.
+  prefers_half_maps: true
   command: "phenix.mtriage {half_map} {full_map}"
 
   log_parsing:
@@ -281,7 +317,7 @@ phenix.map_symmetry:
 
   hints:
     - "Run on full map to detect point-group symmetry"
-    - "Output .ncs_spec file can be used by resolve_cryo_em, predict_and_build, or apply_ncs"
+    - "Output .ncs_spec file can be used by resolve_cryo_em or apply_ncs (NOT predict_and_build — see v119.H14.2)"
     - "Optional: specify expected ncs_type if known (C2, D2, C3, etc.)"
 
   user_advice_keywords:
@@ -329,9 +365,25 @@ phenix.predict_and_build:
         multiple: true
         auto_fill: false
         description: "Only used when no full map is available; prefer full_map when present"
-      ncs_spec:
-        extensions: [.ncs_spec]
-        flag: "map_model.ncs_file="
+      # v119.H14.2: ncs_spec input REMOVED.  Pre-H14.2, the entry
+      # declared `flag: "map_model.ncs_file="`, but predict_and_build
+      # does NOT accept that (or any) NCS-file PHIL parameter.  Tom's
+      # 2026-05-26 1029B-sad ollama run with no PDB file in the
+      # directory surfaced this: the agent auto-discovered the
+      # leftover find_ncs.ncs_spec file, looked up the documented
+      # flag, emitted `map_model.ncs_file=...find_ncs.ncs_spec`, and
+      # predict_and_build failed with "Some PHIL parameters are not
+      # recognized."  Cycle-level retry re-emitted the same bad
+      # parameter and looped.
+      #
+      # predict_and_build runs NCS detection internally if needed;
+      # there is no external-file mechanism to inject one.  Removing
+      # the entry stops the agent from attempting to pass any
+      # .ncs_spec file it discovers in the input directory.
+      #
+      # find_ncs's downstream-consumer hint (line ~320) was also
+      # updated to remove predict_and_build from the list of programs
+      # that accept its .ncs_spec output.
 
   outputs:
     files:
@@ -353,7 +405,9 @@ phenix.predict_and_build:
       - map_cc
 
   # Half-maps are used for density modification alongside the full map
-  command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map} {ncs_spec}"
+  # v119.H14.2: dropped {ncs_spec} from command template — see the
+  # optional-inputs comment above for the rationale.
+  command: "phenix.predict_and_build {sequence} {data_mtz} {full_map} {half_map}"
 
   defaults:
     control.nproc: 4
@@ -508,7 +562,7 @@ phenix.phaser:
 
   strategy_flags:
     component_copies:
-      flag: "phaser.ensemble.copies={value}"
+      flag: "phaser.search_copies={value}"
       type: int
     output_root:
       flag: "phaser.root={value}"
@@ -549,6 +603,13 @@ phenix.phaser:
       type: string
       display_name: "Space Group"
 
+  invariants:
+    - name: auto_fill_obs_labels
+      description: "Disambiguate multi-array MTZ (v119.H16). OPTIONAL auto-fill: obs_labels is only needed when the data MTZ has multiple suitable arrays. This invariant deliberately omits a 'check: has_strategy' clause so it does NOT block command building when obs_labels is absent (the common single-array case). The fix runs in _apply_invariants and injects obs_labels only when inspect_mtz reports is_multi_array."
+      fix:
+        auto_fill_obs_labels: true
+      message: "obs_labels auto-fill for multi-array MTZ (non-blocking)"
+
 
 phenix.autobuild:
   description: "Iterative model building and refinement"
@@ -565,6 +626,30 @@ phenix.autobuild:
   gui_app_id: "AutoBuildDM"
   stop_directive_patterns:
     - 'autobuild'
+
+  # v116.10 Tier 2.1: Declarative requirements.
+  # autobuild requires x-ray data AND (a model OR phase information OR
+  # a phasing program has already completed).
+  #
+  # The second clause mirrors the existing explanation pattern in
+  # explain_unavailable_program, which checks phaser_done OR
+  # autosol_done OR has_placed_model_from_history.  The simulator
+  # (and some real session paths) set the _done flags reliably but
+  # may not always set has_phased_data_mtz, so we accept both
+  # families via any_of.
+  #
+  # See ARCHITECTURE.md "Declarative Program Requirements" section
+  # for the schema and audit rules.
+  requirements:
+    requires:
+      - has_any: [data_mtz, phased_data_mtz]
+      - any_of:
+          - has: phased_data_mtz
+          - has: model
+          - has: placed_model
+          - has: placed_model_from_history
+          - done: phaser
+          - done: autosol
 
   inputs:
     required:
@@ -893,6 +978,9 @@ phenix.dock_in_map:
       categories: [search_model]
       # Subcategory preference: processed_predicted > pdb_template > predicted
       prefer_subcategories: [processed_predicted, pdb_template, predicted]
+      # Fallback: if no search_model exists (S2c promotion lost), try model.
+      # The not_done: dock workflow condition prevents re-docking placed models.
+      fallback_categories: [model]
       # Exclude ligands and intermediates
       exclude_categories: [ligand, ligand_pdb, ligand_cif, intermediate_mr]
     map:
@@ -1083,6 +1171,12 @@ phenix.process_predicted_model:
 
   command: "phenix.process_predicted_model {model}"
 
+  # strict_strategy_flags: only defined strategy_flags are allowed.
+  # KNOWN_PHIL_SHORT_NAMES (space_group, unit_cell, nproc, etc.) are NOT
+  # passed through.  This prevents the LLM from injecting crystal_symmetry
+  # params that process_predicted_model doesn't accept.
+  strict_strategy_flags: true
+
   # strategy_flags defines the ONLY key=value params allowed (beyond files).
   # Without this, sanitize_command cannot strip LLM-hallucinated params
   # like wavelength=, anomalous=True, or ambiguous 'rmsd='.
@@ -1135,6 +1229,19 @@ phenix.refine:
         extensions: [.cif]
         flag: ""
         description: "Ligand geometry restraint file (.ligands.cif)"
+        # Exclude autobuild/predict_and_build geometry-restraints CIFs.
+        # These are whole-model mmCIF files (overall_best.cif, refine_*.cif)
+        # that look like .cif but are NOT small-molecule ligand restraints.
+        # Passing them positionally to phenix.refine causes "wrong number of
+        # models" errors.  Real ligand CIFs are named *.ligands.cif or
+        # similar.  Pattern matches use word-boundary semantics (see top of
+        # this file) — patterns must NOT have leading or trailing underscore.
+        exclude_patterns:
+          - "overall_best"
+          - "overall_best_final"
+          - "refine"               # v119.H11: was "refine_" — trailing _ broke word-boundary match
+          - "autobuild"
+          - "predict_and_build"
 
   # Input priorities: which file categories to prefer for each input
   # Categories are checked in order; first match wins
@@ -1181,12 +1288,21 @@ phenix.refine:
       - bonds_rmsd
       - angles_rmsd
 
-  command: "phenix.refine {model} {data_mtz} {ligand_cif} xray_data.r_free_flags.generate=True"
+  command: "phenix.refine {model} {data_mtz} {ligand_cif}"
 
-  defaults:
-    xray_data.r_free_flags.generate: True
+  # NOTE: xray_data.r_free_flags.generate=True is NOT in the template.
+  # It is added conditionally by the BUILD node only when the session
+  # has no locked R-free MTZ (i.e., first refinement only).
+  # Including it unconditionally causes R-free flags mismatches on
+  # second+ refinements and on datasets with pre-existing R-free flags.
+
+  defaults: {}
 
   strategy_flags:
+    generate_rfree_flags:
+      flag: "xray_data.r_free_flags.generate={value}"
+      type: boolean
+      hint: "Only set True on first refinement when no R-free flags exist"
     output_prefix:
       flag: "output.prefix={value}"
       type: string
@@ -1228,6 +1344,16 @@ phenix.refine:
     resolution_limit:
       flag: "xray_data.high_resolution={value}"
       type: float
+    # CANONICAL FORM for new obs_labels entries (v119.H16+):
+    #   obs_labels:
+    #     flag: 'xray_data.labels="{value}"'   # Note: quoted value
+    # Existing entries in phaser/autobuild/autosol/predict_and_build
+    # use the unquoted form for compatibility; migration is a
+    # backlog item.  Use the quoted form for any future additions.
+    obs_labels:
+      flag: 'xray_data.labels="{value}"'
+      type: string
+      hint: "Observation column labels for multi-array MTZ disambiguation (auto-filled by H16)"
     nproc:
       flag: "refinement.main.nproc={value}"
       type: int
@@ -1239,6 +1365,24 @@ phenix.refine:
       flag: "reference_model.use_starting_model_as_reference={value}"
       type: boolean
       hint: "Use starting model as the reference model"
+    ramachandran_restraints:
+      flag: "ramachandran_restraints={value}"
+      type: boolean
+      hint: "Enable Ramachandran restraints for low-resolution refinement"
+
+  # PHIL namespace prefixes that are safe to pass through PHIL validation.
+  # Any strategy key containing one of these as a substring is allowed,
+  # even if not explicitly listed in strategy_flags.  This covers both
+  # short forms (ncs.type) and full PHIL paths
+  # (refinement.pdb_interpretation.ncs.type).
+  #
+  # Covers standard crystallographic restraint parameters that tutorials
+  # and users commonly need but are too numerous to list individually.
+  allowed_phil_prefixes:
+    - "reference_model."         # .file, .enabled, .use_starting_model, etc.
+    - "secondary_structure"      # .enabled, .protein.*, .input.file_name, etc.
+    - "ncs."                     # .type, .constraints, .find_ncs, .groups, etc.
+    - "ramachandran"             # ramachandran_restraints, ramachandran_plot
 
   log_parsing:
     r_free:
@@ -1277,6 +1421,12 @@ phenix.refine:
         auto_fill_output_prefix: "refine"
       message: "Auto-generating unique output prefix"
 
+    - name: auto_fill_obs_labels
+      description: "Disambiguate multi-array MTZ (v119.H16). OPTIONAL auto-fill: obs_labels is only needed when the data MTZ has multiple suitable arrays. This invariant deliberately omits a 'check: has_strategy' clause so it does NOT block command building when obs_labels is absent (the common single-array case). The fix runs in _apply_invariants and injects obs_labels only when inspect_mtz reports is_multi_array."
+      fix:
+        auto_fill_obs_labels: true
+      message: "obs_labels auto-fill for multi-array MTZ (non-blocking)"
+
 
 phenix.real_space_refine:
   description: "Refine atomic model against cryo-EM map"
@@ -1302,7 +1452,8 @@ phenix.real_space_refine:
       map:
         extensions: [.mrc, .ccp4, .map]
         flag: ""
-        exclude_patterns: [half_1, half_2, half1, half2, _half]
+        # v119.H11: was "_half" — leading _ broke word-boundary match
+        exclude_patterns: [half_1, half_2, half1, half2, half]
 
   # Input priorities for cryo-EM refinement
   # 
@@ -1507,6 +1658,7 @@ phenix.pdbtools:
         extensions: [.pdb]
         flag: ""
         prefer_patterns: [ligand_fit, lig]
+        exclude_patterns: [pose]
 
   # Input priorities for category-based file selection
   input_priorities:
@@ -1547,6 +1699,7 @@ phenix.resolve_cryo_em:
   description: "Density modification of cryo-EM map (map optimization, NOT model building)"
   category: map_optimization
   experiment_types: [cryoem]
+  prefers_half_maps: true  # Bug 2/3: dedup must keep half-maps, drop full_map
   log_detection:
     markers: ["resolve_cryo_em"]
   done_tracking:
@@ -1586,17 +1739,16 @@ phenix.resolve_cryo_em:
   # strategy_flags defines the ONLY key=value params allowed (beyond files).
   # Without this, sanitize_command cannot strip LLM-hallucinated params
   # like main.number_of_macro_cycles=1.
-  # Note: mask_atoms is a valid param (used by _STRATEGY_REWRITES in
-  # graph_nodes.py to normalize "strategy.mask_atoms" → "mask_atoms").
+  # Note: mask_atoms was removed because `mask_atoms=True` gets resolved
+  # by PHENIX to `strategy.mask_atoms_atom_radius="True"` which is a
+  # numeric field → RuntimeError.  The correct PHIL path would be
+  # `strategy.mask_atoms=True` but the LLM doesn't know the full path.
+  # resolve_cryo_em works fine without it (default is adequate).
   strategy_flags:
     resolution:
       flag: "resolution={value}"
       type: float
       hint: "High-resolution limit for density modification"
-    mask_atoms:
-      flag: "mask_atoms={value}"
-      type: boolean
-      hint: "Mask atoms in density modification"
 
   input_priorities:
     half_map:
@@ -1616,6 +1768,7 @@ phenix.map_sharpening:
   description: "Sharpen cryo-EM map. Three modes: map+model, full map only, or two half maps"
   category: map_optimization
   experiment_types: [cryoem]
+  prefers_half_maps: true  # Half-map mode gives best results; drop full_map when both present
   log_detection:
     markers: ["map_sharpening", "local_aniso"]
   done_tracking:
@@ -1628,7 +1781,7 @@ phenix.map_sharpening:
   # Three modes of operation:
   # Mode 1 (map+model): map.ccp4 model=model.pdb seq_file=seq.dat sharpening_method=shells model_sharpen=True
   # Mode 2 (full map only): map.ccp4 resolution=2.9 sharpening_method=b-factor seq_file=seq.dat
-  # Mode 3 (two half maps): half_map=half_1.map half_map=half_2.map seq_file=seq.dat
+  # Mode 3 (two half maps): half1.ccp4 half2.ccp4 seq_file=seq.dat  (positional, no flag)
 
   inputs:
     required: {}
@@ -1640,9 +1793,9 @@ phenix.map_sharpening:
         description: "Full map (bare positional arg) - for modes 1 and 2"
       half_map:
         extensions: [.mrc, .ccp4, .map]
-        flag: "half_map="
+        flag: ""
         multiple: true
-        description: "Two half maps - for mode 3"
+        description: "Two half maps (bare positional args) - for mode 3"
       model:
         extensions: [.pdb, .cif]
         flag: "model="
@@ -1704,7 +1857,7 @@ phenix.polder:
   
   # NOTE: Polder only needs Fobs (data_mtz), NOT map coefficients!
   # It calculates its own phases internally.
-  # Polder has NO resolution keyword.
+  # Polder must use the same or worse resolution than refinement.
   log_detection:
     markers: ["polder"]
   done_tracking:
@@ -1738,6 +1891,10 @@ phenix.polder:
       exclude_categories: [map_coeffs_mtz]
 
   strategy_flags:
+    resolution:
+      flag: "xray_data.high_resolution={value}"
+      type: float
+      description: "Resolution limit — must match or be worse than the refinement resolution"
     selection:
       flag: "selection='{value}'"
       type: str
@@ -1753,10 +1910,12 @@ phenix.polder:
         set_strategy: {selection: "hetero and not water"}
       message: "selection is REQUIRED for polder. Defaulting to 'hetero and not water' to evaluate all ligands."
 
-  hints:
-    - "selection is REQUIRED - default is selection='hetero and not water' (safe for any ligand name)"
-    - "Polder has NO resolution keyword - do not add resolution to the command"
-    - "IMPORTANT: always use single quotes around the selection value on the command line"
+    - name: requires_resolution
+      description: "Resolution must match or be worse than refinement resolution"
+      check:
+        has_strategy: resolution
+      fix:
+        auto_fill_resolution: true
 
   outputs:
     files:
@@ -1792,6 +1951,9 @@ phenix.polder:
       summary_format: "{value}"
 
   hints:
+    - "selection is REQUIRED - default is selection='hetero and not water' (safe for any ligand name)"
+    - "Resolution MUST match or be worse than the refinement resolution - use xray_data.high_resolution=X.X"
+    - "IMPORTANT: always use single quotes around the selection value on the command line"
     - "Use to verify ligand or residue placement in electron density"
     - "High CC(1,3) and conclusion 'likely to show' indicates good placement"
     - "Selection syntax: 'chain X and resseq N' or 'resname LIG'"
