@@ -2857,6 +2857,40 @@ class TrialDialog(BaseDialog):
     self.indexing_ctrl_sizer.Add(self.chk_subsampling, flag=wx.ALL, border=10)
     self.indexing_sizer.Add(self.indexing_ctrl_sizer)
 
+    # Streaming archiving parameters, encoded in the trial PHIL alongside
+    # process_type (no DB schema change). onOK appends a well-formed
+    # ``archive { ... }`` block to the stored target_phil_str.
+    self.archive_level_choices = ['none', 'all', 'spotfinding', 'indexing',
+                                  'refinement', 'integration']
+    self.archive_sort_choices = ['none', 'image_id', 'timestamp']
+    self.archive_panel = wx.Panel(self)
+    archive_box = wx.StaticBox(self.archive_panel, label='Archiving parameters')
+    self.archive_sizer = wx.StaticBoxSizer(archive_box)
+    self.archive_panel.SetSizer(self.archive_sizer)
+    self.archive_ctrl_sizer = wx.FlexGridSizer(2, 2, 10, 10)
+
+    self.archive_level = gctr.ChoiceCtrl(self.archive_panel,
+                                         label='Archive level:',
+                                         label_size=(150, -1),
+                                         label_style='normal',
+                                         ctrl_size=(180, -1),
+                                         choices=self.archive_level_choices)
+    self.archive_sort_order = gctr.ChoiceCtrl(self.archive_panel,
+                                              label='Sort order:',
+                                              label_size=(150, -1),
+                                              label_style='normal',
+                                              ctrl_size=(180, -1),
+                                              choices=self.archive_sort_choices)
+    self.archive_timeout = gctr.TextButtonCtrl(self.archive_panel,
+                                               label='Archive timeout (s):',
+                                               label_size=(150, -1),
+                                               label_style='normal',
+                                               ghost_button=False)
+    self.archive_ctrl_sizer.Add(self.archive_level, flag=wx.ALL, border=10)
+    self.archive_ctrl_sizer.Add(self.archive_sort_order, flag=wx.ALL, border=10)
+    self.archive_ctrl_sizer.Add(self.archive_timeout, flag=wx.ALL, border=10)
+    self.archive_sizer.Add(self.archive_ctrl_sizer)
+
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
     self.copy_runblocks = gctr.ChoiceCtrl(self,
@@ -2866,6 +2900,19 @@ class TrialDialog(BaseDialog):
                                           ctrl_size=(80, -1),
                                           choices=choices)
     self.copy_runblocks.ctr.SetSelection(0)
+
+    # Streaming process type, encoded in the trial PHIL (no DB schema change).
+    # onOK prepends ``process_type = <selected>`` to the stored target_phil_str.
+    self.process_types = ['dials.stills_process', 'small_cell',
+                          'image_average', 'archive', 'radial_average']
+    self.process_type = gctr.ChoiceCtrl(self,
+                                        name='process_type',
+                                        label='Process type',
+                                        label_style='normal',
+                                        label_size=(180, -1),
+                                        ctrl_size=(180, -1),
+                                        choices=self.process_types)
+    self.process_type.ctr.SetSelection(0)
     self.throttle = gctr.SpinCtrl(self,
                                   name='trial_throttle',
                                   label='Percent events processed:',
@@ -2912,9 +2959,13 @@ class TrialDialog(BaseDialog):
     self.main_sizer.Add(self.trial_comment,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
+    self.main_sizer.Add(self.process_type,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
     self.main_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.archive_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -2956,6 +3007,10 @@ class TrialDialog(BaseDialog):
       self.throttle.ctr.Disable()
       self.num_bins.ctr.Disable()
       self.d_min.ctr.Disable()
+      self.process_type.ctr.Disable()
+      self.archive_level.ctr.Disable()
+      self.archive_sort_order.ctr.Disable()
+      self.archive_timeout.ctr.Disable()
 
     if target_phil_str is None:
       target_phil_str = ""
@@ -2970,6 +3025,27 @@ class TrialDialog(BaseDialog):
     self.sync_controls()
 
     self.throttle.ctr.SetValue(process_percent)
+
+    # Reflect the process type encoded in the (possibly inherited) trial PHIL.
+    try:
+      self.process_type.ctr.SetSelection(
+        self.process_types.index(self._extract_process_type(target_phil_str)))
+    except ValueError:
+      self.process_type.ctr.SetSelection(0)
+
+    # Reflect the archiving params encoded in the (possibly inherited) trial PHIL.
+    archive_level, archive_sort_order, archive_timeout = \
+      self._extract_archive_params(target_phil_str)
+    try:
+      self.archive_level.ctr.SetSelection(self.archive_level_choices.index(archive_level))
+    except ValueError:
+      self.archive_level.ctr.SetSelection(self.archive_level_choices.index('all'))
+    try:
+      self.archive_sort_order.ctr.SetSelection(
+        self.archive_sort_choices.index(archive_sort_order))
+    except ValueError:
+      self.archive_sort_order.ctr.SetSelection(self.archive_sort_choices.index('image_id'))
+    self.archive_timeout.ctr.SetValue(str(archive_timeout))
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
@@ -3148,11 +3224,64 @@ class TrialDialog(BaseDialog):
         self.working_phil_scope = working_phil_scope
     return params, msg
 
+  def _extract_process_type(self, target_phil_str):
+    # Read the process_type encoded in a stored trial PHIL (default stills).
+    from iotbx.phil import parse
+    scope = parse("""process_type = *dials.stills_process small_cell image_average archive radial_average
+  .type = choice""")
+    if not target_phil_str:
+      return 'dials.stills_process'
+    return scope.fetch(parse(target_phil_str)).extract().process_type
+
+  def _extract_archive_params(self, target_phil_str):
+    # Read the archiving params encoded in a stored trial PHIL. The dialog
+    # defaults apply when the trial carries no archive block (sort_order
+    # defaults to image_id, not the streaming scope default of none).
+    from iotbx.phil import parse
+    scope = parse("""archive {
+  level = none *all spotfinding indexing refinement integration
+    .type = choice
+  sort_order = none *image_id timestamp
+    .type = choice
+  timeout = 120
+    .type = float
+}""")
+    archive = scope.fetch(parse(target_phil_str or "")).extract().archive
+    # The choice option literally named ``none`` extracts as Python None.
+    level = 'none' if archive.level is None else archive.level
+    sort_order = 'none' if archive.sort_order is None else archive.sort_order
+    return level, sort_order, archive.timeout
+
+  def _build_archive_phil_str(self):
+    # Well-formed, newline-separated archive block. One definition per line is
+    # required: two PHIL definitions on one line make level's value a token-soup
+    # that matches no choice option, silently coercing it to none downstream.
+    level = self.archive_level.ctr.GetString(self.archive_level.ctr.GetSelection())
+    sort_order = self.archive_sort_order.ctr.GetString(
+      self.archive_sort_order.ctr.GetSelection())
+    timeout = self.archive_timeout.ctr.GetValue() or '120'
+    return ("archive {\n"
+            "  level = %s\n"
+            "  sort_order = %s\n"
+            "  timeout = %s\n"
+            "}\n" % (level, sort_order, timeout))
+
   def onOK(self, e):
     if self.new:
-      if not self.sync_phil_scope():
-        return
-      target_phil_str = self.phil_scope.fetch_diff(self.working_phil_scope).as_str()
+      selected_process_type = self.process_types[self.process_type.ctr.GetSelection()]
+
+      # The structured spotfinding/indexing controls only apply to the
+      # stills-based process types; for the others they are ignored on save.
+      if selected_process_type in ('dials.stills_process', 'small_cell'):
+        if not self.sync_phil_scope():
+          return
+        target_phil_str = self.phil_scope.fetch_diff(self.working_phil_scope).as_str()
+      else:
+        target_phil_str = ""
+
+      # Encode the selected process type (front) and a well-formed archive block.
+      target_phil_str = "process_type = %s\n%s\n%s" % (
+        selected_process_type, target_phil_str, self._build_archive_phil_str())
 
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
