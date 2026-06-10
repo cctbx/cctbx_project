@@ -208,11 +208,12 @@ HETATM  604  O   HOH A 422       9.389  18.060   1.780  0.34  9.73           O
 """
 
 
-def _run_endoexo_on_string(pdb_str):
+def _run_endoexo_on_string(pdb_str, radius=None):
   """Drive ``mmtbx.programs.endoexo.Program`` in-memory on a PDB string
   with default settings (metal scan, radius=5.0, depth=3).  Parses the
   string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
-  the single result dict produced for the Fe seed."""
+  the single result dict produced for the Fe seed.  *radius* overrides
+  ``params.radius`` when given."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
   dm = DataManager(["model"])
@@ -222,6 +223,8 @@ def _run_endoexo_on_string(pdb_str):
   master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
   params.write_files = False
+  if radius is not None:
+    params.radius = radius
 
   prog = EndoexoProgram(dm, params, master_phil=master, logger=io.StringIO())
   prog.validate()
@@ -442,6 +445,44 @@ def exercise_2c2u_fe_coordination_distances():
   for d in hoh_o_distances:
     assert d < 3.0, (
       f"HOH 2154 O-Fe distance {d:.2f} A outside coordination range")
+
+
+def exercise_2c2u_symmetry_truncation_consistency():
+  """At radius=6 the three symmetry copies of Asp 93 must be truncated
+  identically.
+
+  Asp 93's CA (5.2 A) and CB (4.5 A) both sit inside a 6 A sphere around
+  the Fe.  The radius search is symmetry-aware, so every copy's CA/CB are
+  seeded and protected -- none is cut at its preferred CA-CB site.  Before
+  the symmetry-aware seeding the identity copy kept CA/CB (its atoms were
+  ASU seeds) while the symmetry images, reached only by BFS, were cut at
+  CA-CB; this pins that asymmetry shut."""
+  result = _run_endoexo_on_string(_2C2U_FE_SPHERE_PDB, radius=6.0)
+  hier = result["model"].get_hierarchy()
+
+  asp_copies = []
+  for ch in hier.chains():
+    for rg in ch.residue_groups():
+      for ag in rg.atom_groups():
+        if ag.resname.strip().upper() == "ASP" and rg.resseq.strip() == "93":
+          # real (non-cap) heavy-atom names; a capped atom carries element H
+          real_heavy = {a.name.strip() for a in ag.atoms()
+                        if a.element.strip().upper() != "H"}
+          asp_copies.append((ch.id.strip(), real_heavy))
+
+  assert len(asp_copies) == 3, (
+    f"expected 3 Asp 93 copies (one per 3-fold sym_op); got "
+    f"{len(asp_copies)}")
+  for chain_id, real_heavy in asp_copies:
+    assert {"CA", "CB"} <= real_heavy, (
+      f"Asp 93 copy in chain {chain_id} is missing real CA/CB (cut at "
+      f"CA-CB instead of keeping the in-radius backbone): "
+      f"{sorted(real_heavy)}")
+  # All three copies must keep the *same* heavy-atom set.
+  atom_sets = {frozenset(real_heavy) for _id, real_heavy in asp_copies}
+  assert len(atom_sets) == 1, (
+    f"Asp 93 symmetry copies truncated differently: "
+    f"{[(cid, sorted(s)) for cid, s in asp_copies]}")
 
 
 def exercise_residue_composition():
@@ -864,6 +905,7 @@ def run():
   exercise_residue_composition()
   exercise_2c2u_symmetry_materialization()
   exercise_2c2u_fe_coordination_distances()
+  exercise_2c2u_symmetry_truncation_consistency()
   # engine unit tests
   exercise_canon_op()
   exercise_hydrogen_capper()

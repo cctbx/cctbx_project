@@ -72,9 +72,10 @@ class QMRegionGrower:
 
     Parameters
     ----------
-    seed_atoms : set of int
-        Seed i_seq values. Internally promoted to nodes carrying the
-        identity ``rt_mx``.
+    seed_atoms : set of int or (int, rt_mx)
+        Seed nodes.  Bare i_seqs are promoted to nodes carrying the
+        identity ``rt_mx``; ``(iseq, op)`` tuples (symmetry-image seeds
+        from the symmetry-aware radius search) are used as-is.
     adjacency : collections.defaultdict of set
         Tagged adjacency: ``adj[i_seq]`` is a set of
         ``(j_seq, edge_op)`` tuples (see
@@ -108,19 +109,33 @@ class QMRegionGrower:
     """
     atoms = model.get_hierarchy().atoms()
     forced_cut_bonds = forced_cut_bonds or set()
+    identity = _canon_op(sgtbx.rt_mx())
+    # Seeds may be bare iseqs (identity image) or pre-built (iseq, op)
+    # nodes (symmetry images from the symmetry-aware radius search);
+    # normalise both to nodes.
+    seed_nodes = {s if isinstance(s, tuple) else (s, identity)
+                  for s in seed_atoms}
     # iseqs belonging to a residue that contains at least one seed
     # (radius) atom.  Residues absent from this set are pure BFS
     # overgrowth and, when geometric_for_overgrowth is on, defer to the
     # geometric C-C heuristic.  Empty (and unused) otherwise.
+    #
+    # APPROXIMATION: keyed on bare iseq, so the sym_op is dropped.  With
+    # symmetry-aware seeding the same residue can appear under several ops,
+    # and "has a seed" is really a per-(residue, op) property.  Here, if
+    # ANY image of a residue carries a seed, every image is treated as
+    # seeded -> uses preferred cuts.  This errs toward the preferred cut
+    # (the pre-overgrowth-rule behaviour), so it can only over-include, not
+    # break.  It bites only when one image of a residue coordinates (seeded)
+    # while another image of the SAME residue is pure overgrowth in the same
+    # sphere -- rare.  To make it exact, key on (residue, op) instead.
     residue_has_seed_iseqs = set()
     if geometric_for_overgrowth:
-      for s_iseq in seed_atoms:
+      for (s_iseq, _s_op) in seed_nodes:
         residue_group = atoms[s_iseq].parent().parent()
         for atom_group in residue_group.atom_groups():
           for residue_atom in atom_group.atoms():
             residue_has_seed_iseqs.add(residue_atom.i_seq)
-    identity = _canon_op(sgtbx.rt_mx())
-    seed_nodes = {(iseq, identity) for iseq in seed_atoms}
     visited = set(seed_nodes)
     cap_candidates = {}
     queue = deque(seed_nodes)

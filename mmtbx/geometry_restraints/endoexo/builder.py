@@ -403,12 +403,21 @@ class QMRegionBuilder(object):
   # ------------------------------------------------------------------
 
   def _seed_qm_region(self, seeds, model):
-    """Return the initial i_seq set for the QM region.
+    """Return the initial ``(iseq, sym_op)`` node set for the QM region.
 
     When *skip_radius_search* is False (default) all atoms within
     ``params.radius`` of every seed are included.  When *skip_radius_search*
     is True only the seed atoms themselves are added and BFS expansion
     (controlled by ``params.max_depth``) is relied upon to grow the region.
+
+    The radius search is symmetry-aware: the KD-tree supplies ASU
+    (identity-image) atoms within ``params.radius``, and
+    :meth:`AtomGraphBuilder.seed_sym_nodes_within_radius` adds the
+    symmetry-image atoms inside the same sphere.  Without the latter, a
+    metal on a special position would seed only the identity copy of its
+    coordinating residues, so the symmetry copies -- reached later by BFS
+    -- would be truncated differently (e.g. cut at CA-CB where the ASU copy
+    keeps CA/CB).
 
     Parameters
     ----------
@@ -417,19 +426,24 @@ class QMRegionBuilder(object):
 
     Returns
     -------
-    set of int
+    set of (int, sgtbx.rt_mx)
     """
-    qm_atoms = set()
+    identity = _canon_op(sgtbx.rt_mx())
+    qm_nodes = set()
     if self.params.skip_radius_search:
       for seed in seeds:
-        qm_atoms.add(seed.i_seq)
+        qm_nodes.add((seed.i_seq, identity))
     else:
       for seed in seeds:
         mask = self._graph_builder.atoms_within_radius_best(
           seed, model, self.params.radius
         )
-        qm_atoms |= set(mask.iselection())
-    return qm_atoms
+        for iseq in mask.iselection():
+          qm_nodes.add((iseq, identity))
+      qm_nodes |= self._graph_builder.seed_sym_nodes_within_radius(
+        seeds, model, self.params.radius
+      )
+    return qm_nodes
 
   def _add_hull_waters(self, model, visited_nodes):
     """Extend *visited_nodes* with water residue groups whose
