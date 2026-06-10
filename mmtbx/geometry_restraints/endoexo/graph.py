@@ -197,3 +197,49 @@ class AtomGraphBuilder:
     if mask.count(True) == 0:
       mask = self.atoms_within_radius_string(center_atom, model, radius)
     return mask
+
+  def seed_sym_nodes_within_radius(self, seeds, model, radius):
+    """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
+
+    The KD-tree radius search (:meth:`atoms_within_radius_best`) only sees
+    ASU atoms, so a metal on or near a special position misses the
+    symmetry-related copies of its coordinating residues that are
+    physically inside the buffer sphere.  This enumerates those copies via
+    ``pair_asu_table`` -- the same mechanism :meth:`add_seed_contact_edges`
+    uses for coordination edges -- and returns one ``(j_seq, rt_mx_ji)``
+    node per atom-image within *radius* of any seed.
+
+    Only **non-identity** images are returned; the identity image is
+    already covered by the KD-tree search, so the caller unions the two.
+
+    Parameters
+    ----------
+    seeds : list of iotbx.pdb.hierarchy.atom
+        Seed atom objects.
+    model : mmtbx.model.manager
+    radius : float
+        Distance threshold in Angstrom.
+
+    Returns
+    -------
+    set of (int, sgtbx.rt_mx)
+        Non-identity atom-image nodes within *radius* of a seed.
+    """
+    identity_xyz = _canon_op(sgtbx.rt_mx()).as_xyz()
+    xs = model.get_xray_structure()
+    pat = xs.pair_asu_table(distance_cutoff=radius)
+    # ``all_interactions_from_inside_asu=True`` enumerates every close
+    # contact of an ASU atom rather than collapsing site-symmetry-equivalent
+    # pairs (see add_seed_contact_edges).
+    sym_table = pat.extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq=False,
+      all_interactions_from_inside_asu=True)
+    nodes = set()
+    for seed in seeds:
+      for j_seq, rt_mx_ji_list in dict(sym_table[seed.i_seq]).items():
+        for rt_mx_ji in rt_mx_ji_list:
+          op = _canon_op(rt_mx_ji)
+          if op.as_xyz() == identity_xyz:
+            continue
+          nodes.add((j_seq, op))
+    return nodes
