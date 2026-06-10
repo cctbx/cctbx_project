@@ -2783,6 +2783,19 @@ class TrialDialog(BaseDialog):
                                           ctrl_size=(80, -1),
                                           choices=choices)
     self.copy_runblocks.ctr.SetSelection(0)
+
+    # Streaming process type, encoded in the trial PHIL (no DB schema change).
+    # onOK prepends ``process_type = <selected>`` to the stored target_phil_str.
+    self.process_types = ['dials.stills_process', 'small_cell',
+                          'image_average', 'archive', 'radial_average']
+    self.process_type = gctr.ChoiceCtrl(self,
+                                        name='process_type',
+                                        label='Process type',
+                                        label_style='normal',
+                                        label_size=(180, -1),
+                                        ctrl_size=(180, -1),
+                                        choices=self.process_types)
+    self.process_type.ctr.SetSelection(0)
     self.throttle = gctr.SpinCtrl(self,
                                   name='trial_throttle',
                                   label='Percent events processed:',
@@ -2827,6 +2840,9 @@ class TrialDialog(BaseDialog):
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.trial_comment,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+    self.main_sizer.Add(self.process_type,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.phil_box, 1,
@@ -2875,6 +2891,7 @@ class TrialDialog(BaseDialog):
       self.throttle.ctr.Disable()
       self.num_bins.ctr.Disable()
       self.d_min.ctr.Disable()
+      self.process_type.ctr.Disable()
 
     if target_phil_str is None:
       target_phil_str = ""
@@ -2882,6 +2899,13 @@ class TrialDialog(BaseDialog):
       process_percent = 100
     self.phil_box.SetValue(target_phil_str)
     self.throttle.ctr.SetValue(process_percent)
+
+    # Reflect the process type encoded in the (possibly inherited) trial PHIL.
+    try:
+      self.process_type.ctr.SetSelection(
+        self.process_types.index(self._extract_process_type(target_phil_str)))
+    except ValueError:
+      self.process_type.ctr.SetSelection(0)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
@@ -2909,41 +2933,64 @@ class TrialDialog(BaseDialog):
     # TODO: Generate default PHIL parameters
     pass
 
+  def _extract_process_type(self, target_phil_str):
+    # Read the process_type encoded in a stored trial PHIL (default stills).
+    from iotbx.phil import parse
+    scope = parse("""process_type = *dials.stills_process small_cell image_average archive radial_average
+  .type = choice""")
+    if not target_phil_str:
+      return 'dials.stills_process'
+    return scope.fetch(parse(target_phil_str)).extract().process_type
+
   def onOK(self, e):
     if self.new:
       target_phil_str = self.phil_box.GetValue()
+      selected_process_type = self.process_types[self.process_type.ctr.GetSelection()]
 
-      # Parameter validation
-      dispatcher = self.db.params.dispatcher
-      from xfel.ui import load_phil_scope_from_dispatcher
-      phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+      # The selector is authoritative: drop any process_type already in the box
+      # (e.g. inherited from a copied trial) so we store exactly one.
+      cleaned_phil_str = "\n".join(
+        line for line in target_phil_str.splitlines()
+        if not line.strip().startswith("process_type"))
 
-      from iotbx.phil import parse
-      msg = None
-      try:
-        trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
-      except Exception as e:
-        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
-      else:
-        if len(unused) > 0:
-          msg = [str(item) for item in unused]
-          msg = '\n'.join(['  %s' % line for line in msg])
-          msg = 'The following definitions were not recognized:\n%s\n' % msg
+      # Validate against the dispatcher only for the stills-based process types.
+      # radial_average / archive / image_average carry params the stills
+      # dispatcher scope does not define, so its unused-definition check would
+      # reject them.
+      if selected_process_type in ('dials.stills_process', 'small_cell'):
+        dispatcher = self.db.params.dispatcher
+        from xfel.ui import load_phil_scope_from_dispatcher
+        phil_scope = load_phil_scope_from_dispatcher(dispatcher)
 
+        from iotbx.phil import parse
+        msg = None
         try:
-          params = trial_params.extract()
+          trial_params, unused = phil_scope.fetch(parse(cleaned_phil_str), track_unused_definitions = True)
         except Exception as e:
-          if msg is None: msg = ""
-          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+          msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
+        else:
+          if len(unused) > 0:
+            msg = [str(item) for item in unused]
+            msg = '\n'.join(['  %s' % line for line in msg])
+            msg = 'The following definitions were not recognized:\n%s\n' % msg
 
-      if msg is not None:
-        msg += '\nFix the parameters and press OK again'
-        msgdlg = wx.MessageDialog(self,
-                                  message=msg,
-                                  caption='Warning',
-                                  style=wx.OK |  wx.ICON_EXCLAMATION)
-        msgdlg.ShowModal()
-        return
+          try:
+            params = trial_params.extract()
+          except Exception as e:
+            if msg is None: msg = ""
+            msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+
+        if msg is not None:
+          msg += '\nFix the parameters and press OK again'
+          msgdlg = wx.MessageDialog(self,
+                                    message=msg,
+                                    caption='Warning',
+                                    style=wx.OK |  wx.ICON_EXCLAMATION)
+          msgdlg.ShowModal()
+          return
+
+      # Encode the selected process type in the stored trial PHIL.
+      target_phil_str = "process_type = %s\n%s" % (selected_process_type, cleaned_phil_str)
 
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
