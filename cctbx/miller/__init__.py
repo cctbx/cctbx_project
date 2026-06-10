@@ -694,6 +694,10 @@ class set(crystal.symmetry):
     return array(
       self, self.unit_cell().stol_sq(self.indices()))
 
+  def sin_theta_over_lambda(self):
+    return array(
+      self, self.unit_cell().stol(self.indices()))
+
   def two_theta(self, wavelength, deg=False):
     """
     Generate a double Miller array containing the scattering angle of each
@@ -2507,6 +2511,19 @@ class array(set):
       return self
     else :
       return self.select(self.sigmas() > 0)
+
+  def treat_negative_amplitudes_shelx(self, omit_s):
+    if omit_s > 0:
+      return self
+    new_data = len(self.data())*[None]
+    s = omit_s/2
+    for i, I in enumerate(self.data()):
+      sig = self.sigmas()[i]
+      new_data[i] = s*sig if I < s*sig else I
+    return self.customized_copy(
+      data=flex.double(new_data),
+      sigmas=self.sigmas())
+
 
   def enforce_positive_amplitudes(self,i_sig_level=-4.0):
     """
@@ -5067,6 +5084,20 @@ class array(set):
     correction = self.shelxl_extinction_correction(x, wavelength)
     return self.customized_copy(data=self.data() * correction)
 
+  def shelxl_SWAT_correction(self, g, U):
+    """
+    Fc_sq(new) = Fc_sq(1 - g.exp[-8 pi^2 U stol^2])^2
+    """
+    stol_sqs = self.unit_cell().stol_sq(self.indices())
+
+    correction = [1 - g*math.exp(-8*math.pi*math.pi*U*stol_sq) for stol_sq in stol_sqs]
+    correction = flex.pow(correction, 2)
+    return correction
+
+  def apply_shelxl_SWAT_correction(self, g, U):
+    correction = self.shelxl_SWAT_correction(g, U)
+    return self.customized_copy(data=self.data() * correction)
+
   def f_obs_f_calc_fan_outlier_selection(self,
         f_calc,
         offset_low=0.05,
@@ -5131,7 +5162,7 @@ class array(set):
         data=result.data,
         sigmas=result.sigmas).set_observation_type(self)
     else: #HKLF 4
-      result = observations.observations(
+      result = observations.observations(self.space_group(),
         self.indices(), self.data(), self.sigmas(), tw_cmps)
       result.fo_sq = self
     # synchronise the life-time of the reference objects

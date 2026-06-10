@@ -182,17 +182,17 @@ public:
     reparametrisation::iterator p = reparam->parameters().begin();
 
     // Expected from DFS
-    SMTBX_ASSERT(*p++ == s1);
-    SMTBX_ASSERT(*p++ == s2);
-    SMTBX_ASSERT(*p++ == s5);
-    SMTBX_ASSERT(*p++ == s7);
-    SMTBX_ASSERT(*p++ == s3);
-    SMTBX_ASSERT(*p++ == s4);
-    SMTBX_ASSERT(*p++ == s6);
-    SMTBX_ASSERT(*p++ == s8);
-    SMTBX_ASSERT(*p++ == s11);
-    SMTBX_ASSERT(*p++ == s10);
-    SMTBX_ASSERT(*p++ == s9);
+    SMTBX_ASSERT((*p++).get() == s1);
+    SMTBX_ASSERT((*p++).get() == s2);
+    SMTBX_ASSERT((*p++).get() == s5);
+    SMTBX_ASSERT((*p++).get() == s7);
+    SMTBX_ASSERT((*p++).get() == s3);
+    SMTBX_ASSERT((*p++).get() == s4);
+    SMTBX_ASSERT((*p++).get() == s6);
+    SMTBX_ASSERT((*p++).get() == s8);
+    SMTBX_ASSERT((*p++).get() == s11);
+    SMTBX_ASSERT((*p++).get() == s10);
+    SMTBX_ASSERT((*p++).get() == s9);
 
     check_parameter_status();
 

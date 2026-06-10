@@ -32,6 +32,8 @@ namespace scitbx { namespace matrix { namespace tensors {
   } // tensor utils
 
   using cctbx::sgtbx::rot_mx;
+  typedef std::vector<int> index_t;
+  typedef std::vector<index_t> index_list_t;
 
   template <class heir_t, typename FloatType>
   class tensor_base {
@@ -42,7 +44,7 @@ namespace scitbx { namespace matrix { namespace tensors {
     /* https://en.wikipedia.org/wiki/Heap%27s_algorithm
     initialises equivalent map indices
     */
-    static void init_index(size_t k, std::vector<int> &idx, size_t linear_index) {
+    static void init_index(size_t k, index_t &idx, size_t linear_index) {
       if (k == 1) {
         heir_t::get_linear_index_(idx) = linear_index;
       }
@@ -63,9 +65,9 @@ namespace scitbx { namespace matrix { namespace tensors {
     multiplicity
     */
     static void init_map_m() {
-      const std::vector<std::vector<int> > &indices = heir_t::get_indices();
+      const index_list_t &indices = heir_t::get_indices();
       for (size_t i = 0; i < indices.size(); i++) {
-        std::vector<int> idx = indices[i];
+        index_t idx = indices[i];
         init_index(idx.size(), idx, i);
         size_t mps[3] = { 0, 0, 0 };
         for (size_t j = 0; j < idx.size(); j++) {
@@ -75,8 +77,8 @@ namespace scitbx { namespace matrix { namespace tensors {
       }
     }
 
-    static std::vector<size_t> &get_multiplicity_() {
-      static std::vector<size_t> multiplicity(heir_t::size());
+    static index_t &get_multiplicity_() {
+      static index_t multiplicity(heir_t::size());
       return multiplicity;
     }
 
@@ -85,7 +87,7 @@ namespace scitbx { namespace matrix { namespace tensors {
 
     FloatType & operator [](size_t i) { return self().data_[i]; }
 
-    static size_t get_linear_idx(const std::vector<int> &idx) {
+    static size_t get_linear_idx(const index_t &idx) {
       return heir_t::get_linear_index_(idx);
     }
 
@@ -93,7 +95,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return get_multiplicity_()[i];
     }
 
-    static const std::vector<std::vector<int> > &get_indices() {
+    static const index_list_t &get_indices() {
       return heir_t::get_indices_();
     }
     /* this might be required in a multithreaded environment!
@@ -101,13 +103,24 @@ namespace scitbx { namespace matrix { namespace tensors {
     static void initialise() {
       heir_t::get_map();
     }
+    /* This is equivalent to h*T*h^t and in genenal e.g. for rank 3 T and h
+    tv = h*T:
+      for (size_t ti = 0; ti < 3; ti++) {
+        for (size_t tj = 0; tj < 3; tj++) {
+          for (size_t tk = 0; tk < 3; tk++) {
+            tv[ti] += h[tj] * h[tk] * T(tk, tj, ti);
+          }
+        }
+      }
+      return tv.DotProd(h)
+    */
 
     template <typename NumType>
     FloatType sum_up(const scitbx::vec3<NumType> &h) const {
       FloatType r = 0;
-      const std::vector<std::vector<int> > &indices = get_indices();
+      const index_list_t &indices = get_indices();
       for (size_t i = 0; i < indices.size(); i++) {
-        const std::vector<int> &idx = indices[i];
+        const index_t &idx = indices[i];
         FloatType prod_h = 1;
         for (size_t j = 0; j < heir_t::rank(); j++) {
           prod_h *= h[idx[j]];
@@ -123,9 +136,9 @@ namespace scitbx { namespace matrix { namespace tensors {
       const scitbx::vec3<NumType> &h) const
     {
       af::shared<FloatType> r(heir_t::size());
-      const std::vector<std::vector<int> > &indices = get_indices();
+      const index_list_t &indices = get_indices();
       for (size_t i = 0; i < indices.size(); i++) {
-        const std::vector<int> &idx = indices[i];
+        const index_t &idx = indices[i];
         FloatType prod_h = 1;
         for (size_t j = 0; j < heir_t::rank(); j++) {
           prod_h *= h[idx[j]];
@@ -133,6 +146,23 @@ namespace scitbx { namespace matrix { namespace tensors {
         r[i] = prod_h * get_multiplicity(i);
       }
       return r;
+    }
+
+    template <typename NumType>
+    void gradient_coefficients(
+      const scitbx::vec3<NumType>& h,
+      std::vector<std::complex<FloatType> > &rv,
+      const int offset) const
+    {
+      const index_list_t& indices = get_indices();
+      for (size_t i = 0; i < indices.size(); i++) {
+        const index_t& idx = indices[i];
+        FloatType prod_h = 1;
+        for (size_t j = 0; j < heir_t::rank(); j++) {
+          prod_h *= h[idx[j]];
+        }
+        rv[i + offset] = prod_h * get_multiplicity(i);
+      }
     }
 
     const af::shared<FloatType> &data() const {
@@ -177,7 +207,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return r;
     }
 
-    static size_t &get_linear_index_(const std::vector<int> &idx) {
+    static size_t &get_linear_index_(const index_t &idx) {
       return get_map()[idx[0]][idx[1]];
     }
 
@@ -189,8 +219,8 @@ namespace scitbx { namespace matrix { namespace tensors {
       return map;
     }
 
-    static const std::vector<std::vector<int> > &get_indices_() {
-      static std::vector<std::vector<int> > indices;
+    static const index_list_t &get_indices_() {
+      static index_list_t indices;
       if (indices.empty()) {
         indices.resize(size());
         for (size_t i = 0; i < size(); i++) {
@@ -234,7 +264,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return data_[get_map()[i][j]];
     }
 
-    static af::shared <FloatType> get_transform(const std::vector<int> &idx,
+    static af::shared <FloatType> get_transform(const index_t &idx,
       const rot_mx &rm)
     {
       tensor_rank_2 result;
@@ -245,6 +275,30 @@ namespace scitbx { namespace matrix { namespace tensors {
         }
       }
       return result.data_;
+    }
+
+    tensor_rank_2 transform(const rot_mx& rm) const {
+      tensor_rank_2 r;
+      const index_list_t& indices = parent_t::get_indices();
+      for (size_t i = 0; i < indices.size(); i++) {
+        const index_t& idx = indices[i];
+        size_t dli = parent_t::get_linear_idx(idx);
+        for (size_t l = 0; l < 3; l++) {
+          for (size_t m = 0; m < 3; m++) {
+            size_t li = linearise(l, m);
+            double p_ = rm(idx[0], l) * rm(idx[1], m);
+            r.data()[dli] += p_ * data_[li];
+          }
+        }
+      }
+      return r;
+    }
+
+    tensor_rank_2& operator = (const scitbx::sym_mat3<FloatType> &m) {
+      for (int i=0; i < 6; i++) {
+        data_[i] = m[i];
+      }
+      return *this;
     }
 
     static size_t rank() { return 2; }
@@ -290,7 +344,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return r;
     }
 
-    static size_t &get_linear_index_(const std::vector<int> &idx) {
+    static size_t &get_linear_index_(const index_t &idx) {
       return get_map()[idx[0]][idx[1]][idx[2]];
     }
 
@@ -305,8 +359,8 @@ namespace scitbx { namespace matrix { namespace tensors {
       return map;
     }
 
-    static const std::vector<std::vector<int> > &get_indices_() {
-      static std::vector<std::vector<int> > indices;
+    static const index_list_t &get_indices_() {
+      static index_list_t indices;
       if (indices.empty()) {
         indices.resize(size());
         for (int i = 0, idx = 0; i < 3; i++) {
@@ -340,7 +394,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return data_[get_map()[i][j][k]];
     }
 
-    static af::shared <FloatType> get_transform(const std::vector<int> &idx,
+    static af::shared <FloatType> get_transform(const index_t &idx,
       const rot_mx &rm)
     {
       tensor_rank_3 result;
@@ -353,6 +407,25 @@ namespace scitbx { namespace matrix { namespace tensors {
         }
       }
       return result.data_;
+    }
+
+    tensor_rank_3 transform(const rot_mx& rm) const {
+      tensor_rank_3 r;
+      const index_list_t& indices = parent_t::get_indices();
+      for (size_t i = 0; i < indices.size(); i++) {
+        const index_t &idx = indices[i];
+        size_t dli = parent_t::get_linear_idx(idx);
+        for (size_t l = 0; l < 3; l++) {
+          for (size_t m = 0; m < 3; m++) {
+            for (size_t n = 0; n < 3; n++) {
+              size_t li = linearise(l, m, n);
+              double p_ = rm(idx[0],l) * rm(idx[1],m) * rm(idx[2], n);
+              r.data()[dli] += p_ * data_[li];
+            }
+          }
+        }
+      }
+      return r;
     }
 
     static size_t rank() { return 3; }
@@ -401,7 +474,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return r;
     }
 
-    static size_t &get_linear_index_(const std::vector<int> &idx) {
+    static size_t &get_linear_index_(const index_t &idx) {
       return get_map()[idx[0]][idx[1]][idx[2]][idx[3]];
     }
 
@@ -419,8 +492,8 @@ namespace scitbx { namespace matrix { namespace tensors {
       return map;
     }
 
-    static const std::vector<std::vector<int> > &get_indices_() {
-      static std::vector<std::vector<int> > indices;
+    static const index_list_t &get_indices_() {
+      static index_list_t indices;
       if (indices.empty()) {
         indices.resize(size());
         for (int i = 0, idx = 0; i < 3; i++) {
@@ -458,7 +531,28 @@ namespace scitbx { namespace matrix { namespace tensors {
       return data_[get_map()[i][j][k][l]];
     }
 
-    static af::shared <FloatType> get_transform(const std::vector<int> &idx,
+    tensor_rank_4 transform(const rot_mx& rm) const {
+      tensor_rank_4 r;
+      const index_list_t& indices = parent_t::get_indices();
+      for (size_t i = 0; i < indices.size(); i++) {
+        const index_t& idx = indices[i];
+        size_t dli = parent_t::get_linear_idx(idx);
+        for (size_t l = 0; l < 3; l++) {
+          for (size_t m = 0; m < 3; m++) {
+            for (size_t n = 0; n < 3; n++) {
+              for (size_t p = 0; p < 3; p++) {
+                size_t li = linearise(l, m, n, p);
+                double pr = rm(idx[0], l) * rm(idx[1], m) * rm(idx[2], n) * rm(idx[3], p);
+                r.data()[dli] += pr * data_[li];
+              }
+            }
+          }
+        }
+      }
+      return r;
+    }
+
+    static af::shared <FloatType> get_transform(const index_t &idx,
       const rot_mx &rm)
     {
       tensor_rank_4 result;
