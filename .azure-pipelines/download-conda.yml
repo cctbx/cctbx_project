@@ -14,9 +14,6 @@ jobs:
   strategy:
     maxParallel: 3
     matrix:
-      linux_py39:
-        OS: linux-64
-        PYTHON_VERSION: py39
       linux_py310:
         OS: linux-64
         PYTHON_VERSION: py310
@@ -32,9 +29,6 @@ jobs:
       linux_py314:
         OS: linux-64
         PYTHON_VERSION: py314
-      macos_py39:
-        OS: osx-64
-        PYTHON_VERSION: py39
       macos_py310:
         OS: osx-64
         PYTHON_VERSION: py310
@@ -50,9 +44,6 @@ jobs:
       macos_py314:
         OS: osx-64
         PYTHON_VERSION: py314
-      win_py39:
-        OS: win-64
-        PYTHON_VERSION: py39
       win_py310:
         OS: win-64
         PYTHON_VERSION: py310
