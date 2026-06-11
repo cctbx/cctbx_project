@@ -240,8 +240,8 @@ def exercise_read_file_handler_returns_string():
     builtin = os.path.join(tmp, "builtin")
     os.makedirs(builtin)
     skill_dir = _make_skill(builtin, "x")
-    with open(os.path.join(skill_dir, "note.md"), "w") as fh:
-      fh.write("citation list\n")
+    with open(os.path.join(skill_dir, "note.md"), "wb") as fh:
+      fh.write(b"citation list\n")
     loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
     skills = loader.load_default()
     tools = dict((spec.name, h) for spec, h in loader.tools(skills))
