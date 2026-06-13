@@ -88,7 +88,7 @@ def exercise_parse_file_type_style():
 
 
 def exercise_detect_data_type():
-  """detect_data_type routes through any_file + data_manager_type."""
+  """detect_data_type delegates to iotbx.file_io.get_file_type."""
   from qttbx.widgets.data_manager._phil_helpers import detect_data_type
   import tempfile
   import os

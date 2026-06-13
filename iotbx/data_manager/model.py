@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model
 
-from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
 from libtbx.utils import Sorry
@@ -223,7 +222,7 @@ The choices are {}.
     return self._has_data(ModelDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_model_file(self, filename):
+  def process_model_file(self, filename, force=False):
     """
     Parse a model file and store the mmtbx.model.manager object
 
@@ -231,6 +230,8 @@ The choices are {}.
     ----------
     filename : str
         The filepath as a string
+    force : bool, optional
+        If True, force the reader to extract the model from a combined CIF
 
     Returns
     -------
@@ -238,25 +239,23 @@ The choices are {}.
         The model filename added to the DataManager
 
     """
-    # unique because any_file does not return a model object
+    # parse once via the file_io facade (type already known)
     if (filename not in self.get_model_names()):
-      a = any_file(filename)
-      if (a.file_type != 'pdb'):
-        raise Sorry('%s is not a recognized model file' % filename)
-      else:
-        model_in = a.file_content.input
-        expand_with_mtrix = True  # default
-        skip_ss_annotations = False
-        if 'model_skip_expand_with_mtrix' in self.custom_options:
-          expand_with_mtrix = False
-        if 'model_skip_ss_annotations' in self.custom_options:
-          skip_ss_annotations = True
-        model = mmtbx.model.manager(
-          model_input=model_in,
-          expand_with_mtrix=expand_with_mtrix,
-          skip_ss_annotations=skip_ss_annotations,
-          log=self.logger)
-        self.add_model(filename, model)
+      from iotbx.file_io import read_file
+      result = read_file(filename, file_type='model', force=force)
+      model_in = result.file_object.input
+      expand_with_mtrix = True  # default
+      skip_ss_annotations = False
+      if 'model_skip_expand_with_mtrix' in self.custom_options:
+        expand_with_mtrix = False
+      if 'model_skip_ss_annotations' in self.custom_options:
+        skip_ss_annotations = True
+      model = mmtbx.model.manager(
+        model_input=model_in,
+        expand_with_mtrix=expand_with_mtrix,
+        skip_ss_annotations=skip_ss_annotations,
+        log=self.logger)
+      self.add_model(filename, model)
     return filename
 
   def process_model_str(self, label, model_str):

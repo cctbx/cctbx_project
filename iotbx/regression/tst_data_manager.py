@@ -535,6 +535,200 @@ YTGDHYATFSLIDQTC
   os.remove(seq_filename)
 
 # -----------------------------------------------------------------------------
+def test_json_datatype():
+  """Exercise the JSON DataManager datatype: in-memory CRUD, file round-trip,
+  flexible write (object or pre-formatted string), and error handling."""
+  import json
+
+  filename = 'test_dm.json'
+  data = {'name': 'cctbx', 'values': [1, 2, 3], 'nested': {'a': True}}
+
+  # in-memory: add / get / names / default / has / remove
+  dm = DataManager(['json'])
+  dm.add_json(filename, data)
+  assert filename in dm.get_json_names()
+  assert dm.get_default_json_name() == filename
+  assert dm.get_json() == data            # no-arg returns the default
+  assert dm.get_json(filename) == data
+  assert dm.has_jsons()
+  assert dm.has_jsons(expected_n=1, exact_count=True)
+  dm.remove_json(filename)
+  assert filename not in dm.get_json_names()
+  assert not dm.has_jsons()
+
+  # output-filename helper appends .json
+  dm = DataManager(['json'])
+  dm.set_default_output_filename('myout')
+  assert dm.get_default_output_json_filename() == 'myout.json'
+
+  # process a real file -> parsed object round-trips
+  with open(filename, 'w') as f:
+    json.dump(data, f)
+  dm = DataManager(['json'])
+  assert dm.process_json_file(filename) == filename
+  assert dm.get_json(filename) == data
+  os.remove(filename)
+
+  # write a Python object -> read back equal
+  out = 'test_dm_out.json'
+  dm = DataManager(['json'])
+  dm.write_json_file(data, filename=out, overwrite=True)
+  with open(out) as f:
+    assert json.load(f) == data
+  os.remove(out)
+
+  # write a pre-formatted string -> written verbatim
+  pre = '{"x": 1}'
+  dm.write_json_file(pre, filename=out, overwrite=True)
+  with open(out) as f:
+    assert f.read() == pre
+  os.remove(out)
+
+  # invalid JSON content -> Sorry
+  bad = 'test_dm_bad.json'
+  with open(bad, 'w') as f:
+    f.write('{bad')
+  dm = DataManager(['json'])
+  got_sorry = False
+  try:
+    dm.process_json_file(bad)
+  except Sorry:
+    got_sorry = True
+  assert got_sorry
+  os.remove(bad)
+
+  # missing file -> Sorry (NOT a raw FileNotFoundError)
+  dm = DataManager(['json'])
+  got_sorry = False
+  try:
+    dm.process_json_file('does_not_exist_zzz.json')
+  except Sorry:
+    got_sorry = True
+  assert got_sorry
+
+# -----------------------------------------------------------------------------
+def test_yaml_datatype():
+  """Exercise the YAML DataManager datatype. Skips if PyYAML is unavailable
+  (mirrors the monomer_library skip in test_model_datatype)."""
+  try:
+    import yaml
+  except ImportError:
+    print('Skipping test_yaml_datatype, PyYAML not available')
+    return
+
+  filename = 'test_dm.yaml'
+  data = {'name': 'cctbx', 'values': [1, 2, 3], 'nested': {'a': True}}
+
+  # in-memory: add / get / names / default / has / remove
+  dm = DataManager(['yaml'])
+  dm.add_yaml(filename, data)
+  assert filename in dm.get_yaml_names()
+  assert dm.get_default_yaml_name() == filename
+  assert dm.get_yaml() == data            # no-arg returns the default
+  assert dm.get_yaml(filename) == data
+  assert dm.has_yamls()
+  assert dm.has_yamls(expected_n=1, exact_count=True)
+  dm.remove_yaml(filename)
+  assert filename not in dm.get_yaml_names()
+  assert not dm.has_yamls()
+
+  # output-filename helper appends .yaml
+  dm = DataManager(['yaml'])
+  dm.set_default_output_filename('myout')
+  assert dm.get_default_output_yaml_filename() == 'myout.yaml'
+
+  # process a real file -> parsed object round-trips
+  with open(filename, 'w') as f:
+    yaml.safe_dump(data, f)
+  dm = DataManager(['yaml'])
+  assert dm.process_yaml_file(filename) == filename
+  assert dm.get_yaml(filename) == data
+  os.remove(filename)
+
+  # write a Python object -> read back equal
+  out = 'test_dm_out.yaml'
+  dm = DataManager(['yaml'])
+  dm.write_yaml_file(data, filename=out, overwrite=True)
+  with open(out) as f:
+    assert yaml.safe_load(f) == data
+  os.remove(out)
+
+  # write a pre-formatted string -> written verbatim
+  pre = 'x: 1\n'
+  dm.write_yaml_file(pre, filename=out, overwrite=True)
+  with open(out) as f:
+    assert f.read() == pre
+  os.remove(out)
+
+  # GENUINELY malformed YAML -> Sorry. NOTE: arbitrary text like 'not yaml'
+  # is VALID YAML (parses to the string), so it would NOT raise. Use an
+  # unbalanced flow collection to force a yaml.YAMLError.
+  bad = 'test_dm_bad.yaml'
+  with open(bad, 'w') as f:
+    f.write('[1, 2')
+  dm = DataManager(['yaml'])
+  got_sorry = False
+  try:
+    dm.process_yaml_file(bad)
+  except Sorry:
+    got_sorry = True
+  assert got_sorry
+  os.remove(bad)
+
+  # empty file parses to None (the one behavioral asymmetry with JSON)
+  empty = 'test_dm_empty.yaml'
+  with open(empty, 'w') as f:
+    f.write('')
+  dm = DataManager(['yaml'])
+  assert dm.process_yaml_file(empty) == empty
+  assert dm.get_yaml(empty) is None
+  os.remove(empty)
+
+# -----------------------------------------------------------------------------
+def test_yaml_without_pyyaml():
+  """Guard the lazy PyYAML import in iotbx/data_manager/yaml.py: a DataManager
+  with the yaml datatype must still construct when PyYAML is absent, and YAML
+  use must raise a user-facing Sorry (not ImportError). Runs regardless of
+  whether PyYAML is installed."""
+  import sys
+
+  fn = 'test_dm_nopyyaml.yaml'
+  _missing = object()
+  saved = sys.modules.get('yaml', _missing)
+  sys.modules['yaml'] = None   # makes "import yaml" raise ImportError
+  try:
+    # construction must succeed without PyYAML (the import is lazy)
+    dm = DataManager(['yaml'])
+    assert dm.supports('yaml')
+
+    # reading a real YAML file must surface the install-guidance Sorry
+    with open(fn, 'w') as f:
+      f.write('a: 1\n')
+    got_sorry = False
+    try:
+      dm.process_yaml_file(fn)
+    except Sorry as e:
+      got_sorry = True
+      assert 'PyYAML' in str(e)
+    assert got_sorry
+
+    # writing a Python object must surface the same Sorry
+    got_sorry = False
+    try:
+      dm.write_yaml_file({'a': 1}, filename='wont_write.yaml', overwrite=True)
+    except Sorry as e:
+      got_sorry = True
+      assert 'PyYAML' in str(e)
+    assert got_sorry
+  finally:
+    if saved is _missing:
+      sys.modules.pop('yaml', None)
+    else:
+      sys.modules['yaml'] = saved
+    if os.path.isfile(fn):
+      os.remove(fn)
+
+# -----------------------------------------------------------------------------
 def test_miller_array_datatype():
 
   data_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1152,6 +1346,9 @@ if __name__ == '__main__':
   test_data_manager()
   test_model_datatype()
   test_sequence_datatype()
+  test_json_datatype()
+  test_yaml_datatype()
+  test_yaml_without_pyyaml()
   test_miller_array_datatype()
   test_real_map_datatype()
   test_map_mixins()

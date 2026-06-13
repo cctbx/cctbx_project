@@ -2,10 +2,8 @@ from __future__ import absolute_import, division, print_function
 '''
 '''
 
-from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
-from libtbx.utils import Sorry
 
 # =============================================================================
 class RestraintDataManager(DataManagerBase):
@@ -36,13 +34,12 @@ class RestraintDataManager(DataManagerBase):
     return self._has_data(RestraintDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_restraint_file(self, filename):
+  def process_restraint_file(self, filename, cif_engine='xcif', force=False):
     if (filename not in self.get_restraint_names()):
-      a = any_file(filename)
-      if (a.file_type != 'cif'):
-        raise Sorry('%s is not a recognized restraints file' % filename)
-      else:
-        self.add_restraint(filename, a.file_object.model())
+      from iotbx.file_io import read_file
+      result = read_file(filename, file_type='restraint', cif_engine=cif_engine,
+                         force=force)
+      self.add_restraint(filename, result.file_object.model())
     return filename
 
   def get_default_output_restraint_filename(self):

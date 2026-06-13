@@ -68,15 +68,14 @@ def parse_file_type_style(style_str):
 def detect_data_type(filename):
   """Detect the DataManager data type for ``filename``.
 
-  Calls :func:`iotbx.file_reader.any_file` and translates the result
-  through :data:`iotbx.data_manager.data_manager_type`. Returns
-  ``None`` if the file is missing, unreadable, or maps to a file_type
-  not in ``data_manager_type``. Never raises.
+  Delegates to :func:`iotbx.file_io.get_file_type` (fast detection that
+  supersedes the old any_file pass). Returns ``None`` if the file is
+  missing, unreadable, or unrecognized. Never raises.
 
   Parameters
   ----------
   filename : str
-    A filesystem path. Normalized internally before any_file is called.
+    A filesystem path. Normalized internally before detection.
 
   Returns
   -------
@@ -84,16 +83,11 @@ def detect_data_type(filename):
     A DataManager data type (e.g. ``"model"``, ``"miller_array"``), or
     ``None``.
   """
-  from iotbx.data_manager import data_manager_type
-  from iotbx.file_reader import any_file
+  from iotbx.file_io import get_file_type
   filename = normalize_path(filename)
   if not os.path.exists(filename):
     return None
-  try:
-    af = any_file(filename)
-  except Exception:
-    return None
-  return data_manager_type.get(af.file_type)
+  return get_file_type(filename)
 
 
 def compatible_phil_params(phil_model, file_data_type):

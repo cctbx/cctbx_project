@@ -185,9 +185,9 @@ class MillerArrayDataManager(DataManagerBase):
     return self._has_data(MillerArrayDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_miller_array_file(self, filename):
+  def process_miller_array_file(self, filename, force=False):
     if filename not in self.get_miller_array_names():
-      self._process_file(MillerArrayDataManager.datatype, filename)
+      self._process_file(MillerArrayDataManager.datatype, filename, force=force)
       self._filter_miller_array_child_datatypes(filename)
     return filename
 

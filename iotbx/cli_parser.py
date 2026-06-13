@@ -13,8 +13,7 @@ from six.moves import cStringIO as StringIO
 import iotbx.phil
 import libtbx.phil
 
-from iotbx.data_manager import DataManager, data_manager_type
-from iotbx.file_reader import any_file
+from iotbx.data_manager import DataManager
 from libtbx import citations
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
@@ -410,7 +409,7 @@ Also, specifying this flag implies that --json is also specified.'''
     files exist. There may be conditions where the file is deleted in the time
     between the first pass and calling this function.
 
-    Use iotbx.file_reader.any_file to process files.
+    Use self.data_manager.process_file to detect and process each file.
     Will need updating to work with mmtbx.model.manager class more efficiently
     '''
     print(message, file=self.logger)
@@ -421,11 +420,12 @@ Also, specifying this flag implies that --json is also specified.'''
     unused_files = []
 
     for filename in file_list:
-      a = any_file(filename)
-      process_function = 'process_%s_file' % data_manager_type.get(a.file_type)
-      if hasattr(self.data_manager, process_function):
-        getattr(self.data_manager, process_function)(filename)
-        print('  Found %s, %s' % (data_manager_type[a.file_type], filename),
+      try:
+        datatypes = self.data_manager.process_file(filename)
+      except Sorry:
+        datatypes = []
+      if datatypes:
+        print('  Found %s, %s' % (', '.join(datatypes), filename),
               file=self.logger)
         printed_something = True
       else:

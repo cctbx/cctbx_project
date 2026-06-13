@@ -16,27 +16,14 @@ from six.moves import range
 import iotbx.phil
 import libtbx.phil
 
-from iotbx.file_reader import any_file
 from libtbx import Auto
 from libtbx.utils import multi_out, Sorry
 
 # =============================================================================
-# mapping from DataManager datatypes to any_file file types
-any_file_type = {
-  'map_coefficients':'hkl',
-  'miller_array':'hkl',
-  'model':'pdb',
-  'ncs_spec':'ncs',
-  'phil':'phil',
-  'real_map':'ccp4_map',
-  'restraint':'cif',
-  'sequence':'seq',
-}
-
-# reverse dictionary to map any_file types to DataManager datatypes
-data_manager_type = {value:key for key, value in any_file_type.items()}
-data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
-data_manager_type['mtz'] = 'miller_array'   # accept the legacy file_type:mtz token
+# datatype <-> any_file maps now live in iotbx.file_io (a lower layer); re-export
+# them here for backward compatibility with existing importers (cli_parser, the
+# qttbx widgets, etc.).
+from iotbx.file_io import any_file_type, data_manager_type, get_file_type, read_file
 
 # build list of supported datatypes
 # datatypes have corresponding modules in iotbx/data_manager
@@ -393,6 +380,112 @@ data_manager
     return datatype in self.datatypes
 
   # ---------------------------------------------------------------------------
+  def get_file_type(self, filename, verify=True):
+    '''
+    Return the DataManager datatype for filename, restricted to the datatypes
+    this DataManager supports, or None. Never raises.
+
+    Parameters
+    ----------
+    filename : str
+        The filepath to detect the datatype of
+    verify : bool, optional
+        If True, the extension-based guess is confirmed against the file
+        content; if False, the extension is trusted.
+
+    Returns
+    -------
+    str or None
+        The DataManager datatype, or None if unrecognized or not supported
+        by this DataManager
+    '''
+    return get_file_type(filename, valid_types=self.datatypes, verify=verify,
+                         logger=self.logger)
+
+  def process_file(self, filename, cif_engine='xcif'):
+    '''
+    Detect filename's datatype(s) and load it. A CIF that contains model,
+    miller_array, and/or restraint content is added as every one of those types
+    that this DataManager supports. Idempotent.
+
+    Parameters
+    ----------
+    filename : str
+        The filepath to detect and process
+    cif_engine : str, optional
+        The CIF engine ("xcif" or "ucif") used to determine CIF content and read
+        restraints
+
+    Returns
+    -------
+    list of str
+        The datatypes added (one for a single-type file, more for a combined
+        CIF); empty if the file is not a supported type for this DataManager.
+        A reader rejection -- the detected type's reader fails to parse the file,
+        whether a detection false-positive or a corrupt file of that type -- is
+        also reported as an empty list, not raised (mirroring the combined-CIF
+        branch); callers needing the parse error should call read_file directly.
+    '''
+    from iotbx.file_io.detection import _is_cif, _cif_datatypes
+    if _is_cif(filename):
+      cif_types = _cif_datatypes(filename, cif_engine)
+      if cif_types:
+        return self._process_combined_cif(filename, cif_types, cif_engine)
+    datatype = self.get_file_type(filename)
+    if datatype is None:
+      return []
+    process_function = 'process_%s_file' % datatype
+    if not hasattr(self, process_function):
+      return []
+    try:
+      if datatype == 'restraint':
+        getattr(self, process_function)(filename, cif_engine=cif_engine)
+      else:
+        getattr(self, process_function)(filename)
+    except Sorry:
+      # detection picked a datatype but the type-specific reader rejected the
+      # content (a detection false-positive); report the file as unused ([]),
+      # matching the combined-CIF branch and this method's contract, rather than
+      # letting the Sorry escape to callers that trust the return value.
+      return []
+    return [datatype]
+
+  def _process_combined_cif(self, filename, cif_types, cif_engine):
+    '''
+    Add a CIF as every datatype it contains that this DataManager supports,
+    each force-extracted with its own reader.
+
+    Parameters
+    ----------
+    filename : str
+        The CIF filepath
+    cif_types : set of str
+        The datatypes present in the CIF (from detection._cif_datatypes)
+    cif_engine : str
+        The CIF engine for the restraint reader
+
+    Returns
+    -------
+    list of str
+        The datatypes actually added
+    '''
+    added = []
+    for datatype in ('miller_array', 'model', 'restraint'):  # precedence order
+      if (datatype not in self.datatypes) or (datatype not in cif_types):
+        continue
+      try:
+        if datatype == 'restraint':
+          self.process_restraint_file(filename, cif_engine=cif_engine, force=True)
+        elif datatype == 'model':
+          self.process_model_file(filename, force=True)
+        else:
+          self.process_miller_array_file(filename, force=True)
+        added.append(datatype)
+      except Sorry:
+        pass  # content present but did not parse as that type
+    return added
+
+  # ---------------------------------------------------------------------------
   def set_default_output_filename(self, filename):
     self._default_output_filename = filename
 
@@ -521,13 +614,10 @@ data_manager
     return self._check_count(
       datatype, actual_n, expected_n, exact_count, raise_sorry)
 
-  def _process_file(self, datatype, filename):
+  def _process_file(self, datatype, filename, force=False):
     if filename not in self._get_names(datatype):
-      a = any_file(filename)
-      if a.file_type != any_file_type[datatype]:
-        raise Sorry('%s is not a recognized %s file' % (filename, datatype))
-      else:
-        self._add(datatype, filename, a.file_object)
+      result = read_file(filename, file_type=datatype, force=force)
+      self._add(datatype, filename, result.file_object)
     return filename
 
   def _update_default_output_filename(self, filename):
