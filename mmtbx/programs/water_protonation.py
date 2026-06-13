@@ -218,8 +218,7 @@ By default it is idempotent: waters that already carry H are left untouched
     as_pdb = (self.params.output.format == "pdb"
               and hier.fits_in_pdb_format(use_hybrid36=False))
     if self.params.output.format == "pdb" and not as_pdb:
-      print("note: structure does not fit standard PDB format "
-            "(multi-char chain ID, >99999 atoms, or resseq >9999); "
+      print("note: structure does not fit standard PDB format; "
             "writing mmCIF instead", file=self.logger)
 
     ext = "pdb" if as_pdb else "cif"
