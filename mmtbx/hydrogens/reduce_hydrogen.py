@@ -1010,7 +1010,7 @@ class place_hydrogens():
           get_class(name=parent_atom.parent().resname) in
             ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid'] and
           atoms[_i].name.strip() in ['H1', 'H2', 'H3', 'D1', 'D2', 'D3']):
-        atoms[_i].name = (' ' + atoms[_i].name.strip()[0]).ljust(4)
+        atoms[_i].name = ' %s  ' % atoms[_i].element.strip()
       first_neighbors = fsc1[_i]
       fn_filtered = [item for item in first_neighbors if item not in sel_remove]
       #print(list(first_neighbors), list(sel_remove), fn_filtered )
