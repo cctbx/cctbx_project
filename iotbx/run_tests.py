@@ -16,6 +16,8 @@ tst_list_base = [
   "$D/regression/tst_pdb_cif_inputs.py",
   "$D/regression/tst_pdb_cif_cells.py",
   "$D/regression/tst_data_manager.py",
+  "$D/regression/tst_file_io.py",
+  "$D/regression/tst_text_detection.py",
   "$D/regression/tst_map_manager_wrapping.py",
   "$D/regression/tst_map_manager.py",
   "$D/regression/tst_map_manager_2.py",
