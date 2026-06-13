@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from libtbx.utils import escape_sh_double_quoted, gzip_open, bz2_open
+from libtbx.utils import escape_sh_double_quoted, gzip_open, bz2_open, \
+  lzma_open, zstd_open
 from libtbx import easy_run
 from libtbx.str_utils import show_string
 from six.moves import cStringIO as StringIO
@@ -19,6 +20,10 @@ def for_reading(file_name, mode="r", gzip_mode="rb"):
       stdout_splitlines=False).raise_if_errors().stdout_buffer)
   if file_name.endswith('.bz2'):
     return bz2_open(file_name=file_name, mode=mode)
+  if file_name.endswith(".xz") or file_name.endswith(".lzma"):
+    return lzma_open(file_name=file_name, mode=gzip_mode)
+  if file_name.endswith(".zst") or file_name.endswith(".zstd"):
+    return zstd_open(file_name=file_name, mode=gzip_mode)
   try:
     return open(file_name, mode)
   except IOError as e:
@@ -34,6 +39,10 @@ def for_writing(file_name, mode="w", gzip_mode="wb"):
     return gzip_open(file_name=file_name, mode=gzip_mode)
   elif file_name.endswith(".bz2"):
     return bz2_open(file_name=file_name, mode=mode)
+  elif file_name.endswith(".xz") or file_name.endswith(".lzma"):
+    return lzma_open(file_name=file_name, mode=gzip_mode)
+  elif file_name.endswith(".zst") or file_name.endswith(".zstd"):
+    return zstd_open(file_name=file_name, mode=gzip_mode)
   try:
     return open(file_name, mode)
   except IOError as e:

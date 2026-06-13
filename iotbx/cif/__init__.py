@@ -52,7 +52,7 @@ DEFAULT_ENGINE = "ucif"
 _VALID_ENGINES = ("ucif", "xcif")
 
 
-_XCIF_COMPRESSED_SUFFIXES = (".gz", ".Z", ".bz2")
+_XCIF_COMPRESSED_SUFFIXES = (".gz", ".Z", ".bz2", ".xz", ".lzma", ".zst", ".zstd")
 
 
 def _xcif_can_use_parse_file(file_path):

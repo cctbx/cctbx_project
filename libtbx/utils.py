@@ -285,6 +285,79 @@ def bz2_open(file_name, mode):
                        % ({'r':'un', 'w':''}[mode], file_name))
   return bz2.BZ2File(file_name, mode)
 
+def lzma_open(file_name, mode):
+  """
+  Wraps lzma.open to open a .xz or .lzma file. The container is auto-detected on
+  read; on write it is chosen from the extension (.lzma -> legacy FORMAT_ALONE,
+  otherwise FORMAT_XZ). lzma is stdlib but may be absent on minimal builds.
+
+  Parameters
+  ----------
+  file_name : str
+  mode : str
+
+  Returns
+  -------
+  file
+
+  Raises
+  ------
+  RuntimeError
+      If lzma is not available.
+  """
+  assert mode in ["r", "rb", "rt", "w", "wb", "wt", "a", "ab"]
+  try:
+    import lzma
+  except ImportError:
+    un = "un" if (mode[0] == "r") else ""
+    raise RuntimeError(
+      "lzma module not available: cannot %scompress file %s"
+        % (un, show_string(file_name)))
+  if (mode[0] == "r"):
+    return lzma.open(file_name, mode)
+  fmt = lzma.FORMAT_ALONE if file_name.endswith(".lzma") else lzma.FORMAT_XZ
+  return lzma.open(file_name, mode, format=fmt)
+
+def zstd_open(file_name, mode):
+  """
+  Wraps zstandard.open to open a .zst file. zstandard is an OPTIONAL dependency;
+  it is imported lazily so libtbx keeps working when it is absent.
+
+  Parameters
+  ----------
+  file_name : str
+  mode : str
+
+  Returns
+  -------
+  file
+
+  Raises
+  ------
+  RuntimeError
+      If zstandard is not available or is too old to provide zstandard.open.
+  """
+  assert mode in ["r", "rb", "rt", "w", "wb", "wt", "a", "ab"]
+  try:
+    import zstandard
+  except ImportError:
+    un = "un" if (mode[0] == "r") else ""
+    raise RuntimeError(
+      "zstandard package not available: cannot %scompress file %s\n"
+      "  Install it with 'libtbx.conda install zstandard' or "
+      "'libtbx.pip install zstandard'." % (un, show_string(file_name)))
+  if not hasattr(zstandard, 'open'):
+    raise RuntimeError(
+      "the installed zstandard lacks zstandard.open (need >= 0.15); upgrade "
+      "with 'libtbx.conda install zstandard' or "
+      "'libtbx.pip install -U zstandard'.")
+  # zstandard.open() defaults a bare r/w/a mode to TEXT, unlike lzma/gzip/bz2
+  # which are binary; normalize so .zst matches the sibling compressors that
+  # smart_open dispatches to.
+  if mode in ("r", "w", "a"):
+    mode = mode + "b"
+  return zstandard.open(file_name, mode)
+
 def warn_if_unexpected_md5_hexdigest(
       path,
       expected_md5_hexdigests,
