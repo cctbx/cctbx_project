@@ -4,7 +4,6 @@ Child class of MillerArrayDataManager for handling map coefficients
 This will eventually be deprecated.
 The array_type PHIL parameter should be used instead
 '''
-from __future__ import absolute_import, division, print_function
 
 from iotbx.data_manager.miller_array import MillerArrayDataManager
 from iotbx.cif_mtz_data_labels import mtz_map_coefficient_labels, \

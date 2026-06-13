@@ -2,7 +2,6 @@
 Base DataManager class and factory function for generating DataManager
 objects
 '''
-from __future__ import absolute_import, division, print_function
 import importlib
 import inspect
 import os
@@ -23,7 +22,8 @@ from libtbx.utils import multi_out, Sorry
 # datatype <-> any_file maps now live in iotbx.file_io (a lower layer); re-export
 # them here for backward compatibility with existing importers (cli_parser, the
 # qttbx widgets, etc.).
-from iotbx.file_io import any_file_type, data_manager_type, get_file_type, read_file
+from iotbx.file_io import any_file_type, get_file_type, read_file
+from iotbx.file_io import data_manager_type # implicit import
 
 # build list of supported datatypes
 # datatypes have corresponding modules in iotbx/data_manager

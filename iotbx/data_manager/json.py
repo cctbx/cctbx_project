@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 '''
 DataManager datatype for reading and writing JSON files
 '''
