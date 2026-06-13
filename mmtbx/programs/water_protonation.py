@@ -133,6 +133,23 @@ By default it is idempotent: waters that already carry H are left untouched
           % ("auto (H for HOH, D for DOD)" if placer_element is None
              else placer_element), file=self.logger)
 
+    # Consistency warning: deuterium is modelled only from neutron (or joint)
+    # data, whose O-D distances are the longer neutron value. Placing D at the
+    # shorter X-ray length is geometrically inconsistent, so warn. The reverse
+    # (H at the neutron length, e.g. a hydrogenous neutron structure) is
+    # legitimate, so it is not flagged.
+    places_d = (placer_element == "D"
+                or (placer_element is None
+                    and any(ag.resname.strip().upper() == "DOD"
+                            for ag in hier.atom_groups())))
+    if places_d and not neutron:
+      print("warning: placing D (deuterium) at the X-ray O-H length (%.3f A); "
+            "deuterium is normally neutron-derived and uses the longer neutron "
+            "distance (%.3f A). Pass oh_distance=neutron for consistent "
+            "geometry." % (water_protonation._WATER_OH_XRAY,
+                           water_protonation._WATER_OH_NEUTRON),
+            file=self.logger)
+
     n_before = self._count_water_h(hier)
     report_stats = self.params.stats
     n_worst = self.params.stats_worst if self.params.stats_worst is not None else 0
