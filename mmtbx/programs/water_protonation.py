@@ -12,7 +12,6 @@ import os
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry
 
 from mmtbx.hydrogens import water_protonation
 
@@ -41,11 +40,11 @@ refine
   .short_caption = Refinement sweeps
 {
   max_sweeps = 5
-    .type = int
+    .type = int(value_min=0)
     .short_caption = Maximum relaxation sweeps
     .help = "Maximum relaxation sweeps re-placing each water against the final environment to relax water-water clashes. Each sweep costs about one placement pass; 0 disables refinement. Sweeping stops early once a sweep removes fewer than tolerance close contacts, so a generous cap is safe."
   tolerance = 1
-    .type = int
+    .type = int(value_min=0)
     .short_caption = Early-stop tolerance
     .help = "Stop refining once a sweep removes fewer than this many close (<2.0 A) H-H contacts (1 = stop at a true plateau, larger = stop sooner on diminishing returns, 0 = run all max_sweeps). The best sweep is always kept."
 }
@@ -53,7 +52,7 @@ basin
   .short_caption = Basin-hopping
 {
   rounds = 0
-    .type = int
+    .type = int(value_min=0)
     .short_caption = Basin-hopping rounds
     .help = "Basin-hopping rounds after refinement (0 = off): each round randomly re-orients the still-clashing waters and relaxes, keeping the best. Deterministic (seeded); helps only where a better orientation exists."
 }
@@ -62,7 +61,7 @@ stats = False
   .short_caption = Report water-H clashes
   .help = "After placement, print the per-sweep water-H clash summary (count of H-H contacts below 2.0/1.8/1.5 A between different waters, and the closest contact)."
 stats_worst = None
-  .type = int
+  .type = int(value_min=0)
   .short_caption = List worst contacts
   .help = "List the N closest residual water-H contacts with their residue IDs (implies stats=True)."
 output {
@@ -104,15 +103,8 @@ By default it is idempotent: waters that already carry H are left untouched
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    if self.params.refine.max_sweeps < 0:
-      raise Sorry("refine.max_sweeps must be >= 0")
-    if self.params.refine.tolerance < 0:
-      raise Sorry("refine.tolerance must be >= 0")
-    if self.params.basin.rounds < 0:
-      raise Sorry("basin.rounds must be >= 0")
+    # Non-negativity of the int params is enforced by value_min=0 in the PHIL.
     if self.params.stats_worst is not None:
-      if self.params.stats_worst < 0:
-        raise Sorry("stats_worst must be >= 0")
       self.params.stats = True   # listing offenders only makes sense with stats
 
   # ----------------------------------------------------------------------------
