@@ -39,8 +39,11 @@ def test_002():
 
 def test_003():
   '''
-  GLY1 linked to the sidechain of ASP9. Make sure only one H of the propeller
-  remains and that it has correct geometry (planar).
+  Cyclic peptide (3njw): the N-terminal GLY 1 is linked (lactam) to the CG of
+  ASP 9, so its N is a secondary amide, not a free N-terminus. It must get a
+  single backbone H, not an N-terminal H1/H2/H3 propeller; the surviving H is
+  renamed to the peptide H and must have correct geometry (planar).
+  (Without the link to ASP 9 the same GLY would get the full propeller.)
   '''
   compare_models(pdb_str = pdb_str_003)
 
@@ -162,7 +165,7 @@ ATOM      1  N   GLY A   1       6.011  23.726   5.538  1.00  4.36           N
 ATOM      2  CA  GLY A   1       7.279  24.418   5.504  1.00  4.79           C
 ATOM      3  C   GLY A   1       8.370  23.751   6.291  1.00  4.66           C
 ATOM      4  O   GLY A   1       9.449  24.344   6.484  1.00  5.69           O
-ATOM      5  H1  GLY A   1       5.585  23.650   6.316  1.00  4.36           H
+ATOM      5  H   GLY A   1       5.585  23.650   6.316  1.00  4.36           H
 ATOM      8  HA2 GLY A   1       7.158  25.311   5.862  1.00  4.79           H
 ATOM      9  HA3 GLY A   1       7.575  24.484   4.583  1.00  4.79           H
 ATOM     10  N   ASP A   9       3.861  20.962   2.856  1.00  4.41           N

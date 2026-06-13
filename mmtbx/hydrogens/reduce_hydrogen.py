@@ -1001,6 +1001,16 @@ class place_hydrogens():
       #print(list(fsc0[_i]))
       parent = fsc0[_i][0]
       #print('origin_id', exclusion_dict[parent], origin_ids.get_origin_key(exclusion_dict[parent]))
+      # A single H kept on a linked backbone N is a peptide-like secondary
+      # amide H, not an N-terminus: rename a leftover propeller name (H1/H2/H3,
+      # D1/D2/D3) to the plain 'H'/'D'. (e.g. cyclic peptide whose N-terminal
+      # residue is linked through its N, as in 3njw.)
+      parent_atom = atoms[parent]
+      if (parent_atom.name.strip() == 'N' and
+          get_class(name=parent_atom.parent().resname) in
+            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid'] and
+          atoms[_i].name.strip() in ['H1', 'H2', 'H3', 'D1', 'D2', 'D3']):
+        atoms[_i].name = (' ' + atoms[_i].name.strip()[0]).ljust(4)
       first_neighbors = fsc1[_i]
       fn_filtered = [item for item in first_neighbors if item not in sel_remove]
       #print(list(first_neighbors), list(sel_remove), fn_filtered )

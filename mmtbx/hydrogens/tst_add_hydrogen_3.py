@@ -96,8 +96,9 @@ def test_001():
 
 def test_002():
   '''
-    SIN forms covalent link to GLU 1. Make sure the default NH3  at the
-    N-terminal becomes a single peptide H in this particular scenario.
+    SIN forms covalent link to GLU 1. Make sure the default NH3 at the
+    N-terminal becomes a single peptide H, named 'H' (the linked N is a
+    secondary amide, not a free N-terminus), in this particular scenario.
   '''
   compare_models(pdb_str = pdb_str_002)
 
@@ -261,7 +262,7 @@ ATOM      8  OE1 GLU A   1       6.017  24.742   4.259  1.00 -1.00           O
 ANISOU    8  OE1 GLU A   1     3535   3430   1924    346   -221   -295       O
 ATOM      9  OE2 GLU A   1       6.197  23.520   6.058  1.00 -1.00           O
 ANISOU    9  OE2 GLU A   1     3239   3344   1625     40   -119   -371       O
-ATOM     10  H1  GLU A   1       9.897  25.002   1.732  1.00 18.32           H
+ATOM     10  H   GLU A   1       9.897  25.002   1.732  1.00 18.32           H
 ATOM     13  HA  GLU A   1       8.880  25.353   4.068  1.00 16.97           H
 ATOM     14  HB2 GLU A   1       7.679  24.074   2.537  1.00 17.54           H
 ATOM     15  HB3 GLU A   1       8.778  22.927   2.590  1.00 17.54           H
