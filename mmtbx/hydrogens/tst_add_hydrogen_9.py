@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import iotbx.pdb
 import mmtbx.model
+from scitbx import matrix
 from libtbx.utils import null_out
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
@@ -12,6 +13,7 @@ def run():
   test_003()
   test_004()
   test_005()
+  test_006()
 
 # ------------------------------------------------------------------------------
 
@@ -107,6 +109,73 @@ def test_005():
   assert 'H61' in chx_names, "CHX H61 should survive (opposite face of C6-NZ link)"
   assert 'H52' not in chx_names, "CHX H52 should be removed (C5-SG link)"
   assert 'H62' not in chx_names, "CHX H62 should be removed (C6-NZ link)"
+
+# ------------------------------------------------------------------------------
+
+def test_006():
+  '''
+    B0I makes two thioether links (6b17): H00 SD - B0I CB1 and CYS SG - B0I CB2
+    (both auto-detected at ~1.8 A). CB1 and CB2 are methyls in the free ligand;
+    each link removes one H, leaving a CH2. exclude_H_on_links must leave the
+    two surviving H at distinct tetrahedral positions -- not collapse both onto
+    a single coincident site (the bug this guards: the kept-H repositioning
+    placed every kept H of a 2-heavy-neighbour atom at the same in-plane
+    bisector position).
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_006.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.set_stop_for_unknowns(False)
+  model = model.select(~model.get_hd_selection())
+  add_h = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False)
+  add_h.run()
+  mh = add_h.get_model()
+  atoms = mh.get_hierarchy().atoms()
+  grm = mh.get_restraints_manager().geometry
+  bond_proxies, asu = grm.get_all_bond_proxies(sites_cart=mh.get_sites_cart())
+
+  def neighbors(resn, nm):
+    iseq = None
+    for a in atoms:
+      if a.parent().resname.strip() == resn and a.name.strip() == nm:
+        iseq = a.i_seq
+        break
+    assert iseq is not None, '%s %s not found' % (resn, nm)
+    out = set()
+    for p in bond_proxies:
+      i, j = p.i_seqs
+      if   i == iseq: out.add(j)
+      elif j == iseq: out.add(i)
+    return out
+
+  def angle(i, j, k):
+    return (matrix.col(atoms[i].xyz) - matrix.col(atoms[j].xyz)).angle(
+            matrix.col(atoms[k].xyz) - matrix.col(atoms[j].xyz), deg=True)
+
+  for cb, link_partner in (('CB1', 'SD'), ('CB2', 'SG')):
+    c_iseq = [a.i_seq for a in atoms
+              if a.parent().resname.strip() == 'B0I' and a.name.strip() == cb][0]
+    nb = neighbors('B0I', cb)
+    # the thioether link must be present, otherwise the scenario isn't exercised
+    assert link_partner in set(atoms[k].name.strip() for k in nb), \
+      'expected %s-%s thioether link' % (cb, link_partner)
+    h_iseqs   = [k for k in nb if atoms[k].element.strip() in ('H', 'D')]
+    heavy_nb  = [k for k in nb if atoms[k].element.strip() not in ('H', 'D')]
+    assert len(h_iseqs) == 2, \
+      'linked %s (a CH2) should keep 2 H, got %s' % (
+        cb, sorted(atoms[k].name.strip() for k in h_iseqs))
+    d = (matrix.col(atoms[h_iseqs[0]].xyz) -
+         matrix.col(atoms[h_iseqs[1]].xyz)).length()
+    assert d > 0.5, \
+      'the two H on linked %s are coincident (d=%.3f A)' % (cb, d)
+    # The two H must sit tetrahedrally about the two real heavy neighbours
+    # (the C-C and C-S directions), not eclipse one of them. Every
+    # heavy-C-H angle should be near tetrahedral, never collapsed toward 0.
+    for h in h_iseqs:
+      for hv in heavy_nb:
+        a = angle(hv, c_iseq, h)
+        assert 95.0 < a < 125.0, \
+          '%s: %s-%s-%s angle = %.1f (not tetrahedral)' % (
+            cb, atoms[hv].name.strip(), cb, atoms[h].name.strip(), a)
 
 # ------------------------------------------------------------------------------
 
@@ -282,6 +351,39 @@ HETATM   18  C3  CHX W 101      18.316  29.955 -33.845  1.00 40.64           C
 HETATM   19  C4  CHX W 101      19.302  30.261 -34.967  1.00 24.46           C
 HETATM   20  C5  CHX W 101      20.557  29.381 -35.046  1.00 15.31           C
 HETATM   21  C6  CHX W 101      21.170  28.958 -33.715  1.00 27.48           C
+END
+"""
+
+# 6b17 chain E: H00 (modified Met, SD) and a CYS each thioether-link to the two
+# methyl carbons CB1/CB2 of the bridging ligand B0I.
+pdb_str_006 = """
+CRYST1   36.758   35.583   38.076  90.00 118.88  90.00 P 1 21 1
+HETATM  209  CA  H00 E   1       6.717 -12.704   5.860  1.00 16.88           C
+HETATM  210  CB  H00 E   1       6.318 -14.063   5.292  1.00 16.74           C
+HETATM  211  CG  H00 E   1       6.017 -15.116   6.354  1.00 16.68           C
+HETATM  212  SD  H00 E   1       5.293 -16.601   5.615  1.00 16.31           S
+HETATM  213  C   H00 E   1       7.931 -12.777   6.784  1.00 18.18           C
+HETATM  214  O   H00 E   1       9.010 -13.154   6.318  1.00 20.57           O
+ATOM    309  N   CYS E  14      -0.395 -23.942   7.399  1.00 13.33           N
+ATOM    310  CA  CYS E  14      -0.510 -23.103   6.204  1.00 14.58           C
+ATOM    311  C   CYS E  14       0.780 -23.163   5.401  1.00 16.24           C
+ATOM    312  O   CYS E  14       0.762 -23.109   4.165  1.00 17.78           O
+ATOM    313  CB  CYS E  14      -0.779 -21.656   6.597  1.00 14.48           C
+ATOM    314  SG  CYS E  14      -2.347 -21.437   7.427  1.00 14.92           S
+HETATM  645  CB1 B0I E 101       3.656 -16.038   5.070  1.00 13.50           C
+HETATM  646  CG1 B0I E 101       2.744 -15.629   6.189  1.00 12.92           C
+HETATM  647  CD1 B0I E 101       1.936 -16.583   6.802  1.00 12.07           C
+HETATM  648  CD2 B0I E 101       2.687 -14.302   6.601  1.00 12.54           C
+HETATM  649  CE1 B0I E 101       1.087 -16.213   7.847  1.00 12.06           C
+HETATM  650  CE2 B0I E 101       1.830 -13.932   7.638  1.00 12.24           C
+HETATM  651  CZ1 B0I E 101       1.031 -14.885   8.264  1.00 12.17           C
+HETATM  652  CB2 B0I E 101      -2.466 -19.639   7.341  1.00 13.09           C
+HETATM  653  CG2 B0I E 101      -1.533 -18.870   8.236  1.00 12.42           C
+HETATM  654  CD3 B0I E 101      -0.661 -17.942   7.685  1.00 11.87           C
+HETATM  655  CD4 B0I E 101      -1.557 -19.074   9.612  1.00 12.57           C
+HETATM  656  CE3 B0I E 101       0.198 -17.211   8.495  1.00 11.38           C
+HETATM  657  CE4 B0I E 101      -0.697 -18.346  10.435  1.00 12.86           C
+HETATM  658  CZ2 B0I E 101       0.174 -17.408   9.876  1.00 12.11           C
 END
 """
 

@@ -998,32 +998,49 @@ class place_hydrogens():
     fsc1=grm.geometry.shell_sym_tables[1].full_simple_connectivity()
     #fsc2=grm.geometry.shell_sym_tables[2].full_simple_connectivity()
     for _i in remove_from_sel_remove:
-      #print(list(fsc0[_i]))
       parent = fsc0[_i][0]
-      #print('origin_id', exclusion_dict[parent], origin_ids.get_origin_key(exclusion_dict[parent]))
-      # A single H kept on a linked backbone N is a peptide-like secondary
-      # amide H, not an N-terminus: rename a leftover propeller name (H1/H2/H3,
-      # D1/D2/D3) to the plain 'H'/'D'. (e.g. cyclic peptide whose N-terminal
-      # residue is linked through its N, as in 3njw.)
+      first_neighbors = fsc1[_i]
+      fn_filtered = [item for item in first_neighbors if item not in sel_remove]
+      n_kept = sum(1 for k in remove_from_sel_remove if fsc0[k][0] == parent)
+      coordp = matrix.col(atoms[parent].xyz)
+      # Two H kept on an sp3 atom with two heavy neighbours: a methyl that
+      # became a CH2 via a link (e.g. B0I CB1/CB2 in 6b17, linked to a thioether
+      # S). Place both H tetrahedrally, symmetric across the plane of the two
+      # heavy neighbours, so the real C-C and C-S(link) directions are respected
+      # (not eclipsed). The single-H branches below cannot handle this: they
+      # would place both H at the same in-plane bisector site.
+      if n_kept == 2 and len(fn_filtered) == 2:
+        siblings = sorted(k for k in remove_from_sel_remove if fsc0[k][0] == parent)
+        u1 = (matrix.col(atoms[fn_filtered[0]].xyz) - coordp).normalize()
+        u2 = (matrix.col(atoms[fn_filtered[1]].xyz) - coordp).normalize()
+        anti = -(u1 + u2).normalize()       # bisects H-C-H, points away from neighbours
+        perp = (u1.cross(u2)).normalize()    # normal to the heavy-atom plane
+        beta = math.radians(54.735)          # half of the tetrahedral angle 109.47
+        s = 1.0 if siblings.index(_i) == 0 else -1.0
+        d = anti*math.cos(beta) + perp*(s*math.sin(beta))
+        atoms[_i].xyz = coordp + d.normalize()*bond_lengths[_i]
+        continue
+      if n_kept > 1:
+        continue  # other multi-H cases: leave the riding-idealized positions
+      # --- a single H is kept on `parent` ---
+      # A lone H kept on a linked backbone N is a peptide-like secondary amide
+      # H, not an N-terminus: rename a leftover propeller name (H1/H2/H3,
+      # D1/D2/D3) to the plain 'H'/'D' (e.g. cyclic peptide linked through its
+      # N-terminal N, as in 3njw).
       parent_atom = atoms[parent]
       if (parent_atom.name.strip() == 'N' and
           get_class(name=parent_atom.parent().resname) in
             ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid'] and
           atoms[_i].name.strip() in ['H1', 'H2', 'H3', 'D1', 'D2', 'D3']):
         atoms[_i].name = ' %s  ' % atoms[_i].element.strip()
-      first_neighbors = fsc1[_i]
-      fn_filtered = [item for item in first_neighbors if item not in sel_remove]
-      #print(list(first_neighbors), list(sel_remove), fn_filtered )
-      # now improve geometry of the H being kept
+      # improve geometry of the single kept H
       # TODO make sure all atoms are in same conformer
       # TODO check that neighbor atoms are all non H
-      # TODO what about two tetrahedral geometry?
       if len(fn_filtered) == 3:
         #print('tetrahedral geometry')
         coord1 = matrix.col(atoms[fn_filtered[0]].xyz)
         coord2 = matrix.col(atoms[fn_filtered[1]].xyz)
         coord3 = matrix.col(atoms[fn_filtered[2]].xyz)
-        coordp = matrix.col(atoms[parent].xyz)
         orth = (coord2-coord1).cross(coord3-coord1).normalize()
         vol = orth.dot(coordp-coord1)
         if vol > 0: orth = -orth
@@ -1032,7 +1049,6 @@ class place_hydrogens():
         #print('flat geometry')
         coord1 = matrix.col(atoms[fn_filtered[0]].xyz)
         coord2 = matrix.col(atoms[fn_filtered[1]].xyz)
-        coordp = matrix.col(atoms[parent].xyz)
         half = ((coord1 - coordp).normalize() + (coord2 - coordp).normalize())
         atoms[_i].xyz = coordp-half.normalize()*bond_lengths[_i]
 
