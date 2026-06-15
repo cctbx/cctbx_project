@@ -59,6 +59,7 @@ general_tests = [
   "$D/density_modification/tst_density_modification.py",
   "$D/geometry_restraints/tst_ramachandran.py",
   "$D/geometry_restraints/tst_manager.py",
+  "$D/geometry_restraints/tst_xtb_manager.py",
   "$D/geometry_restraints/external.py",
   "$D/regression/tst_map_type_parser.py",
   "$D/rsr/tst.py",

@@ -3,6 +3,7 @@ import os
 from libtbx import Auto
 
 from mmtbx.geometry_restraints import mopac_manager
+from mmtbx.geometry_restraints import xtb_manager
 
 def env_exists_exists(env, var, check=True):
   if check:
@@ -24,12 +25,19 @@ def is_mopac_installed(env, var, verbose=False):
   else:
     return env_exists_exists(env, var)
 
+def is_xtb_installed(env, var, verbose=False):
+  if xtb_manager.get_exe(verbose=verbose):
+    return True
+  else:
+    return env_exists_exists(env, var)
+
 def is_qm_test_installed(env, var):
   return True #env_exists_exists(env, var, check=False)
 
 program_options = {
   'orca' : (is_orca_installed, 'PHENIX_ORCA'),
   'mopac' : (is_mopac_installed, 'PHENIX_MOPAC'),
+  'xtb' : (is_xtb_installed, 'PHENIX_XTB'),
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
 
@@ -305,6 +313,10 @@ def populate_qmr_defaults(qmr):
     if qmr.package.method is Auto:
       qmr.package.method='PM7'
       qmr.package.method='PM6-D3H4'
+  elif program=='xtb':
+    default_defaults(qmr)
+    if qmr.package.method is Auto:
+      qmr.package.method='GFN2-xTB'
   else:
     assert 0
   return qmr

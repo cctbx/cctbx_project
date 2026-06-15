@@ -73,6 +73,10 @@ def process_qm_log_file(log_filename=None,
       status = True
     if line.find('* JOB ENDED NORMALLY *')>-1:
       status = True
+    # 'abnormal termination of xtb' contains 'normal termination of xtb' as a
+    # substring, so guard against the failure line matching as success.
+    if line.find('normal termination of xtb')>-1 and line.find('abnormal')==-1:
+      status = True
     if error_lines:
       if type(error_lines)==type({}):
         for el, ad in error_lines.items():
