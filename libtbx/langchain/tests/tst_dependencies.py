@@ -15,7 +15,6 @@ Categories
 ----------
 1. REQUIRED (must succeed for any use of ai_agent):
    - langchain_core
-   - langchain_community
    - yaml (pyyaml)
 
 2. PROVIDER (at least one must succeed; user picks via config):
@@ -29,12 +28,11 @@ Categories
    makes the code gracefully degrade when these are absent):
    - chromadb
    - langchain_chroma
-   - langchain_cohere + cohere
 
 4. DOC-LOADING (only needed to rebuild the RAG database; users
    running pre-built db don't need these):
    - pypdf
-   - unstructured + bs4
+   - bs4 (PhenixHTMLLoader HTML parser)
    - langchain_text_splitters
    - tqdm
 
@@ -48,10 +46,10 @@ Categories
      langchain_chroma are pip-installed but this probe fails,
      suggest the opentelemetry-proto upgrade documented in
      v118.6.1's install hint.
-   - FlashrankRerank: needed at runtime by analyze_log_summary()
-     and query_docs() via create_reranking_retriever().  If
-     chromadb is available but flashrank isn't, RAG queries will
-     crash — surface this as FAIL so the user installs flashrank
+   - PhenixFlashrankCompressor (+ flashrank): needed at runtime by
+     analyze_log_summary() and query_docs() via create_reranking_retriever().
+     If chromadb is available but flashrank isn't, RAG queries will
+     crash -- surface this as FAIL so the user installs flashrank
      before first use.
 
 Test outcomes
@@ -86,7 +84,6 @@ import sys
 
 REQUIRED = [
     ("langchain-core",      "langchain_core",      "Core LangChain runtime"),
-    ("langchain-community", "langchain_community", "Document loaders, retrievers"),
     ("pyyaml",              "yaml",                "knowledge/programs.yaml loading"),
 ]
 
@@ -113,8 +110,6 @@ PROVIDERS = [
 RAG_OPTIONAL = [
     ("langchain-chroma", "langchain_chroma", "RAG vector store wrapper"),
     ("chromadb",         "chromadb",         "RAG vector DB engine"),
-    ("langchain-cohere", "langchain_cohere", "Cohere reranker (alternative)"),
-    ("cohere",           "cohere",           "Cohere API client"),
     # flashrank moved to runtime probe — see _probe_flashrank_runtime() and
     # _report_flashrank_runtime_probe().  It's needed at runtime by both
     # analyze_log_summary() and query_docs() via create_reranking_retriever(),
@@ -123,8 +118,7 @@ RAG_OPTIONAL = [
 
 DOC_LOADING_OPTIONAL = [
     ("pypdf",                    "pypdf",                    "PDF document loader"),
-    ("unstructured",             "unstructured",             "HTML document loader"),
-    ("beautifulsoup4",           "bs4",                      "HTML parser (unstructured backend)"),
+    ("beautifulsoup4",           "bs4",                      "HTML parser (PhenixHTMLLoader backend)"),
     ("langchain-text-splitters", "langchain_text_splitters", "Document chunking"),
     ("tqdm",                     "tqdm",                     "Progress bars"),
 ]
@@ -204,7 +198,7 @@ def _probe_google_extras():
 
 
 def _probe_flashrank_runtime():
-    """Probe whether FlashrankRerank can actually be instantiated.
+    """Probe whether the local reranker (PhenixFlashrankCompressor) can be imported.
 
     flashrank is needed at runtime by analyze_log_summary() and
     query_docs() via create_reranking_retriever() in rag/retriever.py.
@@ -215,13 +209,14 @@ def _probe_flashrank_runtime():
     "package imports but symbol cannot be loaded."
     """
     try:
-        from langchain_community.document_compressors import FlashrankRerank
-        if FlashrankRerank is None:
-            return (False, "FlashrankRerank is None after import")
-        # Don't instantiate — instantiation tries to download model weights.
-        # Just confirm the class is constructible (has __init__).
-        if not callable(FlashrankRerank):
-            return (False, "FlashrankRerank is not callable")
+        from flashrank import Ranker, RerankRequest
+        from libtbx.langchain.rag.retriever import PhenixFlashrankCompressor
+        if PhenixFlashrankCompressor is None:
+            return (False, "PhenixFlashrankCompressor is None after import")
+        # Don't instantiate the Ranker — instantiation tries to download model
+        # weights.  Just confirm the class is constructible (has __init__).
+        if not callable(PhenixFlashrankCompressor):
+            return (False, "PhenixFlashrankCompressor is not callable")
         return (True, None)
     except Exception as e:
         return (False, "%s: %s" % (type(e).__name__, e))
@@ -232,7 +227,7 @@ def _probe_flashrank_runtime():
 # ---------------------------------------------------------------
 
 def _report_flashrank_runtime_probe():
-    """Probe whether FlashrankRerank can be loaded for reranking.
+    """Probe whether the local reranker can be loaded for reranking.
 
     Returns True if usable OR if the user is clearly opting out of
     RAG entirely (chromadb missing → no RAG path will be taken).
@@ -247,9 +242,9 @@ def _report_flashrank_runtime_probe():
         return True
     ok, err = _probe_flashrank_runtime()
     if ok:
-        print("  [ OK ]    FlashrankRerank loaded; reranking retriever usable")
+        print("  [ OK ]    PhenixFlashrankCompressor + flashrank loaded; reranking usable")
         return True
-    print("  [FAIL]    FlashrankRerank could not be loaded: %s" % err)
+    print("  [FAIL]    local reranker could not be loaded: %s" % err)
     print()
     print("  flashrank is needed at runtime by both `analyze_log_summary()`")
     print("  and `query_docs()` via `create_reranking_retriever()`.  Without")

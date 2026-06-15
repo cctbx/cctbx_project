@@ -29,7 +29,7 @@ from libtbx.langchain.rag._chroma_resilience import (
 )
 
 # v118.G1b note (per Gemini Q7): document_loader is currently
-# protobuf-safe — it uses langchain_community and langchain_text_splitters,
+# protobuf-safe -- it uses langchain_core (loaders) and langchain_text_splitters,
 # neither of which is in the chromadb chain.  If a future change
 # introduces a chromadb-dep code path into document_loader, this eager
 # import becomes a regression site and must be refactored to lazy at

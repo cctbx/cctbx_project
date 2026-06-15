@@ -19,6 +19,7 @@ import os
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
+from langchain_core.documents import Document, BaseDocumentCompressor
 # v118.G1: chromadb has known protobuf version conflicts in some envs
 # (TypeError: Descriptors cannot be created directly).  Lazy-import via
 # shared helper so this module imports cleanly in any env; failure is
@@ -51,6 +52,78 @@ class _CompressionRetriever(BaseRetriever):
         docs = self.base_retriever.invoke(query)
         compressed = self.base_compressor.compress_documents(docs, query)
         return list(compressed)
+
+
+# Module-level Ranker cache: building a flashrank Ranker may download/load model
+# weights, so we build each (model_name) once and reuse it.  Kept OUTSIDE the
+# pydantic model below to avoid private-attribute machinery on
+# BaseDocumentCompressor (a pydantic v2 model in langchain-core 1.x).
+_RANKER_CACHE = {}
+
+
+def _get_flashrank_ranker(model_name):
+    """Return a cached flashrank Ranker for model_name, building it on first use."""
+    ranker = _RANKER_CACHE.get(model_name)
+    if ranker is None:
+        from flashrank import Ranker
+        ranker = Ranker(model_name=model_name)
+        _RANKER_CACHE[model_name] = ranker
+    return ranker
+
+
+class PhenixFlashrankCompressor(BaseDocumentCompressor):
+    """Local FlashRank reranker -- drop-in replacement for the deprecated
+    langchain-community FlashrankRerank, with no langchain-community dependency.
+
+    Reranks retrieved documents with a local cross-encoder (default
+    ms-marco-MiniLM-L-12-v2, ~34MB, CPU, no API key) via the `flashrank` package
+    directly.  Subclasses BaseDocumentCompressor and implements compress_documents
+    so it plugs into _CompressionRetriever unchanged.
+
+    Behaviour matches the old langchain-community FlashrankRerank defaults: results
+    are filtered by score_threshold (default 0.0, i.e. drop negative-score docs) and
+    then truncated to top_n.
+    """
+    # All fields are standard scalars, so no `arbitrary_types_allowed` / Config is
+    # needed (the flashrank Ranker is held in the module-level cache, NOT as a
+    # field).  BaseDocumentCompressor is a pydantic v2 model and accepts these
+    # defaulted fields directly, exactly as the community FlashrankRerank did.
+    model_name: str = "ms-marco-MiniLM-L-12-v2"
+    top_n: int = 8
+    score_threshold: float = 0.0   # matches community FlashrankRerank default
+
+    # Only compress_documents is abstract in BaseDocumentCompressor; the async
+    # acompress_documents has a concrete default that delegates to this method via
+    # run_in_executor (verified in langchain_core source), so we don't implement
+    # the async variant.
+    def compress_documents(self, documents, query, callbacks=None):
+        documents = list(documents)
+        if not documents:
+            return []
+        from flashrank import RerankRequest
+        # Tag each doc with its index so we can map flashrank's result back to the
+        # exact Document object (preserving page_content + metadata).
+        passages = [
+            {"id": i, "text": doc.page_content, "meta": doc.metadata or {}}
+            for i, doc in enumerate(documents)
+        ]
+        ranker = _get_flashrank_ranker(self.model_name)
+        ranked = ranker.rerank(RerankRequest(query=query, passages=passages))
+        # flashrank returns ALL passages, already sorted best-first.  Apply the
+        # score_threshold filter (community default 0.0) THEN truncate to top_n --
+        # the order the community wrapper used.
+        out = []
+        for item in ranked:
+            score = float(item.get("score", 0.0))   # raw is np.float32
+            if score < self.score_threshold:
+                continue
+            src = documents[item["id"]]
+            md = dict(src.metadata or {})
+            md["relevance_score"] = score
+            out.append(Document(page_content=src.page_content, metadata=md))
+            if len(out) >= self.top_n:
+                break
+        return out
 
 
 # =============================================================================
@@ -109,11 +182,9 @@ def create_reranking_retriever(vectorstore, llm, timeout=60, top_n=8):
     """
     base_retriever = vectorstore.as_retriever(search_kwargs={"k": 20})
 
-    # Lazy import: only needed when actually reranking (not on client in server mode)
-    from langchain_community.document_compressors import FlashrankRerank
-
-    reranker = FlashrankRerank(
-        model="ms-marco-MiniLM-L-12-v2",
+    # Local FlashRank compressor (no langchain-community dependency).
+    reranker = PhenixFlashrankCompressor(
+        model_name="ms-marco-MiniLM-L-12-v2",
         top_n=top_n,
     )
 
