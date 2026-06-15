@@ -480,7 +480,7 @@ class _():
         for residue_group in chain.residue_groups():
           for atom_group in residue_group.atom_groups():
             if get_class(name=atom_group.resname) == "common_water":
-              result.append(int(atom_group.parent().resseq))
+              result.append(int(atom_group.parent().resseq_as_int()))
     return flex.max_default(result, 0)
 
   def chains(self):
