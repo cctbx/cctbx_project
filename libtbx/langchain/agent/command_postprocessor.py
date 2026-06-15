@@ -228,6 +228,127 @@ def _is_valid_space_group(value):
   return True
 
 
+# =========================================================================
+# Data-consistency guard (v120.x): never inject a directive unit_cell or
+# space_group that contradicts the reflection data file.  The data file is
+# the authoritative source of crystal symmetry; a directive value that
+# disagrees is almost always a hallucination/typo and, if injected, makes
+# phenix.refine abort with "Working unit cell is not compatible".
+# =========================================================================
+
+# Reflection-data file extensions whose embedded cell we trust over a directive.
+_REFLECTION_EXTS = ('.mtz', '.sca', '.hkl')
+
+# Agreement tolerances (per Gemini review): tight, because on conflict we SKIP
+# the directive and defer to the data file's own cell (always safe).
+_CELL_LENGTH_TOL_FRAC = 0.005   # 0.5% on a, b, c
+_CELL_ANGLE_TOL_DEG  = 0.5      # 0.5 degrees on alpha, beta, gamma
+
+
+def _find_reflection_file(command):
+  """Return the first reflection-data file path present in the command, or None.
+
+    Scans whitespace-separated tokens for one ending in a reflection extension
+    (.mtz/.sca/.hkl).  Returns the first match.  If more than one distinct
+    reflection file is present, returns the string "AMBIGUOUS" so the caller
+    can fall back to current behavior rather than guess which is authoritative.
+    """
+  found = []
+  for tok in command.split():
+    t = tok.strip().strip('"').strip("'")
+    low = t.lower()
+    # strip a possible PHIL key prefix like data=...; keep the value
+    if '=' in t:
+      t = t.split('=', 1)[1].strip().strip('"').strip("'")
+      low = t.lower()
+    if low.endswith(_REFLECTION_EXTS):
+      if t not in found:
+        found.append(t)
+  if not found:
+    return None
+  if len(found) > 1:
+    return "AMBIGUOUS"
+  return found[0]
+
+
+def _read_data_cell_and_sg(path, log=None):
+  """Best-effort read of (unit_cell_tuple, space_group_type) from a data file.
+
+    Returns (uc, sg) where uc is a 6-tuple of floats or None, and sg is a
+    cctbx space_group object or None.  ANY failure (missing file, unreadable,
+    no symmetry in file, iotbx import failure) returns (None, None) so callers
+    fall back to current injection behavior — do no harm.
+    """
+  try:
+    import os
+    if not os.path.exists(path):
+      return (None, None)
+    from iotbx.reflection_file_reader import any_reflection_file
+    hkl = any_reflection_file(file_name=path)
+    arrays = hkl.as_miller_arrays()
+    if not arrays:
+      return (None, None)
+    cs = arrays[0].crystal_symmetry()
+    if cs is None:
+      return (None, None)
+    uc_obj = cs.unit_cell()
+    sg_info = cs.space_group_info()
+    uc = tuple(uc_obj.parameters()) if uc_obj is not None else None
+    sg = sg_info.group() if sg_info is not None else None
+    return (uc, sg)
+  except Exception as e:
+    if log:
+      log("  [inject_crystal_symmetry] could not read cell from %s "
+        "(%s: %s); proceeding without data-consistency check"
+        % (path, type(e).__name__, e))
+    return (None, None)
+
+
+def _cells_agree(directive_uc, data_uc):
+  """True if two unit-cell 6-tuples agree within tolerance.
+
+    directive_uc, data_uc: sequences of 6 floats (a,b,c,alpha,beta,gamma).
+    Returns True if they agree, False if they conflict.  On any malformed
+    input returns True (cannot prove conflict → do not block injection).
+    """
+  try:
+    d = [float(x) for x in directive_uc]
+    f = [float(x) for x in data_uc]
+    if len(d) != 6 or len(f) != 6:
+      return True
+    for i in range(3):   # lengths a, b, c
+      ref = abs(f[i]) if f[i] else 1.0
+      if abs(d[i] - f[i]) > _CELL_LENGTH_TOL_FRAC * ref:
+        return False
+    for i in range(3, 6):   # angles alpha, beta, gamma
+      if abs(d[i] - f[i]) > _CELL_ANGLE_TOL_DEG:
+        return False
+    return True
+  except (TypeError, ValueError):
+    return True
+
+
+def _space_groups_agree(directive_sg_str, data_sg):
+  """True if a directive space-group string matches the data file's space group.
+
+    directive_sg_str: the raw directive value (e.g. "P 32 2 1").
+    data_sg: a cctbx space_group object from the data file (or None).
+    Compares by space-group NUMBER (setting-independent).  On any failure
+    (cannot parse the directive symbol, no data sg) returns True — cannot
+    prove conflict, so do not block injection.
+    """
+  if data_sg is None:
+    return True
+  try:
+    from cctbx import sgtbx
+    d_type = sgtbx.space_group_info(symbol=str(directive_sg_str).strip())
+    d_number = d_type.type().number()
+    f_number = sgtbx.space_group_info(group=data_sg).type().number()
+    return d_number == f_number
+  except Exception:
+    return True
+
+
 def inject_crystal_symmetry(command, directives, program_name, log=None):
   """Append unit_cell and space_group to commands whose programs accept them.
 
@@ -266,20 +387,40 @@ def inject_crystal_symmetry(command, directives, program_name, log=None):
 
   command_lower = command.lower()
 
+  # Data-consistency guard (v120.x): the reflection data file's own crystal
+  # symmetry is authoritative.  Read it once; if a directive value conflicts,
+  # skip that injection and defer to the data file (always safe).  Any read
+  # failure leaves data_uc/data_sg as None → checks pass-through (do no harm).
+  data_uc, data_sg = (None, None)
+  _refl = _find_reflection_file(command)
+  if _refl and _refl != "AMBIGUOUS":
+    data_uc, data_sg = _read_data_cell_and_sg(_refl, log=log)
+  elif _refl == "AMBIGUOUS" and log:
+    log("  [inject_crystal_symmetry] multiple reflection files in command; "
+      "skipping data-consistency check (proceeding with injection)")
+
   # ── unit cell ──────────────────────────────────────────────────────────
   if unit_cell and "unit_cell" not in command_lower:
     nums = re.findall(r'[-+]?\d+(?:\.\d+)?', str(unit_cell))
     if len(nums) == 6:
-      uc_str = " ".join(nums)
-      if program_name in _CRYSTAL_INFO_PROGRAMS:
-        param = 'crystal_info.unit_cell="%s"' % uc_str
-      elif program_name in _PHASER_CS_PROGRAMS:
-        param = 'xray_data.unit_cell="%s"' % uc_str
+      # Skip if the directive cell contradicts the data file's cell.
+      if data_uc is not None and not _cells_agree(nums, data_uc):
+        if log:
+          log("  [inject_crystal_symmetry] SKIPPING unit_cell=%r — conflicts "
+            "with reflection-file cell %s (using data file's cell)"
+            % (" ".join(nums),
+               " ".join("%.3f" % x for x in data_uc)))
       else:
-        param = 'crystal_symmetry.unit_cell="%s"' % uc_str
-      command = command + ' ' + param
-      if log:
-        log("  [inject_crystal_symmetry] appended %s" % param)
+        uc_str = " ".join(nums)
+        if program_name in _CRYSTAL_INFO_PROGRAMS:
+          param = 'crystal_info.unit_cell="%s"' % uc_str
+        elif program_name in _PHASER_CS_PROGRAMS:
+          param = 'xray_data.unit_cell="%s"' % uc_str
+        else:
+          param = 'crystal_symmetry.unit_cell="%s"' % uc_str
+        command = command + ' ' + param
+        if log:
+          log("  [inject_crystal_symmetry] appended %s" % param)
 
   # ── space group ────────────────────────────────────────────────────────
   if space_group and "space_group" not in command_lower:
@@ -289,6 +430,11 @@ def inject_crystal_symmetry(command, directives, program_name, log=None):
       if log:
         log("  [inject_crystal_symmetry] skipping space_group=%r "
           "(not a valid space group symbol)" % sg_str)
+    elif data_sg is not None and not _space_groups_agree(sg_str, data_sg):
+      if log:
+        log("  [inject_crystal_symmetry] SKIPPING space_group=%r — conflicts "
+          "with reflection-file space group (using data file's space group)"
+          % sg_str)
     else:
       if " " in sg_str and not sg_str.startswith('"'):
         sg_str = '"%s"' % sg_str
@@ -549,6 +695,22 @@ def sanitize_command(command, program_name=None, bad_inject_params=None,
   # ── 2. Load strategy_flags allowlist ───────────────────────────────
   prog_allowlist, strategy_flags = _load_prog_allowlist(program_name)
 
+  # ── 2b. Data-consistency pre-read (v120.x) ─────────────────────────
+  # If the command already carries a unit_cell= / space_group= that the LLM
+  # authored (not injected), and the reflection file has its own crystal
+  # symmetry, an LLM-authored value that CONTRADICTS the data file is the
+  # exact failure that makes phenix.refine abort.  Read the data cell ONCE
+  # here (only when a symmetry token is present and the program accepts
+  # symmetry), so Rule B3 below can strip a conflicting authored value.
+  # The data file is authoritative.  Any read failure → (None, None) →
+  # Rule B3 is a no-op (do no harm).
+  _sani_data_uc, _sani_data_sg = (None, None)
+  if (program_name in _XRAY_SYMMETRY_PROGRAMS and
+      ('unit_cell' in command.lower() or 'space_group' in command.lower())):
+    _refl = _find_reflection_file(command)
+    if _refl and _refl != "AMBIGUOUS":
+      _sani_data_uc, _sani_data_sg = _read_data_cell_and_sg(_refl, log=log)
+
   # ── 3. Generic sanitization loop ──────────────────────────────────
   _ALL_KV_RE = re.compile(
     r'\s*([\w.]+)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s]+)'
@@ -606,6 +768,33 @@ def sanitize_command(command, program_name=None, bad_inject_params=None,
           _strip = True
           if log:
             log("  [sanitize_command] removed invalid space_group: %r"
+              % token.strip())
+
+      # Rule B3 (v120.x): strip an LLM-authored unit_cell / space_group that
+      # CONTRADICTS the reflection file's own crystal symmetry.  The data file
+      # is authoritative; a conflicting authored value is the exact thing that
+      # makes phenix.refine abort with "Working unit cell is not compatible".
+      # Only fires when the data cell was read successfully (pre-read above);
+      # otherwise it's a no-op (do no harm).
+      if not _strip and 'unit_cell' in key_full and _sani_data_uc is not None:
+        uc_nums = re.findall(r'[-+]?\d+(?:\.\d+)?',
+                             val.strip().strip('"').strip("'"))
+        if len(uc_nums) == 6 and not _cells_agree(uc_nums, _sani_data_uc):
+          _strip = True
+          if log:
+            log("  [sanitize_command] removed unit_cell %r — conflicts with "
+              "reflection-file cell %s (data file is authoritative)"
+              % (token.strip(),
+                 " ".join("%.3f" % x for x in _sani_data_uc)))
+
+      if (not _strip and 'space_group' in key_full and
+          'unit_cell' not in key_full and _sani_data_sg is not None):
+        sg_val = val.strip().strip('"').strip("'")
+        if sg_val and not _space_groups_agree(sg_val, _sani_data_sg):
+          _strip = True
+          if log:
+            log("  [sanitize_command] removed space_group %r — conflicts with "
+              "reflection-file space group (data file is authoritative)"
               % token.strip())
 
       # Rule C: key=value on a program with no strategy_flags

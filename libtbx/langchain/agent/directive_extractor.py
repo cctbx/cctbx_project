@@ -242,13 +242,22 @@ Output a JSON object with these sections. Include ONLY sections that have releva
      * sites: int (number of anomalous sites)
      * twin_law: string (e.g., "-h,-k,l")
      * riding_hydrogens: bool
-     * unit_cell: string — space-separated "a b c alpha beta gamma" (e.g., "116.097 116.097 44.175 90 90 120")
-     * space_group: string (e.g., "P 32 2 1", "P 1", "C 2 2 21")
-     * copies: int (number of copies of the search model in the ASU, e.g. 4 — place under "default")
+     * unit_cell: string — space-separated "a b c alpha beta gamma".
+       Extract ONLY if the user's text explicitly states a unit cell. If the
+       user gives no unit cell, OMIT this field entirely — do NOT invent one
+       and do NOT copy the format placeholder below.
+       Format placeholder (illustrative only — never emit these tokens):
+       "A_LENGTH B_LENGTH C_LENGTH ALPHA BETA GAMMA"
+     * space_group: string — Hermann-Mauguin symbol.
+       Extract ONLY if the user's text explicitly states a space group. If the
+       user gives no space group, OMIT this field — do NOT invent one and do NOT
+       copy the placeholder. Format placeholder (illustrative only, never emit):
+       "SPACE_GROUP_SYMBOL"
+     * copies: int (number of copies of the search model in the ASU — place under "default")
    - IMPORTANT: unit_cell, space_group, and copies apply to ALL programs — always place them under "default", not under a specific program
    - unit_cell FORMAT: always convert the user's value to a space-separated string of 6 numbers in order a b c alpha beta gamma
-     * "(116.097, 116.097, 44.175, 90, 90, 120)" → "116.097 116.097 44.175 90 90 120"
-     * "116 116 44 90 90 120" → "116 116 44 90 90 120"
+     * "(A_LENGTH, B_LENGTH, C_LENGTH, ALPHA, BETA, GAMMA)" → "A_LENGTH B_LENGTH C_LENGTH ALPHA BETA GAMMA"
+       (placeholder shape only — substitute the user's actual numbers, never these tokens)
      * Never use parentheses or commas in the extracted string value
    - For phenix.map_sharpening specifically:
      * resolution: float (required for model-based sharpening)
@@ -343,10 +352,11 @@ IMPORTANT GUIDELINES:
 **CRITICAL: unit_cell and space_group — always use "default" scope**
 - When the user specifies a unit cell or space group, put it under "default" so it applies to all programs:
   ```json
-  {{"program_settings": {{"default": {{"unit_cell": "116.097 116.097 44.175 90 90 120"}}}}}}
+  {{"program_settings": {{"default": {{"unit_cell": "A_LENGTH B_LENGTH C_LENGTH ALPHA BETA GAMMA"}}}}}}
   ```
+  (placeholder only — emit this field ONLY when the user states a cell, with their real numbers)
 - Convert any parenthesized comma-separated tuple to a plain space-separated string: strip `(`, `)`, and replace `,` with spaces.
-- Example triggers: "use unit cell (a, b, c, α, β, γ)", "the specified unit cell is ...", "space group P 32 2 1"
+- Example triggers: "use unit cell (a, b, c, α, β, γ)", "the specified unit cell is ...", "space group <symbol>"
 
 **CRITICAL: max_refine_cycles vs after_program vs after_cycle**
 - max_refine_cycles=N: Limits the NUMBER of refinement jobs to N. The workflow continues normally until refinement, then stops after N refinement jobs.
