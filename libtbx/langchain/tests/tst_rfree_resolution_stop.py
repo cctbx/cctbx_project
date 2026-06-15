@@ -54,8 +54,9 @@ def test_perceive_prefers_session_resolution():
         r'resolution,\s*_resolution_source\s*=\s*resolve_session_resolution\(\s*\n?\s*state,\s*metrics_history=metrics_history\)',
         src), \
         "perceive() must call resolve_session_resolution(state, metrics_history=metrics_history)"
-    assert "from libtbx.langchain.utils.run_utils import _safe_float" in src, \
-        "graph_nodes must import _safe_float for the coercion"
+    assert "from libtbx.langchain.utils.run_utils import _coerce_resolution" in src, \
+        "graph_nodes must import _coerce_resolution (the shared coercion helper, " \
+        "which applies _safe_float internally)"
     # The old bare history-only form and the old inline _safe_float-or form must be gone.
     assert not re.search(r'^\s*resolution = get_latest_resolution\(metrics_history\)\s*$',
                          src, re.MULTILINE), \
