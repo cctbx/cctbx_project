@@ -28,6 +28,11 @@ try:
 except ImportError:
   from agent.file_utils import matches_exclude_pattern
 
+try:
+  from libtbx.langchain.utils.run_utils import _coerce_resolution
+except ImportError:
+  from utils.run_utils import _coerce_resolution
+
 # Centralized pattern utilities
 from libtbx.langchain.agent.pattern_manager import extract_cycle_number, extract_all_numbers
 
@@ -176,11 +181,17 @@ class CommandContext:
     session_info = state.get("session_info", {})
     workflow_state = state.get("workflow_state", {})
 
-    # Get resolution from multiple sources
+    # Get resolution from multiple sources, coercing each to a sane float so a
+    # stringized value (e.g. from JSON round-trip or history parsing) cannot
+    # crash the downstream auto-fill `round(context.resolution, 1)` /
+    # `"%.1f" % context.resolution` in _apply_invariants.  _coerce_resolution is
+    # the shared coercion+range-guard primitive (see utils/run_utils.py); it
+    # returns None for None/0.0/non-numeric/out-of-range, so the `or` chain skips
+    # to the next source exactly as before.
     resolution = (
-      state.get("session_resolution") or
-      state.get("resolution") or
-      workflow_state.get("resolution")
+      _coerce_resolution(state.get("session_resolution")) or
+      _coerce_resolution(state.get("resolution")) or
+      _coerce_resolution(workflow_state.get("resolution"))
     )
 
     # v118.F1: prefer session-locked experiment_type (set after first

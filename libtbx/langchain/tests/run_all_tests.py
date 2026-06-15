@@ -334,6 +334,16 @@ def main():
         print(f"⚠️  Could not import tst_safe_float_consolidation: {e}")
         results.append(("safe_float consolidation", "tst_safe_float_consolidation", False, 0))
 
+    # --- dropped-resolution premature-stop (rfree target) ---
+    try:
+        from tests.tst_rfree_resolution_stop import run_all_tests as run_rfree_res_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_resolution_stop", run_rfree_res_tests, args.verbose)
+        results.append(("rfree resolution stop", "tst_rfree_resolution_stop", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_rfree_resolution_stop: {e}")
+        results.append(("rfree resolution stop", "tst_rfree_resolution_stop", False, 0))
+
     # --- Best Files Tracker Tests ---
     try:
         from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests

@@ -353,10 +353,89 @@ as strings, and `sanity_checker._check_metric_anomalies` did `curr - prev`
   display_data_model).  All now import a single definition added to
   `utils/run_utils.py` (the shared-helpers home, dependency-free -> no import
   cycle); sanity_checker imports it too.  One definition, six importers.
-- Tests: `tst_safe_float_consolidation.py` (5 tests) — single definition, no
+- Tests: `tst_safe_float_consolidation.py` (8 tests) — single definition, no
   agent module re-defines it, consumers import the canonical one, behavior
   (string/None/0.0/non-numeric), and sanity_checker coercion.  Negative-control
   confirmed the "no duplicate" test fails if a copy is re-introduced.
+
+### Dropped-resolution premature stop (sub-2A R-free target)
+
+Bug: at sub-2A resolution `phenix.ai_agent` could declare "R-free TARGET
+REACHED" and stop after a SINGLE refinement.  In `perceive()` the resolution
+used for stop evaluation came from `get_latest_resolution(metrics_history)`,
+which returns None when a cycle's structured `analysis` dict lacks a resolution
+(even though the data resolution is known and held in
+`state["session_resolution"]`).  With resolution=None the evaluator used the
+resolution-INDEPENDENT R-free target 0.28 instead of the banded 0.25 ([1.5,2.0]
+in metrics.yaml); success_threshold 0.26 vs 0.23, so R-free 0.252 looked
+"reached".  Downstream: a second refinement is skipped, ordered solvent is
+never added (needs refine_count >= 2), and a post-refine ligand is merged but
+never refined.
+
+Fixes (both, defense-in-depth):
+- `agent/graph_nodes.py` perceive(): prefer the authoritative session value --
+  `resolution = _safe_float(state.get("session_resolution")) or
+  get_latest_resolution(metrics_history)`.  Matches the session-resolution-first
+  pattern used elsewhere in the file.  `_safe_float` guards against a string
+  `session_resolution` (the band lookup does `lo <= resolution < hi` and would
+  raise TypeError on a str).
+- `agent/metrics_analyzer.py` derive_metrics_from_history(): add a resolution
+  text-fallback via a dedicated `_extract_resolution()` helper (NOT a naive
+  `_extract_float` "resolution" pattern).  The helper skips/strips
+  "Anomalous Resolution: N.NN" (which precedes the data resolution in xtriage
+  output and a first-match regex would wrongly grab), takes the high-resolution
+  limit of a "range: lo - hi" form, lets the last match win, requires a decimal
+  (so integer headers like "Completeness in resolution range: 1" are not read as
+  1.0 A), and sanity-bounds 0.5 < res < 20.  Verified to match the structured
+  extractor on real p9 xtriage/autosol/autobuild text.  An earlier resolution
+  text-fallback (reusing the existing `resolution[:\s=]` pattern) so
+  metrics_history retains resolution even when the `analysis` dict omits it.
+
+Verified against the REAL stack (real yaml_loader + real metrics.yaml + real
+metric_evaluator): get_target('r_free', None)=0.28, ('r_free',1.57)=0.25; the
+None path reports "TARGET REACHED", the 1.57 path does not; the text-fallback
+recovers 1.57.  Tests: `tst_rfree_resolution_stop.py` (10 tests) + a committed
+synthetic fixture `tests/data/session_rfree_resolution_bug.json`.  Negative
+control confirmed the perceive() source-scan fails if the fix is reverted.
+
+### Unified resolution resolver (perceive / build single source)
+
+`perceive()` and `build()` resolved the data resolution with DIFFERENT chains:
+perceive() used `session_resolution -> get_latest_resolution(metrics_history)`;
+build()'s nested `find_resolution()` used `session_resolution -> workflow_state
+-> log_analysis -> history-command regex`.  Two chains on the same state can
+disagree (perceive() stops on one value while build() builds parameters from
+another).  Consolidated into one module-level
+`resolve_session_resolution(state, workflow_state=None, metrics_history=None)`:
+
+- Priority: session_resolution -> workflow_state -> log_analysis ->
+  metrics_history -> previous-command regex.  Each caller passes the optional
+  sources it has in scope (perceive: metrics_history; build: workflow_state); a
+  missing source is skipped.
+- Returns `(resolution, source_label)`.
+- All values coerced with `_safe_float` and range-checked `0.5 < res < 20`, so a
+  stringized or out-of-range value can neither crash the band lookup nor flow
+  into a command parameter (the old `find_resolution()` could return a raw
+  string like "2.1").
+- The nested `find_resolution()` closure in build() was removed.
+- A THIRD resolver, `CommandContext.from_state()` in command_builder.py, feeds
+  the LIVE command-build path (USE_NEW_COMMAND_BUILDER=True) and its
+  `context.resolution` is consumed by `round(context.resolution, 1)` /
+  `"%.1f" % context.resolution` in `_apply_invariants`.  Its previously
+  UNCOERCED `a or b or c` chain could pass a stringized resolution straight into
+  `round()` -> TypeError.  It now coerces each source via the shared
+  `_coerce_resolution`.
+- The coercion+range-guard rule is consolidated into one primitive,
+  `_coerce_resolution(val)` in utils/run_utils.py (coerce via `_safe_float`,
+  guard `0.5 < res < 20`), used by both `resolve_session_resolution` and
+  `from_state`.  The source CHAINS remain per-site (they legitimately differ);
+  only the coercion rule is shared.
+
+Behavior is preserved: a 200-case scan shows perceive() unchanged vs its old
+logic, and a 2000-case scan shows build() unchanged vs old `find_resolution()`
+except for the intended string->float coercion and range-guard hardening (zero
+true value divergences).  Tests: `tst_rfree_resolution_stop.py` gains
+resolver-tier, coercion/range, and a "perceive and build agree" test (now 10).
 
 ### Tests
 

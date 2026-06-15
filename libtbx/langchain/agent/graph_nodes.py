@@ -35,6 +35,7 @@ from libtbx.langchain.agent.metrics_analyzer import (
     analyze_metrics_trend,
     get_latest_resolution,
 )
+from libtbx.langchain.utils.run_utils import _safe_float, _coerce_resolution
 
 from libtbx.langchain.agent.workflow_state import (
     detect_workflow_state,
@@ -404,6 +405,78 @@ except ImportError:
 
 
 # =============================================================================
+# Shared resolution resolver
+# =============================================================================
+
+def resolve_session_resolution(state, workflow_state=None, metrics_history=None):
+    """Single source of resolution truth for graph nodes.
+
+    Both perceive() and build() need "the data resolution" to drive
+    resolution-dependent decisions (the R-free stop target; auto-filled program
+    parameters).  They used to resolve it differently -- perceive() looked at
+    session_resolution then metrics history; build()'s nested find_resolution()
+    looked at session_resolution then workflow_state, log_analysis, and a
+    history-command regex.  Two chains on the same state can disagree (e.g.
+    perceive() stops on a loose default while build() prepares parameters from a
+    different value).  This unifies them.
+
+    Priority (first hit wins):
+      1. state["session_resolution"]  -- the per-cycle graph alias of
+         session.data["resolution"] (see ARCHITECTURE section 48).
+      2. workflow_state["resolution"] -- extracted from history analysis.
+      3. state["log_analysis"]["resolution"] -- current cycle's log analysis.
+      4. get_latest_resolution(metrics_history) -- most recent per-cycle metric
+         resolution (structured; this is the source perceive() relied on).
+      5. resolution=NN from a previous command string in history (last resort).
+
+    Every candidate is passed through _coerce_resolution (shared with
+    CommandContext.from_state): coerced via _safe_float so a stringized value
+    cannot crash the downstream band lookup `lo <= resolution < hi` or the
+    `round()`/`%.1f` auto-fill, and range-guarded 0.5 < res < 20 so a stray parse
+    is rejected rather than propagated.  `workflow_state` and
+    `metrics_history` are optional: a caller passes whatever it has in scope
+    (perceive() has metrics_history; build() has workflow_state); a missing
+    source is simply skipped.
+
+    Returns (resolution_or_None, source_label).
+    """
+    # 1. Authoritative session value (the single source of truth's graph alias).
+    sess = _coerce_resolution(state.get("session_resolution"))
+    if sess is not None:
+        return sess, "session"
+
+    # 2. workflow_state (extracted from history analysis).
+    if workflow_state is None:
+        workflow_state = state.get("workflow_state", {}) or {}
+    ws = _coerce_resolution(workflow_state.get("resolution"))
+    if ws is not None:
+        return ws, "workflow_state"
+
+    # 3. Current log_analysis.
+    analysis = state.get("log_analysis", {}) or {}
+    la = _coerce_resolution(analysis.get("resolution"))
+    if la is not None:
+        return la, "log_analysis"
+
+    # 4. Most recent per-cycle metric resolution (perceive()'s historical source).
+    if metrics_history:
+        mh = _coerce_resolution(get_latest_resolution(metrics_history))
+        if mh is not None:
+            return mh, "metrics_history"
+
+    # 5. resolution=NN in a previous command string (last resort).
+    for entry in reversed(state.get("history", []) or []):
+        cmd = entry.get("command", "") if isinstance(entry, dict) else ""
+        m = re.search(r'resolution[=\s]+([\d.]+)', cmd, re.IGNORECASE)
+        if m:
+            val = _coerce_resolution(m.group(1))
+            if val is not None:
+                return val, "previous_command"
+
+    return None, None
+
+
+# =============================================================================
 # NODE: PERCEIVE
 # =============================================================================
 
@@ -518,7 +591,16 @@ def perceive(state):
         metrics_history.append(current_metrics)
 
     # 4. Analyze metrics trend
-    resolution = get_latest_resolution(metrics_history)
+    # Resolve the data resolution through the shared resolver (see
+    # resolve_session_resolution / ARCHITECTURE section 48), so perceive() and
+    # build() agree on the same value.  Prefers the authoritative
+    # session_resolution; falls back through workflow_state, log_analysis, the
+    # most recent per-cycle metric resolution, and finally a history command.
+    # Getting this wrong made the stop evaluator use the resolution-INDEPENDENT
+    # R-free target (0.28) instead of the banded target -- a premature
+    # "TARGET REACHED" at sub-2A (see section 47).
+    resolution, _resolution_source = resolve_session_resolution(
+        state, metrics_history=metrics_history)
 
     # Get available_files first (needed for both experiment type detection and workflow state)
     available_files = state.get("available_files", [])
@@ -4095,39 +4177,6 @@ def build(state):
     strategy, state = _validate_phil_strategy(
         program, strategy, state)
 
-    def find_resolution():
-        # 1. From session_resolution (single source of truth - set by xtriage/mtriage)
-        session_res = state.get("session_resolution")
-        if session_res:
-            return session_res, "session"
-
-        # 2. From workflow_state (extracted from history analysis)
-        res = workflow_state.get(
-            "resolution")
-        if res:
-            return res, "workflow_state"
-
-        # 3. From current log_analysis
-        analysis = state.get("log_analysis", {})
-        if analysis.get("resolution"):
-            return analysis["resolution"], "log_analysis"
-
-        # 4. From previous commands in history (last resort)
-        history = state.get("history", [])
-        import re
-        for entry in reversed(history):
-            cmd = entry.get("command", "") if isinstance(entry, dict) else ""
-            res_match = re.search(r'resolution[=\s]+([\d\.]+)', cmd, re.IGNORECASE)
-            if res_match:
-                try:
-                    res = float(res_match.group(1))
-                    if 0.5 < res < 20:  # Sanity check
-                        return res, "previous_command"
-                except ValueError:
-                    pass
-
-        return None, None
-
     # NOTE: Resolution requirements for predict_and_build, real_space_refine,
     # and dock_in_map are now handled by invariants in programs.yaml.
     # The validate_and_fix() call below will auto-fill resolution from context.
@@ -4438,11 +4487,12 @@ def build(state):
 
             # Validate invariants and apply fixes (single place for all program constraints)
             # Build context for auto-fills (resolution, etc.)
-            # Use find_resolution() to get resolution from all possible sources
-            found_resolution, res_source = find_resolution()
+            # Use the shared resolver so build() and perceive() agree (section 48).
+            found_resolution, res_source = resolve_session_resolution(
+                state, workflow_state=workflow_state)
             invariant_context = {
                 "session_resolution": state.get("session_resolution"),
-                "resolution": found_resolution,  # From find_resolution() priority order
+                "resolution": found_resolution,  # resolve_session_resolution() priority order
                 "resolution_source": res_source,
                 "workflow_state": workflow_state,
             }

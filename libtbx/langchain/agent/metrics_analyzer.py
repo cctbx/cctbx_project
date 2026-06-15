@@ -109,6 +109,15 @@ def derive_metrics_from_history(history):
                 metrics["tfz"] = _extract_float(result_text, r"TFZ[=:\s]+([0-9.]+)")
             if not metrics["llg"]:
                 metrics["llg"] = _extract_float(result_text, r"LLG[=:\s]+([0-9.]+)")
+            # Resolution text-fallback: the structured "analysis" dict often
+            # omits resolution even though it appears in the refine/xtriage
+            # result text.  Without this, metrics_history carries resolution=None
+            # and the stop evaluator loses the resolution-banded R-free target.
+            # (Defense-in-depth; perceive() also prefers state["session_resolution"].)
+            # Uses _extract_resolution (not _extract_float) to avoid mis-reading
+            # "Anomalous Resolution" / "Resolution range: lo - hi" forms.
+            if not metrics["resolution"]:
+                metrics["resolution"] = _extract_resolution(result_text)
             if not metrics["map_cc"]:
                 # Try multiple patterns for map_cc extraction
                 # Pattern 1: CC_mask (the actual format from real_space_refine)
@@ -141,6 +150,49 @@ def _extract_float(text, pattern):
         except (ValueError, IndexError):
             pass
     return None
+
+
+def _extract_resolution(text):
+    r"""Extract the data (high-resolution) limit from program result text.
+
+    This is NOT a plain `_extract_float` with a "resolution" pattern, because a
+    naive first-match regex mis-reads real PHENIX output.  Hazards handled:
+
+      - ``Anomalous Resolution: 2.10`` appears (in xtriage output) BEFORE the
+        data ``Resolution: 1.74``; a first-match grabs 2.10.  The anomalous span
+        is stripped from each line first (so a real resolution sharing the line
+        is still found).
+      - ``Resolution range: 20.0 - 1.74`` -> take the high-resolution limit
+        (the second number, 1.74), not the low-resolution 20.0.  A first-match
+        ``[0-9.]+`` grabs 20.0 (or, anchored after a colon, fails entirely).
+      - Multiple ``Resolution:`` lines -> the LAST one wins, since program
+        summaries / final tables appear near the bottom of the log.
+      - A decimal point is REQUIRED (``[0-9]+\.[0-9]+``); this avoids matching
+        integer headers such as ``Completeness in resolution range: 1`` as a
+        1.0 Angstrom resolution.  PHENIX prints resolutions with decimals.
+
+    A sanity bound (0.5 < res < 20) mirrors find_resolution()'s history branch
+    so a stray parse can't feed a nonsense value to the resolution-banded target
+    lookup.  Returns a float, or None.
+    """
+    if not text:
+        return None
+    best = None
+    for raw in text.splitlines():
+        # Strip an "anomalous resolution: NN.NN" span so it can't be taken as the
+        # data resolution, while preserving any real resolution on the same line.
+        line = re.sub(r'anomalous\s+resolution[:\s=]*[0-9]+(?:\.[0-9]+)?',
+                      ' ', raw, flags=re.IGNORECASE)
+        # "resolution" then a decimal float, optionally a "- float" range.
+        m = re.search(
+            r'resolution\b[^0-9\n]*?([0-9]+\.[0-9]+)'
+            r'(?:\s*[-\u2013]\s*([0-9]+\.[0-9]+))?',
+            line, re.IGNORECASE)
+        if m:
+            val = float(m.group(2)) if m.group(2) else float(m.group(1))
+            if 0.5 < val < 20.0:  # plausible macromolecular resolution
+                best = val  # last match wins (final summary near bottom)
+    return best
 
 
 # _safe_float is shared; see libtbx/langchain/utils/run_utils.py

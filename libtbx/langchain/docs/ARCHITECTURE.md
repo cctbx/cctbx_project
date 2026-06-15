@@ -4979,12 +4979,207 @@ same name in the module namespace).  Verified: per-file call-site counts are
 unchanged from the originals (3/7/12/45/16 across the five modules), and the
 imported object is identity-equal to `run_utils._safe_float`.
 
-Tests: `tst_safe_float_consolidation.py` (5 tests) — exactly one definition;
+Tests: `tst_safe_float_consolidation.py` (8 tests) — exactly one definition;
 no agent module re-defines it; each consumer imports the canonical one; behavior
 (string `"0.385"`, `None`, `0.0`, non-numeric → `None`, no raise); and
 sanity_checker coerces both metric blocks with the `is not None` guard.  A
 negative control confirmed the "no duplicate definitions" test fails if a copy
 is re-introduced.
+
+### 47. Resolution-Dependent Stop Targets: Don't Drop session_resolution (v120)
+
+**Symptom.** At sub-2A resolution a run could stop after a SINGLE refinement
+with "R-free TARGET REACHED" (observed: 1.57A, R-free 0.252, stopped).
+
+**Mechanism.** The stop evaluator's R-free target is resolution-dependent
+(`metrics.yaml` `r_free.by_resolution`): the `[1.5, 2.0]` band gives
+`acceptable = 0.25`, but the resolution-INDEPENDENT default is `0.28`.  With
+`success_threshold = target - 0.02`, the banded path needs R-free < 0.23 (0.252
+does NOT qualify) while the default path needs < 0.26 (0.252 DOES) — so dropping
+the resolution flips a "keep going" into a false "target reached".
+
+**Root cause.** `perceive()` (`agent/graph_nodes.py`) chose the stop-evaluation
+resolution from `get_latest_resolution(metrics_history)`.  That returns None when
+a cycle's structured `analysis` dict lacks a resolution — which happens even
+though the data resolution is known and carried in `state["session_resolution"]`
+(the per-cycle graph alias of `session.data["resolution"]`, which xtriage/mtriage
+populate via `set_resolution()` — see §48 for the full data flow).  `derive_metrics_from_history()` only read resolution
+from `analysis[...]` and had no result-text fallback (unlike r_free/r_work/etc.),
+so history silently carried `resolution=None`.  `get_target("r_free", None)` then
+returned 0.28.
+
+**Fix (defense-in-depth, two layers).**
+1. `perceive()` prefers the authoritative session value:
+   `resolution = _safe_float(state.get("session_resolution")) or
+   get_latest_resolution(metrics_history)`.  This matches the
+   session_resolution-first pattern already used ~8x elsewhere in graph_nodes.py
+   (the perceive() stop-evaluation read was the lone exception).  `_safe_float` coercion matters: the band
+   lookup does `lo <= resolution < hi`, which raises `TypeError` if
+   `session_resolution` is ever stored as a string; coercion both prevents that
+   crash and lets a non-numeric value fall through to the history value.
+2. `derive_metrics_from_history()` gains a resolution text-fallback via a
+   dedicated `_extract_resolution()` helper, so history retains resolution even
+   when `analysis` omits it.  The helper is deliberately NOT a naive
+   `_extract_float(..., "resolution")`: real PHENIX output prints
+   `Anomalous Resolution: 2.10` *before* the data `Resolution: 1.74`, so a
+   first-match regex grabs the anomalous value.  `_extract_resolution` strips the
+   anomalous span, takes the high-resolution limit of a `range: lo - hi` form,
+   lets the last match win, requires a decimal (so `Completeness in resolution
+   range: 1` is not read as 1.0 A), and bounds `0.5 < res < 20`.  It matches the
+   structured extractor on real p9 xtriage/autosol/autobuild text.
+
+**Verification.** Driven against the REAL stack (real `yaml_loader` + real
+`metrics.yaml` + real `metric_evaluator`): `get_target("r_free", None) = 0.28`,
+`get_target("r_free", 1.57) = 0.25`; the None path's trend reads "TARGET
+REACHED", the 1.57 path reads "first refinement"; the text-fallback recovers
+1.57.  Tests: `tst_rfree_resolution_stop.py` (10) + committed fixture
+`tests/data/session_rfree_resolution_bug.json`; a negative control confirms the
+perceive() change is required, and a wiring test (the recovered-from-text case
+uses the Anomalous-prefix form) fails if the fallback reverts to a naive pattern.
+
+**Downstream impact of the original bug** (why it mattered beyond one extra
+cycle): a skipped second refinement means ordered solvent is never added
+(`rules_selector` requires `refine_count >= 2`) and a ligand fitted after the
+first refine is merged but never refined against the data, leaving strong
+unexplained difference density in the (pre-ligand) output map.
+
+**Side effect to be aware of:** supplying the real resolution also activates the
+non-YAML fallback's own resolution-dependent target (`_analyze_xray_trend`:
+`dynamic_target = clamp(resolution/10, 0.20, 0.30)`), which previously defaulted
+to 0.25 when resolution was None — so that path now stops slightly *less* readily
+at high resolution and slightly *more* readily at low resolution (both correct);
+the default YAML path is unchanged in mechanism.
+
+### 48. Resolution Data Flow: One Value, Three Names, Two Renames
+
+The data resolution is referred to by **three different key names** as it
+travels from the session to the graph, with **two renames** along the way.  This
+is the single most confusing part of the resolution handling; the names are NOT
+independent values — they are the same number relabeled at layer boundaries.
+
+```
+LAYER                         KEY NAME                       set / read by
+----------------------------  -----------------------------  -----------------------------
+1. Session (truth)            session.data["resolution"]     set_resolution() writes it;
+                                                             get_resolution() reads it
+        |  ai_agent.py: session_resolution = session.get_resolution()
+        v
+2. Agent call / wire          session_state["resolution"]    build_session_state() renames
+                                                             session_resolution ->
+                                                             session_state["resolution"]
+                                                             (api_client.py)   [RENAME 1]
+        |  run_ai_agent.py: create_initial_state(
+        |      session_resolution = session_state.get("resolution"))           [RENAME 2]
+        v
+3. Graph state                state["session_resolution"]    create_initial_state() writes it
+                                                             (graph_state.py); perceive(),
+                                                             build()/find_resolution(),
+                                                             template_builder, command_builder
+                                                             read it
+```
+
+**The single source of truth is `session.data["resolution"]`**, populated by
+`session.set_resolution(value, source)` (e.g. from xtriage/mtriage).
+`state["session_resolution"]` is its **per-cycle graph alias**, rebuilt fresh by
+`create_initial_state()` every cycle — it is NOT persisted.  Consequences worth
+remembering:
+
+- A persisted `agent_session.json` (a dump of `session.data`) contains
+  **`resolution`**, not `session_resolution`.  The absence of a
+  `session_resolution` key in saved session files is correct, not a bug.
+- The two renames are deliberate: the wire/`session_state` layer uses the plain
+  name `resolution` (shared with other request fields), while the graph state
+  uses the qualified `session_resolution` to distinguish the
+  authoritative-session value from per-cycle metric resolutions in history.
+- `build_session_state()` only sets `session_state["resolution"]` when the value
+  is not None, and `create_initial_state()` defaults `session_resolution=None`,
+  so an unknown resolution stays None all the way through (and the stop evaluator
+  falls back to history / resolution-independent targets — see §47).
+
+The names are **load-bearing** across `graph_state.py` (TypedDict), `contract.py`,
+`api_client.py`, `template_builder.py`, `command_builder.py`, and several tests,
+so they are intentionally NOT unified by renaming; this section documents the
+mapping instead.
+
+### 49. Unified Resolution Resolver (v120)
+
+`perceive()` (the stop decision) and `build()` (program-parameter auto-fill) both
+need "the data resolution", and they used to compute it with **different chains**:
+
+| node | old chain |
+|---|---|
+| `perceive()` | `session_resolution` -> `get_latest_resolution(metrics_history)` |
+| `build()` (nested `find_resolution()`) | `session_resolution` -> `workflow_state["resolution"]` -> `log_analysis["resolution"]` -> previous-command regex |
+
+Two chains over the same state can disagree — e.g. `perceive()` decides "stop" from
+a loose history default while `build()` prepares parameters from a different
+resolution. v120 replaces both with one module-level helper in `graph_nodes.py`:
+
+```python
+def resolve_session_resolution(state, workflow_state=None, metrics_history=None):
+    # priority (first hit wins), returns (resolution, source_label):
+    #   1. state["session_resolution"]            (coerced; the section-48 alias)
+    #   2. workflow_state["resolution"]
+    #   3. state["log_analysis"]["resolution"]
+    #   4. get_latest_resolution(metrics_history) (perceive's structured source)
+    #   5. resolution=NN from a previous command  (last resort)
+```
+
+- Each caller passes the optional sources it has in scope: `perceive()` passes
+  `metrics_history`; `build()` passes `workflow_state`.  A missing source is
+  skipped (so `build()` keeps exactly its original source set — it does not gain
+  `metrics_history` — and `perceive()` keeps its metrics source while *also*
+  gaining the richer fallbacks).
+- Every value is coerced with `_safe_float` and range-checked `0.5 < res < 20`.
+  This both prevents a stringized `session_resolution` from crashing the band
+  lookup (`lo <= resolution < hi`) and stops the old `find_resolution()` failure
+  mode where a raw string like `"2.1"` could be returned into
+  `invariant_context["resolution"]` and thence a command parameter.
+
+**Behavior preservation.** `perceive()` is unchanged vs its old
+`session_resolution or get_latest_resolution(...)` logic (verified by a 200-case
+scan).  `build()` is unchanged vs the old `find_resolution()` except for the
+intended string->float coercion and range-guard (a 2000-case scan shows zero true
+value divergences; all differences are same-value type coercions or correctly
+dropped out-of-range values).  `perceive()` and `build()` now agree whenever the
+resolution comes from a source they share (session / workflow_state / log_analysis
+/ history).  Tests in `tst_rfree_resolution_stop.py` cover the priority tiers, the
+coercion/range guard, and an explicit perceive-vs-build agreement check.
+
+**A third resolver on the live build path.** There is a *third* place resolution
+is resolved: `CommandContext.from_state()` in `command_builder.py`.  When
+`USE_NEW_COMMAND_BUILDER=True` (the default), `build()` delegates to
+`_build_with_new_builder`, which constructs a `CommandContext` via
+`from_state()`; that object's `context.resolution` is then consumed by
+`round(context.resolution, 1)` and `"%.1f" % context.resolution` in
+`_apply_invariants` (the resolution auto-fill).  `from_state()` uses its own
+3-source chain (`session_resolution` -> `state["resolution"]` ->
+`workflow_state["resolution"]`) -- different again from perceive()/build(), and
+it ran UNCOERCED, so a stringized source could reach `round()` and raise
+`TypeError: type str doesn't define __round__`.  (The graph_nodes `build()`
+unification above only covers the *legacy* `USE_NEW_COMMAND_BUILDER=False` path;
+`from_state()` is the live consumer.)
+
+**Consolidated coercion primitive.** Rather than unify the three *source chains*
+(they legitimately see different state: perceive() has metrics_history, build()'s
+context has none, etc.) or create a `command_builder -> graph_nodes` import
+cycle, the shared piece -- the coercion+range-guard *rule* -- is factored into
+one primitive, `_coerce_resolution(val)` in `utils/run_utils.py` (no agent
+dependencies, so no cycle):
+
+```python
+def _coerce_resolution(val):
+    v = _safe_float(val)
+    if v is not None and 0.5 < v < 20.0:
+        return v
+    return None
+```
+
+Both `resolve_session_resolution` (every tier) and `from_state()` (every source)
+now run candidates through it.  `from_state()`'s coercion is behavior-preserving
+except for the two intended improvements: a stringized value is coerced to float
+(removing the `round()` crash) and a 0.0/negative/out-of-range value is rejected
+(the `or` chain skips to the next source, exactly as a falsy value did before).
 
 ## Workflow States
 

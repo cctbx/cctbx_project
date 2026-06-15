@@ -60,6 +60,33 @@ def _safe_float(val):
     return None
 
 
+# Plausible macromolecular resolution bounds (Angstroms).  Below ~0.5 or above
+# ~20 is almost certainly a parse error rather than a real data resolution.
+_RESOLUTION_MIN = 0.5
+_RESOLUTION_MAX = 20.0
+
+
+def _coerce_resolution(val):
+  """Coerce a candidate resolution to a sane float, or return None.
+
+  Single shared definition of "what counts as a usable resolution value", used
+  by every place that resolves the data resolution (the graph stop-evaluation
+  resolver and CommandContext.from_state).  It:
+    - coerces via _safe_float (so a JSON/parse stringized "1.74" becomes 1.74,
+      which matters because consumers do `round(resolution, 1)` and
+      `"%.1f" % resolution` -- both raise TypeError on a str), and
+    - range-guards 0.5 < res < 20 so a stray parse (0.0, a negative, or a wildly
+      out-of-range number) is rejected rather than propagated.
+
+  Returns a float in (0.5, 20.0) or None.  Note 0.0 returns None, matching the
+  falsy-skip behavior of the historical `a or b or c` resolver chains.
+  """
+  v = _safe_float(val)
+  if v is not None and _RESOLUTION_MIN < v < _RESOLUTION_MAX:
+    return v
+  return None
+
+
 def load_log_text(file_name, debug_log=None, out=sys.stdout):
   """
   Load log text from a file.

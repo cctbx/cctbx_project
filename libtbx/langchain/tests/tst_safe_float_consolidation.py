@@ -19,6 +19,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import re
+import importlib.util
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)                      # .../libtbx/langchain
@@ -132,6 +133,83 @@ def test_safe_float_behavior():
     assert sf([1, 2]) is None        # non-convertible type -> None, no raise
 
 
+# --- _coerce_resolution consolidation (shared resolution coercion+guard) ------
+
+def _load_coerce_resolution():
+    path = _run_utils_path()
+    if path is None:
+        return None
+    src = open(path).read()
+    # _coerce_resolution depends on _safe_float and the bound module constants;
+    # exec the relevant span (constants + both defs) together.
+    m = re.search(
+        r'def _safe_float\(val\):.*?def _coerce_resolution\(val\):.*?\n  return None\n',
+        src, re.DOTALL)
+    if not m:
+        return None
+    ns = {}
+    exec(m.group(0), ns)
+    return ns.get("_coerce_resolution")
+
+
+def test_coerce_resolution_single_definition():
+    """run_utils.py defines _coerce_resolution exactly once."""
+    path = _run_utils_path()
+    if path is None:
+        print("  (skip)")
+        return
+    n = len(re.findall(r'^def _coerce_resolution\(', open(path).read(), re.MULTILINE))
+    assert n == 1, "run_utils.py must define _coerce_resolution exactly once (found %d)" % n
+
+
+def test_coerce_resolution_behavior():
+    """Coerces strings to float, range-guards 0.5 < res < 20, never raises."""
+    cr = _load_coerce_resolution()
+    if cr is None:
+        print("  (skip) could not load _coerce_resolution")
+        return
+    assert cr(1.74) == 1.74
+    assert cr("1.74") == 1.74        # JSON/parse string -> float (the crash fix)
+    assert cr("2.5") == 2.5
+    assert cr(None) is None
+    assert cr(0.0) is None           # falsy/invalid -> None (or-chain skips)
+    assert cr("0.0") is None
+    assert cr(-1.5) is None          # negative -> None (range guard)
+    assert cr("abc") is None
+    assert cr(25.0) is None          # out of range high
+    assert cr(0.5) is None           # boundary exclusive
+    assert cr(20.0) is None          # boundary exclusive
+    assert cr(0.51) == 0.51
+
+
+def test_coerce_resolution_consumers():
+    """Both resolution-resolving sites use the shared _coerce_resolution:
+    graph_nodes.resolve_session_resolution and command_builder.from_state.
+    This guards against a site re-introducing an uncoerced chain (which would
+    let a stringized resolution crash `round(context.resolution, 1)`)."""
+    # graph_nodes resolver
+    gn = _agent_file("graph_nodes.py")
+    if gn is not None:
+        src = open(gn).read()
+        assert "_coerce_resolution" in src, \
+            "graph_nodes must use the shared _coerce_resolution"
+        assert "import _safe_float, _coerce_resolution" in src or \
+               "import _coerce_resolution" in src, \
+            "graph_nodes must import _coerce_resolution from run_utils"
+    # command_builder.from_state
+    cb = _agent_file("command_builder.py")
+    if cb is not None:
+        src = open(cb).read()
+        assert "_coerce_resolution(state.get(\"session_resolution\"))" in src, \
+            "command_builder.from_state must coerce session_resolution"
+        assert "_coerce_resolution(workflow_state.get(\"resolution\"))" in src, \
+            "command_builder.from_state must coerce workflow_state resolution"
+        # the old uncoerced bare chain must be gone
+        assert not re.search(
+            r'state\.get\("session_resolution"\)\s*or\s*\n\s*state\.get\("resolution"\)\s*or\s*\n\s*workflow_state\.get\("resolution"\)\s*\n\s*\)',
+            src), "the old uncoerced from_state resolution chain must be replaced"
+
+
 # --- sanity_checker bug fix (source-scan; behavior covered above) ------------
 
 def test_sanity_checker_coerces_metrics():
@@ -161,6 +239,9 @@ _TESTS = [
     test_no_other_definitions_in_agent,
     test_consumers_import_canonical,
     test_safe_float_behavior,
+    test_coerce_resolution_single_definition,
+    test_coerce_resolution_behavior,
+    test_coerce_resolution_consumers,
     test_sanity_checker_coerces_metrics,
 ]
 
