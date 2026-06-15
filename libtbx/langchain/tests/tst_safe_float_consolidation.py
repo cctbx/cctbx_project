@@ -21,6 +21,8 @@ import os
 import re
 import importlib.util
 
+x = importlib.util # just to allow import
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)                      # .../libtbx/langchain
 _AGENT = os.path.join(_ROOT, "agent")

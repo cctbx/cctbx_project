@@ -35,7 +35,7 @@ from libtbx.langchain.agent.metrics_analyzer import (
     analyze_metrics_trend,
     get_latest_resolution,
 )
-from libtbx.langchain.utils.run_utils import _safe_float, _coerce_resolution
+from libtbx.langchain.utils.run_utils import _coerce_resolution
 
 from libtbx.langchain.agent.workflow_state import (
     detect_workflow_state,
