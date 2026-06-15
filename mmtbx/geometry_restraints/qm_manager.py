@@ -5,7 +5,7 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import make_header
 
 from libtbx.utils import Sorry
-from mmtbx.geometry_restraints import base_qm_manager, mopac_manager, orca_manager
+from mmtbx.geometry_restraints import base_qm_manager, mopac_manager, orca_manager, xtb_manager
 
 harkcal = 627.50946900
 bohrang = 0.52918
@@ -36,6 +36,10 @@ def qm_runner(qmm,
     coordinate_filename_ext='.arc' # maybe better from .out?
     log_filename_ext='.out'
     redirect_output=False
+  elif qmm.program=='xtb':
+    func = get_func(xtb_manager.xtb_manager, qmm.program_goal)
+    coordinate_filename_ext='.xtbopt.xyz'
+    log_filename_ext='.log'
   else:
     raise Sorry('QM program not found or set "%s"' % qmm.program)
   if func is None:

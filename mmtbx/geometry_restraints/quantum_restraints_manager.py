@@ -14,6 +14,7 @@ from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints import qm_manager
 from mmtbx.geometry_restraints import mopac_manager
 from mmtbx.geometry_restraints import orca_manager
+from mmtbx.geometry_restraints import xtb_manager
 
 from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
@@ -504,6 +505,9 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   elif program=='mopac':
     qmm = mopac_manager.mopac_manager
     default_solvent_model='EPS=78.4'
+  elif program=='xtb':
+    qmm = xtb_manager.xtb_manager
+    default_solvent_model='ALPB=ether'
   else:
     assert 0
   qmr = quantum_interface.populate_qmr_defaults(qmr)
