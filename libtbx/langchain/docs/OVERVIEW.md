@@ -800,6 +800,9 @@ PHENIX documentation. The pipeline has three stages:
 The reranking retriever is created in `rag/retriever.py` via
 `create_reranking_retriever()` and used by both log analysis
 (`analysis/analyzer.py`) and documentation queries (`utils/query.py`).
+The reranker itself is `PhenixFlashrankCompressor`, a local
+`BaseDocumentCompressor` that calls the `flashrank` package directly (no
+`langchain-community` dependency).
 
 ### 10. Thinking Levels and the Strategic Planner
 
@@ -1732,17 +1735,20 @@ installation. Install via `phenix.python -m pip install <package>` or via the
 
 | Package | Purpose | Required on |
 |---------|---------|-------------|
-| `langchain-core`, `langchain-community` | LLM orchestration core and community integrations | Server and local |
+| `langchain-core` | LLM orchestration core | Server and local |
 | `langchain-google-genai` | Google Gemini LLM provider | Server and local |
 | `langchain-openai` | OpenAI LLM provider | Server and local |
 | `langchain-anthropic`, `anthropic` | Anthropic (Claude) LLM provider | Server and local |
 | `portkey-ai` | Portkey gateway SDK (Azure-OpenAI upstream); optional — a manual fallback path works without it | Server and local |
 | `langchain-chroma` | Chroma vector store for document retrieval | Server and local |
-| `flashrank` | Local cross-encoder reranking (no API key needed) | Server, or local if `run_on_server=False` |
+| `flashrank` | Local cross-encoder reranking (no API key needed), wrapped by `PhenixFlashrankCompressor` | Server, or local if `run_on_server=False` |
+| `pypdf`, `beautifulsoup4` | Local document loaders (PDF and HTML) for building the docs DB | Where the docs DB is built |
 | `markdown-it-py` | HTML rendering of analysis output | Server and local |
 
 **Note:** `flashrank` downloads its model (~34MB) automatically on first use.
-No Cohere API key is required — reranking runs entirely locally.
+Reranking runs entirely locally via `PhenixFlashrankCompressor` (in
+`rag/retriever.py`), which calls `flashrank` directly — there is no dependency on
+`langchain-community` (the loaders and reranker were localized to remove it).
 
 ### LLM Providers and Environment Variables
 

@@ -209,7 +209,7 @@ def _probe_flashrank_runtime():
     "package imports but symbol cannot be loaded."
     """
     try:
-        from flashrank import Ranker, RerankRequest
+        from flashrank import Ranker
         from libtbx.langchain.rag.retriever import PhenixFlashrankCompressor
         if PhenixFlashrankCompressor is None:
             return (False, "PhenixFlashrankCompressor is None after import")
