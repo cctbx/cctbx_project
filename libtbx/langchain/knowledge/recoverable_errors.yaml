@@ -119,6 +119,42 @@ errors:
       - "xray_data.r_free_flags.generate"
 
   # ---------------------------------------------------------------------------
+  # R-free Flags Missing (inverse twin of rfree_flags_mismatch)
+  # ---------------------------------------------------------------------------
+  # Occurs when phenix.refine is run against reflection data that has NO R-free
+  # flag array, and the command supplied neither a flags-bearing MTZ nor
+  # xray_data.r_free_flags.generate=True.  Observed in AF-bromodomain-ligand
+  # (AIAgent_15, 2026-06-15): the LLM ran refine on the raw 7qz0.mtz directly,
+  # bypassing the locked R-free MTZ; refine aborted and the agent advanced to
+  # polder on the unrefined model.
+  #
+  # Example error (phenix.refine):
+  #   No array of R-free flags found.
+  #   If previously used R-free flags are available run this command again
+  #   with the name of the file containing the original flags ... or run this
+  #   command again with the additional definition:
+  #   xray_data.r_free_flags.generate=True
+  #
+  # Recovery: force a retry of phenix.refine.  The retry is rebuilt by the
+  # server-side BUILD node / command_builder, which re-selects files with empty
+  # files={} — substituting the locked R-free MTZ (context.rfree_mtz) for the
+  # data slot when one is locked (preserving R-free flag continuity), or
+  # falling back to generate=True when no MTZ is locked.  No flag injection
+  # here; the builder does the right thing on the rebuilt command.
+  # ---------------------------------------------------------------------------
+  rfree_flags_missing:
+    description: "Refinement data has no R-free flags; retry with locked R-free MTZ"
+    max_retries: 1
+
+    detection_patterns:
+      - "No array of R-free flags found"
+      - "If previously used R-free flags are available"
+
+    # Resolution: force a retry; the builder re-selects the locked rfree_mtz
+    resolution: force_retry
+    retry_program: phenix.refine
+
+  # ---------------------------------------------------------------------------
   # Missing PHIB columns in input_map_file (v119.H17)
   # ---------------------------------------------------------------------------
   # Occurs when phenix.autobuild is given a `map_file=` MTZ that lacks

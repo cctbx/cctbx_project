@@ -304,6 +304,12 @@ class ErrorAnalyzer:
         if error_def.get("resolution") == "strip_parameter":
             return {"resolution": "strip_parameter"}
 
+        # force_retry resolutions need no extracted info either — the retry is
+        # rebuilt downstream by the BUILD node.  Return a non-empty marker so
+        # analyze() doesn't bail at the "if not error_info" check (line ~197).
+        if error_def.get("resolution") == "force_retry":
+            return {"resolution": "force_retry"}
+
         return None
 
     def _extract_ambiguous_labels_info(self, log_text: str,
@@ -407,6 +413,13 @@ class ErrorAnalyzer:
         if error_def.get("resolution") == "strip_parameter":
             return self._resolve_strip_parameter(error_type, error_def, program)
 
+        # rfree_flags_missing (and any future force_retry error): the fix is
+        # not a flag edit but a retry — the server-side BUILD node rebuilds the
+        # command with empty files={}, re-selecting the locked R-free MTZ (or
+        # falling back to generate=True).  See _resolve_force_retry.
+        if error_def.get("resolution") == "force_retry":
+            return self._resolve_force_retry(error_type, error_def, program)
+
         return None
 
     def _resolve_strip_parameter(self, error_type: str,
@@ -455,6 +468,52 @@ class ErrorAnalyzer:
             reason=("Stripping parameter(s) %s from %s retry: %s"
                     % (strip_list, program, description)),
             retry_program=program,
+            selected_choice="",
+        )
+
+    def _resolve_force_retry(self, error_type: str,
+                             error_def: Dict[str, Any],
+                             program: str) -> Optional[ErrorRecovery]:
+        """
+        Build a recovery that simply forces a retry of the program — with
+        NO flag additions and NO flag strips.
+
+        Mirror of _resolve_strip_parameter, but for errors whose YAML declares
+        ``resolution: force_retry``.  The fix lives downstream: the forced
+        retry is rebuilt by the server-side BUILD node / command_builder, which
+        re-selects files with empty ``files={}`` — substituting the locked
+        R-free MTZ (``context.rfree_mtz``) for the data slot when one is locked
+        (preserving R-free flag continuity), or falling back to
+        ``generate=True`` when no MTZ is locked.  This handler therefore emits
+        an ErrorRecovery with empty ``flags`` AND empty ``strip_flags``; the
+        only payload is the force-retry signal (``retry_program``), which
+        _handle_recovery turns into ``set_force_retry_program``.
+
+        Used by:
+        - ``rfree_flags_missing``: "No array of R-free flags found" — retry so
+          the builder re-selects the locked R-free MTZ.
+
+        Args:
+            error_type: The YAML error key (e.g. "rfree_flags_missing").
+            error_def: The full YAML entry for this error.
+            program: The program that produced the error (fallback retry target
+                if the YAML omits ``retry_program``).
+
+        Returns:
+            ErrorRecovery with empty flags and empty strip_flags, carrying the
+            retry_program signal.
+        """
+        retry_program = error_def.get("retry_program", program)
+        description = error_def.get("description", error_type)
+        return ErrorRecovery(
+            error_type=error_type,
+            affected_file="",      # not specific to a single file
+            flags={},              # nothing to ADD
+            strip_flags=[],        # nothing to STRIP
+            reason=("Forcing retry of %s; builder re-selects files "
+                    "(incl. locked R-free MTZ): %s"
+                    % (retry_program, description)),
+            retry_program=retry_program,
             selected_choice="",
         )
 

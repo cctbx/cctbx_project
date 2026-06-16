@@ -2251,6 +2251,16 @@ def main():
                        "tst_obs_labels_auto_fill",
                        False, 0))
 
+    # --- R-free-flags-missing auto-recovery (force_retry) ---
+    try:
+        from tests.tst_rfree_flags_missing import run_all_tests as run_rfree_missing_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_flags_missing", run_rfree_missing_tests, args.verbose)
+        results.append(("rfree flags missing recovery", "tst_rfree_flags_missing", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_rfree_flags_missing: {e}")
+        results.append(("rfree flags missing recovery", "tst_rfree_flags_missing", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

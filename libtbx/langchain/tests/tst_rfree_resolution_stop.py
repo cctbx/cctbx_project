@@ -195,14 +195,24 @@ def _load_metrics_stack():
     except ImportError:
         return None, None
 
+    # Register lightweight parent packages so the by-path module loads below
+    # resolve.  GUARD with `if name not in sys.modules`: in a real PHENIX env
+    # `libtbx`, `libtbx.langchain`, etc. are already real packages, and
+    # UNCONDITIONALLY overwriting them replaces `libtbx.langchain` (path=None)
+    # with a __path__-less module.  That persists in sys.modules for the rest of
+    # the suite and makes a LATER test's `from libtbx.langchain.rag... import`
+    # fail with "'libtbx.langchain' is not a package" (observed: tst_dependencies
+    # reranker probe failing only inside run_all_tests).  Only inject a fake when
+    # the real one is absent (bare sandbox).
     for name, path in [("libtbx", None), ("libtbx.langchain", None),
                        ("libtbx.langchain.agent", _AGENT),
                        ("libtbx.langchain.utils", None),
                        ("libtbx.langchain.knowledge", _KNOWLEDGE)]:
-        m = types.ModuleType(name)
-        if path:
-            m.__path__ = [path]
-        sys.modules[name] = m
+        if name not in sys.modules:
+            m = types.ModuleType(name)
+            if path:
+                m.__path__ = [path]
+            sys.modules[name] = m
 
     ru = types.ModuleType("libtbx.langchain.utils.run_utils")
     def _safe_float(v):
@@ -403,18 +413,47 @@ _TESTS = [
 ]
 
 
+def _snapshot_sysmodules():
+    """Snapshot the sys.modules entries this test may add or overwrite, so
+    run_all_tests() can restore them and never leak test-loaded modules into
+    the rest of the suite (e.g. by-path metric_evaluator/metrics_analyzer or a
+    fake yaml_loader shadowing the real package for a later test)."""
+    return {k: v for k, v in sys.modules.items()
+            if k == "libtbx" or k.startswith("libtbx.")
+            or k in ("langchain_chroma",)}
+
+
+def _restore_sysmodules(saved):
+    """Restore sys.modules to the saved snapshot for the tracked keys: delete
+    anything added since, put back anything overwritten."""
+    for k in [k for k in list(sys.modules)
+              if (k == "libtbx" or k.startswith("libtbx.")
+                  or k == "langchain_chroma") and k not in saved]:
+        sys.modules.pop(k, None)
+    for k, v in saved.items():
+        sys.modules[k] = v
+
+
 def run_all_tests():
-    for fn in _TESTS:
-        fn()
+    saved = _snapshot_sysmodules()
+    try:
+        for fn in _TESTS:
+            fn()
+    finally:
+        _restore_sysmodules(saved)
     print("All %d tests passed." % len(_TESTS))
     return True
 
 
 if __name__ == "__main__":
+    saved = _snapshot_sysmodules()
     p = f = 0
-    for fn in _TESTS:
-        try:
-            fn(); print("  PASS: %s" % fn.__name__); p += 1
-        except AssertionError as e:
-            print("  FAIL: %s -- %s" % (fn.__name__, e)); f += 1
+    try:
+        for fn in _TESTS:
+            try:
+                fn(); print("  PASS: %s" % fn.__name__); p += 1
+            except AssertionError as e:
+                print("  FAIL: %s -- %s" % (fn.__name__, e)); f += 1
+    finally:
+        _restore_sysmodules(saved)
     print("\n%d passed, %d failed" % (p, f))
