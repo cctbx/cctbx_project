@@ -54,7 +54,6 @@ from mmtbx.geometry_restraints import base_qm_manager
 from mmtbx.geometry_restraints.base_qm_manager import harkcal, bohrang
 
 DEFAULT_XTB_GFN = 2
-DEFAULT_XTB_SOLVENT = 'ether'
 DEFAULT_XTB_MAXCYCLE = 1000
 # Harmonic force constant for $constrain dihedral restraints (Eh/rad^2). xTB has
 # no exact dihedral constraint (only $fix is exact, and only on Cartesians), so
@@ -105,8 +104,7 @@ def _compress_index_ranges(indices):
 
 class xtb_manager(base_qm_manager.base_qm_manager):
 
-  # Caller-overridable knobs.
-  maxcycle = DEFAULT_XTB_MAXCYCLE
+  # Caller-overridable knob.
   robust = False
 
   error_lines = [
@@ -200,7 +198,7 @@ class xtb_manager(base_qm_manager.base_qm_manager):
       # native and tblite backends. 'inertial' is exact on the native backend
       # but drifts the fixed atoms on tblite (which --spinpol forces); 'rf'
       # (default) drifts on both.
-      lines += ['$opt', '   engine=lbfgs', f'   maxcycle={self.maxcycle}',
+      lines += ['$opt', '   engine=lbfgs', f'   maxcycle={DEFAULT_XTB_MAXCYCLE}',
                 '$end']
     return '\n'.join(lines) + '\n'
 
