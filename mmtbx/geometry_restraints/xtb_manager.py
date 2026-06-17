@@ -56,7 +56,6 @@ from mmtbx.geometry_restraints.base_qm_manager import harkcal, bohrang
 DEFAULT_XTB_GFN = 2
 DEFAULT_XTB_SOLVENT = 'ether'
 DEFAULT_XTB_MAXCYCLE = 1000
-DEFAULT_XTB_THREADS = 1
 # Harmonic force constant for $constrain dihedral restraints (Eh/rad^2). xTB has
 # no exact dihedral constraint (only $fix is exact, and only on Cartesians), so
 # torsions are held by a stiff restraint; 1.0 holds them to within ~0.2 deg.
@@ -108,7 +107,6 @@ class xtb_manager(base_qm_manager.base_qm_manager):
 
   # Caller-overridable knobs.
   maxcycle = DEFAULT_XTB_MAXCYCLE
-  threads = DEFAULT_XTB_THREADS
   robust = False
 
   error_lines = [
@@ -172,7 +170,8 @@ class xtb_manager(base_qm_manager.base_qm_manager):
     return solvent_str
 
   def _get_threads(self):
-    return self.nproc or self.threads or DEFAULT_XTB_THREADS
+    # nproc (base default 1); the guard covers an explicit nproc=0/None.
+    return self.nproc or 1
 
   # ---- input generation ----------------------------------------------------
 
