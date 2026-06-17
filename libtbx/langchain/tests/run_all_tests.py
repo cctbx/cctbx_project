@@ -2321,6 +2321,26 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_autobuild_sequence_waiver: {e}")
         results.append(("autobuild sequence waiver", "tst_autobuild_sequence_waiver", False, 0))
 
+    # --- Option 2a: reactive-deviation hold ---
+    try:
+        from tests.tst_reactive_deviation_hold import run_all_tests as run_reactive_hold_tests
+        success, elapsed = run_test_module(
+            "tst_reactive_deviation_hold", run_reactive_hold_tests, args.verbose)
+        results.append(("reactive deviation hold", "tst_reactive_deviation_hold", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_reactive_deviation_hold: {e}")
+        results.append(("reactive deviation hold", "tst_reactive_deviation_hold", False, 0))
+
+    # --- Option 2a: plan lead-program offer ---
+    try:
+        from tests.tst_plan_lead_program_offer import run_all_tests as run_lead_offer_tests
+        success, elapsed = run_test_module(
+            "tst_plan_lead_program_offer", run_lead_offer_tests, args.verbose)
+        results.append(("plan lead program offer", "tst_plan_lead_program_offer", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_plan_lead_program_offer: {e}")
+        results.append(("plan lead program offer", "tst_plan_lead_program_offer", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

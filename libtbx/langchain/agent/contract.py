@@ -44,7 +44,7 @@ HOW TO ADD A NEW RESPONSE FIELD
 # v116.10 Phase 2: bumped from 3 to 5 to match the v4 and v5 fields
 # (plan_has_pending_stages, asu_copies) that were registered without
 # updating this constant.
-CURRENT_PROTOCOL_VERSION = 5
+CURRENT_PROTOCOL_VERSION = 6
 MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 
@@ -117,6 +117,14 @@ SESSION_INFO_FIELDS = [
     ("asu_copies",              None,  5,
      "Number of copies in the ASU (int or None). "
      "From user directives or xtriage log analysis."),
+
+    # --- v6: Option 2a reactive-deviation hold (v120) --------------------
+    ("plan_current_unrun_lead_program", "", 6,
+     "Lead program (programs[0], e.g. phenix.autobuild) of the current "
+     "ACTIVE plan stage when that stage has not run yet.  PERCEIVE injects "
+     "it into valid_programs so a stage held active by a reactive deviation "
+     "gets its lead program offered next cycle.  Empty string when there is "
+     "no such program."),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)

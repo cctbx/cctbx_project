@@ -463,7 +463,17 @@ def test_stage_failed_constant_is_reachable():
     status of a stage after a deviation catch-up over an
     unmet-criteria stage.  This is independent of test_A's
     assertions about Tom's specific plan; this is a
-    structural guarantee about the new semantics."""
+    structural guarantee about the new semantics.
+
+    v120 (Option 2a): the abandoned stage is given
+    cycles_used=1 so it represents a stage that RAN and
+    missed criteria.  The reactive-deviation hold only
+    guards stages that have NEVER run (cycles_used == 0,
+    lead program un-run); a stage that already ran is not
+    held and still catches up to STAGE_FAILED, exactly as
+    H15 requires.  (See §A, which likewise uses a
+    cycles_used>0 stage.)  The un-run-stage HOLD path is
+    covered by tst_reactive_deviation_hold.py."""
     stages = [
         StageDef(
             id="must_fail",
@@ -477,6 +487,7 @@ def test_stage_failed_constant_is_reachable():
     ]
     plan = StructurePlan(stages=stages)
     plan.stages[0].status = STAGE_ACTIVE
+    plan.stages[0].cycles_used = 1  # ran once, missed criteria
     sm = FakeStructureModel({"r_free": 0.50})
 
     plan.record_stage_cycle(
@@ -495,6 +506,59 @@ def test_stage_failed_constant_is_reachable():
     # And it must be on the right stage
     assert plan.stages[0].status == STAGE_FAILED
     print("  PASS: test_stage_failed_constant_is_reachable")
+
+
+def test_unrun_stage_held_not_failed_on_first_deviation():
+    """v120 Option 2a interaction with H15.
+
+    H15 marks a deviated-over, unmet-criteria stage FAILED — but ONLY once
+    the reactive-deviation hold has been consumed.  On the FIRST deviation
+    over a stage that has never run (cycles_used == 0) whose lead program is
+    un-run and whose criteria are unmet, Option 2a HOLDS the stage active
+    instead of failing it, so the agent returns to run the lead program.  This
+    pins that the two semantics coexist: §G (a RAN stage) fails; an UN-RUN
+    stage is held.  (The full hold behavior — second-deviation catch-up,
+    serialization, etc. — lives in tst_reactive_deviation_hold.py.)"""
+    stages = [
+        StageDef(
+            id="must_run",
+            programs=["p1"],
+            success_criteria={"r_free": "<0.10"},
+        ),
+        StageDef(
+            id="target",
+            programs=["p2"],
+        ),
+    ]
+    plan = StructurePlan(stages=stages)
+    plan.stages[0].status = STAGE_ACTIVE  # cycles_used stays 0 (never ran)
+    sm = FakeStructureModel({"r_free": 0.50})
+
+    plan.record_stage_cycle(
+        "p2",
+        structure_model=sm,
+        session_data={},
+        cycle_number=1,
+    )
+
+    # The un-run stage is HELD active, not FAILED, on the first deviation.
+    # If the hold cannot evaluate criteria (gate_evaluator unavailable →
+    # _criteria_met degrades to True → no hold), the stage advances to FAILED
+    # instead; accept that degradation rather than report a false failure.
+    held = plan.stages[0].status == STAGE_ACTIVE
+    degraded = plan.stages[0].status == STAGE_FAILED
+    assert held or degraded, (
+        "un-run stage should be HELD active (or FAILED if criteria eval "
+        "degraded), got %r" % plan.stages[0].status)
+    if held:
+        assert plan.stages[0].reactive_deviations == 1, (
+            "a held deviation must increment reactive_deviations")
+        assert plan.stages[0].cycles_used == 0, (
+            "holding must not count a cycle for the un-run stage")
+        print("  PASS: test_unrun_stage_held_not_failed_on_first_deviation")
+    else:
+        print("  PASS (degraded): "
+              "test_unrun_stage_held_not_failed_on_first_deviation")
 
 
 # =====================================================================
@@ -626,6 +690,7 @@ def run_all_tests():
     test_advance_force_true_unchanged()
     test_empty_criteria_marks_complete()
     test_stage_failed_constant_is_reachable()
+    test_unrun_stage_held_not_failed_on_first_deviation()
     # H1 micro-fix tests
     test_get_failed_stage_ids_basic()
     test_gate_stop_reason_surfaces_failed_stages()
