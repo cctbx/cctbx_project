@@ -89,7 +89,7 @@ def exercise_input_generation():
   # --- optimisation input ---
   opt_lines = m.get_input_lines(optimise_ligand=True, optimise_h=True)
   for token in ('$chrg 0', '$spin 0', '$gfn', 'method=2', '$opt',
-                'engine=inertial', 'maxcycle=1000', '$fix'):
+                'engine=lbfgs', 'maxcycle=1000', '$fix'):
     assert token in opt_lines, token
   # The donor O (atom 1, not a ligand atom and not H) is the only frozen atom.
   assert 'atoms: 1' in opt_lines, opt_lines
