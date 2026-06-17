@@ -927,6 +927,56 @@ ai_agent.py: session.get_all_bad_inject_params()   # v120: merged static ∪ lea
     → BUILD: postprocess_command(bad_inject_params=set(...))
 ```
 
+**`session_info` field plumbing contract (parity-critical).**  Any value that
+`ai_agent.py` puts into the per-cycle `session_info` dict and that server-side code
+(PERCEIVE / BUILD / the gate) needs to read must be carried at EVERY hop of the
+shared transport path, or it is silently dropped:
+
+```
+ai_agent.py session_info["X"]
+  → build_session_state()        [api_client.py]   session_info → session_state
+  → build_request_v2()           [api_client.py]   session_state → normalized_session_state
+                                                    (the WIRE WHITELIST — an explicit
+                                                     per-field copy; unlisted keys are dropped)
+  → create_request()             [api_schema.py]   dict(session_state), no filter
+  → apply_request_defaults()     [api_schema.py]   additive only (fills defaults,
+                                                    never strips; the session_state
+                                                    "subfields" list is descriptive,
+                                                    NOT a whitelist)
+  → transport encode/decode      [transport.py]    whole-request JSON, no per-key filter
+  → run_ai_agent.py              session_state → session_info  (explicit per-field map-back)
+  → graph_nodes.py PERCEIVE      session_info.get("X")
+```
+
+This is parity-critical because **LocalAgent and RemoteAgent share this entire
+path**: LocalAgent deliberately runs the same `build_request_v2()` + encode/decode
+roundtrip (see "Key Design Decision" above).  The single chokepoint is the
+`build_request_v2()` wire whitelist — whatever it omits is dropped IDENTICALLY for
+local and server, so a missing field doesn't violate parity but does make the
+feature inert.  A new `session_info` field therefore requires, at minimum: an entry
+in `build_session_state()`, the `build_request_v2()` whitelist, and the
+`run_ai_agent.py` map-back.  If it is read in `graph_nodes.py` via the literal
+`session_info.get("X")` (not the `_si` alias), it must ALSO be registered in
+`agent/contract.py::SESSION_INFO_FIELDS` (with `CURRENT_PROTOCOL_VERSION` bumped to
+≥ the field's version), which `tst_contract_compliance.py` enforces.
+
+**Plan-driven program fields + v120 transport repair.**  Three `session_info`
+fields let the plan steer `valid_programs` in PERCEIVE:
+`plan_has_pending_stages` (suppress AUTO-STOP while the plan has work),
+`plan_next_stage_programs` (offer the next pending stage's programs when the engine
+would only offer STOP), and `plan_current_unrun_lead_program` (v120 Option 2a —
+offer the current ACTIVE stage's un-run lead program, e.g. `phenix.autobuild`, even
+when other non-STOP programs are valid; see §38.5).  Before v120, none of the three
+fully round-tripped: `plan_has_pending_stages` was carried by
+`build_session_state()`/`run_ai_agent.py` but NOT the `build_request_v2()` wire
+whitelist, and the other two were carried nowhere — so all three were dropped on
+the wire for BOTH local and server (parity intact, but the plan-injection behavior
+was inert).  v120 plumbs all three through `build_session_state()`,
+`build_request_v2()`, and `run_ai_agent.py`, verified end-to-end through the real
+`create_request`/`apply_request_defaults` and a JSON transport roundtrip.
+`plan_current_unrun_lead_program` is registered in `agent/contract.py` as a v6
+field (default `""`), which bumped `CURRENT_PROTOCOL_VERSION` 5 → 6.
+
 **Error pattern expansion (v112.75):** The learning system originally only triggered
 on "unknown command line parameter" and "no such parameter" errors.  PHIL
 boolean-type errors ("True or False value expected, scope.path.param="value" found")
@@ -4238,6 +4288,17 @@ legacy catch-up, but it means `gate_evaluator.py` must be deployed
 alongside `plan_schema.py` for the hold to engage.  `graph_nodes.py` is
 server-side (PERCEIVE), `ai_agent.py` client-side, `plan_schema.py` shared —
 deploy all three together.
+
+**Transport plumbing (parity)**: the `plan_current_unrun_lead_program` field
+this section relies on must round-trip the full client→server path
+(`build_session_state` → `build_request_v2` wire whitelist → `run_ai_agent`
+map-back), or PERCEIVE never sees it and the injection is inert — identically for
+local and server.  v120 plumbs it (and the previously-dropped
+`plan_has_pending_stages` / `plan_next_stage_programs`); see the "`session_info`
+field plumbing contract" under Request Building above.  So the full deploy set for
+this feature is `plan_schema.py`, `gate_evaluator.py`, `ai_agent.py`,
+`graph_nodes.py`, `contract.py`, `api_client.py`, and `run_ai_agent.py` — all to
+BOTH server and Mac.
 
 **Tests**: `tests/tst_reactive_deviation_hold.py` (7, real StructurePlan +
 real GateEvaluator: 1st deviation held; 2nd catches up; no hold when lead
