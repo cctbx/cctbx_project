@@ -2010,6 +2010,9 @@ v118 Section F adds:
   `_select_files` detects refinement-without-rfree-mtz on a
   first-refinement cycle.  BUILD log line:
   `BUILD: First refinement - will generate R-free flags (no rfree_mtz locked)`.
+  (v120 hardens this: generation is now also suppressed when the
+  selected input data MTZ already carries an R-free array — see
+  "R-free generate guard" under the recovery-errors section.)
 
 Section F is the **first v118 section that touches server-side
 code**.  After Section F, the v118 ledger formally distinguishes
@@ -6741,6 +6744,53 @@ return dict to the top-level graph output.
   `generate=True` when no MTZ is locked.  This is the **inverse twin** of
   `rfree_flags_mismatch` (which strips `generate=True` when flags already
   exist).  Resolution kind: `force_retry`.
+
+#### R-free generate guard (v120): never overwrite an existing test set
+
+The three R-free invariants the agent must honor are: (1) input has **no**
+test set → generate one; (2) input **already has** a test set → keep it,
+never generate; (3) once a set is generated/locked → never regenerate.
+(1) and (3) worked; (2) had a latent hole.
+
+`command_builder.py`'s phenix.refine invariant originally added
+`xray_data.r_free_flags.generate=True` whenever `context.rfree_mtz` was not
+locked.  But `rfree_mtz` is only locked from a refinement **output**
+(`session.set_rfree_mtz`, called post-cycle on output MTZs) — never from the
+original **input**.  So a *first* refinement against pre-flagged input data
+had no lock yet and wrongly received `generate=True`.  phenix.refine treats
+`generate=True` as an instruction to create a **new random** R-free
+partition, **overwriting** any flags already present — silently invalidating
+cross-validation (a former test reflection can land in the new working set).
+Observed on `beta_blip_001.mtz`, whose input carries an `R-free-flags`
+column: the reported R-free was computed against a fresh test set, not the
+original.
+
+The fix wires up detection that already existed but was unused
+(`mtz_inspector.inspect_mtz()` returns `rfree_label`; the comment even noted
+"for future use").  `CommandBuilder._input_mtz_has_rfree(files, context)`
+reports whether the data MTZ that will actually be used contains an R-free
+array, checking two sources in order: the precomputed
+`context.mtz_inspection["rfree_label"]` when present, else a direct
+`inspect_mtz()` of the **selected** `files["data_mtz"]` (important because
+`best_files["data_mtz"]` is often `None` at a first refinement, so only
+direct inspection of the selected file catches it).  Any failure (cctbx
+unavailable, unreadable MTZ, no data MTZ) returns `False`, degrading safely
+to the legacy `rfree_mtz`-only behavior rather than wrongly suppressing
+generation.  The invariant now strips/suppresses `generate_rfree_flags`
+(including an LLM-forced value) when `context.rfree_mtz` **or**
+`_input_mtz_has_rfree(...)` is true; the inspection is evaluated lazily
+(short-circuit) so a locked session skips the per-cycle disk read.  BUILD log
+line on the new path: `BUILD: Stripped generate_rfree_flags (input data MTZ
+already has R-free flags)`.
+
+This is server-safe and parity-safe by construction: it lives entirely in the
+shared `command_builder` (runs identically local and server), and reuses the
+same `inspect_mtz` mechanism already documented as "SERVER-COMPUTED data" for
+the obs-labels path.  The parallel `generate_rfree_flags` injection in
+`graph_nodes.py` (~4086) is dead in the default path (guarded
+`USE_NEW_COMMAND_BUILDER is False`); `command_builder` is authoritative.
+Pinned by `tests/tst_rfree_generate_guard.py` (8 cases covering all three
+requirements plus LLM-strip, safe degradation, and list-valued slots).
 
 ### Resolution kinds (v119.H17, extended v120)
 

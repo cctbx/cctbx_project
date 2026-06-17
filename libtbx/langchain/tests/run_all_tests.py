@@ -447,6 +447,16 @@ def main():
         print(f"⚠️  Could not import tst_command_builder: {e}")
         results.append(("Command Builder", "tst_command_builder", False, 0))
 
+    # --- R-free generate guard (never regenerate an existing test set) ---
+    try:
+        from tests.tst_rfree_generate_guard import run_all_tests as run_rfree_generate_guard_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_generate_guard", run_rfree_generate_guard_tests, args.verbose)
+        results.append(("R-free generate guard", "tst_rfree_generate_guard", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_rfree_generate_guard: {e}")
+        results.append(("R-free generate guard", "tst_rfree_generate_guard", False, 0))
+
     # --- File Categorization Tests ---
     try:
         from tests.tst_file_categorization import run_all_tests as run_file_categorization_tests

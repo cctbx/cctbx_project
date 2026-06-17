@@ -2772,6 +2772,7 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `tst_pattern_manager.py` | 17 | Pattern management |
 | `tst_directives_integration.py` | 16 | End-to-end directive tests |
 | `tst_command_builder.py` | 22 | Unified command generation, MR-SAD partpdb_file |
+| `tst_rfree_generate_guard.py` | 8 | phenix.refine never regenerates an existing R-free test set (input-flag detection) |
 | `tst_event_system.py` | 13 | Event logging system |
 | `tst_program_registration.py` | 13 | Program registry tests |
 | `tst_integration.py` | 13 | End-to-end workflow tests |
@@ -5666,6 +5667,19 @@ Agent stops refinement when:
 **MTZ selection:**
 - For refinement: Use locked `data_mtz` (original with R-free flags)
 - For ligandfit: Use `map_coeffs_mtz` (latest calculated phases)
+
+**R-free generate guard (v120):** `command_builder.py`'s phenix.refine invariant
+adds `xray_data.r_free_flags.generate=True` only when there is genuinely no test
+set — i.e. no locked `rfree_mtz` AND the selected input data MTZ has no R-free
+array.  The latter check is `CommandBuilder._input_mtz_has_rfree(files, context)`,
+which trusts `context.mtz_inspection["rfree_label"]` when present, else inspects the
+selected `files["data_mtz"]` directly (needed because `best_files["data_mtz"]` is
+often `None` on a first refinement).  If flags already exist from either source,
+any `generate_rfree_flags` (including an LLM-set one) is stripped — phenix.refine
+treats `generate=True` as "create a new random partition", which would **overwrite**
+an existing test set and silently break cross-validation (observed on
+`beta_blip_001.mtz`).  Detection failures degrade safely to the legacy
+`rfree_mtz`-only behavior.  Pinned by `tst_rfree_generate_guard.py`.
 
 ---
 

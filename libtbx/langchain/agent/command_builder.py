@@ -2208,6 +2208,47 @@ class CommandBuilder:
   # STEP 3: APPLY INVARIANTS
   # =========================================================================
 
+  def _input_mtz_has_rfree(self, files, context):
+    """Return True if the data MTZ that will be used already contains an
+    R-free flag array.
+
+    Used by the phenix.refine generate-flags invariant so we never
+    regenerate (overwrite) an existing test set.  Detection sources, in
+    order:
+      1. context.mtz_inspection["rfree_label"] — the cheap precomputed
+         result, BUT it is keyed off best_files["data_mtz"], which can be
+         absent/None (or a different file) at a first refinement.  We only
+         trust it when it is non-None.
+      2. inspect_mtz() on the actually-selected data MTZ (files["data_mtz"]
+         after selection/canonicalization) — authoritative for THIS command.
+
+    Returns False on any failure (cctbx unavailable, unreadable MTZ, no
+    data MTZ selected) so the caller falls back to the legacy
+    rfree_mtz-only behavior — a safe degradation that never wrongly
+    suppresses generation when we cannot prove flags exist."""
+    # Source 1: trust a positive precomputed inspection only.
+    insp = getattr(context, "mtz_inspection", None)
+    if isinstance(insp, dict) and insp.get("rfree_label"):
+      return True
+    # Source 2: inspect the selected data MTZ directly.
+    data_mtz = None
+    if isinstance(files, dict):
+      data_mtz = files.get("data_mtz") or files.get("hkl_file")
+    # Selection values may be a list (multiple:true slots) or a string.
+    if isinstance(data_mtz, (list, tuple)):
+      data_mtz = data_mtz[0] if data_mtz else None
+    if not data_mtz:
+      return False
+    try:
+      try:
+        from libtbx.langchain.agent.mtz_inspector import inspect_mtz
+      except ImportError:
+        from agent.mtz_inspector import inspect_mtz
+      result = inspect_mtz(data_mtz)
+      return bool(result and result.get("rfree_label"))
+    except Exception:
+      return False
+
   def _apply_invariants(self, program: str, files: Dict[str, Any],
              strategy: Dict[str, Any],
              context: CommandContext) -> Tuple[Dict, Dict]:
@@ -2410,20 +2451,35 @@ class CommandBuilder:
     # R-free flags.  F1 also addresses the root cycle-1 threading
     # issue; F2 removes this redundant guard as defense-in-depth.
     if program == "phenix.refine":
-      if not context.rfree_mtz:
+      # Does the data MTZ that will actually be used already contain an
+      # R-free flag array?  If so we must NEVER generate (that would
+      # OVERWRITE the existing flags with a fresh random partition —
+      # phenix.refine does not preserve them under generate=True — which
+      # silently invalidates cross-validation; observed on beta_blip_001,
+      # whose input carries an "R-free-flags" column).  This covers the
+      # case the rfree_mtz lock alone misses: a FIRST refinement against
+      # pre-flagged input data, where rfree_mtz has not been locked yet
+      # (it only locks from a refinement OUTPUT).  See _input_mtz_has_rfree.
+      _data_mtz_has_rfree = self._input_mtz_has_rfree(files, context)
+      if context.rfree_mtz or _data_mtz_has_rfree:
+        # Flags already exist (locked from a prior cycle, OR present in the
+        # input data MTZ) — strip generate if the LLM/hints set it.
+        if strategy.get("generate_rfree_flags"):
+          del strategy["generate_rfree_flags"]
+          _why = ("rfree_mtz locked: %s"
+                  % os.path.basename(str(context.rfree_mtz))
+                  if context.rfree_mtz
+                  else "input data MTZ already has R-free flags")
+          self._log(context,
+              "BUILD: Stripped generate_rfree_flags (%s)" % _why)
+      else:
+        # No locked rfree_mtz and no R-free flags in the input data MTZ —
+        # this is a genuine first refinement with no test set, so generate.
         if "generate_rfree_flags" not in strategy:
           strategy["generate_rfree_flags"] = True
           self._log(context,
               "BUILD: First refinement - will generate "
-              "R-free flags (no rfree_mtz locked)")
-      else:
-        # R-free MTZ already locked — strip generate if LLM set it
-        if strategy.get("generate_rfree_flags"):
-          del strategy["generate_rfree_flags"]
-          self._log(context,
-              "BUILD: Stripped generate_rfree_flags "
-              "(rfree_mtz locked: %s)"
-              % os.path.basename(str(context.rfree_mtz)))
+              "R-free flags (no rfree_mtz locked, input has no R-free flags)")
 
     # predict_and_build: resolution is required for building (stop_after_predict=False)
     # If no resolution available, must use stop_after_predict=True (prediction only)

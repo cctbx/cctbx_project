@@ -688,7 +688,10 @@ Semantic file classification using rules from `file_categories.yaml`:
 Tracks the best file of each type across cycles:
 - Scores files based on metrics (R-free, resolution, cycle number)
 - **Dual MTZ tracking**:
-  - `data_mtz`: Locks after first R-free flags generated (consistency for refinement)
+  - `data_mtz`: Locks after R-free flags are first generated or supplied
+    (consistency for refinement; if the input MTZ already carries an R-free
+    array the agent keeps it rather than regenerating — see ARCHITECTURE.md
+    "R-free generate guard")
   - `map_coeffs_mtz`: Always prefers most recent (maps improve with refinement)
 - Provides `best_files["model"]`, `best_files["data_mtz"]`, `best_files["map_coeffs_mtz"]` to CommandBuilder
 - **Supplemental file discovery**: Session load (`_rebuild_best_files_from_cycles`)
