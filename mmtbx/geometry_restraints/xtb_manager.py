@@ -13,10 +13,13 @@ The tuning here targets transition-metal sites:
     manager does not request).
   * ALPB implicit solvent by *named* solvent (default ``ether``, eps ~ 4.3,
     the closest common match to the eps = 4 protein-interior model).
-  * The inertial (FIRE) optimiser (``$opt engine=inertial``) so a ``$fix``
-    block holds the frozen scaffold atoms *exactly* in Cartesian space; the
-    default ANC optimiser drifts fixed atoms ~0.3 A, which would inject noise
-    into the optimised region's geometry.
+  * The lbfgs optimiser (``$opt engine=lbfgs``) so a ``$fix`` block holds the
+    frozen scaffold atoms *exactly* in Cartesian space on both of xTB's
+    backends -- otherwise drift in the fixed atoms injects noise into the
+    optimised region's geometry. The default ``rf`` optimiser drifts on both
+    backends, and ``inertial`` (FIRE) -- exact on the native backend -- silently
+    drops ``$fix`` on the tblite backend (which ``--spinpol`` forces); lbfgs is
+    the only engine exact on both.
   * A generous geometry-optimisation cycle cap (xTB's automatic default is
     only ~2x the atom count, which a slow-converging case can exceed); xTB
     cycles are cheap.
@@ -178,7 +181,7 @@ class xtb_manager(base_qm_manager.base_qm_manager):
 
   def _input_header(self, gradients_only=False):
     """xcontrol blocks that don't depend on the frozen-atom partition:
-    charge/spin/GFN, and (for an optimisation) the inertial-optimiser ``$opt``
+    charge/spin/GFN, and (for an optimisation) the lbfgs-optimiser ``$opt``
     block. A leading comment records the command-line-only settings (GFN,
     solvent, threads, robust) so a change in any of them is still detected by
     ``check_file_read_safe``."""
@@ -197,9 +200,11 @@ class xtb_manager(base_qm_manager.base_qm_manager):
     if gfn != 'ff':
       lines += ['$gfn', f'   method={gfn}', '$end']
     if not gradients_only:
-      # Inertial (FIRE) optimiser so $fix holds the scaffold *exactly*; the
-      # default ANC optimiser would drift the fixed atoms ~0.3 A.
-      lines += ['$opt', '   engine=inertial', f'   maxcycle={self.maxcycle}',
+      # lbfgs optimiser: the only engine that holds $fix *exactly* on both the
+      # native and tblite backends. 'inertial' is exact on the native backend
+      # but drifts the fixed atoms on tblite (which --spinpol forces); 'rf'
+      # (default) drifts on both.
+      lines += ['$opt', '   engine=lbfgs', f'   maxcycle={self.maxcycle}',
                 '$end']
     return '\n'.join(lines) + '\n'
 
