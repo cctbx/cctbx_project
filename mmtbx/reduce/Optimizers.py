@@ -424,6 +424,9 @@ class Optimizer(object):
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
+              # If the Oxygen is bonded (presumably to hydrogens/deuteriums), then we just leave it alone.
+              if len(bondedNeighborLists[a]) > 0:
+                self._infoString += _VerboseCheck(self._verbosity, 3,"Not adding phantom Hydrogens on {} due to bonded neighbors\n".format(_ResNameAndID(a)))
 
               # We're an acceptor and not a donor.
               ei = self._extraAtomInfo.getMappingFor(a)

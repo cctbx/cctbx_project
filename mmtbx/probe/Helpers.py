@@ -680,7 +680,7 @@ def getPhantomHydrogensFor(largestISeq, atom, spatialQuery, extraAtomInfo, minOc
   maxDist = 4.0
   nearby = sorted(spatialQuery.neighbors(atom.xyz, 0.001, maxDist), key=lambda x:x.i_seq)
 
-  # Candidates for nearby atoms.  We use this list to keep track of one ones we
+  # Candidates for nearby atoms.  We use this list to keep track of ones we
   # have already found so that we can compare against them to only get one for each
   # aromatic ring.
   class Candidate(object):
