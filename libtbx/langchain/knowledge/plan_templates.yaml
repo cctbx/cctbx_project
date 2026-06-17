@@ -470,9 +470,7 @@ templates:
         description: "Rebuild model with autobuild"
         success:
           r_free: "<0.30"
-        skip_if: "r_free < 0.25"
-        strategy:
-          rebuild_in_place: false
+        skip_if: "r_free < 0.28"
         provides:
           - rebuilt_model
 

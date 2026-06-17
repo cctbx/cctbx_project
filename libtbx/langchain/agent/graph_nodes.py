@@ -887,6 +887,24 @@ def perceive(state):
                     "(plan has pending stages): %s"
                     % _plan_progs)
 
+    # Option 2a: offer the current ACTIVE stage's un-run lead program (e.g.
+    # phenix.autobuild) even when the workflow engine ALSO offers other non-STOP
+    # programs.  Without this, after a reactive deviation holds model_rebuilding
+    # active, the engine keeps offering only its default next program (e.g.
+    # molprobity) and the rebuild's lead program is never presented — so the
+    # agent never runs it.  Unlike the STOP-only injection above, this fires
+    # regardless of what else is valid, because the plan explicitly wants this
+    # program run now.
+    _lead = session_info.get("plan_current_unrun_lead_program", "")
+    if _lead:
+        _valid = workflow_state.get("valid_programs", [])
+        if _lead not in _valid:
+            _valid.append(_lead)
+            workflow_state["valid_programs"] = _valid
+            state = _log(state,
+                "PERCEIVE: Injected plan lead program %s "
+                "(current stage active and un-run)" % _lead)
+
     # J5: Log zombie state corrections so users know why a previously-run
     # program is being offered again (helps debug crash/restart scenarios).
     for diag in workflow_state.get("zombie_diagnostics", []):

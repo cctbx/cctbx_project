@@ -180,9 +180,9 @@ for file scanning (`_record_command_result`, `_track_output_files`) while keepin
 
 #### command_postprocessor.py
 Server-safe command transforms called by the BUILD node (new in v112.66):
-- `sanitize_command()` — Rules A–D: strip placeholders, blacklisted params, hallucinated cross-program params, bare unscoped params. Rule B2 (v112.72): validates `space_group=` values and strips non-space-group words.
+- `sanitize_command()` — Rules A–D: strip placeholders, blacklisted params, hallucinated cross-program params, bare unscoped params. Rule B2 (v112.72): validates `space_group=` values and strips non-space-group words. Rule B3 (v120): strips an LLM-authored `unit_cell=`/`space_group=` that conflicts with the reflection file's own crystal symmetry.
 - `inject_user_params()` — append user key=value params missing from command (scope-matched for dotted keys, strategy_flags-validated for bare keys)
-- `inject_crystal_symmetry()` — append unit_cell/space_group from directives (validates with `_is_valid_space_group()`)
+- `inject_crystal_symmetry()` — append unit_cell/space_group from directives (validates with `_is_valid_space_group()`; v120: skips injecting a directive cell/space group that conflicts with the reflection file's crystal symmetry)
 - `inject_program_defaults()` — append defaults from programs.yaml if missing (safety net)
 - `postprocess_command()` — single entry point calling all four in order
 - `_is_valid_space_group()` — validates that a value is a plausible space group symbol (H-M notation or IT number 1-230), rejecting English words like "determination"
@@ -239,6 +239,32 @@ where recovery params are known.  Autobuild expanded from 3 to 6 flags
 (`rebuild_in_place`, `n_cycle_build_max`, `maps_only` added in v112.77).  A
 future "warn but keep" mode could rely on PHIL validation + catch-all blacklist
 as safety nets.
+
+**Unit-cell hallucination guard (v120):** Two coordinated fixes stop a
+hallucinated crystal symmetry from reaching `phenix.refine` (which aborts with
+"Working unit cell is not compatible").  The trigger was the directive
+extractor's few-shot prompt: it contained a realistic example cell
+(`116.097 116.097 44.175 90 90 120`) and space group, which the LLM copied into
+directives even when the user advice stated none (observed in beta-blip,
+AIAgent_8 — the bad cell sent refine into a phaser→refine→phaser loop).  *Fix A
+(`directive_extractor.py`):* the prompt's example values are replaced with
+syntactically-invalid placeholders (`A_LENGTH B_LENGTH C_LENGTH ...`,
+`SPACE_GROUP_SYMBOL`) plus explicit "extract ONLY if the user states one"
+guards, so a leak fails safe (no six numbers → injection skipped).  *Fix B
+(`command_postprocessor.py`):* a data-consistency guard reads the reflection
+file's own crystal symmetry via iotbx (`any_reflection_file(...)
+.as_miller_arrays()[0].crystal_symmetry()`) and treats it as authoritative on
+**both** command paths — `inject_crystal_symmetry` skips injecting a *directive*
+cell/space group that conflicts, and `sanitize_command` Rule B3 strips an
+*LLM-authored* cell/space group already in the command that conflicts.  The
+original failure took the LLM-authored path, so the injection-side guard alone
+was insufficient; both paths are now covered.  Agreement tolerances:
+`_CELL_LENGTH_TOL_FRAC=0.005` (0.5% on a,b,c), `_CELL_ANGLE_TOL_DEG=0.5`.  Helper
+`_find_reflection_file` returns `"AMBIGUOUS"` when a command has multiple
+reflection files (→ skip the check, do no harm); any iotbx read failure also
+falls back to current behavior.  Verified end-to-end on the real beta-blip
+`PHASER.1.mtz`: the bogus 116.097 cell is stripped while the matching `P 32 2 1`
+space group is correctly kept.
 
 #### Session Tracker (session.py)
 Persists workflow state across cycles:
@@ -4141,6 +4167,92 @@ session's experiment_type lock survives across the gate
 re-fire.  H15 fixes the stage-state side; §3.3 would fix
 the experiment-type side.
 
+### 38.5 Reactive-Deviation Hold for Un-Run Must-Run Stages (v120)
+
+**Rationale**: H15 (§38) made the plan-deviation catch-up *honest*
+(intermediate stages that don't meet criteria are marked FAILED, not
+silently COMPLETE), but it did not stop the catch-up from abandoning a
+stage that *never ran at all*.  Tom's beta-blip rebuild (AIAgent_21)
+exposed the gap: the plan selected `refine_rebuild_placed`, so
+`model_rebuilding` (programs `[phenix.autobuild, phenix.refine]`) was the
+active stage after refinement.  At cycle 3 the LLM chose
+`phenix.molprobity` — reasoning, sensibly, "validate first, then rebuild."
+But molprobity matches a LATER stage (validation), so
+`record_stage_cycle`'s catch-up advanced PAST `model_rebuilding` (recording
+it COMPLETE with `cycles_used == 0`) to validation.  The plan then read
+"all stages complete" → STOP.  Autobuild never ran; the user's explicit
+rebuild request was lost to a single reactive validation.
+
+This is the architectural "tail wagging the dog" the code comments flag:
+the LLM's reactive program choice drives the plan, and choosing a
+later-stage program collapses the stages in between.
+
+**The fix (Option 2a — hold-and-sustain, not force-forward).**  Three
+coordinated pieces let the LLM take ONE reactive detour without abandoning
+an un-run, must-run stage:
+
+1. *`knowledge/plan_schema.py` — the hold.*  `StageDef` gains a
+   `reactive_deviations` counter (serialized; tolerant default 0 for
+   pre-existing sessions).  In `record_stage_cycle`, when the program
+   matches a LATER stage but the CURRENT stage is *must-run-and-un-run*
+   (`cycles_used == 0`, its lead program `programs[0]` has not completed in
+   history, its success_criteria are not met) and `reactive_deviations < 1`,
+   the catch-up is HELD: the stage stays active, no cycle is counted (lead
+   never ran), `reactive_deviations` is incremented, and a HELD deviation
+   event (`from == to == curr.id`) is recorded for observability.  A log
+   line makes it explicit:
+   `PLAN_GUARD: Holding model_rebuilding stage while side-cycle (molprobity)
+   executes (reactive_deviations: 1/1)`.  On a SECOND deviation the guard is
+   exhausted and the normal H15 catch-up proceeds — so there is no infinite
+   hold.  The "lead already ran" test counts a variant
+   (`phenix.autobuild_denmod`) as the lead (`phenix.autobuild`); it
+   deliberately does NOT reuse `_program_matches_phase` for this, because
+   that helper returns True on an empty program list and would falsely
+   report the lead as run when history is empty.
+
+2. *`programs/ai_agent.py` — surface the lead program.*  A new
+   `_get_plan_current_unrun_lead_program(session)` returns the current
+   ACTIVE stage's lead program when it is un-run.  This is necessary because
+   `_get_plan_next_stage_programs` only inspects `status == "pending"` and so
+   misses the active held stage.  The value is passed into `session_info` as
+   `plan_current_unrun_lead_program`.
+
+3. *`agent/graph_nodes.py` — offer it in PERCEIVE.*  The existing
+   plan-stage injection only fired when `valid_programs` was STOP-only.  A
+   new injection adds `plan_current_unrun_lead_program` to `valid_programs`
+   *even when other non-STOP programs are already valid* — otherwise, after
+   the hold, the engine keeps offering only molprobity and autobuild is
+   never presented.  Logged as
+   `PERCEIVE: Injected plan lead program <prog> (current stage active and
+   un-run)`.
+
+**End-to-end**: cycle 3 molprobity → HELD (stage stays active) → gate
+evaluates `model_rebuilding` (skip_if/​success unmet, not exhausted →
+continue) → cycle 4 autobuild offered and run → final refine → validation.
+The LLM gets its one "look before you leap"; the rebuild still happens.
+
+**Deployment coupling**: the hold's criteria check (`_criteria_met`) lazily
+imports `GateEvaluator`.  If that import fails at runtime it returns True
+(criteria "met") and the hold does NOT fire — a safe degradation toward
+legacy catch-up, but it means `gate_evaluator.py` must be deployed
+alongside `plan_schema.py` for the hold to engage.  `graph_nodes.py` is
+server-side (PERCEIVE), `ai_agent.py` client-side, `plan_schema.py` shared —
+deploy all three together.
+
+**Tests**: `tests/tst_reactive_deviation_hold.py` (7, real StructurePlan +
+real GateEvaluator: 1st deviation held; 2nd catches up; no hold when lead
+ran / criteria met / variant ran; holds with empty history;
+serialization round-trip incl. missing-field default) and
+`tests/tst_plan_lead_program_offer.py` (8, lead surfacing + PERCEIVE
+injection).
+
+**Status**: this is the most invasive plan/LLM-arbitration change to date.
+The narrow trigger (un-run + lead-not-run + criteria-unmet + once) and the
+safe `_criteria_met` degradation bound the risk, but the next few rebuild
+runs should be watched.  Option 1 (broaden the next-stage-program injection
+to steer the LLM toward the plan's program directly) remains a documented
+fallback if the hold proves too permissive or too strict.
+
 ### 39. MTZ Auto-Inspection and obs_labels Injection (v119.H16 / H16.1)
 
 **Rationale**: 88 TIER-1 failures across two batch scans
@@ -6556,16 +6668,26 @@ return dict to the top-level graph output.
   generic `_resolve_strip_parameter` handler): refine was called with a
   `rfree_mtz=` that has incompatible R-free flags.  The agent strips the flag
   and lets refine generate new flags.  Resolution kind: `strip_parameter`.
+- **`rfree_flags_missing`** (v120): refine was given reflection data with **no**
+  R-free flag array and neither a flags-bearing MTZ nor
+  `xray_data.r_free_flags.generate=True`, so it aborts with "No array of R-free
+  flags found".  Observed in AF-bromodomain-ligand (AIAgent_15): refine ran on
+  the raw data MTZ directly, failed, and the agent advanced to polder on the
+  unrefined protein+ligand model.  The agent forces a retry of `phenix.refine`;
+  on the rebuilt retry the server-side BUILD node / `command_builder` re-selects
+  the locked R-free MTZ (`context.rfree_mtz`) for the data slot — preserving
+  R-free flag continuity (no test-set leakage) — or falls back to
+  `generate=True` when no MTZ is locked.  This is the **inverse twin** of
+  `rfree_flags_mismatch` (which strips `generate=True` when flags already
+  exist).  Resolution kind: `force_retry`.
 
-### Resolution kinds (v119.H17)
+### Resolution kinds (v119.H17, extended v120)
 
-The agent supports three resolution kinds:
+The agent supports these resolution kinds:
 
 - **`select_value`**: disambiguates an enum the LLM left ambiguous (label
   selection, array choice).  Picks a default per a YAML-defined preference policy
   and injects via the recovery parameter mechanism.
-- **`add_parameter`**: injects a missing flag (e.g., `r_free_flags.generate=True`)
-  via the same mechanism.
 - **`strip_parameter`** (v119.H17): removes an inappropriate flag entirely on
   retry.  Detection runs in `error_analyzer.py`; execution wires through
   `programs/ai_agent.py::_execute_command` which applies a robust regex
@@ -6573,6 +6695,25 @@ The agent supports three resolution kinds:
   strip the flag prefix before running the retry command.  Emits `[STRIP]` log
   line.  One-shot via `pop()` — entry is consumed on use so a subsequent retry
   doesn't re-strip.
+- **`force_retry`** (v120): re-runs the program with NO flag additions and NO
+  flag strips — the fix is delegated entirely to the command rebuild.  The
+  forced retry routes through the server-side graph (PLAN emits a retry intent
+  with empty `files={}` / `strategy={}`), so `command_builder` does its own file
+  selection on the rebuilt command.  Used by `rfree_flags_missing`: the builder
+  substitutes the locked R-free MTZ (or falls back to `generate=True`) without
+  the recovery having to inject any parameter.  `error_analyzer.py` provides
+  `_resolve_force_retry` (returns an `ErrorRecovery` with empty `flags` AND empty
+  `strip_flags`, carrying only `retry_program`) plus a `force_retry` marker in
+  `_extract_error_info` so `analyze()` doesn't bail before dispatch.  No
+  `ai_agent.py` change was needed: `_handle_recovery` already calls
+  `set_force_retry_program` for every recovery.
+
+> Note: an `add_parameter` kind (inject a missing flag such as
+> `r_free_flags.generate=True`) is *not* implemented.  The
+> `rfree_flags_missing` case that would have used it is instead handled by
+> `force_retry`, which lets `command_builder`'s existing R-free logic choose
+> between the locked MTZ and `generate=True` — covering both situations with one
+> entry and no new injection path.
 
 ### Configuration
 
@@ -6586,16 +6727,23 @@ The agent supports three resolution kinds:
 
 1. Add an entry under `errors:` in `recoverable_errors.yaml` with detection patterns
    and extraction regexes.  Choose a resolution kind: `select_value`,
-   `add_parameter`, or `strip_parameter` (v119.H17).
-2. For `select_value`/`add_parameter` resolutions: add a resolution handler in
+   `strip_parameter` (v119.H17), or `force_retry` (v120).
+2. For `select_value` resolutions: add a resolution handler in
    `error_analyzer.py` (`resolve_error()` method).
 3. For `strip_parameter` resolutions: the generic `_resolve_strip_parameter`
    handler reads the `strip_parameters` YAML list directly — no per-error
    handler needed.
-4. The fallback node in the graph will automatically use the new pattern.
-5. K-test contract: for `strip_parameter` entries, pin the regex against the
+4. For `force_retry` resolutions: the generic `_resolve_force_retry` handler
+   needs only `resolution: force_retry` (+ optional `retry_program`) in YAML.
+   IMPORTANT: also add a marker branch in `_extract_error_info`
+   (`return {"resolution": "<kind>"}`) for any new non-extracting kind, or
+   `analyze()` returns None at its `if not error_info` guard before dispatch.
+5. The fallback node in the graph will automatically use the new pattern.
+6. K-test contract: for `strip_parameter` entries, pin the regex against the
    PHIL-spacing/quote variants — see `tests/tst_h17_strip_executor.py` for the
-   reference template.
+   reference template.  For `force_retry` entries, assert the full `analyze()`
+   path returns an `ErrorRecovery` with the right `retry_program` and empty
+   `flags`/`strip_flags` — see `tests/tst_rfree_flags_missing.py`.
 
 ### Recovery strategies persist intentionally
 
@@ -7285,7 +7433,7 @@ Key operations:
 
 ### Plan Templates (`knowledge/plan_templates.yaml`)
 
-Nineteen pre-defined plan skeletons:
+Pre-defined plan skeletons:
 
 | Template | Applicable When |
 |----------|----------------|
@@ -7294,15 +7442,15 @@ Nineteen pre-defined plan skeletons:
 | `mr_refine_lowres` | X-ray, has search model, resolution > 3.0Å |
 | `mr_refine_highres` | X-ray, has search model, resolution < 1.5Å |
 | `mr_refine_twinned` | X-ray, has search model, twinned data |
+| `refine_placed` | X-ray, model already placed (skip MR) |
+| `refine_placed_polder` | X-ray, placed model + `wants_polder` |
+| `refine_placed_ligand` | X-ray, placed model + ligand |
+| `refine_rebuild_placed` | X-ray, placed model + `wants_rebuild` (advice-driven) |
 | `predict_refine` | X-ray, sequence only (no model, no anomalous) |
 | `predict_refine_ligand` | X-ray, sequence + ligand (no model, no anomalous) |
 | `mr_sad` | X-ray, has search model + anomalous atoms |
 | `sad_phasing` | X-ray, anomalous atoms (no search model) |
 | `sad_phasing_ligand` | X-ray, anomalous atoms + ligand |
-| `refine_placed` | X-ray, placed model (`model_is_placed`) — refine + validate |
-| `refine_placed_ligand` | X-ray, placed model + ligand |
-| `refine_placed_polder` | X-ray, placed model + `wants_polder` |
-| `refine_rebuild_placed` | X-ray, placed model + `wants_rebuild` — refine + autobuild rebuild + validate |
 | `validate_existing` | X-ray, `wants_validation_only` + placed model (v115.09) |
 | `data_analysis_only` | X-ray, no model, no sequence |
 | `cryoem_refine` | Cryo-EM |
@@ -7310,44 +7458,30 @@ Nineteen pre-defined plan skeletons:
 | `cryoem_analysis_only` | Cryo-EM, no model, no sequence |
 
 Templates encode expert crystallographic knowledge. Selection is
-deterministic (rule-based): each template's `applicable_when` is
-scored against the session context, highest score wins, ties broken
-by `priority`. The LLM only customizes parameters within template
-bounds (resolution-appropriate thresholds, ligand-specific
-settings) — it cannot add or remove stages, so a capability the
-selected template lacks (e.g. rebuilding) simply never runs.
+deterministic (rule-based). The LLM only customizes parameters
+within template bounds (resolution-appropriate thresholds,
+ligand-specific settings).
 
 `mr_refine_lowres` relaxes R-free targets and disables ordered
 solvent — prevents the common failure mode where the agent adds
 waters at low resolution and overfits.
 
-**Placed-model family.** When the model is already positioned
-(`model_is_placed`, set from MR completion, ligandfit/refine
-intent, or a refinement `after_program`), the `refine_placed*`
-templates skip molecular replacement. Plain `refine_placed`
-runs data_assessment → refinement → final_refinement → validation.
-Sibling templates add one capability each, selected by an
-advice-derived context flag that raises the `applicable_when`
-match score above plain `refine_placed`: `+ligand` →
-`refine_placed_ligand`, `wants_polder` → `refine_placed_polder`,
-`wants_rebuild` → `refine_rebuild_placed`.
-
-**Advice-driven rebuilding** (`refine_rebuild_placed`). Because the
-LLM cannot add stages, an explicit user request to rebuild
-(e.g. "improve this model by refinement/**rebuilding** whatever is
-necessary") must change *template selection*, not just parameters.
-`plan_generator._build_context` scans the advice and
-`directives.constraints` for explicit rebuild words (`rebuild`,
-`autobuild`, `model building`, etc.; deliberately NOT bare "build"
-or vague "whatever is necessary") and sets `wants_rebuild`, which
-also implies `model_is_placed`. The `refine_rebuild_placed`
-template is `refine_placed` plus a `model_rebuilding` stage
-(`phenix.autobuild`, `rebuild_in_place: false`, `skip_if:
-"r_free < 0.28"`) inserted between refinement and final refinement.
-This mirrors the existing `wants_polder` → `refine_placed_polder`
-mechanism. Quality-driven rebuilding (escalating to rebuild when a
-validated model is poor regardless of wording) is intentionally a
-separate concern, not handled by this template.
+**Advice-driven rebuild** (`refine_rebuild_placed`, v120): plans are
+template-driven — the LLM cannot add stages the template lacks — so a placed
+model normally selects `refine_placed`, which has NO rebuild stage.  When the
+user's advice asks to rebuild (keywords `rebuild`, `re-build`, `autobuild`,
+`model building`, etc. — deliberately not bare "build" or "whatever is
+necessary"), `wants_rebuild` is set and `refine_rebuild_placed` is selected
+instead: `refine_placed` plus a `model_rebuilding` stage
+(`[phenix.autobuild, phenix.refine]`).  Its 4-condition match
+(`{xray, has_search_model, model_is_placed, wants_rebuild}`) beats
+`refine_placed`'s 3.  Two further fixes make the stage actually run rather than
+being skipped or abandoned: a placement-skip exception preserves the stage when
+the template was explicitly chosen (see ai_agent placement-skip), a command
+builder waiver lets `phenix.autobuild` run without a sequence file when a model
+is available (autobuild derives the sequence and rebuilds in place), and the
+reactive-deviation hold (§38.5) stops a "validate first" detour from collapsing
+the plan past the un-run rebuild.
 
 ### Plan Generator (`agent/plan_generator.py`)
 

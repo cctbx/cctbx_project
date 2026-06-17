@@ -1128,44 +1128,6 @@ class CommandBuilder:
             pref_key, os.path.basename(str(pref_val))))
         break  # Try only the first matching slot for this preference key
 
-    # Locked R-free MTZ retires the raw data file (R-free continuity rule).
-    # Once a flags-bearing MTZ is locked in the session (some prior step produced
-    # R-free flags), an X-ray refinement data slot must use it -- NOT a raw,
-    # flags-less file that an LLM hint or a user file_preference pinned above.
-    # Without this, a directive like file_preferences.data_mtz=7qz0.mtz (or an
-    # LLM-authored command naming the raw MTZ) pre-fills the slot before
-    # _find_file_for_slot's PRIORITY-1 lock can act, and phenix.refine aborts
-    # with "No array of R-free flags found" (observed: AF-bromodomain-ligand
-    # AIAgent_33 cycle 7/8 -> advanced to validation on an unrefined complex).
-    #
-    # We REPLACE the pre-fill in place (rather than delete + rely on the
-    # required-input slot walk) so the slot is never left empty regardless of
-    # whether the data slot is required or optional.  The guard mirrors
-    # _find_file_for_slot PRIORITY 1 exactly -- same slot names, same
-    # per-program skip_rfree_lock exemption (e.g. autosol/xtriage need original
-    # data) -- so it inherits the registry's existing exemptions and stays
-    # consistent with the shipped lock behavior.  Before any lock exists
-    # (context.rfree_mtz falsy), this is a no-op: the first refinement uses the
-    # raw file (+ generate=True), which is correct.
-    if context.rfree_mtz and self._file_is_available(context.rfree_mtz):
-      _locked_abs = os.path.abspath(str(context.rfree_mtz))
-      for _slot in ("data_mtz", "hkl_file", "data"):
-        if _slot not in selected_files:
-          continue
-        _slot_priorities = self._registry.get_input_priorities(program, _slot)
-        if _slot_priorities.get("skip_rfree_lock", False):
-          continue
-        _cur = selected_files[_slot]
-        _cur_str = _cur[0] if isinstance(_cur, list) else _cur
-        if os.path.abspath(str(_cur_str)) != _locked_abs:
-          selected_files[_slot] = context.rfree_mtz
-          self._record_selection(_slot, context.rfree_mtz, "rfree_locked")
-          self._log(context,
-                    "BUILD: retiring raw %s %s -- locked R-free MTZ exists; "
-                    "using locked file %s (test-set continuity)" % (
-                      _slot, os.path.basename(str(_cur_str)),
-                      os.path.basename(str(context.rfree_mtz))))
-
     # Auto-fill missing required inputs
     for input_name in required_inputs:
       if input_name in selected_files:
@@ -1216,6 +1178,26 @@ class CommandBuilder:
         selected_files["ligand"] = selected_files.pop(
           "ligand_cif")
         missing.remove("ligand")
+    # Special case: phenix.autobuild can rebuild a model "in place" and derive
+    # the sequence from that input model, so a sequence file is not required
+    # when a model is available.  We do NOT set rebuild_in_place here —
+    # autobuild decides in-place vs. not on its own; we only stop REQUIRING the
+    # sequence in this case.  Sequence stays required when no model is available
+    # (nothing to derive from) and for all other programs.  The model slot is
+    # OPTIONAL and auto-filled later (below), so it is not yet in selected_files
+    # here — probe availability with the same helper the optional loop uses.
+    if missing == ["sequence"] and program == "phenix.autobuild":
+      _model_def = inputs.get("optional", {}).get("model")
+      _model_avail = bool(_model_def) and bool(
+        self._find_file_for_slot(
+          program, "model", _model_def,
+          available_files, context, basename_to_path))
+      if _model_avail:
+        self._log(context,
+          "BUILD: waiving required 'sequence' for phenix.autobuild — a "
+          "model is available; autobuild can rebuild in place and derive "
+          "the sequence from the model")
+        missing.remove("sequence")
     if missing:
       self._log(context, "BUILD: Missing required inputs: %s" % ", ".join(missing))
       self._last_missing_slots = missing

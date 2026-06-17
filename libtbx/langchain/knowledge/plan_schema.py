@@ -110,6 +110,12 @@ class StageDef(object):
     # --- Runtime state (updated by gate evaluator) ---
     self.status = STAGE_PENDING
     self.cycles_used = 0
+    # Option 2a: count of reactive side-cycles HELD at this stage — i.e. times
+    # the LLM ran an off-plan (later-stage) program while this stage was active
+    # and un-run, and the catch-up was deliberately held rather than abandoning
+    # this stage.  Capped (see record_stage_cycle) so a single "validate first"
+    # detour is allowed but the agent can't loop on it.
+    self.reactive_deviations = 0
     self.start_cycle = None    # cycle number when entered
     self.end_cycle = None      # cycle number when exited
     self.result_metrics = {}   # metrics at stage completion
@@ -145,6 +151,7 @@ class StageDef(object):
       # Runtime state
       "status": self.status,
       "cycles_used": self.cycles_used,
+      "reactive_deviations": self.reactive_deviations,
       "start_cycle": self.start_cycle,
       "end_cycle": self.end_cycle,
       "result_metrics": dict(self.result_metrics),
@@ -178,6 +185,11 @@ class StageDef(object):
       stage.status = status
     stage.cycles_used = int(
       d.get("cycles_used", 0)
+    )
+    # Option 2a: optional — absent in sessions written before this field
+    # existed; default 0.
+    stage.reactive_deviations = int(
+      d.get("reactive_deviations", 0)
     )
     stage.start_cycle = d.get("start_cycle")
     stage.end_cycle = d.get("end_cycle")
@@ -236,6 +248,25 @@ def _program_matches_phase(program_name, phase_programs):
     if program_name.startswith(pp + "_"):
       return True
   return False
+
+
+def _done_programs_from_session(session_data):
+  """Return the list of program names that completed successfully in this
+  session's history.  Used by record_stage_cycle's Option-2a hold to tell whether
+  a stage's lead program (e.g. phenix.autobuild) has already run.
+
+  Reads session_data["cycles"]; tolerant of None / missing / malformed entries.
+  Mirrors the SUCCESS-detection used by ai_agent's resume fast-forward."""
+  done = []
+  if not isinstance(session_data, dict):
+    return done
+  for h in session_data.get("cycles", []) or []:
+    if isinstance(h, dict):
+      prog = h.get("program") or ""
+      result = h.get("result") or ""
+      if prog and "SUCCESS" in str(result).upper():
+        done.append(prog)
+  return done
 
 
 # ── Success-criteria checker (v119.H15 Item 1) ──────
@@ -688,6 +719,50 @@ class StructurePlan(object):
             if (s.programs
                 and _program_matches_phase(
                   program_name, s.programs)):
+              # Option 2a: do not ABANDON an un-run, must-run stage on a single
+              # reactive deviation.  If the agent ran an off-plan (later-stage)
+              # program — e.g. validating with molprobity before rebuilding —
+              # while THIS stage has never run and its lead program (programs[0],
+              # e.g. phenix.autobuild) hasn't executed and its criteria aren't
+              # met, HOLD: let the off-plan program run as a one-off side cycle,
+              # keep this stage active (no advance, no cycles_used increment), and
+              # count one reactive_deviation.  The next cycle returns here so the
+              # lead program runs.  Capped at 1 so the agent can't loop on the
+              # detour; on a 2nd deviation the normal catch-up below proceeds.
+              _lead = curr.programs[0] if curr.programs else None
+              _done = _done_programs_from_session(session_data)
+              # Has the lead program already run?  NB: do NOT use
+              # _program_matches_phase(lead, _done) here — that helper returns
+              # True for an EMPTY list ("no filter"), which would falsely report
+              # the lead as run when history has no successes (exactly the case
+              # the hold must catch).  Check membership directly, counting a
+              # variant (autobuild_denmod) of the lead (autobuild) as the lead.
+              _lead_ran = bool(_lead) and any(
+                (dp == _lead or dp.startswith(_lead + "_"))
+                for dp in _done)
+              _crit_met = _criteria_met(curr, structure_model)
+              if (curr.cycles_used == 0
+                  and _lead is not None
+                  and not _lead_ran
+                  and not _crit_met
+                  and curr.reactive_deviations < 1):
+                curr.reactive_deviations += 1
+                logger.info(
+                  "PLAN_GUARD: Holding %s stage while side-cycle (%s) "
+                  "executes (reactive_deviations: %d/1)"
+                  % (curr.id, program_name,
+                     curr.reactive_deviations))
+                # Observability: record the HELD deviation (curr -> curr, the
+                # stage we deliberately stayed on) so session JSON shows the
+                # detour without implying we abandoned the stage.
+                self.record_plan_deviation(
+                  session_data,
+                  from_stage_id=curr.id,
+                  to_stage_id=curr.id,
+                  program_name=program_name,
+                  cycle_number=cycle_number,
+                )
+                return
               logger.info(
                 "Plan deviation: program %s matches "
                 "stage '%s' (index %d), advancing "

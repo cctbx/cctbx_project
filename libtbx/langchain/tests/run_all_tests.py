@@ -2301,6 +2301,26 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_rebuild_template_selection: {e}")
         results.append(("rebuild template selection", "tst_rebuild_template_selection", False, 0))
 
+    # --- placement-skip preserves explicit rebuild ---
+    try:
+        from tests.tst_placement_skip_rebuild import run_all_tests as run_placement_skip_tests
+        success, elapsed = run_test_module(
+            "tst_placement_skip_rebuild", run_placement_skip_tests, args.verbose)
+        results.append(("placement-skip rebuild", "tst_placement_skip_rebuild", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_placement_skip_rebuild: {e}")
+        results.append(("placement-skip rebuild", "tst_placement_skip_rebuild", False, 0))
+
+    # --- autobuild sequence waiver ---
+    try:
+        from tests.tst_autobuild_sequence_waiver import run_all_tests as run_autobuild_seq_tests
+        success, elapsed = run_test_module(
+            "tst_autobuild_sequence_waiver", run_autobuild_seq_tests, args.verbose)
+        results.append(("autobuild sequence waiver", "tst_autobuild_sequence_waiver", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_autobuild_sequence_waiver: {e}")
+        results.append(("autobuild sequence waiver", "tst_autobuild_sequence_waiver", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 
