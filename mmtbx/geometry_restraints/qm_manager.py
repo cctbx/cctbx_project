@@ -7,8 +7,6 @@ from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from mmtbx.geometry_restraints import base_qm_manager, mopac_manager, orca_manager, xtb_manager
 
-harkcal = 627.50946900
-bohrang = 0.52918
 #
 # QM runner
 #

@@ -5,9 +5,7 @@ import time
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import base_qm_manager
-
-harkcal = 627.50946900
-bohrang = 0.52918
+from mmtbx.geometry_restraints.base_qm_manager import harkcal, bohrang
 
 class orca_manager(base_qm_manager.base_qm_manager):
 

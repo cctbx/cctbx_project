@@ -51,10 +51,7 @@ from libtbx import Auto
 import libtbx.load_env
 
 from mmtbx.geometry_restraints import base_qm_manager
-
-# Eh -> kcal/mol and bohr -> Angstrom, used to put gradients into kcal/mol/A.
-harkcal = 627.50946900
-bohrang = 0.52918
+from mmtbx.geometry_restraints.base_qm_manager import harkcal, bohrang
 
 DEFAULT_XTB_GFN = 2
 DEFAULT_XTB_SOLVENT = 'ether'
