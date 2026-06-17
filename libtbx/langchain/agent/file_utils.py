@@ -33,10 +33,15 @@ def classify_mtz_type(filepath):
 
     Classification rules:
     1. refine_NNN.mtz or refine_NNN_NNN.mtz -> map_coeffs_mtz (refine map output)
-    2. *_001.mtz pattern -> map_coeffs_mtz (other numbered map outputs)
-    3. Contains 'map_coeffs', 'denmod', 'density_mod' -> map_coeffs_mtz
-    4. Contains '_data.mtz' or 'refinement_data' -> data_mtz
-    5. Default -> data_mtz
+    2. Contains 'map_coeffs', 'denmod', 'density_mod' -> map_coeffs_mtz
+    3. Contains '_data.mtz' or 'refinement_data' -> data_mtz
+    4. Default -> data_mtz
+
+    Note: classification is filename-based only (this module imports os+re and
+    must work server-side where the MTZ is not on local disk).  A file ending
+    in '_001.mtz' is NOT treated as map coefficients on the suffix alone — that
+    suffix is common on user input data files (e.g. a phenix.refine output fed
+    back in, which carries Fobs + R-free flags and is valid refinement data).
 
     Args:
         filepath: Path to MTZ file (string)
@@ -64,9 +69,16 @@ def classify_mtz_type(filepath):
     if re.match(r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$', basename):
         return "map_coeffs_mtz"
 
-    # Pattern 2: Other numbered outputs like model_refine_001.mtz
-    if re.match(r'.*_001\.mtz$', basename):
-        return "map_coeffs_mtz"
+    # NOTE: a former "Pattern 2" matched any '*_001.mtz' and returned
+    # map_coeffs_mtz.  It was removed: '_001' is a common user suffix on INPUT
+    # data files (e.g. beta_blip_001.mtz, a phenix.refine output the user feeds
+    # back in, which carries Fobs + R-free flags and IS valid refinement data).
+    # Matching it as map coefficients dropped the file from data_mtz, set
+    # has_data_mtz=False, and stripped phenix.xtriage from valid_programs ->
+    # the agent stalled at [STOP] with nothing to run.  Genuine PHENIX
+    # map-coefficient outputs are already covered: '*refine_NNN(.mtz)' by
+    # Pattern 1 (its only legitimate example, model_refine_001.mtz, matches
+    # Pattern 1), and 'map_coeffs'/'denmod'/'density_mod' by Pattern 3.
 
     # Pattern 3: Explicit map coefficients or density-modified
     for pattern in MAP_COEFFS_PATTERNS:

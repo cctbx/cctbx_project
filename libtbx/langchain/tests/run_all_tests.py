@@ -2261,6 +2261,46 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_rfree_flags_missing: {e}")
         results.append(("rfree flags missing recovery", "tst_rfree_flags_missing", False, 0))
 
+    # --- classify_mtz_type _001 suffix fix (bare *_001.mtz is data, not map) ---
+    try:
+        from tests.tst_classify_mtz_type_001 import run_all_tests as run_classify_001_tests
+        success, elapsed = run_test_module(
+            "tst_classify_mtz_type_001", run_classify_001_tests, args.verbose)
+        results.append(("classify_mtz_type _001 fix", "tst_classify_mtz_type_001", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_classify_mtz_type_001: {e}")
+        results.append(("classify_mtz_type _001 fix", "tst_classify_mtz_type_001", False, 0))
+
+    # --- phenix.refine Final-vs-Start R-free extraction fix ---
+    try:
+        from tests.tst_refine_final_rfree import run_all_tests as run_refine_final_rfree_tests
+        success, elapsed = run_test_module(
+            "tst_refine_final_rfree", run_refine_final_rfree_tests, args.verbose)
+        results.append(("refine final rfree", "tst_refine_final_rfree", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_refine_final_rfree: {e}")
+        results.append(("refine final rfree", "tst_refine_final_rfree", False, 0))
+
+    # --- spurious stop_after_requested strip (open-ended advice != stop) ---
+    try:
+        from tests.tst_spurious_stop_after_requested import run_all_tests as run_spurious_stop_tests
+        success, elapsed = run_test_module(
+            "tst_spurious_stop_after_requested", run_spurious_stop_tests, args.verbose)
+        results.append(("spurious stop strip", "tst_spurious_stop_after_requested", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_spurious_stop_after_requested: {e}")
+        results.append(("spurious stop strip", "tst_spurious_stop_after_requested", False, 0))
+
+    # --- advice-driven rebuild template selection ---
+    try:
+        from tests.tst_rebuild_template_selection import run_all_tests as run_rebuild_template_tests
+        success, elapsed = run_test_module(
+            "tst_rebuild_template_selection", run_rebuild_template_tests, args.verbose)
+        results.append(("rebuild template selection", "tst_rebuild_template_selection", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_rebuild_template_selection: {e}")
+        results.append(("rebuild template selection", "tst_rebuild_template_selection", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 

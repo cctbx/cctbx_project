@@ -183,6 +183,7 @@ def _build_context(data_characteristics=None,
     "has_anomalous_atoms": False,
     "wants_mr_sad": False,
     "wants_polder": False,
+    "wants_rebuild": False,
     "wants_validation_only": False,
     "model_is_placed": False,
     "resolution": None,
@@ -433,6 +434,20 @@ def _build_context(data_characteristics=None,
     ctx["model_is_placed"] = True
     ctx["wants_polder"] = True
 
+  # Rebuild intent: when the user explicitly asks to rebuild / autobuild
+  # (e.g. "improve this model by refinement/rebuilding whatever is necessary"),
+  # select a placed-model template that INCLUDES a model_rebuilding stage
+  # rather than plain refine_placed (which only refines + validates).  Like
+  # polder, rebuilding a model implies it is already placed.  Keyed on explicit
+  # rebuild words so a plain "refine" request still gets refine_placed.
+  _rebuild_keywords = (
+    "rebuild", "re-build", "autobuild", "auto-build",
+    "build the model", "model building", "model rebuilding",
+  )
+  if any(w in advice for w in _rebuild_keywords):
+    ctx["model_is_placed"] = True
+    ctx["wants_rebuild"] = True
+
   # Also check directives for placement signals
   d = directives or {}
   _d_constraints = d.get("constraints", [])
@@ -444,6 +459,16 @@ def _build_context(data_characteristics=None,
       "polder", "validate",
     )):
       ctx["model_is_placed"] = True
+      break
+  # Rebuild intent can also arrive via directives.constraints
+  # (e.g. "Improve model by refinement/rebuilding whatever is
+  # necessary").  Mirror the advice-based detection above.
+  for c in _d_constraints:
+    c_lower = (c.lower()
+               if isinstance(c, str) else "")
+    if any(w in c_lower for w in _rebuild_keywords):
+      ctx["model_is_placed"] = True
+      ctx["wants_rebuild"] = True
       break
   # user_wants_ligandfit → model is placed
   wf = d.get("workflow_preferences", {})

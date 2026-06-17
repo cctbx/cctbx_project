@@ -7285,7 +7285,7 @@ Key operations:
 
 ### Plan Templates (`knowledge/plan_templates.yaml`)
 
-Twelve pre-defined plan skeletons:
+Nineteen pre-defined plan skeletons:
 
 | Template | Applicable When |
 |----------|----------------|
@@ -7299,6 +7299,10 @@ Twelve pre-defined plan skeletons:
 | `mr_sad` | X-ray, has search model + anomalous atoms |
 | `sad_phasing` | X-ray, anomalous atoms (no search model) |
 | `sad_phasing_ligand` | X-ray, anomalous atoms + ligand |
+| `refine_placed` | X-ray, placed model (`model_is_placed`) — refine + validate |
+| `refine_placed_ligand` | X-ray, placed model + ligand |
+| `refine_placed_polder` | X-ray, placed model + `wants_polder` |
+| `refine_rebuild_placed` | X-ray, placed model + `wants_rebuild` — refine + autobuild rebuild + validate |
 | `validate_existing` | X-ray, `wants_validation_only` + placed model (v115.09) |
 | `data_analysis_only` | X-ray, no model, no sequence |
 | `cryoem_refine` | Cryo-EM |
@@ -7306,13 +7310,44 @@ Twelve pre-defined plan skeletons:
 | `cryoem_analysis_only` | Cryo-EM, no model, no sequence |
 
 Templates encode expert crystallographic knowledge. Selection is
-deterministic (rule-based). The LLM only customizes parameters
-within template bounds (resolution-appropriate thresholds,
-ligand-specific settings).
+deterministic (rule-based): each template's `applicable_when` is
+scored against the session context, highest score wins, ties broken
+by `priority`. The LLM only customizes parameters within template
+bounds (resolution-appropriate thresholds, ligand-specific
+settings) — it cannot add or remove stages, so a capability the
+selected template lacks (e.g. rebuilding) simply never runs.
 
 `mr_refine_lowres` relaxes R-free targets and disables ordered
 solvent — prevents the common failure mode where the agent adds
 waters at low resolution and overfits.
+
+**Placed-model family.** When the model is already positioned
+(`model_is_placed`, set from MR completion, ligandfit/refine
+intent, or a refinement `after_program`), the `refine_placed*`
+templates skip molecular replacement. Plain `refine_placed`
+runs data_assessment → refinement → final_refinement → validation.
+Sibling templates add one capability each, selected by an
+advice-derived context flag that raises the `applicable_when`
+match score above plain `refine_placed`: `+ligand` →
+`refine_placed_ligand`, `wants_polder` → `refine_placed_polder`,
+`wants_rebuild` → `refine_rebuild_placed`.
+
+**Advice-driven rebuilding** (`refine_rebuild_placed`). Because the
+LLM cannot add stages, an explicit user request to rebuild
+(e.g. "improve this model by refinement/**rebuilding** whatever is
+necessary") must change *template selection*, not just parameters.
+`plan_generator._build_context` scans the advice and
+`directives.constraints` for explicit rebuild words (`rebuild`,
+`autobuild`, `model building`, etc.; deliberately NOT bare "build"
+or vague "whatever is necessary") and sets `wants_rebuild`, which
+also implies `model_is_placed`. The `refine_rebuild_placed`
+template is `refine_placed` plus a `model_rebuilding` stage
+(`phenix.autobuild`, `rebuild_in_place: false`, `skip_if:
+"r_free < 0.28"`) inserted between refinement and final refinement.
+This mirrors the existing `wants_polder` → `refine_placed_polder`
+mechanism. Quality-driven rebuilding (escalating to rebuild when a
+validated model is poor regardless of wording) is intentionally a
+separate concern, not handled by this template.
 
 ### Plan Generator (`agent/plan_generator.py`)
 

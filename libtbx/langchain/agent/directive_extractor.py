@@ -887,6 +887,28 @@ def extract_directives(user_advice, provider="google", model=None, log_func=None
                     "method_constraint"] = _method
         # tutorial: keep whatever the LLM set
 
+        # Strip a SPURIOUS stop_after_requested (any intent).  The LLM
+        # occasionally sets stop_conditions.stop_after_requested=True from an
+        # open-ended instruction like "do everything you can ... whatever is
+        # necessary", which is the OPPOSITE of a stop request and violates the
+        # extractor's "explicit stop only" rule.  The flag is justified only
+        # when the advice carries an explicit stop (_has_explicit_stop) OR an
+        # after_program pins a concrete program to stop after (e.g. intent=task).
+        # If neither holds, remove it so the agent is not told to stop after the
+        # first refinement when the user asked it to keep improving the model.
+        # (The intent=task / solve / solve_constrained branches above already
+        # set or strip the flag for their cases; this catches the tutorial /
+        # no-after_program gap they leave open.)
+        _sc_strip = directives.get("stop_conditions", {})
+        if (_sc_strip.get("stop_after_requested") is True
+                and not _sc_strip.get("after_program")
+                and not _has_explicit_stop):
+            _sc_strip.pop("stop_after_requested", None)
+            log("DIRECTIVES: stripped spurious stop_after_requested "
+                "(no explicit stop in advice, no after_program)")
+            if not _sc_strip:
+                directives.pop("stop_conditions", None)
+
         # Simplify intent to just the string for
         # downstream consumers
         if isinstance(directives.get("intent"), dict):

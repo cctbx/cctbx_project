@@ -426,6 +426,70 @@ templates:
         max_cycles: 1
         description: "Final model validation"
 
+  # -----------------------------------------------------------
+  # PLACED MODEL + REFINEMENT + REBUILDING
+  # -----------------------------------------------------------
+  # Covers: user explicitly asks to rebuild / autobuild a placed
+  # model (e.g. "improve this model by refinement/rebuilding
+  # whatever is necessary").  Same as refine_placed but inserts a
+  # model_rebuilding stage (phenix.autobuild) between refinement
+  # and final refinement.  Selected over refine_placed via the
+  # wants_rebuild context flag (higher applicable_when score).
+  refine_rebuild_placed:
+    description: "Refine and rebuild existing model (X-ray)"
+    applicable_when:
+      experiment_type: xray
+      has_search_model: true
+      model_is_placed: true
+      wants_rebuild: true
+    priority: 55
+    stages:
+
+      - id: data_assessment
+        programs: [phenix.xtriage]
+        max_cycles: 1
+        description: "Analyze data quality"
+        success:
+          xtriage_completed: "true"
+        provides:
+          [resolution, twinning_status]
+
+      - id: refinement
+        programs: [phenix.refine]
+        max_cycles: 5
+        description: "Refine model against data"
+        success:
+          r_free: "<0.25"
+        gate:
+          - if: "r_free > 0.50 after 2 cycles"
+            action: "stop_report"
+
+      - id: model_rebuilding
+        programs: [phenix.autobuild, phenix.refine]
+        max_cycles: 2
+        description: "Rebuild model with autobuild"
+        success:
+          r_free: "<0.30"
+        skip_if: "r_free < 0.25"
+        strategy:
+          rebuild_in_place: false
+        provides:
+          - rebuilt_model
+
+      - id: final_refinement
+        programs: [phenix.refine]
+        max_cycles: 3
+        description: "Final refinement with waters"
+        strategy:
+          ordered_solvent: true
+        success:
+          r_free: "<0.22"
+
+      - id: validation
+        programs: [phenix.molprobity]
+        max_cycles: 1
+        description: "Final model validation"
+
   refine_placed_ligand:
     description: "Refine and fit ligand (X-ray)"
     applicable_when:
