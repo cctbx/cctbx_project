@@ -150,6 +150,21 @@ def build_session_state(session_info, session_resolution=None):
             session_state[
                 "plan_has_pending_stages"] = True
 
+        # Plan next-stage programs (v114.1) and the current ACTIVE stage's
+        # un-run lead program (v120 Option 2a).  Both let PERCEIVE inject
+        # plan-driven programs into valid_programs.  They must round-trip
+        # session_info -> session_state -> session_info (run_ai_agent) to reach
+        # the graph; without these two lines they are silently dropped at the
+        # client->server boundary (identically for LocalAgent and RemoteAgent,
+        # which share this function — so parity holds either way, but the
+        # feature would be inert).  Truthy-guarded, so empty []/"" are skipped.
+        if session_info.get("plan_next_stage_programs"):
+            session_state["plan_next_stage_programs"] = (
+                session_info["plan_next_stage_programs"])
+        if session_info.get("plan_current_unrun_lead_program"):
+            session_state["plan_current_unrun_lead_program"] = (
+                session_info["plan_current_unrun_lead_program"])
+
         # P4: session-blocked programs — programs that have failed too many
         # times this session.  Persisted client-side and re-injected each
         # cycle so the server can filter them from valid_programs.
@@ -274,6 +289,22 @@ def build_request_v2(
         # ASU copy count (copies feature)
         if session_state.get("asu_copies"):
             normalized_session_state["asu_copies"] = session_state["asu_copies"]
+        # Plan-driven program injection (v114.1 plan_has_pending_stages /
+        # plan_next_stage_programs; v120 Option 2a plan_current_unrun_lead_program).
+        # build_request_v2 IS the single transport chokepoint for BOTH LocalAgent
+        # and RemoteAgent (LocalAgent runs the identical encode/decode path), so
+        # whatever is not whitelisted here is dropped IDENTICALLY in both — these
+        # entries are required for the plan fields to reach PERCEIVE on either
+        # route, and adding them here preserves server==local parity by
+        # construction.
+        if session_state.get("plan_has_pending_stages"):
+            normalized_session_state["plan_has_pending_stages"] = True
+        if session_state.get("plan_next_stage_programs"):
+            normalized_session_state["plan_next_stage_programs"] = (
+                session_state["plan_next_stage_programs"])
+        if session_state.get("plan_current_unrun_lead_program"):
+            normalized_session_state["plan_current_unrun_lead_program"] = (
+                session_state["plan_current_unrun_lead_program"])
 
     # Build settings
     settings = {

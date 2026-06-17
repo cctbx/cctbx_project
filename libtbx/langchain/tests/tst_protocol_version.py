@@ -80,16 +80,19 @@ def test_min_supported_at_least_one():
     print("  PASS")
 
 
-def test_current_protocol_version_is_5():
-    """Phase 2 specifically bumped CURRENT to 5.
+def test_current_protocol_version_is_6():
+    """v120 bumped CURRENT to 6.
 
-    This documents the v116.10 Phase 2 decision.  If a future phase
-    bumps to 6 or higher, update this test (or remove it).
+    Change-detector: this documents the current protocol version as a
+    conscious decision.  v116.10 Phase 2 set it to 5; v120 bumped it to 6
+    for the plan_current_unrun_lead_program field (Option 2a reactive-
+    deviation hold).  If a future phase bumps to 7 or higher, update this
+    test (or remove it).
     """
-    print("Test: current_protocol_version_is_5")
-    assert contract.CURRENT_PROTOCOL_VERSION == 5, (
-        "v116.10 Phase 2 set CURRENT_PROTOCOL_VERSION to 5; "
-        "current value is %d. If this is intentional (e.g. v6 added), "
+    print("Test: current_protocol_version_is_6")
+    assert contract.CURRENT_PROTOCOL_VERSION == 6, (
+        "v120 set CURRENT_PROTOCOL_VERSION to 6; "
+        "current value is %d. If this is intentional (e.g. v7 added), "
         "update this test." % contract.CURRENT_PROTOCOL_VERSION)
     print("  PASS")
 
