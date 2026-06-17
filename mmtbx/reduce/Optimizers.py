@@ -722,20 +722,6 @@ class Optimizer(object):
         self._numCalculated += optC.GetNumCalculatedAtoms()
         self._numCached += optC.GetNumCachedAtoms()
 
-      ################################################################################
-      # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
-      # both in the initial setup and determined during optimization.  Phantom Hydrogens
-      # on waters do not need to be adjusted because they were never added to the
-      # structure.
-      # We only do this after the last-checked alternate configuration for a given model.
-      self._infoString += _VerboseCheck(self._verbosity, 1,"Deleting Hydrogens tagged by Histidine Movers\n")
-      for a in self._deleteMes:
-        aName = a.name.strip().upper()
-        resNameAndID = _ResNameAndID(a)
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Deleting {} {}\n".format(resNameAndID, aName))
-        a.parent().remove_atom(a)
-      self._infoString += _ReportTiming(self._verbosity, "delete Hydrogens")
-
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
       if fillAtomDump:
@@ -785,6 +771,15 @@ class Optimizer(object):
     ret = self._atomDump
     self._atomDump = ""
     return ret
+
+  def getHydrogensToDelete(self):
+    """
+      Returns a list of the Hydrogens that were marked for deletion during the processing.
+      The caller should delete these form the optimized structure to produce a model that
+      has the best contacts and fewest clashes.
+      :return: a list of the Hydrogens that were marked for deletion during the processing.
+    """
+    return list(self._deleteMes)
 
   def _setMoverState(self, positionReturn, index):
     """
