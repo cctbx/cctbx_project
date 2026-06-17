@@ -10,6 +10,10 @@ from libtbx import adopt_init_args
 from libtbx import easy_run
 from libtbx import Auto
 
+# Shared by the QM managers: Eh -> kcal/mol and bohr -> Angstrom.
+harkcal = 627.50946900
+bohrang = 0.52918
+
 def dist2(xyz1, xyz2):
   d2=0
   for i in range(3):
