@@ -277,122 +277,55 @@ def write_do_not_edit(f, win_bat=False):
   print(s+' THIS IS AN AUTOMATICALLY GENERATED FILE.', file=f)
   print(s+' DO NOT EDIT! CHANGES WILL BE LOST.', file=f)
 
-def conda_activation_lines(shell, conda_prefix=None, subdir="activate.d",
-                           skip_if_active=None):
-  """Lines that run a conda environment's activation (or deactivation)
-  hooks without requiring "conda activate".
+def conda_activation_lines(shell, conda_prefix=None):
+  """Lines that run a conda environment's activate.d hooks without requiring
+  "conda activate".
 
-  The hooks in <prefix>/etc/conda/{activate,deactivate}.d set/revert
-  environment variables some packages need at runtime (e.g. COOT_DATA_DIR,
-  GSETTINGS_SCHEMA_DIR, XML_CATALOG_FILES). They reference CONDA_PREFIX, so
-  it is pointed at the target prefix only while they run and then restored
-  to its prior value, so a different active environment is left untouched.
+  The hooks in <prefix>/etc/conda/activate.d set environment variables some
+  packages need at runtime (e.g. COOT_DATA_DIR, GSETTINGS_SCHEMA_DIR,
+  XML_CATALOG_FILES). They reference CONDA_PREFIX, so it is pointed at the
+  target prefix only while they run and then restored to its prior value, so a
+  different active environment is left untouched. They are skipped when that
+  environment is already active (CONDA_PREFIX already equals the prefix).
 
-  Two callers share this:
+  The dispatchers run these hooks per command, in a subshell that exits, so
+  nothing persists into the user's shell. Two dispatcher kinds share this,
+  differing only in how the prefix is found:
 
   - **conda-package dispatchers** (``conda_prefix=None``): the prefix is
     resolved at runtime from LIBTBX_PREFIX (for "sh" it is the prefix; for
-    "bat" it is <prefix>\\Library, so the prefix is its parent). Hooks are
-    skipped when the environment is already active (default
-    ``skip_if_active=True``).
-  - **setpaths / unsetpaths** (``conda_prefix=<path>``): the prefix is
-    baked in as a literal. setpaths sources ``activate.d``; unsetpaths
-    sources ``deactivate.d`` (pass ``subdir="deactivate.d"``). The
-    exported variables persist -- that is the point of setpaths -- so
-    ``skip_if_active`` defaults to False.
-
-  Conda's CshActivator sources .csh hooks when activating from csh/tcsh,
-  so "csh" emits a parallel block that iterates "<prefix>/etc/conda/
-  {subdir}/*.csh". Today most conda-forge packages only ship .sh hooks
-  (no .csh), but a future hook in the user's env would silently fail to
-  run without this.
+    "bat" it is <prefix>\\Library, so the prefix is its parent), because
+    there the build directory is the conda prefix.
+  - **development-build dispatchers** (``conda_prefix=<path>``): the prefix
+    is baked in as a literal, because there the build directory is not the
+    conda prefix.
 
   Parameters
   ----------
   shell : str
-      "sh", "csh", or "bat".
+      "sh" or "bat".
   conda_prefix : str or None
       Literal prefix baked into the script, or None to resolve from
-      LIBTBX_PREFIX at runtime (the dispatcher case).
-  subdir : str
-      "activate.d" or "deactivate.d".
-  skip_if_active : bool or None
-      Skip the hooks when CONDA_PREFIX already equals the target prefix.
-      None selects the per-caller default (True for dispatchers, False for
-      baked-literal setpaths).
+      LIBTBX_PREFIX at runtime.
 
   Returns
   -------
   list of str
-      Script lines, or [] for shells that cannot source conda hooks.
+      The script lines that source the activate.d hooks.
 
   Raises
   ------
   ValueError
-      If shell is not one of "sh", "csh", "bat".
+      If shell is not one of "sh", "bat".
   """
-  from_dispatcher = conda_prefix is None
-  if (skip_if_active is None):
-    skip_if_active = from_dispatcher
-  if (shell == "csh"):
-    # csh has no ${VAR+set} parameter expansion and `"$VAR"` errors when
-    # VAR is unset, so use $?VAR guards and a temp materialization for
-    # the active-prefix comparison. `nonomatch` is saved/restored so the
-    # foreach glob doesn't error when no .csh hooks exist (the common
-    # case today) and we don't clobber a user-set nonomatch.
-    prefix = "${LIBTBX_PREFIX}" if from_dispatcher else conda_prefix
-    lines = [
-      '# Run the conda environment %s scripts so packages that rely on' % subdir,
-      '# activation-time environment variables work without "conda activate".',
-      '# CONDA_PREFIX is set only while the scripts run, then restored, so',
-      '# only the variables they change persist.',
-    ]
-    if (skip_if_active):
-      lines += [
-        'set libtbx_active_prefix = ""',
-        'if ($?CONDA_PREFIX) set libtbx_active_prefix = "$CONDA_PREFIX"',
-        ('if ("$libtbx_active_prefix" != "%s" && -d "%s/etc/conda/%s") then'
-         % (prefix, prefix, subdir)),
-      ]
-    else:
-      lines.append('if (-d "%s/etc/conda/%s") then' % (prefix, subdir))
-    lines += [
-      '  if ($?CONDA_PREFIX) then',
-      '    set libtbx_conda_prefix_was_set = "set"',
-      '    set libtbx_conda_prefix_backup = "$CONDA_PREFIX"',
-      '  else',
-      '    set libtbx_conda_prefix_was_set = ""',
-      '    set libtbx_conda_prefix_backup = ""',
-      '  endif',
-      '  setenv CONDA_PREFIX "%s"' % prefix,
-      '  set libtbx_nonomatch_was_set = ""',
-      '  if ($?nonomatch) set libtbx_nonomatch_was_set = "set"',
-      '  set nonomatch',
-      ('  foreach libtbx_activate_script ("%s"/etc/conda/%s/*.csh)'
-       % (prefix, subdir)),
-      '    if (-r "$libtbx_activate_script") source "$libtbx_activate_script"',
-      '  end',
-      '  if ("$libtbx_nonomatch_was_set" == "") unset nonomatch',
-      '  unset libtbx_nonomatch_was_set',
-      '  if ("$libtbx_conda_prefix_was_set" == "set") then',
-      '    setenv CONDA_PREFIX "$libtbx_conda_prefix_backup"',
-      '  else',
-      '    unsetenv CONDA_PREFIX',
-      '  endif',
-      '  unset libtbx_activate_script libtbx_conda_prefix_backup libtbx_conda_prefix_was_set',
-      'endif',
-    ]
-    if (skip_if_active):
-      lines.append('unset libtbx_active_prefix')
-    return lines
+  resolve_at_runtime = conda_prefix is None
   if (shell == "sh"):
     # Expression that yields the prefix inside double quotes.
-    prefix = "${LIBTBX_PREFIX}" if from_dispatcher else conda_prefix
-    guard = '[ -d "%s/etc/conda/%s" ]' % (prefix, subdir)
-    if (skip_if_active):
-      guard = '[ "${CONDA_PREFIX}" != "%s" ] && %s' % (prefix, guard)
+    prefix = "${LIBTBX_PREFIX}" if resolve_at_runtime else conda_prefix
+    guard = ('[ "${CONDA_PREFIX}" != "%s" ] && [ -d "%s/etc/conda/activate.d" ]'
+             % (prefix, prefix))
     return [
-      '# Run the conda environment %s scripts so packages that rely on' % subdir,
+      '# Run the conda environment activate.d scripts so packages that rely on',
       '# activation-time environment variables work without "conda activate".',
       '# CONDA_PREFIX is set only while the scripts run, then restored, so',
       '# only the variables they change persist.',
@@ -401,7 +334,7 @@ def conda_activation_lines(shell, conda_prefix=None, subdir="activate.d",
       '  libtbx_conda_prefix_backup="${CONDA_PREFIX}"',
       '  CONDA_PREFIX="%s"' % prefix,
       '  export CONDA_PREFIX',
-      '  for libtbx_activate_script in "%s"/etc/conda/%s/*.sh; do' % (prefix, subdir),
+      '  for libtbx_activate_script in "%s"/etc/conda/activate.d/*.sh; do' % prefix,
       '    if [ -r "${libtbx_activate_script}" ]; then',
       '      . "${libtbx_activate_script}"',
       '    fi',
@@ -416,20 +349,19 @@ def conda_activation_lines(shell, conda_prefix=None, subdir="activate.d",
       'fi',
     ]
   if (shell == "bat"):
-    # Build subdir-bearing lines by concatenation: %-formatting would
-    # collide with the literal %VAR% batch references.
-    if (from_dispatcher):
+    # Build these lines by concatenation: %-formatting would collide with the
+    # literal %VAR% batch references.
+    if (resolve_at_runtime):
       set_prefix = r'@for %%F in ("%LIBTBX_PREFIX%\..") do @set "LIBTBX_CONDA_PREFIX=%%~fF"'
     else:
       set_prefix = r'@set "LIBTBX_CONDA_PREFIX=' + conda_prefix + r'"'
-    hookdir = '%LIBTBX_CONDA_PREFIX%\\etc\\conda\\' + subdir
+    hookdir = r'%LIBTBX_CONDA_PREFIX%\etc\conda\activate.d'
     exist = '@if exist "' + hookdir + '\\" @set LIBTBX_RUN_ACTIVATE=1'
-    if (skip_if_active):
-      exist = r'@if /i not "%CONDA_PREFIX%"=="%LIBTBX_CONDA_PREFIX%" ' + exist
+    exist = r'@if /i not "%CONDA_PREFIX%"=="%LIBTBX_CONDA_PREFIX%" ' + exist
     loop = ('@if "%LIBTBX_RUN_ACTIVATE%"=="1" @for %%S in ("'
             + hookdir + '\\*.bat") do @call "%%S"')
     return [
-      r'@rem Run the conda environment ' + subdir + r' scripts so packages that',
+      r'@rem Run the conda environment activate.d scripts so packages that',
       r'@rem rely on activation-time environment variables work without',
       r'@rem "conda activate". CONDA_PREFIX is set only while the scripts run,',
       r'@rem then restored, so only the variables they change persist.',
@@ -444,7 +376,7 @@ def conda_activation_lines(shell, conda_prefix=None, subdir="activate.d",
       r'@set "LIBTBX_CONDA_PREFIX_BACKUP="',
       r'@set "LIBTBX_RUN_ACTIVATE="',
     ]
-  raise ValueError("shell must be 'sh', 'csh', or 'bat', not %r" % (shell,))
+  raise ValueError("shell must be 'sh' or 'bat', not %r" % (shell,))
 
 def open_info(path, mode="w", info="   "):
   print(info, path.basename())
@@ -1682,6 +1614,13 @@ Wait for the command to finish, then try again.""" % vars())
       print('  %s="%s"' % (n, v), file=f)
       print('  export %s' % n, file=f)
       print('fi', file=f)
+    if (self.build_options.use_conda):
+      # Run the conda activate.d hooks here -- like the conda-package
+      # dispatchers -- instead of from setpaths. The build directory is not
+      # the conda prefix in a development build, so the prefix is baked in as
+      # a literal rather than resolved from LIBTBX_PREFIX at runtime.
+      for line in conda_activation_lines("sh", get_conda_prefix()):
+        print(line, file=f)
     precall_commands = self.dispatcher_precall_commands()
     if (precall_commands is not None):
       for line in precall_commands:
@@ -1806,6 +1745,13 @@ Wait for the command to finish, then try again.""" % vars())
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
       print('@set %s=%s;%%%s%%' % (n, v, n), file=f)
+    if self.build_options.use_conda:
+      # Run the conda activate.d hooks here -- like the conda-package
+      # dispatchers -- instead of from setpaths. The build directory is not
+      # the conda prefix in a development build, so the prefix is baked in as
+      # a literal rather than resolved from LIBTBX_PREFIX at runtime.
+      for line in conda_activation_lines("bat", get_conda_prefix()):
+        print(line, file=f)
     print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(), file=f)
     write_dispatcher_include(where="before_command")
     qnew_tmp = qnew
@@ -1921,13 +1867,6 @@ alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
       var_name="PATH",
       val=self.bin_path.sh_value(),
       var_name_in="LIBTBX_OPATH")
-    if (self.build_options.use_conda):
-      conda_prefix = get_conda_prefix()
-      for line in conda_activation_lines("sh", conda_prefix):
-        print(line, file=s)
-      for line in conda_activation_lines(
-          "sh", conda_prefix, subdir="deactivate.d"):
-        print(line, file=u)
     for f in s, u:
       print('LIBTBX_TMPVAL=', file=f)
       print('LIBTBX_OPATH=', file=f)
@@ -1967,13 +1906,6 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
       var_name="PATH",
       val=self.bin_path.sh_value(),
       var_name_in="LIBTBX_OPATH")
-    if (self.build_options.use_conda):
-      conda_prefix = get_conda_prefix()
-      for line in conda_activation_lines("csh", conda_prefix):
-        print(line, file=s)
-      for line in conda_activation_lines(
-          "csh", conda_prefix, subdir="deactivate.d"):
-        print(line, file=u)
     for f in s, u:
       print('unsetenv LIBTBX_TMPVAL', file=f)
       print('unsetenv LIBTBX_OPATH', file=f)
@@ -2004,13 +1936,6 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
     if (suffix == "_debug"):
       print('@set PYTHONCASEOK=1', file=s) # no unset
     setpaths.set_unset_vars()
-    if (self.build_options.use_conda):
-      conda_prefix = get_conda_prefix()
-      for line in conda_activation_lines("bat", conda_prefix):
-        print(line, file=s)
-      for line in conda_activation_lines(
-          "bat", conda_prefix, subdir="deactivate.d"):
-        print(line, file=u)
     for f in s, u:
       print('@set LIBTBX_OPATH=', file=f)
       if (suffix == ""):
