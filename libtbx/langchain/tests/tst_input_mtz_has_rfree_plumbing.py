@@ -1,4 +1,6 @@
-"""K_RFREE_PLUMBING: input_mtz_has_rfree must survive the client->server wire.
+"""K_RFREE_PLUMBING: R-free session_info fields survive the client->server wire.
+
+Covers both the scalar input_mtz_has_rfree and the v120.2 per-file mtz_rfree_map.
 
 The R-free generate decision (command_builder._input_mtz_rfree_state) relies on
 the CLIENT-extracted fact `input_mtz_has_rfree` reaching the server-side builder.
@@ -128,11 +130,29 @@ _BSS, _BRV2, _RESTORE = _load()
 
 
 def _map_back(session_state):
-  """Exact replica of run_ai_agent.py's input_mtz_has_rfree map-back."""
+  """Exact replica of run_ai_agent.py's map-back for the R-free fields."""
   session_info = {}
   if session_state.get("input_mtz_has_rfree") is not None:
     session_info["input_mtz_has_rfree"] = session_state["input_mtz_has_rfree"]
+  if session_state.get("mtz_rfree_map") is not None:
+    session_info["mtz_rfree_map"] = session_state["mtz_rfree_map"]
   return session_info
+
+
+def _roundtrip_map(rfree_map, present=True):
+  """Run a per-file map through all hops; return it as seen after the map-back,
+  or '<ABSENT>' if it never arrived."""
+  session_info = {"experiment_type": "xray", "best_files": {},
+                  "client_protocol_version": 8}
+  if present:
+    session_info["mtz_rfree_map"] = rfree_map
+  session_state = _BSS(session_info)                       # hop 1
+  request = _BRV2(files={"data_mtz": "x.mtz"}, cycle_number=1,
+                  session_state=session_state, client_version=8)  # hop 2
+  request = json.loads(json.dumps(request))                # JSON transport
+  nss = request.get("session_state", {})
+  session_info_back = _map_back(nss)                       # hop 3
+  return session_info_back.get("mtz_rfree_map", "<ABSENT>")
 
 
 def _roundtrip(fact, present=True):
@@ -189,11 +209,46 @@ def test_missing_field_is_absent():
   print("  PASS: test_missing_field_is_absent")
 
 
+def test_rfree_map_survives():
+  # v120.2: the per-file map (dict with mixed True/False) must arrive intact,
+  # including the False entries (a truthy-collapsing bug would corrupt them).
+  if _BSS is None:
+    print("  SKIP")
+    return
+  m = {"beta_blip_001.mtz": True, "PHASER.1.mtz": False,
+       "beta_blip_P3221.mtz": False}
+  got = _roundtrip_map(m)
+  assert got == m, "map must survive intact, got %r" % got
+  print("  PASS: test_rfree_map_survives")
+
+
+def test_rfree_map_absent_stays_absent():
+  if _BSS is None:
+    print("  SKIP")
+    return
+  got = _roundtrip_map(None, present=False)
+  assert got == "<ABSENT>", "absent map must stay absent, got %r" % got
+  print("  PASS: test_rfree_map_absent_stays_absent")
+
+
+def test_rfree_map_empty_survives():
+  # An empty map is distinguishable from absent (is-not-None guard).
+  if _BSS is None:
+    print("  SKIP")
+    return
+  got = _roundtrip_map({})
+  assert got == {}, "empty map must survive as {}, got %r" % got
+  print("  PASS: test_rfree_map_empty_survives")
+
+
 _TESTS = [
   test_true_survives,
   test_false_survives_not_dropped,
   test_none_is_absent,
   test_missing_field_is_absent,
+  test_rfree_map_survives,
+  test_rfree_map_absent_stays_absent,
+  test_rfree_map_empty_survives,
 ]
 
 

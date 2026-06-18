@@ -173,6 +173,15 @@ class CommandContext:
   # compatibility (same rule as mtz_inspection above).
   input_mtz_has_rfree: Optional[bool] = None
 
+  # v120.2: per-file R-free map {mtz_basename: bool}, client-extracted for every
+  # local MTZ (original inputs AND intermediate outputs, e.g. PHASER.1.mtz).
+  # The generate guard looks up the SELECTED data MTZ's basename here, giving a
+  # per-file answer that is identical server- and client-side (the map travels in
+  # session_info).  This supersedes the original-input-only input_mtz_has_rfree
+  # scalar for the actually-refined file.  None/absent -> fall back to the scalar
+  # / lock.  Appended at the END for positional-construction compatibility.
+  mtz_rfree_map: Optional[Dict[str, Any]] = None
+
   def file_preferences(self) -> Dict[str, Any]:
     """Return directives.file_preferences dict (empty dict if not set)."""
     return self.directives.get("file_preferences", {}) if self.directives else {}
@@ -270,6 +279,8 @@ class CommandContext:
       # v120: client-extracted R-free presence for the input data MTZ (tri-state).
       # Same plumbing pattern as model_hetatm_residues / unplaced_model_cell.
       input_mtz_has_rfree=session_info.get("input_mtz_has_rfree"),
+      # v120.2: per-file R-free map for the actually-selected data MTZ.
+      mtz_rfree_map=session_info.get("mtz_rfree_map"),
     )
 
   def _log(self, msg: str):
@@ -2226,7 +2237,7 @@ class CommandBuilder:
   # =========================================================================
 
   def _input_mtz_rfree_state(self, files, context):
-    """Return whether the data MTZ that will be used contains an R-free flag
+    """Return whether the data MTZ that will be REFINED contains an R-free flag
     array, as a TRI-STATE:
 
       True  -> positive evidence flags EXIST.
@@ -2234,63 +2245,55 @@ class CommandBuilder:
       None  -> undetermined (could not be established).
 
     Used by the phenix.refine generate-flags invariant so we never regenerate
-    (overwrite) an existing test set, while ALSO never force-generating when we
-    cannot prove flags are absent.  The caller treats None conservatively
-    (does not generate) — a visible, recoverable rfree_flags_missing error is
-    far preferable to silently overwriting an existing test set.
+    (overwrite) an existing test set, while ALSO not omitting generate on a
+    genuine first refinement of flagless data.
+
+    PARITY (server == local): every source below travels in session_info, so the
+    answer is IDENTICAL whether the build runs on the server or the client.  The
+    builder does NOT read the filesystem here — a client-only inspect would make
+    the local build diverge from the server build, which is not allowed.  The
+    client does all inspection up front (ai_agent.py) and ships the results.
 
     Detection sources, in order:
-      0. context.input_mtz_has_rfree (client-extracted, shipped in session_info).
-         AUTHORITATIVE — the client inspected the input MTZ where the file is
-         local.  This is the ONLY source that can work server-side
-         (files_local=False), because the server cannot read client paths.
-      1. context.mtz_inspection — the precomputed inspection of the selected
-         data MTZ.  POSITIVE ONLY: a dict WITH an rfree_label -> True.  Its
-         ABSENCE is NOT taken as False (mtz_inspection is keyed off
-         best_files["data_mtz"], which may be empty or a different file at a
-         first refinement, and is always None server-side) -> keep looking.
-      2. inspect_mtz() on the actually-selected data MTZ, but ONLY when
-         context.files_local is True.  A server-side read would fail and must
-         NOT be mistaken for "no flags"; gating on files_local prevents that.
-         A successful read -> True/False; a failure -> None.
+      0. context.mtz_rfree_map[basename(selected data_mtz)] — the PER-FILE answer
+         for the file actually being refined (covers intermediate outputs like
+         PHASER.1.mtz, which the original-input scalar does not).  Authoritative.
+      1. context.input_mtz_has_rfree — the original-input scalar (tri-state).
+         Used only as a fallback when the selected file is not in the map.
+      2. context.mtz_inspection — precomputed inspection, POSITIVE ONLY (a
+         present rfree_label -> True; absence is not taken as False).
 
-    Returns None when nothing can establish the answer."""
-    # Source 0: authoritative client-extracted fact (works server-side).
-    flagged = getattr(context, "input_mtz_has_rfree", None)
-    if flagged is not None:
-      return bool(flagged)
-    # Source 1: precomputed inspection.  Trust only a POSITIVE result: a
-    # present rfree_label -> True.  We do NOT infer False from its absence,
-    # because mtz_inspection is keyed off best_files["data_mtz"], which at a
-    # first refinement can be empty or a DIFFERENT file than the one being
-    # refined (and is always None server-side) — a confident False there could
-    # wrongly trigger generation.  Absence -> keep looking.
-    insp = getattr(context, "mtz_inspection", None)
-    if isinstance(insp, dict) and insp.get("rfree_label"):
-      return True
-    # Source 2: inspect the selected data MTZ directly — LOCAL runs only.
-    if not getattr(context, "files_local", True):
-      # Server mode and no client fact -> cannot determine.
-      return None
+    Returns None when nothing can establish the answer (the decision then treats
+    an UNLOCKED refinement as a first refinement that needs flags)."""
+    # Identify the selected data MTZ (may be a list for multiple:true slots).
     data_mtz = None
     if isinstance(files, dict):
       data_mtz = files.get("data_mtz") or files.get("hkl_file")
-    # Selection values may be a list (multiple:true slots) or a string.
     if isinstance(data_mtz, (list, tuple)):
       data_mtz = data_mtz[0] if data_mtz else None
-    if not data_mtz:
-      return None
-    try:
-      try:
-        from libtbx.langchain.agent.mtz_inspector import inspect_mtz
-      except ImportError:
-        from agent.mtz_inspector import inspect_mtz
-      result = inspect_mtz(data_mtz)
-      if result is None:
-        return None  # unreadable / not an MTZ -> undetermined
-      return bool(result.get("rfree_label"))
-    except Exception:
-      return None
+
+    # Source 0: per-file map lookup for the file actually being refined.
+    rfree_map = getattr(context, "mtz_rfree_map", None)
+    if isinstance(rfree_map, dict) and data_mtz:
+      import os as _os
+      entry = rfree_map.get(_os.path.basename(str(data_mtz)))
+      if entry is not None:
+        return bool(entry)
+
+    # Source 1: original-input scalar fallback (when the selected file is not in
+    # the map — e.g. an old client, or a file the client could not inspect).
+    flagged = getattr(context, "input_mtz_has_rfree", None)
+    if flagged is not None:
+      return bool(flagged)
+
+    # Source 2: precomputed inspection, POSITIVE ONLY.  A present rfree_label ->
+    # True; absence is NOT inferred as False (mtz_inspection is keyed off
+    # best_files["data_mtz"], which may be empty or a different file).
+    insp = getattr(context, "mtz_inspection", None)
+    if isinstance(insp, dict) and insp.get("rfree_label"):
+      return True
+
+    return None
 
   def _apply_invariants(self, program: str, files: Dict[str, Any],
              strategy: Dict[str, Any],
@@ -2494,19 +2497,30 @@ class CommandBuilder:
     # R-free flags.  F1 also addresses the root cycle-1 threading
     # issue; F2 removes this redundant guard as defense-in-depth.
     if program == "phenix.refine":
-      # R-free generate decision (v120, three-valued — see _input_mtz_rfree_state).
+      # R-free generate decision (v120.1, three-valued — see _input_mtz_rfree_state).
       # phenix.refine treats generate=True as "create a NEW random R-free
       # partition", which OVERWRITES any flags already present and silently
       # invalidates cross-validation (observed on beta_blip_001, whose input
-      # carries an "R-free-flags" column).  We therefore GENERATE ONLY when we
-      # have positive evidence the input has NO test set.  When flags exist, or
-      # when we cannot determine the answer (e.g. server mode with no
-      # client-shipped fact), we strip/suppress generate — a visible, recoverable
-      # "No array of R-free flags found" error (handled by the rfree_flags_missing
-      # force_retry recovery) is far preferable to silently corrupting the test set.
+      # carries an "R-free-flags" column).  So we must NOT generate when flags
+      # already exist.  But we ALSO must not OMIT generate on a genuine first
+      # refinement of flagless data (e.g. an MR/phaser output, beta_blip_P3221) —
+      # phenix.refine then aborts on "No array of R-free flags found".
       #
-      # rfree_mtz locked (from a prior cycle's OUTPUT) always means flags exist, so
-      # short-circuit and skip the state probe (avoids a per-cycle inspection).
+      # The decision keys off the lock state AND the tri-state file probe:
+      #   rfree_mtz locked            -> strip   (flags exist, locked from output)
+      #   state is True               -> strip   (positive evidence flags in file)
+      #   state is False              -> generate (positive evidence: no flags)
+      #   state is None (UNDETERMINED) and nothing locked -> GENERATE
+      #     This is the safe default for an unlocked (first) refinement: when we
+      #     cannot prove flags exist and none are locked, treat it as a first
+      #     refinement that needs a fresh test set.  Worst case is a freshly
+      #     generated set (correct for genuine first-refine); the alternative
+      #     (omitting generate) is an immediate hard refinement abort.  This
+      #     restores the robust pre-fix default ("not rfree_mtz -> generate")
+      #     while still stripping on POSITIVE evidence of existing flags, which is
+      #     what prevents the overwrite.
+      #
+      # rfree_mtz locked short-circuits the probe (avoids a per-cycle inspection).
       if context.rfree_mtz:
         rfree_state = True
         _why = "rfree_mtz locked: %s" % os.path.basename(str(context.rfree_mtz))
@@ -2514,24 +2528,27 @@ class CommandBuilder:
         rfree_state = self._input_mtz_rfree_state(files, context)
         _why = ("input data MTZ already has R-free flags"
                 if rfree_state is True
-                else "R-free status undetermined; not generating (safe default)")
+                else "R-free flags present in selected data MTZ")
 
-      if rfree_state is False:
-        # Positive evidence of NO test set — genuine first refinement, so
-        # generate.  (Only here do we add the flag.)
-        if "generate_rfree_flags" not in strategy:
-          strategy["generate_rfree_flags"] = True
-          self._log(context,
-              "BUILD: First refinement - will generate "
-              "R-free flags (no rfree_mtz locked, input confirmed to have no "
-              "R-free flags)")
-      else:
-        # rfree_state is True (flags exist) or None (undetermined): never
-        # generate.  Strip any generate the LLM/hints set.
+      if rfree_state is True:
+        # Positive evidence flags already exist (locked, or detected in the
+        # selected data MTZ) — never generate; strip any the LLM/hints set.
         if strategy.get("generate_rfree_flags"):
           del strategy["generate_rfree_flags"]
           self._log(context,
               "BUILD: Stripped generate_rfree_flags (%s)" % _why)
+      else:
+        # rfree_state is False (confirmed no flags) OR None (undetermined, and
+        # nothing locked): this is a first refinement that needs a test set, so
+        # generate.  Add the flag if the LLM/hints didn't.
+        if "generate_rfree_flags" not in strategy:
+          strategy["generate_rfree_flags"] = True
+          _detail = ("input confirmed to have no R-free flags"
+                     if rfree_state is False
+                     else "R-free status undetermined and no rfree_mtz locked")
+          self._log(context,
+              "BUILD: First refinement - will generate "
+              "R-free flags (no rfree_mtz locked, %s)" % _detail)
 
     # predict_and_build: resolution is required for building (stop_after_predict=False)
     # If no resolution available, must use stop_after_predict=True (prediction only)

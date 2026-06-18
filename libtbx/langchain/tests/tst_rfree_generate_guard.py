@@ -1,56 +1,64 @@
-"""K_RFREE_GUARD: phenix.refine must not regenerate an existing R-free set.
+"""K_RFREE_GUARD: phenix.refine R-free generate decision (per-file, parity-safe).
 
-Requirements (Tom, beta_blip_001):
-  (1) input has NO R-free flags        -> generate a new set
-  (2) input ALREADY has R-free flags   -> keep them (never generate)
-  (3) once a set is locked/generated   -> never regenerate
+Requirements:
+  (1) refine data has NO R-free flags  -> generate a new set
+  (2) refine data ALREADY has flags    -> keep them (never generate/overwrite)
+  (3) once a set is locked (rfree_mtz)  -> never regenerate
 
-The bug: the generate-flags invariant gated ONLY on `context.rfree_mtz`,
-which locks from a refinement OUTPUT.  A FIRST refinement against
-pre-flagged INPUT data (rfree_mtz not yet locked) wrongly received
-`generate=True`, which phenix.refine uses to OVERWRITE the existing flags
-with a fresh random partition -- silently invalidating cross-validation.
+History / why per-file:
+  The original guard gated only on `context.rfree_mtz` (which locks from a
+  refinement OUTPUT), so a FIRST refinement of pre-flagged INPUT data wrongly
+  got `generate=True` and OVERWROTE the existing test set (beta_blip_001).  The
+  v120 fix added a client-extracted scalar `input_mtz_has_rfree`, but it
+  described the ORIGINAL input only -- wrong for the MR workflow, where refine
+  runs on a phaser OUTPUT (PHASER.1.mtz) that carries no flags (AIAgent_35).
 
-v120 (server parity): the original fix inspected the MTZ with inspect_mtz,
-which reads the file -- a no-op on the SERVER, where client paths don't
-exist (files_local=False).  The fix is now CLIENT-EXTRACTED and tri-state:
-the client ships `input_mtz_has_rfree` (True/False/None) in session_info, and
-`CommandBuilder._input_mtz_rfree_state(files, context)` returns:
-  True  -> flags exist  (strip/suppress generate)
+v120.2 (per-file + parity): the decision is about the SPECIFIC data MTZ being
+refined.  The client inspects every local MTZ it can see (inputs AND outputs)
+and ships a per-file map `mtz_rfree_map` {basename: bool} in session_info.
+`CommandBuilder._input_mtz_rfree_state(files, context)` is TRI-STATE:
+  True  -> flags exist  (strip/suppress generate -- prevents overwrite)
   False -> flags absent (generate -- genuine first refinement)
-  None  -> undetermined (strip/suppress -- conservative: a recoverable
-           rfree_flags_missing error beats silently overwriting a test set)
-Sources, in order: (0) context.input_mtz_has_rfree (client fact, the only one
-that works server-side); (1) context.mtz_inspection positive only;
-(2) inspect_mtz on the selected data MTZ, LOCAL runs only (gated on
-files_local so a server read can't masquerade as a confident False).
+  None  -> undetermined: when nothing is locked, GENERATE (the safe
+           first-refinement default; omitting generate aborts phenix.refine on
+           a flagless MR/phaser output)
+Sources, in order, ALL session_info-borne (so the answer is IDENTICAL on the
+server and the client -- the builder never reads the filesystem):
+  (0) context.mtz_rfree_map[basename(selected data_mtz)] -- per-file answer for
+      the file actually being refined (authoritative);
+  (1) context.input_mtz_has_rfree -- original-input scalar fallback;
+  (2) context.mtz_inspection -- precomputed inspection, POSITIVE ONLY.
 
-These tests exercise the REAL `_input_mtz_rfree_state` (bound from the real
-CommandBuilder class source, with inspect_mtz stubbed) plus the three-valued
-generate decision the invariant implements.
+These tests exercise the REAL `_input_mtz_rfree_state` (extracted/bound from the
+CommandBuilder source) plus the generate decision the invariant implements,
+including a parity check that the helper performs NO filesystem reads.
 """
 from __future__ import absolute_import, division, print_function
 
 import os
 import sys
-import types
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_MISSING = object()  # sentinel for "key absent" in sys.modules snapshot
 
 
 def _load_helper():
   """Bind CommandBuilder._input_mtz_rfree_state without importing the heavy
-  ProgramRegistry/yaml stack.  We exec the method's source against a stub
-  module that provides a controllable inspect_mtz."""
+  ProgramRegistry/yaml stack: extract the method's source and exec it as a
+  module-level function.
+
+  As of v120.2 the helper no longer reads the filesystem (it consumes only
+  session_info-borne data: the per-file map, the scalar fact, and any
+  precomputed inspection), so no inspect_mtz stub is needed.  Returns
+  (func, None, noop_restore); the second slot is kept for call-site
+  compatibility."""
   cb_path = os.environ.get(
     "COMMAND_BUILDER_PY",
     os.path.join(_HERE, "..", "agent", "command_builder.py"))
   if not os.path.exists(cb_path):
-    return None, None, None
+    return None, None, (lambda: None)
   src = open(cb_path).read()
   if "_input_mtz_rfree_state" not in src:
-    return None, None, None
+    return None, None, (lambda: None)
   # Extract the method body and dedent to a module-level function.
   lines = src.splitlines()
   start = None
@@ -59,7 +67,7 @@ def _load_helper():
       start = i
       break
   if start is None:
-    return None, None, None
+    return None, None, (lambda: None)
   base_indent = len(lines[start]) - len(lines[start].lstrip())
   body = [lines[start][base_indent:]]
   for ln in lines[start + 1:]:
@@ -71,95 +79,22 @@ def _load_helper():
       break
     body.append(ln[base_indent:])
   func_src = "\n".join(body)
-  # Provide a stub `agent.mtz_inspector.inspect_mtz` the method imports.
-  #   files_with_flags : paths whose inspection reports an R-free label
-  #   raise            : inspect_mtz raises (cctbx unavailable / crash)
-  #   returns_none     : paths for which inspect_mtz returns None
-  #                      (unreadable / not an MTZ) -> tri-state "undetermined"
-  stub_flags = {"files_with_flags": set(), "raise": False,
-                "returns_none": set()}
-
-  def _inspect(path):
-    if stub_flags["raise"]:
-      raise RuntimeError("cctbx unavailable")
-    if path in stub_flags["returns_none"]:
-      return None
-    return {"rfree_label":
-            "R-free-flags" if path in stub_flags["files_with_flags"]
-            else None}
-
-  # The helper imports inspect_mtz from EITHER
-  # `libtbx.langchain.agent.mtz_inspector` (tried first) OR
-  # `agent.mtz_inspector` (fallback).  In the deployed tree the libtbx path
-  # resolves to the REAL module, which would bypass a stub registered only
-  # under `agent.mtz_inspector` (this caused false failures: the real
-  # inspect_mtz ran on fake filenames and found no flags).  Register the stub
-  # under BOTH names so whichever import the helper resolves gets the stub.
-  insp_mod = types.ModuleType("mtz_inspector_stub")
-  insp_mod.inspect_mtz = _inspect
-
-  def _ensure_pkg(name):
-    if name not in sys.modules:
-      m = types.ModuleType(name)
-      m.__path__ = []
-      sys.modules[name] = m
-    return sys.modules[name]
-
-  # Snapshot the sys.modules entries (and the parent-package attributes) we are
-  # about to overwrite, so a teardown can restore them — leaving a stub behind
-  # would break any LATER test in the same process that needs the real
-  # mtz_inspector (PHENIX importlib convention: restore what you mutate).
-  _mod_names = [
-    "agent.mtz_inspector",
-    "libtbx.langchain.agent.mtz_inspector",
-  ]
-  _saved_modules = {n: sys.modules.get(n, _MISSING) for n in _mod_names}
-  _parents = ["libtbx.langchain.agent", "agent"]
-
-  # Build/register both module paths pointing at the same stub.
-  _ensure_pkg("agent")
-  sys.modules["agent.mtz_inspector"] = insp_mod
-  _ensure_pkg("libtbx")
-  _ensure_pkg("libtbx.langchain")
-  _ensure_pkg("libtbx.langchain.agent")
-  sys.modules["libtbx.langchain.agent.mtz_inspector"] = insp_mod
-  # Also expose as an attribute so `from pkg import mtz_inspector` styles work.
-  _saved_attrs = {}
-  for p in _parents:
-    pmod = sys.modules.get(p)
-    _saved_attrs[p] = getattr(pmod, "mtz_inspector", _MISSING) if pmod else _MISSING
-    if pmod is not None:
-      pmod.mtz_inspector = insp_mod
-
-  def _restore():
-    for n, v in _saved_modules.items():
-      if v is _MISSING:
-        sys.modules.pop(n, None)
-      else:
-        sys.modules[n] = v
-    for p, v in _saved_attrs.items():
-      pmod = sys.modules.get(p)
-      if pmod is None:
-        continue
-      if v is _MISSING:
-        if hasattr(pmod, "mtz_inspector"):
-          delattr(pmod, "mtz_inspector")
-      else:
-        pmod.mtz_inspector = v
-
   ns = {}
   exec(func_src, ns)
-  return ns["_input_mtz_rfree_state"], stub_flags, _restore
+  return ns["_input_mtz_rfree_state"], None, (lambda: None)
 
 
 class _Ctx(object):
   def __init__(self, mtz_inspection=None, input_mtz_has_rfree=None,
-               files_local=True):
+               files_local=True, mtz_rfree_map=None):
     self.mtz_inspection = mtz_inspection
-    # v120: client-extracted tri-state fact (authoritative source 0).
+    # v120: client-extracted tri-state scalar fact (original-input fallback).
     self.input_mtz_has_rfree = input_mtz_has_rfree
-    # v120: when False (server mode), the helper must NOT read the file
-    # (it cannot) and must return None rather than a wrong False.
+    # v120.2: per-file map {basename: bool} — the authoritative per-file source.
+    self.mtz_rfree_map = mtz_rfree_map
+    # files_local retained for ctor parity; the v120.2 helper no longer reads
+    # the filesystem at all (parity: identical server and local), so this no
+    # longer affects the decision.
     self.files_local = files_local
 
 
@@ -174,21 +109,23 @@ def _state(files, ctx):
 
 
 def _decide(rfree_mtz, files, ctx, strategy=None):
-  """Mirror of the invariant's THREE-valued generate decision using the real
-  _input_mtz_rfree_state.  Generates ONLY when the state is positively False;
-  strips/suppresses when rfree_mtz is locked, state is True, or state is None
-  (undetermined -> conservative)."""
+  """Mirror of the invariant's v120.1 THREE-valued generate decision using the
+  real _input_mtz_rfree_state.  Strips ONLY on positive evidence flags exist
+  (rfree_mtz locked, or state is True).  Generates on state False (confirmed no
+  flags) OR state None (undetermined and nothing locked -> first-refine safe
+  default that restores the robust pre-fix behavior)."""
   strategy = dict(strategy or {})
   if rfree_mtz:
     rfree_state = True
   else:
     rfree_state = _state(files, ctx)
-  if rfree_state is False:
-    if "generate_rfree_flags" not in strategy:
-      strategy["generate_rfree_flags"] = True
-  else:
+  if rfree_state is True:
     if strategy.get("generate_rfree_flags"):
       del strategy["generate_rfree_flags"]
+  else:
+    # False or None (unlocked): generate.
+    if "generate_rfree_flags" not in strategy:
+      strategy["generate_rfree_flags"] = True
   return strategy.get("generate_rfree_flags", False)
 
 
@@ -196,34 +133,32 @@ def test_req1_no_flags_generates():
   if _HELPER is None:
     print("  SKIP: helper not found (fix not applied?)")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
-  # Local read confirms no flags -> state False -> generate.
+  # No map entry, no scalar, no inspection -> state None.  Unlocked -> generate
+  # (v120.1 first-refinement default).
   g = _decide(None, {"data_mtz": "noflags.mtz"}, _Ctx())
-  assert g is True, "no flags + no lock must generate, got %r" % g
+  assert g is True, "no flags info + no lock must generate, got %r" % g
   print("  PASS: test_req1_no_flags_generates")
 
 
-def test_req2_input_flags_kept_direct_inspect():
+def test_req2_input_flags_via_map():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = {"beta_blip_001.mtz"}
-  _STUB["raise"] = False
-  # mtz_inspection None (as in the real beta_blip session) -> direct inspect
-  g = _decide(None, {"data_mtz": "beta_blip_001.mtz"}, _Ctx(mtz_inspection=None))
-  assert g is False, "input flags must NOT generate, got %r" % g
-  print("  PASS: test_req2_input_flags_kept_direct_inspect")
+  # v120.2: the per-file map reports flags present for the selected data MTZ ->
+  # strip (do not regenerate).  Parity-safe: no file read.
+  ctx = _Ctx(mtz_rfree_map={"beta_blip_001.mtz": True})
+  g = _decide(None, {"data_mtz": "/x/beta_blip_001.mtz"}, ctx)
+  assert g is False, "input flags (map True) must NOT generate, got %r" % g
+  print("  PASS: test_req2_input_flags_via_map")
 
 
 def test_req2_strips_llm_forced_generate():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = {"beta_blip_001.mtz"}
-  _STUB["raise"] = False
-  g = _decide(None, {"data_mtz": "beta_blip_001.mtz"}, _Ctx(),
+  # Map says the selected file has flags -> an LLM-forced generate is stripped.
+  ctx = _Ctx(mtz_rfree_map={"beta_blip_001.mtz": True})
+  g = _decide(None, {"data_mtz": "/x/beta_blip_001.mtz"}, ctx,
               strategy={"generate_rfree_flags": True})
   assert g is False, "LLM-forced generate must be stripped, got %r" % g
   print("  PASS: test_req2_strips_llm_forced_generate")
@@ -233,8 +168,6 @@ def test_req2_precomputed_inspection():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()  # direct inspect would say no
-  _STUB["raise"] = False
   # but precomputed mtz_inspection says yes -> trusted
   g = _decide(None, {"data_mtz": "x.mtz"},
               _Ctx(mtz_inspection={"rfree_label": "FreeR_flag"}))
@@ -246,8 +179,6 @@ def test_req3_locked_rfree_strips():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["raise"] = False
   g = _decide("/sub_02_refine/refine_001_data.mtz",
               {"data_mtz": "refine_001_data.mtz"}, _Ctx(),
               strategy={"generate_rfree_flags": True})
@@ -255,35 +186,31 @@ def test_req3_locked_rfree_strips():
   print("  PASS: test_req3_locked_rfree_strips")
 
 
-def test_safe_degradation_on_inspect_error():
+def test_undetermined_unlocked_generates():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["returns_none"] = set()
-  _STUB["raise"] = True  # inspect_mtz blows up
-  # v120 (Gemini review): detection failure -> state None (undetermined).  We do
-  # NOT generate when undetermined — a recoverable rfree_flags_missing error is
-  # far preferable to silently overwriting an existing test set.  So an
-  # LLM-forced generate is STRIPPED, and none is added.
-  g = _decide(None, {"data_mtz": "unknown.mtz"}, _Ctx(),
-              strategy={"generate_rfree_flags": True})
-  assert g is False, "undetermined must NOT generate (strip), got %r" % g
+  # No map entry, no scalar, no inspection -> state None (undetermined).  With
+  # nothing locked, the safe default for an unlocked/first refinement is to
+  # GENERATE — omitting generate causes a hard "No array of R-free flags found"
+  # abort (the MR/phaser workflow, beta_blip_P3221).  We only STRIP on positive
+  # evidence flags exist.
+  g = _decide(None, {"data_mtz": "unknown.mtz"}, _Ctx())
+  assert g is True, "undetermined + unlocked must generate, got %r" % g
   st = _state({"data_mtz": "unknown.mtz"}, _Ctx())
-  assert st is None, "inspect failure must yield None, got %r" % st
-  print("  PASS: test_safe_degradation_on_inspect_error")
+  assert st is None, "no map/scalar/inspection must yield None, got %r" % st
+  print("  PASS: test_undetermined_unlocked_generates")
 
 
 def test_list_valued_data_mtz_slot():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = {"multi.mtz"}
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
-  # multiple:true slots can be lists; helper takes the first
-  st = _state({"data_mtz": ["multi.mtz", "other.mtz"]}, _Ctx())
-  assert st is True, "list-valued data_mtz first element must be inspected"
+  # multiple:true slots can be lists; the helper takes the first element and
+  # looks up its basename in the map.
+  ctx = _Ctx(mtz_rfree_map={"multi.mtz": True, "other.mtz": False})
+  st = _state({"data_mtz": ["/x/multi.mtz", "/x/other.mtz"]}, ctx)
+  assert st is True, "list-valued data_mtz first element must drive lookup, got %r" % st
   print("  PASS: test_list_valued_data_mtz_slot")
 
 
@@ -291,11 +218,9 @@ def test_no_data_mtz_no_flags():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
-  # No data MTZ selected locally -> cannot determine -> None (undetermined),
-  # NOT a confident False (which would wrongly invite generation).
+  # No data MTZ in the selection at all -> cannot determine -> None
+  # (undetermined), NOT a confident False (which would wrongly invite
+  # generation via a spurious False).
   st = _state({}, _Ctx())
   assert st is None, "no data_mtz selected -> undetermined (None), got %r" % st
   print("  PASS: test_no_data_mtz_no_flags")
@@ -308,9 +233,6 @@ def test_client_fact_true_strips():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
   ctx = _Ctx(input_mtz_has_rfree=True, files_local=False)
   st = _state({"data_mtz": "/client/beta_blip_001.mtz"}, ctx)
   assert st is True, "client fact True must win, got %r" % st
@@ -326,9 +248,6 @@ def test_client_fact_false_generates():
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
   ctx = _Ctx(input_mtz_has_rfree=False, files_local=False)
   st = _state({"data_mtz": "/client/data.mtz"}, ctx)
   assert st is False, "client fact False must be respected, got %r" % st
@@ -337,73 +256,132 @@ def test_client_fact_false_generates():
   print("  PASS: test_client_fact_false_generates")
 
 
-def test_server_no_fact_is_undetermined_and_strips():
-  # KEY (Gemini pt 2): server mode (files_local=False) with NO client fact and
-  # no precomputed inspection -> the helper must NOT read the (absent) file and
-  # must return None.  The decision must then STRIP, not generate — a recoverable
-  # error beats silently overwriting an existing test set.
+def test_server_no_fact_undetermined_unlocked_generates():
+  # v120.1 (AIAgent_35 MR/phaser case): server mode (files_local=False) with NO
+  # client fact and no precomputed inspection -> the helper must NOT read the
+  # (absent) file and returns None.  With nothing locked, the decision must
+  # GENERATE (first-refinement safe default) — NOT strip.  Stripping here is what
+  # broke the MR workflow: phenix.refine on a flagless phaser output aborted on
+  # "No array of R-free flags found".
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = {"/client/beta_blip_001.mtz"}  # would be True IF read
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
   ctx = _Ctx(input_mtz_has_rfree=None, files_local=False)
-  st = _state({"data_mtz": "/client/beta_blip_001.mtz"}, ctx)
+  st = _state({"data_mtz": "/client/PHASER.1.mtz"}, ctx)
   assert st is None, "server + no fact must be undetermined (None), got %r" % st
-  g = _decide(None, {"data_mtz": "/client/beta_blip_001.mtz"}, ctx,
-              strategy={"generate_rfree_flags": True})
-  assert g is False, "undetermined on server must strip generate, got %r" % g
-  print("  PASS: test_server_no_fact_is_undetermined_and_strips")
+  g = _decide(None, {"data_mtz": "/client/PHASER.1.mtz"}, ctx)
+  assert g is True, "undetermined + unlocked must generate, got %r" % g
+  print("  PASS: test_server_no_fact_undetermined_unlocked_generates")
 
 
-def test_client_fact_overrides_local_read():
-  # When both a client fact and a (contradictory) local read are available, the
-  # client fact (source 0) wins — it is the authoritative input-MTZ answer.
+def test_map_overrides_scalar():
+  # Precedence: the per-file map (source 0) wins over the original-input scalar
+  # (source 1).  Here the map says the SELECTED file has no flags while the
+  # scalar (original input) says True -> the map's per-file answer governs.
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()  # local read would say False
-  _STUB["raise"] = False
-  _STUB["returns_none"] = set()
-  ctx = _Ctx(input_mtz_has_rfree=True, files_local=True)
-  st = _state({"data_mtz": "in.mtz"}, ctx)
-  assert st is True, "client fact must override local read, got %r" % st
-  print("  PASS: test_client_fact_overrides_local_read")
+  ctx = _Ctx(input_mtz_has_rfree=True,
+             mtz_rfree_map={"PHASER.1.mtz": False})
+  st = _state({"data_mtz": "/x/PHASER.1.mtz"}, ctx)
+  assert st is False, "map must override scalar for the selected file, got %r" % st
+  # The scalar still applies for a file NOT in the map:
+  st2 = _state({"data_mtz": "/x/original.mtz"}, ctx)
+  assert st2 is True, "scalar applies when file absent from map, got %r" % st2
+  print("  PASS: test_map_overrides_scalar")
 
 
-def test_unreadable_mtz_is_undetermined():
-  # Local mode, file present but inspect_mtz returns None (unreadable / not an
-  # MTZ) -> undetermined (None), NOT a confident False.
+def test_file_absent_from_map_is_undetermined():
+  # The selected file is not in the map (the client could not inspect it) and
+  # there is no scalar -> undetermined (None), NOT a confident False.  With
+  # nothing locked, the decision then generates (first-refine default).
   if _HELPER is None:
     print("  SKIP")
     return
-  _STUB["files_with_flags"] = set()
-  _STUB["raise"] = False
-  _STUB["returns_none"] = {"corrupt.mtz"}
-  st = _state({"data_mtz": "corrupt.mtz"}, _Ctx(files_local=True))
-  assert st is None, "unreadable MTZ must be undetermined (None), got %r" % st
-  # And the decision must not force-generate on an undetermined input.
-  g = _decide(None, {"data_mtz": "corrupt.mtz"}, _Ctx(files_local=True),
-              strategy={"generate_rfree_flags": True})
-  assert g is False, "undetermined must strip, got %r" % g
-  print("  PASS: test_unreadable_mtz_is_undetermined")
+  ctx = _Ctx(mtz_rfree_map={"other.mtz": True})
+  st = _state({"data_mtz": "/x/not_in_map.mtz"}, ctx)
+  assert st is None, "file absent from map must be undetermined (None), got %r" % st
+  g = _decide(None, {"data_mtz": "/x/not_in_map.mtz"}, ctx)
+  assert g is True, "undetermined + unlocked must generate, got %r" % g
+  print("  PASS: test_file_absent_from_map_is_undetermined")
+
+
+def test_mr_phaser_output_fact_false_generates():
+  # v120.1 regression (AIAgent_35): MR workflow refines the phaser output
+  # (PHASER.1.mtz, NO flags).  The client fact is False (the original input data,
+  # beta_blip_P3221.mtz, also has no flags).  rfree_mtz is unlocked.  The decision
+  # MUST add generate=True even though the LLM omitted it (the LLM hallucinated
+  # "flags generated by Phaser").  Before v120.1 this stripped/omitted generate
+  # and phenix.refine aborted.
+  if _HELPER is None:
+    print("  SKIP")
+    return
+  ctx = _Ctx(input_mtz_has_rfree=False, files_local=True)
+  # LLM omitted generate entirely:
+  g = _decide(None, {"data_mtz": "PHASER.1.mtz"}, ctx)
+  assert g is True, "MR phaser-output refine (fact False) must generate, got %r" % g
+  print("  PASS: test_mr_phaser_output_fact_false_generates")
+
+
+def test_map_distinguishes_two_files():
+  # v120.2 core: the map gives DIFFERENT answers for different selected files in
+  # the same session — the original input (flags) vs a phaser output (no flags).
+  if _HELPER is None:
+    print("  SKIP")
+    return
+  m = {"beta_blip_001.mtz": True, "PHASER.1.mtz": False}
+  st_in = _state({"data_mtz": "/x/beta_blip_001.mtz"}, _Ctx(mtz_rfree_map=m))
+  st_ph = _state({"data_mtz": "/x/PHASER.1.mtz"}, _Ctx(mtz_rfree_map=m))
+  assert st_in is True, "flagged input -> True, got %r" % st_in
+  assert st_ph is False, "phaser output -> False, got %r" % st_ph
+  # And the decisions differ accordingly:
+  assert _decide(None, {"data_mtz": "/x/beta_blip_001.mtz"},
+                 _Ctx(mtz_rfree_map=m)) is False  # strip
+  assert _decide(None, {"data_mtz": "/x/PHASER.1.mtz"},
+                 _Ctx(mtz_rfree_map=m)) is True   # generate
+  print("  PASS: test_map_distinguishes_two_files")
+
+
+def test_parity_no_filesystem_read():
+  # v120.2 parity guarantee: the helper must produce the SAME state regardless of
+  # files_local (it no longer reads the filesystem).  inspect_mtz is stubbed to
+  # raise (above), so if the helper tried to read, this would error.
+  if _HELPER is None:
+    print("  SKIP")
+    return
+  m = {"PHASER.1.mtz": False}
+  for label, ctxkw in [
+      ("map False", dict(mtz_rfree_map=m)),
+      ("scalar True", dict(input_mtz_has_rfree=True)),
+      ("scalar False", dict(input_mtz_has_rfree=False)),
+      ("undetermined", dict())]:
+    st_local = _state({"data_mtz": "/x/PHASER.1.mtz"},
+                      _Ctx(files_local=True, **ctxkw))
+    st_server = _state({"data_mtz": "/x/PHASER.1.mtz"},
+                       _Ctx(files_local=False, **ctxkw))
+    assert st_local == st_server, (
+        "%s: local %r != server %r (parity violation)"
+        % (label, st_local, st_server))
+  print("  PASS: test_parity_no_filesystem_read")
 
 
 _TESTS = [
   test_req1_no_flags_generates,
-  test_req2_input_flags_kept_direct_inspect,
+  test_req2_input_flags_via_map,
   test_req2_strips_llm_forced_generate,
   test_req2_precomputed_inspection,
   test_req3_locked_rfree_strips,
-  test_safe_degradation_on_inspect_error,
+  test_undetermined_unlocked_generates,
   test_list_valued_data_mtz_slot,
   test_no_data_mtz_no_flags,
   test_client_fact_true_strips,
   test_client_fact_false_generates,
-  test_server_no_fact_is_undetermined_and_strips,
-  test_client_fact_overrides_local_read,
-  test_unreadable_mtz_is_undetermined,
+  test_server_no_fact_undetermined_unlocked_generates,
+  test_map_overrides_scalar,
+  test_file_absent_from_map_is_undetermined,
+  test_mr_phaser_output_fact_false_generates,
+  test_map_distinguishes_two_files,
+  test_parity_no_filesystem_read,
 ]
 
 
