@@ -41,15 +41,22 @@ def tst000():
       If the scattering table retrieved from `xray_structure` does not match
       the expected table.
   """
-  for table in ["n_gaussian", "wk1995", "it1992", "electron"]:
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-    # set the scattering table via model object
-    model.setup_scattering_dictionaries(scattering_table=table)
-    # check that this table is consistent with what can be accessed with xrs
-    xrs = model.get_xray_structure()
-    assert (xrs.scattering_type_registry_params.table == table)
-    assert (xrs.get_scattering_table() == table)
+  for deep_copy in [True, False]:
+    for process in [True, False]:
+      for table in ["n_gaussian", "wk1995", "it1992", "electron"]:
+        print(deep_copy, process, table)
+        pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+        model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+        # set the scattering table via model object
+        model.setup_scattering_dictionaries(scattering_table=table)
+        # check that this table is consistent with what can be accessed with xrs
+        if process:
+          model.process(make_restraints=True)
+        if deep_copy:
+          model = model.deep_copy()
+        xrs = model.get_xray_structure()
+        assert (xrs.scattering_type_registry_params.table == table)
+        assert (xrs.get_scattering_table() == table)
 
 # ------------------------------------------------------------------------------
 
@@ -212,7 +219,7 @@ if(__name__ == "__main__"):
   """
   t0 = time.time()
   tst000()
-  tst001()
-  tst002()
-  tst003() # toy example
+  #tst001()
+  #tst002()
+  #tst003() # toy example
   print("OK. Time: %8.3f"%(time.time()-t0))

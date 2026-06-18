@@ -84,6 +84,9 @@ from cctbx import geometry_restraints
 from cctbx import geometry
 from cctbx.geometry_restraints.linking_class import linking_class
 
+known_scattering_tables = [
+  "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
+
 time_model_show = 0.0
 
 # Utilties for conversion of models to objects that can be pickled
@@ -248,7 +251,7 @@ class restraints_scale_manager(object):
     sites_frac = self.model.get_sites_frac()
     for k, proxy in enumerate(bond_proxies_simple):
       i_seq, j_seq = proxy.i_seqs
-      if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
+      #if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
       dist_ideal = proxy.distance_ideal
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
@@ -2163,6 +2166,9 @@ class manager(object):
         custom_nb_excl            = None,
         run_clash_guard           = False):
     self._processed = True
+    SAVE_scatering_table = None
+    if self._xray_structure is not None:
+      SAVE_scatering_table = self._xray_structure.get_scattering_table()
     if(pdb_interpretation_params is not None):
       self.unset_restraints_manager()
     if(pdb_interpretation_params is None):
@@ -2259,6 +2265,9 @@ class manager(object):
     self.unset_processed_pdb_file()
     # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
+    # Ensure we did not loose scattering_table
+    if SAVE_scatering_table is not None:
+      self.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
 
   def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
     if self.rsm is None: return
@@ -2834,8 +2843,6 @@ class manager(object):
         iff_wavelength=iff_wavelength)
     if(log is not None):
       str_utils.make_header("Scattering factors", out = log)
-    known_scattering_tables = [
-      "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
     if(not (scattering_table in known_scattering_tables)):
       raise Sorry("Unknown scattering_table: %s\n%s"%
         (str_utils.show_string(scattering_table),
@@ -3180,6 +3187,53 @@ class manager(object):
     self.reset_after_changing_hierarchy()
     self.unset_riding_h_manager()
 
+  def get_hstats(self):
+    """
+    Gather the following statistics about H atoms:
+      all_h         -- all hydrogen selection
+      non_rotatable -- selection of H without rotational d.o.f.
+      rotatable     -- selection of H with rotational d.o.f.
+      For all three cases above, make a dictionary with keys being hydrogen's
+      i_seq and value being a list of parent atom i_seq and ideal bond length.
+    """
+    xhct = self.xh_connectivity_table2()
+    atoms = self.get_hierarchy().atoms()
+    def get_xh_iseq_pairs(hselection):
+      assert isinstance(hselection, flex.int) or \
+             isinstance(hselection, flex.size_t)
+      result = {}
+      for ih in hselection:
+        # Guard against unbonded/isolated H missing from the connectivity table
+        d = xhct.get(ih)
+        if not d: continue
+        ix = d[0][0]
+        assert ix != ih
+        assert not atoms[ix].element_is_hydrogen()
+        assert     atoms[ih].element_is_hydrogen()
+        dist = atoms[ix].distance(atoms[ih])
+        assert dist < 1.3, [ix, ih, dist]
+        # d[0][3] natively corresponds to proxy.distance_ideal in the table
+        result[ih] = [ix, d[0][3]]
+      return result
+    # All hydrogens
+    all_h_bool = self.get_xray_structure().hd_selection()
+    all_h_isel = all_h_bool.iselection()
+    # Rotatable H
+    rotatable_isel=self.rotatable_hd_selection(iselection=True, use_shortcut=True)
+    #
+    rotatable_bool = flex.bool(size=all_h_bool.size(), iselection=rotatable_isel)
+    non_rotatable_bool = all_h_bool & ~rotatable_bool
+    non_rotatable_isel = non_rotatable_bool.iselection()
+    #
+    return group_args(
+      all_h            = all_h_isel,
+      non_rotatable    = non_rotatable_isel,
+      rotatable        = rotatable_isel,
+      xh_all           = get_xh_iseq_pairs(hselection=all_h_isel),
+      xh_non_rotatable = get_xh_iseq_pairs(hselection=non_rotatable_isel),
+      xh_rotatable     = get_xh_iseq_pairs(hselection=rotatable_isel)
+    )
+
   def rotatable_hd_selection(self,
                              iselection=True,
                              use_shortcut=True,
@@ -3284,8 +3338,11 @@ class manager(object):
          is not use_neutron_distances):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
+      save_log = self.log
+      self.set_log(log = null_out())
       self.process(make_restraints=True,
         pdb_interpretation_params=pi_scope)
+      self.set_log(log = save_log)
     geometry = self.get_restraints_manager().geometry
     hierarchy = self.get_hierarchy()
     atoms = hierarchy.atoms()
@@ -3879,6 +3936,11 @@ class manager(object):
     # XXX ignores IAS
     if isinstance(selection, flex.size_t) or isinstance(selection, flex.int):
       selection = flex.bool(self.get_number_of_atoms(), selection)
+    #
+    SAVE_scatering_table = None
+    if self._xray_structure is not None:
+      SAVE_scatering_table = self._xray_structure.get_scattering_table()
+    #
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     sdi = self.scattering_dict_info
     new_refinement_flags = None
@@ -3945,6 +4007,11 @@ class manager(object):
     if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
+    if(SAVE_scatering_table is not None and
+       SAVE_scatering_table in known_scattering_tables and
+       SAVE_scatering_table != "n_gaussian" # setting this requires d_min!!!!!!!
+       ):
+      new.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
     return new
 
   def number_of_ordered_solvent_molecules(self):
