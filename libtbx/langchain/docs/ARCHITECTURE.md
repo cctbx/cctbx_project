@@ -977,6 +977,21 @@ was inert).  v120 plumbs all three through `build_session_state()`,
 `plan_current_unrun_lead_program` is registered in `agent/contract.py` as a v6
 field (default `""`), which bumped `CURRENT_PROTOCOL_VERSION` 5 → 6.
 
+**Tri-state field + `is not None` guards (v120, `input_mtz_has_rfree`).**  Most
+`session_info` fields are plumbed with truthy guards (`if session_info.get("X"):`),
+which is fine for fields whose falsy value is also their "absent" meaning.
+`input_mtz_has_rfree` is the exception: it is **tri-state** (`True` = input MTZ has
+an R-free array, `False` = confirmed none, `None` = undetermined), and `False` is a
+*meaningful* value distinct from `None`.  Plumbed with a truthy guard, a
+confirmed-`False` would be dropped at the wire chokepoint and arrive server-side as
+`None`, flipping the generate decision from "generate (genuine first refinement)" to
+"do not generate".  All three hops therefore use an explicit `is not None` guard.
+This field is client-extracted (the server cannot read the MTZ; see the "R-free
+generate guard" subsection) and registered in `agent/contract.py` as a v7 field
+(default `None`), bumping `CURRENT_PROTOCOL_VERSION` 6 → 7.  The True/False/None
+round-trip is pinned by `tst_input_mtz_has_rfree_plumbing.py`, which asserts in
+particular that `False` survives.
+
 **Error pattern expansion (v112.75):** The learning system originally only triggered
 on "unknown command line parameter" and "no such parameter" errors.  PHIL
 boolean-type errors ("True or False value expected, scope.path.param="value" found")
@@ -6765,32 +6780,64 @@ Observed on `beta_blip_001.mtz`, whose input carries an `R-free-flags`
 column: the reported R-free was computed against a fresh test set, not the
 original.
 
-The fix wires up detection that already existed but was unused
-(`mtz_inspector.inspect_mtz()` returns `rfree_label`; the comment even noted
-"for future use").  `CommandBuilder._input_mtz_has_rfree(files, context)`
-reports whether the data MTZ that will actually be used contains an R-free
-array, checking two sources in order: the precomputed
-`context.mtz_inspection["rfree_label"]` when present, else a direct
-`inspect_mtz()` of the **selected** `files["data_mtz"]` (important because
-`best_files["data_mtz"]` is often `None` at a first refinement, so only
-direct inspection of the selected file catches it).  Any failure (cctbx
-unavailable, unreadable MTZ, no data MTZ) returns `False`, degrading safely
-to the legacy `rfree_mtz`-only behavior rather than wrongly suppressing
-generation.  The invariant now strips/suppresses `generate_rfree_flags`
-(including an LLM-forced value) when `context.rfree_mtz` **or**
-`_input_mtz_has_rfree(...)` is true; the inspection is evaluated lazily
-(short-circuit) so a locked session skips the per-cycle disk read.  BUILD log
-line on the new path: `BUILD: Stripped generate_rfree_flags (input data MTZ
-already has R-free flags)`.
+The fix is a CLIENT-EXTRACTED, tri-state fact.  An earlier attempt inspected the
+MTZ inside `command_builder` via `mtz_inspector.inspect_mtz()`, but that reads the
+file — a no-op on the **server**, where the data MTZ lives at a client path that
+does not exist (`files_local=False`).  So the guard worked locally but not on the
+server (the AIAgent_37 regression: `generate=True` still emitted, flags still
+overwritten).  The working fix mirrors the `unplaced_model_cell` pattern: the
+**client** (`ai_agent.py`) inspects the original input data MTZ where the file is
+local — picking the data MTZ(s) from `session.data["original_files"]` via
+`classify_mtz_type(...) == "data_mtz"`, running `inspect_mtz`, and caching the
+result once on `session.data` — then ships a tri-state fact
+`input_mtz_has_rfree` in `session_info`.  The fact is plumbed through the shared
+transport (`build_session_state` → `build_request_v2` whitelist →
+`run_ai_agent` map-back, each with an explicit `is not None` guard so a
+confirmed-`False` is not dropped) and read by `command_builder.from_state` into
+`CommandContext.input_mtz_has_rfree`.
 
-This is server-safe and parity-safe by construction: it lives entirely in the
-shared `command_builder` (runs identically local and server), and reuses the
-same `inspect_mtz` mechanism already documented as "SERVER-COMPUTED data" for
-the obs-labels path.  The parallel `generate_rfree_flags` injection in
-`graph_nodes.py` (~4086) is dead in the default path (guarded
-`USE_NEW_COMMAND_BUILDER is False`); `command_builder` is authoritative.
-Pinned by `tests/tst_rfree_generate_guard.py` (8 cases covering all three
-requirements plus LLM-strip, safe degradation, and list-valued slots).
+`CommandBuilder._input_mtz_rfree_state(files, context)` returns a **tri-state**
+(`True` / `False` / `None`) from three sources, in order: (0) the client fact
+`context.input_mtz_has_rfree` — authoritative, and the only source that works
+server-side; (1) `context.mtz_inspection` — positive only (a present
+`rfree_label` → True; absence is **not** taken as a confident False, since
+`mtz_inspection` is keyed off `best_files["data_mtz"]`, which may be empty or a
+different file at a first refinement); (2) `inspect_mtz` of the selected data MTZ,
+**gated on `context.files_local`** so a server-side read cannot masquerade as a
+confident `False` — a failure or unreadable MTZ → `None`.
+
+The phenix.refine generate decision is correspondingly **three-valued**:
+**generate only on positive evidence of no test set** (`state is False`);
+strip/suppress when `rfree_mtz` is locked, `state is True`, **or `state is None`**
+(undetermined).  Treating `None` conservatively is deliberate (and a fix for the
+old-client case, where the fact arrives absent): silently overwriting an existing
+test set is irreversible bad science, whereas refusing to generate when flags are
+truly absent produces a *visible* `No array of R-free flags found` error that the
+`rfree_flags_missing` → `force_retry` recovery already handles.  The probe is lazy
+(skipped when `rfree_mtz` is locked).  BUILD log lines: `BUILD: Stripped
+generate_rfree_flags (input data MTZ already has R-free flags)` /
+`(R-free status undetermined; not generating (safe default))` /
+`(rfree_mtz locked: …)`, and on the generate path `BUILD: First refinement - will
+generate R-free flags (… input confirmed to have no R-free flags)`.
+
+Parity & protocol: the fix lives in the shared `command_builder` + the shared
+transport, so both LocalAgent and RemoteAgent ship and read the same fact —
+server == local by construction.  `input_mtz_has_rfree` is registered in
+`contract.py` (v7; `command_builder.from_state` reads it via literal
+`session_info.get`, and command_builder is in the contract SERVER_FILES scan).  Old
+clients (MIN_SUPPORTED stays 1) send the fact absent → `None` → the conservative
+path; the design does **not** rely on version gating.  The parallel
+`generate_rfree_flags` injection in `graph_nodes.py` (~4086) is dead in the default
+path (guarded `USE_NEW_COMMAND_BUILDER is False`); `command_builder` is
+authoritative.  A separate `validation/` `ProgramValidator` package
+(`RefineValidator.prevalidate` → `add_rfree_generation_if_needed`, which shells out
+to `phenix.mtz.dump`) carries the same server-blindness latent bug but is ORPHANED
+(no caller in the live agent path; confirmed by grep) and so is not a second
+injection site — see the TODO notes there should it ever be wired in.  Pinned by
+`tests/tst_rfree_generate_guard.py` (13 cases: the three requirements, LLM-strip,
+the client-fact True/False/None paths, the server-undetermined→strip case, and safe
+degradation) and `tests/tst_input_mtz_has_rfree_plumbing.py` (the True/False/None
+wire round-trip, proving `False` is not dropped).
 
 ### Resolution kinds (v119.H17, extended v120)
 

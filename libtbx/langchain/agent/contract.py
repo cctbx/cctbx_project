@@ -44,7 +44,9 @@ HOW TO ADD A NEW RESPONSE FIELD
 # v116.10 Phase 2: bumped from 3 to 5 to match the v4 and v5 fields
 # (plan_has_pending_stages, asu_copies) that were registered without
 # updating this constant.
-CURRENT_PROTOCOL_VERSION = 6
+# v120: bumped 5 -> 6 for plan_current_unrun_lead_program (Option 2a), then
+# 6 -> 7 for input_mtz_has_rfree (client-extracted R-free presence).
+CURRENT_PROTOCOL_VERSION = 7
 MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 
@@ -125,6 +127,18 @@ SESSION_INFO_FIELDS = [
      "it into valid_programs so a stage held active by a reactive deviation "
      "gets its lead program offered next cycle.  Empty string when there is "
      "no such program."),
+
+    # --- v7: client-extracted input-MTZ R-free presence (v120) -----------
+    ("input_mtz_has_rfree", None, 7,
+     "Tri-state bool: whether the INPUT data MTZ already contains an R-free "
+     "flag array (True), confirmed lacks one (False), or is undetermined "
+     "(None).  Extracted CLIENT-side by ai_agent.py (inspect_mtz on the "
+     "original data MTZ) because the server cannot read client file paths.  "
+     "command_builder._input_mtz_rfree_state consumes it to decide the "
+     "phenix.refine generate-flags invariant: generate ONLY on confirmed "
+     "False, never overwrite an existing test set, and treat None "
+     "conservatively (do not generate).  None for old clients that predate "
+     "this field."),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)

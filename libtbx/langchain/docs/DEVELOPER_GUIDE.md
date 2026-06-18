@@ -2772,7 +2772,8 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `tst_pattern_manager.py` | 17 | Pattern management |
 | `tst_directives_integration.py` | 16 | End-to-end directive tests |
 | `tst_command_builder.py` | 22 | Unified command generation, MR-SAD partpdb_file |
-| `tst_rfree_generate_guard.py` | 8 | phenix.refine never regenerates an existing R-free test set (input-flag detection) |
+| `tst_rfree_generate_guard.py` | 13 | phenix.refine never regenerates an existing R-free test set (tri-state client-fact detection; server-undetermined→strip) |
+| `tst_input_mtz_has_rfree_plumbing.py` | 4 | input_mtz_has_rfree tri-state survives the client→server wire (False not dropped) |
 | `tst_event_system.py` | 13 | Event logging system |
 | `tst_program_registration.py` | 13 | Program registry tests |
 | `tst_integration.py` | 13 | End-to-end workflow tests |
@@ -5669,17 +5670,24 @@ Agent stops refinement when:
 - For ligandfit: Use `map_coeffs_mtz` (latest calculated phases)
 
 **R-free generate guard (v120):** `command_builder.py`'s phenix.refine invariant
-adds `xray_data.r_free_flags.generate=True` only when there is genuinely no test
-set — i.e. no locked `rfree_mtz` AND the selected input data MTZ has no R-free
-array.  The latter check is `CommandBuilder._input_mtz_has_rfree(files, context)`,
-which trusts `context.mtz_inspection["rfree_label"]` when present, else inspects the
-selected `files["data_mtz"]` directly (needed because `best_files["data_mtz"]` is
-often `None` on a first refinement).  If flags already exist from either source,
-any `generate_rfree_flags` (including an LLM-set one) is stripped — phenix.refine
-treats `generate=True` as "create a new random partition", which would **overwrite**
-an existing test set and silently break cross-validation (observed on
-`beta_blip_001.mtz`).  Detection failures degrade safely to the legacy
-`rfree_mtz`-only behavior.  Pinned by `tst_rfree_generate_guard.py`.
+adds `xray_data.r_free_flags.generate=True` ONLY on positive evidence there is no
+test set, and never overwrites an existing one.  Because the server cannot read
+client file paths (`files_local=False`), the input-MTZ R-free check is
+**client-extracted**: `ai_agent.py` inspects the original data MTZ (from
+`session.data["original_files"]`, via `classify_mtz_type`/`inspect_mtz`), caches the
+result once, and ships a tri-state fact `input_mtz_has_rfree`
+(True/False/None) through the transport (`build_session_state` →
+`build_request_v2` whitelist → `run_ai_agent` map-back, each with an explicit
+`is not None` guard so a confirmed-`False` is not dropped).
+`CommandBuilder._input_mtz_rfree_state(files, context)` reads, in order: the client
+fact (authoritative, works server-side); `context.mtz_inspection` positive-only; and
+`inspect_mtz` of the selected data MTZ **only when `files_local`** (so a server read
+can't masquerade as a confident False).  The decision is three-valued: generate only
+when state is `False`; strip/suppress when `rfree_mtz` is locked, state is `True`, or
+state is `None` (undetermined → conservative, since silently overwriting a test set
+is worse than a recoverable `rfree_flags_missing` error).  Field registered in
+`contract.py` (v7).  Pinned by `tst_rfree_generate_guard.py` and
+`tst_input_mtz_has_rfree_plumbing.py`.
 
 ---
 

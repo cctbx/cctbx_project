@@ -165,6 +165,15 @@ def build_session_state(session_info, session_resolution=None):
             session_state["plan_current_unrun_lead_program"] = (
                 session_info["plan_current_unrun_lead_program"])
 
+        # v120: client-extracted input-MTZ R-free presence (tri-state bool).
+        # Use an explicit `is not None` guard, NOT a truthy guard: the value
+        # False (confirmed no flags) is meaningful and must survive the wire —
+        # a truthy guard would drop both False and None, collapsing "confirmed
+        # absent" into "undetermined" and changing the server's generate decision.
+        if session_info.get("input_mtz_has_rfree") is not None:
+            session_state["input_mtz_has_rfree"] = (
+                session_info["input_mtz_has_rfree"])
+
         # P4: session-blocked programs — programs that have failed too many
         # times this session.  Persisted client-side and re-injected each
         # cycle so the server can filter them from valid_programs.
@@ -305,6 +314,13 @@ def build_request_v2(
         if session_state.get("plan_current_unrun_lead_program"):
             normalized_session_state["plan_current_unrun_lead_program"] = (
                 session_state["plan_current_unrun_lead_program"])
+
+        # v120: input-MTZ R-free presence (tri-state).  `is not None` guard so
+        # confirmed-False is not dropped at this wire chokepoint (see the same
+        # rationale in build_session_state).
+        if session_state.get("input_mtz_has_rfree") is not None:
+            normalized_session_state["input_mtz_has_rfree"] = (
+                session_state["input_mtz_has_rfree"])
 
     # Build settings
     settings = {
