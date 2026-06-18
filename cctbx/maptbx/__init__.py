@@ -2395,6 +2395,49 @@ def map_values_along_line_connecting_two_points(map_data, points_cart,
     vals.append(mv)
   return group_args(dist = dist, vals = vals, point_max = point_max)
 
+def find_peak_local(rrange, map_data, site_cart, unit_cell, wrapping, eps=1.e-3):
+  """
+  Find peak inside a sphere inscribed within the cube defined by rrange
+  around a specified point.
+  Return None ONLY if the best peak is near the sphere surface (indicating
+  the true peak is outside the search radius).
+  """
+  x_start, y_start, z_start = site_cart
+  site_frac = unit_cell.fractionalize(site_cart)
+  mv_start = map_data.tricubic_interpolation(site_frac)
+  mv_best = mv_start
+  # Initialize to the starting point so we return the center if it's already
+  # the peak
+  site_cart_best = site_cart
+  dist_best = 0.0
+  assert abs(rrange[0])==abs(rrange[-1])
+  r = abs(rrange[0])
+  for dx in rrange:
+    for dy in rrange:
+      for dz in rrange:
+        site_cart_ = [x_start+dx, y_start+dy, z_start+dz]
+        site_frac_ = unit_cell.fractionalize(site_cart_)
+        if not wrapping:
+          if not (0.0 <= site_frac_[0] <= 1.0 and
+                  0.0 <= site_frac_[1] <= 1.0 and
+                  0.0 <= site_frac_[2] <= 1.0):
+            raise Sorry("Cannot have coordinates outside non-periodic box.")
+        dist = unit_cell.distance(site_frac, site_frac_)
+        if dist > r: continue
+        mv = map_data.tricubic_interpolation(site_frac_)
+        if mv > mv_best:
+          dist_best = dist
+          mv_best = mv
+          site_cart_best = site_cart_
+  # eps is now 1.e-3, so it only rejects the paper-thin mathematical boundary
+  if abs(dist_best - r) < eps:
+      return None
+
+  return group_args(
+    value_start    = mv_start,
+    value_best     = mv_best,
+    site_cart_best = site_cart_best)
+
 class MapPeakLocator(object):
 
   """
@@ -2521,4 +2564,17 @@ class MapPeakLocator(object):
               shifted_peaks_cart = selected_peaks_cart + T_cart_array
               nearby_peaks_cart.extend(shifted_peaks_cart)
               nearby_peaks_heights.extend(self.peak_heights.select(sel))
+    #
+    # Convert to tricubic interpolation values
+    #tmp = flex.double()
+    #for site_cart in nearby_peaks_cart:
+    #  site_frac = self.unit_cell.fractionalize(site_cart)
+    #  mv = self.map_data_0.tricubic_interpolation(site_frac)
+    #  if threshold is not None:
+    #    if mv > threshold:
+    #      tmp.append(mv)
+    #  else:
+    #    tmp.append(mv)
+    #nearby_peaks_heights = tmp
+    #
     return nearby_peaks_cart, nearby_peaks_heights
