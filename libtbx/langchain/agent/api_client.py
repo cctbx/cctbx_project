@@ -174,6 +174,11 @@ def build_session_state(session_info, session_resolution=None):
             session_state["input_mtz_has_rfree"] = (
                 session_info["input_mtz_has_rfree"])
 
+        # v120.2: per-file R-free map (dict).  is-not-None guard so an empty
+        # map is distinguishable from "absent" (both ship as-is when present).
+        if session_info.get("mtz_rfree_map") is not None:
+            session_state["mtz_rfree_map"] = session_info["mtz_rfree_map"]
+
         # P4: session-blocked programs — programs that have failed too many
         # times this session.  Persisted client-side and re-injected each
         # cycle so the server can filter them from valid_programs.
@@ -321,6 +326,11 @@ def build_request_v2(
         if session_state.get("input_mtz_has_rfree") is not None:
             normalized_session_state["input_mtz_has_rfree"] = (
                 session_state["input_mtz_has_rfree"])
+
+        # v120.2: per-file R-free map travels the same wire chokepoint.
+        if session_state.get("mtz_rfree_map") is not None:
+            normalized_session_state["mtz_rfree_map"] = (
+                session_state["mtz_rfree_map"])
 
     # Build settings
     settings = {

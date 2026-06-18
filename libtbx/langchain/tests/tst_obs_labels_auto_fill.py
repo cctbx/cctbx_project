@@ -657,21 +657,32 @@ def test_obs_labels_invariant_does_not_block_single_array_builds():
 # =====================================================================
 
 def test_command_context_mtz_inspection_at_end_of_fields():
-    """Regression guard for the v119.H16.2 fix.
+    """Regression guard for the v119.H16.2 fix (updated v120.2).
 
-    mtz_inspection MUST be the LAST field in the CommandContext
-    dataclass.  Inserting it elsewhere shifts the positions of
-    subsequent fields, breaking any caller that constructs
-    CommandContext with positional args.
+    Original H16.2 bug: a mid-list insertion into the CommandContext
+    dataclass shifted the positions of subsequent fields, breaking a
+    caller that constructed CommandContext with POSITIONAL args
+    (tst_command_builder.py::test_llm_data_slot_used_for_mtz returned
+    None because llm_files/files_local/etc. misaligned).
 
-    Tom's tst_command_builder.py::test_llm_data_slot_used_for_mtz
-    caught the original H16 bug — command generation returned None
-    because the positional construction misaligned llm_files,
-    files_local, etc.
+    The invariant that actually matters: the PRE-EXISTING fields keep
+    their exact order, and any NEW field is APPENDED at the known tail
+    — never inserted in the middle (which is what shifts positions).
+    Originally this was enforced as "mtz_inspection must be last", which
+    was correct when mtz_inspection was the newest field.  v120 appended
+    input_mtz_has_rfree and v120.2 appended mtz_rfree_map AFTER it (both
+    with defaults; every CommandContext(...) call site uses keyword args,
+    so appending cannot misalign any caller).  This test now pins:
+      - the 16 pre-H16 fields, in exact order, at the front;
+      - mtz_inspection immediately after them (its H16.2 position);
+      - then exactly the documented v120/v120.2 tail, in order.
+    A reordering, a mid-list insertion, or a stray/undocumented field
+    still fails the guard.  When adding a CommandContext field, append it
+    to the tail here and update _expected_tail in lockstep.
 
-    Tries to import the real CommandContext; if libtbx isn't
-    available, skips gracefully (sandbox case).  Production
-    deployment exercises the real construction path."""
+    Tries to import the real CommandContext; if libtbx isn't available,
+    skips gracefully (sandbox case).  Production deployment exercises the
+    real construction path."""
     try:
         try:
             from libtbx.langchain.agent.command_builder import (
@@ -687,13 +698,8 @@ def test_command_context_mtz_inspection_at_end_of_fields():
 
     from dataclasses import fields
     field_names = [f.name for f in fields(CommandContext)]
-    # mtz_inspection must be last
-    assert field_names[-1] == "mtz_inspection", (
-        "mtz_inspection MUST be the last field in CommandContext to "
-        "preserve positional-construction compatibility.  Got field "
-        "order: %r" % field_names)
-    # The set of fields BEFORE mtz_inspection must match the pre-H16
-    # set (no new fields snuck in elsewhere)
+
+    # (a) The 16 pre-H16 fields must keep their exact order at the front.
     expected_pre_h16 = [
         "cycle_number", "experiment_type", "resolution",
         "best_files", "rfree_mtz", "rfree_resolution",
@@ -701,11 +707,33 @@ def test_command_context_mtz_inspection_at_end_of_fields():
         "llm_files", "llm_strategy", "recovery_strategies",
         "directives", "model_hetatm_residues", "files_local", "log",
     ]
-    assert field_names[:-1] == expected_pre_h16, (
+    assert field_names[:len(expected_pre_h16)] == expected_pre_h16, (
         "Pre-H16 field order changed.  This breaks positional "
         "construction in existing code.\n"
-        "  Expected: %r\n"
-        "  Actual:   %r" % (expected_pre_h16, field_names[:-1]))
+        "  Expected (first %d): %r\n"
+        "  Actual   (first %d): %r"
+        % (len(expected_pre_h16), expected_pre_h16,
+           len(expected_pre_h16), field_names[:len(expected_pre_h16)]))
+
+    # (b) mtz_inspection must immediately follow the pre-H16 block
+    #     (its H16.2 position — the field whose misplacement caused the bug).
+    _i = len(expected_pre_h16)
+    assert len(field_names) > _i and field_names[_i] == "mtz_inspection", (
+        "mtz_inspection MUST immediately follow the pre-H16 fields "
+        "(index %d).  Got field order: %r" % (_i, field_names))
+
+    # (c) Only the documented v120/v120.2 fields may follow, in order.
+    #     A new/undocumented field or a reordering trips this.  When adding
+    #     a CommandContext field, append it here in lockstep.
+    _expected_tail = ["input_mtz_has_rfree", "mtz_rfree_map"]
+    assert field_names[_i + 1:] == _expected_tail, (
+        "Unexpected CommandContext field(s) after mtz_inspection.\n"
+        "  Expected tail: %r\n"
+        "  Actual   tail: %r\n"
+        "If you added a field, APPEND it (with a default) and update "
+        "_expected_tail in lockstep — do NOT insert it earlier in the "
+        "field list (that shifts positions and reintroduces the H16.2 bug)."
+        % (_expected_tail, field_names[_i + 1:]))
     print("  PASS: test_command_context_mtz_inspection_at_end_of_fields")
 
 

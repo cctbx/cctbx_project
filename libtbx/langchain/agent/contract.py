@@ -45,8 +45,9 @@ HOW TO ADD A NEW RESPONSE FIELD
 # (plan_has_pending_stages, asu_copies) that were registered without
 # updating this constant.
 # v120: bumped 5 -> 6 for plan_current_unrun_lead_program (Option 2a), then
-# 6 -> 7 for input_mtz_has_rfree (client-extracted R-free presence).
-CURRENT_PROTOCOL_VERSION = 7
+# 6 -> 7 for input_mtz_has_rfree (client-extracted R-free presence), then
+# 7 -> 8 for mtz_rfree_map (per-file R-free map, v120.2 parity fix).
+CURRENT_PROTOCOL_VERSION = 8
 MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 
@@ -139,6 +140,18 @@ SESSION_INFO_FIELDS = [
      "False, never overwrite an existing test set, and treat None "
      "conservatively (do not generate).  None for old clients that predate "
      "this field."),
+
+    # --- v8: per-file R-free map (v120.2) --------------------------------
+    ("mtz_rfree_map", None, 8,
+     "Dict {mtz_basename: bool} giving, for every LOCAL MTZ the client could "
+     "inspect (original inputs AND intermediate outputs like PHASER.1.mtz), "
+     "whether it contains an R-free flag array.  Extracted CLIENT-side by "
+     "ai_agent.py each cycle (the server cannot read client paths, so this is "
+     "how server and local builds stay identical).  command_builder's R-free "
+     "guard looks up the SELECTED data MTZ's basename here for a per-file, "
+     "parity-safe answer; this supersedes the original-input-only scalar "
+     "input_mtz_has_rfree for the actually-refined file.  None/absent when no "
+     "local MTZ was inspectable."),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)
