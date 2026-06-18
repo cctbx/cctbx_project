@@ -1,4 +1,128 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2
+
+## Version 120.2 (R-free generate guard: per-file map + strict server/local parity — v120 → v120.1 → v120.2)
+
+### Summary
+
+The `phenix.refine` R-free generate decision must satisfy two opposing
+requirements: **generate** a fresh test set on a flagless first refinement,
+but **never overwrite** flags that already exist (which silently invalidates
+cross-validation).  This cluster fixes that decision across three ships, ending
+with a per-file, parity-safe design.
+
+```
+v120 (client-extracted scalar fact) → v120.1 (decision-default flip + live-path plumbing) → v120.2 (per-file map + remove the parity-violating local read)
+```
+
+### v120 — the original overwrite bug (client-extracted scalar)
+
+`command_builder`'s phenix.refine invariant added
+`xray_data.r_free_flags.generate=True` whenever `context.rfree_mtz` was not
+locked.  But `rfree_mtz` only locks from a refinement **output**, never from the
+**input**, so a *first* refinement against pre-flagged input data wrongly
+generated, overwriting the existing test set (observed on `beta_blip_001.mtz`).
+An early attempt inspected the MTZ inside `command_builder`, but that reads the
+file — a no-op on the **server**, where the data MTZ lives at a client path that
+does not exist (`files_local=False`).  The fix made the fact **client-extracted**:
+`ai_agent.py` inspects the input MTZ where the file is local and ships a tri-state
+`input_mtz_has_rfree` in `session_info`, plumbed through the shared transport
+(`build_session_state` → `build_request_v2` whitelist → `run_ai_agent` map-back,
+each with an explicit `is not None` guard so a confirmed-`False` is not dropped).
+
+### v120.1 — the MR regression (decision default + live-path plumbing)
+
+After v120 deployed, the beta-blip molecular-replacement tutorial failed at
+refinement (AIAgent_35).  Two bugs:
+
+1. **The fix was bypassed on the live build path.**  The live builder is
+   `graph_nodes._build_with_new_builder` (`USE_NEW_COMMAND_BUILDER=True`), which
+   constructs `CommandContext` **directly** and never passed
+   `input_mtz_has_rfree` — so the client fact was inert where it mattered.  (The
+   v120 plumbing wired only `CommandContext.from_state`, which is not on the live
+   path.)
+
+2. **The default direction was backwards for first-refine.**  In the MR workflow
+   refinement runs on the phaser **output** `PHASER.1.mtz`, which has **no** flags,
+   so it *must* generate — but v120's conservative "undetermined → strip" default
+   omitted generate and phenix.refine aborted with
+   `No array of R-free flags found`.
+
+v120.1 plumbs `input_mtz_has_rfree` into all three `CommandContext(...)`
+constructors on the live path, and flips the decision so it strips **only on
+positive evidence flags exist** (locked `rfree_mtz`, or state `True`) and
+generates on state `False` **or** undetermined-when-unlocked.  This restores the
+robust pre-fix first-refinement default while preserving overwrite protection.
+
+### v120.2 — per-file map + strict parity
+
+The scalar `input_mtz_has_rfree` describes only the **original input**, but
+refinement often runs on a **derived output** (the phaser MTZ), so the scalar can
+be wrong for the file actually being refined.  v120.2 makes the answer per-file:
+
+- **Per-file map.**  `ai_agent.py` inspects every local MTZ it can see each cycle
+  — original inputs **and** intermediate outputs like `PHASER.1.mtz` — via
+  `mtz_inspector.inspect_mtz` (which opens the file with iotbx and detects the
+  R-free column), and ships `mtz_rfree_map = {basename: bool}` in `session_info`.
+  The guard looks up the **selected** data MTZ's basename for a correct per-file
+  answer.  The scalar remains as a fallback.
+
+- **Strict server/local parity.**  `command_builder._input_mtz_rfree_state` no
+  longer reads the filesystem at all.  Its sources are, in order, all
+  `session_info`-borne: (0) `mtz_rfree_map[basename(selected data_mtz)]`,
+  (1) `input_mtz_has_rfree` scalar fallback, (2) `mtz_inspection` (positive only).
+  The `files_local`-gated local `inspect_mtz` (the one source that let the local
+  build resolve where the server could not — a parity violation) is **removed**.
+  The decision is now byte-identical on server and local by construction: the
+  **client** inspects once, ships the answer, and both sides read the same answer.
+
+- **Protocol.**  `mtz_rfree_map` is registered in `agent/contract.py`, bumping
+  `CURRENT_PROTOCOL_VERSION` 7 → 8.  It travels both `api_client` hops and the
+  `run_ai_agent` map-back with `is not None` guards (an empty map is meaningful and
+  distinct from absent).
+
+### Also removed (dead code)
+
+The orphaned `validation/` `ProgramValidator` package
+(`libtbx/langchain/validation/`) and its `docs/reference/VALIDATION.md`.  Its
+`RefineValidator.prevalidate` → `add_rfree_generation_if_needed` shelled out to
+`phenix.mtz.dump` and carried the same server-blindness latent bug, but it was
+never wired into the live agent path (no caller; confirmed by `libtbx.find_files`).
+The live R-free guard is `command_builder._input_mtz_rfree_state`.
+
+### Deploy set (BOTH server and Mac), 6 code files
+
+`agent/command_builder.py`, `agent/graph_nodes.py`, `agent/contract.py`,
+`agent/api_client.py`, `phenix/programs/ai_agent.py`,
+`phenix/phenix_ai/run_ai_agent.py`.  Protocol v8.  After deploy, the AIAgent_35
+cycle-3 `phenix.refine` command carries `xray_data.r_free_flags.generate=True`
+and refinement proceeds.
+
+### Tests
+
+- `tst_rfree_generate_guard.py` — 16 cases: the three requirements, LLM-strip, the
+  per-file map cases (map distinguishes two files; map overrides scalar; file
+  absent from map → undetermined), the AIAgent_35 MR regression, the
+  undetermined-unlocked-generates default, and a **parity** assertion that the
+  guard performs no filesystem reads (`inspect_mtz` stubbed to raise).
+- `tst_input_mtz_has_rfree_plumbing.py` — 7 cases: the scalar `True`/`False`/`None`
+  round-trip (proving `False` is not dropped) plus the `mtz_rfree_map` round-trip
+  (intact incl. `False` entries; empty-vs-absent).
+- `tst_protocol_version.py` — change-detector updated to v8.
+- `tst_contract_compliance.py` — passes at v8 (18 fields).
+
+### Known follow-up (dormant dead path)
+
+`CommandContext.from_state` still calls `inspect_mtz` to populate
+`mtz_inspection` — a server-side file read that contradicts the parity model.  It
+is **dormant**: `from_state` is not on the live build path (which is
+`_build_with_new_builder`), surviving only in docstrings and the `__main__` demo,
+and even if reached it degrades to `None` (inspect_mtz returns `None` on a missing
+path).  Cosmetic inconsistency, not a live bug; remove in a standalone cleanup so
+the codebase has a single rule: the guard never reads files; the client ships the
+answer.
+
+---
+
 
 ## Version 120 (New Providers: Portkey + Claude, and FORCE_NO_AI_SERVER — P1, P2, P3)
 
