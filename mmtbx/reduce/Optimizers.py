@@ -1024,6 +1024,7 @@ class Optimizer(object):
               if s.flipped:
                 index = 1
                 # Add to the list of flipped amide movers.
+                # We're not appending it to the list of Movers, so it won't be counted later.
                 self._amideFlipsPerformed.append(FlippedMoverInfo(alt, a))
               else:
                 index = 0
@@ -1144,6 +1145,7 @@ class Optimizer(object):
               if s.flipped:
                 enabledFlips = 2
                 # Record that we have flipped this Histidine so that we can report on it later.
+                # We're not appending it to the list of Movers, so it won't be counted later.
                 self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
               else:
                 enabledFlips = 1
