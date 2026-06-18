@@ -14,6 +14,8 @@ from cctbx import maptbx
 from six.moves import zip
 from six.moves import range
 from iotbx import extract_xtal_data
+from cctbx.maptbx import servalcat_difference_map
+from libtbx import group_args
 
 map_coeff_params_base_str = """\
   map_coefficients
@@ -541,3 +543,100 @@ def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True,
   if(b_only): return b_sharp_best
   else:
     return map_coeffs.customized_copy(data = map_coeffs.data()*k_sharp)
+
+def mask_aware_map_standard_deviation(map_data, xray_structure, wrapping):
+  """
+  Compute map standard deviation (sigma, rms): overall, inside and outside the
+  molecular mask.
+  For sigma-scaled maps, use SD computed inside the mask.
+  """
+  assert tuple(map_data.origin())==(0,0,0), "Map must have an origin at (0,0,0)"
+  # Apply the boundary trick to guard non-periodic boxes
+  if not wrapping:
+    min_frac = xray_structure.sites_frac().min()
+    max_frac = xray_structure.sites_frac().max()
+    # Check if ANY atom is outside the 0.0 to 1.0 fractional boundaries
+    if(min_frac[0] < 0.0 or min_frac[1] < 0.0 or min_frac[2] < 0.0 or
+       max_frac[0] > 1.0 or max_frac[1] > 1.0 or max_frac[2] > 1.0):
+      raise Sorry("Cannot have coordinates outside non-periodic box.")
+  #
+  from mmtbx import masks
+  mp = masks.mask_master_params.extract()
+  mp.n_real = map_data.all()
+  mp.step = None
+  mmtbx_masks_asu_mask_obj = masks.asu_mask(
+    xray_structure = xray_structure.expand_to_p1(sites_mod_positive=wrapping),
+    mask_params    = mp)
+  bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
+  map_1d  = map_data.as_1d()
+  mask_1d = bulk_solvent_mask.as_1d()
+  SDall = map_1d.standard_deviation_of_the_sample()
+  sel_solvent_isel  = (mask_1d > 0.5).iselection()
+  sel_molecule_isel = (mask_1d < 0.5).iselection()
+  map_solvent  = map_1d.select(sel_solvent_isel)
+  map_molecule = map_1d.select(sel_molecule_isel)
+  SDout = 0.0
+  if map_solvent.size() > 1:
+    SDout = map_solvent.standard_deviation_of_the_sample()
+  SDin = 0.0
+  if map_molecule.size() > 1:
+    SDin  = map_molecule.standard_deviation_of_the_sample()
+  return group_args(SDin=SDin, SDout=SDout, SDall=SDall)
+
+class diff_map_cryoem(object):
+
+  def __init__(self, fo, xray_structure, fo1=None, fo2=None, d_min=None,
+                     reflections_per_bin = 5000):
+    adopt_init_args(self, locals())
+    assert [fo1, fo2].count(None) in [0,2]
+    assert xray_structure.get_scattering_table() == "electron"
+    if fo1 is not None:
+      assert fo1.indices().all_eq(fo2.indices())
+      assert fo1.indices().all_eq( fo.indices())
+    if d_min is not None:
+      ds = fo.d_spacings().data()
+      sel = ds >= d_min
+      self.fo = fo.select(selection = sel)
+      if fo1 is not None:
+        self.fo1 = fo1.select(selection = sel)
+        self.fo2 = fo2.select(selection = sel)
+    self.ss = 1./flex.pow2(self.fo.d_spacings().data())
+    self.fc = self.fo.structure_factors_from_scatterers(xray_structure).f_calc()
+    self.fc_scaled = self.fo.multiscale(
+      other               = self.fc,
+      use_exp_scale       = True,
+      reflections_per_bin = reflections_per_bin)
+
+  def _prepare_arrays(self, phases):
+    assert phases in ["fo", "fc", "vector"]
+    fo = self.fo.deep_copy()
+    fc = self.fc_scaled.deep_copy()
+    if   phases == "fo": fc = fc.phase_transfer(phase_source = fo)
+    elif phases == "fc": fo = fo.phase_transfer(phase_source = fc)
+    else: pass # Do nothing, leave arrays as is
+    return fo, fc
+
+  def compute_simple(self, phases="vector"):
+    fo, fc = self._prepare_arrays(phases = phases)
+    return fo.array(data = fo.data()-fc.data())
+
+  def compute_charge_density(self, phases="vector"):
+    return self.fo.array(
+      data = self.compute_simple(phases=phases).data()*self.ss)
+
+  def compute_sigmaa(self):
+    import mmtbx.f_model
+    fmodel = mmtbx.f_model.manager(
+      f_obs          = abs(self.fo),
+      xray_structure = self.xray_structure)
+    fmodel.update_all_scales(remove_outliers = False)
+    return fmodel.vector_diff_map(fo_phase_source = self.fo)
+
+  def compute_servalcat(self):
+    assert self.fo1 is not None
+    return servalcat_difference_map.compute(
+      fo                  = self.fo,
+      fo1                 = self.fo1,
+      fo2                 = self.fo2,
+      fc                  = self.fc,
+      reflections_per_bin = self.reflections_per_bin)
