@@ -12,14 +12,14 @@
 
 namespace cctbx { namespace uctbx {
 
-  //! Exception raised when the Niggli reduction iteration limit is exceeded.
+  //! Exception raised when the Krivy-Gruber iteration limit is exceeded.
   class niggli_reduction_iteration_limit_exceeded : public error
   {
     public:
       niggli_reduction_iteration_limit_exceeded(std::size_t limit)
       :
         error(
-          "Niggli reduction iteration limit exceeded (limit="
+          "Krivy-Gruber iteration limit exceeded (limit="
           + std::to_string(limit) + ").")
       {}
   };
