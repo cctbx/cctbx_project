@@ -417,7 +417,7 @@ def test_compressed_population_all_formats():
   the binary MTZ/MRC readers go through read_file's temp-decompress fallback
   (which also fixes the pre-existing .mtz.gz gap).'''
   from iotbx.data_manager import DataManager
-  import tempfile, shutil, gzip
+  import tempfile, shutil, gzip, gc
   try:
     import bz2, lzma
   except ImportError:
@@ -456,6 +456,13 @@ def test_compressed_population_all_formats():
     assert dm.process_file(jp) == ['json'], dm.process_file(jp)
     assert dm.get_json(jp) == {'a': [1, 2, 3]}
   finally:
+    # The compressed-map read leaves an mrcfile handle open until the next
+    # collection (mrcfile cannot read .xz directly, so the failed direct read's
+    # MrcFile object is held by a reference cycle on its traceback). Force the
+    # collection so the handle is closed before shutil.rmtree deletes m.map.xz;
+    # otherwise Windows raises "the process cannot access the file". POSIX is
+    # unaffected (an open handle does not block unlink there).
+    gc.collect()
     shutil.rmtree(tmp)
   print('test_compressed_population_all_formats OK')
 
@@ -700,7 +707,8 @@ def test_cif_compression_detection():
               'data_comp_TST\nloop_\n_chem_comp_atom.comp_id\n'
               '_chem_comp_atom.atom_id\n_chem_comp_atom.type_symbol\n'
               ' TST C1 C\n TST C2 C\n')
-    raw = open(cif, 'rb').read()
+    with open(cif, 'rb') as f:
+      raw = f.read()
     # .gz already worked; .xz exercises the fix (same code path as .lzma/.zst)
     for ext, opener in [('.gz', gzip.open), ('.xz', lzma.open)]:
       p = cif + ext
