@@ -1197,10 +1197,10 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   for a in model.get_hierarchy().models()[0].atoms():
     if a.name.strip() in ["H41","H42","HO2'"]:
       if not isPolarHydrogen(a, bondedNeighborLists):
-        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
+        return "Helpers:Test(): Polar Hydrogen not identified: " + a.name
     if a.name.strip() in ["H5","H6"]:
       if isPolarHydrogen(a, bondedNeighborLists):
-        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
+        return "Helpers:Test(): Polar Hydrogen improperly identified: " + a.name
 
   #========================================================================
   # Run unit test on getAtomsWithinNBonds().
