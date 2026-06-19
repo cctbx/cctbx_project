@@ -62,10 +62,7 @@ def one_bin(fo, fo1, fo2, fc):
 def compute(fo, fo1, fo2, fc, reflections_per_bin = 5000):
   fo1d = fo1.data()
   fo2d = fo2.data()
-
-  fod = fo.data() # use ACTUAL data, not from 1/2 maps!
-  #fod  = (fo1d + fo2d) / 2.
-
+  fod  = (fo1d + fo2d) / 2.
   fcd  = fc.data()
   result = flex.complex_double(fod.size(), 0)
   fo.setup_binner(reflections_per_bin = reflections_per_bin)

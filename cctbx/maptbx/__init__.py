@@ -1443,7 +1443,7 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return radius
 
-def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2000):
+def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2000, charge_density = False, B = None):
   #
   # ff_packed is linear array of array_of_a() + c() + array_of_b() + (0,)
   # n_grid - number of intervals
@@ -1479,6 +1479,8 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2000):
     for igs in range(1, NSGrid, 2):
       ss     = SStep * igs
       fatoms = ScatFunc[igs] * ss * 4.
+      if charge_density: fatoms *= ss**2
+      if B is not None: fatoms *= math.exp(-B * ss**2/4)
       for ir in range(1,NImage+1):
         rr   = dx * ir
         arg  = rr * ss
@@ -1489,6 +1491,8 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2000):
     for igs in range(2, NSGrid-1, 2):
       ss     = SStep * igs
       fatoms = ScatFunc[igs] * ss * 2.
+      if charge_density: fatoms *= ss**2
+      if B is not None: fatoms *= math.exp(-B * ss**2/4)
       for ir in range(1,NImage+1):
         rr   = dx * ir
         arg  = rr * ss
@@ -1498,6 +1502,8 @@ def atom_image_fast(ff_packed, d_min, n_grid, dist_max, n_sf_grid=2000):
 #   terminal point (point s = 0 gives zero contribution and is ignored)
     ss     = SStep * NSGrid
     fatoms = ScatFunc[NSGrid] * ss
+    if charge_density: fatoms *= ss**2
+    if B is not None: fatoms *= math.exp(-B * ss**2/4)
     for ir in range(1,NImage+1):
       rr   = dx * ir
       arg  = rr * ss
@@ -1657,7 +1663,7 @@ Fourier image of specified resolution, etc.
         image_values.append(s)
     else: # use AU's adopted code, limited (see assertions below)
       assert d_max is None
-      assert abs(b_iso) < 1.e-6
+#      assert abs(b_iso) < 1.e-6
       v = self.scr.as_type_gaussian_dict()[self.scattering_type]
       ff_AU_style=tuple(v.array_of_a())+(v.c(),)+tuple(v.array_of_b())+(0,)
       #
@@ -1671,7 +1677,8 @@ Fourier image of specified resolution, etc.
         ff_packed = ff_AU_style,
         d_min     = d_min,
         n_grid    = radii.size()-1,
-        dist_max  = radii[-1])
+        dist_max  = radii[-1],
+        B         = b_iso)
       image_values = flex.double(image_values)
     # Fine first inflection point
     first_inflection_point = None
@@ -2430,9 +2437,7 @@ def find_peak_local(rrange, map_data, site_cart, unit_cell, wrapping, eps=1.e-3)
           mv_best = mv
           site_cart_best = site_cart_
   # eps is now 1.e-3, so it only rejects the paper-thin mathematical boundary
-  if abs(dist_best - r) < eps:
-      return None
-
+  if abs(dist_best - r) < eps: return None
   return group_args(
     value_start    = mv_start,
     value_best     = mv_best,

@@ -151,11 +151,69 @@ def exercise_03(d_min = 1.0, n_grid = 2000, dist_max = 5.0):
   emean, emax = get_rel_err(m1=image1, m2=approx)
   print("emean, emax:", emean, emax)
 
+def exercise_04(d_min = 1.0, n_grid = 2000, dist_max = 5.0, b_iso = 10.):
+  #
+  # Test to make sure non-zero B works ok.
+  #
+  # Image of S (fast), (8-9)
+  #
+  ff_S = [6.372157,  5.154568, 1.473732,  1.635073,  1.209372, 0.154722,
+          1.514347, 22.092527, 0.061373, 55.445175,  0.646925, 0.000000]
+  image1, radii = maptbx.atom_image_fast(
+     ff_packed = ff_S,
+     d_min     = d_min,
+     n_grid    = n_grid,
+     dist_max  = dist_max,
+     B         = b_iso)
+  assert approx_equal(image1.size(), radii.size())
+  assert approx_equal(radii[0], 0.0)
+  assert approx_equal(radii[-1], 5.0)
+  assert approx_equal(image1.size(), n_grid+1)
+  # control, (8-9) (same call, using different interface)
+  o = maptbx.atom_curves(scattering_type="S", scattering_table="wk1995")
+  im = o.image(
+    d_min = d_min,
+    b_iso = b_iso,
+    radii = radii,
+    fast  = True)
+  assert approx_equal(image1, im.image_values)
+  assert approx_equal(radii, im.radii)
+  emean, emax = get_rel_err(m1=image1, m2=im.image_values)
+  assert approx_equal(emean, 0)
+  assert approx_equal(emax, 0)
+  #
+  # Image via integration (slow), (8-9)
+  #
+  im = o.image(
+    d_min = d_min,
+    b_iso = b_iso,
+    radii = radii,
+    fast  = False)
+  emean, emax = get_rel_err(m1=image1, m2=im.image_values)
+  assert emean < 1.e-5, emean
+  assert emax  < 1.e-5, emax
+  assert approx_equal(image1, im.image_values)
+  assert approx_equal(radii, im.radii)
+  #
+  # BCR approximation, (1-2)
+  #
+  import cctbx.maptbx.bcr
+  from cctbx.maptbx.bcr import bcr
+  t = cctbx.maptbx.bcr.load_table(element="S", table="wk1995")
+  d = t["1.0"]
+  B = d["B"]
+  C = d["C"]
+  R = d["R"]
+  approx = bcr.curve(B=B, C=C, R=R, radii=radii, b_iso=b_iso)
+  emean, emax = get_rel_err(m1=image1, m2=approx)
+  print("emean, emax:", emean, emax)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
   exercise_01()
   exercise_02()
   exercise_03()
+  exercise_04()
   print("Time: %6.3f"%(time.time()-t0))
   print("OK")
