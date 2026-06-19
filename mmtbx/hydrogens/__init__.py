@@ -611,8 +611,13 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   # it already carries restraints from place_hydrogens. ORDER MATTERS -- the
   # re-process below drops restraints, so it must come AFTER the Optimizer
   # (this mirrors clashscore2.check_and_add_hydrogen).
-  Optimizers.Optimizer(
+  opt = Optimizers.Optimizer(
     probe_phil, do_flips, model, modelIndex=None, fillAtomDump=False)
+
+  # Delete any hydrogens that we've been asked to delete.
+  for a in opt.getHydrogensToDelete():
+    a.parent().remove_atom(a)
+
   # Re-process for output safety (matches clashscore2: avoids a pair_proxies crash
   # when writing mmCIF). No restraints are needed afterwards.
   model.get_hierarchy().sort_atoms_in_place()
