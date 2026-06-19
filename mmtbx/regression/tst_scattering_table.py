@@ -219,7 +219,7 @@ if(__name__ == "__main__"):
   """
   t0 = time.time()
   tst000()
-  #tst001()
-  #tst002()
-  #tst003() # toy example
+  tst001()
+  tst002()
+  tst003() # toy example
   print("OK. Time: %8.3f"%(time.time()-t0))
