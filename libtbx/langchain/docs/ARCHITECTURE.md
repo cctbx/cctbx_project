@@ -6850,7 +6850,7 @@ is authoritative.  (A separate `validation/` `ProgramValidator` package once
 contained an independent R-free injection path — `RefineValidator.prevalidate` →
 `add_rfree_generation_if_needed`, which shelled out to `phenix.mtz.dump` and
 carried the same server-blindness latent bug — but it was ORPHANED, with no caller
-in the live agent path, and was **removed as dead code in v120**; see CHANGELOG.)
+in the live agent path, and was **removed as dead code in v120.2**; see CHANGELOG.)
 Pinned by `tests/tst_rfree_generate_guard.py` (16 cases: the three requirements,
 LLM-strip, the per-file map cases, map-overrides-scalar, the AIAgent_35 MR
 regression, the undetermined-unlocked-generates default, and a parity assertion

@@ -579,7 +579,6 @@ def test_planner_no_heavy_imports():
     forbidden_imports = [
         "langchain_core",
         "from libtbx.langchain.knowledge.prompts import",
-        "from libtbx.langchain.validation",
         "from libtbx.langchain.agent.memory import",
         "phenix_knowledge",
     ]

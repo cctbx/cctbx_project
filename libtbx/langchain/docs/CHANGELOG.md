@@ -83,7 +83,7 @@ be wrong for the file actually being refined.  v120.2 makes the answer per-file:
 ### Also removed (dead code)
 
 The orphaned `validation/` `ProgramValidator` package
-(`libtbx/langchain/validation/`) and its `docs/reference/VALIDATION.md`.  Its
+(`libtbx/langchain/validation/`).  Its
 `RefineValidator.prevalidate` → `add_rfree_generation_if_needed` shelled out to
 `phenix.mtz.dump` and carried the same server-blindness latent bug, but it was
 never wired into the live agent path (no caller; confirmed by `libtbx.find_files`).

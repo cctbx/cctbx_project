@@ -5,7 +5,6 @@ Tests cover:
 - Core module (LLM setup, types)
 - Analysis module (summarization, state extraction)
 - RAG module (document loading, retrieval)
-- Validation module (command validation)
 - Knowledge module (programs, prompts)
 - Agent module (memory, planning)
 - Utils module (text processing)
@@ -243,47 +242,6 @@ class TestRAGModule(unittest.TestCase):
 
 
 @_skip_if_deps_missing
-class TestValidationModule(unittest.TestCase):
-    """Tests for libtbx.langchain.validation"""
-
-    def test_imports(self):
-        """Test that validation module imports work."""
-        from libtbx.langchain.validation.core_validator import validate_phenix_command
-        from libtbx.langchain.validation.registry import get_validator
-        self.assertIsNotNone(validate_phenix_command)
-        self.assertIsNotNone(get_validator)
-
-    def test_get_validator_refine(self):
-        """Test getting validator for phenix.refine."""
-        from libtbx.langchain.validation.registry import get_validator
-        validator = get_validator('phenix.refine')
-        self.assertIsNotNone(validator)
-        self.assertEqual(validator.program_name, 'phenix.refine')
-
-    def test_get_validator_unknown(self):
-        """Test getting validator for unknown program returns None."""
-        from libtbx.langchain.validation.registry import get_validator
-        validator = get_validator('phenix.nonexistent')
-        self.assertIsNone(validator)
-
-    def test_get_all_validators(self):
-        """Test getting all registered validators."""
-        from libtbx.langchain.validation.registry import get_all_validators
-        validators = get_all_validators()
-        self.assertIsInstance(validators, dict)
-        self.assertIn('phenix.refine', validators)
-
-    def test_refine_validator_common_errors(self):
-        """Test RefineValidator has common error patterns."""
-        from libtbx.langchain.validation.phenix_refine import RefineValidator
-        validator = RefineValidator()
-        errors = validator.get_common_errors()
-        self.assertIsInstance(errors, dict)
-        # Should have twin_law error pattern
-        self.assertTrue(any('twin_law' in key for key in errors.keys()))
-
-
-@_skip_if_deps_missing
 class TestKnowledgeModule(unittest.TestCase):
     """Tests for libtbx.langchain.knowledge"""
 
@@ -502,7 +460,7 @@ def run_all_tests():
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
     for cls in [TestCoreModule, TestAnalysisModule, TestRAGModule,
-                TestValidationModule, TestKnowledgeModule, TestAgentModule,
+                TestKnowledgeModule, TestAgentModule,
                 TestUtilsModule, TestIntegration]:
         suite.addTests(loader.loadTestsFromTestCase(cls))
     runner = unittest.TextTestRunner(verbosity=2)

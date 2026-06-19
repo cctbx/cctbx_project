@@ -42,7 +42,7 @@ Test Suites (require PHENIX environment):
   31. Integration - End-to-end workflow tests
   32. Directives Integration - End-to-end directive system tests
 
-  33. Langchain Tools - Legacy module tests (core, analysis, RAG, validation, prompts, memory)
+  33. Langchain Tools - Legacy module tests (core, analysis, RAG, prompts, memory)
   34. Hardcoded Cleanup - Conformance guards for YAML-driven architecture (v112.10)
   35. v112.13        - Companion files, intermediate filtering, file categorisation
   36. Audit Fix Regressions - Categories I/J/E/G/H: max_refine_cycles landing, zombie

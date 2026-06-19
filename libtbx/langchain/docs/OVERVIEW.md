@@ -2032,12 +2032,6 @@ improved_agent_v2/
 │   └── base.py                 # Abstract base class for command builders
 ├── strategies/                 # Planning strategy framework
 │   └── base.py                 # Abstract base class for planning strategies
-├── validation/                 # Command validation framework
-│   ├── base.py                 # Abstract base class for validators
-│   ├── core_validator.py       # Syntax validation and LLM-based fixing
-│   ├── mtz_utils.py            # MTZ R-free flag checking
-│   ├── phenix_refine.py        # phenix.refine-specific validation
-│   └── registry.py             # Validator auto-discovery and lookup
 ├── rag/                        # RAG (Retrieval-Augmented Generation)
 │   ├── document_loader.py      # Document loading and chunking
 │   ├── retriever.py            # Vector DB retrieval with FlashRank reranking
@@ -2064,8 +2058,7 @@ improved_agent_v2/
     ├── USER_GUIDE.md           # User guide + directives reference
     ├── reference/              # API and logic reference
     │   ├── ARCHITECTURE.md     # Component deep-dive
-    │   ├── API_REFERENCE.md    # V2 JSON API spec
-    │   └── VALIDATION.md       # Validation system
+    │   └── API_REFERENCE.md    # V2 JSON API spec
     ├── project/                # Design history and changelog
     │   ├── CHANGELOG.md        # Version history
     │   ├── THOUGHT_EXPERIMENT.md # Example workflow traces
