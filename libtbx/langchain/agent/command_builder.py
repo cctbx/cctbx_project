@@ -230,34 +230,18 @@ class CommandContext:
       or workflow_state.get("experiment_type", "")
     )
 
-    # v119.H16: Inspect the selected data MTZ for column structure.
-    # When the MTZ contains multiple suitable observation arrays, the
-    # auto_fill_obs_labels invariant uses this info to inject the
-    # correct obs_labels= flag.  A precomputed value cached on `state`
-    # (same-request memoization) takes precedence; otherwise we run
-    # cctbx inspection lazily from the selected data MTZ.
-    # All failure paths return None (no inspection → no injection).
+    # v119.H16: mtz_inspection carries the selected data MTZ's column
+    # structure; the auto_fill_obs_labels invariant uses it to inject the
+    # correct obs_labels= flag when the MTZ has multiple suitable arrays.
     #
-    # Note: mtz_inspection is SERVER-COMPUTED data, derived here from
-    # the selected data MTZ.  It is intentionally NOT read from the
-    # client session_info dict and is therefore NOT a registered field
-    # in the client/server contract (agent/contract.py).  The only
-    # cache source is `state` (set by a prior call within the same
-    # request); absent that, we compute it fresh below.
+    # v120.2 parity (server == local): from_state takes mtz_inspection ONLY
+    # from `state` (precomputed up front and carried across in session_info);
+    # it does NOT read the filesystem here.  A client-only inspect_mtz() read
+    # would make the local build diverge from the server build, which is not
+    # allowed.  Absent a precomputed value, mtz_inspection stays None (no
+    # inspection → no injection) and the generate guard falls back to its
+    # other session_info-borne sources.
     mtz_inspection = state.get("mtz_inspection")
-    if mtz_inspection is None:
-      try:
-        data_mtz = (session_info.get("best_files", {})
-                    .get("data_mtz"))
-        if data_mtz:
-          try:
-            from libtbx.langchain.agent.mtz_inspector \
-              import inspect_mtz
-          except ImportError:
-            from agent.mtz_inspector import inspect_mtz
-          mtz_inspection = inspect_mtz(data_mtz)
-      except Exception:
-        mtz_inspection = None
 
     return cls(
       cycle_number=state.get("cycle_number", 1),

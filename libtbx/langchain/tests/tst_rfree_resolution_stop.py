@@ -64,11 +64,17 @@ def test_perceive_prefers_session_resolution():
     # The nested find_resolution() closure must be gone (unified to module level).
     assert "def find_resolution():" not in src, \
         "the nested find_resolution() closure must be replaced by the module-level resolver"
-    # build() must also route through the shared resolver.
-    assert re.search(
-        r'found_resolution,\s*res_source\s*=\s*resolve_session_resolution\(\s*\n?\s*state,\s*workflow_state=workflow_state\)',
-        src), \
-        "build() must call resolve_session_resolution(state, workflow_state=workflow_state)"
+    # build() routes through the shared resolver INDIRECTLY now: perceive()
+    # resolves resolution (above) and stores it; the unified builder consumes
+    # state["session_resolution"] rather than re-deriving it.  The legacy
+    # build-side resolve_session_resolution(state, workflow_state=workflow_state)
+    # call lived in the USE_NEW_COMMAND_BUILDER=False branch, which was removed
+    # as dead code; build() now delegates to _build_with_new_builder().
+    assert "_build_with_new_builder(state)" in src, \
+        "build() must delegate to the unified _build_with_new_builder(state)"
+    assert re.search(r'state\.get\(\s*["\']session_resolution["\']\s*\)', src), \
+        "the unified build path must consume the resolver's output via " \
+        "state['session_resolution'] (resolved upstream by perceive())"
 
 
 def _load_resolver():

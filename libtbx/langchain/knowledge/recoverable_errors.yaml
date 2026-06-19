@@ -143,7 +143,7 @@ errors:
   # here; the builder does the right thing on the rebuilt command.
   # ---------------------------------------------------------------------------
   rfree_flags_missing:
-    description: "Refinement data has no R-free flags; retry with locked R-free MTZ"
+    description: "Refinement data has no R-free flags; retry — builder re-selects the locked R-free MTZ if one is locked, else generates a new test set"
     max_retries: 1
 
     detection_patterns:

@@ -233,12 +233,100 @@ def test_loop_cap_blocks_second_identical_failure():
     "second identical failure must be blocked by max_retries: 1"
 
 
+def _load_generate_guard():
+  """Bind CommandBuilder._input_mtz_rfree_state from command_builder.py source
+  WITHOUT importing the heavy builder stack (mirrors tst_rfree_generate_guard.py).
+  Returns the bound function, or None if the source/method is unavailable."""
+  cb_path = _find("COMMAND_BUILDER_PY", _AGENT, "command_builder.py")
+  if not cb_path:
+    return None
+  src = open(cb_path).read()
+  if "_input_mtz_rfree_state" not in src:
+    return None
+  lines = src.splitlines()
+  start = next((i for i, ln in enumerate(lines)
+                if ln.strip().startswith("def _input_mtz_rfree_state")), None)
+  if start is None:
+    return None
+  base = len(lines[start]) - len(lines[start].lstrip())
+  body = [lines[start][base:]]
+  for ln in lines[start + 1:]:
+    if ln.strip() == "":
+      body.append("")
+      continue
+    if (len(ln) - len(ln.lstrip())) <= base and ln.strip():
+      break
+    body.append(ln[base:])
+  ns = {}
+  exec("\n".join(body), ns)
+  return ns["_input_mtz_rfree_state"]
+
+
+class _GuardCtx(object):
+  """Minimal CommandContext stand-in for the v120.2 generate guard."""
+
+  def __init__(self, mtz_rfree_map=None, input_mtz_has_rfree=None,
+               mtz_inspection=None, files_local=True):
+    self.mtz_rfree_map = mtz_rfree_map
+    self.input_mtz_has_rfree = input_mtz_has_rfree
+    self.mtz_inspection = mtz_inspection
+    self.files_local = files_local
+
+
+def _rebuild_generates(guard, files, ctx, rfree_mtz=None):
+  """Mirror the builder's unlocked-generate rule using the REAL guard: with
+  nothing locked, GENERATE unless the guard returns True (flags already exist)."""
+  if rfree_mtz:                      # a locked R-free MTZ was selected
+    return False                     # reuse it; never regenerate (no overwrite)
+  state = guard(None, files, ctx)    # tri-state: True | False | None
+  return state is not True           # False/None + unlocked -> generate=True
+
+
+def test_force_retry_rebuild_generates_when_unlocked():
+  """AIAgent_35 regression — closes the loop the force_retry left open.
+
+  The rfree_flags_missing recovery DELEGATES the fix to the builder (it adds no
+  flags itself).  On the rebuilt retry, a flagless data MTZ with NOTHING locked
+  must add xray_data.r_free_flags.generate=True (the v120.2 generate guard).
+  This pins both halves together so a future command_builder regression that
+  drops the generate fallback is caught here rather than in production."""
+  # Half 1: the recovery is delegating -- it adds and strips no flags.
+  analyzer = _load_analyzer()
+  if analyzer is not None:
+    rec = analyzer.analyze(_RFREE_MISSING_LOG, "phenix.refine",
+                           context={}, session=_FakeSession())
+    assert rec is not None and rec.error_type == "rfree_flags_missing", \
+      "recovery did not fire for the rfree-missing log"
+    assert rec.flags == {} and list(rec.strip_flags) == [], \
+      "force_retry must delegate the generate decision to the builder"
+  # Half 2: the REAL builder guard generates for the rebuilt, UNLOCKED inputs.
+  guard = _load_generate_guard()
+  if guard is None:
+    print("  (skip) command_builder._input_mtz_rfree_state not found")
+    return
+  files = {"data_mtz": "beta_blip_001.mtz"}
+  # client shipped the per-file answer: this data MTZ has NO R-free flags.
+  ctx_no_flags = _GuardCtx(mtz_rfree_map={"beta_blip_001.mtz": False})
+  assert _rebuild_generates(guard, files, ctx_no_flags) is True, \
+    "force_retry rebuild must add generate=True when the data MTZ has no flags " \
+    "and nothing is locked"
+  # undetermined (file absent from the map) + unlocked must ALSO generate.
+  ctx_undet = _GuardCtx(mtz_rfree_map={})
+  assert _rebuild_generates(guard, files, ctx_undet) is True, \
+    "undetermined + unlocked rebuild must also generate (first-refine default)"
+  # guard rail: a LOCKED R-free MTZ must be reused, never regenerated.
+  assert _rebuild_generates(guard, files, ctx_no_flags,
+                            rfree_mtz="locked_rfree.mtz") is False, \
+    "a locked R-free MTZ must be reused, not overwritten by generate=True"
+
+
 _TESTS = [
   test_yaml_entry_present_and_well_formed,
   test_full_analyze_returns_force_retry_recovery,
   test_detection_is_specific,
   test_does_not_collide_with_rfree_flags_mismatch,
   test_loop_cap_blocks_second_identical_failure,
+  test_force_retry_rebuild_generates_when_unlocked,
 ]
 
 

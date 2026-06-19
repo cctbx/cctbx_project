@@ -386,8 +386,13 @@ def test_graph_nodes_feature_flag():
     assert 'def _fallback_with_new_builder' in source, "_fallback_with_new_builder not found"
     assert 'def _get_command_builder' in source, "_get_command_builder not found"
 
-    # Check delegation is in place
-    assert 'if USE_NEW_COMMAND_BUILDER:' in source, "Delegation check not found"
+    # Check delegation is in place.  The delegation is now UNCONDITIONAL: the
+    # legacy `if USE_NEW_COMMAND_BUILDER:` gate (and its dead False branch) was
+    # removed, so build()/fallback() return the unified builders directly.
+    assert 'return _build_with_new_builder(state)' in source, \
+        "build() delegation to _build_with_new_builder not found"
+    assert 'return _fallback_with_new_builder(state)' in source, \
+        "fallback() delegation to _fallback_with_new_builder not found"
 
     print("  PASSED")
 
