@@ -691,7 +691,9 @@ Tracks the best file of each type across cycles:
   - `data_mtz`: Locks after R-free flags are first generated or supplied
     (consistency for refinement; if the input MTZ already carries an R-free
     array the agent keeps it rather than regenerating — see ARCHITECTURE.md
-    "R-free generate guard")
+    "R-free generate guard").  A flagless or unverifiable file later selected
+    over the lock (e.g. a `data_mtz` preference for the raw input) is reconciled
+    back to it — see ARCHITECTURE.md "R-free Lock Reconciliation — F1 / F2"
   - `map_coeffs_mtz`: Always prefers most recent (maps improve with refinement)
 - Provides `best_files["model"]`, `best_files["data_mtz"]`, `best_files["map_coeffs_mtz"]` to CommandBuilder
 - **Supplemental file discovery**: Session load (`_rebuild_best_files_from_cycles`)

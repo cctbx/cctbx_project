@@ -5974,7 +5974,7 @@ Each file is scored based on **processing stage** (0-100 points) and **quality m
 
 ### R-free MTZ Locking (X-ray Only)
 
-Once an MTZ with R-free flags is identified, it is **locked for the entire session**. This ensures consistent cross-validation statistics throughout refinement. The locked MTZ has absolute priority (Priority 0) over all other file selection mechanisms.
+Once an MTZ with R-free flags is identified, it is **locked for the entire session**. This ensures consistent cross-validation statistics throughout refinement. The locked MTZ is Priority 0 inside `_find_file_for_slot` — but a `data_mtz` preference or LLM hint can pre-fill the slot *before* that point (see the caveat below), so the lock's priority is enforced for the refine data slot by **R-free lock reconciliation** (F1/F2), not by Priority 0 alone.
 
 ### File Selection Priority
 
@@ -5984,6 +5984,40 @@ When building commands, files are selected in this order:
 1. **Best Files** — From the BestFilesTracker scoring system
 2. **Categorized Files** — From workflow_state file categorization
 3. **Extension Matching** — Search available_files by extension
+
+> **Caveat (v120.3): preferences fill the slot before Priority 0.**  A
+> `directives.file_preferences.data_mtz` or an explicit LLM hint is applied in
+> `_select_files` *before* `_find_file_for_slot` injects the Priority-0 lock, so a
+> preference pointing at the original (often flagless) input can win over the
+> lock.  R-free **lock reconciliation** (below) is the corrective.
+
+### R-free Lock Reconciliation — F1 / F2 (v120.3, widened v120.4)
+
+Two coordinated steps in `command_builder.py` keep the refine data file and the
+generate decision consistent with the locked R-free MTZ:
+
+- **F2 — reconcile the data slot to the lock.**  In `build()`, after
+  `_select_files` and before `_apply_invariants`, if `rfree_mtz` is locked and the
+  data slot holds a *different* file that is **not confirmed to carry flags**, the
+  slot is reset to the locked MTZ (logged `BUILD: reconciled … locked R-free MTZ`).
+  "Not confirmed flagged" = `_input_mtz_rfree_state` returns `False` (flagless)
+  **or** `None` (unverifiable — e.g. a raw scalepack input, which `inspect_mtz`
+  cannot read).  A flagged file (`True`) is never overridden, and an `abspath`
+  guard (checked first) skips the slot when it already *is* the lock.  v120.3
+  reconciled only `False`; **v120.4** widened the trigger to `is not True` so an
+  undetermined input (scalepack `p9.sca`, p9-sad AIAgent_95) reconciles too.
+
+- **F1 — generate decision keys off the selected file.**  `_apply_invariants`
+  decides `xray_data.r_free_flags.generate` from `_input_mtz_rfree_state(files,
+  context)` on the *actually-selected* file (post-F2), not from the mere existence
+  of a lock: strip on `True`, add on `False`/undetermined-when-unlocked, with the
+  lock as the undetermined fallback.
+
+Net effect: a flagless or unverifiable file selected over the lock is pulled back
+to the flagged lock (F2), and the generate flag follows the file that will actually
+be refined (F1).  Fail-safe — you never lose R-free flags; worst case you refine
+against the locked dataset instead of an unverifiable one.  Pinned by
+`tst_rfree_lock_reconciliation.py`.
 
 ### Key Files
 
@@ -6808,10 +6842,14 @@ selected file is absent from the map;
 There is **no** `files_local`-gated local read (a v120 source that made the local
 build resolve where the server could not — a parity violation; removed in v120.2).
 
-The generate decision keys on the lock and this tri-state:
+The generate decision (F1, v120.3) keys on the **selected file's** tri-state, with
+the lock only as the undetermined fallback — it no longer strips merely because a
+lock exists:
 
-- `rfree_mtz` locked → **strip** (flags exist, locked from a prior output);
 - `state is True` → **strip** (positive evidence the selected file has flags);
+- `state is None` (undetermined) **and `rfree_mtz` locked** → **strip** (fallback:
+  assume the locked dataset's flags; note F2 reconciliation normally resets the
+  slot to the lock first, so the selected file usually *is* the flagged lock);
 - `state is False` → **generate** (positive evidence it has none);
 - `state is None` (undetermined) **and nothing locked** → **generate**.
 

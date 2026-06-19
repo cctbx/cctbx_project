@@ -2773,6 +2773,7 @@ The `run_tests_with_fail_fast()` function automatically discovers tests:
 | `tst_directives_integration.py` | 16 | End-to-end directive tests |
 | `tst_command_builder.py` | 22 | Unified command generation, MR-SAD partpdb_file |
 | `tst_rfree_generate_guard.py` | 13 | phenix.refine never regenerates an existing R-free test set (tri-state client-fact detection; server-undetermined→strip) |
+| `tst_rfree_lock_reconciliation.py` | 10 | F1/F2 (v120.3–v120.4): a flagless or unverifiable data file selected over the locked R-free MTZ is reconciled back to it; flagged files and the lock-as-slot case are untouched |
 | `tst_input_mtz_has_rfree_plumbing.py` | 4 | input_mtz_has_rfree tri-state survives the client→server wire (False not dropped) |
 | `tst_event_system.py` | 13 | Event logging system |
 | `tst_program_registration.py` | 13 | Program registry tests |

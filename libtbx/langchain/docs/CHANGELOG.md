@@ -1,4 +1,90 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4
+
+## Version 120.4 (R-free lock reconciliation: selected-file generate decision + lock reconciliation, widened to undetermined — v120.3 → v120.4)
+
+### Summary
+
+v120.2 made the generate decision per-file, but two production failures showed the
+decision and the **file selection** feeding it could still diverge.  A `data_mtz`
+file-preference (extracted from the original goal) fills the refine data slot
+*before* the Priority-0 locked R-free MTZ is consulted, so refinement ran against
+the wrong, flagless file while a flagged lock existed.  This cluster reconciles the
+data slot back to the lock (F2) and bases the generate decision on the actually
+selected file (F1).
+
+```
+v120.3 (F1 selected-file decision + F2 reconcile confirmed-flagless) → v120.4 (F2 widened to undetermined)
+```
+
+### v120.3 — F1 + F2 (beta-blip, AIAgent_55)
+
+The beta-blip MR tutorial aborted at `refine_003` with `No array of R-free flags
+found` even though `refine_001_data.mtz` was correctly locked as `rfree_mtz`.
+Root cause: `directives.file_preferences.data_mtz` (the original input filename,
+extracted by the directive layer) filled the data slot in `_select_files`
+**before** the Priority-0 lock injection in `_find_file_for_slot`, so the flagless
+original won.  The generate invariant then stripped `generate=True` merely because
+a lock existed, yielding a flagless command with no generate → abort.
+
+Two coordinated changes in `command_builder.py`:
+
+- **F1 — generate decision keys off the selected file.**  `_apply_invariants` no
+  longer strips generate just because `context.rfree_mtz` is locked; it probes the
+  **actually-selected** data file via `_input_mtz_rfree_state(files, context)` and
+  strips only on `True`, adding generate on `False` (or undetermined-when-unlocked).
+  The lock is consulted only as the undetermined-case fallback.
+
+- **F2 — R-free lock reconciliation.**  In `build()`, after `_select_files` and
+  **before** `_apply_invariants`, if a lock is set and a *different* file in the
+  data slot is **confirmed flagless** (`_input_mtz_rfree_state is False`), the slot
+  is reconciled to the locked MTZ (`_record_selection(..., "rfree_lock_reconcile")`)
+  so F1 then sees the flagged lock and strips correctly.  An `abspath` guard skips
+  the slot when it already *is* the lock (so a flagged input that became the lock is
+  untouched).
+
+### v120.4 — F2 widened to undetermined (p9-sad, AIAgent_95)
+
+The p9-sad SAD tutorial reproduced the same override, but the preference pinned the
+**raw scalepack input** `p9.sca`.  `mtz_inspector.inspect_mtz` is ccp4_mtz-only
+(H16.1: `file_type != "ccp4_mtz" → None`), so scalepack is never given a flag
+verdict — it probes **`None`**, not `False`.  F2's `is False` trigger skipped it, F1
+took the `None + lock` fallback and stripped generate, and refine aborted on the
+flagless `p9.sca` (a no-op `rfree_flags_missing` `force_retry` then looped to STOP).
+
+v120.4 widens the F2 trigger from `is False` (confirmed flagless) to **`is not
+True`** (not confirmed flagged — flagless **or** unverifiable).  A data file is kept
+only on positive evidence it carries flags (`probe is True`); otherwise it is
+reconciled to the known-flagged lock.  Fail-safe: you never lose R-free flags —
+worst case you refine against the locked dataset instead of an unverifiable one
+(crystallographically, a raw scalepack/intensity file cannot carry the generated
+R-free set anyway).  The reconcile log now distinguishes `flagless` (`False`) from
+`unverified` (`None`).  No scalepack parser is added; `inspect_mtz` stays MTZ-only.
+
+**Boundary preserved:** a *genuinely flagged* different file (`probe is True`) is
+never overridden, and the `abspath` guard (checked before the probe) keeps the
+"user supplies a flagged MTZ that becomes the lock, run refine" path unchanged.
+
+### Tests
+
+- `tst_rfree_lock_reconciliation.py` — probe tri-state (incl. scalepack → `None`),
+  plus build-level cases: confirmed-flagless → reconcile (beta-blip), undetermined
+  → reconcile (p9-sad, logged `unverified`), confirmed-flagged → kept, and
+  slot-equals-lock → no-op (the regression guard).
+
+### Deploy set
+
+`agent/command_builder.py` (F1 + F2) and the test.  No protocol change — F1/F2 use
+the `mtz_rfree_map` / `rfree_mtz` already on the wire at v8.
+
+### Known follow-up
+
+The `rfree_flags_missing` recovery is a no-op `force_retry` that loops when the
+rebuild reproduces the same command; with F2 in place the live path no longer
+reaches it.  A standalone ship adds an identical-command guard (and, gated on "no
+flagged candidate anywhere", a `generate=True` injection) as defense-in-depth.
+
+---
+
 
 ## Version 120.2 (R-free generate guard: per-file map + strict server/local parity — v120 → v120.1 → v120.2)
 
