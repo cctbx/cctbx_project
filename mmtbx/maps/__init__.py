@@ -640,3 +640,6 @@ class diff_map_cryoem(object):
       fo2                 = self.fo2,
       fc                  = self.fc,
       reflections_per_bin = self.reflections_per_bin)
+
+  def compute_servalcat_charge_density(self):
+    return self.fo.array(data = self.compute_servalcat().data()*self.ss)
