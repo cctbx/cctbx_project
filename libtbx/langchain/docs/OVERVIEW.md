@@ -1949,74 +1949,117 @@ python3 tests/run_all_tests.py --pattern "directive"
 ## Directory Structure
 
 ```
-improved_agent_v2/
+improved_agent_v2/              # AI Agent system (libtbx/langchain/ + phenix/phenix/ entry points)
+├── __init__.py                 # Package marker
+├── VERSION                     # Package version string
 ├── agent/                      # Core agent logic
-│   ├── graph.py                # LangGraph state machine definition
-│   ├── graph_state.py          # Agent state type definitions
-│   ├── graph_nodes.py          # LangGraph node implementations
-│   ├── planner.py              # Agent planning and next-move generation
-│   ├── workflow_engine.py      # YAML workflow interpreter
-│   ├── workflow_state.py       # State detection, PDB content guards
+│   ├── advice_preprocessor.py  # README discovery, advice processing
+│   ├── api_client.py           # V2 API request/response building
+│   ├── best_files_tracker.py   # Track best files per type
 │   ├── command_builder.py      # Unified command generation (with content guards)
 │   ├── command_postprocessor.py # Server-safe command transforms (sanitize, inject)
-│   ├── template_builder.py     # YAML-driven command templates
-│   ├── file_utils.py           # Shared file classification (MTZ type, exclude patterns)
-│   ├── best_files_tracker.py   # Track best files per type
-│   ├── placement_checker.py    # Unit cell comparison for model placement
-│   ├── error_analyzer.py       # Automatic error recovery
-│   ├── advice_preprocessor.py  # README discovery, advice processing
+│   ├── command_templates.json  # Program command templates and file slots
+│   ├── config_loader.py        # Load decision_config.json thresholds
+│   ├── contract.py             # session_info field registry + protocol version
+│   ├── decision_config.json    # Tiered decision rules and thresholds
 │   ├── directive_extractor.py  # Parse user directives from advice
 │   ├── directive_validator.py  # Pre-validate user requests
-│   ├── sanity_checker.py       # Red flag detection
-│   ├── rules_selector.py       # Rules-only program selection
-│   ├── config_loader.py        # Load decision_config.json thresholds
-│   ├── memory.py               # Persistent learned syntax tips
-│   ├── metrics_analyzer.py     # Metric trends and convergence
-│   ├── metric_evaluator.py     # Metric quality evaluation
-│   ├── session.py              # Persistent session tracking (AgentSession, duplicate detection, supplemental file discovery)
-│   ├── api_client.py           # V2 API request/response building
-│   ├── phenix_utils.py         # REST encoding, standalone PHENIX utilities
-│   ├── transport.py            # Sanitization and encoding
-│   ├── rate_limit_handler.py   # LLM rate limiting with backoff
-│   ├── program_registry.py     # YAML program registry
-│   ├── pattern_manager.py      # Regex pattern management
-│   ├── event_log.py            # Structured event logging
-│   ├── event_formatter.py      # Output formatting (verbosity levels)
-│   ├── dry_run_manager.py      # Testing: dry-run workflow simulation
-│   ├── utils.py                # General utility functions
-│   ├── command_templates.json  # Program command templates and file slots
-│   ├── decision_config.json    # Tiered decision rules and thresholds
-│   ├── parameter_fixes.json    # Wrong→correct parameter name mappings
-│   ├── yaml_tools.py           # CLI: YAML validation and inspection
-│   ├── session_tools.py        # CLI: Session management
+│   ├── display_data_model.py   # Unified display data (progress/results tabs + HTML report)
 │   ├── docs_tools.py           # CLI: Documentation generation
-│   ├── generate_safety_docs.py # CLI: Safety checks documentation
+│   ├── dry_run_manager.py      # Testing: dry-run workflow simulation
+│   ├── error_analyzer.py       # YAML-driven automatic error recovery
+│   ├── error_classifier.py     # PERCEIVE error classes (TERMINAL/PHIL/LABEL/RETRYABLE)
+│   ├── event_formatter.py      # Output formatting (verbosity levels)
+│   ├── event_log.py            # Structured event logging
+│   ├── failure_diagnoser.py    # LLM diagnosis of terminal errors
+│   ├── file_metadata.py        # Output-file metadata (contents, quality, provenance)
+│   ├── file_utils.py           # Shared file classification (MTZ type, exclude patterns)
+│   ├── format_validation.py    # Format validation results as THINK-context text
+│   ├── gate_evaluator.py       # Strategic planner: gate/stop evaluation
 │   ├── generate_logic_doc.py   # CLI: Decision logic documentation
-│   └── program_validator.py    # CLI: Program config validation
+│   ├── generate_safety_docs.py # CLI: Safety checks documentation
+│   ├── graph.py                # LangGraph state machine definition
+│   ├── graph_nodes.py          # LangGraph node implementations
+│   ├── graph_state.py          # Agent state type definitions
+│   ├── hypothesis_evaluator.py # Strategic planner: hypothesis evaluation
+│   ├── intent_classifier.py    # Classify advice intent (solve/task/tutorial) -> stop behavior
+│   ├── kb_tags.py              # Derive KB lookup tags (category + tags) from state
+│   ├── log_section_extractor.py # Extract informative log sections within a char budget
+│   ├── memory.py               # Persistent learned syntax tips
+│   ├── metric_evaluator.py     # Metric quality evaluation
+│   ├── metrics_analyzer.py     # Metric trends and convergence
+│   ├── mtz_inspector.py        # Client-side MTZ inspection (R-free columns)
+│   ├── nl_to_phil.py           # Natural-language-to-PHIL conversion
+│   ├── pattern_manager.py      # Regex pattern management
+│   ├── perceive_checks.py      # PERCEIVE-node stop-condition checks (pure helpers)
+│   ├── phenix_utils.py         # REST encoding, standalone PHENIX utilities
+│   ├── phil_validator.py       # PHIL parameter validation
+│   ├── placement_checker.py    # Unit cell comparison for model placement
+│   ├── plan_generator.py       # Strategic planner: plan generation
+│   ├── planner.py              # Agent planning and next-move generation
+│   ├── program_registry.py     # YAML program registry
+│   ├── program_validator.py    # CLI: Program config validation
+│   ├── rate_limit_handler.py   # LLM rate limiting with backoff
+│   ├── raw_advice_scanner.py   # Scan raw advice for crystallography filenames (LLM-free)
+│   ├── rules_selector.py       # Rules-only program selection
+│   ├── sanity_checker.py       # Red flag detection
+│   ├── session.py              # Persistent session tracking (AgentSession, dup detection)
+│   ├── session_tools.py        # CLI: Session management
+│   ├── strategy_memory.py      # Persistent strategy memory across sessions
+│   ├── structure_model.py      # Structure Model state (xtriage/phaser-derived)
+│   ├── template_builder.py     # YAML-driven command templates
+│   ├── thinking_agent.py       # THINK node: should_think()/run_think_node()
+│   ├── transport.py            # Sanitization and encoding
+│   ├── tst_agent_enhancements.py # In-tree tests for agent enhancements
+│   ├── utils.py                # General utility functions
+│   ├── validation_history.py   # Per-cycle validation history tracking
+│   ├── validation_inspector.py # Headless structural validation (GUI-free) -> dict
+│   ├── workflow_engine.py      # YAML workflow interpreter
+│   ├── workflow_state.py       # State detection, PDB content guards
+│   └── yaml_tools.py           # CLI: YAML validation and inspection
 ├── knowledge/                  # Configuration & domain knowledge
-│   ├── programs.yaml           # Program definitions
-│   ├── workflows.yaml          # Workflow state machines
-│   ├── metrics.yaml            # Quality thresholds
-│   ├── file_categories.yaml    # File categorization
-│   ├── patterns.yaml           # Regex patterns
-│   ├── recoverable_errors.yaml # Error recovery patterns
-│   ├── transport.yaml          # Sanitization rules
 │   ├── api_schema.py           # V2 API schema definitions
-│   ├── yaml_loader.py          # Configuration loading
+│   ├── diagnosable_errors.yaml # Terminal errors needing LLM diagnosis
+│   ├── errors.yaml             # THINK stop-reason codes (STOP_REASON_CODES source of truth)
+│   ├── expert_knowledge_base_v2.yaml # Expert crystallography knowledge base
+│   ├── explanation_prompts.py  # Explanation-engine prompts
+│   ├── file_categories.yaml    # File categorization
+│   ├── html_report_template.py # Template HTML report (DisplayDataModel; inline SVG charts)
+│   ├── kb_loader.py            # Expert KB runtime loader (category/tag filtering)
 │   ├── metric_patterns.py      # YAML-driven metric extraction
+│   ├── metrics.yaml            # Quality thresholds
+│   ├── parameter_fixes.json    # Wrong->correct parameter name mappings
+│   ├── patterns.yaml           # Regex patterns
 │   ├── phenix_programs.py      # Program discovery and introspection
+│   ├── plan_schema.py          # Plan schema definitions/validation
+│   ├── plan_template_loader.py # Load plan_templates.yaml (resolve inheritance) -> StructurePlan
+│   ├── plan_templates.yaml     # Expert plan skeletons for standard workflows
 │   ├── program_registration.py # Program detection from logs
+│   ├── programs.yaml           # Program definitions
 │   ├── prompts.py              # LLM prompts for planning and commands
 │   ├── prompts_hybrid.py       # Hybrid planning prompts (rules + LLM)
-│   └── summary_display.py      # Quality table formatting
-├── phenix_ai/                  # Runtime entry points
+│   ├── recoverable_errors.yaml # Error recovery patterns
+│   ├── solve_run_info.yaml     # Minimal solve-mode hints (project_advice) per tutorial
+│   ├── summary_display.py      # Quality table formatting
+│   ├── thinking_prompts.py     # THINK-node prompts
+│   ├── transport.yaml          # Sanitization rules
+│   ├── tutorial_expectations.yaml # Expected programs/method/results per tutorial (dual-run)
+│   ├── workflows.yaml          # Workflow state machines
+│   └── yaml_loader.py          # Configuration loading
+├── phenix_ai/                  # Runtime entry points (in phenix/phenix/)
 │   ├── local_agent.py          # Local execution (same process)
 │   ├── remote_agent.py         # Server execution (REST API)
 │   ├── run_ai_agent.py         # Decision engine (graph execution)
 │   ├── run_ai_analysis.py      # Log analysis (standalone)
 │   ├── log_parsers.py          # Log metric extraction
-│   └── utilities.py            # Shared runtime utilities
-├── programs/                   # PHENIX program integration
+│   ├── utilities.py            # Shared runtime utilities
+│   ├── agent_interface.py      # BaseAgent ABC (decide_next_step interface)
+│   ├── install_ai_tools.csh    # C-shell installer for the AI tools
+│   ├── cohere_api_key.html     # Cohere API-key setup help page
+│   ├── google_api_key.html     # Google API-key setup help page
+│   ├── openai_api_key.html     # OpenAI API-key setup help page
+│   └── README                  # Package README
+├── programs/                   # PHENIX program integration (AI entry points, in phenix/phenix/)
 │   ├── ai_agent.py             # Main PHENIX entry point
 │   └── ai_analysis.py          # Log analysis entry point
 ├── analysis/                   # Log analysis and post-run analysis
@@ -2027,15 +2070,19 @@ improved_agent_v2/
 │   └── agent_session_analyzer.py # Session performance analysis
 ├── core/                       # LLM integration
 │   ├── llm.py                  # Provider abstraction (Google, OpenAI, etc.)
-│   └── types.py                # Core data types (AgentPlan, etc.)
+│   ├── types.py                # Core data types (AgentPlan, etc.)
+│   ├── _build_info.py          # Auto-generated build info
+│   └── _version.py             # Auto-generated version string
 ├── commands/                   # Command building framework
 │   └── base.py                 # Abstract base class for command builders
 ├── strategies/                 # Planning strategy framework
 │   └── base.py                 # Abstract base class for planning strategies
+├── examples/                   # Example scripts (package marker only)
 ├── rag/                        # RAG (Retrieval-Augmented Generation)
 │   ├── document_loader.py      # Document loading and chunking
 │   ├── retriever.py            # Vector DB retrieval with FlashRank reranking
-│   └── vector_store.py         # Chroma vector store creation
+│   ├── vector_store.py         # Chroma vector store creation
+│   └── _chroma_resilience.py   # Lazy chromadb import/probe (resilient optional dependency)
 ├── utils/                      # General utilities
 │   ├── query.py                # Documentation query interface
 │   ├── run_utils.py            # Log parsing and HTML output
@@ -2046,23 +2093,41 @@ improved_agent_v2/
 ├── run_build_db.py             # CLI: Build RAG documentation database
 ├── run_inspect_db.py           # CLI: Inspect RAG database contents
 ├── run_query_docs.py           # CLI: Query PHENIX documentation
-├── tst_langchain_tools.py      # Unit tests for external modules
-├── tests/                      # Test suites (~745+ tests)
-│   ├── run_all_tests.py        # Test runner (32 registered suites)
-│   ├── tst_utils.py           # Assert helpers (cctbx-style)
+├── findings/                   # Generated static-audit reports
+│   ├── phase_0_static_audit.yaml                 # Static audit
+│   ├── phase_1_contract_gaps.yaml                # Contract gaps
+│   ├── phase_2_path_divergences.yaml             # Path divergences
+│   ├── phase_3_roundtrip_failures.yaml           # Round-trip failures
+│   ├── phase_4_flag_mismatches.yaml              # Flag mismatches
+│   ├── phase_5_classification_disagreements.yaml # Classifier disagreements
+│   ├── phase_6_missing_inputs.yaml               # Missing inputs
+│   ├── phase_8_command_failures.yaml             # Command failures
+│   └── phase_9_llm_perturbation.yaml             # LLM perturbation
+├── tests/                      # Test suites (abbreviated; many tst_*.py)
+│   ├── run_all_tests.py        # Test runner (registers all suites)
+│   ├── tst_langchain_tools.py  # Legacy-module unit tests
+│   ├── tst_hardcoded_cleanup.py # Conformance guards
+│   ├── tst_utils.py            # Assert helpers (cctbx-style)
 │   └── scenarios/              # Dry-run test scenarios
 └── docs/                       # Documentation
-    ├── README.md               # This file
-    ├── OVERVIEW.md             # Technical overview
+    ├── OVERVIEW.md             # Technical overview (this file)
+    ├── ARCHITECTURE.md         # Component deep-dive
     ├── DEVELOPER_GUIDE.md      # How-to guides (adding programs, testing, safety)
     ├── USER_GUIDE.md           # User guide + directives reference
-    ├── reference/              # API and logic reference
-    │   ├── ARCHITECTURE.md     # Component deep-dive
-    │   └── API_REFERENCE.md    # V2 JSON API spec
-    ├── project/                # Design history and changelog
-    │   ├── CHANGELOG.md        # Version history
-    │   ├── THOUGHT_EXPERIMENT.md # Example workflow traces
-    │   └── TRANSPARENCY_LOGGING.md # Event system design
+    ├── CHANGELOG.md            # Version history
+    ├── CHANGELOG_ARCHIVE.md    # Archived older version history
+    ├── CCTBX_LLM_PROGRAMMING_GUIDELINES.md     # cctbx LLM-assisted dev guide
+    ├── AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md  # Agent-specific supplement
+    └── prompts/                # LLM workflow prompts & handoff templates
+        ├── HOW_TO_PROGRAM_WITH_AN_LLM.md       # Methodology guide
+        ├── WORKFLOW.md                         # Plan/Review/Execute workflow
+        ├── WORKFLOW_PROMPT.txt                 # Workflow-stage prompt
+        ├── PLAN_PROMPT.txt                     # Plan-stage prompt
+        ├── REVIEW.txt                          # Review-stage prompt
+        ├── CONTINUE_PROMPT.txt                 # Continuation prompt
+        ├── HANDOFF.json                        # Session handoff checkpoint
+        ├── CCTBX_LLM_PROGRAMMING_GUIDELINES.md     # (prompt copy)
+        └── AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md  # (prompt copy)
 ```
 
 ---

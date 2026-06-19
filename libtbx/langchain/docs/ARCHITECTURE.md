@@ -7974,8 +7974,6 @@ Note: `debug` is accepted as an alias for `verbose` (3 levels total).
 - `agent/graph_nodes.py` - Event emission (`_emit()` helper)
 - `agent/thinking_agent.py` - Expert assessment event emission (v113)
 
-See [TRANSPARENCY_LOGGING.md](../project/TRANSPARENCY_LOGGING.md) for full details.
-
 ---
 
 ## Systematic Testing Framework (v115.08)
