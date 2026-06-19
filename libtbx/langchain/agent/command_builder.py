@@ -230,18 +230,34 @@ class CommandContext:
       or workflow_state.get("experiment_type", "")
     )
 
-    # v119.H16: mtz_inspection carries the selected data MTZ's column
-    # structure; the auto_fill_obs_labels invariant uses it to inject the
-    # correct obs_labels= flag when the MTZ has multiple suitable arrays.
+    # v119.H16: Inspect the selected data MTZ for column structure.
+    # When the MTZ contains multiple suitable observation arrays, the
+    # auto_fill_obs_labels invariant uses this info to inject the
+    # correct obs_labels= flag.  A precomputed value cached on `state`
+    # (same-request memoization) takes precedence; otherwise we run
+    # cctbx inspection lazily from the selected data MTZ.
+    # All failure paths return None (no inspection → no injection).
     #
-    # v120.2 parity (server == local): from_state takes mtz_inspection ONLY
-    # from `state` (precomputed up front and carried across in session_info);
-    # it does NOT read the filesystem here.  A client-only inspect_mtz() read
-    # would make the local build diverge from the server build, which is not
-    # allowed.  Absent a precomputed value, mtz_inspection stays None (no
-    # inspection → no injection) and the generate guard falls back to its
-    # other session_info-borne sources.
+    # Note: mtz_inspection is SERVER-COMPUTED data, derived here from
+    # the selected data MTZ.  It is intentionally NOT read from the
+    # client session_info dict and is therefore NOT a registered field
+    # in the client/server contract (agent/contract.py).  The only
+    # cache source is `state` (set by a prior call within the same
+    # request); absent that, we compute it fresh below.
     mtz_inspection = state.get("mtz_inspection")
+    if mtz_inspection is None:
+      try:
+        data_mtz = (session_info.get("best_files", {})
+                    .get("data_mtz"))
+        if data_mtz:
+          try:
+            from libtbx.langchain.agent.mtz_inspector \
+              import inspect_mtz
+          except ImportError:
+            from agent.mtz_inspector import inspect_mtz
+          mtz_inspection = inspect_mtz(data_mtz)
+      except Exception:
+        mtz_inspection = None
 
     return cls(
       cycle_number=state.get("cycle_number", 1),
@@ -525,6 +541,34 @@ class CommandBuilder:
     if files is None:
       self._log(context, "BUILD: Failed to select required files")
       return None
+
+    # 1.5 R-free lock reconciliation (v120.3, F2).
+    # If an R-free MTZ is locked and available but a CONFIRMED-FLAGLESS different
+    # file landed in the data slot (via LLM hint / file_preference / category),
+    # prefer the locked flag-carrying file to preserve R-free continuity.  Runs
+    # BEFORE _apply_invariants so the generate decision (F1, below) sees the
+    # reconciled file.  Fires ONLY on positive evidence the selected file is
+    # flagless (mtz_rfree_map says False), so it never overrides a flagged
+    # selection.  abspath (not basename) guards "same file" — two different
+    # files can share a basename across cycle dirs.  The probe is normalized to
+    # the "data_mtz" key because _input_mtz_rfree_state only reads data_mtz/
+    # hkl_file (a raw "data" key would read as undetermined).
+    if (program == "phenix.refine" and context.rfree_mtz
+            and self._file_is_available(context.rfree_mtz)):
+      _lock_abs = os.path.abspath(str(context.rfree_mtz))
+      for _slot in ("data_mtz", "hkl_file", "data"):
+        _sel = files.get(_slot)
+        if not _sel or isinstance(_sel, (list, tuple)):
+          continue
+        if os.path.abspath(str(_sel)) == _lock_abs:
+          continue
+        if self._input_mtz_rfree_state({"data_mtz": _sel}, context) is False:
+          files[_slot] = context.rfree_mtz
+          self._record_selection(_slot, context.rfree_mtz,
+                                 "rfree_lock_reconcile")
+          self._log(context,
+              "BUILD: reconciled %s -> locked R-free MTZ (was flagless %s)"
+              % (_slot, os.path.basename(str(_sel))))
 
     # 2. Build strategy (and track sources)
     strategy = self._build_strategy(program, context)
@@ -2505,14 +2549,27 @@ class CommandBuilder:
       #     what prevents the overwrite.
       #
       # rfree_mtz locked short-circuits the probe (avoids a per-cycle inspection).
-      if context.rfree_mtz:
+      # F1 (v120.3): base the decision on the ACTUALLY-SELECTED data file, not on
+      # whether a lock merely exists.  The old "lock short-circuits the probe"
+      # optimization stripped generate for a flagless file selected OVER the lock
+      # (file_preference overriding the lock — beta_blip AIAgent_55 refine_003).
+      # In the live refine path F2 (above) reconciles such a flagless slot back to
+      # the flagged lock before we get here, so this normally sees the flag file
+      # and strips.  F1 is the per-file-correct decision and defense-in-depth: for
+      # any path where a flagless file still reaches the slot it ADDS generate
+      # instead of aborting.  mtz_rfree_map makes the probe a free dict lookup;
+      # the lock is consulted only as the undetermined-case fallback below.
+      rfree_state = self._input_mtz_rfree_state(files, context)
+      if rfree_state is None and context.rfree_mtz:
+        # Undetermined (old client / no per-file map) AND a lock exists: keep the
+        # historical safe assumption that the locked file carries flags.
         rfree_state = True
-        _why = "rfree_mtz locked: %s" % os.path.basename(str(context.rfree_mtz))
+        _why = ("rfree_mtz locked (no per-file map): %s"
+                % os.path.basename(str(context.rfree_mtz)))
+      elif rfree_state is True:
+        _why = "selected data MTZ has R-free flags"
       else:
-        rfree_state = self._input_mtz_rfree_state(files, context)
-        _why = ("input data MTZ already has R-free flags"
-                if rfree_state is True
-                else "R-free flags present in selected data MTZ")
+        _why = "selected data MTZ confirmed/assumed flagless"
 
       if rfree_state is True:
         # Positive evidence flags already exist (locked, or detected in the

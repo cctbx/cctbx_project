@@ -143,7 +143,7 @@ errors:
   # here; the builder does the right thing on the rebuilt command.
   # ---------------------------------------------------------------------------
   rfree_flags_missing:
-    description: "Refinement data has no R-free flags; retry — builder re-selects the locked R-free MTZ if one is locked, else generates a new test set"
+    description: "Refinement data has no R-free flags; retry with locked R-free MTZ"
     max_retries: 1
 
     detection_patterns:
@@ -193,6 +193,34 @@ errors:
       - "map_file"
       - "input_map_file"
       - "input_files.map_file"
+
+  # HL coeffs present but no PHIB in the autobuild data MTZ
+  # -----------------------------------------------------------------
+  # phenix.autobuild reads the data= MTZ column labels; if it finds
+  # Hendrickson-Lattman coeffs (HLA-HLD) but no PHIB, and use_hl_if_present
+  # defaults to True, it aborts:
+  #   -->Please either specify PHIB and HL coeffs or neither or else
+  #      specify 'use_hl_if_present=False' to ignore HL coeffs in your file.
+  # Seen with AutoSol refined-output MTZs in SAD workflows, where phases come
+  # from map_file= and the HL columns in the data file are vestigial.
+  #
+  # Recovery: retry with use_hl_if_present=False (autobuild's own remedy). The
+  # flag is keyed to the affected data MTZ (extracted from the log) so
+  # command_builder merges it when that file is reselected on retry — modelled
+  # on the file-keyed obs_labels recovery, NOT a global flag.
+  #
+  # Detection: the single specific phrase only.  The "use_hl_if_present=False"
+  # advice text is deliberately NOT a pattern (it would false-positive on the
+  # advice line / help text under the OR-matched detection).
+  autobuild_hl_without_phib:
+    description: "Autobuild data MTZ has HL coeffs but no PHIB; ignore HL on retry"
+    detection_patterns:
+      - "specify PHIB and HL coeffs or neither"
+    resolution: add_parameters
+    add_parameters:
+      use_hl_if_present: "False"
+    retry_program: phenix.autobuild
+    max_retries: 1
 
 
 # =============================================================================

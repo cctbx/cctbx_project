@@ -310,6 +310,28 @@ class ErrorAnalyzer:
         if error_def.get("resolution") == "force_retry":
             return {"resolution": "force_retry"}
 
+        # add_parameters resolutions (e.g. autobuild_hl_without_phib) add a fixed
+        # flag (use_hl_if_present=False) on retry.  The flag is FILE-KEYED, so we
+        # must extract the offending data MTZ from the log here — without it the
+        # recovery keys to "" , matches no selected file, and the flag is
+        # silently dropped.
+        #
+        # Use the LAST match, not the first: autobuild prints "Getting column
+        # labels from <X> for input data file" for several MTZs earlier in the
+        # same log buffer (e.g. an AutoSol internal data file), and the file that
+        # actually triggered THIS abort is the most recent one before it.  A
+        # first-match grab keys the recovery to the wrong file -> the flag never
+        # reaches the reselected data MTZ -> silent no-op.  Fall back to the
+        # "Using ... for refinement" line (also last-match).
+        if error_def.get("resolution") == "add_parameters":
+            ms = re.findall(
+                r"Getting column labels from (\S+\.mtz) for input data file",
+                log_text)
+            if not ms:
+                ms = re.findall(r"Using (\S+\.mtz) for refinement", log_text)
+            return {"resolution": "add_parameters",
+                    "affected_file": ms[-1] if ms else ""}
+
         return None
 
     def _extract_ambiguous_labels_info(self, log_text: str,
@@ -420,6 +442,13 @@ class ErrorAnalyzer:
         if error_def.get("resolution") == "force_retry":
             return self._resolve_force_retry(error_type, error_def, program)
 
+        # add_parameters (e.g. autobuild_hl_without_phib): retry with a fixed
+        # flag added, keyed to the affected data MTZ so command_builder merges it
+        # when that file is reselected.  Passes error_info for the affected_file.
+        if error_def.get("resolution") == "add_parameters":
+            return self._resolve_add_parameters(
+                error_type, error_def, program, error_info)
+
         return None
 
     def _resolve_strip_parameter(self, error_type: str,
@@ -513,6 +542,37 @@ class ErrorAnalyzer:
             reason=("Forcing retry of %s; builder re-selects files "
                     "(incl. locked R-free MTZ): %s"
                     % (retry_program, description)),
+            retry_program=retry_program,
+            selected_choice="",
+        )
+
+    def _resolve_add_parameters(self, error_type: str, error_def: dict,
+                                program: str,
+                                error_info: Dict[str, Any]) -> Optional[ErrorRecovery]:
+        """Add fixed parameters on retry (e.g. use_hl_if_present=False).
+
+        The parameters in the YAML ``add_parameters`` map are returned as a
+        FILE-KEYED recovery (keyed to ``error_info['affected_file']``) so
+        command_builder merges them — and the post-assembly injection appends
+        them to the command string — when that file is reselected on retry.
+        Modelled on the file-keyed obs_labels recovery; NOT a global flag.
+
+        If no affected_file could be extracted, decline recovery (return None)
+        rather than fire a recovery whose flag would key to "" and silently
+        never reach the command.
+        """
+        add = dict(error_def.get("add_parameters", {}))
+        affected_file = error_info.get("affected_file", "")
+        retry_program = error_def.get("retry_program", program)
+        if not affected_file or not add:
+            return None
+        return ErrorRecovery(
+            error_type=error_type,
+            affected_file=affected_file,
+            flags=add,
+            strip_flags=[],
+            reason=("Adding %s on retry of %s (%s)"
+                    % (add, retry_program, error_type)),
             retry_program=retry_program,
             selected_choice="",
         )

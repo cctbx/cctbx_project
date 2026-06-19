@@ -2351,6 +2351,26 @@ def main():
         print(f"\u26a0\ufe0f  Could not import tst_plan_lead_program_offer: {e}")
         results.append(("plan lead program offer", "tst_plan_lead_program_offer", False, 0))
 
+    # --- autobuild HL-without-PHIB recovery (use_hl_if_present=False retry) ---
+    try:
+        from tests.tst_autobuild_hl_recovery import run_all_tests as run_autobuild_hl_tests
+        success, elapsed = run_test_module(
+            "tst_autobuild_hl_recovery", run_autobuild_hl_tests, args.verbose)
+        results.append(("autobuild HL recovery", "tst_autobuild_hl_recovery", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_autobuild_hl_recovery: {e}")
+        results.append(("autobuild HL recovery", "tst_autobuild_hl_recovery", False, 0))
+
+    # --- R-free lock reconciliation + selected-file generate decision (F1+F2) ---
+    try:
+        from tests.tst_rfree_lock_reconciliation import run_all_tests as run_rfree_lock_reconcile_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_lock_reconciliation", run_rfree_lock_reconcile_tests, args.verbose)
+        results.append(("R-free lock reconciliation", "tst_rfree_lock_reconciliation", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_rfree_lock_reconciliation: {e}")
+        results.append(("R-free lock reconciliation", "tst_rfree_lock_reconciliation", False, 0))
+
     # --- Summary ---
     total_elapsed = time.time() - total_start
 
