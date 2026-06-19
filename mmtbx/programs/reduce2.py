@@ -34,7 +34,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.15.0"
+version = "3.0.0"
 
 master_phil_str = '''
 approach = *add remove optimize
@@ -1300,6 +1300,24 @@ NOTES:
       if len(warnings) > 0:
         print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
+
+      # Delete any hydrogens that we've been asked to delete, adding this to the info.
+      hToDelete = opt.getHydrogensToDelete()
+      if len(hToDelete) > 0:
+        outString += ' Deleting hydrogens requested for deletion by optimization:\n'
+        for a in hToDelete:
+          aName = a.name.strip().upper()
+          chainID = a.parent().parent().parent().id
+          resName = a.parent().resname.strip().upper()
+          resID = str(a.parent().parent().resseq_as_int())
+          altLoc = a.parent().altloc
+          # Don't print the code if it is a space (blank).
+          insertionCode = a.parent().parent().icode.strip()
+          resNameAndID = "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
+          outString += "  Deleting {} {}\n".format(resNameAndID, aName)
+
+          a.parent().remove_atom(a)
+
       if self.params.approach == 'add':
         outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
       outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'

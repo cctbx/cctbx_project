@@ -148,6 +148,17 @@ class FlipMoverState(object):
   def __repr__(self):
       return "Optimizers.FlipMoverState({})".format(str(self))
 
+class FlippedMoverInfo(object):
+  def __init__(self, alt, baseAtom):
+    self.alt = alt              # String altId of the conformation that is flipped
+    self.baseAtom = baseAtom    # Atom that is the base of the flip, which is the N for
+                                # an amide flip and the NE for a histidine flip
+
+  def __str__(self):
+    return "alt '{}', base atom {}".format(self.alt.strip().upper(), int(self.baseAtom.i_seq))
+  def __repr__(self):
+      return "Optimizers.FlippedMoverInfo({})".format(str(self))
+
 ##################################################################################
 # Optimizer, which wraps the OptimizerC class to do the optimization:
 
@@ -249,6 +260,8 @@ class Optimizer(object):
     self._waterBCutoff = 40.0   # @todo Make this a parameter, -WaterBcutoff param in reduce
     self._numCalculated = 0
     self._numCached = 0
+    self._amideFlipsPerformed = []  # List of amide flips performed, whether by Mover or locking in place.
+    self._hisFlipsPerformed = []    # List of histidine flips performed, whether by Mover or locking in place.
 
     ################################################################################
     # Get the Cartesian positions of all of the atoms in the entire model and find
@@ -492,7 +505,7 @@ class Optimizer(object):
         # NOTE: We must do this after fixupExplicitDonors() so that the Hydrogens are properly
         # marked as donors.
         deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
-                           addFlipMovers)
+                           addFlipMovers, alt)
         self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
         self._infoString += _ReportTiming(self._verbosity, "place movers")
@@ -722,19 +735,18 @@ class Optimizer(object):
         self._numCalculated += optC.GetNumCalculatedAtoms()
         self._numCached += optC.GetNumCachedAtoms()
 
-      ################################################################################
-      # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
-      # both in the initial setup and determined during optimization.  Phantom Hydrogens
-      # on waters do not need to be adjusted because they were never added to the
-      # structure.
-      # We only do this after the last-checked alternate configuration for a given model.
-      self._infoString += _VerboseCheck(self._verbosity, 1,"Deleting Hydrogens tagged by Histidine Movers\n")
-      for a in self._deleteMes:
-        aName = a.name.strip().upper()
-        resNameAndID = _ResNameAndID(a)
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Deleting {} {}\n".format(resNameAndID, aName))
-        a.parent().remove_atom(a)
-      self._infoString += _ReportTiming(self._verbosity, "delete Hydrogens")
+        #################################################################################
+        # Add any flipped amides and histidines to the lists of flipped amides and histidines.
+        for m in self._movers:
+          coarse_loc = optC.GetCoarseLocation(m)
+
+          if isinstance(m, Movers.MoverAmideFlip) and coarse_loc == 1:
+            nitrogen = m.CoarsePositions().atoms[0]
+            self._amideFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
+
+          elif isinstance(m, Movers.MoverHisFlip) and coarse_loc == 4:
+            nitrogen = m.CoarsePositions().atoms[0]
+            self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
@@ -785,6 +797,33 @@ class Optimizer(object):
     ret = self._atomDump
     self._atomDump = ""
     return ret
+
+  def getHydrogensToDelete(self):
+    """
+      Returns a list of the Hydrogens that were marked for deletion during the processing.
+      The caller should delete these form the optimized structure to produce a model that
+      has the best contacts and fewest clashes.
+      :return: a list of the Hydrogens that were marked for deletion during the processing.
+    """
+    return list(self._deleteMes)
+
+  def getFlippedAmides(self):
+    """
+      Returns a list of the Movers that are amide flips.  The caller may want to use this to report
+      on the flips that were done.  This includes both "locked down" Movers and those
+      that were chosen to be flipped based on their scores.
+      :return: a list with a FlippedMoverInfo from each Mover that is an amide flip.
+    """
+    return list(self._amideFlipsPerformed)
+
+  def getFlippedHistidines(self):
+    """
+      Returns a list of the Movers that are histidine flips.  The caller may want to use this to report
+      on the flips that were done.  This includes both "locked down" Movers and those
+      that were chosen to be flipped based on their scores.
+      :return: a list with a FlippedMoverInfo from each Mover that is a histidine flip.
+    """
+    return list(self._hisFlipsPerformed)
 
   def _setMoverState(self, positionReturn, index):
     """
@@ -844,7 +883,7 @@ class Optimizer(object):
   # Placement
 
   def _PlaceMovers(self, atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters,
-                    addFlipMovers):
+                    addFlipMovers, alt):
     """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
     :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
     Movers present in the structure already.
@@ -858,6 +897,8 @@ class Optimizer(object):
     coefficients for hydrogens that have associated dihedral angles.  This can be
     obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
     :param addFlipMovers: Do we add flip Movers along with other types?
+    :param alt: The alternate conformation identifier for the conformer being processed.  This is
+    used for our logging purposes when we are recording flipped movers.
     :return: List of atoms that should be unconditionally marked for deletion as a result
     of the analysis done during placement.
     """
@@ -982,6 +1023,9 @@ class Optimizer(object):
               cp = flip.CoarsePositions()
               if s.flipped:
                 index = 1
+                # Add to the list of flipped amide movers.
+                # We're not appending it to the list of Movers, so it won't be counted later.
+                self._amideFlipsPerformed.append(FlippedMoverInfo(alt, a))
               else:
                 index = 0
               self._setMoverState(cp, index)
@@ -1055,6 +1099,11 @@ class Optimizer(object):
               if i < len(fixUp.extraInfos):
                 self._extraAtomInfo.setMappingFor(a, fixUp.extraInfos[i])
 
+            # If the bonded configuration is the flipped one, then we add it to the list of
+            # flipped Histidine Movers so that we can report on it later.
+            if bondedConfig == 4:
+              self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
+
             # See if we should remove the Hydrogen from each of the two potentially-bonded
             # Nitrogens and make each an acceptor if we do remove its Hydrogen.  The two atoms
             # are NE2 (0th atom with its Hydrogen at atom 1) and ND1 (4th atom with
@@ -1095,6 +1144,9 @@ class Optimizer(object):
             if s is not None:
               if s.flipped:
                 enabledFlips = 2
+                # Record that we have flipped this Histidine so that we can report on it later.
+                # We're not appending it to the list of Movers, so it won't be counted later.
+                self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
               else:
                 enabledFlips = 1
               hist = Movers.MoverHisFlip(a, bondedNeighborLists, self._extraAtomInfo, self._nonFlipPreference,
