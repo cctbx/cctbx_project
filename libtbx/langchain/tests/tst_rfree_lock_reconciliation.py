@@ -59,7 +59,12 @@ except ImportError:
 
 BETA = "/data/beta-blip/beta_blip_P3221.mtz"            # original, flagless
 LOCK = "/run/sub_03_refine/refine_001_data.mtz"         # locked, has flags
-RMAP = {"beta_blip_P3221.mtz": False, "refine_001_data.mtz": True}
+SCA  = "/data/p9-sad/p9.sca"                            # scalepack: UNVERIFIABLE
+OFLAG = "/run/other/other_flagged.mtz"                  # a DIFFERENT flagged MTZ
+# Note: SCA is deliberately absent from the map -> probe returns None (the
+# p9-sad case: inspect_mtz is ccp4_mtz-only, so scalepack is never verdicted).
+RMAP = {"beta_blip_P3221.mtz": False, "refine_001_data.mtz": True,
+        "other_flagged.mtz": True}
 
 
 class _Ctx(object):
@@ -222,6 +227,84 @@ def test_build_invariant_no_flagless_without_generate():
                    and "refine_001_data.mtz" not in cmd)
   assert_false(flagless_data and "r_free_flags.generate=True" not in cmd,
                "emitted a flagless data MTZ with no generate: %s" % cmd)
+
+
+# ---------------------------------------------------------------------
+# v120.4: widened gate (is not True) — undetermined slot reconciles too
+# ---------------------------------------------------------------------
+
+def test_probe_scalepack_is_none():
+  """A scalepack (.sca) basename absent from the map probes None (not False, no
+  exception) — the load-bearing assumption of the widened gate (p9-sad)."""
+  probe = _bind_probe()
+  assert_true(probe({"data_mtz": SCA}, _Ctx(mtz_rfree_map=RMAP)) is None,
+              "scalepack input absent from the map must probe None")
+
+
+def test_build_f2_reconciles_undetermined_to_lock():
+  """v120.4: an UNVERIFIABLE data slot (probe None, e.g. scalepack p9.sca) is
+  reconciled to the locked flagged MTZ.  Asserts the reconcile log fired and
+  names the file 'unverified' (not 'flagless')."""
+  CB, CC = _load_builder()
+  if CB is None:
+    return
+  try:
+    cmd, logs = _build_refine(CB, CC, rfree_mtz=LOCK,
+                              available=[SCA, LOCK], pref_data=SCA, rmap=RMAP)
+  except Exception as exc:
+    print("    SKIP (build raised: %s)" % exc)
+    return
+  if not cmd:
+    print("    SKIP (build returned None — align harness with tst_command_builder)")
+    return
+  assert_true(any("reconciled" in m and "unverified" in m for m in logs),
+              "expected an 'unverified' reconcile log; logs=%r" % logs)
+  assert_true("refine_001_data.mtz" in cmd,
+              "refine should use the locked flag MTZ, got: %s" % cmd)
+  assert_false("p9.sca" in cmd,
+               "the unverifiable scalepack input must not be the refine data: %s" % cmd)
+
+
+def test_build_f2_keeps_a_different_flagged_file():
+  """A DIFFERENT file that probes True (confirmed flagged) is NOT overridden — the
+  widened gate keeps genuinely flagged alternatives."""
+  CB, CC = _load_builder()
+  if CB is None:
+    return
+  try:
+    cmd, logs = _build_refine(CB, CC, rfree_mtz=LOCK,
+                              available=[OFLAG, LOCK], pref_data=OFLAG, rmap=RMAP)
+  except Exception as exc:
+    print("    SKIP (build raised: %s)" % exc)
+    return
+  if not cmd:
+    print("    SKIP (build returned None — align harness with tst_command_builder)")
+    return
+  assert_false(any("reconciled" in m for m in logs),
+               "a confirmed-flagged file must NOT be reconciled; logs=%r" % logs)
+  assert_true("other_flagged.mtz" in cmd,
+              "the flagged preference should be kept, got: %s" % cmd)
+
+
+def test_build_f2_same_file_as_lock_is_noop():
+  """Risk A: when the data slot resolves to the lock itself, the abspath guard
+  short-circuits before the probe — no spurious reconcile, no double-listing."""
+  CB, CC = _load_builder()
+  if CB is None:
+    return
+  try:
+    cmd, logs = _build_refine(CB, CC, rfree_mtz=LOCK,
+                              available=[LOCK], pref_data=LOCK, rmap=RMAP)
+  except Exception as exc:
+    print("    SKIP (build raised: %s)" % exc)
+    return
+  if not cmd:
+    print("    SKIP (build returned None — align harness with tst_command_builder)")
+    return
+  assert_false(any("reconciled" in m for m in logs),
+               "the lock must not be reconciled to itself; logs=%r" % logs)
+  assert_true("refine_001_data.mtz" in cmd,
+              "refine should run on the locked MTZ, got: %s" % cmd)
 
 
 # ---------------------------------------------------------------------
