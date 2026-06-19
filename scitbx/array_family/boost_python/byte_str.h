@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_BYTE_STR_H
 
 #include <boost/python/str.hpp>
+#include <boost/python/handle.hpp>
 #include <scitbx/array_family/shared.h>
 
 #if PY_MAJOR_VERSION >= 3
@@ -67,15 +68,21 @@ namespace scitbx { namespace af { namespace boost_python {
   {
 #ifdef IS_PY3K
     PyObject* o(byte_str.ptr());
-    const char* str_ptr;
-    if (PyUnicode_Check(o))
-      o = PyUnicode_AsUTF8String(o);
-    str_ptr = PyBytes_AsString(o);
+    // A unicode argument is re-encoded to UTF-8 bytes; keep that temporary
+    // alive (and released) with handle<>. len_byte_str must be the size of
+    // the byte buffer str_ptr points at, not len(byte_str): for non-ASCII
+    // unicode the latter is the code-point count and would truncate the array.
+    boost::python::handle<> utf8;
+    if (PyUnicode_Check(o)) {
+      utf8 = boost::python::handle<>(PyUnicode_AsUTF8String(o));
+      o = utf8.get();
+    }
+    const char* str_ptr = PyBytes_AsString(o);
+    boost::python::ssize_t len_byte_str = PyBytes_GET_SIZE(o);
 #else
     const char* str_ptr = PyString_AsString(byte_str.ptr());
+    boost::python::ssize_t len_byte_str = boost::python::len(byte_str);
 #endif
-    boost::python::ssize_t
-      len_byte_str = boost::python::len(byte_str);
     boost::python::ssize_t
       shared_array_size = len_byte_str / sizeof(ElementType);
     SCITBX_ASSERT(shared_array_size * sizeof(ElementType) == len_byte_str);
