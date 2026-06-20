@@ -237,18 +237,37 @@ Usage examples:
       for filename in [
         "geostd_list.cif",
         "mon_lib_list.cif",
+        'chain_link_rna2p.cif',
+        'chain_link_rna3p.cif',
+        'mod_rna2p.cif',
+        'mod_rna2p_pyr.cif',
+        'mod_rna2p_pur.cif',
+        'mod_rna3p.cif',
+        'mod_rna3p_pyr.cif',
+        'mod_rna3p_pur.cif',
         ]:
         if filename=="geostd_list.cif":
           cif_list = geostd_utils.get_cif_list(filename)
           geostd_keys=list(cif_list.keys())
-        else:
+        elif filename=='mon_lib_list.cif':
           cif_list = geostd_utils.get_cif_list(filename)
           monlib_keys=list(cif_list.keys())
+        else:
+          d='rna_dna'
+          import iotbx.cif
+          cif_list={}
+          filename=os.path.join(d, filename)
+          if os.path.exists(filename):
+            cif = iotbx.cif.reader(filename, strict=False).model()
+            cif_list.update(cif)
         tmp.update(cif_list)
         hits=[]
         for key in tmp.keys():
           if key.upper().find(code.upper())>-1:
             hits.append(key)
+          if key.upper()==code.upper():
+            hits=[key]
+            break
       if len(hits)==0:
         print(f'\nNo hits found for "{code}".', file=self.logger)
         outl='  '
