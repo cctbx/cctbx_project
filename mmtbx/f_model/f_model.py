@@ -2380,13 +2380,17 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def twinned(self):
     return self.arrays.core_twin is not None
 
-  def vector_diff_map(self, fo_phase_source):
+  def vector_diff_map(self, fo_phase_source, isotropize):
     mch = self.map_calculation_helper()
     fo = self.f_obs().phase_transfer(phase_source = fo_phase_source)
     fo = fo.array(data = fo.data()*mch.fom)
     fc = self.f_model()
     fc = fc.array(data = fc.data()*mch.alpha.data())
-    return fo.array(data = fo.data() - fc.data())
+    diff = fo.data() - fc.data()
+    if isotropize:
+      scale = 1. / (self.k_isotropic()*self.k_anisotropic())
+      diff = diff * scale
+    return fo.array(data = diff)
 
   def map_calculation_helper(self,
                              free_reflections_per_bin = 100,
