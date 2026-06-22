@@ -234,6 +234,10 @@ class ConversationStorage:
       raise Sorry("Subagent record not found: %s" % sub_id)
     return _subagent_from_dict(_read_json(path))
 
+  def conv_dir(self, conv_id):
+    """Public path to a conversation's directory (creates nothing)."""
+    return self._conv_dir(conv_id)
+
   # ---- internal ------------------------------------------------------------
 
   def _ensure_root(self):
@@ -391,6 +395,7 @@ def _meta_to_dict(m):
     "archived": m.archived,
     "pinned": m.pinned,
     "summary": m.summary,
+    "agent_session_id": m.agent_session_id,
     "schema_version": m.schema_version,
   }
 
@@ -407,6 +412,7 @@ def _meta_from_dict(d):
     archived=d.get("archived", False),
     pinned=d.get("pinned", False),
     summary=d.get("summary", ""),
+    agent_session_id=d.get("agent_session_id"),
     schema_version=d.get("schema_version", _SCHEMA_VERSION),
   )
 

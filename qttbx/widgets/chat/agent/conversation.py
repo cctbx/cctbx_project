@@ -108,6 +108,7 @@ class ConversationMeta:
   archived: bool = False
   pinned: bool = False
   summary: str = ""
+  agent_session_id: str = None       # session-based backends (claude_code) only
   schema_version: str = "1.0"
 
 
