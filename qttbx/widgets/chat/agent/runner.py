@@ -18,8 +18,8 @@ from qttbx.widgets.chat.agent.errors import AgentError, CancelToken
 from qttbx.widgets.chat.agent.events import (
   AskUserQuestionRequested, ImageEmitted, ServerToolResult,
   ServerToolUsed, TextDelta, Thinking,
-  TokenUsage as TokenUsageEvent, ToolResultsBatched, ToolUseRequested,
-  TurnDone)
+  TokenUsage as TokenUsageEvent, ToolResultObserved, ToolResultsBatched,
+  ToolUseRequested, TurnDone)
 from qttbx.widgets.chat.agent.tools import (
   ToolApprovalRequest, _Cancelled)
 
@@ -103,6 +103,7 @@ class QtAgentRunner(QtCore.QObject):
   - ``tool_use_requested(object)`` — ``ToolUseRequested`` or
     ``ToolApprovalRequest``
   - ``tool_results_batched(object)`` — ``ToolResultsBatched``
+  - ``tool_result_observed(object)`` — ``ToolResultObserved``
   - ``server_tool_used(object)`` — ``ServerToolUsed``
   - ``server_tool_result(object)`` — ``ServerToolResult``
   - ``image_emitted(object)``
@@ -121,6 +122,7 @@ class QtAgentRunner(QtCore.QObject):
   thinking_delta = QtCore.Signal(str)
   tool_use_requested = QtCore.Signal(object)
   tool_results_batched = QtCore.Signal(object)
+  tool_result_observed = QtCore.Signal(object)
   server_tool_used = QtCore.Signal(object)
   server_tool_result = QtCore.Signal(object)
   image_emitted = QtCore.Signal(object)
@@ -280,6 +282,8 @@ class QtAgentRunner(QtCore.QObject):
       self.tool_use_requested.emit(ev)
     elif isinstance(ev, ToolResultsBatched):
       self.tool_results_batched.emit(ev)
+    elif isinstance(ev, ToolResultObserved):
+      self.tool_result_observed.emit(ev)
     elif isinstance(ev, ServerToolUsed):
       self.server_tool_used.emit(ev)
     elif isinstance(ev, ServerToolResult):

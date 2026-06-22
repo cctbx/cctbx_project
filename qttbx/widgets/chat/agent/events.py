@@ -101,6 +101,26 @@ class ToolResultsBatched(AgentEvent):
 
 
 @dataclass
+class ToolResultObserved(AgentEvent):
+  """A tool result observed from an agent that runs its own tool loop.
+
+  The Claude Code backend dispatches MCP tools inside the SDK subprocess, so
+  the ``ToolResultsBatched`` path (which the session emits only for tools it
+  dispatches itself) never fires for it. The backend instead surfaces one of
+  these per in-subprocess tool result, carrying ``tool_use_id`` + ``content``,
+  so a client can capture the result. ``name``/``input`` are the originating
+  tool call, resolved by the agent (it sees the tool_use before the result, in
+  order) so the client need not correlate against the conversation -- the
+  current turn's tool_use is not yet persisted when this fires. Surfaced for
+  client-side capture only -- not persisted to the transcript.
+  """
+  tool_use_id: str = ""
+  content: object = None
+  name: str = ""
+  input: dict = field(default_factory=dict)
+
+
+@dataclass
 class AskUserQuestionRequested(AgentEvent):
   """The agent needs the user to answer one or more multiple-choice questions.
 
