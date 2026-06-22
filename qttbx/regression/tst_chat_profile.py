@@ -94,6 +94,101 @@ def exercise_based_on_cycle_detected():
     shutil.rmtree(tmp)
 
 
+def exercise_load_file_from_explicit_path():
+  """load_file reads a profile from an explicit path, not by name."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "ext", {"name": "ext", "model": "m"})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load_file(os.path.join(tmp, "ext.json"))
+    assert p.name == "ext"
+    assert p.model == "m"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_load_file_based_on_sibling_wins_over_builtin():
+  """A file's based_on resolves a sibling in the file's OWN directory, and that
+  sibling takes PRECEDENCE over a same-named profile in a configured dir.
+
+  Both dirs hold a profile named "base" with different values, so only search
+  priority decides the outcome -- this locks in 'extra dir searched first',
+  catching a regression that appended instead of prepended (or dropped it)."""
+  bundle = tempfile.mkdtemp()
+  builtin = tempfile.mkdtemp()
+  try:
+    _write_profile(builtin, "base", {"name": "base", "model": "m",
+                                     "tool_policy_default": "ask"})
+    _write_profile(bundle, "base", {"name": "base", "model": "m",
+                                    "tool_policy_default": "allow"})
+    _write_profile(bundle, "ext", {"name": "ext", "based_on": "base"})
+    loader = ProfileLoader(builtin_dir=Path(builtin), log=null_out())
+    p = loader.load_file(os.path.join(bundle, "ext.json"))
+    assert p.name == "ext"
+    # The SIBLING base (allow) must win over the builtin base (ask).
+    assert p.tool_policy_default == "allow", p.tool_policy_default
+  finally:
+    shutil.rmtree(bundle)
+    shutil.rmtree(builtin)
+
+
+def exercise_load_file_does_not_mutate_loader_search_dirs():
+  """load_file is stateless: the external file's directory is scoped to that
+  call and does not leak into a later load() on the same loader instance."""
+  bundle = tempfile.mkdtemp()
+  builtin = tempfile.mkdtemp()
+  try:
+    _write_profile(bundle, "leak", {"name": "leak", "model": "m"})
+    _write_profile(bundle, "ext", {"name": "ext", "model": "m"})
+    _write_profile(builtin, "real", {"name": "real", "model": "m"})
+    loader = ProfileLoader(builtin_dir=Path(builtin), log=null_out())
+    loader.load_file(os.path.join(bundle, "ext.json"))   # bundle scoped to here
+    # A later load() must NOT resolve names from the bundle dir.
+    try:
+      loader.load("leak")
+    except Sorry as e:
+      assert "not found" in str(e).lower(), str(e)
+    else:
+      raise Exception_expected
+    # ... and a genuinely configured (builtin) profile still loads fine.
+    assert loader.load("real").name == "real"
+  finally:
+    shutil.rmtree(bundle)
+    shutil.rmtree(builtin)
+
+
+def exercise_load_file_based_on_falls_through_to_builtin():
+  """When the parent is not a sibling, based_on still resolves against the
+  configured search dirs (so an external file can inherit from a builtin)."""
+  bundle = tempfile.mkdtemp()
+  builtin = tempfile.mkdtemp()
+  try:
+    _write_profile(builtin, "base", {"name": "base", "model": "m",
+                                     "max_tokens": 4096})
+    _write_profile(bundle, "ext", {"name": "ext", "based_on": "base"})
+    loader = ProfileLoader(builtin_dir=Path(builtin), log=null_out())
+    p = loader.load_file(os.path.join(bundle, "ext.json"))
+    assert p.max_tokens == 4096   # inherited from the builtin parent
+  finally:
+    shutil.rmtree(bundle)
+    shutil.rmtree(builtin)
+
+
+def exercise_load_file_missing_raises():
+  """load_file on a path that is not a file raises a clear Sorry."""
+  tmp = tempfile.mkdtemp()
+  try:
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    try:
+      loader.load_file(os.path.join(tmp, "nope.json"))
+    except Sorry as e:
+      assert "not found" in str(e).lower(), str(e)
+    else:
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_variable_expansion_env():
   tmp = tempfile.mkdtemp()
   saved = os.environ.get("PHENIX_TEST_VAR")
@@ -430,6 +525,11 @@ def exercise():
   exercise_missing_required_field_raises()
   exercise_based_on_inheritance()
   exercise_based_on_cycle_detected()
+  exercise_load_file_from_explicit_path()
+  exercise_load_file_based_on_sibling_wins_over_builtin()
+  exercise_load_file_does_not_mutate_loader_search_dirs()
+  exercise_load_file_based_on_falls_through_to_builtin()
+  exercise_load_file_missing_raises()
   exercise_variable_expansion_env()
   exercise_project_overrides_user_overrides_builtin()
   exercise_unknown_fields_warn_not_fail()

@@ -238,20 +238,64 @@ class ProfileLoader:
     """
     return self._load_with_chain(name, _seen=())
 
-  def _load_with_chain(self, name, _seen):
-    """Recursively load ``name``, resolving ``based_on`` inheritance.
+  def load_file(self, path):
+    """Resolve, parse, validate, and expand a profile from an explicit file.
+
+    Like :meth:`load`, but the root profile is read from ``path`` directly
+    instead of by name. The file's own directory is searched first for its
+    ``based_on`` parents (so it can reference sibling profiles, mirroring how
+    ``${PROFILE_DIR}`` lets ``system_prompt_file`` reference siblings); names
+    not found there fall through to the loader's configured search dirs, so an
+    external file can still inherit from a shipped profile such as
+    ``phenix_base``. The extra directory is scoped to this call -- the loader
+    is not mutated, so a later :meth:`load` on the same instance is unaffected.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to a profile ``.json`` file.
+
+    Returns
+    -------
+    Profile
+        The fully resolved profile.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When ``path`` is not a file, or on any error :meth:`load` can raise
+        (parse error, inheritance cycle, missing field, unknown backend).
+    """
+    p = Path(path)
+    if not p.is_file():
+      raise Sorry("Profile file not found: %s" % path)
+    p = p.resolve()
+    # Search the file's own directory first (so based_on can reach siblings),
+    # threaded through resolution rather than mutating self.search_dirs.
+    return self._load_path(p, _seen=(), extra_dirs=(p.parent,))
+
+  def _load_with_chain(self, name, _seen, extra_dirs=()):
+    """Resolve ``name`` to a path, then load it via :meth:`_load_path`.
 
     ``_seen`` carries the chain of already-visited names so an inheritance
-    cycle raises rather than recursing forever.
+    cycle raises rather than recursing forever. ``extra_dirs`` are searched
+    ahead of ``self.search_dirs`` (threaded from :meth:`load_file`).
     """
     if name in _seen:
       raise Sorry("Profile inheritance cycle: %s -> %s"
                   % (" -> ".join(_seen), name))
-    _seen = _seen + (name,)
-
-    path = self._resolve_path(name)
+    path = self._resolve_path(name, extra_dirs)
     if path is None:
       raise Sorry("Profile not found: %s" % name)
+    return self._load_path(path, _seen + (name,), extra_dirs)
+
+  def _load_path(self, path, _seen, extra_dirs=()):
+    """Parse the profile at ``path``, resolve ``based_on``, validate, build.
+
+    The shared body of :meth:`_load_with_chain` (name-resolved) and
+    :meth:`load_file` (path-given). ``_seen`` is the inheritance chain so far;
+    ``extra_dirs`` are forwarded to ``based_on`` resolution.
+    """
     try:
       with open(path) as fh:
         data = json.load(fh)
@@ -261,7 +305,7 @@ class ProfileLoader:
     # Inheritance: parent first, child overrides.
     based_on = data.get("based_on")
     if based_on:
-      parent = self._load_with_chain(based_on, _seen)
+      parent = self._load_with_chain(based_on, _seen, extra_dirs)
       merged = _profile_to_dict(parent)
       merged.update({k: v for k, v in data.items()
                      if k != "based_on" and v is not None})
@@ -289,9 +333,14 @@ class ProfileLoader:
 
     return _build_profile(data, source_path=path)
 
-  def _resolve_path(self, name):
-    """Return the first ``<dir>/<name>.json`` that exists, else ``None``."""
-    for d in self.search_dirs:
+  def _resolve_path(self, name, extra_dirs=()):
+    """Return the first ``<dir>/<name>.json`` that exists, else ``None``.
+
+    ``extra_dirs`` are searched before ``self.search_dirs`` (used by
+    :meth:`load_file` so an external file's siblings resolve first), which
+    keeps the loader itself stateless.
+    """
+    for d in tuple(extra_dirs) + tuple(self.search_dirs):
       candidate = Path(d) / ("%s.json" % name)
       if candidate.exists():
         return candidate
