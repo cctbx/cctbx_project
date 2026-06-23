@@ -502,7 +502,7 @@ def test_baseline_values_unchanged():
     }
     expected_rag = {
       "google":    "gemini-2.5-flash-lite",
-      "openai":    "gpt-5-nano",
+      "openai":    "gpt-5.4-nano",
       "ollama":    "llama3.1:70b",
       "portkey":   "gpt-5",
     }
@@ -516,7 +516,7 @@ def test_baseline_values_unchanged():
     }
     expected_expensive = {
       "google":    "gemini-2.5-pro",
-      "openai":    "gpt-5",
+      "openai":    "gpt-5.5",
       "ollama":    "qwen3:32b",
       "anthropic": "claude-opus-4-7",
       "portkey":   "gpt-5",

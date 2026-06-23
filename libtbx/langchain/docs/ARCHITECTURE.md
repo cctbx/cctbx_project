@@ -722,10 +722,10 @@ The system uses three distinct LLM roles, each with provider-specific model defa
 
 | Activity | Function | ollama | google | openai | anthropic | portkey |
 |---|---|---|---|---|---|---|
-| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-2.5-pro | gpt-5 | claude-opus-4 | gpt-5 (Azure) |
-| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-2.5-flash-lite | gpt-5-nano | claude-sonnet-4 | gpt-5 (Azure) |
-| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-2.5-pro | gpt-5 | claude-opus-4 | gpt-5 (Azure) |
-| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-2.0-flash | (provider default) | claude-sonnet-4 | gpt-5 (Azure) |
+| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-2.5-pro | gpt-5.5 | claude-opus-4-7 | gpt-5 (Azure) |
+| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-2.5-flash-lite | gpt-5.4-nano | claude-sonnet-4-6 | gpt-5 (Azure) |
+| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-2.5-pro | gpt-5.5 | claude-opus-4-7 | gpt-5 (Azure) |
+| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-2.5-flash-lite | (provider default) | claude-sonnet-4-6 | gpt-5 (Azure) |
 
 Model defaults come from the five role tables in `core/llm.py` and can be
 overridden per provider via env var (`OLLAMA_LLM_MODEL`, `ANTHROPIC_LLM_MODEL`,

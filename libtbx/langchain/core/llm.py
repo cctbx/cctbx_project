@@ -62,7 +62,7 @@ RAG_MODEL_DEFAULTS = {
   # anthropic has no entry: get_llm_and_embeddings delegates anthropic
   # embeddings (no native endpoint) and anthropic is not used for RAG.
   "google":    "gemini-2.5-flash-lite",
-  "openai":    "gpt-5-nano",
+  "openai":    "gpt-5.4-nano",   # was gpt-5-nano; gpt-5-nano-2025-08-07 retires 2026-12-11
   "ollama":    "llama3.1:70b",
   "portkey":   "gpt-5",
 }
@@ -102,7 +102,7 @@ EMBEDDING_EXPECTED_DIM = {
 
 EXPENSIVE_MODEL_DEFAULTS = {
   "google":    "gemini-2.5-pro",
-  "openai":    "gpt-5",
+  "openai":    "gpt-5.5",   # was gpt-5; gpt-5-2025-08-07 retires 2026-12-11
   "ollama":    "qwen3:32b",
   "anthropic": "claude-opus-4-7",
   "portkey":   "gpt-5",
@@ -127,6 +127,16 @@ RETIRED_MODELS = frozenset([
   # LLM models -- OpenAI
   "gpt-3.5-turbo",
   "gpt-4-vision-preview",
+  # OpenAI GPT-5 / o3 dated snapshots retired 2026-12-11 (notice 2026-06-11).
+  # Bare aliases (gpt-5, gpt-5-nano) are intentionally NOT listed: bare "gpt-5"
+  # is still the portkey/Azure deployment name in the DEFAULTS tables, and the
+  # tst_default_models disjointness check forbids any DEFAULTS value here.
+  "gpt-5-2025-08-07",
+  "gpt-5-mini-2025-08-07",
+  "gpt-5-nano-2025-08-07",
+  "gpt-5-pro-2025-10-06",
+  "o3-2025-04-16",
+  "o3-pro-2025-06-10",
   # LLM models -- Anthropic
   "claude-2",
   "claude-instant-1",
