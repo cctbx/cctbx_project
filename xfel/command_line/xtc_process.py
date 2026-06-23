@@ -490,6 +490,9 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     self.tt_high = None
     self.db_app = None
 
+    self.idxr = None
+    self.debug_file_handle = None
+
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
     self.debug_str += ",%s,%s,%s\n"
@@ -497,14 +500,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
   def debug_write(self, string, state = None):
     ts = cspad_tbx.evt_timestamp() # Now
-    debug_file_handle = open(self.debug_file_path, 'a')
+    if not self.debug_file_handle:
+      self.debug_file_handle = open(self.debug_file_path, 'a')
     if string == "":
-      debug_file_handle.write("\n")
+      self.debug_file_handle.write("\n")
     else:
       if state is None:
         state = "    "
-      debug_file_handle.write(self.debug_str%(ts, state, string))
-    debug_file_handle.close()
+      self.debug_file_handle.write(self.debug_str%(ts, state, string))
 
   def mpi_log_write(self, string):
     print(string)
@@ -590,6 +593,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
             +'Set integration.debug.output=True and integration.debug.separate_files=False to save shoeboxes.')
 
     self.params = params
+
+    if params.indexing.basis_vector_combinations.max_refine is libtbx.Auto:
+      params.indexing.basis_vector_combinations.max_refine = 5
+
     self.load_reference_geometry()
 
     if params.output.composite_output:
