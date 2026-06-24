@@ -672,32 +672,20 @@ def get_nqh_flips_reduce2(model, probe_phil=None):
   PRECONDITION: `model` already has hydrogens and has had PDB interpretation run
   (restraints present). This does NOT add hydrogens. Returns
   (user_mods, atom_notes, score_dict) matching mmtbx.rotamer.nqh.get_nqh_flips so
-  flip_selected() can apply it unchanged (atom-preserving via flip_residue)."""
-  import mmtbx.programs.reduce2 as reduce2_prog   # _FindFlipsInOutputString
+  flip_selected() can apply it unchanged (atom-preserving via flip_residue)
+  """
   from mmtbx.reduce import Optimizers
   assert model.get_hd_selection().count(True) > 0, \
     "get_nqh_flips_reduce2 requires a model that already has hydrogens"
   if probe_phil is None: probe_phil = default_probe_phil()
-  # Optimizer mutates while scoring (rotates/flips/removes His H), so run it on a
-  # copy. We only extract the flip DECISION; the caller applies it with
-  # flip_residue (which preserves atom content).
   work = model.deep_copy()
   opt = Optimizers.Optimizer(
-    probe_phil, True, work, modelIndex=None, altID="", verbosity=1)
-  info = opt.getInfo()
-  flipped = []
-  for mtype in ("AmideFlip", "HisFlip"):
-    flipped.extend(
-      f for f in reduce2_prog._FindFlipsInOutputString(info, mtype) if f.flipped)
+    probe_phil, True, work, modelIndex=None, altID="")
   user_mods = []
-  for m in model.get_hierarchy().models():
-    for chain in m.chains():
-      for rg in chain.residue_groups():
-        for conformer in rg.conformers():
-          residue = conformer.only_residue()
-          if residue.resname not in ("ASN", "GLN", "HIS"): continue
-          if any(chain.id == f.chain and rg.resseq_as_int() == f.resId
-                 and rg.icode.strip() == f.iCode.strip() for f in flipped):
-            user_mods.append((chain.id + residue.resid() + residue.resname
-                              + "    " + conformer.altloc).strip())
+  for fm in opt.getFlippedAmides() + opt.getFlippedHistidines():
+    ag    = fm.baseAtom.parent()   # atom_group    -> resname
+    rg    = ag.parent()            # residue_group -> resid()
+    chain = rg.parent()            # chain         -> id
+    user_mods.append(
+      (chain.id + rg.resid() + ag.resname + "    " + fm.alt).strip())
   return user_mods, [], {}
