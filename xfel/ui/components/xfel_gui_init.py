@@ -350,7 +350,7 @@ class JobMonitor(Thread):
     wx.PostEvent(self.parent.run_window.jobs_tab, evt)
 
   def run(self):
-    from xfel.ui.components.submission_tracker import TrackerFactory
+    from xfel.ui.components.submission_tracker import TrackerFactory, CACHEABLE_TERMINAL
 
     # one time post for an initial update
     self.post_refresh()
@@ -367,10 +367,10 @@ class JobMonitor(Thread):
 
         # Collect the jobs that still need tracking, then query the queueing system
         # in a single batched call (one squeue per cycle) rather than once per job.
-        # TIMEOUT is terminal, so skip it too; UNKWN is intentionally NOT skipped
-        # because it is transient for slurm (e.g. ensemble jobs with mixed states).
-        active_jobs = [job for job in jobs
-                       if job.status not in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED', 'TIMEOUT']]
+        # Skip the terminal statuses (CACHEABLE_TERMINAL, which includes ERR and
+        # TIMEOUT); UNKWN is intentionally NOT in that set because it is transient
+        # for slurm (e.g. ensemble jobs with mixed states), so it keeps tracking.
+        active_jobs = [job for job in jobs if job.status not in CACHEABLE_TERMINAL]
         new_statuses = tracker.track_many(
           [job.submission_id for job in active_jobs],
           [job.get_log_path() for job in active_jobs])

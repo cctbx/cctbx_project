@@ -276,17 +276,12 @@ class SubmissionTracker(object):
     if submission_id is None:
       return "UNKWN"
     all_statuses = [self._track(sid, log_path) for sid in submission_id.split(',')]
-    return self._aggregate(all_statuses)
-
-  @staticmethod
-  def _aggregate(all_statuses):
-    """Collapse the statuses of a job's (comma-separated) submission ids into one.
-    All ids must agree, otherwise the job is considered UNKWN (e.g. an ensemble
-    job whose chunks are still in mixed states)."""
-    if all_statuses and all([all_statuses[0] == s for s in all_statuses[1:]]):
+    # Collapse a job's (comma-separated) submission ids into one status. All ids
+    # must agree, otherwise the job is considered UNKWN (e.g. an ensemble job
+    # whose chunks are still in mixed states).
+    if all_statuses and all(all_statuses[0] == s for s in all_statuses[1:]):
       return all_statuses[0]
-    else:
-      return "UNKWN"
+    return "UNKWN"
 
   def track_many(self, submission_ids, log_paths):
     """Return a list of statuses, one per job. Default implementation simply loops
