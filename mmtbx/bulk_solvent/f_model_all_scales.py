@@ -73,6 +73,7 @@ class run(mmtbx.f_model.manager):
       for iii in range(5):
         self.remove_outliers(use_model = True, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
+    self._show_scaling_b_values(result = result, log = log)
     return result
 
   def reset_all_scales(self):
@@ -103,6 +104,36 @@ class run(mmtbx.f_model.manager):
       print(m, file=log)
     else:
       print(m+" twin_fraction=%4.2f"%self.twin_fraction, file=log)
+
+  def _capture_scaling_b_values(self, fast, result):
+    # Capture the anisotropic (b_cart from k_anisotropic) and isotropic
+    # (b_isotropic from k_isotropic) B-values of the bulk-solvent scaling for
+    # whichever mode actually ran (fast = analytical, slow = minimization).
+    # Returned via russ and printed later, after the block of r-factor lines.
+    import scitbx.math
+    if(fast):
+      b_cart = getattr(result, "scale_matrices", None)
+      if(b_cart is not None and len(b_cart) > 6): b_cart = None # polynomial scale
+    else:
+      b_cart = result.b_cart()
+    b_isotropic = None
+    k_isotropic = result.k_isotropic()
+    if(k_isotropic is not None and k_isotropic.size() == self.ss.size()):
+      b_isotropic = scitbx.math.gaussian_fit_1d_analytical(
+        x = flex.sqrt(self.ss), y = k_isotropic).b
+    return group_args(
+      mode = "fast" if fast else "slow", b_cart = b_cart, b_isotropic = b_isotropic)
+
+  def _show_scaling_b_values(self, result, log):
+    i = getattr(result, "scaling_b_info", None)
+    if(log is None or i is None): return
+    print(file=log)
+    print("bulk-solvent scaling B-values (mode: %s):" % i.mode, file=log)
+    if(i.b_cart is not None):
+      print("  b_cart:      %s" % " ".join(["%.4f" % b for b in i.b_cart]),
+        file=log)
+    if(i.b_isotropic is not None):
+      print("  b_isotropic: %.4f" % i.b_isotropic, file=log)
 
   def need_to_refine_hd_scattering_contribution(self):
     if(self.xray_structure is None): return False
@@ -172,6 +203,7 @@ class run(mmtbx.f_model.manager):
       k_anisotropic = k_anisotropic,
       k_isotropic   = k_isotropic)
     self.show(prefix = "bulk-solvent and scaling", log = log)
+    scaling_b_info = self._capture_scaling_b_values(fast = fast, result = result)
     # Consistency check
     if(not apply_back_trace):
       assert approx_equal(self.r_all(), r_all_from_scaler)
@@ -273,7 +305,8 @@ class run(mmtbx.f_model.manager):
       b_cart = b_cart,
       k_h    = kh,
       b_h    = bh,
-      b_adj  = b_adj)
+      b_adj  = b_adj,
+      scaling_b_info = scaling_b_info)
 
   def update_solvent_and_scale_twin(self, refine_hd_scattering, log):
     if(not self.twinned()): return
