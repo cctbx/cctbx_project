@@ -48,7 +48,7 @@ class CifParserError(Sorry):
 # Callers can override per-instance via the engine= kwarg on
 # reader.__init__. DEFAULT_ENGINE is read at construction time; changing
 # it at runtime affects only subsequent reader() calls.
-DEFAULT_ENGINE = "ucif"
+DEFAULT_ENGINE = "xcif"
 _VALID_ENGINES = ("ucif", "xcif")
 
 
