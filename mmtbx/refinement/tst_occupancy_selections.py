@@ -1266,6 +1266,38 @@ def exercise_regroup_3d(verbose):
     sorry_found = True
   assert sorry_found
 
+def exercise_zero_occ_altloc_water(verbose):
+  # Regression test for a crash in occupancy_selections when add_water=True and
+  # the model contains an alternate-conformation water with a zero-occupancy
+  # conformer. Such an atom satisfies BOTH the "occupancy < 1.e-6" and the
+  # "member of a multi-conformer occupancy group" conditions, which previously
+  # caused water_selection.remove(i) to be called twice -> ValueError.
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  pdb_str = """\
+CRYST1   28.950   56.540   27.550  90.00  96.38  90.00 P 1 21 1
+HETATM 2882  O   HOH A 201      28.399  -6.151  12.844  0.92  6.90           O
+HETATM 2883  O   HOH A 202      16.216 -11.974   5.495  0.93  8.93           O
+HETATM 2946  O  1HOH A 262      10.692 -14.603  -0.293  0.59 34.13           O
+HETATM 2947  O  2HOH A 262       9.163 -14.863   1.518  0.41 41.83           O
+HETATM 2948  O  3HOH A 262      10.541 -14.555   0.658  0.00 35.13           O
+"""
+  model = get_model_str(pdb_str, log)
+  # The alternate-conformation water has a zero-occupancy conformer; this must
+  # not raise ValueError.
+  res = occupancy_selections(
+    model          = model,
+    add_water      = True,
+    as_flex_arrays = False)
+  # The three alternate conformers of HOH 262 form one constrained group.
+  assert [[2], [3], [4]] in res, res
+  # The zero-occupancy conformer (i_seq 4) must not also be added as an
+  # individual water occupancy selection.
+  assert [[4]] not in res, res
+  # The two full waters (partial occupancy) are added as individual selections.
+  assert [[0]] in res, res
+  assert [[1]] in res, res
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -1299,6 +1331,7 @@ def run():
   exercise_29(verbose=verbose)
   exercise_30(verbose=verbose)
   exercise_regroup_3d(verbose=verbose)
+  exercise_zero_occ_altloc_water(verbose=verbose)
   print(format_cpu_times())
 
 if (__name__ == "__main__"):

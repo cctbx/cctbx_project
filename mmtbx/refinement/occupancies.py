@@ -464,11 +464,12 @@ def occupancy_selections(
       water_selection = list(water_selection)
       wocc = model.get_hierarchy().atoms().extract_occ()
       wsel = model.solvent_selection().iselection()
-      wremove = []
       for i in wsel:
-         if wocc[i]<1.e-6:
-           water_selection.remove(i)
-         if i in occ_groups_of_more_than_one:
+         # Drop zero-occupancy and multi-conformer solvent atoms.
+         # Single IF so no chance to call water_seelction.remove(i)
+         # twice on the same water.
+         if i in water_selection and (
+              wocc[i]<1.e-6 or i in occ_groups_of_more_than_one):
            water_selection.remove(i)
       result = add_occupancy_selection(
         result     = result,
