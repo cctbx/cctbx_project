@@ -6,9 +6,17 @@ find-best-cell-perf branch rewrote it with a per-space-group "plan" cache and la
 of symmetry()/all_cells(), claiming bit-identical results, but the production class had no direct
 correctness coverage (the existing tst_find_best_cell.py only exercises alternative_find_best_cell).
 
-This test pins cb_op(), symmetry(), and all_cells() to a golden baseline generated from master
-(stored in find_best_cell_golden.pickle) and asserts the current code reproduces it. The baseline
-is a modest, curated subset of inputs that still spans all four find_best_cell branches.
+This test pins symmetry() and all_cells() to a golden baseline generated from master (stored in
+find_best_cell_golden.pickle) and asserts the current code reproduces it. The baseline is a modest,
+curated subset of inputs that still spans all four find_best_cell branches.
+
+Comparison is tolerance-based on the floating-point parts and exact on the discrete parts, so it is
+portable across OS / Python / BLAS (the Azure pipelines run several): unit-cell parameters are
+compared with libtbx.test_utils.approx_equal (the same idiom as tst_find_best_cell.py); space
+groups are compared exactly. The cb_op operator itself is deliberately NOT pinned -- on cells with
+symmetry-equivalent axis permutations (e.g. equal edge lengths) several change-of-basis operators
+yield the SAME best cell, and which one is returned depends on last-bit arithmetic, so it varies by
+platform. Its effect is pinned instead, via symmetry() (= input.change_basis(cb_op)).
 
 Inputs: a subset of the niggli-reduction cell population (harvested verbatim from
 cctbx/regression/tst_niggli_reduction_cpp.py, including its edge cases). The niggli cells carry no
@@ -40,6 +48,7 @@ import importlib
 
 from cctbx import sgtbx, crystal
 from libtbx import easy_pickle
+from libtbx.test_utils import approx_equal
 
 # Import the submodule explicitly: cctbx.crystal re-exports the find_best_cell *class* under the
 # same name, which shadows the submodule for `import ... as` / attribute access.
@@ -206,10 +215,12 @@ def build_inputs():
 
 
 def canonical_outputs(fbc, sg_cache):
-  """Exact, order-preserving serialization of the three public accessors.
+  """Order-preserving serialization of symmetry() and all_cells() for comparison.
 
-  cb_op as its canonical xyz string; symmetry and every all_cells entry as
-  (unit-cell parameters, space-group lookup_symbol). Space-group symbols are memoized in sg_cache
+  Returns (symmetry unit-cell parameters, symmetry space-group symbol, all_cells as a tuple of
+  (parameters, space-group symbol)). Unit cells are compared later with approx_equal; space groups
+  exactly. cb_op is intentionally omitted -- see the module docstring (its exact value is not
+  portable; its effect is captured by symmetry()). Space-group symbols are memoized in sg_cache
   (keyed on the hashable space_group object) to avoid repeated space_group_type builds.
   """
   def sg_symbol(symmetry):
@@ -221,7 +232,6 @@ def canonical_outputs(fbc, sg_cache):
     return key
   sym = fbc.symmetry()
   return (
-    fbc.cb_op().as_xyz(),
     tuple(sym.unit_cell().parameters()),
     sg_symbol(sym),
     tuple((tuple(c.unit_cell().parameters()), sg_symbol(c))
@@ -262,24 +272,27 @@ def generate(out_dir=None):
 
 
 def _describe_diff(label, expected, got):
-  """Short description of the first divergence between two result_for() values, or None."""
+  """Short description of the first divergence between two result_for() values, or None.
+
+  Unit cells are compared with approx_equal (portable across platforms); space groups exactly."""
   if expected[0] != got[0]:
     return "%s: kind got %r, expected %r" % (label, got[0], expected[0])
   if expected[0] == "raised":
     return None  # both raised the same exception type
-  exp_cb, exp_sym_uc, exp_sym_sg, exp_all = expected[1]
-  got_cb, got_sym_uc, got_sym_sg, got_all = got[1]
-  if got_cb != exp_cb:
-    return "%s: cb_op got %s, expected %s" % (label, got_cb, exp_cb)
-  if got_sym_uc != exp_sym_uc:
-    return "%s: symmetry unit cell got %s, expected %s" % (label, got_sym_uc, exp_sym_uc)
+  exp_sym_uc, exp_sym_sg, exp_all = expected[1]
+  got_sym_uc, got_sym_sg, got_all = got[1]
   if got_sym_sg != exp_sym_sg:
     return "%s: symmetry space group got %s, expected %s" % (label, got_sym_sg, exp_sym_sg)
+  if not approx_equal(got_sym_uc, exp_sym_uc, out=None):
+    return "%s: symmetry unit cell got %s, expected %s" % (label, got_sym_uc, exp_sym_uc)
   if len(got_all) != len(exp_all):
     return "%s: all_cells length got %d, expected %d" % (label, len(got_all), len(exp_all))
   for i, (g, e) in enumerate(zip(got_all, exp_all)):
-    if g != e:
-      return "%s: all_cells[%d] got %s, expected %s" % (label, i, g, e)
+    (g_uc, g_sg), (e_uc, e_sg) = g, e
+    if g_sg != e_sg:
+      return "%s: all_cells[%d] space group got %s, expected %s" % (label, i, g_sg, e_sg)
+    if not approx_equal(g_uc, e_uc, out=None):
+      return "%s: all_cells[%d] unit cell got %s, expected %s" % (label, i, g_uc, e_uc)
   return None
 
 
