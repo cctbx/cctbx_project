@@ -31,8 +31,8 @@ from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
 from xfel.ui.db.xfel_db import xfel_db_application
 
-from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
-from prime.postrefine.mod_input import master_phil
+#from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
+#from prime.postrefine.mod_input import master_phil
 from iota.utils.utils import Capturing, set_base_dir
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
@@ -363,10 +363,16 @@ class JobMonitor(Thread):
         trials = db.get_all_trials()
         jobs = db.get_all_jobs(active = self.only_active_jobs)
 
-        for job in jobs:
-          if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
-            continue
-          new_status = tracker.track(job.submission_id, job.get_log_path())
+        # Collect the jobs that still need tracking, then query the queueing system
+        # in a single batched call (one sacct per cycle) rather than once per job.
+        # TIMEOUT is terminal, so skip it too; UNKWN is intentionally NOT skipped
+        # because it is transient for slurm (e.g. ensemble jobs with mixed states).
+        active_jobs = [job for job in jobs
+                       if job.status not in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED', 'TIMEOUT']]
+        new_statuses = tracker.track_many(
+          [job.submission_id for job in active_jobs],
+          [job.get_log_path() for job in active_jobs])
+        for job, new_status in zip(active_jobs, new_statuses):
           # Handle the case where the job was submitted but no status is available yet
           if job.status == "SUBMITTED" and new_status == "ERR":
             pass
@@ -375,7 +381,7 @@ class JobMonitor(Thread):
 
         self.post_refresh(trials, jobs)
         wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'on')
-        time.sleep(5)
+        time.sleep(10)
       except Exception as e:
         print(e)
         wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'alert')

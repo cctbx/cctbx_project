@@ -2,6 +2,31 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx import easy_run
 
+# Mapping from raw Slurm (sacct) job states to cctbx job statuses.
+SLURM_STATUS_MAP = {'COMPLETED': 'DONE',
+                    'COMPLETING': 'RUN',
+                    'FAILED': 'EXIT',
+                    'PENDING': 'PEND',
+                    'PREEMPTED': 'SUSP',
+                    'RUNNING': 'RUN',
+                    'SUSPENDED': 'SUSP',
+                    'STOPPED': 'SUSP',
+                    'CANCELLED': 'EXIT',
+                    'TIMEOUT': 'TIMEOUT',
+                    'OUT_OF_ME': 'EXIT',      # truncated 'OUT_OF_MEMORY'
+                    'OUT_OF_MEMORY': 'EXIT',
+                   }
+
+def _map_slurm_state(raw):
+  """Normalize a raw sacct state string and map it to a cctbx job status.
+
+  Handles both truncated forms (e.g. 'CANCELLED+', 'OUT_OF_ME') and full forms
+  with trailing detail (e.g. 'CANCELLED by 12345')."""
+  status = raw.split()[0].rstrip('+') if raw else ''
+  if status not in SLURM_STATUS_MAP:
+    print('Unknown job status', status)
+  return SLURM_STATUS_MAP.get(status, 'UNKWN')
+
 class JobStopper(object):
   def __init__(self, queueing_system):
     self.queueing_system = queueing_system
@@ -91,21 +116,7 @@ class QueueInterrogator(object):
       # submission tracker.
       result = easy_run.fully_buffered(command=self.command%submission_id)
       if len(result.stdout_lines) == 0: return 'UNKWN'
-      status = result.stdout_lines[0].strip().rstrip('+')
-      statuses = {'COMPLETED': 'DONE',
-                  'COMPLETING': 'RUN',
-                  'FAILED': 'EXIT',
-                  'PENDING': 'PEND',
-                  'PREEMPTED': 'SUSP',
-                  'RUNNING': 'RUN',
-                  'SUSPENDED': 'SUSP',
-                  'STOPPED': 'SUSP',
-                  'CANCELLED': 'EXIT',
-                  'TIMEOUT': 'TIMEOUT',
-                  'OUT_OF_ME': 'EXIT',
-                 }
-      if status not in statuses: print('Unknown job status', status)
-      return statuses[status] if status in statuses else 'UNKWN'
+      return _map_slurm_state(result.stdout_lines[0].strip())
     elif self.queueing_system == 'htcondor':
       # (copied from the man page)
       # H = on hold, R = running, I = idle (waiting for a machine to execute on), C = completed,
@@ -134,6 +145,33 @@ class QueueInterrogator(object):
         return error
     else:
       return status
+
+  def query_many(self, submission_ids):
+    """Query many slurm/shifter jobs in a single sacct call.
+
+    Returns a dict mapping each submission id (str) to its cctbx status. Ids not
+    reported by sacct (e.g. not yet registered in the accounting DB) map to 'UNKWN'.
+    Only supported for the slurm/shifter queueing systems."""
+    assert self.queueing_system in ('slurm', 'shifter')
+    ids = [str(sid) for sid in submission_ids if sid]
+    result = {sid: 'UNKWN' for sid in ids}
+    if not ids:
+      return result
+    # Parsable (pipe-delimited) output avoids column-width truncation, and a single
+    # call covers every id to keep slurmdbd load to one query per cycle.
+    command = "sacct --jobs=%s --format=JobID,State --noheader -P" % ",".join(ids)
+    sacct_result = easy_run.fully_buffered(command=command)
+    for line in sacct_result.stdout_lines:
+      fields = line.split('|')
+      if len(fields) < 2:
+        continue
+      jobid, state = fields[0].strip(), fields[1].strip()
+      # Skip step rows (e.g. '12345.batch', '12345.extern', '12345.0').
+      if '.' in jobid:
+        continue
+      if jobid in result:
+        result[jobid] = _map_slurm_state(state)
+    return result
 
   def get_mysql_server_hostname(self, submission_id):
     if self.queueing_system in ["mpi", "lsf"]:
@@ -191,10 +229,22 @@ class SubmissionTracker(object):
     if submission_id is None:
       return "UNKWN"
     all_statuses = [self._track(sid, log_path) for sid in submission_id.split(',')]
+    return self._aggregate(all_statuses)
+
+  @staticmethod
+  def _aggregate(all_statuses):
+    """Collapse the statuses of a job's (comma-separated) submission ids into one.
+    All ids must agree, otherwise the job is considered UNKWN (e.g. an ensemble
+    job whose chunks are still in mixed states)."""
     if all_statuses and all([all_statuses[0] == s for s in all_statuses[1:]]):
       return all_statuses[0]
     else:
       return "UNKWN"
+
+  def track_many(self, submission_ids, log_paths):
+    """Return a list of statuses, one per job. Default implementation simply loops
+    over track(); SlurmSubmissionTracker overrides this to batch into one query."""
+    return [self.track(sid, lp) for sid, lp in zip(submission_ids, log_paths)]
 
   def _track(self, submission_id, log_path):
     raise NotImplementedError("Override me!")
@@ -245,6 +295,24 @@ class SGESubmissionTracker(SubmissionTracker):
 class SlurmSubmissionTracker(SubmissionTracker):
   def _track(self, submission_id, log_path):
     return self.interrogator.query(submission_id)
+
+  def track_many(self, submission_ids, log_paths):
+    # Gather every submission id across all jobs and issue a single sacct query,
+    # then aggregate each job's ids back into one status. This keeps slurmdbd load
+    # to one query per cycle regardless of how many (active) jobs are tracked.
+    all_ids = []
+    for submission_id in submission_ids:
+      if submission_id is not None:
+        all_ids.extend(submission_id.split(','))
+    status_map = self.interrogator.query_many(all_ids)
+    results = []
+    for submission_id in submission_ids:
+      if submission_id is None:
+        results.append("UNKWN")
+        continue
+      statuses = [status_map.get(sid, 'UNKWN') for sid in submission_id.split(',')]
+      results.append(self._aggregate(statuses))
+    return results
 
 class HTCondorSubmissionTracker(SubmissionTracker):
   def _track(self, submission_id, log_path):
