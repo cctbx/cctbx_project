@@ -27,6 +27,31 @@ def _map_slurm_state(raw):
     print('Unknown job status', status)
   return SLURM_STATUS_MAP.get(status, 'UNKWN')
 
+# Per-chunk statuses that are terminal and stable, so they never need to be
+# re-queried. 'UNKWN' is deliberately excluded (it is transient -- a job not yet
+# registered with the scheduler reads as UNKWN until it appears).
+CACHEABLE_TERMINAL = frozenset(["DONE", "EXIT", "DELETED", "ERR", "SUBMIT_FAIL", "TIMEOUT"])
+
+def _aggregate_ensemble(statuses):
+  """Collapse the statuses of a job's chunks (comma-separated submission ids,
+  e.g. ensemble refinement) into one overall status. Active states win so the
+  job keeps being tracked; once nothing is active, a single failed chunk marks
+  the whole job EXIT, and only an all-clear set is DONE."""
+  s = [st for st in statuses if st is not None]
+  if not s:
+    return "UNKWN"
+  if "RUN" in s:
+    return "RUN"
+  if "PEND" in s or "SUBMITTED" in s:
+    return "PEND"
+  if "SUSP" in s:
+    return "SUSP"
+  if any(st in ("EXIT", "ERR", "TIMEOUT") for st in s):
+    return "EXIT"
+  if "UNKWN" in s:
+    return "UNKWN"
+  return "DONE"
+
 class JobStopper(object):
   def __init__(self, queueing_system):
     self.queueing_system = queueing_system
@@ -147,30 +172,52 @@ class QueueInterrogator(object):
       return status
 
   def query_many(self, submission_ids):
-    """Query many slurm/shifter jobs in a single sacct call.
+    """Query many slurm/shifter jobs with minimal load on the accounting DB.
 
-    Returns a dict mapping each submission id (str) to its cctbx status. Ids not
-    reported by sacct (e.g. not yet registered in the accounting DB) map to 'UNKWN'.
-    Only supported for the slurm/shifter queueing systems."""
+    Live state comes from the controller (slurmctld) via a single `squeue` call,
+    which is cheap and in-memory. Only jobs that have already left the queue are
+    looked up in the accounting DB (slurmdbd) via a single batched `sacct`, to
+    classify their terminal state once. Returns {submission_id: cctbx status};
+    ids unknown to both map to 'UNKWN'. Slurm/shifter only."""
     assert self.queueing_system in ('slurm', 'shifter')
     ids = [str(sid) for sid in submission_ids if sid]
-    result = {sid: 'UNKWN' for sid in ids}
+    result = {}
     if not ids:
       return result
-    # Parsable (pipe-delimited) output avoids column-width truncation, and a single
-    # call covers every id to keep slurmdbd load to one query per cycle.
-    command = "sacct --jobs=%s --format=JobID,State --noheader -P" % ",".join(ids)
-    sacct_result = easy_run.fully_buffered(command=command)
-    for line in sacct_result.stdout_lines:
+    # 1) Controller state -- avoids slurmdbd entirely. --states=all is needed so
+    #    that jobs still held in the controller in a finished state are reported.
+    squeue_command = "squeue --jobs=%s --noheader --format='%%i|%%T' --states=all" \
+      % ",".join(ids)
+    squeue_result = easy_run.fully_buffered(command=squeue_command)
+    for line in squeue_result.stdout_lines:
       fields = line.split('|')
       if len(fields) < 2:
         continue
       jobid, state = fields[0].strip(), fields[1].strip()
-      # Skip step rows (e.g. '12345.batch', '12345.extern', '12345.0').
-      if '.' in jobid:
+      if '.' in jobid:  # array/step sub-entries
         continue
-      if jobid in result:
-        result[jobid] = _map_slurm_state(state)
+      result[jobid] = _map_slurm_state(state)
+    # 2) Jobs no longer known to the controller have finished and left the queue;
+    #    resolve their terminal state once from the accounting DB, batched.
+    missing = [sid for sid in ids if sid not in result]
+    if missing:
+      sacct_command = "sacct --jobs=%s --format=JobID,State --noheader -P" \
+        % ",".join(missing)
+      sacct_result = easy_run.fully_buffered(command=sacct_command)
+      for line in sacct_result.stdout_lines:
+        fields = line.split('|')
+        if len(fields) < 2:
+          continue
+        jobid, state = fields[0].strip(), fields[1].strip()
+        # Skip step rows (e.g. '12345.batch', '12345.extern', '12345.0').
+        if '.' in jobid:
+          continue
+        if jobid in missing:
+          result[jobid] = _map_slurm_state(state)
+    # 3) Anything still unresolved (e.g. very recently submitted, not yet
+    #    registered with either the controller or the accounting DB).
+    for sid in ids:
+      result.setdefault(sid, 'UNKWN')
     return result
 
   def get_mysql_server_hostname(self, submission_id):
@@ -293,25 +340,46 @@ class SGESubmissionTracker(SubmissionTracker):
       print("Found an unknown status", status)
 
 class SlurmSubmissionTracker(SubmissionTracker):
+  def __init__(self, params):
+    super(SlurmSubmissionTracker, self).__init__(params)
+    # Cache of terminal per-chunk statuses, so finished chunks (e.g. of an
+    # ensemble job) are never re-queried for the life of this tracker.
+    self._chunk_cache = {}
+
   def _track(self, submission_id, log_path):
     return self.interrogator.query(submission_id)
 
   def track_many(self, submission_ids, log_paths):
-    # Gather every submission id across all jobs and issue a single sacct query,
-    # then aggregate each job's ids back into one status. This keeps slurmdbd load
-    # to one query per cycle regardless of how many (active) jobs are tracked.
-    all_ids = []
+    # Collect every not-yet-terminal chunk id across all jobs, query them in a
+    # single squeue (+ at most one sacct) call, and aggregate per job. Chunks
+    # already known to be terminal are served from the cache and not re-queried.
+    to_query = set()
     for submission_id in submission_ids:
-      if submission_id is not None:
-        all_ids.extend(submission_id.split(','))
-    status_map = self.interrogator.query_many(all_ids)
+      if submission_id is None:
+        continue
+      for cid in submission_id.split(','):
+        if cid and cid not in self._chunk_cache:
+          to_query.add(cid)
+    fresh = {}
+    if to_query:
+      fresh = self.interrogator.query_many(sorted(to_query))
+      for cid, status in fresh.items():
+        if status in CACHEABLE_TERMINAL:
+          self._chunk_cache[cid] = status
+    def chunk_status(cid):
+      return self._chunk_cache.get(cid) or fresh.get(cid, "UNKWN")
     results = []
     for submission_id in submission_ids:
       if submission_id is None:
         results.append("UNKWN")
         continue
-      statuses = [status_map.get(sid, 'UNKWN') for sid in submission_id.split(',')]
-      results.append(self._aggregate(statuses))
+      statuses = [chunk_status(cid) for cid in submission_id.split(',') if cid]
+      # Single-chunk jobs report their exact status (preserving e.g. TIMEOUT);
+      # multi-chunk (ensemble) jobs are collapsed by precedence.
+      if len(statuses) == 1:
+        results.append(statuses[0])
+      else:
+        results.append(_aggregate_ensemble(statuses))
     return results
 
 class HTCondorSubmissionTracker(SubmissionTracker):

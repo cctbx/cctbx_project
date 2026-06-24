@@ -342,6 +342,8 @@ class JobMonitor(Thread):
     self.parent = parent
     self.active = active
     self.only_active_jobs = True
+    # {job.id: status} from the previous cycle, used to repaint only on a delta.
+    self._last_snapshot = None
 
   def post_refresh(self, trials = None, jobs = None):
     evt = MonitorJobs(tp_EVT_JOB_MONITOR, -1, trials, jobs)
@@ -364,7 +366,7 @@ class JobMonitor(Thread):
         jobs = db.get_all_jobs(active = self.only_active_jobs)
 
         # Collect the jobs that still need tracking, then query the queueing system
-        # in a single batched call (one sacct per cycle) rather than once per job.
+        # in a single batched call (one squeue per cycle) rather than once per job.
         # TIMEOUT is terminal, so skip it too; UNKWN is intentionally NOT skipped
         # because it is transient for slurm (e.g. ensemble jobs with mixed states).
         active_jobs = [job for job in jobs
@@ -372,14 +374,23 @@ class JobMonitor(Thread):
         new_statuses = tracker.track_many(
           [job.submission_id for job in active_jobs],
           [job.get_log_path() for job in active_jobs])
+        updates = []
         for job, new_status in zip(active_jobs, new_statuses):
-          # Handle the case where the job was submitted but no status is available yet
-          if job.status == "SUBMITTED" and new_status == "ERR":
-            pass
-          elif job.status != new_status:
-            job.status = new_status
+          # A just-submitted job may not be visible to the scheduler yet; keep it
+          # SUBMITTED rather than flipping it to a transient ERR/UNKWN.
+          if job.status == "SUBMITTED" and new_status in ("ERR", "UNKWN"):
+            continue
+          if job.status != new_status:
+            updates.append((job, new_status))
+        # Persist all status changes in one UPDATE (also syncs the Job objects).
+        db.update_job_statuses(updates)
 
-        self.post_refresh(trials, jobs)
+        # Repaint only when something actually changed (a status delta, or the
+        # set of active jobs changed), to avoid needless UI churn.
+        snapshot = {job.id: job.status for job in jobs}
+        if snapshot != self._last_snapshot:
+          self.post_refresh(trials, jobs)
+          self._last_snapshot = snapshot
         wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'on')
         time.sleep(10)
       except Exception as e:
