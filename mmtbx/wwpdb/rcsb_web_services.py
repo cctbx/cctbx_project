@@ -515,7 +515,7 @@ query
   if data_entry['exptl'][0]['method'] != 'ELECTRON MICROSCOPY':
     return None
   emdb_ids = data_entry['rcsb_entry_container_identifiers']['emdb_ids']
-  if len(emdb_ids)==0:
+  if not emdb_ids:
     return None
   return emdb_ids
 

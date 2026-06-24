@@ -144,6 +144,9 @@ def exercise_get_emdb_id():
   assert emdb_ids == ['EMD-37438'], emdb_ids
   emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('1yjp')
   assert emdb_ids == None, emdb_ids
+  # EM structure without an associated EMDB id: emdb_ids field is null
+  emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('1uon')
+  assert emdb_ids == None, emdb_ids
 
 def exercise_sequence_search():
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
