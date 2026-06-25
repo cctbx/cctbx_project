@@ -886,6 +886,8 @@ class model_idealization():
               value = getattr(sub_class, val_subname, None)
             else:
               value = sub_class
+          if value is None:
+            value = 99999
           l += val_format.format(value)
         else:
           l += val_format.format(0)
