@@ -208,6 +208,31 @@ def exercise_04(d_min = 1.0, n_grid = 2000, dist_max = 5.0, b_iso = 10.):
   emean, emax = get_rel_err(m1=image1, m2=approx)
   print("emean, emax:", emean, emax)
 
+def exercise_05(d_min = 1.0, n_grid = 2000, dist_max = 5.0, b_iso = 10.):
+  #
+  # Test non-zero B
+  #
+  radii = flex.double([i/100 for i in range(0, 301)])
+  o = maptbx.atom_curves(scattering_type="S", scattering_table="wk1995")
+  im1 = o.image(
+    d_min = d_min,
+    b_iso = b_iso,
+    radii = radii,
+    fast  = True)
+  #
+  # Image via integration (slow), (8-9)
+  #
+  im2 = o.image(
+    d_min = d_min,
+    b_iso = b_iso,
+    radii = radii,
+    fast  = False)
+  emean, emax = get_rel_err(m1=im1.image_values, m2=im2.image_values)
+  assert emean < 1.e-5, emean
+  assert emax  < 1.e-5, emax
+  assert approx_equal(im2.image_values, im1.image_values)
+  assert approx_equal(radii, im1.radii)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
@@ -215,5 +240,6 @@ if (__name__ == "__main__"):
   exercise_02()
   exercise_03()
   exercise_04()
+  exercise_05()
   print("Time: %6.3f"%(time.time()-t0))
   print("OK")

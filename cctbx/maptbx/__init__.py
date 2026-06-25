@@ -1638,7 +1638,10 @@ Fourier image of specified resolution, etc.
             radius_step = 0.001,
             n_integration_steps = 2000,
             compute_derivatives=True,
+            charge_density=False, # supported only in atom_image_fast
             fast=False):
+    if charge_density:
+      assert fast
     # define radii if not supplied
     if radii is None:
       radii = flex.double()
@@ -1674,11 +1677,12 @@ Fourier image of specified resolution, etc.
       #
       ff_AU_style = [round(_,6) for _ in ff_AU_style]
       image_values, _ = atom_image_fast(
-        ff_packed = ff_AU_style,
-        d_min     = d_min,
-        n_grid    = radii.size()-1,
-        dist_max  = radii[-1],
-        B         = b_iso)
+        ff_packed      = ff_AU_style,
+        d_min          = d_min,
+        n_grid         = radii.size()-1,
+        dist_max       = radii[-1],
+        B              = b_iso,
+        charge_density = charge_density)
       image_values = flex.double(image_values)
     # Fine first inflection point
     first_inflection_point = None
