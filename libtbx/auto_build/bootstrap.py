@@ -962,6 +962,12 @@ class alphafold_module(SourceModule):
                'git@github.com:google-deepmind/alphafold.git',
                'https://github.com/google-deepmind/alphafold.git']
 
+class onedep_lib_module(SourceModule):
+  module = 'onedep_lib'
+  anonymous = ['git',
+               'git@github.com:wwPDB/onedep_lib.git',
+               'https://github.com/wwPDB/onedep_lib.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
@@ -2446,6 +2452,7 @@ class PhenixBuilder(CCIBuilder):
     'phaser_regression',
     'voyager_regression',
     'phaser_voyager',
+    'onedep_lib',
     # 'dials',
     # 'xia2',
     # 'iota',
@@ -2516,6 +2523,16 @@ in your path. """)
                               'auto_build', 'install_conda.py'),
                  '--install_dev_env', '--verbose']
       self.add_step(self.shell(command=command, workdir=['.']))
+
+  def add_make(self):
+    super(PhenixBuilder, self).add_make()
+    # install onedep_lib
+    python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
+    self.add_step(self.shell(
+      command=[python, '-m', 'pip', 'install', '.'],
+        workdir=['modules', 'onedep_lib'],
+        description='pip installing onedep_lib',
+      ))
 
   def add_install(self):
     Builder.add_install(self)
