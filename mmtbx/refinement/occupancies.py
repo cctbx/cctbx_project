@@ -67,6 +67,7 @@ class manager(object):
           par_initial.append(val)
         constrained_groups_selections.append(ss)
       minimized = None
+      n_iterations_total, n_fun_total = 0, 0
       for macro_cycle in range(number_of_macro_cycles):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = minimizer(
@@ -75,6 +76,10 @@ class manager(object):
           constrained_groups_selections = constrained_groups_selections,
           par_initial                   = par_initial,
           max_number_of_iterations      = max_number_of_iterations)
+        mm = getattr(minimized, "minimizer", None)
+        if(mm is not None):
+          n_iterations_total += mm.iter()
+          n_fun_total        += mm.nfun()
         if(minimized is not None): par_initial = minimized.par_min
         set_refinable_parameters(
           xray_structure     = fmodels.fmodel_xray().xray_structure,
@@ -94,6 +99,10 @@ class manager(object):
       assert flex.min(refined_occ) >= occupancy_min
       assert flex.max(refined_occ) <= occupancy_max
       self.show(fmodels= fmodels, log = log, message="occupancy refinement: end")
+      if(log is not None):
+        print(file=log)
+        print("Number of minimizer iterations: %d (%d function evaluations)" % (
+          n_iterations_total, n_fun_total), file=log)
 
   def show(self, fmodels, message, log):
     if(log is not None):
