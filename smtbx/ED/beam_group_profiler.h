@@ -34,7 +34,7 @@ namespace smtbx { namespace ED {
 
       af::shared<BeamGroup<FloatType> > beam_groups;
       beam_groups.push_back(beam_group);
-      base_t::init(beam_groups);
+      base_t::init(beam_groups, params.useSysAbs());
 
       base_t::build();
     }
