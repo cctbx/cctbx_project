@@ -5,6 +5,7 @@
 #include <limits>
 #include <locale.h>
 #include <stdexcept>
+#include <xlocale.h>
 
 // strtod is locale-sensitive (decimal separator varies).  Use a C-locale
 // strtod wrapper so that CIF's mandatory '.' separator always works.
