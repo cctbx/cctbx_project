@@ -195,12 +195,50 @@ def flip_selected(pdb_hierarchy, # changed in-place
             total_flipped += 1
   print("\nTotal number of N/Q/H flips: %d\n" % total_flipped, file=log)
 
-def flip(pdb_hierarchy, log=None, mon_lib_srv=None):
-  if mon_lib_srv is None:
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-  if(log is None): log = sys.stdout
-  pdb_hierarchy.atoms().reset_i_seq()
+def flip(model, selection=None, log=None):
+  """Flip backwards N/Q/H side-chains on `model`, in place. The engine -- reduce1
+  (external molprobity.reduce) or reduce2 (in-process) -- is chosen by
+  mmtbx.hydrogens.use_old_reduce(); each just decides the flips, which are then
+  applied here via flip_selected (heavy-atom swap only, atom-preserving). Under
+  reduce2 raises: no hydrogens are added mid-refinement."""
+  # lazy import: mmtbx.hydrogens imports mmtbx.model, which imports this module
+  # (nqh), so importing hydrogens at module top would be a circular import.
+  from mmtbx import hydrogens
+  if log is None: log = sys.stdout
   print("Analyzing N/Q/H residues for possible flip corrections...", file=log)
+  if hydrogens.use_old_reduce():
+    if selection is None:
+      pdb_hierarchy = model.get_hierarchy()
+    else:
+      pdb_hierarchy = model.get_hierarchy().select(selection)
+    flips  = _nqh_flips_reduce1(pdb_hierarchy, log)
+  else:
+    # reduce2 detects on a model, so honor `selection` (e.g. an NCS group) by
+    # working on a sub-model -- mirroring reduce1's sub-hierarchy detection.
+    work_model    = model if selection is None else model.select(selection)
+    pdb_hierarchy = work_model.get_hierarchy()
+    if work_model.has_hd() == 0:
+      # policy: no H is added mid-refinement, so with no H there is no flip to
+      # decide -- skip (_nqh_flips_reduce2 would otherwise refuse an H-less model)
+      print("No hydrogens present; skipping N/Q/H flips (reduce2 policy).", file=log)
+      flips = [], [], {}
+    else:
+      flips  = _nqh_flips_reduce2(work_model, log)
+  flip_list, atom_notes, score_dict = flips
+  flip_selected(
+    pdb_hierarchy = pdb_hierarchy, # changed in-place
+    mon_lib_srv   = model.get_mon_lib_srv(),
+    flip_list     = flip_list,
+    atom_notes    = atom_notes,
+    score_dict    = score_dict,
+    log           = log)
+  model.set_sites_cart(
+    sites_cart = pdb_hierarchy.atoms().extract_xyz(), selection = selection)
+
+def _nqh_flips_reduce1(pdb_hierarchy, log):
+  """reduce1 detection: external molprobity.reduce. Returns (flip_list,
+  atom_notes, score_dict), or None if Reduce could not be run."""
+  pdb_hierarchy.atoms().reset_i_seq()
   tmp_pdb_hierarchy = pdb_hierarchy.deep_copy()
   tmp_pdb_hierarchy.atoms().reset_i_seq()
   #analyze chain/segid relationship
@@ -214,8 +252,7 @@ def flip(pdb_hierarchy, log=None, mon_lib_srv=None):
     force_unique_chain_ids(
       pdb_hierarchy=tmp_pdb_hierarchy)
   try:
-    flip_list, atom_notes, score_dict = get_nqh_flips(
-      pdb_hierarchy = tmp_pdb_hierarchy)
+    return get_nqh_flips(pdb_hierarchy = tmp_pdb_hierarchy)
   except OSError as e :
     if (e.errno == 32) :
       print("WARNING: system error attempting to run Reduce", file=log)
@@ -224,18 +261,13 @@ def flip(pdb_hierarchy, log=None, mon_lib_srv=None):
       print("         should check Asn/Gln/His residues visually.", file=log)
       print("         contact help@phenix-online.org if this problem", file=log)
       print("         occurs frequently.", file=log)
-      return pdb_hierarchy
+      return [], [], {}
     else :
       raise e
-  if len(flip_list) == 0:
-    print("\nNo N/Q/H corrections needed this macrocycle", file=log)
-  else:
-    print("\nFlipped N/Q/H residues before XYZ refinement:", file=log)
-    flip_selected(
-      pdb_hierarchy = pdb_hierarchy, # changed in-place
-      mon_lib_srv   = mon_lib_srv,
-      flip_list     = flip_list,
-      atom_notes    = atom_notes,
-      score_dict    = score_dict,
-      log           = log)
-  return pdb_hierarchy
+
+def _nqh_flips_reduce2(model, log):
+  """reduce2 detection: in-process. Returns (flip_list, atom_notes, score_dict),
+  or None if there are no hydrogens (none are added mid-refinement, so there is
+  no flip to decide)."""
+  from mmtbx import hydrogens
+  return hydrogens.get_nqh_flips_reduce2(model)

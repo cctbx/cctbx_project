@@ -841,23 +841,8 @@ class manager(object):
     assert d<1.e-4
 
   def flip_nqh(self, selection = None):
-    "Flip N/Q/H residue side-chains if needed"
-    if(selection is None):
-      nqh.flip(
-        pdb_hierarchy = self.get_hierarchy(), # changed in-place
-        log           = self.log,
-        mon_lib_srv   = self.get_mon_lib_srv())
-      self.set_sites_cart(
-        sites_cart = self.get_hierarchy().atoms().extract_xyz())
-    else:
-      ph_tmp = self.get_hierarchy().select(selection)
-      nqh.flip(
-        pdb_hierarchy = ph_tmp, # changed in-place
-        log           = self.log,
-        mon_lib_srv   = self.get_mon_lib_srv())
-      self.set_sites_cart(
-        sites_cart = ph_tmp.atoms().extract_xyz(),
-        selection  = selection)
+    "Flip N/Q/H residue side-chains if needed (reduce1/reduce2 chosen in nqh)"
+    nqh.flip(model = self, selection = selection, log = self.log)
 
   def set_ramachandran_plot_restraints(self, rama_params):
     """ rama_params - mmtbx.geometry_restraints.ramachandran.master_phil->

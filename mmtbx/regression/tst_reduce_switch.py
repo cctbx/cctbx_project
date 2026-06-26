@@ -147,6 +147,227 @@ def test_clashscore2_delegates():
   assert _h_count(out_model) > 0
   print("test_clashscore2_delegates OK")
 
+def _make_all_asn_backwards(hierarchy):
+  """Swap OD1/ND2 on every ASN so reduce wants to flip them back. Returns count."""
+  n = 0
+  for rg in hierarchy.residue_groups():
+    for ag in rg.atom_groups():
+      if ag.resname.strip() == "ASN":
+        ad = {a.name.strip(): a for a in ag.atoms()}
+        if "OD1" in ad and "ND2" in ad:
+          ad["OD1"].xyz, ad["ND2"].xyz = ad["ND2"].xyz, ad["OD1"].xyz
+          n += 1
+  return n
+
+def test_flip_nqh_skips_h_less_model_reduce2():
+  """Under reduce2 no H is added mid-refinement, so flip_nqh skips an H-less
+  model: it logs 'skipping', applies no flip, and leaves the model unchanged."""
+  from io import StringIO
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    m = model_from_str(pdb_str)                  # no hydrogens
+    assert not m.has_hd()
+    log = StringIO(); m.set_log(log)
+    n_before = m.get_number_of_atoms()
+    m.flip_nqh()                                 # skips (no raise)
+    assert m.get_number_of_atoms() == n_before
+    out = log.getvalue().lower()
+    assert "skipping" in out and "hydrogen" in out, log.getvalue()
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_flip_nqh_skips_h_less_model_reduce2 OK")
+
+def test_flip_nqh_applies_reduce2_flip():
+  """Under reduce2, an H-bearing model with backwards ASN side-chains is flipped
+  via the reduce2 decision path, atom-preservingly (no atom added or removed).
+  Also exercises the full path get_nqh_flips_reduce2 -> flip_selected, so a
+  flip-key format mismatch would surface as 0 flips applied."""
+  import os, re, libtbx.load_env
+  from io import StringIO
+  p = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/ions/3zu8.pdb", test=os.path.isfile)
+  if p is None:
+    print("3zu8.pdb not found, skipping reduce2 flip-apply test"); return
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    dm = DataManager(['model']); dm.process_model_file(p)
+    m = dm.get_model(); m.add_crystal_symmetry_if_necessary()
+    assert _make_all_asn_backwards(m.get_hierarchy()) > 0
+    m.set_sites_cart(m.get_hierarchy().atoms().extract_xyz())
+    hm = _h_restrained_model(m)                   # add H + restraints
+    assert hm.get_hd_selection().count(True) > 0
+    n_before = hm.get_number_of_atoms()
+    log = StringIO(); hm.set_log(log)
+    hm.flip_nqh()                                 # reduce2 decision-only flip
+    out = log.getvalue()
+    assert hm.get_number_of_atoms() == n_before   # atom-preserving
+    mobj = re.search(r"Total number of N/Q/H flips:\s*(\d+)", out)
+    assert mobj and int(mobj.group(1)) >= 1, out  # a flip was actually applied
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_flip_nqh_applies_reduce2_flip OK")
+
+def test_flip_nqh_respects_selection_reduce2():
+  """Under reduce2, flip_nqh(selection=...) detects on a SUB-model (model.select)
+  and applies/propagates the flip only within the selection."""
+  import os, re, libtbx.load_env
+  from io import StringIO
+  p = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/ions/3zu8.pdb", test=os.path.isfile)
+  if p is None:
+    print("3zu8.pdb not found, skipping selection test"); return
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    dm = DataManager(['model']); dm.process_model_file(p)
+    m = dm.get_model(); m.add_crystal_symmetry_if_necessary()
+    assert _make_all_asn_backwards(m.get_hierarchy()) > 0
+    m.set_sites_cart(m.get_hierarchy().atoms().extract_xyz())
+    hm = _h_restrained_model(m)
+    sel = hm.selection("chain A")                 # contains the backwards ASN
+    assert sel.count(True) > 0
+    sites_before = hm.get_sites_cart().deep_copy()
+    log = StringIO(); hm.set_log(log)
+    hm.flip_nqh(selection=sel)                     # reduce2 detects on model.select(sel)
+    mo = re.search(r"Total number of N/Q/H flips:\s*(\d+)", log.getvalue())
+    assert mo and int(mo.group(1)) >= 1, log.getvalue()
+    moved = (hm.get_sites_cart() - sites_before).norms() > 0.1
+    assert moved.count(True) > 0                   # the flip propagated to the model
+    assert (moved & ~sel).count(True) == 0        # only selection atoms moved
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_flip_nqh_respects_selection_reduce2 OK")
+
+def test_clash_none_when_no_h_reduce2():
+  """Under reduce2 (USE_OLD_REDUCE=False), geometry clash() is a NON-ADDING
+  observer: an H-less model yields score=None (no reduce1 force-add), and
+  mp_score()/show() tolerate the None instead of raising."""
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    model = model_from_str(pdb_str)                    # no hydrogens
+    model.process(make_restraints=True)
+    gs = model.geometry_statistics(use_hydrogens=True) # keep H (there are none)
+    c = gs.clash()
+    assert c.score is None, c.score
+    assert c.clashes is None, c.clashes
+    assert gs.mp_score() is None, gs.mp_score()
+    gs.show(log=null_out())                            # must not raise on None
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_clash_none_when_no_h_reduce2 OK")
+
+def test_clash_scores_existing_h_reduce2():
+  """Under reduce2, an H-bearing model still gets a real (non-None) clashscore:
+  Probe runs on the existing H and no reduce is invoked (regression guard for the
+  H-present branch of the non-adding observer)."""
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    hmodel = reduce_switch.place_and_optimize_hydrogens(
+      model=model_from_str(pdb_str), do_flips=False, nuclear=False, log=null_out())
+    assert _h_count(hmodel) > 0
+    hmodel.process(make_restraints=True)               # engine left no restraints
+    gs = hmodel.geometry_statistics(use_hydrogens=True)
+    score = gs.clash().score
+    assert score is not None and score >= 0, score     # a real clashscore
+    assert gs.mp_score() is not None
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_clash_scores_existing_h_reduce2 OK")
+
+def test_rsr_per_cycle_clashscore_keeps_h_reduce2():
+  """Under reduce2 the real-space per-cycle stats (rsr_model.update_statistics)
+  must report a clashscore for an H-bearing model. The bug: geometry_statistics()
+  with default use_hydrogens=None strips H (electron table / riding H), so reduce2
+  clash() returns None. The fix passes use_hydrogens=True under reduce2."""
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    hmodel = reduce_switch.place_and_optimize_hydrogens(
+      model=model_from_str(pdb_str), log=null_out())
+    hmodel.process(make_restraints=True)
+    hmodel.setup_scattering_dictionaries(scattering_table="electron")
+    assert hmodel.has_hd()
+    xrs = hmodel.get_xray_structure()
+    fft_map = xrs.structure_factors(d_min=2.0).f_calc().fft_map(
+      resolution_factor=1./3)
+    fft_map.apply_sigma_scaling()
+    from mmtbx.refinement.real_space import rsr_model
+    rm = rsr_model(model=hmodel, map_data=fft_map.real_map_unpadded(), d_min=2.0)
+    rm.update_statistics()
+    geo = rm.stats_evaluations[-1].geometry
+    assert geo is not None and geo.clash.score is not None, \
+      "per-cycle clashscore is None (H stripped before clash)"
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_rsr_per_cycle_clashscore_keeps_h_reduce2 OK")
+
+def test_model_idealization_stat_display_tolerates_none_reduce2():
+  """phenix.model_idealization works on an H-less model (it runs remove_hydrogens),
+  so under reduce2 every geometry_statistics() snapshot has clash.score=None and
+  molprobity_score=None. print_stat_comparison() must render those as the program's
+  own 99999 'not available' sentinel instead of crashing on "{:10.2f}".format(None)
+  (the contract: all clash()/mp_score() callers must tolerate None)."""
+  from io import StringIO
+  from libtbx import group_args
+  from mmtbx.command_line import model_idealization as mi
+  def fake_stats():
+    # mimic geometry_statistics().result() under reduce2: clash/molprobity are None,
+    # the other validation fields are real numbers (reduce2 does not touch them).
+    return group_args(
+      molprobity_score = None,
+      clash        = group_args(score=None, clashes=None),
+      c_beta       = group_args(outliers=0),
+      ramachandran = group_args(outliers=0, allowed=0, favored=100),
+      rotamer      = group_args(outliers=0),
+      omega        = group_args(cis_proline=0, cis_general=0,
+                                twisted_proline=0, twisted_general=0),
+      cablam       = group_args(outliers=0, disfavored=0, ca_outliers=0))
+  # Build the reporter without the heavy __init__ (needs a real model+map); we only
+  # exercise the stat-printing method, feeding it the reduce2-shaped stat objects.
+  obj = mi.model_idealization.__new__(mi.model_idealization)
+  obj.log = StringIO()
+  obj.params = group_args(run_minimization_first=False)
+  obj.after_cablam_statistics  = None
+  obj.init_gm_model_statistics = None
+  obj.init_model_statistics    = fake_stats()
+  obj.after_ss_idealization    = fake_stats()
+  obj.after_loop_idealization  = fake_stats()
+  obj.after_rotamer_fixing     = fake_stats()
+  obj.final_model_statistics   = fake_stats()
+  obj.time_for_init = 0; obj.time_for_run = 0
+  obj.get_rmsd_from_start  = lambda: 0.0  # shadow the heavy rmsd calc (unrelated)
+  obj.get_rmsd_from_start2 = lambda: 0.0
+  obj.print_stat_comparison()             # must NOT raise on the None values
+  out = obj.log.getvalue()
+  clash_lines = [l for l in out.splitlines() if l.startswith("Clashscore")]
+  assert len(clash_lines) == 1, out
+  assert "99999" in clash_lines[0], clash_lines[0]   # None -> sentinel, not a crash
+  print("test_model_idealization_stat_display_tolerates_none_reduce2 OK")
+
+def test_molprobity_validation_adds_h_reduce2():
+  """Standalone comprehensive validation (mmtbx.validation.molprobity.molprobity)
+  needs a real clashscore. Under reduce2 clash() is a non-adding observer, so for
+  an H-less model clash.clashes is None (-> AttributeError on
+  probe_clashscore_manager). Per policy, molprobity adds H itself -- gated on
+  use_old_reduce(), on a copy -- so clash() then scores the (added) H. No-op under
+  reduce1."""
+  import mmtbx.validation.molprobity
+  saved = reduce_switch.USE_OLD_REDUCE
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    m = model_from_str(pdb_str)                       # no hydrogens
+    assert not m.has_hd()
+    v = mmtbx.validation.molprobity.molprobity(model=m, keep_hydrogens=False)
+    assert v.clashes is not None                      # H added -> real clash object
+    assert v.clashscore() is not None                 # a real clashscore, not None
+  finally:
+    reduce_switch.USE_OLD_REDUCE = saved
+  print("test_molprobity_validation_adds_h_reduce2 OK")
+
 if __name__ == "__main__":
   test_adds_hydrogens()
   test_dispatcher_explicit_reduce2()
@@ -155,4 +376,12 @@ if __name__ == "__main__":
   test_get_nqh_flips_requires_h()
   test_get_nqh_flips_detects_flip()
   test_clashscore2_delegates()
+  test_clash_none_when_no_h_reduce2()
+  test_clash_scores_existing_h_reduce2()
+  test_flip_nqh_skips_h_less_model_reduce2()
+  test_flip_nqh_applies_reduce2_flip()
+  test_flip_nqh_respects_selection_reduce2()
+  test_rsr_per_cycle_clashscore_keeps_h_reduce2()
+  test_model_idealization_stat_display_tolerates_none_reduce2()
+  test_molprobity_validation_adds_h_reduce2()
   print("OK")
