@@ -363,6 +363,7 @@ class refine_adp(object):
         deltab .append(result.delta_b)
         w      .append(result.weight)
     #
+    accepted_result = None
     if(len(trial_weights)>1 and rw.size()>0):
       # filter by rfree-rwork
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
@@ -397,6 +398,7 @@ class refine_adp(object):
         if(abs(result.weight-w_best)<=1.e-8):
           best_u_star = result.u_star
           best_u_iso = result.u_iso
+          accepted_result = result
           break
       if(best_u_iso is None) : # XXX this probably shouldn't happen...
         self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
@@ -421,6 +423,12 @@ class refine_adp(object):
         # this needs to be done again again, just in case
         fmodels.create_target_functors()
       self.show(weight=w_best)
+    if(accepted_result is None):
+      for result in trial_results:
+        if(result is not None):
+          accepted_result = result
+          break
+    self._show_n_iterations(accepted_result)
     self.fmodels.fmodel_xray().xray_structure.tidy_us()
     self.fmodels.update_xray_structure(
       xray_structure = self.fmodels.fmodel_xray().xray_structure,
@@ -441,13 +449,14 @@ class refine_adp(object):
         update_f_calc  = True)
       self.target_weights.adp_weights_result.wx = weight
       self.target_weights.adp_weights_result.wx_scale = self.wx_scale
-    minimized = self.minimize()
+    n_iterations, n_fun = self.minimize()
     wt = weight*self.wx_scale
-    result = self.show(weight=wt, print_stats=print_stats)
+    result = self.show(weight=wt, print_stats=print_stats,
+      n_iterations=n_iterations, n_fun=n_fun)
     return result
 
   def show(self, weight = None, prefix = "", show_neutron=True,
-      print_stats=True):
+      print_stats=True, n_iterations=None, n_fun=None):
     deltab = self.model.rms_b_iso_or_b_equiv_bonded()
     r_work = self.fmodels.fmodel_xray().r_work()*100.
     r_free = self.fmodels.fmodel_xray().r_free()*100.
@@ -471,7 +480,9 @@ class refine_adp(object):
       neutron_r_work=neutron_r_work,
       neutron_r_free=neutron_r_free,
       u_star=xrs.scatterers().extract_u_star(),
-      u_iso=xrs.scatterers().extract_u_iso())
+      u_iso=xrs.scatterers().extract_u_iso(),
+      n_iterations=n_iterations,
+      n_fun=n_fun)
     if (print_stats):
       result.show(out=self.log)
     return result
@@ -506,18 +517,33 @@ class refine_adp(object):
     w      = w     .select(sel)
     return rw, rf, rfrw, deltab, w
 
+  def _show_n_iterations(self, result):
+    # Number of ADP-refinement minimizer iterations for the accepted weight.
+    # Reported in the main process (after weight selection) so it survives the
+    # weight-optimization + nproc>1 path, where minimizations run in pool_map
+    # workers whose stdout is discarded.
+    if(self.log is None or result is None): return
+    if(getattr(result, "n_iterations", None) is None): return
+    print(file=self.log)
+    print("Number of minimizer iterations: %d (%d function evaluations)" % (
+      result.n_iterations, result.n_fun), file=self.log)
+
   def minimize(self):
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
       x2 = self.model.get_xray_structure())
     self.model.set_refine_individual_adp()
-    self.run_lbfgs()
+    minimized = self.run_lbfgs()
     self.model.set_xray_structure(self.fmodels.fmodel_xray().xray_structure)
     #assert minimized.xray_structure is self.model.get_xray_structure()
     #utils.assert_xray_structures_equal(
     #  x1 = minimized.xray_structure,
     #  x2 = self.model.get_xray_structure())
-    #return minimized
+    n_iterations, n_fun = None, None
+    mm = getattr(minimized, "minimizer", None)
+    if(mm is not None):
+      n_iterations, n_fun = mm.iter(), mm.nfun()
+    return n_iterations, n_fun
 
   def run_lbfgs(self):
     if(self.model.get_ncs_groups() is None or
@@ -556,10 +582,12 @@ class refine_adp(object):
         prefix        = "NCS constrained ADP refinement").minimized
       self.model.set_xray_structure(fmodel.xray_structure)
     else: raise RuntimeError("Bad ncs options.")
+    return minimized
 
 class weight_result(object):
   def __init__(self, r_work, r_free, delta_b, mean_b, weight, xray_target,
-      neutron_r_work, neutron_r_free, u_star, u_iso):
+      neutron_r_work, neutron_r_free, u_star, u_iso,
+      n_iterations=None, n_fun=None):
     adopt_init_args(self, locals())
     self.r_gap = r_free - r_work
 
