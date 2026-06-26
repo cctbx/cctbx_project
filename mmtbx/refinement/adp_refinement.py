@@ -522,11 +522,12 @@ class refine_adp(object):
     # Reported in the main process (after weight selection) so it survives the
     # weight-optimization + nproc>1 path, where minimizations run in pool_map
     # workers whose stdout is discarded.
-    if(self.log is None or result is None): return
-    if(getattr(result, "n_iterations", None) is None): return
-    print(file=self.log)
-    print("Number of minimizer iterations: %d (%d function evaluations)" % (
-      result.n_iterations, result.n_fun), file=self.log)
+    if(result is None): return
+    import mmtbx.refinement
+    mmtbx.refinement.show_number_of_minimizer_iterations(
+      n_iterations = getattr(result, "n_iterations", None),
+      n_fun        = getattr(result, "n_fun", None),
+      log          = self.log)
 
   def minimize(self):
     utils.assert_xray_structures_equal(

@@ -99,10 +99,9 @@ class manager(object):
       assert flex.min(refined_occ) >= occupancy_min
       assert flex.max(refined_occ) <= occupancy_max
       self.show(fmodels= fmodels, log = log, message="occupancy refinement: end")
-      if(log is not None):
-        print(file=log)
-        print("Number of minimizer iterations: %d (%d function evaluations)" % (
-          n_iterations_total, n_fun_total), file=log)
+      import mmtbx.refinement
+      mmtbx.refinement.show_number_of_minimizer_iterations(
+        n_iterations = n_iterations_total, n_fun = n_fun_total, log = log)
 
   def show(self, fmodels, message, log):
     if(log is not None):

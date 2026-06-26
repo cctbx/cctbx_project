@@ -1,5 +1,20 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
+import re
+
+# Single source of truth for the per-minimizer iteration log line printed by the
+# reciprocal-space xyz / adp / occupancy minimizers in phenix.refine. The
+# companion regex (number_of_minimizer_iterations_regex) is used by
+# phenix_regression/refinement/tst_129 to verify the line is still emitted; keep
+# the two in sync (changing the wording here updates both the output and the test).
+number_of_minimizer_iterations_regex = re.compile(
+  r"Number of minimizer iterations: (\d+) \((\d+) function evaluations\)")
+
+def show_number_of_minimizer_iterations(n_iterations, n_fun, log):
+  if(log is None or n_iterations is None or n_fun is None): return
+  print(file=log)
+  print("Number of minimizer iterations: %d (%d function evaluations)" % (
+    n_iterations, n_fun), file=log)
 
 class monitors(object):
   def __init__(
