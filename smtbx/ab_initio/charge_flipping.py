@@ -39,6 +39,7 @@ from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args
 
 from cctbx.array_family import flex
+from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import miller
 from cctbx import maptbx
@@ -494,7 +495,7 @@ class solving_iterator(object):
         self.skewness_evolution = observable_evolution()
         for n, flipping in enumerate(
           itertools.islice(self.flipping_iterator,
-                           0, self.max_solving_iterations)):
+                           0, int(self.max_solving_iterations))):
           self.iteration_index = n
           if n % self.yield_solving_interval == 0:
             yield self.solving

@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/scatterer_utils.h>
+#include <cctbx/xray/scatterer_lookup.h>
 #include <cctbx/crystal/direct_space_asu.h>
 #include <cctbx/eltbx/henke.h>
 #include <cctbx/eltbx/sasaki.h>
@@ -9,6 +10,8 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_internal_reference.hpp>
+#include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -20,62 +23,63 @@ namespace {
     typedef w_t::float_type flt_t;
 
     static void
-    wrap()
+      wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
+      return_value_policy<copy_const_reference> ccr;
       class_<w_t>("scatterer", no_init)
         .def(init<w_t const&>(arg("other")))
         .def(init<std::string const&,
-                  fractional<flt_t> const&,
-                  flt_t const&,
-                  flt_t const&,
-                  std::string const&,
-                  flt_t const&,
-                  flt_t const&>((
-          arg("label"),
-          arg("site"),
-          arg("u_iso"),
-          arg("occupancy"),
-          arg("scattering_type"),
-          arg("fp"),
-          arg("fdp"))))
+          fractional<flt_t> const&,
+          flt_t const&,
+          flt_t const&,
+          std::string const&,
+          flt_t const&,
+          flt_t const&>((
+            arg("label"),
+            arg("site"),
+            arg("u_iso"),
+            arg("occupancy"),
+            arg("scattering_type"),
+            arg("fp"),
+            arg("fdp"))))
         .def(init<std::string const&,
-                  fractional<flt_t> const&,
-                  scitbx::sym_mat3<flt_t> const&,
-                  flt_t const&,
-                  std::string const&,
-                  flt_t const&,
-                  flt_t const&>((
-          arg("label"),
-          arg("site"),
-          arg("u_star"),
-          arg("occupancy"),
-          arg("scattering_type"),
-          arg("fp"),
-          arg("fdp"))))
+          fractional<flt_t> const&,
+          scitbx::sym_mat3<flt_t> const&,
+          flt_t const&,
+          std::string const&,
+          flt_t const&,
+          flt_t const&>((
+            arg("label"),
+            arg("site"),
+            arg("u_star"),
+            arg("occupancy"),
+            arg("scattering_type"),
+            arg("fp"),
+            arg("fdp"))))
         .add_property("label", make_getter(&w_t::label, rbv()),
-                               make_setter(&w_t::label, dcp()))
+          make_setter(&w_t::label, dcp()))
         .add_property("scattering_type",
           make_getter(&w_t::scattering_type, rbv()),
           make_setter(&w_t::scattering_type, dcp()))
         .add_property("fp", make_getter(&w_t::fp, rbv()),
-                            make_setter(&w_t::fp, dcp()))
+          make_setter(&w_t::fp, dcp()))
         .add_property("fdp", make_getter(&w_t::fdp, rbv()),
-                             make_setter(&w_t::fdp, dcp()))
+          make_setter(&w_t::fdp, dcp()))
         .add_property("site", make_getter(&w_t::site, rbv()),
-                              make_setter(&w_t::site, dcp()))
+          make_setter(&w_t::site, dcp()))
         .add_property("occupancy", make_getter(&w_t::occupancy, rbv()),
-                                   make_setter(&w_t::occupancy, dcp()))
+          make_setter(&w_t::occupancy, dcp()))
         .add_property("u_iso", make_getter(&w_t::u_iso, rbv()),
-                               make_setter(&w_t::u_iso, dcp()))
+          make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
-                                make_setter(&w_t::u_star, dcp()))
+          make_setter(&w_t::u_star, dcp()))
         .add_property("anharmonic_adp", make_getter(&w_t::anharmonic_adp, rbv()),
-                                        make_setter(&w_t::anharmonic_adp, dcp()))
+          make_setter(&w_t::anharmonic_adp, dcp()))
         .def_readwrite("flags", &w_t::flags)
-        .def("set_use_u", &w_t::set_use_u, (arg("iso"),arg("aniso")))
+        .def("set_use_u", &w_t::set_use_u, (arg("iso"), arg("aniso")))
         .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
         .def("set_use_u_aniso_only", &w_t::set_use_u_aniso_only)
         .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
@@ -84,13 +88,13 @@ namespace {
           arg("unit_cell")))
         .def("is_positive_definite_u",
           (bool(w_t::*)(uctbx::unit_cell const&) const)
-            &w_t::is_positive_definite_u, (
-          arg("unit_cell")))
+          & w_t::is_positive_definite_u, (
+            arg("unit_cell")))
         .def("is_positive_definite_u",
           (bool(w_t::*)(uctbx::unit_cell const&, double const&) const)
-            &w_t::is_positive_definite_u, (
-          arg("unit_cell"),
-          arg("u_cart_tolerance")))
+          & w_t::is_positive_definite_u, (
+            arg("unit_cell"),
+            arg("u_cart_tolerance")))
         .def("is_anharmonic_adp", &w_t::is_anharmonic_adp)
         .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg("unit_cell")))
         .def("b_iso", &w_t::b_iso)
@@ -101,62 +105,137 @@ namespace {
             sgtbx::site_symmetry_ops const&,
             double const&,
             double const&,
-            double const&)) &w_t::tidy_u, (
-          arg("unit_cell"),
-          arg("site_symmetry_ops"),
-          arg("u_min"),
-          arg("u_max"),
-          arg("anisotropy_min")))
+            double const&)) & w_t::tidy_u, (
+              arg("unit_cell"),
+              arg("site_symmetry_ops"),
+              arg("u_min"),
+              arg("u_max"),
+              arg("anisotropy_min")))
         .def("shift_u",
           (void(w_t::*)(
             uctbx::unit_cell const&,
-            double const&)) &w_t::shift_u, (
-          arg("unit_cell"),
-          arg("u_shift")))
+            double const&)) & w_t::shift_u, (
+              arg("unit_cell"),
+              arg("u_shift")))
         .def("shift_occupancy",
           (void(w_t::*)(
-            double const&)) &w_t::shift_occupancy, (
-          arg("q_shift")))
+            double const&)) & w_t::shift_occupancy, (
+              arg("q_shift")))
         .def("apply_symmetry",
           (sgtbx::site_symmetry(w_t::*)(
             uctbx::unit_cell const&,
             sgtbx::space_group const&,
             double const&,
             double const&,
-            bool)) &w_t::apply_symmetry, (
+            bool)) & w_t::apply_symmetry, (
               arg("unit_cell"),
               arg("space_group"),
-              arg("min_distance_sym_equiv")=0.5,
-              arg("u_star_tolerance")=0,
-              arg("assert_min_distance_sym_equiv")=true))
+              arg("min_distance_sym_equiv") = 0.5,
+              arg("u_star_tolerance") = 0,
+              arg("assert_min_distance_sym_equiv") = true))
         .def("apply_symmetry",
           (void(w_t::*)(
             sgtbx::site_symmetry_ops const&,
-            double const&)) &w_t::apply_symmetry, (
+            double const&)) & w_t::apply_symmetry, (
               arg("site_symmetry_ops"),
-              arg("u_star_tolerance")=0))
+              arg("u_star_tolerance") = 0))
         .def("apply_symmetry_site", &w_t::apply_symmetry_site, (
           arg("site_symmetry_ops")))
         .def("apply_symmetry_u_star", &w_t::apply_symmetry_u_star, (
           arg("site_symmetry_ops"),
-          arg("u_star_tolerance")=0))
+          arg("u_star_tolerance") = 0))
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
         .def("report_details", &w_t::report_details, (
           arg("unit_cell"),
           arg("prefix")))
-      ;
+        .add_property("atomic_number", &w_t::get_atomic_number)
+        .add_property("element_name", &w_t::get_element_name)
+        .add_property("element_weight", &w_t::get_element_weight)
+        .def("get_id_2_16", &w_t::get_id_2_16, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("get_id_2_1", &w_t::get_id_2_1, ((arg("data") = 0), arg("multiplier") = 1))
+        .def("get_id_5_16", &w_t::get_id_5_16, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("get_id_5_1", &w_t::get_id_5_1, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("element_info", &w_t::element_info, ccr)
+        ;
+    }
+
+    template <typename FloatType, class crd_t, class mask_info, uint64_t m>
+    static void wrap_id(const char* name) {
+      using namespace boost::python;
+      typedef scatterer_id_base<FloatType, crd_t, mask_info, m> wt;
+      class_<wt, boost::shared_ptr<wt> >(name, no_init)
+        .def(init<const wt&>((arg("source"))))
+        .def(init<uint64_t>((arg("id"))))
+        .def("get_z", &wt::get_z)
+        .def("get_crd", &wt::get_crd)
+          .def("get_data", &wt::get_data)
+          .add_property("id", &wt::id)
+          ;
+    }
+
+    template <typename FloatType, class crd_t, class mask_info, uint64_t cell_m>
+    static void wrap_lookup(const char* name) {
+      using namespace boost::python;
+      typedef scatterer_lookup<FloatType, crd_t, mask_info, cell_m> wt;
+      return_internal_reference<> rir;
+
+      class_<wt, boost::shared_ptr<wt> >(name, no_init)
+        .def(init <const af::shared<scatterer<> > &, FloatType>(
+          (arg("scatterers"), arg("multiplier") = 1)))
+        .def(init <const af::shared<scatterer<> > &, const af::shared<int>&, FloatType>(
+          (arg("scatterers"), arg("data"), arg("multiplier") = 1)))
+        .def("find", &wt::find, rir)
+        .def("init", &wt::init)
+        .def("init_with_data", &wt::init_with_data)
+        .def("get_id", &wt::get_id, (
+          arg("z"), arg("site"), arg("data") = 0, arg("multiplier") = 1))
+        ;
+    }
+
+    template <typename FloatType>
+    static void wrap_cart_lookup() {
+      using namespace boost::python;
+      typedef scatterer_cart_lookup<FloatType> wt;
+      return_internal_reference<> rir;
+
+      class_<wt, boost::shared_ptr<wt> >("scatterer_lookup_cart", no_init)
+        .def(init<const uctbx::unit_cell&, const af::shared<scatterer<> > &>(
+          (arg("unit_cell"), arg("scatterers"))))
+        .def(init<const uctbx::unit_cell&,
+          const af::shared<scatterer<> > &,
+          const af::shared<int>&>(
+          (arg("unit_cell"), arg("scatterers"), arg("data"))))
+        .def("find_fractional", &wt::find_fractional,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
+        .def("find_cartisian", &wt::find_cartesian,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
+        .def("index_of_fractional", &wt::index_of_fractional,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3))
+        .def("index_of_cartisian", &wt::index_of_cartesian,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3))
+        ;
     }
   };
 
-} // namespace <anoymous>
+} // namespace <anonymous>
 
   void wrap_scatterer()
   {
     using namespace boost::python;
+    typedef fractional<double> crd_t;
 
     scatterer_wrappers::wrap();
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d2, 16>("scatterer_id_2_16");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d2, 1>("scatterer_id_2_1");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d5, 16>("scatterer_id_5_16");
+    scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d5, 1>("scatterer_id_5_1");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d2, 16>("scatterer_lookup_2_16");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d2, 1>("scatterer_lookup_2_1");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d5, 16>("scatterer_lookup_5_16");
+    scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d5, 1>("scatterer_lookup_5_1");
+    scatterer_wrappers::wrap_cart_lookup<double>();
 
     def("is_positive_definite_u",
       (af::shared<bool>(*)(

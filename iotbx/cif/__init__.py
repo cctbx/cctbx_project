@@ -24,7 +24,11 @@ from libtbx.containers import OrderedDict
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
+from libtbx.utils import format_float_with_standard_uncertainty \
+     as format_float_with_su
 from libtbx import smart_open
+import iotbx
+import math
 
 import os
 import sys
@@ -388,7 +392,7 @@ class reader(object):
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
-def atom_type_cif_loop(xray_structure, format="mmcif"):
+def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
   format = format.lower()
   assert format in ("corecif", "mmcif")
   if format == "mmcif": separator = '.'
@@ -397,34 +401,77 @@ def atom_type_cif_loop(xray_structure, format="mmcif"):
   sources = {
     "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
     "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
+    "neutron": "Neutron News, Vol. 3, No. 3, 1992, 29-37",
+    "electron": "L.-M. Peng (1998), J. Appl. Cryst. A54, 481-485"
   }
   inelastic_references = {
     "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
     "sasaki" : "Sasaki, KEK Report, 1989, 88-14, 1",
+    "brennan" : "Brennan, Cowan, Rev. Sci. Instrum., 1992, 63, 850",
   }
 
   scattering_type_registry = xray_structure.scattering_type_registry()
   unique_gaussians = scattering_type_registry.unique_gaussians_as_list()
   max_n_gaussians = max([gaussian.n_terms() for gaussian in unique_gaussians])
   max_n_gaussians = max(max_n_gaussians, 4) # Need for compliance with mmcif_pdbx_v50
-  # _atom_type_* loop
-  header = ['_atom_type%ssymbol' %separator,
-            '_atom_type%sscat_dispersion_real' %separator,
-            '_atom_type%sscat_dispersion_imag' %separator]
-  header.extend(['_atom_type%sscat_Cromer_Mann_a%i' %(separator, i+1)
-                 for i in range(max_n_gaussians)])
-  header.extend(['_atom_type%sscat_Cromer_Mann_b%i' %(separator, i+1)
-                 for i in range(max_n_gaussians)])
-  header.extend(['_atom_type%sscat_Cromer_Mann_c' %separator,
-                 '_atom_type%sscat_source' %separator,
-                 '_atom_type%sscat_dispersion_source' %separator])
-  atom_type_loop = model.loop(header=header)
-  gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
-  scattering_type_registry = xray_structure.scattering_type_registry()
   params = xray_structure.scattering_type_registry_params
+
+  if "neutron" == params.table:
+    header = ['_atom_type%ssymbol' %separator,
+              '_atom_type%sscat_length_neutron' %separator,
+              '_atom_type%sscat_source'  %separator,
+              ]
+  else:
+    # _atom_type_* loop
+    header = ['_atom_type%ssymbol' %separator,
+              '_atom_type%sscat_dispersion_real' %separator,
+              '_atom_type%sscat_dispersion_imag' %separator]
+    header.extend(['_atom_type%sscat_Cromer_Mann_a%i' %(separator, i+1)
+                  for i in range(max_n_gaussians)])
+    header.extend(['_atom_type%sscat_Cromer_Mann_b%i' %(separator, i+1)
+                  for i in range(max_n_gaussians)])
+    header.extend(['_atom_type%sscat_Cromer_Mann_c' %separator,
+                  '_atom_type%sscat_source' %separator,
+                  '_atom_type%sscat_dispersion_source' %separator])
+  atom_type_loop = model.loop(header=header)
+  #gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
+  if covariance_matrix:
+    param_map = xray_structure.parameter_map()
+    covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
   fp_fdp_table = {}
-  for sc in xray_structure.scatterers():
-    fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
+  fp_fdp_table_fixed = {}
+  fp_fdp_table_completeness = {}
+  for i_seq, sc in enumerate(xray_structure.scatterers()):
+    completeness = fp_fdp_table_completeness.get(sc.scattering_type, None)
+    if completeness is None:
+      completeness = [1,1,1]
+      fp_fdp_table_completeness[sc.scattering_type] = completeness
+    else:
+      completeness[0] += 1
+    fp, fdp = sc.fp, sc.fdp
+    if covariance_matrix:
+      sc_params = param_map[i_seq]
+      if sc.flags.grad_fp():
+        fp = format_float_with_su(sc.fp,
+                math.sqrt(covariance_diagonal[sc_params.fp]))
+      if sc.flags.grad_fdp():
+        fdp = format_float_with_su(sc.fdp,
+                math.sqrt(covariance_diagonal[sc_params.fdp]))
+      elif not sc.flags.grad_fp():
+        fp_fdp_table_fixed[sc.scattering_type] = (fp, fdp)
+    fp_fdp = fp_fdp_table.get(sc.scattering_type, None)
+    if fp_fdp is None:
+      fp_fdp_table[sc.scattering_type] = (fp, fdp)
+    else:
+      if fp == fp_fdp[0]:
+        completeness[1] += 1
+      if fdp == fp_fdp[1]:
+        completeness[2] += 1
+
+  for sc, completeness in fp_fdp_table_completeness.items():
+    if completeness[0] != completeness[1] or completeness[0] != completeness[2]:
+      del fp_fdp_table[sc]
+
   disp_source = inelastic_references.get(
     xray_structure.inelastic_form_factors_source)
   # custom?
@@ -441,20 +488,31 @@ def atom_type_cif_loop(xray_structure, format="mmcif"):
 %i-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."""
       scat_source = scat_source %gaussian.n_terms()
-    if disp_source == ".":
-      fp, fdp = ".", "."
-    else:
-      fp, fdp = fp_fdp_table[atom_type]
-      fp = "%.5f" %fp
-      fdp = "%.5f" %fdp
+    fp, fdp = ".", "."
+    if "" != disp_source:
+      if atom_type in fp_fdp_table:
+        fp, fdp = fp_fdp_table[atom_type]
+      elif atom_type in fp_fdp_table_fixed:
+        fp, fdp = fp_fdp_table_fixed[atom_type]
+      if not isinstance(fp, str):
+        fp = "%.5f" %fp
+      if not isinstance(fdp, str):
+        fdp = "%.5f" %fdp
+    if "neutron" == params.table:
+      atom_type_loop.add_row([atom_type, "%.5f" %gaussian.c(), scat_source])
+      continue
     row = [atom_type, fp, fdp]
+    lds = disp_source
+    if "(" in fp or "(" in fdp:
+      lds = "refined"
     #gaussian = gaussian_dict[sc.scattering_type]
     gaussian_a = ["%.5f" %a for a in gaussian.array_of_a()]
     gaussian_b = ["%.5f" %a for a in gaussian.array_of_b()]
+    gaussian_c = "%.5f" %gaussian.c()
     gaussian_a.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
     gaussian_b.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
     row.extend(gaussian_a + gaussian_b)
-    row.extend([gaussian.c(), scat_source, disp_source])
+    row.extend([gaussian_c, scat_source, lds])
     atom_type_loop.add_row(row)
 
   return atom_type_loop
@@ -507,6 +565,10 @@ class miller_arrays_as_cif_block():
           ('.A_' in column_names[0] and '.B_' in column_names[1])):
         data = [flex.real(array.data()).as_string(),
                  flex.imag(array.data()).as_string()]
+      elif (('_F_squared_calc' in column_names[0] and 'phase_calc' in column_names[1]) or
+            ('_F_squared_calc' in column_names[1] and 'phase_calc' in column_names[0])):
+        data = [flex.norm(array.data()).as_string(),
+                 array.phases(deg=True).data().as_string()]
       else:
         data = [flex.abs(array.data()).as_string(),
                  array.phases(deg=True).data().as_string()]

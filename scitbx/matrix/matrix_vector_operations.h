@@ -2,6 +2,8 @@
 #define SCITBX_MATRIX_MATRIX_VECTOR_OPERATIONS_H
 
 #include <scitbx/matrix/vector_operations.h>
+#include <fast_linalg/cblas.h>
+#include <fast_linalg/lapacke.h>
 
 namespace scitbx { namespace matrix {
 
@@ -71,15 +73,28 @@ namespace scitbx { namespace matrix {
   /// A := alpha x x^T + A for symmetric matrix A
   /** The upper diagonal of A packed by rows shall be passed in the range
       [ a, a +  n*(n+1)/2 )
-   */
+    Note that using fast_linalg is slower here
+    if (fast_linalg::is_initialised()) {
+      using namespace fast_linalg;
+      spr(CblasRowMajor, CblasUpper, n, alpha, x, 1, a);
+    }
+  */
   template <typename T>
   void symmetric_packed_u_rank_1_update(int n,
                                         T *a, T const *x,
                                         T alpha=1)
   {
-    for (int i=0; i<n; ++i) {
+    if (alpha == 0.0) {
+      return;
+    }
+    for (int i = 0; i < n; ++i) {
+      int len = (n - i);
+      if (x[i] == 0) {
+        a += len;
+        continue;
+      }
       T alpha_x_i = alpha * x[i];
-      for (int j=i; j<n; ++j) {
+      for (int j = i; j < n; ++j) {
         *a++ += alpha_x_i * x[j];
       }
     }

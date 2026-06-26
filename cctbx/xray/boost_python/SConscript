@@ -27,6 +27,7 @@ sources = [
   "grouped_data.cpp",
   "parameter_map.cpp",
   "twin_components.cpp",
+  "thickness.cpp",
   "extinction.cpp",
   "sigmaa.cpp",
   "../targets/shelxl_wght_ls_bpl.cpp",

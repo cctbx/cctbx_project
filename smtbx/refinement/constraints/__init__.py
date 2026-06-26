@@ -104,8 +104,9 @@ class reparametrisation(ext.reparametrisation):
 
   temperature = 20 # Celsius
   twin_fractions = None
-  extinction = None
+  thickness = None
   directions = None
+  fc_correction = None
 
   def __init__(self,
                structure,
@@ -147,9 +148,8 @@ class reparametrisation(ext.reparametrisation):
     scatterers = xs.scatterers()
     self.site_symmetry_table_ = self.structure.site_symmetry_table()
     libtbx.adopt_optional_init_args(self, kwds)
-    self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
-    self.independent_scalar_parameters = shared_independent_shared_parameters()
-
+    self.asu_scatterer_parameters = shared_scatterer_parameters(scatterers)
+    self.independent_scalar_parameters = shared_independent_parameters()
     #create referrable parameters
     if self.directions is not None:
       directions = {}
@@ -195,9 +195,17 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           self.add_new_twin_fraction_parameter(fraction)
-    if self.extinction is not None and self.extinction.grad:
-      p = self.add(extinction_parameter, self.extinction)
+    if self.fc_correction is not None and self.fc_correction.grad:
+      if isinstance(self.fc_correction, xray.shelx_extinction_correction):
+        p = self.add(extinction_parameter, self.fc_correction)
+      elif isinstance(self.fc_correction, xray.shelx_SWAT_correction):
+        p = self.add(SWAT_parameter, self.fc_correction)
       self.independent_scalar_parameters.append(p)
+    self.thickness_param = None
+    if self.thickness is not None and self.thickness.grad:
+      p = self.add(thickness_parameter, self.thickness)
+      self.independent_scalar_parameters.append(p)
+      self.thickness_param = p
     self.finalise()
 
   def finalise(self):
@@ -215,7 +223,9 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           independent_grad_cnt += 1
-    if self.extinction is not None and self.extinction.grad:
+    if self.fc_correction is not None and self.fc_correction.grad:
+      independent_grad_cnt += self.fc_correction.n_param
+    if self.thickness is not None and self.thickness.grad:
       independent_grad_cnt += 1
     # update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
@@ -224,8 +234,11 @@ class reparametrisation(ext.reparametrisation):
         if fraction.grad:
           fraction.grad_index = independent_grad_i
           independent_grad_i += 1
-    if self.extinction is not None and self.extinction.grad:
-      self.extinction.grad_index = independent_grad_i
+    if self.fc_correction is not None and self.fc_correction.grad:
+      self.fc_correction.grad_index = independent_grad_i
+      independent_grad_i += self.fc_correction.n_param
+    if self.thickness is not None and self.thickness.grad:
+      self.thickness.grad_index = independent_grad_i
       independent_grad_i += 1
 
   def apply_shifts(self, shifts):
@@ -360,6 +373,9 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           rv.add_independent_scalar()
-    if self.extinction is not None and self.extinction.grad:
+    if self.fc_correction is not None and self.fc_correction.grad:
+      for i in range(self.fc_correction.n_param):
+        rv.add_independent_scalar()
+    if self.thickness is not None and self.thickness.grad:
       rv.add_independent_scalar()
     return rv

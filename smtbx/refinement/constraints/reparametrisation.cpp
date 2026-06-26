@@ -19,33 +19,44 @@ namespace smtbx { namespace refinement { namespace constraints {
     return af::ref<double>(&value, 1);
   }
 
-  // independent_scalar_parameter
-
-  void independent_scalar_parameter
-  ::linearise(uctbx::unit_cell const &unit_cell,
-              sparse_matrix_type *jacobian_transpose)
-  {}
-
   // independent_small_vector_parameter
 
   template class independent_small_vector_parameter<3>;
   template class independent_small_vector_parameter<6>;
 
-  // twin_component_parameter
-
-  af::ref<double> twin_fraction_parameter::components() {
-    return af::ref<double>(&twin_fraction->value, 1);
+  // twin_fraction_parameter correction
+  void twin_fraction_parameter::validate() {
   }
 
-  // extinction_correction_parameter
-
-  af::ref<double> extinction_parameter::components() {
-    return af::ref<double>(&exti->get_value(), 1);
-  }
-
+  // extinction_component_parameter
   void extinction_parameter::validate() {
-    if (exti->get_value() < 0) {
-      exti->get_value() = 0;
+    if (exti->value < 0) {
+      exti->value = 0;
+    }
+  }
+
+  // SWAT correction
+  void SWAT_parameter::validate() {
+    if (swat->values[0] <= 0) {
+      swat->values[0] = 0.8;
+    }
+    else if (swat->values[0] > 1) {
+      swat->values[0] = 0.8;
+    }
+    if (swat->values[1] < 0) {
+      swat->values[1] = std::abs(swat->values[1])/2;
+    }
+  }
+
+  // thickness parameter
+  void thickness_parameter::validate() {
+    if (constrained && thickness->value <= 0) {
+      if (thickness->value < 0) {
+        thickness->value = -thickness->value;
+      }
+      else {
+        thickness->value = 1e-5;
+      }
     }
   }
   // single_scatterer_parameter
@@ -163,35 +174,42 @@ namespace smtbx { namespace refinement { namespace constraints {
       std::ostream &output) const
   {
     if (scatterer == this->scatterer) {
-      const std::vector<std::vector<int> > &r3_indices =
-        scitbx::matrix::tensors::tensor_rank_3<double>::get_indices();
-      for (size_t i = 0; i < r3_indices.size(); i++) {
-        const std::vector<int> &idx = r3_indices[i];
-        output << scatterer->label << ".C"
-          << (char)('1' + idx[0])
-          << (char)('1' + idx[1])
-          << (char)('1' + idx[2]) << ',';
+      int order = scatterer->anharmonic_adp->get_order();
+      if (order >= 3){
+        const std::vector<std::vector<int> > &r3_indices =
+          scitbx::matrix::tensors::tensor_rank_3<double>::get_indices();
+        for (size_t i = 0; i < r3_indices.size(); i++) {
+          const std::vector<int> &idx = r3_indices[i];
+          output << scatterer->label << ".C"
+            << (char)('1' + idx[0])
+            << (char)('1' + idx[1])
+            << (char)('1' + idx[2]) << ',';
+        }
       }
-      const std::vector<std::vector<int> > &r4_indices =
-        scitbx::matrix::tensors::tensor_rank_4<double>::get_indices();
-      for (size_t i = 0; i < r4_indices.size(); i++) {
-        const std::vector<int> &idx = r4_indices[i];
-        output << scatterer->label << ".D"
-          << (char)('1' + idx[0])
-          << (char)('1' + idx[1])
-          << (char)('1' + idx[2])
-          << (char)('1' + idx[3]) << ',';
+      if (order >= 4){
+        const std::vector<std::vector<int> > &r4_indices =
+          scitbx::matrix::tensors::tensor_rank_4<double>::get_indices();
+        for (size_t i = 0; i < r4_indices.size(); i++) {
+          const std::vector<int> &idx = r4_indices[i];
+          output << scatterer->label << ".D"
+            << (char)('1' + idx[0])
+            << (char)('1' + idx[1])
+            << (char)('1' + idx[2])
+            << (char)('1' + idx[3]) << ',';
+        }
       }
     }
   }
 
   void asu_anharmonic_adp_parameter::store(uctbx::unit_cell const &unit_cell) const {
-    for (size_t i = 0; i < 10; i++) {
-      scatterer->anharmonic_adp->C[i] = value[i];
-    }
-    for (size_t i = 0; i < 15; i++) {
-      scatterer->anharmonic_adp->D[i] = value[i + 10];
-    }
+    if (scatterer->anharmonic_adp->order >= 3)
+      for (size_t i = 0; i < 10; i++) {
+        scatterer->anharmonic_adp->C[i] = value[i];
+      }
+    if (scatterer->anharmonic_adp->order >= 4)
+      for (size_t i = 0; i < 15; i++) {
+        scatterer->anharmonic_adp->D[i] = value[i + 10];
+      }
   }
 
   void independent_anharmonic_adp_parameter
@@ -303,12 +321,12 @@ namespace smtbx { namespace refinement { namespace constraints {
     /* Assign variability to each parameter.
      It also evaluates constant parameters once and for all.
      */
-    variability_visitor var(unit_cell);
+    variability_visitor var(unit_cell_);
     accept(var);
 
     // Assign indices to parameters
     n_independents_ = n_intermediates_ = n_non_trivial_roots_ = 0;
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       std::size_t s = p->size();
       if      (!p->is_variable())   n_intermediates_ += s;
       else if (p->is_independent()) n_independents_ += s;
@@ -318,7 +336,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     std::size_t i_independent = 0,
     i_intermediate = n_independents(),
     i_non_trivial_root = n_independents() + n_intermediates();
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       std::size_t s = p->size();
       if      (!p->is_variable()) {
         p->set_index(i_intermediate);
@@ -349,9 +367,9 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   void reparametrisation
-  ::add(parameter *p) {
-    typedef std::back_insert_iterator<std::vector<parameter *> >
-    all_param_inserter_t;
+  ::add(const parameter_ptr_t &p) {
+    typedef typename std::back_insert_iterator<parameter_array_t>
+      all_param_inserter_t;
     topologist<all_param_inserter_t> t(std::back_inserter(all));
     t.visit(p);
   }
@@ -363,7 +381,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   reparametrisation::~reparametrisation() {
-    BOOST_FOREACH(parameter *p, all) delete p;
+    //BOOST_FOREACH(parameter *p, all) delete p;
   }
 
   void reparametrisation
@@ -372,27 +390,28 @@ namespace smtbx { namespace refinement { namespace constraints {
     for (std::size_t j=n_independents(); j<n_components(); ++j) {
       jacobian_transpose.col(j).zero();
     }
-    evaluator eval(unit_cell, &jacobian_transpose);
+    evaluator eval(unit_cell_, &jacobian_transpose);
     accept(eval);
   }
 
   void reparametrisation
   ::apply_shifts(af::const_ref<double> const &shifts) {
     SMTBX_ASSERT(shifts.size() == n_independents());
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       if (p->is_independent() && p->is_variable()) {
         double const *s = &shifts[p->index()];
         af::ref<double> x = p->components();
         for (std::size_t i=0; i<x.size(); ++i) x[i] += s[i];
-        p->validate();
       }
+      // 'composite' params may need validation too!
+      p->validate();
     }
   }
 
   double reparametrisation
   ::norm_of_independent_parameter_vector() {
     scitbx::math::accumulator::norm_accumulator<double> acc;
-    BOOST_FOREACH(parameter *p, all) {
+    BOOST_FOREACH(parameter_ptr_t p, all) {
       if (p->is_independent() && p->is_variable()) {
         acc(af::sum_sq(p->components()));
       }
@@ -402,16 +421,60 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   void reparametrisation
   ::store() {
-    BOOST_FOREACH(parameter *p, all) {
-      asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
-      if (cp) cp->store(unit_cell);
+    BOOST_FOREACH(parameter_ptr_t p, all) {
+      asu_parameter *cp = dynamic_cast<asu_parameter *> (p.get());
+      if (cp) cp->store(unit_cell_);
     }
   }
 
   void reparametrisation
   ::whiten() {
-    BOOST_FOREACH(parameter *p, all) p->set_colour(white);
+    BOOST_FOREACH(parameter_ptr_t p, all) p->set_colour(white);
   }
 
+  af::shared<parameter*> reparametrisation
+    ::independent() const
+  {
+    af::shared<parameter*> rv;
+    BOOST_FOREACH(parameter_ptr_t p, all) {
+      if (p->is_independent() && p->is_variable()) {
+        rv.push_back(p.get());
+      }
+    }
+    return rv;
+  }
+
+  af::shared<asu_parameter*> reparametrisation
+    ::independent_owners(af::shared<parameter*> const& params) const
+  {
+    af::shared<asu_parameter*> rv;
+    std::map<const parameter *, asu_parameter *> p_map;
+    BOOST_FOREACH(parameter_ptr_t p, all) {
+      asu_parameter *asu_p = dynamic_cast<asu_parameter*>(p.get());
+      if (asu_p == 0) {
+        continue;
+      }
+      for (size_t i = 0; i < asu_p->n_arguments(); i++) {
+        p_map.insert(std::make_pair(asu_p->argument(i), asu_p));
+      }
+    }
+
+    BOOST_FOREACH(parameter *p, params) {
+      asu_parameter* asu_p = dynamic_cast<asu_parameter*>(p);
+      if (asu_p != 0) {
+        rv.push_back(asu_p);
+        continue;
+      }
+      std::map<const parameter*, asu_parameter*>
+        ::const_iterator i = p_map.find(p);
+      if (i != p_map.end()) {
+        rv.push_back(i->second);
+      }
+      else {
+        rv.push_back(0);
+      }
+    }
+    return rv;
+  }
 
 }}}
