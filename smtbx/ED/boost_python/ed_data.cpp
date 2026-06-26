@@ -133,6 +133,7 @@ namespace boost_python {
         .add_property("use_flat_scales", &wt::useFlatScales)
         .add_property("top_up_d", &wt::getTopUpD)
         .add_property("top_up_max_sg", &wt::getTopUpMaxSg)
+        .add_property("use_sys_abs", &wt::useSysAbs)
         ;
     }
 

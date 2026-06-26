@@ -31,7 +31,7 @@ namespace smtbx { namespace ED
     N_NEAM_SHARED_DATA_TYPEDES;
 
   protected:
-    void init(af::shared<BeamGroup<FloatType> > beam_groups) {
+    void init(af::shared<BeamGroup<FloatType> > beam_groups, bool use_sys_abs) {
       SMTBX_ASSERT(params.getBeamN() > 2);
       this->beam_groups = beam_groups;
       const typename utils<FloatType>::a_geometry& geom = *beam_groups[0].geometry;
@@ -81,7 +81,7 @@ namespace smtbx { namespace ED
         typedef typename utils<FloatType>::Reflection ref_t;
         while (!(h = h_generator.next()).is_zero()) {
           indices.push_back(h);
-          if (space_group.is_sys_absent(h)) {
+          if (!use_sys_abs && space_group.is_sys_absent(h)) {
             continue;
           }
           FloatType d_star_sq = unit_cell.d_star_sq(h);

@@ -41,7 +41,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       Jt_matching_grad_fc(Jt_matching_grad_fc),
       compute_grad(compute_grad)
     {
-      base_t::init(beam_groups);
+      base_t::init(beam_groups, params.useSysAbs());
       for (size_t i = 0; i < beam_groups.size(); i++) {
         BeamGroup<FloatType>& beam_group = beam_groups[i];
         beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
