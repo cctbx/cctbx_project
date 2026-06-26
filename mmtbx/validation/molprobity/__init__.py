@@ -250,6 +250,29 @@ class molprobity(slots_getstate_setstate):
       use_hydrogens=keep_hydrogens, condensed_probe=False, fast_clash=False)
     self.model_statistics_geometry_result = \
       self.model_statistics_geometry.result()
+    # reduce2 (use_old_reduce()==False): clash() is a non-adding observer, so for an
+    # H-less model clash.clashes is None and there is no clashscore. Comprehensive
+    # validation adds H on a COPY and scores the clash on its hierarchy -- matching
+    # reduce1, which added H for the clash only, leaving bond/angle/rama H-less.
+    # clashscore needs only a hierarchy (no restraints), so add_hydrogens' own
+    # processing suffices -- no second model.process() here. self.model stays H-less
+    # (faithful bond/angle + picklable result, no riding-H). No-op under reduce1.
+    from mmtbx import hydrogens as reduce_switch
+    gr = self.model_statistics_geometry_result
+    if (not reduce_switch.use_old_reduce()) and (gr.clash.clashes is None) \
+       and (not self.model.has_hd()):
+      from libtbx import group_args
+      from mmtbx.validation.utils import molprobity_score
+      hmodel = reduce_switch.add_hydrogens(
+        self.model.deep_copy(), nuclear=nuclear, log=null_out())
+      cs = clashscore.clashscore(
+        pdb_hierarchy=hmodel.get_hierarchy(), keep_hydrogens=True,
+        fast=False, condensed_probe=False, nuclear=nuclear)
+      gr.clash = group_args(score=cs.get_clashscore(), clashes=cs)
+      gr.molprobity_score = molprobity_score(
+        clashscore = gr.clash.score,
+        rota_out   = gr.rotamer.outliers,
+        rama_fav   = gr.ramachandran.favored)
     self.ramalyze  = self.model_statistics_geometry_result.ramachandran.ramalyze
     self.omegalyze = self.model_statistics_geometry_result.omega.omegalyze
     self.rotalyze  = self.model_statistics_geometry_result.rotamer.rotalyze

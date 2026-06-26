@@ -44,8 +44,15 @@ def exercise_protein():
   # percentiles
   out4 = StringIO()
   result.show_summary(out=out4, show_percentiles=True)
-  assert ("""  Clashscore            =  49.96 (percentile: 0.2)""" in
-          out4.getvalue())
+  # Clashscore (and its percentile) depends on the H-placement engine: reduce2
+  # places H differently than reduce1, so gate the expected value on the switch
+  # for now (until reduce2 becomes the default).
+  from mmtbx import hydrogens as reduce_switch
+  expected_clashscore = (
+    "  Clashscore            =  49.96 (percentile: 0.2)"
+    if reduce_switch.use_old_reduce() else
+    "  Clashscore            =  49.17 (percentile: 0.3)")
+  assert expected_clashscore in out4.getvalue(), out4.getvalue()
   # misc
   assert approx_equal(result.r_work(), 0.237) # from PDB header
   assert approx_equal(result.r_free(), 0.293) # from PDB header
