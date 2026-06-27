@@ -973,6 +973,29 @@ class place_hydrogens():
           bond_lengths[j] = proxy.distance_ideal
           removed_dict[j] = exclusion_dict[i]
           parent_dict[j]=i
+    # A peptide-bonded N-substituted (e.g. N-methylated) amino acid is a
+    # tertiary amide: its backbone N has three heavy neighbours (CA, the
+    # N-substituent, the previous residue's C) and cannot carry a backbone H.
+    # The peptide bond is plain covalent geometry (origin_id 0), so it is not
+    # flagged as a link above; flag the leftover H here so the valence check
+    # below removes it. Count only heavy neighbours that share the H's conformer
+    # (blank or same altloc) so a backbone split at CA is not mistaken for three
+    # substituents.
+    for n_iseq in list(bonds.keys()):
+      atom_n = atoms[n_iseq]
+      if atom_n.name.strip() != 'N': continue
+      if get_class(name=atom_n.parent().resname) not in (
+        'common_amino_acid', 'modified_amino_acid', 'd_amino_acid'): continue
+      neighbors = set(bonds[n_iseq])
+      for k in neighbors:
+        if elements[k] not in ["H","D"] or k in sel_remove: continue
+        h_altloc = atoms[k].parent().altloc
+        n_heavy = sum(1 for m in neighbors if elements[m] not in ["H","D"]
+          and atoms[m].parent().altloc in ('', h_altloc))
+        if n_heavy >= 3:
+          sel_remove.append(k)
+          removed_dict[k] = 'a tertiary amide'
+          parent_dict[k] = n_iseq
     # remove H atoms NOT to remove - double negative!
     #verbose=True
     if verbose:
@@ -1059,8 +1082,10 @@ class place_hydrogens():
         if verbose: print('keep',atoms[r].quote())
       sel_remove=flex.size_t(sel_remove)
     #
+    def _removed_label(v):
+      return v if isinstance(v, str) else origin_ids.get_origin_key(v)
     sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
-                   origin_ids.get_origin_key(removed_dict[atom.i_seq]))
+                   _removed_label(removed_dict[atom.i_seq]))
         for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
     #
     if sel_remove:
