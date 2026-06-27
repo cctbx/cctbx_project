@@ -338,7 +338,7 @@ END
 
 def run():
   for idealize in [True,False]:
-    exercise(pdb_str=pdb_str, eps=1.e-4, idealize=idealize)
+    exercise(pdb_str=pdb_str, eps=1.e-5, idealize=idealize)
 
 if (__name__ == "__main__"):
   t0 = time.time()
