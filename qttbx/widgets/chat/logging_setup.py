@@ -44,6 +44,27 @@ def _open_log(chat_root, prefix):
   return _RedactingLog(open(path, "w", buffering=1)), path
 
 
+def open_raw_log(chat_root, prefix):
+  """Open a rotated, NON-redacting ``<prefix>-<TS>.log`` under ``chat_root/logs``.
+
+  The raw counterpart to :func:`_open_log`: same directory creation, ``LOG_KEEP``
+  rotation, and timestamped name, but returns a real file object -- not a
+  redacting wrapper -- for callers that need an OS file descriptor (e.g. to
+  capture a subprocess's stdout/stderr). Use only for output the caller knows
+  carries no secrets.
+
+  Returns
+  -------
+  tuple of (file, pathlib.Path)
+      The open append-mode handle and its path; the caller owns the handle.
+  """
+  log_dir = chat_root / "logs"
+  log_dir.mkdir(parents=True, exist_ok=True)
+  _prune_old_logs(log_dir, "%s-*.log" % prefix)
+  path = _log_path(chat_root, prefix)
+  return open(path, "a"), path
+
+
 def session_log_path(chat_root):
   """Return a timestamped session log path under ``chat_root/logs``."""
   return _log_path(chat_root, "chat")
@@ -188,8 +209,12 @@ class _RedactingLog:
 
 
 def _prune_old_logs(log_dir, pattern):
-  logs = sorted(log_dir.glob(pattern),
-                key=lambda p: p.stat().st_mtime, reverse=True)
+  def _mtime(p):
+    try:
+      return p.stat().st_mtime
+    except OSError:
+      return 0.0   # vanished/unstattable -> sort oldest; the unlink is guarded
+  logs = sorted(log_dir.glob(pattern), key=_mtime, reverse=True)
   for p in logs[LOG_KEEP:]:
     try:
       p.unlink()

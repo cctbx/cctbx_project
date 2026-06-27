@@ -9,7 +9,8 @@ from pathlib import Path
 from libtbx.utils import format_cpu_times
 
 from qttbx.widgets.chat.logging_setup import (
-  LOG_KEEP, open_session_log, redact_secrets, session_log_path)
+  LOG_KEEP, _prune_old_logs, open_raw_log, open_session_log, redact_secrets,
+  session_log_path)
 
 
 def exercise_session_log_path_format():
@@ -98,6 +99,65 @@ def exercise_prune_keeps_only_log_keep_most_recent():
     shutil.rmtree(tmp)
 
 
+def exercise_prune_survives_unstattable_entry():
+  """A globbed log whose stat() fails mid-prune (e.g. a TOCTOU delete between
+  glob and stat) must not crash _prune_old_logs: the unstattable entry sorts as
+  oldest and the guarded unlink handles it. Regression for the sort key that
+  used an unguarded p.stat()."""
+  import pathlib
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log_dir = tmp / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(LOG_KEEP + 2):
+      (log_dir / ("coot-%02d.log" % i)).write_text("x")
+    (log_dir / "coot-vanish.log").write_text("x")   # stat faked to fail below
+    real_stat = pathlib.Path.stat
+    def fake_stat(self, *args, **kwargs):
+      if self.name == "coot-vanish.log":
+        raise FileNotFoundError(2, "No such file", str(self))
+      return real_stat(self, *args, **kwargs)
+    pathlib.Path.stat = fake_stat
+    try:
+      _prune_old_logs(log_dir, "coot-*.log")          # must not raise
+    finally:
+      pathlib.Path.stat = real_stat
+    remaining = sorted(p.name for p in log_dir.glob("coot-*.log"))
+    assert len(remaining) == LOG_KEEP, remaining
+    assert "coot-vanish.log" not in remaining, remaining
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_open_raw_log_rotates_and_is_raw():
+  """open_raw_log returns a REAL file handle (has fileno, unlike the redacting
+  session/debug logs) under chat_root/logs, writes through un-redacted, and
+  rotates <prefix>-*.log to LOG_KEEP -- the unified machinery for the Coot
+  subprocess-capture log, so callers don't reinvent path/prune/open."""
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log_dir = tmp / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(LOG_KEEP + 3):
+      (log_dir / ("coot-seed-%02d.log" % i)).write_text("x")
+    fh, path = open_raw_log(tmp, "coot")
+    try:
+      assert path.parent == log_dir, path
+      assert path.name.startswith("coot-") and path.name.endswith(".log"), path
+      fh.write("sk-ant-not-redacted\n")    # raw log: no redaction wrapper
+      fh.flush()
+      fh.fileno()                          # a real fd (redacting wrapper raises)
+    finally:
+      fh.close()
+    assert path.read_text() == "sk-ant-not-redacted\n", path.read_text()
+    # Pre-existing coot-*.log pruned to LOG_KEEP (the new file is created after
+    # pruning, so it isn't counted against the seeds).
+    seeds = [p for p in log_dir.glob("coot-*.log") if "seed" in p.name]
+    assert len(seeds) == LOG_KEEP, [p.name for p in seeds]
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_session_log_path_format()
   exercise_open_session_log_creates_dir_and_writes()
@@ -106,6 +166,8 @@ def exercise():
   exercise_redact_secrets_passes_clean_text()
   exercise_redact_secrets_is_idempotent()
   exercise_prune_keeps_only_log_keep_most_recent()
+  exercise_prune_survives_unstattable_entry()
+  exercise_open_raw_log_rotates_and_is_raw()
 
 
 if __name__ == "__main__":
