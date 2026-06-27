@@ -4744,7 +4744,6 @@ class map_model_manager(object):
     map_id_to_be_scaled = kw['map_id_to_be_scaled_list'][0]
     cc = self.map_model_cc(map_id=map_id_to_be_scaled, model_id=model_id)
     print ("Map-model CC before sharpening: %.3f " %(cc), file = self.log)
-
     map_coeffs = working_mmm.get_map_manager_by_id(
        map_id_to_be_scaled).map_as_fourier_coefficients( d_min = d_min)
 
@@ -4757,6 +4756,7 @@ class map_model_manager(object):
 
     # Generate map from model using existing possibly anisotropic B
     model=working_mmm.get_model_by_id(model_id)
+    model.neutralize_scatterers() # Get rid of atoms like O1-
 
     if find_k_sol_b_sol and (k_sol is None) and (b_sol is None):
       # Find k_sol and b_sol
