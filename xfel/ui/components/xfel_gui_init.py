@@ -31,8 +31,8 @@ from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
 from xfel.ui.db.xfel_db import xfel_db_application
 
-from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
-from prime.postrefine.mod_input import master_phil
+#from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
+#from prime.postrefine.mod_input import master_phil
 from iota.utils.utils import Capturing, set_base_dir
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
@@ -342,13 +342,15 @@ class JobMonitor(Thread):
     self.parent = parent
     self.active = active
     self.only_active_jobs = True
+    # {job.id: status} from the previous cycle, used to repaint only on a delta.
+    self._last_snapshot = None
 
   def post_refresh(self, trials = None, jobs = None):
     evt = MonitorJobs(tp_EVT_JOB_MONITOR, -1, trials, jobs)
     wx.PostEvent(self.parent.run_window.jobs_tab, evt)
 
   def run(self):
-    from xfel.ui.components.submission_tracker import TrackerFactory
+    from xfel.ui.components.submission_tracker import TrackerFactory, CACHEABLE_TERMINAL
 
     # one time post for an initial update
     self.post_refresh()
@@ -363,19 +365,34 @@ class JobMonitor(Thread):
         trials = db.get_all_trials()
         jobs = db.get_all_jobs(active = self.only_active_jobs)
 
-        for job in jobs:
-          if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
+        # Collect the jobs that still need tracking, then query the queueing system
+        # in a single batched call (one squeue per cycle) rather than once per job.
+        # Skip the terminal statuses (CACHEABLE_TERMINAL, which includes ERR and
+        # TIMEOUT); UNKWN is intentionally NOT in that set because it is transient
+        # for slurm (e.g. ensemble jobs with mixed states), so it keeps tracking.
+        active_jobs = [job for job in jobs if job.status not in CACHEABLE_TERMINAL]
+        new_statuses = tracker.track_many(
+          [job.submission_id for job in active_jobs],
+          [job.get_log_path() for job in active_jobs])
+        updates = []
+        for job, new_status in zip(active_jobs, new_statuses):
+          # A just-submitted job may not be visible to the scheduler yet; keep it
+          # SUBMITTED rather than flipping it to a transient ERR/UNKWN.
+          if job.status == "SUBMITTED" and new_status in ("ERR", "UNKWN"):
             continue
-          new_status = tracker.track(job.submission_id, job.get_log_path())
-          # Handle the case where the job was submitted but no status is available yet
-          if job.status == "SUBMITTED" and new_status == "ERR":
-            pass
-          elif job.status != new_status:
-            job.status = new_status
+          if job.status != new_status:
+            updates.append((job, new_status))
+        # Persist all status changes in one UPDATE (also syncs the Job objects).
+        db.update_job_statuses(updates)
 
-        self.post_refresh(trials, jobs)
+        # Repaint only when something actually changed (a status delta, or the
+        # set of active jobs changed), to avoid needless UI churn.
+        snapshot = {job.id: job.status for job in jobs}
+        if snapshot != self._last_snapshot:
+          self.post_refresh(trials, jobs)
+          self._last_snapshot = snapshot
         wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'on')
-        time.sleep(5)
+        time.sleep(10)
       except Exception as e:
         print(e)
         wx.CallAfter(self.parent.run_window.jmn_light.change_status, 'alert')
