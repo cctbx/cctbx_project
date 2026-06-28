@@ -13,6 +13,7 @@ def run():
   test_001()
   test_002()
   test_003()
+  test_004()
 
 # ------------------------------------------------------------------------------
 
@@ -196,6 +197,42 @@ def test_003():
 
 # ------------------------------------------------------------------------------
 
+def test_004():
+  '''
+    The backbone N of an internal proline-type residue (e.g. HYP,
+    4-hydroxyproline) is a tertiary amide: it is bonded to CA, the ring CD, and
+    the previous residue's C. The monomer expects a backbone N-H that cannot be
+    placed (the ring N is already fully substituted). reduce must report this as
+    a tertiary amide, not as a generic "could not be parameterized (not enough
+    restraints)" failure. Example: internal HYP of chain A in 5mas.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_004.split("\n"), source_info=None)
+  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model_initial.set_stop_for_unknowns(False)
+
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    model = model_initial,
+    stop_for_unknowns = False)
+  reduce_add_h_obj.run()
+  ph = reduce_add_h_obj.get_model().get_hierarchy()
+
+  # The HYP backbone N must not carry an H in the output.
+  for ag in ph.atom_groups():
+    if ag.resname.strip() == 'HYP':
+      names = [a.name.strip() for a in ag.atoms()]
+      assert('H' not in names), 'HYP must not have a backbone N-H: %s' % names
+
+  # The omitted HYP H is reported as a tertiary amide, not as a generic
+  # "could not be parameterized" failure.
+  ta = reduce_add_h_obj.site_labels_tertiary_amide
+  assert(any('HYP' in s for s in ta)), \
+    'HYP backbone H not reported as tertiary amide: %s' % ta
+  assert(not any('HYP' in s for s in reduce_add_h_obj.site_labels_no_para)), \
+    'HYP H wrongly reported under could-not-parameterize: %s' % \
+    reduce_add_h_obj.site_labels_no_para
+
+# ------------------------------------------------------------------------------
+
 pdb_str_000 = """
 CRYST1  100.667  101.210  170.826  90.00  90.00  90.00 P 21 21 21
 ATOM      1  N   LEU A 482     114.924  99.962 -27.431  1.00 10.00           N
@@ -334,6 +371,37 @@ ATOM     11  C   SER A   2      -9.236  -7.832 -10.951  1.00  6.76           C
 ATOM     12  O   SER A   2      -8.826  -8.990 -10.799  1.00  7.56           O
 ATOM     13  CB  SER A   2     -11.691  -7.490 -11.164  1.00  9.75           C
 ATOM     14  OG  SER A   2     -11.883  -8.665 -10.484  1.00 13.96           O
+TER
+END
+"""
+
+# ------------------------------------------------------------------------------
+
+pdb_str_004 = """
+CRYST1   27.688   54.971   73.509  90.00  90.00 90.00 P 21 21 21
+HETATM   54  N   AIB A   9       8.193   6.231   1.668  1.00  2.65           N
+HETATM   55  CA  AIB A   9       8.830   5.063   2.289  1.00  2.66           C
+HETATM   56  C   AIB A   9      10.204   5.417   2.905  1.00  2.37           C
+HETATM   57  O   AIB A   9      10.503   4.963   4.008  1.00  2.49           O
+HETATM   58  CB1 AIB A   9       9.066   3.999   1.207  1.00  2.69           C
+HETATM   59  CB2 AIB A   9       7.887   4.519   3.361  1.00  2.79           C
+HETATM   60  N   HYP A  10      11.088   6.150   2.203  1.00  2.24           N
+HETATM   61  CA  HYP A  10      12.443   6.314   2.751  1.00  2.55           C
+HETATM   62  C   HYP A  10      12.513   7.043   4.090  1.00  2.82           C
+HETATM   63  O   HYP A  10      13.527   6.972   4.759  1.00  3.62           O
+HETATM   64  CB  HYP A  10      13.173   7.123   1.668  1.00  2.69           C
+HETATM   65  CG  HYP A  10      12.373   6.906   0.400  1.00  2.36           C
+HETATM   66  CD  HYP A  10      10.962   6.808   0.895  1.00  2.35           C
+HETATM   67  OD1 HYP A  10      12.699   5.681  -0.242  1.00  2.81           O
+ATOM     68  N   GLN A  11      11.449   7.823   4.417  1.00  2.57           N
+ATOM     69  CA  GLN A  11      11.425   8.570   5.666  1.00  2.59           C
+ATOM     70  C   GLN A  11      10.952   7.707   6.834  1.00  2.68           C
+ATOM     71  O   GLN A  11      11.109   8.109   7.988  1.00  3.44           O
+ATOM     72  CB  GLN A  11      10.543   9.792   5.569  1.00  2.68           C
+ATOM     73  CG  GLN A  11      10.831  10.646   4.324  1.00  3.13           C
+ATOM     74  CD  GLN A  11      12.289  10.903   4.096  1.00  2.99           C
+ATOM     75  OE1 GLN A  11      13.051  11.164   5.025  1.00  3.82           O
+ATOM     76  NE2 GLN A  11      12.692  10.845   2.804  1.00  3.56           N
 TER
 END
 """
