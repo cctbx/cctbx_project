@@ -60,7 +60,7 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
     lines.append("Recent log (%s):" % log_path)
     lines.append("-" * 40)
     try:
-      with open(log_path, "r") as fh:
+      with open(log_path, "r", encoding="utf-8", errors="replace") as fh:
         log_lines = fh.readlines()
       for line in log_lines[-log_tail_lines:]:
         lines.append(line.rstrip("\n"))

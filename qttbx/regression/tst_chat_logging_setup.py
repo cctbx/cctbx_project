@@ -9,19 +9,7 @@ from pathlib import Path
 from libtbx.utils import format_cpu_times
 
 from qttbx.widgets.chat.logging_setup import (
-  LOG_KEEP, _prune_old_logs, open_raw_log, open_session_log, redact_secrets,
-  session_log_path)
-
-
-def exercise_session_log_path_format():
-  tmp = Path(tempfile.mkdtemp())
-  try:
-    p = session_log_path(chat_root=tmp)
-    assert p.parent == tmp / "logs"
-    assert p.name.startswith("chat-")
-    assert p.name.endswith(".log")
-  finally:
-    shutil.rmtree(tmp)
+  LOG_KEEP, _prune_old_logs, open_raw_log, open_session_log, redact_secrets)
 
 
 def exercise_open_session_log_creates_dir_and_writes():
@@ -159,7 +147,6 @@ def exercise_open_raw_log_rotates_and_is_raw():
 
 
 def exercise():
-  exercise_session_log_path_format()
   exercise_open_session_log_creates_dir_and_writes()
   exercise_redact_secrets_handles_anthropic_keys()
   exercise_redact_secrets_handles_authorization_header()

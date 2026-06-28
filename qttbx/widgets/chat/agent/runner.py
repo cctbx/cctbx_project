@@ -18,7 +18,7 @@ from qttbx.widgets.chat.agent.errors import AgentError, CancelToken
 from qttbx.widgets.chat.agent.events import (
   AskUserQuestionRequested, ImageEmitted, ServerToolResult,
   ServerToolUsed, TextDelta, Thinking,
-  TokenUsage as TokenUsageEvent, ToolResultObserved, ToolResultsBatched,
+  ToolResultObserved, ToolResultsBatched,
   ToolUseRequested, TurnDone)
 from qttbx.widgets.chat.agent.tools import (
   ToolApprovalRequest, _Cancelled)
@@ -108,7 +108,6 @@ class QtAgentRunner(QtCore.QObject):
   - ``server_tool_result(object)`` — ``ServerToolResult``
   - ``image_emitted(object)``
   - ``ask_user_question_requested(object)`` — ``AskUserQuestionRequested``
-  - ``usage(object)`` — ``TokenUsage`` event
   - ``turn_done(str)`` — stop_reason
   - ``error(str, bool, str)`` — message, recoverable, kind
 
@@ -127,7 +126,6 @@ class QtAgentRunner(QtCore.QObject):
   server_tool_result = QtCore.Signal(object)
   image_emitted = QtCore.Signal(object)
   ask_user_question_requested = QtCore.Signal(object)
-  usage = QtCore.Signal(object)
   turn_done = QtCore.Signal(str)
   error = QtCore.Signal(str, bool, str)
 
@@ -225,10 +223,12 @@ class QtAgentRunner(QtCore.QObject):
 
     Tries ``agent.submit_question_answer`` first: the Claude Code backend
     runs its own loop and owns its own ask-user futures, so it resolves
-    them itself. If the agent lacks the method (the API backends) or
-    doesn't own ``request_id``, the answers go to the session's
-    ``submit_question_answer`` (the path a ``phenix_ask_user_question``
-    builtin parks on).
+    them itself. The API backends inherit the ``Agent`` base default
+    (returns ``False``) and so fall through to the session's
+    ``submit_question_answer`` -- the path a ``phenix_ask_user_question``
+    builtin parks on. Every backend is an ``Agent`` subclass, so the
+    method is always present (a direct call, mirroring ``submit_approval``
+    above).
 
     Must be called from the GUI thread.
 
@@ -245,9 +245,7 @@ class QtAgentRunner(QtCore.QObject):
         ``True`` if either the agent or the session owned and handled the
         request, ``False`` otherwise.
     """
-    agent = self.session.agent
-    handler = getattr(agent, "submit_question_answer", None)
-    if handler is not None and handler(request_id, answers):
+    if self.session.agent.submit_question_answer(request_id, answers):
       return True
     return self.session.submit_question_answer(request_id, answers)
 
@@ -292,8 +290,6 @@ class QtAgentRunner(QtCore.QObject):
       self.image_emitted.emit(ev)
     elif isinstance(ev, AskUserQuestionRequested):
       self.ask_user_question_requested.emit(ev)
-    elif isinstance(ev, TokenUsageEvent):
-      self.usage.emit(ev)
     elif isinstance(ev, TurnDone):
       self.turn_done.emit(ev.stop_reason)
     elif isinstance(ev, AgentError):

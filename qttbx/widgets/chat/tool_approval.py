@@ -43,7 +43,6 @@ class ToolApprovalCard(QtWidgets.QFrame):
     self._requests = []
     self._decided = False
     self._remember_tool = False
-    self._remember_server = False
     self._layout = QtWidgets.QVBoxLayout(self)
     self._layout.setContentsMargins(8, 6, 8, 6)
     self._content_widget = None
@@ -57,9 +56,6 @@ class ToolApprovalCard(QtWidgets.QFrame):
 
   def set_remember_tool(self, value):
     self._remember_tool = bool(value)
-
-  def set_remember_server(self, value):
-    self._remember_server = bool(value)
 
   def is_decided(self):
     """Report whether a decision has already been emitted.
@@ -164,11 +160,8 @@ class ToolApprovalCard(QtWidgets.QFrame):
 
   def _emit(self, decision):
     remember = "none"
-    if decision == "approve":
-      if self._remember_server:
-        remember = "server"
-      elif self._remember_tool:
-        remember = "tool"
+    if decision == "approve" and self._remember_tool:
+      remember = "tool"
     responses = [
       ToolApprovalResponse(request_id=r.request_id,
                            decision=decision, remember=remember)

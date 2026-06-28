@@ -113,6 +113,39 @@ def exercise_oversized_image_is_resampled():
   assert len(atts[0]["bytes"]) <= w._max_image_bytes
 
 
+def exercise_oversized_webp_is_reencoded_with_jpeg_mime():
+  """An oversized webp/gif is re-encoded to JPEG by _maybe_resample (PNG
+  stays PNG; every other allowed type re-encodes as JPG). The resulting
+  attachment must advertise image/jpeg, not the original mime -- shipping
+  webp/gif bytes that are actually JPEG makes the provider reject the
+  request (400). Regression: the mime used to stay 'image/webp'."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  # A large, decodable image. The bytes are PNG-encoded (always available in
+  # Qt) but presented as image/webp: _maybe_resample selects the re-encode
+  # format from the declared mime (webp -> JPG), and QImage sniffs the real
+  # content on load, so this faithfully drives the webp/gif code path.
+  img = QtGui.QImage(2000, 2000, QtGui.QImage.Format_ARGB32)
+  img.fill(QtGui.QColor(50, 100, 150))
+  buf = QtCore.QBuffer()
+  buf.open(QtCore.QBuffer.WriteOnly)
+  img.save(buf, "PNG")
+  big = bytes(buf.data())
+  w = MessageInput()
+  w._max_image_bytes = max(1024, len(big) // 4)   # force resampling
+  ok = w.attach_bytes(big, "image/webp", filename="big.webp")
+  assert ok, "resampled attachment should be accepted"
+  assert w.attachment_count() == 1
+  att = w._attachments[0]
+  # The mime must match the re-encoded (JPEG) bytes, not the original webp.
+  assert att["mime"] == "image/jpeg", att["mime"]
+  assert att["bytes"][:2] == b"\xff\xd8", att["bytes"][:4]   # JPEG magic
+  assert len(att["bytes"]) <= w._max_image_bytes
+
+
 def exercise_save_chat_button_emits_signal():
   """The 'Save chat' button in the lower-left of the button row emits
   the parameterless save_chat signal so the chat window can prompt for
@@ -341,6 +374,7 @@ def exercise():
   exercise_attach_bytes_appears_in_send_payload()
   exercise_unsupported_mime_is_dropped_with_warning()
   exercise_oversized_image_is_resampled()
+  exercise_oversized_webp_is_reencoded_with_jpeg_mime()
   exercise_save_chat_button_emits_signal()
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()

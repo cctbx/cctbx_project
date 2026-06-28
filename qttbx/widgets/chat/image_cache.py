@@ -1,18 +1,17 @@
 """LRU image cache for the chat UI.
 
-Keyed by ``(conv_id, sha256)`` for full-size, ``(conv_id, sha256,
-width)`` for thumbnails. Capacity is in entry count, not bytes —
-~200 full-size ``QImage`` instances is a reasonable proxy for ~200 MB
-at typical chat image sizes.
+Keyed by ``(conv_id, sha256)`` for full-size images. Capacity is in
+entry count, not bytes — ~200 full-size ``QImage`` instances is a
+reasonable proxy for ~200 MB at typical chat image sizes.
 
-``get_image`` / ``get_thumbnail`` are module-level helpers backed by a
-single default ``ImageCache`` instance set via ``set_default_cache``,
-which lets multiple widgets share a single cache without each holding
-a reference."""
+``get_image`` is a module-level helper backed by a single default
+``ImageCache`` instance set via ``set_default_cache``, which lets
+multiple widgets share a single cache without each holding a
+reference."""
 
 from collections import OrderedDict
 
-from qttbx.qt import QtCore, QtGui
+from qttbx.qt import QtGui
 
 
 _DEFAULT_CAPACITY = 200
@@ -90,7 +89,7 @@ def get_image(storage, conv_id, sha256):
   QtGui.QImage
       The decoded image, or a gray placeholder on failure.
   """
-  key = ("img", conv_id, sha256)
+  key = (conv_id, sha256)
   cached = _default_cache.get(key)
   if cached is not None:
     return cached
@@ -105,40 +104,6 @@ def get_image(storage, conv_id, sha256):
     return _placeholder()
   _default_cache.put(key, img)
   return img
-
-
-def get_thumbnail(storage, conv_id, sha256, width=240):
-  """Return a width-scaled thumbnail, cached separately from full-size.
-
-  Aspect ratio is preserved.
-
-  Parameters
-  ----------
-  storage : object
-      Attachment store providing ``load_attachment(conv_id, sha256)``.
-  conv_id : str
-      Conversation the attachment belongs to.
-  sha256 : str
-      Content hash identifying the attachment.
-  width : int, optional
-      Target width in pixels.
-
-  Returns
-  -------
-  QtGui.QImage
-      The scaled thumbnail, or a gray placeholder on failure.
-  """
-  key = ("thumb", conv_id, sha256, int(width))
-  cached = _default_cache.get(key)
-  if cached is not None:
-    return cached
-  full = get_image(storage, conv_id, sha256)
-  if full.width() <= 0:
-    return _placeholder()
-  thumb = full.scaledToWidth(
-    int(width), QtCore.Qt.SmoothTransformation)
-  _default_cache.put(key, thumb)
-  return thumb
 
 
 def _placeholder(width=240, height=180):

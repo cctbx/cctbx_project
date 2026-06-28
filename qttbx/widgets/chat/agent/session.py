@@ -12,14 +12,14 @@ import uuid
 from libtbx.utils import Sorry
 
 from qttbx.widgets.chat.agent.conversation import (
-  ContentBlock, Conversation, Message, TokenUsage, now)
+  ContentBlock, Message, now)
 from qttbx.widgets.chat.agent.errors import TurnCancelled
 from qttbx.widgets.chat.agent.events import (
   AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
   Thinking, TextDelta, ToolResultsBatched, ToolUseRequested, TurnDone,
   TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
-  ToolApprovalRequest, ToolApprovalResponse, _Cancelled)
+  ToolApprovalRequest, _Cancelled)
 
 
 def _new_id(prefix=""):
@@ -111,7 +111,6 @@ class AgentSession:
     self.cancel = None
     self.sub_id = _new_id("sa_") if depth > 0 else None
     self.started_at = now()
-    self.current_tool_use_id = None
     # Push-based rollup of nested-session token usage. Keyed by sub_id.
     self._subagent_usage_by_id = {}
 
@@ -221,7 +220,7 @@ class AgentSession:
         continue
 
       try:
-        decision = self._resolve_and_approve(call, batch_id, cancel)
+        decision = self._resolve_and_approve(call, batch_id)
       except TurnCancelled:
         result_blocks.append(_tool_error_block(
           call.id, "Cancelled by user"))
@@ -250,16 +249,23 @@ class AgentSession:
         continue
 
       blocks = self._to_canonical_content_blocks(handler_result)
+      # Honor a handler result that carries its own is_error (an MCP
+      # McpToolResult flags failures with is_error=True instead of raising,
+      # so a failed MCP tool must reach the model + UI as an error, not a
+      # success). Builtin/skill results are str/bytes/dict with no is_error
+      # attribute, so they default to False -- their failures already arrive
+      # as Sorry/Exception and were turned into _tool_error_block above.
+      is_error = bool(getattr(handler_result, "is_error", False))
       result_blocks.append(ContentBlock(type="tool_result", data={
         "tool_use_id": call.id,
         "content": blocks,
-        "is_error": False,
+        "is_error": is_error,
       }))
 
     self.on_event(ToolResultsBatched(blocks=result_blocks))
     return Message(role="user", content=result_blocks, timestamp=now())
 
-  def _resolve_and_approve(self, call, batch_id, cancel):
+  def _resolve_and_approve(self, call, batch_id):
     policy = self.policy.resolve(call.name)
     if policy == "deny":
       return "deny"
@@ -272,17 +278,12 @@ class AgentSession:
       tool_source=self.tools.source_of(call.name) or "builtin",
       input=call.input,
       risk=self.tools.risk_of(call.name),
-      summary=_summarize_call(call),
       batch_id=batch_id,
     )
     response = self._await_approval(req)
     if response.decision == "approve":
       if response.remember == "tool":
         self.policy.allow_tool_for_session(call.name)
-      elif response.remember == "server":
-        server = self.tools.server_of(call.name)
-        if server:
-          self.policy.allow_server_for_session(server)
       return "approve"
     return response.decision
 
@@ -378,13 +379,9 @@ class AgentSession:
   def _invoke_tool(self, call, cancel):
     source = self.tools.source_of(call.name) or ""
     if source == "builtin":
-      self.current_tool_use_id = call.id
-      try:
-        return self.tools.invoke_builtin(
-          call.name, call.input,
-          cancel=cancel, session=self, tool_use_id=call.id)
-      finally:
-        self.current_tool_use_id = None
+      return self.tools.invoke_builtin(
+        call.name, call.input,
+        cancel=cancel, session=self, tool_use_id=call.id)
     if source == "skill":
       return self.tools.invoke_skill(call.name, call.input)
     if source.startswith("mcp:"):
@@ -445,11 +442,7 @@ def _accumulate(msg, event, tool_calls, storage, conv_id):
       "attachment_sha256": att.sha256, "mime": event.mime,
       "caption": event.caption}))
   elif isinstance(event, TokenUsageEvent):
-    msg.usage = TokenUsage(
-      input=event.input,
-      output=event.output,
-      cache_read=event.cache_read,
-      cache_creation=event.cache_creation)
+    msg.usage = event.to_stored()
   elif isinstance(event, TurnDone):
     msg.stop_reason = event.stop_reason
   elif isinstance(event, AgentError):
@@ -473,30 +466,6 @@ def _append_thinking(msg, text, signature):
   else:
     msg.content.append(ContentBlock(type="thinking", data={
       "text": text, "signature": signature or ""}))
-
-
-def _summarize_call(call):
-  """Build a short human-readable summary for the approval card.
-
-  Best-effort; the UI shows the full input when expanded.
-
-  Parameters
-  ----------
-  call : ToolUseRequested
-      The tool-use request to summarize.
-
-  Returns
-  -------
-  str
-      A ``name(arg=value, ...)`` rendering with truncated values.
-  """
-  return "%s(%s)" % (call.name, ", ".join(
-    "%s=%s" % (k, _short(v)) for k, v in call.input.items()))
-
-
-def _short(v, n=40):
-  s = str(v)
-  return s if len(s) <= n else s[:n] + "..."
 
 
 def _tool_error_block(tool_use_id, message):

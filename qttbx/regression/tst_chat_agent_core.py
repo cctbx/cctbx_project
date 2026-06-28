@@ -10,7 +10,7 @@ from libtbx.test_utils import Exception_expected
 from libtbx.utils import format_cpu_times
 
 from qttbx.widgets.chat.agent.base import (
-  Agent, AgentCapabilities, ToolSpec)
+  Agent, ToolSpec)
 from qttbx.widgets.chat.agent.conversation import (
   Attachment, ContentBlock, Conversation, ConversationMeta, Message,
   SubagentRecord, TokenUsage, now)
@@ -22,16 +22,7 @@ from qttbx.widgets.chat.agent.events import (
 from qttbx.widgets.chat.agent.events import TokenUsage as TokenUsageEvent
 
 
-# ---- Agent ABC + ToolSpec + AgentCapabilities ----------------------------
-
-
-def exercise_agent_capabilities_flags():
-  caps = (AgentCapabilities.STREAMING
-          | AgentCapabilities.TOOL_USE
-          | AgentCapabilities.VISION_INPUT)
-  assert AgentCapabilities.STREAMING in caps
-  assert AgentCapabilities.TOOL_USE in caps
-  assert AgentCapabilities.IMAGE_OUTPUT not in caps
+# ---- Agent ABC + ToolSpec ------------------------------------------------
 
 
 def exercise_tool_spec_basic():
@@ -60,7 +51,6 @@ def exercise_subclass_must_implement_methods():
   class IncompleteAgent(Agent):
     name = "incomplete"
     model = "x"
-    capabilities = AgentCapabilities.STREAMING
   try:
     IncompleteAgent()
   except TypeError:
@@ -73,7 +63,6 @@ def exercise_subclass_with_methods_instantiable():
   class GoodAgent(Agent):
     name = "good"
     model = "x"
-    capabilities = AgentCapabilities.STREAMING
 
     def stream_turn(self, conversation, tools, cancel):
       return iter([])
@@ -284,7 +273,6 @@ def exercise_now_returns_datetime():
 
 def exercise():
   # base
-  exercise_agent_capabilities_flags()
   exercise_tool_spec_basic()
   exercise_agent_is_abstract()
   exercise_subclass_must_implement_methods()

@@ -72,6 +72,99 @@ def exercise_add_bubble_then_streaming_then_finalize():
   assert "there" in v.bubbles()[-1].combined_text()
 
 
+def exercise_finalize_cancelled_marks_running_tool_cells_cancelled():
+  """When a turn is cancelled (the user hit Stop), the in-progress bubble is
+  finalized with stop_reason='cancelled'. Any tool cell still 'running' -- its
+  result will never arrive -- must be transitioned to the cancelled terminal
+  state rather than left stuck spinning."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bub = v.start_assistant_bubble()
+  v.append_block_to_current(ContentBlock(type="tool_use", data={
+    "id": "t1", "name": "phenix_start_job", "input": {}}))
+  cell = bub._tool_cells_by_id["t1"]
+  assert cell.is_running()
+  v.finalize_assistant_bubble("cancelled")
+  assert not cell.is_running(), \
+    "cancelled turn must terminate the still-running tool cell"
+  assert "cancelled" in cell.header_button.text()
+
+
+def exercise_finalize_non_cancel_leaves_running_cells_untouched():
+  """A non-cancel finalize (end_turn) must NOT relabel a still-running tool
+  cell -- the sweep is cancel-specific (only stop_reason='cancelled' calls
+  cancel_running_tools). This pins that gate directly; it does NOT assume the
+  cell was already finished -- on claude_code a live tool_use cell is only
+  finished when its result is observed (see
+  exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bub = v.start_assistant_bubble()
+  v.append_block_to_current(ContentBlock(type="tool_use", data={
+    "id": "t1", "name": "phenix_start_job", "input": {}}))
+  cell = bub._tool_cells_by_id["t1"]
+  v.finalize_assistant_bubble("end_turn")
+  assert cell.is_running(), \
+    "non-cancel finalize must leave running cells alone"
+
+
+def exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it():
+  """[F#2] claude_code dispatches tools in its SDK subprocess and renders the
+  results in a SEPARATE bubble -- it never calls set_tool_use_finished on the
+  live tool_use cell, so the cell stays 'running'. ConversationView's
+  finish_tool_cell (driven by ChatWindow._on_tool_result_observed when a result
+  is observed) must transition the matching in-progress cell to the finished
+  terminal state. Otherwise the Stop-time sweep -- finalize_assistant_bubble(
+  'cancelled') -> cancel_running_tools -- mislabels a tool that actually
+  COMPLETED as 'cancelled'.
+
+  Pins three things: (a) an observed cell becomes finished, (b) a later
+  turn-cancel does NOT relabel that finished cell, and (c) a still-running
+  sibling cell IS marked cancelled.
+
+  Revert-proof: make finish_tool_cell a no-op and the cell stays running, so
+  assertion (a) fails immediately -- and were it reached, the cancel sweep in
+  (b) would relabel it 'cancelled'."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bub = v.start_assistant_bubble()
+  for tid in ("done", "running"):
+    v.append_block_to_current(ContentBlock(type="tool_use", data={
+      "id": tid, "name": "phenix_start_job", "input": {}}))
+  done_cell = bub._tool_cells_by_id["done"]
+  running_cell = bub._tool_cells_by_id["running"]
+  assert done_cell.is_running() and running_cell.is_running()
+  # (a) 'done's result is observed -> its cell transitions to finished.
+  v.finish_tool_cell("done")
+  assert not done_cell.is_running()
+  assert "finished" in done_cell.header_button.text(), \
+    done_cell.header_button.text()
+  # The user hits Stop -> the cancel sweep runs.
+  v.finalize_assistant_bubble("cancelled")
+  # (b) the finished cell is left exactly as it was -- never 'cancelled'.
+  assert "cancelled" not in done_cell.header_button.text(), \
+    done_cell.header_button.text()
+  assert "finished" in done_cell.header_button.text()
+  # (c) the still-running sibling IS swept to cancelled.
+  assert not running_cell.is_running()
+  assert "cancelled" in running_cell.header_button.text()
+
+
+def exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble():
+  """finish_tool_cell must tolerate being called with no in-progress bubble
+  (e.g. a stray late result after the turn already finalized) -- a guard so a
+  mis-timed ToolResultObserved can't raise into the GUI thread."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  v.finish_tool_cell("nope")               # no in-progress bubble -> no raise
+  v.start_assistant_bubble()
+  v.finish_tool_cell("unknown_id")          # unknown id on the bubble -> no raise
+
+
 def exercise_set_assistant_label_flows_to_new_bubbles():
   """set_assistant_label provides the fallback name for new assistant bubbles
   that carry no per-message backend stamp (the live streaming case)."""
@@ -108,7 +201,7 @@ def exercise_batched_approval_coalesces_by_batch_id():
   v.start_assistant_bubble()
   reqs = [ToolApprovalRequest(
     request_id="r%d" % i, tool_name="t", tool_source="builtin",
-    input={"i": i}, risk="write", summary=None, batch_id="B")
+    input={"i": i}, risk="write", batch_id="B")
     for i in range(3)]
   for r in reqs:
     v.add_approval_request(r)
@@ -126,7 +219,7 @@ def exercise_two_batches_two_cards():
     v.add_approval_request(ToolApprovalRequest(
       request_id="r-" + bid + "-x", tool_name="t",
       tool_source="builtin", input={}, risk="write",
-      summary=None, batch_id=bid))
+      batch_id=bid))
   assert v.approval_card_count() == 2
 
 
@@ -137,10 +230,10 @@ def exercise_solo_request_without_batch_id_gets_own_card():
   v.start_assistant_bubble()
   v.add_approval_request(ToolApprovalRequest(
     request_id="r1", tool_name="t", tool_source="builtin",
-    input={}, risk="write", summary=None, batch_id=None))
+    input={}, risk="write", batch_id=None))
   v.add_approval_request(ToolApprovalRequest(
     request_id="r2", tool_name="t", tool_source="builtin",
-    input={}, risk="write", summary=None, batch_id=None))
+    input={}, risk="write", batch_id=None))
   assert v.approval_card_count() == 2
 
 
@@ -157,7 +250,7 @@ def exercise_same_batch_after_decision_starts_a_fresh_card():
   v.start_assistant_bubble()
   v.add_approval_request(ToolApprovalRequest(
     request_id="t1", tool_name="t", tool_source="builtin",
-    input={}, risk="write", summary=None, batch_id="B"))
+    input={}, risk="write", batch_id="B"))
   assert v.approval_card_count() == 1
   card1 = v.approval_cards()[0]
   # The user approves the first tool; the card emits its decision + hides.
@@ -165,7 +258,7 @@ def exercise_same_batch_after_decision_starts_a_fresh_card():
   # The session dispatches tool 1, then emits the second same-batch request.
   v.add_approval_request(ToolApprovalRequest(
     request_id="t2", tool_name="t", tool_source="builtin",
-    input={}, risk="write", summary=None, batch_id="B"))
+    input={}, risk="write", batch_id="B"))
   # A second, distinct card must carry t2 -- not an append to hidden card1.
   assert v.approval_card_count() == 2, v.approval_card_count()
   card2 = v.approval_cards()[1]
@@ -427,6 +520,10 @@ def exercise_list_rename_button_with_no_selection_is_no_op():
 
 def exercise():
   exercise_add_bubble_then_streaming_then_finalize()
+  exercise_finalize_cancelled_marks_running_tool_cells_cancelled()
+  exercise_finalize_non_cancel_leaves_running_cells_untouched()
+  exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it()
+  exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble()
   exercise_set_assistant_label_flows_to_new_bubbles()
   exercise_question_card_uses_assistant_label()
   exercise_batched_approval_coalesces_by_batch_id()

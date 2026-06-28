@@ -83,6 +83,26 @@ class TokenUsage(AgentEvent):
   cache_read: int = 0
   cache_creation: int = 0
 
+  def to_stored(self):
+    """Convert this usage event to the canonical stored ``TokenUsage``.
+
+    ``conversation.TokenUsage`` is the single source of truth for the
+    persisted usage field list. Copying field-by-field off it (rather than
+    naming each field here) means a usage field added there flows through
+    automatically and cannot be silently dropped when an event becomes a
+    stored message.
+
+    Returns
+    -------
+    qttbx.widgets.chat.agent.conversation.TokenUsage
+        A stored ``TokenUsage`` carrying every field the two types share.
+    """
+    from dataclasses import fields
+    from qttbx.widgets.chat.agent.conversation import TokenUsage
+    return TokenUsage(**{f.name: getattr(self, f.name)
+                         for f in fields(TokenUsage)
+                         if hasattr(self, f.name)})
+
 
 @dataclass
 class TurnDone(AgentEvent):

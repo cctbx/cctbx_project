@@ -167,6 +167,50 @@ def exercise_index_rebuild_when_missing():
     shutil.rmtree(tmp)
 
 
+def exercise_delete_removes_conversation():
+  """delete(conv_id) removes the conversation's on-disk directory so it no
+  longer appears in list_conversations, while other conversations survive."""
+  tmp, storage = _new_storage()
+  try:
+    c1 = Conversation.new(profile_name="p", model="m", title="First")
+    c2 = Conversation.new(profile_name="p", model="m", title="Second")
+    storage.save(c1)
+    storage.save(c2)
+    assert len(storage.list_conversations()) == 2
+    c1_dir = storage.conv_dir(c1.meta.id)
+    assert c1_dir.exists()
+    storage.delete(c1.meta.id)
+    # Its directory is gone...
+    assert not c1_dir.exists()
+    # ...it is no longer listed, and the other conversation survives.
+    listing = storage.list_conversations()
+    assert len(listing) == 1, listing
+    assert {m.title for m in listing} == {"Second"}
+    assert storage.conv_dir(c2.meta.id).exists()
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_delete_unknown_raises_sorry():
+  """delete() of an unknown conv_id raises Sorry, matching load()'s
+  not-found contract rather than leaking a raw error -- and leaves the
+  existing conversations untouched."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="x")
+    storage.save(conv)
+    try:
+      storage.delete("no-such-conversation")
+    except Sorry:
+      pass
+    else:
+      from libtbx.test_utils import Exception_expected
+      raise Exception_expected
+    assert len(storage.list_conversations()) == 1
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_subagent_store_and_load():
   from qttbx.widgets.chat.agent.conversation import SubagentRecord
   tmp, storage = _new_storage()
@@ -230,6 +274,182 @@ def exercise_schema_version_default_accepts_current():
     # No corruption; load should succeed.
     loaded = storage.load(conv.meta.id)
     assert loaded.meta.title == "ok"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_load_corrupt_meta_json_raises_sorry():
+  """A conversation whose meta.json is corrupt (invalid JSON) must surface
+  as a Sorry, not a raw json.JSONDecodeError -- load()'s documented
+  Sorry-only contract."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="x")
+    storage.save(conv)
+    meta_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+                 conv.meta.id / "meta.json")
+    meta_path.write_text("{ this is not valid json")
+    try:
+      storage.load(conv.meta.id)
+    except Sorry:
+      pass
+    else:
+      from libtbx.test_utils import Exception_expected
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_load_missing_created_at_raises_sorry():
+  """A meta.json missing the required 'created_at' key must surface as a
+  Sorry, not a cryptic KeyError ('created_at')."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="x")
+    storage.save(conv)
+    meta_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+                 conv.meta.id / "meta.json")
+    with open(meta_path) as fh:
+      doc = json.load(fh)
+    del doc["created_at"]
+    with open(meta_path, "w") as fh:
+      json.dump(doc, fh)
+    try:
+      storage.load(conv.meta.id)
+    except Sorry:
+      pass
+    else:
+      from libtbx.test_utils import Exception_expected
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_load_content_block_not_dict_raises_sorry():
+  """A messages.json whose content entry is a bare string (so
+  _content_block_from_dict hits AttributeError on .get) must surface as a
+  Sorry, not a raw AttributeError -- load()'s documented Sorry-only
+  contract."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="x")
+    storage.save(conv)
+    msgs_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+                 conv.meta.id / "messages.json")
+    with open(msgs_path, "w") as fh:
+      json.dump({"schema_version": "1.0",
+                 "messages": [{"role": "user", "timestamp": None,
+                               "content": ["text"]}]}, fh)
+    try:
+      storage.load(conv.meta.id)
+    except Sorry:
+      pass
+    else:
+      from libtbx.test_utils import Exception_expected
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_load_usage_wrong_type_raises_sorry():
+  """A messages.json whose 'usage' is a bare int (so _token_usage_from_dict
+  hits TypeError on the membership test) must surface as a Sorry, not a raw
+  TypeError -- load()'s documented Sorry-only contract."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="x")
+    storage.save(conv)
+    msgs_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+                 conv.meta.id / "messages.json")
+    with open(msgs_path, "w") as fh:
+      json.dump({"schema_version": "1.0",
+                 "messages": [{"role": "assistant", "timestamp": None,
+                               "content": [], "usage": 5}]}, fh)
+    try:
+      storage.load(conv.meta.id)
+    except Sorry:
+      pass
+    else:
+      from libtbx.test_utils import Exception_expected
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_save_failure_cleans_up_tmp():
+  """A save that fails mid-write (an un-serializable value) must not leave
+  an orphaned .tmp file behind: the atomic write cleans up its temp file."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="x")
+    # An un-serializable value in a message makes messages.json's write
+    # raise after meta.json has already been committed.
+    conv.append(Message(role="user",
+                        content=[ContentBlock(type="text",
+                                              data={"text": object()})],
+                        timestamp=now()))
+    try:
+      storage.save(conv)
+    except TypeError:
+      pass
+    else:
+      from libtbx.test_utils import Exception_expected
+      raise Exception_expected
+    conv_dir = Path(tmp) / ".phenix_chat" / "conversations" / conv.meta.id
+    orphans = sorted(str(p) for p in conv_dir.rglob("*.tmp"))
+    assert orphans == [], orphans
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_store_attachment_cleans_up_tmp_on_replace_failure():
+  """A store_attachment whose os.replace fails mid-write must not leave an
+  orphaned <file>.tmp behind: the content-addressed write uses the same
+  try/finally cleanup _atomic_write_json has. The originating OSError still
+  propagates; the contract under test is solely the temp cleanup.
+
+  Revert-proof: an inline tmp+os.replace without the cleanup leaves the .tmp
+  on disk and the orphan assert fails."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m")
+    storage.save(conv)
+    att_dir = (Path(tmp) / ".phenix_chat" / "conversations" /
+               conv.meta.id / "attachments")
+    orig_replace = os.replace
+    def boom(src, dst):
+      raise OSError("simulated os.replace failure")
+    os.replace = boom
+    raised = False
+    try:
+      storage.store_attachment(conv.meta.id, b"PNG bytes here", mime="image/png")
+    except OSError:
+      raised = True
+    finally:
+      os.replace = orig_replace
+    assert raised, "the OSError from os.replace must still propagate out"
+    orphans = (sorted(str(p) for p in att_dir.glob("*.tmp"))
+               if att_dir.exists() else [])
+    assert orphans == [], orphans
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_all_token_usage_fields_round_trip():
+  """Every TokenUsage field on an assistant message survives save()+load().
+  Dataclass equality compares all fields, so a usage field added later is
+  covered automatically -- it must not silently drop on persist."""
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="usage")
+    usage = TokenUsage(input=11, output=22, cache_read=33, cache_creation=44)
+    conv.append(Message(role="assistant",
+                        content=[ContentBlock(type="text",
+                                              data={"text": "hi"})],
+                        timestamp=now(), stop_reason="end_turn", usage=usage))
+    storage.save(conv)
+    loaded = storage.load(conv.meta.id)
+    assert loaded.messages[-1].usage == usage, loaded.messages[-1].usage
   finally:
     shutil.rmtree(tmp)
 
@@ -337,6 +557,53 @@ def exercise_chat_root_for_env_override():
     os.rmdir(tmp_override)
 
 
+def exercise_delete_rejects_unsafe_conv_id():
+  """delete() must reject a conv_id that is not a single safe path segment
+  (traversal / nested / absolute), raising Sorry rather than touching
+  anything outside the per-conversation directory."""
+  tmp, storage = _new_storage()
+  try:
+    for bad in ("..", "../x", "a/b", "a\\b", "/etc/passwd", ".", ""):
+      try:
+        storage.delete(bad)
+      except Sorry:
+        pass
+      else:
+        raise RuntimeError("delete(%r) should have raised Sorry" % (bad,))
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_delete_refuses_symlink_escape():
+  """A conversations/<id> symlink pointing outside the chat root is refused
+  by the resolve()/parents guard, and the symlink target is left intact."""
+  tmp, storage = _new_storage()
+  outside = tempfile.mkdtemp()
+  try:
+    conv = Conversation.new(profile_name="p", model="m")
+    storage.save(conv)                       # realize the conversations/ tree
+    conv_root = storage.conv_dir(conv.meta.id).parent
+    victim = os.path.join(outside, "precious.txt")
+    with open(victim, "w") as fh:
+      fh.write("keep")
+    link = os.path.join(str(conv_root), "evil")
+    try:
+      os.symlink(outside, link)
+    except (OSError, NotImplementedError):
+      print("symlink not supported; skipping escape check")
+      return
+    try:
+      storage.delete("evil")
+    except Sorry:
+      pass
+    else:
+      raise RuntimeError("delete('evil') should have refused the escape")
+    assert os.path.exists(victim), "symlink target must be untouched"
+  finally:
+    shutil.rmtree(tmp)
+    shutil.rmtree(outside, ignore_errors=True)
+
+
 def exercise():
   exercise_lazy_directory_creation()
   exercise_save_then_load_roundtrip()
@@ -345,9 +612,20 @@ def exercise():
   exercise_attachment_dedup_by_sha256()
   exercise_index_listing()
   exercise_index_rebuild_when_missing()
+  exercise_delete_removes_conversation()
+  exercise_delete_unknown_raises_sorry()
+  exercise_delete_rejects_unsafe_conv_id()
+  exercise_delete_refuses_symlink_escape()
   exercise_subagent_store_and_load()
   exercise_schema_version_check_rejects_future_version()
   exercise_schema_version_default_accepts_current()
+  exercise_load_corrupt_meta_json_raises_sorry()
+  exercise_load_missing_created_at_raises_sorry()
+  exercise_load_content_block_not_dict_raises_sorry()
+  exercise_load_usage_wrong_type_raises_sorry()
+  exercise_save_failure_cleans_up_tmp()
+  exercise_store_attachment_cleans_up_tmp_on_replace_failure()
+  exercise_all_token_usage_fields_round_trip()
   exercise_resolve_project_dir_cli_arg_wins()
   exercise_resolve_project_dir_embedded_arg()
   exercise_resolve_project_dir_env_var()

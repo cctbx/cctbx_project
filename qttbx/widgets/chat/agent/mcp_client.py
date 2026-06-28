@@ -137,7 +137,7 @@ class McpServerConnection:
   """One MCP server subprocess and its tools.
 
   Lifecycle: ``STOPPED`` -> ``STARTING`` -> ``READY`` -> (``STOPPED`` |
-  ``STOPPED_UNEXPECTEDLY`` | ``FAILED``). Public surface: ``start()``,
+  ``FAILED``). Public surface: ``start()``,
   ``stop()``, ``call_tool(name, input, cancel)``. Tools are exposed as
   ``ToolSpec`` instances after ``start()`` so the ``ToolRegistry`` can
   register them with ``register_mcp_tool``.
@@ -167,7 +167,6 @@ class McpServerConnection:
   STATE_STARTING = "starting"
   STATE_READY = "ready"
   STATE_FAILED = "failed"
-  STATE_STOPPED_UNEXPECTEDLY = "stopped_unexpectedly"
 
   def __init__(self, config, project_dir, storage, conv_id, log=None):
     self.config = config
@@ -206,9 +205,19 @@ class McpServerConnection:
             (self.config.name, len(self.tools)), file=self.log)
     except Sorry:
       self.state = self.STATE_FAILED
+      # Close the client BEFORE tearing down the loop. A partial start --
+      # __aenter__ connected (spawning the subprocess) but list_tools() then
+      # raised -- leaves a live subprocess; _close_client awaits __aexit__ to
+      # tell it to exit, and that needs the loop still running. Then tear down
+      # the loop thread so a failed start (incl. a _run_async timeout) doesn't
+      # leak it; the guarded _stop_loop won't raise even if the thread wedged.
+      self._close_client()
+      self._stop_loop()
       raise
     except Exception as exc:
       self.state = self.STATE_FAILED
+      self._close_client()
+      self._stop_loop()
       raise Sorry("MCP %s: start failed: %s" %
                   (self.config.name, exc))
 
@@ -217,16 +226,29 @@ class McpServerConnection:
 
     Best-effort: a subprocess that has already exited does not raise.
     """
-    if self._client_cm is not None:
-      try:
-        self._run_async(self._client_cm.__aexit__(None, None, None))
-      except Exception:
-        # Best-effort shutdown; subprocess may already be gone.
-        pass
-      self._client_cm = None
-      self._client = None
+    self._close_client()
     self._stop_loop()
     self.state = self.STATE_STOPPED
+
+  def _close_client(self):
+    """Close the MCP client connection, best-effort.
+
+    Awaits the client's ``__aexit__`` so a spawned subprocess is told to
+    exit. Must run BEFORE :meth:`_stop_loop`, which tears down the event
+    loop the ``__aexit__`` coroutine runs on. A no-op when no client was
+    opened. Never raises: a subprocess that already exited, or a close that
+    times out, is swallowed -- the loop teardown reclaims resources either
+    way.
+    """
+    if self._client_cm is None:
+      return
+    try:
+      self._run_async(self._client_cm.__aexit__(None, None, None),
+                      timeout=30.0)
+    except Exception:
+      pass
+    self._client_cm = None
+    self._client = None
 
   def call_tool(self, name, input, cancel, timeout=60.0):
     """Invoke an MCP tool and return its converted result.
@@ -254,11 +276,19 @@ class McpServerConnection:
     if self.state != self.STATE_READY:
       return error_result("MCP server '%s' not ready" % self.config.name)
     try:
+      # The inner _async_call already bounds the call by `timeout` (and polls
+      # `cancel`); give the outer wait a slightly larger bound so the inner
+      # timeout/cancel produces the error in the common case and this is only
+      # a last-resort guard against a fully wedged loop.
       raw = self._run_async(
-        self._async_call(name, input, timeout=timeout, cancel=cancel))
+        self._async_call(name, input, timeout=timeout, cancel=cancel),
+        timeout=timeout + 30.0)
+      # _convert_result stays inside the try: persisting an image item can
+      # raise (e.g. an attachment-store OSError on a full disk), and that must
+      # become an error result -- not escape call_tool's never-raise contract.
+      return self._convert_result(raw)
     except Exception as exc:
       return error_result("Tool call failed: %s" % exc)
-    return self._convert_result(raw)
 
   # ---- test hooks ----------------------------------------------------------
 
@@ -374,8 +404,15 @@ class McpServerConnection:
         task.cancel()
         try:
           await task
-        except Exception:
+        except asyncio.CancelledError:
+          # The cancellation we just requested. Since py3.8 CancelledError is a
+          # BaseException, so a bare `except Exception` misses it -- without this
+          # branch it would escape past the `raise Sorry("Cancelled")` below
+          # (leaving it dead) and surface as an empty 'Tool call failed: '.
           pass
+        except Exception:
+          pass            # task raised something else while unwinding -- ignore
+        # KeyboardInterrupt / SystemExit are neither caught above; they propagate.
         raise Sorry("Cancelled")
       try:
         return await asyncio.wait_for(asyncio.shield(task), timeout=0.1)
@@ -468,12 +505,54 @@ class McpServerConnection:
   def _stop_loop(self):
     if self._loop is None:
       return
-    self._loop.call_soon_threadsafe(self._loop.stop)
-    self._loop_thread.join(timeout=2.0)
-    self._loop.close()
+    loop = self._loop
+    thread = self._loop_thread
+    loop.call_soon_threadsafe(loop.stop)
+    if thread is not None:
+      thread.join(timeout=2.0)
+    # Only close once the loop thread has actually exited. If the join timed
+    # out (a coroutine wedged the loop so run_forever never returned) the
+    # loop is still running, and loop.close() would raise "Cannot close a
+    # running event loop". Skip the close in that case and let the daemon
+    # thread die with the process; null out the handles either way.
+    thread_stopped = thread is None or not thread.is_alive()
+    if thread_stopped and not loop.is_running():
+      loop.close()
     self._loop = None
     self._loop_thread = None
 
-  def _run_async(self, coro):
+  def _run_async(self, coro, timeout=60.0):
+    """Submit ``coro`` to the loop thread and block for its result.
+
+    Bounded so a wedged MCP server (a tool that never returns, a subprocess
+    stuck on startup) can't block the caller forever: ``start`` and ``stop``
+    run on the GUI thread, where an unbounded wait would freeze the chat.
+
+    Parameters
+    ----------
+    coro : coroutine
+        Coroutine scheduled on the connection's event loop.
+    timeout : float, optional
+        Maximum seconds to block. Defaults to ``60.0`` (matching the
+        per-call default in :meth:`call_tool`).
+
+    Returns
+    -------
+    object
+        Whatever ``coro`` returns.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When ``coro`` does not finish within ``timeout`` seconds; the
+        pending task is cancelled before raising.
+    """
+    import concurrent.futures
     future = asyncio.run_coroutine_threadsafe(coro, self._loop)
-    return future.result()
+    try:
+      return future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+      future.cancel()
+      raise Sorry(
+        "MCP server '%s': async operation timed out after %.0fs"
+        % (self.config.name, timeout))

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from libtbx.utils import format_cpu_times, null_out
 from qttbx.widgets.chat.agent.base import (
-  Agent, AgentCapabilities, ToolSpec)
+  Agent, ToolSpec)
 from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, TokenUsage, now)
 from qttbx.widgets.chat.agent.errors import CancelToken, TurnCancelled
@@ -27,7 +27,6 @@ class FakeAgent(Agent):
   yields events from the next list; raises if exhausted."""
   name = "fake"
   model = "fake"
-  capabilities = AgentCapabilities.STREAMING | AgentCapabilities.TOOL_USE
 
   def __init__(self, turn_scripts):
     self.turn_scripts = list(turn_scripts)
@@ -175,6 +174,35 @@ def exercise_tool_use_loop_completes():
     shutil.rmtree(tmp)
 
 
+def exercise_builtin_handler_receives_tool_use_id():
+  """A builtin tool handler is invoked with tool_use_id == the call id,
+  passed directly through invoke_builtin (no session-held state needed --
+  this is why AgentSession keeps no current_tool_use_id attribute)."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "hi"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="done"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    seen = []
+
+    def _handler(name, input, cancel, session, tool_use_id):
+      seen.append(tool_use_id)
+      return input["text"]
+
+    session.tools.register_builtin(
+      ToolSpec(name="echo", description="echo",
+               input_schema={"type": "object"}),
+      handler=_handler, risk="write")
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    assert seen == ["t1"], seen
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_tool_denied_returns_is_error():
   """Policy='deny' for the tool → tool_result is_error=True; the model's
   next turn sees the denial."""
@@ -304,6 +332,28 @@ def exercise_add_subagent_usage_aggregates():
                                TokenUsage(input=200, output=70))
     assert session._subagent_usage_by_id["sa_1"].input == 100
     assert session._subagent_usage_by_id["sa_2"].output == 70
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_token_usage_event_carries_all_fields_to_message():
+  """A TokenUsage event accumulates into the assistant message's usage as a
+  stored TokenUsage with every field preserved (the event -> stored
+  conversion drops nothing). Dataclass equality compares all fields, so a
+  usage field added later is covered automatically."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"),
+     TokenUsageEvent(input=11, output=22, cache_read=33, cache_creation=44),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
+    assistant = session.run_turn(user_msg, cancel)
+    assert isinstance(assistant.usage, TokenUsage), type(assistant.usage)
+    assert assistant.usage == TokenUsage(
+      input=11, output=22, cache_read=33, cache_creation=44), assistant.usage
   finally:
     shutil.rmtree(tmp)
 
@@ -495,25 +545,6 @@ def exercise_ask_user_question_tool_loop_round_trips_answers():
     shutil.rmtree(tmp)
 
 
-def exercise_ask_user_question_registered_as_builtin():
-  """register_ask_user_question surfaces phenix_ask_user_question as a
-  read-risk builtin with the questions input schema."""
-  from qttbx.widgets.chat.agent.tools import register_ask_user_question
-  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
-  try:
-    register_ask_user_question(session.tools)
-    reg = session.tools
-    assert reg.source_of("phenix_ask_user_question") == "builtin"
-    assert reg.risk_of("phenix_ask_user_question") == "read"
-    spec = next(s for s in reg.specs()
-                if s.name == "phenix_ask_user_question")
-    props = spec.input_schema["properties"]
-    assert "questions" in props
-    assert spec.input_schema["required"] == ["questions"]
-  finally:
-    shutil.rmtree(tmp)
-
-
 def exercise_run_turn_drains_stale_cancelled_from_question_queue():
   """A _Cancelled left in question_queue by a previous turn's cancel must
   be drained at run_turn start, so the next turn's first question isn't
@@ -572,7 +603,6 @@ def _new_session_for_mcp(tmp):
   class _FakeAgent:
     name = "fake"
     model = "fake"
-    capabilities = 0
     def stream_turn(self, conversation, tools, cancel):
       yield from ()
 
@@ -651,27 +681,102 @@ def exercise_non_mcp_results_still_handled():
     shutil.rmtree(tmp)
 
 
+# ---- MCP dispatch is_error propagation -----------------------------------
+# The dispatch loop must carry an MCP tool's is_error flag onto the
+# tool_result block: a failed MCP tool (McpToolResult.is_error=True) must
+# reach the model + UI as an error, not be reported as a success.
+
+
+def exercise_mcp_tool_error_result_propagates_is_error():
+  """A dispatched MCP tool whose handler returns an McpToolResult flagged
+  is_error=True must yield a tool_result block with is_error=True. The
+  failure must reach the model + UI as an error rather than being reported
+  as a success (the session must honour the handler result's is_error
+  instead of hardcoding False)."""
+  from qttbx.widgets.chat.agent.mcp_client import McpToolItem, McpToolResult
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="phenix_boom", input={}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="saw the error"),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    session.tools.register_mcp_tool(
+      ToolSpec(name="phenix_boom", description="boom",
+               input_schema={"type": "object"}),
+      server_name="phenix",
+      handler=lambda name, input, cancel: McpToolResult(
+        content=[McpToolItem(type="text", text="it failed")],
+        is_error=True),
+      risk="write")
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "go"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    tr_msg = session.conv.messages[2]
+    assert tr_msg.content[0].type == "tool_result"
+    assert tr_msg.content[0].data["tool_use_id"] == "t1"
+    assert tr_msg.content[0].data["is_error"] is True, \
+      "failed MCP tool was reported as success"
+    text = tr_msg.content[0].data["content"][0].data["text"]
+    assert "it failed" in text, text
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_mcp_tool_success_result_keeps_is_error_false():
+  """The is_error-honouring change must not flip a successful MCP tool to
+  error: an McpToolResult with is_error=False yields a tool_result block
+  with is_error=False."""
+  from qttbx.widgets.chat.agent.mcp_client import McpToolItem, McpToolResult
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="phenix_ok", input={}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="done"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    session.tools.register_mcp_tool(
+      ToolSpec(name="phenix_ok", description="ok",
+               input_schema={"type": "object"}),
+      server_name="phenix",
+      handler=lambda name, input, cancel: McpToolResult(
+        content=[McpToolItem(type="text", text="all good")],
+        is_error=False),
+      risk="write")
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "go"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    tr_msg = session.conv.messages[2]
+    assert tr_msg.content[0].data["is_error"] is False
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_simple_text_turn()
   exercise_assistant_messages_stamped_with_model_and_backend()
   exercise_reconciles_meta_model_and_backend_on_continue()
   exercise_tool_use_loop_completes()
+  exercise_builtin_handler_receives_tool_use_id()
   exercise_tool_denied_returns_is_error()
   exercise_cancel_while_awaiting_approval()
   exercise_max_turns_cap()
   exercise_add_subagent_usage_aggregates()
+  exercise_token_usage_event_carries_all_fields_to_message()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()
   exercise_await_question_answer_returns_preseeded_answers()
   exercise_await_question_answer_cancel_raises_turn_cancelled()
   exercise_submit_question_answer_routes_only_matching_id()
   exercise_ask_user_question_tool_loop_round_trips_answers()
-  exercise_ask_user_question_registered_as_builtin()
   exercise_run_turn_drains_stale_cancelled_from_question_queue()
   exercise_mcp_text_item_round_trips()
   exercise_mcp_image_item_uses_sha256_directly()
   exercise_mcp_resource_item_renders_as_text()
   exercise_non_mcp_results_still_handled()
+  exercise_mcp_tool_error_result_propagates_is_error()
+  exercise_mcp_tool_success_result_keeps_is_error_false()
 
 
 if __name__ == "__main__":

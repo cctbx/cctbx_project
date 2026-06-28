@@ -229,7 +229,7 @@ class MessageInput(QtWidgets.QWidget):
         generic label.
     """
     self._idle_placeholder = self._PLACEHOLDER_FMT % (name or "the assistant")
-    if not getattr(self, "_busy", False):
+    if not self._busy:
       self.set_placeholder(self._idle_placeholder, dim=True)
 
   # ---- busy / button state -------------------------------------------------
@@ -237,9 +237,6 @@ class MessageInput(QtWidgets.QWidget):
   def set_busy(self, busy):
     self._busy = bool(busy)
     self._button.setText("Stop" if self._busy else "Send")
-
-  def is_busy(self):
-    return self._busy
 
   # ---- attachments ---------------------------------------------------------
 
@@ -267,7 +264,11 @@ class MessageInput(QtWidgets.QWidget):
       self.attachment_rejected.emit(
         "Unsupported attachment type: %s" % mime)
       return False
-    data = self._maybe_resample(data, mime)
+    # _maybe_resample re-encodes a non-PNG type (webp/gif/jpeg) to JPEG when
+    # it shrinks, so it returns the mime that matches the bytes it hands back.
+    # The attachment must carry that mime -- shipping webp/gif bytes that are
+    # really JPEG makes the provider reject the request (400).
+    data, mime = self._maybe_resample(data, mime)
     if len(data) > self._max_image_bytes:
       self.attachment_rejected.emit(
         "Attachment too large (%d bytes)" % len(data))
@@ -289,7 +290,10 @@ class MessageInput(QtWidgets.QWidget):
     """Shrink an oversized image to fit under the byte cap.
 
     Repeatedly halves dimensions until under the byte cap, up to 5
-    iterations.
+    iterations. PNG re-encodes as PNG; every other allowed type
+    (jpeg/webp/gif) re-encodes as JPEG, so the returned mime is
+    ``"image/jpeg"`` in that case -- the caller must advertise the bytes'
+    real format or the provider rejects the attachment.
 
     Parameters
     ----------
@@ -300,16 +304,21 @@ class MessageInput(QtWidgets.QWidget):
 
     Returns
     -------
-    bytes
-        The smaller bytes, or the original if Qt can't read them
-        (which lets the size check catch it later).
+    (bytes, str)
+        The (possibly smaller) bytes and the mime matching them. The
+        original bytes + original mime are returned unchanged when the
+        input is already under the cap or Qt can't read it (which lets the
+        size check catch an unreadable oversized blob later).
     """
     if len(data) <= self._max_image_bytes:
-      return data
+      return data, mime
     img = QtGui.QImage()
     if not img.loadFromData(data):
-      return data
-    target_fmt = "PNG" if mime == "image/png" else "JPG"
+      return data, mime
+    if mime == "image/png":
+      target_fmt, out_mime = "PNG", "image/png"
+    else:
+      target_fmt, out_mime = "JPG", "image/jpeg"
     out = data
     for _ in range(5):
       img = img.scaled(max(1, img.width() // 2),
@@ -321,8 +330,8 @@ class MessageInput(QtWidgets.QWidget):
       img.save(buf, target_fmt)
       out = bytes(buf.data())
       if len(out) <= self._max_image_bytes:
-        return out
-    return out
+        return out, out_mime
+    return out, out_mime
 
   def _refresh_chip_bar(self):
     while self._chip_layout.count():

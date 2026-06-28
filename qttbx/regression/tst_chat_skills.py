@@ -42,6 +42,18 @@ def _make_skill(root, name, body="example body\n",
   return d
 
 
+def _make_undecodable_skill(root, name):
+  """Write a SKILL.md whose bytes are not valid UTF-8 (a lone 0xFF), so
+  reading it raises UnicodeDecodeError under any locale. Used to prove one
+  unreadable skill is skipped rather than aborting the whole load."""
+  d = os.path.join(root, name)
+  os.makedirs(d)
+  with open(os.path.join(d, "SKILL.md"), "wb") as fh:
+    fh.write(b"---\nname: bad\ndescription: x\nmode: always\n---\n\n"
+             b"\xff\xfe not valid utf-8\n")
+  return d
+
+
 def exercise_load_builtin_only():
   tmp = tempfile.mkdtemp()
   try:
@@ -162,6 +174,180 @@ def exercise_disabled_skill_excluded():
     skills = loader.load_default(disabled={"b"})
     names = {s.name for s in skills}
     assert names == {"a"}
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_one_unreadable_skill_does_not_drop_the_rest():
+  """A single malformed / undecodable SKILL.md must be SKIPPED, not abort
+  the whole load. Before the fix the UnicodeDecodeError escaped the
+  per-skill `except Sorry` guard and dropped every other skill too (F6).
+  The bad skill sorts AFTER the good one, so a passing result also proves
+  the good skill is not lost when a later skill blows up."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    _make_skill(builtin, "good_skill")
+    _make_undecodable_skill(builtin, "zz_bad_skill")
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    skills = loader.load_default()
+    assert [s.name for s in skills] == ["good_skill"], [s.name for s in skills]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_non_ascii_utf8_skill_loads():
+  """A SKILL.md containing non-ASCII UTF-8 text loads cleanly and its body /
+  description round-trip. Guards the encoding='utf-8' pin in _parse_skill_md
+  (F6): without it, read_text() uses the locale default, so a non-ASCII
+  SKILL.md raises UnicodeDecodeError under a C/POSIX locale."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    d = os.path.join(builtin, "unicode_skill")
+    os.makedirs(d)
+    skill_md = (
+      "---\n"
+      "name: unicode_skill\n"
+      "description: résumé of ångström refinement\n"
+      "mode: always\n"
+      "---\n\n"
+      "Body with non-ASCII: éåö — café.\n")
+    with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as fh:
+      fh.write(skill_md)
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    skills = loader.load_default()
+    assert len(skills) == 1, [s.name for s in skills]
+    assert skills[0].name == "unicode_skill"
+    assert "café" in skills[0].body, skills[0].body
+    assert "résumé" in skills[0].description, skills[0].description
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_scalar_requires_coerced_to_single_element_list():
+  """A SKILL.md with a SCALAR `requires: phenix` (not a YAML list) keeps that
+  one requirement intact. PyYAML parses the scalar as the string "phenix", and
+  the old `list(frontmatter.get("requires", []) or [])` would explode it into
+  ['p','h','e','n','i','x'] -- none of which match a real MCP server, so the
+  skill was silently dropped with a garbage 'missing servers' log (F3). The
+  scalar must coerce to the one-element list ['phenix']: the skill loads when
+  phenix is available and is filtered when it isn't."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    d = os.path.join(builtin, "scalar_req")
+    os.makedirs(d)
+    skill_md = (
+      "---\n"
+      "name: scalar_req\n"
+      "description: needs phenix\n"
+      "mode: always\n"
+      "requires: phenix\n"               # scalar, NOT [phenix]
+      "---\n\nbody\n")
+    with open(os.path.join(d, "SKILL.md"), "w") as fh:
+      fh.write(skill_md)
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    # requires must be the one-element list, not exploded into characters.
+    skill = loader.load_default()[0]      # no mcp filter -> loads regardless
+    assert skill.requires == ["phenix"], skill.requires
+    # ... and the requires filter treats it as a single 'phenix' requirement.
+    assert [s.name for s in loader.load_default(mcp_servers=["phenix"])] \
+      == ["scalar_req"]
+    assert loader.load_default(mcp_servers=[]) == []
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_non_string_scalar_requires_does_not_drop_batch():
+  """[F3] A NON-string scalar `requires` (e.g. `requires: 1` or `requires: true`)
+  must coerce to a one-element list and NOT abort the whole skill load. An even
+  earlier round's coercion handled only str; a non-str scalar still reached
+  list(1) / list(True) -> TypeError, which is NOT in _load_checked's
+  (Sorry, OSError, ValueError) guard, so it escaped _load_builtins ->
+  load_default raised -> the session caught it as 'Failed to load skills
+  (continuing without)' and lost EVERY skill.
+
+  requires entries are server NAMES, so each element is now str()-coerced after
+  the list-wrap: the scalar 1 becomes ['1'] and true becomes ['True'] (a single
+  hashable, non-matching requirement) and the rest of the batch survives."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    _make_skill(builtin, "good_skill")              # sorts before the scalar ones
+    # Raw SKILL.md with a scalar int / bool `requires` (NOT a YAML list).
+    for name, scalar in (("zz_int_req", "1"), ("zz_bool_req", "true")):
+      d = os.path.join(builtin, name)
+      os.makedirs(d)
+      with open(os.path.join(d, "SKILL.md"), "w") as fh:
+        fh.write("---\nname: %s\ndescription: d\nmode: always\n"
+                 "requires: %s\n---\n\nbody\n" % (name, scalar))
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    skills = loader.load_default()                  # must NOT raise; keeps all
+    by_name = {s.name: s for s in skills}
+    assert "good_skill" in by_name, list(by_name)   # batch not dropped
+    # Each scalar coerces to its single-element STRING list -- not exploded,
+    # not dropped, and uniformly hashable for the requires membership test.
+    assert by_name["zz_int_req"].requires == ["1"], by_name["zz_int_req"].requires
+    assert by_name["zz_bool_req"].requires == ["True"], \
+      by_name["zz_bool_req"].requires
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_mapping_requires_coerced_and_does_not_abort_batch():
+  """[F#1] A YAML MAPPING `requires: {phenix: null}` (or a list element that is
+  itself a dict/list) parses to an UNHASHABLE requires value. This round's bare
+  `[requires]` list-wrap left that dict in place, and _requires_satisfied's
+  `r in available_servers` (frozenset membership) then raised TypeError --
+  OUTSIDE _load_checked's (Sorry, OSError, ValueError) guard -- so it escaped
+  _load_builtins and aborted the WHOLE skill batch (every skill lost), strictly
+  worse than the pre-this-round clean single-skill drop. str()-coercing each
+  element makes any value hashable: the skill loads (with a stringified,
+  non-matching requirement) and the batch survives.
+
+  Revert-proof: without the `[str(r) for r in requires]` coercion, the
+  mapping skill's membership test raises TypeError out of load_default (it runs
+  because mcp_servers is non-None), so the first load_default below raises and
+  none of the asserts run -- good_skill is lost with it."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    _make_skill(builtin, "good_skill")              # sorts before the zz_* ones
+    # A MAPPING `requires` (unhashable dict element) ...
+    d = os.path.join(builtin, "zz_map_req")
+    os.makedirs(d)
+    with open(os.path.join(d, "SKILL.md"), "w") as fh:
+      fh.write("---\nname: zz_map_req\ndescription: d\nmode: always\n"
+               "requires: {phenix: null}\n---\n\nbody\n")
+    # ... and a LIST whose elements include a non-string scalar.
+    d2 = os.path.join(builtin, "zz_list_nonstr")
+    os.makedirs(d2)
+    with open(os.path.join(d2, "SKILL.md"), "w") as fh:
+      fh.write("---\nname: zz_list_nonstr\ndescription: d\nmode: always\n"
+               "requires: [1, phenix]\n---\n\nbody\n")
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    # mcp_servers is non-None so the requires membership test actually RUNS --
+    # that membership test is where the unhashable dict used to raise TypeError.
+    skills = loader.load_default(mcp_servers=["phenix"])
+    by_name = {s.name: s for s in skills}
+    # The batch is NOT dropped: good_skill survives the malformed siblings.
+    assert "good_skill" in by_name, list(by_name)
+    # Each malformed skill is cleanly FILTERED (its stringified requirement
+    # doesn't match a real server) rather than aborting the load.
+    assert "zz_map_req" not in by_name, list(by_name)
+    assert "zz_list_nonstr" not in by_name, list(by_name)
+    # With the check opted out (mcp_servers=None) the skills load and EVERY
+    # requires element is a string -- proving the load-time stringification.
+    everything = {s.name: s for s in loader.load_default()}
+    assert all(isinstance(r, str) for r in everything["zz_map_req"].requires), \
+      everything["zz_map_req"].requires
+    assert everything["zz_list_nonstr"].requires == ["1", "phenix"], \
+      everything["zz_list_nonstr"].requires
   finally:
     shutil.rmtree(tmp)
 
@@ -414,6 +600,11 @@ def exercise():
   exercise_read_file_rejects_symlink_escape()
   exercise_read_file_succeeds_for_in_skill_file()
   exercise_disabled_skill_excluded()
+  exercise_one_unreadable_skill_does_not_drop_the_rest()
+  exercise_non_ascii_utf8_skill_loads()
+  exercise_scalar_requires_coerced_to_single_element_list()
+  exercise_non_string_scalar_requires_does_not_drop_batch()
+  exercise_mapping_requires_coerced_and_does_not_abort_batch()
   exercise_assemble_system_prompt_includes_descriptions()
   exercise_tools_returns_empty_for_no_skills()
   exercise_tools_returns_two_when_all_always_mode()

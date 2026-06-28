@@ -1,9 +1,8 @@
 """Credentials dialog widgets for chat agents.
 
 The base ``CredentialsDialog`` provides the common UX (instructions,
-masked input, show/hide toggle, save-to-keychain checkbox, save and
-cancel buttons). Each agent subclasses to set its own title and
-instructions.
+masked input, show/hide toggle, save and cancel buttons). Each agent
+subclasses to set its own title and instructions.
 """
 
 from qttbx.qt import QtWidgets
@@ -13,8 +12,7 @@ class CredentialsDialog(QtWidgets.QDialog):
   """Parent-agnostic credentials prompt.
 
   Provides the common UX (instructions, masked input, show/hide toggle,
-  save-to-keychain checkbox, save and cancel buttons). Subclass and
-  configure via constructor args.
+  save and cancel buttons). Subclass and configure via constructor args.
 
   Parameters
   ----------
@@ -57,11 +55,6 @@ class CredentialsDialog(QtWidgets.QDialog):
     row.addWidget(self._toggle_btn)
     layout.addLayout(row)
 
-    self._save_to_keychain = QtWidgets.QCheckBox(
-      "Save to system keychain (recommended)")
-    self._save_to_keychain.setChecked(True)
-    layout.addWidget(self._save_to_keychain)
-
     btns = QtWidgets.QHBoxLayout()
     self._cancel_btn = QtWidgets.QPushButton("Cancel")
     self._cancel_btn.clicked.connect(self._on_cancel)
@@ -87,10 +80,6 @@ class CredentialsDialog(QtWidgets.QDialog):
   def result_value(self):
     """Return the saved value, or ``None`` if cancelled or not saved."""
     return self._result_value
-
-  def save_to_keychain_checked(self):
-    """Return whether the save-to-keychain checkbox is checked."""
-    return self._save_to_keychain.isChecked()
 
   # ---- slots ---------------------------------------------------------------
 

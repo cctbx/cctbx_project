@@ -267,12 +267,9 @@ class _ScaledImageLabel(QtWidgets.QLabel):
     self._reload()
 
 
-_default_renderers_registered = False
-
-
 def _ensure_default_renderers_registered():
-  global _default_renderers_registered
-  if _default_renderers_registered:
-    return
-  register_renderer("image", _image_renderer)
-  _default_renderers_registered = True
+  # Idempotent one-time registration of the default image renderer. Querying
+  # the registry directly is the natural idempotency check -- no separate
+  # module-level "already ran" flag to keep in sync.
+  if renderer_for("image") is None:
+    register_renderer("image", _image_renderer)

@@ -140,7 +140,7 @@ def _resolve_attachment_path(storage, conv_id, sha):
   if storage is None or not sha or not conv_id:
     return None
   try:
-    att_dir = storage._conv_dir(conv_id) / "attachments"
+    att_dir = storage.conv_dir(conv_id) / "attachments"
     matches = sorted(att_dir.glob("sha256-%s.*" % sha))
   except Exception:
     return None

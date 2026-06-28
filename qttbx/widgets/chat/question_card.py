@@ -30,7 +30,6 @@ class QuestionCard(QtWidgets.QFrame):
     self._request_id = ""
     self._questions = []
     # Per-question state: list of dicts with:
-    #   'group' (QButtonGroup or None for multiSelect),
     #   'option_buttons' (list of (QAbstractButton, label_str)),
     #   'other_edit' (QLineEdit), 'multi_select' (bool).
     self._question_state = []
@@ -165,7 +164,6 @@ class QuestionCard(QtWidgets.QFrame):
     other_row.addWidget(other_edit, 1)
     v.addLayout(other_row)
     self._question_state.append({
-      "group": group,
       "option_buttons": option_buttons,
       "other_edit": other_edit,
       "multi_select": multi_select,
@@ -180,5 +178,4 @@ class QuestionCard(QtWidgets.QFrame):
     submit = QtWidgets.QPushButton("Submit", box)
     submit.clicked.connect(self.click_submit)
     layout.addWidget(submit)
-    self._submit_btn = submit
     return box

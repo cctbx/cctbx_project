@@ -23,13 +23,13 @@ except ImportError:
 # ---- MarkdownView widget -------------------------------------------------
 
 
-def exercise_set_and_append_markdown():
+def exercise_append_markdown():
   from qttbx.widgets.chat.markdown_view import MarkdownView
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   from qttbx.widgets.font_init import init_default_app_font
   init_default_app_font(app)
   v = MarkdownView()
-  v.set_markdown("**hello**")
+  v.append_markdown("**hello**")
   assert "hello" in v.toPlainText()
   v.append_markdown("\n\nworld")
   text = v.toPlainText()
@@ -42,7 +42,7 @@ def exercise_clear():
   from qttbx.widgets.font_init import init_default_app_font
   init_default_app_font(app)
   v = MarkdownView()
-  v.set_markdown("x")
+  v.append_markdown("x")
   v.clear()
   assert v.toPlainText().strip() == ""
 
@@ -72,7 +72,7 @@ def exercise_raw_html_in_markdown_is_not_rendered_as_rich_text():
   from qttbx.widgets.font_init import init_default_app_font
   init_default_app_font(app)
   v = MarkdownView()
-  v.set_markdown('look <img src="file:///etc/passwd"> here')
+  v.append_markdown('look <img src="file:///etc/passwd"> here')
   assert "<img" in v.toPlainText(), repr(v.toPlainText())
 
 
@@ -228,6 +228,40 @@ def exercise_image_renders_link_to_attachment_when_storage_present():
     shutil.rmtree(tmp)
 
 
+def exercise_image_resolves_via_public_conv_dir_accessor():
+  """The export must resolve attachment paths through storage's PUBLIC
+  conv_dir() accessor, not the private _conv_dir(). A storage-like object that
+  exposes only the public method still resolves the image link; reverting to
+  the private name AttributeErrors -> _resolve_attachment_path returns None ->
+  the export falls back to the placeholder, failing the link assert below."""
+  from pathlib import Path
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  tmp = tempfile.mkdtemp()
+  try:
+    sha = "abc123" + "0" * 58            # plain hex; only used as a filename token
+    att_dir = os.path.join(tmp, "conv", "attachments")
+    os.makedirs(att_dir)
+    img_path = os.path.join(att_dir, "sha256-%s.png" % sha)
+    with open(img_path, "wb") as fh:
+      fh.write(b"PNG")
+
+    class PublicOnlyStorage(object):
+      # Exposes ONLY the public conv_dir(); it has no _conv_dir, so reaching
+      # into the private name would AttributeError.
+      def conv_dir(self, conv_id):
+        return Path(tmp) / "conv"
+
+    conv.append(Message(role="assistant", timestamp=now(), content=[
+      ContentBlock(type="image", data={
+        "attachment_sha256": sha, "mime": "image/png",
+        "caption": "green square"})]))
+    md = conversation_to_markdown(conv, storage=PublicOnlyStorage())
+    assert "![green square](%s)" % img_path in md, md
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_image_without_storage_falls_back_to_placeholder():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
@@ -263,7 +297,7 @@ def exercise_ends_with_newline():
 
 
 def exercise():
-  exercise_set_and_append_markdown()
+  exercise_append_markdown()
   exercise_clear()
   exercise_auto_height_no_scrollbar()
   exercise_raw_html_in_markdown_is_not_rendered_as_rich_text()
@@ -275,6 +309,7 @@ def exercise():
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()
   exercise_image_renders_link_to_attachment_when_storage_present()
+  exercise_image_resolves_via_public_conv_dir_accessor()
   exercise_image_without_storage_falls_back_to_placeholder()
   exercise_malformed_block_does_not_crash()
   exercise_ends_with_newline()

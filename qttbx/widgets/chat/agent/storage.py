@@ -67,7 +67,7 @@ class ConversationStorage:
     index_path = self.root / "index.json"
     if index_path.exists():
       try:
-        with open(index_path) as fh:
+        with open(index_path, encoding="utf-8") as fh:
           data = json.load(fh)
         return [_meta_from_dict(d) for d in data.get("conversations", [])]
       except Exception as e:
@@ -97,16 +97,31 @@ class ConversationStorage:
         If the conversation directory does not exist, or a document's
         ``schema_version`` is unsupported.
     """
+    from libtbx.utils import Sorry
     conv_dir = self._conv_dir(conv_id)
     if not conv_dir.exists():
-      from libtbx.utils import Sorry
       raise Sorry("Conversation not found: %s" % conv_id)
-    meta_doc = _read_json(conv_dir / "meta.json")
-    _check_schema_version(meta_doc, str(conv_dir / "meta.json"))
-    meta = _meta_from_dict(meta_doc)
-    messages_doc = _read_json(conv_dir / "messages.json")
-    _check_schema_version(messages_doc, str(conv_dir / "messages.json"))
-    messages = [_message_from_dict(m) for m in messages_doc.get("messages", [])]
+    try:
+      meta_doc = _read_json(conv_dir / "meta.json")
+      _check_schema_version(meta_doc, str(conv_dir / "meta.json"))
+      meta = _meta_from_dict(meta_doc)
+      messages_doc = _read_json(conv_dir / "messages.json")
+      _check_schema_version(messages_doc, str(conv_dir / "messages.json"))
+      messages = [_message_from_dict(m)
+                  for m in messages_doc.get("messages", [])]
+    except Sorry:
+      # Already a clear user-facing error (e.g. unsupported schema_version);
+      # surface it unchanged.
+      raise
+    except (ValueError, KeyError, TypeError, AttributeError, OSError) as e:
+      # Corrupt/partial JSON (json.JSONDecodeError is a ValueError), a
+      # missing required key (KeyError), a bad timestamp (ValueError), a
+      # wrong-typed field (TypeError, e.g. a non-iterable 'usage';
+      # AttributeError, e.g. a content block that is a bare string), or a
+      # missing/unreadable file (OSError) -- map all to the documented
+      # Sorry-only contract instead of leaking a cryptic raw exception.
+      raise Sorry("Conversation '%s' could not be loaded; its files are "
+                  "missing or corrupt (%s)." % (conv_id, e))
     # Attachments and subagents loaded on demand.
     return Conversation(meta=meta, messages=messages,
                         attachments={}, subagents=[])
@@ -127,6 +142,44 @@ class ConversationStorage:
       "schema_version": _SCHEMA_VERSION,
       "messages": [_message_to_dict(m) for m in conv.messages],
     })
+    self._refresh_index()
+
+  def delete(self, conv_id):
+    """Delete a conversation's on-disk directory, then reindex.
+
+    Removes the conversation's directory (its ``meta.json`` /
+    ``messages.json`` / ``attachments`` / ``subagents``) so it disappears
+    from ``list_conversations``, then rewrites the index from the remaining
+    on-disk conversations.
+
+    Parameters
+    ----------
+    conv_id : str
+        Identifier of the conversation to delete.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        If ``conv_id`` is unsafe as a path segment, or no such conversation
+        exists (matching ``load``'s not-found contract).
+    """
+    import shutil
+    from libtbx.utils import Sorry
+    # _conv_dir validates conv_id via _safe_segment (rejects path
+    # separators / '..' / absolute ids), so the join cannot escape the
+    # chat root.
+    conv_dir = self._conv_dir(conv_id)
+    if not conv_dir.exists():
+      raise Sorry("Conversation not found: %s" % conv_id)
+    # Defense in depth before a destructive rmtree: confirm the resolved
+    # target really sits directly under this project's conversations dir
+    # (a conv id that resolves elsewhere -- e.g. through a symlink -- is
+    # refused rather than followed).
+    conv_root = (self.root / "conversations").resolve()
+    resolved = conv_dir.resolve()
+    if conv_root not in resolved.parents:
+      raise Sorry("Refusing to delete outside the chat root: %s" % conv_id)
+    shutil.rmtree(resolved)
     self._refresh_index()
 
   # ---- attachments ---------------------------------------------------------
@@ -158,10 +211,7 @@ class ConversationStorage:
     att_dir.mkdir(parents=True, exist_ok=True)
     fpath = att_dir / fname
     if not fpath.exists():
-      tmp = fpath.with_suffix(fpath.suffix + ".tmp")
-      with open(tmp, "wb") as fh:
-        fh.write(data)
-      os.replace(tmp, fpath)
+      _atomic_write_bytes(fpath, data)
     return Attachment(sha256=sha, mime=mime, path=fname)
 
   def load_attachment(self, conv_id, sha256):
@@ -254,21 +304,26 @@ class ConversationStorage:
     is small enough that this is simpler.
     """
     self._ensure_root()
-    metas = self._scan_conversation_metas()
-    _atomic_write_json(self.root / "index.json", {
-      "schema_version": _SCHEMA_VERSION,
-      "conversations": [_meta_to_dict(m) for m in metas],
-    })
+    self._write_index(self._scan_conversation_metas())
 
   def _rebuild_index(self):
     metas = self._scan_conversation_metas()
     if metas:
       self._ensure_root()
-      _atomic_write_json(self.root / "index.json", {
-        "schema_version": _SCHEMA_VERSION,
-        "conversations": [_meta_to_dict(m) for m in metas],
-      })
+      self._write_index(metas)
     return metas
+
+  def _write_index(self, metas):
+    """Atomically (re)write index.json from the given conversation metas.
+
+    Single index writer shared by _refresh_index (unconditional) and
+    _rebuild_index (only when on-disk conversations exist); callers own the
+    _ensure_root() precondition.
+    """
+    _atomic_write_json(self.root / "index.json", {
+      "schema_version": _SCHEMA_VERSION,
+      "conversations": [_meta_to_dict(m) for m in metas],
+    })
 
   def _scan_conversation_metas(self):
     conv_root = self.root / "conversations"
@@ -330,15 +385,38 @@ def _safe_segment(value, kind):
 
 
 def _read_json(path):
-  with open(path) as fh:
+  with open(path, encoding="utf-8") as fh:
     return json.load(fh)
 
 
-def _atomic_write_json(path, obj):
+def _atomic_write(path, mode, write_fn):
+  # Write to a sibling .tmp via write_fn(handle), then atomically rename it into
+  # place. If the write (or rename) fails partway, remove the temp file so a
+  # mid-write failure cannot leave an orphaned .tmp behind. Sole owner of the
+  # tmp+os.replace+cleanup idiom, so every writer -- JSON and content-addressed
+  # bytes alike -- gets the same orphan-free guarantee.
   tmp = path.with_suffix(path.suffix + ".tmp")
-  with open(tmp, "w") as fh:
-    json.dump(obj, fh, indent=2, default=_json_default)
-  os.replace(tmp, path)
+  replaced = False
+  try:
+    with open(tmp, mode) as fh:
+      write_fn(fh)
+    os.replace(tmp, path)
+    replaced = True
+  finally:
+    if not replaced:
+      try:
+        os.remove(tmp)
+      except OSError:
+        pass
+
+
+def _atomic_write_json(path, obj):
+  _atomic_write(path, "w",
+                lambda fh: json.dump(obj, fh, indent=2, default=_json_default))
+
+
+def _atomic_write_bytes(path, data):
+  _atomic_write(path, "wb", lambda fh: fh.write(data))
 
 
 def _json_default(o):
@@ -438,6 +516,20 @@ def _content_block_from_dict(d):
   return ContentBlock(type=d["type"], data=data)
 
 
+def _token_usage_from_dict(d):
+  """Build a stored ``TokenUsage`` from its persisted dict.
+
+  Reads every field declared on ``TokenUsage`` (the canonical field list),
+  so a usage field added there is loaded automatically; absent keys fall
+  back to the dataclass defaults. The single read-side counterpart of
+  ``TokenUsage`` event ``to_stored()``.
+  """
+  from dataclasses import fields
+  d = d or {}
+  return TokenUsage(**{f.name: d[f.name]
+                       for f in fields(TokenUsage) if f.name in d})
+
+
 def _message_to_dict(m):
   out = {
     "role": m.role,
@@ -458,13 +550,7 @@ def _message_to_dict(m):
 def _message_from_dict(d):
   usage = None
   if "usage" in d and d["usage"] is not None:
-    u = d["usage"]
-    usage = TokenUsage(
-      input=u.get("input", 0),
-      output=u.get("output", 0),
-      cache_read=u.get("cache_read", 0),
-      cache_creation=u.get("cache_creation", 0),
-    )
+    usage = _token_usage_from_dict(d["usage"])
   return Message(
     role=d["role"],
     content=[_content_block_from_dict(b) for b in d.get("content", [])],
@@ -494,7 +580,6 @@ def _subagent_to_dict(r):
 
 
 def _subagent_from_dict(d):
-  tu = d.get("token_usage", {})
   return SubagentRecord(
     sub_id=d["sub_id"],
     parent_conversation_id=d.get("parent_conversation_id", ""),
@@ -505,11 +590,6 @@ def _subagent_from_dict(d):
     started_at=_parse_dt(d["started_at"]),
     finished_at=_parse_dt(d["finished_at"]),
     final_text=d.get("final_text", ""),
-    token_usage=TokenUsage(
-      input=tu.get("input", 0),
-      output=tu.get("output", 0),
-      cache_read=tu.get("cache_read", 0),
-      cache_creation=tu.get("cache_creation", 0),
-    ),
+    token_usage=_token_usage_from_dict(d.get("token_usage", {})),
     messages=[_message_from_dict(m) for m in d.get("messages", [])],
   )

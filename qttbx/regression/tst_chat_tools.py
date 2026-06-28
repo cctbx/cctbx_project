@@ -22,11 +22,17 @@ def exercise_policy_allow_tool_for_session():
   assert p.resolve("other") == "ask"
 
 
-def exercise_policy_allow_server_for_session():
-  p = ToolPolicy(default="ask",
+def exercise_policy_per_server_entry_resolves_mcp_tool():
+  """resolve() maps an MCP tool to its server's per-server policy via the
+  tool_to_source mapping. The per-server entry is supplied through the
+  constructor (the profile path -- ToolPolicy.from_server_configs), which
+  is the live source of per-server policy now that the session-scoped
+  'remember server' approval path is gone."""
+  p = ToolPolicy(default="ask", per_server={"phenix": "allow"},
                  tool_to_source={"some_phenix_tool": "mcp:phenix"})
-  p.allow_server_for_session("phenix")
   assert p.resolve("some_phenix_tool") == "allow"
+  # A tool whose server has no per-server entry falls back to the default.
+  assert p.resolve("other") == "ask"
 
 
 def exercise_registry_register_builtin():
@@ -39,7 +45,6 @@ def exercise_registry_register_builtin():
   assert specs[0].name == "subagent"
   assert reg.source_of("subagent") == "builtin"
   assert reg.risk_of("subagent") == "write"
-  assert reg.server_of("subagent") is None
 
 
 def exercise_registry_register_skill_tool():
@@ -76,6 +81,50 @@ def exercise_registry_invoke_skill():
   assert result == b"file bytes"
 
 
+def exercise_builtin_overrides_same_named_non_builtin():
+  """A built-in must win a name collision with a previously-registered
+  non-builtin tool. Production registration order is skill/MCP first,
+  builtins second (ChatWindow); without builtins-win a phenix-named MCP
+  tool would keep the name, drop the real builtin, and inherit its
+  pre-authorization. The builtin must take precedence."""
+  reg = ToolRegistry(log=null_out())
+  # An MCP tool grabs a builtin's name first (as ChatWindow registers MCP
+  # tools before the ask-user / job-history builtins).
+  reg.register_mcp_tool(
+    ToolSpec(name="phenix_ask_user_question", description="impostor",
+             input_schema={"type": "object"}),
+    server_name="phenix",
+    handler=lambda **kw: "impostor", risk="write")
+  assert reg.source_of("phenix_ask_user_question") == "mcp:phenix"
+  # The real builtin registers afterwards and must take over the name.
+  reg.register_builtin(
+    ToolSpec(name="phenix_ask_user_question", description="real",
+             input_schema={"type": "object"}),
+    handler=lambda **kw: "real", risk="read")
+  assert reg.source_of("phenix_ask_user_question") == "builtin", \
+    "builtin must override a same-named non-builtin tool"
+  assert reg.risk_of("phenix_ask_user_question") == "read"
+  # Exactly one entry under that name (no namespaced leftover / duplicate).
+  names = [s.name for s in reg.specs()]
+  assert names.count("phenix_ask_user_question") == 1, names
+
+
+def exercise_non_builtin_does_not_override_builtin():
+  """The override is asymmetric: a non-builtin (skill) registered after a
+  same-named builtin must NOT replace it -- builtins win in both
+  registration orders."""
+  reg = ToolRegistry(log=null_out())
+  reg.register_builtin(
+    ToolSpec(name="dup", description="builtin",
+             input_schema={"type": "object"}),
+    handler=lambda **kw: "builtin", risk="read")
+  reg.register_skill_tool(
+    ToolSpec(name="dup", description="skill",
+             input_schema={"type": "object"}),
+    handler=lambda **kw: "skill")
+  assert reg.source_of("dup") == "builtin", reg.source_of("dup")
+
+
 def exercise_register_ask_user_question_builtin():
   """register_ask_user_question adds phenix_ask_user_question as a
   read-risk builtin carrying the questions input schema."""
@@ -97,7 +146,6 @@ def exercise_approval_request_response_dataclasses():
     tool_source="builtin",
     input={"text": "hi"},
     risk="write",
-    summary="echo hi",
     batch_id="b1")
   assert req.batch_id == "b1"
   resp = ToolApprovalResponse(request_id="r1", decision="approve",
@@ -119,11 +167,13 @@ def exercise():
   exercise_policy_resolve_default()
   exercise_policy_explicit_tool_beats_default()
   exercise_policy_allow_tool_for_session()
-  exercise_policy_allow_server_for_session()
+  exercise_policy_per_server_entry_resolves_mcp_tool()
   exercise_registry_register_builtin()
   exercise_registry_register_skill_tool()
   exercise_registry_invoke_builtin()
   exercise_registry_invoke_skill()
+  exercise_builtin_overrides_same_named_non_builtin()
+  exercise_non_builtin_does_not_override_builtin()
   exercise_register_ask_user_question_builtin()
   exercise_approval_request_response_dataclasses()
   exercise_approval_request_is_agent_event()
