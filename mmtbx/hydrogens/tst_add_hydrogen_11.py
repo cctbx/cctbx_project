@@ -4,6 +4,7 @@ import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import reduce_hydrogen
 from libtbx.utils import null_out
+from scitbx import matrix
 
 # ------------------------------------------------------------------------------
 
@@ -11,6 +12,7 @@ def run():
   test_000()
   test_001()
   test_002()
+  test_003()
 
 # ------------------------------------------------------------------------------
 
@@ -153,6 +155,47 @@ def test_002():
 
 # ------------------------------------------------------------------------------
 
+def test_003():
+  '''
+    The backbone N of pyroglutamate (PCA, a 5-membered lactam) is an amide
+    nitrogen: it is bonded to CA, the carbonyl carbon CD (CD=OE), and H, and the
+    monomer restrains N/CA/CG/CD/OE/H to be coplanar. Its H must therefore lie
+    in that plane. The GeoStd ideal angles around N (H-N-CD=120.3, H-N-CA=114.0,
+    CD-N-CA=114.2) sum to only ~348 deg, so the riding-H parameterization used to
+    treat N as pyramidal ('2neigbs') and place H ~0.5 A out of plane, ignoring
+    the planarity restraint. Example: N-terminal PCA of chain A in 4jp6.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_003.split("\n"), source_info=None)
+  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model_initial.set_stop_for_unknowns(False)
+
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    model = model_initial,
+    stop_for_unknowns = False)
+  reduce_add_h_obj.run()
+  model_h_added = reduce_add_h_obj.get_model()
+  ph = model_h_added.get_hierarchy()
+
+  xyz = {}
+  for a in ph.atoms():
+    if a.parent().parent().resseq.strip() == '1' and a.parent().resname.strip() == 'PCA':
+      xyz[a.name.strip()] = matrix.col(a.xyz)
+
+  assert('H' in xyz), 'PCA backbone amide H was not placed'
+  N, CA, CD, H = xyz['N'], xyz['CA'], xyz['CD'], xyz['H']
+
+  # Bond length sanity.
+  assert(0.8 < (H - N).length() < 1.1), 'unexpected N-H length: %.3f' % (H-N).length()
+
+  # H must be in the amide plane: its distance from the plane through N, CA, CD
+  # must be ~0 (was ~0.48 A with the pyramidal placement).
+  normal = (CA - N).cross(CD - N).normalize()
+  out_of_plane = abs((H - N).dot(normal))
+  assert(out_of_plane < 0.05), \
+    'PCA amide H is out of plane by %.3f A (should be ~0)' % out_of_plane
+
+# ------------------------------------------------------------------------------
+
 pdb_str_000 = """
 CRYST1  100.667  101.210  170.826  90.00  90.00  90.00 P 21 21 21
 ATOM      1  N   LEU A 482     114.924  99.962 -27.431  1.00 10.00           N
@@ -269,6 +312,28 @@ ATOM    159  O   VAL C   9      26.402  19.504  65.798  1.00 43.29           O
 ATOM    160  CB  VAL C   9      23.694  19.009  67.102  1.00 41.32           C
 ATOM    161  CG1 VAL C   9      23.802  19.340  68.588  1.00 39.65           C
 ATOM    162  CG2 VAL C   9      22.267  18.632  66.739  1.00 40.83           C
+TER
+END
+"""
+
+# ------------------------------------------------------------------------------
+
+pdb_str_003 = """
+CRYST1   27.688   54.971   73.509  90.00  90.00 90.00 P 21 21 21
+HETATM    1  N   PCA A   1     -11.673  -9.095 -16.308  1.00  8.92           N
+HETATM    2  CA  PCA A   1     -10.819  -9.389 -15.195  1.00  8.33           C
+HETATM    3  C   PCA A   1     -10.830  -8.243 -14.205  1.00  7.30           C
+HETATM    4  O   PCA A   1     -11.068  -7.106 -14.550  1.00  7.71           O
+HETATM    5  CB  PCA A   1      -9.428  -9.570 -15.897  1.00  9.07           C
+HETATM    6  CG  PCA A   1      -9.711  -9.650 -17.380  1.00 10.60           C
+HETATM    7  CD  PCA A   1     -11.141  -9.250 -17.510  1.00  9.08           C
+HETATM    8  OE  PCA A   1     -11.716  -9.140 -18.582  1.00 11.01           O
+ATOM      9  N   SER A   2     -10.385  -8.545 -13.002  1.00  8.03           N
+ATOM     10  CA  SER A   2     -10.366  -7.552 -11.919  1.00  8.31           C
+ATOM     11  C   SER A   2      -9.236  -7.832 -10.951  1.00  6.76           C
+ATOM     12  O   SER A   2      -8.826  -8.990 -10.799  1.00  7.56           O
+ATOM     13  CB  SER A   2     -11.691  -7.490 -11.164  1.00  9.75           C
+ATOM     14  OG  SER A   2     -11.883  -8.665 -10.484  1.00 13.96           O
 TER
 END
 """

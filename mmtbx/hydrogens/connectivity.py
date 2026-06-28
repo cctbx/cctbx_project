@@ -23,7 +23,8 @@ class neighbors(object):
       h2 = {},
       b1 = {},
       number_h_neighbors = None,
-      number_non_h_neighbors = None):
+      number_non_h_neighbors = None,
+      is_in_plane = False):
     self.ih = ih
     self.a0 = a0
     self.a1 = a1
@@ -34,6 +35,7 @@ class neighbors(object):
     self.b1 = b1
     self.number_h_neighbors = number_h_neighbors
     self.number_non_h_neighbors = number_non_h_neighbors
+    self.is_in_plane = is_in_plane
 
 class determine_connectivity(object):
   """ Obtain information about the necessary number of neighbors to reconstruct
@@ -94,6 +96,13 @@ class determine_connectivity(object):
 
     # Add slipped H atoms to h_connectivity
     self.add_slipped()
+
+    # Flag H atoms that participate in a planarity restraint so the
+    # parameterization can place them in-plane even when the ideal angles
+    # around the parent do not sum to 360 (e.g. the amide N-H of PCA).
+    for nb in self.h_connectivity:
+      if nb is None: continue
+      nb.is_in_plane = nb.ih in self.plane_h
 
 
   def find_first_neighbors(self, bond_proxies_simple, fsc0):
