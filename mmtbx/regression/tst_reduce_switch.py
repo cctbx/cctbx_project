@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx import hydrogens as reduce_switch
 from iotbx.data_manager import DataManager
 from libtbx.utils import null_out
+from mmtbx.rotamer import nqh
 
 # Small 3-residue peptide, no hydrogens.
 pdb_str = """\
@@ -170,7 +171,7 @@ def test_flip_nqh_skips_h_less_model_reduce2():
     assert not m.has_hd()
     log = StringIO(); m.set_log(log)
     n_before = m.get_number_of_atoms()
-    m.flip_nqh()                                 # skips (no raise)
+    nqh.flip(model=m, log=m.log)                 # skips (no raise)
     assert m.get_number_of_atoms() == n_before
     out = log.getvalue().lower()
     assert "skipping" in out and "hydrogen" in out, log.getvalue()
@@ -200,7 +201,7 @@ def test_flip_nqh_applies_reduce2_flip():
     assert hm.get_hd_selection().count(True) > 0
     n_before = hm.get_number_of_atoms()
     log = StringIO(); hm.set_log(log)
-    hm.flip_nqh()                                 # reduce2 decision-only flip
+    nqh.flip(model=hm, log=hm.log)                # reduce2 decision-only flip
     out = log.getvalue()
     assert hm.get_number_of_atoms() == n_before   # atom-preserving
     mobj = re.search(r"Total number of N/Q/H flips:\s*(\d+)", out)
@@ -230,7 +231,7 @@ def test_flip_nqh_respects_selection_reduce2():
     assert sel.count(True) > 0
     sites_before = hm.get_sites_cart().deep_copy()
     log = StringIO(); hm.set_log(log)
-    hm.flip_nqh(selection=sel)                     # reduce2 detects on model.select(sel)
+    nqh.flip(model=hm, selection=sel, log=hm.log)  # reduce2 detects on model.select(sel)
     mo = re.search(r"Total number of N/Q/H flips:\s*(\d+)", log.getvalue())
     assert mo and int(mo.group(1)) >= 1, log.getvalue()
     moved = (hm.get_sites_cart() - sites_before).norms() > 0.1
