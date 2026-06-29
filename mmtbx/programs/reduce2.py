@@ -1047,7 +1047,7 @@ NOTES:
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
-    reduce_add_h_obj.show(self.logger)
+    reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:

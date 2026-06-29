@@ -5,6 +5,7 @@ import iotbx.pdb
 from mmtbx.hydrogens import reduce_hydrogen
 from libtbx.utils import null_out
 from scitbx import matrix
+from six.moves import cStringIO as StringIO
 
 # ------------------------------------------------------------------------------
 
@@ -14,6 +15,7 @@ def run():
   test_002()
   test_003()
   test_004()
+  test_005()
 
 # ------------------------------------------------------------------------------
 
@@ -233,6 +235,43 @@ def test_004():
 
 # ------------------------------------------------------------------------------
 
+def test_005():
+  '''
+    Methylene H on an incomplete side chain (a residue modelled only up to a
+    carbon whose next heavy atom is missing, e.g. GLN truncated at CB) cannot be
+    parameterized: the methylene rotation is undefined without that neighbour.
+    These should be classified as "missing neighbouring heavy atom" and reported
+    as a summary (count + residues), not one line per atom under the generic
+    "could not be parameterized" message; the per-atom list appears only in
+    verbose output. Example: the many REMARK-470 side chains in 5ohm.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_005.split("\n"), source_info=None)
+  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model_initial.set_stop_for_unknowns(False)
+
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    model = model_initial,
+    stop_for_unknowns = False)
+  reduce_add_h_obj.run()
+
+  # GLN2's CB methylene H are classified as missing-neighbor (not generic no-para).
+  mn = reduce_add_h_obj.site_labels_missing_neighbor
+  assert(any('GLN' in s and 'HB2' in s for s in mn)), mn
+  assert(any('GLN' in s and 'HB3' in s for s in mn)), mn
+  assert(not any('GLN' in s for s in reduce_add_h_obj.site_labels_no_para)), \
+    reduce_add_h_obj.site_labels_no_para
+  assert(any('GLN A 2' in r for r in reduce_add_h_obj.residues_missing_neighbor)), \
+    reduce_add_h_obj.residues_missing_neighbor
+
+  # Reporting: summary by default; per-atom enumeration only when verbose.
+  buf = StringIO(); reduce_add_h_obj.show(buf); out = buf.getvalue()
+  assert('neighbouring heavy atom is missing' in out), out
+  assert(' HB2 GLN' not in out), 'per-atom list should be suppressed by default'
+  buf_v = StringIO(); reduce_add_h_obj.show(buf_v, verbose=True); out_v = buf_v.getvalue()
+  assert(' HB2 GLN' in out_v), 'per-atom list should appear when verbose'
+
+# ------------------------------------------------------------------------------
+
 pdb_str_000 = """
 CRYST1  100.667  101.210  170.826  90.00  90.00  90.00 P 21 21 21
 ATOM      1  N   LEU A 482     114.924  99.962 -27.431  1.00 10.00           N
@@ -402,6 +441,46 @@ ATOM     73  CG  GLN A  11      10.831  10.646   4.324  1.00  3.13           C
 ATOM     74  CD  GLN A  11      12.289  10.903   4.096  1.00  2.99           C
 ATOM     75  OE1 GLN A  11      13.051  11.164   5.025  1.00  3.82           O
 ATOM     76  NE2 GLN A  11      12.692  10.845   2.804  1.00  3.56           N
+TER
+END
+"""
+
+# ------------------------------------------------------------------------------
+
+pdb_str_005 = """
+CRYST1   80.000   80.000   80.000  90.00  90.00  90.00 P 1
+ATOM      1  N   MET A   1     -25.726 -18.352  25.835  1.00144.73           N
+ATOM      2  CA  MET A   1     -26.372 -17.982  24.581  1.00143.33           C
+ATOM      3  C   MET A   1     -27.738 -18.640  24.458  1.00138.04           C
+ATOM      4  O   MET A   1     -28.107 -19.489  25.266  1.00142.01           O
+ATOM      5  CB  MET A   1     -25.509 -18.382  23.384  1.00144.04           C
+ATOM      6  CG  MET A   1     -25.277 -19.879  23.274  1.00144.27           C
+ATOM      7  SD  MET A   1     -23.995 -20.312  22.084  1.00147.11           S
+ATOM      8  CE  MET A   1     -24.065 -22.099  22.162  1.00145.41           C
+ATOM      9  N   GLN A   2     -28.487 -18.241  23.436  1.00129.65           N
+ATOM     10  CA  GLN A   2     -29.799 -18.802  23.159  1.00122.77           C
+ATOM     11  C   GLN A   2     -29.707 -19.633  21.888  1.00132.06           C
+ATOM     12  O   GLN A   2     -29.144 -19.182  20.885  1.00125.97           O
+ATOM     13  CB  GLN A   2     -30.855 -17.705  23.008  1.00115.53           C
+ATOM     14  N   ILE A   3     -30.255 -20.846  21.937  1.00130.32           N
+ATOM     15  CA  ILE A   3     -30.289 -21.735  20.786  1.00118.03           C
+ATOM     16  C   ILE A   3     -31.727 -22.181  20.584  1.00109.12           C
+ATOM     17  O   ILE A   3     -32.569 -22.077  21.479  1.00106.64           O
+ATOM     18  CB  ILE A   3     -29.374 -22.966  20.952  1.00108.39           C
+ATOM     19  CG1 ILE A   3     -29.724 -23.706  22.242  1.00109.97           C
+ATOM     20  CG2 ILE A   3     -27.911 -22.551  20.950  1.00116.56           C
+ATOM     21  CD1 ILE A   3     -29.222 -25.133  22.285  1.00123.32           C
+ATOM     22  N   PHE A   4     -31.998 -22.700  19.394  1.00109.86           N
+ATOM     23  CA  PHE A   4     -33.334 -23.142  19.034  1.00117.33           C
+ATOM     24  C   PHE A   4     -33.387 -24.659  18.940  1.00117.79           C
+ATOM     25  O   PHE A   4     -32.420 -25.303  18.521  1.00126.75           O
+ATOM     26  CB  PHE A   4     -33.773 -22.525  17.702  1.00111.78           C
+ATOM     27  CG  PHE A   4     -33.778 -21.028  17.706  1.00100.83           C
+ATOM     28  CD1 PHE A   4     -32.817 -20.317  17.011  1.00107.70           C
+ATOM     29  CD2 PHE A   4     -34.740 -20.330  18.417  1.00 94.10           C
+ATOM     30  CE1 PHE A   4     -32.819 -18.939  17.018  1.00110.76           C
+ATOM     31  CE2 PHE A   4     -34.748 -18.952  18.428  1.00 92.40           C
+ATOM     32  CZ  PHE A   4     -33.785 -18.256  17.727  1.00104.18           C
 TER
 END
 """

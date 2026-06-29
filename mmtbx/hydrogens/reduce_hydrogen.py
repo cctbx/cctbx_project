@@ -535,6 +535,8 @@ class place_hydrogens():
     self.site_labels_disulfides = list()
     self.site_labels_no_para    = list()
     self.site_labels_tertiary_amide = list()
+    self.site_labels_missing_neighbor = list()
+    self.residues_missing_neighbor    = list()
     # Names of restraint dictionaries auto-generated for unknown ligands during
     # placement; these are throwaway (purpose-built for H placement) and are
     # removed from the model before returning so they don't leak into
@@ -703,13 +705,19 @@ class place_hydrogens():
       water_selection = self.model.solvent_selection()
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
-    # Classify the unplaceable H: those on a tertiary-amide backbone N (e.g. the
-    # ring N of an internal proline-type residue such as HYP) are correctly
-    # omitted because the N is already fully substituted, not because restraints
-    # are missing. Report them separately so the message reflects the real cause.
+    # Classify the unplaceable H so the report reflects the real cause:
+    #  - on a tertiary-amide backbone N (e.g. the ring N of an internal
+    #    proline-type residue such as HYP): omitted because the N is already
+    #    fully substituted.
+    #  - missing a neighbouring heavy atom: the H's parent atom lacks an expected
+    #    heavy neighbour (an incomplete side chain truncated before its next
+    #    atom), so e.g. a methylene's rotation is undefined.
+    #  - everything else: genuinely could not be parameterized.
     # Only walk the bonds when there is something to classify (usually none).
     self.site_labels_no_para = list()
     self.site_labels_tertiary_amide = list()
+    self.site_labels_missing_neighbor = list()
+    self.residues_missing_neighbor = list()
     if not sel_h_not_in_para_but_not_lone.all_eq(False):
       grm = self.model.get_restraints_manager().geometry
       bps, asu = grm.get_all_bond_proxies(sites_cart=self.model.get_sites_cart())
@@ -723,11 +731,25 @@ class place_hydrogens():
         bonds.setdefault(i, []).append(j)
         bonds.setdefault(j, []).append(i)
       tertiary = self.h_on_tertiary_amide_n(bonds, atoms, elements)
+      def _heavy_neighbors(iseq):
+        return [m for m in set(bonds.get(iseq, [])) if elements[m] not in ('H','D')]
+      seen_residues = set()
       for atom in self.model.get_hierarchy().atoms().select(
           sel_h_not_in_para_but_not_lone):
         label = atom.id_str().replace('pdb=','').replace('"','')
         if atom.i_seq in tertiary:
           self.site_labels_tertiary_amide.append(label)
+          continue
+        parents = _heavy_neighbors(atom.i_seq)
+        # parent atom missing an expected heavy neighbour -> incomplete residue
+        if len(parents) == 1 and len(_heavy_neighbors(parents[0])) < 2:
+          self.site_labels_missing_neighbor.append(label)
+          rg = atom.parent().parent()
+          resid = '%s %s %s' % (atom.parent().resname.strip(),
+            rg.parent().id.strip(), rg.resseq.strip())
+          if resid not in seen_residues:
+            seen_residues.add(resid)
+            self.residues_missing_neighbor.append(resid)
         else:
           self.site_labels_no_para.append(label)
     if not sel_h_not_in_para.all_eq(False):
@@ -1136,9 +1158,11 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
-  def show(self, log):
+  def show(self, log, verbose=False):
     '''
-    Informative output
+    Informative output. With verbose=True the per-atom lists of H that were not
+    placed on incomplete side chains are printed in full; by default only a
+    count + residue summary is shown.
     '''
     if log is None: log = sys.stdout
     #
@@ -1167,12 +1191,43 @@ involved in a disulfide bond'''
     #
     if self.site_labels_tertiary_amide:
       msg = '''
-The following backbone H atoms were not placed because the residue's N atom is a
-tertiary amide (already bonded to three heavy atoms, e.g. an internal
+The following backbone H atoms were not placed because the residue's N atom
+is a tertiary amide (already bonded to three heavy atoms, e.g. an internal
 proline-type or N-substituted residue)'''
       print(msg, file=log)
       for label in self.site_labels_tertiary_amide:
         print(label, file=log)
+    #
+    if self.site_labels_missing_neighbor:
+      n_atoms = len(self.site_labels_missing_neighbor)
+      residues = self.residues_missing_neighbor
+      print('', file=log)
+      msg = ('%d H atoms were not placed because a neighbouring heavy atom is '
+        'missing\n(incomplete side chains) - %d residues:')
+      print(msg % (n_atoms, len(residues)), file=log)
+      cap = 12
+      tokens = list(residues[:cap])
+      more = '(+%d more)' % (len(residues) - cap) if len(residues) > cap else None
+      line = ''
+      for t in tokens:
+        add = (', ' if line else '') + t
+        if line and len(' ' + line + add) > 78:
+          print(' ' + line, file=log)
+          line = t
+        else:
+          line += add
+      if more is not None:
+        add = (' ' if line else '') + more
+        if line and len(' ' + line + add) > 78:
+          print(' ' + line, file=log)
+          line = more
+        else:
+          line += add
+      if line:
+        print(' ' + line, file=log)
+      if verbose:
+        for label in self.site_labels_missing_neighbor:
+          print(label, file=log)
     #
     if self.site_labels_no_para:
       msg = '''
@@ -1210,7 +1265,9 @@ The following H atoms were not placed because they could not be parameterized
       no_H_placed_mlq = self.no_H_placed_mlq,
       site_labels_disulfides = self.site_labels_disulfides,
       site_labels_no_para = self.site_labels_no_para,
-      site_labels_tertiary_amide = self.site_labels_tertiary_amide)
+      site_labels_tertiary_amide = self.site_labels_tertiary_amide,
+      site_labels_missing_neighbor = self.site_labels_missing_neighbor,
+      residues_missing_neighbor = self.residues_missing_neighbor)
 
 # ------------------------------------------------------------------------------
 
