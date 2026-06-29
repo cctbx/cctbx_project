@@ -570,8 +570,8 @@ def run_fit_rotatable(
 # =============================================================================
 import sys
 
-USE_OLD_REDUCE = True # SINGLE source of truth (code variable, not an env var).
-                      # Flip to False to run reduce2 everywhere, then libtbx.refresh.
+USE_OLD_REDUCE = True # SINGLE flip for switching to reduce2.
+                      # Flip to False to run reduce2 everywhere.
 
 def use_old_reduce():
   return USE_OLD_REDUCE
