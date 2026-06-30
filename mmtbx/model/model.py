@@ -2248,6 +2248,11 @@ class manager(object):
     if SAVE_scatering_table is not None:
       self.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
 
+  def get_missing_atoms(self):
+    if self._missing_atoms is None:
+      self.process(make_restraints=True)
+    return self._missing_atoms
+
   def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
     if self.rsm is None: return
     if abs(factor)<1.e-9: return
