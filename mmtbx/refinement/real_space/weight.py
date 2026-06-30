@@ -81,10 +81,25 @@ of individual sites.
       else:
         sel = result[chunk]
         sel = flex.bool(xrs_dc.scatterers().size(), sel)
-      ro.refine(
-        selection        = sel,
-        rms_bonds_limit  = rms_bonds_limit,
-        rms_angles_limit = rms_angles_limit)
+      try:
+        ro.refine(
+          selection        = sel,
+          rms_bonds_limit  = rms_bonds_limit,
+          rms_angles_limit = rms_angles_limit)
+      except RuntimeError as e:
+        # A trial refinement of a chunk can blow up (e.g. with very strong
+        # Ramachandran or custom geometry restraints) so that bonded atoms end up
+        # implausibly far apart, tripping the max_reasonable_bond_distance check in
+        # the geometry restraints manager. This is a throwaway computation used only
+        # to estimate the optimal data/restraints weight, so skip this chunk and
+        # carry on instead of aborting the whole refinement. Intercept
+        # ONLY this specific blow-up; re-raise anything else.
+        if("max_reasonable_bond_distance" not in str(e)):
+          raise
+        self.msg_strings.append(
+          "chunk %s skipped: trial refinement blew up (%s)"%(
+            str(chunk), str(e).splitlines()[0]))
+        continue
       self.msg_strings.append("chunk %s optimal weight: %9.4f"%(
           str(chunk), ro.weight_optimal))
       if(ro.weight_optimal is not None):
