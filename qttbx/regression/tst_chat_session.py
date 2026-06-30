@@ -174,6 +174,92 @@ def exercise_tool_use_loop_completes():
     shutil.rmtree(tmp)
 
 
+def exercise_cancel_after_tool_use_does_not_orphan_tool_use():
+  """[Major] Stop hit after the model streamed a tool_use but BEFORE dispatch
+  must not leave an unmatched tool_use in the saved transcript: an assistant
+  tool_use with no following tool_result is a non-recoverable provider 400 on
+  the next turn's replay, which permanently wedges the conversation
+  (anthropic/openai/portkey/gemini). The cancel early-return must answer the
+  pending tool_uses with a tool_result."""
+  cancel = CancelToken()
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "hi"}),
+     TurnDone(stop_reason="tool_use")]])
+  orig_stream = session.agent.stream_turn
+
+  def _stream(conversation, tools, c):
+    for ev in orig_stream(conversation, tools, c):
+      yield ev
+    cancel.set()                 # Stop pressed just as the tool_use finished
+  session.agent.stream_turn = _stream
+  try:
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "go"})],
+                       timestamp=now())
+    assistant = session.run_turn(user_msg, cancel)
+    assert assistant.stop_reason == "cancelled", assistant.stop_reason
+    # The saved transcript must NOT orphan the tool_use: the final message is a
+    # user tool_result answering t1.
+    last = session.conv.messages[-1]
+    assert last.role == "user", [m.role for m in session.conv.messages]
+    assert any(b.type == "tool_result" and b.data.get("tool_use_id") == "t1"
+               for b in last.content), [(b.type, b.data) for b in last.content]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_cancel_during_streaming_does_not_orphan_tool_use():
+  """[Major] The REALISTIC Stop-during-streaming case: the backend (Anthropic)
+  emits a COMPLETED tool_use block and THEN a TurnDone(stop_reason='cancelled')
+  -- so the assistant message carries a pending tool_use but its stop_reason is
+  'cancelled', not 'tool_use'. run_turn's `stop_reason != 'tool_use'` early
+  return must STILL answer the pending tool_use, or it orphans the transcript
+  -> non-recoverable replay 400. (A previous fix only covered the narrower
+  stop_reason=='tool_use'-then-cancel window.)"""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "hi"}),
+     TurnDone(stop_reason="cancelled")]])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "go"})],
+                       timestamp=now())
+    assistant = session.run_turn(user_msg, cancel)
+    assert assistant.stop_reason == "cancelled", assistant.stop_reason
+    last = session.conv.messages[-1]
+    assert last.role == "user", [m.role for m in session.conv.messages]
+    assert any(b.type == "tool_result" and b.data.get("tool_use_id") == "t1"
+               for b in last.content), [(b.type, b.data) for b in last.content]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_cancel_during_multi_tool_streaming_answers_all():
+  """The window widens for parallel/multi-tool turns: Stop after several
+  tool_use blocks streamed (then a cancelled TurnDone) must answer EVERY
+  pending tool_use, not just one -- an unmatched tool_use of any of them
+  orphans the transcript."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "a"}),
+     ToolUseRequested(id="t2", name="echo", input={"text": "b"}),
+     ToolUseRequested(id="t3", name="echo", input={"text": "c"}),
+     TurnDone(stop_reason="cancelled")]])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "go"})],
+                       timestamp=now())
+    session.run_turn(user_msg, cancel)
+    answered = set()
+    for m in session.conv.messages:
+      for b in m.content:
+        if b.type == "tool_result":
+          answered.add(b.data.get("tool_use_id"))
+    assert answered == {"t1", "t2", "t3"}, answered
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_builtin_handler_receives_tool_use_id():
   """A builtin tool handler is invoked with tool_use_id == the call id,
   passed directly through invoke_builtin (no session-held state needed --
@@ -758,6 +844,9 @@ def exercise():
   exercise_assistant_messages_stamped_with_model_and_backend()
   exercise_reconciles_meta_model_and_backend_on_continue()
   exercise_tool_use_loop_completes()
+  exercise_cancel_after_tool_use_does_not_orphan_tool_use()
+  exercise_cancel_during_streaming_does_not_orphan_tool_use()
+  exercise_cancel_during_multi_tool_streaming_answers_all()
   exercise_builtin_handler_receives_tool_use_id()
   exercise_tool_denied_returns_is_error()
   exercise_cancel_while_awaiting_approval()

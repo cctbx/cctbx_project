@@ -71,6 +71,29 @@ class Agent(ABC):
         constructor, or ``None`` when user input is still needed.
     """
 
+  def resolve_api_key(self, api_key, missing_message):
+    """Return an explicit ``api_key`` else the resolved credential.
+
+    The shared constructor credential guard for the API backends (Anthropic /
+    OpenAI-compatible / Gemini), each of which previously inlined the identical
+    ``api_key if api_key is not None else self.resolve_credentials()`` lookup
+    and ``Sorry`` raise. Raises ``Sorry(missing_message)`` when neither yields a
+    usable key.
+
+    Parameters
+    ----------
+    api_key : object or None
+        An explicit key passed to the constructor (wins when not ``None``).
+    missing_message : str
+        The provider-specific message for the ``Sorry`` raised when no key is
+        available.
+    """
+    key = api_key if api_key is not None else self.resolve_credentials()
+    if not key:
+      from libtbx.utils import Sorry
+      raise Sorry(missing_message)
+    return key
+
   @abstractmethod
   def credentials_dialog_class(self):
     """Return the Qt dialog class to prompt for this provider's credentials.

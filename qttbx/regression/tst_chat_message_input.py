@@ -367,8 +367,58 @@ def exercise_set_history_drops_blank_entries():
   assert w._history == ["real"], w._history
 
 
+def exercise_dropped_file_url_not_inserted_as_text():
+  """A file dropped on the entry box must not dump a raw file:// URI into
+  the prompt. Qt delivers drag-drop to the QPlainTextEdit viewport, so the
+  edit itself -- not MessageInput.dropEvent -- has to intercept it. Both a
+  drop and a paste funnel through insertFromMimeData, so drive that with a
+  URL-only payload and assert nothing lands in the text box."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  md = QtCore.QMimeData()
+  md.setUrls([QtCore.QUrl.fromLocalFile("/no/such/dir/report.pdf")])
+  w._edit.insertFromMimeData(md)
+  txt = w._edit.toPlainText()
+  assert "file://" not in txt, txt
+  assert txt == "", repr(txt)
+
+
+def exercise_pasted_remote_url_inserts_as_text():
+  """[Regression] A pasted/dropped REMOTE (http/https) URL must paste as TEXT,
+  not be swallowed by the attachment chokepoint -- only local files / images
+  become attachments. The chokepoint used to intercept ANY hasUrls() payload,
+  so pasting a plain link inserted nothing (and attached nothing)."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  md = QtCore.QMimeData()
+  md.setUrls([QtCore.QUrl("https://example.com/page")])
+  md.setText("https://example.com/page")
+  w._edit.insertFromMimeData(md)
+  txt = w._edit.toPlainText()
+  assert "https://example.com/page" in txt, repr(txt)
+  assert w.attachment_count() == 0, w._attachments
+
+
+def exercise_pasted_image_via_chokepoint_attaches():
+  """A pasted image funnels through insertFromMimeData (the single paste/drop
+  chokepoint) and becomes an attachment -- QPlainTextEdit's default
+  insertFromMimeData drops images, so the _DropTextEdit override is what makes
+  Ctrl/Cmd+V images work, making the old eventFilter Ctrl+V handler redundant."""
+  from qttbx.qt import QtCore, QtGui
+  w = _new_input()
+  img = QtGui.QImage(8, 8, QtGui.QImage.Format_RGB32)
+  img.fill(QtGui.QColor(10, 20, 30))
+  md = QtCore.QMimeData()
+  md.setImageData(img)
+  w._edit.insertFromMimeData(md)
+  assert w.attachment_count() == 1, w._attachments
+  assert w._edit.toPlainText() == "", repr(w._edit.toPlainText())
+
+
 def exercise():
   exercise_send_signal_carries_text_and_empty_attachments()
+  exercise_pasted_remote_url_inserts_as_text()
+  exercise_pasted_image_via_chokepoint_attaches()
   exercise_empty_send_is_no_op()
   exercise_set_busy_toggles_to_stop()
   exercise_attach_bytes_appears_in_send_payload()
@@ -386,6 +436,7 @@ def exercise():
   exercise_up_arrow_below_first_line_moves_cursor_not_history()
   exercise_set_history_swaps_recall_list_and_resets_navigation()
   exercise_set_history_drops_blank_entries()
+  exercise_dropped_file_url_not_inserted_as_text()
 
 
 if __name__ == "__main__":

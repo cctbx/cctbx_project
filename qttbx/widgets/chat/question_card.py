@@ -29,6 +29,9 @@ class QuestionCard(QtWidgets.QFrame):
     self._assistant_label = assistant_label or "Assistant"
     self._request_id = ""
     self._questions = []
+    # True once an answer has been emitted (via Submit or the malformed-
+    # payload auto-answer), so the two paths never double-emit.
+    self._resolved = False
     # Per-question state: list of dicts with:
     #   'option_buttons' (list of (QAbstractButton, label_str)),
     #   'other_edit' (QLineEdit), 'multi_select' (bool).
@@ -42,8 +45,61 @@ class QuestionCard(QtWidgets.QFrame):
 
   def set_request(self, request_id, questions):
     self._request_id = request_id
-    self._questions = list(questions or [])
+    self._resolved = False
+    self._questions = self._normalize_questions(questions)
     self._rebuild()
+    if not self._questions:
+      # A malformed/empty payload (not a list of question dicts) leaves
+      # nothing to render. The agent worker that emitted
+      # phenix_ask_user_question is parked on question_queue.get() waiting
+      # for an answer a Submit click can no longer produce -- so release it
+      # ourselves with a safe error answer instead of hanging the turn.
+      # Deferred via singleShot because the caller
+      # (ConversationView.add_question_request) connects `answered` only
+      # AFTER set_request returns; a synchronous emit would be dropped.
+      self.hide()
+      QtCore.QTimer.singleShot(0, self._emit_unanswerable)
+
+  @staticmethod
+  def _normalize_questions(questions):
+    """Coerce a raw questions payload into a list of question dicts.
+
+    The agent is supposed to send a list of ``{question, options, ...}``
+    dicts, but a malformed tool call can send a bare dict, a string,
+    ``None``, or a list carrying non-dict entries -- any of which would
+    otherwise crash ``_build_one_question`` on ``q.get(...)`` and strand
+    the parked worker. A bare dict becomes a single-question list; anything
+    that is not a list/tuple yields no questions; non-dict entries are
+    dropped.
+
+    Parameters
+    ----------
+    questions : object
+        The raw payload from the tool call.
+
+    Returns
+    -------
+    list of dict
+        The questions safe to render (possibly empty).
+    """
+    if isinstance(questions, dict):
+      questions = [questions]
+    elif not isinstance(questions, (list, tuple)):
+      return []
+    return [q for q in questions if isinstance(q, dict)]
+
+  def _emit_unanswerable(self):
+    """Emit a safe error answer for a payload that rendered no questions.
+
+    Releases the worker parked in ``AgentSession._await_question_answer``
+    (see :meth:`set_request`). Guarded by ``_resolved`` so it never
+    double-emits alongside a real Submit.
+    """
+    if self._resolved:
+      return
+    self._resolved = True
+    self.answered.emit(
+      self._request_id, {"error": "no valid questions to display"})
 
   def click_submit(self):
     """Collect answers from every question and emit them.
@@ -51,6 +107,9 @@ class QuestionCard(QtWidgets.QFrame):
     Programmatic submit (tests use this; the Submit button calls the
     same path). Emits ``answered(request_id, answers)``.
     """
+    if self._resolved:
+      return
+    self._resolved = True
     answers = {}
     for q, state in zip(self._questions, self._question_state):
       text = q.get("question", "")
@@ -137,13 +196,23 @@ class QuestionCard(QtWidgets.QFrame):
       v.addWidget(tl)
     multi_select = bool(q.get("multiSelect", False))
     options = q.get("options", []) or []
+    if not isinstance(options, (list, tuple)):
+      options = []
     option_buttons = []
     group = None if multi_select else QtWidgets.QButtonGroup(frame)
     if group is not None:
       group.setExclusive(True)
     for opt in options:
-      label = opt.get("label", "")
-      desc = opt.get("description", "")
+      # Tolerate a malformed option: a {label, description} dict is the
+      # spec, but a bare string is coerced to its label and anything else
+      # is skipped -- never crash on opt.get(...).
+      if isinstance(opt, dict):
+        label = opt.get("label", "")
+        desc = opt.get("description", "")
+      elif isinstance(opt, str):
+        label, desc = opt, ""
+      else:
+        continue
       text_full = "%s -- %s" % (label, desc) if desc else label
       if multi_select:
         btn = QtWidgets.QCheckBox(text_full, frame)

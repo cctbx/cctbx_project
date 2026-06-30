@@ -29,7 +29,9 @@ def exercise_top_bar_shows_title_and_model_and_hides_debug_by_default():
   assert "test_profile" in bar.title_label.text()
   assert "claude-opus-4-7" in bar.model_label.text()
   # No debug-log set => the slot is hidden so the bar doesn't show empty space.
-  assert bar.debug_label.isHidden() or bar.debug_label.text() == ""
+  # (The old `or text() == ""` branch was always true on a fresh bar, so a
+  # regression that showed the empty slot would have passed unnoticed.)
+  assert bar.debug_label.isHidden()
 
 
 def exercise_top_bar_shows_and_hides_debug_log_path():

@@ -76,43 +76,88 @@ class _Cancelled:
 class ToolPolicy:
   """allow / ask / deny policy with session-scoped remembered choices.
 
-  Resolution order, highest first: a per-tool entry (from profile or
-  session memory); then a per-server entry (from profile
-  ``mcp_servers[].tool_policy['*']``, which requires the
-  ``tool_to_source`` mapping to know which server owns a tool); then the
-  default (``'ask'`` unless overridden by ``profile.tool_policy_default``).
+  Resolution order, highest first: an exact per-tool entry (a session
+  ``allow`` remembered under the registered name); then the profile's
+  per-server-scoped per-tool entry for the tool's owning server (so a
+  collision-renamed ``<server>:<tool>`` still resolves to its own server's
+  decision); then the per-server (``'*'``) entry; then the default (``'ask'``
+  unless overridden by ``profile.tool_policy_default``). The per-server and
+  per-server-scoped lookups require the ``tool_to_source`` mapping to know
+  which server owns a tool. There is deliberately no bare-name fallback for a
+  renamed tool, so one server's allow can never bleed onto another's.
 
   Parameters
   ----------
   default : str, optional
-      Fallback decision when no per-tool or per-server entry matches.
-      Defaults to ``'ask'``.
+      Fallback decision when nothing more specific matches. Defaults to
+      ``'ask'``.
   per_tool : dict, optional
-      Mapping of tool name to ``allow`` / ``ask`` / ``deny``.
+      Mapping of registered tool name to ``allow`` / ``ask`` / ``deny`` --
+      session-remembered allows and directly-constructed (non-server-scoped)
+      entries.
   per_server : dict, optional
-      Mapping of server name to ``allow`` / ``ask`` / ``deny``.
+      Mapping of server name to ``allow`` / ``ask`` / ``deny`` (the
+      ``tool_policy['*']`` entry).
   tool_to_source : dict, optional
-      Mapping of tool name to its source (``'mcp:<server>'`` or
+      Mapping of registered tool name to its source (``'mcp:<server>'`` or
       ``'builtin'`` / ``'skill'``), used to resolve per-server entries.
+  per_server_tool : dict, optional
+      Mapping of ``(server_name, bare_tool_name)`` to ``allow`` / ``ask`` /
+      ``deny`` -- the profile's per-tool policy, kept server-scoped so a
+      cross-server name collision can't make one server's decision clobber
+      another's. Built by :meth:`from_server_configs`.
   """
 
   def __init__(self, default="ask",
                per_tool=None, per_server=None,
-               tool_to_source=None):
+               tool_to_source=None, per_server_tool=None):
     self.default = default
     self.per_tool = dict(per_tool or {})           # name -> allow|ask|deny
     self.per_server = dict(per_server or {})       # server -> allow|ask|deny
+    # (server, bare tool) -> decision. Profile per-tool policy is per-server,
+    # so it must stay keyed by its owning server: an MCP tool whose name
+    # collides across servers is registered as '<server>:<tool>', and this
+    # keying lets resolve() apply each server's own decision to the right tool
+    # regardless of the rename (instead of flattening both into one bare key).
+    self.per_server_tool = dict(per_server_tool or {})
     self.tool_to_source = dict(tool_to_source or {})  # tool -> 'mcp:server' or 'builtin'/'skill'
 
+  def _server_and_bare(self, tool_name):
+    """Return ``(server, bare_tool)`` for *tool_name*, else ``(None, tool_name)``.
+
+    A collision-renamed MCP tool is registered as ``<server>:<tool>``; recover
+    the owning server (from ``tool_to_source``) and strip its prefix so the
+    per-server-scoped policy keys match whether or not the tool was renamed.
+    """
+    source = self.tool_to_source.get(tool_name, "")
+    if not source.startswith("mcp:"):
+      return None, tool_name
+    server = source.split(":", 1)[1]
+    prefix = server + ":"
+    bare = tool_name[len(prefix):] if tool_name.startswith(prefix) else tool_name
+    return server, bare
+
   def resolve(self, tool_name):
-    """Return the ``allow`` / ``ask`` / ``deny`` decision for a tool."""
+    """Return the ``allow`` / ``ask`` / ``deny`` decision for a tool.
+
+    Order, highest first: an exact ``per_tool`` entry (a session-remembered
+    allow, keyed by the registered name); the profile's per-server-scoped
+    per-tool entry for the tool's owning server; the server-wide (``'*'``)
+    entry; then the default.
+
+    There is deliberately NO bare-name ``per_tool`` fallback for a
+    collision-renamed ``<server>:<tool>``: it would let one server's session
+    allow (or a seeded bare builtin/skill name) override a DIFFERENT server's
+    decision -- a cross-server deny->allow bypass. A session allow only ever
+    matches the exact registered name it was remembered under (step 1).
+    """
     if tool_name in self.per_tool:
       return self.per_tool[tool_name]
-    source = self.tool_to_source.get(tool_name, "")
-    if source.startswith("mcp:"):
-      server = source.split(":", 1)[1]
-      if server in self.per_server:
-        return self.per_server[server]
+    server, bare = self._server_and_bare(tool_name)
+    if server is not None and (server, bare) in self.per_server_tool:
+      return self.per_server_tool[(server, bare)]
+    if server is not None and server in self.per_server:
+      return self.per_server[server]
     return self.default
 
   def allow_tool_for_session(self, tool_name):
@@ -137,15 +182,19 @@ class ToolPolicy:
     tool_to_source : dict, optional
         Forwarded to the constructor (resolves per-server entries).
     """
-    per_tool, per_server = {}, {}
+    per_server, per_server_tool = {}, {}
     for cfg in (configs or []):
+      name = getattr(cfg, "name", "")
       for tool_name, decision in (getattr(cfg, "tool_policy", {}) or {}).items():
         if tool_name == "*":
-          per_server[getattr(cfg, "name", "")] = decision
+          per_server[name] = decision
         else:
-          per_tool[tool_name] = decision
-    return cls(default=default, per_tool=per_tool, per_server=per_server,
-               tool_to_source=tool_to_source)
+          # Keep per-tool policy scoped to its server so a cross-server name
+          # collision (and the registry's '<server>:<tool>' rename) can't make
+          # one server's decision clobber another's or be silently bypassed.
+          per_server_tool[(name, tool_name)] = decision
+    return cls(default=default, per_server=per_server,
+               per_server_tool=per_server_tool, tool_to_source=tool_to_source)
 
 
 # ---- registry --------------------------------------------------------------

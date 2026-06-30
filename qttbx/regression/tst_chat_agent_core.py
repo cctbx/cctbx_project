@@ -1,8 +1,8 @@
-"""Agent foundation types: the Agent ABC + capability flags + ToolSpec
-(base.py), the event dataclasses streamed from stream_turn (events.py),
-the cancel / error sentinels (errors.py), and the conversation data
-model (conversation.py). These are the types every backend touches; the
-tests are tiny, so they live together."""
+"""Agent foundation types: the Agent ABC + ToolSpec (base.py), the event
+dataclasses streamed from stream_turn (events.py), the cancel / error
+sentinels (errors.py), and the conversation data model (conversation.py).
+These are the types every backend touches; the tests are tiny, so they live
+together."""
 
 from datetime import datetime
 

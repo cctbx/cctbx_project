@@ -316,6 +316,7 @@ class SkillLoader:
     enum_clause = ", ".join("'%s'" % n for n in skill_names)
 
     def read_file_handler(name, input):
+      input = input or {}                  # GPT clients send null for no-args
       skill = by_name.get(input.get("skill_name", ""))
       if skill is None:
         raise Sorry("Unknown skill: %s" % input.get("skill_name"))
@@ -327,12 +328,14 @@ class SkillLoader:
         return {"binary_base64": base64.b64encode(data).decode("ascii")}
 
     def list_files_handler(name, input):
+      input = input or {}
       skill = by_name.get(input.get("skill_name", ""))
       if skill is None:
         raise Sorry("Unknown skill: %s" % input.get("skill_name"))
       return self.list_files(skill)
 
     def load_skill_handler(name, input):
+      input = input or {}
       skill = by_name.get(input.get("skill_name", ""))
       if skill is None:
         raise Sorry("Unknown skill: %s" % input.get("skill_name"))
@@ -393,6 +396,10 @@ class SkillLoader:
       raise Sorry("read_skill_file: path escapes skill directory")
     if not os.path.exists(safe):
       raise Sorry("read_skill_file: file not found: %s" % relative_path)
+    if not os.path.isfile(safe):
+      # A directory (or other non-regular file) passes the existence check;
+      # open() would then raise a raw IsADirectoryError. Surface a Sorry.
+      raise Sorry("read_skill_file: not a regular file: %s" % relative_path)
     with open(safe, "rb") as fh:
       return fh.read()
 

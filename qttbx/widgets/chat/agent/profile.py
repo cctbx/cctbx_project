@@ -321,8 +321,8 @@ class ProfileLoader:
       # merged never contains a system_prompt_file key.
       if data.get("system_prompt_file") is not None:
         merged.pop("system_prompt", None)
-      merged.update({k: v for k, v in data.items()
-                     if k != "based_on" and v is not None})
+      merged = _deep_merge(
+        merged, {k: v for k, v in data.items() if k != "based_on"})
       data = merged
 
     # Warn on unknown keys (forward compatibility).
@@ -362,6 +362,41 @@ class ProfileLoader:
 
 
 # ---- helpers ---------------------------------------------------------------
+
+def _deep_merge(base, override):
+  """Recursively overlay ``override`` onto ``base``, returning a new dict.
+
+  Used by ``based_on`` inheritance: ``base`` is the parent profile
+  serialized by :func:`_profile_to_dict` and ``override`` is the child's
+  raw JSON. A nested dict section (``thinking``, ``skills``, ``subagents``,
+  ``claude``, ...) is merged key-by-key so a child overriding ONE sub-key
+  keeps the parent's other sub-keys; scalars and lists replace wholesale.
+  An ``override`` value of ``None`` is skipped so an explicit null in the
+  child never evicts an inherited value (preserving the prior shallow
+  merge's ``v is not None`` filter).
+
+  Parameters
+  ----------
+  base : dict
+      The parent data to overlay onto (not mutated).
+  override : dict
+      The child data taking precedence.
+
+  Returns
+  -------
+  dict
+      A new merged dict.
+  """
+  out = dict(base)
+  for k, v in override.items():
+    if v is None:
+      continue
+    if isinstance(v, dict) and isinstance(out.get(k), dict):
+      out[k] = _deep_merge(out[k], v)
+    else:
+      out[k] = v
+  return out
+
 
 def _server_tools_list(value, source_path):
   """Validate a profile's ``server_tools`` field as a list of tool names.

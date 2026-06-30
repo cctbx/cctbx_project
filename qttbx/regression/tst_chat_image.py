@@ -90,8 +90,14 @@ def exercise_lru_evicts_oldest_at_capacity():
         "c1", _png_bytes(color=(i*40, 0, 0)), "image/png")
       shas.append(att.sha256)
       get_image(storage, "c1", att.sha256)
-    # First sha should be evicted; cache size capped at 3.
-    assert len(cache) <= 3
+    # The OLDEST entry (the victim) must be the one evicted, and the 3
+    # most-recently-used must remain -- asserting only the size would pass even
+    # if the wrong entry were dropped. The cache key is (conv_id, sha256);
+    # cache.get is a peek (None when absent).
+    assert len(cache) == 3, len(cache)
+    assert cache.get(("c1", shas[0])) is None, "oldest entry should be evicted"
+    for sha in shas[1:]:
+      assert cache.get(("c1", sha)) is not None, sha
   finally:
     shutil.rmtree(tmp)
 

@@ -87,6 +87,55 @@ def error_result(message):
     is_error=True)
 
 
+_BLOCKING_TIMEOUT_MARGIN = 30.0
+# Ceiling on a wait_s-derived timeout. The running-jobs skill never drives
+# wait_s above ~900; capping keeps an absurd/adversarial value from producing
+# a non-finite or astronomical timeout that overflows
+# concurrent.futures.Future.result and orphans the in-flight poll task.
+_MAX_BLOCKING_WAIT_S = 3600.0
+
+
+def _effective_timeout(input, base_timeout):
+  """Per-call transport timeout, widened for blocking long-poll tools.
+
+  ``phenix_get_status(wait_s=N)`` blocks server-side for up to ``N`` seconds
+  on the job's completion event, and the phenix-running-jobs skill drives it
+  with ``wait_s`` as high as 900. A fixed ``base_timeout`` (60s) would abort
+  that long-poll spuriously -- the call errors out while the job keeps
+  running and the model, following its own skill's guidance, just gets a
+  failure. So when the input carries a positive finite numeric ``wait_s`` the
+  timeout is widened to ``min(wait_s, _MAX_BLOCKING_WAIT_S) + margin``;
+  everything else (no/zero/negative/non-finite/non-numeric ``wait_s``) keeps
+  the base. The cap keeps an absurd value from producing an astronomical
+  timeout downstream.
+
+  Parameters
+  ----------
+  input : dict or None
+      The tool arguments. Only a positive finite numeric ``wait_s`` matters.
+  base_timeout : float
+      The caller's default per-call timeout.
+
+  Returns
+  -------
+  float
+      ``max(base_timeout, min(wait_s, _MAX_BLOCKING_WAIT_S) + margin)`` for a
+      positive finite numeric ``wait_s``; ``base_timeout`` otherwise.
+  """
+  wait_s = input.get("wait_s") if isinstance(input, dict) else None
+  try:
+    wait_s = float(wait_s)
+  except (TypeError, ValueError):
+    return base_timeout
+  import math
+  if not math.isfinite(wait_s) or wait_s <= 0:
+    return base_timeout
+  # Cap before adding the margin so 'inf' / an astronomical wait_s can't
+  # overflow the downstream future.result(timeout=...) (see _MAX_BLOCKING_WAIT_S).
+  return max(base_timeout,
+             min(wait_s, _MAX_BLOCKING_WAIT_S) + _BLOCKING_TIMEOUT_MARGIN)
+
+
 def _derive_risk(raw):
   ann = getattr(raw, "annotations", None) or {}
   # Pydantic models vs plain dicts both supported.
@@ -266,7 +315,9 @@ class McpServerConnection:
     cancel : CancelToken
         Polled while the call is in flight; cancels the task when set.
     timeout : float, optional
-        Per-call timeout in seconds. Defaults to ``60.0``.
+        Base per-call timeout in seconds (default ``60.0``). Widened
+        automatically for blocking long-poll tools -- see
+        :func:`_effective_timeout`.
 
     Returns
     -------
@@ -276,13 +327,18 @@ class McpServerConnection:
     if self.state != self.STATE_READY:
       return error_result("MCP server '%s' not ready" % self.config.name)
     try:
-      # The inner _async_call already bounds the call by `timeout` (and polls
-      # `cancel`); give the outer wait a slightly larger bound so the inner
-      # timeout/cancel produces the error in the common case and this is only
-      # a last-resort guard against a fully wedged loop.
+      # Blocking long-poll tools (phenix_get_status with a large wait_s) need
+      # the transport timeout widened to cover the server-side wait, or the
+      # call aborts at 60s while the job runs on (the running-jobs skill drives
+      # wait_s up to 900). _effective_timeout is a no-op for ordinary calls.
+      eff_timeout = _effective_timeout(input, timeout)
+      # The inner _async_call already bounds the call by `eff_timeout` (and
+      # polls `cancel`); give the outer wait a slightly larger bound so the
+      # inner timeout/cancel produces the error in the common case and this is
+      # only a last-resort guard against a fully wedged loop.
       raw = self._run_async(
-        self._async_call(name, input, timeout=timeout, cancel=cancel),
-        timeout=timeout + 30.0)
+        self._async_call(name, input, timeout=eff_timeout, cancel=cancel),
+        timeout=eff_timeout + 30.0)
       # _convert_result stays inside the try: persisting an image item can
       # raise (e.g. an attachment-store OSError on a full disk), and that must
       # become an error result -- not escape call_tool's never-raise contract.
@@ -479,16 +535,47 @@ class McpServerConnection:
                getattr(entry, "mime_type", "image/png")
         try:
           data = base64.b64decode(data_b64)
-        except Exception:
-          data = b""
+        except Exception as exc:
+          # Surface the failure instead of silently storing a 0-byte image the
+          # model can't see / interpret.
+          items.append(McpToolItem(
+            type="text",
+            text="[image dropped: invalid base64 (%s)]" % exc))
+          continue
         att = self.storage.store_attachment(
           self.conv_id, data, mime)
         items.append(McpToolItem(type="image",
                                  sha256=att.sha256, mime=mime))
       elif t == "resource":
+        # An EmbeddedResource nests its uri/text under entry.resource (a
+        # TextResourceContents / BlobResourceContents), not on the entry
+        # itself; reading them off the entry yields empty strings and the
+        # resource content is silently dropped.
+        resource = getattr(entry, "resource", None)
+        uri = getattr(resource, "uri", "") or ""
+        text_excerpt = getattr(resource, "text", None) or ""
+        if not text_excerpt:
+          # A BlobResourceContents carries base64 binary in .blob, not .text.
+          # We can't inline binary as text, but note it (mime + size) rather
+          # than silently dropping it to a bare "Resource <uri>".
+          blob = getattr(resource, "blob", None)
+          if blob:
+            mime = getattr(resource, "mimeType", None) or \
+                   getattr(resource, "mime_type", None)
+            # Decoded size from the base64 LENGTH -- don't materialize a
+            # possibly-large payload just to count it. Approximate (ignores
+            # any wrapping whitespace) but fine for a human-readable note.
+            try:
+              b64 = "".join(str(blob).split())
+              nbytes = max(0, (len(b64) // 4) * 3 - b64.count("="))
+            except Exception:
+              nbytes = None
+            text_excerpt = "[binary resource%s%s]" % (
+              " %s" % mime if mime else "",
+              " %d bytes" % nbytes if nbytes is not None else "")
         items.append(McpToolItem(type="resource",
-                                 uri=getattr(entry, "uri", ""),
-                                 text_excerpt=getattr(entry, "text", "")))
+                                 uri=str(uri),
+                                 text_excerpt=text_excerpt))
     return McpToolResult(content=items, is_error=is_error)
 
   # ---- event loop helpers --------------------------------------------------

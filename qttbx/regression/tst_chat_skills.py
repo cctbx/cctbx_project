@@ -466,6 +466,53 @@ def exercise_handlers_raise_sorry_for_unknown_skill_name():
     shutil.rmtree(tmp)
 
 
+def exercise_read_file_rejects_directory_with_sorry():
+  """A relative_path that resolves to a directory must raise a clean Sorry,
+  not a raw IsADirectoryError out of open(): the path exists but isn't a
+  file, so the existence check alone lets a directory through."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    skill_dir = _make_skill(builtin, "x")
+    os.makedirs(os.path.join(skill_dir, "subdir"))
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    skill = loader.load_default()[0]
+    try:
+      loader.read_file(skill, "subdir")
+    except Sorry:
+      pass
+    else:
+      raise AssertionError("expected Sorry when relative_path is a directory")
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_skill_handlers_tolerate_null_input():
+  """GPT-family clients send `arguments: null` for a call with no args; the
+  skill handlers must treat None like {} -- then fail on the missing required
+  skill_name with a Sorry -- rather than raising AttributeError on
+  None.get(...)."""
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    _make_skill(builtin, "x", mode="on_demand")
+    loader = SkillLoader(builtin_path=Path(builtin), log=null_out())
+    skills = loader.load_default()
+    tools = dict((spec.name, h) for spec, h in loader.tools(skills))
+    for tool_name in ("read_skill_file", "list_skill_files", "load_skill"):
+      try:
+        tools[tool_name](tool_name, None)
+      except Sorry:
+        pass   # missing skill_name -> Sorry is fine; AttributeError is not
+      else:
+        raise AssertionError(
+          "expected Sorry (not a crash) from %s on null input" % tool_name)
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_requires_filter_drops_skill_when_server_missing():
   """When the skill declares `requires: [phenix]` and the loader is told
   the phenix MCP server isn't available, the skill is filtered out and
@@ -612,6 +659,8 @@ def exercise():
   exercise_tools_input_schema_enumerates_loaded_skills()
   exercise_read_file_handler_returns_string()
   exercise_handlers_raise_sorry_for_unknown_skill_name()
+  exercise_read_file_rejects_directory_with_sorry()
+  exercise_skill_handlers_tolerate_null_input()
   exercise_requires_filter_drops_skill_when_server_missing()
   exercise_requires_filter_keeps_skill_when_server_present()
   exercise_requires_filter_none_opts_out_of_check()

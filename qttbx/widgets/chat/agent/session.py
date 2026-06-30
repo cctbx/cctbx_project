@@ -170,12 +170,30 @@ class AgentSession:
       self.conv.append(assistant_msg)
 
       if assistant_msg.stop_reason != "tool_use":
+        # A completed-but-undispatched tool_use can ride a non-"tool_use" stop:
+        # a backend that streams the tool_use block and only THEN surfaces the
+        # cancel (Anthropic emits the tool_use on content_block_stop, then a
+        # trailing TurnDone(stop_reason='cancelled')) leaves tool_calls pending
+        # here. They must still be answered or the saved transcript orphans the
+        # tool_use -> non-recoverable replay 400. (Backends that batch tool
+        # calls only after their stream loop never reach this with tool_calls.)
+        if tool_calls:
+          self._answer_pending_tool_uses(tool_calls, "Cancelled by user.")
         return assistant_msg
       if cancel.is_set():
+        # Cancel set AFTER a tool_use-stop response but before dispatch (the
+        # narrower window where stop_reason stays 'tool_use'): answer the
+        # pending tool_uses so the saved transcript isn't orphaned.
+        self._answer_pending_tool_uses(tool_calls, "Cancelled by user.")
         assistant_msg.stop_reason = "cancelled"
         return assistant_msg
 
       if max_turns is not None and iterations >= max_turns:
+        # Stopped at the turn cap before dispatching this turn's tool_uses:
+        # answer them so the tool_use isn't orphaned, then the human-visible
+        # cap marker.
+        self._answer_pending_tool_uses(
+          tool_calls, "[Subagent stopped at turn cap (%d)]" % max_turns)
         self.conv.append(Message(
           role="user", timestamp=now(),
           content=[ContentBlock(type="text", data={
@@ -264,6 +282,24 @@ class AgentSession:
 
     self.on_event(ToolResultsBatched(blocks=result_blocks))
     return Message(role="user", content=result_blocks, timestamp=now())
+
+  def _answer_pending_tool_uses(self, tool_calls, reason):
+    """Append a user message with an error tool_result for every pending
+    tool_use.
+
+    A turn that ends right after an assistant tool_use block -- Stop pressed
+    before dispatch, or the subagent turn-cap -- must not leave an UNMATCHED
+    tool_use in the saved transcript: on the next turn that transcript is
+    replayed verbatim, and an assistant tool_use with no following tool_result
+    is a non-recoverable provider 400 (anthropic / openai / portkey / gemini)
+    that permanently breaks the conversation. (claude_code owns its own
+    transcript and is immune.) No-op when there were no tool_calls.
+    """
+    if not tool_calls:
+      return
+    self.conv.append(Message(
+      role="user", timestamp=now(),
+      content=[_tool_error_block(c.id, reason) for c in tool_calls]))
 
   def _resolve_and_approve(self, call, batch_id):
     policy = self.policy.resolve(call.name)

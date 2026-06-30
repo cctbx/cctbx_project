@@ -1,7 +1,8 @@
 """McpServerConnection tests against an in-process fastmcp server
 fixture: tool listing + dispatch round-trip, error paths, empty-command
-clarity, and risk-annotation derivation. Subprocess coverage of the
-same client lives in tst_chat_mcp_e2e.py (phenix repo)."""
+clarity, and risk-annotation derivation. Real-subprocess coverage of the
+same client lives in phenix's tst_chat_window_mcp.py
+(exercise_end_to_end_real_subprocess)."""
 
 import shutil
 import sys
@@ -417,8 +418,173 @@ def exercise_stop_loop_survives_unstoppable_loop_thread():
     shutil.rmtree(tmp)
 
 
+def exercise_convert_result_reads_embedded_resource_fields():
+  """[Minor] An MCP EmbeddedResource nests its uri/text under
+  entry.resource (a TextResourceContents), not on the entry itself.
+  _convert_result must read them from there -- otherwise every resource
+  result comes back with an empty uri and excerpt, silently dropping the
+  content the server returned."""
+  tmp = tempfile.mkdtemp()
+  try:
+    conn = _conn(tmp, _build_app())          # not started; convert directly
+
+    class _Res:
+      uri = "file:///tmp/report.txt"
+      text = "the resource body"
+
+    class _Entry:
+      type = "resource"
+      resource = _Res()
+
+    class _Raw:
+      is_error = False
+      content = [_Entry()]
+
+    out = conn._convert_result(_Raw())
+    assert len(out.content) == 1, out.content
+    item = out.content[0]
+    assert item.type == "resource", item
+    assert item.uri == "file:///tmp/report.txt", item.uri
+    assert item.text_excerpt == "the resource body", item.text_excerpt
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_convert_result_image_decode_failure_is_error_not_empty():
+  """A base64-decode failure on an image item must surface a text error, not
+  silently store a 0-byte image the model can't see."""
+  tmp = tempfile.mkdtemp()
+  try:
+    conn = _conn(tmp, _build_app())
+
+    class _Entry:
+      type = "image"
+      data = "a"                       # invalid base64 length -> b64decode raises
+      mimeType = "image/png"
+
+    class _Raw:
+      is_error = False
+      content = [_Entry()]
+
+    out = conn._convert_result(_Raw())
+    assert len(out.content) == 1, out.content
+    item = out.content[0]
+    assert item.type == "text", item
+    assert "image" in (item.text or "").lower(), item.text
+    assert not any(i.type == "image" for i in out.content), out.content
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_convert_result_binary_blob_resource_is_noted_not_dropped():
+  """A binary EmbeddedResource carries base64 in .blob (not .text); it must be
+  surfaced as a note (binary + mime + size), not silently dropped to an empty
+  excerpt the model can't interpret."""
+  tmp = tempfile.mkdtemp()
+  try:
+    import base64
+    conn = _conn(tmp, _build_app())
+
+    class _Res:
+      uri = "file:///x.bin"
+      text = None
+      blob = base64.b64encode(b"\x00\x01\x02\x03").decode()
+      mimeType = "application/octet-stream"
+
+    class _Entry:
+      type = "resource"
+      resource = _Res()
+
+    class _Raw:
+      is_error = False
+      content = [_Entry()]
+
+    out = conn._convert_result(_Raw())
+    item = out.content[0]
+    assert item.type == "resource", item
+    assert item.uri == "file:///x.bin", item.uri
+    assert item.text_excerpt, item.text_excerpt
+    assert "binary" in item.text_excerpt.lower(), item.text_excerpt
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_effective_timeout_widens_for_wait_s():
+  """The per-call timeout policy: a positive numeric wait_s in the tool input
+  widens the transport timeout to cover the server-side long-poll (plus a
+  margin); everything else keeps the base timeout."""
+  from qttbx.widgets.chat.agent.mcp_client import _effective_timeout
+  # No / non-positive / non-numeric wait_s -> base unchanged.
+  assert _effective_timeout({}, 60.0) == 60.0
+  assert _effective_timeout({"job_id": "j"}, 60.0) == 60.0
+  assert _effective_timeout({"wait_s": 0}, 60.0) == 60.0
+  assert _effective_timeout({"wait_s": -5}, 60.0) == 60.0
+  assert _effective_timeout({"wait_s": None}, 60.0) == 60.0
+  assert _effective_timeout({"wait_s": "nope"}, 60.0) == 60.0
+  assert _effective_timeout(None, 60.0) == 60.0
+  # A small wait_s already covered by the base stays at the base.
+  assert _effective_timeout({"wait_s": 5}, 60.0) == 60.0
+  # A long wait_s (the skill drives phenix_get_status up to 900) widens to
+  # wait_s + margin so the call doesn't abort while the job runs.
+  assert _effective_timeout({"wait_s": 900}, 60.0) == 930.0
+  assert _effective_timeout({"wait_s": 900.0}, 60.0) == 930.0
+  assert _effective_timeout({"wait_s": 60}, 60.0) == 90.0
+  # Adversarial / absurd values must not yield a non-finite or astronomical
+  # timeout -- that overflows concurrent.futures.Future.result(timeout=...)
+  # and orphans the in-flight poll task. They must degrade to a bounded value.
+  import math
+  assert _effective_timeout({"wait_s": float("inf")}, 60.0) == 60.0
+  assert _effective_timeout({"wait_s": "inf"}, 60.0) == 60.0
+  assert _effective_timeout({"wait_s": "1e400"}, 60.0) == 60.0
+  big = _effective_timeout({"wait_s": 1e12}, 60.0)
+  assert math.isfinite(big) and big <= 3600.0 + 30.0, big
+
+
+def exercise_call_tool_widens_timeout_for_wait_s_longpoll():
+  """[Major] The chat's MCP call path hard-capped every call at 60s, so the
+  phenix_get_status(wait_s=900) long-poll the running-jobs skill prescribes
+  aborted at 60s while the job kept running. call_tool must widen the
+  transport timeout to cover a positive wait_s -- and leave ordinary calls at
+  the 60s default."""
+  tmp = tempfile.mkdtemp()
+  try:
+    conn = _conn(tmp, _build_app())
+    conn.start()
+    real_run_async = conn._run_async
+    try:
+      seen = {}
+
+      def _spy(coro, timeout=60.0):
+        seen["outer"] = timeout
+        coro.close()                       # don't actually dispatch the call
+        raw = type("_Raw", (), {})()
+        raw.is_error = False
+        raw.content = []
+        return raw
+
+      conn._run_async = _spy
+      # wait_s=900 -> effective 930 -> outer guard 930 + 30 = 960.
+      conn.call_tool("phenix_get_status",
+                     {"job_id": "j", "wait_s": 900}, cancel=CancelToken())
+      assert seen["outer"] == 960.0, seen
+      # A normal call with no wait_s keeps the 60s default (outer 90).
+      seen.clear()
+      conn.call_tool("echo", {"message": "hi"}, cancel=CancelToken())
+      assert seen["outer"] == 90.0, seen
+    finally:
+      conn._run_async = real_run_async     # restore before stop()
+      conn.stop()
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_start_lists_tools()
+  exercise_convert_result_reads_embedded_resource_fields()
+  exercise_convert_result_image_decode_failure_is_error_not_empty()
+  exercise_convert_result_binary_blob_resource_is_noted_not_dropped()
+  exercise_effective_timeout_widens_for_wait_s()
+  exercise_call_tool_widens_timeout_for_wait_s_longpoll()
   exercise_call_tool_text_round_trips()
   exercise_call_tool_failure_returns_error_result()
   exercise_cancelled_tool_names_cancellation_in_error()

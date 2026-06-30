@@ -76,6 +76,38 @@ def exercise_based_on_inheritance():
     shutil.rmtree(tmp)
 
 
+def exercise_based_on_deep_merges_nested_section():
+  """A child overriding ONE sub-key of an inherited nested section (here
+  `subagents`) must keep the parent's OTHER sub-keys. A shallow merge
+  replaces the whole nested dict, silently dropping the inherited sub-keys
+  back to their defaults; this asserts they survive a partial override."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "parent", {
+      "name": "parent",
+      "model": "m",
+      "subagents": {
+        "enabled": False,
+        "max_depth": 2,
+        "default_max_turns": 50,
+        "default_model": "claude-sonnet-4-5",
+      },
+    })
+    _write_profile(tmp, "child", {
+      "name": "child",
+      "based_on": "parent",
+      "subagents": {"max_depth": 3},   # override only one sub-key
+    })
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load("child")
+    assert p.subagents_max_depth == 3                        # override
+    assert p.subagents_default_max_turns == 50               # inherited
+    assert p.subagents_enabled is False                      # inherited
+    assert p.subagents_default_model == "claude-sonnet-4-5"  # inherited
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_based_on_child_system_prompt_file_overrides_parent_prompt():
   """A child may override an inherited inline system_prompt with its own
   system_prompt_file. The parent's resolved system_prompt must not survive
@@ -744,6 +776,7 @@ def exercise():
   exercise_minimal_profile_loads()
   exercise_missing_required_field_raises()
   exercise_based_on_inheritance()
+  exercise_based_on_deep_merges_nested_section()
   exercise_based_on_child_system_prompt_file_overrides_parent_prompt()
   exercise_based_on_child_system_prompt_overrides_parent_prompt_file()
   exercise_based_on_does_not_weaken_mutual_exclusivity_gate()

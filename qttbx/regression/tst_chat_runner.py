@@ -101,8 +101,13 @@ def exercise_emits_text_delta_then_turn_done():
 
 
 def exercise_cancel_stops_the_turn():
-  """Cancel mid-stream — the scripted agent honors cancel between events
-  so the turn ends with stop_reason='cancelled'."""
+  """A streamed delta drives a cancel that propagates onto the runner's token.
+
+  The text delta is delivered to the GUI slot, which calls ``runner.cancel()``
+  -- that must set the cancel token the session worker polls. The weak form
+  only checked the runner went idle, which happens anyway once this short
+  scripted turn ends; pinning the delta delivery + the set token catches a
+  broken event dispatch or a ``cancel()`` that never reaches the token."""
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   init_default_app_font(app)
   tmp = tempfile.mkdtemp()
@@ -117,6 +122,11 @@ def exercise_cancel_stops_the_turn():
     runner.wait_for_idle(timeout_ms=2000)
     _pump(app)
     assert not runner.is_busy()
+    # The streamed delta reached the GUI slot (so the cancel could fire) ...
+    assert received == ["hello"], received
+    # ... and runner.cancel() set the token the worker polls. Going idle alone
+    # does not prove the cancel path ran.
+    assert runner._cancel.is_set()
   finally:
     shutil.rmtree(tmp)
 
