@@ -54,6 +54,7 @@ def run():
   run_test10()
   run_test11()
   run_test12()
+  run_test13()
 
 # ------------------------------------------------------------------------------
 
@@ -108,8 +109,8 @@ def run_test01():
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
-  #if os.path.isfile('one_chain_ligand_water_newH.cif'):
-  #  os.remove('one_chain_ligand_water_newH.cif')
+  if os.path.isfile('one_chain_ligand_water_newH.cif'):
+    os.remove('one_chain_ligand_water_newH.cif')
 
 # ------------------------------------------------------------------------------
 
@@ -683,6 +684,21 @@ def run_test12():
   text = sio.getvalue()
   assert 'missing' in text, text
   assert 'O3' in text, text
+
+# ------------------------------------------------------------------------------
+
+def run_test13():
+  print('test13')
+  vl_manager = _gol_missing_atom_manager()
+  snap1 = find_lr(vl_manager, 'resname GOL and chain A and resseq 1').as_picklable_snapshot()
+  assert snap1.missing_atoms is not None
+  assert snap1.missing_atoms.missing_heavy == ['O3'], snap1.missing_atoms.missing_heavy
+  assert snap1.missing_atoms.n_missing_heavy == 1, snap1.missing_atoms.n_missing_heavy
+  #
+  snap2 = find_lr(vl_manager, 'resname GOL and chain A and resseq 2').as_picklable_snapshot()
+  assert snap2.missing_atoms is not None
+  assert snap2.missing_atoms.missing_heavy == [], snap2.missing_atoms.missing_heavy
+  assert snap2.missing_atoms.n_missing_heavy == 0, snap2.missing_atoms.n_missing_heavy
 
 # ------------------------------------------------------------------------------
 

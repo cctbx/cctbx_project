@@ -1203,6 +1203,7 @@ class ligand_result(object):
     occs = self.get_occupancies()
     rmsds = self.get_rmsds()
     mapv  = self.get_map_values()
+    ma    = self.get_missing_atoms()
 
     # centroid: mean of ligand atom coordinates as plain Python floats
     xyz = self._atoms_ligand.extract_xyz().mean()
@@ -1262,4 +1263,8 @@ class ligand_result(object):
         percent_bad_blobs           = _f(mapv.percent_bad_blobs)           if mapv is not None else None,
       ) if mapv is not None else None,
       fragment_png_bytes = fragment_png_bytes,
+      missing_atoms = group_args(
+        missing_heavy   = list(ma.missing_heavy),
+        n_missing_heavy = _i(ma.n_missing_heavy),
+      ) if ma is not None else None,
     )
