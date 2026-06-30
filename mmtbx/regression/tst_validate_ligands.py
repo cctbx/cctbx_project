@@ -51,6 +51,9 @@ def run():
   run_test06()
   run_test08()
   run_test09()
+  run_test10()
+  run_test11()
+  run_test12()
 
 # ------------------------------------------------------------------------------
 
@@ -581,6 +584,105 @@ def run_test09():
   finally:
     if os.path.isfile(map_fn):
       os.remove(map_fn)
+
+# ------------------------------------------------------------------------------
+
+# Two glycerol (GOL) ligands. Chain A resseq 1 is missing the O3 heavy atom;
+# chain A resseq 2 is heavy-complete (no H atoms are modelled in either).
+_gol_missing_atom_pdb_str = '''
+CRYST1   30.000   20.000   20.000  90.00  90.00  90.00 P 1
+SCALE1      0.033333  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.050000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.050000        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  C1  GOL A   2      15.000   5.000   5.000  1.00 20.00           C
+HETATM    7  C2  GOL A   2      16.520   5.000   5.000  1.00 20.00           C
+HETATM    8  C3  GOL A   2      17.100   6.400   5.000  1.00 20.00           C
+HETATM    9  O1  GOL A   2      14.300   3.850   5.400  1.00 20.00           O
+HETATM   10  O2  GOL A   2      17.220   4.050   5.700  1.00 20.00           O
+HETATM   11  O3  GOL A   2      18.500   6.350   4.700  1.00 20.00           O
+'''
+
+def _gol_missing_atom_model():
+  pdb_inp = iotbx.pdb.input(
+    lines=_gol_missing_atom_pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  return model
+
+def run_test10():
+  print('test10')
+  model = _gol_missing_atom_model()
+  missing = model.get_missing_atoms()
+  atoms = model.get_hierarchy().atoms()
+
+  def ag_key(sel_str):
+    isel = model.iselection(sel_str)
+    return atoms[isel[0]].parent().id_str()
+
+  key1 = ag_key('resname GOL and chain A and resseq 1')
+  key2 = ag_key('resname GOL and chain A and resseq 2')
+
+  assert key1 in missing, missing
+  heavy1 = missing[key1].get('missing', {}).get('heavy', {})
+  assert 'O3' in heavy1, list(heavy1)
+
+  heavy2 = missing.get(key2, {}).get('missing', {}).get('heavy', {})
+  assert len(heavy2) == 0, list(heavy2)
+
+  # Lazy path: a fresh, un-processed model must auto-process on access.
+  pdb_inp2 = iotbx.pdb.input(
+    lines=_gol_missing_atom_pdb_str.split("\n"), source_info=None)
+  model_lazy = mmtbx.model.manager(model_input=pdb_inp2, log=null_out())
+  missing_lazy = model_lazy.get_missing_atoms()
+  assert missing_lazy is not None
+  assert any('O3' in v.get('missing', {}).get('heavy', {})
+             for v in missing_lazy.values()), missing_lazy
+
+# ------------------------------------------------------------------------------
+
+def _gol_missing_atom_manager():
+  from mmtbx.validation import validate_ligands as vlmod
+  model = _gol_missing_atom_model()
+  params = vlmod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = vlmod.manager(
+    model       = model,
+    fmodel      = None,
+    map_manager = None,
+    params      = params,
+    log         = null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test11():
+  print('test11')
+  vl_manager = _gol_missing_atom_manager()
+  lr1 = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  ma1 = lr1.get_missing_atoms()
+  assert ma1.missing_heavy == ['O3'], ma1.missing_heavy
+  assert ma1.n_missing_heavy == 1, ma1.n_missing_heavy
+  #
+  lr2 = find_lr(vl_manager, 'resname GOL and chain A and resseq 2')
+  ma2 = lr2.get_missing_atoms()
+  assert ma2.missing_heavy == [], ma2.missing_heavy
+  assert ma2.n_missing_heavy == 0, ma2.n_missing_heavy
+
+# ------------------------------------------------------------------------------
+
+def run_test12():
+  print('test12')
+  from six.moves import cStringIO as StringIO
+  vl_manager = _gol_missing_atom_manager()
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'missing' in text, text
+  assert 'O3' in text, text
 
 # ------------------------------------------------------------------------------
 

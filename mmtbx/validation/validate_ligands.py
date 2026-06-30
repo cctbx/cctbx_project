@@ -199,6 +199,11 @@ class manager(list):
        'data_fn': lambda lr: f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"},
       {'headers': ['dihedral', 'rmsz', 'outliers'], 'width': 17,
        'data_fn': lambda lr: f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"},
+      {'headers': ['', 'missing', 'heavy atoms'], 'width': 22,
+       'data_fn': lambda lr: (
+           f"{lr.get_missing_atoms().n_missing_heavy} "
+           f"({','.join(lr.get_missing_atoms().missing_heavy)})"
+           if lr.get_missing_atoms().n_missing_heavy else '-')},
     ]
 
     # --- From here, the code is generic and builds the table from the config above ---
@@ -362,6 +367,7 @@ class ligand_result(object):
       '_ccs'           : 'get_ccs',
       #'_is_suspicious' : 'check_if_suspicious',
       '_map_values'    : 'get_map_values',
+      '_missing_atoms' : 'get_missing_atoms',
       #'_qmr'           : 'get_qmr',
       #'_polder_ccs'  : 'get_polder_ccs',
     }
@@ -501,6 +507,28 @@ class ligand_result(object):
       )
 
     return self._occupancies
+
+  # ----------------------------------------------------------------------------
+
+  def get_missing_atoms(self):
+    if self._missing_atoms is not None:
+      return self._missing_atoms
+    missing_dict = self.model.get_missing_atoms() or {}
+    ag = self._atoms_ligand[0].parent()
+    resid_tail = ag.id_str()[1:]
+    missing_heavy = []
+    for key, item in missing_dict.items():
+      if not key.endswith(resid_tail):
+        continue
+      if self.altloc.strip() and not key.startswith('"%s"' % self.altloc):
+        continue
+      heavy = item.get('missing', {}).get('heavy', {})
+      missing_heavy = sorted(name.strip() for name in heavy)
+      break
+    self._missing_atoms = group_args(
+      missing_heavy   = missing_heavy,
+      n_missing_heavy = len(missing_heavy))
+    return self._missing_atoms
 
   # ----------------------------------------------------------------------------
 
