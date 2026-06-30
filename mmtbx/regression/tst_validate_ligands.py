@@ -7,6 +7,7 @@ import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
+import mmtbx.ligands.rdkit_utils as rdkit_utils
 
 from rdkit import RDLogger
 lg = RDLogger.logger()
@@ -55,6 +56,10 @@ def run():
   run_test11()
   run_test12()
   run_test13()
+  run_test14()
+  run_test15()
+  run_test16()
+  run_test17()
 
 # ------------------------------------------------------------------------------
 
@@ -699,6 +704,100 @@ def run_test13():
   assert snap2.missing_atoms is not None
   assert snap2.missing_atoms.missing_heavy == [], snap2.missing_atoms.missing_heavy
   assert snap2.missing_atoms.n_missing_heavy == 0, snap2.missing_atoms.n_missing_heavy
+
+# ------------------------------------------------------------------------------
+
+def _gol_frag_mol_and_cif(vl_manager, resseq):
+  lr = find_lr(vl_manager, 'resname GOL and chain A and resseq %d' % resseq)
+  ag = lr._atoms_ligand[0].parent()
+  srv = lr.model.get_mon_lib_srv()
+  cif_object, _ani = srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=ag.resname, atom_names=ag.atoms().extract_name())
+  return lr._frag_mol, cif_object, lr
+
+def run_test14():
+  print('test14')
+  vl = _gol_missing_atom_manager()
+  frag_mol, cif_object, lr = _gol_frag_mol_and_cif(vl, 1)
+  draw_mol, missing_idxs = rdkit_utils.build_drawing_mol_with_missing(
+    frag_mol, cif_object, ['O3'])
+  assert draw_mol.GetNumAtoms() == frag_mol.GetNumAtoms() + 1, draw_mol.GetNumAtoms()
+  assert len(missing_idxs) == 1, missing_idxs
+  idx = list(missing_idxs)[0]
+  assert idx == frag_mol.GetNumAtoms(), idx
+  assert draw_mol.GetAtomWithIdx(idx).GetProp('_Name').strip() == 'O3'
+  assert draw_mol.GetAtomWithIdx(idx).GetProp('atomLabel') == 'O3'
+  draw_mol2, mi2 = rdkit_utils.build_drawing_mol_with_missing(frag_mol, cif_object, [])
+  assert len(mi2) == 0
+  assert draw_mol2.GetNumAtoms() == frag_mol.GetNumAtoms()
+  draw_mol3, mi3 = rdkit_utils.build_drawing_mol_with_missing(frag_mol, cif_object, None)
+  assert len(mi3) == 0
+  assert draw_mol3.GetNumAtoms() == frag_mol.GetNumAtoms()
+
+# ------------------------------------------------------------------------------
+
+def run_test15():
+  print('test15')
+  import tempfile, os
+  vl = _gol_missing_atom_manager()
+  frag_mol, cif_object, lr = _gol_frag_mol_and_cif(vl, 1)
+  draw_mol, missing_idxs = rdkit_utils.build_drawing_mol_with_missing(
+    frag_mol, cif_object, ['O3'])
+  tf = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+  tf.close()
+  try:
+    rdkit_utils.draw_colored_fragments(
+      draw_mol, lr._rdkit_frags, filename=tf.name, missing_atom_idxs=missing_idxs)
+    assert os.path.getsize(tf.name) > 0
+  finally:
+    os.unlink(tf.name)
+
+# ------------------------------------------------------------------------------
+
+def run_test16():
+  print('test16')
+  vl = _gol_missing_atom_manager()
+  lr1 = find_lr(vl, 'resname GOL and chain A and resseq 1')
+  assert len(lr1._draw_missing_idxs) == 1, lr1._draw_missing_idxs
+  lr2 = find_lr(vl, 'resname GOL and chain A and resseq 2')
+  assert len(lr2._draw_missing_idxs) == 0, lr2._draw_missing_idxs
+  snap = lr1.as_picklable_snapshot()
+  assert snap.fragment_png_bytes is not None
+
+def run_test17():
+  print('test17')
+  import os, tempfile
+  from mmtbx.monomer_library import server
+  gol_cif = libtbx.env.find_in_repositories(
+    relative_path='chem_data/geostd/g/data_GOL.cif', test=os.path.isfile)
+  if gol_cif is None:
+    print('  skipping: geostd not available')
+    return
+  lines = [ln for ln in open(gol_cif).read().splitlines()
+           if not (ln.strip().startswith('GOL') and
+                   (' O3 ' in ln or ' HO3 ' in ln or ln.rstrip().endswith(' O3')
+                    or ln.rstrip().endswith(' HO3')))]
+  tf = tempfile.NamedTemporaryFile(suffix='.cif', delete=False, mode='w')
+  tf.write('\n'.join(lines) + '\n')
+  tf.close()
+  try:
+    from mmtbx.validation import validate_ligands as vlmod
+    pdb_inp = iotbx.pdb.input(
+      lines=_gol_missing_atom_pdb_str.split('\n'), source_info=None)
+    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+    model.set_restraint_objects([(tf.name, server.read_cif(tf.name))])
+    model.set_stop_for_unknowns(False)
+    model.process(make_restraints=True)
+    params = vlmod.master_params().extract().validate_ligands
+    params.ligand_code = []
+    vl = vlmod.manager(model=model, fmodel=None, map_manager=None,
+                       params=params, log=null_out())
+    vl.run()
+    lr1 = find_lr(vl, 'resname GOL and chain A and resseq 1')
+    assert lr1.get_missing_atoms().missing_heavy == [], lr1.get_missing_atoms().missing_heavy
+    assert len(lr1._draw_missing_idxs) == 0, lr1._draw_missing_idxs
+  finally:
+    os.unlink(tf.name)
 
 # ------------------------------------------------------------------------------
 

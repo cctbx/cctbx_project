@@ -436,8 +436,60 @@ def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
 
 # ------------------------------------------------------------------------------
 
+def build_drawing_mol_with_missing(frag_mol, cif_object, missing_names):
+  '''Return (draw_mol, missing_idxs): a copy of frag_mol with the named missing
+  heavy atoms appended (element + atomLabel from cif_object) and their cif bonds
+  added where both endpoints exist. Appending preserves existing atom indices.'''
+  if not missing_names or cif_object is None or not hasattr(cif_object, 'atom_list'):
+    return Chem.Mol(frag_mol), set()
+  rw = Chem.RWMol(frag_mol)
+  name_to_idx = {}
+  for i in range(rw.GetNumAtoms()):
+    a = rw.GetAtomWithIdx(i)
+    if a.HasProp('_Name'):
+      name_to_idx[a.GetProp('_Name').strip()] = i
+  name_to_element = {}
+  for ca in cif_object.atom_list:
+    name_to_element[ca.atom_id.strip()] = ca.type_symbol.strip()
+  missing_idxs = set()
+  for name in missing_names:
+    if name in name_to_idx:
+      continue
+    el = name_to_element.get(name)
+    if not el:
+      continue
+    try:
+      atom = Chem.Atom(el.capitalize())
+    except (ValueError, RuntimeError):
+      continue
+    atom.SetProp('_Name', name)
+    atom.SetProp('atomLabel', name)
+    idx = rw.AddAtom(atom)
+    name_to_idx[name] = idx
+    missing_idxs.add(idx)
+  if hasattr(cif_object, 'bond_list'):
+    for bond in cif_object.bond_list:
+      n1 = bond.atom_id_1.strip()
+      n2 = bond.atom_id_2.strip()
+      if n1 in name_to_idx and n2 in name_to_idx:
+        if rw.GetBondBetweenAtoms(name_to_idx[n1], name_to_idx[n2]) is None:
+          r_type = get_rdkit_bond_type(
+            getattr(bond, 'type', 'sing'),
+            elements={name_to_element.get(n1, 'C'), name_to_element.get(n2, 'C')})
+          rw.AddBond(name_to_idx[n1], name_to_idx[n2], r_type)
+  draw_mol = rw.GetMol()
+  for atom in draw_mol.GetAtoms():
+    atom.SetNoImplicit(True)
+    atom.SetNumExplicitHs(0)
+    atom.UpdatePropertyCache(strict=False)
+  return draw_mol, missing_idxs
+
+# ------------------------------------------------------------------------------
+
+_FIG_SUPERSAMPLE = 2
+
 def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
-                           frag_ccs=None):
+                           frag_ccs=None, missing_atom_idxs=None):
   """
   1. Removes all H atoms.
   2. Strips all charges and implicit H properties (forces clean drawing).
@@ -467,6 +519,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     atom.SetNumExplicitHs(0)
     # Optional: Remove formal charges (e.g. make S+ look like S)
     atom.SetFormalCharge(0)
+    atom.SetNumRadicalElectrons(0)
     # Update property cache to accept these "weird" valences
     atom.UpdatePropertyCache(strict=False)
 
@@ -520,6 +573,16 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
         new_atom_highlights[new_idx] = color
         new_idx_to_frag_id[new_idx] = frag_id
 
+  # Grey out missing atoms (in no fragment).
+  new_missing_idxs = set()
+  if missing_atom_idxs:
+    missing_set = set(missing_atom_idxs)
+    for atom in mol_viz.GetAtoms():
+      if atom.HasProp("orig_idx") and atom.GetIntProp("orig_idx") in missing_set:
+        new_idx = atom.GetIdx()
+        new_atom_highlights[new_idx] = (0.7, 0.7, 0.7)
+        new_missing_idxs.add(new_idx)
+
   # 7. Highlight Bonds
   for bond in mol_viz.GetBonds():
     a1 = bond.GetBeginAtomIdx()
@@ -528,6 +591,8 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     if a1 in new_idx_to_frag_id and a2 in new_idx_to_frag_id:
       if new_idx_to_frag_id[a1] == new_idx_to_frag_id[a2]:
         new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
+    elif a1 in new_missing_idxs or a2 in new_missing_idxs:
+      new_bond_highlights[bond.GetIdx()] = (0.7, 0.7, 0.7)
 
   # 8. Draw
   # Base size scales with molecule complexity; canvas then stretches to match
@@ -544,8 +609,8 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
   bb_h = max(ys) - min(ys) if ys else 1.0
   aspect = max(0.33, min(3.0, (bb_w + 1e-6) / (bb_h + 1e-6)))
   import math
-  width  = max(400, int(base_px * math.sqrt(aspect)))
-  height = max(400, int(base_px / math.sqrt(aspect)))
+  width  = max(400, int(base_px * math.sqrt(aspect))) * _FIG_SUPERSAMPLE
+  height = max(400, int(base_px / math.sqrt(aspect))) * _FIG_SUPERSAMPLE
   drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
 
   opts = drawer.drawOptions()
@@ -588,10 +653,10 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       from PIL import Image, ImageDraw as PILDraw, ImageFont
       import io as _io
 
-      legend_font_size = 20
-      badge_font_size = 16
-      badge_r = 13
-      badge_text_gap = 6
+      legend_font_size = 20 * _FIG_SUPERSAMPLE
+      badge_font_size = 16 * _FIG_SUPERSAMPLE
+      badge_r = 13 * _FIG_SUPERSAMPLE
+      badge_text_gap = 6 * _FIG_SUPERSAMPLE
       try:
         legend_font = ImageFont.load_default(size=legend_font_size)
       except TypeError:
@@ -617,7 +682,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       def draw_badge(d, cx, cy, n):
         d.ellipse(
           (cx - badge_r, cy - badge_r, cx + badge_r, cy + badge_r),
-          fill=(255, 255, 255, 235), outline=(40, 40, 40), width=2)
+          fill=(255, 255, 255, 235), outline=(40, 40, 40), width=2 * _FIG_SUPERSAMPLE)
         try:
           d.text((cx, cy), str(n), fill=(0, 0, 0),
                  font=badge_font, anchor='mm')
@@ -647,10 +712,10 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       sep = '   '
       prefix_w, _ = text_size(prefix, legend_font)
       sep_w, _ = text_size(sep, legend_font)
-      row_h = max(legend_font_size, 2 * badge_r) + 6
+      row_h = max(legend_font_size, 2 * badge_r) + 6 * _FIG_SUPERSAMPLE
 
       # Wrap entries into rows.
-      max_row_w = width - 20
+      max_row_w = width - 20 * _FIG_SUPERSAMPLE
       rows = []
       cur_row = []
       cur_w = prefix_w
@@ -665,8 +730,8 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
           cur_w += add_w
       if cur_row: rows.append(cur_row)
 
-      legend_pad_top = 8
-      legend_pad_bot = 6
+      legend_pad_top = 8 * _FIG_SUPERSAMPLE
+      legend_pad_bot = 6 * _FIG_SUPERSAMPLE
       legend_h = legend_pad_top + row_h * len(rows) + legend_pad_bot
       canvas_h = height + legend_h
 
@@ -684,7 +749,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       # Legend: same badge graphic + tier-coloured CC value.
       y_row = height + legend_pad_top
       for row_i, row in enumerate(rows):
-        x = 10
+        x = 10 * _FIG_SUPERSAMPLE
         row_mid = y_row + row_h // 2
         if row_i == 0:
           try:

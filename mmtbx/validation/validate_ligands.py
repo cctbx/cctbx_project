@@ -378,11 +378,12 @@ class ligand_result(object):
     self.d_min = None
     if self.fmodel is not None:
       self.d_min = self.fmodel.f_obs().d_min()
-    self._fragment()
 
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
       assert hasattr(self, func)
+
+    self._fragment()
 
   # ----------------------------------------------------------------------------
 
@@ -644,6 +645,10 @@ class ligand_result(object):
       cif_object = cif_object)
     self.ligand_rigid_components_isels, self._frag_mol, self._rdkit_frags = \
       rdkit_utils.get_rigid_components(mol, rdkit_to_cctbx)
+    missing_names = self.get_missing_atoms().missing_heavy
+    self._draw_mol, self._draw_missing_idxs = \
+      rdkit_utils.build_drawing_mol_with_missing(
+        self._frag_mol, cif_object, missing_names)
     # PNG generation is deferred to as_picklable_snapshot() where CC values
     # are available and can be annotated directly onto the figure.
 
@@ -1157,8 +1162,9 @@ class ligand_result(object):
     '''
     import os
     import tempfile
-    frag_mol   = getattr(self, '_frag_mol',    None)
+    frag_mol   = getattr(self, '_draw_mol',  None) or getattr(self, '_frag_mol', None)
     rdkit_frags = getattr(self, '_rdkit_frags', None)
+    missing_idxs = getattr(self, '_draw_missing_idxs', None)
     if frag_mol is None or rdkit_frags is None:
       return None
     frag_cc_list = None
@@ -1168,7 +1174,8 @@ class ligand_result(object):
     tf.close()
     try:
       rdkit_utils.draw_colored_fragments(
-        frag_mol, rdkit_frags, filename=tf.name, frag_ccs=frag_cc_list)
+        frag_mol, rdkit_frags, filename=tf.name, frag_ccs=frag_cc_list,
+        missing_atom_idxs=missing_idxs)
       with open(tf.name, 'rb') as fh:
         data = fh.read()
     except Exception:
