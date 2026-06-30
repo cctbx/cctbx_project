@@ -576,6 +576,12 @@ USE_OLD_REDUCE = True # SINGLE flip for switching to reduce2.
 def use_old_reduce():
   return USE_OLD_REDUCE
 
+USE_REDUCE2_FLIPS = True # under reduce2, accept reduce2's optimized H
+                          # positions and flips (atom-preserving). No-op unless reduce2 is on.
+
+def use_reduce2_flips():
+  return (not use_old_reduce()) and USE_REDUCE2_FLIPS
+
 def default_probe_phil():
   """The probe Phil scope reduce2 uses, so our defaults match reduce2 exactly."""
   import iotbx.phil
@@ -696,3 +702,30 @@ def get_nqh_flips_reduce2(model, probe_phil=None):
     user_mods.append(
       (chain.id + rg.resid() + ag.resname + "    " + fm.alt).strip())
   return user_mods, [], {}
+
+def accept_reduce2_flips(work_model, probe_phil=None, log=None):
+  """Compute reduce2's N/Q/H flips AND optimized H for work_model via the reduce2
+  Optimizer (addFlipMovers=True) and return the resulting sites_cart; the caller
+  pushes them onto the live model via model.set_sites_cart. The Optimizer is run on a
+  PRIVATE deep copy (see below), so the caller's model is not mutated here.
+  Atom-preserving: getHydrogensToDelete is never called, so the atom content is
+  unchanged. PRECONDITION: work_model already has hydrogens and restraints (PDB
+  interpretation run)."""
+  from mmtbx.reduce import Optimizers
+  if log is None: log = sys.stdout
+  if probe_phil is None: probe_phil = default_probe_phil()
+  assert work_model.get_hd_selection().count(True) > 0, \
+    "accept_reduce2_flips requires a model that already has hydrogens"
+  # Run the Optimizer on a private deep copy, never the caller's live model.
+  # Optimizer.__init__ calls model.setup_riding_h_manager() (Optimizers.py), which
+  # CREATES a riding_h_manager on whatever model it is given. In reciprocal
+  # phenix.refine the per-macro-cycle "Setup riding H model" step is the designated
+  # creator and asserts riding_h_manager is None; it runs only in some macro cycles
+  # while the N/Q/H flip runs every cycle, so optimizing the live model in place
+  # would leave a stray manager that crashes that later assert. (The decision-only
+  # path, get_nqh_flips_reduce2, deep-copies for the same reason.)
+  reduce_model = work_model.deep_copy()
+  opt = Optimizers.Optimizer(probe_phil, True, reduce_model, modelIndex=None, altID="")
+  print("Total number of N/Q/H flips: %d" % (
+    len(opt.getFlippedAmides()) + len(opt.getFlippedHistidines())), file=log)
+  return reduce_model.get_sites_cart()
