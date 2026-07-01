@@ -46,7 +46,7 @@ metal_element = None
 (e.g. metal_element=Fe, or metal_element=Fe metal_element=Cu). Element symbols \
 are case-insensitive. Only consulted when no `selection` is given; if any \
 selection is provided, the explicit selection wins. Default (no values): \
-seed on every metal found by mmtbx.qmi.metals."
+seed on every metal found by mmtbx.geometry_restraints.qmi.metals."
 altloc = auto
   .type = str
   .help = "Which altloc letter to retain per residue.  'auto' (default) picks the \
@@ -168,7 +168,7 @@ class Program(ProgramTemplate):
         model : mmtbx.model.manager
             Truncated sub-model with caps applied and the parent's
             restraints manager attached. Suitable for direct in-memory
-            consumption by downstream tools (e.g., ``mmtbx.qmi``) without
+            consumption by downstream tools (e.g., ``mmtbx.geometry_restraints.qmi``) without
             the disk round-trip through the written PDB/mmCIF.
         seed_iseqs : list of int
             Sorted 0-based positional indices of the seed atoms inside
