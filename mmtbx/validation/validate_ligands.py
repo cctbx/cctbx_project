@@ -904,9 +904,13 @@ class ligand_result(object):
     cc_total = self.compute_cc(m1, m2, cs, sites_cart)
 
     # ----- RSCC per ligand fragment -----
+    # Restrict fragment grid points to heavy atoms so the selection is
+    # consistent with the whole-ligand/sites CCs (which use *_noH); the rigid
+    # components themselves keep their H (used for the figure and Coot).
     frag_ccs = {}
     for isel in self.ligand_rigid_components_isels:
-      sites_cart = sc.select(isel)
+      isel_noH = isel.intersection(self.ligand_isel_noH)
+      sites_cart = sc.select(isel_noH)
       cc = self.compute_cc(m1, m2, cs, sites_cart)
       frag_ccs[isel] = cc
 
