@@ -169,11 +169,12 @@ class input(object):
         # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_before.pdb")
         cache = hierarchy.atom_selection_cache()
         sel = cache.selection("not (%s)" % self.params.exclude_selection)
-        self.truncated_hierarchy = hierarchy.select(sel)
+        self.old_i_seqs = hierarchy.atoms().extract_i_seq().select(sel)
+        self.truncated_hierarchy = hierarchy.select(sel, copy_atoms=True)
       else:
         # this could be to save iseqs but I'm not sure
-        self.truncated_hierarchy = hierarchy.select(flex.size_t_range(hierarchy.atoms_size()))
-      self.old_i_seqs = self.truncated_hierarchy.atoms().extract_i_seq()
+        self.old_i_seqs = hierarchy.atoms().extract_i_seq()
+        self.truncated_hierarchy = hierarchy.select(flex.size_t_range(hierarchy.atoms_size()), copy_atoms=True)
       # print "self.old_i_seqs", list(self.old_i_seqs)
       # self.truncated_hierarchy.atoms().reset_i_seq()
       self.truncated_hierarchy.reset_atom_i_seqs()
