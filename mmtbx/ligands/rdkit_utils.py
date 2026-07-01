@@ -535,13 +535,17 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
   AllChem.Compute2DCoords(mol_viz)
 
   # 6. Color Mapping Logic
+  # Neutral single-hue (brown/tan) shades used when no RSCC data is available.
+  # Deliberately avoids green/amber/red (reserved for the RSCC traffic-light)
+  # and grey (reserved for missing atoms), so fragment colouring can't be
+  # mistaken for a density verdict. Ordered light/dark-alternating so adjacent
+  # fragments contrast (between-fragment bonds are also left uncoloured).
   palette = [
-    (1.0, 0.6, 0.6), (0.6, 0.8, 1.0), (0.6, 1.0, 0.6),
-    (1.0, 0.8, 0.4), (0.8, 0.6, 1.0), (1.0, 1.0, 0.6),
-    (0.4, 0.8, 0.8), (0.8, 0.8, 0.8)
+    (0.878, 0.788, 0.651), (0.824, 0.706, 0.549), (0.788, 0.659, 0.463),
+    (0.902, 0.835, 0.722), (0.749, 0.627, 0.439), (0.847, 0.761, 0.604),
   ]
 
-  # Per-fragment color: traffic-light by CC when provided, else rainbow palette.
+  # Per-fragment color: traffic-light by CC when provided, else neutral shades.
   frag_colors = {}
   for i in range(len(rdkit_frags)):
     if frag_ccs is not None and i < len(frag_ccs):
