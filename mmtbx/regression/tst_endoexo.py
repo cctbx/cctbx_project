@@ -33,7 +33,7 @@ import mmtbx.model
 from iotbx.data_manager import DataManager
 from mmtbx.programs.endoexo import Program as EndoexoProgram
 from scitbx import matrix
-from cctbx import sgtbx
+from cctbx import geometry_restraints, sgtbx
 
 from mmtbx.geometry_restraints.endoexo.util import _canon_op
 from mmtbx.geometry_restraints.endoexo.capping import HydrogenCapper
@@ -208,31 +208,89 @@ HETATM  604  O   HOH A 422       9.389  18.060   1.780  0.34  9.73           O
 """
 
 
-def _run_endoexo_on_string(pdb_str, radius=None):
+def _run_endoexo_on_string(pdb_str, radius=None, include=None):
   """Drive ``mmtbx.programs.endoexo.Program`` in-memory on a PDB string
   with default settings (metal scan, radius=5.0, depth=3).  Parses the
   string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
-  the single result dict produced for the Fe seed.  *radius* overrides
-  ``params.radius`` when given."""
+  the single result dict produced for the seed.  *radius* overrides
+  ``params.radius`` when given; *include*, when given, is a
+  ``(selection, scope, proximity)`` tuple configuring
+  ``residues_to_include``."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
   dm = DataManager(["model"])
-  dm.add_model("fe_sphere", model)
-  dm.set_default_model("fe_sphere")
+  dm.add_model("model", model)
+  dm.set_default_model("model")
 
   master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
   params.write_files = False
   if radius is not None:
     params.radius = radius
+  if include is not None:
+    (params.residues_to_include.selection,
+     params.residues_to_include.scope,
+     params.residues_to_include.proximity) = include
 
   prog = EndoexoProgram(dm, params, master_phil=master, logger=io.StringIO())
   prog.validate()
   prog.run()
   results = prog.get_results()
   assert len(results) == 1, (
-    f"expected 1 submodel (1 Fe atom in input); got {len(results)}")
+    f"expected 1 submodel (1 seed atom in input); got {len(results)}")
   return results[0]
+
+
+def _residue_atom_names(result, resseq):
+  """Return the sorted set of atom names for residue *resseq* in the
+  materialized submodel of *result* (empty set if the residue is absent)."""
+  names = set()
+  for rg in result["model"].get_hierarchy().residue_groups():
+    if rg.resseq.strip() == resseq:
+      for ag in rg.atom_groups():
+        for a in ag.atoms():
+          names.add(a.name.strip())
+  return names
+
+
+def exercise_residues_to_include():
+  """residues_to_include pulls a residue into the region whole, exempt from
+  the sidechain cut rules, gated by the per_seed proximity sphere.
+
+  Target: Lys 7 of 1BQ8.  Its closest atom sits 5.88 A from the Fe, so it
+  is absent from the default region and straddles the proximity threshold
+  -- ideal for exercising both the gate and the include path."""
+  full_lys7 = {"N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ"}
+
+  # Baseline: Lys 7 is not in the default region.
+  base = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  assert base["model"].get_number_of_atoms() == 72
+  assert _residue_atom_names(base, "7") == set()
+
+  # per_seed, proximity below the 5.88 A closest approach -> still excluded.
+  near_excl = _run_endoexo_on_string(
+    _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "per_seed", 5.0))
+  assert near_excl["model"].get_number_of_atoms() == 72
+  assert _residue_atom_names(near_excl, "7") == set()
+
+  # per_seed, proximity above 5.88 A -> included whole (all 9 heavy atoms),
+  # regardless of the sidechain cut rules.
+  near_incl = _run_endoexo_on_string(
+    _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "per_seed", 7.0))
+  assert near_incl["model"].get_number_of_atoms() == 77
+  assert _residue_atom_names(near_incl, "7") == full_lys7
+
+  # global ignores proximity: included even with a tiny sphere.
+  glob = _run_endoexo_on_string(
+    _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "global", 1.0))
+  assert glob["model"].get_number_of_atoms() == 77
+  assert _residue_atom_names(glob, "7") == full_lys7
+
+  # Whole-residue expansion: a single-atom selection still pulls the
+  # complete residue.
+  expand = _run_endoexo_on_string(
+    _1BQ8_FE_SPHERE_PDB, include=("resseq 7 and name NZ", "global", 1.0))
+  assert _residue_atom_names(expand, "7") == full_lys7
 
 
 def exercise_submodel_shape():
@@ -857,23 +915,25 @@ def exercise_overgrowth_geometric_cut():
     f"present={sorted(present1)}")
 
 
-class _SimpleProxy(object):
-  def __init__(self, i, j):
-    self.i_seqs = (i, j)
+def _simple_bond_proxies(pdb_str):
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  model.process(
+    pdb_interpretation_params=model.get_current_pdb_interpretation_params(),
+    make_restraints=True)
+  grm = model.get_restraints_manager().geometry
+  simple, _asu = grm.get_all_bond_proxies(sites_cart=model.get_sites_cart())
+  return simple
 
 
-class _AsuProxy(object):
-  def __init__(self, i, j):
-    self.i_seq = i
-    self.j_seq = j
-
-
-class _AsuMappings(object):
-  def __init__(self, op):
-    self._op = op
-
-  def get_rt_mx_ji(self, proxy):
-    return self._op
+def _asu_bond_proxies(pdb_str, distance_cutoff=3.2):
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  pair_asu_table = model.get_xray_structure().pair_asu_table(
+    distance_cutoff=distance_cutoff)
+  sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    pair_asu_table=pair_asu_table)
+  return list(sorted_asu_proxies.asu), pair_asu_table.asu_mappings()
 
 
 def exercise_build_adjacency():
@@ -883,26 +943,32 @@ def exercise_build_adjacency():
   builder = AtomGraphBuilder()
   identity = _canon_op(sgtbx.rt_mx())
 
-  # Intra-ASU bond 0-1: identity op both ways.
-  adj = builder.build_adjacency([_SimpleProxy(0, 1)], [], None)
-  assert (1, identity) in adj[0]
-  assert (0, identity) in adj[1]
+  simple = _simple_bond_proxies(_1BQ8_FE_SPHERE_PDB)
+  assert len(simple) > 0
+  adj = builder.build_adjacency(simple, [], None)
+  for proxy in simple:
+    i_seq, j_seq = proxy.i_seqs
+    assert (j_seq, identity) in adj[i_seq]
+    assert (i_seq, identity) in adj[j_seq]
 
-  # Symmetry-crossing bond 0-1 under a unit z-translation: forward edge
-  # carries the op, reverse edge carries its inverse.
-  op = sgtbx.rt_mx("x,y,z+1")
-  adj = builder.build_adjacency([], [_AsuProxy(0, 1)], _AsuMappings(op))
-  assert (1, _canon_op(op)) in adj[0]
-  assert (0, _canon_op(op.inverse())) in adj[1]
-  # The reverse edge is the negative translation.
-  rev_ops = {o.as_xyz() for (j, o) in adj[1] if j == 0}
-  assert sgtbx.rt_mx("x,y,z-1").as_xyz() in rev_ops
+  asu, asu_mappings = _asu_bond_proxies(_2C2U_FE_SPHERE_PDB)
+  assert len(asu) > 0
+  adj = builder.build_adjacency([], asu, asu_mappings)
+  n_non_identity = 0
+  for proxy in asu:
+    op = _canon_op(asu_mappings.get_rt_mx_ji(proxy))
+    if op != identity:
+      n_non_identity += 1
+    assert (proxy.j_seq, op) in adj[proxy.i_seq]
+    assert (proxy.i_seq, _canon_op(op.inverse())) in adj[proxy.j_seq]
+  assert n_non_identity > 0
 
 
 def run():
   exercise_submodel_shape()
   exercise_cys_coordination()
   exercise_residue_composition()
+  exercise_residues_to_include()
   exercise_2c2u_symmetry_materialization()
   exercise_2c2u_fe_coordination_distances()
   exercise_2c2u_symmetry_truncation_consistency()
