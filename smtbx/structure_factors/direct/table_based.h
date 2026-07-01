@@ -183,6 +183,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       const std::string &file_name)
     {
       using namespace std;
+      typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
       ifstream tsc_file(file_name.c_str(), ios::binary);
 
       const size_t charsize = sizeof(char);
@@ -198,7 +199,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       if (head[0] != 0) {
         vector<char> header(head[0]);
         tsc_file.read(&header[0], head[0] * charsize);
-        header_str = header.data();
+        header_str = string(header.begin(), header.end());
       }
       //read scatterer labels and map onto scattterers list
       int sc_len[1] = {0};
@@ -209,18 +210,33 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       vector<string> toks;
       boost::split(toks, scat_str, boost::is_any_of(" "));
       SMTBX_ASSERT(toks.size() == nr_scat);
-      map<string, size_t> sc_map;
-      for (size_t sci = 0; sci < nr_scat; sci++) {
-        sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
-      }
       vector<size_t> sc_indices(nr_scat);
-      for (size_t sci = 0; sci < nr_scat; sci++) {
-        boost::to_upper(toks[sci]);
-        map<string, size_t>::iterator fsci = sc_map.find(toks[sci]);
-        SMTBX_ASSERT(fsci != sc_map.end())("scatterer " + toks[sci] + " not found!");
-        sc_indices[sci] = fsci->second;
+      if (boost::icontains(header_str, "SCATTERER_IDS")) {
+        cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers);
+        for (size_t sci = 0; sci < nr_scat; sci++) {
+          std::stringstream ss;
+          ss << std::hex << toks[sci];
+          uint64_t id_val;
+          ss >> id_val;
+          scatterer_id_t sc_id(id_val);
+          size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), 0, 1e-2);
+          SMTBX_ASSERT(idx != ~0);
+          sc_indices[sci] = idx;
+        }
       }
-      SMTBX_ASSERT(sc_map.size() == scatterers.size());
+      else {
+        map<string, size_t> sc_map;
+        for (size_t sci = 0; sci < nr_scat; sci++) {
+          sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
+        }
+        for (size_t sci = 0; sci < nr_scat; sci++) {
+          boost::to_upper(toks[sci]);
+          map<string, size_t>::iterator fsci = sc_map.find(toks[sci]);
+          SMTBX_ASSERT(fsci != sc_map.end())("scatterer " + toks[sci] + " not found!");
+          sc_indices[sci] = fsci->second;
+        }
+        SMTBX_ASSERT(sc_map.size() == scatterers.size());
+      }
       //binary tsc files will only be written in expanded mode
       parent_t::expanded = true;
       //read number of indices in tscb file
