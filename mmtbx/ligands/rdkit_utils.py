@@ -487,6 +487,8 @@ def build_drawing_mol_with_missing(frag_mol, cif_object, missing_names):
 # ------------------------------------------------------------------------------
 
 _FIG_SUPERSAMPLE = 2
+_FIG_BOND_PX = 60   # target bond length (logical px); sets the fixed figure scale
+_FIG_MAX_PX = 800   # cap on either canvas dimension (logical px) before supersample
 
 def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
                            frag_ccs=None, missing_atom_idxs=None):
@@ -595,26 +597,38 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       new_bond_highlights[bond.GetIdx()] = (0.7, 0.7, 0.7)
 
   # 8. Draw
-  # Base size scales with molecule complexity; canvas then stretches to match
-  # the molecule's 2D aspect ratio so long/thin ligands don't end up drawn
-  # in a narrow strip of a square canvas.
-  n_heavy = mol_viz.GetNumHeavyAtoms()
-  if   n_heavy > 40: base_px = 800
-  elif n_heavy > 20: base_px = 650
-  else:              base_px = 500
+  # Draw every ligand at a FIXED bond length so atoms and highlight blobs render
+  # at the same physical scale regardless of size; the canvas is then fitted to
+  # the molecule's 2D bounding box at that scale (+ padding). This makes the
+  # figure size a true visual cue of molecule size: a small ligand (e.g. EDO)
+  # yields a small figure, a large one a large figure. rdkit is NOT allowed to
+  # fit-to-canvas (which previously blew tiny molecules up to fill the frame).
+  bond_px = _FIG_BOND_PX * _FIG_SUPERSAMPLE
   conf = mol_viz.GetConformer()
   xs = [conf.GetAtomPosition(i).x for i in range(mol_viz.GetNumAtoms())]
   ys = [conf.GetAtomPosition(i).y for i in range(mol_viz.GetNumAtoms())]
   bb_w = max(xs) - min(xs) if xs else 1.0
   bb_h = max(ys) - min(ys) if ys else 1.0
-  aspect = max(0.33, min(3.0, (bb_w + 1e-6) / (bb_h + 1e-6)))
-  import math
-  width  = max(400, int(base_px * math.sqrt(aspect))) * _FIG_SUPERSAMPLE
-  height = max(400, int(base_px / math.sqrt(aspect))) * _FIG_SUPERSAMPLE
+  # Pixels per molecular unit from the median bond length in the 2D conformer.
+  bond_lens = []
+  for bond in mol_viz.GetBonds():
+    p1 = conf.GetAtomPosition(bond.GetBeginAtomIdx())
+    p2 = conf.GetAtomPosition(bond.GetEndAtomIdx())
+    bond_lens.append(((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2) ** 0.5)
+  bond_lens.sort()
+  median_bond = bond_lens[len(bond_lens) // 2] if bond_lens else 1.5
+  ppu = bond_px / (median_bond if median_bond > 1e-6 else 1.5)
+  pad = int(0.9 * bond_px)          # clears highlight blobs and atom labels
+  min_w = int(3.4 * bond_px)        # floor: keep the legend row from clipping
+  min_h = int(2.4 * bond_px)        # floor: linear ligands get vertical room
+  max_px = _FIG_MAX_PX * _FIG_SUPERSAMPLE
+  width  = max(min_w, min(max_px, int(bb_w * ppu) + 2 * pad))
+  height = max(min_h, min(max_px, int(bb_h * ppu) + 2 * pad))
   drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
 
   opts = drawer.drawOptions()
   opts.fillHighlights = True
+  opts.fixedBondLength = bond_px  # pin the scale; do not fit-to-canvas
   opts.padding = 0.05  # tight fit; badges + legend are added via PIL below
 
   drawer.DrawMolecule(
