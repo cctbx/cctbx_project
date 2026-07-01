@@ -951,19 +951,14 @@ class ligand_result(object):
   # ----------------------------------------------------------------------------
 
   def compute_cc(self, m1, m2, cs, sites_cart):
-    # site radii: depend on resolution and B-factors
-    # but ad-hoc value is probably OK. Use 1.0 because H atoms are included.
+    # site radii: ad-hoc 1.5 A around each atom (resolution/B-factor
+    # dependence ignored; good enough here).
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = cs.unit_cell(),
       fft_n_real = m1.focus(),
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
       site_radii = flex.double(sites_cart.size(), 1.5))
-    #print(sel.size())
-    # below selection maybe not necessary?
-    # maybe to prevent that particular grid points ruin the overall cc
-    m1 = m1.set_selected(m1<0, 0)
-    m2 = m2.set_selected(m1<0, 0)
     cc = flex.linear_correlation(
       x=m1.select(sel).as_1d(),
       y=m2.select(sel).as_1d()).coefficient()
