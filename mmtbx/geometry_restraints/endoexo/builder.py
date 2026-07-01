@@ -74,6 +74,7 @@ class QMRegionBuilder(object):
     self.params = params
     self.logger = logger
     self._results = []
+    self._include_nodes = set()
     self._graph_builder = AtomGraphBuilder()
     self._capper = HydrogenCapper(log=self.logger)
     self._bond_cut_detector = BondCutDetector(
@@ -127,6 +128,8 @@ class QMRegionBuilder(object):
     )
 
     model = self._apply_altloc_filter(model)
+
+    self._include_nodes = self._resolve_residues_to_include(model)
 
     seed_finder = SeedFinder()
     selection_strings = [s for s in (self.params.selection or []) if s]
@@ -443,7 +446,79 @@ class QMRegionBuilder(object):
       qm_nodes |= self._graph_builder.seed_sym_nodes_within_radius(
         seeds, model, self.params.radius
       )
+    qm_nodes |= self._include_nodes_for(seeds, model)
     return qm_nodes
+
+  def _resolve_residues_to_include(self, model):
+    """Identity-op nodes for every atom of every residue group touched by
+    ``params.residues_to_include.selection``.
+
+    The selection is expanded to whole residue groups, so a partial match
+    (e.g. a single atom name) still pulls in the complete residue.  Returns
+    an empty set when no selection is configured.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+
+    Returns
+    -------
+    set of (int, sgtbx.rt_mx)
+    """
+    selection = self.params.residues_to_include.selection
+    if not selection:
+      return set()
+    identity = _canon_op(sgtbx.rt_mx())
+    atoms = model.get_hierarchy().atoms()
+    nodes = set()
+    for iseq in model.selection(selection).iselection():
+      residue_group = atoms[iseq].parent().parent()
+      for atom_group in residue_group.atom_groups():
+        for residue_atom in atom_group.atoms():
+          nodes.add((residue_atom.i_seq, identity))
+    return nodes
+
+  def _include_nodes_for(self, seeds, model):
+    """Return the ``residues_to_include`` nodes applicable to *seeds*.
+
+    With ``scope=global`` every resolved include node applies to every seed
+    region.  With ``scope=per_seed`` (default) an included residue is kept
+    only when at least one of its atoms lies within ``proximity`` of a seed
+    atom in this group; the whole residue is kept when any atom qualifies.
+
+    Parameters
+    ----------
+    seeds : list of iotbx.pdb.hierarchy.atom
+    model : mmtbx.model.manager
+
+    Returns
+    -------
+    set of (int, sgtbx.rt_mx)
+    """
+    if not self._include_nodes:
+      return set()
+    scope = self.params.residues_to_include
+    if scope.scope == 'global':
+      return self._include_nodes
+
+    # per_seed: union the proximity spheres of every seed in this group,
+    # reusing the graph builder's cached KD-tree.
+    near = flex.bool(model.get_number_of_atoms(), False)
+    for seed in seeds:
+      near = near | self._graph_builder.atoms_within_radius_best(
+        seed, model, scope.proximity)
+    near_iseqs = set(near.iselection())
+
+    # Keep a residue whole if any of its atoms is inside a sphere.
+    atoms = model.get_hierarchy().atoms()
+    nodes_by_residue = defaultdict(list)
+    for node in self._include_nodes:
+      nodes_by_residue[id(atoms[node[0]].parent().parent())].append(node)
+    kept = set()
+    for residue_nodes in nodes_by_residue.values():
+      if any(iseq in near_iseqs for (iseq, _op) in residue_nodes):
+        kept.update(residue_nodes)
+    return kept
 
   def _add_hull_waters(self, model, visited_nodes):
     """Extend *visited_nodes* with water residue groups whose

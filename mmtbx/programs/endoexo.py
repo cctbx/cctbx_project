@@ -83,10 +83,26 @@ include_waters_in_convex_hull = True
 do_capping = True
   .type = bool
   .help = "Whether to perform capping of boundary atoms based on heuristics. If False, the output QM region will have uncapped dangling bonds."
-residues_to_include = None
-  .type = str
-  .help = "Selection string for residues to almost always include in the output (depending on chain specified in the selection string),
-  regardless of the sidechain rules. For example: 'chain A and resseq 50-100'."
+residues_to_include
+  .help = "Residues to include in the output whole, exempt from the sidechain \
+cut rules. Leave 'selection' unset to disable."
+{
+  selection = None
+    .type = str
+    .help = "CCTBX selection string, e.g. 'chain A and resseq 50-100'. \
+Expanded to whole residue groups, so a partial match still pulls in the \
+complete residue."
+  scope = *per_seed global
+    .type = choice
+    .help = "per_seed: add an included residue only to the region of a seed \
+it lies within 'proximity' of. global: add every included residue to every \
+seed region."
+  proximity = 5.0
+    .type = float(value_min=0)
+    .help = "per_seed only. A residue is included in a seed's region if any \
+of its atoms is within this distance (Angstrom) of any seed atom in that \
+group. Ignored when scope=global."
+}
 include_terminal_charges = False
   .type = bool
   .help = "If True, estimate free peptide termini charges inside the truncated QM region."
