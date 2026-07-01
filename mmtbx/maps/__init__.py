@@ -631,7 +631,7 @@ class diff_map_cryoem(object):
     return self.fo.array(
       data = self.compute_simple(phases=phases).data()*self.ss)
 
-  def compute_sigmaa(self, isotropize=False):
+  def compute_sigmaa(self, isotropize=True):
     import mmtbx.f_model
     fmodel = mmtbx.f_model.manager(
       f_obs          = abs(self.fo),
