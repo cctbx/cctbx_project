@@ -388,7 +388,7 @@ class QMRegionBuilder(object):
       'file_name': file_name,
       'n_atoms': model_sel.get_number_of_atoms(),
       'charge_summary': charge_summary,
-      # In-memory hand-off for downstream consumers (e.g., mmtbx.qmi
+      # In-memory hand-off for downstream consumers (e.g., mmtbx.geometry_restraints.qmi
       # predictor): the truncated sub-model with restraints attached,
       # and the positional indices of seed and cap atoms inside it.
       'model': model_sel,

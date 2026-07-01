@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-from mmtbx.qmi import metals as qmi_metals
+from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 
 
 class SeedFinder:
@@ -15,7 +15,7 @@ class SeedFinder:
   def find_metals(self, model, element_filter=None):
     """Return metal atom objects in *model*.
 
-    Delegates to ``mmtbx.qmi.metals.metal_atoms``. When *element_filter*
+    Delegates to ``mmtbx.geometry_restraints.qmi.metals.metal_atoms``. When *element_filter*
     is given, its element symbols are passed straight through as the
     ``metals=`` argument, restricting the scan to those element(s).
     When ``None``, the canonical ``METALS`` recognition list is used.
