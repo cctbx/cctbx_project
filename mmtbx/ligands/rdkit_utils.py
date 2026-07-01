@@ -648,7 +648,8 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
   # 9. Composite numbered badges at each fragment centroid and a wrapped
   #    legend below the molecule, so every CC stays linked to its fragment
   #    regardless of molecule shape or fragment count.
-  if frag_ccs is not None and frag_pixel_centroids:
+  has_missing = bool(missing_atom_idxs)
+  if (frag_ccs is not None and frag_pixel_centroids) or has_missing:
     try:
       from PIL import Image, ImageDraw as PILDraw, ImageFont
       import io as _io
@@ -732,7 +733,8 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
 
       legend_pad_top = 8 * _FIG_SUPERSAMPLE
       legend_pad_bot = 6 * _FIG_SUPERSAMPLE
-      legend_h = legend_pad_top + row_h * len(rows) + legend_pad_bot
+      n_legend_rows = len(rows) + (1 if has_missing else 0)
+      legend_h = legend_pad_top + row_h * n_legend_rows + legend_pad_bot
       canvas_h = height + legend_h
 
       img = Image.open(_io.BytesIO(png_bytes)).convert('RGBA')
@@ -770,6 +772,22 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
           except TypeError:
             draw.text((tx, y_row), cc_str, fill=color, font=legend_font)
           x += entry_w
+        y_row += row_h
+
+      if has_missing:
+        x = 10 * _FIG_SUPERSAMPLE
+        row_mid = y_row + row_h // 2
+        draw.ellipse(
+          (x, row_mid - badge_r, x + 2 * badge_r, row_mid + badge_r),
+          fill=(179, 179, 179), outline=(40, 40, 40),
+          width=2 * _FIG_SUPERSAMPLE)
+        tx = x + 2 * badge_r + badge_text_gap
+        try:
+          draw.text((tx, row_mid), '= missing atoms', fill=(80, 80, 80),
+                    font=legend_font, anchor='lm')
+        except TypeError:
+          draw.text((tx, y_row), '= missing atoms', fill=(80, 80, 80),
+                    font=legend_font)
         y_row += row_h
 
       out = _io.BytesIO()

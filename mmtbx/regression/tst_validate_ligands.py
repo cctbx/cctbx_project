@@ -749,6 +749,10 @@ def run_test15():
     rdkit_utils.draw_colored_fragments(
       draw_mol, lr._rdkit_frags, filename=tf.name, missing_atom_idxs=missing_idxs)
     assert os.path.getsize(tf.name) > 0
+    rdkit_utils.draw_colored_fragments(
+      draw_mol, lr._rdkit_frags, filename=tf.name,
+      missing_atom_idxs=missing_idxs, frag_ccs=None)
+    assert os.path.getsize(tf.name) > 0
   finally:
     os.unlink(tf.name)
 
