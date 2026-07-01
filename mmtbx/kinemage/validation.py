@@ -541,16 +541,7 @@ def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
         continue
       is_hydrogen = (atom_1.startswith('H') or atom_2.startswith('H') or
                      atom_1.startswith('D') or atom_2.startswith('D'))
-      if res_class in ('other', 'common_small_molecule'):
-        if is_hydrogen:
-          if show_hydrogen and atom_1 in het_hash and atom_2 in het_hash:
-            result['het_h'] += kin_vec(het_hash[atom_1][0], het_hash[atom_1][1],
-                                       het_hash[atom_2][0], het_hash[atom_2][1])
-        else:
-          if atom_1 in het_hash and atom_2 in het_hash:
-            result['het'] += kin_vec(het_hash[atom_1][0], het_hash[atom_1][1],
-                                     het_hash[atom_2][0], het_hash[atom_2][1])
-      elif res_class in ("common_amino_acid", "common_rna_dna"):
+      if res_class in ("common_amino_acid", "common_rna_dna"):
         if atom_1 in mc_atoms and atom_2 in mc_atoms:
           # Skip inter-residue bonds handled separately (C-N, O3'-P)
           if not ((atom_1 == "C" and atom_2 == "N") or
@@ -569,6 +560,17 @@ def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
           result['sc'] += kin_vec(key_hash[atom_1], xyz_hash[atom_1],
                                   key_hash[atom_2], xyz_hash[atom_2])
         drawn_bonds.append(drawn_key)
+      else:
+        # Het/ligand bonds (covers 'other', 'common_small_molecule',
+        # 'common_saccharide', and any other non-polymer classes)
+        if is_hydrogen:
+          if show_hydrogen and atom_1 in het_hash and atom_2 in het_hash:
+            result['het_h'] += kin_vec(het_hash[atom_1][0], het_hash[atom_1][1],
+                                       het_hash[atom_2][0], het_hash[atom_2][1])
+        else:
+          if atom_1 in het_hash and atom_2 in het_hash:
+            result['het'] += kin_vec(het_hash[atom_1][0], het_hash[atom_1][1],
+                                     het_hash[atom_2][0], het_hash[atom_2][1])
   return result
 
 def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hydrogen=True):
@@ -679,13 +681,15 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
           elif res_class == "common_element":
             ion_list += "{%s} %.3f %.3f %.3f\n" % (
               key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
-          elif res_class == "other" and len(residue.atoms()) == 1:
-            ion_list += "{%s} %.3f %.3f %.3f\n" % (
-              key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
-          elif residue.resname.lower() == 'hoh':
+          elif res_class == "common_water":
             if atom.name == ' O  ':
               water_list += "{%s} P %.3f %.3f %.3f\n" % (
                 key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
+          elif len(residue.atoms()) == 1:
+            # Single-atom non-polymer residue (e.g., lone S from SO4,
+            # unknown ligand with one atom) — draw as a sphere
+            ion_list += "{%s} %.3f %.3f %.3f\n" % (
+              key, atom.xyz[0], atom.xyz[1], atom.xyz[2])
           else:
             het_hash[atom.name.strip()] = [key, atom.xyz]
 
