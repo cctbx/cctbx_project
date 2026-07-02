@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-from xfel.merging.reflection_table_utils import reflection_table_utils
+from xfel.merging.application.reflection_table_utils import reflection_table_utils
 from dxtbx.imageset import ImageSetFactory
 from dxtbx.model.experiment_list import ExperimentList
 from dials.array_family import flex
@@ -36,7 +36,8 @@ class integrate(worker):
     all_integrated_expts = ExperimentList()
     all_integrated_refls = None
 
-    for expt_id, (expt, refls) in enumerate(reflection_table_utils.iterate_experiments_and_load_imagesets(experiments, reflections)):
+    for expt_id, (expt, refls) in enumerate(reflection_table_utils.iterate_experiments_and_load_imagesets(
+        experiments, reflections, params=self.params, mpi_helper=self.mpi_helper)):
       self.logger.log("Starting integration experiment %d"%expt_id)
       if self.params.integration.recruitment.expand_nave_parameters: # NKS request predictions on larger envelope
         eta = expt.crystal.get_half_mosaicity_deg()

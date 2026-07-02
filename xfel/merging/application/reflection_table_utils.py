@@ -156,28 +156,36 @@ class reflection_table_utils(object):
         yield reflection_table_stub(reflections)
 
   @staticmethod
-  def iterate_experiments_and_load_imagesets(params, experiments, reflections = None):
+  def iterate_experiments_and_load_imagesets(experiments, reflections = None, params = None, mpi_helper = None):
+    # Re-generate the image sets using their format classes so we can read the
+    # raw data, one experiment at a time to bound memory. Yields (expt, refls)
+    # per experiment; refls is None when reflections is not supplied.
+    # In psana2 mode the imageset paths are gathered across ranks (requires
+    # mpi_helper) so a shared streaming path can be re-made once per path.
+    from dxtbx.imageset import ImageSetFactory
 
-    # Re-generate the image sets using their format classes so we can read the raw data
     current_imageset = None
     current_imageset_path = None
 
-    if self.params.mp.psana2_mode:
+    if params is not None and params.mp.psana2_mode:
       paths_ = list(set([p for iset in experiments.imagesets() for p in iset.paths()]))
-      paths = list(set([p for plist in self.mpi_helper.comm.allgather(paths_) for p in plist]))
+      if mpi_helper is not None:
+        paths = list(set([p for plist in mpi_helper.comm.allgather(paths_) for p in plist]))
+      else:
+        paths = paths_
 
       for path in paths:
-        current_imageset_path = paths[0]
+        current_imageset_path = path
         current_imageset = ImageSetFactory.make_imageset([current_imageset_path])
-      
+
         for expt_id, expt in enumerate(experiments):
           assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
           if expt.imageset.paths()[0] != path: continue
-          
+
           idx = expt.imageset.indices()[0]
           expt.imageset = current_imageset[idx:idx+1]
 
-          if reflections:
+          if reflections is not None:
             refls = reflections.select(reflections['id'] == expt_id)
             refls['id'] = flex.int(len(refls), 0)
             idents = refls.experiment_identifiers()
@@ -192,7 +200,10 @@ class reflection_table_utils(object):
       for expt_id, expt in enumerate(experiments):
         assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
 
-        refls = reflections.select(reflections['id'] == expt_id)
+        if reflections is not None:
+          refls = reflections.select(reflections['id'] == expt_id)
+        else:
+          refls = None
 
         if expt.imageset.paths()[0] != current_imageset_path:
           current_imageset_path = expt.imageset.paths()[0]
@@ -200,10 +211,12 @@ class reflection_table_utils(object):
 
         idx = expt.imageset.indices()[0]
         expt.imageset = current_imageset[idx:idx+1]
-        idents = refls.experiment_identifiers()
-        del idents[expt_id]
-        idents[0] = expt.identifier
-        refls['id'] = flex.int(len(refls), 0)
+
+        if refls is not None:
+          idents = refls.experiment_identifiers()
+          del idents[expt_id]
+          idents[0] = expt.identifier
+          refls['id'] = flex.int(len(refls), 0)
 
         yield expt, refls
 
