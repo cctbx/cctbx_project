@@ -168,11 +168,22 @@ class reflection_table_utils(object):
     current_imageset_path = None
 
     if params is not None and params.mp.psana2_mode:
-      paths_ = list(set([p for iset in experiments.imagesets() for p in iset.paths()]))
+      # psana2 preempts MPI ranks 0 and 1 for backend data retrieval, so those
+      # ranks reach this worker with experiments = None. They must still take
+      # part in the collective allgather below (contributing no paths of their
+      # own) and stay in step with the rest of the ranks; treating them as an
+      # empty experiment list lets the per-experiment loop no-op on them.
+      if experiments is not None:
+        paths_ = list(set([p for iset in experiments.imagesets() for p in iset.paths()]))
+      else:
+        paths_ = []
       if mpi_helper is not None:
         paths = list(set([p for plist in mpi_helper.comm.allgather(paths_) for p in plist]))
       else:
         paths = paths_
+
+      if experiments is None:
+        experiments = []
 
       for path in paths:
         current_imageset_path = path
@@ -197,6 +208,8 @@ class reflection_table_utils(object):
           yield expt, refls
 
     else:
+      if experiments is None:
+        return
       for expt_id, expt in enumerate(experiments):
         assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
 
