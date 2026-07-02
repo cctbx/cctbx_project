@@ -78,7 +78,7 @@ class QMRegionBuilder(object):
     self._graph_builder = AtomGraphBuilder()
     self._capper = HydrogenCapper(log=self.logger)
     self._bond_cut_detector = BondCutDetector(
-      use_preferred_cuts=self.params.use_preferred_cuts,
+      use_preferred_cuts=self.params.capping.preferred_cuts,
       log=self.logger,
     )
     self._region_grower = QMRegionGrower(
@@ -114,10 +114,11 @@ class QMRegionBuilder(object):
     self.model_name = model_name
     self.default_output_filename = default_output_filename
 
-    if self.params.preferred_cut_fallback and not self.params.use_preferred_cuts:
+    if (self.params.capping.preferred_cuts_fallback
+        and not self.params.capping.preferred_cuts):
       print(
-        'Note: preferred_cut_fallback=True has no effect because '
-        'use_preferred_cuts=False (the geometric heuristic already applies '
+        'Note: capping.preferred_cuts_fallback=True has no effect because '
+        'capping.preferred_cuts=False (the geometric heuristic already applies '
         'to every bond).',
         file=self.logger,
       )
@@ -356,7 +357,8 @@ class QMRegionBuilder(object):
     visited_nodes, cap_nodes = self._region_grower.grow_region(
       qm_atoms, adjacency, model, max_depth=self.params.max_depth,
       preferred_cut_fallback=(
-        self.params.use_preferred_cuts and self.params.preferred_cut_fallback),
+        self.params.capping.preferred_cuts
+        and self.params.capping.preferred_cuts_fallback),
     )
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
@@ -797,7 +799,7 @@ class QMRegionBuilder(object):
     # would clash with the library's expected element for that name
     # inside non-standard residues).
     orig_element_for_iseq = {}
-    if self.params.do_capping:
+    if self.params.capping.enable:
       for cap_node, anchor_node in cap_nodes.items():
         cap_iseq_orig, cap_op = cap_node
         anchor_iseq_orig, anchor_op = anchor_node
