@@ -116,7 +116,7 @@ def get_restraints_from_model_via_grm(ligand_model,
       Sorry: Description
   """
   from libtbx.utils import null_out
-  ligand_model = copy.deepcopy(ligand_model)
+  ligand_model = ligand_model.deep_copy()
   ligand_model.unset_restraints_manager()
   ligand_model.log=null_out()
   ligand_model.process(make_restraints=True)
