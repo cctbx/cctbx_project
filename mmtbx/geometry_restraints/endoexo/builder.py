@@ -179,7 +179,7 @@ class QMRegionBuilder(object):
     adjacency = self._graph_builder.build_adjacency(
       bond_proxies_simple, bond_proxies_asu, asu_mappings)
 
-    cutoff = self.params.metal_ligand_cutoff
+    cutoff = self.params.contact_cutoff
     if not self.params.skip_radius_search:
       added_edges = self._graph_builder.add_seed_contact_edges(
         seeds_flat, model, adjacency, cutoff=cutoff
