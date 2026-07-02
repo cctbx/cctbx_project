@@ -1,4 +1,4 @@
-"""Seed-atom discovery for the endoexo QM-region builder."""
+"""Seed-atom discovery for the endo_exo QM-region builder."""
 
 from __future__ import absolute_import, division, print_function
 

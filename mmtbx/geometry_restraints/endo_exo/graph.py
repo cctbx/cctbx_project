@@ -1,4 +1,4 @@
-"""Symmetry-aware covalent adjacency graph construction for the endoexo
+"""Symmetry-aware covalent adjacency graph construction for the endo_exo
 QM-region builder."""
 
 from __future__ import absolute_import, division, print_function
@@ -9,7 +9,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scipy.spatial import KDTree
 
-from mmtbx.geometry_restraints.endoexo.util import _canon_op
+from mmtbx.geometry_restraints.endo_exo.util import _canon_op
 
 
 class AtomGraphBuilder:

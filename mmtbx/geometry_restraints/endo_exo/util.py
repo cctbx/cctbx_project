@@ -1,4 +1,4 @@
-"""Symmetry-op canonicalisation and adjacency helpers for the endoexo
+"""Symmetry-op canonicalisation and adjacency helpers for the endo_exo
 QM-region builder."""
 
 from __future__ import absolute_import, division, print_function

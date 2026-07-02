@@ -3,7 +3,7 @@ hydrogen-capping sites."""
 
 from __future__ import absolute_import, division, print_function
 
-from mmtbx.geometry_restraints.endoexo.util import _neighbour_iseqs
+from mmtbx.geometry_restraints.endo_exo.util import _neighbour_iseqs
 
 
 PREFERRED_CUTS = {
