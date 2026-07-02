@@ -464,19 +464,27 @@ class ProcessDialog(wx.Dialog):
     return (self._aborted)
 
   def handle_error(self):
-    if isinstance(self._error, Exception):
-      raise event.data
-    elif isinstance(self._error, tuple):
-      exception, traceback = self._error
-      if (isinstance(exception, Sorry)):
-        raise Sorry(str(exception))
-      raise RuntimeError("""\
-Error in subprocess!
- Original error: %s
- Original traceback:
-%s""" % (str(exception), traceback))
-    else :
-      raise Sorry("error in child process: %s" % str(self._error))
+    error = self._error
+    traceback = None
+    if isinstance(error, tuple):
+      error, traceback = error
+    if isinstance(error, BaseException):
+      # Re-raise the original exception so its type survives to the error
+      # handler (a URLError stays a URLError, a Sorry stays a Sorry).  The
+      # worker traceback is dropped when the exception is pickled across a
+      # process boundary, so re-attach it as a note for the bug report.
+      if traceback and getattr(error, "__traceback__", None) is None:
+        try:
+          error.add_note("Worker traceback:\n%s" % traceback)
+        except AttributeError:  # add_note requires Python 3.11+
+          pass
+      raise error
+    # 'error' is a non-exception payload -- e.g. the detached-process transport
+    # (runtime_utils) stringifies an un-pickleable exception.  Keep the worker
+    # traceback so a genuine crash is still reported, not shown as benign.
+    if traceback:
+      raise RuntimeError("Error in subprocess: %s\n\n%s" % (str(error), traceback))
+    raise Sorry("error in child process: %s" % str(error))
    # finally :
    #   self.EndModal(wx.ID_CANCEL)
 
