@@ -59,9 +59,9 @@ radius = 5.0
 skip_radius_search = False
   .type = bool
   .help = "If True, the initial radius search is skipped and only the seed atoms themselves seed the QM region (BFS expansion still applies)."
-metal_ligand_cutoff = 3.0
+contact_cutoff = 3.0
   .type = float(value_min=0)
-  .help = "Distance cutoff in Angstrom used to add fallback metal-ligand edges when bond proxies do not include coordination bonds."
+  .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
 max_depth = 3
   .type = int(value_min=0)
   .help = "Maximum BFS depth from any atom within the QM region."
