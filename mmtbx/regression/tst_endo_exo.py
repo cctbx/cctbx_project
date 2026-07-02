@@ -1,4 +1,4 @@
-"""Regression test: ``mmtbx.development.endoexo`` produces a stable
+"""Regression test: ``mmtbx.development.endo_exo`` produces a stable
 QM region around two contrasting Fe sites:
 
 * **1BQ8** (Pyrococcus rubredoxin, P 21 21 21).  All four Cys ligands
@@ -31,19 +31,19 @@ from libtbx.utils import format_cpu_times
 
 import mmtbx.model
 from iotbx.data_manager import DataManager
-from mmtbx.programs.endoexo import Program as EndoexoProgram
+from mmtbx.programs.endo_exo import Program as EndoexoProgram
 from scitbx import matrix
 from cctbx import geometry_restraints, sgtbx
 
-from mmtbx.geometry_restraints.endoexo.util import _canon_op
-from mmtbx.geometry_restraints.endoexo.capping import HydrogenCapper
-from mmtbx.geometry_restraints.endoexo.cutting import BondCutDetector
-from mmtbx.geometry_restraints.endoexo.graph import AtomGraphBuilder
-from mmtbx.geometry_restraints.endoexo.grow import QMRegionGrower
+from mmtbx.geometry_restraints.endo_exo.util import _canon_op
+from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
+from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
+from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
+from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 
 
 # 8 A sphere around the Fe of 1BQ8 (29 residues, 154 atoms).  Slightly
-# larger than the QM region endoexo extracts (72 atoms) so the BFS has
+# larger than the QM region endo_exo extracts (72 atoms) so the BFS has
 # scaffold to cap into.
 _1BQ8_FE_SPHERE_PDB = """\
 CRYST1   33.823   34.705   43.204  90.00  90.00  90.00 P 21 21 21
@@ -208,8 +208,8 @@ HETATM  604  O   HOH A 422       9.389  18.060   1.780  0.34  9.73           O
 """
 
 
-def _run_endoexo_on_string(pdb_str, radius=None, include=None, selection=None):
-  """Drive ``mmtbx.programs.endoexo.Program`` in-memory on a PDB string
+def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
+  """Drive ``mmtbx.programs.endo_exo.Program`` in-memory on a PDB string
   with default settings (metal scan, radius=5.0, depth=3).  Parses the
   string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
   the single result dict produced for the seed.  *radius* overrides
@@ -266,32 +266,32 @@ def exercise_residues_to_include():
   full_lys7 = {"N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ"}
 
   # Baseline: Lys 7 is not in the default region.
-  base = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  base = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
   assert base["model"].get_number_of_atoms() == 72
   assert _residue_atom_names(base, "7") == set()
 
   # per_seed, proximity below the 5.88 A closest approach -> still excluded.
-  near_excl = _run_endoexo_on_string(
+  near_excl = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "per_seed", 5.0))
   assert near_excl["model"].get_number_of_atoms() == 72
   assert _residue_atom_names(near_excl, "7") == set()
 
   # per_seed, proximity above 5.88 A -> included whole (all 9 heavy atoms),
   # regardless of the sidechain cut rules.
-  near_incl = _run_endoexo_on_string(
+  near_incl = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "per_seed", 7.0))
   assert near_incl["model"].get_number_of_atoms() == 77
   assert _residue_atom_names(near_incl, "7") == full_lys7
 
   # global ignores proximity: included even with a tiny sphere.
-  glob = _run_endoexo_on_string(
+  glob = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "global", 1.0))
   assert glob["model"].get_number_of_atoms() == 77
   assert _residue_atom_names(glob, "7") == full_lys7
 
   # Whole-residue expansion: a single-atom selection still pulls the
   # complete residue.
-  expand = _run_endoexo_on_string(
+  expand = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7 and name NZ", "global", 1.0))
   assert _residue_atom_names(expand, "7") == full_lys7
 
@@ -299,7 +299,7 @@ def exercise_residues_to_include():
 def exercise_submodel_shape():
   """Lock in the structural shape of the submodel: total atom count,
   element distribution, seed and cap iseq counts."""
-  result = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
 
   atoms = list(result["model"].get_hierarchy().atoms())
   assert len(atoms) == 72, (
@@ -324,7 +324,7 @@ def exercise_submodel_shape():
 def exercise_cys_coordination():
   """Verify the chemistry: the four Cys side chains coordinate the Fe
   with Sg atoms within 3 A of the seed."""
-  result = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
   hier = result["model"].get_hierarchy()
   atoms = list(hier.atoms())
 
@@ -434,7 +434,7 @@ def exercise_2c2u_symmetry_materialization():
     the parent "A" plus at least two additional chains for the
     symmetry images.
   """
-  result = _run_endoexo_on_string(_2C2U_FE_SPHERE_PDB)
+  result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
   hier = result["model"].get_hierarchy()
 
   fe_atoms = 0
@@ -476,7 +476,7 @@ def exercise_2c2u_fe_coordination_distances():
   """The three Asp 93 OD1/OD2 and three HOH 2154 oxygens that survive
   materialization should all be within Fe coordination range
   (<= 3.0 A from the deduplicated Fe)."""
-  result = _run_endoexo_on_string(_2C2U_FE_SPHERE_PDB)
+  result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
   hier = result["model"].get_hierarchy()
   atoms = list(hier.atoms())
 
@@ -518,7 +518,7 @@ def exercise_2c2u_symmetry_truncation_consistency():
   the symmetry-aware seeding the identity copy kept CA/CB (its atoms were
   ASU seeds) while the symmetry images, reached only by BFS, were cut at
   CA-CB; this pins that asymmetry shut."""
-  result = _run_endoexo_on_string(_2C2U_FE_SPHERE_PDB, radius=6.0)
+  result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB, radius=6.0)
   hier = result["model"].get_hierarchy()
 
   asp_copies = []
@@ -549,7 +549,7 @@ def exercise_2c2u_symmetry_truncation_consistency():
 def exercise_residue_composition():
   """The default buffer (radius=5, depth=3) pulls in a stable scaffold
   around the four coordinating Cys.  Pin the residue type counts."""
-  result = _run_endoexo_on_string(_1BQ8_FE_SPHERE_PDB)
+  result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
   hier = result["model"].get_hierarchy()
 
   resname_counts = {}
@@ -640,7 +640,7 @@ def exercise_selection_seed_terminates():
   """A non-metal ``selection`` seed on a symmetric crystal grows a bounded,
   covalent-only region: the run returns a finite region that contains the
   seeded residue with its side chain kept whole."""
-  result = _run_endoexo_on_string(_1YJP_PEPTIDE_PDB, selection="resid 3")
+  result = _run_endo_exo_on_string(_1YJP_PEPTIDE_PDB, selection="resid 3")
 
   # Finite region, not an unbounded lattice walk.
   n = result["model"].get_number_of_atoms()

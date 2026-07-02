@@ -2,7 +2,7 @@
 finding metal atoms in a model or atoms array.
 
 Single source of truth for "what counts as a metal" across qmi and
-endoexo. Both modules import ``METALS`` from here instead of carrying
+endo_exo. Both modules import ``METALS`` from here instead of carrying
 private copies that can drift apart.
 
 Element symbols are in Title case (``'Mg'``, ``'Fe'``, ``'ZN'`` ->

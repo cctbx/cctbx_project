@@ -22,19 +22,19 @@ from scitbx import matrix
 
 from scipy.spatial import ConvexHull
 
-from mmtbx.geometry_restraints.endoexo.util import _canon_op
-from mmtbx.geometry_restraints.endoexo.seeds import SeedFinder
-from mmtbx.geometry_restraints.endoexo.graph import AtomGraphBuilder
-from mmtbx.geometry_restraints.endoexo.cutting import BondCutDetector
-from mmtbx.geometry_restraints.endoexo.grow import QMRegionGrower
-from mmtbx.geometry_restraints.endoexo.capping import HydrogenCapper
-from mmtbx.geometry_restraints.endoexo.charge import ChargeEstimator
+from mmtbx.geometry_restraints.endo_exo.util import _canon_op
+from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
+from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
+from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
+from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
+from mmtbx.geometry_restraints.endo_exo.charge import ChargeEstimator
 
 
 # Sidecar PHIL emitted alongside each QM-region PDB/mmCIF.  Indices are
 # 0-based positional indices into the output PDB/mmCIF atom list.
 master_sidecar_phil_str = """
-endoexo_region {
+endo_exo_region {
   cap_atoms = None
     .type = ints
     .help = "Indices of hydrogen cap atoms in the QM-region output file."
@@ -64,7 +64,7 @@ class QMRegionBuilder(object):
   ----------
   params : group_args-like
       Resolved parameters (the ``master_phil_str`` scope extract from
-      :class:`mmtbx.programs.endoexo.Program`, or any object exposing the
+      :class:`mmtbx.programs.endo_exo.Program`, or any object exposing the
       same attributes).
   logger : file-like or None, optional
       Destination for diagnostic messages.
@@ -179,7 +179,7 @@ class QMRegionBuilder(object):
     adjacency = self._graph_builder.build_adjacency(
       bond_proxies_simple, bond_proxies_asu, asu_mappings)
 
-    # Seed-contact edges disabled (see contact_cutoff note in endoexo.py).
+    # Seed-contact edges disabled (see contact_cutoff note in endo_exo.py).
     # cutoff = self.params.contact_cutoff
     # if not self.params.skip_radius_search:
     #   added_edges = self._graph_builder.add_seed_contact_edges(
@@ -888,11 +888,11 @@ class QMRegionBuilder(object):
     """
     sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
     sidecar_phil_extract = sidecar_phil.extract()
-    sidecar_phil_extract.endoexo_region.cap_atoms = list(cap_indices)
-    sidecar_phil_extract.endoexo_region.cap_original_elements = list(
+    sidecar_phil_extract.endo_exo_region.cap_atoms = list(cap_indices)
+    sidecar_phil_extract.endo_exo_region.cap_original_elements = list(
       cap_original_elements)
-    sidecar_phil_extract.endoexo_region.seed_atoms = list(seed_indices)
-    sidecar_phil_extract.endoexo_region.selection_string = selection_string
+    sidecar_phil_extract.endo_exo_region.seed_atoms = list(seed_indices)
+    sidecar_phil_extract.endo_exo_region.selection_string = selection_string
     sidecar_phil_path = file_name + '.phil'
     with open(sidecar_phil_path, 'w') as file:
       sidecar_phil.format(sidecar_phil_extract).show(out=file)

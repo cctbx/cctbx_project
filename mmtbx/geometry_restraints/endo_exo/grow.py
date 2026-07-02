@@ -7,8 +7,8 @@ from collections import deque
 
 from cctbx import sgtbx
 
-from mmtbx.geometry_restraints.endoexo.util import _canon_op, _neighbour_iseqs
-from mmtbx.geometry_restraints.endoexo.cutting import (
+from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
+from mmtbx.geometry_restraints.endo_exo.cutting import (
   BondCutDetector, PREFERRED_CUTS)
 
 

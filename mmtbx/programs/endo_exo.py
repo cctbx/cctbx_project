@@ -1,4 +1,4 @@
-"""mmtbx.endoexo — QM region builder with BFS expansion and hydrogen capping.
+"""mmtbx.endo_exo — QM region builder with BFS expansion and hydrogen capping.
 
 Grows a QM region around each seed site (metal atoms by default, or a
 user-supplied selection) by breadth-first traversal of the covalent graph,
@@ -8,14 +8,14 @@ sidecar PHIL file per seed.
 
 Usage (via dispatcher):
 
-    mmtbx.endoexo model.pdb
-    mmtbx.endoexo model.pdb selection="chain A and resseq 100" radius=5.0
-    mmtbx.endoexo model.pdb selection="chain A and resseq 100" \\
+    mmtbx.endo_exo model.pdb
+    mmtbx.endo_exo model.pdb selection="chain A and resseq 100" radius=5.0
+    mmtbx.endo_exo model.pdb selection="chain A and resseq 100" \\
                              selection="chain B and resseq 200"
 
 Programmatic use::
 
-    from mmtbx.programs.endoexo import Program
+    from mmtbx.programs.endo_exo import Program
     from iotbx.cli_parser import run_program
     run_program(program_class=Program)
 """
@@ -29,7 +29,7 @@ except ImportError:
 
 from libtbx.utils import Sorry
 
-from mmtbx.geometry_restraints.endoexo.builder import QMRegionBuilder
+from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
 
 
 master_phil_str = """
@@ -129,7 +129,7 @@ class Program(ProgramTemplate):
   Seeds the QM region either from all metals in the structure (default) or
   from a user-supplied CCTBX selection string (``selection`` parameter).
   The heavy lifting is delegated to
-  :class:`mmtbx.geometry_restraints.endoexo.builder.QMRegionBuilder`.
+  :class:`mmtbx.geometry_restraints.endo_exo.builder.QMRegionBuilder`.
   """
 
   description = '''

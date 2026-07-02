@@ -31,8 +31,8 @@ general_tests = [
   "$D/ions/tst_validate_mg.py",
   "$D/ions/tst_symmetry_axis.py",
   "$D/ions/tst_utils.py",
-  # endoexo
-  "$D/regression/tst_endoexo.py",
+  # endo_exo
+  "$D/regression/tst_endo_exo.py",
   # TLS
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",
