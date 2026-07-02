@@ -34,11 +34,45 @@ save_fragment_png = False
   .type = bool
 run_qmr = False
   .type = bool
+frag_consistency {
+  delta_weak = 0.20
+    .type = float
+    .help = "Flag a fragment as localized-weak if its RSCC is this far below the overall ligand RSCC. Provisional default; calibrate on more ligands."
+  obs_floor = 0.30
+    .type = float
+    .help = "Minimum mean observed (omit-map, sigma) density for a fragment to enter the model/observed balance check. Provisional default."
+  balance_ratio = 1.5
+    .type = float
+    .help = "Flag inconsistent modeling if max/min of per-fragment (mean model / mean observed) density across ordered fragments reaches this. Provisional default."
+}
 }
 """
 
 def master_params():
   return phil.parse(master_params_str, process_includes = False)
+
+def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
+                         delta_weak=0.20, obs_floor=0.30, balance_ratio=1.5):
+  # Single "inspect fragments" flag. (A) a fragment far below the whole ligand
+  # (localized weak density); (B) ordered fragments at inconsistent
+  # observed-vs-model density scales (occupancy/B imbalance).
+  reasons = []
+  n = len(frag_ccs)
+  if n and cc_overall is not None:
+    cc_min = min(frag_ccs)
+    if cc_min <= cc_overall - delta_weak:
+      reasons.append('(A) fragment %d RSCC %.2f << overall %.2f'
+                     % (frag_ccs.index(cc_min) + 1, cc_min, cc_overall))
+  balances = [(i, frag_mod[i] / frag_obs[i]) for i in range(n)
+              if frag_obs[i] >= obs_floor and frag_obs[i] > 0 and frag_mod[i] > 0]
+  if len(balances) >= 2:
+    hi = max(balances, key=lambda t: t[1])
+    lo = min(balances, key=lambda t: t[1])
+    if lo[1] > 0 and hi[1] / lo[1] >= balance_ratio:
+      reasons.append('(B) modeling imbalance, fragment %d vs %d'
+                     % (hi[0] + 1, lo[0] + 1))
+  return group_args(flag='inspect' if reasons else 'consistent',
+                    reason='; '.join(reasons))
 
 # =============================================================================
 
@@ -176,6 +210,11 @@ class manager(list):
            ', '.join(f'{cc:.2f}' for cc in lr.get_ccs().frag_ccs.values())
            if lr.get_ccs() and getattr(lr.get_ccs(), 'frag_ccs', None) else '-'
        )},
+      {'headers': ['', 'fragment', 'flag'], 'width': 10,
+       'data_fn': lambda lr: (
+           ('OK' if getattr(lr.get_ccs(), 'fragment_flag', None) == 'consistent'
+            else getattr(lr.get_ccs(), 'fragment_flag', None) or '-')
+           if lr.get_ccs() else '-')},
 
       {'headers': ['% bad', 'map values', 'Fo-Fc'], 'width': 12,
        'data_fn': lambda lr: f"{lr.get_map_values().percent_bad_at_atom_centers}" if lr.get_map_values() else 'NA'},
@@ -332,10 +371,18 @@ class manager(list):
       if lr.resname in resnames: continue
       resnames.append(lr.resname)
       frag_isels = lr.ligand_rigid_components_isels
+      ccs = lr.get_ccs()
+      # frag_obs/frag_mod are ordered by fragment (same order as frag_isels)
+      fo = list(ccs.frag_obs.values()) if (ccs and getattr(ccs, 'frag_obs', None)) else None
+      fm = list(ccs.frag_mod.values()) if (ccs and getattr(ccs, 'frag_mod', None)) else None
       print('\n', file=self.log)
       print(lr.id_str, file=self.log)
       for i, rigid_comp in enumerate(frag_isels, start=1):
-        print('  fragment %s:\t' % i, ", ".join(lr._ph.atoms()[idx].name for idx in rigid_comp), file=self.log)
+        names = ", ".join(lr._ph.atoms()[idx].name for idx in rigid_comp)
+        extra = ''
+        if fo is not None and fm is not None and i - 1 < len(fo):
+          extra = '\t(obs/model %.2f/%.2f)' % (fo[i - 1], fm[i - 1])
+        print('  fragment %s:\t' % i, names + extra, file=self.log)
 
 # =============================================================================
 
@@ -851,7 +898,11 @@ class ligand_result(object):
     ccs = group_args(
           rscc = cc,
           rscc_sites = None,
-          frag_ccs = None
+          frag_ccs = None,
+          frag_obs = None,
+          frag_mod = None,
+          fragment_flag = None,
+          fragment_reason = None,
        )
 
     return ccs
@@ -908,11 +959,16 @@ class ligand_result(object):
     # consistent with the whole-ligand/sites CCs (which use *_noH); the rigid
     # components themselves keep their H (used for the figure and Coot).
     frag_ccs = {}
+    frag_obs = {}
+    frag_mod = {}
     for isel in self.ligand_rigid_components_isels:
       isel_noH = isel.intersection(self.ligand_isel_noH)
       sites_cart = sc.select(isel_noH)
-      cc = self.compute_cc(m1, m2, cs, sites_cart)
+      cc, obs_mean, mod_mean = self.compute_cc(m1, m2, cs, sites_cart,
+                                               return_means=True)
       frag_ccs[isel] = cc
+      frag_obs[isel] = obs_mean
+      frag_mod[isel] = mod_mean
 
     # ----- RSCC for sites -----
 
@@ -940,17 +996,30 @@ class ligand_result(object):
 
 
     # ----- save -----
+    fcp = self.params.frag_consistency
+    consistency = fragment_consistency(
+      cc_overall    = cc_total,
+      frag_ccs      = list(frag_ccs.values()),
+      frag_obs      = list(frag_obs.values()),
+      frag_mod      = list(frag_mod.values()),
+      delta_weak    = fcp.delta_weak,
+      obs_floor     = fcp.obs_floor,
+      balance_ratio = fcp.balance_ratio)
     ccs = group_args(
           rscc = cc_total,
           rscc_sites = cc_total_sites,
-          frag_ccs = frag_ccs
+          frag_ccs = frag_ccs,
+          frag_obs = frag_obs,
+          frag_mod = frag_mod,
+          fragment_flag = consistency.flag,
+          fragment_reason = consistency.reason,
        )
 
     return ccs
 
   # ----------------------------------------------------------------------------
 
-  def compute_cc(self, m1, m2, cs, sites_cart):
+  def compute_cc(self, m1, m2, cs, sites_cart, return_means=False):
     # site radii: ad-hoc 1.5 A around each atom (resolution/B-factor
     # dependence ignored; good enough here).
     sel = maptbx.grid_indices_around_sites(
@@ -959,10 +1028,11 @@ class ligand_result(object):
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
       site_radii = flex.double(sites_cart.size(), 1.5))
-    cc = flex.linear_correlation(
-      x=m1.select(sel).as_1d(),
-      y=m2.select(sel).as_1d()).coefficient()
-
+    x = m1.select(sel).as_1d()
+    y = m2.select(sel).as_1d()
+    cc = flex.linear_correlation(x=x, y=y).coefficient()
+    if return_means:
+      return cc, flex.mean(x), flex.mean(y)
     return cc
 
   # ----------------------------------------------------------------------------
@@ -1234,6 +1304,12 @@ class ligand_result(object):
         rscc       = _f(ccs.rscc)       if ccs is not None else None,
         rscc_sites = _f(ccs.rscc_sites) if ccs is not None else None,
         frag_ccs   = frag_ccs_plain,
+        frag_obs   = ([float(v) for v in ccs.frag_obs.values()]
+                      if ccs is not None and getattr(ccs, 'frag_obs', None) else None),
+        frag_mod   = ([float(v) for v in ccs.frag_mod.values()]
+                      if ccs is not None and getattr(ccs, 'frag_mod', None) else None),
+        fragment_flag   = getattr(ccs, 'fragment_flag', None) if ccs is not None else None,
+        fragment_reason = getattr(ccs, 'fragment_reason', None) if ccs is not None else None,
       ) if ccs is not None else None,
       overlaps = group_args(
         n_clashes = _i(ov.n_clashes) if ov is not None else None,

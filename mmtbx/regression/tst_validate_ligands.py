@@ -60,6 +60,7 @@ def run():
   run_test15()
   run_test16()
   run_test17()
+  run_test18()
 
 # ------------------------------------------------------------------------------
 
@@ -767,6 +768,28 @@ def run_test16():
   assert len(lr2._draw_missing_idxs) == 0, lr2._draw_missing_idxs
   snap = lr1.as_picklable_snapshot()
   assert snap.fragment_png_bytes is not None
+
+def run_test18():
+  from mmtbx.validation.validate_ligands import fragment_consistency as fc
+  # consistent: balances ~equal, no weak fragment
+  r = fc(0.90, [0.88, 0.91, 0.89], [0.60, 0.70, 0.65], [0.90, 1.00, 0.95])
+  assert r.flag == 'consistent', r.flag
+  # (A) localized weak fragment (STI-like): frag 6 RSCC 0.19 << overall 0.86
+  r = fc(0.86, [0.78, 0.93, 0.88, 0.84, 0.73, 0.19],
+              [0.49, 0.60, 0.37, 0.18, 0.24, -0.22],
+              [0.77, 0.95, 0.96, 0.83, 0.96, 0.02])
+  assert r.flag == 'inspect', r.flag
+  assert '(A)' in r.reason and 'fragment 6' in r.reason, r.reason
+  # (B) inconsistent balance (EPE-like): sulfonate mod/obs 2.46 vs ring 1.46
+  r = fc(0.78, [0.83, 0.82, 0.77], [0.505, 0.681, 0.520], [1.244, 0.992, 1.096])
+  assert r.flag == 'inspect', r.flag
+  assert '(B)' in r.reason, r.reason
+  # obs_floor guard: a near-zero-obs fragment is excluded from (B), not a div blow-up
+  r = fc(0.90, [0.90, 0.90], [0.05, 0.60], [1.00, 0.90])
+  assert r.flag == 'consistent', r.flag   # only 1 fragment clears obs_floor -> (B) skipped
+  print('OK run_test18')
+
+# ------------------------------------------------------------------------------
 
 def run_test17():
   print('test17')
