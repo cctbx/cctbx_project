@@ -67,24 +67,26 @@ skip_radius_search = False
 max_depth = 3
   .type = int(value_min=0)
   .help = "Maximum BFS depth from any atom within the QM region."
-use_preferred_cuts = True
-  .type = bool
-  .help = "Whether to use preferred cut atoms for each residue type when identifying candidate bonds for capping, instead of relying on heuristics alone."
-preferred_cut_fallback = False
-  .type = bool
-  .help = "Only effective when use_preferred_cuts=True. When a preferred-cut \
+capping {
+  enable = True
+    .type = bool
+    .help = "Whether to perform capping of boundary atoms based on heuristics. If False, the output QM region will have uncapped dangling bonds."
+  preferred_cuts = True
+    .type = bool
+    .help = "Whether to use preferred cut atoms for each residue type when identifying candidate bonds for capping, instead of relying on heuristics alone."
+  preferred_cuts_fallback = False
+    .type = bool
+    .help = "Only effective when preferred_cuts=True. When a preferred-cut \
 bond ends up with both endpoints inside the region (e.g. the radius search \
 seeded atoms on both sides of it, so the preferred cut can no longer be \
 made), fall back to the geometric C-C heuristic to re-cut inward of it and \
 trim the resulting backbone overgrowth. Never trims atoms inside 'radius'. \
-No effect when use_preferred_cuts=False (the geometric heuristic already \
+No effect when preferred_cuts=False (the geometric heuristic already \
 applies to every bond)."
+}
 include_waters_in_convex_hull = True
   .type = bool
   .help = "Whether to check for water molecules inside the convex hull of the selected QM region and add them to the QM region if found."
-do_capping = True
-  .type = bool
-  .help = "Whether to perform capping of boundary atoms based on heuristics. If False, the output QM region will have uncapped dangling bonds."
 residues_to_include
   .help = "Residues to include in the output whole, exempt from the sidechain \
 cut rules. Leave 'selection' unset to disable."
