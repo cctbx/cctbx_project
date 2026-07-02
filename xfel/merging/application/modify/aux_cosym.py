@@ -513,6 +513,7 @@ class TargetWithCustomSymops(TargetWithFastRij):
       for i, (axis, angle) in enumerate(ld_tuples):
         if axis in twin_axes and angle in twin_angles:
           i_symops_to_keep.append(i)
+      #assert 1==0, "requested twin law %s not found, instead use autodetection with lattice_symmetry_max_delta=1.0"%self.params.twin_axis
       assert len(i_symops_to_keep) == len(twin_axes)
       sym_ops = [auto_sym_ops[i] for i in i_symops_to_keep]
     else:

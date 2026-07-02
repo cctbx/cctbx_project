@@ -328,12 +328,22 @@ modify
 }
 """
 
+export_phil = """
+export
+  .help = Condense all expt + refl, output a single batch MTZ for Careless
+  {
+  output_label = None
+    .type = str
+    .help = If output_label is not None, worker writes a batch MTZ file.
+  }
+"""
+
 select_phil = """
 select
   .help = The select section accepts or rejects specified reflections
   .help = refer to the filter section for filtering of whole experiments
   {
-  algorithm = panel cspad_sensor significance_filter isolation_forest
+  algorithm = panel cspad_sensor significance_filter isolation_forest target_energy
     .type = choice(multi=True)
   cspad_sensor {
     number = None
@@ -405,6 +415,19 @@ select
     random_seed = 0
       .type = int
       .help = seed for the random forest model
+    }
+  target_energy {
+    target_eV = None
+      .type = float
+      .help = Target photon energy in eV against which each reflection's
+      .help = spectrum- and rocking-curve-weighted expected energy <E> is
+      .help = compared when filtering.
+    n_sigma = 1.0
+      .type = float
+      .help = Number of energy spreads (sigma_E, the second central moment of
+      .help = the contributing-photon energy distribution) within which a
+      .help = reflection's expected energy <E> must lie of target_eV to
+      .help = be kept.
     }
 }
 """
@@ -921,6 +944,7 @@ modify.cosym.use_curvatures=False
 """
 
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
+              export_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil + lunus_phil + \
               publish_phil + diffbragg_phil + monitor_phil + filter_global_phil + \

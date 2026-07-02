@@ -247,6 +247,11 @@ class crystal_model(worker):
           self.logger.main_log("Using target unit cell: " + str(unit_cell))
 
     # create symmetry for the full miller set
+#    if self.mpi_helper.rank == 0:
+#      import IPython;IPython.embed()
+#    else:
+#      import time
+#      time.sleep(1000000)
     symm = symmetry(unit_cell=unit_cell, space_group_info = self.params.scaling.space_group)
 
     # Adjust the minimum d-spacing of the generated Miller set to assure

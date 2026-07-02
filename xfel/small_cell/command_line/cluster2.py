@@ -102,7 +102,8 @@ class ManualClusterer:
         
         # Compute KDE maxima
         if n_maxima > 0:
-            self.compute_pf_maxima()
+            #self.compute_pf_maxima()
+            self.compute_kde_maxima()
             self.points = self.kde_maxima
         
 

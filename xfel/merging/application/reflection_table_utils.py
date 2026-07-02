@@ -154,3 +154,56 @@ class reflection_table_utils(object):
       empty_slices = max(0, n_slices - generated_slices)
       for i in range(empty_slices):
         yield reflection_table_stub(reflections)
+
+  @staticmethod
+  def iterate_experiments_and_load_imagesets(params, experiments, reflections = None):
+
+    # Re-generate the image sets using their format classes so we can read the raw data
+    current_imageset = None
+    current_imageset_path = None
+
+    if self.params.mp.psana2_mode:
+      paths_ = list(set([p for iset in experiments.imagesets() for p in iset.paths()]))
+      paths = list(set([p for plist in self.mpi_helper.comm.allgather(paths_) for p in plist]))
+
+      for path in paths:
+        current_imageset_path = paths[0]
+        current_imageset = ImageSetFactory.make_imageset([current_imageset_path])
+      
+        for expt_id, expt in enumerate(experiments):
+          assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
+          if expt.imageset.paths()[0] != path: continue
+          
+          idx = expt.imageset.indices()[0]
+          expt.imageset = current_imageset[idx:idx+1]
+
+          if reflections:
+            refls = reflections.select(reflections['id'] == expt_id)
+            refls['id'] = flex.int(len(refls), 0)
+            idents = refls.experiment_identifiers()
+            del idents[expt_id]
+            idents[0] = expt.identifier
+          else:
+            refls = None
+
+          yield expt, refls
+
+    else:
+      for expt_id, expt in enumerate(experiments):
+        assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
+
+        refls = reflections.select(reflections['id'] == expt_id)
+
+        if expt.imageset.paths()[0] != current_imageset_path:
+          current_imageset_path = expt.imageset.paths()[0]
+          current_imageset = ImageSetFactory.make_imageset(expt.imageset.paths())
+
+        idx = expt.imageset.indices()[0]
+        expt.imageset = current_imageset[idx:idx+1]
+        idents = refls.experiment_identifiers()
+        del idents[expt_id]
+        idents[0] = expt.identifier
+        refls['id'] = flex.int(len(refls), 0)
+
+        yield expt, refls
+

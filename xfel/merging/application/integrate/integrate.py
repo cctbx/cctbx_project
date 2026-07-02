@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
+from xfel.merging.reflection_table_utils import reflection_table_utils
 from dxtbx.imageset import ImageSetFactory
 from dxtbx.model.experiment_list import ExperimentList
 from dials.array_family import flex
@@ -9,6 +10,7 @@ from dials.command_line.stills_process import Processor
 class integrate_only_processor(Processor):
   def __init__(self, params):
     self.params = params
+    self.psana_split_comm = False
 
 class integrate(worker):
   """
@@ -16,6 +18,7 @@ class integrate(worker):
   """
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(integrate, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+    self.psana_split_comm = False
 
   def __repr__(self):
     return 'Integrate reflections'
@@ -32,20 +35,8 @@ class integrate(worker):
     # Integrate the experiments one at a time to not use up memory
     all_integrated_expts = ExperimentList()
     all_integrated_refls = None
-    current_imageset = None
-    current_imageset_path = None
 
-    if self.params.mp.psana2_mode:
-      self.check_psana2(split_comm=False)
-      paths_ = list(set([p for iset in experiments.imagesets() for p in iset.paths()]))
-      paths = list(set([p for plist in self.mpi_helper.comm.allgather(paths_) for p in plist]))
-      assert len(paths) == 1
-
-      current_imageset_path = paths[0]
-      current_imageset = ImageSetFactory.make_imageset([current_imageset_path])
-
-    for expt_id, expt in enumerate(experiments):
-      assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
+    for expt_id, (expt, refls) in enumerate(reflection_table_utils.iterate_experiments_and_load_imagesets(experiments, reflections)):
       self.logger.log("Starting integration experiment %d"%expt_id)
       if self.params.integration.recruitment.expand_nave_parameters: # NKS request predictions on larger envelope
         eta = expt.crystal.get_half_mosaicity_deg()
@@ -55,16 +46,6 @@ class integrate(worker):
         expt.crystal.set_half_mosaicity_deg(eta*factor)
         self.logger.log("Expand focus experiment, half_mosaicity_deg=%8f-->%8f domain_size_ang=%.0f-->%.0f"%(
           eta,expt.crystal.get_half_mosaicity_deg(),deff,expt.crystal.get_domain_size_ang()))
-      refls = reflections.select(reflections['id'] == expt_id)
-      if expt.imageset.paths()[0] != current_imageset_path:
-        current_imageset_path = expt.imageset.paths()[0]
-        current_imageset = ImageSetFactory.make_imageset(expt.imageset.paths())
-      idx = expt.imageset.indices()[0]
-      expt.imageset = current_imageset[idx:idx+1]
-      idents = refls.experiment_identifiers()
-      del idents[expt_id]
-      idents[0] = expt.identifier
-      refls['id'] = flex.int(len(refls), 0)
 
       try:
         integrated = processor.integrate(experiments[expt_id:expt_id+1], refls)

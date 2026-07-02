@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.merging.application.worker import worker
+from xfel.merging.application.reflection_table_utils import reflection_table_utils
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from rstbx.dials_core.integration_core import show_observations
@@ -15,6 +16,7 @@ class reflection_filter(worker):
 
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(reflection_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+    self.psana_split_comm = False
 
   def __repr__(self):
     return 'Filter reflections'
@@ -22,6 +24,7 @@ class reflection_filter(worker):
   def validate(self):
     filter_by_significance = 'significance_filter' in self.params.select.algorithm
     filter_by_isolation_forest = 'isolation_forest' in self.params.select.algorithm
+    filter_by_target_energy = 'target_energy' in self.params.select.algorithm
     if filter_by_isolation_forest:
       check0 = self.params.select.reflection_filter.tail_percentile > 0
       check1 = self.params.select.reflection_filter.tail_percentile < 1
@@ -39,6 +42,11 @@ class reflection_filter(worker):
       check1 = self.params.select.reflection_filter.sampling_fraction < 1
       assert check0 and check1, \
         'sampling_fraction must be between 0 and 1'
+    if filter_by_target_energy:
+      check0 = self.params.select.target_energy.target_energy > 0
+      check1 = self.params.select.target_energy.n_sigma > 0
+      assert check0 and check1, \
+        'target_energy and n_sigma must be > 0'
 
   def plot_reflections(self, experiments, reflections, tag):
     if reflections:
@@ -77,6 +85,7 @@ class reflection_filter(worker):
   def run(self, experiments, reflections):
     filter_by_significance = 'significance_filter' in self.params.select.algorithm
     filter_by_isolation_forest = 'isolation_forest' in self.params.select.algorithm
+    filter_by_target_energy = 'target_energy' in self.params.select.algorithm
     # only "unit_cell" "n_obs" and "resolution" algorithms are supported
     if (not filter_by_significance) and (not filter_by_isolation_forest):
       return experiments, reflections
@@ -125,6 +134,16 @@ class reflection_filter(worker):
       if self.mpi_helper.rank == 0:
         self.logger.main_log(f"Total reflections rejected because of {filter_type}: {removed_reflections_filter}")
         self.logger.main_log(f"Total experiments rejected because of {filter_type}: {removed_experiments_filter}")
+
+    if filter_by_target_energy:
+      experiments, reflections = self.apply_target_energy_filter(experiments, reflections)
+      filter_type = 'Target Energy'
+      removed_reflections_filter_rank = n_reflections_initial - len(reflections)
+      removed_reflections_filter = self.mpi_helper.comm.reduce(
+        removed_reflections_filter_rank, self.mpi_helper.MPI.SUM, root=0
+        )
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log(f"Total reflections rejected because of {filter_type}: {removed_reflections_filter}")
 
     from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params).count(experiments, reflections)
@@ -542,6 +561,113 @@ class reflection_filter(worker):
     del new_reflections['inlier']
     return new_experiments, new_reflections
 
+  def apply_target_energy_filter(self, experiments, reflections):
+    """
+    Filter reflections by how well the polychromatic diffraction condition
+    places them near a target energy.
+
+    For each experiment we read its incident spectrum, build the Gaussian
+    rocking model from the crystal's mosaicity and domain size, and for every
+    reflection compute the expected (spectrum * rocking-curve weighted) energy
+    <E> and its spread sigma_E (the second central moment of the contributing-
+    photon energy distribution).
+
+    A reflection is kept iff:
+
+        | <E> - mosaic_energy | <= sigma_E
+
+    i.e. the target energy falls within one sigma_E of the reflection's
+    effective energy centroid.
+    """
+    from dials.array_family import flex
+    import dxtbx
+
+    HC = 12398.4198  # eV * Angstrom;  lambda[A] = HC / E[eV],  |s0| = E[eV] / HC
+
+    target_E = self.params.select.target_energy.target_energy  # eV
+
+    filtered_experiments = ExperimentList()
+    filtered_reflections = flex.reflection_table()
+
+    n_in = reflections.size()
+
+    for expt_id, (experiment, refls) in enumerate(reflection_table_utils.iterate_experiments_and_load_imagesets(experiments, reflections)):
+      if refls.size() == 0:
+        filtered_experiments.append(experiment)
+        continue
+
+      # --- fixed per-experiment state ---
+      crystal = experiment.crystal
+      beam = experiment.beam
+
+      A = np.array(crystal.get_A()).reshape(3, 3)          # 1/A, no 2*pi
+      s0_hat = np.array(beam.get_unit_s0(), dtype=float)   # unit incident dir
+
+      mosaicity_rad = np.deg2rad(2.0 * crystal.get_half_mosaicity_deg())
+      domain_size_A = crystal.get_domain_size_ang()
+
+      # spectrum via the format class (check_format=False friendly)
+      spectrum = experiment.imageset.get_spectrum()
+      energies_eV = np.asarray(spectrum.get_energies_eV(), dtype=float)
+      weights = np.asarray(spectrum.get_weights(), dtype=float)
+      order = np.argsort(energies_eV)
+      energies_eV = energies_eV[order]
+      weights = weights[order]
+
+      # --- vectorized excitation error over all reflections ---
+      # hkl: (M, 3); q = A @ hkl^T -> (3, M)
+      hkl = np.array(refls["miller_index"], dtype=float).reshape(-1, 3)
+      q = A @ hkl.T                                         # (3, M)
+      q2 = np.einsum("ij,ij->j", q, q)                     # (M,)
+      qmag = np.sqrt(q2)                                   # (M,)
+
+      inv_lambda = energies_eV / HC                        # (N,) = |s0|
+      # s0 . q for every (energy, reflection) pair:
+      # s0 = inv_lambda[:,None] * s0_hat -> contribution = inv_lambda * (s0_hat . q)
+      s0hat_dot_q = s0_hat @ q                             # (M,)
+      # s_E[n, m] = (2 * inv_lambda[n] * s0hat_dot_q[m] + q2[m]) / (2 inv_lambda[n])
+      s_E = ((2.0 * np.outer(inv_lambda, s0hat_dot_q)
+              + q2[None, :]) / (2.0 * inv_lambda[:, None]))  # (N, M)
+
+      # --- rocking model and moments, per reflection ---
+      sigma_s = np.sqrt((qmag * mosaicity_rad) ** 2
+                        + (1.0 / domain_size_A) ** 2)        # (M,)
+      R = np.exp(-0.5 * (s_E / sigma_s[None, :]) ** 2)       # (N, M)
+
+      integrand = weights[:, None] * R                       # I(E)*R, (N, M)
+      num = np.trapz(integrand, energies_eV, axis=0)         # (M,)
+
+      # expected energy and spread; guard zero-weight reflections
+      good = num > 0
+      expected_E = np.full(refls.size(), np.nan)
+      sigma_E = np.full(refls.size(), np.nan)
+
+      expected_E[good] = (
+          np.trapz(energies_eV[:, None] * integrand[:, good],
+                   energies_eV, axis=0) / num[good])
+      var_E = (np.trapz((energies_eV[:, None] - expected_E[None, good]) ** 2
+                        * integrand[:, good], energies_eV, axis=0)
+               / num[good])
+      sigma_E[good] = np.sqrt(np.clip(var_E, 0.0, None))
+
+      # --- keep reflections within sigma_E of the target energy ---
+      n_sigma = self.params.select.target_energy.n_sigma
+      keep = good & (np.abs(expected_E - target_E) <= n_sigma * sigma_E)
+      keep_flex = flex.bool(keep.tolist())
+
+      kept = refls.select(keep_flex)
+      filtered_reflections.extend(kept)
+      filtered_experiments.append(experiment)
+
+      self.logger.log(
+          "Experiment %d: kept %d / %d reflections within sigma_E of %.1f eV"
+          % (expt_id, kept.size(), refls.size(), target_E))
+
+    n_out = filtered_reflections.size()
+    self.logger.log("Energy-spread filter: kept %d / %d reflections total"
+                    % (n_out, n_in))
+
+    return filtered_experiments, filtered_reflections
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker
