@@ -9,6 +9,7 @@
 #include <cctbx/miller/lookup_utils.h>
 #include <cctbx/xray/scatterer_lookup.h>
 #include <fstream>
+#include <stdint.h>
 
 namespace smtbx { namespace structure_factors { namespace table_based {
 
@@ -187,37 +188,31 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       ifstream tsc_file(file_name.c_str(), ios::binary);
 
       const size_t charsize = sizeof(char);
-      int head[1] = { 0 };
-      const size_t intsize = sizeof(head);
+      const size_t intsize = sizeof(int);
+      const size_t uint64size = sizeof(uint64_t);
       const size_t complex_doublesize = sizeof(complex<double>);
       const size_t complex_type_size = sizeof(complex_type);
       //If the size is not according to double type the binary will not be readable
       SMTBX_ASSERT(complex_doublesize == complex_type_size);
-      tsc_file.read((char*)&head, intsize);
+      uint64_t head = 0;
+      tsc_file.read((char*)&head, uint64size);
       const int nr_scat = scatterers.size();
       string header_str;
-      if (head[0] != 0) {
-        vector<char> header(head[0]);
-        tsc_file.read(&header[0], head[0] * charsize);
+      if (head != 0) {
+        vector<char> header(head);
+        tsc_file.read(&header[0], head * charsize);
         header_str = string(header.begin(), header.end());
       }
-      //read scatterer labels and map onto scattterers list
-      int sc_len[1] = {0};
-      tsc_file.read((char*)&sc_len, intsize);
-      vector<char> scat_line(sc_len[0]);
-      tsc_file.read((char*)scat_line.data(), sc_len[0] * charsize);
-      string scat_str(scat_line.begin(),scat_line.end());
-      vector<string> toks;
-      boost::split(toks, scat_str, boost::is_any_of(" "));
-      SMTBX_ASSERT(toks.size() == nr_scat);
+      //read scatterer labels or ids and map onto scattterers list
+      uint64_t sc_len = 0;
+      tsc_file.read((char*)&sc_len, uint64size);
       vector<size_t> sc_indices(nr_scat);
       if (boost::icontains(header_str, "SCATTERER_IDS")) {
+        SMTBX_ASSERT(sc_len == uint64size * nr_scat);
         cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers);
         for (size_t sci = 0; sci < nr_scat; sci++) {
-          std::stringstream ss;
-          ss << std::hex << toks[sci];
           uint64_t id_val;
-          ss >> id_val;
+          tsc_file.read((char*)&id_val, uint64size);
           scatterer_id_t sc_id(id_val);
           size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), 0, 1e-2);
           SMTBX_ASSERT(idx != ~0);
@@ -225,6 +220,12 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
       }
       else {
+        vector<char> scat_line(sc_len);
+        tsc_file.read((char*)scat_line.data(), sc_len * charsize);
+        string scat_str(scat_line.begin(),scat_line.end());
+        vector<string> toks;
+        boost::split(toks, scat_str, boost::is_any_of(" "));
+        SMTBX_ASSERT(toks.size() == nr_scat);
         map<string, size_t> sc_map;
         for (size_t sci = 0; sci < nr_scat; sci++) {
           sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
