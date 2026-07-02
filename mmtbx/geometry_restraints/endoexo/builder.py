@@ -166,7 +166,7 @@ class QMRegionBuilder(object):
       seeds_all = [s for _, grp in seed_groups for s in grp]
       self._print_seeds(seeds_all, label='seed atoms')
 
-    seeds_flat = [atom for _, grp in seed_groups for atom in grp]
+    # seeds_flat = [atom for _, grp in seed_groups for atom in grp]  # needed for contact_cutoff
 
     grm = model.get_restraints_manager().geometry
     sites_cart = model.get_sites_cart()
@@ -179,22 +179,13 @@ class QMRegionBuilder(object):
     adjacency = self._graph_builder.build_adjacency(
       bond_proxies_simple, bond_proxies_asu, asu_mappings)
 
-    cutoff = self.params.contact_cutoff
-    if not self.params.skip_radius_search:
-      added_edges = self._graph_builder.add_seed_contact_edges(
-        seeds_flat, model, adjacency, cutoff=cutoff
-      )
-      print(
-        f'Added {added_edges} distance-based seed-contact edges '
-        f'(cutoff={cutoff:.2f} A)',
-        file=self.logger,
-      )
-    else:
-      print(
-        'Skipping distance-based seed-contact edges '
-        '(skip_radius_search=True).',
-        file=self.logger,
-      )
+    # Seed-contact edges disabled (see contact_cutoff note in endoexo.py).
+    # cutoff = self.params.contact_cutoff
+    # if not self.params.skip_radius_search:
+    #   added_edges = self._graph_builder.add_seed_contact_edges(
+    #     seeds_flat, model, adjacency, cutoff=cutoff)
+    #   print(f'Added {added_edges} seed-contact edges '
+    #         f'(cutoff={cutoff:.2f} A)', file=self.logger)
     print(
       f'Always-included seed-centered radius: {self.params.radius:.2f} A',
       file=self.logger,
