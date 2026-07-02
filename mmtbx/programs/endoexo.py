@@ -59,9 +59,11 @@ radius = 5.0
 skip_radius_search = False
   .type = bool
   .help = "If True, the initial radius search is skipped and only the seed atoms themselves seed the QM region (BFS expansion still applies)."
-contact_cutoff = 3.0
-  .type = float(value_min=0)
-  .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
+# contact_cutoff removed: its seed-contact edges let the BFS drift across the
+# lattice forever; the radius search covers what it did.
+# contact_cutoff = 3.0
+#   .type = float(value_min=0)
+#   .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
 max_depth = 3
   .type = int(value_min=0)
   .help = "Maximum BFS depth from any atom within the QM region."
