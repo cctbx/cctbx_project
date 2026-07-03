@@ -11,6 +11,7 @@ from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from cctbx import miller
+from cctbx import crystal
 from libtbx.str_utils import make_sub_header
 import mmtbx.maps.polder
 import mmtbx.maps.correlation
@@ -45,6 +46,17 @@ frag_consistency {
     .type = float
     .help = "Flag inconsistent modeling if max/min of per-fragment (mean model / mean observed) density across ordered fragments reaches this. Provisional default."
 }
+alt_conf {
+  overlap_dist = 2.0
+    .type = float
+    .help = "Distance (A) for the symmetry-aware 'within' search that pairs a ligand's alternate conformation modelled under a different residue number. Provisional default; tunable."
+  sym_overlap_dist = 1.5
+    .type = float
+    .help = "Tight coincidence cutoff (A) for detecting a ligand's own crystallographic-symmetry mate overlapping it (special position / symmetry axis). Below ordinary packing contacts (~2.4 A). Provisional default; tunable."
+  occ_tol = 0.02
+    .type = float
+    .help = "Tolerance on how far the summed occupancy of an alternate-conformation set may deviate from 1.0 before it is flagged. Provisional default; tunable."
+}
 }
 """
 
@@ -73,6 +85,23 @@ def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
                      % (hi[0] + 1, lo[0] + 1))
   return group_args(flag='inspect' if reasons else 'consistent',
                     reason='; '.join(reasons))
+
+def _alt_conf_short(ac):
+  if ac is None:
+    return '-'
+  if ac.state == 'single':
+    return 'sym' if (ac.symmetry is not None and ac.symmetry.self_overlap) else '-'
+  if ac.state == 'alt_conf':
+    return '/'.join(ac.altlocs)
+  if ac.state == 'lone_altloc':
+    return 'lone %s' % ac.altloc.strip()
+  if ac.state == 'split_residue':
+    return 'split %s' % ac.altloc.strip()
+  return '-'
+
+_LIGAND_EXCLUDE_CLASSES = ["common_amino_acid", "modified_amino_acid",
+  "common_rna_dna", "modified_rna_dna", "ccp4_mon_lib_rna_dna",
+  "common_water", "common_element"]
 
 # =============================================================================
 
@@ -158,9 +187,6 @@ class manager(list):
     '''
     ph = self.model.get_hierarchy()
     get_class = iotbx.pdb.common_residue_names_get_class
-    exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
-               "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
-                "common_element"]
     for model in ph.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
@@ -170,7 +196,7 @@ class manager(list):
             if self.params.ligand_code:
               if resname.strip() not in self.params.ligand_code:
                 continue
-            if (not get_class(name=resname) in exclude):
+            if (not get_class(name=resname) in _LIGAND_EXCLUDE_CLASSES):
               iselection = residue.atoms().extract_i_seq()
               sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
                 rg.resseq_as_int(), resname)
@@ -243,6 +269,11 @@ class manager(list):
            f"{lr.get_missing_atoms().n_missing_heavy} "
            f"({','.join(lr.get_missing_atoms().missing_heavy)})"
            if lr.get_missing_atoms().n_missing_heavy else '-')},
+
+      {'headers': ['', 'alt', 'conf'], 'width': 12,
+       'data_fn': lambda lr: (
+           ('! ' if lr.get_alt_conf().flag == 'inspect' else '')
+           + _alt_conf_short(lr.get_alt_conf()))},
     ]
 
     # --- From here, the code is generic and builds the table from the config above ---
@@ -415,6 +446,7 @@ class ligand_result(object):
       #'_is_suspicious' : 'check_if_suspicious',
       '_map_values'    : 'get_map_values',
       '_missing_atoms' : 'get_missing_atoms',
+      '_alt_conf'      : 'get_alt_conf',
       #'_qmr'           : 'get_qmr',
       #'_polder_ccs'  : 'get_polder_ccs',
     }
@@ -577,6 +609,170 @@ class ligand_result(object):
       missing_heavy   = missing_heavy,
       n_missing_heavy = len(missing_heavy))
     return self._missing_atoms
+
+  # ----------------------------------------------------------------------------
+
+  def _conformer_occ(self, altloc, rg):
+    occs = flex.double()
+    for ag in rg.atom_groups():
+      if ag.altloc.strip() == altloc:
+        occs.extend(ag.atoms().extract_occ())
+    if occs.size() == 0:
+      return 0.0
+    return flex.mean(occs)
+
+  def _find_split_partner(self, overlap_dist):
+    get_class = iotbx.pdb.common_residue_names_get_class
+    rg = self._atoms_ligand[0].parent().parent()
+    own_resseq = rg.resseq_as_int()
+    own_altloc = self.altloc.strip()
+    sel = ("within(%g, (%s)) and not (%s) "
+           "and not (altloc ' ') and not (element H or element D)"
+           % (overlap_dist, self.sel_str_noH, self.sel_str))
+    isel = self.model.iselection(sel)
+    if isel.size() == 0:
+      return None
+    atoms = self._ph.atoms()
+    for i_seq in isel:
+      ag  = atoms[i_seq].parent()
+      prg = ag.parent()
+      if prg.resseq_as_int() == own_resseq:
+        continue
+      alt = ag.altloc.strip()
+      if not alt or alt == own_altloc:
+        continue
+      if get_class(name=ag.resname) in _LIGAND_EXCLUDE_CLASSES:
+        continue
+      p_altlocs = set(a.altloc for a in prg.atom_groups() if a.altloc.strip())
+      if len(p_altlocs) != 1:
+        continue
+      return group_args(
+        resseq  = prg.resseq_as_int(),
+        altloc  = ag.altloc,
+        resname = ag.resname.strip(),
+        occ     = flex.mean(ag.atoms().extract_occ()))
+    return None
+
+  def _symmetry_overlap(self, sym_overlap_dist):
+    xrs = self._xrs_ligand_noH
+    cs = xrs.crystal_symmetry()
+    if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+      return None
+    sym_ops = []
+    min_dist = None
+    try:
+      asu_mappings = xrs.asu_mappings(buffer_thickness=sym_overlap_dist)
+      pg = crystal.neighbors_fast_pair_generator(
+        asu_mappings=asu_mappings, distance_cutoff=sym_overlap_dist)
+      for pair in pg:
+        rt_mx_ji = asu_mappings.get_rt_mx_ji(pair)
+        if rt_mx_ji.is_unit_mx():
+          continue
+        d = pair.dist_sq ** 0.5
+        sym_ops.append(str(rt_mx_ji))
+        if min_dist is None or d < min_dist:
+          min_dist = d
+    except Exception:
+      return None
+    if not sym_ops:
+      return None
+    return group_args(
+      self_overlap        = True,
+      on_special_position = (min_dist is not None and min_dist < 0.1),
+      sym_ops             = sorted(set(sym_ops)),
+      min_dist            = min_dist)
+
+  def _alt_conf_reason(self, state, altlocs, resnames, hetero, partner,
+                       occupancy, symmetry):
+    parts = []
+    if state == 'single':
+      parts.append('single conformation')
+    elif state == 'alt_conf':
+      parts.append('alt confs %s' % '/'.join(altlocs))
+    elif state == 'lone_altloc':
+      parts.append('lone altloc %s (no partner conformation found)'
+                   % self.altloc.strip())
+    elif state == 'split_residue':
+      parts.append('altloc %s; partner conformation modelled as resseq %d altloc %s'
+                   % (self.altloc.strip(), partner.resseq, partner.altloc.strip()))
+    if hetero:
+      parts.append('alternate conformations model different chemical entities (%s)'
+                   % ', '.join(resnames))
+    if occupancy is not None and not occupancy.sum_ok:
+      parts.append('occupancies sum to %.2f' % occupancy.occ_sum)
+    if symmetry is not None and symmetry.self_overlap:
+      if symmetry.on_special_position:
+        parts.append('on special position (%s)' % ', '.join(symmetry.sym_ops))
+      else:
+        parts.append('symmetry mate overlaps (%s, min %.2f A)'
+                     % (', '.join(symmetry.sym_ops), symmetry.min_dist))
+    return '; '.join(parts)
+
+  def get_alt_conf(self):
+    if self._alt_conf is not None:
+      return self._alt_conf
+    p = self.params.alt_conf
+    rg = self._atoms_ligand[0].parent().parent()
+    altlocs = sorted(set(ag.altloc for ag in rg.atom_groups()
+                         if ag.altloc.strip()))
+    own_altloc = self.altloc.strip()
+
+    partner = None
+    if len(altlocs) == 0:
+      state = 'single'
+    elif len(altlocs) >= 2:
+      state = 'alt_conf'
+    else:
+      partner = self._find_split_partner(p.overlap_dist)
+      state = 'split_residue' if partner is not None else 'lone_altloc'
+
+    if state == 'alt_conf':
+      resnames = sorted(set(ag.resname.strip() for ag in rg.atom_groups()
+                            if ag.altloc.strip()))
+    elif state == 'split_residue':
+      resnames = sorted(set([self.resname, partner.resname]))
+    else:
+      resnames = [self.resname]
+    hetero = len(resnames) > 1
+
+    occupancy = None
+    if state != 'single':
+      self_occ = self._conformer_occ(own_altloc, rg)
+      partner_occ = None
+      if state == 'alt_conf':
+        occ_sum = sum(self._conformer_occ(a, rg) for a in altlocs)
+      elif state == 'split_residue':
+        partner_occ = partner.occ
+        occ_sum = self_occ + partner_occ
+      else:
+        occ_sum = self_occ
+      occupancy = group_args(
+        self_occ    = self_occ,
+        partner_occ = partner_occ,
+        occ_sum     = occ_sum,
+        sum_ok      = abs(occ_sum - 1.0) <= p.occ_tol)
+    symmetry = self._symmetry_overlap(p.sym_overlap_dist)
+
+    inspect = (state in ('lone_altloc', 'split_residue')
+               or hetero
+               or (occupancy is not None and not occupancy.sum_ok)
+               or (symmetry is not None and symmetry.self_overlap))
+
+    reason = self._alt_conf_reason(
+      state, altlocs, resnames, hetero, partner, occupancy, symmetry)
+
+    self._alt_conf = group_args(
+      state     = state,
+      flag      = 'inspect' if inspect else 'ok',
+      altloc    = self.altloc,
+      altlocs   = altlocs,
+      resnames  = resnames,
+      hetero    = hetero,
+      partner   = partner,
+      occupancy = occupancy,
+      symmetry  = symmetry,
+      reason    = reason)
+    return self._alt_conf
 
   # ----------------------------------------------------------------------------
 
@@ -1280,6 +1476,7 @@ class ligand_result(object):
     rmsds = self.get_rmsds()
     mapv  = self.get_map_values()
     ma    = self.get_missing_atoms()
+    ac = self.get_alt_conf()
 
     # centroid: mean of ligand atom coordinates as plain Python floats
     xyz = self._atoms_ligand.extract_xyz().mean()
@@ -1349,4 +1546,30 @@ class ligand_result(object):
         missing_heavy   = list(ma.missing_heavy),
         n_missing_heavy = _i(ma.n_missing_heavy),
       ) if ma is not None else None,
+      alt_conf = group_args(
+        state    = ac.state,
+        flag     = ac.flag,
+        altloc   = ac.altloc,
+        altlocs  = list(ac.altlocs),
+        resnames = list(ac.resnames),
+        hetero   = bool(ac.hetero),
+        partner  = (group_args(
+                      resseq  = _i(ac.partner.resseq),
+                      altloc  = ac.partner.altloc,
+                      resname = ac.partner.resname)
+                    if ac.partner is not None else None),
+        occupancy = (group_args(
+                      self_occ    = _f(ac.occupancy.self_occ),
+                      partner_occ = _f(ac.occupancy.partner_occ),
+                      occ_sum     = _f(ac.occupancy.occ_sum),
+                      sum_ok      = bool(ac.occupancy.sum_ok))
+                     if ac.occupancy is not None else None),
+        symmetry = (group_args(
+                      self_overlap        = bool(ac.symmetry.self_overlap),
+                      on_special_position = bool(ac.symmetry.on_special_position),
+                      sym_ops             = list(ac.symmetry.sym_ops),
+                      min_dist            = _f(ac.symmetry.min_dist))
+                    if ac.symmetry is not None else None),
+        reason   = ac.reason,
+      ) if ac is not None else None,
     )
