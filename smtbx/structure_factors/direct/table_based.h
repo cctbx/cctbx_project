@@ -194,8 +194,8 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       const size_t complex_type_size = sizeof(complex_type);
       //If the size is not according to double type the binary will not be readable
       SMTBX_ASSERT(complex_doublesize == complex_type_size);
-      uint64_t head = 0;
-      tsc_file.read((char*)&head, uint64size);
+      int head = 0;
+      tsc_file.read((char*)&head, intsize);
       const int nr_scat = scatterers.size();
       string header_str;
       if (head != 0) {
@@ -204,11 +204,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         header_str = string(header.begin(), header.end());
       }
       //read scatterer labels or ids and map onto scattterers list
-      uint64_t sc_len = 0;
-      tsc_file.read((char*)&sc_len, uint64size);
+      int sc_len = 0;
+      tsc_file.read((char*)&sc_len, intsize);
       vector<size_t> sc_indices(nr_scat);
       if (boost::icontains(header_str, "SCATTERER_IDS")) {
-        SMTBX_ASSERT(sc_len == uint64size * nr_scat);
+        SMTBX_ASSERT(sc_len == nr_scat);
         cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers);
         for (size_t sci = 0; sci < nr_scat; sci++) {
           uint64_t id_val;
