@@ -581,7 +581,7 @@ def mask_aware_map_standard_deviation(map_data, xray_structure, wrapping):
   SDin = 0.0
   if map_molecule.size() > 1:
     SDin  = map_molecule.standard_deviation_of_the_sample()
-  return group_args(SDin=SDin, SDout=SDout, SDall=SDall)
+  return group_args(SDin=SDin, SDout=SDout, SDall=SDall, map_molecule=map_molecule)
 
 class diff_map_cryoem(object):
 
@@ -605,14 +605,16 @@ class diff_map_cryoem(object):
         self.fo2 = fo2.select(selection = sel)
     self.ss = 1./flex.pow2(self.fo.d_spacings().data())
     self.fc = self.fo.structure_factors_from_scatterers(xray_structure).f_calc()
-    self.fc_scaled = self.fo.multiscale(
-      other               = self.fc,
-      use_exp_scale       = True,
-      reflections_per_bin = reflections_per_bin)
+    self.fc_scaled = None
 
   def _prepare_arrays(self, phases):
     assert phases in ["fo", "fc", "vector"]
     fo = self.fo.deep_copy()
+    if self.fc_scaled is None:
+      self.fc_scaled = self.fo.multiscale(
+        other               = self.fc,
+        use_exp_scale       = True,
+        reflections_per_bin = self.reflections_per_bin)
     fc = self.fc_scaled.deep_copy()
     if   phases == "fo": fc = fc.phase_transfer(phase_source = fo)
     elif phases == "fc": fo = fo.phase_transfer(phase_source = fc)
