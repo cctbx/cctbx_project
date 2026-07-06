@@ -564,6 +564,7 @@ def mask_aware_map_standard_deviation(map_data, xray_structure, wrapping):
   mp = masks.mask_master_params.extract()
   mp.n_real = map_data.all()
   mp.step = None
+  mp.ignore_hydrogens = False
   mmtbx_masks_asu_mask_obj = masks.asu_mask(
     xray_structure = xray_structure.expand_to_p1(sites_mod_positive=wrapping),
     mask_params    = mp)
@@ -621,25 +622,24 @@ class diff_map_cryoem(object):
     else: pass # Do nothing, leave arrays as is
     return fo, fc
 
-  def compute_simple(self, phases="vector", isotropize=False):
+  def compute_simple(self, phases="vector", isotropize=True, charge_density=False):
     fo, fc = self._prepare_arrays(phases = phases)
     diff = fo.data()-fc.data()
     if isotropize:
       scale = 1./flex.abs(self.fc_scaled.data()/self.fc.data())
       diff = diff * scale
-    return fo.array(data = diff)
+    if charge_density: return fo.array(data = diff*self.ss)
+    else:              return fo.array(data = diff)
 
-  def compute_charge_density(self, phases="vector"):
-    return self.fo.array(
-      data = self.compute_simple(phases=phases).data()*self.ss)
-
-  def compute_sigmaa(self, isotropize=True):
+  def compute_sigmaa(self, isotropize=True, charge_density=False):
     import mmtbx.f_model
     fmodel = mmtbx.f_model.manager(
       f_obs          = abs(self.fo),
       xray_structure = self.xray_structure)
     fmodel.update_all_scales(remove_outliers = False)
-    return fmodel.vector_diff_map(fo_phase_source = self.fo, isotropize=isotropize)
+    r = fmodel.vector_diff_map(fo_phase_source = self.fo, isotropize=isotropize)
+    if charge_density: return self.fo.array(data = r.data()*self.ss)
+    else:              return r
 
   def compute_servalcat(self, multiscale=False, use_fmodel=False):
     assert self.fo1 is not None
