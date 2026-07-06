@@ -20,6 +20,7 @@ def run():
   run_test23()
   run_test24()
   run_test25()
+  run_test26()
 
 # ------------------------------------------------------------------------------
 
@@ -116,6 +117,15 @@ def run_test20():
   assert ac5.flag == 'inspect', ac5.flag
   assert ac5.partner.resseq == 6, ac5.partner.resseq
   assert ac5.partner.altloc.strip() == 'B', ac5.partner.altloc
+
+  # partner carries chain id and a fully-qualified id string
+  from mmtbx.validation.validate_ligands import _partner_id_str
+  assert ac5.partner.chain == 'A', ac5.partner.chain
+  assert _partner_id_str(ac5.partner) == 'GOL A 6 (altloc B)', _partner_id_str(ac5.partner)
+
+  assert 'GOL A 6 (altloc B)' in ac5.reason, ac5.reason
+  from mmtbx.validation.validate_ligands import _alt_conf_short
+  assert _alt_conf_short(ac5) == 'split A -> A 6 B', _alt_conf_short(ac5)
 
   ac6 = _altconf_lr(vl, 6, 'B').get_alt_conf()
   assert ac6.state == 'split_residue', ac6.state
@@ -225,6 +235,7 @@ def run_test24():
   assert snap5.alt_conf.state == 'split_residue'
   assert snap5.alt_conf.flag == 'inspect'
   assert snap5.alt_conf.partner.resseq == 6
+  assert snap5.alt_conf.partner.chain == 'A', snap5.alt_conf.partner.chain
   assert snap5.alt_conf.hetero is False
   assert snap5.alt_conf.resnames == ['GOL']
   assert snap5.alt_conf.occupancy.sum_ok is True
@@ -263,6 +274,47 @@ def run_test25():
   # operations that must be filtered out.
   assert ac.symmetry is None, ac.symmetry
   assert ac.flag == 'ok', ac.flag
+
+# ------------------------------------------------------------------------------
+
+_altconf_order_pdb_str = '''
+CRYST1   70.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1 C1  AGOL A   1       5.000   5.000   5.000  0.50 20.00           C
+HETATM    2 C2  AGOL A   1       6.500   5.000   5.000  0.50 20.00           C
+HETATM    3 C3  AGOL A   1       7.100   6.400   5.000  0.50 20.00           C
+HETATM    4 O1  AGOL A   1       4.300   3.850   5.000  0.50 20.00           O
+HETATM    5 O2  AGOL A   1       7.200   4.050   5.000  0.50 20.00           O
+HETATM   11 C1   GOL A   2      30.000   5.000   5.000  1.00 20.00           C
+HETATM   12 C2   GOL A   2      31.500   5.000   5.000  1.00 20.00           C
+HETATM   13 C3   GOL A   2      32.100   6.400   5.000  1.00 20.00           C
+HETATM   14 O1   GOL A   2      29.300   3.850   5.000  1.00 20.00           O
+HETATM   15 O2   GOL A   2      32.200   4.050   5.000  1.00 20.00           O
+HETATM   21 C1  BGOL A   3       5.200   5.000   5.000  0.50 20.00           C
+HETATM   22 C2  BGOL A   3       6.700   5.000   5.000  0.50 20.00           C
+HETATM   23 C3  BGOL A   3       7.300   6.400   5.000  0.50 20.00           C
+HETATM   24 O1  BGOL A   3       4.500   3.850   5.000  0.50 20.00           O
+HETATM   25 O2  BGOL A   3       7.400   4.050   5.000  0.50 20.00           O
+'''
+
+def run_test26():
+  print('test26')
+  vl = _altconf_manager(_altconf_order_pdb_str)
+  order = vl._ordered_for_display()
+  # id_str glues the altloc letter onto the resname for altloc-bearing
+  # ligands (e.g. 'AGOL A   1', see tst_validate_ligands.py::run_test02),
+  # so identify rows by (resname, chain, resseq, altloc) instead.
+  def _key(lr):
+    rg = lr._atoms_ligand[0].parent().parent()
+    return (lr.resname, rg.parent().id.strip(), rg.resseq_as_int(),
+             lr.altloc.strip())
+  keys = [_key(lr) for lr in order]
+  # every ligand appears exactly once
+  assert len(order) == len(vl), (len(order), len(vl))
+  # partner (resseq 3, altloc B) immediately follows resseq 1 altloc A,
+  # ahead of the unrelated single GOL resseq 2
+  assert keys[0] == ('GOL', 'A', 1, 'A'), keys
+  assert keys[1] == ('GOL', 'A', 3, 'B'), keys
+  assert keys[2] == ('GOL', 'A', 2, ''), keys
 
 # ------------------------------------------------------------------------------
 

@@ -64,13 +64,14 @@ def master_params():
   return phil.parse(master_params_str, process_includes = False)
 
 def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
-                         delta_weak=0.20, obs_floor=0.30, balance_ratio=1.5):
+                         delta_weak=0.20, obs_floor=0.30, balance_ratio=1.5,
+                         overall_floor=0.70):
   # Single "inspect fragments" flag. (A) a fragment far below the whole ligand
   # (localized weak density); (B) ordered fragments at inconsistent
   # observed-vs-model density scales (occupancy/B imbalance).
   reasons = []
   n = len(frag_ccs)
-  if n and cc_overall is not None:
+  if n and cc_overall is not None and cc_overall >= overall_floor:
     cc_min = min(frag_ccs)
     if cc_min <= cc_overall - delta_weak:
       reasons.append('(A) fragment %d RSCC %.2f << overall %.2f'
@@ -96,8 +97,16 @@ def _alt_conf_short(ac):
   if ac.state == 'lone_altloc':
     return 'lone %s' % ac.altloc.strip()
   if ac.state == 'split_residue':
+    if ac.partner is not None:
+      return 'split %s -> %s %d %s' % (
+        ac.altloc.strip(), ac.partner.chain, ac.partner.resseq,
+        ac.partner.altloc.strip())
     return 'split %s' % ac.altloc.strip()
   return '-'
+
+def _partner_id_str(partner):
+  return '%s %s %d (altloc %s)' % (
+    partner.resname, partner.chain, partner.resseq, partner.altloc.strip())
 
 _LIGAND_EXCLUDE_CLASSES = ["common_amino_acid", "modified_amino_acid",
   "common_rna_dna", "modified_rna_dna", "ccp4_mon_lib_rna_dna",
@@ -218,6 +227,30 @@ class manager(list):
 
   # ----------------------------------------------------------------------------
 
+  def _ordered_for_display(self):
+    by_key = {}
+    for lr in self:
+      rg = lr._atoms_ligand[0].parent().parent()
+      key = (rg.parent().id.strip(), rg.resseq_as_int(), lr.altloc.strip())
+      by_key[key] = lr
+    order = []
+    emitted = set()
+    for lr in self:
+      if id(lr) in emitted:
+        continue
+      order.append(lr)
+      emitted.add(id(lr))
+      ac = lr.get_alt_conf()
+      if ac.state == 'split_residue' and ac.partner is not None:
+        pk = (ac.partner.chain, ac.partner.resseq, ac.partner.altloc.strip())
+        plr = by_key.get(pk)
+        if plr is not None and id(plr) not in emitted:
+          order.append(plr)
+          emitted.add(id(plr))
+    return order
+
+  # ----------------------------------------------------------------------------
+
   def show_table(self, out=sys.stdout):
     '''
     Print a summary table.
@@ -270,7 +303,7 @@ class manager(list):
            f"({','.join(lr.get_missing_atoms().missing_heavy)})"
            if lr.get_missing_atoms().n_missing_heavy else '-')},
 
-      {'headers': ['', 'alt', 'conf'], 'width': 12,
+      {'headers': ['', 'alt', 'conf'], 'width': 22,
        'data_fn': lambda lr: (
            ('! ' if lr.get_alt_conf().flag == 'inspect' else '')
            + _alt_conf_short(lr.get_alt_conf()))},
@@ -291,7 +324,7 @@ class manager(list):
     print(separator, file=out)
 
     # Print data rows
-    for lr in self:
+    for lr in self._ordered_for_display():
       # Build and print the main data row for the ligand
       data_cells = [f"{c['data_fn'](lr):^{c['width']}}" for c in columns]
       print("|".join(data_cells), file=out)
@@ -647,6 +680,7 @@ class ligand_result(object):
       if len(p_altlocs) != 1:
         continue
       return group_args(
+        chain   = prg.parent().id.strip(),
         resseq  = prg.resseq_as_int(),
         altloc  = ag.altloc,
         resname = ag.resname.strip(),
@@ -693,8 +727,8 @@ class ligand_result(object):
       parts.append('lone altloc %s (no partner conformation found)'
                    % self.altloc.strip())
     elif state == 'split_residue':
-      parts.append('altloc %s; partner conformation modelled as resseq %d altloc %s'
-                   % (self.altloc.strip(), partner.resseq, partner.altloc.strip()))
+      parts.append('altloc %s; partner modelled as %s'
+                   % (self.altloc.strip(), _partner_id_str(partner)))
     if hetero:
       parts.append('alternate conformations model different chemical entities (%s)'
                    % ', '.join(resnames))
@@ -1554,6 +1588,7 @@ class ligand_result(object):
         resnames = list(ac.resnames),
         hetero   = bool(ac.hetero),
         partner  = (group_args(
+                      chain   = ac.partner.chain,
                       resseq  = _i(ac.partner.resseq),
                       altloc  = ac.partner.altloc,
                       resname = ac.partner.resname)

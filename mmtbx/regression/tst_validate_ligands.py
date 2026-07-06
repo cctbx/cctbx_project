@@ -787,6 +787,15 @@ def run_test18():
   # obs_floor guard: a near-zero-obs fragment is excluded from (B), not a div blow-up
   r = fc(0.90, [0.90, 0.90], [0.05, 0.60], [1.00, 0.90])
   assert r.flag == 'consistent', r.flag   # only 1 fragment clears obs_floor -> (B) skipped
+  # overall already bad -> localized-weak (A) suppressed (redundant when whole ligand is poor)
+  r = fc(0.60, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'consistent', (r.flag, r.reason)
+  # boundary: overall at the floor (0.70) still raises (A)
+  r = fc(0.70, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'inspect' and '(A)' in r.reason, (r.flag, r.reason)
+  # just below the floor -> suppressed
+  r = fc(0.69, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'consistent', (r.flag, r.reason)
   print('OK run_test18')
 
 # ------------------------------------------------------------------------------
