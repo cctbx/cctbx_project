@@ -2864,7 +2864,7 @@ class PhenixReleaseBuilder(PhenixBuilder):
   Phenix with DIALS
   '''
   extra_codebases = ['dials', 'iota', 'xia2']
-  extra_libtbx = extra_codebases + ['prime']
+  extra_libtbx = extra_codebases + ['prime', 'serialtbx']
   CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + extra_codebases
   LIBTBX_EXTRA = PhenixBuilder.LIBTBX_EXTRA + extra_libtbx
 
