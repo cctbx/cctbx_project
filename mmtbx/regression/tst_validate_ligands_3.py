@@ -21,6 +21,7 @@ def run():
   run_test24()
   run_test25()
   run_test26()
+  run_test27()
 
 # ------------------------------------------------------------------------------
 
@@ -219,8 +220,12 @@ def run_test23():
   assert acS.state == 'split_residue', acS.state
   assert acS.hetero is True
   assert acS.partner.resname == 'EDO', acS.partner.resname
+  assert acS.partner.is_ligand is True, acS.partner.is_ligand
 
-  # class-filter control: lone GOL with a LYS altloc sidechain within 2 A
+  # same-altloc control: the only neighbour within 2 A is a LYS sidechain in
+  # GOL's *own* altloc A, so it is not a partner -> still lone. (The partner
+  # search no longer excludes residues by class; the altloc-match rule keeps
+  # this out.)
   acL = _altconf_lr(vl, 701, 'A').get_alt_conf()
   assert acL.state == 'lone_altloc', acL.state
   assert acL.hetero is False, acL.hetero
@@ -315,6 +320,76 @@ def run_test26():
   assert keys[0] == ('GOL', 'A', 1, 'A'), keys
   assert keys[1] == ('GOL', 'A', 3, 'B'), keys
   assert keys[2] == ('GOL', 'A', 2, ''), keys
+
+# ------------------------------------------------------------------------------
+
+_altconf_nonligand_pdb_str = '''
+CRYST1   90.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1 C1  AGOL A   1       5.000   5.000   5.000  0.60 20.00           C
+HETATM    2 C2  AGOL A   1       6.500   5.000   5.000  0.60 20.00           C
+HETATM    3 C3  AGOL A   1       7.100   6.400   5.000  0.60 20.00           C
+HETATM    4 O1  AGOL A   1       4.300   3.850   5.000  0.60 20.00           O
+HETATM    5 O2  AGOL A   1       7.200   4.050   5.000  0.60 20.00           O
+HETATM    6  O  BHOH A 101       5.100   5.100   5.000  0.40 20.00           O
+HETATM   11 C1  AGOL A   2      25.000   5.000   5.000  0.30 20.00           C
+HETATM   12 C2  AGOL A   2      26.500   5.000   5.000  0.30 20.00           C
+HETATM   13 C3  AGOL A   2      27.100   6.400   5.000  0.30 20.00           C
+HETATM   14 O1  AGOL A   2      24.300   3.850   5.000  0.30 20.00           O
+HETATM   15 O2  AGOL A   2      27.200   4.050   5.000  0.30 20.00           O
+HETATM   16  O  BHOH A 102      25.100   5.100   5.000  0.30 20.00           O
+HETATM   21 C1  AGOL A   3      45.000   5.000   5.000  0.50 20.00           C
+HETATM   22 C2  AGOL A   3      46.500   5.000   5.000  0.50 20.00           C
+HETATM   23 C3  AGOL A   3      47.100   6.400   5.000  0.50 20.00           C
+HETATM   24 O1  AGOL A   3      44.300   3.850   5.000  0.50 20.00           O
+HETATM   25 O2  AGOL A   3      47.200   4.050   5.000  0.50 20.00           O
+HETATM   31 C1  AGOL A   4      65.000   5.000   5.000  0.50 20.00           C
+HETATM   32 C2  AGOL A   4      66.500   5.000   5.000  0.50 20.00           C
+HETATM   33 C3  AGOL A   4      67.100   6.400   5.000  0.50 20.00           C
+HETATM   34 O1  AGOL A   4      64.300   3.850   5.000  0.50 20.00           O
+HETATM   35 O2  AGOL A   4      67.200   4.050   5.000  0.50 20.00           O
+ATOM     36  N  BLYS A 400      65.100   5.100   5.000  0.50 20.00           N
+ATOM     37  CA BLYS A 400      65.100   6.200   5.000  0.50 20.00           C
+'''
+
+def run_test27():
+  print('test27')
+  vl = _altconf_manager(_altconf_nonligand_pdb_str)
+
+  # (1) ligand alt conf A shares its site with a single-altloc-B water;
+  #     occupancies sum to 1.0 -> recognized as split (not lone) and OK.
+  ac1 = _altconf_lr(vl, 1, 'A').get_alt_conf()
+  assert ac1.state == 'split_residue', ac1.state
+  assert ac1.partner.resname == 'HOH', ac1.partner.resname
+  assert ac1.partner.is_ligand is False, ac1.partner.is_ligand
+  assert ac1.hetero is False, ac1.hetero
+  assert approx_equal(ac1.occupancy.occ_sum, 1.0)
+  assert ac1.flag == 'ok', ac1.flag
+
+  # (2) same, but occupancies sum to 0.6 -> still split, flagged for occupancy.
+  ac2 = _altconf_lr(vl, 2, 'A').get_alt_conf()
+  assert ac2.state == 'split_residue', ac2.state
+  assert ac2.partner.resname == 'HOH', ac2.partner.resname
+  assert ac2.flag == 'inspect', ac2.flag
+  assert 'occupancies sum to 0.60' in ac2.reason, ac2.reason
+
+  # (3) isolated partial-occupancy ligand: nothing at the site -> genuinely lone.
+  ac3 = _altconf_lr(vl, 3, 'A').get_alt_conf()
+  assert ac3.state == 'lone_altloc', ac3.state
+  assert ac3.partner is None
+  assert ac3.flag == 'inspect', ac3.flag
+
+  # (4) residue (LYS) partner in the complementary altloc; occ sums to 1.0 -> OK.
+  ac4 = _altconf_lr(vl, 4, 'A').get_alt_conf()
+  assert ac4.state == 'split_residue', ac4.state
+  assert ac4.partner.resname == 'LYS', ac4.partner.resname
+  assert ac4.partner.is_ligand is False, ac4.partner.is_ligand
+  assert ac4.flag == 'ok', ac4.flag
+
+  # snapshot carries the partner classification
+  snap1 = _altconf_lr(vl, 1, 'A').as_picklable_snapshot()
+  assert snap1.alt_conf.partner.resname == 'HOH'
+  assert snap1.alt_conf.partner.is_ligand is False
+  assert snap1.alt_conf.flag == 'ok'
 
 # ------------------------------------------------------------------------------
 

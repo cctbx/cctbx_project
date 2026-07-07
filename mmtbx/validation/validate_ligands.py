@@ -674,17 +674,16 @@ class ligand_result(object):
       alt = ag.altloc.strip()
       if not alt or alt == own_altloc:
         continue
-      if get_class(name=ag.resname) in _LIGAND_EXCLUDE_CLASSES:
-        continue
       p_altlocs = set(a.altloc for a in prg.atom_groups() if a.altloc.strip())
       if len(p_altlocs) != 1:
         continue
       return group_args(
-        chain   = prg.parent().id.strip(),
-        resseq  = prg.resseq_as_int(),
-        altloc  = ag.altloc,
-        resname = ag.resname.strip(),
-        occ     = flex.mean(ag.atoms().extract_occ()))
+        chain     = prg.parent().id.strip(),
+        resseq    = prg.resseq_as_int(),
+        altloc    = ag.altloc,
+        resname   = ag.resname.strip(),
+        occ       = flex.mean(ag.atoms().extract_occ()),
+        is_ligand = get_class(name=ag.resname) not in _LIGAND_EXCLUDE_CLASSES)
     return None
 
   def _symmetry_overlap(self, sym_overlap_dist):
@@ -763,11 +762,15 @@ class ligand_result(object):
     if state == 'alt_conf':
       resnames = sorted(set(ag.resname.strip() for ag in rg.atom_groups()
                             if ag.altloc.strip()))
+      hetero = len(resnames) > 1
     elif state == 'split_residue':
       resnames = sorted(set([self.resname, partner.resname]))
+      # A water/residue/ion partner is not a different *chemical entity* in the
+      # concerning sense; only a genuine ligand partner counts as hetero.
+      hetero = partner.is_ligand and len(resnames) > 1
     else:
       resnames = [self.resname]
-    hetero = len(resnames) > 1
+      hetero = False
 
     occupancy = None
     if state != 'single':
@@ -787,7 +790,8 @@ class ligand_result(object):
         sum_ok      = abs(occ_sum - 1.0) <= p.occ_tol)
     symmetry = self._symmetry_overlap(p.sym_overlap_dist)
 
-    inspect = (state in ('lone_altloc', 'split_residue')
+    inspect = (state == 'lone_altloc'
+               or (state == 'split_residue' and partner.is_ligand)
                or hetero
                or (occupancy is not None and not occupancy.sum_ok)
                or (symmetry is not None and symmetry.self_overlap))
@@ -1588,10 +1592,11 @@ class ligand_result(object):
         resnames = list(ac.resnames),
         hetero   = bool(ac.hetero),
         partner  = (group_args(
-                      chain   = ac.partner.chain,
-                      resseq  = _i(ac.partner.resseq),
-                      altloc  = ac.partner.altloc,
-                      resname = ac.partner.resname)
+                      chain     = ac.partner.chain,
+                      resseq    = _i(ac.partner.resseq),
+                      altloc    = ac.partner.altloc,
+                      resname   = ac.partner.resname,
+                      is_ligand = bool(ac.partner.is_ligand))
                     if ac.partner is not None else None),
         occupancy = (group_args(
                       self_occ    = _f(ac.occupancy.self_occ),
