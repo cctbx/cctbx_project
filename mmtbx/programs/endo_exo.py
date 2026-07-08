@@ -1,4 +1,4 @@
-"""mmtbx.endo_exo — QM region builder with BFS expansion and hydrogen capping.
+"""mmtbx.endo_exo: QM region builder with BFS expansion and hydrogen capping.
 
 Grows a QM region around each seed site (metal atoms by default, or a
 user-supplied selection) by breadth-first traversal of the covalent graph,
@@ -9,7 +9,7 @@ sidecar PHIL file per seed.
 Usage (via dispatcher):
 
     mmtbx.endo_exo model.pdb
-    mmtbx.endo_exo model.pdb selection="chain A and resseq 100" radius=5.0
+    mmtbx.endo_exo model.pdb selection="chain A and resseq 100" buffer.radius=5.0
     mmtbx.endo_exo model.pdb selection="chain A and resseq 100" \\
                              selection="chain B and resseq 200"
 
@@ -39,32 +39,35 @@ selection = None
   .help = "Atom selection string(s) for the initial seed region(s). Each entry produces one QM region output file. \
 May be specified multiple times (e.g. selection='chain A and resseq 100' selection='chain B and resseq 200'). \
 If no selection is given, all metals in the structure are used as seeds (one output per metal)."
-metal_element = None
+element_filter = None
   .type = str
   .multiple = True
-  .help = "Restrict the metal-scan seed search to atoms of these element(s) \
-(e.g. metal_element=Fe, or metal_element=Fe metal_element=Cu). Element symbols \
-are case-insensitive. Only consulted when no `selection` is given; if any \
-selection is provided, the explicit selection wins. Default (no values): \
-seed on every metal found by mmtbx.geometry_restraints.qmi.metals."
+  .help = "Restrict the element-scan seed search to atoms of these element(s) \
+(e.g. element_filter=Fe, or element_filter=Fe element_filter=Cu). Element \
+symbols are case-insensitive and need not be metals. Only consulted when no \
+`selection` is given; if any selection is provided, the explicit selection \
+wins. Default (no values): seed on every metal found by \
+mmtbx.geometry_restraints.qmi.metals."
 altloc = auto
   .type = str
   .help = "Which altloc letter to retain per residue.  'auto' (default) picks the \
 highest mean-occupancy non-blank altloc per residue.  A specific letter (e.g. 'A', 'B') \
 keeps that letter, falling back to the highest-occupancy altloc with a warning if the \
 letter is absent from a residue.  'all' disables altloc filtering."
-radius = 5.0
-  .type = float(value_min=0)
-  .help = "Radius of the buffer region around the selected scatterer."
-skip_radius_search = False
-  .type = bool
-  .help = "If True, the initial radius search is skipped and only the seed atoms themselves seed the QM region (BFS expansion still applies)."
+buffer {
+  radius = 5.0
+    .type = float(value_min=0)
+    .help = "Radius of the buffer region around the selected scatterer."
+  skip_search = False
+    .type = bool
+    .help = "If True, the initial radius search is skipped and only the seed atoms themselves seed the QM region (BFS expansion still applies)."
+}
 # contact_cutoff removed: its seed-contact edges let the BFS drift across the
 # lattice forever; the radius search covers what it did.
 # contact_cutoff = 3.0
 #   .type = float(value_min=0)
 #   .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
-max_depth = 3
+max_search_depth = 3
   .type = int(value_min=0)
   .help = "Maximum BFS depth from any atom within the QM region."
 capping {
@@ -107,21 +110,23 @@ seed region."
 of its atoms is within this distance (Angstrom) of any seed atom in that \
 group. Ignored when scope=global."
 }
-include_terminal_charges = False
-  .type = bool
-  .help = "If True, estimate free peptide termini charges inside the truncated QM region."
+terminal_charges {
+  enable = False
+    .type = bool
+    .help = "If True, estimate free peptide termini charges inside the truncated QM region."
+  n_terminus = 1
+    .type = int(value_min=0, value_max=1)
+    .help = "Charge assigned to each detected free N-terminus when terminal_charges.enable=True."
+  c_terminus = -1
+    .type = int(value_min=-1, value_max=0)
+    .help = "Charge assigned to each detected free C-terminus when terminal_charges.enable=True."
+}
 write_files = True
   .type = bool
   .help = "If True (default), write a PDB, an mmCIF, and a sidecar PHIL \
 file per seed to the current working directory. Set to False when calling \
 the program in-memory (e.g. via Program(...).run() + get_results()) and \
 the per-seed Model objects are consumed directly without a disk round-trip."
-n_terminus_charge = 1
-  .type = int(value_min=0, value_max=1)
-  .help = "Charge assigned to each detected free N-terminus when include_terminal_charges=True."
-c_terminus_charge = -1
-  .type = int(value_min=-1, value_max=0)
-  .help = "Charge assigned to each detected free C-terminus when include_terminal_charges=True."
 """
 
 

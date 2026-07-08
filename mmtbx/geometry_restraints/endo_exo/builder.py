@@ -1,4 +1,4 @@
-"""QMRegionBuilder -- the per-seed QM-region extraction pipeline.
+"""QMRegionBuilder: the per-seed QM-region extraction pipeline.
 
 Orchestrates seed discovery, covalent-graph construction, BFS region growth,
 hydrogen capping, charge estimation, and (optionally) writing a PDB, mmCIF,
@@ -86,9 +86,9 @@ class QMRegionBuilder(object):
       log=self.logger,
     )
     self._charge_estimator = ChargeEstimator(
-      include_terminal_charges=self.params.include_terminal_charges,
-      n_terminus_charge=self.params.n_terminus_charge,
-      c_terminus_charge=self.params.c_terminus_charge,
+      include_terminal_charges=self.params.terminal_charges.enable,
+      n_terminus_charge=self.params.terminal_charges.n_terminus,
+      c_terminus_charge=self.params.terminal_charges.c_terminus,
       log=self.logger,
     )
 
@@ -135,11 +135,11 @@ class QMRegionBuilder(object):
     seed_finder = SeedFinder()
     selection_strings = [s for s in (self.params.selection or []) if s]
     element_filter = [
-      e for e in (self.params.metal_element or []) if e and e.strip()
+      e for e in (self.params.element_filter or []) if e and e.strip()
     ]
     if element_filter and selection_strings:
       print(
-        f"Note: ignoring metal_element={element_filter} because an "
+        f"Note: ignoring element_filter={element_filter} because an "
         f"explicit selection was provided.",
         file=self.logger,
       )
@@ -182,13 +182,13 @@ class QMRegionBuilder(object):
 
     # Seed-contact edges disabled (see contact_cutoff note in endo_exo.py).
     # cutoff = self.params.contact_cutoff
-    # if not self.params.skip_radius_search:
+    # if not self.params.buffer.skip_search:
     #   added_edges = self._graph_builder.add_seed_contact_edges(
     #     seeds_flat, model, adjacency, cutoff=cutoff)
     #   print(f'Added {added_edges} seed-contact edges '
     #         f'(cutoff={cutoff:.2f} A)', file=self.logger)
     print(
-      f'Always-included seed-centered radius: {self.params.radius:.2f} A',
+      f'Always-included seed-centered radius: {self.params.buffer.radius:.2f} A',
       file=self.logger,
     )
 
@@ -209,11 +209,11 @@ class QMRegionBuilder(object):
 
     Behaviour is controlled by ``params.altloc``:
 
-    * ``'all'`` -- no filtering; *model* is returned unchanged.
-    * ``'auto'`` -- for each residue group containing non-blank altlocs,
+    * ``'all'``: no filtering; *model* is returned unchanged.
+    * ``'auto'``: for each residue group containing non-blank altlocs,
       retain the altloc with the highest mean atom occupancy and drop
       the others.
-    * any specific letter (e.g. ``'A'``) -- retain that letter where it
+    * any specific letter (e.g. ``'A'``): retain that letter where it
       is present; if a residue has non-blank altlocs but not the
       requested letter, fall back to the highest-occupancy altloc and
       emit a warning.
@@ -355,7 +355,7 @@ class QMRegionBuilder(object):
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
-      qm_atoms, adjacency, model, max_depth=self.params.max_depth,
+      qm_atoms, adjacency, model, max_depth=self.params.max_search_depth,
       preferred_cut_fallback=(
         self.params.capping.preferred_cuts
         and self.params.capping.preferred_cuts_fallback),
@@ -401,18 +401,19 @@ class QMRegionBuilder(object):
   def _seed_qm_region(self, seeds, model):
     """Return the initial ``(iseq, sym_op)`` node set for the QM region.
 
-    When *skip_radius_search* is False (default) all atoms within
-    ``params.radius`` of every seed are included.  When *skip_radius_search*
-    is True only the seed atoms themselves are added and BFS expansion
-    (controlled by ``params.max_depth``) is relied upon to grow the region.
+    When *buffer.skip_search* is False (default) all atoms within
+    ``params.buffer.radius`` of every seed are included.  When
+    *buffer.skip_search* is True only the seed atoms themselves are added and
+    BFS expansion (controlled by ``params.max_search_depth``) is relied upon to
+    grow the region.
 
     The radius search is symmetry-aware: the KD-tree supplies ASU
-    (identity-image) atoms within ``params.radius``, and
+    (identity-image) atoms within ``params.buffer.radius``, and
     :meth:`AtomGraphBuilder.seed_sym_nodes_within_radius` adds the
     symmetry-image atoms inside the same sphere.  Without the latter, a
     metal on a special position would seed only the identity copy of its
-    coordinating residues, so the symmetry copies -- reached later by BFS
-    -- would be truncated differently (e.g. cut at CA-CB where the ASU copy
+    coordinating residues, so the symmetry copies (reached later by BFS)
+    would be truncated differently (e.g. cut at CA-CB where the ASU copy
     keeps CA/CB).
 
     Parameters
@@ -426,18 +427,18 @@ class QMRegionBuilder(object):
     """
     identity = _canon_op(sgtbx.rt_mx())
     qm_nodes = set()
-    if self.params.skip_radius_search:
+    if self.params.buffer.skip_search:
       for seed in seeds:
         qm_nodes.add((seed.i_seq, identity))
     else:
       for seed in seeds:
         mask = self._graph_builder.atoms_within_radius_best(
-          seed, model, self.params.radius
+          seed, model, self.params.buffer.radius
         )
         for iseq in mask.iselection():
           qm_nodes.add((iseq, identity))
       qm_nodes |= self._graph_builder.seed_sym_nodes_within_radius(
-        seeds, model, self.params.radius
+        seeds, model, self.params.buffer.radius
       )
     qm_nodes |= self._include_nodes_for(seeds, model)
     return qm_nodes
@@ -519,7 +520,7 @@ class QMRegionBuilder(object):
     set.
 
     The hull is built from the *materialized* Cartesian positions of
-    the visited nodes, not from ASU coordinates -- so symmetry
+    the visited nodes, not from ASU coordinates, so symmetry
     images that already participate in the QM region contribute to
     the bounding volume on equal footing with the parent atoms.
 
@@ -925,8 +926,8 @@ class QMRegionBuilder(object):
     model_stem = os.path.splitext(os.path.basename(self.model_name))[0]
 
     common_suffix = (
-      f'_within{self.params.radius:.2f}A'
-      f'_depth{self.params.max_depth}'
+      f'_within{self.params.buffer.radius:.2f}A'
+      f'_depth{self.params.max_search_depth}'
     )
 
     if selection_str:

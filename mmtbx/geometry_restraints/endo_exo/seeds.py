@@ -12,13 +12,14 @@ class SeedFinder:
   matched by one or more user-supplied CCTBX selection strings.
   """
 
-  def find_metals(self, model, element_filter=None):
-    """Return metal atom objects in *model*.
+  def find_by_element(self, model, element_filter=None):
+    """Return atom objects whose element matches *element_filter*.
 
-    Delegates to ``mmtbx.geometry_restraints.qmi.metals.metal_atoms``. When *element_filter*
-    is given, its element symbols are passed straight through as the
-    ``metals=`` argument, restricting the scan to those element(s).
-    When ``None``, the canonical ``METALS`` recognition list is used.
+    Delegates to ``mmtbx.geometry_restraints.qmi.metals.metal_atoms``. When
+    *element_filter* is given, its element symbols are passed straight through
+    as the ``metals=`` argument, restricting the scan to those element(s),
+    which need not be metals. When ``None``, the canonical ``METALS``
+    recognition list is used as the default filter.
 
     Parameters
     ----------
@@ -89,7 +90,7 @@ class SeedFinder:
       ]
     return [
       (None, [m])
-      for m in self.find_metals(model, element_filter=element_filter)
+      for m in self.find_by_element(model, element_filter=element_filter)
     ]
 
   def count_metals(self, model):

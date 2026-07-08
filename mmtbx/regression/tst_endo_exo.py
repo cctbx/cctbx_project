@@ -214,7 +214,7 @@ def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   with default settings (metal scan, radius=5.0, depth=3).  Parses the
   string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
   the single result dict produced for the seed.  *radius* overrides
-  ``params.radius`` when given; *include*, when given, is a
+  ``params.buffer.radius`` when given; *include*, when given, is a
   ``(selection, scope, proximity)`` tuple configuring
   ``residues_to_include``; *selection*, when given, seeds from that CCTBX
   selection string instead of scanning for metals."""
@@ -228,7 +228,7 @@ def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   params = master.extract()
   params.write_files = False
   if radius is not None:
-    params.radius = radius
+    params.buffer.radius = radius
   if selection is not None:
     params.selection = [selection]
   if include is not None:

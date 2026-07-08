@@ -205,8 +205,8 @@ class AtomGraphBuilder:
     ASU atoms, so a metal on or near a special position misses the
     symmetry-related copies of its coordinating residues that are
     physically inside the buffer sphere.  This enumerates those copies via
-    ``pair_asu_table`` -- the same mechanism :meth:`add_seed_contact_edges`
-    uses for coordination edges -- and returns one ``(j_seq, rt_mx_ji)``
+    ``pair_asu_table`` (the same mechanism :meth:`add_seed_contact_edges`
+    uses for coordination edges) and returns one ``(j_seq, rt_mx_ji)``
     node per atom-image within *radius* of any seed.
 
     Only **non-identity** images are returned; the identity image is

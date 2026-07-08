@@ -1,4 +1,4 @@
-"""endo_exo -- QM-region builder engine.
+"""endo_exo: QM-region builder engine.
 
 Grows a QM region around seed sites by breadth-first traversal of the
 covalent graph, caps dangling bonds with hydrogens, and estimates the net

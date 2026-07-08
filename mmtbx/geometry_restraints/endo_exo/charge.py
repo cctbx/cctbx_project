@@ -31,7 +31,7 @@ STANDARD_RESIDUE_CHARGES = {
 # formal_charge is the residue's charge in its standard RCSB CCD reference
 # form (ASP/GLU/CYS/TYR neutral; LYS/ARG/HIS+ protonated).  protonation_sites
 # lists every canonical H name that, when present, contributes +1 to the
-# reference charge -- one canonical name per chemically distinct H slot.
+# reference charge: one canonical name per chemically distinct H slot.
 # Net sidechain charge = formal_charge - len(canonical_sites) + n_present.
 CHARGED_SIDECHAINS = {
   'ASP': {
