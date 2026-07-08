@@ -48,11 +48,11 @@ def _png_bytes(width=10, height=10):
   return bytes(buf.data())
 
 
-def _meta(i):
+def _meta(i, title=None):
   ts = now()
   return ConversationMeta(
-    id="id%d" % i, title="Conv %d" % i, profile_name="t", model="m",
-    created_at=ts, updated_at=ts)
+    id="id%d" % i, title="Conv %d" % i if title is None else title,
+    profile_name="t", model="m", created_at=ts, updated_at=ts)
 
 
 # ---- ConversationView ----------------------------------------------------
@@ -403,6 +403,61 @@ def exercise_list_populate_and_select():
   assert selected == ["id1"], selected
 
 
+def exercise_list_set_active_marks_one_row_with_checkmark():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1), _meta(2)])
+  w.set_active("id1")
+  assert w._active_id == "id1", w._active_id
+  # Exactly the active row carries a non-null (checkmark) icon; the others
+  # carry a same-size transparent placeholder (null cacheKey differs).
+  active_icon = w._list.item(1).icon()
+  assert not active_icon.isNull(), "active row must show a checkmark icon"
+  for i in (0, 2):
+    assert w._list.item(i).icon().cacheKey() != active_icon.cacheKey(), i
+
+
+def exercise_list_rebuild_preserves_active_checkmark():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id1")
+  w.set_conversations([_meta(0), _meta(1)])          # rebuild
+  assert not w._list.item(1).icon().isNull(), "rebuild must keep the checkmark"
+  assert w._list.item(0).icon().cacheKey() != w._list.item(1).icon().cacheKey()
+
+
+def exercise_list_checkmark_is_small_and_gutter_fixed():
+  """The active-row checkmark is small (a pinned iconSize) and the inactive-row
+  blank gutter is the SAME size, so the checkmark can't shift the conversation
+  name relative to an inactive row."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  sz = w._list.iconSize()
+  assert sz.width() == sz.height() and 0 < sz.width() <= 14, \
+    (sz.width(), sz.height())                        # small + square
+  # checkmark and blank render at the same footprint -> constant decoration
+  # width -> the name never indents as active moves between rows
+  assert w._check_icon.pixmap(sz).size() == w._blank_icon.pixmap(sz).size() == sz
+
+
+def exercise_list_set_active_on_empty_title_emits_no_rename():
+  """setIcon is setData(DecorationRole), which fires itemChanged. Without a
+  blockSignals guard, an empty-title row (text 'Untitled', cached title '')
+  would emit a spurious rename_requested(cid, 'Untitled')."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0, title=""), _meta(1, title="")])
+  renames = []
+  w.rename_requested.connect(lambda cid, t: renames.append((cid, t)))
+  w.set_active("id0")
+  assert renames == [], renames
+
+
 def exercise_list_new_button_emits_signal():
   from qttbx.widgets.chat.conversation_list import ConversationList
   _qapp()
@@ -427,7 +482,8 @@ def exercise_list_delete_button_emits_signal_for_selected():
 
 def exercise_list_items_are_editable_for_rename():
   """Every row must carry the Qt.ItemIsEditable flag so the in-place
-  editor opens on double-click / F2 / the Rename button."""
+  editor opens on F2 / the Rename button / double-click on the active
+  row (a double-click on a non-active row activates it instead)."""
   from qttbx.qt import QtCore
   from qttbx.widgets.chat.conversation_list import ConversationList
   _qapp()
@@ -465,18 +521,56 @@ def exercise_list_rename_button_emits_signal_when_text_changes():
 
 
 def exercise_list_double_click_path_emits_rename_via_item_changed():
-  """The double-click rename path goes through the same itemChanged
-  slot as the button-driven editor. Pin that the slot emits the
-  signal whether the user got there via double-click or the button."""
+  """Double-clicking the ACTIVE row opens the editor; committing (simulated by
+  a setText, as Qt fires itemChanged either way) emits rename_requested."""
   from qttbx.widgets.chat.conversation_list import ConversationList
   _qapp()
   w = ConversationList()
-  w.set_conversations([_meta(0)])
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
   renames = []
-  w.rename_requested.connect(
-    lambda cid, title: renames.append((cid, title)))
-  w._list.item(0).setText("Edited via double-click")
-  assert renames == [("id0", "Edited via double-click")], renames
+  w.rename_requested.connect(lambda cid, t: renames.append((cid, t)))
+  w._on_item_double_clicked(w._list.item(0))         # active -> editor opens
+  w._list.item(0).setText("Renamed conversation")
+  assert renames == [("id0", "Renamed conversation")], renames
+
+
+def exercise_list_double_click_non_active_emits_activated():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  w._on_item_double_clicked(w._list.item(1))         # non-active
+  assert got == ["id1"], got
+
+
+def exercise_list_double_click_active_opens_editor_no_activated():
+  from qttbx.qt import QtWidgets
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  w._on_item_double_clicked(w._list.item(0))         # active -> rename
+  assert got == [], got
+  assert w._list.state() == QtWidgets.QAbstractItemView.EditingState
+
+
+def exercise_list_single_click_does_not_activate():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  w.select_index(1)                                  # selection change only
+  assert got == [], got
 
 
 def exercise_list_empty_rename_is_rejected_and_reverted():
@@ -518,6 +612,324 @@ def exercise_list_rename_button_with_no_selection_is_no_op():
   w.click_rename()
 
 
+def exercise_list_select_id_selects_without_activating():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1), _meta(2)])
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  w.select_id("id2")
+  assert w.selected_id() == "id2", w.selected_id()
+  assert got == [], got                              # programmatic: no activate
+
+
+def exercise_list_select_id_unknown_is_noop():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.select_index(0)
+  w.select_id("does-not-exist")
+  assert w.selected_id() == "id0", w.selected_id()   # selection unchanged
+
+
+def _return_event():
+  from qttbx.qt import QtCore, QtGui
+  return QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Return,
+                         QtCore.Qt.NoModifier)
+
+
+def exercise_list_return_on_non_active_activates():
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
+  w.select_index(1)                                  # non-active selected
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  handled = w.eventFilter(w._list, _return_event())
+  assert handled is True, "Return must be consumed"
+  assert got == ["id1"], got
+
+
+def exercise_list_return_on_active_opens_no_editor():
+  from qttbx.qt import QtWidgets
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
+  w.select_index(0)                                  # active selected
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  handled = w.eventFilter(w._list, _return_event())
+  assert handled is True, "Return must be consumed (no fall-through to editor)"
+  assert got == [], got
+  assert w._list.state() != QtWidgets.QAbstractItemView.EditingState
+
+
+def exercise_list_return_after_rename_commit_does_not_activate():
+  """Renaming a NON-active row (F2/Rename button) and pressing Return to commit
+  must not then activate that row. The EditingState check is the primary guard;
+  the closeEditor flag is backup. If this passes with the flag removed on both
+  PySide2 and PySide6, the flag may be dropped."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w.set_active("id0")
+  w.select_index(1)                                  # non-active row to rename
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  w.click_rename()                                   # opens editor on row 1
+  w._list.item(1).setText("Renamed")                 # commit (fires itemChanged)
+  w._list.closePersistentEditor(w._list.item(1))     # editor closes on commit
+  w._arm_return_suppression()                        # simulate closeEditor firing
+  handled = w.eventFilter(w._list, _return_event())  # the propagated Return
+  assert handled is True and got == [], (handled, got)
+
+
+def exercise_list_locked_conversation_is_dimmed_but_selectable():
+  """A conversation open in another process (locked_ids) renders DIMMED but stays
+  selectable + enabled (so a click can re-check / offer Unlock); it is NOT
+  editable, and double-clicking it emits no activated (can't switch to a locked
+  one until it's unlocked)."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)], locked_ids={"id1"})
+  it0, it1 = w._list.item(0), w._list.item(1)
+  assert it0.flags() & QtCore.Qt.ItemIsEditable                # unlocked: editable
+  assert it1.flags() & QtCore.Qt.ItemIsSelectable              # locked: selectable
+  assert it1.flags() & QtCore.Qt.ItemIsEnabled                 #   + enabled
+  assert not (it1.flags() & QtCore.Qt.ItemIsEditable)          #   but not editable
+  assert it1.foreground() == w._dim_brush                      # dimmed
+  assert it0.foreground() != w._dim_brush                      # unlocked: normal
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  w._on_item_double_clicked(it1)                               # locked -> inert
+  assert got == [], got
+
+
+def exercise_list_unlock_button_and_mark_unlocked():
+  """set_unlock_button flips Delete -> Unlock (disabling Rename) and routes its
+  click to unlock_requested; mark_unlocked re-styles a row normal (editable,
+  undimmed) and drops it from the locked set; set_delete_button restores Delete +
+  Rename."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)], locked_ids={"id1"})
+  assert w._del_btn.text() == "Delete"                         # default
+  got = []
+  w.unlock_requested.connect(lambda cid: got.append(cid))
+  w.set_unlock_button("id1")
+  assert w._del_btn.text() == "Unlock" and w._unlock_target == "id1"
+  assert not w._rename_btn.isEnabled()                         # locked: no rename
+  w._on_del_button()                                           # routes to unlock
+  assert got == ["id1"]
+  w.mark_unlocked("id1")                                       # freed -> normal
+  assert "id1" not in w._locked_ids
+  it1 = w._list.item(1)
+  assert (it1.flags() & QtCore.Qt.ItemIsEditable) \
+    and it1.foreground() != w._dim_brush
+  w.set_delete_button()
+  assert w._del_btn.text() == "Delete" and w._unlock_target is None
+  assert w._rename_btn.isEnabled()                             # restored
+  # the button reserves the wider label's width, so the Delete<->Unlock toggle
+  # can't resize it (which would nudge the sidebar)
+  for _label in ("Delete", "Unlock"):
+    w._del_btn.setText(_label)
+    assert w._del_btn.minimumWidth() >= w._del_btn.sizeHint().width()
+
+
+def exercise_list_mark_locked_dims_a_row():
+  """mark_locked dims a row and adds it to the locked set (the inverse of
+  mark_unlocked) -- used when an on-select re-check finds a conversation now open
+  in another process. The _LOCKED_ROLE flag is set so it stays dimmed even when
+  selected."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.conversation_list import ConversationList, _LOCKED_ROLE
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])          # none locked initially
+  assert w.listed_ids() == ["id0", "id1"]            # rows in display order
+  it1 = w._list.item(1)
+  assert it1.foreground() != w._dim_brush
+  assert it1.flags() & QtCore.Qt.ItemIsEditable
+  w.mark_locked("id1")                               # a 2nd window opened
+  assert "id1" in w._locked_ids
+  assert it1.foreground() == w._dim_brush
+  assert not (it1.flags() & QtCore.Qt.ItemIsEditable)
+  assert it1.data(_LOCKED_ROLE) is True              # dimmed even when selected
+  w.mark_locked("id1")                               # idempotent
+  assert "id1" in w._locked_ids
+
+
+def exercise_list_locked_row_stays_dimmed_when_selected():
+  """A locked row stays dimmed even when it is the selected row: the item
+  delegate forces HighlightedText (the selected row's text colour) to the dim
+  colour, so the 'locked' cue survives selection. A normal row is unaffected."""
+  from qttbx.qt import QtGui, QtWidgets
+  from qttbx.widgets.chat.conversation_list import (
+    ConversationList, _LockAwareDelegate)
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)], locked_ids={"id1"})
+  d = w._list.itemDelegate()
+  assert isinstance(d, _LockAwareDelegate)
+  dim = w.palette().color(QtGui.QPalette.Disabled, QtGui.QPalette.Text)
+  opt1 = QtWidgets.QStyleOptionViewItem()
+  d.initStyleOption(opt1, w._list.model().index(1, 0))          # locked row
+  assert opt1.palette.color(QtGui.QPalette.HighlightedText) == dim
+  opt0 = QtWidgets.QStyleOptionViewItem()
+  d.initStyleOption(opt0, w._list.model().index(0, 0))          # unlocked row
+  assert opt0.palette.color(QtGui.QPalette.HighlightedText) != dim
+
+
+def exercise_list_enter_on_locked_row_is_inert():
+  """Enter/Return on a locked selected row does NOT activate it (parity with the
+  double-click guard) -- it must be unlocked first. Deleting the eventFilter's
+  locked-row clause would fail this."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)], locked_ids={"id1"})
+  w.select_index(1)                                    # select the locked row
+  got = []
+  w.activated.connect(lambda cid: got.append(cid))
+  ev = QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Return,
+                       QtCore.Qt.NoModifier)
+  w.eventFilter(w._list, ev)
+  assert got == [], "Enter on a locked row must not activate"
+
+
+def exercise_list_non_left_double_click_is_ignored():
+  """itemDoubleClicked is button-agnostic; the viewport filter swallows a
+  non-left double-click so only a LEFT one activates/renames."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  vp = w._list.viewport()
+
+  def _dbl(button):
+    return QtGui.QMouseEvent(
+      QtCore.QEvent.MouseButtonDblClick, QtCore.QPointF(5, 5),
+      button, button, QtCore.Qt.NoModifier)
+
+  assert w.eventFilter(vp, _dbl(QtCore.Qt.RightButton)) is True    # consumed
+  assert w.eventFilter(vp, _dbl(QtCore.Qt.MiddleButton)) is True   # consumed
+  # a LEFT double-click is NOT consumed here (falls through to itemDoubleClicked)
+  assert w.eventFilter(vp, _dbl(QtCore.Qt.LeftButton)) is not True
+
+
+def exercise_list_rebuild_resets_unlock_button_to_delete():
+  """A rebuild (set_conversations) restores Delete + Rename even if a locked row
+  had flipped the button to Unlock, so no stale Unlock target lingers."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)], locked_ids={"id1"})
+  w.set_unlock_button("id1")
+  assert w._del_btn.text() == "Unlock" and not w._rename_btn.isEnabled()
+  w.set_conversations([_meta(0), _meta(1)])            # rebuild
+  assert w._del_btn.text() == "Delete" and w._unlock_target is None
+  assert w._rename_btn.isEnabled()
+
+
+def exercise_list_lock_mid_rename_closes_editor_and_blocks_rename():
+  """mark_locked on a row being renamed closes its editor, and even a forced
+  commit on the now-locked row emits no rename_requested (the flag change alone
+  would not retro-close the editor)."""
+  from qttbx.qt import QtWidgets
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  got = []
+  w.rename_requested.connect(lambda cid, t: got.append((cid, t)))
+  it1 = w._list.item(1)
+  w._list.setCurrentItem(it1)
+  w._list.editItem(it1)                                # open the editor
+  assert w._list.state() == QtWidgets.QAbstractItemView.EditingState
+  w.mark_locked("id1")                                 # a poll dims it mid-edit
+  assert w._list.state() != QtWidgets.QAbstractItemView.EditingState, \
+    "mark_locked must close the open editor"
+  w._list.blockSignals(True)                           # force a stray commit
+  it1.setText("hacked")
+  w._list.blockSignals(False)
+  w._on_item_changed(it1)
+  assert got == [], "a locked row must not emit rename_requested"
+
+
+def exercise_list_revert_last_rename_restores_pre_edit_title():
+  """revert_last_rename restores a row's pre-edit title + cache after an
+  optimistic in-place rename, without a rebuild -- backs the chat window's
+  rename-refusal path (which can't rely on a rebuild a list failure would skip)."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  m1 = _meta(1)
+  m1.title = "Orig"
+  w.set_conversations([_meta(0), m1])
+  got = []
+  w.rename_requested.connect(lambda cid, t: got.append((cid, t)))
+  it1 = w._list.item(1)
+  w._list.blockSignals(True)
+  it1.setText("Edited")
+  w._list.blockSignals(False)
+  w._on_item_changed(it1)                              # optimistic commit
+  assert got == [("id1", "Edited")] and it1.text() == "Edited"
+  w.revert_last_rename("id1")                          # refusal -> revert
+  assert it1.text() == "Orig" and w._cached_title("id1") == "Orig"
+  w.revert_last_rename("id1")                          # idempotent (already reverted)
+  assert it1.text() == "Orig"
+
+
+def exercise_list_action_button_debounces_on_label_flip():
+  """The Delete/Unlock button disables itself briefly on a REAL label flip (so a
+  click aimed at the old label drops), and does NOT re-arm when set to the same
+  state twice (a steady poll must not keep it disabled)."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)], locked_ids={"id1"})
+  assert w._del_btn.isEnabled()
+  w.set_unlock_button("id1")                            # flip Delete -> Unlock
+  assert not w._del_btn.isEnabled(), "a label flip debounces the button"
+  w._enable_action_button()                             # (the timer would)
+  w.set_unlock_button("id1")                            # same state -> no re-arm
+  assert w._del_btn.isEnabled(), "a repeat in the same state must not debounce"
+
+
+def exercise_list_return_suppression_flag_auto_clears():
+  """The post-rename Return guard must self-clear on the NEXT event-loop turn
+  (QTimer.singleShot(0)), not linger. closeEditor also fires on a focus-out
+  commit or an Escape revert -- cases where no Return follows -- so a
+  never-cleared flag would silently swallow the user's next genuine Return.
+  Arm it, pump the event loop, and assert it cleared: deleting the singleShot
+  line leaves the flag armed and fails this."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  app = _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0), _meta(1)])
+  w._arm_return_suppression()
+  assert w._suppress_next_return is True, "flag should arm"
+  deadline = QtCore.QElapsedTimer()
+  deadline.start()
+  while w._suppress_next_return and deadline.elapsed() < 500:
+    app.processEvents(QtCore.QEventLoop.AllEvents, 20)
+  assert w._suppress_next_return is False, "flag must auto-clear next loop turn"
+
+
 def exercise():
   exercise_add_bubble_then_streaming_then_finalize()
   exercise_finalize_cancelled_marks_running_tool_cells_cancelled()
@@ -536,14 +948,37 @@ def exercise():
   exercise_streaming_deltas_do_not_yank_user_who_scrolled_up()
   exercise_range_change_while_following_snaps_to_new_max()
   exercise_list_populate_and_select()
+  exercise_list_set_active_marks_one_row_with_checkmark()
+  exercise_list_rebuild_preserves_active_checkmark()
+  exercise_list_checkmark_is_small_and_gutter_fixed()
+  exercise_list_set_active_on_empty_title_emits_no_rename()
   exercise_list_new_button_emits_signal()
   exercise_list_delete_button_emits_signal_for_selected()
   exercise_list_items_are_editable_for_rename()
   exercise_list_rename_button_emits_signal_when_text_changes()
   exercise_list_double_click_path_emits_rename_via_item_changed()
+  exercise_list_double_click_non_active_emits_activated()
+  exercise_list_double_click_active_opens_editor_no_activated()
+  exercise_list_single_click_does_not_activate()
   exercise_list_empty_rename_is_rejected_and_reverted()
   exercise_list_rename_with_same_title_is_no_op()
   exercise_list_rename_button_with_no_selection_is_no_op()
+  exercise_list_select_id_selects_without_activating()
+  exercise_list_select_id_unknown_is_noop()
+  exercise_list_return_on_non_active_activates()
+  exercise_list_return_on_active_opens_no_editor()
+  exercise_list_return_after_rename_commit_does_not_activate()
+  exercise_list_return_suppression_flag_auto_clears()
+  exercise_list_locked_conversation_is_dimmed_but_selectable()
+  exercise_list_unlock_button_and_mark_unlocked()
+  exercise_list_mark_locked_dims_a_row()
+  exercise_list_locked_row_stays_dimmed_when_selected()
+  exercise_list_enter_on_locked_row_is_inert()
+  exercise_list_non_left_double_click_is_ignored()
+  exercise_list_rebuild_resets_unlock_button_to_delete()
+  exercise_list_lock_mid_rename_closes_editor_and_blocks_rename()
+  exercise_list_revert_last_rename_restores_pre_edit_title()
+  exercise_list_action_button_debounces_on_label_flip()
 
 
 if __name__ == "__main__":
