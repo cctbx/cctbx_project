@@ -7,12 +7,13 @@ Wraps any ``Agent``. Pure-Python; no Qt. ``QtAgentRunner`` (in
 import json
 import queue
 import sys
+import time
 import uuid
 
 from libtbx.utils import Sorry
 
 from qttbx.widgets.chat.agent.conversation import (
-  ContentBlock, Message, now)
+  Conversation, ContentBlock, Message, now)
 from qttbx.widgets.chat.agent.errors import TurnCancelled
 from qttbx.widgets.chat.agent.events import (
   AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
@@ -20,6 +21,15 @@ from qttbx.widgets.chat.agent.events import (
   TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
   ToolApprovalRequest, _Cancelled)
+
+
+# Events that add content to the in-progress assistant message. The mid-turn
+# autosave fires only on these -- never on the terminal TurnDone, whose
+# GIL-releasing save I/O would race the GUI turn-end save (see
+# _collect_one_response).
+_CONTENT_EVENT_TYPES = (
+  TextDelta, Thinking, ToolUseRequested, ServerToolUsed, ServerToolResult,
+  ImageEmitted)
 
 
 def _new_id(prefix=""):
@@ -83,7 +93,7 @@ class AgentSession:
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
-               approval_queue=None):
+               approval_queue=None, autosave_interval_s=5.0, clock=None):
     self.agent = agent
     self.conv = conversation
     self.storage = storage
@@ -91,6 +101,9 @@ class AgentSession:
     self.policy = policy
     self.profile = profile
     self.depth = depth
+    self.autosave_interval_s = autosave_interval_s
+    self._clock = clock or time.monotonic
+    self._last_autosave = 0.0
     self.on_event = on_event or (lambda ev: None)
     self.log = log if log is not None else sys.stdout
 
@@ -145,6 +158,7 @@ class AgentSession:
         The final assistant message of the turn.
     """
     self.cancel = cancel
+    self._last_autosave = self._clock()            # reset mid-turn autosave
     # Drop any stale _Cancelled sentinel a previous turn's Stop left in
     # the shared queues (see _drain_stale_cancelled).
     _drain_stale_cancelled(self.approval_queue)
@@ -202,6 +216,7 @@ class AgentSession:
 
       tool_result_msg = self._dispatch_and_build_results(tool_calls, cancel)
       self.conv.append(tool_result_msg)
+      self._maybe_autosave()                       # checkpoint after tool result
 
       # Dispatch may have set the cancel token (deny_and_stop or sentinel
       # cancellation during approval). Don't ask the model for another
@@ -210,6 +225,41 @@ class AgentSession:
       if cancel.is_set():
         assistant_msg.stop_reason = "cancelled"
         return assistant_msg
+
+  def _maybe_autosave(self, partial_msg=None):
+    """Throttled mid-turn persistence (top-level sessions only).
+
+    Writes a non-mutating snapshot -- the committed messages plus the
+    in-progress assistant message -- at most once per ``autosave_interval_s``.
+    ``storage.save`` trims a snapshot that would end in an unanswered ``tool_use``
+    to the committed prefix, so a crash never freezes an un-resumable transcript
+    on disk. ``reindex=False`` keeps the O(N) index rescan (and the worker's
+    ``index.json`` writes) out of the hot loop. Never call this on the terminal
+    ``TurnDone`` event; see ``_collect_one_response``.
+
+    Parameters
+    ----------
+    partial_msg : Message, optional
+        The assistant message currently being streamed (not yet appended to the
+        conversation). Included in the snapshot when it has content.
+    """
+    if self.depth != 0 or self.storage is None:
+      return
+    now_t = self._clock()
+    if now_t - self._last_autosave < self.autosave_interval_s:
+      return
+    self._last_autosave = now_t                    # throttle even if save raises
+    tail = [partial_msg] if (partial_msg is not None and partial_msg.content) \
+        else []
+    # storage.save trims a trailing unanswered tool_use, so a snapshot caught
+    # mid-tool_use (before dispatch appends the tool_result) is persisted as a
+    # resumable prefix rather than an un-resumable provider-400 transcript.
+    snapshot = Conversation(meta=self.conv.meta,
+                            messages=self.conv.messages + tail)
+    try:
+      self.storage.save(snapshot, reindex=False)
+    except Exception as exc:
+      print("chat: mid-turn autosave failed: %s" % exc, file=self.log)
 
   def _collect_one_response(self, cancel):
     # Stamp each assistant message with the model (from the agent) and the
@@ -223,6 +273,13 @@ class AgentSession:
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
       self.on_event(event)
       _accumulate(msg, event, tool_calls, self.storage, self.conv.meta.id)
+      # Throttled mid-turn checkpoint -- ONLY on content events. Never on the
+      # terminal TurnDone: _collect_one_response returns straight into
+      # conv.append(assistant_msg), and autosave's blocking I/O (which releases
+      # the GIL) between the queued TurnDone emit and that append would let the
+      # GUI's _on_turn_done save a conv.messages still missing this message.
+      if isinstance(event, _CONTENT_EVENT_TYPES):
+        self._maybe_autosave(msg)
     return msg, tool_calls
 
   # ---- tool dispatch -------------------------------------------------------

@@ -18,6 +18,24 @@ def now():
   return datetime.now(timezone.utc)
 
 
+_MIN_DT = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def recency_key(meta):
+  """tz-aware ``updated_at`` for sorting conversations most-recent-first.
+
+  Robust to a hand-edited/legacy meta whose ``updated_at`` is ``None`` (returns
+  ``_MIN_DT``, so it sorts last) or naive (coerced to UTC) -- comparing naive
+  and aware datetimes raises ``TypeError``, the same threat the null case
+  guards against. Shared by the launcher's startup restore and the chat
+  window's sidebar sort.
+  """
+  dt = meta.updated_at
+  if dt is None:
+    return _MIN_DT
+  return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
 def _new_id():
   return uuid.uuid4().hex
 
