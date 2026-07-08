@@ -58,10 +58,10 @@ class QMRegionGrower:
     :meth:`_try_mark_cap`.  Two situations promote a tentative cap back to
     interior:
 
-    * **Re-encounter** -- *neighbour* is later reached from a different
+    * **Re-encounter**: *neighbour* is later reached from a different
       node.  The cap is then a regular interior node on at least two
       paths, so it is demoted via :meth:`_demote_cap_candidate`.
-    * **Adjacent-cap conflict** -- the would-be cap is directly bonded to
+    * **Adjacent-cap conflict**: the would-be cap is directly bonded to
       an existing cap candidate (detected at cap-creation time inside
       :meth:`_try_mark_cap`).  Both nodes are promoted to interior; this
       catches the edge case the re-encounter check cannot see, since
@@ -91,8 +91,8 @@ class QMRegionGrower:
         by :meth:`grow_region` (preferred-cut fallback) to re-cut residues
         whose preferred cut became unachievable.
     geometric_for_overgrowth : bool, optional
-        When ``True``, residues with no seed (radius) atom -- i.e. those
-        reached purely as BFS backbone overgrowth -- defer to the
+        When ``True``, residues with no seed (radius) atom (i.e. those
+        reached purely as BFS backbone overgrowth) defer to the
         geometric C-C sp3 heuristic instead of their ``PREFERRED_CUTS``
         entry.  The heuristic cuts at the first sp3 C-C bond along the
         BFS path (typically CA-CB), trimming such residues to backbone.
@@ -124,11 +124,11 @@ class QMRegionGrower:
     # symmetry-aware seeding the same residue can appear under several ops,
     # and "has a seed" is really a per-(residue, op) property.  Here, if
     # ANY image of a residue carries a seed, every image is treated as
-    # seeded -> uses preferred cuts.  This errs toward the preferred cut
+    # seeded -> uses preferred cuts. This errs toward the preferred cut
     # (the pre-overgrowth-rule behaviour), so it can only over-include, not
-    # break.  It bites only when one image of a residue coordinates (seeded)
+    # break. It bites only when one image of a residue coordinates (seeded)
     # while another image of the SAME residue is pure overgrowth in the same
-    # sphere -- rare.  To make it exact, key on (residue, op) instead.
+    # sphere (rare). To make it exact, key on (residue, op) instead.
     residue_has_seed_iseqs = set()
     if geometric_for_overgrowth:
       for (s_iseq, _s_op) in seed_nodes:
@@ -241,24 +241,24 @@ class QMRegionGrower:
     happen, both of which defer to the geometric C-C sp3 heuristic when the
     preferred cut is not the right boundary:
 
-    * **Overgrowth residues** -- residues with no seed (radius) atom use
+    * **Overgrowth residues**: residues with no seed (radius) atom use
       the geometric heuristic from the start (see
       ``geometric_for_overgrowth`` on :meth:`grow_by_depth`), so a residue
       reached only as backbone overgrowth is cut at its first sp3 C-C bond
       (typically CA-CB) rather than at its preferred site.
-    * **Consumed preferred cuts** -- the pass is repeated, accumulating
+    * **Consumed preferred cuts**: the pass is repeated, accumulating
       geometric fallback cuts, until no new ones are found (below).
 
     A preferred cut is "consumed" when both of its endpoints end up
-    interior to the region -- typically because the radius search seeded
+    interior to the region, typically because the radius search seeded
     atoms on both sides of it.  The canonical cut can then no longer be
     made, and BFS walks inward through the (now interior) sidechain into
     the backbone.  For each such residue this computes the outermost
     geometric C-C cut inward of the consumed bond, adds it to a
     ``forced_cut_bonds`` set, and re-runs :meth:`grow_by_depth`.  The trim
     follows from re-running: an atom survives only if it is still reachable
-    from a seed without crossing a cut, so the backbone overgrowth -- and
-    anything dragged in through it -- falls away on its own.  Seeds
+    from a seed without crossing a cut, so the backbone overgrowth (and
+    anything dragged in through it) falls away on its own.  Seeds
     (including all radius atoms) are never trimmed, so the radius floor is
     preserved.
 
@@ -338,7 +338,7 @@ class QMRegionGrower:
         continue
       handled.add(bond)
       # If one endpoint is the cap of the other, the preferred cut actually
-      # fired -- the bond is the boundary, not consumed.  Leave it.
+      # fired: the bond is the boundary, not consumed.  Leave it.
       if (cap_candidates.get((iseq, op)) == (partner.i_seq, op) or
           cap_candidates.get((partner.i_seq, op)) == (iseq, op)):
         continue
@@ -598,7 +598,7 @@ class QMRegionGrower:
 
     "Amide atoms" here means the backbone N, C, and O atoms across all
     alternate conformations of the residue group. Each amide atom is
-    looked up in *visited* as a node ``(i_seq, sym_op)`` -- so two
+    looked up in *visited* as a node ``(i_seq, sym_op)``, so two
     different symmetry images of the same residue are treated as
     distinct.
 
