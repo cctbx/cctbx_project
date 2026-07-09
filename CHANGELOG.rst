@@ -2,7 +2,7 @@
 ======
 
 * Added difference map calculation for cryoEM (as implemented in Servalcat)
-* Added a GFN-xTB engine (xtb_manager) for quantum-mechanics restraints
+* Added a GFN-xTB engine (xtb_manager) for quantum-mechanical restraints
 * Improvements to reduce2 hydrogen placement (with a reduce1/reduce2
   switch) and speedups to probe2 and clashscore2
 * Added iotbx.file_io for single-parse file reading, with xz/lzma/zstd
