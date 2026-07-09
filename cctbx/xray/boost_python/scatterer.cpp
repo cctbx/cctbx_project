@@ -157,6 +157,8 @@ namespace {
         .def("get_id_2_1", &w_t::get_id_2_1, ((arg("data") = 0), arg("multiplier") = 1))
         .def("get_id_5_16", &w_t::get_id_5_16, ((arg("data") = 0, arg("multiplier") = 1)))
         .def("get_id_5_1", &w_t::get_id_5_1, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("get_part", &w_t::get_part)
+        .def("set_part", &w_t::set_part, (arg("part") = 0))
         .def("element_info", &w_t::element_info, ccr)
         ;
     }

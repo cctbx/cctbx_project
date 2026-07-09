@@ -67,7 +67,8 @@ namespace xray {
         u_star(-1,-1,-1,-1,-1,-1),
         flags(scatterer_flags::use_bit|scatterer_flags::use_u_iso_bit),
         multiplicity_(0),
-        weight_without_occupancy_(0)
+        weight_without_occupancy_(0),
+        part(0)
       {}
 
       //! Initialization with anisotropic displacement parameters.
@@ -89,7 +90,32 @@ namespace xray {
         u_star(u_star_),
         flags(scatterer_flags::use_bit|scatterer_flags::use_u_aniso_bit),
         multiplicity_(0),
-        weight_without_occupancy_(0)
+        weight_without_occupancy_(0),
+        part(0)
+      {}
+
+      //! Initialization with anisotropic displacement parameters.
+      scatterer(LabelType const& label_,
+                crd_t const& site_,
+                scitbx::sym_mat3<FloatType> const& u_star_,
+                FloatType const& occupancy_,
+                ScatteringTypeType const& scattering_type_,
+                FloatType fp_,
+                FloatType fdp_,
+                int part_)
+      :
+        label(label_),
+        scattering_type(scattering_type_),
+        fp(fp_),
+        fdp(fdp_),
+        site(site_),
+        occupancy(occupancy_),
+        u_iso(-1),
+        u_star(u_star_),
+        flags(scatterer_flags::use_bit|scatterer_flags::use_u_aniso_bit),
+        multiplicity_(0),
+        weight_without_occupancy_(0),
+        part(part_)
       {}
 
       //! Direct access to label.
@@ -123,6 +149,9 @@ namespace xray {
 
       //! Direct access to isotropic displacement parameter.
       FloatType u_iso;
+
+      //! Direct access to the part or other integer data fields
+      int part;
 
       //! Direct access to anisotropic displacement parameters.
       /*! Conversions between isotropic and anisotropic displacement
@@ -540,6 +569,10 @@ namespace xray {
         return scatterer_id_base<FloatType, crd_t, mask_info, cell_m>(
           element_info().atomic_number(), site, data, multiplier);
       }
+
+      int get_part() const { return part; }
+      void set_part(int part_) { part = part_; }
+
     protected:
       int multiplicity_;
       FloatType weight_without_occupancy_;
