@@ -145,6 +145,15 @@ db {
       .expert_level = 2
   }
 }
+streaming {
+  orchestrator_host = localhost
+    .type = str
+    .help = Host of the dials_streaming orchestrator to poll for liveness.
+  orchestrator_port = 31019
+    .type = int
+    .help = Port of the orchestrator display/rendezvous ROUTER \
+            (dials_streaming networking.ports.orchestrator_display).
+}
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
 

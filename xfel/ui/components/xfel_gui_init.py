@@ -1338,97 +1338,54 @@ class MergingStatsSentinel(Thread):
 
 # ------------------------------- Streaming Sentinel ------------------------- #
 
-tp_EVT_STREAMING_UPDATE = wx.NewEventType()
-EVT_STREAMING_UPDATE    = wx.PyEventBinder(tp_EVT_STREAMING_UPDATE, 1)
-
-class StreamingUpdate(wx.PyCommandEvent):
-  def __init__(self, etype, eid, status=None):
-    wx.PyCommandEvent.__init__(self, etype, eid)
-    self._status = status
-  def GetValue(self):
-    return self._status
-
 class StreamingSentinel(Thread):
-  ''' Background thread that owns the dials_streaming Orchestrator for its entire
-      lifetime: it constructs the Orchestrator, launches the system, polls it for
-      status, forwards add/remove-node commands from the GUI command queue, and
-      shuts it down on stop.
+  ''' Background thread that polls the dials_streaming Orchestrator for liveness and
+      drives the RunWindow streaming light green (alive) / red (down).
 
-      The Orchestrator is created and driven ENTIRELY on this thread because it owns
-      a ZMQ ROUTER socket (not thread-safe) and must not have its construction race
-      with command/status calls from another thread. The Orchestrator is constructed
-      with install_signal_handlers=False: signal.signal() is illegal off the main
-      thread, and the GUI installs its own SIGINT/SIGTERM handlers (see
-      MainWindow.start_streaming) to drive graceful shutdown on Ctrl+C. '''
+      The Orchestrator runs independently of the GUI -- the operator launches it
+      standalone (dials_streaming.orchestrator ...) and it persists across GUI
+      crashes/restarts. This thread never constructs, owns, or commands it; the only
+      coupling is a request/reply liveness probe to the Orchestrator's display
+      rendezvous ROUTER (the same endpoint a standalone Display dials): a reply means
+      the Orchestrator process is alive and in its supervision loop.
 
-  def __init__(self, parent, params, active=True):
+      Host and port are read fresh from params.streaming every cycle, so a change made
+      in the Settings dialog takes effect without restarting the GUI. change_status()
+      is thread-safe (it posts a wx event), so it is called directly from here. '''
+
+  POLL_TIMEOUT_MS = 2000
+  POLL_INTERVAL_S = 3
+
+  def __init__(self, parent, active=True):
     Thread.__init__(self)
     self.parent = parent
-    self.params = params
     self.active = active
-    self.orchestrator = None
     self.daemon = True
 
-  def post_update(self, status):
-    evt = StreamingUpdate(tp_EVT_STREAMING_UPDATE, -1, status=status)
-    wx.PostEvent(self.parent.run_window.streaming_tab, evt)
-
   def run(self):
-    from dials_streaming.components.Orchestrator import Orchestrator
+    import zmq
+    context = zmq.Context()
     try:
-      # Construct and launch on this thread (sole owner of the ZMQ command socket).
-      self.orchestrator = Orchestrator(self.params, install_signal_handlers=False)
-      self.parent.orchestrator = self.orchestrator
-      self.orchestrator.start()  # non-blocking: returns once ControlHub is ready
-      self.parent.run_window.streaming_light.change_status('on')
-    except Exception as e:
-      print('StreamingSentinel start error:', e)
-      self.parent.run_window.streaming_light.change_status('alert')
-      self.active = False
-
-    while self.active:
-      # Drain the command queue. A spinner value of n adds n nodes as one job and
-      # removes a job of exactly n nodes (add_group/remove_group are symmetric).
-      cmd_queue = self.parent.streaming_cmd_queue
-      while not cmd_queue.empty():
+      while self.active:
+        host = self.parent.params.streaming.orchestrator_host or 'localhost'
+        port = self.parent.params.streaming.orchestrator_port
+        # A fresh DEALER per probe (LINGER 0) so a dropped or late reply can never
+        # leak into the next probe and read as a false "alive".
+        socket = context.socket(zmq.DEALER)
+        socket.setsockopt(zmq.LINGER, 0)
+        alive = False
         try:
-          cmd, n = cmd_queue.get_nowait()
-        except queue.Empty:
-          break
-        if cmd == 'add':
-          self.orchestrator.add_group(n)
-        elif cmd == 'remove':
-          self.orchestrator.remove_group(n)
-        elif cmd == 'display':
-          # Images-only window: suppress the strong/indexed time-series canvas so
-          # the display shows only the diffraction image.
-          self.orchestrator.spawn_display(extra_args=['display.show_spots=False'])
-
-      # Poll orchestrator status
-      try:
-        control = self.orchestrator.request_status()
-        status = {
-          'n_nodes': self.orchestrator.n_nodes,
-          'mode': self.orchestrator.params.deployment.mode,
-          'control': control,
-        }
-        self.post_update(status)
-        self.parent.run_window.streaming_light.change_status('on')
-      except Exception as e:
-        print('StreamingSentinel error:', e)
-        self.parent.run_window.streaming_light.change_status('alert')
-
-      time.sleep(5)
-
-    # Graceful shutdown on the owning thread so the command socket is only ever
-    # touched here.
-    if self.orchestrator is not None:
-      try:
-        self.orchestrator.shutdown()
-      except Exception as e:
-        print('StreamingSentinel shutdown error:', e)
-      self.orchestrator = None
-      self.parent.orchestrator = None
+          socket.connect('tcp://{}:{}'.format(host, port))
+          socket.send(b'control_ip')
+          if socket.poll(self.POLL_TIMEOUT_MS):
+            socket.recv()  # payload unused; a reply alone proves liveness
+            alive = True
+        finally:
+          socket.close()
+        self.parent.run_window.streaming_light.change_status('on' if alive else 'alert')
+        time.sleep(self.POLL_INTERVAL_S)
+    finally:
+      context.term()
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -1446,12 +1403,6 @@ class MainWindow(wx.Frame):
     self.unitcell_sentinel = None
     self.mergingstats_sentinel = None
     self.streaming_sentinel = None
-    self.orchestrator = None
-    self.streaming_cmd_queue = queue.Queue()
-    # Previous SIGINT/SIGTERM handlers, saved while streaming is active so Ctrl+C
-    # shuts the orchestrator down gracefully before the GUI exits.
-    self._streaming_prev_sigint = None
-    self._streaming_prev_sigterm = None
 
     if not params:
       params = load_cached_settings()
@@ -1482,13 +1433,6 @@ class MainWindow(wx.Frame):
                                 bmpDisabled=wx.NullBitmap,
                                 shortHelp='Auto-submit jobs',
                                 longHelp='Auto-submit all pending jobs')
-      if self.params.facility.name == 'streaming':
-        self.tb_btn_streaming = self.toolbar.AddTool(wx.ID_ANY,
-                                  label='Start streaming',
-                                  bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
-                                  bmpDisabled=wx.NullBitmap,
-                                  shortHelp='Start streaming',
-                                  longHelp='Start/stop dials_streaming orchestrator')
       self.toolbar.AddSeparator()
       #self.tb_btn_calibrate = self.toolbar.AddTool(wx.ID_ANY,
       #                    label='Calibration',
@@ -1542,8 +1486,6 @@ class MainWindow(wx.Frame):
     if not self.params.monitoring_mode:
       self.Bind(wx.EVT_TOOL, self.onWatchRuns, self.tb_btn_watch_new_runs)
       self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
-      if self.params.facility.name == 'streaming':
-        self.Bind(wx.EVT_TOOL, self.onStreaming, self.tb_btn_streaming)
       #self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
       self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
     self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
@@ -1554,6 +1496,12 @@ class MainWindow(wx.Frame):
 
     # Draw the main window sizer
     self.SetSizer(main_box)
+
+    # In streaming mode the orchestrator runs independently of the GUI; poll it for
+    # liveness so the streaming light reflects whether it is up, and re-attach
+    # automatically whenever the GUI (re)starts.
+    if self.params.facility.name == 'streaming':
+      self.start_streaming_sentinel()
 
   def connect_to_db(self, drop_tables = False):
     self.db = xfel_db_application(self.params, drop_tables = drop_tables, verify_tables = True)
@@ -1571,7 +1519,7 @@ class MainWindow(wx.Frame):
     self.stop_unitcell_sentinel()
     self.stop_mergingstats_sentinel()
     if self.params.facility.name == 'streaming':
-      self.stop_streaming(block=True)
+      self.stop_streaming_sentinel(block=True)
 
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
@@ -1749,87 +1697,21 @@ class MainWindow(wx.Frame):
     else:
       self.start_job_sentinel()
 
-  def onStreaming(self, e):
-    ''' Toggle streaming orchestrator '''
-    if self.streaming_sentinel is not None:
-      self.stop_streaming()
-    else:
-      self.start_streaming()
-
-  def _streaming_signal_handler(self, sig, frame):
-    ''' Gracefully shut down the orchestrator on Ctrl+C, then re-deliver the signal
-        to the restored handler so the GUI exits as it normally would. '''
-    self.stop_streaming(block=True)  # restores the previous handlers
-    os.kill(os.getpid(), sig)
-
-  def start_streaming(self):
-    from dials_streaming.components.phil import phil_scope, validate
-    from libtbx.phil import parse
-    phil_text = self.run_window.streaming_tab.phil.ctr.GetValue()
-    # Persist PHIL on shared filesystem so Orchestrator and compute nodes can read it
-    if not os.path.exists(settings_dir):
-      os.makedirs(settings_dir)
-    streaming_phil_path = os.path.join(settings_dir, 'streaming_phil.txt')
-    with open(streaming_phil_path, 'w') as f:
-      f.write(phil_text)
-
-    # Build and validate the params on the main thread so errors surface in a dialog
-    # rather than crashing a background thread. n_nodes comes from the spinner; the
-    # GUI always launches the orchestrator in remote (Slurm) mode.
-    n_nodes = self.run_window.streaming_tab.node_spin.GetValue()
-    try:
-      params = phil_scope.fetch(sources=[parse(phil_text)]).extract()
-      params.deployment.n_nodes = n_nodes
-      params.deployment.mode = 'remote'
-      validate(params, streamer=False)
-    except Exception as e:
-      wx.MessageBox('Could not start streaming:\n\n{}'.format(e),
-                    'Streaming configuration error', wx.OK | wx.ICON_ERROR)
+  def start_streaming_sentinel(self):
+    ''' Start polling the independently-launched orchestrator for liveness. Drives
+        the streaming light only; never launches or commands the orchestrator. '''
+    if self.streaming_sentinel is not None and self.streaming_sentinel.active:
       return
-
-    # The StreamingSentinel constructs and owns the Orchestrator on its own thread
-    # (see StreamingSentinel). Install signal handlers here, on the main thread, so
-    # Ctrl+C drives a graceful shutdown (the embedded Orchestrator does not install
-    # its own -- install_signal_handlers=False).
-    self._streaming_prev_sigint = signal.signal(signal.SIGINT,
-                                                 self._streaming_signal_handler)
-    self._streaming_prev_sigterm = signal.signal(signal.SIGTERM,
-                                                  self._streaming_signal_handler)
-    self.streaming_sentinel = StreamingSentinel(self, params, active=True)
+    self.streaming_sentinel = StreamingSentinel(self, active=True)
     self.streaming_sentinel.start()
-    self.run_window.streaming_light.change_status('on')
-    self.toolbar.SetToolNormalBitmap(self.tb_btn_streaming.Id,
-                                     wx.Bitmap('{}/32x32/pause.png'.format(icons)))
-    self.toolbar.SetToolShortHelp(self.tb_btn_streaming.Id, 'Stop streaming')
-    self.run_window.streaming_tab.btn_add_node.Enable()
-    self.run_window.streaming_tab.btn_remove_node.Enable()
-    self.run_window.streaming_tab.btn_display.Enable()
 
-  def stop_streaming(self, block=True):
-    # The sentinel owns the Orchestrator and calls shutdown() on its own thread when
-    # it stops, so we only signal+join here -- never touch the command socket from
-    # the main thread.
+  def stop_streaming_sentinel(self, block=True):
     if self.streaming_sentinel is not None and self.streaming_sentinel.active:
       self.streaming_sentinel.active = False
       if block:
         self.streaming_sentinel.join()
     self.streaming_sentinel = None
-    self.orchestrator = None
-    # Restore the signal handlers saved when streaming started.
-    if self._streaming_prev_sigint is not None:
-      signal.signal(signal.SIGINT, self._streaming_prev_sigint)
-      self._streaming_prev_sigint = None
-    if self._streaming_prev_sigterm is not None:
-      signal.signal(signal.SIGTERM, self._streaming_prev_sigterm)
-      self._streaming_prev_sigterm = None
     self.run_window.streaming_light.change_status('off')
-    if not self.params.monitoring_mode and self.params.facility.name == 'streaming':
-      self.toolbar.SetToolNormalBitmap(self.tb_btn_streaming.Id,
-                                       wx.Bitmap('{}/32x32/run.png'.format(icons)))
-      self.toolbar.SetToolShortHelp(self.tb_btn_streaming.Id, 'Start streaming')
-      self.run_window.streaming_tab.btn_add_node.Disable()
-      self.run_window.streaming_tab.btn_remove_node.Disable()
-      self.run_window.streaming_tab.btn_display.Disable()
 
   def onTabChange(self, e):
     name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
@@ -1869,8 +1751,6 @@ class MainWindow(wx.Frame):
       if self.mergingstats_sentinel is None or not self.mergingstats_sentinel.active:
         self.start_mergingstats_sentinel()
         self.run_window.mergingstats_light.change_status('on')
-    elif name == self.run_window.streaming_tab.name:
-      pass  # Streaming sentinel is always running while orchestrator is active
     #elif name == self.run_window.merge_tab.name:
     #  self.run_window.merge_tab.find_trials()
 
@@ -1907,8 +1787,6 @@ class MainWindow(wx.Frame):
       if self.mergingstats_sentinel.active:
         self.stop_mergingstats_sentinel(block = False)
         self.run_window.mergingstats_light.change_status('off')
-    elif name == self.run_window.streaming_tab.name:
-      pass  # Streaming sentinel stays active while orchestrator is running
 
 
   def onQuit(self, e):
@@ -1939,7 +1817,6 @@ class RunWindow(wx.Panel):
     self.datasets_tab = DatasetTab(self.main_nbook, main=self.parent)
     #self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.mergingstats_tab = MergingStatsTab(self.main_nbook, main=self.parent)
-    self.streaming_tab = StreamingTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
     self.main_nbook.AddPage(self.energy_tab, self.energy_tab.name)
     self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
@@ -1950,8 +1827,6 @@ class RunWindow(wx.Panel):
     self.main_nbook.AddPage(self.datasets_tab, self.datasets_tab.name)
     #self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
     self.main_nbook.AddPage(self.mergingstats_tab, self.mergingstats_tab.name)
-    if self.parent.params.facility.name == 'streaming':
-      self.main_nbook.AddPage(self.streaming_tab, self.streaming_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 8, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
@@ -2009,10 +1884,8 @@ class RunWindow(wx.Panel):
       self.energy_tab.Hide()
 
     if self.parent.params.facility.name == 'streaming':
-      self.streaming_tab.Show()
       self.streaming_light.Show()
     else:
-      self.streaming_tab.Hide()
       self.streaming_light.Hide()
 
 # --------------------------------- UI Tabs ---------------------------------- #
@@ -4393,96 +4266,6 @@ class MergeTab(BaseTab):
 
     # Try and write files to created folder
 
-
-# ------------------------------- Streaming Tab ------------------------------ #
-
-class StreamingTab(BaseTab):
-  ''' Tab for controlling the dials_streaming Orchestrator. Only shown when
-      facility.name == "streaming". '''
-
-  def __init__(self, parent, main):
-    BaseTab.__init__(self, parent=parent)
-    self.name = 'Streaming'
-    self.main = main
-
-    # Load persisted PHIL text if available
-    streaming_phil_path = os.path.join(settings_dir, 'streaming_phil.txt')
-    initial_phil = ''
-    if os.path.exists(streaming_phil_path):
-      with open(streaming_phil_path) as f:
-        initial_phil = f.read()
-
-    # PHIL input box
-    self.phil = gctr.PHILBox(self, btn_import=True, btn_export=True,
-                             btn_default=False, ctr_size=(-1, 300),
-                             ctr_value=initial_phil)
-    self.main_sizer.Add(self.phil, flag=wx.EXPAND | wx.ALL, border=5)
-
-    # Status bar
-    self.status_text = wx.StaticText(self, label='Stopped')
-    self.main_sizer.Add(self.status_text, flag=wx.ALL, border=5)
-
-    # Node controls row
-    node_sizer = wx.FlexGridSizer(1, 5, 0, 10)
-    node_label = wx.StaticText(self, label='Nodes:')
-    self.node_spin = wx.SpinCtrl(self, value='1', min=1, max=32, size=(60, -1))
-    self.btn_add_node = wx.Button(self, label='Add Node(s)')
-    self.btn_remove_node = wx.Button(self, label='Remove Node(s)')
-    self.btn_display = wx.Button(self, label='Open Display')
-    node_sizer.Add(node_label, flag=wx.ALIGN_CENTER_VERTICAL)
-    node_sizer.Add(self.node_spin, flag=wx.ALIGN_CENTER_VERTICAL)
-    node_sizer.Add(self.btn_add_node, flag=wx.ALIGN_CENTER_VERTICAL)
-    node_sizer.Add(self.btn_remove_node, flag=wx.ALIGN_CENTER_VERTICAL)
-    node_sizer.Add(self.btn_display, flag=wx.ALIGN_CENTER_VERTICAL)
-    self.main_sizer.Add(node_sizer, flag=wx.ALL, border=5)
-
-    # Buttons disabled until orchestrator is running
-    self.btn_add_node.Disable()
-    self.btn_remove_node.Disable()
-    self.btn_display.Disable()
-
-    # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onAddNode, self.btn_add_node)
-    self.Bind(wx.EVT_BUTTON, self.onRemoveNode, self.btn_remove_node)
-    self.Bind(wx.EVT_BUTTON, self.onDisplay, self.btn_display)
-    self.Bind(EVT_STREAMING_UPDATE, self.onStreamingUpdate)
-
-  def onAddNode(self, e):
-    if self.main.streaming_sentinel is None:
-      return
-    n = self.node_spin.GetValue()
-    self.main.streaming_cmd_queue.put(('add', n))
-
-  def onRemoveNode(self, e):
-    if self.main.streaming_sentinel is None:
-      return
-    n = self.node_spin.GetValue()
-    self.main.streaming_cmd_queue.put(('remove', n))
-
-  def onDisplay(self, e):
-    # Hand off to the sentinel thread, which owns the Orchestrator and launches an
-    # images-only display against the running ControlHub.
-    if self.main.streaming_sentinel is None:
-      return
-    self.main.streaming_cmd_queue.put(('display', None))
-
-  def onStreamingUpdate(self, e):
-    status = e.GetValue()
-    if status is None:
-      return
-    n_nodes = status.get('n_nodes', '?')
-    mode = status.get('mode', '?')
-    control = status.get('control', {}) or {}
-    active_runs = control.get('active_runs', [])
-    draining = control.get('draining_nodes', [])
-    summary = 'Running — {} node(s), mode: {}'.format(n_nodes, mode)
-    if 'error' in control:
-      summary += ' | control: {}'.format(control['error'])
-    else:
-      summary += ' | active runs: {}'.format(len(active_runs))
-      if draining:
-        summary += ' | draining: {}'.format(list(draining))
-    self.status_text.SetLabel(summary)
 
 # ------------------------------- UI Elements -------------------------------- #
 
