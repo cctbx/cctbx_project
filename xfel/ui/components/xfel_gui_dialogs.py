@@ -183,6 +183,30 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
+    # Streaming orchestrator host/port -- polled by the streaming-facility liveness
+    # light. Enabled only for the streaming facility (see setup_facility_options).
+    self.orchestrator_host = gctr.TextButtonCtrl(self,
+                                                 name='orchestrator_host',
+                                                 label='Orchestrator host',
+                                                 label_style='bold',
+                                                 label_size=(150, -1),
+                                                 big_button_size=(130, -1),
+                                                 value=str(self.params.streaming.orchestrator_host))
+    self.main_sizer.Add(self.orchestrator_host,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.orchestrator_port = gctr.TextButtonCtrl(self,
+                                                 name='orchestrator_port',
+                                                 label='Orchestrator port',
+                                                 label_style='bold',
+                                                 label_size=(150, -1),
+                                                 big_button_size=(130, -1),
+                                                 value=str(self.params.streaming.orchestrator_port))
+    self.main_sizer.Add(self.orchestrator_port,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_OK.SetDefault()
@@ -227,6 +251,12 @@ class SettingsDialog(BaseDialog):
       self.experiment.Enable()
     else:
       self.experiment.Disable()
+    if self.params.facility.name == 'streaming':
+      self.orchestrator_host.Enable()
+      self.orchestrator_port.Enable()
+    else:
+      self.orchestrator_host.Disable()
+      self.orchestrator_port.Disable()
 
   def onFacilityOptions(self, e):
     if self.params.facility.name == 'lcls':
@@ -273,6 +303,8 @@ class SettingsDialog(BaseDialog):
     self.params.output_folder = self.output.ctr.GetValue()
     if self.params.facility.name == 'lcls':
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
+    self.params.streaming.orchestrator_host = self.orchestrator_host.ctr.GetValue()
+    self.params.streaming.orchestrator_port = int(self.orchestrator_port.ctr.GetValue())
 
   def onOK(self, e):
     self.update_settings()
