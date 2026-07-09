@@ -102,17 +102,23 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           }
           else if (boost::iequals(toks[0], "scatterer_ids")) {
             std::vector<std::string> stoks;
-            cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers);
             boost::trim(toks[1]);
             boost::split(stoks, toks[1], boost::is_any_of(" "));
             SMTBX_ASSERT(stoks.size() == scatterers.size());
+            int nr_scat = scatterers.size();
+            af::shared<int> data(nr_scat);
+            for (size_t sci = 0; sci < nr_scat; sci++) {
+                data[sci] = scatterers[sci].get_part() + 16; // add 16 to avoid negative values
+            }
+    
+            cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
               std::stringstream ss;
               ss << std::hex << stoks[sci];
               uint64_t id_val;
               ss >> id_val;
               scatterer_id_t sc_id(id_val);
-              size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), 0, 1e-2);
+              size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1e-2);
               SMTBX_ASSERT(idx != ~0);
               sc_indices[sci] = idx;
             }
@@ -209,12 +215,17 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       vector<size_t> sc_indices(nr_scat);
       if (boost::icontains(header_str, "SCATTERER_IDS")) {
         SMTBX_ASSERT(sc_len == nr_scat);
-        cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers);
+        af::shared<int> data(nr_scat);
+        for (size_t sci = 0; sci < nr_scat; sci++) {
+            data[sci] = scatterers[sci].get_part() + 16; // add 16 to avoid negative values
+        }
+
+        cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
         for (size_t sci = 0; sci < nr_scat; sci++) {
           uint64_t id_val;
           tsc_file.read((char*)&id_val, uint64size);
           scatterer_id_t sc_id(id_val);
-          size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), 0, 1e-2);
+          size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1e-2);
           SMTBX_ASSERT(idx != ~0);
           sc_indices[sci] = idx;
         }
