@@ -15,7 +15,8 @@ from qttbx.widgets.chat.agent.conversation import (
 from qttbx.widgets.chat.agent.errors import CancelToken, TurnCancelled
 from qttbx.widgets.chat.agent.events import (
   AskUserQuestionRequested, ServerToolResult, ServerToolUsed, TextDelta,
-  ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
+  ToolResultObserved, ToolUseRequested, TurnDone,
+  TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.profile import Profile
 from qttbx.widgets.chat.agent.session import AgentSession
 from qttbx.widgets.chat.agent.storage import ConversationStorage
@@ -536,6 +537,158 @@ def exercise_server_tool_events_accumulate_without_dispatch():
     assert len(session.conv.messages) == 2, len(session.conv.messages)
   finally:
     shutil.rmtree(tmp)
+
+
+# ---- claude_code observed-result answering -------------------------------
+# The claude_code backend runs its OWN tool loop inside the SDK subprocess and
+# surfaces each executed result as a ToolResultObserved -- its tool_use blocks
+# still reach the session as ToolUseRequested (populating tool_calls), but the
+# turn ends with a normal end_turn, NOT 'tool_use'. The session must answer the
+# pending tool_uses with their REAL observed results instead of fabricating
+# 'Cancelled by user.' errors, which otherwise surface on resume as bogus
+# 'result (error)' entries.
+
+
+def exercise_observed_results_answer_completed_claude_code_tools():
+  """[Major] A claude_code turn (tool_use answered by ToolResultObserved, then a
+  normal end_turn) must NOT fabricate a 'Cancelled by user.' result for the
+  completed tool, and must persist the assistant message (persistable_prefix
+  trims a trailing assistant tool_use, so the answering tool_result has to be
+  real, not skipped)."""
+  from qttbx.widgets.chat.agent.storage import persistable_prefix
+  session, tmp = _new_test_session([
+    [TextDelta(text="Checking. "),
+     ToolUseRequested(id="t1", name="phenix_get_status", input={"job": "1"}),
+     ToolResultObserved(tool_use_id="t1", content="Job 1: done",
+                        name="phenix_get_status", input={"job": "1"}),
+     TextDelta(text="It finished."),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "status?"})], timestamp=now())
+    assistant = session.run_turn(user_msg, cancel)
+    assert assistant.stop_reason == "end_turn", assistant.stop_reason
+    # The tool_use is answered with the REAL result, is_error=False.
+    tr_msgs = [m for m in session.conv.messages if m.role == "user"
+               and m.content and m.content[0].type == "tool_result"]
+    assert len(tr_msgs) == 1, [m.role for m in session.conv.messages]
+    block = tr_msgs[0].content[0]
+    assert block.data["tool_use_id"] == "t1", block.data
+    assert block.data["is_error"] is False, "completed tool marked as error"
+    text = block.data["content"][0].data["text"]
+    assert "Job 1: done" in text, text
+    # No fabricated cancel anywhere in the conversation.
+    for m in session.conv.messages:
+      for b in m.content:
+        if b.type == "tool_result":
+          assert "Cancelled by user" not in \
+            b.data["content"][0].data["text"], b.data
+    # The assistant message survives persistence: because the tool_use is
+    # answered by a REAL tool_result (not skipped), the transcript ends in that
+    # user message, so persistable_prefix trims NOTHING -- a skipped answer would
+    # leave a trailing unanswered assistant tool_use and drop the whole assistant
+    # turn.
+    kept = persistable_prefix(session.conv.messages)
+    assert len(kept) == len(session.conv.messages), [m.role for m in kept]
+    assert kept[-1].role == "user", [m.role for m in kept]
+    assert any(m.role == "assistant" for m in kept), [m.role for m in kept]
+    session.storage.save(session.conv)
+    p = session.storage.conv_dir(session.conv.meta.id) / "messages.json"
+    reloaded = json.load(open(p, encoding="utf-8"))["messages"]
+    amsg = next(m for m in reloaded if m["role"] == "assistant")
+    assert any(b["type"] == "tool_use" for b in amsg["content"]), amsg
+    assert "Cancelled by user" not in json.dumps(reloaded), \
+      "fabricated cancel persisted to messages.json"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_partial_observed_answers_mix_real_and_cancelled():
+  """A claude_code turn cut short after one of two tools ran: the observed tool
+  gets its real result, the un-observed one still gets 'Cancelled by user.' so
+  the transcript never orphans a tool_use."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="phenix_get_status", input={}),
+     ToolResultObserved(tool_use_id="t1", content="ran", name="phenix_get_status",
+                        input={}),
+     ToolUseRequested(id="t2", name="phenix_get_status", input={}),
+     TurnDone(stop_reason="cancelled")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "go"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    answers = {}
+    for m in session.conv.messages:
+      for b in m.content:
+        if b.type == "tool_result":
+          answers[b.data["tool_use_id"]] = (
+            b.data["is_error"], b.data["content"][0].data["text"])
+    assert set(answers) == {"t1", "t2"}, answers
+    assert answers["t1"] == (False, "ran"), answers["t1"]
+    assert answers["t2"][0] is True and \
+      "Cancelled by user" in answers["t2"][1], answers["t2"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_observed_error_result_preserves_is_error():
+  """A claude_code tool that FAILED in its SDK subprocess -- a ToolResultObserved
+  with is_error=True -- must be answered with an is_error tool_result, not
+  recorded as a success, so a resumed conversation shows the failure rather than
+  a muted 'success' cell."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="Bash", input={"command": "false"}),
+     ToolResultObserved(tool_use_id="t1", content="exit status 1",
+                        name="Bash", input={"command": "false"},
+                        is_error=True),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "run it"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    results = [b for m in session.conv.messages for b in m.content
+               if b.type == "tool_result"]
+    assert len(results) == 1, [m.role for m in session.conv.messages]
+    block = results[0]
+    assert block.data["tool_use_id"] == "t1", block.data
+    assert block.data["is_error"] is True, "observed failure recorded as success"
+    assert "exit status 1" in block.data["content"][0].data["text"], block.data
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_observed_content_blocks_normalizes_shapes():
+  """_observed_content_blocks (which builds each claude_code answer block) keeps
+  text verbatim, reduces base64-bearing blocks (image / document) to a compact
+  ``[<type>]`` placeholder so no blob inlines into the transcript, JSON-encodes
+  small structured items, and maps empty / None to an empty text block."""
+  from qttbx.widgets.chat.agent.session import _observed_content_blocks
+
+  def _texts(blocks):
+    return [b.data["text"] for b in blocks]
+
+  assert _texts(_observed_content_blocks("hi")) == ["hi"]        # string verbatim
+  blocks = _observed_content_blocks([
+    {"type": "text", "text": "ok"},
+    {"type": "image", "source": {"type": "base64", "data": "AAAA"}},
+    {"type": "document", "source": {"type": "base64", "data": "BBBB"}},
+    {"type": "tool_reference", "id": "r1"}])
+  t = _texts(blocks)
+  assert t[0] == "ok", t
+  assert t[1] == "[image]", t
+  assert t[2] == "[document]", t                                 # base64 doc, not blob
+  assert "AAAA" not in "".join(t) and "BBBB" not in "".join(t), t
+  assert "tool_reference" in t[3], t                             # small item -> JSON
+  # empty list / empty string / None all normalize to one empty text block.
+  assert _texts(_observed_content_blocks([])) == [""]
+  assert _texts(_observed_content_blocks("")) == [""]
+  assert _texts(_observed_content_blocks(None)) == [""]
 
 
 # ---- phenix_ask_user_question (API-backend ask-user parity) --------------
@@ -1161,6 +1314,10 @@ def exercise():
   exercise_token_usage_event_carries_all_fields_to_message()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()
+  exercise_observed_results_answer_completed_claude_code_tools()
+  exercise_partial_observed_answers_mix_real_and_cancelled()
+  exercise_observed_error_result_preserves_is_error()
+  exercise_observed_content_blocks_normalizes_shapes()
   exercise_await_question_answer_returns_preseeded_answers()
   exercise_await_question_answer_cancel_raises_turn_cancelled()
   exercise_submit_question_answer_routes_only_matching_id()

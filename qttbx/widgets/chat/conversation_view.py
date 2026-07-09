@@ -21,6 +21,20 @@ from qttbx.widgets.chat.question_card import QuestionCard
 from qttbx.widgets.chat.tool_approval import ToolApprovalCard
 
 
+def _is_tool_result_answer(message):
+  """True for a user message whose blocks are ALL tool_result -- the answering
+  message the session appends after an assistant tool_use turn (a dispatched
+  batch, or claude_code's observed results). On reload these fold into the
+  bubble holding the matching tool_use cells; a text or mixed user message (the
+  user's own input, the turn-cap marker) is left as its own bubble.
+  """
+  if getattr(message, "role", None) != "user":
+    return False
+  content = getattr(message, "content", None) or []
+  return bool(content) and all(
+    getattr(b, "type", None) == "tool_result" for b in content)
+
+
 class ConversationView(QtWidgets.QScrollArea):
   """Scrollable streaming view of bubbles, approval cards, and questions.
 
@@ -97,7 +111,21 @@ class ConversationView(QtWidgets.QScrollArea):
     """
     self._assistant_label = name or "Assistant"
 
-  def add_message(self, message):
+  def add_message(self, message, fold_tool_results=False):
+    # On reload (fold_tool_results=True), an answering tool_result message folds
+    # into the bubble that holds its tool_use cells (the preceding assistant
+    # message) instead of becoming its own bubble: each result transitions its
+    # tool_use cell out of 'running' and renders inline, so a reloaded turn
+    # shows one cell per tool -- the call and its result together -- rather than
+    # a bank of stuck-'running' call cells followed by a detached bank of
+    # 'result' cells. A result with no matching cell falls back to its own cell
+    # (MessageBubble._add_block's orphan path), so nothing is dropped. Live
+    # callers keep the default: a streamed tool_result batch is its own bubble.
+    if fold_tool_results and self._bubbles and _is_tool_result_answer(message):
+      target = self._bubbles[-1]
+      target.fold_tool_results(message.content)
+      self._maybe_scroll_to_bottom()
+      return target
     bubble = MessageBubble(message, parent=self._container,
                            storage=self._storage, conv_id=self._conv_id,
                            assistant_label=self._assistant_label)
@@ -161,28 +189,43 @@ class ConversationView(QtWidgets.QScrollArea):
     self._in_progress.append_block(block)
     self._maybe_scroll_to_bottom()
 
-  def finish_tool_cell(self, tool_use_id):
-    """Mark a tool cell on the in-progress bubble as finished (not cancelled).
+  def finish_tool_cell(self, tool_use_id, is_error=False, result=None):
+    """Mark a tool cell on the in-progress bubble as finished or failed.
 
-    The claude_code backend dispatches tools inside its SDK subprocess and
-    renders their results in a SEPARATE bubble, so it never calls
-    ``set_tool_use_finished`` on the live tool_use cell -- the cell would stay
-    ``running`` until the turn ends. Observing the result is the signal that
-    the tool actually completed, so transition the matching in-progress cell to
-    the finished terminal state here. Without it, ``finalize_assistant_bubble``'s
-    Stop-time sweep (``cancel_running_tools``) would mislabel a COMPLETED tool
-    ``cancelled``. No-op when there is no in-progress bubble or no cell matches
-    ``tool_use_id`` (e.g. an API backend that already finished the cell itself).
+    The claude_code backend runs its tools inside the SDK subprocess, bypassing
+    the session's dispatch loop -- the path that finishes an API backend's cell
+    by delivering its tool_result. So nothing else finishes the live tool_use
+    cell; observing the result is the signal that the tool completed, and this
+    call transitions the matching in-progress cell to a terminal state. Without
+    it the cell stays ``running`` until the turn ends, and
+    ``finalize_assistant_bubble``'s Stop-time sweep (``cancel_running_tools``)
+    would mislabel a COMPLETED tool ``cancelled``. No-op when there is no
+    in-progress bubble or no cell matches ``tool_use_id`` (e.g. an API backend
+    that already finished the cell itself).
+
+    ``is_error`` transitions the cell to the failed state (carrying ``result``
+    as the error text) rather than finished, so a failed in-subprocess tool is
+    reported live in the same red state the reloaded view shows -- otherwise the
+    failure reads as a neutral success until the next reload / conversation
+    switch rebuilds the view.
 
     Parameters
     ----------
     tool_use_id : str
         Identifier of the tool_use cell to finish (matches the originating
         ``ToolUseRequested.id``).
+    is_error : bool, optional
+        Whether the observed result was an error.
+    result : str, optional
+        Flattened result text; shown as the error detail when ``is_error``.
     """
     if self._in_progress is None:
       return
-    self._in_progress.set_tool_use_finished(tool_use_id)
+    if is_error:
+      self._in_progress.set_tool_use_finished(
+        tool_use_id, error=result or "error")
+    else:
+      self._in_progress.set_tool_use_finished(tool_use_id)
 
   # ---- approval API --------------------------------------------------------
 

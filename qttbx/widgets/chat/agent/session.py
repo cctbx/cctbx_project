@@ -17,8 +17,8 @@ from qttbx.widgets.chat.agent.conversation import (
 from qttbx.widgets.chat.agent.errors import TurnCancelled
 from qttbx.widgets.chat.agent.events import (
   AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
-  Thinking, TextDelta, ToolResultsBatched, ToolUseRequested, TurnDone,
-  TokenUsage as TokenUsageEvent)
+  Thinking, TextDelta, ToolResultObserved, ToolResultsBatched,
+  ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
   ToolApprovalRequest, _Cancelled)
 
@@ -180,19 +180,27 @@ class AgentSession:
     iterations = 0
     while True:
       iterations += 1
-      assistant_msg, tool_calls = self._collect_one_response(cancel)
+      assistant_msg, tool_calls, answered = self._collect_one_response(cancel)
       self.conv.append(assistant_msg)
 
       if assistant_msg.stop_reason != "tool_use":
-        # A completed-but-undispatched tool_use can ride a non-"tool_use" stop:
-        # a backend that streams the tool_use block and only THEN surfaces the
-        # cancel (Anthropic emits the tool_use on content_block_stop, then a
-        # trailing TurnDone(stop_reason='cancelled')) leaves tool_calls pending
-        # here. They must still be answered or the saved transcript orphans the
-        # tool_use -> non-recoverable replay 400. (Backends that batch tool
+        # A tool_use can ride a non-"tool_use" stop. Two backends reach here:
+        #   - claude_code runs its OWN tool loop in the SDK subprocess, so its
+        #     tool_use blocks arrive as ToolUseRequested and each real result as
+        #     a ToolResultObserved that _accumulate has ALREADY turned into an
+        #     answering tool_result in ``answered`` -- so those tools are never
+        #     pending here; they are answered with their real result (not a bogus
+        #     cancel that used to surface on resume). A tool_use with NO answer
+        #     genuinely did not run (the turn was cancelled between its tool_use
+        #     and its result) and is answered "Cancelled by user.".
+        #   - Anthropic streams the tool_use block and only THEN surfaces a
+        #     cancel (trailing TurnDone(stop_reason='cancelled')): nothing was
+        #     observed, so every tool_use is answered "Cancelled by user.".
+        # Either way the tool_uses must be answered, or the saved transcript
+        # orphans them -> non-recoverable replay 400. (Backends that batch tool
         # calls only after their stream loop never reach this with tool_calls.)
-        if tool_calls:
-          self._answer_pending_tool_uses(tool_calls, "Cancelled by user.")
+        self._answer_pending_tool_uses(
+          tool_calls, "Cancelled by user.", answered=answered)
         return assistant_msg
       if cancel.is_set():
         # Cancel set AFTER a tool_use-stop response but before dispatch (the
@@ -270,9 +278,11 @@ class AgentSession:
                   model=getattr(self.agent, "model", None),
                   backend=getattr(self.profile, "backend", None))
     tool_calls = []
+    answered = []
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
       self.on_event(event)
-      _accumulate(msg, event, tool_calls, self.storage, self.conv.meta.id)
+      _accumulate(msg, event, tool_calls, answered, self.storage,
+                  self.conv.meta.id)
       # Throttled mid-turn checkpoint -- ONLY on content events. Never on the
       # terminal TurnDone: _collect_one_response returns straight into
       # conv.append(assistant_msg), and autosave's blocking I/O (which releases
@@ -280,7 +290,7 @@ class AgentSession:
       # GUI's _on_turn_done save a conv.messages still missing this message.
       if isinstance(event, _CONTENT_EVENT_TYPES):
         self._maybe_autosave(msg)
-    return msg, tool_calls
+    return msg, tool_calls, answered
 
   # ---- tool dispatch -------------------------------------------------------
 
@@ -340,23 +350,35 @@ class AgentSession:
     self.on_event(ToolResultsBatched(blocks=result_blocks))
     return Message(role="user", content=result_blocks, timestamp=now())
 
-  def _answer_pending_tool_uses(self, tool_calls, reason):
-    """Append a user message with an error tool_result for every pending
-    tool_use.
+  def _answer_pending_tool_uses(self, tool_calls, reason, answered=None):
+    """Append one user message answering every tool_use of the just-ended turn.
 
     A turn that ends right after an assistant tool_use block -- Stop pressed
-    before dispatch, or the subagent turn-cap -- must not leave an UNMATCHED
-    tool_use in the saved transcript: on the next turn that transcript is
-    replayed verbatim, and an assistant tool_use with no following tool_result
-    is a non-recoverable provider 400 (anthropic / openai / portkey / gemini)
-    that permanently breaks the conversation. (claude_code owns its own
-    transcript and is immune.) No-op when there were no tool_calls.
+    before dispatch, the subagent turn-cap, or a claude_code turn (which runs
+    tools in its SDK subprocess) -- must not leave an UNMATCHED tool_use in the
+    saved transcript: on the next turn that transcript is replayed verbatim, and
+    an assistant tool_use with no following tool_result is a non-recoverable
+    provider 400 (anthropic / openai / portkey / gemini) that permanently breaks
+    the conversation. (claude_code resumes via its own SDK session and is immune
+    to the 400, but an unanswered tool_use would still be trimmed off the saved
+    transcript by ``persistable_prefix`` and lost from the rebuilt view.)
+
+    ``answered`` is the ordered list of tool_result blocks ``_accumulate``
+    already built from this turn's observed results (claude_code tools that
+    actually ran, each carrying its real content + is_error). A tool_use with no
+    answer genuinely did not run -- a pre-dispatch cancel, a mid-turn cancel
+    before its result arrived, or the turn cap -- and gets an is_error result
+    carrying ``reason``. Blocks are emitted in tool_use order. No-op when there
+    is nothing to answer.
     """
-    if not tool_calls:
+    by_id = {}
+    for b in answered or []:
+      by_id[b.data.get("tool_use_id")] = b
+    blocks = [by_id.get(c.id) or _tool_error_block(c.id, reason)
+              for c in tool_calls]
+    if not blocks:
       return
-    self.conv.append(Message(
-      role="user", timestamp=now(),
-      content=[_tool_error_block(c.id, reason) for c in tool_calls]))
+    self.conv.append(Message(role="user", timestamp=now(), content=blocks))
 
   def _resolve_and_approve(self, call, batch_id):
     policy = self.policy.resolve(call.name)
@@ -513,7 +535,7 @@ class AgentSession:
 
 # ---- module helpers --------------------------------------------------------
 
-def _accumulate(msg, event, tool_calls, storage, conv_id):
+def _accumulate(msg, event, tool_calls, answered, storage, conv_id):
   if isinstance(event, TextDelta):
     _append_text(msg, event.text)
   elif isinstance(event, Thinking):
@@ -522,6 +544,18 @@ def _accumulate(msg, event, tool_calls, storage, conv_id):
     msg.content.append(ContentBlock(type="tool_use", data={
       "id": event.id, "name": event.name, "input": event.input}))
     tool_calls.append(event)
+  elif isinstance(event, ToolResultObserved):
+    # A backend that runs its OWN tool loop (claude_code, in the SDK subprocess)
+    # reports each executed result here instead of the session dispatching it.
+    # The matching tool_use rode in as a ToolUseRequested (pending in tool_calls)
+    # but the turn ends 'end_turn' (not 'tool_use'), so build its answering
+    # tool_result NOW -- carrying the observed is_error -- into ``answered``.
+    # run_turn appends these as the tool_use's real answer, so the tool is never
+    # left pending to be fabricated as a "Cancelled by user." error on resume.
+    answered.append(ContentBlock(type="tool_result", data={
+      "tool_use_id": event.tool_use_id,
+      "content": _observed_content_blocks(event.content),
+      "is_error": bool(getattr(event, "is_error", False))}))
   elif isinstance(event, ServerToolUsed):
     # API-executed; no dispatch needed. Persist for the bubble + replay.
     msg.content.append(ContentBlock(type="server_tool_use", data={
@@ -567,3 +601,48 @@ def _tool_error_block(tool_use_id, message):
     "content": [ContentBlock(type="text", data={"text": message})],
     "is_error": True,
   })
+
+
+def _is_binary_block(item):
+  """True for a content block reduced to a compact ``[<type>]`` placeholder
+  rather than JSON-inlined: any image (regardless of source), or any block with
+  a base64 ``source`` (a document / PDF, ...). Keeps a multi-MB base64 blob out
+  of the persisted transcript; an image is placeholdered even when url-sourced,
+  since its bytes are not needed in a text transcript."""
+  if item.get("type") == "image":
+    return True
+  source = item.get("source")
+  return isinstance(source, dict) and source.get("type") == "base64"
+
+
+def _observed_content_blocks(content):
+  """Canonical tool_result content blocks from a claude_code observed result.
+
+  The SDK surfaces a tool result's content as a plain string, a list of
+  Anthropic content dicts (text / image / document / tool_reference / ...), or
+  None. Text is preserved verbatim; a base64-bearing block (image, document,
+  ...) is reduced to a compact ``[<type>]`` placeholder -- so the persisted
+  transcript stays text-sized and never inlines a base64 blob (the bytes are
+  re-derivable from the claude_code transcript on resume; images are also
+  surfaced live via ImageEmitted). Any other structured item is JSON-encoded,
+  and an empty or None result becomes a single empty text block.
+  """
+  if content is None:
+    return [ContentBlock(type="text", data={"text": ""})]
+  if isinstance(content, str):
+    return [ContentBlock(type="text", data={"text": content})]
+  if isinstance(content, list):
+    blocks = []
+    for item in content:
+      if isinstance(item, dict) and item.get("type") == "text":
+        blocks.append(ContentBlock(type="text",
+                                   data={"text": item.get("text", "")}))
+      elif isinstance(item, dict) and _is_binary_block(item):
+        blocks.append(ContentBlock(
+          type="text", data={"text": "[%s]" % (item.get("type") or "binary")}))
+      else:
+        blocks.append(ContentBlock(type="text",
+                                   data={"text": json.dumps(item, default=str)}))
+    return blocks or [ContentBlock(type="text", data={"text": ""})]
+  return [ContentBlock(type="text",
+                       data={"text": json.dumps(content, default=str)})]

@@ -111,9 +111,9 @@ def exercise_finalize_non_cancel_leaves_running_cells_untouched():
 
 
 def exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it():
-  """[F#2] claude_code dispatches tools in its SDK subprocess and renders the
-  results in a SEPARATE bubble -- it never calls set_tool_use_finished on the
-  live tool_use cell, so the cell stays 'running'. ConversationView's
+  """[F#2] claude_code runs its tools in the SDK subprocess, bypassing the
+  session dispatch that finishes an API backend's cell -- so nothing finishes
+  the live tool_use cell and it stays 'running'. ConversationView's
   finish_tool_cell (driven by ChatWindow._on_tool_result_observed when a result
   is observed) must transition the matching in-progress cell to the finished
   terminal state. Otherwise the Stop-time sweep -- finalize_assistant_bubble(
@@ -163,6 +163,85 @@ def exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble():
   v.finish_tool_cell("nope")               # no in-progress bubble -> no raise
   v.start_assistant_bubble()
   v.finish_tool_cell("unknown_id")          # unknown id on the bubble -> no raise
+
+
+def exercise_reload_folds_tool_results_into_matching_tool_cells():
+  """[F#2] On reload, an answering tool_result message folds into the bubble
+  holding its tool_use cells instead of becoming its own bubble: the reloaded
+  turn shows one finished cell per tool (call + result), not a stuck-'running'
+  call cell plus a detached 'result' cell.
+
+  add_message(..., fold_tool_results=True) is the reload path (ChatWindow.
+  _rebuild_view). Pins: (a) no extra bubble for the answer, (b) the matching
+  cell leaves 'running' and shows 'finished', (c) an is_error result shows
+  'failed', and (d) the default (live) path still gives the answer its own
+  bubble and leaves the call cell running (the legacy shape this retires)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+
+  def _assistant_with_tool(tid):
+    return Message(role="assistant", timestamp=now(), content=[
+      ContentBlock(type="text", data={"text": "working"}),
+      ContentBlock(type="tool_use", data={
+        "id": tid, "name": "phenix_get_status", "input": {}})])
+
+  def _answer(tid, text, is_error=False):
+    return Message(role="user", timestamp=now(), content=[
+      ContentBlock(type="tool_result", data={
+        "tool_use_id": tid,
+        "content": [ContentBlock(type="text", data={"text": text})],
+        "is_error": is_error})])
+
+  # Reload: an assistant tool_use turn, then its answering tool_result message.
+  v = ConversationView()
+  v.add_message(_assistant_with_tool("t1"), fold_tool_results=True)
+  assert v.bubble_count() == 1
+  cell = v.bubbles()[-1]._tool_cells_by_id["t1"]
+  assert cell.is_running()                        # nothing has answered it yet
+  v.add_message(_answer("t1", "Job 1: done"), fold_tool_results=True)
+  # (a) folded -- no second bubble for the answer.
+  assert v.bubble_count() == 1, \
+    "answering tool_result must fold into the assistant bubble, not add one"
+  # (b) the matching cell left 'running' and shows the finished result.
+  assert not cell.is_running(), "folded result must finish the tool cell"
+  assert "finished" in cell.header_button.text(), cell.header_button.text()
+
+  # (c) a failed observed result folds as an error cell.
+  v.add_message(_assistant_with_tool("t2"), fold_tool_results=True)
+  err_cell = v.bubbles()[-1]._tool_cells_by_id["t2"]
+  v.add_message(_answer("t2", "boom", is_error=True), fold_tool_results=True)
+  assert not err_cell.is_running()
+  assert "failed" in err_cell.header_button.text(), err_cell.header_button.text()
+
+  # (d) default (live) path is unchanged: the answer is its own bubble and the
+  # call cell stays 'running' -- the orphan/legacy reload shape this fix retires.
+  v2 = ConversationView()
+  v2.add_message(_assistant_with_tool("t3"))
+  v2.add_message(_answer("t3", "done"))
+  assert v2.bubble_count() == 2
+  assert v2.bubbles()[0]._tool_cells_by_id["t3"].is_running()
+
+
+def exercise_finish_tool_cell_error_marks_cell_failed():
+  """A failed observed tool (is_error=True) finishes its LIVE cell as 'failed',
+  not neutral 'finished' -- so a failure the user is watching is reported at
+  once, matching the reloaded view (which renders the persisted is_error
+  tool_result as a red cell). A successful finish stays 'finished'."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bub = v.start_assistant_bubble()
+  for tid in ("bad", "good"):
+    v.append_block_to_current(ContentBlock(type="tool_use", data={
+      "id": tid, "name": "Bash", "input": {}}))
+  v.finish_tool_cell("bad", is_error=True, result="exit status 1")
+  v.finish_tool_cell("good")
+  bad = bub._tool_cells_by_id["bad"]
+  good = bub._tool_cells_by_id["good"]
+  assert not bad.is_running() and "failed" in bad.header_button.text(), \
+    bad.header_button.text()
+  assert not good.is_running() and "finished" in good.header_button.text(), \
+    good.header_button.text()
 
 
 def exercise_set_assistant_label_flows_to_new_bubbles():
@@ -936,6 +1015,8 @@ def exercise():
   exercise_finalize_non_cancel_leaves_running_cells_untouched()
   exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it()
   exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble()
+  exercise_reload_folds_tool_results_into_matching_tool_cells()
+  exercise_finish_tool_cell_error_marks_cell_failed()
   exercise_set_assistant_label_flows_to_new_bubbles()
   exercise_question_card_uses_assistant_label()
   exercise_batched_approval_coalesces_by_batch_id()

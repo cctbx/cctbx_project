@@ -493,6 +493,26 @@ class MessageBubble(QtWidgets.QFrame):
       if cell.is_running():
         self.set_tool_use_finished(tool_id, cancelled=True)
 
+  def fold_tool_results(self, blocks):
+    """Fold a following message's tool_result blocks into THIS bubble.
+
+    Used on reload to attach each answering tool_result to the tool_use cell it
+    matches (by tool_use_id) in this bubble -- transitioning that cell out of
+    'running' and rendering its result (or error) inline -- so a reloaded turn
+    shows one cell per tool instead of separate 'running' call cells and a
+    detached bank of 'result' cells. Reuses ``_add_block``, so a result whose
+    tool_use is NOT in this bubble still falls back to its own cell and nothing
+    is dropped.
+
+    Parameters
+    ----------
+    blocks : list of ContentBlock
+        The answering message's content; only tool_result blocks are folded.
+    """
+    for block in blocks or []:
+      if getattr(block, "type", None) == "tool_result":
+        self._add_block(block)
+
   # ---- streaming -----------------------------------------------------------
 
   def append_text_delta(self, text):
