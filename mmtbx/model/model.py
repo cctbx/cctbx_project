@@ -49,8 +49,6 @@ from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import collections
 
-from mmtbx.rotamer import nqh
-
 from scitbx import matrix
 from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
@@ -839,10 +837,6 @@ class manager(object):
     s2 = self.get_xray_structure().sites_cart()
     d = flex.sqrt((s1 - s2).dot())
     assert d<1.e-4
-
-  def flip_nqh(self, selection = None):
-    "Flip N/Q/H residue side-chains if needed (reduce1/reduce2 chosen in nqh)"
-    nqh.flip(model = self, selection = selection, log = self.log)
 
   def set_ramachandran_plot_restraints(self, rama_params):
     """ rama_params - mmtbx.geometry_restraints.ramachandran.master_phil->
@@ -2253,6 +2247,11 @@ class manager(object):
     # Ensure we did not loose scattering_table
     if SAVE_scatering_table is not None:
       self.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+
+  def get_missing_atoms(self):
+    if self._missing_atoms is None:
+      self.process(make_restraints=True)
+    return self._missing_atoms
 
   def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
     if self.rsm is None: return

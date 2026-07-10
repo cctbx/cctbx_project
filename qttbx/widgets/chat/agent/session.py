@@ -7,19 +7,29 @@ Wraps any ``Agent``. Pure-Python; no Qt. ``QtAgentRunner`` (in
 import json
 import queue
 import sys
+import time
 import uuid
 
 from libtbx.utils import Sorry
 
 from qttbx.widgets.chat.agent.conversation import (
-  ContentBlock, Conversation, Message, TokenUsage, now)
+  Conversation, ContentBlock, Message, now)
 from qttbx.widgets.chat.agent.errors import TurnCancelled
 from qttbx.widgets.chat.agent.events import (
   AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
   Thinking, TextDelta, ToolResultsBatched, ToolUseRequested, TurnDone,
   TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
-  ToolApprovalRequest, ToolApprovalResponse, _Cancelled)
+  ToolApprovalRequest, _Cancelled)
+
+
+# Events that add content to the in-progress assistant message. The mid-turn
+# autosave fires only on these -- never on the terminal TurnDone, whose
+# GIL-releasing save I/O would race the GUI turn-end save (see
+# _collect_one_response).
+_CONTENT_EVENT_TYPES = (
+  TextDelta, Thinking, ToolUseRequested, ServerToolUsed, ServerToolResult,
+  ImageEmitted)
 
 
 def _new_id(prefix=""):
@@ -83,7 +93,7 @@ class AgentSession:
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
-               approval_queue=None):
+               approval_queue=None, autosave_interval_s=5.0, clock=None):
     self.agent = agent
     self.conv = conversation
     self.storage = storage
@@ -91,6 +101,9 @@ class AgentSession:
     self.policy = policy
     self.profile = profile
     self.depth = depth
+    self.autosave_interval_s = autosave_interval_s
+    self._clock = clock or time.monotonic
+    self._last_autosave = 0.0
     self.on_event = on_event or (lambda ev: None)
     self.log = log if log is not None else sys.stdout
 
@@ -111,7 +124,6 @@ class AgentSession:
     self.cancel = None
     self.sub_id = _new_id("sa_") if depth > 0 else None
     self.started_at = now()
-    self.current_tool_use_id = None
     # Push-based rollup of nested-session token usage. Keyed by sub_id.
     self._subagent_usage_by_id = {}
 
@@ -146,6 +158,7 @@ class AgentSession:
         The final assistant message of the turn.
     """
     self.cancel = cancel
+    self._last_autosave = self._clock()            # reset mid-turn autosave
     # Drop any stale _Cancelled sentinel a previous turn's Stop left in
     # the shared queues (see _drain_stale_cancelled).
     _drain_stale_cancelled(self.approval_queue)
@@ -171,12 +184,30 @@ class AgentSession:
       self.conv.append(assistant_msg)
 
       if assistant_msg.stop_reason != "tool_use":
+        # A completed-but-undispatched tool_use can ride a non-"tool_use" stop:
+        # a backend that streams the tool_use block and only THEN surfaces the
+        # cancel (Anthropic emits the tool_use on content_block_stop, then a
+        # trailing TurnDone(stop_reason='cancelled')) leaves tool_calls pending
+        # here. They must still be answered or the saved transcript orphans the
+        # tool_use -> non-recoverable replay 400. (Backends that batch tool
+        # calls only after their stream loop never reach this with tool_calls.)
+        if tool_calls:
+          self._answer_pending_tool_uses(tool_calls, "Cancelled by user.")
         return assistant_msg
       if cancel.is_set():
+        # Cancel set AFTER a tool_use-stop response but before dispatch (the
+        # narrower window where stop_reason stays 'tool_use'): answer the
+        # pending tool_uses so the saved transcript isn't orphaned.
+        self._answer_pending_tool_uses(tool_calls, "Cancelled by user.")
         assistant_msg.stop_reason = "cancelled"
         return assistant_msg
 
       if max_turns is not None and iterations >= max_turns:
+        # Stopped at the turn cap before dispatching this turn's tool_uses:
+        # answer them so the tool_use isn't orphaned, then the human-visible
+        # cap marker.
+        self._answer_pending_tool_uses(
+          tool_calls, "[Subagent stopped at turn cap (%d)]" % max_turns)
         self.conv.append(Message(
           role="user", timestamp=now(),
           content=[ContentBlock(type="text", data={
@@ -185,6 +216,7 @@ class AgentSession:
 
       tool_result_msg = self._dispatch_and_build_results(tool_calls, cancel)
       self.conv.append(tool_result_msg)
+      self._maybe_autosave()                       # checkpoint after tool result
 
       # Dispatch may have set the cancel token (deny_and_stop or sentinel
       # cancellation during approval). Don't ask the model for another
@@ -193,6 +225,41 @@ class AgentSession:
       if cancel.is_set():
         assistant_msg.stop_reason = "cancelled"
         return assistant_msg
+
+  def _maybe_autosave(self, partial_msg=None):
+    """Throttled mid-turn persistence (top-level sessions only).
+
+    Writes a non-mutating snapshot -- the committed messages plus the
+    in-progress assistant message -- at most once per ``autosave_interval_s``.
+    ``storage.save`` trims a snapshot that would end in an unanswered ``tool_use``
+    to the committed prefix, so a crash never freezes an un-resumable transcript
+    on disk. ``reindex=False`` keeps the O(N) index rescan (and the worker's
+    ``index.json`` writes) out of the hot loop. Never call this on the terminal
+    ``TurnDone`` event; see ``_collect_one_response``.
+
+    Parameters
+    ----------
+    partial_msg : Message, optional
+        The assistant message currently being streamed (not yet appended to the
+        conversation). Included in the snapshot when it has content.
+    """
+    if self.depth != 0 or self.storage is None:
+      return
+    now_t = self._clock()
+    if now_t - self._last_autosave < self.autosave_interval_s:
+      return
+    self._last_autosave = now_t                    # throttle even if save raises
+    tail = [partial_msg] if (partial_msg is not None and partial_msg.content) \
+        else []
+    # storage.save trims a trailing unanswered tool_use, so a snapshot caught
+    # mid-tool_use (before dispatch appends the tool_result) is persisted as a
+    # resumable prefix rather than an un-resumable provider-400 transcript.
+    snapshot = Conversation(meta=self.conv.meta,
+                            messages=self.conv.messages + tail)
+    try:
+      self.storage.save(snapshot, reindex=False)
+    except Exception as exc:
+      print("chat: mid-turn autosave failed: %s" % exc, file=self.log)
 
   def _collect_one_response(self, cancel):
     # Stamp each assistant message with the model (from the agent) and the
@@ -206,6 +273,13 @@ class AgentSession:
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
       self.on_event(event)
       _accumulate(msg, event, tool_calls, self.storage, self.conv.meta.id)
+      # Throttled mid-turn checkpoint -- ONLY on content events. Never on the
+      # terminal TurnDone: _collect_one_response returns straight into
+      # conv.append(assistant_msg), and autosave's blocking I/O (which releases
+      # the GIL) between the queued TurnDone emit and that append would let the
+      # GUI's _on_turn_done save a conv.messages still missing this message.
+      if isinstance(event, _CONTENT_EVENT_TYPES):
+        self._maybe_autosave(msg)
     return msg, tool_calls
 
   # ---- tool dispatch -------------------------------------------------------
@@ -221,7 +295,7 @@ class AgentSession:
         continue
 
       try:
-        decision = self._resolve_and_approve(call, batch_id, cancel)
+        decision = self._resolve_and_approve(call, batch_id)
       except TurnCancelled:
         result_blocks.append(_tool_error_block(
           call.id, "Cancelled by user"))
@@ -250,16 +324,41 @@ class AgentSession:
         continue
 
       blocks = self._to_canonical_content_blocks(handler_result)
+      # Honor a handler result that carries its own is_error (an MCP
+      # McpToolResult flags failures with is_error=True instead of raising,
+      # so a failed MCP tool must reach the model + UI as an error, not a
+      # success). Builtin/skill results are str/bytes/dict with no is_error
+      # attribute, so they default to False -- their failures already arrive
+      # as Sorry/Exception and were turned into _tool_error_block above.
+      is_error = bool(getattr(handler_result, "is_error", False))
       result_blocks.append(ContentBlock(type="tool_result", data={
         "tool_use_id": call.id,
         "content": blocks,
-        "is_error": False,
+        "is_error": is_error,
       }))
 
     self.on_event(ToolResultsBatched(blocks=result_blocks))
     return Message(role="user", content=result_blocks, timestamp=now())
 
-  def _resolve_and_approve(self, call, batch_id, cancel):
+  def _answer_pending_tool_uses(self, tool_calls, reason):
+    """Append a user message with an error tool_result for every pending
+    tool_use.
+
+    A turn that ends right after an assistant tool_use block -- Stop pressed
+    before dispatch, or the subagent turn-cap -- must not leave an UNMATCHED
+    tool_use in the saved transcript: on the next turn that transcript is
+    replayed verbatim, and an assistant tool_use with no following tool_result
+    is a non-recoverable provider 400 (anthropic / openai / portkey / gemini)
+    that permanently breaks the conversation. (claude_code owns its own
+    transcript and is immune.) No-op when there were no tool_calls.
+    """
+    if not tool_calls:
+      return
+    self.conv.append(Message(
+      role="user", timestamp=now(),
+      content=[_tool_error_block(c.id, reason) for c in tool_calls]))
+
+  def _resolve_and_approve(self, call, batch_id):
     policy = self.policy.resolve(call.name)
     if policy == "deny":
       return "deny"
@@ -272,17 +371,12 @@ class AgentSession:
       tool_source=self.tools.source_of(call.name) or "builtin",
       input=call.input,
       risk=self.tools.risk_of(call.name),
-      summary=_summarize_call(call),
       batch_id=batch_id,
     )
     response = self._await_approval(req)
     if response.decision == "approve":
       if response.remember == "tool":
         self.policy.allow_tool_for_session(call.name)
-      elif response.remember == "server":
-        server = self.tools.server_of(call.name)
-        if server:
-          self.policy.allow_server_for_session(server)
       return "approve"
     return response.decision
 
@@ -378,13 +472,9 @@ class AgentSession:
   def _invoke_tool(self, call, cancel):
     source = self.tools.source_of(call.name) or ""
     if source == "builtin":
-      self.current_tool_use_id = call.id
-      try:
-        return self.tools.invoke_builtin(
-          call.name, call.input,
-          cancel=cancel, session=self, tool_use_id=call.id)
-      finally:
-        self.current_tool_use_id = None
+      return self.tools.invoke_builtin(
+        call.name, call.input,
+        cancel=cancel, session=self, tool_use_id=call.id)
     if source == "skill":
       return self.tools.invoke_skill(call.name, call.input)
     if source.startswith("mcp:"):
@@ -445,11 +535,7 @@ def _accumulate(msg, event, tool_calls, storage, conv_id):
       "attachment_sha256": att.sha256, "mime": event.mime,
       "caption": event.caption}))
   elif isinstance(event, TokenUsageEvent):
-    msg.usage = TokenUsage(
-      input=event.input,
-      output=event.output,
-      cache_read=event.cache_read,
-      cache_creation=event.cache_creation)
+    msg.usage = event.to_stored()
   elif isinstance(event, TurnDone):
     msg.stop_reason = event.stop_reason
   elif isinstance(event, AgentError):
@@ -473,30 +559,6 @@ def _append_thinking(msg, text, signature):
   else:
     msg.content.append(ContentBlock(type="thinking", data={
       "text": text, "signature": signature or ""}))
-
-
-def _summarize_call(call):
-  """Build a short human-readable summary for the approval card.
-
-  Best-effort; the UI shows the full input when expanded.
-
-  Parameters
-  ----------
-  call : ToolUseRequested
-      The tool-use request to summarize.
-
-  Returns
-  -------
-  str
-      A ``name(arg=value, ...)`` rendering with truncated values.
-  """
-  return "%s(%s)" % (call.name, ", ".join(
-    "%s=%s" % (k, _short(v)) for k, v in call.input.items()))
-
-
-def _short(v, n=40):
-  s = str(v)
-  return s if len(s) <= n else s[:n] + "..."
 
 
 def _tool_error_block(tool_use_id, message):

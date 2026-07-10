@@ -23,8 +23,7 @@ def _req(request_id="r1", tool_name="phenix_start_job",
          source="mcp:phenix", risk="write", batch_id=None):
   return ToolApprovalRequest(
     request_id=request_id, tool_name=tool_name, tool_source=source,
-    input={"program": "phenix.refine"}, risk=risk, summary=None,
-    batch_id=batch_id)
+    input={"program": "phenix.refine"}, risk=risk, batch_id=batch_id)
 
 
 def exercise_single_card_approve_emits_response():
@@ -150,7 +149,7 @@ def exercise_untrusted_input_rendered_as_plain_text():
   card = ToolApprovalCard()
   card.set_requests([ToolApprovalRequest(
     request_id="r1", tool_name="phenix_start_job", tool_source="mcp:phenix",
-    input={"path": evil}, risk="write", summary=None, batch_id=None)])
+    input={"path": evil}, risk="write", batch_id=None)])
   hits = [l for l in card.findChildren(QtWidgets.QLabel)
           if "file:///" in l.text()]
   assert hits, [l.text() for l in card.findChildren(QtWidgets.QLabel)]
@@ -160,11 +159,9 @@ def exercise_untrusted_input_rendered_as_plain_text():
   card2 = ToolApprovalCard()
   card2.set_requests([
     ToolApprovalRequest(request_id="a", tool_name="t1", tool_source="s",
-                        input={"p": evil}, risk="write", summary=None,
-                        batch_id="B"),
+                        input={"p": evil}, risk="write", batch_id="B"),
     ToolApprovalRequest(request_id="b", tool_name="t2", tool_source="s",
-                        input={"p": "ok"}, risk="write", summary=None,
-                        batch_id="B")])
+                        input={"p": "ok"}, risk="write", batch_id="B")])
   hits2 = [l for l in card2.findChildren(QtWidgets.QLabel)
            if "file:///" in l.text()]
   assert hits2, [l.text() for l in card2.findChildren(QtWidgets.QLabel)]

@@ -645,18 +645,19 @@ class cablam_result(residue):
 
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
-  def as_kinemage(self, mode=None, out=sys.stdout):
-    #prints kinemage markup for this residue
+  def as_kinemage(self, mode=None, out=None):
+    #returns kinemage markup for this residue as a string
     #has separate output modes for cablam outliers and for ca geom outliers
+    kin_text = ""
     if mode == 'ca_geom':
       if self.feedback.c_alpha_geom_outlier is not None:
         stats = self.mp_id() + " ca_geom=%.2f alpha=%.2f beta=%.2f three-ten=%.2f" %(self.scores.c_alpha_geom*100, self.scores.alpha*100, self.scores.beta*100, self.scores.threeten*100)
         CA_1 = self.prevres.get_atom(' CA ').xyz
         CA_2 = self.get_atom(' CA ').xyz
         CA_3 = self.nextres.get_atom(' CA ').xyz
-        out.write('\n{'+stats+'} P '+str(CA_2[0]-(CA_2[0]-CA_1[0])*0.9)+' '+str(CA_2[1]-(CA_2[1]-CA_1[1])*0.9)+' '+str(CA_2[2]-(CA_2[2]-CA_1[2])*0.9))
-        out.write('\n{'+stats+'} '+str(CA_2[0])+' '+str(CA_2[1])+' '+str(CA_2[2]))
-        out.write('\n{'+stats+'} '+str(CA_2[0]-(CA_2[0]-CA_3[0])*0.9)+' '+str(CA_2[1]-(CA_2[1]-CA_3[1])*0.9)+' '+str(CA_2[2]-(CA_2[2]-CA_3[2])*0.9))
+        kin_text += '\n{'+stats+'} P '+str(CA_2[0]-(CA_2[0]-CA_1[0])*0.9)+' '+str(CA_2[1]-(CA_2[1]-CA_1[1])*0.9)+' '+str(CA_2[2]-(CA_2[2]-CA_1[2])*0.9)
+        kin_text += '\n{'+stats+'} '+str(CA_2[0])+' '+str(CA_2[1])+' '+str(CA_2[2])
+        kin_text += '\n{'+stats+'} '+str(CA_2[0]-(CA_2[0]-CA_3[0])*0.9)+' '+str(CA_2[1]-(CA_2[1]-CA_3[1])*0.9)+' '+str(CA_2[2]-(CA_2[2]-CA_3[2])*0.9)
     elif mode == 'cablam':
       if self.feedback.cablam_outlier is not None:
         stats = self.mp_id() + " cablam=%.2f alpha=%.2f beta=%.2f three-ten=%.2f" %(self.scores.cablam*100, self.scores.alpha*100, self.scores.beta*100, self.scores.threeten*100)
@@ -666,11 +667,14 @@ class cablam_result(residue):
         X_1 = perptersect(CA_1,CA_2,O_1)
         X_2 = perptersect(CA_2,CA_3,O_2)
         midpoint = [ (X_1[0]+X_2[0])/2.0 , (X_1[1]+X_2[1])/2.0 , (X_1[2]+X_2[2])/2.0 ]
-        out.write('\n{'+stats+'} P '+ str(O_1[0]) +' '+ str(O_1[1]) +' '+ str(O_1[2]))
-        out.write('\n{'+stats+'} '+ str(X_1[0]) +' '+ str(X_1[1]) +' '+ str(X_1[2]))
-        out.write('\n{'+stats+'} '+ str(midpoint[0]) +' '+ str(midpoint[1]) +' '+ str(midpoint[2]))
-        out.write('\n{'+stats+'} '+ str(X_2[0]) +' '+ str(X_2[1]) +' '+ str(X_2[2]))
-        out.write('\n{'+stats+'} '+ str(O_2[0]) +' '+ str(O_2[1]) +' '+ str(O_2[2]))
+        kin_text += '\n{'+stats+'} P '+ str(O_1[0]) +' '+ str(O_1[1]) +' '+ str(O_1[2])
+        kin_text += '\n{'+stats+'} '+ str(X_1[0]) +' '+ str(X_1[1]) +' '+ str(X_1[2])
+        kin_text += '\n{'+stats+'} '+ str(midpoint[0]) +' '+ str(midpoint[1]) +' '+ str(midpoint[2])
+        kin_text += '\n{'+stats+'} '+ str(X_2[0]) +' '+ str(X_2[1]) +' '+ str(X_2[2])
+        kin_text += '\n{'+stats+'} '+ str(O_2[0]) +' '+ str(O_2[1]) +' '+ str(O_2[2])
+    if out is not None:
+      out.write(kin_text)
+    return kin_text
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1359,90 +1363,108 @@ class cablamalyze(validation):
   #}}}
 
   def cablam_wheel_triangle(self, wheel_center, wedge, color):
-    self.out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
-    self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2]))
-    self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2]))
+    kin_text = ""
+    kin_text += '\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2])
+    kin_text += '\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2])
+    kin_text += '\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2])
+    return kin_text
 
   def cablam_wheel_edge(self, wheel_center, wedge, prevwedge):
     pass
 
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
-  def as_kinemage(self):
-    #output cablam validation as standalone kinemage markup for viewing in KiNG
-    self.out.write('\n@subgroup {cablam disfavored} dominant\n')
-    self.out.write('@vectorlist {cablam disfavored} color= purple width= 4 master={cablam disfavored} off') #default off
+  def as_kinemage(self, chain_id=None, include_wheels=True):
+    #output cablam validation as kinemage markup, returns string
+    #
+    #include_wheels=True emits the purple/magenta peptide-plane score wheels
+    #(and their deadblack outline) alongside the outlier line markup. Set to
+    #False to emit only the {cablam disfavored} / {cablam outlier} /
+    #{ca geom outlier} line subgroups — useful when the wheels are too busy
+    #for an embedded multicrit kinemage viewer.
+    kin_out = '\n@subgroup {cablam disfavored} dominant\n'
+    kin_out += '@vectorlist {cablam disfavored} color= purple width= 4 master={cablam disfavored} off' #default off
     for result in self.results:
       if not result.has_ca:
         continue
+      if chain_id is not None and result.chain_id.strip() != chain_id.strip():
+        continue
       if result.feedback.cablam_disfavored:
-        result.as_kinemage(mode="cablam", out=self.out)
-    self.out.write('\n@subgroup {cablam outlier} dominant\n')
-    self.out.write('@vectorlist {cablam outlier} color= magenta width= 4 master={cablam outlier}') #default on
+        kin_out += result.as_kinemage(mode="cablam")
+    kin_out += '\n@subgroup {cablam outlier} dominant\n'
+    kin_out += '@vectorlist {cablam outlier} color= magenta width= 4 master={cablam outlier}' #default on
     for result in self.results:
       if not result.has_ca:
+        continue
+      if chain_id is not None and result.chain_id.strip() != chain_id.strip():
         continue
       if result.feedback.cablam_outlier:
-        result.as_kinemage(mode="cablam", out=self.out)
-    self.out.write('\n@subgroup {ca geom outlier} dominant\n')
-    self.out.write('@vectorlist {ca geom outlier} color= red width= 4 master={ca geom outlier}') #default on
+        kin_out += result.as_kinemage(mode="cablam")
+    kin_out += '\n@subgroup {ca geom outlier} dominant\n'
+    kin_out += '@vectorlist {ca geom outlier} color= red width= 4 master={ca geom outlier}' #default on
     for result in self.results:
       if not result.has_ca:
+        continue
+      if chain_id is not None and result.chain_id.strip() != chain_id.strip():
         continue
       if result.feedback.c_alpha_geom_outlier:
-        result.as_kinemage(mode="ca_geom", out=self.out)
-    #----------------------------
-    #"wheels" show favorable and unfavorabe regions for each peptide plane involved in a cablam outlier
-    #Some additional calculations are required to generate these wheels
-    cablam_contours = fetch_peptide_expectations()
-    wheels_list = []
-    for result in self.results:
-      if not result.has_ca:
-        continue
-      if result.feedback.cablam_disfavored:
-        wheels_list.extend(result.calculate_kinemage_wheels(cablam_contours=cablam_contours))
-    #wheels are made of 10-degree wedges, each wedge drawn as a triangle
-    self.out.write('\n@subgroup {cablam_wheels} dominant master={cablam wheels}\n')
-    self.out.write('@trianglelist {cablam_wheels} alpha=0.75')
-    for cablam_wheel in wheels_list:
-      wheel = cablam_wheel[0]
-      wheel_center = cablam_wheel[1]
-      for wedge in wheel:
-        if wedge is None:
+        kin_out += result.as_kinemage(mode="ca_geom")
+    if include_wheels:
+      #----------------------------
+      #"wheels" show favorable and unfavorabe regions for each peptide plane involved in a cablam outlier
+      #Some additional calculations are required to generate these wheels
+      cablam_contours = fetch_peptide_expectations()
+      wheels_list = []
+      for result in self.results:
+        if not result.has_ca:
           continue
-        elif wedge.cablam_score < 0.01:
-          color = 'magenta'
-        else:
-          color = 'purple'
-        self.cablam_wheel_triangle(wheel_center, wedge, color)
-        #self.out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
-        #self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2]))
-        #self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2]))
-    #a thin black line outlining the wheel greatly aids visual interpretation
-    self.out.write('\n@vectorlist {cablam_wheels_lines} color=deadblack width= 1 alpha=0.75')
-    for cablam_wheel in wheels_list:
-      wheel = cablam_wheel[0]
-      wheel_center = cablam_wheel[1]
-      prevwedge = wheel[-1]
-      new_poly = ' P' #starts a new polyline in kinemage format, print this for each new wheel
-      for wedge in wheel:
-        if wedge and prevwedge:
-          self.out.write('\n{}%s %.3f %.3f %.3f' % (new_poly, wedge.start[0], wedge.start[1], wedge.start[2]))
-          self.out.write('\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2]))
-        elif wedge and not prevwedge:
-          self.out.write('\n{}%s %.3f %.3f %.3f' % (new_poly, wheel_center[0], wheel_center[1], wheel_center[2]))
-          self.out.write('\n{} %.3f %.3f %.3f' % (wedge.start[0], wedge.start[1], wedge.start[2]))
-          self.out.write('\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2]))
-        elif prevwedge and not wedge:
-          self.out.write('\n{}%s %.3f %.3f %.3f' % (new_poly, prevwedge.end[0], prevwedge.end[1], prevwedge.end[2]))
-          self.out.write('\n{} %.3f %.3f %.3f' % (wheel_center[0], wheel_center[1], wheel_center[2]))
-        else:
+        if chain_id is not None and result.chain_id.strip() != chain_id.strip():
+          continue
+        if result.feedback.cablam_disfavored:
+          wheels_list.extend(result.calculate_kinemage_wheels(cablam_contours=cablam_contours))
+      #wheels are made of 10-degree wedges, each wedge drawn as a triangle
+      kin_out += '\n@subgroup {cablam_wheels} dominant master={cablam wheels}\n'
+      kin_out += '@trianglelist {cablam_wheels} alpha=0.75'
+      for cablam_wheel in wheels_list:
+        wheel = cablam_wheel[0]
+        wheel_center = cablam_wheel[1]
+        for wedge in wheel:
+          if wedge is None:
+            continue
+          elif wedge.cablam_score < 0.01:
+            color = 'magenta'
+          else:
+            color = 'purple'
+          kin_out += self.cablam_wheel_triangle(wheel_center, wedge, color)
+      #a thin black line outlining the wheel greatly aids visual interpretation
+      kin_out += '\n@vectorlist {cablam_wheels_lines} color=deadblack width= 1 alpha=0.75'
+      for cablam_wheel in wheels_list:
+        wheel = cablam_wheel[0]
+        wheel_center = cablam_wheel[1]
+        prevwedge = wheel[-1]
+        new_poly = ' P' #starts a new polyline in kinemage format, print this for each new wheel
+        for wedge in wheel:
+          if wedge and prevwedge:
+            kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, wedge.start[0], wedge.start[1], wedge.start[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2])
+          elif wedge and not prevwedge:
+            kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, wheel_center[0], wheel_center[1], wheel_center[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wedge.start[0], wedge.start[1], wedge.start[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2])
+          elif prevwedge and not wedge:
+            kin_out += '\n{}%s %.3f %.3f %.3f' % (new_poly, prevwedge.end[0], prevwedge.end[1], prevwedge.end[2])
+            kin_out += '\n{} %.3f %.3f %.3f' % (wheel_center[0], wheel_center[1], wheel_center[2])
+          else:
+            prevwedge = wedge
+            continue
           prevwedge = wedge
-          continue
-        prevwedge = wedge
-        new_poly=''
-    #----------------------------
-    self.out.write('\n')
+          new_poly=''
+      #----------------------------
+    kin_out += '\n'
+    # Write to self.out for backward compatibility with standalone use
+    if self.out is not None:
+      self.out.write(kin_out)
+    return kin_out
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1455,7 +1477,7 @@ class cablamalyze(validation):
     #Pdb-to-kinemage printing has been hijacked from mmtbx.kinemage.validation
     #  That code was not meant to be used outside its original context, so this
     #  may be fragile.
-    from mmtbx.kinemage.validation import get_kin_lots, build_name_hash
+    from mmtbx.kinemage.validation import get_kin_lots, build_name_hash, _build_bond_hash
     from mmtbx import monomer_library
     from mmtbx.monomer_library import pdb_interpretation
     i_seq_name_hash = build_name_hash(pdb_hierarchy=self.pdb_hierarchy)
@@ -1473,12 +1495,7 @@ class cablamalyze(validation):
     #angle_proxies = geometry.angle_proxies
     pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
     bond_proxies = pair_proxies.bond_proxies
-    quick_bond_hash = {}
-    for bp in bond_proxies.simple:
-      if (i_seq_name_hash[bp.i_seqs[0]][9:14] == i_seq_name_hash[bp.i_seqs[1]][9:14]):
-        if quick_bond_hash.get(bp.i_seqs[0]) is None:
-          quick_bond_hash[bp.i_seqs[0]] = []
-        quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
+    quick_bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
 
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():

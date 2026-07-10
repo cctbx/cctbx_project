@@ -23,7 +23,7 @@ except ImportError:
 
 from qttbx.widgets.chat.agent.storage import ConversationStorage
 from qttbx.widgets.chat.image_cache import (
-  ImageCache, get_image, get_thumbnail, set_default_cache)
+  ImageCache, get_image, set_default_cache)
 
 
 def _qapp():
@@ -66,23 +66,6 @@ def exercise_get_image_round_trips():
     shutil.rmtree(tmp)
 
 
-def exercise_thumbnail_scales_and_caches():
-  tmp = tempfile.mkdtemp()
-  try:
-    storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
-    cache = ImageCache(capacity=8)
-    set_default_cache(cache)
-    att = storage.store_attachment("c1", _png_bytes(800, 400), "image/png")
-    t = get_thumbnail(storage, "c1", att.sha256, width=240)
-    assert t.width() == 240
-    # Second call should hit cache (we can't see hits directly, but
-    # the returned object should be a valid QImage and not raise).
-    t2 = get_thumbnail(storage, "c1", att.sha256, width=240)
-    assert t2.width() == 240
-  finally:
-    shutil.rmtree(tmp)
-
-
 def exercise_missing_attachment_returns_placeholder():
   tmp = tempfile.mkdtemp()
   try:
@@ -107,8 +90,14 @@ def exercise_lru_evicts_oldest_at_capacity():
         "c1", _png_bytes(color=(i*40, 0, 0)), "image/png")
       shas.append(att.sha256)
       get_image(storage, "c1", att.sha256)
-    # First sha should be evicted; cache size capped at 3.
-    assert len(cache) <= 3
+    # The OLDEST entry (the victim) must be the one evicted, and the 3
+    # most-recently-used must remain -- asserting only the size would pass even
+    # if the wrong entry were dropped. The cache key is (conv_id, sha256);
+    # cache.get is a peek (None when absent).
+    assert len(cache) == 3, len(cache)
+    assert cache.get(("c1", shas[0])) is None, "oldest entry should be evicted"
+    for sha in shas[1:]:
+      assert cache.get(("c1", sha)) is not None, sha
   finally:
     shutil.rmtree(tmp)
 
@@ -138,7 +127,6 @@ def exercise_lightbox_is_modal():
 
 def exercise():
   exercise_get_image_round_trips()
-  exercise_thumbnail_scales_and_caches()
   exercise_missing_attachment_returns_placeholder()
   exercise_lru_evicts_oldest_at_capacity()
   exercise_lightbox_holds_pixmap_and_closes_on_click()

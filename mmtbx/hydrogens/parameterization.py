@@ -256,6 +256,12 @@ class manager(object):
       else:
         # 2neigbs
         htype = '2neigbs'
+        # A single H whose parent is restrained planar (e.g. an amide N-H such
+        # as the lactam N of PCA) must lie in the plane of its two neighbours,
+        # even when the ideal angles around the parent do not sum to 360. Place
+        # it flat instead of pyramidal.
+        if getattr(neighbors, 'is_in_plane', False):
+          htype = 'flat_2neigbs'
     if (h is None):
       h = 0
     self.h_parameterization[ih] = riding_coefficients(

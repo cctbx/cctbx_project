@@ -19,7 +19,7 @@ except ImportError:
   print("OK")
   sys.exit(0)
 
-from qttbx.widgets.chat.agent.base import Agent, AgentCapabilities
+from qttbx.widgets.chat.agent.base import Agent
 from qttbx.widgets.font_init import init_default_app_font
 from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, now)
@@ -34,7 +34,6 @@ from qttbx.widgets.chat.agent.tools import ToolPolicy, ToolRegistry
 class _ScriptedAgent(Agent):
   name = "scripted"
   model = "scripted-1"
-  capabilities = AgentCapabilities.STREAMING
 
   def __init__(self, events):
     self._events = events
@@ -76,15 +75,18 @@ def exercise_emits_text_delta_then_turn_done():
   init_default_app_font(app)
   tmp = tempfile.mkdtemp()
   try:
+    # A TokenUsage event in the stream must be tolerated even though the
+    # runner no longer re-emits it as a Qt signal: token usage flows via
+    # msg.usage (set on the message and persisted by the session), so the
+    # runner just ignores the event without breaking dispatch.
     events = [TextDelta(text="hello "), TextDelta(text="world"),
               TokenUsageEvent(input=10, output=2),
               TurnDone(stop_reason="end_turn")]
     session, _ = _make_session(events, tmp)
     runner = QtAgentRunner(session)
-    text_deltas, turn_dones, usages = [], [], []
+    text_deltas, turn_dones = [], []
     runner.text_delta.connect(lambda s: text_deltas.append(s))
     runner.turn_done.connect(lambda r: turn_dones.append(r))
-    runner.usage.connect(lambda u: usages.append(u))
 
     user = Message(role="user", content=[
       ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
@@ -94,15 +96,18 @@ def exercise_emits_text_delta_then_turn_done():
 
     assert text_deltas == ["hello ", "world"], text_deltas
     assert turn_dones == ["end_turn"], turn_dones
-    assert len(usages) == 1
-    assert usages[0].input == 10
   finally:
     shutil.rmtree(tmp)
 
 
 def exercise_cancel_stops_the_turn():
-  """Cancel mid-stream — the scripted agent honors cancel between events
-  so the turn ends with stop_reason='cancelled'."""
+  """A streamed delta drives a cancel that propagates onto the runner's token.
+
+  The text delta is delivered to the GUI slot, which calls ``runner.cancel()``
+  -- that must set the cancel token the session worker polls. The weak form
+  only checked the runner went idle, which happens anyway once this short
+  scripted turn ends; pinning the delta delivery + the set token catches a
+  broken event dispatch or a ``cancel()`` that never reaches the token."""
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   init_default_app_font(app)
   tmp = tempfile.mkdtemp()
@@ -117,6 +122,11 @@ def exercise_cancel_stops_the_turn():
     runner.wait_for_idle(timeout_ms=2000)
     _pump(app)
     assert not runner.is_busy()
+    # The streamed delta reached the GUI slot (so the cancel could fire) ...
+    assert received == ["hello"], received
+    # ... and runner.cancel() set the token the worker polls. Going idle alone
+    # does not prove the cancel path ran.
+    assert runner._cancel.is_set()
   finally:
     shutil.rmtree(tmp)
 
@@ -223,7 +233,6 @@ def exercise_submit_approval_queues_for_session_while_turn_in_flight():
     class _BlockingAgent(Agent):
       name = "blocking"
       model = "blocking-1"
-      capabilities = AgentCapabilities.STREAMING
 
       def __init__(self):
         self.release = threading.Event()
@@ -269,15 +278,28 @@ def exercise_submit_approval_queues_for_session_while_turn_in_flight():
 
 
 def exercise_submit_question_answer_falls_through_to_session():
-  """When the agent has no submit_question_answer (the API backends),
-  runner.submit_question_answer routes the answers to the session's
-  submit_question_answer. The agent path wins when it owns the id; the
-  session path is the fallback the API agents rely on."""
+  """When the agent inherits the base submit_question_answer (the API
+  backends return the default False), runner.submit_question_answer routes
+  the answers to the session's submit_question_answer. The agent path wins
+  when it owns the id; the session path is the fallback the API agents rely
+  on."""
   import queue as _queue
 
-  class _AgentWithoutQuestions:
-    """An API-style agent: no submit_question_answer override at all (it
-    is not even an Agent subclass, so getattr returns None)."""
+  class _AgentWithoutQuestions(Agent):
+    """An API-style agent that does NOT override submit_question_answer; it
+    inherits the Agent base default (returns False), so the runner falls
+    through to the session."""
+    name = "no-questions"
+    model = "no-questions-1"
+
+    def stream_turn(self, conversation, tools, cancel):
+      return iter(())
+
+    def resolve_credentials(self, cli_override=None):
+      return "k"
+
+    def credentials_dialog_class(self):
+      return object
 
   class _AgentOwning:
     """A claude_code-style agent that owns the id."""
@@ -324,7 +346,6 @@ def exercise_cancel_flushes_question_queue():
   class _BlockingAgent(Agent):
     name = "blocking-q"
     model = "blocking-q-1"
-    capabilities = AgentCapabilities.STREAMING
 
     def __init__(self):
       self.release = threading.Event()

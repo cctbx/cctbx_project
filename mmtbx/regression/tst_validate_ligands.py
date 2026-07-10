@@ -7,6 +7,8 @@ import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
+from mmtbx.validation import validate_ligands as val_lig_mod
+import mmtbx.ligands.rdkit_utils as rdkit_utils
 
 from rdkit import RDLogger
 lg = RDLogger.logger()
@@ -51,6 +53,17 @@ def run():
   run_test06()
   run_test08()
   run_test09()
+  run_test10()
+  run_test11()
+  run_test12()
+  run_test13()
+  run_test14()
+  run_test15()
+  run_test16()
+  run_test17()
+  run_test18()
+  run_test19()
+  run_test20()
 
 # ------------------------------------------------------------------------------
 
@@ -105,8 +118,8 @@ def run_test01():
   assert(rmsd_result.angle_n_outliers == 0)
   assert approx_equal(rmsd_result.dihedral_rmsd, 32.6, eps=0.5)
 
-  #if os.path.isfile('one_chain_ligand_water_newH.cif'):
-  #  os.remove('one_chain_ligand_water_newH.cif')
+  if os.path.isfile('one_chain_ligand_water_newH.cif'):
+    os.remove('one_chain_ligand_water_newH.cif')
 
 # ------------------------------------------------------------------------------
 
@@ -584,6 +597,300 @@ def run_test09():
 
 # ------------------------------------------------------------------------------
 
+# Two glycerol (GOL) ligands. Chain A resseq 1 is missing the O3 heavy atom;
+# chain A resseq 2 is heavy-complete (no H atoms are modelled in either).
+_gol_missing_atom_pdb_str = '''
+CRYST1   30.000   20.000   20.000  90.00  90.00  90.00 P 1
+SCALE1      0.033333  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.050000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.050000        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  C1  GOL A   2      15.000   5.000   5.000  1.00 20.00           C
+HETATM    7  C2  GOL A   2      16.520   5.000   5.000  1.00 20.00           C
+HETATM    8  C3  GOL A   2      17.100   6.400   5.000  1.00 20.00           C
+HETATM    9  O1  GOL A   2      14.300   3.850   5.400  1.00 20.00           O
+HETATM   10  O2  GOL A   2      17.220   4.050   5.700  1.00 20.00           O
+HETATM   11  O3  GOL A   2      18.500   6.350   4.700  1.00 20.00           O
+'''
+
+def _gol_missing_atom_model():
+  pdb_inp = iotbx.pdb.input(
+    lines=_gol_missing_atom_pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  return model
+
+def run_test10():
+  print('test10')
+  model = _gol_missing_atom_model()
+  missing = model.get_missing_atoms()
+  atoms = model.get_hierarchy().atoms()
+
+  def ag_key(sel_str):
+    isel = model.iselection(sel_str)
+    return atoms[isel[0]].parent().id_str()
+
+  key1 = ag_key('resname GOL and chain A and resseq 1')
+  key2 = ag_key('resname GOL and chain A and resseq 2')
+
+  assert key1 in missing, missing
+  heavy1 = missing[key1].get('missing', {}).get('heavy', {})
+  assert 'O3' in heavy1, list(heavy1)
+
+  heavy2 = missing.get(key2, {}).get('missing', {}).get('heavy', {})
+  assert len(heavy2) == 0, list(heavy2)
+
+  # Lazy path: a fresh, un-processed model must auto-process on access.
+  pdb_inp2 = iotbx.pdb.input(
+    lines=_gol_missing_atom_pdb_str.split("\n"), source_info=None)
+  model_lazy = mmtbx.model.manager(model_input=pdb_inp2, log=null_out())
+  missing_lazy = model_lazy.get_missing_atoms()
+  assert missing_lazy is not None
+  assert any('O3' in v.get('missing', {}).get('heavy', {})
+             for v in missing_lazy.values()), missing_lazy
+
+# ------------------------------------------------------------------------------
+
+def _gol_missing_atom_manager():
+  from mmtbx.validation import validate_ligands as vlmod
+  model = _gol_missing_atom_model()
+  params = vlmod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = vlmod.manager(
+    model       = model,
+    fmodel      = None,
+    map_manager = None,
+    params      = params,
+    log         = null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test11():
+  print('test11')
+  vl_manager = _gol_missing_atom_manager()
+  lr1 = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  ma1 = lr1.get_missing_atoms()
+  assert ma1.missing_heavy == ['O3'], ma1.missing_heavy
+  assert ma1.n_missing_heavy == 1, ma1.n_missing_heavy
+  #
+  lr2 = find_lr(vl_manager, 'resname GOL and chain A and resseq 2')
+  ma2 = lr2.get_missing_atoms()
+  assert ma2.missing_heavy == [], ma2.missing_heavy
+  assert ma2.n_missing_heavy == 0, ma2.n_missing_heavy
+
+# ------------------------------------------------------------------------------
+
+def run_test12():
+  print('test12')
+  from six.moves import cStringIO as StringIO
+  vl_manager = _gol_missing_atom_manager()
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'missing' in text, text
+  assert 'O3' in text, text
+
+# ------------------------------------------------------------------------------
+
+def run_test13():
+  print('test13')
+  vl_manager = _gol_missing_atom_manager()
+  snap1 = find_lr(vl_manager, 'resname GOL and chain A and resseq 1').as_picklable_snapshot()
+  assert snap1.missing_atoms is not None
+  assert snap1.missing_atoms.missing_heavy == ['O3'], snap1.missing_atoms.missing_heavy
+  assert snap1.missing_atoms.n_missing_heavy == 1, snap1.missing_atoms.n_missing_heavy
+  #
+  snap2 = find_lr(vl_manager, 'resname GOL and chain A and resseq 2').as_picklable_snapshot()
+  assert snap2.missing_atoms is not None
+  assert snap2.missing_atoms.missing_heavy == [], snap2.missing_atoms.missing_heavy
+  assert snap2.missing_atoms.n_missing_heavy == 0, snap2.missing_atoms.n_missing_heavy
+
+# ------------------------------------------------------------------------------
+
+def _gol_frag_mol_and_cif(vl_manager, resseq):
+  lr = find_lr(vl_manager, 'resname GOL and chain A and resseq %d' % resseq)
+  ag = lr._atoms_ligand[0].parent()
+  srv = lr.model.get_mon_lib_srv()
+  cif_object, _ani = srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=ag.resname, atom_names=ag.atoms().extract_name())
+  return lr._frag_mol, cif_object, lr
+
+def run_test14():
+  print('test14')
+  vl = _gol_missing_atom_manager()
+  frag_mol, cif_object, lr = _gol_frag_mol_and_cif(vl, 1)
+  draw_mol, missing_idxs = rdkit_utils.build_drawing_mol_with_missing(
+    frag_mol, cif_object, ['O3'])
+  assert draw_mol.GetNumAtoms() == frag_mol.GetNumAtoms() + 1, draw_mol.GetNumAtoms()
+  assert len(missing_idxs) == 1, missing_idxs
+  idx = list(missing_idxs)[0]
+  assert idx == frag_mol.GetNumAtoms(), idx
+  assert draw_mol.GetAtomWithIdx(idx).GetProp('_Name').strip() == 'O3'
+  assert draw_mol.GetAtomWithIdx(idx).GetProp('atomLabel') == 'O3'
+  draw_mol2, mi2 = rdkit_utils.build_drawing_mol_with_missing(frag_mol, cif_object, [])
+  assert len(mi2) == 0
+  assert draw_mol2.GetNumAtoms() == frag_mol.GetNumAtoms()
+  draw_mol3, mi3 = rdkit_utils.build_drawing_mol_with_missing(frag_mol, cif_object, None)
+  assert len(mi3) == 0
+  assert draw_mol3.GetNumAtoms() == frag_mol.GetNumAtoms()
+
+# ------------------------------------------------------------------------------
+
+def run_test15():
+  print('test15')
+  import tempfile, os
+  vl = _gol_missing_atom_manager()
+  frag_mol, cif_object, lr = _gol_frag_mol_and_cif(vl, 1)
+  draw_mol, missing_idxs = rdkit_utils.build_drawing_mol_with_missing(
+    frag_mol, cif_object, ['O3'])
+  tf = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+  tf.close()
+  try:
+    rdkit_utils.draw_colored_fragments(
+      draw_mol, lr._rdkit_frags, filename=tf.name, missing_atom_idxs=missing_idxs)
+    assert os.path.getsize(tf.name) > 0
+    rdkit_utils.draw_colored_fragments(
+      draw_mol, lr._rdkit_frags, filename=tf.name,
+      missing_atom_idxs=missing_idxs, frag_ccs=None)
+    assert os.path.getsize(tf.name) > 0
+  finally:
+    os.unlink(tf.name)
+
+# ------------------------------------------------------------------------------
+
+def run_test16():
+  print('test16')
+  vl = _gol_missing_atom_manager()
+  lr1 = find_lr(vl, 'resname GOL and chain A and resseq 1')
+  assert len(lr1._draw_missing_idxs) == 1, lr1._draw_missing_idxs
+  lr2 = find_lr(vl, 'resname GOL and chain A and resseq 2')
+  assert len(lr2._draw_missing_idxs) == 0, lr2._draw_missing_idxs
+  snap = lr1.as_picklable_snapshot()
+  assert snap.fragment_png_bytes is not None
+
+def run_test18():
+  from mmtbx.validation.validate_ligands import fragment_consistency as fc
+  # consistent: balances ~equal, no weak fragment
+  r = fc(0.90, [0.88, 0.91, 0.89], [0.60, 0.70, 0.65], [0.90, 1.00, 0.95])
+  assert r.flag == 'consistent', r.flag
+  # (A) localized weak fragment (STI-like): frag 6 RSCC 0.19 << overall 0.86
+  r = fc(0.86, [0.78, 0.93, 0.88, 0.84, 0.73, 0.19],
+              [0.49, 0.60, 0.37, 0.18, 0.24, -0.22],
+              [0.77, 0.95, 0.96, 0.83, 0.96, 0.02])
+  assert r.flag == 'inspect', r.flag
+  assert '(A)' in r.reason and 'fragment 6' in r.reason, r.reason
+  # (B) inconsistent balance (EPE-like): sulfonate mod/obs 2.46 vs ring 1.46
+  r = fc(0.78, [0.83, 0.82, 0.77], [0.505, 0.681, 0.520], [1.244, 0.992, 1.096])
+  assert r.flag == 'inspect', r.flag
+  assert '(B)' in r.reason, r.reason
+  # obs_floor guard: a near-zero-obs fragment is excluded from (B), not a div blow-up
+  r = fc(0.90, [0.90, 0.90], [0.05, 0.60], [1.00, 0.90])
+  assert r.flag == 'consistent', r.flag   # only 1 fragment clears obs_floor -> (B) skipped
+  # overall already bad -> localized-weak (A) suppressed (redundant when whole ligand is poor)
+  r = fc(0.60, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'consistent', (r.flag, r.reason)
+  # boundary: overall at the floor (0.70) still raises (A)
+  r = fc(0.70, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'inspect' and '(A)' in r.reason, (r.flag, r.reason)
+  # just below the floor -> suppressed
+  r = fc(0.69, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'consistent', (r.flag, r.reason)
+  print('OK run_test18')
+
+# ------------------------------------------------------------------------------
+
+def run_test19():
+  print('test19')
+  # Reuse the cached real 1avd fmodel; skip if phenix_regression is absent.
+  vl = _load_1avd_manager()
+  if vl is None:
+    print('Skipping run_test19 (no phenix_regression)')
+    return
+  fmodel = vl[0].fmodel
+  mtz_object = val_lig_mod.map_coefficients_as_mtz_object(fmodel)
+  labels = list(mtz_object.column_labels())
+  for lbl in ['2FOFCWT', 'PH2FOFCWT', 'FOFCWT', 'PHFOFCWT']:
+    assert lbl in labels, (lbl, labels)
+  n_complex = sum(1 for ma in mtz_object.as_miller_arrays()
+                  if ma.is_complex_array())
+  assert n_complex == 2, n_complex
+
+# ------------------------------------------------------------------------------
+
+def run_test20():
+  print('test20')
+  # End-to-end: run the Program on 1avd with save_map_coeffs=True and confirm
+  # the MTZ is written with the expected columns. Skip if data unavailable.
+  import os
+  mtz_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1avd.mtz",
+    test=os.path.isfile)
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
+    test=os.path.isfile)
+  if mtz_fname is None or pdb_fname is None:
+    print('Skipping run_test20 (no phenix_regression)')
+    return
+  out_fn = 'pdb1avd_map_coeffs.mtz'
+  if os.path.isfile(out_fn):
+    os.remove(out_fn)
+  run_program(
+    program_class=val_lig.Program,
+    args=[pdb_fname, mtz_fname, 'save_map_coeffs=True', 'run_reduce2=False'],
+    logger=null_out())
+  try:
+    assert os.path.isfile(out_fn), out_fn
+    from iotbx import mtz
+    labels = list(mtz.object(out_fn).column_labels())
+    for lbl in ['2FOFCWT', 'PH2FOFCWT', 'FOFCWT', 'PHFOFCWT']:
+      assert lbl in labels, (lbl, labels)
+  finally:
+    if os.path.isfile(out_fn):
+      os.remove(out_fn)
+
+# ------------------------------------------------------------------------------
+
+def run_test17():
+  print('test17')
+  import os, tempfile
+  from mmtbx.monomer_library import server
+  gol_cif = libtbx.env.find_in_repositories(
+    relative_path='chem_data/geostd/g/data_GOL.cif', test=os.path.isfile)
+  if gol_cif is None:
+    print('  skipping: geostd not available')
+    return
+  lines = [ln for ln in open(gol_cif).read().splitlines()
+           if not (ln.strip().startswith('GOL') and
+                   (' O3 ' in ln or ' HO3 ' in ln or ln.rstrip().endswith(' O3')
+                    or ln.rstrip().endswith(' HO3')))]
+  tf = tempfile.NamedTemporaryFile(suffix='.cif', delete=False, mode='w')
+  tf.write('\n'.join(lines) + '\n')
+  tf.close()
+  try:
+    from mmtbx.validation import validate_ligands as vlmod
+    pdb_inp = iotbx.pdb.input(
+      lines=_gol_missing_atom_pdb_str.split('\n'), source_info=None)
+    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+    model.set_restraint_objects([(tf.name, server.read_cif(tf.name))])
+    model.set_stop_for_unknowns(False)
+    model.process(make_restraints=True)
+    params = vlmod.master_params().extract().validate_ligands
+    params.ligand_code = []
+    vl = vlmod.manager(model=model, fmodel=None, map_manager=None,
+                       params=params, log=null_out())
+    vl.run()
+    lr1 = find_lr(vl, 'resname GOL and chain A and resseq 1')
+    assert lr1.get_missing_atoms().missing_heavy == [], lr1.get_missing_atoms().missing_heavy
+    assert len(lr1._draw_missing_idxs) == 0, lr1._draw_missing_idxs
+  finally:
+    os.unlink(tf.name)
+
+# ------------------------------------------------------------------------------
+
 cif_str_tst_4 = '''
 data_default
 _cell.length_a                    67.330
@@ -878,6 +1185,8 @@ HETATM  171  O   HOH A 612      55.669  18.124  20.272  1.00 30.96           O
 HETATM  172  O   HOH A 628      52.150   8.845  12.227  0.50  9.11           O
 END
 '''
+
+# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 

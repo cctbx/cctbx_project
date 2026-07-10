@@ -13,13 +13,18 @@ The tuning here targets transition-metal sites:
     manager does not request).
   * ALPB implicit solvent by *named* solvent (default ``ether``, eps ~ 4.3,
     the closest common match to the eps = 4 protein-interior model).
-  * The lbfgs optimiser (``$opt engine=lbfgs``) so a ``$fix`` block holds the
-    frozen scaffold atoms *exactly* in Cartesian space on both of xTB's
-    backends -- otherwise drift in the fixed atoms injects noise into the
-    optimised region's geometry. The default ``rf`` optimiser drifts on both
-    backends, and ``inertial`` (FIRE) -- exact on the native backend -- silently
-    drops ``$fix`` on the tblite backend (which ``--spinpol`` forces); lbfgs is
-    the only engine exact on both.
+  * The inertial optimiser (``$opt engine=inertial``, i.e. FIRE) so a ``$fix``
+    block holds the frozen scaffold atoms *exactly* in Cartesian space;
+    otherwise drift in the fixed atoms injects noise into the optimised
+    region's geometry. FIRE optimises directly in Cartesian coordinates with
+    the fixed atoms' gradient projected out, so it holds ``$fix`` exactly on
+    the native backend this manager uses. The default ``rf`` and ``lbfgs``
+    optimise in approximate normal coordinates and back-transform each step to
+    Cartesian, leaking a small displacement onto the fixed atoms every cycle;
+    that leak accumulates (silently, still reporting convergence) when a frozen
+    atom carries a large force. (On the tblite backend that ``--spinpol``
+    forces the behaviour reverses and lbfgs is the exact one, but this manager
+    does not request tblite.)
   * A generous geometry-optimisation cycle cap (xTB's automatic default is
     only ~2x the atom count, which a slow-converging case can exceed); xTB
     cycles are cheap.
@@ -175,7 +180,7 @@ class xtb_manager(base_qm_manager.base_qm_manager):
 
   def _input_header(self, gradients_only=False):
     """xcontrol blocks that don't depend on the frozen-atom partition:
-    charge/spin/GFN, and (for an optimisation) the lbfgs-optimiser ``$opt``
+    charge/spin/GFN, and (for an optimisation) the inertial-optimiser ``$opt``
     block. A leading comment records the command-line-only settings (GFN,
     solvent, threads, robust) so a change in any of them is still detected by
     ``check_file_read_safe``."""
@@ -194,11 +199,12 @@ class xtb_manager(base_qm_manager.base_qm_manager):
     if gfn != 'ff':
       lines += ['$gfn', f'   method={gfn}', '$end']
     if not gradients_only:
-      # lbfgs optimiser: the only engine that holds $fix *exactly* on both the
-      # native and tblite backends. 'inertial' is exact on the native backend
-      # but drifts the fixed atoms on tblite (which --spinpol forces); 'rf'
-      # (default) drifts on both.
-      lines += ['$opt', '   engine=lbfgs', f'   maxcycle={DEFAULT_XTB_MAXCYCLE}',
+      # inertial (FIRE) works in Cartesians with the fixed gradient projected
+      # out, so it holds $fix *exactly* on the native backend this manager
+      # uses; 'rf' (default) and 'lbfgs' drift the fixed atoms under large
+      # force. (Only on the tblite backend that --spinpol forces would lbfgs be
+      # the exact one; this manager does not request tblite.)
+      lines += ['$opt', '   engine=inertial', f'   maxcycle={DEFAULT_XTB_MAXCYCLE}',
                 '$end']
     return '\n'.join(lines) + '\n'
 

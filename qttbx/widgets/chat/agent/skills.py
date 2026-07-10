@@ -36,8 +36,6 @@ class Skill:
       The ``SKILL.md`` body with frontmatter stripped.
   requires : list, optional
       MCP server names the skill depends on.
-  version : str, optional
-      Skill version string.
   """
   name: str
   path: Path                                    # absolute path to skill dir
@@ -45,7 +43,6 @@ class Skill:
   mode: str = "always"                          # "always" | "on_demand"
   body: str = ""                                # SKILL.md body (frontmatter stripped)
   requires: list = field(default_factory=list)  # MCP server names
-  version: str = ""
 
 
 class SkillLoader:
@@ -131,17 +128,9 @@ class SkillLoader:
         continue
       if entry.name in disabled:
         continue
-      try:
-        skill = self._load_one(entry)
-      except Sorry as e:
-        print("skill %s: skipping (%s)" % (entry, e), file=self.log)
-        continue
-      if not self._requires_satisfied(skill, available_servers):
-        missing = sorted(set(skill.requires) - available_servers)
-        print("skill '%s': skipping (requires MCP servers not available: %s)"
-              % (skill.name, missing), file=self.log)
-        continue
-      skills.append(skill)
+      skill = self._load_checked(entry, available_servers)
+      if skill is not None:
+        skills.append(skill)
     return skills
 
   def _resolve_additional(self, ref, available_servers):
@@ -160,9 +149,34 @@ class SkillLoader:
     if path is None:
       print("skill '%s' not found in any search path" % ref, file=self.log)
       return None
+    return self._load_checked(path, available_servers)
+
+  def _load_checked(self, path, available_servers):
+    """Load the skill at ``path`` and apply the ``requires`` filter.
+
+    The shared body of :meth:`_load_builtins` and :meth:`_resolve_additional`:
+    load the ``SKILL.md`` (skipping with a log on a malformed / unreadable
+    one), then drop it (with a log) when its ``requires`` lists an MCP server
+    outside ``available_servers``.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The skill directory to load.
+    available_servers : frozenset of str or None
+        Names of available MCP servers, or ``None`` to skip the check.
+
+    Returns
+    -------
+    Skill or None
+        The loaded skill, or ``None`` when it should be skipped.
+    """
     try:
       skill = self._load_one(path)
-    except Sorry as e:
+    except (Sorry, OSError, ValueError) as e:
+      # One malformed / unreadable skill (e.g. an undecodable SKILL.md raising
+      # UnicodeDecodeError, a ValueError subclass) is skipped so it does not
+      # abort the whole batch and drop every other skill.
       print("skill %s: skipping (%s)" % (path, e), file=self.log)
       return None
     if not self._requires_satisfied(skill, available_servers):
@@ -205,14 +219,30 @@ class SkillLoader:
       raise Sorry("SKILL.md missing required field 'name'")
     if "description" not in frontmatter:
       raise Sorry("SKILL.md missing required field 'description'")
+    # `requires` may be a YAML list, a scalar, or absent. First normalize any
+    # non-list (a bare scalar `requires: phenix`) to a one-element list -- list()
+    # on a string would otherwise explode it into ['p','h','e','n','i','x'].
+    # Then coerce EVERY element to str: requires entries are MCP server NAMES
+    # (strings), and stringifying makes the list uniformly hashable. A YAML
+    # MAPPING (`requires: {a: b}`) or a list element that is itself a dict/list
+    # parses to an UNHASHABLE value; _requires_satisfied's `r in
+    # available_servers` (frozenset membership) would then raise TypeError --
+    # which is OUTSIDE _load_checked's (Sorry, OSError, ValueError) guard and
+    # would abort the WHOLE skill batch. str() also folds non-string scalars
+    # (`requires: 1`, `requires: true`) in uniformly (mirroring the str()
+    # coercion of name/description/mode below); a stringified non-name simply
+    # matches no server, so the skill is cleanly filtered rather than crashing.
+    requires = frontmatter.get("requires") or []
+    if not isinstance(requires, list):
+      requires = [requires]
+    requires = [str(r) for r in requires]
     return Skill(
       name=str(frontmatter["name"]),
       path=path.resolve(),
       description=str(frontmatter["description"]),
       mode=str(frontmatter.get("mode", "always")),
       body=body,
-      requires=list(frontmatter.get("requires", []) or []),
-      version=str(frontmatter.get("version", "")),
+      requires=requires,
     )
 
   # ---- system prompt assembly ----------------------------------------------
@@ -286,6 +316,7 @@ class SkillLoader:
     enum_clause = ", ".join("'%s'" % n for n in skill_names)
 
     def read_file_handler(name, input):
+      input = input or {}                  # GPT clients send null for no-args
       skill = by_name.get(input.get("skill_name", ""))
       if skill is None:
         raise Sorry("Unknown skill: %s" % input.get("skill_name"))
@@ -297,12 +328,14 @@ class SkillLoader:
         return {"binary_base64": base64.b64encode(data).decode("ascii")}
 
     def list_files_handler(name, input):
+      input = input or {}
       skill = by_name.get(input.get("skill_name", ""))
       if skill is None:
         raise Sorry("Unknown skill: %s" % input.get("skill_name"))
       return self.list_files(skill)
 
     def load_skill_handler(name, input):
+      input = input or {}
       skill = by_name.get(input.get("skill_name", ""))
       if skill is None:
         raise Sorry("Unknown skill: %s" % input.get("skill_name"))
@@ -363,6 +396,10 @@ class SkillLoader:
       raise Sorry("read_skill_file: path escapes skill directory")
     if not os.path.exists(safe):
       raise Sorry("read_skill_file: file not found: %s" % relative_path)
+    if not os.path.isfile(safe):
+      # A directory (or other non-regular file) passes the existence check;
+      # open() would then raise a raw IsADirectoryError. Surface a Sorry.
+      raise Sorry("read_skill_file: not a regular file: %s" % relative_path)
     with open(safe, "rb") as fh:
       return fh.read()
 
@@ -429,7 +466,7 @@ def _parse_skill_md(path):
       If the frontmatter is missing, unterminated, not a mapping, or
       malformed, or if PyYAML is not installed.
   """
-  text = path.read_text()
+  text = path.read_text(encoding="utf-8")
   if not text.startswith("---"):
     raise Sorry("SKILL.md %s missing YAML frontmatter" % path)
   # Split after the first '---' on its own line, then find the next.

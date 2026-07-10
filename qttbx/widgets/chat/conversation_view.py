@@ -128,6 +128,12 @@ class ConversationView(QtWidgets.QScrollArea):
 
   def finalize_assistant_bubble(self, stop_reason):
     if self._in_progress is not None:
+      # A cancelled turn (the user hit Stop) ends without the runner
+      # delivering tool_results for any in-flight tool calls, so transition
+      # the bubble's still-running tool cells to the cancelled terminal state
+      # rather than leaving them stuck spinning.
+      if stop_reason == "cancelled":
+        self._in_progress.cancel_running_tools()
       self._in_progress.message.stop_reason = stop_reason
       self._in_progress = None
     self._approval_by_batch.clear()                # batches don't carry over
@@ -154,6 +160,29 @@ class ConversationView(QtWidgets.QScrollArea):
       self.start_assistant_bubble()
     self._in_progress.append_block(block)
     self._maybe_scroll_to_bottom()
+
+  def finish_tool_cell(self, tool_use_id):
+    """Mark a tool cell on the in-progress bubble as finished (not cancelled).
+
+    The claude_code backend dispatches tools inside its SDK subprocess and
+    renders their results in a SEPARATE bubble, so it never calls
+    ``set_tool_use_finished`` on the live tool_use cell -- the cell would stay
+    ``running`` until the turn ends. Observing the result is the signal that
+    the tool actually completed, so transition the matching in-progress cell to
+    the finished terminal state here. Without it, ``finalize_assistant_bubble``'s
+    Stop-time sweep (``cancel_running_tools``) would mislabel a COMPLETED tool
+    ``cancelled``. No-op when there is no in-progress bubble or no cell matches
+    ``tool_use_id`` (e.g. an API backend that already finished the cell itself).
+
+    Parameters
+    ----------
+    tool_use_id : str
+        Identifier of the tool_use cell to finish (matches the originating
+        ``ToolUseRequested.id``).
+    """
+    if self._in_progress is None:
+      return
+    self._in_progress.set_tool_use_finished(tool_use_id)
 
   # ---- approval API --------------------------------------------------------
 

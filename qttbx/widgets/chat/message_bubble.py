@@ -54,8 +54,6 @@ class _ImageCell(QtWidgets.QFrame):
       absent.
   sha256 : str, optional
       Attachment hash; travels with the ``clicked`` signal.
-  mime : str, optional
-      Attachment MIME type; stored as metadata.
   conv_id : str, optional
       Conversation id; travels with the ``clicked`` signal.
   parent : QtWidgets.QWidget, optional
@@ -66,7 +64,7 @@ class _ImageCell(QtWidgets.QFrame):
 
   clicked = QtCore.Signal(str, str)                # conv_id, sha256
 
-  def __init__(self, pixmap, caption=None, sha256=None, mime=None,
+  def __init__(self, pixmap, caption=None, sha256=None,
                conv_id=None, parent=None):
     super().__init__(parent)
     self._pixmap = pixmap
@@ -74,7 +72,6 @@ class _ImageCell(QtWidgets.QFrame):
     # Metadata travels with the clicked signal so the chat window can
     # focus / fetch the corresponding attachment.
     self.sha256 = sha256 or ""
-    self.mime = mime or ""
     self.conv_id = conv_id or ""
     self.setFrameShape(QtWidgets.QFrame.NoFrame)
     layout = QtWidgets.QVBoxLayout(self)
@@ -289,7 +286,6 @@ class MessageBubble(QtWidgets.QFrame):
       # per session) and render as an inline thumbnail. Falls back to a
       # placeholder pixmap when storage/sha256 are missing.
       sha256 = block.data.get("attachment_sha256", "")
-      mime = block.data.get("mime", "")
       caption = block.data.get("caption")
       if self.storage is not None and self.conv_id is not None and sha256:
         from qttbx.widgets.chat.image_cache import get_image
@@ -302,7 +298,7 @@ class MessageBubble(QtWidgets.QFrame):
         pixmap.fill(QtCore.Qt.lightGray)
       cell = self.add_image_cell(
         pixmap=pixmap, caption=caption,
-        sha256=sha256, mime=mime, conv_id=self.conv_id)
+        sha256=sha256, conv_id=self.conv_id)
       cell.clicked.connect(self.image_clicked)
     # Unknown block types are silently dropped - they shouldn't reach the
     # bubble in normal operation (storage rejects unknown types on load).
@@ -380,15 +376,14 @@ class MessageBubble(QtWidgets.QFrame):
 
   # ---- image cells --------------------------------------------------------
 
-  def add_image_cell(self, pixmap, caption=None, sha256=None, mime=None,
+  def add_image_cell(self, pixmap, caption=None, sha256=None,
                      conv_id=None):
     """Insert an inline image cell.
 
     The cell renders a height-capped thumbnail and opens ImageLightbox
-    on click. The ``sha256`` / ``mime`` / ``conv_id`` kwargs travel
-    with the cell's ``clicked(conv_id, sha256)`` signal so the
-    ConversationView can re-emit them to the chat window's
-    artifact-focus handler.
+    on click. The ``sha256`` / ``conv_id`` kwargs travel with the cell's
+    ``clicked(conv_id, sha256)`` signal so the ConversationView can
+    re-emit them to the chat window's artifact-focus handler.
 
     Parameters
     ----------
@@ -398,8 +393,6 @@ class MessageBubble(QtWidgets.QFrame):
         Text rendered below the thumbnail.
     sha256 : str, optional
         Attachment hash; travels with the cell's ``clicked`` signal.
-    mime : str, optional
-        Attachment MIME type.
     conv_id : str, optional
         Conversation id; travels with the cell's ``clicked`` signal.
 
@@ -410,9 +403,11 @@ class MessageBubble(QtWidgets.QFrame):
     """
     cell = _ImageCell(
       pixmap=pixmap, caption=caption,
-      sha256=sha256, mime=mime, conv_id=conv_id, parent=self)
-    # Reset _text_view so subsequent add_text creates a fresh
-    # MarkdownView -- same invariant as add_tool_use_cell.
+      sha256=sha256, conv_id=conv_id, parent=self)
+    # Reset _text_view so the next text append lands in a fresh MarkdownView
+    # -- same invariant as add_tool_use_cell. In production that next append
+    # arrives via append_text_delta (streaming) or _add_block (replay); without
+    # the reset it would merge into the pre-image view.
     self._text_view = None
     self._layout.addWidget(cell)
     return cell
@@ -445,9 +440,10 @@ class MessageBubble(QtWidgets.QFrame):
       cell.set_args(args)
     if tool_id:
       self._tool_cells_by_id[tool_id] = cell
-    # Reset _text_view so subsequent add_text creates a fresh MarkdownView
-    # -- without this, text-after-tool would merge into the pre-tool view
-    # (out-of-order visual rendering).
+    # Reset _text_view so the next text append lands in a fresh MarkdownView.
+    # Without this, text-after-tool would merge into the pre-tool view
+    # (out-of-order visual rendering). In production that next append arrives
+    # via append_text_delta (streaming) or _add_block (replay).
     self._text_view = None
     self._layout.addWidget(cell)
     return cell
@@ -476,7 +472,7 @@ class MessageBubble(QtWidgets.QFrame):
     if cell is None:
       return
     if cancelled:
-      cell.set_status("cancelled", color="muted")
+      cell.set_status("cancelled", color="cancelled")
     elif error is not None:
       cell.set_status("failed: %s" % error, color="error")
     else:
@@ -484,6 +480,18 @@ class MessageBubble(QtWidgets.QFrame):
       cell.set_status("finished%s" % suffix, color="default")
     if result is not None:
       cell.set_result(result)
+
+  def cancel_running_tools(self):
+    """Mark every still-running tool cell on this bubble as cancelled.
+
+    Called when the turn is cancelled (the user hit Stop): the runner never
+    delivers a tool_result for an aborted tool, so without this its
+    disclosure would stay stuck in the ``running`` state forever. Cells that
+    already reached a terminal state (finished / failed) are left untouched.
+    """
+    for tool_id, cell in self._tool_cells_by_id.items():
+      if cell.is_running():
+        self.set_tool_use_finished(tool_id, cancelled=True)
 
   # ---- streaming -----------------------------------------------------------
 
@@ -539,6 +547,10 @@ class MessageBubble(QtWidgets.QFrame):
     str
         The content blocks flattened to newline-joined text.
     """
+    # Shared with ToolApprovalCard's tool-input preview -- one definition
+    # (in tool_approval) rather than a byte-identical copy here. Function
+    # scope mirrors this module's other sibling-widget imports.
+    from qttbx.widgets.chat.tool_approval import _short_json
     parts = []
     for block in self.message.content:
       if block.type == "text":
@@ -556,16 +568,6 @@ class MessageBubble(QtWidgets.QFrame):
           (block.data.get("attachment_sha256", "") or "")[:8],
           block.data.get("mime", "")))
     return "\n".join(parts)
-
-
-def _short_json(d, limit=80):
-  try:
-    s = json.dumps(d, default=str)
-  except Exception:
-    s = repr(d)
-  if len(s) > limit:
-    s = s[:limit - 1] + "..."
-  return s
 
 
 def _flatten_result_text(blocks):

@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx import hydrogens as reduce_switch
 from iotbx.data_manager import DataManager
 from libtbx.utils import null_out
+from mmtbx.rotamer import nqh
 
 # Small 3-residue peptide, no hydrogens.
 pdb_str = """\
@@ -170,7 +171,7 @@ def test_flip_nqh_skips_h_less_model_reduce2():
     assert not m.has_hd()
     log = StringIO(); m.set_log(log)
     n_before = m.get_number_of_atoms()
-    m.flip_nqh()                                 # skips (no raise)
+    nqh.flip(model=m, log=m.log)                 # skips (no raise)
     assert m.get_number_of_atoms() == n_before
     out = log.getvalue().lower()
     assert "skipping" in out and "hydrogen" in out, log.getvalue()
@@ -200,7 +201,7 @@ def test_flip_nqh_applies_reduce2_flip():
     assert hm.get_hd_selection().count(True) > 0
     n_before = hm.get_number_of_atoms()
     log = StringIO(); hm.set_log(log)
-    hm.flip_nqh()                                 # reduce2 decision-only flip
+    nqh.flip(model=hm, log=hm.log)                # reduce2 decision-only flip
     out = log.getvalue()
     assert hm.get_number_of_atoms() == n_before   # atom-preserving
     mobj = re.search(r"Total number of N/Q/H flips:\s*(\d+)", out)
@@ -209,15 +210,17 @@ def test_flip_nqh_applies_reduce2_flip():
     reduce_switch.USE_OLD_REDUCE = saved
   print("test_flip_nqh_applies_reduce2_flip OK")
 
-def test_flip_nqh_respects_selection_reduce2():
-  """Under reduce2, flip_nqh(selection=...) detects on a SUB-model (model.select)
-  and applies/propagates the flip only within the selection."""
+def test_flip_nqh_use_ncs_without_groups_reduce2():
+  """use_ncs=True on a model with no NCS groups falls back to a whole-model flip
+  (get_master_selection is not consulted) and still flips a backwards ASN, atom-
+  preservingly. The NCS master-flip + multiply_ncs propagation itself is covered
+  end-to-end by real_space_refine tst_73."""
   import os, re, libtbx.load_env
   from io import StringIO
   p = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/mmtbx/ions/3zu8.pdb", test=os.path.isfile)
   if p is None:
-    print("3zu8.pdb not found, skipping selection test"); return
+    print("3zu8.pdb not found, skipping use_ncs test"); return
   saved = reduce_switch.USE_OLD_REDUCE
   try:
     reduce_switch.USE_OLD_REDUCE = False
@@ -226,19 +229,16 @@ def test_flip_nqh_respects_selection_reduce2():
     assert _make_all_asn_backwards(m.get_hierarchy()) > 0
     m.set_sites_cart(m.get_hierarchy().atoms().extract_xyz())
     hm = _h_restrained_model(m)
-    sel = hm.selection("chain A")                 # contains the backwards ASN
-    assert sel.count(True) > 0
-    sites_before = hm.get_sites_cart().deep_copy()
+    assert not hm.get_ncs_groups()                 # no NCS -> whole-model fallback
+    n_before = hm.get_number_of_atoms()
     log = StringIO(); hm.set_log(log)
-    hm.flip_nqh(selection=sel)                     # reduce2 detects on model.select(sel)
+    nqh.flip(model=hm, use_ncs=True, log=hm.log)    # safe: falls back to whole model
+    assert hm.get_number_of_atoms() == n_before     # atom-preserving
     mo = re.search(r"Total number of N/Q/H flips:\s*(\d+)", log.getvalue())
     assert mo and int(mo.group(1)) >= 1, log.getvalue()
-    moved = (hm.get_sites_cart() - sites_before).norms() > 0.1
-    assert moved.count(True) > 0                   # the flip propagated to the model
-    assert (moved & ~sel).count(True) == 0        # only selection atoms moved
   finally:
     reduce_switch.USE_OLD_REDUCE = saved
-  print("test_flip_nqh_respects_selection_reduce2 OK")
+  print("test_flip_nqh_use_ncs_without_groups_reduce2 OK")
 
 def test_clash_none_when_no_h_reduce2():
   """Under reduce2 (USE_OLD_REDUCE=False), geometry clash() is a NON-ADDING
@@ -368,6 +368,50 @@ def test_molprobity_validation_adds_h_reduce2():
     reduce_switch.USE_OLD_REDUCE = saved
   print("test_molprobity_validation_adds_h_reduce2 OK")
 
+def test_reduce2_flips_applies_wholesale():
+  """USE_REDUCE2_FLIPS on: flip() applies reduce2's flips AND optimized H wholesale
+  via the Optimizer (one run), atom-preserving even though reduce2 would otherwise
+  delete H (3zu8 has a His near Ni). A flip is actually performed and H are kept."""
+  import os, re, libtbx.load_env
+  from io import StringIO
+  from mmtbx.reduce import Optimizers
+  p = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/ions/3zu8.pdb", test=os.path.isfile)
+  if p is None:
+    print("3zu8.pdb not found, skipping wholesale flip test"); return
+  saved_old   = reduce_switch.USE_OLD_REDUCE
+  saved_flips = getattr(reduce_switch, "USE_REDUCE2_FLIPS", False)
+  try:
+    reduce_switch.USE_OLD_REDUCE = False
+    dm = DataManager(['model']); dm.process_model_file(p)
+    m = dm.get_model(); m.add_crystal_symmetry_if_necessary()
+    assert _make_all_asn_backwards(m.get_hierarchy()) > 0
+    m.set_sites_cart(m.get_hierarchy().atoms().extract_xyz())
+    hm = _h_restrained_model(m)
+    n_before = hm.get_number_of_atoms()
+    hsel = hm.get_hd_selection()
+    # reduce2 WOULD delete H here and wants flips -> atom-preservation is non-trivial
+    chk = hm.deep_copy()
+    opt = Optimizers.Optimizer(reduce_switch.default_probe_phil(), True, chk,
+                               modelIndex=None, altID="")
+    assert len(opt.getHydrogensToDelete()) > 0           # reduce2 wants to delete H
+    assert len(opt.getFlippedAmides()) + len(opt.getFlippedHistidines()) >= 1
+    # switch 1 ON: wholesale flips + H, atom-preserving (deletions NOT applied)
+    reduce_switch.USE_REDUCE2_FLIPS = True
+    sites_before = hm.get_sites_cart().deep_copy()
+    log = StringIO()
+    nqh.flip(model=hm, log=log)
+    assert hm.get_number_of_atoms() == n_before          # atom-preserving
+    assert hm.has_hd()
+    mo = re.search(r"Total number of N/Q/H flips:\s*(\d+)", log.getvalue())
+    assert mo and int(mo.group(1)) >= 1, log.getvalue()  # a flip was applied
+    moved = (hm.get_sites_cart() - sites_before).norms() > 0.1
+    assert (moved & ~hsel).count(True) > 0               # heavy atoms flipped
+  finally:
+    reduce_switch.USE_OLD_REDUCE   = saved_old
+    reduce_switch.USE_REDUCE2_FLIPS = saved_flips
+  print("test_reduce2_flips_applies_wholesale OK")
+
 if __name__ == "__main__":
   test_adds_hydrogens()
   test_dispatcher_explicit_reduce2()
@@ -380,8 +424,9 @@ if __name__ == "__main__":
   test_clash_scores_existing_h_reduce2()
   test_flip_nqh_skips_h_less_model_reduce2()
   test_flip_nqh_applies_reduce2_flip()
-  test_flip_nqh_respects_selection_reduce2()
+  test_flip_nqh_use_ncs_without_groups_reduce2()
   test_rsr_per_cycle_clashscore_keeps_h_reduce2()
   test_model_idealization_stat_display_tolerates_none_reduce2()
   test_molprobity_validation_adds_h_reduce2()
+  test_reduce2_flips_applies_wholesale()
   print("OK")

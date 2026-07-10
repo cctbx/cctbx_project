@@ -11,6 +11,7 @@ from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from cctbx import miller
+from cctbx import crystal
 from libtbx.str_utils import make_sub_header
 import mmtbx.maps.polder
 import mmtbx.maps.correlation
@@ -34,11 +35,102 @@ save_fragment_png = False
   .type = bool
 run_qmr = False
   .type = bool
+frag_consistency {
+  delta_weak = 0.20
+    .type = float
+    .help = "Flag a fragment as localized-weak if its RSCC is this far below the overall ligand RSCC. Provisional default; calibrate on more ligands."
+  obs_floor = 0.30
+    .type = float
+    .help = "Minimum mean observed (omit-map, sigma) density for a fragment to enter the model/observed balance check. Provisional default."
+  balance_ratio = 1.5
+    .type = float
+    .help = "Flag inconsistent modeling if max/min of per-fragment (mean model / mean observed) density across ordered fragments reaches this. Provisional default."
+}
+alt_conf {
+  overlap_dist = 2.0
+    .type = float
+    .help = "Distance (A) for the symmetry-aware 'within' search that pairs a ligand's alternate conformation modelled under a different residue number. Provisional default; tunable."
+  sym_overlap_dist = 1.5
+    .type = float
+    .help = "Tight coincidence cutoff (A) for detecting a ligand's own crystallographic-symmetry mate overlapping it (special position / symmetry axis). Below ordinary packing contacts (~2.4 A). Provisional default; tunable."
+  occ_tol = 0.02
+    .type = float
+    .help = "Tolerance on how far the summed occupancy of an alternate-conformation set may deviate from 1.0 before it is flagged. Provisional default; tunable."
+}
 }
 """
 
 def master_params():
   return phil.parse(master_params_str, process_includes = False)
+
+def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
+                         delta_weak=0.20, obs_floor=0.30, balance_ratio=1.5,
+                         overall_floor=0.70):
+  # Single "inspect fragments" flag. (A) a fragment far below the whole ligand
+  # (localized weak density); (B) ordered fragments at inconsistent
+  # observed-vs-model density scales (occupancy/B imbalance).
+  reasons = []
+  n = len(frag_ccs)
+  if n and cc_overall is not None and cc_overall >= overall_floor:
+    cc_min = min(frag_ccs)
+    if cc_min <= cc_overall - delta_weak:
+      reasons.append('(A) fragment %d RSCC %.2f << overall %.2f'
+                     % (frag_ccs.index(cc_min) + 1, cc_min, cc_overall))
+  balances = [(i, frag_mod[i] / frag_obs[i]) for i in range(n)
+              if frag_obs[i] >= obs_floor and frag_obs[i] > 0 and frag_mod[i] > 0]
+  if len(balances) >= 2:
+    hi = max(balances, key=lambda t: t[1])
+    lo = min(balances, key=lambda t: t[1])
+    if lo[1] > 0 and hi[1] / lo[1] >= balance_ratio:
+      reasons.append('(B) modeling imbalance, fragment %d vs %d'
+                     % (hi[0] + 1, lo[0] + 1))
+  return group_args(flag='inspect' if reasons else 'consistent',
+                    reason='; '.join(reasons))
+
+def _alt_conf_short(ac):
+  if ac is None:
+    return '-'
+  if ac.state == 'single':
+    return 'sym' if (ac.symmetry is not None and ac.symmetry.self_overlap) else '-'
+  if ac.state == 'alt_conf':
+    return '/'.join(ac.altlocs)
+  if ac.state == 'lone_altloc':
+    return 'lone %s' % ac.altloc.strip()
+  if ac.state == 'split_residue':
+    if ac.partner is not None:
+      return 'split %s -> %s %d %s' % (
+        ac.altloc.strip(), ac.partner.chain, ac.partner.resseq,
+        ac.partner.altloc.strip())
+    return 'split %s' % ac.altloc.strip()
+  return '-'
+
+def _partner_id_str(partner):
+  return '%s %s %d (altloc %s)' % (
+    partner.resname, partner.chain, partner.resseq, partner.altloc.strip())
+
+def map_coefficients_as_mtz_object(fmodel, fill_missing=False, isotropize=True):
+  '''
+  Build an MTZ object with 2mFo-DFc and mFo-DFc map coefficients from an fmodel.
+  Columns: 2FOFCWT/PH2FOFCWT (2mFo-DFc) and FOFCWT/PHFOFCWT (mFo-DFc), which
+  Coot recognizes automatically. Uses the same electron_density_map idiom as
+  ligand_result.compute_maps so the saved maps match the tool's internal maps.
+  '''
+  import iotbx.mtz
+  label_decorator = iotbx.mtz.label_decorator(phases_prefix="PH")
+  edm = map_tools.electron_density_map(fmodel=fmodel)
+  coeffs_2fofc = edm.map_coefficients(
+    map_type="2mFo-DFc", isotropize=isotropize, fill_missing=fill_missing)
+  coeffs_fofc = edm.map_coefficients(
+    map_type="mFo-DFc", isotropize=isotropize, fill_missing=fill_missing)
+  mtz_dataset = coeffs_2fofc.as_mtz_dataset(
+    column_root_label="2FOFCWT", label_decorator=label_decorator)
+  mtz_dataset.add_miller_array(
+    coeffs_fofc, column_root_label="FOFCWT", label_decorator=label_decorator)
+  return mtz_dataset.mtz_object()
+
+_LIGAND_EXCLUDE_CLASSES = ["common_amino_acid", "modified_amino_acid",
+  "common_rna_dna", "modified_rna_dna", "ccp4_mon_lib_rna_dna",
+  "common_water", "common_element"]
 
 # =============================================================================
 
@@ -124,9 +216,6 @@ class manager(list):
     '''
     ph = self.model.get_hierarchy()
     get_class = iotbx.pdb.common_residue_names_get_class
-    exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
-               "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
-                "common_element"]
     for model in ph.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
@@ -136,7 +225,7 @@ class manager(list):
             if self.params.ligand_code:
               if resname.strip() not in self.params.ligand_code:
                 continue
-            if (not get_class(name=resname) in exclude):
+            if (not get_class(name=resname) in _LIGAND_EXCLUDE_CLASSES):
               iselection = residue.atoms().extract_i_seq()
               sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
                 rg.resseq_as_int(), resname)
@@ -158,6 +247,30 @@ class manager(list):
 
   # ----------------------------------------------------------------------------
 
+  def _ordered_for_display(self):
+    by_key = {}
+    for lr in self:
+      rg = lr._atoms_ligand[0].parent().parent()
+      key = (rg.parent().id.strip(), rg.resseq_as_int(), lr.altloc.strip())
+      by_key[key] = lr
+    order = []
+    emitted = set()
+    for lr in self:
+      if id(lr) in emitted:
+        continue
+      order.append(lr)
+      emitted.add(id(lr))
+      ac = lr.get_alt_conf()
+      if ac.state == 'split_residue' and ac.partner is not None:
+        pk = (ac.partner.chain, ac.partner.resseq, ac.partner.altloc.strip())
+        plr = by_key.get(pk)
+        if plr is not None and id(plr) not in emitted:
+          order.append(plr)
+          emitted.add(id(plr))
+    return order
+
+  # ----------------------------------------------------------------------------
+
   def show_table(self, out=sys.stdout):
     '''
     Print a summary table.
@@ -176,6 +289,11 @@ class manager(list):
            ', '.join(f'{cc:.2f}' for cc in lr.get_ccs().frag_ccs.values())
            if lr.get_ccs() and getattr(lr.get_ccs(), 'frag_ccs', None) else '-'
        )},
+      {'headers': ['', 'fragment', 'flag'], 'width': 10,
+       'data_fn': lambda lr: (
+           ('OK' if getattr(lr.get_ccs(), 'fragment_flag', None) == 'consistent'
+            else getattr(lr.get_ccs(), 'fragment_flag', None) or '-')
+           if lr.get_ccs() else '-')},
 
       {'headers': ['% bad', 'map values', 'Fo-Fc'], 'width': 12,
        'data_fn': lambda lr: f"{lr.get_map_values().percent_bad_at_atom_centers}" if lr.get_map_values() else 'NA'},
@@ -199,6 +317,16 @@ class manager(list):
        'data_fn': lambda lr: f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"},
       {'headers': ['dihedral', 'rmsz', 'outliers'], 'width': 17,
        'data_fn': lambda lr: f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"},
+      {'headers': ['', 'missing', 'heavy atoms'], 'width': 22,
+       'data_fn': lambda lr: (
+           f"{lr.get_missing_atoms().n_missing_heavy} "
+           f"({','.join(lr.get_missing_atoms().missing_heavy)})"
+           if lr.get_missing_atoms().n_missing_heavy else '-')},
+
+      {'headers': ['', 'alt', 'conf'], 'width': 22,
+       'data_fn': lambda lr: (
+           ('! ' if lr.get_alt_conf().flag == 'inspect' else '')
+           + _alt_conf_short(lr.get_alt_conf()))},
     ]
 
     # --- From here, the code is generic and builds the table from the config above ---
@@ -216,7 +344,7 @@ class manager(list):
     print(separator, file=out)
 
     # Print data rows
-    for lr in self:
+    for lr in self._ordered_for_display():
       # Build and print the main data row for the ligand
       data_cells = [f"{c['data_fn'](lr):^{c['width']}}" for c in columns]
       print("|".join(data_cells), file=out)
@@ -327,10 +455,18 @@ class manager(list):
       if lr.resname in resnames: continue
       resnames.append(lr.resname)
       frag_isels = lr.ligand_rigid_components_isels
+      ccs = lr.get_ccs()
+      # frag_obs/frag_mod are ordered by fragment (same order as frag_isels)
+      fo = list(ccs.frag_obs.values()) if (ccs and getattr(ccs, 'frag_obs', None)) else None
+      fm = list(ccs.frag_mod.values()) if (ccs and getattr(ccs, 'frag_mod', None)) else None
       print('\n', file=self.log)
       print(lr.id_str, file=self.log)
       for i, rigid_comp in enumerate(frag_isels, start=1):
-        print('  fragment %s:\t' % i, ", ".join(lr._ph.atoms()[idx].name for idx in rigid_comp), file=self.log)
+        names = ", ".join(lr._ph.atoms()[idx].name for idx in rigid_comp)
+        extra = ''
+        if fo is not None and fm is not None and i - 1 < len(fo):
+          extra = '\t(obs/model %.2f/%.2f)' % (fo[i - 1], fm[i - 1])
+        print('  fragment %s:\t' % i, names + extra, file=self.log)
 
 # =============================================================================
 
@@ -362,6 +498,8 @@ class ligand_result(object):
       '_ccs'           : 'get_ccs',
       #'_is_suspicious' : 'check_if_suspicious',
       '_map_values'    : 'get_map_values',
+      '_missing_atoms' : 'get_missing_atoms',
+      '_alt_conf'      : 'get_alt_conf',
       #'_qmr'           : 'get_qmr',
       #'_polder_ccs'  : 'get_polder_ccs',
     }
@@ -372,11 +510,12 @@ class ligand_result(object):
     self.d_min = None
     if self.fmodel is not None:
       self.d_min = self.fmodel.f_obs().d_min()
-    self._fragment()
 
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
       assert hasattr(self, func)
+
+    self._fragment()
 
   # ----------------------------------------------------------------------------
 
@@ -504,6 +643,197 @@ class ligand_result(object):
 
   # ----------------------------------------------------------------------------
 
+  def get_missing_atoms(self):
+    if self._missing_atoms is not None:
+      return self._missing_atoms
+    missing_dict = self.model.get_missing_atoms() or {}
+    ag = self._atoms_ligand[0].parent()
+    resid_tail = ag.id_str()[1:]
+    missing_heavy = []
+    for key, item in missing_dict.items():
+      if not key.endswith(resid_tail):
+        continue
+      if self.altloc.strip() and not key.startswith('"%s"' % self.altloc):
+        continue
+      heavy = item.get('missing', {}).get('heavy', {})
+      missing_heavy = sorted(name.strip() for name in heavy)
+      break
+    self._missing_atoms = group_args(
+      missing_heavy   = missing_heavy,
+      n_missing_heavy = len(missing_heavy))
+    return self._missing_atoms
+
+  # ----------------------------------------------------------------------------
+
+  def _conformer_occ(self, altloc, rg):
+    occs = flex.double()
+    for ag in rg.atom_groups():
+      if ag.altloc.strip() == altloc:
+        occs.extend(ag.atoms().extract_occ())
+    if occs.size() == 0:
+      return 0.0
+    return flex.mean(occs)
+
+  def _find_split_partner(self, overlap_dist):
+    get_class = iotbx.pdb.common_residue_names_get_class
+    rg = self._atoms_ligand[0].parent().parent()
+    own_resseq = rg.resseq_as_int()
+    own_altloc = self.altloc.strip()
+    sel = ("within(%g, (%s)) and not (%s) "
+           "and not (altloc ' ') and not (element H or element D)"
+           % (overlap_dist, self.sel_str_noH, self.sel_str))
+    isel = self.model.iselection(sel)
+    if isel.size() == 0:
+      return None
+    atoms = self._ph.atoms()
+    for i_seq in isel:
+      ag  = atoms[i_seq].parent()
+      prg = ag.parent()
+      if prg.resseq_as_int() == own_resseq:
+        continue
+      alt = ag.altloc.strip()
+      if not alt or alt == own_altloc:
+        continue
+      p_altlocs = set(a.altloc for a in prg.atom_groups() if a.altloc.strip())
+      if len(p_altlocs) != 1:
+        continue
+      return group_args(
+        chain     = prg.parent().id.strip(),
+        resseq    = prg.resseq_as_int(),
+        altloc    = ag.altloc,
+        resname   = ag.resname.strip(),
+        occ       = flex.mean(ag.atoms().extract_occ()),
+        is_ligand = get_class(name=ag.resname) not in _LIGAND_EXCLUDE_CLASSES)
+    return None
+
+  def _symmetry_overlap(self, sym_overlap_dist):
+    xrs = self._xrs_ligand_noH
+    cs = xrs.crystal_symmetry()
+    if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+      return None
+    sym_ops = []
+    min_dist = None
+    try:
+      asu_mappings = xrs.asu_mappings(buffer_thickness=sym_overlap_dist)
+      pg = crystal.neighbors_fast_pair_generator(
+        asu_mappings=asu_mappings, distance_cutoff=sym_overlap_dist)
+      for pair in pg:
+        rt_mx_ji = asu_mappings.get_rt_mx_ji(pair)
+        if rt_mx_ji.is_unit_mx():
+          continue
+        d = pair.dist_sq ** 0.5
+        sym_ops.append(str(rt_mx_ji))
+        if min_dist is None or d < min_dist:
+          min_dist = d
+    except Exception:
+      return None
+    if not sym_ops:
+      return None
+    return group_args(
+      self_overlap        = True,
+      on_special_position = (min_dist is not None and min_dist < 0.1),
+      sym_ops             = sorted(set(sym_ops)),
+      min_dist            = min_dist)
+
+  def _alt_conf_reason(self, state, altlocs, resnames, hetero, partner,
+                       occupancy, symmetry):
+    parts = []
+    if state == 'single':
+      parts.append('single conformation')
+    elif state == 'alt_conf':
+      parts.append('alt confs %s' % '/'.join(altlocs))
+    elif state == 'lone_altloc':
+      parts.append('lone altloc %s (no partner conformation found)'
+                   % self.altloc.strip())
+    elif state == 'split_residue':
+      parts.append('altloc %s; partner modelled as %s'
+                   % (self.altloc.strip(), _partner_id_str(partner)))
+    if hetero:
+      parts.append('alternate conformations model different chemical entities (%s)'
+                   % ', '.join(resnames))
+    if occupancy is not None and not occupancy.sum_ok:
+      parts.append('occupancies sum to %.2f' % occupancy.occ_sum)
+    if symmetry is not None and symmetry.self_overlap:
+      if symmetry.on_special_position:
+        parts.append('on special position (%s)' % ', '.join(symmetry.sym_ops))
+      else:
+        parts.append('symmetry mate overlaps (%s, min %.2f A)'
+                     % (', '.join(symmetry.sym_ops), symmetry.min_dist))
+    return '; '.join(parts)
+
+  def get_alt_conf(self):
+    if self._alt_conf is not None:
+      return self._alt_conf
+    p = self.params.alt_conf
+    rg = self._atoms_ligand[0].parent().parent()
+    altlocs = sorted(set(ag.altloc for ag in rg.atom_groups()
+                         if ag.altloc.strip()))
+    own_altloc = self.altloc.strip()
+
+    partner = None
+    if len(altlocs) == 0:
+      state = 'single'
+    elif len(altlocs) >= 2:
+      state = 'alt_conf'
+    else:
+      partner = self._find_split_partner(p.overlap_dist)
+      state = 'split_residue' if partner is not None else 'lone_altloc'
+
+    if state == 'alt_conf':
+      resnames = sorted(set(ag.resname.strip() for ag in rg.atom_groups()
+                            if ag.altloc.strip()))
+      hetero = len(resnames) > 1
+    elif state == 'split_residue':
+      resnames = sorted(set([self.resname, partner.resname]))
+      # A water/residue/ion partner is not a different *chemical entity* in the
+      # concerning sense; only a genuine ligand partner counts as hetero.
+      hetero = partner.is_ligand and len(resnames) > 1
+    else:
+      resnames = [self.resname]
+      hetero = False
+
+    occupancy = None
+    if state != 'single':
+      self_occ = self._conformer_occ(own_altloc, rg)
+      partner_occ = None
+      if state == 'alt_conf':
+        occ_sum = sum(self._conformer_occ(a, rg) for a in altlocs)
+      elif state == 'split_residue':
+        partner_occ = partner.occ
+        occ_sum = self_occ + partner_occ
+      else:
+        occ_sum = self_occ
+      occupancy = group_args(
+        self_occ    = self_occ,
+        partner_occ = partner_occ,
+        occ_sum     = occ_sum,
+        sum_ok      = abs(occ_sum - 1.0) <= p.occ_tol)
+    symmetry = self._symmetry_overlap(p.sym_overlap_dist)
+
+    inspect = (state == 'lone_altloc'
+               or (state == 'split_residue' and partner.is_ligand)
+               or hetero
+               or (occupancy is not None and not occupancy.sum_ok)
+               or (symmetry is not None and symmetry.self_overlap))
+
+    reason = self._alt_conf_reason(
+      state, altlocs, resnames, hetero, partner, occupancy, symmetry)
+
+    self._alt_conf = group_args(
+      state     = state,
+      flag      = 'inspect' if inspect else 'ok',
+      altloc    = self.altloc,
+      altlocs   = altlocs,
+      resnames  = resnames,
+      hetero    = hetero,
+      partner   = partner,
+      occupancy = occupancy,
+      symmetry  = symmetry,
+      reason    = reason)
+    return self._alt_conf
+
+  # ----------------------------------------------------------------------------
+
   def get_adps(self):
     '''
     Get isotropic B-factors of non-H atoms
@@ -616,6 +946,10 @@ class ligand_result(object):
       cif_object = cif_object)
     self.ligand_rigid_components_isels, self._frag_mol, self._rdkit_frags = \
       rdkit_utils.get_rigid_components(mol, rdkit_to_cctbx)
+    missing_names = self.get_missing_atoms().missing_heavy
+    self._draw_mol, self._draw_missing_idxs = \
+      rdkit_utils.build_drawing_mol_with_missing(
+        self._frag_mol, cif_object, missing_names)
     # PNG generation is deferred to as_picklable_snapshot() where CC values
     # are available and can be annotated directly onto the figure.
 
@@ -818,7 +1152,11 @@ class ligand_result(object):
     ccs = group_args(
           rscc = cc,
           rscc_sites = None,
-          frag_ccs = None
+          frag_ccs = None,
+          frag_obs = None,
+          frag_mod = None,
+          fragment_flag = None,
+          fragment_reason = None,
        )
 
     return ccs
@@ -871,11 +1209,20 @@ class ligand_result(object):
     cc_total = self.compute_cc(m1, m2, cs, sites_cart)
 
     # ----- RSCC per ligand fragment -----
+    # Restrict fragment grid points to heavy atoms so the selection is
+    # consistent with the whole-ligand/sites CCs (which use *_noH); the rigid
+    # components themselves keep their H (used for the figure and Coot).
     frag_ccs = {}
+    frag_obs = {}
+    frag_mod = {}
     for isel in self.ligand_rigid_components_isels:
-      sites_cart = sc.select(isel)
-      cc = self.compute_cc(m1, m2, cs, sites_cart)
+      isel_noH = isel.intersection(self.ligand_isel_noH)
+      sites_cart = sc.select(isel_noH)
+      cc, obs_mean, mod_mean = self.compute_cc(m1, m2, cs, sites_cart,
+                                               return_means=True)
       frag_ccs[isel] = cc
+      frag_obs[isel] = obs_mean
+      frag_mod[isel] = mod_mean
 
     # ----- RSCC for sites -----
 
@@ -903,34 +1250,43 @@ class ligand_result(object):
 
 
     # ----- save -----
+    fcp = self.params.frag_consistency
+    consistency = fragment_consistency(
+      cc_overall    = cc_total,
+      frag_ccs      = list(frag_ccs.values()),
+      frag_obs      = list(frag_obs.values()),
+      frag_mod      = list(frag_mod.values()),
+      delta_weak    = fcp.delta_weak,
+      obs_floor     = fcp.obs_floor,
+      balance_ratio = fcp.balance_ratio)
     ccs = group_args(
           rscc = cc_total,
           rscc_sites = cc_total_sites,
-          frag_ccs = frag_ccs
+          frag_ccs = frag_ccs,
+          frag_obs = frag_obs,
+          frag_mod = frag_mod,
+          fragment_flag = consistency.flag,
+          fragment_reason = consistency.reason,
        )
 
     return ccs
 
   # ----------------------------------------------------------------------------
 
-  def compute_cc(self, m1, m2, cs, sites_cart):
-    # site radii: depend on resolution and B-factors
-    # but ad-hoc value is probably OK. Use 1.0 because H atoms are included.
+  def compute_cc(self, m1, m2, cs, sites_cart, return_means=False):
+    # site radii: ad-hoc 1.5 A around each atom (resolution/B-factor
+    # dependence ignored; good enough here).
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = cs.unit_cell(),
       fft_n_real = m1.focus(),
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
       site_radii = flex.double(sites_cart.size(), 1.5))
-    #print(sel.size())
-    # below selection maybe not necessary?
-    # maybe to prevent that particular grid points ruin the overall cc
-    m1 = m1.set_selected(m1<0, 0)
-    m2 = m2.set_selected(m1<0, 0)
-    cc = flex.linear_correlation(
-      x=m1.select(sel).as_1d(),
-      y=m2.select(sel).as_1d()).coefficient()
-
+    x = m1.select(sel).as_1d()
+    y = m2.select(sel).as_1d()
+    cc = flex.linear_correlation(x=x, y=y).coefficient()
+    if return_means:
+      return cc, flex.mean(x), flex.mean(y)
     return cc
 
   # ----------------------------------------------------------------------------
@@ -1129,8 +1485,9 @@ class ligand_result(object):
     '''
     import os
     import tempfile
-    frag_mol   = getattr(self, '_frag_mol',    None)
+    frag_mol   = getattr(self, '_draw_mol',  None) or getattr(self, '_frag_mol', None)
     rdkit_frags = getattr(self, '_rdkit_frags', None)
+    missing_idxs = getattr(self, '_draw_missing_idxs', None)
     if frag_mol is None or rdkit_frags is None:
       return None
     frag_cc_list = None
@@ -1140,7 +1497,8 @@ class ligand_result(object):
     tf.close()
     try:
       rdkit_utils.draw_colored_fragments(
-        frag_mol, rdkit_frags, filename=tf.name, frag_ccs=frag_cc_list)
+        frag_mol, rdkit_frags, filename=tf.name, frag_ccs=frag_cc_list,
+        missing_atom_idxs=missing_idxs)
       with open(tf.name, 'rb') as fh:
         data = fh.read()
     except Exception:
@@ -1175,6 +1533,8 @@ class ligand_result(object):
     occs = self.get_occupancies()
     rmsds = self.get_rmsds()
     mapv  = self.get_map_values()
+    ma    = self.get_missing_atoms()
+    ac = self.get_alt_conf()
 
     # centroid: mean of ligand atom coordinates as plain Python floats
     xyz = self._atoms_ligand.extract_xyz().mean()
@@ -1199,6 +1559,12 @@ class ligand_result(object):
         rscc       = _f(ccs.rscc)       if ccs is not None else None,
         rscc_sites = _f(ccs.rscc_sites) if ccs is not None else None,
         frag_ccs   = frag_ccs_plain,
+        frag_obs   = ([float(v) for v in ccs.frag_obs.values()]
+                      if ccs is not None and getattr(ccs, 'frag_obs', None) else None),
+        frag_mod   = ([float(v) for v in ccs.frag_mod.values()]
+                      if ccs is not None and getattr(ccs, 'frag_mod', None) else None),
+        fragment_flag   = getattr(ccs, 'fragment_flag', None) if ccs is not None else None,
+        fragment_reason = getattr(ccs, 'fragment_reason', None) if ccs is not None else None,
       ) if ccs is not None else None,
       overlaps = group_args(
         n_clashes = _i(ov.n_clashes) if ov is not None else None,
@@ -1234,4 +1600,36 @@ class ligand_result(object):
         percent_bad_blobs           = _f(mapv.percent_bad_blobs)           if mapv is not None else None,
       ) if mapv is not None else None,
       fragment_png_bytes = fragment_png_bytes,
+      missing_atoms = group_args(
+        missing_heavy   = list(ma.missing_heavy),
+        n_missing_heavy = _i(ma.n_missing_heavy),
+      ) if ma is not None else None,
+      alt_conf = group_args(
+        state    = ac.state,
+        flag     = ac.flag,
+        altloc   = ac.altloc,
+        altlocs  = list(ac.altlocs),
+        resnames = list(ac.resnames),
+        hetero   = bool(ac.hetero),
+        partner  = (group_args(
+                      chain     = ac.partner.chain,
+                      resseq    = _i(ac.partner.resseq),
+                      altloc    = ac.partner.altloc,
+                      resname   = ac.partner.resname,
+                      is_ligand = bool(ac.partner.is_ligand))
+                    if ac.partner is not None else None),
+        occupancy = (group_args(
+                      self_occ    = _f(ac.occupancy.self_occ),
+                      partner_occ = _f(ac.occupancy.partner_occ),
+                      occ_sum     = _f(ac.occupancy.occ_sum),
+                      sum_ok      = bool(ac.occupancy.sum_ok))
+                     if ac.occupancy is not None else None),
+        symmetry = (group_args(
+                      self_overlap        = bool(ac.symmetry.self_overlap),
+                      on_special_position = bool(ac.symmetry.on_special_position),
+                      sym_ops             = list(ac.symmetry.sym_ops),
+                      min_dist            = _f(ac.symmetry.min_dist))
+                    if ac.symmetry is not None else None),
+        reason   = ac.reason,
+      ) if ac is not None else None,
     )

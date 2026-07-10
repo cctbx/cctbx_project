@@ -385,7 +385,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
   # Traverse the hierarchy and look up the extra data to be filled in.
   extras = probeExt.ExtraAtomInfoMap([],[])
   mon_lib_srv = model.get_mon_lib_srv()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  ener_lib = mmtbx.monomer_library.server.ener_lib(use_neutron_distances=useNeutronDistances)
   ph = model.get_hierarchy()
   for m in ph.models():
     for chain in m.chains():
@@ -494,6 +494,14 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
               warnings += ("Warning: Could not find atom info for "+fullName+
                 " (perhaps interpretation was not run on the model?):"+
                 " keeping some default values: "+str(e)+"\n")
+              # Fall back to element-based VDW radius for atoms without
+              # restraints (e.g. unknown ligands) so probe2 can still run.
+              if extra.vdwRadius <= 0:
+                element = a.element.strip().upper()
+                if element in ener_lib.lib_atom and ener_lib.lib_atom[element].vdw_radius:
+                  extra.vdwRadius = ener_lib.lib_atom[element].vdw_radius
+                  warnings += ("Using element-based VDW radius for "+fullName+
+                    ": "+str(extra.vdwRadius)+"\n")
               extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)

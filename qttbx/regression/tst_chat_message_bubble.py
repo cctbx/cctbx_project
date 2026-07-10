@@ -473,6 +473,72 @@ def exercise_disclosure_no_hardcoded_color_on_args_view():
   assert "color:" not in ss.replace(" ", "").lower(), ss
 
 
+def exercise_disclosure_is_running_reflects_status():
+  """``is_running`` is the predicate the cancel sweep uses to find tool cells
+  that never reached a terminal state -- True for the initial 'running' status,
+  False once a finished/failed/cancelled status is set."""
+  _qapp()
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  w = ToolCallDisclosure(name="phenix_start_job", status="running")
+  assert w.is_running()
+  w.set_status("finished, 3s", color="default")
+  assert not w.is_running()
+
+
+def exercise_disclosure_cancelled_state_distinct_from_finished_and_failed():
+  """The cancelled terminal state must be visually distinct from BOTH the
+  success (finished) and failure (failed) states, so a tool aborted when the
+  user hits Stop reads differently from one that completed or errored."""
+  _qapp()
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  finished = ToolCallDisclosure(name="t", status="running")
+  finished.set_status("finished", color="default")
+  failed = ToolCallDisclosure(name="t", status="running")
+  failed.set_status("failed: boom", color="error")
+  cancelled = ToolCallDisclosure(name="t", status="running")
+  cancelled.set_status("cancelled", color="cancelled")
+  assert "cancelled" in cancelled.header_button.text()
+  ss_cancelled = cancelled.header_button.styleSheet()
+  assert ss_cancelled != finished.header_button.styleSheet(), ss_cancelled
+  assert ss_cancelled != failed.header_button.styleSheet(), ss_cancelled
+
+
+def exercise_tool_cell_cancelled_marks_terminal_state():
+  """``set_tool_use_finished(cancelled=True)`` transitions a running tool cell
+  to the cancelled terminal state: no longer running, header shows
+  'cancelled' (distinct from the finished/failed wording)."""
+  os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+  _qapp()
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  bubble = MessageBubble(role="assistant")
+  cell = bubble.add_tool_use_cell(
+    tool_id="t1", name="phenix_start_job", args={})
+  assert cell.is_running()
+  bubble.set_tool_use_finished(tool_id="t1", cancelled=True)
+  assert not cell.is_running()
+  assert "cancelled" in cell.header_button.text()
+
+
+def exercise_cancel_running_tools_sweeps_only_running_cells():
+  """``cancel_running_tools()`` marks every still-running tool cell cancelled
+  and leaves already-finished cells untouched -- the finalize-on-Stop sweep."""
+  os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+  _qapp()
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  bubble = MessageBubble(role="assistant")
+  done = bubble.add_tool_use_cell(tool_id="done", name="a", args={})
+  running = bubble.add_tool_use_cell(tool_id="run", name="b", args={})
+  bubble.set_tool_use_finished(tool_id="done", result="ok")
+  assert not done.is_running()
+  assert running.is_running()
+  bubble.cancel_running_tools()
+  assert not running.is_running()
+  assert "cancelled" in running.header_button.text()
+  # The already-finished cell is left exactly as it was.
+  assert "finished" in done.header_button.text()
+  assert "cancelled" not in done.header_button.text()
+
+
 def exercise_untrusted_text_labels_use_plain_text_format():
   """Thinking text, image captions, and tool-result text are
   model/tool-controlled, so an embedded ``<img src="file://...">`` must
@@ -509,6 +575,24 @@ def exercise_untrusted_text_labels_use_plain_text_format():
   assert evil in discs[0].result_view.toPlainText()
 
 
+def exercise_short_json_shared_from_tool_approval_not_redefined():
+  """_short_json has one definition (in tool_approval); message_bubble shares
+  it rather than carrying a byte-identical copy. Pin that no module-level copy
+  comes back AND that combined_text still truncates tool_use input via the
+  shared helper."""
+  import qttbx.widgets.chat.message_bubble as mb
+  _qapp()
+  assert not hasattr(mb, "_short_json"), \
+    "message_bubble must not re-introduce a local _short_json copy"
+  m = Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="tool_use", data={
+      "id": "t1", "name": "phenix_start_job",
+      "input": {"k": "v" * 200}})])
+  text = mb.MessageBubble(m).combined_text()
+  assert "phenix_start_job" in text
+  assert "..." in text                  # long input truncated by _short_json
+
+
 def exercise():
   exercise_renders_user_text()
   exercise_renders_tool_use_cell()
@@ -535,6 +619,11 @@ def exercise():
   exercise_disclosure_set_args_and_result_populates_body()
   exercise_disclosure_expanded_result_view_fits_all_content()
   exercise_disclosure_no_hardcoded_color_on_args_view()
+  exercise_disclosure_is_running_reflects_status()
+  exercise_disclosure_cancelled_state_distinct_from_finished_and_failed()
+  exercise_tool_cell_cancelled_marks_terminal_state()
+  exercise_cancel_running_tools_sweeps_only_running_cells()
+  exercise_short_json_shared_from_tool_approval_not_redefined()
 
 
 def _png_bytes(width=10, height=10):

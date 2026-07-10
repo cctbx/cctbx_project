@@ -155,6 +155,48 @@ def exercise_submit_disables_buttons_and_hides_card():
   assert not card._buttons_widget.isEnabled()
 
 
+def exercise_malformed_question_payload_unblocks_worker():
+  """A malformed ask_user_question payload (not a list of question dicts)
+  must not crash the card. The card is built on the GUI thread while the
+  agent worker is parked on question_queue.get(); a crash here strands that
+  worker forever. set_request must stay quiet AND release the waiting path
+  by emitting `answered` so the worker unblocks with a safe error answer."""
+  from qttbx.widgets.chat.question_card import QuestionCard
+  app = _qapp()
+  card = QuestionCard()
+  fired = []
+  card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
+  # A bare string is the classic shape: list("...") explodes into single
+  # characters, each a non-dict that crashes q.get(...) when the card
+  # builds. set_request must not raise.
+  card.set_request("q_bad", "totally malformed")
+  # The unblock is emitted deferred (the real caller connects `answered`
+  # only after set_request returns), so let the event loop run it.
+  app.processEvents()
+  assert fired, "answered not emitted; the parked worker would hang"
+  rid, ans = fired[0]
+  assert rid == "q_bad", rid
+  assert isinstance(ans, dict), ans
+
+
+def exercise_non_dict_options_do_not_crash():
+  """An option that isn't a {label, description} dict (a bare string, or
+  junk) must not crash card construction at opt.get('label'). The card
+  still renders and a normal Submit emits an answer for the question."""
+  from qttbx.widgets.chat.question_card import QuestionCard
+  _qapp()
+  card = QuestionCard()
+  # Mixed junk: a plain string, a proper dict, and entries that are neither.
+  card.set_request("q_opt", [{
+    "question": "Pick?",
+    "options": ["yes", {"label": "no"}, 5, None],
+  }])
+  fired = []
+  card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
+  card.click_submit()
+  assert fired and fired[0][0] == "q_opt", fired
+
+
 def exercise():
   exercise_single_select_emits_chosen_label()
   exercise_single_select_other_overrides_radio()
@@ -163,6 +205,8 @@ def exercise():
   exercise_multiple_questions_in_one_card()
   exercise_header_uses_assistant_label()
   exercise_submit_disables_buttons_and_hides_card()
+  exercise_malformed_question_payload_unblocks_worker()
+  exercise_non_dict_options_do_not_crash()
 
 
 if __name__ == "__main__":

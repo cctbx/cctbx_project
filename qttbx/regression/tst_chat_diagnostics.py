@@ -52,9 +52,32 @@ def exercise_no_log_file_is_ok():
     shutil.rmtree(tmp)
 
 
+def exercise_non_utf8_log_bytes_are_readable():
+  """Regression: the session-log tail is read with a strict utf-8 decode, but
+  a log written under a legacy non-utf-8 locale can hold bytes that aren't
+  valid utf-8. A strict read raises UnicodeDecodeError -- a ValueError, NOT the
+  OSError the tail's except clause catches -- so the whole dump would crash.
+  The read must tolerate undecodable bytes (errors='replace')."""
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log = tmp / "logs" / "chat-x.log"
+    log.parent.mkdir(parents=True)
+    log.write_bytes(b"line1\nlegacy \xff\xfe bytes\nline3\n")
+    text = build_diagnostics(
+      profile=_MiniProfile(),
+      storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
+      log_path=log,
+      log_tail_lines=10)
+    assert "phenix_expert" in text
+    assert "line3" in text
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_dump_contains_basic_fields()
   exercise_no_log_file_is_ok()
+  exercise_non_utf8_log_bytes_are_readable()
 
 
 if __name__ == "__main__":

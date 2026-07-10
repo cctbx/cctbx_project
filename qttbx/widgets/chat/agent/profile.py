@@ -297,7 +297,11 @@ class ProfileLoader:
     ``extra_dirs`` are forwarded to ``based_on`` resolution.
     """
     try:
-      with open(path) as fh:
+      # Pin UTF-8 so a human-authored profile carrying literal non-ASCII
+      # (an accented description, an em-dash in a prompt) loads under a
+      # C/POSIX locale too -- same fix as the system_prompt_file read below
+      # (:442) and skills._parse_skill_md.
+      with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     except Exception as e:
       raise Sorry("Profile %s parse error: %s" % (path, e))
@@ -307,8 +311,18 @@ class ProfileLoader:
     if based_on:
       parent = self._load_with_chain(based_on, _seen, extra_dirs)
       merged = _profile_to_dict(parent)
-      merged.update({k: v for k, v in data.items()
-                     if k != "based_on" and v is not None})
+      # system_prompt and system_prompt_file are mutually exclusive (enforced
+      # in _build_profile). _profile_to_dict only ever emits the parent's
+      # resolved system_prompt (a parent's system_prompt_file is already inlined
+      # into system_prompt), so a child overriding the prompt via
+      # system_prompt_file must evict that inherited system_prompt -- otherwise
+      # the merged dict carries both and the mutual-exclusivity gate raises,
+      # leaving the window unable to open. The reverse eviction is unnecessary:
+      # merged never contains a system_prompt_file key.
+      if data.get("system_prompt_file") is not None:
+        merged.pop("system_prompt", None)
+      merged = _deep_merge(
+        merged, {k: v for k, v in data.items() if k != "based_on"})
       data = merged
 
     # Warn on unknown keys (forward compatibility).
@@ -348,6 +362,41 @@ class ProfileLoader:
 
 
 # ---- helpers ---------------------------------------------------------------
+
+def _deep_merge(base, override):
+  """Recursively overlay ``override`` onto ``base``, returning a new dict.
+
+  Used by ``based_on`` inheritance: ``base`` is the parent profile
+  serialized by :func:`_profile_to_dict` and ``override`` is the child's
+  raw JSON. A nested dict section (``thinking``, ``skills``, ``subagents``,
+  ``claude``, ...) is merged key-by-key so a child overriding ONE sub-key
+  keeps the parent's other sub-keys; scalars and lists replace wholesale.
+  An ``override`` value of ``None`` is skipped so an explicit null in the
+  child never evicts an inherited value (preserving the prior shallow
+  merge's ``v is not None`` filter).
+
+  Parameters
+  ----------
+  base : dict
+      The parent data to overlay onto (not mutated).
+  override : dict
+      The child data taking precedence.
+
+  Returns
+  -------
+  dict
+      A new merged dict.
+  """
+  out = dict(base)
+  for k, v in override.items():
+    if v is None:
+      continue
+    if isinstance(v, dict) and isinstance(out.get(k), dict):
+      out[k] = _deep_merge(out[k], v)
+    else:
+      out[k] = v
+  return out
+
 
 def _server_tools_list(value, source_path):
   """Validate a profile's ``server_tools`` field as a list of tool names.
@@ -429,7 +478,21 @@ def _build_profile(data, source_path):
     if not file_path.exists():
       raise Sorry("Profile %s: system_prompt_file not found: %s"
                   % (source_path, file_path))
-    system_prompt = file_path.read_text()
+    system_prompt = file_path.read_text(encoding="utf-8")
+
+  # A scalar `skills.additional: myskill` (or `disabled: bad`) parses as a
+  # bare string; list()/set() would explode it into ['m','y',...] / a char-set,
+  # silently dropping the real skill (and disabling phantom one-char ids).
+  # Coerce a scalar to a single-element container first -- the same forgiving
+  # coercion applied to a skill's `requires` frontmatter. (server_tools keeps
+  # its stricter Sorry-on-non-list: that field is opt-in and a typo there
+  # should fail loudly.)
+  skills_additional = skills.get("additional", [])
+  if isinstance(skills_additional, str):
+    skills_additional = [skills_additional]
+  skills_disabled = skills.get("disabled", [])
+  if isinstance(skills_disabled, str):
+    skills_disabled = [skills_disabled]
 
   return Profile(
     name=data["name"],
@@ -440,8 +503,8 @@ def _build_profile(data, source_path):
     thinking_budget=int(thinking.get("budget_tokens", 0)),
     vision_input=bool(data.get("vision_input", True)),
     system_prompt=system_prompt,
-    skills_additional=list(skills.get("additional", [])),
-    skills_disabled=set(skills.get("disabled", [])),
+    skills_additional=list(skills_additional),
+    skills_disabled=set(skills_disabled),
     mcp_servers=_expand_mcp_servers(
       data.get("mcp_servers", []), source_path=source_path),
     tool_policy_default=data.get("tool_policy_default", "ask"),

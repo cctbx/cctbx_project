@@ -20,6 +20,9 @@ def test_000():
 def test_001():
   '''
     8b0x : AA IAS not in GeoStd but in CCD
+    The IAS backbone amide H is placed in the peptide plane (planar amide);
+    its CCD ideal angles around N do not sum to 360, but the planarity
+    restraint is honored during riding-H parameterization.
   '''
   compare_models(pdb_str = pdb_str_001)
 
@@ -157,7 +160,7 @@ HETATM   23  CB  IAS K 119     256.323 210.322 172.779  1.00 42.46           C
 HETATM   24  CG  IAS K 119     255.676 211.385 173.653  1.00 44.06           C
 HETATM   25  OD1 IAS K 119     255.162 212.373 173.118  1.00 43.83           O
 HETATM   26  OXT IAS K 119     256.063 212.654 170.241  1.00 50.48           O
-HETATM   27  H   IAS K 119     257.533 212.741 171.959  1.00 44.51           H
+HETATM   27  H   IAS K 119     257.622 212.769 171.692  1.00 44.51           H
 HETATM   28  HA  IAS K 119     257.454 210.117 171.110  1.00 47.09           H
 HETATM   29  HB2 IAS K 119     257.001 209.856 173.312  1.00 42.46           H
 HETATM   30  HB3 IAS K 119     255.629 209.686 172.503  1.00 42.46           H

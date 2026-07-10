@@ -16,6 +16,36 @@ markdown export.
 from qttbx.qt import QtCore, QtGui, QtWidgets
 
 
+class _DropTextEdit(QtWidgets.QPlainTextEdit):
+  """Entry box that hands dropped/pasted files and images to its owner.
+
+  Qt delivers drag-and-drop to a QPlainTextEdit's viewport, so the parent
+  ``MessageInput.dropEvent`` never fires for a drop on the visible text
+  area -- the default handling would insert the raw ``file://`` URI as
+  text. Both drop and paste funnel through ``insertFromMimeData``, so
+  intercepting it here is the single chokepoint that covers both: a
+  URL/image payload is routed to the owner (becoming an attachment), while
+  ordinary text falls through to the normal editor behaviour.
+  """
+
+  def __init__(self, owner):
+    super().__init__(owner)
+    self._owner = owner
+
+  def insertFromMimeData(self, source):
+    # Intercept ONLY payloads that actually become attachments: an image, or
+    # urls that include a LOCAL file. A remote http(s) link (hasUrls() but no
+    # local file) must paste as text, not be swallowed -- so it falls through
+    # to the normal editor behaviour.
+    if source is not None and (
+        source.hasImage()
+        or (source.hasUrls()
+            and any(u.isLocalFile() for u in source.urls()))):
+      self._owner._handle_dropped_mime(source)
+      return
+    super().insertFromMimeData(source)
+
+
 class MessageInput(QtWidgets.QWidget):
   """Multi-line chat input with attachments and a button row."""
 
@@ -63,7 +93,7 @@ class MessageInput(QtWidgets.QWidget):
     layout.addWidget(self._chip_bar)
     # Text edit gets the full width; the VBox owns horizontal expansion
     # so the edit grows with the panel automatically.
-    self._edit = QtWidgets.QPlainTextEdit(self)
+    self._edit = _DropTextEdit(self)
     # Per-session idle placeholder; set_assistant_name() rewrites it.
     self._idle_placeholder = self.DEFAULT_PLACEHOLDER
     self._edit.setPlaceholderText(self._idle_placeholder)
@@ -229,7 +259,7 @@ class MessageInput(QtWidgets.QWidget):
         generic label.
     """
     self._idle_placeholder = self._PLACEHOLDER_FMT % (name or "the assistant")
-    if not getattr(self, "_busy", False):
+    if not self._busy:
       self.set_placeholder(self._idle_placeholder, dim=True)
 
   # ---- busy / button state -------------------------------------------------
@@ -237,9 +267,6 @@ class MessageInput(QtWidgets.QWidget):
   def set_busy(self, busy):
     self._busy = bool(busy)
     self._button.setText("Stop" if self._busy else "Send")
-
-  def is_busy(self):
-    return self._busy
 
   # ---- attachments ---------------------------------------------------------
 
@@ -267,7 +294,11 @@ class MessageInput(QtWidgets.QWidget):
       self.attachment_rejected.emit(
         "Unsupported attachment type: %s" % mime)
       return False
-    data = self._maybe_resample(data, mime)
+    # _maybe_resample re-encodes a non-PNG type (webp/gif/jpeg) to JPEG when
+    # it shrinks, so it returns the mime that matches the bytes it hands back.
+    # The attachment must carry that mime -- shipping webp/gif bytes that are
+    # really JPEG makes the provider reject the request (400).
+    data, mime = self._maybe_resample(data, mime)
     if len(data) > self._max_image_bytes:
       self.attachment_rejected.emit(
         "Attachment too large (%d bytes)" % len(data))
@@ -289,7 +320,10 @@ class MessageInput(QtWidgets.QWidget):
     """Shrink an oversized image to fit under the byte cap.
 
     Repeatedly halves dimensions until under the byte cap, up to 5
-    iterations.
+    iterations. PNG re-encodes as PNG; every other allowed type
+    (jpeg/webp/gif) re-encodes as JPEG, so the returned mime is
+    ``"image/jpeg"`` in that case -- the caller must advertise the bytes'
+    real format or the provider rejects the attachment.
 
     Parameters
     ----------
@@ -300,16 +334,21 @@ class MessageInput(QtWidgets.QWidget):
 
     Returns
     -------
-    bytes
-        The smaller bytes, or the original if Qt can't read them
-        (which lets the size check catch it later).
+    (bytes, str)
+        The (possibly smaller) bytes and the mime matching them. The
+        original bytes + original mime are returned unchanged when the
+        input is already under the cap or Qt can't read it (which lets the
+        size check catch an unreadable oversized blob later).
     """
     if len(data) <= self._max_image_bytes:
-      return data
+      return data, mime
     img = QtGui.QImage()
     if not img.loadFromData(data):
-      return data
-    target_fmt = "PNG" if mime == "image/png" else "JPG"
+      return data, mime
+    if mime == "image/png":
+      target_fmt, out_mime = "PNG", "image/png"
+    else:
+      target_fmt, out_mime = "JPG", "image/jpeg"
     out = data
     for _ in range(5):
       img = img.scaled(max(1, img.width() // 2),
@@ -321,8 +360,8 @@ class MessageInput(QtWidgets.QWidget):
       img.save(buf, target_fmt)
       out = bytes(buf.data())
       if len(out) <= self._max_image_bytes:
-        return out
-    return out
+        return out, out_mime
+    return out, out_mime
 
   def _refresh_chip_bar(self):
     while self._chip_layout.count():
@@ -404,14 +443,26 @@ class MessageInput(QtWidgets.QWidget):
       event.acceptProposedAction()
 
   def dropEvent(self, event):
-    md = event.mimeData()
+    self._handle_dropped_mime(event.mimeData())
+    event.acceptProposedAction()
+
+  def _handle_dropped_mime(self, md):
+    """Route a dropped/pasted image or local-file payload to attachments.
+
+    Shared by the entry box (:class:`_DropTextEdit`, which intercepts
+    drops/pastes on the visible text area) and this widget's own
+    ``dropEvent`` (drops on the chip bar / button row). A dropped file
+    becomes an attachment instead of a raw ``file://`` URI in the prompt;
+    non-local URLs are ignored rather than inserted as text.
+    """
+    if md is None:
+      return
     if md.hasImage():
       self._handle_qimage(md.imageData())
     if md.hasUrls():
       for url in md.urls():
         if url.isLocalFile():
           self._handle_file(url.toLocalFile())
-    event.acceptProposedAction()
 
   def _handle_qimage(self, qimage_or_obj):
     img = qimage_or_obj if isinstance(qimage_or_obj, QtGui.QImage) \
@@ -464,12 +515,5 @@ class MessageInput(QtWidgets.QWidget):
       if key == QtCore.Qt.Key_Down and not nav_mods \
          and self._cursor_at_last_line():
         if self._history_recall_next():
-          return True
-      if key == QtCore.Qt.Key_V and \
-         (mods & (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier)):
-        cb = QtWidgets.QApplication.clipboard()
-        md = cb.mimeData()
-        if md is not None and md.hasImage():
-          self._handle_qimage(md.imageData())
           return True
     return super().eventFilter(obj, event)

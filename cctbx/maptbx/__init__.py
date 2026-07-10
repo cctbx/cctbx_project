@@ -2523,7 +2523,8 @@ class MapPeakLocator(object):
     # Convert directly to Cartesian space exactly once
     self.peak_sites_cart = self.unit_cell.orthogonalize(self.peak_sites_frac)
 
-  def get_peaks_within_radius(self, target_cart, R, threshold=None):
+  def get_peaks_within_radius(self, target_cart, R, threshold=None,
+        convert_to_tricubic_values=False):
     target_cart = tuple(target_cart)
     R_sq = R * R
     nearby_peaks_cart = flex.vec3_double()
@@ -2575,15 +2576,111 @@ class MapPeakLocator(object):
               nearby_peaks_heights.extend(self.peak_heights.select(sel))
     #
     # Convert to tricubic interpolation values
-    #tmp = flex.double()
-    #for site_cart in nearby_peaks_cart:
-    #  site_frac = self.unit_cell.fractionalize(site_cart)
-    #  mv = self.map_data_0.tricubic_interpolation(site_frac)
-    #  if threshold is not None:
-    #    if mv > threshold:
-    #      tmp.append(mv)
-    #  else:
-    #    tmp.append(mv)
-    #nearby_peaks_heights = tmp
+    if convert_to_tricubic_values:
+      tmp = flex.double()
+      for site_cart in nearby_peaks_cart:
+        site_frac = self.unit_cell.fractionalize(site_cart)
+        mv = self.map_data_0.tricubic_interpolation(site_frac)
+        if threshold is not None:
+          if mv > threshold:
+            tmp.append(mv)
+        else:
+          tmp.append(mv)
+      nearby_peaks_heights = tmp
     #
     return nearby_peaks_cart, nearby_peaks_heights
+
+class MapValueMatcher(object):
+  """
+  NOTE: THIS IS AI GENERATE CODE IN RESPONSE TO THE FOLLOWING PROMPT:
+
+  I have two maps, m1 and m2, and I want to compare their values for a number of
+  points in space. For example, for the first point, the map values in m1 is M1.
+  What is the equivalent values in the map m2?
+
+  To do this, I'd calculate histograms of both maps:
+
+  h1 = maptbx.histogram(map=m1, n_bins=10000)
+  h2 = maptbx.histogram(map=m2, n_bins=10000)
+
+  then print the following:
+
+  for a1,c1,v1, a2,c2,v2 in zip(h1.arguments(), h1.c_values(), h1.values(),
+                                    h2.arguments(), h2.c_values(), h2.values()):
+        print("(%15.9f %15.9f %15.9f) <> (%15.9f %15.9f %15.9f)"%\
+          (a1,c1,v1, a2,c2,v2))
+
+  For the value M1, I will locate the value of corresponding CDF value in the
+  map m1. Then I will look up the map value in m2 that corresponds to this CDF
+  value, and this is my answer.
+
+  Now, as you can imagine, doing this the way I described is tedious.
+
+  So I need a class, that takes two maps, m1 and m2, and computes their
+  histograms in the constructor. Then we have a method of this class that is
+  meant to take the value in m1, and return the matching value in m2.
+  """
+  def __init__(self, m1, m2, n_bins=10000):
+    """
+    Computes the histograms for both maps and prepares strict
+    CDF coordinates using native scitbx.array_family.flex
+    """
+    self.h1 = histogram(map=m1, n_bins=n_bins)
+    self.h2 = histogram(map=m2, n_bins=n_bins)
+    # 1. h1: The bin coordinates (arguments) are naturally strictly
+    # increasing, so we can store them as-is.
+    self.a1 = self.h1.arguments()
+    self.c1 = self.h1.c_values()
+    raw_a2  = self.h2.arguments()
+    raw_c2  = self.h2.c_values()
+    # 2. h2: Reverse mapping requires c2 to be the reference axis.
+    # We must filter out flat plateaus (empty bins) to ensure strict
+    # monotonicity.
+    self.c2_strict = flex.double()
+    self.a2_strict = flex.double()
+    last_c = -1.0
+    for a, c in zip(raw_a2, raw_c2):
+      if c > last_c:
+        self.c2_strict.append(c)
+        self.a2_strict.append(a)
+        last_c = c
+
+  def get_m2_value(self, m1_value):
+    """
+    Takes a single value from m1 and returns the equivalent value in m2.
+    """
+    # Clamp m1_value to array bounds to prevent flex out-of-bounds error
+    m1_value = max(self.a1[0], min(m1_value, self.a1[-1]))
+    # Interpolate the exact CDF value in m1
+    target_cdf = flex.linear_interpolation(self.a1, self.c1, m1_value)
+    # Clamp CDF to the boundaries of our strict h2 array
+    target_cdf = max(self.c2_strict[0], min(target_cdf, self.c2_strict[-1]))
+    # Reverse interpolate to find the equivalent m2 map value
+    m2_value = flex.linear_interpolation(
+      self.c2_strict, self.a2_strict, target_cdf)
+    return m2_value
+
+  def get_m2_values_bulk(self, m1_values):
+    """
+    Processes a Python list or flex array of m1 values at once, taking
+    advantage of C++ level flex iterations. Returns a flex.double array.
+    """
+    if not isinstance(m1_values, flex.double):
+      m1_values = flex.double(m1_values)
+    else:
+      # Deep copy to avoid mutating the user's original data during clamping
+      m1_values = m1_values.deep_copy()
+    # Clamp m1 values to bounds
+    m1_values = m1_values.set_selected(m1_values < self.a1[0], self.a1[0])
+    m1_values = m1_values.set_selected(m1_values > self.a1[-1], self.a1[-1])
+    # Bulk interpolate the target CDFs
+    target_cdfs = flex.linear_interpolation(self.a1, self.c1, m1_values)
+    # Clamp the CDFs to bounds of the strict m2 CDF
+    target_cdfs = target_cdfs.set_selected(
+      target_cdfs < self.c2_strict[0], self.c2_strict[0])
+    target_cdfs = target_cdfs.set_selected(
+      target_cdfs > self.c2_strict[-1], self.c2_strict[-1])
+    # Bulk reverse interpolate to get the m2 map values
+    m2_values = flex.linear_interpolation(
+      self.c2_strict, self.a2_strict, target_cdfs)
+    return m2_values

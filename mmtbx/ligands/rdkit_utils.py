@@ -436,8 +436,62 @@ def _filter_isolated_linkers(candidate_cut_bonds, mol, fragment_size_map):
 
 # ------------------------------------------------------------------------------
 
+def build_drawing_mol_with_missing(frag_mol, cif_object, missing_names):
+  '''Return (draw_mol, missing_idxs): a copy of frag_mol with the named missing
+  heavy atoms appended (element + atomLabel from cif_object) and their cif bonds
+  added where both endpoints exist. Appending preserves existing atom indices.'''
+  if not missing_names or cif_object is None or not hasattr(cif_object, 'atom_list'):
+    return Chem.Mol(frag_mol), set()
+  rw = Chem.RWMol(frag_mol)
+  name_to_idx = {}
+  for i in range(rw.GetNumAtoms()):
+    a = rw.GetAtomWithIdx(i)
+    if a.HasProp('_Name'):
+      name_to_idx[a.GetProp('_Name').strip()] = i
+  name_to_element = {}
+  for ca in cif_object.atom_list:
+    name_to_element[ca.atom_id.strip()] = ca.type_symbol.strip()
+  missing_idxs = set()
+  for name in missing_names:
+    if name in name_to_idx:
+      continue
+    el = name_to_element.get(name)
+    if not el:
+      continue
+    try:
+      atom = Chem.Atom(el.capitalize())
+    except (ValueError, RuntimeError):
+      continue
+    atom.SetProp('_Name', name)
+    atom.SetProp('atomLabel', name)
+    idx = rw.AddAtom(atom)
+    name_to_idx[name] = idx
+    missing_idxs.add(idx)
+  if hasattr(cif_object, 'bond_list'):
+    for bond in cif_object.bond_list:
+      n1 = bond.atom_id_1.strip()
+      n2 = bond.atom_id_2.strip()
+      if n1 in name_to_idx and n2 in name_to_idx:
+        if rw.GetBondBetweenAtoms(name_to_idx[n1], name_to_idx[n2]) is None:
+          r_type = get_rdkit_bond_type(
+            getattr(bond, 'type', 'sing'),
+            elements={name_to_element.get(n1, 'C'), name_to_element.get(n2, 'C')})
+          rw.AddBond(name_to_idx[n1], name_to_idx[n2], r_type)
+  draw_mol = rw.GetMol()
+  for atom in draw_mol.GetAtoms():
+    atom.SetNoImplicit(True)
+    atom.SetNumExplicitHs(0)
+    atom.UpdatePropertyCache(strict=False)
+  return draw_mol, missing_idxs
+
+# ------------------------------------------------------------------------------
+
+_FIG_SUPERSAMPLE = 2
+_FIG_BOND_PX = 60   # target bond length (logical px); sets the fixed figure scale
+_FIG_MAX_PX = 800   # cap on either canvas dimension (logical px) before supersample
+
 def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
-                           frag_ccs=None):
+                           frag_ccs=None, missing_atom_idxs=None):
   """
   1. Removes all H atoms.
   2. Strips all charges and implicit H properties (forces clean drawing).
@@ -467,6 +521,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     atom.SetNumExplicitHs(0)
     # Optional: Remove formal charges (e.g. make S+ look like S)
     atom.SetFormalCharge(0)
+    atom.SetNumRadicalElectrons(0)
     # Update property cache to accept these "weird" valences
     atom.UpdatePropertyCache(strict=False)
 
@@ -480,13 +535,17 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
   AllChem.Compute2DCoords(mol_viz)
 
   # 6. Color Mapping Logic
+  # Neutral single-hue (brown/tan) shades used when no RSCC data is available.
+  # Deliberately avoids green/amber/red (reserved for the RSCC traffic-light)
+  # and grey (reserved for missing atoms), so fragment colouring can't be
+  # mistaken for a density verdict. Ordered light/dark-alternating so adjacent
+  # fragments contrast (between-fragment bonds are also left uncoloured).
   palette = [
-    (1.0, 0.6, 0.6), (0.6, 0.8, 1.0), (0.6, 1.0, 0.6),
-    (1.0, 0.8, 0.4), (0.8, 0.6, 1.0), (1.0, 1.0, 0.6),
-    (0.4, 0.8, 0.8), (0.8, 0.8, 0.8)
+    (0.878, 0.788, 0.651), (0.824, 0.706, 0.549), (0.788, 0.659, 0.463),
+    (0.902, 0.835, 0.722), (0.749, 0.627, 0.439), (0.847, 0.761, 0.604),
   ]
 
-  # Per-fragment color: traffic-light by CC when provided, else rainbow palette.
+  # Per-fragment color: traffic-light by CC when provided, else neutral shades.
   frag_colors = {}
   for i in range(len(rdkit_frags)):
     if frag_ccs is not None and i < len(frag_ccs):
@@ -520,6 +579,16 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
         new_atom_highlights[new_idx] = color
         new_idx_to_frag_id[new_idx] = frag_id
 
+  # Grey out missing atoms (in no fragment).
+  new_missing_idxs = set()
+  if missing_atom_idxs:
+    missing_set = set(missing_atom_idxs)
+    for atom in mol_viz.GetAtoms():
+      if atom.HasProp("orig_idx") and atom.GetIntProp("orig_idx") in missing_set:
+        new_idx = atom.GetIdx()
+        new_atom_highlights[new_idx] = (0.7, 0.7, 0.7)
+        new_missing_idxs.add(new_idx)
+
   # 7. Highlight Bonds
   for bond in mol_viz.GetBonds():
     a1 = bond.GetBeginAtomIdx()
@@ -528,28 +597,42 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     if a1 in new_idx_to_frag_id and a2 in new_idx_to_frag_id:
       if new_idx_to_frag_id[a1] == new_idx_to_frag_id[a2]:
         new_bond_highlights[bond.GetIdx()] = new_atom_highlights[a1]
+    elif a1 in new_missing_idxs or a2 in new_missing_idxs:
+      new_bond_highlights[bond.GetIdx()] = (0.7, 0.7, 0.7)
 
   # 8. Draw
-  # Base size scales with molecule complexity; canvas then stretches to match
-  # the molecule's 2D aspect ratio so long/thin ligands don't end up drawn
-  # in a narrow strip of a square canvas.
-  n_heavy = mol_viz.GetNumHeavyAtoms()
-  if   n_heavy > 40: base_px = 800
-  elif n_heavy > 20: base_px = 650
-  else:              base_px = 500
+  # Draw every ligand at a FIXED bond length so atoms and highlight blobs render
+  # at the same physical scale regardless of size; the canvas is then fitted to
+  # the molecule's 2D bounding box at that scale (+ padding). This makes the
+  # figure size a true visual cue of molecule size: a small ligand (e.g. EDO)
+  # yields a small figure, a large one a large figure. rdkit is NOT allowed to
+  # fit-to-canvas (which previously blew tiny molecules up to fill the frame).
+  bond_px = _FIG_BOND_PX * _FIG_SUPERSAMPLE
   conf = mol_viz.GetConformer()
   xs = [conf.GetAtomPosition(i).x for i in range(mol_viz.GetNumAtoms())]
   ys = [conf.GetAtomPosition(i).y for i in range(mol_viz.GetNumAtoms())]
   bb_w = max(xs) - min(xs) if xs else 1.0
   bb_h = max(ys) - min(ys) if ys else 1.0
-  aspect = max(0.33, min(3.0, (bb_w + 1e-6) / (bb_h + 1e-6)))
-  import math
-  width  = max(400, int(base_px * math.sqrt(aspect)))
-  height = max(400, int(base_px / math.sqrt(aspect)))
+  # Pixels per molecular unit from the median bond length in the 2D conformer.
+  bond_lens = []
+  for bond in mol_viz.GetBonds():
+    p1 = conf.GetAtomPosition(bond.GetBeginAtomIdx())
+    p2 = conf.GetAtomPosition(bond.GetEndAtomIdx())
+    bond_lens.append(((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2) ** 0.5)
+  bond_lens.sort()
+  median_bond = bond_lens[len(bond_lens) // 2] if bond_lens else 1.5
+  ppu = bond_px / (median_bond if median_bond > 1e-6 else 1.5)
+  pad = int(0.9 * bond_px)          # clears highlight blobs and atom labels
+  min_w = int(3.4 * bond_px)        # floor: keep the legend row from clipping
+  min_h = int(2.4 * bond_px)        # floor: linear ligands get vertical room
+  max_px = _FIG_MAX_PX * _FIG_SUPERSAMPLE
+  width  = max(min_w, min(max_px, int(bb_w * ppu) + 2 * pad))
+  height = max(min_h, min(max_px, int(bb_h * ppu) + 2 * pad))
   drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
 
   opts = drawer.drawOptions()
   opts.fillHighlights = True
+  opts.fixedBondLength = bond_px  # pin the scale; do not fit-to-canvas
   opts.padding = 0.05  # tight fit; badges + legend are added via PIL below
 
   drawer.DrawMolecule(
@@ -583,15 +666,16 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
   # 9. Composite numbered badges at each fragment centroid and a wrapped
   #    legend below the molecule, so every CC stays linked to its fragment
   #    regardless of molecule shape or fragment count.
-  if frag_ccs is not None and frag_pixel_centroids:
+  has_missing = bool(missing_atom_idxs)
+  if (frag_ccs is not None and frag_pixel_centroids) or has_missing:
     try:
       from PIL import Image, ImageDraw as PILDraw, ImageFont
       import io as _io
 
-      legend_font_size = 20
-      badge_font_size = 16
-      badge_r = 13
-      badge_text_gap = 6
+      legend_font_size = 20 * _FIG_SUPERSAMPLE
+      badge_font_size = 16 * _FIG_SUPERSAMPLE
+      badge_r = 13 * _FIG_SUPERSAMPLE
+      badge_text_gap = 6 * _FIG_SUPERSAMPLE
       try:
         legend_font = ImageFont.load_default(size=legend_font_size)
       except TypeError:
@@ -617,7 +701,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       def draw_badge(d, cx, cy, n):
         d.ellipse(
           (cx - badge_r, cy - badge_r, cx + badge_r, cy + badge_r),
-          fill=(255, 255, 255, 235), outline=(40, 40, 40), width=2)
+          fill=(255, 255, 255, 235), outline=(40, 40, 40), width=2 * _FIG_SUPERSAMPLE)
         try:
           d.text((cx, cy), str(n), fill=(0, 0, 0),
                  font=badge_font, anchor='mm')
@@ -647,10 +731,10 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       sep = '   '
       prefix_w, _ = text_size(prefix, legend_font)
       sep_w, _ = text_size(sep, legend_font)
-      row_h = max(legend_font_size, 2 * badge_r) + 6
+      row_h = max(legend_font_size, 2 * badge_r) + 6 * _FIG_SUPERSAMPLE
 
       # Wrap entries into rows.
-      max_row_w = width - 20
+      max_row_w = width - 20 * _FIG_SUPERSAMPLE
       rows = []
       cur_row = []
       cur_w = prefix_w
@@ -665,9 +749,10 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
           cur_w += add_w
       if cur_row: rows.append(cur_row)
 
-      legend_pad_top = 8
-      legend_pad_bot = 6
-      legend_h = legend_pad_top + row_h * len(rows) + legend_pad_bot
+      legend_pad_top = 8 * _FIG_SUPERSAMPLE
+      legend_pad_bot = 6 * _FIG_SUPERSAMPLE
+      n_legend_rows = len(rows) + (1 if has_missing else 0)
+      legend_h = legend_pad_top + row_h * n_legend_rows + legend_pad_bot
       canvas_h = height + legend_h
 
       img = Image.open(_io.BytesIO(png_bytes)).convert('RGBA')
@@ -684,7 +769,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
       # Legend: same badge graphic + tier-coloured CC value.
       y_row = height + legend_pad_top
       for row_i, row in enumerate(rows):
-        x = 10
+        x = 10 * _FIG_SUPERSAMPLE
         row_mid = y_row + row_h // 2
         if row_i == 0:
           try:
@@ -705,6 +790,22 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
           except TypeError:
             draw.text((tx, y_row), cc_str, fill=color, font=legend_font)
           x += entry_w
+        y_row += row_h
+
+      if has_missing:
+        x = 10 * _FIG_SUPERSAMPLE
+        row_mid = y_row + row_h // 2
+        draw.ellipse(
+          (x, row_mid - badge_r, x + 2 * badge_r, row_mid + badge_r),
+          fill=(179, 179, 179), outline=(40, 40, 40),
+          width=2 * _FIG_SUPERSAMPLE)
+        tx = x + 2 * badge_r + badge_text_gap
+        try:
+          draw.text((tx, row_mid), '= missing atoms', fill=(80, 80, 80),
+                    font=legend_font, anchor='lm')
+        except TypeError:
+          draw.text((tx, y_row), '= missing atoms', fill=(80, 80, 80),
+                    font=legend_font)
         y_row += row_h
 
       out = _io.BytesIO()

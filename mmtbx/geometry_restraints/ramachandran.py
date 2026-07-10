@@ -111,6 +111,7 @@ ramachandran_plot_restraints {
     weight = 0.
       .type = float
       .expert_level = 2
+      .short_caption = "Oldfield direct weight (0 = automatic)"
       .help = Direct weight value. If 0 the weight will \
           be calculated as following: \
           (w, op.esd, op.dist_weight_max, 2.0, op.weight_scale) \
@@ -119,7 +120,13 @@ ramachandran_plot_restraints {
                          max(2.0,   current_distance_to_allowed) \
                                                                   \
            1 / esd^2  * weight_scale  *  max(distance_to_allowed_cutoff,   current_distance_to_allowed)   \
-                weight_scale(=0.01)  *  max(distance_weight_min(=2.), min(distance_weight_max(=10.), current_distance_to_allowed))
+                weight_scale(=0.01)  *  max(distance_weight_min(=2.), min(distance_weight_max(=10.), current_distance_to_allowed)) \
+                                                  \
+              Any positive value is used directly \
+              and overrides the adaptive scheme, large values (even 0.1-1.0) may make the dihedral \
+              restraints very stiff and can destabilize refinement to the point \
+              that the model blows up. You don't normally need to change this parameter, \
+              adjust weight_scale instead (also for experts only).
     weight_scale = 0.01
       .type = float
       .expert_level = 2

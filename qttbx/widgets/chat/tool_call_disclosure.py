@@ -16,13 +16,17 @@ from qttbx.qt import QtCore, QtWidgets
 # already communicates state literally; the style here is just a hint.
 # 'running' is italic (no colour override) so legibility doesn't depend
 # on hue; 'error' uses a red that reads on both light and dark themes;
-# 'muted' uses the theme's mid colour so it stays in palette.
+# 'muted' uses the theme's mid colour so it stays in palette. 'cancelled'
+# is the terminal state for a tool aborted by Stop: a muted+italic look
+# that is distinct from both 'default'/finished (no style) and 'error'
+# (red), so a cancelled call doesn't read as a successful or failed one.
 _COLORS = {
-  None:       "",                        # default text color
-  "default":  "",
-  "running":  "font-style: italic;",
-  "error":    "color: #c0392b;",
-  "muted":    "color: palette(mid);",
+  None:        "",                       # default text color
+  "default":   "",
+  "running":   "font-style: italic;",
+  "error":     "color: #c0392b;",
+  "muted":     "color: palette(mid);",
+  "cancelled": "color: palette(mid); font-style: italic;",
 }
 
 
@@ -156,6 +160,15 @@ class ToolCallDisclosure(QtWidgets.QFrame):
       return
     self.result_view.setPlainText(text)
     self.result_view.show()
+
+  def is_running(self):
+    """Return True while the call is still in its initial ``running`` state.
+
+    The predicate the turn-cancel sweep uses to find tool cells that never
+    reached a terminal state (finished / failed / cancelled) -- their result
+    will never arrive, so they would otherwise stay stuck spinning.
+    """
+    return self._status == "running"
 
   # ---- internals ----------------------------------------------------------
 

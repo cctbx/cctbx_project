@@ -570,11 +570,17 @@ def run_fit_rotatable(
 # =============================================================================
 import sys
 
-USE_OLD_REDUCE = True # SINGLE source of truth (code variable, not an env var).
-                      # Flip to False to run reduce2 everywhere, then libtbx.refresh.
+USE_OLD_REDUCE = True # SINGLE flip for switching to reduce2.
+                      # Flip to False to run reduce2 everywhere.
 
 def use_old_reduce():
   return USE_OLD_REDUCE
+
+USE_REDUCE2_FLIPS = True # under reduce2, accept reduce2's optimized H
+                          # positions and flips (atom-preserving). No-op unless reduce2 is on.
+
+def use_reduce2_flips():
+  return (not use_old_reduce()) and USE_REDUCE2_FLIPS
 
 def default_probe_phil():
   """The probe Phil scope reduce2 uses, so our defaults match reduce2 exactly."""
@@ -584,9 +590,15 @@ def default_probe_phil():
     reduce2.master_phil_str, process_includes=True).extract().probe
 
 def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
-      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False, log=None):
+      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
+      raise_on_missing=True, log=None):
   """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
-  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen."""
+  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
+
+  :param raise_on_missing: When True (default), raise Sorry if restraints were
+    not found for some residues (no H placed there). Set False for best-effort
+    callers (e.g. the MolProbity kinemage view) that prefer to produce results
+    for the rest of the structure rather than fail on a few problem residues."""
   from mmtbx.hydrogens import reduce_hydrogen
   from mmtbx.reduce import Optimizers
   if log is None: log = sys.stdout
@@ -603,7 +615,7 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   o.run()
   o.show(log)
   missed = set(o.no_H_placed_mlq)
-  if len(missed) > 0:
+  if len(missed) > 0 and raise_on_missing:
     raise Sorry("Restraints were not found for the following residues:" +
                 "".join(" " + r for r in missed))
   model = o.get_model()
@@ -612,7 +624,8 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   # re-process below drops restraints, so it must come AFTER the Optimizer
   # (this mirrors clashscore2.check_and_add_hydrogen).
   opt = Optimizers.Optimizer(
-    probe_phil, do_flips, model, modelIndex=None, fillAtomDump=False)
+    probe_phil, do_flips, model, modelIndex=None,
+    useNeutronDistances=nuclear, fillAtomDump=False)
 
   # Delete any hydrogens that we've been asked to delete.
   for a in opt.getHydrogensToDelete():
@@ -689,3 +702,30 @@ def get_nqh_flips_reduce2(model, probe_phil=None):
     user_mods.append(
       (chain.id + rg.resid() + ag.resname + "    " + fm.alt).strip())
   return user_mods, [], {}
+
+def accept_reduce2_flips(work_model, probe_phil=None, log=None):
+  """Compute reduce2's N/Q/H flips AND optimized H for work_model via the reduce2
+  Optimizer (addFlipMovers=True) and return the resulting sites_cart; the caller
+  pushes them onto the live model via model.set_sites_cart. The Optimizer is run on a
+  PRIVATE deep copy (see below), so the caller's model is not mutated here.
+  Atom-preserving: getHydrogensToDelete is never called, so the atom content is
+  unchanged. PRECONDITION: work_model already has hydrogens and restraints (PDB
+  interpretation run)."""
+  from mmtbx.reduce import Optimizers
+  if log is None: log = sys.stdout
+  if probe_phil is None: probe_phil = default_probe_phil()
+  assert work_model.get_hd_selection().count(True) > 0, \
+    "accept_reduce2_flips requires a model that already has hydrogens"
+  # Run the Optimizer on a private deep copy, never the caller's live model.
+  # Optimizer.__init__ calls model.setup_riding_h_manager() (Optimizers.py), which
+  # CREATES a riding_h_manager on whatever model it is given. In reciprocal
+  # phenix.refine the per-macro-cycle "Setup riding H model" step is the designated
+  # creator and asserts riding_h_manager is None; it runs only in some macro cycles
+  # while the N/Q/H flip runs every cycle, so optimizing the live model in place
+  # would leave a stray manager that crashes that later assert. (The decision-only
+  # path, get_nqh_flips_reduce2, deep-copies for the same reason.)
+  reduce_model = work_model.deep_copy()
+  opt = Optimizers.Optimizer(probe_phil, True, reduce_model, modelIndex=None, altID="")
+  print("Total number of N/Q/H flips: %d" % (
+    len(opt.getFlippedAmides()) + len(opt.getFlippedHistidines())), file=log)
+  return reduce_model.get_sites_cart()

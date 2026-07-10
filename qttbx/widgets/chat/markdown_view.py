@@ -57,17 +57,12 @@ class MarkdownView(QtWidgets.QTextBrowser):
     from qttbx.widgets.chat.auto_height import set_auto_height
     set_auto_height(self)
 
-  def set_markdown(self, text):
-    """Replace the document with ``text`` rendered as markdown."""
-    self._raw = text or ""
-    # Render via the document so the MarkdownNoHTML feature flag takes
-    # effect -- the QTextBrowser-level setMarkdown() binding drops the
-    # features argument, but QTextDocument.setMarkdown() honors it.
-    self.document().setMarkdown(self._raw, _MD_FEATURES)
-
   def append_markdown(self, text):
     """Append ``text`` to the accumulated markdown and re-render."""
     self._raw = (self._raw or "") + (text or "")
+    # Render via the document so the MarkdownNoHTML feature flag takes
+    # effect -- the QTextBrowser-level setMarkdown() binding drops the
+    # features argument, but QTextDocument.setMarkdown() honors it.
     self.document().setMarkdown(self._raw, _MD_FEATURES)
 
   def _on_anchor_clicked(self, url):

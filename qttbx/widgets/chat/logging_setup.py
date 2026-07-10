@@ -28,6 +28,20 @@ def _log_path(chat_root, prefix):
   return chat_root / "logs" / ("%s-%s.log" % (prefix, ts))
 
 
+def _prepare_log(chat_root, prefix):
+  """Create ``chat_root/logs``, prune old ``<prefix>-*.log``, return a new path.
+
+  Shared prep for the redacting (:func:`_open_log`) and raw
+  (:func:`open_raw_log`) openers, which differ only in how they open the
+  returned path. Pruning runs before the new log is opened so ``LOG_KEEP``
+  counts only pre-existing files; the log about to be created is excluded.
+  """
+  log_dir = chat_root / "logs"
+  log_dir.mkdir(parents=True, exist_ok=True)
+  _prune_old_logs(log_dir, "%s-*.log" % prefix)
+  return _log_path(chat_root, prefix)
+
+
 def _open_log(chat_root, prefix):
   """Open a redacting ``<prefix>-*.log``, creating the dir, pruning old logs.
 
@@ -35,18 +49,26 @@ def _open_log(chat_root, prefix):
   log families differ only in filename prefix and rotate independently
   (same ``LOG_KEEP``, separate globs). The caller owns the returned handle.
   """
-  log_dir = chat_root / "logs"
-  log_dir.mkdir(parents=True, exist_ok=True)
-  # Prune before creating today's log so LOG_KEEP counts only pre-existing
-  # files; the new log we're about to open is excluded from the count.
-  _prune_old_logs(log_dir, "%s-*.log" % prefix)
-  path = _log_path(chat_root, prefix)
-  return _RedactingLog(open(path, "w", buffering=1)), path
+  path = _prepare_log(chat_root, prefix)
+  return _RedactingLog(open(path, "w", buffering=1, encoding="utf-8")), path
 
 
-def session_log_path(chat_root):
-  """Return a timestamped session log path under ``chat_root/logs``."""
-  return _log_path(chat_root, "chat")
+def open_raw_log(chat_root, prefix):
+  """Open a rotated, NON-redacting ``<prefix>-<TS>.log`` under ``chat_root/logs``.
+
+  The raw counterpart to :func:`_open_log`: same directory creation, ``LOG_KEEP``
+  rotation, and timestamped name, but returns a real file object -- not a
+  redacting wrapper -- for callers that need an OS file descriptor (e.g. to
+  capture a subprocess's stdout/stderr). Use only for output the caller knows
+  carries no secrets.
+
+  Returns
+  -------
+  tuple of (file, pathlib.Path)
+      The open append-mode handle and its path; the caller owns the handle.
+  """
+  path = _prepare_log(chat_root, prefix)
+  return open(path, "a", encoding="utf-8"), path
 
 
 def open_session_log(chat_root):
@@ -65,11 +87,6 @@ def open_session_log(chat_root):
       The open, line-buffered, redacting log handle and its path.
   """
   return _open_log(chat_root, "chat")
-
-
-def debug_log_path(chat_root):
-  """Return a timestamped debug log path under ``chat_root/logs``."""
-  return _log_path(chat_root, "debug")
 
 
 def open_debug_log(chat_root):
@@ -159,15 +176,6 @@ class _RedactingLog:
     """Delegate any non-overridden attribute to the wrapped handle."""
     return getattr(self._fh, name)
 
-  def __enter__(self):
-    """Return self so the wrapper can be used as a context manager."""
-    return self
-
-  def __exit__(self, *exc):
-    """Close the wrapped handle on context-manager exit."""
-    self._fh.close()
-    return False
-
   def fileno(self):
     """Refuse to expose a raw file descriptor.
 
@@ -188,8 +196,12 @@ class _RedactingLog:
 
 
 def _prune_old_logs(log_dir, pattern):
-  logs = sorted(log_dir.glob(pattern),
-                key=lambda p: p.stat().st_mtime, reverse=True)
+  def _mtime(p):
+    try:
+      return p.stat().st_mtime
+    except OSError:
+      return 0.0   # vanished/unstattable -> sort oldest; the unlink is guarded
+  logs = sorted(log_dir.glob(pattern), key=_mtime, reverse=True)
   for p in logs[LOG_KEEP:]:
     try:
       p.unlink()

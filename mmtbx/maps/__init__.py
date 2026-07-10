@@ -564,6 +564,7 @@ def mask_aware_map_standard_deviation(map_data, xray_structure, wrapping):
   mp = masks.mask_master_params.extract()
   mp.n_real = map_data.all()
   mp.step = None
+  mp.ignore_hydrogens = False
   mmtbx_masks_asu_mask_obj = masks.asu_mask(
     xray_structure = xray_structure.expand_to_p1(sites_mod_positive=wrapping),
     mask_params    = mp)
@@ -581,64 +582,87 @@ def mask_aware_map_standard_deviation(map_data, xray_structure, wrapping):
   SDin = 0.0
   if map_molecule.size() > 1:
     SDin  = map_molecule.standard_deviation_of_the_sample()
-  return group_args(SDin=SDin, SDout=SDout, SDall=SDall)
+  return group_args(SDin=SDin, SDout=SDout, SDall=SDall, map_molecule=map_molecule)
 
 class diff_map_cryoem(object):
 
-  def __init__(self, fo, xray_structure, fo1=None, fo2=None, d_min=None,
+  def __init__(self, xray_structure, fo=None, fo1=None, fo2=None, d_min=None,
                      reflections_per_bin = 5000):
     adopt_init_args(self, locals())
     assert [fo1, fo2].count(None) in [0,2]
     assert xray_structure.get_scattering_table() == "electron"
     if fo1 is not None:
       assert fo1.indices().all_eq(fo2.indices())
-      assert fo1.indices().all_eq( fo.indices())
+      assert fo is None
+      self.fo = self.fo1.array(data=(self.fo1.data() + self.fo2.data())/2.)
+    else:
+      assert self.fo is not None
     if d_min is not None:
-      ds = fo.d_spacings().data()
+      ds = self.fo.d_spacings().data()
       sel = ds >= d_min
-      self.fo = fo.select(selection = sel)
+      self.fo = self.fo.select(selection = sel)
       if fo1 is not None:
         self.fo1 = fo1.select(selection = sel)
         self.fo2 = fo2.select(selection = sel)
     self.ss = 1./flex.pow2(self.fo.d_spacings().data())
     self.fc = self.fo.structure_factors_from_scatterers(xray_structure).f_calc()
-    self.fc_scaled = self.fo.multiscale(
-      other               = self.fc,
-      use_exp_scale       = True,
-      reflections_per_bin = reflections_per_bin)
+    self.fc_scaled = None
 
   def _prepare_arrays(self, phases):
     assert phases in ["fo", "fc", "vector"]
     fo = self.fo.deep_copy()
+    if self.fc_scaled is None:
+      self.fc_scaled = self.fo.multiscale(
+        other               = self.fc,
+        use_exp_scale       = True,
+        reflections_per_bin = self.reflections_per_bin)
     fc = self.fc_scaled.deep_copy()
     if   phases == "fo": fc = fc.phase_transfer(phase_source = fo)
     elif phases == "fc": fo = fo.phase_transfer(phase_source = fc)
     else: pass # Do nothing, leave arrays as is
     return fo, fc
 
-  def compute_simple(self, phases="vector"):
+  def compute_simple(self, phases="vector", isotropize=True, charge_density=False):
     fo, fc = self._prepare_arrays(phases = phases)
-    return fo.array(data = fo.data()-fc.data())
+    diff = fo.data()-fc.data()
+    if isotropize:
+      scale = 1./flex.abs(self.fc_scaled.data()/self.fc.data())
+      diff = diff * scale
+    if charge_density: return fo.array(data = diff*self.ss)
+    else:              return fo.array(data = diff)
 
-  def compute_charge_density(self, phases="vector"):
-    return self.fo.array(
-      data = self.compute_simple(phases=phases).data()*self.ss)
-
-  def compute_sigmaa(self):
+  def compute_sigmaa(self, isotropize=True, charge_density=False):
     import mmtbx.f_model
     fmodel = mmtbx.f_model.manager(
       f_obs          = abs(self.fo),
       xray_structure = self.xray_structure)
     fmodel.update_all_scales(remove_outliers = False)
-    return fmodel.vector_diff_map(fo_phase_source = self.fo)
+    r = fmodel.vector_diff_map(fo_phase_source = self.fo, isotropize=isotropize)
+    if charge_density: return self.fo.array(data = r.data()*self.ss)
+    else:              return r
 
-  def compute_servalcat(self):
+  def compute_servalcat(self, multiscale=False, use_fmodel=False):
     assert self.fo1 is not None
+    fc = self.fc
+    tmp = self.fo.array(data=(self.fo1.data() + self.fo2.data())/2.)
+    #
+    if use_fmodel:
+      import mmtbx.f_model
+      fmodel = mmtbx.f_model.manager(
+        f_obs          = abs(tmp),
+        xray_structure = self.xray_structure)
+      fmodel.update_all_scales(remove_outliers = False)
+      fc = fmodel.f_model_scaled_with_k1()
+    #
+    if multiscale:
+      fc = tmp.multiscale(
+        other               = self.fc,
+        use_exp_scale       = True,
+        reflections_per_bin = self.reflections_per_bin)
     return servalcat_difference_map.compute(
-      fo                  = self.fo,
       fo1                 = self.fo1,
       fo2                 = self.fo2,
-      fc                  = self.fc,
+      fc                  = fc,
       reflections_per_bin = self.reflections_per_bin)
 
   def compute_servalcat_charge_density(self):

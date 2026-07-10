@@ -105,7 +105,7 @@ reference_model
       .type=path
       .optional=True
       .short_caption = Reference model for this restraint group
-      .style = bold hidden
+      .style = bold
       .help = this is to used internally to disambiguate cases where multiple \
               reference models contain the same chain ID. This normally does \
               not need to be set by the user

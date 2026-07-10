@@ -54,7 +54,9 @@ def exercise_add_image_artifact_auto_advances():
       kind="image", payload={"conv_id": "c", "sha256": att.sha256,
                              "mime": "image/png"}, caption="x.png"))
     assert p.current_artifact() is not None
-    assert "x.png" in p.status_text() or "image" in p.status_text()
+    # The caption is the contract. The old `or "image" in ..." branch matched
+    # the kind fallback, so it still passed if the caption was dropped entirely.
+    assert "x.png" in p.status_text(), p.status_text()
   finally:
     shutil.rmtree(tmp)
 

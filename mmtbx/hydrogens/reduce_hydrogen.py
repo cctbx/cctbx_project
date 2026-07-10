@@ -534,6 +534,9 @@ class place_hydrogens():
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
     self.site_labels_no_para    = list()
+    self.site_labels_tertiary_amide = list()
+    self.site_labels_missing_neighbor = list()
+    self.residues_missing_neighbor    = list()
     # Names of restraint dictionaries auto-generated for unknown ligands during
     # placement; these are throwaway (purpose-built for H placement) and are
     # removed from the model before returning so they don't leak into
@@ -702,8 +705,53 @@ class place_hydrogens():
       water_selection = self.model.solvent_selection()
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
-    self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
-      for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para_but_not_lone)]
+    # Classify the unplaceable H so the report reflects the real cause:
+    #  - on a tertiary-amide backbone N (e.g. the ring N of an internal
+    #    proline-type residue such as HYP): omitted because the N is already
+    #    fully substituted.
+    #  - missing a neighbouring heavy atom: the H's parent atom lacks an expected
+    #    heavy neighbour (an incomplete side chain truncated before its next
+    #    atom), so e.g. a methylene's rotation is undefined.
+    #  - everything else: genuinely could not be parameterized.
+    # Only walk the bonds when there is something to classify (usually none).
+    self.site_labels_no_para = list()
+    self.site_labels_tertiary_amide = list()
+    self.site_labels_missing_neighbor = list()
+    self.residues_missing_neighbor = list()
+    if not sel_h_not_in_para_but_not_lone.all_eq(False):
+      grm = self.model.get_restraints_manager().geometry
+      bps, asu = grm.get_all_bond_proxies(sites_cart=self.model.get_sites_cart())
+      atoms = self.model.get_atoms()
+      elements = self.model.get_hierarchy().atoms().extract_element()
+      bonds = {}
+      for proxy in list(bps) + list(asu):
+        if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
+        elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
+        else: continue
+        bonds.setdefault(i, []).append(j)
+        bonds.setdefault(j, []).append(i)
+      tertiary = self.h_on_tertiary_amide_n(bonds, atoms, elements)
+      def _heavy_neighbors(iseq):
+        return [m for m in set(bonds.get(iseq, [])) if elements[m] not in ('H','D')]
+      seen_residues = set()
+      for atom in self.model.get_hierarchy().atoms().select(
+          sel_h_not_in_para_but_not_lone):
+        label = atom.id_str().replace('pdb=','').replace('"','')
+        if atom.i_seq in tertiary:
+          self.site_labels_tertiary_amide.append(label)
+          continue
+        parents = _heavy_neighbors(atom.i_seq)
+        # parent atom missing an expected heavy neighbour -> incomplete residue
+        if len(parents) == 1 and len(_heavy_neighbors(parents[0])) < 2:
+          self.site_labels_missing_neighbor.append(label)
+          rg = atom.parent().parent()
+          resid = '%s %s %s' % (atom.parent().resname.strip(),
+            rg.parent().id.strip(), rg.resseq.strip())
+          if resid not in seen_residues:
+            seen_residues.add(resid)
+            self.residues_missing_neighbor.append(resid)
+        else:
+          self.site_labels_no_para.append(label)
     if not sel_h_not_in_para.all_eq(False):
       sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
       self.model = self.model.select(~sel_h_not_in_para)
@@ -911,6 +959,32 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def h_on_tertiary_amide_n(self, bonds, atoms, elements):
+    """Return {h_iseq: n_iseq} for H/D atoms bonded to an amino-acid backbone N
+    that is a tertiary amide. In the H's conformer the N already has three heavy
+    neighbours (CA, an N-substituent such as a methyl or the proline-type ring
+    carbon, and the peptide C), so it cannot carry an H. Only heavy neighbours
+    that share the H's conformer (blank or same altloc) are counted, so a
+    backbone split at CA is not mistaken for three substituents. The caller
+    passes an already-built {iseq: [neighbor iseqs]} map to avoid re-walking the
+    bond proxies.
+    """
+    result = {}
+    for n_iseq, neighbors in bonds.items():
+      atom_n = atoms[n_iseq]
+      if atom_n.name.strip() != 'N': continue
+      if get_class(name=atom_n.parent().resname) not in (
+        'common_amino_acid', 'modified_amino_acid', 'd_amino_acid'): continue
+      neighbors = set(neighbors)
+      for k in neighbors:
+        if elements[k] not in ["H", "D"]: continue
+        h_altloc = atoms[k].parent().altloc
+        n_heavy = sum(1 for m in neighbors if elements[m] not in ["H", "D"]
+          and atoms[m].parent().altloc in ('', h_altloc))
+        if n_heavy >= 3:
+          result[k] = n_iseq
+    return result
+
   def exclude_H_on_links(self, verbose=False):
     """Remove H atoms bound to heavy atoms that form a link
 
@@ -973,6 +1047,17 @@ class place_hydrogens():
           bond_lengths[j] = proxy.distance_ideal
           removed_dict[j] = exclusion_dict[i]
           parent_dict[j]=i
+    # A peptide-bonded N-substituted (e.g. N-methylated) amino acid is a
+    # tertiary amide: its backbone N has three heavy neighbours (CA, the
+    # N-substituent, the previous residue's C) and cannot carry a backbone H.
+    # The peptide bond is plain covalent geometry (origin_id 0), so it is not
+    # flagged as a link above; flag the leftover H here so the valence check
+    # below removes it. (Reuses the bonds map already built above.)
+    for k, n_iseq in self.h_on_tertiary_amide_n(bonds, atoms, elements).items():
+      if k not in sel_remove:
+        sel_remove.append(k)
+        removed_dict[k] = 'a tertiary amide'
+        parent_dict[k] = n_iseq
     # remove H atoms NOT to remove - double negative!
     #verbose=True
     if verbose:
@@ -1059,8 +1144,10 @@ class place_hydrogens():
         if verbose: print('keep',atoms[r].quote())
       sel_remove=flex.size_t(sel_remove)
     #
+    def _removed_label(v):
+      return v if isinstance(v, str) else origin_ids.get_origin_key(v)
     sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
-                   origin_ids.get_origin_key(removed_dict[atom.i_seq]))
+                   _removed_label(removed_dict[atom.i_seq]))
         for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
     #
     if sel_remove:
@@ -1071,9 +1158,11 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
-  def show(self, log):
+  def show(self, log, verbose=False):
     '''
-    Informative output
+    Informative output. With verbose=True the per-atom lists of H that were not
+    placed on incomplete side chains are printed in full; by default only a
+    count + residue summary is shown.
     '''
     if log is None: log = sys.stdout
     #
@@ -1099,6 +1188,46 @@ involved in a disulfide bond'''
       print(msg, file=log)
       for label in self.site_labels_disulfides:
         print(label, file=log)
+    #
+    if self.site_labels_tertiary_amide:
+      msg = '''
+The following backbone H atoms were not placed because the residue's N atom
+is a tertiary amide (already bonded to three heavy atoms, e.g. an internal
+proline-type or N-substituted residue)'''
+      print(msg, file=log)
+      for label in self.site_labels_tertiary_amide:
+        print(label, file=log)
+    #
+    if self.site_labels_missing_neighbor:
+      n_atoms = len(self.site_labels_missing_neighbor)
+      residues = self.residues_missing_neighbor
+      print('', file=log)
+      msg = ('%d H atoms were not placed because a neighbouring heavy atom is '
+        'missing\n(incomplete side chains) - %d residues:')
+      print(msg % (n_atoms, len(residues)), file=log)
+      cap = 12
+      tokens = list(residues[:cap])
+      more = '(+%d more)' % (len(residues) - cap) if len(residues) > cap else None
+      line = ''
+      for t in tokens:
+        add = (', ' if line else '') + t
+        if line and len(' ' + line + add) > 78:
+          print(' ' + line, file=log)
+          line = t
+        else:
+          line += add
+      if more is not None:
+        add = (' ' if line else '') + more
+        if line and len(' ' + line + add) > 78:
+          print(' ' + line, file=log)
+          line = more
+        else:
+          line += add
+      if line:
+        print(' ' + line, file=log)
+      if verbose:
+        for label in self.site_labels_missing_neighbor:
+          print(label, file=log)
     #
     if self.site_labels_no_para:
       msg = '''
@@ -1135,7 +1264,10 @@ The following H atoms were not placed because they could not be parameterized
       number_h_final  = self.n_H_final,
       no_H_placed_mlq = self.no_H_placed_mlq,
       site_labels_disulfides = self.site_labels_disulfides,
-      site_labels_no_para = self.site_labels_no_para)
+      site_labels_no_para = self.site_labels_no_para,
+      site_labels_tertiary_amide = self.site_labels_tertiary_amide,
+      site_labels_missing_neighbor = self.site_labels_missing_neighbor,
+      residues_missing_neighbor = self.residues_missing_neighbor)
 
 # ------------------------------------------------------------------------------
 

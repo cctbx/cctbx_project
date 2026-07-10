@@ -113,6 +113,39 @@ def exercise_oversized_image_is_resampled():
   assert len(atts[0]["bytes"]) <= w._max_image_bytes
 
 
+def exercise_oversized_webp_is_reencoded_with_jpeg_mime():
+  """An oversized webp/gif is re-encoded to JPEG by _maybe_resample (PNG
+  stays PNG; every other allowed type re-encodes as JPG). The resulting
+  attachment must advertise image/jpeg, not the original mime -- shipping
+  webp/gif bytes that are actually JPEG makes the provider reject the
+  request (400). Regression: the mime used to stay 'image/webp'."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  # A large, decodable image. The bytes are PNG-encoded (always available in
+  # Qt) but presented as image/webp: _maybe_resample selects the re-encode
+  # format from the declared mime (webp -> JPG), and QImage sniffs the real
+  # content on load, so this faithfully drives the webp/gif code path.
+  img = QtGui.QImage(2000, 2000, QtGui.QImage.Format_ARGB32)
+  img.fill(QtGui.QColor(50, 100, 150))
+  buf = QtCore.QBuffer()
+  buf.open(QtCore.QBuffer.WriteOnly)
+  img.save(buf, "PNG")
+  big = bytes(buf.data())
+  w = MessageInput()
+  w._max_image_bytes = max(1024, len(big) // 4)   # force resampling
+  ok = w.attach_bytes(big, "image/webp", filename="big.webp")
+  assert ok, "resampled attachment should be accepted"
+  assert w.attachment_count() == 1
+  att = w._attachments[0]
+  # The mime must match the re-encoded (JPEG) bytes, not the original webp.
+  assert att["mime"] == "image/jpeg", att["mime"]
+  assert att["bytes"][:2] == b"\xff\xd8", att["bytes"][:4]   # JPEG magic
+  assert len(att["bytes"]) <= w._max_image_bytes
+
+
 def exercise_save_chat_button_emits_signal():
   """The 'Save chat' button in the lower-left of the button row emits
   the parameterless save_chat signal so the chat window can prompt for
@@ -334,13 +367,64 @@ def exercise_set_history_drops_blank_entries():
   assert w._history == ["real"], w._history
 
 
+def exercise_dropped_file_url_not_inserted_as_text():
+  """A file dropped on the entry box must not dump a raw file:// URI into
+  the prompt. Qt delivers drag-drop to the QPlainTextEdit viewport, so the
+  edit itself -- not MessageInput.dropEvent -- has to intercept it. Both a
+  drop and a paste funnel through insertFromMimeData, so drive that with a
+  URL-only payload and assert nothing lands in the text box."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  md = QtCore.QMimeData()
+  md.setUrls([QtCore.QUrl.fromLocalFile("/no/such/dir/report.pdf")])
+  w._edit.insertFromMimeData(md)
+  txt = w._edit.toPlainText()
+  assert "file://" not in txt, txt
+  assert txt == "", repr(txt)
+
+
+def exercise_pasted_remote_url_inserts_as_text():
+  """[Regression] A pasted/dropped REMOTE (http/https) URL must paste as TEXT,
+  not be swallowed by the attachment chokepoint -- only local files / images
+  become attachments. The chokepoint used to intercept ANY hasUrls() payload,
+  so pasting a plain link inserted nothing (and attached nothing)."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  md = QtCore.QMimeData()
+  md.setUrls([QtCore.QUrl("https://example.com/page")])
+  md.setText("https://example.com/page")
+  w._edit.insertFromMimeData(md)
+  txt = w._edit.toPlainText()
+  assert "https://example.com/page" in txt, repr(txt)
+  assert w.attachment_count() == 0, w._attachments
+
+
+def exercise_pasted_image_via_chokepoint_attaches():
+  """A pasted image funnels through insertFromMimeData (the single paste/drop
+  chokepoint) and becomes an attachment -- QPlainTextEdit's default
+  insertFromMimeData drops images, so the _DropTextEdit override is what makes
+  Ctrl/Cmd+V images work, making the old eventFilter Ctrl+V handler redundant."""
+  from qttbx.qt import QtCore, QtGui
+  w = _new_input()
+  img = QtGui.QImage(8, 8, QtGui.QImage.Format_RGB32)
+  img.fill(QtGui.QColor(10, 20, 30))
+  md = QtCore.QMimeData()
+  md.setImageData(img)
+  w._edit.insertFromMimeData(md)
+  assert w.attachment_count() == 1, w._attachments
+  assert w._edit.toPlainText() == "", repr(w._edit.toPlainText())
+
+
 def exercise():
   exercise_send_signal_carries_text_and_empty_attachments()
+  exercise_pasted_remote_url_inserts_as_text()
+  exercise_pasted_image_via_chokepoint_attaches()
   exercise_empty_send_is_no_op()
   exercise_set_busy_toggles_to_stop()
   exercise_attach_bytes_appears_in_send_payload()
   exercise_unsupported_mime_is_dropped_with_warning()
   exercise_oversized_image_is_resampled()
+  exercise_oversized_webp_is_reencoded_with_jpeg_mime()
   exercise_save_chat_button_emits_signal()
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
@@ -352,6 +436,7 @@ def exercise():
   exercise_up_arrow_below_first_line_moves_cursor_not_history()
   exercise_set_history_swaps_recall_list_and_resets_navigation()
   exercise_set_history_drops_blank_entries()
+  exercise_dropped_file_url_not_inserted_as_text()
 
 
 if __name__ == "__main__":

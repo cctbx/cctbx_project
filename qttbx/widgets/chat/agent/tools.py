@@ -32,8 +32,6 @@ class ToolApprovalRequest(AgentEvent):
       The arguments the tool would be invoked with.
   risk : str
       Risk level: ``'read'``, ``'write'``, or ``'destructive'``.
-  summary : str, optional
-      Short human-readable summary of the call for the approval card.
   batch_id : str, optional
       Identifier grouping requests issued together in one batch.
   """
@@ -42,7 +40,6 @@ class ToolApprovalRequest(AgentEvent):
   tool_source: str                 # 'builtin' | 'skill' | 'mcp:<server>'
   input: dict
   risk: str                        # 'read' | 'write' | 'destructive'
-  summary: str = None
   batch_id: str = None
 
 
@@ -59,11 +56,11 @@ class ToolApprovalResponse:
       ``'deny_and_stop'``.
   remember : str, optional
       Scope to remember the choice for this session: ``'none'``
-      (default), ``'tool'``, or ``'server'``.
+      (default) or ``'tool'``.
   """
   request_id: str
   decision: str                    # 'approve' | 'deny' | 'deny_and_stop'
-  remember: str = "none"           # 'none' | 'tool' | 'server'
+  remember: str = "none"           # 'none' | 'tool'
 
 
 class _Cancelled:
@@ -79,52 +76,93 @@ class _Cancelled:
 class ToolPolicy:
   """allow / ask / deny policy with session-scoped remembered choices.
 
-  Resolution order, highest first: a per-tool entry (from profile or
-  session memory); then a per-server entry (from profile
-  ``mcp_servers[].tool_policy['*']``, which requires the
-  ``tool_to_source`` mapping to know which server owns a tool); then the
-  default (``'ask'`` unless overridden by ``profile.tool_policy_default``).
+  Resolution order, highest first: an exact per-tool entry (a session
+  ``allow`` remembered under the registered name); then the profile's
+  per-server-scoped per-tool entry for the tool's owning server (so a
+  collision-renamed ``<server>:<tool>`` still resolves to its own server's
+  decision); then the per-server (``'*'``) entry; then the default (``'ask'``
+  unless overridden by ``profile.tool_policy_default``). The per-server and
+  per-server-scoped lookups require the ``tool_to_source`` mapping to know
+  which server owns a tool. There is deliberately no bare-name fallback for a
+  renamed tool, so one server's allow can never bleed onto another's.
 
   Parameters
   ----------
   default : str, optional
-      Fallback decision when no per-tool or per-server entry matches.
-      Defaults to ``'ask'``.
+      Fallback decision when nothing more specific matches. Defaults to
+      ``'ask'``.
   per_tool : dict, optional
-      Mapping of tool name to ``allow`` / ``ask`` / ``deny``.
+      Mapping of registered tool name to ``allow`` / ``ask`` / ``deny`` --
+      session-remembered allows and directly-constructed (non-server-scoped)
+      entries.
   per_server : dict, optional
-      Mapping of server name to ``allow`` / ``ask`` / ``deny``.
+      Mapping of server name to ``allow`` / ``ask`` / ``deny`` (the
+      ``tool_policy['*']`` entry).
   tool_to_source : dict, optional
-      Mapping of tool name to its source (``'mcp:<server>'`` or
+      Mapping of registered tool name to its source (``'mcp:<server>'`` or
       ``'builtin'`` / ``'skill'``), used to resolve per-server entries.
+  per_server_tool : dict, optional
+      Mapping of ``(server_name, bare_tool_name)`` to ``allow`` / ``ask`` /
+      ``deny`` -- the profile's per-tool policy, kept server-scoped so a
+      cross-server name collision can't make one server's decision clobber
+      another's. Built by :meth:`from_server_configs`.
   """
 
   def __init__(self, default="ask",
                per_tool=None, per_server=None,
-               tool_to_source=None):
+               tool_to_source=None, per_server_tool=None):
     self.default = default
     self.per_tool = dict(per_tool or {})           # name -> allow|ask|deny
     self.per_server = dict(per_server or {})       # server -> allow|ask|deny
+    # (server, bare tool) -> decision. Profile per-tool policy is per-server,
+    # so it must stay keyed by its owning server: an MCP tool whose name
+    # collides across servers is registered as '<server>:<tool>', and this
+    # keying lets resolve() apply each server's own decision to the right tool
+    # regardless of the rename (instead of flattening both into one bare key).
+    self.per_server_tool = dict(per_server_tool or {})
     self.tool_to_source = dict(tool_to_source or {})  # tool -> 'mcp:server' or 'builtin'/'skill'
 
+  def _server_and_bare(self, tool_name):
+    """Return ``(server, bare_tool)`` for *tool_name*, else ``(None, tool_name)``.
+
+    A collision-renamed MCP tool is registered as ``<server>:<tool>``; recover
+    the owning server (from ``tool_to_source``) and strip its prefix so the
+    per-server-scoped policy keys match whether or not the tool was renamed.
+    """
+    source = self.tool_to_source.get(tool_name, "")
+    if not source.startswith("mcp:"):
+      return None, tool_name
+    server = source.split(":", 1)[1]
+    prefix = server + ":"
+    bare = tool_name[len(prefix):] if tool_name.startswith(prefix) else tool_name
+    return server, bare
+
   def resolve(self, tool_name):
-    """Return the ``allow`` / ``ask`` / ``deny`` decision for a tool."""
+    """Return the ``allow`` / ``ask`` / ``deny`` decision for a tool.
+
+    Order, highest first: an exact ``per_tool`` entry (a session-remembered
+    allow, keyed by the registered name); the profile's per-server-scoped
+    per-tool entry for the tool's owning server; the server-wide (``'*'``)
+    entry; then the default.
+
+    There is deliberately NO bare-name ``per_tool`` fallback for a
+    collision-renamed ``<server>:<tool>``: it would let one server's session
+    allow (or a seeded bare builtin/skill name) override a DIFFERENT server's
+    decision -- a cross-server deny->allow bypass. A session allow only ever
+    matches the exact registered name it was remembered under (step 1).
+    """
     if tool_name in self.per_tool:
       return self.per_tool[tool_name]
-    source = self.tool_to_source.get(tool_name, "")
-    if source.startswith("mcp:"):
-      server = source.split(":", 1)[1]
-      if server in self.per_server:
-        return self.per_server[server]
+    server, bare = self._server_and_bare(tool_name)
+    if server is not None and (server, bare) in self.per_server_tool:
+      return self.per_server_tool[(server, bare)]
+    if server is not None and server in self.per_server:
+      return self.per_server[server]
     return self.default
 
   def allow_tool_for_session(self, tool_name):
     """Remember ``allow`` for this tool for the rest of the session."""
     self.per_tool[tool_name] = "allow"
-
-  def allow_server_for_session(self, server_name):
-    """Remember ``allow`` for this server for the rest of the session."""
-    self.per_server[server_name] = "allow"
 
   @classmethod
   def from_server_configs(cls, configs, default="ask", tool_to_source=None):
@@ -144,15 +182,19 @@ class ToolPolicy:
     tool_to_source : dict, optional
         Forwarded to the constructor (resolves per-server entries).
     """
-    per_tool, per_server = {}, {}
+    per_server, per_server_tool = {}, {}
     for cfg in (configs or []):
+      name = getattr(cfg, "name", "")
       for tool_name, decision in (getattr(cfg, "tool_policy", {}) or {}).items():
         if tool_name == "*":
-          per_server[getattr(cfg, "name", "")] = decision
+          per_server[name] = decision
         else:
-          per_tool[tool_name] = decision
-    return cls(default=default, per_tool=per_tool, per_server=per_server,
-               tool_to_source=tool_to_source)
+          # Keep per-tool policy scoped to its server so a cross-server name
+          # collision (and the registry's '<server>:<tool>' rename) can't make
+          # one server's decision clobber another's or be silently bypassed.
+          per_server_tool[(name, tool_name)] = decision
+    return cls(default=default, per_server=per_server,
+               per_server_tool=per_server_tool, tool_to_source=tool_to_source)
 
 
 # ---- registry --------------------------------------------------------------
@@ -181,9 +223,17 @@ class ToolRegistry:
   # ---- registration --------------------------------------------------------
 
   def register_builtin(self, spec, handler, risk="write"):
-    """Register a built-in tool under ``spec.name``."""
+    """Register a built-in tool under ``spec.name``.
+
+    Built-ins take precedence: a same-named non-builtin tool (skill or MCP)
+    already registered is replaced, so a same-named MCP tool can't shadow a
+    trusted built-in and inherit its pre-authorization. This enforces the
+    registry's built-in > skill > MCP collision order regardless of
+    registration order (production registers MCP before these built-ins).
+    """
     self._add(spec.name, _ToolEntry(
-      spec=spec, source="builtin", handler=handler, risk=risk))
+      spec=spec, source="builtin", handler=handler, risk=risk),
+      overwrite=True)
 
   def register_skill_tool(self, spec, handler):
     """Register a skill-wrapped tool (always ``read`` risk)."""
@@ -209,12 +259,23 @@ class ToolRegistry:
     self._add(spec.name, _ToolEntry(
       spec=spec, source="mcp:" + server_name, handler=handler, risk=risk))
 
-  def _add(self, name, entry):
-    """Insert an entry under ``name``, skipping if already registered."""
-    if name in self._entries:
-      existing = self._entries[name].source
+  def _add(self, name, entry, overwrite=False):
+    """Insert an entry under ``name``.
+
+    First-wins by default: a duplicate name is skipped. ``overwrite=True``
+    (built-ins) replaces an existing entry of a DIFFERENT source so a
+    trusted built-in always wins a name collision; a same-source duplicate
+    still stays first-wins.
+    """
+    existing = self._entries.get(name)
+    if existing is not None:
+      if overwrite and existing.source != entry.source:
+        print("tool '%s' from %s overridden by %s"
+              % (name, existing.source, entry.source), file=self.log)
+        self._entries[name] = entry
+        return
       print("tool '%s' already registered from %s; skipping new %s"
-            % (name, existing, entry.source), file=self.log)
+            % (name, existing.source, entry.source), file=self.log)
       return
     self._entries[name] = entry
 
@@ -227,13 +288,6 @@ class ToolRegistry:
   def source_of(self, name):
     """Return a tool's source string, or ``None`` if unregistered."""
     return self._entries[name].source if name in self._entries else None
-
-  def server_of(self, name):
-    """Return the MCP server owning a tool, or ``None`` if not MCP."""
-    src = self.source_of(name) or ""
-    if src.startswith("mcp:"):
-      return src.split(":", 1)[1]
-    return None
 
   def risk_of(self, name):
     """Return a tool's risk level, defaulting to ``write`` if unknown."""

@@ -184,7 +184,7 @@ def new_solvent_sites_as_hierarchy_chain(
   size = model.size()
   # Figure out resname
   resname = params.output_residue_name
-  if resname is Auto:
+  if resname is Auto or resname is None:
     resname = model.get_hierarchy().get_water_resname()
     if resname is None:
       table = model.get_xray_structure().get_scattering_table()

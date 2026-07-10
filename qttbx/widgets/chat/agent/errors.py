@@ -32,6 +32,57 @@ class AgentError(AgentEvent):
   kind: str = None
 
 
+def map_httpx_sdk_error(sdk_module, exc):
+  """Map an httpx-based SDK exception (openai or anthropic) onto an AgentError.
+
+  The openai and anthropic SDKs share an exception hierarchy in which
+  ``AuthenticationError`` / ``RateLimitError`` / ``APIConnectionError`` /
+  ``APIStatusError`` are all subclasses of ``APIError``. Both chat backends map
+  that hierarchy onto ``AgentError`` with one policy, parameterized here by the
+  SDK module so a single implementation serves both:
+
+    AuthenticationError -> recoverable=False, kind="auth"
+    RateLimitError      -> recoverable=True,  kind="rate_limited"
+    APIConnectionError  -> recoverable=True   ("Network error: ...")
+    APIStatusError      -> recoverable=(status_code >= 500) ("API <code>: ...")
+    APIError (catch-all)-> recoverable=False  ("API error: ...")
+
+  Anything that is not one of these five SDK types is re-raised, so a non-SDK
+  bug is never silently turned into an AgentError.
+
+  Parameters
+  ----------
+  sdk_module : module
+      The provider SDK (``openai`` or ``anthropic``) supplying the exception
+      classes the isinstance ladder tests against.
+  exc : Exception
+      The exception raised by the SDK call.
+
+  Returns
+  -------
+  AgentError
+      The mapped event.
+
+  Raises
+  ------
+  Exception
+      ``exc`` itself, when it matches none of the five SDK types.
+  """
+  if isinstance(exc, sdk_module.AuthenticationError):
+    return AgentError(message=str(exc), recoverable=False, kind="auth")
+  if isinstance(exc, sdk_module.RateLimitError):
+    return AgentError(message=str(exc), recoverable=True, kind="rate_limited")
+  if isinstance(exc, sdk_module.APIConnectionError):
+    return AgentError(message="Network error: %s" % exc, recoverable=True)
+  if isinstance(exc, sdk_module.APIStatusError):
+    code = getattr(exc, "status_code", 0)
+    return AgentError(message="API %s: %s" % (code, exc),
+                      recoverable=(code >= 500))
+  if isinstance(exc, sdk_module.APIError):
+    return AgentError(message="API error: %s" % exc, recoverable=False)
+  raise exc
+
+
 class CancelToken:
   """Thread-safe boolean flag.
 

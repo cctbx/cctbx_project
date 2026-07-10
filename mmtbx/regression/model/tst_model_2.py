@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import mmtbx.model
+from mmtbx.rotamer import nqh
 import libtbx.load_env
 import iotbx.pdb
 import os
@@ -415,7 +416,7 @@ END
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   m = mmtbx.model.manager(model_input = pdb_inp)
-  m.flip_nqh()
+  nqh.flip(model = m, log = m.log)
   sc_flipped = m.get_sites_cart()
   sc_orig    = iotbx.pdb.input(source_info=None, lines=pdb_str).atoms().extract_xyz()
   sc_answer  = iotbx.pdb.input(source_info=None, lines=pdb_str_answer).atoms().extract_xyz()

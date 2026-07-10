@@ -76,6 +76,150 @@ def exercise_based_on_inheritance():
     shutil.rmtree(tmp)
 
 
+def exercise_based_on_deep_merges_nested_section():
+  """A child overriding ONE sub-key of an inherited nested section (here
+  `subagents`) must keep the parent's OTHER sub-keys. A shallow merge
+  replaces the whole nested dict, silently dropping the inherited sub-keys
+  back to their defaults; this asserts they survive a partial override."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "parent", {
+      "name": "parent",
+      "model": "m",
+      "subagents": {
+        "enabled": False,
+        "max_depth": 2,
+        "default_max_turns": 50,
+        "default_model": "claude-sonnet-4-5",
+      },
+    })
+    _write_profile(tmp, "child", {
+      "name": "child",
+      "based_on": "parent",
+      "subagents": {"max_depth": 3},   # override only one sub-key
+    })
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load("child")
+    assert p.subagents_max_depth == 3                        # override
+    assert p.subagents_default_max_turns == 50               # inherited
+    assert p.subagents_enabled is False                      # inherited
+    assert p.subagents_default_model == "claude-sonnet-4-5"  # inherited
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_based_on_child_system_prompt_file_overrides_parent_prompt():
+  """A child may override an inherited inline system_prompt with its own
+  system_prompt_file. The parent's resolved system_prompt must not survive
+  the inheritance merge -- otherwise the merged profile carries BOTH a
+  system_prompt and a system_prompt_file and trips the mutual-exclusivity
+  gate in _build_profile, so the chat window never opens (F11)."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "parent", {
+      "name": "parent",
+      "model": "claude-opus-4-7",
+      "system_prompt": "PARENT INLINE PROMPT",
+    })
+    with open(os.path.join(tmp, "child_prompt.md"), "w") as fh:
+      fh.write("CHILD PROMPT FROM FILE")
+    _write_profile(tmp, "child", {
+      "name": "child",
+      "based_on": "parent",
+      "system_prompt_file": "${PROFILE_DIR}/child_prompt.md",
+    })
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load("child")          # must not raise Sorry
+    assert p.system_prompt == "CHILD PROMPT FROM FILE", p.system_prompt
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_based_on_child_system_prompt_overrides_parent_prompt_file():
+  """A parent's system_prompt_file is inlined into system_prompt when the
+  PARENT loads, so by merge time the parent contributes only a resolved inline
+  system_prompt (never a system_prompt_file key). A child supplying its own
+  inline system_prompt therefore simply overrides that inherited prompt --
+  ordinary child-over-parent. This is NOT the symmetric counterpart of the F11
+  eviction: no system_prompt_file ever survives into the merged dict, so there
+  is nothing to evict and the mutual-exclusivity gate is never even approached
+  (this case passes with or without the eviction). The gate itself is covered
+  by exercise_based_on_does_not_weaken_mutual_exclusivity_gate."""
+  tmp = tempfile.mkdtemp()
+  try:
+    with open(os.path.join(tmp, "parent_prompt.md"), "w") as fh:
+      fh.write("PARENT PROMPT FROM FILE")
+    _write_profile(tmp, "parent", {
+      "name": "parent",
+      "model": "claude-opus-4-7",
+      "system_prompt_file": "${PROFILE_DIR}/parent_prompt.md",
+    })
+    _write_profile(tmp, "child", {
+      "name": "child",
+      "based_on": "parent",
+      "system_prompt": "CHILD INLINE PROMPT",
+    })
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load("child")          # must not raise Sorry
+    assert p.system_prompt == "CHILD INLINE PROMPT", p.system_prompt
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_based_on_does_not_weaken_mutual_exclusivity_gate():
+  """The based_on merge evicts the PARENT's inherited prompt so a child can
+  switch prompt mechanisms (F11) -- but a profile that GENUINELY declares both
+  system_prompt AND system_prompt_file must still raise. Covers a standalone
+  profile and a based_on child that each declare both."""
+  tmp = tempfile.mkdtemp()
+  try:
+    # (i) Standalone profile declaring both keys. The prompt file genuinely
+    # exists and stays in-bounds, so the raised Sorry is unambiguously the
+    # mutual-exclusivity gate -- not a missing-file or directory-escape error.
+    with open(os.path.join(tmp, "both_prompt.md"), "w") as fh:
+      fh.write("FILE PROMPT")
+    _write_profile(tmp, "both", {
+      "name": "both",
+      "model": "claude-opus-4-7",
+      "system_prompt": "INLINE PROMPT",
+      "system_prompt_file": "${PROFILE_DIR}/both_prompt.md",
+    })
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    try:
+      loader.load("both")
+    except Sorry as e:
+      assert "mutually exclusive" in str(e), str(e)
+    else:
+      raise Exception_expected
+
+    # (ii) A based_on child that ITSELF declares both keys. The F11 eviction
+    # pops only the PARENT's inherited system_prompt; the child's OWN
+    # system_prompt then overlays back in next to its system_prompt_file, so
+    # _build_profile still sees both and the gate must fire. The eviction
+    # narrows what is inherited -- it does not suppress the gate.
+    with open(os.path.join(tmp, "child_prompt.md"), "w") as fh:
+      fh.write("CHILD FILE PROMPT")
+    _write_profile(tmp, "parent", {
+      "name": "parent",
+      "model": "claude-opus-4-7",
+      "system_prompt": "PARENT INLINE PROMPT",
+    })
+    _write_profile(tmp, "child", {
+      "name": "child",
+      "based_on": "parent",
+      "system_prompt": "CHILD INLINE PROMPT",
+      "system_prompt_file": "${PROFILE_DIR}/child_prompt.md",
+    })
+    try:
+      loader.load("child")
+    except Sorry as e:
+      assert "mutually exclusive" in str(e), str(e)
+    else:
+      raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_based_on_cycle_detected():
   tmp = tempfile.mkdtemp()
   try:
@@ -274,6 +418,95 @@ def exercise_system_prompt_file_with_expansion():
     shutil.rmtree(tmp)
 
 
+def exercise_system_prompt_file_non_ascii_utf8_round_trips():
+  """A system_prompt_file holding non-ASCII UTF-8 text loads and round-trips
+  regardless of the platform's default text encoding. read_text() with no
+  explicit encoding uses that default (ASCII under a C/POSIX locale), which
+  raises UnicodeDecodeError on a non-ASCII byte -- so the prompt-file read is
+  pinned to encoding='utf-8' (matching skills._parse_skill_md). The Path
+  monkeypatch below simulates an ASCII default so this also fails on a UTF-8
+  dev machine if the pin is dropped."""
+  tmp = tempfile.mkdtemp()
+  orig_read_text = Path.read_text
+
+  def _ascii_default_read_text(self, encoding=None, *args, **kwargs):
+    # Faithfully model the C/POSIX locale: a read with no explicit encoding
+    # defaults to ASCII -- the bug condition the utf-8 pin guards against.
+    if encoding is None:
+      encoding = "ascii"
+    return orig_read_text(self, encoding, *args, **kwargs)
+
+  try:
+    prompt_path = os.path.join(tmp, "prompt.md")
+    non_ascii = "You are a résumé / ångström assistant — café.\n"
+    with open(prompt_path, "w", encoding="utf-8") as fh:
+      fh.write(non_ascii)
+    # The bytes are genuinely non-ASCII, so an ASCII decode of the file fails;
+    # that is exactly the failure the utf-8 pin prevents.
+    try:
+      Path(prompt_path).read_bytes().decode("ascii")
+    except UnicodeDecodeError:
+      pass
+    else:
+      raise Exception_expected
+    _write_profile(tmp, "p", {
+      "name": "p", "model": "m",
+      "system_prompt_file": "${PROFILE_DIR}/prompt.md"})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    Path.read_text = _ascii_default_read_text
+    p = loader.load("p")
+    assert p.system_prompt == non_ascii, repr(p.system_prompt)
+  finally:
+    Path.read_text = orig_read_text
+    shutil.rmtree(tmp)
+
+
+def exercise_profile_json_non_ascii_utf8_loads():
+  """A profile JSON containing non-ASCII UTF-8 (e.g. an accented description)
+  loads regardless of the platform's default text encoding. _load_path read
+  the file with `open(path)` -- no encoding -- so under a C/POSIX locale
+  (ASCII default) a non-ASCII profile raised UnicodeDecodeError, surfacing as
+  a confusing 'Profile parse error' (F9). The read is pinned to
+  encoding='utf-8' (matching profile.py's :442 read_text and
+  skills._parse_skill_md). The builtins.open monkeypatch models an ASCII
+  default so this also fails on a UTF-8 dev machine if the pin is dropped."""
+  import builtins
+  tmp = tempfile.mkdtemp()
+  orig_open = builtins.open
+
+  def _ascii_default_open(file, mode="r", *args, **kwargs):
+    # Faithfully model the C/POSIX locale: a text read with no explicit
+    # encoding defaults to ASCII -- the bug condition the utf-8 pin guards.
+    if "b" not in mode and "encoding" not in kwargs and not args:
+      kwargs["encoding"] = "ascii"
+    return orig_open(file, mode, *args, **kwargs)
+
+  try:
+    desc = "résumé / ångström refinement — café"
+    path = os.path.join(tmp, "uni.json")
+    # ensure_ascii=False writes the description as LITERAL UTF-8 bytes (how a
+    # human-authored profile naturally carries non-ASCII), not \uXXXX escapes
+    # -- so the on-disk file genuinely needs a UTF-8 decode.
+    with open(path, "w", encoding="utf-8") as fh:
+      json.dump({"name": "uni", "model": "m", "description": desc}, fh,
+                ensure_ascii=False)
+    # The bytes are genuinely non-ASCII: an ASCII decode of the file fails;
+    # that is exactly the failure the utf-8 pin prevents.
+    try:
+      Path(path).read_bytes().decode("ascii")
+    except UnicodeDecodeError:
+      pass
+    else:
+      raise Exception_expected
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    builtins.open = _ascii_default_open
+    p = loader.load("uni")          # must not raise under an ASCII default
+    assert p.description == desc, repr(p.description)
+  finally:
+    builtins.open = orig_open
+    shutil.rmtree(tmp)
+
+
 def exercise_profile_backend_defaults_to_claude_code():
   """Profiles with no `backend:` key default to claude_code so a user
   with `claude login` already done can chat with no extra setup. Users
@@ -423,6 +656,25 @@ def exercise_server_tools_parsed_and_defaults_empty():
     shutil.rmtree(tmp)
 
 
+def exercise_skills_scalar_additional_disabled_coerced_to_single_id():
+  """Regression: a scalar `skills.additional: myskill` (or `disabled: bad`) is
+  a single skill id, not a sequence of characters. Without a scalar guard the
+  bare list()/set() explode it into ['m','y','s','k','i','l','l'] / a char-set,
+  silently dropping the real skill (and disabling phantom one-char ids). Coerce
+  a scalar to a one-element container so the id survives intact -- the same
+  forgiving coercion already applied to a skill's `requires` frontmatter."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "m",
+                              "skills": {"additional": "myskill",
+                                         "disabled": "badskill"}})
+    prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert prof.skills_additional == ["myskill"], prof.skills_additional
+    assert prof.skills_disabled == {"badskill"}, prof.skills_disabled
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
   """A profile may be project-supplied (untrusted). Its per-server env
   must not override PATH / dynamic-loader / PHENIX_* vars and thereby
@@ -524,6 +776,10 @@ def exercise():
   exercise_minimal_profile_loads()
   exercise_missing_required_field_raises()
   exercise_based_on_inheritance()
+  exercise_based_on_deep_merges_nested_section()
+  exercise_based_on_child_system_prompt_file_overrides_parent_prompt()
+  exercise_based_on_child_system_prompt_overrides_parent_prompt_file()
+  exercise_based_on_does_not_weaken_mutual_exclusivity_gate()
   exercise_based_on_cycle_detected()
   exercise_load_file_from_explicit_path()
   exercise_load_file_based_on_sibling_wins_over_builtin()
@@ -534,6 +790,8 @@ def exercise():
   exercise_project_overrides_user_overrides_builtin()
   exercise_unknown_fields_warn_not_fail()
   exercise_system_prompt_file_with_expansion()
+  exercise_system_prompt_file_non_ascii_utf8_round_trips()
+  exercise_profile_json_non_ascii_utf8_loads()
   exercise_profile_backend_defaults_to_claude_code()
   exercise_profile_backend_claude_code_parsed()
   exercise_openai_is_known_backend()
@@ -544,6 +802,7 @@ def exercise():
   exercise_profile_backend_unknown_raises()
   exercise_server_tools_parsed_and_defaults_empty()
   exercise_server_tools_string_raises_clear_sorry()
+  exercise_skills_scalar_additional_disabled_coerced_to_single_id()
   exercise_mcp_server_env_cannot_override_path_or_phenix_vars()
   exercise_mcp_server_inject_phenix_env_default_true()
   exercise_mcp_server_inject_phenix_env_parsed_false()
