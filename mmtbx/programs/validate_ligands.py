@@ -29,6 +29,10 @@ run_reduce2 = True
   .type = bool
 save_reduce2_model = False
   .type = bool
+save_map_coeffs = False
+  .type = bool
+  .short_caption = Save map coefficients (MTZ)
+  .help = "Write 2mFo-DFc and mFo-DFc map coefficients (from fmodel) to <basename>_map_coeffs.mtz. Requires reflection data."
 verbose = False
   .type = bool
 gui
@@ -316,6 +320,18 @@ RSCC.
     if self.params.save_reduce2_model:
       self.data_manager.set_overwrite(True)
       self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
+
+    if self.params.save_map_coeffs:
+      if fmodel is not None:
+        map_coeffs_fn = "%s_map_coeffs.mtz" % basename.split(".")[0]
+        mtz_object = validate_ligands.map_coefficients_as_mtz_object(fmodel)
+        self.data_manager.set_overwrite(True)
+        self.data_manager.write_miller_array_file(
+          mtz_object, filename=map_coeffs_fn)
+        print('Wrote map coefficients:', map_coeffs_fn, file=self.logger)
+      else:
+        print('save_map_coeffs requested but no reflection data were provided; '
+              'skipping map output.', file=self.logger)
 
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(

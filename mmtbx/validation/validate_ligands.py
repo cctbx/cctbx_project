@@ -108,6 +108,26 @@ def _partner_id_str(partner):
   return '%s %s %d (altloc %s)' % (
     partner.resname, partner.chain, partner.resseq, partner.altloc.strip())
 
+def map_coefficients_as_mtz_object(fmodel, fill_missing=False, isotropize=True):
+  '''
+  Build an MTZ object with 2mFo-DFc and mFo-DFc map coefficients from an fmodel.
+  Columns: 2FOFCWT/PH2FOFCWT (2mFo-DFc) and FOFCWT/PHFOFCWT (mFo-DFc), which
+  Coot recognizes automatically. Uses the same electron_density_map idiom as
+  ligand_result.compute_maps so the saved maps match the tool's internal maps.
+  '''
+  import iotbx.mtz
+  label_decorator = iotbx.mtz.label_decorator(phases_prefix="PH")
+  edm = map_tools.electron_density_map(fmodel=fmodel)
+  coeffs_2fofc = edm.map_coefficients(
+    map_type="2mFo-DFc", isotropize=isotropize, fill_missing=fill_missing)
+  coeffs_fofc = edm.map_coefficients(
+    map_type="mFo-DFc", isotropize=isotropize, fill_missing=fill_missing)
+  mtz_dataset = coeffs_2fofc.as_mtz_dataset(
+    column_root_label="2FOFCWT", label_decorator=label_decorator)
+  mtz_dataset.add_miller_array(
+    coeffs_fofc, column_root_label="FOFCWT", label_decorator=label_decorator)
+  return mtz_dataset.mtz_object()
+
 _LIGAND_EXCLUDE_CLASSES = ["common_amino_acid", "modified_amino_acid",
   "common_rna_dna", "modified_rna_dna", "ccp4_mon_lib_rna_dna",
   "common_water", "common_element"]

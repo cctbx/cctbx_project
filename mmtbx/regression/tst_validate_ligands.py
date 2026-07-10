@@ -7,6 +7,7 @@ import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
+from mmtbx.validation import validate_ligands as val_lig_mod
 import mmtbx.ligands.rdkit_utils as rdkit_utils
 
 from rdkit import RDLogger
@@ -61,6 +62,8 @@ def run():
   run_test16()
   run_test17()
   run_test18()
+  run_test19()
+  run_test20()
 
 # ------------------------------------------------------------------------------
 
@@ -797,6 +800,57 @@ def run_test18():
   r = fc(0.69, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
   assert r.flag == 'consistent', (r.flag, r.reason)
   print('OK run_test18')
+
+# ------------------------------------------------------------------------------
+
+def run_test19():
+  print('test19')
+  # Reuse the cached real 1avd fmodel; skip if phenix_regression is absent.
+  vl = _load_1avd_manager()
+  if vl is None:
+    print('Skipping run_test19 (no phenix_regression)')
+    return
+  fmodel = vl[0].fmodel
+  mtz_object = val_lig_mod.map_coefficients_as_mtz_object(fmodel)
+  labels = list(mtz_object.column_labels())
+  for lbl in ['2FOFCWT', 'PH2FOFCWT', 'FOFCWT', 'PHFOFCWT']:
+    assert lbl in labels, (lbl, labels)
+  n_complex = sum(1 for ma in mtz_object.as_miller_arrays()
+                  if ma.is_complex_array())
+  assert n_complex == 2, n_complex
+
+# ------------------------------------------------------------------------------
+
+def run_test20():
+  print('test20')
+  # End-to-end: run the Program on 1avd with save_map_coeffs=True and confirm
+  # the MTZ is written with the expected columns. Skip if data unavailable.
+  import os
+  mtz_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1avd.mtz",
+    test=os.path.isfile)
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
+    test=os.path.isfile)
+  if mtz_fname is None or pdb_fname is None:
+    print('Skipping run_test20 (no phenix_regression)')
+    return
+  out_fn = 'pdb1avd_map_coeffs.mtz'
+  if os.path.isfile(out_fn):
+    os.remove(out_fn)
+  run_program(
+    program_class=val_lig.Program,
+    args=[pdb_fname, mtz_fname, 'save_map_coeffs=True', 'run_reduce2=False'],
+    logger=null_out())
+  try:
+    assert os.path.isfile(out_fn), out_fn
+    from iotbx import mtz
+    labels = list(mtz.object(out_fn).column_labels())
+    for lbl in ['2FOFCWT', 'PH2FOFCWT', 'FOFCWT', 'PHFOFCWT']:
+      assert lbl in labels, (lbl, labels)
+  finally:
+    if os.path.isfile(out_fn):
+      os.remove(out_fn)
 
 # ------------------------------------------------------------------------------
 

@@ -37,46 +37,54 @@ def run_test19():
 
 _altconf_state_pdb_str = '''
 CRYST1   70.000   20.000   20.000  90.00  90.00  90.00 P 1
-HETATM    1 C1   GOL A   1       5.000   5.000   5.000  1.00 20.00           C
-HETATM    2 C2   GOL A   1       6.500   5.000   5.000  1.00 20.00           C
-HETATM    3 C3   GOL A   1       7.100   6.400   5.000  1.00 20.00           C
-HETATM    4 O1   GOL A   1       4.300   3.850   5.000  1.00 20.00           O
-HETATM    5 O2   GOL A   1       7.200   4.050   5.000  1.00 20.00           O
-HETATM   11 C1  AGOL A   2      15.000   5.000   5.000  0.50 20.00           C
-HETATM   12 C2  AGOL A   2      16.500   5.000   5.000  0.50 20.00           C
-HETATM   13 C3  AGOL A   2      17.100   6.400   5.000  0.50 20.00           C
-HETATM   14 O1  AGOL A   2      14.300   3.850   5.000  0.50 20.00           O
-HETATM   15 O2  AGOL A   2      17.200   4.050   5.000  0.50 20.00           O
-HETATM   21 C1  BGOL A   2      15.200   5.000   5.000  0.50 20.00           C
-HETATM   22 C2  BGOL A   2      16.700   5.000   5.000  0.50 20.00           C
-HETATM   23 C3  BGOL A   2      17.300   6.400   5.000  0.50 20.00           C
-HETATM   24 O1  BGOL A   2      14.500   3.850   5.000  0.50 20.00           O
-HETATM   25 O2  BGOL A   2      17.400   4.050   5.000  0.50 20.00           O
-HETATM   31 C1  AGOL A   3      25.000   5.000   5.000  0.50 20.00           C
-HETATM   32 C2  AGOL A   3      26.500   5.000   5.000  0.50 20.00           C
-HETATM   33 C3  AGOL A   3      27.100   6.400   5.000  0.50 20.00           C
-HETATM   34 O1  AGOL A   3      24.300   3.850   5.000  0.50 20.00           O
-HETATM   35 O2  AGOL A   3      27.200   4.050   5.000  0.50 20.00           O
-HETATM   41 C1  BGOL A   3      25.200   5.000   5.000  0.20 20.00           C
-HETATM   42 C2  BGOL A   3      26.700   5.000   5.000  0.20 20.00           C
-HETATM   43 C3  BGOL A   3      27.300   6.400   5.000  0.20 20.00           C
-HETATM   44 O1  BGOL A   3      24.500   3.850   5.000  0.20 20.00           O
-HETATM   45 O2  BGOL A   3      27.400   4.050   5.000  0.20 20.00           O
-HETATM   51 C1  AGOL A   4      35.000   5.000   5.000  0.50 20.00           C
-HETATM   52 C2  AGOL A   4      36.500   5.000   5.000  0.50 20.00           C
-HETATM   53 C3  AGOL A   4      37.100   6.400   5.000  0.50 20.00           C
-HETATM   54 O1  AGOL A   4      34.300   3.850   5.000  0.50 20.00           O
-HETATM   55 O2  AGOL A   4      37.200   4.050   5.000  0.50 20.00           O
-HETATM   61 C1  AGOL A   5      45.000   5.000   5.000  0.50 20.00           C
-HETATM   62 C2  AGOL A   5      46.500   5.000   5.000  0.50 20.00           C
-HETATM   63 C3  AGOL A   5      47.100   6.400   5.000  0.50 20.00           C
-HETATM   64 O1  AGOL A   5      44.300   3.850   5.000  0.50 20.00           O
-HETATM   65 O2  AGOL A   5      47.200   4.050   5.000  0.50 20.00           O
-HETATM   71 C1  BGOL A   6      45.300   5.000   5.000  0.50 20.00           C
-HETATM   72 C2  BGOL A   6      46.800   5.000   5.000  0.50 20.00           C
-HETATM   73 C3  BGOL A   6      47.400   6.400   5.000  0.50 20.00           C
-HETATM   74 O1  BGOL A   6      44.600   3.850   5.000  0.50 20.00           O
-HETATM   75 O2  BGOL A   6      47.500   4.050   5.000  0.50 20.00           O
+HETATM    1  C1  GOL A   1       5.578   9.079   8.959  1.00 20.00           C
+HETATM    2  C2  GOL A   1       5.404  10.193   9.989  1.00 20.00           C
+HETATM    3  C3  GOL A   1       4.003  10.183  10.608  1.00 20.00           C
+HETATM    4  O1  GOL A   1       5.482   7.794   9.563  1.00 20.00           O
+HETATM    5  O2  GOL A   1       5.628  11.463   9.370  1.00 20.00           O
+HETATM    6  O3  GOL A   1       3.905  11.289  11.512  1.00 20.00           O
+HETATM    7  C1 AGOL A   2      15.578   9.079   8.959  0.50 20.00           C
+HETATM    8  C2 AGOL A   2      15.404  10.193   9.989  0.50 20.00           C
+HETATM    9  C3 AGOL A   2      14.003  10.183  10.608  0.50 20.00           C
+HETATM   10  O1 AGOL A   2      15.482   7.794   9.563  0.50 20.00           O
+HETATM   11  O2 AGOL A   2      15.628  11.463   9.370  0.50 20.00           O
+HETATM   12  O3 AGOL A   2      13.905  11.289  11.512  0.50 20.00           O
+HETATM   13  C1 BGOL A   2      16.035   9.666   8.959  0.50 20.00           C
+HETATM   14  C2 BGOL A   2      15.185  10.407   9.989  0.50 20.00           C
+HETATM   15  C3 BGOL A   2      14.119   9.499  10.608  0.50 20.00           C
+HETATM   16  O1 BGOL A   2      16.788   8.620   9.563  0.50 20.00           O
+HETATM   17  O2 BGOL A   2      14.540  11.525   9.370  0.50 20.00           O
+HETATM   18  O3 BGOL A   2      13.333  10.283  11.512  0.50 20.00           O
+HETATM   19  C1 AGOL A   3      25.578   9.079   8.959  0.50 20.00           C
+HETATM   20  C2 AGOL A   3      25.404  10.193   9.989  0.50 20.00           C
+HETATM   21  C3 AGOL A   3      24.003  10.183  10.608  0.50 20.00           C
+HETATM   22  O1 AGOL A   3      25.482   7.794   9.563  0.50 20.00           O
+HETATM   23  O2 AGOL A   3      25.628  11.463   9.370  0.50 20.00           O
+HETATM   24  O3 AGOL A   3      23.905  11.289  11.512  0.50 20.00           O
+HETATM   25  C1 BGOL A   3      26.035   9.666   8.959  0.20 20.00           C
+HETATM   26  C2 BGOL A   3      25.185  10.407   9.989  0.20 20.00           C
+HETATM   27  C3 BGOL A   3      24.119   9.499  10.608  0.20 20.00           C
+HETATM   28  O1 BGOL A   3      26.788   8.620   9.563  0.20 20.00           O
+HETATM   29  O2 BGOL A   3      24.540  11.525   9.370  0.20 20.00           O
+HETATM   30  O3 BGOL A   3      23.333  10.283  11.512  0.20 20.00           O
+HETATM   31  C1 AGOL A   4      35.578   9.079   8.959  0.50 20.00           C
+HETATM   32  C2 AGOL A   4      35.404  10.193   9.989  0.50 20.00           C
+HETATM   33  C3 AGOL A   4      34.003  10.183  10.608  0.50 20.00           C
+HETATM   34  O1 AGOL A   4      35.482   7.794   9.563  0.50 20.00           O
+HETATM   35  O2 AGOL A   4      35.628  11.463   9.370  0.50 20.00           O
+HETATM   36  O3 AGOL A   4      33.905  11.289  11.512  0.50 20.00           O
+HETATM   37  C1 AGOL A   5      45.578   9.079   8.959  0.50 20.00           C
+HETATM   38  C2 AGOL A   5      45.404  10.193   9.989  0.50 20.00           C
+HETATM   39  C3 AGOL A   5      44.003  10.183  10.608  0.50 20.00           C
+HETATM   40  O1 AGOL A   5      45.482   7.794   9.563  0.50 20.00           O
+HETATM   41  O2 AGOL A   5      45.628  11.463   9.370  0.50 20.00           O
+HETATM   42  O3 AGOL A   5      43.905  11.289  11.512  0.50 20.00           O
+HETATM   43  C1 BGOL A   6      46.035   9.666   8.959  0.50 20.00           C
+HETATM   44  C2 BGOL A   6      45.185  10.407   9.989  0.50 20.00           C
+HETATM   45  C3 BGOL A   6      44.119   9.499  10.608  0.50 20.00           C
+HETATM   46  O1 BGOL A   6      46.788   8.620   9.563  0.50 20.00           O
+HETATM   47  O2 BGOL A   6      44.540  11.525   9.370  0.50 20.00           O
+HETATM   48  O3 BGOL A   6      43.333  10.283  11.512  0.50 20.00           O
 '''
 
 def _altconf_manager(pdb_str):
@@ -155,17 +163,19 @@ def run_test21():
   assert ac1.occupancy is None
 
 _altconf_sym_pdb_str = '''
-CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 2
-HETATM    1 C1   GOL A   1       0.300   3.000   0.300  0.50 20.00           C
-HETATM    2 C2   GOL A   1       0.300   4.500   0.300  0.50 20.00           C
-HETATM    3 C3   GOL A   1       0.300   6.000   0.300  0.50 20.00           C
-HETATM    4 O1   GOL A   1       0.300   2.000   0.300  0.50 20.00           O
-HETATM    5 O2   GOL A   1       0.300   7.000   0.300  0.50 20.00           O
-HETATM   11 C1   GOL A   2       8.000   3.000   8.000  1.00 20.00           C
-HETATM   12 C2   GOL A   2       8.000   4.500   8.000  1.00 20.00           C
-HETATM   13 C3   GOL A   2       8.000   6.000   8.000  1.00 20.00           C
-HETATM   14 O1   GOL A   2       8.000   2.000   8.000  1.00 20.00           O
-HETATM   15 O2   GOL A   2       8.000   7.000   8.000  1.00 20.00           O
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1  C1  GOL A   1       0.475   8.886  -0.730  0.50 20.00           C
+HETATM    2  C2  GOL A   1       0.300  10.000   0.300  0.50 20.00           C
+HETATM    3  C3  GOL A   1      -1.101   9.990   0.919  0.50 20.00           C
+HETATM    4  O1  GOL A   1       0.379   7.601  -0.127  0.50 20.00           O
+HETATM    5  O2  GOL A   1       0.525  11.271  -0.319  0.50 20.00           O
+HETATM    6  O3  GOL A   1      -1.199  11.096   1.823  0.50 20.00           O
+HETATM    7  C1  GOL A   2       6.578   9.079   4.959  1.00 20.00           C
+HETATM    8  C2  GOL A   2       6.404  10.193   5.989  1.00 20.00           C
+HETATM    9  C3  GOL A   2       5.003  10.183   6.608  1.00 20.00           C
+HETATM   10  O1  GOL A   2       6.482   7.794   5.563  1.00 20.00           O
+HETATM   11  O2  GOL A   2       6.628  11.463   5.370  1.00 20.00           O
+HETATM   12  O3  GOL A   2       4.905  11.289   7.512  1.00 20.00           O
 '''
 
 def run_test22():
@@ -184,23 +194,41 @@ def run_test22():
 
 _altconf_hetero_pdb_str = '''
 CRYST1   50.000   20.000   20.000  90.00  90.00  90.00 P 1
-HETATM    1  C1 AGOL A   1       5.000   5.000   5.000  0.50 20.00           C
-HETATM    2  C2 AGOL A   1       6.500   5.000   5.000  0.50 20.00           C
-HETATM    3  O1 AGOL A   1       4.300   3.850   5.000  0.50 20.00           O
-HETATM    4  C1 BEDO A   1       5.100   5.100   5.000  0.50 20.00           C
-HETATM    5  C2 BEDO A   1       6.600   5.100   5.000  0.50 20.00           C
-HETATM    6  O1 BEDO A   1       4.400   3.950   5.000  0.50 20.00           O
-HETATM   11  C1 AGOL A 501      25.000   5.000   5.000  0.50 20.00           C
-HETATM   12  C2 AGOL A 501      26.500   5.000   5.000  0.50 20.00           C
-HETATM   13  O1 AGOL A 501      24.300   3.850   5.000  0.50 20.00           O
-HETATM   21  C1 BEDO A 502      25.200   5.100   5.000  0.50 20.00           C
-HETATM   22  C2 BEDO A 502      26.700   5.100   5.000  0.50 20.00           C
-HETATM   23  O1 BEDO A 502      24.500   3.950   5.000  0.50 20.00           O
-ATOM     31  N  ALYS A 700      40.150   6.800   5.000  0.50 20.00           N
-ATOM     32  CA ALYS A 700      40.150   7.900   5.000  0.50 20.00           C
-HETATM   41  C1 AGOL A 701      40.000   5.000   5.000  0.50 20.00           C
-HETATM   42  C2 AGOL A 701      41.500   5.000   5.000  0.50 20.00           C
-HETATM   43  O1 AGOL A 701      39.300   3.850   5.000  0.50 20.00           O
+HETATM    1  C1 AGOL A   1       5.578   9.079   8.959  0.50 20.00           C
+HETATM    2  C2 AGOL A   1       5.404  10.193   9.989  0.50 20.00           C
+HETATM    3  C3 AGOL A   1       4.003  10.183  10.608  0.50 20.00           C
+HETATM    4  O1 AGOL A   1       5.482   7.794   9.563  0.50 20.00           O
+HETATM    5  O2 AGOL A   1       5.628  11.463   9.370  0.50 20.00           O
+HETATM    6  O3 AGOL A   1       3.905  11.289  11.512  0.50 20.00           O
+HETATM    7  C1 BEDO A   1       4.844  10.913   9.726  0.50 20.00           C
+HETATM    8  C2 BEDO A   1       4.502   9.470   9.376  0.50 20.00           C
+HETATM    9  O1 BEDO A   1       6.135  10.939  10.336  0.50 20.00           O
+HETATM   10  O2 BEDO A   1       4.519   8.679  10.563  0.50 20.00           O
+HETATM   11  C1 AGOL A 501      25.578   9.079   8.959  0.50 20.00           C
+HETATM   12  C2 AGOL A 501      25.404  10.193   9.989  0.50 20.00           C
+HETATM   13  C3 AGOL A 501      24.003  10.183  10.608  0.50 20.00           C
+HETATM   14  O1 AGOL A 501      25.482   7.794   9.563  0.50 20.00           O
+HETATM   15  O2 AGOL A 501      25.628  11.463   9.370  0.50 20.00           O
+HETATM   16  O3 AGOL A 501      23.905  11.289  11.512  0.50 20.00           O
+HETATM   17  C1 BEDO A 502      25.467  10.800   9.726  0.50 20.00           C
+HETATM   18  C2 BEDO A 502      24.278   9.914   9.376  0.50 20.00           C
+HETATM   19  O1 BEDO A 502      26.473   9.989  10.336  0.50 20.00           O
+HETATM   20  O2 BEDO A 502      23.782   9.297  10.563  0.50 20.00           O
+HETATM   21  C1 AGOL A 701      40.578   9.079   8.959  0.50 20.00           C
+HETATM   22  C2 AGOL A 701      40.404  10.193   9.989  0.50 20.00           C
+HETATM   23  C3 AGOL A 701      39.003  10.183  10.608  0.50 20.00           C
+HETATM   24  O1 AGOL A 701      40.482   7.794   9.563  0.50 20.00           O
+HETATM   25  O2 AGOL A 701      40.628  11.463   9.370  0.50 20.00           O
+HETATM   26  O3 AGOL A 701      38.905  11.289  11.512  0.50 20.00           O
+ATOM     27  N  ALYS A 700      38.239  14.866  10.239  0.50 20.00           N
+ATOM     28  CA ALYS A 700      38.335  13.591   9.489  0.50 20.00           C
+ATOM     29  C  ALYS A 700      37.032  12.796   9.649  0.50 20.00           C
+ATOM     30  O  ALYS A 700      36.086  13.093  10.363  0.50 20.00           O
+ATOM     31  CB ALYS A 700      39.529  12.763   9.981  0.50 20.00           C
+ATOM     32  CG ALYS A 700      40.876  13.457   9.747  0.50 20.00           C
+ATOM     33  CD ALYS A 700      42.042  12.570  10.193  0.50 20.00           C
+ATOM     34  CE ALYS A 700      43.383  13.263   9.958  0.50 20.00           C
+ATOM     35  NZ ALYS A 700      44.479  12.399  10.381  0.50 20.00           N
 '''
 
 def run_test23():
@@ -265,9 +293,12 @@ def run_test24():
 # pair.j_sym instead of the actual rt_mx).
 _altconf_symfp_pdb_str = '''
 CRYST1   20.000   24.000   28.000  90.00  90.00  90.00 P 21 21 21
-HETATM    1 C1   GOL A   1      10.000  12.000  14.000  1.00 20.00           C
-HETATM    2 C2   GOL A   1      11.500  12.000  14.000  1.00 20.00           C
-HETATM    3 O1   GOL A   1      10.700  13.300  14.000  1.00 20.00           O
+HETATM    1  C1  GOL A   1      10.578  11.079  12.959  1.00 20.00           C
+HETATM    2  C2  GOL A   1      10.404  12.193  13.989  1.00 20.00           C
+HETATM    3  C3  GOL A   1       9.003  12.183  14.608  1.00 20.00           C
+HETATM    4  O1  GOL A   1      10.482   9.794  13.563  1.00 20.00           O
+HETATM    5  O2  GOL A   1      10.628  13.463  13.370  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.905  13.289  15.512  1.00 20.00           O
 '''
 
 def run_test25():
@@ -284,21 +315,24 @@ def run_test25():
 
 _altconf_order_pdb_str = '''
 CRYST1   70.000   20.000   20.000  90.00  90.00  90.00 P 1
-HETATM    1 C1  AGOL A   1       5.000   5.000   5.000  0.50 20.00           C
-HETATM    2 C2  AGOL A   1       6.500   5.000   5.000  0.50 20.00           C
-HETATM    3 C3  AGOL A   1       7.100   6.400   5.000  0.50 20.00           C
-HETATM    4 O1  AGOL A   1       4.300   3.850   5.000  0.50 20.00           O
-HETATM    5 O2  AGOL A   1       7.200   4.050   5.000  0.50 20.00           O
-HETATM   11 C1   GOL A   2      30.000   5.000   5.000  1.00 20.00           C
-HETATM   12 C2   GOL A   2      31.500   5.000   5.000  1.00 20.00           C
-HETATM   13 C3   GOL A   2      32.100   6.400   5.000  1.00 20.00           C
-HETATM   14 O1   GOL A   2      29.300   3.850   5.000  1.00 20.00           O
-HETATM   15 O2   GOL A   2      32.200   4.050   5.000  1.00 20.00           O
-HETATM   21 C1  BGOL A   3       5.200   5.000   5.000  0.50 20.00           C
-HETATM   22 C2  BGOL A   3       6.700   5.000   5.000  0.50 20.00           C
-HETATM   23 C3  BGOL A   3       7.300   6.400   5.000  0.50 20.00           C
-HETATM   24 O1  BGOL A   3       4.500   3.850   5.000  0.50 20.00           O
-HETATM   25 O2  BGOL A   3       7.400   4.050   5.000  0.50 20.00           O
+HETATM    1  C1 AGOL A   1       5.578   9.079   8.959  0.50 20.00           C
+HETATM    2  C2 AGOL A   1       5.404  10.193   9.989  0.50 20.00           C
+HETATM    3  C3 AGOL A   1       4.003  10.183  10.608  0.50 20.00           C
+HETATM    4  O1 AGOL A   1       5.482   7.794   9.563  0.50 20.00           O
+HETATM    5  O2 AGOL A   1       5.628  11.463   9.370  0.50 20.00           O
+HETATM    6  O3 AGOL A   1       3.905  11.289  11.512  0.50 20.00           O
+HETATM    7  C1  GOL A   2      30.578   9.079   8.959  1.00 20.00           C
+HETATM    8  C2  GOL A   2      30.404  10.193   9.989  1.00 20.00           C
+HETATM    9  C3  GOL A   2      29.003  10.183  10.608  1.00 20.00           C
+HETATM   10  O1  GOL A   2      30.482   7.794   9.563  1.00 20.00           O
+HETATM   11  O2  GOL A   2      30.628  11.463   9.370  1.00 20.00           O
+HETATM   12  O3  GOL A   2      28.905  11.289  11.512  1.00 20.00           O
+HETATM   13  C1 BGOL A   3       6.035   9.666   8.959  0.50 20.00           C
+HETATM   14  C2 BGOL A   3       5.185  10.407   9.989  0.50 20.00           C
+HETATM   15  C3 BGOL A   3       4.119   9.499  10.608  0.50 20.00           C
+HETATM   16  O1 BGOL A   3       6.788   8.620   9.563  0.50 20.00           O
+HETATM   17  O2 BGOL A   3       4.540  11.525   9.370  0.50 20.00           O
+HETATM   18  O3 BGOL A   3       3.333  10.283  11.512  0.50 20.00           O
 '''
 
 def run_test26():
@@ -325,30 +359,41 @@ def run_test26():
 
 _altconf_nonligand_pdb_str = '''
 CRYST1   90.000   20.000   20.000  90.00  90.00  90.00 P 1
-HETATM    1 C1  AGOL A   1       5.000   5.000   5.000  0.60 20.00           C
-HETATM    2 C2  AGOL A   1       6.500   5.000   5.000  0.60 20.00           C
-HETATM    3 C3  AGOL A   1       7.100   6.400   5.000  0.60 20.00           C
-HETATM    4 O1  AGOL A   1       4.300   3.850   5.000  0.60 20.00           O
-HETATM    5 O2  AGOL A   1       7.200   4.050   5.000  0.60 20.00           O
-HETATM    6  O  BHOH A 101       5.100   5.100   5.000  0.40 20.00           O
-HETATM   11 C1  AGOL A   2      25.000   5.000   5.000  0.30 20.00           C
-HETATM   12 C2  AGOL A   2      26.500   5.000   5.000  0.30 20.00           C
-HETATM   13 C3  AGOL A   2      27.100   6.400   5.000  0.30 20.00           C
-HETATM   14 O1  AGOL A   2      24.300   3.850   5.000  0.30 20.00           O
-HETATM   15 O2  AGOL A   2      27.200   4.050   5.000  0.30 20.00           O
-HETATM   16  O  BHOH A 102      25.100   5.100   5.000  0.30 20.00           O
-HETATM   21 C1  AGOL A   3      45.000   5.000   5.000  0.50 20.00           C
-HETATM   22 C2  AGOL A   3      46.500   5.000   5.000  0.50 20.00           C
-HETATM   23 C3  AGOL A   3      47.100   6.400   5.000  0.50 20.00           C
-HETATM   24 O1  AGOL A   3      44.300   3.850   5.000  0.50 20.00           O
-HETATM   25 O2  AGOL A   3      47.200   4.050   5.000  0.50 20.00           O
-HETATM   31 C1  AGOL A   4      65.000   5.000   5.000  0.50 20.00           C
-HETATM   32 C2  AGOL A   4      66.500   5.000   5.000  0.50 20.00           C
-HETATM   33 C3  AGOL A   4      67.100   6.400   5.000  0.50 20.00           C
-HETATM   34 O1  AGOL A   4      64.300   3.850   5.000  0.50 20.00           O
-HETATM   35 O2  AGOL A   4      67.200   4.050   5.000  0.50 20.00           O
-ATOM     36  N  BLYS A 400      65.100   5.100   5.000  0.50 20.00           N
-ATOM     37  CA BLYS A 400      65.100   6.200   5.000  0.50 20.00           C
+HETATM    1  C1 AGOL A   1       5.578   9.079   8.959  0.60 20.00           C
+HETATM    2  C2 AGOL A   1       5.404  10.193   9.989  0.60 20.00           C
+HETATM    3  C3 AGOL A   1       4.003  10.183  10.608  0.60 20.00           C
+HETATM    4  O1 AGOL A   1       5.482   7.794   9.563  0.60 20.00           O
+HETATM    5  O2 AGOL A   1       5.628  11.463   9.370  0.60 20.00           O
+HETATM    6  O3 AGOL A   1       3.905  11.289  11.512  0.60 20.00           O
+HETATM    7  O  BHOH A 101       5.000  10.000  10.000  0.40 20.00           O
+HETATM    8  C1 AGOL A   2      25.578   9.079   8.959  0.30 20.00           C
+HETATM    9  C2 AGOL A   2      25.404  10.193   9.989  0.30 20.00           C
+HETATM   10  C3 AGOL A   2      24.003  10.183  10.608  0.30 20.00           C
+HETATM   11  O1 AGOL A   2      25.482   7.794   9.563  0.30 20.00           O
+HETATM   12  O2 AGOL A   2      25.628  11.463   9.370  0.30 20.00           O
+HETATM   13  O3 AGOL A   2      23.905  11.289  11.512  0.30 20.00           O
+HETATM   14  O  BHOH A 102      25.000  10.000  10.000  0.30 20.00           O
+HETATM   15  C1 AGOL A   3      45.578   9.079   8.959  0.50 20.00           C
+HETATM   16  C2 AGOL A   3      45.404  10.193   9.989  0.50 20.00           C
+HETATM   17  C3 AGOL A   3      44.003  10.183  10.608  0.50 20.00           C
+HETATM   18  O1 AGOL A   3      45.482   7.794   9.563  0.50 20.00           O
+HETATM   19  O2 AGOL A   3      45.628  11.463   9.370  0.50 20.00           O
+HETATM   20  O3 AGOL A   3      43.905  11.289  11.512  0.50 20.00           O
+HETATM   21  C1 AGOL A   4      65.578   9.079   8.959  0.50 20.00           C
+HETATM   22  C2 AGOL A   4      65.404  10.193   9.989  0.50 20.00           C
+HETATM   23  C3 AGOL A   4      64.003  10.183  10.608  0.50 20.00           C
+HETATM   24  O1 AGOL A   4      65.482   7.794   9.563  0.50 20.00           O
+HETATM   25  O2 AGOL A   4      65.628  11.463   9.370  0.50 20.00           O
+HETATM   26  O3 AGOL A   4      63.905  11.289  11.512  0.50 20.00           O
+ATOM     27  N  BLYS A 400      58.760  12.467   9.858  0.50 20.00           N
+ATOM     28  CA BLYS A 400      58.856  11.192   9.109  0.50 20.00           C
+ATOM     29  C  BLYS A 400      57.553  10.397   9.268  0.50 20.00           C
+ATOM     30  O  BLYS A 400      56.607  10.694   9.983  0.50 20.00           O
+ATOM     31  CB BLYS A 400      60.050  10.364   9.600  0.50 20.00           C
+ATOM     32  CG BLYS A 400      61.397  11.058   9.366  0.50 20.00           C
+ATOM     33  CD BLYS A 400      62.563  10.171   9.812  0.50 20.00           C
+ATOM     34  CE BLYS A 400      63.904  10.864   9.577  0.50 20.00           C
+ATOM     35  NZ BLYS A 400      65.000  10.000  10.000  0.50 20.00           N
 '''
 
 def run_test27():
