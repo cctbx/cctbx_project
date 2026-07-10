@@ -1,11 +1,22 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path, write_xtc_locator, get_image_mode
+from xfel.ui.db import get_streaming_process_type, is_streaming_rungroup
 import os, shutil, copy
 from iotbx.phil import parse
 
-known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD", "TIMEOUT"]
+# STREAMING marks a job whose images are being processed live by dials_streaming.
+# It is deliberately absent from finished_job_statuses, so delete() refuses while
+# the feed is running. The JobMonitor never hands a STREAMING job to the queueing
+# system tracker: the orchestrator owns its status, writing DONE from post_finalize
+# once the master file exists.
+known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD", "TIMEOUT", "STREAMING"]
 finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL", "TIMEOUT"]
+
+# Process families a restart can rerun from the archived master file, using the
+# GUI's configured dispatcher. The others (image_average, radial_average, archive)
+# have no offline dispatcher yet.
+restartable_streaming_process_types = ["dials.stills_process", "small_cell"]
 
 class JobFactory(object):
   @staticmethod
@@ -74,6 +85,49 @@ class Job(db_proxy):
 
   def submit(self, previous_job = None):
     raise NotImplementedError("Override me!")
+
+  def stop(self):
+    """Stop this job, returning a message describing what was done.
+
+    A streaming job is fed by an operator-launched orchestrator that the GUI does
+    not own, so stopping must never signal it. Marking the row EXIT only gives up
+    on tracking the job: it releases delete()/restart, and if the run is in fact
+    still live, post_finalize will overwrite EXIT with DONE."""
+    if self.status == "STREAMING":
+      self.status = "EXIT"
+      return "Job %d marked EXIT; the streaming processes were left running" % self.id
+
+    from xfel.ui.components.submission_tracker import JobStopper
+    JobStopper(self.app.params.mp.method).stop_job(self.submission_id)
+    return "Stopped job %d" % self.id
+
+  def can_restart(self):
+    """(bool, reason) -- whether restarting can find the data to reprocess.
+
+    Restart deletes this job's results and lets submit_all_jobs resubmit it, which
+    for non-LCLS facilities reads run.path. A streaming run only has a run.path once
+    post_finalize has written the master file."""
+    if self.run is None:
+      # Dataset-scoped jobs (merging, phenix, global tasks) carry run_id NULL and
+      # do not read run.path when resubmitted.
+      return True, ""
+
+    if self.app.params.facility.name == 'lcls':
+      return True, ""
+
+    if not self.run.path:
+      return False, "run %s has no archived data (never finalized, or archive.level=none)" % \
+        self.run.run
+    if not os.path.exists(self.run.path):
+      return False, "archived data for run %s is missing: %s" % (self.run.run, self.run.path)
+
+    if is_streaming_rungroup(self.rungroup):
+      process_type = get_streaming_process_type(self.trial, self.rungroup)
+      if process_type not in restartable_streaming_process_types:
+        return False, "restart from archived data is not implemented for process type %s" % \
+          process_type
+
+    return True, ""
 
   def delete(self, output_only=False):
     raise NotImplementedError("Override me!")
@@ -1011,6 +1065,14 @@ def submit_all_jobs(app):
 
   for job in needed_jobs:
     if _job.job_hash(job) in submitted_jobs:
+      continue
+
+    if app.params.facility.name != 'lcls' and not job.run.path:
+      # IndexingJob.submit passes run.path to the dispatcher; a None here reaches
+      # submit_job's arg.endswith(".h5") and kills the JobSentinel thread. A
+      # streaming run has no run.path until post_finalize writes the master file
+      # (and never, when archive.level=none), so skip rather than crash.
+      print("Skipping job for run %s: no data path recorded" % job.run.run)
       continue
 
     print("Submitting job: trial %d, rungroup %d, run %s"%(job.trial.trial, job.rungroup.id, job.run.run))

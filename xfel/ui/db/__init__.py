@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from iotbx.phil import parse
 from libtbx.utils import Sorry
 import six
 from six.moves import zip
@@ -19,6 +20,33 @@ def get_run_path(rootpath, trial, rungroup, run, task=None):
   if task is not None:
     p = os.path.join(p, "task%03d"%task.id)
   return p
+
+"""The dials_streaming process family, encoded in the trial PHIL rather than the
+schema. The TrialDialog prepends ``process_type = <selected>`` to target_phil_str;
+both the GUI and dials_streaming's XfelGuiAdapter extract it through the helper
+below so there is exactly one definition of the choice list."""
+streaming_process_type_scope = parse("""
+process_type = *dials.stills_process small_cell image_average archive radial_average
+  .type = choice
+""")
+
+def is_streaming_rungroup(rungroup):
+  """True if this rungroup is fed by dials_streaming rather than batch submission.
+
+  Tolerates None: dataset, merging, and phenix jobs carry rungroup_id NULL, and
+  Job.__getattr__ returns None for them."""
+  return rungroup is not None and rungroup.streaming_first_run is not None
+
+def get_streaming_process_type(trial, rungroup=None):
+  """The process family a streaming trial/rungroup selects (rungroup wins on conflict).
+
+  Returns the PHIL default, 'dials.stills_process', when neither sets process_type."""
+  sources = []
+  if trial is not None and trial.target_phil_str:
+    sources.append(parse(trial.target_phil_str))
+  if rungroup is not None and rungroup.extra_phil_str:
+    sources.append(parse(rungroup.extra_phil_str))
+  return streaming_process_type_scope.fetch(sources=sources).extract().process_type
 
 def get_image_mode(rungroup):
   mode = "other"

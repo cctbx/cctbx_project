@@ -30,7 +30,7 @@ import xfel.ui.components.xfel_gui_dialogs as dlg
 import xfel.ui.components.xfel_gui_plotter as pltr
 
 from xfel.ui import load_cached_settings, save_cached_settings, settings_dir
-from xfel.ui.db import get_run_path
+from xfel.ui.db import get_run_path, get_streaming_process_type, is_streaming_rungroup
 from xfel.ui.db.xfel_db import xfel_db_application
 
 #from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
@@ -393,7 +393,12 @@ class JobMonitor(Thread):
         # Skip the terminal statuses (CACHEABLE_TERMINAL, which includes ERR and
         # TIMEOUT); UNKWN is intentionally NOT in that set because it is transient
         # for slurm (e.g. ensemble jobs with mixed states), so it keeps tracking.
-        active_jobs = [job for job in jobs if job.status not in CACHEABLE_TERMINAL]
+        # STREAMING jobs are never tracked: they were not submitted to the queueing
+        # system, so the tracker would report UNKWN (or, worse, the state of the
+        # orchestrator's own allocation) and overwrite the status the orchestrator
+        # itself maintains in the database.
+        active_jobs = [job for job in jobs
+                       if job.status not in CACHEABLE_TERMINAL and job.status != "STREAMING"]
         new_statuses = tracker.track_many(
           [job.submission_id for job in active_jobs],
           [job.get_log_path() for job in active_jobs])
@@ -2443,6 +2448,8 @@ class JobsTab(BaseTab):
     self.all_jobs = None
     self.filter = 'All jobs'
     self.data = {}
+    # (trial.id, rungroup.id) -> process family, for the Type column of streaming jobs.
+    self.streaming_process_types = {}
 
     self.job_list = gctr.SortableListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
     self.job_list.InsertColumn(0, "Job")
@@ -2516,11 +2523,16 @@ class JobsTab(BaseTab):
     if (msg.ShowModal() == wx.ID_NO):
       return
 
-    from xfel.ui.components.submission_tracker import JobStopper
-    stopper = JobStopper(self.main.params.mp.method)
-    for job in self.all_jobs:
+    # Fetch fresh objects via the main app's connection: job.stop() may write
+    # job.status, and writing through a JobMonitor-thread object while the monitor
+    # concurrently uses that same connection segfaults the MySQL C connector.
+    jobs_to_stop = set(jobs_to_stop)
+    for job in self.main.db.get_all_jobs():
       if job.id in jobs_to_stop:
-        stopper.stop_job(job.submission_id)
+        try:
+          print(job.stop())
+        except Exception as e:
+          print("Error stopping job %d: %s" % (job.id, e))
 
   def onDeleteJob(self, e):
     if self.all_jobs is None:
@@ -2579,6 +2591,16 @@ class JobsTab(BaseTab):
     jobs_to_restart = set(jobs_to_restart)
     for job in self.main.db.get_all_jobs():
       if job.id in jobs_to_restart:
+        # Check before deleting: restart resubmits from the archived data, so a job
+        # with nothing to reprocess must keep its results rather than lose them.
+        try:
+          restartable, reason = job.can_restart()
+        except Exception as e:
+          print("Couldn't check job %d for restart: %s" % (job.id, e))
+          continue
+        if not restartable:
+          print("Couldn't restart job %d: %s" % (job.id, reason))
+          continue
         try:
           job.delete()
         except Exception as e:
@@ -2622,7 +2644,20 @@ class JobsTab(BaseTab):
 
         # Order: job, type, dataset, trial, run, rungroup, submission id, status
         j = str(job.id)
-        jt = job.task.type if job.task is not None else "-"
+        if job.task is not None:
+          jt = job.task.type
+        elif is_streaming_rungroup(job.rungroup):
+          # Streaming jobs carry no task, so the process family is the only thing
+          # that identifies what this job did. Cache it: this repaints every 10 s.
+          # Key on both ids -- a rungroup's extra_phil_str overrides the trial's
+          # process_type, so two rungroups of one trial can differ.
+          key = (job.trial.id, job.rungroup.id)
+          if key not in self.streaming_process_types:
+            self.streaming_process_types[key] = \
+              get_streaming_process_type(job.trial, job.rungroup)
+          jt = self.streaming_process_types[key]
+        else:
+          jt = "-"
         ds = job.dataset.name if job.dataset is not None else "-"
         t = "t%03d" % job.trial.trial if job.trial is not None else "-"
         try:
@@ -2638,6 +2673,8 @@ class JobsTab(BaseTab):
           short_status = "S_FAIL"
         elif short_status == "SUBMITTED":
           short_status = "SUBMIT"
+        elif short_status == "STREAMING":
+          short_status = "STREAM"
         s = short_status
 
         self.data[job.id] = [j, jt, ds, t, r, rg, tsk, sid, s]
