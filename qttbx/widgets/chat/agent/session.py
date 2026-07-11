@@ -382,6 +382,13 @@ class AgentSession:
 
   def _resolve_and_approve(self, call, batch_id):
     policy = self.policy.resolve(call.name)
+    # A tool that opted out of standing approval (allow_remember=False -- the
+    # coot force-close) ALWAYS confirms via a card, regardless of a permissive
+    # tool_policy. Scoped to the opt-out flag, NOT risk, so a destructive tool
+    # that still offers "Always allow" keeps it. Only the blanket --auto-approve
+    # (handled in the chat window) may skip the card.
+    if policy == "allow" and not self.tools.allow_remember_of(call.name):
+      policy = "ask"
     if policy == "deny":
       return "deny"
     if policy == "allow":
@@ -394,10 +401,15 @@ class AgentSession:
       input=call.input,
       risk=self.tools.risk_of(call.name),
       batch_id=batch_id,
+      allow_remember=self.tools.allow_remember_of(call.name),
     )
     response = self._await_approval(req)
     if response.decision == "approve":
-      if response.remember == "tool":
+      # Re-check allow_remember_of, not just the card's remember flag: keep the
+      # "never per-tool auto-approve" guarantee in the data layer, not only the
+      # UI that suppresses the checkbox.
+      if (response.remember == "tool"
+          and self.tools.allow_remember_of(call.name)):
         self.policy.allow_tool_for_session(call.name)
       return "approve"
     return response.decision

@@ -34,6 +34,10 @@ class ToolApprovalRequest(AgentEvent):
       Risk level: ``'read'``, ``'write'``, or ``'destructive'``.
   batch_id : str, optional
       Identifier grouping requests issued together in one batch.
+  allow_remember : bool, optional
+      Whether the approval card may offer 'Always allow this tool'
+      (standing per-tool auto-approval). Defaults to ``True``; a
+      destructive tool sets ``False`` to force a decision every time.
   """
   request_id: str
   tool_name: str
@@ -41,6 +45,7 @@ class ToolApprovalRequest(AgentEvent):
   input: dict
   risk: str                        # 'read' | 'write' | 'destructive'
   batch_id: str = None
+  allow_remember: bool = True      # False -> card omits "Always allow this tool"
 
 
 @dataclass
@@ -206,6 +211,7 @@ class _ToolEntry:
   source: str                      # 'builtin' | 'skill' | 'mcp:<server>'
   handler: object = None           # callable; signature varies by source
   risk: str = "write"
+  allow_remember: bool = True      # False -> approval card hides "Always allow"
 
 
 class ToolRegistry:
@@ -222,7 +228,7 @@ class ToolRegistry:
 
   # ---- registration --------------------------------------------------------
 
-  def register_builtin(self, spec, handler, risk="write"):
+  def register_builtin(self, spec, handler, risk="write", allow_remember=True):
     """Register a built-in tool under ``spec.name``.
 
     Built-ins take precedence: a same-named non-builtin tool (skill or MCP)
@@ -230,9 +236,14 @@ class ToolRegistry:
     trusted built-in and inherit its pre-authorization. This enforces the
     registry's built-in > skill > MCP collision order regardless of
     registration order (production registers MCP before these built-ins).
+
+    ``allow_remember=False`` marks a tool whose approval card must not offer
+    'Always allow this tool' -- a destructive tool that should be re-confirmed
+    on every call rather than granted standing per-tool auto-approval.
     """
     self._add(spec.name, _ToolEntry(
-      spec=spec, source="builtin", handler=handler, risk=risk),
+      spec=spec, source="builtin", handler=handler, risk=risk,
+      allow_remember=allow_remember),
       overwrite=True)
 
   def register_skill_tool(self, spec, handler):
@@ -292,6 +303,11 @@ class ToolRegistry:
   def risk_of(self, name):
     """Return a tool's risk level, defaulting to ``write`` if unknown."""
     return self._entries[name].risk if name in self._entries else "write"
+
+  def allow_remember_of(self, name):
+    """Whether the approval card may offer 'Always allow this tool' for
+    ``name``. Defaults to True for unknown names."""
+    return self._entries[name].allow_remember if name in self._entries else True
 
   # ---- invocation ----------------------------------------------------------
 

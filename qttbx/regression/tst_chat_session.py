@@ -1298,6 +1298,86 @@ def exercise_autosave_throttle_measured_from_turn_start():
     shutil.rmtree(tmp)
 
 
+def exercise_session_propagates_allow_remember():
+  """A builtin registered allow_remember=False surfaces a request with
+  allow_remember False; a normal tool surfaces True. _resolve_and_approve
+  must stamp the minted ToolApprovalRequest from the registry so the card
+  can suppress 'Always allow this tool' for a destructive tool."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    session.tools.register_builtin(
+      ToolSpec(name="keepme", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="destructive", allow_remember=False)
+    session.tools.register_builtin(
+      ToolSpec(name="normaltool", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="write")
+    session.policy = ToolPolicy(default="ask")
+    captured = []
+    session.on_event = captured.append
+    # Pre-seed a deny so _await_approval returns without blocking; we only
+    # care about the ToolApprovalRequest surfaced to on_event, not the answer.
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="ignored", decision="deny"))
+    session._resolve_and_approve(
+      ToolUseRequested(id="t1", name="keepme", input={}), batch_id=None)
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="ignored", decision="deny"))
+    session._resolve_and_approve(
+      ToolUseRequested(id="t2", name="normaltool", input={}), batch_id=None)
+    reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
+    assert len(reqs) == 2, reqs
+    assert reqs[0].allow_remember is False, reqs[0]
+    assert reqs[1].allow_remember is True, reqs[1]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_destructive_always_cards():
+  """A1: a destructive / allow_remember=False builtin ALWAYS surfaces a card,
+  even under a permissive tool_policy (default 'allow'); a normal tool under the
+  same policy auto-approves without a card."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    session.tools.register_builtin(
+      ToolSpec(name="killtool", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="destructive", allow_remember=False)
+    session.tools.register_builtin(
+      ToolSpec(name="readtool", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="read")
+    session.policy = ToolPolicy(default="allow")     # permissive
+    captured = []
+    session.on_event = captured.append
+    # Destructive: forced to a card despite default='allow'; _await_approval
+    # blocks until we feed a decision, so pre-seed a deny.
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="ignored", decision="deny"))
+    d = session._resolve_and_approve(
+      ToolUseRequested(id="t1", name="killtool", input={}), batch_id=None)
+    reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
+    assert len(reqs) == 1 and d == "deny", (reqs, d)
+    # Normal read tool under the same allow policy: auto-approved, no card.
+    r = session._resolve_and_approve(
+      ToolUseRequested(id="t2", name="readtool", input={}), batch_id=None)
+    assert r == "approve", r
+    assert not [e for e in captured[1:] if isinstance(e, ToolApprovalRequest)]
+    # A destructive tool that STILL offers 'Always allow' (allow_remember=True)
+    # is NOT force-carded -- else its shown checkbox would do nothing (#1). The
+    # floor is scoped to the opt-out flag, not risk.
+    session.tools.register_builtin(
+      ToolSpec(name="rememberkill", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="destructive", allow_remember=True)
+    before = len([e for e in captured if isinstance(e, ToolApprovalRequest)])
+    r2 = session._resolve_and_approve(
+      ToolUseRequested(id="t3", name="rememberkill", input={}), batch_id=None)
+    assert r2 == "approve", r2
+    assert len([e for e in captured if isinstance(e, ToolApprovalRequest)]) \
+        == before, "destructive+rememberable must not be force-carded"
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_simple_text_turn()
   exercise_assistant_messages_stamped_with_model_and_backend()
@@ -1337,6 +1417,8 @@ def exercise():
   exercise_autosave_over_tool_use_turn_is_crash_safe()
   exercise_autosave_checkpoints_after_tool_result()
   exercise_autosave_throttle_measured_from_turn_start()
+  exercise_session_propagates_allow_remember()
+  exercise_session_destructive_always_cards()
 
 
 if __name__ == "__main__":

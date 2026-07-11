@@ -169,6 +169,33 @@ def exercise_untrusted_input_rendered_as_plain_text():
     assert l.textFormat() == QtCore.Qt.PlainText, l.text()
 
 
+def exercise_allow_remember_hides_checkbox():
+  """A request with allow_remember=False yields a card without the
+  'Always allow this tool' checkbox; the default (True) keeps it."""
+  from qttbx.widgets.chat.tool_approval import ToolApprovalCard
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+
+  def _checkbox_labels(card):
+    return [w.text() for w in card.findChildren(QtWidgets.QCheckBox)]
+
+  # Default (allow_remember=True) keeps the "Always allow this tool" checkbox.
+  card_default = ToolApprovalCard()
+  card_default.set_requests([ToolApprovalRequest(
+    request_id="r1", tool_name="phenix_start_job", tool_source="mcp:phenix",
+    input={}, risk="write", batch_id=None)])
+  assert "Always allow this tool" in _checkbox_labels(card_default)
+
+  # allow_remember=False suppresses it (a destructive tool opts out of the
+  # standing per-tool auto-approval the checkbox grants).
+  card_no_remember = ToolApprovalCard()
+  card_no_remember.set_requests([ToolApprovalRequest(
+    request_id="r2", tool_name="coot_close_unresponsive",
+    tool_source="mcp:phenix_chat", input={}, risk="destructive",
+    batch_id=None, allow_remember=False)])
+  assert "Always allow this tool" not in _checkbox_labels(card_no_remember)
+
+
 def exercise():
   exercise_single_card_approve_emits_response()
   exercise_single_card_deny_and_stop()
@@ -178,6 +205,7 @@ def exercise():
   exercise_card_hides_and_disables_buttons_after_click()
   exercise_is_decided_reflects_decision_state()
   exercise_untrusted_input_rendered_as_plain_text()
+  exercise_allow_remember_hides_checkbox()
 
 
 if __name__ == "__main__":

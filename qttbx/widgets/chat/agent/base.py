@@ -20,6 +20,8 @@ class ToolSpec:
   name: str
   description: str
   input_schema: dict           # JSON Schema
+  risk: str = "read"           # 'read' | 'write' | 'destructive' (claude_code card)
+  allow_remember: bool = True  # False -> approval card omits "Always allow this tool"
 
 
 class Agent(ABC):

@@ -218,6 +218,19 @@ def exercise_approval_request_is_agent_event():
   assert isinstance(req, AgentEvent)
 
 
+def exercise_allow_remember_of():
+  """register_builtin carries allow_remember; default True, overridable False."""
+  reg = ToolRegistry(log=null_out())
+  spec_a = ToolSpec(name="a", description="", input_schema={})
+  spec_b = ToolSpec(name="b", description="", input_schema={})
+  reg.register_builtin(spec_a, handler=lambda *a, **k: "", risk="write")
+  reg.register_builtin(spec_b, handler=lambda *a, **k: "", risk="destructive",
+                       allow_remember=False)
+  assert reg.allow_remember_of("a") is True
+  assert reg.allow_remember_of("b") is False
+  assert reg.allow_remember_of("missing") is True     # safe default
+
+
 def exercise():
   exercise_policy_resolve_default()
   exercise_policy_explicit_tool_beats_default()
@@ -234,6 +247,7 @@ def exercise():
   exercise_register_ask_user_question_builtin()
   exercise_approval_request_response_dataclasses()
   exercise_approval_request_is_agent_event()
+  exercise_allow_remember_of()
 
 
 if __name__ == "__main__":
