@@ -101,6 +101,42 @@ def exercise_loadresource_refuses_local_file():
     shutil.rmtree(d)
 
 
+def exercise_escape_approx_tildes_is_narrow():
+  """The tilde filter is deliberately narrow: only a lone '~' immediately
+  before a digit (the '~2.5' "approximately" shorthand) is escaped. A real
+  '~~word~~' / '~word~', a '~/path', and a bare '~' are all left untouched,
+  so deliberate strikethrough and ordinary tildes render unchanged."""
+  from qttbx.widgets.chat.markdown_view import _escape_approx_tildes as esc
+  assert esc('~0.02 and ~0.001') == r'\~0.02 and \~0.001'
+  assert esc('resolution ~2.5 A') == r'resolution \~2.5 A'
+  assert esc('drop ~~this~~ now') == 'drop ~~this~~ now'    # double tilde
+  assert esc('a ~word~ here') == 'a ~word~ here'            # '~' before letter
+  assert esc('path ~/data/x.pdb') == 'path ~/data/x.pdb'   # '~' before slash
+  assert esc('no tildes here') == 'no tildes here'
+
+
+def exercise_approx_tilde_not_rendered_as_strikethrough():
+  """End-to-end: two '~<number>' approximate values in one block (the second
+  closable because it follows a quote) would be paired by Qt's GFM parser and
+  struck. append_markdown escapes them first, so nothing is struck and the
+  tildes survive as literal text. The precondition check pins that the raw
+  input genuinely strikes, so the test fails if the filter is removed."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.markdown_view import MarkdownView, _MD_FEATURES
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  raw = 'costs ~0.02 rather than the "~0.001" I estimated'
+  probe = QtGui.QTextDocument()
+  probe.setMarkdown(raw, _MD_FEATURES)
+  assert "line-through" in probe.toHtml().lower(), "input no longer strikes"
+  v = MarkdownView()
+  v.append_markdown(raw)
+  assert "line-through" not in v.document().toHtml().lower()
+  plain = v.toPlainText()
+  assert "~0.02" in plain and "~0.001" in plain, repr(plain)
+
+
 # ---- conversation_to_markdown export -------------------------------------
 
 
@@ -302,6 +338,8 @@ def exercise():
   exercise_auto_height_no_scrollbar()
   exercise_raw_html_in_markdown_is_not_rendered_as_rich_text()
   exercise_loadresource_refuses_local_file()
+  exercise_escape_approx_tildes_is_narrow()
+  exercise_approx_tilde_not_rendered_as_strikethrough()
   exercise_header_renders_title_meta_and_separator()
   exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()

@@ -6,6 +6,8 @@ markdown-stitched (re-set the whole document with the accumulated text)
 because Qt's incremental markdown support is limited — the cost is
 negligible at typical chat message sizes."""
 
+import re
+
 from qttbx.qt import QtCore, QtGui, QtWidgets
 
 # Stylesheet template; %s is filled with the platform's fixed-pitch
@@ -31,6 +33,43 @@ _MD_FEATURES = QtGui.QTextDocument.MarkdownDialectGitHub
 _MD_NO_HTML = getattr(QtGui.QTextDocument, "MarkdownNoHTML", None)
 if _MD_NO_HTML is not None:
   _MD_FEATURES = _MD_FEATURES | _MD_NO_HTML
+
+# A lone '~' immediately before a digit is the "~2.5" ("approximately")
+# shorthand the assistant emits for approximate numbers -- it is content,
+# not markup. But the GitHub dialect above treats '~' as a GFM strikethrough
+# marker, so two such tildes in one block (e.g. '~0.02 ... ~0.001') get
+# paired and everything between them renders struck through. Escaping the
+# tilde to a literal '~' before rendering breaks that pairing while keeping
+# the character visible.
+_APPROX_TILDE_RE = re.compile(r"(?<!~)~(?=\d)")
+
+
+def _escape_approx_tildes(text):
+  """Escape a lone ``~`` that precedes a digit so GFM cannot pair it into an
+  unwanted strikethrough; the escaped ``\\~`` renders as a literal ``~``.
+
+  The filter is deliberately NARROW -- it matches ONLY a ``~`` directly
+  followed by a digit (the ``~2.5`` "approximately" shorthand). It is not a
+  general strikethrough switch: a genuine ``~~word~~`` or ``~word~`` is left
+  untouched and still renders struck through, and ordinary tildes
+  (``~/path``, a bare ``~``) and ``~~`` runs are ignored. That narrowness is
+  intentional -- the assistant only ever writes ``~`` before a number, so
+  this neutralizes exactly the accidental pattern and nothing else, which
+  lets the view stay on the GitHub dialect (tables etc. keep rendering)
+  instead of disabling strikethrough wholesale or re-parsing the markdown.
+
+  Parameters
+  ----------
+  text : str
+      Raw markdown about to be handed to ``setMarkdown``.
+
+  Returns
+  -------
+  str
+      ``text`` with each lone ``~``-before-a-digit escaped to ``\\~``; text
+      without that pattern is returned unchanged.
+  """
+  return _APPROX_TILDE_RE.sub(r"\\~", text)
 
 
 class MarkdownView(QtWidgets.QTextBrowser):
@@ -63,7 +102,12 @@ class MarkdownView(QtWidgets.QTextBrowser):
     # Render via the document so the MarkdownNoHTML feature flag takes
     # effect -- the QTextBrowser-level setMarkdown() binding drops the
     # features argument, but QTextDocument.setMarkdown() honors it.
-    self.document().setMarkdown(self._raw, _MD_FEATURES)
+    # _escape_approx_tildes neutralizes only the '~<digit>' "approximately"
+    # shorthand (see its docstring) so it cannot form an accidental GFM
+    # strikethrough; self._raw stays the true original so the chat export
+    # stays faithful.
+    self.document().setMarkdown(
+      _escape_approx_tildes(self._raw), _MD_FEATURES)
 
   def _on_anchor_clicked(self, url):
     """Open a clicked link only if it uses a safe scheme.
