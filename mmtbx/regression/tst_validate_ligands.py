@@ -64,6 +64,8 @@ def run():
   run_test18()
   run_test19()
   run_test20()
+  run_test21()
+  run_test22()
 
 # ------------------------------------------------------------------------------
 
@@ -851,6 +853,124 @@ def run_test20():
   finally:
     if os.path.isfile(out_fn):
       os.remove(out_fn)
+
+# ------------------------------------------------------------------------------
+
+# One glycerol (GOL, has restraints) and one genuinely-unknown ligand J99 (no
+# monomer entry -> no restraints). Atoms of J99 are >2 A apart so no automatic
+# bonds form; processed with stop_for_unknowns=False (as the Program does), it
+# yields bond_n = angle_n = dihedral_n = 0 -- the "no restraints" case.
+_gol_and_unknown_ligand_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.500   6.350   4.700  1.00 20.00           O
+HETATM    7  C1  J99 A   2      20.000   5.000   5.000  1.00 20.00           C
+HETATM    8  C2  J99 A   2      23.000   8.000   5.000  1.00 20.00           C
+HETATM    9  N1  J99 A   2      20.000  10.000  10.000  1.00 20.00           N
+'''
+
+def _gol_and_unknown_ligand_manager():
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_and_unknown_ligand_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = val_lig_mod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test21():
+  print('test21')
+  from six.moves import cStringIO as StringIO
+  vl_manager = _gol_and_unknown_ligand_manager()
+
+  # The unknown ligand has no restraints of any kind.
+  lr_unknown = find_lr(vl_manager, 'resname J99 and chain A and resseq 2')
+  rmsds = lr_unknown.get_rmsds()
+  assert rmsds.bond_n == 0, rmsds.bond_n
+  assert rmsds.angle_n == 0, rmsds.angle_n
+  assert rmsds.dihedral_n == 0, rmsds.dihedral_n
+
+  # GOL still has restraints.
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol.get_rmsds().bond_n > 0
+
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  lines = sio.getvalue().splitlines()
+  j99_line = [l for l in lines if 'J99 A   2' in l]
+  gol_line = [l for l in lines if 'GOL A   1' in l]
+  assert len(j99_line) == 1, j99_line
+  assert len(gol_line) == 1, gol_line
+  j99_line, gol_line = j99_line[0], gol_line[0]
+
+  # No-restraints ligand: geometry cells must show '-', never a spurious 0(0).
+  assert '0(0)' not in j99_line, j99_line
+  assert '0.00' not in j99_line, j99_line
+  # GOL keeps its real geometry numbers.
+  assert '(5)' in gol_line, gol_line
+
+# ------------------------------------------------------------------------------
+
+# One glycerol (GOL, has restraints -> bonded rdkit mol) and one ligand 7Q8
+# with no monomer entry (cif_object is None -> rdkit mol has NO bonds). A
+# bond-less molecule fragments into one atom per fragment and its figure is a
+# meaningless grid of disconnected atoms -> no figure should be produced.
+_gol_and_norestraints_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.500   6.350   4.700  1.00 20.00           O
+HETATM    7  C1  7Q8 A   2      20.000   5.000   5.000  1.00 20.00           C
+HETATM    8  C2  7Q8 A   2      21.500   5.000   5.000  1.00 20.00           C
+HETATM    9  N1  7Q8 A   2      23.000   5.000   5.000  1.00 20.00           N
+HETATM   10  O1  7Q8 A   2      24.500   5.000   5.000  1.00 20.00           O
+'''
+
+def _gol_and_norestraints_manager():
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_and_norestraints_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = val_lig_mod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test22():
+  print('test22')
+  vl_manager = _gol_and_norestraints_manager()
+
+  # No-restraints ligand: rdkit mol has no bonds -> no figure.
+  lr_nr = find_lr(vl_manager, 'resname 7Q8 and chain A and resseq 2')
+  assert lr_nr._frag_mol.GetNumBonds() == 0, lr_nr._frag_mol.GetNumBonds()
+  assert lr_nr.as_picklable_snapshot().fragment_png_bytes is None
+
+  # GOL is bonded -> a figure is produced as usual.
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol._frag_mol.GetNumBonds() > 0
+  assert lr_gol.as_picklable_snapshot().fragment_png_bytes is not None
 
 # ------------------------------------------------------------------------------
 

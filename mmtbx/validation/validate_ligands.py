@@ -312,11 +312,14 @@ class manager(list):
       {'headers': ['', 'occupancies', 'min   max   mean'], 'width': 21,
        'data_fn': lambda lr: f"{lr.get_occupancies().occ_min:^7.1f}{lr.get_occupancies().occ_max:^7.1f}{lr.get_occupancies().occ_mean:^7.1f}"},
       {'headers': ['bond', 'rmsz', 'outliers'], 'width': 17,
-       'data_fn': lambda lr: f"{lr.get_rmsds().bond_rmsz:.2f}  {lr.get_rmsds().bond_n_outliers}({lr.get_rmsds().bond_n})"},
+       'data_fn': lambda lr: (f"{lr.get_rmsds().bond_rmsz:.2f}  {lr.get_rmsds().bond_n_outliers}({lr.get_rmsds().bond_n})"
+           if lr.get_rmsds() and lr.get_rmsds().bond_n else '-')},
       {'headers': ['angle', 'rmsz', 'outliers'], 'width': 17,
-       'data_fn': lambda lr: f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"},
+       'data_fn': lambda lr: (f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"
+           if lr.get_rmsds() and lr.get_rmsds().angle_n else '-')},
       {'headers': ['dihedral', 'rmsz', 'outliers'], 'width': 17,
-       'data_fn': lambda lr: f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"},
+       'data_fn': lambda lr: (f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"
+           if lr.get_rmsds() and lr.get_rmsds().dihedral_n else '-')},
       {'headers': ['', 'missing', 'heavy atoms'], 'width': 22,
        'data_fn': lambda lr: (
            f"{lr.get_missing_atoms().n_missing_heavy} "
@@ -1489,6 +1492,11 @@ class ligand_result(object):
     rdkit_frags = getattr(self, '_rdkit_frags', None)
     missing_idxs = getattr(self, '_draw_missing_idxs', None)
     if frag_mol is None or rdkit_frags is None:
+      return None
+    # No bonds (e.g. a ligand with no restraints/monomer entry) means every
+    # atom is its own fragment -- the figure is a meaningless grid of
+    # disconnected atoms, so don't draw one.
+    if frag_mol.GetNumBonds() == 0:
       return None
     frag_cc_list = None
     if frag_ccs_plain:

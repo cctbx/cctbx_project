@@ -8,7 +8,8 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
-from mmtbx.validation.clashscore2 import check_and_add_hydrogen
+#from mmtbx.validation.clashscore2 import check_and_add_hydrogen
+from mmtbx.hydrogens import place_and_optimize_hydrogens
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb
 from libtbx.utils import null_out, Sorry
@@ -145,15 +146,26 @@ RSCC.
     '''
     make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
     try:
-      self.working_model,_ = check_and_add_hydrogen(
-        probe_parameters=self.params.probe,
-        data_manager_model=model,
+
+      self.working_model = place_and_optimize_hydrogens(
+        model           = model,
+        #do_flips        = do_flips,
+        #nuclear         = False,
+        keep_existing_H = False,
+        probe_phil      = self.params.probe,
         stop_for_unknowns = False,
-        #nuclear=False,
-        #verbose=verbose,
-        keep_hydrogens=False,
-        #do_flips = do_flips,
-        log=self.logger)
+        raise_on_missing = False,
+        log             = self.logger)
+
+#      self.working_model,_ = check_and_add_hydrogen(
+#        probe_parameters=self.params.probe,
+#        data_manager_model=model,
+#        stop_for_unknowns = False,
+#        #nuclear=False,
+#        #verbose=verbose,
+#        keep_hydrogens=False,
+#        #do_flips = do_flips,
+#        log=self.logger)
       self.working_model.unset_riding_h_manager()
     except Exception as e:
       msg = traceback.format_exc()
