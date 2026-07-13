@@ -33,6 +33,8 @@ general_tests = [
   "$D/ions/tst_utils.py",
   # endo_exo
   "$D/regression/tst_endo_exo.py",
+  # qmi
+  "$D/regression/tst_qmi.py",
   # TLS
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",

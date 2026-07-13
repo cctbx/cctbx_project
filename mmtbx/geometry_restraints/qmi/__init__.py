@@ -1,4 +1,4 @@
-"""qmi -- QM-based geometry-restraint generation for mononuclear metal sites.
+"""qmi: QM-based geometry-restraint generation for mononuclear metal sites.
 
 Generates Phenix ``geometry_restraints.edits`` (bond + angle targets with
 per-restraint sigmas) for mononuclear metal sites by running one
