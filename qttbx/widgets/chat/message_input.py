@@ -457,9 +457,13 @@ class MessageInput(QtWidgets.QWidget):
     """
     if md is None:
       return
+    # elif, not a second if: a payload that carries BOTH image data and a
+    # local file:// URL (some apps/clipboards populate both) must yield ONE
+    # attachment. Two independent ifs attached the image twice -- once as
+    # 'pasted.png' here, once by reading the dropped file below.
     if md.hasImage():
       self._handle_qimage(md.imageData())
-    if md.hasUrls():
+    elif md.hasUrls():
       for url in md.urls():
         if url.isLocalFile():
           self._handle_file(url.toLocalFile())
@@ -479,11 +483,34 @@ class MessageInput(QtWidgets.QWidget):
     import mimetypes
     mime, _ = mimetypes.guess_type(path)
     if mime is None:
+      # Extension mimetypes can't map -> we can't confirm an allowed image
+      # type, so reject via the same attachment_rejected path a known-
+      # unsupported mime uses rather than returning silently (no signal,
+      # no status).
+      self.attachment_rejected.emit(
+        "Could not determine attachment type: %s" % path)
+      return
+    # Validate the guessed mime BEFORE opening/reading the file. Reading first
+    # (as this method used to) meant a dropped multi-GB file with a non-None
+    # but disallowed mime (e.g. video/quicktime) was pulled entirely into
+    # memory on the GUI thread -- freezing the event loop, risking MemoryError
+    # -- only for attach_bytes to reject it afterwards. Reject here instead,
+    # via the same attachment_rejected path attach_bytes uses for a disallowed
+    # mime, so behaviour is unchanged for the user -- just moved earlier, and
+    # the bytes are never read.
+    if mime not in self._ALLOWED_MIMES:
+      self.attachment_rejected.emit(
+        "Unsupported attachment type: %s" % mime)
       return
     try:
       with open(path, "rb") as fh:
         data = fh.read()
-    except OSError:
+    except OSError as exc:
+      # Surface the read failure via attachment_rejected instead of
+      # swallowing it silently; carry the OSError detail so it isn't
+      # discarded bare.
+      self.attachment_rejected.emit(
+        "Could not read attachment %s: %s" % (path, exc))
       return
     import os
     self.attach_bytes(data, mime, filename=os.path.basename(path))

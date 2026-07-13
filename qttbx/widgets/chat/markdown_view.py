@@ -43,6 +43,29 @@ if _MD_NO_HTML is not None:
 # the character visible.
 _APPROX_TILDE_RE = re.compile(r"(?<!~)~(?=\d)")
 
+# A markdown inline code span: a run of backticks, the shortest run of
+# characters, then a matching run of the same length. Tildes inside such a
+# span (and inside fenced code blocks, bracketed line-by-line below) are
+# literal code, never strikethrough, so the approximate-tilde escape skips them.
+_INLINE_CODE_RE = re.compile(r"(`+)(?:.+?)\1")
+
+# A fenced-code delimiter line: up to three leading spaces then a run of 3+
+# backticks or 3+ tildes (CommonMark). Used to bracket fenced blocks.
+_CODE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+
+
+def _escape_outside_code_spans(line):
+  """Apply the approximate-tilde escape to ``line`` but leave inline ``code``
+  spans untouched -- a ``~`` inside a span is literal code, not strikethrough."""
+  out = []
+  pos = 0
+  for m in _INLINE_CODE_RE.finditer(line):
+    out.append(_APPROX_TILDE_RE.sub(r"\\~", line[pos:m.start()]))
+    out.append(m.group(0))                 # code span: left verbatim
+    pos = m.end()
+  out.append(_APPROX_TILDE_RE.sub(r"\\~", line[pos:]))
+  return "".join(out)
+
 
 def _escape_approx_tildes(text):
   """Escape a lone ``~`` that precedes a digit so GFM cannot pair it into an
@@ -58,6 +81,11 @@ def _escape_approx_tildes(text):
   lets the view stay on the GitHub dialect (tables etc. keep rendering)
   instead of disabling strikethrough wholesale or re-parsing the markdown.
 
+  Fenced code blocks (``` / ~~~) and inline ``code`` spans are skipped: GFM
+  strikethrough cannot occur inside code, so there a ``~`` is literal (a
+  version ``~1.2.0``, a size ``~5GB``) and a backslash escape would render /
+  copy as a spurious character.
+
   Parameters
   ----------
   text : str
@@ -66,10 +94,33 @@ def _escape_approx_tildes(text):
   Returns
   -------
   str
-      ``text`` with each lone ``~``-before-a-digit escaped to ``\\~``; text
-      without that pattern is returned unchanged.
+      ``text`` with each lone ``~``-before-a-digit that lies outside code
+      escaped to ``\\~``; text without that pattern is returned unchanged.
   """
-  return _APPROX_TILDE_RE.sub(r"\\~", text)
+  if not text:
+    return text
+  out = []
+  fence = None             # (char, length) while inside a fenced block, else None
+  for line in text.splitlines(keepends=True):
+    body = line.rstrip("\r\n")
+    m = _CODE_FENCE_RE.match(body)
+    if fence is None:
+      if m:
+        delim = m.group(1)
+        fence = (delim[0], len(delim))     # opening fence; its info string is code
+        out.append(line)
+      else:
+        out.append(_escape_outside_code_spans(line))
+    else:
+      out.append(line)                     # inside a fenced block: never escape
+      # A closing fence: same char, at least as long, nothing but whitespace
+      # after the run.
+      if m:
+        delim = m.group(1)
+        if (delim[0] == fence[0] and len(delim) >= fence[1]
+            and body[m.end():].strip() == ""):
+          fence = None
+  return "".join(out)
 
 
 class MarkdownView(QtWidgets.QTextBrowser):

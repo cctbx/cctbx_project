@@ -383,6 +383,56 @@ def exercise_dropped_file_url_not_inserted_as_text():
   assert txt == "", repr(txt)
 
 
+def exercise_disallowed_file_is_not_read_before_mime_rejection():
+  """[Regression] A dropped local file whose guessed mime is not an allowed
+  image type must be rejected BEFORE its bytes are read. The old _handle_file
+  read the ENTIRE file into memory on the GUI thread first, so dropping a
+  multi-GB file with a non-None but disallowed mime (e.g. video/quicktime)
+  could freeze the event loop / MemoryError only for attach_bytes to reject
+  it afterwards. The rejection must still travel the existing
+  attachment_rejected path -- just moved earlier, before any read."""
+  import builtins
+  import mimetypes
+  import tempfile
+  from qttbx.qt import QtCore
+  w = _new_input()
+  fd, path = tempfile.mkstemp(suffix=".mov")   # -> video/quicktime, disallowed
+  try:
+    os.write(fd, b"not really a movie")
+    os.close(fd)
+    # Guard the premise: the guessed mime is non-None yet not an allowed type,
+    # so the file would sail past the `mime is None` early-return and reach the
+    # read in the buggy code.
+    mime, _ = mimetypes.guess_type(path)
+    assert mime is not None and mime not in w._ALLOWED_MIMES, mime
+    warned = []
+    w.attachment_rejected.connect(lambda msg: warned.append(msg))
+    # Sentinel: record any attempt to open THIS file for binary reading. A read
+    # before the mime check fires this; the fix must not open the file at all.
+    reads = []
+    real_open = builtins.open
+    def _spy_open(f, mode="r", *a, **k):
+      if f == path and "b" in mode and ("r" in mode or "+" in mode):
+        reads.append(f)
+      return real_open(f, mode, *a, **k)
+    builtins.open = _spy_open
+    try:
+      md = QtCore.QMimeData()
+      md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+      w._edit.insertFromMimeData(md)
+    finally:
+      builtins.open = real_open
+    # (a) Rejected via the same attachment_rejected path a disallowed in-memory
+    # attachment uses, and nothing was attached.
+    assert warned, "expected attachment_rejected for a disallowed file type"
+    assert mime in warned[0], warned
+    assert w.attachment_count() == 0, w._attachments
+    # (b) The file's bytes were NOT read before the mime was rejected.
+    assert reads == [], "disallowed file must not be read before validation"
+  finally:
+    os.remove(path)
+
+
 def exercise_pasted_remote_url_inserts_as_text():
   """[Regression] A pasted/dropped REMOTE (http/https) URL must paste as TEXT,
   not be swallowed by the attachment chokepoint -- only local files / images
@@ -415,6 +465,78 @@ def exercise_pasted_image_via_chokepoint_attaches():
   assert w._edit.toPlainText() == "", repr(w._edit.toPlainText())
 
 
+def exercise_mixed_image_and_file_url_attaches_once():
+  """[Regression] A single drop/paste payload carrying BOTH image data
+  (hasImage) AND a local file:// URL (hasUrls) must produce exactly ONE
+  attachment, not two. _handle_dropped_mime used two independent if-branches,
+  so a mixed payload attached the image once as 'pasted.png' and again by
+  reading the dropped file -- a double-attach."""
+  import tempfile
+  from qttbx.qt import QtCore, QtGui
+  w = _new_input()
+  # A real, readable PNG on disk so the file branch WOULD attach it (making
+  # the double-attach observable) in the buggy code.
+  img = QtGui.QImage(8, 8, QtGui.QImage.Format_RGB32)
+  img.fill(QtGui.QColor(10, 20, 30))
+  fd, path = tempfile.mkstemp(suffix=".png")
+  os.close(fd)
+  try:
+    assert img.save(path, "PNG"), "could not write temp PNG"
+    md = QtCore.QMimeData()
+    md.setImageData(img)
+    md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+    w._edit.insertFromMimeData(md)
+    assert w.attachment_count() == 1, w._attachments
+  finally:
+    os.remove(path)
+
+
+def exercise_unknown_extension_file_is_rejected():
+  """[Regression] A dropped local file whose extension mimetypes cannot map
+  (guess_type -> None) must be rejected via attachment_rejected, not returned
+  silently -- consistent with the explicit rejection for a known-unsupported
+  mime. _handle_file used to `return` on the None-mime path with no signal."""
+  import mimetypes
+  import tempfile
+  from qttbx.qt import QtCore
+  w = _new_input()
+  fd, path = tempfile.mkstemp(suffix=".zzzunknown")   # unmappable extension
+  try:
+    os.write(fd, b"whatever")
+    os.close(fd)
+    mime, _ = mimetypes.guess_type(path)
+    assert mime is None, mime           # premise: guess_type cannot map it
+    warned = []
+    w.attachment_rejected.connect(lambda msg: warned.append(msg))
+    md = QtCore.QMimeData()
+    md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+    w._edit.insertFromMimeData(md)
+    assert warned, "expected attachment_rejected for an unmappable file type"
+    assert w.attachment_count() == 0, w._attachments
+  finally:
+    os.remove(path)
+
+
+def exercise_unreadable_file_is_rejected():
+  """[Regression] A dropped local file with an allowed image extension whose
+  bytes cannot be read (open raises OSError -- here because the path does not
+  exist) must be rejected via attachment_rejected rather than swallowed. The
+  handler used to `except OSError: return` -- no signal, and the error was
+  discarded bare."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  # Allowed extension so the mime checks pass and we reach open(); the path
+  # does not exist so open raises FileNotFoundError (an OSError).
+  path = "/no/such/dir/definitely-missing.png"
+  warned = []
+  w.attachment_rejected.connect(lambda msg: warned.append(msg))
+  md = QtCore.QMimeData()
+  md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+  w._edit.insertFromMimeData(md)
+  assert warned, "expected attachment_rejected for an unreadable file"
+  assert w.attachment_count() == 0, w._attachments
+
+
 def exercise():
   exercise_send_signal_carries_text_and_empty_attachments()
   exercise_pasted_remote_url_inserts_as_text()
@@ -437,6 +559,10 @@ def exercise():
   exercise_set_history_swaps_recall_list_and_resets_navigation()
   exercise_set_history_drops_blank_entries()
   exercise_dropped_file_url_not_inserted_as_text()
+  exercise_disallowed_file_is_not_read_before_mime_rejection()
+  exercise_mixed_image_and_file_url_attaches_once()
+  exercise_unknown_extension_file_is_rejected()
+  exercise_unreadable_file_is_rejected()
 
 
 if __name__ == "__main__":

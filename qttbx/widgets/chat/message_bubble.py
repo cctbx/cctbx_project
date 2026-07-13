@@ -41,8 +41,8 @@ class _ImageCell(QtWidgets.QFrame):
 
   ``clicked(conv_id, sha256)`` is the only public signal -- it
   propagates up through MessageBubble.image_clicked and
-  ConversationView.image_clicked to ChatWindow._on_image_clicked, which
-  uses the two strings to look up the artifact in the side panel.
+  ConversationView.image_clicked to the application's image-click handler,
+  which uses the two strings to look up the artifact in the side panel.
 
   Parameters
   ----------
@@ -335,29 +335,6 @@ class MessageBubble(QtWidgets.QFrame):
     else:
       self._text_view.append_markdown(text or "")
 
-  def add_text(self, text):
-    """Append a text block to the bubble.
-
-    The first call gets the bold-prefixed role marker (``You:`` for user
-    turns, the backend's display name -- e.g. ``Claude:`` / ``GPT:`` -- for
-    assistant turns); subsequent calls render as plain markdown. Also
-    mirrors into ``message.content`` so ``combined_text()`` stays
-    consistent.
-
-    Returns
-    -------
-    MarkdownView
-        The shared text view the block was appended to.
-    """
-    self._append_text_markdown(text)
-    last = self.message.content[-1] if self.message.content else None
-    if last is not None and last.type == "text":
-      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
-    else:
-      self.message.content.append(
-        ContentBlock(type="text", data={"text": text or ""}))
-    return self._text_view
-
   def first_text_cell_html(self):
     """Return the HTML of the first text cell.
 
@@ -515,17 +492,24 @@ class MessageBubble(QtWidgets.QFrame):
 
   # ---- streaming -----------------------------------------------------------
 
-  def append_text_delta(self, text):
-    """Append a streamed text delta to the bubble and message content."""
-    self._append_text_markdown(text)
-    # Keep message.content in sync so combined_text() reflects what was
-    # streamed in (the bubble is the source of truth for on-screen content).
+  def _mirror_text_block(self, block_type, text):
+    """Mirror a streamed delta into ``message.content``: extend the last block
+    when it is already ``block_type``, else append a new one. Keeps
+    message.content in sync with what streamed into the bubble (the bubble is
+    the source of truth for on-screen content) so ``combined_text()`` stays
+    consistent. Shared by ``append_text_delta`` ('text') and
+    ``append_thinking_delta`` ('thinking')."""
     last = self.message.content[-1] if self.message.content else None
-    if last is not None and last.type == "text":
+    if last is not None and last.type == block_type:
       last.data["text"] = (last.data.get("text", "") or "") + (text or "")
     else:
       self.message.content.append(
-        ContentBlock(type="text", data={"text": text or ""}))
+        ContentBlock(type=block_type, data={"text": text or ""}))
+
+  def append_text_delta(self, text):
+    """Append a streamed text delta to the bubble and message content."""
+    self._append_text_markdown(text)
+    self._mirror_text_block("text", text)
 
   def append_thinking_delta(self, text):
     """Append a streamed thinking delta to the bubble and message content."""
@@ -533,14 +517,7 @@ class MessageBubble(QtWidgets.QFrame):
       self._thinking_cell = _ThinkingCell("", self)
       self._layout.addWidget(self._thinking_cell)
     self._thinking_cell.append(text)
-    # Mirror into message.content (same shape as append_text_delta): extend
-    # the LAST block only if it is thinking; otherwise append a new one.
-    last = self.message.content[-1] if self.message.content else None
-    if last is not None and last.type == "thinking":
-      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
-    else:
-      self.message.content.append(
-        ContentBlock(type="thinking", data={"text": text or ""}))
+    self._mirror_text_block("thinking", text)
 
   def append_block(self, block):
     """Append a new ContentBlock to the in-progress bubble.
@@ -555,7 +532,7 @@ class MessageBubble(QtWidgets.QFrame):
     self.message.content.append(block)
     self._add_block(block)
 
-  # ---- introspection (for tests + sidebar previews) -----------------------
+  # ---- introspection (for tests) ------------------------------------------
 
   def combined_text(self):
     """Return a flat-text representation of the bubble's content.

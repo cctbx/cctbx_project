@@ -74,10 +74,56 @@ def exercise_non_utf8_log_bytes_are_readable():
     shutil.rmtree(tmp)
 
 
+def exercise_log_tail_does_not_read_whole_file():
+  """The log tail must be produced with collections.deque(fh, maxlen=N), NOT
+  fh.readlines()[-N:] which slurps a possibly-huge log fully into memory on the
+  GUI thread. Inject a file object that is line-iterable but whose readlines()
+  raises: with the deque tail the dump still builds and holds exactly the last
+  N lines; the old readlines() path would raise here instead."""
+  from qttbx.widgets.chat import diagnostics as diag
+
+  class _NoReadlinesFile:
+    """Line-iterable stand-in for an open log whose readlines() is sabotaged,
+    so any reliance on readlines() surfaces instead of silently passing."""
+    def __init__(self, lines):
+      self._lines = list(lines)
+    def __enter__(self):
+      return self
+    def __exit__(self, *exc):
+      return False
+    def __iter__(self):
+      return iter(self._lines)
+    def readlines(self):
+      raise AssertionError("must tail via deque iteration, not readlines()")
+
+  all_lines = ["line%d\n" % i for i in range(1000)]
+
+  def fake_open(path, *args, **kwargs):
+    return _NoReadlinesFile(all_lines)
+
+  diag.open = fake_open
+  try:
+    text = diag.build_diagnostics(
+      profile=_MiniProfile(),
+      storage=_MiniStorage(project_dir="/x", chat_root="/x"),
+      log_path="/does/not/matter.log",
+      log_tail_lines=5)
+  finally:
+    del diag.open
+
+  # Exactly the last 5 lines (995..999) are present ...
+  for i in range(995, 1000):
+    assert "line%d" % i in text, (i, text)
+  # ... and lines before the tail window are not.
+  assert "line994\n" not in text, text
+  assert "line0\n" not in text, text
+
+
 def exercise():
   exercise_dump_contains_basic_fields()
   exercise_no_log_file_is_ok()
   exercise_non_utf8_log_bytes_are_readable()
+  exercise_log_tail_does_not_read_whole_file()
 
 
 if __name__ == "__main__":

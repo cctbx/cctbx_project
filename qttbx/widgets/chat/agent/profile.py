@@ -19,7 +19,7 @@ from libtbx.utils import Sorry
 # (forward compatibility).
 _KNOWN_KEYS = {
   "name", "description", "based_on",
-  "model", "max_tokens", "thinking", "vision_input",
+  "model",
   "system_prompt", "system_prompt_file",
   "skills", "mcp_servers", "tool_policy_default",
   "subagents",
@@ -164,10 +164,6 @@ class Profile:
   name: str
   model: str
   description: str = ""
-  max_tokens: int = 8192
-  thinking_enabled: bool = False
-  thinking_budget: int = 0
-  vision_input: bool = True
   system_prompt: str = ""                              # resolved (file content inlined)
   skills_additional: list = field(default_factory=list)
   skills_disabled: set = field(default_factory=set)
@@ -176,8 +172,8 @@ class Profile:
   # Provider-side tools the user opts into (canonical names, e.g.
   # "web_search", "web_fetch", "code_execution"). Empty by default so an
   # existing profile that omits the key gets pure-passthrough behavior --
-  # the backend declares nothing extra. Only the anthropic backend
-  # currently consults this; other backends carry the default empty list.
+  # the backend declares nothing extra. The anthropic and google backends
+  # consult this; other backends carry the default empty list.
   server_tools: list = field(default_factory=list)
   subagents_enabled: bool = True
   subagents_max_depth: int = 1
@@ -300,11 +296,19 @@ class ProfileLoader:
       # Pin UTF-8 so a human-authored profile carrying literal non-ASCII
       # (an accented description, an em-dash in a prompt) loads under a
       # C/POSIX locale too -- same fix as the system_prompt_file read below
-      # (:442) and skills._parse_skill_md.
+      # and skills._parse_skill_md.
       with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     except Exception as e:
       raise Sorry("Profile %s parse error: %s" % (path, e))
+
+    # A well-formed JSON file whose top-level value is not an object (a bare
+    # list / number / string / bool / null) parses fine but has no fields to
+    # read. Guard here -- OUTSIDE the parse try/except so this Sorry is not
+    # re-wrapped as a parse error -- so the data.get() calls below raise a
+    # clear Sorry rather than a raw AttributeError, honoring load()'s contract.
+    if not isinstance(data, dict):
+      raise Sorry("Profile %s: top-level JSON must be an object" % path)
 
     # Inheritance: parent first, child overrides.
     based_on = data.get("based_on")
@@ -368,7 +372,7 @@ def _deep_merge(base, override):
 
   Used by ``based_on`` inheritance: ``base`` is the parent profile
   serialized by :func:`_profile_to_dict` and ``override`` is the child's
-  raw JSON. A nested dict section (``thinking``, ``skills``, ``subagents``,
+  raw JSON. A nested dict section (``skills``, ``subagents``,
   ``claude``, ...) is merged key-by-key so a child overriding ONE sub-key
   keeps the parent's other sub-keys; scalars and lists replace wholesale.
   An ``override`` value of ``None`` is skipped so an explicit null in the
@@ -414,10 +418,25 @@ def _server_tools_list(value, source_path):
   return list(value)
 
 
+def _coerce_int(value, field, source_path):
+  """Coerce a numeric profile field to int, raising a clear Sorry on bad input.
+
+  A malformed value in an otherwise well-formed profile (e.g.
+  ``subagents.max_depth: "deep"`` or ``[1]``) would otherwise raise a raw
+  ValueError/TypeError from ``int()`` at build time, contradicting the
+  loader's Sorry contract. ``field`` names the offending key for the message.
+  """
+  try:
+    return int(value)
+  except (ValueError, TypeError):
+    raise Sorry("Profile %s: %s must be an integer, not %r"
+                % (source_path, field, value))
+
+
 def _build_profile(data, source_path):
   """Construct a ``Profile`` from a merged, validated profile dict.
 
-  Flattens nested subtrees (``thinking``, ``skills``, ``subagents``,
+  Flattens nested subtrees (``skills``, ``subagents``,
   ``claude``) into ``Profile`` fields and inlines ``system_prompt_file``
   content with ``${VAR}`` expansion.
 
@@ -440,7 +459,6 @@ def _build_profile(data, source_path):
       When ``system_prompt`` and ``system_prompt_file`` are both set, or
       when ``system_prompt_file`` cannot be found.
   """
-  thinking = data.get("thinking", {}) or {}
   skills = data.get("skills", {}) or {}
   subagents = data.get("subagents", {}) or {}
   # The claude subtree is parsed on every load (cheap), but only the
@@ -490,28 +508,37 @@ def _build_profile(data, source_path):
   skills_additional = skills.get("additional", [])
   if isinstance(skills_additional, str):
     skills_additional = [skills_additional]
+  try:
+    skills_additional = list(skills_additional)
+  except TypeError:
+    raise Sorry("Profile %s: skills.additional must be a list of skill "
+                "names, not %r" % (source_path, skills_additional))
   skills_disabled = skills.get("disabled", [])
   if isinstance(skills_disabled, str):
     skills_disabled = [skills_disabled]
+  try:
+    skills_disabled = set(skills_disabled)
+  except TypeError:
+    raise Sorry("Profile %s: skills.disabled must be a list of skill "
+                "names, not %r" % (source_path, skills_disabled))
 
   return Profile(
     name=data["name"],
     model=data["model"],
     description=data.get("description", ""),
-    max_tokens=int(data.get("max_tokens", 8192)),
-    thinking_enabled=bool(thinking.get("enabled", False)),
-    thinking_budget=int(thinking.get("budget_tokens", 0)),
-    vision_input=bool(data.get("vision_input", True)),
     system_prompt=system_prompt,
-    skills_additional=list(skills_additional),
-    skills_disabled=set(skills_disabled),
+    skills_additional=skills_additional,
+    skills_disabled=skills_disabled,
     mcp_servers=_expand_mcp_servers(
       data.get("mcp_servers", []), source_path=source_path),
     tool_policy_default=data.get("tool_policy_default", "ask"),
     server_tools=_server_tools_list(data.get("server_tools"), source_path),
     subagents_enabled=bool(subagents.get("enabled", True)),
-    subagents_max_depth=int(subagents.get("max_depth", 1)),
-    subagents_default_max_turns=int(subagents.get("default_max_turns", 25)),
+    subagents_max_depth=_coerce_int(
+      subagents.get("max_depth", 1), "subagents.max_depth", source_path),
+    subagents_default_max_turns=_coerce_int(
+      subagents.get("default_max_turns", 25),
+      "subagents.default_max_turns", source_path),
     subagents_default_model=subagents.get(
       "default_model", "claude-opus-4-7"),
     subagents_default_profile=subagents.get("default_profile"),
@@ -543,12 +570,6 @@ def _profile_to_dict(p):
     "name": p.name,
     "description": p.description,
     "model": p.model,
-    "max_tokens": p.max_tokens,
-    "thinking": {
-      "enabled": p.thinking_enabled,
-      "budget_tokens": p.thinking_budget,
-    },
-    "vision_input": p.vision_input,
     "system_prompt": p.system_prompt,
     "skills": {
       "additional": list(p.skills_additional),

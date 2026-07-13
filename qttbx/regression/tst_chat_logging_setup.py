@@ -146,8 +146,39 @@ def exercise_open_raw_log_rotates_and_is_raw():
     shutil.rmtree(tmp)
 
 
+def exercise_log_dir_and_files_are_owner_only():
+  """On a shared project dir the chat logs (only best-effort-redacted, and the
+  raw coot log un-redacted) must not be world-readable: the logs dir is created
+  0700 and each log file 0600 via an explicit chmod, not the ambient umask.
+  POSIX-only (Windows perms don't map)."""
+  if os.name != "posix":
+    return
+  import stat
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log, path = open_session_log(chat_root=tmp)
+    try:
+      log_dir = tmp / "logs"
+      assert stat.S_IMODE(log_dir.stat().st_mode) == 0o700, \
+        oct(stat.S_IMODE(log_dir.stat().st_mode))
+      assert stat.S_IMODE(Path(path).stat().st_mode) == 0o600, \
+        oct(stat.S_IMODE(Path(path).stat().st_mode))
+    finally:
+      log.close()
+    # The raw (un-redacted) coot capture log is tightened too.
+    fh, rawpath = open_raw_log(tmp, "coot")
+    try:
+      assert stat.S_IMODE(Path(rawpath).stat().st_mode) == 0o600, \
+        oct(stat.S_IMODE(Path(rawpath).stat().st_mode))
+    finally:
+      fh.close()
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_open_session_log_creates_dir_and_writes()
+  exercise_log_dir_and_files_are_owner_only()
   exercise_redact_secrets_handles_anthropic_keys()
   exercise_redact_secrets_handles_authorization_header()
   exercise_redact_secrets_passes_clean_text()

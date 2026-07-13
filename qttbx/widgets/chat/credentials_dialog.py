@@ -101,7 +101,10 @@ class CredentialsDialog(QtWidgets.QDialog):
     self.reject()
 
   def _on_save(self):
-    self._result_value = self._value_edit.text()
+    # Strip surrounding whitespace: a pasted key routinely carries a trailing
+    # newline / stray spaces, which would otherwise reach the SDK and get the
+    # Authorization header rejected by httpx as a spurious auth failure.
+    self._result_value = self._value_edit.text().strip()
     self.accept()
 
 

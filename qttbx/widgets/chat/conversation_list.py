@@ -347,6 +347,14 @@ class ConversationList(QtWidgets.QWidget):
     item = self._list.item(row)
     if item is None:
       return
+    # Neutralise the shared Delete/Unlock button synchronously on any selection
+    # change. The async lock re-check that morphs it back to Unlock (for a still-
+    # locked row) runs LATER -- the debounce only guards label flips, not
+    # selection changes -- so a stale 'Unlock <other row>' target must not survive
+    # into the new selection, or a click during the scan would unlock the wrong,
+    # no-longer-selected conversation. set_delete_button is a no-op when already
+    # in the Delete state, so an unlocked->unlocked hop doesn't churn.
+    self.set_delete_button()
     self.selected.emit(item.data(QtCore.Qt.UserRole))
 
   def _on_item_double_clicked(self, item):
@@ -439,6 +447,15 @@ class ConversationList(QtWidgets.QWidget):
       item.setText(old_title or "Untitled")
       self._list.blockSignals(False)
       return
+    if item.text() != new_title:
+      # Normalise the row's DISPLAYED text to the stripped title so what's shown
+      # matches what's stored/emitted -- a padded '  Notes  ' commit would
+      # otherwise leave the raw, unstripped text visible for the whole in-flight
+      # turn (the busy path skips the sidebar repopulate). blockSignals so this
+      # write can't re-enter _on_item_changed.
+      self._list.blockSignals(True)
+      item.setText(new_title)
+      self._list.blockSignals(False)
     if new_title == old_title:
       return
     # Remember the pre-edit title so a chat-window refusal (e.g. the row locked

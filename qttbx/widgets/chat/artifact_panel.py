@@ -178,6 +178,34 @@ class ArtifactPanel(QtWidgets.QWidget):
 
   # ---- buttons -------------------------------------------------------------
 
+  def _suggested_save_name(self, art):
+    """Return the default filename offered by the save dialog.
+
+    Prefers the artifact caption verbatim; otherwise builds
+    ``<sha8><ext>`` where ``ext`` comes from the payload ``mime`` (via
+    ``mimetypes.guess_extension``), mirroring how ``store_attachment``
+    derives extensions and falling back to ``.png`` when the mime is
+    missing or unknown.
+
+    Parameters
+    ----------
+    art : Artifact
+        The artifact whose default save name is being computed.
+
+    Returns
+    -------
+    str
+        The suggested default filename.
+    """
+    import mimetypes
+    if art.caption:
+      return art.caption
+    payload = art.payload or {}
+    sha = payload.get("sha256", "")
+    mime = payload.get("mime")
+    ext = (mimetypes.guess_extension(mime) if mime else None) or ".png"
+    return "%s%s" % (sha[:8], ext)
+
   def save_current(self):
     """Prompt for a path and save the current image artifact to disk."""
     art = self.current_artifact()
@@ -188,7 +216,7 @@ class ArtifactPanel(QtWidgets.QWidget):
     payload = art.payload or {}
     sha = payload.get("sha256", "")
     conv_id = payload.get("conv_id", "")
-    suggested = (art.caption or "%s.png" % sha[:8])
+    suggested = self._suggested_save_name(art)
     path, _ = QtWidgets.QFileDialog.getSaveFileName(
       self, "Save image", suggested,
       "Images (*.png *.jpg *.jpeg *.webp *.gif)")
@@ -249,17 +277,25 @@ class _ScaledImageLabel(QtWidgets.QLabel):
     self._sha256 = sha256
     self.setAlignment(QtCore.Qt.AlignCenter)
     self.setMinimumSize(120, 80)
+    self._last_width = None
     self._reload()
 
   def _reload(self):
     if self._storage is None or not self._sha256:
       self.setText("(no image)")
       return
+    width = self.width()
+    # resizeEvent fires continuously during a drag-resize; skip the expensive
+    # decode + smooth rescale (and the storage re-read) when the target width
+    # is unchanged since the last reload.
+    if width == self._last_width:
+      return
+    self._last_width = width
     img = get_image(self._storage, self._conv_id, self._sha256)
     pix = QtGui.QPixmap.fromImage(img)
-    if self.width() > 0:
+    if width > 0:
       pix = pix.scaledToWidth(
-        self.width(), QtCore.Qt.SmoothTransformation)
+        width, QtCore.Qt.SmoothTransformation)
     self.setPixmap(pix)
 
   def resizeEvent(self, event):

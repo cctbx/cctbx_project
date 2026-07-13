@@ -108,11 +108,81 @@ def exercise_show_image_focuses_existing_or_inserts():
     shutil.rmtree(tmp)
 
 
+def exercise_reload_skips_unchanged_width():
+  """A resize to an unchanged width must not re-run the expensive reload.
+
+  Every resizeEvent used to re-decode the image (get_image) and re-scale
+  the full-res pixmap, making drag-resize janky. A width guard should make
+  a repeated resize to the same width a no-op for the expensive path.
+  """
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
+    att = storage.store_attachment("c", _png_bytes(), "image/png")
+    import qttbx.widgets.chat.artifact_panel as ap_mod
+    calls = {"n": 0}
+    real_get_image = ap_mod.get_image
+    def _spy(*args, **kwargs):
+      calls["n"] += 1
+      return real_get_image(*args, **kwargs)
+    ap_mod.get_image = _spy
+    try:
+      label = ap_mod._ScaledImageLabel(storage, "c", att.sha256)
+      label.resize(200, 100)
+      ev = QtGui.QResizeEvent(QtCore.QSize(200, 100), QtCore.QSize(120, 80))
+      label.resizeEvent(ev)
+      first = calls["n"]
+      assert first >= 1, first
+      # A second resize to the SAME width must not touch get_image again.
+      label.resizeEvent(ev)
+      assert calls["n"] == first, (first, calls["n"])
+    finally:
+      ap_mod.get_image = real_get_image
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_save_name_extension_follows_mime():
+  """The suggested save filename extension follows the payload mime.
+
+  save_current used to hardcode a ``.png`` default, so a JPEG/webp/gif
+  artifact was offered a wrong ``.png`` name. The default name should
+  derive its extension from the payload mime, falling back to ``.png``.
+  """
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
+    att = storage.store_attachment("c", _png_bytes(), "image/jpeg")
+    p = ArtifactPanel(storage=storage)
+    art = Artifact(kind="image", payload={
+      "conv_id": "c", "sha256": att.sha256, "mime": "image/jpeg"})
+    name = p._suggested_save_name(art)
+    assert name.lower().endswith((".jpg", ".jpeg")), name
+    # A missing / unknown mime still falls back to ``.png``.
+    art_nomime = Artifact(kind="image", payload={
+      "conv_id": "c", "sha256": att.sha256})
+    assert p._suggested_save_name(art_nomime).endswith(".png"), \
+      p._suggested_save_name(art_nomime)
+    # A caption still wins verbatim when present.
+    art_cap = Artifact(kind="image", caption="figure.tiff", payload={
+      "conv_id": "c", "sha256": att.sha256, "mime": "image/jpeg"})
+    assert p._suggested_save_name(art_cap) == "figure.tiff", \
+      p._suggested_save_name(art_cap)
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_empty_state_has_no_current_artifact()
   exercise_add_image_artifact_auto_advances()
   exercise_user_navigation_pins_index()
   exercise_show_image_focuses_existing_or_inserts()
+  exercise_reload_skips_unchanged_width()
+  exercise_save_name_extension_follows_mime()
 
 
 if __name__ == "__main__":

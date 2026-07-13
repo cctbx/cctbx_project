@@ -86,9 +86,10 @@ class AgentSession:
   log : file-like, optional
       Stream for log output. Defaults to ``sys.stdout``.
   approval_queue : queue.Queue, optional
-      Queue the worker parks on during the ``ask`` policy. External
-      callers (the GUI runner) inject a queue they also push to; tests
-      inject a ``queue.Queue``. A fresh queue is created when omitted.
+      Queue the worker parks on during the ``ask`` policy. A fresh queue is
+      created here and exposed as ``self.approval_queue``; the GUI runner and
+      tests push the user's decision onto it. No caller injects one today,
+      though the parameter permits it.
   """
 
   def __init__(self, agent, conversation, storage, tools, policy,
@@ -108,8 +109,8 @@ class AgentSession:
     self.log = log if log is not None else sys.stdout
 
     # The approval queue is the worker's blocking point during 'ask' policy.
-    # External callers (the GUI runner) inject a queue they also push to;
-    # tests inject a queue.Queue.
+    # A fresh queue is created here (no caller injects one today); the GUI
+    # runner and tests push the user's decision onto self.approval_queue.
     self.approval_queue = approval_queue or queue.Queue()
 
     # The question queue is the worker's blocking point while a
@@ -119,6 +120,7 @@ class AgentSession:
     # on cancel, and delivers the user's answers via submit_question_answer.
     self.question_queue = queue.Queue()
     self._pending_question_id = None
+    self._pending_approval_id = None
 
     # Set when run_turn starts; consulted by tool handlers.
     self.cancel = None
@@ -418,7 +420,10 @@ class AgentSession:
     """Park the worker on the approval queue until a decision arrives.
 
     Wakes on either a real ``ToolApprovalResponse`` or a ``_Cancelled``
-    sentinel pushed by the GUI's cancel handler.
+    sentinel pushed by the GUI's cancel handler. A response whose
+    ``request_id`` does not match ``req`` is a stale click from an abandoned
+    earlier turn's card and is discarded, so it can't be misapplied to this
+    request (mirrors ``submit_question_answer``'s id check).
 
     Parameters
     ----------
@@ -435,11 +440,32 @@ class AgentSession:
     TurnCancelled
         If a ``_Cancelled`` sentinel is received instead of a response.
     """
-    self.on_event(req)                              # surface to UI
-    response = self.approval_queue.get()
-    if isinstance(response, _Cancelled):
-      raise TurnCancelled()
-    return response
+    self._pending_approval_id = req.request_id
+    try:
+      self.on_event(req)                              # surface to UI
+      while True:
+        response = self.approval_queue.get()
+        if isinstance(response, _Cancelled):
+          raise TurnCancelled()
+        if getattr(response, "request_id", None) == req.request_id:
+          return response
+        # A response for a DIFFERENT request is a stale card click from an
+        # abandoned earlier turn (the approval path is is_busy-gated, so it can
+        # be queued while this later turn runs). Drop it -- returning it would
+        # misapply an unrelated decision to THIS tool. Batch siblings are queued
+        # and consumed in the same dispatch order, so the only non-matching item
+        # reached here is a genuinely stale one, never a sibling still needed.
+    finally:
+      self._pending_approval_id = None
+
+  def owns_pending_approval(self, request_id):
+    """Whether the worker is currently parked in ``_await_approval`` waiting for
+    this exact ``request_id``.
+
+    Lets the runner gate a ``deny_and_stop`` cancel on a matching request so a
+    stale card's stop can't cancel an unrelated later turn.
+    """
+    return request_id is not None and request_id == self._pending_approval_id
 
   def _await_question_answer(self, request_id, questions):
     """Emit an ``AskUserQuestionRequested`` and park the worker for answers.

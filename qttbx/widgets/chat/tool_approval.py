@@ -80,6 +80,22 @@ class ToolApprovalCard(QtWidgets.QFrame):
   def click_stop(self):
     self._emit("deny_and_stop")
 
+  def finalize(self):
+    """Disable this card WITHOUT emitting a decision.
+
+    Called when the card's turn ends while still undecided (the user stopped
+    the turn) so a later click can't emit a stale response into a subsequent
+    turn -- the approval-misroute guard. Marks the card decided (so ``_emit``
+    won't fire), disables its buttons, and hides it, mirroring the
+    post-decision state. A no-op once a real decision has been emitted.
+    """
+    if self._decided:
+      return
+    self._decided = True
+    if self._buttons_widget is not None:
+      self._buttons_widget.setEnabled(False)
+    self.hide()
+
   # ---- UI build ------------------------------------------------------------
 
   def _rebuild(self):
@@ -165,6 +181,8 @@ class ToolApprovalCard(QtWidgets.QFrame):
   # ---- emit ----------------------------------------------------------------
 
   def _emit(self, decision):
+    if self._decided:
+      return               # already decided or finalized -- never emit twice
     remember = "none"
     if decision == "approve" and self._remember_tool:
       remember = "tool"

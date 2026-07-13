@@ -183,7 +183,7 @@ def exercise_role_renders_as_bold_prefix_on_first_text_line():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   _qapp()
   bubble = MessageBubble(role="user")
-  bubble.add_text("refine 1yjp")
+  bubble.append_text_delta("refine 1yjp")
   text = bubble.first_text_cell_html()
   assert "You" in text and "refine 1yjp" in text, text
 
@@ -196,7 +196,7 @@ def exercise_assistant_label_from_backend_stamp():
   _qapp()
   msg = Message(role="assistant", timestamp=now(), content=[], backend="openai")
   bubble = MessageBubble(msg)
-  bubble.add_text("I will run phenix.refine.")
+  bubble.append_text_delta("I will run phenix.refine.")
   text = bubble.first_text_cell_html()
   assert "GPT" in text and "phenix.refine" in text, text
   assert "Claude" not in text, text
@@ -208,10 +208,10 @@ def exercise_assistant_label_falls_back_to_passed_name_then_assistant():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   _qapp()
   b1 = MessageBubble(role="assistant", assistant_label="Gemini")
-  b1.add_text("hi")
+  b1.append_text_delta("hi")
   assert "Gemini" in b1.first_text_cell_html()
   b2 = MessageBubble(role="assistant")
-  b2.add_text("hi")
+  b2.append_text_delta("hi")
   t2 = b2.first_text_cell_html()
   assert "Assistant" in t2 and "Claude" not in t2, t2
 
@@ -247,7 +247,7 @@ def exercise_text_after_tool_cell_does_not_merge_into_prior_text_view():
   _qapp()
   from qttbx.widgets.chat.message_bubble import MessageBubble
   bubble = MessageBubble(role="assistant")
-  bubble.add_text("I'll run the job.")
+  bubble.append_text_delta("I'll run the job.")
   first_view = bubble._text_view
   assert first_view is not None
   bubble.add_tool_use_cell(tool_id="t1", name="phenix_start_job", args={})
@@ -255,7 +255,7 @@ def exercise_text_after_tool_cell_does_not_merge_into_prior_text_view():
   # _text_view so the NEXT add_text() creates a new MarkdownView.
   assert bubble._text_view is None, \
     "tool cell insertion must reset _text_view"
-  bubble.add_text("Now waiting for it to finish.")
+  bubble.append_text_delta("Now waiting for it to finish.")
   second_view = bubble._text_view
   assert second_view is not None
   assert second_view is not first_view, \

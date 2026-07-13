@@ -473,11 +473,15 @@ def exercise_deny_and_stop_ends_turn():
       risk="write")
     approval_queue = queue.Queue()
     session.approval_queue = approval_queue
-    # Pre-load the queue with a deny_and_stop response so the worker
-    # doesn't actually have to block.
-    approval_queue.put(ToolApprovalResponse(
-      request_id="ignored",  # session uses internally-generated ids
-      decision="deny_and_stop"))
+    # Deliver Deny+Stop carrying the SURFACED request's id (the real card echoes
+    # req.request_id), so _await_approval matches it instead of discarding it as
+    # a stale click from an abandoned turn.
+    from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+    def _deny_and_stop(ev):
+      if isinstance(ev, ToolApprovalRequest):
+        approval_queue.put(ToolApprovalResponse(
+          request_id=ev.request_id, decision="deny_and_stop"))
+    session.on_event = _deny_and_stop
     cancel = CancelToken()
     user_msg = Message(role="user", content=[
       ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
@@ -1314,15 +1318,17 @@ def exercise_session_propagates_allow_remember():
       handler=lambda *a, **k: "", risk="write")
     session.policy = ToolPolicy(default="ask")
     captured = []
-    session.on_event = captured.append
-    # Pre-seed a deny so _await_approval returns without blocking; we only
-    # care about the ToolApprovalRequest surfaced to on_event, not the answer.
-    session.approval_queue.put(ToolApprovalResponse(
-      request_id="ignored", decision="deny"))
+    # Answer each surfaced request with a deny carrying ITS id (the real card
+    # echoes req.request_id), so _await_approval matches instead of discarding
+    # it. We only care about the ToolApprovalRequests surfaced, not the answers.
+    def _on_event(ev):
+      captured.append(ev)
+      if isinstance(ev, ToolApprovalRequest):
+        session.approval_queue.put(ToolApprovalResponse(
+          request_id=ev.request_id, decision="deny"))
+    session.on_event = _on_event
     session._resolve_and_approve(
       ToolUseRequested(id="t1", name="keepme", input={}), batch_id=None)
-    session.approval_queue.put(ToolApprovalResponse(
-      request_id="ignored", decision="deny"))
     session._resolve_and_approve(
       ToolUseRequested(id="t2", name="normaltool", input={}), batch_id=None)
     reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
@@ -1348,11 +1354,14 @@ def exercise_session_destructive_always_cards():
       handler=lambda *a, **k: "", risk="read")
     session.policy = ToolPolicy(default="allow")     # permissive
     captured = []
-    session.on_event = captured.append
-    # Destructive: forced to a card despite default='allow'; _await_approval
-    # blocks until we feed a decision, so pre-seed a deny.
-    session.approval_queue.put(ToolApprovalResponse(
-      request_id="ignored", decision="deny"))
+    # Destructive: forced to a card despite default='allow'. Answer the surfaced
+    # request with a deny carrying ITS id so _await_approval matches it.
+    def _on_event(ev):
+      captured.append(ev)
+      if isinstance(ev, ToolApprovalRequest):
+        session.approval_queue.put(ToolApprovalResponse(
+          request_id=ev.request_id, decision="deny"))
+    session.on_event = _on_event
     d = session._resolve_and_approve(
       ToolUseRequested(id="t1", name="killtool", input={}), batch_id=None)
     reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]

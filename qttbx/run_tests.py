@@ -20,6 +20,7 @@ tst_list_base.append("$D/regression/tst_chat_profile.py")
 tst_list_base.append("$D/regression/tst_chat_session.py")
 tst_list_base.append("$D/regression/tst_chat_skills.py")
 tst_list_base.append("$D/regression/tst_chat_storage.py")
+tst_list_base.append("$D/regression/tst_chat_storage_session.py")
 tst_list_base.append("$D/regression/tst_chat_tools.py")
 
 # Qt-requiring chat widgets

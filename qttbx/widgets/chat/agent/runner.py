@@ -213,9 +213,17 @@ class QtAgentRunner(QtCore.QObject):
       # flight. A late click on a still-visible card after the turn ended
       # (e.g. the user hit Stop, then clicked Approve) would otherwise sit
       # unconsumed and be applied to the NEXT turn's first approval -- the
-      # same stale-item leak cancel() guards against via is_busy().
+      # same stale-item leak cancel() guards against via is_busy(). A stale
+      # response that still slips through is dropped on the consume side by
+      # _await_approval's request-id match.
       self.session.approval_queue.put(response)
-    if response.decision == "deny_and_stop":
+    # A deny_and_stop cancels the in-flight turn -- but only when this response
+    # belongs to it: the agent owned it (claude_code's can_use_tool callback),
+    # or it answers the approval the session worker is parked on. A stale card's
+    # stop from an abandoned earlier turn must NOT cancel an unrelated later
+    # turn (the same hazard cancel()'s is_busy() guard addresses).
+    if response.decision == "deny_and_stop" and (
+        handled or self.session.owns_pending_approval(response.request_id)):
       self._cancel.set()
 
   def submit_question_answer(self, request_id, answers):
@@ -226,9 +234,9 @@ class QtAgentRunner(QtCore.QObject):
     them itself. The API backends inherit the ``Agent`` base default
     (returns ``False``) and so fall through to the session's
     ``submit_question_answer`` -- the path a ``phenix_ask_user_question``
-    builtin parks on. Every backend is an ``Agent`` subclass, so the
-    method is always present (a direct call, mirroring ``submit_approval``
-    above).
+    builtin parks on. Every backend exposes the ``Agent`` contract (the API
+    backends subclass it; claude_code duck-types it), so the method is always
+    present (a direct call, mirroring ``submit_approval`` above).
 
     Must be called from the GUI thread.
 
@@ -255,8 +263,8 @@ class QtAgentRunner(QtCore.QObject):
   def wait_for_idle(self, timeout_ms=5000):
     """Block until the current turn finishes.
 
-    Used by tests; the GUI never calls this. Must be called from the GUI
-    thread.
+    Called by the GUI on the conversation-switch and close teardown paths
+    (ChatWindow) and by tests. Must be called from the GUI thread.
 
     Parameters
     ----------
@@ -266,6 +274,31 @@ class QtAgentRunner(QtCore.QObject):
     if self._thread is None:
       return
     self._thread.wait(timeout_ms)
+
+  def shutdown(self, timeout_ms=2000):
+    """Synchronously stop and join the worker thread from the GUI thread.
+
+    Unlike ``wait_for_idle`` -- which only ``wait()``s and relies on the queued
+    ``_on_worker_finished`` slot to ``quit()`` the thread's ``exec()`` loop, a
+    slot that cannot run while the GUI thread is blocked in that ``wait()`` --
+    this quits the thread's event loop itself, then joins it. Call it on
+    teardown (``closeEvent`` / conversation switch, after ``cancel()``) so the
+    ``QThread`` is actually finished before the runner/window is destroyed;
+    otherwise ``wait()`` blocks the full timeout and the still-running thread
+    aborts with "QThread: Destroyed while thread is still running". Idempotent;
+    must be called from the GUI thread.
+    """
+    thread = self._thread
+    if thread is None:
+      return
+    thread.quit()               # ask the thread's exec() loop to exit
+    thread.wait(timeout_ms)     # then join it (bounded)
+    thread.deleteLater()
+    worker = self._worker
+    if worker is not None:
+      worker.deleteLater()
+    self._thread = None
+    self._worker = None
 
   # ---- event routing -------------------------------------------------------
 

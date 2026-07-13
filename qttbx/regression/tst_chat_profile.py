@@ -25,9 +25,7 @@ def exercise_minimal_profile_loads():
     assert p.name == "minimal"
     assert p.model == "claude-opus-4-7"
     # All other fields take defaults
-    assert p.max_tokens == 8192
     assert p.tool_policy_default == "ask"
-    assert p.vision_input is True
     assert p.skills_additional == []
     assert p.skills_disabled == set()
     assert p.subagents_enabled is True
@@ -57,20 +55,18 @@ def exercise_based_on_inheritance():
     _write_profile(tmp, "parent", {
       "name": "parent",
       "model": "claude-opus-4-7",
-      "max_tokens": 4096,
       "tool_policy_default": "allow",
     })
     _write_profile(tmp, "child", {
       "name": "child",
       "based_on": "parent",
       "model": "claude-haiku-4-5",   # override
-      # max_tokens inherited from parent
+      # tool_policy_default inherited from parent
     })
     loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
     p = loader.load("child")
     assert p.name == "child"
     assert p.model == "claude-haiku-4-5"          # override
-    assert p.max_tokens == 4096                   # inherited
     assert p.tool_policy_default == "allow"       # inherited
   finally:
     shutil.rmtree(tmp)
@@ -308,11 +304,11 @@ def exercise_load_file_based_on_falls_through_to_builtin():
   builtin = tempfile.mkdtemp()
   try:
     _write_profile(builtin, "base", {"name": "base", "model": "m",
-                                     "max_tokens": 4096})
+                                     "tool_policy_default": "allow"})
     _write_profile(bundle, "ext", {"name": "ext", "based_on": "base"})
     loader = ProfileLoader(builtin_dir=Path(builtin), log=null_out())
     p = loader.load_file(os.path.join(bundle, "ext.json"))
-    assert p.max_tokens == 4096   # inherited from the builtin parent
+    assert p.tool_policy_default == "allow"   # inherited from the builtin parent
   finally:
     shutil.rmtree(bundle)
     shutil.rmtree(builtin)
@@ -366,20 +362,17 @@ def exercise_project_overrides_user_overrides_builtin():
   project = tempfile.mkdtemp()
   try:
     _write_profile(builtin, "phenix_expert",
-                   {"name": "phenix_expert", "model": "claude-opus-4-7",
-                    "max_tokens": 1})
+                   {"name": "phenix_expert", "model": "builtin-model"})
     _write_profile(user, "phenix_expert",
-                   {"name": "phenix_expert", "model": "claude-opus-4-7",
-                    "max_tokens": 2})
+                   {"name": "phenix_expert", "model": "user-model"})
     _write_profile(project, "phenix_expert",
-                   {"name": "phenix_expert", "model": "claude-opus-4-7",
-                    "max_tokens": 3})
+                   {"name": "phenix_expert", "model": "project-model"})
     loader = ProfileLoader(builtin_dir=Path(builtin),
                            user_dir=Path(user),
                            project_dir=Path(project),
                            log=null_out())
     p = loader.load("phenix_expert")
-    assert p.max_tokens == 3  # project wins
+    assert p.model == "project-model"  # project wins
   finally:
     shutil.rmtree(builtin)
     shutil.rmtree(user)
@@ -396,6 +389,36 @@ def exercise_unknown_fields_warn_not_fail():
     loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
     p = loader.load("p")  # should not raise
     assert p.name == "p"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_removed_dormant_fields_are_unknown_keys():
+  """max_tokens / thinking / vision_input were dormant profile fields the
+  launcher never forwarded -- a silent-ignore trap (a profile setting
+  max_tokens=4096 was quietly dropped, masked only because 8192 happened to
+  match the anthropic/gemini constructor default). They have been removed from
+  the profile schema, so a profile that sets them now warns as an unknown key
+  (ignored) and the loaded Profile carries no such attribute, rather than
+  advertising an inert knob. The backends keep their own max_tokens /
+  thinking_budget constructor defaults -- those are unaffected."""
+  import io
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {
+      "name": "p", "model": "m",
+      "max_tokens": 4096,
+      "thinking": {"enabled": True, "budget_tokens": 2048},
+      "vision_input": False,
+    })
+    log = io.StringIO()
+    p = ProfileLoader(builtin_dir=Path(tmp), log=log).load("p")  # must not raise
+    warned = log.getvalue()
+    for key in ("max_tokens", "thinking", "vision_input"):
+      assert "unknown key '%s'" % key in warned, warned
+    for attr in ("max_tokens", "thinking_enabled", "thinking_budget",
+                 "vision_input"):
+      assert not hasattr(p, attr), attr
   finally:
     shutil.rmtree(tmp)
 
@@ -772,6 +795,55 @@ def exercise_system_prompt_file_outside_profile_dir_rejected():
     shutil.rmtree(secret_dir)
 
 
+def exercise_malformed_field_types_raise_sorry():
+  """A well-formed profile object carrying a malformed FIELD type must raise a
+  clear Sorry, not a raw ValueError/TypeError from the int()/list()/set()
+  coercions in _build_profile. Covers subagents.max_depth (a non-numeric
+  string and a list), subagents.default_max_turns, and skills.additional /
+  skills.disabled given a non-iterable scalar (int)."""
+  tmp = tempfile.mkdtemp()
+  try:
+    bad_profiles = (
+      {"name": "p", "model": "m", "subagents": {"max_depth": "deep"}},
+      {"name": "p", "model": "m", "subagents": {"max_depth": [1]}},
+      {"name": "p", "model": "m", "subagents": {"default_max_turns": "lots"}},
+      {"name": "p", "model": "m", "skills": {"additional": 5}},
+      {"name": "p", "model": "m", "skills": {"disabled": 5}},
+    )
+    for body in bad_profiles:
+      _write_profile(tmp, "p", body)
+      loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+      try:
+        loader.load("p")
+      except Sorry:
+        pass
+      else:
+        raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_non_object_toplevel_json_raises_sorry():
+  """A profile file whose top-level JSON is not an object -- a bare list /
+  number / string / bool / null -- parses via json.load but has no fields to
+  read. Without a type guard, the subsequent data.get("based_on") raised a raw
+  AttributeError OUTSIDE the parse try/except, contradicting load()'s Sorry
+  contract. Each non-object top-level value must raise a clear Sorry instead."""
+  tmp = tempfile.mkdtemp()
+  try:
+    for body in ([], 42, "x", True, None):
+      _write_profile(tmp, "p", body)
+      loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+      try:
+        loader.load("p")
+      except Sorry as e:
+        assert "object" in str(e), str(e)
+      else:
+        raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_minimal_profile_loads()
   exercise_missing_required_field_raises()
@@ -789,6 +861,7 @@ def exercise():
   exercise_variable_expansion_env()
   exercise_project_overrides_user_overrides_builtin()
   exercise_unknown_fields_warn_not_fail()
+  exercise_removed_dormant_fields_are_unknown_keys()
   exercise_system_prompt_file_with_expansion()
   exercise_system_prompt_file_non_ascii_utf8_round_trips()
   exercise_profile_json_non_ascii_utf8_loads()
@@ -808,6 +881,8 @@ def exercise():
   exercise_mcp_server_inject_phenix_env_parsed_false()
   exercise_system_prompt_file_outside_profile_dir_rejected()
   exercise_backend_display_name_maps_each_backend()
+  exercise_malformed_field_types_raise_sorry()
+  exercise_non_object_toplevel_json_raises_sorry()
 
 
 def exercise_backend_display_name_maps_each_backend():

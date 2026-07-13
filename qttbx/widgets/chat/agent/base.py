@@ -375,3 +375,63 @@ def close_client(client):
       closer()
     except Exception:
       pass
+
+
+class HttpClientAgent(Agent):
+  """Shared base for the HTTP/SDK-client API backends (Anthropic, OpenAI-
+  compatible, Portkey, Gemini).
+
+  Codifies the api-key rotation dance -- build a fresh client for the new key
+  (re-applying ``base_url`` + any subclass kwargs) and release the old client's
+  connection pool -- so each backend doesn't re-implement ``set_api_key``. The
+  subprocess-shaped ``claude_code`` backend is a plain ``Agent`` (no HTTP client
+  to rotate), which is why this refinement lives one level below the ABC rather
+  than on ``Agent`` itself. Subclasses store the client on ``self.client`` and a
+  0-arg-per-key factory on ``self._client_factory``; they vary only in how the
+  client is built (``_rebuild_client``) and what extra kwargs it takes
+  (``_client_extra_kwargs``).
+  """
+
+  def set_api_key(self, key):
+    """Rebuild the provider client with a new API key (runtime re-auth) and
+    release the old client's connection pool.
+
+    Called by ChatWindow when the user supplies a new key via the credentials
+    dialog. The next ``stream_turn`` uses the new client. Shared by every
+    HTTP-client backend; subclasses vary only in ``_rebuild_client``.
+    """
+    old = getattr(self, "client", None)
+    self.client = self._rebuild_client(key)
+    close_client(old)               # release the prior client's pool
+
+  def _rebuild_client(self, key):
+    """Construct a fresh provider client for ``key``.
+
+    Default: call the stored ``self._client_factory`` with ``_client_kwargs``.
+    Gemini overrides this because its google-genai client isn't
+    ``factory(**kwargs)``-shaped.
+    """
+    return self._client_factory(**self._client_kwargs(key))
+
+  def _client_kwargs(self, key):
+    """Build the provider client constructor kwargs.
+
+    ``api_key`` always; ``base_url`` only when set (so the SDK default endpoint
+    isn't overridden with an explicit ``None``); plus any subclass extras from
+    ``_client_extra_kwargs`` (e.g. Portkey's ``virtual_key`` / ``config``).
+    Shared by ``__init__`` and ``set_api_key`` so construction and key rotation
+    can't diverge.
+    """
+    kwargs = {"api_key": key}
+    if getattr(self, "base_url", None):
+      kwargs["base_url"] = self.base_url
+    kwargs.update(self._client_extra_kwargs())
+    return kwargs
+
+  def _client_extra_kwargs(self):
+    """Extra client-constructor kwargs folded into ``_client_kwargs``.
+
+    Base returns none; subclasses (e.g. ``PortkeyAgent``) override to inject
+    provider-specific client kwargs such as ``virtual_key`` / ``config``.
+    """
+    return {}

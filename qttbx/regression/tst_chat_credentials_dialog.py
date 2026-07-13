@@ -39,6 +39,19 @@ def exercise_credentials_dialog_save_returns_entered_value():
   assert dlg.result_value() == "sk-test-1234"
 
 
+def exercise_credentials_dialog_save_strips_whitespace():
+  """A pasted key often carries surrounding whitespace / a trailing newline
+  ('  sk-ant-abc\n'). Unstripped it reaches the SDK and httpx rejects the
+  Authorization header -> a spurious auth failure. _on_save must .strip()."""
+  from qttbx.widgets.chat.credentials_dialog import CredentialsDialog
+  app = _app()
+  dlg = CredentialsDialog(title="Test", instructions="Enter a key.",
+                          field_label="API key")
+  dlg.set_value("  sk-ant-abc\n")
+  dlg._on_save()
+  assert dlg.result_value() == "sk-ant-abc", repr(dlg.result_value())
+
+
 def exercise_credentials_dialog_show_hide_toggle():
   from qttbx.qt.QtWidgets import QLineEdit
   from qttbx.widgets.chat.credentials_dialog import CredentialsDialog
@@ -66,6 +79,7 @@ def exercise_anthropic_credentials_dialog_uses_anthropic_metadata():
 def exercise():
   exercise_credentials_dialog_base_returns_none_on_cancel()
   exercise_credentials_dialog_save_returns_entered_value()
+  exercise_credentials_dialog_save_strips_whitespace()
   exercise_credentials_dialog_show_hide_toggle()
   exercise_anthropic_credentials_dialog_uses_anthropic_metadata()
 

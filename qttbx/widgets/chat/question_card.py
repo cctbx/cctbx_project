@@ -101,6 +101,37 @@ class QuestionCard(QtWidgets.QFrame):
     self.answered.emit(
       self._request_id, {"error": "no valid questions to display"})
 
+  @staticmethod
+  def _unique_answer_key(answers, text):
+    """Return a key for ``text`` that does not collide in ``answers``.
+
+    Two questions can carry the same ``question`` string (or both omit it,
+    yielding ""), and the model reads the answers keyed by question text (the
+    tool contract). Keeping the text as the key but appending an ordinal
+    suffix on a collision -- "Same?", "Same? (2)", ... -- keeps that contract
+    while ensuring each of the N questions yields its own entry; keying by raw
+    text would let the second write clobber the first and silently drop one of
+    the user's selections.
+
+    Parameters
+    ----------
+    answers : dict
+        Keys already assigned in this submit.
+    text : str
+        The question's text (its preferred key).
+
+    Returns
+    -------
+    str
+        ``text`` if free, else ``text`` with the lowest free ordinal suffix.
+    """
+    if text not in answers:
+      return text
+    n = 2
+    while ("%s (%d)" % (text, n)) in answers:
+      n += 1
+    return "%s (%d)" % (text, n)
+
   def click_submit(self):
     """Collect answers from every question and emit them.
 
@@ -119,7 +150,6 @@ class QuestionCard(QtWidgets.QFrame):
         other = state["other_edit"].text().strip()
         if other:
           picked.append(other)
-        answers[text] = picked
       else:
         picked = None
         for btn, label in state["option_buttons"]:
@@ -131,11 +161,42 @@ class QuestionCard(QtWidgets.QFrame):
           # Free-form text wins over a radio selection when both are set;
           # the user's intent is whatever they last typed.
           picked = other
-        answers[text] = picked
+      answers[self._unique_answer_key(answers, text)] = picked
     if self._buttons_widget is not None:
       self._buttons_widget.setEnabled(False)
     self.hide()
     self.answered.emit(self._request_id, answers)
+
+  def is_resolved(self):
+    """Report whether an answer (or the auto-error) has been emitted.
+
+    Once resolved, the card is hidden and its Submit disabled.
+    ``ConversationView`` consults this so its turn-end sweep never
+    re-finalizes an already-answered card.
+
+    Returns
+    -------
+    bool
+        ``True`` once an answer has been emitted or the card finalized.
+    """
+    return self._resolved
+
+  def finalize(self):
+    """Disable this card WITHOUT emitting an answer.
+
+    Called when the card's turn ends while still unanswered (the user stopped
+    the turn) so a later Submit can't emit a stale answer whose ``request_id``
+    the parked worker no longer waits on -- mirroring ``ToolApprovalCard.
+    finalize`` and the approval-misroute guard. Marks the card resolved (so
+    ``click_submit`` won't fire), disables its buttons, and hides it. A no-op
+    once a real answer has been emitted.
+    """
+    if self._resolved:
+      return
+    self._resolved = True
+    if self._buttons_widget is not None:
+      self._buttons_widget.setEnabled(False)
+    self.hide()
 
   # ---- UI build ------------------------------------------------------------
 

@@ -58,8 +58,9 @@ class ConversationView(QtWidgets.QScrollArea):
     self._storage = storage
     self._conv_id = conv_id
     # Current backend's assistant display name; the fallback for bubbles /
-    # question cards with no per-message backend stamp. ChatWindow sets it
-    # via set_assistant_label().
+    # question cards with no per-message backend stamp. Fixed for the
+    # ChatWindow session (backend/profile don't change) and set here at
+    # construction; set_assistant_label() can update it later (used by tests).
     self._assistant_label = assistant_label or "Assistant"
     self.setWidgetResizable(True)
     self._container = QtWidgets.QWidget(self)
@@ -164,6 +165,11 @@ class ConversationView(QtWidgets.QScrollArea):
         self._in_progress.cancel_running_tools()
       self._in_progress.message.stop_reason = stop_reason
       self._in_progress = None
+    # An approval card the turn left undecided must not stay clickable into a
+    # later turn (approval-misroute guard); the same holds for a question card
+    # the turn left unanswered (a late Submit would misroute).
+    self.finalize_pending_approvals()
+    self.finalize_pending_questions()
     self._approval_by_batch.clear()                # batches don't carry over
 
   def append_text_delta_to_current(self, text):
@@ -264,6 +270,20 @@ class ConversationView(QtWidgets.QScrollArea):
   def _on_card_decided(self, responses):
     self.approval_decided.emit(responses)
 
+  def finalize_pending_approvals(self):
+    """Finalize (disable) every still-undecided approval card.
+
+    A card left undecided when its turn ends must not stay clickable: a later
+    click would route a stale response into the NEXT turn (the approval-misroute
+    bug), since the approval path matches on ``is_busy()`` alone, not the
+    request id. Called from ``ChatWindow._on_stop`` (the parked-cancel path,
+    where no terminal ``TurnDone`` reaches the view) and from
+    ``finalize_assistant_bubble`` (the normal / error turn-end paths).
+    """
+    for card in self._approval_cards:
+      if not card.is_decided():
+        card.finalize()
+
   # ---- question API --------------------------------------------------------
 
   def add_question_request(self, req):
@@ -287,6 +307,21 @@ class ConversationView(QtWidgets.QScrollArea):
 
   def _on_question_answered(self, request_id, answers):
     self.question_answered.emit(request_id, answers)
+
+  def finalize_pending_questions(self):
+    """Finalize (disable) every still-unanswered question card.
+
+    The QuestionCard analogue of ``finalize_pending_approvals``: a card left
+    unanswered when its turn ends must not stay clickable, because a late
+    Submit carries a ``request_id`` the parked worker no longer waits on -- the
+    answer is silently dropped while the stale card lingers with Submit
+    enabled. Called from the same turn-end paths: ``ChatWindow._on_stop`` (the
+    parked-cancel path) and ``finalize_assistant_bubble`` (normal / error
+    turn-end).
+    """
+    for card in self._question_cards:
+      if not card.is_resolved():
+        card.finalize()
 
   # ---- clear ---------------------------------------------------------------
 
@@ -331,7 +366,19 @@ class ConversationView(QtWidgets.QScrollArea):
     """
     if action == QtWidgets.QAbstractSlider.SliderNoAction:
       return
-    # Defer until after Qt updates value() for the action.
+    bar = self.verticalScrollBar()
+    # sliderPosition already reflects this action's target -- Qt updates it
+    # before emitting actionTriggered and commits value() only after -- so
+    # disengage follow SYNCHRONOUSLY once the user has moved away from the
+    # bottom. Deferring this (all we used to do) loses the race with a
+    # streaming delta: rangeChanged fires _on_range_changed while _follow_bottom
+    # is still True, snapping the viewport back to the bottom and stranding the
+    # user, and the deferred refresh then reads that snapped-back position and
+    # re-asserts follow. Re-engaging is still left to the deferred
+    # _refresh_follow_state (which reads the committed value), so a scroll that
+    # lands back at the bottom resumes following. Same 24 px band as the refresh.
+    if bar.sliderPosition() < bar.maximum() - 24:
+      self._follow_bottom = False
     QtCore.QTimer.singleShot(0, self._refresh_follow_state)
 
   def _refresh_follow_state(self):

@@ -252,7 +252,7 @@ def exercise_set_assistant_label_flows_to_new_bubbles():
   v = ConversationView()
   v.set_assistant_label("Gemini")
   bubble = v.start_assistant_bubble()
-  bubble.add_text("hello")
+  bubble.append_text_delta("hello")
   assert "Gemini" in bubble.first_text_cell_html()
 
 
@@ -270,6 +270,37 @@ def exercise_question_card_uses_assistant_label():
   card = v._question_cards[-1]
   labels = [w.text() for w in card.findChildren(QtWidgets.QLabel)]
   assert any("Gemini needs an answer" in t for t in labels), labels
+
+
+def exercise_stop_finalizes_pending_question_cards():
+  """A turn stopped while a QuestionCard is still awaiting an answer must
+  finalize that card (disable Submit + hide it) -- the same sweep the pending
+  approval cards get. Otherwise the stale card stays clickable and a late
+  Submit carries a request_id the parked worker no longer waits on, so the
+  answer is silently dropped. finalize_assistant_bubble is the normal/error
+  turn-end path (ChatWindow._on_stop covers the parked-cancel path)."""
+  from qttbx.widgets.chat.agent.events import AskUserQuestionRequested
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  v.start_assistant_bubble()
+  v.add_question_request(AskUserQuestionRequested(
+    request_id="r1",
+    questions=[{"question": "Which?",
+                "options": [{"label": "a"}, {"label": "b"}]}]))
+  card = v._question_cards[-1]
+  assert card._buttons_widget.isEnabled()            # live: Submit clickable
+  fired = []
+  card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
+  # The user hits Stop -> the turn finalizes.
+  v.finalize_assistant_bubble("cancelled")
+  # The undecided question card must be swept: Submit disabled + card hidden.
+  assert not card._buttons_widget.isEnabled(), \
+    "stopped question card must have Submit disabled"
+  assert card.isHidden(), "stopped question card must be hidden"
+  # A late click on the finalized card must not emit a stale answer.
+  card.click_submit()
+  assert fired == [], "a finalized question card must not emit a late answer"
 
 
 def exercise_batched_approval_coalesces_by_batch_id():
@@ -439,6 +470,32 @@ def exercise_streaming_deltas_do_not_yank_user_who_scrolled_up():
   # the bottom. Allow some slack since the bubble's growth changes
   # bar.maximum() (value stays put but the gap from max widens).
   assert bar.value() < bar.maximum() - 24, (bar.value(), bar.maximum(), mid)
+
+
+def exercise_scroll_up_disengages_follow_synchronously_during_growth():
+  """During streaming, a manual scroll-up must disengage follow-mode
+  SYNCHRONOUSLY. If _on_user_scroll_action only DEFERS the follow re-eval
+  (singleShot), _follow_bottom is still True when the next delta's
+  rangeChanged fires -> _on_range_changed snaps the viewport back to the
+  bottom, and the deferred refresh (reading the snapped-back position) then
+  re-asserts follow. The user could never scroll away to re-read mid-stream."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bar = v.verticalScrollBar()
+  bar.setRange(0, 500)
+  v._follow_bottom = True
+  bar.setValue(120)                    # user parked well above the bottom
+  # A real user scroll-up action (wheel / arrow / drag). It must flip follow
+  # off NOW, not on a later event-loop turn.
+  v._on_user_scroll_action(QtWidgets.QAbstractSlider.SliderSingleStepSub)
+  assert not v._follow_bottom, \
+    "scroll-up did not disengage follow-mode synchronously"
+  # A streaming delta grows the content before the deferred refresh runs;
+  # rangeChanged must NOT yank the viewport back to the new bottom.
+  bar.setRange(0, 600)
+  v._on_range_changed(0, 600)
+  assert bar.value() != bar.maximum(), (bar.value(), bar.maximum())
 
 
 def exercise_range_change_while_following_snaps_to_new_max():
@@ -680,6 +737,27 @@ def exercise_list_rename_with_same_title_is_no_op():
     lambda cid, title: renames.append((cid, title)))
   w._list.item(0).setText("Conv 0")
   assert renames == [], renames
+
+
+def exercise_list_rename_normalises_padded_title_in_display():
+  """A committed rename to a padded title emits and stores the whitespace-
+  STRIPPED title, so the row's DISPLAYED text must be stripped to match --
+  otherwise the visible row shows '  Notes  ' while the stored/emitted title is
+  'Notes', a mismatch that lingers for a whole in-flight turn (the busy path
+  skips the sidebar repopulate that would otherwise redraw it)."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0)])
+  w.select_index(0)
+  renames = []
+  w.rename_requested.connect(
+    lambda cid, title: renames.append((cid, title)))
+  w.click_rename()                                   # opens the editor
+  w._list.item(0).setText("  Notes  ")               # commit a padded title
+  assert renames == [("id0", "Notes")], renames      # emitted stripped
+  assert w._cached_title("id0") == "Notes", w._cached_title("id0")   # stored stripped
+  assert w._list.item(0).text() == "Notes", w._list.item(0).text()  # displayed too
 
 
 def exercise_list_rename_button_with_no_selection_is_no_op():
@@ -988,6 +1066,30 @@ def exercise_list_action_button_debounces_on_label_flip():
   assert w._del_btn.isEnabled(), "a repeat in the same state must not debounce"
 
 
+def exercise_list_selection_change_clears_stale_unlock_target():
+  """Changing the selection must reset the shared Delete/Unlock button
+  SYNCHRONOUSLY. The async lock re-check that re-arms Unlock for a locked row
+  runs later (off-thread scan -> _sync_action_button_to_selection), so a stale
+  'Unlock B' target left over from a previously-selected locked row must NOT
+  survive into a newly-selected UNLOCKED row -- otherwise a click during the scan
+  fires unlock_requested for B, the wrong, no-longer-selected conversation. The
+  debounce only guards LABEL FLIPS, not selection changes, so the reset has to
+  happen in _on_row_changed."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  # id1 (row 1) locked, id2 (row 2) not.
+  w.set_conversations([_meta(0), _meta(1), _meta(2)], locked_ids={"id1"})
+  w.select_index(1)                                     # select locked row B
+  w.set_unlock_button("id1")                            # a scan armed Unlock B
+  assert w._del_btn.text() == "Unlock" and w._unlock_target == "id1"
+  w.select_index(2)                                     # select UNLOCKED row C
+  # Before any async scan reconciles, the button must no longer be armed to
+  # unlock B (else a click here unlocks the wrong conversation).
+  assert w._unlock_target != "id1", w._unlock_target
+  assert w._del_btn.text() == "Delete", w._del_btn.text()
+
+
 def exercise_list_return_suppression_flag_auto_clears():
   """The post-rename Return guard must self-clear on the NEXT event-loop turn
   (QTimer.singleShot(0)), not linger. closeEditor also fires on a focus-out
@@ -1019,6 +1121,7 @@ def exercise():
   exercise_finish_tool_cell_error_marks_cell_failed()
   exercise_set_assistant_label_flows_to_new_bubbles()
   exercise_question_card_uses_assistant_label()
+  exercise_stop_finalizes_pending_question_cards()
   exercise_batched_approval_coalesces_by_batch_id()
   exercise_two_batches_two_cards()
   exercise_solo_request_without_batch_id_gets_own_card()
@@ -1027,6 +1130,7 @@ def exercise():
   exercise_image_click_propagates_to_view()
   exercise_add_message_always_scrolls_to_bottom()
   exercise_streaming_deltas_do_not_yank_user_who_scrolled_up()
+  exercise_scroll_up_disengages_follow_synchronously_during_growth()
   exercise_range_change_while_following_snaps_to_new_max()
   exercise_list_populate_and_select()
   exercise_list_set_active_marks_one_row_with_checkmark()
@@ -1043,6 +1147,7 @@ def exercise():
   exercise_list_single_click_does_not_activate()
   exercise_list_empty_rename_is_rejected_and_reverted()
   exercise_list_rename_with_same_title_is_no_op()
+  exercise_list_rename_normalises_padded_title_in_display()
   exercise_list_rename_button_with_no_selection_is_no_op()
   exercise_list_select_id_selects_without_activating()
   exercise_list_select_id_unknown_is_noop()
@@ -1060,6 +1165,7 @@ def exercise():
   exercise_list_lock_mid_rename_closes_editor_and_blocks_rename()
   exercise_list_revert_last_rename_restores_pre_edit_title()
   exercise_list_action_button_debounces_on_label_flip()
+  exercise_list_selection_change_clears_stale_unlock_target()
 
 
 if __name__ == "__main__":

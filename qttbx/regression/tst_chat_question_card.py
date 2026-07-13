@@ -129,6 +129,32 @@ def exercise_multiple_questions_in_one_card():
   assert fired == [("q_5", {"A?": "a1", "B?": "b2"})], fired
 
 
+def exercise_duplicate_question_text_keeps_both_answers():
+  """Two questions may carry the SAME text (or empty/missing text). Keying
+  the answers dict by raw question text drops one -- the second write
+  clobbers the first (answers[text]=picked). Each of the N questions must
+  still yield its own entry, so no user selection is silently lost."""
+  from qttbx.widgets.chat.question_card import QuestionCard
+  _qapp()
+  card = QuestionCard()
+  card.set_request("q_dup", [
+    {"question": "Same?", "options": [{"label": "a1"}, {"label": "a2"}]},
+    {"question": "Same?", "options": [{"label": "b1"}, {"label": "b2"}]},
+  ])
+  fired = []
+  card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
+  card._question_state[0]["option_buttons"][0][0].setChecked(True)
+  card._question_state[1]["option_buttons"][1][0].setChecked(True)
+  card.click_submit()
+  assert fired, fired
+  rid, ans = fired[0]
+  assert rid == "q_dup", rid
+  # Two questions -> two entries; neither answer overwrites the other.
+  assert len(ans) == 2, ans
+  picked = list(ans.values())
+  assert "a1" in picked and "b2" in picked, ans
+
+
 def exercise_header_uses_assistant_label():
   """The card header names the active assistant ('GPT needs an answer:'),
   not a hard-coded 'Claude', so it matches the chosen backend."""
@@ -203,6 +229,7 @@ def exercise():
   exercise_multi_select_collects_all_checked()
   exercise_multi_select_other_is_appended()
   exercise_multiple_questions_in_one_card()
+  exercise_duplicate_question_text_keeps_both_answers()
   exercise_header_uses_assistant_label()
   exercise_submit_disables_buttons_and_hides_card()
   exercise_malformed_question_payload_unblocks_worker()

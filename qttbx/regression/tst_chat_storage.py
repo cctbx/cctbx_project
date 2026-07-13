@@ -405,6 +405,34 @@ def exercise_save_failure_cleans_up_tmp():
     shutil.rmtree(tmp)
 
 
+def exercise_json_default_coerces_pydantic_but_raises_unknown():
+  """_json_default degrades a provider SDK pydantic object (one exposing
+  model_dump) to its JSON-native dict, so a single un-normalized value can't
+  make an entire conversation permanently unsaveable (audit HIGH,
+  defense-in-depth). A genuinely unknown object STILL raises TypeError, so a
+  real serialization bug is never silently masked -- keeping
+  exercise_save_failure_cleans_up_tmp's raise-on-unserializable contract."""
+  from datetime import datetime, timezone
+  from qttbx.widgets.chat.agent.storage import _json_default
+  # datetime is still handled by the primary branch.
+  dt = datetime(2020, 1, 2, tzinfo=timezone.utc)
+  assert _json_default(dt) == dt.isoformat()
+
+  class _FakePydantic:
+    def model_dump(self, mode=None):
+      return {"title": "r", "url": "u"}
+  assert _json_default(_FakePydantic()) == {"title": "r", "url": "u"}
+
+  # A genuinely unknown object (no model_dump) still raises -- bug not masked.
+  try:
+    _json_default(object())
+  except TypeError:
+    pass
+  else:
+    from libtbx.test_utils import Exception_expected
+    raise Exception_expected
+
+
 def exercise_store_attachment_cleans_up_tmp_on_replace_failure():
   """A store_attachment whose os.replace fails mid-write must not leave an
   orphaned <file>.tmp behind: the content-addressed write uses the same
@@ -1181,8 +1209,38 @@ def exercise_delete_refuses_symlink_escape():
     shutil.rmtree(outside, ignore_errors=True)
 
 
+def exercise_conversation_tree_is_owner_only():
+  """On a shared project dir the chat storage tree (transcripts, the
+  claude_session.jsonl, attachments) must not be world-readable: the storage
+  root and conversations/ dir are created 0700 -- which denies other users
+  traversal into every conversation beneath -- and message files 0600.
+  POSIX-only (Windows perms don't map)."""
+  if os.name != "posix":
+    return
+  import stat
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="secret")
+    conv.append(Message(role="user",
+                        content=[ContentBlock(type="text", data={"text": "hi"})],
+                        timestamp=now()))
+    storage.save(conv)
+    root = Path(tmp) / ".phenix_chat"
+    convs = root / "conversations"
+    assert stat.S_IMODE(root.stat().st_mode) == 0o700, \
+      oct(stat.S_IMODE(root.stat().st_mode))
+    assert stat.S_IMODE(convs.stat().st_mode) == 0o700, \
+      oct(stat.S_IMODE(convs.stat().st_mode))
+    msgs = convs / conv.meta.id / "messages.json"
+    assert stat.S_IMODE(msgs.stat().st_mode) == 0o600, \
+      oct(stat.S_IMODE(msgs.stat().st_mode))
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_lazy_directory_creation()
+  exercise_conversation_tree_is_owner_only()
   exercise_save_then_load_roundtrip()
   exercise_meta_backend_and_per_turn_stamp_roundtrip()
   exercise_atomic_write_interruption_leaves_prior_intact()
@@ -1201,6 +1259,7 @@ def exercise():
   exercise_load_content_block_not_dict_raises_sorry()
   exercise_load_usage_wrong_type_raises_sorry()
   exercise_save_failure_cleans_up_tmp()
+  exercise_json_default_coerces_pydantic_but_raises_unknown()
   exercise_store_attachment_cleans_up_tmp_on_replace_failure()
   exercise_atomic_replace_fails_fast_on_posix()
   exercise_all_token_usage_fields_round_trip()

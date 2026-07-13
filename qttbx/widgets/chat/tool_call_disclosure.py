@@ -117,8 +117,8 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     status : str
         New status text shown in the header parenthetical.
     color : str or None, optional
-        One of ``None``, ``'default'``, ``'running'``, ``'error'``, or
-        ``'muted'``. ``None`` preserves the current color.
+        One of ``None``, ``'default'``, ``'running'``, ``'error'``,
+        ``'muted'``, or ``'cancelled'``. ``None`` preserves the current color.
     """
     self._status = status
     if color is not None:

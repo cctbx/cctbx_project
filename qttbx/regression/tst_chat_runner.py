@@ -419,6 +419,158 @@ def exercise_worker_finish_drains_stray_approval_response():
     shutil.rmtree(tmp)
 
 
+def exercise_await_approval_discards_stale_response():
+  """_await_approval returns only the response matching the request it is parked
+  on. A stale response from an abandoned earlier turn's card (queued while a
+  later turn runs -- the approval path is is_busy-gated) is discarded, not
+  misapplied to THIS request (the approval-misroute root fix)."""
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.tools import (
+      ToolApprovalRequest, ToolApprovalResponse)
+    session, _ = _make_session([], tmp)
+    session.on_event = lambda ev: None
+    # A stale response (an old turn's card) sits ahead of the real one.
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="r_stale", decision="approve"))
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="r_real", decision="deny"))
+    req = ToolApprovalRequest(
+      request_id="r_real", tool_name="phenix_start_job",
+      tool_source="mcp:phenix", input={}, risk="write", batch_id=None)
+    resp = session._await_approval(req)
+    assert resp.request_id == "r_real", resp.request_id
+    assert resp.decision == "deny", resp.decision      # not the stale "approve"
+    assert session.approval_queue.empty()              # stale dropped, real used
+    assert session._pending_approval_id is None        # cleared in finally
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_await_approval_returns_batch_responses_in_dispatch_order():
+  """A batched approval queues one response per request in dispatch order; each
+  sequential _await_approval must return ITS matching response -- the id-check
+  must neither hand a batch sibling's response to the wrong request nor drop
+  it."""
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.tools import (
+      ToolApprovalRequest, ToolApprovalResponse)
+    session, _ = _make_session([], tmp)
+    session.on_event = lambda ev: None
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="r_a", decision="approve"))
+    session.approval_queue.put(ToolApprovalResponse(
+      request_id="r_b", decision="deny"))
+    req_a = ToolApprovalRequest(
+      request_id="r_a", tool_name="t1", tool_source="s", input={},
+      risk="write", batch_id="B")
+    req_b = ToolApprovalRequest(
+      request_id="r_b", tool_name="t2", tool_source="s", input={},
+      risk="write", batch_id="B")
+    ra = session._await_approval(req_a)
+    rb = session._await_approval(req_b)
+    assert ra.request_id == "r_a" and ra.decision == "approve", ra
+    assert rb.request_id == "r_b" and rb.decision == "deny", rb
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_stale_deny_and_stop_does_not_cancel_unrelated_turn():
+  """runner.submit_approval sets the turn's cancel token on a deny_and_stop ONLY
+  when the response belongs to the in-flight turn (agent-owned, or the approval
+  the session worker is parked on). A stale card's stop from an abandoned turn
+  must not cancel an unrelated later turn (root fix for the unguarded cancel)."""
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
+    session, _ = _make_session([], tmp)
+    runner = QtAgentRunner(session)
+    # Simulate the worker parked on THIS turn's approval "r_current".
+    session._pending_approval_id = "r_current"
+    assert not runner._cancel.is_set()
+    # A stale deny_and_stop for a DIFFERENT (abandoned) request must NOT cancel.
+    runner.submit_approval(ToolApprovalResponse(
+      request_id="r_stale", decision="deny_and_stop"))
+    assert not runner._cancel.is_set(), "stale stop must not cancel the turn"
+    # The in-flight request's own deny_and_stop DOES cancel.
+    runner.submit_approval(ToolApprovalResponse(
+      request_id="r_current", decision="deny_and_stop"))
+    assert runner._cancel.is_set(), "the in-flight request's stop must cancel"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_shutdown_joins_worker_without_event_loop():
+  """closeEvent / conversation-switch tears down a still-running turn from the
+  GUI thread. It must fully stop AND join the worker QThread WITHOUT relying on
+  the queued _on_worker_finished slot (which can't run while the GUI thread is
+  blocked in the join) -- otherwise the QThread outlives the window and aborts
+  with 'QThread: Destroyed while thread is still running'. shutdown() quits the
+  thread's exec loop itself then joins it, so cancel()+shutdown() with NO
+  event-loop pump (mimicking the blocked GUI thread) leaves the runner idle and
+  the thread reference dropped."""
+  import threading           # noqa: F401  (parity with the other blocking tests)
+  import time
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    class _CancellableBlockingAgent(Agent):
+      name = "cancellable"
+      model = "cancellable-1"
+
+      def stream_turn(self, conversation, tools, cancel):
+        # Stay in flight (worker parked in next()) until the user cancels --
+        # the closeEvent "Stop and exit" path.
+        while not cancel.is_set():
+          time.sleep(0.01)
+        return
+        yield  # pragma: no cover -- makes this a generator
+
+      def resolve_credentials(self, cli_override=None):
+        return "k"
+
+      def credentials_dialog_class(self):
+        return object
+
+    storage = ConversationStorage(project_dir=tmp, log=null_out())
+    conv = Conversation.new(profile_name="t", model="cancellable-1")
+    session = AgentSession(
+      agent=_CancellableBlockingAgent(), conversation=conv, storage=storage,
+      tools=ToolRegistry(log=null_out()),
+      policy=ToolPolicy(default="ask"), profile=None, log=null_out())
+    runner = QtAgentRunner(session)
+    runner.start_turn(Message(role="user", timestamp=now(),
+      content=[ContentBlock(type="text", data={"text": "hi"})]))
+    deadline = QtCore.QElapsedTimer()
+    deadline.start()
+    while not runner.is_busy() and deadline.elapsed() < 2000:
+      _pump(app, 20)
+    assert runner.is_busy(), "runner should be busy during the blocked turn"
+    # closeEvent teardown: cancel + shutdown, with NO event-loop pump after --
+    # in the real closeEvent the GUI thread is blocked here, so the queued
+    # _on_worker_finished slot cannot run.
+    runner.cancel()
+    t0 = QtCore.QElapsedTimer()
+    t0.start()
+    runner.shutdown(timeout_ms=3000)
+    assert not runner.is_busy(), "shutdown must stop + join the worker thread"
+    assert runner._thread is None, runner._thread
+    # The thread really finished -- shutdown did not just spin the full timeout.
+    assert t0.elapsed() < 2500, \
+      "shutdown blocked the full timeout (thread never joined): %dms" \
+      % t0.elapsed()
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_emits_text_delta_then_turn_done()
   exercise_cancel_stops_the_turn()
@@ -429,6 +581,10 @@ def exercise():
   exercise_submit_question_answer_falls_through_to_session()
   exercise_cancel_flushes_question_queue()
   exercise_worker_finish_drains_stray_approval_response()
+  exercise_await_approval_discards_stale_response()
+  exercise_await_approval_returns_batch_responses_in_dispatch_order()
+  exercise_stale_deny_and_stop_does_not_cancel_unrelated_turn()
+  exercise_shutdown_joins_worker_without_event_loop()
 
 
 if __name__ == "__main__":

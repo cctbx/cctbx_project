@@ -115,6 +115,22 @@ def exercise_escape_approx_tildes_is_narrow():
   assert esc('no tildes here') == 'no tildes here'
 
 
+def exercise_escape_approx_tildes_skips_code():
+  """The tilde filter must leave code alone: a '~<digit>' inside an inline
+  `code` span or a fenced code block is literal code (a version like ~1.2.0,
+  a size like ~5GB), where GFM strikethrough never applies and a backslash
+  would show up verbatim. Only prose '~<digit>' is still escaped."""
+  from qttbx.widgets.chat.markdown_view import _escape_approx_tildes as esc
+  # Inline code span: the tilde stays literal (no spurious backslash).
+  assert esc('pin `~1.2.0` please') == 'pin `~1.2.0` please'
+  # Fenced code block: the tilde stays literal inside the fence.
+  fenced = 'run:\n```\nsize = ~5GB\n```\ndone'
+  assert esc(fenced) == fenced
+  # Prose is still escaped -- the strikethrough guard is not regressed.
+  assert esc('about ~5 apples') == r'about \~5 apples'
+  assert esc('costs ~0.02 and ~0.001') == r'costs \~0.02 and \~0.001'
+
+
 def exercise_approx_tilde_not_rendered_as_strikethrough():
   """End-to-end: two '~<number>' approximate values in one block (the second
   closable because it follows a quote) would be paired by Qt's GFM parser and
@@ -229,6 +245,27 @@ def exercise_tool_result_renders_text_content_in_fence():
   assert "last: 3 min ago" in md, md
 
 
+def exercise_tool_result_fence_outlasts_inner_backticks():
+  """A tool_result whose own text contains a ``` code fence must not break out
+  of the export's code fence. Per CommonMark the exporter opens with a fence
+  one backtick longer than the longest inner backtick run (never fewer than 3),
+  so the inner ``` stays inside the block and the prose after it is not
+  promoted to live markdown."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  inner = "log start\n```\ndef f(): return 1\n```\nAFTER_FENCE: done"
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_1",
+      "content": [ContentBlock(type="text", data={"text": inner})],
+      "is_error": False})]))
+  md = conversation_to_markdown(conv)
+  # The longest inner run is 3 backticks, so the fence is 4; the whole tool
+  # output (its own ``` fences and the line after them) is preserved verbatim
+  # between the 4-backtick open/close rather than breaking out of the fence.
+  assert "````tool-result\n%s\n````" % inner in md, md
+
+
 def exercise_image_renders_link_to_attachment_when_storage_present():
   from qttbx.widgets.chat.agent.storage import ConversationStorage
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
@@ -322,6 +359,29 @@ def exercise_malformed_block_does_not_crash():
   assert "[unknown block: surprise]" in md, md
 
 
+def exercise_tool_result_non_iterable_content_does_not_sink_export():
+  """The module docstring promises a malformed block falls back to a
+  placeholder so a single bad block doesn't sink the export. A tool_result
+  whose `content` is a truthy NON-iterable (e.g. a JSON number) makes
+  `for inner in content` raise TypeError in _render_tool_result; without a
+  per-block guard in conversation_to_markdown that TypeError aborts the whole
+  'Save chat'. The export must catch it, emit a placeholder for the bad block,
+  and still render the good blocks on either side."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "before bad block"}),
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_1",
+      "content": 42,                 # truthy non-iterable -> TypeError in loop
+      "is_error": False}),
+    ContentBlock(type="text", data={"text": "after bad block"})]))
+  md = conversation_to_markdown(conv)              # must NOT raise
+  assert "before bad block" in md, md
+  assert "after bad block" in md, md
+  assert "[unknown block]" in md, md
+
+
 def exercise_ends_with_newline():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
@@ -339,6 +399,7 @@ def exercise():
   exercise_raw_html_in_markdown_is_not_rendered_as_rich_text()
   exercise_loadresource_refuses_local_file()
   exercise_escape_approx_tildes_is_narrow()
+  exercise_escape_approx_tildes_skips_code()
   exercise_approx_tilde_not_rendered_as_strikethrough()
   exercise_header_renders_title_meta_and_separator()
   exercise_assistant_label_reflects_backend_stamp()
@@ -346,10 +407,12 @@ def exercise():
   exercise_thinking_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()
+  exercise_tool_result_fence_outlasts_inner_backticks()
   exercise_image_renders_link_to_attachment_when_storage_present()
   exercise_image_resolves_via_public_conv_dir_accessor()
   exercise_image_without_storage_falls_back_to_placeholder()
   exercise_malformed_block_does_not_crash()
+  exercise_tool_result_non_iterable_content_does_not_sink_export()
   exercise_ends_with_newline()
 
 

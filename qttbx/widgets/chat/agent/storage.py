@@ -547,8 +547,15 @@ class ConversationStorage:
   # ---- internal ------------------------------------------------------------
 
   def _ensure_root(self):
+    # 0700 on the root + conversations dir denies other users traversal into
+    # every conversation beneath, so the transcripts, the claude_session.jsonl,
+    # and attachments are not world-readable on a shared project dir regardless
+    # of per-file mode (files are also written 0600 via _atomic_write).
     self.root.mkdir(parents=True, exist_ok=True)
-    (self.root / "conversations").mkdir(exist_ok=True)
+    _restrict(self.root, 0o700)
+    convs = self.root / "conversations"
+    convs.mkdir(exist_ok=True)
+    _restrict(convs, 0o700)
 
   def sweep_stale_tmp(self):
     """Best-effort, once-per-instance removal of orphaned atomic-write temps.
@@ -946,6 +953,16 @@ def _atomic_replace(tmp, path):
       delay = min(delay * 2, 0.05)
 
 
+def _restrict(path, mode):
+  """Best-effort tighten permissions (POSIX; a near-no-op on Windows). Chat
+  transcripts / session files must not be world-readable on a shared project
+  dir. Swallow errors: a perms tweak must never break a save."""
+  try:
+    os.chmod(str(path), mode)
+  except OSError:
+    pass
+
+
 def _atomic_write(path, mode, write_fn):
   # Write to a UNIQUE sibling .tmp via write_fn(handle), then atomically rename
   # it into place. The pid+uuid tag means two concurrent writers -- two threads
@@ -962,6 +979,7 @@ def _atomic_write(path, mode, write_fn):
   try:
     with open(tmp, mode) as fh:
       write_fn(fh)
+    _restrict(tmp, 0o600)          # the rename carries the tightened mode in
     _atomic_replace(tmp, path)
     replaced = True
   finally:
@@ -984,6 +1002,15 @@ def _atomic_write_bytes(path, data):
 def _json_default(o):
   if isinstance(o, datetime):
     return o.isoformat()
+  # Defense in depth: a single value a backend failed to normalize to a
+  # JSON-native form (e.g. a provider SDK's pydantic result object that slipped
+  # through) must not make the whole conversation permanently unsaveable.
+  # Coerce a pydantic model (mode="json" -> fully JSON-native) instead of
+  # raising and losing every turn from here on. A genuinely unknown object
+  # still raises, so a real serialization bug is surfaced rather than masked.
+  dump = getattr(o, "model_dump", None)
+  if callable(dump):
+    return dump(mode="json")
   raise TypeError("Not JSON serializable: %r" % o)
 
 
