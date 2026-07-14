@@ -143,6 +143,7 @@ if not libtbx.env.module_is_installed("cctbx"):
     SConscript("uctbx/determine_unit_cell/SConscript")
     SConscript("examples/merging/SConscript")
     SConscript("uctbx/lrl/SConscript")
+    SConscript("other_restraints/SConscript")
 
   SConscript("sgtbx/direct_space_asu/proto/SConscript")
   SConscript("math/SConscript")

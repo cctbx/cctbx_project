@@ -162,3 +162,52 @@ class scalar_scaled_u(object):
     from math import sqrt
     cov_diag = ls.covariance_matrix().matrix_packed_u_diagonal()
     return sqrt(cov_diag[self.scalar.index])
+
+class shared_rotating_u(object):
+  """ u_eq or u_star of some scatterer constrained to be equal to
+      u_iso or u_start of another scatterer
+  """
+
+  def __init__(self, ind_ref, ind_atom, scale,
+               refine_scale, alpha, beta, gamma, refine_angle):
+    self.ind_ref = ind_ref
+    self.ind_atom = ind_atom
+    self.scale_value = scale
+    self.refine_scale = refine_scale
+    self.alpha_value = alpha
+    self.beta_value = beta
+    self.gamma_value = gamma
+    self.refine_angle = refine_angle
+
+  @property
+  def constrained_parameters(self):
+    return tuple(((self.ind_atom, 'U'),))
+
+  def add_to(self, reparametrisation):
+    scatterers = reparametrisation.structure.scatterers()
+    if not scatterers[self.ind_ref].flags.use_u_aniso() or\
+       not scatterers[self.ind_atom].flags.use_u_aniso():
+      raise InvalidConstraint(
+        "only anisotropic atoms are allowed for shared rotating ADP")
+
+    u_c = reparametrisation.add_new_thermal_displacement_parameter(self.ind_ref)
+    self.scale = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.scale_value, variable=self.refine_scale)
+    self.alpha = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.alpha_value*pi/180, variable=self.refine_angle)
+    self.beta = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.beta_value*pi/180, variable=self.refine_angle)
+    self.gamma = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.gamma_value*pi/180, variable=self.refine_angle)
+    param = reparametrisation.add(
+      _.shared_rotating_u_star,
+      scatterer=scatterers[self.ind_atom],
+      reference=u_c,
+      scale=self.scale,
+      alpha=self.alpha,
+      beta=self.beta,
+      gamma=self.gamma
+    )
+    reparametrisation.shared_Us[self.ind_atom] = u_c
+    reparametrisation.asu_scatterer_parameters[self.ind_atom].u = param
+    self.value = u_c

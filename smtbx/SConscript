@@ -73,3 +73,4 @@ if not libtbx.env.module_is_installed("smtbx"):
     SConscript("refinement/restraints/boost_python/SConscript")
     SConscript("ab_initio/SConscript")
     SConscript("structure_factors/direct/boost_python/SConscript")
+    SConscript("ED/boost_python/SConscript")

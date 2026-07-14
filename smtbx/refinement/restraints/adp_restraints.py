@@ -1,13 +1,25 @@
 from __future__ import absolute_import, division, print_function
-from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import adp_restraints
 
 class adp_similarity_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
                i_seqs=None, sigma=0.04, sigma_terminal=None,
-               buffer_thickness=3.5):
+               buffer_thickness=3.5, connectivity=None):
     assert [xray_structure, pair_sym_table].count(None) == 1
+    scatterers = None
+    if xray_structure is not None:
+      scatterers = xray_structure.scatterers()
+
+    def is_suitable(idx):
+      if scatterers is not None and\
+          scatterers[idx].flags.use_u_iso() and scatterers[idx].flags.grad_u_iso():
+        return True
+      if scatterers is not None and\
+          scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso():
+        return True
+      return False
+
     if i_seqs is not None and len(i_seqs) == 0: i_seqs = None
     if sigma_terminal is None: sigma_terminal = 2 * sigma
     if proxies is None:
@@ -16,15 +28,17 @@ class adp_similarity_restraints(object):
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
+      pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
+    if connectivity is None:
+      connectivity = pair_sym_table.full_simple_connectivity()
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
       if i_seqs is not None and i_seq not in i_seqs: continue
+      if not is_suitable(i_seq): continue
       for j_seq, sym_ops in j_seq_dict.items():
         if i_seqs is not None and j_seq not in i_seqs: continue
+        if not is_suitable(j_seq): continue
         for sym_op in sym_ops:
           if sym_op.is_unit_mx():
             i_is_terminal = (connectivity[i_seq].size() <= 1)
@@ -38,10 +52,73 @@ class adp_similarity_restraints(object):
           break
     self.proxies = proxies
 
+
+# for use bu RIGU and DELU below
+def build_proxies(proxies, proxy_type, sigma_12, sigma_13,
+    xray_structure=None, pair_sym_table=None, i_seqs=None,
+    buffer_thickness=3.5, connectivity=None):
+  scatterers = None
+  if xray_structure is not None:
+    scatterers = xray_structure.scatterers()
+
+  def is_suitable(idx):
+    return scatterers is not None and\
+        scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso()
+
+  if pair_sym_table is None:
+    asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    scattering_types = xray_structure.scatterers().extract_scattering_types()
+    pair_asu_table.add_covalent_pairs(scattering_types)
+    pair_sym_table = pair_asu_table.extract_pair_sym_table()
+  if connectivity is None:
+    connectivity = pair_sym_table.full_simple_connectivity()
+  ij_seqs = set()
+  for i_seq, j_seq_dict in enumerate(pair_sym_table):
+    if i_seqs is not None and i_seq not in i_seqs: continue
+    if not is_suitable(i_seq): continue
+    for j_seq in connectivity[i_seq]:
+      if i_seqs is not None and j_seq not in i_seqs: continue
+      if not is_suitable(j_seq): continue
+      if i_seq < j_seq:
+        j_sym_ops = pair_sym_table[i_seq][j_seq]
+      else:
+        k_sym_ops = pair_sym_table[j_seq][i_seq]
+      for sym_op in j_sym_ops:
+        if (    sym_op.is_unit_mx()
+            and i_seq < j_seq
+            and (i_seq, j_seq) not in ij_seqs):
+          ij_seqs.add((i_seq, j_seq))
+          weight = 1/(sigma_12*sigma_12)
+          proxies.append(proxy_type(
+            i_seqs=(i_seq,j_seq),weight=weight))
+          break
+      if connectivity[j_seq].size() > 1:
+        for k_seq in connectivity[j_seq]:
+          if i_seqs is not None and k_seq not in i_seqs: continue
+          if not is_suitable(k_seq): continue
+          if k_seq != i_seq:
+            for sym_op in j_sym_ops:
+              if sym_op.is_unit_mx():
+                if j_seq < k_seq:
+                  k_sym_ops = pair_sym_table[j_seq][k_seq]
+                else:
+                  k_sym_ops = pair_sym_table[k_seq][j_seq]
+                for sym_op in k_sym_ops:
+                  if (    sym_op.is_unit_mx()
+                      and i_seq < k_seq
+                      and (i_seq, k_seq) not in ij_seqs):
+                    ij_seqs.add((i_seq, k_seq))
+                    weight = 1/(sigma_13*sigma_13)
+                    proxies.append(proxy_type(
+                      i_seqs=(i_seq,k_seq),weight=weight))
+                    break
+                break
+
 class rigid_bond_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
                i_seqs=None, sigma_12=0.01, sigma_13=None,
-               buffer_thickness=3.5):
+               buffer_thickness=3.5, connectivity=None):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
     """
@@ -50,59 +127,15 @@ class rigid_bond_restraints(object):
     if sigma_13 is None: sigma_13 = sigma_12
     if proxies is None:
       proxies = adp_restraints.shared_rigid_bond_proxy()
-    if pair_sym_table is None:
-      asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
-      pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-      scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
-      pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
-    ij_seqs = set()
-
-    for i_seq, j_seq_dict in enumerate(pair_sym_table):
-      if i_seqs is not None and i_seq not in i_seqs: continue
-      for j_seq in connectivity[i_seq]:
-        if i_seqs is not None and j_seq not in i_seqs: continue
-        if i_seq < j_seq:
-          j_sym_ops = pair_sym_table[i_seq][j_seq]
-        else:
-          k_sym_ops = pair_sym_table[j_seq][i_seq]
-        for sym_op in j_sym_ops:
-          if (    sym_op.is_unit_mx()
-              and i_seq < j_seq
-              and (i_seq, j_seq) not in ij_seqs):
-            ij_seqs.add((i_seq, j_seq))
-            weight = 1/(sigma_12*sigma_12)
-            proxies.append(adp_restraints.rigid_bond_proxy(
-              i_seqs=(i_seq,j_seq),weight=weight))
-            break
-        if connectivity[j_seq].size() > 1:
-          for k_seq in connectivity[j_seq]:
-            if i_seqs is not None and k_seq not in i_seqs: continue
-            if k_seq != i_seq:
-              for sym_op in j_sym_ops:
-                if sym_op.is_unit_mx():
-                  if j_seq < k_seq:
-                    k_sym_ops = pair_sym_table[j_seq][k_seq]
-                  else:
-                    k_sym_ops = pair_sym_table[k_seq][j_seq]
-                  for sym_op in k_sym_ops:
-                    if (    sym_op.is_unit_mx()
-                        and i_seq < k_seq
-                        and (i_seq, k_seq) not in ij_seqs):
-                      ij_seqs.add((i_seq, k_seq))
-                      weight = 1/(sigma_13*sigma_13)
-                      proxies.append(adp_restraints.rigid_bond_proxy(
-                        i_seqs=(i_seq,k_seq),weight=weight))
-                      break
-                  break
+    build_proxies(proxies, adp_restraints.rigid_bond_proxy, sigma_12, sigma_13,
+      xray_structure=xray_structure, pair_sym_table=pair_sym_table,
+      i_seqs=i_seqs, buffer_thickness=buffer_thickness, connectivity=connectivity)
     self.proxies = proxies
 
 class rigu_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
                i_seqs=None, sigma_12=0.004, sigma_13=None,
-               buffer_thickness=3.5):
+               buffer_thickness=3.5, connectivity=None):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
     """
@@ -111,58 +144,17 @@ class rigu_restraints(object):
     if sigma_13 is None: sigma_13 = sigma_12
     if proxies is None:
       proxies = adp_restraints.shared_rigu_proxy()
-    if pair_sym_table is None:
-      asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
-      pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-      scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
-      pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
-    ij_seqs = set()
 
-    for i_seq, j_seq_dict in enumerate(pair_sym_table):
-      if i_seqs is not None and i_seq not in i_seqs: continue
-      for j_seq in connectivity[i_seq]:
-        if i_seqs is not None and j_seq not in i_seqs: continue
-        if i_seq < j_seq:
-          j_sym_ops = pair_sym_table[i_seq][j_seq]
-        else:
-          k_sym_ops = pair_sym_table[j_seq][i_seq]
-        for sym_op in j_sym_ops:
-          if (    sym_op.is_unit_mx()
-              and i_seq < j_seq
-              and (i_seq, j_seq) not in ij_seqs):
-            ij_seqs.add((i_seq, j_seq))
-            weight = 1/(sigma_12*sigma_12)
-            proxies.append(adp_restraints.rigu_proxy(
-              i_seqs=(i_seq,j_seq),weight=weight))
-            break
-        if connectivity[j_seq].size() > 1:
-          for k_seq in connectivity[j_seq]:
-            if i_seqs is not None and k_seq not in i_seqs: continue
-            if k_seq != i_seq:
-              for sym_op in j_sym_ops:
-                if sym_op.is_unit_mx():
-                  if j_seq < k_seq:
-                    k_sym_ops = pair_sym_table[j_seq][k_seq]
-                  else:
-                    k_sym_ops = pair_sym_table[k_seq][j_seq]
-                  for sym_op in k_sym_ops:
-                    if (    sym_op.is_unit_mx()
-                        and i_seq < k_seq
-                        and (i_seq, k_seq) not in ij_seqs):
-                      ij_seqs.add((i_seq, k_seq))
-                      weight = 1/(sigma_13*sigma_13)
-                      proxies.append(adp_restraints.rigu_proxy(
-                        i_seqs=(i_seq,k_seq),weight=weight))
-                      break
-                  break
+    build_proxies(proxies, adp_restraints.rigu_proxy, sigma_12, sigma_13,
+      xray_structure=xray_structure, pair_sym_table=pair_sym_table,
+      i_seqs=i_seqs, buffer_thickness=buffer_thickness, connectivity=connectivity)
+
     self.proxies = proxies
 
 class isotropic_adp_restraints(object):
   def __init__(self, xray_structure, pair_sym_table=None, proxies=None,
-               i_seqs=None, sigma=0.1, sigma_terminal=None, buffer_thickness=3.5):
+               i_seqs=None, sigma=0.1, sigma_terminal=None,
+                buffer_thickness=3.5, connectivity=None):
     if sigma_terminal is None: sigma_terminal = 2 * sigma
     if i_seqs is not None and len(i_seqs) == 0: i_seqs = None
     if proxies is None:
@@ -172,14 +164,13 @@ class isotropic_adp_restraints(object):
     if pair_sym_table is None:
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
+      pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
+    if connectivity is None:
+      connectivity = pair_sym_table.full_simple_connectivity()
 
     for i_seq, neighbours in enumerate(connectivity):
       if i_seqs is not None and i_seq not in i_seqs: continue
-      elif scattering_types[i_seq] in ('H','D'): continue
       elif not use_u_aniso[i_seq]: continue
       if neighbours.size() <= 1:
         weight = 1/(sigma_terminal*sigma_terminal)
@@ -196,8 +187,7 @@ class fixed_u_eq_adp_restraints(object):
       proxies = adp_restraints.shared_fixed_u_eq_adp_proxy()
     weight = 1/(sigma*sigma)
     if i_seqs is None:
-      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
-                if s.scattering_type not in ('H', 'D')]
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())]
     for i_seq in i_seqs:
       proxies.append(adp_restraints.fixed_u_eq_adp_proxy(
         i_seqs=(i_seq,),weight=weight, u_eq_ideal=u_eq_ideal))
@@ -210,8 +200,7 @@ class adp_u_eq_similarity_restraints(object):
       proxies = adp_restraints.shared_adp_u_eq_similarity_proxy()
     weight = 1/(sigma*sigma)
     if i_seqs is None:
-      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
-                if s.scattering_type not in ('H', 'D')]
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())]
     assert len(i_seqs) > 1
     proxies.append(adp_restraints.adp_u_eq_similarity_proxy(
       i_seqs=i_seqs, weight=weight))
@@ -224,8 +213,7 @@ class adp_volume_similarity_restraints(object):
       proxies = adp_restraints.shared_adp_volume_similarity_proxy()
     weight = 1/(sigma*sigma)
     if i_seqs is None:
-      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
-                if s.scattering_type not in ('H', 'D')]
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())]
     assert len(i_seqs) > 1
     proxies.append(adp_restraints.adp_volume_similarity_proxy(
       i_seqs=i_seqs, weight=weight))

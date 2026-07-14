@@ -98,9 +98,9 @@ typedef struct
 
   char *weigkey;
   char resumefile[99];
-  char **rgsformat;
+  const char **rgsformat;
   void **rgpadr;
-  char **rgskeyar;
+  const char **rgskeyar;
   double ***rgp2adr;
   int n1para, n1outpara;
   int n2para;
@@ -111,7 +111,7 @@ typedef struct
  * CMA-ES "object"
  */
 {
-  char *version;
+  const char *version;
   readpara_t sp;
   random_t rand; /* random number generator */
 

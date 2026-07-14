@@ -15,14 +15,14 @@ namespace smtbx { namespace refinement { namespace constraints {
         return_internal_reference<> rir;
         class_<wt,
                bases<asu_u_star_parameter>,
-               std::auto_ptr<wt> >("scalar_scaled_u_star", no_init)
+               boost::shared_ptr<wt> >("scalar_scaled_u_star", no_init)
           .def(init<independent_scalar_parameter *,
                     wt::scatterer_type *>
                ((arg("scalar"),
                  arg("scatterer"))))
           .add_property("reference", make_function(&wt::reference, rir))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -34,14 +34,14 @@ namespace smtbx { namespace refinement { namespace constraints {
         return_internal_reference<> rir;
         class_<wt,
                bases<asu_u_iso_parameter>,
-               std::auto_ptr<wt> >("scalar_scaled_u_iso", no_init)
+               boost::shared_ptr<wt> >("scalar_scaled_u_iso", no_init)
           .def(init<independent_scalar_parameter *,
                     wt::scatterer_type *>
                ((arg("scalar"),
                  arg("scatterer"))))
           .add_property("reference", &wt::reference)
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 

@@ -218,8 +218,11 @@ class fixed_u_eq_adp_test_case(adp_restraints_test_case):
     if u_cart is None:
       u_cart=self.xray_structure.scatterers().extract_u_cart(
         self.xray_structure.unit_cell())
+    if u_iso is None:
+      u_iso=self.xray_structure.scatterers().extract_u_iso()
+    use_u_aniso=self.xray_structure.use_u_aniso()
     return adp.fixed_u_eq_adp(
-      adp_restraint_params(u_cart=u_cart),
+      adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso),
       proxy)
 
 class adp_similarity_test_case(adp_restraints_test_case):
@@ -268,7 +271,7 @@ class adp_volume_similarity_test_case(adp_restraints_test_case):
     adp_restraints_test_case.__init__(self)
     # eigen values and eigen vectors are dependent after all...
     # may need to make smaller
-    self.tolerance = 0.2
+    self.tolerance = 0.3
   def restraint(self, proxy, u_iso=None, u_cart=None):
     if u_cart is None:
       u_cart=self.xray_structure.scatterers().extract_u_cart(

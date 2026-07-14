@@ -13,6 +13,10 @@
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
 #include <sstream>
+#if defined(_OPENMP)
+  #include <omp.h>
+#endif
+
 
 namespace scitbx { namespace lstbx { namespace normal_equations {
 
@@ -452,6 +456,47 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
+#if defined(_OPENMP)
+    /* this will work correctly only with matrix::sum_of_symmetric_rank_1_updates
+    * normal_equations_omp.h file provides implementations for double
+    */
+    void add_residuals_omp(const int& n,
+      const int& start,
+      const int& threads,
+      af::const_ref<scalar_t> const& yc,
+      af::const_ref<scalar_t> const& yo,
+      af::const_ref<scalar_t> const& w)
+    {
+      throw SCITBX_NOT_IMPLEMENTED();
+    }
+
+    void add_residuals_omp(const int& n,
+      const int& start,
+      const int& threads,
+      af::const_ref<scalar_t> const& yc,
+      af::const_ref<scalar_t> const& yo)
+    {
+      throw SCITBX_NOT_IMPLEMENTED();
+    }
+
+    /// Add many equations in one go using OpenMP
+    void add_equations_omp(const int& n_ref,
+      const int& n_par,
+      const int& chunk_size,
+      const int& start,
+      const int& threads,
+      std::vector<FloatType>& matrix,          //
+      std::vector<FloatType>& yo_dot_grad_yc_, // These are arrays passed as locals for each thread to reduce overhead of generating them for each chunk
+      std::vector<FloatType>& yc_dot_grad_yc_, //
+      af::const_ref<scalar_t> const& yc,
+      std::vector<FloatType> const& jacobian_yc,
+      af::const_ref<scalar_t> const& yo,
+      af::const_ref<scalar_t> const& w)
+    {
+      throw SCITBX_NOT_IMPLEMENTED();
+    }
+#endif
+
     /// Addition in the sense of the L.S. objective functions
     /**
      *  The overall factor for this objective and other's objective are the same.
@@ -605,6 +650,10 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     non_linear_ls<scalar_t> reduced_ls;
   };
 
+// OpenMP specialisation
+#if defined(_OPENMP)
+  #include <scitbx/lstbx/normal_equations_omp.h>
+#endif
 }}}
 
 #endif // GUARD

@@ -170,6 +170,41 @@ class structure(crystal.special_position_settings):
     """
     return self._scatterers
 
+  def get_scatterer_lookup(self, lookup_type="2_16", data=[], multiplier=1):
+    """ Scatterer sites and types plus extra data (like disorder part) can be
+     encoded into a single 64bit number. Current implementations provide 16 and
+    17bit per fractional coordinate (id_5 and id_2) with that they can carry
+    either 5 bit ([0..31]) or 2 bit [0..3] extra data. The two ids _16 and _1
+    refer to the encoded range - 16 or 1 units cells across.
+    This function provides ways to get those lookup objects, which in their
+     order, give functionality (.get_id(data=0)) to get the required ids.
+    Multiplier parameter allows to round the provided fractional coordinates
+     to some range like “100” will make 0.95 to be 1.
+
+    """
+    from cctbx.xray import ext
+    if lookup_type == "2_16":
+      return ext.scatterer_lookup_2_16(self.scatterers(), data, multiplier=multiplier)
+    if lookup_type == "2_1":
+      return ext.scatterer_lookup_2_1(self.scatterers(), data, multiplier=multiplier)
+    if lookup_type == "5_16":
+      return ext.scatterer_lookup_5_16(self.scatterers(), data, multiplier=multiplier)
+    if lookup_type == "5_1":
+      return ext.scatterer_lookup_5_1(self.scatterers(),data, multiplier=multiplier)
+    raise Exception("Unknown lookup type")
+
+  def get_scatterer_lookup_cart(self, data=[]):
+    """This is a different kind of lookup that tries to locate a scatterer at a
+     given position within some epsilon and possibly data. Some positions may
+      change slightly during the refinement and although the scatterer lookup
+      can deal with them to some degree with rounding - this could be a more
+     reliable way. The lookup's find function expects Z, site (fractional),
+     extra data(0) and the acceptable deviation (1e-3)
+    """
+    from cctbx.xray import ext
+    return ext.scatterer_lookup_cart(self.unit_cell(), self.scatterers(), data)
+
+
   def non_unit_occupancy_implies_min_distance_sym_equiv_zero(self):
     return self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
 
@@ -2114,7 +2149,9 @@ class structure(crystal.special_position_settings):
         uc.u_star_to_u_cif_linear_map()))
       u_star_to_u_iso_linear_form = matrix.row(
         uc.u_star_to_u_iso_linear_form())
-    fmt = "%.6f"
+    def fmt_func(v):
+      if abs(v) < 1e-16:  return "0"
+      return "%.6g" %v
 
     # _atom_site_* loop
     atom_site_loop = model.loop(header=(
@@ -2122,8 +2159,11 @@ class structure(crystal.special_position_settings):
       '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
       '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
       '_atom_site_occupancy'))
+    refined_disp = []
+    if covariance_matrix:
+      covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
     for i_seq, sc in enumerate(scatterers):
-      site = occu = u_iso_or_equiv = None
+      site = occu = u_iso_or_equiv = fp = fdp = None
       # site
       if covariance_matrix is not None:
         params = param_map[i_seq]
@@ -2131,7 +2171,7 @@ class structure(crystal.special_position_settings):
           site = []
           for i in range(3):
             site.append(format_float_with_su(sc.site[i],
-              math.sqrt(covariance_diagonal[params.site+i])))
+              math.sqrt(covariance_diagonal[params.site+i]), min_format_func=fmt_func))
         #occupancy
         if sc.flags.grad_occupancy() and params.occupancy >= 0:
           occu = format_float_with_su(sc.occupancy,
@@ -2141,21 +2181,30 @@ class structure(crystal.special_position_settings):
           if sc.flags.grad_u_iso():
             u_iso_or_equiv = format_float_with_su(
               sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
-                i_seq, covariance_matrix, param_map)))
+                i_seq, covariance_matrix, param_map)), min_format_func=fmt_func)
           else:
             cov = covariance.extract_covariance_matrix_for_u_aniso(
               i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
             var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
                    ).dot(u_star_to_u_iso_linear_form)
             u_iso_or_equiv = format_float_with_su(
-              sc.u_iso_or_equiv(uc), math.sqrt(var))
+              sc.u_iso_or_equiv(uc), math.sqrt(var), min_format_func=fmt_func)
+        if sc.flags.grad_fp() or sc.flags.grad_fdp():
+          fp, fdp = sc.fp, sc.fdp
+          if sc.flags.grad_fp():
+            fp = format_float_with_su(sc.fp,
+                math.sqrt(covariance_diagonal[params.fp]), min_format_func=fmt_func)
+          if sc.flags.grad_fdp():
+            fdp = format_float_with_su(sc.fdp,
+                math.sqrt(covariance_diagonal[params.fdp]), min_format_func=fmt_func)
+          refined_disp.append((sc, fp, fdp))
 
       if site is None:
-        site = [fmt % sc.site[i] for i in range(3)]
+        site = [fmt_func(sc.site[i]) for i in range(3)]
       if occu is None:
-        occu = fmt % sc.occupancy
+        occu = fmt_func(sc.occupancy)
       if u_iso_or_equiv is None:
-        u_iso_or_equiv = fmt % sc.u_iso_or_equiv(uc)
+        u_iso_or_equiv = fmt_func(sc.u_iso_or_equiv(uc))
 
       if sc.flags.use_u_aniso():
         adp_type = 'Uani'
@@ -2192,11 +2241,11 @@ class structure(crystal.special_position_settings):
                 row.append(
                   format_float_with_su(u_cif[i], math.sqrt(var[i])))
               else:
-                row.append(fmt%u_cif[i])
+                row.append(fmt_func(u_cif[i]))
           else:
-            row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+            row = [sc.label] + [fmt_func(u_cif[i]) for i in range(6)]
         else:
-          row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+          row = [sc.label] + [fmt_func(u_cif[i]) for i in range(6)]
         aniso_loop.add_row(row)
       cs_cif_block.add_loop(aniso_loop)
       if anharmonic_scatterers:
@@ -2210,24 +2259,42 @@ class structure(crystal.special_position_settings):
           D_header.append("_atom_site_anharm_GC_D_%s%s%s%s" %(idx[0]+1,idx[1]+1,idx[2]+1,idx[3]+1))
         C_loop = model.loop(header=(C_header))
         D_loop = model.loop(header=(D_header))
+        has_4th = False
         for sc in anharmonic_scatterers:
+          order = sc.anharmonic_adp.get_order()
           C_row = [sc.label]
           D_row = [sc.label]
           for i, d in enumerate(sc.anharmonic_adp.data()):
             if covariance_matrix is not None:
               idx = param_map[labels.index(sc.label)].u_aniso
               if idx > -1:
-                var = covariance_diagonal[idx+6:idx+6+25]
+                if order == 3:
+                  var = covariance_diagonal[idx+6:idx+6+10]
+                elif order == 4:
+                  has_4th = True
+                  var = covariance_diagonal[idx+6:idx+6+25]
                 d = format_float_with_su(d, math.sqrt(var[i]))
             if i < 10:
               C_row.append(d)
             else:
+              if order == 3:
+                break
               D_row.append(d)
           C_loop.add_row(C_row)
-          D_loop.add_row(D_row)
+          if order == 4:
+            D_loop.add_row(D_row)
         cs_cif_block.add_loop(C_loop)
-        cs_cif_block.add_loop(D_loop)
-      cs_cif_block.add_loop(atom_type_cif_loop(self, format=format))
+        if has_4th:
+          cs_cif_block.add_loop(D_loop)
+      if refined_disp:
+        disp_loop = model.loop(header=(['_atom_site_dispersion_label',
+                                        '_atom_site_dispersion_real',
+                                        '_atom_site_dispersion_imag']))
+        for sc, fp, fdp in refined_disp:
+          disp_loop.add_row([sc.label, fp, fdp])
+        cs_cif_block.add_loop(disp_loop)
+
+      cs_cif_block.add_loop(atom_type_cif_loop(self, format=format, covariance_matrix=covariance_matrix))
     return cs_cif_block
 
   def as_pdb_file(self,
@@ -2384,7 +2451,6 @@ class conservative_pair_proxies(object):
       angle_pair_asu_table = bond_pair_asu_table.angle_pair_asu_table()
       self.angle = geometry_restraints.bond_sorted_asu_proxies(
         pair_asu_table=angle_pair_asu_table)
-
 
 class meaningful_site_cart_differences(object):
   """ Differences between the Cartesian coordinates of corresponding sites

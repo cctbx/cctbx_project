@@ -20,10 +20,12 @@ namespace cctbx { namespace miller {
   index_generator::index_generator(uctbx::unit_cell const& unit_cell,
                                    sgtbx::space_group_type const& sg_type,
                                    bool anomalous_flag,
-                                   double resolution_d_min)
+                                   double resolution_d_min,
+                                   bool return_sys_absent)
     : unit_cell_(unit_cell),
       sg_type_(sg_type),
       anomalous_flag_(anomalous_flag),
+      return_sys_absent_(return_sys_absent),
       asu_(sg_type)
   {
     if (resolution_d_min <= 0.) {
@@ -37,9 +39,11 @@ namespace cctbx { namespace miller {
 
   index_generator::index_generator(sgtbx::space_group_type const& sg_type,
                                    bool anomalous_flag,
-                                   index<> const& max_index)
+                                   index<> const& max_index,
+                                   bool return_sys_absent)
     : sg_type_(sg_type),
       anomalous_flag_(anomalous_flag),
+    return_sys_absent_(return_sys_absent),
       asu_(sg_type),
       d_star_sq_max_(-1.)
   {
@@ -49,6 +53,9 @@ namespace cctbx { namespace miller {
   bool
   index_generator::set_phase_info(index<> const& h)
   {
+    if (return_sys_absent_) {
+      return false;
+    }
     phase_info_ = sgtbx::phase_info(sg_type_.group(), h, false);
     return phase_info_.is_sys_absent();
   }
