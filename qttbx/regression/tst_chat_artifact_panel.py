@@ -108,6 +108,48 @@ def exercise_show_image_focuses_existing_or_inserts():
     shutil.rmtree(tmp)
 
 
+def exercise_add_artifact_dedupes_repeated_image():
+  """Re-adding an image already in history (same conv_id + sha256) is a no-op.
+
+  The live emit path and the turn-done / tool-results rescans can push the
+  same image more than once; the panel must keep a single history entry per
+  (conv_id, sha256) and must not yank a navigating user off their spot on
+  the duplicate push. The same sha under a DIFFERENT conv_id is a distinct
+  artifact (matching show_image's identity rule).
+  """
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    storage = ConversationStorage(project_dir=Path(tmp), log=null_out())
+    a1 = storage.store_attachment("c", _png_bytes(color=(255, 0, 0)),
+                                  "image/png")
+    a2 = storage.store_attachment("c", _png_bytes(color=(0, 255, 0)),
+                                  "image/png")
+    p = ArtifactPanel(storage=storage)
+    p.add_artifact(Artifact(kind="image", payload={
+      "conv_id": "c", "sha256": a1.sha256, "mime": "image/png"}))
+    p.add_artifact(Artifact(kind="image", payload={
+      "conv_id": "c", "sha256": a1.sha256, "mime": "image/png"}))
+    assert len(p._artifacts) == 1, len(p._artifacts)
+    # A duplicate push while the user navigated away neither grows the
+    # history nor moves the current selection.
+    p.add_artifact(Artifact(kind="image", payload={
+      "conv_id": "c", "sha256": a2.sha256, "mime": "image/png"}))
+    p.go_prev()
+    assert p.current_artifact().payload["sha256"] == a1.sha256
+    p.add_artifact(Artifact(kind="image", payload={
+      "conv_id": "c", "sha256": a2.sha256, "mime": "image/png"}))
+    assert len(p._artifacts) == 2, len(p._artifacts)
+    assert p.current_artifact().payload["sha256"] == a1.sha256
+    # Same sha in a different conversation is NOT a duplicate.
+    p.add_artifact(Artifact(kind="image", payload={
+      "conv_id": "d", "sha256": a1.sha256, "mime": "image/png"}))
+    assert len(p._artifacts) == 3, len(p._artifacts)
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_reload_skips_unchanged_width():
   """A resize to an unchanged width must not re-run the expensive reload.
 
@@ -181,6 +223,7 @@ def exercise():
   exercise_add_image_artifact_auto_advances()
   exercise_user_navigation_pins_index()
   exercise_show_image_focuses_existing_or_inserts()
+  exercise_add_artifact_dedupes_repeated_image()
   exercise_reload_skips_unchanged_width()
   exercise_save_name_extension_follows_mime()
 

@@ -69,11 +69,20 @@ class ArtifactPanel(QtWidgets.QWidget):
   def add_artifact(self, artifact):
     """Append an artifact, advancing to it unless the user navigated away.
 
+    An image already in history (same ``conv_id`` + ``sha256``, the identity
+    rule ``show_image`` uses) is skipped without disturbing the current
+    selection -- the live emit path and the turn-done / tool-results rescans
+    may push the same image more than once.
+
     Parameters
     ----------
     artifact : Artifact
         The artifact to append to the history.
     """
+    payload = artifact.payload or {}
+    if artifact.kind == "image" and payload.get("sha256") and \
+       self._find_image(payload.get("conv_id"), payload.get("sha256")) >= 0:
+      return
     self._artifacts.append(artifact)
     if not self._user_navigated:
       self._index = len(self._artifacts) - 1
@@ -94,20 +103,31 @@ class ArtifactPanel(QtWidgets.QWidget):
     sha256 : str
         Content hash identifying the image.
     """
+    i = self._find_image(conv_id, sha256)
+    if i < 0:
+      self._artifacts.append(Artifact(kind="image", payload={
+        "conv_id": conv_id, "sha256": sha256, "mime": "image/png"}))
+      i = len(self._artifacts) - 1
+    self._index = i
+    self._user_navigated = True
+    self._refresh()
+
+  def _find_image(self, conv_id, sha256):
+    """Return the history index of the image with this identity, or -1.
+
+    Parameters
+    ----------
+    conv_id : str
+        Conversation id the image belongs to.
+    sha256 : str
+        Content hash identifying the image.
+    """
     for i, art in enumerate(self._artifacts):
       payload = art.payload or {}
       if art.kind == "image" and payload.get("sha256") == sha256 \
          and payload.get("conv_id") == conv_id:
-        self._index = i
-        self._user_navigated = True
-        self._refresh()
-        return
-    art = Artifact(kind="image", payload={
-      "conv_id": conv_id, "sha256": sha256, "mime": "image/png"})
-    self._artifacts.append(art)
-    self._index = len(self._artifacts) - 1
-    self._user_navigated = True
-    self._refresh()
+        return i
+    return -1
 
   def clear(self):
     self._artifacts = []
