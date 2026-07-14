@@ -2780,7 +2780,7 @@ class TrialDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 600),
+                        size=(800, 600),
                         *args, **kwargs)
 
     if trial is None:
@@ -2796,7 +2796,7 @@ class TrialDialog(BaseDialog):
 
     # Scrollable content region so the (tall) two-column parameter blocks get a
     # vertical scrollbar on the right rather than forcing a very tall dialog.
-    self.scroll_panel = ScrolledPanel(self, size=(600, 500))
+    self.scroll_panel = ScrolledPanel(self, size=(800, 500))
     self.scroll_sizer = wx.BoxSizer(wx.VERTICAL)
     self.scroll_panel.SetSizer(self.scroll_sizer)
 
