@@ -2842,7 +2842,7 @@ class TrialDialog(BaseDialog):
                                                ctrl_size=(200, -1),
                                                choices=['dispersion', 'dispersion_extended', 'radial_profile'])
 
-    self.spotfinding_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
+    self.spotfinding_ctrl_sizer = wx.FlexGridSizer(0, 4, 10, 10)
     self.spotfinding_ctrl_sizer.Add(self.min_spot_size, flag=wx.ALL, border=10)
     self.spotfinding_ctrl_sizer.Add(self.max_spot_size, flag=wx.ALL, border=10)
     self.spotfinding_ctrl_sizer.Add(self.sigma_background, flag=wx.ALL, border=10)
@@ -2857,7 +2857,7 @@ class TrialDialog(BaseDialog):
     indexing_box = wx.StaticBox(self.indexing_panel, label='Indexing parameters')
     self.indexing_sizer = wx.StaticBoxSizer(indexing_box)
     self.indexing_panel.SetSizer(self.indexing_sizer)
-    self.indexing_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
+    self.indexing_ctrl_sizer = wx.FlexGridSizer(0, 4, 10, 10)
 
     self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
                                          label='Unit cell:',
@@ -2899,7 +2899,7 @@ class TrialDialog(BaseDialog):
     archive_box = wx.StaticBox(self.archive_panel, label='Archiving parameters')
     self.archive_sizer = wx.StaticBoxSizer(archive_box)
     self.archive_panel.SetSizer(self.archive_sizer)
-    self.archive_ctrl_sizer = wx.FlexGridSizer(2, 2, 10, 10)
+    self.archive_ctrl_sizer = wx.FlexGridSizer(0, 4, 10, 10)
 
     self.archive_level = gctr.ChoiceCtrl(self.archive_panel,
                                          label='Archive level:',
