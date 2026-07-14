@@ -398,6 +398,8 @@ class IndexingJob(Job):
           trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
         if trial_params.integration.lookup.mask is None:
           trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.input.reference_geometry is None:
+          trial_params.input.reference_geometry = self.rungroup.reference_geometry_path
 
         if self.app.params.facility.name == 'lcls':
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
