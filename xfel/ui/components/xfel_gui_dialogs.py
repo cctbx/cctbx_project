@@ -2120,6 +2120,10 @@ class RunBlockDialog(BaseDialog):
     self.use_ids = db.params.facility.name not in ['lcls']
     self.is_lcls = db.params.facility.name == 'lcls'
     self.is_streaming = db.params.facility.name == 'streaming'
+    # Spectrometer/wavelength calibration is a detector capability, not an
+    # LCLS-only trait: streaming (which may carry LCLS data) needs it too. Gate
+    # those fields on the derived capability rather than the facility identity.
+    self.has_spectrometer = self.is_lcls or self.is_streaming
 
     all_runs = db.get_all_runs()
     if self.is_streaming or len(all_runs) == 0:
@@ -2306,6 +2310,17 @@ class RunBlockDialog(BaseDialog):
                                           ctrl_size=(80, -1),
                                           items=items)
       self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    else:
+      self.energy = gctr.TextButtonCtrl(self.runblock_panel,
+                                        name='rg_energy',
+                                        label='Energy override',
+                                        label_size=(150, -1))
+      self.energy.ctr.SetValue(str(block.energy))
+      self.runblock_sizer.Add(self.energy, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Wavelength/spectrometer calibration: any facility with a spectrometer (LCLS
+    # or streaming LCLS data), not LCLS batch alone.
+    if self.has_spectrometer:
       self.wavelength_offset = gctr.OptionCtrl(self.runblock_panel,
                                                name='rg_wavelength_offset',
                                                ctrl_size=(80, -1),
@@ -2317,13 +2332,6 @@ class RunBlockDialog(BaseDialog):
                                                   items=[('spectrum_eV_per_pixel', block.spectrum_eV_per_pixel),
                                                          ('spectrum_eV_offset', block.spectrum_eV_offset)])
       self.runblock_sizer.Add(self.spectrum_calibration, flag=wx.EXPAND | wx.ALL, border=10)
-    else:
-      self.energy = gctr.TextButtonCtrl(self.runblock_panel,
-                                        name='rg_energy',
-                                        label='Energy override',
-                                        label_size=(150, -1))
-      self.energy.ctr.SetValue(str(block.energy))
-      self.runblock_sizer.Add(self.energy, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Two theta values for droplet hit finding
     self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
@@ -2478,14 +2486,16 @@ class RunBlockDialog(BaseDialog):
       rg_dict['beamx']=self.beam_xyz.X.GetValue()
       rg_dict['beamy']=self.beam_xyz.Y.GetValue()
       rg_dict['energy']=self.bin_nrg_gain.energy.GetValue()
-      rg_dict['wavelength_offset']=self.wavelength_offset.wavelength_offset.GetValue()
       rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
       rg_dict['detector_address']=self.address.ctr.GetValue()
       rg_dict['extra_format_str']=self.format.ctr.GetValue()
-      rg_dict['spectrum_eV_per_pixel']=self.spectrum_calibration.spectrum_eV_per_pixel.GetValue()
-      rg_dict['spectrum_eV_offset']=self.spectrum_calibration.spectrum_eV_offset.GetValue()
     else:
       rg_dict['energy']=self.energy.ctr.GetValue()
+
+    if self.has_spectrometer:
+      rg_dict['wavelength_offset']=self.wavelength_offset.wavelength_offset.GetValue()
+      rg_dict['spectrum_eV_per_pixel']=self.spectrum_calibration.spectrum_eV_per_pixel.GetValue()
+      rg_dict['spectrum_eV_offset']=self.spectrum_calibration.spectrum_eV_offset.GetValue()
 
     for key, value in six.iteritems(rg_dict):
       if str(value) == 'None' or str(value) == '':
@@ -2555,6 +2565,7 @@ class RunBlockDialog(BaseDialog):
         self.beam_xyz.Y.SetValue(str(last.beamy))
         self.bin_nrg_gain.binning.SetValue(str(last.binning))
         self.bin_nrg_gain.energy.SetValue(str(last.energy))
+      if self.has_spectrometer:
         self.wavelength_offset.wavelength_offset.SetValue(str(last.wavelength_offset))
         self.spectrum_calibration.spectrum_eV_per_pixel.SetValue(str(last.spectrum_eV_per_pixel))
         self.spectrum_calibration.spectrum_eV_offset.SetValue(str(last.spectrum_eV_offset))
