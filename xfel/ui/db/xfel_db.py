@@ -285,6 +285,10 @@ class initialize(initialize_base):
         cursor.execute(query)
         query = "ALTER TABLE `%s_rungroup` ADD COLUMN streaming_last_run INT NULL"%self.params.experiment_tag
         cursor.execute(query)
+      if 'reference_geometry_path' not in column_names:
+        print("Upgrading to version 5.7 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN reference_geometry_path TEXT NULL"%self.params.experiment_tag
+        cursor.execute(query)
 
       # Maintain backwards compatibility with SQL tables v5.5: 03/10/25
       query = "SHOW columns FROM `%s_experiment`"%self.params.experiment_tag

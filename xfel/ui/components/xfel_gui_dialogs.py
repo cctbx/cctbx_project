@@ -2172,6 +2172,7 @@ class RunBlockDialog(BaseDialog):
             return 22.8 # Defaults are from kapton tape experiments (this is water ring)
           elif item in ["extra_phil_str", "calib_dir", "dark_avg_path", "dark_stddev_path",
             "gain_map_path", "beamx", "beamy", "gain_mask_level", "untrusted_pixel_mask_path",
+            "reference_geometry_path",
             "binning", "energy", "wavelength_offset", "spectrum_eV_per_pixel", "spectrum_eV_offset",
             "comment", "extra_format_str"]:
             return None
@@ -2352,6 +2353,16 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
+    # Reference geometry path
+    self.reference_geometry_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                              label='Reference Geometry:',
+                                              label_style='normal',
+                                              label_size=(180, -1),
+                                              big_button=True,
+                                              value=str(block.reference_geometry_path))
+    self.runblock_sizer.Add(self.reference_geometry_path, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
     # Comment
     self.comment = gctr.TextButtonCtrl(self.runblock_panel,
                                        label='Comment:',
@@ -2381,6 +2392,8 @@ class RunBlockDialog(BaseDialog):
       self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onReferenceGeometryBrowse,
+              id=self.reference_geometry_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     self.fill_in_fields()
@@ -2477,6 +2490,7 @@ class RunBlockDialog(BaseDialog):
                    open=rg_open,
                    extra_phil_str=self.phil.ctr.GetValue(),
                    untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue().strip(),
+                   reference_geometry_path=self.reference_geometry_path.ctr.GetValue().strip(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
@@ -2572,6 +2586,7 @@ class RunBlockDialog(BaseDialog):
       self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
       self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
+      self.reference_geometry_path.ctr.SetValue(str(last.reference_geometry_path))
       self.comment.ctr.SetValue(str(last.comment))
 
   def configure_controls(self):
@@ -2632,6 +2647,19 @@ class RunBlockDialog(BaseDialog):
 
     if dlg.ShowModal() == wx.ID_OK:
       self.untrusted_path.ctr.SetValue(dlg.GetPaths()[0])
+    dlg.Destroy()
+
+  def onReferenceGeometryBrowse(self, e):
+    dlg = wx.FileDialog(self,
+                             message="Load reference geometry",
+                             defaultDir=os.curdir,
+                             defaultFile="*.expt",
+                             wildcard="*.expt;*.json",
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.reference_geometry_path.ctr.SetValue(dlg.GetPaths()[0])
     dlg.Destroy()
 
   def onCalibDirBrowse(self, e):

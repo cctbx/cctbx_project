@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`rungroup` (
   `energy` DOUBLE NULL,
   `wavelength_offset` DOUBLE NULL,
   `untrusted_pixel_mask_path` TEXT NULL,
+  `reference_geometry_path` TEXT NULL,
   `dark_avg_path` TEXT NULL,
   `dark_stddev_path` TEXT NULL,
   `gain_map_path` TEXT NULL,
