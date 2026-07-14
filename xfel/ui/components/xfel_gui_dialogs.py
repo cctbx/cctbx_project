@@ -2766,7 +2766,13 @@ class TrialDialog(BaseDialog):
       trial_number = trial.trial
       d_min = trial.d_min if trial.d_min is not None else 1.5
 
-    self.trial_info = gctr.TwoButtonCtrl(self,
+    # Scrollable content region so the (tall) two-column parameter blocks get a
+    # vertical scrollbar on the right rather than forcing a very tall dialog.
+    self.scroll_panel = ScrolledPanel(self, size=(600, 500))
+    self.scroll_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.scroll_panel.SetSizer(self.scroll_sizer)
+
+    self.trial_info = gctr.TwoButtonCtrl(self.scroll_panel,
                                          label='Trial number:',
                                          label_size=(100, -1),
                                          label_style='normal',
@@ -2777,13 +2783,13 @@ class TrialDialog(BaseDialog):
                                          button2_label='Edit PHIL' if new else 'Show PHIL',
                                          button2_size=(120, -1),
                                          value="{}".format(trial_number))
-    self.trial_comment = gctr.TextButtonCtrl(self,
+    self.trial_comment = gctr.TextButtonCtrl(self.scroll_panel,
                                              label='Comment:',
                                              label_size=(100, -1),
                                              label_style='normal',
                                              ghost_button=False)
 
-    self.overall_panel = wx.Panel(self)
+    self.overall_panel = wx.Panel(self.scroll_panel)
     overall_box = wx.StaticBox(self.overall_panel, label='Overall parameters')
     self.overall_sizer = wx.StaticBoxSizer(overall_box)
     self.overall_panel.SetSizer(self.overall_sizer)
@@ -2806,7 +2812,7 @@ class TrialDialog(BaseDialog):
     self.overall_ctrl_sizer.Add(self.min_spots, flag=wx.ALL, border=10)
     self.overall_sizer.Add(self.overall_ctrl_sizer)
 
-    self.spotfinding_panel = wx.Panel(self)
+    self.spotfinding_panel = wx.Panel(self.scroll_panel)
     spotfinding_box = wx.StaticBox(self.spotfinding_panel, label='Spotfinding parameters')
     self.spotfinding_sizer = wx.StaticBoxSizer(spotfinding_box)
     self.spotfinding_panel.SetSizer(self.spotfinding_sizer)
@@ -2853,7 +2859,7 @@ class TrialDialog(BaseDialog):
                                                ctrl_size=(200, -1),
                                                choices=['dispersion', 'dispersion_extended', 'radial_profile'])
 
-    self.spotfinding_ctrl_sizer = wx.FlexGridSizer(0, 4, 10, 10)
+    self.spotfinding_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
     self.spotfinding_ctrl_sizer.Add(self.min_spot_size, flag=wx.ALL, border=10)
     self.spotfinding_ctrl_sizer.Add(self.max_spot_size, flag=wx.ALL, border=10)
     self.spotfinding_ctrl_sizer.Add(self.sigma_background, flag=wx.ALL, border=10)
@@ -2864,11 +2870,11 @@ class TrialDialog(BaseDialog):
     self.spotfinding_ctrl_sizer.Add(self.threshold_algorithm, flag=wx.ALL, border=10)
     self.spotfinding_sizer.Add(self.spotfinding_ctrl_sizer)
 
-    self.indexing_panel = wx.Panel(self)
+    self.indexing_panel = wx.Panel(self.scroll_panel)
     indexing_box = wx.StaticBox(self.indexing_panel, label='Indexing parameters')
     self.indexing_sizer = wx.StaticBoxSizer(indexing_box)
     self.indexing_panel.SetSizer(self.indexing_sizer)
-    self.indexing_ctrl_sizer = wx.FlexGridSizer(0, 4, 10, 10)
+    self.indexing_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
 
     self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
                                          label='Unit cell:',
@@ -2906,11 +2912,11 @@ class TrialDialog(BaseDialog):
     self.archive_level_choices = ['none', 'all', 'spotfinding', 'indexing',
                                   'refinement', 'integration']
     self.archive_sort_choices = ['none', 'image_id', 'timestamp']
-    self.archive_panel = wx.Panel(self)
+    self.archive_panel = wx.Panel(self.scroll_panel)
     archive_box = wx.StaticBox(self.archive_panel, label='Archiving parameters')
     self.archive_sizer = wx.StaticBoxSizer(archive_box)
     self.archive_panel.SetSizer(self.archive_sizer)
-    self.archive_ctrl_sizer = wx.FlexGridSizer(0, 4, 10, 10)
+    self.archive_ctrl_sizer = wx.FlexGridSizer(2, 2, 10, 10)
 
     self.archive_level = gctr.ChoiceCtrl(self.archive_panel,
                                          label='Archive level:',
@@ -2936,7 +2942,7 @@ class TrialDialog(BaseDialog):
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
-    self.copy_runblocks = gctr.ChoiceCtrl(self,
+    self.copy_runblocks = gctr.ChoiceCtrl(self.scroll_panel,
                                           label='Copy runblocks from',
                                           label_style='normal',
                                           label_size=(180, -1),
@@ -2948,7 +2954,7 @@ class TrialDialog(BaseDialog):
     # onOK prepends ``process_type = <selected>`` to the stored target_phil_str.
     self.process_types = ['dials.stills_process', 'small_cell',
                           'image_average', 'archive', 'radial_average']
-    self.process_type = gctr.ChoiceCtrl(self,
+    self.process_type = gctr.ChoiceCtrl(self.scroll_panel,
                                         name='process_type',
                                         label='Process type',
                                         label_style='normal',
@@ -2956,7 +2962,7 @@ class TrialDialog(BaseDialog):
                                         ctrl_size=(180, -1),
                                         choices=self.process_types)
     self.process_type.ctr.SetSelection(0)
-    self.throttle = gctr.SpinCtrl(self,
+    self.throttle = gctr.SpinCtrl(self.scroll_panel,
                                   name='trial_throttle',
                                   label='Percent events processed:',
                                   label_size=(180, -1),
@@ -2965,7 +2971,7 @@ class TrialDialog(BaseDialog):
                                   ctrl_value='100',
                                   ctrl_min=1,
                                   ctrl_max=100)
-    self.num_bins = gctr.SpinCtrl(self,
+    self.num_bins = gctr.SpinCtrl(self.scroll_panel,
                                   name='trial_num_bins',
                                   label='Number of bins:',
                                   label_size=(180, -1),
@@ -2975,7 +2981,7 @@ class TrialDialog(BaseDialog):
                                   ctrl_min=1,
                                   ctrl_max=100,
                                   ctrl_step=1)
-    self.d_min = gctr.SpinCtrl(self,
+    self.d_min = gctr.SpinCtrl(self.scroll_panel,
                                name='trial_d_min',
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
@@ -2996,20 +3002,23 @@ class TrialDialog(BaseDialog):
                                (self.num_bins),
                                (self.d_min)])
 
-    self.main_sizer.Add(self.trial_info,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.trial_comment,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.process_type,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.archive_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.trial_info,
+                          flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                          border=10)
+    self.scroll_sizer.Add(self.trial_comment,
+                          flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                          border=10)
+    self.scroll_sizer.Add(self.process_type,
+                          flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                          border=10)
+    self.scroll_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.archive_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.scroll_panel.SetupScrolling(scroll_x=False, scroll_y=True)
+    self.main_sizer.Add(self.scroll_panel, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
 
     # Dialog control
