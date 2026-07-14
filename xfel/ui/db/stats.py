@@ -262,6 +262,44 @@ class HitrateStats(object):
     #print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths
 
+def gather_run_stats(app, trial, compute_stats, run_numbers = None):
+  """Gather per-run stats across every rungroup of a trial, keeping only the
+  rungroups that actually have data.
+
+  For each (rungroup, run) in the trial, calls
+  compute_stats(run_number, trial_number, rungroup_id) and keeps the result only
+  when it is non-empty (len(stats[0]) > 0, i.e. at least one event). A run that
+  belongs to several rungroups (e.g. an empty streaming/archive rungroup plus a
+  real processing rungroup) therefore contributes a result for each rungroup that
+  has data, and none for the empty ones; callers that want a single result per
+  run should dedupe by run.run on the returned list (first-with-data wins).
+
+  compute_stats is a callable so both HitrateStats and SpotfinderStats can share
+  this logic — each returns a tuple whose first element is the timestamp array.
+
+  Resilient by design: a (run, rungroup) whose compute_stats raises is logged
+  with a full traceback and skipped, so one bad run never aborts the whole gather
+  (and never takes down the GUI sentinel that drives it).
+
+  Returns a list of (rungroup, run, stats) tuples.
+  """
+  import traceback
+  results = []
+  for rungroup in trial.rungroups:
+    for run in rungroup.runs:
+      if run_numbers is not None and run.run not in run_numbers:
+        continue
+      try:
+        stats = compute_stats(run.run, trial.trial, rungroup.id)
+      except Exception:
+        print("Run stats: skipping run %s rungroup %d after error:" % (
+          run.run, rungroup.id))
+        traceback.print_exc()
+        continue
+      if len(stats[0]) > 0:
+        results.append((rungroup, run, stats))
+  return results
+
 class SpotfinderStats(object):
   def __init__(self, app, run_number, trial_number, rungroup_id, raw_data_sampling = 1):
     self.app = app
