@@ -11,7 +11,7 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.ui import master_phil_str, db_phil_str
 from xfel.ui.db.xfel_db import xfel_db_application
-from xfel.ui.db.stats import HitrateStats
+from xfel.ui.db.stats import HitrateStats, gather_run_stats
 from xfel.ui.components.run_stats_plotter import plot_multirun_stats
 import sys
 
@@ -64,12 +64,12 @@ def run(args):
   if params.rungroup is None:
     assert len(params.run) == 0
     trial = app.get_trial(trial_number = params.trial)
-    for rungroup in trial.rungroups:
-      for run in rungroup.runs:
-        stats = HitrateStats(app, run.run, trial.trial, rungroup.id, params.d_min)()
-        if len(stats[0]) > 0:
-          runs.append(run.run)
-          all_results.append(stats)
+    for rungroup, run, stats in gather_run_stats(
+      app, trial,
+      lambda run_no, trial_no, rg_id: HitrateStats(
+        app, run_no, trial_no, rg_id, params.d_min)()):
+      runs.append(run.run)
+      all_results.append(stats)
   else:
     for run_no in params.run:
       runs.append(run_no)

@@ -676,14 +676,19 @@ class RunStatsSentinel(Thread):
         self.info = {}
         wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'on')
         time.sleep(5)
-      except Exception as e:
-        print(e)
+      except Exception:
+        # Keep the sentinel alive across errors so a single bad cycle does not
+        # take down run stats (the old `break` left the light stuck red until the
+        # user switched tabs to restart the thread). Log, flag the light for this
+        # cycle, and try again next cycle — a healthy cycle restores 'on'.
+        import traceback
+        traceback.print_exc()
         wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'alert')
-        break
+        time.sleep(5)
 
   def refresh_stats(self):
     #from xfel.ui.components.timeit import duration
-    from xfel.ui.db.stats import HitrateStats
+    from xfel.ui.db.stats import HitrateStats, gather_run_stats
     import copy, time
     t1 = time.time()
     if self.parent.run_window.runstats_tab.trial_no is not None:
@@ -697,17 +702,25 @@ class RunStatsSentinel(Thread):
       self.trgr = {}
       self.run_tags = []
       self.run_statuses = []
-      for rg in trial.rungroups:
-        for run in rg.runs:
-          if run.run not in self.run_numbers and run.run in selected_runs:
-            self.run_numbers.append(run.run)
-            trial_ids.append(trial.id)
-            rungroup_ids.append(rg.id)
-            self.trgr[run.run] = (trial, rg, run)
-            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
-                                           i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
-                                           d_min=self.parent.run_window.runstats_tab.d_min)())
-            self.run_tags.append([tag.name for tag in run.tags])
+      # gather_run_stats keeps only the rungroups that actually have data, so a run
+      # that is also linked to an empty streaming/archive rungroup is bound to its
+      # real processing rungroup rather than the empty one. Dedupe by run so a run
+      # with data in more than one rungroup is plotted once (first-with-data wins).
+      for rg, run, stats in gather_run_stats(
+        self.db, trial,
+        lambda run_no, trial_no, rg_id: HitrateStats(
+          self.db, run_no, trial_no, rg_id,
+          i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
+          d_min=self.parent.run_window.runstats_tab.d_min)(),
+        run_numbers=selected_runs):
+        if run.run in self.run_numbers:
+          continue
+        self.run_numbers.append(run.run)
+        trial_ids.append(trial.id)
+        rungroup_ids.append(rg.id)
+        self.trgr[run.run] = (trial, rg, run)
+        self.stats.append(stats)
+        self.run_tags.append([tag.name for tag in run.tags])
 
       jobs = self.db.get_all_jobs()
       for idx in range(len(self.run_numbers)):
@@ -876,7 +889,7 @@ class SpotfinderSentinel(Thread):
         break
 
   def refresh_stats(self):
-    from xfel.ui.db.stats import SpotfinderStats
+    from xfel.ui.db.stats import SpotfinderStats, gather_run_stats
     from xfel.ui.components.spotfinder_scraper import get_spot_length_stats
     import copy
     if self.parent.run_window.spotfinder_tab.trial_no is not None:
@@ -892,31 +905,37 @@ class SpotfinderSentinel(Thread):
       self.run_tags = []
       self.run_statuses = []
       self.output = self.parent.params.output_folder
-      for rg in trial.rungroups:
-        for run in rg.runs:
-          if run.run not in self.run_numbers and run.run in selected_runs:
-            self.run_numbers.append(run.run)
-            trial_ids.append(trial.id)
-            rungroup_ids.append(rg.id)
-            self.trgr[run.run] = (trial, rg, run)
-            # spot count
-            sf_stats = SpotfinderStats(self.db, run.run, trial.trial, rg.id)()
-            self.stats.append(sf_stats)
-            self.run_tags.append([tag.name for tag in run.tags])
-            # spot lengths
-            if self.parent.params.dispatcher == "cxi.xtc_process": #LABELIT backend
-              outdir = "integration"
-            else:
-              outdir = "out"
-            run_outdir = os.path.join(get_run_path(self.output, trial, rg, run), outdir)
-            try:
-              self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
-            except OSError:
-              print("Outdir %s no longer accessible." % run_outdir)
-            except Exception as e:
-              print(e)
-              from dials.array_family import flex
-              self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
+      # See RunStatsSentinel.refresh_stats: keep only rungroups with data and
+      # dedupe by run so an empty streaming/archive rungroup never shadows the
+      # real processing rungroup.
+      for rg, run, sf_stats in gather_run_stats(
+        self.db, trial,
+        lambda run_no, trial_no, rg_id: SpotfinderStats(
+          self.db, run_no, trial_no, rg_id)(),
+        run_numbers=selected_runs):
+        if run.run in self.run_numbers:
+          continue
+        self.run_numbers.append(run.run)
+        trial_ids.append(trial.id)
+        rungroup_ids.append(rg.id)
+        self.trgr[run.run] = (trial, rg, run)
+        # spot count
+        self.stats.append(sf_stats)
+        self.run_tags.append([tag.name for tag in run.tags])
+        # spot lengths
+        if self.parent.params.dispatcher == "cxi.xtc_process": #LABELIT backend
+          outdir = "integration"
+        else:
+          outdir = "out"
+        run_outdir = os.path.join(get_run_path(self.output, trial, rg, run), outdir)
+        try:
+          self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
+        except OSError:
+          print("Outdir %s no longer accessible." % run_outdir)
+        except Exception as e:
+          print(e)
+          from dials.array_family import flex
+          self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
 
       jobs = self.db.get_all_jobs()
       for idx in range(len(self.run_numbers)):

@@ -283,7 +283,7 @@ def plot_run_stats(stats,
     status = run_statuses[idx]
     if status == "DONE":
       status_color = 'blue'
-    elif status in ["RUN", "PEND", "SUBMITTED"]:
+    elif status in ["RUN", "PEND", "SUBMITTED", "STREAMING"]:
       status_color = 'green'
     elif status is None:
       status_color = 'black'
