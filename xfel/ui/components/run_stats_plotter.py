@@ -47,7 +47,12 @@ def get_string_from_timestamp(ts, long_form=False):
   import time
   time_seconds = int(math.floor(ts))
   time_milliseconds = int(round((ts - time_seconds)*1000))
-  time_obj = time.gmtime(time_seconds)
+  try:
+    time_obj = time.gmtime(time_seconds)
+  except (OSError, OverflowError, ValueError):
+    # Out-of-range timestamp (e.g. ns-scale value): cannot form a UTC filename
+    # component. Return blank rather than crash the shared plotter.
+    return ""
   if long_form:
     string = "%04d-%02d-%02dT%02d:%02dZ%02d.%03d" % (
       time_obj.tm_year,
