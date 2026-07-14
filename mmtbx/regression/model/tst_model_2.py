@@ -647,6 +647,9 @@ def exercise_select_preserves_stop_for_unknowns():
   m_false_sel = m_false.select(m_false.selection("all"))
   assert m_false_sel.get_stop_for_unknowns() is False, \
     "select() must preserve stop_for_unknowns=False onto the selected model"
+  # deep_copy() is built on select(), so it must preserve the flag too
+  assert m_false.deep_copy().get_stop_for_unknowns() is False, \
+    "deep_copy() must preserve stop_for_unknowns=False onto the copied model"
 
 if (__name__ == "__main__"):
   t0 = time.time()
