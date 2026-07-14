@@ -762,6 +762,20 @@ class RunStatsSentinel(Thread):
     return params
 
   def fetch_timestamps(self, indexed=False):
+    if self.parent.params.facility.name != 'lcls':
+      # The should-have-indexed / strong-indexed image-path machinery below is
+      # LCLS-XTC only (idx-/shot-<ts>.cbf on disk, cctbx.xfel.xtc_dump). For other
+      # facilities (e.g. streaming/standalone, incl. LCLStreamer) it is never
+      # consumed, and those timestamps are raw psana2 clock values (~7e18) so
+      # get_string_from_timestamp -> time.gmtime would overflow.
+      # Leave the consumer attributes well-defined (empty) and return.
+      if indexed:
+        self.parent.run_window.runstats_tab.strong_indexed_image_timestamps = []
+        self.parent.run_window.runstats_tab.strong_indexed_image_paths = []
+      else:
+        self.parent.run_window.runstats_tab.should_have_indexed_timestamps = []
+        self.parent.run_window.runstats_tab.should_have_indexed_image_paths = []
+      return
     from xfel.ui.components.run_stats_plotter import \
       get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps, get_strings_from_timestamps
     runs, timestamps = \
