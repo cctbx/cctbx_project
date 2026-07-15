@@ -204,6 +204,80 @@ def exercise_placeholder_dim_flag_controls_palette_role():
     dim_color
 
 
+def exercise_set_placeholder_skips_redundant_palette_and_text():
+  """The in-flight 'Thinking...' spinner calls set_placeholder ~8x/s with dim
+  unchanged and only the trailing glyph changing. set_placeholder must NOT
+  rebuild the palette (a style re-polish) when dim is unchanged, nor re-set the
+  text (which forces a viewport repaint) when the text is identical -- else it
+  re-polishes + repaints the whole input 8x/s for a turn's duration."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  pal, txt, vp = [], [], []
+
+  class _CountingViewport:
+    def update(self, *a):
+      vp.append(1)
+
+  fake_vp = _CountingViewport()
+  w._edit.setPalette = lambda p: pal.append(1)
+  w._edit.setPlaceholderText = lambda t: txt.append(t)
+  w._edit.viewport = lambda: fake_vp
+  # Enter the cue: dim flips to False (one palette apply) + first frame set +
+  # one repaint.
+  w.set_placeholder("Thinking... -", dim=False)
+  assert pal == [1], pal
+  assert txt == ["Thinking... -"], txt
+  assert len(vp) == 1, vp
+  # Spinner ticks: dim stays False (no palette rebuild), the glyph changes each
+  # tick (text re-set + one repaint each).
+  w.set_placeholder("Thinking... \\", dim=False)
+  w.set_placeholder("Thinking... |", dim=False)
+  assert pal == [1], "palette rebuilt while dim unchanged"
+  assert txt == ["Thinking... -", "Thinking... \\", "Thinking... |"], txt
+  assert len(vp) == 3, vp                     # exactly one repaint per changed frame
+  # An identical frame repeats -> nothing: no palette, no text, NO repaint.
+  w.set_placeholder("Thinking... |", dim=False)
+  assert txt == ["Thinking... -", "Thinking... \\", "Thinking... |"], \
+    "text re-set on an identical frame"
+  assert pal == [1], pal
+  assert len(vp) == 3, "repainted on an identical frame"
+
+
+def exercise_set_placeholder_reresolves_on_theme_change():
+  """A theme (palette) switch mid-'Thinking...' must not leave the placeholder
+  frozen at the old theme's colour. set_placeholder caches the applied dim state
+  and skips re-writing the explicitly-set PlaceholderText role, so a
+  PaletteChange must invalidate that cache and re-resolve -- else a light->dark
+  switch renders the spinning cue dark-on-dark (unreadable) for the rest of the
+  turn (the pre-cache code self-healed on the next verb swap)."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  saved = QtWidgets.QApplication.palette()
+  try:
+    w = MessageInput()
+    # Enter the in-flight cue (dim=False -> full-contrast Text colour).
+    w.set_placeholder("Refining... |", dim=False)
+    before = w._edit.palette().color(QtGui.QPalette.PlaceholderText)
+    # Simulate the OS auto-appearance switch: the app's Text colour changes.
+    new_text = QtGui.QColor(123, 45, 67)
+    assert before != new_text, before.name()          # distinct so the test bites
+    pal = QtWidgets.QApplication.palette()
+    pal.setColor(QtGui.QPalette.Text, new_text)
+    QtWidgets.QApplication.setPalette(pal)
+    QtCore.QCoreApplication.sendEvent(
+      w, QtCore.QEvent(QtCore.QEvent.PaletteChange))
+    after = w._edit.palette().color(QtGui.QPalette.PlaceholderText)
+    assert after == new_text, (before.name(), after.name(), new_text.name())
+  finally:
+    QtWidgets.QApplication.setPalette(saved)
+
+
 def exercise_set_assistant_name_updates_placeholder():
   """set_assistant_name rewrites the idle placeholder to name the active
   backend's assistant (e.g. 'Message GPT...'), not a hard-coded 'Claude', and
@@ -551,6 +625,8 @@ def exercise():
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()
+  exercise_set_placeholder_skips_redundant_palette_and_text()
+  exercise_set_placeholder_reresolves_on_theme_change()
   exercise_set_assistant_name_updates_placeholder()
   exercise_up_arrow_recalls_previous_inputs()
   exercise_down_arrow_walks_forward_and_restores_draft()

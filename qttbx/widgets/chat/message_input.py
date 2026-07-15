@@ -104,6 +104,12 @@ class MessageInput(QtWidgets.QWidget):
     # reset_placeholder restores this dim value.
     self._dim_placeholder_color = (
       self._edit.palette().color(QtGui.QPalette.PlaceholderText))
+    # Cache the last-applied placeholder text + dim so set_placeholder can skip
+    # the palette re-polish (dim unchanged) and the viewport repaint (text
+    # unchanged) -- the in-flight 'Thinking...' spinner drives it ~8x/s. Seeded
+    # to the dim idle text set above.
+    self._placeholder_text = self._idle_placeholder
+    self._placeholder_dim = True
     layout.addWidget(self._edit)
     # Button row below the edit. Save chat sits on the left; the
     # auto-approve toggle sits in the centre (flanked by stretches so
@@ -228,18 +234,54 @@ class MessageInput(QtWidgets.QWidget):
         for the 'Thinking...' verb cycle so the verbs aren't visually
         muted.
     """
-    palette = self._edit.palette()
-    target_color = (
-      self._dim_placeholder_color if dim
-      else palette.color(QtGui.QPalette.Text))
-    palette.setColor(QtGui.QPalette.PlaceholderText, target_color)
-    self._edit.setPalette(palette)
-    self._edit.setPlaceholderText(text or "")
-    # QPlainTextEdit only repaints the cursor area on placeholder
-    # change when focused, so the user sees a stale tail (just the
-    # first letter of the new verb updates). Force the viewport to
-    # repaint the whole placeholder region.
-    self._edit.viewport().update()
+    text = text or ""
+    changed = False
+    # Only rebuild the palette when the dim state actually changed: the palette
+    # depends solely on `dim`, so re-applying it (a style re-polish) on every
+    # spinner tick -- which holds dim constant -- is pure waste.
+    if dim != self._placeholder_dim:
+      palette = self._edit.palette()
+      target_color = (
+        self._dim_placeholder_color if dim
+        else QtWidgets.QApplication.palette().color(QtGui.QPalette.Text))
+      palette.setColor(QtGui.QPalette.PlaceholderText, target_color)
+      self._edit.setPalette(palette)
+      self._placeholder_dim = dim
+      changed = True
+    # Only re-set the text (and repaint) when it actually changed.
+    if text != self._placeholder_text:
+      self._edit.setPlaceholderText(text)
+      self._placeholder_text = text
+      changed = True
+    if changed:
+      # QPlainTextEdit only repaints the cursor area on placeholder change
+      # when focused, so the user sees a stale tail (just the first letter of
+      # the new verb updates). Force the viewport to repaint the whole
+      # placeholder region.
+      self._edit.viewport().update()
+
+  def changeEvent(self, event):
+    """Re-resolve the placeholder colour on an app theme (palette) switch.
+
+    set_placeholder caches the applied dim state and skips re-writing the
+    explicitly-set PlaceholderText palette role while it's unchanged. That role
+    does not follow a theme switch on its own, so without this a 'Thinking...'
+    cue begun before a light->dark switch would keep its old (near-black) colour
+    and render dark-on-dark for the rest of the turn. Invalidate the cached dim
+    state and re-apply against the new palette (a rare event, so the ~8x/s
+    fast-path stays cheap)."""
+    super().changeEvent(event)
+    et = event.type()
+    # Guard construction: a PaletteChange can arrive before _build_ui seeds the
+    # placeholder cache.
+    if et in (QtCore.QEvent.PaletteChange, QtCore.QEvent.ThemeChange) \
+       and hasattr(self, "_placeholder_text"):
+      self._dim_placeholder_color = (
+        QtWidgets.QApplication.palette().color(QtGui.QPalette.PlaceholderText))
+      dim = self._placeholder_dim
+      self._placeholder_dim = None                 # force set_placeholder to re-apply
+      self.set_placeholder(
+        self._placeholder_text, dim=True if dim is None else dim)
 
   def reset_placeholder(self):
     """Restore the idle placeholder (per-session text + dim colour)."""
