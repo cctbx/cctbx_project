@@ -20,7 +20,7 @@ from qttbx.widgets.chat.agent.events import (
   Thinking, TextDelta, ToolResultObserved, ToolResultsBatched,
   ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
-  ToolApprovalRequest, _Cancelled)
+  ToolApprovalRequest, record_tool_remember, _Cancelled)
 
 
 # Events that add content to the in-progress assistant message. The mid-turn
@@ -85,16 +85,13 @@ class AgentSession:
       Callback invoked with each emitted event. Defaults to a no-op.
   log : file-like, optional
       Stream for log output. Defaults to ``sys.stdout``.
-  approval_queue : queue.Queue, optional
-      Queue the worker parks on during the ``ask`` policy. A fresh queue is
-      created here and exposed as ``self.approval_queue``; the GUI runner and
-      tests push the user's decision onto it. No caller injects one today,
-      though the parameter permits it.
+  approvals : ApprovalCoordinator, optional
+      Shared approval coordinator; a fresh one is created when not injected.
   """
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
-               approval_queue=None, autosave_interval_s=5.0, clock=None):
+               approvals=None, autosave_interval_s=5.0, clock=None):
     self.agent = agent
     self.conv = conversation
     self.storage = storage
@@ -108,19 +105,23 @@ class AgentSession:
     self.on_event = on_event or (lambda ev: None)
     self.log = log if log is not None else sys.stdout
 
-    # The approval queue is the worker's blocking point during 'ask' policy.
-    # A fresh queue is created here (no caller injects one today); the GUI
-    # runner and tests push the user's decision onto self.approval_queue.
-    self.approval_queue = approval_queue or queue.Queue()
+    # Cancel-safe approval bookkeeping shared with the claude_code backend
+    # (chat_window builds one coordinator and injects it into both). A fresh
+    # one is created when no caller injects it (tests, headless subagents).
+    from qttbx.widgets.chat.agent.approval import ApprovalCoordinator
+    self.approvals = approvals or ApprovalCoordinator()
+    # request_id -> tool name for approvals surfaced by _resolve_and_approve, so
+    # record_approval_remember can persist a remember='tool' choice on the GUI
+    # thread. Cleared at each turn's start.
+    self._pending_approval_calls = {}
 
     # The question queue is the worker's blocking point while a
     # phenix_ask_user_question builtin is in flight (the API-backend
-    # equivalent of ClaudeCodeAgent's SDK ask-user tool). It mirrors
-    # approval_queue: the GUI runner flushes a _Cancelled sentinel into it
-    # on cancel, and delivers the user's answers via submit_question_answer.
+    # equivalent of ClaudeCodeAgent's SDK ask-user tool). The GUI runner
+    # flushes a _Cancelled sentinel into it on cancel, and delivers the
+    # user's answers via submit_question_answer.
     self.question_queue = queue.Queue()
     self._pending_question_id = None
-    self._pending_approval_id = None
 
     # Set when run_turn starts; consulted by tool handlers.
     self.cancel = None
@@ -132,6 +133,20 @@ class AgentSession:
   # ---- main loop -----------------------------------------------------------
 
   def run_turn(self, user_message, cancel, max_turns=None):
+    """Run one turn, then guarantee the approval registry is left clean.
+
+    A turn that ends with an approval still open -- e.g. a subprocess-death
+    claude_code turn whose ``_on_can_use_tool`` future never resolved -- must
+    not leave a pending future in the coordinator: it would keep
+    ``owns_pending_approval`` True while idle (so a stale Deny+Stop could set the
+    idle cancel token) and destroy a still-pending SDK task at exit.
+    ``cancel_turn`` is a no-op on a clean turn."""
+    try:
+      return self._run_turn(user_message, cancel, max_turns)
+    finally:
+      self.approvals.cancel_turn()
+
+  def _run_turn(self, user_message, cancel, max_turns=None):
     """Append the user message and iterate the tool-use loop.
 
     Loop terminates on ``stop_reason != 'tool_use'``, on cancellation,
@@ -140,8 +155,9 @@ class AgentSession:
     so the model (or a viewer) sees why the loop ended.
 
     Cancel handling: if the cancel token is set after a tool dispatch
-    (``deny_and_stop``, or a ``_Cancelled`` sentinel during approval),
-    we do NOT ask the model for another response — we finalize the
+    (``deny_and_stop``, or the coordinator cancelling the pending approval
+    future during a Stop), we do NOT ask the model for another response
+    — we finalize the
     in-flight assistant message with ``stop_reason='cancelled'`` and
     return.
 
@@ -161,9 +177,12 @@ class AgentSession:
     """
     self.cancel = cancel
     self._last_autosave = self._clock()            # reset mid-turn autosave
-    # Drop any stale _Cancelled sentinel a previous turn's Stop left in
-    # the shared queues (see _drain_stale_cancelled).
-    _drain_stale_cancelled(self.approval_queue)
+    # Turn boundary: abandon anything a previous (cancelled) turn left pending.
+    # Replaces the old _drain_stale_cancelled(approval_queue). Clear the
+    # remember map at ENTRY (not turn end) so a late click after the prior turn
+    # still recorded its choice.
+    self.approvals.begin_turn()
+    self._pending_approval_calls.clear()
     _drain_stale_cancelled(self.question_queue)
     self.conv.append(user_message)
     # Reconcile the conversation meta to the model/backend actually running
@@ -405,67 +424,58 @@ class AgentSession:
       batch_id=batch_id,
       allow_remember=self.tools.allow_remember_of(call.name),
     )
+    # Map request -> tool so record_approval_remember (called by the runner on
+    # the GUI thread, BEFORE the coordinator resolves this future) can persist a
+    # remember='tool' choice even when a click races a cancel that wakes this
+    # _await_approval cancelled. Cleared at the next turn's start.
+    self._pending_approval_calls[req.request_id] = call.name
     response = self._await_approval(req)
     if response.decision == "approve":
-      # Re-check allow_remember_of, not just the card's remember flag: keep the
-      # "never per-tool auto-approve" guarantee in the data layer, not only the
-      # UI that suppresses the checkbox.
-      if (response.remember == "tool"
-          and self.tools.allow_remember_of(call.name)):
-        self.policy.allow_tool_for_session(call.name)
       return "approve"
     return response.decision
 
+  def record_approval_remember(self, response):
+    """Persist a remember='tool' choice for an API-backend approval by wiring the
+    session's pending-calls map, the registry opt-out recheck, and the policy's
+    session-allow set into the shared ``record_tool_remember`` contract (the same
+    one ``ClaudeCodeAgent.submit_approval`` uses). No-op for claude_code, whose
+    SDK tools never populate ``_pending_approval_calls`` (so ``tool_name_of``
+    returns None). Called by the runner on the GUI thread BEFORE the coordinator
+    resolves the future, so a click racing a cancel still records it."""
+    record_tool_remember(
+      response,
+      tool_name_of=self._pending_approval_calls.get,
+      allow_remember=self.tools.allow_remember_of,
+      remember=self.policy.allow_tool_for_session)
+
   def _await_approval(self, req):
-    """Park the worker on the approval queue until a decision arrives.
+    """Block the worker on the shared coordinator until a decision arrives.
 
-    Wakes on either a real ``ToolApprovalResponse`` or a ``_Cancelled``
-    sentinel pushed by the GUI's cancel handler. A response whose
-    ``request_id`` does not match ``req`` is a stale click from an abandoned
-    earlier turn's card and is discarded, so it can't be misapplied to this
-    request (mirrors ``submit_question_answer``'s id check).
-
-    Parameters
-    ----------
-    req : ToolApprovalRequest
-        Request surfaced to the UI before blocking.
-
-    Returns
-    -------
-    ToolApprovalResponse
-        The user's approval decision.
+    Surfaces ``req`` via ``on_event``, then parks on the coordinator's future.
+    A stale click from an abandoned earlier turn is dropped by the coordinator
+    (its request already left the registry at the turn boundary); a cancel
+    (runner Stop / next turn) cancels the future.
 
     Raises
     ------
     TurnCancelled
-        If a ``_Cancelled`` sentinel is received instead of a response.
+        If the turn is cancelled before a decision arrives.
     """
-    self._pending_approval_id = req.request_id
+    import concurrent.futures
+    # A Stop that lands between the dispatch loop's cancel check and here is
+    # handled inside open(): a closed coordinator (cancel_turn ran) returns a
+    # pre-cancelled future without surfacing a card, so fut.result() unwinds
+    # into TurnCancelled at once instead of parking on a future a Stop passed.
+    fut = self.approvals.open(req, self.on_event)
     try:
-      self.on_event(req)                              # surface to UI
-      while True:
-        response = self.approval_queue.get()
-        if isinstance(response, _Cancelled):
-          raise TurnCancelled()
-        if getattr(response, "request_id", None) == req.request_id:
-          return response
-        # A response for a DIFFERENT request is a stale card click from an
-        # abandoned earlier turn (the approval path is is_busy-gated, so it can
-        # be queued while this later turn runs). Drop it -- returning it would
-        # misapply an unrelated decision to THIS tool. Batch siblings are queued
-        # and consumed in the same dispatch order, so the only non-matching item
-        # reached here is a genuinely stale one, never a sibling still needed.
-    finally:
-      self._pending_approval_id = None
+      return fut.result()
+    except concurrent.futures.CancelledError:
+      raise TurnCancelled()
 
   def owns_pending_approval(self, request_id):
-    """Whether the worker is currently parked in ``_await_approval`` waiting for
-    this exact ``request_id``.
-
-    Lets the runner gate a ``deny_and_stop`` cancel on a matching request so a
-    stale card's stop can't cancel an unrelated later turn.
-    """
-    return request_id is not None and request_id == self._pending_approval_id
+    """Whether the worker is currently parked awaiting this exact
+    ``request_id`` (lets the runner gate a deny_and_stop cancel)."""
+    return self.approvals.owns(request_id)
 
   def _await_question_answer(self, request_id, questions):
     """Emit an ``AskUserQuestionRequested`` and park the worker for answers.

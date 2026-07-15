@@ -13,6 +13,7 @@ except ImportError:
 # block so the list visibly drifts when a new test is added without
 # updating this manifest.
 tst_list_base.append("$D/regression/tst_chat_agent_core.py")
+tst_list_base.append("$D/regression/tst_chat_approval_coordinator.py")
 tst_list_base.append("$D/regression/tst_chat_diagnostics.py")
 tst_list_base.append("$D/regression/tst_chat_logging_setup.py")
 tst_list_base.append("$D/regression/tst_chat_mcp_client.py")

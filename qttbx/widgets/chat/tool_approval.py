@@ -3,9 +3,9 @@
 For a single ``ToolApprovalRequest`` the card shows the tool and four
 buttons: Approve / Deny / Always allow / Stop. For a batch (multiple
 requests sharing ``batch_id``) the card collapses to Approve all /
-Deny all / Stop. The worker receives batched responses in dispatch
-order so the session's ``_dispatch_and_build_results`` loop can pair
-each response with its request.
+Deny all / Stop. Each response carries its ``request_id``; the
+``ApprovalCoordinator`` pairs it with the matching pending request, so
+responses need not arrive in dispatch order.
 """
 
 import json

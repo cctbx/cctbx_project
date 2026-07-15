@@ -68,6 +68,42 @@ class ToolApprovalResponse:
   remember: str = "none"           # 'none' | 'tool'
 
 
+def record_tool_remember(response, tool_name_of, allow_remember, remember):
+  """Apply a remember='tool' approval to a backend's session-allow sink.
+
+  The single implementation of the remember='tool' contract, shared by both
+  backends -- the API path (``AgentSession``) and the SDK path
+  (``ClaudeCodeAgent``), which differ only in where the request_id->tool_name
+  map, the opt-out recheck, and the allow set live. Records nothing unless the
+  user APPROVED with remember='tool' AND the tool still permits being remembered
+  (the data-layer opt-out floor, enforced here rather than trusting the card's
+  checkbox). Called on the GUI thread BEFORE the coordinator resolves the
+  future, so a click that races a cancel still records "always allow".
+
+  Parameters
+  ----------
+  response : ToolApprovalResponse
+      The user's decision.
+  tool_name_of : callable
+      ``request_id -> tool_name or None`` (the per-request map recorded at
+      ``open``). Returns None for a backend that never surfaced this request, so
+      that backend's call is a no-op -- which is how the runner can hand every
+      response to both backends and have exactly one record it.
+  allow_remember : callable
+      ``tool_name -> bool``; a False vetoes recording (e.g. a force-close tool
+      registered ``allow_remember=False``).
+  remember : callable
+      ``tool_name -> None``; the sink that marks the tool session-allowed.
+  """
+  if (getattr(response, "decision", None) != "approve"
+      or getattr(response, "remember", "none") != "tool"):
+    return
+  tool_name = tool_name_of(response.request_id)
+  if tool_name is None or not allow_remember(tool_name):
+    return
+  remember(tool_name)
+
+
 class _Cancelled:
   """Sentinel pushed into the approval queue when the turn is cancelled.
 

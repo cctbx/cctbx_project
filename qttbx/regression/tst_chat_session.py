@@ -1,6 +1,5 @@
 import io
 import json
-import queue
 import shutil
 import tempfile
 import threading
@@ -75,6 +74,52 @@ def _new_test_session(turn_scripts, project_dir=None, max_depth=1, agent=None,
     clock=clock,
     autosave_interval_s=autosave_interval_s)
   return session, project_dir
+
+
+def _answer_surfaced_approvals(session, decision="deny"):
+  """Answer each ToolApprovalRequest the session surfaces from a SEPARATE
+  thread, modelling production: the worker thread registers + emits the card and
+  then blocks in _await_approval's fut.result() WITHOUT holding the lock, while
+  the GUI thread submits the decision. on_event now runs UNDER the coordinator
+  lock, so a test must never submit inline from it (that re-enters the lock on
+  the worker thread and deadlocks) -- it hands the request to the answering
+  thread instead.
+
+  Returns (captured, on_event, stop): install on_event as session.on_event,
+  inspect captured after the calls, and call stop() to join the thread.
+  """
+  import queue as _queue
+  import threading as _threading
+  from qttbx.widgets.chat.agent.tools import (
+    ToolApprovalRequest, ToolApprovalResponse)
+  captured = []
+  surfaced = _queue.Queue()
+  done = _threading.Event()
+
+  def _on_event(ev):
+    captured.append(ev)
+    if isinstance(ev, ToolApprovalRequest):
+      surfaced.put(ev)
+
+  def _answer():
+    while not done.is_set():
+      try:
+        req = surfaced.get(timeout=0.05)
+      except _queue.Empty:
+        continue
+      # Carry the surfaced id (the real card echoes req.request_id) so
+      # _await_approval matches it instead of dropping it as a stale click.
+      session.approvals.submit(ToolApprovalResponse(
+        request_id=req.request_id, decision=decision))
+
+  th = _threading.Thread(target=_answer, daemon=True)
+  th.start()
+
+  def _stop():
+    done.set()
+    th.join(timeout=2)
+
+  return captured, _on_event, _stop
 
 
 # ---- tests -----------------------------------------------------------------
@@ -325,8 +370,9 @@ def exercise_tool_denied_returns_is_error():
 
 
 def exercise_cancel_while_awaiting_approval():
-  """The deadlock-fix path: worker parked on approval queue, GUI pushes
-  _Cancelled sentinel, worker raises TurnCancelled, turn ends."""
+  """The deadlock-fix path: worker parked on the coordinator future; the
+  runner cancels the turn via cancel_turn(); the worker raises
+  TurnCancelled, the turn ends."""
   session, tmp = _new_test_session([
     [ToolUseRequested(id="t1", name="echo", input={}),
      TurnDone(stop_reason="tool_use")],
@@ -337,10 +383,6 @@ def exercise_cancel_while_awaiting_approval():
       ToolSpec(name="echo", description="echo",
                input_schema={"type": "object"}),
       handler=lambda **kw: "x", risk="write")
-
-    # Wire a real Queue for approvals.
-    approval_queue = queue.Queue()
-    session.approval_queue = approval_queue
 
     cancel = CancelToken()
     user_msg = Message(role="user", content=[
@@ -374,7 +416,7 @@ def exercise_cancel_while_awaiting_approval():
 
     # GUI side: set cancel + push sentinel (Section 10.4 mechanism).
     cancel.set()
-    approval_queue.put(_Cancelled())
+    session.approvals.cancel_turn()          # was: approval_queue.put(_Cancelled())
 
     t.join(timeout=5.0)
     assert not t.is_alive(), "worker did not unblock — deadlock"
@@ -471,21 +513,18 @@ def exercise_deny_and_stop_ends_turn():
                input_schema={"type": "object"}),
       handler=lambda **kw: "should-not-run",
       risk="write")
-    approval_queue = queue.Queue()
-    session.approval_queue = approval_queue
-    # Deliver Deny+Stop carrying the SURFACED request's id (the real card echoes
-    # req.request_id), so _await_approval matches it instead of discarding it as
-    # a stale click from an abandoned turn.
-    from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
-    def _deny_and_stop(ev):
-      if isinstance(ev, ToolApprovalRequest):
-        approval_queue.put(ToolApprovalResponse(
-          request_id=ev.request_id, decision="deny_and_stop"))
-    session.on_event = _deny_and_stop
+    # Deliver Deny+Stop from a separate thread once the card is surfaced -- the
+    # production split: the worker blocks in _await_approval's fut.result()
+    # while the GUI thread submits (on_event runs under the coordinator lock, so
+    # answering inline from it would re-enter and deadlock).
+    _captured, on_event, stop = _answer_surfaced_approvals(
+      session, decision="deny_and_stop")
+    session.on_event = on_event
     cancel = CancelToken()
     user_msg = Message(role="user", content=[
       ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
     assistant = session.run_turn(user_msg, cancel)
+    stop()
     # The assistant message gets finalized with stop_reason="cancelled"
     # (turn unwinds without asking the model again).
     assert assistant.stop_reason == "cancelled"
@@ -1317,20 +1356,16 @@ def exercise_session_propagates_allow_remember():
       ToolSpec(name="normaltool", description="", input_schema={}),
       handler=lambda *a, **k: "", risk="write")
     session.policy = ToolPolicy(default="ask")
-    captured = []
-    # Answer each surfaced request with a deny carrying ITS id (the real card
-    # echoes req.request_id), so _await_approval matches instead of discarding
-    # it. We only care about the ToolApprovalRequests surfaced, not the answers.
-    def _on_event(ev):
-      captured.append(ev)
-      if isinstance(ev, ToolApprovalRequest):
-        session.approval_queue.put(ToolApprovalResponse(
-          request_id=ev.request_id, decision="deny"))
-    session.on_event = _on_event
+    # Answer each surfaced request from a separate thread (on_event runs under
+    # the coordinator lock; inline submit would re-enter and deadlock). We only
+    # care about the ToolApprovalRequests surfaced, not the answers.
+    captured, on_event, stop = _answer_surfaced_approvals(session)
+    session.on_event = on_event
     session._resolve_and_approve(
       ToolUseRequested(id="t1", name="keepme", input={}), batch_id=None)
     session._resolve_and_approve(
       ToolUseRequested(id="t2", name="normaltool", input={}), batch_id=None)
+    stop()
     reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
     assert len(reqs) == 2, reqs
     assert reqs[0].allow_remember is False, reqs[0]
@@ -1353,15 +1388,11 @@ def exercise_session_destructive_always_cards():
       ToolSpec(name="readtool", description="", input_schema={}),
       handler=lambda *a, **k: "", risk="read")
     session.policy = ToolPolicy(default="allow")     # permissive
-    captured = []
-    # Destructive: forced to a card despite default='allow'. Answer the surfaced
-    # request with a deny carrying ITS id so _await_approval matches it.
-    def _on_event(ev):
-      captured.append(ev)
-      if isinstance(ev, ToolApprovalRequest):
-        session.approval_queue.put(ToolApprovalResponse(
-          request_id=ev.request_id, decision="deny"))
-    session.on_event = _on_event
+    # Destructive: forced to a card despite default='allow'. Answer surfaced
+    # requests from a separate thread (on_event runs under the coordinator lock;
+    # inline submit would re-enter and deadlock).
+    captured, on_event, stop = _answer_surfaced_approvals(session)
+    session.on_event = on_event
     d = session._resolve_and_approve(
       ToolUseRequested(id="t1", name="killtool", input={}), batch_id=None)
     reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
@@ -1383,6 +1414,118 @@ def exercise_session_destructive_always_cards():
     assert r2 == "approve", r2
     assert len([e for e in captured if isinstance(e, ToolApprovalRequest)]) \
         == before, "destructive+rememberable must not be force-carded"
+    stop()
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_cancel_landing_before_open_does_not_wedge():
+  """A Stop landing after the dispatch cancel-check but before _await_approval
+  opens its future must not park the worker forever. The runner sets the cancel
+  token and then approvals.cancel_turn(), which CLOSES the coordinator; the
+  subsequent open() returns a pre-cancelled future without registering or
+  emitting, so _await_approval's fut.result() wakes cancelled and raises
+  TurnCancelled instead of blocking. (The closed flag superseded the earlier
+  post-open token re-check: cancel and open are now serialized under one lock.)"""
+  import threading
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  try:
+    session.policy = ToolPolicy(default="ask")
+    session.tools.register_builtin(
+      ToolSpec(name="echo", description="echo",
+               input_schema={"type": "object"}),
+      handler=lambda **kw: "x", risk="write")
+    cancel = CancelToken()
+    session.cancel = cancel                       # run_turn sets this per turn
+    session.approvals.begin_turn()
+    # Simulate a Stop landing before open(): the runner sets the token, then
+    # cancel_turn() runs on the (still-empty) registry.
+    cancel.set()
+    session.approvals.cancel_turn()
+    req = ToolApprovalRequest(
+      request_id="r1", tool_name="echo", tool_source="builtin",
+      input={}, risk="write", batch_id=None, allow_remember=True)
+    box = []
+
+    def _run():
+      try:
+        session._await_approval(req)
+      except TurnCancelled:
+        box.append("cancelled")
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=2.0)
+    assert not t.is_alive(), \
+      "worker wedged: _await_approval blocked on a future a Stop already passed"
+    assert box == ["cancelled"], box
+    assert not session.approvals.owns("r1"), \
+      "open() on the closed coordinator must not register the future"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_run_turn_cancels_pending_approval_on_exit():
+  """A turn that ends with an approval still open (subprocess-death style) must
+  leave the coordinator registry empty -- run_turn cancel_turn()s in a finally,
+  so owns() is False when idle and no pending task is destroyed at exit."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([])
+  try:
+    box = {}
+
+    class _OpensApprovalAgent(Agent):
+      name = "opens"
+      model = "opens-1"
+
+      def stream_turn(self, conversation, tools, cancel):
+        # Open an approval future the way claude_code's _on_can_use_tool would,
+        # then end the turn WITHOUT it resolving (as on a subprocess death).
+        req = ToolApprovalRequest(
+          request_id="r1", tool_name="t", tool_source="builtin",
+          input={}, risk="write", batch_id=None, allow_remember=True)
+        box["fut"] = session.approvals.open(req, lambda ev: None)
+        yield TurnDone(stop_reason="end_turn")
+
+      def resolve_credentials(self, cli_override=None):
+        return "k"
+
+      def credentials_dialog_class(self):
+        return object
+
+    session.agent = _OpensApprovalAgent()
+    user = Message(role="user", timestamp=now(),
+                   content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user, CancelToken())
+    assert not session.approvals.owns("r1"), "pending approval leaked past turn end"
+    assert box["fut"].cancelled(), "pending future not cancelled at turn end"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_api_remember_recorded_before_resolve_survives_cancel():
+  """The API-backend remember='tool' persistence runs in record_approval_remember
+  (GUI thread, before the coordinator resolves) via the request->tool map, so a
+  click racing a cancel still records 'always allow' -- parity with claude_code
+  (whose recording lives in submit_approval, likewise pre-resolve)."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
+  session, tmp = _new_test_session([])
+  try:
+    session.policy = ToolPolicy(default="ask")
+    session.tools.register_builtin(
+      ToolSpec(name="echo", description="echo",
+               input_schema={"type": "object"}),
+      handler=lambda **kw: "x", risk="write")
+    # Simulate _resolve_and_approve having surfaced request r1 for tool 'echo'.
+    session._pending_approval_calls = {"r1": "echo"}
+    assert session.policy.resolve("echo") == "ask"          # not yet remembered
+    session.record_approval_remember(ToolApprovalResponse(
+      request_id="r1", decision="approve", remember="tool"))
+    assert session.policy.resolve("echo") == "allow"        # now session-allowed
   finally:
     shutil.rmtree(tmp)
 
@@ -1398,6 +1541,9 @@ def exercise():
   exercise_builtin_handler_receives_tool_use_id()
   exercise_tool_denied_returns_is_error()
   exercise_cancel_while_awaiting_approval()
+  exercise_cancel_landing_before_open_does_not_wedge()
+  exercise_run_turn_cancels_pending_approval_on_exit()
+  exercise_api_remember_recorded_before_resolve_survives_cancel()
   exercise_max_turns_cap()
   exercise_add_subagent_usage_aggregates()
   exercise_token_usage_event_carries_all_fields_to_message()

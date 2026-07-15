@@ -107,15 +107,15 @@ class Agent(ABC):
     """Forward a user approval decision to the agent if it owns the request.
 
     The default implementation returns ``False`` -- the agent didn't
-    originate the request, so the runner should fall through to the
-    session's approval queue.
+    originate the request, so the runner resolves it through the
+    session's ApprovalCoordinator instead.
 
     Backends that gate tool execution via a provider-side callback
     (e.g. the Claude Code SDK's ``can_use_tool``) override this to
-    fulfill a pending future when ``response.request_id`` matches one
-    they emitted. Returning ``True`` tells the runner the request was
-    handled here and should NOT also land in the session queue (which
-    is parked on a different tool's approval).
+    persist any remember choice before the coordinator resolves the
+    future. Returning ``True`` would tell the runner the request was
+    fully handled here; the claude_code override returns ``False`` so
+    the decision still flows through the shared coordinator.
 
     Parameters
     ----------
