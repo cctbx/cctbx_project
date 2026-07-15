@@ -52,6 +52,29 @@ element_filter = None
   .help = "Restrict the metal scan to these element(s) (e.g. element_filter=Zn \
 element_filter=Mn). Case-insensitive. Only consulted when no `selection` is \
 given."
+metal_state
+  .multiple = True
+  .help = "Force the electronic state of the metal site(s) matched by \
+`selection`. Authoritative: a matched block overrides the built-in guess, and \
+supplying both values lets qmi run a metal that has no built-in state. Repeat \
+the block to set different states for different sites; a site matched by no \
+block falls through to the built-in guess."
+{
+  selection = None
+    .type = str
+    .help = "Atom-selection string identifying the metal site(s) this state \
+applies to; the block is used for a site when its metal atom falls in the \
+selection (use e.g. 'element Zn' to cover every Zn). Required."
+  oxidation_state = None
+    .type = int
+    .help = "Metal oxidation state for the matched site(s). Falls back to the \
+built-in value when left unset."
+  multiplicity = None
+    .type = int(value_min=1)
+    .help = "Spin multiplicity 2S+1 for the matched site(s) (1 = singlet, \
+2 = doublet, 6 = high-spin d5 sextet; = number of unpaired electrons + 1). \
+Falls back to the built-in value when left unset."
+}
 buffer_radius = 3.0
   .type = float(value_min=0)
   .help = "Radius (Angstrom) of the endo_exo buffer region grown around each \
@@ -61,10 +84,52 @@ max_search_depth = 3
   .help = "endo_exo BFS depth from any atom within the QM region."
 protonate = False
   .type = bool
-  .help = "Add hydrogens with mmtbx.reduce2 and deprotonate metal-coordinating \
-donors (Cys/Tyr/Asp/Glu stripped to anionic; His tautomer-aware) before \
-building restraints. When False (default), the model must already be \
-protonated or the run aborts."
+  .help = "Add hydrogens with mmtbx.reduce2, place water hydrogens (naiad), and \
+deprotonate metal-coordinating donors (Cys/Tyr/Asp/Glu stripped to anionic; \
+His tautomer-aware) before building restraints. When False (default), the \
+model must already be protonated or the run aborts."
+water_protonation
+  .help = "Water-H placement quality knobs (naiad); only used when \
+protonate=True."
+{
+  refine {
+    max_sweeps = 5
+      .type = int(value_min=0)
+      .help = "Maximum relaxation sweeps re-placing each water against the \
+final environment to relax water-water clashes. 0 disables refinement; \
+sweeping stops early once a sweep clears fewer than 'tolerance' close contacts."
+    tolerance = 1
+      .type = int(value_min=0)
+      .help = "Stop refining once a sweep removes fewer than this many close \
+(<2.0 A) H-H contacts (1 = stop at a plateau, 0 = run all max_sweeps). The best \
+sweep is always kept."
+  }
+  basin {
+    rounds = 0
+      .type = int(value_min=0)
+      .help = "Basin-hopping rounds after refinement (0 = off): each round \
+randomly re-orients still-clashing waters and relaxes, keeping the best. \
+Deterministic (seeded); helps only where a better orientation exists."
+  }
+  lone_pair = False
+    .type = bool
+    .help = "Aim each O-H at an acceptor lone-pair lobe (from its \
+bonded-neighbour geometry) rather than its nucleus, for better \
+donor-H-acceptor angles."
+  joint = False
+    .type = bool
+    .help = "Optimize both O-H of a water together (best orientation \
+satisfying two acceptors at once) instead of placing H1 greedily then H2 on \
+its cone. Slower; falls back to greedy in crowded pockets."
+  stats = False
+    .type = bool
+    .help = "After placement, print the per-sweep water-H clash summary (count \
+of H-H contacts below 2.0/1.8/1.5 A between different waters, and the closest)."
+  stats_worst = None
+    .type = int(value_min=0)
+    .help = "List the N closest residual water-H contacts with their residue \
+IDs (implies stats=True)."
+}
 solvent = ether
   .type = str
   .help = "ALPB named solvent for the xTB optimisation (nearest to the \
@@ -113,6 +178,20 @@ Requires xtb.
         model.selection(sel_str)
       except Exception as e:
         raise Sorry(f"Invalid selection string '{sel_str}': {e}")
+    for ms in (self.params.metal_state or []):
+      if (ms.selection is None and ms.oxidation_state is None
+          and ms.multiplicity is None):
+        continue  # empty default block from a PHIL .multiple scope
+      if not ms.selection:
+        raise Sorry("Each metal_state block requires a `selection` "
+                    "(use e.g. 'element Zn' to cover every Zn).")
+      try:
+        model.selection(ms.selection)
+      except Exception as e:
+        raise Sorry(f"Invalid metal_state.selection '{ms.selection}': {e}")
+      if ms.oxidation_state is None and ms.multiplicity is None:
+        raise Sorry(f"metal_state block for '{ms.selection}' sets neither "
+                    f"oxidation_state nor multiplicity.")
     self._require_hydrogens(model)
     from mmtbx.geometry_restraints import xtb_manager
     if not xtb_manager.get_exe():
@@ -143,21 +222,26 @@ Requires xtb.
     element_filter = [e for e in (p.element_filter or []) if e and e.strip()]
     selection = [s for s in (p.selection or []) if s]
     if p.protonate:
-      import mmtbx.model
       from mmtbx.geometry_restraints.qmi import protonation
-      from mmtbx.geometry_restraints.qmi.builder import PHASE1_STATES
-      # Only deprotonate donors around metals qmi actually models (Zn/Mn),
-      # optionally narrowed by element_filter, so a Cys/Tyr/Asp/Glu/His next to
-      # an out-of-scope metal is left untouched.
-      scope = set(PHASE1_STATES)
+      from mmtbx.geometry_restraints.qmi import metals as qmi_metals
+      # Deprotonate metal-coordinating donors for every metal element
+      # (qmi.metals.METALS), optionally narrowed by element_filter. This covers
+      # engine-guessed metals AND any a user metal_state override forces. It is
+      # chemically safe as a broad scope because deprotonate_metal_donors gates
+      # the metal-induced Cys/Tyr rules to anion-inducing metals internally,
+      # while carboxylate/His (metal-independent) apply to all.
+      scope = set(qmi_metals.METALS)
       if element_filter:
         scope &= {e.strip().capitalize() for e in element_filter}
-      model = protonation.add_hydrogens(model, log=self.logger)
-      hier = model.get_hierarchy()
-      protonation.deprotonate_metal_donors(hier, metals=scope, log=self.logger)
-      model = mmtbx.model.manager(
-        model_input=None, pdb_hierarchy=hier,
-        crystal_symmetry=model.crystal_symmetry())
+      wp = p.water_protonation
+      model = protonation.prepare_model(
+        model, metals=scope, log=self.logger,
+        water_kwargs=dict(
+          n_refine=wp.refine.max_sweeps, refine_tol=wp.refine.tolerance,
+          n_basin=wp.basin.rounds, lone_pair_directed=wp.lone_pair,
+          joint=wp.joint,
+          report_stats=wp.stats or (wp.stats_worst is not None),
+          n_worst=wp.stats_worst or 0))
 
     self._builder = QMRestraintsBuilder(
       metal_element=element_filter or None,
@@ -166,6 +250,7 @@ Requires xtb.
       max_depth=p.max_search_depth,
       solvent_model=p.solvent,
       temperature=p.temperature,
+      metal_states=p.metal_state,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()
@@ -188,6 +273,7 @@ Requires xtb.
         continue
       print(f'  {r.site_tag}: {r.metal_element} ox={r.oxidation_state:+d} '
             f'mult={r.multiplicity} charge={r.charge:+d} '
+            f'state={r.state_source} '
             f'({len(r.restraints.bonds)} bond, {len(r.restraints.angles)} '
             f'angle; sigma={r.sigma_origin})', file=self.logger)
 

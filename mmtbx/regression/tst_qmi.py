@@ -113,6 +113,50 @@ ATOM      2  SG  CYS A  99       0.000   2.300   0.000  1.00 10.00           S
 ATOM      3  DG  CYS A  99       0.500   3.000   0.000  1.00 10.00           D
 """
 
+# Mg (a hard ion) coordinating a Cys and an Asp: the metal-induced Cys thiolate
+# must NOT form (HG stays), but the pH-driven Asp carboxylate must (HD2 goes).
+_MG_DONORS_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1 MG    MG A 262       0.000   0.000   0.000  1.00 10.00          MG
+ATOM      2  SG  CYS A  99       2.300   0.000   0.000  1.00 10.00           S
+ATOM      3  HG  CYS A  99       2.900   0.600   0.000  1.00 10.00           H
+ATOM      4  OD1 ASP A  50       0.000   2.000   0.000  1.00 10.00           O
+ATOM      5  OD2 ASP A  50       0.000   2.400   0.300  1.00 10.00           O
+ATOM      6  CG  ASP A  50       0.000   3.000   0.000  1.00 10.00           C
+ATOM      7  HD2 ASP A  50       0.500   2.500   0.000  1.00 10.00           H
+"""
+
+# Zn + a bidentate Asp (both OD within cutoff, ~60 deg bite) + two His N, for
+# the carboxylate-regularisation shape test.
+_CARBOX_SHELL_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+ATOM      2  OD1 ASP A  50       1.905   1.100   0.000  1.00 10.00           O
+ATOM      3  OD2 ASP A  50       1.905  -1.100   0.000  1.00 10.00           O
+ATOM      4  CG  ASP A  50       2.800   0.000   0.000  1.00 10.00           C
+ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
+ATOM      6  NE2 HIS A  96       0.000   0.000   2.000  1.00 10.00           N
+"""
+
+# Zn + an anisobidentate Asp (OD1 at 2.1 A, OD2 at 2.7 A: monodentate + a long
+# contact, not a chelate) + two His N.
+_CARBOX_ANISO_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+ATOM      2  OD1 ASP A  50       1.819   1.050   0.000  1.00 10.00           O
+ATOM      3  OD2 ASP A  50       2.338  -1.350   0.000  1.00 10.00           O
+ATOM      4  CG  ASP A  50       2.800   0.000   0.000  1.00 10.00           C
+ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
+ATOM      6  NE2 HIS A  96       0.000   0.000   2.000  1.00 10.00           N
+"""
+
+# Zn + a bare coordinating water, for the cation-aware water-H placement.
+_WATER_METAL_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+HETATM    2  O   HOH A 300       2.100   0.000   0.000  1.00 10.00           O
+"""
+
 
 def _model(pdb_str):
   """mmtbx.model.manager from an inline PDB string (no processing)."""
@@ -345,6 +389,22 @@ def exercise_deprotonation_donor_families():
   assert "HD2" in {a.name.strip() for a in h4.atoms()}
 
 
+def exercise_water_protonation():
+  from scitbx import matrix
+  from mmtbx.geometry_restraints.qmi import protonation
+  hier = _model(_WATER_METAL_PDB).get_hierarchy()
+  assert protonation.protonate_waters(hier, log=null_out()) == 2
+  assert protonation.protonate_waters(hier, log=null_out()) == 0   # idempotent
+  atoms = list(hier.atoms())
+  o = next(a for a in atoms if a.name.strip() == "O")
+  zn = next(a for a in atoms if a.element.strip().capitalize() == "Zn")
+  ov = (matrix.col(zn.xyz) - matrix.col(o.xyz)).normalize()
+  # cation-aware: both H sit in the hemisphere away from the metal.
+  for hh in [a for a in atoms if a.element.strip().upper() == "H"]:
+    hv = (matrix.col(hh.xyz) - matrix.col(o.xyz)).normalize()
+    assert hv.dot(ov) <= 0.0, hv.dot(ov)
+
+
 # ---------------------------------------------------------------------------
 # Program: PHIL + validate (the full run needs xtb and is exercised manually)
 # ---------------------------------------------------------------------------
@@ -357,6 +417,8 @@ def exercise_program():
   assert p.buffer_radius == 3.0 and p.solvent == "ether"
   assert p.temperature == 298.15 and p.write_files is True
   assert p.combine is False and p.protonate is False
+  assert p.water_protonation.refine.max_sweeps == 5
+  assert p.water_protonation.basin.rounds == 0
 
   # no model -> Sorry
   prog = Program(DataManager(["model"]), p, master_phil=master,
@@ -386,6 +448,279 @@ def exercise_program():
     assert "protonat" in str(e).lower(), str(e)
 
 
+def exercise_state_override():
+  """User metal_state overrides: authoritative, per-selection, with fallback to
+  the electronic-engine guess for unset fields / unmatched sites."""
+  from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
+  from libtbx import group_args
+  from libtbx.utils import Sorry
+  m = _model(_ZN_SITE_PDB)          # ZN is atom iseq 0
+  def ms(**k):
+    d = dict(selection=None, oxidation_state=None, multiplicity=None)
+    d.update(k)
+    return group_args(**d)
+  b = QMRestraintsBuilder(logger=null_out())
+
+  # No override: the engine guesses. Single-state metals commit (Zn/Mg singlet).
+  st = b._resolve_state("Zn", None, "tetrahedral", 4)
+  assert st.oxidation_state == 2 and st.multiplicity == 1 and not st.skipped
+  assert st.state_source == "guessed", st.state_source
+  assert b._resolve_state("Mg", None, "octahedral", 6).multiplicity == 1
+  # Cu narrows by geometry: linear -> Cu(I) singlet; octahedral -> Cu(II) doublet.
+  assert b._resolve_state("Cu", None, "linear", 2).multiplicity == 1
+  cu2 = b._resolve_state("Cu", None, "octahedral", 6)
+  assert cu2.oxidation_state == 2 and cu2.multiplicity == 2
+  # Mn commits the dominant Mn(II) default but records both candidates.
+  mn = b._resolve_state("Mn", None, "octahedral", 6)
+  assert mn.oxidation_state == 2 and mn.multiplicity == 6
+  assert sorted(mn.candidates) == [2, 3]
+  # Fe is ambiguous (II/III) with no dominant default -> NOT committed, skipped.
+  assert b._resolve_state("Fe", None, "octahedral", 6).skipped
+  # Metal with no priors + no override -> skipped (Ni not in OXIDATION_PRIORS).
+  assert b._resolve_state("Ni", None, "octahedral", 6).skipped
+
+  # Full override: authoritative; runs a metal the engine cannot guess, and
+  # resolves an otherwise-ambiguous Fe.
+  st = b._resolve_state("Ni", ms(oxidation_state=3, multiplicity=4),
+                        "octahedral", 6)
+  assert st.oxidation_state == 3 and st.multiplicity == 4 and not st.skipped
+  assert st.state_source == "user-supplied"
+  fe = b._resolve_state("Fe", ms(oxidation_state=3, multiplicity=6),
+                        "octahedral", 6)
+  assert fe.oxidation_state == 3 and fe.multiplicity == 6 and not fe.skipped
+
+  # Partial override (oxidation only): spin is the ligand field for THAT
+  # oxidation. Mn(III) high-spin octahedral d4 -> 4 unpaired -> mult 5.
+  st = b._resolve_state("Mn", ms(oxidation_state=3), "octahedral", 6)
+  assert st.oxidation_state == 3 and st.multiplicity == 5, st.multiplicity
+  assert st.state_source == "user-supplied"
+
+  # The lookup-override machinery (selection matching + conflict) is unchanged.
+
+  # A selection that misses the metal -> no override.
+  b4 = QMRestraintsBuilder(
+    metal_states=[ms(selection="chain B", oxidation_state=3, multiplicity=4)],
+    logger=null_out())
+  assert b4._lookup_override(m, 0) is None
+
+  # Two blocks both matching the same metal -> Sorry (disjoint required).
+  b5 = QMRestraintsBuilder(
+    metal_states=[ms(selection="element Zn", oxidation_state=2, multiplicity=1),
+                  ms(selection="chain A and resseq 262", oxidation_state=3,
+                     multiplicity=4)], logger=null_out())
+  try:
+    b5._lookup_override(m, 0); raise AssertionError("expected Sorry on conflict")
+  except Sorry:
+    pass
+
+
+def exercise_shape():
+  """CShM classifier: self-consistency, a published cross-value anchor, and the
+  angular-only (bond-length-invariant) property. Pure geometry, no model."""
+  from mmtbx.geometry_restraints.qmi import shape
+  from scitbx import matrix as sm
+  # Every ideal polyhedron scores ~0 against itself.
+  for name, verts in shape.IDEAL_POLYHEDRA.items():
+    fit = shape.csm_against_shape(verts, name)
+    assert fit.csm < 1e-6, (name, fit.csm)
+  # Published anchor: a perfect tetrahedron measured against square-planar is
+  # exactly 100/3 (Pinsky-Avnir / SHAPE), canonical centroid-normalised.
+  td = shape.IDEAL_POLYHEDRA["tetrahedral"]
+  s = shape.csm_against_shape(td, "square_planar", centroid_normalized=True).csm
+  assert abs(s - 100.0 / 3.0) < 1e-3, s
+  # A perfect octahedron is octahedral; and against the equilateral trigonal
+  # prism it reproduces the published cross-value S = 16.737 (SHAPE TPR-6).
+  best = shape.find_best_shape(shape.IDEAL_POLYHEDRA["octahedral"])
+  assert best.shape == "octahedral" and best.csm < 1e-6
+  assert abs(best.all_fits["trigonal_prism"].csm - 16.737) < 0.05, \
+    best.all_fits["trigonal_prism"].csm
+
+  # The symmetry-reduced track (opt-in) gives the same result as full N!.
+  # octahedron proper-rotation group order 24 -> 720/24 = 30 labelings.
+  assert len(shape._reduced_perms("octahedral")) * 24 == 720
+  noisy = flex.vec3_double(
+    [(sm.col(v) + sm.col((0.1 * (k % 3 - 1), -0.08 * (k % 2), 0.05 * k))
+      ).elems for k, v in enumerate(shape.IDEAL_POLYHEDRA["octahedral"])])
+  full = shape.find_best_shape(noisy, symmetry_reduced=False)
+  red = shape.find_best_shape(noisy, symmetry_reduced=True)
+  assert red.shape == full.shape and abs(red.csm - full.csm) < 1e-9, \
+    (full.csm, red.csm)
+  # Angular-only: stretch one tetrahedral bond 3x; after unit-normalisation the
+  # class is unchanged and the CShM stays ~0.
+  verts = list(td)
+  verts[0] = tuple(3.0 * c for c in verts[0])
+  units = flex.vec3_double(
+    [(sm.col(v) / sm.col(v).length()).elems for v in verts])
+  fit = shape.find_best_shape(units)
+  assert fit.shape == "tetrahedral" and fit.csm < 1e-6, (fit.shape, fit.csm)
+
+
+def exercise_shape_carboxylate():
+  """Carboxylate handling: a symmetric chelate collapses to one vertex, a
+  monodentate one does not, and an anisobidentate one drops its far O."""
+  from mmtbx.geometry_restraints.qmi import shape
+  # Look donors up by name (mmtbx.model sorts atoms, so iseqs are not input
+  # order).
+  def iseqs(atoms, *names):
+    want = set(names)
+    return [i for i, a in enumerate(atoms) if a.name.strip() in want]
+
+  atoms = _model(_CARBOX_SHELL_PDB).get_hierarchy().atoms()
+  metal = iseqs(atoms, "ZN")[0]
+  od1, od2 = iseqs(atoms, "OD1")[0], iseqs(atoms, "OD2")[0]
+  ne2 = iseqs(atoms, "NE2")           # the two His N
+  # Symmetric bidentate Asp (both OD) + 2 N -> raw 4, effective 3, one bidentate.
+  res = shape.classify_geometry(atoms, metal, [od1, od2] + ne2)
+  assert res.raw_cn == 4 and res.cn == 3, (res.raw_cn, res.cn)
+  assert res.n_bidentate_carboxylate == 1
+  assert "bidentate_carboxylate" in res.flags
+  assert res.shape is not None
+  # Monodentate Asp (only OD1) + 2 N -> no regularisation, CN 3.
+  res2 = shape.classify_geometry(atoms, metal, [od1] + ne2)
+  assert res2.raw_cn == 3 and res2.cn == 3
+  assert res2.n_bidentate_carboxylate == 0
+
+  # Anisobidentate Asp (2.1 / 2.7 A) + 2 N -> far O dropped, not a chelate.
+  aa = _model(_CARBOX_ANISO_PDB).get_hierarchy().atoms()
+  am = iseqs(aa, "ZN")[0]
+  aod1, aod2 = iseqs(aa, "OD1")[0], iseqs(aa, "OD2")[0]
+  ane = iseqs(aa, "NE2")
+  r3 = shape.classify_geometry(aa, am, [aod1, aod2] + ane)
+  assert r3.raw_cn == 4 and r3.cn == 3, (r3.raw_cn, r3.cn)
+  assert r3.n_bidentate_carboxylate == 0
+  assert "carboxylate_asymmetric" in r3.flags
+
+
+def exercise_electronic():
+  """Ligand-field spin rules (derived, no data file): d-count, unpaired
+  electrons per geometry/regime, multiplicity, and the two predicates."""
+  from mmtbx.geometry_restraints.qmi import electronic as el
+  # d-count = group - oxidation.
+  assert el.d_electron_count("Zn", 2) == 10
+  assert el.d_electron_count("Mn", 2) == 5
+  assert el.d_electron_count("Fe", 3) == 5
+  assert el.d_electron_count("Cu", 2) == 9
+  assert el.d_electron_count("Mg", 2) == 0
+  # Octahedral high-spin / low-spin filling across d0..d10 (the reference
+  # ligand-field unpaired counts).
+  oct_hs = [el.unpaired_electrons("octahedral", d) for d in range(11)]
+  oct_ls = [el.unpaired_electrons("octahedral", d, low_spin=True)
+            for d in range(11)]
+  assert oct_hs == [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0], oct_hs
+  assert oct_ls == [0, 1, 2, 3, 2, 1, 0, 1, 2, 1, 0], oct_ls
+  # Tetrahedral is always high spin (low_spin flag ignored).
+  assert el.unpaired_electrons("tetrahedral", 6, low_spin=True) == 4
+  # Square-planar: only strong-field d8 (diamagnetic) is a defined value.
+  assert el.unpaired_electrons("square_planar", 8) == 0
+  # Multiplicity = unpaired + 1: Mn(II) d5 HS sextet, Zn(II) d10 singlet,
+  # Fe(II) d6 low-spin singlet.
+  assert el.multiplicity(el.unpaired_electrons("octahedral", 5)) == 6
+  assert el.multiplicity(el.unpaired_electrons("octahedral", 10)) == 1
+  assert el.multiplicity(
+    el.unpaired_electrons("octahedral", 6, low_spin=True)) == 1
+  # Field-dependence: only octahedral d4-d7 is a real HS/LS choice.
+  assert el.is_field_dependent("octahedral", 5)
+  assert not el.is_field_dependent("octahedral", 3)
+  assert not el.is_field_dependent("octahedral", 8)
+  assert not el.is_field_dependent("tetrahedral", 5)
+  # Encoded coverage: oct/tet all d; square-planar only d8; others not.
+  assert el.is_encoded("octahedral", 7) and el.is_encoded("tetrahedral", 4)
+  assert el.is_encoded("square_planar", 8)
+  assert not el.is_encoded("square_planar", 5)
+  assert not el.is_encoded("trigonal_bipyramidal", 5)
+  # Convenience state ties it together and matches the former hardcoded states.
+  st = el.spin_state("Mn", 2, "octahedral")   # high-spin default
+  assert st.d_count == 5 and st.multiplicity == 6
+  assert st.field_dependent and st.encoded
+  assert el.spin_state("Zn", 2, "tetrahedral").multiplicity == 1
+
+  # Oxidation-state priors (empirical, cited): accessible states + default.
+  assert el.accessible_oxidation_states("Zn") == (2,)
+  assert el.accessible_oxidation_states("Mn") == (2, 3)
+  assert el.accessible_oxidation_states("Fe") == (2, 3)
+  assert el.accessible_oxidation_states("Cu") == (1, 2)
+  assert el.accessible_oxidation_states("Ni") is None   # not in scope
+  assert el.default_oxidation("Zn") == 2 and el.default_oxidation("Cu") == 2
+  assert el.default_oxidation("Ni") is None
+  # Priors + spin rules together reproduce the former hardcoded states for the
+  # in-scope metals (default oxidation, high-spin): Zn -> singlet, Mn -> sextet.
+  for elem, geom, mult in (("Zn", "tetrahedral", 1), ("Mn", "octahedral", 6),
+                           ("Mg", "octahedral", 1)):
+    ox = el.default_oxidation(elem)
+    assert el.spin_state(elem, ox, geom).multiplicity == mult, elem
+
+  # guess_state (top-level entry): default oxidation + high-spin per geometry.
+  gz = el.guess_state("Zn", "tetrahedral")
+  assert gz.oxidation_state == 2 and gz.multiplicity == 1 and gz.encoded
+  gm = el.guess_state("Mn", "octahedral")
+  assert (gm.oxidation_state == 2 and gm.multiplicity == 6 and gm.d_count == 5
+          and gm.field_dependent)
+  assert el.guess_state("Ni", "octahedral") is None   # no priors -> no guess
+  # Unclassified geometry -> high-spin fallback, flagged not-encoded.
+  gu = el.guess_state("Mn", None)
+  assert gu.multiplicity == 6 and gu.encoded is False
+  # Fallback geometries: not-encoded but still return a high-spin count.
+  assert not el.is_encoded("square_planar", 6)
+  assert el.unpaired_electrons("square_planar", 6) == 4   # HS d6
+  # Case/whitespace normalisation.
+  assert el.default_oxidation(" zn ") == 2
+  assert el.d_electron_count(" zn ", 2) == 10
+  # Error paths.
+  for bad in (lambda: el.d_electron_count("Xx", 2),        # unknown element
+              lambda: el.d_electron_count("Zn", -1),       # d13, out of range
+              lambda: el.unpaired_electrons("octahedral", 11)):  # d11
+    try:
+      bad(); raise AssertionError("expected KeyError/ValueError")
+    except (KeyError, ValueError):
+      pass
+
+  # candidate_oxidations (plan 6.3): narrow where structure allows (Cu), carry
+  # both otherwise (Fe/Mn), max-likelihood first, never using bond lengths.
+  assert el.candidate_oxidations("Zn", "tetrahedral", 4) == [2]   # single state
+  assert el.candidate_oxidations("Cu", "linear", 2) == [1]
+  assert el.candidate_oxidations("Cu", "trigonal", 3) == [1]
+  assert el.candidate_oxidations("Cu", "octahedral", 6) == [2]
+  assert el.candidate_oxidations("Cu", "square_planar", 4) == [2]
+  assert sorted(el.candidate_oxidations("Cu", "tetrahedral", 4)) == [1, 2]
+  # Fe carries both; no dominant default (None) to seed the order.
+  assert sorted(el.candidate_oxidations("Fe", "octahedral", 6)) == [2, 3]
+  assert el.default_oxidation("Fe") is None
+  # Mn carries both, dominant default (Mn II) first.
+  mn = el.candidate_oxidations("Mn", "octahedral", 6)
+  assert sorted(mn) == [2, 3] and mn[0] == el.default_oxidation("Mn") == 2
+  assert el.candidate_oxidations("Ni", "octahedral", 6) is None  # no priors
+
+
+def exercise_deprotonation_metal_gating():
+  """Cys/Tyr deprotonation is gated to anion-inducing metals, carboxylate is
+  universal. Near a hard Mg the Cys stays protonated but the Asp deprotonates."""
+  from mmtbx.geometry_restraints.qmi import protonation
+  hier = _model(_MG_DONORS_PDB).get_hierarchy()
+  protonation.deprotonate_metal_donors(hier, metals=None)   # all metals in scope
+  names = [a.name.strip() for a in hier.atoms()]
+  assert "HG" in names, "Cys near hard Mg must stay protonated"
+  assert "HD2" not in names, "Asp carboxylate must deprotonate (metal-agnostic)"
+
+
+def exercise_bvs():
+  """Bond-valence-sum confirm-only cross-check: CIF parse, valence sum, and the
+  resolution gate / missing-parameter guards."""
+  from mmtbx.geometry_restraints.qmi import bvs
+  # Parse: Zn(II)-O picks the Brown-Altermatt row; Fe(II)/Fe(III) R0 differ.
+  assert bvs.valence_params("Zn", 2, "O") == (1.704, 0.37)
+  assert bvs.valence_params("Fe", 2, "O")[0] != bvs.valence_params("Fe", 3, "O")[0]
+  # A tetrahedral Zn(II)-O4 at ~1.97 A sums to V ~ 2.
+  V, n = bvs.valence_sum("Zn", 2, [("O", 1.97)] * 4)
+  assert n == 4 and abs(V - 2.0) < 0.1, (V, n)
+  # confirm_oxidation: agrees at high resolution; None below the gate, with no
+  # resolution, or with an unparameterised donor.
+  c = bvs.confirm_oxidation("Zn", 2, [("O", 1.97)] * 4, resolution=1.0)
+  assert c is not None and c.agrees and c.nearest_int == 2
+  assert bvs.confirm_oxidation("Zn", 2, [("O", 1.97)] * 4, resolution=2.5) is None
+  assert bvs.confirm_oxidation("Zn", 2, [("O", 1.97)] * 4, resolution=None) is None
+  assert bvs.valence_sum("Zn", 2, [("Xx", 2.0)]) == (None, 0)
+
+
 def run():
   exercise_metals()
   exercise_hessian_parse()
@@ -399,6 +734,13 @@ def run():
   exercise_symmetry_donor_skip()
   exercise_deprotonation()
   exercise_deprotonation_donor_families()
+  exercise_deprotonation_metal_gating()
+  exercise_water_protonation()
+  exercise_state_override()
+  exercise_shape()
+  exercise_shape_carboxylate()
+  exercise_electronic()
+  exercise_bvs()
   exercise_program()
 
 

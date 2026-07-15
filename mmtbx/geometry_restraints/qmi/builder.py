@@ -4,14 +4,13 @@ Ties the pieces together for one model: extract a capped cluster per metal
 site with the ``endo_exo`` builder (in-memory), fix the electronic state, run a
 constrained GFN2-xTB optimisation, and emit ``geometry_restraints.edits``.
 
-Phase-1 scope (plan Sec 11): the electronic-guess engine (Sec 6) is **out of
-the path**: the (oxidation, multiplicity) state is *hardcoded* per metal via
-:data:`PHASE1_STATES` (Zn(II) d10 singlet; Mn(II) d5 high-spin sextet).  The
-total cluster charge is derived from that hardcoded metal oxidation state with
+The electronic state comes from the educated-guess engine (:mod:`electronic`,
+plan Sec 6) using the coordination geometry from the CShM classifier
+(:mod:`shape`, Sec 5C), or from a user ``metal_state`` override (authoritative).
+The total cluster charge is derived from the metal oxidation state with
 ``quantum_interface.electrons`` (which walks the bond graph + per-element
 valences), so deprotonated/charged ligands are accounted for.  Sigmas are the
-placeholders in :mod:`restraints`; modified-Seminario curvature sigmas (Sec 5F)
-come later.
+modified-Seminario curvature sigmas (Sec 5F), with a placeholder fallback.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -24,18 +23,8 @@ from mmtbx.programs.endo_exo import master_phil_str as endo_exo_master_phil_str
 from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
+from mmtbx.geometry_restraints.qmi import electronic, shape
 from mmtbx.geometry_restraints.qmi import qm, restraints, sigma
-
-
-# Hardcoded Phase-1 electronic states: metal element -> (oxidation_state,
-# multiplicity).  The electronic-guess engine (plan Sec 6) replaces this table
-# in Phase 4; until then only these metals are handled (others are skipped).
-#   Zn(II): d10, closed shell    -> singlet (mult 1, 0 unpaired) [Phase 1a]
-#   Mn(II): d5, high spin        -> sextet  (mult 6, 5 unpaired) [Phase 1b]
-PHASE1_STATES = {
-  "Zn": group_args(oxidation_state=2, multiplicity=1),
-  "Mn": group_args(oxidation_state=2, multiplicity=6),
-}
 
 
 def _default_output_filename(prefix=None, suffix=None):
@@ -65,7 +54,8 @@ class QMRestraintsBuilder(object):
   ----------
   metal_element : iterable of str or None
       Restrict the metal scan to these element(s); default (None) scans every
-      metal endo_exo finds, and each is handled if it is in :data:`PHASE1_STATES`.
+      metal endo_exo finds, and each is handled if the electronic engine can
+      guess its state (``electronic.OXIDATION_PRIORS``) or the user overrides it.
   selection : iterable of str or None
       Explicit endo_exo seed selection string(s); overrides ``metal_element``.
   radius : float
@@ -77,6 +67,14 @@ class QMRestraintsBuilder(object):
   temperature : float
       Temperature (K) for the modified-Seminario force-constant to sigma
       conversion (plan Sec 5F); the global sigma tightness scalar.
+  metal_states : iterable of group_args or None
+      Per-site electronic-state overrides. Each entry has a required
+      ``.selection`` (an atom-selection string identifying the metal site(s)),
+      plus ``.oxidation_state`` and ``.multiplicity``. Authoritative (plan
+      Sec 6): a matched override replaces the engine guess, and a full override
+      lets a metal the engine cannot guess be run. Each field falls back
+      independently to the engine when left unset; selections must be disjoint
+      (an unmatched site just uses the engine guess).
   work_dir : str or None
       Directory the xTB jobs run in (xTB writes scratch files into the cwd).
   logger : file-like or None
@@ -84,7 +82,8 @@ class QMRestraintsBuilder(object):
 
   def __init__(self, metal_element=None, selection=None, radius=5.0,
                max_depth=3, solvent_model=qm.DEFAULT_SOLVENT,
-               temperature=sigma.DEFAULT_TEMPERATURE_K, work_dir=None,
+               temperature=sigma.DEFAULT_TEMPERATURE_K,
+               metal_states=None, work_dir=None,
                logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
@@ -92,6 +91,7 @@ class QMRestraintsBuilder(object):
     self.max_depth = max_depth
     self.solvent_model = solvent_model
     self.temperature = temperature
+    self.metal_states = list(metal_states) if metal_states else []
     self.work_dir = work_dir
     self.logger = logger if logger is not None else null_out()
     self._results = []
@@ -138,6 +138,87 @@ class QMRestraintsBuilder(object):
 
   # ------------------------------------------------------------------
 
+  def _lookup_override(self, submodel, metal_iseq):
+    """The user ``metal_state`` override whose ``selection`` picks this site's
+    metal, or None. Each override's selection is tested against the sub-model
+    (which keeps the original chain/resseq labelling); a block that sets
+    neither value is ignored. Raises if two selections both match the metal.
+    """
+    match = None
+    for scope in self.metal_states:
+      if not scope.selection:
+        continue
+      if scope.oxidation_state is None and scope.multiplicity is None:
+        continue  # nothing forced
+      try:
+        picked = submodel.selection(scope.selection)[metal_iseq]
+      except Exception as exc:
+        raise Sorry(f"Invalid metal_state.selection "
+                    f"'{scope.selection}': {exc}")
+      if picked:
+        if match is not None:
+          raise Sorry(f"Two metal_state blocks both match the metal picked by "
+                      f"'{match.selection}' and '{scope.selection}'; "
+                      f"selections must be disjoint.")
+        match = scope
+    return match
+
+  def _resolve_state(self, metal_element, override, geometry, cn):
+    """Combine a user ``metal_state`` *override* (or None) with the electronic
+    engine into a committed (oxidation_state, multiplicity) state, given the
+    coordination *geometry* (shape name from :mod:`shape`, or None) and *cn*.
+
+    Oxidation: a user override is authoritative. Otherwise
+    ``electronic.candidate_oxidations`` narrows from geometry + CN (plan Sec 6.3,
+    never from bond lengths): a single candidate is committed; multiple
+    candidates commit the dominant resting-state default where one exists (Mn,
+    Cu), or -- where none does (Fe) -- the site is NOT single-committed but left
+    for a user override / the plan Sec 7 run-both-and-inflate. Multiplicity, if
+    unset, is the ligand-field spin for the resolved oxidation.
+
+    Returns a group_args; ``skipped`` is a reason string when the state cannot
+    be committed (oxidation_state/multiplicity then None), else None with the
+    committed state, ``state_source``, and ``candidates`` (for the log/Sec 7).
+    """
+    def skip(reason):
+      return group_args(oxidation_state=None, multiplicity=None,
+                        state_source=None, candidates=None, skipped=reason)
+
+    user_ox = override.oxidation_state if override is not None else None
+    user_mult = override.multiplicity if override is not None else None
+
+    ox, candidates = user_ox, None
+    if ox is None:
+      candidates = electronic.candidate_oxidations(metal_element, geometry, cn)
+      if candidates is None:
+        return skip(f"{metal_element} has no electronic prior; add a "
+                    f"metal_state block with oxidation_state and multiplicity")
+      if len(candidates) == 1:
+        ox = candidates[0]
+      else:
+        default = electronic.default_oxidation(metal_element)
+        if default in candidates:
+          ox = default
+        else:
+          cands = "/".join(f"{c:+d}" for c in candidates)
+          return skip(f"{metal_element} oxidation state is ambiguous ({cands}) "
+                      f"with no dominant default; add a metal_state override "
+                      f"(running all candidates and widening the sigma is plan "
+                      f"Sec 7)")
+
+    mult = user_mult
+    if mult is None:
+      try:
+        mult = electronic.spin_state(metal_element, ox, geometry).multiplicity
+      except (KeyError, ValueError):
+        return skip(f"{metal_element}{ox:+d} gives an impossible d-count; check "
+                    f"the oxidation_state override")
+
+    user = user_ox is not None or user_mult is not None
+    return group_args(oxidation_state=ox, multiplicity=mult,
+                      state_source="user-supplied" if user else "guessed",
+                      candidates=candidates, skipped=None)
+
   def _process_site(self, index, seed, original_chain_ids):
     """Run the QM-restraint pipeline for one endo_exo seed result."""
     submodel = seed["model"]
@@ -168,13 +249,22 @@ class QMRestraintsBuilder(object):
     metal_element = metal_atom.element.strip().capitalize()
     _rg = metal_atom.parent().parent()
     site_tag = f"{metal_element}_{_rg.parent().id.strip()}{_rg.resseq.strip()}"
-    state = PHASE1_STATES.get(metal_element)
-    if state is None:
-      return _skip(f"metal {metal_element} not in Phase-1 scope "
-                   f"(no hardcoded state)", metal_element=metal_element)
+    override = self._lookup_override(submodel, metal_iseq)
+    # First shell from the crystal geometry, then the CShM geometry class; both
+    # feed the electronic guess (the class sets the ligand-field spin).
+    donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
+    geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
+    state = self._resolve_state(metal_element, override, geom.shape, geom.cn)
+    if state.skipped:
+      return _skip(state.skipped, metal_element=metal_element)
 
-    print(f"Site {index}: {metal_element}, hardcoded "
-          f"ox={state.oxidation_state:+d} mult={state.multiplicity}",
+    cand_note = ""
+    if state.candidates and len(state.candidates) > 1:
+      cand_note = " [candidates " + \
+          "/".join(f"{c:+d}" for c in state.candidates) + "]"
+    print(f"Site {index}: {metal_element}, {state.state_source} "
+          f"ox={state.oxidation_state:+d} mult={state.multiplicity} "
+          f"(shape={geom.shape or 'unclassified'}, CN={geom.cn}){cand_note}",
           file=self.logger)
 
     # Restraints manager (needed for charge accounting + cap-anchor freezing).
@@ -191,9 +281,8 @@ class QMRestraintsBuilder(object):
       preamble=f"qmi_site{index:03d}", work_dir=self.work_dir,
       log=self.logger)
 
-    # Donors from the crystal geometry; targets from the optimised geometry.
-    donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
-
+    # Donors were detected above (crystal geometry); targets come from the
+    # optimised geometry.
     # Modified-Seminario sigmas from the Hessian at the optimised geometry
     # (plan Sec 5F); degrade gracefully to placeholder sigmas on any failure.
     bond_sigmas = angle_sigmas = None
@@ -240,6 +329,7 @@ class QMRestraintsBuilder(object):
       metal_element=metal_element,
       oxidation_state=state.oxidation_state,
       multiplicity=state.multiplicity, charge=charge,
+      state_source=state.state_source,
       n_donors=len(donor_iseqs), restraints=site_restraints,
       edits=edits, sigma_origin=sigma_origin, skipped=None)
 

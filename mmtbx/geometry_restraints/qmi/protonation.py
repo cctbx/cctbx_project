@@ -11,10 +11,20 @@ protonation prep from the calibration ``prepare_qm_calcs.py``:
   form; His is handled tautomer-aware (it stays NEUTRAL, not an imidazolate):
   the coordinating ring N is made H-free while the partner ring N keeps a
   proton.
+- ``protonate_waters``: place H on bare waters (H-bond and cation aware) via
+  the naiad placer, so a coordinating water is neutral H2O with its H kept off
+  the metal.
+- ``prepare_model``: the single entry point the Program calls (reduce2 +
+  water H + metal-donor deprotonation), returning a fresh model.
 
 The Program's validate() guard uses ``mmtbx.model.manager.has_hd()`` to decide
-whether the model is already protonated. Water protonation is intentionally
-left out for now.
+whether the model is already protonated.
+
+INTERIM: water H come from the qmi-local ``naiad`` copy of
+``place_water_hydrogens``; that placer is being reworked into reduce2. Once
+reduce2 places good water H, request it inside ``add_hydrogens`` and delete the
+marked ``protonate_waters`` call in ``prepare_model`` (and the ``qmi/naiad``
+copy). No other qmi code, and no caller, changes.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -27,6 +37,7 @@ from contextlib import contextmanager
 from libtbx import easy_run
 from libtbx.utils import null_out, Sorry
 from scitbx import matrix
+from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 
@@ -44,6 +55,25 @@ _COORD_DEPROT_RULES = {
   ("GLU", "OE1"): {"HE2", "DE2"},
   ("GLU", "OE2"): {"HE2", "DE2"},
 }
+
+# Cys-thiolate and Tyr-phenolate formation is metal-INDUCED: only a soft or
+# borderline, Lewis-acidic transition-metal / Zn cation supplies the covalency
+# that stabilises the anion. Hard, low-charge ions (Na, K, Ca, Mg) do NOT, and
+# rarely bind S/O-phenol at all, so a Cys/Tyr near one must be left neutral
+# (HSAB: Pearson 1963 [37]; Dudev & Lim 2003 [38]). Carboxylate (Asp/Glu) is
+# anionic by pH regardless of the metal, so it is NOT gated. These two donors
+# fire only when the coordinating metal is in _ANION_INDUCING_METALS.
+_SOFT_DONOR_KEYS = {("CYS", "SG"), ("TYR", "OH")}
+
+# The d-block transition metals + group 12 (Zn/Cd/Hg): acidic/soft enough to
+# induce thiolate/phenolate. Excludes hard alkali/alkaline-earth (Na, K, Mg,
+# Ca, ...) and the p-block metals (conservative; a Pb/Sn thiolate would need a
+# user override). Cited [37, 38].
+_ANION_INDUCING_METALS = frozenset({
+  "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+  "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+  "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+})
 
 # Histidine is tautomer-aware (neutral, not imidazolate): the coordinating ring
 # N donates through its lone pair and must be H-free; the partner ring N keeps
@@ -111,6 +141,69 @@ def add_hydrogens(model, use_neutron_distances=True, log=None):
 
 
 # ---------------------------------------------------------------------------
+# water protonation (naiad)
+# ---------------------------------------------------------------------------
+def _count_water_h(hier):
+  n = 0
+  for ag in hier.atom_groups():
+    if common_residue_names_get_class(ag.resname) != "common_water":
+      continue
+    for a in ag.atoms():
+      if a.element.strip().upper() in ("H", "D"):
+        n += 1
+  return n
+
+
+def protonate_waters(hier, n_refine=5, refine_tol=1, n_basin=0,
+                     lone_pair_directed=False, joint=False,
+                     report_stats=False, n_worst=0, log=None):
+  """Place the two H on every bare water IN PLACE, H-bond-aware and cation-aware
+  (the H are kept off coordinating metals), via the naiad placer.
+
+  reduce2 leaves waters bare, so a metal-coordinating water would otherwise be
+  read as an oxide/hydroxide by the charge accounting; protonating it to a
+  neutral H2O with its H directed away from the metal fixes the cluster charge.
+  Idempotent (waters already carrying H are untouched). Returns the number of
+  water H atoms added.
+
+  *n_refine* / *refine_tol* / *n_basin* / *lone_pair_directed* / *joint* are the
+  placement-quality knobs forwarded to
+  :func:`...naiad.water_protonation.place_water_hydrogens` (defaults match it).
+  With *report_stats*, the per-sweep water-H clash table is streamed; with
+  *n_worst* > 0, the closest residual water-H contacts are listed afterwards.
+  """
+  if log is None:
+    log = null_out()
+  from mmtbx.geometry_restraints.qmi.naiad import water_protonation
+  before = _count_water_h(hier)
+
+  on_state = None
+  if report_stats:
+    header = {"printed": False}
+    def on_state(label, stats):
+      if not header["printed"]:
+        print(f"  water H clash report ({stats[0]} placed; H-H between "
+              f"different waters):", file=log)
+        header["printed"] = True
+      water_protonation._clash_row(label, stats, log)
+
+  water_protonation.place_water_hydrogens(
+    hier, n_refine=n_refine, refine_tol=refine_tol, n_basin=n_basin,
+    lone_pair_directed=lone_pair_directed, joint=joint, on_state=on_state)
+  added = _count_water_h(hier) - before
+  print(f"  placed {added} water hydrogen(s)", file=log)
+  if report_stats and n_worst:
+    worst = water_protonation._worst_water_clashes(hier, n_worst)
+    if worst:
+      print(f"  worst {len(worst)} water-H contact(s):", file=log)
+      for d, id_a, id_b in worst:
+        print(f"    {d:.2f} A  {id_a}  <->  {id_b}", file=log)
+    else:
+      print("  no water-H contacts < 2.0 A", file=log)
+  return added
+
+
+# ---------------------------------------------------------------------------
 # His tautomer helpers (ported from prepare_qm_calcs.py)
 # ---------------------------------------------------------------------------
 def _imidazole_nh_xyz(atoms_by_name, n_name, nh_len=_NH_BOND_A):
@@ -175,15 +268,19 @@ def deprotonate_metal_donors(hier, metals=None,
   """Fix, IN PLACE, the protonation of sidechain donors in *hier* coordinating
   any metal atom (within *coord_cutoff_A*).
 
-  - Cys/Tyr/Asp/Glu (:data:`_COORD_DEPROT_RULES`): strip the donor H so charge
-    accounting reads them as anionic.
+  - Asp/Glu carboxylate (:data:`_COORD_DEPROT_RULES`): strip the acid H for any
+    coordinating metal (anionic by pH, metal-independent).
+  - Cys thiolate / Tyr phenolate: strip the donor H ONLY when coordinated by an
+    anion-inducing metal (:data:`_ANION_INDUCING_METALS`, transition metals +
+    Zn); a Cys/Tyr near a hard Na/K/Ca/Mg is left neutral (Pearson 1963 [37];
+    Dudev & Lim 2003 [38]).
   - His: tautomer-aware (neutral, not imidazolate) via
-    :func:`_relocate_or_remove_his_h`.
+    :func:`_relocate_or_remove_his_h`, for any coordinating metal.
 
   *metals* is the element set the donors are scored against (default: all
-  METALS); the in-pipeline caller passes the subset qmi actually models, so
-  donors near an out-of-scope metal (e.g. an alkali or alkaline-earth ion) are
-  left untouched.
+  METALS); the in-pipeline caller passes the metals qmi may model, so donors
+  near an entirely out-of-scope metal are left untouched. The Cys/Tyr gate is
+  applied on top of that, against the anion-inducing subset.
 
   Canonicalises atom order at the end (a relocated His proton is renamed in
   place). Returns ``(n_donors_corrected, n_his_corrected)``. A no-op (0, 0)
@@ -191,12 +288,15 @@ def deprotonate_metal_donors(hier, metals=None,
   """
   if log is None:
     log = null_out()
-  metal_xyzs = [matrix.col(a.xyz)
-                for a in qmi_metals.metal_atoms(hier.atoms(), metals=metals)]
+  metal_atoms = qmi_metals.metal_atoms(hier.atoms(), metals=metals)
+  metal_xyzs = [matrix.col(a.xyz) for a in metal_atoms]
   if not metal_xyzs:
     return 0, 0
+  # Cys/Tyr score only against anion-inducing metals (see _SOFT_DONOR_KEYS).
+  anion_xyzs = [matrix.col(a.xyz) for a in metal_atoms
+                if a.element.strip().capitalize() in _ANION_INDUCING_METALS]
 
-  # Cys / Tyr / Asp / Glu: strip the donor proton.
+  # Asp/Glu (any metal) and Cys/Tyr (anion-inducing metals only): strip the H.
   to_remove, seen = [], set()
   reports = []
   for atom in hier.atoms():
@@ -204,8 +304,11 @@ def deprotonate_metal_donors(hier, metals=None,
     key = (ag.resname.strip().upper(), atom.name.strip().upper())
     if key not in _COORD_DEPROT_RULES:
       continue
+    scored_xyzs = anion_xyzs if key in _SOFT_DONOR_KEYS else metal_xyzs
+    if not scored_xyzs:
+      continue
     donor_xyz = matrix.col(atom.xyz)
-    d_min = min((donor_xyz - mxyz).length() for mxyz in metal_xyzs)
+    d_min = min((donor_xyz - mxyz).length() for mxyz in scored_xyzs)
     if d_min > coord_cutoff_A:
       continue
     rg = ag.parent()
@@ -264,3 +367,31 @@ def deprotonate_metal_donors(hier, metals=None,
     for ch, rs, action in his_reports:
       print(f"    HIS {ch}{rs}: {action}", file=log)
   return len(reports), len(his_reports)
+
+
+def prepare_model(model, metals=None, water_kwargs=None, log=None):
+  """Protonate a raw model for qmi and fix metal-donor protonation.
+
+  Runs reduce2 (protein H), places water H, and deprotonates metal-coordinating
+  donors, returning a fresh model ready for cluster extraction. This is the one
+  entry point the Program calls, so the reduce2-vs-naiad split is hidden from
+  the caller: switching water H to reduce2 later touches only this function.
+
+  *metals* scopes the deprotonation (see :func:`deprotonate_metal_donors`);
+  *water_kwargs* is a dict forwarded to :func:`protonate_waters` (None uses its
+  defaults).
+  """
+  import mmtbx.model
+  if log is None:
+    log = null_out()
+  model = add_hydrogens(model, log=log)
+  hier = model.get_hierarchy()
+  # --- INTERIM: qmi-local naiad water protonation. When reduce2 places good
+  #     water H, request it in add_hydrogens (so it returns a model with waters
+  #     already protonated) and delete the next call; nothing else changes. ---
+  protonate_waters(hier, log=log, **(water_kwargs or {}))
+  # -------------------------------------------------------------------------
+  deprotonate_metal_donors(hier, metals=metals, log=log)
+  return mmtbx.model.manager(
+    model_input=None, pdb_hierarchy=hier,
+    crystal_symmetry=model.crystal_symmetry())
