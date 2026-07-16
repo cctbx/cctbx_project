@@ -75,6 +75,15 @@ def exercise_subclass_with_methods_instantiable():
 
   g = GoodAgent()
   assert g.name == "good"
+  # Optional capability hooks are declared on the ABC with False defaults --
+  # protocol, not duck-typing. A GUI probing callable(getattr(...)) instead
+  # would misroute any backend that grows a same-named method: the auth
+  # recovery dispatches on reload_credentials()' RETURN (True = reloaded,
+  # retry; False = fall through to the key prompt) and on uses_env_api_key().
+  assert g.submit_approval(object()) is False
+  assert g.submit_question_answer("rid", {}) is False
+  assert g.reload_credentials() is False
+  assert g.uses_env_api_key() is False
 
 
 # ---- event dataclasses ---------------------------------------------------
@@ -271,12 +280,46 @@ def exercise_now_returns_datetime():
   assert isinstance(now(), datetime)
 
 
+def exercise_classify_error_text_matches_whole_phrases_only():
+  """classify_error_text matches WHOLE signal phrases -- the expiry/revoke
+  signals must carry their qualifying noun ('token expired', 'session has
+  expired', 'token has been revoked', ...). Bare 'expired'/'revoked'
+  substrings classified a TLS 'certificate has expired' (proxy, clock skew)
+  or a provider's expired *uploaded file* as an auth failure -- driving the
+  wrong banner and, on claude_code, the credential-reload + auto-retry
+  machinery for non-auth errors. The documented legacy traps stay pinned
+  too: the 'rate' inside 'generate'/'moderate' and the 'auth' inside
+  'author' must not match, and a message carrying both a rate and an auth
+  signal reads as the recoverable rate limit."""
+  from qttbx.widgets.chat.agent.base import classify_error_text
+  for text in ("The access token expired",
+               "Your token has expired -- please sign in again",
+               "Session expired",
+               "your session has expired",
+               "access token revoked by the administrator",
+               "OAuth token has been revoked"):
+    assert classify_error_text(text) == "auth", text
+  for text in ("certificate has expired",              # TLS / proxy, not auth
+               "The uploaded file has expired",        # provider file expiry
+               "the share link was revoked",           # not a credential
+               "failed to generate content",           # 'rate' in 'generate'
+               "response was flagged as moderate",     # 'rate' in 'moderate'
+               "unknown author"):                      # 'auth' in 'author'
+    assert classify_error_text(text) is None, text
+  # Rate stays recognized, and wins over auth when both signals appear (a
+  # quota window is recoverable -- favor the retryable read).
+  assert classify_error_text("429 Too Many Requests") == "rate_limited"
+  assert classify_error_text(
+    "quota exceeded for this oauth client") == "rate_limited"
+
+
 def exercise():
   # base
   exercise_tool_spec_basic()
   exercise_agent_is_abstract()
   exercise_subclass_must_implement_methods()
   exercise_subclass_with_methods_instantiable()
+  exercise_classify_error_text_matches_whole_phrases_only()
   # events
   exercise_text_delta()
   exercise_thinking_with_signature()

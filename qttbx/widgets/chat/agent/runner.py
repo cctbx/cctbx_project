@@ -111,6 +111,11 @@ class QtAgentRunner(QtCore.QObject):
   - ``ask_user_question_requested(object)`` — ``AskUserQuestionRequested``
   - ``turn_done(str)`` — stop_reason
   - ``error(str, bool, str)`` — message, recoverable, kind
+  - ``idle()`` — the turn's worker/thread have been torn down and
+    ``is_busy()`` is False again. Emitted once per turn, after the turn's
+    terminal event (``turn_done`` / ``error``); a slot may synchronously
+    start the next turn. ``shutdown()`` does NOT emit it (teardown callers
+    manage their own state).
 
   Thread affinity: ``start_turn``, ``cancel``, ``submit_approval``,
   ``submit_question_answer``, and ``wait_for_idle`` must be called from the
@@ -129,6 +134,7 @@ class QtAgentRunner(QtCore.QObject):
   ask_user_question_requested = QtCore.Signal(object)
   turn_done = QtCore.Signal(str)
   error = QtCore.Signal(str, bool, str)
+  idle = QtCore.Signal()
 
   def __init__(self, session, parent=None):
     super().__init__(parent)
@@ -355,3 +361,8 @@ class QtAgentRunner(QtCore.QObject):
           q.get_nowait()
         except queue.Empty:
           break
+    # Announce end-of-turn teardown LAST -- is_busy() is False and the stale
+    # question answers are drained, so a slot may synchronously start the next
+    # turn (the chat window fires its deferred auth retry from here instead of
+    # polling is_busy() on a timer).
+    self.idle.emit()

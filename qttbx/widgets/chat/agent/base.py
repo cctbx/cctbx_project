@@ -157,6 +157,46 @@ class Agent(ABC):
     """
     return False
 
+  def reload_credentials(self):
+    """Refresh this agent's credentials in place ahead of an auth retry.
+
+    The default returns ``False`` -- API-key backends hold nothing that can
+    be reloaded in place; they recover through the credentials dialog
+    (``credentials_dialog_class`` + ``set_api_key``), so the caller falls
+    through to that prompt. A backend whose credentials live outside the
+    process (e.g. claude_code's CLI OAuth login, re-read from disk when its
+    subprocess respawns) overrides this to refresh them and return ``True``.
+
+    Declared on the ABC so the capability is protocol, not duck-typing: a
+    GUI probing ``callable(getattr(agent, "reload_credentials"))`` would
+    silently misroute any future backend that grows a same-named method.
+
+    Returns
+    -------
+    bool
+        ``True`` when credentials were reloaded and the failed turn is
+        worth retrying; ``False`` to recover via the key prompt instead.
+    """
+    return False
+
+  def uses_env_api_key(self):
+    """True when this agent's auth is an API key injected via its process
+    environment / launch flags rather than a key the agent holds (or an
+    external login). The default is ``False``.
+
+    The GUI uses this to pick the auth-failure recovery and banner: an
+    env-delivered key can only be replaced interactively (``set_api_key``)
+    -- a live process never sees a later parent-shell export -- so
+    ``True`` routes to the key prompt even when the backend also supports
+    ``reload_credentials``.
+
+    Returns
+    -------
+    bool
+        ``True`` for env/flag-delivered key auth, else ``False``.
+    """
+    return False
+
   def close(self):
     """Release any resources the agent holds (HTTP client connection
     pools, a subprocess, an asyncio loop).
@@ -256,7 +296,17 @@ def anthropic_image_block(mime, data):
 # inside "generate"/"moderate" and `"auth" in text` matches "author".
 _AUTH_SIGNALS = ("authentication", "authenticated", "unauthorized",
                  "authorization", "permission", "api key", "api_key",
-                 "oauth", "login")
+                 "oauth", "login",
+                 # A mid-session credential expiry/revoke -- the target of the
+                 # claude_code auth-reload path -- often reads "token expired" /
+                 # "session expired" / "token has been revoked" with none of
+                 # the words above. WHOLE phrases only (with their has/been
+                 # variants), per the rule above: a bare "expired"/"revoked"
+                 # would classify a TLS "certificate has expired" or a
+                 # provider's expired uploaded file as an auth failure.
+                 "token expired", "token has expired",
+                 "session expired", "session has expired",
+                 "token revoked", "token has been revoked")
 _RATE_SIGNALS = ("rate limit", "rate-limit", "rate_limit", "ratelimit",
                  "429", "quota", "resource_exhausted", "resource exhausted")
 

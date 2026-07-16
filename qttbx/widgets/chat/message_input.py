@@ -70,6 +70,14 @@ class MessageInput(QtWidgets.QWidget):
   def __init__(self, parent=None):
     super().__init__(parent)
     self._busy = False
+    # Optional 0-arg callable -> bool consulted by click_send BEFORE the draft
+    # is consumed. Returning False refuses the send and KEEPS the typed text
+    # and attachments in place: the `send` signal is fire-and-forget (the
+    # widget clears itself right after emitting), so a host window that can
+    # reject a send (e.g. a turn still in flight) must gate it here -- a
+    # rejection inside its slot would come after the draft was already wiped.
+    # The gate owns any user feedback (status banner).
+    self.send_gate = None
     self._attachments = []          # list[dict]
     self._max_image_bytes = self._MAX_IMAGE_BYTES
     # Up/Down input history. The recall list is supplied per conversation
@@ -465,6 +473,9 @@ class MessageInput(QtWidgets.QWidget):
       return
     msg = self.text().strip()
     if not msg and not self._attachments:
+      return
+    if self.send_gate is not None and not self.send_gate():
+      # Refused (e.g. a turn in flight): the draft stays in the composer.
       return
     atts = list(self._attachments)
     self._attachments = []

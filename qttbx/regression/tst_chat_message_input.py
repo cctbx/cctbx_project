@@ -58,6 +58,37 @@ def exercise_set_busy_toggles_to_stop():
   w.set_busy(False)
 
 
+def exercise_send_gate_refusal_keeps_the_draft():
+  """A refused send_gate must keep the draft. The `send` signal is
+  fire-and-forget -- click_send clears the composer right after emitting --
+  so a host window that rejects the send from its slot (turn in flight) is
+  too late: the typed text and attachments are already wiped. The gate runs
+  BEFORE the draft is consumed; on False nothing is emitted and the text +
+  attachments stay put, ready for the user to re-send."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  received = []
+  w.send.connect(lambda msg, atts: received.append((msg, atts)))
+  allow = [False]
+  w.send_gate = lambda: allow[0]
+  w.set_text("precious draft")
+  w.attach_bytes(b"\x89PNG\r\n\x1a\n123", "image/png", filename="x.png")
+  n_atts = len(w._attachments)
+  assert n_atts == 1, w._attachments
+  w.click_send()
+  assert received == [], "a gated-off send still emitted"
+  assert w.text() == "precious draft", "refused send wiped the typed text"
+  assert len(w._attachments) == n_atts, "refused send dropped attachments"
+  # Gate opens: the same draft sends normally and the composer clears.
+  allow[0] = True
+  w.click_send()
+  assert len(received) == 1 and received[0][0] == "precious draft", received
+  assert w.text() == "" and w._attachments == []
+
+
 def exercise_attach_bytes_appears_in_send_payload():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
@@ -617,6 +648,7 @@ def exercise():
   exercise_pasted_image_via_chokepoint_attaches()
   exercise_empty_send_is_no_op()
   exercise_set_busy_toggles_to_stop()
+  exercise_send_gate_refusal_keeps_the_draft()
   exercise_attach_bytes_appears_in_send_payload()
   exercise_unsupported_mime_is_dropped_with_warning()
   exercise_oversized_image_is_resampled()

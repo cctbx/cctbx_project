@@ -162,6 +162,36 @@ def exercise_error_event_emits_error_signal():
     shutil.rmtree(tmp)
 
 
+def exercise_idle_fires_after_worker_teardown():
+  """The runner announces end-of-turn teardown with ``idle``: emitted once per
+  turn, AFTER the turn's terminal event (error / turn_done) has been dispatched
+  and AFTER _on_worker_finished has torn down the worker/thread (is_busy()
+  False) and drained the question queue -- so a GUI slot may synchronously
+  start the next turn from the signal. shutdown() must NOT emit it (teardown
+  paths manage their own state)."""
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  tmp = tempfile.mkdtemp()
+  try:
+    from qttbx.widgets.chat.agent.errors import AgentError
+    events = [AgentError(message="boom", recoverable=False, kind="auth")]
+    session, _ = _make_session(events, tmp)
+    runner = QtAgentRunner(session)
+    seq = []
+    runner.error.connect(lambda *a: seq.append("error"))
+    runner.idle.connect(lambda: seq.append(("idle", runner.is_busy())))
+    runner.start_turn(Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "x"})], timestamp=now()))
+    runner.wait_for_idle(timeout_ms=2000)
+    _pump(app)
+    assert seq == ["error", ("idle", False)], seq
+    runner.shutdown()                        # already torn down: no re-emit
+    _pump(app, 50)
+    assert seq == ["error", ("idle", False)], seq
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_cancel_when_idle_does_not_poison_next_turn():
   """Clicking Stop after a turn finishes must not cancel an approval a later
   turn has open on the coordinator -- cancel() no-ops while idle."""
@@ -517,6 +547,7 @@ def exercise():
   exercise_emits_text_delta_then_turn_done()
   exercise_cancel_stops_the_turn()
   exercise_error_event_emits_error_signal()
+  exercise_idle_fires_after_worker_teardown()
   exercise_cancel_when_idle_does_not_poison_next_turn()
   exercise_idle_click_records_no_remember_and_is_dropped()
   exercise_submit_approval_resolves_parked_worker()
