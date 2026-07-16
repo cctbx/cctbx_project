@@ -443,9 +443,11 @@ def run_hessian(submodel, sites_cart, charge, multiplicity,
   solvent = qmm._get_solvent()
   threads = qmm._get_threads()
   ns = qmm.get_namespace()
+  # ns already ends in '_hess' (the preamble names this the Hessian job), which
+  # namespaces these and the .hessian/.charges/... xTB writes; no '.hess' infix.
   xyz_name = f"{ns}.xyz"
-  inp_name = f"{ns}.hess.inp"
-  log_name = f"{ns}.hess.log"
+  inp_name = f"{ns}.inp"
+  log_name = f"{ns}.log"
   hess_name = f"{ns}.hessian"
 
   inp_lines = [f"# qmi hessian ({preamble})",

@@ -15,16 +15,20 @@ modified-Seminario curvature sigmas (Sec 5F), with a placeholder fallback.
 
 from __future__ import absolute_import, division, print_function
 
+import os
+
 import libtbx.phil
 from libtbx import group_args
 from libtbx.utils import null_out, Sorry
 
 from mmtbx.programs.endo_exo import master_phil_str as endo_exo_master_phil_str
 from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+from scitbx import matrix
+
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 from mmtbx.geometry_restraints.qmi import electronic, shape
-from mmtbx.geometry_restraints.qmi import qm, restraints, sigma
+from mmtbx.geometry_restraints.qmi import bvs, qm, restraints, sigma
 
 
 def _default_output_filename(prefix=None, suffix=None):
@@ -33,7 +37,7 @@ def _default_output_filename(prefix=None, suffix=None):
   return f"{prefix or ''}{suffix or ''}"
 
 
-def _endo_exo_params(metal_element=None, selection=None, radius=5.0,
+def _endo_exo_params(metal_element=None, selection=None, radius=4.0,
                     max_depth=3):
   """Build an endo_exo parameter object for an in-memory run (no file output)."""
   params = libtbx.phil.parse(endo_exo_master_phil_str).extract()
@@ -59,7 +63,8 @@ class QMRestraintsBuilder(object):
   selection : iterable of str or None
       Explicit endo_exo seed selection string(s); overrides ``metal_element``.
   radius : float
-      endo_exo buffer radius (A).
+      Seed-inclusion radius (A) for the endo_exo region (its ``buffer.radius``);
+      the final capped cluster can extend beyond it.
   max_depth : int
       endo_exo BFS depth.
   solvent_model : str
@@ -76,14 +81,16 @@ class QMRestraintsBuilder(object):
       independently to the engine when left unset; selections must be disjoint
       (an unmatched site just uses the engine guess).
   work_dir : str or None
-      Directory the xTB jobs run in (xTB writes scratch files into the cwd).
+      Directory the xTB jobs run in (xTB writes many scratch/output files into
+      the cwd, so they are collected here rather than the current directory).
+      Created if absent; ``None`` keeps them in the current directory.
   logger : file-like or None
   """
 
-  def __init__(self, metal_element=None, selection=None, radius=5.0,
+  def __init__(self, metal_element=None, selection=None, radius=4.0,
                max_depth=3, solvent_model=qm.DEFAULT_SOLVENT,
                temperature=sigma.DEFAULT_TEMPERATURE_K,
-               metal_states=None, work_dir=None,
+               metal_states=None, work_dir="qm_work_dir",
                logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
@@ -94,6 +101,7 @@ class QMRestraintsBuilder(object):
     self.metal_states = list(metal_states) if metal_states else []
     self.work_dir = work_dir
     self.logger = logger if logger is not None else null_out()
+    self._model_stem = "qmi_model"
     self._results = []
 
   def run(self, model, model_name="qmi_model"):
@@ -104,6 +112,14 @@ class QMRestraintsBuilder(object):
     ``n_donors``, ``restraints`` (the :func:`restraints.metal_ligand_restraints`
     record), ``edits`` (the PHIL string), and ``skipped`` (None, or a reason).
     """
+    self._model_stem = os.path.splitext(os.path.basename(model_name))[0]
+    if self.work_dir is not None:
+      # Collect the many per-site xTB scratch/output files in one directory
+      # (created if absent); the .edits files still go to the current directory.
+      self.work_dir = os.path.abspath(self.work_dir)
+      if not os.path.isdir(self.work_dir):
+        os.makedirs(self.work_dir)
+
     params = _endo_exo_params(
       metal_element=self.metal_element, selection=self.selection,
       radius=self.radius, max_depth=self.max_depth)
@@ -219,6 +235,21 @@ class QMRestraintsBuilder(object):
                       state_source="user-supplied" if user else "guessed",
                       candidates=candidates, skipped=None)
 
+  def _bvs_estimate(self, atoms, metal_iseq, metal_element, donor_iseqs):
+    """BVS estimate of the most self-consistent oxidation over the metal's
+    accessible states, from the observed first-shell distances (plan Sec 6.4).
+    Returns None when the metal has no accessible states or no donor matched a
+    vendored parameter. Advisory cross-check; never changes the committed state.
+    """
+    ox_states = electronic.accessible_oxidation_states(metal_element)
+    if not ox_states:
+      return None
+    m = matrix.col(atoms[metal_iseq].xyz)
+    contacts = [(atoms[i].element.strip().capitalize(),
+                 (matrix.col(atoms[i].xyz) - m).length())
+                for i in donor_iseqs]
+    return bvs.estimate_oxidation(metal_element, tuple(ox_states), contacts)
+
   def _process_site(self, index, seed, original_chain_ids):
     """Run the QM-restraint pipeline for one endo_exo seed result."""
     submodel = seed["model"]
@@ -254,6 +285,19 @@ class QMRestraintsBuilder(object):
     # feed the electronic guess (the class sets the ligand-field spin).
     donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
+    # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
+    # oxidation over the accessible states, from the OBSERVED first-shell
+    # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
+    # its BVS estimate to guide an override; it never overrides the electronic
+    # guess, and is trustworthy only at high resolution / undamaged metal.
+    bvs_est = self._bvs_estimate(atoms, metal_iseq, metal_element, donor_iseqs)
+    if bvs_est is not None:
+      vstr = ", ".join(f"{q:+d}:{v:.2f}"
+                       for q, v in sorted(bvs_est.valences.items()))
+      print(f"Site {index}: BVS most-likely ox={bvs_est.best:+d} "
+            f"(V {vstr}; observed geometry, high-resolution only)",
+            file=self.logger)
+
     state = self._resolve_state(metal_element, override, geom.shape, geom.cn)
     if state.skipped:
       return _skip(state.skipped, metal_element=metal_element)
@@ -275,10 +319,13 @@ class QMRestraintsBuilder(object):
     frozen_iseqs, _free = qm.determine_frozen_atoms(
       submodel, metal_iseq, cap_iseqs, log=self.logger)
 
+    # Intermediary xTB files share the .edits naming scheme
+    # (<model>_<Metal>_<Chain><Resseq>); xtb_manager prepends 'xtb_'.
+    preamble = f"qmi_{self._model_stem}_{site_tag}"
     opt_sites, qmm = qm.run_constrained_opt(
       submodel, frozen_iseqs, charge=charge,
       multiplicity=state.multiplicity, solvent_model=self.solvent_model,
-      preamble=f"qmi_site{index:03d}", work_dir=self.work_dir,
+      preamble=preamble, work_dir=self.work_dir,
       log=self.logger)
 
     # Donors were detected above (crystal geometry); targets come from the
@@ -291,7 +338,7 @@ class QMRestraintsBuilder(object):
       hess_path = qm.run_hessian(
         submodel, opt_sites, charge=charge,
         multiplicity=state.multiplicity, solvent_model=self.solvent_model,
-        preamble=f"qmi_site{index:03d}_hess", work_dir=self.work_dir,
+        preamble=f"{preamble}_hess", work_dir=self.work_dir,
         log=self.logger)
       n_atoms = submodel.get_hierarchy().atoms().size()
       hessian = sigma.read_xtb_hessian(hess_path, n_atoms)
@@ -329,15 +376,16 @@ class QMRestraintsBuilder(object):
       metal_element=metal_element,
       oxidation_state=state.oxidation_state,
       multiplicity=state.multiplicity, charge=charge,
-      state_source=state.state_source,
+      state_source=state.state_source, candidates=state.candidates,
+      bvs=bvs_est,
       n_donors=len(donor_iseqs), restraints=site_restraints,
       edits=edits, sigma_origin=sigma_origin, skipped=None)
 
   def _total_charge(self, submodel, metal_element, state):
     """Total cluster charge for xTB ``--chrg``: the whole system given the
-    metal's hardcoded oxidation state, via ``quantum_interface.electrons``
-    (bond graph + per-element valences, so charged/deprotonated ligands
-    count)."""
+    metal's resolved oxidation state (engine guess or ``metal_state`` override),
+    via ``quantum_interface.electrons`` (bond graph + per-element valences, so
+    charged/deprotonated ligands count)."""
     sel = f"element {metal_element}"
     sac = [group_args(atom_selection=sel, charge=state.oxidation_state)]
     sam = [group_args(atom_selection=sel, multiplicity=state.multiplicity)]

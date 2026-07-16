@@ -414,11 +414,11 @@ def exercise_program():
   from mmtbx.programs.qmi import Program, master_phil_str
   master = libtbx.phil.parse(master_phil_str)
   p = master.extract()
-  assert p.buffer_radius == 3.0 and p.solvent == "ether"
-  assert p.temperature == 298.15 and p.write_files is True
-  assert p.combine is False and p.protonate is False
-  assert p.water_protonation.refine.max_sweeps == 5
-  assert p.water_protonation.basin.rounds == 0
+  assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
+  assert p.qm.temperature == 298.15 and p.output.write_files is True
+  assert p.output.combine is False and p.protonation.enable is False
+  assert p.protonation.water.refine.max_sweeps == 5
+  assert p.protonation.water.basin.rounds == 0
 
   # no model -> Sorry
   prog = Program(DataManager(["model"]), p, master_phil=master,
@@ -431,7 +431,7 @@ def exercise_program():
   # invalid selection -> Sorry (raised before the xtb-availability check)
   dm = DataManager(["model"])
   dm.add_model("m", _model(_ZN_SITE_PDB)); dm.set_default_model("m")
-  p2 = master.extract(); p2.selection = ["not a valid ((( selection"]
+  p2 = master.extract(); p2.sites.selection = ["not a valid ((( selection"]
   prog2 = Program(dm, p2, master_phil=master, logger=null_out())
   try:
     prog2.validate(); raise AssertionError("expected Sorry on bad selection")
@@ -703,8 +703,8 @@ def exercise_deprotonation_metal_gating():
 
 
 def exercise_bvs():
-  """Bond-valence-sum confirm-only cross-check: CIF parse, valence sum, and the
-  resolution gate / missing-parameter guards."""
+  """Bond-valence-sum oxidation estimate: CIF parse, valence sum, and the
+  deduce-most-self-consistent-state estimator with its missing-parameter guard."""
   from mmtbx.geometry_restraints.qmi import bvs
   # Parse: Zn(II)-O picks the Brown-Altermatt row; Fe(II)/Fe(III) R0 differ.
   assert bvs.valence_params("Zn", 2, "O") == (1.704, 0.37)
@@ -712,12 +712,19 @@ def exercise_bvs():
   # A tetrahedral Zn(II)-O4 at ~1.97 A sums to V ~ 2.
   V, n = bvs.valence_sum("Zn", 2, [("O", 1.97)] * 4)
   assert n == 4 and abs(V - 2.0) < 0.1, (V, n)
-  # confirm_oxidation: agrees at high resolution; None below the gate, with no
-  # resolution, or with an unparameterised donor.
-  c = bvs.confirm_oxidation("Zn", 2, [("O", 1.97)] * 4, resolution=1.0)
-  assert c is not None and c.agrees and c.nearest_int == 2
-  assert bvs.confirm_oxidation("Zn", 2, [("O", 1.97)] * 4, resolution=2.5) is None
-  assert bvs.confirm_oxidation("Zn", 2, [("O", 1.97)] * 4, resolution=None) is None
+  # estimate_oxidation: Zn only has +2 accessible; V ~ 2 so best is +2.
+  e = bvs.estimate_oxidation("Zn", (2,), [("O", 1.97)] * 4)
+  assert e is not None and e.best == 2 and e.n_used == 4
+  assert abs(e.valences[2] - 2.0) < 0.1, e.valences
+  # Fe-O6 short bonds (~2.00 A octahedral) are more self-consistent with +3:
+  # V_III lands nearer 3 than V_II lands to 2, so the estimator deduces +3.
+  fe = bvs.estimate_oxidation("Fe", (2, 3), [("O", 2.00)] * 6)
+  assert fe is not None and set(fe.valences) == {2, 3} and fe.n_used == 6
+  assert fe.best == 3, fe.valences
+  # Longer Fe-O6 bonds (~2.15 A) tip the estimate the other way, to +2.
+  assert bvs.estimate_oxidation("Fe", (2, 3), [("O", 2.15)] * 6).best == 2
+  # No vendored parameters for any candidate -> None; valence_sum guard.
+  assert bvs.estimate_oxidation("Zn", (2,), [("Xx", 2.0)]) is None
   assert bvs.valence_sum("Zn", 2, [("Xx", 2.0)]) == (None, 0)
 
 

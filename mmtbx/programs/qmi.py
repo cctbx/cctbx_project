@@ -7,16 +7,19 @@ force constants, and writes one Phenix ``geometry_restraints.edits`` file per
 site (``<model_stem>_<site>_qmi.edits``), or a single combined file with
 ``combine=True``.
 
-Phase-1 scope: the electronic state is hardcoded per metal (Zn(II) singlet,
-Mn(II) high-spin sextet); other metals are skipped. The input model must be
-protonated (e.g. with mmtbx.reduce2) and use standard residue names; in-model
-protonation and the educated-guess electronic engine come later.
+Phase-1 scope: only mononuclear sites are handled. The electronic state is
+chosen by the educated-guess engine (``electronic.OXIDATION_PRIORS``, currently
+Zn/Mn/Mg/Fe/Cu) from the coordination geometry, or by a user ``metal_state``
+override; a metal with no prior, or an ambiguous one with no dominant default
+and no override (e.g. Fe), is skipped. The model must already be protonated
+(standard residue names), or pass ``protonation.enable=True`` to add hydrogens
+(reduce2 + water placement + donor deprotonation) during the run.
 
 Usage (via dispatcher):
 
     mmtbx.development.qmi model.cif
-    mmtbx.development.qmi model.cif element_filter=Zn buffer_radius=3.0
-    mmtbx.development.qmi model.cif selection="chain A and resseq 262"
+    mmtbx.development.qmi model.cif sites.element_filter=Zn qm_region.radius=5
+    mmtbx.development.qmi model.cif sites.selection="chain A and resseq 262"
 
 Programmatic use::
 
@@ -40,113 +43,158 @@ from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
 
 
 master_phil_str = """
-selection = None
-  .type = str
-  .multiple = True
-  .help = "Atom selection string(s) for the metal site(s). Each entry seeds \
-one site. If no selection is given, every metal in the structure is used \
-(one per metal)."
-element_filter = None
-  .type = str
-  .multiple = True
-  .help = "Restrict the metal scan to these element(s) (e.g. element_filter=Zn \
-element_filter=Mn). Case-insensitive. Only consulted when no `selection` is \
-given."
-metal_state
-  .multiple = True
-  .help = "Force the electronic state of the metal site(s) matched by \
-`selection`. Authoritative: a matched block overrides the built-in guess, and \
-supplying both values lets qmi run a metal that has no built-in state. Repeat \
-the block to set different states for different sites; a site matched by no \
-block falls through to the built-in guess."
+sites
+  .short_caption = Metal sites
+  .help = "Which metal site(s) to build restraints for, and optional per-site \
+electronic-state overrides."
 {
   selection = None
     .type = str
-    .help = "Atom-selection string identifying the metal site(s) this state \
-applies to; the block is used for a site when its metal atom falls in the \
-selection (use e.g. 'element Zn' to cover every Zn). Required."
-  oxidation_state = None
-    .type = int
-    .help = "Metal oxidation state for the matched site(s). Falls back to the \
-built-in value when left unset."
-  multiplicity = None
-    .type = int(value_min=1)
-    .help = "Spin multiplicity 2S+1 for the matched site(s) (1 = singlet, \
-2 = doublet, 6 = high-spin d5 sextet; = number of unpaired electrons + 1). \
-Falls back to the built-in value when left unset."
+    .multiple = True
+    .short_caption = Site selection
+    .help = "Atom selection string(s) for the metal site(s); each entry seeds \
+one site. If omitted, every metal in the structure is used."
+  element_filter = None
+    .type = str
+    .multiple = True
+    .short_caption = Element filter
+    .help = "Restrict the metal scan to these element(s) (e.g. \
+element_filter=Zn element_filter=Mn). Case-insensitive; only consulted when no \
+selection is given."
+  metal_state
+    .multiple = True
+    .short_caption = Metal state override
+    .help = "Set the oxidation state and/or spin multiplicity for specific \
+metal site(s), overriding the built-in guess. Repeat the block for different \
+sites; a site matched by no block uses the built-in guess."
+  {
+    selection = None
+      .type = str
+      .help = "Atom selection for the site(s) this state applies to (e.g. \
+'element Zn' covers every Zn). Required."
+    oxidation_state = None
+      .type = int
+      .help = "Metal oxidation state for the matched site(s). Falls back to the \
+built-in value when unset."
+    multiplicity = None
+      .type = int(value_min=1)
+      .help = "Spin multiplicity (2S+1): number of unpaired electrons + 1 \
+(e.g. 1 = singlet, 2 = doublet, 6 = high-spin d5). Falls back to the built-in \
+value when unset."
+  }
 }
-buffer_radius = 3.0
-  .type = float(value_min=0)
-  .help = "Radius (Angstrom) of the endo_exo buffer region grown around each \
-metal seed to build the QM cluster."
-max_search_depth = 3
-  .type = int(value_min=0)
-  .help = "endo_exo BFS depth from any atom within the QM region."
-protonate = False
-  .type = bool
-  .help = "Add hydrogens with mmtbx.reduce2, place water hydrogens (naiad), and \
-deprotonate metal-coordinating donors (Cys/Tyr/Asp/Glu stripped to anionic; \
-His tautomer-aware) before building restraints. When False (default), the \
-model must already be protonated or the run aborts."
-water_protonation
-  .help = "Water-H placement quality knobs (naiad); only used when \
-protonate=True."
+qm_region
+  .short_caption = QM region
+  .help = "Size of the QM cluster grown around each metal site."
 {
-  refine {
-    max_sweeps = 5
-      .type = int(value_min=0)
-      .help = "Maximum relaxation sweeps re-placing each water against the \
-final environment to relax water-water clashes. 0 disables refinement; \
-sweeping stops early once a sweep clears fewer than 'tolerance' close contacts."
-    tolerance = 1
-      .type = int(value_min=0)
-      .help = "Stop refining once a sweep removes fewer than this many close \
-(<2.0 A) H-H contacts (1 = stop at a plateau, 0 = run all max_sweeps). The best \
-sweep is always kept."
-  }
-  basin {
-    rounds = 0
-      .type = int(value_min=0)
-      .help = "Basin-hopping rounds after refinement (0 = off): each round \
-randomly re-orients still-clashing waters and relaxes, keeping the best. \
-Deterministic (seeded); helps only where a better orientation exists."
-  }
-  lone_pair = False
-    .type = bool
-    .help = "Aim each O-H at an acceptor lone-pair lobe (from its \
-bonded-neighbour geometry) rather than its nucleus, for better \
-donor-H-acceptor angles."
-  joint = False
-    .type = bool
-    .help = "Optimize both O-H of a water together (best orientation \
-satisfying two acceptors at once) instead of placing H1 greedily then H2 on \
-its cone. Slower; falls back to greedy in crowded pockets."
-  stats = False
-    .type = bool
-    .help = "After placement, print the per-sweep water-H clash summary (count \
-of H-H contacts below 2.0/1.8/1.5 A between different waters, and the closest)."
-  stats_worst = None
+  radius = 4.0
+    .type = float(value_min=0)
+    .short_caption = Region radius (A)
+    .help = "Seed-inclusion radius (Angstrom): atoms within this distance of a \
+metal are pulled into the QM region. The final capped cluster can extend beyond \
+this radius."
+  max_search_depth = 3
     .type = int(value_min=0)
-    .help = "List the N closest residual water-H contacts with their residue \
-IDs (implies stats=True)."
+    .expert_level = 2
+    .short_caption = Max search depth
+    .help = "Maximum number of bonds to expand outward when growing the QM \
+region around each site."
 }
-solvent = ether
-  .type = str
-  .help = "ALPB named solvent for the xTB optimisation (nearest to the \
-protein-interior dielectric; empty string disables solvation)."
-temperature = 298.15
-  .type = float(value_min=0)
-  .help = "Temperature (K) for the modified-Seminario force-constant to sigma \
-conversion; the global restraint-tightness scalar (sigma proportional to \
+protonation
+  .short_caption = Protonation
+  .help = "Add hydrogens to the model before building restraints."
+{
+  enable = False
+    .type = bool
+    .short_caption = Protonate model
+    .help = "Add hydrogens (reduce2), place water hydrogens, and deprotonate \
+metal-coordinating donors (Cys/Tyr/Asp/Glu; His tautomer-aware) before \
+building restraints. When False (default), the input model must already be \
+protonated or the run aborts."
+  water
+    .short_caption = Water hydrogens
+    .help = "Water hydrogen placement options; only used when enable=True."
+  {
+    refine {
+      max_sweeps = 5
+        .type = int(value_min=0)
+        .help = "Maximum passes that re-place each water against its final \
+environment to relax water-water clashes (0 disables). Stops early once a pass \
+clears fewer than 'tolerance' close contacts."
+      tolerance = 1
+        .type = int(value_min=0)
+        .help = "Stop refining once a pass removes fewer than this many close \
+(<2.0 A) H-H contacts (1 = stop at a plateau, 0 = run all max_sweeps). The best \
+pass is always kept."
+    }
+    basin {
+      rounds = 0
+        .type = int(value_min=0)
+        .expert_level = 2
+        .help = "Extra rounds after refinement that randomly re-orient \
+still-clashing waters and keep the best result (0 = off). Deterministic; helps \
+only where a better orientation exists."
+    }
+    lone_pair = False
+      .type = bool
+      .expert_level = 2
+      .help = "Aim each O-H at an acceptor's lone pair rather than at the \
+acceptor atom, for better hydrogen-bond angles."
+    joint = False
+      .type = bool
+      .expert_level = 2
+      .help = "Optimize both O-H of a water together instead of one after the \
+other, for a better fit to two acceptors at once. Slower; falls back to the \
+simpler method in crowded pockets."
+    stats = False
+      .type = bool
+      .expert_level = 2
+      .help = "After placement, print a per-pass summary of water-H clashes \
+(H-H contacts below 2.0/1.8/1.5 A, and the closest)."
+    stats_worst = None
+      .type = int(value_min=0)
+      .expert_level = 2
+      .help = "List the N closest residual water-H contacts with their residue \
+IDs (implies stats=True)."
+  }
+}
+qm
+  .short_caption = QM / restraints
+  .help = "QM optimisation and restraint-tightness settings."
+{
+  solvent = ether
+    .type = str
+    .short_caption = Solvent model
+    .help = "Named solvent model for the xTB optimisation (default 'ether', \
+closest to the protein-interior dielectric). Empty string disables solvation."
+  temperature = 298.15
+    .type = float(value_min=0)
+    .short_caption = Temperature (K)
+    .help = "Temperature (K) used to convert QM force constants into restraint \
+sigmas: higher values give looser restraints (sigma scales with \
 sqrt(temperature))."
-write_files = True
-  .type = bool
-  .help = "If True (default), write the .edits file(s). Set False for \
-in-memory use (consume Program(...).get_results() directly)."
-combine = False
-  .type = bool
-  .help = "If True, write all sites' restraints to a single combined \
+}
+output
+  .style = menu_item auto_align
+  .short_caption = Output
+  .help = "Where and whether to write the restraint files."
+{
+  write_files = True
+    .type = bool
+    .short_caption = Write .edits files
+    .help = "If True (default), write the .edits restraint file(s) to disk. \
+Set False to consume results in memory via get_results()."
+  combine = False
+    .type = bool
+    .short_caption = Combine into one file
+    .help = "If True, write all sites' restraints to a single combined \
 <model_stem>_qmi.edits file instead of one file per site."
+  qm_work_dir = "qm_work_dir"
+    .type = path
+    .short_caption = QM working directory
+    .help = "Directory to hold the intermediate per-site xTB files (created if \
+absent). Set to '.' to write them in the current directory instead."
+}
 """
 
 
@@ -173,12 +221,12 @@ Requires xtb.
     if not self.data_manager.has_models():
       raise Sorry('No model provided. Please supply a PDB or mmCIF file.')
     model = self.data_manager.get_model()
-    for sel_str in [s for s in (self.params.selection or []) if s]:
+    for sel_str in [s for s in (self.params.sites.selection or []) if s]:
       try:
         model.selection(sel_str)
       except Exception as e:
         raise Sorry(f"Invalid selection string '{sel_str}': {e}")
-    for ms in (self.params.metal_state or []):
+    for ms in (self.params.sites.metal_state or []):
       if (ms.selection is None and ms.oxidation_state is None
           and ms.multiplicity is None):
         continue  # empty default block from a PHIL .multiple scope
@@ -198,30 +246,30 @@ Requires xtb.
       raise Sorry("xtb executable not found. qmi requires xtb; set the "
                   "PHENIX_XTB environment variable or install xtb in the "
                   "build.")
-    if self.params.protonate:
+    if self.params.protonation.enable:
       try:
         import mmtbx.programs.reduce2  # noqa: F401
       except ImportError:
-        raise Sorry("protonate=True requires mmtbx.reduce2, which is not "
-                    "available in this build.")
+        raise Sorry("protonation.enable=True requires mmtbx.reduce2, which is "
+                    "not available in this build.")
 
   def _require_hydrogens(self, model):
     """Protonation guard shared by validate() and run(): abort on an
-    unprotonated model unless protonate=True. Called from run() too, so a
-    programmatic caller that skips run_program's validate() is still guarded."""
-    if not model.has_hd() and not self.params.protonate:
+    unprotonated model unless protonation.enable=True. Called from run() too, so
+    a programmatic caller that skips run_program's validate() is still guarded."""
+    if not model.has_hd() and not self.params.protonation.enable:
       raise Sorry("The model does not appear to be protonated and qmi needs "
                   "hydrogens. Protonate it first (e.g. mmtbx.reduce2) or set "
-                  "protonate=True to add hydrogens during this run.")
+                  "protonation.enable=True to add hydrogens during this run.")
 
   def run(self):
     """Build the restraints and (optionally) write the per-site .edits."""
     model = self.data_manager.get_model()
     self._require_hydrogens(model)
-    p = self.params
-    element_filter = [e for e in (p.element_filter or []) if e and e.strip()]
-    selection = [s for s in (p.selection or []) if s]
-    if p.protonate:
+    element_filter = [e for e in (self.params.sites.element_filter or [])
+                      if e and e.strip()]
+    selection = [s for s in (self.params.sites.selection or []) if s]
+    if self.params.protonation.enable:
       from mmtbx.geometry_restraints.qmi import protonation
       from mmtbx.geometry_restraints.qmi import metals as qmi_metals
       # Deprotonate metal-coordinating donors for every metal element
@@ -233,7 +281,7 @@ Requires xtb.
       scope = set(qmi_metals.METALS)
       if element_filter:
         scope &= {e.strip().capitalize() for e in element_filter}
-      wp = p.water_protonation
+      wp = self.params.protonation.water
       model = protonation.prepare_model(
         model, metals=scope, log=self.logger,
         water_kwargs=dict(
@@ -246,17 +294,18 @@ Requires xtb.
     self._builder = QMRestraintsBuilder(
       metal_element=element_filter or None,
       selection=selection or None,
-      radius=p.buffer_radius,
-      max_depth=p.max_search_depth,
-      solvent_model=p.solvent,
-      temperature=p.temperature,
-      metal_states=p.metal_state,
+      radius=self.params.qm_region.radius,
+      max_depth=self.params.qm_region.max_search_depth,
+      solvent_model=self.params.qm.solvent,
+      temperature=self.params.qm.temperature,
+      metal_states=self.params.sites.metal_state,
+      work_dir=self.params.output.qm_work_dir,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()
     self._results = self._builder.run(model, model_name=self._model_name)
     self._show_summary()
-    if p.write_files:
+    if self.params.output.write_files:
       self._write_edits()
 
   def get_results(self):
@@ -284,7 +333,7 @@ Requires xtb.
             file=self.logger)
       return
     stem = os.path.splitext(os.path.basename(self._model_name))[0]
-    if self.params.combine:
+    if self.params.output.combine:
       out = f'{stem}_qmi.edits'
       n_bonds = sum(len(r.restraints.bonds) for r in emitted)
       n_angles = sum(len(r.restraints.angles) for r in emitted)
