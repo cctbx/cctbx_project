@@ -326,55 +326,36 @@ def get_angle_average(angles):
 def check_for_internal_chain_ter_records(
       pdb_hierarchy,
       ter_indices):
+  # A TER card splits the atoms into two runs. It is "internal" (errant) only
+  # when it cuts through a single contiguous chain, i.e. the protein/na atoms
+  # immediately before and after the card share the same chain id. A TER that
+  # terminates a chain is legitimate even when that chain id is reused later in
+  # the file -- a common layout when ligands or a second discontinuous segment
+  # sharing a protein chain id are grouped at the end of the file (e.g. the
+  # peptide-like 0ZZ ligand of PDB 1rhq, which reuses chain ids 'A'/'D' and is
+  # written after all four protein chains).
   if ter_indices.size() == 0: return
-  chains = pdb_hierarchy.chains()
-  atoms = pdb_hierarchy.atoms()
-  chain_ter_matches = {}
-  chain_ranges = {}
-  for chain in chains:
+  # i_seq range of every protein/na chain object. Chain objects have contiguous,
+  # disjoint i_seq ranges; the same chain id may span more than one object.
+  chain_intervals = []
+  for chain in pdb_hierarchy.chains():
     if not chain.is_protein() and not chain.is_na():
       continue
-    min = None
-    max = None
-    for atom in chain.atoms():
-      if min is not None:
-        if atom.i_seq < min:
-          min = atom.i_seq
-      else:
-        min = atom.i_seq
-      if max is not None:
-        if atom.i_seq > max:
-          max = atom.i_seq
-      else:
-        max = atom.i_seq
-    if chain_ranges.get(chain.id) is None:
-      chain_ranges[chain.id] = []
-    chain_ranges[chain.id].append( (min, max) )
-
-  #find min/max for all chains with same id
-  reduced_chain_ranges = {}
-  for key in chain_ranges.keys():
-    min_all = None
-    max_all = None
-    ranges = chain_ranges[key]
-    for min, max in ranges:
-      if min_all is not None:
-        if min < min_all:
-          min_all = min
-      else:
-        min_all = min
-      if max_all is not None:
-        if max > max_all:
-          max_all = max
-      else:
-        max_all = max
-    reduced_chain_ranges[key] = (min_all, max_all)
+    i_seqs = chain.atoms().extract_i_seq()
+    if i_seqs.size() == 0:
+      continue
+    chain_intervals.append((flex.min(i_seqs), flex.max(i_seqs), chain.id))
+  def chain_id_at(i_seq):
+    for i_min, i_max, chain_id in chain_intervals:
+      if i_min <= i_seq <= i_max:
+        return chain_id
+    return None
+  # ter_id is the i_seq of the first atom following the TER card.
   for ter_id in ter_indices:
-    for key in reduced_chain_ranges.keys():
-      min, max = reduced_chain_ranges[key]
-      if ter_id > min and ter_id < max:
-        raise Sorry("chain '%s' contains one or more "%(key)+
-                    "errant TER cards.\nPlease remove and try again.")
+    chain_id_before = chain_id_at(ter_id - 1)
+    if chain_id_before is not None and chain_id_before == chain_id_at(ter_id):
+      raise Sorry("chain '%s' contains one or more "%(chain_id_before)+
+                  "errant TER cards.\nPlease remove and try again.")
 
 def get_torsion_id(dp,
                    name_hash,
