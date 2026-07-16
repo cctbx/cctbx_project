@@ -406,8 +406,9 @@ class AgentSession:
     # A tool that opted out of standing approval (allow_remember=False -- the
     # coot force-close) ALWAYS confirms via a card, regardless of a permissive
     # tool_policy. Scoped to the opt-out flag, NOT risk, so a destructive tool
-    # that still offers "Always allow" keeps it. Only the blanket --auto-approve
-    # (handled in the chat window) may skip the card.
+    # that still offers "Always allow" keeps it. Even the blanket --auto-approve
+    # honors this floor (the chat window shows the card for an allow_remember=
+    # False tool rather than auto-approving it).
     if policy == "allow" and not self.tools.allow_remember_of(call.name):
       policy = "ask"
     if policy == "deny":
