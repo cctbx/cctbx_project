@@ -57,6 +57,12 @@ class ChatTopBar(QtWidgets.QFrame):
       QtCore.Qt.TextSelectableByMouse)
     self.model_label.setMaximumWidth(_SIDE_SLOT_MAX_WIDTH)
     self.debug_label.setMaximumWidth(_SIDE_SLOT_MAX_WIDTH)
+    # The stretch share can hand a slot more width than its text; keep the
+    # blank on the title side, not against the window edge.
+    self.model_label.setAlignment(
+      QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+    self.debug_label.setAlignment(
+      QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
     layout.addWidget(self.title_label, stretch=_TITLE_STRETCH)
     layout.addWidget(self.model_label, stretch=_SIDE_STRETCH)

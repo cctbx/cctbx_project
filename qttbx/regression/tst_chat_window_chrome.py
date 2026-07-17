@@ -153,6 +153,54 @@ def exercise_top_bar_gives_the_title_priority_over_the_side_slots():
       % (width, bar.title_label.width()))
 
 
+def exercise_top_bar_pins_side_slot_text_to_the_right_edge():
+  """A short model id / debug path must hug the bar's right edge.
+
+  The side slots take a stretch share of surplus width (that share is what
+  spreads the SHORTFALL on a narrow bar instead of collapsing the title), so
+  on a wide bar each slot is wider than its text. A QLabel paints where its
+  alignment says: with the default AlignLeft the model id floats mid-bar
+  with the blank space on its right -- it used to sit flush against the
+  right edge when the slots took no stretch (stretch=0 slots hug their
+  text). The slots must right-align so the surplus lands on their LEFT.
+  If the side slots ever go back to taking no stretch, slot width == text
+  width and this alignment requirement is vacuous, not wrong.
+  """
+  app = _qapp()
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.chat_top_bar import ChatTopBar
+  bar = ChatTopBar()
+  bar.set_title("profile / hi")
+  bar.set_model("fable")
+  bar.show()
+  bar.resize(900, 28)
+  app.processEvents()
+  # Preconditions for the regression: the model slot is the rightmost
+  # visible slot, ends at the bar's right content edge, and is wider than
+  # its text (i.e. there IS surplus for alignment to place).
+  assert bar.debug_label.isHidden()
+  gap = bar.width() - 1 - bar.model_label.geometry().right()
+  assert gap <= 10, (
+    "model slot ends %d px short of the bar's right edge" % gap)
+  fm = bar.model_label.fontMetrics()
+  assert bar.model_label.width() > fm.size(
+    QtCore.Qt.TextSingleLine, "fable").width(), \
+    "precondition: the model slot should be wider than its text"
+  assert bar.model_label.alignment() & QtCore.Qt.AlignRight, (
+    "model id paints at the left of its %d px slot, leaving the blank "
+    "space against the bar's right edge" % bar.model_label.width())
+  # With the debug slot shown it becomes the rightmost slot and takes the
+  # same surplus, so a short path has the same problem.
+  bar.set_debug_log_path("/tmp/chat.log")
+  app.processEvents()
+  gap = bar.width() - 1 - bar.debug_label.geometry().right()
+  assert gap <= 10, (
+    "debug slot ends %d px short of the bar's right edge" % gap)
+  assert bar.debug_label.alignment() & QtCore.Qt.AlignRight, (
+    "debug path paints at the left of its %d px slot, leaving the blank "
+    "space against the bar's right edge" % bar.debug_label.width())
+
+
 def exercise_top_bar_re_elides_the_title_when_a_sibling_takes_its_width():
   """The title must re-elide when the layout -- not the window -- resizes it.
 
@@ -274,6 +322,7 @@ def exercise():
   exercise_top_bar_elides_long_title_and_keeps_the_full_text()
   exercise_top_bar_model_and_debug_labels_do_not_floor_the_bar_width()
   exercise_top_bar_gives_the_title_priority_over_the_side_slots()
+  exercise_top_bar_pins_side_slot_text_to_the_right_edge()
   exercise_top_bar_re_elides_the_title_when_a_sibling_takes_its_width()
   exercise_top_bar_shows_and_hides_debug_log_path()
   exercise_left_rail_starts_collapsed_and_toggles()
