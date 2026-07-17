@@ -21,6 +21,18 @@ namespace smtbx { namespace structure_factors { namespace direct {
         self.evaluate(h);
       }
 
+      static af::shared<complex_type>
+      evaluate_many(wt &self, af::const_ref<miller::index<> > const &indices)
+      {
+        af::shared<complex_type> result;
+        result.reserve(indices.size());
+        for (std::size_t i = 0; i < indices.size(); ++i) {
+          self.evaluate(indices[i]);
+          result.push_back(self.f_calc);
+        }
+        return result;
+      }
+
       static void linearise(wt &self, miller::index<> const &h) {
         self.linearise(h);
       }
@@ -57,6 +69,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         (*this)
           .def("evaluate" , evaluate , args("miller_index"))
           .def("linearise", linearise, args("miller_index"))
+          .def("evaluate_many", evaluate_many, args("miller_indices"))
           .add_property("f_calc", f_calc)
           .add_property("observable", observable)
           .add_property("grad_f_calc", grad_f_calc)
