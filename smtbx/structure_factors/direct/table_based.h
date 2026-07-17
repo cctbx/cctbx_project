@@ -308,20 +308,33 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       // Size the table up front and fill it in place: pushing each row back
       // copies it, which is another pass over the whole table.
       parent_t::data_.resize(nr_hkl[0]);
+      bool scatterers_are_in_file_order = (n_columns == static_cast<size_t>(nr_scat));
+      if (scatterers_are_in_file_order) {
+        for (int i = 0; i < nr_scat; i++) {
+          if (sc_indices[i] != static_cast<size_t>(i)) {
+            scatterers_are_in_file_order = false;
+            break;
+          }
+        }
+      }
       for (int run = 0; run < *nr_hkl; run++) {
         tsc_file.read((char*)&index, 3*intsize);
         cctbx::miller::index<> mi(index[0], index[1], index[2]);
         parent_t::miller_indices_.push_back(mi);
-        // A read per scatterer spends more in stream bookkeeping than it
-        // moves, and a table holds one row per reflection: take the row in one
-        // read and put the scatterers in their places afterwards.
-        tsc_file.read((char*)&buffer[0], n_columns * complex_doublesize);
-        vector<complex_type> &target = parent_t::data_[run];
         // an atom the table misses keeps a zero here and is served elsewhere
+        vector<complex_type> &target = parent_t::data_[run];
         target.assign(nr_scat, complex_type(0));
-        for (size_t i = 0; i < n_columns; i++) {
-          if (sc_indices[i] != ~0) {
-            target[sc_indices[i]] = buffer[i];
+        if (scatterers_are_in_file_order) {
+          tsc_file.read((char*)target.data(), nr_scat * complex_doublesize);
+        }
+        else {
+          // A read per scatterer spends more in stream bookkeeping than it
+          // moves, and a table holds one row per reflection: take the row in one
+          // read and put the scatterers in their places afterwards.
+          tsc_file.read((char*)&buffer[0], n_columns * complex_doublesize);
+          for (size_t i = 0; i < n_columns; i++) {
+            if (sc_indices[i] != ~0) {
+              target[sc_indices[i]] = buffer[i];
           }
         }
       }
@@ -608,6 +621,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
       SMTBX_ASSERT(data_.is_expanded());
       const af::shared<cctbx::miller::index<> > &indices = data_.miller_indices();
+      data = data_.data();
       for (size_t i = 0; i < data.size(); i++) {
         (*mi_lookup)[indices[i]] = i;
       }
