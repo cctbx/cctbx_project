@@ -1,4 +1,4 @@
-"""H-bond-aware placement of hydrogens on water (HOH/DOD) residues.
+"""H-bond-aware placement of hydrogens on water residues.
 
 Thin DataManager/PHIL wrapper around
 :func:`mmtbx.hydrogens.water_protonation.place_water_hydrogens`. The
@@ -59,17 +59,7 @@ basin
 stats = False
   .type = bool
   .short_caption = Report water-H clashes
-  .help = "After placement, print the per-sweep water-H clash summary (count of H-H contacts below 2.0/1.8/1.5 A between different waters, and the closest contact)."
-stats_worst = None
-  .type = int(value_min=0)
-  .short_caption = List worst contacts
-  .help = "List the N closest residual water-H contacts with their residue IDs (implies stats=True)."
-output {
-  format = *mmcif pdb
-    .type = choice(multi=False)
-    .short_caption = Output format
-    .help = "Output format. mmCIF by default (PDB format breaks on large structures); pdb falls back to mmCIF when the structure does not fit the standard PDB format."
-}
+  .help = "After placement, print the per-sweep water-H clash summary and list the residual inter-water H-H contacts, grouped by the 1.5/1.8/2.0 A thresholds."
 '''
 
 
@@ -77,7 +67,7 @@ class Program(ProgramTemplate):
   description = '''
 mmtbx.naiad: H-bond-aware placement of hydrogens on water residues.
 
-Adds the two H atoms to every bare HOH/DOD oxygen in a model, orienting each
+Adds the two H atoms to every bare water oxygen in a model, orienting each
 proton toward a nearby H-bond acceptor while staying clash-free against the
 whole structure (including H placed on other waters) and keeping off metal
 cations. Map-free and library-free -- placement is purely from geometry.
@@ -85,8 +75,9 @@ cations. Map-free and library-free -- placement is purely from geometry.
 Inputs:
   PDB or mmCIF file containing an atomic model.
 Output:
-  Model with water hydrogens added (mmCIF by default), written to
-  <model-stem>_waters_protonated.<ext> unless output.file_name is given.
+  Model with water hydrogens added, written to
+  <model-stem>_waters_protonated.<ext> unless output.file_name is given. The
+  format follows the input (output.target_output_format overrides it).
 
 By default it is idempotent: waters that already carry H are left untouched
 (reorient_existing=True strips and re-places them).
@@ -104,8 +95,6 @@ By default it is idempotent: waters that already carry H are left untouched
       expected_n  = 1,
       exact_count = True)
     # Non-negativity of the int params is enforced by value_min=0 in the PHIL.
-    if self.params.stats_worst is not None:
-      self.params.stats = True   # listing offenders only makes sense with stats
 
   # ----------------------------------------------------------------------------
 
@@ -117,11 +106,11 @@ By default it is idempotent: waters that already carry H are left untouched
     # O-H distance: honour an explicit choice, else infer from the structure.
     if self.params.oh_distance == "auto":
       neutron, source = water_protonation._detect_neutron(pdb_in, hier)
-      print("O-H distance: %s (auto: %s)"
-            % ("neutron" if neutron else "X-ray", source), file=self.logger)
+      kind = "neutron" if neutron else "X-ray"
+      print(f"O-H distance: {kind} (auto: {source})", file=self.logger)
     else:
       neutron = self.params.oh_distance == "neutron"
-      print("O-H distance: %s (forced)" % self.params.oh_distance,
+      print(f"O-H distance: {self.params.oh_distance} (forced)",
             file=self.logger)
     oh = water_protonation._WATER_OH_NEUTRON if neutron \
         else water_protonation._WATER_OH_XRAY
@@ -129,9 +118,9 @@ By default it is idempotent: waters that already carry H are left untouched
     # Element: "auto" leaves the per-residue choice (DOD->D, HOH->H) to the
     # placer (element=None); "H"/"D" force it.
     placer_element = None if self.params.element == "auto" else self.params.element
-    print("water hydrogen element: %s"
-          % ("auto (H for HOH, D for DOD)" if placer_element is None
-             else placer_element), file=self.logger)
+    element_desc = ("auto (H for HOH, D for DOD)" if placer_element is None
+                    else placer_element)
+    print(f"water hydrogen element: {element_desc}", file=self.logger)
 
     # Consistency warning: deuterium is modelled only from neutron (or joint)
     # data, whose O-D distances are the longer neutron value. Placing D at the
@@ -143,16 +132,15 @@ By default it is idempotent: waters that already carry H are left untouched
                     and any(ag.resname.strip().upper() == "DOD"
                             for ag in hier.atom_groups())))
     if places_d and not neutron:
-      print("warning: placing D (deuterium) at the X-ray O-H length (%.3f A); "
-            "deuterium is normally neutron-derived and uses the longer neutron "
-            "distance (%.3f A). Pass oh_distance=neutron for consistent "
-            "geometry." % (water_protonation._WATER_OH_XRAY,
-                           water_protonation._WATER_OH_NEUTRON),
-            file=self.logger)
+      xray = water_protonation._WATER_OH_XRAY
+      neut = water_protonation._WATER_OH_NEUTRON
+      print(f"warning: placing D (deuterium) at the X-ray O-H length "
+            f"({xray:.3f} A); deuterium is normally neutron-derived and uses "
+            f"the longer neutron distance ({neut:.3f} A). Pass "
+            f"oh_distance=neutron for consistent geometry.", file=self.logger)
 
     n_before = self._count_water_h(hier)
     report_stats = self.params.stats
-    n_worst = self.params.stats_worst if self.params.stats_worst is not None else 0
 
     # Stream the clash table as the sweeps complete. The summary line and
     # header print lazily on the first state (after the greedy pass, when the
@@ -162,8 +150,8 @@ By default it is idempotent: waters that already carry H are left untouched
       if not header["printed"]:
         print(self._summary(n_before, self._count_water_h(hier)),
               file=self.logger)
-        print("water H clash report (%d placed; H-H between different "
-              "waters):" % stats[0], file=self.logger)
+        print(f"water H clash report ({stats[0]} placed; H-H between "
+              f"different waters):", file=self.logger)
         header["printed"] = True
       water_protonation._clash_row(label, stats, self.logger)
 
@@ -187,68 +175,44 @@ By default it is idempotent: waters that already carry H are left untouched
       print(self._summary(n_before, n_after), file=self.logger)
     elif header["printed"]:
       if kept_label is not None:
-        print("  kept: %s" % kept_label, file=self.logger)
-      if n_worst:
-        worst = water_protonation._worst_water_clashes(hier, n_worst)
-        if worst:
-          print("  worst %d contacts:" % len(worst), file=self.logger)
-          for d, id_a, id_b in worst:
-            print("    %.2f A  %s  <->  %s" % (d, id_a, id_b),
-                  file=self.logger)
-        else:
-          print("  no contacts < 2.0 A", file=self.logger)
+        print(f"  kept: {kept_label}", file=self.logger)
+      self._print_residual_contacts(hier)
 
     self.model = model
-    self._write_output(model, hier)
+    self._write_output(model)
 
   # ----------------------------------------------------------------------------
 
-  def _write_output(self, model, hier):
-    """Serialize the (in-place mutated) hierarchy and write via DataManager.
+  def _write_output(self, model):
+    """Write the (in-place mutated) model via the DataManager.
 
-    mmCIF by default; 'pdb' is honoured only if the structure fits the
-    standard PDB format, else it falls back to mmCIF with a note. The output
-    extension is forced to match the format actually written.
+    Format follows the input, or ``output.target_output_format`` when set,
+    dropping to mmCIF for structures too large for the standard PDB format.
+    The writer fixes the extension to match the format actually written.
     """
     # New H atoms come back with blank serial numbers; the mmCIF writer
     # rejects blanks as "invalid number literal". Re-number first.
-    hier.atoms().reset_serial()
-    cs = model.crystal_symmetry()
+    model.get_hierarchy().atoms().reset_serial()
+    self.output_file_name = self.data_manager.write_model_file(
+      model, filename=self._output_file_name())
+    print(f"Wrote file: {self.output_file_name}", file=self.logger)
 
-    as_pdb = (self.params.output.format == "pdb"
-              and hier.fits_in_pdb_format(use_hybrid36=False))
-    if self.params.output.format == "pdb" and not as_pdb:
-      print("note: structure does not fit standard PDB format; "
-            "writing mmCIF instead", file=self.logger)
-
-    ext = "pdb" if as_pdb else "cif"
-    self.output_file_name = self._output_file_name(ext)
-    if as_pdb:
-      txt = hier.as_pdb_string(crystal_symmetry=cs)
-    else:
-      txt = hier.as_mmcif_string(crystal_symmetry=cs)
-    self.data_manager.write_model_file(
-      model_str = txt,
-      filename  = self.output_file_name,
-      format    = ext)
-    print("Wrote file: %s" % self.output_file_name, file=self.logger)
-
-  def _output_file_name(self, ext):
-    """``output.file_name`` (extension forced to ``ext``), else the default
-    ``<model-stem>_waters_protonated.<ext>``."""
+  def _output_file_name(self):
+    """``output.file_name`` if given, else the default
+    ``<model-stem>_waters_protonated``. The writer appends the extension."""
     # output.file_name and output.filename are PHIL aliases; honour either.
     given = self.params.output.file_name or self.params.output.filename
     if given is not None:
-      return os.path.splitext(given)[0] + "." + ext
+      return given
     stem = os.path.splitext(os.path.basename(
       self.data_manager.get_default_model_name()))[0]
-    return "%s_waters_protonated.%s" % (stem, ext)
+    return f"{stem}_waters_protonated"
 
   @staticmethod
   def _count_water_h(hier):
     return sum(
       1 for ag in hier.atom_groups()
-      if ag.resname.strip().upper() in ("HOH", "DOD")
+      if water_protonation._is_water(ag.resname)
       for a in ag.atoms()
       if a.element.strip().upper() in ("H", "D"))
 
@@ -257,9 +221,25 @@ By default it is idempotent: waters that already carry H are left untouched
     # With reorient_existing the existing H were stripped and re-placed, so
     # report the reoriented count (the net change alone reads as "+0").
     if self.params.reorient_existing and n_before:
-      return ("water H/D atoms: %d -> %d (reoriented %d, +%d)"
-              % (n_before, n_now, n_before, added))
-    return "water H/D atoms: %d -> %d (+%d)" % (n_before, n_now, added)
+      return (f"water H/D atoms: {n_before} -> {n_now} "
+              f"(reoriented {n_before}, +{added})")
+    return f"water H/D atoms: {n_before} -> {n_now} (+{added})"
+
+  def _print_residual_contacts(self, hier):
+    """List the residual inter-water H-H contacts (< 2.0 A) with residue IDs,
+    grouped into the 1.5/1.8/2.0 A bands and closest-first within each band."""
+    contacts = water_protonation._worst_water_clashes(hier)
+    if not contacts:
+      print("  no contacts < 2.0 A", file=self.logger)
+      return
+    print("  residual contacts:", file=self.logger)
+    for label, lo, hi in (("< 1.5 A", 0.0, 1.5),
+                          ("1.5-1.8 A", 1.5, 1.8),
+                          ("1.8-2.0 A", 1.8, 2.0)):
+      band = [c for c in contacts if lo <= c[0] < hi]
+      print(f"    {label} ({len(band)}):", file=self.logger)
+      for d, id_a, id_b in band:
+        print(f"      {d:.2f} A  {id_a}  <->  {id_b}", file=self.logger)
 
   # ----------------------------------------------------------------------------
 
