@@ -223,7 +223,142 @@ def exercise_non_dict_options_do_not_crash():
   assert fired and fired[0][0] == "q_opt", fired
 
 
+def _card_min_width(questions):
+  """Minimum width a fresh card reports for ``questions``."""
+  from qttbx.widgets.chat.question_card import QuestionCard
+  card = QuestionCard()
+  card.set_request("r1", questions)
+  return card.minimumSizeHint().width()
+
+
+def exercise_unbroken_question_header_does_not_floor_the_card_width():
+  """A long header chip must not widen the card, even as one unbroken token.
+
+  'header' is model-controlled: meant to be a ~12-char chip, but nothing
+  enforces that, and an over-long one floors the card's -- and hence the whole
+  ConversationView's -- minimum width, stopping the bubbles tracking the
+  window. The chip elides rather than wraps: word wrap would not have unfloored
+  it anyway, since a wrapped QLabel reports its widest unbreakable token as its
+  minimumSizeHint width, so a space-free header (a snake_case identifier, a
+  path, a URL) would floor the card exactly as the whole string would.
+
+  Measured against the same card with a conventional short header, not against
+  an absolute pixel budget: the card's fixed chrome (the '<assistant> needs an
+  answer:' head, the Other row, Submit) scales with the platform's font
+  metrics, and a font-less Qt -- the Windows CI conda build ships no
+  Library/lib/fonts, so every glyph measures as a fallback box the size of the
+  font -- pushes that chrome past any absolute budget while the chip behaves
+  perfectly. Only the header differs between the two payloads, so the delta is
+  exactly what the chip adds.
+  """
+  _qapp()
+  base_width = _card_min_width([{
+    "question": "Which backend?",
+    "header": "Backend",
+    "multiSelect": False,
+    "options": [{"label": "a", "description": "d"},
+                {"label": "b", "description": "d"}],
+  }])
+  wide_width = _card_min_width([{
+    "question": "Which backend?",
+    "header": "backend_selection_strategy_for_this_conversation_including_"
+              "every_fallback_we_might_conceivably_need",
+    "multiSelect": False,
+    "options": [{"label": "a", "description": "d"},
+                {"label": "b", "description": "d"}],
+  }])
+  assert wide_width <= base_width, (
+    "question card minimum width grew from %d to %d when the header became "
+    "one unbroken token" % (base_width, wide_width))
+
+
+def exercise_long_option_description_does_not_floor_the_card_width():
+  """Option rows must not widen the card either.
+
+  QCheckBox / QRadioButton neither wrap nor elide, so folding the
+  model-controlled 'label -- description' text into the button text reports
+  its full width as the row's minimumSizeHint. Option descriptions are
+  sentence-length by design, so this is ordinary output rather than an edge
+  case -- and it re-floors the whole ConversationView the way the inlined Coot
+  error did. Same short-payload baseline as the header test, for the same
+  font-metrics reason; only the descriptions differ between the two payloads.
+  """
+  _qapp()
+  base_width = _card_min_width([{
+    "question": "Which backend?",
+    "header": "Backend",
+    "multiSelect": False,
+    "options": [{"label": "claude_code", "description": "d"},
+                {"label": "anthropic", "description": "d"}],
+  }])
+  wide_width = _card_min_width([{
+    "question": "Which backend?",
+    "header": "Backend",
+    "multiSelect": False,
+    "options": [
+      {"label": "claude_code",
+       "description": "Reuse the existing Claude Code OAuth login so no API "
+                      "key is needed; this is the default and works for "
+                      "every profile that does not pin its own backend."},
+      {"label": "anthropic",
+       "description": "Call the Anthropic API directly with "
+                      "PHENIX_ANTHROPIC_API_KEY, falling back to "
+                      "ANTHROPIC_API_KEY when the prefixed one is unset."},
+    ],
+  }])
+  assert wide_width <= base_width, (
+    "question card minimum width grew from %d to %d under sentence-length "
+    "option descriptions" % (base_width, wide_width))
+
+
+def exercise_long_option_description_stays_readable():
+  """Unflooring an option row must not cost the user the description text.
+
+  The description is what the user reads to choose between options, so it has
+  to stay fully rendered at a narrow width rather than being elided away to an
+  ellipsis.
+  """
+  from qttbx.widgets.chat.question_card import QuestionCard
+  app = _qapp()
+  desc = ("Reuse the existing Claude Code OAuth login so no API key is "
+          "needed; this is the default for every profile.")
+  card = QuestionCard()
+  card.set_request("r1", [{
+    "question": "Which backend?",
+    "header": "Backend",
+    "multiSelect": False,
+    "options": [{"label": "claude_code", "description": desc},
+                {"label": "anthropic", "description": "Use an API key."}],
+  }])
+  card.resize(360, 500)
+  card.show()
+  app.processEvents()
+  rendered = _rendered_text(card)
+  assert desc in rendered, (
+    "option description is not rendered in full anywhere on the card")
+  assert "claude_code" in rendered, "option label went missing"
+
+
+def _rendered_text(widget):
+  """Concatenate the text of every child widget that carries any."""
+  parts = []
+  for child in widget.findChildren(QtWidgets.QWidget):
+    getter = getattr(child, "text", None)
+    if not callable(getter):
+      continue
+    try:
+      value = getter()
+    except TypeError:
+      continue
+    if isinstance(value, str):
+      parts.append(value)
+  return "\n".join(parts)
+
+
 def exercise():
+  exercise_unbroken_question_header_does_not_floor_the_card_width()
+  exercise_long_option_description_does_not_floor_the_card_width()
+  exercise_long_option_description_stays_readable()
   exercise_single_select_emits_chosen_label()
   exercise_single_select_other_overrides_radio()
   exercise_multi_select_collects_all_checked()

@@ -23,6 +23,16 @@ def _qapp():
   return QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
 
+# The shape of error a force-killed Coot bridge produces: long, single-line,
+# and routed to the failing tool's disclosure cell. Kept verbatim in
+# tst_chat_conversation_widgets.py, which exercises the same failure one
+# layer out (at the ConversationView) -- change both together.
+LONG_TOOL_ERROR = (
+  "MCP error -32000: Connection closed. Failed to connect to the Coot RPC "
+  "bridge at 127.0.0.1:44100: [Errno 61] Connection refused. The Coot "
+  "process may have exited or been killed; restart Coot and retry.")
+
+
 def exercise_renders_user_text():
   from qttbx.widgets.chat.message_bubble import MessageBubble
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
@@ -624,6 +634,170 @@ def exercise():
   exercise_tool_cell_cancelled_marks_terminal_state()
   exercise_cancel_running_tools_sweeps_only_running_cells()
   exercise_short_json_shared_from_tool_approval_not_redefined()
+  exercise_failed_tool_error_goes_to_the_body_not_the_header()
+  exercise_failed_tool_header_status_is_clamped_to_one_short_line()
+  exercise_long_tool_name_alone_does_not_floor_the_header_width()
+  exercise_tool_header_hugs_its_text_instead_of_spanning_the_bubble()
+  exercise_failed_tool_shows_the_error_even_when_a_result_is_present()
+  exercise_non_str_tool_error_renders_instead_of_crashing()
+  exercise_non_str_status_renders_instead_of_crashing()
+
+
+def exercise_failed_tool_error_goes_to_the_body_not_the_header():
+  """A failed tool's error text is shown in the disclosure body, not inlined
+  into the header.
+
+  The header is a QToolButton: it never elides and its minimumSizeHint is its
+  full text width, so an inlined error floors the bubble's -- and hence the
+  whole ConversationView's -- minimum width. The body's result view already
+  wraps and auto-heights, and is where bulk tool output belongs. The header
+  still says 'failed' so the state stays readable while collapsed.
+  """
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  b = MessageBubble(role="assistant")
+  b.add_tool_use_cell(tool_id="t1", name="mcp__coot__run_python", args={})
+  b.set_tool_use_finished(tool_id="t1", error=LONG_TOOL_ERROR)
+  cell = b._tool_cells_by_id["t1"]
+  header = cell.header_button.text()
+  assert "failed" in header, header
+  assert LONG_TOOL_ERROR not in header, "full error inlined into the header"
+  assert LONG_TOOL_ERROR in cell.result_view.toPlainText(), \
+    "error text was dropped instead of being shown in the body"
+  # The floor this bug was made of: the header must stay narrow enough that a
+  # bubble can still shrink with the window.
+  assert cell.header_button.minimumSizeHint().width() < 400, \
+    cell.header_button.minimumSizeHint().width()
+
+
+def exercise_failed_tool_header_status_is_clamped_to_one_short_line():
+  """Defense in depth for the header floor: whatever a caller passes as a
+  status, the rendered header stays a short single line (full text on the
+  tooltip). Without this, any future long status would re-floor the layout the
+  way the inlined error did."""
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  cell = ToolCallDisclosure(name="Bash", status="running")
+  cell.set_status("failed: line one\nline two\n" + "x" * 500, color="error")
+  header = cell.header_button.text()
+  assert "\n" not in header, "header must stay a single line"
+  assert len(header) < 120, len(header)
+  assert cell.header_button.minimumSizeHint().width() < 400, \
+    cell.header_button.minimumSizeHint().width()
+  assert "line two" in cell.header_button.toolTip(), \
+    "full status should remain available on the tooltip"
+
+
+def exercise_long_tool_name_alone_does_not_floor_the_header_width():
+  """The tool name reaches the header with no clamp of any kind.
+
+  Nothing bounds a server-registered tool name, and add_tool_use_cell renders
+  it straight into the QToolButton -- so a long one floors the view on its own,
+  before any status is considered, and does so again on every reload.
+  """
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  cell = ToolCallDisclosure(
+    name="mcp__structure_tools__" + "compute_real_space_correlation" * 3,
+    status="running")
+  assert cell.header_button.minimumSizeHint().width() < 400, (
+    "header minimum width %d is floored by the tool name alone"
+    % cell.header_button.minimumSizeHint().width())
+
+
+def exercise_tool_header_hugs_its_text_instead_of_spanning_the_bubble():
+  """The disclosure header is a button, not a banner.
+
+  QToolButton defaults to a Fixed horizontal policy exactly so that it hugs
+  its text: with autoRaise on, the hover highlight then covers the row you can
+  actually click and nothing more. Making the header shrinkable (so a long
+  tool name cannot floor the view) must not also make it growable -- that
+  stretches it to the full bubble width and lights the whole bubble up on
+  hover.
+  """
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.agent.conversation import Message
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  view = ConversationView()
+  bub = view.add_message(Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "Fitting the ligand now."})]))
+  bub.add_tool_use_cell(tool_id="t1", name="coot_ping", args={})
+  bub.set_tool_use_finished(tool_id="t1", result="pong", elapsed="0.1s")
+  view.resize(900, 600)
+  view.show()
+  app.processEvents()
+  header = bub._tool_cells_by_id["t1"].header_button
+  assert header.width() <= header.sizeHint().width() + 2, (
+    "header grew to %d px past its %d px of text"
+    % (header.width(), header.sizeHint().width()))
+  assert header.width() < bub.width(), (
+    "header spans the whole %d px bubble instead of hugging its text"
+    % bub.width())
+  del MessageBubble
+
+
+def exercise_failed_tool_shows_the_error_even_when_a_result_is_present():
+  """Passing both result and error must not silently discard the error.
+
+  Both are documented parameters of set_tool_use_finished, and the old header
+  showed 'failed: <error>' regardless of result. Routing the error into the
+  body only when result is None loses it entirely for a caller that has both:
+  the header says a bare 'failed' and the error appears nowhere at all.
+  """
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  b = MessageBubble(role="assistant")
+  b.add_tool_use_cell(tool_id="t1", name="mcp__coot__run_python", args={})
+  b.set_tool_use_finished(
+    tool_id="t1", result="partial output before the bridge died",
+    error=LONG_TOOL_ERROR)
+  cell = b._tool_cells_by_id["t1"]
+  body = cell.result_view.toPlainText()
+  assert "partial output before the bridge died" in body, body
+  assert LONG_TOOL_ERROR in body, (
+    "the error was discarded because a result was also passed")
+
+
+def exercise_non_str_tool_error_renders_instead_of_crashing():
+  """A non-str error must render, not raise.
+
+  The docstring asks only for an 'error message', and the old header coerced
+  whatever it got via '%s'. Routing the value into set_result drops that
+  coercion, so an exception object reaches QPlainTextEdit.setPlainText and
+  raises TypeError inside the handler processing the tool result -- the cell
+  never reaches a terminal state and the traceback surfaces mid-turn.
+  """
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  b = MessageBubble(role="assistant")
+  b.add_tool_use_cell(tool_id="t1", name="mcp__coot__run_python", args={})
+  b.set_tool_use_finished(tool_id="t1", error=RuntimeError("bridge is gone"))
+  cell = b._tool_cells_by_id["t1"]
+  assert "bridge is gone" in cell.result_view.toPlainText(), \
+    cell.result_view.toPlainText()
+  assert "failed" in cell.header_button.text(), cell.header_button.text()
+
+
+def exercise_non_str_status_renders_instead_of_crashing():
+  """Same coercion drop, second site: set_status on a non-str value.
+
+  The old header build coerced any object via '%s'; splitting the raw status
+  to clamp it calls .split() on whatever it is, so an exception object raises
+  AttributeError out of set_status instead of rendering.
+  """
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  cell = ToolCallDisclosure(name="Bash", status="running")
+  cell.set_status(ValueError("boom"), color="error")
+  assert "boom" in cell.header_button.text(), cell.header_button.text()
 
 
 def _png_bytes(width=10, height=10):

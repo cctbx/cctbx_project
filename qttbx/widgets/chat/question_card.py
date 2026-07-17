@@ -10,6 +10,9 @@ the selected label (or list of labels).
 
 from qttbx.qt import QtCore, QtWidgets
 
+from qttbx.widgets.chat.eliding import ElidingCheckBox, ElidingLabel
+from qttbx.widgets.chat.eliding import ElidingRadioButton, WrappingLabel
+
 
 class QuestionCard(QtWidgets.QFrame):
   """Single card carrying one or more questions.
@@ -247,13 +250,19 @@ class QuestionCard(QtWidgets.QFrame):
     v.setContentsMargins(0, 4, 0, 4)
     header = q.get("header")
     if header:
-      hl = QtWidgets.QLabel("[%s] " % header, frame)
+      # 'header' is model-controlled and only conventionally short. It is a
+      # chip, so it elides rather than wraps -- and word wrap would not have
+      # unfloored it anyway: a wrapped QLabel reports its widest unbreakable
+      # token as its minimumSizeHint width, so a lone snake_case identifier or
+      # URL would still floor the card's, and with it the whole view's,
+      # minimum width.
+      hl = ElidingLabel(frame)
       hl.setStyleSheet("color: palette(mid);")
+      hl.set_full_text("[%s] " % header)
       v.addWidget(hl)
     text = q.get("question", "")
     if text:
-      tl = QtWidgets.QLabel(text, frame)
-      tl.setWordWrap(True)
+      tl = WrappingLabel(text, frame)
       v.addWidget(tl)
     multi_select = bool(q.get("multiSelect", False))
     options = q.get("options", []) or []
@@ -274,13 +283,26 @@ class QuestionCard(QtWidgets.QFrame):
         label, desc = opt, ""
       else:
         continue
-      text_full = "%s -- %s" % (label, desc) if desc else label
+      # The button carries only the label. QCheckBox / QRadioButton neither
+      # wrap nor elide, and an option description is sentence-length by
+      # design, so keeping 'label -- description' in the button text floored
+      # the card's minimum width and with it the whole ConversationView's.
+      # Wrapped underneath it also reads the way the user actually uses it:
+      # the description is what they read to choose between the options.
       if multi_select:
-        btn = QtWidgets.QCheckBox(text_full, frame)
+        btn = ElidingCheckBox(frame)
       else:
-        btn = QtWidgets.QRadioButton(text_full, frame)
+        btn = ElidingRadioButton(frame)
         group.addButton(btn)
+      btn.set_full_text(label)
       v.addWidget(btn)
+      if desc:
+        dl = WrappingLabel(desc, frame)
+        dl.setStyleSheet("color: palette(mid);")
+        # Indent clear of the checkbox / radio indicator so the description
+        # hangs under its label rather than under the control.
+        dl.setContentsMargins(20, 0, 0, 4)
+        v.addWidget(dl)
       option_buttons.append((btn, label))
     # "Other" free-form input -- always shown so the user can type a
     # different answer if none of the canned options fit.

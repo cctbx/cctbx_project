@@ -439,9 +439,11 @@ class MessageBubble(QtWidgets.QFrame):
     elapsed : optional
         Elapsed-time suffix appended to the finished status when set.
     result : optional
-        Result payload rendered into the cell when set.
+        Result payload rendered into the cell body when set.
     error : optional
-        Error message; transitions the cell to a failed state when set.
+        Error message; transitions the cell to a failed state when set and
+        is rendered into the cell body. Independent of ``result`` -- pass
+        both and the body shows the partial output followed by the error.
     cancelled : bool, optional
         When true, transitions the cell to a cancelled state.
     """
@@ -451,7 +453,19 @@ class MessageBubble(QtWidgets.QFrame):
     if cancelled:
       cell.set_status("cancelled", color="cancelled")
     elif error is not None:
-      cell.set_status("failed: %s" % error, color="error")
+      # The error text goes in the BODY, never inlined into the header: the
+      # header renders a one-line '<name> (<status>)' summary, and a
+      # force-killed Coot bridge yields a ~230-char MCP connection error.
+      # Bulk tool output belongs in the body's result view, which wraps and
+      # auto-heights. The header still says 'failed', so a collapsed cell
+      # still reads as failed.
+      cell.set_status("failed", color="error")
+      # Never drop the error. Both parameters are documented and independent,
+      # so a caller with partial output *and* a failure passes both -- the old
+      # header inlined the error unconditionally, and showing only the result
+      # would leave nothing in the UI to say what went wrong. Chronological
+      # order: what the tool managed to emit, then why it died.
+      result = error if result is None else "%s\n\n%s" % (result, error)
     else:
       suffix = ", %s" % elapsed if elapsed else ""
       cell.set_status("finished%s" % suffix, color="default")

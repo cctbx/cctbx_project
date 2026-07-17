@@ -38,6 +38,14 @@ def _user(text="hi"):
     ContentBlock(type="text", data={"text": text})])
 
 
+# The shape of error a force-killed Coot bridge produces: long, single-line,
+# and routed to the failing tool's disclosure cell.
+LONG_TOOL_ERROR = (
+  "MCP error -32000: Connection closed. Failed to connect to the Coot RPC "
+  "bridge at 127.0.0.1:44100: [Errno 61] Connection refused. The Coot "
+  "process may have exited or been killed; restart Coot and retry.")
+
+
 def _png_bytes(width=10, height=10):
   from qttbx.qt import QtCore, QtGui
   img = QtGui.QImage(width, height, QtGui.QImage.Format_ARGB32)
@@ -242,6 +250,38 @@ def exercise_finish_tool_cell_error_marks_cell_failed():
     bad.header_button.text()
   assert not good.is_running() and "finished" in good.header_button.text(), \
     good.header_button.text()
+
+
+def exercise_failed_tool_cell_does_not_floor_the_view_width():
+  """A failed tool's error text must not pin the view's width.
+
+  The bubbles track the window because ConversationView is a
+  setWidgetResizable QScrollArea -- but only while nothing inside floors the
+  container's minimum width. The disclosure header is a QToolButton, whose
+  minimumSizeHint is its FULL text width and which never elides, so routing a
+  long error into it floored the container: the bubbles stopped tracking the
+  window, a horizontal scrollbar appeared, and every message was clipped.
+  Seen for real when a force-killed Coot made mcp__coot__* calls fail with a
+  long MCP connection error. One such cell anywhere in the conversation pins
+  the whole view, even scrolled out of sight.
+  """
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  v = ConversationView()
+  bub = v.add_message(_user("hello"))
+  bub.add_tool_use_cell(tool_id="t1", name="mcp__coot__run_python", args={})
+  bub.set_tool_use_finished(tool_id="t1", error=LONG_TOOL_ERROR)
+  v.resize(1100, 700)
+  v.show()
+  app.processEvents()
+  v.resize(500, 700)
+  app.processEvents()
+  assert v.widget().width() <= v.viewport().width(), (
+    "container %d exceeds viewport %d -- a failed tool cell floored the view"
+    % (v.widget().width(), v.viewport().width()))
+  assert v.horizontalScrollBar().maximum() == 0, (
+    "horizontal scrollbar appeared (max=%d); bubbles no longer track the "
+    "window width" % v.horizontalScrollBar().maximum())
 
 
 def exercise_set_assistant_label_flows_to_new_bubbles():
@@ -1119,6 +1159,7 @@ def exercise():
   exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble()
   exercise_reload_folds_tool_results_into_matching_tool_cells()
   exercise_finish_tool_cell_error_marks_cell_failed()
+  exercise_failed_tool_cell_does_not_floor_the_view_width()
   exercise_set_assistant_label_flows_to_new_bubbles()
   exercise_question_card_uses_assistant_label()
   exercise_stop_finalizes_pending_question_cards()

@@ -11,6 +11,8 @@ import json
 
 from qttbx.qt import QtCore, QtWidgets
 
+from qttbx.widgets.chat.eliding import ElidingToolButton
+
 
 # Header state styling. The (status) parenthetical in the header text
 # already communicates state literally; the style here is just a hint.
@@ -28,6 +30,17 @@ _COLORS = {
   "muted":     "color: palette(mid);",
   "cancelled": "color: palette(mid); font-style: italic;",
 }
+
+# Longest status rendered in the header, which carries a one-line
+# '<name> (<status>)' summary. A status with newlines in it, or a whole tool
+# result pasted into it, is a caller error; this keeps the rendered string
+# short and single-line and hangs the rest on the tooltip.
+#
+# This is a READABILITY bound, not the layout's protection: a character budget
+# cannot bound a pixel width -- 60 chars of a proportional font is still
+# ~880 px -- and the tool name it sits next to is not bounded at all. The
+# header not flooring the view is ElidingToolButton's job.
+_MAX_HEADER_STATUS = 60
 
 
 class ToolCallDisclosure(QtWidgets.QFrame):
@@ -55,7 +68,13 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(2)
 
-    self.header_button = QtWidgets.QToolButton(self)
+    # Eliding: the header renders a tool name and a status, neither of them
+    # bounded (an MCP server names its own tools, and a caller can put
+    # anything in a status). A plain QToolButton reports that whole string as
+    # its minimumSizeHint and never elides, so it floors the bubble's minimum
+    # width and with it the whole ConversationView's -- the bubbles stop
+    # tracking the window and a horizontal scrollbar appears.
+    self.header_button = ElidingToolButton(self)
     self.header_button.setAutoRaise(True)
     self.header_button.setCheckable(True)
     self.header_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
@@ -115,7 +134,11 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     Parameters
     ----------
     status : str
-        New status text shown in the header parenthetical.
+        New status text shown in the header parenthetical. Coerced with
+        ``str``, so an exception object renders rather than raising. Keep it
+        short: the header is a one-line summary, so only the first line
+        survives and anything past ``_MAX_HEADER_STATUS`` characters moves to
+        the tooltip. Bulk text belongs in ``set_result``.
     color : str or None, optional
         One of ``None``, ``'default'``, ``'running'``, ``'error'``,
         ``'muted'``, or ``'cancelled'``. ``None`` preserves the current color.
@@ -152,13 +175,15 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     ----------
     text : str
         Plain-text result. An empty value clears and hides the result
-        view.
+        view. Coerced with ``str``, so an exception object or any other
+        payload renders instead of raising out of the handler that is
+        delivering the tool result.
     """
     if not text:
       self.result_view.setPlainText("")
       self.result_view.hide()
       return
-    self.result_view.setPlainText(text)
+    self.result_view.setPlainText(str(text))
     self.result_view.show()
 
   def is_running(self):
@@ -199,7 +224,38 @@ class ToolCallDisclosure(QtWidgets.QFrame):
         # 'Internal C++ object already deleted' -- widget is gone.
         return
 
+  def _status_text(self):
+    """Return the status as a string.
+
+    Coerced rather than assumed: the header used to build its text with
+    ``'%s'``, so a caller could pass an exception object -- or anything else
+    -- and see it rendered. Reading the raw value to clamp it would raise
+    ``AttributeError`` on everything that is not a str.
+    """
+    return "" if self._status is None else str(self._status)
+
+  def _header_status(self):
+    """Return the status reduced to one short line for the header.
+
+    Returns ``(text, clamped)``; ``clamped`` is True when anything was
+    dropped, so the caller can hang the full status on the tooltip.
+    """
+    full = self._status_text()
+    first = full.split("\n", 1)[0].strip()
+    if len(first) > _MAX_HEADER_STATUS:
+      return first[:_MAX_HEADER_STATUS - 1].rstrip() + "…", True
+    return first, first != full
+
   def _refresh_header(self):
     arrow = "▾" if self.header_button.isChecked() else "▸"
-    self.header_button.setText("%s %s (%s)" % (arrow, self._name, self._status))
+    status, clamped = self._header_status()
+    # A clamped status keeps the whole of itself on the tooltip. Otherwise
+    # leave the tooltip to the button, which shows the full header text only
+    # when it had to elide it -- so an ordinary 'finished' row at a normal
+    # width sprouts no redundant hover label.
+    tooltip = None
+    if clamped:
+      tooltip = "%s (%s)" % (self._name, self._status_text())
+    self.header_button.set_full_text(
+      "%s %s (%s)" % (arrow, self._name, status), tooltip=tooltip)
     self.header_button.setStyleSheet(_COLORS.get(self._color, ""))
