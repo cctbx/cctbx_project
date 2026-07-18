@@ -46,7 +46,7 @@ def copy_dist_files(bundle_options, dirname, names):
     del names[:]
     names.extend(names_keep)
 
-def run(target_root):
+def run(target_root, to_skip=[]):
   cwd = os.getcwd()
   abs_target_root = os.path.normpath(os.path.abspath(target_root))
   for module in libtbx.env.module_list:
@@ -61,10 +61,26 @@ def run(target_root):
       os.chdir(dist_path)
       options = (module.exclude_from_binary_bundle, dist_copy)
       for root, dirs, files in os.walk("."):
+        skip = False
+        for s in to_skip:
+          if root.startswith(s):
+            skip = True
+            break;
+        if skip:
+          print(f"Skipping: {root}")
+          continue
         copy_dist_files(options, root, files)
   libtbx.bundle.utils.write_bundle_info(abs_target_root)
   os.chdir(cwd)
 
 if (__name__ == "__main__"):
-  assert len(sys.argv) == 2
-  run(sys.argv[1])
+  from optparse import OptionParser
+  from copy_all import options_to_list
+  parser = OptionParser()
+  parser.add_option('--skip_src',
+        dest='skip_src',
+        default="",
+        help='Skip paths from the bundle, Usage: skip=langchain;maptbx/bcr')
+  options, argv = parser.parse_args()
+  assert len(argv) == 1
+  run(argv[0], to_skip=options_to_list(options.skip_src))
