@@ -10,6 +10,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from scitbx.array_family import flex
+import math
 import random
 from scitbx.math.lefebvre import matrix_inverse_error_propagation
 from six.moves import range
@@ -106,6 +107,32 @@ def calc_monte_carlo_population_covariances(mats, mean_matrix):
 
   return covmat
 
+def assert_covariances_agree(cov_MC, cov_analytic, n_samples, n_sigma=5.0):
+  """Assert that each analytically-propagated covariance agrees with its Monte
+  Carlo estimate to within n_sigma Monte Carlo standard errors.
+
+  A plain fractional test, abs((mc - analytic) / mc) < tol, cannot be used
+  here: several elements have a true covariance of ~0 (for example the
+  covariance between two elements of the inverse of a triangular matrix), so
+  the analytic value is correctly ~0 while the MC estimate is dominated by
+  sampling noise, and the fractional error is then a meaningless ~100%. The
+  standard error of a sample covariance of a and b is approximately
+  sqrt((var(a)*var(b) + cov(a,b)**2) / n_samples); scaling the tolerance by it
+  gives a test that is well conditioned as the covariance approaches zero and
+  is not flaky (a genuine error in the analytic formula is still caught, as it
+  spans many standard errors)."""
+
+  m = cov_analytic.all()[0]
+  assert cov_analytic.all() == (m, m)
+  assert cov_MC.all() == (m, m)
+  for i in range(m):
+    for j in range(m):
+      se = math.sqrt(
+        (cov_analytic[i,i]*cov_analytic[j,j] + cov_analytic[i,j]**2) / n_samples)
+      if se == 0: continue # element is identically zero; nothing to compare
+      assert abs(cov_MC[i,j] - cov_analytic[i,j]) < n_sigma * se, \
+        (i, j, cov_MC[i,j], cov_analytic[i,j], se)
+
 def test_lefebvre():
   """Run the test presented in part 4 of the paper Lefebvre et al. (1999),
   http://arxiv.org/abs/hep-ex/9909031."""
@@ -128,15 +155,10 @@ def test_lefebvre():
   cov_inv_mat = matrix_inverse_error_propagation(mat, cov_mat)
   cov_inv_mat = cov_inv_mat.as_flex_double_matrix()
 
-  # Get fractional differences
-  frac = (cov_inv_mat_MC - cov_inv_mat) / cov_inv_mat_MC
-
-  # assert all fractional errors are within 5%. When the random seed is allowed
-  # to vary this fails about 7 times in every 100 runs. This is mainly due to
-  # the random variation in the MC method itself, as with just 10000 samples
-  # one MC estimate compared to another MC estimate regularly has some
-  # fractional errors greater than 5%.
-  assert all([abs(e) < 0.05 for e in frac])
+  # Compare the analytic covariances with the Monte Carlo estimates. A plain
+  # fractional test is not robust here (see assert_covariances_agree); instead
+  # require agreement to within a few Monte Carlo standard errors.
+  assert_covariances_agree(cov_inv_mat_MC, cov_inv_mat, n_samples=len(p_mats))
 
   return
 
@@ -161,7 +183,6 @@ def test_B_matrix():
   # Now calculate using the analytical formula. First need the covariance
   # matrix of B itself. This is the diagonal matrix of errors applied in the
   # simulation.
-  n = Bmat.n_rows()
   sig_B = Bmat * 0.01
   cov_B = matrix.diag([e**2 for e in sig_B])
 
@@ -169,18 +190,10 @@ def test_B_matrix():
   cov_invB = matrix_inverse_error_propagation(Bmat, cov_B)
   cov_invB = cov_invB.as_flex_double_matrix()
 
-  # Get fractional differences
-  frac = flex.double(flex.grid(n**2, n**2), 0.0)
-  for i in range(frac.all()[0]):
-    for j in range(frac.all()[1]):
-      e1 = cov_invB_MC[i,j]
-      e2 = cov_invB[i,j]
-      if e1 < 1e-10: continue # avoid divide-by-zero errors below
-      if e2 < 1e-10: continue # avoid elements that are supposed to be zero
-      frac[i,j] = (e1 - e2) / e1
-
-  # assert all fractional errors are within 5%
-  assert all([abs(e) < 0.05 for e in frac])
+  # Compare the analytic covariances with the Monte Carlo estimates. A plain
+  # fractional test is not robust here (see assert_covariances_agree); instead
+  # require agreement to within a few Monte Carlo standard errors.
+  assert_covariances_agree(cov_invB_MC, cov_invB, n_samples=len(invBs))
 
   return
 
