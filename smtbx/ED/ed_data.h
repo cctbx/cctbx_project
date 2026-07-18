@@ -396,7 +396,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() > 21);
+      SMTBX_ASSERT(values.size() > 20);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -432,7 +432,7 @@ namespace smtbx { namespace ED
     FloatType getTopUpD() const { return values[18]; }
     FloatType getTopUpMaxSg() const { return values[19]; }
     FloatType getGroupWidth() const { return values[20]; }
-    bool useSysAbs() const { return values[21] == 1; }
+    bool useSysAbs() const { return values.size() < 22 ? false : values[21] == 1; }
   };
 
 }}
