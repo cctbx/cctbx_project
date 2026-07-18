@@ -80,7 +80,7 @@ if (__name__ == "__main__"):
   parser.add_option('--skip_src',
         dest='skip_src',
         default="",
-        help='Skip paths from the bundle, Usage: skip=langchain;maptbx/bcr')
+        help='Skip paths from the bundle, Usage: skip="langchain;maptbx/bcr"')
   options, argv = parser.parse_args()
   assert len(argv) == 1
   run(argv[0], to_skip=options_to_list(options.skip_src))
