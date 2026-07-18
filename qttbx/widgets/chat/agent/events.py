@@ -106,7 +106,21 @@ class TokenUsage(AgentEvent):
 
 @dataclass
 class TurnDone(AgentEvent):
+  """One assistant round finished.
+
+  ``stop_reason`` is the raw, load-bearing backend string (``AgentSession``
+  loops while it stays ``"tool_use"``; the GUI/storage special-case
+  ``"cancelled"``) and MUST keep its native per-backend vocabulary.
+
+  ``finish`` is the backend-agnostic disposition, normalized AT THE AGENT
+  BOUNDARY so a headless consumer never has to interpret per-backend
+  stop-reason strings itself. Each backend maps its native finish state onto
+  one of the canonical values in ``phenix.gui.chat.finish`` (clean / truncated
+  / tool_use / cancelled / cap / error). Empty string means "unset" -- a
+  consumer that requires a definite disposition treats it as non-clean.
+  """
   stop_reason: str = ""
+  finish: str = ""
 
 
 @dataclass
