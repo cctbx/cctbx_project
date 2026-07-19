@@ -123,8 +123,13 @@ class QMRegionBuilder(object):
         file=self.logger,
       )
 
+    # Only the bond graph is needed: CDL ideals never reach the adjacency, and
+    # flipping would move input coordinates for no gain here.
+    interpretation_params = model.get_current_pdb_interpretation_params()
+    interpretation_params.pdb_interpretation.restraints_library.cdl = False
+    interpretation_params.pdb_interpretation.flip_symmetric_amino_acids = False
     model.process(
-      pdb_interpretation_params=model.get_current_pdb_interpretation_params(),
+      pdb_interpretation_params=interpretation_params,
       make_restraints=True,
     )
 
@@ -384,8 +389,7 @@ class QMRegionBuilder(object):
       'file_name': file_name,
       'n_atoms': model_sel.get_number_of_atoms(),
       'charge_summary': charge_summary,
-      # In-memory hand-off for downstream consumers (e.g., mmtbx.geometry_restraints.qmi
-      # predictor): the truncated sub-model with restraints attached,
+      # In-memory hand-off: the truncated sub-model (no restraints manager)
       # and the positional indices of seed and cap atoms inside it.
       'model': model_sel,
       'seed_iseqs': seed_indices,
@@ -703,7 +707,7 @@ class QMRegionBuilder(object):
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
       if c not in orig_chain_ids)
     chain_id_for = {}
-    for op_idx, op_xyz in enumerate(op_keys):
+    for op_xyz in op_keys:
       for orig_id in orig_chain_ids:
         if op_xyz == identity_xyz:
           chain_id_for[(orig_id, op_xyz)] = orig_id
