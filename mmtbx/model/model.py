@@ -249,7 +249,7 @@ class restraints_scale_manager(object):
     sites_frac = self.model.get_sites_frac()
     for k, proxy in enumerate(bond_proxies_simple):
       i_seq, j_seq = proxy.i_seqs
-      #if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
+      if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
       dist_ideal = proxy.distance_ideal
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
@@ -4073,15 +4073,14 @@ class manager(object):
     return n_old_atoms - n_new_atoms
 
   def remove_solvent(self):
-    result = self.select(selection = ~self.solvent_selection())
-    return result
+    return self.select(selection = ~self.solvent_selection())
 
   def remove_hydrogens(self):
     if self.has_hd():
       noh_selection = self.selection("not (element H or element D)")
       return self.select(noh_selection)
     else:
-      return self
+      return self.deep_copy()
 
   def show_occupancy_statistics(self, out=None, text=""):
     global time_model_show
