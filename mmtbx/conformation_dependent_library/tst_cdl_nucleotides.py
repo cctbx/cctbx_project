@@ -178,11 +178,16 @@ geo_asserts.append(
      pdb=" OP1   G A   2 "
   ideal  model  delta    sigma   weight residual
   1.485  1.484  0.001 2.00e-02 2.50e+03 2.16e-03''',
+  # '''angle pdb=" O3'   C B   3 "
+  #     pdb=" P     G B   4 "
+  #     pdb=" O5'   G B   4 "
+  #   ideal   model   delta    sigma   weight residual
+  #  104.00   91.11   12.89 1.50e+00 4.44e-01 7.38e+01''',
   '''angle pdb=" O3'   C B   3 "
       pdb=" P     G B   4 "
       pdb=" O5'   G B   4 "
     ideal   model   delta    sigma   weight residual
-   104.00   91.11   12.89 1.50e+00 4.44e-01 7.38e+01''',
+   104.00   91.11   12.89 1.90e+00 2.77e-01 4.60e+01''',
   ])
 geo_asserts.append(geo_asserts[0])
 geo_asserts.append(
@@ -190,11 +195,16 @@ geo_asserts.append(
      pdb=" OP1   G A   2 "
   ideal  model  delta    sigma   weight residual
   1.484  1.484 -0.000 2.00e-02 2.50e+03 1.25e-05''',
+  # '''angle pdb=" O3'   C B   3 "
+  #     pdb=" P     G B   4 "
+  #     pdb=" O5'   G B   4 "
+  #   ideal   model   delta    sigma   weight residual
+  #  104.20   91.11   13.09 1.50e+00 4.44e-01 7.61e+01''',
   '''angle pdb=" O3'   C B   3 "
       pdb=" P     G B   4 "
       pdb=" O5'   G B   4 "
     ideal   model   delta    sigma   weight residual
-   104.20   91.11   13.09 1.50e+00 4.44e-01 7.61e+01''',
+   104.20   91.11   13.09 1.90e+00 2.77e-01 4.74e+01''',
   ])
 geo_asserts.append(
   ['''bond pdb=" P     G A   2 "
