@@ -225,7 +225,13 @@ def run():
   verbose = "--verbose" in sys.argv[1:]
   rv = exercise_1()
   rv_cif = exercise_1(test_mmcif=True)
-  exercise_pdbvcif(rv, rv_cif)
+  # exercise_1 returns None when phenix_regression is unavailable, following the same
+  # skip convention as every other test in this directory. Those all discard the
+  # return value; this is the only one that consumes it, and consuming it unguarded
+  # turned a clean skip into an AttributeError, so a checkout without
+  # phenix_regression looked like a real regression.
+  if (rv is not None and rv_cif is not None):
+    exercise_pdbvcif(rv, rv_cif)
   exercise_2()
   exercise_3()
   print("OK. Time: %8.3f"%(time.time()-t0))
