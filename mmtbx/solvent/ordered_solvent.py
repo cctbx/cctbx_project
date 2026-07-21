@@ -5,6 +5,7 @@ from libtbx import adopt_init_args
 from cctbx import adptbx
 import iotbx.xplor.map
 import iotbx.phil
+from iotbx.pdb.mmcif import format_pdb_atom_name
 from mmtbx import find_peaks
 import mmtbx.utils
 from cctbx import maptbx
@@ -174,7 +175,7 @@ def master_params():
   return iotbx.phil.parse(master_params_str)
 
 def new_solvent_sites_as_hierarchy_chain(
-      sites, model, params=None, conformer_indices=None):
+      sites, model, params, conformer_indices=None):
   uc = model.crystal_symmetry().unit_cell()
   ort = uc.orthogonalize
   b_iso = flex.mean(model.get_xray_structure(
@@ -192,16 +193,21 @@ def new_solvent_sites_as_hierarchy_chain(
       else:                resname = "HOH"
   # Figure out first water resseq
   first_water_resseq = model.get_hierarchy().get_water_max_resseq()+1
-  #
+  # Figure out atom name
+  element = "O"
+  atom_name = params.output_atom_name
+  if atom_name is Auto or atom_name is None:
+    atom_name = element
+  atom_name = format_pdb_atom_name(atom_name, element)
   new_chain = iotbx.pdb.hierarchy.chain(id=params.output_chain_id)
   for i_seq, site_frac in enumerate(sites):
     water_i_seq = size+i_seq+1 # same as resseq below
     new_atom = (iotbx.pdb.hierarchy.atom()
       .set_serial(new_serial=iotbx.pdb.hy36encode(width=5, value=water_i_seq))
-      .set_name(new_name="O")
+      .set_name(new_name=atom_name)
       .set_xyz(new_xyz=ort(site_frac))
       .set_occ(new_occ=1)
-      .set_element("O")
+      .set_element(element)
       .set_charge("")
       .set_hetero(new_hetero=True))
     if(  params.new_solvent == "isotropic"):
