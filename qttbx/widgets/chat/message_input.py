@@ -58,8 +58,9 @@ class MessageInput(QtWidgets.QWidget):
   # Idle placeholder text. The assistant name defaults to "Claude" but is
   # rewritten per session by ChatWindow via set_assistant_name() so the box
   # names the active backend (GPT / Gemini / …). ChatWindow also swaps in a
-  # cycling 'Thinking...' placeholder while a turn is in flight and restores
-  # the idle one on turn_done.
+  # cycling 'Thinking...' placeholder while a turn is in flight. turn_done
+  # now carries the full TurnDone event; only a TERMINAL finish returns the
+  # idle placeholder and unlocks the composer.
   _PLACEHOLDER_FMT = "Message %s...  (Ctrl/Cmd+Enter to send)"
   DEFAULT_PLACEHOLDER = _PLACEHOLDER_FMT % "Claude"
 

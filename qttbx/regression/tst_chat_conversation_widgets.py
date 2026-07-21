@@ -318,7 +318,9 @@ def exercise_stop_finalizes_pending_question_cards():
   approval cards get. Otherwise the stale card stays clickable and a late
   Submit carries a request_id the parked worker no longer waits on, so the
   answer is silently dropped. finalize_assistant_bubble is the normal/error
-  turn-end path (ChatWindow._on_stop covers the parked-cancel path)."""
+  turn-end path; on a parked cancel ChatWindow._on_stop sweeps immediately,
+  then the session's synthesized terminal cancel TurnDone finalizes via this
+  same path afterwards (queued)."""
   from qttbx.widgets.chat.agent.events import AskUserQuestionRequested
   from qttbx.widgets.chat.conversation_view import ConversationView
   _qapp()

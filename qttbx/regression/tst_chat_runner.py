@@ -93,7 +93,7 @@ def exercise_emits_text_delta_then_turn_done():
     runner = QtAgentRunner(session)
     text_deltas, turn_dones = [], []
     runner.text_delta.connect(lambda s: text_deltas.append(s))
-    runner.turn_done.connect(lambda r: turn_dones.append(r))
+    runner.turn_done.connect(lambda ev: turn_dones.append(ev))
 
     user = Message(role="user", content=[
       ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
@@ -102,7 +102,8 @@ def exercise_emits_text_delta_then_turn_done():
     _pump(app)
 
     assert text_deltas == ["hello ", "world"], text_deltas
-    assert turn_dones == ["end_turn"], turn_dones
+    assert [ev.stop_reason for ev in turn_dones] == ["end_turn"], turn_dones
+    assert all(isinstance(ev, TurnDone) for ev in turn_dones), turn_dones
   finally:
     shutil.rmtree(tmp)
 

@@ -276,8 +276,9 @@ class ConversationView(QtWidgets.QScrollArea):
     A card left undecided when its turn ends must not stay clickable: a later
     click would route a stale response into the NEXT turn (the approval-misroute
     bug), since the approval path matches on ``is_busy()`` alone, not the
-    request id. Called from ``ChatWindow._on_stop`` (the parked-cancel path,
-    where no terminal ``TurnDone`` reaches the view) and from
+    request id. Called from ``ChatWindow._on_stop`` (killing stale-card
+    clickability at once, before the session's synthesized terminal
+    cancel ``TurnDone`` arrives queued) and from
     ``finalize_assistant_bubble`` (the normal / error turn-end paths).
     """
     for card in self._approval_cards:
@@ -315,9 +316,10 @@ class ConversationView(QtWidgets.QScrollArea):
     unanswered when its turn ends must not stay clickable, because a late
     Submit carries a ``request_id`` the parked worker no longer waits on -- the
     answer is silently dropped while the stale card lingers with Submit
-    enabled. Called from the same turn-end paths: ``ChatWindow._on_stop`` (the
-    parked-cancel path) and ``finalize_assistant_bubble`` (normal / error
-    turn-end).
+    enabled. Called from the same turn-end paths: ``ChatWindow._on_stop``
+    (killing stale-card clickability at once, before the session's synthesized
+    terminal cancel ``TurnDone`` arrives queued) and
+    ``finalize_assistant_bubble`` (normal / error turn-end).
     """
     for card in self._question_cards:
       if not card.is_resolved():

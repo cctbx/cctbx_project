@@ -109,7 +109,9 @@ class QtAgentRunner(QtCore.QObject):
   - ``server_tool_result(object)`` — ``ServerToolResult``
   - ``image_emitted(object)``
   - ``ask_user_question_requested(object)`` — ``AskUserQuestionRequested``
-  - ``turn_done(str)`` — stop_reason
+  - ``turn_done(object)`` — the full ``TurnDone`` event; carries
+    ``stop_reason`` and the canonical ``finish`` (the window routes
+    iteration-boundary vs terminal on ``finish``)
   - ``error(str, bool, str)`` — message, recoverable, kind
   - ``idle()`` — the turn's worker/thread have been torn down and
     ``is_busy()`` is False again. Emitted once per turn, after the turn's
@@ -132,7 +134,7 @@ class QtAgentRunner(QtCore.QObject):
   server_tool_result = QtCore.Signal(object)
   image_emitted = QtCore.Signal(object)
   ask_user_question_requested = QtCore.Signal(object)
-  turn_done = QtCore.Signal(str)
+  turn_done = QtCore.Signal(object)
   error = QtCore.Signal(str, bool, str)
   idle = QtCore.Signal()
 
@@ -332,7 +334,7 @@ class QtAgentRunner(QtCore.QObject):
     elif isinstance(ev, AskUserQuestionRequested):
       self.ask_user_question_requested.emit(ev)
     elif isinstance(ev, TurnDone):
-      self.turn_done.emit(ev.stop_reason)
+      self.turn_done.emit(ev)
     elif isinstance(ev, AgentError):
       self.error.emit(ev.message, ev.recoverable, ev.kind or "")
 

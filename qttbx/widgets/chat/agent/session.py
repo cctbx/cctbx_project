@@ -32,6 +32,14 @@ _CONTENT_EVENT_TYPES = (
   ImageEmitted)
 
 
+# Two rapid iteration checkpoints inside this window coalesce into one write:
+# storage.save is a full-file rewrite, so a burst of sub-250ms tool calls
+# must not rewrite messages.json per call. Freshness target is per-iteration,
+# not per-write; a hard kill inside the window loses only those sub-250ms
+# iterations until the next save heals.
+_CHECKPOINT_FLOOR_S = 0.25
+
+
 def _new_id(prefix=""):
   return prefix + uuid.uuid4().hex[:12]
 
@@ -102,6 +110,7 @@ class AgentSession:
     self.autosave_interval_s = autosave_interval_s
     self._clock = clock or time.monotonic
     self._last_autosave = 0.0
+    self._last_checkpoint = None       # None: first checkpoint always writes
     self.on_event = on_event or (lambda ev: None)
     self.log = log if log is not None else sys.stdout
 
@@ -177,6 +186,9 @@ class AgentSession:
     """
     self.cancel = cancel
     self._last_autosave = self._clock()            # reset mid-turn autosave
+    self._last_checkpoint = None                   # floor is per-turn: a new
+                                                   # turn's first iteration
+                                                   # always writes
     # Turn boundary: abandon anything a previous (cancelled) turn left pending.
     # Replaces the old _drain_stale_cancelled(approval_queue). Clear the
     # remember map at ENTRY (not turn end) so a late click after the prior turn
@@ -201,8 +213,31 @@ class AgentSession:
     iterations = 0
     while True:
       iterations += 1
-      assistant_msg, tool_calls, answered = self._collect_one_response(cancel)
-      self.conv.append(assistant_msg)
+      (assistant_msg, tool_calls, answered,
+       last_committed) = self._collect_one_response(cancel)
+      # An empty residual after a per-iteration commit (the turn ended right
+      # on a tool result) must NOT be appended: persistable_prefix would trim
+      # it on save, silently dropping the terminal stop_reason/usage riding
+      # it. Fold both onto the last committed assistant (same object already
+      # in conv.messages) instead -- usage only when present, never
+      # clobbering with None. A tool_use-bearing or text residual, and any
+      # turn with no commit (API backends; error-before-content), keeps the
+      # existing append. Mutating an already-appended message after the
+      # agent's terminal TurnDone was queued shares the race discipline of
+      # _collect_one_response's autosave note: no blocking I/O intervenes
+      # before these fields land, exactly as the bulk append below always
+      # relied on -- and the at-risk window here is two fields, not a whole
+      # message.
+      folded = (last_committed is not None
+                and not assistant_msg.content
+                and assistant_msg.stop_reason != "tool_use")
+      if folded:
+        if assistant_msg.stop_reason:
+          last_committed.stop_reason = assistant_msg.stop_reason
+        if assistant_msg.usage is not None:
+          last_committed.usage = assistant_msg.usage
+      else:
+        self.conv.append(assistant_msg)
 
       if assistant_msg.stop_reason != "tool_use":
         # A tool_use can ride a non-"tool_use" stop. Two backends reach here:
@@ -222,13 +257,23 @@ class AgentSession:
         # calls only after their stream loop never reach this with tool_calls.)
         self._answer_pending_tool_uses(
           tool_calls, "Cancelled by user.", answered=answered)
-        return assistant_msg
+        return last_committed if folded else assistant_msg
       if cancel.is_set():
         # Cancel set AFTER a tool_use-stop response but before dispatch (the
         # narrower window where stop_reason stays 'tool_use'): answer the
         # pending tool_uses so the saved transcript isn't orphaned.
         self._answer_pending_tool_uses(tool_calls, "Cancelled by user.")
         assistant_msg.stop_reason = "cancelled"
+        # This return path emits no agent TurnDone (the last one said
+        # finish='tool_use'), so consumers keying turn end on the terminal
+        # event -- the GUI composer unlock, headless disposition -- would
+        # wait forever. Synthesize it. Literal "cancelled": the canonical
+        # CANCELLED value documented on TurnDone (qttbx must not import the
+        # phenix finish module). MUST stay AFTER the appends above -- the
+        # GUI's turn-end save races the worker (see _collect_one_response's
+        # autosave note), and emitting first would let it persist a
+        # conversation missing this turn's answers.
+        self.on_event(TurnDone(stop_reason="cancelled", finish="cancelled"))
         return assistant_msg
 
       if max_turns is not None and iterations >= max_turns:
@@ -245,7 +290,7 @@ class AgentSession:
 
       tool_result_msg = self._dispatch_and_build_results(tool_calls, cancel)
       self.conv.append(tool_result_msg)
-      self._maybe_autosave()                       # checkpoint after tool result
+      self._checkpoint_iteration()                 # per-iteration disk cadence
 
       # Dispatch may have set the cancel token (deny_and_stop or sentinel
       # cancellation during approval). Don't ask the model for another
@@ -253,6 +298,9 @@ class AgentSession:
       # FakeAgent tests, exhaust the scripted turns.
       if cancel.is_set():
         assistant_msg.stop_reason = "cancelled"
+        # Same synthesized terminal as the pre-dispatch short-circuit above,
+        # same ordering constraint: after this iteration's appends.
+        self.on_event(TurnDone(stop_reason="cancelled", finish="cancelled"))
         return assistant_msg
 
   def _maybe_autosave(self, partial_msg=None):
@@ -290,20 +338,65 @@ class AgentSession:
     except Exception as exc:
       print("chat: mid-turn autosave failed: %s" % exc, file=self.log)
 
+  def _checkpoint_iteration(self):
+    """Immediate (floored, unthrottled) persistence of a completed tool
+    iteration -- the per-iteration disk cadence every backend shares. Same
+    failure contract and depth gate as ``_maybe_autosave``; ``reindex=False``
+    for the same reason. Also advances the autosave clock so the throttled
+    path doesn't double-write the snapshot it just wrote."""
+    if self.depth != 0 or self.storage is None:
+      return
+    now_t = self._clock()
+    if (self._last_checkpoint is not None
+        and now_t - self._last_checkpoint < _CHECKPOINT_FLOOR_S):
+      return
+    self._last_checkpoint = now_t
+    self._last_autosave = now_t
+    snapshot = Conversation(meta=self.conv.meta,
+                            messages=list(self.conv.messages))
+    try:
+      self.storage.save(snapshot, reindex=False)
+    except Exception as exc:
+      print("chat: iteration checkpoint failed: %s" % exc, file=self.log)
+
+  def _new_assistant_msg(self):
+    """A fresh in-progress assistant message stamped with the model (from the
+    agent) and backend (from the profile) producing this turn."""
+    return Message(role="assistant", content=[], timestamp=now(),
+                   model=getattr(self.agent, "model", None),
+                   backend=getattr(self.profile, "backend", None))
+
   def _collect_one_response(self, cancel):
-    # Stamp each assistant message with the model (from the agent) and the
-    # backend (from the profile) that produced it. getattr guards keep this
-    # robust for agents without a public .model (handled by exposing one)
-    # and for sessions built without a profile (synchronous tests).
-    msg = Message(role="assistant", content=[], timestamp=now(),
-                  model=getattr(self.agent, "model", None),
-                  backend=getattr(self.profile, "backend", None))
+    msg = self._new_assistant_msg()
     tool_calls = []
     answered = []
+    last_committed = None
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
       self.on_event(event)
       _accumulate(msg, event, tool_calls, answered, self.storage,
                   self.conv.meta.id)
+      # A backend that runs its OWN tool loop (claude_code) streams the whole
+      # multi-iteration turn through one stream_turn call. Commit each
+      # completed iteration -- every pending tool_use answered by an observed
+      # result -- as the same (assistant, tool_results) message pair the API
+      # loop appends, so the persisted shape is backend-uniform and the
+      # checkpoint below gives claude_code the same per-iteration disk
+      # cadence. API backends never emit ToolResultObserved, so this branch
+      # cannot fire for them.
+      if isinstance(event, ToolResultObserved) and tool_calls:
+        answered_ids = set(b.data.get("tool_use_id") for b in answered)
+        if all(c.id in answered_ids for c in tool_calls):
+          msg.stop_reason = "tool_use"
+          self.conv.append(msg)
+          self.conv.append(Message(
+            role="user", timestamp=now(),
+            content=_ordered_tool_result_blocks(
+              tool_calls, answered, "Result not observed.")))
+          last_committed = msg
+          msg = self._new_assistant_msg()
+          tool_calls = []
+          answered = []
+          self._checkpoint_iteration()
       # Throttled mid-turn checkpoint -- ONLY on content events. Never on the
       # terminal TurnDone: _collect_one_response returns straight into
       # conv.append(assistant_msg), and autosave's blocking I/O (which releases
@@ -311,7 +404,7 @@ class AgentSession:
       # GUI's _on_turn_done save a conv.messages still missing this message.
       if isinstance(event, _CONTENT_EVENT_TYPES):
         self._maybe_autosave(msg)
-    return msg, tool_calls, answered
+    return msg, tool_calls, answered, last_committed
 
   # ---- tool dispatch -------------------------------------------------------
 
@@ -392,11 +485,7 @@ class AgentSession:
     carrying ``reason``. Blocks are emitted in tool_use order. No-op when there
     is nothing to answer.
     """
-    by_id = {}
-    for b in answered or []:
-      by_id[b.data.get("tool_use_id")] = b
-    blocks = [by_id.get(c.id) or _tool_error_block(c.id, reason)
-              for c in tool_calls]
+    blocks = _ordered_tool_result_blocks(tool_calls, answered, reason)
     if not blocks:
       return
     self.conv.append(Message(role="user", timestamp=now(), content=blocks))
@@ -650,6 +739,19 @@ def _tool_error_block(tool_use_id, message):
     "content": [ContentBlock(type="text", data={"text": message})],
     "is_error": True,
   })
+
+
+def _ordered_tool_result_blocks(tool_calls, answered, fallback_reason):
+  """The answering tool_result blocks for ``tool_calls``, in tool_use order:
+  each call's observed block from ``answered`` when present, else an is_error
+  block carrying ``fallback_reason``. Single assembly shared by the
+  per-iteration commit and ``_answer_pending_tool_uses`` so the two can't
+  drift."""
+  by_id = {}
+  for b in answered or []:
+    by_id[b.data.get("tool_use_id")] = b
+  return [by_id.get(c.id) or _tool_error_block(c.id, fallback_reason)
+          for c in tool_calls]
 
 
 def _is_binary_block(item):
