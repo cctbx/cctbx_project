@@ -4,6 +4,8 @@ from mmtbx.validation.utils import (
   _clash_severity,
   _cbeta_severity,
   _bond_angle_severity,
+  _rna_suite_severity,
+  _rna_pucker_severity,
   calculate_overall_residue_quality_score,
 )
 
@@ -171,12 +173,65 @@ def exercise_ranking_invariants():
   print("  exercise_ranking_invariants: OK")
 
 
+def exercise_rna_suite_severity():
+  # A suite matching no named cluster is the serious case.
+  assert approx_equal(_rna_suite_severity(True, None), 4.0)
+  assert approx_equal(_rna_suite_severity(True, 0.9), 4.0), \
+    "an outlier stays an outlier however good its suiteness looks"
+  # Assigned to a cluster but fitting it poorly: the "wannabe" tier. This is the
+  # reason for grading at all, since a binary flag cannot express it.
+  assert approx_equal(_rna_suite_severity(False, 0.1), 1.5)
+  assert approx_equal(_rna_suite_severity(False, 0.29), 1.5)
+  # A good fit, or no suiteness reported, costs nothing.
+  assert approx_equal(_rna_suite_severity(False, 0.3), 0.0), \
+    "0.3 is the boundary and must count as an acceptable fit"
+  assert approx_equal(_rna_suite_severity(False, 0.95), 0.0)
+  assert approx_equal(_rna_suite_severity(False, None), 0.0)
+  print("  exercise_rna_suite_severity: OK")
+
+
+def exercise_rna_pucker_severity():
+  # A delta outlier means P-perp and delta disagree about the pucker: a real,
+  # rare, chemically well-defined error, at the Ramachandran tier.
+  assert approx_equal(_rna_pucker_severity(True, False), 5.0)
+  assert approx_equal(_rna_pucker_severity(True, True), 5.0), \
+    "delta dominates when both are set"
+  # Epsilon out of range while the pucker itself is consistent is milder.
+  assert approx_equal(_rna_pucker_severity(False, True), 3.0)
+  assert approx_equal(_rna_pucker_severity(False, False), 0.0)
+  # None must behave as "not an outlier". The validator reports None for a residue
+  # it could not judge, and an unjudged residue must not be scored as a problem.
+  assert approx_equal(_rna_pucker_severity(None, None), 0.0)
+  # The untyped fallback is treated as the delta tier.
+  assert approx_equal(_rna_pucker_severity(False, False, True), 5.0)
+  print("  exercise_rna_pucker_severity: OK")
+
+
+def exercise_rna_severity_ordering():
+  """The tiers must stay ordered, since the ranking depends on it.
+
+  Pucker outliers are rarer than suite outliers, which is why they outrank them.
+  If someone retunes one constant without the other, this is what catches it.
+  """
+  pucker_delta = _rna_pucker_severity(True, False)
+  pucker_eps = _rna_pucker_severity(False, True)
+  suite_out = _rna_suite_severity(True, None)
+  suite_wannabe = _rna_suite_severity(False, 0.1)
+  assert pucker_delta > suite_out > pucker_eps > suite_wannabe > 0.0, \
+    "severity tiers out of order: %s" % [pucker_delta, suite_out,
+                                         pucker_eps, suite_wannabe]
+  print("  exercise_rna_severity_ordering: OK")
+
+
 def exercise():
   exercise_clash_severity()
   exercise_cbeta_severity()
   exercise_bond_angle_severity()
   exercise_residue_quality_score()
   exercise_ranking_invariants()
+  exercise_rna_suite_severity()
+  exercise_rna_pucker_severity()
+  exercise_rna_severity_ordering()
 
 
 if __name__ == "__main__":

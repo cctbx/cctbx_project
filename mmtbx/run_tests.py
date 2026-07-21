@@ -132,6 +132,7 @@ general_tests = [
   #"$D/scaling/tst_xtriage_massage_data.py",
   # monomer library
   "$D/monomer_library/tst_rna_sugar_pucker_analysis.py",
+  "$D/monomer_library/tst_rna_sugar_pucker_analysis_dna.py",
   "$D/monomer_library/tst_cif_types.py",
   "$D/monomer_library/tst_motif.py",
   "$D/monomer_library/tst_cif_triage.py",
@@ -303,6 +304,7 @@ general_tests = [
   "$D/validation/regression/tst_restraints.py",
   "$D/validation/regression/tst_omegalyze.py",
   "$D/validation/regression/tst_rna_validate.py",
+  "$D/validation/regression/tst_rna_validate_dna.py",
   "$D/validation/regression/tst_suitename.py",
   "$D/validation/regression/tst_model_properties.py",
   "$D/validation/regression/tst_molprobity_2.py",
