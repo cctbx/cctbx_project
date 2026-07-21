@@ -68,3 +68,10 @@ Add suitealyze RNA suite outlier markup to kinemage output. Thread `suite_result
 
 ## 2026-05-11
 Fix ribbon rendering: nucleic acid ribbons now render as SHEET (flat with arrowheads, matching Prekin's BETA behavior) instead of thin coil lines. Raise minimum contiguous segment to 3 residues (matching Prekin). Filter degenerate short HELIX/SHEET ribbon elements to COIL.
+
+## 2026-07-21
+Grade RNA sugar-pucker and suite problems by severity instead of scoring every outlier the same. Add `_rna_suite_severity` and `_rna_pucker_severity` in `mmtbx/validation/utils.py`: a delta outlier (wrong sugar pucker) weighs 5.0, an epsilon-only problem is a milder backbone issue, and suite outliers scale with how far the conformer sits from any named cluster.
+
+## 2026-07-21
+Extend sugar-pucker validation to DNA. Lift the `is_rna` gate in `rna_validate.rna_puckers` (that check was only "has an O2'", so it excluded all DNA), add DNA-specific delta and O3'-perp thresholds to `rna_sugar_pucker_analysis` selected by a new `is_dna` argument, and admit DNA-only structures at the top-level gate in `validation/molprobity/__init__.py`. RNA behaviour and the pdb_interpretation restraints path are unchanged. Retuned thresholds alone were not enough: DNA needs a contradiction rule plus a P-perp confidence margin, because roughly a third of DNA sugars are conformationally intermediate where a binary call carries no information. Flags 0.44% of DNA against the old rule's 24.5%, with 2.5x enrichment on PDB-REDO movement where the old rule scores 0.92x, i.e. chance.
+
