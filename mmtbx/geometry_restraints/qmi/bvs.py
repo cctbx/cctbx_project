@@ -30,6 +30,8 @@ from functools import lru_cache
 import iotbx.cif
 from libtbx import group_args
 
+from mmtbx.geometry_restraints.qmi import metals
+
 
 _CIF_PATH = os.path.join(os.path.dirname(__file__), "bvparm2020.cif")
 
@@ -59,8 +61,8 @@ def _table():
 def valence_params(cation, oxidation, donor):
   """(R0, B) for a (cation, oxidation, donor-element) bond, or None if the
   vendored table has no entry."""
-  return _table().get((cation.strip().capitalize(), oxidation,
-                       donor.strip().capitalize()))
+  return _table().get((metals.normalize_element(cation), oxidation,
+                       metals.normalize_element(donor)))
 
 
 def valence_sum(cation, oxidation, contacts):

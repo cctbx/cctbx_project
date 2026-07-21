@@ -48,6 +48,8 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx import group_args
 
+from mmtbx.geometry_restraints.qmi import util
+
 
 # ---------------------------------------------------------------------------
 # Ideal polyhedra: unit-radius vertices centred at the origin. These are
@@ -142,29 +144,29 @@ def _ideal_cubic():
 
 
 IDEAL_POLYHEDRA = {
-  "linear": _ideal_linear(),
-  "trigonal": _ideal_trigonal_planar(),
-  "tetrahedral": _ideal_tetrahedral(),
-  "square_planar": _ideal_square_planar(),
-  "trigonal_bipyramidal": _ideal_trigonal_bipyramidal(),
-  "square_pyramidal": _ideal_square_pyramidal(),
-  "octahedral": _ideal_octahedral(),
-  "trigonal_prism": _ideal_trigonal_prism(),
-  "pentagonal_bipyramidal": _ideal_pentagonal_bipyramidal(),
-  "square_antiprism": _ideal_square_antiprism(),
-  "cubic": _ideal_cubic(),
+  util.LINEAR: _ideal_linear(),
+  util.TRIGONAL: _ideal_trigonal_planar(),
+  util.TETRAHEDRAL: _ideal_tetrahedral(),
+  util.SQUARE_PLANAR: _ideal_square_planar(),
+  util.TRIGONAL_BIPYRAMIDAL: _ideal_trigonal_bipyramidal(),
+  util.SQUARE_PYRAMIDAL: _ideal_square_pyramidal(),
+  util.OCTAHEDRAL: _ideal_octahedral(),
+  util.TRIGONAL_PRISM: _ideal_trigonal_prism(),
+  util.PENTAGONAL_BIPYRAMIDAL: _ideal_pentagonal_bipyramidal(),
+  util.SQUARE_ANTIPRISM: _ideal_square_antiprism(),
+  util.CUBIC: _ideal_cubic(),
 }
 
 
 # Candidate shapes worth scoring at each coordination number.
 SHAPES_BY_CN = {
-  2: ["linear"],
-  3: ["trigonal"],
-  4: ["tetrahedral", "square_planar"],
-  5: ["trigonal_bipyramidal", "square_pyramidal"],
-  6: ["octahedral", "trigonal_prism"],
-  7: ["pentagonal_bipyramidal"],
-  8: ["square_antiprism", "cubic"],
+  2: [util.LINEAR],
+  3: [util.TRIGONAL],
+  4: [util.TETRAHEDRAL, util.SQUARE_PLANAR],
+  5: [util.TRIGONAL_BIPYRAMIDAL, util.SQUARE_PYRAMIDAL],
+  6: [util.OCTAHEDRAL, util.TRIGONAL_PRISM],
+  7: [util.PENTAGONAL_BIPYRAMIDAL],
+  8: [util.SQUARE_ANTIPRISM, util.CUBIC],
 }
 
 # Brute-force permutation search is over N! labelings; 8! = 40320 is trivial
@@ -452,13 +454,6 @@ _CHELATE_MAX_ANGLE_DEG = 90.0
 _CHELATE_MAX_ASYMMETRY_A = 0.5
 
 
-def _residue_key(atom):
-  # No altloc: two O of one carboxylate must pair even if one is modelled in an
-  # alternate conformation (a mixed/blank altloc must not split the group).
-  rg = atom.parent().parent()
-  return (rg.parent().id, rg.resseq, rg.icode, atom.parent().resname.strip())
-
-
 def _unit(vec):
   m = matrix.col(vec)
   n = m.length()
@@ -481,9 +476,9 @@ def _effective_donors(atoms, metal_xyz, donor_iseqs):
     name = a.name.strip()
     pair = _CARBOXYLATE_O_PAIRS.get(resname)
     if pair is not None and name in pair:
-      by_res.setdefault(_residue_key(a), {})[name] = iseq
+      by_res.setdefault(util.residue_key(a), {})[name] = iseq
     elif name in _CTERM_O_PAIR:
-      by_res.setdefault(_residue_key(a), {})[name] = iseq
+      by_res.setdefault(util.residue_key(a), {})[name] = iseq
 
   chelating = {}  # iseq -> bisector partner iseq (symmetric chelate)
   drop = set()    # far O of an anisobidentate carboxylate (a long contact)

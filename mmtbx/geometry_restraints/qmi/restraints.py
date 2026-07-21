@@ -23,6 +23,8 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 from scitbx import matrix
 
+from mmtbx.geometry_restraints.qmi import util
+
 
 # Biological donor elements (carbon excluded by default: at ~3 A the His ring
 # carbons sit at the cutoff and would be picked up as spurious donors).  Same
@@ -31,8 +33,9 @@ DEFAULT_DONOR_ELEMENTS = frozenset({
   "O", "N", "S", "SE", "F", "CL", "BR", "I", "P",
 })
 
-# Distance defining a first-shell contact (Harding / CheckMyMetal convention).
-DEFAULT_COORDINATION_CUTOFF_A = 3.0
+# Distance defining a first-shell contact (Harding / CheckMyMetal convention);
+# the single value lives in qmi.util so the pipeline cannot silently diverge.
+DEFAULT_COORDINATION_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
 
 # Phase-1 placeholder sigmas (plan Appendix A).  Replaced by the modified-
 # Seminario curvature floors (Sec 5F) and the state-sensitive inflation (Sec 7)
@@ -68,16 +71,17 @@ def detect_first_shell(submodel, metal_iseq, sites_cart=None,
     sites_cart = submodel.get_sites_cart()
   accept = frozenset(e.upper() for e in donor_elements)
   atoms = submodel.get_hierarchy().atoms()
-  metal_xyz = matrix.col(sites_cart[metal_iseq])
+  # All metal-atom distances in one vectorised flex pass; the element/H test
+  # stays a per-atom mask.
+  dists = (sites_cart - matrix.col(sites_cart[metal_iseq])).norms()
   donors = []
   for i, atom in enumerate(atoms):
-    if i == metal_iseq:
+    if i == metal_iseq or dists[i] > cutoff_A:
       continue
     elem = atom.element.strip().upper()
-    if elem in ("H", "D") or elem not in accept:
+    if atom.element_is_hydrogen() or elem not in accept:
       continue
-    if (matrix.col(sites_cart[i]) - metal_xyz).length() <= cutoff_A:
-      donors.append(i)
+    donors.append(i)
   return donors
 
 

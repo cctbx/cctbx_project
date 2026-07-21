@@ -32,7 +32,6 @@ from __future__ import absolute_import, division, print_function
 import os
 import shutil
 import tempfile
-from contextlib import contextmanager
 
 from libtbx import easy_run
 from libtbx.utils import null_out, Sorry
@@ -40,10 +39,12 @@ from scitbx import matrix
 from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
+from mmtbx.geometry_restraints.qmi import util
 
 
-# Distance defining a metal-coordinating donor (Harding / CheckMyMetal).
-DEFAULT_COORD_CUTOFF_A = 3.0
+# Distance defining a metal-coordinating donor (Harding / CheckMyMetal); the
+# single value lives in qmi.util so the pipeline cannot silently diverge.
+DEFAULT_COORD_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
 
 # Anionic donors: (resname, donor heavy-atom) -> H names to strip so charge
 # accounting reads them as anionic, not neutral.
@@ -91,16 +92,6 @@ _HIS_RING_H = {
 _NH_BOND_A = 1.01  # placed N-H length; the optimiser frees all H, so it relaxes
 
 
-@contextmanager
-def _in_directory(path):
-  saved = os.getcwd()
-  os.chdir(path)
-  try:
-    yield
-  finally:
-    os.chdir(saved)
-
-
 def add_hydrogens(model, use_neutron_distances=True, log=None):
   """Add hydrogens to *model* by running ``mmtbx.reduce2`` and return a fresh
   ``mmtbx.model.manager`` for the H-completed structure.
@@ -123,7 +114,7 @@ def add_hydrogens(model, use_neutron_distances=True, log=None):
     cmd = (f"mmtbx.reduce2 {in_path} output.filename={out_path} "
            f"use_neutron_distances={use_neutron_distances} --overwrite")
     print(f"  adding hydrogens: {cmd}", file=log)
-    with _in_directory(tmp):
+    with util.in_directory(tmp):
       result = easy_run.fully_buffered(cmd)
     if result.return_code != 0 or not os.path.exists(out_path):
       tail = "\n".join((result.stdout_lines + result.stderr_lines)[-15:])
@@ -149,7 +140,7 @@ def _count_water_h(hier):
     if common_residue_names_get_class(ag.resname) != "common_water":
       continue
     for a in ag.atoms():
-      if a.element.strip().upper() in ("H", "D"):
+      if a.element_is_hydrogen():
         n += 1
   return n
 
@@ -300,7 +291,7 @@ def deprotonate_metal_donors(hier, metals=None,
     return 0, 0
   # Cys/Tyr score only against anion-inducing metals (see _SOFT_DONOR_KEYS).
   anion_xyzs = [matrix.col(a.xyz) for a in metal_atoms
-                if a.element.strip().capitalize() in _ANION_INDUCING_METALS]
+                if qmi_metals.normalize_element(a.element) in _ANION_INDUCING_METALS]
 
   # Asp/Glu (any metal) and Cys/Tyr (anion-inducing metals only): strip the H.
   to_remove, seen = [], set()

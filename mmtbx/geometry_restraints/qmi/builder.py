@@ -27,7 +27,7 @@ from scitbx import matrix
 
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
-from mmtbx.geometry_restraints.qmi import donors, electronic, shape
+from mmtbx.geometry_restraints.qmi import donors, electronic, shape, util
 from mmtbx.geometry_restraints.qmi import bvs, qm, restraints, sigma
 
 
@@ -245,14 +245,10 @@ class QMRestraintsBuilder(object):
     descs = []
     for i in donor_iseqs:
       a = atoms[i]
-      ag = a.parent()
-      rg = ag.parent()
-      res_id = (rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip(),
-                ag.resname.strip())
-      c = donors.classify(a.element, ag.resname, a.name)
+      c = donors.classify(a.element, a.parent().resname, a.name)
       descs.append(group_args(element=c.element, kind=c.kind, field=c.field,
                               charge=c.charge, strong_axial=c.strong_axial,
-                              res_id=res_id))
+                              res_id=util.residue_key(a)))
     return donors.summarize(descs) if descs else None
 
   def _bvs_estimate(self, atoms, metal_iseq, metal_element, donor_iseqs):
@@ -265,7 +261,7 @@ class QMRestraintsBuilder(object):
     if not ox_states:
       return None
     m = matrix.col(atoms[metal_iseq].xyz)
-    contacts = [(atoms[i].element.strip().capitalize(),
+    contacts = [(qmi_metals.normalize_element(atoms[i].element),
                  (matrix.col(atoms[i].xyz) - m).length())
                 for i in donor_iseqs]
     return bvs.estimate_oxidation(metal_element, tuple(ox_states), contacts)
@@ -297,7 +293,7 @@ class QMRestraintsBuilder(object):
 
     metal_iseq = seed_iseqs[0]
     metal_atom = atoms[metal_iseq]
-    metal_element = metal_atom.element.strip().capitalize()
+    metal_element = qmi_metals.normalize_element(metal_atom.element)
     _rg = metal_atom.parent().parent()
     site_tag = f"{metal_element}_{_rg.parent().id.strip()}{_rg.resseq.strip()}"
     override = self._lookup_override(submodel, metal_iseq)

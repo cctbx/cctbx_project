@@ -23,6 +23,8 @@ from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 from iotbx.pdb import common_residue_names_get_class
 
+from mmtbx.geometry_restraints.qmi import metals
+
 
 WEAK, INTERMEDIATE, STRONG = "weak", "intermediate", "strong"
 
@@ -47,7 +49,7 @@ def classify(element, resname, atom_name):
   so a bidentate carboxylate counts once), and ``strong_axial`` flags a donor
   able to complete a low-spin heme axial pair (imidazole N, thioether S) [45].
   """
-  el = element.strip().upper()
+  el = metals.normalize_element(element)   # canonical Title-case symbol
   rn = resname.strip().upper()
   cls = common_residue_names_get_class(rn)
 

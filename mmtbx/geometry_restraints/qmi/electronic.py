@@ -32,6 +32,11 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx import group_args
 
+from mmtbx.geometry_restraints.qmi import metals
+from mmtbx.geometry_restraints.qmi.util import (
+  LINEAR, TRIGONAL, TETRAHEDRAL, SQUARE_PLANAR, TRIGONAL_BIPYRAMIDAL,
+  SQUARE_PYRAMIDAL, OCTAHEDRAL)
+
 
 # Periodic-table group numbers (1-18) for the metals in qmi scope. Definitional
 # (not empirical): for a transition metal the group number is the count of
@@ -52,7 +57,7 @@ def d_electron_count(element, oxidation):
   Raises KeyError for a metal outside :data:`GROUP` and ValueError if the
   result is outside 0..10.
   """
-  el = element.strip().capitalize()
+  el = metals.normalize_element(element)
   d = GROUP[el] - oxidation
   if not 0 <= d <= 10:
     raise ValueError(f"{el}{oxidation:+d} gives d-count {d}, outside 0..10")
@@ -95,7 +100,7 @@ OXIDATION_PRIORS = {
 def accessible_oxidation_states(element):
   """Accessible oxidation states for a metal in mononuclear biological sites
   (cited [36]) as a tuple, or None if the metal is outside the vetted priors."""
-  p = OXIDATION_PRIORS.get(element.strip().capitalize())
+  p = OXIDATION_PRIORS.get(metals.normalize_element(element))
   return p.accessible if p is not None else None
 
 
@@ -103,7 +108,7 @@ def default_oxidation(element):
   """Dominant biological resting-state oxidation to commit for a metal when
   structure leaves more than one candidate (plan 6.6), or None when the metal
   is outside the vetted priors OR has no dominant state (Fe)."""
-  p = OXIDATION_PRIORS.get(element.strip().capitalize())
+  p = OXIDATION_PRIORS.get(metals.normalize_element(element))
   return p.default if p is not None else None
 
 
@@ -143,7 +148,7 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
   Returns group_args(oxidation, confidence, reason), or None if the metal is
   outside the vetted priors (:data:`OXIDATION_PRIORS`).
   """
-  el = element.strip().capitalize()
+  el = metals.normalize_element(element)
   accessible = accessible_oxidation_states(el)
   if accessible is None:
     return None
@@ -152,12 +157,11 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
                       reason="only one accessible oxidation state")
 
   if el == "Cu":                                                        # [39, 40]
-    if (cn is not None and cn <= 3) or geometry in ("linear", "trigonal"):
+    if (cn is not None and cn <= 3) or geometry in (LINEAR, TRIGONAL):
       return group_args(oxidation=1, confidence=CONF_HIGH,
                         reason="low CN / linear-trigonal geometry")
     if (cn is not None and cn >= 5) or geometry in (
-        "square_planar", "square_pyramidal", "trigonal_bipyramidal",
-        "octahedral"):
+        SQUARE_PLANAR, SQUARE_PYRAMIDAL, TRIGONAL_BIPYRAMIDAL, OCTAHEDRAL):
       return group_args(oxidation=2, confidence=CONF_HIGH,
                         reason="CN>=5 / square-planar-pyramidal-octahedral")
     return group_args(oxidation=2, confidence=CONF_LOW,
@@ -209,7 +213,7 @@ def _aufbau_unpaired(n, levels):
 
 # Orbital-splitting levels (low energy first) that are strong-field / low-spin
 # distinct from the weak-field (5,) filling. Only octahedral differs.
-_LOW_SPIN_LEVELS = {"octahedral": (3, 2)}   # t2g, eg
+_LOW_SPIN_LEVELS = {OCTAHEDRAL: (3, 2)}   # t2g, eg
 
 
 def is_encoded(geometry, d_count):
@@ -223,9 +227,9 @@ def is_encoded(geometry, d_count):
   remaining field-dependent d-counts (4-7) at 5-coordinate / trigonal-prism
   geometries fall back to the weak-field high-spin count -- predict_spin still
   commits them high-spin, but flags the lower certainty via ``encoded``."""
-  if geometry in ("octahedral", "tetrahedral"):
+  if geometry in (OCTAHEDRAL, TETRAHEDRAL):
     return True
-  if geometry == "square_planar":
+  if geometry == SQUARE_PLANAR:
     return d_count in (8, 9)
   return d_count in (0, 1, 2, 3, 9, 10)
 
@@ -233,7 +237,7 @@ def is_encoded(geometry, d_count):
 def is_field_dependent(geometry, d_count):
   """True where high-spin vs low-spin is a real choice (octahedral d4-d7);
   elsewhere the spin is fixed by geometry + d-count."""
-  return geometry == "octahedral" and 4 <= d_count <= 7
+  return geometry == OCTAHEDRAL and 4 <= d_count <= 7
 
 
 def unpaired_electrons(geometry, d_count, low_spin=False):
@@ -247,7 +251,7 @@ def unpaired_electrons(geometry, d_count, low_spin=False):
   """
   if not 0 <= d_count <= 10:
     raise ValueError(f"d-count {d_count} outside 0..10")
-  if geometry == "square_planar" and d_count == 8:
+  if geometry == SQUARE_PLANAR and d_count == 8:
     return 0
   if low_spin and geometry in _LOW_SPIN_LEVELS:
     return _aufbau_unpaired(d_count, _LOW_SPIN_LEVELS[geometry])
@@ -292,7 +296,7 @@ def predict_spin(element, oxidation, geometry, summary=None):
   if not is_field_dependent(geometry, d):
     return group_args(low_spin=False, confidence=CONF_HIGH,
                       reason="spin fixed by geometry and d-count")
-  el = element.strip().capitalize()
+  el = metals.normalize_element(element)
   if el == "Fe" and summary is not None and summary.heme:
     if summary.n_axial >= 2 and summary.axial_all_strong:              # [45]
       return group_args(low_spin=True, confidence=CONF_HIGH,

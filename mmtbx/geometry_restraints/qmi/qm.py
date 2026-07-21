@@ -30,12 +30,13 @@ hydrogen, which would release the cap H atoms that must stay frozen.
 from __future__ import absolute_import, division, print_function
 
 import os
-from contextlib import contextmanager
 
 from libtbx.utils import null_out, Sorry
 from scitbx import matrix
+from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints import xtb_manager
+from mmtbx.geometry_restraints.qmi import util
 
 
 # Cofactor (macrocycle) residue names: a cofactor residue touching the free
@@ -53,7 +54,6 @@ COFACTOR_RESNAMES = frozenset({
 
 # Defaults shared with the calibration pipeline.
 DEFAULT_FREE_RADIUS = 5.0      # A; atoms within this of the seed relax
-DEFAULT_COORD_CUTOFF = 3.0     # A; a backbone donor inside this coordinates
 # ALPB named solvent nearest the protein-interior dielectric (eps ~ 4); xTB has
 # no arbitrary-epsilon option, so the nearest named solvent stands in (plan
 # Sec 5E.1).  Passed to the xtb_manager constructor so the opt is solvated.
@@ -61,27 +61,9 @@ DEFAULT_SOLVENT = "ether"
 DEFAULT_METHOD = "GFN2-xTB"
 
 _BACKBONE_NAMES = {"N", "CA", "C", "O", "OXT"}
-_STD_AA = {
-  "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-  "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
-}
-
-
-@contextmanager
-def _in_directory(path):
-  """chdir into *path* for the block, restoring the prior cwd after.  xTB (via
-  ``xtb_manager``) writes its scratch / output files into the current working
-  directory, so a per-run scratch dir keeps concurrent sites from colliding and
-  keeps the source tree clean.  ``path=None`` is a no-op (stay in cwd)."""
-  if path is None:
-    yield
-    return
-  saved = os.getcwd()
-  os.chdir(path)
-  try:
-    yield
-  finally:
-    os.chdir(saved)
+# Protein residue classes (standard + modified, so e.g. MSE selenomethionine is
+# recognised) whose backbone atoms qualify for the coordinating-backbone rule.
+_AA_CLASSES = ("common_amino_acid", "modified_amino_acid")
 
 
 def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
@@ -124,7 +106,7 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
 
 def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
                            free_radius=DEFAULT_FREE_RADIUS,
-                           coord_cutoff_A=DEFAULT_COORD_CUTOFF,
+                           coord_cutoff_A=util.DEFAULT_COORDINATION_CUTOFF_A,
                            freeze_water_o=False, log=None):
   """Return ``(frozen_iseqs, free_iseqs)`` for the QM optimisation.
 
@@ -207,9 +189,10 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   carbonyl_unit_iseqs = set()
   carbonyl_unit_log = []
   for i, atom in enumerate(atoms):
-    resname = atom.parent().resname.strip().upper()
+    resname = atom.parent().resname
     name = atom.name.strip().upper()
-    if resname in _STD_AA and name in _BACKBONE_NAMES:
+    if (common_residue_names_get_class(resname) in _AA_CLASSES
+        and name in _BACKBONE_NAMES):
       d = (matrix.col(atom.xyz) - seed_xyz).length()
       if d > coord_cutoff_A:
         free_iseqs.discard(i)
@@ -238,7 +221,7 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   # are subtracted just below, so this must precede the cap removal.
   h_iseqs = {
     i for i, atom in enumerate(atoms)
-    if atom.element.strip().upper() in ("H", "D")
+    if atom.element_is_hydrogen()
   }
   free_iseqs |= h_iseqs
 
@@ -267,8 +250,8 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   water_o_iseqs = set()
   if freeze_water_o:
     for i, atom in enumerate(atoms):
-      if (atom.parent().resname.strip().upper() in ("HOH", "DOD")
-          and atom.element.strip().upper() not in ("H", "D")):
+      if (common_residue_names_get_class(atom.parent().resname) == "common_water"
+          and not atom.element_is_hydrogen()):
         water_o_iseqs.add(i)
     free_iseqs -= water_o_iseqs
 
@@ -392,7 +375,7 @@ def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
   qmm.robust = robust
   qmm.set_ligand_atoms(mask)
 
-  with _in_directory(work_dir):
+  with util.in_directory(work_dir):
     # optimise_h=False: the injected mask is authoritative; without it the
     # manager force-frees every H, releasing the frozen cap H atoms.
     _opt_subset, full_coords = qmm.get_opt(
@@ -469,7 +452,7 @@ def run_hessian(submodel, sites_cart, charge, multiplicity,
   cmd = (f"{exe} {xyz_name} --input {inp_name} --namespace {ns} "
          f"{gfn_flag}{solvent_flag} -P {threads} --hess >& {log_name}")
 
-  with _in_directory(work_dir):
+  with util.in_directory(work_dir):
     with open(inp_name, 'w') as f:
       f.write("\n".join(inp_lines) + "\n")
     with open(xyz_name, 'w') as f:
