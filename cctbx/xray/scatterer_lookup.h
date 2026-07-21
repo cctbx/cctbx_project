@@ -133,68 +133,79 @@ namespace xray {
         return scatterers[idx];
       }
 
-      size_t index_of_fractional(const fractional<FloatType>& site,
-        int Z, int sdata = 0, FloatType eps = 1e-3) const
+      size_t index_of_fractional(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id, FloatType eps = 1e-3) const
       {
+        for (size_t i = 0; i < scatterers.size(); i++) {
+          if (scatterer_id_big<FloatType, fractional<FloatType> >(scatterers[i].site, scatterers[i].get_part(), scatterers[i].element_info().atomic_number(), 0) == sc_id) {
+            return i;
+          }
+        }
+
         return index_of_cartesian(u_cell.orthogonalize(site), Z, sdata, eps);
       }
 
-      size_t index_of_cartesian(const cart_t& crd, int Z, int sdata = 0,
-        FloatType eps = 1e-3) const
-      {
-        typedef typename std::vector<pair_t>::const_iterator itr_t;
-        FloatType sql = crd.length();
-        FloatType eps_qd = sql * eps;
-        itr_t itr = std::upper_bound(
-          map.begin(), map.end(),
-          std::make_pair(sql, size_t(~0)), less_qd());
-        CCTBX_ASSERT(itr != map.end());
-        itr_t itr1 = itr;
-        FloatType diff = std::abs((*itr).first - sql);
-        while (diff < eps_qd && itr != map.end()) {
-          size_t idx = (*itr).second;
-          const scatterer_t& s = scatterers[idx];
-          FloatType qd = (crd - crds[idx]).length();
-          if (s.get_atomic_number() == Z && qd < eps) {
-            if (data.size() == 0 || data[idx] == sdata) {
-              return idx;
-            }
-          }
-          itr++;
-          if (itr != map.end()) {
-            diff = std::abs((*itr).first - sql);
-          }
-        }
-        itr = itr1;
-        CCTBX_ASSERT(itr != map.begin());
-        itr--;
-        diff = std::abs((*itr).first - sql);
-        while (diff < eps_qd) {
-          size_t idx = (*itr).second;
-          const scatterer_t& s = scatterers[idx];
-          FloatType qd = (crd - crds[idx]).length();
-          if (s.get_atomic_number() == Z && qd < eps) {
-            if (data.size() == 0 || data[idx] == sdata) {
-              return idx;
-            }
-          }
-          if (itr == map.begin()) {
-            break;
-          }
-          itr--;
-          diff = std::abs((*itr).first - sql);
-        }
-        return ~0;
-      }
+    //   size_t index_of_fractional(const fractional<FloatType>& site,
+    //     int Z, int sdata = 0, FloatType eps = 1e-3) const
+    //   {
+    //     return index_of_cartesian(u_cell.orthogonalize(site), Z, sdata, eps);
+    //   }
 
-      static bool sort_qd(const pair_t& a, const pair_t& b) {
-        return a.first < b.first;
-      }
+    //   size_t index_of_cartesian(const cart_t& crd, int Z, int sdata = 0,
+    //     FloatType eps = 1e-3) const
+    //   {
+    //     typedef typename std::vector<pair_t>::const_iterator itr_t;
+    //     FloatType sql = crd.length();
+    //     FloatType eps_qd = sql * eps;
+    //     itr_t itr = std::upper_bound(
+    //       map.begin(), map.end(),
+    //       std::make_pair(sql, size_t(~0)), less_qd());
+    //     CCTBX_ASSERT(itr != map.end());
+    //     itr_t itr1 = itr;
+    //     FloatType diff = std::abs((*itr).first - sql);
+    //     while (diff < eps_qd && itr != map.end()) {
+    //       size_t idx = (*itr).second;
+    //       const scatterer_t& s = scatterers[idx];
+    //       FloatType qd = (crd - crds[idx]).length();
+    //       if (s.get_atomic_number() == Z && qd < eps) {
+    //         if (data.size() == 0 || data[idx] == sdata) {
+    //           return idx;
+    //         }
+    //       }
+    //       itr++;
+    //       if (itr != map.end()) {
+    //         diff = std::abs((*itr).first - sql);
+    //       }
+    //     }
+    //     itr = itr1;
+    //     CCTBX_ASSERT(itr != map.begin());
+    //     itr--;
+    //     diff = std::abs((*itr).first - sql);
+    //     while (diff < eps_qd) {
+    //       size_t idx = (*itr).second;
+    //       const scatterer_t& s = scatterers[idx];
+    //       FloatType qd = (crd - crds[idx]).length();
+    //       if (s.get_atomic_number() == Z && qd < eps) {
+    //         if (data.size() == 0 || data[idx] == sdata) {
+    //           return idx;
+    //         }
+    //       }
+    //       if (itr == map.begin()) {
+    //         break;
+    //       }
+    //       itr--;
+    //       diff = std::abs((*itr).first - sql);
+    //     }
+    //     return ~0;
+    //   }
 
-      struct less_qd {
-        bool operator()(const pair_t& a, const pair_t& b) const {
-          return sort_qd(a, b);
-        }
-      };
+    //   static bool sort_qd(const pair_t& a, const pair_t& b) {
+    //     return a.first < b.first;
+    //   }
+
+    //   struct less_qd {
+    //     bool operator()(const pair_t& a, const pair_t& b) const {
+    //       return sort_qd(a, b);
+    //     }
+    //   };
     };
 }} // namespace cctbx::xray

@@ -64,7 +64,8 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       const std::string &file_name)
     {
       using namespace std;
-      typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
+    //   typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
+    typedef cctbx::xray::scatterer_id_big<float_type, fractional<float_type> > scatterer_id_t;
       ifstream in_file(file_name.c_str());
       string line;
       vector<std::string> toks;
@@ -113,12 +114,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     
             cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
-              std::stringstream ss;
-              ss << std::hex << stoks[sci];
-              uint64_t id_val;
-              ss >> id_val;
-              scatterer_id_t sc_id(id_val);
-              size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1e-2);
+              scatterer_id_t sc_id(stoks[sci]);
+              size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1.0);
+              std::cout << "scatterer id: " << stoks[sci] << " idx: " << idx << " crd: " << sc_id.get_crd()[0] << ", " << sc_id.get_crd()[1] << ", " << sc_id.get_crd()[2] << " z: " << sc_id.get_z() << " data: " << sc_id.get_data() << std::endl;
               SMTBX_ASSERT(idx != ~0);
               sc_indices[sci] = idx;
             }
@@ -190,9 +188,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       const std::string &file_name)
     {
       using namespace std;
-      typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
+    //   typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
+      typedef cctbx::xray::scatterer_id_big<float_type, fractional<float_type> > scatterer_id_t;
       ifstream tsc_file(file_name.c_str(), ios::binary);
-
+      ofstream tmp_logs("tsc_read.log");
       const size_t charsize = sizeof(char);
       const size_t intsize = sizeof(int);
       const size_t uint64size = sizeof(uint64_t);
@@ -216,16 +215,13 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       if (boost::icontains(header_str, "SCATTERER_IDS")) {
         SMTBX_ASSERT(sc_len == nr_scat);
         af::shared<int> data(nr_scat);
-        for (size_t sci = 0; sci < nr_scat; sci++) {
-            data[sci] = scatterers[sci].get_part() + 16; // add 16 to avoid negative values
-        }
 
         cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
         for (size_t sci = 0; sci < nr_scat; sci++) {
-          uint64_t id_val;
-          tsc_file.read((char*)&id_val, uint64size);
-          scatterer_id_t sc_id(id_val);
-          size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1e-2);
+          scatterer_id_t sc_id(tsc_file); //Read the raw bytes and convert to scatterer_id_t
+          tmp_logs << "READ crd: " << sc_id.get_crd()[0] << ", " << sc_id.get_crd()[1] << ", " << sc_id.get_crd()[2] << " z: " << sc_id.get_z() << " data: " << sc_id.get_data() << std::endl;
+          tmp_logs << "INTE crd: " << scatterers[sci].site[0] << ", " << scatterers[sci].site[1] << ", " << scatterers[sci].site[2] << " z: " << scatterers[sci].element_info().atomic_number() << " data: " << scatterers[sci].get_part() << std::endl;
+          size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1);
           SMTBX_ASSERT(idx != ~0);
           sc_indices[sci] = idx;
         }
@@ -269,6 +265,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       }
       tsc_file.close();
       SMTBX_ASSERT(!tsc_file.bad());
+      tmp_logs.close();
     }
 
   public:
