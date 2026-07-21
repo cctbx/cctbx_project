@@ -1,12 +1,12 @@
 """H-bond-aware placement of the two hydrogens on bare water oxygens.
 
 A map-free, H-bond-network-aware placer for water hydrogens. For every
-bare ``HOH``/``DOD`` oxygen it places the two H so they (a) point at real
-H-bond acceptors, (b) avoid clashes against the whole structure (including
-H placed on other waters), and (c) keep off metal cations -- purely from
-geometry, with no experimental data/map, no residue-name tables and no
-monomer library. It enforces O-H = 0.984 A (neutron) or 0.957 A (X-ray)
-and H-O-H = 104.5 deg.
+bare water oxygen (any common water residue: HOH, DOD, H2O, WAT, OH2, ...)
+it places the two H so they (a) point at real H-bond acceptors, (b) avoid
+clashes against the whole structure (including H placed on other waters),
+and (c) keep off metal cations -- placed purely from geometry, with no
+experimental data/map and no monomer library. It enforces O-H = 0.984 A
+(neutron) or 0.957 A (X-ray) and H-O-H = 104.5 deg.
 
 The public entry point is :func:`place_water_hydrogens`, which modifies a
 hierarchy in place. The :class:`mmtbx.programs.water_protonation.Program`
@@ -87,6 +87,12 @@ _WATER_CATION_ELEMENTS = frozenset({
 _WATER_CATION_RADIUS = 3.0
 
 
+def _is_water(resname):
+  """True for any common water alias (HOH, DOD, H2O, WAT, OH2, ...)."""
+  return (iotbx.pdb.common_residue_names_get_class(resname.strip().upper())
+          == "common_water")
+
+
 def _fibonacci_sphere(n):
   """Roughly-uniform unit vectors over the sphere (Fibonacci spiral).
 
@@ -117,7 +123,7 @@ _WATER_FALLBACK_DIRECTIONS = _fibonacci_sphere(64)
 
 
 def _strip_water_hydrogens(hier):
-  """Remove every H/D from HOH/DOD residues, leaving bare O.
+  """Remove every H/D from water residues, leaving bare O.
 
   The stripped waters are re-placed from scratch by the caller.
 
@@ -133,7 +139,7 @@ def _strip_water_hydrogens(hier):
   """
   n = 0
   for ag in hier.atom_groups():
-    if ag.resname.strip().upper() not in ("HOH", "DOD"):
+    if not _is_water(ag.resname):
       continue
     for a in list(ag.atoms()):
       if a.element.strip().upper() in ("H", "D"):
@@ -815,8 +821,7 @@ class _WaterHydrogenPlacer(object):
     # within the clash radius (excluding the water's own atoms).
     waters = []
     for ag in hier.atom_groups():
-      resname = ag.resname.strip().upper()
-      if resname not in ("HOH", "DOD"):
+      if not _is_water(ag.resname):
         continue
       if len(ag.atoms()) >= 3:
         continue  # already protonated
@@ -937,9 +942,10 @@ def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
                           reorient_existing=False, lone_pair_directed=False,
                           joint=False, on_state=None):
-  """Place the two H on every bare HOH/DOD water, H-bond-aware.
+  """Place the two H on every bare water, H-bond-aware.
 
-  For each HOH/DOD residue missing H:
+  For each water residue missing H (any common water alias -- HOH, DOD,
+  H2O, WAT, OH2, ...):
 
   - H1 along O -> nearest H-bond acceptor (within
     ``_WATER_ACCEPTOR_RADIUS``, element in ``_WATER_ACCEPTOR_ELEMENTS``,
@@ -966,7 +972,7 @@ def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
   best sweep is always kept, so the result is never worse than any state
   seen. New H inherit the parent O's occupancy and B factor.
 
-  Modifies *hier* in place. By default it is idempotent: HOH residues
+  Modifies *hier* in place. By default it is idempotent: water residues
   already carrying H are left untouched.
 
   This is a thin wrapper around :class:`_WaterHydrogenPlacer`; the
@@ -1052,7 +1058,7 @@ def _water_clash_stats(hier):
   """
   wh = []
   for ag in hier.atom_groups():
-    if ag.resname.strip().upper() not in ("HOH", "DOD"):
+    if not _is_water(ag.resname):
       continue
     wid = ag.memory_id()
     for a in ag.atoms():
@@ -1113,26 +1119,23 @@ def _atom_id(a):
           f"{rg.resseq.strip()} {a.name.strip()}")
 
 
-def _worst_water_clashes(hier, limit):
+def _worst_water_clashes(hier):
   """Closest inter-water H-H contacts -- the offenders behind the counts.
 
   Parameters
   ----------
   hier : iotbx.pdb.hierarchy.root
       Model hierarchy.
-  limit : int
-      Maximum number of contacts to return.
 
   Returns
   -------
   list of tuple
-      Up to ``limit`` ``(distance, id_a, id_b)`` tuples for water-H vs
-      water-H contacts between different waters within 2.0 A, closest
-      first.
+      ``(distance, id_a, id_b)`` tuples for every water-H vs water-H contact
+      between different waters within 2.0 A, closest first.
   """
   wh = []
   for ag in hier.atom_groups():
-    if ag.resname.strip().upper() not in ("HOH", "DOD"):
+    if not _is_water(ag.resname):
       continue
     wid = ag.memory_id()
     for a in ag.atoms():
@@ -1149,7 +1152,7 @@ def _worst_water_clashes(hier, limit):
         continue
       pairs.append(((matrix.col(wh[j][0]) - xc).length(), a, wh[j][2]))
   pairs.sort(key=lambda t: t[0])
-  return [(d, _atom_id(a), _atom_id(b)) for d, a, b in pairs[:limit]]
+  return [(d, _atom_id(a), _atom_id(b)) for d, a, b in pairs]
 
 
 def _detect_neutron(pdb_in, hier):

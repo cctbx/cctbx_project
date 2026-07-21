@@ -149,13 +149,8 @@ simpler method in crowded pockets."
     stats = False
       .type = bool
       .expert_level = 2
-      .help = "After placement, print a per-pass summary of water-H clashes \
-(H-H contacts below 2.0/1.8/1.5 A, and the closest)."
-    stats_worst = None
-      .type = int(value_min=0)
-      .expert_level = 2
-      .help = "List the N closest residual water-H contacts with their residue \
-IDs (implies stats=True)."
+      .help = "After placement, print the per-pass water-H clash summary and \
+list the residual inter-water H-H contacts (grouped by 1.5/1.8/2.0 A)."
   }
 }
 qm
@@ -288,8 +283,7 @@ Requires xtb.
           n_refine=wp.refine.max_sweeps, refine_tol=wp.refine.tolerance,
           n_basin=wp.basin.rounds, lone_pair_directed=wp.lone_pair,
           joint=wp.joint,
-          report_stats=wp.stats or (wp.stats_worst is not None),
-          n_worst=wp.stats_worst or 0))
+          report_stats=wp.stats))
 
     self._builder = QMRestraintsBuilder(
       metal_element=element_filter or None,

@@ -156,7 +156,7 @@ def _count_water_h(hier):
 
 def protonate_waters(hier, n_refine=5, refine_tol=1, n_basin=0,
                      lone_pair_directed=False, joint=False,
-                     report_stats=False, n_worst=0, log=None):
+                     report_stats=False, log=None):
   """Place the two H on every bare water IN PLACE, H-bond-aware and cation-aware
   (the H are kept off coordinating metals), via the naiad placer.
 
@@ -169,8 +169,9 @@ def protonate_waters(hier, n_refine=5, refine_tol=1, n_basin=0,
   *n_refine* / *refine_tol* / *n_basin* / *lone_pair_directed* / *joint* are the
   placement-quality knobs forwarded to
   :func:`...naiad.water_protonation.place_water_hydrogens` (defaults match it).
-  With *report_stats*, the per-sweep water-H clash table is streamed; with
-  *n_worst* > 0, the closest residual water-H contacts are listed afterwards.
+  With *report_stats*, the per-sweep water-H clash table is streamed and the
+  residual inter-water H-H contacts are listed afterwards (grouped by
+  1.5/1.8/2.0 A), mirroring the naiad water_protonation Program.
   """
   if log is None:
     log = null_out()
@@ -192,14 +193,19 @@ def protonate_waters(hier, n_refine=5, refine_tol=1, n_basin=0,
     lone_pair_directed=lone_pair_directed, joint=joint, on_state=on_state)
   added = _count_water_h(hier) - before
   print(f"  placed {added} water hydrogen(s)", file=log)
-  if report_stats and n_worst:
-    worst = water_protonation._worst_water_clashes(hier, n_worst)
-    if worst:
-      print(f"  worst {len(worst)} water-H contact(s):", file=log)
-      for d, id_a, id_b in worst:
-        print(f"    {d:.2f} A  {id_a}  <->  {id_b}", file=log)
-    else:
+  if report_stats:
+    contacts = water_protonation._worst_water_clashes(hier)
+    if not contacts:
       print("  no water-H contacts < 2.0 A", file=log)
+    else:
+      print("  residual water-H contacts:", file=log)
+      for label, lo, hi in (("< 1.5 A", 0.0, 1.5),
+                            ("1.5-1.8 A", 1.5, 1.8),
+                            ("1.8-2.0 A", 1.8, 2.0)):
+        band = [c for c in contacts if lo <= c[0] < hi]
+        print(f"    {label} ({len(band)}):", file=log)
+        for d, id_a, id_b in band:
+          print(f"      {d:.2f} A  {id_a}  <->  {id_b}", file=log)
   return added
 
 
