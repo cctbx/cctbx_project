@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS `mydb`.`run` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `run` VARCHAR(1000) NOT NULL,
   `path` TEXT NULL,
+  `lcls_state` VARCHAR(45) NULL,
+  `streaming_state` VARCHAR(45) NULL,
+  `streaming_request` VARCHAR(45) NULL,
+  `transfer_uuid` VARCHAR(64) NULL,
+  `streaming_detail` TEXT NULL,
+  `streaming_endpoint` VARCHAR(255) NULL,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `run_UNIQUE` (`run` ASC))
 ENGINE = InnoDB;

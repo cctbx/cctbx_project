@@ -290,6 +290,32 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_rungroup` ADD COLUMN reference_geometry_path TEXT NULL"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5.8: streaming run discovery
+      query = "SHOW columns FROM `%s_run`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'streaming_state' not in column_names:
+        print("Upgrading to version 5.8 of mysql database schema")
+        query = "ALTER TABLE `%s_run` ADD COLUMN lcls_state VARCHAR(45) NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_run` ADD COLUMN streaming_state VARCHAR(45) NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_run` ADD COLUMN streaming_request VARCHAR(45) NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_run` ADD COLUMN transfer_uuid VARCHAR(64) NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_run` ADD COLUMN streaming_detail TEXT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
+      # streaming_endpoint added after the initial v5.8 columns: a separate check so a DB
+      # that already ran the v5.8 migration still gets the new column.
+      if 'streaming_endpoint' not in column_names:
+        print("Adding streaming_endpoint column to the run table")
+        query = "ALTER TABLE `%s_run` ADD COLUMN streaming_endpoint VARCHAR(255) NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
       # Maintain backwards compatibility with SQL tables v5.5: 03/10/25
       query = "SHOW columns FROM `%s_experiment`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
