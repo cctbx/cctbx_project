@@ -1948,8 +1948,11 @@ class RunTab(BaseTab):
     self.all_tags = []
     self.all_tag_buttons = []
     self.persistent_tags = []
-    self.run_rows = []
     self._drop_highlight = None
+    # run number -> RunEntry, so existing rows' streaming state can be refreshed in
+    # place (refresh_rows otherwise only creates a row for a newly-seen run).
+    self.run_entries = {}
+    self.streaming = main.params.facility.name == 'streaming'
 
     self.run_panel = ScrolledPanel(self)
     self.run_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1960,12 +1963,16 @@ class RunTab(BaseTab):
     # We don't need scroll-on-focus here, so drop the default handler.
     self.run_panel.Unbind(wx.EVT_CHILD_FOCUS)
 
-    self.colname_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    n_cols = 4 if self.streaming else 2
+    self.colname_sizer = wx.FlexGridSizer(1, n_cols, 0, 10)
     run_label = wx.StaticText(self, label='Run', size=(60, -1))
     tag_label = wx.StaticText(self, label='Sample Tags', size=(620, -1))
     self.colname_sizer.Add(run_label, flag=wx.ALIGN_RIGHT)
     self.colname_sizer.Add(tag_label, flag=wx.ALIGN_RIGHT | wx.EXPAND)
     self.colname_sizer.AddGrowableCol(1, 1)
+    if self.streaming:
+      self.colname_sizer.Add(wx.StaticText(self, label='LCLS', size=(90, -1)))
+      self.colname_sizer.Add(wx.StaticText(self, label='Streaming', size=(110, -1)))
     self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.btn_multirun_tags = wx.Button(self, label='Change Tags on Multiple Runs', size=(240, -1))
@@ -1991,6 +1998,18 @@ class RunTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onMultiRunTags, self.btn_multirun_tags)
     self.Bind(wx.EVT_BUTTON, self.onManagePersistentTags, self.btn_persistent_tags)
     self.Bind(wx.EVT_BUTTON, self.onManageTags, self.btn_manage_tags)
+
+    # In streaming mode the per-run streaming state changes without the run set
+    # changing (which is what posts a RefreshRuns event), so poll the DB on a timer
+    # while the tab is visible to keep the state columns current.
+    if self.streaming:
+      self.stream_refresh_timer = wx.Timer(self)
+      self.Bind(wx.EVT_TIMER, self.onStreamRefreshTimer, self.stream_refresh_timer)
+      self.stream_refresh_timer.Start(5000)
+
+  def onStreamRefreshTimer(self, e):
+    if self.IsShownOnScreen():
+      self.refresh_rows()
 
   def onRefresh(self, e):
       self.refresh_rows()
@@ -2055,8 +2074,16 @@ class RunTab(BaseTab):
     for run in runs:
       run_row = RunEntry(self.run_panel, run=run, params=self.main.params, label_width = max_width, tab=self)
       self.all_tag_buttons.append(run_row.tag_button)
-      self.run_rows.append(run_row)
+      self.run_entries[run.run] = run_row
       self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
+
+    # Refresh the streaming/LCLS state on already-displayed rows from the freshly
+    # fetched run objects (their state changes without the run set changing).
+    if self.streaming:
+      for run in all_runs:
+        entry = self.run_entries.get(run.run)
+        if entry is not None:
+          entry.update_streaming_status(run)
 
     self.all_runs = all_runs
 
@@ -4638,28 +4665,42 @@ class RunEntry(wx.Panel):
     self.tab = tab
     self._drag_start = None
     self._dragging = False
+    self.streaming = params.facility.name == 'streaming'
 
     wx.Panel.__init__(self, parent=parent)
     if label_width is None: label_width = 60
 
-    self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
+    n_cols = 5 if self.streaming else 4
+    self.sizer = wx.FlexGridSizer(1, n_cols, 0, 10)
     run_no = wx.StaticText(self, label=str(run),
                            size=(label_width, -1))
     self.tag_button = gctr.TagButton(self, run=run)
-    self.avg_button = wx.Button(self, label='Average')
-    self.view_button = wx.Button(self, label='View')
-    self.view_button.Hide()
 
     self.sizer.Add(run_no, flag=wx.EXPAND)
     self.sizer.Add(self.tag_button, flag=wx.EXPAND)
     self.sizer.AddGrowableCol(1)
-    self.sizer.Add(self.avg_button)
-    self.sizer.Add(self.view_button, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
-
-    # Button Bindings
     self.Bind(wx.EVT_BUTTON, self.onTagButton, self.tag_button)
-    self.Bind(wx.EVT_BUTTON, self.onAvgButton, self.avg_button)
-    self.Bind(wx.EVT_BUTTON, self.onViewButton, self.view_button)
+
+    if self.streaming:
+      # LCLS collection state (from the lgbk poll) and the dials_streaming streaming
+      # state, plus a button that requests streaming of this run. The StreamManager
+      # (a separate process) reads the intent and drives the streaming state.
+      self.lcls_state_text = wx.StaticText(self, label='', size=(90, -1))
+      self.streaming_state_text = wx.StaticText(self, label='', size=(110, -1))
+      self.stream_button = wx.Button(self, label='Stream', size=(90, -1))
+      self.sizer.Add(self.lcls_state_text, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.sizer.Add(self.streaming_state_text, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.sizer.Add(self.stream_button)
+      self.Bind(wx.EVT_BUTTON, self.onStreamButton, self.stream_button)
+      self.update_streaming_status(run)
+    else:
+      self.avg_button = wx.Button(self, label='Average')
+      self.view_button = wx.Button(self, label='View')
+      self.view_button.Hide()
+      self.sizer.Add(self.avg_button)
+      self.sizer.Add(self.view_button, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+      self.Bind(wx.EVT_BUTTON, self.onAvgButton, self.avg_button)
+      self.Bind(wx.EVT_BUTTON, self.onViewButton, self.view_button)
 
     # Drag-to-copy-tags bindings. A drag can start anywhere on the row: the
     # run number cell, the row's own surface, or the tag button. We do not
@@ -4737,6 +4778,33 @@ class RunEntry(wx.Panel):
     if self.tab is not None:
       self.tab.clear_drop_highlight()
       self.tag_button.SetState(gctr.mb.GRADIENT_NORMAL)
+
+  def update_streaming_status(self, run):
+    '''Refresh the LCLS and streaming state labels from a (fresh) run object.
+
+    The passed run should be freshly fetched from the DB -- a db_proxy caches its
+    columns at construction, so re-reading the row this widget was built with would
+    return stale values.'''
+    if not self.streaming:
+      return
+    lcls_state = getattr(run, 'lcls_state', None) or ''
+    streaming_state = getattr(run, 'streaming_state', None) or ''
+    self.lcls_state_text.SetLabel(lcls_state)
+    self.streaming_state_text.SetLabel(streaming_state)
+    # Only allow a Stream request when the run is not already in flight, so a stray
+    # click cannot leave a lingering 'requested' intent (which would re-stream the run
+    # once it later reaches a terminal state), and only once the run is 'ready' (closed,
+    # with every file present at S3DF where the producer reads it). The StreamManager
+    # enforces the same gate against a click racing this refresh.
+    in_flight = streaming_state in ('requested', 'waiting', 'provisioning', 'streaming')
+    self.stream_button.Enable(not in_flight and lcls_state == 'ready')
+
+  def onStreamButton(self, e):
+    '''Request streaming of this run by writing the intent to the DB; the
+    StreamManager picks it up on its next tick and drives the streaming state.'''
+    self.run.streaming_request = 'requested'
+    self.streaming_state_text.SetLabel('requested')
+    self.stream_button.Disable()  # re-enabled by update_streaming_status if it returns to idle
 
   def onTagButton(self, e):
     self.tag_button.change_tags()
