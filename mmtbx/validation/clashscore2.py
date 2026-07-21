@@ -64,6 +64,7 @@ class clashscore2(validation):
       verbose=False,
       do_flips=False,
       save_probe_output=False,
+      ignore_missing_restraints=False,
       out=sys.stdout):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
@@ -98,6 +99,7 @@ class clashscore2(validation):
       verbose=verbose,
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
+      ignore_missing_restraints=ignore_missing_restraints,
       log=out)
 
     # Save the hydrogenated model for downstream use (e.g. kinemage generation)
@@ -599,6 +601,7 @@ def check_and_add_hydrogen(
         verbose=False,
         n_hydrogen_cut_off=0,
         do_flips=False,
+        ignore_missing_restraints=False,
         log=None,
         stop_for_unknowns=True):
   """
@@ -613,6 +616,12 @@ def check_and_add_hydrogen(
     verbose (bool): verbosity of printout
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
+    ignore_missing_restraints (bool): when False (default), raise a Sorry if
+      restraints were not found for some residues (e.g. unknown ligands). When
+      True, continue on a best-effort basis: those residues simply get no
+      hydrogens added, and the rest of the model is still analyzed. This also
+      relaxes stop_for_unknowns for the re-process step, since a residue with no
+      restraints necessarily leaves atoms with unknown energy types.
 
   Returns:
     (model): Model with hydrogens added
@@ -653,7 +662,13 @@ def check_and_add_hydrogen(
       nuclear         = nuclear,
       keep_existing_H = False,
       probe_phil      = probe_parameters,
-      stop_for_unknowns = stop_for_unknowns,
+      # Best-effort mode has to open both gates: raise_on_missing covers the
+      # "no restraints for this residue" check, and stop_for_unknowns covers the
+      # unknown-atom-type check in the re-process that follows. Relaxing only the
+      # first still aborts the run on the second. Mirrors the pairing already used
+      # by mmtbx/programs/validate_ligands.py.
+      stop_for_unknowns = stop_for_unknowns and not ignore_missing_restraints,
+      raise_on_missing = not ignore_missing_restraints,
       log             = log)
     return data_manager_model, True
   else:
