@@ -148,6 +148,53 @@ def test_clashscore2_delegates():
   assert _h_count(out_model) > 0
   print("test_clashscore2_delegates OK")
 
+# Same peptide plus an unknown ligand (UNL). mon_lib_query returns None for this
+# residue name, so reduce2 records it in no_H_placed_mlq -- which is what the
+# missing-restraints handling keys off. (Many made-up 3-letter codes resolve to
+# some monomer entry instead and would not exercise this path at all.)
+pdb_str_unknown_ligand = pdb_str.replace("TER\nEND\n", "") + """\
+HETATM   16  C1  UNL B   1      15.000   5.000   5.000  1.00 20.00           C
+HETATM   17  C2  UNL B   1      16.400   5.000   5.000  1.00 20.00           C
+HETATM   18  O1  UNL B   1      17.100   6.100   5.000  1.00 20.00           O
+TER
+END
+"""
+
+def test_clashscore2_ignore_missing_restraints():
+  """check_and_add_hydrogen aborts on a restraint-less ligand by default, and
+  continues best-effort when ignore_missing_restraints=True.
+
+  Pins the plumbing of ignore_missing_restraints through to
+  place_and_optimize_hydrogens(raise_on_missing=...). The 2-tuple return shape is
+  unchanged on both paths.
+  """
+  from mmtbx.validation import clashscore2
+  from libtbx.utils import Sorry
+  probe_phil = reduce_switch.default_probe_phil()
+
+  # Default: the ligand with no restraints aborts the whole run.
+  try:
+    clashscore2.check_and_add_hydrogen(
+      probe_parameters=probe_phil,
+      data_manager_model=model_from_str(pdb_str_unknown_ligand),
+      nuclear=False, keep_hydrogens=True, do_flips=False, log=null_out())
+  except Sorry as e:
+    assert "Restraints were not found" in str(e), str(e)
+  else:
+    raise AssertionError("expected Sorry for a ligand with no restraints when "
+                         "ignore_missing_restraints=False")
+
+  # Best-effort: completes, still returns the 2-tuple, and the rest of the model
+  # still gets hydrogens.
+  out_model, changed = clashscore2.check_and_add_hydrogen(
+    probe_parameters=probe_phil,
+    data_manager_model=model_from_str(pdb_str_unknown_ligand),
+    nuclear=False, keep_hydrogens=True, do_flips=False,
+    ignore_missing_restraints=True, log=null_out())
+  assert changed is True
+  assert _h_count(out_model) > 0
+  print("test_clashscore2_ignore_missing_restraints OK")
+
 def _make_all_asn_backwards(hierarchy):
   """Swap OD1/ND2 on every ASN so reduce wants to flip them back. Returns count."""
   n = 0
@@ -420,6 +467,7 @@ if __name__ == "__main__":
   test_get_nqh_flips_requires_h()
   test_get_nqh_flips_detects_flip()
   test_clashscore2_delegates()
+  test_clashscore2_ignore_missing_restraints()
   test_clash_none_when_no_h_reduce2()
   test_clash_scores_existing_h_reduce2()
   test_flip_nqh_skips_h_less_model_reduce2()
