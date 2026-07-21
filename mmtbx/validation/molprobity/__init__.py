@@ -260,7 +260,12 @@ class molprobity(slots_getstate_setstate):
       if (flags.nqh):
         self.nqh_flips = clashscore.nqh_flips(
           pdb_hierarchy=pdb_hierarchy)
-    if (pdb_hierarchy.contains_rna() and flags.rna):
+    # DNA is included here as well as RNA. The sugar-pucker validator now handles it
+    # (see rna_sugar_pucker_analysis.evaluate, is_dna), so a DNA-only structure would
+    # otherwise be silently skipped and report no nucleic-acid validation at all.
+    # Suite analysis inside rna_validation remains RNA-only; it needs a DNA conformer
+    # library that does not exist yet.
+    if ((pdb_hierarchy.contains_rna() or pdb_hierarchy.contains_dna()) and flags.rna):
       if (geometry_restraints_manager is not None):
         self.rna = rna_validate.rna_validation(
           pdb_hierarchy=pdb_hierarchy,

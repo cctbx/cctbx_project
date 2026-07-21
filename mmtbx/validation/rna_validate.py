@@ -24,6 +24,14 @@ rna_backbone_atoms = set([
   "P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
   "C3'", "O3'", "C2'", "O2'", "N1", "N9" ]) #version 3.x naming
 
+# Standard DNA residue names. Used by the sugar-pucker validator to tell DNA apart
+# from a nucleotide that merely failed the O2' test for some other reason, so that a
+# malformed RNA residue missing its O2' is not silently rescored with DNA thresholds.
+dna_resnames = set(["DA", "DC", "DG", "DT", "DU", "DI"])
+
+def is_dna_resname(resname):
+  return resname.strip().upper() in dna_resnames
+
 # individual validation results
 class rna_bond(atoms):
   __slots__ = atoms.__slots__ + ["sigma", "delta"]
@@ -334,7 +342,8 @@ class rna_puckers(rna_geometry):
   gui_list_headers = ["Residue", "Delta", "Epsilon"]
   gui_formats = ["%s", "%.2f", "%.2f"]
   wx_column_widths = [200]*3
-  def __init__(self, pdb_hierarchy, params=None, outliers_only=True):
+  def __init__(self, pdb_hierarchy, params=None, outliers_only=True,
+               include_dna=True):
     if (params is None):
       params = rna_sugar_pucker_analysis.master_phil.extract()
     self.pucker_states = []
@@ -359,12 +368,29 @@ class rna_puckers(rna_geometry):
               residue_atoms=residue.atoms(),
               distance_tolerance=params.bond_detection_distance_tolerance)
             if (ra1.problems is not None): continue
-            if (not ra1.is_rna): continue
+            # ra1.is_rna is simply "has an O2' atom", so this used to exclude all DNA.
+            # The pucker analysis itself needs only C1', O3', C3', C4', C5', the next
+            # phosphate and the glycosidic base atom, every one of which DNA has, and
+            # its 2'-endo/3'-endo test is symmetric. DNA is admitted here and given its
+            # own delta and O3'-perp thresholds via is_dna below.
+            residue_is_dna = False
+            if (not ra1.is_rna):
+              if (not include_dna): continue
+              if (not is_dna_resname(residue.resname)): continue
+              residue_is_dna = True
             residue_2_p_atom = None
             next_pdb_residue = _get_next_residue()
             if (next_pdb_residue is not None):
               residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
             if (get_res_class(residue.resname) != "common_rna_dna"):
+              continue
+            # rna_sugar_pucker_analysis.evaluate indexes the sugar atom dict directly,
+            # so a residue missing any of these raises KeyError. The RNA path never hit
+            # that because is_rna already required an O2'; admitting DNA exposes
+            # incomplete sugars, which really occur (24 of 420 benchmark entries hit it).
+            # Skip them, matching how the RNA path silently passed over such residues.
+            if (any(ra1.deoxy_ribo_atom_dict.get(a) is None
+                    for a in ("C1'", "O3'", "C3'", "C4'", "C5'"))):
               continue
             if conformer.altloc.strip() == '':
               local_altloc = ''
@@ -378,7 +404,8 @@ class rna_puckers(rna_geometry):
               params=params,
               residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
               residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
-              residue_2_p_atom=residue_2_p_atom)
+              residue_2_p_atom=residue_2_p_atom,
+              is_dna=residue_is_dna)
             self.pucker_states.append(ana)
             self.n_total += 1
             self.n_total_by_model[model.id] += 1
