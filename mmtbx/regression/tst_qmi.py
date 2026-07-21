@@ -461,37 +461,39 @@ def exercise_state_override():
     return group_args(**d)
   b = QMRestraintsBuilder(logger=null_out())
 
-  # No override: the engine guesses. Single-state metals commit (Zn/Mg singlet).
-  st = b._resolve_state("Zn", None, "tetrahedral", 4)
+  # No override: the predictor commits. Single-state metals -> singlet (Zn/Mg).
+  st = b._resolve_state("Zn", None, "tetrahedral", 4, None)
   assert st.oxidation_state == 2 and st.multiplicity == 1 and not st.skipped
-  assert st.state_source == "guessed", st.state_source
-  assert b._resolve_state("Mg", None, "octahedral", 6).multiplicity == 1
+  assert st.state_source == "guessed" and st.confidence == "high", st.confidence
+  assert b._resolve_state("Mg", None, "octahedral", 6, None).multiplicity == 1
   # Cu narrows by geometry: linear -> Cu(I) singlet; octahedral -> Cu(II) doublet.
-  assert b._resolve_state("Cu", None, "linear", 2).multiplicity == 1
-  cu2 = b._resolve_state("Cu", None, "octahedral", 6)
+  assert b._resolve_state("Cu", None, "linear", 2, None).multiplicity == 1
+  cu2 = b._resolve_state("Cu", None, "octahedral", 6, None)
   assert cu2.oxidation_state == 2 and cu2.multiplicity == 2
-  # Mn commits the dominant Mn(II) default but records both candidates.
-  mn = b._resolve_state("Mn", None, "octahedral", 6)
-  assert mn.oxidation_state == 2 and mn.multiplicity == 6
-  assert sorted(mn.candidates) == [2, 3]
-  # Fe is ambiguous (II/III) with no dominant default -> NOT committed, skipped.
-  assert b._resolve_state("Fe", None, "octahedral", 6).skipped
-  # Metal with no priors + no override -> skipped (Ni not in OXIDATION_PRIORS).
-  assert b._resolve_state("Ni", None, "octahedral", 6).skipped
+  # Mn commits the dominant Mn(II) default at low confidence (no discriminator).
+  mn = b._resolve_state("Mn", None, "octahedral", 6, None)
+  assert mn.oxidation_state == 2 and mn.multiplicity == 6 and mn.confidence == "low"
+  # Fe is now COMMITTED, never skipped: with no donor summary the ferrous lean
+  # commits Fe(II) high-spin at low confidence.
+  fe = b._resolve_state("Fe", None, "octahedral", 6, None)
+  assert (fe.oxidation_state == 2 and fe.multiplicity == 5 and not fe.skipped
+          and fe.confidence == "low")
+  # The only skip left: a metal outside the priors with no override (Ni).
+  assert b._resolve_state("Ni", None, "octahedral", 6, None).skipped
 
-  # Full override: authoritative; runs a metal the engine cannot guess, and
-  # resolves an otherwise-ambiguous Fe.
+  # Full override: authoritative; runs a metal the predictor cannot guess (Ni),
+  # and overrides Fe to a specific state.
   st = b._resolve_state("Ni", ms(oxidation_state=3, multiplicity=4),
-                        "octahedral", 6)
+                        "octahedral", 6, None)
   assert st.oxidation_state == 3 and st.multiplicity == 4 and not st.skipped
-  assert st.state_source == "user-supplied"
+  assert st.state_source == "user-supplied" and st.confidence == "high"
   fe = b._resolve_state("Fe", ms(oxidation_state=3, multiplicity=6),
-                        "octahedral", 6)
+                        "octahedral", 6, None)
   assert fe.oxidation_state == 3 and fe.multiplicity == 6 and not fe.skipped
 
   # Partial override (oxidation only): spin is the ligand field for THAT
   # oxidation. Mn(III) high-spin octahedral d4 -> 4 unpaired -> mult 5.
-  st = b._resolve_state("Mn", ms(oxidation_state=3), "octahedral", 6)
+  st = b._resolve_state("Mn", ms(oxidation_state=3), "octahedral", 6, None)
   assert st.oxidation_state == 3 and st.multiplicity == 5, st.multiplicity
   assert st.state_source == "user-supplied"
 
@@ -623,11 +625,14 @@ def exercise_electronic():
   assert not el.is_field_dependent("octahedral", 3)
   assert not el.is_field_dependent("octahedral", 8)
   assert not el.is_field_dependent("tetrahedral", 5)
-  # Encoded coverage: oct/tet all d; square-planar only d8; others not.
+  # Encoded coverage: oct/tet all d; square-planar d8 (diamagnetic) + d9 (Cu(II)
+  # doublet); field-independent d-counts (0-3, 9, 10) at any geometry; the
+  # field-dependent d4-d7 at other geometries fall back (not encoded).
   assert el.is_encoded("octahedral", 7) and el.is_encoded("tetrahedral", 4)
-  assert el.is_encoded("square_planar", 8)
+  assert el.is_encoded("square_planar", 8) and el.is_encoded("square_planar", 9)
   assert not el.is_encoded("square_planar", 5)
-  assert not el.is_encoded("trigonal_bipyramidal", 5)
+  assert el.is_encoded("trigonal_bipyramidal", 10)     # field-independent d10
+  assert not el.is_encoded("trigonal_bipyramidal", 5)  # field-dependent -> fallback
   # Convenience state ties it together and matches the former hardcoded states.
   st = el.spin_state("Mn", 2, "octahedral")   # high-spin default
   assert st.d_count == 5 and st.multiplicity == 6
@@ -649,22 +654,11 @@ def exercise_electronic():
     ox = el.default_oxidation(elem)
     assert el.spin_state(elem, ox, geom).multiplicity == mult, elem
 
-  # guess_state (top-level entry): default oxidation + high-spin per geometry.
-  gz = el.guess_state("Zn", "tetrahedral")
-  assert gz.oxidation_state == 2 and gz.multiplicity == 1 and gz.encoded
-  gm = el.guess_state("Mn", "octahedral")
-  assert (gm.oxidation_state == 2 and gm.multiplicity == 6 and gm.d_count == 5
-          and gm.field_dependent)
-  assert el.guess_state("Ni", "octahedral") is None   # no priors -> no guess
-  # Unclassified geometry -> high-spin fallback, flagged not-encoded.
-  gu = el.guess_state("Mn", None)
-  assert gu.multiplicity == 6 and gu.encoded is False
-  # Fallback geometries: not-encoded but still return a high-spin count.
-  assert not el.is_encoded("square_planar", 6)
-  assert el.unpaired_electrons("square_planar", 6) == 4   # HS d6
   # Case/whitespace normalisation.
   assert el.default_oxidation(" zn ") == 2
   assert el.d_electron_count(" zn ", 2) == 10
+  # Fe now defaults to the ferrous (photoreduction) lean, not None.
+  assert el.default_oxidation("Fe") == 2
   # Error paths.
   for bad in (lambda: el.d_electron_count("Xx", 2),        # unknown element
               lambda: el.d_electron_count("Zn", -1),       # d13, out of range
@@ -674,21 +668,67 @@ def exercise_electronic():
     except (KeyError, ValueError):
       pass
 
-  # candidate_oxidations (plan 6.3): narrow where structure allows (Cu), carry
-  # both otherwise (Fe/Mn), max-likelihood first, never using bond lengths.
-  assert el.candidate_oxidations("Zn", "tetrahedral", 4) == [2]   # single state
-  assert el.candidate_oxidations("Cu", "linear", 2) == [1]
-  assert el.candidate_oxidations("Cu", "trigonal", 3) == [1]
-  assert el.candidate_oxidations("Cu", "octahedral", 6) == [2]
-  assert el.candidate_oxidations("Cu", "square_planar", 4) == [2]
-  assert sorted(el.candidate_oxidations("Cu", "tetrahedral", 4)) == [1, 2]
-  # Fe carries both; no dominant default (None) to seed the order.
-  assert sorted(el.candidate_oxidations("Fe", "octahedral", 6)) == [2, 3]
-  assert el.default_oxidation("Fe") is None
-  # Mn carries both, dominant default (Mn II) first.
-  mn = el.candidate_oxidations("Mn", "octahedral", 6)
-  assert sorted(mn) == [2, 3] and mn[0] == el.default_oxidation("Mn") == 2
-  assert el.candidate_oxidations("Ni", "octahedral", 6) is None  # no priors
+  # ---- committing predictor (plan Sec 6): always commits, robust features only.
+  from libtbx import group_args
+  from mmtbx.geometry_restraints.qmi import donors as D
+  def summ(spec):
+    """Build a donors.summarize() result from (element, resname, name, res_id)."""
+    ds = []
+    for elx, rn, nm, rid in spec:
+      c = D.classify(elx, rn, nm)
+      ds.append(group_args(element=c.element, kind=c.kind, field=c.field,
+                           charge=c.charge, strong_axial=c.strong_axial,
+                           res_id=rid))
+    return D.summarize(ds)
+
+  # predict_oxidation: geometry/CN commit Cu; donor hardness commits Fe.
+  assert el.predict_oxidation("Zn", "tetrahedral", 4).oxidation == 2
+  assert el.predict_oxidation("Cu", "linear", 2).oxidation == 1
+  assert el.predict_oxidation("Cu", "trigonal", 3).oxidation == 1
+  assert el.predict_oxidation("Cu", "octahedral", 6).oxidation == 2
+  cu4 = el.predict_oxidation("Cu", "tetrahedral", 4)
+  assert cu4.oxidation == 2 and cu4.confidence == el.CONF_LOW    # CN4 ambiguous
+  assert el.predict_oxidation("Ni", "octahedral", 6) is None     # no prior
+  # Fe donor-hardness commits (never bond lengths):
+  tyr = summ([("O", "TYR", "OH", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
+              ("O", "ASP", "OD1", ("A", 3))])
+  assert el.predict_oxidation("Fe", "octahedral", 6, tyr).oxidation == 3  # tyrosinate
+  triad = summ([("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
+                ("O", "ASP", "OD1", ("A", 3))])
+  ft = el.predict_oxidation("Fe", "octahedral", 6, triad)
+  assert ft.oxidation == 2 and ft.confidence == el.CONF_HIGH     # facial triad
+  rubr = summ([("S", "CYS", "SG", ("A", i)) for i in (1, 2, 3, 4)])
+  fr = el.predict_oxidation("Fe", "tetrahedral", 4, rubr)
+  assert fr.oxidation == 2 and fr.confidence == el.CONF_LOW      # soft-S guard
+  fb = el.predict_oxidation("Fe", "octahedral", 6, None)
+  assert fb.oxidation == 2 and fb.confidence == el.CONF_LOW      # ferrous lean
+
+  # predict_spin: non-heme Fe high-spin; heme axial-gated (bis-His LS, aquomet HS).
+  assert el.predict_spin("Fe", 2, "octahedral", triad).low_spin is False
+  heme = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
+               ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
+               ("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2))])
+  assert heme.heme and heme.n_axial == 2 and heme.axial_all_strong
+  assert el.predict_spin("Fe", 3, "octahedral", heme).low_spin is True   # bis-His
+  heme_aq = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
+                  ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
+                  ("N", "HIS", "NE2", ("A", 1)), ("O", "HOH", "O", ("W", 1))])
+  assert el.predict_spin("Fe", 3, "octahedral", heme_aq).low_spin is False  # aquomet
+
+  # predict_state ties it together and ALWAYS commits (None only off-scope).
+  pz = el.predict_state("Zn", "tetrahedral", 4)
+  assert pz.oxidation_state == 2 and pz.multiplicity == 1
+  assert pz.confidence == el.CONF_HIGH and pz.low_spin is False
+  pm = el.predict_state("Mn", "octahedral", 6)
+  assert (pm.oxidation_state == 2 and pm.multiplicity == 6
+          and pm.confidence == el.CONF_LOW)          # Mn(II) default, low conf
+  # Fe is committed now (no skip): non-heme facial triad -> Fe(II) high-spin.
+  pf = el.predict_state("Fe", "octahedral", 6, triad)
+  assert pf.oxidation_state == 2 and pf.multiplicity == 5 and pf.low_spin is False
+  # heme bis-His -> low-spin ferrous-lean d6 singlet.
+  ph = el.predict_state("Fe", "octahedral", 6, heme)
+  assert ph.multiplicity == 1 and ph.low_spin is True
+  assert el.predict_state("Ni", "octahedral", 6) is None       # off-scope
 
 
 def exercise_deprotonation_metal_gating():
@@ -700,6 +740,45 @@ def exercise_deprotonation_metal_gating():
   names = [a.name.strip() for a in hier.atoms()]
   assert "HG" in names, "Cys near hard Mg must stay protonated"
   assert "HD2" not in names, "Asp carboxylate must deprotonate (metal-agnostic)"
+
+
+def exercise_donors():
+  """Biological donor classification + coordination summary (robust features
+  only: residue/element identity, no bond lengths)."""
+  from mmtbx.geometry_restraints.qmi import donors as D
+  from libtbx import group_args
+  # classify: kind / field / formal charge / strong-axial role.
+  assert D.classify("N", "HIS", "NE2").kind == "his_n"
+  assert D.classify("N", "HIS", "NE2").strong_axial          # imidazole axial
+  assert D.classify("O", "ASP", "OD1").charge == -1          # carboxylate anion
+  assert D.classify("O", "TYR", "OH").kind == "tyrosinate_o"
+  cys = D.classify("S", "CYS", "SG")
+  assert cys.charge == -1 and not cys.strong_axial           # thiolate, soft
+  assert D.classify("S", "MET", "SD").strong_axial           # thioether His/Met
+  assert D.classify("O", "HOH", "O").kind == "water_o"
+  assert D.classify("N", "HEM", "NA").kind == "het_n"        # porphyrin N (het)
+
+  def desc(el, rn, nm, rid):
+    c = D.classify(el, rn, nm)
+    return group_args(element=c.element, kind=c.kind, field=c.field,
+                      charge=c.charge, strong_axial=c.strong_axial, res_id=rid)
+
+  # Heme by FeN4 topology: 4 N from ONE residue -> heme; 4 His N from four
+  # residues -> NOT heme (the discriminator is same-residue, not element count).
+  heme = D.summarize([desc("N", "HEM", nm, ("H", 1))
+                      for nm in ("NA", "NB", "NC", "ND")]
+                     + [desc("N", "HIS", "NE2", ("A", 1)),
+                        desc("N", "HIS", "NE2", ("A", 2))])
+  assert heme.heme and heme.n_axial == 2 and heme.axial_all_strong
+  four_his = D.summarize([desc("N", "HIS", "NE2", ("A", i)) for i in range(4)])
+  assert not four_his.heme
+  # Motif counts + hard-anion charge dedup per residue (bidentate Asp = one -1).
+  s = D.summarize([desc("O", "ASP", "OD1", ("A", 5)),
+                   desc("O", "ASP", "OD2", ("A", 5)),   # same Asp -> one group
+                   desc("O", "TYR", "OH", ("A", 6)),
+                   desc("N", "HIS", "NE2", ("A", 7))])
+  assert s.n_carboxylate == 1 and s.n_tyrosinate == 1 and s.n_his == 1
+  assert s.q_hard == -2                                  # carboxylate + tyrosinate
 
 
 def exercise_bvs():
@@ -747,6 +826,7 @@ def run():
   exercise_shape()
   exercise_shape_carboxylate()
   exercise_electronic()
+  exercise_donors()
   exercise_bvs()
   exercise_program()
 

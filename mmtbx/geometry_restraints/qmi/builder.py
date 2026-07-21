@@ -27,7 +27,7 @@ from scitbx import matrix
 
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
-from mmtbx.geometry_restraints.qmi import electronic, shape
+from mmtbx.geometry_restraints.qmi import donors, electronic, shape
 from mmtbx.geometry_restraints.qmi import bvs, qm, restraints, sigma
 
 
@@ -179,61 +179,81 @@ class QMRestraintsBuilder(object):
         match = scope
     return match
 
-  def _resolve_state(self, metal_element, override, geometry, cn):
-    """Combine a user ``metal_state`` *override* (or None) with the electronic
-    engine into a committed (oxidation_state, multiplicity) state, given the
-    coordination *geometry* (shape name from :mod:`shape`, or None) and *cn*.
+  def _resolve_state(self, metal_element, override, geometry, cn, summary):
+    """Combine a user ``metal_state`` *override* (or None) with the committing
+    electronic predictor into a single (oxidation_state, multiplicity) state,
+    given the CShM *geometry* class, *cn*, and the donor *summary* (from
+    :func:`donors.summarize`, or None).
 
-    Oxidation: a user override is authoritative. Otherwise
-    ``electronic.candidate_oxidations`` narrows from geometry + CN (plan Sec 6.3,
-    never from bond lengths): a single candidate is committed; multiple
-    candidates commit the dominant resting-state default where one exists (Mn,
-    Cu), or -- where none does (Fe) -- the site is NOT single-committed but left
-    for a user override / the plan Sec 7 run-both-and-inflate. Multiplicity, if
-    unset, is the ligand-field spin for the resolved oxidation.
+    A user override is authoritative for whichever field it sets; the rest come
+    from ``electronic.predict_oxidation`` / ``predict_spin`` on refinement-robust
+    features only (donor summary + geometry + CN, never bond lengths). qmi ALWAYS
+    commits: the only skip is a metal outside the vetted priors with no override
+    (``predict_oxidation`` returns None), which then needs a metal_state block.
 
-    Returns a group_args; ``skipped`` is a reason string when the state cannot
-    be committed (oxidation_state/multiplicity then None), else None with the
-    committed state, ``state_source``, and ``candidates`` (for the log/Sec 7).
+    Returns a group_args; ``skipped`` is a reason string when the state cannot be
+    committed (fields then None), else None with the committed state,
+    ``state_source``, ``low_spin``, ``confidence``, and the per-part reasons.
     """
     def skip(reason):
-      return group_args(oxidation_state=None, multiplicity=None,
-                        state_source=None, candidates=None, skipped=reason)
+      return group_args(oxidation_state=None, multiplicity=None, low_spin=None,
+                        state_source=None, confidence=None,
+                        oxidation_reason=None, spin_reason=None, skipped=reason)
 
     user_ox = override.oxidation_state if override is not None else None
     user_mult = override.multiplicity if override is not None else None
 
-    ox, candidates = user_ox, None
-    if ox is None:
-      candidates = electronic.candidate_oxidations(metal_element, geometry, cn)
-      if candidates is None:
+    # Oxidation: a user value wins, else the committing predictor.
+    if user_ox is not None:
+      ox, ox_conf, ox_reason = user_ox, electronic.CONF_HIGH, "user-supplied"
+    else:
+      pred = electronic.predict_oxidation(metal_element, geometry, cn, summary)
+      if pred is None:
         return skip(f"{metal_element} has no electronic prior; add a "
                     f"metal_state block with oxidation_state and multiplicity")
-      if len(candidates) == 1:
-        ox = candidates[0]
-      else:
-        default = electronic.default_oxidation(metal_element)
-        if default in candidates:
-          ox = default
-        else:
-          cands = "/".join(f"{c:+d}" for c in candidates)
-          return skip(f"{metal_element} oxidation state is ambiguous ({cands}) "
-                      f"with no dominant default; add a metal_state override "
-                      f"(running all candidates and widening the sigma is plan "
-                      f"Sec 7)")
+      ox, ox_conf, ox_reason = pred.oxidation, pred.confidence, pred.reason
 
-    mult = user_mult
-    if mult is None:
+    # Multiplicity: a user value wins, else the ligand-field spin for that
+    # oxidation (heme-aware; high-spin off-heme).
+    if user_mult is not None:
+      mult, low_spin = user_mult, None
+      spin_conf, spin_reason = electronic.CONF_HIGH, "user-supplied"
+    else:
       try:
-        mult = electronic.spin_state(metal_element, ox, geometry).multiplicity
+        sp = electronic.predict_spin(metal_element, ox, geometry, summary)
+        d = electronic.d_electron_count(metal_element, ox)
+        unpaired = electronic.unpaired_electrons(geometry, d,
+                                                 low_spin=sp.low_spin)
       except (KeyError, ValueError):
         return skip(f"{metal_element}{ox:+d} gives an impossible d-count; check "
                     f"the oxidation_state override")
+      mult, low_spin = unpaired + 1, sp.low_spin
+      spin_conf, spin_reason = sp.confidence, sp.reason
 
     user = user_ox is not None or user_mult is not None
-    return group_args(oxidation_state=ox, multiplicity=mult,
-                      state_source="user-supplied" if user else "guessed",
-                      candidates=candidates, skipped=None)
+    return group_args(
+      oxidation_state=ox, multiplicity=mult, low_spin=low_spin,
+      state_source="user-supplied" if user else "guessed",
+      confidence=electronic.min_confidence(ox_conf, spin_conf),
+      oxidation_reason=ox_reason, spin_reason=spin_reason, skipped=None)
+
+  def _donor_summary(self, atoms, donor_iseqs):
+    """Classify the first-shell donors into the coordination summary the
+    committing predictor reads (:func:`donors.summarize`): heme (FeN4) topology
+    plus donor hardness, from residue/element identity only (no bond lengths).
+    None when there are no donors."""
+    descs = []
+    for i in donor_iseqs:
+      a = atoms[i]
+      ag = a.parent()
+      rg = ag.parent()
+      res_id = (rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip(),
+                ag.resname.strip())
+      c = donors.classify(a.element, ag.resname, a.name)
+      descs.append(group_args(element=c.element, kind=c.kind, field=c.field,
+                              charge=c.charge, strong_axial=c.strong_axial,
+                              res_id=res_id))
+    return donors.summarize(descs) if descs else None
 
   def _bvs_estimate(self, atoms, metal_iseq, metal_element, donor_iseqs):
     """BVS estimate of the most self-consistent oxidation over the metal's
@@ -298,18 +318,21 @@ class QMRestraintsBuilder(object):
             f"(V {vstr}; observed geometry, high-resolution only)",
             file=self.logger)
 
-    state = self._resolve_state(metal_element, override, geom.shape, geom.cn)
+    summary = self._donor_summary(atoms, donor_iseqs)
+    state = self._resolve_state(metal_element, override, geom.shape, geom.cn,
+                                summary)
     if state.skipped:
       return _skip(state.skipped, metal_element=metal_element)
 
-    cand_note = ""
-    if state.candidates and len(state.candidates) > 1:
-      cand_note = " [candidates " + \
-          "/".join(f"{c:+d}" for c in state.candidates) + "]"
+    conf_note = (f" [confidence {state.confidence}]"
+                 if state.state_source == "guessed" else "")
     print(f"Site {index}: {metal_element}, {state.state_source} "
           f"ox={state.oxidation_state:+d} mult={state.multiplicity} "
-          f"(shape={geom.shape or 'unclassified'}, CN={geom.cn}){cand_note}",
+          f"(shape={geom.shape or 'unclassified'}, CN={geom.cn}){conf_note}",
           file=self.logger)
+    if state.state_source == "guessed":
+      print(f"  predicted: oxidation ({state.oxidation_reason}); "
+            f"spin ({state.spin_reason})", file=self.logger)
 
     # Restraints manager (needed for charge accounting + cap-anchor freezing).
     qm.ensure_restraints(submodel, cap_iseqs=cap_iseqs,
@@ -375,8 +398,9 @@ class QMRestraintsBuilder(object):
       site_tag=site_tag,
       metal_element=metal_element,
       oxidation_state=state.oxidation_state,
-      multiplicity=state.multiplicity, charge=charge,
-      state_source=state.state_source, candidates=state.candidates,
+      multiplicity=state.multiplicity, charge=charge, low_spin=state.low_spin,
+      state_source=state.state_source, confidence=state.confidence,
+      oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason,
       bvs=bvs_est,
       n_donors=len(donor_iseqs), restraints=site_restraints,
       edits=edits, sigma_origin=sigma_origin, skipped=None)

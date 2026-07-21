@@ -314,9 +314,12 @@ Requires xtb.
       if r.skipped:
         print(f'  {r.site_id}: skipped ({r.skipped})', file=self.logger)
         continue
+      state = r.state_source
+      if r.state_source == "guessed":
+        state = f"{r.state_source}/{r.confidence}-confidence"
       print(f'  {r.site_tag}: {r.metal_element} ox={r.oxidation_state:+d} '
             f'mult={r.multiplicity} charge={r.charge:+d} '
-            f'state={r.state_source} '
+            f'state={state} '
             f'({len(r.restraints.bonds)} bond, {len(r.restraints.angles)} '
             f'angle; sigma={r.sigma_origin})', file=self.logger)
 
