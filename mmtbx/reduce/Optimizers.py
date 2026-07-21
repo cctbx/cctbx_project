@@ -1036,7 +1036,7 @@ class Optimizer(object):
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverAmideFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
           except Exception as e:
-            self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
+            self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
       # See if we should insert a MoverHisFlip here.
       # @todo Is there a more general way than looking for specific names?
@@ -1163,7 +1163,7 @@ class Optimizer(object):
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
         except Exception as e:
-          self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
+          self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
     # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
     # look up the single-hydrogen rotators. We only place atoms that are in our current model

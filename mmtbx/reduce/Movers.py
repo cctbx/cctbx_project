@@ -849,7 +849,7 @@ class MoverAmideFlip(object):
       raise ValueError("MoverAmideFlip(): nh2Atom is not a Nitrogen")
     partners = bondedNeighborLists[nh2Atom]
     if len(partners) != 3:
-      raise ValueError("MoverAmideFlip(): nh2Atom does not have three bonded neighbors")
+      raise ValueError("MoverAmideFlip(): nh2Atom does not have three bonded neighbors (perhaps a custom bond)")
     nh2Hydrogens = []
     hinge = None
     for a in partners:
@@ -1054,6 +1054,8 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): NE2 does not have one bonded hydrogen (probably ionically bound)")
     if len(carbons) != 2:
       raise ValueError("MoverHisFlip(): NE2 does not have two bonded carbons")
+    if len(bondedNeighborLists[ne2Atom]) != 3:
+      raise ValueError("MoverHisFlip(): NE2 does not have three bonded neighbors (perhaps a custom bond)")
     ne2HAtom = hydrogens[0]
 
     # Determine if the first Carbon is CE1, which is bonded to two Nitrogens (zero Carbons).  If not,
@@ -1140,6 +1142,8 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): ND1 does not have one bonded hydrogen (probably ionically bound)")
     if len(carbons) != 2:
       raise ValueError("MoverHisFlip(): ND1 does not have two bonded carbons")
+    if len(bondedNeighborLists[nd1Atom]) != 3:
+      raise ValueError("MoverHisFlip(): ND1 does not have three bonded neighbors (perhaps a custom bond)")
     nd1HAtom = hydrogens[0]
 
     # Find CA on the other side of CB and find CBs Hydrogens
