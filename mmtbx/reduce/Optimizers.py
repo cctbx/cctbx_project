@@ -1036,7 +1036,7 @@ class Optimizer(object):
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverAmideFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
           except Exception as e:
-            self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
+            self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
       # See if we should insert a MoverHisFlip here.
       # @todo Is there a more general way than looking for specific names?
@@ -1136,6 +1136,14 @@ class Optimizer(object):
             self._infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
             self._infoString += _VerboseCheck(self._verbosity, 1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
+          elif addFlipMovers and _HisRingNitrogenHasNonstandardBond(a, bondedNeighborLists):
+            # Issue #1199: a ring Nitrogen carries a bond outside the standard ring
+            # connectivity that the ion lock-down above (bondedConfig) did not handle
+            # -- a user-defined/custom bond, or an ion the spatial search missed.
+            # Flipping the ring could break that bond, so leave the residue in its
+            # original orientation rather than adding a flip Mover.
+            self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
+              " (bond outside standard ring connectivity)\n")
           elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and insert the Mover as a non-flipping Histidine.
@@ -1351,6 +1359,24 @@ def _ParseFlipStates(fs):
         ret.append(FlipMoverState(t, modelId, altId, chain, resName, resIdWithICode, flipped, fixedUp))
   return ret
 
+
+def _HisRingNitrogenHasNonstandardBond(ne2Atom, bondedNeighborLists):
+  '''Issue #1199: does either Histidine ring Nitrogen (ND1 or NE2) carry a bond
+  outside the standard ring connectivity -- i.e. to something other than the two
+  ring Carbons and its single Hydrogen (a user-defined/custom bond, or a metal)?
+  Such a bond would be broken by flipping the ring. Unlike the ring Carbons, the
+  ring Nitrogens are not protected by the MoverHisFlip neighbour-count checks, so
+  we detect the extra bond here from the restraint bond list.
+  :param ne2Atom: NE2 atom of the Histidine (its atom_group holds ND1 and NE2).
+  :param bondedNeighborLists: dictionary from probe.Helpers.getBondedNeighborLists().
+  :return: True if a nonstandard bond is present on ND1 or NE2.
+  '''
+  for atom in ne2Atom.parent().atoms():
+    if atom.name.strip() in ('ND1', 'NE2'):
+      for neighbor in bondedNeighborLists[atom]:
+        if (not neighbor.element_is_hydrogen()) and neighbor.element.strip().upper() != 'C':
+          return True
+  return False
 
 def _FindFlipState(a, flipStates):
   '''Is an atom in the list of residues that have flip states? If so, return the associated state
