@@ -343,3 +343,46 @@ def predict_state(element, geometry, cn=None, summary=None):
     oxidation_confidence=ox.confidence, spin_confidence=sp.confidence,
     oxidation_reason=ox.reason, spin_reason=sp.reason,
     encoded=is_encoded(geometry, d))
+
+
+def enumerate_states(element, geometry=None):
+  """Accessible (oxidation, multiplicity) states for a multi-state scan.
+
+  Each accessible oxidation is crossed with the ligand-field spin extremes:
+  weak-field high-spin (the ``(5,)`` filling) and strong-field low-spin (the
+  ``(3,2)`` t2g/eg filling). The two extremes coincide (a single state) for
+  d0-d3, d8-d10 and closed shells.
+
+  *geometry* selects how much of that space to emit:
+
+  * ``None`` (the ``states=all`` scan): GEOMETRY-BLIND, both extremes for every
+    oxidation, including low-spin at geometries the predictor would commit high-
+    spin (e.g. tetrahedral). Brute-force everything, trust nothing.
+  * a CShM class (the ``states=reasonable`` scan): only the spin(s) the ligand
+    field permits at that geometry (tetrahedral -> high-spin only, square-planar
+    d8 -> diamagnetic, octahedral d4-d7 -> both). An unclassified geometry cannot
+    prune, so pass ``None`` and it degrades to the blind scan.
+
+  This is a scan enumeration, NOT a committing prediction (predict_spin stays
+  geometry-aware and commits a single state).
+
+  Returns a list of ``(oxidation, multiplicity)``, or None if the metal is
+  outside the vetted priors (:data:`OXIDATION_PRIORS`)."""
+  accessible = accessible_oxidation_states(element)
+  if accessible is None:
+    return None
+  out = []
+  for ox in accessible:
+    try:
+      d = d_electron_count(element, ox)
+    except (KeyError, ValueError):
+      continue
+    if geometry is None:                        # geometry-blind (states=all)
+      hs = _aufbau_unpaired(d, (5,)) + 1        # weak field (one 5-orbital level)
+      ls = _aufbau_unpaired(d, (3, 2)) + 1      # strong field (t2g then eg)
+    else:                                       # ligand-field-allowed (reasonable)
+      hs = unpaired_electrons(geometry, d, low_spin=False) + 1
+      ls = unpaired_electrons(geometry, d, low_spin=True) + 1
+    for mult in ([hs] if hs == ls else [hs, ls]):
+      out.append((ox, mult))
+  return out

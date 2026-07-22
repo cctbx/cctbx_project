@@ -16,11 +16,19 @@ import tempfile
 import iotbx.pdb
 import libtbx.phil
 import mmtbx.model
+from iotbx.data_manager import DataManager
+from libtbx import group_args
 from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
+from scitbx import matrix
 from scitbx.array_family import flex
 
-from mmtbx.geometry_restraints.qmi import qm, restraints, sigma, metals
+from mmtbx.programs.qmi import Program, master_phil_str
+from mmtbx.geometry_restraints.qmi import (
+  qm, restraints, sigma, metals, protonation, shape, bvs)
+from mmtbx.geometry_restraints.qmi import electronic as el
+from mmtbx.geometry_restraints.qmi import donors as D
+from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
 
 
 # A minimal Zn(II) N3O site: Zn + 3 His N donors + a catalytic water O, plus a
@@ -280,6 +288,18 @@ def exercise_determine_frozen_atoms():
   assert frozen == {2}, frozen
   assert free == {0, 1, 3}, free
 
+  # constraints.txt inventory: count header + one FROZEN/free line per atom.
+  path = os.path.join(tempfile.mkdtemp(), "constraints.txt")
+  qm.write_constraints_summary(model, frozen, free, path)
+  lines = open(path).read().splitlines()
+  assert lines[0] == "# QM optimization constraint list"
+  assert "# Total atoms: 4" in lines
+  assert "# Free:   3" in lines and "# Frozen: 1" in lines
+  body = [ln for ln in lines if ln[:4].strip().isdigit()]
+  assert len(body) == 4
+  assert body[2].split()[1] == "FROZEN"                  # far water O
+  assert all(body[i].split()[1] == "free" for i in (0, 1, 3))
+
 
 # ---------------------------------------------------------------------------
 # restraints: detection, assembly, .edits
@@ -351,7 +371,6 @@ def exercise_symmetry_donor_skip():
 # protonation: metal-donor deprotonation (Cys/Tyr/Asp/Glu strip + His tautomer)
 # ---------------------------------------------------------------------------
 def exercise_deprotonation():
-  from mmtbx.geometry_restraints.qmi import protonation
   # HIP His (both ring N protonated) coordinating via NE2 + a coordinating Cys.
   hier = _model(_HIS_HIP_PDB).get_hierarchy()
   assert protonation.deprotonate_metal_donors(hier, log=null_out()) == (1, 1)
@@ -373,7 +392,6 @@ def exercise_deprotonation():
 
 
 def exercise_deprotonation_donor_families():
-  from mmtbx.geometry_restraints.qmi import protonation
   # bidentate Asp: the shared HD2 is stripped exactly once (dedup), 1 donor.
   hier = _model(_ASP_PDB).get_hierarchy()
   assert protonation.deprotonate_metal_donors(hier, log=null_out()) == (1, 0)
@@ -390,8 +408,6 @@ def exercise_deprotonation_donor_families():
 
 
 def exercise_water_protonation():
-  from scitbx import matrix
-  from mmtbx.geometry_restraints.qmi import protonation
   hier = _model(_WATER_METAL_PDB).get_hierarchy()
   assert protonation.protonate_waters(hier, log=null_out()) == 2
   assert protonation.protonate_waters(hier, log=null_out()) == 0   # idempotent
@@ -409,16 +425,16 @@ def exercise_water_protonation():
 # Program: PHIL + validate (the full run needs xtb and is exercised manually)
 # ---------------------------------------------------------------------------
 def exercise_program():
-  from iotbx.data_manager import DataManager
-  from libtbx.utils import Sorry
-  from mmtbx.programs.qmi import Program, master_phil_str
   master = libtbx.phil.parse(master_phil_str)
   p = master.extract()
   assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
-  assert p.qm.temperature == 298.15 and p.output.write_files is True
+  assert p.qm.temperature == 298.15 and p.qm.nproc == 1
+  assert p.output.write_files is True
   assert p.output.combine is False and p.protonation.enable is False
   assert p.protonation.water.refine.max_sweeps == 5
   assert p.protonation.water.basin.rounds == 0
+  assert p.predict_only is False and p.states == 'predicted'
+  assert p.use_bvs is False
 
   # no model -> Sorry
   prog = Program(DataManager(["model"]), p, master_phil=master,
@@ -447,13 +463,18 @@ def exercise_program():
   except Sorry as e:
     assert "protonat" in str(e).lower(), str(e)
 
+  # predict_only + a multi-state scan is contradictory -> Sorry.
+  p4 = master.extract(); p4.predict_only = True; p4.states = 'all'
+  prog4 = Program(dm, p4, master_phil=master, logger=null_out())
+  try:
+    prog4.validate(); raise AssertionError("expected Sorry on predict_only+scan")
+  except Sorry as e:
+    assert "predict_only" in str(e), str(e)
+
 
 def exercise_state_override():
   """User metal_state overrides: authoritative, per-selection, with fallback to
   the electronic-engine guess for unset fields / unmatched sites."""
-  from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
-  from libtbx import group_args
-  from libtbx.utils import Sorry
   m = _model(_ZN_SITE_PDB)          # ZN is atom iseq 0
   def ms(**k):
     d = dict(selection=None, oxidation_state=None, multiplicity=None)
@@ -515,12 +536,27 @@ def exercise_state_override():
   except Sorry:
     pass
 
+  # use_bvs: the BVS most-likely oxidation replaces the predictor's and the spin
+  # is re-derived for it. Off (default), the predictor still wins.
+  bvs3 = group_args(best=3, valences={2: 2.6, 3: 3.1}, n_used=4)
+  assert b._resolve_state("Fe", None, "octahedral", 6, None,
+                          bvs_est=bvs3).oxidation_state == 2   # use_bvs off
+  bb = QMRestraintsBuilder(use_bvs=True, logger=null_out())
+  st = bb._resolve_state("Fe", None, "octahedral", 6, None, bvs_est=bvs3)
+  assert st.oxidation_state == 3 and st.multiplicity == 6      # Fe(III) HS d5
+  assert st.state_source == "bvs"                             # distinct tag
+  assert st.oxidation_reason == "BVS most-likely" and st.confidence == "medium"
+  # A user oxidation still wins over BVS; no BVS estimate falls back to predictor.
+  st = bb._resolve_state("Fe", ms(oxidation_state=2), "octahedral", 6, None,
+                         bvs_est=bvs3)
+  assert st.oxidation_state == 2 and st.state_source == "user-supplied"
+  assert bb._resolve_state("Fe", None, "octahedral", 6, None,
+                           bvs_est=None).oxidation_state == 2
+
 
 def exercise_shape():
   """CShM classifier: self-consistency, a published cross-value anchor, and the
   angular-only (bond-length-invariant) property. Pure geometry, no model."""
-  from mmtbx.geometry_restraints.qmi import shape
-  from scitbx import matrix as sm
   # Every ideal polyhedron scores ~0 against itself.
   for name, verts in shape.IDEAL_POLYHEDRA.items():
     fit = shape.csm_against_shape(verts, name)
@@ -541,7 +577,7 @@ def exercise_shape():
   # octahedron proper-rotation group order 24 -> 720/24 = 30 labelings.
   assert len(shape._reduced_perms("octahedral")) * 24 == 720
   noisy = flex.vec3_double(
-    [(sm.col(v) + sm.col((0.1 * (k % 3 - 1), -0.08 * (k % 2), 0.05 * k))
+    [(matrix.col(v) + matrix.col((0.1 * (k % 3 - 1), -0.08 * (k % 2), 0.05 * k))
       ).elems for k, v in enumerate(shape.IDEAL_POLYHEDRA["octahedral"])])
   full = shape.find_best_shape(noisy, symmetry_reduced=False)
   red = shape.find_best_shape(noisy, symmetry_reduced=True)
@@ -552,7 +588,7 @@ def exercise_shape():
   verts = list(td)
   verts[0] = tuple(3.0 * c for c in verts[0])
   units = flex.vec3_double(
-    [(sm.col(v) / sm.col(v).length()).elems for v in verts])
+    [(matrix.col(v) / matrix.col(v).length()).elems for v in verts])
   fit = shape.find_best_shape(units)
   assert fit.shape == "tetrahedral" and fit.csm < 1e-6, (fit.shape, fit.csm)
 
@@ -560,7 +596,6 @@ def exercise_shape():
 def exercise_shape_carboxylate():
   """Carboxylate handling: a symmetric chelate collapses to one vertex, a
   monodentate one does not, and an anisobidentate one drops its far O."""
-  from mmtbx.geometry_restraints.qmi import shape
   # Look donors up by name (mmtbx.model sorts atoms, so iseqs are not input
   # order).
   def iseqs(atoms, *names):
@@ -596,7 +631,6 @@ def exercise_shape_carboxylate():
 def exercise_electronic():
   """Ligand-field spin rules (derived, no data file): d-count, unpaired
   electrons per geometry/regime, multiplicity, and the two predicates."""
-  from mmtbx.geometry_restraints.qmi import electronic as el
   # d-count = group - oxidation.
   assert el.d_electron_count("Zn", 2) == 10
   assert el.d_electron_count("Mn", 2) == 5
@@ -669,8 +703,6 @@ def exercise_electronic():
       pass
 
   # ---- committing predictor (plan Sec 6): always commits, robust features only.
-  from libtbx import group_args
-  from mmtbx.geometry_restraints.qmi import donors as D
   def summ(spec):
     """Build a donors.summarize() result from (element, resname, name, res_id)."""
     ds = []
@@ -730,11 +762,25 @@ def exercise_electronic():
   assert ph.multiplicity == 1 and ph.low_spin is True
   assert el.predict_state("Ni", "octahedral", 6) is None       # off-scope
 
+  # enumerate_states scan enumerator. geometry=None (states=all): geometry-blind,
+  # both spin extremes per accessible oxidation.
+  assert el.enumerate_states("Zn") == [(2, 1)]                  # d10 singlet
+  assert sorted(el.enumerate_states("Fe")) == [(2, 1), (2, 5), (3, 2), (3, 6)]
+  assert el.enumerate_states("Cu") == [(1, 1), (2, 2)]         # d10 singlet, d9 doublet
+  assert el.enumerate_states("Ni") is None                     # no prior
+  # geometry given (states=reasonable): only the ligand-field-allowed spin(s).
+  # Tetrahedral Fe is always high-spin, so the low-spin extremes are pruned.
+  assert el.enumerate_states("Fe", "tetrahedral") == [(2, 5), (3, 6)]
+  # Octahedral d5/d6 are genuinely field-ambiguous -> the same 4 states as blind.
+  assert sorted(el.enumerate_states("Fe", "octahedral")) == \
+      [(2, 1), (2, 5), (3, 2), (3, 6)]
+  # An unclassified geometry cannot prune -> degrades to the blind scan.
+  assert el.enumerate_states("Fe", None) == el.enumerate_states("Fe")
+
 
 def exercise_deprotonation_metal_gating():
   """Cys/Tyr deprotonation is gated to anion-inducing metals, carboxylate is
   universal. Near a hard Mg the Cys stays protonated but the Asp deprotonates."""
-  from mmtbx.geometry_restraints.qmi import protonation
   hier = _model(_MG_DONORS_PDB).get_hierarchy()
   protonation.deprotonate_metal_donors(hier, metals=None)   # all metals in scope
   names = [a.name.strip() for a in hier.atoms()]
@@ -745,8 +791,6 @@ def exercise_deprotonation_metal_gating():
 def exercise_donors():
   """Biological donor classification + coordination summary (robust features
   only: residue/element identity, no bond lengths)."""
-  from mmtbx.geometry_restraints.qmi import donors as D
-  from libtbx import group_args
   # classify: kind / field / formal charge / strong-axial role.
   assert D.classify("N", "HIS", "NE2").kind == "his_n"
   assert D.classify("N", "HIS", "NE2").strong_axial          # imidazole axial
@@ -781,10 +825,21 @@ def exercise_donors():
   assert s.q_hard == -2                                  # carboxylate + tyrosinate
 
 
+def exercise_predict_only():
+  """predict_only: detection + committing prediction, stopping before the QM
+  step (no xtb, no restraints emitted)."""
+  res = QMRestraintsBuilder(predict_only=True, logger=null_out()).run(
+    _model(_ZN_SITE_PDB))
+  assert len(res) == 1
+  r = res[0]
+  assert not r.skipped and r.restraints is None and r.edits is None
+  assert r.oxidation_state == 2 and r.multiplicity == 1
+  assert r.confidence == "high" and r.charge is None
+
+
 def exercise_bvs():
   """Bond-valence-sum oxidation estimate: CIF parse, valence sum, and the
   deduce-most-self-consistent-state estimator with its missing-parameter guard."""
-  from mmtbx.geometry_restraints.qmi import bvs
   # Parse: Zn(II)-O picks the Brown-Altermatt row; Fe(II)/Fe(III) R0 differ.
   assert bvs.valence_params("Zn", 2, "O") == (1.704, 0.37)
   assert bvs.valence_params("Fe", 2, "O")[0] != bvs.valence_params("Fe", 3, "O")[0]
@@ -827,6 +882,7 @@ def run():
   exercise_shape_carboxylate()
   exercise_electronic()
   exercise_donors()
+  exercise_predict_only()
   exercise_bvs()
   exercise_program()
 

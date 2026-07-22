@@ -168,6 +168,10 @@ closest to the protein-interior dielectric). Empty string disables solvation."
     .help = "Temperature (K) used to convert QM force constants into restraint \
 sigmas: higher values give looser restraints (sigma scales with \
 sqrt(temperature))."
+  nproc = 1
+    .type = int(value_min=1)
+    .short_caption = Threads per xTB job
+    .help = "Threads for each xTB optimisation and Hessian."
 }
 output
   .style = menu_item auto_align
@@ -190,6 +194,24 @@ Set False to consume results in memory via get_results()."
     .help = "Directory to hold the intermediate per-site xTB files (created if \
 absent). Set to '.' to write them in the current directory instead."
 }
+predict_only = False
+  .type = bool
+  .short_caption = Predict only
+  .help = "Run only the electronic-state prediction (oxidation/spin + \
+confidence) for each site and stop; no restraints are computed or written."
+states = *predicted reasonable all
+  .type = choice
+  .short_caption = States to run
+  .help = "Which metal states to run per site. predicted: the predictor commits \
+one (oxidation, spin). reasonable: scan every accessible oxidation crossed with \
+the spin(s) the site's ligand-field geometry permits (tetrahedral stays high-\
+spin). all: scan every accessible oxidation crossed with both spin extremes, \
+ignoring geometry. reasonable and all run each state in its own qm_work_dir \
+subdirectory with its own restraints, and still report what the predictor thinks."
+use_bvs = False
+  .type = bool
+  .short_caption = Oxidation from BVS
+  .help = "Commit the BVS most-likely oxidation instead of the predictor's."
 """
 
 
@@ -215,6 +237,9 @@ Requires xtb.
     """Validate user inputs before :meth:`run`."""
     if not self.data_manager.has_models():
       raise Sorry('No model provided. Please supply a PDB or mmCIF file.')
+    if self.params.predict_only and self.params.states != 'predicted':
+      raise Sorry(f'predict_only cannot be combined with states='
+                  f'{self.params.states} (predict_only runs the predictor only).')
     model = self.data_manager.get_model()
     for sel_str in [s for s in (self.params.sites.selection or []) if s]:
       try:
@@ -236,11 +261,12 @@ Requires xtb.
         raise Sorry(f"metal_state block for '{ms.selection}' sets neither "
                     f"oxidation_state nor multiplicity.")
     self._require_hydrogens(model)
-    from mmtbx.geometry_restraints import xtb_manager
-    if not xtb_manager.get_exe():
-      raise Sorry("xtb executable not found. qmi requires xtb; set the "
-                  "PHENIX_XTB environment variable or install xtb in the "
-                  "build.")
+    if not self.params.predict_only:
+      from mmtbx.geometry_restraints import xtb_manager
+      if not xtb_manager.get_exe():
+        raise Sorry("xtb executable not found. qmi requires xtb; set the "
+                    "PHENIX_XTB environment variable or install xtb in the "
+                    "build.")
     if self.params.protonation.enable:
       try:
         import mmtbx.programs.reduce2  # noqa: F401
@@ -249,9 +275,8 @@ Requires xtb.
                     "not available in this build.")
 
   def _require_hydrogens(self, model):
-    """Protonation guard shared by validate() and run(): abort on an
-    unprotonated model unless protonation.enable=True. Called from run() too, so
-    a programmatic caller that skips run_program's validate() is still guarded."""
+    """Protonation guard: abort on an unprotonated model unless
+    protonation.enable=True."""
     if not model.has_hd() and not self.params.protonation.enable:
       raise Sorry("The model does not appear to be protonated and qmi needs "
                   "hydrogens. Protonate it first (e.g. mmtbx.reduce2) or set "
@@ -260,7 +285,6 @@ Requires xtb.
   def run(self):
     """Build the restraints and (optionally) write the per-site .edits."""
     model = self.data_manager.get_model()
-    self._require_hydrogens(model)
     element_filter = [e for e in (self.params.sites.element_filter or [])
                       if e and e.strip()]
     selection = [s for s in (self.params.sites.selection or []) if s]
@@ -294,12 +318,17 @@ Requires xtb.
       temperature=self.params.qm.temperature,
       metal_states=self.params.sites.metal_state,
       work_dir=self.params.output.qm_work_dir,
+      predict_only=self.params.predict_only,
+      states=self.params.states,
+      nproc=self.params.qm.nproc,
+      use_bvs=self.params.use_bvs,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()
     self._results = self._builder.run(model, model_name=self._model_name)
     self._show_summary()
-    if self.params.output.write_files:
+    if (self.params.output.write_files and not self.params.predict_only
+        and self.params.states == 'predicted'):
       self._write_edits()
 
   def get_results(self):
@@ -315,8 +344,13 @@ Requires xtb.
         print(f'  {r.site_id}: skipped ({r.skipped})', file=self.logger)
         continue
       state = r.state_source
-      if r.state_source == "guessed":
+      if r.state_source in ("guessed", "bvs"):
         state = f"{r.state_source}/{r.confidence}-confidence"
+      if r.restraints is None:   # predict_only: no QM, no restraints
+        print(f'  {r.site_tag}: {r.metal_element} ox={r.oxidation_state:+d} '
+              f'mult={r.multiplicity} state={state} (prediction only)',
+              file=self.logger)
+        continue
       print(f'  {r.site_tag}: {r.metal_element} ox={r.oxidation_state:+d} '
             f'mult={r.multiplicity} charge={r.charge:+d} '
             f'state={state} '

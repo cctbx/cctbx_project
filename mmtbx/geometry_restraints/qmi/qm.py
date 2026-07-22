@@ -294,6 +294,24 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   return frozen_iseqs, free_iseqs
 
 
+def write_constraints_summary(submodel, frozen_iseqs, free_iseqs, output_path):
+  """Write *output_path* (a ``constraints.txt``): the frozen vs free inventory
+  for the QM optimisation, one line per atom (index, FROZEN/free, PDB record),
+  with a count header. Mirrors the calibration ``prepare_qm_calcs.py``."""
+  atoms = submodel.get_hierarchy().atoms()
+  frozen_iseqs = set(frozen_iseqs)
+  with open(output_path, "w") as fh:
+    fh.write("# QM optimization constraint list\n")
+    fh.write(f"# Total atoms: {atoms.size()}\n")
+    fh.write(f"# Free:   {len(free_iseqs)}\n")
+    fh.write(f"# Frozen: {len(frozen_iseqs)}\n\n")
+    fh.write(f"{'idx':>4s}  {'state':6s}  PDB record\n")
+    fh.write(f"{'-'*4}  {'-'*6}  {'-'*60}\n")
+    for i, atom in enumerate(atoms):
+      state = "FROZEN" if i in frozen_iseqs else "free"
+      fh.write(f"{i:>4d}  {state:6s}  {atom.format_atom_record().rstrip()}\n")
+
+
 def optimise_mask_from_frozen(n_atoms, frozen_iseqs):
   """Return the per-atom optimise mask ``xtb_manager.set_ligand_atoms`` wants.
 

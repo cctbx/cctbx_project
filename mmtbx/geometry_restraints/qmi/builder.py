@@ -16,6 +16,7 @@ modified-Seminario curvature sigmas (Sec 5F), with a placeholder fallback.
 from __future__ import absolute_import, division, print_function
 
 import os
+import re
 
 import libtbx.phil
 from libtbx import group_args
@@ -31,17 +32,35 @@ from mmtbx.geometry_restraints.qmi import donors, electronic, shape, util
 from mmtbx.geometry_restraints.qmi import bvs, qm, restraints, sigma
 
 
-def _default_output_filename(prefix=None, suffix=None):
-  """Filename-stem callable for QMRegionBuilder when running in-memory (we set
-  ``write_files=False``, but endo_exo still derives a stem per seed)."""
-  return f"{prefix or ''}{suffix or ''}"
+# endo_exo's per-atom seed suffix is `_{element}_chain{chain}_res{resseq}_...`.
+_SEED_SUFFIX_RE = re.compile(r"_chain(.*?)_res(.+?)_within")
+
+
+def _region_output_filename(work_dir):
+  """Return the ``default_output_filename`` callable for QMRegionBuilder.
+
+  When *work_dir* is set, each QM region is routed into a per-site subdirectory
+  ``<work_dir>/<stem>_<chain>_<resseq>/region`` (so the region PDB/CIF endo_exo
+  writes sit beside that site's xTB files). Falls back to a bare stem (endo_exo's
+  in-memory default) when there is no work dir or the seed is not a single metal
+  atom (e.g. a selection seed)."""
+  def _fn(prefix=None, suffix=None):
+    m = _SEED_SUFFIX_RE.search(suffix or "")
+    if work_dir is None or m is None:
+      return f"{prefix or ''}{suffix or ''}"
+    site_dir = os.path.join(work_dir, f"{prefix}_{m.group(1)}_{m.group(2)}")
+    if not os.path.isdir(site_dir):
+      os.makedirs(site_dir)
+    return os.path.join(site_dir, "region")
+  return _fn
 
 
 def _endo_exo_params(metal_element=None, selection=None, radius=4.0,
-                    max_depth=3):
-  """Build an endo_exo parameter object for an in-memory run (no file output)."""
+                     max_depth=3, write_files=False):
+  """Build an endo_exo parameter object. *write_files* lets endo_exo write each
+  QM region to disk (path from ``default_output_filename``)."""
   params = libtbx.phil.parse(endo_exo_master_phil_str).extract()
-  params.write_files = False
+  params.write_files = write_files
   params.buffer.radius = radius
   params.max_search_depth = max_depth
   if selection:
@@ -84,6 +103,20 @@ class QMRestraintsBuilder(object):
       Directory the xTB jobs run in (xTB writes many scratch/output files into
       the cwd, so they are collected here rather than the current directory).
       Created if absent; ``None`` keeps them in the current directory.
+  predict_only : bool
+      Run only the electronic-state prediction per site and stop (no QM, no
+      restraints).
+  states : str
+      Which states to run per site: ``'predicted'`` (the predictor commits one),
+      ``'reasonable'`` (scan the accessible oxidations x the geometry-allowed
+      spins), or ``'all'`` (scan the accessible oxidations x both spin extremes,
+      geometry-blind). Both scans run each state in its own subdirectory.
+  nproc : int
+      Threads for each xTB optimisation and Hessian.
+  use_bvs : bool
+      Commit the BVS most-likely oxidation instead of the predictor's (spin is
+      re-derived for it); a user metal_state oxidation still wins. Applies to the
+      committing (states='predicted') path only.
   logger : file-like or None
   """
 
@@ -91,7 +124,8 @@ class QMRestraintsBuilder(object):
                max_depth=3, solvent_model=qm.DEFAULT_SOLVENT,
                temperature=sigma.DEFAULT_TEMPERATURE_K,
                metal_states=None, work_dir="qm_work_dir",
-               logger=None):
+               predict_only=False, states="predicted", nproc=1,
+               use_bvs=False, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -100,6 +134,10 @@ class QMRestraintsBuilder(object):
     self.temperature = temperature
     self.metal_states = list(metal_states) if metal_states else []
     self.work_dir = work_dir
+    self.predict_only = predict_only
+    self.states = states   # 'predicted' | 'reasonable' | 'all'
+    self.nproc = nproc
+    self.use_bvs = use_bvs
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
     self._results = []
@@ -113,27 +151,36 @@ class QMRestraintsBuilder(object):
     record), ``edits`` (the PHIL string), and ``skipped`` (None, or a reason).
     """
     self._model_stem = os.path.splitext(os.path.basename(model_name))[0]
-    if self.work_dir is not None:
-      # Collect the many per-site xTB scratch/output files in one directory
-      # (created if absent); the .edits files still go to the current directory.
+    write_regions = self.work_dir is not None and not self.predict_only
+    if write_regions:
+      # qm_work_dir holds the input (protonated) model plus one subdirectory per
+      # site (qm_work_dir/<stem>_<chain>_<resseq>) into which endo_exo writes the
+      # QM region and this pipeline writes the xTB files. The .edits files still
+      # go to the current directory.
       self.work_dir = os.path.abspath(self.work_dir)
       if not os.path.isdir(self.work_dir):
         os.makedirs(self.work_dir)
+      model.get_hierarchy().write_pdb_file(
+        crystal_symmetry=model.crystal_symmetry(),
+        file_name=os.path.join(self.work_dir,
+                               f"{self._model_stem}_protonated.pdb"))
+    else:
+      self.work_dir = None   # predict_only (or no work dir) writes no QM files
 
     params = _endo_exo_params(
       metal_element=self.metal_element, selection=self.selection,
-      radius=self.radius, max_depth=self.max_depth)
+      radius=self.radius, max_depth=self.max_depth, write_files=write_regions)
     region_builder = QMRegionBuilder(params, logger=self.logger)
     seed_results = region_builder.run(
       model, model_name=model_name,
-      default_output_filename=_default_output_filename)
+      default_output_filename=_region_output_filename(self.work_dir))
 
     original_chain_ids = [c.id.strip()
                           for c in model.get_hierarchy().chains()]
 
     self._results = []
     for i, seed in enumerate(seed_results, start=1):
-      self._results.append(
+      self._results.extend(
         self._process_site(i, seed, original_chain_ids))
     return self._results
 
@@ -179,7 +226,8 @@ class QMRestraintsBuilder(object):
         match = scope
     return match
 
-  def _resolve_state(self, metal_element, override, geometry, cn, summary):
+  def _resolve_state(self, metal_element, override, geometry, cn, summary,
+                     bvs_est=None):
     """Combine a user ``metal_state`` *override* (or None) with the committing
     electronic predictor into a single (oxidation_state, multiplicity) state,
     given the CShM *geometry* class, *cn*, and the donor *summary* (from
@@ -190,6 +238,9 @@ class QMRestraintsBuilder(object):
     features only (donor summary + geometry + CN, never bond lengths). qmi ALWAYS
     commits: the only skip is a metal outside the vetted priors with no override
     (``predict_oxidation`` returns None), which then needs a metal_state block.
+
+    With ``use_bvs`` and a *bvs_est*, the BVS most-likely oxidation replaces the
+    predictor's (a user oxidation still wins); the spin is re-derived for it.
 
     Returns a group_args; ``skipped`` is a reason string when the state cannot be
     committed (fields then None), else None with the committed state,
@@ -203,9 +254,12 @@ class QMRestraintsBuilder(object):
     user_ox = override.oxidation_state if override is not None else None
     user_mult = override.multiplicity if override is not None else None
 
-    # Oxidation: a user value wins, else the committing predictor.
+    # Oxidation: a user value wins; else BVS (when use_bvs) or the predictor.
     if user_ox is not None:
       ox, ox_conf, ox_reason = user_ox, electronic.CONF_HIGH, "user-supplied"
+    elif self.use_bvs and bvs_est is not None:
+      ox, ox_conf, ox_reason = (bvs_est.best, electronic.CONF_MEDIUM,
+                                "BVS most-likely")
     else:
       pred = electronic.predict_oxidation(metal_element, geometry, cn, summary)
       if pred is None:
@@ -230,10 +284,15 @@ class QMRestraintsBuilder(object):
       mult, low_spin = unpaired + 1, sp.low_spin
       spin_conf, spin_reason = sp.confidence, sp.reason
 
-    user = user_ox is not None or user_mult is not None
+    if user_ox is None and self.use_bvs and bvs_est is not None:
+      source = "bvs"           # BVS set the oxidation (matches the branch above)
+    elif user_ox is not None or user_mult is not None:
+      source = "user-supplied"
+    else:
+      source = "guessed"
     return group_args(
       oxidation_state=ox, multiplicity=mult, low_spin=low_spin,
-      state_source="user-supplied" if user else "guessed",
+      state_source=source,
       confidence=electronic.min_confidence(ox_conf, spin_conf),
       oxidation_reason=ox_reason, spin_reason=spin_reason, skipped=None)
 
@@ -267,36 +326,30 @@ class QMRestraintsBuilder(object):
     return bvs.estimate_oxidation(metal_element, tuple(ox_states), contacts)
 
   def _process_site(self, index, seed, original_chain_ids):
-    """Run the QM-restraint pipeline for one endo_exo seed result."""
+    """Run the QM-restraint pipeline for one endo_exo seed; return a LIST of
+    per-site results (one normally, one per state in a reasonable/all scan)."""
     submodel = seed["model"]
     seed_iseqs = seed["seed_iseqs"]
     cap_iseqs = seed["cap_iseqs"]
     cap_original_elements = seed.get("cap_original_elements", ())
     atoms = submodel.get_hierarchy().atoms()
 
-    def _skip(reason, **extra):
-      print(f"Site {index} skipped: {reason}", file=self.logger)
-      return group_args(
-        site_id=seed.get("file_name", f"site_{index}"),
-        site_tag=extra.get("site_tag"),
-        metal_element=extra.get("metal_element"),
-        oxidation_state=None, multiplicity=None, charge=None,
-        n_donors=None, restraints=None, edits=None, sigma_origin=None,
-        skipped=reason)
-
     if not seed_iseqs:
-      return _skip("no seed atom returned by endo_exo")
+      return [self._skip_result(index, seed,
+                                "no seed atom returned by endo_exo")]
     # Phase-1 mononuclear gate: exactly one metal in the cluster.
     n_metals = qmi_metals.count_metals(submodel)
     if n_metals != 1:
-      return _skip(f"polynuclear_out_of_scope ({n_metals} metals in cluster)")
+      return [self._skip_result(
+        index, seed, f"polynuclear_out_of_scope ({n_metals} metals in cluster)")]
 
     metal_iseq = seed_iseqs[0]
     metal_atom = atoms[metal_iseq]
     metal_element = qmi_metals.normalize_element(metal_atom.element)
     _rg = metal_atom.parent().parent()
-    site_tag = f"{metal_element}_{_rg.parent().id.strip()}{_rg.resseq.strip()}"
-    override = self._lookup_override(submodel, metal_iseq)
+    chain_id = _rg.parent().id.strip()
+    resseq = _rg.resseq.strip()
+    site_tag = f"{metal_element}_{chain_id}{resseq}"
     # First shell from the crystal geometry, then the CShM geometry class; both
     # feed the electronic guess (the class sets the ligand-field spin).
     donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
@@ -304,8 +357,9 @@ class QMRestraintsBuilder(object):
     # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
     # oxidation over the accessible states, from the OBSERVED first-shell
     # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
-    # its BVS estimate to guide an override; it never overrides the electronic
-    # guess, and is trustworthy only at high resolution / undamaged metal.
+    # its BVS estimate to guide an override; it drives the committed oxidation
+    # only under use_bvs, and is trustworthy only at high resolution / undamaged
+    # metal.
     bvs_est = self._bvs_estimate(atoms, metal_iseq, metal_element, donor_iseqs)
     if bvs_est is not None:
       vstr = ", ".join(f"{q:+d}:{v:.2f}"
@@ -315,52 +369,196 @@ class QMRestraintsBuilder(object):
             file=self.logger)
 
     summary = self._donor_summary(atoms, donor_iseqs)
+
+    if self.states in ("reasonable", "all"):
+      return self._process_state_scan(
+        index, seed, submodel, metal_iseq, donor_iseqs, cap_iseqs,
+        cap_original_elements, geom, metal_element, site_tag, chain_id, resseq,
+        original_chain_ids, bvs_est, summary)
+
+    override = self._lookup_override(submodel, metal_iseq)
     state = self._resolve_state(metal_element, override, geom.shape, geom.cn,
-                                summary)
+                                summary, bvs_est=bvs_est)
     if state.skipped:
-      return _skip(state.skipped, metal_element=metal_element)
+      return [self._skip_result(index, seed, state.skipped,
+                                metal_element=metal_element, site_tag=site_tag)]
 
     conf_note = (f" [confidence {state.confidence}]"
-                 if state.state_source == "guessed" else "")
+                 if state.state_source in ("guessed", "bvs") else "")
     print(f"Site {index}: {metal_element}, {state.state_source} "
           f"ox={state.oxidation_state:+d} mult={state.multiplicity} "
           f"(shape={geom.shape or 'unclassified'}, CN={geom.cn}){conf_note}",
           file=self.logger)
-    if state.state_source == "guessed":
-      print(f"  predicted: oxidation ({state.oxidation_reason}); "
+    if state.state_source in ("guessed", "bvs"):
+      prefix = "predicted: " if state.state_source == "guessed" else ""
+      print(f"  {prefix}oxidation ({state.oxidation_reason}); "
             f"spin ({state.spin_reason})", file=self.logger)
+
+    if self.predict_only:   # stop before the QM optimisation; prediction only
+      return [group_args(
+        site_id=seed.get("file_name", f"site_{index}"), site_tag=site_tag,
+        metal_element=metal_element, oxidation_state=state.oxidation_state,
+        multiplicity=state.multiplicity, low_spin=state.low_spin, charge=None,
+        state_source=state.state_source, confidence=state.confidence,
+        oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason,
+        bvs=bvs_est, n_donors=len(donor_iseqs), restraints=None, edits=None,
+        sigma_origin=None, skipped=None)]
 
     # Restraints manager (needed for charge accounting + cap-anchor freezing).
     qm.ensure_restraints(submodel, cap_iseqs=cap_iseqs,
                          cap_original_elements=cap_original_elements)
-
-    charge = self._total_charge(submodel, metal_element, state)
-    frozen_iseqs, _free = qm.determine_frozen_atoms(
+    charge = self._total_charge(submodel, metal_element,
+                                state.oxidation_state, state.multiplicity)
+    frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
       submodel, metal_iseq, cap_iseqs, log=self.logger)
+    site_dir = self._site_dir(chain_id, resseq)
+    self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)
+    return [self._run_state(
+      index, seed, submodel, metal_iseq, donor_iseqs, frozen_iseqs,
+      metal_element, site_tag, original_chain_ids, bvs_est,
+      state.oxidation_state, state.multiplicity, charge,
+      site_dir, state.state_source,
+      low_spin=state.low_spin, confidence=state.confidence,
+      oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason)]
 
-    # Intermediary xTB files share the .edits naming scheme
-    # (<model>_<Metal>_<Chain><Resseq>); xtb_manager prepends 'xtb_'.
-    preamble = f"qmi_{self._model_stem}_{site_tag}"
+  def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
+                          cap_iseqs, cap_original_elements, geom, metal_element,
+                          site_tag, chain_id, resseq, original_chain_ids,
+                          bvs_est, summary):
+    """states=reasonable/all scan: report the predictor's guess (informational;
+    not used to pick), then run every scanned (oxidation, multiplicity) state,
+    each in its own qm_work_dir/<stem>_<chain>_<resseq>/ox<n>_mult<m>/ subdir.
+    'all' is geometry-blind (both spin extremes); 'reasonable' keeps only the
+    spin(s) the site's ligand field permits. Returns one result per state (the
+    predicted state, if it is among those scanned, is tagged)."""
+    pred = electronic.predict_state(metal_element, geom.shape, geom.cn, summary)
+    if pred is not None:
+      print(f"Site {index}: {metal_element}, predictor -> "
+            f"ox={pred.oxidation_state:+d} mult={pred.multiplicity} "
+            f"[confidence {pred.confidence}] "
+            f"(shape={geom.shape or 'unclassified'}, CN={geom.cn})",
+            file=self.logger)
+      print(f"  predicted: oxidation ({pred.oxidation_reason}); "
+            f"spin ({pred.spin_reason})", file=self.logger)
+
+    # 'reasonable' prunes to the geometry-allowed spins; 'all' is geometry-blind.
+    geometry = geom.shape if self.states == "reasonable" else None
+    states = electronic.enumerate_states(metal_element, geometry=geometry)
+    if not states:
+      return [self._skip_result(
+        index, seed, f"{metal_element} has no electronic prior; cannot enumerate "
+        f"accessible states", metal_element=metal_element, site_tag=site_tag)]
+
+    print(f"Site {index}: {self.states}-states scan of {len(states)} state(s): "
+          + ", ".join(f"ox{ox:+d}/mult{m}" for ox, m in states),
+          file=self.logger)
+    qm.ensure_restraints(submodel, cap_iseqs=cap_iseqs,
+                         cap_original_elements=cap_original_elements)
+    frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
+      submodel, metal_iseq, cap_iseqs, log=self.logger)
+    site_dir = self._site_dir(chain_id, resseq)
+    self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)
+
+    results = []
+    for ox, mult in states:
+      is_pred = (pred is not None and ox == pred.oxidation_state
+                 and mult == pred.multiplicity)
+      state_dir = None
+      if site_dir is not None:
+        state_dir = os.path.join(site_dir, f"ox{ox:+d}_mult{mult}")
+        if not os.path.isdir(state_dir):
+          os.makedirs(state_dir)
+      charge = self._total_charge(submodel, metal_element, ox, mult)
+      try:
+        results.append(self._run_state(
+          index, seed, submodel, metal_iseq, donor_iseqs, frozen_iseqs,
+          metal_element, site_tag, original_chain_ids, bvs_est, ox, mult, charge,
+          state_dir,
+          f"{self.states}-states (predicted)" if is_pred else f"{self.states}-states",
+          confidence=(pred.confidence if is_pred else None),
+          oxidation_reason=(pred.oxidation_reason if is_pred else None),
+          spin_reason=(pred.spin_reason if is_pred else None)))
+      except Exception as exc:
+        # One state's QM failing must not abort the scan: states=all deliberately
+        # enumerates SCF-fragile states. Record the skip and run the rest.
+        results.append(self._skip_result(
+          index, seed, f"ox={ox:+d} mult={mult} QM failed: {exc}",
+          metal_element=metal_element, site_tag=site_tag))
+    return results
+
+  def _total_charge(self, submodel, metal_element, oxidation, multiplicity):
+    """Total cluster charge for xTB ``--chrg``: the whole system given the
+    metal's oxidation state, via ``quantum_interface.electrons`` (bond graph +
+    per-element valences, so charged/deprotonated ligands count)."""
+    sel = f"element {metal_element}"
+    sac = [group_args(atom_selection=sel, charge=oxidation)]
+    sam = [group_args(atom_selection=sel, multiplicity=multiplicity)]
+    return quantum_interface.electrons(
+      submodel, specific_atom_charges=sac,
+      specific_atom_multiplicities=sam, log=self.logger)
+
+  def _skip_result(self, index, seed, reason, metal_element=None, site_tag=None):
+    """A per-site result marking the site skipped (no restraints)."""
+    print(f"Site {index} skipped: {reason}", file=self.logger)
+    return group_args(
+      site_id=seed.get("file_name", f"site_{index}"), site_tag=site_tag,
+      metal_element=metal_element, oxidation_state=None, multiplicity=None,
+      charge=None, n_donors=None, restraints=None, edits=None,
+      sigma_origin=None, skipped=reason)
+
+  def _site_dir(self, chain_id, resseq):
+    """The per-site subdirectory qm_work_dir/<stem>_<chain>_<resseq> (created),
+    or None when there is no work dir."""
+    if self.work_dir is None:
+      return None
+    d = os.path.join(self.work_dir, f"{self._model_stem}_{chain_id}_{resseq}")
+    if not os.path.isdir(d):
+      os.makedirs(d)
+    return d
+
+  def _write_constraints(self, submodel, frozen_iseqs, free_iseqs, site_dir):
+    """Write site_dir/constraints.txt (the frozen vs free atom inventory) beside
+    region.pdb; a no-op when there is no work dir."""
+    if site_dir is None:
+      return
+    qm.write_constraints_summary(
+      submodel, frozen_iseqs, free_iseqs,
+      os.path.join(site_dir, "constraints.txt"))
+
+  def _run_state(self, index, seed, submodel, metal_iseq, donor_iseqs,
+                 frozen_iseqs, metal_element, site_tag, original_chain_ids,
+                 bvs_est, oxidation, multiplicity, charge, work_dir,
+                 state_source, low_spin=None, confidence=None,
+                 oxidation_reason=None, spin_reason=None):
+    """Run the constrained opt + Hessian + restraint assembly for a single
+    (oxidation, multiplicity, charge) state in *work_dir* (writing optimized.pdb
+    and qmi.edits there), returning the per-state result group_args."""
+    print(f"Site {index}: calculating {metal_element} "
+          f"ox={oxidation:+d} mult={multiplicity}", file=self.logger)
     opt_sites, qmm = qm.run_constrained_opt(
-      submodel, frozen_iseqs, charge=charge,
-      multiplicity=state.multiplicity, solvent_model=self.solvent_model,
-      preamble=preamble, work_dir=self.work_dir,
-      log=self.logger)
+      submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
+      solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi",
+      work_dir=work_dir, log=self.logger)
 
-    # Donors were detected above (crystal geometry); targets come from the
-    # optimised geometry.
+    if work_dir is not None:
+      # The optimised QM region, beside region.pdb (the input geometry).
+      opt_hier = submodel.get_hierarchy().deep_copy()
+      opt_hier.atoms().set_xyz(opt_sites)
+      opt_hier.write_pdb_file(
+        crystal_symmetry=submodel.crystal_symmetry(),
+        file_name=os.path.join(work_dir, "optimized.pdb"))
+
     # Modified-Seminario sigmas from the Hessian at the optimised geometry
     # (plan Sec 5F); degrade gracefully to placeholder sigmas on any failure.
     bond_sigmas = angle_sigmas = None
     sigma_origin = "placeholder"
     try:
       hess_path = qm.run_hessian(
-        submodel, opt_sites, charge=charge,
-        multiplicity=state.multiplicity, solvent_model=self.solvent_model,
-        preamble=f"{preamble}_hess", work_dir=self.work_dir,
-        log=self.logger)
-      n_atoms = submodel.get_hierarchy().atoms().size()
-      hessian = sigma.read_xtb_hessian(hess_path, n_atoms)
+        submodel, opt_sites, charge=charge, multiplicity=multiplicity,
+        solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi_hess",
+        work_dir=work_dir, log=self.logger)
+      hessian = sigma.read_xtb_hessian(hess_path,
+                                       submodel.get_hierarchy().atoms().size())
       sigmas = sigma.seminario_sigmas(
         hessian, metal_iseq, donor_iseqs, opt_sites,
         temperature=self.temperature, log=self.logger)
@@ -376,39 +574,26 @@ class QMRestraintsBuilder(object):
       original_chain_ids=original_chain_ids, log=self.logger)
     sigma_label = ("modified-Seminario sigmas" if sigma_origin == "hessian"
                    else "placeholder sigmas")
-    header = (f"qmi Phase-1 restraints: {metal_element} "
-              f"ox={state.oxidation_state:+d} mult={state.multiplicity} "
-              f"charge={charge:+d} "
+    header = (f"qmi restraints: {metal_element} ox={oxidation:+d} "
+              f"mult={multiplicity} charge={charge:+d} "
               f"(GFN2-xTB/{self.solvent_model or 'gas'}; {sigma_label})")
     edits = restraints.as_edits_phil(site_restraints, header=header)
+    if work_dir is not None:
+      with open(os.path.join(work_dir, "qmi.edits"), "w") as fh:
+        fh.write(edits)
 
-    skip_note = (f" ({site_restraints.n_skipped_symmetry} symmetry "
-                 f"donor(s) skipped)"
-                 if site_restraints.n_skipped_symmetry else "")
-    print(f"Site {index}: {len(site_restraints.bonds)} bond + "
+    skip_note = (f" ({site_restraints.n_skipped_symmetry} symmetry donor(s) "
+                 f"skipped)" if site_restraints.n_skipped_symmetry else "")
+    print(f"Site {index} ox={oxidation:+d} mult={multiplicity}: "
+          f"{len(site_restraints.bonds)} bond + "
           f"{len(site_restraints.angles)} angle restraint(s){skip_note}",
           file=self.logger)
 
     return group_args(
-      site_id=seed.get("file_name", f"site_{index}"),
-      site_tag=site_tag,
-      metal_element=metal_element,
-      oxidation_state=state.oxidation_state,
-      multiplicity=state.multiplicity, charge=charge, low_spin=state.low_spin,
-      state_source=state.state_source, confidence=state.confidence,
-      oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason,
-      bvs=bvs_est,
-      n_donors=len(donor_iseqs), restraints=site_restraints,
-      edits=edits, sigma_origin=sigma_origin, skipped=None)
-
-  def _total_charge(self, submodel, metal_element, state):
-    """Total cluster charge for xTB ``--chrg``: the whole system given the
-    metal's resolved oxidation state (engine guess or ``metal_state`` override),
-    via ``quantum_interface.electrons`` (bond graph + per-element valences, so
-    charged/deprotonated ligands count)."""
-    sel = f"element {metal_element}"
-    sac = [group_args(atom_selection=sel, charge=state.oxidation_state)]
-    sam = [group_args(atom_selection=sel, multiplicity=state.multiplicity)]
-    return quantum_interface.electrons(
-      submodel, specific_atom_charges=sac,
-      specific_atom_multiplicities=sam, log=self.logger)
+      site_id=seed.get("file_name", f"site_{index}"), site_tag=site_tag,
+      metal_element=metal_element, oxidation_state=oxidation,
+      multiplicity=multiplicity, charge=charge, low_spin=low_spin,
+      state_source=state_source, confidence=confidence,
+      oxidation_reason=oxidation_reason, spin_reason=spin_reason, bvs=bvs_est,
+      n_donors=len(donor_iseqs), restraints=site_restraints, edits=edits,
+      sigma_origin=sigma_origin, skipped=None)
