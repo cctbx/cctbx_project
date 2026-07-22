@@ -241,6 +241,8 @@ class Base_geometry(object):
     return 0
   def get_hbond_proxies_iseqs(self):
     return None
+  def get_edits_bond_proxies_iseqs(self):
+    return None
 
   def new_included_bonded_atoms(self, proxies, sites_cart,
       site_symmetry_table, nonbonded_types, nonbonded_charges,

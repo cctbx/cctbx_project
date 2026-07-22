@@ -906,10 +906,11 @@ class reference_model(object):
       target_donor -> ref_donor -> ref_acceptor -> target_acceptor
     via match_map (heavy-atom map established at construction) and the
     inverse multimap built here on demand. Pairs already restrained as
-    secondary-structure H-bonds (origin_id 'hydrogen bonds') are skipped
-    via geometry.get_hbond_proxies_iseqs(). The working-model partner
-    distance cutoff discriminates within-NCS-copy pairings (kept) from
-    cross-NCS-copy pairings (rejected).
+    secondary-structure H-bonds (origin_id 'hydrogen bonds', via
+    geometry.get_hbond_proxies_iseqs()) or as user-defined custom bonds
+    (origin_id 'edits', via geometry.get_edits_bond_proxies_iseqs()) are
+    skipped. The working-model partner distance cutoff discriminates
+    within-NCS-copy pairings (kept) from cross-NCS-copy pairings (rejected).
 
     Returns ([], []) when params.hydrogen_bonds.enabled is False.
     """
@@ -920,7 +921,14 @@ class reference_model(object):
     if hb_p is None or not hb_p.enabled:
       return [], []
     ref_hb_oid = linking_class().get_origin_id('reference hydrogen bonds')
-    ss_pairs = set(frozenset(p) for p in geometry.get_hbond_proxies_iseqs())
+    # Skip pairs that are already restrained, so a reference H-bond is not
+    # stacked on top of an existing bond restraint: secondary-structure
+    # H-bonds (origin_id 'hydrogen bonds') and user-defined custom bonds
+    # (geometry_restraints.edits, origin_id 'edits').
+    skip_pairs = set(frozenset(p)
+                     for p in (geometry.get_hbond_proxies_iseqs() or []))
+    skip_pairs |= set(frozenset(p)
+                      for p in (geometry.get_edits_bond_proxies_iseqs() or []))
     weight_bond  = 1.0 / hb_p.sigma_bond**2
     weight_angle = 1.0 / hb_p.sigma_angle**2
     bond_proxies = []
@@ -947,7 +955,7 @@ class reference_model(object):
             if d_work > hb_p.partner_distance_cutoff:
               continue
             pair = (min(m_d, m_a), max(m_d, m_a))
-            if pair in emitted or frozenset(pair) in ss_pairs:
+            if pair in emitted or frozenset(pair) in skip_pairs:
               continue
             emitted.add(pair)
             d_target = d_DA if hb_p.target == 'as_found' else hb_p.ideal_distance

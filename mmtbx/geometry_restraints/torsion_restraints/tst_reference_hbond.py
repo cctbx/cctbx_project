@@ -712,6 +712,78 @@ def exercise_ensure_hydrogens_adds_h_to_h_less():
       ref_h.atoms_size(), augmented.atoms_size())
 
 
+def exercise_collect_edits_bond_pairs():
+  """GRM.get_edits_bond_proxies_iseqs returns pairs for proxies with origin_id
+  'edits' (user-defined custom bonds, i.e. geometry_restraints.edits). This is
+  the basis for the custom-bond overlap filter used by the reference-H-bond
+  builder."""
+  model, geometry = _build_minimal_model_and_geometry()
+  edits_oid = linking_class().get_origin_id('edits')
+  proxy = geometry_restraints.bond_simple_proxy(
+    i_seqs=[0, 3],
+    distance_ideal=3.0,
+    weight=400.0,
+    origin_id=edits_oid)
+  sites_cart = model.get_sites_cart()
+  geometry.add_new_bond_restraints_in_place([proxy], sites_cart=sites_cart)
+  pairs = geometry.get_edits_bond_proxies_iseqs()
+  pair_set = set(frozenset(p) for p in pairs)
+  assert frozenset({0, 3}) in pair_set, pair_set
+
+
+def exercise_edits_filter_excludes_overlap():
+  """Pairs already restrained as user-defined custom bonds (origin_id 'edits')
+  are skipped by reference_model.get_hbond_proxies, so a reference H-bond is
+  not stacked on top of a bond the user already defined."""
+  # 1st pass: discover the i_seqs of one reference H-bond
+  model = _build_helix_model()
+  geometry = model.get_restraints_manager().geometry
+  p = reference_model_params.extract()
+  p.reference_model.use_starting_model_as_reference = True
+  p.reference_model.hydrogen_bonds.enabled = True
+  rm = reference_model(
+    model=model,
+    reference_hierarchy_list=[model.get_hierarchy()],
+    reference_file_list=None,
+    params=p.reference_model,
+    log=null_out())
+  geometry.adopt_reference_dihedral_manager(rm)
+  bp, _ = rm.get_hbond_proxies(
+    geometry=geometry, sites_cart=model.get_sites_cart())
+  assert len(bp) > 0
+  baseline_pairs = set(frozenset(proxy.i_seqs) for proxy in bp)
+  victim_pair = next(iter(baseline_pairs))
+  i, j = tuple(victim_pair)
+
+  # 2nd pass: rebuild and inject a user 'edits' bond proxy on the victim pair
+  model = _build_helix_model()
+  geometry = model.get_restraints_manager().geometry
+  edits_oid = linking_class().get_origin_id('edits')
+  edit_proxy = geometry_restraints.bond_simple_proxy(
+    i_seqs=[i, j],
+    distance_ideal=2.9,
+    weight=400.0,
+    origin_id=edits_oid)
+  geometry.add_new_bond_restraints_in_place([edit_proxy],
+    sites_cart=model.get_sites_cart())
+  rm = reference_model(
+    model=model,
+    reference_hierarchy_list=[model.get_hierarchy()],
+    reference_file_list=None,
+    params=p.reference_model,
+    log=null_out())
+  geometry.adopt_reference_dihedral_manager(rm)
+  bp2, _ = rm.get_hbond_proxies(
+    geometry=geometry, sites_cart=model.get_sites_cart())
+  filtered_pairs = set(frozenset(proxy.i_seqs) for proxy in bp2)
+  assert victim_pair not in filtered_pairs, \
+    "victim pair %s should have been filtered out (user 'edits' bond)" % (
+      victim_pair,)
+  # the other reference H-bonds should still be there
+  assert len(filtered_pairs) == len(baseline_pairs) - 1, \
+    (len(filtered_pairs), len(baseline_pairs))
+
+
 def run(args):
   assert not args, args
   exercise_origin_id_registered()
@@ -721,6 +793,8 @@ def run(args):
   exercise_ensure_hydrogens_adds_h_to_h_less()
   exercise_detect_reference_hbonds()
   exercise_collect_ss_hbond_pairs()
+  exercise_collect_edits_bond_pairs()
+  exercise_edits_filter_excludes_overlap()
   exercise_end_to_end_as_found_no_angles_no_ss()
   exercise_end_to_end_target_ideal()
   exercise_ss_filter_excludes_overlap()
