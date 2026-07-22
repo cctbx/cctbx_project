@@ -155,6 +155,12 @@ def test_custom_bond_on_his_ring_n_suppresses_flip():
     "issue #1199: a His flip Mover was added for a residue whose ND1 carries a "
     "user-defined bond to Cys SG; flipping the ring would break that bond.\n"
     + info)
+  # reduce2 protonates both ring nitrogens, so the Optimizer must delete the
+  # hydrogen that conflicts with the bond (HD1 on the bonded ND1) rather than
+  # leaving it dangling. This holds regardless of when/how the H was placed.
+  deleted = set((h.parent().resname.strip(), h.name.strip())
+                for h in opt.getHydrogensToDelete())
+  assert ("HIS", "HD1") in deleted, deleted
   print("test_custom_bond_on_his_ring_n_suppresses_flip OK")
 
 def test_metal_coordinated_his_stays_locked():
