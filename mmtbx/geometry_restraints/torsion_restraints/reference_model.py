@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.geometry_restraints
-from mmtbx.validation import rotalyze
+from mmtbx.validation import ramalyze, rotalyze
 from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
@@ -121,7 +121,9 @@ reference_model
                reference model for every residue with a matched reference. \
                The standard reference_model dihedral restraints on phi/psi \
                (when params.enabled is also True) are not removed; both \
-               families of restraints apply concurrently."
+               families of restraints apply concurrently. Only reference \
+               residues in a favored Ramachandran region are used as targets; \
+               allowed and outlier reference residues keep the default target."
   }
   hydrogen_bonds
     .short_caption = Reference H-bond restraints
@@ -702,6 +704,13 @@ class reference_model(object):
       fn, ref_iseqs = mapped
       ref_sites = self.sites_cart_ref[fn]
       phi_ref, psi_ref = _phi_psi_from_iseqs(ref_sites, ref_iseqs)
+      # Only favored reference residues may serve as a target.
+      # Allowed and outlier are skipped so default targets remain.
+      rama_key = ramalyze.res_types_dict.get(proxy.residue_type)
+      if rama_key is not None:
+        rama_score = ramachandran_manager.rama_eval.get_score(rama_key, phi_ref, psi_ref)
+        if ramachandran_manager.rama_eval.evaluate_score(rama_key, rama_score) != ramalyze.RAMALYZE_FAVORED:
+          continue
       phi_refined, psi_refined = _phi_psi_from_iseqs(refined_sites, i_seqs)
       dphi = cctbx.geometry_restraints.angle_delta_deg(phi_ref, phi_refined)
       dpsi = cctbx.geometry_restraints.angle_delta_deg(psi_ref, psi_refined)
