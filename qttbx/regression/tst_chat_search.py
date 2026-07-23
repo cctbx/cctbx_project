@@ -501,13 +501,17 @@ def exercise_overlay_repositions_when_scrollbar_appears():
   _pump(app)
   sb = v.verticalScrollBar()
   assert not sb.isVisible()
-  x_without_sb = cs.bar.x()
+  right_without_sb = cs.bar.x() + cs.bar.width()
   for i in range(30):
     v.add_message(_text_message("filler line %d" % i))
   _pump(app)
   assert sb.isVisible()
-  assert cs.bar.x() < x_without_sb, (cs.bar.x(), x_without_sb)
-  assert cs.bar.x() + cs.bar.width() <= v.width() - sb.width()
+  # The bar's RIGHT edge retreats clear of the scrollbar -- by moving
+  # left when it has room, by shrinking when the width cap pins it
+  # (hint-floored bar on a narrow view under giant font metrics).
+  right_with_sb = cs.bar.x() + cs.bar.width()
+  assert right_with_sb < right_without_sb, (right_with_sb, right_without_sb)
+  assert right_with_sb <= v.width() - sb.width()
 
 
 def exercise_scroll_to_top_and_bottom():
@@ -635,12 +639,14 @@ def exercise_close_preserves_scroll_position():
 def exercise_bar_width_tracks_view():
   """The overlay scales with the conversation area: about half the
   view's width, never narrower than its content hint, and re-sized live
-  when the view resizes."""
+  when the view resizes. All geometry derives from the bar's actual
+  sizeHint so the checks hold on any font stack -- a fontless Windows
+  CI reports a hint of ~800 px where macOS measures ~450."""
   app = _app()
   from qttbx.widgets.chat.conversation_view import ConversationView
   from qttbx.widgets.chat.conversation_search import ConversationSearch
   v = ConversationView()
-  v.resize(1200, 300)
+  v.resize(640, 300)
   v.show()
   v.add_message(_text_message("one line"))
   _pump(app)
@@ -648,18 +654,28 @@ def exercise_bar_width_tracks_view():
   cs.open()
   _pump(app, 50)
   hint_w = cs.bar.sizeHint().width()
-  assert hint_w < 600, hint_w          # precondition for the half checks
-  assert cs.bar.width() == 600, cs.bar.width()
+  # Wide view: half the view exceeds the hint -> bar is half the view.
+  wide = 2 * hint_w + 100
+  v.resize(wide, 300)
+  _pump(app, 50)
+  assert cs.bar.width() == wide // 2, (cs.bar.width(), wide, hint_w)
   # Growing the view grows the bar (the view Resize repositions it).
-  v.resize(1600, 300)
+  wider = wide + 400
+  v.resize(wider, 300)
   _pump(app, 50)
-  assert cs.bar.width() == 800, cs.bar.width()
+  assert cs.bar.width() == wider // 2, (cs.bar.width(), wider, hint_w)
   assert cs.bar.x() + cs.bar.width() <= v.width()
-  # A view too narrow for half-width falls back to the content hint
-  # (capped to the view, as before).
-  v.resize(500, 300)
+  # Half the view falls under the hint -> the content hint is the
+  # floor (the cap, view - 16, still sits above it here).
+  snug = hint_w + 60
+  v.resize(snug, 300)
   _pump(app, 50)
-  assert cs.bar.width() == min(hint_w, 500 - 16), cs.bar.width()
+  assert cs.bar.width() == hint_w, (cs.bar.width(), hint_w)
+  # Too narrow even for the hint -> capped inside the view.
+  tiny = hint_w // 2
+  v.resize(tiny, 300)
+  _pump(app, 50)
+  assert cs.bar.width() == tiny - 16, (cs.bar.width(), tiny, hint_w)
   assert cs.bar.x() + cs.bar.width() <= v.width()
 
 

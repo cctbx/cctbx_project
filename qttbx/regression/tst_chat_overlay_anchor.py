@@ -120,6 +120,35 @@ def exercise_hidden_overlay_is_left_alone():
   assert overlay.width() == 250, overlay.width()
 
 
+def exercise_wide_scrollbar_narrow_host_cap():
+  """A style-scaled scrollbar wider than the 16 px margin (fontless
+  Windows CI scales everything up): the width cap must subtract the
+  scrollbar too, or a hint-floored overlay lands on top of it. The
+  stylesheet is applied before show so the scrollbar is wide from the
+  first layout pass."""
+  app = _app()
+  from qttbx.widgets.chat.overlay_anchor import OverlayAnchor
+  host = QtWidgets.QScrollArea()
+  host.setStyleSheet("QScrollBar:vertical { width: 30px; }")
+  host.setWidgetResizable(True)
+  inner = QtWidgets.QWidget()
+  inner.setMinimumHeight(2000)
+  host.setWidget(inner)
+  host.resize(140, 300)
+  host.show()
+  overlay = _Overlay(host)
+  anchor = OverlayAnchor(host, overlay)
+  _pump(app, 30)
+  anchor.reposition()
+  overlay.show()
+  _pump(app, 30)
+  sb = host.verticalScrollBar()
+  assert sb.isVisible() and sb.width() == 30, sb.width()
+  assert overlay.width() == 140 - 30 - 16, overlay.width()
+  assert overlay.x() + overlay.width() <= host.width() - sb.width(), \
+      (overlay.x(), overlay.width(), host.width(), sb.width())
+
+
 def exercise_destroyed_host_drops_references():
   """Killing the host trips the destroyed-hook: the anchor drops its
   references, and late calls (a queued reposition, a stale rangeChanged
@@ -145,6 +174,7 @@ def exercise():
   exercise_half_width_floor_and_cap()
   exercise_scrollbar_clearance_deferred_on_range_change()
   exercise_hidden_overlay_is_left_alone()
+  exercise_wide_scrollbar_narrow_host_cap()
   exercise_destroyed_host_drops_references()
 
 

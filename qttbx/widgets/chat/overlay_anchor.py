@@ -52,12 +52,15 @@ class OverlayAnchor(QtCore.QObject):
     overlay = getattr(self, "_overlay", None)
     if host is None or overlay is None:
       return
-    hint = overlay.sizeHint()
-    width = max(hint.width(), host.width() // 2)
-    width = min(width, max(0, host.width() - 16))
-    overlay.resize(width, hint.height())
     sb = host.verticalScrollBar()
     sb_w = sb.width() if sb.isVisible() else 0
+    hint = overlay.sizeHint()
+    width = max(hint.width(), host.width() // 2)
+    # The cap subtracts the scrollbar too: a style-scaled scrollbar can
+    # be wider than the 16 px margin, and a hint-floored overlay capped
+    # only to the host would land on top of it.
+    width = min(width, max(0, host.width() - sb_w - 16))
+    overlay.resize(width, hint.height())
     x = max(0, host.width() - width - sb_w - 8)
     overlay.move(x, 8)
 
