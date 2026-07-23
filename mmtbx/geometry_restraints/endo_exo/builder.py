@@ -356,7 +356,8 @@ class QMRegionBuilder(object):
     -------
     dict
         Keys: ``file_name``, ``n_atoms``, ``charge_summary``, ``model``,
-        ``seed_iseqs``, ``cap_iseqs``, ``selection_string``.
+        ``seed_iseqs``, ``cap_iseqs``, ``cap_original_elements``,
+        ``cap_anchor_iseqs``, ``selection_string``.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
@@ -368,8 +369,8 @@ class QMRegionBuilder(object):
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
 
-    (model_sel, seed_indices, cap_indices,
-     cap_original_elements) = self._materialize_qm_region(
+    (model_sel, seed_indices, cap_indices, cap_original_elements,
+     cap_anchor_indices) = self._materialize_qm_region(
       model, visited_nodes, cap_nodes, seeds)
 
     charge_summary = self._charge_estimator.calculate(model=model_sel)
@@ -390,11 +391,14 @@ class QMRegionBuilder(object):
       'n_atoms': model_sel.get_number_of_atoms(),
       'charge_summary': charge_summary,
       # In-memory hand-off: the truncated sub-model (no restraints manager)
-      # and the positional indices of seed and cap atoms inside it.
+      # and the positional indices of seed and cap atoms inside it, plus the
+      # heavy-atom anchor each cap is bonded to (kept in memory only, not the
+      # on-disk sidecar).
       'model': model_sel,
       'seed_iseqs': seed_indices,
       'cap_iseqs': cap_indices,
       'cap_original_elements': cap_original_elements,
+      'cap_anchor_iseqs': cap_anchor_indices,
       'selection_string': selection_str,
     }
 
@@ -681,6 +685,13 @@ class QMRegionBuilder(object):
         Positional indices of seed atoms in *model_sel*.
     cap_indices : list of int
         Positional indices of cap atoms in *model_sel*.
+    cap_original_elements : list of str
+        Element each cap carried before being replaced by H (parallel to
+        *cap_indices*).
+    cap_anchor_indices : list of int
+        Sorted, unique positional indices of the QM-region heavy atoms the caps
+        are bonded to (their anchors), so downstream tools can pin the severed
+        boundary bonds at both ends without re-deriving the connectivity.
     """
     import iotbx.pdb
     import mmtbx.model as mmtbx_model
@@ -804,6 +815,7 @@ class QMRegionBuilder(object):
     # would clash with the library's expected element for that name
     # inside non-standard residues).
     orig_element_for_iseq = {}
+    anchor_iseq_by_cap = {}
     if self.params.capping.enable:
       for cap_node, anchor_node in cap_nodes.items():
         cap_iseq_orig, cap_op = cap_node
@@ -812,6 +824,8 @@ class QMRegionBuilder(object):
         anchor_atom = _lookup_node(anchor_iseq_orig, anchor_op.as_xyz())
         if cap_atom is not None:
           orig_element_for_iseq[cap_atom] = cap_atom.element.strip()
+          if anchor_atom is not None:
+            anchor_iseq_by_cap[cap_atom] = anchor_atom.i_seq
         self._capper.cap_atom(anchor_atom, cap_atom)
 
     # Assemble the final mmtbx.model.manager
@@ -833,8 +847,12 @@ class QMRegionBuilder(object):
     cap_indices = [a.i_seq for a in cap_atoms_sorted]
     cap_original_elements = [orig_element_for_iseq.get(a, 'C')
                              for a in cap_atoms_sorted]
+    cap_anchor_indices = sorted(set(
+      anchor_iseq_by_cap[a] for a in cap_atoms_sorted
+      if a in anchor_iseq_by_cap))
 
-    return model_sel, seed_indices, cap_indices, cap_original_elements
+    return (model_sel, seed_indices, cap_indices, cap_original_elements,
+            cap_anchor_indices)
 
   def _write_submodel(self, model_sel, crystal_symmetry, file_name):
     """Write *model_sel* as both a PDB and an mmCIF file.
