@@ -164,6 +164,31 @@ class ConversationSearch(QtCore.QObject):
 
   # ---- navigation ----------------------------------------------------------
 
+  def find_next(self):
+    """Step to the next match; open the bar first when it is closed.
+
+    The window-level Find Next shortcut lands here. From a closed bar
+    the retained query's CURRENT match is revealed without stepping
+    (reopening must not skip match 1); with it open this is exactly
+    the bar's Enter.
+    """
+    self._find_step(+1)
+
+  def find_previous(self):
+    """Step to the previous match; open the bar first when closed.
+
+    Mirror of :meth:`find_next` (the bar's Shift+Enter).
+    """
+    self._find_step(-1)
+
+  def _find_step(self, delta):
+    if not self.is_open():
+      self.open()
+      if self._matches:
+        self._reveal()
+      return
+    self._go(delta)
+
   def _go(self, delta):
     """Step to the next/previous match (wrapping) and reveal it.
 

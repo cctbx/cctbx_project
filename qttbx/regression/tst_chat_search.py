@@ -510,6 +510,83 @@ def exercise_overlay_repositions_when_scrollbar_appears():
   assert cs.bar.x() + cs.bar.width() <= v.width() - sb.width()
 
 
+def exercise_scroll_to_top_and_bottom():
+  """scroll_to_top parks the viewport at the first message and stops
+  following; scroll_to_bottom returns to the latest message, resumes
+  following, and releases the autofollow hold (an explicit jump to the end
+  abandons the match the pin was protecting)."""
+  app = _app()
+  v = _filled_view(app)
+  bar = v.verticalScrollBar()
+  assert bar.maximum() > 0 and bar.value() == bar.maximum()
+  v.scroll_to_top()
+  assert bar.value() == 0, bar.value()
+  assert v._follow_bottom is False
+  v.set_autofollow_held(True)
+  v.scroll_to_bottom()
+  assert bar.value() == bar.maximum()
+  assert v._follow_bottom is True
+  assert v._autofollow_held is False
+  # scroll_to_top leaves an engaged pin alone: follow is off either way,
+  # and the pin keeps suppressing add_message's follow re-assert while
+  # the search stays open on a match.
+  v.set_autofollow_held(True)
+  v.scroll_to_top()
+  assert v._autofollow_held is True
+  assert v._follow_bottom is False
+
+
+def exercise_find_next_and_previous_controller_api():
+  """find_next()/find_previous() drive navigation without the bar's own
+  keys: with the bar closed they open it and reveal the retained
+  query's current match WITHOUT stepping (reopening must not skip
+  match 1); with it open they step exactly like Enter / Shift+Enter."""
+  app = _app()
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.conversation_search import ConversationSearch
+  v = ConversationView()
+  v.resize(500, 300)
+  v.show()
+  v.activateWindow()
+  cs = ConversationSearch(v)
+  v.add_message(_text_message("needle one sits at the top"))
+  v.add_message(_text_message("needle two just below"))
+  for i in range(30):
+    v.add_message(_text_message("filler line %d" % i))
+  _pump(app)
+  # Retain a query, then close: the shortcut path starts from a closed
+  # bar with a remembered query.
+  cs.open()
+  cs.bar._edit.setText("needle")
+  cs.close()
+  bar = v.verticalScrollBar()
+  assert bar.value() == bar.maximum()
+  cs.find_next()                       # closed -> open + reveal, no step
+  _pump(app)                           # deferred scroll-to-match
+  assert cs.is_open()
+  assert cs._current == 0, cs._current
+  assert cs.bar._count.text() == "1/2", cs.bar._count.text()
+  assert v._autofollow_held is True
+  assert bar.value() < bar.maximum()   # left the bottom for match 1
+  cs.find_next()                       # open -> step, like Enter
+  assert cs._current == 1, cs._current
+  cs.find_previous()                   # open -> step back
+  assert cs._current == 0, cs._current
+  # find_previous from closed also reveals the current match, no step.
+  cs.close()
+  cs.find_previous()
+  _pump(app)
+  assert cs.is_open()
+  assert cs._current == 0, cs._current
+  # With no retained query the shortcut just opens the (blank) bar.
+  cs.bar._edit.setText("")
+  cs.close()
+  cs.find_next()
+  assert cs.is_open()
+  assert cs._matches == []
+  assert cs.bar._count.text() == ""
+
+
 def exercise_close_preserves_scroll_position():
   """Closing the bar must not move the viewport. Hiding the focused bar
   makes Qt hand focus down the tab chain; if that lands on a message
@@ -699,6 +776,8 @@ def exercise():
   exercise_stale_deferred_scroll_noop_after_close()
   exercise_same_cell_current_vs_other_highlight()
   exercise_overlay_repositions_when_scrollbar_appears()
+  exercise_scroll_to_top_and_bottom()
+  exercise_find_next_and_previous_controller_api()
   exercise_close_preserves_scroll_position()
   exercise_bar_width_tracks_view()
   exercise_navigation_pin_engages_before_deferred_scroll()

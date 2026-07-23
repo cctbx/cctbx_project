@@ -398,6 +398,29 @@ class ConversationView(QtWidgets.QScrollArea):
     if self._autofollow_held:
       self._follow_bottom = False
 
+  def scroll_to_top(self):
+    """Jump to the first message and stop following the bottom.
+
+    An engaged autofollow hold is left alone: follow is off either
+    way, and the hold keeps suppressing ``add_message``'s follow
+    re-assert while its owner (e.g. an open search) still wants it.
+    """
+    self._follow_bottom = False
+    bar = self.verticalScrollBar()
+    bar.setValue(bar.minimum())
+
+  def scroll_to_bottom(self):
+    """Jump to the latest message and resume following the bottom.
+
+    Releases any autofollow hold: an explicit jump to the end abandons
+    the position the hold was protecting, and the user's intent is to
+    track new content again.
+    """
+    self._autofollow_held = False
+    self._follow_bottom = True
+    bar = self.verticalScrollBar()
+    bar.setValue(bar.maximum())
+
   def ensure_child_rect_visible(self, widget, rect, margin=80):
     """Scroll a rect of a child widget into view and hold the viewport.
 

@@ -55,6 +55,8 @@ class MessageInput(QtWidgets.QWidget):
   save_chat = QtCore.Signal()                      # 'Save chat' button click
   auto_approve_changed = QtCore.Signal(bool)       # checked state
   search_clicked = QtCore.Signal()                 # 🔍 button click
+  goto_conversation_start = QtCore.Signal()        # Ctrl+Home in editor
+  goto_conversation_end = QtCore.Signal()          # Ctrl+End in editor
 
   # Idle placeholder text. The assistant name defaults to "Claude" but is
   # rewritten per session by ChatWindow via set_assistant_name() so the box
@@ -596,6 +598,21 @@ class MessageInput(QtWidgets.QWidget):
         if mods & (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier):
           self.click_send()
           return True
+      # Exact Ctrl+Home / Ctrl+End are conversation navigation, not
+      # composer cursor movement: the editor claims document-nav keys
+      # via ShortcutOverride, so window-level Go to Start/End shortcuts
+      # could never fire while it has focus -- and it holds focus
+      # almost always. A stray KeypadModifier (numpad Home/End) counts
+      # as the same chord; Shift selections and every other combo stay
+      # native.
+      if (key in (QtCore.Qt.Key_Home, QtCore.Qt.Key_End)
+          and (mods & ~QtCore.Qt.KeypadModifier)
+              == QtCore.Qt.ControlModifier):
+        if key == QtCore.Qt.Key_Home:
+          self.goto_conversation_start.emit()
+        else:
+          self.goto_conversation_end.emit()
+        return True
       # Plain Up / Down recall the input history (shell-style), but only at
       # the first / last line so multi-line editing and Shift-selection are
       # left alone.
