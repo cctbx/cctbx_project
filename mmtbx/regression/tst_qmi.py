@@ -271,6 +271,94 @@ def exercise_sigma_conversion():
   assert sigma.bond_sigma(1e-9, sigma_min=0.01, sigma_max=0.2) == 0.2
 
 
+def exercise_imaginary_mode():
+  # 3 atoms: metal Fe (0), donor N (1), scaffold C (2). Diagonal Hessian; only
+  # the metal+donor sub-block is diagonalised, so the scaffold's huge negative
+  # curvature must NOT appear.
+  n = 3
+  H = flex.double(flex.grid(3 * n, 3 * n), 0.0)
+  diag = [0.5, 0.5, 0.5,        # Fe (0): stable
+          0.5, 0.5, -0.02,      # N  (1): one imaginary direction
+          -10., -10., -10.]     # C  (2): unstable, but NOT inner -> excluded
+  for i in range(3 * n):
+    H[(i, i)] = diag[i]
+  masses = [55.847, 14.007, 12.011]                # Fe, N, C (amu)
+  chk = sigma.imaginary_mode_check(H, 0, [1], masses, log=null_out())
+  assert not chk.stable and len(chk.imaginary) == 1
+  # magnitude: -0.02 Hartree/Bohr^2 on 14.007 amu -> ~ -194 cm^-1
+  expect = -sigma.HESS_EIGVAL_TO_CM * math.sqrt(0.02 / 14.007)
+  assert approx_equal(chk.imaginary[0], expect, eps=1.0), (chk.imaginary[0], expect)
+  # scaffold's -10 (which would be ~ -4700 cm^-1) is excluded by the sub-block
+  assert min(chk.frequencies) > -300.0, chk.frequencies
+  # sign convention: mass-weighting preserves the count of imaginary modes
+  assert sum(1 for f in chk.frequencies if f < 0) == 1
+  # perturb along the imaginary mode: only its dominant atom (N, along z) moves,
+  # by `step` A; the metal (0, inner but off the mode) and the scaffold (2, not
+  # inner) are untouched. Deterministic.
+  sites = flex.vec3_double([(0, 0, 0), (2.0, 0, 0), (0, 2.0, 0)])
+  out = sigma.imaginary_mode_perturbation(H, 0, [1], masses, sites, step=0.1)
+  assert approx_equal(out[1], (2.0, 0.0, 0.1), eps=1e-6), out[1]
+  assert approx_equal(out[0], sites[0], eps=1e-9)
+  assert approx_equal(out[2], sites[2], eps=1e-9)
+  # a fully stable inner sphere -> no imaginary mode
+  H2 = flex.double(flex.grid(3 * n, 3 * n), 0.0)
+  for i in range(3 * n):
+    H2[(i, i)] = 0.5
+  chk2 = sigma.imaginary_mode_check(H2, 0, [1], masses, log=null_out())
+  assert chk2.stable and not chk2.imaginary
+
+
+def exercise_perturb_reopt():
+  """Perturb-and-reoptimise-once orchestration (plan Sec 5F) with the QM layer
+  stubbed (no xTB): stable -> hessian; imaginary-then-stable -> one reopt then
+  hessian; imaginary-twice -> placeholder sigmas."""
+  b = QMRestraintsBuilder(logger=null_out())
+  model = _model(_ZN_SITE_PDB)
+  sites = model.get_hierarchy().atoms().extract_xyz()
+  calls = {"reopt": 0}
+  preambles = []
+  stability = iter(())
+  saved = (qm.run_hessian, qm.run_constrained_opt, sigma.read_xtb_hessian,
+           sigma.seminario_sigmas, sigma.imaginary_mode_check,
+           sigma.imaginary_mode_perturbation)
+  try:
+    def fake_hess(*a, **k):
+      preambles.append(k.get("preamble"))
+      return "hess_path"
+    qm.run_hessian = fake_hess
+    sigma.read_xtb_hessian = lambda *a, **k: None
+    sigma.seminario_sigmas = lambda *a, **k: group_args(
+      bond_sigmas={1: 0.02}, angle_sigmas={})
+    sigma.imaginary_mode_perturbation = lambda *a, **k: sites
+    sigma.imaginary_mode_check = lambda *a, **k: group_args(
+      stable=next(stability), frequencies=[], imaginary=[])
+    def fake_opt(*a, **k):
+      calls["reopt"] += 1
+      return sites, None
+    qm.run_constrained_opt = fake_opt
+
+    def run():
+      return b._sigmas_with_reopt(1, model, sites, 0, [1, 2, 3, 4], [],
+                                  0, 1, None)
+    stability = iter([True]); calls["reopt"] = 0          # stable first
+    _s, bs, _as, origin = run()
+    assert origin == "hessian" and bs == {1: 0.02} and calls["reopt"] == 0
+    stability = iter([False, True]); calls["reopt"] = 0   # imaginary -> reopt -> ok
+    preambles[:] = []
+    _s, bs, _as, origin = run()
+    assert origin == "hessian" and calls["reopt"] == 1
+    # the two Hessians must use distinct namespaces (else a failed 2nd --hess
+    # would read the 1st geometry's stale Hessian).
+    assert preambles == ["qmi_hess", "qmi_reopt_hess"], preambles
+    stability = iter([False, False]); calls["reopt"] = 0  # still imaginary
+    _s, bs, _as, origin = run()
+    assert origin == "placeholder" and bs is None and calls["reopt"] == 1
+  finally:
+    (qm.run_hessian, qm.run_constrained_opt, sigma.read_xtb_hessian,
+     sigma.seminario_sigmas, sigma.imaginary_mode_check,
+     sigma.imaginary_mode_perturbation) = saved
+
+
 # ---------------------------------------------------------------------------
 # qm: optimise mask + frozen/free partition
 # ---------------------------------------------------------------------------
@@ -923,6 +1011,8 @@ def run():
   exercise_seminario_bond()
   exercise_seminario_angle_guards()
   exercise_sigma_conversion()
+  exercise_imaginary_mode()
+  exercise_perturb_reopt()
   exercise_optimise_mask()
   exercise_determine_frozen_atoms()
   exercise_detect_first_shell()

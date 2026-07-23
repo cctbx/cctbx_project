@@ -50,6 +50,27 @@ DEFAULT_BOND_SIGMA_MAX = 0.20     # A
 DEFAULT_ANGLE_SIGMA_MIN = 0.5     # deg
 DEFAULT_ANGLE_SIGMA_MAX = 15.0    # deg
 
+# Mass-weighted Cartesian Hessian eigenvalue (omega^2, in Hartree/(Bohr^2 amu))
+# -> harmonic wavenumber (cm^-1): nu = sqrt(omega^2) / (2 pi c). Derived from
+# CODATA constants so the factor is transparent and unit-checked (evaluates to
+# 5140.487 cm^-1, the standard value). A negative eigenvalue is an imaginary mode.
+_HARTREE_J = 4.3597447222071e-18   # J
+_BOHR_M = 0.529177210903e-10       # m
+_AMU_KG = 1.66053906660e-27        # kg
+_C_CM_S = 2.99792458e10            # cm/s
+HESS_EIGVAL_TO_CM = (math.sqrt(_HARTREE_J / (_BOHR_M ** 2 * _AMU_KG))
+                     / (2.0 * math.pi * _C_CM_S))
+
+# Inner-sphere modes below this wavenumber (cm^-1) count as genuinely imaginary;
+# the band between it and 0 is treated as numerical noise / a benign soft mode.
+DEFAULT_IMAGINARY_THRESHOLD_CM = -50.0
+
+# One perturb-and-reoptimise kick along the imaginary mode (plan Sec 5F) moves the
+# mode's dominant atom by this much (Angstrom): enough to leave the saddle, small
+# enough (a few percent of an M-L bond) that the re-optimisation stays in the
+# nearby basin.
+DEFAULT_PERTURB_STEP_A = 0.1
+
 
 def read_xtb_hessian(path, n_atoms):
   """Parse an xtb ``.hessian`` file into a ``flex.double`` of shape (3N, 3N).
@@ -211,3 +232,99 @@ def seminario_sigmas(hessian, metal_iseq, donor_iseqs, opt_sites_cart,
         f"{len(angle_sigmas)} angle (T={temperature:.1f} K)", file=log)
   return group_args(bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
                     bond_ks=bond_ks, angle_ks=angle_ks)
+
+
+def _mass_weighted_inner_block(hessian, iseqs, masses):
+  """The mass-weighted metal+donor Hessian sub-block and its per-DOF 1/sqrt(mass).
+
+  Gathers the 3m x 3m Cartesian block for atoms *iseqs* (m = len(iseqs)) from the
+  full *hessian* by a row-major flex ``select``, symmetrises it, and mass-weights
+  (``D H D`` with ``D = diag(1/sqrt(m))``, an outer-product elementwise multiply).
+  Returns ``(hw [flex dim x dim], inv_sqrt_m [flex dim])``.
+
+  Only the metal+donor block is used (plan Sec 5F): those atoms were free during
+  the constrained opt, so this block is the exact second-order condition for that
+  constrained minimum. The clamped scaffold's non-stationarity lives only in the
+  discarded cross/scaffold blocks and cannot enter here; and because the scaffold
+  is clamped, the inner cluster's rigid translation/rotation is resisted, so there
+  are no trivial zero modes to project out."""
+  n3 = hessian.all()[0]
+  dim = 3 * len(iseqs)
+  dof = [3 * int(ip) + a for ip in iseqs for a in range(3)]     # 3m DOF indices
+  flat = flex.size_t([r * n3 + c for r in dof for c in dof])    # row-major picks
+  sub = hessian.as_1d().select(flat)
+  sub.reshape(flex.grid(dim, dim))
+  sub = (sub + sub.matrix_transpose()) * 0.5                    # symmetrise
+  inv_sqrt_m = flex.double([1.0 / math.sqrt(masses[int(ip)])
+                            for ip in iseqs for _ in range(3)])
+  wcol = inv_sqrt_m.deep_copy(); wcol.reshape(flex.grid(dim, 1))
+  wrow = inv_sqrt_m.deep_copy(); wrow.reshape(flex.grid(1, dim))
+  return sub * wcol.matrix_multiply(wrow), inv_sqrt_m
+
+
+def inner_sphere_frequencies(hessian, iseqs, masses):
+  """Harmonic wavenumbers (cm^-1) of the metal+donor Hessian sub-block, sorted
+  ascending; a NEGATIVE value is an imaginary mode (omega^2 < 0).
+
+  Diagonalises the mass-weighted sub-block (:func:`_mass_weighted_inner_block`).
+  Mass-weighting does not change WHICH modes are imaginary (Sylvester's law of
+  inertia); it sets the frequency scale so the threshold is physical and a real
+  imaginary mode is reportable in cm^-1."""
+  hw, _ = _mass_weighted_inner_block(hessian, iseqs, masses)
+  vals = eigensystem.real_symmetric(hw).values()               # lambda = omega^2
+  cm = flex.sqrt(flex.abs(vals)) * HESS_EIGVAL_TO_CM            # |nu| in cm^-1
+  neg = vals < 0.0
+  cm.set_selected(neg, -cm.select(neg))                        # imaginary -> < 0
+  return sorted(cm)
+
+
+def imaginary_mode_perturbation(hessian, metal_iseq, donor_iseqs, masses,
+                                sites_cart, step=DEFAULT_PERTURB_STEP_A):
+  """Perturb *sites_cart* along the most-imaginary inner-sphere mode (plan Sec 5F).
+
+  Returns a new ``flex.vec3_double`` where only the metal+donor atoms move, along
+  the imaginary mode's Cartesian displacement (its mass-weighted eigenvector, un-
+  weighted per DOF), scaled so the mode's DOMINANT atom moves *step* Angstrom.
+  Deterministic (the eigenvector is fixed by the Hessian), so runs stay
+  reproducible; the sign is arbitrary (either direction escapes the saddle)."""
+  iseqs = [metal_iseq] + list(donor_iseqs)
+  hw, inv_sqrt_m = _mass_weighted_inner_block(hessian, iseqs, masses)
+  es = eigensystem.real_symmetric(hw)
+  vals, vecs = es.values(), es.vectors()
+  dim = 3 * len(iseqs)
+  i_min = min(range(dim), key=lambda i: vals[i])               # most-imaginary
+  q = flex.double([vecs[i_min * dim + k] for k in range(dim)])
+  dx = q * inv_sqrt_m                                           # mass-weighted -> Cartesian
+  disp = [matrix.col((dx[3 * p], dx[3 * p + 1], dx[3 * p + 2]))
+          for p in range(len(iseqs))]
+  d_max = max(v.length() for v in disp)
+  out = sites_cart.deep_copy()
+  if d_max < 1e-12:
+    return out
+  scale = step / d_max                                         # dominant atom -> step A
+  for ip, v in zip(iseqs, disp):
+    out[ip] = tuple(matrix.col(out[ip]) + v * scale)
+  return out
+
+
+def imaginary_mode_check(hessian, metal_iseq, donor_iseqs, masses,
+                         threshold_cm=DEFAULT_IMAGINARY_THRESHOLD_CM, log=None):
+  """Whether the inner sphere (metal + donors) sits at a true local minimum.
+
+  Diagonalises the mass-weighted metal+donor Hessian sub-block
+  (:func:`inner_sphere_frequencies`) and treats any mode below *threshold_cm* as
+  a genuine imaginary mode (the band above it is numerical noise / a benign soft
+  mode). Returns group_args(stable, frequencies, imaginary): *stable* is True when
+  no mode is below threshold, *frequencies* the full sorted list (cm^-1),
+  *imaginary* the offending ones. The trigger for the perturb-and-reoptimise step
+  (plan Sec 5F)."""
+  if log is None:
+    log = null_out()
+  freqs = inner_sphere_frequencies(hessian, [metal_iseq] + list(donor_iseqs),
+                                   masses)
+  imaginary = [f for f in freqs if f < threshold_cm]
+  if imaginary:
+    modes = ", ".join(f"{-f:.0f}i" for f in imaginary)
+    print(f"    inner-sphere imaginary mode(s) at {modes} cm^-1 "
+          f"(threshold {threshold_cm:.0f})", file=log)
+  return group_args(stable=not imaginary, frequencies=freqs, imaginary=imaginary)

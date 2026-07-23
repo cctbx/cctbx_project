@@ -25,6 +25,7 @@ from libtbx.utils import null_out, Sorry
 from mmtbx.programs.endo_exo import master_phil_str as endo_exo_master_phil_str
 from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
 from scitbx import matrix
+from cctbx.eltbx import tiny_pse
 
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
@@ -540,33 +541,20 @@ class QMRestraintsBuilder(object):
       solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi",
       work_dir=work_dir, log=self.logger)
 
+    # Modified-Seminario sigmas from the Hessian at the optimised geometry, with
+    # ONE perturb-and-reoptimise if the inner sphere is not a true minimum (plan
+    # Sec 5F). Returns the final (possibly re-optimised) geometry.
+    opt_sites, bond_sigmas, angle_sigmas, sigma_origin = self._sigmas_with_reopt(
+      index, submodel, opt_sites, metal_iseq, donor_iseqs, frozen_iseqs, charge,
+      multiplicity, work_dir)
+
     if work_dir is not None:
-      # The optimised QM region, beside region.pdb (the input geometry).
+      # The (final) optimised QM region, beside region.pdb (the input geometry).
       opt_hier = submodel.get_hierarchy().deep_copy()
       opt_hier.atoms().set_xyz(opt_sites)
       opt_hier.write_pdb_file(
         crystal_symmetry=submodel.crystal_symmetry(),
         file_name=os.path.join(work_dir, "optimized.pdb"))
-
-    # Modified-Seminario sigmas from the Hessian at the optimised geometry
-    # (plan Sec 5F); degrade gracefully to placeholder sigmas on any failure.
-    bond_sigmas = angle_sigmas = None
-    sigma_origin = "placeholder"
-    try:
-      hess_path = qm.run_hessian(
-        submodel, opt_sites, charge=charge, multiplicity=multiplicity,
-        solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi_hess",
-        work_dir=work_dir, log=self.logger)
-      hessian = sigma.read_xtb_hessian(hess_path,
-                                       submodel.get_hierarchy().atoms().size())
-      sigmas = sigma.seminario_sigmas(
-        hessian, metal_iseq, donor_iseqs, opt_sites,
-        temperature=self.temperature, log=self.logger)
-      bond_sigmas, angle_sigmas = sigmas.bond_sigmas, sigmas.angle_sigmas
-      sigma_origin = "hessian"
-    except Exception as exc:
-      print(f"Site {index}: Hessian/Seminario failed ({exc}); "
-            f"using placeholder sigmas", file=self.logger)
 
     site_restraints = restraints.metal_ligand_restraints(
       submodel, opt_sites, metal_iseq, donor_iseqs,
@@ -597,3 +585,73 @@ class QMRestraintsBuilder(object):
       oxidation_reason=oxidation_reason, spin_reason=spin_reason, bvs=bvs_est,
       n_donors=len(donor_iseqs), restraints=site_restraints, edits=edits,
       sigma_origin=sigma_origin, skipped=None)
+
+  def _sigmas_with_reopt(self, index, submodel, opt_sites, metal_iseq,
+                         donor_iseqs, frozen_iseqs, charge, multiplicity,
+                         work_dir):
+    """Hessian -> modified-Seminario sigmas at *opt_sites*, with ONE perturb-and-
+    reoptimise if the inner sphere carries an imaginary mode (plan Sec 5F).
+
+    Returns ``(opt_sites, bond_sigmas, angle_sigmas, sigma_origin)``: *opt_sites*
+    is the final (possibly re-optimised) geometry, *sigma_origin* is ``"hessian"``
+    at a true minimum, else ``"placeholder"`` (bond/angle sigmas None). A QM or
+    Hessian failure also degrades to placeholder."""
+    masses = [tiny_pse.table(a.element.strip()).weight()
+              for a in submodel.get_atoms()]
+    n_atoms = submodel.get_hierarchy().atoms().size()
+
+    def hessian_sigmas(sites, preamble):
+      # A distinct namespace per call: run_hessian guards only on output-file
+      # existence, so a shared namespace would let a failed second --hess read
+      # the first geometry's stale Hessian (missing file now raises instead).
+      hess_path = qm.run_hessian(
+        submodel, sites, charge=charge, multiplicity=multiplicity,
+        solvent_model=self.solvent_model, nproc=self.nproc,
+        preamble=preamble, work_dir=work_dir, log=self.logger)
+      hessian = sigma.read_xtb_hessian(hess_path, n_atoms)
+      sig = sigma.seminario_sigmas(
+        hessian, metal_iseq, donor_iseqs, sites,
+        temperature=self.temperature, log=self.logger)
+      chk = sigma.imaginary_mode_check(
+        hessian, metal_iseq, donor_iseqs, masses, log=self.logger)
+      return hessian, sig, chk
+
+    try:
+      hessian, sig, chk = hessian_sigmas(opt_sites, "qmi_hess")
+      if not chk.stable:
+        print(f"Site {index}: inner-sphere imaginary mode; perturb and "
+              f"re-optimise once (plan Sec 5F)", file=self.logger)
+        perturbed = sigma.imaginary_mode_perturbation(
+          hessian, metal_iseq, donor_iseqs, masses, opt_sites)
+        opt_sites = self._reoptimise(submodel, perturbed, frozen_iseqs, charge,
+                                     multiplicity, work_dir)
+        _hessian, sig, chk = hessian_sigmas(opt_sites, "qmi_reopt_hess")
+        if not chk.stable:
+          print(f"Site {index}: still imaginary after re-optimise; "
+                f"placeholder sigmas", file=self.logger)
+          return opt_sites, None, None, "placeholder"
+      return opt_sites, sig.bond_sigmas, sig.angle_sigmas, "hessian"
+    except Exception as exc:
+      print(f"Site {index}: Hessian/Seminario failed ({exc}); "
+            f"placeholder sigmas", file=self.logger)
+      return opt_sites, None, None, "placeholder"
+
+  def _reoptimise(self, submodel, start_sites, frozen_iseqs, charge,
+                  multiplicity, work_dir):
+    """Constrained re-optimisation from *start_sites* (the perturbed geometry).
+
+    Uses a distinct ``qmi_reopt`` namespace so xtb_manager's coordinate cache
+    does not replay the first optimisation, and restores the sub-model's original
+    coordinates afterwards so a states scan re-uses the same submodel
+    independently."""
+    atoms = submodel.get_hierarchy().atoms()
+    saved = atoms.extract_xyz()
+    atoms.set_xyz(start_sites)
+    try:
+      opt_sites, _qmm = qm.run_constrained_opt(
+        submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
+        solvent_model=self.solvent_model, nproc=self.nproc,
+        preamble="qmi_reopt", work_dir=work_dir, log=self.logger)
+    finally:
+      atoms.set_xyz(saved)
+    return opt_sites
