@@ -193,6 +193,30 @@ def exercise_save_chat_button_emits_signal():
   assert fired == [True], fired
 
 
+def exercise_search_button_next_to_attach_emits_signal():
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  got = []
+  w.search_clicked.connect(lambda: got.append(True))
+  w._search_btn.click()
+  assert got == [True], got
+  # Lower-right placement: 🔍 sits immediately left of the @ button.
+  # The buttons share the button row; assert relative order by x() after
+  # a resize+show pass.
+  w.resize(600, 120)
+  w.show()
+  app.processEvents()
+  assert w._search_btn.x() < w._attach_btn.x()
+  assert w._search_btn.y() == w._attach_btn.y()
+  # Focus proxy: focusing the composite lands in the editor (used by
+  # the search bar's close-refocus path).
+  assert w.focusProxy() is w._edit
+  w.hide()
+
+
 def exercise_placeholder_set_and_reset():
   """set_placeholder swaps the edit's placeholderText; reset returns
   to MessageInput.DEFAULT_PLACEHOLDER. Used by ChatWindow to cycle
@@ -654,6 +678,7 @@ def exercise():
   exercise_oversized_image_is_resampled()
   exercise_oversized_webp_is_reencoded_with_jpeg_mime()
   exercise_save_chat_button_emits_signal()
+  exercise_search_button_next_to_attach_emits_signal()
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()

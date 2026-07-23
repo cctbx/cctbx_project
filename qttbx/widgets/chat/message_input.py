@@ -1,6 +1,6 @@
 """Multi-line chat input with attachments, drag-drop, paste, and buttons.
 
-The button row holds Save chat / Auto-approve / attach / Send.
+The button row holds Save chat / Auto-approve / search / attach / Send.
 
 The Send button's label flips to 'Stop' when ``set_busy(True)`` is
 called; ``click_send`` emits ``stop`` in that mode. Attachments are
@@ -54,6 +54,7 @@ class MessageInput(QtWidgets.QWidget):
   attachment_rejected = QtCore.Signal(str)
   save_chat = QtCore.Signal()                      # 'Save chat' button click
   auto_approve_changed = QtCore.Signal(bool)       # checked state
+  search_clicked = QtCore.Signal()                 # 🔍 button click
 
   # Idle placeholder text. The assistant name defaults to "Claude" but is
   # rewritten per session by ChatWindow via set_assistant_name() so the box
@@ -144,6 +145,11 @@ class MessageInput(QtWidgets.QWidget):
     self._auto_approve_btn.toggled.connect(self._on_auto_approve_toggled)
     button_row.addWidget(self._auto_approve_btn)
     button_row.addStretch(1)
+    self._search_btn = QtWidgets.QToolButton(self)
+    self._search_btn.setText("🔍")
+    self._search_btn.setToolTip("Search conversation (Ctrl+F / ⌘F)")
+    self._search_btn.clicked.connect(self._on_search_clicked)
+    button_row.addWidget(self._search_btn)
     self._attach_btn = QtWidgets.QToolButton(self)
     self._attach_btn.setText("@")    # ASCII-safe; UI later replaces with icon
     self._attach_btn.setToolTip("Attach an image")
@@ -153,6 +159,9 @@ class MessageInput(QtWidgets.QWidget):
     self._button.clicked.connect(self.click_send)
     button_row.addWidget(self._button)
     layout.addLayout(button_row)
+    # Focusing the composite lands in the editor -- the search bar's
+    # close path refocuses the input via setFocus().
+    self.setFocusProxy(self._edit)
 
   # ---- text helpers --------------------------------------------------------
 
@@ -439,6 +448,9 @@ class MessageInput(QtWidgets.QWidget):
 
   def _on_save_chat_clicked(self, _checked=False):
     self.save_chat.emit()
+
+  def _on_search_clicked(self, _checked=False):
+    self.search_clicked.emit()
 
   # ---- auto-approve --------------------------------------------------------
 
