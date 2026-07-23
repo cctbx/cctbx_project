@@ -1,8 +1,7 @@
 """Floating find-in-conversation bar.
 
 Pure UI: a query line edit, a match-count label, previous/next arrows,
-scope checkboxes ("Thinking" default ON, "Tools" default OFF), and a
-close button. The widget owns no search logic; ConversationSearch drives it
+a "Tools" scope checkbox (default OFF), and a close button. The widget owns no search logic; ConversationSearch drives it
 through signals and the small query/scope/count API.
 
 Key handling while the bar has focus: Enter -> next, Shift+Enter ->
@@ -14,15 +13,16 @@ stops the turn.
 
 from qttbx.qt import QtCore, QtWidgets
 
+# Kinds searched unconditionally: regular text and thinking cells both
+# read as the conversation itself, so neither is toggleable.
+ALWAYS_SEARCHED = frozenset(("text", "thinking"))
+
 # Optional search scopes: (kind, checkbox label, tooltip, default_on).
-# "text" cells are always searched; each entry here gets a checkbox on
-# the bar, keyed by the same kind string the cell classes report from
-# their searchable_cells(). Adding a cell kind = one row here plus the
-# cell class reporting it. Thinking starts checked -- the model's
-# reasoning is part of what users remember reading; tool payloads are
-# bulkier and stay opt-in.
+# Each entry gets a checkbox on the bar, keyed by the same kind string
+# the cell classes report from their searchable_cells(). Adding a cell
+# kind = one row here (or in ALWAYS_SEARCHED) plus the cell class
+# reporting it. Tool payloads are bulky, so they stay opt-in.
 OPTIONAL_SCOPES = (
-  ("thinking", "Thinking", "Also search [thinking] cells", True),
   ("tool", "Tools", "Also search tool-call args and results", False),
 )
 
@@ -110,10 +110,10 @@ class SearchBar(QtWidgets.QFrame):
     Returns
     -------
     set of str
-        ``"text"`` always, plus the kind of each checked
-        optional-scope checkbox.
+        The always-searched kinds (text, thinking) plus the kind of
+        each checked optional-scope checkbox.
     """
-    kinds = {"text"}
+    kinds = set(ALWAYS_SEARCHED)
     for kind, box in self._scope_boxes.items():
       if box.isChecked():
         kinds.add(kind)

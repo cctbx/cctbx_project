@@ -204,7 +204,10 @@ def exercise_search_bar_signals_and_defaults():
   app = _app()
   from qttbx.widgets.chat.search_bar import SearchBar
   bar = SearchBar()
+  # Thinking text reads as part of the conversation and is ALWAYS
+  # searched; Tools is the only optional scope.
   assert bar.included_kinds() == {"text", "thinking"}
+  assert set(bar._scope_boxes) == {"tool"}, bar._scope_boxes
   got = {"q": [], "next": 0, "prev": 0, "scope": 0, "close": 0}
   bar.query_changed.connect(lambda t: got["q"].append(t))
   bar.next_requested.connect(
@@ -219,12 +222,11 @@ def exercise_search_bar_signals_and_defaults():
   assert got["q"] == ["needle"], got["q"]
   bar._next_btn.click()
   bar._prev_btn.click()
-  bar._scope_boxes["thinking"].setChecked(False)
   bar._scope_boxes["tool"].setChecked(True)
   bar._close_btn.click()
   assert (got["next"], got["prev"], got["scope"], got["close"]) \
-      == (1, 1, 2, 1), got
-  assert bar.included_kinds() == {"text", "tool"}
+      == (1, 1, 1, 1), got
+  assert bar.included_kinds() == {"text", "thinking", "tool"}
   assert bar.query() == "needle"
 
 
@@ -259,8 +261,7 @@ def exercise_search_bar_keys_from_all_children():
   bar.close_requested.connect(
     lambda: got.__setitem__("close", got["close"] + 1))
   children = (bar._edit, bar._prev_btn, bar._next_btn,
-              bar._scope_boxes["thinking"], bar._scope_boxes["tool"],
-              bar._close_btn)
+              bar._scope_boxes["tool"], bar._close_btn)
   for child in children:
     ov = QtGui.QKeyEvent(QtCore.QEvent.ShortcutOverride,
                          QtCore.Qt.Key_Escape, QtCore.Qt.NoModifier)
@@ -272,7 +273,7 @@ def exercise_search_bar_keys_from_all_children():
   key(bar._edit, QtCore.Qt.Key_Enter)                     # numpad Enter
   key(bar._edit, QtCore.Qt.Key_Return, QtCore.Qt.ShiftModifier)
   key(bar._edit, QtCore.Qt.Key_Escape)
-  key(bar._scope_boxes["thinking"], QtCore.Qt.Key_Return)
+  key(bar._scope_boxes["tool"], QtCore.Qt.Key_Return)
   key(bar._scope_boxes["tool"], QtCore.Qt.Key_Escape)
   key(bar._close_btn, QtCore.Qt.Key_Return, QtCore.Qt.ShiftModifier)
   assert (got["next"], got["prev"], got["close"]) == (3, 2, 2), got
@@ -320,18 +321,14 @@ def exercise_scan_default_scope_and_counts():
   v, cs = _controller_fixture(app)
   cs.open()
   cs.bar._edit.setText("needle")
-  # Default scope: text + thinking (Thinking starts checked) --
-  # "first needle here", "alpha needle one", "needle in thought".
-  # Tool matches are opt-in.
+  # Default scope: text + thinking -- thinking is always searched (it
+  # reads as part of the conversation): "first needle here",
+  # "alpha needle one", "needle in thought". Tool matches are opt-in.
   assert len(cs._matches) == 3, cs._matches
   assert cs._current == 0
   assert cs.bar._count.text() == "1/3", cs.bar._count.text()
-  # Scope checkboxes narrow/widen the scan: -1 thinking, +2 tool (the
-  # args JSON and the result line each contain 'needle').
-  cs.bar._scope_boxes["thinking"].setChecked(False)
-  assert len(cs._matches) == 2, len(cs._matches)
-  cs.bar._scope_boxes["thinking"].setChecked(True)
-  assert len(cs._matches) == 3, len(cs._matches)
+  # The Tools checkbox widens the scan by 2: the args JSON and the
+  # result line each contain 'needle'.
   cs.bar._scope_boxes["tool"].setChecked(True)
   assert len(cs._matches) == 5, len(cs._matches)
   assert cs.bar._count.text() == "1/5", cs.bar._count.text()
