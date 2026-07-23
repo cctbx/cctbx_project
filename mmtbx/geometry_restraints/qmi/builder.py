@@ -10,7 +10,7 @@ plan Sec 6) using the coordination geometry from the CShM classifier
 The total cluster charge is derived from the metal oxidation state with
 ``quantum_interface.electrons`` (which walks the bond graph + per-element
 valences), so deprotonated/charged ligands are accounted for.  Sigmas are the
-modified-Seminario curvature sigmas (Sec 5F), with a placeholder fallback.
+modified-Seminario curvature sigmas (Sec 5F), with a conservative M-L fallback.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -114,6 +114,9 @@ class QMRestraintsBuilder(object):
       geometry-blind). Both scans run each state in its own subdirectory.
   nproc : int
       Threads for each xTB optimisation and Hessian.
+  perturb_attempts : int
+      Perturb-and-reoptimise attempts to escape an imaginary-mode saddle before
+      the conservative fallback (plan Sec 5F); each attempt uses a larger kick.
   use_bvs : bool
       Commit the BVS most-likely oxidation instead of the predictor's (spin is
       re-derived for it); a user metal_state oxidation still wins. Applies to the
@@ -126,7 +129,7 @@ class QMRestraintsBuilder(object):
                temperature=sigma.DEFAULT_TEMPERATURE_K,
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
-               use_bvs=False, logger=None):
+               perturb_attempts=1, use_bvs=False, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -138,6 +141,7 @@ class QMRestraintsBuilder(object):
     self.predict_only = predict_only
     self.states = states   # 'predicted' | 'reasonable' | 'all'
     self.nproc = nproc
+    self.perturb_attempts = perturb_attempts
     self.use_bvs = use_bvs
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
@@ -561,7 +565,7 @@ class QMRestraintsBuilder(object):
       bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
       original_chain_ids=original_chain_ids, log=self.logger)
     sigma_label = ("modified-Seminario sigmas" if sigma_origin == "hessian"
-                   else "placeholder sigmas")
+                   else "conservative fallback sigmas")
     header = (f"qmi restraints: {metal_element} ox={oxidation:+d} "
               f"mult={multiplicity} charge={charge:+d} "
               f"(GFN2-xTB/{self.solvent_model or 'gas'}; {sigma_label})")
@@ -594,8 +598,9 @@ class QMRestraintsBuilder(object):
 
     Returns ``(opt_sites, bond_sigmas, angle_sigmas, sigma_origin)``: *opt_sites*
     is the final (possibly re-optimised) geometry, *sigma_origin* is ``"hessian"``
-    at a true minimum, else ``"placeholder"`` (bond/angle sigmas None). A QM or
-    Hessian failure also degrades to placeholder."""
+    at a true minimum, else ``"conservative_fallback"`` (bond/angle sigmas None, so
+    restraints applies the conservative M-L defaults). A QM or Hessian failure also
+    degrades to the conservative fallback."""
     masses = [tiny_pse.table(a.element.strip()).weight()
               for a in submodel.get_atoms()]
     n_atoms = submodel.get_hierarchy().atoms().size()
@@ -618,30 +623,40 @@ class QMRestraintsBuilder(object):
 
     try:
       hessian, sig, chk = hessian_sigmas(opt_sites, "qmi_hess")
-      if not chk.stable:
-        print(f"Site {index}: inner-sphere imaginary mode; perturb and "
-              f"re-optimise once (plan Sec 5F)", file=self.logger)
+      # Perturb along the imaginary mode and re-optimise, up to perturb_attempts
+      # times with a LARGER kick each time (a repeated identical kick is a fixed-
+      # point no-op). A distinct namespace per attempt keeps the opt/Hessian cache
+      # from replaying an earlier attempt.
+      for attempt in range(1, self.perturb_attempts + 1):
+        if chk.stable:
+          break
+        step = attempt * sigma.DEFAULT_PERTURB_STEP_A
+        print(f"Site {index}: inner-sphere imaginary mode; perturb "
+              f"({step:.2f} A) and re-optimise "
+              f"(attempt {attempt}/{self.perturb_attempts}, plan Sec 5F)",
+              file=self.logger)
         perturbed = sigma.imaginary_mode_perturbation(
-          hessian, metal_iseq, donor_iseqs, masses, opt_sites)
+          hessian, metal_iseq, donor_iseqs, masses, opt_sites, step=step)
         opt_sites = self._reoptimise(submodel, perturbed, frozen_iseqs, charge,
-                                     multiplicity, work_dir)
-        _hessian, sig, chk = hessian_sigmas(opt_sites, "qmi_reopt_hess")
-        if not chk.stable:
-          print(f"Site {index}: still imaginary after re-optimise; "
-                f"placeholder sigmas", file=self.logger)
-          return opt_sites, None, None, "placeholder"
+                                     multiplicity, work_dir, f"qmi_reopt{attempt}")
+        hessian, sig, chk = hessian_sigmas(opt_sites, f"qmi_reopt{attempt}_hess")
+      if not chk.stable:
+        print(f"Site {index}: still imaginary after {self.perturb_attempts} "
+              f"perturb-reoptimise attempt(s); conservative fallback sigmas",
+              file=self.logger)
+        return opt_sites, None, None, "conservative_fallback"
       return opt_sites, sig.bond_sigmas, sig.angle_sigmas, "hessian"
     except Exception as exc:
       print(f"Site {index}: Hessian/Seminario failed ({exc}); "
-            f"placeholder sigmas", file=self.logger)
-      return opt_sites, None, None, "placeholder"
+            f"conservative fallback sigmas", file=self.logger)
+      return opt_sites, None, None, "conservative_fallback"
 
   def _reoptimise(self, submodel, start_sites, frozen_iseqs, charge,
-                  multiplicity, work_dir):
+                  multiplicity, work_dir, preamble):
     """Constrained re-optimisation from *start_sites* (the perturbed geometry).
 
-    Uses a distinct ``qmi_reopt`` namespace so xtb_manager's coordinate cache
-    does not replay the first optimisation, and restores the sub-model's original
+    Uses a per-attempt *preamble* so xtb_manager's coordinate cache does not
+    replay an earlier optimisation, and restores the sub-model's original
     coordinates afterwards so a states scan re-uses the same submodel
     independently."""
     atoms = submodel.get_hierarchy().atoms()
@@ -651,7 +666,7 @@ class QMRestraintsBuilder(object):
       opt_sites, _qmm = qm.run_constrained_opt(
         submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
         solvent_model=self.solvent_model, nproc=self.nproc,
-        preamble="qmi_reopt", work_dir=work_dir, log=self.logger)
+        preamble=preamble, work_dir=work_dir, log=self.logger)
     finally:
       atoms.set_xyz(saved)
     return opt_sites

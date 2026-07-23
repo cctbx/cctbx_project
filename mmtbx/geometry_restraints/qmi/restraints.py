@@ -9,12 +9,13 @@ Donor identification uses the *input* (crystal) coordinates (coordination is
 a property of the deposited structure), while the restraint targets are
 measured in the *optimised* geometry.
 
-Phase-1 scope: sigmas are fixed placeholders (:data:`DEFAULT_BOND_SIGMA` /
-:data:`DEFAULT_ANGLE_SIGMA`); the modified-Seminario curvature sigmas (plan
-Sec 5F) and the state-sensitive bond factorisation (Sec 7) replace them in a
-later increment.  Atom selections are built from atom identity (chain / resseq
-/ resname / name / altloc) so the ``.edits`` file applies to the full input
-model at refinement time; donors on symmetry images (renamed chains in the
+Each restraint sigma is the modified-Seminario curvature (plan Sec 5F); when the
+curvature is unavailable (Hessian failure, or still an imaginary mode after the
+one perturb-and-reoptimise) it falls back to a conservative M-L default
+(:data:`DEFAULT_BOND_SIGMA` / :data:`DEFAULT_ANGLE_SIGMA`) flagged
+``conservative_fallback``.  Atom selections are built from atom identity (chain /
+resseq / resname / name / altloc) so the ``.edits`` file applies to the full
+input model at refinement time; donors on symmetry images (renamed chains in the
 endo_exo sub-model) cannot be expressed this way and are flagged, not emitted.
 """
 
@@ -37,11 +38,15 @@ DEFAULT_DONOR_ELEMENTS = frozenset({
 # the single value lives in qmi.util so the pipeline cannot silently diverge.
 DEFAULT_COORDINATION_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
 
-# Phase-1 placeholder sigmas (plan Appendix A).  Replaced by the modified-
-# Seminario curvature floors (Sec 5F) and the state-sensitive inflation (Sec 7)
-# in a later increment.
-DEFAULT_BOND_SIGMA = 0.02      # A
-DEFAULT_ANGLE_SIGMA = 3.0      # deg
+# Conservative M-L fallback sigmas, used when the modified-Seminario curvature is
+# unavailable (plan Sec 5F/9.2). Deliberately looser than the covalent-calibrated
+# Phenix defaults (0.02 A / 3 deg): metal-ligand bonds are softer (lower force
+# constants), so an M-L bond we could not characterise should not be restrained as
+# tightly as a covalent one. An engineering default, NOT a database value; it sits
+# inside the computed Seminario clamp range so a failed Hessian is never tighter
+# than a soft computed bond.
+DEFAULT_BOND_SIGMA = 0.05      # A
+DEFAULT_ANGLE_SIGMA = 5.0      # deg
 
 
 def detect_first_shell(submodel, metal_iseq, sites_cart=None,
@@ -141,7 +146,8 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   angle_sigmas : dict {frozenset({i, j}): sigma_deg} or None
       Per-angle Seminario sigmas; falls back to *angle_sigma*.
   bond_sigma, angle_sigma : float
-      Placeholder scalar sigmas used when no Seminario value is supplied.
+      Conservative M-L fallback sigmas used when no Seminario value is supplied
+      (flagged ``conservative_fallback``).
   original_chain_ids : iterable of str or None
       Chain ids present in the original input model; used to skip
       symmetry-image donors.  ``None`` disables the check (all donors emitted).
@@ -185,7 +191,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       atom_selection_2=_selection_string(atoms[d]),
       distance_ideal=vec.length(),
       sigma=s if s is not None else bond_sigma,
-      sigma_origin="hessian" if s is not None else "placeholder",
+      sigma_origin="hessian" if s is not None else "conservative_fallback",
     ))
 
   angles = []
@@ -201,7 +207,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
         atom_selection_3=_selection_string(atoms[usable[b]]),
         angle_ideal=va.angle(vb, deg=True),
         sigma=s if s is not None else angle_sigma,
-        sigma_origin="hessian" if s is not None else "placeholder",
+        sigma_origin="hessian" if s is not None else "conservative_fallback",
       ))
 
   return group_args(bonds=bonds, angles=angles, n_skipped_symmetry=n_skipped)

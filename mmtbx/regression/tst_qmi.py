@@ -309,50 +309,57 @@ def exercise_imaginary_mode():
 
 
 def exercise_perturb_reopt():
-  """Perturb-and-reoptimise-once orchestration (plan Sec 5F) with the QM layer
-  stubbed (no xTB): stable -> hessian; imaginary-then-stable -> one reopt then
-  hessian; imaginary-twice -> placeholder sigmas."""
-  b = QMRestraintsBuilder(logger=null_out())
+  """Perturb-and-reoptimise orchestration (plan Sec 5F) with the QM layer stubbed
+  (no xTB): stable -> hessian; imaginary-then-stable -> reopt then hessian;
+  imaginary past the attempt budget -> conservative_fallback. Multiple attempts
+  escalate the kick and use a distinct namespace each time."""
+  b1 = QMRestraintsBuilder(perturb_attempts=1, logger=null_out())
+  b3 = QMRestraintsBuilder(perturb_attempts=3, logger=null_out())
   model = _model(_ZN_SITE_PDB)
   sites = model.get_hierarchy().atoms().extract_xyz()
+  hpre, opre, steps = [], [], []
   calls = {"reopt": 0}
-  preambles = []
   stability = iter(())
   saved = (qm.run_hessian, qm.run_constrained_opt, sigma.read_xtb_hessian,
            sigma.seminario_sigmas, sigma.imaginary_mode_check,
            sigma.imaginary_mode_perturbation)
   try:
     def fake_hess(*a, **k):
-      preambles.append(k.get("preamble"))
-      return "hess_path"
+      hpre.append(k.get("preamble")); return "hess_path"
+    def fake_opt(*a, **k):
+      calls["reopt"] += 1; opre.append(k.get("preamble")); return sites, None
+    def fake_perturb(*a, **k):
+      steps.append(k.get("step")); return sites
     qm.run_hessian = fake_hess
+    qm.run_constrained_opt = fake_opt
+    sigma.imaginary_mode_perturbation = fake_perturb
     sigma.read_xtb_hessian = lambda *a, **k: None
     sigma.seminario_sigmas = lambda *a, **k: group_args(
       bond_sigmas={1: 0.02}, angle_sigmas={})
-    sigma.imaginary_mode_perturbation = lambda *a, **k: sites
     sigma.imaginary_mode_check = lambda *a, **k: group_args(
       stable=next(stability), frequencies=[], imaginary=[])
-    def fake_opt(*a, **k):
-      calls["reopt"] += 1
-      return sites, None
-    qm.run_constrained_opt = fake_opt
 
-    def run():
-      return b._sigmas_with_reopt(1, model, sites, 0, [1, 2, 3, 4], [],
-                                  0, 1, None)
-    stability = iter([True]); calls["reopt"] = 0          # stable first
-    _s, bs, _as, origin = run()
+    def run(builder):
+      hpre[:] = []; opre[:] = []; steps[:] = []; calls["reopt"] = 0
+      return builder._sigmas_with_reopt(1, model, sites, 0, [1, 2, 3, 4], [],
+                                        0, 1, None)
+    stability = iter([True])                               # stable first
+    _s, bs, _as, origin = run(b1)
     assert origin == "hessian" and bs == {1: 0.02} and calls["reopt"] == 0
-    stability = iter([False, True]); calls["reopt"] = 0   # imaginary -> reopt -> ok
-    preambles[:] = []
-    _s, bs, _as, origin = run()
+    stability = iter([False, True])                        # imaginary -> reopt -> ok
+    _s, bs, _as, origin = run(b1)
     assert origin == "hessian" and calls["reopt"] == 1
-    # the two Hessians must use distinct namespaces (else a failed 2nd --hess
-    # would read the 1st geometry's stale Hessian).
-    assert preambles == ["qmi_hess", "qmi_reopt_hess"], preambles
-    stability = iter([False, False]); calls["reopt"] = 0  # still imaginary
-    _s, bs, _as, origin = run()
-    assert origin == "placeholder" and bs is None and calls["reopt"] == 1
+    assert hpre == ["qmi_hess", "qmi_reopt1_hess"], hpre   # distinct namespaces
+    stability = iter([False, False])                       # past the 1-attempt budget
+    _s, bs, _as, origin = run(b1)
+    assert origin == "conservative_fallback" and bs is None and calls["reopt"] == 1
+    stability = iter([False, False, True])                 # 3 attempts: imag,imag,ok
+    _s, bs, _as, origin = run(b3)
+    assert origin == "hessian" and calls["reopt"] == 2
+    assert steps == [sigma.DEFAULT_PERTURB_STEP_A,         # escalating kick
+                     2 * sigma.DEFAULT_PERTURB_STEP_A], steps
+    assert opre == ["qmi_reopt1", "qmi_reopt2"], opre      # distinct opt namespaces
+    assert hpre == ["qmi_hess", "qmi_reopt1_hess", "qmi_reopt2_hess"], hpre
   finally:
     (qm.run_hessian, qm.run_constrained_opt, sigma.read_xtb_hessian,
      sigma.seminario_sigmas, sigma.imaginary_mode_check,
@@ -412,12 +419,17 @@ def exercise_metal_ligand_restraints():
   assert rr.n_skipped_symmetry == 0
   b0 = rr.bonds[0]
   assert approx_equal(b0["distance_ideal"], 2.0, eps=1e-3), b0   # His94 at 2.0
+  # no Seminario sigmas -> conservative M-L fallback (looser than covalent 0.02/3)
+  assert restraints.DEFAULT_BOND_SIGMA == 0.05
+  assert restraints.DEFAULT_ANGLE_SIGMA == 5.0
   assert b0["sigma"] == restraints.DEFAULT_BOND_SIGMA
-  assert b0["sigma_origin"] == "placeholder"
+  assert b0["sigma_origin"] == "conservative_fallback"
+  assert rr.angles[0]["sigma"] == restraints.DEFAULT_ANGLE_SIGMA
+  assert rr.angles[0]["sigma_origin"] == "conservative_fallback"
   assert "resname ZN" in b0["atom_selection_1"]
   assert "name NE2" in b0["atom_selection_2"]
 
-  # per-restraint (Seminario) sigmas override the placeholder
+  # per-restraint (Seminario) sigmas override the conservative fallback
   bond_sigmas = dict.fromkeys(donors, 0.033)
   angle_sigmas = {frozenset((donors[i], donors[j])): 4.2
                   for i in range(len(donors))
@@ -517,6 +529,7 @@ def exercise_program():
   p = master.extract()
   assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
   assert p.qm.temperature == 298.15 and p.qm.nproc == 1
+  assert p.qm.perturb_attempts == 1
   assert p.output.write_files is True
   assert p.output.combine is False and p.protonation.enable is False
   assert p.protonation.water.refine.max_sweeps == 5

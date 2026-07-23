@@ -172,6 +172,11 @@ sqrt(temperature))."
     .type = int(value_min=1)
     .short_caption = Threads per xTB job
     .help = "Threads for each xTB optimisation and Hessian."
+  perturb_attempts = 1
+    .type = int(value_min=1)
+    .short_caption = Perturb-reoptimise attempts
+    .help = "Perturb-and-reoptimise attempts when the inner sphere has an \
+imaginary mode (each attempt uses a larger kick)."
 }
 output
   .style = menu_item auto_align
@@ -343,6 +348,7 @@ Requires xtb.
       predict_only=self.params.predict_only,
       states=self.params.states,
       nproc=self.params.qm.nproc,
+      perturb_attempts=self.params.qm.perturb_attempts,
       use_bvs=self.params.use_bvs,
       logger=self.logger,
     )
