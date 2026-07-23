@@ -344,18 +344,19 @@ def exercise_perturb_reopt():
       return builder._sigmas_with_reopt(1, model, sites, 0, [1, 2, 3, 4], [],
                                         0, 1, None)
     stability = iter([True])                               # stable first
-    _s, bs, _as, origin = run(b1)
-    assert origin == "hessian" and bs == {1: 0.02} and calls["reopt"] == 0
+    _s, bs, _as, origin, npert = run(b1)
+    assert origin == "hessian" and bs == {1: 0.02}
+    assert calls["reopt"] == 0 and npert == 0
     stability = iter([False, True])                        # imaginary -> reopt -> ok
-    _s, bs, _as, origin = run(b1)
-    assert origin == "hessian" and calls["reopt"] == 1
+    _s, bs, _as, origin, npert = run(b1)
+    assert origin == "hessian" and calls["reopt"] == 1 and npert == 1
     assert hpre == ["qmi_hess", "qmi_reopt1_hess"], hpre   # distinct namespaces
     stability = iter([False, False])                       # past the 1-attempt budget
-    _s, bs, _as, origin = run(b1)
-    assert origin == "conservative_fallback" and bs is None and calls["reopt"] == 1
+    _s, bs, _as, origin, npert = run(b1)
+    assert origin == "conservative_fallback" and bs is None and npert == 1
     stability = iter([False, False, True])                 # 3 attempts: imag,imag,ok
-    _s, bs, _as, origin = run(b3)
-    assert origin == "hessian" and calls["reopt"] == 2
+    _s, bs, _as, origin, npert = run(b3)
+    assert origin == "hessian" and calls["reopt"] == 2 and npert == 2
     assert steps == [sigma.DEFAULT_PERTURB_STEP_A,         # escalating kick
                      2 * sigma.DEFAULT_PERTURB_STEP_A], steps
     assert opre == ["qmi_reopt1", "qmi_reopt2"], opre      # distinct opt namespaces
@@ -364,6 +365,38 @@ def exercise_perturb_reopt():
     (qm.run_hessian, qm.run_constrained_opt, sigma.read_xtb_hessian,
      sigma.seminario_sigmas, sigma.imaginary_mode_check,
      sigma.imaginary_mode_perturbation) = saved
+
+
+def exercise_provenance():
+  """Provenance comment blocks (plan Sec 9.3): global (versions injected, no xTB
+  subprocess) and per-site."""
+  from mmtbx.geometry_restraints.qmi import provenance
+  g = provenance.global_block(
+    method="GFN2-xTB", solvent="ether", temperature=298.15, model_name="1abc",
+    protonation="user-supplied (protonation off)",
+    xtb_ver="6.7.1", cctbx_ver="2026.7")
+  assert any("GFN2-xTB" in ln and "ether" in ln for ln in g)
+  assert any("xtb 6.7.1" in ln and "cctbx 2026.7" in ln for ln in g)
+  assert any("model: 1abc" in ln for ln in g)
+  assert any(ln.startswith("protonation:") for ln in g)
+  assert not any("resolution" in ln for ln in g)          # omitted when None
+
+  bvs = group_args(best=3, valences={}, n_used=4)
+  s = "\n".join(provenance.site_block(
+    "Fe", "Fe_A54", 3, 6, 1, "guessed", "medium",
+    "coordinating tyrosinate", "high-spin", bvs, "hessian", 1, 2))
+  assert "site Fe_A54: Fe ox=+3 mult=6 charge=+1" in s
+  assert "source=guessed/medium" in s
+  assert "oxidation (coordinating tyrosinate); spin (high-spin)" in s
+  assert "BVS most-likely ox=+3" in s
+  assert "sigmas: hessian; recovered after 2 perturbation(s)" in s
+  assert "1 symmetry donor(s) skipped" in s
+  # conservative fallback, no perturb / no reasons / no BVS -> compact
+  s2 = "\n".join(provenance.site_block(
+    "Zn", "Zn_A262", 2, 1, 2, "guessed", "high", None, None, None,
+    "conservative_fallback", 0, 0))
+  assert "sigmas: conservative_fallback" in s2
+  assert "perturbation" not in s2 and "BVS" not in s2
 
 
 # ---------------------------------------------------------------------------
@@ -1026,6 +1059,7 @@ def run():
   exercise_sigma_conversion()
   exercise_imaginary_mode()
   exercise_perturb_reopt()
+  exercise_provenance()
   exercise_optimise_mask()
   exercise_determine_frozen_atoms()
   exercise_detect_first_shell()

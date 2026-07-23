@@ -353,7 +353,10 @@ Requires xtb.
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()
-    self._results = self._builder.run(model, model_name=self._model_name)
+    self._results = self._builder.run(
+      model, model_name=self._model_name,
+      provenance=None if self.params.predict_only
+      else self._global_provenance())
     self._show_summary()
     if (self.params.output.write_files and not self.params.predict_only
         and self.params.states == 'predicted'):
@@ -364,6 +367,18 @@ Requires xtb.
     return self._results
 
   # ------------------------------------------------------------------
+
+  def _global_provenance(self):
+    """Global provenance comment lines for the .edits header (plan Sec 9.3):
+    tool/method, xtb + cctbx versions, model, protonation source/opt-out."""
+    from mmtbx.geometry_restraints.qmi import provenance
+    proto = ("reduce2 + naiad water-H + metal-donor deprotonation"
+             if self.params.protonation.enable
+             else "user-supplied (protonation off)")
+    return provenance.global_block(
+      method="GFN2-xTB", solvent=self.params.qm.solvent,
+      temperature=self.params.qm.temperature, model_name=self._model_name,
+      protonation=proto)
 
   def _show_summary(self):
     print('\nqmi metal-restraint summary:', file=self.logger)

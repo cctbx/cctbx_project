@@ -30,7 +30,7 @@ from cctbx.eltbx import tiny_pse
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 from mmtbx.geometry_restraints.qmi import donors, electronic, shape, util
-from mmtbx.geometry_restraints.qmi import bvs, qm, restraints, sigma
+from mmtbx.geometry_restraints.qmi import bvs, provenance, qm, restraints, sigma
 
 
 # endo_exo's per-atom seed suffix is `_{element}_chain{chain}_res{resseq}_...`.
@@ -146,15 +146,21 @@ class QMRestraintsBuilder(object):
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
     self._results = []
+    self._provenance = []   # global provenance comment lines (set by run())
 
-  def run(self, model, model_name="qmi_model"):
+  def run(self, model, model_name="qmi_model", provenance=None):
     """Run the pipeline on *model*; return a list of per-site result objects.
 
     Each result is a ``libtbx.group_args`` with fields ``site_id``,
     ``metal_element``, ``oxidation_state``, ``multiplicity``, ``charge``,
     ``n_donors``, ``restraints`` (the :func:`restraints.metal_ligand_restraints`
     record), ``edits`` (the PHIL string), and ``skipped`` (None, or a reason).
+
+    *provenance* is an optional list of global comment lines (plan Sec 9.3,
+    from :func:`provenance.global_block`) prepended to every emitted site's
+    ``.edits`` header.
     """
+    self._provenance = list(provenance) if provenance else []
     self._model_stem = os.path.splitext(os.path.basename(model_name))[0]
     write_regions = self.work_dir is not None and not self.predict_only
     if write_regions:
@@ -194,15 +200,21 @@ class QMRestraintsBuilder(object):
 
   def combined_edits(self, header=None):
     """One ``geometry_restraints.edits`` PHIL string covering every emitted
-    site's bonds + angles (sites that were skipped contribute nothing)."""
-    bonds, angles = [], []
+    site's bonds + angles (sites that were skipped contribute nothing).
+
+    The header is the global provenance block, each emitted site's provenance
+    block, then *header* (a summary line)."""
+    bonds, angles, site_lines = [], [], []
     for r in self._results:
       if r.restraints is None:
         continue
       bonds += r.restraints.bonds
       angles += r.restraints.angles
+      site_lines += r.provenance_lines
+    lines = self._provenance + site_lines + ([header] if header else [])
     return restraints.as_edits_phil(
-      group_args(bonds=bonds, angles=angles), header=header)
+      group_args(bonds=bonds, angles=angles),
+      header="\n".join(lines) if lines else None)
 
   # ------------------------------------------------------------------
 
@@ -548,7 +560,8 @@ class QMRestraintsBuilder(object):
     # Modified-Seminario sigmas from the Hessian at the optimised geometry, with
     # ONE perturb-and-reoptimise if the inner sphere is not a true minimum (plan
     # Sec 5F). Returns the final (possibly re-optimised) geometry.
-    opt_sites, bond_sigmas, angle_sigmas, sigma_origin = self._sigmas_with_reopt(
+    (opt_sites, bond_sigmas, angle_sigmas,
+     sigma_origin, n_perturb) = self._sigmas_with_reopt(
       index, submodel, opt_sites, metal_iseq, donor_iseqs, frozen_iseqs, charge,
       multiplicity, work_dir)
 
@@ -564,12 +577,14 @@ class QMRestraintsBuilder(object):
       submodel, opt_sites, metal_iseq, donor_iseqs,
       bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
       original_chain_ids=original_chain_ids, log=self.logger)
-    sigma_label = ("modified-Seminario sigmas" if sigma_origin == "hessian"
-                   else "conservative fallback sigmas")
-    header = (f"qmi restraints: {metal_element} ox={oxidation:+d} "
-              f"mult={multiplicity} charge={charge:+d} "
-              f"(GFN2-xTB/{self.solvent_model or 'gas'}; {sigma_label})")
-    edits = restraints.as_edits_phil(site_restraints, header=header)
+    # Provenance (plan Sec 9.3): the global block (set by run()) plus this site's
+    # committed state / source / reasons / origin, as the .edits header comment.
+    site_lines = provenance.site_block(
+      metal_element, site_tag, oxidation, multiplicity, charge, state_source,
+      confidence, oxidation_reason, spin_reason, bvs_est, sigma_origin,
+      site_restraints.n_skipped_symmetry, n_perturb)
+    edits = restraints.as_edits_phil(
+      site_restraints, header="\n".join(self._provenance + site_lines))
     if work_dir is not None:
       with open(os.path.join(work_dir, "qmi.edits"), "w") as fh:
         fh.write(edits)
@@ -588,19 +603,21 @@ class QMRestraintsBuilder(object):
       state_source=state_source, confidence=confidence,
       oxidation_reason=oxidation_reason, spin_reason=spin_reason, bvs=bvs_est,
       n_donors=len(donor_iseqs), restraints=site_restraints, edits=edits,
-      sigma_origin=sigma_origin, skipped=None)
+      sigma_origin=sigma_origin, provenance_lines=site_lines, skipped=None)
 
   def _sigmas_with_reopt(self, index, submodel, opt_sites, metal_iseq,
                          donor_iseqs, frozen_iseqs, charge, multiplicity,
                          work_dir):
-    """Hessian -> modified-Seminario sigmas at *opt_sites*, with ONE perturb-and-
-    reoptimise if the inner sphere carries an imaginary mode (plan Sec 5F).
+    """Hessian -> modified-Seminario sigmas at *opt_sites*, with up to
+    perturb_attempts perturb-and-reoptimise cycles if the inner sphere carries an
+    imaginary mode (plan Sec 5F).
 
-    Returns ``(opt_sites, bond_sigmas, angle_sigmas, sigma_origin)``: *opt_sites*
-    is the final (possibly re-optimised) geometry, *sigma_origin* is ``"hessian"``
-    at a true minimum, else ``"conservative_fallback"`` (bond/angle sigmas None, so
-    restraints applies the conservative M-L defaults). A QM or Hessian failure also
-    degrades to the conservative fallback."""
+    Returns ``(opt_sites, bond_sigmas, angle_sigmas, sigma_origin, n_perturb)``:
+    *opt_sites* is the final (possibly re-optimised) geometry, *sigma_origin* is
+    ``"hessian"`` at a true minimum, else ``"conservative_fallback"`` (bond/angle
+    sigmas None, so restraints applies the conservative M-L defaults), and
+    *n_perturb* is the number of perturbation cycles run. A QM or Hessian failure
+    also degrades to the conservative fallback."""
     masses = [tiny_pse.table(a.element.strip()).weight()
               for a in submodel.get_atoms()]
     n_atoms = submodel.get_hierarchy().atoms().size()
@@ -621,6 +638,7 @@ class QMRestraintsBuilder(object):
         hessian, metal_iseq, donor_iseqs, masses, log=self.logger)
       return hessian, sig, chk
 
+    n_perturb = 0
     try:
       hessian, sig, chk = hessian_sigmas(opt_sites, "qmi_hess")
       # Perturb along the imaginary mode and re-optimise, up to perturb_attempts
@@ -630,6 +648,7 @@ class QMRestraintsBuilder(object):
       for attempt in range(1, self.perturb_attempts + 1):
         if chk.stable:
           break
+        n_perturb = attempt
         step = attempt * sigma.DEFAULT_PERTURB_STEP_A
         print(f"Site {index}: inner-sphere imaginary mode; perturb "
               f"({step:.2f} A) and re-optimise "
@@ -644,12 +663,12 @@ class QMRestraintsBuilder(object):
         print(f"Site {index}: still imaginary after {self.perturb_attempts} "
               f"perturb-reoptimise attempt(s); conservative fallback sigmas",
               file=self.logger)
-        return opt_sites, None, None, "conservative_fallback"
-      return opt_sites, sig.bond_sigmas, sig.angle_sigmas, "hessian"
+        return opt_sites, None, None, "conservative_fallback", n_perturb
+      return opt_sites, sig.bond_sigmas, sig.angle_sigmas, "hessian", n_perturb
     except Exception as exc:
       print(f"Site {index}: Hessian/Seminario failed ({exc}); "
             f"conservative fallback sigmas", file=self.logger)
-      return opt_sites, None, None, "conservative_fallback"
+      return opt_sites, None, None, "conservative_fallback", n_perturb
 
   def _reoptimise(self, submodel, start_sites, frozen_iseqs, charge,
                   multiplicity, work_dir, preamble):
