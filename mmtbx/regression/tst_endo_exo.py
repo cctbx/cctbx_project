@@ -321,6 +321,20 @@ def exercise_submodel_shape():
   seed_iseq = result["seed_iseqs"][0]
   assert atoms[seed_iseq].element.strip().upper() == "FE"
 
+  # Each cap's heavy-atom anchor is recorded (caps sit 1.1 A from their
+  # anchor): anchors are heavy atoms, and every cap has one within bonding
+  # distance.
+  anchors = result["cap_anchor_iseqs"]
+  assert anchors, "no cap anchors recorded"
+  for ai in anchors:
+    assert atoms[ai].element.strip().upper() != "H", (
+      f"cap anchor {ai} is not a heavy atom")
+  for ci in result["cap_iseqs"]:
+    cap_xyz = matrix.col(atoms[ci].xyz)
+    assert any((matrix.col(atoms[ai].xyz) - cap_xyz).length() < 1.2
+               for ai in anchors), (
+      f"cap {ci} has no recorded anchor within bonding distance")
+
 
 def exercise_cys_coordination():
   """Verify the chemistry: the four Cys side chains coordinate the Fe

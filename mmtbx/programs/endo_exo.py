@@ -191,10 +191,8 @@ class Program(ProgramTemplate):
         charge_summary : dict
             As returned by :meth:`ChargeEstimator.calculate`.
         model : mmtbx.model.manager
-            Truncated sub-model with caps applied and the parent's
-            restraints manager attached. Suitable for direct in-memory
-            consumption by downstream tools (e.g., ``mmtbx.geometry_restraints.qmi``) without
-            the disk round-trip through the written PDB/mmCIF.
+            Truncated sub-model with caps applied, carrying no restraints
+            manager. For in-memory use.
         seed_iseqs : list of int
             Sorted 0-based positional indices of the seed atoms inside
             ``model``.
