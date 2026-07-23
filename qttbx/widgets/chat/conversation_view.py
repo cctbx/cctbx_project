@@ -88,6 +88,10 @@ class ConversationView(QtWidgets.QScrollArea):
     # first growth: maximum jumps up while value stays put, so we'd
     # decide we were 'no longer at bottom' and stop following.
     self._follow_bottom = True
+    # While another feature holds the viewport (a search-match
+    # navigation, a future jump-to-error), add_message must not
+    # re-assert follow-bottom (see set_autofollow_held).
+    self._autofollow_held = False
     bar = self.verticalScrollBar()
     bar.actionTriggered.connect(self._on_user_scroll_action)
     # When a bubble grows (auto_height resize, new cell appended) the
@@ -135,8 +139,11 @@ class ConversationView(QtWidgets.QScrollArea):
     self._bubbles.append(bubble)
     # A new message is something the user wants to see -- either they
     # just sent it themselves, or the runner is appending a response
-    # for them. Re-assert follow regardless of where the scroll was.
-    self._follow_bottom = True
+    # for them. Re-assert follow regardless of where the scroll was --
+    # UNLESS a viewport hold is engaged (batched mid-turn tool-result
+    # messages land here; see set_autofollow_held).
+    if not self._autofollow_held:
+      self._follow_bottom = True
     self._maybe_scroll_to_bottom()
     return bubble
 
@@ -352,6 +359,71 @@ class ConversationView(QtWidgets.QScrollArea):
   def approval_card_count(self):
     return len(self._approval_cards)
 
+  def searchable_cells(self):
+    """Flatten each bubble's searchable cells, bubbles in display order.
+
+    Returns
+    -------
+    list of (str, QtWidgets.QWidget)
+        ``(kind, widget)`` pairs; kind in {"text", "thinking", "tool"}.
+    """
+    cells = []
+    for b in self._bubbles:
+      cells.extend(b.searchable_cells())
+    return cells
+
+  def set_autofollow_held(self, held):
+    """Hold auto-follow-bottom while another feature owns the viewport.
+
+    Engaging the hold disengages follow-bottom IN THE SAME TICK and
+    suppresses ``add_message``'s follow re-assert. Both must happen
+    synchronously at navigation time, not in a deferred scroll: a
+    message streamed between the navigation and its deferred
+    ``ensure_child_rect_visible`` would otherwise see follow still
+    engaged and schedule its own deferred snap-to-bottom, which fires
+    AFTER the navigation scroll and yanks the viewport off the target.
+    While held, ``add_message`` skips the re-assert, and ONLY that: a
+    manual scroll back to the bottom still re-engages follow through
+    the ``actionTriggered`` refresh path. Releasing the hold leaves
+    follow-bottom alone -- it re-engages through those normal paths,
+    never as a side effect of release.
+
+    Parameters
+    ----------
+    held : bool
+        True while another feature (search-match navigation, ...)
+        holds the viewport.
+    """
+    self._autofollow_held = bool(held)
+    if self._autofollow_held:
+      self._follow_bottom = False
+
+  def ensure_child_rect_visible(self, widget, rect, margin=80):
+    """Scroll a rect of a child widget into view and hold the viewport.
+
+    Engages the autofollow hold (see ``set_autofollow_held``) so the
+    revealed position is not immediately snapped away by follow-bottom.
+
+    Parameters
+    ----------
+    widget : QtWidgets.QWidget
+        The child (text cell) holding the target.
+    rect : QtCore.QRect
+        Target rectangle in the widget's *viewport* coordinates
+        (``cursorRect()``'s frame of reference; the cells are all
+        NoFrame today so widget and viewport origins coincide, but the
+        contract names the viewport).
+    margin : int, optional
+        Vertical margin keeping the target comfortably inside the view
+        rather than hugging an edge.
+    """
+    self._follow_bottom = False
+    self._autofollow_held = True
+    viewport = getattr(widget, "viewport", None)
+    origin = viewport() if viewport is not None else widget
+    pt = origin.mapTo(self._container, rect.topLeft())
+    self.ensureVisible(pt.x(), pt.y(), 0, margin)
+
   # ---- internals -----------------------------------------------------------
 
   def _insert_widget(self, w):
@@ -403,6 +475,12 @@ class ConversationView(QtWidgets.QScrollArea):
     QtCore.QTimer.singleShot(0, self._do_scroll_to_bottom)
 
   def _do_scroll_to_bottom(self):
+    # Re-check at fire time: follow may have been disengaged (a
+    # navigation engaged the autofollow hold) between the deferred
+    # schedule and this call -- a stale snap here would yank the
+    # viewport off the position the user just navigated to.
+    if not self._follow_bottom:
+      return
     bar = self.verticalScrollBar()
     bar.setValue(bar.maximum())
 

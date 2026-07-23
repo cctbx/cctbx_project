@@ -553,9 +553,9 @@ def exercise_untrusted_text_labels_use_plain_text_format():
   """Thinking text, image captions, and tool-result text are
   model/tool-controlled, so an embedded ``<img src="file://...">`` must
   be shown literally rather than rendered as rich text (which would load
-  the local file at paint time). Thinking and caption render in PlainText
-  QLabels; tool-result text renders in the disclosure's QPlainTextEdit,
-  which has no rich-text path at all."""
+  the local file at paint time). The caption renders in a PlainText
+  QLabel; thinking and tool-result text render in QPlainTextEdits, which
+  have no rich-text path at all."""
   from qttbx.qt import QtCore
   from qttbx.widgets.chat.message_bubble import MessageBubble
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
@@ -570,19 +570,57 @@ def exercise_untrusted_text_labels_use_plain_text_format():
     ContentBlock(type="image", data={
       "attachment_sha256": "", "mime": "image/png", "caption": evil})])
   b = MessageBubble(m)
-  # Thinking cell and image caption carry the literal text in PlainText
-  # QLabels.
+  # Image caption carries the literal text in a PlainText QLabel.
   hits = [lbl for lbl in b.findChildren(QtWidgets.QLabel)
           if "<img" in lbl.text()]
-  assert len(hits) >= 2, [lbl.text() for lbl in b.findChildren(QtWidgets.QLabel)]
+  assert len(hits) == 1, [lbl.text()
+                          for lbl in b.findChildren(QtWidgets.QLabel)]
   for lbl in hits:
     assert lbl.textFormat() == QtCore.Qt.PlainText, lbl.text()
-  # Tool-result text is carried by the disclosure's QPlainTextEdit, which
-  # renders only plain text -- there is no HTML/rich-text path through
-  # which the embedded file:// reference could be loaded.
+  # Thinking text is carried by the thinking cell's read-only
+  # QPlainTextEdit -- plain text only, no rich-text path.
+  assert b._thinking_cell is not None
+  assert evil in b._thinking_cell.view.toPlainText()
+  assert b._thinking_cell.view.isReadOnly()
+  # Tool-result text is likewise a QPlainTextEdit.
   discs = b.findChildren(ToolCallDisclosure)
   assert len(discs) == 1, discs
   assert evil in discs[0].result_view.toPlainText()
+
+
+def exercise_thinking_cell_append_streams_and_survives_highlights():
+  """append() extends the plain text in place, and appending while extra
+  selections (search highlights) are applied neither corrupts the text
+  nor raises -- selections are a paint overlay, not document content."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.message_bubble import _ThinkingCell
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  cell = _ThinkingCell("alpha")
+  assert cell.view.toPlainText() == "[thinking] alpha"
+  cell.append(" beta")
+  assert cell.view.toPlainText() == "[thinking] alpha beta"
+  # Visual-parity pins: frameless, no doc margin, italic font,
+  # transparent background, auto-height applied (no inner scrollbars,
+  # refresh hook installed), and mouse-selectable text.
+  from qttbx.qt import QtCore
+  assert cell.view.frameShape() == QtWidgets.QFrame.NoFrame
+  assert cell.view.document().documentMargin() == 0
+  assert cell.view.font().italic()
+  assert "background: transparent" in cell.view.styleSheet()
+  assert cell.view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
+  assert hasattr(cell.view, "_auto_height_refresh")
+  assert cell.view.textInteractionFlags() & QtCore.Qt.TextSelectableByMouse
+  # Apply a highlight-style extra selection, then keep streaming.
+  sel = QtWidgets.QTextEdit.ExtraSelection()
+  cursor = QtGui.QTextCursor(cell.view.document())
+  cursor.setPosition(0)
+  cursor.setPosition(5, QtGui.QTextCursor.KeepAnchor)
+  sel.cursor = cursor
+  sel.format.setBackground(QtGui.QColor("#FFF176"))
+  cell.view.setExtraSelections([sel])
+  cell.append(" gamma")
+  assert cell.view.toPlainText() == "[thinking] alpha beta gamma"
 
 
 def exercise_short_json_shared_from_tool_approval_not_redefined():
@@ -609,6 +647,7 @@ def exercise():
   exercise_renders_thinking_block()
   exercise_image_block_renders_as_placeholder()
   exercise_untrusted_text_labels_use_plain_text_format()
+  exercise_thinking_cell_append_streams_and_survives_highlights()
   exercise_streaming_append()
   exercise_thinking_delta_after_text_starts_new_block()
   exercise_image_cell_renders_real_image()

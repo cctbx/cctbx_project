@@ -14,22 +14,50 @@ from qttbx.widgets.chat.markdown_view import MarkdownView
 
 
 class _ThinkingCell(QtWidgets.QFrame):
+  """Italic grey ``[thinking] ...`` cell.
+
+  The text renders in a read-only, frameless, transparent, auto-height
+  QPlainTextEdit -- the same recipe as ToolCallDisclosure's args/result
+  views -- rather than a QLabel, so conversation search can highlight
+  matches with the same extra-selections machinery as every other text
+  cell. QPlainTextEdit has no rich-text path, so model-controlled text
+  stays literal; as a side effect the text becomes mouse-selectable,
+  matching the markdown cells.
+  """
+
   def __init__(self, text, parent=None):
     super().__init__(parent)
     self.setFrameShape(QtWidgets.QFrame.NoFrame)
     layout = QtWidgets.QVBoxLayout(self)
     layout.setContentsMargins(6, 2, 6, 2)
-    label = QtWidgets.QLabel("[thinking] %s" % (text or ""), self)
-    # Thinking text is model-controlled: render literally (no rich text).
-    label.setTextFormat(QtCore.Qt.PlainText)
-    label.setWordWrap(True)
-    label.setStyleSheet("color: palette(mid); font-style: italic;")
-    layout.addWidget(label)
-    self._label = label
+    view = QtWidgets.QPlainTextEdit(self)
+    view.setReadOnly(True)
+    view.setFrameStyle(QtWidgets.QFrame.NoFrame)
+    # Italic goes on the QFont (not the stylesheet) so the
+    # fontMetrics-based auto-height math measures the rendered font.
+    font = view.font()
+    font.setItalic(True)
+    view.setFont(font)
+    view.setStyleSheet("background: transparent; color: palette(mid);")
+    # The old QLabel had no inner document margin; drop QPlainTextEdit's
+    # default 4 px so the text inset stays pixel-compatible.
+    view.document().setDocumentMargin(0)
+    view.setPlainText("[thinking] %s" % (text or ""))
+    from qttbx.widgets.chat.auto_height import set_auto_height
+    set_auto_height(view)
+    layout.addWidget(view)
+    self.view = view
 
   def append(self, text):
-    cur = self._label.text()
-    self._label.setText(cur + (text or ""))
+    if not text:
+      return
+    cursor = self.view.textCursor()
+    cursor.movePosition(QtGui.QTextCursor.End)
+    cursor.insertText(text)
+
+  def searchable_cells(self):
+    """This cell's searchable text: the inner view, kind ``"thinking"``."""
+    return [("thinking", self.view)]
 
 
 class _ImageCell(QtWidgets.QFrame):
@@ -350,6 +378,30 @@ class MessageBubble(QtWidgets.QFrame):
     if hasattr(self._first_text_cell, "toHtml"):
       return self._first_text_cell.toHtml()
     return self._first_text_cell.text()
+
+  def searchable_cells(self):
+    """Ordered ``(kind, widget)`` pairs of this bubble's searchable text.
+
+    Each cell class reports its own pairs through the duck-typed
+    ``searchable_cells()`` protocol (MarkdownView -> ``"text"``, a
+    thinking cell -> ``"thinking"``, a tool disclosure -> its ``"tool"``
+    args/result views); the bubble just concatenates them. Walks the
+    layout -- NOT ``_thinking_cell``, which only ever points at the
+    LAST thinking cell (``_add_block`` overwrites it per thinking
+    block) -- so every cell appears, in display order.
+
+    Returns
+    -------
+    list of (str, QtWidgets.QWidget)
+        Scope-key / text-widget pairs in display order.
+    """
+    cells = []
+    for i in range(self._layout.count()):
+      w = self._layout.itemAt(i).widget()
+      report = getattr(w, "searchable_cells", None)
+      if report is not None:
+        cells.extend(report())
+    return cells
 
   # ---- image cells --------------------------------------------------------
 
