@@ -124,6 +124,44 @@ def min_confidence(*labels):
   return min(labels, key=lambda c: _CONF_RANK[c])
 
 
+def _heme_oxidation(summary):
+  """Commit a heme Fe oxidation from the axial ligand alone (plan Sec 6.3, Phase
+  5). The porphyrin N4 is redox-invariant, so the sixth/axial ligand is the
+  diagnostic; heme oxidation topology never supports high confidence.
+
+  Ferric on any diagnostic ferric axial ligand, else a LOW-confidence ferrous
+  lean. Ordering is first-match; a phenolate coexisting with a thiolate/water
+  still yields ferric, so anionic O leads.
+  """
+  if summary.q_hard <= -1:                                             # [52, 50, 44]
+    # Anionic axial O (Tyr phenolate; catalase-type ferric). The carboxylate
+    # limb of q_hard is HSAB-extrapolated: no characterised axial-carboxylate
+    # heme, but the direction (anionic O favours the harder Fe(III)) holds.
+    return group_args(oxidation=3, confidence=CONF_MEDIUM,
+                      reason="heme, anionic axial O (phenolate/catalase-type ferric)")
+  if summary.n_cys_s >= 1:                                             # [51]
+    # Coordinating Cys thiolate (charge < 0; neutral Met thioether is not counted
+    # in n_cys_s). Heme-c peripheral thioether Cys sit off the metal and are
+    # dropped by the first-shell cutoff, so cytochrome c is not misread here.
+    return group_args(oxidation=3, confidence=CONF_MEDIUM,
+                      reason="thiolate-ligated heme (P450/CPO/NOS ferric resting)")
+  if summary.n_water_o >= 1:                                           # [48]
+    # Bound axial water: aquo/hydroxo met (ferric). Deoxy ferrous is
+    # 5-coordinate, so a sixth aqua ligand implies met. Keyed strictly on
+    # water_o (HOH), so a diatomic OXY/CMO (het O/C) never trips it; a
+    # non-coordinating distal water inside the cutoff stays a modelling risk.
+    return group_args(oxidation=3, confidence=CONF_MEDIUM,
+                      reason="aquo/hydroxo met-heme (bound axial water)")
+  # Single-His deoxy, bis-His / His-Met carriers: topology cannot decide, and
+  # this branch systematically leans the wrong way for the 5-coordinate proximal-
+  # His peroxidases (HRP/CcP/APX, ferric resting [53]) and oxidised bis-His/His-
+  # Met carriers ([45]). Flagged LOW; the sole honest lean is photoreduction.
+  return group_args(oxidation=2, confidence=CONF_LOW,                  # [42, 46, 53, 45]
+                    reason="single-His / weak-field heme; oxidation indeterminate "
+                           "(globin-ferrous vs peroxidase-ferric), photoreduction "
+                           "ferrous lean")
+
+
 def predict_oxidation(element, geometry, cn=None, summary=None):
   """Commit ONE oxidation state (+ confidence + reason) from refinement-robust
   features (plan Sec 6.3): donor identity/charge (via *summary* from
@@ -137,11 +175,17 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
     pyramidal/bipyramidal/octahedral -> Cu(II); CN 4 / tetrahedral is ambiguous
     -> Cu(II) default, low confidence. (Jahn-Teller 4+2 is a bond-length feature
     and is excluded.)
-  - Fe: donor hardness commits ferrous vs ferric, Fe(III) being the harder acid
-    [37, 44]; a coordinating tyrosinate is a ferric diagnostic [50]; the 2-His-
-    1-carboxylate facial triad is the ferrous oxygenase motif [41]; an all-
-    thiolate Fe(S-Cys)n set stays ferrous on a soft-S guard [49]; otherwise the
-    ferrous photoreduction lean [42].
+  - Fe heme (FeN4): the AXIAL ligand commits ferrous vs ferric (Sec 6.3, Phase
+    5), the porphyrin N4 being redox-invariant: an anionic axial O (phenolate,
+    catalase-type [52, 50]), a Cys thiolate (P450/CPO/NOS resting [51]), or a
+    bound axial water (aquo/hydroxo met [48]) commits Fe(III); a single-His /
+    bis-His / His-Met heme is indeterminate and leans ferrous at LOW confidence
+    ([42, 46], with the known 5-coordinate-His peroxidase miss [53, 45]).
+  - Fe non-heme: donor hardness commits ferrous vs ferric, Fe(III) being the
+    harder acid [37, 44]; a coordinating tyrosinate is a ferric diagnostic [50];
+    the 2-His-1-carboxylate facial triad is the ferrous oxygenase motif [41]; an
+    all-thiolate Fe(S-Cys)n set stays ferrous on a soft-S guard [49]; otherwise
+    the ferrous photoreduction lean [42].
   - Mn: no robust II/III discriminator survives (Jahn-Teller excluded), so the
     dominant Mn(II) default [43], low confidence.
 
@@ -169,6 +213,8 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
 
   if el == "Fe":
     if summary is not None:
+      if summary.heme:
+        return _heme_oxidation(summary)
       if summary.n_tyrosinate >= 1:                                     # [50]
         return group_args(oxidation=3, confidence=CONF_HIGH,
                           reason="coordinating tyrosinate")

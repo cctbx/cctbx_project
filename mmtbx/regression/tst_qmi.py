@@ -471,6 +471,27 @@ def exercise_program():
   except Sorry as e:
     assert "predict_only" in str(e), str(e)
 
+  # Bare-O water: has_hd() passes (His H) but a water has no hydrogens, so the
+  # guard must still abort under protonation.enable=False. _ZN_SITE_PDB's HOH is
+  # bare; adding one H (a hydroxo ligand) is accepted.
+  prog5 = Program(dm, master.extract(), master_phil=master, logger=null_out())
+  assert prog5._has_unprotonated_water(_model(_ZN_SITE_PDB)) is True
+  try:
+    prog5._require_hydrogens(_model(_ZN_SITE_PDB))
+    raise AssertionError("expected Sorry on a bare-O water")
+  except Sorry as e:
+    assert "water" in str(e).lower(), str(e)
+  oh = _ZN_SITE_PDB.replace(
+    "HETATM    5  O   HOH A 263      -1.400  -1.400   0.000  1.00 10.00           O",
+    "HETATM    5  O   HOH A 263      -1.400  -1.400   0.000  1.00 10.00           O\n"
+    "HETATM    8  H1  HOH A 263      -2.100  -1.700   0.000  1.00 10.00           H")
+  assert prog5._has_unprotonated_water(_model(oh)) is False   # hydroxo, one H
+  prog5._require_hydrogens(_model(oh))                         # no raise
+  # predict_only is QM-free -> validate() skips the hydrogen/water guard entirely
+  # (dm holds the bare-water _ZN_SITE_PDB).
+  p6 = master.extract(); p6.predict_only = True
+  Program(dm, p6, master_phil=master, logger=null_out()).validate()   # no raise
+
 
 def exercise_state_override():
   """User metal_state overrides: authoritative, per-selection, with fallback to
@@ -735,6 +756,28 @@ def exercise_electronic():
   fb = el.predict_oxidation("Fe", "octahedral", 6, None)
   assert fb.oxidation == 2 and fb.confidence == el.CONF_LOW      # ferrous lean
 
+  # Heme oxidation (Sec 6.3): the axial ligand commits ferrous/ferric. Ferric on
+  # any diagnostic ferric axial ligand (phenolate/thiolate/aqua), else a LOW
+  # ferrous lean (single-His/bis-His/His-Met, indeterminate).
+  def heme_ax(*extra):
+    return summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
+                 ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1))]
+                + list(extra))
+  h_tyr = heme_ax(("O", "TYR", "OH", ("A", 1)))                 # catalase-type
+  o_tyr = el.predict_oxidation("Fe", "octahedral", 5, h_tyr)
+  assert o_tyr.oxidation == 3 and o_tyr.confidence == el.CONF_MEDIUM
+  h_cys = heme_ax(("S", "CYS", "SG", ("A", 1)))                 # P450-type thiolate
+  o_cys = el.predict_oxidation("Fe", "octahedral", 5, h_cys)
+  assert o_cys.oxidation == 3 and o_cys.confidence == el.CONF_MEDIUM
+  h_aq = heme_ax(("N", "HIS", "NE2", ("A", 1)), ("O", "HOH", "O", ("W", 1)))
+  o_aq = el.predict_oxidation("Fe", "octahedral", 6, h_aq)     # aquomet
+  assert o_aq.oxidation == 3 and o_aq.confidence == el.CONF_MEDIUM
+  h_deoxy = heme_ax(("N", "HIS", "NE2", ("A", 1)))              # 5-coordinate His
+  o_dx = el.predict_oxidation("Fe", "octahedral", 5, h_deoxy)
+  assert o_dx.oxidation == 2 and o_dx.confidence == el.CONF_LOW    # indeterminate lean
+  h_bis = heme_ax(("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)))
+  assert el.predict_oxidation("Fe", "octahedral", 6, h_bis).oxidation == 2  # carrier lean
+
   # predict_spin: non-heme Fe high-spin; heme axial-gated (bis-His LS, aquomet HS).
   assert el.predict_spin("Fe", 2, "octahedral", triad).low_spin is False
   heme = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
@@ -746,6 +789,18 @@ def exercise_electronic():
                   ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
                   ("N", "HIS", "NE2", ("A", 1)), ("O", "HOH", "O", ("W", 1))])
   assert el.predict_spin("Fe", 3, "octahedral", heme_aq).low_spin is False  # aquomet
+  # His/Met is the other strong axial pair -> low spin (thioether S is strong).
+  heme_hm = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
+                  ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
+                  ("N", "HIS", "NE2", ("A", 1)), ("S", "MET", "SD", ("A", 2))])
+  assert heme_hm.n_axial == 2 and heme_hm.axial_all_strong
+  assert el.predict_spin("Fe", 3, "octahedral", heme_hm).low_spin is True   # His/Met
+  # 5-coordinate heme (single axial) stays high spin.
+  heme_5c = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
+                  ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
+                  ("N", "HIS", "NE2", ("A", 1))])
+  assert heme_5c.heme and heme_5c.n_axial == 1
+  assert el.predict_spin("Fe", 3, "octahedral", heme_5c).low_spin is False  # 5-coord
 
   # predict_state ties it together and ALWAYS commits (None only off-scope).
   pz = el.predict_state("Zn", "tetrahedral", 4)

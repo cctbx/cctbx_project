@@ -260,8 +260,10 @@ Requires xtb.
       if ms.oxidation_state is None and ms.multiplicity is None:
         raise Sorry(f"metal_state block for '{ms.selection}' sets neither "
                     f"oxidation_state nor multiplicity.")
-    self._require_hydrogens(model)
     if not self.params.predict_only:
+      # predict_only is QM-free (state from donor geometry, not H), so it needs
+      # neither protonation nor xtb.
+      self._require_hydrogens(model)
       from mmtbx.geometry_restraints import xtb_manager
       if not xtb_manager.get_exe():
         raise Sorry("xtb executable not found. qmi requires xtb; set the "
@@ -275,12 +277,32 @@ Requires xtb.
                     "not available in this build.")
 
   def _require_hydrogens(self, model):
-    """Protonation guard: abort on an unprotonated model unless
-    protonation.enable=True."""
-    if not model.has_hd() and not self.params.protonation.enable:
+    """Protonation guard: with protonation off the model must already be
+    protonated. has_hd() is global (protein H alone satisfies it), so also
+    require every water to carry a hydrogen: a bare-O water would enter the QM
+    region unprotonated (two H for water, one for a hydroxo ligand; only a
+    zero-H water is rejected)."""
+    if self.params.protonation.enable:
+      return
+    if not model.has_hd():
       raise Sorry("The model does not appear to be protonated and qmi needs "
                   "hydrogens. Protonate it first (e.g. mmtbx.reduce2) or set "
                   "protonation.enable=True to add hydrogens during this run.")
+    if self._has_unprotonated_water(model):
+      raise Sorry("The model has a water with no hydrogens; qmi needs every "
+                  "water protonated (two H for water, one for a hydroxo ligand). "
+                  "Protonate the waters or set protonation.enable=True to place "
+                  "water hydrogens.")
+
+  def _has_unprotonated_water(self, model):
+    """True if any water residue carries no H/D (a bare O). has_hd() is global
+    (protein H alone passes it), so it misses a reduce-only model whose waters
+    are bare; such a water would enter the QM region unprotonated."""
+    water = model.get_hierarchy().select(model.selection("water"))
+    for rg in water.residue_groups():
+      if not any(a.element_is_hydrogen() for a in rg.atoms()):
+        return True
+    return False
 
   def run(self):
     """Build the restraints and (optionally) write the per-site .edits."""

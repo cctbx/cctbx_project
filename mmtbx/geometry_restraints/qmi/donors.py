@@ -105,7 +105,7 @@ def summarize(donors):
   oxidation call.
 
   Returns group_args(heme, n_axial, axial_all_strong, n_carboxylate,
-  n_tyrosinate, n_cys_s, n_his, q_hard).
+  n_tyrosinate, n_cys_s, n_his, n_water_o, q_hard).
   """
   donors = list(donors)
   n_by_res = {}
@@ -126,6 +126,7 @@ def summarize(donors):
   n_tyrosinate = _count("tyrosinate_o")
   n_cys_s = _count("cys_s")
   n_his = _count("his_n")
+  n_water_o = _count("water_o")
 
   return group_args(
     heme=heme,
@@ -135,5 +136,8 @@ def summarize(donors):
     n_tyrosinate=n_tyrosinate,
     n_cys_s=n_cys_s,
     n_his=n_his,
+    # Coordinating water O (aquo/hydroxo; both modelled as HOH). For a heme every
+    # non-porphyrin donor is axial, so this is the axial-water count there.
+    n_water_o=n_water_o,
     # Hard anionic O charge (carboxylate + tyrosinate), one -1 per group.
     q_hard=-(n_carboxylate + n_tyrosinate))
