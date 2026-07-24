@@ -38,12 +38,19 @@ def _atoms_from(atoms_or_model):
   return atoms_or_model
 
 
+def normalize_element(element_symbol):
+  """Element symbol in the Title-case convention qmi uses for lookups
+  (``' ZN '`` / ``'zn'`` -> ``'Zn'``). Single source of the strip/capitalize
+  idiom used across qmi."""
+  return element_symbol.strip().capitalize()
+
+
 def is_metal(element_symbol, metals=None):
   """True iff ``element_symbol`` (any case, with/without whitespace) is
   a metal per ``metals`` (default ``METALS``)."""
   if metals is None:
     metals = METALS
-  return element_symbol.strip().capitalize() in metals
+  return normalize_element(element_symbol) in metals
 
 
 def metal_atoms(atoms_or_model, metals=None):
@@ -51,25 +58,15 @@ def metal_atoms(atoms_or_model, metals=None):
 
   Accepts an iotbx.pdb.hierarchy atoms array or an mmtbx.model.manager.
   """
-  atoms = _atoms_from(atoms_or_model)
-  if metals is None:
-    metals = METALS
-  return [a for a in atoms if a.element.strip().capitalize() in metals]
+  return [a for a in _atoms_from(atoms_or_model) if is_metal(a.element, metals)]
 
 
 def metal_iseqs(atoms_or_model, metals=None):
   """Return iseqs (positional indices) of metal atoms in ``atoms_or_model``."""
-  atoms = _atoms_from(atoms_or_model)
-  if metals is None:
-    metals = METALS
-  return [i for i, a in enumerate(atoms)
-          if a.element.strip().capitalize() in metals]
+  return [i for i, a in enumerate(_atoms_from(atoms_or_model))
+          if is_metal(a.element, metals)]
 
 
 def count_metals(atoms_or_model, metals=None):
   """Return the number of metal atoms in ``atoms_or_model``."""
-  atoms = _atoms_from(atoms_or_model)
-  if metals is None:
-    metals = METALS
-  return sum(1 for a in atoms
-             if a.element.strip().capitalize() in metals)
+  return sum(1 for a in _atoms_from(atoms_or_model) if is_metal(a.element, metals))
