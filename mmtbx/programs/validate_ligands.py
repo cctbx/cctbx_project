@@ -8,15 +8,12 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
-#from mmtbx.validation.clashscore2 import check_and_add_hydrogen
 from mmtbx.hydrogens import place_and_optimize_hydrogens
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb
 from libtbx.utils import null_out, Sorry
-from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
 from libtbx import group_args
-#from cctbx.array_family import flex
 
 
 master_phil_str = """
@@ -84,60 +81,6 @@ RSCC.
       expected_n  = 1,
       exact_count = True)
 
-    has_miller = self.data_manager.has_miller_arrays()
-    has_map = self.data_manager.has_real_maps()
-
-  # ---------------------------------------------------------------------------
-
-  def get_crystal_symmetry(self, model_fn, data_fn):
-    crystal_symmetries = []
-    for f in [model_fn, data_fn]:
-      if f is None: continue
-      cs = crystal_symmetry_from_any.extract_from(f)
-      if (cs is not None):
-        crystal_symmetries.append(cs)
-    if (len(crystal_symmetries) == 0):
-     raise Sorry("No crystal symmetry found.")
-    elif (len(crystal_symmetries) > 1):
-      if (not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
-        raise Sorry("Crystal symmetry mismatch between different files.")
-    crystal_symmetry = crystal_symmetries[0]
-    return crystal_symmetry
-
-  # ---------------------------------------------------------------------------
-
-#  def add_hydrogens_old(self, model_fn):
-#    '''
-#    Place H atoms with reduce2
-#    '''
-#    make_sub_header(' Placing H with reduce2 ', out=self.logger)
-#    model_reduce2 = None
-#    basename = os.path.splitext(os.path.basename(model_fn))[0]
-#    model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
-#    from iotbx.cli_parser import run_program
-#    from mmtbx.programs import reduce2 as reduce2
-#    args=["overwrite=True",
-#          "%s" % model_fn,
-#          "ignore_missing_restraints=True",
-#          #"use_neutron_distances=True",
-#          "output.filename=%s" % model_fn_reduce2]
-#    print("mmtbx.reduce2 %s" %(" ".join(args)), file=self.logger)
-#    try:
-#      result = run_program(program_class=reduce2.Program,args=args,
-#       logger = null_out())
-#      #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
-#      model_reduce2 = result.model
-#      model_reduce2.unset_riding_h_manager()
-#    except Exception as e:
-#      msg = traceback.format_exc()
-#      print('Reduce2 failed.\n' + msg, file=self.logger)
-#      return
-#
-#    self.data_manager.add_model(model_fn_reduce2, model_reduce2)
-#    self.working_model_fn = model_fn_reduce2
-#    self.params.validate_ligands.model_fn_reduce2 = model_fn_reduce2
-#    self.working_model = model_reduce2
-
   # ---------------------------------------------------------------------------
 
   def add_hydrogens(self, model):
@@ -146,31 +89,26 @@ RSCC.
     '''
     make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
     try:
-
       self.working_model = place_and_optimize_hydrogens(
         model           = model,
-        #do_flips        = do_flips,
-        #nuclear         = False,
         keep_existing_H = False,
         probe_phil      = self.params.probe,
         stop_for_unknowns = False,
         raise_on_missing = False,
         log             = self.logger)
-
-#      self.working_model,_ = check_and_add_hydrogen(
-#        probe_parameters=self.params.probe,
-#        data_manager_model=model,
-#        stop_for_unknowns = False,
-#        #nuclear=False,
-#        #verbose=verbose,
-#        keep_hydrogens=False,
-#        #do_flips = do_flips,
-#        log=self.logger)
       self.working_model.unset_riding_h_manager()
-    except Exception as e:
+    except Exception:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)
-      return
+      raise Sorry('Hydrogen placement (reduce2) failed; '
+                  'see log for details.')
+
+  # ---------------------------------------------------------------------------
+
+  @staticmethod
+  def _remove_element_x(model):
+    '''Drop pseudo-atoms with element "X"; they choke pdb_interpretation.'''
+    return model.select(~model.selection('element X'))
 
   # ---------------------------------------------------------------------------
 
@@ -181,7 +119,7 @@ RSCC.
                "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
                 "common_element"]
     self.has_ligands = False
-    model = model.select(~model.selection('element X'))
+    model = self._remove_element_x(model)
     for chain in model.chains():
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():
@@ -198,16 +136,10 @@ RSCC.
   def run(self):
     has_miller = False
     has_map = False
-    #
     fmodel = None
     map_manager = None
-    #
-    self.additional_ro = []
-    self.working_model_fn = None
     self.ligand_manager = None
-    #
     self.model_fn_reduce2 = None
-    #
     model_fn = self.data_manager.get_default_model_name()
     self._original_model_fn = model_fn
     data_fn = self.data_manager.get_default_miller_array_name()
@@ -247,13 +179,7 @@ RSCC.
     if ' X' in m.get_hierarchy().atoms().extract_element():
       print('\nFound atoms with element "X" in model. Removing...',
         file=self.logger)
-      m = m.select(~m.selection('element X'))
-      #basename = os.path.splitext(os.path.basename(model_fn))[0]
-      #model_fn = "%s_noX.cif" % basename
-      #self.data_manager.write_model_file(
-      #  model_str = m.model_as_mmcif(),
-      #  filename  = model_fn,
-      #  overwrite = True)
+      m = self._remove_element_x(m)
 
     self.working_model = None
 
@@ -265,16 +191,25 @@ RSCC.
     if self.working_model is None:
       raise Sorry('Could not create model object.')
 
+    # Register the working model (with reduce2 H placed and element-X atoms
+    # removed) so downstream managers use it instead of the original input
+    # model. This does not change the DataManager default model.
+    # In-memory DataManager key for the working model; never written to disk.
+    _model_fn = '%s_validate_ligands_working.pdb' % os.path.splitext(
+      os.path.basename(model_fn))[0]
+    self.data_manager.add_model(_model_fn, self.working_model)
+
     if has_map:
       mmm = self.data_manager.get_map_model_manager(
-        model_file = self.working_model_fn)
+        model_file = _model_fn)
       map_manager = mmm.map_manager()
       self.working_model = mmm.model()
+      # Map inputs are cryo-EM; electron scattering is physically correct here
+      # regardless of the phil default (scattering_table only applies to the
+      # fmodel/reflection path).
       self.working_model.setup_scattering_dictionaries(scattering_table='electron')
-
-    _model_fn = 'bla.pdb'
-    #self.data_manager.write_model_file(self.working_model,filename=_model_fn)
-    self.data_manager.add_model(_model_fn, self.working_model)
+      # keep the registered model in sync with the boxed map model
+      self.data_manager.add_model(_model_fn, self.working_model)
 
     ro = self.working_model.get_restraint_objects()
     if ro is None: ro=[]
@@ -286,13 +221,7 @@ RSCC.
           ro_no_duplicates.append((name, _ro))
           seen.add(name)
 
-    #for _ro in ro_no_duplicates:
-    #  print(_ro[0])
     #  print(_ro[1]['comp_list']['_chem_comp.three_letter_code'][0])
-
-
-
-    #_m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
 
     # get fmodel object if reflection data were provided
     if has_miller:
@@ -327,15 +256,17 @@ RSCC.
       return
 
 
-    basename = os.path.splitext(os.path.basename(model_fn))[0]
-    self.model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
+    # split(".")[0] strips any remaining extension after splitext, e.g. the
+    # ".ent" left over from a compound extension like "pdb1avd.ent.gz".
+    basename = os.path.splitext(os.path.basename(model_fn))[0].split(".")[0]
+    self.model_fn_reduce2 = "%s_newH.cif" % basename
     if self.params.save_reduce2_model:
       self.data_manager.set_overwrite(True)
       self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
 
     if self.params.save_map_coeffs:
       if fmodel is not None:
-        map_coeffs_fn = "%s_map_coeffs.mtz" % basename.split(".")[0]
+        map_coeffs_fn = "%s_map_coeffs.mtz" % basename
         mtz_object = validate_ligands.map_coefficients_as_mtz_object(fmodel)
         self.data_manager.set_overwrite(True)
         self.data_manager.write_miller_array_file(
@@ -345,7 +276,6 @@ RSCC.
         print('save_map_coeffs requested but no reflection data were provided; '
               'skipping map output.', file=self.logger)
 
-    #t0 = time.time()
     ligand_manager = validate_ligands.manager(
       model = self.working_model,
       fmodel = fmodel,
@@ -359,7 +289,6 @@ RSCC.
     ligand_manager.show_table(out=self.logger)
 
     self.ligand_manager = ligand_manager
-    #print('time running manager: ', time.time()-t0)
 
   # ---------------------------------------------------------------------------
 
