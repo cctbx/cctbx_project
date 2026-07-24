@@ -182,6 +182,11 @@ imaginary mode (each attempt uses a larger kick)."
     .short_caption = Freeze QM-region water oxygens
     .help = "Freeze the oxygen of each QM-region water during the \
 optimisation; its hydrogens stay free."
+  work_dir = "qm_work_dir"
+    .type = path
+    .short_caption = QM working directory
+    .help = "Directory for the intermediate per-site xTB files (created if \
+absent). Set to '.' to write them in the current directory."
 }
 output
   .style = menu_item auto_align
@@ -197,12 +202,7 @@ Set False to consume results in memory via get_results()."
     .type = bool
     .short_caption = Combine into one file
     .help = "If True, write all sites' restraints to a single combined \
-<model_stem>_qmi.edits file instead of one file per site."
-  qm_work_dir = "qm_work_dir"
-    .type = path
-    .short_caption = QM working directory
-    .help = "Directory to hold the intermediate per-site xTB files (created if \
-absent). Set to '.' to write them in the current directory instead."
+.edits file instead of one file per site."
 }
 predict_only = False
   .type = bool
@@ -216,7 +216,7 @@ states = *predicted reasonable all
 one (oxidation, spin). reasonable: scan every accessible oxidation crossed with \
 the spin(s) the site's ligand-field geometry permits (tetrahedral stays high-\
 spin). all: scan every accessible oxidation crossed with both spin extremes, \
-ignoring geometry. reasonable and all run each state in its own qm_work_dir \
+ignoring geometry. reasonable and all run each state in its own qm.work_dir \
 subdirectory with its own restraints, and still report what the predictor thinks."
 use_bvs = False
   .type = bool
@@ -349,7 +349,7 @@ Requires xtb.
       solvent_model=self.params.qm.solvent,
       temperature=self.params.qm.temperature,
       metal_states=self.params.sites.metal_state,
-      work_dir=self.params.output.qm_work_dir,
+      work_dir=self.params.qm.work_dir,
       predict_only=self.params.predict_only,
       states=self.params.states,
       nproc=self.params.qm.nproc,
@@ -406,27 +406,38 @@ Requires xtb.
             f'({len(r.restraints.bonds)} bond, {len(r.restraints.angles)} '
             f'angle; sigma={r.sigma_origin})', file=self.logger)
 
+  def _write_text(self, filename, content):
+    """Write *content* to *filename*, honouring output.overwrite (the standard
+    ProgramTemplate flag)."""
+    if os.path.isfile(filename) and not self.params.output.overwrite:
+      raise Sorry(f"{filename} already exists; set output.overwrite=True to "
+                  f"replace it.")
+    with open(filename, 'w') as fh:
+      fh.write(content)
+
   def _write_edits(self):
     emitted = [r for r in self._results if r.restraints is not None]
     if not emitted:
       print('No restraints emitted (all sites skipped); no .edits written.',
             file=self.logger)
       return
-    stem = os.path.splitext(os.path.basename(self._model_name))[0]
+    # Base name: output.prefix (standard field) overrides the input-model stem.
+    stem = (self.params.output.prefix
+            or os.path.splitext(os.path.basename(self._model_name))[0])
     if self.params.output.combine:
-      out = f'{stem}_qmi.edits'
+      # output.filename (standard field), if set, names the single combined file.
+      out = (self.params.output.filename or self.params.output.file_name
+             or f'{stem}_qmi.edits')
       n_bonds = sum(len(r.restraints.bonds) for r in emitted)
       n_angles = sum(len(r.restraints.angles) for r in emitted)
       header = (f'qmi restraints for {self._model_name}: {len(emitted)} '
                 f'site(s), {n_bonds} bond + {n_angles} angle')
-      with open(out, 'w') as fh:
-        fh.write(self._builder.combined_edits(header=header))
+      self._write_text(out, self._builder.combined_edits(header=header))
       print(f'  wrote {out} ({len(emitted)} site(s), {n_bonds} bond, '
             f'{n_angles} angle)', file=self.logger)
       return
     for r in emitted:
       out = f'{stem}_{r.site_tag}_qmi.edits'
-      with open(out, 'w') as fh:
-        fh.write(r.edits)
+      self._write_text(out, r.edits)
       print(f'  wrote {out} ({len(r.restraints.bonds)} bond, '
             f'{len(r.restraints.angles)} angle)', file=self.logger)

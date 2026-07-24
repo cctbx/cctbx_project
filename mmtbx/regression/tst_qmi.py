@@ -614,6 +614,7 @@ def exercise_program():
   assert p.qm.temperature == 298.15 and p.qm.nproc == 1
   assert p.qm.perturb_attempts == 1
   assert p.qm.freeze_waters is True
+  assert p.qm.work_dir == "qm_work_dir"
   assert p.output.write_files is True
   assert p.output.combine is False and p.protonation.enable is False
   assert p.protonation.water.refine.max_sweeps == 5
