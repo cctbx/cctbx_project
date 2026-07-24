@@ -301,6 +301,8 @@ general_tests = [
   "$D/validation/regression/tst_chiral_validation.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
+  "$D/validation/regression/tst_reduce2_atom_names.py",
+  "$D/validation/regression/tst_reduce2_na_names.py",
   "$D/validation/regression/tst_mp_geo.py",
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
