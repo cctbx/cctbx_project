@@ -106,7 +106,7 @@ class AtomGraphBuilder:
         if j_seq == i_seq:
           continue
         atom = atoms[j_seq]
-        if atom.element.strip().upper() in ('H', 'D'):
+        if atom.element_is_hydrogen():
           continue
         for rt_mx_ji in rt_mx_ji_list:
           op = _canon_op(rt_mx_ji)

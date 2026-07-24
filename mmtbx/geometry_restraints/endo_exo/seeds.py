@@ -25,8 +25,8 @@ class SeedFinder:
     ----------
     model : mmtbx.model.manager
     element_filter : iterable of str or None, optional
-        Element symbols (case-/whitespace-tolerant, matched against
-        ``element.strip().capitalize()``).
+        Element symbols (case-/whitespace-tolerant, normalized via
+        ``qmi.metals.normalize_element``).
 
     Returns
     -------
@@ -34,7 +34,7 @@ class SeedFinder:
     """
     if element_filter:
       wanted = {
-        str(e).strip().capitalize()
+        qmi_metals.normalize_element(str(e))
         for e in element_filter if str(e).strip()
       }
       if wanted:

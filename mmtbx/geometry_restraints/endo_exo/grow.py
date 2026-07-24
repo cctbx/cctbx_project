@@ -391,7 +391,7 @@ class QMRegionGrower:
       candidates = [
         nb for nb in _neighbour_iseqs(adjacency, cur)
         if nb != prev and nb in dist and dist[nb] < dist[cur]
-        and atoms[nb].element.strip().upper() not in ('H', 'D')]
+        and not atoms[nb].element_is_hydrogen()]
       if not candidates:
         return None
       nxt = min(candidates, key=lambda n: dist[n])
