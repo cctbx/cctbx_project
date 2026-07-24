@@ -279,12 +279,6 @@ Requires xtb.
         raise Sorry("xtb executable not found. qmi requires xtb; set the "
                     "PHENIX_XTB environment variable or install xtb in the "
                     "build.")
-    if self.params.protonation.enable:
-      try:
-        import mmtbx.programs.reduce2  # noqa: F401
-      except ImportError:
-        raise Sorry("protonation.enable=True requires mmtbx.reduce2, which is "
-                    "not available in this build.")
 
   def _require_hydrogens(self, model):
     """Protonation guard: with protonation off the model must already be
