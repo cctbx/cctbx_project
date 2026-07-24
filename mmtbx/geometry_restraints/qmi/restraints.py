@@ -189,6 +189,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
     bonds.append(dict(
       atom_selection_1=metal_sel,
       atom_selection_2=_selection_string(atoms[d]),
+      donor_element=atoms[d].element.strip(),
       distance_ideal=vec.length(),
       sigma=s if s is not None else bond_sigma,
       sigma_origin="hessian" if s is not None else "conservative_fallback",

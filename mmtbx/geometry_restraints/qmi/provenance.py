@@ -65,8 +65,13 @@ def global_block(method, solvent, temperature, model_name, protonation,
 
 def site_block(metal_element, site_tag, oxidation, multiplicity, charge,
                state_source, confidence, oxidation_reason, spin_reason,
-               bvs_est, sigma_origin, n_skipped_symmetry, n_perturb):
-  """The per-site provenance lines (committed state + how it was decided)."""
+               bvs_est, sigma_origin, n_skipped_symmetry, n_perturb,
+               sanity=None):
+  """The per-site provenance lines (committed state + how it was decided).
+
+  *sanity* is the :func:`mmtbx.geometry_restraints.qmi.sanity.check_site` result
+  (or None); any atypical / implausible emitted distances are flagged here
+  (Sec 9.4, flag-not-fix), with a per-bond detail line."""
   src = state_source + (f"/{confidence}" if confidence else "")
   lines = [f"site {site_tag}: {metal_element} ox={oxidation:+d} "
            f"mult={multiplicity} charge={charge:+d}  [source={src}]"]
@@ -85,5 +90,14 @@ def site_block(metal_element, site_tag, oxidation, multiplicity, charge,
     flags.append(f"{outcome} after {n_perturb} perturbation(s)")
   if n_skipped_symmetry:
     flags.append(f"{n_skipped_symmetry} symmetry donor(s) skipped")
+  if sanity is not None and (sanity.n_atypical or sanity.n_implausible):
+    counts = []
+    if sanity.n_atypical:
+      counts.append(f"{sanity.n_atypical} atypical")
+    if sanity.n_implausible:
+      counts.append(f"{sanity.n_implausible} implausible")
+    flags.append("sanity " + " + ".join(counts))
   lines.append("  " + "; ".join(flags))
+  if sanity is not None and sanity.details:
+    lines.append("  sanity: " + "; ".join(sanity.details))
   return lines

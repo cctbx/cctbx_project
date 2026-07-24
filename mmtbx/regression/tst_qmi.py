@@ -25,7 +25,7 @@ from scitbx.array_family import flex
 
 from mmtbx.programs.qmi import Program, master_phil_str
 from mmtbx.geometry_restraints.qmi import (
-  qm, restraints, sigma, metals, protonation, shape, bvs)
+  qm, restraints, sigma, metals, protonation, shape, bvs, sanity, provenance)
 from mmtbx.geometry_restraints.qmi import electronic as el
 from mmtbx.geometry_restraints.qmi import donors as D
 from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
@@ -406,6 +406,38 @@ def exercise_optimise_mask():
   assert qm.optimise_mask_from_frozen(5, {1, 3}) == \
       [True, False, True, False, True]
   assert qm.optimise_mask_from_frozen(3, set()) == [True, True, True]
+
+
+def exercise_sanity_bounds():
+  # windows are ordered; None for an out-of-scope metal or an untabulated donor.
+  tw = sanity.target_window("Zn", "N")
+  assert tw is not None and tw[0] < tw[1], tw
+  bw = sanity.bvs_window("Zn", "N")
+  assert bw is not None and bw[0] < bw[1], bw
+  assert sanity.target_window("Zn", "C") is None       # no C target
+  assert sanity.bvs_window("Ca", "O") is None          # Ca not a predictor prior
+  assert sanity.check_bond("Ca", "O", 2.4) == []       # out-of-scope: no crash
+
+  # a typical bond passes; a dissociated / collapsed one trips both windows.
+  assert sanity.check_bond("Zn", "N", 2.05) == []
+  assert set(sanity.check_bond("Zn", "O", 3.5)) == {"atypical", "implausible"}
+  assert set(sanity.check_bond("Zn", "S", 1.5)) == {"atypical", "implausible"}
+  assert sanity.check_bond("Cu", "S", 2.5) == []       # real Cu-Met(S) distance
+
+  r = sanity.check_site("Zn", [("N", 2.05), ("O", 3.5), ("S", 1.5)])
+  assert r.n_atypical == 2 and r.n_implausible == 2, (r.n_atypical, r.n_implausible)
+  assert len(r.details) == 2
+
+  # provenance emits the flags when present, and nothing when clean.
+  flagged = provenance.site_block(
+    "Zn", "Zn_A1", 2, 1, 0, "guessed", "high", "ox", "spin", None,
+    "hessian", 0, 0, sanity=r)
+  assert any("sanity 2 atypical + 2 implausible" in ln for ln in flagged)
+  assert any(ln.strip().startswith("sanity:") for ln in flagged)
+  clean = sanity.check_site("Zn", [("N", 2.05), ("S", 2.31)])
+  assert not any("sanity" in ln for ln in provenance.site_block(
+    "Zn", "Zn_A1", 2, 1, 0, "guessed", "high", "ox", "spin", None,
+    "hessian", 0, 0, sanity=clean))
 
 
 def exercise_determine_frozen_atoms():
@@ -1079,6 +1111,7 @@ def run():
   exercise_imaginary_mode()
   exercise_perturb_reopt()
   exercise_provenance()
+  exercise_sanity_bounds()
   exercise_optimise_mask()
   exercise_determine_frozen_atoms()
   exercise_detect_first_shell()

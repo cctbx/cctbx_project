@@ -30,7 +30,8 @@ from cctbx.eltbx import tiny_pse
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 from mmtbx.geometry_restraints.qmi import donors, electronic, shape, util
-from mmtbx.geometry_restraints.qmi import bvs, provenance, qm, restraints, sigma
+from mmtbx.geometry_restraints.qmi import (
+  bvs, provenance, qm, restraints, sanity, sigma)
 
 
 # endo_exo's per-atom seed suffix is `_{element}_chain{chain}_res{resseq}_...`.
@@ -591,12 +592,20 @@ class QMRestraintsBuilder(object):
       submodel, opt_sites, metal_iseq, donor_iseqs,
       bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
       original_chain_ids=original_chain_ids, log=self.logger)
+    # Sanity bounds (plan Sec 9.4): cross-check each emitted M-donor distance vs
+    # the empirical target and bond-valence windows; flag, never alter.
+    site_sanity = sanity.check_site(
+      metal_element, [(b["donor_element"], b["distance_ideal"])
+                      for b in site_restraints.bonds])
+    if site_sanity.n_atypical or site_sanity.n_implausible:
+      print(f"Site {index}: sanity-bound flags: "
+            + "; ".join(site_sanity.details), file=self.logger)
     # Provenance (plan Sec 9.3): the global block (set by run()) plus this site's
-    # committed state / source / reasons / origin, as the .edits header comment.
+    # committed state / source / reasons / origin / sanity, as the .edits header.
     site_lines = provenance.site_block(
       metal_element, site_tag, oxidation, multiplicity, charge, state_source,
       confidence, oxidation_reason, spin_reason, bvs_est, sigma_origin,
-      site_restraints.n_skipped_symmetry, n_perturb)
+      site_restraints.n_skipped_symmetry, n_perturb, sanity=site_sanity)
     edits = restraints.as_edits_phil(
       site_restraints, header="\n".join(self._provenance + site_lines))
     if work_dir is not None:
@@ -617,7 +626,8 @@ class QMRestraintsBuilder(object):
       state_source=state_source, confidence=confidence,
       oxidation_reason=oxidation_reason, spin_reason=spin_reason, bvs=bvs_est,
       n_donors=len(donor_iseqs), restraints=site_restraints, edits=edits,
-      sigma_origin=sigma_origin, provenance_lines=site_lines, skipped=None)
+      sigma_origin=sigma_origin, sanity=site_sanity,
+      provenance_lines=site_lines, skipped=None)
 
   def _sigmas_with_reopt(self, index, submodel, opt_sites, metal_iseq,
                          donor_iseqs, frozen_iseqs, charge, multiplicity,
