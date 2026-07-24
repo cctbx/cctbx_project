@@ -92,7 +92,8 @@ OXIDATION_PRIORS = {
 # SPIN INVARIANT (load-bearing): the multiplicity commit is HIGH-SPIN by default
 # and flips to low spin ONLY in predict_spin's heme branch (octahedral d4-d7 with
 # a strong axial pair [45]). Non-heme biological Fe/Mn are high-spin at every
-# geometry [41, 47]. Adding a metal with an accessible biological low-spin state
+# geometry (Fe [41]; Mn(II)/Mn(III) [47, 61, 62], weak-field O/N per LFT [12]).
+# Adding a metal with an accessible biological low-spin state
 # OUTSIDE heme (e.g. Co, Ni) requires extending predict_spin's strong-field
 # detection first, or the multiplicity will be silently wrong.
 
@@ -186,8 +187,11 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
     the 2-His-1-carboxylate facial triad is the ferrous oxygenase motif [41]; an
     all-thiolate Fe(S-Cys)n set stays ferrous on a soft-S guard [49]; otherwise
     the ferrous photoreduction lean [42].
-  - Mn: no robust II/III discriminator survives (Jahn-Teller excluded), so the
-    dominant Mn(II) default [43], low confidence.
+  - Mn: dominant Mn(II) default [56, 57], overridden to Mn(III) by the SOD-fold
+    signature (5-coordinate trigonal-bipyramidal 3-His/carboxylate/solvent,
+    resting Mn(III)-hydroxo [58, 59, 62, 63, 64], MEDIUM) or a coordinating
+    tyrosinate ([60], LOW). No hardness / CN / Jahn-Teller rule: none separates
+    Mn(II) from Mn(III) refinement-robustly.
 
   Returns group_args(oxidation, confidence, reason), or None if the metal is
   outside the vetted priors (:data:`OXIDATION_PRIORS`).
@@ -231,7 +235,29 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
     return group_args(oxidation=2, confidence=CONF_LOW,                 # [42]
                       reason="no ferric signature (ferrous lean)")
 
-  # Mn: dominant Mn(II) default, no robust II/III discriminator.            [43]
+  if el == "Mn":
+    if summary is not None:
+      # SOD-fold resting/oxidised Mn(III): a 5-coordinate trigonal-bipyramidal
+      # 3-His / 1-carboxylate / 1-solvent site, resting Mn(III)-hydroxo by QM and
+      # neutron structure [58, 59, 62, 64]. MEDIUM only -- the reduced Mn(II)-SOD
+      # state is isostructural [57].
+      if (cn == 5 and geometry == TRIGONAL_BIPYRAMIDAL
+          and summary.n_his == 3 and summary.n_carboxylate == 1
+          and summary.n_water_o >= 1 and summary.n_tyrosinate == 0
+          and summary.n_cys_s == 0 and not summary.heme):
+        return group_args(oxidation=3, confidence=CONF_MEDIUM,
+                          reason="SOD-fold 5-coordinate TBP "
+                          "(3-His/carboxylate/solvent)")
+      # A coordinating Tyr phenolate leans Mn(III) (transferrin-type [60]); rare
+      # and indirectly supported, so LOW (cf. the HIGH-confidence Fe rule [50]).
+      if summary.n_tyrosinate >= 1:
+        return group_args(oxidation=3, confidence=CONF_LOW,
+                          reason="coordinating tyrosinate")
+    # Dominant Mn(II) default; no robust II/III discriminator otherwise [56, 57].
+    return group_args(oxidation=2, confidence=CONF_LOW,
+                      reason="no ferric signature (Mn(II) default)")
+
+  # Any other multi-state metal: dominant-default fallback.
   default = default_oxidation(el)
   return group_args(oxidation=default if default is not None else accessible[0],
                     confidence=CONF_LOW,
@@ -334,7 +360,7 @@ def predict_spin(element, oxidation, geometry, summary=None):
       6-coordinate with a weak axial (aquo/hydroxo met) -> high spin [48];
       otherwise (single axial / 5-coordinate) -> high spin [46].
   - Non-heme biological field-dependent site: weak-field donor set -> high spin,
-    Fe [41], Mn [47, 12].
+    Fe [41], Mn [47, 61, 62, 12].
 
   Returns group_args(low_spin, confidence, reason).
   """
@@ -353,7 +379,7 @@ def predict_spin(element, oxidation, geometry, summary=None):
                         reason="6-coordinate heme, weak axial (aquo/hydroxo)")
     return group_args(low_spin=False, confidence=CONF_HIGH,            # [46]
                       reason="5-coordinate heme (single axial)")
-  # Non-heme biological weak field -> high spin.                       [41, 47, 12]
+  # Non-heme biological weak field -> high spin.               [41, 47, 61, 62, 12]
   return group_args(low_spin=False, confidence=CONF_HIGH,
                     reason="non-heme biological weak-field donor set")
 

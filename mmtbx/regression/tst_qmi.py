@@ -963,6 +963,29 @@ def exercise_electronic():
   h_bis = heme_ax(("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)))
   assert el.predict_oxidation("Fe", "octahedral", 6, h_bis).oxidation == 2  # carrier lean
 
+  # Mn oxidation (Sec 6.3): Mn(II) default; the SOD-fold 5-coordinate TBP
+  # (3-His/carboxylate/solvent) -> Mn(III) MEDIUM; a coordinating tyrosinate ->
+  # Mn(III) LOW. A 6-coordinate cupin look-alike (3-His-1-carboxylate) stays Mn(II).
+  sod = summ([("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
+              ("N", "HIS", "NE2", ("A", 3)), ("O", "ASP", "OD1", ("A", 4)),
+              ("O", "HOH", "O", ("W", 1))])
+  m_sod = el.predict_oxidation("Mn", el.TRIGONAL_BIPYRAMIDAL, 5, sod)
+  assert m_sod.oxidation == 3 and m_sod.confidence == el.CONF_MEDIUM
+  cupin = summ([("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
+                ("N", "HIS", "NE2", ("A", 3)), ("O", "GLU", "OE1", ("A", 4)),
+                ("O", "HOH", "O", ("W", 1)), ("O", "HOH", "O", ("W", 2))])
+  assert el.predict_oxidation("Mn", "octahedral", 6, cupin).oxidation == 2  # cupin -> Mn(II)
+  m_tyr = summ([("O", "TYR", "OH", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
+                ("O", "ASP", "OD1", ("A", 3))])
+  m_ty = el.predict_oxidation("Mn", "octahedral", 6, m_tyr)
+  assert m_ty.oxidation == 3 and m_ty.confidence == el.CONF_LOW
+  m_def = el.predict_oxidation("Mn", "octahedral", 6, None)
+  assert m_def.oxidation == 2 and m_def.confidence == el.CONF_LOW
+  # Mn spin: always high-spin -- Mn(II) d5 sextet(6), Mn(III) d4 quintet(5).
+  assert el.predict_state("Mn", "octahedral", 6, cupin).multiplicity == 6
+  assert el.predict_state("Mn", el.TRIGONAL_BIPYRAMIDAL, 5, sod).multiplicity == 5
+  assert el.predict_spin("Mn", 3, "octahedral", None).low_spin is False
+
   # predict_spin: non-heme Fe high-spin; heme axial-gated (bis-His LS, aquomet HS).
   assert el.predict_spin("Fe", 2, "octahedral", triad).low_spin is False
   heme = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
