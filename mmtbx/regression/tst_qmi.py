@@ -428,6 +428,24 @@ def exercise_determine_frozen_atoms():
   assert body[2].split()[1] == "FROZEN"                  # far water O
   assert all(body[i].split()[1] == "free" for i in (0, 1, 3))
 
+  # cap anchors (from endo_exo) freeze the heavy atom each cap is bonded to.
+  # Treat HE2 (iseq 3) as a cap anchored to NE2 (iseq 1): both end up frozen.
+  frozen_c, free_c = qm.determine_frozen_atoms(
+    model, seed_iseq=0, cap_iseqs=(3,), cap_anchor_iseqs=(1,),
+    free_radius=5.0, log=null_out())
+  assert 3 in frozen_c and 1 in frozen_c, frozen_c       # cap + its anchor
+  assert free_c == {0}, free_c                           # only the metal free
+
+  # freeze_waters freezes a coordinating water O that is otherwise free.
+  zn = _model(_ZN_SITE_PDB)                              # HOH O is iseq 4, ~2 A
+  _f, free_w = qm.determine_frozen_atoms(
+    zn, seed_iseq=0, cap_iseqs=(), free_radius=5.0, log=null_out())
+  assert 4 in free_w, free_w                             # free by default
+  frozen_w, free_w2 = qm.determine_frozen_atoms(
+    zn, seed_iseq=0, cap_iseqs=(), free_radius=5.0, freeze_waters=True,
+    log=null_out())
+  assert 4 in frozen_w and 4 not in free_w2, frozen_w    # frozen with the flag
+
 
 # ---------------------------------------------------------------------------
 # restraints: detection, assembly, .edits
@@ -563,6 +581,7 @@ def exercise_program():
   assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
   assert p.qm.temperature == 298.15 and p.qm.nproc == 1
   assert p.qm.perturb_attempts == 1
+  assert p.qm.freeze_waters is True
   assert p.output.write_files is True
   assert p.output.combine is False and p.protonation.enable is False
   assert p.protonation.water.refine.max_sweeps == 5

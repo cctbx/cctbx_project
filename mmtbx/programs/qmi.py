@@ -177,6 +177,11 @@ sqrt(temperature))."
     .short_caption = Perturb-reoptimise attempts
     .help = "Perturb-and-reoptimise attempts when the inner sphere has an \
 imaginary mode (each attempt uses a larger kick)."
+  freeze_waters = True
+    .type = bool
+    .short_caption = Freeze QM-region water oxygens
+    .help = "Freeze the oxygen of each QM-region water during the \
+optimisation; its hydrogens stay free."
 }
 output
   .style = menu_item auto_align
@@ -350,6 +355,7 @@ Requires xtb.
       nproc=self.params.qm.nproc,
       perturb_attempts=self.params.qm.perturb_attempts,
       use_bvs=self.params.use_bvs,
+      freeze_waters=self.params.qm.freeze_waters,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()

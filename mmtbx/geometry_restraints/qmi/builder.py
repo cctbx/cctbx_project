@@ -121,6 +121,10 @@ class QMRestraintsBuilder(object):
       Commit the BVS most-likely oxidation instead of the predictor's (spin is
       re-derived for it); a user metal_state oxidation still wins. Applies to the
       committing (states='predicted') path only.
+  freeze_waters : bool
+      Freeze the oxygen of each QM-region water during the optimisation (its
+      hydrogens stay free); the truncated cluster loses the water's H-bond
+      network, so a free O would drift.
   logger : file-like or None
   """
 
@@ -129,7 +133,8 @@ class QMRestraintsBuilder(object):
                temperature=sigma.DEFAULT_TEMPERATURE_K,
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
-               perturb_attempts=1, use_bvs=False, logger=None):
+               perturb_attempts=1, use_bvs=False, freeze_waters=True,
+               logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -143,6 +148,7 @@ class QMRestraintsBuilder(object):
     self.nproc = nproc
     self.perturb_attempts = perturb_attempts
     self.use_bvs = use_bvs
+    self.freeze_waters = freeze_waters
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
     self._results = []
@@ -349,6 +355,7 @@ class QMRestraintsBuilder(object):
     seed_iseqs = seed["seed_iseqs"]
     cap_iseqs = seed["cap_iseqs"]
     cap_original_elements = seed.get("cap_original_elements", ())
+    cap_anchor_iseqs = seed.get("cap_anchor_iseqs", ())
     atoms = submodel.get_hierarchy().atoms()
 
     if not seed_iseqs:
@@ -387,11 +394,23 @@ class QMRestraintsBuilder(object):
 
     summary = self._donor_summary(atoms, donor_iseqs)
 
+    # The frozen/free partition is state-independent and, with endo_exo's cap
+    # anchors, needs no restraints manager, so compute it ONCE per site and share
+    # it between the predicted and scan QM paths.  predict_only runs no QM (and
+    # forces states='predicted', so the scan branch is never taken there).
+    frozen_iseqs = site_dir = None
+    if not self.predict_only:
+      frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
+        submodel, metal_iseq, cap_iseqs, cap_anchor_iseqs=cap_anchor_iseqs,
+        freeze_waters=self.freeze_waters, log=self.logger)
+      site_dir = self._site_dir(chain_id, resseq)
+      self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)
+
     if self.states in ("reasonable", "all"):
       return self._process_state_scan(
         index, seed, submodel, metal_iseq, donor_iseqs, cap_iseqs,
-        cap_original_elements, geom, metal_element, site_tag, chain_id, resseq,
-        original_chain_ids, bvs_est, summary)
+        cap_original_elements, geom, metal_element, site_tag,
+        original_chain_ids, bvs_est, summary, frozen_iseqs, site_dir)
 
     override = self._lookup_override(submodel, metal_iseq)
     state = self._resolve_state(metal_element, override, geom.shape, geom.cn,
@@ -421,15 +440,12 @@ class QMRestraintsBuilder(object):
         bvs=bvs_est, n_donors=len(donor_iseqs), restraints=None, edits=None,
         sigma_origin=None, skipped=None)]
 
-    # Restraints manager (needed for charge accounting + cap-anchor freezing).
+    # Restraints manager: needed only for charge accounting (the frozen
+    # partition above needs no bond graph).
     qm.ensure_restraints(submodel, cap_iseqs=cap_iseqs,
                          cap_original_elements=cap_original_elements)
     charge = self._total_charge(submodel, metal_element,
                                 state.oxidation_state, state.multiplicity)
-    frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
-      submodel, metal_iseq, cap_iseqs, log=self.logger)
-    site_dir = self._site_dir(chain_id, resseq)
-    self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)
     return [self._run_state(
       index, seed, submodel, metal_iseq, donor_iseqs, frozen_iseqs,
       metal_element, site_tag, original_chain_ids, bvs_est,
@@ -440,8 +456,8 @@ class QMRestraintsBuilder(object):
 
   def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
                           cap_iseqs, cap_original_elements, geom, metal_element,
-                          site_tag, chain_id, resseq, original_chain_ids,
-                          bvs_est, summary):
+                          site_tag, original_chain_ids, bvs_est, summary,
+                          frozen_iseqs, site_dir):
     """states=reasonable/all scan: report the predictor's guess (informational;
     not used to pick), then run every scanned (oxidation, multiplicity) state,
     each in its own qm_work_dir/<stem>_<chain>_<resseq>/ox<n>_mult<m>/ subdir.
@@ -469,12 +485,10 @@ class QMRestraintsBuilder(object):
     print(f"Site {index}: {self.states}-states scan of {len(states)} state(s): "
           + ", ".join(f"ox{ox:+d}/mult{m}" for ox, m in states),
           file=self.logger)
+    # ensure_restraints for the per-state charge accounting below; the frozen
+    # partition and site_dir were computed once in _process_site.
     qm.ensure_restraints(submodel, cap_iseqs=cap_iseqs,
                          cap_original_elements=cap_original_elements)
-    frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
-      submodel, metal_iseq, cap_iseqs, log=self.logger)
-    site_dir = self._site_dir(chain_id, resseq)
-    self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)
 
     results = []
     for ox, mult in states:

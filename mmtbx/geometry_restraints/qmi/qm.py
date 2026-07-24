@@ -72,8 +72,7 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
   Idempotent: a no-op when restraints already exist.  The materialised
   sub-model from endo_exo arrives without restraints (the parent's bond proxies
   do not apply atom-for-atom to the symmetry-expanded hierarchy), and the bond
-  graph is needed downstream: by :func:`determine_frozen_atoms` (cap-anchor
-  detection) and by charge accounting.
+  graph is needed downstream for charge accounting.
 
   endo_exo cap atoms arrive as ``element='H'`` carrying the anchor's name (e.g.
   CB, C2).  Before ``process(make_restraints=True)`` the original element is
@@ -104,10 +103,10 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
       atoms[iseq].set_element('H')
 
 
-def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
+def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
                            free_radius=DEFAULT_FREE_RADIUS,
                            coord_cutoff_A=util.DEFAULT_COORDINATION_CUTOFF_A,
-                           freeze_water_o=False, log=None):
+                           freeze_waters=False, log=None):
   """Return ``(frozen_iseqs, free_iseqs)`` for the QM optimisation.
 
   The first shell must relax while the protein scaffold and the truncation
@@ -129,25 +128,27 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   Frozen atoms (the returned set):
 
   - cap atoms (always; they encode the QM-region boundary);
-  - the heavy atom each cap is bonded to (the cap anchor, which pins the boundary
-    bond vector at both ends; needs the bond graph, so call
-    :func:`ensure_restraints` first);
+  - each cap's heavy-atom anchor (*cap_anchor_iseqs*, as recorded by endo_exo),
+    which pins the severed boundary bond vector at both ends;
   - non-coordinating standard-AA backbone, and anything beyond *free_radius*
     not in a freed cofactor;
-  - with *freeze_water_o*: the O of every water (a coordinating water has no
+  - with *freeze_waters*: the O of every water (a coordinating water has no
     H-bond network in the truncated cluster and would drift; the 2 H stay
     free).
 
   Parameters
   ----------
   submodel : mmtbx.model.manager
-      Sub-model with restraints attached (see :func:`ensure_restraints`).
+      The endo_exo sub-model (restraints manager not required).
   seed_iseq : int
       Positional index of the seed metal atom.
   cap_iseqs : sequence of int
       Positional indices of cap atoms.
+  cap_anchor_iseqs : sequence of int
+      Positional indices of the heavy atoms the caps are bonded to (their
+      anchors), as recorded by endo_exo (``seed['cap_anchor_iseqs']``).
   free_radius, coord_cutoff_A : float
-  freeze_water_o : bool
+  freeze_waters : bool
   log : file-like or None
 
   Returns
@@ -229,26 +230,16 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   free_iseqs -= cap_set
 
   # Freeze the heavy atom each cap is bonded to: a frozen cap alone pins only
-  # one end of the severed boundary bond.  Each cap is a terminal H, so its
-  # single bonded heavy neighbour is the anchor.  Needs the bond graph; if
-  # restraints were not built, the anchors are skipped (logged).  Applied last
-  # so the boundary anchor wins over near-seed / coordinating-carbonyl freeing.
-  cap_anchor_iseqs = set()
-  rm = submodel.get_restraints_manager()
-  if cap_set and rm is not None:
-    bond_proxies, _asu = rm.geometry.get_all_bond_proxies(
-      sites_cart=submodel.get_sites_cart())
-    for bp in bond_proxies:
-      a, b = bp.i_seqs
-      if a in cap_set and b not in cap_set:
-        cap_anchor_iseqs.add(b)
-      elif b in cap_set and a not in cap_set:
-        cap_anchor_iseqs.add(a)
-  anchor_over_carbonyl = cap_anchor_iseqs & carbonyl_unit_iseqs
-  free_iseqs -= cap_anchor_iseqs
+  # one end of the severed boundary bond.  endo_exo records each cap's anchor
+  # when it cuts the region (cap_anchor_iseqs), so no bond graph is needed here.
+  # Applied last so the boundary anchor wins over near-seed / coordinating-
+  # carbonyl freeing.
+  cap_anchor_set = set(cap_anchor_iseqs)
+  anchor_over_carbonyl = cap_anchor_set & carbonyl_unit_iseqs
+  free_iseqs -= cap_anchor_set
 
   water_o_iseqs = set()
-  if freeze_water_o:
+  if freeze_waters:
     for i, atom in enumerate(atoms):
       if (common_residue_names_get_class(atom.parent().resname) == "common_water"
           and not atom.element_is_hydrogen()):
@@ -260,19 +251,14 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs,
   print(f"    free atoms: {len(free_iseqs)}/{n} "
         f"(frozen: {len(frozen_iseqs)})", file=log)
   print(f"    cap atoms frozen: {len(cap_set)}", file=log)
-  if cap_set and rm is None:
-    print("    WARNING: no restraints manager; cap-anchor atoms not frozen "
-          "(boundary bonds pinned at one end only)", file=log)
-  else:
-    print(f"    cap-anchor heavy atoms frozen: {len(cap_anchor_iseqs)}",
-          file=log)
+  print(f"    cap-anchor heavy atoms frozen: {len(cap_anchor_set)}", file=log)
   if anchor_over_carbonyl:
     print(f"    note: {len(anchor_over_carbonyl)} carbonyl-unit atom(s) "
           f"re-frozen as cap anchor", file=log)
   print(f"    H/D atoms freed: {len(h_iseqs - cap_set)} "
         f"(of {len(h_iseqs)}; {len(h_iseqs & cap_set)} are caps)", file=log)
-  if freeze_water_o:
-    print(f"    water O frozen (freeze_water_o): {len(water_o_iseqs)}",
+  if freeze_waters:
+    print(f"    water O frozen (freeze_waters): {len(water_o_iseqs)}",
           file=log)
   if cofactor_residues_freed:
     cof_str = ", ".join(
