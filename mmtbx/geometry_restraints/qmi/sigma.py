@@ -3,7 +3,7 @@
 Reads the Cartesian Hessian xTB writes (``--hess``, a ``<namespace>.hessian``
 file, Hartree/Bohr^2, full 3N x 3N) at the optimised geometry and derives a
 per-restraint force constant by the modified-Seminario method (Allen, Payne &
-Cole 2018, improving Seminario 1996):
+Cole 2018 [65], improving Seminario 1996):
 
 - **Bond M-L**: project the (symmetrised) inter-atomic Hessian block onto the
   bond unit vector, summed over the block's eigenpairs.
@@ -41,7 +41,11 @@ BOHR_TO_ANG = 0.52917721067
 HARTREE_BOHR2_TO_KCAL_A2 = HARTREE_TO_KCAL / (BOHR_TO_ANG ** 2)
 # Boltzmann constant, kcal/(mol K).
 KB_KCAL = 0.0019872041
-DEFAULT_TEMPERATURE_K = 298.15
+# sigma = sqrt(k_B T / k) is the thermal spread at the crystal's data-collection
+# temperature; almost all X-ray (cryostream) and cryo-EM (vitrified) structures
+# are ~100 K, so that is the default (the qm.temperature PHIL overrides it for a
+# room-temperature dataset).
+DEFAULT_TEMPERATURE_K = 100.0
 
 # Sigma clamps (plan: sigmas are floors to widen; never emit a false-tight
 # restraint from numerical noise).
@@ -188,6 +192,36 @@ def angle_sigma(k_kcal_rad2, temperature=DEFAULT_TEMPERATURE_K,
   return min(max(math.degrees(s_rad), sigma_min), sigma_max)
 
 
+def _classify_angle_sigmas(angle_ks, temperature,
+                           sigma_max=DEFAULT_ANGLE_SIGMA_MAX):
+  """Per-angle ``(sigma, origin)``, separating genuine curvatures from
+  contaminated ones.
+
+  The constrained-opt full Hessian is non-stationary, so its low-frequency
+  donor-metal-donor bend projections are unreliable (some come back with
+  negative curvature).  A curvature is trusted only when its force constant
+  clears the clamp floor -- positive and stiff enough to give a sigma below the
+  ceiling.  Contaminated angles (``None`` / sub-floor k) take the site's LOOSEST
+  trusted angle sigma (widen-only, ``seminario_fallback``); a site with no
+  trusted angle drops its angles entirely.
+
+  Returns ``(angle_sigmas {key: sigma_deg}, angle_origins {key: origin})``; a
+  dropped angle is in neither dict.
+  """
+  k_floor = KB_KCAL * temperature / math.radians(sigma_max) ** 2
+  trusted = {key: angle_sigma(k, temperature)
+             for key, k in angle_ks.items()
+             if k is not None and k > k_floor}
+  fallback = max(trusted.values()) if trusted else None
+  angle_sigmas, angle_origins = {}, {}
+  for key in angle_ks:
+    if key in trusted:
+      angle_sigmas[key], angle_origins[key] = trusted[key], "hessian"
+    elif fallback is not None:
+      angle_sigmas[key], angle_origins[key] = fallback, "seminario_fallback"
+  return angle_sigmas, angle_origins
+
+
 def seminario_sigmas(hessian, metal_iseq, donor_iseqs, opt_sites_cart,
                      temperature=DEFAULT_TEMPERATURE_K, log=None):
   """Modified-Seminario sigmas for every M-L bond and L-M-L angle of a site.
@@ -207,8 +241,9 @@ def seminario_sigmas(hessian, metal_iseq, donor_iseqs, opt_sites_cart,
   -------
   libtbx.group_args
       ``bond_sigmas`` {donor_iseq: sigma_A}, ``angle_sigmas``
-      {frozenset({i, j}): sigma_deg}, plus the raw force constants
-      ``bond_ks`` / ``angle_ks`` (for provenance / reporting).
+      {frozenset({i, j}): sigma_deg}, ``angle_origins`` {frozenset({i, j}):
+      ``hessian`` | ``seminario_fallback``} parallel to *angle_sigmas*, plus the
+      raw force constants ``bond_ks`` / ``angle_ks`` (for provenance / reporting).
   """
   if log is None:
     log = null_out()
@@ -218,20 +253,21 @@ def seminario_sigmas(hessian, metal_iseq, donor_iseqs, opt_sites_cart,
     bond_ks[d] = k
     bond_sigmas[d] = bond_sigma(k, temperature)
 
-  angle_sigmas, angle_ks = {}, {}
+  angle_ks = {}
   donors = list(donor_iseqs)
   for x in range(len(donors)):
     for y in range(x + 1, len(donors)):
       i, j = donors[x], donors[y]
-      k = angle_force_constant(hessian, i, metal_iseq, j, opt_sites_cart)
-      key = frozenset((i, j))
-      angle_ks[key] = k
-      angle_sigmas[key] = angle_sigma(k, temperature)
+      angle_ks[frozenset((i, j))] = angle_force_constant(
+        hessian, i, metal_iseq, j, opt_sites_cart)
+  angle_sigmas, angle_origins = _classify_angle_sigmas(angle_ks, temperature)
 
   print(f"    Seminario sigmas: {len(bond_sigmas)} bond, "
-        f"{len(angle_sigmas)} angle (T={temperature:.1f} K)", file=log)
+        f"{len(angle_sigmas)} angle emitted of {len(angle_ks)} "
+        f"(T={temperature:.1f} K)", file=log)
   return group_args(bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
-                    bond_ks=bond_ks, angle_ks=angle_ks)
+                    angle_origins=angle_origins, bond_ks=bond_ks,
+                    angle_ks=angle_ks)
 
 
 def _mass_weighted_inner_block(hessian, iseqs, masses):

@@ -121,6 +121,7 @@ def _is_symmetry_image(atom, original_chain_ids):
 
 def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
                             bond_sigmas=None, angle_sigmas=None,
+                            angle_origins=None, emit_angles=True,
                             bond_sigma=DEFAULT_BOND_SIGMA,
                             angle_sigma=DEFAULT_ANGLE_SIGMA,
                             original_chain_ids=None, log=None):
@@ -144,7 +145,17 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       Per-bond modified-Seminario sigmas (plan Sec 5F); falls back to
       *bond_sigma* for any donor absent from the dict (or when None).
   angle_sigmas : dict {frozenset({i, j}): sigma_deg} or None
-      Per-angle Seminario sigmas; falls back to *angle_sigma*.
+      Per-angle sigmas (plan Sec 5F): trusted Seminario curvatures plus the
+      site's widen-only ``seminario_fallback`` for contaminated angles; a key
+      absent from the dict (contaminated, with no trusted site angle to widen to)
+      takes the conservative *angle_sigma* default, so ``emit_angles`` always
+      yields every angle.  ``None`` means the whole-Hessian conservative fallback.
+  angle_origins : dict {frozenset({i, j}): str} or None
+      Per-angle ``sigma_origin`` (``hessian`` / ``seminario_fallback``) parallel
+      to *angle_sigmas*; defaults to ``hessian`` for present keys.
+  emit_angles : bool
+      Whether to emit donor-metal-donor angle restraints at all (the CShM gate;
+      plan Sec 7).
   bond_sigma, angle_sigma : float
       Conservative M-L fallback sigmas used when no Seminario value is supplied
       (flagged ``conservative_fallback``).
@@ -196,20 +207,27 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
     ))
 
   angles = []
-  for a in range(len(usable)):
-    va = matrix.col(opt_sites_cart[usable[a]]) - metal_xyz
-    for b in range(a + 1, len(usable)):
-      vb = matrix.col(opt_sites_cart[usable[b]]) - metal_xyz
-      s = (angle_sigmas.get(frozenset((usable[a], usable[b])))
-           if angle_sigmas else None)
-      angles.append(dict(
-        atom_selection_1=_selection_string(atoms[usable[a]]),
-        atom_selection_2=metal_sel,
-        atom_selection_3=_selection_string(atoms[usable[b]]),
-        angle_ideal=va.angle(vb, deg=True),
-        sigma=s if s is not None else angle_sigma,
-        sigma_origin="hessian" if s is not None else "conservative_fallback",
-      ))
+  if emit_angles:
+    for a in range(len(usable)):
+      va = matrix.col(opt_sites_cart[usable[a]]) - metal_xyz
+      for b in range(a + 1, len(usable)):
+        key = frozenset((usable[a], usable[b]))
+        if angle_sigmas is None:            # whole-Hessian conservative fallback
+          s, origin = angle_sigma, "conservative_fallback"
+        elif key in angle_sigmas:           # trusted Seminario or seminario_fallback
+          s = angle_sigmas[key]
+          origin = angle_origins.get(key, "hessian") if angle_origins else "hessian"
+        else:                               # contaminated, no site fallback:
+          s, origin = angle_sigma, "conservative_fallback"   # conservative default
+        vb = matrix.col(opt_sites_cart[usable[b]]) - metal_xyz
+        angles.append(dict(
+          atom_selection_1=_selection_string(atoms[usable[a]]),
+          atom_selection_2=metal_sel,
+          atom_selection_3=_selection_string(atoms[usable[b]]),
+          angle_ideal=va.angle(vb, deg=True),
+          sigma=s,
+          sigma_origin=origin,
+        ))
 
   return group_args(bonds=bonds, angles=angles, n_skipped_symmetry=n_skipped)
 

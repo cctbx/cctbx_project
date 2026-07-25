@@ -162,12 +162,12 @@ qm
     .short_caption = Solvent model
     .help = "Named solvent model for the xTB optimisation (default 'ether', \
 closest to the protein-interior dielectric). Empty string disables solvation."
-  temperature = 298.15
+  temperature = 100
     .type = float(value_min=0)
     .short_caption = Temperature (K)
-    .help = "Temperature (K) used to convert QM force constants into restraint \
-sigmas: higher values give looser restraints (sigma scales with \
-sqrt(temperature))."
+    .help = "Data-collection temperature (K) used to convert QM force constants \
+into restraint sigmas; the default is the ~100 K of a cryo-cooled crystal. \
+Sigma scales with sqrt(temperature)."
   nproc = 1
     .type = int(value_min=1)
     .short_caption = Threads per xTB job
@@ -182,6 +182,12 @@ imaginary mode (each attempt uses a larger kick)."
     .short_caption = Freeze QM-region water oxygens
     .help = "Freeze the oxygen of each QM-region water during the \
 optimisation; its hydrogens stay free."
+  angle_restraints = *auto always never
+    .type = choice
+    .short_caption = Donor-metal-donor angle restraints
+    .help = "When to emit donor-metal-donor angle restraints. 'auto' emits them \
+only for CN<=2 (linear) sites, whose angle the M-L distances leave free; a \
+CN>=3 site is held by its bonds alone. 'always'/'never' are unconditional."
   work_dir = "qm_work_dir"
     .type = path
     .short_caption = QM working directory
@@ -350,6 +356,7 @@ Requires xtb.
       perturb_attempts=self.params.qm.perturb_attempts,
       use_bvs=self.params.use_bvs,
       freeze_waters=self.params.qm.freeze_waters,
+      angle_restraints=self.params.qm.angle_restraints,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()

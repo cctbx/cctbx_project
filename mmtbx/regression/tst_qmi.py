@@ -271,6 +271,42 @@ def exercise_sigma_conversion():
   assert sigma.bond_sigma(1e-9, sigma_min=0.01, sigma_max=0.2) == 0.2
 
 
+def exercise_classify_angle_sigmas():
+  """Contaminated angles (None / sub-floor k, from the non-stationary Hessian)
+  take the site's LOOSEST trusted angle sigma (widen-only, seminario_fallback);
+  a site with no trusted angle drops its angles; trusted angles keep their own
+  hessian sigma."""
+  T = sigma.DEFAULT_TEMPERATURE_K
+  ka, kb, kc, kd = (frozenset((0, 1)), frozenset((0, 2)),
+                    frozenset((1, 2)), frozenset((0, 3)))
+  # a stiff (small sigma), b soft-but-trusted (larger sigma), c None, d sub-floor
+  s, o = sigma._classify_angle_sigmas({ka: 100.0, kb: 10.0, kc: None, kd: 1.0}, T)
+  assert o[ka] == "hessian" and approx_equal(s[ka], sigma.angle_sigma(100.0, T))
+  assert o[kb] == "hessian" and approx_equal(s[kb], sigma.angle_sigma(10.0, T))
+  # contaminated c/d widen to the site's loosest trusted angle (b), never tighten
+  assert o[kc] == "seminario_fallback" and s[kc] == s[kb]
+  assert o[kd] == "seminario_fallback" and s[kd] == s[kb]
+  assert s[kb] == max(s[ka], s[kb])
+  # no trusted angle -> every angle dropped (present in neither dict)
+  s2, o2 = sigma._classify_angle_sigmas({ka: None, kb: -3.0}, T)
+  assert s2 == {} and o2 == {}
+
+
+def exercise_emit_angles():
+  """Angle-restraint gate (builder._emit_angles): 'auto' emits only for CN<=2
+  (linear, angle left free by the M-L distances); CN>=3 is triangulated by its
+  bonds, so no angle. 'always' / 'never' override regardless of CN."""
+  auto = QMRestraintsBuilder(angle_restraints="auto", logger=null_out())
+  always = QMRestraintsBuilder(angle_restraints="always", logger=null_out())
+  never = QMRestraintsBuilder(angle_restraints="never", logger=null_out())
+  for cn, expect in [(1, True), (2, True), (3, False), (4, False), (6, False),
+                     (None, False)]:
+    assert auto._emit_angles(group_args(cn=cn)) is expect, cn
+  for cn in (2, 3, 6, None):
+    assert always._emit_angles(group_args(cn=cn)) is True, cn
+    assert never._emit_angles(group_args(cn=cn)) is False, cn
+
+
 def exercise_imaginary_mode():
   # 3 atoms: metal Fe (0), donor N (1), scaffold C (2). Diagonal Hessian; only
   # the metal+donor sub-block is diagonalised, so the scaffold's huge negative
@@ -335,7 +371,7 @@ def exercise_perturb_reopt():
     sigma.imaginary_mode_perturbation = fake_perturb
     sigma.read_xtb_hessian = lambda *a, **k: None
     sigma.seminario_sigmas = lambda *a, **k: group_args(
-      bond_sigmas={1: 0.02}, angle_sigmas={})
+      bond_sigmas={1: 0.02}, angle_sigmas={}, angle_origins={})
     sigma.imaginary_mode_check = lambda *a, **k: group_args(
       stable=next(stability), frequencies=[], imaginary=[])
 
@@ -344,18 +380,18 @@ def exercise_perturb_reopt():
       return builder._sigmas_with_reopt(1, model, sites, 0, [1, 2, 3, 4], [],
                                         0, 1, None)
     stability = iter([True])                               # stable first
-    _s, bs, _as, origin, npert = run(b1)
+    _s, bs, _as, _ao, origin, npert = run(b1)
     assert origin == "hessian" and bs == {1: 0.02}
     assert calls["reopt"] == 0 and npert == 0
     stability = iter([False, True])                        # imaginary -> reopt -> ok
-    _s, bs, _as, origin, npert = run(b1)
+    _s, bs, _as, _ao, origin, npert = run(b1)
     assert origin == "hessian" and calls["reopt"] == 1 and npert == 1
     assert hpre == ["qmi_hess", "qmi_reopt1_hess"], hpre   # distinct namespaces
     stability = iter([False, False])                       # past the 1-attempt budget
-    _s, bs, _as, origin, npert = run(b1)
+    _s, bs, _as, _ao, origin, npert = run(b1)
     assert origin == "conservative_fallback" and bs is None and npert == 1
     stability = iter([False, False, True])                 # 3 attempts: imag,imag,ok
-    _s, bs, _as, origin, npert = run(b3)
+    _s, bs, _as, _ao, origin, npert = run(b3)
     assert origin == "hessian" and calls["reopt"] == 2 and npert == 2
     assert steps == [sigma.DEFAULT_PERTURB_STEP_A,         # escalating kick
                      2 * sigma.DEFAULT_PERTURB_STEP_A], steps
@@ -528,6 +564,24 @@ def exercise_metal_ligand_restraints():
   assert any(approx_equal(a["angle_ideal"], 90.0, eps=1e-2)
              for a in rr2.angles)
 
+  # a contaminated angle (key absent from angle_sigmas) is still emitted, at the
+  # conservative default: emit_angles never drops an angle
+  partial = dict(angle_sigmas)
+  partial.pop(frozenset((donors[0], donors[1])))
+  rr3 = restraints.metal_ligand_restraints(
+    model, sites, 0, donors, angle_sigmas=partial,
+    angle_origins={k: "hessian" for k in partial}, log=null_out())
+  assert len(rr3.angles) == 6          # all six emitted, none omitted
+  fallback = [a for a in rr3.angles
+              if a["sigma"] == restraints.DEFAULT_ANGLE_SIGMA]
+  assert len(fallback) == 1 and fallback[0]["sigma_origin"] == "conservative_fallback"
+
+  # emit_angles=False -> bonds only, no angle restraints
+  rr4 = restraints.metal_ligand_restraints(
+    model, sites, 0, donors, angle_sigmas=angle_sigmas, emit_angles=False,
+    log=null_out())
+  assert rr4.angles == [] and len(rr4.bonds) == 4
+
   # emitted PHIL is syntactically valid and carries the expected blocks
   edits = restraints.as_edits_phil(rr2, header="unit test")
   libtbx.phil.parse(edits)             # raises if malformed
@@ -611,9 +665,10 @@ def exercise_program():
   master = libtbx.phil.parse(master_phil_str)
   p = master.extract()
   assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
-  assert p.qm.temperature == 298.15 and p.qm.nproc == 1
+  assert p.qm.temperature == 100 and p.qm.nproc == 1
   assert p.qm.perturb_attempts == 1
   assert p.qm.freeze_waters is True
+  assert p.qm.angle_restraints == "auto"
   assert p.qm.work_dir == "qm_work_dir"
   assert p.output.write_files is True
   assert p.output.combine is False and p.protonation.enable is False
@@ -1132,6 +1187,8 @@ def run():
   exercise_seminario_bond()
   exercise_seminario_angle_guards()
   exercise_sigma_conversion()
+  exercise_classify_angle_sigmas()
+  exercise_emit_angles()
   exercise_imaginary_mode()
   exercise_perturb_reopt()
   exercise_provenance()

@@ -126,6 +126,11 @@ class QMRestraintsBuilder(object):
       Freeze the oxygen of each QM-region water during the optimisation (its
       hydrogens stay free); the truncated cluster loses the water's H-bond
       network, so a free O would drift.
+  angle_restraints : str
+      Donor-metal-donor angle-restraint policy (plan Sec 7): ``'auto'`` emits
+      them only for geometries the M-L distances cannot hold (angularly-ambiguous
+      isomer at the same distances: everything but a regular high-CN polyhedron);
+      ``'always'`` / ``'never'`` are unconditional.
   logger : file-like or None
   """
 
@@ -135,7 +140,7 @@ class QMRestraintsBuilder(object):
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
                perturb_attempts=1, use_bvs=False, freeze_waters=True,
-               logger=None):
+               angle_restraints="auto", logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -150,6 +155,7 @@ class QMRestraintsBuilder(object):
     self.perturb_attempts = perturb_attempts
     self.use_bvs = use_bvs
     self.freeze_waters = freeze_waters
+    self.angle_restraints = angle_restraints   # 'auto' | 'always' | 'never'
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
     self._results = []
@@ -379,6 +385,9 @@ class QMRestraintsBuilder(object):
     # feed the electronic guess (the class sets the ligand-field spin).
     donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
+    # Angle-restraint gate (plan Sec 7): whether the M-L distances leave the
+    # coordination angles under-determined; the same geom classification drives it.
+    emit_angles = self._emit_angles(geom)
     # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
     # oxidation over the accessible states, from the OBSERVED first-shell
     # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
@@ -411,7 +420,8 @@ class QMRestraintsBuilder(object):
       return self._process_state_scan(
         index, seed, submodel, metal_iseq, donor_iseqs, cap_iseqs,
         cap_original_elements, geom, metal_element, site_tag,
-        original_chain_ids, bvs_est, summary, frozen_iseqs, site_dir)
+        original_chain_ids, bvs_est, summary, frozen_iseqs, site_dir,
+        emit_angles)
 
     override = self._lookup_override(submodel, metal_iseq)
     state = self._resolve_state(metal_element, override, geom.shape, geom.cn,
@@ -451,14 +461,28 @@ class QMRestraintsBuilder(object):
       index, seed, submodel, metal_iseq, donor_iseqs, frozen_iseqs,
       metal_element, site_tag, original_chain_ids, bvs_est,
       state.oxidation_state, state.multiplicity, charge,
-      site_dir, state.state_source,
+      site_dir, state.state_source, emit_angles=emit_angles,
       low_spin=state.low_spin, confidence=state.confidence,
       oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason)]
+
+  def _emit_angles(self, geom):
+    """Whether to emit donor-metal-donor angle restraints for this site (plan
+    Sec 7). ``always`` / ``never`` are unconditional; ``auto`` emits only when the
+    M-L distances leave the angles under-determined, i.e. a CN <= 2 (linear/bent)
+    site, where the metal lies on a circle around the donor-donor axis so the
+    L-M-L angle is free. At CN >= 3 the donors triangulate the metal and the
+    distances fix every angle whatever the polyhedron, so no angle is emitted -- a
+    rubredoxin Fe(SCys)4 tetrahedron is held by its four bonds alone."""
+    if self.angle_restraints == "always":
+      return True
+    if self.angle_restraints == "never":
+      return False
+    return geom.cn is not None and geom.cn <= 2
 
   def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
                           cap_iseqs, cap_original_elements, geom, metal_element,
                           site_tag, original_chain_ids, bvs_est, summary,
-                          frozen_iseqs, site_dir):
+                          frozen_iseqs, site_dir, emit_angles):
     """states=reasonable/all scan: report the predictor's guess (informational;
     not used to pick), then run every scanned (oxidation, multiplicity) state,
     each in its own qm_work_dir/<stem>_<chain>_<resseq>/ox<n>_mult<m>/ subdir.
@@ -507,6 +531,7 @@ class QMRestraintsBuilder(object):
           metal_element, site_tag, original_chain_ids, bvs_est, ox, mult, charge,
           state_dir,
           f"{self.states}-states (predicted)" if is_pred else f"{self.states}-states",
+          emit_angles=emit_angles,
           confidence=(pred.confidence if is_pred else None),
           oxidation_reason=(pred.oxidation_reason if is_pred else None),
           spin_reason=(pred.spin_reason if is_pred else None)))
@@ -560,7 +585,7 @@ class QMRestraintsBuilder(object):
   def _run_state(self, index, seed, submodel, metal_iseq, donor_iseqs,
                  frozen_iseqs, metal_element, site_tag, original_chain_ids,
                  bvs_est, oxidation, multiplicity, charge, work_dir,
-                 state_source, low_spin=None, confidence=None,
+                 state_source, emit_angles=True, low_spin=None, confidence=None,
                  oxidation_reason=None, spin_reason=None):
     """Run the constrained opt + Hessian + restraint assembly for a single
     (oxidation, multiplicity, charge) state in *work_dir* (writing optimized.pdb
@@ -575,7 +600,7 @@ class QMRestraintsBuilder(object):
     # Modified-Seminario sigmas from the Hessian at the optimised geometry, with
     # ONE perturb-and-reoptimise if the inner sphere is not a true minimum (plan
     # Sec 5F). Returns the final (possibly re-optimised) geometry.
-    (opt_sites, bond_sigmas, angle_sigmas,
+    (opt_sites, bond_sigmas, angle_sigmas, angle_origins,
      sigma_origin, n_perturb) = self._sigmas_with_reopt(
       index, submodel, opt_sites, metal_iseq, donor_iseqs, frozen_iseqs, charge,
       multiplicity, work_dir)
@@ -591,6 +616,7 @@ class QMRestraintsBuilder(object):
     site_restraints = restraints.metal_ligand_restraints(
       submodel, opt_sites, metal_iseq, donor_iseqs,
       bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
+      angle_origins=angle_origins, emit_angles=emit_angles,
       original_chain_ids=original_chain_ids, log=self.logger)
     # Sanity bounds (plan Sec 9.4): cross-check each emitted M-donor distance vs
     # the empirical target and bond-valence windows; flag, never alter.
@@ -636,12 +662,14 @@ class QMRestraintsBuilder(object):
     perturb_attempts perturb-and-reoptimise cycles if the inner sphere carries an
     imaginary mode (plan Sec 5F).
 
-    Returns ``(opt_sites, bond_sigmas, angle_sigmas, sigma_origin, n_perturb)``:
-    *opt_sites* is the final (possibly re-optimised) geometry, *sigma_origin* is
-    ``"hessian"`` at a true minimum, else ``"conservative_fallback"`` (bond/angle
-    sigmas None, so restraints applies the conservative M-L defaults), and
-    *n_perturb* is the number of perturbation cycles run. A QM or Hessian failure
-    also degrades to the conservative fallback."""
+    Returns ``(opt_sites, bond_sigmas, angle_sigmas, angle_origins,
+    sigma_origin, n_perturb)``: *opt_sites* is the final (possibly re-optimised)
+    geometry, *angle_origins* is the per-angle ``sigma_origin`` map parallel to
+    *angle_sigmas*, *sigma_origin* is ``"hessian"`` at a true minimum, else
+    ``"conservative_fallback"`` (bond/angle sigmas None, so restraints applies the
+    conservative M-L defaults), and *n_perturb* is the number of perturbation
+    cycles run. A QM or Hessian failure also degrades to the conservative
+    fallback."""
     masses = [tiny_pse.table(a.element.strip()).weight()
               for a in submodel.get_atoms()]
     n_atoms = submodel.get_hierarchy().atoms().size()
@@ -687,12 +715,13 @@ class QMRestraintsBuilder(object):
         print(f"Site {index}: still imaginary after {self.perturb_attempts} "
               f"perturb-reoptimise attempt(s); conservative fallback sigmas",
               file=self.logger)
-        return opt_sites, None, None, "conservative_fallback", n_perturb
-      return opt_sites, sig.bond_sigmas, sig.angle_sigmas, "hessian", n_perturb
+        return opt_sites, None, None, None, "conservative_fallback", n_perturb
+      return (opt_sites, sig.bond_sigmas, sig.angle_sigmas, sig.angle_origins,
+              "hessian", n_perturb)
     except Exception as exc:
       print(f"Site {index}: Hessian/Seminario failed ({exc}); "
             f"conservative fallback sigmas", file=self.logger)
-      return opt_sites, None, None, "conservative_fallback", n_perturb
+      return opt_sites, None, None, None, "conservative_fallback", n_perturb
 
   def _reoptimise(self, submodel, start_sites, frozen_iseqs, charge,
                   multiplicity, work_dir, preamble):
