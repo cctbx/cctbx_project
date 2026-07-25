@@ -86,7 +86,7 @@ def site_block(metal_element, site_tag, oxidation, multiplicity, charge,
     lines.append(f"  BVS most-likely ox={bvs_est.best:+d} (advisory)")
   flags = [f"sigmas: {sigma_origin}"]
   if n_perturb:
-    outcome = "recovered" if sigma_origin == "hessian" else "still imaginary"
+    outcome = "recovered" if sigma_origin == "hessian" else "unresolved"
     flags.append(f"{outcome} after {n_perturb} perturbation(s)")
   if n_skipped_symmetry:
     flags.append(f"{n_skipped_symmetry} symmetry donor(s) skipped")

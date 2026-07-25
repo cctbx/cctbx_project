@@ -52,10 +52,11 @@ def _table():
     try:
       key = (metals.normalize_element(cation), int(valence),
              metals.normalize_element(anion))
+      params = (float(ro), float(b))
     except ValueError:
       continue
     if key not in table:                        # first row = most reliable
-      table[key] = (float(ro), float(b))
+      table[key] = params
   return table
 
 

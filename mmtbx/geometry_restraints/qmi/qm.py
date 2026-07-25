@@ -457,6 +457,10 @@ def run_hessian(submodel, sites_cart, charge, multiplicity,
       f.write("\n".join(inp_lines) + "\n")
     with open(xyz_name, 'w') as f:
       f.write("\n".join(xyz_lines) + "\n")
+    # A prior run's Hessian in this namespace must not survive an aborted --hess
+    # and be read back as this run's output.
+    if os.path.exists(hess_name):
+      os.remove(hess_name)
     saved = {k: os.environ.get(k) for k in qmm._omp_env()}
     os.environ.update(qmm._omp_env())
     try:
@@ -468,6 +472,9 @@ def run_hessian(submodel, sites_cart, charge, multiplicity,
           os.environ.pop(k, None)
         else:
           os.environ[k] = v
+    # Trust the Hessian only if xtb terminated normally (mirrors the opt path's
+    # xtb_manager check); an abort otherwise leaves a stale/partial file.
+    qmm._check_log(log_name, log=log)
     if not os.path.exists(hess_name):
       raise Sorry(f"xtb --hess did not produce {hess_name}; check {log_name}")
     return os.path.abspath(hess_name)

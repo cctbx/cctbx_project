@@ -150,7 +150,9 @@ class QMRestraintsBuilder(object):
     self.metal_states = list(metal_states) if metal_states else []
     self.work_dir = work_dir
     self.predict_only = predict_only
-    self.states = states   # 'predicted' | 'reasonable' | 'all'
+    # predict_only runs no QM, so a state scan is meaningless: force the single
+    # committing path (the program's validate() rejects the combo up front too).
+    self.states = "predicted" if predict_only else states   # 'predicted' | 'reasonable' | 'all'
     self.nproc = nproc
     self.perturb_attempts = perturb_attempts
     self.use_bvs = use_bvs

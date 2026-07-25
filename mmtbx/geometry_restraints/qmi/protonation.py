@@ -240,9 +240,11 @@ def _relocate_or_remove_his_h(ag, coord_n, coord_h, metal_d):
     return f"removed {old} from {coord_n} (HIP to neutral, d={metal_d:.2f} A)"
   new_xyz = _imidazole_nh_xyz(atoms_by_name, other_n)
   if new_xyz is None:
+    # No ring geometry to place the partner-N proton; keep the coordinating-N
+    # proton so the ring stays neutral (removing the only remaining ring proton
+    # would leave both ring N bare, an imidazolate).
     old = coord_h.name.strip()
-    ag.remove_atom(coord_h)
-    return (f"removed {old} from {coord_n} (no ring geom to relocate, "
+    return (f"kept {old} on {coord_n} (no ring geom to relocate, "
             f"d={metal_d:.2f} A)")
   old_raw = coord_h.name
   old = old_raw.strip()
