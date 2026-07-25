@@ -10,8 +10,8 @@ site (``<model_stem>_<site>_qmi.edits``), or a single combined file with
 Phase-1 scope: only mononuclear sites are handled. The electronic state is
 chosen by the educated-guess engine (``electronic.OXIDATION_PRIORS``, currently
 Zn/Mn/Mg/Fe/Cu) from the coordination geometry, or by a user ``metal_state``
-override; a metal with no prior, or an ambiguous one with no dominant default
-and no override (e.g. Fe), is skipped. The model must already be protonated
+override; a metal with no prior and no override is skipped. The model must
+already be protonated
 (standard residue names), or pass ``protonation.enable=True`` to add hydrogens
 (reduce2 + water placement + donor deprotonation) during the run.
 

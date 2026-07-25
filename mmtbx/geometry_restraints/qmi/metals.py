@@ -61,12 +61,6 @@ def metal_atoms(atoms_or_model, metals=None):
   return [a for a in _atoms_from(atoms_or_model) if is_metal(a.element, metals)]
 
 
-def metal_iseqs(atoms_or_model, metals=None):
-  """Return iseqs (positional indices) of metal atoms in ``atoms_or_model``."""
-  return [i for i, a in enumerate(_atoms_from(atoms_or_model))
-          if is_metal(a.element, metals)]
-
-
 def count_metals(atoms_or_model, metals=None):
   """Return the number of metal atoms in ``atoms_or_model``."""
   return sum(1 for a in _atoms_from(atoms_or_model) if is_metal(a.element, metals))

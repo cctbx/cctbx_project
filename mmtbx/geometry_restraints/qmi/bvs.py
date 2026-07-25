@@ -50,7 +50,8 @@ def _table():
       blk["_valence_param_atom_2"], blk["_valence_param_Ro"],
       blk["_valence_param_B"]):
     try:
-      key = (cation.capitalize(), int(valence), anion.capitalize())
+      key = (metals.normalize_element(cation), int(valence),
+             metals.normalize_element(anion))
     except ValueError:
       continue
     if key not in table:                        # first row = most reliable

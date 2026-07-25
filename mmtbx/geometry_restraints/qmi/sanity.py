@@ -10,12 +10,12 @@ and *flagged, not fixed* (the QM target always stands):
 - a bond-valence plausibility window from the vendored bond-valence parameters
   [35] (the same table qmi.bvs uses) over the metal's accessible oxidation
   states.  Outside it => the distance is physically implausible (a collapsed or
-  dissociating contact) -- a stronger signal of a wrong state, bad cluster or
+  dissociating contact), a stronger signal of a wrong state, bad cluster or
   SCF failure.
 
 Coarse by design: the emitted value is a QM-optimised distance carrying xTB
-error, so both windows are per (metal, donor element) with generous tolerance --
-a plausibility check, not a crystallographic-accuracy check.
+error, so both windows are per (metal, donor element) with generous tolerance, a
+plausibility check, not a crystallographic-accuracy check.
 """
 
 from __future__ import absolute_import, division, print_function

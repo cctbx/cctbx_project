@@ -334,8 +334,8 @@ class QMRestraintsBuilder(object):
     descs = []
     for i in donor_iseqs:
       a = atoms[i]
-      c = donors.classify(a.element, a.parent().resname, a.name)
-      descs.append(group_args(element=c.element, kind=c.kind, field=c.field,
+      c = donors.classify(a.element, a.parent().resname)
+      descs.append(group_args(element=c.element, kind=c.kind,
                               charge=c.charge, strong_axial=c.strong_axial,
                               res_id=util.residue_key(a)))
     return donors.summarize(descs) if descs else None
@@ -471,8 +471,8 @@ class QMRestraintsBuilder(object):
     M-L distances leave the angles under-determined, i.e. a CN <= 2 (linear/bent)
     site, where the metal lies on a circle around the donor-donor axis so the
     L-M-L angle is free. At CN >= 3 the donors triangulate the metal and the
-    distances fix every angle whatever the polyhedron, so no angle is emitted -- a
-    rubredoxin Fe(SCys)4 tetrahedron is held by its four bonds alone."""
+    distances fix every angle whatever the polyhedron, so no angle is emitted (a
+    rubredoxin Fe(SCys)4 tetrahedron is held by its four bonds alone)."""
     if self.angle_restraints == "always":
       return True
     if self.angle_restraints == "never":
@@ -707,7 +707,8 @@ class QMRestraintsBuilder(object):
               f"(attempt {attempt}/{self.perturb_attempts}, plan Sec 5F)",
               file=self.logger)
         perturbed = sigma.imaginary_mode_perturbation(
-          hessian, metal_iseq, donor_iseqs, masses, opt_sites, step=step)
+          hessian, metal_iseq, donor_iseqs, masses, opt_sites, step=step,
+          eigen=chk.eigen)
         opt_sites = self._reoptimise(submodel, perturbed, frozen_iseqs, charge,
                                      multiplicity, work_dir, f"qmi_reopt{attempt}")
         hessian, sig, chk = hessian_sigmas(opt_sites, f"qmi_reopt{attempt}_hess")

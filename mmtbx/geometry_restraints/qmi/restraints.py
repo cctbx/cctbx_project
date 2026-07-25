@@ -193,15 +193,19 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       continue
     usable.append(d)
 
+  # Per-donor selection string and metal-relative vector, computed once; the
+  # angle loop would otherwise rebuild each donor's selection string O(N) times.
+  sels = [_selection_string(atoms[d]) for d in usable]
+  vecs = [matrix.col(opt_sites_cart[d]) - metal_xyz for d in usable]
+
   bonds = []
-  for d in usable:
-    vec = matrix.col(opt_sites_cart[d]) - metal_xyz
+  for idx, d in enumerate(usable):
     s = bond_sigmas.get(d) if bond_sigmas else None
     bonds.append(dict(
       atom_selection_1=metal_sel,
-      atom_selection_2=_selection_string(atoms[d]),
+      atom_selection_2=sels[idx],
       donor_element=atoms[d].element.strip(),
-      distance_ideal=vec.length(),
+      distance_ideal=vecs[idx].length(),
       sigma=s if s is not None else bond_sigma,
       sigma_origin="hessian" if s is not None else "conservative_fallback",
     ))
@@ -209,7 +213,6 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   angles = []
   if emit_angles:
     for a in range(len(usable)):
-      va = matrix.col(opt_sites_cart[usable[a]]) - metal_xyz
       for b in range(a + 1, len(usable)):
         key = frozenset((usable[a], usable[b]))
         if angle_sigmas is None:            # whole-Hessian conservative fallback
@@ -219,12 +222,11 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
           origin = angle_origins.get(key, "hessian") if angle_origins else "hessian"
         else:                               # contaminated, no site fallback:
           s, origin = angle_sigma, "conservative_fallback"   # conservative default
-        vb = matrix.col(opt_sites_cart[usable[b]]) - metal_xyz
         angles.append(dict(
-          atom_selection_1=_selection_string(atoms[usable[a]]),
+          atom_selection_1=sels[a],
           atom_selection_2=metal_sel,
-          atom_selection_3=_selection_string(atoms[usable[b]]),
-          angle_ideal=va.angle(vb, deg=True),
+          atom_selection_3=sels[b],
+          angle_ideal=vecs[a].angle(vecs[b], deg=True),
           sigma=s,
           sigma_origin=origin,
         ))

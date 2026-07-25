@@ -13,11 +13,11 @@ This module also carries the COMMITTING predictor (plan Sec 6). Given a metal,
 its CShM geometry class, coordination number, and a donor summary (from
 :mod:`mmtbx.geometry_restraints.qmi.donors`, all refinement-robust features),
 :func:`predict_state` ALWAYS commits a single (oxidation, multiplicity) with a
-confidence label -- it never defers to the user and never widens a sigma;
+confidence label: it never defers to the user and never widens a sigma;
 uncertainty is reported as the confidence, a different object than a restraint
 sigma. Oxidation is narrowed by donor hardness + CN + geometry (plan Sec 6.3),
 never by bond lengths. Spin is high-spin by default and flips to low spin only
-on a determinable strong-field signature -- in biological macromolecules that is
+on a determinable strong-field signature; in biological macromolecules that is
 a heme with a strong axial-donor pair (bis-His / His-Met) [45, 46, 48], not a
 pi-acid diatomic (essentially exogenous here); non-heme biological Fe is
 high-spin at every geometry [41].
@@ -87,7 +87,7 @@ OXIDATION_PRIORS = {
 # crystal [42], but predict_oxidation() overrides it toward Fe(III) on a ferric
 # donor signature (tyrosinate [50], hard-anionic-O charge <= -2 [37, 44]) and
 # back toward Fe(II) on a ferrous one (2-His-1-carboxylate facial triad [41], an
-# all-thiolate Fe(S-Cys)n set [49]) -- with the confidence set accordingly.
+# all-thiolate Fe(S-Cys)n set [49]), with the confidence set accordingly.
 #
 # SPIN INVARIANT (load-bearing): the multiplicity commit is HIGH-SPIN by default
 # and flips to low spin ONLY in predict_spin's heme branch (octahedral d4-d7 with
@@ -108,7 +108,7 @@ def accessible_oxidation_states(element):
 def default_oxidation(element):
   """Dominant biological resting-state oxidation to commit for a metal when
   structure leaves more than one candidate (plan 6.6), or None when the metal
-  is outside the vetted priors OR has no dominant state (Fe)."""
+  is outside the vetted priors."""
   p = OXIDATION_PRIORS.get(metals.normalize_element(element))
   return p.default if p is not None else None
 
@@ -239,7 +239,7 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
     if summary is not None:
       # SOD-fold resting/oxidised Mn(III): a 5-coordinate trigonal-bipyramidal
       # 3-His / 1-carboxylate / 1-solvent site, resting Mn(III)-hydroxo by QM and
-      # neutron structure [58, 59, 62, 64]. MEDIUM only -- the reduced Mn(II)-SOD
+      # neutron structure [58, 59, 62, 64]. MEDIUM only, the reduced Mn(II)-SOD
       # state is isostructural [57].
       if (cn == 5 and geometry == TRIGONAL_BIPYRAMIDAL
           and summary.n_his == 3 and summary.n_carboxylate == 1
@@ -297,7 +297,7 @@ def is_encoded(geometry, d_count):
   any other geometry the spin is encoded only where the d-count is field-
   INDEPENDENT (0-3, 9, 10 give the same unpaired count in any field); the
   remaining field-dependent d-counts (4-7) at 5-coordinate / trigonal-prism
-  geometries fall back to the weak-field high-spin count -- predict_spin still
+  geometries fall back to the weak-field high-spin count; predict_spin still
   commits them high-spin, but flags the lower certainty via ``encoded``."""
   if geometry in (OCTAHEDRAL, TETRAHEDRAL):
     return True

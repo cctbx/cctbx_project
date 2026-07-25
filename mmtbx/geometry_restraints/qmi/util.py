@@ -21,6 +21,12 @@ from contextlib import contextmanager
 DEFAULT_COORDINATION_CUTOFF_A = 3.0
 
 
+# common_residue_names_get_class outputs that count as a protein residue (standard
+# + modified, so e.g. MSE selenomethionine qualifies). Shared by qm (coordinating
+# backbone) and donors (backbone donor classification) so the two cannot diverge.
+AA_RESIDUE_CLASSES = frozenset(("common_amino_acid", "modified_amino_acid"))
+
+
 # CShM geometry-class names: the single vocabulary shape.py produces (as
 # IDEAL_POLYHEDRA / SHAPES_BY_CN keys) and electronic.py consumes. Named here so
 # a rename/typo cannot silently diverge producer from consumer (a divergence

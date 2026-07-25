@@ -373,7 +373,7 @@ def exercise_perturb_reopt():
     sigma.seminario_sigmas = lambda *a, **k: group_args(
       bond_sigmas={1: 0.02}, angle_sigmas={}, angle_origins={})
     sigma.imaginary_mode_check = lambda *a, **k: group_args(
-      stable=next(stability), frequencies=[], imaginary=[])
+      stable=next(stability), frequencies=[], imaginary=[], eigen=None)
 
     def run(builder):
       hpre[:] = []; opre[:] = []; steps[:] = []; calls["reopt"] = 0
@@ -417,10 +417,10 @@ def exercise_provenance():
   assert any(ln.startswith("protonation:") for ln in g)
   assert not any("resolution" in ln for ln in g)          # omitted when None
 
-  bvs = group_args(best=3, valences={}, n_used=4)
+  bvs_est = group_args(best=3, valences={}, n_used=4)
   s = "\n".join(provenance.site_block(
     "Fe", "Fe_A54", 3, 6, 1, "guessed", "medium",
-    "coordinating tyrosinate", "high-spin", bvs, "hessian", 1, 2))
+    "coordinating tyrosinate", "high-spin", bvs_est, "hessian", 1, 2))
   assert "site Fe_A54: Fe ox=+3 mult=6 charge=+1" in s
   assert "source=guessed/medium" in s
   assert "oxidation (coordinating tyrosinate); spin (high-spin)" in s
@@ -969,8 +969,8 @@ def exercise_electronic():
     """Build a donors.summarize() result from (element, resname, name, res_id)."""
     ds = []
     for elx, rn, nm, rid in spec:
-      c = D.classify(elx, rn, nm)
-      ds.append(group_args(element=c.element, kind=c.kind, field=c.field,
+      c = D.classify(elx, rn)
+      ds.append(group_args(element=c.element, kind=c.kind,
                            charge=c.charge, strong_axial=c.strong_axial,
                            res_id=rid))
     return D.summarize(ds)
@@ -1037,7 +1037,7 @@ def exercise_electronic():
   assert m_ty.oxidation == 3 and m_ty.confidence == el.CONF_LOW
   m_def = el.predict_oxidation("Mn", "octahedral", 6, None)
   assert m_def.oxidation == 2 and m_def.confidence == el.CONF_LOW
-  # Mn spin: always high-spin -- Mn(II) d5 sextet(6), Mn(III) d4 quintet(5).
+  # Mn spin: always high-spin, Mn(II) d5 sextet(6), Mn(III) d4 quintet(5).
   assert el.predict_state("Mn", "octahedral", 6, cupin).multiplicity == 6
   assert el.predict_state("Mn", el.TRIGONAL_BIPYRAMIDAL, 5, sod).multiplicity == 5
   assert el.predict_spin("Mn", 3, "octahedral", None).low_spin is False
@@ -1110,20 +1110,20 @@ def exercise_deprotonation_metal_gating():
 def exercise_donors():
   """Biological donor classification + coordination summary (robust features
   only: residue/element identity, no bond lengths)."""
-  # classify: kind / field / formal charge / strong-axial role.
-  assert D.classify("N", "HIS", "NE2").kind == "his_n"
-  assert D.classify("N", "HIS", "NE2").strong_axial          # imidazole axial
-  assert D.classify("O", "ASP", "OD1").charge == -1          # carboxylate anion
-  assert D.classify("O", "TYR", "OH").kind == "tyrosinate_o"
-  cys = D.classify("S", "CYS", "SG")
+  # classify: kind / formal charge / strong-axial role.
+  assert D.classify("N", "HIS").kind == "his_n"
+  assert D.classify("N", "HIS").strong_axial                 # imidazole axial
+  assert D.classify("O", "ASP").charge == -1                 # carboxylate anion
+  assert D.classify("O", "TYR").kind == "tyrosinate_o"
+  cys = D.classify("S", "CYS")
   assert cys.charge == -1 and not cys.strong_axial           # thiolate, soft
-  assert D.classify("S", "MET", "SD").strong_axial           # thioether His/Met
-  assert D.classify("O", "HOH", "O").kind == "water_o"
-  assert D.classify("N", "HEM", "NA").kind == "het_n"        # porphyrin N (het)
+  assert D.classify("S", "MET").strong_axial                 # thioether His/Met
+  assert D.classify("O", "HOH").kind == "water_o"
+  assert D.classify("N", "HEM").kind == "het_n"              # porphyrin N (het)
 
-  def desc(el, rn, nm, rid):
-    c = D.classify(el, rn, nm)
-    return group_args(element=c.element, kind=c.kind, field=c.field,
+  def desc(elx, rn, nm, rid):
+    c = D.classify(elx, rn)
+    return group_args(element=c.element, kind=c.kind,
                       charge=c.charge, strong_axial=c.strong_axial, res_id=rid)
 
   # Heme by FeN4 topology: 4 N from ONE residue -> heme; 4 His N from four

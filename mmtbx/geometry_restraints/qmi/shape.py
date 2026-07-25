@@ -365,10 +365,10 @@ def csm_against_shape(observed, shape_name, centroid_normalized=False,
            if symmetry_reduced and not centroid_normalized
            else _perm_index(n))
   csm, perm = _best_csm_over_permutations(Q, P, perms)
-  # gRMSD on the original (uncentered) observed vs the best-permuted ideal;
-  # angles are translation/scale invariant so the convention does not matter.
-  P_best = ideal.select(flex.size_t(perm))
-  grmsd = _angular_grmsd(observed, P_best)
+  # gRMSD on the original (uncentered) observed vs the ideal; angles are
+  # translation/scale invariant and the sorted pairwise-angle set is
+  # permutation-invariant, so neither centering nor the CShM permutation matters.
+  grmsd = _angular_grmsd(observed, ideal)
   return group_args(shape=shape_name, csm=csm, gRMSD_deg=grmsd, permutation=perm)
 
 

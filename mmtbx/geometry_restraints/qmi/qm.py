@@ -61,9 +61,8 @@ DEFAULT_SOLVENT = "ether"
 DEFAULT_METHOD = "GFN2-xTB"
 
 _BACKBONE_NAMES = {"N", "CA", "C", "O", "OXT"}
-# Protein residue classes (standard + modified, so e.g. MSE selenomethionine is
-# recognised) whose backbone atoms qualify for the coordinating-backbone rule.
-_AA_CLASSES = ("common_amino_acid", "modified_amino_acid")
+# Protein residue classes qualifying for the coordinating-backbone rule.
+_AA_CLASSES = util.AA_RESIDUE_CLASSES
 
 
 def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
@@ -183,9 +182,6 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
           cofactor_residues_freed.add(
             (chain.id.strip(), rg.resseq.strip(), resname))
 
-  # Positional index per atom, so a coordinating backbone O can free its
-  # partner carbonyl C (located by atom-group membership).
-  pos_by_id = {atom.memory_id(): i for i, atom in enumerate(atoms)}
   coord_unfreezes = []
   carbonyl_unit_iseqs = set()
   carbonyl_unit_log = []
@@ -210,7 +206,7 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
         if name in ("O", "OXT"):
           for sib in ag.atoms():
             if sib.name.strip().upper() in ("C", "CA"):
-              carbonyl_unit_iseqs.add(pos_by_id[sib.memory_id()])
+              carbonyl_unit_iseqs.add(sib.i_seq)
           carbonyl_unit_log.append((ch.id.strip(), rg.resseq.strip()))
 
   # Applied after the discard pass so the result is independent of atom order

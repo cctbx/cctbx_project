@@ -44,7 +44,7 @@ from mmtbx.geometry_restraints.qmi import util
 
 # Distance defining a metal-coordinating donor (Harding / CheckMyMetal); the
 # single value lives in qmi.util so the pipeline cannot silently diverge.
-DEFAULT_COORD_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
+DEFAULT_COORDINATION_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
 
 # Anionic donors: (resname, donor heavy-atom) -> H names to strip so charge
 # accounting reads them as anionic, not neutral.
@@ -260,7 +260,7 @@ def _relocate_or_remove_his_h(ag, coord_n, coord_h, metal_d):
 # metal-donor deprotonation
 # ---------------------------------------------------------------------------
 def deprotonate_metal_donors(hier, metals=None,
-                             coord_cutoff_A=DEFAULT_COORD_CUTOFF_A,
+                             coord_cutoff_A=DEFAULT_COORDINATION_CUTOFF_A,
                              log=None):
   """Fix, IN PLACE, the protonation of sidechain donors in *hier* coordinating
   any metal atom (within *coord_cutoff_A*).
