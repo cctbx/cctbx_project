@@ -617,17 +617,30 @@ def exercise_metal_ligand_restraints():
 
 
 def exercise_symmetry_donor_skip():
-  # A donor whose chain is absent from the original model (a symmetry image on
-  # a renamed chain) has no input-model selection and must be skipped.
+  # A donor whose chain is absent from the original model (a symmetry image on a
+  # renamed chain) has no plain input-model selection.
   model = _model(_ZN_SITE_PDB)
   sites = model.get_hierarchy().atoms().extract_xyz()
+  atoms = model.get_hierarchy().atoms()
   donors = restraints.detect_first_shell(model, 0, sites_cart=sites)
   keep = restraints.metal_ligand_restraints(
     model, sites, 0, donors, original_chain_ids=["A"], log=null_out())
   assert keep.n_skipped_symmetry == 0 and len(keep.bonds) == 4
+  # Without provenance a symmetry-image donor is skipped.
   skip = restraints.metal_ligand_restraints(
     model, sites, 0, donors, original_chain_ids=["Q"], log=null_out())
   assert skip.n_skipped_symmetry == 4 and len(skip.bonds) == 0
+  # With provenance it is emitted as a bond to its ASU parent via
+  # symmetry_operation (no angle -- angles cannot cross symmetry).
+  prov = {d: (atoms[d], "-x,-y,-z") for d in donors}
+  sym = restraints.metal_ligand_restraints(
+    model, sites, 0, donors, original_chain_ids=["Q"],
+    sym_image_provenance=prov, log=null_out())
+  assert sym.n_skipped_symmetry == 0 and len(sym.bonds) == 4 and not sym.angles
+  assert all(b["symmetry_operation"] == "-x,-y,-z" for b in sym.bonds)
+  edits = restraints.as_edits_phil(sym)
+  libtbx.phil.parse(edits)              # symmetry_operation renders as valid PHIL
+  assert edits.count("symmetry_operation = -x,-y,-z") == 4
 
 
 # ---------------------------------------------------------------------------

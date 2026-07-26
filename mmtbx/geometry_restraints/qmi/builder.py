@@ -365,6 +365,7 @@ class QMRestraintsBuilder(object):
     cap_iseqs = seed["cap_iseqs"]
     cap_original_elements = seed.get("cap_original_elements", ())
     cap_anchor_iseqs = seed.get("cap_anchor_iseqs", ())
+    sym_image_provenance = seed.get("sym_image_provenance", {})
     atoms = submodel.get_hierarchy().atoms()
 
     if not seed_iseqs:
@@ -387,15 +388,16 @@ class QMRestraintsBuilder(object):
     # feed the electronic guess (the class sets the ligand-field spin).
     donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
-    # Angle-restraint gate (plan Sec 7): count the donors that will actually be
-    # restrained. metal_ligand_restraints drops symmetry-image donors (no
-    # input-model selection), so their bonds are never emitted and cannot
-    # triangulate the metal; gating on the raw shell count would wrongly omit
-    # angles for a site whose count is inflated by a symmetry mate.
-    n_emittable = sum(
+    # Angle-restraint gate (plan Sec 7): count the donors that will actually get a
+    # bond. A symmetry-image donor is bonded to its ASU parent (via
+    # symmetry_operation) when endo_exo supplied provenance; one without it is
+    # skipped and cannot triangulate. Gating on the bonded count keeps a
+    # symmetry-coordinated site from wrongly emitting or omitting its angle.
+    n_bonded = sum(
       1 for d in donor_iseqs
-      if not restraints.is_symmetry_image(atoms[d], original_chain_ids))
-    emit_angles = self._emit_angles(n_emittable)
+      if not restraints.is_symmetry_image(atoms[d], original_chain_ids)
+         or d in sym_image_provenance)
+    emit_angles = self._emit_angles(n_bonded)
     # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
     # oxidation over the accessible states, from the OBSERVED first-shell
     # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
@@ -429,7 +431,7 @@ class QMRestraintsBuilder(object):
         index, seed, submodel, metal_iseq, donor_iseqs, cap_iseqs,
         cap_original_elements, geom, metal_element, site_tag,
         original_chain_ids, bvs_est, summary, frozen_iseqs, site_dir,
-        emit_angles)
+        emit_angles, sym_image_provenance)
 
     override = self._lookup_override(submodel, metal_iseq)
     coord_n = self._coordination_number(geom)
@@ -471,6 +473,7 @@ class QMRestraintsBuilder(object):
       metal_element, site_tag, original_chain_ids, bvs_est,
       state.oxidation_state, state.multiplicity, charge,
       site_dir, state.state_source, emit_angles=emit_angles,
+      sym_image_provenance=sym_image_provenance,
       low_spin=state.low_spin, confidence=state.confidence,
       oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason)]
 
@@ -482,26 +485,28 @@ class QMRestraintsBuilder(object):
     instead (every emitted M-L bond)."""
     return geom.cn + geom.n_bidentate_carboxylate
 
-  def _emit_angles(self, n_emittable):
+  def _emit_angles(self, n_bonded):
     """Whether to emit donor-metal-donor angle restraints for this site (plan
     Sec 7). ``always`` / ``never`` are unconditional; ``auto`` emits only when the
     emitted M-L bonds leave the angles under-determined, i.e. <= 2 donors will be
     restrained (linear/bent), where the metal lies on a circle around the
     donor-donor axis so the L-M-L angle is free. With >= 3 emitted bonds the metal
     is triangulated and every angle is fixed whatever the polyhedron (a rubredoxin
-    Fe(SCys)4 tetrahedron is held by its four bonds alone). *n_emittable* is the
-    count of donors that actually get a bond (a chelate's second O counts, a
-    symmetry-image donor does not: it carries no input-model selection)."""
+    Fe(SCys)4 tetrahedron is held by its four bonds alone). *n_bonded* is the
+    count of donors that actually get a bond: a chelate's second O counts, and a
+    symmetry-image donor counts when endo_exo supplied provenance (it is bonded to
+    its ASU parent via symmetry_operation)."""
     if self.angle_restraints == "always":
       return True
     if self.angle_restraints == "never":
       return False
-    return n_emittable <= 2
+    return n_bonded <= 2
 
   def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
                           cap_iseqs, cap_original_elements, geom, metal_element,
                           site_tag, original_chain_ids, bvs_est, summary,
-                          frozen_iseqs, site_dir, emit_angles):
+                          frozen_iseqs, site_dir, emit_angles,
+                          sym_image_provenance):
     """states=reasonable/all scan: report the predictor's guess (informational;
     not used to pick), then run every scanned (oxidation, multiplicity) state,
     each in its own qm_work_dir/<stem>_<chain>_<resseq>/ox<n>_mult<m>/ subdir.
@@ -551,7 +556,7 @@ class QMRestraintsBuilder(object):
           metal_element, site_tag, original_chain_ids, bvs_est, ox, mult, charge,
           state_dir,
           f"{self.states}-states (predicted)" if is_pred else f"{self.states}-states",
-          emit_angles=emit_angles,
+          emit_angles=emit_angles, sym_image_provenance=sym_image_provenance,
           confidence=(pred.confidence if is_pred else None),
           oxidation_reason=(pred.oxidation_reason if is_pred else None),
           spin_reason=(pred.spin_reason if is_pred else None)))
@@ -605,7 +610,8 @@ class QMRestraintsBuilder(object):
   def _run_state(self, index, seed, submodel, metal_iseq, donor_iseqs,
                  frozen_iseqs, metal_element, site_tag, original_chain_ids,
                  bvs_est, oxidation, multiplicity, charge, work_dir,
-                 state_source, emit_angles=True, low_spin=None, confidence=None,
+                 state_source, emit_angles=True, sym_image_provenance=None,
+                 low_spin=None, confidence=None,
                  oxidation_reason=None, spin_reason=None):
     """Run the constrained opt + Hessian + restraint assembly for a single
     (oxidation, multiplicity, charge) state in *work_dir* (writing optimized.pdb
@@ -637,7 +643,8 @@ class QMRestraintsBuilder(object):
       submodel, opt_sites, metal_iseq, donor_iseqs,
       bond_sigmas=bond_sigmas, angle_sigmas=angle_sigmas,
       angle_origins=angle_origins, emit_angles=emit_angles,
-      original_chain_ids=original_chain_ids, log=self.logger)
+      original_chain_ids=original_chain_ids,
+      sym_image_provenance=sym_image_provenance, log=self.logger)
     # Sanity bounds (plan Sec 9.4): cross-check each emitted M-donor distance vs
     # the empirical target and bond-valence windows; flag, never alter.
     site_sanity = sanity.check_site(

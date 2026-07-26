@@ -124,14 +124,17 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
                             angle_origins=None, emit_angles=True,
                             bond_sigma=DEFAULT_BOND_SIGMA,
                             angle_sigma=DEFAULT_ANGLE_SIGMA,
-                            original_chain_ids=None, log=None):
+                            original_chain_ids=None, sym_image_provenance=None,
+                            log=None):
   """Build bond + angle restraint records from the optimised geometry.
 
   One bond per metal-donor contact (``distance_ideal`` = optimised M-donor
   distance) and one angle per donor-metal-donor pair (``angle_ideal`` =
-  optimised donor-metal-donor angle).  Donors whose selection cannot be
-  expressed against the input model (symmetry images on renamed chains) are
-  skipped and counted in the returned ``n_skipped_symmetry``.
+  optimised donor-metal-donor angle).  A symmetry-image donor (on a renamed
+  chain) is emitted as a bond to its ASU parent via a ``symmetry_operation`` when
+  *sym_image_provenance* supplies it (angles cannot cross symmetry, so it gets no
+  angle); a symmetry-image donor without provenance is skipped and counted in the
+  returned ``n_skipped_symmetry``.
 
   Parameters
   ----------
@@ -160,8 +163,13 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       Conservative M-L fallback sigmas used when no Seminario value is supplied
       (flagged ``conservative_fallback``).
   original_chain_ids : iterable of str or None
-      Chain ids present in the original input model; used to skip
-      symmetry-image donors.  ``None`` disables the check (all donors emitted).
+      Chain ids present in the original input model; used to identify
+      symmetry-image donors.  ``None`` disables the check (all donors emitted as
+      plain bonds).
+  sym_image_provenance : dict {donor_iseq: (asu_parent_atom, symmetry_op_xyz)} or None
+      Provenance for symmetry-image donors (from endo_exo). A symmetry-image
+      donor present here is emitted as a bond to its ASU parent with
+      ``symmetry_operation`` set; one absent here is skipped.
   log : file-like or None
 
   Returns
@@ -181,15 +189,21 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   if original_chain_ids is not None:
     original_chain_ids = frozenset(c.strip() for c in original_chain_ids)
 
-  usable = []
+  prov = sym_image_provenance or {}
+  usable = []          # non-symmetry donors: plain bonds + angles
+  sym_bonds = []       # (donor_iseq, asu_parent_atom, op_xyz): symmetry bonds only
   n_skipped = 0
   for d in donor_iseqs:
     if (original_chain_ids is not None
         and is_symmetry_image(atoms[d], original_chain_ids)):
-      donor_id = atoms[d].id_str().replace("pdb=", "")
-      print(f"    skipping symmetry-image donor {donor_id} "
-            f"(no input-model selection)", file=log)
-      n_skipped += 1
+      entry = prov.get(d)
+      if entry is None:
+        donor_id = atoms[d].id_str().replace("pdb=", "")
+        print(f"    skipping symmetry-image donor {donor_id} "
+              f"(no provenance for a symmetry_operation bond)", file=log)
+        n_skipped += 1
+        continue
+      sym_bonds.append((d, entry[0], entry[1]))
       continue
     usable.append(d)
 
@@ -198,17 +212,25 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   sels = [_selection_string(atoms[d]) for d in usable]
   vecs = [matrix.col(opt_sites_cart[d]) - metal_xyz for d in usable]
 
-  bonds = []
-  for idx, d in enumerate(usable):
-    s = bond_sigmas.get(d) if bond_sigmas else None
-    bonds.append(dict(
+  def _bond_record(donor, selection, distance, sym_op):
+    s = bond_sigmas.get(donor) if bond_sigmas else None
+    return dict(
       atom_selection_1=metal_sel,
-      atom_selection_2=sels[idx],
-      donor_element=atoms[d].element.strip(),
-      distance_ideal=vecs[idx].length(),
+      atom_selection_2=selection,
+      symmetry_operation=sym_op,
+      donor_element=atoms[donor].element.strip(),
+      distance_ideal=distance,
       sigma=s if s is not None else bond_sigma,
       sigma_origin="hessian" if s is not None else "conservative_fallback",
-    ))
+    )
+
+  bonds = [_bond_record(d, sels[idx], vecs[idx].length(), None)
+           for idx, d in enumerate(usable)]
+  # Symmetry-image donors: restrain the metal to symmetry_operation * ASU-parent
+  # (angles cannot cross symmetry, so these get bonds only).
+  for d, parent_atom, op_xyz in sym_bonds:
+    distance = (matrix.col(opt_sites_cart[d]) - metal_xyz).length()
+    bonds.append(_bond_record(d, _selection_string(parent_atom), distance, op_xyz))
 
   angles = []
   if emit_angles:
@@ -259,6 +281,10 @@ def as_edits_phil(restraints, header=None):
       "        action = *add",
       f"        atom_selection_1 = {b['atom_selection_1']}",
       f"        atom_selection_2 = {b['atom_selection_2']}",
+    ]
+    if b.get('symmetry_operation'):
+      lines.append(f"        symmetry_operation = {b['symmetry_operation']}")
+    lines += [
       f"        distance_ideal = {b['distance_ideal']:.4f}",
       f"        sigma = {b['sigma']:.4f}",
       "      }",
