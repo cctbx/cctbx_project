@@ -387,9 +387,15 @@ class QMRestraintsBuilder(object):
     # feed the electronic guess (the class sets the ligand-field spin).
     donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
-    # Angle-restraint gate (plan Sec 7): whether the M-L distances leave the
-    # coordination angles under-determined; the same geom classification drives it.
-    emit_angles = self._emit_angles(geom)
+    # Angle-restraint gate (plan Sec 7): count the donors that will actually be
+    # restrained. metal_ligand_restraints drops symmetry-image donors (no
+    # input-model selection), so their bonds are never emitted and cannot
+    # triangulate the metal; gating on the raw shell count would wrongly omit
+    # angles for a site whose count is inflated by a symmetry mate.
+    n_emittable = sum(
+      1 for d in donor_iseqs
+      if not restraints.is_symmetry_image(atoms[d], original_chain_ids))
+    emit_angles = self._emit_angles(n_emittable)
     # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
     # oxidation over the accessible states, from the OBSERVED first-shell
     # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
@@ -426,7 +432,8 @@ class QMRestraintsBuilder(object):
         emit_angles)
 
     override = self._lookup_override(submodel, metal_iseq)
-    state = self._resolve_state(metal_element, override, geom.shape, geom.cn,
+    coord_n = self._coordination_number(geom)
+    state = self._resolve_state(metal_element, override, geom.shape, coord_n,
                                 summary, bvs_est=bvs_est)
     if state.skipped:
       return [self._skip_result(index, seed, state.skipped,
@@ -436,7 +443,7 @@ class QMRestraintsBuilder(object):
                  if state.state_source in ("guessed", "bvs") else "")
     print(f"Site {index}: {metal_element}, {state.state_source} "
           f"ox={state.oxidation_state:+d} mult={state.multiplicity} "
-          f"(shape={geom.shape or 'unclassified'}, CN={geom.cn}){conf_note}",
+          f"(shape={geom.shape or 'unclassified'}, CN={coord_n}){conf_note}",
           file=self.logger)
     if state.state_source in ("guessed", "bvs"):
       prefix = "predicted: " if state.state_source == "guessed" else ""
@@ -467,19 +474,29 @@ class QMRestraintsBuilder(object):
       low_spin=state.low_spin, confidence=state.confidence,
       oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason)]
 
-  def _emit_angles(self, geom):
+  def _coordination_number(self, geom):
+    """Coordinative coordination number for the electronic predictor: the
+    effective vertex count with each symmetric bidentate carboxylate counted as
+    its two donor O (its formal denticity), but an anisobidentate far O left out
+    as a long semicoordinate contact. The bond-based angle gate uses raw_cn
+    instead (every emitted M-L bond)."""
+    return geom.cn + geom.n_bidentate_carboxylate
+
+  def _emit_angles(self, n_emittable):
     """Whether to emit donor-metal-donor angle restraints for this site (plan
     Sec 7). ``always`` / ``never`` are unconditional; ``auto`` emits only when the
-    M-L distances leave the angles under-determined, i.e. a CN <= 2 (linear/bent)
-    site, where the metal lies on a circle around the donor-donor axis so the
-    L-M-L angle is free. At CN >= 3 the donors triangulate the metal and the
-    distances fix every angle whatever the polyhedron, so no angle is emitted (a
-    rubredoxin Fe(SCys)4 tetrahedron is held by its four bonds alone)."""
+    emitted M-L bonds leave the angles under-determined, i.e. <= 2 donors will be
+    restrained (linear/bent), where the metal lies on a circle around the
+    donor-donor axis so the L-M-L angle is free. With >= 3 emitted bonds the metal
+    is triangulated and every angle is fixed whatever the polyhedron (a rubredoxin
+    Fe(SCys)4 tetrahedron is held by its four bonds alone). *n_emittable* is the
+    count of donors that actually get a bond (a chelate's second O counts, a
+    symmetry-image donor does not: it carries no input-model selection)."""
     if self.angle_restraints == "always":
       return True
     if self.angle_restraints == "never":
       return False
-    return geom.cn is not None and geom.cn <= 2
+    return n_emittable <= 2
 
   def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
                           cap_iseqs, cap_original_elements, geom, metal_element,
@@ -491,12 +508,13 @@ class QMRestraintsBuilder(object):
     'all' is geometry-blind (both spin extremes); 'reasonable' keeps only the
     spin(s) the site's ligand field permits. Returns one result per state (the
     predicted state, if it is among those scanned, is tagged)."""
-    pred = electronic.predict_state(metal_element, geom.shape, geom.cn, summary)
+    coord_n = self._coordination_number(geom)
+    pred = electronic.predict_state(metal_element, geom.shape, coord_n, summary)
     if pred is not None:
       print(f"Site {index}: {metal_element}, predictor -> "
             f"ox={pred.oxidation_state:+d} mult={pred.multiplicity} "
             f"[confidence {pred.confidence}] "
-            f"(shape={geom.shape or 'unclassified'}, CN={geom.cn})",
+            f"(shape={geom.shape or 'unclassified'}, CN={coord_n})",
             file=self.logger)
       print(f"  predicted: oxidation ({pred.oxidation_reason}); "
             f"spin ({pred.spin_reason})", file=self.logger)

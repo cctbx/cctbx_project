@@ -26,10 +26,11 @@ Two design choices specific to qmi:
   only; an anisobidentate carboxylate (unequal M-O) keeps only its near O, the
   far O being a long contact. The unweighted bisector is deliberate: distance
   weighting would reintroduce the bond-length dependence the angular-only
-  design excludes. ``cn`` (effective) is for geometry only; the true donor
-  count ``raw_cn`` is kept and flagged, and the electronic-state guess (plan 6)
-  should use ``raw_cn`` for ligand-field/electron counting. The QM
-  charge/cluster still sees both O.
+  design excludes. ``cn`` (effective) is for geometry only; the electronic-state
+  guess (plan 6) uses the denticity count ``cn + n_bidentate_carboxylate`` (a
+  symmetric chelate restored to its two O, an anisobidentate far O left out as a
+  long contact), while ``raw_cn`` (every shell donor) is the emitted M-L bond
+  count. The QM charge/cluster still sees both O.
 
 Coordinate math uses scitbx flex arrays plus numpy (both ship with cctbx and are
 used by endo_exo and naiad). The N! permutation search is vectorised with a
@@ -448,9 +449,9 @@ _CHELATE_MAX_ANGLE_DEG = 90.0
 
 # A chelate has two near-equal M-O bonds. If the two M-O differ by more than
 # this, the carboxylate is anisobidentate/monodentate: only the near O is a
-# coordination vertex and the far O is a long contact. Boundary from CSD
-# carboxylate binding-mode surveys (Rardin, Tolman, Lippard, New J. Chem. 1991,
-# 15, 417).
+# coordination vertex and the far O is a long contact. The anisobidentate mode
+# (the "carboxylate shift") is from Rardin, Tolman & Lippard [70]; the 0.5 A
+# split is a working boundary consistent with it, not a value from that survey.
 _CHELATE_MAX_ASYMMETRY_A = 0.5
 
 

@@ -112,7 +112,7 @@ def _selection_string(atom):
   return " and ".join(terms)
 
 
-def _is_symmetry_image(atom, original_chain_ids):
+def is_symmetry_image(atom, original_chain_ids):
   """True if *atom* sits on a chain that endo_exo created for a symmetry image
   (i.e. a chain id not present in the original model), so its selection string
   would not resolve in the input model."""
@@ -185,7 +185,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   n_skipped = 0
   for d in donor_iseqs:
     if (original_chain_ids is not None
-        and _is_symmetry_image(atoms[d], original_chain_ids)):
+        and is_symmetry_image(atoms[d], original_chain_ids)):
       donor_id = atoms[d].id_str().replace("pdb=", "")
       print(f"    skipping symmetry-image donor {donor_id} "
             f"(no input-model selection)", file=log)

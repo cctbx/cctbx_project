@@ -26,10 +26,11 @@ Two design choices specific to qmi:
   only; an anisobidentate carboxylate (unequal M-O) keeps only its near O, the
   far O being a long contact. The unweighted bisector is deliberate: distance
   weighting would reintroduce the bond-length dependence the angular-only
-  design excludes. ``cn`` (effective) is for geometry only; the true donor
-  count ``raw_cn`` is kept and flagged, and the electronic-state guess (plan 6)
-  should use ``raw_cn`` for ligand-field/electron counting. The QM
-  charge/cluster still sees both O.
+  design excludes. ``cn`` (effective) is for geometry only; the electronic-state
+  guess (plan 6) uses the coordinative count ``cn + n_bidentate_carboxylate`` (a
+  symmetric chelate restored to its two O, an anisobidentate far O left out as a
+  long contact), while ``raw_cn`` (every shell donor) is the emitted M-L bond
+  count. The QM charge/cluster still sees both O.
 
 Coordinate math uses only scitbx flex arrays and scitbx.linalg (no numpy). This
 is the pure-scitbx parallel of shape.py (the numpy-batched version used in the

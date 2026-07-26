@@ -293,18 +293,44 @@ def exercise_classify_angle_sigmas():
 
 
 def exercise_emit_angles():
-  """Angle-restraint gate (builder._emit_angles): 'auto' emits only for CN<=2
-  (linear, angle left free by the M-L distances); CN>=3 is triangulated by its
-  bonds, so no angle. 'always' / 'never' override regardless of CN."""
+  """Angle-restraint gate (builder._emit_angles): 'auto' emits only when <= 2
+  donors will actually be restrained, so the angle is left free; >= 3 emitted
+  bonds triangulate the metal, so no angle. 'always' / 'never' override."""
   auto = QMRestraintsBuilder(angle_restraints="auto", logger=null_out())
   always = QMRestraintsBuilder(angle_restraints="always", logger=null_out())
   never = QMRestraintsBuilder(angle_restraints="never", logger=null_out())
-  for cn, expect in [(1, True), (2, True), (3, False), (4, False), (6, False),
-                     (None, False)]:
-    assert auto._emit_angles(group_args(cn=cn)) is expect, cn
-  for cn in (2, 3, 6, None):
-    assert always._emit_angles(group_args(cn=cn)) is True, cn
-    assert never._emit_angles(group_args(cn=cn)) is False, cn
+  for n, expect in [(1, True), (2, True), (3, False), (4, False), (6, False)]:
+    assert auto._emit_angles(n) is expect, n
+  for n in (2, 3, 6):
+    assert always._emit_angles(n) is True, n
+    assert never._emit_angles(n) is False, n
+
+  # The gate counts EMITTABLE donors (dropping symmetry-image donors), not the
+  # raw shell: a symmetry-image donor inflates the shell but is not restrained,
+  # so it must not credit triangulation.
+  model = _model(_ZN_SITE_PDB)                 # 4 donors, all chain A
+  atoms = model.get_hierarchy().atoms()
+  donors = restraints.detect_first_shell(model, 0)
+  assert restraints.is_symmetry_image(atoms[donors[0]], ["Q"])       # chain A -> image
+  assert not restraints.is_symmetry_image(atoms[donors[0]], ["A"])
+  n_real = sum(1 for d in donors
+               if not restraints.is_symmetry_image(atoms[d], ["A"]))
+  n_image = sum(1 for d in donors
+                if not restraints.is_symmetry_image(atoms[d], ["Q"]))
+  assert n_real == 4 and n_image == 0
+
+
+def exercise_coordination_number():
+  """builder._coordination_number: the chemical (denticity) count fed to the
+  predictor is effective cn plus one per symmetric bidentate carboxylate (an
+  anisobidentate far O stays out, already excluded from cn)."""
+  b = QMRestraintsBuilder(logger=null_out())
+  # 2 His + monodentate Asp: no chelate -> denticity == effective cn.
+  assert b._coordination_number(group_args(cn=3, n_bidentate_carboxylate=0)) == 3
+  # 2 His + chelating Glu: cn=3 (2 N + bisector), one chelate -> denticity 4.
+  assert b._coordination_number(group_args(cn=3, n_bidentate_carboxylate=1)) == 4
+  # two chelates -> add both back.
+  assert b._coordination_number(group_args(cn=4, n_bidentate_carboxylate=2)) == 6
 
 
 def exercise_imaginary_mode():
@@ -1189,6 +1215,7 @@ def run():
   exercise_sigma_conversion()
   exercise_classify_angle_sigmas()
   exercise_emit_angles()
+  exercise_coordination_number()
   exercise_imaginary_mode()
   exercise_perturb_reopt()
   exercise_provenance()

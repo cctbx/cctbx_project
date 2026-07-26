@@ -15,8 +15,10 @@ its CShM geometry class, coordination number, and a donor summary (from
 :func:`predict_state` ALWAYS commits a single (oxidation, multiplicity) with a
 confidence label: it never defers to the user and never widens a sigma;
 uncertainty is reported as the confidence, a different object than a restraint
-sigma. Oxidation is narrowed by donor hardness + CN + geometry (plan Sec 6.3),
-never by bond lengths. Spin is high-spin by default and flips to low spin only
+sigma. Oxidation is narrowed by donor hardness + CN + geometry (plan Sec 6.3);
+the only bond-length input is the carboxylate binding mode that sets the CN, not
+a fit of the target distances. Spin is high-spin by default and flips to low spin
+only
 on a determinable strong-field signature; in biological macromolecules that is
 a heme with a strong axial-donor pair (bis-His / His-Met) [45, 46, 48], not a
 pi-acid diatomic (essentially exogenous here); non-heme biological Fe is
