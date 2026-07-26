@@ -487,8 +487,16 @@ def _effective_donors(atoms, metal_xyz, donor_iseqs):
   n_bidentate = 0
   for key, names in by_res.items():
     resname = key[-1]
-    pair = _CARBOXYLATE_O_PAIRS.get(resname, _CTERM_O_PAIR)
-    if pair[0] not in names or pair[1] not in names:
+    # Pick the O-pair actually collected: the sidechain carboxylate (OD1/OD2,
+    # OE1/OE2) when both its O coordinate, else the main-chain C-terminal pair
+    # (O/OXT). Keying on resname alone would force the sidechain pair for an
+    # ASP/GLU and skip a C-terminal Asp/Glu chelating via its backbone carboxylate.
+    sidechain = _CARBOXYLATE_O_PAIRS.get(resname)
+    if sidechain is not None and set(sidechain) <= names.keys():
+      pair = sidechain
+    elif set(_CTERM_O_PAIR) <= names.keys():
+      pair = _CTERM_O_PAIR
+    else:
       continue
     i0, i1 = names[pair[0]], names[pair[1]]
     v0 = matrix.col(atoms[i0].xyz) - m

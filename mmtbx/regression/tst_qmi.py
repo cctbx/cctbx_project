@@ -158,6 +158,18 @@ ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
 ATOM      6  NE2 HIS A  96       0.000   0.000   2.000  1.00 10.00           N
 """
 
+# Zn + a C-terminal Asp chelating via its BACKBONE carboxylate (O/OXT, symmetric)
+# + two His N. The coordinating pair is the main-chain O/OXT, not the sidechain.
+_CTERM_CARBOX_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+ATOM      2  O   ASP A  50       1.905   1.100   0.000  1.00 10.00           O
+ATOM      3  OXT ASP A  50       1.905  -1.100   0.000  1.00 10.00           O
+ATOM      4  C   ASP A  50       2.800   0.000   0.000  1.00 10.00           C
+ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
+ATOM      6  NE2 HIS A  96       0.000   0.000   2.000  1.00 10.00           N
+"""
+
 # Zn + a bare coordinating water, for the cation-aware water-H placement.
 _WATER_METAL_PDB = """\
 CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
@@ -896,7 +908,8 @@ def exercise_shape():
 
 def exercise_shape_carboxylate():
   """Carboxylate handling: a symmetric chelate collapses to one vertex, a
-  monodentate one does not, and an anisobidentate one drops its far O."""
+  monodentate one does not, an anisobidentate one drops its far O, and a
+  C-terminal Asp/Glu chelating via its backbone carboxylate collapses too."""
   # Look donors up by name (mmtbx.model sorts atoms, so iseqs are not input
   # order).
   def iseqs(atoms, *names):
@@ -927,6 +940,17 @@ def exercise_shape_carboxylate():
   assert r3.raw_cn == 4 and r3.cn == 3, (r3.raw_cn, r3.cn)
   assert r3.n_bidentate_carboxylate == 0
   assert "carboxylate_asymmetric" in r3.flags
+
+  # C-terminal Asp chelating via its BACKBONE carboxylate (O/OXT) collapses like a
+  # sidechain one, though keying the pair on resname alone would force OD1/OD2.
+  ct = _model(_CTERM_CARBOX_PDB).get_hierarchy().atoms()
+  cm = iseqs(ct, "ZN")[0]
+  co, coxt = iseqs(ct, "O")[0], iseqs(ct, "OXT")[0]
+  cne = iseqs(ct, "NE2")
+  r4 = shape.classify_geometry(ct, cm, [co, coxt] + cne)
+  assert r4.raw_cn == 4 and r4.cn == 3, (r4.raw_cn, r4.cn)
+  assert r4.n_bidentate_carboxylate == 1
+  assert "bidentate_carboxylate" in r4.flags
 
 
 def exercise_electronic():
