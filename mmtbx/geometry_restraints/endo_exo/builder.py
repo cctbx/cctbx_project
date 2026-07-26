@@ -357,7 +357,7 @@ class QMRegionBuilder(object):
     dict
         Keys: ``file_name``, ``n_atoms``, ``charge_summary``, ``model``,
         ``seed_iseqs``, ``cap_iseqs``, ``cap_original_elements``,
-        ``cap_anchor_iseqs``, ``selection_string``.
+        ``cap_anchor_iseqs``, ``sym_image_provenance``, ``selection_string``.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
@@ -370,7 +370,7 @@ class QMRegionBuilder(object):
     visited_nodes = self._add_hull_waters(model, visited_nodes)
 
     (model_sel, seed_indices, cap_indices, cap_original_elements,
-     cap_anchor_indices) = self._materialize_qm_region(
+     cap_anchor_indices, sym_image_provenance) = self._materialize_qm_region(
       model, visited_nodes, cap_nodes, seeds)
 
     charge_summary = self._charge_estimator.calculate(model=model_sel)
@@ -399,6 +399,10 @@ class QMRegionBuilder(object):
       'cap_iseqs': cap_indices,
       'cap_original_elements': cap_original_elements,
       'cap_anchor_iseqs': cap_anchor_indices,
+      # {sub-model i_seq: (asu_parent_atom, symmetry_operation_xyz)} for
+      # symmetry-image atoms, so a metal-ligand bond to one can be restrained
+      # against its ASU parent (kept in memory only, not the on-disk sidecar).
+      'sym_image_provenance': sym_image_provenance,
       'selection_string': selection_str,
     }
 
@@ -692,6 +696,10 @@ class QMRegionBuilder(object):
         Sorted, unique positional indices of the QM-region heavy atoms the caps
         are bonded to (their anchors), so downstream tools can pin the severed
         boundary bonds at both ends without re-deriving the connectivity.
+    sym_image_provenance : dict
+        ``{sub-model i_seq: (asu_parent_atom, symmetry_operation_xyz)}`` for each
+        materialized symmetry-image atom, so a metal-ligand bond to a
+        symmetry-image donor can be emitted against its ASU parent.
     """
     import iotbx.pdb
     import mmtbx.model as mmtbx_model
@@ -851,8 +859,20 @@ class QMRegionBuilder(object):
       anchor_iseq_by_cap[a] for a in cap_atoms_sorted
       if a in anchor_iseq_by_cap))
 
+    # Symmetry-image provenance (in-memory hand-off): map each materialized
+    # symmetry-image atom's sub-model i_seq to (its ASU-parent atom, the
+    # symmetry_operation that generated it), both already known from region
+    # building. A downstream tool restrains a metal-ligand bond to such a donor
+    # via geometry_restraints.edits (atom_1 vs symmetry_operation * atom_2),
+    # building atom_2's selection from the parent atom. Angles cannot cross
+    # symmetry, so only bonds benefit.
+    sym_image_provenance = {
+      atom.i_seq: (parent_atoms[parent_iseq], op_xyz)
+      for (parent_iseq, op_xyz), atom in atom_for_node.items()
+      if op_xyz != identity_xyz}
+
     return (model_sel, seed_indices, cap_indices, cap_original_elements,
-            cap_anchor_indices)
+            cap_anchor_indices, sym_image_provenance)
 
   def _write_submodel(self, model_sel, crystal_symmetry, file_name):
     """Write *model_sel* as both a PDB and an mmCIF file.

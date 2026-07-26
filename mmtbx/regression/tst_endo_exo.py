@@ -998,6 +998,32 @@ def exercise_build_adjacency():
   assert n_non_identity > 0
 
 
+def exercise_2c2u_sym_image_provenance():
+  """Symmetry-image donors of the 2C2U Fe site carry provenance back to their
+  ASU parent atom + the operator, so a metal-ligand bond to a symmetry image can
+  be restrained via geometry_restraints.edits (atom_1 vs symmetry_operation *
+  atom_2). Also exercises that the parent-atom references survive the hand-off."""
+  result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
+  prov = result["sym_image_provenance"]
+  atoms = list(result["model"].get_hierarchy().atoms())
+  identity = sgtbx.rt_mx().as_xyz()
+
+  assert prov, "expected symmetry-image provenance for the special-position Fe"
+  for iseq, (parent_atom, op_xyz) in prov.items():
+    image = atoms[iseq]
+    assert image.parent().parent().parent().id.strip() != "A"   # renamed image
+    assert op_xyz != identity                                    # a real sym op
+    sgtbx.rt_mx(op_xyz)                                          # parseable operator
+    # the ASU parent is on an original chain and shares the image's identity
+    assert parent_atom.parent().parent().parent().id.strip() == "A"
+    assert parent_atom.name.strip() == image.name.strip()
+    assert (parent_atom.parent().parent().resseq.strip()
+            == image.parent().parent().resseq.strip())
+  # the coordinating Asp 93 / HOH 2154 images are represented
+  resnames = {atoms[i].parent().resname.strip().upper() for i in prov}
+  assert "ASP" in resnames and "HOH" in resnames
+
+
 def run():
   exercise_submodel_shape()
   exercise_cys_coordination()
@@ -1006,6 +1032,7 @@ def run():
   exercise_2c2u_symmetry_materialization()
   exercise_2c2u_fe_coordination_distances()
   exercise_2c2u_symmetry_truncation_consistency()
+  exercise_2c2u_sym_image_provenance()
   exercise_selection_seed_terminates()
   # engine unit tests
   exercise_canon_op()
