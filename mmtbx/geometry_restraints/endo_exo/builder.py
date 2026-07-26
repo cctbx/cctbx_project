@@ -519,7 +519,7 @@ class QMRegionBuilder(object):
     atoms = model.get_hierarchy().atoms()
     nodes_by_residue = defaultdict(list)
     for node in self._include_nodes:
-      nodes_by_residue[id(atoms[node[0]].parent().parent())].append(node)
+      nodes_by_residue[atoms[node[0]].parent().parent()].append(node)
     kept = set()
     for residue_nodes in nodes_by_residue.values():
       if any(iseq in near_iseqs for (iseq, _op) in residue_nodes):
