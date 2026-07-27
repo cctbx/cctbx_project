@@ -444,7 +444,6 @@ def exercise_perturb_reopt():
 def exercise_provenance():
   """Provenance comment blocks (plan Sec 9.3): global (versions injected, no xTB
   subprocess) and per-site."""
-  from mmtbx.geometry_restraints.qmi import provenance
   g = provenance.global_block(
     method="GFN2-xTB", solvent="ether", temperature=298.15, model_name="1abc",
     protonation="user-supplied (protonation off)",
