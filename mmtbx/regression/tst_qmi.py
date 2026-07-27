@@ -305,31 +305,33 @@ def exercise_classify_angle_sigmas():
 
 
 def exercise_emit_angles():
-  """Angle-restraint gate (builder._emit_angles): 'auto' emits only when <= 2
-  donors will actually be restrained, so the angle is left free; >= 3 emitted
-  bonds triangulate the metal, so no angle. 'always' / 'never' override."""
+  """Angle-restraint gate (builder._emit_angles): 'auto' emits when the emitted
+  M-L bonds fail to pin the metal in 3D -- <=2 bonds (metal on a circle/line), or
+  >=3 bonds whose directions are (near-)coplanar (a planar shell with a soft
+  out-of-plane mode). A 3D-spanning shell needs no angle. 'always'/'never'
+  override."""
+  def dirs(*vs):
+    return [matrix.col(v).normalize() for v in vs]
   auto = QMRestraintsBuilder(angle_restraints="auto", logger=null_out())
   always = QMRestraintsBuilder(angle_restraints="always", logger=null_out())
   never = QMRestraintsBuilder(angle_restraints="never", logger=null_out())
-  for n, expect in [(1, True), (2, True), (3, False), (4, False), (6, False)]:
-    assert auto._emit_angles(n) is expect, n
-  for n in (2, 3, 6):
-    assert always._emit_angles(n) is True, n
-    assert never._emit_angles(n) is False, n
 
-  # The gate counts EMITTABLE donors (dropping symmetry-image donors), not the
-  # raw shell: a symmetry-image donor inflates the shell but is not restrained,
-  # so it must not credit triangulation.
-  model = _model(_ZN_SITE_PDB)                 # 4 donors, all chain A
-  atoms = model.get_hierarchy().atoms()
-  donors = restraints.detect_first_shell(model, 0)
-  assert restraints.is_symmetry_image(atoms[donors[0]], ["Q"])       # chain A -> image
-  assert not restraints.is_symmetry_image(atoms[donors[0]], ["A"])
-  n_real = sum(1 for d in donors
-               if not restraints.is_symmetry_image(atoms[d], ["A"]))
-  n_image = sum(1 for d in donors
-                if not restraints.is_symmetry_image(atoms[d], ["Q"]))
-  assert n_real == 4 and n_image == 0
+  linear = dirs((1, 0, 0), (-1, 0, 0))
+  trigonal = dirs((1, 0, 0), (-0.5, 0.866, 0), (-0.5, -0.866, 0))
+  square_planar = dirs((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0))
+  tetrahedral = dirs((1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1))
+  octahedral = dirs((1, 0, 0), (-1, 0, 0), (0, 1, 0),
+                    (0, -1, 0), (0, 0, 1), (0, 0, -1))
+
+  # auto: coplanar / under-determined -> emit; a 3D-spanning shell -> no angle.
+  assert auto._emit_angles(linear) is True             # <=2: metal on a circle
+  assert auto._emit_angles(trigonal) is True           # 3 coplanar bonds
+  assert auto._emit_angles(square_planar) is True        # 4 coplanar bonds
+  assert auto._emit_angles(tetrahedral) is False         # spans 3D
+  assert auto._emit_angles(octahedral) is False          # spans 3D
+  for ds in (trigonal, tetrahedral):                   # modes ignore geometry
+    assert always._emit_angles(ds) is True
+    assert never._emit_angles(ds) is False
 
 
 def exercise_coordination_number():

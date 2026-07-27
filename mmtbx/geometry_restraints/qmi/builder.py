@@ -25,6 +25,8 @@ from libtbx.utils import null_out, Sorry
 from mmtbx.programs.endo_exo import master_phil_str as endo_exo_master_phil_str
 from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
 from scitbx import matrix
+from scitbx.array_family import flex
+from scitbx.linalg import eigensystem
 from cctbx.eltbx import tiny_pse
 
 from mmtbx.geometry_restraints import quantum_interface
@@ -36,6 +38,29 @@ from mmtbx.geometry_restraints.qmi import (
 
 # endo_exo's per-atom seed suffix is `_{element}_chain{chain}_res{resseq}_...`.
 _SEED_SUFFIX_RE = re.compile(r"_chain(.*?)_res(.+?)_within")
+
+# Angle-gate coplanarity cutoff (plan Sec 7): lambda_min(sum u u^T)/n below this
+# means the bonded-donor directions are (near-)coplanar. 0 for an ideal planar
+# shell, 0.2 for a square pyramid (the tightest 3D-spanning shell), ~0.33 for
+# tetrahedral/octahedral, so 0.1 separates planar from 3D with margin.
+_MIN_OUT_OF_PLANE_COVERAGE = 0.1
+
+
+def _directions_span_3d(unit_dirs):
+  """Whether the metal->donor unit vectors span 3D (so the M-L bonds triangulate
+  the metal). The metal-position bond stiffness is ``sum_i u_i u_i^T``; its
+  smallest eigenvalue is the softest-mode stiffness, ~0 for a coplanar/collinear
+  shell (a soft out-of-plane mode the bonds cannot hold). Normalised by the count
+  so the cutoff is coordination-number independent."""
+  acc = [0.0] * 9
+  for u in unit_dirs:
+    for i in range(3):
+      for j in range(3):
+        acc[3 * i + j] += u[i] * u[j]
+  m = flex.double(acc)
+  m.reshape(flex.grid(3, 3))
+  return (min(eigensystem.real_symmetric(m).values()) / len(unit_dirs)
+          >= _MIN_OUT_OF_PLANE_COVERAGE)
 
 
 def _region_output_filename(work_dir):
@@ -388,16 +413,21 @@ class QMRestraintsBuilder(object):
     # feed the electronic guess (the class sets the ligand-field spin).
     donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
-    # Angle-restraint gate (plan Sec 7): count the donors that will actually get a
-    # bond. A symmetry-image donor is bonded to its ASU parent (via
-    # symmetry_operation) when endo_exo supplied provenance; one without it is
-    # skipped and cannot triangulate. Gating on the bonded count keeps a
-    # symmetry-coordinated site from wrongly emitting or omitting its angle.
-    n_bonded = sum(
-      1 for d in donor_iseqs
-      if not restraints.is_symmetry_image(atoms[d], original_chain_ids)
-         or d in sym_image_provenance)
-    emit_angles = self._emit_angles(n_bonded)
+    # Angle-restraint gate (plan Sec 7): the metal->donor directions of the donors
+    # that will actually get a bond. A symmetry-image donor is bonded to its ASU
+    # parent (via symmetry_operation) when endo_exo supplied provenance; one
+    # without it is skipped and cannot triangulate. _emit_angles then tests
+    # whether those bonds pin the metal in 3D.
+    metal_xyz = matrix.col(atoms[metal_iseq].xyz)
+    bond_dirs = []
+    for d in donor_iseqs:
+      if (restraints.is_symmetry_image(atoms[d], original_chain_ids)
+          and d not in sym_image_provenance):
+        continue                       # skipped symmetry donor: no bond emitted
+      v = matrix.col(atoms[d].xyz) - metal_xyz
+      if v.length() > 0:
+        bond_dirs.append(v.normalize())
+    emit_angles = self._emit_angles(bond_dirs)
     # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
     # oxidation over the accessible states, from the OBSERVED first-shell
     # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
@@ -485,22 +515,24 @@ class QMRestraintsBuilder(object):
     instead (every emitted M-L bond)."""
     return geom.cn + geom.n_bidentate_carboxylate
 
-  def _emit_angles(self, n_bonded):
+  def _emit_angles(self, bond_dirs):
     """Whether to emit donor-metal-donor angle restraints for this site (plan
-    Sec 7). ``always`` / ``never`` are unconditional; ``auto`` emits only when the
-    emitted M-L bonds leave the angles under-determined, i.e. <= 2 donors will be
-    restrained (linear/bent), where the metal lies on a circle around the
-    donor-donor axis so the L-M-L angle is free. With >= 3 emitted bonds the metal
-    is triangulated and every angle is fixed whatever the polyhedron (a rubredoxin
-    Fe(SCys)4 tetrahedron is held by its four bonds alone). *n_bonded* is the
-    count of donors that actually get a bond: a chelate's second O counts, and a
-    symmetry-image donor counts when endo_exo supplied provenance (it is bonded to
-    its ASU parent via symmetry_operation)."""
+    Sec 7). ``always`` / ``never`` are unconditional; ``auto`` emits when the
+    emitted M-L bonds leave the metal's position under-determined: <= 2 bonds
+    (linear/bent, metal free on a circle), or >= 3 bonds whose directions are
+    (near-)coplanar (a trigonal-planar / square-planar shell, where the bonds
+    give zero out-of-plane stiffness and the metal can pucker freely). A bond set
+    that spans 3D triangulates the metal and needs no angle (a rubredoxin
+    Fe(SCys)4 tetrahedron is held by its four bonds alone). *bond_dirs* are the
+    metal->donor unit vectors of the donors that actually get a bond (a chelate's
+    second O and a symmetry-image donor with provenance both count)."""
     if self.angle_restraints == "always":
       return True
     if self.angle_restraints == "never":
       return False
-    return n_bonded <= 2
+    if len(bond_dirs) <= 2:
+      return True                      # metal on a circle/line: angle is free
+    return not _directions_span_3d(bond_dirs)   # coplanar shell: soft out-of-plane
 
   def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
                           cap_iseqs, cap_original_elements, geom, metal_element,
