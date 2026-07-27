@@ -561,13 +561,11 @@ namespace xray {
         return scatterer_id_5<FloatType, crd_t, 1>(
           element_info().atomic_number(), site, data, multiplier).id;
       }
-      std::string get_id_big_string(int16_t data = 0) const {
+
+      scatterer_id_big<FloatType, crd_t> get_id_big(int16_t data = 0) const {
         return scatterer_id_big<FloatType, crd_t>(
-          site[0],site[1],site[2], data, element_info().atomic_number(), 0).to_hex_string();
+          site[0],site[1],site[2], data, element_info().atomic_number(), 0);
       }
-
-
-
 
       template <class mask_info, uint64_t cell_m>
       scatterer_id_base<FloatType, crd_t, mask_info, cell_m>
@@ -575,13 +573,6 @@ namespace xray {
       {
         return scatterer_id_base<FloatType, crd_t, mask_info, cell_m>(
           element_info().atomic_number(), site, data, multiplier);
-      }
-
-      scatterer_id_big<FloatType, crd_t>
-        get_id_big(short data = 0) const
-      {
-        return scatterer_id_big<FloatType, crd_t>(
-          site[0],site[1],site[2], data, element_info().atomic_number(), 0);
       }
 
       int get_part() const { return part; }

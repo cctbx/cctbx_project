@@ -390,7 +390,7 @@ namespace cctbx {
             validate_loaded_data();
         }
 
-        std::array<std::uint64_t, 2> as_uint64() const noexcept
+        std::pair<uint64_t,uint64_t> as_uint64() const noexcept
         {
             // First 64-bit integer:
             // bits  0-31: frac_x_int
@@ -421,7 +421,6 @@ namespace cctbx {
             return { first, second };
         }
 
-
         std::string to_hex_string() const
         {
             const auto [first, second] = as_uint64();
@@ -448,20 +447,13 @@ namespace cctbx {
             return Z_ != 0;
         }
 
-        void write_atom_id(std::ostream& os) const {
+        std::string to_bytes() const {
             if (!is_initialized()) {
                 throw std::runtime_error("Atom ID is not initialized");
             }
-
-            os.write(
-                reinterpret_cast<const char*>(this),
-                sizeof(scatterer_id_big)
-            );
-
-            if (!os) {
-                throw std::runtime_error("Failed to write atom ID to stream");
-            }
-
+            std::ostringstream oss;
+            oss.write(reinterpret_cast<const char*>(this), sizeof(scatterer_id_big));
+            return oss.str();
         }
 
         crd_t get_crd() const {

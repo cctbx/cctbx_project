@@ -109,14 +109,13 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             int nr_scat = scatterers.size();
             af::shared<int> data(nr_scat);
             for (size_t sci = 0; sci < nr_scat; sci++) {
-                data[sci] = scatterers[sci].get_part() + 16; // add 16 to avoid negative values
+                data[sci] = scatterers[sci].get_part(); // add 16 to avoid negative values
             }
     
-            cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
+            cctbx::xray::scatterer_ID_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
               scatterer_id_t sc_id(stoks[sci]);
-              size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1.0);
-              std::cout << "scatterer id: " << stoks[sci] << " idx: " << idx << " crd: " << sc_id.get_crd()[0] << ", " << sc_id.get_crd()[1] << ", " << sc_id.get_crd()[2] << " z: " << sc_id.get_z() << " data: " << sc_id.get_data() << std::endl;
+              size_t idx = scatter_lookup.get_index(sc_id, 1e-2);
               SMTBX_ASSERT(idx != ~0);
               sc_indices[sci] = idx;
             }
@@ -215,13 +214,16 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       if (boost::icontains(header_str, "SCATTERER_IDS")) {
         SMTBX_ASSERT(sc_len == nr_scat);
         af::shared<int> data(nr_scat);
+        for (size_t sci = 0; sci < nr_scat; sci++) {
+            data[sci] = scatterers[sci].get_part(); // add 16 to avoid negative values
+        }
 
-        cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
+        cctbx::xray::scatterer_ID_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
         for (size_t sci = 0; sci < nr_scat; sci++) {
           scatterer_id_t sc_id(tsc_file); //Read the raw bytes and convert to scatterer_id_t
           tmp_logs << "READ crd: " << sc_id.get_crd()[0] << ", " << sc_id.get_crd()[1] << ", " << sc_id.get_crd()[2] << " z: " << sc_id.get_z() << " data: " << sc_id.get_data() << std::endl;
           tmp_logs << "INTE crd: " << scatterers[sci].site[0] << ", " << scatterers[sci].site[1] << ", " << scatterers[sci].site[2] << " z: " << scatterers[sci].element_info().atomic_number() << " data: " << scatterers[sci].get_part() << std::endl;
-          size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), sc_id.get_data(), 1);
+          size_t idx = scatter_lookup.get_index(sc_id, 1e-2);
           SMTBX_ASSERT(idx != ~0);
           sc_indices[sci] = idx;
         }
