@@ -101,6 +101,19 @@ def exercise_input_generation():
   assert 'runtype=grad' in grad_lines
   assert '$gfn' in grad_lines
 
+  # --- hessian input: charge/spin/GFN only, no $opt/$fix (evaluated as given) ---
+  hess_lines = m.get_hessian_input_lines()
+  for token in ('$chrg 0', '$spin 0', '$gfn', 'method=2', 'runtype=hess'):
+    assert token in hess_lines, token
+  assert '$opt' not in hess_lines and '$fix' not in hess_lines
+  assert m.get_hessian_filename() == 'xtb_inpgen.hessian'
+
+  # --- get_xyz_lines honours an explicit geometry (what run_hessian passes) ---
+  shifted = [(x + 1.0, y, z) for (x, y, z) in m.atoms.extract_xyz()]
+  shifted_xyz = m.get_xyz_lines(sites_cart=shifted)
+  assert shifted_xyz != m.get_xyz_lines()
+  assert f'{shifted[0][0]:.6f}' in shifted_xyz
+
   # --- multiplicity -> unpaired-electron count ($spin = mult - 1) ---
   m5 = make_manager(WATER_PDB, [0, 1, 1], 'mult', multiplicity=5)
   assert '$spin 4' in m5.get_input_lines()
@@ -119,6 +132,7 @@ def exercise_input_generation():
                   '--namespace xtb_inpgen'):
       assert token in cmd, token
     assert '--grad' in m.get_cmd(gradients_only=True)
+    assert '--hess' in m.get_cmd(hessian=True)
     m.robust = True
     rcmd = m.get_cmd()
     for token in ('--opt loose', '--etemp 1500', '--iterations 500'):
@@ -145,6 +159,15 @@ def exercise_run():
   coords2, buf2 = m_reuse.get_opt(file_read=True, redirect_output=True)
   assert buf2.size() == 3
   assert approx_equal(list(buf2[1]), list(buf[1]), eps=1e-4)   # same H position
+
+  # --- hessian: --hess at the optimised geometry writes a 3N x 3N .hessian ---
+  mh = make_manager(WATER_PDB, [0, 1, 1], 'tst_xtb_hess')
+  hess_path = mh.run_hessian(sites_cart=buf)
+  assert os.path.exists(hess_path) and hess_path.endswith('xtb_tst_xtb_hess.hessian')
+  hess_text = mh.get_lines(hess_path)
+  assert hess_text.startswith('$hessian')
+  numbers = [t for t in hess_text.split() if t not in ('$hessian', '$end')]
+  assert len(numbers) == 81, len(numbers)                     # 3N x 3N for N = 3
 
   # --- single-point gradient ---
   mg = make_manager(WATER_PDB, [0, 1, 1], 'tst_xtb_grad')
