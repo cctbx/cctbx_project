@@ -97,7 +97,7 @@ def generate_isc_table_file(file_name,
     out.write("Title: generated from isotropic AFF")
     out.write("\nScatterer_ids:")
     for sc in xs.scatterers():
-      out.write(" %X" %sc.get_id_5_16())
+      out.write(" %s" %sc.get_id_big(sc.get_part()).to_hex_string())
     out.write("\nScatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)

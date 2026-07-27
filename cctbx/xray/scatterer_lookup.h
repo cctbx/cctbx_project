@@ -198,6 +198,15 @@ namespace xray {
 
     };
 
+    /* Resolves the scatterer ids carried by a .tsc onto a structure.
+
+    The id is built from the element, the part and the fractional coordinate,
+    the last of them to about 1e-8 of a cell edge. It therefore identifies a
+    scatterer only for as long as the structure does not move: a single
+    refinement cycle changes every coordinate and with it every id. Matching by
+    id alone would work exactly once, so the position the id carries is used as
+    the fallback, and that fallback carries the burden in practice.
+    */
     template <typename FloatType>
     struct scatterer_ID_lookup {
       typedef scatterer<FloatType> scatterer_t;
@@ -205,10 +214,15 @@ namespace xray {
       typedef scitbx::vec3<FloatType> cart_t;
       typedef std::pair<uint64_t,uint64_t> scatterer_id_t;
       af::shared<scatterer_t> scatterers;
-      std::vector<cart_t> crds;
       std::vector<scatterer_id_t> scatterer_as_ids;
       af::shared<int> data;
-      
+
+      /* How far a scatterer may have moved and still be recognised, in
+      Angstrom. Refinement shifts are a few hundredths; the nearest atom of the
+      same element and part is at least a bond length away, and an ambiguous
+      match is refused in any case, so this can be generous.
+      */
+      static FloatType default_tolerance() { return 0.5; }
 
       scatterer_ID_lookup(const uctbx::unit_cell& u_cell)
         : u_cell(u_cell)
@@ -219,22 +233,25 @@ namespace xray {
           const af::shared<int>& data = af::shared<int>())
         : u_cell(u_cell)
       {
+        CCTBX_ASSERT(data.size() == 0 || data.size() == scatterers.size());
         this->data = data;
         this->scatterers = scatterers;
-        crds.reserve(scatterers.size());
         scatterer_as_ids.reserve(scatterers.size());
         for (size_t i = 0; i < scatterers.size(); i++) {
-          crds.push_back(u_cell.orthogonalize(scatterers[i].site));
-          scatterer_as_ids.push_back(scatterers[i].get_id_big(data[i]).as_uint64());
+          scatterer_as_ids.push_back(
+            scatterers[i].get_id_big(data_of(i)).as_uint64());
         }
+      }
+
+      //! The part of scatterer i, or 0 when no parts were supplied.
+      int data_of(size_t i) const {
+        return data.size() == 0 ? 0 : data[i];
       }
 
       size_t index_from_id(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id) const
       {
         scatterer_id_t sc_id_pair = sc_id.as_uint64();
-        tmp_logs << "TEST ID: " << sc_id_pair.first << ", " << sc_id_pair.second << std::endl;
         for (size_t i = 0; i < scatterers.size(); i++) {
-          tmp_logs << "CHECK ID: " << scatterer_as_ids[i].first << ", " << scatterer_as_ids[i].second << std::endl;
           if (scatterer_as_ids[i] == sc_id_pair) {
             return i;
           }
@@ -242,35 +259,61 @@ namespace xray {
         return ~0;
       }
 
-      size_t index_cartesian(const scatterer_id_big<FloatType, fractional<FloatType>>& sc_test, FloatType eps = 1e-3) const
-      {
-        cart_t crd_test = u_cell.orthogonalize(sc_test.get_crd());
-        uint8_t Z_test = sc_test.get_z();
-        int16_t data_test = sc_test.get_data();
+      /* The scatterer the id describes, by position rather than by identity.
 
+      The nearest candidate is taken, not the first one within eps, so that a
+      tolerance loose enough to absorb a refinement cannot pick up a neighbour
+      instead. A match with a rival nearly as close is refused rather than
+      guessed at: mixing two scatterers up silently would corrupt every
+      structure factor built from the table.
+      */
+      size_t index_cartesian(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_test,
+        FloatType eps = -1) const
+      {
+        if (eps < 0) {
+          eps = default_tolerance();
+        }
+        fractional<FloatType> site_test = sc_test.get_crd();
+        int Z_test = sc_test.get_z();
+        int data_test = sc_test.get_data();
+        size_t best = ~0;
+        FloatType best_d = eps, next_d = eps;
         for (size_t i = 0; i < scatterers.size(); i++) {
-          if (scatterers[i].get_atomic_number() == Z_test && data[i] == data_test) {
-            FloatType qd = (crds[i] - crd_test).length();
-            if (qd < eps) {
-              return i;
-            }
+          if (scatterers[i].get_atomic_number() != Z_test) continue;
+          if (data_of(i) != data_test) continue;
+          // an atom is free to cross a cell edge, which leaves the two sites a
+          // lattice translation apart rather than genuinely far apart
+          FloatType d = u_cell.mod_short_distance(scatterers[i].site, site_test);
+          if (d < best_d) {
+            next_d = best_d;
+            best_d = d;
+            best = i;
+          }
+          else if (d < next_d) {
+            next_d = d;
           }
         }
-        return ~0;
+        if (best == ~0 || next_d < 2 * best_d) {
+          return ~0;
+        }
+        return best;
       }
 
-      size_t get_index(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id, FloatType eps = 1e-3) const
+      size_t get_index(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id, FloatType eps = -1) const
       {
         size_t idx = index_from_id(sc_id);
         if (idx != ~0) {
           return idx;
         }
-        
+
         idx = index_cartesian(sc_id, eps);
         if (idx != ~0) {
           return idx;
         }
-        throw CCTBX_ERROR("Could not locate scatterer");
+        throw CCTBX_ERROR("Could not locate the scatterer a table entry"
+          " describes: no atom of the same element and part is near where the"
+          " table says it was. The table was made for a different structure,"
+          " or for one which has since moved too far.");
       }
     };
 }} // namespace cctbx::xray

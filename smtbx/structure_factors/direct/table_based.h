@@ -109,13 +109,13 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             int nr_scat = scatterers.size();
             af::shared<int> data(nr_scat);
             for (size_t sci = 0; sci < nr_scat; sci++) {
-                data[sci] = scatterers[sci].get_part(); // add 16 to avoid negative values
+                data[sci] = scatterers[sci].get_part();
             }
-    
+
             cctbx::xray::scatterer_ID_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
               scatterer_id_t sc_id(stoks[sci]);
-              size_t idx = scatter_lookup.get_index(sc_id, 1e-2);
+              size_t idx = scatter_lookup.get_index(sc_id);
               SMTBX_ASSERT(idx != ~0);
               sc_indices[sci] = idx;
             }
@@ -190,7 +190,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     //   typedef cctbx::xray::scatterer_id_5<float_type, fractional<float_type>, 16> scatterer_id_t;
       typedef cctbx::xray::scatterer_id_big<float_type, fractional<float_type> > scatterer_id_t;
       ifstream tsc_file(file_name.c_str(), ios::binary);
-      ofstream tmp_logs("tsc_read.log");
       const size_t charsize = sizeof(char);
       const size_t intsize = sizeof(int);
       const size_t uint64size = sizeof(uint64_t);
@@ -215,15 +214,13 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         SMTBX_ASSERT(sc_len == nr_scat);
         af::shared<int> data(nr_scat);
         for (size_t sci = 0; sci < nr_scat; sci++) {
-            data[sci] = scatterers[sci].get_part(); // add 16 to avoid negative values
+            data[sci] = scatterers[sci].get_part();
         }
 
         cctbx::xray::scatterer_ID_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
         for (size_t sci = 0; sci < nr_scat; sci++) {
           scatterer_id_t sc_id(tsc_file); //Read the raw bytes and convert to scatterer_id_t
-          tmp_logs << "READ crd: " << sc_id.get_crd()[0] << ", " << sc_id.get_crd()[1] << ", " << sc_id.get_crd()[2] << " z: " << sc_id.get_z() << " data: " << sc_id.get_data() << std::endl;
-          tmp_logs << "INTE crd: " << scatterers[sci].site[0] << ", " << scatterers[sci].site[1] << ", " << scatterers[sci].site[2] << " z: " << scatterers[sci].element_info().atomic_number() << " data: " << scatterers[sci].get_part() << std::endl;
-          size_t idx = scatter_lookup.get_index(sc_id, 1e-2);
+          size_t idx = scatter_lookup.get_index(sc_id);
           SMTBX_ASSERT(idx != ~0);
           sc_indices[sci] = idx;
         }
@@ -254,20 +251,30 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       tsc_file.read((char*)&nr_hkl, intsize);
       //read indices and scattering factors row by row
       int index[3] = { 0,0,0 };
-      vector<complex<double> > row(nr_scat);
-      parent_t::data_.reserve(nr_hkl[0] * nr_scat);
+      vector<complex_type> buffer(nr_scat);
+      // one entry per reflection, not one per element of every reflection:
+      // over-reserving here costs gigabytes on a table of any size
+      parent_t::data_.reserve(nr_hkl[0]);
+      parent_t::miller_indices_.reserve(nr_hkl[0]);
+      // Size the table up front and fill it in place: pushing each row back
+      // copies it, which is another pass over the whole table.
+      parent_t::data_.resize(nr_hkl[0]);
       for (int run = 0; run < *nr_hkl; run++) {
         tsc_file.read((char*)&index, 3*intsize);
         cctbx::miller::index<> mi(index[0], index[1], index[2]);
         parent_t::miller_indices_.push_back(mi);
+        // A read per scatterer spends more in stream bookkeeping than it
+        // moves, and a table holds one row per reflection: take the row in one
+        // read and put the scatterers in their places afterwards.
+        tsc_file.read((char*)&buffer[0], nr_scat * complex_doublesize);
+        vector<complex_type> &target = parent_t::data_[run];
+        target.resize(nr_scat);
         for (int i = 0; i < nr_scat; i++) {
-          tsc_file.read((char*)&(row[sc_indices[i]]), complex_doublesize);
+          target[sc_indices[i]] = buffer[i];
         }
-        parent_t::data_.push_back(row);
       }
       tsc_file.close();
       SMTBX_ASSERT(!tsc_file.bad());
-      tmp_logs.close();
     }
 
   public:
@@ -312,15 +319,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       sgtbx::space_group const &space_group,
       bool anomalous_flag)
       :
-      data(data_.miller_indices().size())
+      // shared, not copied: af::shared is reference counted
+      data(data_.data())
     {
       SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
-      for (size_t i = 0; i < data.size(); i++) {
-        data[i].resize(scatterers.size());
-        for (size_t j = 0; j < scatterers.size(); j++) {
-          data[i][j] = data_.data()[i][j];
-        }
-      }
       mi_lookup = miller::lookup_utils::lookup_tensor<float_type>(
         data_.miller_indices().const_ref(),
         space_group,
@@ -492,7 +494,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       bool anomalous_flag)
       :
       space_group(space_group),
-      data(data_.miller_indices().size()),
+      // af::shared is reference counted, so this shares the table the reader
+      // built rather than copying it. Copying it row by row doubled both the
+      // time and the peak memory of loading a table, and on a large one that
+      // is gigabytes of each.
+      data(data_.data()),
       anomalous_flag(anomalous_flag),
       tmp(space_group.n_smx())
     {
@@ -501,11 +507,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       const af::shared<cctbx::miller::index<> > &indices = data_.miller_indices();
       for (size_t i = 0; i < data.size(); i++) {
         mi_lookup[indices[i]] = i;
-        data[i].resize(scatterers.size());
-#pragma omp parallel for
-        for (int j = 0; j < scatterers.size(); j++) {
-          data[i][j] = data_.data()[i][j];
-        }
       }
     }
     // for testing
