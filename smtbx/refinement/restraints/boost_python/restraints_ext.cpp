@@ -15,6 +15,7 @@
 #include <cctbx/adp_restraints/rigu.h>
 #include <cctbx/adp_restraints/isotropic_adp.h>
 #include <cctbx/adp_restraints/fixed_u_eq_adp.h>
+#include <cctbx/adp_restraints/npd_adp.h>
 #include <cctbx/restraints.h>
 
 #include <smtbx/import_scitbx_af.h>
@@ -152,6 +153,10 @@ namespace boost_python {
     linearise_restraints_with_parameter_map_and_extra_parameters<
       double, cctbx::adp_restraints::adp_restraint_params,
       adp_res::fixed_u_eq_adp_proxy, adp_res::fixed_u_eq_adp>::wrap();
+
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::npd_adp_proxy, adp_res::npd_adp>::wrap();
 
     linearise_restraints_with_parameter_map_and_extra_parameters<
       double, cctbx::adp_restraints::adp_restraint_params,

@@ -24,6 +24,7 @@ class manager(object):
   rigid_bond_proxies=None
   rigu_proxies=None
   isotropic_adp_proxies=None
+  npd_adp_proxies=None
   sump_proxies=None
   #new
   fixed_u_eq_adp_proxies=None
@@ -182,6 +183,11 @@ class manager(object):
     if self.fixed_u_eq_adp_proxies is not None:
       adp_proxies.append(self.fixed_u_eq_adp_proxies)
       n_restraints += self.fixed_u_eq_adp_proxies.size()
+    if self.npd_adp_proxies is not None:
+      # one row per proxy, whether or not the atom is currently restrained --
+      # an inactive one is emitted with zero weight, so the count is exact
+      adp_proxies.append(self.npd_adp_proxies)
+      n_restraints += self.npd_adp_proxies.size()
     if self.rigid_bond_proxies is not None:
       adp_proxies.append(self.rigid_bond_proxies)
       n_restraints += self.rigid_bond_proxies.size()
