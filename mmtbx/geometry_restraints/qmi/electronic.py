@@ -171,6 +171,14 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
   :func:`mmtbx.geometry_restraints.qmi.donors.summarize`), coordination number,
   and CShM geometry class. NEVER bond lengths, energy, or diffraction.
 
+  Caveat for future rules: *geometry* is the CShM class of the EFFECTIVE-vertex
+  set (a symmetric bidentate carboxylate merged to one vertex), while *cn* is the
+  COORDINATIVE count (that chelate counted as its two O). So for a chelating site
+  the shape's vertex count is below *cn* by the number of symmetric chelates; a
+  rule that combines the two must not assume the shape's vertex count equals *cn*.
+  The current rules stay consistent (the Cu CN cutoffs are monotone; the Mn-SOD
+  gate requires TBP, which pins the chelate count to zero at cn==5).
+
   The rule per branch and its literature basis:
 
   - Single accessible state (Zn, Mg): committed, high confidence.
