@@ -21,7 +21,7 @@ class command_stream(object):
     'HOPE', 'L.S.', 'LATT', 'LAUE', 'LIST', 'MERG', 'MOLE', 'MORE', 'MOVE',
     'MUST', 'PART', 'PLAN', 'REM' , 'RESI', 'SFAC', 'SHEL', 'SIZE', 'SPEC',
     'STIR', 'SUMP', 'SWAT', 'SYMM', 'TEMP', 'TIME', 'TITL', 'TWIN', 'UNIT',
-    'WGHT', 'WPDB', 'ZERR'
+    'WGHT', 'WPDB', 'ZERR', 'ABIN', 'ANSC', 'ANSR', 'PRIG', 'TWST', 'XNPD'
   ]}
   shelx_commands.update(commands_allowing_atom_names)
 
