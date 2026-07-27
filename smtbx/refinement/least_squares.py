@@ -73,12 +73,30 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     def twin_fractions(self):
       return self.reparametrisation.twin_fractions
 
-    def build_up(self, objective_only=False):
+    # A subclass which assembles the solvent contribution once and keeps it,
+    # the mask being fixed for the length of a run, puts it here and mask_data()
+    # hands that one out rather than rebuilding it.
+    f_mask_data = None
+
+    def mask_data(self):
+      """ The solvent contribution, in the form the builders expect.
+
+      Factored out of build_up so that anything else linearising the same
+      problem computes the same structure factors, c.f. smtbx.refinement.cgls.
+      Leaving it to each caller to assemble is how the two paths came to
+      disagree: an omitted mask does not fail, it quietly refines a different
+      structure.
+      """
+      if self.f_mask_data is not None:
+        return self.f_mask_data
       if self.f_mask is None:
-        f_mask_data = MaskData(flex.complex_double())
-      else:
-        f_mask_data = MaskData(self.observations, self.xray_structure.space_group(),
-          self.observations.fo_sq.anomalous_flag(), self.f_mask.indices(), self.f_mask.data())
+        return MaskData(flex.complex_double())
+      return MaskData(self.observations, self.xray_structure.space_group(),
+        self.observations.fo_sq.anomalous_flag(), self.f_mask.indices(),
+        self.f_mask.data())
+
+    def build_up(self, objective_only=False):
+      f_mask_data = self.mask_data()
 
       fc_correction = self.reparametrisation.fc_correction
       if fc_correction is None:
@@ -149,17 +167,51 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           self.step_equations(),
           self.reparametrisation.jacobian_transpose_matching_grad_fc(),
           self.reparametrisation.asu_scatterer_parameters)
+      # An override says which scale factor to weight the data with when there
+      # are no fresh normal equations to take one from. There now are, so it
+      # has served its purpose, and anything reading scale_factor() after this
+      # -- the journal in normal_eqns_solving, for one -- wants the new one.
+      self.overridden_scale_factor = None
 
     def parameter_vector_norm(self):
       return self.reparametrisation.norm_of_independent_parameter_vector
 
-    def scale_factor(self): return self.optimal_scale_factor()
+    # Set by a solver which determines the scale factor without building the
+    # normal equations, c.f. smtbx.refinement.cgls; None means take it from
+    # them as usual. build_up clears it, having made it obsolete.
+    overridden_scale_factor = None
 
-    def step_forward(self):
-      self.reparametrisation.apply_shifts(self.step())
+    def scale_factor(self):
+      if self.overridden_scale_factor is not None:
+        return self.overridden_scale_factor
+      return self.optimal_scale_factor()
+
+    def apply_shifts(self, shifts):
+      """ Move the structure by the given increment of the independent
+          parameters.
+
+      Factored out of step_forward so that minimisers which do not follow the
+      step obtained from the normal equations can reuse it, c.f.
+      scitbx.lstbx.scipy_iterations.
+      """
+      self.reparametrisation.apply_shifts(shifts)
       self.reparametrisation.linearise()
       self.reparametrisation.store()
-      self.taken_step = self.step().deep_copy()
+      self.taken_step = shifts.deep_copy()
+
+    def step_forward(self):
+      self.apply_shifts(self.step())
+
+    def parameter_vector(self):
+      """ The independent parameters, as apply_shifts indexes them.
+
+      apply_shifts does not always move the parameters by exactly the shifts
+      it is given, validate() constraining some of them -- a U_iso or an
+      occupancy driven negative, an extinction parameter, the thickness. A
+      minimiser which places the parameters itself has to be able to see where
+      they really went, or every subsequent shift is out by the difference.
+      """
+      return self.reparametrisation.independent_parameter_vector()
 
     def step_backward(self):
       self.reparametrisation.apply_shifts(-self.taken_step)

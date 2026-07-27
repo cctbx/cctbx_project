@@ -25,7 +25,7 @@ struct accumulate_reflection_chunk_omp {
   af::ref<std::complex<FloatType> > f_calc;
   af::ref<FloatType> observables;
   af::ref<FloatType> weights;
-  af::versa<FloatType, af::c_grid<2> >& design_matrix;
+  af::versa<StoreType, af::c_grid<2> >& design_matrix;
   int max_memory;
   bool running;
 
@@ -45,7 +45,7 @@ struct accumulate_reflection_chunk_omp {
     af::ref<std::complex<FloatType> > f_calc,
     af::ref<FloatType> observables,
     af::ref<FloatType> weights,
-    af::versa<FloatType, af::c_grid<2> >& design_matrix,
+    af::versa<StoreType, af::c_grid<2> >& design_matrix,
     int &max_memory)
     : parent(parent),
     normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
@@ -80,23 +80,32 @@ struct accumulate_reflection_chunk_omp {
       }
       const FloatType temp_memory = threads * ((n_rows * (n_rows + 1) / 2) + 3 * n_rows) * sizeof(FloatType) / 1048576.0;
       const FloatType mem_per_size = n_rows * sizeof(FloatType) / 1048576.0;
-      int size = n;
-      FloatType req_mem = temp_memory + size * mem_per_size;
-      while (req_mem > max_memory) {
-        size -= threads;
+      int chunk = n;
+      FloatType req_mem = temp_memory + chunk * mem_per_size;
+      while (req_mem > max_memory && chunk > threads) {
+        chunk -= threads;
         req_mem -= mem_per_size * threads;
-        if (size >= n) {
-          break;
-        }
+      }
+      /* The per-thread normal matrices are not part of what shrinking the
+         chunk can save, so a budget smaller than those alone would drive the
+         chunk to nothing. One reflection at a time is as far as this can go.
+       */
+      if (chunk < 1) {
+        chunk = 1;
       }
       matrix.resize(threads * (n_rows * (n_rows + 1) / 2), 0);
       yo_dot_grad_yc_.resize(threads * n_rows, 0);
       yc_dot_grad_yc_.resize(threads * n_rows, 0);
-      if (compute_grad && !build_design_matrix && size < n) {
-        gradients.resize(size * n_rows, 0);
+      if (compute_grad && !build_design_matrix && chunk < n) {
+        gradients.resize(chunk * n_rows, 0);
       }
-      for (int i_h = 0; i_h * size < n; i_h++) {
-        const int start = i_h * size;
+      /* The stride stays the chunk throughout. Deriving the next start from a
+         size which the final, shorter chunk had overwritten would step back
+         over reflections already accumulated, and they would be added to the
+         normal equations more than once.
+       */
+      for (int start = 0; start < n; start += chunk) {
+        int size = chunk;
         //check whether last chunk is smaller
         if (start + size >= n) {
           size = n - start;
@@ -159,7 +168,7 @@ struct accumulate_reflection_chunk_omp {
               refl_i, *(f_calc_threads[thread]), gradient);
             // Fc correction
             FloatType fc_k = fc_crs[thread]->compute(
-              reflections.has_wavelengths() ? reflections.wavelength(i_h) : 0,
+              reflections.has_wavelengths() ? reflections.wavelength(refl_i) : 0,
               h, observable, compute_grad);
             if (fc_k != 1) {
               observable *= fc_k;
@@ -191,8 +200,14 @@ struct accumulate_reflection_chunk_omp {
               }
             }
             if (build_design_matrix) {
-              memcpy(&design_matrix(refl_i, 0), gradient.begin(),
-                gradient.size() * sizeof(FloatType));
+              // pre-multiplied by sqrt(w), as the threaded path in
+              // least_squares.h stores it; the two must agree on what a stored
+              // design matrix means
+              FloatType const sqrt_weight = std::sqrt(weight);
+              StoreType *row = &design_matrix(refl_i, 0);
+              for (std::size_t gi = 0; gi < gradient.size(); gi++) {
+                row[gi] = static_cast<StoreType>(sqrt_weight*gradient[gi]);
+              }
             }
           }
         }

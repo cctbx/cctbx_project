@@ -122,14 +122,21 @@ void non_linear_ls_with_separable_scale_factor<
           }
         }
       }
+      /* The scratch is allocated by the caller and carried from one chunk to
+         the next, so by the last it holds the sum over all of them. Reducing
+         it into the normal equations after every chunk would therefore add the
+         earlier chunks again, once more for each chunk that follows.
+       */
+      if (start + chunk_size >= n_ref) {
 #pragma omp critical
-      {
-        for (int i = 0; i < limit; i++) {
-          m[i] += l_matrix[i];
-        }
-        for (int i = 0; i < n_par; i++) {
-          yo_dot_grad_yc[i] += l_ogc[i];
-          yc_dot_grad_yc[i] += l_cgc[i];
+        {
+          for (int i = 0; i < limit; i++) {
+            m[i] += l_matrix[i];
+          }
+          for (int i = 0; i < n_par; i++) {
+            yo_dot_grad_yc[i] += l_ogc[i];
+            yc_dot_grad_yc[i] += l_cgc[i];
+          }
         }
       }
     }
@@ -165,19 +172,26 @@ void non_linear_ls_with_separable_scale_factor<
           l_ogc[x] += g_yc_loc[x] * yo[i];
           l_cgc[x] += g_yc_loc[x] * yc[i];
           int run = x * (n_par - 1) - x * (x - 1) / 2;
-          for (int y = n_par - 1; y >= 0; y++) {
+          /* counting down to x, as the weighted branch above does: the packed
+             row holds only the upper triangle, and y++ from n_par-1 against
+             y >= 0 neither terminates nor stays inside it
+           */
+          for (int y = n_par - 1; y >= x; y--) {
             l_matrix[run + y] += g_yc_loc[x] * g_yc_loc[y];
           }
         }
       }
+      // see the weighted branch above for why this waits for the last chunk
+      if (start + chunk_size >= n_ref) {
 #pragma omp critical
-      {
-        for (int i = 0; i < limit; i++) {
-          m[i] += l_matrix[i];
-        }
-        for (int i = 0; i < n_par; i++) {
-          yo_dot_grad_yc[i] += l_ogc[i];
-          yc_dot_grad_yc[i] += l_cgc[i];
+        {
+          for (int i = 0; i < limit; i++) {
+            m[i] += l_matrix[i];
+          }
+          for (int i = 0; i < n_par; i++) {
+            yo_dot_grad_yc[i] += l_ogc[i];
+            yc_dot_grad_yc[i] += l_cgc[i];
+          }
         }
       }
     }

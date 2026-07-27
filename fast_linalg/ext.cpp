@@ -28,6 +28,9 @@ namespace {
       .def("initialise", &fast_linalg::initialise, (arg("lib_name")))
       .def("finalise", &fast_linalg::finalise)
       .staticmethod("initialise")
+      // as static as initialise is: it takes no arguments, so as an instance
+      // method boost::python hands it self and no call can ever match
+      .staticmethod("finalise")
       ;
     scope().attr("env") = object(new environment());
   }

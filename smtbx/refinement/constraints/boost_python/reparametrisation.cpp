@@ -600,6 +600,8 @@ namespace boost_python {
              &wt::jacobian_transpose_matching,
              arg("mapping"))
         .def("apply_shifts", &wt::apply_shifts)
+        .def("independent_parameter_vector",
+             &wt::independent_parameter_vector)
         .add_property("norm_of_independent_parameter_vector",
                       &wt::norm_of_independent_parameter_vector)
         ;

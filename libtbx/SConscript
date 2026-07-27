@@ -430,12 +430,24 @@ libtbx.scons: Warning: compiling with /MDd:
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
+      # /O1 optimises for size and is the long-standing default here. /O2
+      # optimises for speed and is what --build=max_optimized asks for, as it
+      # has always done on gcc and clang further down this file.
       opts = ["/DNDEBUG", "/O1"]
-      if (    libtbx.env.build_options.msvc_arch_flag is not None
-          and not is_64bit_architecture):
-        opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
-      # stick with /fp:precise for VS2017 and later
-      if env_etc.msvc_version > 7 and env_etc.msvc_version < 15:
+      if (libtbx.env.build_options.max_optimized):
+        opts[1] = "/O2"
+      if (libtbx.env.build_options.msvc_arch_flag is not None):
+        # SSE and SSE2 are the x64 baseline and MSVC rejects them there; AVX
+        # and above are what there is to ask for, and asking raises the
+        # minimum CPU the build will run on. There is no /arch:SSE4.2.
+        arch = libtbx.env.build_options.msvc_arch_flag
+        if (not is_64bit_architecture or arch not in ("SSE", "SSE2")):
+          opts.append("/arch:%s" % arch)
+      # /fp:precise otherwise, which is the default from VS2017 on. Fast math
+      # is what lets the vectoriser replace a loop of transcendentals with a
+      # call into the vector math library, which is most of what it is worth.
+      if (libtbx.env.build_options.enable_fast_math
+          or (env_etc.msvc_version > 7 and env_etc.msvc_version < 15)):
         opts.append("/fp:fast")
     else:
       opts = ["/Od"]
@@ -1029,7 +1041,8 @@ int main() {
       opts = ["-DNDEBUG", "-O3"]
       # -ffast-math changes scitbx/lbfgs/tst_lbfgs_fem.py behavior in Xcode 11.4
       # minimization steps may be different than fortran standard
-      if xcode_version is not None and xcode_version < [11, 4]:
+      if (libtbx.env.build_options.enable_fast_math
+          or (xcode_version is not None and xcode_version < [11, 4])):
         opts.append("-ffast-math")
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):

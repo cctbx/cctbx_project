@@ -408,6 +408,19 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
+  af::shared<double> reparametrisation
+  ::independent_parameter_vector() {
+    af::shared<double> result(n_independents());
+    BOOST_FOREACH(parameter_ptr_t p, all) {
+      if (p->is_independent() && p->is_variable()) {
+        double *r = &result[p->index()];
+        af::ref<double> x = p->components();
+        for (std::size_t i=0; i<x.size(); ++i) r[i] = x[i];
+      }
+    }
+    return result;
+  }
+
   double reparametrisation
   ::norm_of_independent_parameter_vector() {
     scitbx::math::accumulator::norm_accumulator<double> acc;

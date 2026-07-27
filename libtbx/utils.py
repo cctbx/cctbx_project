@@ -2567,10 +2567,57 @@ def to_str(text, codec=None, errors='replace'):
 
 def guess_total_memory():
   '''
-  Use psutil to return the total memory on a system in bytes.
+  Return the total memory on a system in bytes, or None if it cannot be found.
+
+  psutil answers this everywhere it is installed, but it is not always: an
+  embedded interpreter -- Olex2's, for one -- need not see the user
+  site-packages directory that pip installs into by default, and there the
+  import fails. So each platform is also asked directly, which needs nothing
+  beyond the standard library.
+
+  Returns None rather than raising, and rather than guessing, so that a caller
+  sizing something against it has to say what it means to not know. A number
+  invented here would be indistinguishable from a measured one.
   '''
-  import psutil
-  return psutil.virtual_memory().total
+  try:
+    import psutil
+    return psutil.virtual_memory().total
+  except Exception:
+    pass
+  if os.name == 'nt':
+    try:
+      import ctypes
+      class memory_status(ctypes.Structure):
+        _fields_ = [('dwLength', ctypes.c_ulong),
+                    ('dwMemoryLoad', ctypes.c_ulong),
+                    ('ullTotalPhys', ctypes.c_ulonglong),
+                    ('ullAvailPhys', ctypes.c_ulonglong),
+                    ('ullTotalPageFile', ctypes.c_ulonglong),
+                    ('ullAvailPageFile', ctypes.c_ulonglong),
+                    ('ullTotalVirtual', ctypes.c_ulonglong),
+                    ('ullAvailVirtual', ctypes.c_ulonglong),
+                    ('ullAvailExtendedVirtual', ctypes.c_ulonglong)]
+      status = memory_status()
+      status.dwLength = ctypes.sizeof(status)
+      if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        return int(status.ullTotalPhys)
+    except Exception:
+      pass
+  else:
+    try:
+      pages = os.sysconf('SC_PHYS_PAGES')
+      page_size = os.sysconf('SC_PAGE_SIZE')
+      if pages > 0 and page_size > 0:
+        return pages*page_size
+    except Exception:
+      pass
+    try:                                  # macOS has no SC_PHYS_PAGES
+      import subprocess
+      out = subprocess.check_output(['sysctl', '-n', 'hw.memsize'])
+      return int(out.strip())
+    except Exception:
+      pass
+  return None
 
 MANGLE_LEN = 256 # magic constant from compile.c
 def mangle(name, klass):

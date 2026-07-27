@@ -81,6 +81,13 @@ namespace fast_linalg {
     double, const double*, int,
     const double*, int, double, double*, int);
 
+  typedef void (cblas_sgemv_t)(int, int, int, int,
+    float, const float*, int,
+    const float*, int, float, float*, int);
+  typedef void (cblas_dgemv_t)(int, int, int, int,
+    double, const double*, int,
+    const double*, int, double, double*, int);
+
   typedef int (openblas_get_num_threads_t)();
   typedef int (openblas_get_num_procs_t)();
   typedef void (openblas_set_num_threads_t)(int);
@@ -141,6 +148,9 @@ namespace fast_linalg {
 
       cblas_sgemm = &lib.get<cblas_sgemm_t>(prefix + "cblas_sgemm");
       cblas_dgemm = &lib.get<cblas_dgemm_t>(prefix + "cblas_dgemm");
+
+      cblas_sgemv = &lib.get<cblas_sgemv_t>(prefix + "cblas_sgemv");
+      cblas_dgemv = &lib.get<cblas_dgemv_t>(prefix + "cblas_dgemv");
     }
     void init_() {
       LAPACKE_dpftrf = 0;
@@ -181,6 +191,9 @@ namespace fast_linalg {
 
       cblas_sgemm = 0;
       cblas_dgemm = 0;
+
+      cblas_sgemv = 0;
+      cblas_dgemv = 0;
     }
   public:
     LAPACKE_dpftrf_t *LAPACKE_dpftrf;
@@ -222,6 +235,9 @@ namespace fast_linalg {
 
     cblas_sgemm_t *cblas_sgemm;
     cblas_dgemm_t* cblas_dgemm;
+
+    cblas_sgemv_t *cblas_sgemv;
+    cblas_dgemv_t *cblas_dgemv;
 
     static Wrapper &instance() {
       SCITBX_ASSERT(initialised());
@@ -495,6 +511,22 @@ void cblas_dgemm(int Order, int TransA, int TransB,
 {
   (*Wrapper::instance().cblas_dgemm)(Order, TransA, TransB, M, N, K, alpha,
     A, lda, B, ldb, beta, C, ldc);
+}
+//............................................................................
+//............................................................................
+void cblas_sgemv(int Order, int TransA, int M, int N,
+  float alpha, const float* A, int lda,
+  const float* X, int incX, float beta, float* Y, int incY)
+{
+  (*Wrapper::instance().cblas_sgemv)(Order, TransA, M, N, alpha,
+    A, lda, X, incX, beta, Y, incY);
+}
+void cblas_dgemv(int Order, int TransA, int M, int N,
+  double alpha, const double* A, int lda,
+  const double* X, int incX, double beta, double* Y, int incY)
+{
+  (*Wrapper::instance().cblas_dgemv)(Order, TransA, M, N, alpha,
+    A, lda, X, incX, beta, Y, incY);
 }
 //............................................................................
 //............................................................................

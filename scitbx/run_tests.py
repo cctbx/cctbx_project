@@ -137,6 +137,7 @@ tst_list = [
   "$D/tests/direct_search_simulated_annealing.py",
   "$D/random/tests/tst_random.py",
   "$D/lstbx/tests/tst_normal_equations.py",
+  "$D/lstbx/tests/tst_scipy_iterations.py",
   "$D/lstbx/tests/test_problems.py",
   "$D/glmtbx/tests/tst.py",
   "$D/dtmin/regression/tst_dtmin_basic.py",

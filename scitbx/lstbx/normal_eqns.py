@@ -39,6 +39,26 @@ class non_linear_ls_mixin(object):
   def step_forward(self):
     raise NotImplementedError()
 
+  def apply_shifts(self, shifts):
+    """ Move the parameter vector by the given increment.
+
+    step_forward() is the special case shifts = step(). Minimisers which do not
+    follow the step obtained from the normal equations -- e.g. those in
+    lstbx.scipy_iterations -- need to move to a point of their own choosing and
+    therefore require this instead.
+    """
+    raise NotImplementedError()
+
+  def parameter_vector(self):
+    """ The current parameter vector, or None if the problem cannot report it.
+
+    Only needed by minimisers which move the parameters to arbitrary points:
+    knowing where the parameters actually ended up lets them recover from
+    values that were clamped while the shifts were applied. Returning None is
+    always safe; such a minimiser then keeps track of the shifts it applied.
+    """
+    return None
+
   def opposite_of_gradient(self):
     return self.step_equations().right_hand_side()
 

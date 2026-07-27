@@ -1127,6 +1127,14 @@ public:
    */
   void apply_shifts(af::const_ref<double> const &shifts);
 
+  /// The vector of independent parameters
+  /** Indexed as apply_shifts() is. Applying shifts does not always move the
+      parameters by exactly the shifts given, since validate() constrains some
+      of them -- a negative U_iso or occupancy, say -- so a minimiser which
+      moves the parameters about needs to be able to see where they ended up.
+   */
+  af::shared<double> independent_parameter_vector();
+
   /// Norm of the vector of independent parameters
   double norm_of_independent_parameter_vector();
 
