@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.merging.application.worker import worker
+from xfel.merging.application.reflection_table_utils import reflection_table_utils
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from rstbx.dials_core.integration_core import show_observations
@@ -15,6 +16,7 @@ class reflection_filter(worker):
 
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(reflection_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+    self.psana_split_comm = False
 
   def __repr__(self):
     return 'Filter reflections'

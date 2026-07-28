@@ -19,6 +19,8 @@ class worker(object):
       from xfel.merging.application.mpi_logger import mpi_logger
       self.logger = mpi_logger(self.params)
 
+    self.psana_split_comm = True
+
   def __repr__(self):
     return 'Unknown'
 
@@ -30,7 +32,7 @@ class worker(object):
     """ Process the data """
     pass
 
-  def check_psana2(self, split_comm=True):
+  def check_psana2(self):
     # psana2 custom check, needed only for the integrate worker
     # psana2 preempts MPI ranks 0 and 1, so this code splits the mpi_helper's
     # communicator into two communicators, so 0 and 1 can no-op when needed
@@ -38,7 +40,7 @@ class worker(object):
     if self.params.mp.psana2_mode:
       import psana # trigger MPI in psana2
       from libtbx.mpi4py import MPI
-      if split_comm:
+      if self.psana_split_comm:
         if self.mpi_helper.comm is MPI.COMM_WORLD:
           if self.mpi_helper.rank < 2:
             color = 0

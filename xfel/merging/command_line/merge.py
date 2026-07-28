@@ -190,7 +190,8 @@ class Script(object):
         self.mpi_logger.main_log(step_desc)
 
       # Execute worker
-      experiments, reflections = worker.run(experiments, reflections)
+      if worker.check_psana2():
+        experiments, reflections = worker.run(experiments, reflections)
       self.mpi_logger.log_step_time("STEP_" + worker.__repr__(), True)
       if experiments:
         self.mpi_logger.log("Ending step with %d experiments"%len(experiments))
