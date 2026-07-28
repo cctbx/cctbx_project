@@ -96,7 +96,13 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
   for iseq, orig_el in zip(cap_iseqs, cap_original_elements):
     atoms[iseq].set_element(orig_el)
   try:
-    submodel.process(make_restraints=True)
+    interpretation_params = submodel.get_current_pdb_interpretation_params()
+    interpretation_params.pdb_interpretation.restraints_library.mcl = False
+    interpretation_params.pdb_interpretation.automatic_linking.link_metals = False
+    submodel.process(
+      pdb_interpretation_params=interpretation_params,
+      make_restraints=True,
+    )
   finally:
     for iseq in cap_iseqs:
       atoms[iseq].set_element('H')
