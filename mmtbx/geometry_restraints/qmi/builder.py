@@ -156,6 +156,10 @@ class QMRestraintsBuilder(object):
       them only for geometries the M-L distances cannot hold (angularly-ambiguous
       isomer at the same distances: everything but a regular high-CN polyhedron);
       ``'always'`` / ``'never'`` are unconditional.
+  coord_cutoff : callable or None
+      Shared metal-donor coordination cutoff (see
+      :func:`util.make_coordination_cutoff`), threaded to donor detection and
+      qm-region freezing. None uses the flat fixed cutoff.
   logger : file-like or None
   """
 
@@ -165,7 +169,7 @@ class QMRestraintsBuilder(object):
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
                perturb_attempts=1, use_bvs=False, freeze_waters=True,
-               angle_restraints="auto", logger=None):
+               angle_restraints="auto", coord_cutoff=None, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -183,6 +187,7 @@ class QMRestraintsBuilder(object):
     self.use_bvs = use_bvs
     self.freeze_waters = freeze_waters
     self.angle_restraints = angle_restraints   # 'auto' | 'always' | 'never'
+    self.coord_cutoff = coord_cutoff   # shared metal-donor cutoff callable, or None
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
     self._results = []
@@ -411,7 +416,8 @@ class QMRestraintsBuilder(object):
     site_tag = f"{metal_element}_{chain_id}{resseq}"
     # First shell from the crystal geometry, then the CShM geometry class; both
     # feed the electronic guess (the class sets the ligand-field spin).
-    donor_iseqs = restraints.detect_first_shell(submodel, metal_iseq)
+    donor_iseqs = restraints.detect_first_shell(
+      submodel, metal_iseq, coord_cutoff=self.coord_cutoff)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
     # Angle-restraint gate (plan Sec 7): the metal->donor directions of the donors
     # that will actually get a bond. A symmetry-image donor is bonded to its ASU
@@ -452,6 +458,7 @@ class QMRestraintsBuilder(object):
     if not self.predict_only:
       frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
         submodel, metal_iseq, cap_iseqs, cap_anchor_iseqs=cap_anchor_iseqs,
+        coord_cutoff=self.coord_cutoff,
         freeze_waters=self.freeze_waters, log=self.logger)
       site_dir = self._site_dir(chain_id, resseq)
       self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)

@@ -39,6 +39,7 @@ except ImportError:
 
 from libtbx.utils import Sorry
 
+from mmtbx.geometry_restraints.qmi import util
 from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
 
 
@@ -188,6 +189,20 @@ optimisation; its hydrogens stay free."
     .help = "When to emit donor-metal-donor angle restraints. 'auto' emits them \
 only for CN<=2 (linear) sites, whose angle the M-L distances leave free; a \
 CN>=3 site is held by its bonds alone. 'always'/'never' are unconditional."
+  coordination
+    .short_caption = Metal-donor coordination cutoff
+  {
+    cutoff = *fixed cordero
+      .type = choice
+      .short_caption = Cutoff method
+      .help = "Metal-donor coordination cutoff: 'fixed' uses a flat 3.0 A; \
+'cordero' uses alpha*(r1+r2) from Cordero covalent radii."
+    cutoff_alpha = 1.3
+      .type = float(value_min=1.0)
+      .short_caption = Cordero cutoff tolerance
+      .help = "Tolerance factor alpha in the Cordero cutoff (ignored when \
+cutoff=fixed)."
+  }
   work_dir = "qm_work_dir"
     .type = path
     .short_caption = QM working directory
@@ -320,6 +335,11 @@ Requires xtb.
     element_filter = [e for e in (self.params.sites.element_filter or [])
                       if e and e.strip()]
     selection = [s for s in (self.params.sites.selection or []) if s]
+    # One shared metal-donor coordination cutoff for donor detection,
+    # deprotonation, and qm-region freezing, so the first shell cannot diverge.
+    coord_cutoff = util.make_coordination_cutoff(
+      self.params.qm.coordination.cutoff,
+      self.params.qm.coordination.cutoff_alpha)
     if self.params.protonation.enable:
       from mmtbx.geometry_restraints.qmi import protonation
       from mmtbx.geometry_restraints.qmi import metals as qmi_metals
@@ -334,7 +354,7 @@ Requires xtb.
         scope &= {e.strip().capitalize() for e in element_filter}
       wp = self.params.protonation.water
       model = protonation.prepare_model(
-        model, metals=scope, log=self.logger,
+        model, metals=scope, coord_cutoff=coord_cutoff, log=self.logger,
         water_kwargs=dict(
           n_refine=wp.refine.max_sweeps, refine_tol=wp.refine.tolerance,
           n_basin=wp.basin.rounds, lone_pair_directed=wp.lone_pair,
@@ -357,6 +377,7 @@ Requires xtb.
       use_bvs=self.params.use_bvs,
       freeze_waters=self.params.qm.freeze_waters,
       angle_restraints=self.params.qm.angle_restraints,
+      coord_cutoff=coord_cutoff,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()

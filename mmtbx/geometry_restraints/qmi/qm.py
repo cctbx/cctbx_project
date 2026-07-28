@@ -104,7 +104,7 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
 
 def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
                            free_radius=DEFAULT_FREE_RADIUS,
-                           coord_cutoff_A=util.DEFAULT_COORDINATION_CUTOFF_A,
+                           coord_cutoff=None,
                            freeze_waters=False, log=None):
   """Return ``(frozen_iseqs, free_iseqs)`` for the QM optimisation.
 
@@ -118,9 +118,10 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   - every atom of a cofactor residue (:data:`COFACTOR_RESNAMES`) that has any
     atom in the free zone, freed whole so doming/ruffling survives;
   - a standard-amino-acid backbone atom (N/CA/C/O/OXT) only when it sits within
-    *coord_cutoff_A* of the metal (a coordinating backbone carbonyl O), plus
-    that O's partner carbonyl C and the residue CA (so the C=O reorients via
-    the soft CA-C rotation, hinged at the still-frozen amide N);
+    ``coord_cutoff(metal_element, atom_element)`` of the metal (a coordinating
+    backbone carbonyl O), plus that O's partner carbonyl C and the residue CA
+    (so the C=O reorients via the soft CA-C rotation, hinged at the still-frozen
+    amide N);
   - every non-cap H/D, regardless of distance (their positions are placed, not
     measured, so the optimiser should settle them).
 
@@ -146,7 +147,10 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   cap_anchor_iseqs : sequence of int
       Positional indices of the heavy atoms the caps are bonded to (their
       anchors), as recorded by endo_exo (``seed['cap_anchor_iseqs']``).
-  free_radius, coord_cutoff_A : float
+  free_radius : float
+  coord_cutoff : callable or None
+      ``(metal_element, donor_element) -> max distance (A)``; see
+      :func:`util.make_coordination_cutoff`. Default: the flat fixed cutoff.
   freeze_waters : bool
   log : file-like or None
 
@@ -157,11 +161,14 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   """
   if log is None:
     log = null_out()
+  if coord_cutoff is None:
+    coord_cutoff = util.make_coordination_cutoff()
   hier = submodel.get_hierarchy()
   atoms = hier.atoms()
   n = atoms.size()
 
   seed_xyz = matrix.col(atoms[seed_iseq].xyz)
+  metal_element = atoms[seed_iseq].element
   near_seed = {
     i for i, atom in enumerate(atoms)
     if (matrix.col(atom.xyz) - seed_xyz).length() <= free_radius
@@ -191,7 +198,7 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
     if (common_residue_names_get_class(resname) in _AA_CLASSES
         and name in _BACKBONE_NAMES):
       d = (matrix.col(atom.xyz) - seed_xyz).length()
-      if d > coord_cutoff_A:
+      if d > coord_cutoff(metal_element, atom.element):
         free_iseqs.discard(i)
       else:
         ag = atom.parent()

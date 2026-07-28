@@ -42,10 +42,6 @@ from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 from mmtbx.geometry_restraints.qmi import util
 
 
-# Distance defining a metal-coordinating donor (Harding / CheckMyMetal); the
-# single value lives in qmi.util so the pipeline cannot silently diverge.
-DEFAULT_COORDINATION_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
-
 # Anionic donors: (resname, donor heavy-atom) -> H names to strip so charge
 # accounting reads them as anionic, not neutral.
 _COORD_DEPROT_RULES = {
@@ -262,10 +258,10 @@ def _relocate_or_remove_his_h(ag, coord_n, coord_h, metal_d):
 # metal-donor deprotonation
 # ---------------------------------------------------------------------------
 def deprotonate_metal_donors(hier, metals=None,
-                             coord_cutoff_A=DEFAULT_COORDINATION_CUTOFF_A,
+                             coord_cutoff=None,
                              log=None):
   """Fix, IN PLACE, the protonation of sidechain donors in *hier* coordinating
-  any metal atom (within *coord_cutoff_A*).
+  any metal atom (within ``coord_cutoff(metal_element, donor_element)``).
 
   - Asp/Glu carboxylate (:data:`_COORD_DEPROT_RULES`): strip the acid H for any
     coordinating metal (anionic by pH, metal-independent).
@@ -287,13 +283,14 @@ def deprotonate_metal_donors(hier, metals=None,
   """
   if log is None:
     log = null_out()
+  if coord_cutoff is None:
+    coord_cutoff = util.make_coordination_cutoff()
   metal_atoms = qmi_metals.metal_atoms(hier.atoms(), metals=metals)
-  metal_xyzs = [matrix.col(a.xyz) for a in metal_atoms]
-  if not metal_xyzs:
+  if not metal_atoms:
     return 0, 0
   # Cys/Tyr score only against anion-inducing metals (see _SOFT_DONOR_KEYS).
-  anion_xyzs = [matrix.col(a.xyz) for a in metal_atoms
-                if qmi_metals.normalize_element(a.element) in _ANION_INDUCING_METALS]
+  anion_atoms = [a for a in metal_atoms
+                 if qmi_metals.normalize_element(a.element) in _ANION_INDUCING_METALS]
 
   # Asp/Glu (any metal) and Cys/Tyr (anion-inducing metals only): strip the H.
   to_remove, seen = [], set()
@@ -303,12 +300,14 @@ def deprotonate_metal_donors(hier, metals=None,
     key = (ag.resname.strip().upper(), atom.name.strip().upper())
     if key not in _COORD_DEPROT_RULES:
       continue
-    scored_xyzs = anion_xyzs if key in _SOFT_DONOR_KEYS else metal_xyzs
-    if not scored_xyzs:
+    scored_metals = anion_atoms if key in _SOFT_DONOR_KEYS else metal_atoms
+    if not scored_metals:
       continue
     donor_xyz = matrix.col(atom.xyz)
-    d_min = min((donor_xyz - mxyz).length() for mxyz in scored_xyzs)
-    if d_min > coord_cutoff_A:
+    nearest, d_min = min(
+      ((m, (donor_xyz - matrix.col(m.xyz)).length()) for m in scored_metals),
+      key=lambda md: md[1])
+    if d_min > coord_cutoff(nearest.element, atom.element):
       continue
     rg = ag.parent()
     ch = rg.parent()
@@ -333,16 +332,19 @@ def deprotonate_metal_donors(hier, metals=None,
     if atom_group.resname.strip().upper() != "HIS":
       continue
     abn = {a.name.strip().upper(): a for a in atom_group.atoms()}
-    coord_n, d_coord = None, None
+    coord_n, d_coord, coord_metal = None, None, None
     for nn in ("ND1", "NE2"):
       na = abn.get(nn)
       if na is None:
         continue
       nxyz = matrix.col(na.xyz)
-      dmin = min((nxyz - mxyz).length() for mxyz in metal_xyzs)
+      m, dmin = min(
+        ((mm, (nxyz - matrix.col(mm.xyz)).length()) for mm in metal_atoms),
+        key=lambda md: md[1])
       if d_coord is None or dmin < d_coord:
-        coord_n, d_coord = nn, dmin
-    if coord_n is None or d_coord > coord_cutoff_A:
+        coord_n, d_coord, coord_metal = nn, dmin, m
+    if coord_n is None or d_coord > coord_cutoff(coord_metal.element,
+                                                 abn[coord_n].element):
       continue
     coord_h = next((abn[h] for h in _HIS_RING_H[coord_n] if h in abn), None)
     if coord_h is None:
@@ -368,7 +370,8 @@ def deprotonate_metal_donors(hier, metals=None,
   return len(reports), len(his_reports)
 
 
-def prepare_model(model, metals=None, water_kwargs=None, log=None):
+def prepare_model(model, metals=None, water_kwargs=None, coord_cutoff=None,
+                  log=None):
   """Protonate a raw model for qmi and fix metal-donor protonation.
 
   Runs reduce2 (protein H), places water H, and deprotonates metal-coordinating
@@ -378,7 +381,8 @@ def prepare_model(model, metals=None, water_kwargs=None, log=None):
 
   *metals* scopes the deprotonation (see :func:`deprotonate_metal_donors`);
   *water_kwargs* is a dict forwarded to :func:`protonate_waters` (None uses its
-  defaults).
+  defaults); *coord_cutoff* is the shared metal-donor cutoff callable (None uses
+  the fixed default).
   """
   import mmtbx.model
   if log is None:
@@ -390,7 +394,8 @@ def prepare_model(model, metals=None, water_kwargs=None, log=None):
   #     already protonated) and delete the next call; nothing else changes. ---
   protonate_waters(hier, log=log, **(water_kwargs or {}))
   # -------------------------------------------------------------------------
-  deprotonate_metal_donors(hier, metals=metals, log=log)
+  deprotonate_metal_donors(hier, metals=metals, coord_cutoff=coord_cutoff,
+                           log=log)
   return mmtbx.model.manager(
     model_input=None, pdb_hierarchy=hier,
     crystal_symmetry=model.crystal_symmetry())

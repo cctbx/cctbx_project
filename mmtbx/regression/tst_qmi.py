@@ -25,7 +25,8 @@ from scitbx.array_family import flex
 
 from mmtbx.programs.qmi import Program, master_phil_str
 from mmtbx.geometry_restraints.qmi import (
-  qm, restraints, sigma, metals, protonation, shape, bvs, sanity, provenance)
+  qm, restraints, sigma, metals, protonation, shape, bvs, sanity, provenance,
+  util)
 from mmtbx.geometry_restraints.qmi import electronic as el
 from mmtbx.geometry_restraints.qmi import donors as D
 from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
@@ -563,6 +564,32 @@ def exercise_detect_first_shell():
   donors = restraints.detect_first_shell(model, 0, sites_cart=sites)
   # 3 N (iseq 1,2,3) + water O (4); NOT the ring C (5) or the H (6).
   assert donors == [1, 2, 3, 4], donors
+
+  # A per-element cutoff callable is honoured: admit N, reject O -> the water O
+  # drops out.  (Proves detect_first_shell asks the callable per donor element.)
+  only_n = lambda m_el, d_el: 5.0 if d_el.strip().upper() == 'N' else 0.0
+  assert restraints.detect_first_shell(
+    model, 0, sites_cart=sites, coord_cutoff=only_n) == [1, 2, 3]
+  # A real Cordero cutoff tightened to alpha=1.0 excludes every contact here
+  # (each N/O sits beyond r_Zn + r_donor).
+  tight = util.make_coordination_cutoff('cordero', 1.0)
+  assert restraints.detect_first_shell(
+    model, 0, sites_cart=sites, coord_cutoff=tight) == []
+
+
+def exercise_coordination_cutoff():
+  fixed = util.make_coordination_cutoff()
+  cordero = util.make_coordination_cutoff('cordero', 1.3)
+  # 'fixed' is element-blind: the flat DEFAULT_COORDINATION_CUTOFF_A.
+  assert fixed('Fe', 'O') == util.DEFAULT_COORDINATION_CUTOFF_A == 3.0
+  assert fixed('Zn', 'S') == 3.0
+  # 'cordero' is alpha*(r_metal + r_donor); Fe/Mn/Co take the high-spin radius,
+  # the rest the cctbx.eltbx (Cordero low-spin / default) value.
+  assert approx_equal(cordero('Fe', 'O'), 1.3 * (1.52 + 0.66), eps=1e-6)
+  assert approx_equal(cordero('Zn', 'S'), 1.3 * (1.22 + 1.05), eps=1e-6)
+  assert util.covalent_radius('Fe') == 1.52       # high-spin override
+  assert util.covalent_radius('Mn') == 1.61
+  assert approx_equal(util.covalent_radius(' o '), 0.66, eps=1e-2)  # eltbx, any case
 
 
 def exercise_metal_ligand_restraints():
@@ -1261,6 +1288,7 @@ def run():
   exercise_optimise_mask()
   exercise_determine_frozen_atoms()
   exercise_detect_first_shell()
+  exercise_coordination_cutoff()
   exercise_metal_ligand_restraints()
   exercise_symmetry_donor_skip()
   exercise_deprotonation()

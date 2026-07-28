@@ -12,6 +12,8 @@ from __future__ import absolute_import, division, print_function
 import os
 from contextlib import contextmanager
 
+from cctbx.eltbx import covalent_radii
+
 
 # Metal first-shell coordination cutoff (Angstrom): an atom within this of the
 # metal is treated as coordinating. ~3.0 A per the protein metal-site surveys
@@ -19,6 +21,40 @@ from contextlib import contextmanager
 # (coordinating-backbone freeing), and protonation (metal-donor deprotonation)
 # so the first-shell definition cannot silently diverge across the pipeline.
 DEFAULT_COORDINATION_CUTOFF_A = 3.0
+
+# Tolerance factor alpha for the Cordero covalent-radii cutoff d <= alpha*(r1+r2)
+# (metal + donor). ~1.3 admits a typical M-L bond with a margin; the alpha range
+# is per CheckMyMetal [10]. Used only when the cutoff mode is 'cordero'.
+DEFAULT_CUTOFF_ALPHA = 1.3
+
+# Cordero et al. (2008) high-spin covalent radii (Angstrom) [26] for the bimodal
+# transition metals. cctbx.eltbx.covalent_radii keeps only their low-spin value;
+# biological non-heme Fe/Mn are high-spin, and the larger radius is the safer
+# (more inclusive) choice for a neighbour search that must not miss a donor.
+_CORDERO_HS_RADII = {'Fe': 1.52, 'Mn': 1.61, 'Co': 1.50}
+
+
+def covalent_radius(element):
+  """Cordero (2008) covalent radius (Angstrom) [26] for *element*: the high-spin
+  value for the bimodal Fe/Mn/Co, else the cctbx.eltbx.covalent_radii value (its
+  low-spin / default entry)."""
+  el = element.strip().capitalize()
+  if el in _CORDERO_HS_RADII:
+    return _CORDERO_HS_RADII[el]
+  return covalent_radii.table(el).radius()
+
+
+def make_coordination_cutoff(mode='fixed', alpha=DEFAULT_CUTOFF_ALPHA):
+  """Return a callable ``(metal_element, donor_element) -> max coordinating
+  distance (Angstrom)``. ``'fixed'`` ignores the elements and returns the flat
+  DEFAULT_COORDINATION_CUTOFF_A; ``'cordero'`` returns ``alpha*(r_metal +
+  r_donor)`` from the Cordero covalent radii [26]. One instance is shared by
+  restraints (donor detection), protonation (metal-donor deprotonation), and qm
+  (coordinating-backbone freeing) so the first shell cannot silently diverge."""
+  if mode == 'cordero':
+    return lambda metal_element, donor_element: alpha * (
+      covalent_radius(metal_element) + covalent_radius(donor_element))
+  return lambda metal_element, donor_element: DEFAULT_COORDINATION_CUTOFF_A
 
 
 # common_residue_names_get_class outputs that count as a protein residue (standard

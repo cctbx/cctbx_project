@@ -50,13 +50,15 @@ DEFAULT_ANGLE_SIGMA = 5.0      # deg
 
 
 def detect_first_shell(submodel, metal_iseq, sites_cart=None,
-                       cutoff_A=DEFAULT_COORDINATION_CUTOFF_A,
+                       coord_cutoff=None,
                        donor_elements=DEFAULT_DONOR_ELEMENTS):
-  """Return the donor i_seqs within *cutoff_A* of the metal.
+  """Return the donor i_seqs coordinating the metal.
 
   Coordination is read from *sites_cart* (default: the sub-model's input
-  coordinates, the crystal geometry), not the optimised geometry.  Hydrogens
-  are excluded, and only elements in *donor_elements* are admitted.
+  coordinates, the crystal geometry), not the optimised geometry.  A donor
+  qualifies when its metal distance is within
+  ``coord_cutoff(metal_element, donor_element)``.  Hydrogens are excluded, and
+  only elements in *donor_elements* are admitted.
 
   Parameters
   ----------
@@ -64,7 +66,9 @@ def detect_first_shell(submodel, metal_iseq, sites_cart=None,
   metal_iseq : int
   sites_cart : scitbx.array_family.flex.vec3_double or None
       Coordinates to measure against; default ``submodel.get_sites_cart()``.
-  cutoff_A : float
+  coord_cutoff : callable or None
+      ``(metal_element, donor_element) -> max distance (A)``; see
+      :func:`util.make_coordination_cutoff`. Default: the flat fixed cutoff.
   donor_elements : iterable of str
 
   Returns
@@ -74,17 +78,22 @@ def detect_first_shell(submodel, metal_iseq, sites_cart=None,
   """
   if sites_cart is None:
     sites_cart = submodel.get_sites_cart()
+  if coord_cutoff is None:
+    coord_cutoff = util.make_coordination_cutoff()
   accept = frozenset(e.upper() for e in donor_elements)
   atoms = submodel.get_hierarchy().atoms()
+  metal_element = atoms[metal_iseq].element
   # All metal-atom distances in one vectorised flex pass; the element/H test
   # stays a per-atom mask.
   dists = (sites_cart - matrix.col(sites_cart[metal_iseq])).norms()
   donors = []
   for i, atom in enumerate(atoms):
-    if i == metal_iseq or dists[i] > cutoff_A:
+    if i == metal_iseq:
       continue
     elem = atom.element.strip().upper()
     if atom.element_is_hydrogen() or elem not in accept:
+      continue
+    if dists[i] > coord_cutoff(metal_element, atom.element):
       continue
     donors.append(i)
   return donors
