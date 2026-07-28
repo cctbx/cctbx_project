@@ -671,8 +671,13 @@ def exercise_symmetry_donor_skip():
     model, sites, 0, donors, original_chain_ids=["Q"], log=null_out())
   assert skip.n_skipped_symmetry == 4 and len(skip.bonds) == 0
   # With provenance it is emitted as a bond to its ASU parent via
-  # symmetry_operation (no angle -- angles cannot cross symmetry).
-  prov = {d: (atoms[d], "-x,-y,-z") for d in donors}
+  # symmetry_operation (no angle -- angles cannot cross symmetry). Provenance
+  # carries the ASU parent's identity tuple, not the atom object.
+  def _ident(a):
+    ag = a.parent(); rg = ag.parent()
+    return (rg.parent().id.strip(), rg.resseq.strip(), ag.resname.strip(),
+            a.name.strip(), ag.altloc.strip())
+  prov = {d: (_ident(atoms[d]), "-x,-y,-z") for d in donors}
   sym = restraints.metal_ligand_restraints(
     model, sites, 0, donors, original_chain_ids=["Q"],
     sym_image_provenance=prov, log=null_out())

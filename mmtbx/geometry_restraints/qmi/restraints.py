@@ -99,6 +99,22 @@ def detect_first_shell(submodel, metal_iseq, sites_cart=None,
   return donors
 
 
+def _selection_from_identity(chain_id, resseq, resname, name, altloc):
+  """A CCTBX atom-selection string from an atom's identity fields (chain /
+  resseq / resname / name, + altloc when present). The single formatter for
+  both a live atom (:func:`_selection_string`) and a symmetry-image donor's
+  stored ASU-parent identity, so the two paths cannot diverge."""
+  terms = [
+    f"chain {chain_id}",
+    f"resseq {resseq}",
+    f"resname {resname}",
+    f"name {name}",
+  ]
+  if altloc:
+    terms.append(f'altloc "{altloc}"')
+  return " and ".join(terms)
+
+
 def _selection_string(atom):
   """A CCTBX atom-selection string identifying *atom* in the full model.
 
@@ -109,16 +125,9 @@ def _selection_string(atom):
   ag = atom.parent()
   rg = ag.parent()
   chain = rg.parent()
-  terms = [
-    f"chain {chain.id.strip()}",
-    f"resseq {rg.resseq.strip()}",
-    f"resname {ag.resname.strip()}",
-    f"name {atom.name.strip()}",
-  ]
-  altloc = ag.altloc.strip()
-  if altloc:
-    terms.append(f'altloc "{altloc}"')
-  return " and ".join(terms)
+  return _selection_from_identity(
+    chain.id.strip(), rg.resseq.strip(), ag.resname.strip(),
+    atom.name.strip(), ag.altloc.strip())
 
 
 def is_symmetry_image(atom, original_chain_ids):
@@ -175,10 +184,11 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       Chain ids present in the original input model; used to identify
       symmetry-image donors.  ``None`` disables the check (all donors emitted as
       plain bonds).
-  sym_image_provenance : dict {donor_iseq: (asu_parent_atom, symmetry_op_xyz)} or None
-      Provenance for symmetry-image donors (from endo_exo). A symmetry-image
-      donor present here is emitted as a bond to its ASU parent with
-      ``symmetry_operation`` set; one absent here is skipped.
+  sym_image_provenance : dict {donor_iseq: (asu_parent_identity, symmetry_op_xyz)} or None
+      Provenance for symmetry-image donors (from endo_exo); asu_parent_identity is
+      the ASU parent's ``(chain, resseq, resname, name, altloc)`` tuple. A
+      symmetry-image donor present here is emitted as a bond to its ASU parent
+      with ``symmetry_operation`` set; one absent here is skipped.
   log : file-like or None
 
   Returns
@@ -200,7 +210,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
 
   prov = sym_image_provenance or {}
   usable = []          # non-symmetry donors: plain bonds + angles
-  sym_bonds = []       # (donor_iseq, asu_parent_atom, op_xyz): symmetry bonds only
+  sym_bonds = []       # (donor_iseq, asu_parent_identity, op_xyz): symmetry bonds only
   n_skipped = 0
   for d in donor_iseqs:
     if (original_chain_ids is not None
@@ -237,9 +247,10 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
            for idx, d in enumerate(usable)]
   # Symmetry-image donors: restrain the metal to symmetry_operation * ASU-parent
   # (angles cannot cross symmetry, so these get bonds only).
-  for d, parent_atom, op_xyz in sym_bonds:
+  for d, ident, op_xyz in sym_bonds:
     distance = (matrix.col(opt_sites_cart[d]) - metal_xyz).length()
-    bonds.append(_bond_record(d, _selection_string(parent_atom), distance, op_xyz))
+    bonds.append(
+      _bond_record(d, _selection_from_identity(*ident), distance, op_xyz))
 
   angles = []
   if emit_angles:
