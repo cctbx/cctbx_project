@@ -85,8 +85,38 @@ class Job(db_proxy):
   def remove_from_db(self):
     assert self.status == "DELETED"
 
-    print("Removing job %d from the db"%self.id, end=' ')
     tag = self.app.params.experiment_tag
+
+    print("Listing dataset_version links for job %d"%self.id, end=' ')
+    query = """SELECT dataset_version_id FROM `%s_dataset_version_job`
+               WHERE job_id = %d""" % (tag, self.id)
+    cursor = self.app.execute_query(query)
+    affected_version_ids = [str(row[0]) for row in cursor.fetchall()]
+    print("(%d)"%len(affected_version_ids))
+
+    if affected_version_ids:
+      print("Deleting dataset_version_job entries for job %d"%self.id, end=' ')
+      query = """DELETE dvj FROM `%s_dataset_version_job` dvj
+                 WHERE dvj.job_id = %d""" % (tag, self.id)
+      cursor = self.app.execute_query(query, commit=True)
+      print("(%d)"%cursor.rowcount)
+
+      is_global = self.task is not None and self.task.scope == "global"
+      if not is_global:
+        print("WARNING: the following dataset_version entries have lost an input "
+              "job and may now be incomplete. Their DB rows are being kept so the "
+              "version numbers are not reused (which would collide with existing "
+              "on-disk results):")
+        ids_csv = ",".join(affected_version_ids)
+        query = """SELECT dv.id, dv.version, ds.name
+                   FROM `%s_dataset_version` dv
+                   JOIN `%s_dataset` ds ON ds.id = dv.dataset_id
+                   WHERE dv.id IN (%s)""" % (tag, tag, ids_csv)
+        cursor = self.app.execute_query(query)
+        for dv_id, version, ds_name in cursor.fetchall():
+          print("  dataset_version id=%d (dataset=%s, version=%d)" % (dv_id, ds_name, version))
+
+    print("Removing job %d from the db"%self.id, end=' ')
     query = """DELETE job FROM `%s_job` job
                WHERE job.id = %d""" % (
                tag, self.id)
@@ -851,6 +881,8 @@ class MergingJob(Job):
     with open(target_phil_path, 'w') as f:
       expt_suffix = refl_suffix = None
       for job in self.dataset_version.jobs:
+        if not (job.task and job.task.scope == 'local'):
+          continue
         input_folder, _expt_suffix, _refl_suffix, _, _ = job.get_output_files()
         if expt_suffix is None: expt_suffix = _expt_suffix
         else: assert expt_suffix == _expt_suffix
@@ -1138,43 +1170,59 @@ def submit_all_jobs(app):
       assert task.scope == 'global' # only two task scopes
       assert task_idx # first task cannot be global
       prev_task = tasks[task_idx-1]
-      if prev_task.scope == 'global':
-        # Submit a job for this task for any versions where it has not been
-        for version in versions:
-          prev_j = _job(None, None, None, prev_task, dataset, version)
-          test_j = _job(None, None, None, task, dataset, version)
-          prev_job = this_job = None
-          for j in version.jobs:
-            if prev_j == j:
-              prev_job = j
-              continue
-            elif test_j == j:
-              this_job = j
-              continue
-            if prev_job and this_job: break
+      # Submit a job for this task for any version that is missing it. For a
+      # non-first global task (e.g. phenix) the predecessor is the previous
+      # global-task job linked to the version. For the first global task (e.g.
+      # merging) the predecessor is the set of local input jobs already linked
+      # to the version -- this also covers resubmitting a merge whose job the
+      # user deleted, since the on-disk folder was removed by delete() and the
+      # new submission writes to the same path under the same version number.
+      current_local_task_ids = {t.id for t in tasks if t.scope == 'local'}
+      for version in versions:
+        # Only process versions created under the current task list. If any
+        # local input belongs to a task no longer in the dataset's task list,
+        # the version was set up under a previous configuration -- leave it
+        # alone so we don't apply the new pipeline to old data.
+        local_inputs = [j for j in version.jobs if j.task and j.task.scope == 'local']
+        if not local_inputs:
+          continue
+        if not all(j.task_id in current_local_task_ids for j in local_inputs):
+          continue
 
-          if not this_job and prev_job and prev_job.status == 'DONE':
-            j = JobFactory.from_args(app,
-                                     task_id = task.id,
-                                     dataset_id = dataset.id,
-                                     status = "SUBMITTED")
-            j.task = task; j.dataset = dataset; j.dataset_version = version
+        if any(j.task_id == task.id for j in version.jobs):
+          continue
 
-            try:
-              j.submission_id = j.submit(prev_job)
-            except Exception as e:
-              print("Couldn't submit job:", str(e))
-              j.status = "SUBMIT_FAIL"
-              raise
-            version.add_job(j)
+        if prev_task.scope == 'global':
+          prev_job = next((j for j in version.jobs if j.task_id == prev_task.id), None)
+          if not (prev_job and prev_job.status == 'DONE'):
+            continue
+          submit_args = (prev_job,)
+        else:
+          print("Resubmitting %s job for existing dataset_version %d (version %d)" % (
+            task.type, version.id, version.version))
+          submit_args = ()
 
-            if app.params.mp.method == 'local': # only run one job at a time
-              return
-            if app.params.mp.max_queued is not None:
-              running_jobs += 1
-              if running_jobs >= app.params.mp.max_queued:
-                print("Waiting for space in the queue to submit next job")
-                return
+        j = JobFactory.from_args(app,
+                                 task_id = task.id,
+                                 dataset_id = dataset.id,
+                                 status = "SUBMITTED")
+        j.task = task; j.dataset = dataset; j.dataset_version = version
+
+        try:
+          j.submission_id = j.submit(*submit_args)
+        except Exception as e:
+          print("Couldn't submit job:", str(e))
+          j.status = "SUBMIT_FAIL"
+          raise
+        version.add_job(j)
+
+        if app.params.mp.method == 'local': # only run one job at a time
+          return
+        if app.params.mp.max_queued is not None:
+          running_jobs += 1
+          if running_jobs >= app.params.mp.max_queued:
+            print("Waiting for space in the queue to submit next job")
+            return
 
       key = dataset_idx, task_idx
       if key not in global_tasks: continue # no jobs ready yet
