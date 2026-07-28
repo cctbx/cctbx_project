@@ -702,9 +702,11 @@ class QMRegionBuilder(object):
         are bonded to (their anchors), so downstream tools can pin the severed
         boundary bonds at both ends without re-deriving the connectivity.
     sym_image_provenance : dict
-        ``{sub-model i_seq: (asu_parent_atom, symmetry_operation_xyz)}`` for each
-        materialized symmetry-image atom, so a metal-ligand bond to a
-        symmetry-image donor can be emitted against its ASU parent.
+        ``{sub-model i_seq: ((chain, resseq, resname, name, altloc),
+        symmetry_operation_xyz)}`` for each materialized symmetry-image atom: the
+        ASU parent's selection identity (not the atom object, whose parent chain
+        dangles once this model is freed) plus the symmetry op, so a metal-ligand
+        bond to a symmetry-image donor can be emitted against its ASU parent.
     """
     import iotbx.pdb
     import mmtbx.model as mmtbx_model
@@ -865,16 +867,25 @@ class QMRegionBuilder(object):
       if a in anchor_iseq_by_cap))
 
     # Symmetry-image provenance (in-memory hand-off): map each materialized
-    # symmetry-image atom's sub-model i_seq to (its ASU-parent atom, the
-    # symmetry_operation that generated it), both already known from region
-    # building. A downstream tool restrains a metal-ligand bond to such a donor
-    # via geometry_restraints.edits (atom_1 vs symmetry_operation * atom_2),
-    # building atom_2's selection from the parent atom. Angles cannot cross
-    # symmetry, so only bonds benefit.
-    sym_image_provenance = {
-      atom.i_seq: (parent_atoms[parent_iseq], op_xyz)
-      for (parent_iseq, op_xyz), atom in atom_for_node.items()
-      if op_xyz != identity_xyz}
+    # symmetry-image atom's sub-model i_seq to its ASU parent's selection
+    # identity (chain, resseq, resname, name, altloc) plus the symmetry_operation
+    # that generated it. A downstream tool restrains a metal-ligand bond to such
+    # a donor via geometry_restraints.edits (atom_1 vs symmetry_operation *
+    # atom_2), building atom_2's selection from that identity. The identity is
+    # captured here, not the atom object: the object's parent chain dangles once
+    # this (filtered) model is freed after the region is returned. Angles cannot
+    # cross symmetry, so only bonds benefit.
+    sym_image_provenance = {}
+    for (parent_iseq, op_xyz), atom in atom_for_node.items():
+      if op_xyz == identity_xyz:
+        continue
+      pa = parent_atoms[parent_iseq]
+      ag = pa.parent()
+      rg = ag.parent()
+      ch = rg.parent()
+      ident = (ch.id.strip(), rg.resseq.strip(), ag.resname.strip(),
+               pa.name.strip(), ag.altloc.strip())
+      sym_image_provenance[atom.i_seq] = (ident, op_xyz)
 
     return (model_sel, seed_indices, cap_indices, cap_original_elements,
             cap_anchor_indices, sym_image_provenance)
