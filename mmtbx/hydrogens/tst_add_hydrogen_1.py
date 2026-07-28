@@ -71,7 +71,7 @@ def compare_models(pdb_str,
   hd_sel_h_added = model_h_added.get_hd_selection()
 
   # For debugging
-  if 0:
+  if 1:
     write_models(model_initial, model_h_added)
 
   ph_h_added = model_h_added.get_hierarchy()
@@ -99,7 +99,7 @@ def compare_models(pdb_str,
   # check if coordinates are correct
   for name, sc in d2.items():
     assert(name in d1)
-    assert approx_equal(sc, d1[name], 0.01)
+    assert approx_equal(sc, d1[name], 0.01), f'{name} {sc} {d1[name]}'
 
 # ------------------------------------------------------------------------------
 
