@@ -53,7 +53,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       narrowed store cannot satisfy. It does not need to: the products the
       conjugate gradients want are done inside the builder (see
       build_design_matrix::times), and the reason the matrix stays in C++ at all
-      is to avoid a second copy of gigabytes. So the accessor works when the
+      is to avoid a second copy of the whole matrix. So the accessor works when the
       store is the working type and refuses otherwise, rather than quietly
       widening the matrix back out and allocating what was just saved.
    */
@@ -142,14 +142,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
   for the stored-J conjugate gradients: they want J and, alongside it, the
   scale factor, the right hand side and the preconditioner blocks, and those
   cost a few flops per reflection while the gradients are still in cache
-  against a second pass over gigabytes if they are recovered from J afterwards.
+  against a second pass over the whole matrix if they are recovered from J
+  afterwards.
   What is accumulated is the caller's choice, the accumulator being a template
   parameter -- see smtbx/refinement/least_squares_matrix_free.h for one which
   gathers exactly that summary and never forms a normal matrix.
   */
   /** StoreType is what the design matrix is *held* in, which need not be what
       the refinement computes in. Holding it in float halves a matrix that is
-      gigabytes on a protein, and the conjugate gradients still accumulate their
+      large problem, and the conjugate gradients still accumulate their
       products in FloatType -- see matrix_vector_mixed in
       scitbx/matrix/matrix_vector_operations.h for what that is worth and what
       it costs. Everything else, the gradients included, stays FloatType: only
@@ -200,8 +201,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       weights_(reflections.size()),
       /* Left uninitialised: the pass writes every row of every column, so
          value-initialising first is a second pass over the whole matrix for
-         nothing -- and on a protein the whole matrix is gigabytes, which is
-         also gigabytes of first-touch page faults taken twice over.
+         nothing -- and that is also a full set of first-touch page faults
+         taken twice over.
        */
       design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
         build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0),
@@ -250,8 +251,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       weights_(reflections.size()),
       /* Left uninitialised: the pass writes every row of every column, so
          value-initialising first is a second pass over the whole matrix for
-         nothing -- and on a protein the whole matrix is gigabytes, which is
-         also gigabytes of first-touch page faults taken twice over.
+         nothing -- and that is also a full set of first-touch page faults
+         taken twice over.
        */
       design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
         build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0),

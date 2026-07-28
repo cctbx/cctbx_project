@@ -299,14 +299,25 @@ namespace xray {
         return best;
       }
 
-      size_t get_index(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id, FloatType eps = -1) const
+      /* The scatterer an id describes, or ~0 if the structure has none.
+
+      For a caller which can carry on without it -- by falling back on a
+      spherical form factor for that atom, say -- a miss is an answer rather
+      than an error.
+      */
+      size_t find_index(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id,
+        FloatType eps = -1) const
       {
         size_t idx = index_from_id(sc_id);
         if (idx != ~0) {
           return idx;
         }
+        return index_cartesian(sc_id, eps);
+      }
 
-        idx = index_cartesian(sc_id, eps);
+      size_t get_index(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_id, FloatType eps = -1) const
+      {
+        size_t idx = find_index(sc_id, eps);
         if (idx != ~0) {
           return idx;
         }

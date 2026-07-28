@@ -5,9 +5,19 @@ ext = bp.import_ext("smtbx_structure_factors_direct_ext")
 class constructed_with_xray_structure(object):
 
   def __init__(self, xray_structure, table_file_name=None, reflections=None,
-               *args, **kwds):
+               scatterer_contribution=None, *args, **kwds):
+    """ scatterer_contribution: a table already read, to be used as it stands.
+
+    Reading a tabulated table costs time and memory proportional to its size,
+    so a caller which needs several of these over the same table can read it
+    once and hand it in. The table is
+    indexed by scatterer, so it only suits a structure whose scatterers are the
+    same ones in the same order; the caller is what knows that.
+    """
     xs = xray_structure
-    if not table_file_name:
+    if scatterer_contribution is not None:
+      self.scatterer_contribution = scatterer_contribution
+    elif not table_file_name:
       if reflections:
           self.scatterer_contribution = ext.isotropic_scatterer_contribution(
             xs.scatterers(),
@@ -29,12 +39,17 @@ class constructed_with_xray_structure(object):
           xs.scattering_type_registry(),
           reflections.indices())
       else:
-        self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
+        # a table need not name every atom of the structure; the ones it
+        # misses fall back on the spherical form factors the registry gives,
+        # which is why it is handed in here
+        self.scatterer_contribution = ext.table_based_scatterer_contribution.\
+          build_with_fallback(
           xs.unit_cell(),
           xs.scatterers(),
           table_file_name,
           xs.space_group(),
-          not xs.space_group().is_origin_centric())
+          not xs.space_group().is_origin_centric(),
+          xs.scattering_type_registry())
 
     args = (xs.unit_cell(),
             xs.space_group(),
@@ -66,16 +81,18 @@ class f_calc_modulus_with_custom_trigonometry(
 def f_calc_modulus_squared(xray_structure,
                            table_file_name=None,
                            reflections=None,
-                           exp_i_2pi_functor=None):
+                           exp_i_2pi_functor=None,
+                           scatterer_contribution=None):
   if exp_i_2pi_functor is None:
-    return f_calc_modulus_squared_with_std_trigonometry(xray_structure,
-                                                        table_file_name=table_file_name,
-                                                        reflections=reflections)
+    return f_calc_modulus_squared_with_std_trigonometry(
+      xray_structure,
+      table_file_name=table_file_name,
+      reflections=reflections,
+      scatterer_contribution=scatterer_contribution)
   else:
-    return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
-                                                           table_file_name,
-                                                           reflections,
-                                                           exp_i_2pi_functor)
+    return f_calc_modulus_squared_with_custom_trigonometry(
+      xray_structure, table_file_name, reflections,
+      scatterer_contribution, exp_i_2pi_functor)
 def f_calc_modulus(xray_structure,
                    exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:

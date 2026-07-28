@@ -25,6 +25,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     bool use_ad;
     af::shared<sgtbx::rot_mx> rot_mxs_;
     bool expanded;
+    // one per scatterer of the structure: did the table have a column for it?
+    // A table need not cover the whole structure, and the ones it misses are
+    // given a spherical form factor rather than nothing.
+    af::shared<bool> covered_;
   public:
     table_data()
     : expanded(false),
@@ -32,6 +36,21 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     {}
     af::shared<std::vector<complex_type> > const &data() const {
       return data_;
+    }
+
+    af::shared<bool> const &covered() const {
+      return covered_;
+    }
+
+    //! The scatterers the table had no column for, in order.
+    af::shared<std::size_t> not_covered() const {
+      af::shared<std::size_t> result;
+      for (std::size_t i = 0; i < covered_.size(); i++) {
+        if (!covered_[i]) {
+          result.push_back(i);
+        }
+      }
+      return result;
     }
 
     af::shared<sgtbx::rot_mx> const &rot_mxs() const {
@@ -70,7 +89,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       string line;
       vector<std::string> toks;
       size_t lc = 0;
-      vector<size_t> sc_indices(scatterers.size());
+      // sized by the table's own column count once the header names them
+      vector<size_t> sc_indices;
+      parent_t::covered_ = af::shared<bool>(scatterers.size(), false);
       bool header_read = false, ids_read = false;
       while (std::getline(in_file, line)) {
         lc++;
@@ -89,23 +110,24 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             std::vector<std::string> stoks;
             boost::trim(toks[1]);
             boost::split(stoks, toks[1], boost::is_any_of(" "));
-            SMTBX_ASSERT(stoks.size() == scatterers.size());
             map<string, size_t> sc_map;
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
               sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
             }
-            for (size_t sci = 0; sci < scatterers.size(); sci++) {
+            sc_indices.assign(stoks.size(), ~0);
+            for (size_t sci = 0; sci < stoks.size(); sci++) {
               boost::to_upper(stoks[sci]);
               map<string, size_t>::iterator fsci = sc_map.find(stoks[sci]);
-              SMTBX_ASSERT(fsci != sc_map.end());
-              sc_indices[sci] = fsci->second;
+              if (fsci != sc_map.end()) {
+                sc_indices[sci] = fsci->second;
+                parent_t::covered_[fsci->second] = true;
+              }
             }
           }
           else if (boost::iequals(toks[0], "scatterer_ids")) {
             std::vector<std::string> stoks;
             boost::trim(toks[1]);
             boost::split(stoks, toks[1], boost::is_any_of(" "));
-            SMTBX_ASSERT(stoks.size() == scatterers.size());
             int nr_scat = scatterers.size();
             af::shared<int> data(nr_scat);
             for (size_t sci = 0; sci < nr_scat; sci++) {
@@ -113,11 +135,14 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             }
 
             cctbx::xray::scatterer_ID_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
-            for (size_t sci = 0; sci < scatterers.size(); sci++) {
+            sc_indices.assign(stoks.size(), ~0);
+            for (size_t sci = 0; sci < stoks.size(); sci++) {
               scatterer_id_t sc_id(stoks[sci]);
-              size_t idx = scatter_lookup.get_index(sc_id);
-              SMTBX_ASSERT(idx != ~0);
+              size_t idx = scatter_lookup.find_index(sc_id);
               sc_indices[sci] = idx;
+              if (idx != ~0) {
+                parent_t::covered_[idx] = true;
+              }
             }
             ids_read = true;
           }
@@ -156,16 +181,22 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         // data
         else {
           boost::split(toks, line, boost::is_any_of(" "));
-          SMTBX_ASSERT(toks.size() == 3 + scatterers.size());
+          // as many columns as the table names, which need not be as many
+          // atoms as the structure has
+          SMTBX_ASSERT(toks.size() == 3 + sc_indices.size());
           cctbx::miller::index<> mi(
             atoi(toks[0].c_str()),
             atoi(toks[1].c_str()),
             atoi(toks[2].c_str()));
           parent_t::miller_indices_.push_back(mi);
           vector<complex_type> row;
-          row.resize(scatterers.size());
+          // an atom the table misses keeps a zero and is served elsewhere
+          row.assign(scatterers.size(), complex_type(0));
 #pragma omp parallel for
           for (int sci = 3; sci < toks.size(); sci++) {
+            if (sc_indices[sci - 3] == ~0) {
+              continue;
+            }
             size_t ci = toks[sci].find(',');
             if (ci != string::npos) {
               complex_type v(
@@ -209,20 +240,35 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       //read scatterer labels or ids and map onto scattterers list
       int sc_len = 0;
       tsc_file.read((char*)&sc_len, intsize);
-      vector<size_t> sc_indices(nr_scat);
+      /* The table's column count and the structure's atom count are two
+      different numbers. They usually agree, but a table need not cover the
+      whole structure, so the file is read with its own width and each column
+      is placed where it belongs -- or dropped, if the structure has no atom
+      for it. Columns the structure has no atom for are read and discarded;
+      atoms with no column are recorded in covered_ and later given a
+      spherical form factor.
+      */
+      // sc_len is a count of ids in the one case and a count of bytes of
+      // label text in the other, so the column count is settled per branch
+      size_t n_columns = 0;
+      vector<size_t> sc_indices;
+      parent_t::covered_ = af::shared<bool>(nr_scat, false);
       if (boost::icontains(header_str, "SCATTERER_IDS")) {
-        SMTBX_ASSERT(sc_len == nr_scat);
+        n_columns = sc_len;
+        sc_indices.assign(n_columns, ~0);
         af::shared<int> data(nr_scat);
         for (size_t sci = 0; sci < nr_scat; sci++) {
             data[sci] = scatterers[sci].get_part();
         }
 
         cctbx::xray::scatterer_ID_lookup<FloatType> scatter_lookup(u_cell, scatterers, data);
-        for (size_t sci = 0; sci < nr_scat; sci++) {
+        for (size_t sci = 0; sci < n_columns; sci++) {
           scatterer_id_t sc_id(tsc_file); //Read the raw bytes and convert to scatterer_id_t
-          size_t idx = scatter_lookup.get_index(sc_id);
-          SMTBX_ASSERT(idx != ~0);
+          size_t idx = scatter_lookup.find_index(sc_id);
           sc_indices[sci] = idx;
+          if (idx != ~0) {
+            parent_t::covered_[idx] = true;
+          }
         }
       }
       else {
@@ -231,18 +277,20 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         string scat_str(scat_line.begin(),scat_line.end());
         vector<string> toks;
         boost::split(toks, scat_str, boost::is_any_of(" "));
-        SMTBX_ASSERT(toks.size() == nr_scat);
         map<string, size_t> sc_map;
         for (size_t sci = 0; sci < nr_scat; sci++) {
           sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
         }
-        for (size_t sci = 0; sci < nr_scat; sci++) {
+        n_columns = toks.size();
+        sc_indices.assign(n_columns, ~0);
+        for (size_t sci = 0; sci < n_columns; sci++) {
           boost::to_upper(toks[sci]);
           map<string, size_t>::iterator fsci = sc_map.find(toks[sci]);
-          SMTBX_ASSERT(fsci != sc_map.end())("scatterer " + toks[sci] + " not found!");
-          sc_indices[sci] = fsci->second;
+          if (fsci != sc_map.end()) {
+            sc_indices[sci] = fsci->second;
+            parent_t::covered_[fsci->second] = true;
+          }
         }
-        SMTBX_ASSERT(sc_map.size() == scatterers.size());
       }
       //binary tsc files will only be written in expanded mode
       parent_t::expanded = true;
@@ -251,10 +299,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       tsc_file.read((char*)&nr_hkl, intsize);
       //read indices and scattering factors row by row
       int index[3] = { 0,0,0 };
-      vector<complex_type> buffer(nr_scat);
+      // a row of the file is as wide as the table, a row of the model as wide
+      // as the structure, and the two need not be the same
+      vector<complex_type> buffer(n_columns);
       // one entry per reflection, not one per element of every reflection:
-      // over-reserving here costs gigabytes on a table of any size
-      parent_t::data_.reserve(nr_hkl[0]);
+      // over-reserving here scales with the whole table
       parent_t::miller_indices_.reserve(nr_hkl[0]);
       // Size the table up front and fill it in place: pushing each row back
       // copies it, which is another pass over the whole table.
@@ -266,11 +315,14 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         // A read per scatterer spends more in stream bookkeeping than it
         // moves, and a table holds one row per reflection: take the row in one
         // read and put the scatterers in their places afterwards.
-        tsc_file.read((char*)&buffer[0], nr_scat * complex_doublesize);
+        tsc_file.read((char*)&buffer[0], n_columns * complex_doublesize);
         vector<complex_type> &target = parent_t::data_[run];
-        target.resize(nr_scat);
-        for (int i = 0; i < nr_scat; i++) {
-          target[sc_indices[i]] = buffer[i];
+        // an atom the table misses keeps a zero here and is served elsewhere
+        target.assign(nr_scat, complex_type(0));
+        for (size_t i = 0; i < n_columns; i++) {
+          if (sc_indices[i] != ~0) {
+            target[sc_indices[i]] = buffer[i];
+          }
         }
       }
       tsc_file.close();
@@ -496,8 +548,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       space_group(space_group),
       // af::shared is reference counted, so this shares the table the reader
       // built rather than copying it. Copying it row by row doubled both the
-      // time and the peak memory of loading a table, and on a large one that
-      // is gigabytes of each.
+      // time and the peak memory of loading a table.
       data(data_.data()),
       anomalous_flag(anomalous_flag),
       tmp(space_group.n_smx())
@@ -583,8 +634,117 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     }
   };
 
+  /* A table that covers only part of the structure, spherical for the rest.
+
+  A tabulated table is made for a particular set of atoms, and the structure it
+  is used with may have gained an atom since, or never have been fully covered.
+  Rather than refuse the table altogether, the atoms it names are taken from it
+  and the others get the spherical form factor they would have had with no
+  table at all. The mixture is not free of consequence -- part of the structure
+  is then modelled less well than the rest -- so which atoms fell back is
+  reported, for whoever has to say so.
+  */
+  template <typename FloatType>
+  class partially_tabulated
+    : public direct::one_scatterer_one_h::scatterer_contribution<FloatType>
+  {
+    typedef direct::one_scatterer_one_h::scatterer_contribution<FloatType>
+      base_type;
+  public:
+    typedef FloatType float_type;
+    typedef std::complex<float_type> complex_type;
+  private:
+    /* isotropic_scatterer_contribution keeps the registry by reference, so
+    something has to own the one it is built against for as long as it lives.
+    The caller's cannot be relied on: from Python the registry is a temporary
+    that dies at the end of the call. Hence a copy here -- it is refcounted
+    inside, so this is cheap -- declared before spherical_ so that it outlives
+    it, and rebuilt rather than forked on copy for the same reason.
+    */
+    af::shared<xray::scatterer<float_type> > scatterers_;
+    xray::scattering_type_registry registry_;
+    boost::shared_ptr<base_type> tabulated_, spherical_;
+    af::shared<bool> covered_;
+    std::size_t n_smx_;
+    mutable std::vector<complex_type> tmp_;
+  public:
+    partially_tabulated(const partially_tabulated &other)
+      : scatterers_(other.scatterers_),
+        registry_(other.registry_),
+        tabulated_(other.tabulated_->raw_fork()),
+        spherical_(new direct::one_scatterer_one_h::
+          isotropic_scatterer_contribution<float_type>(scatterers_, registry_)),
+        covered_(other.covered_),
+        n_smx_(other.n_smx_),
+        tmp_(other.n_smx_)
+    {}
+
+    partially_tabulated(base_type *tabulated,
+      af::shared<xray::scatterer<float_type> > const &scatterers,
+      xray::scattering_type_registry const &registry,
+      af::shared<bool> const &covered, std::size_t n_smx)
+      : scatterers_(scatterers),
+        registry_(registry),
+        tabulated_(tabulated),
+        spherical_(new direct::one_scatterer_one_h::
+          isotropic_scatterer_contribution<float_type>(scatterers_, registry_)),
+        covered_(covered),
+        n_smx_(n_smx),
+        tmp_(n_smx)
+    {}
+
+    virtual complex_type get(std::size_t scatterer_idx,
+      miller::index<> const &h) const
+    {
+      return covered_[scatterer_idx] ? tabulated_->get(scatterer_idx, h)
+                                     : spherical_->get(scatterer_idx, h);
+    }
+
+    /* A spherical form factor depends on the reflection only through its
+    resolution, which every symmetry equivalent shares, so the entries this
+    returns for an atom off the table are all the same number.
+    */
+    virtual std::vector<complex_type> const &get_full(std::size_t scatterer_idx,
+      miller::index<> const &h) const
+    {
+      if (covered_[scatterer_idx]) {
+        return tabulated_->get_full(scatterer_idx, h);
+      }
+      tmp_.assign(n_smx_, spherical_->get(scatterer_idx, h));
+      return tmp_;
+    }
+
+    virtual base_type &at_d_star_sq(float_type d_star_sq) {
+      tabulated_->at_d_star_sq(d_star_sq);
+      spherical_->at_d_star_sq(d_star_sq);
+      return *this;
+    }
+
+    //! Mixed, so not the uniform spherical case callers may optimise for.
+    virtual bool is_spherical() const {
+      return false;
+    }
+
+    virtual af::shared<std::size_t> scatterers_not_in_table() const {
+      af::shared<std::size_t> result;
+      for (std::size_t i = 0; i < covered_.size(); i++) {
+        if (!covered_[i]) {
+          result.push_back(i);
+        }
+      }
+      return result;
+    }
+
+    virtual base_type *raw_fork() const {
+      return new partially_tabulated(*this);
+    }
+  };
+
   template <typename FloatType>
   struct builder {
+    /* Without a registry a table which misses an atom is an error, as before.
+    build_with_fallback supplies one and gets the spherical fallback instead.
+    */
     static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
       build(
         const uctbx::unit_cell& u_cell,
@@ -593,31 +753,81 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         sgtbx::space_group const &space_group,
         bool anomalous_flag)
     {
+      return build_impl(u_cell, scatterers, file_name, space_group,
+        anomalous_flag, 0);
+    }
+
+    static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
+      build_with_fallback(
+        const uctbx::unit_cell& u_cell,
+        af::shared< xray::scatterer<FloatType> > const &scatterers,
+        std::string const &file_name,
+        sgtbx::space_group const &space_group,
+        bool anomalous_flag,
+        xray::scattering_type_registry const &scattering_type_registry)
+    {
+      return build_impl(u_cell, scatterers, file_name, space_group,
+        anomalous_flag, &scattering_type_registry);
+    }
+
+    static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
+      build_impl(
+        const uctbx::unit_cell& u_cell,
+        af::shared< xray::scatterer<FloatType> > const &scatterers,
+        std::string const &file_name,
+        sgtbx::space_group const &space_group,
+        bool anomalous_flag,
+        xray::scattering_type_registry const *scattering_type_registry)
+    {
       table_reader<FloatType> data(u_cell, scatterers, file_name);
       if(!data.use_AD()){
         anomalous_flag = false;
       }
+      direct::one_scatterer_one_h::scatterer_contribution<FloatType> *result;
       if (data.rot_mxs().size() <= 1) {
         if (data.is_expanded()) {
-          return new lookup_based_anisotropic<FloatType>(
+          result = new lookup_based_anisotropic<FloatType>(
             scatterers,
             data,
             space_group,
             anomalous_flag);
         }
         else {
-          return new table_based_isotropic<FloatType>(
+          result = new table_based_isotropic<FloatType>(
             scatterers,
             data,
             space_group,
             anomalous_flag);
         }
       }
-      return new table_based_anisotropic<FloatType>(
-        scatterers,
-        data,
-        space_group,
-        anomalous_flag);
+      else {
+        result = new table_based_anisotropic<FloatType>(
+          scatterers,
+          data,
+          space_group,
+          anomalous_flag);
+      }
+      /* A table which covers every atom is used as it stands. One which does
+      not is paired with spherical form factors for the rest, so the refinement
+      can go on -- but only if the caller supplied the registry to compute them
+      from. Without it there is nothing to fall back on, and a table that does
+      not fit the structure is an error as it was before.
+      */
+      af::shared<std::size_t> missing = data.not_covered();
+      if (missing.size() != 0) {
+        if (scattering_type_registry == 0) {
+          delete result;
+          throw SMTBX_ERROR("the table does not cover the whole structure and"
+            " no scattering type registry was given to fall back on");
+        }
+        result = new partially_tabulated<FloatType>(
+          result,
+          scatterers,
+          *scattering_type_registry,
+          data.covered(),
+          space_group.n_smx());
+      }
+      return result;
     }
 
     static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *

@@ -159,7 +159,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     };
 
     /** StoreType is what the design matrix is held in. Wrapped twice: once at
-        FloatType, and once at float, which halves a matrix that is gigabytes on
+        FloatType, and once at float, which halves a matrix that is large on
         a protein. The narrow one still accumulates its products in FloatType --
         see build_design_matrix::times -- so it is mixed precision and not
         single precision, and the difference is 2.6e-08 against 3.0e-06.

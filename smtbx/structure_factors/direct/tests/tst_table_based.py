@@ -15,26 +15,34 @@ import smtbx.development
 import smtbx.structure_factors.direct as structure_factors
 import os
 import random
+import struct
 
 indices = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (2, 1, 1)]
 
 
-def write_table(file_name, xs):
+def write_table(file_name, xs, columns=None):
   """ A table for the structure as it stands, entry i marked with i+1.
 
   Labelling the entries by construction means a table which reads back in the
   wrong order is caught, and not merely one which fails to read at all.
+
+  columns: which scatterers to give a column, defaulting to all of them. A
+  table is free to cover only part of a structure, and the entries keep the
+  label of the scatterer they describe either way.
   """
   scatterers = xs.scatterers()
+  if columns is None:
+    columns = range(scatterers.size())
   with open(file_name, 'w') as out:
     out.write('Title: labelled table for the scatterer id test')
     out.write('\nScatterer_ids:')
-    for sc in scatterers:
-      out.write(' %s' % sc.get_id_big(sc.get_part()).to_hex_string())
+    for i in columns:
+      out.write(' %s' % scatterers[i].get_id_big(
+        scatterers[i].get_part()).to_hex_string())
     out.write('\nData:')
     for h in indices:
       out.write('\n%d %d %d' % h)
-      for i in range(scatterers.size()):
+      for i in columns:
         out.write(' %.6f,%.6f' % (i + 1, 0))
     out.write('\n')
 
@@ -55,7 +63,9 @@ def resolves(file_name, xs):
   try:
     rows = read_table(file_name, xs)
   except RuntimeError as e:
-    assert 'Could not locate' in str(e), e
+    # an entry that cannot be placed leaves its scatterer uncovered, which
+    # without a registry to fall back on is refused outright
+    assert 'does not cover the whole structure' in str(e), e
     return False
   for row in rows:
     assert row == expected, (row, expected)
@@ -150,18 +160,132 @@ def exercise_the_generated_table_is_readable(file_name):
       not xs.space_group().is_origin_centric())
 
 
+def exercise_a_partial_table_falls_back_on_spherical(file_name):
+  """ Atoms the table misses shall get spherical form factors, not zeroes.
+
+  A zero would be silent: the refinement would run and simply pretend those
+  atoms are not there. So this checks the value each uncovered scatterer gets
+  against what it would have had with no table at all, and checks that the
+  covered ones still come from the table.
+  """
+  xs = smtbx.development.random_xray_structure(
+    sgtbx.space_group_info('P1'), elements=['C'] * 4 + ['O'] * 2,
+    u_iso=0.05, random_u_iso=False)
+  n = xs.scatterers().size()
+  missing = [1, 4]
+  covered = [i for i in range(n) if i not in missing]
+  write_table(file_name, xs, columns=covered)
+
+  # without a registry there is nothing to fall back on, so it is an error
+  try:
+    read_table(file_name, xs)
+    raise AssertionError('a partial table was accepted with no fallback')
+  except RuntimeError as e:
+    assert 'does not cover the whole structure' in str(e), e
+
+  contribution = structure_factors.ext.table_based_scatterer_contribution.\
+    build_with_fallback(
+      xs.unit_cell(), xs.scatterers(), file_name, xs.space_group(),
+      not xs.space_group().is_origin_centric(), xs.scattering_type_registry())
+  assert list(contribution.scatterers_not_in_table()) == missing, \
+    list(contribution.scatterers_not_in_table())
+
+  spherical = structure_factors.ext.isotropic_scatterer_contribution(
+    xs.scatterers(), xs.scattering_type_registry())
+  for h in indices:
+    d_star_sq = xs.unit_cell().d_star_sq(h)
+    contribution.at_d_star_sq(d_star_sq)
+    spherical.at_d_star_sq(d_star_sq)
+    for i in range(n):
+      got = contribution.get(i, h)
+      if i in missing:
+        expected = spherical.get(i, h)
+        assert abs(got - expected) < 1e-12, (i, h, got, expected)
+        assert abs(got) > 1e-6, (i, h, got)
+      else:
+        assert abs(got - complex(i + 1, 0)) < 1e-6, (i, h, got)
+
+
+ENCODE_SCALE = 2147483647 / 16.0
+
+
+def write_tscb(file_name, xs, columns):
+  """ The same table in the binary format, which has its own reader.
+
+  The two readers keep separate bookkeeping of which scatterers a table
+  covered, and the binary one is what a NoSpherA2 run actually produces, so
+  exercising only the text one would leave the used path untested.
+  """
+  scatterers = xs.scatterers()
+  header = b'SCATTERER_IDS\nAD: FALSE\n'
+  with open(file_name, 'wb') as out:
+    out.write(struct.pack('<i', len(header)))
+    out.write(header)
+    out.write(struct.pack('<i', len(columns)))
+    for i in columns:
+      sc = scatterers[i]
+      # the 16 bytes scatterer_id_big reads straight off the stream
+      out.write(struct.pack(
+        '<iiihBB',
+        int(round(sc.site[0] * ENCODE_SCALE)),
+        int(round(sc.site[1] * ENCODE_SCALE)),
+        int(round(sc.site[2] * ENCODE_SCALE)),
+        sc.get_part(), sc.electron_count(), 0))
+    out.write(struct.pack('<i', len(indices)))
+    for h in indices:
+      out.write(struct.pack('<iii', *h))
+      for i in columns:
+        out.write(struct.pack('<dd', i + 1, 0.0))
+
+
+def exercise_a_partial_tscb_falls_back_on_spherical(file_name):
+  """ As above, for the binary format. Values are unreachable from Python
+  here -- a binary table is always expanded, so it is read through get_full,
+  which is not wrapped -- so this checks the coverage bookkeeping only.
+  """
+  xs = smtbx.development.random_xray_structure(
+    sgtbx.space_group_info('P1'), elements=['C'] * 4 + ['O'] * 2,
+    u_iso=0.05, random_u_iso=False)
+  n = xs.scatterers().size()
+  ext = structure_factors.ext.table_based_scatterer_contribution
+
+  write_tscb(file_name, xs, list(range(n)))
+  full = ext.build(xs.unit_cell(), xs.scatterers(), file_name,
+                   xs.space_group(), not xs.space_group().is_origin_centric())
+  assert list(full.scatterers_not_in_table()) == []
+
+  missing = [1, 4]
+  write_tscb(file_name, xs, [i for i in range(n) if i not in missing])
+  try:
+    ext.build(xs.unit_cell(), xs.scatterers(), file_name, xs.space_group(),
+              not xs.space_group().is_origin_centric())
+    raise AssertionError('a partial .tscb was accepted with no fallback')
+  except RuntimeError as e:
+    assert 'does not cover the whole structure' in str(e), e
+
+  partial = ext.build_with_fallback(
+    xs.unit_cell(), xs.scatterers(), file_name, xs.space_group(),
+    not xs.space_group().is_origin_centric(), xs.scattering_type_registry())
+  assert list(partial.scatterers_not_in_table()) == missing, \
+    list(partial.scatterers_not_in_table())
+
+
 def run():
   flex.set_random_seed(0)
   random.seed(0)
   file_name = 'tst_table_based_tmp.tsc'
+  binary_file_name = 'tst_table_based_tmp.tscb'
   try:
     exercise_table_survives_a_refinement(file_name)
     exercise_another_structure_is_refused(file_name)
     exercise_an_ambiguous_match_is_refused(file_name)
     exercise_the_generated_table_is_readable(file_name)
+    exercise_a_partial_table_falls_back_on_spherical(file_name)
+    exercise_a_partial_tscb_falls_back_on_spherical(binary_file_name)
   finally:
-    if os.path.isfile(file_name):
-      os.remove(file_name)
+    for name in (file_name, binary_file_name):
+      if os.path.isfile(name):
+        os.remove(name)
   print('OK')
 
 

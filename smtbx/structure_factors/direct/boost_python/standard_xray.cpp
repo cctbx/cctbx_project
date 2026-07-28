@@ -159,6 +159,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
              arg("h")))
           .def("at_d_star_sq", &wt::at_d_star_sq,
             (arg("d_start_sq")), return_internal_reference<>())
+          .def("is_spherical", &wt::is_spherical)
+          .def("scatterers_not_in_table", &wt::scatterers_not_in_table)
           ;
       }
     };
@@ -208,6 +210,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
               arg("anomalous_flag")),
             return_value_policy<manage_new_object>())
           .staticmethod("build")
+          .def("build_with_fallback", &wt::build_with_fallback,
+            (arg("unit_cell"),
+              arg("scatterers"),
+              arg("file_name"),
+              arg("space_group"),
+              arg("anomalous_flag"),
+              arg("scattering_type_registry")),
+            return_value_policy<manage_new_object>())
+          .staticmethod("build_with_fallback")
           .def("build_lookup_based_for_tests", &wt::build_lookup_based_for_tests,
           (arg("unit_cell"),
             arg("space_group"),

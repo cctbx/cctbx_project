@@ -544,9 +544,9 @@ def exercise_mode_selection():
   print("\tmode falls back stored -> normal_matrix -> matrix_free")
 
   # And the default, which is to ask the machine rather than to hold a number.
-  # This is the path that matters: a fixed 2048 MB default once excluded a
-  # 2555 MB design matrix on a host with 128 GB, and sent a structure to the
-  # normal matrix at three times the cost a cycle. Nothing above would have
+  # This is the path that matters: a fixed default once excluded a design
+  # matrix that the machine had ample room for, and sent a structure to the
+  # normal matrix at several times the cost a cycle. Nothing above would have
   # caught it, every case there pinning the budget by hand.
   chooser.max_design_matrix_memory = None
   chooser.max_normal_matrix_memory = 1e9

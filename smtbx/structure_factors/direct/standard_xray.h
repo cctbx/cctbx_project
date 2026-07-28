@@ -834,6 +834,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       virtual bool is_spherical() const = 0;
 
+      /* Which scatterers a tabulated table did not cover, and which are
+      therefore served by a spherical form factor instead. Empty for every
+      contribution that has no such split, which is all of them but one.
+      */
+      virtual af::shared<std::size_t> scatterers_not_in_table() const {
+        return af::shared<std::size_t>();
+      }
+
       virtual scatterer_contribution *raw_fork() const = 0;
     };
 

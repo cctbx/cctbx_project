@@ -36,8 +36,8 @@
   Both hold O(n_par) state per thread, against the O(n_par^2) a normal matrix
   needs, which is the entire point: the per-thread copies of the latter are
   what force the OpenMP path in least_squares_omp.h to chunk itself against
-  max_memory, and at ten thousand parameters a packed normal matrix is 400 MB
-  before it is multiplied by the number of threads.
+  max_memory: a packed normal matrix grows with the square of the parameter
+  count before it is multiplied by the number of threads.
 */
 
 #include <scitbx/array_family/shared.h>
