@@ -124,10 +124,15 @@ class QMRegionBuilder(object):
       )
 
     # Only the bond graph is needed: CDL ideals never reach the adjacency, and
-    # flipping would move input coordinates for no gain here.
+    # flipping would move input coordinates for no gain here. Metal auto-linking
+    # and the metal coordination library are off too, so the graph holds only
+    # covalent bonds, not metal-donor coordinate bonds or idealized Zn/Fe-S
+    # proxies.
     interpretation_params = model.get_current_pdb_interpretation_params()
     interpretation_params.pdb_interpretation.restraints_library.cdl = False
+    interpretation_params.pdb_interpretation.restraints_library.mcl = False
     interpretation_params.pdb_interpretation.flip_symmetric_amino_acids = False
+    interpretation_params.pdb_interpretation.automatic_linking.link_metals = False
     model.process(
       pdb_interpretation_params=interpretation_params,
       make_restraints=True,
