@@ -11,8 +11,10 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx import crystal, sgtbx, xray
 from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
 import smtbx.development
 import smtbx.structure_factors.direct as structure_factors
+import gc
 import os
 import random
 import struct
@@ -142,6 +144,32 @@ def exercise_an_ambiguous_match_is_refused(file_name):
     'a scatterer was picked out of two comparably good candidates'
 
 
+def exercise_a_lone_candidate_is_not_called_ambiguous(file_name):
+  """ Distance alone shall not be read as ambiguity.
+
+  A scatterer with no rival anywhere near it is not ambiguous however far it
+  has moved, and refusing it on distance would refuse the whole structure at
+  once, since every atom moves together. Only a rival comparably close is
+  grounds to refuse.
+  """
+  cs = crystal.symmetry(unit_cell=(20, 20, 20, 90, 90, 90),
+                        space_group_symbol='P1')
+  # far apart, so nothing here is ever genuinely ambiguous
+  sites = [(0.1, 0.1, 0.1), (0.5, 0.5, 0.5), (0.8, 0.2, 0.6)]
+  xs = xray.structure(crystal_symmetry=cs)
+  for i, site in enumerate(sites):
+    xs.add_scatterer(xray.scatterer(label='C%d' % i, site=site, u=0.05))
+  write_table(file_name, xs)
+  assert resolves(file_name, xs), 'the structure it was written for'
+  # a 20 A cell makes 0.02 fractional 0.4 A, which is past half the tolerance
+  for shift in (0.1, 0.2, 0.3, 0.4):
+    moved = xs.deep_copy_scatterers()
+    for sc in moved.scatterers():
+      sc.site = (sc.site[0] + shift / 20.0, sc.site[1], sc.site[2])
+    assert resolves(file_name, moved), \
+      'a lone candidate %.2f A away was refused as ambiguous' % shift
+
+
 def exercise_the_generated_table_is_readable(file_name):
   """ The table the isotropic helper writes shall read back in.
 
@@ -206,10 +234,91 @@ def exercise_a_partial_table_falls_back_on_spherical(file_name):
         assert abs(got - complex(i + 1, 0)) < 1e-6, (i, h, got)
 
 
+def exercise_a_table_outlives_the_structure_it_was_built_for(file_name):
+  """ A contribution shall not depend on its inputs staying alive.
+
+  Reading a large table is expensive, so a caller may keep the contribution and
+  reuse it for the next refinement rather than read the file again. By then the
+  structure it was built from is gone, and anything the contribution held by
+  reference into it -- the space group, in particular, whose symmetry
+  operations every structure factor goes through -- points at memory that has
+  since been reused. Nothing raises: the refinement simply computes rubbish,
+  which shows up only as an R factor in the tens.
+
+  So: build against one structure, drop it, disturb the heap, and check the
+  contribution still gives what it gave before.
+  """
+  def make_xs():
+    """ A fresh structure, sharing nothing with any previous one. """
+    cs = crystal.symmetry(unit_cell=(8, 9, 10, 90, 90, 90),
+                          space_group_symbol='P1')
+    xs = xray.structure(crystal_symmetry=cs)
+    for i, site in enumerate([(0.1, 0.2, 0.3), (0.4, 0.15, 0.35),
+                              (0.25, 0.45, 0.05)]):
+      xs.add_scatterer(xray.scatterer(label='C%d' % i, site=site, u=0.02))
+    return xs
+
+  def f_calcs(xs, contribution):
+    f = structure_factors.f_calc_modulus_squared(
+      xs, scatterer_contribution=contribution)
+    out = []
+    for h in indices:
+      f.linearise(h)
+      out.append(f.f_calc)
+    return out
+
+  def build_from_a_temporary_structure():
+    """ A contribution whose structure is unreachable by the time it returns.
+    """
+    xs = make_xs()
+    write_tscb(file_name, xs, list(range(xs.scatterers().size())),
+               value=varying_value)
+    contribution = structure_factors.ext.table_based_scatterer_contribution.\
+      build_with_fallback(
+        xs.unit_cell(), xs.scatterers(), file_name, xs.space_group(),
+        not xs.space_group().is_origin_centric(),
+        xs.scattering_type_registry())
+    return contribution, f_calcs(xs, contribution)
+
+  # Several, because this depends on the freed memory actually being handed
+  # out again. One structure's worth may not be: whatever ran earlier can
+  # leave free blocks of the same size that get used first, and the check then
+  # passes whether or not the reference dangles -- which is how an earlier
+  # version of this test passed against the very bug it was written for.
+  built = [build_from_a_temporary_structure() for _ in range(8)]
+  gc.collect()
+
+  # churn with space groups specifically; other allocation sizes will not land
+  # on the blocks that were just freed
+  churn = [sgtbx.space_group_info(symbol=s).group()
+           for s in ('P21/c', 'P212121', 'C2/c', 'Pbca', 'P-1', 'Pnma') * 500]
+
+  for contribution, before in built:
+    after = f_calcs(make_xs(), contribution)
+    for h, a, b in zip(indices, after, before):
+      assert approx_equal(a, b, eps=1e-12), (h, a, b)
+  del churn
+
+
 ENCODE_SCALE = 2147483647 / 16.0
 
 
-def write_tscb(file_name, xs, columns):
+def flat_value(h, i):
+  """ Entry i carries i+1, whatever the reflection. """
+  return i + 1
+
+
+def varying_value(h, i):
+  """ Entry i carries a value that also depends on the reflection.
+
+  Needed wherever the test has to notice a row being fetched for the wrong
+  reflection: with a value that is the same for every h, looking up the wrong
+  one returns the right answer by accident and the check passes regardless.
+  """
+  return (i + 1) + 0.25 * (h[0] + 2 * h[1] + 3 * h[2])
+
+
+def write_tscb(file_name, xs, columns, value=flat_value):
   """ The same table in the binary format, which has its own reader.
 
   The two readers keep separate bookkeeping of which scatterers a table
@@ -235,7 +344,7 @@ def write_tscb(file_name, xs, columns):
     for h in indices:
       out.write(struct.pack('<iii', *h))
       for i in columns:
-        out.write(struct.pack('<dd', i + 1, 0.0))
+        out.write(struct.pack('<dd', value(h, i), 0.0))
 
 
 def exercise_a_partial_tscb_falls_back_on_spherical(file_name):
@@ -279,9 +388,11 @@ def run():
     exercise_table_survives_a_refinement(file_name)
     exercise_another_structure_is_refused(file_name)
     exercise_an_ambiguous_match_is_refused(file_name)
+    exercise_a_lone_candidate_is_not_called_ambiguous(file_name)
     exercise_the_generated_table_is_readable(file_name)
     exercise_a_partial_table_falls_back_on_spherical(file_name)
     exercise_a_partial_tscb_falls_back_on_spherical(binary_file_name)
+    exercise_a_table_outlives_the_structure_it_was_built_for(binary_file_name)
   finally:
     for name in (file_name, binary_file_name):
       if os.path.isfile(name):

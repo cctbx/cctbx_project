@@ -524,7 +524,15 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     typedef std::map<cctbx::miller::index<>, std::size_t,
       cctbx::miller::fast_less_than<> > lookup_t;
     lookup_t mi_lookup;
-    sgtbx::space_group const &space_group;
+    /* Held by value, not by reference. A contribution can outlive the call
+    that built it -- a caller may keep one to reuse across refinements rather
+    than read a large table again -- and the space group it was given is
+    typically a temporary belonging to that call. A reference to it dangles as
+    soon as the call returns, and the symmetry operations read through it
+    afterwards are whatever later occupied the memory, which corrupts every
+    structure factor without any error being raised.
+    */
+    sgtbx::space_group space_group;
     af::shared<std::vector<complex_type> > data;
     bool anomalous_flag;
     mutable std::vector<complex_type> tmp;

@@ -1,6 +1,7 @@
 // (c) O.V.D., OlexSys Ltd, 2025
 #pragma once
 #include <cctbx/xray/scatterer.h>
+#include <limits>
 
 namespace cctbx {
 namespace xray {
@@ -266,6 +267,12 @@ namespace xray {
       instead. A match with a rival nearly as close is refused rather than
       guessed at: mixing two scatterers up silently would corrupt every
       structure factor built from the table.
+
+      The rival is looked for over every candidate, not only those inside eps,
+      and there being none at all is the common case rather than a suspicious
+      one. Treating "no rival" as a rival sitting exactly at eps refuses every
+      match past eps/2 on distance alone -- the whole structure at once, since
+      they all move together -- which is a plain miss dressed as ambiguity.
       */
       size_t index_cartesian(const scatterer_id_big<FloatType, fractional<FloatType> >& sc_test,
         FloatType eps = -1) const
@@ -277,7 +284,8 @@ namespace xray {
         int Z_test = sc_test.get_z();
         int data_test = sc_test.get_data();
         size_t best = ~0;
-        FloatType best_d = eps, next_d = eps;
+        FloatType best_d = std::numeric_limits<FloatType>::max();
+        FloatType next_d = std::numeric_limits<FloatType>::max();
         for (size_t i = 0; i < scatterers.size(); i++) {
           if (scatterers[i].get_atomic_number() != Z_test) continue;
           if (data_of(i) != data_test) continue;
@@ -293,7 +301,12 @@ namespace xray {
             next_d = d;
           }
         }
-        if (best == ~0 || next_d < 2 * best_d) {
+        // near enough to be the same scatterer having moved
+        if (best == ~0 || best_d > eps) {
+          return ~0;
+        }
+        // and far enough clear of the runner-up to be sure which one it is
+        if (next_d < 2 * best_d) {
           return ~0;
         }
         return best;
