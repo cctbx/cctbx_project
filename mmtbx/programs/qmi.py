@@ -187,8 +187,9 @@ optimisation; its hydrogens stay free."
     .type = choice
     .short_caption = Donor-metal-donor angle restraints
     .help = "When to emit donor-metal-donor angle restraints. 'auto' emits them \
-only for CN<=2 (linear) sites, whose angle the M-L distances leave free; a \
-CN>=3 site is held by its bonds alone. 'always'/'never' are unconditional."
+where the M-L bonds leave the metal under-determined: <=2 donors, or >=3 \
+coplanar donors (trigonal/square-planar); a 3D-spanning shell is held by its \
+bonds alone. 'always'/'never' are unconditional."
   coordination
     .short_caption = Metal-donor coordination cutoff
   {
