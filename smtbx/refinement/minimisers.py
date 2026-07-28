@@ -80,13 +80,11 @@ class crystallographic_scipy_iterations(scipy_iterations.scipy_iterations):
   # Below this many iterations, a method which is not self-scaling is being
   # asked to converge on a budget it cannot converge on, and says so.
   iterations_worth_warning_about = 10
-  self_scaling_methods = ('trust-ncg', 'trust-krylov', 'trust-constr',
-                          'Newton-CG')
 
   def do(self):
     if (self.n_max_iterations
         and self.n_max_iterations < self.iterations_worth_warning_about
-        and self.method not in self.self_scaling_methods):
+        and not self.traits().self_scaling):
       print("Warning: %s is being given only %i iterations; it typically needs"
             " more than Gauss-Newton, not fewer"
             % (self.method, self.n_max_iterations), file=self.out())
@@ -114,6 +112,10 @@ class crystallographic_scipy_iterations(scipy_iterations.scipy_iterations):
     log = self.out()
     print("%s: %i iterations, %i evaluations of the objective"
           % (self, self.n_iterations, self.n_evaluations), file=log)
+    if self.n_unevaluable:
+      print("  %i trial point(s) the structure could not be evaluated at,"
+            " the last of them: %s"
+            % (self.n_unevaluable, self.unevaluable_reason), file=log)
     if self.stop_reason is not None:
       print("  stopped early because %s" % self.stop_reason, file=log)
     elif self.scipy_result is not None:

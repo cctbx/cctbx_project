@@ -38,16 +38,22 @@ class method_traits(object):
   scipy_iterations.supported_methods.
   """
 
-  def __init__(self, arguments=(), tolerances=None, max_evaluations=None):
+  def __init__(self, arguments=(), tolerances=None, max_evaluations=None,
+               self_scaling=False):
     """ arguments: which of 'jac', 'hessp' and 'bounds' the method takes.
         tolerances: maps 'f', 'g' and 'x' onto the options the method uses for
           them; those it has no option for are simply left out.
         max_evaluations: the option limiting the number of function
           evaluations, or None if the method has none.
+        self_scaling: whether the method works out the size of its own steps,
+          either from a trust region it adapts or from a Newton direction. The
+          others start from a step of unit norm, which is only a sensible one
+          if p is calibrated for it; c.f. calibrate().
     """
     self.arguments = frozenset(arguments)
     self.tolerances = tolerances or {}
     self.max_evaluations = max_evaluations
+    self.self_scaling = self_scaling
 
 
 class scipy_iterations(normal_eqns_solving.iterations):
@@ -65,12 +71,21 @@ class scipy_iterations(normal_eqns_solving.iterations):
   differ by orders of magnitude in curvature (fractional coordinates against
   U_iso, say).
 
+  Its magnitude matters as much as its shape, which is what calibrate() is
+  about, and a point the model cannot be evaluated at all is reported to the
+  minimiser rather than allowed to end the minimisation, which is what
+  penalty() is about.
+
   Note that the histories journaled by the base class are recorded once per
   *evaluation*, of which there are several per iteration.
   """
 
   method = 'L-BFGS-B'
   preconditioning = 'diagonal' # or None
+  calibration = True
+  # a run of this many trial points the model cannot be evaluated at is taken
+  # to mean the model itself is broken rather than the minimiser overreaching
+  max_consecutive_unevaluable = 20
   f_tolerance = None
   g_tolerance = None
   x_tolerance = None
@@ -92,11 +107,15 @@ class scipy_iterations(normal_eqns_solving.iterations):
                                   {'g': 'gtol', 'f': 'ftol', 'x': 'xtol'},
                                   'maxfun'),
     'SLSQP':        method_traits(('jac', 'bounds'), {'f': 'ftol'}),
-    'Newton-CG':    method_traits(('jac', 'hessp'), {'x': 'xtol'}),
-    'trust-ncg':    method_traits(('jac', 'hessp'), {'g': 'gtol'}),
-    'trust-krylov': method_traits(('jac', 'hessp'), {'g': 'gtol'}),
+    'Newton-CG':    method_traits(('jac', 'hessp'), {'x': 'xtol'},
+                                  self_scaling=True),
+    'trust-ncg':    method_traits(('jac', 'hessp'), {'g': 'gtol'},
+                                  self_scaling=True),
+    'trust-krylov': method_traits(('jac', 'hessp'), {'g': 'gtol'},
+                                  self_scaling=True),
     'trust-constr': method_traits(('jac', 'hessp', 'bounds'),
-                                  {'g': 'gtol', 'x': 'xtol'}),
+                                  {'g': 'gtol', 'x': 'xtol'},
+                                  self_scaling=True),
     'Powell':       method_traits((), {'f': 'ftol', 'x': 'xtol'}, 'maxfev'),
     'Nelder-Mead':  method_traits((), {'f': 'fatol', 'x': 'xatol'}, 'maxfev'),
   }
@@ -107,6 +126,11 @@ class scipy_iterations(normal_eqns_solving.iterations):
     self.n_evaluations = 0
     self.scipy_result = None
     self.stop_reason = None
+    self.objective_scale = 1
+    self.unevaluable = None
+    self.unevaluable_reason = None
+    self.n_unevaluable = 0
+    self.consecutive_unevaluable = 0
     traits = self.traits()
 
     # The first build gives the objective, the gradient and the normal matrix
@@ -117,10 +141,13 @@ class scipy_iterations(normal_eqns_solving.iterations):
 
     n_parameters = self.non_linear_ls.opposite_of_gradient().size()
     self.parameter_scale = self.preconditioner()
+    self.objective_scale = self.calibrate(traits)
     self.x_0 = self.non_linear_ls.parameter_vector()
     self.p_model = flex.double(n_parameters, 0)     # where the parameters are
     self.p_accepted = flex.double(n_parameters, 0)  # last accepted iterate
     self.p_evaluated = flex.double(n_parameters, 0) # where the last build was
+    self.p_good = flex.double(n_parameters, 0)      # last one which evaluated
+    self.f_good = self.non_linear_ls.objective()*self.objective_scale
     self.evaluated_objective_only = False
     if self.n_max_iterations == 0: return
 
@@ -138,7 +165,18 @@ class scipy_iterations(normal_eqns_solving.iterations):
     # normal equations describe it: the covariance matrix, and with it the
     # standard uncertainties, are worked out from them afterwards.
     self.move_to(self.p_accepted)
-    self.non_linear_ls.build_up()
+    try:
+      self.non_linear_ls.build_up()
+    except RuntimeError:
+      # A minimiser only settles on a point it evaluated, so this is not
+      # expected; falling back to one which is known to evaluate is still
+      # better than leaving the structure where it cannot be worked with.
+      if self.p_accepted.all_eq(self.p_good): raise
+      self.stop_reason = "the point the minimiser settled on could not be" \
+                         " evaluated; the last one which could was kept"
+      self.p_accepted = self.p_good
+      self.move_to(self.p_accepted)
+      self.non_linear_ls.build_up()
 
   def __str__(self):
     return "scipy.optimize.minimize, method %s" % self.method
@@ -166,6 +204,42 @@ class scipy_iterations(normal_eqns_solving.iterations):
     # a parameter the data says nothing about would otherwise scale to infinity
     diagonal.set_selected(diagonal <= 0, 1.)
     return flex.sqrt(diagonal)
+
+  def calibrate(self, traits):
+    """ Rescale p so that a step of unit norm in it is the natural step.
+
+    The preconditioner fixes the *shape* of p-space -- the Gauss-Newton Hessian
+    has unit diagonal there -- but says nothing about its magnitude, and
+    several of these minimisers (L-BFGS-B, TNC, SLSQP) take a step of unit norm
+    as their first trial point, having no way to know any better. That step is
+    1/||g_p|| times the Gauss-Newton step, so it overshoots worst exactly where
+    a refinement is normally started from: an already converged structure,
+    whose gradient is small. Overshooting by a factor of ten is enough to drive
+    an ADP so far that the structure factors can no longer be worked out at
+    all, which is how this surfaces.
+
+    Dividing D by s = ||g_p|| shrinks that first step to the Gauss-Newton one.
+    Multiplying the objective by 1/s^2 at the same time is what keeps the units
+    honest: the two together leave the unit diagonal alone and make the
+    gradient at the starting point unit-norm as well, so the Newton step in p
+    is -g_p, of norm 1, which is precisely what those minimisers assume. The
+    gradient the g_tolerance is compared against therefore still means what it
+    meant.
+
+    A method which scales itself is left alone: it would only have the size of
+    its first trial step changed, for no reason, and a trust region converging
+    on the right radius from a different one costs iterations.
+
+    Returns the factor to multiply the objective, and its gradient and Hessian
+    with it, by; self.parameter_scale is rescaled in place.
+    """
+    if traits.self_scaling: return 1
+    if not self.calibration or self.parameter_scale is None: return 1
+    g_p = self.non_linear_ls.opposite_of_gradient()/self.parameter_scale
+    s = g_p.norm()
+    if s == 0: return 1
+    self.parameter_scale = self.parameter_scale/s
+    return 1/s**2
 
   def bounds(self):
     """ Bounds on p for the methods which support them, None for no bounds. """
@@ -203,18 +277,43 @@ class scipy_iterations(normal_eqns_solving.iterations):
 
   def function_and_gradient(self, p):
     self.build_at(p)
+    if self.unevaluable is not None:
+      objective, gradient = self.penalty(self.as_flex(p))
+      return objective, gradient.as_numpy_array()
     gradient = -self.non_linear_ls.opposite_of_gradient()
     if self.parameter_scale is not None:
       gradient /= self.parameter_scale
-    objective = self.non_linear_ls.objective()
+    gradient *= self.objective_scale
+    objective = self.non_linear_ls.objective()*self.objective_scale
     self.check_is_finite(objective, gradient.norm())
     return objective, gradient.as_numpy_array()
 
   def function(self, p):
     self.build_at(p, objective_only=True)
-    objective = self.non_linear_ls.objective()
+    if self.unevaluable is not None:
+      return self.penalty(self.as_flex(p))[0]
+    objective = self.non_linear_ls.objective()*self.objective_scale
     self.check_is_finite(objective)
     return objective
+
+  def penalty(self, p):
+    """ What to report at a point where the model cannot be evaluated.
+
+    A minimiser can take the parameters somewhere the model has nothing to say
+    at all -- an ADP driven so large that the Debye-Waller factor overflows,
+    say -- and there is then no objective to hand back. Letting the failure end
+    the minimisation throws away every cycle already done and leaves the
+    structure wherever the trial step happened to put it, when all the point
+    needs is to be reported as a bad one so that the line search steps back
+    from it.
+
+    The surrogate is the quadratic model p-space is preconditioned to look
+    like: unit curvature about the last point which did evaluate. It is worse
+    there than at that point and its gradient points away from it, which is
+    what a line search needs in order to back off.
+    """
+    d = p - self.p_good
+    return self.f_good + 0.5*d.norm()**2, d
 
   def stop(self, reason):
     """ Abandon the minimisation, keeping the last accepted iterate. """
@@ -244,6 +343,9 @@ class scipy_iterations(normal_eqns_solving.iterations):
     """
     self.build_at(p)
     u = self.as_flex(v)
+    if self.unevaluable is not None:
+      # the unit curvature the penalty above is built on
+      return u.as_numpy_array()
     if self.parameter_scale is not None:
       u /= self.parameter_scale
     u.reshape(flex.grid(1, u.size()))
@@ -252,6 +354,7 @@ class scipy_iterations(normal_eqns_solving.iterations):
     product.reshape(flex.grid(product.size()))
     if self.parameter_scale is not None:
       product /= self.parameter_scale
+    product *= self.objective_scale
     return product.as_numpy_array()
 
   def on_iteration(self, p, *args):
@@ -285,7 +388,22 @@ class scipy_iterations(normal_eqns_solving.iterations):
       self.stop("the limit of %i evaluations was reached"
                 % self.max_evaluations)
     self.move_to(p)
-    self.non_linear_ls.build_up(objective_only=objective_only)
+    try:
+      self.non_linear_ls.build_up(objective_only=objective_only)
+    except RuntimeError as e:
+      self.consecutive_unevaluable += 1
+      if self.consecutive_unevaluable > self.max_consecutive_unevaluable:
+        # every trial point failing is the model being broken, not a line
+        # search overreaching, and there is nothing useful to report back
+        raise
+      self.n_unevaluable += 1
+      self.unevaluable = e
+      self.unevaluable_reason = str(e)  # kept once self.unevaluable is cleared
+    else:
+      self.consecutive_unevaluable = 0
+      self.unevaluable = None
+      self.p_good = p
+      self.f_good = self.non_linear_ls.objective()*self.objective_scale
     self.n_evaluations += 1
     self.p_evaluated = p
     self.evaluated_objective_only = objective_only
