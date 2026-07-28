@@ -908,6 +908,8 @@ class MergingJob(Job):
 
 class PhenixJob(Job):
   def get_global_path(self):
+    if self.dataset_version is None:
+      return None
     return os.path.join(self.dataset_version.output_path(), self.get_identifier_string())
 
   def get_log_path(self):
@@ -1060,6 +1062,8 @@ def submit_all_jobs(app):
       j.status = "SUBMIT_FAIL"
       raise
 
+    submitted_jobs[_job.job_hash(job)] = j  # keep in-call dict current
+
     if app.params.mp.method == 'local': # only run one job at a time
       return
 
@@ -1150,6 +1154,8 @@ def submit_all_jobs(app):
           j.status = "SUBMIT_FAIL"
           raise
 
+        submitted_jobs[_job.job_hash(job)] = j  # keep in-call dict current
+
         previous_job = j
 
         if app.params.mp.method == 'local': # only run one job at a time
@@ -1178,6 +1184,7 @@ def submit_all_jobs(app):
       # user deleted, since the on-disk folder was removed by delete() and the
       # new submission writes to the same path under the same version number.
       current_local_task_ids = {t.id for t in tasks if t.scope == 'local'}
+      current_run_ids = {run.id for run, rungroup in runs_rungroups}
       for version in versions:
         # Only process versions created under the current task list. If any
         # local input belongs to a task no longer in the dataset's task list,
@@ -1187,6 +1194,13 @@ def submit_all_jobs(app):
         if not local_inputs:
           continue
         if not all(j.task_id in current_local_task_ids for j in local_inputs):
+          continue
+        # Likewise, leave alone any version whose local inputs include a run
+        # that is no longer tagged into this dataset. Such a version reflects a
+        # run selection that has since changed (e.g. runs were re-tagged);
+        # resubmitting it as-is would merge the wrongly-tagged runs. The new
+        # dataset version created below picks up only the currently-tagged runs.
+        if not all(j.run_id in current_run_ids for j in local_inputs):
           continue
 
         if any(j.task_id == task.id for j in version.jobs):
@@ -1231,9 +1245,26 @@ def submit_all_jobs(app):
       if latest_version is None:
         next_version = 0
       else:
-        latest_version_local_jobs = [j.id for j in latest_version.jobs if j.task and j.task.scope == 'local']
-        new_jobs = [j for j in global_tasks[key] if j.id not in latest_version_local_jobs]
-        if new_jobs:
+        latest_version_local_jobs = [j for j in latest_version.jobs if j.task and j.task.scope == 'local']
+        latest_local_job_ids = {j.id for j in latest_version_local_jobs}
+        new_jobs = [j for j in global_tasks[key] if j.id not in latest_local_job_ids]
+        # Additions (new_jobs) roll a new version as runs finish. For the first
+        # global task, also roll one when the latest version was built from a run
+        # that is no longer tagged into the dataset (e.g. runs were re-tagged
+        # out). A removal doesn't show up as a new job, so without this the
+        # corrected run selection would never get its own version. Restricted to
+        # the first global task because only it seeds a version from local jobs;
+        # later global tasks (e.g. phenix) key off the version's merge job.
+        removed_runs = prev_task.scope != 'global' and \
+          any(j.run_id not in current_run_ids for j in latest_version_local_jobs)
+        # Note: the new version's local-input set may duplicate that of an older
+        # version (e.g. de-tagging C from {A,B,C} reproduces an earlier {A,B}
+        # version). This is intentional -- keeping the latest version correct is
+        # worth the extra reprocessing -- so do NOT add a "skip if a matching
+        # version already exists" guard here. Only one corrective version is
+        # created: on the next pass latest == the corrected set with no removed
+        # runs, so it is not repeated.
+        if new_jobs or removed_runs:
           next_version = latest_version.version + 1
 
       if next_version is not None:
