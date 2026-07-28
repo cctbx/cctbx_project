@@ -404,9 +404,10 @@ class QMRegionBuilder(object):
       'cap_iseqs': cap_indices,
       'cap_original_elements': cap_original_elements,
       'cap_anchor_iseqs': cap_anchor_indices,
-      # {sub-model i_seq: (asu_parent_atom, symmetry_operation_xyz)} for
-      # symmetry-image atoms, so a metal-ligand bond to one can be restrained
-      # against its ASU parent (kept in memory only, not the on-disk sidecar).
+      # {sub-model i_seq: ((chain, resseq, resname, name, altloc),
+      # symmetry_operation_xyz)} for symmetry-image atoms, so a metal-ligand bond
+      # to one can be restrained against its ASU parent (kept in memory only, not
+      # the on-disk sidecar).
       'sym_image_provenance': sym_image_provenance,
       'selection_string': selection_str,
     }
