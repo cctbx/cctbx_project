@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from xfel.merging.application.worker import worker
-from xfel.merging.application.reflection_table_utils import reflection_table_utils
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from rstbx.dials_core.integration_core import show_observations
