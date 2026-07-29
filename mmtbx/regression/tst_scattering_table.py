@@ -55,8 +55,10 @@ def tst000():
         if deep_copy:
           model = model.deep_copy()
         xrs = model.get_xray_structure()
-        assert (xrs.scattering_type_registry_params.table == table)
-        assert (xrs.get_scattering_table() == table)
+        actual1 = xrs.scattering_type_registry_params.table
+        assert actual1 == table, f"Expected {table}, got {actual1}"
+        actual2 = xrs.get_scattering_table()
+        assert actual2 == table, f"Expected {table}, got {actual2}"
 
 # ------------------------------------------------------------------------------
 

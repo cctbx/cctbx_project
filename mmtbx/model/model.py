@@ -625,6 +625,15 @@ class manager(object):
   def get_scattering_table(self):
     return self.get_xray_structure().get_scattering_table()
 
+  def get_scattering_table_d_min(self):
+    """d_min the current scattering table was set up with, None if unknown.
+
+    Needed whenever a scattering table is restored after xray_structure has
+    been rebuilt: "n_gaussian" with d_min of None, 1 or 3 are all different.
+    """
+    if(self.scattering_dict_info is None): return None
+    return self.scattering_dict_info.d_min
+
   def get_xray_structure(self, force=False):
     if force: self._xray_structure = None
     if(self._xray_structure is None):
@@ -1145,6 +1154,7 @@ class manager(object):
 
       # Reset _crystal_symmetry
       scattering_table = xrs.scattering_type_registry().last_table()
+      scattering_table_d_min = self.get_scattering_table_d_min()
       scatterers = xrs.scatterers()
       sp = crystal.special_position_settings(crystal_symmetry)
       self._xray_structure = xray.structure(sp, scatterers) # new symmetry
@@ -1163,7 +1173,9 @@ class manager(object):
 
       # Set up scattering table if there was one before
       if scattering_table:
-        self.setup_scattering_dictionaries(scattering_table = scattering_table)
+        self.setup_scattering_dictionaries(
+          scattering_table = scattering_table,
+          d_min            = scattering_table_d_min)
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
@@ -2146,8 +2158,10 @@ class manager(object):
         run_clash_guard           = False):
     self._processed = True
     SAVE_scatering_table = None
+    SAVE_scatering_table_d_min = None
     if self._xray_structure is not None:
       SAVE_scatering_table = self._xray_structure.get_scattering_table()
+      SAVE_scatering_table_d_min = self.get_scattering_table_d_min()
     if(pdb_interpretation_params is not None):
       self.unset_restraints_manager()
     if(pdb_interpretation_params is None):
@@ -2244,9 +2258,12 @@ class manager(object):
     self.unset_processed_pdb_file()
     # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
-    # Ensure we did not loose scattering_table
+    # Ensure we did not loose scattering_table (and the d_min it was set up
+    # with: "n_gaussian" means a different table for a different d_min)
     if SAVE_scatering_table is not None:
-      self.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+      self.setup_scattering_dictionaries(
+        scattering_table = SAVE_scatering_table,
+        d_min            = SAVE_scatering_table_d_min)
 
   def get_missing_atoms(self):
     if self._missing_atoms is None:
@@ -2858,7 +2875,8 @@ class manager(object):
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
-    self._xray_structure.scattering_type_registry_params.table = scattering_table
+    # Record d_min as well as the "n_gaussian" table depends d_min.
+    self._xray_structure.set_scattering_table(scattering_table, d_min = d_min)
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_searched_tls_selections(self, nproc, log):
@@ -3993,10 +4011,13 @@ class manager(object):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
     if(SAVE_scatering_table is not None and
-       SAVE_scatering_table in known_scattering_tables and
-       SAVE_scatering_table != "n_gaussian" # setting this requires d_min!!!!!!!
-       ):
-      new.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+       SAVE_scatering_table in known_scattering_tables):
+      # d_min matters: "n_gaussian" at d_min=None, 1 or 3 are three different
+      # tables. sdi (propagated above) remembers the d_min the table was set
+      # up with, so restore the table with it.
+      new.setup_scattering_dictionaries(
+        scattering_table = SAVE_scatering_table,
+        d_min            = None if sdi is None else sdi.d_min)
     return new
 
   def number_of_ordered_solvent_molecules(self):
@@ -4341,7 +4362,9 @@ class manager(object):
         restraint_objects  = self._restraint_objects,
         monomer_parameters = self._monomer_parameters,
         log                = null_out())
-      m.setup_scattering_dictionaries(scattering_table=scattering_table)
+      m.setup_scattering_dictionaries(
+        scattering_table = scattering_table,
+        d_min            = self.get_scattering_table_d_min())
       m.process(make_restraints=True,
         pdb_interpretation_params = self.get_current_pdb_interpretation_params())
     else:
