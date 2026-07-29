@@ -643,10 +643,24 @@ class QMRestraintsBuilder(object):
     and qmi.edits there), returning the per-state result group_args."""
     print(f"Site {index}: calculating {metal_element} "
           f"ox={oxidation:+d} mult={multiplicity}", file=self.logger)
-    opt_sites, qmm = qm.run_constrained_opt(
-      submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
-      solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi",
-      work_dir=work_dir, log=self.logger)
+    try:
+      opt_sites, _qmm = qm.run_constrained_opt(
+        submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
+        solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi",
+        work_dir=work_dir, log=self.logger)
+    except Sorry:
+      # The default optimiser can stall on a floppy cluster: the inertial engine
+      # never drives a flat PES below the gradient threshold, so no converged
+      # geometry is written. Retry once with the robustness preset (looser
+      # optlevel + Fermi smearing), which reshapes the PES enough to converge
+      # while still honouring $fix. A distinct namespace keeps the stalled
+      # attempt's files from being read back.
+      print(f"Site {index}: constrained opt did not converge; retrying with "
+            f"the robust preset", file=self.logger)
+      opt_sites, _qmm = qm.run_constrained_opt(
+        submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
+        solvent_model=self.solvent_model, nproc=self.nproc,
+        preamble="qmi_robust", robust=True, work_dir=work_dir, log=self.logger)
 
     # Modified-Seminario sigmas from the Hessian at the optimised geometry, with
     # ONE perturb-and-reoptimise if the inner sphere is not a true minimum (plan
