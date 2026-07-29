@@ -16,7 +16,6 @@ modified-Seminario curvature sigmas (Sec 5F), with a conservative M-L fallback.
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 
 import libtbx.phil
 from libtbx import group_args
@@ -34,10 +33,6 @@ from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 from mmtbx.geometry_restraints.qmi import donors, electronic, shape, util
 from mmtbx.geometry_restraints.qmi import (
   bvs, provenance, qm, restraints, sanity, sigma)
-
-
-# endo_exo's per-atom seed suffix is `_{element}_chain{chain}_res{resseq}_...`.
-_SEED_SUFFIX_RE = re.compile(r"_chain(.*?)_res(.+?)_within")
 
 # Angle-gate coplanarity cutoff (plan Sec 7): lambda_min(sum u u^T)/n below this
 # means the bonded-donor directions are (near-)coplanar. 0 for an ideal planar
@@ -63,23 +58,11 @@ def _directions_span_3d(unit_dirs):
           >= _MIN_OUT_OF_PLANE_COVERAGE)
 
 
-def _region_output_filename(work_dir):
-  """Return the ``default_output_filename`` callable for QMRegionBuilder.
-
-  When *work_dir* is set, each QM region is routed into a per-site subdirectory
-  ``<work_dir>/<stem>_<chain>_<resseq>/region`` (so the region PDB/CIF endo_exo
-  writes sit beside that site's xTB files). Falls back to a bare stem (endo_exo's
-  in-memory default) when there is no work dir or the seed is not a single metal
-  atom (e.g. a selection seed)."""
-  def _fn(prefix=None, suffix=None):
-    m = _SEED_SUFFIX_RE.search(suffix or "")
-    if work_dir is None or m is None:
-      return f"{prefix or ''}{suffix or ''}"
-    site_dir = os.path.join(work_dir, f"{prefix}_{m.group(1)}_{m.group(2)}")
-    if not os.path.isdir(site_dir):
-      os.makedirs(site_dir)
-    return os.path.join(site_dir, "region")
-  return _fn
+def _default_output_filename(prefix=None, suffix=None):
+  """Bare-stem naming QMRegionBuilder requires. QMI keeps each region in memory
+  and writes it itself (region.pdb per site), so this name is never used on
+  disk (endo_exo runs with write_files=False)."""
+  return f"{prefix or ''}{suffix or ''}"
 
 
 def _endo_exo_params(metal_element=None, selection=None, radius=4.0,
@@ -210,8 +193,8 @@ class QMRestraintsBuilder(object):
     write_regions = self.work_dir is not None and not self.predict_only
     if write_regions:
       # qm_work_dir holds the input (protonated) model plus one subdirectory per
-      # site (qm_work_dir/<stem>_<chain>_<resseq>) into which endo_exo writes the
-      # QM region and this pipeline writes the xTB files. The .edits files still
+      # site (qm_work_dir/<stem>_<chain>_<resseq>) holding that site's QM region
+      # (region.pdb), xTB files, and optimised geometry. The .edits files still
       # go to the current directory.
       self.work_dir = os.path.abspath(self.work_dir)
       if not os.path.isdir(self.work_dir):
@@ -225,11 +208,11 @@ class QMRestraintsBuilder(object):
 
     params = _endo_exo_params(
       metal_element=self.metal_element, selection=self.selection,
-      radius=self.radius, max_depth=self.max_depth, write_files=write_regions)
+      radius=self.radius, max_depth=self.max_depth, write_files=False)
     region_builder = QMRegionBuilder(params, logger=self.logger)
     seed_results = region_builder.run(
       model, model_name=model_name,
-      default_output_filename=_region_output_filename(self.work_dir))
+      default_output_filename=_default_output_filename)
 
     original_chain_ids = [c.id.strip()
                           for c in model.get_hierarchy().chains()]
@@ -461,6 +444,9 @@ class QMRestraintsBuilder(object):
         coord_cutoff=self.coord_cutoff,
         freeze_waters=self.freeze_waters, log=self.logger)
       site_dir = self._site_dir(chain_id, resseq)
+      submodel.get_hierarchy().write_pdb_file(
+        crystal_symmetry=submodel.crystal_symmetry(),
+        file_name=os.path.join(site_dir, "region.pdb"))
       self._write_constraints(submodel, frozen_iseqs, free_iseqs, site_dir)
 
     if self.states in ("reasonable", "all"):
