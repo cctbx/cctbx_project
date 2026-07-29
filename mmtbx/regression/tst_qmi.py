@@ -178,6 +178,48 @@ HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
 HETATM    2  O   HOH A 300       2.100   0.000   0.000  1.00 10.00           O
 """
 
+# Cu + a coordinating backbone amide (ALA N-H, ~2 A) + a coordinating N-terminal
+# amine (GLY -NH3+, ~2 A), for the ATCUN deprotonation (amidate + -NH2 amine).
+_ATCUN_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 CU    CU A 262       0.000   0.000   0.000  1.00 10.00          CU
+ATOM      2  N   ALA A   3       2.000   0.000   0.000  1.00 10.00           N
+ATOM      3  H   ALA A   3       2.600   0.700   0.000  1.00 10.00           H
+ATOM      4  N   GLY A   1       0.000   2.000   0.000  1.00 10.00           N
+ATOM      5  H1  GLY A   1       0.600   2.600   0.000  1.00 10.00           H
+ATOM      6  H2  GLY A   1      -0.600   2.600   0.000  1.00 10.00           H
+ATOM      7  H3  GLY A   1       0.000   2.600   0.600  1.00 10.00           H
+"""
+
+# The same backbone amide near a Zn (not an amidate-inducing ion): the amide H
+# must be kept (metal-gating test).
+_ZN_AMIDE_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+ATOM      2  N   ALA A   3       2.000   0.000   0.000  1.00 10.00           N
+ATOM      3  H   ALA A   3       2.600   0.700   0.000  1.00 10.00           H
+"""
+
+# Zn + a MONODENTATE Asp: OD1 coordinates (2.0 A), OD2 dangles beyond the cutoff
+# (3.8 A), for the far-O freeze.
+_CARBOX_MONO_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+ATOM      2  OD1 ASP A  50       2.000   0.000   0.000  1.00 10.00           O
+ATOM      3  OD2 ASP A  50       3.500   1.500   0.000  1.00 10.00           O
+ATOM      4  CG  ASP A  50       3.000   0.000   0.000  1.00 10.00           C
+ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
+"""
+
+# Zn + a His N donor (2 A) + a non-donor water O (4 A), for the coordination-mode
+# check: the test moves the metal-relative geometry to make one leave, one enter.
+_MODE_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+ATOM      2  NE2 HIS A  94       2.000   0.000   0.000  1.00 10.00           N
+HETATM    3  O   HOH A 300       4.000   0.000   0.000  1.00 10.00           O
+"""
+
 
 def _model(pdb_str):
   """mmtbx.model.manager from an inline PDB string (no processing)."""
@@ -1277,6 +1319,67 @@ def exercise_bvs():
   assert bvs.valence_sum("Zn", 2, [("Xx", 2.0)]) == (None, 0)
 
 
+def exercise_atcun_deprotonation():
+  # ATCUN Cu N-terminus: the coordinating backbone amide (ALA N-H) is stripped to
+  # an amidate, AND the N-terminal amine (GLY -NH3+) loses the H nearest the
+  # metal (-> -NH2). Both count as donors (returns 2, 0).
+  h = _model(_ATCUN_PDB).get_hierarchy()
+  assert protonation.deprotonate_metal_donors(h, log=null_out()) == (2, 0)
+  ala = {a.name.strip() for a in h.atoms()
+         if a.parent().resname.strip() == "ALA"}
+  gly = {a.name.strip() for a in h.atoms()
+         if a.parent().resname.strip() == "GLY"}
+  assert "H" not in ala, ala                             # amide -> amidate
+  assert len(gly & {"H1", "H2", "H3"}) == 2, gly         # -NH3+ -> -NH2
+  # metal gating: the same backbone N near a Zn is neither amidate nor amine.
+  hz = _model(_ZN_AMIDE_PDB).get_hierarchy()
+  assert protonation.deprotonate_metal_donors(hz, log=null_out()) == (0, 0)
+  assert "H" in {a.name.strip() for a in hz.atoms()}
+
+
+def exercise_freeze_far_carboxylate():
+  # A monodentate Asp (OD1 in, OD2 beyond the cutoff): the far OD2 is frozen only
+  # with the flag; without it OD2 stays free.
+  mono = _model(_CARBOX_MONO_PDB)
+  name = {a.i_seq: a.name.strip() for a in mono.get_hierarchy().atoms()}
+  fr, _ = qm.determine_frozen_atoms(
+    mono, seed_iseq=0, cap_iseqs=(), free_radius=5.0,
+    freeze_far_carboxylate_o=True, log=null_out())
+  fr0, _ = qm.determine_frozen_atoms(
+    mono, seed_iseq=0, cap_iseqs=(), free_radius=5.0,
+    freeze_far_carboxylate_o=False, log=null_out())
+  assert {name[i] for i in fr} == {"OD2"}, {name[i] for i in fr}
+  assert {name[i] for i in fr0} == set(), fr0
+  # a genuine bidentate Asp (both OD within cutoff) has no far O -> untouched.
+  bi = _model(_CARBOX_SHELL_PDB)
+  bname = {a.i_seq: a.name.strip() for a in bi.get_hierarchy().atoms()}
+  frb, _ = qm.determine_frozen_atoms(
+    bi, seed_iseq=0, cap_iseqs=(), free_radius=5.0,
+    freeze_far_carboxylate_o=True, log=null_out())
+  assert not any(bname[i] in ("OD1", "OD2") for i in frb), frb
+
+
+def exercise_coordination_mode_changes():
+  # A detected donor (NE2) the opt pushes OUT -> 'left'; a non-donor water O the
+  # opt pulls IN -> 'entered'.
+  model = _model(_MODE_PDB)
+  atoms = model.get_hierarchy().atoms()
+  idx = {a.name.strip(): a.i_seq for a in atoms}
+  opt = flex.vec3_double([a.xyz for a in atoms])
+  opt[idx["NE2"]] = (4.0, 0.0, 0.0)             # donor leaves (> 3.0)
+  opt[idx["O"]] = (2.5, 0.0, 0.0)               # non-donor enters (< 3.0)
+  details = sanity.coordination_mode_changes(
+    model, opt, metal_iseq=idx["ZN"], donor_iseqs={idx["NE2"]},
+    coord_cutoff=None)
+  assert any("left" in d and "NE2" in d for d in details), details
+  assert any("entered" in d and "HOH" in d for d in details), details
+  # unchanged geometry -> no mode change.
+  same = sanity.coordination_mode_changes(
+    model, flex.vec3_double([a.xyz for a in atoms]), metal_iseq=idx["ZN"],
+    donor_iseqs={idx["NE2"]}, coord_cutoff=None)
+  assert same == [], same
+
+
 def run():
   exercise_metals()
   exercise_hessian_parse()
@@ -1290,8 +1393,10 @@ def run():
   exercise_perturb_reopt()
   exercise_provenance()
   exercise_sanity_bounds()
+  exercise_coordination_mode_changes()
   exercise_optimise_mask()
   exercise_determine_frozen_atoms()
+  exercise_freeze_far_carboxylate()
   exercise_detect_first_shell()
   exercise_coordination_cutoff()
   exercise_metal_ligand_restraints()
@@ -1299,6 +1404,7 @@ def run():
   exercise_deprotonation()
   exercise_deprotonation_donor_families()
   exercise_deprotonation_metal_gating()
+  exercise_atcun_deprotonation()
   exercise_water_protonation()
   exercise_state_override()
   exercise_shape()

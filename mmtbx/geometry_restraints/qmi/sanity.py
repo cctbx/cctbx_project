@@ -13,6 +13,10 @@ and *flagged, not fixed* (the QM target always stands):
   dissociating contact), a stronger signal of a wrong state, bad cluster or
   SCF failure.
 
+A separate coordination-mode check (:func:`coordination_mode_changes`) flags a
+donor the optimisation pushed OUT of the coordination sphere, or a non-donor it
+pulled IN, relative to the input geometry the detection saw.
+
 Coarse by design: the emitted value is a QM-optimised distance carrying xTB
 error, so both windows are per (metal, donor element) with generous tolerance, a
 plausibility check, not a crystallographic-accuracy check.
@@ -23,8 +27,9 @@ from __future__ import absolute_import, division, print_function
 from math import log
 
 from libtbx import group_args
+from scitbx import matrix
 
-from mmtbx.geometry_restraints.qmi import bvs, electronic, metals
+from mmtbx.geometry_restraints.qmi import bvs, electronic, metals, util
 
 
 # Consensus mean M-donor coordination distances (Angstrom) as (mean_lo, mean_hi),
@@ -55,6 +60,9 @@ TARGET_PAD_A = 0.25
 # contact) and s_min (a dissociating one).  Inverting, R = R0 - B*ln(s).  Wide by
 # design, so only a gross error trips it.
 BVS_VALENCE_BAND = (0.05, 1.5)   # (s_min, s_max)
+
+# Elements treated as candidate metal donors for the coordination-mode check.
+_DONOR_ELEMENTS = frozenset({"N", "O", "S", "P", "SE", "F", "CL", "BR", "I"})
 
 
 def target_window(metal, donor_element):
@@ -107,12 +115,56 @@ def check_bond(metal, donor_element, distance):
   return flags
 
 
-def check_site(metal, bonds):
+def coordination_mode_changes(submodel, opt_sites, metal_iseq, donor_iseqs,
+                              coord_cutoff):
+  """Coordination-mode changes the optimisation made relative to the input
+  geometry the donor detection saw (plan Sec 9.4).
+
+  Returns a list of short detail strings:
+
+  - a detected donor (in *donor_iseqs*) whose OPTIMISED M-donor distance exceeds
+    ``coord_cutoff`` has DE-coordinated (``left``): its emitted bond is now a
+    dangling, usually implausible contact (e.g. a mis-protonated ATCUN amide the
+    QM pushed off).
+  - a non-donor N/O/S/... that starts beyond the cutoff and ends within it has
+    been pulled IN (``entered``): a possible over-coordination (a monodentate
+    carboxylate swinging bidentate, or the metal drifting onto a frozen atom).
+
+  Both are changes the input-geometry detection could not anticipate, so they
+  are flagged, never fixed.
+  """
+  if coord_cutoff is None:
+    coord_cutoff = util.make_coordination_cutoff()
+  atoms = list(submodel.get_hierarchy().atoms())
+  metal = atoms[metal_iseq]
+  m_in = matrix.col(metal.xyz)
+  m_out = matrix.col(opt_sites[metal_iseq])
+  donor_set = set(donor_iseqs)
+  details = []
+  for i, atom in enumerate(atoms):
+    if i == metal_iseq or atom.element.strip().upper() not in _DONOR_ELEMENTS:
+      continue
+    cut = coord_cutoff(metal.element, atom.element)
+    d_in = (m_in - matrix.col(atom.xyz)).length()
+    d_out = (m_out - matrix.col(opt_sites[i])).length()
+    ag = atom.parent()
+    label = (f"{ag.resname.strip()}{ag.parent().resseq.strip()}"
+             f"/{atom.name.strip()}")
+    if i in donor_set and d_out > cut:
+      details.append(f"{label} left coordination ({d_out:.2f} A)")
+    elif i not in donor_set and d_in > cut and d_out <= cut:
+      details.append(f"{label} entered coordination ({d_out:.2f} A)")
+  return details
+
+
+def check_site(metal, bonds, mode_changes=()):
   """Sanity-check every emitted bond of a site.
 
-  *bonds* is an iterable of ``(donor_element, distance)`` pairs.  Returns
-  ``group_args(n_atypical, n_implausible, details)`` where *details* is a list of
-  short strings (one per flagged bond) for the log and provenance header.
+  *bonds* is an iterable of ``(donor_element, distance)`` pairs.  *mode_changes*
+  is an iterable of coordination-mode-change detail strings (from
+  :func:`coordination_mode_changes`).  Returns ``group_args(n_atypical,
+  n_implausible, n_mode_changed, details)`` where *details* lists one short
+  string per flagged bond and per mode change, for the log and provenance header.
   """
   n_atypical = n_implausible = 0
   details = []
@@ -127,5 +179,7 @@ def check_site(metal, bonds):
       n_implausible += 1
     details.append(f"{m}-{metals.normalize_element(donor_element)} "
                    f"{distance:.2f} A ({'/'.join(flags)})")
+  mode_changes = list(mode_changes)
+  details.extend(mode_changes)
   return group_args(n_atypical=n_atypical, n_implausible=n_implausible,
-                    details=details)
+                    n_mode_changed=len(mode_changes), details=details)

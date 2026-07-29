@@ -63,6 +63,8 @@ DEFAULT_METHOD = "GFN2-xTB"
 _BACKBONE_NAMES = {"N", "CA", "C", "O", "OXT"}
 # Protein residue classes qualifying for the coordinating-backbone rule.
 _AA_CLASSES = util.AA_RESIDUE_CLASSES
+# Carboxylate O pairs, for the optional monodentate far-O freeze.
+_CARBOXYLATE_O = {"ASP": ("OD1", "OD2"), "GLU": ("OE1", "OE2")}
 
 
 def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
@@ -111,7 +113,8 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
 def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
                            free_radius=DEFAULT_FREE_RADIUS,
                            coord_cutoff=None,
-                           freeze_waters=False, log=None):
+                           freeze_waters=False, freeze_far_carboxylate_o=False,
+                           log=None):
   """Return ``(frozen_iseqs, free_iseqs)`` for the QM optimisation.
 
   The first shell must relax while the protein scaffold and the truncation
@@ -141,6 +144,10 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   - with *freeze_waters*: the O of every water (a coordinating water has no
     H-bond network in the truncated cluster and would drift; the 2 H stay
     free).
+  - with *freeze_far_carboxylate_o*: the non-coordinating O of a MONODENTATE
+    Asp/Glu carboxylate (one O inside the coordination cutoff, its sibling
+    outside), so the optimiser cannot pull the sibling into a spurious
+    bidentate.
 
   Parameters
   ----------
@@ -158,6 +165,8 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
       ``(metal_element, donor_element) -> max distance (A)``; see
       :func:`util.make_coordination_cutoff`. Default: the flat fixed cutoff.
   freeze_waters : bool
+  freeze_far_carboxylate_o : bool
+      Freeze the non-coordinating O of a monodentate Asp/Glu carboxylate.
   log : file-like or None
 
   Returns
@@ -255,6 +264,33 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
         water_o_iseqs.add(i)
     free_iseqs -= water_o_iseqs
 
+  # Optional: freeze the non-coordinating O of a MONODENTATE carboxylate so the
+  # optimiser cannot swing it in to a spurious bidentate (a semiempirical over-
+  # coordination tendency, worse in a truncated cluster). Only fires when one
+  # carboxylate O is inside the coordination cutoff and its sibling is outside;
+  # a genuine bidentate (both O inside) has no far O, so it is untouched.
+  carboxylate_far_o = []
+  if freeze_far_carboxylate_o:
+    for ag in hier.atom_groups():
+      pair = _CARBOXYLATE_O.get(ag.resname.strip().upper())
+      if pair is None:
+        continue
+      abn = {a.name.strip().upper(): a for a in ag.atoms()}
+      o1, o2 = abn.get(pair[0]), abn.get(pair[1])
+      if o1 is None or o2 is None:
+        continue
+      cut = coord_cutoff(metal_element, o1.element)
+      d1 = (matrix.col(o1.xyz) - seed_xyz).length()
+      d2 = (matrix.col(o2.xyz) - seed_xyz).length()
+      far = o2 if d1 <= d2 else o1
+      if min(d1, d2) <= cut < max(d1, d2) and far.i_seq in free_iseqs:
+        free_iseqs.discard(far.i_seq)
+        rg = ag.parent()
+        ch = rg.parent()
+        carboxylate_far_o.append((ch.id.strip(), rg.resseq.strip(),
+                                  ag.resname.strip(), far.name.strip(),
+                                  max(d1, d2)))
+
   frozen_iseqs = set(range(n)) - free_iseqs
 
   print(f"    free atoms: {len(free_iseqs)}/{n} "
@@ -269,6 +305,10 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   if freeze_waters:
     print(f"    water O frozen (freeze_waters): {len(water_o_iseqs)}",
           file=log)
+  if carboxylate_far_o:
+    cx = ", ".join(f"{rn} {ch}{rs}/{nm}(d={d:.2f})"
+                   for ch, rs, rn, nm, d in carboxylate_far_o)
+    print(f"    monodentate carboxylate far O frozen: {cx}", file=log)
   if cofactor_residues_freed:
     cof_str = ", ".join(
       f"{rn} {ch}{rs}"

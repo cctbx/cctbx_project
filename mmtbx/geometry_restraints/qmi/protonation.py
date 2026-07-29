@@ -10,7 +10,9 @@ protonation prep from the calibration ``prepare_qm_calcs.py``:
   metal. Cys/Tyr/Asp/Glu carboxylate donors are stripped to their anionic
   form; His is handled tautomer-aware (it stays NEUTRAL, not an imidazolate):
   the coordinating ring N is made H-free while the partner ring N keeps a
-  proton.
+  proton. A coordinating Cu/Ni N-terminus is deprotonated to its ATCUN form: a
+  backbone amide becomes an amidate and the free alpha-amino terminus becomes
+  -NH2.
 - ``protonate_waters``: place H on bare waters (H-bond and cation aware) via
   the naiad placer, so a coordinating water is neutral H2O with its H kept off
   the metal.
@@ -71,6 +73,21 @@ _ANION_INDUCING_METALS = frozenset({
   "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
   "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
 })
+
+# Metal-induced N-terminal deprotonation at Cu(II)/Ni(II) (the ATCUN motif [71]).
+# Binding collapses the pKa of the free alpha-amino terminus and of the first
+# backbone amides, so they deprotonate and the N coordinate. reduce2 protonates
+# them as for a free peptide, so at one of these ions strip:
+#   - the single peptide amide H (_BACKBONE_AMIDE_H) on a coordinating backbone N;
+#   - one of the three N-terminal amine H (_NTERM_AMINE_H) on a coordinating
+#     alpha-amino N (-NH3+ -> -NH2), freeing its lone pair for the metal.
+# Kept to the ions that do this biologically: a broader set would risk
+# deprotonating an N that merely sits near a metal.
+_ATCUN_METALS = frozenset({"Cu", "Ni"})
+# Backbone amide H (single peptide H on N) vs the N-terminal amine H (three, on
+# the alpha-amino N); the two donors are handled separately below.
+_BACKBONE_AMIDE_H = {"H", "HN", "D", "DN"}
+_NTERM_AMINE_H = {"H1", "H2", "H3", "D1", "D2", "D3"}
 
 # Histidine is tautomer-aware (neutral, not imidazolate): the coordinating ring
 # N donates through its lone pair and must be H-free; the partner ring N keeps
@@ -260,8 +277,8 @@ def _relocate_or_remove_his_h(ag, coord_n, coord_h, metal_d):
 def deprotonate_metal_donors(hier, metals=None,
                              coord_cutoff=None,
                              log=None):
-  """Fix, IN PLACE, the protonation of sidechain donors in *hier* coordinating
-  any metal atom (within ``coord_cutoff(metal_element, donor_element)``).
+  """Fix, IN PLACE, the protonation of donors in *hier* coordinating any metal
+  atom (within ``coord_cutoff(metal_element, donor_element)``).
 
   - Asp/Glu carboxylate (:data:`_COORD_DEPROT_RULES`): strip the acid H for any
     coordinating metal (anionic by pH, metal-independent).
@@ -269,6 +286,10 @@ def deprotonate_metal_donors(hier, metals=None,
     anion-inducing metal (:data:`_ANION_INDUCING_METALS`, transition metals +
     Zn); a Cys/Tyr near a hard Na/K/Ca/Mg is left neutral (Pearson 1963 [37];
     Dudev & Lim 2003 [38]).
+  - ATCUN N-terminal deprotonation at a coordinating Cu(II)/Ni(II)
+    (:data:`_ATCUN_METALS`, ATCUN-type [71]): a standard-AA backbone N is a
+    deprotonated peptide amidate (strip its amide H); a free alpha-amino terminus
+    (-NH3+, all three H) binds as -NH2 (drop the H nearest the metal).
   - His: tautomer-aware (neutral, not imidazolate) via
     :func:`_relocate_or_remove_his_h`, for any coordinating metal.
 
@@ -321,6 +342,67 @@ def deprotonate_metal_donors(hier, metals=None,
         to_remove.append((ag, h_atom))
         reports.append((ch.id.strip(), rg.resseq.strip(),
                         key[0], key[1], h_atom.name.strip(), d_min))
+
+  # ATCUN (Cu/Ni) N-terminal deprotonation. (a) backbone amidate: a standard-AA
+  # backbone N coordinating an ATCUN metal is a deprotonated peptide N, so strip
+  # the amide H reduce2 placed. A backbone N carrying only H1/H2/H3 is an
+  # N-terminal amine (handled in (b)) and is skipped here (no _BACKBONE_AMIDE_H).
+  atcun_metals = [a for a in metal_atoms if qmi_metals.normalize_element(
+                  a.element) in _ATCUN_METALS]
+  for atom in (hier.atoms() if atcun_metals else ()):
+    if atom.name.strip().upper() != "N":
+      continue
+    ag = atom.parent()
+    if common_residue_names_get_class(ag.resname) not in util.AA_RESIDUE_CLASSES:
+      continue
+    h_atom = next((a for a in ag.atoms()
+                   if a.name.strip().upper() in _BACKBONE_AMIDE_H
+                   and a.memory_id() not in seen), None)
+    if h_atom is None:
+      continue
+    n_xyz = matrix.col(atom.xyz)
+    nearest, d_min = min(
+      ((m, (n_xyz - matrix.col(m.xyz)).length()) for m in atcun_metals),
+      key=lambda md: md[1])
+    if d_min > coord_cutoff(nearest.element, atom.element):
+      continue
+    rg = ag.parent()
+    ch = rg.parent()
+    seen.add(h_atom.memory_id())
+    to_remove.append((ag, h_atom))
+    reports.append((ch.id.strip(), rg.resseq.strip(),
+                    ag.resname.strip(), "N", h_atom.name.strip(), d_min))
+
+  # (b) N-terminal amine: a coordinating alpha-amino N still carrying all three
+  # -NH3+ protons binds as -NH2; drop the H nearest the metal so the vacated site
+  # becomes the lone pair pointing at it. Requiring all three keeps this off a
+  # backbone amide (single H, done in (a)) or an already-neutral amine.
+  for atom in (hier.atoms() if atcun_metals else ()):
+    if atom.name.strip().upper() != "N":
+      continue
+    ag = atom.parent()
+    if common_residue_names_get_class(ag.resname) not in util.AA_RESIDUE_CLASSES:
+      continue
+    amine_h = [a for a in ag.atoms()
+               if a.name.strip().upper() in _NTERM_AMINE_H
+               and a.memory_id() not in seen]
+    if len(amine_h) < 3:
+      continue
+    n_xyz = matrix.col(atom.xyz)
+    nearest, d_min = min(
+      ((m, (n_xyz - matrix.col(m.xyz)).length()) for m in atcun_metals),
+      key=lambda md: md[1])
+    if d_min > coord_cutoff(nearest.element, atom.element):
+      continue
+    m_xyz = matrix.col(nearest.xyz)
+    h_atom = min(amine_h, key=lambda h: (matrix.col(h.xyz) - m_xyz).length())
+    rg = ag.parent()
+    ch = rg.parent()
+    seen.add(h_atom.memory_id())
+    to_remove.append((ag, h_atom))
+    reports.append((ch.id.strip(), rg.resseq.strip(),
+                    ag.resname.strip(), "N", h_atom.name.strip(), d_min))
+
   for ag, h_atom in to_remove:
     ag.remove_atom(h_atom)
 

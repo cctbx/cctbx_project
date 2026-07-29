@@ -134,6 +134,9 @@ class QMRestraintsBuilder(object):
       Freeze the oxygen of each QM-region water during the optimisation (its
       hydrogens stay free); the truncated cluster loses the water's H-bond
       network, so a free O would drift.
+  freeze_far_carboxylate_o : bool
+      Freeze the non-coordinating O of a monodentate Asp/Glu carboxylate during
+      the optimisation, so it cannot swing in to a spurious bidentate.
   angle_restraints : str
       Donor-metal-donor angle-restraint policy (plan Sec 7): ``'auto'`` emits
       them only for geometries the M-L distances cannot hold (angularly-ambiguous
@@ -152,6 +155,7 @@ class QMRestraintsBuilder(object):
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
                perturb_attempts=1, use_bvs=False, freeze_waters=True,
+               freeze_far_carboxylate_o=False,
                angle_restraints="auto", coord_cutoff=None, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
@@ -169,6 +173,7 @@ class QMRestraintsBuilder(object):
     self.perturb_attempts = perturb_attempts
     self.use_bvs = use_bvs
     self.freeze_waters = freeze_waters
+    self.freeze_far_carboxylate_o = freeze_far_carboxylate_o
     self.angle_restraints = angle_restraints   # 'auto' | 'always' | 'never'
     self.coord_cutoff = coord_cutoff   # shared metal-donor cutoff callable, or None
     self.logger = logger if logger is not None else null_out()
@@ -442,7 +447,8 @@ class QMRestraintsBuilder(object):
       frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
         submodel, metal_iseq, cap_iseqs, cap_anchor_iseqs=cap_anchor_iseqs,
         coord_cutoff=self.coord_cutoff,
-        freeze_waters=self.freeze_waters, log=self.logger)
+        freeze_waters=self.freeze_waters,
+        freeze_far_carboxylate_o=self.freeze_far_carboxylate_o, log=self.logger)
       site_dir = self._site_dir(chain_id, resseq)
       submodel.get_hierarchy().write_pdb_file(
         crystal_symmetry=submodel.crystal_symmetry(),
@@ -686,10 +692,14 @@ class QMRestraintsBuilder(object):
       sym_image_provenance=sym_image_provenance, log=self.logger)
     # Sanity bounds (plan Sec 9.4): cross-check each emitted M-donor distance vs
     # the empirical target and bond-valence windows; flag, never alter.
+    mode_changes = sanity.coordination_mode_changes(
+      submodel, opt_sites, metal_iseq, donor_iseqs, self.coord_cutoff)
     site_sanity = sanity.check_site(
       metal_element, [(b["donor_element"], b["distance_ideal"])
-                      for b in site_restraints.bonds])
-    if site_sanity.n_atypical or site_sanity.n_implausible:
+                      for b in site_restraints.bonds],
+      mode_changes=mode_changes)
+    if (site_sanity.n_atypical or site_sanity.n_implausible
+        or site_sanity.n_mode_changed):
       print(f"Site {index}: sanity-bound flags: "
             + "; ".join(site_sanity.details), file=self.logger)
     # Provenance (plan Sec 9.3): the global block (set by run()) plus this site's

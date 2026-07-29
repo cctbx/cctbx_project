@@ -183,6 +183,11 @@ imaginary mode (each attempt uses a larger kick)."
     .short_caption = Freeze QM-region water oxygens
     .help = "Freeze the oxygen of each QM-region water during the \
 optimisation; its hydrogens stay free."
+  freeze_far_carboxylate_o = False
+    .type = bool
+    .short_caption = Freeze a monodentate carboxylate's dangling oxygen
+    .help = "Freeze the non-coordinating oxygen of a monodentate Asp/Glu \
+carboxylate during the optimisation; the coordinating oxygen stays free."
   angle_restraints = *auto always never
     .type = choice
     .short_caption = Donor-metal-donor angle restraints
@@ -377,6 +382,7 @@ Requires xtb.
       perturb_attempts=self.params.qm.perturb_attempts,
       use_bvs=self.params.use_bvs,
       freeze_waters=self.params.qm.freeze_waters,
+      freeze_far_carboxylate_o=self.params.qm.freeze_far_carboxylate_o,
       angle_restraints=self.params.qm.angle_restraints,
       coord_cutoff=coord_cutoff,
       logger=self.logger,

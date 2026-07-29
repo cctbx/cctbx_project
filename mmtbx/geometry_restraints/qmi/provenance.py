@@ -90,12 +90,16 @@ def site_block(metal_element, site_tag, oxidation, multiplicity, charge,
     flags.append(f"{outcome} after {n_perturb} perturbation(s)")
   if n_skipped_symmetry:
     flags.append(f"{n_skipped_symmetry} symmetry donor(s) skipped")
-  if sanity is not None and (sanity.n_atypical or sanity.n_implausible):
+  n_mode_changed = getattr(sanity, "n_mode_changed", 0) if sanity else 0
+  if sanity is not None and (sanity.n_atypical or sanity.n_implausible
+                             or n_mode_changed):
     counts = []
     if sanity.n_atypical:
       counts.append(f"{sanity.n_atypical} atypical")
     if sanity.n_implausible:
       counts.append(f"{sanity.n_implausible} implausible")
+    if n_mode_changed:
+      counts.append(f"{n_mode_changed} mode-changed")
     flags.append("sanity " + " + ".join(counts))
   lines.append("  " + "; ".join(flags))
   if sanity is not None and sanity.details:
