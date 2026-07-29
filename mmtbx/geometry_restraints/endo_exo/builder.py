@@ -669,9 +669,10 @@ class QMRegionBuilder(object):
     realised as separate atoms in the output: the parent atom's
     position is transformed by the ``sym_op``'s fractional rotation
     plus translation, and the result lives in its own chain block.
-    Atoms whose materialized positions coincide (special-position
-    case: multiple symmetry operations producing the same physical
-    point) are deduplicated by Cartesian-position key.
+    A symmetry image that positionally duplicates a kept atom group
+    (special-position case: the fixing op maps the group onto itself)
+    is dropped whole, keyed on its heavy atoms so an on-axis water is
+    not left with its two disorder H orientations as extra protons.
 
     Chain IDs are assigned per ``(original_chain_id, sym_op)`` pair so
     each symmetry image is distinguishable in the output.
@@ -792,29 +793,30 @@ class QMRegionBuilder(object):
           node_of_atom[new_atom] = (iseqs_in_order[k], op_xyz)
           k += 1
 
-    # Single pass: deduplicate atoms occupying the same physical
-    # position (special-position case: multiple sym_ops produce the
-    # same point), drop atom groups / residue groups / chains left
-    # empty by that removal, and index the survivors by parent node
-    # so the cap pass below can find them.  Dedup is O(n^2) within
-    # each (element, name) bucket; the 0.2 A tolerance absorbs the
-    # fractionalize -> rotate/translate -> orthogonalize drift.
+    # Drop a symmetry image that positionally duplicates a kept atom group
+    # (special position: the fixing op maps the group onto itself), then drop
+    # emptied residue groups / chains and index survivors by parent node. Keyed
+    # per group on its HEAVY atoms (an on-axis water shares its O but places its
+    # two disorder H apart), so a group whose heavy atoms all coincide with kept
+    # ones is dropped whole. 0.2 A tolerance absorbs the coordinate drift.
     POS_TOL = 0.2
-    seen_by_key = defaultdict(list)  # (element, name) -> [atom, ...]
+    seen_heavy = defaultdict(list)  # (element, name) -> [kept heavy atom, ...]
     atom_for_node = {}  # (parent_iseq, op_xyz) -> surviving atom
     for ch in list(out_hier_model.chains()):
       for rg in list(ch.residue_groups()):
         for ag in list(rg.atom_groups()):
-          for atom in list(ag.atoms()):
-            ename = (atom.element.strip(), atom.name.strip())
-            if any(atom.distance(prev) < POS_TOL
-                   for prev in seen_by_key[ename]):
-              ag.remove_atom(atom)
-            else:
-              seen_by_key[ename].append(atom)
-              atom_for_node[node_of_atom[atom]] = atom
-          if len(list(ag.atoms())) == 0:
+          heavy = [a for a in ag.atoms() if not a.element_is_hydrogen()]
+          is_duplicate = bool(heavy) and all(
+            any(a.distance(prev) < POS_TOL
+                for prev in seen_heavy[(a.element.strip(), a.name.strip())])
+            for a in heavy)
+          if is_duplicate:
             rg.remove_atom_group(ag)
+            continue
+          for atom in ag.atoms():
+            if not atom.element_is_hydrogen():
+              seen_heavy[(atom.element.strip(), atom.name.strip())].append(atom)
+            atom_for_node[node_of_atom[atom]] = atom
         if len(list(rg.atom_groups())) == 0:
           ch.remove_residue_group(rg)
       if len(list(ch.residue_groups())) == 0:
