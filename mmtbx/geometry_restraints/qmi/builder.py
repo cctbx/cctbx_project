@@ -783,7 +783,10 @@ class QMRestraintsBuilder(object):
     Uses a per-attempt *preamble* so xtb_manager's coordinate cache does not
     replay an earlier optimisation, and restores the sub-model's original
     coordinates afterwards so a states scan re-uses the same submodel
-    independently."""
+    independently. Runs with ``file_read=False``: the perturbed start geometry
+    is not bit-reproducible across runs, so a stale re-optimisation left in a
+    persistent work_dir would differ in the low decimals and trip
+    ``check_file_read_safe`` instead of being reused."""
     atoms = submodel.get_hierarchy().atoms()
     saved = atoms.extract_xyz()
     atoms.set_xyz(start_sites)
@@ -791,7 +794,7 @@ class QMRestraintsBuilder(object):
       opt_sites, _qmm = qm.run_constrained_opt(
         submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
         solvent_model=self.solvent_model, nproc=self.nproc,
-        preamble=preamble, work_dir=work_dir, log=self.logger)
+        preamble=preamble, work_dir=work_dir, file_read=False, log=self.logger)
     finally:
       atoms.set_xyz(saved)
     return opt_sites

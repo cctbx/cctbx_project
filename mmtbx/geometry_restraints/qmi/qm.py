@@ -323,7 +323,7 @@ def optimise_mask_from_frozen(n_atoms, frozen_iseqs):
 def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
                         solvent_model=DEFAULT_SOLVENT, method=DEFAULT_METHOD,
                         nproc=1, preamble="qmi", work_dir=None, robust=False,
-                        cleanup=False, log=None):
+                        cleanup=False, file_read=True, log=None):
   """Run a constrained GFN2-xTB optimisation of *submodel* and return the
   optimised geometry.
 
@@ -360,6 +360,11 @@ def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
       clusters that otherwise stall/crash the SCF.
   cleanup : bool or str
       Forwarded to ``xtb_manager.get_opt`` (``'all'`` / ``'most'`` / False).
+  file_read : bool
+      Reuse a matching cached optimisation in this namespace if present
+      (``True``). Pass ``False`` to always run fresh, e.g. for a re-optimisation
+      whose start geometry is not bit-reproducible across runs, where a stale
+      cache would otherwise trip ``check_file_read_safe``.
   log : file-like or None
 
   Returns
@@ -392,7 +397,7 @@ def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
     # optimise_h=False: the injected mask is authoritative; without it the
     # manager force-frees every H, releasing the frozen cap H atoms.
     _opt_subset, full_coords = qmm.get_opt(
-      optimise_h=False, cleanup=cleanup, log=log)
+      optimise_h=False, cleanup=cleanup, file_read=file_read, log=log)
 
   return full_coords, qmm
 
