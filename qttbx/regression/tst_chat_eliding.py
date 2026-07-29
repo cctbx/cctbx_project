@@ -14,7 +14,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from libtbx.utils import format_cpu_times
 
 try:
-  from qttbx.qt import QtCore, QtWidgets
+  from qttbx.qt import QtCore, QtGui, QtWidgets
 except ImportError:
   print("PySide2/PySide6 not available; skipping")
   print("OK")
@@ -46,6 +46,36 @@ def _in_layout(widget, width):
   return host
 
 
+def _room_for(widget):
+  """Width a host must have for ``widget`` to render its full text.
+
+  Never hardcode a "wide enough" pixel count. Qt on the Windows CI runner
+  finds no font files at all -- it logs ``QFontDatabase: Cannot find font
+  directory .../conda_base/Library/lib/fonts`` -- and then measures every
+  glyph with the fixed-pitch fallback engine, one font pixel size each:
+  17 px for the default 12 pt at the offscreen plugin's 100 dpi. LONG wants
+  128 * 17 = 2176 px under that against ~1000 px in a desktop proportional
+  font, so a literal that looks roomy on a developer's machine leaves the
+  text elided on CI, and only there.
+
+  Ask the widget instead: sizeHint reports the FULL text's width by
+  contract, which exercise_eliding_label_size_hint_reports_the_full_text
+  pins down.
+  """
+  return widget.sizeHint().width()
+
+
+def _too_narrow_for(widget):
+  """Width that forces ``widget`` to elide, on any font.
+
+  Half of what the text asks for: past the elide threshold under every
+  font, and still leaving enough glyphs that an ElideLeft tail is
+  recognisable. A fixed 160 px is not -- under a fallback box font that is
+  nine glyphs, which keeps no useful end of anything.
+  """
+  return _room_for(widget) // 2
+
+
 def exercise_eliding_label_never_floors_its_container():
   """The floor is the whole point: minimumSizeHint width must be zero."""
   from qttbx.widgets.chat.eliding import ElidingLabel
@@ -69,13 +99,13 @@ def exercise_eliding_label_size_hint_reports_the_full_text():
   label = ElidingLabel()
   label.set_full_text(LONG)
   wide = label.sizeHint().width()
-  host = _in_layout(label, 200)
-  assert label.text() != LONG, "precondition: text should be elided at 200 px"
+  host = _in_layout(label, _too_narrow_for(label))
+  assert label.text() != LONG, "precondition: the text should be elided"
   # Tolerance, not equality: the chrome around the text is measured by
   # subtracting the text's advance from the inherited hint, and QLabel sizes
   # its own text a pixel differently than QFontMetrics.horizontalAdvance. The
   # property under test is that the hint still describes the whole string --
-  # a collapse would drop it to the ~200 px the elision occupies.
+  # a collapse would drop it to the half-width the elision occupies.
   assert label.sizeHint().width() >= wide - 2, (
     "sizeHint collapsed from %d to %d once the text was elided; the layout "
     "can never grow it back" % (wide, label.sizeHint().width()))
@@ -88,11 +118,12 @@ def exercise_eliding_label_elides_to_fit_and_grows_back():
   app = _qapp()
   label = ElidingLabel()
   label.set_full_text(LONG)
-  host = _in_layout(label, 200)
+  room = _room_for(label)
+  host = _in_layout(label, _too_narrow_for(label))
   assert "…" in label.text(), label.text()
   assert label.toolTip() == LONG, label.toolTip()
   assert label.full_text() == LONG, "full_text must survive the elide"
-  host.resize(1400, 40)
+  host.resize(room, 40)
   app.processEvents()
   assert label.text() == LONG, label.text()
   assert label.toolTip() == "", \
@@ -110,12 +141,18 @@ def exercise_eliding_label_re_elides_when_the_layout_resizes_it():
   app = _qapp()
   label = ElidingLabel()
   label.set_full_text(LONG)
-  host = _in_layout(label, 1400)
-  assert label.text() == LONG, "precondition: the text fits at 1400 px"
-  # A sibling claims most of the row. The host never changes size.
-  sibling = QtWidgets.QLabel("x" * 120, host)
+  host = _in_layout(label, _room_for(label))
+  assert label.text() == LONG, "precondition: the text fits in a full row"
+  # A sibling claims half the row -- a plain QLabel floors at its own text, so
+  # the whole shortfall lands on the label under test. Half of LONG rather
+  # than a fixed run of characters, so the split stays a half on any font: a
+  # literal wide enough to squeeze a proportional font squeezes a fallback box
+  # font to nothing, and a zero-width label is excused from eliding at all.
+  # The host never changes size.
+  sibling = QtWidgets.QLabel(LONG[:len(LONG) // 2], host)
   host.layout().addWidget(sibling)
   app.processEvents()
+  assert label.width() > 0, "the sibling took the whole row; nothing to elide"
   metrics = label.fontMetrics()
   assert metrics.horizontalAdvance(label.text()) <= label.width(), (
     "stale elide: %d px of text in a %d px label"
@@ -129,7 +166,8 @@ def exercise_elide_left_keeps_the_tail_visible():
   _qapp()
   label = ElidingLabel(mode=QtCore.Qt.ElideLeft)
   label.set_full_text("/Users/someone/very/long/path/to/a/chat_debug.log")
-  host = _in_layout(label, 160)
+  host = _in_layout(label, _too_narrow_for(label))
+  assert "…" in label.text(), "precondition: the path should be elided"
   assert label.text().endswith("chat_debug.log"), label.text()
   del host
 
@@ -145,9 +183,10 @@ def exercise_tooltip_override_survives_a_resize():
   app = _qapp()
   label = ElidingLabel()
   label.set_full_text("debug: …/chat_debug.log", tooltip="/full/path.log")
-  host = _in_layout(label, 1400)
+  room = _room_for(label)
+  host = _in_layout(label, room)
   assert label.toolTip() == "/full/path.log", label.toolTip()
-  host.resize(120, 40)
+  host.resize(room // 2, 40)
   app.processEvents()
   assert label.toolTip() == "/full/path.log", (
     "the re-elide clobbered the caller's tooltip: %r" % label.toolTip())
@@ -182,8 +221,9 @@ def exercise_eliding_check_box_can_shrink_below_its_size_hint():
     assert policy != QtWidgets.QSizePolicy.Minimum, (
       "%s keeps the Minimum policy, so the layout ignores minimumSizeHint "
       "and floors at sizeHint anyway" % cls.__name__)
-    host = _in_layout(btn, 120)
-    assert btn.width() <= 120, "%s refused to shrink: %d px" % (
+    narrow = _too_narrow_for(btn)
+    host = _in_layout(btn, narrow)
+    assert btn.width() <= narrow, "%s refused to shrink: %d px" % (
       cls.__name__, btn.width())
     del host
 
@@ -220,10 +260,11 @@ def exercise_eliding_tool_button_hugs_its_text():
   _qapp()
   btn = ElidingToolButton()
   btn.set_full_text("▸ coot_ping (finished, 0.1s)")
-  host = _in_layout(btn, 900)
+  row = _room_for(btn) * 3
+  host = _in_layout(btn, row)
   assert btn.width() <= btn.sizeHint().width() + 2, (
-    "button grew to %d px in a 900 px row; it should hug its %d px of text"
-    % (btn.width(), btn.sizeHint().width()))
+    "button grew to %d px in a %d px row; it should hug its %d px of text"
+    % (btn.width(), row, btn.sizeHint().width()))
   del host
 
 
@@ -248,7 +289,8 @@ def exercise_hugging_widget_shows_its_whole_text():
       text = "▸ %s (finished)" % name
       w = cls()
       w.set_full_text(text)
-      host = _in_layout(w, 1400)  # ample room; the widget hugs its text
+      # Ample room; the widget hugs its text.
+      host = _in_layout(w, _room_for(w) * 2)
       assert "…" not in w.text(), (
         "%s dropped text with a full row to render in: %r (needs %d px, "
         "sizeHint asked for %d)"
@@ -284,19 +326,50 @@ def exercise_wrapping_label_wraps_and_never_floors():
   del host
 
 
+_EXERCISES = (
+  exercise_eliding_label_never_floors_its_container,
+  exercise_eliding_label_size_hint_reports_the_full_text,
+  exercise_eliding_label_elides_to_fit_and_grows_back,
+  exercise_eliding_label_re_elides_when_the_layout_resizes_it,
+  exercise_elide_left_keeps_the_tail_visible,
+  exercise_tooltip_override_survives_a_resize,
+  exercise_set_full_text_coerces_non_str,
+  exercise_eliding_check_box_can_shrink_below_its_size_hint,
+  exercise_becoming_shrinkable_does_not_make_a_widget_growable,
+  exercise_eliding_tool_button_hugs_its_text,
+  exercise_hugging_widget_shows_its_whole_text,
+  exercise_wrapping_label_wraps_and_never_floors,
+)
+
+
+def exercise_all_of_it_again_under_a_font_this_machine_lacks():
+  """Every check again with metrics nothing like the developer's.
+
+  This whole file is about how much room text takes, so it can be green on
+  a machine with fonts and red on one without: the Windows CI runner ships
+  no font files, falls back to a fixed-pitch engine at 17 px a glyph, and
+  needs more than twice the width macOS does for the same string. That is
+  invisible to anyone running the suite locally, so run it twice -- once on
+  the real font, once on one wide enough that any width still written as a
+  pixel literal cannot be enough.
+  """
+  app = _qapp()
+  original = QtGui.QFont(app.font())
+  wide = QtGui.QFont(original)
+  # max(): a font set by pixel size rather than points reports -1 here.
+  wide.setPointSize(max(24, original.pointSize() * 2))
+  app.setFont(wide)
+  try:
+    for fn in _EXERCISES:
+      fn()
+  finally:
+    app.setFont(original)
+
+
 def exercise():
-  exercise_eliding_label_never_floors_its_container()
-  exercise_eliding_label_size_hint_reports_the_full_text()
-  exercise_eliding_label_elides_to_fit_and_grows_back()
-  exercise_eliding_label_re_elides_when_the_layout_resizes_it()
-  exercise_elide_left_keeps_the_tail_visible()
-  exercise_tooltip_override_survives_a_resize()
-  exercise_set_full_text_coerces_non_str()
-  exercise_eliding_check_box_can_shrink_below_its_size_hint()
-  exercise_becoming_shrinkable_does_not_make_a_widget_growable()
-  exercise_eliding_tool_button_hugs_its_text()
-  exercise_hugging_widget_shows_its_whole_text()
-  exercise_wrapping_label_wraps_and_never_floors()
+  for fn in _EXERCISES:
+    fn()
+  exercise_all_of_it_again_under_a_font_this_machine_lacks()
 
 
 if __name__ == "__main__":
