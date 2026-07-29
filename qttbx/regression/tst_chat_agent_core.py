@@ -254,7 +254,7 @@ def exercise_message_assistant_with_usage():
 def exercise_conversation_meta_defaults():
   m = ConversationMeta(id="01HX",
                        title="Test",
-                       profile_name="phenix_expert",
+                       profile_name="phenix_assistant",
                        model="claude-opus-4-7",
                        created_at=now(),
                        updated_at=now())
@@ -265,10 +265,10 @@ def exercise_conversation_meta_defaults():
 
 
 def exercise_conversation_new():
-  c = Conversation.new(profile_name="phenix_expert",
+  c = Conversation.new(profile_name="phenix_assistant",
                        model="claude-opus-4-7",
                        title="New chat")
-  assert c.meta.profile_name == "phenix_expert"
+  assert c.meta.profile_name == "phenix_assistant"
   assert c.meta.model == "claude-opus-4-7"
   assert c.meta.title == "New chat"
   assert isinstance(c.meta.id, str) and len(c.meta.id) > 0
@@ -298,7 +298,7 @@ def exercise_subagent_record():
     parent_conversation_id="01HX",
     parent_tool_use_id="toolu_1",
     task="monitor job",
-    profile_name="phenix_expert_subagent",
+    profile_name="phenix_assistant_subagent",
     model="claude-opus-4-7",
     started_at=now(),
     finished_at=now(),

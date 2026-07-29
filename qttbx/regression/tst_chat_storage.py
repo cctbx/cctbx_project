@@ -41,7 +41,7 @@ def exercise_lazy_directory_creation():
 def exercise_save_then_load_roundtrip():
   tmp, storage = _new_storage()
   try:
-    conv = Conversation.new(profile_name="phenix_expert",
+    conv = Conversation.new(profile_name="phenix_assistant",
                             model="claude-opus-4-7",
                             title="Test")
     conv.append(Message(role="user",
@@ -68,7 +68,7 @@ def exercise_meta_backend_and_per_turn_stamp_roundtrip():
   defaults -- covered by the other round-trip tests)."""
   tmp, storage = _new_storage()
   try:
-    conv = Conversation.new(profile_name="phenix_expert",
+    conv = Conversation.new(profile_name="phenix_assistant",
                             model="claude-opus-4-8",
                             backend="anthropic",
                             title="Backends")
@@ -225,7 +225,7 @@ def exercise_subagent_store_and_load():
       parent_conversation_id=conv.meta.id,
       parent_tool_use_id="toolu_1",
       task="monitor",
-      profile_name="phenix_expert_subagent",
+      profile_name="phenix_assistant_subagent",
       model="claude-opus-4-7",
       started_at=now(),
       finished_at=now(),

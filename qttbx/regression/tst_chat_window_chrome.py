@@ -34,10 +34,11 @@ def exercise_top_bar_shows_title_and_model_and_hides_debug_by_default():
   assert bar.debug_label.isHidden()
 
 
-# The title is '<profile> / <first 60 chars of first user text>', so an
-# ordinary conversation produces one this long.
-LONG_TITLE = ("phenix_expert / Use the sequence to get a model to phase the "
-              "data. Split the")
+# ChatTopBar is a generic widget: the title slot must elide whatever it is
+# handed, so this is deliberately longer than any title a caller would
+# plausibly pass.
+LONG_TITLE = ("a_very_long_user_written_profile_name_that_the_bar_must_elide "
+              "rather than floor the window width at")
 
 
 def _grow_until_title_fits(app, bar, cap=4000):

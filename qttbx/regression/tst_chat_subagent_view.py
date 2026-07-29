@@ -51,7 +51,7 @@ def _record(sub_id="sa_abc123", final_text="# Adversarial review — m.pdb\n\nbo
 
 
 def _parent(storage, title="parent"):
-  conv = Conversation.new(profile_name="phenix_expert", model="claude-opus-5")
+  conv = Conversation.new(profile_name="phenix_assistant", model="claude-opus-5")
   conv.meta.title = title
   storage.save(conv)
   return conv

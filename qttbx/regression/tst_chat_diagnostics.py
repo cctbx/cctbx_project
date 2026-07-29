@@ -10,7 +10,7 @@ from qttbx.widgets.chat.diagnostics import build_diagnostics
 
 
 class _MiniProfile:
-  def __init__(self, name="phenix_expert", model="claude-opus-4-7"):
+  def __init__(self, name="phenix_assistant", model="claude-opus-4-7"):
     self.name = name
     self.model = model
 
@@ -32,7 +32,7 @@ def exercise_dump_contains_basic_fields():
       storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
       log_path=log,
       log_tail_lines=10)
-    assert "phenix_expert" in text
+    assert "phenix_assistant" in text
     assert "claude-opus-4-7" in text
     assert "line3" in text
     assert str(tmp) in text
@@ -47,7 +47,7 @@ def exercise_no_log_file_is_ok():
       profile=_MiniProfile(),
       storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
       log_path=tmp / "missing.log")
-    assert "phenix_expert" in text
+    assert "phenix_assistant" in text
   finally:
     shutil.rmtree(tmp)
 
@@ -68,7 +68,7 @@ def exercise_non_utf8_log_bytes_are_readable():
       storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
       log_path=log,
       log_tail_lines=10)
-    assert "phenix_expert" in text
+    assert "phenix_assistant" in text
     assert "line3" in text
   finally:
     shutil.rmtree(tmp)

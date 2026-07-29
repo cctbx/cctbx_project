@@ -422,17 +422,17 @@ def exercise_project_overrides_user_overrides_builtin():
   user = tempfile.mkdtemp()
   project = tempfile.mkdtemp()
   try:
-    _write_profile(builtin, "phenix_expert",
-                   {"name": "phenix_expert", "model": "builtin-model"})
-    _write_profile(user, "phenix_expert",
-                   {"name": "phenix_expert", "model": "user-model"})
-    _write_profile(project, "phenix_expert",
-                   {"name": "phenix_expert", "model": "project-model"})
+    _write_profile(builtin, "phenix_assistant",
+                   {"name": "phenix_assistant", "model": "builtin-model"})
+    _write_profile(user, "phenix_assistant",
+                   {"name": "phenix_assistant", "model": "user-model"})
+    _write_profile(project, "phenix_assistant",
+                   {"name": "phenix_assistant", "model": "project-model"})
     loader = ProfileLoader(builtin_dir=Path(builtin),
                            user_dir=Path(user),
                            project_dir=Path(project),
                            log=null_out())
-    p = loader.load("phenix_expert")
+    p = loader.load("phenix_assistant")
     assert p.model == "project-model"  # project wins
   finally:
     shutil.rmtree(builtin)
