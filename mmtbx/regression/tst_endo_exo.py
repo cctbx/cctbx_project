@@ -436,6 +436,23 @@ END
 """
 
 
+# A Zn on a 2-fold special position (P 2 2 2; the 2-fold along a is (x,-y,-z))
+# with a coordinating water ON the axis (its O maps onto itself while its two H
+# sit in a general orientation, so the fixing op places two more H) plus a
+# second water OFF the axis (a genuine two-copy symmetry pair).
+_SPECIAL_POS_WATER_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 2 2 2
+HETATM    1 ZN    ZN A 262      10.000   0.000   0.000  1.00 10.00          ZN
+HETATM    2  O   HOH A 300      12.200   0.000   0.000  1.00 10.00           O
+ATOM      3  H1  HOH A 300      12.780   0.620   0.420  1.00 10.00           H
+ATOM      4  H2  HOH A 300      12.780   0.420   0.620  1.00 10.00           H
+HETATM    5  O   HOH A 301      11.000   1.500   1.500  1.00 10.00           O
+ATOM      6  H1  HOH A 301      11.500   2.100   1.900  1.00 10.00           H
+ATOM      7  H2  HOH A 301      11.500   1.900   2.100  1.00 10.00           H
+END
+"""
+
+
 def exercise_2c2u_symmetry_materialization():
   """Lock in the symmetry-expanded shape of the 2C2U Fe region.
 
@@ -1026,6 +1043,36 @@ def exercise_2c2u_sym_image_provenance():
   assert "ASP" in resnames and "HOH" in resnames
 
 
+def exercise_special_position_water_dedup():
+  """A water ON a special position must not keep the symmetry-flipped H as extra
+  protons (an H4O): the redundant image is dropped whole, so the on-axis water
+  survives with exactly two H. An OFF-axis water is a genuine symmetry pair and
+  keeps both two-H copies."""
+  result = _run_endo_exo_on_string(_SPECIAL_POS_WATER_PDB)
+  waters = []
+  for ch in result["model"].get_hierarchy().chains():
+    for rg in ch.residue_groups():
+      for ag in rg.atom_groups():
+        if ag.resname.strip().upper() != "HOH":
+          continue
+        n_h = sum(1 for a in ag.atoms() if a.element_is_hydrogen())
+        n_o = sum(1 for a in ag.atoms() if not a.element_is_hydrogen())
+        waters.append((rg.resseq.strip(), n_o, n_h))
+
+  # every surviving water is a normal 2-H water: no orphan H (O deduped away) and
+  # no H4O (flipped H kept on a shared O).
+  for resseq, n_o, n_h in waters:
+    assert (n_o, n_h) == (1, 2), (
+      f"HOH {resseq}: {n_o} O, {n_h} H (expected 1 O, 2 H)")
+  counts = {}
+  for resseq, _o, _h in waters:
+    counts[resseq] = counts.get(resseq, 0) + 1
+  assert counts.get("300") == 1, (
+    f"on-axis water 300 should survive once; got {counts}")
+  assert counts.get("301") == 2, (
+    f"off-axis water 301 should keep both symmetry copies; got {counts}")
+
+
 def run():
   exercise_submodel_shape()
   exercise_cys_coordination()
@@ -1035,6 +1082,7 @@ def run():
   exercise_2c2u_fe_coordination_distances()
   exercise_2c2u_symmetry_truncation_consistency()
   exercise_2c2u_sym_image_provenance()
+  exercise_special_position_water_dedup()
   exercise_selection_seed_terminates()
   # engine unit tests
   exercise_canon_op()
