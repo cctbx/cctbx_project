@@ -19,8 +19,8 @@ def test_000():
 
 def test_001():
   '''
-    8b0x : AA IAS not in GeoStd but in CCD
-    The IAS backbone amide H is placed in the peptide plane (planar amide);
+    8b0x : AA I_S not in GeoStd but in CCD
+    The I_S backbone amide H is placed in the peptide plane (planar amide);
     its CCD ideal angles around N do not sum to 360, but the planarity
     restraint is honored during riding-H parameterization.
   '''
@@ -133,6 +133,7 @@ HETATM   99  HN3 PSU a 748     195.721 179.903 232.903  1.00 24.70           H
 
 pdb_str_001 = '''
 REMARK 8b0x : AA IAS not in GeoStd but in CCD
+REMARK renamed IAS to I_S with special code that will never be in the geostd
 CRYST1   23.974   19.428   18.316  90.00  90.00  90.00 P 1
 ATOM      1  N   HIS K 118     259.542 213.935 173.314  1.00 42.87           N
 ATOM      2  CA  HIS K 118     260.103 212.912 172.395  1.00 40.58           C
@@ -152,18 +153,18 @@ ATOM     15  HD1 HIS K 118     261.377 214.998 171.575  1.00 46.16           H
 ATOM     16  HD2 HIS K 118     264.341 213.093 173.251  1.00 42.53           H
 ATOM     17  HE1 HIS K 118     263.259 216.433 171.388  1.00 44.04           H
 ATOM     18  HE2 HIS K 118     265.078 215.249 172.435  1.00 44.79           H
-HETATM   19  N   IAS K 119     257.964 211.947 171.869  1.00 44.51           N
-HETATM   20  CA  IAS K 119     256.995 210.879 171.523  1.00 47.09           C
-HETATM   21  C   IAS K 119     255.993 211.448 170.505  1.00 52.64           C
-HETATM   22  O   IAS K 119     255.168 210.666 170.043  1.00 53.29           O
-HETATM   23  CB  IAS K 119     256.323 210.322 172.779  1.00 42.46           C
-HETATM   24  CG  IAS K 119     255.676 211.385 173.653  1.00 44.06           C
-HETATM   25  OD1 IAS K 119     255.162 212.373 173.118  1.00 43.83           O
-HETATM   26  OXT IAS K 119     256.063 212.654 170.241  1.00 50.48           O
-HETATM   27  H   IAS K 119     257.622 212.769 171.692  1.00 44.51           H
-HETATM   28  HA  IAS K 119     257.454 210.117 171.110  1.00 47.09           H
-HETATM   29  HB2 IAS K 119     257.001 209.856 173.312  1.00 42.46           H
-HETATM   30  HB3 IAS K 119     255.629 209.686 172.503  1.00 42.46           H
+HETATM   19  N   I_S K 119     257.964 211.947 171.869  1.00 44.51           N
+HETATM   20  CA  I_S K 119     256.995 210.879 171.523  1.00 47.09           C
+HETATM   21  C   I_S K 119     255.993 211.448 170.505  1.00 52.64           C
+HETATM   22  O   I_S K 119     255.168 210.666 170.043  1.00 53.29           O
+HETATM   23  CB  I_S K 119     256.323 210.322 172.779  1.00 42.46           C
+HETATM   24  CG  I_S K 119     255.676 211.385 173.653  1.00 44.06           C
+HETATM   25  OD1 I_S K 119     255.162 212.373 173.118  1.00 43.83           O
+HETATM   26  OXT I_S K 119     256.063 212.654 170.241  1.00 50.48           O
+HETATM   27  H   I_S K 119     257.622 212.769 171.692  1.00 44.51           H
+HETATM   28  HA  I_S K 119     257.454 210.117 171.110  1.00 47.09           H
+HETATM   29  HB2 I_S K 119     257.001 209.856 173.312  1.00 42.46           H
+HETATM   30  HB3 I_S K 119     255.629 209.686 172.503  1.00 42.46           H
 '''
 
 if (__name__ == "__main__"):

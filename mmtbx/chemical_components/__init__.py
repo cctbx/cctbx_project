@@ -72,8 +72,20 @@ def get_cif_filename(code):
   code=code.strip()
   if (len(code) == 0):
     raise Sorry("Residue code is blank.")
-  return os.path.join(
-    data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
+  elif code=='I_S':
+    f=open(os.path.join(data_dir, "%s" % code[0].lower(), "data_IAS.cif"), 'r')
+    lines=f.read()
+    del f
+    lines=lines.replace('IAS', 'I_S')
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp_file:
+      print(f"File path: {temp_file.name}")
+      temp_file.write(lines)
+      temp_file.close()
+      return temp_file.name
+  else:
+    return os.path.join(
+      data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
 
 def is_chemical_components_file(filename):
   try:
