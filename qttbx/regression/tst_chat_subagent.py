@@ -1899,7 +1899,7 @@ def exercise_a_backends_own_bookkeeping_server_is_not_a_measurement():
   """A tool the child's PROFILE never asked for measures nothing for it.
 
   Every backend wires in servers of its own on top of the profile's.
-  ``claude_code`` builds an in-process ``phenix_chat`` server on EVERY agent,
+  ``claude_code`` builds an in-process ``phenix_agent`` server on EVERY agent,
   carrying ``phenix_get_job_history`` -- auto-approved ahead of every policy
   check, and (with no provider wired, which is every child: only the chat
   window ever wires one) returning ``"(no jobs recorded)"`` as a SUCCESSFUL
@@ -1915,7 +1915,7 @@ def exercise_a_backends_own_bookkeeping_server_is_not_a_measurement():
   tmp = tempfile.mkdtemp()
   try:
     parent, storage = _parent(tmp)
-    bookkeeping = "mcp__phenix_chat__phenix_get_job_history"
+    bookkeeping = "mcp__phenix_agent__phenix_get_job_history"
     measure = "mcp__phenix__phenix_get_results"
     bundle = _bundle(
       [[ToolUseRequested(id="tu1", name=bookkeeping, input={}),

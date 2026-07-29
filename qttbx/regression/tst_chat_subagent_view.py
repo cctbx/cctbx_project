@@ -169,7 +169,7 @@ def exercise_records_written_before_the_feature_need_no_migration():
     storage.store_subagent(parent.meta.id, _record())
     # Rewrite index.json exactly as an older build left it: real conversation
     # rows, no views, no generation stamp.
-    index_path = Path(tmp) / ".phenix_chat" / "index.json"
+    index_path = Path(tmp) / ".phenix_agent" / "index.json"
     doc = json.loads(index_path.read_text(encoding="utf-8"))
     doc.pop("views_generation", None)
     doc["conversations"] = [d for d in doc["conversations"]
@@ -201,7 +201,7 @@ def exercise_opening_a_view_yields_the_childs_messages_and_writes_nothing():
     assert [m.role for m in conv.messages] == ["user", "assistant"]
     # The record rides along so the view can show what the child reported.
     assert conv.subagents and conv.subagents[0].sub_id == "sa_abc123"
-    conv_root = Path(tmp) / ".phenix_chat" / "conversations"
+    conv_root = Path(tmp) / ".phenix_agent" / "conversations"
     assert sorted(p.name for p in conv_root.iterdir()) == [parent.meta.id], \
       "opening a view created a directory"
   finally:
@@ -266,9 +266,9 @@ def exercise_an_unreadable_parent_meta_does_not_hide_its_reviews():
   try:
     parent = _parent(storage)
     storage.store_subagent(parent.meta.id, _record())
-    (Path(tmp) / ".phenix_chat" / "conversations" / parent.meta.id
+    (Path(tmp) / ".phenix_agent" / "conversations" / parent.meta.id
      / "meta.json").write_text("{ not json", encoding="utf-8")
-    (Path(tmp) / ".phenix_chat" / "index.json").unlink()
+    (Path(tmp) / ".phenix_agent" / "index.json").unlink()
     metas = storage.list_conversations()
     assert [m.title for m in metas] == ["Adversarial review — m.pdb"], \
       [m.title for m in metas]

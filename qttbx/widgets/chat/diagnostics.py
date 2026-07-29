@@ -31,7 +31,7 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
       The assembled diagnostics report, terminated by a newline.
   """
   lines = []
-  lines.append("PhenixChat diagnostics")
+  lines.append("PhenixAgent diagnostics")
   lines.append("=" * 40)
   lines.append("timestamp: %s" % datetime.datetime.now().isoformat(
     timespec="seconds"))

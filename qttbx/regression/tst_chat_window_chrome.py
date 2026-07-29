@@ -246,7 +246,7 @@ def exercise_top_bar_shows_and_hides_debug_log_path():
   _qapp()
   from qttbx.widgets.chat.chat_top_bar import ChatTopBar
   bar = ChatTopBar()
-  bar.set_debug_log_path("/Users/x/proj/.phenix_chat/logs/debug-20260518T103000.log")
+  bar.set_debug_log_path("/Users/x/proj/.phenix_agent/logs/debug-20260518T103000.log")
   assert not bar.debug_label.isHidden()
   assert "debug-20260518T103000.log" in bar.debug_label.text()
   bar.set_debug_log_path(None)

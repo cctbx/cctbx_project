@@ -144,7 +144,7 @@ class ConversationList(QtWidgets.QWidget):
 
   def set_conversations(self, metas, locked_ids=()):
     """Rebuild the list. ``locked_ids`` name conversations open in another
-    phenix.chat process; they render DIMMED but stay selectable, so a click can
+    phenix.agent process; they render DIMMED but stay selectable, so a click can
     re-check the lock (the chat window does this) and, if still held, turn the
     Delete button into Unlock. Locked rows are not renamable."""
     self._metas = list(metas)
@@ -169,7 +169,7 @@ class ConversationList(QtWidgets.QWidget):
     is the selected row."""
     item.setData(_LOCKED_ROLE, locked)
     if locked:
-      item.setToolTip("Open in another phenix.chat window (select it to unlock)")
+      item.setToolTip("Open in another phenix.agent window (select it to unlock)")
       item.setForeground(self._dim_brush)
       item.setFlags((item.flags() | QtCore.Qt.ItemIsSelectable
                      | QtCore.Qt.ItemIsEnabled) & ~QtCore.Qt.ItemIsEditable)

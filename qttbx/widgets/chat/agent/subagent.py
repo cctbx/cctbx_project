@@ -70,7 +70,7 @@ both read off the wiring the child was actually built from so neither can drift
   signal the phenix-side factory uses to choose what to pre-allow, never a
   hardcoded name list that a renamed or added skill tool walks past;
 - any tool from an MCP server the child's PROFILE did not ask for. A backend
-  adds servers of its own: ``claude_code`` builds an in-process ``phenix_chat``
+  adds servers of its own: ``claude_code`` builds an in-process ``phenix_agent``
   server on every agent, and its ``phenix_get_job_history`` -- auto-approved
   ahead of every policy check, and returning ``"(no jobs recorded)"`` as a
   SUCCESSFUL result when no provider is wired, which is every child -- made
@@ -698,7 +698,7 @@ def _is_measurement_tool(name, tools, servers):
   - **Tools from a server the child's PROFILE did not ask for.** *servers*
     names the MCP servers this build really wired up. A backend adds servers of
     its own on top of those -- ``claude_code`` builds an in-process
-    ``phenix_chat`` server on EVERY agent, carrying the job-history and
+    ``phenix_agent`` server on EVERY agent, carrying the job-history and
     ask-user tools, and auto-approves the job-history one ahead of any policy
     check. With no provider wired (nothing wires one for a child)
     ``phenix_get_job_history`` returns ``"(no jobs recorded)"`` as a

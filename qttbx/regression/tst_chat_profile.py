@@ -941,10 +941,30 @@ def exercise():
   exercise_mcp_server_inject_phenix_env_default_true()
   exercise_mcp_server_inject_phenix_env_parsed_false()
   exercise_system_prompt_file_outside_profile_dir_rejected()
+  exercise_agent_root_token_expands_and_unknown_tokens_pass_through()
   exercise_backend_display_name_maps_each_backend()
   exercise_malformed_field_types_raise_sorry()
   exercise_non_object_toplevel_json_raises_sorry()
   exercise_own_max_turns_is_separate_from_the_subagents_default()
+
+
+def exercise_agent_root_token_expands_and_unknown_tokens_pass_through():
+  """``${AGENT_ROOT}`` expands to PHENIX_AGENT_HOME. An unrecognized token
+  is left as its own literal text rather than raising or emptying, so a
+  profile naming a token this function does not know yields a path with
+  '${...}' still in it."""
+  from qttbx.widgets.chat.agent.profile import _expand_str
+  saved = os.environ.get("PHENIX_AGENT_HOME")
+  os.environ["PHENIX_AGENT_HOME"] = "/proj/.phenix_agent"
+  try:
+    assert _expand_str("${AGENT_ROOT}/db.sqlite", "/p/x.json") \
+        == "/proj/.phenix_agent/db.sqlite"
+    assert _expand_str("${NOPE_ROOT}/db", "/p/x.json") == "${NOPE_ROOT}/db"
+  finally:
+    if saved is None:
+      os.environ.pop("PHENIX_AGENT_HOME", None)
+    else:
+      os.environ["PHENIX_AGENT_HOME"] = saved
 
 
 def exercise_backend_display_name_maps_each_backend():

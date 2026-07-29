@@ -146,7 +146,7 @@ class McpServerConfig:
   tool_policy: dict = field(default_factory=dict)
   auto_start: bool = True
   # Phenix-aware servers (default) receive PHENIX_PROJECT_DIR /
-  # PHENIX_CHAT_HOME in their subprocess env; foreign servers (e.g. the
+  # PHENIX_AGENT_HOME in their subprocess env; foreign servers (e.g. the
   # Coot bridge) set this False so no Phenix scoping leaks into them.
   inject_phenix_env: bool = True
 
@@ -630,8 +630,8 @@ def _expand_str(value, source_path):
 
   Recognized tokens: ``${env:NAME}`` (environment variable, empty if
   unset), ``${PROFILE_DIR}`` (the profile file's directory),
-  ``${PROJECT_DIR}`` (``PHENIX_PROJECT_DIR``), and ``${CHAT_ROOT}``
-  (``PHENIX_CHAT_HOME``). Unknown tokens are left untouched.
+  ``${PROJECT_DIR}`` (``PHENIX_PROJECT_DIR``), and ``${AGENT_ROOT}``
+  (``PHENIX_AGENT_HOME``). Unknown tokens are left untouched.
 
   Parameters
   ----------
@@ -653,8 +653,8 @@ def _expand_str(value, source_path):
       return str(Path(source_path).parent.resolve())
     if token == "PROJECT_DIR":
       return os.environ.get("PHENIX_PROJECT_DIR", "")
-    if token == "CHAT_ROOT":
-      return os.environ.get("PHENIX_CHAT_HOME", "")
+    if token == "AGENT_ROOT":
+      return os.environ.get("PHENIX_AGENT_HOME", "")
     return m.group(0)                  # leave unknown tokens as-is
   return _VAR_RE.sub(_sub, value)
 

@@ -2,7 +2,7 @@
 
 Layout::
 
-    <project_dir>/.phenix_chat/
+    <project_dir>/.phenix_agent/
       index.json
       conversations/<conv_id>/
         meta.json
@@ -52,7 +52,7 @@ _TMP_STALE_SECONDS = 3600
 
 
 class ConversationStorage:
-  """Read and write conversations under a project's ``.phenix_chat/`` dir.
+  """Read and write conversations under a project's ``.phenix_agent/`` dir.
 
   Construction does not touch the filesystem. Directories appear lazily on
   first write.
@@ -398,7 +398,7 @@ class ConversationStorage:
   def acquire_conversation_lock(self, conv_id):
     """Try to publish this process's ``.open`` marker for a conversation.
 
-    Two phenix.chat processes on one project must not both drive a single
+    Two phenix.agent processes on one project must not both drive a single
     conversation: ``save`` is a whole-file rewrite, so the last to finish a turn
     silently clobbers the other's messages. The marker holds ``<pid>@<hostname>``
     and is published ATOMICALLY -- written to a unique temp, then ``os.link``ed
@@ -819,7 +819,7 @@ def _read_json(path):
   (ERROR_ACCESS_DENIED): a concurrent writer's ``os.replace`` -- the atomic-write
   final step -- briefly holds the target, so a reader that opens in that window
   fails, the mirror image of the ``_atomic_replace`` write-side sharing violation
-  (another phenix.chat process saving, or the worker's autosave racing a
+  (another phenix.agent process saving, or the worker's autosave racing a
   ``load`` / sidebar scan). A short bounded backoff (up to
   ``_REPLACE_RETRY_SECONDS``) wins the gap; a genuinely unreadable path (a real
   EACCES / read-only tree) still surfaces once the deadline passes, so ``load``'s
@@ -1045,7 +1045,7 @@ def _pid_alive_windows(pid):
 
 
 # Longest the final replace retries a Windows sharing violation before giving up.
-# On Windows a concurrent reader holding the target open -- another phenix.chat
+# On Windows a concurrent reader holding the target open -- another phenix.agent
 # process's load() / list_conversations() on the same project -- blocks the
 # replace: CPython's open() grants FILE_SHARE_READ|WRITE but NOT
 # FILE_SHARE_DELETE, so MoveFileEx can't take the delete access os.replace needs
@@ -1099,7 +1099,7 @@ def _atomic_write(path, mode, write_fn):
   # Write to a UNIQUE sibling .tmp via write_fn(handle), then atomically rename
   # it into place. The pid+uuid tag means two concurrent writers -- two threads
   # (a worker-thread mid-turn autosave racing the GUI's turn-end save) or even
-  # two phenix.chat processes on the same project dir -- never share a tmp, so
+  # two phenix.agent processes on the same project dir -- never share a tmp, so
   # each replace stays atomic and it is last-writer-wins. The replace goes through
   # _atomic_replace so a Windows reader holding the target open only delays the
   # write briefly instead of failing it. If the write (or replace) fails partway,
@@ -1178,7 +1178,7 @@ def _check_schema_version(doc, source):
     from libtbx.utils import Sorry
     raise Sorry(
       "%s: schema_version '%s' is not supported by this client "
-      "(expected '%s'). Update PhenixChat or use a compatible version."
+      "(expected '%s'). Update PhenixAgent or use a compatible version."
       % (source, version, _SCHEMA_VERSION))
 
 
