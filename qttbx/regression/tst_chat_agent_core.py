@@ -86,6 +86,39 @@ def exercise_subclass_with_methods_instantiable():
   assert g.uses_env_api_key() is False
 
 
+def exercise_note_context_tokens_is_a_high_water_mark():
+  """The peak never falls, and a missing reading leaves it STANDING.
+
+  `note_context_tokens` is where the four backends' copies of this rule were
+  consolidated, and it had no test of its own -- the rule was only checked
+  through two backends, near-verbatim, so the shared function nobody owned was
+  the one place it could break silently.
+
+  The invariant that matters is the second one. Prompt size falls legitimately
+  all the time (a shorter turn, a cleared context), and `context_tokens` is
+  read to decide whether a handoff threshold was CROSSED. Lowering it on a
+  smaller later reading discards exactly that fact.
+  """
+  from qttbx.widgets.chat.agent.base import note_context_tokens
+
+  class _Agent(object):
+    last_context_tokens = 0
+
+  agent = _Agent()
+  assert note_context_tokens(agent, 100) == 100
+  assert note_context_tokens(agent, 250) == 250          # rises
+  assert note_context_tokens(agent, 40) == 250           # never falls
+  # Unreported: both spellings a backend uses for "no usage payload".
+  assert note_context_tokens(agent, 0) == 250
+  assert note_context_tokens(agent, None) == 250
+  assert agent.last_context_tokens == 250, agent.last_context_tokens
+  # And it is a free function, not a method: ClaudeCodeAgent duck-types the
+  # agent contract, so a method would raise AttributeError on that backend.
+  from qttbx.widgets.chat.agent.base import Agent as _Base
+  assert not hasattr(_Base, "note_context_tokens"), \
+    "note_context_tokens became a method; the duck-typed backend loses it"
+
+
 # ---- event dataclasses ---------------------------------------------------
 
 
@@ -321,6 +354,7 @@ def exercise():
   exercise_subclass_with_methods_instantiable()
   exercise_classify_error_text_matches_whole_phrases_only()
   # events
+  exercise_note_context_tokens_is_a_high_water_mark()
   exercise_text_delta()
   exercise_thinking_with_signature()
   exercise_thinking_default_signature()

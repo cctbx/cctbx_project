@@ -119,6 +119,29 @@ class ApprovalCoordinator:
     with self._lock:
       return request_id in self._pending
 
+  def record_denial(self, tool_name, reason=""):
+    """Note that ``tool_name`` was refused WITHOUT an approval being surfaced.
+
+    A policy ``deny`` is settled by ``AgentSession`` before any request is
+    opened, and a backend that owns its own permission layer (claude_code's SDK
+    callback) never opens one either -- so a coordinator that learns of
+    denials only through ``open`` sees a subset that can be empty even when
+    every tool the turn tried was refused. This is where the rest arrive, so
+    the coordinator stays the single account of what was denied.
+
+    A no-op here, since a depth-0 session's denials are already visible to the
+    user who caused them; ``subagent._HeadlessApprovals`` overrides it, because
+    a child's are visible to nobody and are what tells a review that measured
+    nothing from one that found nothing.
+
+    Parameters
+    ----------
+    tool_name : str
+        The tool that was refused.
+    reason : str, optional
+        Short why, for a subclass that reports it.
+    """
+
   def _abandon_pending(self, closed):
     with self._lock:
       self._closed = closed

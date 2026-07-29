@@ -231,12 +231,28 @@ def exercise_subagent_store_and_load():
       finished_at=now(),
       final_text="done",
       token_usage=TokenUsage(input=10, output=5),
-      messages=[])
+      messages=[],
+      incomplete_reason="turn_cap")
     storage.store_subagent(conv.meta.id, rec)
     loaded = storage.load_subagent(conv.meta.id, "sa_test")
     assert loaded.sub_id == "sa_test"
     assert loaded.final_text == "done"
     assert loaded.token_usage.input == 10
+    # A child cut off must not come back off disk looking clean.
+    assert loaded.incomplete_reason == "turn_cap", loaded.incomplete_reason
+
+    # Records written before the field existed still load, as ""; the delete
+    # also pins that the writer emits the key at all.
+    path = (Path(tmp) / ".phenix_chat" / "conversations" / conv.meta.id /
+            "subagents" / "sa_test.json")
+    with open(path) as fh:
+      doc = json.load(fh)
+    del doc["incomplete_reason"]
+    with open(path, "w") as fh:
+      json.dump(doc, fh)
+    legacy = storage.load_subagent(conv.meta.id, "sa_test")
+    assert legacy.incomplete_reason == "", legacy.incomplete_reason
+    assert legacy.final_text == "done"
   finally:
     shutil.rmtree(tmp)
 
@@ -503,12 +519,23 @@ def exercise_atomic_replace_fails_fast_on_posix():
 
 def exercise_all_token_usage_fields_round_trip():
   """Every TokenUsage field on an assistant message survives save()+load().
-  Dataclass equality compares all fields, so a usage field added later is
-  covered automatically -- it must not silently drop on persist."""
+
+  Dataclass equality compares all fields, so a field added later is covered
+  automatically -- but only if the fixture gives it a NON-DEFAULT value. Left
+  at its default a dropped field still compares equal, which is how this test
+  claimed to cover ``context_tokens`` while a near-identical copy of itself
+  was added below to actually do it.
+
+  ``context_tokens`` is also the one field that differs in MEANING: the cost
+  fields accumulate over a turn and are meant to be summed, while it is a PEAK
+  prompt size that must never be. Round-tripping it is what lets a restored
+  conversation know how full its context already is without re-measuring.
+  """
   tmp, storage = _new_storage()
   try:
     conv = Conversation.new(profile_name="p", model="m", title="usage")
-    usage = TokenUsage(input=11, output=22, cache_read=33, cache_creation=44)
+    usage = TokenUsage(input=11, output=22, cache_read=33, cache_creation=44,
+                       context_tokens=788694)
     conv.append(Message(role="assistant",
                         content=[ContentBlock(type="text",
                                               data={"text": "hi"})],
@@ -516,6 +543,48 @@ def exercise_all_token_usage_fields_round_trip():
     storage.save(conv)
     loaded = storage.load(conv.meta.id)
     assert loaded.messages[-1].usage == usage, loaded.messages[-1].usage
+    # Named explicitly as well as compared: equality alone would not say WHICH
+    # field regressed, and this is the one with the surprising semantics.
+    assert loaded.messages[-1].usage.context_tokens == 788694, \
+      loaded.messages[-1].usage
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_usage_written_before_context_tokens_existed_loads_as_zero():
+  """Conversations saved by an older build have no ``context_tokens`` key.
+  They must load with 0 -- read as "not measured", never as "context empty"."""
+  from qttbx.widgets.chat.agent.storage import _token_usage_from_dict
+  legacy = {"input": 1, "output": 2, "cache_read": 3, "cache_creation": 4}
+  usage = _token_usage_from_dict(legacy)
+  assert usage.context_tokens == 0, usage
+  assert usage.input == 1, usage
+
+
+def exercise_ephemeral_blocks_are_never_persisted():
+  """A content block tagged ephemeral is dropped on save, on EVERY path.
+
+  ``save`` is the single choke point every writer funnels through -- the
+  worker's mid-turn autosave, the turn-end / errored-turn / close saves alike
+  (see ``persistable_prefix``). Filtering here, rather than at one caller's
+  turn-end, is what makes a transient block (a context-pressure note sent to
+  the model for one turn) provably absent from disk no matter which path saved.
+  The block's non-ephemeral siblings in the same message must survive."""
+  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="eph")
+    conv.append(Message(role="user", timestamp=now(), content=[
+      ContentBlock(type="text", data={"text": "real question"}),
+      ContentBlock(type="text", data={"text": "[transient note]",
+                                      EPHEMERAL_BLOCK_KEY: True})]))
+    storage.save(conv)
+    loaded = storage.load(conv.meta.id)
+    texts = [b.data.get("text") for b in loaded.messages[-1].content]
+    assert texts == ["real question"], texts
+    # The in-memory conversation is untouched -- the block is still there for
+    # the turn that is delivering it; only the serialized form drops it.
+    assert len(conv.messages[-1].content) == 2, conv.messages[-1].content
   finally:
     shutil.rmtree(tmp)
 
@@ -1263,6 +1332,8 @@ def exercise():
   exercise_store_attachment_cleans_up_tmp_on_replace_failure()
   exercise_atomic_replace_fails_fast_on_posix()
   exercise_all_token_usage_fields_round_trip()
+  exercise_ephemeral_blocks_are_never_persisted()
+  exercise_usage_written_before_context_tokens_existed_loads_as_zero()
   exercise_read_json_retries_windows_sharing_violation()
   exercise_concurrent_saves_do_not_corrupt()
   exercise_save_reindex_false_skips_index()

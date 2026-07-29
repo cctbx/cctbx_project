@@ -22,7 +22,7 @@ _KNOWN_KEYS = {
   "model",
   "system_prompt", "system_prompt_file",
   "skills", "mcp_servers", "tool_policy_default",
-  "subagents",
+  "subagents", "max_turns",
   "server_tools",
   "backend", "claude", "portkey",
 }
@@ -30,6 +30,16 @@ _KNOWN_KEYS = {
 # Backends supported by the agent factory. Validated at load time so
 # typos surface before the chat window opens.
 _KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
+
+# There is deliberately NO `subagents.default_model`. A child that names no
+# model runs on the PARENT's pair (see `subagent_factory._resolve_pair`), which
+# is what makes same-model review the config-free default and cross-model an
+# opt-in the spawn call states. A profile-level default model would invert
+# that: every child would silently become cross-model on whatever literal this
+# module carried, and a user on gpt/gemini/portkey who never ran `claude login`
+# would get a hard auth failure instead of a review on their own model. The
+# field existed, defaulted to a Claude model, and was read by nothing; it was
+# removed rather than wired.
 
 # User-facing assistant name per backend, for the chat UI (response label,
 # input placeholder, question card). Portkey is a gateway whose underlying
@@ -175,11 +185,23 @@ class Profile:
   # the backend declares nothing extra. The anthropic and google backends
   # consult this; other backends carry the default empty list.
   server_tools: list = field(default_factory=list)
+  # The `subagents.*` block is, without exception, about the children THIS
+  # profile spawns -- never about this profile's own run. `max_turns` below is
+  # the other direction and has its own top-level key for exactly that reason;
+  # see its comment.
   subagents_enabled: bool = True
   subagents_max_depth: int = 1
   subagents_default_max_turns: int = 25
-  subagents_default_model: str = "claude-opus-4-7"
   subagents_default_profile: str = None
+  # This profile's OWN turn cap, whoever runs it -- the number that governs
+  # when this profile is used AS a child. Distinct from
+  # `subagents_default_max_turns`, which is the default this profile hands the
+  # children IT spawns; one key cannot mean both, since a profile in the middle
+  # of a chain is both a child and a parent. None means "not declared", which
+  # is what leaves the spawning caller's default in force; every other field
+  # here carries a filled-in dataclass default, so None is the only value that
+  # can distinguish "the author wrote a cap" from "the author wrote nothing".
+  max_turns: int = None
   backend: str = "claude_code"  # anthropic|claude_code|openai|portkey|google
   claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
   # Backend-specific knobs for the "portkey" backend; only consulted when
@@ -539,9 +561,12 @@ def _build_profile(data, source_path):
     subagents_default_max_turns=_coerce_int(
       subagents.get("default_max_turns", 25),
       "subagents.default_max_turns", source_path),
-    subagents_default_model=subagents.get(
-      "default_model", "claude-opus-4-7"),
     subagents_default_profile=subagents.get("default_profile"),
+    # Absent stays None -- "not declared" -- and is NOT coerced: int(None)
+    # raises, and a filled-in default here would be indistinguishable from an
+    # authored cap and would outrank every spawning caller's number.
+    max_turns=(None if data.get("max_turns") is None else
+               _coerce_int(data.get("max_turns"), "max_turns", source_path)),
     backend=data.get("backend", "claude_code"),
     claude=claude_opts,
     portkey_virtual_key=portkey_data.get("virtual_key"),
@@ -583,8 +608,8 @@ def _profile_to_dict(p):
       "max_depth": p.subagents_max_depth,
       "default_max_turns": p.subagents_default_max_turns,
       "default_profile": p.subagents_default_profile,
-      "default_model": p.subagents_default_model,
     },
+    "max_turns": p.max_turns,
     "backend": p.backend,
     "claude": {
       "cli_path": p.claude.cli_path,

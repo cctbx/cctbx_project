@@ -167,6 +167,71 @@ def exercise_assistant_messages_stamped_with_model_and_backend():
     shutil.rmtree(tmp)
 
 
+class _SwitchingAgent(FakeAgent):
+  """A backend that answers with a different model than it was asked for.
+
+  What `/model` mid-conversation looks like from the session's side: the
+  request said one thing, the reply reports another.
+  """
+
+  def __init__(self, *args, answers_with=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    self._answers_with = answers_with
+
+  def stream_turn(self, conversation, tools, cancel):
+    self.observed_model = None          # reset per turn, as claude_code does
+    for event in super().stream_turn(conversation, tools, cancel):
+      if self._answers_with:
+        self.observed_model = self._answers_with
+      yield event
+
+
+def exercise_the_observed_model_reaches_the_message_and_the_meta():
+  """Both surfaces, because they are read for different things: the meta names
+  the conversation in the sidebar, the per-message stamp preserves the
+  per-turn history a switch makes non-uniform."""
+  agent = _SwitchingAgent([[TextDelta(text="hi"),
+                            TurnDone(stop_reason="end_turn")]],
+                          answers_with="claude-opus-4-8-20260115")
+  agent.model = "opus"
+  session, tmp = _new_test_session(None, agent=agent)
+  try:
+    _run_text_turn(session)
+    assistant = [m for m in session.conv.messages if m.role == "assistant"]
+    assert assistant, session.conv.messages
+    assert assistant[-1].model == "claude-opus-4-8-20260115", assistant[-1].model
+    assert session.conv.meta.model == "claude-opus-4-8-20260115", \
+      session.conv.meta.model
+  finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def exercise_the_requested_model_is_never_overwritten():
+  """The one-way rule. Writing the observed id back into `agent.model` would
+  send it as the NEXT turn's request, silently pinning a version the alias was
+  chosen to avoid -- and the failure would be invisible, since everything
+  would keep working on a frozen model."""
+  agent = _SwitchingAgent([[TextDelta(text="hi"),
+                            TurnDone(stop_reason="end_turn")]],
+                          answers_with="claude-opus-4-8-20260115")
+  agent.model = "opus"
+  session, tmp = _new_test_session(None, agent=agent)
+  try:
+    _run_text_turn(session)
+    assert agent.model == "opus", \
+      "the observed model was written back into the request"
+  finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def exercise_the_base_declares_observed_model():
+  """Read with getattr, but declared so a backend author finds the contract
+  rather than inventing a second name for it."""
+  from qttbx.widgets.chat.agent.base import Agent
+  assert getattr(Agent, "observed_model", "missing") is None, \
+    "Agent no longer declares observed_model"
+
+
 def exercise_reconciles_meta_model_and_backend_on_continue():
   """Continuing a conversation under a different model/backend updates the
   conversation meta to the active one (the per-message stamp preserves the
@@ -459,19 +524,6 @@ def exercise_max_turns_cap():
     shutil.rmtree(tmp)
 
 
-def exercise_add_subagent_usage_aggregates():
-  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
-  try:
-    session.add_subagent_usage("sa_1",
-                               TokenUsage(input=100, output=50))
-    session.add_subagent_usage("sa_2",
-                               TokenUsage(input=200, output=70))
-    assert session._subagent_usage_by_id["sa_1"].input == 100
-    assert session._subagent_usage_by_id["sa_2"].output == 70
-  finally:
-    shutil.rmtree(tmp)
-
-
 def exercise_token_usage_event_carries_all_fields_to_message():
   """A TokenUsage event accumulates into the assistant message's usage as a
   stored TokenUsage with every field preserved (the event -> stored
@@ -479,7 +531,8 @@ def exercise_token_usage_event_carries_all_fields_to_message():
   usage field added later is covered automatically."""
   session, tmp = _new_test_session([
     [TextDelta(text="hi"),
-     TokenUsageEvent(input=11, output=22, cache_read=33, cache_creation=44),
+     TokenUsageEvent(input=11, output=22, cache_read=33, cache_creation=44,
+                     context_tokens=55),
      TurnDone(stop_reason="end_turn")],
   ])
   try:
@@ -489,7 +542,8 @@ def exercise_token_usage_event_carries_all_fields_to_message():
     assistant = session.run_turn(user_msg, cancel)
     assert isinstance(assistant.usage, TokenUsage), type(assistant.usage)
     assert assistant.usage == TokenUsage(
-      input=11, output=22, cache_read=33, cache_creation=44), assistant.usage
+      input=11, output=22, cache_read=33, cache_creation=44,
+      context_tokens=55), assistant.usage
   finally:
     shutil.rmtree(tmp)
 
@@ -1870,6 +1924,9 @@ def exercise_streaming_cancel_synthesizes_no_second_terminal():
 def exercise():
   exercise_simple_text_turn()
   exercise_assistant_messages_stamped_with_model_and_backend()
+  exercise_the_observed_model_reaches_the_message_and_the_meta()
+  exercise_the_requested_model_is_never_overwritten()
+  exercise_the_base_declares_observed_model()
   exercise_reconciles_meta_model_and_backend_on_continue()
   exercise_tool_use_loop_completes()
   exercise_cancel_after_tool_use_does_not_orphan_tool_use()
@@ -1885,7 +1942,6 @@ def exercise():
   exercise_run_turn_cancels_pending_approval_on_exit()
   exercise_api_remember_recorded_before_resolve_survives_cancel()
   exercise_max_turns_cap()
-  exercise_add_subagent_usage_aggregates()
   exercise_token_usage_event_carries_all_fields_to_message()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()

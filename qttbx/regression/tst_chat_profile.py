@@ -29,7 +29,68 @@ def exercise_minimal_profile_loads():
     assert p.skills_additional == []
     assert p.skills_disabled == set()
     assert p.subagents_enabled is True
-    assert p.subagents_default_model == "claude-opus-4-7"
+    assert p.subagents_default_max_turns == 25
+    # There is deliberately NO default MODEL. A child naming none runs on the
+    # PARENT's pair, which is what makes same-model review the config-free
+    # default and cross-model an opt-in the spawn call states; a profile-level
+    # default would invert that for every child and would hard-fail a
+    # gpt/gemini/portkey user who never ran `claude login`. The field existed,
+    # defaulted to a Claude literal, and was read by nothing -- it was removed
+    # rather than wired, so re-adding it has to be a deliberate act with this
+    # assertion in front of it.
+    assert not hasattr(p, "subagents_default_model"), \
+      "a dormant subagents.default_model is back on Profile"
+    # A profile's OWN turn cap is undeclared unless its author wrote one, and
+    # None is the only value that can say so: every other field here carries a
+    # filled-in default, and a filled-in cap would be indistinguishable from an
+    # authored one and would outrank the number the spawning caller passed.
+    # Distinct from subagents_default_max_turns above, which is the default
+    # this profile hands the children IT spawns -- one key cannot mean both,
+    # since a profile in the middle of a spawn chain is child and parent at
+    # once.
+    assert p.max_turns is None, p.max_turns
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_own_max_turns_is_separate_from_the_subagents_default():
+  """``max_turns`` (one's own cap) and ``subagents.default_max_turns`` (the cap
+  handed to one's children) are independent keys carrying independent numbers.
+
+  They used to be one key read two ways, which meant a profile could not say
+  "give me 40 turns, and cap my children at 10" -- and a profile that said only
+  the first was read as having said only the second, or the reverse, depending
+  on which side of a spawn it was on. Both are set here to different values and
+  both must survive, including through ``based_on`` inheritance, which merges
+  the nested ``subagents`` block and the top-level key by different paths.
+  """
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "reviewer", {
+      "name": "reviewer",
+      "model": "m",
+      "max_turns": 40,                                # MY cap
+      "subagents": {"default_max_turns": 10},         # my CHILDREN's cap
+    })
+    _write_profile(tmp, "heir", {"name": "heir", "based_on": "reviewer"})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    p = loader.load("reviewer")
+    assert p.max_turns == 40, p.max_turns
+    assert p.subagents_default_max_turns == 10, p.subagents_default_max_turns
+    heir = loader.load("heir")
+    assert heir.max_turns == 40, heir.max_turns
+    assert heir.subagents_default_max_turns == 10, \
+        heir.subagents_default_max_turns
+    # Malformed is a Sorry from the loader, like every other numeric field --
+    # not an int() TypeError at build time.
+    _write_profile(tmp, "bad", {"name": "bad", "model": "m",
+                                "max_turns": "many"})
+    try:
+      loader.load("bad")
+    except Sorry as exc:
+      assert "max_turns" in str(exc), str(exc)
+    else:
+      raise Exception_expected
   finally:
     shutil.rmtree(tmp)
 
@@ -86,7 +147,7 @@ def exercise_based_on_deep_merges_nested_section():
         "enabled": False,
         "max_depth": 2,
         "default_max_turns": 50,
-        "default_model": "claude-sonnet-4-5",
+        "default_profile": "inherited_child",
       },
     })
     _write_profile(tmp, "child", {
@@ -99,7 +160,7 @@ def exercise_based_on_deep_merges_nested_section():
     assert p.subagents_max_depth == 3                        # override
     assert p.subagents_default_max_turns == 50               # inherited
     assert p.subagents_enabled is False                      # inherited
-    assert p.subagents_default_model == "claude-sonnet-4-5"  # inherited
+    assert p.subagents_default_profile == "inherited_child"  # inherited
   finally:
     shutil.rmtree(tmp)
 
@@ -883,6 +944,7 @@ def exercise():
   exercise_backend_display_name_maps_each_backend()
   exercise_malformed_field_types_raise_sorry()
   exercise_non_object_toplevel_json_raises_sorry()
+  exercise_own_max_turns_is_separate_from_the_subagents_default()
 
 
 def exercise_backend_display_name_maps_each_backend():
