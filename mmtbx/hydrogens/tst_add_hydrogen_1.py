@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import time
+import sys, time
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import reduce_hydrogen
@@ -40,6 +40,7 @@ def compare_models(pdb_str,
   '''
     Function to compare model with new H to the known answer (pdb_str)
   '''
+  debug = '--debug' in sys.argv
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   # initial model
@@ -71,7 +72,7 @@ def compare_models(pdb_str,
   hd_sel_h_added = model_h_added.get_hd_selection()
 
   # For debugging
-  if 1:
+  if debug:
     write_models(model_initial, model_h_added)
 
   ph_h_added = model_h_added.get_hierarchy()
