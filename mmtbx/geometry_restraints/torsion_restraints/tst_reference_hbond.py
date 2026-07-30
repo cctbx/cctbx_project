@@ -53,6 +53,9 @@ def exercise_phil_defaults():
   assert abs(hb.ideal_angle - 180.0) < 1.e-9, hb.ideal_angle
   assert hb.add_hydrogens_if_missing is True, hb.add_hydrogens_if_missing
   assert abs(hb.partner_distance_cutoff - 5.0) < 1.e-9, hb.partner_distance_cutoff
+  assert hb.remove_outliers is True, hb.remove_outliers
+  assert abs(hb.distance_cut_n_o - 3.5) < 1.e-9, hb.distance_cut_n_o
+  assert hb.top_out is False, hb.top_out
 
 
 # A tiny single-residue PDB used to instantiate a real GRM cheaply.
@@ -784,10 +787,113 @@ def exercise_edits_filter_excludes_overlap():
     (len(filtered_pairs), len(baseline_pairs))
 
 
+def _self_reference_helix_rm(**hb_overrides):
+  """Build a self-referencing reference_model on the poly-Gly helix, with
+  hydrogen_bonds enabled and the given hydrogen_bonds PHIL overrides."""
+  model = _build_helix_model()
+  geometry = model.get_restraints_manager().geometry
+  p = reference_model_params.extract()
+  p.reference_model.use_starting_model_as_reference = True
+  p.reference_model.hydrogen_bonds.enabled = True
+  for k, v in hb_overrides.items():
+    setattr(p.reference_model.hydrogen_bonds, k, v)
+  rm = reference_model(
+    model=model,
+    reference_hierarchy_list=[model.get_hierarchy()],
+    reference_file_list=None,
+    params=p.reference_model,
+    log=null_out())
+  geometry.adopt_reference_dihedral_manager(rm)
+  return model, geometry, rm
+
+
+def _stretch_one_acceptor(model, rm, geometry, d_target=4.2):
+  """Return a sites_cart in which the acceptor of the first reference H-bond
+  sits exactly d_target from its donor. d_target must fall between
+  distance_cut_n_o (3.5) and partner_distance_cutoff (5.0) so that only the
+  former can be responsible for rejecting the pair."""
+  hb_p = rm.params.hydrogen_bonds
+  assert hb_p.distance_cut_n_o < d_target < hb_p.partner_distance_cutoff, \
+    "fixture distance %.2f must isolate distance_cut_n_o" % d_target
+  sites = model.get_sites_cart().deep_copy()
+  bp, _ = rm.get_hbond_proxies(geometry=geometry, sites_cart=sites)
+  assert len(bp) > 0, "fixture needs at least one reference H-bond"
+  i, j = bp[0].i_seqs
+  direction = (col(sites[j]) - col(sites[i])).normalize()
+  sites[j] = tuple(col(sites[i]) + direction * d_target)
+  return sites, (min(i, j), max(i, j))
+
+
+def exercise_remove_outliers_rejects_long_working_pairs():
+  """With remove_outliers=True (default) a candidate whose working-model D-A
+  distance exceeds distance_cut_n_o is not restrained at all; the same
+  candidate survives when remove_outliers=False."""
+  model, geometry, rm = _self_reference_helix_rm()
+  sites, victim = _stretch_one_acceptor(model, rm, geometry)
+  cut = rm.params.hydrogen_bonds.distance_cut_n_o
+
+  bp, _ = rm.get_hbond_proxies(geometry=geometry, sites_cart=sites)
+  kept = set(tuple(sorted(p.i_seqs)) for p in bp)
+  assert victim not in kept, \
+    "pair stretched to >%.1f A must be rejected by remove_outliers" % cut
+  for p in bp:
+    d = (col(sites[p.i_seqs[0]]) - col(sites[p.i_seqs[1]])).length()
+    assert d <= cut, \
+      "proxy at %.3f A survived distance_cut_n_o=%.3f" % (d, cut)
+
+  rm.params.hydrogen_bonds.remove_outliers = False
+  bp_off, _ = rm.get_hbond_proxies(geometry=geometry, sites_cart=sites)
+  kept_off = set(tuple(sorted(p.i_seqs)) for p in bp_off)
+  assert victim in kept_off, \
+    "remove_outliers=False must keep the long pair %s" % (victim,)
+
+
+def exercise_top_out_sets_limit_on_bond_proxies():
+  """top_out=True caps each bond residual at the value it would reach at
+  distance_cut_n_o; top_out=False (default) leaves the plain harmonic."""
+  model, geometry, rm = _self_reference_helix_rm()
+  bp, _ = rm.get_hbond_proxies(
+    geometry=geometry, sites_cart=model.get_sites_cart())
+  assert len(bp) > 0
+  for p in bp:
+    assert p.top_out is False, "top_out must default to False"
+
+  rm.params.hydrogen_bonds.top_out = True
+  bp, _ = rm.get_hbond_proxies(
+    geometry=geometry, sites_cart=model.get_sites_cart())
+  assert len(bp) > 0
+  hb_p = rm.params.hydrogen_bonds
+  weight = 1.0 / hb_p.sigma_bond**2
+  for p in bp:
+    assert p.top_out is True, "top_out=True must reach the proxy"
+    expected = (hb_p.distance_cut_n_o - p.distance_ideal)**2 * weight
+    assert abs(p.limit - expected) < 1.e-6, (p.limit, expected)
+
+
+def exercise_rejected_outliers_are_reported():
+  """remove_outliers silently drops restraints, so the number rejected is
+  reported; nothing is printed when nothing was rejected."""
+  model, geometry, rm = _self_reference_helix_rm()
+  sites, _ = _stretch_one_acceptor(model, rm, geometry)
+
+  rm.log = StringIO()
+  rm.get_hbond_proxies(geometry=geometry, sites_cart=sites)
+  flat = ' '.join(rm.log.getvalue().split())
+  assert '1 reference H-bond candidate rejected' in flat, flat
+
+  rm.log = StringIO()
+  rm.get_hbond_proxies(
+    geometry=geometry, sites_cart=model.get_sites_cart())
+  assert 'rejected' not in rm.log.getvalue(), rm.log.getvalue()
+
+
 def run(args):
   assert not args, args
   exercise_origin_id_registered()
   exercise_phil_defaults()
+  exercise_remove_outliers_rejects_long_working_pairs()
+  exercise_rejected_outliers_are_reported()
+  exercise_top_out_sets_limit_on_bond_proxies()
   exercise_get_hbond_proxies_returns_empty_when_disabled()
   exercise_ensure_hydrogens_idempotent_on_h_bearing()
   exercise_ensure_hydrogens_adds_h_to_h_less()

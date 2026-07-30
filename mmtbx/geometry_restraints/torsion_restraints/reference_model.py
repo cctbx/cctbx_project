@@ -159,6 +159,21 @@ reference_model
       .type = float
       .help = Reject a candidate partner in the working model if it is \
               farther than this from the donor atom
+    remove_outliers = True
+      .type = bool
+      .short_caption = Filter out H-bond outliers
+      .help = If true, a candidate whose working-model D-A distance exceeds \
+              distance_cut_n_o is not restrained at all. Mirrors the \
+              secondary_structure hydrogen bond behaviour.
+    distance_cut_n_o = 3.5
+      .type = float
+      .short_caption = D-A distance cutoff
+      .help = Candidates longer than this in the working model are dropped \
+              when remove_outliers=True
+    top_out = False
+      .type = bool
+      .help = Use a top-out potential for the bond restraints, capping each \
+              residual at the value it would reach at distance_cut_n_o
   }
   %s
 }
@@ -933,6 +948,7 @@ class reference_model(object):
     weight_angle = 1.0 / hb_p.sigma_angle**2
     bond_proxies = []
     angle_proxies = []
+    n_rejected_outliers = 0
     work_h = self.pdb_hierarchy
     for fn in self.reference_file_list:
       ref_h = self.pdb_hierarchy_ref[fn]
@@ -954,16 +970,24 @@ class reference_model(object):
             d_work = (col(sites_cart[m_d]) - col(sites_cart[m_a])).length()
             if d_work > hb_p.partner_distance_cutoff:
               continue
+            if hb_p.remove_outliers and d_work > hb_p.distance_cut_n_o:
+              n_rejected_outliers += 1
+              continue
             pair = (min(m_d, m_a), max(m_d, m_a))
             if pair in emitted or frozenset(pair) in skip_pairs:
               continue
             emitted.add(pair)
             d_target = d_DA if hb_p.target == 'as_found' else hb_p.ideal_distance
+            limit = -1
+            if hb_p.top_out:
+              limit = (hb_p.distance_cut_n_o - d_target)**2 * weight_bond
             bond_proxies.append(cctbx.geometry_restraints.bond_simple_proxy(
               i_seqs=[m_d, m_a],
               distance_ideal=d_target,
               weight=weight_bond,
               slack=hb_p.slack_bond,
+              top_out=hb_p.top_out,
+              limit=limit,
               origin_id=ref_hb_oid))
             if hb_p.restrain_angles:
               h_iseq = _lookup_working_h_iseq(work_h, ref_h, m_d, r_h)
@@ -975,6 +999,12 @@ class reference_model(object):
                 angle_ideal=a_target,
                 weight=weight_angle,
                 origin_id=ref_hb_oid))
+    if n_rejected_outliers > 0:
+      print("*** %d reference H-bond candidate%s rejected: working-model D-A "
+            "distance > distance_cut_n_o=%.2f A ***" % (
+              n_rejected_outliers, "s"[:n_rejected_outliers != 1],
+              hb_p.distance_cut_n_o),
+            file=self.log)
     return bond_proxies, angle_proxies
 
   def show_reference_summary(self, log=None):
