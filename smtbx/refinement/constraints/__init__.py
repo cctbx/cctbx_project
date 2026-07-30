@@ -107,6 +107,9 @@ class reparametrisation(ext.reparametrisation):
   thickness = None
   directions = None
   fc_correction = None
+  # an xray.dispersion_radial_correction, giving f' and f'' a refinable radial
+  # falloff; c.f. cctbx/xray/dispersion_radial.h
+  dispersion_radial = None
 
   def __init__(self,
                structure,
@@ -206,6 +209,13 @@ class reparametrisation(ext.reparametrisation):
       p = self.add(thickness_parameter, self.thickness)
       self.independent_scalar_parameters.append(p)
       self.thickness_param = p
+    # last of the independent scalars: finalise(), parameter_map() and every
+    # consumer peeling the covariance diagonal must agree on that
+    self.dispersion_radial_param = None
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      p = self.add(dispersion_radial_parameter, self.dispersion_radial)
+      self.independent_scalar_parameters.append(p)
+      self.dispersion_radial_param = p
     self.finalise()
 
   def finalise(self):
@@ -227,6 +237,8 @@ class reparametrisation(ext.reparametrisation):
       independent_grad_cnt += self.fc_correction.n_param
     if self.thickness is not None and self.thickness.grad:
       independent_grad_cnt += 1
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      independent_grad_cnt += self.dispersion_radial.n_param
     # update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
     if self.twin_fractions is not None:
@@ -240,6 +252,9 @@ class reparametrisation(ext.reparametrisation):
     if self.thickness is not None and self.thickness.grad:
       self.thickness.grad_index = independent_grad_i
       independent_grad_i += 1
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      self.dispersion_radial.grad_index = independent_grad_i
+      independent_grad_i += self.dispersion_radial.n_param
 
   def apply_shifts(self, shifts):
     ext.reparametrisation.apply_shifts(self, shifts)
@@ -378,4 +393,7 @@ class reparametrisation(ext.reparametrisation):
         rv.add_independent_scalar()
     if self.thickness is not None and self.thickness.grad:
       rv.add_independent_scalar()
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      for i in range(self.dispersion_radial.n_param):
+        rv.add_independent_scalar()
     return rv

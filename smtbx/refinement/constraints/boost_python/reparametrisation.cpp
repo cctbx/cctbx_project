@@ -205,6 +205,21 @@ namespace boost_python {
     }
   };
 
+  struct dispersion_radial_parameter_wrapper
+  {
+    typedef dispersion_radial_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+        bases<independent_parameter>,
+        boost::shared_ptr<wt> >("dispersion_radial_parameter", no_init)
+        .def(init<cctbx::xray::dispersion_radial_correction<double>*>((
+          arg("correction"))));
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
+    }
+  };
+
   struct thickness_parameter_wrapper {
     typedef thickness_parameter wt;
 
@@ -644,6 +659,7 @@ namespace boost_python {
     extinction_parameter_wrapper::wrap();
 
     SWAT_parameter_wrapper::wrap();
+    dispersion_radial_parameter_wrapper::wrap();
 
     thickness_parameter_wrapper::wrap();
 

@@ -45,6 +45,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
                                        : object();
       }
 
+      static boost::python::object disp_correction(wt const &self) {
+        using namespace boost::python;
+        return self.disp_cr ? object(self.disp_cr) : object();
+      }
+
       fc_for_one_h_class(std::string const &name)
         : boost::python::class_<wt>(name.c_str(), boost::python::no_init)
       {
@@ -56,6 +61,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           .add_property("observable", observable)
           .add_property("grad_f_calc", grad_f_calc)
           .add_property("grad_observable", grad_observable)
+          .add_property("disp_correction", disp_correction)
           ;
       }
     };
@@ -85,6 +91,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
         scatterer_contribution_type;
+      typedef cctbx::xray::dispersion_radial_correction<float_type>
+        disp_correction_type;
       static void wrap_custom_trigo(char const *core_name) {
         using namespace boost::python;
         typedef one_h::custom_trigonometry<FloatType,
@@ -99,13 +107,16 @@ namespace smtbx { namespace structure_factors { namespace direct {
                     af::shared< xray::scatterer<float_type> > const &,
                     exp_i_2pi_functor const &,
                     scatterer_contribution_type *,
-                    bool>
+                    bool,
+                    boost::shared_ptr<disp_correction_type> const &>
                ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
                  arg("exp_i_2pi_functor"),
                  arg("scatter_contribution"),
-                 arg("own_scatterer_contribution") = false))
+                 arg("own_scatterer_contribution") = false,
+                 arg("disp_correction")
+                   = boost::shared_ptr<disp_correction_type>()))
                 [with_custodian_and_ward<1, 2,
                  with_custodian_and_ward<1, 3,
                  with_custodian_and_ward<1, 4,
@@ -126,12 +137,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
                     sgtbx::space_group const &,
                     af::shared< xray::scatterer<float_type> > const &,
                     scatterer_contribution_type *,
-                    bool>
+                    bool,
+                    boost::shared_ptr<disp_correction_type> const &>
                ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
                  arg("scatter_contribution"),
-                 arg("own_scatterer_contribution") = false))
+                 arg("own_scatterer_contribution") = false,
+                 arg("disp_correction")
+                   = boost::shared_ptr<disp_correction_type>()))
                 [with_custodian_and_ward<1, 2,
                  with_custodian_and_ward<1, 3,
                  with_custodian_and_ward<1, 4,

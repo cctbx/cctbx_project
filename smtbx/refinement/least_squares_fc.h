@@ -2,6 +2,7 @@
 #define SMTBX_REFINEMENT_LEAST_SQUARES_FC_H
 
 #include <cctbx/xray/twin_component.h>
+#include <cctbx/xray/dispersion_radial.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <boost/shared_ptr.hpp>
 
@@ -65,7 +66,47 @@ namespace smtbx {
         virtual af::const_ref<FloatType> get_grad_observable() const = 0;
         /* returns true if grads are for all and not independent only params */
         virtual bool raw_gradients() const { return true; }
+        /* The radial correction of f' and f'', or null if there is none.
+
+        It is owned by the structure factor functor rather than sitting beside
+        the normal equations the way fc_correction does, because its gradients
+        are accumulated during the computation of Fc. Whoever reads them has to
+        read them from the very functor that computed them, which under
+        threading is a fork of the original -- hence going through here rather
+        than holding a pointer of one's own.
+        */
+        virtual cctbx::xray::dispersion_radial_correction<FloatType> const*
+        get_dispersion_correction() const
+        {
+          return 0;
+        }
       };
+
+      /** @brief Put the radial f'/f'' correction's gradients in their slots.
+
+      They sit at the tail of the gradient vector next to BASF, EXTI and the
+      rest. The sparse Jacobian product which fills the rest of the vector
+      leaves them at zero -- they belong to no scatterer -- so this assigns
+      rather than adds. The correction has to be the one belonging to this very
+      f_calc_function, which under threading is a fork of the original.
+      */
+      template <typename FloatType>
+      void write_dispersion_gradients(
+        f_calc_function_base<FloatType> const &f_calc_function,
+        af::shared<FloatType> &gradients)
+      {
+        cctbx::xray::dispersion_radial_correction<FloatType> const *dc =
+          f_calc_function.get_dispersion_correction();
+        if (dc == 0 || !dc->grad) {
+          return;
+        }
+        af::const_ref<FloatType> dg = dc->get_gradients();
+        SMTBX_ASSERT(dc->grad_index >= 0
+          && dc->grad_index + dg.size() <= gradients.size());
+        for (std::size_t gi = 0; gi < dg.size(); gi++) {
+          gradients[dc->grad_index + gi] = dg[gi];
+        }
+      }
 
       /* A thin wrapper around the concrete implementation */
       template <typename FloatType,
@@ -103,6 +144,11 @@ namespace smtbx {
         }
         virtual af::const_ref<FloatType> get_grad_observable() const {
           return f_calc_function->get_grad_observable().const_ref();
+        }
+        virtual cctbx::xray::dispersion_radial_correction<FloatType> const*
+        get_dispersion_correction() const
+        {
+          return f_calc_function->disp_cr.get();
         }
 
         boost::shared_ptr<OneMillerIndexFcalc> f_calc_function;
@@ -151,7 +197,17 @@ namespace smtbx {
           : f_calc_function(f_calc_function),
           use_cache(use_cache),
           length_sq(0)
-        {}
+        {
+          /* A cache hit skips compute() altogether, which would leave the
+             radial correction's gradient accumulator holding whatever the last
+             reflection that missed put there, while the observable came from
+             the cache. Caching the correction's gradients alongside the rest
+             would fix it; refusing the combination is what is warranted until
+             something asks for it, this wrapper being unreachable from Python.
+           */
+          SMTBX_ASSERT(!use_cache
+            || f_calc_function->get_dispersion_correction() == 0);
+        }
 
         virtual void compute(
           miller::index<> const& h,
@@ -219,6 +275,12 @@ namespace smtbx {
         }
         virtual af::const_ref<FloatType> get_grad_observable() const {
           return grad_observable;
+        }
+        virtual cctbx::xray::dispersion_radial_correction<FloatType> const*
+        get_dispersion_correction() const
+        {
+          // safe only because the constructor refuses use_cache with one
+          return f_calc_function->get_dispersion_correction();
         }
 
         typedef std::map<miller::index<>, f_calc_function_result> cache_t;

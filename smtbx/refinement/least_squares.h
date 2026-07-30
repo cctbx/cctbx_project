@@ -217,6 +217,23 @@ namespace smtbx { namespace refinement { namespace least_squares {
          than left to the one caller which happens not to ask for it.
        */
       SMTBX_ASSERT(!(build_design_matrix && objective_only));
+      check_dispersion_correction();
+    }
+
+    /** @brief Refuse a radial f'/f'' correction on twinned data.
+
+    The correction accumulates its gradients during one computation of Fc, and
+    twinning_processor computes Fc once per twin component, each call starting
+    the accumulation over. Only the last component's contribution would survive.
+    Summing them with their component scales is what it would take, in
+    least_squares_twinning.h; until then this says so rather than returning a
+    wrong gradient. Batch scaling (HKLF 2) is a different thing and is fine: it
+    scales one already-complete gradient vector.
+    */
+    void check_dispersion_correction() const {
+      cctbx::xray::dispersion_radial_correction<FloatType> const *dc =
+        f_calc_function.get_dispersion_correction();
+      SMTBX_ASSERT(!(dc && dc->grad && reflections_.is_twinned()));
     }
 
     template<class NormalEquations>
@@ -260,6 +277,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {
       // as above: refused before anything is built
       SMTBX_ASSERT(!(build_design_matrix && objective_only));
+      check_dispersion_correction();
       build(normal_equations, weighting_scheme);
     }
 
@@ -554,6 +572,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
                     f_calc_function.get_grad_observable().begin(),
                     f_calc_function.get_grad_observable().end());
                 }
+                /* The radial correction of f' and f'' keeps its gradients to
+                   itself -- they are not per-scatterer, so the Jacobian above
+                   has nothing to say about them and leaves their slots at zero.
+                   Assigning them here, rather than beside the Fc correction
+                   below, puts them in before twinning_processor scales the
+                   whole vector by a batch scale factor, which is what makes
+                   HKLF 2 data work without any further thought.
+                 */
+                write_dispersion_gradients(f_calc_function, gradients);
               }
               // sort out twinning
               FloatType observable = twp.process(

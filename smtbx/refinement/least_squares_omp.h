@@ -161,6 +161,8 @@ struct accumulate_reflection_chunk_omp {
                   f_calc_threads[thread]->get_grad_observable().begin(),
                   f_calc_threads[thread]->get_grad_observable().end());
               }
+              // this thread's own correction, the one which just accumulated
+              write_dispersion_gradients(*(f_calc_threads[thread]), gradient);
             }
 
             // sort out twinning
