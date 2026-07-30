@@ -99,6 +99,73 @@ def read_xtb_hessian(path, n_atoms):
   return vals
 
 
+def read_orca_hessian(path, n_atoms):
+  """Parse the ``$hessian`` block of an ORCA ``.hess`` file into a
+  ``flex.double`` of shape (3N, 3N).
+
+  A drop-in alternative to :func:`read_xtb_hessian`: same type, shape, units
+  (Hartree/Bohr^2), row-major, in the input atom order.
+
+  ORCA writes the (3N x 3N) Cartesian Hessian in column blocks.  After the
+  ``$hessian`` line and a line with the matrix dimension M (= 3N) come the
+  blocks: each opens with a header row of column indices (``0 1 2 3 4`` ...),
+  then M rows whose leading integer is the row index followed by that block's
+  values.  The block width is read from the header row, not assumed (typically
+  5, sometimes 6).  A header row is distinguished from a data row by being all
+  integers (data values are always in ``E`` notation).  The block ends at the
+  next header row or ``$`` section (e.g. ``$vibrational_frequencies``).
+
+  ORCA's raw Hessian is essentially symmetric; if asymmetry exceeds 1e-6 the
+  result is symmetrised as ``0.5 (H + H^T)``, otherwise it is left as parsed.
+  """
+  n = 3 * n_atoms
+  with open(path) as fh:
+    lines = fh.readlines()
+  i = 0
+  while i < len(lines) and lines[i].strip() != '$hessian':
+    i += 1
+  if i >= len(lines):
+    raise ValueError(f"hessian {path}: no $hessian block found")
+  i += 1
+  while i < len(lines) and not lines[i].strip():   # skip blanks before the dim
+    i += 1
+  if i >= len(lines):
+    raise ValueError(f"hessian {path}: truncated $hessian block")
+  dim = int(lines[i].split()[0])
+  i += 1
+  if dim != n:
+    raise ValueError(f"hessian {path}: matrix dimension {dim}, expected "
+                     f"{n} for {n_atoms} atoms")
+  vals = flex.double(n * n, 0.0)
+  seen = 0
+  cols = None
+  while i < len(lines):
+    s = lines[i].strip()
+    i += 1
+    if not s:
+      continue
+    if s.startswith('$') or s.startswith('#'):     # next section: block done
+      break
+    toks = s.split()
+    try:                                           # header row = all integers
+      cols = [int(t) for t in toks]
+      continue
+    except ValueError:
+      pass
+    row = int(toks[0])                             # data row: index + values
+    for k, t in enumerate(toks[1:]):
+      vals[row * n + cols[k]] = float(t)
+      seen += 1
+  if seen != n * n:
+    raise ValueError(f"hessian {path}: parsed {seen} values, expected "
+                     f"{n * n} for {n_atoms} atoms")
+  vals.reshape(flex.grid(n, n))
+  asym = flex.max(flex.abs(vals - vals.matrix_transpose()))
+  if asym > 1e-6:
+    vals = (vals + vals.matrix_transpose()) * 0.5
+  return vals
+
+
 def _block(hessian, i, j):
   """The 3x3 Hessian sub-block for atoms (i, j) as ``scitbx.matrix.sqr``."""
   return matrix.sqr([hessian[(3 * i + a, 3 * j + b)]

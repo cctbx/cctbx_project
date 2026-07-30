@@ -158,6 +158,49 @@ qm
   .short_caption = QM / restraints
   .help = "QM optimisation and restraint-tightness settings."
 {
+  engine = *xtb orca
+    .type = choice
+    .short_caption = QM engine
+    .help = "QM backend for the optimisation and Hessian."
+  orca
+    .short_caption = ORCA backend
+    .help = "ORCA backend settings (used when engine=orca)."
+  {
+    method = r2SCAN-3c
+      .type = str
+      .short_caption = Method
+      .help = "ORCA method."
+    basis_set = None
+      .type = str
+      .short_caption = Basis set
+      .help = "ORCA basis set; leave unset for a composite method that carries \
+its own basis."
+    solvent = CPCM(diethylether)
+      .type = str
+      .short_caption = Solvent model
+      .help = "ORCA implicit solvent model. Empty string disables solvation."
+    optimisation = *LooseOpt Opt
+      .type = choice
+      .short_caption = Optimisation convergence
+      .help = "ORCA geometry-optimisation convergence."
+    optimise_hydrogens = False
+      .type = bool
+      .short_caption = Optimise all hydrogens
+      .help = "Free every hydrogen in the ORCA optimisation. When False, all \
+but the coordinating-water hydrogens are frozen; capping hydrogens are frozen \
+either way."
+    hessian = *xtb partial full
+      .type = choice
+      .short_caption = Hessian source
+      .help = "Force-constant source for the sigmas: 'xtb' takes a GFN2-xTB \
+Hessian at the ORCA geometry; 'partial'/'full' take an ORCA NumFreq, partial \
+displacing only the metal and its donors."
+    exe = None
+      .type = path
+      .short_caption = ORCA executable
+      .help = "Path to the ORCA executable, else the PHENIX_ORCA environment \
+variable."
+  }
   solvent = ether
     .type = str
     .short_caption = Solvent model
@@ -171,8 +214,9 @@ into restraint sigmas; the default is the ~100 K of a cryo-cooled crystal. \
 Sigma scales with sqrt(temperature)."
   nproc = 1
     .type = int(value_min=1)
-    .short_caption = Threads per xTB job
-    .help = "Threads for each xTB optimisation and Hessian."
+    .short_caption = Processes per QM job
+    .help = "Parallelism for each QM optimisation and Hessian (xTB threads, \
+ORCA MPI ranks)."
   perturb_attempts = 1
     .type = int(value_min=1)
     .short_caption = Perturb-reoptimise attempts
@@ -188,6 +232,11 @@ optimisation; its hydrogens stay free."
     .short_caption = Freeze a monodentate carboxylate's dangling oxygen
     .help = "Freeze the non-coordinating oxygen of a monodentate Asp/Glu \
 carboxylate during the optimisation; the coordinating oxygen stays free."
+  optimise_all = False
+    .type = bool
+    .short_caption = Optimise the whole cluster (freeze nothing)
+    .help = "Let every atom relax during the optimisation, overriding the \
+scaffold, cap, and water freezes."
   angle_restraints = *auto always never
     .type = choice
     .short_caption = Donor-metal-donor angle restraints
@@ -299,13 +348,20 @@ Requires xtb.
                     f"oxidation_state nor multiplicity.")
     if not self.params.predict_only:
       # predict_only is QM-free (state from donor geometry, not H), so it needs
-      # neither protonation nor xtb.
+      # neither protonation nor a QM engine.
       self._require_hydrogens(model)
-      from mmtbx.geometry_restraints import xtb_manager
-      if not xtb_manager.get_exe():
-        raise Sorry("xtb executable not found. qmi requires xtb; set the "
-                    "PHENIX_XTB environment variable or install xtb in the "
-                    "build.")
+      # xtb is still needed under engine=orca unless the Hessian is also ORCA.
+      if (self.params.qm.engine == 'xtb'
+          or self.params.qm.orca.hessian == 'xtb'):
+        from mmtbx.geometry_restraints import xtb_manager
+        if not xtb_manager.get_exe():
+          raise Sorry("xtb executable not found. qmi requires xtb; set the "
+                      "PHENIX_XTB environment variable or install xtb in the "
+                      "build.")
+      if (self.params.qm.engine == 'orca'
+          and not (self.params.qm.orca.exe or os.environ.get('PHENIX_ORCA'))):
+        raise Sorry("ORCA executable not set for qm.engine=orca; set "
+                    "qm.orca.exe or the PHENIX_ORCA environment variable.")
 
   def _require_hydrogens(self, model):
     """Protonation guard: with protonation off the model must already be
@@ -383,8 +439,17 @@ Requires xtb.
       use_bvs=self.params.use_bvs,
       freeze_waters=self.params.qm.freeze_waters,
       freeze_far_carboxylate_o=self.params.qm.freeze_far_carboxylate_o,
+      optimise_all=self.params.qm.optimise_all,
       angle_restraints=self.params.qm.angle_restraints,
       coord_cutoff=coord_cutoff,
+      engine=self.params.qm.engine,
+      orca_method=self.params.qm.orca.method,
+      orca_basis_set=self.params.qm.orca.basis_set,
+      orca_solvent_model=self.params.qm.orca.solvent,
+      orca_optimisation=self.params.qm.orca.optimisation,
+      orca_hessian=self.params.qm.orca.hessian,
+      orca_optimise_hydrogens=self.params.qm.orca.optimise_hydrogens,
+      orca_exe=self.params.qm.orca.exe,
       logger=self.logger,
     )
     self._model_name = self.data_manager.get_default_model_name()

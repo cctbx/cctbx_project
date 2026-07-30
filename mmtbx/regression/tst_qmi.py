@@ -1380,9 +1380,183 @@ def exercise_coordination_mode_changes():
   assert same == [], same
 
 
+# ---------------------------------------------------------------------------
+# ORCA backend wiring (no live QM: dispatch, input construction, .hess parse)
+# ---------------------------------------------------------------------------
+
+# ZN + a coordinating water (O + 2 H), a His donor N with a ring H, and a frozen
+# capping carbon.  iseqs are file order: 0 ZN, 1 O, 2/3 water H, 4 N, 5 His H,
+# 6 cap C.
+_ORCA_HFREEZE_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
+HETATM    2  O   HOH A 263       2.100   0.000   0.000  1.00 10.00           O
+HETATM    3  H1  HOH A 263       2.700   0.700   0.000  1.00 10.00           H
+HETATM    4  H2  HOH A 263       2.700  -0.700   0.000  1.00 10.00           H
+ATOM      5  NE2 HIS A  94       0.000   2.100   0.000  1.00 10.00           N
+ATOM      6  HE2 HIS A  94       0.500   2.800   0.000  1.00 10.00           H
+ATOM      7  C   ACE A 999       1.000   1.000   3.000  1.00 10.00           C
+END
+"""
+
+
+def exercise_engine_options():
+  x = qm.engine_options()
+  assert x.engine == "xtb" and x.method == qm.DEFAULT_XTB_METHOD
+  assert x.solvent_model == qm.DEFAULT_XTB_SOLVENT
+  assert x.hessian == "xtb" and x.optimise_hydrogens is False
+  o = qm.engine_options(engine="orca")
+  assert o.engine == "orca" and o.method == qm.DEFAULT_ORCA_METHOD
+  assert o.solvent_model == qm.DEFAULT_ORCA_SOLVENT
+  assert o.optimisation == "LooseOpt"
+  # explicit overrides win; a None basis normalises to "".
+  o2 = qm.engine_options(engine="orca", method="TPSS", basis_set=None,
+                         solvent_model="CPCM(water)", optimisation="Opt",
+                         hessian="partial", optimise_hydrogens=True, exe="/x")
+  assert o2.method == "TPSS" and o2.basis_set == "" and o2.hessian == "partial"
+  assert o2.optimisation == "Opt" and o2.optimise_hydrogens is True
+  assert o2.exe == "/x"
+
+
+def exercise_read_orca_hessian():
+  # ORCA writes the (3N x 3N) Hessian in 5-wide column blocks, each led by an
+  # integer column-index header row.  Use a symmetric M[i][j]=i+j so no
+  # symmetrisation is triggered.  2 atoms -> 6x6.
+  n = 6
+  M = [[i + j for j in range(n)] for i in range(n)]
+  tmp = tempfile.mkdtemp()
+  path = os.path.join(tmp, "probe.hess")
+  with open(path, "w") as fh:
+    fh.write("$hessian\n%d\n" % n)
+    for c0 in range(0, n, 5):
+      cols = list(range(c0, min(c0 + 5, n)))
+      fh.write("    " + "".join("%18d" % c for c in cols) + "\n")
+      for r in range(n):
+        fh.write("%5d" % r
+                 + "".join("%18.10E" % M[r][c] for c in cols) + "\n")
+    fh.write("$vibrational_frequencies\n")
+  h = sigma.read_orca_hessian(path, 2)
+  assert h.focus() == (6, 6), h.focus()
+  assert approx_equal(h[(0, 0)], 0.0)
+  assert approx_equal(h[(0, 5)], 5.0)
+  assert approx_equal(h[(5, 5)], 10.0)
+  assert approx_equal(h[(2, 3)], 5.0) and approx_equal(h[(3, 2)], 5.0)
+  try:
+    sigma.read_orca_hessian(path, 3)      # wrong atom count must raise
+  except ValueError:
+    pass
+  else:
+    raise AssertionError("expected ValueError on size mismatch")
+
+
+def exercise_orca_manager_input():
+  atoms = _model(_ZN_SITE_PDB).get_hierarchy().atoms()
+  n = atoms.size()
+  mask = [i in (0, 1) for i in range(n)]   # free metal + one donor, freeze rest
+  qmm = qm._orca_manager(atoms, "r2SCAN-3c", "", "CPCM(diethylether)",
+                         2, 1, nproc=1, preamble="t")
+  qmm.program = "orca"; qmm.program_goal = "opt"; qmm.optimisation = "LooseOpt"
+  qmm.set_ligand_atoms(mask)
+  inp = qmm.get_input_lines(optimise_ligand=True, optimise_h=False)
+  assert "! r2SCAN-3c" in inp and "CPCM(diethylether)" in inp
+  assert "LooseOpt" in inp and "%pal" not in inp          # serial: no %pal
+  assert "{C 2 C}" in inp                                 # frozen atom fixed
+  assert "{C 0 C}" not in inp and "{C 1 C}" not in inp    # free atoms not fixed
+  # nproc>1 emits %pal; optimisation=Opt replaces LooseOpt.
+  qmm2 = qm._orca_manager(atoms, "r2SCAN-3c", "", "CPCM(diethylether)",
+                          2, 1, nproc=4, preamble="t2")
+  qmm2.program = "orca"; qmm2.program_goal = "opt"; qmm2.optimisation = "Opt"
+  qmm2.set_ligand_atoms(mask)
+  inp2 = qmm2.get_input_lines(optimise_ligand=True, optimise_h=False)
+  assert "%pal nprocs 4 end" in inp2
+  assert "LooseOpt" not in inp2 and "Opt" in inp2
+
+
+def exercise_freeze_orca_hydrogens():
+  b = QMRestraintsBuilder(engine="orca", orca_exe="x", logger=null_out())
+  model = _model(_ORCA_HFREEZE_PDB)
+  ZN, WO, WH1, WH2, HN, HH, CAP = range(7)
+  frozen = set(b._freeze_orca_hydrogens(model, [CAP], donor_iseqs=[WO, HN]))
+  assert HH in frozen, "a non-water hydrogen must be frozen"
+  assert CAP in frozen, "a pre-frozen cap atom must stay frozen"
+  assert WH1 not in frozen and WH2 not in frozen, \
+    "coordinating-water hydrogens must stay free"
+  assert not ({ZN, WO, HN} & frozen), "heavy inner-sphere atoms stay free"
+
+
+def exercise_run_hessian_dispatch():
+  model = _model(_ZN_SITE_PDB)
+  sites = model.get_hierarchy().atoms().extract_xyz()
+  saved = (qm._run_xtb_hessian, qm._run_orca_hessian,
+           sigma.read_xtb_hessian, sigma.read_orca_hessian)
+  calls = []
+  try:
+    def fake_xtb_run(*a, **k): calls.append("xtb_run"); return "xp"
+    def fake_orca_run(*a, **k): calls.append("orca_run"); return "op"
+    def fake_xtb_read(p, n): calls.append(("xtb_read", p)); return "XH"
+    def fake_orca_read(p, n): calls.append(("orca_read", p)); return "OH"
+    qm._run_xtb_hessian = fake_xtb_run
+    qm._run_orca_hessian = fake_orca_run
+    sigma.read_xtb_hessian = fake_xtb_read
+    sigma.read_orca_hessian = fake_orca_read
+    # xtb engine -> xtb runner + xtb reader
+    r = qm.run_hessian(model, sites, 2, 1, engine_opts=qm.engine_options())
+    assert calls == ["xtb_run", ("xtb_read", "xp")] and r == "XH", calls
+    # orca engine but hessian=xtb -> still the xtb Hessian
+    calls[:] = []
+    r = qm.run_hessian(model, sites, 2, 1,
+                       engine_opts=qm.engine_options(engine="orca",
+                                                     hessian="xtb"))
+    assert calls == ["xtb_run", ("xtb_read", "xp")] and r == "XH", calls
+    # orca engine, hessian=partial -> orca runner + orca reader
+    calls[:] = []
+    r = qm.run_hessian(model, sites, 2, 1, hessian_atoms=[0, 1],
+                       engine_opts=qm.engine_options(engine="orca",
+                                                     hessian="partial"))
+    assert calls == ["orca_run", ("orca_read", "op")] and r == "OH", calls
+  finally:
+    (qm._run_xtb_hessian, qm._run_orca_hessian,
+     sigma.read_xtb_hessian, sigma.read_orca_hessian) = saved
+
+
+def exercise_run_constrained_opt_dispatch():
+  from mmtbx.geometry_restraints import xtb_manager as xm
+  model = _model(_ZN_SITE_PDB)
+  work = tempfile.mkdtemp()
+  saved = (qm._orca_manager, xm.xtb_manager)
+  built = []
+  class _Fake(object):
+    def __init__(self, *a, **k): built.append((type(self).tag, k.get("nproc")))
+    def set_ligand_atoms(self, m): self.mask = m
+    def get_opt(self, **k):
+      built.append((type(self).tag + "_opt", k.get("optimise_h"))); return None, "C"
+  class FakeOrca(_Fake): tag = "orca"
+  class FakeXtb(_Fake): tag = "xtb"
+  try:
+    qm._orca_manager = FakeOrca
+    xm.xtb_manager = FakeXtb
+    _c, m1 = qm.run_constrained_opt(model, [2, 3, 4], 2, 1, nproc=4,
+                                    work_dir=work, engine_opts=qm.engine_options())
+    assert isinstance(m1, FakeXtb) and m1.mask[0] is True and m1.mask[2] is False
+    _c2, m2 = qm.run_constrained_opt(
+      model, [2, 3, 4], 2, 1, nproc=4, work_dir=work,
+      engine_opts=qm.engine_options(engine="orca", optimisation="Opt", exe="/x"))
+    assert isinstance(m2, FakeOrca) and m2.optimisation == "Opt"
+    assert ("xtb", 4) in built and ("orca", 4) in built
+    assert ("xtb_opt", False) in built and ("orca_opt", False) in built
+  finally:
+    (qm._orca_manager, xm.xtb_manager) = saved
+
+
 def run():
   exercise_metals()
   exercise_hessian_parse()
+  exercise_engine_options()
+  exercise_read_orca_hessian()
+  exercise_orca_manager_input()
+  exercise_freeze_orca_hydrogens()
+  exercise_run_hessian_dispatch()
+  exercise_run_constrained_opt_dispatch()
   exercise_seminario_bond()
   exercise_seminario_angle_guards()
   exercise_sigma_conversion()

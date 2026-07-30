@@ -27,6 +27,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from scitbx.linalg import eigensystem
 from cctbx.eltbx import tiny_pse
+from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
@@ -150,13 +151,17 @@ class QMRestraintsBuilder(object):
   """
 
   def __init__(self, metal_element=None, selection=None, radius=4.0,
-               max_depth=3, solvent_model=qm.DEFAULT_SOLVENT,
+               max_depth=3, solvent_model=qm.DEFAULT_XTB_SOLVENT,
                temperature=sigma.DEFAULT_TEMPERATURE_K,
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
                perturb_attempts=1, use_bvs=False, freeze_waters=True,
-               freeze_far_carboxylate_o=False,
-               angle_restraints="auto", coord_cutoff=None, logger=None):
+               freeze_far_carboxylate_o=False, optimise_all=False,
+               angle_restraints="auto", coord_cutoff=None,
+               engine="xtb", orca_method=None, orca_basis_set=None,
+               orca_solvent_model=None, orca_optimisation="LooseOpt",
+               orca_hessian="xtb", orca_optimise_hydrogens=False,
+               orca_exe=None, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -174,8 +179,22 @@ class QMRestraintsBuilder(object):
     self.use_bvs = use_bvs
     self.freeze_waters = freeze_waters
     self.freeze_far_carboxylate_o = freeze_far_carboxylate_o
+    self.optimise_all = optimise_all   # True => no $fix, whole cluster relaxes
     self.angle_restraints = angle_restraints   # 'auto' | 'always' | 'never'
     self.coord_cutoff = coord_cutoff   # shared metal-donor cutoff callable, or None
+    self.engine = engine               # 'xtb' | 'orca'
+    # One QM-backend bundle threaded to every run_constrained_opt / run_hessian
+    # call. For xTB the orca_* arguments are ignored; for ORCA the unset ones
+    # fall back to the r2SCAN-3c / CPCM(diethylether) defaults.
+    if engine == "orca":
+      self._engine_opts = qm.engine_options(
+        engine="orca", method=orca_method, basis_set=orca_basis_set,
+        solvent_model=orca_solvent_model, optimisation=orca_optimisation,
+        hessian=orca_hessian, optimise_hydrogens=orca_optimise_hydrogens,
+        exe=orca_exe)
+    else:
+      self._engine_opts = qm.engine_options(
+        engine="xtb", solvent_model=solvent_model)
     self.logger = logger if logger is not None else null_out()
     self._model_stem = "qmi_model"
     self._results = []
@@ -449,6 +468,17 @@ class QMRestraintsBuilder(object):
         coord_cutoff=self.coord_cutoff,
         freeze_waters=self.freeze_waters,
         freeze_far_carboxylate_o=self.freeze_far_carboxylate_o, log=self.logger)
+      if self.optimise_all:
+        frozen_iseqs = []   # freeze nothing: the whole cluster relaxes
+      elif self.engine == 'orca' and not self._engine_opts.optimise_hydrogens:
+        # A DFT optimisation pays dearly for the many free hydrogens; freeze all
+        # but the coordinating-water H (which shape the M-O interaction) and
+        # recompute the free set so the constraints summary stays accurate.
+        frozen_iseqs = self._freeze_orca_hydrogens(
+          submodel, frozen_iseqs, donor_iseqs)
+        frozen_set = set(frozen_iseqs)
+        free_iseqs = [i for i in range(submodel.get_hierarchy().atoms().size())
+                      if i not in frozen_set]
       site_dir = self._site_dir(chain_id, resseq)
       submodel.get_hierarchy().write_pdb_file(
         crystal_symmetry=submodel.crystal_symmetry(),
@@ -638,6 +668,43 @@ class QMRestraintsBuilder(object):
       submodel, frozen_iseqs, free_iseqs,
       os.path.join(site_dir, "constraints.txt"))
 
+  def _freeze_orca_hydrogens(self, submodel, frozen_iseqs, donor_iseqs):
+    """Return *frozen_iseqs* extended with every hydrogen except those on a
+    first-shell water donor.
+
+    A DFT optimisation converges slowly with the inner sphere's many free
+    hydrogens (~120 extra degrees of freedom), and the emitted restraints are
+    heavy-atom, so only the coordinating-water H (whose O-H orientation shapes
+    the M-O interaction) are worth relaxing. Capping H are already in
+    *frozen_iseqs* and stay frozen either way; this only adds."""
+    atoms = submodel.get_atoms()
+    def res_key(atom):
+      # A value key: atom.parent() hands back a fresh proxy each call, so object
+      # identity is not stable; (chain, resseq, icode, altloc, resname) is.
+      ag = atom.parent()
+      if ag is None:
+        return None
+      rg = ag.parent()
+      chain = rg.parent() if rg is not None else None
+      return (None if chain is None else chain.id,
+              None if rg is None else rg.resseq,
+              None if rg is None else rg.icode,
+              ag.altloc, ag.resname)
+    water_donor_keys = set()
+    for i in donor_iseqs:
+      ag = atoms[i].parent()
+      if ag is not None and \
+         common_residue_names_get_class(ag.resname) == 'common_water':
+        water_donor_keys.add(res_key(atoms[i]))
+    frozen = set(frozen_iseqs)
+    for j, atom in enumerate(atoms):
+      if not atom.element_is_hydrogen():
+        continue
+      if res_key(atom) in water_donor_keys:
+        continue   # keep coordinating-water H free
+      frozen.add(j)
+    return sorted(frozen)
+
   def _run_state(self, index, seed, submodel, metal_iseq, donor_iseqs,
                  frozen_iseqs, metal_element, site_tag, original_chain_ids,
                  bvs_est, oxidation, multiplicity, charge, work_dir,
@@ -652,7 +719,7 @@ class QMRestraintsBuilder(object):
     try:
       opt_sites, _qmm = qm.run_constrained_opt(
         submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
-        solvent_model=self.solvent_model, nproc=self.nproc, preamble="qmi",
+        engine_opts=self._engine_opts, nproc=self.nproc, preamble="qmi",
         work_dir=work_dir, log=self.logger)
     except Sorry:
       # The default optimiser can stall on a floppy cluster: the inertial engine
@@ -665,7 +732,7 @@ class QMRestraintsBuilder(object):
             f"the robust preset", file=self.logger)
       opt_sites, _qmm = qm.run_constrained_opt(
         submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
-        solvent_model=self.solvent_model, nproc=self.nproc,
+        engine_opts=self._engine_opts, nproc=self.nproc,
         preamble="qmi_robust", robust=True, work_dir=work_dir, log=self.logger)
 
     # Modified-Seminario sigmas from the Hessian at the optimised geometry, with
@@ -748,17 +815,17 @@ class QMRestraintsBuilder(object):
     fallback."""
     masses = [tiny_pse.table(a.element.strip()).weight()
               for a in submodel.get_atoms()]
-    n_atoms = submodel.get_hierarchy().atoms().size()
 
     def hessian_sigmas(sites, preamble):
       # A distinct namespace per call: run_hessian guards only on output-file
       # existence, so a shared namespace would let a failed second --hess read
       # the first geometry's stale Hessian (missing file now raises instead).
-      hess_path = qm.run_hessian(
+      hessian = qm.run_hessian(
         submodel, sites, charge=charge, multiplicity=multiplicity,
-        solvent_model=self.solvent_model, nproc=self.nproc,
-        preamble=preamble, work_dir=work_dir, log=self.logger)
-      hessian = sigma.read_xtb_hessian(hess_path, n_atoms)
+        engine_opts=self._engine_opts,
+        hessian_atoms=[metal_iseq] + list(donor_iseqs),
+        nproc=self.nproc, preamble=preamble, work_dir=work_dir,
+        log=self.logger)
       sig = sigma.seminario_sigmas(
         hessian, metal_iseq, donor_iseqs, sites,
         temperature=self.temperature, log=self.logger)
@@ -817,7 +884,7 @@ class QMRestraintsBuilder(object):
     try:
       opt_sites, _qmm = qm.run_constrained_opt(
         submodel, frozen_iseqs, charge=charge, multiplicity=multiplicity,
-        solvent_model=self.solvent_model, nproc=self.nproc,
+        engine_opts=self._engine_opts, nproc=self.nproc,
         preamble=preamble, work_dir=work_dir, file_read=False, log=self.logger)
     finally:
       atoms.set_xyz(saved)
