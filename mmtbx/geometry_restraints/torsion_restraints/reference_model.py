@@ -436,6 +436,11 @@ class reference_model(object):
     # This takes 80% of constructor time!!!
     self.residue_match_hash = {} # {key_model: ('file_name', key_ref)}
     self.match_map = {} # {'file_name':{i_seq_model:i_seq_ref}}
+    # {'file_name':{i_seq_model: copy_key}}. Several working atoms map to the
+    # same reference atom when the reference chain was matched to N NCS
+    # copies; copy_key says which copy each one came from, so that a
+    # reference interaction is only ever reproduced within a single copy.
+    self.match_copy_id = {}
     if params.use_starting_model_as_reference:
       self.get_matching_from_self()
     else:
@@ -451,6 +456,7 @@ class reference_model(object):
     """ Shortcut for the case when restraining on starting model """
     if self.reference_file_list[0] not in self.match_map.keys():
       self.match_map[self.reference_file_list[0]] = {}
+    self.match_copy_id.setdefault(self.reference_file_list[0], {})
     for chain in self.pdb_hierarchy.only_model().chains():
       for rg in chain.residue_groups():
         # Filling out self.residue_match_hash
@@ -460,6 +466,8 @@ class reference_model(object):
         # Filling out self.match_map
         for atom in rg.atoms():
           self.match_map[self.reference_file_list[0]][atom.i_seq] = atom.i_seq
+          # The model is its own reference: a single copy.
+          self.match_copy_id[self.reference_file_list[0]][atom.i_seq] = 0
 
 
 
@@ -496,7 +504,7 @@ class reference_model(object):
         log = self.log)
     # For each found NCS group we going to do matching procedure between
     # copies
-    for group_list in ncs_obj.get_ncs_restraints_group_list():
+    for g_i, group_list in enumerate(ncs_obj.get_ncs_restraints_group_list()):
       # combine selections from master and copies into one list...
       n_total_selections = len(group_list.copies) + 1
       ncs_iselections = [group_list.master_iselection]
@@ -520,6 +528,7 @@ class reference_model(object):
         assert len(ncs_rg) == len_ncs_rg
       if fn not in self.match_map.keys():
         self.match_map[fn] = {}
+      self.match_copy_id.setdefault(fn, {})
       ref_indeces = []
       for i in range(n_total_ncs_residue_groups):
         if (len(ncs_residue_groups[i][0].parent().id) > 2 and
@@ -571,9 +580,13 @@ class reference_model(object):
               info_rgs[1][0], info_rgs[1][2], info_rgs[1][3])
           m_sel = m_cache.selection(m_str)
           ref_sel = ref_cache.selection(ref_str)
+          # This reference_group selection, NCS group and NCS copy together
+          # identify one copy of the reference in the working model.
+          copy_key = (model_selection_str, g_i, i)
           for m_atom, ref_atom in zip(self.pdb_hierarchy.select(m_sel).atoms(),
               self.pdb_hierarchy_ref[fn].select(ref_sel).atoms()):
             self.match_map[fn][m_atom.i_seq] = ref_atom.i_seq
+            self.match_copy_id[fn][m_atom.i_seq] = copy_key
 
   def is_reference_groups_provided(self):
     if hasattr(self.params, "reference_group"):
@@ -961,11 +974,19 @@ class reference_model(object):
       inv = {}
       for m_iseq, r_iseq in self.match_map[fn].items():
         inv.setdefault(r_iseq, []).append(m_iseq)
+      copy_of = self.match_copy_id.get(fn, {})
       emitted = set()
       for r_d, r_h, r_a, d_DA, d_HA, a_DHA in detected:
         for m_d in inv.get(r_d, []):
           for m_a in inv.get(r_a, []):
             if m_d == m_a:
+              continue
+            # A reference H-bond lives inside one copy of the reference, so
+            # only reproduce it inside one copy of the working model. The
+            # K*K candidate pairs from K NCS copies would otherwise include
+            # K*K-K cross-copy pairings, which distance filters alone cannot
+            # reject once the copies are in contact.
+            if copy_of.get(m_d) != copy_of.get(m_a):
               continue
             d_work = (col(sites_cart[m_d]) - col(sites_cart[m_a])).length()
             if d_work > hb_p.partner_distance_cutoff:

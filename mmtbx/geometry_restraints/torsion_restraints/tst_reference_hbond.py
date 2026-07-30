@@ -887,6 +887,49 @@ def exercise_rejected_outliers_are_reported():
   assert 'rejected' not in rm.log.getvalue(), rm.log.getvalue()
 
 
+def exercise_no_cross_copy_pairs_when_copies_are_in_contact():
+  """Cross-NCS-copy pairings must be rejected even when the two copies sit
+  close enough that the spurious donor-acceptor distance passes every
+  distance filter.
+
+  exercise_partner_distance_cutoff_rejects covers copies 30 A apart, where
+  the distance cutoffs do the work on their own. Here chain B is moved to
+  within 3 A of chain A - as NCS copies are in a real packed oligomer - so
+  a cross-copy pair is closer than distance_cut_n_o and only copy identity
+  can distinguish it from the genuine intra-copy H-bond."""
+  work_model, ref_hier = _build_two_chain_working_and_one_chain_ref()
+  geometry = work_model.get_restraints_manager().geometry
+  p = reference_model_params.extract()
+  p.reference_model.use_starting_model_as_reference = False
+  p.reference_model.hydrogen_bonds.enabled = True
+  rm = reference_model(
+    model=work_model,
+    reference_hierarchy_list=[ref_hier],
+    reference_file_list=None,
+    params=p.reference_model,
+    log=null_out())
+  geometry.adopt_reference_dihedral_manager(rm)
+
+  # Slide chain B back along x so it overlaps chain A with a 3 A offset.
+  # The match_map was built from the original (30 A apart) coordinates and
+  # is unaffected; only the working distances change.
+  atoms = work_model.get_hierarchy().atoms()
+  sites = work_model.get_sites_cart().deep_copy()
+  for i, a in enumerate(atoms):
+    if a.parent().parent().parent().id.strip() == 'B':
+      sites[i] = tuple(col(sites[i]) - col((27.0, 0.0, 0.0)))
+
+  bp, _ = rm.get_hbond_proxies(geometry=geometry, sites_cart=sites)
+  assert len(bp) > 0, "expected intra-chain proxies to survive"
+  for proxy in bp:
+    i, j = proxy.i_seqs
+    chain_i = atoms[i].parent().parent().parent().id.strip()
+    chain_j = atoms[j].parent().parent().parent().id.strip()
+    assert chain_i == chain_j, \
+      "cross-NCS-copy pair %s / %s leaked through" % (
+        atoms[i].id_str(), atoms[j].id_str())
+
+
 def run(args):
   assert not args, args
   exercise_origin_id_registered()
@@ -894,6 +937,7 @@ def run(args):
   exercise_remove_outliers_rejects_long_working_pairs()
   exercise_rejected_outliers_are_reported()
   exercise_top_out_sets_limit_on_bond_proxies()
+  exercise_no_cross_copy_pairs_when_copies_are_in_contact()
   exercise_get_hbond_proxies_returns_empty_when_disabled()
   exercise_ensure_hydrogens_idempotent_on_h_bearing()
   exercise_ensure_hydrogens_adds_h_to_h_less()
