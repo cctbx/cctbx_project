@@ -251,6 +251,25 @@ def build_element_hash(pdb_hierarchy):
     i_seq_element_hash[atom.i_seq]=atom.element
   return i_seq_element_hash
 
+amino_acid_residue_classes = [
+  "common_amino_acid", "modified_amino_acid", "d_amino_acid"]
+
+def build_amino_acid_hash(pdb_hierarchy):
+  """i_seq -> True if the atom belongs to an amino acid residue.
+
+  The main_chain/side_chain reference model filters are expressed in terms of
+  the N/CA/C/O backbone atom names, which only mean anything for amino acids.
+  Anything else (ligands, nucleic acids, water) has to bypass those filters.
+  """
+  i_seq_amino_acid_hash = dict()
+  for residue_group in pdb_hierarchy.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      is_aa = common_residue_names_get_class(
+        atom_group.resname) in amino_acid_residue_classes
+      for atom in atom_group.atoms():
+        i_seq_amino_acid_hash[atom.i_seq] = is_aa
+  return i_seq_amino_acid_hash
+
 def build_chain_hash(pdb_hierarchy):
   chain_hash = dict()
   for chain in pdb_hierarchy.chains():

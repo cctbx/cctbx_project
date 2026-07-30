@@ -777,6 +777,10 @@ class reference_model(object):
     if not include_hydrogens:
       i_seq_element_hash = \
         utils.build_element_hash(pdb_hierarchy=pdb_hierarchy)
+    i_seq_amino_acid_hash = None
+    if not include_main_chain or not include_side_chain:
+      i_seq_amino_acid_hash = \
+        utils.build_amino_acid_hash(pdb_hierarchy=pdb_hierarchy)
     i_seq_name_hash = \
       utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     dihedral_hash = dict()
@@ -788,8 +792,18 @@ class reference_model(object):
           for i_seq in dp.i_seqs:
             if i_seq_element_hash[i_seq] == " H":
               raise StopIteration()
+        # main_chain and side_chain are expressed in terms of the protein
+        # backbone atom names, so they can only be applied to dihedrals lying
+        # entirely within amino acid residues. Ligands and nucleic acids have
+        # no such atoms and would otherwise all count as side chain.
+        is_protein = True
+        if i_seq_amino_acid_hash is not None:
+          for i_seq in dp.i_seqs:
+            if not i_seq_amino_acid_hash.get(i_seq, False):
+              is_protein = False
+              break
         #ignore backbone dihedrals
-        if not include_main_chain:
+        if is_protein and not include_main_chain:
           sc_atoms = False
           for i_seq in dp.i_seqs:
             if i_seq_name_hash[i_seq][0:4] not in [' CA ',' N  ',' C  ',' O  ']:
@@ -797,7 +811,7 @@ class reference_model(object):
               break
           if not sc_atoms:
             raise StopIteration()
-        if not include_side_chain:
+        if is_protein and not include_side_chain:
           sc_atoms = False
           for i_seq in dp.i_seqs:
             if i_seq_name_hash[i_seq][0:4] \
