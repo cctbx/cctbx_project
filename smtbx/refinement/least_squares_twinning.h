@@ -102,6 +102,28 @@ namespace smtbx {
           jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc)
         {}
 
+        /** @brief Whether process() would do nothing but hand the observable
+            back untouched, for every reflection.
+
+        Asked once per build so that the caller may lift it out of its inner
+        loop. Untwinned is not enough on its own: HKLF 2 data carries a batch
+        scale per reflection, which process() applies, and that shows up as a
+        measured scale index of 2 or more. The scan is over the reflections once
+        and is nothing against a build.
+        */
+        bool is_trivial() const {
+          if (reflections.is_twinned()) {
+            return false;
+          }
+          af::shared<int> const &msi = reflections.measured_scale_indices();
+          for (std::size_t i = 0; i < msi.size(); i++) {
+            if (msi[i] >= 2) {
+              return false;
+            }
+          }
+          return true;
+        }
+
         FloatType process(int i_h,
           f_calc_function_base<FloatType>& f_calc_function,
           af::shared<FloatType>& gradients) const

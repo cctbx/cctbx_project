@@ -477,6 +477,103 @@ namespace smtbx { namespace refinement { namespace least_squares {
       }
     };
 
+    /** @brief The reparametrisation's Jacobian transpose, flattened once so
+        that applying it does not walk a sparse structure per reflection.
+
+    scitbx::sparse::matrix is a vector of sparse columns, each column its own
+    heap block. Applying it the way it applies itself means, for every
+    reflection, stepping through every column object in turn and following each
+    to its own storage -- and the columns are many and nearly all of them hold
+    one or two entries, so that walk costs more than the arithmetic it carries.
+    The structure does not change during a build, only the vector it is applied
+    to does, so the walk is done once here and what is left is a flat sequential
+    pass.
+
+    The entries are laid down in the order the sparse traversal visits them and
+    accumulated in that order, so a column with a repeated row index -- which is
+    allowed, the columns not being compacted -- still adds up the same way, and
+    the result is the one the sparse product gives, bit for bit.
+    */
+    struct flattened_jacobian_transpose {
+      struct entry {
+        int row, col;
+        FloatType value;
+      };
+
+      flattened_jacobian_transpose(
+        scitbx::sparse::matrix<FloatType> const &jt)
+        : n_rows(jt.n_rows())
+      {
+        entries.reserve(jt.non_zeroes());
+        for (int j=0; j < jt.n_cols(); j++) {
+          for (typename scitbx::sparse::matrix<FloatType>::const_row_iterator
+               p = jt.col(j).begin(); p != jt.col(j).end(); ++p)
+          {
+            entry e = { (int)p.index(), j, *p };
+            entries.push_back(e);
+          }
+        }
+      }
+
+      /// w = J^T v, with w a row the caller owns
+      void apply(af::const_ref<FloatType> const &v, FloatType *w) const {
+        std::fill(w, w + n_rows, FloatType(0));
+        for (std::size_t k=0; k < entries.size(); k++) {
+          entry const &e = entries[k];
+          w[e.row] += e.value*v[e.col];
+        }
+      }
+
+      std::vector<entry> entries;
+      int n_rows;
+    };
+
+    /** @brief The gradients of the observable with respect to the parameters,
+        written into somewhere the caller already has.
+
+    The functor gives its gradients in the basis of the structure factor's own
+    parameters, which the reparametrisation's Jacobian transpose then maps onto
+    the refined ones -- or gives them in that basis already, if it has applied
+    the Jacobian itself.
+
+    The destination is a bare pointer rather than a vector so that the
+    accumulator's own row may be passed, which is where they would have to be
+    copied to otherwise.
+    */
+    static void fill_gradients(f_calc_function_base_t const &f_calc_function,
+      flattened_jacobian_transpose const &jacobian_transpose,
+      FloatType *destination, int n_params)
+    {
+      af::const_ref<FloatType> g = f_calc_function.get_grad_observable();
+      if (f_calc_function.raw_gradients()) {
+        jacobian_transpose.apply(g, destination);
+      }
+      else {
+        SMTBX_ASSERT(g.size() == n_params)(g.size())(n_params);
+        std::copy(g.begin(), g.end(), destination);
+      }
+    }
+
+    /** @brief One row of sqrt(W) J.
+
+    Stored already multiplied by sqrt(w), so that the rows are those of
+    sqrt(W) J and a matrix-vector product against them is a plain gemv. Scaling
+    afterwards instead is a read, a multiply and a write over the whole matrix
+    for nothing, the store being bandwidth bound either way. The accumulator
+    sees the unscaled gradients, which is what it wants: it applies w itself.
+    */
+    static void store_design_row(
+      af::versa<StoreType, af::c_grid<2> > &design_matrix,
+      int i_h, FloatType const *gradients, int n_params, FloatType weight)
+    {
+      FloatType const sqrt_weight = std::sqrt(weight);
+      StoreType *row = &design_matrix(i_h, 0);
+      for (int gi = 0; gi < n_params; gi++) {
+        // narrowed here and only here, once the row is final
+        row[gi] = static_cast<StoreType>(sqrt_weight*gradients[gi]);
+      }
+    }
+
     /// Accumulate from reflections whose indices are
     /// returned by scheduler
     template<class NormalEquations>
@@ -543,6 +640,35 @@ namespace smtbx { namespace refinement { namespace least_squares {
           if (compute_grad) {
             gradients.resize(n_params);
           }
+          /* Flattened per worker rather than shared between them. It costs one
+             pass over the non-zeros, which is nothing against the reflections a
+             worker then applies it to, and it saves passing another reference
+             down through every constructor. Not built at all for a pass which
+             wants no derivatives, since then it is never applied to anything.
+           */
+          boost::scoped_ptr<flattened_jacobian_transpose> jt;
+          if (compute_grad) {
+            jt.reset(new flattened_jacobian_transpose(
+              jacobian_transpose_matching_grad_fc));
+          }
+          /** @brief Whether nothing stands between the Jacobian product and the
+              normal equations.
+
+          The twinning processor, the Fc correction and the radial f'/f''
+          correction each get a say in the gradient vector, and in an ordinary
+          refinement none of the three has anything to say -- yet each is asked,
+          through a virtual call, once per reflection. All three are properties
+          of the build and not of the reflection, so they are settled here, once,
+          and the loop below takes a path with none of them in it.
+
+          What that path buys is not only the calls: with nothing left to modify
+          the gradients after they are computed, they can be written straight
+          into the row the accumulator was going to copy them into anyway.
+          */
+          bool const fast = compute_grad
+            && twp.is_trivial()
+            && fc_cr->is_trivial()
+            && f_calc_function.get_dispersion_correction() == 0;
           while (true) {
             chunk ch = scheduler.next();
             if (ch.size == 0) {
@@ -562,16 +688,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 f_calc_function.compute(h, boost::none, fraction, compute_grad);
               }
               f_calc[i_h] = f_calc_function.get_f_calc();
-              if (compute_grad) {
-                if (f_calc_function.raw_gradients()) {
-                  gradients =
-                    jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
-                }
-                else {
-                  gradients = af::shared<FloatType>(
-                    f_calc_function.get_grad_observable().begin(),
-                    f_calc_function.get_grad_observable().end());
-                }
+              /* The gradients live either in the accumulator's own row, on the
+                 fast path, or in the local vector when something downstream is
+                 going to modify them. Either way this points at them.
+               */
+              FloatType *grad = 0;
+              if (fast) {
+                grad = normal_equations.open_equation();
+                fill_gradients(f_calc_function, *jt, grad, n_params);
+              }
+              else if (compute_grad) {
+                grad = gradients.begin();
+                fill_gradients(f_calc_function, *jt, grad, n_params);
                 /* The radial correction of f' and f'' keeps its gradients to
                    itself -- they are not per-scatterer, so the Jacobian above
                    has nothing to say about them and leaves their slots at zero.
@@ -582,16 +710,21 @@ namespace smtbx { namespace refinement { namespace least_squares {
                  */
                 write_dispersion_gradients(f_calc_function, gradients);
               }
-              // sort out twinning
-              FloatType observable = twp.process(
-                i_h, f_calc_function, gradients);
-              // Fc correction
-              FloatType fc_k = fc_cr->compute(
-                reflections.has_wavelengths() ? reflections.wavelength(i_h) : 0,
-                h, observable, compute_grad);
-              if (fc_k != 1) {
-                observable *= fc_k;
-                f_calc[i_h] *= std::sqrt(fc_k);
+              FloatType observable;
+              if (fast) {
+                observable = f_calc_function.get_observable();
+              }
+              else {
+                // sort out twinning
+                observable = twp.process(i_h, f_calc_function, gradients);
+                // Fc correction
+                FloatType fc_k = fc_cr->compute(
+                  reflections.has_wavelengths() ? reflections.wavelength(i_h) : 0,
+                  h, observable, compute_grad);
+                if (fc_k != 1) {
+                  observable *= fc_k;
+                  f_calc[i_h] *= std::sqrt(fc_k);
+                }
               }
               observables[i_h] = observable;
 
@@ -600,6 +733,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
               weights[i_h] = weight;
               if (objective_only) {
                 normal_equations.add_residual(observable,
+                  reflections.fo_sq(i_h), weight);
+              }
+              else if (fast) {
+                if (build_design_matrix) {
+                  store_design_row(design_matrix, i_h, grad, n_params, weight);
+                }
+                /* After the design matrix and not before: committing the
+                   equation weights the row in place, and the row is the one
+                   the gradients were written into.
+                 */
+                normal_equations.commit_equation(observable, grad,
                   reflections.fo_sq(i_h), weight);
               }
               else {
@@ -620,21 +764,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 }
                 normal_equations.add_equation(observable,
                   gradients.ref(), reflections.fo_sq(i_h), weight);
-              }
-              if (build_design_matrix) {
-                /* Stored already multiplied by sqrt(w), so that the rows are
-                   those of sqrt(W) J and a matrix-vector product against them
-                   is a plain gemv. Scaling afterwards instead is a read, a
-                   multiply and a write over the whole matrix for nothing, the
-                   store being bandwidth bound either way. The accumulator above
-                   has already seen the unscaled gradients, which is what it
-                   wants: it applies w itself.
-                 */
-                FloatType const sqrt_weight = std::sqrt(weight);
-                StoreType *row = &design_matrix(i_h, 0);
-                for (std::size_t gi = 0; gi < gradients.size(); gi++) {
-                  // narrowed here and only here, once the row is final
-                  row[gi] = static_cast<StoreType>(sqrt_weight*gradients[gi]);
+                if (build_design_matrix) {
+                  store_design_row(design_matrix, i_h, grad, n_params, weight);
                 }
               }
             }

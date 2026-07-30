@@ -206,6 +206,23 @@ namespace smtbx { namespace refinement { namespace least_squares {
       }
     }
 
+    /** The gradients written here rather than handed over; see
+        scitbx::lstbx::non_linear_ls_with_separable_scale_factor. This one has
+        no row of its own to lend, so it lends a scratch vector and the caller's
+        copy is what is saved, not one here.
+     */
+    //@{
+    scalar_t *open_equation() {
+      equation_row.resize(n_params);
+      return &equation_row[0];
+    }
+    void commit_equation(scalar_t yc, scalar_t const *grad_yc,
+                         scalar_t yo, scalar_t w)
+    {
+      add_equation(yc, af::const_ref<scalar_t>(grad_yc, n_params), yo, w);
+    }
+    //@}
+
     separable_scale_factor_summary &
     operator+=(separable_scale_factor_summary const &other) {
       SMTBX_ASSERT(n_params == other.n_params)(n_params)(other.n_params);
@@ -322,6 +339,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
     std::vector<scalar_t> yo_dot_grad_yc, yc_dot_grad_yc, block_data;
     std::vector<scalar_t> grad_scale_factor_, right_hand_side_;
     mutable std::vector<scalar_t> gathered;
+    /// lent out by open_equation(), and only allocated if that is ever called
+    std::vector<scalar_t> equation_row;
     scalar_t sum_w_yo_sq, sum_w_yc_sq, sum_w_yo_yc;
     scalar_t scale_factor_, objective_;
     int n_equations;
@@ -401,6 +420,19 @@ namespace smtbx { namespace refinement { namespace least_squares {
       s_ += t*yc;
     }
 
+    /// As above: a scratch row, this one having no buffer of its own either
+    //@{
+    scalar_t *open_equation() {
+      equation_row.resize(n_params);
+      return &equation_row[0];
+    }
+    void commit_equation(scalar_t yc, scalar_t const *grad_yc,
+                         scalar_t yo, scalar_t w)
+    {
+      add_equation(yc, af::const_ref<scalar_t>(grad_yc, n_params), yo, w);
+    }
+    //@}
+
     separable_scale_factor_product &
     operator+=(separable_scale_factor_product const &other) {
       SMTBX_ASSERT(n_params == other.n_params)(n_params)(other.n_params);
@@ -447,6 +479,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
     int n_params;
     scalar_t k, sum_w_yo_sq_, grad_k_dot_p, s_;
     std::vector<scalar_t> grad_k_, p_, y_;
+    /// lent out by open_equation(), and only allocated if that is ever called
+    std::vector<scalar_t> equation_row;
     bool finalised;
   };
 

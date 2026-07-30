@@ -447,6 +447,36 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
+    /** \brief Add an equation whose gradients are written here rather than
+        handed over.
+
+    open_equation() returns n_parameters() scalars for the caller to fill with
+    \f$\nabla y_c\f$, and commit_equation() then does exactly what add_equation()
+    does with a vector it was given. Splitting it this way lets the caller build
+    the gradients in place: the accumulator has to have them in a row of its own
+    whatever happens, so a caller which can write them there directly saves a
+    copy of the vector per equation.
+
+    The arithmetic is the one add_equation() does, in the order it does it --
+    the vector sums read the unweighted gradients, and the row is weighted after
+    -- so the two give the same normal equations to the last bit.
+     */
+    //@{
+    scalar_t *open_equation() {
+      return grad_yc_dot_grad_yc.open_row();
+    }
+    void commit_equation(scalar_t yc, scalar_t const *grad_yc,
+                         scalar_t yo, scalar_t w)
+    {
+      add_residual(yc, yo, w);
+      for (int i=0; i<n_params; ++i) {
+        yo_dot_grad_yc[i] += w * yo * grad_yc[i];
+        yc_dot_grad_yc[i] += w * yc * grad_yc[i];
+      }
+      grad_yc_dot_grad_yc.commit_row(w);
+    }
+    //@}
+
     /// Add many equations in one go
     void add_equations(af::const_ref<scalar_t> const &yc,
                        af::const_ref<scalar_t, af::mat_grid> const &jacobian_yc,

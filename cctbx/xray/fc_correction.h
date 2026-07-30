@@ -27,6 +27,16 @@ namespace cctbx {
       virtual af::const_ref<FloatType> get_gradients() const = 0;
       virtual boost::shared_ptr<fc_correction_t> fork() const = 0;
       virtual size_t n_param() const = 0;
+      /** @brief Whether compute() always returns 1 and there is nothing to
+          differentiate.
+
+      Asked once per build, not once per reflection: it lets a caller lift the
+      whole correction out of its inner loop rather than making a virtual call
+      per reflection to be told there is nothing to do. Answering true is a
+      promise about compute(), so the default is the safe answer and only the
+      dummy overrides it.
+      */
+      virtual bool is_trivial() const { return false; }
       bool grad;
     };
 
@@ -44,6 +54,7 @@ namespace cctbx {
         return 1;
       }
 
+      virtual bool is_trivial() const { return true; }
       virtual FloatType get_grad_Fc_multiplier() const { return 1; }
       virtual int get_grad_index() const { return -1; }
       virtual af::const_ref<FloatType> get_gradients() const {

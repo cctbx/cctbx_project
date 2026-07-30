@@ -18,6 +18,8 @@ namespace scitbx { namespace matrix {
   {
   private:
     af::versa<T, af::packed_u_accessor> a;
+    /// filled on first use by open_row(), and only if that is ever called
+    af::shared<T> row_scratch;
 
   public:
     /// Initialise the sum to a zero matrix of size n
@@ -49,6 +51,28 @@ namespace scitbx { namespace matrix {
     void add(T const *x, T alpha) {
       symmetric_packed_u_rank_1_update(a.accessor().n_rows(), a.begin(), x, alpha);
     }
+
+    /** @brief A row for a caller which would otherwise build one and hand it
+        over to add(), so that it may write it here directly instead.
+
+    open_row() returns n_rows scalars to fill; commit_row() then does with them
+    what add() would have done. The caller may read the row back between the two
+    -- the least squares wants it for its own vector sums -- and it is untouched
+    until commit_row.
+
+    This one has nowhere to put a row but a scratch vector of its own, so a
+    copy is still made; what is saved is the caller's copy, not this one. The
+    buffered accumulator has somewhere, and saves both.
+    */
+    //@{
+    T *open_row() {
+      if (row_scratch.size() != a.accessor().n_rows()) {
+        row_scratch.resize(a.accessor().n_rows());
+      }
+      return row_scratch.begin();
+    }
+    void commit_row(T alpha) { add(row_scratch.begin(), alpha); }
+    //@}
 
     /// Add s in-place
     sum_of_symmetric_rank_1_updates
@@ -137,14 +161,13 @@ namespace scitbx { namespace matrix {
       std::size_t const row_bytes =
         std::max<std::size_t>(1, std::size_t(cols)*sizeof(T));
       chunk_rows = std::max(min_chunk_rows(), buffer_bytes/row_bytes);
-      /* Reserved, not sized. Sizing it to the whole chunk up front measures
-         markedly slower on a small problem than letting it grow to what is
-         actually used, with the row writes themselves proved free -- so it is
-         the buffer the update is handed that differs, not the filling of it.
-         Growth stops at one chunk, which is the point of chunking; within that
-         it behaves as it always did.
+      /* Not allocated here. The buffer grows geometrically to what is actually
+         used and stops at one chunk, which is the point of chunking. Sizing it
+         to the whole chunk up front measures markedly slower on a small problem
+         -- where a generous budget makes a chunk very much larger than the whole
+         of A -- with the row writes themselves proved free, so it is the buffer
+         the update is handed that differs and not the filling of it.
        */
-      a.reserve(chunk_rows*std::max<std::size_t>(cols, 1));
       reset();
     }
 
@@ -164,13 +187,37 @@ namespace scitbx { namespace matrix {
      *  been written, so there was nothing much to save.
      */
     void add(T const *x, T alpha) {
-      SCITBX_ASSERT(alpha >= 0)(alpha);
-      if (n_pending() == chunk_rows) {
+      T *row = open_row();
+      std::copy(x, x + cols, row);
+      commit_row(alpha);
+    }
+
+    /** @brief A row for a caller which would otherwise build one and hand it
+        over to add(), so that it may write it here directly instead.
+
+    This is the buffer the rows of A are already accumulated in, so a caller
+    which fills the row itself removes a copy of it per equation: the gradient
+    vector is built once, where before it was built and then copied in.
+
+    The row comes back uninitialised -- the caller is expected to write all of
+    it -- and stays readable and unscaled until commit_row, which the least
+    squares depends on, its own vector sums reading the unweighted gradients.
+    */
+    //@{
+    T *open_row() {
+      if (n_pending_ == chunk_rows) {
         flush();
       }
-      a.extend(x, x + cols);
-      matrix::scale_vector(cols, a.end()-cols, std::sqrt(alpha));
+      reserve_rows(n_pending_ + 1);
+      return a.begin() + n_pending_*std::size_t(cols);
     }
+    void commit_row(T alpha) {
+      SCITBX_ASSERT(alpha >= 0)(alpha);
+      matrix::scale_vector(cols, a.begin() + n_pending_*std::size_t(cols),
+                           std::sqrt(alpha));
+      n_pending_++;
+    }
+    //@}
 
     /// Add u in-place
     /** u is const, so its pending rows cannot be flushed through itself; they
@@ -181,8 +228,8 @@ namespace scitbx { namespace matrix {
     rank_n_update &operator+=(rank_n_update const &u) {
       SCITBX_ASSERT(u.cols == cols)(u.cols)(cols);
       flush();
-      if (cols != 0 && u.a.size() != 0) {
-        update(u.a.begin(), u.a.size()/std::size_t(cols));
+      if (cols != 0 && u.n_pending_ != 0) {
+        update(u.a.begin(), u.n_pending_);
       }
       if (u.folded) {
         // nothing has written this one's result yet, so u's is it rather than
@@ -205,7 +252,7 @@ namespace scitbx { namespace matrix {
      *  both cheaper than zeroing it and what the unchunked version did.
      */
     void reset() {
-      a.clear();
+      n_pending_ = 0;
       folded = false;
     }
 
@@ -217,15 +264,14 @@ namespace scitbx { namespace matrix {
     */
     //@{
     static std::size_t omp_matrix_scratch(int, int) { return 0; }
-    std::size_t n_pending() const {
-      return cols ? a.size()/std::size_t(cols) : 0;
-    }
+    std::size_t n_pending() const { return n_pending_; }
     std::size_t max_pending() const { return chunk_rows; }
     /// Make room for n more rows and hand back the first of them
     T *open_pending(std::size_t n) {
-      std::size_t const at = a.size();
-      a.resize(at + n*std::size_t(cols));
-      return a.begin() + at;
+      std::size_t const at = n_pending_;
+      reserve_rows(at + n);
+      n_pending_ += n;
+      return a.begin() + at*std::size_t(cols);
     }
     void fold_pending() { flush(); }
     //@}
@@ -267,11 +313,28 @@ namespace scitbx { namespace matrix {
   private:
     /// Fold the buffered rows into the result and empty the buffer
     void flush() {
-      if (cols == 0 || a.size() == 0) {
+      if (cols == 0 || n_pending_ == 0) {
         return;
       }
-      update(a.begin(), a.size()/std::size_t(cols));
-      a.clear();
+      update(a.begin(), n_pending_);
+      n_pending_ = 0;
+    }
+
+    /// Make sure the buffer holds n rows, growing it geometrically if not
+    /** Doubling, and never past one chunk, so that filling a chunk costs a
+     *  logarithmic number of reallocations however the rows arrive. Growing it
+     *  rather than sizing it in the constructor is what keeps a small problem
+     *  from paying for a buffer sized by the memory budget instead of by its own
+     *  number of reflections.
+     */
+    void reserve_rows(std::size_t n) {
+      std::size_t const need = n*std::size_t(cols);
+      if (a.size() >= need) {
+        return;
+      }
+      std::size_t want = std::max(need, 2*a.size());
+      want = std::min(want, chunk_rows*std::size_t(cols));
+      a.resize(std::max(want, need));
     }
 
     /// aaT = A^T A for the first chunk, += it for the rest
@@ -296,13 +359,14 @@ namespace scitbx { namespace matrix {
       folded = true;
     }
 
+    /// the rows of A not yet folded in; its size is capacity, n_pending_ is use
     af::shared<T> a;
     /// cols x cols, row major; syrk writes its upper triangle, the lower stays
     /// zero from construction
     af::shared<T> aaT;
     af::versa<T, af::packed_u_accessor> aaT_packed;
     int cols;
-    std::size_t chunk_rows;
+    std::size_t chunk_rows, n_pending_;
     /// whether anything has been folded into aaT_rfp since the last reset
     bool folded;
   };
