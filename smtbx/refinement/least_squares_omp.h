@@ -78,7 +78,15 @@ struct accumulate_reflection_chunk_omp {
         f_calc_threads[i] = f_calc_function.fork();
         fc_crs[i] = fc_cr.fork();
       }
-      const FloatType temp_memory = threads * ((n_rows * (n_rows + 1) / 2) + 3 * n_rows) * sizeof(FloatType) / 1048576.0;
+      /* Only an accumulator which cannot fold rows in for itself needs a matrix
+         per thread, and on a large problem those dwarf everything else here --
+         so ask, rather than allocating them for whichever accumulator turns up.
+       */
+      const std::size_t matrix_scratch =
+        NormalEquations::omp_matrix_scratch(n_rows, threads);
+      const FloatType temp_memory =
+        (matrix_scratch + threads * 3 * std::size_t(n_rows))
+        * sizeof(FloatType) / 1048576.0;
       const FloatType mem_per_size = n_rows * sizeof(FloatType) / 1048576.0;
       int chunk = n;
       FloatType req_mem = temp_memory + chunk * mem_per_size;
@@ -93,7 +101,7 @@ struct accumulate_reflection_chunk_omp {
       if (chunk < 1) {
         chunk = 1;
       }
-      matrix.resize(threads * (n_rows * (n_rows + 1) / 2), 0);
+      matrix.resize(matrix_scratch, 0);
       yo_dot_grad_yc_.resize(threads * n_rows, 0);
       yc_dot_grad_yc_.resize(threads * n_rows, 0);
       if (compute_grad && !build_design_matrix && chunk < n) {

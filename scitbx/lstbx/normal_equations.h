@@ -376,13 +376,20 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         specify whether to use the normalised objective \f$L\f$ or the
         non-normalised objective \f$\tilde{L}\f$.
      */
-    non_linear_ls_with_separable_scale_factor(int n_parameters,
-                                              bool normalised=true)
+    /** accumulator_buffer_bytes is passed on to the accumulator, for those of
+        them which buffer rows before folding them into the normal matrix; zero
+        leaves the choice to it. It has no meaning for an accumulator which does
+        not buffer, and is ignored there.
+     */
+    non_linear_ls_with_separable_scale_factor(
+      int n_parameters,
+      bool normalised=true,
+      std::size_t accumulator_buffer_bytes=0)
       : yo_dot_yc(0), yc_sq(0), yo_sq(0),
         n_params(n_parameters),
         n_data(0),
         normalised_(normalised),
-        grad_yc_dot_grad_yc(n_parameters),
+        grad_yc_dot_grad_yc(n_parameters, accumulator_buffer_bytes),
         yo_dot_grad_yc(n_parameters),
         yc_dot_grad_yc(n_parameters),
         grad_k_star(n_parameters),
@@ -456,9 +463,19 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
+    /// Per-thread scratch the OpenMP accumulation wants for the normal matrix
+    /** Zero for an accumulator which folds the rows in for itself, and the
+        caller should not allocate what it will not use: on a large problem
+        those per-thread matrices come to more than everything else together.
+     */
+    static std::size_t omp_matrix_scratch(int n_parameters, int threads) {
+      return sum_of_rank_1_updates_t::omp_matrix_scratch(n_parameters, threads);
+    }
+
 #if defined(_OPENMP)
-    /* this will work correctly only with matrix::sum_of_symmetric_rank_1_updates
-    * normal_equations_omp.h file provides implementations for double
+    /* These two touch nothing but the scalar sums, so they are the same
+    whichever accumulator is in use. add_equations_omp does touch the matrix and
+    is specialised per accumulator in normal_equations_omp.h.
     */
     void add_residuals_omp(const int& n,
       const int& start,
@@ -467,7 +484,18 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       af::const_ref<scalar_t> const& yo,
       af::const_ref<scalar_t> const& w)
     {
-      throw SCITBX_NOT_IMPLEMENTED();
+      n_data += n;
+      scalar_t temp2 = 0, temp3 = 0, temp4 = 0;
+#pragma omp parallel for reduction(+:temp2, temp3, temp4) num_threads(threads)
+      for (int i = start; i < start + n; i++) {
+        scalar_t const temp1 = w[i] * yo[i];
+        temp2 += temp1 * yo[i];
+        temp3 += temp1 * yc[i];
+        temp4 += w[i] * yc[i] * yc[i];
+      }
+      yo_sq += temp2;
+      yo_dot_yc += temp3;
+      yc_sq += temp4;
     }
 
     void add_residuals_omp(const int& n,
@@ -476,7 +504,17 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       af::const_ref<scalar_t> const& yc,
       af::const_ref<scalar_t> const& yo)
     {
-      throw SCITBX_NOT_IMPLEMENTED();
+      n_data += n;
+      scalar_t temp1 = 0, temp2 = 0, temp3 = 0;
+#pragma omp parallel for reduction(+:temp1, temp2, temp3) num_threads(threads)
+      for (int i = start; i < start + n; i++) {
+        temp1 += yo[i] * yo[i];
+        temp2 += yo[i] * yc[i];
+        temp3 += yc[i] * yc[i];
+      }
+      yo_sq += temp1;
+      yo_dot_yc += temp2;
+      yc_sq += temp3;
     }
 
     /// Add many equations in one go using OpenMP

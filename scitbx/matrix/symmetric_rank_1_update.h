@@ -8,6 +8,7 @@
 #include <scitbx/matrix/vector_operations.h>
 #include <scitbx/array_family/simple_io.h>
 #include <fast_linalg/lapacke.h>
+#include <algorithm>
 
 namespace scitbx { namespace matrix {
 
@@ -20,9 +21,21 @@ namespace scitbx { namespace matrix {
 
   public:
     /// Initialise the sum to a zero matrix of size n
-    sum_of_symmetric_rank_1_updates(int n)
+    /** The second argument is the row buffer size the other accumulator takes.
+        This one keeps no buffer, so it is accepted and ignored, and the two
+        remain interchangeable as template arguments.
+     */
+    sum_of_symmetric_rank_1_updates(int n, std::size_t=0)
     : a(n)
     {}
+
+    /// Per-thread scratch the OpenMP accumulation needs for the matrix
+    /** This one has no way to fold rows in by itself, so the OpenMP path does
+        the packed rank-1 updates on its own, one matrix per thread.
+     */
+    static std::size_t omp_matrix_scratch(int n, int threads) {
+      return std::size_t(threads)*(std::size_t(n)*(n + 1)/2);
+    }
 
     /// Add \f$\alpha x x^T\f$ to the sum
     void add(af::const_ref<T> const &x, T alpha) {
@@ -68,15 +81,72 @@ namespace scitbx { namespace matrix {
    *  when all \f$\alpha_i\f$ are non-negative, since then
    *  \f$\alpha x x^T = y y^T\f$ where \f$y = \sqrt{\alpha} x\f$ is one row
    *  of matrix A.
+   *
+   *  The rows are buffered and folded into the result a chunk at a time, so
+   *  that the buffer is a working set rather than the whole of A. Holding all
+   *  of A costs n_rows n_cols scalars, which on a large problem runs to several
+   *  gigabytes and reallocates its way there, and there is no need to:
+   *  \f$A^T A = \sum_c A_c^T A_c\f$ over any partition of the rows into chunks,
+   *  and syrk accumulates into its output, so one call per chunk gives the same
+   *  matrix. The flops are unchanged; what is paid for it is one pass over the
+   *  result per chunk, which against the \f$n_{cols}^2 n_{rows}/2\f$ of the
+   *  updates themselves is small.
+   *
+   *  Reassociating a floating-point sum is not bit-exact, so the matrix differs
+   *  in the last digit or two from the unchunked one, as it does between any
+   *  two summation orders.
    */
   template <typename T>
   class rank_n_update
   {
   public:
+    /// Rows per chunk are chosen to fill about this much of a buffer
+    /** A fallback only: a caller which knows its memory budget should say so,
+     *  c.f. crystallographic_ls.accumulator_buffer_bytes. Generous, because
+     *  each chunk costs a pass over the whole result and syrk's result is a
+     *  full n^2 where the packed one it replaced was half that -- the buffer
+     *  size hardly mattered with the packed update and does with this one, so
+     *  the chunks are kept few. Still well below holding every row.
+     *
+     *  Functions rather than static constants so that taking their value never
+     *  needs an out-of-line definition of them.
+     */
+    static std::size_t default_buffer_bytes() { return 256u << 20; }
+    /// Below this, syrk is being called on too thin a matrix to pay for itself
+    static std::size_t min_chunk_rows() { return 64; }
+
+    /// CBLAS spells these as an enum which is not in scope here; the values are
+    /// fixed by the CBLAS standard
+    //@{
+    static int cblas_row_major() { return 101; }
+    static int cblas_upper() { return 121; }
+    static int cblas_trans() { return 112; }
+    //@}
+
     /// Prepare for a resulting matrix of size n
-    rank_n_update(int n)
-    : a((af::reserve(n*n/2))), aaT_rfp(n), aaT_packed(n), cols(n)
-    {}
+    /** buffer_bytes bounds the row buffer. A problem small enough that all of
+     *  its rows fit is never chunked at all, so nothing about a small structure
+     *  changes: it does the one update it always did.
+     */
+    rank_n_update(int n, std::size_t buffer_bytes=0)
+    : aaT(std::size_t(n)*n, T(0)), aaT_packed(n), cols(n)
+    {
+      if (buffer_bytes == 0) {
+        buffer_bytes = default_buffer_bytes();
+      }
+      std::size_t const row_bytes =
+        std::max<std::size_t>(1, std::size_t(cols)*sizeof(T));
+      chunk_rows = std::max(min_chunk_rows(), buffer_bytes/row_bytes);
+      /* Reserved, not sized. Sizing it to the whole chunk up front measures
+         markedly slower on a small problem than letting it grow to what is
+         actually used, with the row writes themselves proved free -- so it is
+         the buffer the update is handed that differs, not the filling of it.
+         Growth stops at one chunk, which is the point of chunking; within that
+         it behaves as it always did.
+       */
+      a.reserve(chunk_rows*std::max<std::size_t>(cols, 1));
+      reset();
+    }
 
     /// Add a row \f$\sqrt{\alpha} x\f$ to matrix A
     /// Precondition: alpha >= 0
@@ -86,37 +156,106 @@ namespace scitbx { namespace matrix {
     }
 
     /// Overload without size check for speed but alpha >= 0 still enforced
+    /** Copy first, scale second, and not fused into one loop over the row.
+     *  Fusing looks like it saves a pass and measures slower: a hand-written
+     *  `dst[j] = x[j]*s` cannot be vectorised, the compiler having to allow for
+     *  dst and x overlapping, where a copy and a scal are each free of that and
+     *  each vectorised. The row is in L1 for the second pass anyway, having just
+     *  been written, so there was nothing much to save.
+     */
     void add(T const *x, T alpha) {
       SCITBX_ASSERT(alpha >= 0)(alpha);
+      if (n_pending() == chunk_rows) {
+        flush();
+      }
       a.extend(x, x + cols);
       matrix::scale_vector(cols, a.end()-cols, std::sqrt(alpha));
     }
 
     /// Add u in-place
+    /** u is const, so its pending rows cannot be flushed through itself; they
+     *  are folded straight into this one's result instead. Both that and the
+     *  part u has already folded into its own are additions into the same
+     *  matrix, so the order of the three below does not matter.
+     */
     rank_n_update &operator+=(rank_n_update const &u) {
-      a.extend(u.a.begin(), u.a.end());
+      SCITBX_ASSERT(u.cols == cols)(u.cols)(cols);
+      flush();
+      if (cols != 0 && u.a.size() != 0) {
+        update(u.a.begin(), u.a.size()/std::size_t(cols));
+      }
+      if (u.folded) {
+        // nothing has written this one's result yet, so u's is it rather than
+        // something to add to whatever happens to be in there
+        if (folded) {
+          for (std::size_t i=0; i < aaT.size(); ++i) {
+            aaT[i] += u.aaT[i];
+          }
+        }
+        else {
+          std::copy(u.aaT.begin(), u.aaT.end(), aaT.begin());
+          folded = true;
+        }
+      }
       return *this;
     }
 
     /// Cancel all the rank-1 updates
+    /** aaT_rfp is not cleared: the first chunk folded in overwrites it, which is
+     *  both cheaper than zeroing it and what the unchunked version did.
+     */
     void reset() {
       a.clear();
+      folded = false;
     }
+
+    /** @brief The row buffer, for a caller which fills it itself.
+
+    The OpenMP accumulation writes the scaled rows straight in, in parallel,
+    rather than one at a time through add(). It needs no scratch matrix of its
+    own: the syrk which folds a chunk in is threaded by the BLAS.
+    */
+    //@{
+    static std::size_t omp_matrix_scratch(int, int) { return 0; }
+    std::size_t n_pending() const {
+      return cols ? a.size()/std::size_t(cols) : 0;
+    }
+    std::size_t max_pending() const { return chunk_rows; }
+    /// Make room for n more rows and hand back the first of them
+    T *open_pending(std::size_t n) {
+      std::size_t const at = a.size();
+      a.resize(at + n*std::size_t(cols));
+      return a.begin() + at;
+    }
+    void fold_pending() { flush(); }
+    //@}
 
     /// Called after after all rank-1 updates have been performed
     void finalise() {
       if (cols == 0) {
         return;
       }
-      std::size_t const rows = a.size()/cols;
-      // A^T A = [A^T] [A^T]^T and A^T is the column-major version of
-      // the row-major A
-      using namespace fast_linalg;
-      sfrk(LAPACK_COL_MAJOR, 'N', 'L', 'N',
-           cols, rows, 1.0, a.begin(), cols, 0.0, aaT_rfp.begin());
-      int info = tfttp(LAPACK_COL_MAJOR, 'N', 'L',
-                       cols, aaT_rfp.begin(), aaT_packed.begin());
-      SCITBX_ASSERT(info == 0)(info);
+      flush();
+      if (!folded) {
+        // no rows at all: the result is the zero matrix, and nothing has
+        // written the upper triangle for the copy below to read
+        std::fill(aaT.begin(), aaT.end(), T(0));
+        folded = true;
+      }
+      /* The upper triangle of a row-major square, read row by row, is the order
+         packed_u stores it in, so this is one sequential pass and no
+         arithmetic -- nothing here can lose a digit. The lower triangle syrk
+         leaves untouched is never read; it is zero from construction so that
+         operator+= may add the whole array without meeting whatever would
+         otherwise be there.
+       */
+      T *p = aaT_packed.begin();
+      for (int i=0; i < cols; ++i) {
+        T const *row = &aaT[std::size_t(i)*cols];
+        for (int j=i; j < cols; ++j) {
+          *p++ = row[j];
+        }
+      }
     }
 
     /// The resulting (symmetric) matrix
@@ -126,9 +265,46 @@ namespace scitbx { namespace matrix {
     }
 
   private:
+    /// Fold the buffered rows into the result and empty the buffer
+    void flush() {
+      if (cols == 0 || a.size() == 0) {
+        return;
+      }
+      update(a.begin(), a.size()/std::size_t(cols));
+      a.clear();
+    }
+
+    /// aaT = A^T A for the first chunk, += it for the rest
+    /** The buffer holds the rows of A, so row-major n_rows x cols, and
+     *  C = A^T A is syrk with trans. Upper, because the upper triangle of a
+     *  row-major square is laid out exactly as af::packed_u_accessor wants it,
+     *  which makes finalise a straight copy.
+     *
+     *  syrk rather than the rectangular-full-packed sfrk, which was here
+     *  before: sfrk halves the storage of the result and measures slower on
+     *  the same shape, RFP being the less travelled path through the BLAS. The
+     *  result costs n^2 rather than n(n+1)/2 for it.
+     *
+     *  beta = 1 accumulates the chunks; the first uses beta = 0 so that nothing
+     *  need be zeroed beforehand.
+     */
+    void update(T const *rows, std::size_t n_rows) {
+      using namespace fast_linalg;
+      syrk(cblas_row_major(), cblas_upper(), cblas_trans(),
+           cols, static_cast<int>(n_rows),
+           1.0, rows, cols, folded ? 1.0 : 0.0, &aaT[0], cols);
+      folded = true;
+    }
+
     af::shared<T> a;
-    af::versa<T, af::packed_u_accessor> aaT_rfp, aaT_packed;
+    /// cols x cols, row major; syrk writes its upper triangle, the lower stays
+    /// zero from construction
+    af::shared<T> aaT;
+    af::versa<T, af::packed_u_accessor> aaT_packed;
     int cols;
+    std::size_t chunk_rows;
+    /// whether anything has been folded into aaT_rfp since the last reset
+    bool folded;
   };
 
 }}

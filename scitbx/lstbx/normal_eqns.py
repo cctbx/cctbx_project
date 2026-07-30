@@ -75,6 +75,38 @@ class non_linear_ls_mixin(object):
   def step(self):
     return self.step_equations().solution()
 
+  def save_step_equations(self):
+    """ Copies of the step equations, to be put back with restore later.
+
+    Solving factorises the normal matrix in place and overwrites the right hand
+    side with the solution, so equations cannot be solved twice -- with a
+    different Levenberg-Marquardt damping, say. Rebuilding them costs a pass
+    over the data; copying them beforehand costs the matrix, once, and no data
+    are touched at all.
+
+    Call before the damping is added, so that what comes back is the undamped
+    normal equations.
+    """
+    return (self.normal_matrix_packed_u().deep_copy(),
+            self.opposite_of_gradient().deep_copy())
+
+  def restore_step_equations(self, saved):
+    """ Put back what save_step_equations returned, unsolved.
+
+    reset() zeroes both arrays and clears the solved flag; the arrays it hands
+    out share the storage the equations themselves use, so adding the copies
+    back in leaves the object as it was before it was damped and solved.
+    """
+    normal_matrix, right_hand_side = saved
+    equations = self.step_equations()
+    equations.reset()
+    # bound to a name first: the arrays share the equations' own storage, so
+    # adding into them in place is what puts the values back
+    a = equations.normal_matrix_packed_u()
+    a += normal_matrix
+    b = equations.right_hand_side()
+    b += right_hand_side
+
 @bp.inject_into(linear_ls)
 class _():
 

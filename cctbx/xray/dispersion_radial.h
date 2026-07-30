@@ -172,9 +172,9 @@ namespace cctbx { namespace xray {
 
     Nothing bounds the coefficients, and one of them against several thousand
     reflections has enough leverage to absorb whatever the model of a heavy
-    atom gets wrong. Left alone it will: on a real structure a single term ran
-    to R = -11 at the resolution limit, which is f' and f'' reversed in sign
-    several times over. That is not dispersion falling off, it is a free
+    atom gets wrong. Left alone it will: a single term has been seen to run to
+    a large negative R at the resolution limit, which is f' and f'' reversed in
+    sign several times over. That is not dispersion falling off, it is a free
     parameter mopping up.
 
     R is scaled back toward 1 -- the whole group by one factor, so the shape it

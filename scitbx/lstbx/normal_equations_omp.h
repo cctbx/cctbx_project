@@ -3,58 +3,6 @@
 template<>
 void non_linear_ls_with_separable_scale_factor<
   double,
-  matrix::sum_of_symmetric_rank_1_updates>::add_residuals_omp(
-    const int& n,
-    const int& start,
-    const int& threads,
-    af::const_ref<scalar_t> const& yc,
-    af::const_ref<scalar_t> const& yo,
-    af::const_ref<scalar_t> const& w)
-{
-  n_data += n;
-  scalar_t temp1;
-  scalar_t temp2 = 0;
-  scalar_t temp3 = 0;
-  scalar_t temp4 = 0;
-#pragma omp parallel for reduction(+:temp2, temp3, temp4) num_threads(threads) private(temp1)
-  for (int i = start; i < start + n; i++) {
-    temp1 = w[i] * yo[i];
-    temp2 += temp1 * yo[i];
-    temp3 += temp1 * yc[i];
-    temp4 += w[i] * yc[i] * yc[i];
-  }
-  yo_sq += temp2;
-  yo_dot_yc += temp3;
-  yc_sq += temp4;
-}
-//.............................................................................
-template<>
-void non_linear_ls_with_separable_scale_factor<
-  double,
-  matrix::sum_of_symmetric_rank_1_updates> ::add_residuals_omp(const int& n,
-  const int& start,
-  const int& threads,
-  af::const_ref<scalar_t> const& yc,
-  af::const_ref<scalar_t> const& yo)
-{
-  n_data += n;
-  scalar_t temp1 = 0;
-  scalar_t temp2 = 0;
-  scalar_t temp3 = 0;
-#pragma omp parallel for reduction(+:temp1, temp2, temp3) num_threads(threads)
-  for (int i = start; i < start + n; i++) {
-    temp1 += yo[i] * yo[i];
-    temp2 += yo[i] * yc[i];
-    temp3 += yc[i] * yc[i];
-  }
-  yo_sq += temp1;
-  yo_dot_yc += temp2;
-  yc_sq += temp3;
-}
-//.............................................................................
-template<>
-void non_linear_ls_with_separable_scale_factor<
-  double,
   matrix::sum_of_symmetric_rank_1_updates> ::add_equations_omp(const int& n_ref,
   const int& n_par,
   const int& chunk_size,
@@ -157,7 +105,9 @@ void non_linear_ls_with_separable_scale_factor<
       for (int i = start; i < start + chunk_size; i++) {
         temp2 += yo[i] * yo[i];
         temp3 += yo[i] * yc[i];
-        temp4 += w[i] * yc[i] * yc[i];
+        // this is the branch taken when there are no weights, so w is empty
+        // and w[i] was reading past the end of it
+        temp4 += yc[i] * yc[i];
       }
 #pragma omp single
       {
@@ -195,6 +145,109 @@ void non_linear_ls_with_separable_scale_factor<
         }
       }
     }
+  }
+}
+//.............................................................................
+
+/* The BLAS 3 accumulator needs none of the per-thread matrices above: it takes
+the scaled rows and folds a whole chunk of them in with one sfrk, which OpenBLAS
+threads for itself. So all that is parallelised here is filling its buffer and
+the two vector sums; the matrix work is left to the BLAS, which is better at it.
+*/
+template<>
+void non_linear_ls_with_separable_scale_factor<
+  double,
+  matrix::rank_n_update>::add_equations_omp(const int& n_ref,
+  const int& n_par,
+  const int& chunk_size,
+  const int& start,
+  const int& threads,
+  std::vector<double>& matrix,      // unused: see omp_matrix_scratch
+  std::vector<double>& yo_dot_grad_yc_,
+  std::vector<double>& yc_dot_grad_yc_,
+  af::const_ref<scalar_t> const& yc,
+  std::vector<double> const& jacobian_yc,
+  af::const_ref<scalar_t> const& yo,
+  af::const_ref<scalar_t> const& w)
+{
+  SCITBX_ASSERT(yc.size() == n_ref
+    && (!w.size() || yc.size() == w.size())
+    && yo.size() == n_ref)
+    (yc.size())(n_ref)(w.size())(yo.size());
+  SCITBX_ASSERT(jacobian_yc.size() == chunk_size * n_par)
+    (jacobian_yc.size())(chunk_size)(n_par);
+  SCITBX_ASSERT(!finalised());
+  bool const weighted = w.size() != 0;
+
+  n_data += chunk_size;
+  scalar_t temp2 = 0, temp3 = 0, temp4 = 0;
+#pragma omp parallel for reduction(+:temp2, temp3, temp4) num_threads(threads)
+  for (int i = start; i < start + chunk_size; i++) {
+    scalar_t const w_i = weighted ? w[i] : 1;
+    scalar_t const temp1 = w_i * yo[i];
+    temp2 += temp1 * yo[i];
+    temp3 += temp1 * yc[i];
+    temp4 += w_i * yc[i] * yc[i];
+  }
+  yo_sq += temp2;
+  yo_dot_yc += temp3;
+  yc_sq += temp4;
+
+  /* yo . grad yc and yc . grad yc, one running copy per thread. Each thread
+  only ever touches its own, so the loop over reflections may be shared out
+  freely; they are reduced into the equations on the last chunk, the scratch
+  being carried across chunks by the caller.
+  */
+#pragma omp parallel num_threads(threads)
+  {
+    const int thread = omp_get_thread_num();
+    double* l_ogc = &(yo_dot_grad_yc_[thread * n_par]);
+    double* l_cgc = &(yc_dot_grad_yc_[thread * n_par]);
+#pragma omp for
+    for (int i = start; i < start + chunk_size; i++) {
+      const double* g = &(jacobian_yc[(i - start) * n_par]);
+      double const w_i = weighted ? w[i] : 1;
+      double const a_yo = w_i * yo[i], a_yc = w_i * yc[i];
+      for (int x = 0; x < n_par; x++) {
+        l_ogc[x] += g[x] * a_yo;
+        l_cgc[x] += g[x] * a_yc;
+      }
+    }
+  }
+  if (start + chunk_size >= n_ref) {
+    for (int t = 0; t < threads; t++) {
+      const double* l_ogc = &(yo_dot_grad_yc_[t * n_par]);
+      const double* l_cgc = &(yc_dot_grad_yc_[t * n_par]);
+      for (int x = 0; x < n_par; x++) {
+        yo_dot_grad_yc[x] += l_ogc[x];
+        yc_dot_grad_yc[x] += l_cgc[x];
+      }
+    }
+  }
+
+  /* The rows, written into the accumulator's buffer in place. Filling it takes
+  as many passes as the buffer has room for at a time; folding a full one in is
+  a collective sfrk and so happens between them, not inside a parallel region.
+  */
+  int written = 0;
+  while (written < chunk_size) {
+    if (grad_yc_dot_grad_yc.n_pending() == grad_yc_dot_grad_yc.max_pending()) {
+      grad_yc_dot_grad_yc.fold_pending();
+    }
+    int const room = static_cast<int>(
+      grad_yc_dot_grad_yc.max_pending() - grad_yc_dot_grad_yc.n_pending());
+    int const take = std::min(chunk_size - written, room);
+    double* rows = grad_yc_dot_grad_yc.open_pending(take);
+#pragma omp parallel for num_threads(threads)
+    for (int k = 0; k < take; k++) {
+      int const i = start + written + k;
+      const double* src = &(jacobian_yc[(i - start) * n_par]);
+      double* dst = rows + std::size_t(k) * n_par;
+      // copy then scale, not one fused loop: see rank_n_update::add
+      std::copy(src, src + n_par, dst);
+      matrix::scale_vector(n_par, dst, std::sqrt(weighted ? w[i] : 1.0));
+    }
+    written += take;
   }
 }
 //.............................................................................

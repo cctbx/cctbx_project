@@ -127,6 +127,14 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static boost::shared_ptr<Derived> instance;
       return instance;
     }
+
+    /** @brief Per-thread scratch the OpenMP normal matrix accumulation needs.
+
+    None: these accumulate a design matrix or a product with one and never form
+    a normal matrix at all, so add_equations_omp is not a path they take. The
+    builder asks whatever it was handed, so they have to be able to answer.
+    */
+    static std::size_t omp_matrix_scratch(int, int) { return 0; }
   };
 
 

@@ -47,10 +47,44 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     may_parallelise = False
     use_openmp = False
     max_memory = 300
+    # How much the BLAS 3 accumulator may buffer before folding its rows into
+    # the normal matrix. Zero means take it from max_memory, which is the
+    # budget the whole build is meant to keep to.
+    normal_matrix_buffer_bytes = 0
+
+    @staticmethod
+    def accumulator_buffer_bytes(n_parameters, max_memory_mb):
+      """ What is left of the memory budget once the result is paid for.
+
+      The accumulator holds the normal matrix twice over -- the full n x n the
+      rank-k update writes into, and the packed copy it hands out -- and buffers
+      rows in whatever remains. Chunking the rows costs a pass over the result
+      per chunk, so the fewer chunks the better and the budget is worth
+      spending; but it is a budget, and the result comes out of it first.
+
+      Capped as well as floored. The buffer is reserved up front, so a generous
+      budget would have it allocate the lot, which is the thing chunking is for
+      avoiding. Past the cap there is nothing to buy anyway: the time is flat
+      from a few hundred megabytes upwards.
+      """
+      if not max_memory_mb:
+        return 0                      # no budget given: the accumulator decides
+      n = int(n_parameters)
+      result = (n*n + n*(n + 1)//2)*8
+      return max(8 << 20,
+                 min(512 << 20, int(max_memory_mb)*1048576 - result))
 
     def __init__(self, observations, reparametrisation,
                  one_h_linearisation=None, **kwds):
-      super(klass, self).__init__(reparametrisation.n_independents)
+      # before adopt_optional_init_args, so these have to come out of kwds here
+      buffer_bytes = kwds.get('normal_matrix_buffer_bytes',
+                              klass.normal_matrix_buffer_bytes)
+      if not buffer_bytes:
+        buffer_bytes = klass.accumulator_buffer_bytes(
+          reparametrisation.n_independents,
+          kwds.get('max_memory', klass.max_memory))
+      super(klass, self).__init__(
+        reparametrisation.n_independents, True, buffer_bytes)
       self.observations = observations
       self.reparametrisation = reparametrisation
       adopt_optional_init_args(self, kwds)

@@ -160,9 +160,9 @@ def exercise_gradients_against_finite_differences(space_group_symbol,
   The step is a large one on purpose. R is linear in c and Fc is linear in R, so
   |Fc|^2 is exactly quadratic in c and a central difference of it is exact, with
   no truncation error to trade off against. All a small step buys here is the
-  cancellation of two nearly equal numbers of the size of |Fc|^2, which for a
-  structure with two bromines is some five orders of magnitude larger than the
-  gradient being measured.
+  cancellation of two nearly equal numbers of the size of |Fc|^2, which with a
+  heavy scatterer present is orders of magnitude larger than the gradient being
+  measured.
   """
   xs = structure_with_anomalous_scatterers(space_group_symbol)
   indices = some_indices(xs)
@@ -499,8 +499,8 @@ def exercise_R_is_kept_positive():
   """ validate() pulls a group back rather than let R go through zero.
 
   Nothing bounds the coefficients and one of them has enough leverage to absorb
-  what the model of a heavy atom gets wrong; on malbac a single term ran to
-  R = -11 at the resolution limit before this was added.
+  what the model of a heavy atom gets wrong; before this was added a single term
+  was seen to run to a large negative R at the resolution limit.
   """
   xs = structure_with_anomalous_scatterers()
   s_max = 0.7
