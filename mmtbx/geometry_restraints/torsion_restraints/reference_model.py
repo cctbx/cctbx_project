@@ -72,7 +72,7 @@ reference_model
   main_chain = True
     .type = bool
     .help = Include dihedrals formed by main chain atoms
-  side_chain = True
+  side_chain = False
     .type = bool
     .help = Include dihedrals formed by side chain atoms
   fix_outliers = True

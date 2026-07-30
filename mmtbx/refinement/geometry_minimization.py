@@ -329,6 +329,10 @@ def minimize_wrapper_for_ramachandran(
       rm_params.reference_model.enabled=True
       rm_params.reference_model.strict_rotamer_matching=False
       rm_params.reference_model.main_chain=False
+      # side_chain is off by default, and main_chain=False alone would leave
+      # both filters off, which generates no proxies at all. Here we want
+      # exactly the side chains.
+      rm_params.reference_model.side_chain=True
       rm = reference_model(
         processed_pdb_file=processed_pdb_file,
         reference_file_list=None,
