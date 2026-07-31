@@ -71,7 +71,7 @@ class orca_manager(base_qm_manager.base_qm_manager):
    8    58.8800869   71.4618835   28.1663680
    8    62.2022254   74.3474953   29.5553167
   16    59.4829095   73.6048329   29.8973572'''
-    f=open('orca_%s.engrad' % self.preamble, 'r')
+    f=open('orca_%s.engrad' % self.preamble, 'r', encoding='utf-8')
     lines = f.read()
     del f
     lines = lines.split('#')
@@ -96,7 +96,7 @@ class orca_manager(base_qm_manager.base_qm_manager):
 
   def read_charge(self):
     filename = self.get_log_filename()
-    f=open(filename, 'r')
+    f=open(filename, 'r', encoding='utf-8')
     lines=f.readlines()
     del f
     #Sum of atomic charges:   -1.0000000
@@ -110,7 +110,7 @@ class orca_manager(base_qm_manager.base_qm_manager):
 
   def read_energy(self):
     filename = self.get_log_filename()
-    f=open(filename, 'r')
+    f=open(filename, 'r', encoding='utf-8')
     lines=f.readlines()
     del f
     for line in lines:
@@ -126,7 +126,7 @@ class orca_manager(base_qm_manager.base_qm_manager):
     filename = self.get_coordinate_filename()
     if not os.path.exists(filename):
       raise Sorry('QM output filename not found: %s' % filename)
-    f=open(filename, 'r')
+    f=open(filename, 'r', encoding='utf-8')
     lines = f.read()
     del f
     rc = flex.vec3_double()
