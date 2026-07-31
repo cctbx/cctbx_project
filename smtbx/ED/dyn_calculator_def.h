@@ -70,7 +70,7 @@ namespace smtbx { namespace ED
     }
 
     /* to compute d(exp(tA))/dp using approach as described here
-    Bernoulli 9(5), 2003, 895ï¿½919
+    Bernoulli 9(5), 2003, 895–919
     */
     virtual af::shared<complex_t> calc_amps_ext(
       af::shared<cmat_t> const& Ds_kin,
@@ -224,6 +224,7 @@ namespace smtbx { namespace ED
         }
       }
 
+      // dI/dp for every refined parameter, from G and the eigenvectors
       this->accumulate_grad_row(this->A, A_cjt, G, idx, complex_t(1),
         Ds_kin, rv, D_dyn);
       return rv;

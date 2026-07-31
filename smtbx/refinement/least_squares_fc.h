@@ -14,6 +14,47 @@ namespace smtbx {
       using namespace cctbx;
       using namespace cctbx::xray;
 
+      /** @brief Three sets of parameters, and the chain rule between them.
+
+      A refinement here never differentiates the observable with respect to the
+      quantities it actually refines. It goes through two changes of variable,
+      and most of the machinery in this file and the next exists to carry
+      gradients back along them.
+
+      Innermost are the *structure factor parameters* c: for each scatterer its
+      site, its ADPs, its occupancy, its f' and f''. These are what Fc is a
+      function of, and what the one_h linearisation differentiates -- it hands
+      back dFc/dc, complex, one entry per c in a fixed layout (see
+      standard_xray.h, where the layout is written).
+
+      Next is the *observable*. Fc is complex and the measurement is not; for
+      the usual case y = |Fc|^2 the chain rule is
+
+          dy/dc = 2 Re( conj(Fc) dFc/dc )
+
+      which turns a complex gradient into a real one without changing its
+      length. get_grad_observable() is the result.
+
+      Outermost are the *refined parameters* x, and they are not the c. Riding
+      hydrogens, rigid groups, shared or constrained ADPs, a free variable
+      driving several occupancies: each is a statement that some c are functions
+      of fewer, or different, x. The reparametrisation knows those functions and
+      supplies their Jacobian J = dc/dx. Gradients travel the other way, so what
+      is applied per reflection is its transpose:
+
+          dy/dx_k = sum_c (dy/dc)(dc/dx_k),   i.e.  grad_x = J^T grad_c
+
+      J is very sparse -- most c depend on one or two x, and an unconstrained c
+      is its own x -- hence the sparse matrix, and hence flattened_jacobian_
+      transpose below, which is about making that product cheap rather than
+      about the mathematics.
+
+      A functor whose gradients are already in x -- the dynamical electron
+      diffraction one, which cannot separate the two changes of variable and so
+      does both itself -- says so via raw_gradients() and is not put through
+      either step.
+      */
+
       /** @brief The reparametrisation's Jacobian transpose, flattened once so
           that applying it does not walk a sparse structure per reflection.
 

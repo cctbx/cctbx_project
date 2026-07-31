@@ -1629,6 +1629,29 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
+    /** @brief From a complex gradient to a real one: the observable functors.
+
+    Fc is complex, the measurement is not, and the two observables here are the
+    two ways of closing that gap. Writing Fc = a + ib and g = dFc/dc for one
+    parameter,
+
+        y = |Fc|^2 = a^2 + b^2      =>  dy/dc = 2 ( a Re(g) + b Im(g) )
+        y = |Fc|   = sqrt(a^2+b^2)  =>  dy/dc = ( a Re(g) + b Im(g) ) / |Fc|
+
+    -- in both cases Re( conj(Fc) g ) up to a factor, which is the statement
+    that only the component of the gradient along Fc moves the modulus. A phase
+    shift of Fc does not change the observable, and this is where that fact
+    enters the refinement.
+
+    The origin_centric_case branch is not an optimisation. For a centrosymmetric
+    structure with the origin on a centre of inversion, Fc is real by symmetry,
+    so b = 0 and the second term should vanish identically. It does not always
+    do so in floating point: b can come out as a signed zero, and -0.0 * Im(g)
+    is -0.0, which then flips the sign of a gradient that ought to be exactly
+    a Re(g). Testing Im(g) and skipping the term keeps the answer the one the
+    symmetry says it is. f_calc_is_real is the same statement made by the
+    caller, who knows it per reflection rather than per component.
+    */
     template <typename FloatType>
     struct modulus_squared
     {

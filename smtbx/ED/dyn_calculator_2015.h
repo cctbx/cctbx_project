@@ -3,7 +3,7 @@
 namespace smtbx { namespace ED
 {
   using namespace cctbx;
-  /* As in Acta Cryst. (2015). A71, 235ï¿½244 */
+  /* As in Acta Cryst. (2015). A71, 235–244 */
   template <typename FloatType>
   class dyn_calculator_2015 : public a_dyn_calculator<FloatType> {
   public:
@@ -66,7 +66,7 @@ namespace smtbx { namespace ED
     }
 
     /* to compute d(exp(tA))/dp using approach as described here
-    Bernoulli 9(5), 2003, 895ï¿½919
+    Bernoulli 9(5), 2003, 895–919
     */
     virtual af::shared<complex_t> calc_amps_ext(
       af::shared<cmat_t> const& Ds_kin,
@@ -219,6 +219,8 @@ namespace smtbx { namespace ED
         }
       }
 
+      // dI/dp for every refined parameter, from G and the eigenvectors; M[idx]
+      // is the beam's amplitude factor, which the old loop applied to each dp
       this->accumulate_grad_row(this->A, A_cjt, G, idx, complex_t(M[idx]),
         Ds_kin, rv, D_dyn);
       return rv;
