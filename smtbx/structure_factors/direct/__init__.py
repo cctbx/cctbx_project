@@ -5,9 +5,23 @@ ext = bp.import_ext("smtbx_structure_factors_direct_ext")
 class constructed_with_xray_structure(object):
 
   def __init__(self, xray_structure, table_file_name=None, reflections=None,
+               scatterer_contribution=None, disp_correction=None,
                *args, **kwds):
+    """ scatterer_contribution: a table already read, to be used as it stands.
+
+    Reading a tabulated table costs time and memory proportional to its size,
+    so a caller which needs several of these over the same table can read it
+    once and hand it in. The table is
+    indexed by scatterer, so it only suits a structure whose scatterers are the
+    same ones in the same order; the caller is what knows that.
+
+    disp_correction: an xray.dispersion_radial_correction giving f' and f'' a
+    refinable radial falloff, or None for the usual constant ones.
+    """
     xs = xray_structure
-    if not table_file_name:
+    if scatterer_contribution is not None:
+      self.scatterer_contribution = scatterer_contribution
+    elif not table_file_name:
       if reflections:
           self.scatterer_contribution = ext.isotropic_scatterer_contribution(
             xs.scatterers(),
@@ -29,16 +43,26 @@ class constructed_with_xray_structure(object):
           xs.scattering_type_registry(),
           reflections.indices())
       else:
-        self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
+        # a table need not name every atom of the structure; the ones it
+        # misses fall back on the spherical form factors the registry gives,
+        # which is why it is handed in here
+        self.scatterer_contribution = ext.table_based_scatterer_contribution.\
+          build_with_fallback(
           xs.unit_cell(),
           xs.scatterers(),
           table_file_name,
           xs.space_group(),
-          not xs.space_group().is_origin_centric())
+          not xs.space_group().is_origin_centric(),
+          xs.scattering_type_registry())
 
     args = (xs.unit_cell(),
             xs.space_group(),
             xs.scatterers()) + args + (self.scatterer_contribution,)
+    # not stored here: the extension class already exposes it as a property,
+    # reading it back from the object which will actually use it
+    if disp_correction is not None:
+      kwds = dict(kwds)
+      kwds['disp_correction'] = disp_correction
     super(constructed_with_xray_structure, self).__init__(*args, **kwds)
     self.xray_structure = xray_structure
 
@@ -66,16 +90,20 @@ class f_calc_modulus_with_custom_trigonometry(
 def f_calc_modulus_squared(xray_structure,
                            table_file_name=None,
                            reflections=None,
-                           exp_i_2pi_functor=None):
+                           exp_i_2pi_functor=None,
+                           scatterer_contribution=None,
+                           disp_correction=None):
   if exp_i_2pi_functor is None:
-    return f_calc_modulus_squared_with_std_trigonometry(xray_structure,
-                                                        table_file_name=table_file_name,
-                                                        reflections=reflections)
+    return f_calc_modulus_squared_with_std_trigonometry(
+      xray_structure,
+      table_file_name=table_file_name,
+      reflections=reflections,
+      scatterer_contribution=scatterer_contribution,
+      disp_correction=disp_correction)
   else:
-    return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
-                                                           table_file_name,
-                                                           reflections,
-                                                           exp_i_2pi_functor)
+    return f_calc_modulus_squared_with_custom_trigonometry(
+      xray_structure, table_file_name, reflections,
+      scatterer_contribution, disp_correction, exp_i_2pi_functor)
 def f_calc_modulus(xray_structure,
                    exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
@@ -97,7 +125,7 @@ def generate_isc_table_file(file_name,
     out.write("Title: generated from isotropic AFF")
     out.write("\nScatterer_ids:")
     for sc in xs.scatterers():
-      out.write(" %X" %sc.get_id_5_16())
+      out.write(" %s" %sc.get_id_big(sc.get_part()).to_hex_string())
     out.write("\nScatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)

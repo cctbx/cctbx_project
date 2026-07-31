@@ -29,6 +29,7 @@ sources = [
   "twin_components.cpp",
   "thickness.cpp",
   "extinction.cpp",
+  "dispersion_radial.cpp",
   "sigmaa.cpp",
   "../targets/shelxl_wght_ls_bpl.cpp",
 ]

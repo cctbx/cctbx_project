@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.bundle import copy_runtime_sources
 from libtbx.bundle import copy_build_libtbx
-import sys, os
+import os
 
 def run(prefix, to_skip_src=[]):
   copy_runtime_sources.run(prefix+"_sources", to_skip=to_skip_src)

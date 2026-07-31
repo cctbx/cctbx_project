@@ -157,6 +157,7 @@ namespace {
         .def("get_id_2_1", &w_t::get_id_2_1, ((arg("data") = 0), arg("multiplier") = 1))
         .def("get_id_5_16", &w_t::get_id_5_16, ((arg("data") = 0, arg("multiplier") = 1)))
         .def("get_id_5_1", &w_t::get_id_5_1, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("get_id_big", &w_t::get_id_big, ((arg("data") = 0)))
         .def("get_part", &w_t::get_part)
         .def("set_part", &w_t::set_part, (arg("part") = 0))
         .def("element_info", &w_t::element_info, ccr)
@@ -172,8 +173,39 @@ namespace {
         .def(init<uint64_t>((arg("id"))))
         .def("get_z", &wt::get_z)
         .def("get_crd", &wt::get_crd)
-          .def("get_data", &wt::get_data)
-          .add_property("id", &wt::id)
+        .def("get_data", &wt::get_data)
+        .add_property("id", &wt::id)
+          ;
+    }
+
+    // to_bytes() returns raw binary data in a std::string; boost.python's
+    // default string converter would try to treat it as text (UTF-8) on
+    // Python 3, corrupting/rejecting non-UTF-8 byte sequences. Build a
+    // Python `bytes` object explicitly instead.
+    template <class wt>
+    static boost::python::object to_bytes_wrapper(wt const& self)
+    {
+        std::string s = self.to_bytes();
+        PyObject* py_bytes = PyBytes_FromStringAndSize(s.data(), s.size());
+        return boost::python::object(boost::python::handle<>(py_bytes));
+    }
+
+    template <typename FloatType, class crd_t>
+    static void wrap_id_big(const char* name) {
+      using namespace boost::python;
+      typedef scatterer_id_big<FloatType, crd_t> wt;
+      class_<wt, boost::shared_ptr<wt> >(name, no_init)
+        .def(init<const wt&>((arg("source"))))
+        .def(init<FloatType, FloatType, FloatType, int16_t, uint8_t, uint8_t>((arg("frac_x"), arg("frac_y"), arg("frac_z"), arg("data"), arg("Z"), arg("reserved"))))
+        .def(init<crd_t, int16_t, uint8_t, uint8_t>((arg("site"), arg("data"), arg("Z"), arg("reserved"))))
+        .def(init<std::string>((arg("id_string"))))
+        .def("get_z", &wt::get_z)
+        .def("get_crd", &wt::get_crd)
+        .def("get_data", &wt::get_data)
+        .def("to_hex_string", &wt::to_hex_string)
+        .def("to_bytes", &to_bytes_wrapper<wt>)
+        .def("as_uint64", &wt::as_uint64)
+        .def("__eq__", &wt::operator==)
           ;
     }
 
@@ -201,6 +233,11 @@ namespace {
       using namespace boost::python;
       typedef scatterer_cart_lookup<FloatType> wt;
       return_internal_reference<> rir;
+      // index_of_fractional is overloaded, on a site and on a scatterer id;
+      // this is the site one, which is what the arguments below describe. The
+      // id one is not exposed to Python.
+      typedef size_t (wt::*index_of_fractional_site_t)(
+        const fractional<FloatType>&, int, int, FloatType) const;
 
       class_<wt, boost::shared_ptr<wt> >("scatterer_lookup_cart", no_init)
         .def(init<const uctbx::unit_cell&, const af::shared<scatterer<> > &>(
@@ -213,7 +250,8 @@ namespace {
           (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
         .def("find_cartisian", &wt::find_cartesian,
           (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
-        .def("index_of_fractional", &wt::index_of_fractional,
+        .def("index_of_fractional",
+          (index_of_fractional_site_t)&wt::index_of_fractional,
           (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3))
         .def("index_of_cartisian", &wt::index_of_cartesian,
           (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3))
@@ -233,6 +271,7 @@ namespace {
     scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d2, 1>("scatterer_id_2_1");
     scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d5, 16>("scatterer_id_5_16");
     scatterer_wrappers::wrap_id<double, crd_t, scatterer_id_masks_d5, 1>("scatterer_id_5_1");
+    scatterer_wrappers::wrap_id_big<double, crd_t>("scatterer_id_big");
     scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d2, 16>("scatterer_lookup_2_16");
     scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d2, 1>("scatterer_lookup_2_1");
     scatterer_wrappers::wrap_lookup<double, crd_t, scatterer_id_masks_d5, 16>("scatterer_lookup_5_16");

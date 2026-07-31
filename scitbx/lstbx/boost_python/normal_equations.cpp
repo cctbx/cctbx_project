@@ -134,7 +134,10 @@ namespace boost_python {
       using namespace boost::python;
       return_internal_reference<> rir;
       class_<wt>(name.c_str(), no_init)
-        .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
+        .def(init<int, bool, std::size_t>
+             ((arg("n_parameters"),
+               arg("normalised")=true,
+               arg("accumulator_buffer_bytes")=0)))
         .add_property("n_parameters", &wt::n_parameters)
         .add_property("n_equations", &wt::n_equations)
         .add_property("dof", &wt::dof)

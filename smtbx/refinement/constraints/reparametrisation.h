@@ -9,6 +9,7 @@
 #include <cctbx/xray/twin_component.h>
 #include <cctbx/xray/thickness.h>
 #include <cctbx/xray/extinction.h>
+#include <cctbx/xray/dispersion_radial.h>
 #include <smtbx/import_cctbx.h>
 #include <smtbx/error.h>
 
@@ -407,6 +408,31 @@ public:
 
 protected:
   SWAT_correction_t* swat;
+};
+
+/// Coefficients of the radial falloff shared by f' and f''
+/** All of them, of every group, as one vector-valued parameter: they are
+    refined together and there is nothing to be gained from telling them apart
+    here. components() aliases the correction's own storage, so the refined
+    values are in place without a store().
+ */
+class dispersion_radial_parameter : public independent_parameter {
+  typedef cctbx::xray::dispersion_radial_correction<double>
+    dispersion_radial_correction_t;
+public:
+  dispersion_radial_parameter(dispersion_radial_correction_t *correction)
+    : parameter(0),
+    independent_parameter(correction->grad),
+    correction(correction)
+  {}
+
+  virtual af::ref<double> components() { return correction->coefficients.ref(); }
+  virtual size_t n_param() const { return correction->n_param(); }
+  /// keep R positive over the data, the way asu_fdp_parameter keeps f'' so
+  virtual void validate() { correction->validate(); }
+
+protected:
+  dispersion_radial_correction_t *correction;
 };
 
 template <int N>
@@ -1126,6 +1152,14 @@ public:
   /** Indexing is, as for the Jacobian, enforced by parameter::index()
    */
   void apply_shifts(af::const_ref<double> const &shifts);
+
+  /// The vector of independent parameters
+  /** Indexed as apply_shifts() is. Applying shifts does not always move the
+      parameters by exactly the shifts given, since validate() constrains some
+      of them -- a negative U_iso or occupancy, say -- so a minimiser which
+      moves the parameters about needs to be able to see where they ended up.
+   */
+  af::shared<double> independent_parameter_vector();
 
   /// Norm of the vector of independent parameters
   double norm_of_independent_parameter_vector();

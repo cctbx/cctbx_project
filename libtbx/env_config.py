@@ -1089,6 +1089,7 @@ Wait for the command to finish, then try again.""" % vars())
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
+        enable_fast_math=command_line.options.enable_fast_math,
         enable_cxx11=command_line.options.enable_cxx11,
         cxxstd=command_line.options.cxxstd,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
@@ -2664,6 +2665,13 @@ class build_options:
     "debug_optimized",
     "profile"]
 
+  # A build directory holds this object pickled, so one configured before an
+  # option existed unpickles without it and would raise on first use. A class
+  # level default is what an old instance falls back to, which lets an existing
+  # tree keep building without being reconfigured -- and the default has to be
+  # the behaviour that tree already had.
+  enable_fast_math = False
+
   def __init__(self,
         compiler,
         mode,
@@ -2685,6 +2693,7 @@ class build_options:
         use_environment_flags=False,
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
+        enable_fast_math=False,
         enable_cxx11=default_enable_cxx11,
         cxxstd=default_cxxstd,
         skip_phenix_dispatchers=False):
@@ -2747,6 +2756,11 @@ class build_options:
     print("Use conda:", self.use_conda, file=f)
     print("Use opt_resources if available:", self.opt_resources, file=f)
     print("Use environment flags:", self.use_environment_flags, file=f)
+    # both of these change the generated code, so a log which does not name
+    # them cannot be compared with one from a differently configured tree
+    print("Enable fast math:", self.enable_fast_math, file=f)
+    if self.msvc_arch_flag is not None:
+      print("MSVC arch flag:", self.msvc_arch_flag, file=f)
     print("Enable C++11:", self.enable_cxx11, file=f)
     if( self.use_environment_flags ):
       print("  CXXFLAGS = ", self.env_cxxflags, file=f)
@@ -2897,13 +2911,28 @@ class pre_process_args:
              "Not compatible with /usr/bin/python: please run configure\n"
              "with /System/Library/Frameworks/Python.framework/"
              "Versions/2.x/bin/python")
-      msvc_arch_flag_choices = ("None", "SSE", "SSE2")
+      # SSE and SSE2 are 32-bit only: on x64 they are the baseline and MSVC
+      # rejects them. AVX and above are 64-bit only in practice, and choosing
+      # one means the binary will not start on a CPU without it -- so a
+      # release that has to run anywhere leaves this at None. There is no
+      # SSE4.2 setting to ask for; MSVC offers no such /arch:.
+      msvc_arch_flag_choices = ("None", "SSE", "SSE2", "AVX", "AVX2", "AVX512")
       parser.option(None, "--msvc_arch_flag",
         choices=msvc_arch_flag_choices,
         default=default_msvc_arch_flag,
         help="choose MSVC CPU architecture instruction set"
-             " for optimized builds",
+             " for optimized builds; AVX and above raise the minimum CPU"
+             " the build will run on",
         metavar="|".join(msvc_arch_flag_choices))
+    parser.option(None, "--enable_fast_math",
+      action="store",
+      type="bool",
+      default=False,
+      help="relax floating point rules in optimized builds: /fp:fast on"
+           " MSVC, -ffast-math on gcc and clang. Permits reassociation and"
+           " lets the compiler vectorise loops of transcendentals, which is"
+           " where it earns its keep; changes results in the last few digits"
+           " and disables strict NaN and infinity handling (default: False)")
     parser.option(None, "--build_boost_python_extensions",
       action="store",
       type="bool",

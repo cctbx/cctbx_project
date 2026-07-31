@@ -1,6 +1,55 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import adp_restraints
+from cctbx.array_family import flex
+
+
+def covalent_pair_sym_table(xray_structure, buffer_thickness=3.5,
+                            exclude_hydrogens=False):
+  """ Which atoms are bonded to which.
+
+  Hydrogen and deuterium are kept unless asked for otherwise. They have to be:
+  which pairs of atoms get a restraint is read off this table, and dropping
+  them would leave every hydrogen unrestrained -- which matters wherever
+  hydrogen ADPs are refined rather than riding, as they are under an aspherical
+  model.
+  """
+  asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  scattering_types = xray_structure.scatterers().extract_scattering_types()
+  if exclude_hydrogens:
+    pair_asu_table.add_covalent_pairs(
+      scattering_types,
+      exclude_scattering_types=flex.std_string(("H", "D")))
+  else:
+    pair_asu_table.add_covalent_pairs(scattering_types)
+  return pair_asu_table.extract_pair_sym_table()
+
+
+def terminal_connectivity(xray_structure, buffer_thickness=3.5):
+  """ Connectivity for deciding whether an atom is terminal, hydrogens aside.
+
+  Being terminal governs the weight a restraint gets -- a terminal atom's
+  displacement is the least well determined, so it is restrained more loosely.
+  What decides that is the heavy-atom skeleton: a methyl carbon carries one
+  carbon and three hydrogens, and it is the archetypal loosely-held group, yet
+  counting its hydrogens makes it look four-coordinate and gives it the tight
+  weight of a backbone atom. Likewise a hydroxyl oxygen is terminal whatever
+  its hydrogen does.
+
+  Separate from the table above on purpose: which atoms are restrained is one
+  question and how tightly is another, and only the second one wants the
+  hydrogens gone.
+
+  Returns None when there is no structure to derive it from, and the caller
+  then falls back on the connectivity it was given.
+  """
+  if xray_structure is None:
+    return None
+  return covalent_pair_sym_table(
+    xray_structure, buffer_thickness,
+    exclude_hydrogens=True).full_simple_connectivity()
+
 
 class adp_similarity_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
@@ -12,11 +61,19 @@ class adp_similarity_restraints(object):
       scatterers = xray_structure.scatterers()
 
     def is_suitable(idx):
-      if scatterers is not None and\
-          scatterers[idx].flags.use_u_iso() and scatterers[idx].flags.grad_u_iso():
+      """ Whether this scatterer's ADPs are being refined, so worth restraining.
+
+      With no structure there are no flags to consult -- this class may be given
+      a pair_sym_table and nothing else, which the assertion above allows for --
+      and the answer is then that nothing is known against the scatterer, not
+      that it is unsuitable. Answering False there rejects every scatterer and
+      the caller gets no restraints at all.
+      """
+      if scatterers is None:
         return True
-      if scatterers is not None and\
-          scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso():
+      if scatterers[idx].flags.use_u_iso() and scatterers[idx].flags.grad_u_iso():
+        return True
+      if scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso():
         return True
       return False
 
@@ -25,13 +82,13 @@ class adp_similarity_restraints(object):
     if proxies is None:
       proxies = adp_restraints.shared_adp_similarity_proxy()
     if pair_sym_table is None:
-      asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
-      pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-      scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(scattering_types)
-      pair_sym_table = pair_asu_table.extract_pair_sym_table()
+      pair_sym_table = covalent_pair_sym_table(xray_structure, buffer_thickness)
     if connectivity is None:
       connectivity = pair_sym_table.full_simple_connectivity()
+    # hydrogens do not make an atom non-terminal; see terminal_connectivity
+    terminal = terminal_connectivity(xray_structure, buffer_thickness)
+    if terminal is None:
+      terminal = connectivity
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
       if i_seqs is not None and i_seq not in i_seqs: continue
@@ -41,8 +98,8 @@ class adp_similarity_restraints(object):
         if not is_suitable(j_seq): continue
         for sym_op in sym_ops:
           if sym_op.is_unit_mx():
-            i_is_terminal = (connectivity[i_seq].size() <= 1)
-            j_is_terminal = (connectivity[j_seq].size() <= 1)
+            i_is_terminal = (terminal[i_seq].size() <= 1)
+            j_is_terminal = (terminal[j_seq].size() <= 1)
             if i_is_terminal or j_is_terminal:
               weight = 1/(sigma_terminal*sigma_terminal)
             else:
@@ -62,15 +119,18 @@ def build_proxies(proxies, proxy_type, sigma_12, sigma_13,
     scatterers = xray_structure.scatterers()
 
   def is_suitable(idx):
-    return scatterers is not None and\
-        scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso()
+    """ \\copydoc adp_similarity_restraints.is_suitable
+
+    RIGU and DELU are restraints between anisotropic atoms, so an isotropic one
+    is filtered out here whatever its flags say.
+    """
+    if scatterers is None:
+      return True
+    return scatterers[idx].flags.use_u_aniso() \
+       and scatterers[idx].flags.grad_u_aniso()
 
   if pair_sym_table is None:
-    asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
-    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-    scattering_types = xray_structure.scatterers().extract_scattering_types()
-    pair_asu_table.add_covalent_pairs(scattering_types)
-    pair_sym_table = pair_asu_table.extract_pair_sym_table()
+    pair_sym_table = covalent_pair_sym_table(xray_structure, buffer_thickness)
   if connectivity is None:
     connectivity = pair_sym_table.full_simple_connectivity()
   ij_seqs = set()
@@ -162,17 +222,18 @@ class isotropic_adp_restraints(object):
     scattering_types = xray_structure.scatterers().extract_scattering_types()
     use_u_aniso = xray_structure.scatterers().extract_use_u_aniso()
     if pair_sym_table is None:
-      asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
-      pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-      pair_asu_table.add_covalent_pairs(scattering_types)
-      pair_sym_table = pair_asu_table.extract_pair_sym_table()
+      pair_sym_table = covalent_pair_sym_table(xray_structure, buffer_thickness)
     if connectivity is None:
       connectivity = pair_sym_table.full_simple_connectivity()
+    # hydrogens do not make an atom non-terminal; see terminal_connectivity
+    terminal = terminal_connectivity(xray_structure, buffer_thickness)
+    if terminal is None:
+      terminal = connectivity
 
     for i_seq, neighbours in enumerate(connectivity):
       if i_seqs is not None and i_seq not in i_seqs: continue
       elif not use_u_aniso[i_seq]: continue
-      if neighbours.size() <= 1:
+      if terminal[i_seq].size() <= 1:
         weight = 1/(sigma_terminal*sigma_terminal)
       else:
         weight = 1/(sigma*sigma)

@@ -12,4 +12,5 @@ env_bpl.SharedLibrary(
     "isotropic_adp_bpl.cpp",
     "aniso_restraints_bpl.cpp",
     "fixed_u_eq_adp_bpl.cpp",
+    "npd_adp_bpl.cpp",
     ])

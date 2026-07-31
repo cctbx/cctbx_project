@@ -11,6 +11,7 @@ tst_list = [
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
+    "$D/structure_factors/direct/tests/tst_table_based.py",
     ["$D/refinement/tests/tst_weighting_schemes.py",
      "--fix_random_seeds"],
     "$D/refinement/constraints/tests/tst_lbfgs.py",
@@ -34,6 +35,10 @@ tst_list = [
     "$D/regression/tst_commandline_refine.py",
     "$D/regression/tst_commandline_anomrefine.py",
     "$D/tests/tst_utils.py",
+    # these two draw no random numbers, so they belong here rather than among
+    # the unstable ones, which run() does not run at all
+    "$D/refinement/tests/tst_scipy_minimisers.py",
+    "$D/refinement/tests/tst_cgls.py",
 ]
 
 # unstable test
