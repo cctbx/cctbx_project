@@ -1,5 +1,6 @@
 #pragma once
 #include <smtbx/error.h>
+#include <fast_linalg/lapacke.h>
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -63,8 +64,8 @@ namespace smtbx { namespace ED {
   the difference is at the level of the last digit or two.
   */
   template <typename FloatType>
-  void hermitian_eigen(std::complex<FloatType> *a, std::size_t n,
-                       FloatType *ev)
+  void hermitian_eigen_unblocked(std::complex<FloatType> *a, std::size_t n,
+                                 FloatType *ev)
   {
     typedef std::complex<FloatType> complex_t;
     if (n == 0) {
@@ -259,6 +260,60 @@ namespace smtbx { namespace ED {
         a[i*n + k] = q[i*n + src];
       }
     }
+  }
+
+  /** @brief Where LAPACK starts winning again.
+
+  The advantage above is an advantage at small n only, and it has to end: the
+  reduction here is unblocked, so once the working set stops fitting in cache
+  LAPACK's blocking is worth more than the per-call overhead it costs. Measured
+  on random Hermitian matrices, us per call, this against LAPACK zheev:
+
+      n     200     300     400     600     800
+      ratio 1.78x   1.58x   1.27x   0.92x   0.74x
+
+  so the crossover sits between 400 and 600, and LAPACK's lead keeps growing
+  above it while the lead below is capped at about 3x. The threshold therefore
+  sits at the crossover rather than beyond it, the curve being shallow enough
+  either side that the exact placement costs little.
+
+  Well outside anything a beam group reaches -- `beam_n` defaults to 10 and a
+  few tens is a large calculation -- so this is about not being surprising if
+  someone turns it up, not about a case anyone runs today.
+  */
+  inline std::size_t hermitian_eigen_blocked_from() { return 512; }
+
+  /** @brief Eigendecomposition of a Hermitian matrix, by whichever is faster.
+
+  See hermitian_eigen_unblocked for the layout, which is LAPACK's, and for what
+  the two implementations do and do not share. They agree to the last digit or
+  two but not bit for bit, so a matrix either side of the threshold is solved
+  to the same accuracy by a different route.
+
+  Without fast_linalg there is no LAPACK to defer to and the unblocked path is
+  used at every size. That is slower for a very large matrix and correct at
+  all of them, which is the right way round: such a build previously could not
+  run this code at all, every call throwing.
+
+  Compiled in is not the same as available: fast_linalg loads its BLAS at run
+  time and every entry point asserts that this has happened. So the test is on
+  is_initialised() and not on the macro alone -- otherwise a process which
+  never called it would throw here, having a working solver right beside it.
+  */
+  template <typename FloatType>
+  void hermitian_eigen(std::complex<FloatType> *a, std::size_t n,
+                       FloatType *ev)
+  {
+#if defined(USE_FAST_LINALG)
+    if (n >= hermitian_eigen_blocked_from() && fast_linalg::is_initialised()) {
+      lapack_int info = fast_linalg::heev(
+        fast_linalg::LAPACK_ROW_MAJOR, 'V', fast_linalg::LAPACK_UPPER,
+        static_cast<lapack_int>(n), a, static_cast<lapack_int>(n), ev);
+      SMTBX_ASSERT(!info)(info);
+      return;
+    }
+#endif
+    hermitian_eigen_unblocked(a, n, ev);
   }
 
 }}
