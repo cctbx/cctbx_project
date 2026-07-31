@@ -160,8 +160,8 @@ class QMRestraintsBuilder(object):
                angle_restraints="auto", coord_cutoff=None,
                engine="xtb", orca_method=None, orca_basis_set=None,
                orca_solvent_model=None, orca_optimisation="LooseOpt",
-               orca_hessian="xtb", orca_optimise_hydrogens=False,
-               orca_exe=None, logger=None):
+               orca_convergence="default", orca_hessian="xtb",
+               orca_optimise_hydrogens=False, orca_exe=None, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -190,6 +190,8 @@ class QMRestraintsBuilder(object):
       self._engine_opts = qm.engine_options(
         engine="orca", method=orca_method, basis_set=orca_basis_set,
         solvent_model=orca_solvent_model, optimisation=orca_optimisation,
+        convergence=(None if orca_convergence in (None, "default")
+                     else orca_convergence),
         hessian=orca_hessian, optimise_hydrogens=orca_optimise_hydrogens,
         exe=orca_exe)
     else:

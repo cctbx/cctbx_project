@@ -24,6 +24,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 
 from mmtbx.programs.qmi import Program, master_phil_str
+from mmtbx.geometry_restraints import orca_manager, xtb_manager
 from mmtbx.geometry_restraints.qmi import (
   qm, restraints, sigma, metals, protonation, shape, bvs, sanity, provenance,
   util)
@@ -1408,7 +1409,7 @@ def exercise_engine_options():
   o = qm.engine_options(engine="orca")
   assert o.engine == "orca" and o.method == qm.DEFAULT_ORCA_METHOD
   assert o.solvent_model == qm.DEFAULT_ORCA_SOLVENT
-  assert o.optimisation == "LooseOpt"
+  assert o.optimisation == "LooseOpt" and o.convergence is None
   # explicit overrides win; a None basis normalises to "".
   o2 = qm.engine_options(engine="orca", method="TPSS", basis_set=None,
                          solvent_model="CPCM(water)", optimisation="Opt",
@@ -1449,29 +1450,6 @@ def exercise_read_orca_hessian():
     raise AssertionError("expected ValueError on size mismatch")
 
 
-def exercise_orca_manager_input():
-  atoms = _model(_ZN_SITE_PDB).get_hierarchy().atoms()
-  n = atoms.size()
-  mask = [i in (0, 1) for i in range(n)]   # free metal + one donor, freeze rest
-  qmm = qm._orca_manager(atoms, "r2SCAN-3c", "", "CPCM(diethylether)",
-                         2, 1, nproc=1, preamble="t")
-  qmm.program = "orca"; qmm.program_goal = "opt"; qmm.optimisation = "LooseOpt"
-  qmm.set_ligand_atoms(mask)
-  inp = qmm.get_input_lines(optimise_ligand=True, optimise_h=False)
-  assert "! r2SCAN-3c" in inp and "CPCM(diethylether)" in inp
-  assert "LooseOpt" in inp and "%pal" not in inp          # serial: no %pal
-  assert "{C 2 C}" in inp                                 # frozen atom fixed
-  assert "{C 0 C}" not in inp and "{C 1 C}" not in inp    # free atoms not fixed
-  # nproc>1 emits %pal; optimisation=Opt replaces LooseOpt.
-  qmm2 = qm._orca_manager(atoms, "r2SCAN-3c", "", "CPCM(diethylether)",
-                          2, 1, nproc=4, preamble="t2")
-  qmm2.program = "orca"; qmm2.program_goal = "opt"; qmm2.optimisation = "Opt"
-  qmm2.set_ligand_atoms(mask)
-  inp2 = qmm2.get_input_lines(optimise_ligand=True, optimise_h=False)
-  assert "%pal nprocs 4 end" in inp2
-  assert "LooseOpt" not in inp2 and "Opt" in inp2
-
-
 def exercise_freeze_orca_hydrogens():
   b = QMRestraintsBuilder(engine="orca", orca_exe="x", logger=null_out())
   model = _model(_ORCA_HFREEZE_PDB)
@@ -1487,16 +1465,18 @@ def exercise_freeze_orca_hydrogens():
 def exercise_run_hessian_dispatch():
   model = _model(_ZN_SITE_PDB)
   sites = model.get_hierarchy().atoms().extract_xyz()
-  saved = (qm._run_xtb_hessian, qm._run_orca_hessian,
+  # The runners are now the managers' run_hessian methods; monkeypatch those.
+  saved = (xtb_manager.xtb_manager.run_hessian,
+           orca_manager.orca_manager.run_hessian,
            sigma.read_xtb_hessian, sigma.read_orca_hessian)
   calls = []
   try:
-    def fake_xtb_run(*a, **k): calls.append("xtb_run"); return "xp"
-    def fake_orca_run(*a, **k): calls.append("orca_run"); return "op"
+    def fake_xtb_run(self, *a, **k): calls.append("xtb_run"); return "xp"
+    def fake_orca_run(self, *a, **k): calls.append("orca_run"); return "op"
     def fake_xtb_read(p, n): calls.append(("xtb_read", p)); return "XH"
     def fake_orca_read(p, n): calls.append(("orca_read", p)); return "OH"
-    qm._run_xtb_hessian = fake_xtb_run
-    qm._run_orca_hessian = fake_orca_run
+    xtb_manager.xtb_manager.run_hessian = fake_xtb_run
+    orca_manager.orca_manager.run_hessian = fake_orca_run
     sigma.read_xtb_hessian = fake_xtb_read
     sigma.read_orca_hessian = fake_orca_read
     # xtb engine -> xtb runner + xtb reader
@@ -1515,15 +1495,15 @@ def exercise_run_hessian_dispatch():
                                                      hessian="partial"))
     assert calls == ["orca_run", ("orca_read", "op")] and r == "OH", calls
   finally:
-    (qm._run_xtb_hessian, qm._run_orca_hessian,
+    (xtb_manager.xtb_manager.run_hessian,
+     orca_manager.orca_manager.run_hessian,
      sigma.read_xtb_hessian, sigma.read_orca_hessian) = saved
 
 
 def exercise_run_constrained_opt_dispatch():
-  from mmtbx.geometry_restraints import xtb_manager as xm
   model = _model(_ZN_SITE_PDB)
   work = tempfile.mkdtemp()
-  saved = (qm._orca_manager, xm.xtb_manager)
+  saved = (orca_manager.orca_manager, xtb_manager.xtb_manager)
   built = []
   class _Fake(object):
     def __init__(self, *a, **k): built.append((type(self).tag, k.get("nproc")))
@@ -1533,8 +1513,8 @@ def exercise_run_constrained_opt_dispatch():
   class FakeOrca(_Fake): tag = "orca"
   class FakeXtb(_Fake): tag = "xtb"
   try:
-    qm._orca_manager = FakeOrca
-    xm.xtb_manager = FakeXtb
+    orca_manager.orca_manager = FakeOrca
+    xtb_manager.xtb_manager = FakeXtb
     _c, m1 = qm.run_constrained_opt(model, [2, 3, 4], 2, 1, nproc=4,
                                     work_dir=work, engine_opts=qm.engine_options())
     assert isinstance(m1, FakeXtb) and m1.mask[0] is True and m1.mask[2] is False
@@ -1545,7 +1525,7 @@ def exercise_run_constrained_opt_dispatch():
     assert ("xtb", 4) in built and ("orca", 4) in built
     assert ("xtb_opt", False) in built and ("orca_opt", False) in built
   finally:
-    (qm._orca_manager, xm.xtb_manager) = saved
+    (orca_manager.orca_manager, xtb_manager.xtb_manager) = saved
 
 
 def run():
@@ -1553,7 +1533,6 @@ def run():
   exercise_hessian_parse()
   exercise_engine_options()
   exercise_read_orca_hessian()
-  exercise_orca_manager_input()
   exercise_freeze_orca_hydrogens()
   exercise_run_hessian_dispatch()
   exercise_run_constrained_opt_dispatch()

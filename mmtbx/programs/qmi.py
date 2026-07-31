@@ -183,6 +183,12 @@ its own basis."
       .type = choice
       .short_caption = Optimisation convergence
       .help = "ORCA geometry-optimisation convergence."
+    convergence = default *looser
+      .type = choice
+      .short_caption = Geometry convergence
+      .help = "ORCA geometry-optimisation convergence tolerances: 'default' keeps \
+the built-in LooseOpt/Opt thresholds; 'looser' relaxes them for faster metal-site \
+optimisation."
     optimise_hydrogens = False
       .type = bool
       .short_caption = Optimise all hydrogens
@@ -447,6 +453,7 @@ Requires xtb.
       orca_basis_set=self.params.qm.orca.basis_set,
       orca_solvent_model=self.params.qm.orca.solvent,
       orca_optimisation=self.params.qm.orca.optimisation,
+      orca_convergence=self.params.qm.orca.convergence,
       orca_hessian=self.params.qm.orca.hessian,
       orca_optimise_hydrogens=self.params.qm.orca.optimise_hydrogens,
       orca_exe=self.params.qm.orca.exe,
@@ -475,8 +482,14 @@ Requires xtb.
     proto = ("reduce2 + naiad water-H + metal-donor deprotonation"
              if self.params.protonation.enable
              else "user-supplied (protonation off)")
+    if self.params.qm.engine == 'orca':
+      orca = self.params.qm.orca
+      method = f"{orca.method} (Hessian: {orca.hessian})"
+      solvent = orca.solvent
+    else:
+      method, solvent = "GFN2-xTB", self.params.qm.solvent
     return provenance.global_block(
-      method="GFN2-xTB", solvent=self.params.qm.solvent,
+      method=method, solvent=solvent,
       temperature=self.params.qm.temperature, model_name=self._model_name,
       protonation=proto)
 

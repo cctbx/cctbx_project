@@ -29,11 +29,10 @@ hydrogen, which would release the cap H atoms that must stay frozen.
 
 from __future__ import absolute_import, division, print_function
 
-import contextlib
 import os
 
 from libtbx import group_args
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import null_out
 from scitbx import matrix
 from iotbx.pdb import common_residue_names_get_class
 
@@ -72,21 +71,23 @@ DEFAULT_ORCA_OPT = "LooseOpt"
 
 def engine_options(engine="xtb", method=None, basis_set="",
                    solvent_model=None, optimisation=DEFAULT_ORCA_OPT,
-                   hessian="xtb", optimise_hydrogens=False, exe=None):
+                   convergence=None, hessian="xtb", optimise_hydrogens=False,
+                   exe=None):
   """Bundle the QM-backend configuration shared by :func:`run_constrained_opt`
   and :func:`run_hessian`.
 
   *engine* is ``'xtb'`` or ``'orca'``.  Unset *method* / *solvent_model* fall
   back to the engine's convention (GFN2-xTB / ether for xTB, r2SCAN-3c /
   CPCM(diethylether) for ORCA).  *optimisation* is the ORCA convergence preset
-  (``'LooseOpt'`` or ``'Opt'``); *hessian* selects the force-constant source
-  (``'xtb'`` computes the Hessian with GFN2-xTB even under the ORCA optimiser,
-  ``'partial'`` / ``'full'`` use an ORCA ``NumFreq``); *optimise_hydrogens*
-  ``True`` keeps the non-cap hydrogens free in the ORCA optimisation as xTB
-  does, ``False`` freezes them too except the coordinating-water hydrogens,
-  cutting the DFT cost (the capping hydrogens are frozen either way); *exe*
-  overrides the ORCA executable (else the ``PHENIX_ORCA`` environment
-  variable)."""
+  (``'LooseOpt'`` or ``'Opt'``); *convergence* -> orca_manager.geom_convergence
+  (None, a GEOM_CONVERGENCE preset name, or a Tol dict); *hessian* selects the
+  force-constant source (``'xtb'`` computes the Hessian with GFN2-xTB even under
+  the ORCA optimiser, ``'partial'`` / ``'full'`` use an ORCA ``NumFreq``);
+  *optimise_hydrogens* ``True`` keeps the non-cap hydrogens free in the ORCA
+  optimisation as xTB does, ``False`` freezes them too except the
+  coordinating-water hydrogens, cutting the DFT cost (the capping hydrogens are
+  frozen either way); *exe* overrides the ORCA executable (else the
+  ``PHENIX_ORCA`` environment variable)."""
   if method is None:
     method = DEFAULT_XTB_METHOD if engine == "xtb" else DEFAULT_ORCA_METHOD
   if solvent_model is None:
@@ -94,42 +95,9 @@ def engine_options(engine="xtb", method=None, basis_set="",
   return group_args(
     engine=engine, method=method, basis_set=basis_set or "",
     solvent_model=solvent_model, optimisation=optimisation,
-    hessian=hessian, optimise_hydrogens=optimise_hydrogens, exe=exe)
+    convergence=convergence, hessian=hessian,
+    optimise_hydrogens=optimise_hydrogens, exe=exe)
 
-
-@contextlib.contextmanager
-def _orca_exe_env(exe):
-  """Point ``PHENIX_ORCA`` at *exe* for the duration of the block (restoring the
-  prior value), so orca_manager's ``get_cmd`` finds the executable.  A falsy
-  *exe* leaves the environment untouched (the caller relies on ``PHENIX_ORCA``
-  already being set)."""
-  if not exe:
-    yield
-    return
-  saved = os.environ.get("PHENIX_ORCA")
-  os.environ["PHENIX_ORCA"] = exe
-  try:
-    yield
-  finally:
-    if saved is None:
-      os.environ.pop("PHENIX_ORCA", None)
-    else:
-      os.environ["PHENIX_ORCA"] = saved
-
-
-class _orca_manager(orca_manager.orca_manager):
-  """orca_manager wired for QMI, kept as a QMI-local subclass so the shared
-  manager stays untouched: run in parallel when ``nproc > 1`` and honour
-  ``self.optimisation`` (the base always emits a serial LooseOpt job)."""
-
-  def _input_header(self, gradients_only=False):
-    header = super()._input_header(gradients_only=gradients_only)
-    optimisation = getattr(self, 'optimisation', None)
-    if not gradients_only and optimisation and optimisation != 'LooseOpt':
-      header = header.replace('LooseOpt', optimisation, 1)
-    if self.nproc > 1:
-      header = f'%pal nprocs {self.nproc} end\n' + header
-    return header
 
 _BACKBONE_NAMES = {"N", "CA", "C", "O", "OXT"}
 # Protein residue classes qualifying for the coordinating-backbone rule.
@@ -494,11 +462,13 @@ def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
   mask = optimise_mask_from_frozen(len(atoms), frozen_iseqs)
 
   if engine_opts.engine == 'orca':
-    qmm = _orca_manager(
+    qmm = orca_manager.orca_manager(
       atoms, engine_opts.method, engine_opts.basis_set,
       engine_opts.solvent_model, charge, multiplicity,
       nproc=nproc, preamble=preamble)
     qmm.optimisation = engine_opts.optimisation
+    qmm.geom_convergence = engine_opts.convergence
+    qmm.exe = engine_opts.exe
   else:
     qmm = xtb_manager.xtb_manager(
       atoms, engine_opts.method, '',   # basis_set: unused by xTB
@@ -509,10 +479,7 @@ def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
   qmm.program_goal = 'opt'   # makes get_opt set optimise_ligand=True
   qmm.set_ligand_atoms(mask)
 
-  # ORCA finds its executable through PHENIX_ORCA; the xTB branch passes
-  # exe=None so the context manager is a no-op.
-  with util.in_directory(work_dir), _orca_exe_env(
-      engine_opts.exe if engine_opts.engine == 'orca' else None):
+  with util.in_directory(work_dir):
     # optimise_h=False: the injected mask is authoritative; without it the
     # manager force-frees every H, releasing the frozen cap H atoms.
     _opt_subset, full_coords = qmm.get_opt(
@@ -560,149 +527,25 @@ def run_hessian(submodel, sites_cart, charge, multiplicity, engine_opts=None,
   from mmtbx.geometry_restraints.qmi import sigma
   n_atoms = len(submodel.get_atoms())
   if engine_opts.engine == 'orca' and engine_opts.hessian in ('partial', 'full'):
-    hess_path = _run_orca_hessian(
-      submodel, sites_cart, charge, multiplicity, engine_opts, hessian_atoms,
-      nproc=nproc, preamble=preamble, work_dir=work_dir, log=log)
+    qmm = orca_manager.orca_manager(
+      submodel.get_atoms(), engine_opts.method, engine_opts.basis_set,
+      engine_opts.solvent_model, charge, multiplicity,
+      nproc=nproc, preamble=preamble)
+    qmm.exe = engine_opts.exe
+    with util.in_directory(work_dir):
+      hess_path = qmm.run_hessian(
+        sites_cart=sites_cart, hessian_atoms=hessian_atoms,
+        partial=(engine_opts.hessian == 'partial'), log=log)
     return sigma.read_orca_hessian(hess_path, n_atoms)
-  # xTB Hessian: always GFN2-xTB in ether, even when ORCA drove the opt (the
-  # r2SCAN-3c label engine_opts carries then is meaningless to xtb).
-  if engine_opts.engine == 'xtb':
-    method, solvent_model = engine_opts.method, engine_opts.solvent_model
-  else:
-    method, solvent_model = DEFAULT_XTB_METHOD, DEFAULT_XTB_SOLVENT
-  hess_path = _run_xtb_hessian(
-    submodel, sites_cart, charge, multiplicity, method, solvent_model,
-    nproc=nproc, preamble=preamble, work_dir=work_dir, log=log)
-  return sigma.read_xtb_hessian(hess_path, n_atoms)
-
-
-def _run_xtb_hessian(submodel, sites_cart, charge, multiplicity, method,
-                     solvent_model, nproc=1, preamble="qmi_hess", work_dir=None,
-                     log=None):
-  """Run ``xtb --hess`` at *sites_cart*; return the ``.hessian`` file path.
-
-  Reuses ``xtb_manager`` for exe discovery and the GFN / solvent / OpenMP
-  conventions, but writes its own ``.xyz`` (at *sites_cart*, not the sub-model's
-  input coordinates) and a minimal xcontrol (charge/spin/GFN, no ``$opt``)."""
-  if log is None:
-    log = null_out()
-  from libtbx import easy_run
-  exe = xtb_manager.get_exe()
-  if not exe:
-    raise Sorry("xtb executable not found. Set the PHENIX_XTB environment "
-                "variable or install xtb in the build.")
-  atoms = submodel.get_atoms()
-  # A throwaway manager only to reuse its GFN/solvent/namespace/OMP helpers.
+  # xTB Hessian (default; also engine=orca with hessian='xtb'): always GFN2-xTB
+  # in ether, even when ORCA drove the opt (the r2SCAN-3c label engine_opts
+  # carries then is meaningless to xtb).
+  method = engine_opts.method if engine_opts.engine == 'xtb' else DEFAULT_XTB_METHOD
+  solvent_model = (engine_opts.solvent_model if engine_opts.engine == 'xtb'
+                   else DEFAULT_XTB_SOLVENT)
   qmm = xtb_manager.xtb_manager(
-    atoms, method, '', solvent_model, charge, multiplicity,
+    submodel.get_atoms(), method, '', solvent_model, charge, multiplicity,
     nproc=nproc, preamble=preamble)
-  gfn = qmm._get_gfn()
-  solvent = qmm._get_solvent()
-  threads = qmm._get_threads()
-  ns = qmm.get_namespace()
-  # ns already ends in '_hess' (the preamble names this the Hessian job), which
-  # namespaces these and the .hessian/.charges/... xTB writes; no '.hess' infix.
-  xyz_name = f"{ns}.xyz"
-  inp_name = f"{ns}.inp"
-  log_name = f"{ns}.log"
-  hess_name = f"{ns}.hessian"
-
-  inp_lines = [f"# qmi hessian ({preamble})",
-               f"$chrg {int(charge)}",
-               f"$spin {int(multiplicity) - 1}"]
-  if gfn != 'ff':
-    inp_lines += ["$gfn", f"   method={gfn}", "$end"]
-
-  xyz_lines = [str(len(atoms)), f"qmi hessian ({preamble})"]
-  for atom, xyz in zip(atoms, sites_cart):
-    elem = atom.element.strip()
-    if not elem:
-      raise Sorry(f"atom {atom.quote()} has blank element column; "
-                  "cannot write xTB xyz block")
-    xyz_lines.append(f"{elem:<2s} {xyz[0]:14.6f} {xyz[1]:14.6f} {xyz[2]:14.6f}")
-
-  gfn_flag = '--gfnff' if gfn == 'ff' else f'--gfn {gfn}'
-  solvent_flag = f' --alpb {solvent}' if solvent else ''
-  cmd = (f"{exe} {xyz_name} --input {inp_name} --namespace {ns} "
-         f"{gfn_flag}{solvent_flag} -P {threads} --hess >& {log_name}")
-
   with util.in_directory(work_dir):
-    with open(inp_name, 'w') as f:
-      f.write("\n".join(inp_lines) + "\n")
-    with open(xyz_name, 'w') as f:
-      f.write("\n".join(xyz_lines) + "\n")
-    # A prior run's Hessian in this namespace must not survive an aborted --hess
-    # and be read back as this run's output.
-    if os.path.exists(hess_name):
-      os.remove(hess_name)
-    saved = {k: os.environ.get(k) for k in qmm._omp_env()}
-    os.environ.update(qmm._omp_env())
-    try:
-      print(f"  Starting (hessian): {cmd}", file=log)
-      easy_run.go(cmd)
-    finally:
-      for k, v in saved.items():
-        if v is None:
-          os.environ.pop(k, None)
-        else:
-          os.environ[k] = v
-    # Trust the Hessian only if xtb terminated normally (mirrors the opt path's
-    # xtb_manager check); an abort otherwise leaves a stale/partial file.
-    qmm._check_log(log_name, log=log)
-    if not os.path.exists(hess_name):
-      raise Sorry(f"xtb --hess did not produce {hess_name}; check {log_name}")
-    return os.path.abspath(hess_name)
-
-
-def _run_orca_hessian(submodel, sites_cart, charge, multiplicity, engine_opts,
-                      hessian_atoms, nproc=1, preamble="qmi_hess", work_dir=None,
-                      log=None):
-  """Run an ORCA ``NumFreq`` at *sites_cart*; return the ``.hess`` file path.
-
-  ``engine_opts.hessian == 'partial'`` displaces only *hessian_atoms* (metal +
-  donors) via ``%freq Partial_Hess {...} end``; ORCA still writes the full
-  3N x 3N Hessian, so :func:`sigma.read_orca_hessian` reads it unchanged.  A
-  ``'full'`` request displaces every atom (much costlier)."""
-  if log is None:
-    log = null_out()
-  from libtbx import easy_run
-  atoms = submodel.get_atoms()
-  base = f"orca_{preamble}"
-  inp_name = f"{base}.in"
-  log_name = f"{base}.log"
-  hess_name = f"{base}.hess"
-
-  header = ["%maxcore 2048"]
-  if nproc > 1:
-    header.append(f"%pal nprocs {int(nproc)} end")
-  keywords = " ".join(w for w in (engine_opts.method, engine_opts.basis_set,
-                                  engine_opts.solvent_model, "NumFreq") if w)
-  lines = header + [f"! {keywords}"]
-  if engine_opts.hessian == 'partial' and hessian_atoms:
-    sel = " ".join(str(int(i)) for i in sorted(set(hessian_atoms)))
-    lines += ["%freq", f"  Partial_Hess {{{sel}}} end", "end"]
-  lines.append(f"* xyz {int(charge)} {int(multiplicity)}")
-  for atom, xyz in zip(atoms, sites_cart):
-    elem = atom.element.strip()
-    if not elem:
-      raise Sorry(f"atom {atom.quote()} has blank element column; "
-                  "cannot write ORCA coordinate block")
-    lines.append(f" {elem} {xyz[0]:.6f} {xyz[1]:.6f} {xyz[2]:.6f}")
-  lines.append("*")
-
-  with util.in_directory(work_dir), _orca_exe_env(engine_opts.exe):
-    exe = os.environ.get("PHENIX_ORCA")
-    if not exe:
-      raise Sorry("ORCA executable not found. Set qm.orca.exe or the "
-                  "PHENIX_ORCA environment variable.")
-    with open(inp_name, 'w') as f:
-      f.write("\n".join(lines) + "\n")
-    # A prior run's Hessian must not survive an aborted NumFreq and be read back.
-    if os.path.exists(hess_name):
-      os.remove(hess_name)
-    cmd = f"{exe} {inp_name} >& {log_name}"
-    print(f"  Starting (hessian): {cmd}", file=log)
-    easy_run.go(cmd)
-    if not os.path.exists(hess_name):
-      raise Sorry(f"ORCA NumFreq did not produce {hess_name}; check {log_name}")
-    return os.path.abspath(hess_name)
+    hess_path = qmm.run_hessian(sites_cart=sites_cart, log=log)
+  return sigma.read_xtb_hessian(hess_path, n_atoms)
