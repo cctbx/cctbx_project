@@ -309,9 +309,9 @@ class xtb_manager(base_qm_manager.base_qm_manager):
     # the .xyz xTB actually reads. (_gradients_only, recovered from whether an
     # $opt block was emitted, tells run_cmd which runtype flag to use.)
     self._gradients_only = '$opt' not in content
-    with open(self.get_input_filename(), 'w') as f:
+    with open(self.get_input_filename(), 'w', encoding='utf-8') as f:
       f.write(content)
-    with open(self.get_coordinate_input_filename(), 'w') as f:
+    with open(self.get_coordinate_input_filename(), 'w', encoding='utf-8') as f:
       f.write(self.get_xyz_lines())
 
   # ---- running -------------------------------------------------------------
@@ -405,9 +405,9 @@ class xtb_manager(base_qm_manager.base_qm_manager):
       raise Sorry('xtb --hess computes the full Cartesian Hessian only; a partial '
                   'Hessian over hessian_atoms is not supported (pass partial=False '
                   'for the full Hessian).')
-    with open(self.get_input_filename(), 'w') as f:
+    with open(self.get_input_filename(), 'w', encoding='utf-8') as f:
       f.write(self.get_hessian_input_lines())
-    with open(self.get_coordinate_input_filename(), 'w') as f:
+    with open(self.get_coordinate_input_filename(), 'w', encoding='utf-8') as f:
       f.write(self.get_xyz_lines(sites_cart=sites_cart))
     hessian_filename = self.get_hessian_filename()
     if os.path.exists(hessian_filename):
@@ -424,7 +424,7 @@ class xtb_manager(base_qm_manager.base_qm_manager):
     filename = self.get_coordinate_filename()
     if not os.path.exists(filename):
       raise Sorry(f'QM output filename not found: {filename}')
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
       lines = f.read().splitlines()[2:]  # skip the atom-count and comment lines
     coords = flex.vec3_double()
     for line in lines:
@@ -463,7 +463,7 @@ class xtb_manager(base_qm_manager.base_qm_manager):
     natoms = len(self.atoms)
     energy = None
     grad_rows = []
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
       for line in f:
         stripped = line.strip()
         if not stripped or stripped.startswith('$'):
