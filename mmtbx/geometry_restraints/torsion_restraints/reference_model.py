@@ -75,7 +75,7 @@ reference_model
   side_chain = False
     .type = bool
     .help = Include dihedrals formed by side chain atoms
-  fix_outliers = True
+  fix_outliers = False
     .type = bool
     .help = Try to fix rotamer outliers in refined model
   strict_rotamer_matching = False
