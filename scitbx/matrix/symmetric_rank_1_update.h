@@ -12,6 +12,39 @@
 
 namespace scitbx { namespace matrix {
 
+  /** @brief Two ways to accumulate \f$\sum_i \alpha_i x_i x_i^T\f$.
+
+  A least-squares normal matrix is \f$J^T W J\f$ with W diagonal, and that is
+  the same thing as a sum of one rank-1 update per row of J:
+
+      (J^T W J)_{jk} = sum_i w_i J_{ij} J_{ik}
+
+  The two classes here are the two ways of taking that sum, and they compute
+  the same matrix by different routes.
+
+  The direct way, sum_of_symmetric_rank_1_updates, folds each row in as it
+  arrives with a packed rank-1 update (BLAS 2, `spr`). It touches the whole
+  n-by-n result once per row while reading only n numbers -- so it moves O(n^2)
+  memory to do O(n^2) arithmetic, and is bound by the former.
+
+  The other way uses the identity that for non-negative weights
+
+      alpha x x^T = y y^T   where   y = sqrt(alpha) x
+
+  so the whole sum is \f$A^T A\f$ for a matrix A whose rows are the scaled
+  \f$y_i\f$. Buffer the rows and that becomes one `syrk` per block -- BLAS 3,
+  which reads a block of rows and does O(n^2) arithmetic per row against it, so
+  the result stays in cache across many rows and the arithmetic can actually
+  saturate the machine. That is rank_n_update below, and the buffering, the
+  chunking and the sqrt are all in service of this one identity.
+
+  The requirement it comes with is visible in the sqrt: the weights must be
+  non-negative. They are, being least-squares weights.
+
+  The two do not agree bit for bit -- they sum in different orders -- which is
+  why swapping between them changes low-order digits and nothing else.
+  */
+
   /// Sum of symmetric rank-1 updates \f$\alpha_i x_i x_i^T\f$
   template <typename T>
   class sum_of_symmetric_rank_1_updates

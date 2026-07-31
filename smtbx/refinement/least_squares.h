@@ -137,6 +137,35 @@ namespace smtbx { namespace refinement { namespace least_squares {
   The constraints is performed with a reparametrisation whose Jacobian
   transpose is passed as an argument.
 
+  What is being built, in the usual notation: a crystallographic refinement
+  minimises
+
+      L(x) = sum_h w_h ( K y_c(h; x) - y_o(h) )^2
+
+  over the refined parameters x, with y the observable (normally |Fc|^2 against
+  Fo^2), w the weights and K an overall scale. That is a non-linear problem
+  solved by repeated linearisation -- each cycle linearises y_c about the
+  current x, giving the design matrix J with one row per reflection,
+
+      J_{h,k} = dy_c(h) / dx_k
+
+  and then solves the *normal equations* of that linear problem for the shift,
+
+      (J^T W J) dx = J^T W r,      r_h = y_o(h) - K y_c(h)
+
+  W being the diagonal of weights. The whole cost of a refinement cycle is
+  filling in J^T W J: the loop below visits each reflection once, computes its
+  y_c and its row of J -- see least_squares_fc.h for the two changes of variable
+  that row is dragged through -- and hands the row to an accumulator which adds
+  its rank-1 contribution w_h j_h j_h^T. Summing rank-1 updates is exactly what
+  makes this a BLAS-3 operation if the rows are batched (syrk over a block of
+  rows) rather than a BLAS-2 one, which is what
+  scitbx/matrix/symmetric_rank_1_update.h is about.
+
+  The scale factor K is not among the x. It is eliminated analytically at each
+  cycle, the problem being linear in it -- separable, or variable-projection,
+  least squares; scitbx/lstbx/normal_equations.h carries that derivation.
+
   The accumulator is fed whether or not the design matrix is being stored, so
   build_design_matrix really does build both, as the name says. That matters
   for the stored-J conjugate gradients: they want J and, alongside it, the

@@ -379,10 +379,18 @@ namespace smtbx { namespace ED
 
     /** @brief Which row of the kinematic design matrix each matrix element reads.
 
-    The pattern is a property of the beams alone -- element (i,j) always comes
-    from the reflection h_i - h_j -- so it is the same for every parameter, and
-    resolving it once rather than once per parameter is the whole point of
-    splitting it out. A diagonal element has no reflection and is left at -1.
+    Ds_kin[p] is dA/dp, the derivative of the scattering matrix with respect to
+    one refined parameter -- see the note on a_dyn_calculator for what A is and
+    why its derivative is what dynamical refinement needs. A(i,j) is the
+    structure factor of h_i - h_j, so dA(i,j)/dp is the derivative of that same
+    structure factor, which the kinematic calculation has already produced: it
+    is one entry of the kinematic design matrix, at the row for h_i - h_j and
+    the column for p.
+
+    That row is a property of the beams alone, identical for every parameter,
+    which is why resolving it is worth separating from filling the matrices.
+    The n^2 index lookups happen once instead of once per parameter. A diagonal
+    element is not a difference of two beams and is left at -1.
     */
     static void build_D_index(
       const lookup_t& mi_lookup,
