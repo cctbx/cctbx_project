@@ -135,6 +135,13 @@ extern "C" {
     double alpha, const double* A, int lda,
     const double* B, int ldb, double beta, double* C, int ldc);
 
+  fast_linalg_api void cblas_sgemv(int Order, int TransA, int M, int N,
+    float alpha, const float* A, int lda,
+    const float* X, int incX, float beta, float* Y, int incY);
+  fast_linalg_api void cblas_dgemv(int Order, int TransA, int M, int N,
+    double alpha, const double* A, int lda,
+    const double* X, int incX, double beta, double* Y, int incY);
+
 };
 
 namespace fast_linalg {
@@ -386,6 +393,27 @@ namespace fast_linalg {
   }
   //@}
 
+  /// @name y := alpha op(A) x + beta y, for a general matrix A
+  /** op(A) is A for TransA = CblasNoTrans and A^T for CblasTrans. M and N are
+      always the rows and columns of A itself, not of op(A), so the same pair
+      describes both directions and x and y swap lengths between them.
+   */
+  //@{
+  inline void gemv(int Order, int TransA, int M, int N,
+    float alpha, const float* A, int lda,
+    const float* X, int incX, float beta, float* Y, int incY)
+  {
+    cblas_sgemv(Order, TransA, M, N, alpha, A, lda, X, incX, beta, Y, incY);
+  }
+
+  inline void gemv(int Order, int TransA, int M, int N,
+    double alpha, const double* A, int lda,
+    const double* X, int incX, double beta, double* Y, int incY)
+  {
+    cblas_dgemv(Order, TransA, M, N, alpha, A, lda, X, incX, beta, Y, incY);
+  }
+  //@}
+
 }
 #else
 namespace fast_linalg {
@@ -500,6 +528,13 @@ namespace fast_linalg {
 
   template <typename FloatType>
   void gemm(int, int, int, int, int, int, FloatType, const FloatType*, int,
+    const FloatType*, int, FloatType, FloatType*, int)
+  {
+    throw SCITBX_NOT_IMPLEMENTED();
+  }
+
+  template <typename FloatType>
+  void gemv(int, int, int, int, FloatType, const FloatType*, int,
     const FloatType*, int, FloatType, FloatType*, int)
   {
     throw SCITBX_NOT_IMPLEMENTED();

@@ -11,10 +11,21 @@ namespace {
   struct fc_correction_wrapper {
     typedef fc_correction<FloatType> wt;
 
+    static FloatType compute(
+      wt const& correction,
+      miller::index<> const& index,
+      FloatType fc_sq,
+      bool compute_gradient)
+    {
+      // A wavelength of zero selects the wavelength stored by corrections
+      // which need one; corrections which do not need it ignore the value.
+      return correction.compute(0, index, fc_sq, compute_gradient);
+    }
+
     static void wrap() {
       using namespace boost::python;
       class_<wt, boost::noncopyable>("fc_correction", no_init)
-        .def("compute", &wt::compute, (
+        .def("compute", &compute, (
           arg("index"),
           arg("fc_sq"),
           arg("compute_gradient")))

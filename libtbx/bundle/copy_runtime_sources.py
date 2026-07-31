@@ -4,7 +4,7 @@ import libtbx.load_env
 import libtbx.path
 import re
 import shutil
-import sys, os
+import os
 
 def copy_dist_files(bundle_options, dirname, names):
   (exclude_from_binary_bundle, dist_copy) = bundle_options

@@ -28,15 +28,32 @@ rows_per_restraint = {
   adp.isotropic_adp_proxy: 6,
   }
 
+def set_gradient_flags(xray_structure):
+  """ Refine everything, which is what these test cases are about.
+
+  It matters to the proxy builders and not only to the refinement: the ADP
+  restraint builders skip a scatterer whose ADPs are not being refined, so a
+  structure whose flags are still at their defaults yields no ADP proxies at
+  all. The test cases build their proxies in the class body, before any
+  instance exists, so the structure they build them from has to be flagged
+  here rather than in __init__.
+  """
+  for sc in xray_structure.scatterers():
+    sc.flags.set_grad_site(True)
+    if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+    if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
+  return xray_structure
+
+
+def refinable_sucrose():
+  return set_gradient_flags(smtbx.development.sucrose())
+
+
 class restraints_test_case:
 
   def __init__(self):
-    self.xray_structure = smtbx.development.sucrose()
+    self.xray_structure = set_gradient_flags(smtbx.development.sucrose())
     self.tolerance = 1e-4
-    for sc in self.xray_structure.scatterers():
-      sc.flags.set_grad_site(True)
-      if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
-      if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
 
     self.param_map = parameter_map(self.xray_structure.scatterers())
     assert self.proxies.size() > 0
@@ -191,7 +208,7 @@ class adp_restraints_test_case(restraints_test_case):
 
 class isotropic_adp_test_case(adp_restraints_test_case):
   proxies = isotropic_adp_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_isotropic_adp_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -207,7 +224,7 @@ class isotropic_adp_test_case(adp_restraints_test_case):
 
 class fixed_u_eq_adp_test_case(adp_restraints_test_case):
   proxies = fixed_u_eq_adp_restraints(
-    xray_structure=smtbx.development.sucrose(),
+    xray_structure=refinable_sucrose(),
     u_eq_ideal=0.025).proxies
   # no need to test all of them every time
   proxies = adp.shared_fixed_u_eq_adp_proxy(
@@ -227,7 +244,7 @@ class fixed_u_eq_adp_test_case(adp_restraints_test_case):
 
 class adp_similarity_test_case(adp_restraints_test_case):
   proxies = adp_similarity_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_adp_similarity_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -246,7 +263,7 @@ class adp_similarity_test_case(adp_restraints_test_case):
 
 class adp_u_eq_similarity_test_case(adp_restraints_test_case):
   proxies = adp_u_eq_similarity_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   #proxies = adp.shared_adp_u_eq_similarity_proxy(
     #flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -265,7 +282,7 @@ class adp_u_eq_similarity_test_case(adp_restraints_test_case):
 
 class adp_volume_similarity_test_case(adp_restraints_test_case):
   proxies = adp_volume_similarity_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   manager = restraints.manager(adp_volume_similarity_proxies=proxies)
   def __init__(self):
     adp_restraints_test_case.__init__(self)
@@ -285,7 +302,7 @@ class adp_volume_similarity_test_case(adp_restraints_test_case):
 
 class rigid_bond_test_case(adp_restraints_test_case):
   proxies = rigid_bond_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_rigid_bond_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.3)))

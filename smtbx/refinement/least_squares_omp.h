@@ -25,7 +25,7 @@ struct accumulate_reflection_chunk_omp {
   af::ref<std::complex<FloatType> > f_calc;
   af::ref<FloatType> observables;
   af::ref<FloatType> weights;
-  af::versa<FloatType, af::c_grid<2> >& design_matrix;
+  af::versa<StoreType, af::c_grid<2> >& design_matrix;
   int max_memory;
   bool running;
 
@@ -45,7 +45,7 @@ struct accumulate_reflection_chunk_omp {
     af::ref<std::complex<FloatType> > f_calc,
     af::ref<FloatType> observables,
     af::ref<FloatType> weights,
-    af::versa<FloatType, af::c_grid<2> >& design_matrix,
+    af::versa<StoreType, af::c_grid<2> >& design_matrix,
     int &max_memory)
     : parent(parent),
     normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
@@ -78,25 +78,70 @@ struct accumulate_reflection_chunk_omp {
         f_calc_threads[i] = f_calc_function.fork();
         fc_crs[i] = fc_cr.fork();
       }
-      const FloatType temp_memory = threads * ((n_rows * (n_rows + 1) / 2) + 3 * n_rows) * sizeof(FloatType) / 1048576.0;
-      const FloatType mem_per_size = n_rows * sizeof(FloatType) / 1048576.0;
-      int size = n;
-      FloatType req_mem = temp_memory + size * mem_per_size;
-      while (req_mem > max_memory) {
-        size -= threads;
-        req_mem -= mem_per_size * threads;
-        if (size >= n) {
-          break;
-        }
+      /* As in the serial loop: the twinning processor, the Fc correction and
+         the radial f'/f'' correction are properties of the build and not of the
+         reflection, and in an ordinary refinement none of them has anything to
+         say. Settling that here lets the loop below skip all three, and write
+         its gradients straight into the chunk array rather than copying them
+         there. The forks are all of one original, so asking the first about the
+         dispersion correction answers for every thread.
+       */
+      const bool fast = compute_grad
+        && twp.is_trivial()
+        && fc_cr.is_trivial()
+        && f_calc_function.get_dispersion_correction() == 0;
+      /* Flattened once here rather than per thread: it is read-only, and the
+         threads below share it. Not built for a pass which wants no
+         derivatives, since then it is never applied to anything.
+       */
+      boost::scoped_ptr<flattened_jacobian_transpose> jt;
+      if (compute_grad) {
+        jt.reset(new flattened_jacobian_transpose(
+          jacobian_transpose_matching_grad_fc));
       }
-      matrix.resize(threads * (n_rows * (n_rows + 1) / 2), 0);
+      /* Each thread's own fork, since the flag lives in the functor and the
+         forks were taken before it was set.
+       */
+      for (int i = 0; i < threads; i++) {
+        f_calc_threads[i]->set_defer_grad_observable(
+          fast && f_calc_threads[i]->raw_gradients());
+      }
+      /* Only an accumulator which cannot fold rows in for itself needs a matrix
+         per thread, and on a large problem those dwarf everything else here --
+         so ask, rather than allocating them for whichever accumulator turns up.
+       */
+      const std::size_t matrix_scratch =
+        NormalEquations::omp_matrix_scratch(n_rows, threads);
+      const FloatType temp_memory =
+        (matrix_scratch + threads * 3 * std::size_t(n_rows))
+        * sizeof(FloatType) / 1048576.0;
+      const FloatType mem_per_size = n_rows * sizeof(FloatType) / 1048576.0;
+      int chunk = n;
+      FloatType req_mem = temp_memory + chunk * mem_per_size;
+      while (req_mem > max_memory && chunk > threads) {
+        chunk -= threads;
+        req_mem -= mem_per_size * threads;
+      }
+      /* The per-thread normal matrices are not part of what shrinking the
+         chunk can save, so a budget smaller than those alone would drive the
+         chunk to nothing. One reflection at a time is as far as this can go.
+       */
+      if (chunk < 1) {
+        chunk = 1;
+      }
+      matrix.resize(matrix_scratch, 0);
       yo_dot_grad_yc_.resize(threads * n_rows, 0);
       yc_dot_grad_yc_.resize(threads * n_rows, 0);
-      if (compute_grad && !build_design_matrix && size < n) {
-        gradients.resize(size * n_rows, 0);
+      if (compute_grad && !build_design_matrix && chunk < n) {
+        gradients.resize(chunk * n_rows, 0);
       }
-      for (int i_h = 0; i_h * size < n; i_h++) {
-        const int start = i_h * size;
+      /* The stride stays the chunk throughout. Deriving the next start from a
+         size which the final, shorter chunk had overwritten would step back
+         over reflections already accumulated, and they would be added to the
+         normal equations more than once.
+       */
+      for (int start = 0; start < n; start += chunk) {
+        int size = chunk;
         //check whether last chunk is smaller
         if (start + size >= n) {
           size = n - start;
@@ -141,34 +186,49 @@ struct accumulate_reflection_chunk_omp {
               continue;
             }
             f_calc[refl_i] = f_calc_threads[thread]->get_f_calc();
+            /* On the fast path the gradients go straight into the slot of the
+               chunk-wide array that add_equations_omp will read, so the copy
+               into it below is not made at all. Off it, they have to go through
+               the thread's own vector, which the twinning processor and the Fc
+               correction expect to be able to rescale.
+             */
+            FloatType *grad = gradient.begin();
             //skip hoarding memory if Gradients are not needed.
             if (compute_grad) {
-              if (f_calc_threads[thread]->raw_gradients()) {
-                gradient = jacobian_transpose_matching_grad_fc *
-                  f_calc_threads[thread]->get_grad_observable();
+              if (fast && !build_design_matrix) {
+                grad = &gradients[run * n_rows];
               }
-              else {
-                gradient = af::shared<FloatType>(
-                  f_calc_threads[thread]->get_grad_observable().begin(),
-                  f_calc_threads[thread]->get_grad_observable().end());
+              fill_gradients(*(f_calc_threads[thread]), *jt,
+                grad, n_rows);
+              if (!fast) {
+                // this thread's own correction, the one which just accumulated
+                write_dispersion_gradients(*(f_calc_threads[thread]), gradient);
               }
             }
 
-            // sort out twinning
-            FloatType observable = twp.process(
-              refl_i, *(f_calc_threads[thread]), gradient);
-            // Fc correction
-            FloatType fc_k = fc_crs[thread]->compute(h, observable, compute_grad);
-            if (fc_k != 1) {
-              observable *= fc_k;
-              f_calc[refl_i] *= std::sqrt(fc_k);
+            FloatType observable;
+            if (fast) {
+              observable = f_calc_threads[thread]->get_observable();
+            }
+            else {
+              // sort out twinning
+              observable = twp.process(
+                refl_i, *(f_calc_threads[thread]), gradient);
+              // Fc correction
+              FloatType fc_k = fc_crs[thread]->compute(
+                reflections.has_wavelengths() ? reflections.wavelength(refl_i) : 0,
+                h, observable, compute_grad);
+              if (fc_k != 1) {
+                observable *= fc_k;
+                f_calc[refl_i] *= std::sqrt(fc_k);
+              }
             }
             observables[refl_i] = observable;
 
             FloatType weight = weighting_scheme(reflections.fo_sq(refl_i),
               reflections.sig(refl_i), observable, h, scale_factor);
             weights[refl_i] = weight;
-            if (!objective_only) {
+            if (!objective_only && !fast) {
               if (fc_crs[thread]->grad) {
                 int grad_idx = fc_crs[thread]->get_grad_index();
                 af::const_ref<FloatType> fc_cr_grads = fc_crs[thread]->get_gradients();
@@ -189,8 +249,14 @@ struct accumulate_reflection_chunk_omp {
               }
             }
             if (build_design_matrix) {
-              memcpy(&design_matrix(refl_i, 0), gradient.begin(),
-                gradient.size() * sizeof(FloatType));
+              // pre-multiplied by sqrt(w), as the threaded path in
+              // least_squares.h stores it; the two must agree on what a stored
+              // design matrix means
+              FloatType const sqrt_weight = std::sqrt(weight);
+              StoreType *row = &design_matrix(refl_i, 0);
+              for (int gi = 0; gi < n_rows; gi++) {
+                row[gi] = static_cast<StoreType>(sqrt_weight*grad[gi]);
+              }
             }
           }
         }

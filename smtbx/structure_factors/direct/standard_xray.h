@@ -9,6 +9,7 @@
 #include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/xray/hr_ht_cache.h>
 #include <cctbx/xray/observations.h>
+#include <cctbx/xray/dispersion_radial.h>
 #include <smtbx/import_cctbx.h>
 #include <smtbx/import_scitbx_af.h>
 
@@ -47,6 +48,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
       grad_u_star_type grad_u_star;
       af::shared<complex_type> grad_anharmonic_adp;
       complex_type grad_u_iso, grad_occ;
+      /* Compute grad_fp and grad_fdp even for a scatterer whose f' and f'' are
+         not themselves refined. A radial correction shared by f' and f'' is
+         differentiated through them, so they are needed whenever it is refined;
+         c.f. cctbx::xray::dispersion_radial_correction.
+       */
+      bool force_fp_fdp_grad;
     };
 
     /** Base class for the linearisation or the evaluation of the structure
@@ -77,7 +84,24 @@ namespace smtbx { namespace structure_factors { namespace direct {
         : hr_ht(exp_i_2pi_functor, space_group, h),
         d_star_sq(d_star_sq),
         exp_i_2pi(exp_i_2pi_functor)
-      {}
+      {
+        // core has no constructor of its own
+        this->force_fp_fdp_grad = false;
+      }
+
+      /// Whether grad_fp / grad_fdp are wanted for this scatterer
+      bool want_fp_grad(scatterer_type const &scatterer) const {
+        return this->force_fp_fdp_grad || scatterer.flags.grad_fp();
+      }
+
+      bool want_fdp_grad(scatterer_type const &scatterer) const {
+        return this->force_fp_fdp_grad || scatterer.flags.grad_fdp();
+      }
+
+      bool want_fp_fdp_grad(scatterer_type const &scatterer) const {
+        return this->force_fp_fdp_grad
+          || scatterer.flags.grad_fp() || scatterer.flags.grad_fdp();
+      }
 
       /** Compute the structure factor of the given scatterer
        as well as its gradients wrt to the crystallographic parameters of that
@@ -108,9 +132,19 @@ namespace smtbx { namespace structure_factors { namespace direct {
         heir.multiply_by_isotropic_part(scatterer, f, compute_grad);
       }
 
+      /** \copydoc one_scatterer_one_h::base::compute
+
+       fp_fdp_scale multiplies f' and f'' -- and only them, the tabulated form
+       factors in ff being free of both. It is 1 unless a radial correction is
+       in play. The gradients grad_fp and grad_fdp are left as those of the
+       *effective* f' and f'', i.e. unscaled, since that is what differentiating
+       the correction needs; scaling them to be gradients wrt f' and f''
+       themselves is the caller's job.
+       */
       void compute_full(scatterer_type const &scatterer,
         std::vector<complex_type> const &ff,
-        bool compute_grad)
+        bool compute_grad,
+        float_type fp_fdp_scale=1)
       {
         Heir &heir = static_cast<Heir &> (*this);
 
@@ -126,7 +160,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           this->grad_fp_fdp_k = 0;
         }
 
-        heir.compute_anisotropic_part_full(scatterer, ff, compute_grad);
+        heir.compute_anisotropic_part_full(scatterer, ff, compute_grad,
+                                           fp_fdp_scale);
         heir.multiply_by_isotropic_part_full(scatterer, compute_grad);
       }
     };
@@ -138,8 +173,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
       using core<float_type>::grad_u_star;                                     \
       using core<float_type>::grad_u_iso;                                      \
       using core<float_type>::grad_occ;                                        \
+      using core<float_type>::force_fp_fdp_grad;                               \
       using base_t::hr_ht;                                                     \
-      using base_t::d_star_sq;
+      using base_t::d_star_sq;                                                 \
+      using base_t::want_fp_grad;                                              \
+      using base_t::want_fdp_grad;                                             \
+      using base_t::want_fp_fdp_grad;
 
 
     /** Key steps of the evaluation or linearisation of the structure factor
@@ -273,7 +312,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       void compute_anisotropic_part_full(scatterer_type const &scatterer,
         std::vector<complex_type> const &ff,
-        bool compute_grad)
+        bool compute_grad,
+        float_type fp_fdp_scale=1)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -283,7 +323,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           hr_ht_group<float_type> const& g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
           complex_type f = this->exp_i_2pi(hrx + g.ht);
-          complex_type fp_fdp = complex_type(scatterer.fp, scatterer.fdp);
+          complex_type fp_fdp =
+            complex_type(scatterer.fp, scatterer.fdp) * fp_fdp_scale;
           complex_type ffk = (ff[k] + fp_fdp) * f;
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
@@ -321,7 +362,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 grad_site[j] += grad_site_factor * static_cast<float_type>(g.hr[j]);
               }
             }
-            if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+            if (want_fp_fdp_grad(scatterer)) {
               base_t::grad_fp_fdp_k += f;
             }
           }
@@ -346,7 +387,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 }
               }
             }
-            if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+            if (want_fp_fdp_grad(scatterer)) {
               base_t::grad_fp_fdp_k +=
                 std::conj(base_t::grad_fp_fdp_k) * hr_ht.f_h_inv_t;
             }
@@ -404,12 +445,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.grad_occupancy()) {
             grad_occ = ff_iso_p * structure_factor;
           }
-          if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+          if (want_fp_fdp_grad(scatterer)) {
             FormFactorType p = f_iso * structure_factor * scatterer.occupancy;
-            if (scatterer.flags.grad_fp()) {
+            if (want_fp_grad(scatterer)) {
               base_t::grad_fp = p;
             }
-            if (scatterer.flags.grad_fdp()) {
+            if (want_fdp_grad(scatterer)) {
               base_t::grad_fdp = complex_type(-p.imag(), p.real());
             }
           }
@@ -477,10 +518,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
           grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
         }
-        if (scatterer.flags.grad_fp()) {
+        if (want_fp_grad(scatterer)) {
           base_t::grad_fp = base_t::grad_fp_fdp_k * ff_iso;
         }
-        if (scatterer.flags.grad_fdp()) {
+        if (want_fdp_grad(scatterer)) {
           base_t::grad_fdp = complex_type(-base_t::grad_fp_fdp_k.imag(),
             base_t::grad_fp_fdp_k.real()) * ff_iso;
         }
@@ -606,7 +647,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       void compute_anisotropic_part_full(scatterer_type const &scatterer,
         const std::vector<complex_type> &ff,
-        bool compute_grad)
+        bool compute_grad,
+        float_type fp_fdp_scale=1)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -620,7 +662,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
           complex_type f = this->exp_i_2pi(hrx + g.ht);
-          complex_type fp_fdp = complex_type(scatterer.fp, scatterer.fdp);
+          complex_type fp_fdp =
+            complex_type(scatterer.fp, scatterer.fdp) * fp_fdp_scale;
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
@@ -664,7 +707,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 grad_site[j] += (t.imag() * ff[k].real() + t.real() * ff[k].imag());
               }
             }
-            if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+            if (want_fp_fdp_grad(scatterer)) {
               base_t::grad_fp_fdp_k += f.real();
             }
           }
@@ -703,12 +746,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.grad_occupancy()) {
             grad_occ = ff_iso_p * structure_factor.real();
           }
-          if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+          if (want_fp_fdp_grad(scatterer)) {
             float_type p = f_iso * structure_factor.real() * scatterer.occupancy;
-            if (scatterer.flags.grad_fp()) {
+            if (want_fp_grad(scatterer)) {
               base_t::grad_fp = p;
             }
-            if (scatterer.flags.grad_fdp()) {
+            if (want_fdp_grad(scatterer)) {
               base_t::grad_fdp = complex_type(0, 1) * p;
             }
           }
@@ -768,12 +811,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.grad_occupancy()) {
             grad_occ = f_iso * structure_factor;
           }
-          if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+          if (want_fp_fdp_grad(scatterer)) {
             float_type p = f_iso * base_t::grad_fp_fdp_k.real() * scatterer.occupancy;
-            if (scatterer.flags.grad_fp()) {
+            if (want_fp_grad(scatterer)) {
               base_t::grad_fp = p;
             }
-            if (scatterer.flags.grad_fdp()) {
+            if (want_fdp_grad(scatterer)) {
               base_t::grad_fdp = complex_type(0, p);
             }
           }
@@ -833,6 +876,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
         float_type d_star_sq) = 0;
 
       virtual bool is_spherical() const = 0;
+
+      /* Which scatterers a tabulated table did not cover, and which are
+      therefore served by a spherical form factor instead. Empty for every
+      contribution that has no such split, which is all of them but one.
+      */
+      virtual af::shared<std::size_t> scatterers_not_in_table() const {
+        return af::shared<std::size_t>();
+      }
 
       virtual scatterer_contribution *raw_fork() const = 0;
     };
@@ -1003,6 +1054,26 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef boost::shared_ptr<Heir> pointer_type;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
         scatterer_contribution_type;
+      typedef cctbx::xray::dispersion_radial_correction<float_type>
+        disp_correction_type;
+
+      /** @brief Deferring the gradients of the observable, for a functor which
+          has no observable to speak of.
+
+      This one computes Fc and its gradients and stops there, so there is
+      nothing to defer and nothing to fuse a Jacobian into. base_obs, which does
+      have an observable, hides both of these with the real thing.
+      */
+      //@{
+      void set_defer_grad_observable(bool) {}
+      template <class FlattenedJacobianTranspose>
+      bool apply_jacobian_to_grad_observable(
+        FlattenedJacobianTranspose const &, float_type *) const
+      {
+        return false;
+      }
+      //@}
+
     protected:
       cctbx::xray::scatterer_grad_flags_counts grad_flags_counts;
       uctbx::unit_cell const &unit_cell;
@@ -1018,6 +1089,16 @@ namespace smtbx { namespace structure_factors { namespace direct {
     public:
       complex_type f_calc;
       af::ref_owning_shared<complex_type> grad_f_calc;
+      /** The radial falloff shared by f' and f'', null if there is none.
+
+       Held here rather than beside the normal equations, the way fc_correction
+       is, because the gradients are accumulated in compute_ below: a fork of
+       this must accumulate into its own copy, and raw_fork() sees to that.
+       Forking it separately would leave the copy which accumulates and the copy
+       which is read for the result being different objects, and every gradient
+       would come out zero under threading.
+       */
+      boost::shared_ptr<disp_correction_type> disp_cr;
     public:
       /** @brief The evaluation or linearisation of \f$F_c\f$
           for the given structure is to be computed.
@@ -1037,7 +1118,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
            sgtbx::space_group const &space_group,
            af::shared< xray::scatterer<float_type> > const &scatterers,
            scatterer_contribution_type *h_scatterer_contribution,
-           bool own_scatterer_contribution)
+           bool own_scatterer_contribution,
+           boost::shared_ptr<disp_correction_type> const &disp_cr
+             = boost::shared_ptr<disp_correction_type>())
 
         : grad_flags_counts(scatterers.const_ref()),
           unit_cell(unit_cell),
@@ -1048,8 +1131,18 @@ namespace smtbx { namespace structure_factors { namespace direct {
                       af::init_functor_null<complex_type>()),
           has_computed_grad(false),
           h_scatterer_contribution(h_scatterer_contribution),
-          own_scatterer_contribution(own_scatterer_contribution)
-      {}
+          own_scatterer_contribution(own_scatterer_contribution),
+          disp_cr(disp_cr)
+      {
+        SMTBX_ASSERT(!disp_cr
+          || disp_cr->group_of_scatterer.size() == scatterers.size());
+      }
+
+      /// A clone of the correction for a fork of this, with its own accumulator
+      boost::shared_ptr<disp_correction_type> forked_disp_cr() const {
+        return disp_cr ? disp_cr->fork()
+                       : boost::shared_ptr<disp_correction_type>();
+      }
 
       ~base_fc() {
         if (own_scatterer_contribution) {
@@ -1142,20 +1235,53 @@ namespace smtbx { namespace structure_factors { namespace direct {
         f_calc = 0;
         grad_f_calc_cursor = grad_f_calc.begin();
 
+        /* The radial correction of f' and f'' is a function of the reflection
+           alone, so it is positioned once here; that also starts a fresh
+           accumulation of its gradients. Its own parameters are differentiated
+           through grad_fp and grad_fdp, which the scatterers' flags would
+           otherwise leave uncomputed -- but only when it is being refined. Held
+           at values the user has fixed it still multiplies f' and f'', and
+           computing gradients nothing will read would be work for nothing.
+         */
+        bool const disp_grad = disp_cr && disp_cr->grad && compute_grad;
+        if (disp_cr) {
+          disp_cr->set_d_star_sq(l.d_star_sq);
+          l.force_fp_fdp_grad = disp_grad;
+        }
+
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
+          float_type const R = disp_cr ? disp_cr->R(j) : 1;
           if (scatter_contrib.is_spherical()) {
             complex_type f = scatter_contrib.get(j, h);
+            /* get() has already folded f' and f'' in, so scaling them means
+               adding what the scaling would have changed. Equivalent to
+               complex(f0 + R fp, R fdp), and it leaves the contribution
+               classes alone.
+             */
+            if (R != 1 && sc.flags.use_fp_fdp()) {
+              f += (R - 1)*complex_type(sc.fp, sc.fdp);
+            }
             l.compute(sc, f, compute_grad);
           }
           else {
             std::vector<complex_type> const &ff = scatter_contrib.get_full(j, h);
-            l.compute_full(sc, ff, compute_grad);
+            // the tabulated values are free of f' and f'', which are added
+            // inside, so the scale goes in rather than being corrected for
+            l.compute_full(sc, ff, compute_grad, R);
           }
 
           f_calc += l.structure_factor;
 
           if (!compute_grad) continue;
+
+          /* Before the cursor writes below, which scale grad_fp and grad_fdp to
+             be the gradients wrt f' and f'' themselves: what the correction
+             needs is the gradients wrt the effective f' and f'', unscaled.
+           */
+          if (disp_grad) {
+            disp_cr->accumulate(j, l.grad_fp*sc.fp + l.grad_fdp*sc.fdp);
+          }
 
           if (sc.flags.grad_site()) {
             for (int j=0; j<3; ++j) {
@@ -1178,11 +1304,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (sc.flags.grad_occupancy()) {
             *grad_f_calc_cursor++ = l.grad_occ;
           }
+          // f'_eff = R f', so dFc/df' is R times dFc/df'_eff
           if (sc.flags.grad_fp()) {
-            *grad_f_calc_cursor++ = l.grad_fp;
+            *grad_f_calc_cursor++ = R*l.grad_fp;
           }
           if (sc.flags.grad_fdp()) {
-            *grad_f_calc_cursor++ = l.grad_fdp;
+            *grad_f_calc_cursor++ = R*l.grad_fdp;
           }
         }
         if (f_mask) {
@@ -1209,18 +1336,82 @@ namespace smtbx { namespace structure_factors { namespace direct {
     public:
       float_type observable;
       af::ref_owning_shared<float_type> grad_observable;
+      /// while set, grad_observable is not assembled; see below
+      bool defer_grad_observable;
 
     public:
       base_obs(uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         af::shared< xray::scatterer<float_type> > const& scatterers,
         scatterer_contribution_type* h_scatterer_contribution,
-        bool own_scatterer_contribution)
+        bool own_scatterer_contribution,
+        boost::shared_ptr<typename parent_t::disp_correction_type> const
+          &disp_cr = boost::shared_ptr<typename parent_t::disp_correction_type>())
         : parent_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
-          own_scatterer_contribution),
+          own_scatterer_contribution, disp_cr),
         grad_observable(parent_t::grad_flags_counts.n_parameters(),
-          af::init_functor_null<float_type>())
+          af::init_functor_null<float_type>()),
+        defer_grad_observable(false)
       {}
+
+      /** @brief Leave the gradients of the observable unassembled, because the
+          caller will convert them itself as it applies the Jacobian.
+
+      Set once per build. While it is on grad_observable is stale, and the only
+      way to the gradients is apply_jacobian_to_grad_observable below.
+      */
+      void set_defer_grad_observable(bool defer) {
+        defer_grad_observable = defer;
+      }
+
+      /** @brief w = J^T (gradients of the observable), converting on the way.
+
+      The conversion from the complex gradients of Fc is elementwise, and the
+      Jacobian visits each component once, so the two fuse into a single pass
+      and the vector of converted gradients is never written down at all.
+
+      Each component is converted exactly once, in the same order and by the
+      same arithmetic as the loop in observable_type::compute, and accumulated
+      into w in the order the sparse traversal gives -- so the result is the one
+      the two-step form gives, bit for bit.
+      */
+      /// Turns the observable's elementwise conversion into the by-component
+      /// lookup the flattened Jacobian asks for
+      template <class GradFunctor>
+      struct grad_of_component {
+        GradFunctor g;
+        complex_type const *grad_f_calc;
+        float_type operator()(int j) const { return g(grad_f_calc[j]); }
+      };
+
+      /// Whether Fc is real is settled here, once, so that the loop the
+      /// Jacobian runs is free of the test; c.f. observable_type::grad_functor
+      template <bool f_calc_is_real, class FlattenedJacobianTranspose>
+      void apply_jacobian_(FlattenedJacobianTranspose const &jt,
+                           float_type *w) const
+      {
+        typedef typename observable_type::template
+          grad_functor<f_calc_is_real> functor_t;
+        grad_of_component<functor_t> const c = {
+          observable_type::template grad_of<f_calc_is_real>(
+            parent_t::origin_centric_case, parent_t::f_calc, observable),
+          parent_t::grad_f_calc.begin()
+        };
+        jt.apply_converted(c, w);
+      }
+
+      template <class FlattenedJacobianTranspose>
+      bool apply_jacobian_to_grad_observable(
+        FlattenedJacobianTranspose const &jt, float_type *w) const
+      {
+        if (parent_t::f_calc.imag() == 0) {
+          apply_jacobian_<true>(jt, w);
+        }
+        else {
+          apply_jacobian_<false>(jt, w);
+        }
+        return true;
+      }
 
       /// Evaluate the structure factors
       void evaluate(miller::index<> const& h,
@@ -1288,7 +1479,21 @@ namespace smtbx { namespace structure_factors { namespace direct {
         observable_type::compute(parent_t::origin_centric_case,
           parent_t::f_calc, parent_t::grad_f_calc,
           observable, grad_observable,
-          compute_grad);
+          compute_grad && !defer_grad_observable);
+        /* The radial correction's gradients of Fc become gradients of the
+           observable the same way every other one does. The functor is
+           elementwise in grad_f_calc, so it takes the correction's own
+           accumulator just as well -- and gets the origin-centric case right,
+           which is worth more than reimplementing two lines of algebra.
+           parent_t::compute_ has added f_mask by now, so f_calc is final.
+         */
+        if (compute_grad && parent_t::disp_cr && parent_t::disp_cr->grad) {
+          float_type unused_observable;
+          observable_type::compute(parent_t::origin_centric_case,
+            parent_t::f_calc, parent_t::disp_cr->grad_accum.const_ref(),
+            unused_observable, parent_t::disp_cr->grad_obs.ref(),
+            true);
+        }
       }
     };
 
@@ -1320,10 +1525,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
         af::shared< xray::scatterer<float_type> > const &scatterers,
         ExpI2PiFunctor<float_type> const &exp_i_2pi,
         scatterer_contribution_type *h_scatterer_contribution,
-        bool own_scatterer_contribution)
+        bool own_scatterer_contribution,
+        boost::shared_ptr<typename base_t::disp_correction_type> const
+          &disp_cr = boost::shared_ptr<typename base_t::disp_correction_type>())
 
         : base_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
-            own_scatterer_contribution),
+            own_scatterer_contribution, disp_cr),
           exp_i_2pi(exp_i_2pi)
       {}
 
@@ -1333,7 +1540,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
                                        this->scatterers.array(),
                                        exp_i_2pi,
                                        this->h_scatterer_contribution->raw_fork(),
-                                       true);
+                                       true,
+                                       this->forked_disp_cr());
       }
     };
 
@@ -1361,10 +1569,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
         sgtbx::space_group const &space_group,
         af::shared< xray::scatterer<float_type> > const &scatterers,
         scatterer_contribution_type *h_scatterer_contribution,
-        bool own_scatterer_contribution)
+        bool own_scatterer_contribution,
+        boost::shared_ptr<typename base_t::disp_correction_type> const
+          &disp_cr = boost::shared_ptr<typename base_t::disp_correction_type>())
 
         : base_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
-          own_scatterer_contribution)
+          own_scatterer_contribution, disp_cr)
       {}
 
       std_trigonometry_fc *raw_fork() const {
@@ -1372,7 +1582,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
                                     this->space_group,
                                     this->scatterers.array(),
                                     this->h_scatterer_contribution->raw_fork(),
-                                    true);
+                                    true,
+                                    this->forked_disp_cr());
       }
     };
 
@@ -1400,10 +1611,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
         sgtbx::space_group const& space_group,
         af::shared< xray::scatterer<float_type> > const& scatterers,
         scatterer_contribution_type* h_scatterer_contribution,
-        bool own_scatterer_contribution)
+        bool own_scatterer_contribution,
+        boost::shared_ptr<typename base_t::disp_correction_type> const
+          &disp_cr = boost::shared_ptr<typename base_t::disp_correction_type>())
 
         : base_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
-          own_scatterer_contribution)
+          own_scatterer_contribution, disp_cr)
       {}
 
       std_trigonometry* raw_fork() const {
@@ -1411,7 +1624,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           this->space_group,
           this->scatterers.array(),
           this->h_scatterer_contribution->raw_fork(),
-          true);
+          true,
+          this->forked_disp_cr());
       }
     };
 
@@ -1420,6 +1634,55 @@ namespace smtbx { namespace structure_factors { namespace direct {
     {
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
+
+      /** @brief One component of the gradient of the observable, given the
+          things that are the same for all of them.
+
+      The whole-array compute() below is this in a loop, and the fused Jacobian
+      product applies it one component at a time as each column comes up. Both
+      go through here so that there is one statement of the algebra and the two
+      cannot drift apart -- including the branches, which are not merely an
+      optimisation: skipping the imaginary term when it is zero is what keeps
+      the origin-centric case free of a signed zero it would otherwise pick up.
+      */
+      /** Whether Fc is real is a property of the reflection, not of the
+          component, so it is a template argument rather than a member: the
+          caller settles it once and the loop body has no test left in it. A
+          real Fc leaves a single multiply, which vectorises; the test would
+          have stopped that whatever the branch predictor made of it.
+       */
+      template <bool f_calc_is_real>
+      struct grad_functor {
+        bool origin_centric_case;
+        complex_type f_calc;
+
+        float_type operator()(complex_type const &g) const {
+          if (f_calc_is_real) {
+            /* The imaginary term is f_calc.imag()*g.imag() with the first
+               factor zero, so the general expression below reduces to this
+               whether or not the reflection is origin centric.
+             */
+            return 2 * f_calc.real() * g.real();
+          }
+          if (!origin_centric_case) {
+            return 2 * (f_calc.real()*g.real() + f_calc.imag()*g.imag());
+          }
+          float_type grad = f_calc.real() * g.real();
+          if (g.imag()) {
+            grad += f_calc.imag() * g.imag();
+          }
+          return grad * 2;
+        }
+      };
+
+      template <bool f_calc_is_real>
+      static grad_functor<f_calc_is_real> grad_of(bool origin_centric_case,
+                                                  complex_type const &f_calc,
+                                                  float_type)
+      {
+        grad_functor<f_calc_is_real> f = { origin_centric_case, f_calc };
+        return f;
+      }
 
       static
       void compute(bool origin_centric_case,
@@ -1438,28 +1701,24 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         if (!compute_grad) return;
 
-        if (!origin_centric_case) {
-          for (int j=0; j < grad_f_calc.size(); ++j) {
-            grad_observable[j] = 2 * (  f_calc.real() * grad_f_calc[j].real()
-                                      + f_calc.imag() * grad_f_calc[j].imag() );
-          }
+        // settled once, so that neither loop below carries the test
+        if (f_calc.imag() == 0) {
+          fill(grad_of<true>(origin_centric_case, f_calc, observable),
+               grad_f_calc, grad_observable);
         }
         else {
-          if (f_calc.imag() == 0) {
-            for (int j=0; j < grad_f_calc.size(); ++j) {
-                grad_observable[j] =  2 * f_calc.real() * grad_f_calc[j].real();
-            }
-          }
-          else {
-            for (int j=0; j < grad_f_calc.size(); ++j) {
-              float_type &grad = grad_observable[j];
-              grad = f_calc.real() * grad_f_calc[j].real();
-              if (grad_f_calc[j].imag()) {
-                grad += f_calc.imag() * grad_f_calc[j].imag();
-              }
-              grad *= 2;
-            }
-          }
+          fill(grad_of<false>(origin_centric_case, f_calc, observable),
+               grad_f_calc, grad_observable);
+        }
+      }
+
+      template <class GradFunctor>
+      static void fill(GradFunctor const &g,
+                       af::const_ref<complex_type> const &grad_f_calc,
+                       af::ref<float_type> const &grad_observable)
+      {
+        for (int j=0; j < grad_f_calc.size(); ++j) {
+          grad_observable[j] = g(grad_f_calc[j]);
         }
       }
     };
@@ -1470,6 +1729,44 @@ namespace smtbx { namespace structure_factors { namespace direct {
     {
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
+
+      /// \copydoc modulus_squared::grad_functor
+      template <bool f_calc_is_real>
+      struct grad_functor {
+        bool origin_centric_case;
+        complex_type f_calc;
+        /// 1/|Fc|, hoisted here because it is the same for every component
+        float_type observable_inverse;
+
+        float_type operator()(complex_type const &g) const {
+          if (f_calc_is_real && origin_centric_case) {
+            return f_calc.real() > 0 ? g.real() : -g.real();
+          }
+          if (!origin_centric_case) {
+            return (f_calc.real()*g.real() + f_calc.imag()*g.imag())
+                   *observable_inverse;
+          }
+          float_type grad = f_calc.real() * g.real();
+          if (g.imag()) {
+            grad += f_calc.imag() * g.imag();
+          }
+          return grad * observable_inverse;
+        }
+      };
+
+      template <bool f_calc_is_real>
+      static grad_functor<f_calc_is_real> grad_of(bool origin_centric_case,
+                                                  complex_type const &f_calc,
+                                                  float_type observable)
+      {
+        /* The branch which needs no division is also the one where the
+           observable may be zero, so the reciprocal is only formed where it
+           will be used.
+         */
+        grad_functor<f_calc_is_real> f = { origin_centric_case, f_calc,
+          (origin_centric_case && f_calc_is_real) ? 0 : 1/observable };
+        return f;
+      }
 
       static
       void compute(bool origin_centric_case,
@@ -1488,32 +1785,24 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         if (!compute_grad) return;
 
-        if (!origin_centric_case) {
-          float_type observable_inverse = 1./observable;
-          for (int j=0; j < grad_f_calc.size(); ++j) {
-            grad_observable[j] =   f_calc.real() * grad_f_calc[j].real()
-                                 + f_calc.imag() * grad_f_calc[j].imag();
-            grad_observable[j] *= observable_inverse;
-          }
+        // settled once, so that neither loop below carries the test
+        if (f_calc.imag() == 0) {
+          fill(grad_of<true>(origin_centric_case, f_calc, observable),
+               grad_f_calc, grad_observable);
         }
         else {
-          if (f_calc.imag() == 0) {
-            for (int j=0; j < grad_f_calc.size(); ++j) {
-              grad_observable[j] = f_calc.real() > 0 ?  grad_f_calc[j].real()
-                                                     : -grad_f_calc[j].real();
-            }
-          }
-          else {
-            float_type observable_inverse = 1./observable;
-            for (int j=0; j < grad_f_calc.size(); ++j) {
-              float_type &grad = grad_observable[j];
-              grad = f_calc.real() * grad_f_calc[j].real();
-              if (grad_f_calc[j].imag()) {
-                grad += f_calc.imag() * grad_f_calc[j].imag();
-              }
-              grad *= observable_inverse;
-            }
-          }
+          fill(grad_of<false>(origin_centric_case, f_calc, observable),
+               grad_f_calc, grad_observable);
+        }
+      }
+
+      template <class GradFunctor>
+      static void fill(GradFunctor const &g,
+                       af::const_ref<complex_type> const &grad_f_calc,
+                       af::ref<float_type> const &grad_observable)
+      {
+        for (int j=0; j < grad_f_calc.size(); ++j) {
+          grad_observable[j] = g(grad_f_calc[j]);
         }
       }
     };

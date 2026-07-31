@@ -47,17 +47,52 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     may_parallelise = False
     use_openmp = False
     max_memory = 300
+    # How much the BLAS 3 accumulator may buffer before folding its rows into
+    # the normal matrix. Zero means take it from max_memory, which is the
+    # budget the whole build is meant to keep to.
+    normal_matrix_buffer_bytes = 0
+
+    @staticmethod
+    def accumulator_buffer_bytes(n_parameters, max_memory_mb):
+      """ What is left of the memory budget once the result is paid for.
+
+      The accumulator holds the normal matrix twice over -- the full n x n the
+      rank-k update writes into, and the packed copy it hands out -- and buffers
+      rows in whatever remains. Chunking the rows costs a pass over the result
+      per chunk, so the fewer chunks the better and the budget is worth
+      spending; but it is a budget, and the result comes out of it first.
+
+      Capped as well as floored. The buffer is reserved up front, so a generous
+      budget would have it allocate the lot, which is the thing chunking is for
+      avoiding. Past the cap there is nothing to buy anyway: the time is flat
+      from a few hundred megabytes upwards.
+      """
+      if not max_memory_mb:
+        return 0                      # no budget given: the accumulator decides
+      n = int(n_parameters)
+      result = (n*n + n*(n + 1)//2)*8
+      return max(8 << 20,
+                 min(512 << 20, int(max_memory_mb)*1048576 - result))
 
     def __init__(self, observations, reparametrisation,
                  one_h_linearisation=None, **kwds):
-      super(klass, self).__init__(reparametrisation.n_independents)
+      # before adopt_optional_init_args, so these have to come out of kwds here
+      buffer_bytes = kwds.get('normal_matrix_buffer_bytes',
+                              klass.normal_matrix_buffer_bytes)
+      if not buffer_bytes:
+        buffer_bytes = klass.accumulator_buffer_bytes(
+          reparametrisation.n_independents,
+          kwds.get('max_memory', klass.max_memory))
+      super(klass, self).__init__(
+        reparametrisation.n_independents, True, buffer_bytes)
       self.observations = observations
       self.reparametrisation = reparametrisation
       adopt_optional_init_args(self, kwds)
       self.one_h_linearisation = one_h_linearisation
       if not self.one_h_linearisation:
         self.one_h_linearisation = f_calc_function_default(direct.f_calc_modulus_squared(
-          self.xray_structure))
+          self.xray_structure,
+          disp_correction=reparametrisation.dispersion_radial))
       if self.weighting_scheme == "default":
         self.weighting_scheme = self.default_weighting_scheme()
       self.origin_fixing_restraint = self.origin_fixing_restraints_type(
@@ -73,12 +108,30 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     def twin_fractions(self):
       return self.reparametrisation.twin_fractions
 
-    def build_up(self, objective_only=False):
+    # A subclass which assembles the solvent contribution once and keeps it,
+    # the mask being fixed for the length of a run, puts it here and mask_data()
+    # hands that one out rather than rebuilding it.
+    f_mask_data = None
+
+    def mask_data(self):
+      """ The solvent contribution, in the form the builders expect.
+
+      Factored out of build_up so that anything else linearising the same
+      problem computes the same structure factors, c.f. smtbx.refinement.cgls.
+      Leaving it to each caller to assemble is how the two paths came to
+      disagree: an omitted mask does not fail, it quietly refines a different
+      structure.
+      """
+      if self.f_mask_data is not None:
+        return self.f_mask_data
       if self.f_mask is None:
-        f_mask_data = MaskData(flex.complex_double())
-      else:
-        f_mask_data = MaskData(self.observations, self.xray_structure.space_group(),
-          self.observations.fo_sq.anomalous_flag(), self.f_mask.indices(), self.f_mask.data())
+        return MaskData(flex.complex_double())
+      return MaskData(self.observations, self.xray_structure.space_group(),
+        self.observations.fo_sq.anomalous_flag(), self.f_mask.indices(),
+        self.f_mask.data())
+
+    def build_up(self, objective_only=False):
+      f_mask_data = self.mask_data()
 
       fc_correction = self.reparametrisation.fc_correction
       if fc_correction is None:
@@ -149,17 +202,51 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           self.step_equations(),
           self.reparametrisation.jacobian_transpose_matching_grad_fc(),
           self.reparametrisation.asu_scatterer_parameters)
+      # An override says which scale factor to weight the data with when there
+      # are no fresh normal equations to take one from. There now are, so it
+      # has served its purpose, and anything reading scale_factor() after this
+      # -- the journal in normal_eqns_solving, for one -- wants the new one.
+      self.overridden_scale_factor = None
 
     def parameter_vector_norm(self):
       return self.reparametrisation.norm_of_independent_parameter_vector
 
-    def scale_factor(self): return self.optimal_scale_factor()
+    # Set by a solver which determines the scale factor without building the
+    # normal equations, c.f. smtbx.refinement.cgls; None means take it from
+    # them as usual. build_up clears it, having made it obsolete.
+    overridden_scale_factor = None
 
-    def step_forward(self):
-      self.reparametrisation.apply_shifts(self.step())
+    def scale_factor(self):
+      if self.overridden_scale_factor is not None:
+        return self.overridden_scale_factor
+      return self.optimal_scale_factor()
+
+    def apply_shifts(self, shifts):
+      """ Move the structure by the given increment of the independent
+          parameters.
+
+      Factored out of step_forward so that minimisers which do not follow the
+      step obtained from the normal equations can reuse it, c.f.
+      scitbx.lstbx.scipy_iterations.
+      """
+      self.reparametrisation.apply_shifts(shifts)
       self.reparametrisation.linearise()
       self.reparametrisation.store()
-      self.taken_step = self.step().deep_copy()
+      self.taken_step = shifts.deep_copy()
+
+    def step_forward(self):
+      self.apply_shifts(self.step())
+
+    def parameter_vector(self):
+      """ The independent parameters, as apply_shifts indexes them.
+
+      apply_shifts does not always move the parameters by exactly the shifts
+      it is given, validate() constraining some of them -- a U_iso or an
+      occupancy driven negative, an extinction parameter, the thickness. A
+      minimiser which places the parameters itself has to be able to see where
+      they really went, or every subsequent shift is out by the difference.
+      """
+      return self.reparametrisation.independent_parameter_vector()
 
     def step_backward(self):
       self.reparametrisation.apply_shifts(-self.taken_step)

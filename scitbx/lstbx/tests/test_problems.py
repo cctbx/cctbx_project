@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.lstbx import normal_eqns
 import libtbx
+import math
 from six.moves import range
 
 
@@ -18,6 +19,9 @@ def polynomial_fit(non_linear_ls_with_separable_scale_factor_impl):
     noise = 1e-5
     n_data = 10
     x_0 = flex.double((0.5, 0.3, 0.2))
+    # 2 (-t^3 + t^2) is the noiseless data, so this is where the fit would
+    # land were it not for the noise, which moves it by about the same amount
+    arg_min = flex.double((1, 0, 0))
 
     def __init__(self, normalised, **kwds):
       super(klass, self).__init__(n_parameters=3,
@@ -35,13 +39,19 @@ def polynomial_fit(non_linear_ls_with_separable_scale_factor_impl):
       self.x = self.x_0.deep_copy()
       self.old_x = None
 
-    def step_forward(self):
+    def apply_shifts(self, shifts):
       self.old_x = self.x.deep_copy()
-      self.x += self.step()
+      self.x += shifts
+
+    def step_forward(self):
+      self.apply_shifts(self.step())
 
     def step_backward(self):
       assert self.old_x is not None
       self.x, self.old_x = self.old_x, None
+
+    def parameter_vector(self):
+      return self.x.deep_copy()
 
     def parameter_vector_norm(self):
       return self.x.norm()
@@ -56,6 +66,88 @@ def polynomial_fit(non_linear_ls_with_separable_scale_factor_impl):
       for j, der_r in enumerate(grad_yc):
         jacobian_yc.matrix_paste_column_in_place(der_r, j)
       self.add_equations(yc, jacobian_yc, self.yo, weights=None)
+      self.finalise()
+  return klass
+
+
+def badly_scaled_basis_fit(non_linear_ls_with_separable_scale_factor_impl,
+                           n_parameters=20, n_data=200, spread=1e4):
+  """ Fit a cosine series whose terms differ wildly in magnitude.
+
+  Term j is scaled by spread^(j/(n-1)) and the coefficient sought for it by the
+  inverse, so that the fit is an ordinary well behaved one but the diagonal of
+  the normal matrix spans spread^2 -- a condition number of 1e8 by default,
+  which is unremarkable for a crystallographic refinement, where the curvature
+  with respect to a fractional coordinate and to a U_iso are orders of
+  magnitude apart.
+
+  Gauss-Newton is invariant under a rescaling of the parameters and does not
+  notice; a first-order minimiser is helpless on this unless it preconditions
+  them, which is what makes this problem worth having.
+
+  The basis is near-orthogonal, so scaling the parameters by sqrt(diag(A)) very
+  nearly whitens the normal matrix and the difference between the two is stark
+  rather than marginal.
+  """
+  class klass(non_linear_ls_with_separable_scale_factor_impl,
+              normal_eqns.non_linear_ls_mixin):
+
+    noise = 1e-6
+
+    def __init__(self, normalised=True, **kwds):
+      super(klass, self).__init__(n_parameters=n_parameters,
+                                  normalised=normalised)
+      libtbx.adopt_optional_init_args(self, kwds)
+      t = flex.double_range(n_data)/n_data
+      self.basis = [
+        math.pow(spread, j/(n_parameters - 1.))*flex.cos(math.pi*(j + 1)*t)
+        for j in range(n_parameters)]
+      # the coefficients undo the scaling of the terms, so the model is of
+      # order one however badly scaled its parametrisation is
+      self.arg_min = flex.double(
+        [math.pow(spread, -j/(n_parameters - 1.))
+         for j in range(n_parameters)])
+      self.yo = self.model(self.arg_min) + self.noise*flex.double(
+        [(-1)**i for i in range(n_data)])
+      # A perturbation proportional to arg_min would be absorbed whole by the
+      # separable scale factor and leave us starting at the minimum, hence the
+      # alternating sign.
+      self.x_0 = self.arg_min*flex.double(
+        [1 + 0.5*(-1)**j for j in range(n_parameters)])
+      self.restart()
+
+    def model(self, x):
+      yc = flex.double(n_data, 0)
+      for j, term in enumerate(self.basis): yc += x[j]*term
+      return yc
+
+    def restart(self):
+      self.x = self.x_0.deep_copy()
+      self.old_x = None
+
+    def apply_shifts(self, shifts):
+      self.old_x = self.x.deep_copy()
+      self.x += shifts
+
+    def step_forward(self):
+      self.apply_shifts(self.step())
+
+    def step_backward(self):
+      assert self.old_x is not None
+      self.x, self.old_x = self.old_x, None
+
+    def parameter_vector(self):
+      return self.x.deep_copy()
+
+    def parameter_vector_norm(self):
+      return self.x.norm()
+
+    def build_up(self, objective_only=False):
+      self.reset()
+      jacobian = flex.double(flex.grid(n_data, n_parameters))
+      for j, term in enumerate(self.basis):
+        jacobian.matrix_paste_column_in_place(term, j)
+      self.add_equations(self.model(self.x), jacobian, self.yo, weights=None)
       self.finalise()
   return klass
 
@@ -109,6 +201,9 @@ class exponential_fit(
     self.x = self.x_0.deep_copy()
     self.old_x = None
 
+  def parameter_vector(self):
+    return self.x.deep_copy()
+
   def parameter_vector_norm(self):
     return self.x.norm()
 
@@ -132,9 +227,12 @@ class exponential_fit(
         jacobian.matrix_paste_column_in_place(der_r, j)
       self.add_equations(residuals, jacobian, weights=None)
 
-  def step_forward(self):
+  def apply_shifts(self, shifts):
     self.old_x = self.x.deep_copy()
-    self.x += self.step()
+    self.x += shifts
+
+  def step_forward(self):
+    self.apply_shifts(self.step())
 
   def step_backward(self):
     assert self.old_x is not None

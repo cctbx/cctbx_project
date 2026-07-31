@@ -359,8 +359,21 @@ class atom_parser(parser, variable_decoder):
         if part_number > 0: conformer_index = part_number
         elif part_number < 0: sym_excl_index = abs(part_number)
       elif cmd == "RESI":
-        current_residue = args
-        self.builder.add_residue(*current_residue)
+        # RESI takes a class and a number, and ShelXL tells them apart by
+        # whether the token is a number rather than by where it sits: the
+        # manual gives the class first, which is what a protein .res written
+        # by ShelXL has, but the other order is met with too. Taking them
+        # positionally swapped the two, and the duplicate check below then
+        # keyed on the class -- so every proline collided with every other.
+        residue_number, residue_class = 0, None
+        for arg in args:
+          try:
+            residue_number = int(arg)
+          except (TypeError, ValueError):
+            if residue_class is None:
+              residue_class = arg
+        current_residue = (residue_number, residue_class)
+        self.builder.add_residue(residue_number, residue_class)
       elif cmd == '__ATOM__':
         if not in_the_midst_of_atom_list:
           if self.label_for_sfac is None:
@@ -373,9 +386,9 @@ class atom_parser(parser, variable_decoder):
         name = scatterer.label.upper()
         line_1 = line_of_scatterer_named.get((residue_number, name))
         if line_1 is not None:
-          raise shelx_error("Residue #%i has two scatterers named %s, "
-                            "(with perhaps a difference in letter case)"
-                            "defined at lines %i and %i"
+          raise shelx_error("Residue #%s has two scatterers named %s "
+                            "(with perhaps a difference in letter case), "
+                            "defined at lines %s and %s"
                             % (residue_number, name, line, line_1),
                             line=None)
         line_of_scatterer_named[(residue_number, name)] = line

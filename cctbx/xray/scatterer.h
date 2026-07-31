@@ -562,6 +562,11 @@ namespace xray {
           element_info().atomic_number(), site, data, multiplier).id;
       }
 
+      scatterer_id_big<FloatType, crd_t> get_id_big(int16_t data = 0) const {
+        return scatterer_id_big<FloatType, crd_t>(
+          site[0],site[1],site[2], data, element_info().atomic_number(), 0);
+      }
+
       template <class mask_info, uint64_t cell_m>
       scatterer_id_base<FloatType, crd_t, mask_info, cell_m>
         get_id(short data = 0, FloatType multiplier=1) const
