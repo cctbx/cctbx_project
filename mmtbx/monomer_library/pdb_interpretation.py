@@ -2008,6 +2008,7 @@ def get_restraints_loading_flags(params):
   return rc
 
 def special_dispensation(proxy_label, m_i, m_j, i_seqs):
+  if m_i is None or m_j is None: return False
   atoms=[]
   for afs in [m_i.pdb_atoms, m_j.pdb_atoms]:
     for atom in afs:
