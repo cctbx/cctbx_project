@@ -70,7 +70,7 @@ namespace smtbx { namespace ED
     }
 
     /* to compute d(exp(tA))/dp using approach as described here
-    Bernoulli 9(5), 2003, 895–919
+    Bernoulli 9(5), 2003, 895ï¿½919
     */
     virtual af::shared<complex_t> calc_amps_ext(
       af::shared<cmat_t> const& Ds_kin,
@@ -224,25 +224,8 @@ namespace smtbx { namespace ED
         }
       }
 
-      for (size_t pi = 0; pi < d_T_off; pi++) {
-        cmat_t V = af::matrix_multiply(
-          af::matrix_multiply(A_cjt.const_ref(), Ds_kin[pi].const_ref()).const_ref(),
-          this->A.const_ref());
-
-        // Hadamard product of G x V by A* first column into dI_dP
-        af::shared<complex_t> df(n_beams);
-        for (size_t i = 0; i < n_beams; i++) {
-          for (size_t j = 0; j < n_beams; j++) {
-            df[i] += G(i, j) * V(i, j) * A_cjt(j, 0);
-          }
-        }
-        complex_t dp;
-        for (size_t j = 0; j < n_beams; j++) {
-          dp += this->A(idx, j) * df[j];
-        }
-        // copy result to output (dI/dp - > |CI|^2)
-        D_dyn(0, pi) = 2 * (rv.real() * dp.real() + rv.imag() * dp.imag());
-      }
+      this->accumulate_grad_row(this->A, A_cjt, G, idx, complex_t(1),
+        Ds_kin, rv, D_dyn);
       return rv;
     }
 

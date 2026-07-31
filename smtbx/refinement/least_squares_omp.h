@@ -92,10 +92,13 @@ struct accumulate_reflection_chunk_omp {
         && f_calc_function.get_dispersion_correction() == 0;
       /* Flattened once here rather than per thread: it is read-only, and the
          threads below share it. Not built for a pass which wants no
-         derivatives, since then it is never applied to anything.
+         derivatives, since then it is never applied to anything -- nor for a
+         functor which hands back gradients that are already in the basis of the
+         refined parameters, the dynamical electron diffraction one being the
+         case in point, which likewise never applies it.
        */
       boost::scoped_ptr<flattened_jacobian_transpose> jt;
-      if (compute_grad) {
+      if (compute_grad && f_calc_function.raw_gradients()) {
         jt.reset(new flattened_jacobian_transpose(
           jacobian_transpose_matching_grad_fc));
       }
@@ -198,7 +201,7 @@ struct accumulate_reflection_chunk_omp {
               if (fast && !build_design_matrix) {
                 grad = &gradients[run * n_rows];
               }
-              fill_gradients(*(f_calc_threads[thread]), *jt,
+              fill_gradients(*(f_calc_threads[thread]), jt.get(),
                 grad, n_rows);
               if (!fast) {
                 // this thread's own correction, the one which just accumulated

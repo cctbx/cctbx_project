@@ -377,6 +377,42 @@ namespace smtbx { namespace ED
       return indices;
     }
 
+    /** @brief Which row of the kinematic design matrix each matrix element reads.
+
+    The pattern is a property of the beams alone -- element (i,j) always comes
+    from the reflection h_i - h_j -- so it is the same for every parameter, and
+    resolving it once rather than once per parameter is the whole point of
+    splitting it out. A diagonal element has no reflection and is left at -1.
+    */
+    static void build_D_index(
+      const lookup_t& mi_lookup,
+      const af::shared<miller::index<> >& indices,
+      std::vector<int>& rows)
+    {
+      const size_t n_beams = indices.size() + 1; // g0+
+      rows.assign(n_beams*n_beams, -1);
+      for (size_t i = 1; i < n_beams; i++) {
+        miller::index<> h_i = indices[i - 1];
+        // h_i - (0,0,0)
+        int ii = mi_lookup.find_hkl(h_i);
+        SMTBX_ASSERT(ii >= 0);
+        rows[i*n_beams] = ii;
+        // (0,0,0) - h_i
+        ii = mi_lookup.find_hkl(-h_i);
+        SMTBX_ASSERT(ii >= 0);
+        rows[i] = ii;
+        for (size_t j = i + 1; j < n_beams; j++) {
+          miller::index<> h_j = indices[j - 1];
+          int i_m_j = mi_lookup.find_hkl(h_i - h_j);
+          SMTBX_ASSERT(i_m_j >= 0);
+          rows[i*n_beams + j] = i_m_j;
+          int j_m_i = mi_lookup.find_hkl(h_j - h_i);
+          SMTBX_ASSERT(j_m_i >= 0);
+          rows[j*n_beams + i] = j_m_i;
+        }
+      }
+    }
+
     static void build_D_matrices(
       const lookup_t& mi_lookup,
       const af::shared<miller::index<> >& indices,
@@ -384,29 +420,17 @@ namespace smtbx { namespace ED
       af::shared<cmat_t>& Ds_kin)
     {
       const size_t n_beams = indices.size() + 1; // g0+
-      size_t n_param = DM_kin.accessor().n_columns();
+      const size_t n_param = DM_kin.accessor().n_columns();
+      std::vector<int> rows;
+      build_D_index(mi_lookup, indices, rows);
       Ds_kin.clear();
       Ds_kin.reserve(n_param);
       for (size_t pi = 0; pi < n_param; pi++) {
         cmat_t D(af::mat_grid(n_beams, n_beams));
-        for (size_t i = 1; i < n_beams; i++) {
-          miller::index<> h_i = indices[i - 1];
-          int ii = mi_lookup.find_hkl(h_i);
-          SMTBX_ASSERT(ii >= 0);
-          // h_i - (0,0,0)
-          D(i, 0) = DM_kin(ii, pi);
-          // (0,0,0) - h_i
-          ii = mi_lookup.find_hkl(-h_i);
-          SMTBX_ASSERT(ii >= 0);
-          D(0, i) = DM_kin(ii, pi);
-          for (size_t j = i + 1; j < n_beams; j++) {
-            miller::index<> h_j = indices[j - 1];
-            int i_m_j = mi_lookup.find_hkl(h_i - h_j);
-            SMTBX_ASSERT(i_m_j >= 0);
-            D(i, j) = DM_kin(i_m_j, pi);
-            int j_m_i = mi_lookup.find_hkl(h_j - h_i);
-            SMTBX_ASSERT(j_m_i >= 0);
-            D(j, i) = DM_kin(j_m_i, pi);
+        complex_t *d = D.begin();
+        for (size_t k = 0; k < rows.size(); k++) {
+          if (rows[k] >= 0) {
+            d[k] = DM_kin(rows[k], pi);
           }
         }
         Ds_kin.push_back(D);

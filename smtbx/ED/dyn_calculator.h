@@ -75,6 +75,64 @@ namespace smtbx { namespace ED
       return A;
     }
   protected:
+    /** @brief One output beam's row of dI/dp, for every refined parameter.
+
+    The derivative of the intensity of beam @p idx with respect to parameter p
+    is, writing V_p for A* D_p A and G for the divided differences of the
+    eigenvalue exponentials,
+
+      dp = sum_ij  A(idx,i) G(i,j) A*(j,0) V_p(i,j)  =  sum_ij W(i,j) V_p(i,j)
+
+    Every factor of W is a property of the eigendecomposition, not of the
+    parameter. Substituting V_p and gathering the sums the other way round,
+
+      dp = sum_ab D_p(a,b) sum_ij conj(A(a,i)) W(i,j) A(b,j)
+         = sum_ab D_p(a,b) M(a,b),   M = conj(A) . W . A^T
+
+    and M does not depend on the parameter either. So the two matrix products
+    are done once here rather than once per parameter, and what is left per
+    parameter is the elementwise sum against its own D -- turning 2*P*n^3 into
+    2*n^3 + P*n^2, a factor of about 2n once there are more parameters than
+    beams. It is the same finite sum in a different order, so the answer moves
+    only by round-off.
+
+    @param scale multiplies the amplitude of the output beam; folded into W so
+      it costs nothing. Pass 1 where the formulation has no such factor.
+    @param rv the already-scaled complex amplitude, for dI = 2 Re(conj(F) dF).
+    */
+    static void accumulate_grad_row(
+      const cmat_t &A, const cmat_t &A_cjt, const cmat_t &G,
+      size_t idx, complex_t scale,
+      af::shared<cmat_t> const &Ds_kin,
+      complex_t const &rv,
+      mat_t &D_dyn)
+    {
+      const size_t n = A.accessor().n_columns();
+      cmat_t W(af::mat_grid(n, n)),
+        At(af::mat_grid(n, n)),   // A transposed
+        cA(af::mat_grid(n, n));   // A conjugated, elementwise
+      for (size_t i = 0; i < n; i++) {
+        const complex_t a_i = A(idx, i)*scale;
+        for (size_t j = 0; j < n; j++) {
+          W(i, j) = a_i*G(i, j)*A_cjt(j, 0);
+          At(j, i) = A(i, j);
+          cA(i, j) = std::conj(A(i, j));
+        }
+      }
+      cmat_t M = af::matrix_multiply(
+        cA.const_ref(),
+        af::matrix_multiply(W.const_ref(), At.const_ref()).const_ref());
+      for (size_t pi = 0; pi < Ds_kin.size(); pi++) {
+        const complex_t *d = Ds_kin[pi].begin();
+        const complex_t *m = M.begin();
+        complex_t dp = 0;
+        for (size_t k = 0; k < n*n; k++) {
+          dp += m[k]*d[k];
+        }
+        D_dyn(0, pi) = 2*(rv.real()*dp.real() + rv.imag()*dp.imag());
+      }
+    }
+
     af::shared<miller::index<> > indices;
     cmat_t A;
     mat3_t RMf;
