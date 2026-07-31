@@ -29,9 +29,7 @@ namespace smtbx { namespace ED
       const size_t n_beams = this->A.accessor().n_columns();
       std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, &ev[0]);
-      SMTBX_ASSERT(!info)(info);
+      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
       std::vector<complex_t> im(n_beams);
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn);
       for (size_t i = 0; i < n_beams; i++) {
@@ -52,9 +50,7 @@ namespace smtbx { namespace ED
       const size_t n_beams = this->A.accessor().n_columns();
       std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, &ev[0]);
-      SMTBX_ASSERT(!info)(info)(this->indices[idx].as_string());
+      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn);
 
       complex_t res;
@@ -79,9 +75,7 @@ namespace smtbx { namespace ED
       SMTBX_ASSERT(num + 1 < n_beams);
       std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, &ev[0]);
-      SMTBX_ASSERT(!info)(info);
+      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
       cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn),
         k_dt(0, scitbx::constants::pi / Kn);
@@ -165,9 +159,7 @@ namespace smtbx { namespace ED
       const size_t n_beams = this->A.accessor().n_columns();
       std::vector<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        this->A.begin(), n_beams, &ev[0]);
-      SMTBX_ASSERT(!info)(info);
+      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
       cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn),
         k_dt(0, scitbx::constants::pi / Kn);

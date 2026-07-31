@@ -1,5 +1,6 @@
 #pragma once
 #include <smtbx/ED/ed.h>
+#include <smtbx/ED/hermitian_eigen.h>
 #include <boost/shared_ptr.hpp>
 namespace smtbx { namespace ED
 {
@@ -37,9 +38,9 @@ namespace smtbx { namespace ED
 
       exp(i pi t A / K) = U diag(exp(i pi t L_k / K)) U*
 
-  which is what every calc_amps* here does: one heev, then a weighted sum over
-  eigenvectors. (`heev` overwrites A with U, so `A` means the scattering matrix
-  before that call and the eigenvectors after it.)
+  which is what every calc_amps* here does: one call to hermitian_eigen, then a
+  weighted sum over eigenvectors. (It overwrites A with U, so `A` means the
+  scattering matrix before that call and the eigenvectors after it.)
 
   Refinement needs the derivative of the intensity with respect to each refined
   parameter, and that is where it stops being a textbook exercise. Moving an
