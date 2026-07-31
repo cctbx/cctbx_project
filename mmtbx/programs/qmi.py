@@ -189,12 +189,13 @@ its own basis."
       .help = "ORCA geometry-optimisation convergence tolerances: 'default' keeps \
 the built-in LooseOpt/Opt thresholds; 'looser' relaxes them for faster metal-site \
 optimisation."
-    optimise_hydrogens = False
-      .type = bool
-      .short_caption = Optimise all hydrogens
-      .help = "Free every hydrogen in the ORCA optimisation. When False, all \
-but the coordinating-water hydrogens are frozen; capping hydrogens are frozen \
-either way."
+    optimise_hydrogens = *free_atoms all
+      .type = choice
+      .short_caption = Hydrogens to optimise
+      .help = "Which hydrogens the ORCA optimisation frees: 'free_atoms' frees \
+the hydrogens on free heavy atoms, 'all' frees every hydrogen. Capping \
+hydrogens stay frozen and coordinating-water hydrogens are optimised under \
+either."
     hessian = *xtb partial full
       .type = choice
       .short_caption = Hessian source

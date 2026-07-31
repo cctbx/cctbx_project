@@ -1396,7 +1396,9 @@ HETATM    3  H1  HOH A 263       2.700   0.700   0.000  1.00 10.00           H
 HETATM    4  H2  HOH A 263       2.700  -0.700   0.000  1.00 10.00           H
 ATOM      5  NE2 HIS A  94       0.000   2.100   0.000  1.00 10.00           N
 ATOM      6  HE2 HIS A  94       0.500   2.800   0.000  1.00 10.00           H
-ATOM      7  C   ACE A 999       1.000   1.000   3.000  1.00 10.00           C
+ATOM      7  CB  LEU A  50       0.000  -3.000   0.000  1.00 10.00           C
+ATOM      8  HB2 LEU A  50       0.500  -3.500   0.500  1.00 10.00           H
+ATOM      9  HC  ACE A 999       3.000   3.000   3.000  1.00 10.00           H
 END
 """
 
@@ -1405,7 +1407,7 @@ def exercise_engine_options():
   x = qm.engine_options()
   assert x.engine == "xtb" and x.method == qm.DEFAULT_XTB_METHOD
   assert x.solvent_model == qm.DEFAULT_XTB_SOLVENT
-  assert x.hessian == "xtb" and x.optimise_hydrogens is False
+  assert x.hessian == "xtb" and x.optimise_hydrogens == "free_atoms"
   o = qm.engine_options(engine="orca")
   assert o.engine == "orca" and o.method == qm.DEFAULT_ORCA_METHOD
   assert o.solvent_model == qm.DEFAULT_ORCA_SOLVENT
@@ -1413,9 +1415,9 @@ def exercise_engine_options():
   # explicit overrides win; a None basis normalises to "".
   o2 = qm.engine_options(engine="orca", method="TPSS", basis_set=None,
                          solvent_model="CPCM(water)", optimisation="Opt",
-                         hessian="partial", optimise_hydrogens=True, exe="/x")
+                         hessian="partial", optimise_hydrogens="all", exe="/x")
   assert o2.method == "TPSS" and o2.basis_set == "" and o2.hessian == "partial"
-  assert o2.optimisation == "Opt" and o2.optimise_hydrogens is True
+  assert o2.optimisation == "Opt" and o2.optimise_hydrogens == "all"
   assert o2.exe == "/x"
 
 
@@ -1450,16 +1452,23 @@ def exercise_read_orca_hessian():
     raise AssertionError("expected ValueError on size mismatch")
 
 
-def exercise_freeze_orca_hydrogens():
+def exercise_free_atoms_hydrogens():
+  # 'free_atoms' rule: a hydrogen is frozen iff its heavy atom is frozen, with
+  # two exemptions (capping H stay frozen, coordinating-water H stay free).
   b = QMRestraintsBuilder(engine="orca", orca_exe="x", logger=null_out())
   model = _model(_ORCA_HFREEZE_PDB)
-  ZN, WO, WH1, WH2, HN, HH, CAP = range(7)
-  frozen = set(b._freeze_orca_hydrogens(model, [CAP], donor_iseqs=[WO, HN]))
-  assert HH in frozen, "a non-water hydrogen must be frozen"
-  assert CAP in frozen, "a pre-frozen cap atom must stay frozen"
+  ZN, WO, WH1, WH2, NE2, HE2, CB, HB2, CAP = range(9)
+  # base partition: the water O (freeze_waters) and the scaffold CB are frozen
+  # heavy atoms, the cap is frozen, every other non-cap H is free.
+  frozen = set(b._freeze_fixed_atom_hydrogens(
+    model, frozen_iseqs=[WO, CB, CAP], donor_iseqs=[WO, NE2], cap_iseqs=[CAP]))
+  assert HB2 in frozen, "a hydrogen on a frozen heavy atom must be frozen"
+  assert HE2 not in frozen, "a hydrogen on a free heavy atom must stay free"
+  assert CAP in frozen, "a capping hydrogen must stay frozen"
   assert WH1 not in frozen and WH2 not in frozen, \
-    "coordinating-water hydrogens must stay free"
-  assert not ({ZN, WO, HN} & frozen), "heavy inner-sphere atoms stay free"
+    "coordinating-water hydrogens stay free even though their O is frozen"
+  assert {WO, CB} <= frozen, "frozen heavy atoms stay frozen"
+  assert not ({ZN, NE2} & frozen), "free heavy atoms stay free"
 
 
 def exercise_run_hessian_dispatch():
@@ -1533,7 +1542,7 @@ def run():
   exercise_hessian_parse()
   exercise_engine_options()
   exercise_read_orca_hessian()
-  exercise_freeze_orca_hydrogens()
+  exercise_free_atoms_hydrogens()
   exercise_run_hessian_dispatch()
   exercise_run_constrained_opt_dispatch()
   exercise_seminario_bond()

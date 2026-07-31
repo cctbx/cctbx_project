@@ -71,8 +71,8 @@ DEFAULT_ORCA_OPT = "LooseOpt"
 
 def engine_options(engine="xtb", method=None, basis_set="",
                    solvent_model=None, optimisation=DEFAULT_ORCA_OPT,
-                   convergence=None, hessian="xtb", optimise_hydrogens=False,
-                   exe=None):
+                   convergence=None, hessian="xtb",
+                   optimise_hydrogens="free_atoms", exe=None):
   """Bundle the QM-backend configuration shared by :func:`run_constrained_opt`
   and :func:`run_hessian`.
 
@@ -83,11 +83,11 @@ def engine_options(engine="xtb", method=None, basis_set="",
   (None, a GEOM_CONVERGENCE preset name, or a Tol dict); *hessian* selects the
   force-constant source (``'xtb'`` computes the Hessian with GFN2-xTB even under
   the ORCA optimiser, ``'partial'`` / ``'full'`` use an ORCA ``NumFreq``);
-  *optimise_hydrogens* ``True`` keeps the non-cap hydrogens free in the ORCA
-  optimisation as xTB does, ``False`` freezes them too except the
-  coordinating-water hydrogens, cutting the DFT cost (the capping hydrogens are
-  frozen either way); *exe* overrides the ORCA executable (else the
-  ``PHENIX_ORCA`` environment variable)."""
+  *optimise_hydrogens* selects which hydrogens ORCA frees: ``'free_atoms'``
+  those on a free heavy atom, ``'all'`` every non-cap hydrogen; capping
+  hydrogens stay frozen and coordinating-water hydrogens are freed under either;
+  *exe* overrides the ORCA executable (else the ``PHENIX_ORCA`` environment
+  variable)."""
   if method is None:
     method = DEFAULT_XTB_METHOD if engine == "xtb" else DEFAULT_ORCA_METHOD
   if solvent_model is None:

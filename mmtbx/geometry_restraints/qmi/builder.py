@@ -161,7 +161,7 @@ class QMRestraintsBuilder(object):
                engine="xtb", orca_method=None, orca_basis_set=None,
                orca_solvent_model=None, orca_optimisation="LooseOpt",
                orca_convergence="default", orca_hessian="xtb",
-               orca_optimise_hydrogens=False, orca_exe=None, logger=None):
+               orca_optimise_hydrogens="free_atoms", orca_exe=None, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -472,12 +472,14 @@ class QMRestraintsBuilder(object):
         freeze_far_carboxylate_o=self.freeze_far_carboxylate_o, log=self.logger)
       if self.optimise_all:
         frozen_iseqs = []   # freeze nothing: the whole cluster relaxes
-      elif self.engine == 'orca' and not self._engine_opts.optimise_hydrogens:
-        # A DFT optimisation pays dearly for the many free hydrogens; freeze all
-        # but the coordinating-water H (which shape the M-O interaction) and
-        # recompute the free set so the constraints summary stays accurate.
-        frozen_iseqs = self._freeze_orca_hydrogens(
-          submodel, frozen_iseqs, donor_iseqs)
+      elif (self.engine == 'orca'
+            and self._engine_opts.optimise_hydrogens == 'free_atoms'):
+        # 'all' leaves the base partition (every non-cap H free) as xTB runs it;
+        # 'free_atoms' freezes each H whose heavy atom is frozen, sparing the DFT
+        # the floppy scaffold-H modes. Recompute the free set so the constraints
+        # summary stays accurate.
+        frozen_iseqs = self._freeze_fixed_atom_hydrogens(
+          submodel, frozen_iseqs, donor_iseqs, cap_iseqs)
         frozen_set = set(frozen_iseqs)
         free_iseqs = [i for i in range(submodel.get_hierarchy().atoms().size())
                       if i not in frozen_set]
@@ -670,15 +672,16 @@ class QMRestraintsBuilder(object):
       submodel, frozen_iseqs, free_iseqs,
       os.path.join(site_dir, "constraints.txt"))
 
-  def _freeze_orca_hydrogens(self, submodel, frozen_iseqs, donor_iseqs):
-    """Return *frozen_iseqs* extended with every hydrogen except those on a
-    first-shell water donor.
+  def _freeze_fixed_atom_hydrogens(self, submodel, frozen_iseqs, donor_iseqs,
+                                   cap_iseqs):
+    """Return *frozen_iseqs* with the 'free_atoms' rule: a hydrogen is frozen iff
+    its heavy atom is frozen.
 
-    A DFT optimisation converges slowly with the inner sphere's many free
-    hydrogens (~120 extra degrees of freedom), and the emitted restraints are
-    heavy-atom, so only the coordinating-water H (whose O-H orientation shapes
-    the M-O interaction) are worth relaxing. Capping H are already in
-    *frozen_iseqs* and stay frozen either way; this only adds."""
+    From the base partition (every non-cap hydrogen free) this freezes only the
+    hydrogens riding a frozen heavy atom, so no free heavy atom drags a frozen H
+    behind it (which would distort its X-H bond). Two hydrogens are exempt:
+    capping hydrogens stay frozen, and coordinating-water hydrogens stay free
+    (their O is frozen, but the O-H orientation shapes the M-O interaction)."""
     atoms = submodel.get_atoms()
     def res_key(atom):
       # A value key: atom.parent() hands back a fresh proxy each call, so object
@@ -698,14 +701,39 @@ class QMRestraintsBuilder(object):
       if ag is not None and \
          common_residue_names_get_class(ag.resname) == 'common_water':
         water_donor_keys.add(res_key(atoms[i]))
+    caps = set(cap_iseqs)
+    frozen_heavy = set(i for i in frozen_iseqs
+                       if not atoms[i].element_is_hydrogen())
     frozen = set(frozen_iseqs)
     for j, atom in enumerate(atoms):
       if not atom.element_is_hydrogen():
         continue
+      if j in caps:
+        frozen.add(j)               # capping H: always frozen
+        continue
       if res_key(atom) in water_donor_keys:
-        continue   # keep coordinating-water H free
-      frozen.add(j)
+        frozen.discard(j)           # coordinating-water H: always free
+        continue
+      heavy = self._bonded_heavy_iseq(atoms, j)
+      if heavy is not None and heavy in frozen_heavy:
+        frozen.add(j)               # rides a frozen atom: freeze it
+      else:
+        frozen.discard(j)           # rides a free atom: free it
     return sorted(frozen)
+
+  def _bonded_heavy_iseq(self, atoms, h_iseq):
+    """iseq of the nearest non-hydrogen atom to *h_iseq* (the heavy atom it is
+    bonded to), or None if none lies within a covalent X-H distance."""
+    hx, hy, hz = atoms[h_iseq].xyz
+    best, best_d2 = None, 1.6 * 1.6   # generous X-H bound (covers S-H)
+    for k, a in enumerate(atoms):
+      if k == h_iseq or a.element_is_hydrogen():
+        continue
+      ax, ay, az = a.xyz
+      d2 = (ax - hx) ** 2 + (ay - hy) ** 2 + (az - hz) ** 2
+      if d2 < best_d2:
+        best, best_d2 = k, d2
+    return best
 
   def _run_state(self, index, seed, submodel, metal_iseq, donor_iseqs,
                  frozen_iseqs, metal_element, site_tag, original_chain_ids,
