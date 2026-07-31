@@ -823,6 +823,29 @@ class manager(object):
     if self._pdb_hierarchy:
       self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
 
+    # __getstate__ drops _xray_structure, so it gets rebuilt from the hierarchy
+    # without a scattering table and silently falls back to the default one.
+    # scattering_dict_info survives pickling, so use it to put the table back.
+    self._restore_scattering_dictionaries()
+
+  def _restore_scattering_dictionaries(self):
+    """Re-apply the scattering table remembered by scattering_dict_info.
+
+    For use after _xray_structure has been dropped and rebuilt: the rebuilt one
+    carries no table, and without this the model would quietly compute
+    structure factors from a different table than it was set up with. Restores
+    d_min too, since "n_gaussian" means a different table for a different d_min.
+    """
+    sdi = self.scattering_dict_info
+    if(sdi is None): return
+    # no (complete) crystal symmetry means no xray_structure to set a table on
+    if(self.get_xray_structure() is None): return
+    self.setup_scattering_dictionaries(
+      scattering_table           = sdi.scattering_table,
+      d_min                      = sdi.d_min,
+      set_inelastic_form_factors = sdi.set_inelastic_form_factors,
+      iff_wavelength             = sdi.iff_wavelength)
+
   def __repr__(self):
     """
       Summarize the model_manager
