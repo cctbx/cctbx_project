@@ -390,11 +390,21 @@ class xtb_manager(base_qm_manager.base_qm_manager):
       raise Sorry(f'xtb does not seem to have terminated normally. '
                   f'Check {log_filename}')
 
-  def run_hessian(self, sites_cart=None, log=None):
+  def run_hessian(self, sites_cart=None, hessian_atoms=None, partial=True, log=None):
     """Run ``xtb --hess`` and return the absolute path to the Cartesian Hessian
     (:meth:`get_hessian_filename`), evaluated at *sites_cart* (else the manager's
     atom coordinates). A stale Hessian is removed first and normal termination is
-    required, so an aborted run raises instead of returning a prior Hessian."""
+    required, so an aborted run raises instead of returning a prior Hessian.
+
+    *hessian_atoms* / *partial* give signature parity with
+    ``orca_manager.run_hessian``.  ``xtb --hess`` computes only the full Cartesian
+    Hessian, so a partial Hessian (a specific *hessian_atoms* subset with *partial*
+    set) is rejected rather than silently returning the full one; pass
+    ``partial=False`` to get the full Hessian regardless of *hessian_atoms*."""
+    if partial and hessian_atoms:
+      raise Sorry('xtb --hess computes the full Cartesian Hessian only; a partial '
+                  'Hessian over hessian_atoms is not supported (pass partial=False '
+                  'for the full Hessian).')
     with open(self.get_input_filename(), 'w') as f:
       f.write(self.get_hessian_input_lines())
     with open(self.get_coordinate_input_filename(), 'w') as f:

@@ -114,6 +114,15 @@ def exercise_input_generation():
   assert shifted_xyz != m.get_xyz_lines()
   assert f'{shifted[0][0]:.6f}' in shifted_xyz
 
+  # --- run_hessian rejects a partial Hessian (xtb --hess is full-only; parity
+  #     with orca_manager.run_hessian, which does partial there) ---
+  from libtbx.utils import Sorry
+  try:
+    m.run_hessian(hessian_atoms=[0])          # partial=True default -> reject
+    raise RuntimeError('expected Sorry for a partial xtb Hessian')
+  except Sorry:
+    pass
+
   # --- multiplicity -> unpaired-electron count ($spin = mult - 1) ---
   m5 = make_manager(WATER_PDB, [0, 1, 1], 'mult', multiplicity=5)
   assert '$spin 4' in m5.get_input_lines()
