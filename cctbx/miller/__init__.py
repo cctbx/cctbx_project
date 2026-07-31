@@ -4351,6 +4351,54 @@ class array(set):
         print(prefix + str(h), d, s, file=f)
     return self
 
+  def setup_binner_d_cube_equal_spacing(miller_array, n_bins=10, min_per_bin=1):
+    """
+    Sets up resolution bins with equal spacing in 1/d^3 (reciprocal volume)
+    on a Miller array, reducing n_bins iteratively if any empty bin is found.
+
+    Parameters:
+      miller_array : cctbx.miller.array
+      n_bins       : int, initial target number of bins
+      min_per_bin  : int, minimum number of reflections required per bin (default: 1)
+
+    Returns:
+      binner       : cctbx.miller.binner object attached to the miller_array
+    """
+    # 1. Obtain overall d_max and d_min limits
+    d_max, d_min = miller_array.d_max_min(
+      d_max_is_highest_defined_if_infinite=True)
+    # 2. Iteratively set up bins, reducing n_bins if an empty bin occurs
+    while n_bins >= 1:
+      s3_min = 1.0 / (d_max ** 3)
+      s3_max = 1.0 / (d_min ** 3)
+      s3_step = (s3_max - s3_min) / n_bins
+      # Construct limits array in d*^2 = 1/d^2 space (expected by cctbx.miller.binning)
+      limits = flex.double()
+      tol = 1.e-5 # Small boundary tolerance to prevent edge reflection loss
+      # Add bounds in 1/d^3 space and convert each to 1/d^2 = (1/d^3)^(2/3)
+      s3_bounds = (
+        [s3_min - tol * s3_step] +
+        [s3_min + i * s3_step for i in range(1, n_bins)] +
+        [s3_max + tol * s3_step]
+      )
+      for s3 in s3_bounds:
+        d_star_sq = math.pow(max(1.e-10, s3), 2.0 / 3.0)
+        limits.append(d_star_sq)
+      # Create binner using custom d*^2 limits
+      binning_obj = miller.binning(miller_array.unit_cell(), limits)
+      binner = miller_array.use_binning(binning=binning_obj)
+      # 3. Check if all used bins meet the minimum reflection threshold
+      all_bins_valid = True
+      for i_bin in binner.range_used():
+        if binner.count(i_bin) < min_per_bin:
+          all_bins_valid = False
+          break
+      if all_bins_valid: return binner
+      # Reduce bin count and retry if an empty/underpopulated bin was found
+      n_bins -= 1
+    raise ValueError(
+      "Could not construct non-empty resolution bins for the provided array.")
+
   def fsc(self, other, smooth=False):
     """
     Compute Fourier Shell Correlation (FSC)

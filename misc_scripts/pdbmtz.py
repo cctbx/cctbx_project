@@ -19,6 +19,8 @@ from cctbx import french_wilson
 import traceback
 import iotbx.pdb
 import os
+from libtbx.test_utils import approx_equal
+from mmtbx import map_tools
 
 cif_files = os.getenv('PDB_MIRROR_MMCIF')
 hkl_files = os.getenv('PDB_MIRROR_STRUCTURE_FACTORS')
@@ -33,6 +35,16 @@ def get_model_files_dict(path):
     code = l[-11:-7]
     result[code] = file_name
   return result
+
+def get_map(fmodel, map_type):
+  mc = map_tools.electron_density_map(
+    fmodel = fmodel).map_coefficients(
+      map_type         = map_type,
+      isotropize       = True,
+      fill_missing     = False)
+  if mc.anomalous_flag():
+    mc = mc.average_bijvoet_mates()
+  return mc
 
 def get_hkl_files_dict(path):
   ifn = open("/".join([path,"INDEX"]),"r")
@@ -166,6 +178,7 @@ def run_one(args):
     if rw_best is None: rw_best = 999
     best_f_obs = None
     best_flags = None
+    best_fmodel = None
     for f_obs in data:
       for r_free_flags in flags:
         r_free_flags_dc = equalize_anom_flags(
@@ -176,12 +189,16 @@ def run_one(args):
           f_obs          = f_obs_dc.deep_copy(),
           r_free_flags   = r_free_flags_dc.deep_copy(),
           xray_structure = xrs)
-        fmodel.update_all_scales()
+        fmodel.update_all_scales(
+          remove_outliers         = False,
+          apply_scale_k1_to_f_obs = False)
+        assert approx_equal(fmodel.f_obs().data(), f_obs_dc.data())
         rw, rf = fmodel.r_work(), fmodel.r_free()
         if rw < rf and rw < rw_best+0.03:
           rw_best = rw
-          best_f_obs = f_obs_dc.deep_copy()
-          best_flags = r_free_flags_dc.deep_copy()
+          best_f_obs  = f_obs_dc.deep_copy()
+          best_flags  = r_free_flags_dc.deep_copy()
+          best_fmodel = fmodel.deep_copy()
     #
     # DUMP RESULT INTO FINAL MTZ
     #
@@ -191,6 +208,15 @@ def run_one(args):
       mtz_dataset.add_miller_array(
         miller_array      = best_flags,
         column_root_label = "R-free-flags")
+      mtz_dataset.add_miller_array(
+        miller_array      = best_fmodel.f_model_scaled_with_k1_composite_work_free(),
+        column_root_label = "Fmodel")
+      mtz_dataset.add_miller_array(
+        miller_array      = get_map(fmodel=best_fmodel, map_type="2mFobs-DFmodel"),
+        column_root_label = "2FOFCWT")
+      mtz_dataset.add_miller_array(
+        miller_array      = get_map(fmodel=best_fmodel, map_type="mFobs-DFmodel"),
+        column_root_label = "FOFCWT")
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = "%s.mtz"%code)
   #

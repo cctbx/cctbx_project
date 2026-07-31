@@ -254,19 +254,36 @@ class restraints_scale_manager(object):
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
       ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+
       consensus_scale = 1
-      if ots < 0.6: cutoff = 0.02
-      else:         cutoff = 0.03
-      if delta > cutoff:
-        if self.scale_counts_bonds[k]==0:
-          consensus_scale = factor
-          self.scale_counts_bonds[k] += 1
-        else:
-          consensus_scale = second_factor
-      if delta < 0.01 and ots > 0.6:
-        consensus_scale = 1./second_factor**2
-      if delta < 0.01 and ots <= 0.6:
-        consensus_scale = 1./1.5
+      if delta > 0.03: consensus_scale = 2
+
+      if ots >= 0.8:
+        if delta < 0.025: consensus_scale = 0.5
+      if ots < 0.8 and ots >=0.6:
+        if delta < 0.02: consensus_scale = 0.5
+      if ots < 0.6 and ots >= 0.4:
+        if delta < 0.015: consensus_scale = 0.5
+      if ots < 0.4:
+        if delta > 0.02: consensus_scale = 2
+
+
+      #consensus_scale = 1
+      #if ots < 0.6: cutoff = 0.02
+      #else:         cutoff = 0.03
+      #
+      #if delta > cutoff:
+      #  if self.scale_counts_bonds[k]==0:
+      #    consensus_scale = factor
+      #    self.scale_counts_bonds[k] += 1
+      #  else:
+      #    consensus_scale = second_factor
+      #
+      #if delta < 0.01 and ots > 0.6:
+      #  consensus_scale = 1./second_factor**2
+      #if delta < 0.01 and ots <= 0.6:
+      #  consensus_scale = 1./1.5
+
       proxy.weight = proxy.weight * consensus_scale
       self.current_bond_weights[k] = proxy.weight
 
@@ -280,19 +297,35 @@ class restraints_scale_manager(object):
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
       ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+
       consensus_scale = 1
-      if ots < 0.6: cutoff = 3.0
-      else:         cutoff = 5.0
-      if delta > cutoff:
-        if self.scale_counts_angles[k]==0:
-          consensus_scale = factor
-          self.scale_counts_angles[k] += 1
-        else:
-          consensus_scale = second_factor
-      if delta < 1.5 and ots > 0.6:
-        consensus_scale = 1./second_factor**2
-      if delta < 1.5 and ots <= 0.6:
-        consensus_scale = 1./1.5
+      if delta > 3.0: consensus_scale = 2
+
+      if ots >= 0.8:
+        if delta < 2.5: consensus_scale = 0.5
+      if ots < 0.8 and ots >=0.6:
+        if delta < 2.0: consensus_scale = 0.5
+      if ots < 0.6 and ots >= 0.4:
+        if delta < 1.5: consensus_scale = 0.5
+      if ots < 0.4:
+        if delta > 2.0: consensus_scale = 2
+
+      #consensus_scale = 1
+      #if ots < 0.6: cutoff = 3.0
+      #else:         cutoff = 5.0
+      #if delta > cutoff:
+      #  if self.scale_counts_angles[k]==0:
+      #    consensus_scale = factor
+      #    self.scale_counts_angles[k] += 1
+      #  else:
+      #    consensus_scale = second_factor
+      #if delta < 1.5 and ots > 0.6:
+      #  consensus_scale = 1./second_factor**2
+      #if delta < 1.5 and ots <= 0.6:
+      #  consensus_scale = 1./1.5
+
+
+
       proxy.weight = proxy.weight * consensus_scale
       self.current_angle_weights[k] = proxy.weight
 
