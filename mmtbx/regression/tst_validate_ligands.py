@@ -82,7 +82,7 @@ def run_test01():
     test=os.path.isfile)
 
   args=[pdb_fname, 'save_reduce2_model=True']
-  #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+  #print("phenix.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -136,7 +136,7 @@ def run_test02():
     relative_path="mmtbx/regression/pdbs/two_chains_ligand_water.pdb",
     test=os.path.isfile)
   args=[pdb_fname]
-  #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+  #print("phenix.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -375,7 +375,7 @@ def run_test04():
   with open(model_fn, "w") as f:
     f.write(cif_str_tst_4)
   args = [model_fn]
-  #print("mmtbx.development.validate_ligands %s run_reduce2=False" % model_fn)
+  #print("phenix.validate_ligands %s run_reduce2=False" % model_fn)
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())

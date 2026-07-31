@@ -27,7 +27,7 @@ def test_000():
     permanent restraint object on the returned model: it is purpose-built for
     placement (bonds shortened to 0.9x, idealized esd=1/period=1 torsions from
     the CCD conformer) and would produce bogus geometry outliers if re-used by
-    downstream validation (e.g. mmtbx.development.validate_ligands).
+    downstream validation (e.g. phenix.validate_ligands).
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_000.split("\n"), source_info=None)
   model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())

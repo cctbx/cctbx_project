@@ -57,8 +57,8 @@ gui
 class Program(ProgramTemplate):
 
   description = '''
-mmtbx.development.validate_ligands model.pdb data.mtz
-mmtbx.development.validate_ligands model.pdb
+phenix.validate_ligands model.pdb data.mtz
+phenix.validate_ligands model.pdb
 
 Print out basic statistics for residue(s) with the given code(s), including
 RSCC.
