@@ -418,12 +418,40 @@ namespace boost_python {
     }
   };
 
+  /** @brief hermitian_eigen, for the test which exercises it.
+
+  Nothing in the refinement calls this: the solver is used from C++, on the
+  scattering matrix, where wrapping it would be pure overhead. It is exposed so
+  that the test can drive it directly with matrices chosen to be awkward --
+  degenerate, already split, badly scaled -- rather than only through whatever
+  a particular dataset happens to produce.
+
+  Returns (eigenvalues ascending, eigenvectors in columns). The argument is
+  left untouched.
+  */
+  template <typename FloatType>
+  bp::tuple hermitian_eigen_for_test(
+    af::const_ref<std::complex<FloatType>, af::c_grid<2> > const &a)
+  {
+    SMTBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    const std::size_t n = a.accessor()[0];
+    af::versa<std::complex<FloatType>, af::c_grid<2> > v(
+      af::c_grid<2>(n, n));
+    std::copy(a.begin(), a.end(), v.begin());
+    af::shared<FloatType> ev(n);
+    hermitian_eigen(v.begin(), n, ev.begin());
+    return bp::make_tuple(ev, v);
+  }
+
   namespace {
     void init_module() {
       ed_data_wrapper<double>::wrap();
       ed_utils_wrapper<double>::wrap();
       dyn_calculator_wrapper<double>::wrap();
       geometry_wrapper<double>::wrap();
+
+      bp::def("hermitian_eigen", &hermitian_eigen_for_test<double>,
+        (bp::arg("matrix")));
 
       scitbx::boost_python::RegisterPyPair<scitbx::mat3<double>, scitbx::vec3<double> >();
     }

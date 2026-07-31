@@ -35,6 +35,7 @@ tst_list = [
     "$D/regression/tst_commandline_refine.py",
     "$D/regression/tst_commandline_anomrefine.py",
     "$D/tests/tst_utils.py",
+    "$D/ED/tests/tst_hermitian_eigen.py",
     # these two draw no random numbers, so they belong here rather than among
     # the unstable ones, which run() does not run at all
     "$D/refinement/tests/tst_scipy_minimisers.py",
