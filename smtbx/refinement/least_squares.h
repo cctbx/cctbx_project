@@ -491,24 +491,27 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     The destination is a bare pointer rather than a vector so that the
     accumulator's own row may be passed, which is where they would have to be
-    copied to otherwise.
+    copied to otherwise. The Jacobian is a pointer too, and null when the
+    functor's gradients need none applying -- there is then nothing to flatten
+    and nothing built.
     */
     static void fill_gradients(f_calc_function_base_t const &f_calc_function,
-      flattened_jacobian_transpose const &jacobian_transpose,
+      flattened_jacobian_transpose const *jacobian_transpose,
       FloatType *destination, int n_params)
     {
       if (f_calc_function.raw_gradients()) {
+        SMTBX_ASSERT(jacobian_transpose != 0);
         /* Fused when the functor can: the gradients of the observable are
            converted from the complex ones a component at a time, as the
            Jacobian reaches each column, and never assembled into a vector of
            their own. Whoever cannot do that says so and is served the long way.
          */
         if (f_calc_function.apply_jacobian_to_grad_observable(
-              jacobian_transpose, destination))
+              *jacobian_transpose, destination))
         {
           return;
         }
-        jacobian_transpose.apply(f_calc_function.get_grad_observable(),
+        jacobian_transpose->apply(f_calc_function.get_grad_observable(),
           destination);
         return;
       }
@@ -608,10 +611,14 @@ namespace smtbx { namespace refinement { namespace least_squares {
              pass over the non-zeros, which is nothing against the reflections a
              worker then applies it to, and it saves passing another reference
              down through every constructor. Not built at all for a pass which
-             wants no derivatives, since then it is never applied to anything.
+             wants no derivatives, since then it is never applied to anything --
+             nor for a functor which hands back gradients that are already in
+             the basis of the refined parameters, the dynamical electron
+             diffraction one being the case in point, which likewise never
+             applies it.
            */
           boost::scoped_ptr<flattened_jacobian_transpose> jt;
-          if (compute_grad) {
+          if (compute_grad && f_calc_function.raw_gradients()) {
             jt.reset(new flattened_jacobian_transpose(
               jacobian_transpose_matching_grad_fc));
           }
@@ -666,11 +673,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
               FloatType *grad = 0;
               if (fast) {
                 grad = normal_equations.open_equation();
-                fill_gradients(f_calc_function, *jt, grad, n_params);
+                fill_gradients(f_calc_function, jt.get(), grad, n_params);
               }
               else if (compute_grad) {
                 grad = gradients.begin();
-                fill_gradients(f_calc_function, *jt, grad, n_params);
+                fill_gradients(f_calc_function, jt.get(), grad, n_params);
                 /* The radial correction of f' and f'' keeps its gradients to
                    itself -- they are not per-scatterer, so the Jacobian above
                    has nothing to say about them and leaves their slots at zero.
