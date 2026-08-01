@@ -174,11 +174,17 @@ namespace smtbx { namespace ED
       cmat_t W(af::mat_grid(n, n)),
         At(af::mat_grid(n, n)),   // A transposed
         cA(af::mat_grid(n, n));   // A conjugated, elementwise
+      /* The intensity, not the amplitude, is what is wanted, and
+         dI/dp = 2 Re(conj(F) dF/dp) keeps only the real part of the
+         contraction. Folding 2 conj(F) into the scale here -- M being linear in
+         it -- means the imaginary part is never formed at all, rather than
+         computed per parameter and discarded. */
+      const complex_t fold = scale*complex_t(2*rv.real(), -2*rv.imag());
       // G scaled by the output row of A and by A* first column: everything the
       // old per-parameter Hadamard product applied to V, gathered up before V
       // exists. The transposes are built in the same sweep, being free here.
       for (size_t i = 0; i < n; i++) {
-        const complex_t a_i = A(idx, i)*scale;
+        const complex_t a_i = A(idx, i)*fold;
         for (size_t j = 0; j < n; j++) {
           W(i, j) = a_i*G(i, j)*A_cjt(j, 0);
           At(j, i) = A(i, j);
@@ -190,17 +196,30 @@ namespace smtbx { namespace ED
       cmat_t M = af::matrix_multiply(
         cA.const_ref(),
         af::matrix_multiply(W.const_ref(), At.const_ref()).const_ref());
-      for (size_t pi = 0; pi < Ds_kin.size(); pi++) {
-        // what is left of the parameter's own contribution: M against D_p,
-        // elementwise, which is dF/dp for this beam
-        const complex_t *d = Ds_kin[pi].begin();
-        const complex_t *m = M.begin();
-        complex_t dp = 0;
+      /* Re(sum_k M_k D_k) = sum_k (Re M_k Re D_k - Im M_k Im D_k), so negating
+         the imaginary parts of M once turns the whole contraction into a plain
+         real dot product over the interleaved storage -- half the multiplies of
+         the complex form, and a shape the compiler can vectorise. std::complex
+         is required to have exactly this layout, which is what makes the cast
+         legitimate. */
+      std::vector<FloatType> m_dot(2*n*n);
+      {
+        const FloatType *m = reinterpret_cast<const FloatType *>(M.begin());
         for (size_t k = 0; k < n*n; k++) {
-          dp += m[k]*d[k];
+          m_dot[2*k] = m[2*k];
+          m_dot[2*k + 1] = -m[2*k + 1];
+        }
+      }
+      const size_t len = 2*n*n;
+      for (size_t pi = 0; pi < Ds_kin.size(); pi++) {
+        const FloatType *d =
+          reinterpret_cast<const FloatType *>(Ds_kin[pi].begin());
+        FloatType dp = 0;
+        for (size_t k = 0; k < len; k++) {
+          dp += m_dot[k]*d[k];
         }
         // copy result to output (dI/dp -> |CI|^2)
-        D_dyn(0, pi) = 2*(rv.real()*dp.real() + rv.imag()*dp.imag());
+        D_dyn(0, pi) = dp;
       }
     }
 
