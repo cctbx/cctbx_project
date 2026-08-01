@@ -207,23 +207,43 @@ namespace smtbx { namespace ED
       return selection;
     }
 
+    /** @brief The beams near one reflection, from the cache or computed.
+
+    Two things here are load bearing under threading, and neither is obvious.
+
+    The lookup is locked as well as the insertion. Reading a std::map while
+    another thread inserts into it is undefined however harmless it looks: an
+    insertion rebalances, so a concurrent find may follow a pointer that is
+    being rewritten.
+
+    The selection handed back is the caller's own copy, not a share of the
+    cached one. af::shared is reference counted and its counter is a plain
+    integer, not an atomic, so two threads holding shares of the same array
+    race every time one of them copies or destroys its share -- silently, and
+    with the reference count as the thing corrupted. Copying the indices costs
+    a few tens of bytes; getting this wrong costs a double free under load,
+    which is exactly the kind of fault that only shows on a big dataset on a
+    machine with many cores.
+    */
     ref_slice_t get_selection(const miller::index<> &h, const mat3_t &RM, bool cache) const {
+      typedef std::map<miller::index<>, ref_slice_t, miller::fast_less_than<> >
+        ref_sel_cache_t;
       if (cache) {
-        typedef std::map<miller::index<>, ref_slice_t, miller::fast_less_than<> >
-          ref_sel_cache_t;
+        boost::mutex::scoped_lock lock(*mtx);
         typename ref_sel_cache_t::const_iterator fi =
           selection_cache.find(h);
         if (fi != selection_cache.end()) {
-          return fi->second;
+          return ref_slice_t(complete_sorted_set,
+            fi->second.selection.deep_copy());
         }
       }
       af::shared<size_t> selection = fetch_selection(h, RM);
-      ref_slice_t rv(complete_sorted_set, selection);
       if (cache) {
         boost::mutex::scoped_lock lock(*mtx);
-        selection_cache.insert(std::make_pair(h, rv));
+        selection_cache.insert(std::make_pair(h,
+          ref_slice_t(complete_sorted_set, selection.deep_copy())));
       }
-      return rv;
+      return ref_slice_t(complete_sorted_set, selection);
     }
 
     void cache_selection(const miller::index<>& h, const af::shared<mat3_t>& RMfs,
@@ -231,10 +251,15 @@ namespace smtbx { namespace ED
     {
       typedef std::map<miller::index<>, ref_slice_t, miller::fast_less_than<> >
         ref_sel_cache_t;
-      typename ref_sel_cache_t::const_iterator fi =
-        selection_cache.find(h);
-      if (!reset && fi != selection_cache.end()) {
-        return;
+      /* Locked, as in get_selection, and the iterator not kept: the map may be
+         inserted into by another thread while the selection below is being
+         computed, which would leave it dangling. The key is looked up again
+         under the lock at the end instead. */
+      if (!reset) {
+        boost::mutex::scoped_lock lock(*mtx);
+        if (selection_cache.find(h) != selection_cache.end()) {
+          return;
+        }
       }
       af::shared<size_t> all;
       for (size_t i = 0; i < RMfs.size(); i++) {
@@ -252,11 +277,9 @@ namespace smtbx { namespace ED
         i = j - 1;
       }
       boost::mutex::scoped_lock lock(*mtx);
-      if (fi != selection_cache.end()) {
-        selection_cache.erase(fi->first);
-      }
-      ref_slice_t rv(complete_sorted_set, selection);
-      selection_cache.insert(std::make_pair(h, rv));
+      selection_cache.erase(h);
+      selection_cache.insert(std::make_pair(h,
+        ref_slice_t(complete_sorted_set, selection)));
     }
 
     f_calc_function_base_t& f_calc_function;
