@@ -679,9 +679,10 @@ class QMRestraintsBuilder(object):
 
     From the base partition (every non-cap hydrogen free) this freezes only the
     hydrogens riding a frozen heavy atom, so no free heavy atom drags a frozen H
-    behind it (which would distort its X-H bond). Two hydrogens are exempt:
-    capping hydrogens stay frozen, and coordinating-water hydrogens stay free
-    (their O is frozen, but the O-H orientation shapes the M-O interaction)."""
+    behind it (which would distort its X-H bond). Capping hydrogens are left as the
+    base partition froze them (together with their anchors, in determine_frozen_atoms);
+    coordinating-water hydrogens are freed even though their O is frozen (the O-H
+    orientation shapes the M-O interaction)."""
     atoms = submodel.get_atoms()
     def res_key(atom):
       # A value key: atom.parent() hands back a fresh proxy each call, so object
@@ -709,8 +710,7 @@ class QMRestraintsBuilder(object):
       if not atom.element_is_hydrogen():
         continue
       if j in caps:
-        frozen.add(j)               # capping H: always frozen
-        continue
+        continue                    # capping H: keep the base partition's frozen state
       if res_key(atom) in water_donor_keys:
         frozen.discard(j)           # coordinating-water H: always free
         continue
