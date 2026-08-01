@@ -412,6 +412,11 @@ namespace smtbx { namespace ED
     int getThreadN() const { return static_cast<int>(values[6]); }
     FloatType getIntSpan() const { return values[7]; }
     FloatType getIntStep() const { return values[8]; }
+    /* Settable so that the integration can be made finer or coarser without
+       rebuilding everything downstream of it -- which is what lets the density
+       be chosen by measurement rather than by hand. See smtbx.ED.
+       estimate_int_points. */
+    void setIntStep(FloatType v) { values[8] = v; }
     size_t getIntPoints() const { return static_cast<size_t>(values[9]); }
     bool isAngleInt() const { return values[10] == 1; }
     bool useNBeamSg() const { return values[11] == 1; }

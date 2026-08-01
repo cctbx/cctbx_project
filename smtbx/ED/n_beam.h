@@ -159,8 +159,9 @@ namespace smtbx { namespace ED
       build_kin_mt(thread_n, Fc2Ug, f_calc_function, indices, Fcs_kin);
     }
 
-    void build() {
-      if (Fcs_kin.size() != indices.size()) {
+    /// @copydoc N_beam_shared_data::build
+    void build(bool rebuild = false) {
+      if (rebuild || Fcs_kin.size() != indices.size()) {
         Fcs_kin.resize(indices.size());
         do_build_kin_mt();
         for (size_t i = 0; i < complete_sorted_set.size(); i++) {

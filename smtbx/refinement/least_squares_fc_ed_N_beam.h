@@ -64,8 +64,22 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         this->indices, this->Fcs_kin, design_matrix_kin, compute_grad);
     }
 
-    void build() {
-      if (this->Fcs_kin.size() != this->indices.size()) {
+    /** @brief Compute the kinematic structure factors and their derivatives.
+
+    Only the structure factors here depend on the structure. Everything the
+    constructor did before this -- generating the reflection list, their
+    diffraction angles, sorting them, building the index lookup -- is a
+    function of the cell, the space group and the resolution cutoff, none of
+    which move during a refinement.
+
+    So @p rebuild exists to let a caller keep the object across cycles and ask
+    only for this part again. Without it the sizes match after the first call
+    and nothing happens, which leaves recreating the whole object as the only
+    way to refresh it -- and that repeats the setup every cycle for nothing.
+    Measured, that setup is about 8% of a refinement cycle.
+    */
+    void build(bool rebuild = false) {
+      if (rebuild || this->Fcs_kin.size() != this->indices.size()) {
         if (compute_grad) {
           size_t cn = Jt_matching_grad_fc.n_rows() - (this->thickness.grad ? 1 : 0);
           if (cn > 0) {
