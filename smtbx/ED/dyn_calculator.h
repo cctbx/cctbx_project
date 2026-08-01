@@ -131,6 +131,7 @@ namespace smtbx { namespace ED
       mat_t& D_dyn,
       size_t idx) = 0;
 
+
     // recomputes the Eigen matrix
     virtual a_dyn_calculator& build() = 0;
     const cart_t K, N;
@@ -138,6 +139,44 @@ namespace smtbx { namespace ED
       return A;
     }
   protected:
+    /** @brief Working storage the per-orientation calls reuse.
+
+    A calculator is built once per reflection and then asked for an amplitude
+    at each of some twenty orientations, so anything held here is allocated
+    once instead of twenty times -- and the arrays are small enough that the
+    allocation was a real part of the call.
+
+    Mutable because the calls which use it are conceptually const in what they
+    compute; nothing here carries meaning between calls.
+    */
+    struct work_t {
+      hermitian_eigen_scratch<FloatType> eigen;
+      std::vector<FloatType> ev;
+      cmat_t A_cjt, G, W, T, M;
+      std::vector<complex_t> exps, im, im_dt;
+      std::vector<FloatType> m_dot;
+
+      void size_for(std::size_t n) {
+        if (ev.size() < n) {
+          ev.resize(n);
+          exps.resize(n);
+          im.resize(n);
+          im_dt.resize(n);
+        }
+        if (static_cast<std::size_t>(A_cjt.accessor().n_columns()) != n) {
+          A_cjt.resize(af::mat_grid(n, n));
+          G.resize(af::mat_grid(n, n));
+          W.resize(af::mat_grid(n, n));
+          T.resize(af::mat_grid(n, n));
+          M.resize(af::mat_grid(n, n));
+        }
+        if (m_dot.size() < 2*n*n) {
+          m_dot.resize(2*n*n);
+        }
+      }
+    };
+    mutable work_t work;
+
     /** @brief One output beam's row of dI/dp, for every refined parameter.
 
     The derivative of the intensity of beam @p idx with respect to parameter p
@@ -163,17 +202,20 @@ namespace smtbx { namespace ED
       it costs nothing. Pass 1 where the formulation has no such factor.
     @param rv the already-scaled complex amplitude, for dI = 2 Re(conj(F) dF).
     */
-    static void accumulate_grad_row(
+    /** @brief M, folded and laid out for a real dot product.
+
+    Everything in the derivative that does not depend on the parameter, which
+    is everything except D itself. Shared by the two contractions below, so
+    that there is one statement of the algebra whichever way D is supplied.
+    Leaves the result in work.m_dot as 2n^2 reals.
+    */
+    void build_m_dot(
       const cmat_t &A, const cmat_t &A_cjt, const cmat_t &G,
-      size_t idx, complex_t scale,
-      af::shared<cmat_t> const &Ds_kin,
-      complex_t const &rv,
-      mat_t &D_dyn)
+      size_t idx, complex_t scale, complex_t const &rv)
     {
       const size_t n = A.accessor().n_columns();
-      cmat_t W(af::mat_grid(n, n)),
-        At(af::mat_grid(n, n)),   // A transposed
-        cA(af::mat_grid(n, n));   // A conjugated, elementwise
+      work.size_for(n);
+      cmat_t &W = work.W, &T = work.T, &M = work.M;
       /* The intensity, not the amplitude, is what is wanted, and
          dI/dp = 2 Re(conj(F) dF/dp) keeps only the real part of the
          contraction. Folding 2 conj(F) into the scale here -- M being linear in
@@ -182,27 +224,47 @@ namespace smtbx { namespace ED
       const complex_t fold = scale*complex_t(2*rv.real(), -2*rv.imag());
       // G scaled by the output row of A and by A* first column: everything the
       // old per-parameter Hadamard product applied to V, gathered up before V
-      // exists. The transposes are built in the same sweep, being free here.
+      // exists.
       for (size_t i = 0; i < n; i++) {
         const complex_t a_i = A(idx, i)*fold;
         for (size_t j = 0; j < n; j++) {
           W(i, j) = a_i*G(i, j)*A_cjt(j, 0);
-          At(j, i) = A(i, j);
-          cA(i, j) = std::conj(A(i, j));
         }
       }
-      // M = conj(A) . W . A^T, the two products that used to be A* D_p A once
-      // per parameter. Done once, with no D in them at all.
-      cmat_t M = af::matrix_multiply(
-        cA.const_ref(),
-        af::matrix_multiply(W.const_ref(), At.const_ref()).const_ref());
+      /* M = conj(A) . W . A^T, the two products that used to be A* D_p A once
+         per parameter. Done once, with no D in them at all.
+
+         Written out rather than handed to matrix_multiply so that neither the
+         transpose of A nor its elementwise conjugate is ever materialised and
+         neither product allocates its result -- both are read straight out of
+         A, indexed the other way round. The second product runs i outermost so
+         that its innermost index walks a row of T and a row of M rather than a
+         column of each. */
+      for (size_t i = 0; i < n; i++) {
+        for (size_t b = 0; b < n; b++) {
+          complex_t s(0, 0);
+          for (size_t j = 0; j < n; j++) {
+            s += W(i, j)*A(b, j);           // A^T(j,b)
+          }
+          T(i, b) = s;
+        }
+      }
+      std::fill(M.begin(), M.end(), complex_t(0, 0));
+      for (size_t a = 0; a < n; a++) {
+        for (size_t i = 0; i < n; i++) {
+          const complex_t c = std::conj(A(a, i));
+          for (size_t b = 0; b < n; b++) {
+            M(a, b) += c*T(i, b);
+          }
+        }
+      }
       /* Re(sum_k M_k D_k) = sum_k (Re M_k Re D_k - Im M_k Im D_k), so negating
          the imaginary parts of M once turns the whole contraction into a plain
          real dot product over the interleaved storage -- half the multiplies of
          the complex form, and a shape the compiler can vectorise. std::complex
          is required to have exactly this layout, which is what makes the cast
          legitimate. */
-      std::vector<FloatType> m_dot(2*n*n);
+      std::vector<FloatType> &m_dot = work.m_dot;
       {
         const FloatType *m = reinterpret_cast<const FloatType *>(M.begin());
         for (size_t k = 0; k < n*n; k++) {
@@ -210,6 +272,19 @@ namespace smtbx { namespace ED
           m_dot[2*k + 1] = -m[2*k + 1];
         }
       }
+    }
+
+    /// dI/dp for every parameter, from the assembled dA/dp of each
+    void accumulate_grad_row(
+      const cmat_t &A, const cmat_t &A_cjt, const cmat_t &G,
+      size_t idx, complex_t scale,
+      af::shared<cmat_t> const &Ds_kin,
+      complex_t const &rv,
+      mat_t &D_dyn)
+    {
+      const size_t n = A.accessor().n_columns();
+      build_m_dot(A, A_cjt, G, idx, scale, rv);
+      const std::vector<FloatType> &m_dot = work.m_dot;
       const size_t len = 2*n*n;
       for (size_t pi = 0; pi < Ds_kin.size(); pi++) {
         const FloatType *d =
@@ -222,6 +297,7 @@ namespace smtbx { namespace ED
         D_dyn(0, pi) = dp;
       }
     }
+
 
     af::shared<miller::index<> > indices;
     cmat_t A;
