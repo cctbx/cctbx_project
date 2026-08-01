@@ -30,9 +30,10 @@ namespace smtbx { namespace ED
     virtual af::shared<complex_t> calc_amps(size_t num, bool include_incident) {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      this->work.size_for(n_beams);
+      FloatType *ev = &this->work.ev[0];
       // heev replaces A with column-wise eigenvectors
-      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
+      hermitian_eigen(this->A.begin(), n_beams, ev, this->work.eigen);
       const FloatType Kl = this->K.length();
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kl);
       af::shared<complex_t> im(n_beams);
@@ -53,9 +54,10 @@ namespace smtbx { namespace ED
     virtual complex_t calc_amps_1(size_t idx) {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      this->work.size_for(n_beams);
+      FloatType *ev = &this->work.ev[0];
       // heev replaces A with column-wise eigenvectors
-      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
+      hermitian_eigen(this->A.begin(), n_beams, ev, this->work.eigen);
       const FloatType Kl = this->K.length();
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kl);
       complex_t res;
@@ -76,15 +78,16 @@ namespace smtbx { namespace ED
     {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      this->work.size_for(n_beams);
+      FloatType *ev = &this->work.ev[0];
       // heev replaces A with column-wise eigenvectors
-      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
-      cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
+      hermitian_eigen(this->A.begin(), n_beams, ev, this->work.eigen);
+      cmat_t &A_cjt = this->work.A_cjt;
       const FloatType Kl = this->K.length();
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kl),
         k_dt(0, scitbx::constants::pi / Kl);
-      af::shared<complex_t> exps(n_beams), im(n_beams),
-        im_dt(n_beams);
+      complex_t *exps = &this->work.exps[0], *im = &this->work.im[0],
+        *im_dt = &this->work.im_dt[0];
       for (size_t i = 0; i < n_beams; i++) {
         A_cjt(i, i) = std::conj(this->A(i, i));
         for (size_t j = i + 1; j < n_beams; j++) {
@@ -102,7 +105,7 @@ namespace smtbx { namespace ED
         }
       }
       // !need only num rows!
-      cmat_t G(af::mat_grid(n_beams, n_beams));
+      cmat_t &G = this->work.G;
       for (size_t i = 0; i < n_beams; i++) {
         //G(i, i) = exps[i];
         G(i, i) = exps[i] * exp_k;
@@ -155,23 +158,26 @@ namespace smtbx { namespace ED
 
     }
 
-    virtual complex_t calc_amps_ext_1(
-      af::shared<cmat_t> const& Ds_kin,
-      bool grad_thickness,
-      mat_t& D_dyn,
-      size_t idx)
+    /** Everything an extended call needs before the parameters come into it:
+        the eigendecomposition, A*, the exponentials, G, the amplitude of the
+        wanted beam and the thickness column of the output. Shared by the two
+        forms of calc_amps_ext_1, which differ only in how dA/dp reaches them.
+        Leaves A*, G and the eigenvectors in work for the contraction. */
+    complex_t prepare_ext_1(bool grad_thickness, mat_t& D_dyn, size_t idx,
+      size_t n_param)
     {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
+      this->work.size_for(n_beams);
+      FloatType *ev = &this->work.ev[0];
       // heev replaces A with column-wise eigenvectors
-      hermitian_eigen(this->A.begin(), n_beams, &ev[0]);
-      cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
+      hermitian_eigen(this->A.begin(), n_beams, ev, this->work.eigen);
+      cmat_t &A_cjt = this->work.A_cjt;
       const FloatType Kl = this->K.length();
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kl),
         k_dt(0, scitbx::constants::pi / Kl);
-      af::shared<complex_t> exps(n_beams), im(n_beams),
-        im_dt(n_beams);
+      complex_t *exps = &this->work.exps[0], *im = &this->work.im[0],
+        *im_dt = &this->work.im_dt[0];
       for (size_t i = 0; i < n_beams; i++) {
         A_cjt(i, i) = std::conj(this->A(i, i));
         for (size_t j = i + 1; j < n_beams; j++) {
@@ -189,7 +195,7 @@ namespace smtbx { namespace ED
         }
       }
       // !need only num rows!
-      cmat_t G(af::mat_grid(n_beams, n_beams));
+      cmat_t &G = this->work.G;
       for (size_t i = 0; i < n_beams; i++) {
         //G(i, i) = exps[i];
         G(i, i) = exps[i] * exp_k;
@@ -199,7 +205,7 @@ namespace smtbx { namespace ED
         }
       }
       // last column - dI_dT
-      size_t d_T_off = Ds_kin.size();
+      const size_t d_T_off = n_param;
       D_dyn.resize(af::mat_grid(1, d_T_off + (grad_thickness ? 1 : 0)));
 
       complex_t rv; // complex amplitudes
@@ -215,12 +221,23 @@ namespace smtbx { namespace ED
           D_dyn[d_T_off] = 2 * (rv.real() * dt.real() + rv.imag() * dt.imag());
         }
       }
-
-      // dI/dp for every refined parameter, from G and the eigenvectors
-      this->accumulate_grad_row(this->A, A_cjt, G, idx, complex_t(1),
-        Ds_kin, rv, D_dyn);
       return rv;
     }
+
+    virtual complex_t calc_amps_ext_1(
+      af::shared<cmat_t> const& Ds_kin,
+      bool grad_thickness,
+      mat_t& D_dyn,
+      size_t idx)
+    {
+      const complex_t rv =
+        prepare_ext_1(grad_thickness, D_dyn, idx, Ds_kin.size());
+      // dI/dp for every refined parameter, from G and the eigenvectors
+      this->accumulate_grad_row(this->A, this->work.A_cjt, this->work.G, idx,
+        complex_t(1), Ds_kin, rv, D_dyn);
+      return rv;
+    }
+
 
     a_dyn_calculator<FloatType>& build() {
       const FloatType Kl = this->K.length();

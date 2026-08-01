@@ -10,11 +10,44 @@
 
 namespace smtbx { namespace ED {
 
+  /** @brief The working storage one eigendecomposition needs.
+
+  Eight small arrays, and at eleven beams every one of them is a few hundred
+  bytes -- so the allocation is a real fraction of the call, and there are tens
+  of thousands of calls per pass. Held by the caller and reused, they are
+  allocated once for a whole beam group instead.
+
+  Sizing is done here rather than at each use so that the arrays grow to the
+  largest matrix seen and then stop; resize() on a vector already big enough
+  does nothing, which is the common case after the first call.
+  */
+  template <typename FloatType>
+  struct hermitian_eigen_scratch {
+    std::vector<std::complex<FloatType> > t, q, v, p, sub;
+    std::vector<FloatType> d, e;
+    std::vector<std::size_t> order;
+
+    void size_for(std::size_t n) {
+      if (t.size() < n*n) {
+        t.resize(n*n);
+        q.resize(n*n);
+      }
+      if (v.size() < n) {
+        v.resize(n);
+        p.resize(n);
+        sub.resize(n);
+        d.resize(n);
+        e.resize(n);
+        order.resize(n);
+      }
+    }
+  };
+
   /// Orders indices by the value they point at; a functor for C++98's sake
   template <typename FloatType>
   struct ascending_by {
-    std::vector<FloatType> const &values;
-    ascending_by(std::vector<FloatType> const &values) : values(values) {}
+    FloatType const *values;
+    ascending_by(FloatType const *values) : values(values) {}
     bool operator()(std::size_t i, std::size_t j) const {
       return values[i] < values[j];
     }
@@ -65,7 +98,8 @@ namespace smtbx { namespace ED {
   */
   template <typename FloatType>
   void hermitian_eigen_unblocked(std::complex<FloatType> *a, std::size_t n,
-                                 FloatType *ev)
+                                 FloatType *ev,
+                                 hermitian_eigen_scratch<FloatType> &s)
   {
     typedef std::complex<FloatType> complex_t;
     if (n == 0) {
@@ -76,10 +110,14 @@ namespace smtbx { namespace ED {
       a[0] = complex_t(1, 0);
       return;
     }
+    s.size_for(n);
 
     // The matrix is reduced in place in `t`; `q` accumulates the transform and
-    // ends up holding the eigenvectors.
-    std::vector<complex_t> t(a, a + n*n), q(n*n, complex_t(0, 0));
+    // ends up holding the eigenvectors. Reused storage, so both are filled
+    // rather than constructed -- q needs its zeros written every time.
+    complex_t *t = &s.t[0], *q = &s.q[0];
+    std::copy(a, a + n*n, t);
+    std::fill(q, q + n*n, complex_t(0, 0));
     for (std::size_t i = 0; i < n; i++) {
       q[i*n + i] = complex_t(1, 0);
       // mirror the upper triangle down, so the update below may read either
@@ -89,7 +127,8 @@ namespace smtbx { namespace ED {
       t[i*n + i] = complex_t(t[i*n + i].real(), 0);
     }
 
-    std::vector<complex_t> v(n), p(n), sub(n > 0 ? n - 1 : 0, complex_t(0, 0));
+    complex_t *v = &s.v[0], *p = &s.p[0], *sub = &s.sub[0];
+    std::fill(sub, sub + n, complex_t(0, 0));
 
     // --- 1. Householder reduction to tridiagonal form ---
     for (std::size_t k = 0; k + 2 < n; k++) {
@@ -172,7 +211,8 @@ namespace smtbx { namespace ED {
     /* e is one longer than the subdiagonal it holds, the last entry staying
        zero: the search for a negligible subdiagonal below runs off the end
        when the block is already split, and finds the zero there. */
-    std::vector<FloatType> d(n), e(n, FloatType(0));
+    FloatType *d = &s.d[0], *e = &s.e[0];
+    std::fill(e, e + n, FloatType(0));
     for (std::size_t i = 0; i < n; i++) {
       d[i] = t[i*n + i].real();
     }
@@ -248,11 +288,11 @@ namespace smtbx { namespace ED {
     }
 
     // --- 4. ascending, which is what heev would have given ---
-    std::vector<std::size_t> order(n);
+    std::size_t *order = &s.order[0];
     for (std::size_t i = 0; i < n; i++) {
       order[i] = i;
     }
-    std::sort(order.begin(), order.end(), ascending_by<FloatType>(d));
+    std::sort(order, order + n, ascending_by<FloatType>(d));
     for (std::size_t k = 0; k < n; k++) {
       ev[k] = d[order[k]];   // NOLINT: a is rewritten from q, not read here
       const std::size_t src = order[k];
@@ -302,7 +342,8 @@ namespace smtbx { namespace ED {
   */
   template <typename FloatType>
   void hermitian_eigen(std::complex<FloatType> *a, std::size_t n,
-                       FloatType *ev)
+                       FloatType *ev,
+                       hermitian_eigen_scratch<FloatType> &s)
   {
 #if defined(USE_FAST_LINALG)
     if (n >= hermitian_eigen_blocked_from() && fast_linalg::is_initialised()) {
@@ -313,7 +354,16 @@ namespace smtbx { namespace ED {
       return;
     }
 #endif
-    hermitian_eigen_unblocked(a, n, ev);
+    hermitian_eigen_unblocked(a, n, ev, s);
+  }
+
+  /// For a caller with nowhere to keep scratch, at the cost of allocating it
+  template <typename FloatType>
+  void hermitian_eigen(std::complex<FloatType> *a, std::size_t n,
+                       FloatType *ev)
+  {
+    hermitian_eigen_scratch<FloatType> s;
+    hermitian_eigen(a, n, ev, s);
   }
 
 }}
