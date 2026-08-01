@@ -121,7 +121,7 @@ namespace boost_python {
         .add_property("beam_n", &wt::getBeamN)
         .add_property("thread_n", &wt::getThreadN)
         .add_property("int_span", &wt::getIntSpan)
-        .add_property("int_step", &wt::getIntStep)
+        .add_property("int_step", &wt::getIntStep, &wt::setIntStep)
         .add_property("int_points", &wt::getIntPoints)
         .add_property("int_angle", &wt::isAngleInt)
         .add_property("use_N_beam_Sg", &wt::useNBeamSg)
@@ -267,7 +267,7 @@ namespace boost_python {
               arg("space_group"), arg("unit_cell"),
               arg("beam_groups"), arg("thickness"),
               arg("params"))))
-        .def("build", &wt::build)
+        .def("build", &wt::build, (arg("rebuild") = false))
         .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
         .add_property("mi_lookup", make_getter(&wt::mi_lookup, rir))
         .add_property("Fcs_kin", make_getter(&wt::Fcs_kin, rbv))
@@ -320,7 +320,7 @@ namespace boost_python {
               arg("space_group"), arg("unit_cell"),
               arg("beam_groups"), arg("thickness"),
               arg("params"), arg("compute_grad"), arg("build") = true)))
-        .def("build", &wt::build)
+        .def("build", &wt::build, (arg("rebuild") = false))
         .def("build_width_cache", &wt::build_width_cache,
           (arg("rebuild") = false))
         .def("compute_dynI", &wt::compute_dynI,
