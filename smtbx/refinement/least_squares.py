@@ -15,8 +15,96 @@ from smtbx.structure_factors import direct
 from smtbx.refinement.restraints import origin_fixing_restraints
 import math
 
-def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
+# Above this much memory per worker, the packed accumulator is not offered to a
+# threaded build however well it does on smaller ones. Each worker streams the
+# whole of its private matrix once per reflection, so it is quick while that
+# matrix stays in cache and turns over hard -- as a cliff, not a slope -- as
+# soon as it does not. The buffered accumulator has no such boundary: it hands
+# the work to a syrk, which the BLAS blocks for whatever cache it finds at
+# runtime. So this is the line between an algorithm that adapts to the machine
+# and one that cannot, and it has to be drawn conservatively.
+#
+# Expressed as bytes rather than as a parameter count, because bytes are what
+# carries to another machine: the packed matrix is n(n+1)/2 doubles, and the
+# question is whether that stays in cache.
+#
+# It is deliberately *not* read from the CPU that happens to be running. That
+# would need a platform call apiece and would tune the refinement to one
+# machine; and it does not need asking. What matters is last-level cache **per
+# hardware thread**, since every worker holds one of these at once, and core
+# counts and cache sizes have grown together, so that ratio has stayed within a
+# narrow band across a long span of hardware -- roughly a megabyte a thread on
+# an old quad-core, on a mid-range laptop and on a many-core desktop alike.
+#
+# The budget is set under the low end of that band, so it is safe on the oldest
+# machine worth supporting rather than right on a modern one and wrong
+# elsewhere. It gives up a little of what a large-cache machine could have
+# used. The other end needs no judgement at all: a few thousand parameters is
+# megabytes a worker and hundreds of megabytes across them, past the last-level
+# cache of any machine that exists.
+
+blas_2_parallel_max_matrix_bytes = 384 << 10
+
+
+def blas_2_parallel_max_parameters(max_matrix_bytes=None):
+  """ The largest n whose packed normal matrix fits the per-thread budget.
+
+  n(n+1)/2 doubles <= budget, solved for n and rounded down. Arithmetic only:
+  nothing here asks the operating system anything, and the answer is the same
+  on every platform.
+  """
+  import math
+  if max_matrix_bytes is None:
+    max_matrix_bytes = blas_2_parallel_max_matrix_bytes
+  doubles = max_matrix_bytes/8.0
+  # n(n+1)/2 <= doubles  =>  n <= (sqrt(8 doubles + 1) - 1)/2
+  return int((math.sqrt(8.0*doubles + 1.0) - 1.0)/2.0)
+
+
+# Below this much work -- reflections x parameters -- sharing the reflection
+# pass over threads costs more than it saves. There are two figures because
+# there are two accumulators and they scale quite differently, and using one
+# number for both is a mistake that shows up as a regression on exactly the
+# structures which fall between them.
+#
+# The packed accumulator threads almost freely: each worker keeps a small matrix
+# which stays in cache, so it pays off on anything but a trivial problem, and
+# its crossover sits low.
+#
+# The buffered one does not. Its workers contend over the BLAS's own threading
+# of the syrk, so it only starts paying at roughly ten times the work. Using one
+# figure for both is a mistake that shows up as a regression on exactly the
+# problems which fall between them.
+blas_2_parallel_work_threshold = 2e5
+blas_3_parallel_work_threshold = 2e6
+
+
+def worth_parallelising(n_parameters, n_reflections, available_threads=None):
+  """ Whether a build of this size should share its reflection pass out.
+
+  Kept beside the accumulator choice deliberately: the two decisions are one
+  decision. Which threshold applies depends on which accumulator will be used,
+  and that depends on the parameter count, so asking the questions separately
+  gets problems between the two thresholds wrong -- applying the low threshold
+  to the buffered accumulator makes them markedly slower than serial.
+  """
+  if available_threads is not None and available_threads <= 1:
+    return False
+  work = float(n_reflections)*n_parameters
+  if n_parameters <= blas_2_parallel_max_parameters():
+    return work >= blas_2_parallel_work_threshold
+  return work >= blas_3_parallel_work_threshold
+
+
+def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None,
+                              n_parameters=None,
+                              may_parallelise=None):
   """ Construct a class for crystallographic L.S. based on the given engine
+
+  n_parameters and may_parallelise are the problem this class is about to be
+  used on, where the caller knows them. They only ever pick between the two
+  stock accumulators; an engine passed in explicitly is always honoured, and
+  with neither given the choice is exactly what it has always been.
   """
   def get_base_class(non_linear_ls_with_separable_scale_factor):
     base_class = non_linear_ls_with_separable_scale_factor
@@ -28,6 +116,15 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
         else:
           base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
       except Exception:
+        base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
+      # A threaded build of a small enough problem is the one case where the
+      # packed rank-1 update beats the buffered rank-k one. Each thread
+      # accumulates into a matrix of its own, and while that matrix is small it
+      # stays in cache, where BLAS 3's row buffer, its n x n scratch and the
+      # per-thread syrks competing with each other all cost more than they save.
+      if (may_parallelise
+          and n_parameters is not None
+          and n_parameters <= blas_2_parallel_max_parameters()):
         base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
     #print("Chosen: " + str(base_class))
     return base_class
@@ -322,8 +419,10 @@ def crystallographic_ls(
   non_linear_ls_with_separable_scale_factor=None,
   may_parallelise=True,
   **kwds):
-  return crystallographic_ls_class(non_linear_ls_with_separable_scale_factor
-                                   )(observations, reparametrisation,
+  return crystallographic_ls_class(
+    non_linear_ls_with_separable_scale_factor,
+    n_parameters=reparametrisation.n_independents,
+    may_parallelise=may_parallelise)(observations, reparametrisation,
                                      may_parallelise=may_parallelise, **kwds)
 
 
