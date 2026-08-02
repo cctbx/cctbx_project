@@ -185,8 +185,17 @@ namespace scitbx { namespace matrix {
      *  its rows fit is never chunked at all, so nothing about a small structure
      *  changes: it does the one update it always did.
      */
+    /** aaT_packed is deliberately not sized here; finalise() sizes it.
+
+    It is the packed copy handed to the caller at the end, and an accumulator
+    which is merged into another with operator+= is never finalised and never
+    asked for it -- which is exactly what the worker threads of a parallel build
+    are. Sizing it up front cost every one of them n(n+1)/2 doubles it would
+    never look at, and on a large structure that is tens of megabytes a thread and
+    a substantial fraction of a gigabyte across a build.
+     */
     rank_n_update(int n, std::size_t buffer_bytes=0)
-    : aaT(std::size_t(n)*n, T(0)), aaT_packed(n), cols(n)
+    : aaT(std::size_t(n)*n, T(0)), cols(n)
     {
       if (buffer_bytes == 0) {
         buffer_bytes = default_buffer_bytes();
@@ -320,6 +329,10 @@ namespace scitbx { namespace matrix {
         // written the upper triangle for the copy below to read
         std::fill(aaT.begin(), aaT.end(), T(0));
         folded = true;
+      }
+      // sized on first use rather than at construction: see the constructor
+      if (aaT_packed.accessor().n_rows() != std::size_t(cols)) {
+        aaT_packed = af::versa<T, af::packed_u_accessor>(cols);
       }
       /* The upper triangle of a row-major square, read row by row, is the order
          packed_u stores it in, so this is one sequential pass and no

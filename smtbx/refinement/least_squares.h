@@ -122,6 +122,121 @@ namespace smtbx { namespace refinement { namespace least_squares {
     void interrupt() {
       interrupted = true;
     }
+
+    /** @brief How long the main thread waits on a worker before looking up.
+
+    The workers cannot simply be joined and forgotten: a refinement has to stay
+    interruptible, so the progress listener must keep being called while they
+    run, and it is that listener's answer which cancels the build.
+
+    That used to be done by polling a flag with a fixed 100 ms sleep between
+    looks, which put a 100 ms floor under every threaded build. The
+    accumulation itself is a few milliseconds on anything short of a protein,
+    so on a small structure that wait *was* the cost of threading -- it is why a
+    threaded build measured a flat tenth of a second whatever the structure, and
+    why parallelising a small one came out several times slower than leaving it
+    serial.
+
+    A bounded join replaces the poll: the thread is joined the instant it
+    finishes, and the wait gives up every 100 ms only so the listener can be
+    called. A sleep-poll cannot do that at any interval -- asking for a shorter
+    sleep does not help much, because the granularity of a Windows sleep is
+    about a millisecond however small the argument, and asking for a longer one
+    is the original problem.
+
+    Joining is also what makes reading a worker's results safe: `running` is a
+    plain bool, so observing it false is not on its own a guarantee that
+    everything written before it is visible here.
+    */
+    static boost::chrono::milliseconds progress_interval() {
+      return boost::chrono::milliseconds(100);
+    }
+
+    /** @brief Bounds on how many workers accumulate a normal matrix each.
+
+    A ceiling and a floor, not a target. Every worker keeps a private copy of
+    the normal matrix, so both the memory a build costs and the O(n^2) it
+    spends allocating, zeroing and merging those copies grow with the thread
+    count, while the arithmetic there is to share does not. Returns therefore
+    fall away, and past some point another worker costs more than it brings.
+
+    The ceiling guards a machine with a great many cores against putting a copy
+    of the matrix on every one of them; on anything with fewer hardware threads
+    than this it does nothing at all. The floor guards the other end, where a
+    structure big enough that one matrix overruns the memory budget would
+    otherwise be left with a single worker and no sharing at all -- some is
+    worth having even when the budget cannot pay for it in full.
+     */
+    //@{
+    static int max_accumulator_threads() { return 16; }
+    static int min_accumulator_threads() { return 3; }
+    //@}
+
+    /** @brief A per-thread normal equations object, told its memory budget
+        where the type in question has one to be told.
+
+    Not every normal equations type the builder is instantiated on takes a
+    buffer size -- only the ones whose accumulator buffers rows. The two
+    overloads pick themselves: the first exists only when the three-argument
+    constructor does, and the int/long argument makes it the better match when
+    both are viable. Plain overload resolution, so no C++11 or later required.
+     */
+    //@{
+    template <typename NE>
+    static NE *new_chunk_equations(int n, std::size_t buffer_bytes, int,
+                                   decltype(NE(0, true, std::size_t(0)))* = 0)
+    {
+      return new NE(n, true, buffer_bytes);
+    }
+
+    template <typename NE>
+    static NE *new_chunk_equations(int n, std::size_t, long) {
+      return new NE(n);
+    }
+    //@}
+
+    /** @brief How much work one worker needs before it pays for itself.
+
+    Model a threaded build as
+
+        time ~ F/T + n^2 n_refl/(T r) + T n^2 m
+
+    -- the structure factor pass and the arithmetic both shared over T threads,
+    and against them the O(n^2) each worker pays for a private normal matrix,
+    which grows with T. Minimising over T,
+
+        T* = sqrt(n_refl / k),   k = r m
+
+    and **n cancels**: how many workers are worth having follows the number of
+    reflections, not the number of parameters. That is a property of the cost
+    structure and holds anywhere; only k, a ratio of merge cost to arithmetic
+    rate, belongs to the hardware.
+
+    Two constants because the accumulators differ greatly in m. The packed one
+    keeps half a matrix and folds each row in as it arrives, so it merges less
+    and wants more workers for the same work; the buffered one carries a full
+    matrix, a row buffer and a syrk besides. They are told apart as in
+    new_chunk_equations above -- the buffered accumulator is the one that takes
+    a buffer size.
+
+    Both values are deliberately conservative. Overshooting T* costs more than
+    undershooting it, every extra worker being another copy of the matrix, and
+    the optimum is flat around its minimum, so erring low gives up very little.
+     */
+    //@{
+    template <typename NE>
+    static double accumulator_work_constant(
+      int, decltype(NE(0, true, std::size_t(0)))* = 0) { return 195.; }
+
+    template <typename NE>
+    static double accumulator_work_constant(long) { return 30.; }
+
+    static int threads_for_work(double work_constant, std::size_t n_reflections)
+    {
+      double const t = std::sqrt(double(n_reflections)/work_constant);
+      return std::max(1, static_cast<int>(t + 0.5));
+    }
+    //@}
   private:
     mutable bool interrupted;
     static int& available_threads_var() {
@@ -349,8 +464,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             design_matrix_, max_memory);
           boost::thread th(boost::ref(job));
           //job();
-          while (job.running) {
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+          while (!th.try_join_for(parent_t::progress_interval())) {
             if (!this->OnProgress(~0, ~0)) {
               this->interrupt();
               th.join();
@@ -375,13 +489,68 @@ namespace smtbx { namespace refinement { namespace least_squares {
           return;
         }
 #endif
-        const int thread_count = parent_t::get_available_threads();
-        boost::thread_group pool;
+        /* Every worker keeps a normal matrix of its own, so what a threaded
+           build costs in memory grows with the thread count, and nothing in
+           `available_threads` knows that. On a large structure this is the
+           dominant allocation and can run to many times the budget asked for.
+
+           Bounding the workers by what the budget holds is not the trade it
+           appears to be: past a handful of them the extra copies buy overhead
+           and duplicate storage rather than arithmetic, the heavy kernel being
+           threaded by the BLAS already. A build bounded this way is usually
+           quicker as well as smaller.
+         */
+        int thread_count = parent_t::get_available_threads();
+        thread_count = std::min(thread_count, parent_t::max_accumulator_threads());
+        thread_count = std::min(thread_count, parent_t::threads_for_work(
+          parent_t::template accumulator_work_constant<NormalEquations>(0),
+          reflections_.size()));
+        if (max_memory > 0 && normal_equations.n_parameters() > 0) {
+          std::size_t const n = normal_equations.n_parameters();
+          std::size_t const result_bytes = n*n*sizeof(FloatType);
+          /* A quarter of the budget, not all of it. The private matrices are
+             not what the budget was written for -- the row buffers are -- and
+             giving them the whole of it lets a *generous* budget produce a
+             slower and hungrier build than a modest one, by making room for
+             copies that do not pay for themselves.
+
+             Floored, and on a very large structure the floor matters more than
+             the cap: once one matrix is itself larger than the share, the
+             division alone would say a single worker and give up threading
+             altogether, costing far more than the memory it saves.
+           */
+          std::size_t const budget = (std::size_t(max_memory) << 20)/4;
+          int const by_memory = static_cast<int>(
+            std::max<std::size_t>(parent_t::min_accumulator_threads(),
+              budget/std::max<std::size_t>(1, result_bytes)));
+          thread_count = std::min(thread_count, by_memory);
+        }
+        /* Held here rather than in a boost::thread_group so that each thread
+           can be joined individually with a bounded wait; a thread_group offers
+           join_all and nothing timed, and the progress listener has to keep
+           being called while the wait is in progress.
+         */
+        std::vector<boost::shared_ptr<boost::thread> > pool;
         std::vector<accumulate_reflection_chunk_ptr_t> accumulators;
         Scheduler scheduler(reflections_.size());
+        /* Each worker buffers rows of its own and, left to itself, takes the
+           accumulator's default -- generous, and multiplied by the thread count
+           far past any budget the caller set. Only the main accumulator ever
+           honoured max_memory; these did not.
+
+           The budget is shared out instead. Fewer rows to a chunk means more
+           chunks and one more pass over the result apiece, which is the trade;
+           the floor keeps that from becoming silly on a machine with many
+           threads and a small budget.
+         */
+        std::size_t const thread_buffer_bytes = max_memory > 0
+          ? std::max<std::size_t>(4u << 20,
+              ((std::size_t(max_memory) << 20)/4)/thread_count)
+          : 0;
         for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
           normal_equations_ptr_t chunk_normal_equations(
-            new NormalEquations(normal_equations.n_parameters()));
+            parent_t::template new_chunk_equations<NormalEquations>(
+              normal_equations.n_parameters(), thread_buffer_bytes, 0));
           accumulate_reflection_chunk_ptr_t accumulator(
             new accumulate_reflection_chunk_t(
               *this,
@@ -395,25 +564,26 @@ namespace smtbx { namespace refinement { namespace least_squares {
               f_calc_.ref(), observables_.ref(), weights_.ref(),
               design_matrix_));
           accumulators.push_back(accumulator);
-          pool.create_thread(boost::ref(*accumulator));
+          pool.push_back(boost::shared_ptr<boost::thread>(
+            new boost::thread(boost::ref(*accumulator))));
         }
-        while (true) {
-          bool running = false;
-          for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
-            if (accumulators[thread_idx]->running) {
-              running = true;
-              break;
+        /* Joined in turn, each with a bounded wait so that the progress
+           listener still runs while they work. Waiting on them one after
+           another rather than all at once loses nothing: the listener is called
+           at the same cadence whichever of them is outstanding, and the last
+           join returns when the last thread does either way.
+         */
+        for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
+          while (!pool[thread_idx]->try_join_for(
+                   parent_t::progress_interval()))
+          {
+            if (!this->OnProgress(~0, ~0)) {
+              this->interrupt();
+              for (int j = thread_idx; j < thread_count; j++) {
+                pool[j]->join();
+              }
+              throw SMTBX_ERROR("external_interrupt");
             }
-          }
-
-          if (!running) {
-            break;
-          }
-          boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-          if (!this->OnProgress(~0, ~0)) {
-            this->interrupt();
-            pool.join_all();
-            throw SMTBX_ERROR("external_interrupt");
           }
         }
 
