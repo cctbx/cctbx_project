@@ -502,9 +502,24 @@ namespace smtbx { namespace refinement { namespace least_squares {
          */
         int thread_count = parent_t::get_available_threads();
         thread_count = std::min(thread_count, parent_t::max_accumulator_threads());
-        thread_count = std::min(thread_count, parent_t::threads_for_work(
-          parent_t::template accumulator_work_constant<NormalEquations>(0),
-          reflections_.size()));
+        /* The work law is calibrated on structure factors, whose cost per
+           reflection is roughly the same for all of them. It must not be
+           applied to a functor whose reflections are far dearer than that: the
+           dynamical electron diffraction one computes a beam group per
+           reflection, orders of magnitude more work, so counting reflections
+           understates the work by about as much and would leave a build that
+           parallelises perfectly well with a handful of threads.
+
+           Told apart by raw_gradients(), as the Jacobian product above is: a
+           functor handing back gradients already in the basis of the refined
+           parameters is the dynamical one, and it is the same distinction
+           rather than a new flag invented for this.
+         */
+        if (f_calc_function.raw_gradients()) {
+          thread_count = std::min(thread_count, parent_t::threads_for_work(
+            parent_t::template accumulator_work_constant<NormalEquations>(0),
+            reflections_.size()));
+        }
         if (max_memory > 0 && normal_equations.n_parameters() > 0) {
           std::size_t const n = normal_equations.n_parameters();
           std::size_t const result_bytes = n*n*sizeof(FloatType);
