@@ -179,16 +179,11 @@ its own basis."
       .type = str
       .short_caption = Solvent model
       .help = "ORCA implicit solvent model. Empty string disables solvation."
-    optimisation = *LooseOpt Opt
+    optimisation = *looser LooseOpt Opt TightOpt VeryTightOpt
       .type = choice
       .short_caption = Optimisation convergence
-      .help = "ORCA geometry-optimisation convergence."
-    convergence = default *looser
-      .type = choice
-      .short_caption = Geometry convergence
-      .help = "ORCA geometry-optimisation convergence tolerances: 'default' keeps \
-the built-in LooseOpt/Opt thresholds; 'looser' relaxes them for faster metal-site \
-optimisation."
+      .help = "ORCA geometry-optimisation convergence. 'looser' applies relaxed \
+metal-site tolerances; the remaining values are ORCA's built-in convergence tiers."
     optimise_hydrogens = *free_atoms all
       .type = choice
       .short_caption = Hydrogens to optimise
@@ -454,7 +449,6 @@ Requires xtb.
       orca_basis_set=self.params.qm.orca.basis_set,
       orca_solvent_model=self.params.qm.orca.solvent,
       orca_optimisation=self.params.qm.orca.optimisation,
-      orca_convergence=self.params.qm.orca.convergence,
       orca_hessian=self.params.qm.orca.hessian,
       orca_optimise_hydrogens=self.params.qm.orca.optimise_hydrogens,
       orca_exe=self.params.qm.orca.exe,
@@ -478,8 +472,9 @@ Requires xtb.
 
   def _global_provenance(self):
     """Global provenance comment lines for the .edits header (plan Sec 9.3):
-    tool/method, xtb + cctbx versions, model, protonation source/opt-out."""
-    from mmtbx.geometry_restraints.qmi import provenance
+    tool/method, xtb + cctbx versions, model, protonation source/opt-out, then
+    the effective region/freeze partition and per-engine optimisation knobs."""
+    from mmtbx.geometry_restraints.qmi import provenance, qm
     proto = ("reduce2 + naiad water-H + metal-donor deprotonation"
              if self.params.protonation.enable
              else "user-supplied (protonation off)")
@@ -489,10 +484,24 @@ Requires xtb.
       solvent = orca.solvent
     else:
       method, solvent = "GFN2-xTB", self.params.qm.solvent
-    return provenance.global_block(
+    lines = provenance.global_block(
       method=method, solvent=solvent,
       temperature=self.params.qm.temperature, model_name=self._model_name,
       protonation=proto)
+    lines += provenance.settings_block(
+      engine=self.params.qm.engine,
+      radius=self.params.qm_region.radius,
+      max_depth=self.params.qm_region.max_search_depth,
+      free_radius=qm.DEFAULT_FREE_RADIUS,
+      freeze_waters=self.params.qm.freeze_waters,
+      freeze_far_carboxylate_o=self.params.qm.freeze_far_carboxylate_o,
+      optimise_all=self.params.qm.optimise_all,
+      optimise_hydrogens=self.params.qm.orca.optimise_hydrogens,
+      optimisation=self.params.qm.orca.optimisation,
+      hessian=self.params.qm.orca.hessian,
+      basis_set=self.params.qm.orca.basis_set,
+      nproc=self.params.qm.nproc)
+    return lines
 
   def _show_summary(self):
     print('\nqmi metal-restraint summary:', file=self.logger)

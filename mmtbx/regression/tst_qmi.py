@@ -500,6 +500,26 @@ def exercise_provenance():
   assert any(ln.startswith("protonation:") for ln in g)
   assert not any("resolution" in ln for ln in g)          # omitted when None
 
+  st = provenance.settings_block(
+    engine="orca", radius=4.0, max_depth=3, free_radius=5.0,
+    freeze_waters=True, freeze_far_carboxylate_o=False, optimise_all=False,
+    optimise_hydrogens="free_atoms", optimisation="looser",
+    hessian="xtb", basis_set=None, nproc=6)
+  assert any(ln.startswith("region:") and "radius=4.0" in ln and "depth=3" in ln
+             and "free_radius=5.0" in ln and "freeze_waters=on" in ln
+             for ln in st), st
+  assert any(ln.startswith("engine: orca") and "H=free_atoms" in ln
+             and "opt=looser" in ln and "hessian=xtb" in ln
+             and "nproc=6" in ln for ln in st), st
+  assert not any("convergence=" in ln for ln in st)       # collapsed into opt
+  assert not any("basis=" in ln for ln in st)             # omitted when None
+  stx = provenance.settings_block(                        # xTB: no ORCA knobs
+    engine="xtb", radius=4.0, max_depth=3, free_radius=5.0,
+    freeze_waters=True, freeze_far_carboxylate_o=False, optimise_all=False,
+    nproc=1)
+  assert any(ln.startswith("engine: xtb") and "all non-cap H free" in ln
+             and "nproc=1" in ln for ln in stx), stx
+
   bvs_est = group_args(best=3, valences={}, n_used=4)
   s = "\n".join(provenance.site_block(
     "Fe", "Fe_A54", 3, 6, 1, "guessed", "medium",

@@ -159,8 +159,8 @@ class QMRestraintsBuilder(object):
                freeze_far_carboxylate_o=False, optimise_all=False,
                angle_restraints="auto", coord_cutoff=None,
                engine="xtb", orca_method=None, orca_basis_set=None,
-               orca_solvent_model=None, orca_optimisation="LooseOpt",
-               orca_convergence="default", orca_hessian="xtb",
+               orca_solvent_model=None, orca_optimisation="looser",
+               orca_hessian="xtb",
                orca_optimise_hydrogens="free_atoms", orca_exe=None, logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
@@ -187,13 +187,19 @@ class QMRestraintsBuilder(object):
     # call. For xTB the orca_* arguments are ignored; for ORCA the unset ones
     # fall back to the r2SCAN-3c / CPCM(diethylether) defaults.
     if engine == "orca":
+      # One user knob (orca_optimisation) drives ORCA's two mechanisms: 'looser'
+      # requests a plain Opt and relaxes its tolerances via an explicit %geom
+      # block; every other value is a built-in ORCA convergence keyword (no
+      # %geom override).
+      if orca_optimisation == "looser":
+        opt_keyword, geom_conv = "Opt", "looser"
+      else:
+        opt_keyword, geom_conv = orca_optimisation, None
       self._engine_opts = qm.engine_options(
         engine="orca", method=orca_method, basis_set=orca_basis_set,
-        solvent_model=orca_solvent_model, optimisation=orca_optimisation,
-        convergence=(None if orca_convergence in (None, "default")
-                     else orca_convergence),
-        hessian=orca_hessian, optimise_hydrogens=orca_optimise_hydrogens,
-        exe=orca_exe)
+        solvent_model=orca_solvent_model, optimisation=opt_keyword,
+        convergence=geom_conv, hessian=orca_hessian,
+        optimise_hydrogens=orca_optimise_hydrogens, exe=orca_exe)
     else:
       self._engine_opts = qm.engine_options(
         engine="xtb", solvent_model=solvent_model)
