@@ -152,7 +152,7 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
 def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
                            free_radius=DEFAULT_FREE_RADIUS,
                            coord_cutoff=None,
-                           freeze_waters=False, freeze_far_carboxylate_o=False,
+                           freeze_waters="peripheral", freeze_far_carboxylate_o=False,
                            log=None):
   """Return ``(frozen_iseqs, free_iseqs)`` for the QM optimisation.
 
@@ -180,9 +180,12 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
     which pins the severed boundary bond vector at both ends;
   - non-coordinating standard-AA backbone, and anything beyond *free_radius*
     not in a freed cofactor;
-  - with *freeze_waters*: the O of every water (a coordinating water has no
-    H-bond network in the truncated cluster and would drift; the 2 H stay
-    free).
+  - *freeze_waters* (``'all'`` / ``'peripheral'`` / ``'none'``) freezes water O
+    inside the relax zone: ``'all'`` every water; ``'peripheral'`` only
+    non-coordinating waters (a coordinating water is held by the metal bond and
+    relaxes, so its M-L distance is an optimised restraint); ``'none'`` no water.
+    Waters beyond *free_radius* are already frozen by the scaffold rule; the 2 H
+    stay free under every mode.
   - with *freeze_far_carboxylate_o*: the non-coordinating O of a MONODENTATE
     Asp/Glu carboxylate (one O inside the coordination cutoff, its sibling
     outside), so the optimiser cannot pull the sibling into a spurious
@@ -203,7 +206,9 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   coord_cutoff : callable or None
       ``(metal_element, donor_element) -> max distance (A)``; see
       :func:`util.make_coordination_cutoff`. Default: the flat fixed cutoff.
-  freeze_waters : bool
+  freeze_waters : str
+      Which relax-zone water O to freeze: ``'all'``, ``'peripheral'`` (only
+      non-coordinating; a metal-coordinating water relaxes), or ``'none'``.
   freeze_far_carboxylate_o : bool
       Freeze the non-coordinating O of a monodentate Asp/Glu carboxylate.
   log : file-like or None
@@ -295,12 +300,23 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   anchor_over_carbonyl = cap_anchor_set & carbonyl_unit_iseqs
   free_iseqs -= cap_anchor_set
 
+  # Non-coordinating waters inside the relax zone have no anchor (no metal bond,
+  # and no H-bond network in the truncated cluster) and drift, so freeze them; a
+  # coordinating water is held by the metal bond and relaxes (its M-L distance is
+  # the restraint signal). Iterate the free set only: waters beyond free_radius
+  # are already frozen by the scaffold rule, so the two mechanisms never overlap.
   water_o_iseqs = set()
-  if freeze_waters:
-    for i, atom in enumerate(atoms):
-      if (common_residue_names_get_class(atom.parent().resname) == "common_water"
-          and not atom.element_is_hydrogen()):
-        water_o_iseqs.add(i)
+  if freeze_waters != "none":
+    for i in list(free_iseqs):
+      atom = atoms[i]
+      if not (common_residue_names_get_class(atom.parent().resname) == "common_water"
+              and not atom.element_is_hydrogen()):
+        continue
+      if (freeze_waters == "peripheral"
+          and (matrix.col(atom.xyz) - seed_xyz).length()
+              <= coord_cutoff(metal_element, atom.element)):
+        continue                                   # coordinating water: relaxes
+      water_o_iseqs.add(i)
     free_iseqs -= water_o_iseqs
 
   # Optional: freeze the non-coordinating O of a MONODENTATE carboxylate so the
@@ -341,9 +357,9 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
           f"re-frozen as cap anchor", file=log)
   print(f"    H/D atoms freed: {len(h_iseqs - cap_set)} "
         f"(of {len(h_iseqs)}; {len(h_iseqs & cap_set)} are caps)", file=log)
-  if freeze_waters:
-    print(f"    water O frozen (freeze_waters): {len(water_o_iseqs)}",
-          file=log)
+  if freeze_waters != "none":
+    print(f"    water O frozen (freeze_waters={freeze_waters}): "
+          f"{len(water_o_iseqs)}", file=log)
   if carboxylate_far_o:
     cx = ", ".join(f"{rn} {ch}{rs}/{nm}(d={d:.2f})"
                    for ch, rs, rn, nm, d in carboxylate_far_o)

@@ -224,11 +224,12 @@ ORCA MPI ranks)."
     .short_caption = Perturb-reoptimise attempts
     .help = "Perturb-and-reoptimise attempts when the inner sphere has an \
 imaginary mode (each attempt uses a larger kick)."
-  freeze_waters = True
-    .type = bool
-    .short_caption = Freeze QM-region water oxygens
-    .help = "Freeze the oxygen of each QM-region water during the \
-optimisation; its hydrogens stay free."
+  freeze_waters = all *peripheral none
+    .type = choice
+    .short_caption = Freeze QM-region waters
+    .help = "Which QM-region water oxygens to freeze during the optimisation \
+(hydrogens always stay free): 'all' every water in the relax zone, 'peripheral' \
+only non-coordinating waters (metal-coordinating waters relax), 'none' no water."
   freeze_far_carboxylate_o = False
     .type = bool
     .short_caption = Freeze a monodentate carboxylate's dangling oxygen

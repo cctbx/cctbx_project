@@ -131,10 +131,11 @@ class QMRestraintsBuilder(object):
       Commit the BVS most-likely oxidation instead of the predictor's (spin is
       re-derived for it); a user metal_state oxidation still wins. Applies to the
       committing (states='predicted') path only.
-  freeze_waters : bool
-      Freeze the oxygen of each QM-region water during the optimisation (its
-      hydrogens stay free); the truncated cluster loses the water's H-bond
-      network, so a free O would drift.
+  freeze_waters : str
+      Which relax-zone water O to freeze during the optimisation (the H stay
+      free): ``'all'`` (every water), ``'peripheral'`` (only non-coordinating
+      waters; a metal-coordinating water is held by the metal bond and relaxes,
+      so its M-L distance is an optimised restraint), or ``'none'``.
   freeze_far_carboxylate_o : bool
       Freeze the non-coordinating O of a monodentate Asp/Glu carboxylate during
       the optimisation, so it cannot swing in to a spurious bidentate.
@@ -155,7 +156,7 @@ class QMRestraintsBuilder(object):
                temperature=sigma.DEFAULT_TEMPERATURE_K,
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
-               perturb_attempts=1, use_bvs=False, freeze_waters=True,
+               perturb_attempts=1, use_bvs=False, freeze_waters="peripheral",
                freeze_far_carboxylate_o=False, optimise_all=False,
                angle_restraints="auto", coord_cutoff=None,
                engine="xtb", orca_method=None, orca_basis_set=None,

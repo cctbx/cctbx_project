@@ -79,7 +79,7 @@ def settings_block(engine, radius, max_depth, free_radius, freeze_waters,
   def onoff(flag):
     return "on" if flag else "off"
   region = (f"region: radius={radius} depth={max_depth} "
-            f"free_radius={free_radius}; freeze_waters={onoff(freeze_waters)} "
+            f"free_radius={free_radius}; freeze_waters={freeze_waters} "
             f"freeze_far_carboxylate_o={onoff(freeze_far_carboxylate_o)} "
             f"optimise_all={onoff(optimise_all)}")
   if engine == "orca":

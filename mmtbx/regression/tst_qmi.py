@@ -12,6 +12,7 @@ from __future__ import absolute_import, division, print_function
 import math
 import os
 import tempfile
+from io import StringIO
 
 import iotbx.pdb
 import libtbx.phil
@@ -56,6 +57,17 @@ HETATM    1 ZN    ZN A   1       0.000   0.000   0.000  1.00 10.00          ZN
 ATOM      2  NE2 HIS A   2       2.000   0.000   0.000  1.00 10.00           N
 HETATM    3  O   HOH A   3       0.000   0.000  10.000  1.00 10.00           O
 ATOM      4  HE2 HIS A   2       1.500   0.000   0.000  1.00 10.00           H
+"""
+
+# Metal + a coordinating water O (~2.1 A), a non-coordinating water O in the
+# relax-zone annulus (~4 A, within free_radius), and a non-coordinating water O
+# beyond free_radius (~7 A), for the freeze_waters mode test.
+_WATER_MODE_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A   1       0.000   0.000   0.000  1.00 10.00          ZN
+HETATM    2  O   HOH A   2       2.100   0.000   0.000  1.00 10.00           O
+HETATM    3  O   HOH A   3       4.000   0.000   0.000  1.00 10.00           O
+HETATM    4  O   HOH A   4       7.000   0.000   0.000  1.00 10.00           O
 """
 
 
@@ -502,11 +514,11 @@ def exercise_provenance():
 
   st = provenance.settings_block(
     engine="orca", radius=4.0, max_depth=3, free_radius=5.0,
-    freeze_waters=True, freeze_far_carboxylate_o=False, optimise_all=False,
+    freeze_waters="peripheral", freeze_far_carboxylate_o=False, optimise_all=False,
     optimise_hydrogens="free_atoms", optimisation="looser",
     hessian="xtb", basis_set=None, nproc=6)
   assert any(ln.startswith("region:") and "radius=4.0" in ln and "depth=3" in ln
-             and "free_radius=5.0" in ln and "freeze_waters=on" in ln
+             and "free_radius=5.0" in ln and "freeze_waters=peripheral" in ln
              for ln in st), st
   assert any(ln.startswith("engine: orca") and "H=free_atoms" in ln
              and "opt=looser" in ln and "hessian=xtb" in ln
@@ -515,7 +527,7 @@ def exercise_provenance():
   assert not any("basis=" in ln for ln in st)             # omitted when None
   stx = provenance.settings_block(                        # xTB: no ORCA knobs
     engine="xtb", radius=4.0, max_depth=3, free_radius=5.0,
-    freeze_waters=True, freeze_far_carboxylate_o=False, optimise_all=False,
+    freeze_waters="peripheral", freeze_far_carboxylate_o=False, optimise_all=False,
     nproc=1)
   assert any(ln.startswith("engine: xtb") and "all non-cap H free" in ln
              and "nproc=1" in ln for ln in stx), stx
@@ -607,15 +619,27 @@ def exercise_determine_frozen_atoms():
   assert 3 in frozen_c and 1 in frozen_c, frozen_c       # cap + its anchor
   assert free_c == {0}, free_c                           # only the metal free
 
-  # freeze_waters freezes a coordinating water O that is otherwise free.
-  zn = _model(_ZN_SITE_PDB)                              # HOH O is iseq 4, ~2 A
-  _f, free_w = qm.determine_frozen_atoms(
-    zn, seed_iseq=0, cap_iseqs=(), free_radius=5.0, log=null_out())
-  assert 4 in free_w, free_w                             # free by default
-  frozen_w, free_w2 = qm.determine_frozen_atoms(
-    zn, seed_iseq=0, cap_iseqs=(), free_radius=5.0, freeze_waters=True,
-    log=null_out())
-  assert 4 in frozen_w and 4 not in free_w2, frozen_w    # frozen with the flag
+  # freeze_waters modes: 'peripheral' (default) frees a coordinating water O but
+  # freezes a non-coordinating one inside the relax zone; 'all' freezes both;
+  # 'none' freezes neither. A water beyond free_radius is always frozen by the
+  # scaffold rule regardless of mode.
+  w = _model(_WATER_MODE_PDB)
+  COORD, ANNULUS, BEYOND = 1, 2, 3        # ~2.1 A, ~4 A (within), ~7 A (beyond)
+  for mode, coord_f, annulus_f in (("none", False, False),
+                                   ("peripheral", False, True),
+                                   ("all", True, True)):
+    fr, _fe = qm.determine_frozen_atoms(
+      w, seed_iseq=0, cap_iseqs=(), free_radius=5.0, freeze_waters=mode,
+      log=null_out())
+    assert (COORD in fr) == coord_f, (mode, "coord", fr)
+    assert (ANNULUS in fr) == annulus_f, (mode, "annulus", fr)
+    assert BEYOND in fr, (mode, "beyond frozen by radius", fr)
+  # overlap fix: under 'all' the water rule freezes COORD + ANNULUS (2), NOT the
+  # beyond-radius water (it is outside the free set the rule iterates).
+  buf = StringIO()
+  qm.determine_frozen_atoms(w, seed_iseq=0, cap_iseqs=(), free_radius=5.0,
+                            freeze_waters="all", log=buf)
+  assert "water O frozen (freeze_waters=all): 2" in buf.getvalue(), buf.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -814,7 +838,7 @@ def exercise_program():
   assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
   assert p.qm.temperature == 100 and p.qm.nproc == 1
   assert p.qm.perturb_attempts == 1
-  assert p.qm.freeze_waters is True
+  assert p.qm.freeze_waters == "peripheral"
   assert p.qm.angle_restraints == "auto"
   assert p.qm.work_dir == "qm_work_dir"
   assert p.output.write_files is True
