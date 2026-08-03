@@ -11,6 +11,25 @@ from dataclasses import dataclass, field
 from qttbx.widgets.chat.agent.errors import AgentEvent, AgentError  # noqa: F401
 
 
+# ---- canonical TurnDone.finish vocabulary ----------------------------------
+#
+# The values ``TurnDone.finish`` may take, defined HERE -- beside the field
+# they describe -- rather than only in ``phenix.gui.chat.finish``, which is
+# where the per-backend MAPPERS onto them live. Two consumers need the
+# vocabulary and only one of them may import phenix: ``AgentSession`` stamps
+# CANCELLED on the terminal event it synthesizes, and ``run_child`` branches on
+# the whole set to tell a cut-off child from a clean one. phenix's finish
+# module re-exports these names, so the two repos share ONE definition and a
+# value cannot drift between the side that writes it and the side that reads
+# it. ``ERROR`` is a finish value, not the ``AgentError`` event.
+CLEAN = "clean"                # complete answer
+TRUNCATED = "truncated"        # output-token limit hit mid-answer
+TOOL_USE = "tool_use"          # ended wanting tools; FINAL means loop capped
+CANCELLED = "cancelled"        # Ctrl-C / Stop / --timeout
+CAP = "cap"                    # the backend's own max-turns cap
+ERROR = "error"                # backend error result
+
+
 @dataclass
 class TextDelta(AgentEvent):
   text: str = ""
@@ -78,10 +97,17 @@ class ImageEmitted(AgentEvent):
 
 @dataclass
 class TokenUsage(AgentEvent):
+  """Token accounting for one assistant turn.
+
+  Field meanings -- in particular that ``context_tokens`` is a peak, not a
+  total, and must never be summed -- are documented on the stored
+  ``conversation.TokenUsage``, which is the canonical definition.
+  """
   input: int = 0
   output: int = 0
   cache_read: int = 0
   cache_creation: int = 0
+  context_tokens: int = 0
 
   def to_stored(self):
     """Convert this usage event to the canonical stored ``TokenUsage``.
@@ -115,9 +141,13 @@ class TurnDone(AgentEvent):
   ``finish`` is the backend-agnostic disposition, normalized AT THE AGENT
   BOUNDARY so a headless consumer never has to interpret per-backend
   stop-reason strings itself. Each backend maps its native finish state onto
-  one of the canonical values in ``phenix.gui.chat.finish`` (clean / truncated
-  / tool_use / cancelled / cap / error). Empty string means "unset" -- a
-  consumer that requires a definite disposition treats it as non-clean.
+  one of the canonical values defined above (and re-exported, with the
+  per-backend mappers, by ``phenix.gui.chat.finish``): ``CLEAN`` /
+  ``TRUNCATED`` / ``TOOL_USE`` / ``CANCELLED`` / ``CAP`` / ``ERROR``. A
+  mapper that FAILS CLOSED may also put a raw provider reason here
+  (``content_filter``, ``pause_turn``, ``SAFETY``), which is non-clean by
+  construction. Empty string means "unset" -- a consumer that requires a
+  definite disposition treats it as no information, not as success.
   """
   stop_reason: str = ""
   finish: str = ""

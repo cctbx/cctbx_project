@@ -54,6 +54,7 @@ def run(args, residue_type, expected_results):
       key = file_name[:-4]
       if (debug):
         print('"%s":' % key)
+        print('phenix_regression/%s_pdb_files' % residue_type)
         print(" ", str(result)+",")
         print(" ", str(expected_results[key])+",")
       if (expected_results is not None):
@@ -83,9 +84,11 @@ expected_results = {
 "dt_v3": [' DT', 32, [], 'DNA', None, None],
 "g_5pho_v2": ['  G%p5*END', 36, [], 'RNA', True, None],
 "g_5pho_v3": ['  G%p5*END', 36, [], 'RNA', True, None],
-"g_5ter_3ter_v2": ['  G%5*END%3*END', 33, [], 'RNA', True, None],
+# "g_5ter_3ter_v2": ['  G%5*END%3*END', 33, [], 'RNA', True, None],
+'g_5ter_3ter_v2' : ['  G%5*END%3*END', 32, ['2H2*'], 'RNA', True, None],
 "g_5ter_3ter_v3": ['  G%5*END%3*END', 33, [], 'RNA', True, None],
-"g_5ter_v2": ['  G%5*END', 32, [], 'RNA', True, None],
+# "g_5ter_v2": ['  G%5*END', 32, [], 'RNA', True, None],
+'g_5ter_v2' : ['  G%5*END', 31, ['2H2*'], 'RNA', True, None],
 "g_5ter_v3": ['  G%5*END', 32, [], 'RNA', True, None],
 "g_v2": ['  G', 34, [], 'RNA', None, None],
 "g_v3": ['  G', 34, [], 'RNA', None, None],

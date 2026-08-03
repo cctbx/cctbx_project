@@ -39,6 +39,16 @@ class scattering_type_registry_params(object):
     self.types_without_a_scattering_contribution = \
                                         types_without_a_scattering_contribution
 
+  def copy(self):
+    """Shallow copy, so that copies of a structure do not share (and mutate)
+    one another's scattering table bookkeeping."""
+    return scattering_type_registry_params(
+      custom_dict = self.custom_dict,
+      d_min       = self.d_min,
+      table       = self.table,
+      types_without_a_scattering_contribution =
+        self.types_without_a_scattering_contribution)
+
 class structure(crystal.special_position_settings):
   """A class to describe and handle information related to a crystal structure.
 
@@ -59,7 +69,8 @@ class structure(crystal.special_position_settings):
         non_unit_occupancy_implies_min_distance_sym_equiv_zero=False,
         scattering_type_registry=None,
         crystal_symmetry=None,
-        wavelength=None):
+        wavelength=None,
+        scattering_type_registry_params=None):
     assert [special_position_settings, crystal_symmetry].count(None) == 1
     assert scatterers is not None or site_symmetry_table is None
     if (special_position_settings is None):
@@ -77,7 +88,10 @@ class structure(crystal.special_position_settings):
         site_symmetry_table=site_symmetry_table,
         non_unit_occupancy_implies_min_distance_sym_equiv_zero=
           self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
-    self.scattering_type_registry_params = None
+    # Kept in step with _scattering_type_registry: whoever hands us a registry
+    # should hand us the params it was built from, or the record of which table
+    # (and which d_min!) the form factors came from is silently lost.
+    self.scattering_type_registry_params = scattering_type_registry_params
     self.inelastic_form_factors_source = None
     self.wavelength = wavelength
 
@@ -126,7 +140,8 @@ class structure(crystal.special_position_settings):
       scattering_type_registry=self._scattering_type_registry,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
-      wavelength=self.wavelength)
+      wavelength=self.wavelength,
+      scattering_type_registry_params=self._scattering_type_registry_params_copy())
     cp._scatterers = self._scatterers.deep_copy()
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     return cp
@@ -158,7 +173,8 @@ class structure(crystal.special_position_settings):
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =non_unit_occupancy_implies_min_distance_sym_equiv_zero,
       scattering_type_registry=self._scattering_type_registry,
-      wavelength=wavelength)
+      wavelength=wavelength,
+      scattering_type_registry_params=self._scattering_type_registry_params_copy())
     str.inelastic_form_factors_source = self.inelastic_form_factors_source
     return str
 
@@ -584,6 +600,42 @@ class structure(crystal.special_position_settings):
     if not self._scattering_type_registry:
       return None
     return self._scattering_type_registry.last_table()
+
+  def _scattering_type_registry_params_copy(self):
+    if(self.scattering_type_registry_params is None): return None
+    return self.scattering_type_registry_params.copy()
+
+  def set_scattering_table(self, table, d_min=None):
+    """Record from which table the scattering factors of this xrs come from.
+
+    It sets both places where the answer is kept,
+
+      self.scattering_type_registry_params.table
+      self._scattering_type_registry (last_table)
+
+    so that the two cannot disagree, but it does NOT re-derive any scattering
+    factors. Use it when the factors already are the ones belonging to `table`
+    and only the record of where they came from was lost, e.g. after select()
+    or a copy. To (re-)compute scattering factors, use
+    scattering_type_registry(table=..., d_min=...) instead.
+
+    Pass d_min whenever it is known: "n_gaussian" depends on d_min
+    """
+    assert table in ["n_gaussian", "it1992", "wk1995", "xray", "electron",
+        "neutron"]
+    if(self._scattering_type_registry is None):
+      # nothing to label: we have to build the factors, which needs the d_min
+      if(table == "n_gaussian"): assert d_min is not None
+      self.scattering_type_registry(table=table, d_min=d_min)
+      return
+    self._scattering_type_registry.set_last_table(table)
+    if(self.scattering_type_registry_params is None):
+      self.scattering_type_registry_params = scattering_type_registry_params(
+        d_min = d_min, table = table)
+    else:
+      self.scattering_type_registry_params.table = table
+      if(d_min is not None):
+        self.scattering_type_registry_params.d_min = d_min
 
   def guess_scattering_type_neutron(self):
     ac,bc,cc = 0,0,0
@@ -1262,7 +1314,8 @@ class structure(crystal.special_position_settings):
       scatterers=self._scatterers.select(selection),
       site_symmetry_table=self._site_symmetry_table.select(selection),
       scattering_type_registry=self._scattering_type_registry,
-      wavelength=self.wavelength)
+      wavelength=self.wavelength,
+      scattering_type_registry_params=self._scattering_type_registry_params_copy())
 
   def select_inplace(self, selection):
     assert self.scatterers() is not None

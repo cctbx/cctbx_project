@@ -209,6 +209,7 @@ not_covalent = [
   'link_gap',
   # necessary
   'hydrogen bonds',
+  'reference hydrogen bonds',
   ]
 
 def iterate_covalent():

@@ -269,7 +269,7 @@ def exercise_cns_names(cns_names, have_hydrogens):
 
 def exercise():
   exercise_rna_dna_atom_names()
-  assert len(iotbx.pdb.rna_dna_atom_names_backbone_aliases) == 102
+  assert len(iotbx.pdb.rna_dna_atom_names_backbone_aliases) == 102, 'actually %s' % len(iotbx.pdb.rna_dna_atom_names_backbone_aliases)
   exercise_mon_lib_names()
   exercise_cns_names(
     cns_names=cns_names_dna_rna_allatom_top, have_hydrogens=True)

@@ -154,6 +154,16 @@ jobs:
   - publish: $(System.DefaultWorkingDirectory)/phenix_examples
     artifact: phenix_examples
 
+  # clean up disk space
+  - script: |
+      rm -fr $(System.DefaultWorkingDirectory)/miniforge
+      rm -fr $(System.DefaultWorkingDirectory)/chem_data
+      rm -fr $(System.DefaultWorkingDirectory)/geostd
+      rm -fr $(System.DefaultWorkingDirectory)/phenix_regression
+      rm -fr $(System.DefaultWorkingDirectory)/phenix_examples
+    displayName: Clean up disk space
+    continueOnError: true
+
   # xfel_regression
   - task: DownloadPipelineArtifact@2
     inputs:

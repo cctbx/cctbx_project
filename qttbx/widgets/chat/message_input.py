@@ -1,6 +1,6 @@
 """Multi-line chat input with attachments, drag-drop, paste, and buttons.
 
-The button row holds Save chat / Auto-approve / attach / Send.
+The button row holds Save chat / Auto-approve / search / attach / Send.
 
 The Send button's label flips to 'Stop' when ``set_busy(True)`` is
 called; ``click_send`` emits ``stop`` in that mode. Attachments are
@@ -54,6 +54,9 @@ class MessageInput(QtWidgets.QWidget):
   attachment_rejected = QtCore.Signal(str)
   save_chat = QtCore.Signal()                      # 'Save chat' button click
   auto_approve_changed = QtCore.Signal(bool)       # checked state
+  search_clicked = QtCore.Signal()                 # 🔍 button click
+  goto_conversation_start = QtCore.Signal()        # Ctrl+Home in editor
+  goto_conversation_end = QtCore.Signal()          # Ctrl+End in editor
 
   # Idle placeholder text. The assistant name defaults to "Claude" but is
   # rewritten per session by ChatWindow via set_assistant_name() so the box
@@ -144,6 +147,11 @@ class MessageInput(QtWidgets.QWidget):
     self._auto_approve_btn.toggled.connect(self._on_auto_approve_toggled)
     button_row.addWidget(self._auto_approve_btn)
     button_row.addStretch(1)
+    self._search_btn = QtWidgets.QToolButton(self)
+    self._search_btn.setText("🔍")
+    self._search_btn.setToolTip("Search conversation (Ctrl+F / ⌘F)")
+    self._search_btn.clicked.connect(self._on_search_clicked)
+    button_row.addWidget(self._search_btn)
     self._attach_btn = QtWidgets.QToolButton(self)
     self._attach_btn.setText("@")    # ASCII-safe; UI later replaces with icon
     self._attach_btn.setToolTip("Attach an image")
@@ -153,6 +161,9 @@ class MessageInput(QtWidgets.QWidget):
     self._button.clicked.connect(self.click_send)
     button_row.addWidget(self._button)
     layout.addLayout(button_row)
+    # Focusing the composite lands in the editor -- the search bar's
+    # close path refocuses the input via setFocus().
+    self.setFocusProxy(self._edit)
 
   # ---- text helpers --------------------------------------------------------
 
@@ -440,6 +451,9 @@ class MessageInput(QtWidgets.QWidget):
   def _on_save_chat_clicked(self, _checked=False):
     self.save_chat.emit()
 
+  def _on_search_clicked(self, _checked=False):
+    self.search_clicked.emit()
+
   # ---- auto-approve --------------------------------------------------------
 
   def _on_auto_approve_toggled(self, checked):
@@ -584,6 +598,21 @@ class MessageInput(QtWidgets.QWidget):
         if mods & (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier):
           self.click_send()
           return True
+      # Exact Ctrl+Home / Ctrl+End are conversation navigation, not
+      # composer cursor movement: the editor claims document-nav keys
+      # via ShortcutOverride, so window-level Go to Start/End shortcuts
+      # could never fire while it has focus -- and it holds focus
+      # almost always. A stray KeypadModifier (numpad Home/End) counts
+      # as the same chord; Shift selections and every other combo stay
+      # native.
+      if (key in (QtCore.Qt.Key_Home, QtCore.Qt.Key_End)
+          and (mods & ~QtCore.Qt.KeypadModifier)
+              == QtCore.Qt.ControlModifier):
+        if key == QtCore.Qt.Key_Home:
+          self.goto_conversation_start.emit()
+        else:
+          self.goto_conversation_end.emit()
+        return True
       # Plain Up / Down recall the input history (shell-style), but only at
       # the first / last line so multi-line editing and Shift-selection are
       # left alone.

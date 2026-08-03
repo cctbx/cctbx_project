@@ -323,7 +323,7 @@ def exercise_subprocess_env_injects_phenix_when_opted_in():
                              storage=None, conv_id="c1", log=null_out())
   env = conn._subprocess_env()
   assert env["PHENIX_PROJECT_DIR"] == "/tmp/proj"
-  assert "PHENIX_CHAT_HOME" in env and env["PHENIX_CHAT_HOME"]
+  assert "PHENIX_AGENT_HOME" in env and env["PHENIX_AGENT_HOME"]
 
 
 def exercise_subprocess_env_omits_phenix_for_foreign_server():
@@ -336,16 +336,16 @@ def exercise_subprocess_env_omits_phenix_for_foreign_server():
   from qttbx.widgets.chat.agent.mcp_client import McpServerConnection
   from qttbx.widgets.chat.agent.profile import McpServerConfig
   saved = {k: os.environ.get(k)
-           for k in ("PHENIX_PROJECT_DIR", "PHENIX_CHAT_HOME")}
+           for k in ("PHENIX_PROJECT_DIR", "PHENIX_AGENT_HOME")}
   os.environ["PHENIX_PROJECT_DIR"] = "/exported/proj"
-  os.environ["PHENIX_CHAT_HOME"] = "/exported/home"
+  os.environ["PHENIX_AGENT_HOME"] = "/exported/home"
   try:
     cfg = McpServerConfig(name="coot", command="x", inject_phenix_env=False)
     conn = McpServerConnection(config=cfg, project_dir="/tmp/proj",
                                storage=None, conv_id="c1", log=null_out())
     env = conn._subprocess_env()
     assert "PHENIX_PROJECT_DIR" not in env, env.get("PHENIX_PROJECT_DIR")
-    assert "PHENIX_CHAT_HOME" not in env, env.get("PHENIX_CHAT_HOME")
+    assert "PHENIX_AGENT_HOME" not in env, env.get("PHENIX_AGENT_HOME")
   finally:
     for k, v in saved.items():
       if v is None:

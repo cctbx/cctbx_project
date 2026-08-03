@@ -435,7 +435,7 @@ class JobSentinel(Thread):
       try:
         submit_all_jobs(db)
         self.post_refresh()
-        time.sleep(2)
+        time.sleep(10)
       except Exception as e:
         print(e)
         wx.CallAfter(self.parent.run_window.job_light.change_status, 'alert')
@@ -1804,10 +1804,17 @@ class RunTab(BaseTab):
     self.all_tags = []
     self.all_tag_buttons = []
     self.persistent_tags = []
+    self.run_rows = []
+    self._drop_highlight = None
 
     self.run_panel = ScrolledPanel(self)
     self.run_sizer = wx.BoxSizer(wx.VERTICAL)
     self.run_panel.SetSizer(self.run_sizer)
+    # ScrolledPanel's default EVT_CHILD_FOCUS handler calls ScrollChildIntoView,
+    # which miscalculates for our nested buttons (run_panel -> RunEntry -> button)
+    # and jumps the scrollbar to the top when a run low in the list is clicked.
+    # We don't need scroll-on-focus here, so drop the default handler.
+    self.run_panel.Unbind(wx.EVT_CHILD_FOCUS)
 
     self.colname_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     run_label = wx.StaticText(self, label='Run', size=(60, -1))
@@ -1902,8 +1909,9 @@ class RunTab(BaseTab):
     else:
       runs = new_runs
     for run in runs:
-      run_row = RunEntry(self.run_panel, run=run, params=self.main.params, label_width = max_width)
+      run_row = RunEntry(self.run_panel, run=run, params=self.main.params, label_width = max_width, tab=self)
       self.all_tag_buttons.append(run_row.tag_button)
+      self.run_rows.append(run_row)
       self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
 
     self.all_runs = all_runs
@@ -1914,8 +1922,50 @@ class RunTab(BaseTab):
       button.all_tags = self.all_tags
       button.update_label()
 
-    self.run_panel.SetupScrolling(scrollToTop=False)
+    self.run_panel.SetupScrolling(scroll_x=False, scrollToTop=False)
     self.run_panel.Refresh()
+
+  def row_at_screen_point(self, screen_pt):
+    ''' Return the RunEntry whose on-screen rectangle contains screen_pt,
+        or None. Used to resolve the drop target of a tag drag. '''
+    for row in self.run_rows:
+      try:
+        if row.IsShown() and row.GetScreenRect().Contains(screen_pt):
+          return row
+      except RuntimeError:
+        # row was destroyed on a refresh; ignore it
+        continue
+    return None
+
+  def highlight_drop_target(self, screen_pt, source):
+    ''' Highlight the row currently under the pointer during a drag. '''
+    target = self.row_at_screen_point(screen_pt)
+    if target is source:
+      target = None
+    if target is not self._drop_highlight:
+      self.clear_drop_highlight()
+      if target is not None:
+        self._drop_highlight = target
+        target.set_highlight(True)
+
+  def clear_drop_highlight(self):
+    if self._drop_highlight is not None:
+      try:
+        self._drop_highlight.set_highlight(False)
+      except RuntimeError:
+        pass
+      self._drop_highlight = None
+
+  def copy_tags(self, source, target):
+    ''' Add every tag on the source run to the target run (union; existing
+        target tags are kept), then refresh the target's tag button. '''
+    existing = [t.name for t in target.run.tags]
+    added = [t for t in source.run.tags if t.name not in existing]
+    for tag in added:
+      target.run.add_tag(tag)
+    if added:
+      target.tag_button.tags = target.run.tags
+      target.tag_button.update_label()
 
 class EnergyTab(BaseTab):
   def __init__(self, parent, main):
@@ -2346,11 +2396,12 @@ class JobsTab(BaseTab):
     self.job_list.InsertColumn(4, "Run")
     self.job_list.InsertColumn(5, "Block")
     self.job_list.InsertColumn(6, "Task")
-    self.job_list.InsertColumn(7, "Subm ID")
-    self.job_list.InsertColumn(8, "Status")
+    self.job_list.InsertColumn(7, "Version")
+    self.job_list.InsertColumn(8, "Subm ID")
+    self.job_list.InsertColumn(9, "Status")
 
-    self.job_list.integer_columns = {0, 6}
-    self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    self.job_list.integer_columns = {0, 7}
+    self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     self.job_list_col = 0
 
     self.trial_choice = gctr.ChoiceCtrl(self,
@@ -2525,6 +2576,7 @@ class JobsTab(BaseTab):
           r = "r%s" % job.run.run
         rg = "rg%03d" % job.rungroup.id if job.rungroup is not None else "-"
         tsk = "%d" % job.task.id if job.task is not None else "-"
+        ver = "%d" % job.dataset_version.version if job.dataset_version is not None else "-"
         sid = str(job.submission_id)
 
         short_status = str(job.status).strip("'")
@@ -2534,7 +2586,7 @@ class JobsTab(BaseTab):
           short_status = "SUBMIT"
         s = short_status
 
-        self.data[job.id] = [j, jt, ds, t, r, rg, tsk, sid, s]
+        self.data[job.id] = [j, jt, ds, t, r, rg, tsk, ver, sid, s]
         found_it = False
         # Look to see if item already in list
         for i, jid in enumerate(job_list_ids):
@@ -2848,7 +2900,7 @@ class RunStatsTab(SpotfinderTab):
     self.toolbar.Realize()
 
     self.runstats_sizer.Add(self.canvas, 1, wx.EXPAND)
-    self.runstats_sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
+    self.runstats_sizer.Add(self.toolbar, 0, wx.LEFT)
 
     self.options_box = wx.StaticBox(self, label='Statistics Options')
 
@@ -4402,9 +4454,14 @@ class DatasetPanel(wx.Panel):
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
-  def __init__(self, parent, run, params, label_width = None):
+  DRAG_THRESHOLD = 5  # pixels of motion before a click becomes a drag
+
+  def __init__(self, parent, run, params, label_width = None, tab = None):
     self.run = run
     self.params = params
+    self.tab = tab
+    self._drag_start = None
+    self._dragging = False
 
     wx.Panel.__init__(self, parent=parent)
     if label_width is None: label_width = 60
@@ -4428,7 +4485,82 @@ class RunEntry(wx.Panel):
     self.Bind(wx.EVT_BUTTON, self.onAvgButton, self.avg_button)
     self.Bind(wx.EVT_BUTTON, self.onViewButton, self.view_button)
 
+    # Drag-to-copy-tags bindings. A drag can start anywhere on the row: the
+    # run number cell, the row's own surface, or the tag button. We do not
+    # grab the mouse until the pointer moves past DRAG_THRESHOLD, so a plain
+    # click on the tag button still opens the tag dialog as before (the
+    # MetallicButton posts its click on left-up and never captures the mouse).
+    for w in (self, run_no, self.tag_button):
+      w.Bind(wx.EVT_LEFT_DOWN, self.onDragStart)
+      w.Bind(wx.EVT_MOTION, self.onDragMotion)
+      w.Bind(wx.EVT_LEFT_UP, self.onDragEnd)
+    self.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.onCaptureLost)
+
     self.SetSizer(self.sizer)
+
+  def set_highlight(self, on):
+    ''' Visually mark this row as the current drop target. '''
+    self.SetBackgroundColour(wx.Colour(200, 225, 255) if on else wx.NullColour)
+    self.Refresh()
+
+  def onDragStart(self, e):
+    # Remember where the press began but DON'T capture yet, so a plain click
+    # on a child control (e.g. the tag button) still fires normally. The drag
+    # only begins once the pointer moves past DRAG_THRESHOLD (onDragMotion).
+    if self.tab is not None:
+      self._drag_start = wx.GetMousePosition()
+      self._dragging = False
+    e.Skip()
+
+  def onDragMotion(self, e):
+    if self._drag_start is None:
+      e.Skip()
+      return
+    if not e.LeftIsDown():
+      # the button came up without us seeing it; abandon the gesture
+      self._drag_start = None
+      self._dragging = False
+      e.Skip()
+      return
+    pos = wx.GetMousePosition()
+    if not self._dragging:
+      moved = abs(pos.x - self._drag_start.x) + abs(pos.y - self._drag_start.y)
+      if moved <= self.DRAG_THRESHOLD:
+        e.Skip()
+        return
+      self._dragging = True
+      if not self.HasCapture():
+        self.CaptureMouse()
+      self.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+    self.tab.highlight_drop_target(pos, source=self)
+
+  def onDragEnd(self, e):
+    if not self._dragging:
+      # a plain click, not a drag: let the underlying control handle it
+      self._drag_start = None
+      e.Skip()
+      return
+    if self.HasCapture():
+      self.ReleaseMouse()
+    self.SetCursor(wx.NullCursor)
+    pos = wx.GetMousePosition()
+    self._drag_start = None
+    self._dragging = False
+    self.tab.clear_drop_highlight()
+    target = self.tab.row_at_screen_point(pos)
+    if target is not None and target is not self:
+      self.tab.copy_tags(source=self, target=target)
+    # if the drag began on the tag button it may be stuck looking 'pressed'
+    # (it never received its left-up); restore its normal appearance.
+    self.tag_button.SetState(gctr.mb.GRADIENT_NORMAL)
+
+  def onCaptureLost(self, e):
+    self._drag_start = None
+    self._dragging = False
+    self.SetCursor(wx.NullCursor)
+    if self.tab is not None:
+      self.tab.clear_drop_highlight()
+      self.tag_button.SetState(gctr.mb.GRADIENT_NORMAL)
 
   def onTagButton(self, e):
     self.tag_button.change_tags()

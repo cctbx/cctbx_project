@@ -24,7 +24,61 @@ class ToolSpec:
   allow_remember: bool = True  # False -> approval card omits "Always allow this tool"
 
 
-class Agent(ABC):
+class AttachmentScope:
+  """Where an agent's transcript files -- and therefore reads -- its images.
+
+  A mixin rather than an ``Agent`` method because the backends do not share one
+  base: ``ClaudeCodeAgent`` is duck-typed and inherits from nothing, while the
+  HTTP backends come through :class:`Agent`. Both re-send image blocks, so both
+  need the same answer, and a second copy of the rule would drift.
+
+  The pair exists because the write and the read had drifted apart already.
+  ``AgentSession`` writes an emitted image under its ``attachment_conv_id``,
+  which for a SUBAGENT is the PARENT's conversation -- a child conversation is
+  never saved, so its bytes and its record both live under the parent. The
+  agents meanwhile resolved image blocks against ``conversation.meta.id``, the
+  CHILD's. Writing to one id and reading from another means a child handed an
+  image by a tool cannot send it back on its next round: the load raises,
+  mid-turn, on an attachment that was on disk the whole time.
+  """
+
+  def set_attachment_conv_id(self, conv_id):
+    """Note which conversation this session FILES attachments under.
+
+    ``AgentSession`` calls this once, at construction, duck-typed. For a
+    top-level session the answer is the conversation the agent is driving and
+    this changes nothing.
+
+    Parameters
+    ----------
+    conv_id : str
+        The conversation id whose ``attachments/`` directory holds this
+        transcript's bytes.
+    """
+    self._attachment_conv_id = conv_id
+
+  def attachment_conv_id_for(self, conversation):
+    """The id to LOAD this transcript's attachments from.
+
+    What :meth:`set_attachment_conv_id` was told, when a session told it;
+    otherwise the conversation's own id, which is the right answer for an agent
+    driven without a session (tests, direct callers) and the behavior that
+    predates the hook.
+
+    Parameters
+    ----------
+    conversation : Conversation
+        The conversation being streamed.
+
+    Returns
+    -------
+    str
+    """
+    return (getattr(self, "_attachment_conv_id", None)
+            or conversation.meta.id)
+
+
+class Agent(AttachmentScope, ABC):
   """Provider-agnostic chat agent.
 
   Implementations live in ``phenix.gui.chat``. ``AgentSession``
@@ -35,7 +89,31 @@ class Agent(ABC):
   # Subclasses set these as class attributes (or instance attributes in
   # __init__).
   name: str
-  model: str
+  model: str                    # the model REQUESTED for this agent
+
+  #: Optional. The model that actually produced the most recent response,
+  #: when the backend reports one. Distinct from ``model`` because they can
+  #: differ: a backend able to switch models inside a conversation
+  #: (claude_code's ``/model``) answers with something other than what was
+  #: configured, and a provider resolving an alias answers with a dated id.
+  #: ``AgentSession`` stamps the message and the conversation meta from this
+  #: when set, and NEVER writes it back into ``model`` -- doing so would pin
+  #: the version an alias exists to keep current. Reset at ``stream_turn``
+  #: entry so a stale reading cannot outlive the turn that observed it.
+  observed_model = None
+
+  #: Peak per-API-CALL prompt size seen so far, for the context-pressure
+  #: monitor. Maintained by :func:`note_context_tokens`; the window zeroes it
+  #: on a conversation switch, so it is effectively a per-conversation
+  #: high-water mark. ``0`` means "nothing measured yet", never "context
+  #: empty".
+  #:
+  #: A HIGH-WATER MARK rather than the latest reading, because the prompt
+  #: usually grows across a turn's tool loop while ``cache_read`` can dip on a
+  #: miss, and the monitor wants the worst case. It must never be taken from a
+  #: whole-turn total that sums every iteration of a backend's internal tool
+  #: loop: that overstates the context by the number of calls in the turn.
+  last_context_tokens = 0
 
   @abstractmethod
   def stream_turn(self, conversation, tools, cancel):
@@ -485,3 +563,34 @@ class HttpClientAgent(Agent):
     provider-specific client kwargs such as ``virtual_key`` / ``config``.
     """
     return {}
+
+
+def note_context_tokens(agent, measured):
+  """Fold one per-call prompt-size reading into *agent*'s high-water mark.
+
+  A free function, not a method: ``ClaudeCodeAgent`` DUCK-TYPES the agent
+  contract rather than deriving from :class:`Agent`, so a method here would
+  reach three of the four backends and raise ``AttributeError`` on the fourth.
+
+  Shared because it was four separate copies of the same two lines whose
+  COMMENTS had already drifted: two of the four documented what happens when a
+  response carries no usage payload and two did not, leaving the invariant that
+  matters -- a missing reading leaves the peak STANDING, since lowering it
+  would discard a crossed threshold -- written down in half the places it
+  holds.
+
+  Parameters
+  ----------
+  agent : object
+      Anything carrying ``last_context_tokens``.
+  measured : int or None
+      Prompt size for one API call; ``0`` / ``None`` when unreported.
+
+  Returns
+  -------
+  int
+      The peak after folding in *measured*.
+  """
+  if measured and measured > agent.last_context_tokens:
+    agent.last_context_tokens = measured
+  return agent.last_context_tokens

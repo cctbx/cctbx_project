@@ -94,6 +94,10 @@ def open_session_log(chat_root):
 
   The caller owns the returned handle and must close it.
 
+  Named ``agent-<TS>.log``. Rotation globs on that prefix, so session logs
+  written under the former ``chat-`` name are not pruned by it and stay
+  until removed by hand.
+
   Parameters
   ----------
   chat_root : pathlib.Path
@@ -104,7 +108,7 @@ def open_session_log(chat_root):
   tuple of (_RedactingLog, pathlib.Path)
       The open, line-buffered, redacting log handle and its path.
   """
-  return _open_log(chat_root, "chat")
+  return _open_log(chat_root, "agent")
 
 
 def open_debug_log(chat_root):
@@ -112,7 +116,7 @@ def open_debug_log(chat_root):
 
   Distinct from :func:`open_session_log`: only created when the launcher
   is invoked with ``--debug``. Collects what would otherwise be lost
-  when ``phenix.chat`` runs without a visible terminal -- uncaught
+  when ``phenix.agent`` runs without a visible terminal -- uncaught
   exceptions, ``AgentError`` events surfaced by the runner, and (for the
   claude_code backend) the SDK's ``debug_stderr`` stream. Same
   ``LOG_KEEP`` rotation as session logs but tracked separately so debug

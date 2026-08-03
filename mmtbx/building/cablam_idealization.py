@@ -56,6 +56,13 @@ class cablam_idealization(object):
     """
     model is changed in place
     params - those in master_phil_str without scope name
+
+    NCS is honored only when the caller has already set it up on the model:
+    outliers are then looked for in the master alone and the fix is propagated
+    to the copies, which is correct because they are constrained to be
+    identical. This class never searches for NCS itself - doing so on a model
+    that is not refined under NCS constraints would replace every copy with the
+    NCS-expanded master.
     """
     self.model = model
     self.params = params
@@ -77,15 +84,6 @@ class cablam_idealization(object):
 
     if self.model.get_hierarchy().models_size() > 1:
       raise Sorry("Multi-model files are not supported")
-
-    log_for_ncs = None
-    if self.params.verbose == 0:
-      log_for_ncs = null_out()
-    self.model.search_for_ncs(log=log_for_ncs)
-    ncs_obj = self.model.get_ncs_obj()
-    nrgl = ncs_obj.get_ncs_restraints_group_list()
-    if nrgl.get_n_groups() > 0 and self.params.verbose > 1:
-      print(self.model.get_ncs_obj().show_phil_format(), file=self.log)
 
     self.outliers_by_chain = self.identify_outliers()
     # idealization

@@ -25,15 +25,15 @@ def _new_storage():
 
 
 def exercise_lazy_directory_creation():
-  """Section 6.3: .phenix_chat/ is NOT created on construction; only on
+  """Section 6.3: .phenix_agent/ is NOT created on construction; only on
   first persistence write."""
   tmp = tempfile.mkdtemp()
   try:
     storage = ConversationStorage(Path(tmp), log=null_out())
-    assert not (Path(tmp) / ".phenix_chat").exists()
+    assert not (Path(tmp) / ".phenix_agent").exists()
     # Listing on an empty/missing root returns empty list, doesn't create.
     assert storage.list_conversations() == []
-    assert not (Path(tmp) / ".phenix_chat").exists()
+    assert not (Path(tmp) / ".phenix_agent").exists()
   finally:
     shutil.rmtree(tmp)
 
@@ -41,7 +41,7 @@ def exercise_lazy_directory_creation():
 def exercise_save_then_load_roundtrip():
   tmp, storage = _new_storage()
   try:
-    conv = Conversation.new(profile_name="phenix_expert",
+    conv = Conversation.new(profile_name="phenix_assistant",
                             model="claude-opus-4-7",
                             title="Test")
     conv.append(Message(role="user",
@@ -49,8 +49,8 @@ def exercise_save_then_load_roundtrip():
                                               data={"text": "hi"})],
                         timestamp=now()))
     storage.save(conv)
-    # Now .phenix_chat/ should exist
-    assert (Path(tmp) / ".phenix_chat" / "conversations" / conv.meta.id /
+    # Now .phenix_agent/ should exist
+    assert (Path(tmp) / ".phenix_agent" / "conversations" / conv.meta.id /
             "messages.json").exists()
     loaded = storage.load(conv.meta.id)
     assert loaded.meta.id == conv.meta.id
@@ -68,7 +68,7 @@ def exercise_meta_backend_and_per_turn_stamp_roundtrip():
   defaults -- covered by the other round-trip tests)."""
   tmp, storage = _new_storage()
   try:
-    conv = Conversation.new(profile_name="phenix_expert",
+    conv = Conversation.new(profile_name="phenix_assistant",
                             model="claude-opus-4-8",
                             backend="anthropic",
                             title="Backends")
@@ -103,7 +103,7 @@ def exercise_atomic_write_interruption_leaves_prior_intact():
   try:
     conv = Conversation.new(profile_name="p", model="m", title="v1")
     storage.save(conv)
-    msgs_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+    msgs_path = (Path(tmp) / ".phenix_agent" / "conversations" /
                  conv.meta.id / "messages.json")
     # Leave a corrupt .tmp file behind.
     (msgs_path.with_suffix(".json.tmp")).write_text("not valid json")
@@ -125,7 +125,7 @@ def exercise_attachment_dedup_by_sha256():
     a2 = storage.store_attachment(conv.meta.id, data, mime="image/png")
     assert a1.sha256 == a2.sha256
     # Only one file on disk
-    att_dir = (Path(tmp) / ".phenix_chat" / "conversations" /
+    att_dir = (Path(tmp) / ".phenix_agent" / "conversations" /
                conv.meta.id / "attachments")
     files = sorted(p.name for p in att_dir.iterdir())
     assert len(files) == 1
@@ -156,7 +156,7 @@ def exercise_index_rebuild_when_missing():
   try:
     conv = Conversation.new(profile_name="p", model="m", title="Recovered")
     storage.save(conv)
-    index_path = Path(tmp) / ".phenix_chat" / "index.json"
+    index_path = Path(tmp) / ".phenix_agent" / "index.json"
     assert index_path.exists()
     index_path.unlink()
     # Fresh storage instance; should rebuild on first list_conversations
@@ -225,18 +225,34 @@ def exercise_subagent_store_and_load():
       parent_conversation_id=conv.meta.id,
       parent_tool_use_id="toolu_1",
       task="monitor",
-      profile_name="phenix_expert_subagent",
+      profile_name="phenix_assistant_subagent",
       model="claude-opus-4-7",
       started_at=now(),
       finished_at=now(),
       final_text="done",
       token_usage=TokenUsage(input=10, output=5),
-      messages=[])
+      messages=[],
+      incomplete_reason="turn_cap")
     storage.store_subagent(conv.meta.id, rec)
     loaded = storage.load_subagent(conv.meta.id, "sa_test")
     assert loaded.sub_id == "sa_test"
     assert loaded.final_text == "done"
     assert loaded.token_usage.input == 10
+    # A child cut off must not come back off disk looking clean.
+    assert loaded.incomplete_reason == "turn_cap", loaded.incomplete_reason
+
+    # Records written before the field existed still load, as ""; the delete
+    # also pins that the writer emits the key at all.
+    path = (Path(tmp) / ".phenix_agent" / "conversations" / conv.meta.id /
+            "subagents" / "sa_test.json")
+    with open(path) as fh:
+      doc = json.load(fh)
+    del doc["incomplete_reason"]
+    with open(path, "w") as fh:
+      json.dump(doc, fh)
+    legacy = storage.load_subagent(conv.meta.id, "sa_test")
+    assert legacy.incomplete_reason == "", legacy.incomplete_reason
+    assert legacy.final_text == "done"
   finally:
     shutil.rmtree(tmp)
 
@@ -249,7 +265,7 @@ def exercise_schema_version_check_rejects_future_version():
     conv = Conversation.new(profile_name="p", model="m", title="x")
     storage.save(conv)
     # Corrupt the messages.json's schema_version
-    msgs_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+    msgs_path = (Path(tmp) / ".phenix_agent" / "conversations" /
                  conv.meta.id / "messages.json")
     with open(msgs_path) as fh:
       doc = json.load(fh)
@@ -289,7 +305,7 @@ def exercise_load_corrupt_meta_json_raises_sorry():
   try:
     conv = Conversation.new(profile_name="p", model="m", title="x")
     storage.save(conv)
-    meta_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+    meta_path = (Path(tmp) / ".phenix_agent" / "conversations" /
                  conv.meta.id / "meta.json")
     meta_path.write_text("{ this is not valid json")
     try:
@@ -310,7 +326,7 @@ def exercise_load_missing_created_at_raises_sorry():
   try:
     conv = Conversation.new(profile_name="p", model="m", title="x")
     storage.save(conv)
-    meta_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+    meta_path = (Path(tmp) / ".phenix_agent" / "conversations" /
                  conv.meta.id / "meta.json")
     with open(meta_path) as fh:
       doc = json.load(fh)
@@ -337,7 +353,7 @@ def exercise_load_content_block_not_dict_raises_sorry():
   try:
     conv = Conversation.new(profile_name="p", model="m", title="x")
     storage.save(conv)
-    msgs_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+    msgs_path = (Path(tmp) / ".phenix_agent" / "conversations" /
                  conv.meta.id / "messages.json")
     with open(msgs_path, "w") as fh:
       json.dump({"schema_version": "1.0",
@@ -362,7 +378,7 @@ def exercise_load_usage_wrong_type_raises_sorry():
   try:
     conv = Conversation.new(profile_name="p", model="m", title="x")
     storage.save(conv)
-    msgs_path = (Path(tmp) / ".phenix_chat" / "conversations" /
+    msgs_path = (Path(tmp) / ".phenix_agent" / "conversations" /
                  conv.meta.id / "messages.json")
     with open(msgs_path, "w") as fh:
       json.dump({"schema_version": "1.0",
@@ -398,7 +414,7 @@ def exercise_save_failure_cleans_up_tmp():
     else:
       from libtbx.test_utils import Exception_expected
       raise Exception_expected
-    conv_dir = Path(tmp) / ".phenix_chat" / "conversations" / conv.meta.id
+    conv_dir = Path(tmp) / ".phenix_agent" / "conversations" / conv.meta.id
     orphans = sorted(str(p) for p in conv_dir.rglob("*.tmp"))
     assert orphans == [], orphans
   finally:
@@ -445,7 +461,7 @@ def exercise_store_attachment_cleans_up_tmp_on_replace_failure():
   try:
     conv = Conversation.new(profile_name="p", model="m")
     storage.save(conv)
-    att_dir = (Path(tmp) / ".phenix_chat" / "conversations" /
+    att_dir = (Path(tmp) / ".phenix_agent" / "conversations" /
                conv.meta.id / "attachments")
     orig_replace = os.replace
     def boom(src, dst):
@@ -503,12 +519,23 @@ def exercise_atomic_replace_fails_fast_on_posix():
 
 def exercise_all_token_usage_fields_round_trip():
   """Every TokenUsage field on an assistant message survives save()+load().
-  Dataclass equality compares all fields, so a usage field added later is
-  covered automatically -- it must not silently drop on persist."""
+
+  Dataclass equality compares all fields, so a field added later is covered
+  automatically -- but only if the fixture gives it a NON-DEFAULT value. Left
+  at its default a dropped field still compares equal, which is how this test
+  claimed to cover ``context_tokens`` while a near-identical copy of itself
+  was added below to actually do it.
+
+  ``context_tokens`` is also the one field that differs in MEANING: the cost
+  fields accumulate over a turn and are meant to be summed, while it is a PEAK
+  prompt size that must never be. Round-tripping it is what lets a restored
+  conversation know how full its context already is without re-measuring.
+  """
   tmp, storage = _new_storage()
   try:
     conv = Conversation.new(profile_name="p", model="m", title="usage")
-    usage = TokenUsage(input=11, output=22, cache_read=33, cache_creation=44)
+    usage = TokenUsage(input=11, output=22, cache_read=33, cache_creation=44,
+                       context_tokens=788694)
     conv.append(Message(role="assistant",
                         content=[ContentBlock(type="text",
                                               data={"text": "hi"})],
@@ -516,6 +543,48 @@ def exercise_all_token_usage_fields_round_trip():
     storage.save(conv)
     loaded = storage.load(conv.meta.id)
     assert loaded.messages[-1].usage == usage, loaded.messages[-1].usage
+    # Named explicitly as well as compared: equality alone would not say WHICH
+    # field regressed, and this is the one with the surprising semantics.
+    assert loaded.messages[-1].usage.context_tokens == 788694, \
+      loaded.messages[-1].usage
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_usage_written_before_context_tokens_existed_loads_as_zero():
+  """Conversations saved by an older build have no ``context_tokens`` key.
+  They must load with 0 -- read as "not measured", never as "context empty"."""
+  from qttbx.widgets.chat.agent.storage import _token_usage_from_dict
+  legacy = {"input": 1, "output": 2, "cache_read": 3, "cache_creation": 4}
+  usage = _token_usage_from_dict(legacy)
+  assert usage.context_tokens == 0, usage
+  assert usage.input == 1, usage
+
+
+def exercise_ephemeral_blocks_are_never_persisted():
+  """A content block tagged ephemeral is dropped on save, on EVERY path.
+
+  ``save`` is the single choke point every writer funnels through -- the
+  worker's mid-turn autosave, the turn-end / errored-turn / close saves alike
+  (see ``persistable_prefix``). Filtering here, rather than at one caller's
+  turn-end, is what makes a transient block (a context-pressure note sent to
+  the model for one turn) provably absent from disk no matter which path saved.
+  The block's non-ephemeral siblings in the same message must survive."""
+  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  tmp, storage = _new_storage()
+  try:
+    conv = Conversation.new(profile_name="p", model="m", title="eph")
+    conv.append(Message(role="user", timestamp=now(), content=[
+      ContentBlock(type="text", data={"text": "real question"}),
+      ContentBlock(type="text", data={"text": "[transient note]",
+                                      EPHEMERAL_BLOCK_KEY: True})]))
+    storage.save(conv)
+    loaded = storage.load(conv.meta.id)
+    texts = [b.data.get("text") for b in loaded.messages[-1].content]
+    assert texts == ["real question"], texts
+    # The in-memory conversation is untouched -- the block is still there for
+    # the turn that is delivering it; only the serialized form drops it.
+    assert len(conv.messages[-1].content) == 2, conv.messages[-1].content
   finally:
     shutil.rmtree(tmp)
 
@@ -807,7 +876,7 @@ def _spawn_live_process():
 
 def exercise_conversation_open_lock():
   """acquire/release/is_locked_by_other model a per-conversation open marker so
-  two phenix.chat processes don't both drive (and clobber) one conversation. A
+  two phenix.agent processes don't both drive (and clobber) one conversation. A
   marker naming our own PID or a dead PID is NOT a lock; a live foreign PID is,
   and acquire is atomic (can't steal a live lock) but steals a stale one. A
   marker from another host is treated as locked -- its PID can't be probed."""
@@ -1131,33 +1200,33 @@ def exercise_resolve_project_dir_falls_back_to_cwd():
 
 def exercise_chat_root_for_default():
   tmp = tempfile.mkdtemp()
-  saved_env = os.environ.get("PHENIX_CHAT_HOME")
+  saved_env = os.environ.get("PHENIX_AGENT_HOME")
   if saved_env is not None:
-    del os.environ["PHENIX_CHAT_HOME"]
+    del os.environ["PHENIX_AGENT_HOME"]
   try:
     root = chat_root_for(Path(tmp))
-    assert root == Path(tmp) / ".phenix_chat"
+    assert root == Path(tmp) / ".phenix_agent"
     # Path is not created -- that's lazy.
     assert not root.exists()
   finally:
     if saved_env is not None:
-      os.environ["PHENIX_CHAT_HOME"] = saved_env
+      os.environ["PHENIX_AGENT_HOME"] = saved_env
     os.rmdir(tmp)
 
 
 def exercise_chat_root_for_env_override():
   tmp_project = tempfile.mkdtemp()
   tmp_override = tempfile.mkdtemp()
-  saved = os.environ.get("PHENIX_CHAT_HOME")
-  os.environ["PHENIX_CHAT_HOME"] = tmp_override
+  saved = os.environ.get("PHENIX_AGENT_HOME")
+  os.environ["PHENIX_AGENT_HOME"] = tmp_override
   try:
     root = chat_root_for(Path(tmp_project))
     assert root == Path(tmp_override)
   finally:
     if saved is None:
-      del os.environ["PHENIX_CHAT_HOME"]
+      del os.environ["PHENIX_AGENT_HOME"]
     else:
-      os.environ["PHENIX_CHAT_HOME"] = saved
+      os.environ["PHENIX_AGENT_HOME"] = saved
     os.rmdir(tmp_project)
     os.rmdir(tmp_override)
 
@@ -1225,7 +1294,7 @@ def exercise_conversation_tree_is_owner_only():
                         content=[ContentBlock(type="text", data={"text": "hi"})],
                         timestamp=now()))
     storage.save(conv)
-    root = Path(tmp) / ".phenix_chat"
+    root = Path(tmp) / ".phenix_agent"
     convs = root / "conversations"
     assert stat.S_IMODE(root.stat().st_mode) == 0o700, \
       oct(stat.S_IMODE(root.stat().st_mode))
@@ -1263,6 +1332,8 @@ def exercise():
   exercise_store_attachment_cleans_up_tmp_on_replace_failure()
   exercise_atomic_replace_fails_fast_on_posix()
   exercise_all_token_usage_fields_round_trip()
+  exercise_ephemeral_blocks_are_never_persisted()
+  exercise_usage_written_before_context_tokens_existed_loads_as_zero()
   exercise_read_json_retries_windows_sharing_violation()
   exercise_concurrent_saves_do_not_corrupt()
   exercise_save_reindex_false_skips_index()

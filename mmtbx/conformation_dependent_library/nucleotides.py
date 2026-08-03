@@ -139,20 +139,21 @@ def update_restraints(hierarchy,
           angle_proxy.weight,
           ), end=' ', file=log)
   assert not bond_restraints
-  for i_seqs in angle_restraints:
-    print(i_seqs,
-          atoms[i_seqs[0]].quote(),
-          atoms[i_seqs[1]].quote(),
-          atoms[i_seqs[2]].quote(),
-          ideal,
-          esd,
-          )
-  if not non_standard_issues:
-    assert not angle_restraints, 'not finished angle_restraints: %s' % angle_restraints
+  if verbose:
+    for i_seqs in angle_restraints:
+      print(i_seqs,
+            atoms[i_seqs[0]].quote(),
+            atoms[i_seqs[1]].quote(),
+            atoms[i_seqs[2]].quote(),
+            ideal,
+            esd,
+            )
   if n_bonds or n_angles:
     print('''  CDL for nucleotides adjusted restraints counts
     coord. : total (unchanged)
     bonds  : %5d (%5d)
     angles : %5d (%5d)''' % (n_bonds, c_bonds, n_angles, c_angles),
       file=log)
+  if not non_standard_issues: # needs more understanding
+    assert not angle_restraints, 'not finished angle_restraints: %s' % angle_restraints
   return (n_bonds, c_bonds, n_angles, c_angles)

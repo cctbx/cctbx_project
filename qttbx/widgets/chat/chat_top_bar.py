@@ -37,8 +37,8 @@ class ChatTopBar(QtWidgets.QFrame):
     layout.setContentsMargins(8, 2, 8, 2)
     layout.setSpacing(12)
 
-    # Every slot here carries unbounded text: the title is
-    # '<profile> / <first 60 chars of first user text>', the model id comes
+    # Every slot here carries unbounded text: the title is a profile name,
+    # which a user-written profile chooses freely, the model id comes
     # straight through from --model, and the debug slot holds a filesystem
     # path. A plain QLabel reports its full text width as its
     # minimumSizeHint, which floors the centre column -- and with it the

@@ -88,7 +88,8 @@ END """
   model.process(pdb_interpretation_params=work_params,
     make_restraints=True)
   n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()
-  assert n_ref_dih_prox == 34, "expected 34, got %d" % n_ref_dih_prox
+  # side_chain defaults to False, so the default is main chain only.
+  assert n_ref_dih_prox == 18, "expected 18, got %d" % n_ref_dih_prox
 
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(source_info=None, lines=pdb_str.split('\n')),
@@ -99,6 +100,9 @@ END """
   work_params.reference_model.enabled=True
   work_params.reference_model.use_starting_model_as_reference=True
   work_params.reference_model.main_chain=False
+  # side_chain must be requested explicitly, otherwise both filters are off
+  # and no proxies are generated at all.
+  work_params.reference_model.side_chain=True
   model.process(make_restraints=True,
     pdb_interpretation_params=work_params)
   n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()

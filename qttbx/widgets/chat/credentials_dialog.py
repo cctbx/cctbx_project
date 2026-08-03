@@ -111,9 +111,9 @@ class CredentialsDialog(QtWidgets.QDialog):
 class AnthropicCredentialsDialog(CredentialsDialog):
   """Anthropic-specific credential prompt."""
 
-  TITLE = "PhenixChat needs an Anthropic API key"
+  TITLE = "PhenixAgent needs an Anthropic API key"
   INSTRUCTIONS = (
-    "PhenixChat uses Claude (Anthropic). You need an API key to start "
+    "PhenixAgent uses Claude (Anthropic). You need an API key to start "
     "chatting.<br><br>"
     "Get a key at "
     "<a href='https://console.anthropic.com'>console.anthropic.com</a>.<br><br>"

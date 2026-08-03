@@ -64,19 +64,19 @@ def exercise_prune_keeps_only_log_keep_most_recent():
     seeded = []
     base_mtime = 1_000_000_000.0
     for i in range(10):
-      p = log_dir / ("chat-seed-%02d.log" % i)
+      p = log_dir / ("agent-seed-%02d.log" % i)
       p.write_text("seed %d" % i)
       mtime = base_mtime + i  # later index => more recent
       os.utime(p, (mtime, mtime))
       seeded.append((p, mtime))
     log, path = open_session_log(chat_root=tmp)
     try:
-      surviving = sorted(log_dir.glob("chat-*.log"))
+      surviving = sorted(log_dir.glob("agent-*.log"))
       # The newly created log should exist.
       assert path.exists()
       # Pre-existing survivors: LOG_KEEP most-recent by mtime.
       expected_survivors = {p for p, _ in seeded[-LOG_KEEP:]}
-      actual_seeded = {p for p in surviving if p.name.startswith("chat-seed-")}
+      actual_seeded = {p for p in surviving if p.name.startswith("agent-seed-")}
       assert actual_seeded == expected_survivors, (
         actual_seeded, expected_survivors)
       # Total files on disk: LOG_KEEP pre-existing + 1 newly created.
@@ -176,8 +176,26 @@ def exercise_log_dir_and_files_are_owner_only():
     shutil.rmtree(tmp)
 
 
+def exercise_session_log_is_named_for_the_command():
+  """The session log is ``agent-<TS>.log``, matching the `phenix.agent`
+  command whose run it records. Nothing pinned the name before, so the
+  prefix could drift away from the command without a test noticing."""
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log, path = open_session_log(chat_root=tmp)
+    try:
+      assert Path(path).name.startswith("agent-"), path
+      assert Path(path).name.endswith(".log"), path
+      assert Path(path).parent == tmp / "logs", path
+    finally:
+      log.close()
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_open_session_log_creates_dir_and_writes()
+  exercise_session_log_is_named_for_the_command()
   exercise_log_dir_and_files_are_owner_only()
   exercise_redact_secrets_handles_anthropic_keys()
   exercise_redact_secrets_handles_authorization_header()

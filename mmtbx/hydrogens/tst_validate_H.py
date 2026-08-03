@@ -1148,6 +1148,40 @@ def exercise_hd_state():
                  use_neutron_distances = True)
   assert (c.get_hd_state() == 'h_and_d')
 
+# Residue missing H atoms whose H atoms carry a different (blank) segid than
+# their parent heavy atoms (segid "A   ") -> non-unique segid within the residue.
+pdb_str_segid = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   CYS A  22      11.000  11.000  11.000  1.00 20.00      A    N
+ATOM      2  CA  CYS A  22      12.000  11.000  11.000  1.00 20.00      A    C
+ATOM      3  C   CYS A  22      13.000  11.000  11.000  1.00 20.00      A    C
+ATOM      4  O   CYS A  22      14.000  11.000  11.000  1.00 20.00      A    O
+ATOM      5  CB  CYS A  22      12.000  12.000  11.000  1.00 20.00      A    C
+ATOM      6  SG  CYS A  22      12.000  13.000  12.000  1.00 20.00      A    S
+ATOM      7  H   CYS A  22      10.500  11.000  10.500  1.00 20.00      A    H
+ATOM      8  HA  CYS A  22      12.500  10.300  11.500  1.00 20.00           H
+ATOM      9  HB2 CYS A  22      11.300  12.000  10.500  1.00 20.00           H
+END
+"""
+
+def exercise_missing_h_nonunique_segid():
+  '''
+  Regression test: a residue that is missing H atoms and whose H atoms carry a
+  different segid than their parent heavy atoms must not crash validate_H.
+  Previously missing_hydrogens() called residue.id_str() with the default
+  suppress_segid, which raised "segid is not unique" for such residues.
+  '''
+  results = get_results_from_validate_H(
+    neutron_distances = False,
+    pdb_str = pdb_str_segid)
+  # The CYS is missing H atoms, so it must be reported -- and reaching this
+  # assert at all means id_str() did not raise on the non-unique segid.
+  missing = results.missing_HD_atoms
+  assert (len(missing) >= 1)
+  assert ('CYS' in missing[0][0])
+
+  test_output(results)
+
 def run():
   exercise()
   exercise1()
@@ -1163,6 +1197,7 @@ def run():
   exercise11()
   exercise12()
   exercise_hd_state()
+  exercise_missing_h_nonunique_segid()
 
 if (__name__ == "__main__"):
   t0 = time.time()

@@ -1,7 +1,7 @@
 """Path resolution for project directory and chat-data root.
 
 The active project directory is where conversations and Phenix job dirs
-live; ``.phenix_chat/`` is created lazily on first persistence write so
+live; ``.phenix_agent/`` is created lazily on first persistence write so
 cwd-as-project doesn't leave a hidden dir behind for chats that never
 sent a message.
 """
@@ -42,8 +42,8 @@ def resolve_project_dir(cli_arg=None, embedded_arg=None):
 def chat_root_for(project_dir):
   """Resolve the chat-data root inside a project directory.
 
-  Resolution order: the ``PHENIX_CHAT_HOME`` env var (test/debug
-  override), then ``<project_dir>/.phenix_chat/``.
+  Resolution order: the ``PHENIX_AGENT_HOME`` env var (test/debug
+  override), then ``<project_dir>/.phenix_agent/``.
 
   The directory is NOT created here. Storage code creates it lazily on the
   first persistence write so cwd-as-project doesn't leave a hidden dir
@@ -59,7 +59,7 @@ def chat_root_for(project_dir):
   pathlib.Path
       The chat-data root (which may not yet exist on disk).
   """
-  override = os.environ.get("PHENIX_CHAT_HOME")
+  override = os.environ.get("PHENIX_AGENT_HOME")
   if override:
     return Path(override)
-  return Path(project_dir) / ".phenix_chat"
+  return Path(project_dir) / ".phenix_agent"

@@ -2260,8 +2260,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       f.f_obs_work().data(), f.f_model_work().data())
 
   def completeness_high(self):
-    return self.f_obs().select(
-      self.bin_selections[len(self.bin_selections)-1]).completeness()
+    sel = self.bin_selections[len(self.bin_selections)-1]
+    ds = self.f_obs().d_spacings().data()
+    d_max = flex.max(ds.select(sel))
+    return self.f_obs().select(sel).completeness(d_max=d_max)
 
   def completeness_low(self):
     return self.f_obs().select(self.bin_selections[0]).completeness()

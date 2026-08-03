@@ -36,10 +36,13 @@ import os
 
 all_links_dict = {
     'rcsb': {
-        'model_pdb': 'https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
-        'model_cif': 'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
-        'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
+        # short links supposed to work with new long pdb ids as well.
+        'model_pdb': 'https://files.rcsb.org/download/{pdb_id}.pdb.gz',
+        'model_cif': 'https://files.rcsb.org/download/{pdb_id}.cif.gz',
         'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif.gz',
+        # 'model_pdb': 'https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+        # 'model_cif': 'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+        'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
         'em_map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
         'em_half_map_1': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
         'em_half_map_2': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',

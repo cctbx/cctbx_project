@@ -179,11 +179,17 @@ def exercise_get_link():
   for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']:
     r.append(get_link('rcsb', ft, '1ab2', emdb_number="1111"))
   # print (r)
-  assert r == ['https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/ab/pdb1ab2.ent.gz',
-               'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/ab/1ab2.cif.gz',
+  assert r == ['https://files.rcsb.org/download/1ab2.pdb.gz',
+               'https://files.rcsb.org/download/1ab2.cif.gz',
                'https://www.rcsb.org/fasta/entry/1ab2',
                'https://files.rcsb.org/download/1ab2-sf.cif.gz',
                'https://files.rcsb.org/pub/emdb/structures/EMD-1111/map/emd_1111.map.gz'], r
+
+  # assert r == ['https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/ab/pdb1ab2.ent.gz',
+  #              'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/ab/1ab2.cif.gz',
+  #              'https://www.rcsb.org/fasta/entry/1ab2',
+  #              'https://files.rcsb.org/download/1ab2-sf.cif.gz',
+  #              'https://files.rcsb.org/pub/emdb/structures/EMD-1111/map/emd_1111.map.gz'], r
 
 if (__name__ == "__main__"):
   exercise_get_link()

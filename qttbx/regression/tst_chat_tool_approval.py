@@ -191,7 +191,7 @@ def exercise_allow_remember_hides_checkbox():
   card_no_remember = ToolApprovalCard()
   card_no_remember.set_requests([ToolApprovalRequest(
     request_id="r2", tool_name="coot_close_unresponsive",
-    tool_source="mcp:phenix_chat", input={}, risk="destructive",
+    tool_source="mcp:phenix_agent", input={}, risk="destructive",
     batch_id=None, allow_remember=False)])
   assert "Always allow this tool" not in _checkbox_labels(card_no_remember)
 

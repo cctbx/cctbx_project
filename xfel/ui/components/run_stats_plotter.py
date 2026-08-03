@@ -116,7 +116,7 @@ def get_run_stats(timestamps,
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
   # set the numerator value to 0 whenever either the numerator or denominator is -1
-  invalid = (two_theta_low <= 0) or (two_theta_high < 0) # <= to prevent /0
+  invalid = (two_theta_low <= 0) | (two_theta_high < 0) # <= to prevent /0
   numerator = two_theta_high.set_selected(invalid, 0)
   denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
   drop_ratios = numerator/denominator
@@ -296,12 +296,9 @@ def plot_run_stats(stats,
       sel = wavelengths > 0
       energies = 12398.4/wavelengths.select(sel)
       ax4.scatter(t.select(sel), energies, c='lightgray', s=spot_ratio, alpha=0.5)
-      min_energy = flex.min(energies); max_energy = flex.max(energies); energy_range = max_energy-min_energy
-      def normit(v):
-        return min_energy + (v * energy_range)
 
       def clipit(ax, x, y, text, max_width, fontsize):
-        t = ax.text(x, y, text, fontsize=fontsize)
+        t = ax.text(x, y, text, fontsize=fontsize, transform=ax.get_xaxis_transform())
         width = t.get_window_extent().width
         ax_width = ax.get_window_extent().width
         xmin, xmax = ax.get_xlim()
@@ -311,28 +308,29 @@ def plot_run_stats(stats,
           for i in range(len(text), 0, -1):
             t.remove()
             truncated_text = text[:i] + "..."
-            t = ax.text(x, y, truncated_text, fontsize=fontsize)
+            t = ax.text(x, y, truncated_text, fontsize=fontsize, transform=ax.get_xaxis_transform())
             if t.get_window_extent().width < max_width_in_pixels:
               break
-          ax.text(x, y, truncated_text, fontsize=fontsize)
+          ax.text(x, y, truncated_text, fontsize=fontsize, transform=ax.get_xaxis_transform())
 
-      ax4.text(start_t, normit(4.05), " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10)
+      ax1.text(start_t, 1.05, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10, transform=ax1.get_xaxis_transform(), clip_on=False, zorder=10)
 
       if end_t:
         width = end_t - start_t
-        clipit(ax4, start_t, normit(.85), "run %s" % str(run_numbers[idx]), width, fontsize=text_ratio)
-        clipit(ax4, start_t, normit(.65), "%d img/%d hit" % (lengths[idx], n_hits), width, fontsize=text_ratio)
-        clipit(ax4, start_t, normit(.45), "%d (%d) idx" % (n_idx_low, n_idx_high), width, fontsize=text_ratio)
-        clipit(ax4, start_t, normit(.25), "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), width, fontsize=text_ratio)
-        clipit(ax4, start_t, normit(.05), "%-3.1f (%-3.1f)%% idx" % \
+        clipit(ax4, start_t, .85, "run %s" % str(run_numbers[idx]), width, fontsize=text_ratio)
+        clipit(ax4, start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), width, fontsize=text_ratio)
+        clipit(ax4, start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), width, fontsize=text_ratio)
+        clipit(ax4, start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), width, fontsize=text_ratio)
+        clipit(ax4, start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
           (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), width, fontsize=text_ratio)
       else:
-        ax4.text(start_t, normit(.85), "run %s" % str(run_numbers[idx]), fontsize=text_ratio)
-        ax4.text(start_t, normit(.65), "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
-        ax4.text(start_t, normit(.45), "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
-        ax4.text(start_t, normit(.25), "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
-        ax4.text(start_t, normit(.05), "%-3.1f (%-3.1f)%% idx" % \
-          (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
+        ax4.text(start_t, .85, "run %s" % str(run_numbers[idx]), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
+        ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
+        ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
+        ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
+        ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
+          (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
+
 
       ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
       ax4.set_ylabel("energy (eV)", fontsize=text_ratio)

@@ -140,11 +140,11 @@ def drive_hessian(m, **kwds):
   """Run run_hessian with run_cmd stubbed (ORCA never launched): the stub writes
   a placeholder .hess so the method succeeds. Return (written .in, path)."""
   def fake_run_cmd(log=None):
-    with open(m.get_hessian_filename(), 'w') as f:  # ORCA would write this
+    with open(m.get_hessian_filename(), 'w', encoding='utf-8') as f:  # ORCA would write this
       f.write('$hessian\n')
   m.run_cmd = fake_run_cmd
   path = m.run_hessian(**kwds)
-  with open(m.get_input_filename()) as f:
+  with open(m.get_input_filename(), encoding='utf-8') as f:
     written = f.read()
   return written, path
 

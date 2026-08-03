@@ -332,6 +332,16 @@ class manager(list):
            + _alt_conf_short(lr.get_alt_conf()))},
     ]
 
+    # The 'sites' sub-row (environment RSCC and ADPs) is written into these two
+    # columns; grab them here so the lookup below survives reordering.
+    def _column(headers):
+      for c in columns:
+        if c['headers'] == headers:
+          return c
+      return None
+    col_rscc_overall = _column(['', 'RSCC', 'overall'])
+    col_adps         = _column(['', 'ADPs', 'min   max   mean'])
+
     # --- From here, the code is generic and builds the table from the config above ---
 
     # Calculate total width and create separator line
@@ -352,24 +362,30 @@ class manager(list):
       data_cells = [f"{c['data_fn'](lr):^{c['width']}}" for c in columns]
       print("|".join(data_cells), file=out)
 
-      # Print the 'sites' ADP info if available
+      # Print the 'sites' ADP info if available. sites_b_str must be reset per
+      # ligand: it is filled in one conditional and used in another, so a stale
+      # value would otherwise be printed for the next ligand.
       adps = lr.get_adps()
+      sites_b_str = None
       if adps and adps.b_min_within is not None:
         sites_b_str = f"{adps.b_min_within:^7.1f}{adps.b_max_within:^7.1f}{adps.b_mean_within:^7.1f}"
       ccs = lr.get_ccs()
       if ccs and ccs.rscc_sites is not None:
         sites_cc_str = f"{lr.get_ccs().rscc_sites:.2f}"
-        # Build the sites row cell by cell to guarantee alignment
+        # Build the sites row cell by cell to guarantee alignment. The target
+        # columns are looked up by header rather than hard-coded, so the row
+        # cannot silently drift out of register if 'columns' is reordered.
         sites_row_cells = []
         for i, col in enumerate(columns):
           if i == 0:
-            sites_row_cells.append(f"{'sites':^{col['width']}}")
-          elif i == 1: # The RSCC column
-            sites_row_cells.append(f"{sites_cc_str:^{col['width']}}")
-          elif i == 8: # The ADPs column
-            sites_row_cells.append(f"{sites_b_str:^{col['width']}}")
+            text = 'sites'
+          elif col is col_rscc_overall:
+            text = sites_cc_str
+          elif col is col_adps and sites_b_str is not None:
+            text = sites_b_str
           else:
-            sites_row_cells.append(f"{'':^{col['width']}}")
+            text = ''
+          sites_row_cells.append(f"{text:^{col['width']}}")
         print("|".join(sites_row_cells), file=out)
 
       print(separator, file=out)
