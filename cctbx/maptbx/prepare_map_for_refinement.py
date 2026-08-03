@@ -57,7 +57,6 @@ def prepare_map_for_refinement(map_filename, map1_filename, map2_filename, d_min
                             mmm=mmm,
                             d_min=d_min,
                             half_maps_provided=half_maps_provided,
-                            determine_ordered_volume=False,
                             sphere_cent=sphere_cent,
                             radius=radius,
                             double_map_box=True,
