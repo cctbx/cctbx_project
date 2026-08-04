@@ -10,15 +10,26 @@ from qttbx.widgets.chat.diagnostics import build_diagnostics
 
 
 class _MiniProfile:
-  def __init__(self, name="phenix_expert", model="claude-opus-4-7"):
+  def __init__(self, name="phenix_assistant", model="claude-opus-4-7"):
     self.name = name
     self.model = model
 
 
 class _MiniStorage:
-  def __init__(self, project_dir, chat_root):
+  """The ConversationStorage attributes the dump reads: ``project_dir`` and
+  ``root``.
+
+  ``root`` must carry the names the real class uses and must NOT equal
+  ``project_dir``: the real root is a ``.phenix_agent`` subdirectory of it,
+  so it is derived here rather than passed. A fixture that invented a
+  ``chat_root`` attribute, set equal to ``project_dir``, hid a real bug
+  twice over -- ``build_diagnostics`` was reading ``chat_root``, which
+  ConversationStorage has never had, and any assertion on one path was
+  satisfied by the other's line."""
+
+  def __init__(self, project_dir, root=None):
     self.project_dir = project_dir
-    self.chat_root = chat_root
+    self.root = Path(project_dir) / ".phenix_agent" if root is None else root
 
 
 def exercise_dump_contains_basic_fields():
@@ -27,15 +38,19 @@ def exercise_dump_contains_basic_fields():
     log = tmp / "logs" / "chat-x.log"
     log.parent.mkdir(parents=True)
     log.write_text("line1\nline2\nline3\n")
+    storage = _MiniStorage(project_dir=tmp)
     text = build_diagnostics(
       profile=_MiniProfile(),
-      storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
+      storage=storage,
       log_path=log,
       log_tail_lines=10)
-    assert "phenix_expert" in text
+    assert "phenix_assistant" in text
     assert "claude-opus-4-7" in text
     assert "line3" in text
-    assert str(tmp) in text
+    # Each storage line asserted on its OWN value, so neither can stand in
+    # for the other and a missing attribute cannot pass as '?'.
+    assert "  project_dir: %s" % tmp in text, text
+    assert "  chat_root:   %s" % storage.root in text, text
   finally:
     shutil.rmtree(tmp)
 
@@ -45,9 +60,9 @@ def exercise_no_log_file_is_ok():
   try:
     text = build_diagnostics(
       profile=_MiniProfile(),
-      storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
+      storage=_MiniStorage(project_dir=tmp),
       log_path=tmp / "missing.log")
-    assert "phenix_expert" in text
+    assert "phenix_assistant" in text
   finally:
     shutil.rmtree(tmp)
 
@@ -65,10 +80,10 @@ def exercise_non_utf8_log_bytes_are_readable():
     log.write_bytes(b"line1\nlegacy \xff\xfe bytes\nline3\n")
     text = build_diagnostics(
       profile=_MiniProfile(),
-      storage=_MiniStorage(project_dir=tmp, chat_root=tmp),
+      storage=_MiniStorage(project_dir=tmp),
       log_path=log,
       log_tail_lines=10)
-    assert "phenix_expert" in text
+    assert "phenix_assistant" in text
     assert "line3" in text
   finally:
     shutil.rmtree(tmp)
@@ -105,7 +120,7 @@ def exercise_log_tail_does_not_read_whole_file():
   try:
     text = diag.build_diagnostics(
       profile=_MiniProfile(),
-      storage=_MiniStorage(project_dir="/x", chat_root="/x"),
+      storage=_MiniStorage(project_dir="/x"),
       log_path="/does/not/matter.log",
       log_tail_lines=5)
   finally:

@@ -218,6 +218,27 @@ def exercise_thinking_blocks_are_skipped():
   assert "the answer is 42" in md, md
 
 
+def exercise_ephemeral_blocks_are_skipped():
+  """An ephemeral block (e.g. a transient context-pressure note) reaches the
+  model in the live conversation but must never appear in an export.
+
+  ``conversation_to_markdown`` is a SECOND serializer of the in-memory
+  conversation, independent of ``storage.save``; between a delivering turn and
+  the next send the note sits in ``conv.messages``, so without the same
+  ``is_ephemeral_block`` filter a 'Save chat' then leaks it under the user's
+  own heading. The sibling text in the same message must survive."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "my real question"}),
+    ContentBlock(type="text", data={"text": "[system note] 80% used",
+                                    EPHEMERAL_BLOCK_KEY: True})]))
+  md = conversation_to_markdown(conv)
+  assert "my real question" in md, md
+  assert "system note" not in md, md
+
+
 def exercise_tool_use_renders_as_fenced_block():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
@@ -405,6 +426,7 @@ def exercise():
   exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()
   exercise_thinking_blocks_are_skipped()
+  exercise_ephemeral_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()
   exercise_tool_result_fence_outlasts_inner_backticks()

@@ -16,7 +16,7 @@ from qttbx.widgets.chat.agent.conversation import (
   Conversation, ContentBlock, Message, now)
 from qttbx.widgets.chat.agent.errors import TurnCancelled
 from qttbx.widgets.chat.agent.events import (
-  AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
+  CANCELLED, AgentError, ImageEmitted, ServerToolResult, ServerToolUsed,
   Thinking, TextDelta, ToolResultObserved, ToolResultsBatched,
   ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.tools import (
@@ -95,14 +95,38 @@ class AgentSession:
       Stream for log output. Defaults to ``sys.stdout``.
   approvals : ApprovalCoordinator, optional
       Shared approval coordinator; a fresh one is created when not injected.
+  attachment_conv_id : str, optional
+      Conversation an emitted image's bytes are filed under. Defaults to this
+      session's own conversation id, which is right for every top-level
+      session. A SUBAGENT must override it with the PARENT's id: a child
+      conversation is never saved (its transcript lives inside the parent's
+      ``SubagentRecord``), so attachments written under the child's id create a
+      directory for a conversation that does not exist, and the record's image
+      blocks -- resolved against the conversation the record is stored under --
+      point at nothing.
   """
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
-               approvals=None, autosave_interval_s=5.0, clock=None):
+               approvals=None, autosave_interval_s=5.0, clock=None,
+               attachment_conv_id=None):
     self.agent = agent
     self.conv = conversation
     self.storage = storage
+    self.attachment_conv_id = (attachment_conv_id if attachment_conv_id
+                               else conversation.meta.id)
+    # Tell the agent WHERE this session files attachments, because it is the
+    # agent that has to read them back. An agent re-sending an image block on a
+    # later round resolves it against the conversation it is driving, which for
+    # a child is the child's own id -- while the bytes were written under the
+    # PARENT's. Writing to one id and reading from another means a child handed
+    # an image by a tool cannot see it on its next round at all: the load fails
+    # and the whole turn dies on a missing attachment. Duck-typed, and offered
+    # here rather than per turn because the answer cannot change for the life
+    # of a session.
+    setter = getattr(agent, "set_attachment_conv_id", None)
+    if callable(setter):
+      setter(self.attachment_conv_id)
     self.tools = tools
     self.policy = policy
     self.profile = profile
@@ -136,8 +160,6 @@ class AgentSession:
     self.cancel = None
     self.sub_id = _new_id("sa_") if depth > 0 else None
     self.started_at = now()
-    # Push-based rollup of nested-session token usage. Keyed by sub_id.
-    self._subagent_usage_by_id = {}
 
   # ---- main loop -----------------------------------------------------------
 
@@ -266,14 +288,14 @@ class AgentSession:
         assistant_msg.stop_reason = "cancelled"
         # This return path emits no agent TurnDone (the last one said
         # finish='tool_use'), so consumers keying turn end on the terminal
-        # event -- the GUI composer unlock, headless disposition -- would
-        # wait forever. Synthesize it. Literal "cancelled": the canonical
-        # CANCELLED value documented on TurnDone (qttbx must not import the
-        # phenix finish module). MUST stay AFTER the appends above -- the
-        # GUI's turn-end save races the worker (see _collect_one_response's
-        # autosave note), and emitting first would let it persist a
-        # conversation missing this turn's answers.
-        self.on_event(TurnDone(stop_reason="cancelled", finish="cancelled"))
+        # event -- the GUI composer unlock, headless disposition, run_child's
+        # incomplete_reason -- would wait forever. Synthesize it, using the
+        # canonical CANCELLED defined beside TurnDone (phenix's finish module
+        # re-exports it; qttbx must not import phenix). MUST stay AFTER the
+        # appends above -- the GUI's turn-end save races the worker (see
+        # _collect_one_response's autosave note), and emitting first would let
+        # it persist a conversation missing this turn's answers.
+        self.on_event(TurnDone(stop_reason="cancelled", finish=CANCELLED))
         return assistant_msg
 
       if max_turns is not None and iterations >= max_turns:
@@ -300,7 +322,7 @@ class AgentSession:
         assistant_msg.stop_reason = "cancelled"
         # Same synthesized terminal as the pre-dispatch short-circuit above,
         # same ordering constraint: after this iteration's appends.
-        self.on_event(TurnDone(stop_reason="cancelled", finish="cancelled"))
+        self.on_event(TurnDone(stop_reason="cancelled", finish=CANCELLED))
         return assistant_msg
 
   def _maybe_autosave(self, partial_msg=None):
@@ -361,7 +383,12 @@ class AgentSession:
 
   def _new_assistant_msg(self):
     """A fresh in-progress assistant message stamped with the model (from the
-    agent) and backend (from the profile) producing this turn."""
+    agent) and backend (from the profile) producing this turn.
+
+    The model here is the one REQUESTED. A backend that reports which model
+    actually answered (``observed_model``) overwrites it as the response
+    streams; see ``_collect_one_response``.
+    """
     return Message(role="assistant", content=[], timestamp=now(),
                    model=getattr(self.agent, "model", None),
                    backend=getattr(self.profile, "backend", None))
@@ -374,7 +401,23 @@ class AgentSession:
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
       self.on_event(event)
       _accumulate(msg, event, tool_calls, answered, self.storage,
-                  self.conv.meta.id)
+                  self.attachment_conv_id)
+      # Record the model that actually ANSWERED, when the backend reports one.
+      # `agent.model` is what we ASKED for, and on a backend that can switch
+      # models inside a conversation (claude_code's /model) the two diverge:
+      # the stamp applied when this message was created would then name a
+      # model that did not produce it. Applied inside the loop, so a
+      # per-iteration commit already carries the corrected value.
+      #
+      # Deliberately one-way. `observed_model` never flows back into
+      # `agent.model`: a request configured with the alias "opus" comes back
+      # reporting a resolved dated id, and feeding that back would silently
+      # pin the version the alias exists to avoid.
+      observed = getattr(self.agent, "observed_model", None)
+      if observed:
+        msg.model = observed
+        if self.depth == 0:
+          self.conv.meta.model = observed
       # A backend that runs its OWN tool loop (claude_code) streams the whole
       # multi-iteration turn through one stream_turn call. Commit each
       # completed iteration -- every pending tool_use answered by an observed
@@ -428,6 +471,16 @@ class AgentSession:
       if decision in ("deny", "deny_and_stop"):
         result_blocks.append(_tool_error_block(
           call.id, "Denied by user policy"))
+        # NOT recorded here. `_resolve_and_approve` reports the one denial it
+        # settles WITHOUT opening a request, and the coordinator reports the
+        # ones it decides inside `open` -- so each denial is recorded exactly
+        # once, by the layer that made it, with the reason that layer knows.
+        # Recording here as well counted every unanswerable 'ask' twice (once
+        # in `_HeadlessApprovals.open`, once here) and labelled the second copy
+        # "tool policy", which is the one thing it was not: for a child the
+        # difference between "your profile denies this tool" and "this tool
+        # needed an approval and a child has nobody to give one" is the
+        # difference between editing a policy and not spawning that way at all.
         if decision == "deny_and_stop":
           cancel.set()
         continue
@@ -501,6 +554,13 @@ class AgentSession:
     if policy == "allow" and not self.tools.allow_remember_of(call.name):
       policy = "ask"
     if policy == "deny":
+      # Settled without opening a request, so the coordinator would never hear
+      # of it from `open`: reported here instead, once, by the layer that made
+      # the decision. Without this a subagent refused every tool by POLICY
+      # (rather than by an unanswerable 'ask') left an empty denial record and
+      # came back reading like a clean review. No-op for a depth-0 session --
+      # see ApprovalCoordinator.record_denial.
+      self.approvals.record_denial(call.name, "tool policy")
       return "deny"
     if policy == "allow":
       return "approve"
@@ -656,24 +716,10 @@ class AgentSession:
     return [ContentBlock(type="text", data={
       "text": json.dumps(result, indent=2, default=str)})]
 
-  # ---- nested-session rollup -----------------------------------------------
-
-  def add_subagent_usage(self, sub_id, usage):
-    """Record token usage from a nested session.
-
-    Parameters
-    ----------
-    sub_id : str
-        Identifier of the nested session the usage belongs to.
-    usage : TokenUsage
-        Token usage rolled up from that nested session.
-    """
-    self._subagent_usage_by_id[sub_id] = usage
-
 
 # ---- module helpers --------------------------------------------------------
 
-def _accumulate(msg, event, tool_calls, answered, storage, conv_id):
+def _accumulate(msg, event, tool_calls, answered, storage, attachment_conv_id):
   if isinstance(event, TextDelta):
     _append_text(msg, event.text)
   elif isinstance(event, Thinking):
@@ -702,7 +748,10 @@ def _accumulate(msg, event, tool_calls, answered, storage, conv_id):
     msg.content.append(ContentBlock(type="server_tool_result", data={
       "tool_use_id": event.tool_use_id, "content": event.content}))
   elif isinstance(event, ImageEmitted):
-    att = storage.store_attachment(conv_id, event.data, event.mime)
+    # NOT necessarily this session's own conversation: a subagent files its
+    # attachments under the PARENT's id, because that is the conversation its
+    # record -- and hence these image blocks -- is resolved against.
+    att = storage.store_attachment(attachment_conv_id, event.data, event.mime)
     msg.content.append(ContentBlock(type="image", data={
       "attachment_sha256": att.sha256, "mime": event.mime,
       "caption": event.caption}))

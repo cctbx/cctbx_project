@@ -217,18 +217,18 @@ class comp_comp_id(slots_getstate_setstate):
   def normalize_atom_ids_in_place(self):
     atom_ids_mod = []
     atom_ids_mod_set = set()
-    is_rna_dna = (self.get_classification() in ["RNA", "RNAv3", "DNA", "DNAv3"])
+    is_rna_dna = (self.get_classification() in ["RNA", "RNAv2", "DNA", "DNAv2"])
     normalized = False
     for atom in self.atom_list:
       atom_id = atom.atom_id
-      if is_rna_dna:
-        atom_id = atom.atom_id.replace("'", "*")
-        if atom_id == "OP1":
-          normalized = True
-          atom_id = "O1P"
-        elif atom_id == "OP2":
-          normalized = True
-          atom_id = "O2P"
+      # if is_rna_dna:
+      #   atom_id = atom.atom_id.replace("'", "*")
+      #   if atom_id == "OP1":
+      #     normalized = True
+      #     atom_id = "O1P"
+      #   elif atom_id == "OP2":
+      #     normalized = True
+      #     atom_id = "O2P"
       if (atom_id in atom_ids_mod_set):
         return False # changing ids results in ambiguity
       atom_ids_mod.append(atom_id)
@@ -508,7 +508,7 @@ class comp_comp_id(slots_getstate_setstate):
     return self.get_classification() == "DNA"
 
   def is_rna_dna(self):
-    return self.get_classification() in ("RNA", "DNA")
+    return self.get_classification() in ("RNA", "DNA", 'RNAv2', 'DNAv2')
 
   def is_water(self):
     return self.get_classification() == "water"

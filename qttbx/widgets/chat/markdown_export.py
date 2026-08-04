@@ -7,6 +7,8 @@ Without storage, image cells fall back to a sha256-tagged placeholder."""
 
 import json
 
+from qttbx.widgets.chat.agent.conversation import is_ephemeral_block
+
 
 def conversation_to_markdown(conv, storage=None):
   """Return a markdown string representing ``conv``.
@@ -65,6 +67,13 @@ def conversation_to_markdown(conv, storage=None):
     out.append("## %s" % role)
     out.append("")
     for block in msg.content or []:
+      # Ephemeral blocks (a transient context-pressure note) reach the model in
+      # the live conversation but are never persisted -- and this export is a
+      # SECOND serializer of that same in-memory conversation, so it must apply
+      # the same filter storage.save does, or 'Save chat' leaks the note in the
+      # window before the next send strips it from conv.messages.
+      if is_ephemeral_block(block):
+        continue
       try:
         rendered = _render_block(block, storage, conv.meta.id)
       except Exception:

@@ -1008,6 +1008,8 @@ Inputs:
 
 def run(pdb_filename=None,
         raw_records=None,
+        pdb_hierarchy=None,
+        crystal_symmetry=None,
         return_formal_charges=False,
         verbose=False,
         cif_objects=None,
@@ -1019,7 +1021,8 @@ def run(pdb_filename=None,
   elif raw_records:
     inp = iotbx.pdb.input(lines=raw_records, source_info='lines from PDB')
   else:
-    assert 0
+    inp = None
+    assert [pdb_hierarchy, crystal_symmetry].count(None) == 0
 
   # create a model manager
   from io import StringIO
@@ -1030,6 +1033,8 @@ def run(pdb_filename=None,
   working_params.pdb_interpretation.automatic_linking.link_metals=True
   model = mmtbx.model.manager(
     model_input = inp,
+    pdb_hierarchy = pdb_hierarchy,
+    crystal_symmetry = crystal_symmetry,
     restraint_objects=cif_objects,
     log = log,
   )

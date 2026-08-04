@@ -19,7 +19,8 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
   profile : object
       Active profile; ``name`` and ``model`` attributes are reported.
   storage : object
-      Storage object; ``project_dir`` and ``chat_root`` are reported.
+      Storage object; ``project_dir`` and ``root`` (the chat-data root,
+      reported as ``chat_root``) are read off it.
   log_path : str or pathlib.Path, optional
       Log file to tail. When ``None``, no log section is included.
   log_tail_lines : int, optional
@@ -31,7 +32,7 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
       The assembled diagnostics report, terminated by a newline.
   """
   lines = []
-  lines.append("PhenixChat diagnostics")
+  lines.append("PhenixAgent diagnostics")
   lines.append("=" * 40)
   lines.append("timestamp: %s" % datetime.datetime.now().isoformat(
     timespec="seconds"))
@@ -53,7 +54,7 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
   lines.append("")
   lines.append("Storage:")
   lines.append("  project_dir: %s" % getattr(storage, "project_dir", "?"))
-  lines.append("  chat_root:   %s" % getattr(storage, "chat_root", "?"))
+  lines.append("  chat_root:   %s" % getattr(storage, "root", "?"))
 
   if log_path is not None:
     import collections

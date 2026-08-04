@@ -160,6 +160,10 @@ class MarkdownView(QtWidgets.QTextBrowser):
     self.document().setMarkdown(
       _escape_approx_tildes(self._raw), _MD_FEATURES)
 
+  def searchable_cells(self):
+    """This cell's searchable text: the view itself, kind ``"text"``."""
+    return [("text", self)]
+
   def _on_anchor_clicked(self, url):
     """Open a clicked link only if it uses a safe scheme.
 

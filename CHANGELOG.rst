@@ -1,3 +1,18 @@
+2026.7
+======
+
+* Ligand validation rolled out as mmtbx.validate_ligands, with alternate
+  conformation handling, more granular fragment analysis, and map
+  coefficient output
+* Added ribbon rendering to MolProbity kinemage output, along with
+  disulfide bonds and suitealyze markup
+* Fixes to reference model restraints: exclude reference hydrogen bonds
+  from covalent geometry statistics, never pair atoms across NCS copies,
+  and apply Ramachandran targets only to favored reference residues
+* Switched the default nucleic acid atom naming to v3 (C2', OP1, OP2),
+  keeping v2 names (C2*, O1P, O2P) as a recognized variant with explicit
+  conversion between the two
+
 2026.6
 ======
 

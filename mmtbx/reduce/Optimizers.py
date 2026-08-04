@@ -1036,7 +1036,7 @@ class Optimizer(object):
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverAmideFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
           except Exception as e:
-            self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
+            self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
       # See if we should insert a MoverHisFlip here.
       # @todo Is there a more general way than looking for specific names?
@@ -1136,6 +1136,25 @@ class Optimizer(object):
             self._infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
             self._infoString += _VerboseCheck(self._verbosity, 1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
+          elif addFlipMovers and _HisRingNitrogensWithNonstandardBond(a, bondedNeighborLists):
+            # Issue #1199: a ring Nitrogen carries a bond outside the standard ring
+            # connectivity that the ion lock-down above (bondedConfig) did not handle
+            # -- a user-defined/custom bond, or an ion the spatial search missed.
+            # Flipping the ring could break that bond, so do not add a flip Mover.
+            # Hydrogen placement puts a Hydrogen on both ring Nitrogens, so remove
+            # the one on each bonded Nitrogen and mark that Nitrogen as an acceptor
+            # (as the ion lock-down does in _modifyIfNeeded); otherwise the Hydrogen
+            # is left dangling on an atom that is already bonded to its partner.
+            self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
+              " (bond outside standard ring connectivity)\n")
+            for nitro, hydro in _HisRingNitrogensWithNonstandardBond(a, bondedNeighborLists):
+              extra = self._extraAtomInfo.getMappingFor(nitro)
+              extra.isAcceptor = True
+              self._extraAtomInfo.setMappingFor(nitro, extra)
+              if hydro is not None:
+                deleteAtoms.append(hydro)
+                self._infoString += _VerboseCheck(self._verbosity, 1,"Not adding Hydrogen to "+resNameAndID+
+                  nitro.name+" and marking as an acceptor (bond outside standard ring connectivity)\n")
           elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and insert the Mover as a non-flipping Histidine.
@@ -1163,7 +1182,7 @@ class Optimizer(object):
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
         except Exception as e:
-          self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
+          self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
     # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
     # look up the single-hydrogen rotators. We only place atoms that are in our current model
@@ -1351,6 +1370,35 @@ def _ParseFlipStates(fs):
         ret.append(FlipMoverState(t, modelId, altId, chain, resName, resIdWithICode, flipped, fixedUp))
   return ret
 
+
+def _HisRingNitrogensWithNonstandardBond(ne2Atom, bondedNeighborLists):
+  '''Issue #1199: find the Histidine ring Nitrogens (ND1/NE2) that carry a bond
+  outside the standard ring connectivity -- i.e. to something other than the two
+  ring Carbons and the Nitrogen's single Hydrogen (a user-defined/custom bond, or
+  a metal). Such a bond would be broken by flipping the ring; and unlike the ring
+  Carbons, the ring Nitrogens are not protected by the MoverHisFlip
+  neighbour-count checks, so we detect the extra bond here from the restraint bond
+  list.
+  :param ne2Atom: NE2 atom of the Histidine (its atom_group holds ND1 and NE2).
+  :param bondedNeighborLists: dictionary from probe.Helpers.getBondedNeighborLists().
+  :return: list of (nitrogen, hydrogen) tuples, one per ring Nitrogen that has a
+  nonstandard bond. hydrogen is that Nitrogen's bonded Hydrogen, or None if the
+  input model does not have it (we do not assume the Hydrogens are present).
+  '''
+  ret = []
+  for atom in ne2Atom.parent().atoms():
+    if atom.name.strip() not in ('ND1', 'NE2'):
+      continue
+    hydrogen = None
+    nonstandard = False
+    for neighbor in bondedNeighborLists[atom]:
+      if neighbor.element_is_hydrogen():
+        hydrogen = neighbor
+      elif neighbor.element.strip().upper() != 'C':
+        nonstandard = True
+    if nonstandard:
+      ret.append((atom, hydrogen))
+  return ret
 
 def _FindFlipState(a, flipStates):
   '''Is an atom in the list of residues that have flip states? If so, return the associated state

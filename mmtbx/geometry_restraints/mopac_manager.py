@@ -43,15 +43,20 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     else:
       nproc_str='THREADS=%s' % self.nproc
     multiplicity=self.get_multiplicity()
-    multiplicity_str=[None,
-                      'singlet', # - 0 unpaired electrons
-                      'doublet', # - 1 unpaired electrons
-                      'triplet', # - 2 unpaired electrons
-                      'quartet', # - 3 unpaired electrons
-                      'quintet', # - 4 unpaired electrons
-                      'sextet', # - 5 unpaired electrons
-                      'septet',
-                      ][multiplicity] + ' UHF'
+    # A closed-shell singlet uses the default RHF; specifying "singlet UHF"
+    # would force an open-shell (unrestricted) calculation, so emit nothing.
+    if multiplicity==1:
+      multiplicity_str=''
+    else:
+      multiplicity_str=[None,
+                        'singlet', # - 0 unpaired electrons
+                        'doublet', # - 1 unpaired electrons
+                        'triplet', # - 2 unpaired electrons
+                        'quartet', # - 3 unpaired electrons
+                        'quintet', # - 4 unpaired electrons
+                        'sextet', # - 5 unpaired electrons
+                        'septet',
+                        ][multiplicity] + ' UHF'
     additional_options=''
     if gradients_only:
       additional_options+=' 1SCF GRAD ANALYT'

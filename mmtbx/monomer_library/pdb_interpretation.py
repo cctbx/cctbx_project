@@ -2018,6 +2018,7 @@ def get_restraints_loading_flags(params):
   return rc
 
 def special_dispensation(proxy_label, m_i, m_j, i_seqs):
+  if m_i is None or m_j is None: return False
   atoms=[]
   for afs in [m_i.pdb_atoms, m_j.pdb_atoms]:
     for atom in afs:
@@ -2072,6 +2073,27 @@ def evaluate_registry_process_result(
       i_seqs=i_seqs,
       base_message="Duplicate %s restraints:" % proxy_label,
       lines=lines))
+
+def __convert_v(s, matches):
+  for s1, s2 in matches:
+    s=s.replace(s1,s2)
+  return s
+
+def convert_v2_to_v3(s):
+  m=[['*', "'"],
+     ['O1P', 'OP1'],
+     ['O2P', 'OP2'],
+     # ['O3P', 'OP3'],
+     ]
+  return __convert_v(s, m)
+
+def convert_v3_to_v2(s):
+  m=[["'", '*'],
+     ['OP1', 'O1P'],
+     ['OP2', 'O2P'],
+     # ['OP3', 'O3P'],
+     ]
+  return __convert_v(s, m)
 
 class add_bond_proxies(object):
 
@@ -2176,18 +2198,18 @@ class add_angle_proxies(object):
       if (   angle.atom_id_1 not in m_1.monomer_atom_dict
           or angle.atom_id_2 not in m_2.monomer_atom_dict
           or angle.atom_id_3 not in m_3.monomer_atom_dict):
-        if (    angle.atom_id_1.replace("'", "*") in m_1.monomer_atom_dict
-            and angle.atom_id_2.replace("'", "*") in m_2.monomer_atom_dict
-            and angle.atom_id_3.replace("'", "*") in m_3.monomer_atom_dict):
-          angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
-          angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
-          angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
-        elif (    angle.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
-              and angle.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
-              and angle.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict):
-          angle.atom_id_1 = angle.atom_id_1.replace("*", "'")
-          angle.atom_id_2 = angle.atom_id_2.replace("*", "'")
-          angle.atom_id_3 = angle.atom_id_3.replace("*", "'")
+        if (    convert_v3_to_v2(angle.atom_id_1) in m_1.monomer_atom_dict
+            and convert_v3_to_v2(angle.atom_id_2) in m_2.monomer_atom_dict
+            and convert_v3_to_v2(angle.atom_id_3) in m_3.monomer_atom_dict):
+          angle.atom_id_1 = convert_v3_to_v2(angle.atom_id_1)
+          angle.atom_id_2 = convert_v3_to_v2(angle.atom_id_2)
+          angle.atom_id_3 = convert_v3_to_v2(angle.atom_id_3)
+        elif (    convert_v2_to_v3(angle.atom_id_1) in m_1.monomer_atom_dict
+              and convert_v2_to_v3(angle.atom_id_2) in m_2.monomer_atom_dict
+              and convert_v2_to_v3(angle.atom_id_3) in m_3.monomer_atom_dict):
+          angle.atom_id_1 = convert_v2_to_v3(angle.atom_id_1)
+          angle.atom_id_2 = convert_v2_to_v3(angle.atom_id_2)
+          angle.atom_id_3 = convert_v2_to_v3(angle.atom_id_3)
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue

@@ -254,19 +254,36 @@ class restraints_scale_manager(object):
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
       ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+
       consensus_scale = 1
-      if ots < 0.6: cutoff = 0.02
-      else:         cutoff = 0.03
-      if delta > cutoff:
-        if self.scale_counts_bonds[k]==0:
-          consensus_scale = factor
-          self.scale_counts_bonds[k] += 1
-        else:
-          consensus_scale = second_factor
-      if delta < 0.01 and ots > 0.6:
-        consensus_scale = 1./second_factor**2
-      if delta < 0.01 and ots <= 0.6:
-        consensus_scale = 1./1.5
+      if delta > 0.03: consensus_scale = 2
+
+      if ots >= 0.8:
+        if delta < 0.025: consensus_scale = 0.5
+      if ots < 0.8 and ots >=0.6:
+        if delta < 0.02: consensus_scale = 0.5
+      if ots < 0.6 and ots >= 0.4:
+        if delta < 0.015: consensus_scale = 0.5
+      if ots < 0.4:
+        if delta > 0.02: consensus_scale = 2
+
+
+      #consensus_scale = 1
+      #if ots < 0.6: cutoff = 0.02
+      #else:         cutoff = 0.03
+      #
+      #if delta > cutoff:
+      #  if self.scale_counts_bonds[k]==0:
+      #    consensus_scale = factor
+      #    self.scale_counts_bonds[k] += 1
+      #  else:
+      #    consensus_scale = second_factor
+      #
+      #if delta < 0.01 and ots > 0.6:
+      #  consensus_scale = 1./second_factor**2
+      #if delta < 0.01 and ots <= 0.6:
+      #  consensus_scale = 1./1.5
+
       proxy.weight = proxy.weight * consensus_scale
       self.current_bond_weights[k] = proxy.weight
 
@@ -280,19 +297,35 @@ class restraints_scale_manager(object):
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
       ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+
       consensus_scale = 1
-      if ots < 0.6: cutoff = 3.0
-      else:         cutoff = 5.0
-      if delta > cutoff:
-        if self.scale_counts_angles[k]==0:
-          consensus_scale = factor
-          self.scale_counts_angles[k] += 1
-        else:
-          consensus_scale = second_factor
-      if delta < 1.5 and ots > 0.6:
-        consensus_scale = 1./second_factor**2
-      if delta < 1.5 and ots <= 0.6:
-        consensus_scale = 1./1.5
+      if delta > 3.0: consensus_scale = 2
+
+      if ots >= 0.8:
+        if delta < 2.5: consensus_scale = 0.5
+      if ots < 0.8 and ots >=0.6:
+        if delta < 2.0: consensus_scale = 0.5
+      if ots < 0.6 and ots >= 0.4:
+        if delta < 1.5: consensus_scale = 0.5
+      if ots < 0.4:
+        if delta > 2.0: consensus_scale = 2
+
+      #consensus_scale = 1
+      #if ots < 0.6: cutoff = 3.0
+      #else:         cutoff = 5.0
+      #if delta > cutoff:
+      #  if self.scale_counts_angles[k]==0:
+      #    consensus_scale = factor
+      #    self.scale_counts_angles[k] += 1
+      #  else:
+      #    consensus_scale = second_factor
+      #if delta < 1.5 and ots > 0.6:
+      #  consensus_scale = 1./second_factor**2
+      #if delta < 1.5 and ots <= 0.6:
+      #  consensus_scale = 1./1.5
+
+
+
       proxy.weight = proxy.weight * consensus_scale
       self.current_angle_weights[k] = proxy.weight
 
@@ -625,6 +658,15 @@ class manager(object):
   def get_scattering_table(self):
     return self.get_xray_structure().get_scattering_table()
 
+  def get_scattering_table_d_min(self):
+    """d_min the current scattering table was set up with, None if unknown.
+
+    Needed whenever a scattering table is restored after xray_structure has
+    been rebuilt: "n_gaussian" with d_min of None, 1 or 3 are all different.
+    """
+    if(self.scattering_dict_info is None): return None
+    return self.scattering_dict_info.d_min
+
   def get_xray_structure(self, force=False):
     if force: self._xray_structure = None
     if(self._xray_structure is None):
@@ -780,6 +822,29 @@ class manager(object):
     # Restore methods from pdb hierarchy
     if self._pdb_hierarchy:
       self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
+
+    # __getstate__ drops _xray_structure, so it gets rebuilt from the hierarchy
+    # without a scattering table and silently falls back to the default one.
+    # scattering_dict_info survives pickling, so use it to put the table back.
+    self._restore_scattering_dictionaries()
+
+  def _restore_scattering_dictionaries(self):
+    """Re-apply the scattering table remembered by scattering_dict_info.
+
+    For use after _xray_structure has been dropped and rebuilt: the rebuilt one
+    carries no table, and without this the model would quietly compute
+    structure factors from a different table than it was set up with. Restores
+    d_min too, since "n_gaussian" means a different table for a different d_min.
+    """
+    sdi = self.scattering_dict_info
+    if(sdi is None): return
+    # no (complete) crystal symmetry means no xray_structure to set a table on
+    if(self.get_xray_structure() is None): return
+    self.setup_scattering_dictionaries(
+      scattering_table           = sdi.scattering_table,
+      d_min                      = sdi.d_min,
+      set_inelastic_form_factors = sdi.set_inelastic_form_factors,
+      iff_wavelength             = sdi.iff_wavelength)
 
   def __repr__(self):
     """
@@ -1145,6 +1210,7 @@ class manager(object):
 
       # Reset _crystal_symmetry
       scattering_table = xrs.scattering_type_registry().last_table()
+      scattering_table_d_min = self.get_scattering_table_d_min()
       scatterers = xrs.scatterers()
       sp = crystal.special_position_settings(crystal_symmetry)
       self._xray_structure = xray.structure(sp, scatterers) # new symmetry
@@ -1163,7 +1229,9 @@ class manager(object):
 
       # Set up scattering table if there was one before
       if scattering_table:
-        self.setup_scattering_dictionaries(scattering_table = scattering_table)
+        self.setup_scattering_dictionaries(
+          scattering_table = scattering_table,
+          d_min            = scattering_table_d_min)
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
@@ -2146,8 +2214,10 @@ class manager(object):
         run_clash_guard           = False):
     self._processed = True
     SAVE_scatering_table = None
+    SAVE_scatering_table_d_min = None
     if self._xray_structure is not None:
       SAVE_scatering_table = self._xray_structure.get_scattering_table()
+      SAVE_scatering_table_d_min = self.get_scattering_table_d_min()
     if(pdb_interpretation_params is not None):
       self.unset_restraints_manager()
     if(pdb_interpretation_params is None):
@@ -2244,9 +2314,12 @@ class manager(object):
     self.unset_processed_pdb_file()
     # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
-    # Ensure we did not loose scattering_table
+    # Ensure we did not loose scattering_table (and the d_min it was set up
+    # with: "n_gaussian" means a different table for a different d_min)
     if SAVE_scatering_table is not None:
-      self.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+      self.setup_scattering_dictionaries(
+        scattering_table = SAVE_scatering_table,
+        d_min            = SAVE_scatering_table_d_min)
 
   def get_missing_atoms(self):
     if self._missing_atoms is None:
@@ -2858,7 +2931,8 @@ class manager(object):
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
-    self._xray_structure.scattering_type_registry_params.table = scattering_table
+    # Record d_min as well as the "n_gaussian" table depends d_min.
+    self._xray_structure.set_scattering_table(scattering_table, d_min = d_min)
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_searched_tls_selections(self, nproc, log):
@@ -3993,10 +4067,13 @@ class manager(object):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
     if(SAVE_scatering_table is not None and
-       SAVE_scatering_table in known_scattering_tables and
-       SAVE_scatering_table != "n_gaussian" # setting this requires d_min!!!!!!!
-       ):
-      new.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+       SAVE_scatering_table in known_scattering_tables):
+      # d_min matters: "n_gaussian" at d_min=None, 1 or 3 are three different
+      # tables. sdi (propagated above) remembers the d_min the table was set
+      # up with, so restore the table with it.
+      new.setup_scattering_dictionaries(
+        scattering_table = SAVE_scatering_table,
+        d_min            = None if sdi is None else sdi.d_min)
     return new
 
   def number_of_ordered_solvent_molecules(self):
@@ -4341,7 +4418,9 @@ class manager(object):
         restraint_objects  = self._restraint_objects,
         monomer_parameters = self._monomer_parameters,
         log                = null_out())
-      m.setup_scattering_dictionaries(scattering_table=scattering_table)
+      m.setup_scattering_dictionaries(
+        scattering_table = scattering_table,
+        d_min            = self.get_scattering_table_d_min())
       m.process(make_restraints=True,
         pdb_interpretation_params = self.get_current_pdb_interpretation_params())
     else:

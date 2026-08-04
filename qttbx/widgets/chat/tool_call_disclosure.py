@@ -186,6 +186,43 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     self.result_view.setPlainText(str(text))
     self.result_view.show()
 
+  def expand(self):
+    """Expand the body programmatically (search navigation).
+
+    A collapsed body's inner views were auto-height-sized while hidden
+    (``viewport().width() == 0`` -> ~1 line tall), and the manual-click
+    path defers the recalc one event-loop tick. A caller about to
+    compute geometry (scroll-to-match) needs it NOW: show the body,
+    force the layout chain so the views get real widths, then run the
+    same refresh the deferred path uses. No-op when already expanded.
+    """
+    if self.header_button.isChecked() and self.body.isVisible():
+      return
+    self.header_button.setChecked(True)
+    self._sync_body_to_header()
+    self.body.layout().activate()
+    if self.layout() is not None:
+      self.layout().activate()
+    self._refresh_inner_heights()
+
+  def ensure_revealed(self):
+    """Reveal hidden searchable content (duck-typed protocol).
+
+    ConversationSearch walks a match's ancestors and calls this on any
+    that expose it, so the controller needs no knowledge of this class
+    or of whether the body is currently collapsed.
+    """
+    self.expand()
+
+  def searchable_cells(self):
+    """This row's searchable text: args and result views, kind ``"tool"``.
+
+    Both views are reported even while the body is collapsed -- hidden
+    tool text is searchable, and navigation reveals it via
+    ``ensure_revealed``.
+    """
+    return [("tool", self.args_view), ("tool", self.result_view)]
+
   def is_running(self):
     """Return True while the call is still in its initial ``running`` state.
 
@@ -197,9 +234,13 @@ class ToolCallDisclosure(QtWidgets.QFrame):
 
   # ---- internals ----------------------------------------------------------
 
-  def _on_toggled(self):
+  def _sync_body_to_header(self):
+    """Show/hide the body to match the header's checked state."""
     self.body.setVisible(self.header_button.isChecked())
     self._refresh_header()
+
+  def _on_toggled(self):
+    self._sync_body_to_header()
     if self.header_button.isChecked():
       # Args/result heights were computed when the body was hidden
       # (viewport().width() == 0), so the inner views cached a tiny
