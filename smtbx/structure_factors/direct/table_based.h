@@ -335,6 +335,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           for (size_t i = 0; i < n_columns; i++) {
             if (sc_indices[i] != ~0) {
               target[sc_indices[i]] = buffer[i];
+            }
           }
         }
       }
