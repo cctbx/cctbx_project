@@ -303,7 +303,6 @@ def add_solvent_to_model_inplace(
     ).extract_xray_structure(crystal_symmetry=model.crystal_symmetry())
   model._xray_structure = model._xray_structure.concatenate(
     solvent_xray_structure)
-  del solvent_xray_structure
   sst = model.get_xray_structure().select(
     new_solvent_selection).site_symmetry_table()
   #
@@ -311,6 +310,7 @@ def add_solvent_to_model_inplace(
   #
   rfs = model.refinement_flags
   if rfs is not None:
+    scatterers = solvent_xray_structure.scatterers()
     #for i_sc, sc in enumerate(solvent_xray_structure.scatterers()):
     for i, atom in enumerate(list(new_solvent_chain.atoms())):
       # occupancy
@@ -328,6 +328,13 @@ def add_solvent_to_model_inplace(
       if(rfs.individual_adp): # H?
         iso = rfs.adp_individual_iso
         ani = rfs.adp_individual_aniso
+
+        # if water happened to be anisotropic already (= not really new!)
+        if scatterers[i].flags.use_u_aniso():
+          if iso is not None: iso.append(False)
+          if ani is not None: ani.append(True)
+          continue
+
         if(params.new_solvent == "isotropic"):
           if iso is not None: iso.append(True)
           if ani is not None: ani.append(False)
