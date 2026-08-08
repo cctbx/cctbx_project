@@ -5,7 +5,6 @@ from libtbx import adopt_init_args
 from cctbx import adptbx
 import iotbx.xplor.map
 import iotbx.phil
-from iotbx.pdb.mmcif import format_pdb_atom_name
 from mmtbx import find_peaks
 import mmtbx.utils
 from cctbx import maptbx
@@ -18,6 +17,8 @@ from libtbx import group_args
 import string
 import libtbx.log
 from libtbx import Auto
+from cctbx import geometry_restraints
+from iotbx.pdb.mmcif import format_pdb_atom_name
 
 def get_unique_altloc(exclude):
   for l in string.ascii_uppercase:
@@ -110,6 +111,26 @@ master_params_str = """\
             after ferst few macro-cycles, filter_only - remove water only, \
             every_macro_cycle - do water update every macro-cycle
     .short_caption = Mode
+  add_hydrogens
+  {
+    d_min = 1.0
+      .type = float
+      .help = None = don't add. Resolution must be better than d_min for H building
+    r_work = 0.1
+      .type = float
+      .help = Rwork must be less than r_work for water to be added
+    min_dist = 0.5
+      .type = float
+    max_dist = 1.5
+      .type = float
+    min_angle = 80.0
+      .type = float
+    max_angle = 170.0
+      .type = float
+    diff_map_peak_threshold = 2.0
+      .type = float
+      .help = mFo-DFc map threshold for H peak search
+  }
   mask_atoms_selection = protein and (name CA or name CB or name N or name C or name O)
     .type = str
     .help = Mask macromolecule atoms in peak picking map
@@ -175,7 +196,10 @@ def master_params():
   return iotbx.phil.parse(master_params_str)
 
 def new_solvent_sites_as_hierarchy_chain(
-      sites, model, params, conformer_indices=None):
+      model,
+      sites,
+      params,
+      conformer_indices=None):
   uc = model.crystal_symmetry().unit_cell()
   ort = uc.orthogonalize
   b_iso = flex.mean(model.get_xray_structure(
@@ -193,12 +217,14 @@ def new_solvent_sites_as_hierarchy_chain(
       else:                resname = "HOH"
   # Figure out first water resseq
   first_water_resseq = model.get_hierarchy().get_water_max_resseq()+1
+  #
   # Figure out atom name
   element = "O"
   atom_name = params.output_atom_name
   if atom_name is Auto or atom_name is None:
     atom_name = element
   atom_name = format_pdb_atom_name(atom_name, element)
+  #
   new_chain = iotbx.pdb.hierarchy.chain(id=params.output_chain_id)
   for i_seq, site_frac in enumerate(sites):
     water_i_seq = size+i_seq+1 # same as resseq below
@@ -234,17 +260,30 @@ def new_solvent_sites_as_hierarchy_chain(
   if new_chain.residue_groups_size()>0: return new_chain
   else:                                 return None
 
-def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
+def add_solvent_to_model_inplace(
+      model,
+      params,
+      sites=None,
+      water_residue_groups=None, # come together
+      chain_id=None,             # come together
+      conformer_indices=None):
   """
   A series of very specialzied manipulations on the model to add new solvent
   without re-creating the new model.
   """
+  assert sites is None or [water_residue_groups, chain_id].count(None)==2
   # Get new solvent as pdb hierarchy chain
-  new_solvent_chain = new_solvent_sites_as_hierarchy_chain(
-    sites             = sites,
-    model             = model,
-    params            = params,
-    conformer_indices = conformer_indices)
+  if sites is None:
+    new_solvent_chain = create_water_chain(
+      water_residue_groups=water_residue_groups,
+      chain_id=chain_id,
+      start_resseq=1)
+  else:
+    new_solvent_chain = new_solvent_sites_as_hierarchy_chain(
+      sites             = sites,
+      model             = model,
+      params            = params,
+      conformer_indices = conformer_indices)
   if new_solvent_chain is None: return
   # Get new solvent selection
   n_new_solvent      = new_solvent_chain.atoms().size()
@@ -252,56 +291,54 @@ def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
   new_solvent_selection = flex.bool(initial_model_size, False)
   new_solvent_selection.extend(flex.bool(n_new_solvent, True))
   # Append new chain to the model
-  model.get_hierarchy().only_model().append_chain(chain=new_solvent_chain)
+  #model.get_hierarchy().only_model().append_chain(chain=new_solvent_chain)
+  add_chain_to_hierarchy(
+    hierarchy = model.get_hierarchy(), new_chain = new_solvent_chain)
   model._update_atom_selection_cache()
   model.get_hierarchy().atoms().reset_i_seq()
   model.unset_processed_pdb_file()
   # Force-update xray_structure
+  # This is done THIS WAY to keep scattering_table
   solvent_xray_structure = new_solvent_chain.as_new_hierarchy(
     ).extract_xray_structure(crystal_symmetry=model.crystal_symmetry())
   model._xray_structure = model._xray_structure.concatenate(
     solvent_xray_structure)
+  del solvent_xray_structure
+  sst = model.get_xray_structure().select(
+    new_solvent_selection).site_symmetry_table()
   #
   # Adjust refinement flags
   #
   rfs = model.refinement_flags
   if rfs is not None:
-    # Occupancy
-    occupancy_flags = None
-    if(params.refine_occupancies):
-      occupancy_flags = []
-      for i in range(1, n_new_solvent+1):
-        occupancy_flags.append([flex.size_t([initial_model_size+i-1])])
-    # Sites
-    if(rfs.individual_sites):
-      ssites = flex.bool(n_new_solvent, True)
-    else: ssites = None
-    # Torsion angles
-    if(rfs.torsion_angles):
-      ssites_tors = flex.bool(n_new_solvent, True)
-    else: ssites_tors = None
-    # ADP
-    xrs = model.get_xray_structure()
-    uui=xrs.use_u_iso().select(new_solvent_selection)
-    uua=xrs.use_u_aniso().select(new_solvent_selection)
-    sadp_iso, sadp_aniso = None, None
-    if(params.new_solvent == "isotropic"):
-      if(rfs.adp_individual_iso or uui.count(True)>0):
-        sadp_iso = uui
-        sadp_aniso = flex.bool(sadp_iso.size(), False)
-      else: sadp_iso = None
-    if(params.new_solvent == "anisotropic"):
-      if(rfs.adp_individual_aniso or uua.count(True)>0):
-        sadp_aniso = uua
-        sadp_iso = flex.bool(sadp_aniso.size(), False)
-      else: sadp_aniso = None
-    rfs.inflate(
-      sites_individual       = ssites,
-      sites_torsion_angles   = ssites_tors,
-      adp_individual_iso     = sadp_iso,
-      adp_individual_aniso   = sadp_aniso,
-      s_occupancies          = occupancy_flags,
-      size_all               = initial_model_size)#torsion_angles
+    #for i_sc, sc in enumerate(solvent_xray_structure.scatterers()):
+    for i, atom in enumerate(list(new_solvent_chain.atoms())):
+      # occupancy
+      if(params.refine_occupancies):
+        sel = [[flex.size_t([initial_model_size+i])], ]
+        if rfs.s_occupancies is None:
+          rfs.s_occupancies = sel
+        else:
+          rfs.s_occupancies.extend(sel)
+          #rfs.s_occupancies.append(sel)
+      # sites
+      if(rfs.individual_sites):
+        rfs.sites_individual.append(True)
+      # ADP
+      if(rfs.individual_adp): # H?
+        iso = rfs.adp_individual_iso
+        ani = rfs.adp_individual_aniso
+        if(params.new_solvent == "isotropic"):
+          if iso is not None: iso.append(True)
+          if ani is not None: ani.append(False)
+        if(params.new_solvent == "anisotropic"):
+          if iso is not None: iso.append(False)
+          if ani is not None: ani.append(True)
+  #
+  nonbonded_types = flex.std_string()
+  for atom in new_solvent_chain.atoms():
+    if(atom.element_is_hydrogen()): nonbonded_types.append('HOH2')
+    else:                           nonbonded_types.append('OH2')
   #
   # Finally, add new atoms to restraints manager
   #
@@ -328,8 +365,6 @@ def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
       donor_acceptor_excl_groups = None
     else:
       donor_acceptor_excl_groups = flex.size_t(n_new_solvent, 0)
-    sst = model.get_xray_structure().select(
-      new_solvent_selection).site_symmetry_table()
     geometry = geometry.new_including_isolated_sites(
       n_additional_sites         = n_new_solvent,
       model_indices              = model_indices,
@@ -337,7 +372,7 @@ def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
       sym_excl_indices           = sym_excl_indices,
       donor_acceptor_excl_groups = donor_acceptor_excl_groups,
       site_symmetry_table        = sst,
-      nonbonded_types            = flex.std_string(["OH2"]*n_new_solvent),
+      nonbonded_types            = nonbonded_types,
       nonbonded_charges          = flex.int(n_new_solvent, 0))
     model.restraints_manager = mmtbx.restraints.manager(
       geometry              = geometry,
@@ -350,6 +385,44 @@ def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
     model.restraints_manager.geometry.update_plain_pair_sym_table(
       sites_frac = model.get_sites_frac())
   #
+  if model.get_restraints_manager() is not None:
+    aproxies, bproxies = [], []
+    get_class = iotbx.pdb.common_residue_names_get_class
+    sct = model.get_scattering_table()
+    if sct in ["neutron", "electron"]: target_bond = 0.98
+    else:                              target_bond = 0.85
+    for m in model.get_hierarchy().models():
+      for c in m.chains():
+        for conf in c.conformers():
+          for r in conf.residues():
+            if(not get_class(name=r.resname) == "common_water"): continue
+            i_seqs = r.atoms().extract_i_seq()
+            if i_seqs.size() != 3: continue
+            io = None
+            ihs = []
+            for atom in r.atoms():
+              if(atom.element_is_hydrogen()): ihs.append(atom.i_seq)
+              else: io = atom.i_seq
+            #
+            if io is not None and len(ihs)==2:
+              for ih in ihs:
+                bproxy = geometry_restraints.bond_simple_proxy(
+                  i_seqs         = (ih, io),
+                  distance_ideal = target_bond,
+                  weight         = 1./(0.02**2),
+                  origin_id      = 0)
+                bproxies.append(bproxy)
+              aproxy = geometry_restraints.angle_proxy(
+                i_seqs      = (ihs[0], io, ihs[1]),
+                angle_ideal = 103.91,
+                weight      = 1./(3.0**2),
+                origin_id   = 0)
+              aproxies.append(aproxy)
+  if model.get_restraints_manager() is not None:
+    g = model.get_restraints_manager().geometry
+    g.add_new_bond_restraints_in_place(bproxies, model.get_sites_cart())
+    g.add_angles_in_place(aproxies)
+  #
   # Update H riding manager
   #
   if model.riding_h_manager is not None:
@@ -359,6 +432,168 @@ def add_solvent_to_model_inplace(sites, model, params, conformer_indices=None):
       n_new_atoms         = n_new_solvent)
     model.riding_h_manager = new_riding_h_manager
   return new_solvent_selection
+
+from scitbx import matrix
+
+def find_water_hydrogens(
+      o_site,
+      peak_heights,
+      peak_coords,
+      min_od=0.5,
+      max_od=1.5,
+      min_angle=80.0,
+      max_angle=170.0):
+    """
+    AI generated.
+
+    Finds the two most likely hydrogen positions for a water oxygen
+    using Cartesian coordinates (sites_cart).
+    Return None if less than 2 H are found.
+
+    Prompt:
+    I need a function that takes the position of a water oxygen and two lists:
+    (1) the values of map peaks and (2) their coordinates.
+    It should return the coordinates of the two points that most likely
+    correspond to the positions of the two water hydrogen atoms. These hydrogen
+    positions should be selected from the provided coordinate and peak heights
+    list such that:
+
+    a) They both correspond to the highest map peaks.
+
+    b) The H-O-H angle is close to the expected value for water (about 103deg).
+
+    c) The O-H distances are close to 1 A (approximately).
+    """
+    xyz_h = list(zip(peak_heights, peak_coords))
+    if len(xyz_h) < 2: return None
+    o_vec = matrix.col(o_site)
+    # Identify H1: Filter candidates in Cartesian space
+    valid_h1_candidates = [
+      p for p in xyz_h
+      if min_od < (o_vec - matrix.col(p[1])).length() < max_od
+    ]
+    if not valid_h1_candidates: return None
+    # Explicitly extract the peak height (x[0]) to avoid vec3 comparison crashes
+    best_h1 = max(valid_h1_candidates, key=lambda x: x[0])
+    h1_height, h1_site = best_h1
+    h1_vec = matrix.col(h1_site)
+    d1 = (o_vec - h1_vec).length()
+    xyz_h.remove(best_h1)
+    # Trackers for H2 parameters
+    h2_site = None
+    h2_height = None
+    d2_final = None
+    angle_final = None
+    best_angle_score = 1e10
+    h_max = -1e300
+    # Iterate through remaining peaks to find the best H2
+    for h, s in xyz_h:
+      s_vec = matrix.col(s)
+      d2 = (o_vec - s_vec).length()
+      if d2 < min_od or d2 > max_od: continue
+      # Cartesian angle calculation: v1.angle(v2, deg=True)
+      a = (s_vec - o_vec).angle((h1_vec - o_vec), deg=True)
+      if min_angle < a < max_angle:
+        angle_deviation = abs(a - 103.91)
+        if h > h_max:
+          h_max = h
+          best_angle_score = angle_deviation
+          h2_site = s
+          h2_height = h
+          d2_final = d2
+          angle_final = a
+        elif h == h_max and angle_deviation < best_angle_score:
+          best_angle_score = angle_deviation
+          h2_site = s
+          h2_height = h
+          d2_final = d2
+          angle_final = a
+    if h2_site is None: return None
+    # Return the packaged group_args object
+    return group_args(
+      h_sites   = (h1_site, h2_site),
+      map_peaks = (h1_height, h2_height),
+      distances = (d1, d2_final),
+      angle     = angle_final
+    )
+
+def get_detached_water_residue_group(o_atom, h_sites_cart):
+    # Detach at the residue_group level (parent of the atom_group)
+    residue_group = o_atom.parent().parent().detached_copy()
+    # Get the corresponding atom_group in the new detached residue_group
+    # (Assuming no alternate conformations for water, so index 0)
+    atom_group = residue_group.atom_groups()[0]
+    detached_o_atom = atom_group.atoms()[0]
+    # Create and append the hydrogens
+    for i, h_xyz in enumerate(h_sites_cart):
+      h_atom = detached_o_atom.detached_copy()
+      h_atom.name = f" H{i+1} "
+      h_atom.element = "H"
+      h_atom.xyz = h_xyz
+      h_atom.uij = (-1, -1, -1, -1, -1, -1)
+      atom_group.append_atom(h_atom)
+    # Return the single residue_group representing the whole water molecule
+    return residue_group
+
+def create_water_chain(water_residue_groups, chain_id, start_resseq=1):
+  """
+  Creates and returns a new iotbx.pdb.hierarchy.chain populated with
+  the provided detached water residue groups.
+  """
+  new_chain = iotbx.pdb.hierarchy.chain(id=chain_id)
+  current_resseq = start_resseq
+  for rg in water_residue_groups:
+    new_rg = rg.detached_copy()
+    # Assign a sequential sequence number to the water
+    new_rg.resseq = iotbx.pdb.resseq_encode(value=current_resseq)
+    new_rg.icode = " "
+    current_resseq += 1
+    # Enforce water-specific attributes
+    for ag in new_rg.atom_groups():
+      for atom in ag.atoms():
+        atom.hetero = True
+    # Suppresses the insertion of 'TER' records
+    new_rg.link_to_previous = True
+    new_chain.append_residue_group(residue_group=new_rg)
+  return new_chain
+
+def add_chain_to_hierarchy(hierarchy, new_chain):
+  """
+  Appends a new chain to the hierarchy as a completely separate chain object,
+  even if a chain with the same ID already exists.
+  It safely renumbers the new chain to prevent numbering collisions without
+  disturbing existing data structures.
+  """
+  # Find the highest existing resseq for this chain ID across the hierarchy
+  highest_resseq = 0
+  for model in hierarchy.models():
+    for chain in model.chains():
+      if chain.id == new_chain.id:
+        for rg in chain.residue_groups():
+          try:
+            seq_val = rg.resseq_as_int()
+            if seq_val > highest_resseq:
+              highest_resseq = seq_val
+          except ValueError:
+            pass
+  # Renumber the new chain's residues to prevent collisions, preserving altlocs
+  current_resseq = highest_resseq + 1
+  previous_incoming_resid = None
+  for rg in new_chain.residue_groups():
+    incoming_resid = rg.resid()
+    if(previous_incoming_resid is not None and
+       incoming_resid != previous_incoming_resid):
+      current_resseq += 1
+    rg.resseq = iotbx.pdb.resseq_encode(value=current_resseq)
+    rg.icode = " "
+    previous_incoming_resid = incoming_resid
+  # Append the new chain as a separate entity (least intrusive method)
+  if hierarchy.models_size() == 0:
+    hierarchy.append_model(iotbx.pdb.hierarchy.model())
+  hierarchy.models()[0].append_chain(new_chain.detached_copy())
+  # Re-index the atoms in the hierarchy
+  hierarchy.atoms().reset_i_seq()
+  return hierarchy
 
 class maps(object):
   def __init__(self,
@@ -459,7 +694,6 @@ class maps(object):
     cntr=0
     for s, sc in zip(sel, scatterers):
       if not s: continue
-      print(self.fmodel.r_work())
       occ = sc.occupancy
       sc.occupancy=0
       self.fmodel.update_xray_structure(update_f_calc=True)
@@ -623,15 +857,13 @@ class manager(object):
                      find_peaks_params = None,
                      log = sys.stdout):
     adopt_init_args(self, locals())
-
     # XXX Rationalize this:
-
     self.find_peaks_params.map_next_to_model.min_peak_peak_dist=self.params.dist_max
     if self.params.include_altlocs:
       self.find_peaks_params.peak_search.min_cross_distance=0.5
       self.find_peaks_params.map_next_to_model.min_model_peak_dist=0.5
       self.find_peaks_params.map_next_to_model.min_peak_peak_dist=0.5
-
+    #
     self.ma         = libtbx.log.manager(log = self.log)
     self.total_time = 0
     self._maps      = None
@@ -640,17 +872,19 @@ class manager(object):
     self.model_size_init = self.model.size()
     self.new_solvent_selection = None
     #
-    self._call(msg="Start",            func=None)
-    self._call(msg="Filter (dist)",    func=self._filter_dist_fix_altlocs)
-    self._call(msg="Filter (q & B)",   func=self._filter_q_b)
-    self._call(msg="Compute maps",     func=self._get_maps)
-    self._call(msg="Filter (map)",     func=self._filter_map)
-    self._call(msg="Find peaks",       func=self._find_peaks)
-    self._call(msg="Add new water",    func=self._add_new_solvent)
-    self._call(msg="Refine new water", func=self._refine)
-    self._call(msg="Filter (q & B)",   func=self._filter_q_b)
-    self._call(msg="Filter (dist only)",   func=self._filter_dist)
-    #self._call(msg="Correct drifted",  func=self._correct_drifted_waters)
+    self._call(msg="Start",             func=None)
+    self._call(msg="Filter (dist)",     func=self._filter_dist_fix_altlocs)
+    self._call(msg="Filter (q & B)",    func=self._filter_q_b)
+    self._call(msg="Compute maps",      func=self._get_maps)
+    self._call(msg="Filter (map)",      func=self._filter_map)
+    self._call(msg="Find peaks",        func=self._find_peaks)
+    self._call(msg="Add new water",     func=self._add_new_solvent)
+    self._call(msg="Refine new water",  func=self._refine)
+    self._call(msg="Filter (q & B)",    func=self._filter_q_b)
+    self._call(msg="Compute maps",      func=self._get_maps)
+    self._call(msg="Build H",           func=self._build_h)
+    self._call(msg="Filter (dist only)",func=self._filter_dist)
+    #self._call(msg="Correct drifted",   func=self._correct_drifted_waters)
 
   def _call(self, msg, func = None):
     timer = user_plus_sys_time()
@@ -684,6 +918,64 @@ class manager(object):
       x1 = self.model.get_xray_structure(),
       x2 = self.fmodel.xray_structure,
       eps=1.e-3)
+
+  def _build_h(self):
+    ahp = self.params.add_hydrogens
+    if ahp.d_min is None: return
+    if self.fmodel.f_obs().d_min() > ahp.d_min: return
+    if self.fmodel.r_work() > ahp.r_work: return
+    mpl = maptbx.MapPeakLocator(
+      map_data    = self._maps.difference_map,
+      unit_cell   = self.model.crystal_symmetry().unit_cell(),
+      is_periodic = True)
+    get_class = iotbx.pdb.common_residue_names_get_class
+    self.model.get_hierarchy().atoms().reset_i_seq()
+    self.model.get_hierarchy().atoms_reset_serial()
+    hoh_residue_groups = []
+    keep_sel = flex.bool(self.model.size(), True)
+    chain_ids = []
+    for m in self.model.get_hierarchy().models():
+      for c in m.chains():
+        for conf in c.conformers():
+          for r in conf.residues():
+            if(not get_class(name=r.resname) == "common_water"): continue
+            i_seqs = r.atoms().extract_i_seq()
+            # skip water with H
+            has_h = False
+            for atom in r.atoms():
+              if(atom.element_is_hydrogen()): has_h = True
+            if has_h: continue
+            #
+            for atom in r.atoms():
+              if(atom.element.strip().upper()=="O"):
+                sites_cart, peaks_heights = mpl.get_peaks_within_radius(
+                  target_cart = atom.xyz,
+                  R           = ahp.max_dist,
+                  threshold   = ahp.diff_map_peak_threshold)
+                wo = find_water_hydrogens(
+                  o_site       = atom.xyz,
+                  peak_heights = peaks_heights,
+                  peak_coords  = sites_cart,
+                  min_od       = ahp.min_dist,
+                  max_od       = ahp.max_dist,
+                  min_angle    = ahp.min_angle,
+                  max_angle    = ahp.max_angle)
+                if wo is not None:
+                  hoh_rg = get_detached_water_residue_group(
+                    o_atom       = atom,
+                    h_sites_cart = wo.h_sites)
+                  hoh_residue_groups.append(hoh_rg)
+                  keep_sel[atom.i_seq] = False
+                  chain_ids.append(atom.parent().parent().parent().id)
+    if len(hoh_residue_groups) > 0:
+      self.model = self.model.select(keep_sel)
+      assert len(list(set(chain_ids)))==1, list(set(chain_ids))
+      add_solvent_to_model_inplace(
+        model                = self.model,
+        params               = self.params,
+        water_residue_groups = hoh_residue_groups, # come together
+        chain_id             = chain_ids[0],       # come together
+        conformer_indices    = None)
 
   def _get_maps(self):
     p = self.params
@@ -769,7 +1061,8 @@ class manager(object):
 
   def _refine(self):
     if(self.params.mode == "filter_only"): return
-    if(self.model.size() == self.model_size_init or self.n_water==0): return
+    if(self.model.size() == self.model_size_init or
+       self.n_water==0): return
     for i in range(self.params.n_cycles):
       self.refine_oat()
 
