@@ -198,6 +198,51 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           self.add_new_twin_fraction_parameter(fraction)
+    if (self.fc_correction is not None and self.fc_correction.grad
+        and self.thickness is not None
+        and isinstance(self.fc_correction, xray.shelx_extinction_correction)):
+      """EXTI must not be refined against an **N-beam (dynamical)** model.
+
+      **This is not a statement about electron diffraction in general.**
+      Refining EXTI against a *kinematical* calculation is perfectly fine and
+      is deliberately left alone -- which is what keying the test on
+      `thickness` achieves, since a sample thickness is only ever supplied for
+      the dynamical path (`smtbx/ED/*`). A kinematical refinement has no
+      thickness, so it never reaches this branch.
+
+      Against N-beam the correction is wrong for two independent reasons:
+
+      Physically it double-counts. Secondary extinction is an empirical
+      stand-in for exactly the multiple scattering the dynamical calculation
+      already computes explicitly, so the two are competing to explain one
+      effect.
+
+      Numerically it carries no information. Measured on TyrosineED with a
+      refined EXTI: the parameter's normal-matrix diagonal is **1.9e-21**,
+      fourteen orders below the Cholesky rounding error, the condition number
+      goes from 1.7e13 to 2.4e27, the objective is bit-identical with and
+      without it, and it refines to ~3e9. (`extinction.h:66` computes
+      `fc_sq*lambda^3*0.001/sin_2t`, and lambda^3 is 1.6e-5 at 0.025 A against
+      3.65 for Cu Ka.)
+
+      The symptom is a Cholesky failure naming a "Scalar Parameter ... not
+      determined by the data" -- and whether it fires at all depends on the
+      build, because a pivot that small is decided by rounding rather than by
+      the data. Ignoring the correction is therefore a fix, not a workaround.
+
+      `grad` is cleared on the caller's own object so that anything peeling an
+      ESD off the covariance diagonal agrees about how many parameters there
+      were; the attribute is then dropped so the build takes the trivial
+      fast path rather than paying for a correction that returns 1.
+      """
+      print("smtbx: EXTI cannot be refined together with an N-beam (dynamical)"
+            " calculation -- it is redundant with the multiple scattering the"
+            " dynamical model already computes, and carries no information"
+            " there. Ignoring it. (EXTI with a kinematical refinement is"
+            " unaffected.)")
+      self.fc_correction.grad = False
+      self.fc_correction = None
+
     if self.fc_correction is not None and self.fc_correction.grad:
       if isinstance(self.fc_correction, xray.shelx_extinction_correction):
         p = self.add(extinction_parameter, self.fc_correction)
