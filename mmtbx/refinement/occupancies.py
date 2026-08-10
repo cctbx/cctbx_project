@@ -298,7 +298,7 @@ def occupancy_selections_wrapper(
       as_flex_arrays                     = True,
       constrain_correlated_3d_groups     = False,
       log                                = None,
-      ungroupped                         = False):
+      ungrouped                          = False):
   result = occupancy_selections(
     model                              = model,
     add_water                          = add_water,
@@ -308,7 +308,7 @@ def occupancy_selections_wrapper(
     as_flex_arrays                     = as_flex_arrays,
     constrain_correlated_3d_groups     = constrain_correlated_3d_groups,
     log                                = log)
-  if ungroupped:
+  if ungrouped:
     result = [[v] for sub in result for v in sub]
   return result
 
