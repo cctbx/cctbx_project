@@ -6,6 +6,182 @@ help_message = '''
 Redesign script for merging xfel data
 '''
 
+
+
+
+
+
+mlscale_phil = """
+mlscale {
+  shape {
+    domain_size = 5000.
+      .type = float
+      .help = Effective Scherrer domain size in Angstroms.  Contributes an RLP
+      .help = width of 1/domain_size, independent of resolution (q^0).
+    mosaicity = 0.05
+      .type = float
+      .help = Effective rotational mosaic spread, RMS, in degrees.  Contributes
+      .help = an RLP width of q * mosaicity_in_radians (q^1).
+    strain = 0.0
+      .type = float
+      .help = Effective relative unit cell variation, RMS (delta_d over d).
+      .help = Contributes an RLP width of q * strain (q^1).  Degenerate with
+      .help = mosaicity in the isotropic approximation - refine one, not both.
+    bandwidth = 0.001
+      .type = float
+      .help = Relative spectral width of the incident beam, RMS (sigma_E / E).
+      .help = Contributes an Ewald shell thickness of
+      .help = bandwidth * q^2 * wavelength / 2 (q^2).
+      .help = Overridden per shot when use_measured_spectrum=True and a
+      .help = spectrum is attached to the beam model.
+    divergence = 0.0
+      .type = float
+      .help = Effective beam convergence half angle, RMS, in radians.
+      .help = Contributes an Ewald shell thickness of q * divergence (q^1).
+      .help = Degenerate with mosaicity and strain in the isotropic
+      .help = approximation.  Fix this from the focusing optics.
+    combine = *quadrature linear
+      .type = choice
+      .help = How to combine the individual contributions to the RLP width and
+      .help = to the shell thickness.  Quadrature is appropriate if each is
+      .help = treated as an independent Gaussian broadening, linear reproduces
+      .help = the additive convention used by the Nave/Sauter mosaic model.
+  }
+  use_measured_spectrum = True
+    .type = bool
+    .help = If a per-shot spectrum is attached to the beam model, use its RMS
+    .help = relative width in place of shape.bandwidth.  Recommended: the
+    .help = shot-to-shot variation in spectral width is what makes the RLP
+    .help = width separable from the shell thickness.
+  spectrum_max_relative_width = 0.05
+    .type = float
+    .help = Sanity ceiling on a measured per-shot relative spectral width.
+    .help = Shots exceeding this fall back to shape.bandwidth and are counted.
+  annotate {
+    store_excitation_error = False
+      .type = bool
+      .help = Also store the per-observation excitation error.  Diagnostic
+      .help = only, costs one more double per observation.
+    store_ewald_normal = False
+      .type = bool
+      .help = Also store the unit Ewald normal at each reflection (3 doubles
+      .help = per observation).  Needed only for an anisotropic shape model.
+  }
+  fit {
+    rho_power = 1.0
+      .type = float
+      .help = Exponent in rho(q) = amp * (q/q_max)^power.  1.0 if the RLP
+      .help = width is mosaicity- or strain-limited (w ~ q), 2.0 if it is
+      .help = domain-size limited (w ~ constant).  NOT refined: it is only
+      .help = weakly determined, and getting it wrong produces a
+      .help = resolution-dependent bias that refinement absorbs into the
+      .help = ADPs.  Run both and compare.
+    rho_amp_start = 2.0
+      .type = float
+      .help = Starting value of rho at the high-resolution limit of the data.
+    rho_amp_scan = None
+      .type = floats
+      .help = Explicit list of amp values to scan.  If None, a spread around
+      .help = rho_amp_start is used.  The log likelihood across this scan is
+      .help = the identifiability diagnostic - if it is flat, the data are not
+      .help = constraining the shape.
+    n_rho_bins = 12
+      .type = int
+      .help = Number of rho bins for the likelihood table.
+    n_noise_bins = 30
+      .type = int
+      .help = Number of bins in ln(sigma/m) for the likelihood table.  Each
+      .help = bin gets its own x range, scaled to the noise level, so weak
+      .help = data are covered as well as strong.
+    n_nodes = 15
+      .type = int
+      .help = Gauss-Hermite nodes for integrating out the frame scale factor.
+    n_steps = 11
+      .type = int
+      .help = Grid points in the M-step line search.  The cost of the whole
+      .help = run is roughly n_nodes * n_steps table lookups per EM iteration,
+      .help = so this is the main performance dial.
+    step_range = 0.7
+      .type = float
+      .help = Half-width of the M-step search on the first iteration.
+    step_decay = 0.65
+      .type = float
+      .help = The search half-width is multiplied by this each iteration.
+      .help = Early iterations need reach, later ones need resolution, a fixed
+      .help = grid cannot give both without being expensive.
+    step_floor = 0.04
+      .type = float
+      .help = Smallest search half-width, setting the final precision.
+    max_em_iter = 150
+      .type = int
+      .help = EM iterations for the final fit at the best shape amplitude.
+    scan_em_iter = 8
+      .type = int
+      .help = EM iterations used for each point of the shape scan.  The scan
+      .help = only needs the relative log likelihood, so it can be coarse, the
+      .help = best amplitude is then refit with max_em_iter.
+    tolerance = 0.5
+      .type = float
+      .help = Stop when the marginal log likelihood changes by less than this.
+    sg_start = 0.4
+      .type = float
+      .help = Starting width of the lognormal prior on ln g.
+  }
+  histograms {
+    enable = False
+      .type = bool
+      .help = Produce per-reflection observed intensity histograms, sampled
+      .help = over resolution and model intensity.  Requires model_scaling
+      .help = earlier in the step list so that scaling.i_model exists.
+    target_d_spacings = None
+      .type = floats
+      .help = Target d-spacings (Angstroms) for the resolution rows.  For each
+      .help = target, eligible reflections nearest it in 1/d are collected and
+      .help = sampled by model intensity.  If None, targets are chosen
+      .help = automatically, equally spaced in 1/d across the eligible range.
+      .help = Do NOT use equal-count binning here: unique reflections per
+      .help = shell grow as q^2, so equal-count bins pile up at the
+      .help = high-resolution limit and never sample low resolution.
+    n_resolution_rows = 4
+      .type = int
+      .help = Number of resolution rows when target_d_spacings is None.
+    resolution_pool_fraction = 0.15
+      .type = float
+      .help = Fraction of the eligible reflections, in 1/d, gathered around
+      .help = each target to form the pool that is then sampled by intensity.
+    intensity_percentiles = 1 21 41 61 81
+      .type = ints
+      .help = Within each resolution pool, which percentiles of the model
+      .help = intensity ranking to sample.  One reflection per percentile.
+    min_multiplicity = 100
+      .type = int
+      .help = Only reflections with at least this global multiplicity are
+      .help = eligible, so that each histogram has enough observations to show
+      .help = a shape.  Lower it if the selection comes up empty.
+    n_bins = 40
+      .type = int
+      .help = Number of histogram bins per panel.
+    normalize_by_model = True
+      .type = bool
+      .help = Plot I_obs / I_calc rather than raw I_obs.  Strongly recommended:
+      .help = the overall scale is then a single global constant across all
+      .help = panels, so the upper edge of each distribution is proportional
+      .help = to p_max for that shell, and the variation of that edge with
+      .help = resolution is a direct readout of the crossover.
+    save_npz = True
+      .type = bool
+      .help = Write the raw per-panel observations to a .npz alongside the
+      .help = plot, so the figure can be redrawn without re-running.
+  }
+}
+"""
+
+
+
+
+
+
+
 dispatch_phil = """
 dispatch {
   step_list = None
@@ -467,7 +643,7 @@ scaling {
     .help = "Sigmas applied in the linear fit of Iobs vs Icalc. unit: sigmas"
             "equal to 1. icalc: Sigmas are proportional to the square root of"
             "Icalc (this relation is totally empirical). icalc_sigma: Error"
-            "due to partiality is proportional to Icalc; this term is added to"
+            "due to partiality is proportional to Icalc, this term is added to"
             "the sigma(Iobs) determined in integration so that sigma ="
             "sqrt(Icalc**2 + sigma(Iobs)**2)."
 }
@@ -897,7 +1073,7 @@ program_defaults_phil_str = """
 modify.cosym.use_curvatures=False
 """
 
-master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
+master_phil = mlscale_phil + dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil + lunus_phil + \
               publish_phil + diffbragg_phil + monitor_phil + filter_global_phil + \

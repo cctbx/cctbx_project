@@ -85,7 +85,7 @@ class experiment_scaler(worker):
         high_res_experiments += 1
 
       # apply scale factors
-      if (
+      if False and (
           not self.params.postrefinement.enable or
           'postrefine' not in self.params.dispatch.step_list
       ):
