@@ -242,6 +242,21 @@ class restraints_scale_manager(object):
       self.current_angle_weights.append(proxy.weight)
     self.scale_counts_angles = flex.int(self.original_angle_weights.size(), 0)
 
+  def linear_scale(self, value, argmin, argmax):
+    """
+    Return 0.5 below argmin, 2.0 above argmax, and linearly
+    interpolate between 0.5 and 2.0 within the interval.
+    """
+    if argmin >= argmax:
+        raise ValueError("argmin must be less than argmax")
+
+    if value < argmin:
+        return 0.5
+    if value > argmax:
+        return 2.0
+
+    return 0.5 + (value - argmin) / (argmax - argmin) * (2.0 - 0.5)
+
   def scale_bonds(self, factor, cutoff, second_factor=2, one_time_scale=None):
     g = self.model.get_restraints_manager().geometry
     bond_proxies_simple, asu = g.get_all_bond_proxies(
@@ -255,17 +270,20 @@ class restraints_scale_manager(object):
       delta = abs(dist_ideal-dist_model)
       ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
 
-      consensus_scale = 1
-      if delta > 0.03: consensus_scale = 2
+      consensus_scale = self.linear_scale(value=delta, argmin=0.01, argmax=0.04)
 
-      if ots >= 0.8:
-        if delta < 0.025: consensus_scale = 0.5
-      if ots < 0.8 and ots >=0.6:
-        if delta < 0.02: consensus_scale = 0.5
-      if ots < 0.6 and ots >= 0.4:
-        if delta < 0.015: consensus_scale = 0.5
-      if ots < 0.4:
-        if delta > 0.02: consensus_scale = 2
+      #consensus_scale = 1
+      #if delta > 0.03: consensus_scale = 2
+      #if delta < 0.015: consensus_scale = 0.5
+
+      #if ots >= 0.8:
+      #  if delta < 0.025: consensus_scale = 0.5
+      #if ots < 0.8 and ots >=0.6:
+      #  if delta < 0.02: consensus_scale = 0.5
+      #if ots < 0.6 and ots >= 0.4:
+      #  if delta < 0.015: consensus_scale = 0.5
+      #if ots < 0.4:
+      #  if delta > 0.02: consensus_scale = 2
 
 
       #consensus_scale = 1
@@ -298,17 +316,20 @@ class restraints_scale_manager(object):
       delta = abs(angle_ideal-angle_model)
       ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
 
-      consensus_scale = 1
-      if delta > 3.0: consensus_scale = 2
+      consensus_scale = self.linear_scale(value=delta, argmin=1.0, argmax=6.0)
 
-      if ots >= 0.8:
-        if delta < 2.5: consensus_scale = 0.5
-      if ots < 0.8 and ots >=0.6:
-        if delta < 2.0: consensus_scale = 0.5
-      if ots < 0.6 and ots >= 0.4:
-        if delta < 1.5: consensus_scale = 0.5
-      if ots < 0.4:
-        if delta > 2.0: consensus_scale = 2
+      #consensus_scale = 1
+      #if delta > 3.0: consensus_scale = 2
+      #if delta < 1.5: consensus_scale = 0.5
+
+      #if ots >= 0.8:
+      #  if delta < 2.5: consensus_scale = 0.5
+      #if ots < 0.8 and ots >=0.6:
+      #  if delta < 2.0: consensus_scale = 0.5
+      #if ots < 0.6 and ots >= 0.4:
+      #  if delta < 1.5: consensus_scale = 0.5
+      #if ots < 0.4:
+      #  if delta > 2.0: consensus_scale = 2
 
       #consensus_scale = 1
       #if ots < 0.6: cutoff = 3.0
