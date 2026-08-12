@@ -313,7 +313,12 @@ namespace cctbx { namespace xray {
             scatterers[i].flags.use_u_aniso() &&
             scatterers[i].anharmonic_adp)
           {
-            u_anharmonic += 25;
+            if (scatterers[i].anharmonic_adp->order == 4)
+              u_anharmonic += 25;
+            else if (scatterers[i].anharmonic_adp->order == 3)
+              u_anharmonic += 10;
+            else if (scatterers[i].anharmonic_adp->order != 0)
+              throw std::runtime_error("Order must be 3 or 4");
           }
         }
       }

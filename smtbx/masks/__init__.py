@@ -353,7 +353,7 @@ class mask(object):
     return cif_block
 
 
-def modified_intensities(observations, f_model, f_mask):
+def modified_intensities(observations, f_model, f_mask,scale_factor=None):
   """Subtracts the solvent contribution from the observed structure
   factors to obtain modified structure factors, suitable for refinement
   with other refinement programs such as ShelXL"""
@@ -362,7 +362,8 @@ def modified_intensities(observations, f_model, f_mask):
     weights = weights=1/flex.pow2(f_obs.sigmas())
   else:
     weights = None
-  scale_factor = f_obs.scale_factor(f_model, weights=weights)
+  if scale_factor == None:
+    scale_factor = f_obs.scale_factor(f_model, weights=weights)
   f_obs = f_obs.phase_transfer(phase_source=f_model)
   modified_f_obs = miller.array(
     miller_set=f_obs,

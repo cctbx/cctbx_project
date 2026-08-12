@@ -65,48 +65,22 @@ namespace smtbx { namespace refinement { namespace constraints {
     e = scitbx::math::orthonormal_basis(x_p - x_pn, e_zero_azimuth);
 
     double l = length->value;
-    double cos_phi, sin_phi;
-    if (!staggered) {
-      double phi = azimuth->value;
-      cos_phi = std::cos(phi);
-      sin_phi = std::sin(phi);
-    }
-    else {
-      cos_phi = -1.;
-      sin_phi = 0.;
-    }
+    double phi = staggered ? scitbx::constants::pi : azimuth->value;
+    double c = std::cos(phi), s = std::sin(phi),
+      new_c = c, new_s = s,
+      ang_inc = 2*scitbx::constants::pi / (n_hydrogens == 6 ? 6 : 3)
+      ;
 
-    // Loop over the Hydrogen atoms
     for (int k=0; k < n_hydrogens; ++k) {
-
-      // Cosine and Sine of the azimutal angle of the k-th Hydrogen
-      /* Mathematica:
-       Table[TrigExpand[Cos[\[Phi] + n Pi/3]], {n, {2, 4}}]
-       Table[TrigExpand[Sin[\[Phi] + n Pi/3]], {n, {2, 4}}]
-       */
-      double c, s;
-      switch (k) {
-        case 0:
-          // 1st Hydrogen: azimuthal angle = phi
-          c = cos_phi;
-          s = sin_phi;
-          break;
-        case 1:
-          // 2nd Hydrogen: azimuthal angle = phi + 2pi/3
-          c = -0.5        *cos_phi - half_sqrt_3*sin_phi;
-          s =  half_sqrt_3*cos_phi -         0.5*sin_phi;
-          break;
-        case 2:
-          // 3rd Hydrogen: azimuthal angle = phi + 4pi/3
-          c = -0.5        *cos_phi + half_sqrt_3*sin_phi;
-          s = -half_sqrt_3*cos_phi -         0.5*sin_phi;
-        default:
-          break;
-      }
-
+      c = new_c;
+      s = new_s;
       // Site of k-th Hydrogen
       cart_t u = sin_tetrahedral_angle*(c*e[1] + s*e[2]) + e[0]/3.;
       this->x_h[k] = x_p + l*u;
+
+      phi += ang_inc;
+      new_c = std::cos(phi);
+      new_s = std::sin(phi);
 
       // Derivatives
       if (!jacobian_transpose) continue;
@@ -141,10 +115,12 @@ namespace smtbx { namespace refinement { namespace constraints {
   template class terminal_tetrahedral_xhn_sites<1, /*staggered=*/false>;
   template class terminal_tetrahedral_xhn_sites<2, /*staggered=*/false>;
   template class terminal_tetrahedral_xhn_sites<3, /*staggered=*/false>;
+  template class terminal_tetrahedral_xhn_sites<6, /*staggered=*/false>;
 
   template class terminal_tetrahedral_xhn_sites<1, /*staggered=*/true>;
   template class terminal_tetrahedral_xhn_sites<2, /*staggered=*/true>;
   template class terminal_tetrahedral_xhn_sites<3, /*staggered=*/true>;
+  template class terminal_tetrahedral_xhn_sites<6, /*staggered=*/true>;
 
   // angle parameter
 

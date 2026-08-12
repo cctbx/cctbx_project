@@ -2,9 +2,11 @@
 #define CCTBX_XRAY_SCATTERER_H
 
 #include <cctbx/xray/scatterer_flags.h>
+#include <cctbx/xray/scatterer_id.h>
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/anharmonic.h>
+#include <cctbx/eltbx/tiny_pse.h>
 
 // XXX backward compatibility 2009-12-12
 #define CCTBX_XRAY_SCATTERER_ANISOTROPIC_FLAG_REMOVED
@@ -35,19 +37,20 @@ namespace xray {
     public:
       //! Facilitates meta-programming.
       typedef FloatType float_type;
+      typedef fractional<FloatType> crd_t;
       //! Facilitates meta-programming.
       typedef LabelType label_type;
       //! Facilitates meta-programming.
       typedef ScatteringTypeType scattering_type_type;
       //
-      typedef adptbx::anharmonic::GramCharlier4<FloatType> anharmonic_adp_type;
+      typedef adptbx::anharmonic::GramCharlier<FloatType> anharmonic_adp_type;
 
       //! Default constructor. Data members are not initialized!
       scatterer() {}
 
       //! Initialization with isotropic displacement parameter.
       scatterer(LabelType const& label_,
-                fractional<FloatType> const& site_,
+                crd_t const& site_,
                 FloatType const& u_iso_,
                 FloatType const& occupancy_,
                 ScatteringTypeType const& scattering_type_,
@@ -69,7 +72,7 @@ namespace xray {
 
       //! Initialization with anisotropic displacement parameters.
       scatterer(LabelType const& label_,
-                fractional<FloatType> const& site_,
+                crd_t const& site_,
                 scitbx::sym_mat3<FloatType> const& u_star_,
                 FloatType const& occupancy_,
                 ScatteringTypeType const& scattering_type_,
@@ -113,7 +116,7 @@ namespace xray {
       //! Direct access to fractional coordinates.
       /*! See also: apply_symmetry(), apply_symmetry_site()
        */
-      fractional<FloatType> site;
+      crd_t site;
 
       //! Direct access to occupancy factor.
       FloatType occupancy;
@@ -129,7 +132,7 @@ namespace xray {
        */
       scitbx::sym_mat3<FloatType> u_star;
 
-      //anharmonic part of the ADP
+      //anharmonic part of the ADP 
       boost::shared_ptr<anharmonic_adp_type> anharmonic_adp;
 
       //! Support for refinement.
@@ -434,11 +437,11 @@ namespace xray {
         const char* where_file_name,
         long where_line_number) const
       {
-        char buf[512];
-        std::snprintf(buf, sizeof(buf),
+        std::vector<char> buf(512);
+        std::snprintf(&buf[0], buf.size(),
           "Negative u_iso: scatterer label=%s, u_iso=%.6g (%s, line %ld)",
           label.c_str(), u_iso, where_file_name, where_line_number);
-        return std::string(buf);
+        return std::string(&buf[0]);
       }
 
       //! Details for exception messages.
@@ -448,42 +451,99 @@ namespace xray {
         const char* prefix) const
       {
         std::string result;
-        char buf[512];
-        std::snprintf(buf, sizeof(buf), "%sscatterer label: %s\n",
+        std::vector<char> buf_(512);
+        char* buf = &buf_[0];
+        size_t sz = buf_.size();
+        std::snprintf(buf, sz, "%sscatterer label: %s\n",
           prefix, label.c_str()); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sscattering type: %s\n",
+        std::snprintf(buf, sz, "%sscattering type: %s\n",
           prefix, scattering_type.c_str()); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sfractional coordinates: %.6f %.6f %.6f\n",
+        std::snprintf(buf, sz, "%sfractional coordinates: %.6f %.6f %.6f\n",
           prefix, site[0], site[1], site[2]); result += buf;
         cctbx::cartesian<FloatType> cart = unit_cell.orthogonalize(site);
-        std::snprintf(buf, sizeof(buf), "%scartesian coordinates: %.6f %.6f %.6f\n",
+        std::snprintf(buf, sz, "%scartesian coordinates: %.6f %.6f %.6f\n",
           prefix, cart[0], cart[1], cart[2]); result += buf;
         if (flags.use_u_iso()) {
-          std::snprintf(buf, sizeof(buf), "%su_iso: %.6g\n",
+          std::snprintf(buf, sz, "%su_iso: %.6g\n",
             prefix, u_iso); result += buf;
-          std::snprintf(buf, sizeof(buf), "%sb_iso: %.6g\n",
+          std::snprintf(buf, sz, "%sb_iso: %.6g\n",
             prefix, adptbx::u_as_b(u_iso)); result += buf;
         }
         if (flags.use_u_aniso()) {
           scitbx::sym_mat3<FloatType> u = u_star;
-          std::snprintf(buf, sizeof(buf), "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sz, "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
           u = adptbx::u_star_as_u_cart(unit_cell, u_star);
-          std::snprintf(buf, sizeof(buf), "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sz, "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
         }
-        std::snprintf(buf, sizeof(buf), "%soccupancy: %.6g\n",
+        if (flags.use_u_aniso() && anharmonic_adp) {
+          std::snprintf(buf, sz, "%sanharmonic ADP: order %d\n",
+            prefix, anharmonic_adp->order); result += buf;
+          std::snprintf(buf, sz, "%sC: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+            prefix, anharmonic_adp->C[0], anharmonic_adp->C[1],
+            anharmonic_adp->C[2], anharmonic_adp->C[3],
+            anharmonic_adp->C[4], anharmonic_adp->C[5]); result += buf;
+          std::snprintf(buf, sz, "%sD: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+            prefix, anharmonic_adp->D[0], anharmonic_adp->D[1],
+            anharmonic_adp->D[2], anharmonic_adp->D[3],
+            anharmonic_adp->D[4], anharmonic_adp->D[5]); result += buf;
+        }
+        std::snprintf(buf, sz, "%soccupancy: %.6g\n",
           prefix, occupancy); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sf-prime: %.6g\n",
+        std::snprintf(buf, sz, "%sf-prime: %.6g\n",
           prefix, fp); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sf-double-prime: %.6g",
+        std::snprintf(buf, sz, "%sf-double-prime: %.6g",
           prefix, fdp); result += buf;
         return result;
       }
 
+      const eltbx::tiny_pse::table& element_info() const {
+        if (element_info_ == 0) {
+          element_info_.reset(
+            new eltbx::tiny_pse::table(scattering_type.empty() ? label : scattering_type));
+          if (!element_info_->is_valid()) {
+            element_info_.reset();
+            CCTBX_ERROR("Could not locate given element label/symbol");
+          }
+        }
+        return *element_info_;
+      }
+
+      int get_atomic_number() const { return element_info().atomic_number(); }
+      std::string get_element_name() const { return std::string(element_info().name()); }
+      float get_element_weight() const { return element_info().weight(); }
+      // for use witin (-16..16)
+      uint64_t get_id_2_16(short data=0, FloatType multiplier = 1) const {
+        return scatterer_id_2<FloatType, crd_t, 16>(
+          element_info().atomic_number(), site, data, multiplier).id;
+      }
+      // for use within (-1..1)
+      uint64_t get_id_2_1(short data = 0, FloatType multiplier = 1) const {
+        return scatterer_id_2<FloatType, crd_t, 1>(
+          element_info().atomic_number(), site, data, multiplier).id;
+      }
+      // for use witin (-16..16)
+      uint64_t get_id_5_16(short data = 0, FloatType multiplier = 1) const {
+        return scatterer_id_5<FloatType, crd_t, 16>(element_info().atomic_number(), site, data).id;
+      }
+      // for use within (-1..1)
+      uint64_t get_id_5_1(short data = 0, FloatType multiplier = 1) const {
+        return scatterer_id_5<FloatType, crd_t, 1>(
+          element_info().atomic_number(), site, data, multiplier).id;
+      }
+
+      template <class mask_info, uint64_t cell_m>
+      scatterer_id_base<FloatType, crd_t, mask_info, cell_m>
+        get_id(short data = 0, FloatType multiplier=1) const
+      {
+        return scatterer_id_base<FloatType, crd_t, mask_info, cell_m>(
+          element_info().atomic_number(), site, data, multiplier);
+      }
     protected:
       int multiplicity_;
       FloatType weight_without_occupancy_;
+      mutable boost::shared_ptr<eltbx::tiny_pse::table> element_info_;
   };
 
   template <typename FloatType,

@@ -18,9 +18,10 @@ namespace {
       cctbx::sgtbx::space_group const& space_group,
       bool anomalous_flag,
       scitbx::af::const_ref<cctbx::miller::index<> > const& fo_sq_indices,
-      scitbx::af::const_ref<FloatType> const& fc_sqs)
+      scitbx::af::const_ref<FloatType> const& fc_sqs, bool complete)
     {
-      return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
+      return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs,
+        complete);
     }
 
     static obst customized_detwin(obst const& self,
@@ -30,10 +31,19 @@ namespace {
       scitbx::af::const_ref<FloatType> const& fc_sqs,
       scitbx::af::shared<
       cctbx::xray::twin_component<FloatType>*> const&
-        merohedral_components)
+        merohedral_components, bool complete)
     {
       return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs,
-        merohedral_components);
+        merohedral_components, complete);
+    }
+
+    static obst twin(obst const& self,
+      cctbx::sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      scitbx::af::const_ref<cctbx::miller::index<> > const& fo_sq_indices,
+      scitbx::af::const_ref<FloatType> const& fc_sqs)
+    {
+      return self.twin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
     }
 
     typedef typename obst::index_twin_component itct;
@@ -43,15 +53,17 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
+      return_value_policy<return_by_value> rbv;
 
       class_<obst>("observations", no_init)
-        .def(init<scitbx::af::shared<cctbx::miller::index<> > const&,
+        .def(init<sgtbx::space_group const&,
+                 scitbx::af::shared<cctbx::miller::index<> > const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_component<FloatType>*> const& >
-             ((arg("indices"),
+             ((arg("space_group"),
+               arg("indices"),
                arg("data"),
                arg("sigmas"),
                arg("merohedral_components"))))
@@ -67,26 +79,29 @@ namespace {
                arg("twin_fractions"),
                arg("merohedral_components"))))
         .def(init<observations<FloatType> const&,
+                  sgtbx::space_group const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_fraction<FloatType>*> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_component<FloatType>*> const& >
              ((arg("observations"),
+               arg("space_group"),
                arg("twin_fractions"),
                arg("merohedral_components"))))
         .def("scale", &obst::scale)
-        .add_property("indices", &obst::indices)
-        .add_property("data", &obst::data)
-        .add_property("sigmas", &obst::sigmas)
-        .add_property("twin_fractions", &obst::twin_fractions)
-        .add_property("merohedral_components", &obst::merohedral_components)
-        .add_property("measured_scale_indices", &obst::measured_scale_indices)
-        .def("iterator", &obst::iterator, rbv())
+        .add_property("indices", make_function(&obst::indices, rbv))
+        .add_property("data", make_function(&obst::data, rbv))
+        .add_property("sigmas", make_function(&obst::sigmas, rbv))
+        .add_property("twin_fractions", make_function(&obst::twin_fractions, rbv))
+        .add_property("merohedral_components", make_function(&obst::merohedral_components, rbv))
+        .add_property("measured_scale_indices", make_function(&obst::measured_scale_indices, rbv))
+        .def("iterator", &obst::iterate, rbv)
         .def("detwin", detwin)
         .def("customized_detwin", customized_detwin)
+        .def("twin", twin)
         ;
 
-      typedef typename obst::iterator_holder itrt;
+      typedef typename obst::iterator itrt;
       class_<itrt>("iterator", no_init)
         .def("has_next", &itrt::has_next)
         .def("next", &itrt::next)
@@ -97,7 +112,7 @@ namespace {
       class_<frt>("filter_result", no_init)
         .def_readonly("omitted_count", &frt::omitted_count)
         .def_readonly("sys_abs_count", &frt::sys_abs_count)
-        .add_property("selection", make_getter(&frt::selection, rbv()))
+        .add_property("selection", make_getter(&frt::selection, rbv))
         ;
 
       class_<itct>("index_twin_component", no_init)
@@ -107,7 +122,7 @@ namespace {
              ((arg("index"),
                arg("fraction"),
                arg("scale"))))
-        .add_property("h", make_getter(&itct::h, rbv()))
+        .add_property("h", make_getter(&itct::h, rbv))
         .add_property("fraction", &get_twin_fractions)
         .add_property("scale", &itct::scale)
         ;

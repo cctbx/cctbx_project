@@ -45,6 +45,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     n_restraints = None
     initial_scale_factor = None
     may_parallelise = False
+    use_openmp = False
+    max_memory = 300
 
     def __init__(self, observations, reparametrisation,
                  one_h_linearisation=None, **kwds):
@@ -52,12 +54,10 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
       self.observations = observations
       self.reparametrisation = reparametrisation
       adopt_optional_init_args(self, kwds)
-      if self.f_mask is not None:
-        assert self.f_mask.size() == observations.fo_sq.size()
       self.one_h_linearisation = one_h_linearisation
       if not self.one_h_linearisation:
-        self.one_h_linearisation = direct.f_calc_modulus_squared(
-          self.xray_structure)
+        self.one_h_linearisation = f_calc_function_default(direct.f_calc_modulus_squared(
+          self.xray_structure))
       if self.weighting_scheme == "default":
         self.weighting_scheme = self.default_weighting_scheme()
       self.origin_fixing_restraint = self.origin_fixing_restraints_type(
@@ -74,27 +74,30 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
       return self.reparametrisation.twin_fractions
 
     def build_up(self, objective_only=False):
-      if self.f_mask is not None:
-        f_mask = self.f_mask.data()
+      if self.f_mask is None:
+        f_mask_data = MaskData(flex.complex_double())
       else:
-        f_mask = flex.complex_double()
+        f_mask_data = MaskData(self.observations, self.xray_structure.space_group(),
+          self.observations.fo_sq.anomalous_flag(), self.f_mask.indices(), self.f_mask.data())
 
-      extinction_correction = self.reparametrisation.extinction
-      if extinction_correction is None:
-        extinction_correction = xray.dummy_extinction_correction()
+      fc_correction = self.reparametrisation.fc_correction
+      if fc_correction is None:
+        fc_correction = xray.dummy_fc_correction()
 
       def build_normal_eqns(scale_factor, weighting_scheme, objective_only):
         return ext.build_normal_equations(
           self,
           self.observations,
-          f_mask,
+          f_mask_data,
           weighting_scheme,
           scale_factor,
           self.one_h_linearisation,
           self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-          extinction_correction,
+          fc_correction,
           objective_only,
-          self.may_parallelise)
+          self.may_parallelise,
+          self.use_openmp,
+          self.max_memory)
 
       if not self.finalised: #i.e. never been called
         self.reparametrisation.linearise()

@@ -15,7 +15,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("same_group_xyz", no_init)
+               boost::shared_ptr<wt> >("same_group_xyz", no_init)
           .def(init<af::shared<wt::scatterer_type *> const &,
                     af::shared<site_parameter *> const &,
                     scitbx::mat3<double> const &,
@@ -26,7 +26,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                  arg("shifts_and_angles")
                  )))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -37,14 +37,14 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("same_group_u_iso", no_init)
+               boost::shared_ptr<wt> >("same_group_u_iso", no_init)
           .def(init<af::shared<wt::scatterer_type *> const &,
                     af::shared<scalar_parameter *> const &>
                ((arg("scatterers"),
                  arg("u_isos")
                  )))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -55,7 +55,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("same_group_u_star", no_init)
+               boost::shared_ptr<wt> >("same_group_u_star", no_init)
           .def(init<af::shared<wt::scatterer_type *> const &,
                     af::shared<u_star_parameter *> const &,
                     scitbx::mat3<double> const &,
@@ -78,7 +78,7 @@ namespace smtbx { namespace refinement { namespace constraints {
           .add_property("beta", &wt::beta)
           .add_property("gamma", &wt::gamma)
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -89,13 +89,13 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<site_parameter>,
-               std::auto_ptr<wt> >("same_group_site_proxy", no_init)
+               boost::shared_ptr<wt> >("same_group_site_proxy", no_init)
           .def(init<same_group_xyz *,
                     int>
                 ((arg("parent"),
                   arg("index"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -106,13 +106,13 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<scalar_parameter>,
-               std::auto_ptr<wt> >("same_group_u_iso_proxy", no_init)
+               boost::shared_ptr<wt> >("same_group_u_iso_proxy", no_init)
           .def(init<same_group_u_iso *,
                     int>
                 ((arg("parent"),
                   arg("index"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 
@@ -123,13 +123,13 @@ namespace smtbx { namespace refinement { namespace constraints {
         using namespace boost::python;
         class_<wt,
                bases<u_star_parameter>,
-               std::auto_ptr<wt> >("same_group_u_star_proxy", no_init)
+               boost::shared_ptr<wt> >("same_group_u_star_proxy", no_init)
           .def(init<same_group_u_star *,
                     int>
                 ((arg("parent"),
                   arg("index"))))
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 

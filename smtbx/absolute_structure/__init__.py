@@ -297,9 +297,9 @@ class students_t_hooft_analysis(hooft_analysis):
 
 class flack_analysis(object):
 
-  def __init__(self, xray_structure, obs_, exti=None, connectivity_table=None):
-    if exti is None:
-      exti = xray.dummy_extinction_correction()
+  def __init__(self, xray_structure, obs_, fc_cr=None, connectivity_table=None):
+    if fc_cr is None:
+      exti = xray.dummy_fc_correction()
     adopt_init_args(self, locals())
     assert obs_.fo_sq.anomalous_flag()
     assert not(obs_.twin_fractions and obs_.merohedral_components)
@@ -315,7 +315,7 @@ class flack_analysis(object):
     twin_fractions = ()
     it = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True)
     twin_components = (it,)
-    obs = observations.customized_copy(obs_, twin_fractions, twin_components)
+    obs = observations.customized_copy(obs_, xray_structure.space_group(), twin_fractions, twin_components)
     # reparameterisation needs all fractions
     twin_fractions += twin_components
     if connectivity_table is None:
@@ -323,7 +323,7 @@ class flack_analysis(object):
     reparametrisation = constraints.reparametrisation(
       xray_structure, [], connectivity_table,
       twin_fractions=twin_fractions,
-      extinction=exti
+      fc_correction=fc_cr
     )
     normal_eqns = least_squares.crystallographic_ls(obs,
       reparametrisation)

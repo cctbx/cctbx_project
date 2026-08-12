@@ -44,7 +44,8 @@ namespace cctbx { namespace miller {
       index_generator(uctbx::unit_cell const& unit_cell,
                       sgtbx::space_group_type const& sg_type,
                       bool anomalous_flag,
-                      double resolution_d_min);
+                      double resolution_d_min,
+                      bool return_sys_absent=false);
 
       //! Initialization with maximum Miller index.
       /*! Miller indices in the range from -max_index to +max_index
@@ -52,7 +53,8 @@ namespace cctbx { namespace miller {
        */
       index_generator(sgtbx::space_group_type const& sg_type,
                       bool anomalous_flag,
-                      index<> const& max_index);
+                      index<> const& max_index,
+                      bool return_sys_absent=false);
 
       //! Unit cell in use.
       uctbx::unit_cell const&
@@ -94,7 +96,7 @@ namespace cctbx { namespace miller {
     private:
       uctbx::unit_cell unit_cell_;
       sgtbx::space_group_type sg_type_;
-      bool anomalous_flag_;
+      bool anomalous_flag_, return_sys_absent_;
 
       sgtbx::reciprocal_space::asu asu_;
       double d_star_sq_max_;
