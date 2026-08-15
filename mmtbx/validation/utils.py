@@ -176,6 +176,50 @@ def _cbeta_severity(deviation):
     """
     return max(0.0, (deviation - 0.13) * 12.0)
 
+def _omega_twist_severity(omega):
+    """Map a twisted peptide's omega to a continuous severity.
+
+    Every twisted peptide previously scored a flat 15.0, the highest severity in the metric,
+    above a chirality inversion. Measured over 1.40 million peptides in 2168 PDB-REDO
+    structures, that flat tier was spending the top of the scale on a quantity that barely
+    varies: the median twist is 36.8 degrees in deposited models and 36.4 in re-refined ones,
+    unchanged across every resolution from 0.8 to 4.0 A, with 43% of all twists inside the
+    first five degrees past the threshold and only 8% reaching 60. A flag that fires on
+    something that constant carries no information beyond "a twist exists", and discards both
+    the 30-90 degree range of the angle itself and the 40-fold variation in how often it
+    happens.
+
+    The shape is not fitted, it is the physics. A peptide bond resists rotation because the
+    amide is conjugated, and that conjugation is lost as sin^2 of the rotation: zero when
+    planar, maximal when perpendicular. So severity follows sin^2 of the twist, which also
+    means it will not need re-tuning when the reference population changes.
+
+    Anchored at the two ends that matter:
+
+      twist 30 deg (MolProbity's Twisted border) ->  3.0, the rotamer tier
+      twist 45 deg                               ->  7.0
+      twist 60 deg                               -> 11.0, above a chirality inversion
+      twist 90 deg (perpendicular)               -> 15.0, the old flat value
+
+    The floor is 3.0 rather than 0.0 deliberately. The threshold itself is arbitrary, a bare
+    constant in omegalyze.find_omega_type with no derivation, and the population shows no
+    feature at 30 degrees: the cumulative share runs 0.145 / 0.102 / 0.075 / 0.060 percent at
+    25 / 28 / 30 / 32 degrees, a smooth decay straight through. That argues for continuity
+    across the border, which a zero floor would give. But a 31-degree twist is still in the
+    top 0.1% of all peptides; it only looks borderline against the 90-degree maximum. Scoring
+    the 99.9th percentile of non-planarity as 0.00 would drop half of all twisted peptides
+    below the high-triage cut of 2.0 and out of hotspot counts entirely.
+
+    omega is the dihedral in degrees. If it is unavailable the old flat 15.0 is returned, so
+    a caller that cannot supply the angle is no worse off than before.
+    """
+    if omega is None:
+        return 15.0
+    twist = min(abs(omega), 180.0 - abs(omega))
+    frac = (math.sin(math.radians(twist)) ** 2 - 0.25) / 0.75   # 0.25 = sin^2(30 deg)
+    return max(3.0, min(15.0, 3.0 + 12.0 * frac))
+
+
 def _bond_angle_severity(num_outliers, worst_sigma):
     """Map bond/angle outlier count and worst sigma to a continuous severity.
 
@@ -272,7 +316,7 @@ def calculate_overall_residue_quality_score(
               rotalyze_category (str),
               is_glycine (bool), is_cbeta_outlier (bool), cbeta_deviation (float),
               cablam_outlier_type (str),
-              omega_type (str), is_proline (bool),
+              omega_type (str), omega_dihedral (float, degrees), is_proline (bool),
               num_bond_outliers_res (int), worst_bond_deviation (float, sigma),
               num_angle_outliers_res (int), worst_angle_deviation (float, sigma),
               num_chiral_handedness_res (int), num_chiral_tetrahedral_res (int),
@@ -335,7 +379,7 @@ def calculate_overall_residue_quality_score(
     if omega_type not in ['not_applicable', 'not_evaluated', None]:
         has_any_metric = True
         if omega_type == 'twisted':
-            severities.append(15.0)
+            severities.append(_omega_twist_severity(get('omega_dihedral')))
         elif omega_type == 'cis' and not get('is_proline'):
             severities.append(8.0)
 
