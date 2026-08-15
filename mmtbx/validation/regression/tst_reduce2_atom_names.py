@@ -14,7 +14,6 @@ import sys
 import mmtbx.model
 import mmtbx.hydrogens.reduce_hydrogen as reduce_hydrogen
 import iotbx.pdb
-import iotbx.phil
 import libtbx.load_env
 from libtbx.utils import null_out
 
