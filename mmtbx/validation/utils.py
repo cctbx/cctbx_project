@@ -166,15 +166,46 @@ def _clash_severity(abs_overlap, num_clashes):
         severity += min(math.log2(num_clashes), 4.0) * 1.0
     return severity
 
+CBETA_THRESHOLD = 0.25          # Angstroms, MolProbity's C-beta outlier cut
+# Anchored so 0.25 A -> 1.0 and 0.50 A -> 4.0, the values the linear form documented.
+CBETA_K = 3.0 / math.log(0.50 / 0.25)
+
+
 def _cbeta_severity(deviation):
     """Map C-beta deviation to a continuous severity.
 
-    Outlier threshold is 0.25 A.  Scales linearly so that:
+    Outlier threshold is 0.25 A.  Logarithmic in the deviation, which is the form that
+    makes severity proportional to -log(population frequency):
+
       0.25 A -> 1.0
       0.50 A -> 4.0
-      0.75 A -> 7.0
+      1.00 A -> 7.0
+      2.00 A -> 10.0
+
+    The previous form was linear, (deviation - 0.13) * 12.0, and uncapped.  Measured over
+    139,418 C-beta evaluations in 204 PDB-REDO structures it reached 33.6, more than twice
+    the ceiling of every discrete tier in the metric, which let one C-beta deviation
+    outrank a residue carrying five independent problems.  Fitting the survival function
+    P(dev >= x) over 0.25-1.99 A, a power law beat both exponential and Gaussian
+    (R^2 0.770 against 0.529 and 0.381), so the logarithm is the surprisal-calibrated
+    shape rather than a clamp picked to make the numbers behave.  It self-limits as a
+    result: the largest deviation in that sample, 2.93 A, scores 11.6.
+
+    That R^2 is the weakest of the three graded populations, and the reason is known: the
+    fitted range spans a bimodal distribution (see the suppression note in
+    calculate_overall_residue_quality_score), so a single power law is being asked to
+    cover two populations.  The shape is right for the first mode; the second is handled
+    by suppression rather than by the curve.
+
+    Note the linear form never hit its own documented anchors; it returned 1.44 at 0.25 A,
+    not 1.0.  This one does.
+
+    Deviations at or below the threshold return 1.0, because the caller only invokes this
+    for residues already flagged as outliers.
     """
-    return max(0.0, (deviation - 0.13) * 12.0)
+    if deviation is None or deviation <= CBETA_THRESHOLD:
+        return 1.0
+    return 1.0 + CBETA_K * math.log(deviation / CBETA_THRESHOLD)
 
 def _omega_twist_severity(omega):
     """Map a twisted peptide's omega to a continuous severity.
@@ -220,24 +251,71 @@ def _omega_twist_severity(omega):
     return max(3.0, min(15.0, 3.0 + 12.0 * frac))
 
 
+BOND_ANGLE_THRESHOLD = 4.0      # sigma, MolProbity's bond/angle outlier cut
+# Anchored so 4 sigma -> 1.0 and 10 sigma -> 4.0, the values the linear form documented.
+BOND_ANGLE_K = 3.0 / math.log(10.0 / 4.0)
+
+
 def _bond_angle_severity(num_outliers, worst_sigma):
     """Map bond/angle outlier count and worst sigma to a continuous severity.
 
-    Uses worst deviation in sigma units as primary signal.  The 4-sigma
-    outlier threshold is the floor.
+    Uses the worst deviation in sigma units as the primary signal, logarithmically, with
+    the 4-sigma outlier threshold as the floor.
 
-    Severity scale (approximate):
-      4 sigma  -> 1.0
-      6 sigma  -> 2.0
-      10 sigma -> 4.0
-    Additional outliers beyond the first add 0.5 each.
+      4 sigma   -> 1.0
+      10 sigma  -> 4.0
+      30 sigma  -> 7.6
+      100 sigma -> 11.5
+      164 sigma -> 13.1   (the worst seen in 1.2M bond restraints; still under 15)
+
+    The previous form was a straight line, (|sigma| - 2) * 0.5, whose docstring only
+    anchored values to 10 sigma and which had no ceiling past there.  Across the scored
+    benchmark it reached 86.6, nearly six times the ceiling of every discrete tier, and
+    8% of structures ended up with a residue whose *only* problem was covalent geometry
+    sorted above residues carrying five or six independent problems.  That inverts the
+    one guarantee the max-plus-quarter-sum combination rule exists to provide.
+
+    The shape is not a clamp, it is what the population says.  Over every restraint in 204
+    PDB-REDO structures (1.2M bonds, 1.7M angles), fitting the survival function
+    P(sigma >= x) from the 4-sigma threshold out to where the data runs out, a power law
+    beat both exponential and Gaussian:
+
+      bond    fitted 4.0 - 52.5 sigma   power law R^2 0.867, exp 0.708, Gaussian 0.605
+      angle   fitted 4.0 - 44.8 sigma   power law R^2 0.931, exp 0.719, Gaussian 0.537
+
+    so -ln(frequency) is linear in ln(sigma) and a surprisal-proportional severity goes as
+    ln(sigma).  Note this is emphatically NOT the physics: a harmonic restraint says
+    quadratic and so does Gaussian surprisal, and both lose to the data, because past
+    roughly 10 sigma the number stops measuring strain and starts measuring how badly
+    something is wrong.  A 31-sigma and a 170-sigma deviation are the same finding with
+    the same fix.
+
+    Bond and angle keep one shared function because both are anchored to the same two
+    documented points, not because their populations are identical: the fitted survival
+    exponents are 1.40 and 2.19, implying density exponents near 2.4 and 3.2.  Angle
+    outliers really do thin out faster.  A per-metric k is the obvious refinement if the
+    tiers are ever recalibrated as a set.
+
+    The fit deliberately stops where fewer than 10 observations remain above a point.
+    Beyond that the sample is a handful of restraints, and some of them are not geometry
+    at all: PDB-REDO 0cyc files occasionally swap a backbone N with a side-chain O or N
+    (seen in 4f35 residue 151 across three chains, and 6baq H176), which manufactures a
+    150+ sigma "bond" out of an atom-naming error.  Those must not be allowed to set the
+    shape of a severity curve.
+
+    The count bonus now matches _clash_severity: log2, capped at 4.0.  It was +0.5 per
+    extra outlier with no cap, the same unbounded-growth problem in a second term.
+
+    A caller that cannot supply the sigma gets the floor of 1.0 plus the count bonus.
     """
     if worst_sigma is None or worst_sigma == 0:
-        # Fall back to count-based if no sigma available
-        return 1.0 + max(0, num_outliers - 1) * 0.5
-    severity = max(0.0, (abs(worst_sigma) - 2.0) * 0.5)
+        severity = 1.0                       # sigma unavailable; count is all we have
+    else:
+        s = abs(worst_sigma)
+        severity = 1.0 if s <= BOND_ANGLE_THRESHOLD else \
+            1.0 + BOND_ANGLE_K * math.log(s / BOND_ANGLE_THRESHOLD)
     if num_outliers > 1:
-        severity += (num_outliers - 1) * 0.5
+        severity += min(math.log2(num_outliers), 4.0)
     return severity
 
 def _rna_suite_severity(is_outlier, suiteness):
@@ -359,9 +437,21 @@ def calculate_overall_residue_quality_score(
             severities.append(3.0)
 
     # --- 4. C-beta Deviation ---
+    # Suppressed when a chirality handedness swap is already flagged on this residue,
+    # because then the two metrics are reporting one physical fact, not two findings.
+    # C-beta deviation is bimodal: a first mode below 1.0 A (4419 outliers measured, 4.2%
+    # chirality-flagged) and, past a gap at 1.0-1.8 A holding 1.0% of the population, a
+    # sharp second mode at 1.9-2.3 A of which 98.9% already carries a chirality flag.
+    # That second mode is the D-amino-acid population; cctbx names the same phenomenon at
+    # the same place, in cbetadev's own exclude_d_peptides guard at dev >= 2.0.  Scoring
+    # it twice gave those residues 10.0 for the handedness swap plus 25-33 on top.
+    #
+    # Only the typed handedness count suppresses.  A tetrahedral-geometry outlier is a
+    # genuinely different problem, and the untyped num_chiral_outliers_res fallback cannot
+    # distinguish the two, so neither is allowed to silence C-beta.
     if not get('is_glycine', False):
         has_any_metric = True
-        if get('is_cbeta_outlier'):
+        if get('is_cbeta_outlier') and not get('num_chiral_handedness_res', 0):
             deviation = get('cbeta_deviation', 0.0) or 0.0
             severities.append(_cbeta_severity(deviation))
 

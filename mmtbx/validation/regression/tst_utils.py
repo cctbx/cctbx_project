@@ -37,28 +37,95 @@ def exercise_clash_severity():
 
 
 def exercise_cbeta_severity():
-  assert approx_equal(_cbeta_severity(0.25), 1.44, eps=0.01)
-  assert approx_equal(_cbeta_severity(0.50), 4.44, eps=0.01)
-  # At baseline (0.13), severity is zero
-  assert _cbeta_severity(0.13) == 0.0
-  # Below baseline returns zero
-  assert _cbeta_severity(0.10) == 0.0
+  # Logarithmic, anchored at the two values the old linear form documented
+  assert approx_equal(_cbeta_severity(0.25), 1.0, eps=0.01)
+  assert approx_equal(_cbeta_severity(0.50), 4.0, eps=0.01)
+  assert approx_equal(_cbeta_severity(1.00), 7.0, eps=0.01)
+  assert approx_equal(_cbeta_severity(2.00), 10.0, eps=0.01)
+
+  # At or below the outlier threshold, the floor. The caller only reaches this
+  # function for residues already flagged, so 0 would be the wrong answer.
+  assert _cbeta_severity(0.13) == 1.0
+  assert _cbeta_severity(0.10) == 1.0
+  assert _cbeta_severity(None) == 1.0
+
+  # Monotonic, and bounded in practice. The largest deviation in 139,418 measured
+  # C-beta evaluations was 2.93 A; the old linear form scored that 33.6, more than
+  # twice the ceiling of every discrete tier in the metric.
+  vals = [_cbeta_severity(d / 100.0) for d in range(25, 300, 5)]
+  assert all(b >= a for a, b in zip(vals, vals[1:])), "cbeta severity must be monotonic"
+  assert _cbeta_severity(2.93) < 15.0, "worst observed C-beta must stay under the ceiling"
 
   print("  exercise_cbeta_severity: OK")
 
 
 def exercise_bond_angle_severity():
-  # With sigma values
+  # Logarithmic, anchored at the two values the old linear form documented
   assert approx_equal(_bond_angle_severity(1, 4.0), 1.0, eps=0.01)
-  assert approx_equal(_bond_angle_severity(1, 6.0), 2.0, eps=0.01)
-  # Multiple outliers add 0.5 each
-  assert approx_equal(_bond_angle_severity(3, 6.0), 3.0, eps=0.01)
+  assert approx_equal(_bond_angle_severity(1, 10.0), 4.0, eps=0.01)
 
-  # Fallback without sigma
+  # Sub-threshold sigma cannot drop below the floor
+  assert approx_equal(_bond_angle_severity(1, 2.0), 1.0, eps=0.01)
+  # Sign of the deviation is irrelevant; only the magnitude counts
+  assert approx_equal(_bond_angle_severity(1, -10.0), _bond_angle_severity(1, 10.0))
+
+  # Count bonus is log2 capped at 4.0, matching _clash_severity. It used to be
+  # +0.5 per extra outlier with no cap, the same unbounded growth in a second term.
+  assert approx_equal(_bond_angle_severity(2, 4.0), 2.0, eps=0.01)
+  assert approx_equal(_bond_angle_severity(16, 4.0), 5.0, eps=0.01)
+  assert approx_equal(_bond_angle_severity(64, 4.0), _bond_angle_severity(16, 4.0)), \
+      "count bonus must be capped"
+
+  # Fallback without sigma: the floor, plus the count bonus
   assert approx_equal(_bond_angle_severity(1, None), 1.0, eps=0.01)
-  assert approx_equal(_bond_angle_severity(3, None), 2.0, eps=0.01)
+  assert approx_equal(_bond_angle_severity(4, None), 3.0, eps=0.01)
+
+  # The whole point of the change: the far tail must stay under the metric's ceiling.
+  # The worst bond in 1.2M restraints was 164 sigma, which the old linear form scored 81.
+  assert _bond_angle_severity(1, 164.0) < 15.0, \
+      "worst observed bond deviation must stay under the twisted-peptide ceiling"
+  assert _bond_angle_severity(1, 31.1) < _omega_twist_severity(90.0), \
+      "a single ligand-link bond outlier must not outrank a perpendicular peptide"
 
   print("  exercise_bond_angle_severity: OK")
+
+
+def exercise_cbeta_chirality_suppression():
+  """A handedness swap and its C-beta deviation are one fact, not two findings.
+
+  98.9% of C-beta outliers past 1.8 A already carry a chirality flag, so scoring both
+  gave those residues 10.0 for the swap plus 25-33 on top. Only the typed handedness
+  count suppresses: tetrahedral geometry is a different problem, and the untyped
+  fallback cannot tell the two apart.
+  """
+  base = {'ramalyze_type': 'not_evaluated', 'rotalyze_category': 'not_evaluated',
+          'cablam_outlier_type': 'not_evaluated', 'omega_type': 'not_evaluated',
+          'is_cbeta_outlier': True, 'cbeta_deviation': 2.2}
+
+  d = dict(base)
+  alone = calculate_overall_residue_quality_score(d)
+
+  d = dict(base, num_chiral_handedness_res=1)
+  suppressed = calculate_overall_residue_quality_score(d)
+  assert approx_equal(suppressed, 10.0, eps=0.01), \
+      "handedness must suppress C-beta entirely, got %s" % suppressed
+  assert suppressed < alone + 10.0, "C-beta must not be added on top of handedness"
+
+  # Tetrahedral does NOT suppress: different problem, both should count
+  d = dict(base, num_chiral_tetrahedral_res=1)
+  tetra = calculate_overall_residue_quality_score(d)
+  assert tetra > 5.0, "tetrahedral must not suppress C-beta, got %s" % tetra
+
+  # The untyped fallback does not suppress either
+  d = dict(base, num_chiral_outliers_res=1)
+  untyped = calculate_overall_residue_quality_score(d)
+  assert untyped > 5.0, "untyped chirality must not suppress C-beta, got %s" % untyped
+
+  # A C-beta outlier with no chirality flag is untouched.
+  # eps allows for the score being rounded to 1 decimal place by the caller.
+  assert approx_equal(alone, _cbeta_severity(2.2), eps=0.06)
+
+  print("  exercise_cbeta_chirality_suppression: OK")
 
 
 def _make_residue(**overrides):
@@ -259,6 +326,7 @@ def exercise():
   exercise_clash_severity()
   exercise_cbeta_severity()
   exercise_bond_angle_severity()
+  exercise_cbeta_chirality_suppression()
   exercise_residue_quality_score()
   exercise_ranking_invariants()
   exercise_omega_twist_severity()
