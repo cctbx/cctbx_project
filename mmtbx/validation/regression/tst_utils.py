@@ -4,6 +4,7 @@ from mmtbx.validation.utils import (
   _clash_severity,
   _cbeta_severity,
   _bond_angle_severity,
+  _omega_twist_severity,
   _rna_suite_severity,
   _rna_pucker_severity,
   calculate_overall_residue_quality_score,
@@ -173,6 +174,37 @@ def exercise_ranking_invariants():
   print("  exercise_ranking_invariants: OK")
 
 
+
+def exercise_omega_twist_severity():
+  # The anchors: MolProbity's Twisted border, and a perpendicular peptide.
+  assert approx_equal(_omega_twist_severity(150.0), 3.0), \
+    "a peptide 30 deg off trans sits at the border and takes the floor"
+  assert approx_equal(_omega_twist_severity(90.0), 15.0), \
+    "perpendicular keeps the old flat value"
+  # sin^2 in between. 135 deg is 45 deg of twist, exactly half the conjugation lost.
+  assert approx_equal(_omega_twist_severity(135.0), 7.0, eps=0.01)
+  assert approx_equal(_omega_twist_severity(120.0), 11.0, eps=0.01)
+  # Symmetric about perpendicular, and about the sign of omega: the same twist either
+  # side of trans, or on the cis side, is the same amount of lost planarity.
+  for a, b in ((150.0, -150.0), (150.0, 30.0), (120.0, 60.0), (135.0, -45.0)):
+    assert approx_equal(_omega_twist_severity(a), _omega_twist_severity(b)), \
+      "twist %s and %s describe the same non-planarity" % (a, b)
+  # Monotonic from border to perpendicular.
+  vals = [_omega_twist_severity(180.0 - t) for t in range(30, 91, 5)]
+  assert vals == sorted(vals), "severity must not fall as the twist grows"
+  # Never below the floor, never above the old flat tier, whatever comes in.
+  for om in (179.0, 151.0, 150.0, 90.0, 1.0, 0.0, -90.0, -179.0):
+    v = _omega_twist_severity(om)
+    assert 3.0 <= v <= 15.0, "%s gave %s, outside [3, 15]" % (om, v)
+  # No angle available: fall back to the old behaviour rather than under-reporting.
+  assert approx_equal(_omega_twist_severity(None), 15.0), \
+    "a caller that cannot supply omega must be no worse off than before"
+  # A borderline twist must stay above the high-triage cut of 2.0, which is the whole
+  # reason the floor is 3.0 and not 0.0.
+  assert _omega_twist_severity(150.0) > 2.0
+  print("  exercise_omega_twist_severity: OK")
+
+
 def exercise_rna_suite_severity():
   # A suite matching no named cluster is the serious case.
   assert approx_equal(_rna_suite_severity(True, None), 4.0)
@@ -229,6 +261,7 @@ def exercise():
   exercise_bond_angle_severity()
   exercise_residue_quality_score()
   exercise_ranking_invariants()
+  exercise_omega_twist_severity()
   exercise_rna_suite_severity()
   exercise_rna_pucker_severity()
   exercise_rna_severity_ordering()
