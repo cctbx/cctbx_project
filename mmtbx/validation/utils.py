@@ -196,6 +196,54 @@ def _bond_angle_severity(num_outliers, worst_sigma):
         severity += (num_outliers - 1) * 0.5
     return severity
 
+def _rna_suite_severity(is_outlier, suiteness):
+    """Map an RNA backbone suite to a graded severity.
+
+    A suite is the backbone unit between two riboses, classified by suitename
+    into named rotamer-like conformers.  A full outlier ("!!") matches no known
+    cluster and is the serious case.  A suite that is assigned a cluster but fits
+    it poorly (low suiteness "wannabe") gets a mild disfavored-tier severity, so
+    the metric has dynamic range instead of a single binary flag.  suiteness is
+    0..1 (higher = better fit).
+
+    Suites are the RNA analogue of protein rotamers (a few % outliers in good
+    structures), so the full-outlier tier sits just below the Ramachandran-
+    equivalent sugar-pucker tier (see _rna_pucker_severity).
+      full outlier             -> 4.0
+      assigned, suiteness < 0.3 -> 1.5   (disfavored-tier "wannabe")
+      otherwise                -> 0.0
+    """
+    if is_outlier:
+        return 4.0
+    if suiteness is not None and suiteness < 0.3:
+        return 1.5
+    return 0.0
+
+def _rna_pucker_severity(is_delta_outlier, is_epsilon_outlier,
+                         is_pucker_outlier=False):
+    """Map an RNA sugar-pucker problem to a graded severity.
+
+    A *delta* outlier means the base-phosphate perpendicular (P-perp) distance
+    and the delta torsion disagree about the sugar pucker (C2'- vs C3'-endo) -- a
+    genuinely wrong, rare, chemically well-defined error, so it sits at the
+    Ramachandran tier.  An *epsilon-only* outlier (epsilon torsion out of the
+    valid range while the sugar pucker itself is consistent) is a milder backbone
+    problem.  Sugar-pucker outliers are rarer than suite outliers, hence weighted
+    above them.
+      delta outlier (wrong sugar pucker) -> 5.0
+      epsilon-only outlier               -> 3.0
+      otherwise                          -> 0.0
+    is_pucker_outlier is a fallback for the (delta OR epsilon) flag when the typed
+    sub-flags are unavailable; treated as the delta (wrong-pucker) tier.
+    """
+    if is_delta_outlier:
+        return 5.0
+    if is_epsilon_outlier:
+        return 3.0
+    if is_pucker_outlier:
+        return 5.0
+    return 0.0
+
 def calculate_overall_residue_quality_score(
     residue_data: Dict[str, Any],
 ) -> Optional[float]:
@@ -230,8 +278,10 @@ def calculate_overall_residue_quality_score(
               num_chiral_handedness_res (int), num_chiral_tetrahedral_res (int),
               num_chiral_pseudochiral_res (int),
               num_chiral_outliers_res (int, fallback if typed counts unavailable),
-              is_rna_residue (bool), is_rna_suite_outlier (bool),
-              is_rna_pucker_outlier (bool).
+              is_rna_residue (bool),
+              is_rna_suite_outlier (bool), rna_suite_suiteness (float, 0..1),
+              is_rna_pucker_outlier (bool), is_delta_outlier (bool),
+              is_epsilon_outlier (bool).
 
     Returns:
         The triage score rounded to 1 decimal place (0.0 = no issues,
@@ -326,17 +376,24 @@ def calculate_overall_residue_quality_score(
         has_any_metric = True
         severities.append(5.0)
 
-    # --- 10. RNA Suite ---
+    # --- 10. RNA Suite (graded: full outlier + low-suiteness wannabe) ---
     if get('is_rna_residue', False):
         has_any_metric = True
-        if get('is_rna_suite_outlier', False):
-            severities.append(3.0)
+        suite_sev = _rna_suite_severity(
+            get('is_rna_suite_outlier', False),
+            get('rna_suite_suiteness'))
+        if suite_sev > 0:
+            severities.append(suite_sev)
 
-    # --- 11. RNA Pucker ---
+    # --- 11. RNA Pucker (graded: wrong-pucker delta outranks epsilon-only) ---
     if get('is_rna_residue', False):
         has_any_metric = True
-        if get('is_rna_pucker_outlier', False):
-            severities.append(3.0)
+        pucker_sev = _rna_pucker_severity(
+            get('is_delta_outlier', False),
+            get('is_epsilon_outlier', False),
+            get('is_rna_pucker_outlier', False))
+        if pucker_sev > 0:
+            severities.append(pucker_sev)
 
     if not has_any_metric:
         return None
