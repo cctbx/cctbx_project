@@ -1607,14 +1607,57 @@ phenix.ligandfit:
         type: ligand
 
   log_parsing:
+    # Rewritten to match what phenix.ligandfit actually writes. The
+    # previous 'Correlation Coefficient:' / 'Real-space R:' patterns
+    # matched nothing in either corpus log.
+    #
+    # All patterns are line-anchored so an earlier candidate line or a
+    # sentence containing the same phrase cannot steal the match. The
+    # final summary block may repeat ("This fit is the new best one"),
+    # so summary metrics take the LAST occurrence; the starting CCs are
+    # reported once per ligand search and take the FIRST.
     ligand_cc:
-      pattern: '[Cc]orrelation\s+[Cc]oefficient\s*[:=]\s*([\d.]+)'
+      pattern: '(?m)^\s*CC to map:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      fallback_pattern: '(?m)^\s*cc_overall\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
       type: float
-      display_name: "Ligand CC"
-    ligand_rsr:
-      pattern: '[Rr]eal[-_\s]?[Ss]pace\s+R\s*[:=]\s*([\d.]+)'
+      extract: last
+      display_name: "Ligand CC to map"
+    ligand_score:
+      pattern: '(?m)^\s*Overall score:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
       type: float
-      display_name: "Ligand RSR"
+      extract: last
+      display_name: "Ligand fit score"
+    atoms_placed:
+      pattern: '(?m)^\s*Atoms placed:\s*(\d+)\s+of\s+\d+\s*$'
+      type: int
+      extract: last
+      display_name: "Ligand atoms placed"
+    atoms_total:
+      pattern: '(?m)^\s*Atoms placed:\s*\d+\s+of\s+(\d+)\s*$'
+      type: int
+      extract: last
+      display_name: "Ligand atoms total"
+    n_ligands:
+      pattern: '(?m)^\s*number_of_ligands\s+(\d+)\s*$'
+      type: int
+      extract: last
+      display_name: "Ligands placed"
+    # Two distinct starting CCs are reported. starting_cc in the JSON
+    # summary equals the GLOBAL "Starting CC of ligand as input to map"
+    # (verified: 0.714/0.714 and 0.069/0.069 in the two corpus logs),
+    # not the local one. Both are kept because they can differ sharply
+    # -- 0.714 global vs 0.24 local in the bromodomain run.
+    starting_cc:
+      pattern: '(?m)^\s*starting_cc\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      fallback_pattern: '(?m)^\s*Starting CC of ligand as input to map:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      type: float
+      extract: first
+      display_name: "Ligand starting CC (global)"
+    starting_local_cc:
+      pattern: '(?m)^\s*Starting local CC of ligand as input to map:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      type: float
+      extract: first
+      display_name: "Ligand starting CC (local)"
 
   command: "phenix.ligandfit {model} {map_coeffs_mtz} {ligand}"
 

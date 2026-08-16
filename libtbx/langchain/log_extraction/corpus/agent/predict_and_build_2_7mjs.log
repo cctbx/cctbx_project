@@ -1,0 +1,1996 @@
+WORKING DIRECTORY: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build
+COMMAND THAT WAS RUN: phenix.predict_and_build input_files.seq_file=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H.fa map_model.full_map=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4 crystal_info.resolution=2.9 control.nproc=4
+LOG TEXT: Starting phenix.predict_and_build
+on Wed Jun 17 10:06:16 2026 by terwill
+===============================================================================
+
+Processing files:
+-------------------------------------------------------------------------------
+
+  No files found
+
+Processing PHIL parameters:
+-------------------------------------------------------------------------------
+
+  Adding command-line PHIL:
+  -------------------------
+    input_files.seq_file=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H.fa
+    map_model.full_map=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4
+    crystal_info.resolution=2.9
+    control.nproc=4
+
+Processing files from PHIL:
+-------------------------------------------------------------------------------
+
+  Found sequence, /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H.fa
+  Found real_map, /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4
+
+Final processed PHIL parameters:
+-------------------------------------------------------------------------------
+  data_manager {
+    sequence_files = "/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H.fa"
+    default_sequence = "/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H.fa"
+    real_map_files = "/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4"
+    default_real_map = "/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4"
+  }
+  input_files {
+    seq_file = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H.fa
+    map_model {
+      full_map = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4
+    }
+  }
+  crystal_info {
+    resolution = 2.9
+  }
+  control {
+    nproc = 4
+  }
+
+
+Starting job
+===============================================================================
+
+*******************************************************************************
+Detected PHENIX_OVERWRITE_ALL environment variable
+Setting output.overwrite to True
+Unset PHENIX_OVERWRITE_ALL if overwriting is not desired
+*******************************************************************************
+
+
+************************************************************
+          PHENIX predict_and_build  Wed Jun 17 10:06:16 2026
+************************************************************
+
+Working directory:  /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build 
+
+PHENIX VERSION:  dev-svn 
+
+Base directory is /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build
+Creating jobname of 'PredictAndBuild_0'
+Working directory /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn will be created in base directory
+Output prefix for files will be: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_rebuilt
+Running in Standard mode...
+
+Running with a cryo-EM map
+Set random_seed_iterations to 5
+No templates read from templates_as_string...
+Total of 0 templates to be used
+Setting density_modify_with_model = False (default for cryo-EM)
+Set autobuild_for_xray_density_modification=True based on resolution
+
+Set rmsd_for_similar_placement to 2.90 A
+Working directory will be based on jobname: PredictAndBuild_0
+Created new temp dir: PredictAndBuild_0 ...
+temp-dir will be deleted at end
+
+================================================================================
+Running predict_and_build
+================================================================================
+
+Starting data:
+Map file: Map manager (from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/7mjs_23883_H_full.ccp4)
+Unit cell: (44.82, 43.99, 65.57, 90, 90, 90) Space group: P 1 (No. 1), 
+Unit-cell grid: (54, 53, 79), (present: (54, 53, 79)), origin shift (0, 0, 0) 
+Working coordinate shift (-0.0, -0.0, -0.0)
+NCS object with 0 groups: 
+
+List of sequences:
+EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+List of chain IDs and sequences to use
+A (7mjs_23883_H_Chain=H): EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+================================================================================
+Running cycle 1 of predict_and_build
+================================================================================
+Not using any supplied msas
+No supplied templates will be used in prediction this cycle
+
+================================================================================
+Predicting models for 1 chains with alphafold
+Including templates from PDB and not including them also this run
+Files for Colab will be in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/colab_files_0
+
+RUNNING PREDICTION ON: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST  
+
+Setting up prediction keywords...
+Number of models (random seed iterations): 5
+Include templates from pdb: False
+Include side in templates: False
+Only include side in templates: None
+Random seed: None
+Nproc in prediction: 4
+Minimum residues will be: 20
+
+Setting up keywords for local work 
+
+
+Sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+No MSA supplied at setup for local work
+No template supplied
+
+Setting up files for PhenixServer in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0
+
+Output model file will be copied to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb
+
+Wrote seq to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0/PredictAndBuild_0_1_cycle_1_input.fa
+
+Wrote prediction instructions to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0/run_PredictAndBuild_0_predicted_1_cycle_1.dat
+
+Wrote list of files to copy to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0/PredictAndBuild_0_1_cycle_1_input.info
+
+RUNNING PREDICTION ON: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST  (templates from pdb)
+
+Setting up prediction keywords...
+Number of models (random seed iterations): 5
+Include templates from pdb: True
+Include side in templates: False
+Only include side in templates: None
+Random seed: None
+Nproc in prediction: 4
+Minimum residues will be: 20
+
+Setting up keywords for local work 
+
+
+Sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+No MSA supplied at setup for local work
+No template supplied
+
+Setting up files for PhenixServer in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_2_0
+
+Output model file will be copied to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb
+
+Wrote seq to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_2_0/PredictAndBuild_0_2_cycle_1_input.fa
+
+Wrote prediction instructions to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_2_0/run_PredictAndBuild_0_predicted_2_cycle_1.dat
+
+Wrote list of files to copy to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_2_0/PredictAndBuild_0_2_cycle_1_input.info
+Copied all files for prediction to /Users/terwill/Downloads/PredictAndBuild_0_cycle_1.tgz
+
+================================================================================
+Running total of 2 predictions cycle 1
+
+================================================================================
+
+Predicting one model and writing to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb
+Running prediction on REST server https://prediction.phenix-online.org
+
+Setting up prediction keywords...
+Number of models (random seed iterations): 5
+Include templates from pdb: False
+Include side in templates: False
+Only include side in templates: None
+Random seed: None
+Nproc in prediction: 4
+Minimum residues will be: 20
+
+Setting up keywords for local work 
+
+
+Sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+No MSA supplied at setup for local work
+No template supplied
+
+Setting up files for PhenixServer in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0
+
+Output model file will be copied to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb
+LOWERCASE TEXT:evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgtlvtvssast
+
+HASH for evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgtlvtvssast 155ebe1a4e0489036f23359678684198
+
+MSA hash: 155ebe1a4e0489036f23359678684198
+Getting MSA for model 1 from mmseqs2 server
+First 20 PDB entries used as templates:
+101	7mjs_H	1.000	132	0	0	1	132	1	132	1.450E-48	170	132M
+101	5e08_H	0.848	132	17	1	1	132	1	129	4.877E-44	157	98M3I31M
+101	6pi7_F	0.848	132	15	1	1	132	1	127	3.245E-43	154	99M5I28M
+101	5eu7_F	0.849	133	19	1	1	132	1	133	3.245E-43	154	109M1D23M
+101	7rth_N	0.848	132	19	1	1	132	1	131	4.450E-43	154	110M1I21M
+101	7rth_J	0.848	132	19	1	1	132	1	131	4.450E-43	154	110M1I21M
+101	6cw3_C	0.840	132	15	1	1	132	1	126	8.370E-43	153	108M6I18M
+101	6cw3_A	0.840	132	15	1	1	132	1	126	8.370E-43	153	108M6I18M
+101	6xkp_H	0.681	132	42	0	1	132	1	132	1.148E-42	153	132M
+101	7phq_H	0.847	131	19	1	2	132	1	130	1.148E-42	153	109M1I21M
+101	6xkp_M	0.681	132	42	0	1	132	1	132	1.148E-42	153	132M
+101	7php_H	0.847	131	19	1	2	132	1	130	1.148E-42	153	109M1I21M
+101	7mnl_H	0.856	132	19	0	1	132	1	132	1.574E-42	153	132M
+101	7u0x_H	0.734	132	35	0	1	132	1	132	1.574E-42	153	132M
+101	4i18_A	0.840	132	17	1	1	132	1	128	4.060E-42	151	108M4I20M
+101	4i18_H	0.840	132	17	1	1	132	1	128	4.060E-42	151	108M4I20M
+101	5x8l_J	0.795	132	16	1	1	132	1	121	5.568E-42	151	99M11I22M
+101	5x8l_G	0.795	132	16	1	1	132	1	121	5.568E-42	151	99M11I22M
+101	5x8l_S	0.795	132	16	1	1	132	1	121	5.568E-42	151	99M11I22M
+101	5x8l_F	0.795	132	16	1	1	132	1	121	5.568E-42	151	99M11I22M
+Got MSA from mmseqs
+
+MSA with 12172 entries obtained from mmseqs2 server
+
+Total of 20 PDB entries obtained from mmseqs2 server
+
+Trying to get model 1 from precalculated results...
+
+MSA not supplied, trying hash with and without MSA
+Not including MSA in hash...
+LOWERCASE TEXT:sequence=evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgtlvtvssastuse_msa=truerandom_seed=nonenumber_of_models=5include_templates_from_pdb=falsetemplates_as_string=noneinclude_side_in_templates=falsemsa=none
+
+HASH for EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST 78ed425611aee269dcb9cf957a342bbd
+
+Including MSA in hash...
+LOWERCASE TEXT:sequence=evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgtlvtvssastuse_msa=truerandom_seed=nonenumber_of_models=5include_templates_from_pdb=falsetemplates_as_string=noneinclude_side_in_templates=falsemsa=>101evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgtlvtvssast>uniref100_upi001ca46e52	156	0.651	1.386e-40	0	131	132	0	131	240qvqlvesggglvkpggslrlsc
+
+HASH for EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST 9fe6d258ea48615f0ab066a45c9bdde3
+
+Running on server now
+
+Uploading MSA
+
+Starting phenix.predict_chain
+on Wed Jun 17 10:06:31 2026 by terwill
+===============================================================================
+
+Processing files:
+-------------------------------------------------------------------------------
+
+  No files found
+
+Processing PHIL parameters:
+-------------------------------------------------------------------------------
+
+  Adding command-line PHIL:
+  -------------------------
+    number_of_models=5
+    include_templates_from_pdb=False
+    include_side_in_templates=False
+    use_msa=True
+    only_include_side_in_templates=None
+    prediction.random_seed=None
+    use_supplied_random_seed_in_prediction=False
+    prediction.nproc=4
+    jobname=PredictAndBuild_0
+    max_wait_time=100000
+    stop_if_internet_not_available=True
+    minimum_residues=20
+    sequence=EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+    output_files.predicted_model=None
+    write_prediction_files_and_wait=True
+    max_wait_time=100000
+    allow_precalculated_result_file=True
+    allow_precalculated_msa_file=True
+    precalculated_results_dir=/app/results/precalculated_results
+    precalculated_msas_dir=/app/results/precalculated_msas
+    put_files_for_prediction_here=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0
+    files_for_prediction_will_be_transfered_here=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0
+    rest_server.check_interval=60
+    rest_server.job_size=medium
+    rest_server.max_tries=10
+    rest_server.max_tries_on_availability=2
+    rest_server.quick_check_interval=1
+    rest_server.requires_gpu=True
+    rest_server.stop_if_server_not_available=True
+    rest_server.timeout=5
+    rest_server.token=HncRtp29.Cvm
+    rest_server.url=https://prediction.phenix-online.org
+    rest_server.url_type=prediction
+    cycle=1
+    stop_if_server_not_available=False
+    skip_if_this_file_appears=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb
+    pdb70_text='101ZZTAZZ7mjs_HZZTAZZ1.000ZZTAZZ132ZZTAZZ0ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.450E-48ZZTAZZ170ZZTAZZ132MZZCRZZ101ZZTAZZ5e08_HZZTAZZ0.848ZZTAZZ132ZZTAZZ17ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ129ZZTAZZ4.877E-44ZZTAZZ157ZZTAZZ98M3I31MZZCRZZ101ZZTAZZ6pi7_FZZTAZZ0.848ZZTAZZ132ZZTAZZ15ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ127ZZTAZZ3.245E-43ZZTAZZ154ZZTAZZ99M5I28MZZCRZZ101ZZTAZZ5eu7_FZZTAZZ0.849ZZTAZZ133ZZTAZZ19ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ133ZZTAZZ3.245E-43ZZTAZZ154ZZTAZZ109M1D23MZZCRZZ101ZZTAZZ7rth_NZZTAZZ0.848ZZTAZZ132ZZTAZZ19ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ131ZZTAZZ4.450E-43ZZTAZZ154ZZTAZZ110M1I21MZZCRZZ101ZZTAZZ7rth_JZZTAZZ0.848ZZTAZZ132ZZTAZZ19ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ131ZZTAZZ4.450E-43ZZTAZZ154ZZTAZZ110M1I21MZZCRZZ101ZZTAZZ6cw3_CZZTAZZ0.840ZZTAZZ132ZZTAZZ15ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ126ZZTAZZ8.370E-43ZZTAZZ153ZZTAZZ108M6I18MZZCRZZ101ZZTAZZ6cw3_AZZTAZZ0.840ZZTAZZ132ZZTAZZ15ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ126ZZTAZZ8.370E-43ZZTAZZ153ZZTAZZ108M6I18MZZCRZZ101ZZTAZZ6xkp_HZZTAZZ0.681ZZTAZZ132ZZTAZZ42ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ7phq_HZZTAZZ0.847ZZTAZZ131ZZTAZZ19ZZTAZZ1ZZTAZZ2ZZTAZZ132ZZTAZZ1ZZTAZZ130ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ109M1I21MZZCRZZ101ZZTAZZ6xkp_MZZTAZZ0.681ZZTAZZ132ZZTAZZ42ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ7php_HZZTAZZ0.847ZZTAZZ131ZZTAZZ19ZZTAZZ1ZZTAZZ2ZZTAZZ132ZZTAZZ1ZZTAZZ130ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ109M1I21MZZCRZZ101ZZTAZZ7mnl_HZZTAZZ0.856ZZTAZZ132ZZTAZZ19ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.574E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ7u0x_HZZTAZZ0.734ZZTAZZ132ZZTAZZ35ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.574E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ4i18_AZZTAZZ0.840ZZTAZZ132ZZTAZZ17ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ128ZZTAZZ4.060E-42ZZTAZZ151ZZTAZZ108M4I20MZZCRZZ101ZZTAZZ4i18_HZZTAZZ0.840ZZTAZZ132ZZTAZZ17ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ128ZZTAZZ4.060E-42ZZTAZZ151ZZTAZZ108M4I20MZZCRZZ101ZZTAZZ5x8l_JZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22MZZCRZZ101ZZTAZZ5x8l_GZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22MZZCRZZ101ZZTAZZ5x8l_SZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22MZZCRZZ101ZZTAZZ5x8l_FZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22M'
+    msa_file=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None
+
+Processing files from PHIL:
+-------------------------------------------------------------------------------
+
+  Files not used by program:
+  --------------------------
+  /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None
+
+Final processed PHIL parameters:
+-------------------------------------------------------------------------------
+  input_files {
+    msa_file = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None
+  }
+  output_files {
+    predicted_model = None
+  }
+  crystal_info {
+    sequence = EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+    pdb70_text = '101ZZTAZZ7mjs_HZZTAZZ1.000ZZTAZZ132ZZTAZZ0ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.450E-48ZZTAZZ170ZZTAZZ132MZZCRZZ101ZZTAZZ5e08_HZZTAZZ0.848ZZTAZZ132ZZTAZZ17ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ129ZZTAZZ4.877E-44ZZTAZZ157ZZTAZZ98M3I31MZZCRZZ101ZZTAZZ6pi7_FZZTAZZ0.848ZZTAZZ132ZZTAZZ15ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ127ZZTAZZ3.245E-43ZZTAZZ154ZZTAZZ99M5I28MZZCRZZ101ZZTAZZ5eu7_FZZTAZZ0.849ZZTAZZ133ZZTAZZ19ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ133ZZTAZZ3.245E-43ZZTAZZ154ZZTAZZ109M1D23MZZCRZZ101ZZTAZZ7rth_NZZTAZZ0.848ZZTAZZ132ZZTAZZ19ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ131ZZTAZZ4.450E-43ZZTAZZ154ZZTAZZ110M1I21MZZCRZZ101ZZTAZZ7rth_JZZTAZZ0.848ZZTAZZ132ZZTAZZ19ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ131ZZTAZZ4.450E-43ZZTAZZ154ZZTAZZ110M1I21MZZCRZZ101ZZTAZZ6cw3_CZZTAZZ0.840ZZTAZZ132ZZTAZZ15ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ126ZZTAZZ8.370E-43ZZTAZZ153ZZTAZZ108M6I18MZZCRZZ101ZZTAZZ6cw3_AZZTAZZ0.840ZZTAZZ132ZZTAZZ15ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ126ZZTAZZ8.370E-43ZZTAZZ153ZZTAZZ108M6I18MZZCRZZ101ZZTAZZ6xkp_HZZTAZZ0.681ZZTAZZ132ZZTAZZ42ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ7phq_HZZTAZZ0.847ZZTAZZ131ZZTAZZ19ZZTAZZ1ZZTAZZ2ZZTAZZ132ZZTAZZ1ZZTAZZ130ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ109M1I21MZZCRZZ101ZZTAZZ6xkp_MZZTAZZ0.681ZZTAZZ132ZZTAZZ42ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ7php_HZZTAZZ0.847ZZTAZZ131ZZTAZZ19ZZTAZZ1ZZTAZZ2ZZTAZZ132ZZTAZZ1ZZTAZZ130ZZTAZZ1.148E-42ZZTAZZ153ZZTAZZ109M1I21MZZCRZZ101ZZTAZZ7mnl_HZZTAZZ0.856ZZTAZZ132ZZTAZZ19ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.574E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ7u0x_HZZTAZZ0.734ZZTAZZ132ZZTAZZ35ZZTAZZ0ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ132ZZTAZZ1.574E-42ZZTAZZ153ZZTAZZ132MZZCRZZ101ZZTAZZ4i18_AZZTAZZ0.840ZZTAZZ132ZZTAZZ17ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ128ZZTAZZ4.060E-42ZZTAZZ151ZZTAZZ108M4I20MZZCRZZ101ZZTAZZ4i18_HZZTAZZ0.840ZZTAZZ132ZZTAZZ17ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ128ZZTAZZ4.060E-42ZZTAZZ151ZZTAZZ108M4I20MZZCRZZ101ZZTAZZ5x8l_JZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22MZZCRZZ101ZZTAZZ5x8l_GZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22MZZCRZZ101ZZTAZZ5x8l_SZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22MZZCRZZ101ZZTAZZ5x8l_FZZTAZZ0.795ZZTAZZ132ZZTAZZ16ZZTAZZ1ZZTAZZ1ZZTAZZ132ZZTAZZ1ZZTAZZ121ZZTAZZ5.568E-42ZZTAZZ151ZZTAZZ99M11I22M'
+  }
+  prediction {
+    cycle = 1
+    include_templates_from_pdb = False
+    include_side_in_templates = False
+    nproc = 4
+    write_prediction_files_and_wait = True
+    put_files_for_prediction_here = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0
+    files_for_prediction_will_be_transfered_here = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_0
+    jobname = PredictAndBuild_0
+    skip_if_this_file_appears = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb
+  }
+  rest_server {
+    url = https://prediction.phenix-online.org
+    token = HncRtp29.Cvm
+    stop_if_server_not_available = False
+  }
+
+
+Starting job
+===============================================================================
+
+*******************************************************************************
+Detected PHENIX_OVERWRITE_ALL environment variable
+Setting output.overwrite to True
+Unset PHENIX_OVERWRITE_ALL if overwriting is not desired
+*******************************************************************************
+
+Service is available
+
+Using MSA from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None with 12172 entries
+Using 1211 templates from PDB
+Using supplied Sequence (132 aa)
+No templates supplied
+
+Starting job on server at https://prediction.phenix-online.org
+Checking for server availability at  https://prediction.phenix-online.org
+Starting job on Phenix server
+
+Starting job on server.
+Job ID: d34bbd9e-01cc-4a2c-899f-b0e363939c1b
+
+Working: Status = running ..
+Run complete...
+Job result
+
+Successful prediction with server
+None
+Successful call to server at https://prediction.phenix-online.org
+Obtained predicted model...
+
+Wrote PAE file to pae_matrix.jsn
+
+Finished with predict_chain
+
+===============================================================================
+Job complete
+usr+sys time: 4.39 seconds
+wall clock time: 16.77 seconds
+Obtained model with 132 residues from server
+plDDT = 89.96
+
+
+PREDICTED MODEL 1 plDDT: 90.0  SEQUENCE: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Wrote predicted model to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb
+
+Wrote MSA for sequence EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_msa_1_cycle_1.a3m 
+
+Wrote PAE file for sequence EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_1_cycle_1.jsn 
+
+PREDICTED MODEL 2 plDDT: 94.6  SEQUENCE: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Wrote predicted model to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb
+
+Wrote MSA for sequence EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_msa_2_cycle_1.a3m 
+
+Wrote PAE file for sequence EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_2_cycle_1.jsn 
+
+Predicted model summary:
+
+Considering model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb with plDDT = 94.6 
+Considering model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_1.pdb with plDDT = 90.0 
+Keeping model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb with plDDT = 94.6 
+Total of 1 predicted chains (for 1 unique sequences) created
+
+Updating chain names in model list...
+Chain A: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Total of 1 working models
+Total MSAs obtained: 1
+MSA LENGTH: 12172  SEQUENCE: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Updating chain IDs
+Previous ID: 'A'  New ID: 'A' 
+MODEL: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb
+
+Getting processed (trimmed, B-values updated) models 
+B-value field interpreted as pLDDT (0 - 100)
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Total of 130 of 132 residues kept after B-factor filtering
+
+Selection string for B-factor filtering:  (chain 'A' and resseq 1:130) 
+
+Selecting domains as compact chains
+Clusters: 4   Threshold: 3.22 
+Clusters: 2   Threshold: 2.61 
+Clusters: 2   Threshold: 2.54 
+Clusters: 2   Threshold: 2.19 
+Clusters: 2   Threshold: 1.88 
+Clusters: 2   Threshold: 1.71 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 0.98 
+Clusters: 2   Threshold: 0.70 
+Best resolution for domains is 15.0 A giving 4 regions
+
+Selection list based on domains:
+(resseq 1:130) (130 residues)  
+Total of 1 regions identified
+VRMS calculation for 'None':
+Mean B: 9.0  pLDDT (0-100) : 95.06 RMSD: 0.6 A  VRMS: 0.8 A
+Obtained processed model from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb with 130 residues (of 132)
+=============================================================================== 
+Finished with prediction (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:06:47) 
+=============================================================================== 
+
+=============================================================================== 
+Getting scaffold model... (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:06:47) 
+=============================================================================== 
+
+
+Checking whether scaffold model is complete...
+
+
+================================================================================
+Getting new scaffold model in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb
+================================================================================
+
+================================================================================
+Docking 1 models (to represent 1 sequences) in map to create a scaffold
+
+================================================================================
+Model to dock: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Calculating how many copies of each sequence
+Model: A EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Model copies: 1 Sequence copies:  1
+Remainder copies:  {'EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST': 0} remainder: 0
+Copies to use:  1
+Setting up model for dock_and_rebuild
+Added model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb (A) for dock_and_rebuild
+
+Running dock_and_rebuild to dock models
+
+Total of 1 predicted models
+MODEL: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+================================================================================
+Running dock_and_rebuild on total of 1 chains
+Chain '1' (chain 'A' from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb) 
+================================================================================
+Working directory for this chain: PredictAndBuild_0/local_dock_and_rebuild_1_0
+No docked model for chain 'A' ...
+Running search...
+
+Running standard docking...
+
+ =============================================================================== 
+    Processing input model 
+ =============================================================================== 
+
+B-value field interpreted as pLDDT (0 - 100)
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Total of 130 of 132 residues kept after B-factor filtering
+
+Selection string for B-factor filtering:  (chain 'A' and resseq 1:130) 
+
+Selecting domains as compact chains
+Clusters: 4   Threshold: 3.22 
+Clusters: 2   Threshold: 2.61 
+Clusters: 2   Threshold: 2.54 
+Clusters: 2   Threshold: 2.19 
+Clusters: 2   Threshold: 1.88 
+Clusters: 2   Threshold: 1.71 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 0.98 
+Clusters: 2   Threshold: 0.70 
+Best resolution for domains is 15.0 A giving 4 regions
+
+Selection list based on domains:
+(resseq 1:130) (130 residues)  
+Total of 1 regions identified
+VRMS calculation for 'None':
+Mean B: 9.0  pLDDT (0-100) : 95.06 RMSD: 0.6 A  VRMS: 0.8 A
+Obtained processed model with 130 residues (of 132)
+Wrote processed model to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_dock_and_rebuild_1_0/working_model_processed.pdb
+
+ =============================================================================== 
+ Extracting unique part of map 
+ =============================================================================== 
+
+
+Setting map-model-manager and model shift to zero during run
+Split model into chains: A1
+Chain number: 1 id: A1  Residues: 130
+
+ ============================================================================== 
+  Searching with each chain as a seed  
+ ============================================================================== 
+
+
+ ============================================================================== 
+  Running dock-in map on domain A1 with 130 residues 
+ ============================================================================== 
+
+
+Running dock-in-map at overall resolution of 2.9 A
+Density radius set to: 17.4 A
+Placing model in map
+
+Map has been not been offset 
+New cell after running map_box: (44.82, 43.99, 65.57, 90.00, 90.00, 90.00)
+Target boxes set to 1
+
+Choosing local part of search model to use in search...
+
+Shifting search model coordinates (-2.3, 0.1, 0.4)  to origin 
+and creating search map coefficients
+
+Docking with MR...
+This is docking a model into a map within a cryo-EM structure determination.
+Note that the cryo-EM map will be converted to pseudo-x-ray data for docking.
+This is not x-ray data however.
+
+
+Using masked map data
+MODEL: full_shifted_sm_1.pdb  mass: 14300 (copies: 1)
+Estimated solvent fraction: 0.86
+Total atoms in all copies: 1005 (volume = 17589.0 A**3)
+Solvent fraction (as used) is about 0.51
+Total good sites: 1244
+Max clusters: 1
+Wrote mtz data to PredictAndBuild_0/local_dock_and_rebuild_1_0/run_mr/mtz_data.mtz
+Wrote model A1_full_shifted_sm_1.pdb to PredictAndBuild_0/local_dock_and_rebuild_1_0/run_mr/A1_full_shifted_sm_1.pdb
+Wrote model A_from_cluster_0.pdb to PredictAndBuild_0/local_dock_and_rebuild_1_0/run_mr/A_from_cluster_0.pdb
+VRMS value for 'full_shifted_sm_1.pdb' is 1.5
+Phaser has found MR solutions
+Top LLG = 2859.205824
+Top PDB file = PredictAndBuild_0/local_dock_and_rebuild_1_0/run_mr/run_mr.1.pdb
+Total solutions: 1 
+Shifted Chain A by (44.82, 0.0, 0.0)
+Shifted Chain B by (44.82, 0.0, 0.0)
+Summary of chains obtained for solution 0:
+Chain A1:  from full_shifted_sm_1.pdb
+Found MR solution
+MR solution is unique...assuming it is correct
+Map-model CC for MR model 1: 0.63
+
+Transformation of working search model to placed model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.9853   22.6204   32.2569
+
+Transformation of original search model to original placed model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Trying 1 transformations directly
+Taking solution even if poor and skipping refinement as it is a unique mr solution
+
+Original transformation of search model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Local transformation of search model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.9853   22.6204   32.2569
+
+================================================================================
+Running rigid-body refinement at resolution of 2.9 A
+================================================================================
+
+Starting map-model cc (CC_mask): 0.600 
+
+Final map-model cc (CC_mask): 0.651 
+
+Transformation for final_model -> final_model_refined:  
+
+ROTA 1:    1.0000    0.0000    0.0000
+ROTA 2:    0.0000    1.0000    0.0000
+ROTA 3:    0.0000    0.0000    1.0000
+TRANS:     0.0000    0.0000    0.0000
+
+Transformation for input model -> final_model_refined:  
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Quick run and CC (0.65) > min_cc (0.40) ...ending search
+
+Trying 1 transformations directly
+
+Original transformation of search model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Local transformation of search model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.9853   22.6204   32.2569
+
+================================================================================
+Running rigid-body refinement at resolution of 2.9 A
+================================================================================
+
+Starting map-model cc (CC_mask): 0.600 
+
+Final map-model cc (CC_mask): 0.651 
+
+Transformation for final_model -> final_model_refined:  
+
+ROTA 1:    1.0000    0.0000    0.0000
+ROTA 2:    0.0000    1.0000    0.0000
+ROTA 3:    0.0000    0.0000    1.0000
+TRANS:     0.0000    0.0000    0.0000
+
+Transformation for input model -> final_model_refined:  
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Quick run and CC (0.65) > min_cc (0.40) ...ending search
+
+Best fit in density search with CC = 0.65 
+
+Transformation of original search model to match original map: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Optimizing position with local searches
+
+Running 10 local optimizations in parallel on 4 processors 
+Set max_position_shift_frac to 0.05 to keep 10 results
+Skipped 1 local searches with low local CC 
+
+
+Average correlation after optimization: 0.6 
+Optimizing position (rmsd = 0.5 A) 
+    XYZ (original)          XYZ (target)           XYZ (fitted)      CC
+
+   40.3   17.8   34.5     40.3   17.3   34.4     40.5   17.5   34.4  0.60
+    7.7   20.7   14.4      8.2   19.9   15.4      7.6   20.6   14.7  0.66
+   34.1   16.0   37.2     34.0   15.6   37.1     34.2   15.8   37.2  0.65
+   18.1   31.7   22.1     18.1   31.5   22.6     18.1   31.5   22.3  0.62
+   20.9   16.4   41.4     21.2   16.4   41.1     21.1   16.3   41.6  0.64
+    5.6   21.4   31.8      5.8   21.6   31.8      5.7   21.3   32.1  0.68
+   23.4   14.3   32.4     23.6   14.3   32.3     23.5   14.1   32.5  0.71
+   16.8   27.0   19.5     16.6   27.1   19.7     16.8   26.8   19.6  0.66
+   30.7   26.4   35.3     30.7   26.4   35.3     30.9   26.2   35.3  0.54
+
+Local search RMSD: 0.5 A  N: 9 
+New CC is worse (0.64 vs 0.65) ...skipping optimization
+
+ Overall final transformation applied to input search model: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+================================================================================
+Running rigid-body refinement at resolution of 2.9 A
+================================================================================
+
+Starting map-model cc (CC_mask): 0.600 
+
+Final map-model cc (CC_mask): 0.651 
+
+Transformation for final_model -> final_model_refined:  
+
+ROTA 1:    1.0000    0.0000    0.0000
+ROTA 2:    0.0000    1.0000    0.0000
+ROTA 3:    0.0000    0.0000    1.0000
+TRANS:     0.0000    0.0000    0.0000
+
+Transformation for input model -> final_model_refined:  
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Updated final transformation: 
+
+ROTA 1:   -0.1325   -0.1177   -0.9842
+ROTA 2:   -0.2048    0.9747   -0.0890
+ROTA 3:    0.9698    0.1898   -0.1532
+TRANS:    19.8925   23.1245   29.9820
+
+Placements for chain 'A1'
+Placement 1 of chain 'A1' with CC= 0.63
+Placement 2 of chain 'A1' with CC= 0.63
+
+Removing unlikely placements
+
+ =============================================================================== 
+    Summary of current placements 
+ ===============================================================================
+
+Chain A1:
+   Chain id: A1   placement: 2  CC: 0.63 
+
+ ============================================================================== 
+  Applying RT 2 for chain 'A1' to all chains 
+ ============================================================================== 
+
+
+================================================================================
+Applying RT 2 for chain 'A1' to chain 'A1'
+================================================================================
+Chain A1 Starting CC: 0.63
+
+================================================================================
+Running rigid-body refinement at resolution of 2.9 A
+================================================================================
+Refinement successful with CC_mask = 0.65
+Refined model has worse CC (0.63 vs 0.63)...skipping
+Chain A1 Placement 3  CC= 0.63
+
+ =============================================================================== 
+    Building full placement 
+ =============================================================================== 
+
+
+Removing unlikely placements
+
+ =============================================================================== 
+    Summary of current placements 
+ ===============================================================================
+
+Chain A1:
+   Chain id: A1   placement: 3  CC: 0.63 
+
+Combinations to try:
+Group 1:  (A1 #3  CC=0.63)  
+
+Scoring combination
+Group 1:  (A1 #3  CC=0.63)  
+Fraction covered: 1.00
+Mean CC: 0.63   Min: 0.63: 
+
+Analyzing NCS combination 1 of this combination...
+Group 1:  (A1 #3  CC=0.63)  
+Groups of similar transformations: 1
+Overlapping CA-CA pairs: 0 (0.0 %)
+Connectivity deviation: 0.0 A
+Acceptable cc 300
+Single group 500
+Domains covered 700
+OK overlap 900
+Connectivity ok 1100
+Min CC: 0.63:  1100.63
+Avg CC: 0.63:  1101.26
+Groups 0.00:  1101.26
+Overlaps: 0.10:  1101.36
+Connectivity: -0.00:  1101.36
+
+Summary of top combinations
+
+# 1 Score: 1101.4  Coverage: 100.0 %  Min CC: 0.63  Avg CC: 0.63  Overlapping fraction: 0.00  Connectivity dev: 0.0 Group 1:  (A1 #3  CC=0.63)  
+
+OK solution found ...ending search
+Docking information written to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_dock_and_rebuild_1_0/working_model_dock_info.pkl
+Final model has 130 residues
+Docked model before getting unique part written to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_dock_and_rebuild_1_0/working_model_full_docked.pdb
+Final model with unique chain has 130 residues
+Map-model CC for docked model with 130 residues: 0.63 
+Wrote docked model to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_dock_and_rebuild_1_0/working_model_docked.pdb
+
+OK solution found 
+
+Ending as stop_after_dock is set
+Obtained model with 1 chains and overall CC=0.63 from model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb ()
+Best docking with overall CC=0.63 for starting model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb ()
+Adding new model with CC = 0.63 from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_dock_and_rebuild_1_0/working_model_docked.pdb () 
+Wrote rebuilt model for search copy 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1_working.pdb
+New fixed model has 1 chains
+
+================================================================================
+All done running on all chains
+================================================================================
+Renaming chain 'A1' to chain 'A'
+Saving docked model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb as scaffold model
+Obtained scaffold model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb with 1 chains
+This scaffold model has one chain for each expected sequence
+Saving scaffold model as superposed_predicted_models_model
+
+================================================================================
+Done with docking 1 models (1 sequences) in map
+
+Updating chain names in scaffold model
+
+Scaffold model is in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb
+Using scaffold_model as superposed_predicted_models_model
+=============================================================================== 
+Finished with scaffold model (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:09:30) 
+=============================================================================== 
+
+=============================================================================== 
+Getting morphed model... (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:09:31) 
+=============================================================================== 
+
+
+================================================================================
+Morphing 1 chains on 1 chains in scaffold cycle 1
+Model to morph: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb
+Scaffold model: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb
+================================================================================
+================================================================================
+
+   ### Running dock_and_rebuild to morph models ###
+================================================================================
+Calculating how many copies of each sequence
+Model: A EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Model copies: 1 Sequence copies:  1
+Remainder copies:  {'EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST': 0} remainder: 0
+Copies to use:  1
+Adding model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb_A
+
+Total of 1 predicted models
+MODEL: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Creating target_model info list from scaffold model with 1 chains
+
+Looking for models that match /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb chain 'A' (EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSA):
+Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb chain 'A' with direct superposition
+Best matching model is /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb (EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST):
+Setting chain ID of model 'A' to 'A'
+Map CC of similar model (chain 'A') recalculated: 0.63
+Expected chains: 1   Placements: 1
+
+Total of 1 chains to work with
+
+================================================================================
+Running dock_and_rebuild on total of 1 chains
+Chain '1' (chain 'A' from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb) Docked model from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb chain 'A' with direct superposition) 
+================================================================================
+Working directory for this chain: PredictAndBuild_0/local_dock_and_rebuild_1_1
+Not redoing search for chain 'A' as CC (0.63) is ok
+
+Testing using previous docked model
+
+Trying to dock model using previous location
+Best simple docking : CC = 0.63
+CC for previous model: 0.63
+Best docking with overall CC=0.63 for starting model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb chain 'A' with direct superposition)
+Adding new model with CC = 0.63 from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_2_cycle_1.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb chain 'A' with direct superposition) 
+Wrote rebuilt model for search copy 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/working_morphed.pdb.pdb
+New fixed model has 1 chains
+
+================================================================================
+All done running on all chains
+================================================================================
+================================================================================
+
+   ###  Done running dock_and_rebuild to morph models ###
+
+================================================================================
+
+Best morphed model was /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/working_morphed.pdb.pdb
+Wrote morphed model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_morphed_cycle_1.pdb
+Summary of morphed model cycle 1
+Overall CC for morphed model: 0.63
+  CC for chain 'A': 0.63
+=============================================================================== 
+Finished with morphed model (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:09:35) 
+=============================================================================== 
+
+=============================================================================== 
+Rebuilding model... (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:09:36) 
+=============================================================================== 
+
+
+================================================================================
+Rebuilding 1 chains in morphed model cycle 1
+Morphed model to rebuild: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_morphed_cycle_1.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_1.pdb chain 'A' with direct superposition, Chain A extracted)
+================================================================================
+No previous model used for chain 'A'
+================================================================================
+
+   ###  Running dock_and_rebuild to rebuild model 1 ###
+
+================================================================================
+
+ =============================================================================== 
+    Processing input model 
+ =============================================================================== 
+
+B-value field interpreted as pLDDT (0 - 100)
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Total of 130 of 132 residues kept after B-factor filtering
+
+Selection string for B-factor filtering:  (chain 'A' and resseq 1:130) 
+
+Selecting domains as compact chains
+Clusters: 4   Threshold: 3.22 
+Clusters: 2   Threshold: 2.61 
+Clusters: 2   Threshold: 2.54 
+Clusters: 2   Threshold: 2.19 
+Clusters: 2   Threshold: 1.88 
+Clusters: 2   Threshold: 1.71 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 0.98 
+Clusters: 2   Threshold: 0.70 
+Best resolution for domains is 15.0 A giving 4 regions
+
+Selection list based on domains:
+(resseq 1:130) (130 residues)  
+Total of 1 regions identified
+VRMS calculation for 'None':
+Mean B: 9.0  pLDDT (0-100) : 95.06 RMSD: 0.6 A  VRMS: 0.8 A
+Obtained processed model with 130 residues (of 132)
+Obtained processed model
+
+================================================================================
+Boxing map around morphed docked model 
+================================================================================
+Original map size: (54, 53, 79)
+Boxed map:         (54, 53, 79)
+
+================================================================================
+Running rebuilding of morphed docked model at resolution of 2.9 A
+================================================================================
+Full sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Chain ID found in original model: A
+Chain IDS found in docked model: A
+Chain IDS found in morphed model: A
+Chain IDS found in processed model: A1
+Replacing with A
+Loop info list: 
+CHAIN ID: A  start: 131   end: 132  Selection string: (chain 'A' and resseq 131:132)
+Base selection string: (chain 'A' and resseq 1:130)
+
+Selection for good part of model based on processed model:
+ (chain 'A' and resseq 1:130)
+
+Selection string: (chain 'A' and resseq 1:130)
+
+Standard refinement at resolution of 2.9 A (starting CC= 0.63)
+Final CC at resolution of 2.9 A: CC= 0.69
+Full sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Identifying good parts of model from map-model CC...
+Mean, sd of reasonable CC values: 0.70 +/- 0.10 
+Getting new selection for (chain 'A' and resseq 1:130)
+Mean, sd of reasonable CC values: 0.70 +/- 0.10 
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Start: 1  End: 130   Trimmmed:  1  130
+
+Selection based on plddt and cc_values:
+ (chain 'A' and resseq 1:130) 
+
+Loop info list: 
+CHAIN ID: A  start: 131   end: 132  Selection string: (chain 'A' and resseq 131:132)
+Base selection string: (chain 'A' and resseq 1:130)
+
+Selection for good part of model based on refined model:
+ (chain 'A' and resseq 1:130)
+
+Obtained trimmed model 
+
+================================================================================
+Setting up rebuilding loops and ends at resolution of 2.9 A
+================================================================================
+
+ Setting up loop fitting and extension at resolution of 2.9 A (starting CC= 0.69)
+Loops to be rebuilt with standard method: 0
+Loops to be rebuilt with trace-through-density method: 0
+Loops to be rebuilt with iterative morphing method: 0
+
+================================================================================
+Rebuilding loops and ends at resolution of 2.9 A
+================================================================================
+
+Working model without ends start and end:  1 130
+
+================================================================================
+Setting up C-term extension at resolution of 2.9 A
+================================================================================
+
+Working model without ends start and end:  1 130
+
+================================================================================
+Setting up N-term extension at resolution of 2.9 A
+================================================================================
+
+================================================================================
+Inserting rebuilt loops and ends at resolution of 2.9 A
+================================================================================
+
+Inserting all loops now...
+No fl changes
+No tr changes
+No im changes
+
+Inserting all extensions now...
+Inserting C-term extension 
+Running sequence from map with a sequence...fit sequence to model
+
+Running build methods...  
+Methods: sequence_from_map_with_resolve 
+Tries per method: 1   Thoroughness: medium   Good enough score: 0.750
+
+  ID    CC_MASK   SCORE     SCORE_TYPE      METHOD NAME        THOROUGHNESS
+   1     0.614     0.614      cc_mask  sequence_from_map_with_resolve       medium
+
+Best log file
+
+Refining model with new sequence...
+Refinement successful
+
+
+
+Best result:
+
+  ID    CC_MASK   SCORE     SCORE_TYPE      METHOD NAME        THOROUGHNESS
+   1     0.614     0.614      cc_mask  sequence_from_map_with_resolve       medium
+Returning sequenced model
+Inserting extension using working model:
+Setting working model as model with extension
+Total of 2 residues added to model (130 before, 132 after)
+Obtained extended model 
+
+================================================================================
+Merging all models at resolution of 2.9 A
+================================================================================
+
+Models available:docked_model, refine_model, extend_model
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (docked_model)
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (refine_model)
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (extend_model)
+
+Base info summary:
+
+Base info for (chain 'A' and resseq 1:130):
+CC: 0.71  Model: extend_model
+CC: 0.69  Model: refine_model
+CC: 0.63  Model: docked_model
+Average base CC: 0.71 
+Average base plDDT: 0.97 
+Getting segments and scoring them
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Model: docked_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+Model: refine_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+Model: extend_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+
+Insert summary:
+
+Inserts for (chain 'A' and resseq 131:132):
+CC: 0.50  Model: extend_model  
+CC: 0.35  Model: refine_model  
+CC: 0.31  Model: docked_model  
+
+Building chain from fragments...
+
+Best version of each segment:
+A 1:130  (130 residues) CC: 0.71 (extend_model)
+A 131:132  (2 residues) CC: 0.50 (extend_model)
+
+Refinement of new model at resolution of 2.9 A (starting CC= 0.71 to working map)
+CC of refined model at resolution of 2.9 A: CC= 0.70 to working map
+Using refined new model
+Wrote refined model with 132 residues and CC= 0.70 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_dock_and_rebuild.pdb
+================================================================================
+
+   ###  Done running dock_and_rebuild to rebuild model 1 ###
+
+================================================================================
+
+Wrote overall rebuilt model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_rebuilt_1_cycle_1.pdb
+
+Putting together model from rebuilt parts
+Using rebuilt model chain 'A' 1 (/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_rebuilt_1_cycle_1.pdb)
+
+Overall mean CC value: 0.71 
+
+Mean CC values after applying cutoff  of 0.36: Mean  0.72  SD: 0.10
+Mean, sd of reasonable CC values: 0.72 +/- 0.10 
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Start: 1  End: 132   Trimmmed:  1  132
+
+Selection based on plddt and cc_values:
+ (chain 'A' and resseq 1:132) 
+
+Trimming unconvincing residues...
+Original residues: 132   After trimming: 132
+Wrote updated rebuilt model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb
+Wrote updated_rebuilt model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb
+Summary of rebuilt model cycle 1
+Overall CC for rebuilt model: 0.70
+  CC for chain 'A': 0.70
+=============================================================================== 
+Finished with rebuilt model (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:14:13) 
+=============================================================================== 
+
+Best docked untrimmed templates model was from cycle 1 with overall RMSD of 0.45 A (match score of 0.93) to best overall model
+
+Going on using results from this cycle...
+
+Best final model = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb
+Writing overall best model from cycle 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best.pdb
+
+Mapped predicted models on scaffold (rmsd = 0.45 A)
+
+Writing superposed predicted models with pLDDT converted to B in B-value field from cycle 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best_superposed_predicted_models.pdb
+
+
+Writing superposed predicted models with pLDDT converted to B in B-value field from cycle 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_superposed_predicted_cycle_1.pdb
+
+
+Writing untrimmed superposed predicted models with pLDDT converted to B in B-value field from cycle 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_1.pdb
+
+Also writing untrimmed superposed predicted models  with pLDDT converted to B in B-value field  from cycle 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_1.pdb
+
+Writing final map...
+Boxing overall best map with /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb...
+Wrote final map to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best_map.ccp4
+Copying PAE matrix for chain 'A' to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_A_cycle_1.jsn
+Copying MSA for chain 'A' to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_A_cycle_1.jsn
+Writing new sequence file to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/7mjs_23883_H_edited.fa
+
+Working directory: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0
+
+
+Using rebuilt model for next cycle of predictions
+
+Set model to rebuild for next cycle to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb
+
+Set scaffold model for next cycle to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb
+NOTE: do not need to redo scaffold as min cc is 0.70
+
+================================================================================
+Done with cycle 1 of predict_and_build
+================================================================================
+=============================================================================== 
+Finished with cycle 1 (Job PredictAndBuild_0 cycle 1 at 2026-06-17 10:14:20) 
+=============================================================================== 
+
+
+pLDDT: average confidence,  High:  high-confidence (plddt >= 70.0) residues,  Low:   low-confidence (plDDT < 70.0) 
+
+RMSD: predicted vs rebuilt models,
+Morphed: Map-model CC of morphed predicted chain,Rebuilt: of rebuilt predicted chain,
+    Cycle    Chain    plDDT     RMSD  Morphed  Rebuilt     High      Low
+
+        1  Chain A    94.59     0.45     0.63     0.70      132        0
+
+
+
+================================================================================
+Running cycle 2 of predict_and_build
+================================================================================
+Using 1 supplied msas
+
+Supplied templates to use in prediction for each sequence: 
+EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb_A.pdb
+Includes MSA with 12172 entries
+
+================================================================================
+Predicting models for 1 chains with alphafold
+Not including templates from PDB this run
+Files for Colab will be in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/colab_files_1
+
+RUNNING PREDICTION ON: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST 12172 
+
+Setting up prediction keywords...
+Number of models (random seed iterations): 5
+Include templates from pdb: False
+Include side in templates: False
+Only include side in templates: None
+Random seed: None
+Nproc in prediction: 4
+Minimum residues will be: 20
+Supplied template will be: 
+/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb_A.pdb
+
+Setting up keywords for local work 
+
+
+Sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Supplying msa directly at setup for local work
+Supplying template directly (sequence=EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST)
+Template supplied
+
+Setting up files for PhenixServer in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1
+
+Output model file will be copied to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+Wrote template model to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1/PredictAndBuild_0_1_cycle_2_input.pdb
+Wrote msa to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1/PredictAndBuild_0_1_cycle_2_input.a3m
+
+Wrote seq to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1/PredictAndBuild_0_1_cycle_2_input.fa
+
+Wrote prediction instructions to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1/run_PredictAndBuild_0_predicted_1_cycle_2.dat
+
+Wrote list of files to copy to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1/PredictAndBuild_0_1_cycle_2_input.info
+Copied all files for prediction to /Users/terwill/Downloads/PredictAndBuild_0_cycle_2.tgz
+
+================================================================================
+Running total of 1 predictions cycle 2
+
+================================================================================
+
+Predicting one model and writing to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+Running prediction on REST server https://prediction.phenix-online.org
+
+Setting up prediction keywords...
+Number of models (random seed iterations): 5
+Include templates from pdb: False
+Include side in templates: False
+Only include side in templates: None
+Random seed: None
+Nproc in prediction: 4
+Minimum residues will be: 20
+Supplied template will be: 
+/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb_A.pdb
+
+Setting up keywords for local work 
+
+
+Sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Supplying msa directly at setup for local work
+Supplying template directly (sequence=EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST)
+Template supplied
+
+Setting up files for PhenixServer in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1
+
+Output model file will be copied to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+
+Not saving MSA as it was supplied directly
+
+Trying to get model 1 from precalculated results...
+
+MSA supplied, only trying hash with MSA
+Including MSA in hash...
+LOWERCASE TEXT:sequence=evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgtlvtvssastuse_msa=truerandom_seed=nonenumber_of_models=5include_templates_from_pdb=falsetemplates_as_string=a+nicaicioicbicgicg1icg2iogiog1isgicdicd1icd2iod1iod2ind1ind2isdiceice1ice2ice3ioe1ioe2ineine1ine2iczicz2icz3inzich2iohinh1inh2+ag1:132:a:evqlvesggglvqpggslrlscaasgfniysssihwvrqapgkglewvayiysysgytsyadsvkgrftisadtskntaylqmnslraedtavyycarsleylyssgyqykwatgldywgqgt
+
+HASH for EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST 9d407c19ff97322fa6ed06ad3ffba419
+
+Running on server now
+
+Uploading MSA
+
+Starting phenix.predict_chain
+on Wed Jun 17 10:14:32 2026 by terwill
+===============================================================================
+
+Processing files:
+-------------------------------------------------------------------------------
+
+  No files found
+
+Processing PHIL parameters:
+-------------------------------------------------------------------------------
+
+  Adding command-line PHIL:
+  -------------------------
+    number_of_models=5
+    include_templates_from_pdb=False
+    include_side_in_templates=False
+    use_msa=True
+    only_include_side_in_templates=None
+    prediction.random_seed=None
+    use_supplied_random_seed_in_prediction=False
+    prediction.nproc=4
+    jobname=PredictAndBuild_0
+    max_wait_time=100000
+    stop_if_internet_not_available=True
+    minimum_residues=20
+    sequence=EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+    crystal_info.templates_as_string=A+NiCAiCiOiCBiCGiCG1iCG2iOGiOG1iSGiCDiCD1iCD2iOD1iOD2iND1iND2iSDiCEiCE1iCE2iCE3iOE1iOE2iNEiNE1iNE2iCZiCZ2iCZ3iNZiCH2iOHiNH1iNH2+Ag1:132:A:EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST:4043e3984e3833e3782e4046e4011e4086e4155e4075e3762e3616e3569e3612e3561e3409e3604e3480e3425e3278e3236e3498e3640e3702e3647e3818e3201e3062e3048e3093e2968e2962e2895e2889e2987e2976e2832e2778e3069e3055e3213e2768e2629e2618e2705e2561e2542e2660e2766e2646e2511e2482e2331e2256e2553e2515e2286e2147e2066e1945e2128e2060e2034e2079e1961e1927e1790e1727e1746e1619e1505e1513e1625e1496e1459e1510e1400e1281e1158e1158e1280e1270e1168e1053e928e852e867e841e901e910e828e1011e772e686e598e543e602e687e760e586e510e592e544e713e801e867e836e959e1030e1179e1219e979e1001e1259e1404e1461e1411e1465e1610e1618e1665e1568e1639e1779e1858e1644e1699e1687e1735e1734e1688e1780e1811e1946e2022e1965e1946e1868e1881e1918e2152e2238e2355e2404e2287e2363e2399e2516e2605e2575e2477e2620e2714e2808e2909e2971e2878e2924e3014e3142e3140e2945e3255e3386e3454e3437e3472e3406e3529e3601e3526e3583e3401e3323e3212e3179e3270e3156e3178e3027e3074e2923e2946e3154e3048e2910e2876e3066e2980e2870e3032e2829e2699e2609e2514e2636e2536e2568e2498e2636e2555e2569e2473e2598e2526e2575e2405e2509e2339e2391e2326e2688e2720e2711e2744e2861e2958e2668e2659e2521e2451e2768e2897e2482e2361e2390e2494e2294e2301e2296e2308e2192e2076e2318e2446e2316e2572e2223e2124e2127e2232e2156e2153e2054e2235e2077e2186e2010e1998e1956e1859e1900e1957e1939e2038e2006e2067e2089e2145e2166e2194e2031e2005e2007e2098e2108e2075e2115e1911e1909e1922e1886e1782e1657e1538e1415e1295e1279e1189e1974e1990e1934e1993e2136e2156e2301e2390e2326e1821e1764e1852e1926e1622e1846e1927e1894e1780e1888e1836e1771e1996e1983e1921e1894e1897e1834e1929e2033e1701e1580e1586e1482e1481e1894e1974e1954e1876e2026e2016e1887e1842e2135e2274e2380e2281e1826e1704e1721e1756e1577e1540e1390e1346e1316e1701e1711e1597e1482e1712e1722e1835e1615e1804e1669e1477e1592e1401e1458e1628e1535e1503e1386e1588e1501e1592e1604e1576e1696e1809e1533e1670e1773e1741e1624e1785e1843e1979e1760e2031e1811e1947e2000e1845e1832e1941e2060e1835e1815e1964e1795e1900e1988e1977e1873e1953e2050e2186e2005e2276e2093e2229e2317e2081e2080e2072e2015e2205e2205e2128e2127e1985e1947e2210e2200e2269e2120e2259e2110e2180e2170e1904e1769e1667e1553e1738e1736e1706e1610e1531e1434e1571e1500e1513e1622e1555e1491e1370e1552e1312e1494e1374e1316e1401e1400e1321e1228e1338e1200e1410e1360e1290e1290e1384e1355e1278e1185e1167e1127e1063e1062e1091e1143e1063e1169e1088e1141e1166e1167e1118e970e919e1198e902e759e731e629e702e749e800e734e821e796e798e747e899e898e857e877e813e819e1027e1089e1100e754e690e585e496e628e607e564e583e542e596e502e542e480e645e691e831e862e689e556e553e651e690e640e781e916e1052e1064e994e1152e1163e1074e1262e1085e1273e1184e1148e1178e1328e1390e1105e1185e1074e1386e1529e1547e1467e1589e1742e1539e1806e1650e1682e1832e1904e1607e1649e1880e2022e2036e1961e2094e2134e2174e2315e2412e2165e2182e2231e2146e2325e2452e2545e2666e2428e2350e2352e2490e2575e2653e2759e2491e2412e2603e2665e2721e2778e2566e2567e2560e2417e2399e2712e2755e2703e2778e2907e2954e2884e3075e2571e2512e2379e2298e2492e2617e2438e2355e2225e2147e2205e2239e2015e1932e1822e1775e1869e1970e1991e2042e2082e2133e2152e2243e1781e1665e1573e1606e1708e1603e1553e1659e1463e1361e1267e1207e1284e1317e1235e1129e1286e1254e1172e1059e1084e1255e1368e1525e1469e935e816e732e743e732e795e844e796e646e553e625e587e439e368e731e817e744e667e944e1048e1164e1097e771e718e830e948e650e540e502e405e359e400e270e791e888e976e1092e816e922e994e1103e1187e898e817e708e644e688e1104e1202e1335e1428e1145e1028e1029e933e1345e1471e1575e1556e1450e1369e1583e1686e1791e1910e1899e1741e2025e2140e2122e2098e2272e2379e2318e2135e2114e2247e2324e2020e1875e1829e1785e1697e1652e1609e1477e2273e2394e2358e2256e2461e2495e2403e2620e2435e2652e2559e2591e2442e2437e2548e2661e2450e2607e2516e2608e2608e2503e2571e2726e2739e2713e2756e2878e2896e3039e3129e3260e3318e3334e2637e2605e2704e2747e2467e2468e2741e2809e2707e2660e2925e3014e3098e3103e2664e2568e2640e2737e2498e2413e2351e2366e2288e2594e2656e2552e2437e2750e2679e2659e2634e2594e2569e2550e2486e2595e2514e2545e2661e2543e2494e2556e2343e2441e2458e2381e2271e2410e2260e2203e2177e2067e2040e1986e1850e2442e2388e2272e2290e2498e2447e2154e2042e2014e1925e1920e1832e2095e2090e2155e2273e2080e2129e2100e2137e2074e2125e2253e2045e2301e2093e2220e2268e2035e2002e2086e2109e1854e1759e1615e1578e1534e2133e2197e2096e2041e2321e2436e2443e2535e2547e2639e2645e2749e2073e1986e2069e2178e1890e1778e1756e1634e1518e2016e2083e2065e1952e2027e2061e1976e2187e2042e2171e2311e2276e2414e2396e2176e2181e2263e2349e2239e2233e2303e2365e2293e2205e2146e2278e2498e2568e2616e2640e2620e2668e2817e2857e2589e2439e2363e2409e2900e3044e3114e3219e3111e3081e2995e3145e3058e3113e3004e2900e3184e3303e3426e3291e3534e3398e3519e3626e3027e2934e2989e3110e2905e2831e2877e2697e2780e2669e2599e2546e2477e2452e2901e2936e2935e2909e2966e2977e2843e2833e3078e3221e3267e3243e3334e2742e2609e2584e2677e2457e2412e2292e2207e2380e2382e2245e2287e2182e2060e2071e2231e2128e2089e2185e1945e1816e1732e1707e1745e1604e1825e1689e1603e1469e1463e1668e1799e1583e1362e1227e1161e1116e1145e1010e1222e1156e1106e1041e1086e1219e1225e935e875e949e914e728e709e1050e1128e1268e1311e1058e1341e1468e1583e1563e1462e1491e1705e1824e1940e1936e1866e2001e1857f1757e1882e1870e1770e1922e2063e2105e2020e2223e1974e1974e2000e2097e2080e2086e2050e1914e1930e1892e1802e1845e1888e1806e1704e1849e1962e1930e1921e2012e2036e2043e2172e1923e1814e1794e1762e1659e1682e1665e1711e1850e1834e1756e1766e1969e2050e2142e2124e2233e1679e1610e1595e1614e1475e1386e1558e1527e1637e1620e1750e1852e1810e1705e1893e1865e1919e1989e1884e1932e1841e1719e1937e1976e2120e1954e1902e1830e1907e2031e1810e1943e1717e1833e1895e1948e1896e1794e1742e1850e1941e1839e2053e2099e1985e1908e2210e2259e2139e1976e1869e1745e1655e1738e1625e1627e1708e1533e1517e1503e1448e1394e1276e1553e1542e1520e1576e1668e1661e1582e1801e1444e1424e1481e1436e1275e1237e1086e1039e912e817e879e1580e1634e1565e1535e1785e1870e2017e1845e1544e1486e1578e1647e1347e1353e1578e1651e1553e1515e1768e1858e1511e1417e1497e1591e1334e1462e1531e1453e1331e1556e1524e1470e1565e1686e1453e1373e1509e1593e1629e1695e1587e1602e1499e1444e1745e1778e1798e1790e1829e1820e1840e1472e1373e1440e1525e1294e1169e1164e1066e1398e1460e1422e1495e1420e1526e1284e1512e1309e1269e1373e1404e1129e1073e961e1126e907e1073e964e911e1432e1524e1668e1759e1496e1508e1692e1827e1849e1755e1854e1833e1976e2019e2062e2120e2133e2112e2031e2068e2156e2126e1944e1867e1984e1945e2266e2358e2346e2328e2504e2538e2617e2504e2633e2565e2356e2382e2527e2573e2285e2148e2041e2101e1932e1966e2160e1889e2084e1950e2598e2736e2744e2689e2833e2977e2817e2813e2822e2967e3060e2761e2841e2775e2848e2805e2689e2880e2983e3112e3102e3033e3156e3295e3336e3252e3466e3166e3170e3254e3341e3227e3230e3310e3458e3501e3254e3117e3123e3536e3680e3735e3855e3651e3693e3667e3602e3620e3682e3663e3563e3550e3720e3694e3555e3474e3528e3400e3390e3488e3379e3362e3364e3232e3272e3249e3118e3015e3250e3121e3099e2984e3198e3122e3002e2906e2948e3041e2924e2856e2863e2756e2758e2887e2678e2807e2703e2777e2673e2576e2558e2597e2477e2687e2514e2412e2388e2422e2280e2327e2293e2163e2132e2407e2371e2360e2354e2330e2323e2312e2282e2087e1963e1955e1972e1838e1712e1830e1587e1933e1888e1736e1684e1955e1923e1927e1889e1898e1860e1865e1836e1667e1524e1435e1326e1486e1551e1479e1397e1373e1261e1463e1393e1275e1444e1211e1380e1264e1200e1478e1475e1455e1419e1604e1716e1477e1467e1593e1594e1700e1827e1885e1889e1926e2062e2086e2168e2211e2293e2314e2439e1928e1987e2117e2133e1894e1871e1761e2209e2335e2372e2339e2446e2565e2441e2474e2620e2677e2384e2237e2165e2168e2031e2033e1965e1830e2680e2811e2804e2699e2868e2917e2922e2888e2826e3060e3112e3033e3234e2928e2910e2764e2731e2989e2950e2676e2537e2439e2318e2504e2585e2528e2488e2402e2313e2362e2486e2410e2503e2439e2532e2182e2087e2024e1927e2078e2028e1970e1878e2137e2203e2264e2368e2466e2480e2553e2021e1974e1902e1936e2091e2157e2128e2251e2189e2312e2281e1800e1726e1706e1650e1591e1494e1543e1753e1737e1615e1590e1864e1860e1886e1994e1537e1419e1396e1459e1296e1261e1308e1276e1125e1060e1346e1070e931e923e962e863e712e661e644e882e886e773e785e880e764e1004e663e553e594e537e429e447e691e736e877e930e732e601e626e633e559e935e1071e1167e1241e1077e1189e1228e1238e1162e1238e1297e1228e1150e1092e1232e1422e1484e1486e1493e1626e1475e1469e1573e1605e1330e1218e1158e1170e1055e1068e1011e908e1624e1712e1656e1663e1855e1965e1985e2094e1593e1546e1661e1721e1428e1295e1271e1330e1186e1693e1803e1745e1683e1902e1968e1974e1992e1766e1718e1837e1947e1627e1490e1429e1442e1814e1914e2045e2154e1939e1820e2032e2144e2245e2209e2094e2040e1976e2152e2373e2483e2551e2538e2587e2534e2638e2588e2657e2781e2602e2622e2692e2786e2808e2768e2844e2941e2878e2950e3019e2934e3013e3096e2991e2745e2673e2653e2598e2537e2548e2637e2467e2696e2693e2780e2901e2743e2649e2757e2718e2785e2692e2571e2826e2749e2672e2644e2737e2747e2706e2721e2518e2475e2440e2358e2355e2388e2412e2396e2443e2427e2450e2480e2500e2482e2410e2441e2615e2709e2803e2706e2890e2792e2884e2970e2315e2260e2323e2339e2107e2045e2357e2427e2365e2328e2576e2355e2307e2424e2536e2247e2188e2142e2253e2239e2121e2347e2398e2499e2501e2396e2475e2361e2621e2649e2708e2821e2746e2777e2656e2896e2625e2662e2739e2688e2539e2466e2340e2315e2265e2860e2937e3004e3025e3043e3143e3117e3264e3208e3355e3327e3417e3036e3101e3250e3290e3043e2900e2843e2897e3333e3477e3529e3482e3547e3540e3432e3642e3425e3635e3527e3520e3626e3681e3775e3877e3753e3814e3741e3834e3864e3807e3778e3704e3953e3977e3864e3834e3801e3689e3553e3451e3698e3819e3821e3932e3931e4043e4042e4152e3548e3422e3407e3505e3416e3408e3390e3428e3331e3286e3250e3179e3075e3165e3248e3281e3295e3358e3372e3403e3479e3235e3179e3116e3163e3283e3321e3470e3501e3417e3008e2938e3013e3043e2796e2708e2670e2647e2589e2573e2647e2500e2575e2502e3042e3097e3004e2929e3238e3007e2925e3010e3076e2825e2745e2737e3006e3060e2950e2838e2981e2885e2905e3004e2900e2889e2929e2747e2811e2834e2772e2821e2781e2635e2576e2580e2666e2602e2576e2519e2471e2445e2504e2365e2482e2343e2401e2379e2618e2601e2505e2502e2736e2832e2898e2879e2980e2971e2851e3035e2915e3006e2426e2352e2440e2560e2377e2451e2466e2545e2383e2391e2534e2621e2559e2392e2402e2315e2276e2285e2213e2285e2336e2065e1990e2050e2293e2368e2278e2166e2417e2491e2622e2515e2328e2263e2355e2470e2234e2182e2135e2303e2378e2307e2192e2390e2447e2478e2375e2324e2396e2510e2345e2277e2295e2329e2394e2294e2180e2469e2604e2336e2245e2247e2174e2279e2355e2333e2355e2399e2372e2457e2461e2529e2431e2313e2622e2553e2478e2394e2466e2495e2350e2302e2467f3442e3394e3379e3329e3260e3215e3090e3031e3051e3423e3420e3278e3214e3517e3507e3660e3228e3095e3096e3169e2991e2960e2850e2808e2802e3013e2984e2833e2762e3041e3193e3238e3250e2783e2638e2605e2650e2589e2439e2626e2529e2490e2360e2273e2472e2598e2627e2564e2711e2347e2222e2210e2307e2211e2314e2091e2067e2002e1983e1967e1892e1748e1702e1677e1539e1504e1582e1383e1330e1375e1360e1177e1105e1135e955e1429e1472e1426e1420e1625e1697e1667e1389e1349e1470e1581e1275e1145e1039e1035e953e1452e1562e1613e1535e1497e1385e1333e1745e1805e1832e1902e1779e1798e1935e2022e1953e2079e2051e1948e2155e2081e2144e2135e2274e2372e2073e2024e1894e2005e2283e2409e2397e2313e2441e2576e2593e2722e2759e2680e2880e2480e2483e2595e2700e2506e2406e2442e2266e2574e2676e2705e2615e2636e2518e2830e2878e2953e3067e2967e3031e2889e2949e3030e2978e2842e3157e3248e3270e3289e3383e3263e3294e3392e3382e3169e3072e3487e3580e3706e3794e3718e3841e3838e3732e3857e3765e3630e3813e3545e3729e3595e3954e3966e3960e4045e4095e4101e4046e4167e3862e3845e3962e3992e3710e3665e3719e3521e4027e4141e4251e4322e4189e4310e4376e4355e4485e4464e4528e4637e4261e4368e4321e4399e4422e4321e4198e4145e4084e4048e4041e4096e4074e4006e3862e3832e4081e4221e3773e3632e3588e3618e3542e3573e3395e3547e3518e3463e3311e3251e3496e3641e3696e3743e3825e3856e3250e3107e3085e3146e3042e3026e3109e2917e3060e2942e2802e2857e2717e2744e3001e2963e2811e2749e3024e2988e3175e2752e2606e2561e2632e2548e2571e2507e2532e2497e2436e2524e2440e2374e2233e2148e2372e2316e2314e2303e2323e2209e2075e1983e2030e2079e1852e1759e1770e1749e1621e1649e1784e1804e1809e1936e1942e2036e2160e2276e2260e2183e2113e1962e1915e1767e2393e2511e2567e2517e2676e2743e2823e2883e2837e2774e2882e2696e2822e2899e2975e2915e2812e2743e2742e2763e2722e3106e3188e3159e3137e3336e3428e3463e3501e3552e3576e3508e3658e3590e3664e3158e3115e3228e3263e2993e2964e2874e3288e3387e3476e3442e3322e3592e3688e3759e3783e3790e3924e3944e4034e4067e4158e4174e4297e3793e3869e3975e3944e3778e3861e3698e3779e4100e4207e4217e4261e4339e4450e4429e4577e4529e4679e4654e4755e4170e4141e4264e4257e4060e3934e4377e4498e4546e4581e4608e4742e4766e4843e4888e4965e4987e5108e4546e4597e4486e4514e4673e4586e4360e4253e4234e4158e4301e4291e4151e4094e4394e4391e4455e4325e4452e4322e4386e4384e4094e3962e3965e4045e3857e3889e3853e3878e3862e3715e3643e3945e3942e3672e3531e3518e3606e3465e3477e3370e3594e3380e3605e3498e3508e3406e3369e3332e3291e3252e3348e3319e3173e3143e3353e3488e3570e3512e3083e2940e2899e2792e2859e2723e2980e2942e3038e3014e2927e2815e3058e3147e3246e3180e3111e3357e3486e3598e3734e3844e3202e3148e3016e2973e2950e2821e2828e2751e2713e2688e2547e2519e2600e2722e2557e2916e2930e3063e3160e2925e2790e2688e2766e2565e2643e2542e3067e3189e3200e3108e3193e3261e3053e3309e3334e3424e3515e3397e3393e3538e3416e3395e3474e3471e3394e3423e3293e3558e3560e3572e3645e3676e3500e3510e3566e3499e3373e3380e3483e3282e3693e3765e3724e3742e3916e3947e3962e3670e3624e3500e3472e3595e3479e3425e3302e3316e3220e3185e3108e2958e2909e2782e3435e3463e3356e3292e3475e3565e3657e3540e3334e3225e3269e3330e3101e3062e2985e3234e3254e3124e3015e3308e3134e3016e3027e3136e2997e2982e2858e3090e2844e3076e2953e2938e2911e2899e2791e2672e2866e2871e3012e2816e2832e2739e2707e2797e2797e2731e2607e2589e2519e2578e2530e2446e2343e2448e2527e2439e2270e2491e2423e2379e2435e2515e2534e2439e2658e2280e2229e2195e2239e2328e2355e2116e2081e1993e1904e2013e2111e2038e2202e2019e1940e1863e1896e2030e2119e2223e2319e2422e2446e2504e1756e1672e1753e1719e1561e1860e1941e2026e2081e2031e2127e2197e2131e2319e2038e2118e2046e2105e2157e2254e2341e2241e1920e1847e1916e1933e1704e1632e1633e1956e2032e2043e2020e2171e2080e2126e2275e2353e2099e2198e1957e2314e2451e2517e2465e2457e2432e2303e2536e2279e2513e2385e2361e2633e2711e2840e2902e2747e2634e2589e2574e2486e2471e2428e2325e2880e3014e3097e3049e3011e2952e3221e3309e3448e3501e3320e3507e3643e3737e3712e3667e3806e3828e3855e3874e3869e3898e3842e3943e4058e4108e4000e4082e4099e4224e4321e4303e4202e4322e4360e4292e4417e4519e4629e4687e4576e4474e4530e4652e4452e4658e4765e4854e4816e4707e4619e4484e4670e4403e4589e4456e4375e4975e5077e5074e5084e5216e5239e5365e5248e5059e5072e5192e5222e4944e4923e4859e4967e4839e4948e4884e4864e5261e5385e5356e5288e5462e5579e5406e5409e5557e5620e5334e5416e5613e5756e5832e5812e5922e6001e5940e5999e6143e6218e6271e6234e6339e6302e6355e6422e5824e5758e5633e5561e5721e5838e5795e5684e5881e5608e5482e5392e5430e5507e5560e5695e5476e5743e5524e5657e5705e5274e5172e5061e5027e5115e5210e5217e5302e5266e5005e4897e4765e4725e4884e5000e5100e5028e5189e5147e4965e5204e5021e5139e4699e4564e4476e4524e4562e4346e4248e4138e4064e4186e4289e4092e4127e4013e3919e3960e3790e3690e3664e3603e3561e3579e3455e3615e3710e3709e3589e3548e3837e3867e3800e3958e3531e3412e3311e3344e3446e3356e3381e3243e3298e3160e3188e3105e3187e3077e2973e2949e3010e3095e3204e3073e3255e3175e2978e3185e2988e3090e2913e2794e2670e2675e2557e2432e2361e2267e2339e2388e2408e2325e2520e2404e2348e2227e2156e2204e2086e2027e2100e2117e1995e2184e1894e1827e1812e1761e1691e1605e1671e1466e1855e1833e1746e1781e1966e1940e2048e1631e1540e1528e1484e1402e1414e1311e1570e1557e1440e1454e1686e1675e1806e1325e1205e1110e1100e1134e1175e1042e944e811e718e923e805e804e683e726e838e591e632e655e670e703e777e897e646e650e717e837e509e513e412:CBiCGiCG1iCG2iOGiOG1iSGiCDiCD1iCD2iOD1iOD2iND1iND2iSDiCEiCE1iCE2iCE3iOE1iOE2iNEiNE1iNE2iCZiCZ2iCZ3iNZiCH2iOHiNH1iNH2d1b7a8a9a14a15a25a41a43a55a65a106a114a119a121c1b1a4a6a7a8a9a11a14a15a16a20a21a22a23a24a25a28a30a31a32a33a36a39a41a43a47a48a50a52a54a55a57a58a60a62a63a65a68a69a70a71a73a74a77a78a84a87a90a91a92a95a96a98a104a105a106a112a113a114a119a121a122a124a125a126a127a128a129a130a131c2b-1a1a2a4a5a6a7a8a9a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a28a29a30a31a33a34a36a37a38a39a40a41a42a43a44a45a47a48a50a51a52a53a54a55a56a57a58a59a60a61a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113a114a115a116a117a118a119a120a121a122a124a126a127a128a129a130c2b-1a1a2a4a5a6a7a8a9a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a28a29a30a31a33a34a36a37a38a39a40a41a42a43a44a45a47a48a50a51a52a53a54a55a57a58a59a60a61a63a64a65a66a69a70a71a73a74a75a77a78a79a80a81a82a83a84a85a86a87a88a90a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a113a114a115a116a117a118a119a120a122a126a127a128a129c7b-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a11a12a13a15a16a17a19a20a21a22a23a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a47a49a50a51a53a54a55a57a58a59a60a61a62a63a65a66a67a69a70a71a72a73a74a75a76a77a79a80a81a82a83a84a85a86a87a88a89a90a91a93a94a95a96a97a100a101a102a103a104a105a106a107a108a109a110a111a112a113a114a115a116a117a118a119a120a123a125c58b-57a-56a-55a-54a-53a-52a-51a-50a-49a-48a-47a-46a-45a-44a-43a-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a17a18a19a21a22a23a24a25a26a27a28a29a30a31a32a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a57a58a59a60a61a62a63a64a66a67a69a70a71a72a73c22b-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110c1b1a3a4a6a7a8a9a10a11a14a15a16a17a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a39a41a43a44a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a65a67a68a69a70a71a72a73a74a76a77a78a79a80a82a83a84a85a87a89a90a91a92a93a94a95a96a98a99a101a102a103a104a105a106a107a109a111a112a113a114a115a116a117a118a119a121a122a123a124a125a126a127a128a129a130a131c4b-3a-2a-1a1a2a3a4a5a6a8a9a10a11a12a13a15a17a18a19a20a21a22a24a27a28a29a31a33a34a35a36a37a38a39a40a42a44a45a49a51a52a54a55a57a58a59a60a61a62a63a65a67a68a69a70a71a72a73a74a75a78a79a80a81a83a84a85a86a87a88a89a92a93a94a95a97a101a102a103a105a107a109a110a111a113a116a117a118a119a121a122a123a124a125a126a127a128c4b-3a-2a-1a1a2a3a4a5a6a8a9a10a11a12a13a15a17a18a19a20a21a22a24a25a27a28a29a30a33a34a35a36a37a38a39a40a42a44a45a47a49a51a52a54a55a57a58a59a60a61a62a63a65a66a67a68a69a70a71a72a73a74a75a78a79a80a81a83a84a85a86a87a88a89a92a93a94a95a97a101a102a103a105a107a109a110a111a113a116a117a118a119a121a122a123a124a125a126a127a128c28b-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a35a36a37a38a39a40a41a42a43a44a46a47a48a50a51a52a53a54a55a57a58a59a60a61a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104c62b-61a-60a-59a-58a-57a-56a-55a-54a-53a-52a-51a-50a-49a-48a-47a-46a-45a-44a-43a-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70c35b-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97c28b-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a50a51a52a53a54a55a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104c83b-82a-81a-80a-79a-78a-77a-76a-75a-74a-73a-72a-71a-70a-69a-68a-67a-66a-65a-64a-63a-62a-61a-60a-59a-58a-57a-56a-55a-54a-53a-52a-51a-50a-49a-48a-47a-46a-45a-44a-43a-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49c43b-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a23a24a25a26a27a28a29a30a31a32a34a35a36a37a38a39a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89c27b-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a4a5a6a7a9a10a11a12a13a14a15a16a17a18a19a20a21a22a24a26a28a29a31a32a34a35a36a37a38a39a40a42a43a44a45a46a47a48a49a50a51a52a54a55a56a57a58a59a60a61a62a63a64a65a66a69a70a71a72a73a74a76a78a79a80a82a84a85a86a87a88a89a90a92a93a94a95a96a97a98a99a100a101a102a103a104a105c27b-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a4a5a6a7a8a10a11a12a13a14a15a16a17a18a19a21a22a24a26a28a29a31a32a34a35a36a37a38a39a40a42a43a44a45a46a47a48a49a50a51a52a54a55a56a57a58a59a60a61a62a63a64a65a66a69a70a71a72a73a74a76a78a79a80a82a84a86a87a88a89a90a93a94a95a96a97a98a99a100a101a102a103a104a105c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c1b1a3a4a6a7a8a9a10a11a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a39a40a41a42a43a44a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a82a83a84a85a86a87a89a90a91a92a93a94a95a96a97a98a99a101a102a103a104a105a106a107a109a110a111a112a113a114a115a116a117a118a119a121a122a123a124a125a126a127a128a129a130a131c1b1a2a3a4a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a89a90a91a92a93a94a95a96a97a98a99a101a102a103a104a105a106a107a108a109a110a111a112a113a114a115a116a117a118a119a120a121a122a123a124a125a126a127a128a129a130a131c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c3b-2a-1a1a2a3a4a5a6a7a8a9a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a33a34a35a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a107a108a109a110a111a112a113a114a115a116a117a119a120a121a122a123a124a125a126a127a128a129c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a9a10a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a32a34a36a37a39a40a42a43a44a45a46a47a50a51a52a53a54a55a56a57a58a59a60a62a63a64a65a66a67a69a70a71a72a73a74a77a78a80a81a82a84a86a87a88a90a92a93a94a95a96a97a98a100a101a102a103a104a105a106a107a108a109a110a111a112a113c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c43b-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a23a24a25a26a27a28a29a30a31a32a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c30b-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a21a23a25a26a28a29a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a51a52a53a54a55a56a57a58a59a60a61a62a63a66a67a68a69a70a71a73a75a76a77a79a81a82a83a84a85a86a87a89a90a91a92a93a94a95a96a97a98a99a100a101a102c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113
+    output_files.predicted_model=None
+    write_prediction_files_and_wait=True
+    max_wait_time=100000
+    allow_precalculated_result_file=True
+    allow_precalculated_msa_file=False
+    precalculated_results_dir=/app/results/precalculated_results
+    precalculated_msas_dir=/app/results/precalculated_msas
+    put_files_for_prediction_here=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1
+    files_for_prediction_will_be_transfered_here=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1
+    rest_server.check_interval=60
+    rest_server.job_size=medium
+    rest_server.max_tries=10
+    rest_server.max_tries_on_availability=2
+    rest_server.quick_check_interval=1
+    rest_server.requires_gpu=True
+    rest_server.stop_if_server_not_available=True
+    rest_server.timeout=5
+    rest_server.token=HncRtp29.Cvm
+    rest_server.url=https://prediction.phenix-online.org
+    rest_server.url_type=prediction
+    cycle=2
+    stop_if_server_not_available=False
+    skip_if_this_file_appears=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+    msa_file=/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None
+
+Processing files from PHIL:
+-------------------------------------------------------------------------------
+
+  Files not used by program:
+  --------------------------
+  /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None
+
+Final processed PHIL parameters:
+-------------------------------------------------------------------------------
+  input_files {
+    msa_file = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None
+  }
+  output_files {
+    predicted_model = None
+  }
+  crystal_info {
+    sequence = EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+    templates_as_string = A+NiCAiCiOiCBiCGiCG1iCG2iOGiOG1iSGiCDiCD1iCD2iOD1iOD2iND1iND2iSDiCEiCE1iCE2iCE3iOE1iOE2iNEiNE1iNE2iCZiCZ2iCZ3iNZiCH2iOHiNH1iNH2+Ag1:132:A:EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST:4043e3984e3833e3782e4046e4011e4086e4155e4075e3762e3616e3569e3612e3561e3409e3604e3480e3425e3278e3236e3498e3640e3702e3647e3818e3201e3062e3048e3093e2968e2962e2895e2889e2987e2976e2832e2778e3069e3055e3213e2768e2629e2618e2705e2561e2542e2660e2766e2646e2511e2482e2331e2256e2553e2515e2286e2147e2066e1945e2128e2060e2034e2079e1961e1927e1790e1727e1746e1619e1505e1513e1625e1496e1459e1510e1400e1281e1158e1158e1280e1270e1168e1053e928e852e867e841e901e910e828e1011e772e686e598e543e602e687e760e586e510e592e544e713e801e867e836e959e1030e1179e1219e979e1001e1259e1404e1461e1411e1465e1610e1618e1665e1568e1639e1779e1858e1644e1699e1687e1735e1734e1688e1780e1811e1946e2022e1965e1946e1868e1881e1918e2152e2238e2355e2404e2287e2363e2399e2516e2605e2575e2477e2620e2714e2808e2909e2971e2878e2924e3014e3142e3140e2945e3255e3386e3454e3437e3472e3406e3529e3601e3526e3583e3401e3323e3212e3179e3270e3156e3178e3027e3074e2923e2946e3154e3048e2910e2876e3066e2980e2870e3032e2829e2699e2609e2514e2636e2536e2568e2498e2636e2555e2569e2473e2598e2526e2575e2405e2509e2339e2391e2326e2688e2720e2711e2744e2861e2958e2668e2659e2521e2451e2768e2897e2482e2361e2390e2494e2294e2301e2296e2308e2192e2076e2318e2446e2316e2572e2223e2124e2127e2232e2156e2153e2054e2235e2077e2186e2010e1998e1956e1859e1900e1957e1939e2038e2006e2067e2089e2145e2166e2194e2031e2005e2007e2098e2108e2075e2115e1911e1909e1922e1886e1782e1657e1538e1415e1295e1279e1189e1974e1990e1934e1993e2136e2156e2301e2390e2326e1821e1764e1852e1926e1622e1846e1927e1894e1780e1888e1836e1771e1996e1983e1921e1894e1897e1834e1929e2033e1701e1580e1586e1482e1481e1894e1974e1954e1876e2026e2016e1887e1842e2135e2274e2380e2281e1826e1704e1721e1756e1577e1540e1390e1346e1316e1701e1711e1597e1482e1712e1722e1835e1615e1804e1669e1477e1592e1401e1458e1628e1535e1503e1386e1588e1501e1592e1604e1576e1696e1809e1533e1670e1773e1741e1624e1785e1843e1979e1760e2031e1811e1947e2000e1845e1832e1941e2060e1835e1815e1964e1795e1900e1988e1977e1873e1953e2050e2186e2005e2276e2093e2229e2317e2081e2080e2072e2015e2205e2205e2128e2127e1985e1947e2210e2200e2269e2120e2259e2110e2180e2170e1904e1769e1667e1553e1738e1736e1706e1610e1531e1434e1571e1500e1513e1622e1555e1491e1370e1552e1312e1494e1374e1316e1401e1400e1321e1228e1338e1200e1410e1360e1290e1290e1384e1355e1278e1185e1167e1127e1063e1062e1091e1143e1063e1169e1088e1141e1166e1167e1118e970e919e1198e902e759e731e629e702e749e800e734e821e796e798e747e899e898e857e877e813e819e1027e1089e1100e754e690e585e496e628e607e564e583e542e596e502e542e480e645e691e831e862e689e556e553e651e690e640e781e916e1052e1064e994e1152e1163e1074e1262e1085e1273e1184e1148e1178e1328e1390e1105e1185e1074e1386e1529e1547e1467e1589e1742e1539e1806e1650e1682e1832e1904e1607e1649e1880e2022e2036e1961e2094e2134e2174e2315e2412e2165e2182e2231e2146e2325e2452e2545e2666e2428e2350e2352e2490e2575e2653e2759e2491e2412e2603e2665e2721e2778e2566e2567e2560e2417e2399e2712e2755e2703e2778e2907e2954e2884e3075e2571e2512e2379e2298e2492e2617e2438e2355e2225e2147e2205e2239e2015e1932e1822e1775e1869e1970e1991e2042e2082e2133e2152e2243e1781e1665e1573e1606e1708e1603e1553e1659e1463e1361e1267e1207e1284e1317e1235e1129e1286e1254e1172e1059e1084e1255e1368e1525e1469e935e816e732e743e732e795e844e796e646e553e625e587e439e368e731e817e744e667e944e1048e1164e1097e771e718e830e948e650e540e502e405e359e400e270e791e888e976e1092e816e922e994e1103e1187e898e817e708e644e688e1104e1202e1335e1428e1145e1028e1029e933e1345e1471e1575e1556e1450e1369e1583e1686e1791e1910e1899e1741e2025e2140e2122e2098e2272e2379e2318e2135e2114e2247e2324e2020e1875e1829e1785e1697e1652e1609e1477e2273e2394e2358e2256e2461e2495e2403e2620e2435e2652e2559e2591e2442e2437e2548e2661e2450e2607e2516e2608e2608e2503e2571e2726e2739e2713e2756e2878e2896e3039e3129e3260e3318e3334e2637e2605e2704e2747e2467e2468e2741e2809e2707e2660e2925e3014e3098e3103e2664e2568e2640e2737e2498e2413e2351e2366e2288e2594e2656e2552e2437e2750e2679e2659e2634e2594e2569e2550e2486e2595e2514e2545e2661e2543e2494e2556e2343e2441e2458e2381e2271e2410e2260e2203e2177e2067e2040e1986e1850e2442e2388e2272e2290e2498e2447e2154e2042e2014e1925e1920e1832e2095e2090e2155e2273e2080e2129e2100e2137e2074e2125e2253e2045e2301e2093e2220e2268e2035e2002e2086e2109e1854e1759e1615e1578e1534e2133e2197e2096e2041e2321e2436e2443e2535e2547e2639e2645e2749e2073e1986e2069e2178e1890e1778e1756e1634e1518e2016e2083e2065e1952e2027e2061e1976e2187e2042e2171e2311e2276e2414e2396e2176e2181e2263e2349e2239e2233e2303e2365e2293e2205e2146e2278e2498e2568e2616e2640e2620e2668e2817e2857e2589e2439e2363e2409e2900e3044e3114e3219e3111e3081e2995e3145e3058e3113e3004e2900e3184e3303e3426e3291e3534e3398e3519e3626e3027e2934e2989e3110e2905e2831e2877e2697e2780e2669e2599e2546e2477e2452e2901e2936e2935e2909e2966e2977e2843e2833e3078e3221e3267e3243e3334e2742e2609e2584e2677e2457e2412e2292e2207e2380e2382e2245e2287e2182e2060e2071e2231e2128e2089e2185e1945e1816e1732e1707e1745e1604e1825e1689e1603e1469e1463e1668e1799e1583e1362e1227e1161e1116e1145e1010e1222e1156e1106e1041e1086e1219e1225e935e875e949e914e728e709e1050e1128e1268e1311e1058e1341e1468e1583e1563e1462e1491e1705e1824e1940e1936e1866e2001e1857f1757e1882e1870e1770e1922e2063e2105e2020e2223e1974e1974e2000e2097e2080e2086e2050e1914e1930e1892e1802e1845e1888e1806e1704e1849e1962e1930e1921e2012e2036e2043e2172e1923e1814e1794e1762e1659e1682e1665e1711e1850e1834e1756e1766e1969e2050e2142e2124e2233e1679e1610e1595e1614e1475e1386e1558e1527e1637e1620e1750e1852e1810e1705e1893e1865e1919e1989e1884e1932e1841e1719e1937e1976e2120e1954e1902e1830e1907e2031e1810e1943e1717e1833e1895e1948e1896e1794e1742e1850e1941e1839e2053e2099e1985e1908e2210e2259e2139e1976e1869e1745e1655e1738e1625e1627e1708e1533e1517e1503e1448e1394e1276e1553e1542e1520e1576e1668e1661e1582e1801e1444e1424e1481e1436e1275e1237e1086e1039e912e817e879e1580e1634e1565e1535e1785e1870e2017e1845e1544e1486e1578e1647e1347e1353e1578e1651e1553e1515e1768e1858e1511e1417e1497e1591e1334e1462e1531e1453e1331e1556e1524e1470e1565e1686e1453e1373e1509e1593e1629e1695e1587e1602e1499e1444e1745e1778e1798e1790e1829e1820e1840e1472e1373e1440e1525e1294e1169e1164e1066e1398e1460e1422e1495e1420e1526e1284e1512e1309e1269e1373e1404e1129e1073e961e1126e907e1073e964e911e1432e1524e1668e1759e1496e1508e1692e1827e1849e1755e1854e1833e1976e2019e2062e2120e2133e2112e2031e2068e2156e2126e1944e1867e1984e1945e2266e2358e2346e2328e2504e2538e2617e2504e2633e2565e2356e2382e2527e2573e2285e2148e2041e2101e1932e1966e2160e1889e2084e1950e2598e2736e2744e2689e2833e2977e2817e2813e2822e2967e3060e2761e2841e2775e2848e2805e2689e2880e2983e3112e3102e3033e3156e3295e3336e3252e3466e3166e3170e3254e3341e3227e3230e3310e3458e3501e3254e3117e3123e3536e3680e3735e3855e3651e3693e3667e3602e3620e3682e3663e3563e3550e3720e3694e3555e3474e3528e3400e3390e3488e3379e3362e3364e3232e3272e3249e3118e3015e3250e3121e3099e2984e3198e3122e3002e2906e2948e3041e2924e2856e2863e2756e2758e2887e2678e2807e2703e2777e2673e2576e2558e2597e2477e2687e2514e2412e2388e2422e2280e2327e2293e2163e2132e2407e2371e2360e2354e2330e2323e2312e2282e2087e1963e1955e1972e1838e1712e1830e1587e1933e1888e1736e1684e1955e1923e1927e1889e1898e1860e1865e1836e1667e1524e1435e1326e1486e1551e1479e1397e1373e1261e1463e1393e1275e1444e1211e1380e1264e1200e1478e1475e1455e1419e1604e1716e1477e1467e1593e1594e1700e1827e1885e1889e1926e2062e2086e2168e2211e2293e2314e2439e1928e1987e2117e2133e1894e1871e1761e2209e2335e2372e2339e2446e2565e2441e2474e2620e2677e2384e2237e2165e2168e2031e2033e1965e1830e2680e2811e2804e2699e2868e2917e2922e2888e2826e3060e3112e3033e3234e2928e2910e2764e2731e2989e2950e2676e2537e2439e2318e2504e2585e2528e2488e2402e2313e2362e2486e2410e2503e2439e2532e2182e2087e2024e1927e2078e2028e1970e1878e2137e2203e2264e2368e2466e2480e2553e2021e1974e1902e1936e2091e2157e2128e2251e2189e2312e2281e1800e1726e1706e1650e1591e1494e1543e1753e1737e1615e1590e1864e1860e1886e1994e1537e1419e1396e1459e1296e1261e1308e1276e1125e1060e1346e1070e931e923e962e863e712e661e644e882e886e773e785e880e764e1004e663e553e594e537e429e447e691e736e877e930e732e601e626e633e559e935e1071e1167e1241e1077e1189e1228e1238e1162e1238e1297e1228e1150e1092e1232e1422e1484e1486e1493e1626e1475e1469e1573e1605e1330e1218e1158e1170e1055e1068e1011e908e1624e1712e1656e1663e1855e1965e1985e2094e1593e1546e1661e1721e1428e1295e1271e1330e1186e1693e1803e1745e1683e1902e1968e1974e1992e1766e1718e1837e1947e1627e1490e1429e1442e1814e1914e2045e2154e1939e1820e2032e2144e2245e2209e2094e2040e1976e2152e2373e2483e2551e2538e2587e2534e2638e2588e2657e2781e2602e2622e2692e2786e2808e2768e2844e2941e2878e2950e3019e2934e3013e3096e2991e2745e2673e2653e2598e2537e2548e2637e2467e2696e2693e2780e2901e2743e2649e2757e2718e2785e2692e2571e2826e2749e2672e2644e2737e2747e2706e2721e2518e2475e2440e2358e2355e2388e2412e2396e2443e2427e2450e2480e2500e2482e2410e2441e2615e2709e2803e2706e2890e2792e2884e2970e2315e2260e2323e2339e2107e2045e2357e2427e2365e2328e2576e2355e2307e2424e2536e2247e2188e2142e2253e2239e2121e2347e2398e2499e2501e2396e2475e2361e2621e2649e2708e2821e2746e2777e2656e2896e2625e2662e2739e2688e2539e2466e2340e2315e2265e2860e2937e3004e3025e3043e3143e3117e3264e3208e3355e3327e3417e3036e3101e3250e3290e3043e2900e2843e2897e3333e3477e3529e3482e3547e3540e3432e3642e3425e3635e3527e3520e3626e3681e3775e3877e3753e3814e3741e3834e3864e3807e3778e3704e3953e3977e3864e3834e3801e3689e3553e3451e3698e3819e3821e3932e3931e4043e4042e4152e3548e3422e3407e3505e3416e3408e3390e3428e3331e3286e3250e3179e3075e3165e3248e3281e3295e3358e3372e3403e3479e3235e3179e3116e3163e3283e3321e3470e3501e3417e3008e2938e3013e3043e2796e2708e2670e2647e2589e2573e2647e2500e2575e2502e3042e3097e3004e2929e3238e3007e2925e3010e3076e2825e2745e2737e3006e3060e2950e2838e2981e2885e2905e3004e2900e2889e2929e2747e2811e2834e2772e2821e2781e2635e2576e2580e2666e2602e2576e2519e2471e2445e2504e2365e2482e2343e2401e2379e2618e2601e2505e2502e2736e2832e2898e2879e2980e2971e2851e3035e2915e3006e2426e2352e2440e2560e2377e2451e2466e2545e2383e2391e2534e2621e2559e2392e2402e2315e2276e2285e2213e2285e2336e2065e1990e2050e2293e2368e2278e2166e2417e2491e2622e2515e2328e2263e2355e2470e2234e2182e2135e2303e2378e2307e2192e2390e2447e2478e2375e2324e2396e2510e2345e2277e2295e2329e2394e2294e2180e2469e2604e2336e2245e2247e2174e2279e2355e2333e2355e2399e2372e2457e2461e2529e2431e2313e2622e2553e2478e2394e2466e2495e2350e2302e2467f3442e3394e3379e3329e3260e3215e3090e3031e3051e3423e3420e3278e3214e3517e3507e3660e3228e3095e3096e3169e2991e2960e2850e2808e2802e3013e2984e2833e2762e3041e3193e3238e3250e2783e2638e2605e2650e2589e2439e2626e2529e2490e2360e2273e2472e2598e2627e2564e2711e2347e2222e2210e2307e2211e2314e2091e2067e2002e1983e1967e1892e1748e1702e1677e1539e1504e1582e1383e1330e1375e1360e1177e1105e1135e955e1429e1472e1426e1420e1625e1697e1667e1389e1349e1470e1581e1275e1145e1039e1035e953e1452e1562e1613e1535e1497e1385e1333e1745e1805e1832e1902e1779e1798e1935e2022e1953e2079e2051e1948e2155e2081e2144e2135e2274e2372e2073e2024e1894e2005e2283e2409e2397e2313e2441e2576e2593e2722e2759e2680e2880e2480e2483e2595e2700e2506e2406e2442e2266e2574e2676e2705e2615e2636e2518e2830e2878e2953e3067e2967e3031e2889e2949e3030e2978e2842e3157e3248e3270e3289e3383e3263e3294e3392e3382e3169e3072e3487e3580e3706e3794e3718e3841e3838e3732e3857e3765e3630e3813e3545e3729e3595e3954e3966e3960e4045e4095e4101e4046e4167e3862e3845e3962e3992e3710e3665e3719e3521e4027e4141e4251e4322e4189e4310e4376e4355e4485e4464e4528e4637e4261e4368e4321e4399e4422e4321e4198e4145e4084e4048e4041e4096e4074e4006e3862e3832e4081e4221e3773e3632e3588e3618e3542e3573e3395e3547e3518e3463e3311e3251e3496e3641e3696e3743e3825e3856e3250e3107e3085e3146e3042e3026e3109e2917e3060e2942e2802e2857e2717e2744e3001e2963e2811e2749e3024e2988e3175e2752e2606e2561e2632e2548e2571e2507e2532e2497e2436e2524e2440e2374e2233e2148e2372e2316e2314e2303e2323e2209e2075e1983e2030e2079e1852e1759e1770e1749e1621e1649e1784e1804e1809e1936e1942e2036e2160e2276e2260e2183e2113e1962e1915e1767e2393e2511e2567e2517e2676e2743e2823e2883e2837e2774e2882e2696e2822e2899e2975e2915e2812e2743e2742e2763e2722e3106e3188e3159e3137e3336e3428e3463e3501e3552e3576e3508e3658e3590e3664e3158e3115e3228e3263e2993e2964e2874e3288e3387e3476e3442e3322e3592e3688e3759e3783e3790e3924e3944e4034e4067e4158e4174e4297e3793e3869e3975e3944e3778e3861e3698e3779e4100e4207e4217e4261e4339e4450e4429e4577e4529e4679e4654e4755e4170e4141e4264e4257e4060e3934e4377e4498e4546e4581e4608e4742e4766e4843e4888e4965e4987e5108e4546e4597e4486e4514e4673e4586e4360e4253e4234e4158e4301e4291e4151e4094e4394e4391e4455e4325e4452e4322e4386e4384e4094e3962e3965e4045e3857e3889e3853e3878e3862e3715e3643e3945e3942e3672e3531e3518e3606e3465e3477e3370e3594e3380e3605e3498e3508e3406e3369e3332e3291e3252e3348e3319e3173e3143e3353e3488e3570e3512e3083e2940e2899e2792e2859e2723e2980e2942e3038e3014e2927e2815e3058e3147e3246e3180e3111e3357e3486e3598e3734e3844e3202e3148e3016e2973e2950e2821e2828e2751e2713e2688e2547e2519e2600e2722e2557e2916e2930e3063e3160e2925e2790e2688e2766e2565e2643e2542e3067e3189e3200e3108e3193e3261e3053e3309e3334e3424e3515e3397e3393e3538e3416e3395e3474e3471e3394e3423e3293e3558e3560e3572e3645e3676e3500e3510e3566e3499e3373e3380e3483e3282e3693e3765e3724e3742e3916e3947e3962e3670e3624e3500e3472e3595e3479e3425e3302e3316e3220e3185e3108e2958e2909e2782e3435e3463e3356e3292e3475e3565e3657e3540e3334e3225e3269e3330e3101e3062e2985e3234e3254e3124e3015e3308e3134e3016e3027e3136e2997e2982e2858e3090e2844e3076e2953e2938e2911e2899e2791e2672e2866e2871e3012e2816e2832e2739e2707e2797e2797e2731e2607e2589e2519e2578e2530e2446e2343e2448e2527e2439e2270e2491e2423e2379e2435e2515e2534e2439e2658e2280e2229e2195e2239e2328e2355e2116e2081e1993e1904e2013e2111e2038e2202e2019e1940e1863e1896e2030e2119e2223e2319e2422e2446e2504e1756e1672e1753e1719e1561e1860e1941e2026e2081e2031e2127e2197e2131e2319e2038e2118e2046e2105e2157e2254e2341e2241e1920e1847e1916e1933e1704e1632e1633e1956e2032e2043e2020e2171e2080e2126e2275e2353e2099e2198e1957e2314e2451e2517e2465e2457e2432e2303e2536e2279e2513e2385e2361e2633e2711e2840e2902e2747e2634e2589e2574e2486e2471e2428e2325e2880e3014e3097e3049e3011e2952e3221e3309e3448e3501e3320e3507e3643e3737e3712e3667e3806e3828e3855e3874e3869e3898e3842e3943e4058e4108e4000e4082e4099e4224e4321e4303e4202e4322e4360e4292e4417e4519e4629e4687e4576e4474e4530e4652e4452e4658e4765e4854e4816e4707e4619e4484e4670e4403e4589e4456e4375e4975e5077e5074e5084e5216e5239e5365e5248e5059e5072e5192e5222e4944e4923e4859e4967e4839e4948e4884e4864e5261e5385e5356e5288e5462e5579e5406e5409e5557e5620e5334e5416e5613e5756e5832e5812e5922e6001e5940e5999e6143e6218e6271e6234e6339e6302e6355e6422e5824e5758e5633e5561e5721e5838e5795e5684e5881e5608e5482e5392e5430e5507e5560e5695e5476e5743e5524e5657e5705e5274e5172e5061e5027e5115e5210e5217e5302e5266e5005e4897e4765e4725e4884e5000e5100e5028e5189e5147e4965e5204e5021e5139e4699e4564e4476e4524e4562e4346e4248e4138e4064e4186e4289e4092e4127e4013e3919e3960e3790e3690e3664e3603e3561e3579e3455e3615e3710e3709e3589e3548e3837e3867e3800e3958e3531e3412e3311e3344e3446e3356e3381e3243e3298e3160e3188e3105e3187e3077e2973e2949e3010e3095e3204e3073e3255e3175e2978e3185e2988e3090e2913e2794e2670e2675e2557e2432e2361e2267e2339e2388e2408e2325e2520e2404e2348e2227e2156e2204e2086e2027e2100e2117e1995e2184e1894e1827e1812e1761e1691e1605e1671e1466e1855e1833e1746e1781e1966e1940e2048e1631e1540e1528e1484e1402e1414e1311e1570e1557e1440e1454e1686e1675e1806e1325e1205e1110e1100e1134e1175e1042e944e811e718e923e805e804e683e726e838e591e632e655e670e703e777e897e646e650e717e837e509e513e412:CBiCGiCG1iCG2iOGiOG1iSGiCDiCD1iCD2iOD1iOD2iND1iND2iSDiCEiCE1iCE2iCE3iOE1iOE2iNEiNE1iNE2iCZiCZ2iCZ3iNZiCH2iOHiNH1iNH2d1b7a8a9a14a15a25a41a43a55a65a106a114a119a121c1b1a4a6a7a8a9a11a14a15a16a20a21a22a23a24a25a28a30a31a32a33a36a39a41a43a47a48a50a52a54a55a57a58a60a62a63a65a68a69a70a71a73a74a77a78a84a87a90a91a92a95a96a98a104a105a106a112a113a114a119a121a122a124a125a126a127a128a129a130a131c2b-1a1a2a4a5a6a7a8a9a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a28a29a30a31a33a34a36a37a38a39a40a41a42a43a44a45a47a48a50a51a52a53a54a55a56a57a58a59a60a61a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113a114a115a116a117a118a119a120a121a122a124a126a127a128a129a130c2b-1a1a2a4a5a6a7a8a9a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a28a29a30a31a33a34a36a37a38a39a40a41a42a43a44a45a47a48a50a51a52a53a54a55a57a58a59a60a61a63a64a65a66a69a70a71a73a74a75a77a78a79a80a81a82a83a84a85a86a87a88a90a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a113a114a115a116a117a118a119a120a122a126a127a128a129c7b-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a11a12a13a15a16a17a19a20a21a22a23a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a47a49a50a51a53a54a55a57a58a59a60a61a62a63a65a66a67a69a70a71a72a73a74a75a76a77a79a80a81a82a83a84a85a86a87a88a89a90a91a93a94a95a96a97a100a101a102a103a104a105a106a107a108a109a110a111a112a113a114a115a116a117a118a119a120a123a125c58b-57a-56a-55a-54a-53a-52a-51a-50a-49a-48a-47a-46a-45a-44a-43a-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a17a18a19a21a22a23a24a25a26a27a28a29a30a31a32a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a57a58a59a60a61a62a63a64a66a67a69a70a71a72a73c22b-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110c1b1a3a4a6a7a8a9a10a11a14a15a16a17a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a39a41a43a44a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a65a67a68a69a70a71a72a73a74a76a77a78a79a80a82a83a84a85a87a89a90a91a92a93a94a95a96a98a99a101a102a103a104a105a106a107a109a111a112a113a114a115a116a117a118a119a121a122a123a124a125a126a127a128a129a130a131c4b-3a-2a-1a1a2a3a4a5a6a8a9a10a11a12a13a15a17a18a19a20a21a22a24a27a28a29a31a33a34a35a36a37a38a39a40a42a44a45a49a51a52a54a55a57a58a59a60a61a62a63a65a67a68a69a70a71a72a73a74a75a78a79a80a81a83a84a85a86a87a88a89a92a93a94a95a97a101a102a103a105a107a109a110a111a113a116a117a118a119a121a122a123a124a125a126a127a128c4b-3a-2a-1a1a2a3a4a5a6a8a9a10a11a12a13a15a17a18a19a20a21a22a24a25a27a28a29a30a33a34a35a36a37a38a39a40a42a44a45a47a49a51a52a54a55a57a58a59a60a61a62a63a65a66a67a68a69a70a71a72a73a74a75a78a79a80a81a83a84a85a86a87a88a89a92a93a94a95a97a101a102a103a105a107a109a110a111a113a116a117a118a119a121a122a123a124a125a126a127a128c28b-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a35a36a37a38a39a40a41a42a43a44a46a47a48a50a51a52a53a54a55a57a58a59a60a61a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104c62b-61a-60a-59a-58a-57a-56a-55a-54a-53a-52a-51a-50a-49a-48a-47a-46a-45a-44a-43a-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70c35b-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97c28b-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a50a51a52a53a54a55a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104c83b-82a-81a-80a-79a-78a-77a-76a-75a-74a-73a-72a-71a-70a-69a-68a-67a-66a-65a-64a-63a-62a-61a-60a-59a-58a-57a-56a-55a-54a-53a-52a-51a-50a-49a-48a-47a-46a-45a-44a-43a-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49c43b-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a23a24a25a26a27a28a29a30a31a32a34a35a36a37a38a39a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89c27b-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a4a5a6a7a9a10a11a12a13a14a15a16a17a18a19a20a21a22a24a26a28a29a31a32a34a35a36a37a38a39a40a42a43a44a45a46a47a48a49a50a51a52a54a55a56a57a58a59a60a61a62a63a64a65a66a69a70a71a72a73a74a76a78a79a80a82a84a85a86a87a88a89a90a92a93a94a95a96a97a98a99a100a101a102a103a104a105c27b-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a4a5a6a7a8a10a11a12a13a14a15a16a17a18a19a21a22a24a26a28a29a31a32a34a35a36a37a38a39a40a42a43a44a45a46a47a48a49a50a51a52a54a55a56a57a58a59a60a61a62a63a64a65a66a69a70a71a72a73a74a76a78a79a80a82a84a86a87a88a89a90a93a94a95a96a97a98a99a100a101a102a103a104a105c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c1b1a3a4a6a7a8a9a10a11a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a39a40a41a42a43a44a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a82a83a84a85a86a87a89a90a91a92a93a94a95a96a97a98a99a101a102a103a104a105a106a107a109a110a111a112a113a114a115a116a117a118a119a121a122a123a124a125a126a127a128a129a130a131c1b1a2a3a4a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a89a90a91a92a93a94a95a96a97a98a99a101a102a103a104a105a106a107a108a109a110a111a112a113a114a115a116a117a118a119a120a121a122a123a124a125a126a127a128a129a130a131c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c3b-2a-1a1a2a3a4a5a6a7a8a9a11a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a33a34a35a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a107a108a109a110a111a112a113a114a115a116a117a119a120a121a122a123a124a125a126a127a128a129c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a9a10a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a32a34a36a37a39a40a42a43a44a45a46a47a50a51a52a53a54a55a56a57a58a59a60a62a63a64a65a66a67a69a70a71a72a73a74a77a78a80a81a82a84a86a87a88a90a92a93a94a95a96a97a98a100a101a102a103a104a105a106a107a108a109a110a111a112a113c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c43b-42a-41a-40a-39a-38a-37a-36a-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a20a21a23a24a25a26a27a28a29a30a31a32a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a79a80a81a82a83a84a85a86a87a88a89c36b-35a-34a-33a-32a-31a-30a-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a12a13a14a15a16a17a18a19a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a68a69a70a71a72a73a74a75a77a78a79a80a81a82a84a85a86a87a88a89a90a91a92a93a94a95a96c30b-29a-28a-27a-26a-25a-24a-23a-22a-21a-20a-19a-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a19a21a23a25a26a28a29a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a48a49a51a52a53a54a55a56a57a58a59a60a61a62a63a66a67a68a69a70a71a73a75a76a77a79a81a82a83a84a85a86a87a89a90a91a92a93a94a95a96a97a98a99a100a101a102c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113c19b-18a-17a-16a-15a-14a-13a-12a-11a-10a-9a-8a-7a-6a-5a-4a-3a-2a-1a1a2a3a4a5a6a7a8a9a10a11a12a13a14a15a16a17a18a20a21a22a23a24a25a26a27a28a29a30a31a32a33a34a35a36a37a38a39a40a41a42a43a44a45a46a47a49a50a51a52a53a54a55a56a57a58a59a60a61a62a63a64a65a66a67a69a70a71a72a73a74a75a76a77a78a80a81a82a83a84a85a86a87a88a89a90a91a92a93a94a95a96a97a98a99a100a101a102a103a104a105a106a107a108a109a110a111a112a113
+  }
+  prediction {
+    cycle = 2
+    include_templates_from_pdb = False
+    include_side_in_templates = False
+    nproc = 4
+    write_prediction_files_and_wait = True
+    put_files_for_prediction_here = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1
+    files_for_prediction_will_be_transfered_here = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/local_prediction_1_1
+    allow_precalculated_msa_file = False
+    jobname = PredictAndBuild_0
+    skip_if_this_file_appears = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+  }
+  rest_server {
+    url = https://prediction.phenix-online.org
+    token = HncRtp29.Cvm
+    stop_if_server_not_available = False
+  }
+
+
+Starting job
+===============================================================================
+
+*******************************************************************************
+Detected PHENIX_OVERWRITE_ALL environment variable
+Setting output.overwrite to True
+Unset PHENIX_OVERWRITE_ALL if overwriting is not desired
+*******************************************************************************
+
+Service is available
+
+Using MSA from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/MSA_1_None with 12173 entries
+Using supplied Sequence (132 aa)
+Using templates available as strings 
+
+Starting job on server at https://prediction.phenix-online.org
+Checking for server availability at  https://prediction.phenix-online.org
+Starting job on Phenix server
+
+Starting job on server.
+Job ID: 401e1421-5851-447d-aa4f-71264885f4de
+
+Working: Status = running .......
+Run complete...
+Job result
+
+Successful prediction with server
+None
+Successful call to server at https://prediction.phenix-online.org
+Obtained predicted model...
+
+Wrote PAE file to pae_matrix.jsn
+
+Finished with predict_chain
+
+===============================================================================
+Job complete
+usr+sys time: 416.96 seconds
+wall clock time: 9 minutes 35.92 seconds (575.92 seconds total)
+Obtained model with 132 residues from server
+plDDT = 94.29
+
+
+PREDICTED MODEL 1 plDDT: 94.3  SEQUENCE: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Wrote predicted model to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+
+Wrote MSA for sequence EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_msa_1_cycle_2.a3m 
+
+Wrote PAE file for sequence EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_1_cycle_2.jsn 
+
+Predicted model summary:
+
+Considering model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb with plDDT = 94.3 
+Keeping model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb with plDDT = 94.3 
+Total of 1 predicted chains (for 1 unique sequences) created
+
+Updating chain names in model list...
+Chain A: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Total of 1 working models
+Total MSAs obtained: 1
+MSA LENGTH: 12174  SEQUENCE: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Updating chain IDs
+Previous ID: 'A'  New ID: 'A' 
+MODEL: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+
+Getting processed (trimmed, B-values updated) models 
+B-value field interpreted as pLDDT (0 - 100)
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Total of 130 of 132 residues kept after B-factor filtering
+
+Selection string for B-factor filtering:  (chain 'A' and resseq 1:130) 
+
+Selecting domains as compact chains
+Clusters: 4   Threshold: 3.13 
+Clusters: 2   Threshold: 2.58 
+Clusters: 2   Threshold: 2.49 
+Clusters: 2   Threshold: 2.17 
+Clusters: 2   Threshold: 1.89 
+Clusters: 2   Threshold: 1.69 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.18 
+Clusters: 2   Threshold: 0.85 
+Best resolution for domains is 15.0 A giving 4 regions
+
+Selection list based on domains:
+(resseq 1:130) (130 residues)  
+Total of 1 regions identified
+VRMS calculation for 'None':
+Mean B: 9.1  pLDDT (0-100) : 94.81 RMSD: 0.6 A  VRMS: 0.8 A
+Obtained processed model from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb with 130 residues (of 132)
+=============================================================================== 
+Finished with prediction (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:17:55) 
+=============================================================================== 
+
+=============================================================================== 
+Finished with density modification (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:17:59) 
+=============================================================================== 
+
+=============================================================================== 
+Getting scaffold model... (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:18:04) 
+=============================================================================== 
+
+
+Checking whether scaffold model is complete...
+Scaffold model is complete and does not need updating
+
+Updating chain names in scaffold model
+
+Scaffold model is in /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb
+=============================================================================== 
+Finished with scaffold model (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:18:10) 
+=============================================================================== 
+
+=============================================================================== 
+Getting morphed model... (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:18:14) 
+=============================================================================== 
+
+
+================================================================================
+Morphing 1 chains on 1 chains in scaffold cycle 2
+Model to morph: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb
+Scaffold model: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb
+================================================================================
+================================================================================
+
+   ### Running dock_and_rebuild to morph models ###
+================================================================================
+Calculating how many copies of each sequence
+Model: A EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Model copies: 1 Sequence copies:  1
+Remainder copies:  {'EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST': 0} remainder: 0
+Copies to use:  1
+Setting scaffold_minimum_chain_cc = -1.00 
+Adding model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb_A
+
+Total of 1 predicted models
+MODEL: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Creating target_model info list from scaffold model with 1 chains
+
+Looking for models that match /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb chain 'A' (EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST):
+Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb chain 'A' with direct superposition
+Best matching model is /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb (EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST):
+Setting chain ID of model 'A' to 'A'
+Map CC of similar model (chain 'A') recalculated: 0.66
+Expected chains: 1   Placements: 1
+
+Total of 1 chains to work with
+
+================================================================================
+Running dock_and_rebuild on total of 1 chains
+Chain '1' (chain 'A' from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb) Docked model from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb chain 'A' with direct superposition) 
+================================================================================
+Working directory for this chain: PredictAndBuild_0/local_dock_and_rebuild_1_2
+Not redoing search for chain 'A' as CC (0.66) is ok
+
+Testing using previous docked model
+
+Trying to dock model using previous location
+Best simple docking : CC = 0.66
+CC for previous model: 0.66
+Best docking with overall CC=0.66 for starting model /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb chain 'A' with direct superposition)
+Adding new model with CC = 0.66 from /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_predicted_1_cycle_2.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb chain 'A' with direct superposition) 
+Wrote rebuilt model for search copy 1 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/working_morphed.pdb.pdb
+New fixed model has 1 chains
+
+================================================================================
+All done running on all chains
+================================================================================
+================================================================================
+
+   ###  Done running dock_and_rebuild to morph models ###
+
+================================================================================
+
+Best morphed model was /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0/working_morphed.pdb.pdb
+Wrote morphed model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_morphed_cycle_2.pdb
+Summary of morphed model cycle 2
+Overall CC for morphed model: 0.66
+  CC for chain 'A': 0.66
+=============================================================================== 
+Finished with morphed model (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:18:22) 
+=============================================================================== 
+
+=============================================================================== 
+Rebuilding model... (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:18:27) 
+=============================================================================== 
+
+
+================================================================================
+Rebuilding 1 chains in morphed model cycle 2
+Morphed model to rebuild: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_morphed_cycle_2.pdb (Superposed on /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_scaffold_cycle_2.pdb chain 'A' with direct superposition, Chain A extracted)
+================================================================================
+Using chain A of previous model as previous_model for chain 'A'
+================================================================================
+
+   ###  Running dock_and_rebuild to rebuild model 1 ###
+
+================================================================================
+ Considering previous model in rebuilding...
+
+ =============================================================================== 
+    Processing input model 
+ =============================================================================== 
+
+B-value field interpreted as pLDDT (0 - 100)
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Total of 130 of 132 residues kept after B-factor filtering
+
+Selection string for B-factor filtering:  (chain 'A' and resseq 1:130) 
+
+Selecting domains as compact chains
+Clusters: 4   Threshold: 3.13 
+Clusters: 2   Threshold: 2.58 
+Clusters: 2   Threshold: 2.49 
+Clusters: 2   Threshold: 2.17 
+Clusters: 2   Threshold: 1.89 
+Clusters: 2   Threshold: 1.69 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.20 
+Clusters: 2   Threshold: 1.18 
+Clusters: 2   Threshold: 0.85 
+Best resolution for domains is 15.0 A giving 4 regions
+
+Selection list based on domains:
+(resseq 1:130) (130 residues)  
+Total of 1 regions identified
+VRMS calculation for 'None':
+Mean B: 9.1  pLDDT (0-100) : 94.81 RMSD: 0.6 A  VRMS: 0.8 A
+Obtained processed model with 130 residues (of 132)
+Obtained processed model
+
+================================================================================
+Boxing map around morphed docked model 
+================================================================================
+Original map size: (54, 53, 79)
+Boxed map:         (54, 53, 79)
+
+================================================================================
+Running rebuilding of morphed docked model at resolution of 2.9 A
+================================================================================
+Full sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+Chain ID found in original model: A
+Chain IDS found in docked model: A
+Chain IDS found in morphed model: A
+Chain IDS found in processed model: A1
+Replacing with A
+Loop info list: 
+CHAIN ID: A  start: 131   end: 132  Selection string: (chain 'A' and resseq 131:132)
+Base selection string: (chain 'A' and resseq 1:130)
+
+Selection for good part of model based on processed model:
+ (chain 'A' and resseq 1:130)
+
+Selection string: (chain 'A' and resseq 1:130)
+
+Standard refinement at resolution of 2.9 A (starting CC= 0.66)
+Final CC at resolution of 2.9 A: CC= 0.69
+Full sequence: EVQLVESGGGLVQPGGSLRLSCAASGFNIYSSSIHWVRQAPGKGLEWVAYIYSYSGYTSYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYCARSLEYLYSSGYQYKWATGLDYWGQGTLVTVSSAST
+
+Identifying good parts of model from map-model CC...
+Mean, sd of reasonable CC values: 0.71 +/- 0.10 
+Getting new selection for (chain 'A' and resseq 1:130)
+Mean, sd of reasonable CC values: 0.71 +/- 0.10 
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Start: 1  End: 130   Trimmmed:  1  130
+
+Selection based on plddt and cc_values:
+ (chain 'A' and resseq 1:130) 
+
+Loop info list: 
+CHAIN ID: A  start: 131   end: 132  Selection string: (chain 'A' and resseq 131:132)
+Base selection string: (chain 'A' and resseq 1:130)
+
+Selection for good part of model based on refined model:
+ (chain 'A' and resseq 1:130)
+
+Obtained trimmed model 
+
+================================================================================
+Setting up rebuilding loops and ends at resolution of 2.9 A
+================================================================================
+
+ Setting up loop fitting and extension at resolution of 2.9 A (starting CC= 0.69)
+Loops to be rebuilt with standard method: 0
+Loops to be rebuilt with trace-through-density method: 0
+Loops to be rebuilt with iterative morphing method: 0
+
+================================================================================
+Rebuilding loops and ends at resolution of 2.9 A
+================================================================================
+
+Working model without ends start and end:  1 130
+
+================================================================================
+Setting up C-term extension at resolution of 2.9 A
+================================================================================
+
+Working model without ends start and end:  1 130
+
+================================================================================
+Setting up N-term extension at resolution of 2.9 A
+================================================================================
+
+================================================================================
+Inserting rebuilt loops and ends at resolution of 2.9 A
+================================================================================
+
+Inserting all loops now...
+No fl changes
+No tr changes
+No im changes
+
+Inserting all extensions now...
+Inserting C-term extension 
+Running sequence from map with a sequence...fit sequence to model
+
+Running build methods...  
+Methods: sequence_from_map_with_resolve 
+Tries per method: 1   Thoroughness: medium   Good enough score: 0.750
+
+  ID    CC_MASK   SCORE     SCORE_TYPE      METHOD NAME        THOROUGHNESS
+   1     0.533     0.533      cc_mask  sequence_from_map_with_resolve       medium
+
+Best log file
+
+Refining model with new sequence...
+Refinement successful
+
+
+
+Best result:
+
+  ID    CC_MASK   SCORE     SCORE_TYPE      METHOD NAME        THOROUGHNESS
+   1     0.533     0.533      cc_mask  sequence_from_map_with_resolve       medium
+Returning sequenced model
+Inserting extension using working model:
+Setting working model as model with extension
+Total of 2 residues added to model (130 before, 132 after)
+Obtained extended model 
+
+================================================================================
+Merging all models at resolution of 2.9 A
+================================================================================
+
+Models available:docked_model, refine_model, extend_model, previous_model
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (docked_model)
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (refine_model)
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (extend_model)
+
+Getting base segments
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Selection: (chain 'A' and resseq 1:130)  start: 1  end: 130  (previous_model)
+
+Base info summary:
+
+Base info for (chain 'A' and resseq 1:130):
+CC: 0.71  Model: extend_model
+CC: 0.70  Model: previous_model
+CC: 0.70  Model: refine_model
+CC: 0.66  Model: docked_model
+Average base CC: 0.71 
+Average base plDDT: 0.97 
+Getting segments and scoring them
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Model: docked_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+Model: refine_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+Model: extend_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+Model: previous_model Selection: (chain 'A' and resseq 131:132) Residues: 2  Expected 2
+
+Insert summary:
+
+Inserts for (chain 'A' and resseq 131:132):
+CC: 0.50  Model: previous_model  
+CC: 0.39  Model: refine_model  
+CC: 0.27  Model: extend_model  (low CC)
+CC: 0.25  Model: docked_model  (low CC)
+
+Building chain from fragments...
+
+Best version of each segment:
+A 1:130  (130 residues) CC: 0.71 (extend_model)
+A 131:132  (2 residues) CC: 0.50 (previous_model)
+
+Refinement of new model at resolution of 2.9 A (starting CC= 0.71 to working map)
+CC of refined model at resolution of 2.9 A: CC= 0.69 to working map
+Using refined new model
+Wrote refined model with 132 residues and CC= 0.69 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_dock_and_rebuild.pdb
+================================================================================
+
+   ###  Done running dock_and_rebuild to rebuild model 1 ###
+
+================================================================================
+
+Wrote overall rebuilt model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_rebuilt_1_cycle_2.pdb
+
+Putting together model from rebuilt parts
+Using rebuilt model chain 'A' 1 (/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_rebuilt_1_cycle_2.pdb)
+
+Overall mean CC value: 0.70 
+
+Mean CC values after applying cutoff  of 0.35: Mean  0.70  SD: 0.10
+Mean, sd of reasonable CC values: 0.70 +/- 0.10 
+Maximum rmsd of 1.50 A used
+Maximum B-value to be included: 59.22 A**2
+Start: 1  End: 132   Trimmmed:  1  132
+
+Selection based on plddt and cc_values:
+ (chain 'A' and resseq 1:132) 
+
+Trimming unconvincing residues...
+Original residues: 132   After trimming: 132
+Wrote updated rebuilt model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb
+Wrote updated_rebuilt model to: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb
+Summary of rebuilt model cycle 2
+Overall CC for rebuilt model: 0.69
+  CC for chain 'A': 0.69
+=============================================================================== 
+Finished with rebuilt model (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:24:12) 
+=============================================================================== 
+
+
+Comparison of model with previous...
+
+Previous: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_1.pdb (A)  
+Current: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb (A)   
+RMSD: 0.33 A
+
+Mean rmsd of all chains: 0.33 A
+Best docked untrimmed templates model was from cycle 1 with overall RMSD of 0.61 A (match score of 0.91) to best overall model
+
+Going on using results from this cycle...
+
+Best final model = /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb
+Writing overall best model from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best.pdb
+
+Mapped predicted models on scaffold (rmsd = 0.61 A)
+
+Writing superposed predicted models with pLDDT converted to B in B-value field from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best_superposed_predicted_models.pdb
+
+
+Writing superposed predicted models with pLDDT converted to B in B-value field from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_superposed_predicted_cycle_2.pdb
+
+
+Writing untrimmed superposed predicted models with pLDDT converted to B in B-value field from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_2.pdb
+
+Also writing untrimmed superposed predicted models  with pLDDT converted to B in B-value field  from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_2.pdb
+
+Writing final map...
+Boxing overall best map with /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb...
+Wrote final map to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best_map.ccp4
+Copying PAE matrix for chain 'A' to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_A_cycle_2.jsn
+Copying MSA for chain 'A' to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_A_cycle_2.jsn
+Writing new sequence file to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/7mjs_23883_H_edited.fa
+
+Working directory: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0
+
+
+Using rebuilt model for next cycle of predictions
+
+Set model to rebuild for next cycle to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb
+
+Set scaffold model for next cycle to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb
+NOTE: do not need to redo scaffold as min cc is 0.69
+
+================================================================================
+Done with cycle 2 of predict_and_build
+================================================================================
+=============================================================================== 
+Finished with cycle 2 (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:24:30) 
+=============================================================================== 
+
+
+pLDDT: average confidence,  High:  high-confidence (plddt >= 70.0) residues,  Low:   low-confidence (plDDT < 70.0) 
+
+RMSD: predicted vs rebuilt models,
+Morphed: Map-model CC of morphed predicted chain,Rebuilt: of rebuilt predicted chain,
+    Cycle    Chain    plDDT     RMSD  Morphed  Rebuilt     High      Low
+
+        1  Chain A    94.59     0.45     0.63     0.70      132        0
+
+
+        2  Chain A    94.29     0.61     0.66     0.69      131        1
+
+
+Change is small... 0.32982309363413237
+Ending cycles as changes are small and model is complete...
+
+================================================================================
+All done with predict_and_build
+================================================================================
+=============================================================================== 
+Finished (Job PredictAndBuild_0 cycle 2 at 2026-06-17 10:24:38) 
+=============================================================================== 
+
+Wrote model with 132 residues to:
+/Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_rebuilt.pdb
+Writing overall best model from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best.pdb
+
+Mapped predicted models on scaffold (rmsd = 0.61 A)
+
+Writing superposed predicted models with pLDDT converted to B in B-value field from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best_superposed_predicted_models.pdb
+
+
+Writing superposed predicted models with pLDDT converted to B in B-value field from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_superposed_predicted_cycle_2.pdb
+
+
+Writing untrimmed superposed predicted models with pLDDT converted to B in B-value field from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_2.pdb
+
+Also writing untrimmed superposed predicted models  with pLDDT converted to B in B-value field  from cycle 2 to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_superposed_predicted_untrimmed_cycle_2.pdb
+
+Writing final map...
+Boxing overall best map with /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_updated_rebuilt_0_cycle_2.pdb...
+Wrote final map to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_overall_best_map.ccp4
+Copying PAE matrix for chain 'A' to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_A_cycle_2.jsn
+Copying MSA for chain 'A' to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0_CarryOn/PredictAndBuild_0_pae_A_cycle_2.jsn
+Writing new sequence file to /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/7mjs_23883_H_edited.fa
+
+Working directory: /Users/terwill/test_ไทย/demos/AF_7mjs_H_PredictAndBuild/AIAgent_60/ai_agent_directory/sub_02_predict_and_build/PredictAndBuild_0
+
+
+Finished with predict_and_build
+
+
+Citations for predict_and_build:
+
+Jumper J, Evans R, Pritzel A, Green T, Figurnov M, Ronneberger O,
+Tunyasuvunakool K, Bates R, Žídek A, Potapenko A, Bridgland A, Meyer C, Kohl
+SAA, Ballard AJ, Cowie A, Romera-Paredes B, Nikolov S, Jain R, Adler J, Back T,
+Petersen S, Reiman D, Clancy E, Zielinski M, Steinegger M, Pacholska M,
+Berghammer T, Bodenstein S, Silver D, Vinyals O, Senior AW, Kavukcuoglu K,
+Kohli P, Hassabis D. (2021) Highly accurate protein structure prediction with
+AlphaFold. Nature 596:583-589.
+
+Liebschner D, Afonine PV, Baker ML, Bunkóczi G, Chen VB, Croll TI, Hintze B,
+Hung LW, Jain S, McCoy AJ, Moriarty NW, Oeffner RD, Poon BK, Prisant MG, Read
+RJ, Richardson JS, Richardson DC, Sammito MD, Sobolev OV, Stockwell DH,
+Terwilliger TC, Urzhumtsev AG, Videau LL, Williams CJ, Adams PD. (2019)
+Macromolecular structure determination using X-rays, neutrons and electrons:
+recent developments in Phenix. Acta Cryst. D75:861-877.
+
+Mirdita M, Schütze K, Moriwaki Y, Heo L, Ovchinnikov S, Steinegger M. (2022)
+Making protein folding accessible to all. Nature Methods 19:679–682.
+
+Mirdita M, Steinegger M, Söding J. (2019) MMseqs2 desktop and local web server
+app for fast interactive sequence searches. Bioinformatics 35:2856-2858.
+
+Steinegger M, Söding J. (2017) MMseqs2 enables sensitive protein sequence
+searching for the analysis of massive data sets. Nature biotechnology
+35:1026-1028.
+
+Terwilliger TC, Poon BK, Afonine PV, Schlicksup CJ, Croll TI, Millán C,
+Richardson JS, Read RJ, Adams PD. (2022) Improved AlphaFold modeling with
+implicit experimental information. Nature Methods 19:1376-1382.
+
+
+
+
+===============================================================================
+Job complete
+usr+sys time: 721.17 seconds
+wall clock time: 18 minutes 40.44 seconds (1120.44 seconds total)
+
+
+
+
+**************************************************
+FINAL QUALITY METRICS REPORT:
+--------------------------------------------------
+Map Cc: 0.6500
+Plddt: 89.96
+**************************************************
+

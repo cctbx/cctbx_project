@@ -127,41 +127,61 @@ async def analyze_log_summary(log_info, llm, embeddings,
       print(result.analysis)
   """
   try:
-    # v118.G2: lazy retriever import — see module-level note above.
-    from libtbx.langchain.rag.retriever import (
-      load_persistent_db,
-      create_reranking_retriever,
-      create_log_analysis_chain,
-    )
+    # Retrieval removed.  retriever.py:275 is
+    #     "context": lambda x: retriever.invoke(x["input"])
+    # so retrieval keyed on the query string ALONE.  That string was
+    # built from processed_log_dict['phenix_program'], which the
+    # summary scrape returns as '' on the format the model actually
+    # emits, and ['summary'], which is assigned "" and never
+    # reassigned.  Measured across four captured runs covering four
+    # programs, the query was
+    #     'Here is a summary of the  log file:\n\n ' + fixed boilerplate
+    # byte-identical for every log.  Retrieval selected documentation
+    # against a constant string; removing it costs nothing because it
+    # contributed nothing.
+    #
+    # `embeddings` and `db_dir` are now unused here and kept only so
+    # callers do not have to change.
+    payload = getattr(log_info, 'analysis_payload', None)
+    if not payload:
+      return group_args(
+        group_args_type='answer',
+        analysis=None,
+        error="no analysis payload was built for this log",
+      )
 
-    vectorstore = load_persistent_db(embeddings, db_dir=db_dir)
-    analysis_prompt = get_log_analysis_prompt()
-    retriever = create_reranking_retriever(vectorstore, llm, timeout=timeout)
-    analysis_rag_chain = create_log_analysis_chain(
-      retriever, llm, analysis_prompt)
+    final_analysis = llm.invoke(payload)
+    content = getattr(final_analysis, 'content', final_analysis)
 
-    retriever_query = (
-      "Here is a summary of the %s log file:\n\n " % (
-        log_info.processed_log_dict['phenix_program']) +
-      log_info.processed_log_dict['summary'] +
-      "\n\nConsidering whether the input data are from crystallography "
-      "(X-ray or neutron) or from cryo-EM, and considering the "
-      "the normal procedure for structure determination "
-      "in Phenix, what are the next steps that I should carry out?" +
-      "Consider this question in the context of the process of structure "
-      "determination in Phenix. Focus on using Phenix tools, but include "
-      "the use of Coot or Isolde if appropriate. Name the tools that are "
-      "to be used, along with their inputs and outputs and what they do."
-    )
-
-    final_analysis = analysis_rag_chain.invoke({
-      "input": retriever_query,
-      "log_summary": log_info.summary,
-    })
+    # Verifier, SHADOW MODE: log only, surface nothing.
+    #
+    # Phase 0a found zero fabricated figures in twenty reports, so this
+    # guards a problem we do not have and its whole value is rarity.
+    # Measured false-positive rate: 10% in-sample on the 40 study
+    # reports, 23% held-out on 13 shipped reports; detection unaffected
+    # (one fabricated figure injected into each of twenty reports is
+    # caught 20 of 20).  The entire residual is one category -- the
+    # R-free/R-work gap, a difference of two log values.  Do not expose
+    # flags to users until that is decided.
+    try:
+      from libtbx.langchain.analysis.report_verifier import (
+        check_numbers, check_program_names, summarise)
+      from libtbx.langchain.analysis.program_identity import load_registry
+      flags = check_numbers(content, getattr(log_info, 'log_text', '') or '')
+      blocked = check_program_names(content, set(load_registry()))
+      note = summarise(flags, blocked)
+      getattr(log_info, 'debug_log', []).append("VERIFIER (shadow): %s"
+                                                % note)
+      for flag in flags[:10]:
+        getattr(log_info, 'debug_log', []).append("  flag: %s" % flag)
+    except Exception as verifier_error:              # noqa: BLE001
+      # The verifier must never break a report it is only observing.
+      getattr(log_info, 'debug_log', []).append(
+        "VERIFIER unavailable: %s" % verifier_error)
 
     return group_args(
       group_args_type='answer',
-      analysis=final_analysis.content,
+      analysis=content,
       error=None
     )
 

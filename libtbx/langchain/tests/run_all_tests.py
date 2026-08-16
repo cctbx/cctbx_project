@@ -77,6 +77,7 @@ Test Suites (require PHENIX environment):
   56. v115 N-Bugs    - N1 event_formatter TypeError, N3 file_categories refined exclude
   57. v115 Fix 2     - fabricated stop-condition lines stripped before directive extraction
   58. v115 F1+F3     - abort_message for all stops; max-cycles explicit message
+  59. Ligandfit Patterns - programs.yaml log_parsing regexes for phenix.ligandfit
   59. v115 F2+F4+F7  - API key errors; blocked-program naming; empty command stop
   60. v115 F5        - workflow_complete stop reason on rules-only success
   61. v115 F6        - diagnosed_failure stop reason for terminal diagnosis
@@ -84,6 +85,10 @@ Test Suites (require PHENIX environment):
   63. P1B            - STOP_REASON_CODES, think_stop_override, think_file_overrides
   64. P1B Prompt     - stop_reason table injection, guard, graceful degradation
   65. P1B Action 1   - validate() think_file_overrides existence check
+  66. Log Structure Extractor - deterministic Phenix log reader: sections, phases,
+      stages, cycles, decisions, skips/exclusions, labeled values,
+      completion records, measurements, identification, and the unparsed
+      ledger. Corpus invariants gate on PHENIX_LOG_CORPUS (130 tests)
 
 Systematic Testing Framework (v115.08):
   S0. Phase 0: Static Audit - automated gate (parse, bare except, import fallbacks)
@@ -373,6 +378,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_yaml_config: {e}")
         results.append(("YAML Config", "tst_yaml_config", False, 0))
+
+    # --- Ligandfit Pattern Tests ---
+    try:
+        from tests.tst_ligandfit_patterns import run_all_tests as run_ligandfit_tests
+        success, elapsed = run_test_module(
+            "tst_ligandfit_patterns", run_ligandfit_tests, args.verbose)
+        results.append(("Ligandfit Patterns", "tst_ligandfit_patterns", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_ligandfit_patterns: {e}")
+        results.append(("Ligandfit Patterns", "tst_ligandfit_patterns", False, 0))
 
     # --- Sanity Checker Tests ---
     try:
@@ -2370,6 +2385,47 @@ def main():
     except ImportError as e:
         print(f"\u26a0\ufe0f  Could not import tst_rfree_lock_reconciliation: {e}")
         results.append(("R-free lock reconciliation", "tst_rfree_lock_reconciliation", False, 0))
+
+    # --- Phenix log structure extractor (libtbx/langchain/log_structure_extractor.py) ---
+    # Deterministic reader for Phenix log files: text in, structure out, every
+    # item carrying the line it came from. NOTE the module is NOT called
+    # tst_log_extractor: that name is already taken by the v113 suite
+    # registered above, and two modules of one name silently shadow each other
+    # on sys.path. 130 tests, including corpus-level invariants that SKIP when
+    # PHENIX_LOG_CORPUS is unset and FAIL LOUDLY when it is set but wrong.
+    try:
+        from tests.tst_log_structure_extractor import (
+            run_all_tests as run_log_structure_extractor_tests)
+        success, elapsed = run_test_module(
+            "tst_log_structure_extractor",
+            run_log_structure_extractor_tests, args.verbose)
+        results.append(("Log Structure Extractor",
+                        "tst_log_structure_extractor", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_log_structure_extractor: {e}")
+        results.append(("Log Structure Extractor",
+                        "tst_log_structure_extractor", False, 0))
+
+    # --- Log analysis replacement (Steps 1-3) ---------------------------
+    # Each of these SKIPS rather than fails when its data directory is
+    # absent, and says so on its own last line.  A skip is not a pass:
+    # set PHIL_CORPUS_DIR, PHIL_REPORTS_DIR, PHIL_CAPTURED_DIR and
+    # PHENIX_SOURCE_DIR to run them for real.
+    for _label, _module in (
+            ("Program identity", "tst_program_identity"),
+            ("Analysis request", "tst_analysis_request"),
+            ("Report verifier", "tst_report_verifier"),
+            ("Mode isolation", "tst_mode_isolation"),
+            ("Summary file", "tst_summary_file"),
+    ):
+        try:
+            _imported = __import__("tests.%s" % _module, fromlist=["x"])
+            success, elapsed = run_test_module(
+                _module, _imported.run_all_tests, args.verbose)
+            results.append((_label, _module, success, elapsed))
+        except ImportError as e:
+            print("\u26a0\ufe0f  Could not import %s: %s" % (_module, e))
+            results.append((_label, _module, False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start
