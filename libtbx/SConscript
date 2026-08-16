@@ -1236,6 +1236,13 @@ if env_etc.cxx11_is_available:
     elif libtbx.env.build_options.enable_cxx11:
       raise RuntimeError("C++11 is not available, see config.log")
 
+# set default C standard
+if sys.platform != 'win32':
+  c_flags = ['-std=gnu17']
+  env_etc.cflags_base.extend(c_flags)
+  env_base.Append(CFLAGS=c_flags)
+  env_base.Append(SHCFLAGS=c_flags)
+
 """ ************************ Custom Builders and Emitters **************************** """
 
 
