@@ -17,6 +17,7 @@ from six.moves import cStringIO as StringIO
 
 import iotbx.phil
 from cctbx import crystal
+from cctbx import sgtbx
 from cctbx.uctbx.near_minimum import cell_distance
 from libtbx.utils import Sorry
 from tqdm import tqdm
@@ -71,6 +72,7 @@ def load_pdb_cells(path):
   """
   rows = []
   n_skipped = 0
+  sg_info_cache = {}
   with open(path) as f:
     for i, line in enumerate(f):
       if i == 0:
@@ -80,9 +82,11 @@ def load_pdb_cells(path):
         pdb_code = entry[0]
         a, b, c, al, be, ga = [float(x) for x in entry[1:7]]
         sg_str = entry[8]
+        if sg_str not in sg_info_cache:
+          sg_info_cache[sg_str] = sgtbx.space_group_info(symbol=sg_str)
         cs = crystal.symmetry(
           unit_cell=(a, b, c, al, be, ga),
-          space_group_symbol=sg_str)
+          space_group_info=sg_info_cache[sg_str])
       except Exception:
         n_skipped += 1
         continue
