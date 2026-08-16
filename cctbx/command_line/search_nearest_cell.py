@@ -52,10 +52,12 @@ usage_string = """\
 cctbx.search_nearest_cell unit_cell=39.741,183.767,140.649,90,90,90 \\
   space_group=C222 data_file=pdb_crystallography_data.csv n_results=10
 
-Search a PDB unit-cell database (CSV) for the entries nearest a query cell,
-transforming each candidate into the query's setting via
-crystal.symmetry.change_of_basis_op_to_nearest_setting so that matches which
-are only visible across a cell-reduction boundary are not missed."""
+Search a PDB unit-cell database (CSV) for the entries nearest a query cell.
+The nearly-reduced settings of the query cell are computed once; each database
+cell is then reduced to its minimum cell and compared against all of those
+settings (via crystal.symmetry.change_of_basis_op_to_nearest_setting), so that
+matches which are only visible across a cell-reduction boundary are not missed.
+Each match is reported transformed into the query's setting."""
 
 
 def load_pdb_cells(path):
@@ -124,7 +126,8 @@ def run(args, out=sys.stdout):
   print("Loaded %d cells from %s (%d skipped: unparsable space group or cell)" % (
     len(rows), params.data_file, n_skipped), file=out)
 
-  print("Searching nearly-reduced settings...", file=out)
+  print("Comparing nearly-reduced settings of the query against all database cells...",
+        file=out)
   t0 = time.time()
   results = []
   for pdb_code, cs_row in tqdm(rows):
