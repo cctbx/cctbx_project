@@ -132,7 +132,8 @@ def run(args, out=sys.stdout):
       cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
         cs_row,
         length_tolerance=params.length_tolerance,
-        angle_tolerance=params.angle_tolerance)
+        angle_tolerance=params.angle_tolerance,
+        test_multiples=False)
     except Exception:
       continue  # search failure, same bucket as parse failures
     transformed_uc = cs_row.unit_cell().change_basis(cb_op)
