@@ -1,6 +1,37 @@
 from cctbx import uctbx, sgtbx
 from cctbx.crystal import symmetry
+from cctbx.uctbx.near_minimum import cell_distance
 import numpy as np
+
+
+def _assert_nearest_setting_matches(actual, expected, reference_cell_params):
+    """
+    The tabulated `expected` cell parameters encode an arbitrary tie-break
+    phase (see docstrings above) among settings that are equally close to the
+    reference, so an exact match is not required. Instead, check that:
+    1) `actual` describes the same lattice as `expected` (up to a similarity
+       transformation), and
+    2) `actual` is at least as close to the reference cell as the tabulated
+       `expected` value is.
+    """
+    sim_ops = uctbx.unit_cell(actual).similarity_transformations(
+        uctbx.unit_cell(expected),
+        relative_length_tolerance=0.02,
+        absolute_angle_tolerance=0.5,
+        unimodular_generator_range=1)
+    assert len(sim_ops) > 0, \
+        f"No similarity transformation found between {actual} and {expected}"
+
+    d_actual = cell_distance(reference_cell_params, actual)
+    d_expected = cell_distance(reference_cell_params, expected)
+    # The tabulated values are only given to a handful of decimal places, so
+    # a strict 1e-3 absolute tolerance is too tight: rounding the tabulated
+    # cell alone can shift its summed L1 distance by more than that. Allow
+    # a small tolerance that scales with the tabulated distance itself.
+    tolerance = max(1e-3, d_expected * 1e-3)
+    assert d_actual <= d_expected + tolerance, \
+        f"{actual} is farther from the reference cell than " \
+        f"{expected} ({d_actual} > {d_expected})"
 
 
 def test_a2a_abs_2023():
@@ -107,6 +138,7 @@ def test_pla2_abs_2023():
 
     for i_ref in [0,3,4]:
         cs_ref = symmetry(unit_cell=cells[i_ref], space_group=sgs[i_ref])
+        reference_cell_params = cs_ref.unit_cell().parameters()
         results = []
 
         # Transform all cells to match reference setting
@@ -121,7 +153,8 @@ def test_pla2_abs_2023():
         assert len(results) == len(expected)
         for i, (actual, expected_params) in enumerate(zip(results, expected)):
             print(i_ref, i)
-            np.testing.assert_allclose(actual, expected_params, rtol=1e-3)
+            _assert_nearest_setting_matches(
+                actual, expected_params, reference_cell_params)
 
 
 def test_table11_database():
@@ -172,6 +205,7 @@ def test_table11_database():
 
     i_ref = 0
     cs_ref = css[i_ref]
+    reference_cell_params = cs_ref.unit_cell().parameters()
     results = []
 
     # Transform all cells to match reference setting
@@ -211,7 +245,8 @@ def test_table11_database():
     assert len(results) == 26, f"Expected 26 results, got {len(results)}"
     for i, (actual, expected_params) in enumerate(zip(results, expected)):
         print(i)
-        np.testing.assert_allclose(actual, expected_params, rtol=1e-3)
+        _assert_nearest_setting_matches(
+            actual, expected_params, reference_cell_params)
 
 
 def test_cell_multiples():

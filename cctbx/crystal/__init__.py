@@ -590,15 +590,17 @@ class symmetry(object):
         identity_idx = idx
         break
 
+    if not hasattr(self, 'nearest_setting_count'):
+      self.nearest_setting_count = 0
+
     if identity_idx is not None:
       # Prefer identity to avoid unnecessary reindexing
       best_idx = identity_idx
+      self.nearest_setting_count += 1
     else:
       # If there are multiple best settings and we are handling multiple cells,
       # then we want all best settings to be represented; but we want to do it
       # deterministically for testing purposes.
-      if not hasattr(self, 'nearest_setting_count'):
-        self.nearest_setting_count = 0
       best_idx = tied_indices[self.nearest_setting_count % len(tied_indices)]
       self.nearest_setting_count += 1
 
