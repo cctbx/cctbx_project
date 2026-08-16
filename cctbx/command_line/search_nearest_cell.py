@@ -15,12 +15,14 @@ import sys
 import time
 from six.moves import cStringIO as StringIO
 
+import numpy as np
+
 import iotbx.phil
 from cctbx import crystal
 from cctbx import sgtbx
-from cctbx.uctbx.near_minimum import cell_distance
+from cctbx.uctbx.near_minimum import (
+  cell_distance, bulk_lean_min_cell_params, bulk_query_frame_distances)
 from libtbx.utils import Sorry
-from tqdm import tqdm
 
 master_phil_str = """
 unit_cell = None
@@ -69,6 +71,16 @@ def load_pdb_cells(path):
   valid crystal.symmetry are silently skipped; the caller is responsible for
   reporting the total skip count (per-row warnings would flood the terminal
   over ~200k rows).
+
+  Some rows store a rhombohedral-setting cell (a=b=c, alpha=beta=gamma != 90)
+  under a bare R space-group symbol (e.g. "R 3 2"); cctbx's bare-symbol
+  default assumes hexagonal axes (gamma=120) and rejects such a cell as
+  incompatible. Before counting such a row as a skip, retry once against the
+  explicit rhombohedral setting of the same symbol (symbol + ' :R'). The
+  ':R' variant's sg_info is cached under its own key, separate from the bare
+  symbol's cache entry, so a symbol that needs the retry is still only
+  reparsed once across the whole file (not once per row that shares it), and
+  a symbol that already succeeds bare is never shadowed by this fallback.
   """
   rows = []
   n_skipped = 0
@@ -84,9 +96,17 @@ def load_pdb_cells(path):
         sg_str = entry[8]
         if sg_str not in sg_info_cache:
           sg_info_cache[sg_str] = sgtbx.space_group_info(symbol=sg_str)
-        cs = crystal.symmetry(
-          unit_cell=(a, b, c, al, be, ga),
-          space_group_info=sg_info_cache[sg_str])
+        try:
+          cs = crystal.symmetry(
+            unit_cell=(a, b, c, al, be, ga),
+            space_group_info=sg_info_cache[sg_str])
+        except Exception:
+          sg_str_r = sg_str + ' :R'
+          if sg_str_r not in sg_info_cache:
+            sg_info_cache[sg_str_r] = sgtbx.space_group_info(symbol=sg_str_r)
+          cs = crystal.symmetry(
+            unit_cell=(a, b, c, al, be, ga),
+            space_group_info=sg_info_cache[sg_str_r])
       except Exception:
         n_skipped += 1
         continue
@@ -133,8 +153,36 @@ def run(args, out=sys.stdout):
   print("Comparing nearly-reduced settings of the query against all database cells...",
         file=out)
   t0 = time.time()
+
+  # Bulk architecture: (1) get every row's minimum-cell params via the lean
+  # path (no change_of_basis_op object construction); (2) one batched numpy
+  # distance computation between the query's cached nearly-reduced settings
+  # and all rows, taking the min over settings per row; (3) run the
+  # unmodified, exact change_of_basis_op_to_nearest_setting API on only the
+  # top-M candidates by bulk distance for the final ranking. Bulk distance
+  # is always <= the true distance (see bulk_query_frame_distances'
+  # docstring), so this re-verification step can only ever promote a
+  # borderline candidate into the top-M, never drop a real hit.
+  settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
+    length_tolerance=params.length_tolerance,
+    angle_tolerance=params.angle_tolerance,
+    test_multiples=False)
+
+  # bulk_lean_min_cell_params silently drops rows whose reduction raises
+  # (mirroring the old per-row try/except loop); valid_indices maps each
+  # surviving row in min_cell_params back to its position in `rows`, so a
+  # dropped row is simply never a bulk-prefilter candidate.
+  min_cell_params, valid_indices = bulk_lean_min_cell_params(
+    [cs_row for _, cs_row in rows])
+  bulk_dist = bulk_query_frame_distances(
+    cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
+
+  margin = max(100, 10 * params.n_results)
+  candidate_order = valid_indices[np.argsort(bulk_dist)[:margin]]
+
   results = []
-  for pdb_code, cs_row in tqdm(rows):
+  for idx in candidate_order:
+    pdb_code, cs_row = rows[idx]
     try:
       cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
         cs_row,

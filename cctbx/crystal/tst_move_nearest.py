@@ -1,6 +1,7 @@
 from cctbx import uctbx, sgtbx
 from cctbx.crystal import symmetry
-from cctbx.uctbx.near_minimum import cell_distance
+from cctbx.uctbx.near_minimum import (
+    cell_distance, bulk_lean_min_cell_params, bulk_query_frame_distances)
 import numpy as np
 
 
@@ -430,10 +431,108 @@ def test_change_of_basis_op_to_nearest_setting():
     print("\nAll has_nearer_setting tests passed!")
 
 
+def test_bulk_query_frame_distances():
+    """
+    Regression test for the bulk-architecture vectorized distance
+    (cctbx.uctbx.near_minimum.bulk_query_frame_distances), used by
+    cctbx.search_nearest_cell to prefilter large databases before running
+    the exact, unmodified change_of_basis_op_to_nearest_setting API.
+
+    bulk_query_frame_distances is a proven lower bound for the query-frame
+    distance change_of_basis_op_to_nearest_setting's caller would compute
+    (see its docstring): check that property holds on ~100 random cells
+    against a fixed query, rather than asserting exact equality (which only
+    holds when the query is already its own minimum cell, or for close
+    matches in general).
+    """
+    np.random.seed(0)
+    cs_ref = symmetry(
+        unit_cell=(57.98, 57.98, 57.98, 92.02, 92.02, 92.02),
+        space_group='R3:R')
+    settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
+        length_tolerance=0.03, angle_tolerance=3.0, test_multiples=False)
+
+    # P1 accepts any (a,b,c,alpha,beta,gamma), so random triclinic cells are
+    # always a valid crystal.symmetry -- this exercises the vectorized
+    # distance formula across a wide range of raw cells without needing to
+    # hand-craft cells compatible with higher-symmetry space groups.
+    n_rows = 100
+    axes = np.random.uniform(20, 150, size=(n_rows, 3))
+    angles = np.random.uniform(70, 110, size=(n_rows, 3))
+    rows = []
+    for i in range(n_rows):
+        cell = tuple(axes[i]) + tuple(angles[i])
+        rows.append(symmetry(unit_cell=cell, space_group='P1'))
+
+    min_cell_params, valid_indices = bulk_lean_min_cell_params(rows)
+    # All P1 cells are valid, so no row should have been dropped.
+    assert list(valid_indices) == list(range(n_rows))
+    bulk_dist = bulk_query_frame_distances(
+        cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
+
+    true_dist = np.full(n_rows, np.nan)
+    for i, cs_row in enumerate(rows):
+        cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
+            cs_row, length_tolerance=0.03, angle_tolerance=3.0,
+            test_multiples=False)
+        transformed_uc = cs_row.unit_cell().change_basis(cb_op)
+        true_dist[i] = cell_distance(
+            cs_ref.unit_cell().parameters(), transformed_uc.parameters())
+
+    # Lower-bound property: the bulk prefilter distance must never exceed
+    # the exact distance the full API reports, else a top-N prefilter could
+    # silently drop a real hit.
+    tolerance = 1e-6
+    assert np.all(bulk_dist <= true_dist[valid_indices] + tolerance), \
+        "bulk_query_frame_distances exceeded the true distance for some row(s): " \
+        f"max excess {np.max(bulk_dist - true_dist[valid_indices])}"
+
+    print("bulk_query_frame_distances lower-bound property holds for "
+          f"{n_rows} random rows")
+
+
+class _FailingSymmetry(object):
+    """
+    Duck-typed stand-in for a crystal.symmetry whose minimum-cell reduction
+    fails, to exercise bulk_lean_min_cell_params's per-row exception
+    handling. A real pathological crystal.symmetry can't easily be
+    constructed for this purpose since the constructor itself already
+    guards against incompatible space-group/cell combinations.
+    """
+
+    def space_group(self):
+        raise RuntimeError("simulated reduction failure")
+
+
+def test_bulk_lean_min_cell_params_edge_cases():
+    """
+    Regression test for two reviewer-flagged bugs in
+    cctbx.uctbx.near_minimum.bulk_lean_min_cell_params:
+    1) empty input must not crash (np.array([]) collapses to shape (0,),
+       not (0, 6), which broke cell_to_metric_tensor_vec's cells[:, i]);
+    2) a row whose reduction raises must be excluded, not propagate the
+       exception -- matching the old per-row try/except loop this bulk
+       path replaces.
+    """
+    params, valid_indices = bulk_lean_min_cell_params([])
+    assert params.shape == (0, 6)
+    assert valid_indices.shape == (0,)
+
+    good = symmetry(unit_cell=(10, 11, 12, 90, 90, 90), space_group='P1')
+    rows = [good, _FailingSymmetry(), good]
+    params, valid_indices = bulk_lean_min_cell_params(rows)
+    assert list(valid_indices) == [0, 2], valid_indices
+    assert params.shape == (2, 6), params.shape
+
+    print("bulk_lean_min_cell_params edge cases (empty input, failing row) ok")
+
+
 if __name__ == '__main__':
     test_a2a_abs_2023()
     test_pla2_abs_2023()
     test_table11_database()
     test_cell_multiples()
     test_change_of_basis_op_to_nearest_setting()
+    test_bulk_query_frame_distances()
+    test_bulk_lean_min_cell_params_edge_cases()
     print("ok")

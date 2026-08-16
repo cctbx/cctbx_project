@@ -510,37 +510,17 @@ class symmetry(object):
   def is_incomplete(self):
     return self.unit_cell() is None or self.space_group() is None
 
-  def change_of_basis_op_to_nearest_setting(self, other,
-                                             length_tolerance=0.03,
-                                             angle_tolerance=3.0,
-                                             test_multiples=False):
+  def _ensure_near_minimum_cache(self, length_tolerance, angle_tolerance,
+                                  test_multiples):
     """
-    Compute the change-of-basis operator that transforms 'other' to the
-    setting nearest to self.
+    Build (if not already cached for these parameters) self's nearly-reduced
+    settings and the composed change-of-basis operators that map a
+    minimum-cell-frame `other` back into self's original setting.
 
-    This method is useful for transforming indexed crystals (with Miller
-    indices, reflections, etc.) to match the setting of a reference crystal.
-
-    Parameters
-    ----------
-    other : symmetry
-        The crystal symmetry to find the transformation for
-    length_tolerance : float
-        Fractional tolerance for length perturbations (default 0.03 = 3%)
-    angle_tolerance : float
-        Tolerance for angle perturbations in degrees (default 3.0)
-    test_multiples : bool
-        Whether to test multiples of the unit cell (default False)
-
-    Returns
-    -------
-    sgtbx.change_of_basis_op
-        The change-of-basis operator to transform 'other' to the nearest
-        setting of self. Apply this directly to 'other' (not to its minimum cell).
+    Shared by change_of_basis_op_to_nearest_setting and the public
+    near_minimum_settings_and_cb_ops() accessor below, so the two never
+    disagree about how the cache is built or keyed.
     """
-
-    # Get or compute cached nearly-reduced settings for self
-    cache_key = ('_near_minimum_cache', length_tolerance, angle_tolerance)
     if not hasattr(self, '_near_minimum_cache') or \
        getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance, test_multiples):
       mc_self = self.minimum_cell()
@@ -576,6 +556,80 @@ class symmetry(object):
         cbi_near_ops.append(cbi_self * cb_near)
       self._near_minimum_cbi_near_ops = cbi_near_ops
 
+  def near_minimum_settings_and_cb_ops(self, length_tolerance=0.03,
+                                        angle_tolerance=3.0,
+                                        test_multiples=False):
+    """
+    Public accessor for self's cached nearly-reduced settings and their
+    composed change-of-basis operators back to self's original setting.
+
+    This is the same cache change_of_basis_op_to_nearest_setting builds and
+    uses internally; it is exposed here for bulk / vectorized callers that
+    need to compare many candidate cells against self's settings at once
+    (see cctbx.uctbx.near_minimum.bulk_query_frame_distances and
+    cctbx/command_line/search_nearest_cell.py for a worked example) without
+    reaching into private attributes.
+
+    Parameters
+    ----------
+    length_tolerance : float
+        Fractional tolerance for length perturbations (default 0.03 = 3%)
+    angle_tolerance : float
+        Tolerance for angle perturbations in degrees (default 3.0)
+    test_multiples : bool
+        Whether to test multiples of the unit cell (default False)
+
+    Returns
+    -------
+    (settings, cbi_near_ops) : (list of dict, list of sgtbx.change_of_basis_op)
+        settings[i]['cell'] is nearly-reduced setting i's cell parameters
+        (tuple of 6 floats); cbi_near_ops[i] is its composed change-of-basis
+        operator, i.e. cbi_near_ops[i] applied to a minimum-cell-frame
+        `other` (by minimum_cell then change_basis) transforms it into
+        self's original setting.
+
+        Each call returns a fresh shallow copy of the two cached lists, so
+        a caller that appends/removes/reorders elements of the returned
+        lists cannot corrupt self's cache (subsequent calls, including
+        change_of_basis_op_to_nearest_setting's internal use of the same
+        cache, are unaffected). The list *elements* themselves -- the
+        setting dicts and change_of_basis_op objects -- are still shared
+        with the cache and should be treated as read-only.
+    """
+    self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples)
+    return list(self._near_minimum_cache), list(self._near_minimum_cbi_near_ops)
+
+  def change_of_basis_op_to_nearest_setting(self, other,
+                                             length_tolerance=0.03,
+                                             angle_tolerance=3.0,
+                                             test_multiples=False):
+    """
+    Compute the change-of-basis operator that transforms 'other' to the
+    setting nearest to self.
+
+    This method is useful for transforming indexed crystals (with Miller
+    indices, reflections, etc.) to match the setting of a reference crystal.
+
+    Parameters
+    ----------
+    other : symmetry
+        The crystal symmetry to find the transformation for
+    length_tolerance : float
+        Fractional tolerance for length perturbations (default 0.03 = 3%)
+    angle_tolerance : float
+        Tolerance for angle perturbations in degrees (default 3.0)
+    test_multiples : bool
+        Whether to test multiples of the unit cell (default False)
+
+    Returns
+    -------
+    sgtbx.change_of_basis_op
+        The change-of-basis operator to transform 'other' to the nearest
+        setting of self. Apply this directly to 'other' (not to its minimum cell).
+    """
+
+    # Get or compute cached nearly-reduced settings for self
+    self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples)
     settings = self._near_minimum_cache
     cbi_near_ops = self._near_minimum_cbi_near_ops
 
