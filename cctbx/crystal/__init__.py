@@ -552,13 +552,38 @@ class symmetry(object):
       )
       self._near_minimum_cache = settings
       self._near_minimum_cache_params = (length_tolerance, angle_tolerance, test_multiples)
-      self._near_minimum_cbi_self = self.change_of_basis_op_to_minimum_cell().inverse()
+      cbi_self = self.change_of_basis_op_to_minimum_cell().inverse()
+      self._near_minimum_cbi_self = cbi_self
+
+      # Precompute the composed change-of-basis operator (cbi_self * cb_near)
+      # for each cached setting. This depends only on `self`'s cached
+      # settings, not on `other`, so it can be computed once per cache build
+      # instead of being reconstructed on every call.
+      cbi_near_ops = []
+      for setting in settings:
+        P = setting['P']
+        P_round = np.rint(P)
+        if np.allclose(P, P_round, atol=1e-8):
+          P_int = tuple(int(x) for x in P_round.ravel())
+          common_denominator = 1
+        else:
+          fractions = [Fraction(x).limit_denominator(10) for x in P.ravel()]
+          denominators = [f.denominator for f in fractions]
+          common_denominator = int(reduce(np.lcm, denominators))
+          P_int = tuple(int(f * common_denominator) for f in fractions)
+        rot_mx = sgtbx.rot_mx(P_int, common_denominator)
+        cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
+        cbi_near_ops.append(cbi_self * cb_near)
+      self._near_minimum_cbi_near_ops = cbi_near_ops
 
     settings = self._near_minimum_cache
-    cbi_self = self._near_minimum_cbi_self
+    cbi_near_ops = self._near_minimum_cbi_near_ops
 
-    # Convert other to minimum cell
-    mc_other = other.minimum_cell()
+    # Convert other to minimum cell. change_basis with the explicit cb_op
+    # avoids other.minimum_cell() redundantly recomputing the same
+    # change_of_basis_op_to_minimum_cell() internally.
+    cb_other_to_min = other.change_of_basis_op_to_minimum_cell()
+    mc_other = other.change_basis(cb_other_to_min)
     uc_other = np.array(mc_other.unit_cell().parameters())
 
     # Compute distances for each nearly-reduced setting
@@ -567,19 +592,9 @@ class symmetry(object):
     tolerance = 1e-7
     tied_indices = [i for i, d in enumerate(distances) if abs(d - best_dist) <= tolerance]
 
-    # Get the transformation from other to its minimum cell
-    cb_other_to_min = other.change_of_basis_op_to_minimum_cell()
-
     # Helper function to build change-of-basis operator from a setting index
     def build_cb_op(idx):
-      P = settings[idx]['P']
-      fractions = [Fraction(x).limit_denominator(10) for x in P.ravel()]
-      denominators = [f.denominator for f in fractions]
-      common_denominator = int(reduce(np.lcm, denominators))
-      P_int = tuple(int(f * common_denominator) for f in fractions)
-      rot_mx = sgtbx.rot_mx(P_int, common_denominator)
-      cb_near = sgtbx.change_of_basis_op(sgtbx.rt_mx(rot_mx).as_xyz())
-      return cbi_self * cb_near * cb_other_to_min
+      return cbi_near_ops[idx] * cb_other_to_min
 
     # Check if any of the tied settings results in an identity operator
     # If so, prefer it to avoid unnecessary reindexing
