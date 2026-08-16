@@ -464,7 +464,9 @@ def test_bulk_query_frame_distances():
         cell = tuple(axes[i]) + tuple(angles[i])
         rows.append(symmetry(unit_cell=cell, space_group='P1'))
 
-    min_cell_params = bulk_lean_min_cell_params(rows)
+    min_cell_params, valid_indices = bulk_lean_min_cell_params(rows)
+    # All P1 cells are valid, so no row should have been dropped.
+    assert list(valid_indices) == list(range(n_rows))
     bulk_dist = bulk_query_frame_distances(
         cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
 
@@ -481,12 +483,48 @@ def test_bulk_query_frame_distances():
     # the exact distance the full API reports, else a top-N prefilter could
     # silently drop a real hit.
     tolerance = 1e-6
-    assert np.all(bulk_dist <= true_dist + tolerance), \
+    assert np.all(bulk_dist <= true_dist[valid_indices] + tolerance), \
         "bulk_query_frame_distances exceeded the true distance for some row(s): " \
-        f"max excess {np.max(bulk_dist - true_dist)}"
+        f"max excess {np.max(bulk_dist - true_dist[valid_indices])}"
 
     print("bulk_query_frame_distances lower-bound property holds for "
           f"{n_rows} random rows")
+
+
+class _FailingSymmetry(object):
+    """
+    Duck-typed stand-in for a crystal.symmetry whose minimum-cell reduction
+    fails, to exercise bulk_lean_min_cell_params's per-row exception
+    handling. A real pathological crystal.symmetry can't easily be
+    constructed for this purpose since the constructor itself already
+    guards against incompatible space-group/cell combinations.
+    """
+
+    def space_group(self):
+        raise RuntimeError("simulated reduction failure")
+
+
+def test_bulk_lean_min_cell_params_edge_cases():
+    """
+    Regression test for two reviewer-flagged bugs in
+    cctbx.uctbx.near_minimum.bulk_lean_min_cell_params:
+    1) empty input must not crash (np.array([]) collapses to shape (0,),
+       not (0, 6), which broke cell_to_metric_tensor_vec's cells[:, i]);
+    2) a row whose reduction raises must be excluded, not propagate the
+       exception -- matching the old per-row try/except loop this bulk
+       path replaces.
+    """
+    params, valid_indices = bulk_lean_min_cell_params([])
+    assert params.shape == (0, 6)
+    assert valid_indices.shape == (0,)
+
+    good = symmetry(unit_cell=(10, 11, 12, 90, 90, 90), space_group='P1')
+    rows = [good, _FailingSymmetry(), good]
+    params, valid_indices = bulk_lean_min_cell_params(rows)
+    assert list(valid_indices) == [0, 2], valid_indices
+    assert params.shape == (2, 6), params.shape
+
+    print("bulk_lean_min_cell_params edge cases (empty input, failing row) ok")
 
 
 if __name__ == '__main__':
@@ -496,4 +534,5 @@ if __name__ == '__main__':
     test_cell_multiples()
     test_change_of_basis_op_to_nearest_setting()
     test_bulk_query_frame_distances()
+    test_bulk_lean_min_cell_params_edge_cases()
     print("ok")

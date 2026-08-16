@@ -130,16 +130,41 @@ def bulk_lean_min_cell_params(crystal_symmetries):
     """
     Apply lean_min_cell_params to a sequence of crystal.symmetry objects.
 
+    A row whose reduction raises (e.g. a space group genuinely incompatible
+    with its cell) is excluded rather than propagating the exception, matching
+    the old per-row try/except loop this replaces: such a row simply never
+    becomes a bulk-prefilter candidate. The caller is responsible for mapping
+    the returned indices back to whatever per-row bookkeeping (pdb codes,
+    etc.) it maintains alongside crystal_symmetries.
+
     Parameters
     ----------
     crystal_symmetries : sequence of crystal.symmetry, length N
 
     Returns
     -------
-    ndarray, shape (N, 6)
-        Minimum-cell parameters for each input, row-aligned.
+    (params, valid_indices) : (ndarray, ndarray)
+        params has shape (M, 6): minimum-cell parameters for each row that
+        didn't raise, in the same relative order as the input. valid_indices
+        has shape (M,), dtype int: params[i] corresponds to
+        crystal_symmetries[valid_indices[i]]. M <= N; both are shape (0, 6)
+        / (0,) if crystal_symmetries is empty or every row fails.
     """
-    return np.array([lean_min_cell_params(cs) for cs in crystal_symmetries])
+    params = []
+    valid_indices = []
+    for i, cs in enumerate(crystal_symmetries):
+        try:
+            p = lean_min_cell_params(cs)
+        except Exception:
+            continue
+        params.append(p)
+        valid_indices.append(i)
+    if not params:
+        # np.array([]) on an empty list collapses to shape (0,), not
+        # (0, 6), which then breaks cells[:, i] downstream -- return the
+        # correctly-shaped empty arrays explicitly instead.
+        return np.empty((0, 6)), np.empty((0,), dtype=int)
+    return np.array(params), np.array(valid_indices, dtype=int)
 
 
 def cell_to_metric_tensor_vec(cells):
@@ -156,6 +181,12 @@ def cell_to_metric_tensor_vec(cells):
     ndarray, shape (N, 3, 3)
         Metric tensor for each input cell.
     """
+    cells = np.asarray(cells)
+    if cells.shape[0] == 0:
+        # An (0,) or (0, 6) empty input both collapse here; cells[:, i]
+        # below would otherwise raise IndexError on a bare shape-(0,) array
+        # (e.g. from np.array([]) on an empty list of cells).
+        return np.empty((0, 3, 3))
     a, b, c, al, be, ga = [cells[:, i] for i in range(6)]
     al, be, ga = np.radians(al), np.radians(be), np.radians(ga)
     G = np.zeros((cells.shape[0], 3, 3))

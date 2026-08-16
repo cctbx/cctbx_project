@@ -587,9 +587,17 @@ class symmetry(object):
         operator, i.e. cbi_near_ops[i] applied to a minimum-cell-frame
         `other` (by minimum_cell then change_basis) transforms it into
         self's original setting.
+
+        Each call returns a fresh shallow copy of the two cached lists, so
+        a caller that appends/removes/reorders elements of the returned
+        lists cannot corrupt self's cache (subsequent calls, including
+        change_of_basis_op_to_nearest_setting's internal use of the same
+        cache, are unaffected). The list *elements* themselves -- the
+        setting dicts and change_of_basis_op objects -- are still shared
+        with the cache and should be treated as read-only.
     """
     self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples)
-    return self._near_minimum_cache, self._near_minimum_cbi_near_ops
+    return list(self._near_minimum_cache), list(self._near_minimum_cbi_near_ops)
 
   def change_of_basis_op_to_nearest_setting(self, other,
                                              length_tolerance=0.03,

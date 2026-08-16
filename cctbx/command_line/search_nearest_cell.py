@@ -150,12 +150,17 @@ def run(args, out=sys.stdout):
     angle_tolerance=params.angle_tolerance,
     test_multiples=False)
 
-  min_cell_params = bulk_lean_min_cell_params([cs_row for _, cs_row in rows])
+  # bulk_lean_min_cell_params silently drops rows whose reduction raises
+  # (mirroring the old per-row try/except loop); valid_indices maps each
+  # surviving row in min_cell_params back to its position in `rows`, so a
+  # dropped row is simply never a bulk-prefilter candidate.
+  min_cell_params, valid_indices = bulk_lean_min_cell_params(
+    [cs_row for _, cs_row in rows])
   bulk_dist = bulk_query_frame_distances(
     cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
 
   margin = max(100, 10 * params.n_results)
-  candidate_order = np.argsort(bulk_dist)[:margin]
+  candidate_order = valid_indices[np.argsort(bulk_dist)[:margin]]
 
   results = []
   for idx in candidate_order:
