@@ -71,6 +71,16 @@ def load_pdb_cells(path):
   valid crystal.symmetry are silently skipped; the caller is responsible for
   reporting the total skip count (per-row warnings would flood the terminal
   over ~200k rows).
+
+  Some rows store a rhombohedral-setting cell (a=b=c, alpha=beta=gamma != 90)
+  under a bare R space-group symbol (e.g. "R 3 2"); cctbx's bare-symbol
+  default assumes hexagonal axes (gamma=120) and rejects such a cell as
+  incompatible. Before counting such a row as a skip, retry once against the
+  explicit rhombohedral setting of the same symbol (symbol + ' :R'). The
+  ':R' variant's sg_info is cached under its own key, separate from the bare
+  symbol's cache entry, so a symbol that needs the retry is still only
+  reparsed once across the whole file (not once per row that shares it), and
+  a symbol that already succeeds bare is never shadowed by this fallback.
   """
   rows = []
   n_skipped = 0
@@ -86,9 +96,17 @@ def load_pdb_cells(path):
         sg_str = entry[8]
         if sg_str not in sg_info_cache:
           sg_info_cache[sg_str] = sgtbx.space_group_info(symbol=sg_str)
-        cs = crystal.symmetry(
-          unit_cell=(a, b, c, al, be, ga),
-          space_group_info=sg_info_cache[sg_str])
+        try:
+          cs = crystal.symmetry(
+            unit_cell=(a, b, c, al, be, ga),
+            space_group_info=sg_info_cache[sg_str])
+        except Exception:
+          sg_str_r = sg_str + ' :R'
+          if sg_str_r not in sg_info_cache:
+            sg_info_cache[sg_str_r] = sgtbx.space_group_info(symbol=sg_str_r)
+          cs = crystal.symmetry(
+            unit_cell=(a, b, c, al, be, ga),
+            space_group_info=sg_info_cache[sg_str_r])
       except Exception:
         n_skipped += 1
         continue
