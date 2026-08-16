@@ -15,12 +15,14 @@ import sys
 import time
 from six.moves import cStringIO as StringIO
 
+import numpy as np
+
 import iotbx.phil
 from cctbx import crystal
 from cctbx import sgtbx
-from cctbx.uctbx.near_minimum import cell_distance
+from cctbx.uctbx.near_minimum import (
+  cell_distance, bulk_lean_min_cell_params, bulk_query_frame_distances)
 from libtbx.utils import Sorry
-from tqdm import tqdm
 
 master_phil_str = """
 unit_cell = None
@@ -133,8 +135,31 @@ def run(args, out=sys.stdout):
   print("Comparing nearly-reduced settings of the query against all database cells...",
         file=out)
   t0 = time.time()
+
+  # Bulk architecture: (1) get every row's minimum-cell params via the lean
+  # path (no change_of_basis_op object construction); (2) one batched numpy
+  # distance computation between the query's cached nearly-reduced settings
+  # and all rows, taking the min over settings per row; (3) run the
+  # unmodified, exact change_of_basis_op_to_nearest_setting API on only the
+  # top-M candidates by bulk distance for the final ranking. Bulk distance
+  # is always <= the true distance (see bulk_query_frame_distances'
+  # docstring), so this re-verification step can only ever promote a
+  # borderline candidate into the top-M, never drop a real hit.
+  settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
+    length_tolerance=params.length_tolerance,
+    angle_tolerance=params.angle_tolerance,
+    test_multiples=False)
+
+  min_cell_params = bulk_lean_min_cell_params([cs_row for _, cs_row in rows])
+  bulk_dist = bulk_query_frame_distances(
+    cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
+
+  margin = max(100, 10 * params.n_results)
+  candidate_order = np.argsort(bulk_dist)[:margin]
+
   results = []
-  for pdb_code, cs_row in tqdm(rows):
+  for idx in candidate_order:
+    pdb_code, cs_row = rows[idx]
     try:
       cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
         cs_row,

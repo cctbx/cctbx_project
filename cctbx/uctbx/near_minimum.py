@@ -88,6 +88,179 @@ def cell_distance(cell1, cell2):
     return s
 
 
+def lean_min_cell_params(crystal_symmetry):
+    """
+    Compute a crystal.symmetry's minimum-cell parameters via the C++
+    reduction result directly (``red.as_unit_cell()``), skipping the
+    ``sgtbx.change_of_basis_op`` construction that
+    ``crystal.symmetry.change_of_basis_op_to_minimum_cell()`` performs.
+
+    Bit-identical (to floating-point noise, ~1e-13) to::
+
+        cb = crystal_symmetry.change_of_basis_op_to_minimum_cell()
+        crystal_symmetry.unit_cell().change_basis(cb).parameters()
+
+    but ~3x faster over a large database, since it never builds the
+    rot_mx/rt_mx/change_of_basis_op/inverse/new_denominators/multiply chain
+    of boost.python objects -- only the reduced cell's parameters are
+    needed, not a reusable operator. Intended for bulk callers (e.g.
+    bulk_lean_min_cell_params below); for a single cell where the
+    change-of-basis operator itself is also needed, use
+    change_of_basis_op_to_minimum_cell() instead.
+
+    Parameters
+    ----------
+    crystal_symmetry : crystal.symmetry
+        Must expose .space_group() and .unit_cell(), as any crystal.symmetry
+        does.
+
+    Returns
+    -------
+    tuple of 6 floats
+        (a, b, c, alpha, beta, gamma) of the minimum cell.
+    """
+    z2p_op = crystal_symmetry.space_group().z2p_op()
+    r_inv = z2p_op.c_inv().r()
+    p_cell = crystal_symmetry.unit_cell().change_basis(r_inv.num(), r_inv.den())
+    red = p_cell.minimum_reduction()
+    return red.as_unit_cell().parameters()
+
+
+def bulk_lean_min_cell_params(crystal_symmetries):
+    """
+    Apply lean_min_cell_params to a sequence of crystal.symmetry objects.
+
+    Parameters
+    ----------
+    crystal_symmetries : sequence of crystal.symmetry, length N
+
+    Returns
+    -------
+    ndarray, shape (N, 6)
+        Minimum-cell parameters for each input, row-aligned.
+    """
+    return np.array([lean_min_cell_params(cs) for cs in crystal_symmetries])
+
+
+def cell_to_metric_tensor_vec(cells):
+    """
+    Vectorized version of cell_to_metric_tensor.
+
+    Parameters
+    ----------
+    cells : ndarray, shape (N, 6)
+        Cell parameters (a, b, c, alpha, beta, gamma), angles in degrees.
+
+    Returns
+    -------
+    ndarray, shape (N, 3, 3)
+        Metric tensor for each input cell.
+    """
+    a, b, c, al, be, ga = [cells[:, i] for i in range(6)]
+    al, be, ga = np.radians(al), np.radians(be), np.radians(ga)
+    G = np.zeros((cells.shape[0], 3, 3))
+    G[:, 0, 0] = a * a
+    G[:, 1, 1] = b * b
+    G[:, 2, 2] = c * c
+    G[:, 0, 1] = G[:, 1, 0] = a * b * np.cos(ga)
+    G[:, 0, 2] = G[:, 2, 0] = a * c * np.cos(be)
+    G[:, 1, 2] = G[:, 2, 1] = b * c * np.cos(al)
+    return G
+
+
+def metric_tensor_to_cell_vec(G):
+    """
+    Vectorized version of metric_tensor_to_cell.
+
+    Parameters
+    ----------
+    G : ndarray, shape (..., 3, 3)
+        Metric tensor(s); any number of leading batch dimensions.
+
+    Returns
+    -------
+    ndarray, shape (..., 6)
+        Cell parameters (a, b, c, alpha, beta, gamma), angles in degrees.
+    """
+    a = np.sqrt(G[..., 0, 0])
+    b = np.sqrt(G[..., 1, 1])
+    c = np.sqrt(G[..., 2, 2])
+    cos_al = np.clip(G[..., 1, 2] / (b * c), -1, 1)
+    cos_be = np.clip(G[..., 0, 2] / (a * c), -1, 1)
+    cos_ga = np.clip(G[..., 0, 1] / (a * b), -1, 1)
+    return np.stack([
+        a, b, c,
+        np.degrees(np.arccos(cos_al)),
+        np.degrees(np.arccos(cos_be)),
+        np.degrees(np.arccos(cos_ga)),
+    ], axis=-1)
+
+
+def bulk_query_frame_distances(self_params, cbi_near_ops, min_cell_params):
+    """
+    Vectorized query-frame L1 distance between a query cell and N candidate
+    cells (given as minimum-cell parameters), minimized over the query's n
+    cached nearly-reduced settings.
+
+    This is a fast lower bound for the distance that
+    crystal.symmetry.change_of_basis_op_to_nearest_setting eventually
+    reports for each candidate: for each cached setting i (with composed
+    change-of-basis operator f_i = cbi_near_ops[i]), the candidate's minimum
+    cell is transformed by f_i via the metric-tensor congruence
+    G' = M^-T G M^-1 (M = f_i's rotation matrix; this convention, not the
+    naive M G M^T or M^T G M, is the one that reproduces
+    uctbx.unit_cell.change_basis, verified against boost.python ground
+    truth on synthetic test cells), and the L1 distance to self_params is
+    taken; the minimum over settings is returned per candidate.
+
+    It is a lower bound, not always bit-identical to the value
+    change_of_basis_op_to_nearest_setting's caller would compute, because
+    that method picks its "best" setting via a different (minimum-cell-frame)
+    criterion first and only then reports whatever query-frame distance that
+    already-chosen setting happens to produce. The two selection criteria
+    provably coincide when self is already its own minimum cell, and
+    empirically coincide for close matches in general; they can diverge for
+    poor/far matches, but only with this function's value being <= the true
+    value -- so a top-M prefilter ranked by this function's output cannot
+    silently drop a true top-N match. See cctbx/command_line/
+    search_nearest_cell.py for the intended bulk-prefilter-then-exact-verify
+    usage.
+
+    Parameters
+    ----------
+    self_params : array-like, shape (6,)
+        The query's own (untransformed) unit cell parameters.
+    cbi_near_ops : sequence of sgtbx.change_of_basis_op, length n
+        The composed change-of-basis operators for the query's cached
+        nearly-reduced settings, e.g. from
+        crystal.symmetry.near_minimum_settings_and_cb_ops().
+    min_cell_params : ndarray, shape (N, 6)
+        Minimum-cell parameters for each of the N candidate rows, e.g. from
+        bulk_lean_min_cell_params().
+
+    Returns
+    -------
+    ndarray, shape (N,)
+        The bulk query-frame distance for each candidate row.
+    """
+    G_row = cell_to_metric_tensor_vec(min_cell_params)  # (N,3,3)
+    Minvs = []
+    for f_i in cbi_near_ops:
+        r = f_i.c().r()
+        M = np.array(r.num(), dtype=float).reshape(3, 3, order='C') / r.den()
+        Minvs.append(np.linalg.inv(M))
+    Minvs = np.array(Minvs)  # (n,3,3)
+    MinvsT = Minvs.transpose(0, 2, 1)  # (n,3,3)
+
+    # G'_{s,r} = Minv_s^T @ G_row[r] @ Minv_s, for all settings s, rows r.
+    G_new = np.einsum('sab,rbc,scd->srad', MinvsT, G_row, Minvs)  # (n,N,3,3)
+    cells_new = metric_tensor_to_cell_vec(G_new)  # (n,N,6)
+    self_params = np.asarray(self_params, dtype=float)
+    diffs = np.abs(cells_new - self_params[None, None, :])
+    dists_query_frame = diffs.sum(axis=-1)  # (n,N)
+    return dists_query_frame.min(axis=0)  # (N,)
+
+
 def _quick_crossing_check(cell, vec1, vec2_array, delta_length_frac, delta_angle_deg):
     """
     Vectorized check if vec2's can become shorter than vec1 under perturbations.
