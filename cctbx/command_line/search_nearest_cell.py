@@ -42,7 +42,8 @@ angle_tolerance = 3.0
   .help = "Angle tolerance (degrees) passed to nearest_setting"
 max_search_index = 10
   .type = int
-  .help = "Lattice vector search range passed to nearest_setting"
+  .help = "Currently unused: change_of_basis_op_to_nearest_setting does not" \
+          "expose this knob; the internal find_near_minimum_settings default applies"
 """
 
 master_phil = iotbx.phil.parse(master_phil_str)
