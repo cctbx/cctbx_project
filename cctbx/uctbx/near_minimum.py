@@ -81,7 +81,11 @@ def cell_distance(cell1, cell2):
     float
         Sum of absolute differences
     """
-    return np.sum(np.abs(np.asarray(cell2) - np.asarray(cell1)))
+    s = 0.0
+    for x1, x2 in zip(cell1, cell2):
+        d = x2 - x1
+        s += d if d >= 0 else -d
+    return s
 
 
 def _quick_crossing_check(cell, vec1, vec2_array, delta_length_frac, delta_angle_deg):

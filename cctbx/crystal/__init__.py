@@ -583,8 +583,7 @@ class symmetry(object):
     # avoids other.minimum_cell() redundantly recomputing the same
     # change_of_basis_op_to_minimum_cell() internally.
     cb_other_to_min = other.change_of_basis_op_to_minimum_cell()
-    mc_other = other.change_basis(cb_other_to_min)
-    uc_other = np.array(mc_other.unit_cell().parameters())
+    uc_other = other.unit_cell().change_basis(cb_other_to_min).parameters()
 
     # Compute distances for each nearly-reduced setting
     distances = [cell_distance(uc_other, setting['cell']) for setting in settings]
