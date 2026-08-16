@@ -1,4 +1,166 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4 / v121
+
+## Version 121 (ai_analysis standard mode: single-call replacement — six measured defects removed)
+
+### Summary
+
+`phenix.ai_analysis` standard mode no longer summarises, chunks or
+retrieves. The report path is now: read the log → resolve the program →
+**one long-context LLM call on the whole log** → report. `summary_file`
+is filled by a deterministic reader of the log, with no LLM involved.
+
+Six defects were measured in the old path and are removed by
+construction — there is no longer a component that can exhibit them.
+
+| # | defect | measured |
+|---|---|---|
+| 1 | the analysis step read a ~1 KB summary, not the log | **0.7–8.4% of the log retained** on 6 of 7 logs |
+| 2 | `_custom_log_chunker` dropped everything after `Citations` when *"Files are in the directory"* appeared | **7 of 20 corpus logs; 59% of a 304 KB log** |
+| 3 | the program was misidentified: the server path never derived the name from the file name, so content substrings decided | **6 wrong of 20**; an xtriage log identified as `phenix.phaser` |
+| 4 | a fabricated program name was written into the prompt: `"Log file for phenix.xtriage_1"` | **19 of 20 named a program that does not exist** |
+| 5 | retrieval keyed on a query built from a scrape that always returned `''` and a field always `""` | query **byte-identical for every log**, 4 captured runs |
+| 6 | the summariser could emit more than it was given | **382,721 chars from 156,951** (one line ×4,328, appearing twice in the source), **byte-identical across two runs**; and **2,026,595 from 312,011** |
+
+### Result
+
+- head to head on the 8 logs with a captured old-path report:
+  **21 rubric checks passed against 16 — better on 3, tied on 5, worse
+  on none**;
+- against a whole-log single call on `claude-sonnet-4-6`:
+  `[20, 8, 3, 5, 4]` against `[20, 7, 3, 5, 3]`;
+- **run-to-run flip rate 2% (2 of 100 cells)** across two uncached
+  passes over 20 logs, against **8% (2 of 25)** for the old path.
+
+### Code changes
+
+`analysis/program_identity.py` (new) — caller → log banner → file name
+→ refuse, every result validated against `knowledge/programs.yaml`.
+**20 of 20, zero wrong, zero refused** on both corpus shapes. Records
+`source` and `authoritative`: a file name is *inferred*, since registry
+membership proves a name exists, not that it is right.
+
+`analysis/analysis_request.py` (new) — builds the single call. The log
+is embedded **once, byte for byte**, with a SHA-256 travelling alongside
+so a caller can verify before sending. No header is written when the
+program is unresolved.
+
+`analysis/report_verifier.py` (new) — shadow mode, logs only. Number
+support allowing rounding, thousands separators, scientific notation and
+truncation; **false-positive rate 10% in-sample, 23% held out**, with
+detection unaffected (one injected figure caught 20 of 20). The entire
+residual is one category, the R-free/R-work gap.
+
+`analysis/orientation_strip.py` (new) — fills `summary_file`
+deterministically. Previously the report was written to both files:
+**byte-identical on 40 of 40 outputs across two passes**. Now
+**382–1033 characters** and identical on 0 of 20. Imports the extractor
+from `log_extraction/`; **no second copy is vendored**.
+
+`analysis/analyzer.py` — retrieval removed; sends the prepared payload.
+
+`utils/run_utils.py` — `analysis_payload` and `program_identity` added
+to the `log_info` object.
+
+`phenix_ai/run_ai_analysis.py` — request construction replaces
+`summarize_log`; **four gates on `log_info.summary` corrected**, not
+one. The gate inside `analyze_summary_with_rag` was missed first time
+and rejected every request with *"Sorry: No summary to analyze"*.
+
+`programs/ai_analysis.py` — the resolver replaces
+`get_program_name_from_log_file_name`; the fabricated header is gone.
+
+### RAG database no longer required for standard mode
+
+Retrieval was removed but **five places still gated on its database**;
+three blocked the report path. Observed in production: **anthropic
+refused to run** for want of a database the code no longer reads.
+
+- `_LLM_ONLY_MODES` now includes `'standard'`;
+- the `raise Sorry("run phenix.install_ai_tools")` in `run_job_locally`
+  became `ai_db_dir = None`;
+- a database error in `run()` is logged rather than aborting.
+
+**This changed 13 of 16 routing combinations for standard mode.** All
+are cases where the user asked for local execution (`run_on_server=False`,
+8 cases) or the provider is local-only (`ollama`, 4 cases) or
+`FORCE_NO_AI_SERVER=1` with no database (1 case). **The default path —
+`run_on_server=True`, provider `google`, `FORCE` unset — is unchanged.**
+
+**Release note:** a user who sets `run_on_server=False` and has no API
+key previously got a silent server submission; they now get a local run
+that fails for want of a key. That honours the flag they set, but it is
+a visible change.
+
+### Statements in earlier entries that this makes false
+
+- **v120, line 317** — *"An actual embeddings query failure (only
+  reachable via `phenix.ai_analysis standard`/RAG, never the agent)"*.
+  Standard mode no longer reaches embeddings for retrieval.
+- **v120, line 329** — *"`analysis/summarizer.py` (portkey chunk
+  sizes)"* as part of the RAG path. `summarizer.py` is no longer
+  reachable from `run()`; verified on the module-local call graph.
+- **v120, line 333** — *"Anthropic is intentionally **not** a
+  database-build provider (no native embeddings)"*. Still true of the
+  database, but it no longer prevents `phenix.ai_analysis` from running:
+  anthropic completed a 659 KB log in 40.8 s wall with no database.
+
+### Large logs
+
+Tested on a real 659 KB AutoBuild log (13,973 lines as analysed here), 2.2× larger than
+anything in the corpus, on **three providers**:
+
+| provider | words | figures traced to the log | deepest citation |
+|---|---|---|---|
+| google | 368 | 14 | **99.8%** |
+| openai | 551 | 34 | **99.8%** |
+| anthropic | 615 | 32 | **99.8%** |
+
+**All three read to the end of the log**, and openai and anthropic cite
+from ~3% to 99.8%. The deterministic summary is byte-identical across
+all three.
+
+**Not established:** behaviour above ~660 KB. No multi-megabyte log has
+been run, and no size threshold or reduction exists. **Do not enable
+this for arbitrary user logs until one does** — an LLM summary above a
+threshold would reintroduce defect 6 at exactly the sizes where it
+fires.
+
+### Tests
+
+`tst_program_identity.py` 15 · `tst_analysis_request.py` 12 ·
+`tst_report_verifier.py` 15 · `tst_mode_isolation.py` 15 ·
+`tst_summary_file.py` 16 — **73, registered in
+`tests/run_all_tests.py`**. Each skips when its data directory is
+absent and **fails loudly when a variable is set but wrong**.
+
+### Deploy set (14 files)
+
+    langchain/analysis/  program_identity.py  analysis_request.py
+                         report_verifier.py   orientation_strip.py
+                         analyzer.py
+    langchain/utils/     run_utils.py
+    langchain/tests/     run_all_tests.py  tst_program_identity.py
+                         tst_analysis_request.py  tst_report_verifier.py
+                         tst_mode_isolation.py    tst_summary_file.py
+    phenix/programs/     ai_analysis.py
+    phenix/phenix_ai/    run_ai_analysis.py
+
+### Known follow-up
+
+- **`analyze_summary_with_rag` is a misnomer** — it does no RAG. Its
+  `embeddings` and `db_dir` arguments are unused on the report path and
+  are kept only so callers need not change. Rename with its callers.
+- **`setup_llms` still constructs embeddings** for a report path that
+  does not use them. Wasted, not harmful.
+- **`_extract_output_files` returns `[]`** on both the summary and the
+  report. Pre-existing; the extractor exposes no output-file structure.
+- **The verifier is shadow-only** and writes to `log_info.debug_log`,
+  which is never echoed.
+- **No check reaches a fluent wrong claim.** The old path's
+  *"enantiomorphic space groups I 4 and I 41"* scores clean on
+  everything here.
+
+---
 
 ## Version 120.4 (R-free lock reconciliation: selected-file generate decision + lock reconciliation, widened to undetermined — v120.3 → v120.4)
 
@@ -316,7 +478,10 @@ no-access key.  For anthropic, embeddings delegate to a default provider
 An actual embeddings *query* failure (only reachable via
 `phenix.ai_analysis standard`/RAG, never the agent) surfaces a clear
 execution-time error echoing the raw upstream message rather than
-matching on `"Unauthorized"`.
+matching on `"Unauthorized"`.  **[SUPERSEDED by v121: `standard` mode no
+longer retrieves, so this failure is not reachable from
+`phenix.ai_analysis` at all.  The remaining embeddings-query sites are
+the database-build tools and `run_query_docs.py`.]**
 
 Call sites updated to route portkey/anthropic: `agent/api_client.py`
 (`_call_portkey_llm` + dispatch), `agent/directive_extractor.py`
@@ -327,10 +492,14 @@ site), `agent/thinking_agent.py` (`_get_rate_handler`).  The embeddings/
 RAG database path was completed end-to-end: `utils/run_utils.py`
 (`validate_api_keys` gates both providers; `get_db_dir_for_provider`
 gained `docs_db_portkey`), `analysis/summarizer.py` (portkey chunk
-sizes), `run_query_docs.py` (accepts both), and the database-build tools
+sizes) **[SUPERSEDED by v121: `summarizer.py` is no longer reachable
+from `run_ai_analysis.run()`; its chunk sizes are on no live path]**, `run_query_docs.py` (accepts both), and the database-build tools
 `command_line/rebuild_ai_database.py` + `update_ai_database.py` (accept
 `portkey` from argv with key-check).  Anthropic is intentionally **not**
-a database-build provider (no native embeddings).  `get_ai_db_dir` /
+a database-build provider (no native embeddings).  **[Still true of the
+database as of v121 — but it no longer prevents `phenix.ai_analysis`
+from running: `standard` mode needs no database, and anthropic
+completed a 659 KB log in 40.8 s wall with no `docs_db_anthropic`.]**  `get_ai_db_dir` /
 `have_ai_database` in `phenix_ai/utilities.py` are provider-agnostic
 (string interpolation → `docs_db_<provider>`) and needed no change.
 

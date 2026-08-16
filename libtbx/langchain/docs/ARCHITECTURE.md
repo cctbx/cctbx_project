@@ -747,11 +747,11 @@ params.communication.provider = "<provider>"
          │       └─► run_directive_extraction(provider=...)
          │            └─► call_llm_simple(provider=...)
          │
-         └─► run_ai_analysis.run() [summarization + RAG]
+         └─► run_ai_analysis.run() [single long-context call, v121]
                  └─► setup_llms(provider=...)
                       ├─► expensive_llm = get_expensive_llm(provider)
-                      ├─► cheap_llm = get_cheap_llm(provider)
-                      └─► embeddings = provider-specific embeddings
+                      ├─► cheap_llm  = constructed, unused on this path
+                      └─► embeddings = constructed, unused on this path
 ```
 
 ### Key Files
@@ -767,13 +767,20 @@ params.communication.provider = "<provider>"
 
 ### Ollama-Specific Behavior
 
-- **LLM-only modes** (v115.05): All analysis modes that don't need the
-  RAG database — `directive_extraction`, `advice_preprocessing`,
+- **LLM-only modes** (v115.05; `standard` added v121): All five analysis
+  modes — `standard`, `directive_extraction`, `advice_preprocessing`,
   `failure_diagnosis`, `agent_session` — are routed to local execution
-  when `run_on_server=False` or when `provider=ollama`. Only `standard`
-  mode (log analysis with knowledge-base retrieval) requires the server
-  database. This prevents concurrent runs from queueing at the Phenix
-  server for preprocessing when a local LLM is available.
+  when `run_on_server=False` or when `provider=ollama`. **No mode needs
+  the RAG database any more**: v121 removed retrieval from `standard`,
+  which was the last consumer. This prevents concurrent runs from
+  queueing at the Phenix server when a local LLM is available.
+
+  **Consequence, worth knowing before editing this dispatcher:** the set
+  now contains every declared `analysis_mode`, so the guard
+  `(analysis_mode not in _LLM_ONLY_MODES) and (not has_database)` in
+  `run_job_on_server_or_locally` **can never be true** and its
+  `raise Sorry` is unreachable. It is left in place deliberately: adding
+  a sixth mode that does need a database would make it live again.
 - **Planning LLM** uses `json_mode=True` (sets `format="json"` in ChatOllama)
   because ollama models need explicit JSON formatting; Google and OpenAI handle
   structured output without this flag
@@ -803,12 +810,18 @@ complete checklist (learned across the v120 portkey/anthropic work):
    `graph_nodes` LLM site; add the handler in `thinking_agent._get_rate_handler`.
 8. Add the provider to the `provider` PHIL enums in `programs/ai_agent.py` and
    `programs/ai_analysis.py` (the GUI dropdown regenerates from these).
-9. If the provider can do embeddings (RAG): add it to `run_utils.validate_api_keys`,
-   `run_utils.get_db_dir_for_provider`, `analysis/summarizer.py` chunk sizes,
-   `run_query_docs.py`, and the database-build tools
-   `command_line/rebuild_ai_database.py` + `update_ai_database.py`. If it has no
-   native embeddings (like anthropic), wire chat only and let
-   `_delegate_embeddings_for_nonnative()` handle the embeddings side.
+9. **Embeddings are optional for `phenix.ai_analysis` as of v121** — the
+   report path makes one long-context call and never retrieves. A provider
+   with chat only (anthropic) runs `standard` mode with no database at
+   all; verified on a 659 KB log, 40.8 s wall, no `docs_db_anthropic`.
+   Embeddings still matter for the database-build tools and for
+   `run_query_docs.py`. If the provider can do them: add it to
+   `run_utils.validate_api_keys`, `run_utils.get_db_dir_for_provider`,
+   `run_query_docs.py`, and `command_line/rebuild_ai_database.py` +
+   `update_ai_database.py`. If it has no native embeddings, wire chat
+   only and let `_delegate_embeddings_for_nonnative()` handle the rest.
+   (`analysis/summarizer.py` chunk sizes are no longer on any live path;
+   that module is unreachable from `run_ai_analysis.run()`.)
 10. Add the runtime deps to `phenix_ai/install_ai_tools.csh`.
 
 ### Provider Routing — Single Source of Truth (v120 P2)
@@ -853,9 +866,12 @@ the same object and that no literal survives outside `core/llm.py`.
   no-access key. For anthropic, `_delegate_embeddings_for_nonnative()`
   delegates to OpenAI/Google when a key is present (emitting a
   `[PROVIDER_DELEGATION]` marker), else returns `None`; it never raises on
-  construction. A real embeddings *query* failure (only via `standard`/RAG)
-  surfaces a clear execution-time error echoing the raw upstream message,
-  not a `"Unauthorized"` string match.
+  construction. A real embeddings *query* failure surfaces a clear
+  execution-time error echoing the raw upstream message, not a
+  `"Unauthorized"` string match. **As of v121 that failure is no longer
+  reachable from `phenix.ai_analysis`** — `standard` mode does not query
+  embeddings. The remaining query sites are the database-build tools and
+  `run_query_docs.py`.
 
 ### FORCE_NO_AI_SERVER (v120 P1)
 
@@ -873,11 +889,13 @@ not a baseline change. No effect on `predict_and_build`/`predict_model` run
 separately. The flag is **absolute**: both dispatchers
 (`run_job_on_server_or_locally` in `ai_agent.py` and `ai_analysis.py`) re-check
 it and refuse to submit to the server, even via the no-local-database fallback
-that `standard` mode would otherwise take. When local execution is impossible
-(standard mode, no local RAG database for the provider), the dispatcher raises
-`Sorry` with actionable guidance instead of silently contacting the server; the
-LLM-only modes (directive_extraction, advice_preprocessing, failure_diagnosis,
-agent_session) never need the database and always run local. Because provider
+that `standard` mode would otherwise take. **As of v121 local execution is
+never impossible for want of a database**: no mode retrieves, so all five
+run local under this flag with no `docs_db_<provider>` present. The
+`Sorry` that used to fire here — *"'standard' analysis mode needs a local
+RAG database for provider 'anthropic' and none was found"* — was blocking
+providers for want of a database the code no longer reads, and is now
+unreachable. Because provider
 travels in the request `settings` and is consumed only in shared
 `agent/`+`core/` code, local and server execution run identical branches; the
 only difference is whether information crosses machines. The server simply also
@@ -6374,24 +6392,31 @@ extremely difficult to diagnose.
 ### Analysis mode routing (`ai_analysis.py`)
 
 The `ai_analysis.py` module is shared infrastructure for all LLM
-interactions. It has five `analysis_mode` values, but only one of
-them uses the RAG database:
+interactions. It has five `analysis_mode` values. **As of v121 none of
+them uses the RAG database** — `standard` was the last consumer and no
+longer retrieves:
 
 | Mode | Used by | Needs RAG DB | What it does |
 |------|---------|:------------:|--------------|
-| `standard` | `phenix.ai_analysis` (standalone) | **Yes** | Analyzes a single PHENIX log file using retrieval-augmented generation against the Phenix knowledge base (documentation, papers, newsletters). Produces a summary + detailed analysis. This is the original `phenix.ai_analysis` program; **the AI Agent does not use this mode**. |
+| `standard` | `phenix.ai_analysis` (standalone) | No (v121) | Analyzes a single PHENIX log file with **one long-context LLM call on the whole log**. Produces a deterministic summary of the log (`summary_file`, built without an LLM) plus the analysis. Before v121 it summarised the log, retrieved documentation against that summary, then analysed the summary; all three steps are gone. **The AI Agent does not use this mode**. |
 | `directive_extraction` | AI Agent (session start) | No | Parses user advice into structured directives (prefer_programs, after_program, strategy settings). Pure LLM call. |
 | `advice_preprocessing` | AI Agent (session start) | No | Reformats a tutorial README into structured guidance the agent can follow. Pure LLM call. |
 | `failure_diagnosis` | AI Agent (on terminal error) | No | Produces a three-section diagnosis (what went wrong / cause / fix) from a program's error log. Pure LLM call. |
 | `agent_session` | AI Agent (session end) | No | Generates an end-of-run assessment from the session history. Pure LLM call. |
 
-**Why this matters for routing.** The v115.05 `_LLM_ONLY_MODES` set
-in `run_job_on_server_or_locally()` routes the four non-standard
-modes to local execution when `run_on_server=False` or when
-`provider=ollama`. Only `standard` mode is sent to the server,
-because it is the only mode that needs the RAG database. Without
-this distinction, all five modes would queue at the Phenix server
-for every cycle, even when a local LLM is available.
+**Why this matters for routing.** The v115.05 `_LLM_ONLY_MODES` set in
+`run_job_on_server_or_locally()` routes its members to local execution
+when `run_on_server=False` or when `provider=ollama`. **v121 added
+`standard`**, so the set now holds all five modes and none is forced to
+the server for want of a database. Without this routing, every mode
+would queue at the Phenix server for each cycle even when a local LLM
+is available.
+
+**Note for anyone adding a sixth mode:** because the set now contains
+every declared mode, the guard
+`(analysis_mode not in _LLM_ONLY_MODES) and (not has_database)` is
+unreachable and its `raise Sorry` cannot fire. A new mode that does
+need the database would make it live again.
 
 **The agent's THINK node is separate.** The THINK node in the
 LangGraph pipeline does its own log analysis using `thinking_prompts.py`
@@ -6399,7 +6424,7 @@ and the expert knowledge base — it does not go through `ai_analysis.py`
 at all. The two systems share the same LLM providers but serve
 different purposes: THINK produces per-cycle expert assessments that
 feed PLAN, while `ai_analysis.py` standard mode produces standalone
-summaries for human consumption.
+reports for human consumption.
 
 ### Observability across the client/server split (v119.H4 lesson)
 

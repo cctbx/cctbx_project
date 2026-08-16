@@ -274,43 +274,49 @@ which modes need the server is critical:
 
 | Mode | Used by | Needs server |
 |------|---------|:------------:|
-| `standard` | `phenix.ai_analysis` (standalone) | **Yes** (RAG DB) |
+| `standard` | `phenix.ai_analysis` (standalone) | No (v121) |
 | `directive_extraction` | Agent (session start) | No |
 | `advice_preprocessing` | Agent (session start) | No |
 | `failure_diagnosis` | Agent (on terminal error) | No |
 | `agent_session` | Agent (session end) | No |
 
 The agent **never uses `standard` mode**. That mode is
-the standalone `phenix.ai_analysis` program which does
-retrieval-augmented generation against the Phenix
-knowledge base.
+the standalone `phenix.ai_analysis` program. **As of
+v121 it no longer does retrieval**: it makes one
+long-context call on the whole log.
 
-The four agent modes are pure LLM calls routed locally
+All five modes are now pure LLM calls routed locally
 when `run_on_server=False` or `provider=ollama`. If you
 add a new analysis mode, decide whether it needs the
 RAG database and add it to `_LLM_ONLY_MODES` in
-`run_job_on_server_or_locally()` if it doesn't.
+`run_job_on_server_or_locally()` if it doesn't — note
+that the set currently contains every declared mode, so
+the database guard there is unreachable until one does.
 
 The agent's THINK node does its own log analysis via
 `thinking_prompts.py` and the expert knowledge base —
 it does not go through `ai_analysis.py` at all.
 
-**Local routing does not relax §0.** The LLM-only modes never need the
-database and always run local, and they still run *identical branches*
-— the only difference is whether information crosses machines.
+**Local routing does not relax §0.** No mode needs the database as of
+v121, and all run local when asked to. They still run *identical
+branches* — the only difference is whether information crosses machines.
 
-**When a mode cannot run locally, it fails loudly.** With no local RAG
-database for the provider, `standard` mode raises `Sorry` with
-actionable guidance **rather than silently contacting the server**.
-Preserve that. A silent fallback to the server is the failure this
-behaviour exists to prevent, and any new mode should fail the same way.
+**When a mode cannot run locally, it fails loudly.** Preserve that
+principle: a silent fallback to the server is the failure this
+guideline exists to prevent.
+
+**The concrete instance is gone as of v121.** `standard` mode used to
+raise `Sorry` when the provider had no local RAG database. It no longer
+retrieves, so it needs no database, and that `Sorry` was refusing runs
+for want of a file the code never read — observed with `anthropic`. Any
+new mode that does need a database should fail the same loud way.
 
 **`FORCE_NO_AI_SERVER=1` is the local-only switch, and it is
 absolute.** Set to the literal `1` (whitespace-stripped), it forces
 `run_on_server=False` for both `phenix.ai_agent` and
 `phenix.ai_analysis`, across **every** analysis mode. Both dispatchers
 re-check it and refuse to submit to the server even via the
-no-local-database fallback `standard` mode would otherwise take. The
+no-local-database fallback `standard` mode used to take. The
 shipped PHIL default stays `True`; this is a surgical switch, not a
 baseline change. **Use it to drive the local side of a parity test**
 rather than building a separate harness.
