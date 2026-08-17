@@ -551,12 +551,57 @@ def perceive(state):
     metrics_history = derive_metrics_from_history(history)
 
     # 2. Extract metrics from current log
+    #
+    # The dispatching client knows which program produced log_text and
+    # sends it as session_info["log_program"] (contract v9).  Use it.
+    # Content matching is wrong on 10 of 19 real logs, and the label is
+    # not cosmetic: analyze_metrics_trend gates its success stop on
+    #     any(m["program"] in ("phenix.molprobity", "phenix.model_vs_data"))
+    # so a mislabelled cycle can satisfy the guard that exists to prevent
+    # declaring success before validation has run.  Observed: a
+    # phenix.refine log labelled phenix.molprobity.
+    #
+    # None when the client is older, or cannot confirm the program; then
+    # extract_all_metrics infers as before.
+    _log_program = session_info.get("log_program")
     try:
         from phenix.phenix_ai.log_parsers import extract_all_metrics
-        analysis = extract_all_metrics(log_text)
+        if _log_program:
+            analysis = extract_all_metrics(log_text, program=_log_program)
+        else:
+            analysis = extract_all_metrics(log_text)
     except ImportError:
         # Fallback if log_parsers not available
         analysis = _fallback_extract_metrics(log_text)
+
+    # The client's program is authoritative for the label.
+    #
+    # extract_all_metrics already sets metrics["program"] = program when
+    # the argument is supplied, so this is a no-op on that path.  It
+    # matters for _fallback_extract_metrics below, which ignores the
+    # argument entirely and labels from its own detection -- and that
+    # name would otherwise reach metrics_history and the validation
+    # gate.
+    if _log_program and isinstance(analysis, dict):
+        _detected = analysis.get("program")
+        if _detected and _detected != _log_program:
+            _msg = ("cycle %s: log identified as %s by content matching, "
+                    "but the client ran %s -- using the client's program"
+                    % (state.get("cycle_number"), _detected, _log_program))
+            state = _log(state, "PERCEIVE: %s" % _msg)
+            # debug_log is not echoed at normal verbosity and is not
+            # persisted in agent_session.json, so an override would leave
+            # no trace an operator can see.  warnings IS surfaced by the
+            # client (ai_agent.py prints it via vlog.quiet) and travels
+            # the same response path for local and remote alike.
+            #
+            # One line per affected cycle, not per run: server state is
+            # rebuilt from the request each cycle, so there is nowhere to
+            # accumulate a per-run total.
+            state = {**state,
+                     "warnings": list(state.get("warnings", []))
+                                 + ["[IDENTITY] %s" % _msg]}
+        analysis["program"] = _log_program
 
     # 2b. CRITICAL: Ensure we have the LAST r_free/r_work values
     # Refinement logs contain multiple R-free values (one per macro cycle).

@@ -124,6 +124,16 @@ def build_session_state(session_info, session_resolution=None):
         if session_info.get("bad_inject_params"):
             session_state["bad_inject_params"] = session_info["bad_inject_params"]
 
+        # v9: the program that produced log_content, named by the client.
+        # Sent only when the history entry and the log file name agree.
+        # NOTE the truthiness test: both are None when the client cannot
+        # confirm the program, and None must not be forwarded -- the
+        # server's normalize_session_info supplies the same default.
+        if session_info.get("log_program"):
+            session_state["log_program"] = session_info["log_program"]
+        if session_info.get("log_cycle") is not None:
+            session_state["log_cycle"] = session_info["log_cycle"]
+
         # Thinking agent (v113): accumulated scientific understanding
         if session_info.get("strategy_memory"):
             session_state["strategy_memory"] = session_info["strategy_memory"]

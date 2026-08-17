@@ -47,7 +47,7 @@ HOW TO ADD A NEW RESPONSE FIELD
 # v120: bumped 5 -> 6 for plan_current_unrun_lead_program (Option 2a), then
 # 6 -> 7 for input_mtz_has_rfree (client-extracted R-free presence), then
 # 7 -> 8 for mtz_rfree_map (per-file R-free map, v120.2 parity fix).
-CURRENT_PROTOCOL_VERSION = 8
+CURRENT_PROTOCOL_VERSION = 9
 MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 
@@ -106,6 +106,7 @@ SESSION_INFO_FIELDS = [
     ("model_hetatm_residues",  None,  3,
      "Pre-extracted HETATM residues as [[chain, resseq, resname], ...] or None"),
 
+
     ("client_protocol_version", 1,    3,
      "Protocol version of the sending client (int). "
      "Defaults to 1 for clients that predate this field."),
@@ -152,6 +153,26 @@ SESSION_INFO_FIELDS = [
      "parity-safe answer; this supersedes the original-input-only scalar "
      "input_mtz_has_rfree for the actually-refined file.  None/absent when no "
      "local MTZ was inspectable."),
+
+    # --- v9: the client tells the server what it ran ------------------------
+    # log_content is "Log text from previous command".  The dispatching
+    # client knows exactly which program produced it -- _execute_command
+    # writes the log as "%s_%s.log" % (program, cycle) -- yet the server
+    # re-derives it by matching markers against the log text, which is
+    # wrong on 10 of 19 real logs.  Observed consequence: a phenix.refine
+    # log labelled phenix.molprobity satisfied the validation_done guard
+    # in analyze_metrics_trend, which exists to stop the agent declaring
+    # success before validation has run.
+    #
+    # Both default to None: a client that does not send them (an older
+    # client, or a GUI-invoked analysis) leaves the server to infer as
+    # before.  Nothing requires a client to send a registered field.
+    ("log_program",            None,  9,
+     "Program that produced log_content, from the dispatching client "
+     "(str or None)"),
+
+    ("log_cycle",              None,  9,
+     "Cycle number that produced log_content (int or None)"),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)
