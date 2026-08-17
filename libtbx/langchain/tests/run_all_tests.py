@@ -2406,6 +2406,24 @@ def main():
         results.append(("Log Structure Extractor",
                         "tst_log_structure_extractor", False, 0))
 
+    # --- Transport surfaces ---------------------------------------------
+    # Checks that every field contract.py declares is produced, carried
+    # by each allow-list hop, and consumed -- and that no key is renamed
+    # in flight.  Reads the sources as TEXT rather than importing them,
+    # so it runs without a full PHENIX environment; it FAILS rather than
+    # skips when a source is unreadable, because a skip here would
+    # silently disarm every check.
+    try:
+        _imported = __import__("tests.tst_transport_surfaces", fromlist=["x"])
+        success, elapsed = run_test_module(
+            "tst_transport_surfaces", _imported.run_all_tests, args.verbose)
+        results.append(("Transport surfaces", "tst_transport_surfaces",
+                        success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_transport_surfaces: {e}")
+        results.append(("Transport surfaces", "tst_transport_surfaces",
+                        False, 0))
+
     # --- Log analysis replacement (Steps 1-3) ---------------------------
     # Each of these SKIPS rather than fails when its data directory is
     # absent, and says so on its own last line.  A skip is not a pass:

@@ -3385,7 +3385,9 @@ def _build_with_new_builder(state):
         # poor to salvage by adjustment.
         _last_rfree = None
         for h in reversed(state.get("history", [])):
-            _m = h.get("metrics", {})
+            # "analysis" is the declared HISTORY_ENTRY_FIELDS key; this
+            # was the single site reading the old "metrics" spelling.
+            _m = h.get("analysis", {})
             if "r_free" in _m:
                 try:
                     _last_rfree = float(_m["r_free"])

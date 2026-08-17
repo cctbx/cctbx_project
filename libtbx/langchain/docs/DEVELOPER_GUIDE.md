@@ -3591,7 +3591,7 @@ The server returns a `history_record` dict. `output_node()` guarantees these fie
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `next_move` | dict | — | `{command, program, explanation, process_log}` |
+| `next_move` | dict | — | `{command, program, explanation, strategy}` |
 | `debug_log` | list[str] | `[]` | Diagnostic messages from all nodes |
 | `events` | list[dict] | `[]` | Structured events for display |
 | `experiment_type` | str | — | Detected experiment type |
@@ -3605,8 +3605,11 @@ The server returns a `history_record` dict. `output_node()` guarantees these fie
 The `warnings` field provides a server→client communication channel for non-fatal advisories. Currently it's used for protocol version deprecation:
 
 - **Server side** (`perceive()` via `get_deprecation_warnings()`): Automatically appends a warning when `client_protocol_version < CURRENT_PROTOCOL_VERSION`.
-- **Client side** (`ai_agent.py`): After receiving the response, prints each warning via `self.vlog.quiet("[AI Server Warning] ...")`.
+- **Response builder** (`run_ai_agent.py`): passes `final_state["warnings"]` to `create_response()` **and** `create_stop_response()`. Both are required — a value in `state["warnings"]` that is not passed here never leaves the server.
+- **Client side** (`ai_agent.py`): prints each warning via `self.vlog.quiet("[AI Server Warning] ...")`, **de-duplicated per session** — the server rebuilds its state from the request each cycle, so a standing condition is re-emitted every cycle and would otherwise repeat indefinitely.
 - **Old clients** that don't check `warnings` simply ignore the field — they already use `.get()` / `getattr()` for all response fields.
+
+> **This channel was inert until 2026-08.** `create_response` was called without `warnings=`, and `create_stop_response` did not accept the argument at all, so nothing written to `state["warnings"]` ever reached the client — including the deprecation notices described above. Fixed in `api_schema.py` and `run_ai_agent.py`; covered by `tst_transport_surfaces.py`.
 
 ### Protocol Version Constants
 
@@ -3614,10 +3617,19 @@ Defined in `agent/contract.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `CURRENT_PROTOCOL_VERSION` | `5` | What the latest client sends |
+| `CURRENT_PROTOCOL_VERSION` | `9` | What the latest client sends |
 | `MIN_SUPPORTED_PROTOCOL_VERSION` | `1` | Oldest client the server accepts |
 
-The client imports `CURRENT_PROTOCOL_VERSION` from contract.py via `_get_protocol_version()` in `ai_agent.py`, so bumping the constant updates both server and client automatically.
+The client imports `CURRENT_PROTOCOL_VERSION` from contract.py via `_get_protocol_version()` in `ai_agent.py`, so bumping the constant updates the value the client *reports* automatically.
+
+> **Reporting it is not the same as the server receiving it.**
+> `client_protocol_version` is an ordinary `session_info` field and must
+> be carried by both allow-lists like any other. Until 2026-08 it was
+> carried by neither, so the server read the contract default of `1` for
+> **every** client: `check_client_version` never rejected anything, and
+> `get_deprecation_warnings` fired for every client on every cycle. That
+> was invisible only because the `warnings` channel above was also
+> broken — repairing one exposed the other.
 
 ### The Rules
 

@@ -124,6 +124,17 @@ def build_session_state(session_info, session_resolution=None):
         if session_info.get("bad_inject_params"):
             session_state["bad_inject_params"] = session_info["bad_inject_params"]
 
+        # The protocol version the client reports.  Without this the
+        # server falls back to session_info.get("client_protocol_version",
+        # 1) and concludes every client is v1: check_client_version has
+        # therefore never rejected anything, and get_deprecation_warnings
+        # fires for every client on every cycle, including current ones.
+        # Harmless while state["warnings"] was not forwarded; visible to
+        # every user now that it is.
+        if session_info.get("client_protocol_version") is not None:
+            session_state["client_protocol_version"] = \
+                session_info["client_protocol_version"]
+
         # v9: the program that produced log_content, named by the client.
         # Sent only when the history entry and the log file name agree.
         # NOTE the truthiness test: both are None when the client cannot
@@ -263,7 +274,13 @@ def build_request_v2(
             sanitized_metrics = sanitize_dict_recursive(raw_metrics, max_len_per_string=500)
 
             normalized_history.append({
-                "cycle": h.get("cycle_number", h.get("cycle", len(normalized_history) + 1)),
+                # HISTORY_ENTRY_FIELDS declares "cycle_number".  Sending
+                # "cycle" made metrics_analyzer fall back to the loop
+                # index (entry.get("cycle_number", cycle_num)), which
+                # diverges as soon as history is filtered -- and
+                # get_history_for_agent DOES filter, emitting only cycles
+                # having both a command and a result.
+                "cycle_number": h.get("cycle_number", h.get("cycle", len(normalized_history) + 1)),
                 "program": sanitize_string(h.get("program", ""), max_len=100),
                 "command": sanitize_string(h.get("command", ""), max_len=1000),
                 "result": sanitize_for_transport(
@@ -273,7 +290,13 @@ def build_request_v2(
                     quote_max_len=200
                 ),
                 "output_files": h.get("output_files", []),
-                "metrics": sanitized_metrics,
+                # HISTORY_ENTRY_FIELDS declares "analysis", and
+                # get_history_for_agent (session.py:2280) already
+                # translates cycle["metrics"] into it.  Renaming back to
+                # "metrics" here left 8 of the 9 consumers reading a key
+                # that never arrived: derive_metrics_from_history (2
+                # sites) and thinking_agent (6 sites) both got {}.
+                "analysis": sanitized_metrics,
             })
 
     # Build session_state

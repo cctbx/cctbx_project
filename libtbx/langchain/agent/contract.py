@@ -65,6 +65,35 @@ MIN_SUPPORTED_PROTOCOL_VERSION = 1
 #
 # NOTE on mutable defaults: The _normalize function below calls copy() on
 # dict/list defaults, so registering {} or [] here is safe.
+#
+# ---------------------------------------------------------------------------
+# REGISTERING A FIELD HERE DOES NOT MAKE IT CROSS THE BOUNDARY.
+#
+# session_info is not transported as a whole.  It passes through TWO
+# EXPLICIT ALLOW-LISTS, and a field absent from either is dropped
+# silently -- normalize_session_info then supplies the default and
+# nothing looks wrong:
+#
+#     ai_agent.py        session_info["x"] = ...            (produce)
+#     api_client.build_session_state                        (COPY: allow-list)
+#     build_request_v2 / transport
+#     run_ai_agent.run   session_info["x"] = session_state["x"]
+#                                                           (COPY: allow-list)
+#     perceive / consumers  session_info.get("x", default)  (consume)
+#
+# So this list is neither necessary nor sufficient for transport:
+#
+#   - Some declared fields travel as TOP-LEVEL request arguments instead,
+#     not via session_state: experiment_type, directives, best_files,
+#     rfree_mtz, force_retry_program, recovery_strategies,
+#     plan_has_pending_stages.
+#   - build_session_state also carries fields NOT declared here, e.g.
+#     structure_model, strategy_memory, validation_history, user_advice.
+#
+# Four defects of exactly this shape were found in one audit (log_program,
+# state["warnings"], client_protocol_version, mtz_rfree_map).  When adding
+# a field, add the two copies as well, and run tests/tst_transport_surfaces.py.
+# ---------------------------------------------------------------------------
 
 SESSION_INFO_FIELDS = [
     # --- v1: original fields ------------------------------------------------
@@ -81,6 +110,11 @@ SESSION_INFO_FIELDS = [
      "Parsed user directives dict (stop conditions, preferences, etc.)"),
 
     # --- v2: error recovery & user interaction ------------------------------
+
+    # NOT TRANSPORTED (audit, 2026-08): set by the client, carried by
+    # neither allow-list, read by nothing on the server.  Left declared
+    # so that removing it is a deliberate decision rather than a silent
+    # one -- wire it or drop it.
     ("rfree_resolution",       None,  2,
      "Resolution limit of R-free flags in Angstroms (float or None)"),
 
@@ -103,6 +137,8 @@ SESSION_INFO_FIELDS = [
     ("unplaced_model_cell",    None,  3,
      "Pre-extracted CRYST1 unit cell as [a, b, c, alpha, beta, gamma] or None"),
 
+    # NOT TRANSPORTED (audit, 2026-08): same as rfree_resolution --
+    # produced client-side, no carrier, no consumer.
     ("model_hetatm_residues",  None,  3,
      "Pre-extracted HETATM residues as [[chain, resseq, resname], ...] or None"),
 
@@ -225,7 +261,7 @@ NEXT_MOVE_FIELDS = [
     "command",             # str: the phenix command to run
     "program",             # str: program name (e.g. "phenix.refine")
     "explanation",         # str: LLM reasoning text
-    "process_log",         # str: detailed agent thought-process log
+    "strategy",            # dict: the strategy block the server chose
 ]
 
 
@@ -312,7 +348,6 @@ def check_client_version(session_info):
             "command": "STOP",
             "program": "STOP",
             "explanation": message,
-            "process_log": "",
         }
         return ("unsupported_client", message, next_move)
 

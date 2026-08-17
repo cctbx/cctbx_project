@@ -1,4 +1,100 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4 / v121
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4 / v121 / v121.1
+
+## Version 121.1 (transport-surface audit: four dropped fields, one rename, and a test)
+
+### Summary
+
+An audit of the four transport surfaces declared in `agent/contract.py`
+found **four fields that were declared, consumed, and never carried**,
+and **one payload renamed in flight**. All five passed every existing
+test: the contract tests check that a field is *declared* and that a
+consumer *reads* it, never that a producer *sends* it or that the hops
+preserve it.
+
+### Fixed
+
+**`log_program` / `log_cycle` (protocol v9).** The dispatching client now
+names the program that produced `log_content`, instead of the server
+matching markers against the log text. Content matching was wrong on
+**10 of 19** real logs; the resolver is 18/19. The label is not
+cosmetic — `analyze_metrics_trend` gates its success stop on
+`any(m["program"] in ("phenix.molprobity", "phenix.model_vs_data"))`,
+so a mislabelled cycle **satisfies the guard that exists to prevent
+declaring success before validation has run.** Observed live: a
+`phenix.refine` log labelled `phenix.molprobity`, with `r_free = 0.1722`
+recorded where refine's own value was `0.1871`.
+
+**`state["warnings"]` never reached the client.** `create_response` was
+called without `warnings=` and `create_stop_response` did not accept the
+argument, so the deprecation channel described in `DEVELOPER_GUIDE.md`
+had never carried anything. Client-side de-duplication added: the server
+rebuilds state per request, so a standing condition would otherwise
+repeat every cycle.
+
+**`client_protocol_version` never reached the server.** The server read
+the contract default `1` for every client. `check_client_version` had
+therefore never rejected anything, and `get_deprecation_warnings` fired
+for every client on every cycle — invisible only because the channel
+above was also broken.
+
+**`mtz_rfree_map` never reached the server.** Forwarded into
+`session_state`, never rebuilt into `session_info`;
+`command_builder.py:283` reads `session_info.get("mtz_rfree_map")`.
+**This is the v120.2 parity fix** — the field written so that local and
+server builds behave identically was itself inert on the server path.
+
+**The per-cycle metrics dict was renamed in flight.** `session.py:2280`
+translates `cycle["metrics"]` to the declared name `analysis`;
+`build_request_v2` renamed it back to `metrics` one hop later. **8 of 9
+consumers read `analysis` and got `{}`** — 2 in `metrics_analyzer`, 6 in
+`thinking_agent`, so THINK's historical reasoning was blind too.
+`graph_nodes` read the other spelling and worked, which masked it.
+Measured: **7 of 7 production cycles delivered `{}`**.
+
+**`cycle_number` was renamed to `cycle`**, so `metrics_analyzer` fell
+back to the loop index. Benign on dense history;
+`get_history_for_agent` filters incomplete cycles, so **one aborted
+cycle renumbered every later entry.**
+
+### Removed
+
+- `process_log` — declared in `NEXT_MOVE_FIELDS`, consumed by
+  `ai_agent.py` (an "AGENT THOUGHT PROCESS" block), never produced. That
+  block had never printed. Removed at both ends; `strategy`, which was
+  already being sent, is now declared.
+- Two `result.analysis` fallbacks in `ai_agent.py` — `api_client` sets
+  the field to `""` unconditionally, so both were unreachable and both
+  swallowed their exceptions.
+
+### Added
+
+**`tests/tst_transport_surfaces.py`** — nine checks plus two negative
+controls, registered in `run_all_tests.py`. For every declared field: a
+producer exists, each allow-list hop carries it, a consumer exists, no
+key is renamed in flight. Verified both ways: 9 pass on the fixed tree,
+4 fail on a copy with the fixes reverted.
+
+`contract.py`'s header now states that **registering a field there does
+not make it cross the boundary**, with the five-hop path and the fields
+that travel as top-level arguments instead.
+
+### Not fixed, recorded
+
+- `red_flag_issues` is declared, sent as `metadata["red_flags"]` on the
+  stop path only, and read under neither name. Whether stop-time red
+  flags should reach the user is a product decision.
+- `rfree_resolution` and `model_hetatm_residues` are declared and
+  produced with no carrier and no consumer; annotated in `contract.py`
+  rather than removed, so removal stays deliberate.
+
+### Note
+
+**This failure mode is documented.** `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`
+§6a describes the hop chain and records three v120 fields that
+"round-tripped nowhere for exactly this reason". It then happened four
+more times. The guidelines now point at the test.
+
+---
 
 ## Version 121 (ai_analysis standard mode: single-call replacement — six measured defects removed)
 

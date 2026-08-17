@@ -465,6 +465,47 @@ response format, that is a protocol change** — see
 `DEVELOPER_GUIDE.md §8 (Backward Compatibility & Contract)` for the
 version-bump procedure.
 
+### This is now enforced, because documenting it was not enough
+
+The failure above is recorded here for v120 — three plan-driven fields
+that "round-tripped nowhere". It then happened four more times, in an
+audit of a single week's work:
+
+| field | what was missing |
+|---|---|
+| `log_program` | registered in the contract, read by the server, carried by neither allow-list |
+| `state["warnings"]` | written by `perceive()`, printed by the client, never passed to `create_response` |
+| `client_protocol_version` | set by the client, carried by nothing — so the server read the default `1` for **every** client, and `get_deprecation_warnings` fired for everyone on every cycle |
+| `mtz_rfree_map` | the v120.2 **parity fix** itself: forwarded into `session_state`, never rebuilt into `session_info`, so `command_builder` saw `None` and the guard it exists to make identical behaved differently server-side |
+
+Plus a rename that no test could see: the per-cycle metrics dict was
+translated **to** the declared name `analysis` by `session.py`, then
+renamed **back** to `metrics` one hop later, leaving 8 of 9 consumers
+reading a key that never arrived.
+
+**`tests/tst_transport_surfaces.py` now checks this mechanically** — for
+every field in every declared surface: a producer exists, each
+allow-list hop carries it, a consumer exists, and no key is renamed in
+flight. It reads the sources as text, so it runs anywhere, and it
+**fails rather than skips** when a source is unreadable.
+
+Run it whenever you add or move a field across the boundary. Six
+occurrences of one failure mode, all in code whose author had this
+section available, is the argument for a check rather than a paragraph.
+
+### On `except` blocks that produce a value
+
+Related, and the reason several of the above stayed invisible:
+
+> **An `except` that swallows a failure while still producing a value
+> the agent acts on must record that it did.**
+
+`graph_nodes.py` has ~18 such sites, most of them fine. The one to
+learn from converts `float(_m["r_free"])` failing into `None`, which
+downstream reads as *"no R-free"* rather than *"R-free unparseable"* —
+and those lead to different decisions. If the value feeds a stop check,
+a plateau test, or a command, log the swallow.
+
 ### The rule of thumb
 
 **Parity (§0) and reachability (§6a) are different properties, and

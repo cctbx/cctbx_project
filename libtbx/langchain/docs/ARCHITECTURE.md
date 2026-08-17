@@ -995,6 +995,38 @@ was inert).  v120 plumbs all three through `build_session_state()`,
 `plan_current_unrun_lead_program` is registered in `agent/contract.py` as a v6
 field (default `""`), which bumped `CURRENT_PROTOCOL_VERSION` 5 → 6.
 
+**The same failure recurred four more times (v121 audit).**  An audit of the four
+declared transport surfaces found:
+
+* `log_program` (v9) — registered in the contract and read by `perceive()`, carried
+  by neither allow-list.  A silent no-op.
+* `client_protocol_version` — set by the client, carried by nothing, so the server
+  read the contract default `1` for EVERY client: `check_client_version` never
+  rejected anything and `get_deprecation_warnings` fired for everyone on every
+  cycle.
+* `mtz_rfree_map` — **the v120.2 parity fix itself**: forwarded into
+  `session_state` but never rebuilt into `session_info`, so `command_builder`
+  (which reads `session_info.get("mtz_rfree_map")`) saw `None` server-side and fell
+  back to the original-input-only scalar.  The field written to make local and
+  server identical was inert on the server path.
+* `state["warnings"]` — written by `perceive()`, printed by the client, never
+  passed to `create_response()`/`create_stop_response()`.
+
+And one that no reachability check would have caught: the per-cycle metrics dict is
+translated **to** the declared name `analysis` by `session.py:2280`, then renamed
+**back** to `metrics` by `build_request_v2` one hop later — leaving 8 of its 9
+consumers (2 in `metrics_analyzer`, 6 in `thinking_agent`) reading a key that never
+arrived, while `graph_nodes` read the other spelling and worked.  One working
+consumer masked the rest.
+
+**`tests/tst_transport_surfaces.py` now enforces this mechanically** for every field
+in every declared surface: a producer exists, each allow-list hop carries it, a
+consumer exists, and no key is renamed in flight.  It reads the sources as text so
+it runs without a full PHENIX environment, and it FAILS rather than skips when a
+source is unreadable.  Six occurrences of one failure mode — all in code whose
+author had this section available — is the case for a check rather than a
+paragraph.
+
 **Tri-state field + per-file map + `is not None` guards (v120 → v120.2,
 `input_mtz_has_rfree` / `mtz_rfree_map`).**  Most `session_info` fields are plumbed
 with truthy guards (`if session_info.get("X"):`), which is fine for fields whose
