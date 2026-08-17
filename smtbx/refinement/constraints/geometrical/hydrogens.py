@@ -105,8 +105,29 @@ class terminal_tetrahedral_xhn_site(hydrogens):
     if len(pivot_neighbour_site_params) != 1:
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    """The azimuth reaches the objective only through the hydrogens' own site
+    derivatives: d(obj)/d(azimuth) = sum_i d(obj)/d(site_i) . d(site_i)/d(azimuth).
+    If no constrained hydrogen has grad_site set, every term is zero, and the
+    azimuth is a refinable parameter with an identically zero row in the normal
+    matrix -- which fails the Cholesky decomposition at its first pivot.
+
+    Olex2's electron-diffraction path hits exactly this: it runs a
+    thickness-only pre-refinement ("fixing ALL parameters but thickness"), and
+    an AFIX 137/147 group left rotating through it gives "Cholesky failure /
+    the leading minor of order 1 for Scalar Parameter is not positive
+    definite". Reproduced on TyrosineED: the NH3 and hydroxyl azimuths both had
+    a diagonal of exactly 0 while the thickness row was healthy at 9.4e-08.
+
+    Not refining a rotation that nothing in the refinement can see is the
+    honest reading -- there is no information about it -- and it turns a hard
+    failure into a well-posed smaller problem.
+    """
+    scatterers = reparametrisation.structure.scatterers()
+    movable = any(scatterers[i].flags.grad_site()
+                  for i in self.constrained_site_indices)
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotating)
+                                    value=0,
+                                    variable=self.rotating and movable)
     uc = reparametrisation.structure.unit_cell()
     for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
       for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
