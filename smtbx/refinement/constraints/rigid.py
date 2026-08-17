@@ -30,10 +30,31 @@ class rigid_pivoted_rotatable_group(object):
     scatterers = reparametrisation.structure.scatterers()
     pivot_sp = reparametrisation.add_new_site_parameter(self.pivot)
     pivot_n_sp = reparametrisation.add_new_site_parameter(self.pivot_neighbour)
+    """The azimuth and the size act on the constrained sites, so their
+    derivatives reach the objective only through those sites' own gradients:
+    d(obj)/d(azimuth) = sum_i d(obj)/d(site_i) . d(site_i)/d(azimuth). If no
+    constrained scatterer has grad_site set, every term is zero -- the
+    parameter is refinable and has an identically zero row in the normal
+    matrix, and the Cholesky decomposition fails on it at the first pivot.
+
+    That is not hypothetical. Olex2's electron-diffraction path runs a
+    thickness-only pre-refinement ("fixing ALL parameters but thickness"), and
+    an AFIX 137/147 group left rotatable through it produces exactly
+    "Cholesky failure / the leading minor of order 1 for Scalar Parameter is
+    not positive definite" -- reproduced on TyrosineED, where the azimuths of
+    the NH3 and hydroxyl groups both had a diagonal of exactly 0 while the
+    thickness row was healthy at 9.4e-08.
+
+    Refusing to refine a rotation nothing can see is the honest reading: there
+    is no information about it in that refinement.
+    """
+    movable = any(scatterers[i].flags.grad_site() for i in self.indices)
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotatable)
+                                    value=0,
+                                    variable=self.rotatable and movable)
     size = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=1, variable=self.sizeable)
+                                    value=1,
+                                    variable=self.sizeable and movable)
     scatterers = tuple([scatterers[i] for i in self.indices])
     param = reparametrisation.add(
       _.rigid_pivoted_rotatable_group,
