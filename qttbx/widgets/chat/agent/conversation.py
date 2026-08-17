@@ -118,6 +118,11 @@ class Message:
   usage: TokenUsage = None           # assistant only
   model: str = None                  # assistant only: model that produced it
   backend: str = None                # assistant only: backend that produced it
+  # Assistant only: whether the session's verbose mode was on when this turn
+  # was produced (phenix.agent --verbose). Provenance, like model/backend --
+  # never read back to configure a session. None = unstamped: a pre-stamp
+  # message, or a host app without the concept.
+  verbose: bool = None
 
 
 @dataclass

@@ -243,6 +243,28 @@ def exercise_child_runs_and_returns_final_text():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def exercise_child_messages_inherit_the_parents_verbose_stamp():
+  """The child session stamps its assistant messages with the PARENT
+  session's verbose flag. The mode is session-wide -- run_subagent children
+  receive the addendum -- so their transcripts must carry the same
+  provenance, and a read-only subagent view shows whether its turns were
+  produced under the mode."""
+  tmp = tempfile.mkdtemp()
+  try:
+    parent, storage = _parent(tmp)
+    parent.verbose = True
+    bundle = _bundle([[TextDelta(text="done"),
+                       TurnDone(stop_reason="end_turn")]])
+    record = _run_child(parent, "task", bundle, CancelToken(),
+                        tool_use_id="t1", max_turns=5)
+    assistants = [m for m in record.messages if m.role == "assistant"]
+    assert assistants, "expected an assistant message on the record"
+    for m in assistants:
+      assert m.verbose is True, m.verbose
+  finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 def exercise_record_is_persisted_despite_depth_gating():
   """depth>0 disables autosave, so the runner must store the record."""
   tmp = tempfile.mkdtemp()
@@ -1902,9 +1924,10 @@ def exercise_a_backends_own_bookkeeping_server_is_not_a_measurement():
   ``claude_code`` builds an in-process ``phenix_agent`` server on EVERY agent,
   carrying ``phenix_get_job_history`` -- auto-approved ahead of every policy
   check, and (with no provider wired, which is every child: only the chat
-  window ever wires one) returning ``"(no jobs recorded)"`` as a SUCCESSFUL
-  result. That satisfied "did any tool succeed" for a child that had been
-  denied every real tool and measured nothing at all.
+  window ever wires one) returning ``"(no job history is attached to this
+  session)"`` as a SUCCESSFUL result. That satisfied "did any tool succeed"
+  for a child that had been denied every real tool and measured nothing at
+  all.
 
   Decided STRUCTURALLY -- is this tool's server one the profile asked for? --
   and not by a list of tool names, which lives in the other repo and would have
@@ -1919,8 +1942,10 @@ def exercise_a_backends_own_bookkeeping_server_is_not_a_measurement():
     measure = "mcp__phenix__phenix_get_results"
     bundle = _bundle(
       [[ToolUseRequested(id="tu1", name=bookkeeping, input={}),
-        ToolResultObserved(tool_use_id="tu1", name=bookkeeping,
-                           content="(no jobs recorded)", is_error=False),
+        ToolResultObserved(
+          tool_use_id="tu1", name=bookkeeping,
+          content="(no job history is attached to this session)",
+          is_error=False),
         ToolUseRequested(id="tu2", name=measure, input={}),
         ToolResultObserved(tool_use_id="tu2", name=measure,
                            content="Denied by tool policy.", is_error=True),
@@ -2237,6 +2262,7 @@ def exercise_the_tool_description_is_a_shared_constant():
 
 def exercise():
   exercise_child_runs_and_returns_final_text()
+  exercise_child_messages_inherit_the_parents_verbose_stamp()
   exercise_record_is_persisted_despite_depth_gating()
   exercise_child_usage_never_touches_the_parent()
   exercise_costs_sum_but_context_peaks()

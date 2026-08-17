@@ -104,12 +104,16 @@ class AgentSession:
       directory for a conversation that does not exist, and the record's image
       blocks -- resolved against the conversation the record is stored under --
       point at nothing.
+  verbose : bool or None, optional
+      Provenance for the per-message stamp (``Message.verbose``): whether the
+      host's verbose mode is on. ``None`` (default) -- the host has no such
+      concept; messages stay unstamped. Never read back to configure anything.
   """
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
                approvals=None, autosave_interval_s=5.0, clock=None,
-               attachment_conv_id=None):
+               attachment_conv_id=None, verbose=None):
     self.agent = agent
     self.conv = conversation
     self.storage = storage
@@ -130,6 +134,13 @@ class AgentSession:
     self.tools = tools
     self.policy = policy
     self.profile = profile
+    # Provenance for the per-message stamp (see _new_assistant_msg): whether
+    # the host's verbose mode is on for this session. Three-state, and this
+    # seam OWNS the normalization: None (the default) means the host has no
+    # such concept and messages stay unstamped; anything else is coerced to
+    # a bool (phenix.agent passes True/False). Never read back to configure
+    # anything.
+    self.verbose = None if verbose is None else bool(verbose)
     self.depth = depth
     self.autosave_interval_s = autosave_interval_s
     self._clock = clock or time.monotonic
@@ -383,7 +394,8 @@ class AgentSession:
 
   def _new_assistant_msg(self):
     """A fresh in-progress assistant message stamped with the model (from the
-    agent) and backend (from the profile) producing this turn.
+    agent), backend (from the profile), and verbose flag (from the session)
+    producing this turn.
 
     The model here is the one REQUESTED. A backend that reports which model
     actually answered (``observed_model``) overwrites it as the response
@@ -391,7 +403,8 @@ class AgentSession:
     """
     return Message(role="assistant", content=[], timestamp=now(),
                    model=getattr(self.agent, "model", None),
-                   backend=getattr(self.profile, "backend", None))
+                   backend=getattr(self.profile, "backend", None),
+                   verbose=self.verbose)
 
   def _collect_one_response(self, cancel):
     msg = self._new_assistant_msg()

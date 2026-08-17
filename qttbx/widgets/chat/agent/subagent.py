@@ -72,11 +72,12 @@ both read off the wiring the child was actually built from so neither can drift
 - any tool from an MCP server the child's PROFILE did not ask for. A backend
   adds servers of its own: ``claude_code`` builds an in-process ``phenix_agent``
   server on every agent, and its ``phenix_get_job_history`` -- auto-approved
-  ahead of every policy check, and returning ``"(no jobs recorded)"`` as a
-  SUCCESSFUL result when no provider is wired, which is every child -- made
-  "did any tool succeed" true for a child that had measured nothing. The
-  bundle's ``measurement_servers`` is what the profile really wired up, so the
-  whole class is excluded at once without naming a single tool.
+  ahead of every policy check, and returning ``"(no job history is attached
+  to this session)"`` as a SUCCESSFUL result when no provider is wired, which
+  is every child -- made "did any tool succeed" true for a child that had
+  measured nothing. The bundle's ``measurement_servers`` is what the profile
+  really wired up, so the whole class is excluded at once without naming a
+  single tool.
 
 The flag itself is gated on the child having been EQUIPPED to measure
 (:func:`_child_was_equipped`): a child that held measurement tools and got
@@ -701,11 +702,11 @@ def _is_measurement_tool(name, tools, servers):
     ``phenix_agent`` server on EVERY agent, carrying the job-history and
     ask-user tools, and auto-approves the job-history one ahead of any policy
     check. With no provider wired (nothing wires one for a child)
-    ``phenix_get_job_history`` returns ``"(no jobs recorded)"`` as a
-    SUCCESSFUL result, which satisfied "did any tool succeed" for a child that
-    had measured nothing at all. Asking whose server it came from excludes
-    every such housekeeping tool at once, present and future, without naming
-    any of them.
+    ``phenix_get_job_history`` returns ``"(no job history is attached to this
+    session)"`` as a SUCCESSFUL result, which satisfied "did any tool succeed"
+    for a child that had measured nothing at all. Asking whose server it came
+    from excludes every such housekeeping tool at once, present and future,
+    without naming any of them.
 
   Everything else counts, and that direction matters as much: a provider's own
   file/search built-ins belong to no MCP server and are not in the registry, so
@@ -1193,6 +1194,12 @@ def run_child(parent_session, task, bundle, cancel, tool_use_id,
     on_event=outcome,                       # never the parent's sink
     approvals=approvals,
     log=parent_session.log,
+    # The mode is session-wide (run_subagent children receive the verbose
+    # addendum), so child transcripts carry the parent's provenance stamp.
+    # getattr, like its siblings: an optional provenance field, read ABOVE
+    # run_child's try/finally -- a hard read on a duck-typed parent stand-in
+    # would skip _release_child and orphan the child's MCP connections.
+    verbose=getattr(parent_session, "verbose", None),
     # The child conversation is NEVER saved -- its transcript lives inside the
     # SubagentRecord, under the parent. An image filed under child_conv's id
     # therefore lands in a conversations/<child_id>/attachments/ directory for

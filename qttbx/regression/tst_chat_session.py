@@ -167,6 +167,72 @@ def exercise_assistant_messages_stamped_with_model_and_backend():
     shutil.rmtree(tmp)
 
 
+def exercise_assistant_messages_stamped_with_verbose():
+  """Each assistant message records the session's verbose flag as
+  provenance, alongside model/backend: True/False when the host app has the
+  concept (phenix.agent threads --verbose into the session), None from a
+  host that does not (the constructor default) -- so pre-stamp messages and
+  foreign apps stay unstamped, and a transcript resumed without the flag
+  shows WHERE the mode flipped instead of pretending it was never on."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    session.verbose = True
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, CancelToken())
+    assistants = [m for m in session.conv.messages if m.role == "assistant"]
+    assert assistants, "expected an assistant message"
+    for m in assistants:
+      assert m.verbose is True, m.verbose
+    # User messages carry no stamp -- provenance describes what PRODUCED a
+    # reply, and the user produced theirs.
+    for m in session.conv.messages:
+      if m.role == "user":
+        assert m.verbose is None, m.verbose
+  finally:
+    shutil.rmtree(tmp)
+  # The default: a session never told about the concept stamps None.
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, CancelToken())
+    for m in session.conv.messages:
+      if m.role == "assistant":
+        assert m.verbose is None, m.verbose
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_verbose_is_normalized_at_construction():
+  """The CONSTRUCTOR owns the three-state normalization the phenix seams
+  defer to: None stays None (a host without the concept), and any other
+  value is coerced to a bool. Pinned here because the other verbose tests
+  assign session.verbose after construction and bypass this seam."""
+  session, tmp = _new_test_session([])
+  try:
+    from qttbx.widgets.chat.agent.session import AgentSession
+    def _mk(v):
+      return AgentSession(agent=session.agent, conversation=session.conv,
+                          storage=session.storage, tools=session.tools,
+                          policy=session.policy, profile=session.profile,
+                          verbose=v)
+    assert _mk(None).verbose is None
+    assert _mk(True).verbose is True
+    assert _mk(False).verbose is False
+    assert _mk(1).verbose is True          # coerced, not stored raw
+    assert _mk("").verbose is False
+    assert session.verbose is None         # the default
+  finally:
+    shutil.rmtree(tmp)
+
+
 class _SwitchingAgent(FakeAgent):
   """A backend that answers with a different model than it was asked for.
 
@@ -1924,6 +1990,8 @@ def exercise_streaming_cancel_synthesizes_no_second_terminal():
 def exercise():
   exercise_simple_text_turn()
   exercise_assistant_messages_stamped_with_model_and_backend()
+  exercise_assistant_messages_stamped_with_verbose()
+  exercise_session_verbose_is_normalized_at_construction()
   exercise_the_observed_model_reaches_the_message_and_the_meta()
   exercise_the_requested_model_is_never_overwritten()
   exercise_the_base_declares_observed_model()

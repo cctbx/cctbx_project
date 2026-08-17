@@ -1305,6 +1305,8 @@ def _message_to_dict(m):
     out["model"] = m.model
   if m.backend is not None:
     out["backend"] = m.backend
+  if m.verbose is not None:
+    out["verbose"] = m.verbose
   return out
 
 
@@ -1320,6 +1322,10 @@ def _message_from_dict(d):
     usage=usage,
     model=d.get("model"),
     backend=d.get("backend"),
+    # Coerced: a hand-edited non-bool ("no", 1, ...) must load as None
+    # (unstamped), not be stored and re-persisted by the next save --
+    # cementing junk in a three-state field.
+    verbose=(d["verbose"] if isinstance(d.get("verbose"), bool) else None),
   )
 
 
