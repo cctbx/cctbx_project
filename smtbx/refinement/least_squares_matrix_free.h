@@ -223,6 +223,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
     //@}
 
+    /// operator+= by another name, for Python; see the fixed-scale class
+    void merge(separable_scale_factor_summary const &other) { *this += other; }
+
     separable_scale_factor_summary &
     operator+=(separable_scale_factor_summary const &other) {
       SMTBX_ASSERT(n_params == other.n_params)(n_params)(other.n_params);
@@ -340,6 +343,224 @@ namespace smtbx { namespace refinement { namespace least_squares {
     std::vector<scalar_t> grad_scale_factor_, right_hand_side_;
     mutable std::vector<scalar_t> gathered;
     /// lent out by open_equation(), and only allocated if that is ever called
+    std::vector<scalar_t> equation_row;
+    scalar_t sum_w_yo_sq, sum_w_yc_sq, sum_w_yo_yc;
+    scalar_t scale_factor_, objective_;
+    int n_equations;
+    bool finalised;
+  };
+
+
+  /// The same pass with the scale held fixed instead of solved for.
+  /** Maximum likelihood needs this. There the effective observation the
+      accumulator is handed already contains the scale - alpha and beta having
+      been estimated with k folded into them - so an accumulator which recovers
+      a scale of its own by variable projection applies a second one on top and
+      does not converge to the maximum of the likelihood. That is the same
+      reason non_linear_ls_with_fixed_scale_factor exists for the path which
+      forms a normal matrix; this is its counterpart for the path which does
+      not, and without it the conjugate-gradient route has no way to carry a
+      likelihood at all.
+
+      The arithmetic is the separable one with grad k set to zero throughout,
+      which is what holding k fixed means. Two consequences, and they are why
+      this is a class of its own rather than a flag:
+
+      - the design matrix rows are D = k J, so the blocks are k^2 (J (x) J) and
+        the separable class's cross terms in grad k drop out;
+      - the objective needs the whole quadratic. The separable class writes
+        sum w r^2 as sum w yo^2 - k sum w yo yc, and the cross terms only
+        cancel because k is the value that minimises it. At a k which is not
+        that value they do not cancel, and using the short form would report an
+        objective that can even come out negative.
+
+      The right hand side is unchanged: k (J^T W yo - k J^T W yc) is already
+      what the separable class computes, its own extra term being identically
+      zero at its optimal k.
+   */
+  template <typename FloatType>
+  class fixed_scale_factor_summary
+    : public thread_local_context<fixed_scale_factor_summary<FloatType> >
+  {
+  public:
+    typedef FloatType scalar_t;
+    typedef thread_local_context<fixed_scale_factor_summary<FloatType> >
+      context_t;
+
+    /// The one Python builds; it leaves itself where the per-thread copies look
+    fixed_scale_factor_summary(int n_parameters,
+                               scalar_t scale_factor,
+                               af::const_ref<int> const &block_parameters,
+                               af::const_ref<int> const &block_sizes)
+      : n_params(n_parameters),
+        given_scale(scale_factor),
+        blocks_(new block_structure(block_parameters, block_sizes))
+    {
+      allocate();
+      context_t::pending().reset(new fixed_scale_factor_summary(*this));
+    }
+
+    /// The one the reflection loop makes for each thread
+    fixed_scale_factor_summary(int n_parameters)
+      : n_params(n_parameters)
+    {
+      boost::shared_ptr<fixed_scale_factor_summary> const &source
+        = context_t::pending();
+      SMTBX_ASSERT(source);
+      SMTBX_ASSERT(source->n_params == n_parameters)
+        (source->n_params)(n_parameters);
+      blocks_ = source->blocks_;
+      given_scale = source->given_scale;
+      allocate();
+    }
+
+    int n_parameters() const { return n_params; }
+
+    void add_residual(scalar_t yc, scalar_t yo, scalar_t w) {
+      sum_w_yo_sq += w*yo*yo;
+      sum_w_yc_sq += w*yc*yc;
+      sum_w_yo_yc += w*yo*yc;
+      n_equations++;
+    }
+
+    void add_equation(scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
+                      scalar_t yo, scalar_t w)
+    {
+      add_residual(yc, yo, w);
+      scalar_t const w_yo = w*yo, w_yc = w*yc;
+      for (int i = 0; i < n_params; i++) {
+        yo_dot_grad_yc[i] += w_yo*grad_yc[i];
+        yc_dot_grad_yc[i] += w_yc*grad_yc[i];
+      }
+      block_structure const &b = *blocks_;
+      for (std::size_t bi = 0; bi < b.n_blocks(); bi++) {
+        int const n = b.size_of(bi);
+        int const *p = &b.parameters[b.parameter_start[bi]];
+        gathered.resize(n);
+        for (int a = 0; a < n; a++) gathered[a] = grad_yc[p[a]];
+        scalar_t *data = &block_data[b.data_start[bi]];
+        for (int a = 0; a < n; a++) {
+          scalar_t const row = w*gathered[a];
+          for (int c = 0; c < n; c++) data[a*n + c] += row*gathered[c];
+        }
+      }
+    }
+
+    //@{
+    scalar_t *open_equation() {
+      equation_row.resize(n_params);
+      return &equation_row[0];
+    }
+    void commit_equation(scalar_t yc, scalar_t const *grad_yc,
+                         scalar_t yo, scalar_t w)
+    {
+      add_equation(yc, af::const_ref<scalar_t>(grad_yc, n_params), yo, w);
+    }
+    //@}
+
+    /// operator+= by another name, for Python: the threaded build's merge is
+    /// worth being able to test on its own
+    void merge(fixed_scale_factor_summary const &other) { *this += other; }
+
+    fixed_scale_factor_summary &
+    operator+=(fixed_scale_factor_summary const &other) {
+      SMTBX_ASSERT(n_params == other.n_params)(n_params)(other.n_params);
+      sum_w_yo_sq += other.sum_w_yo_sq;
+      sum_w_yc_sq += other.sum_w_yc_sq;
+      sum_w_yo_yc += other.sum_w_yo_yc;
+      n_equations += other.n_equations;
+      for (int i = 0; i < n_params; i++) {
+        yo_dot_grad_yc[i] += other.yo_dot_grad_yc[i];
+        yc_dot_grad_yc[i] += other.yc_dot_grad_yc[i];
+      }
+      for (std::size_t i = 0; i < block_data.size(); i++) {
+        block_data[i] += other.block_data[i];
+      }
+      return *this;
+    }
+
+    void finalise(bool objective_only = false) {
+      SMTBX_ASSERT(sum_w_yo_sq > 0)(sum_w_yo_sq);
+      scale_factor_ = given_scale;
+      scalar_t const k = scale_factor_;
+      // the whole quadratic: nothing cancels at a k which was not chosen to
+      // make it
+      objective_ =
+        (sum_w_yo_sq - 2*k*sum_w_yo_yc + k*k*sum_w_yc_sq)/(2*sum_w_yo_sq);
+      if (objective_only) {
+        finalised = true;
+        return;
+      }
+      grad_scale_factor_.assign(n_params, 0);
+      right_hand_side_.resize(n_params);
+      for (int i = 0; i < n_params; i++) {
+        right_hand_side_[i] =
+          k*(yo_dot_grad_yc[i] - k*yc_dot_grad_yc[i])/sum_w_yo_sq;
+      }
+      block_structure const &b = *blocks_;
+      for (std::size_t bi = 0; bi < b.n_blocks(); bi++) {
+        int const n = b.size_of(bi);
+        scalar_t *data = &block_data[b.data_start[bi]];
+        for (int a = 0; a < n*n; a++) {
+          data[a] = k*k*data[a]/sum_w_yo_sq;
+        }
+      }
+      finalised = true;
+    }
+
+    scalar_t scale_factor() const { check(); return scale_factor_; }
+    scalar_t objective() const { check(); return objective_; }
+    scalar_t sum_w_yo_sq_value() const { return sum_w_yo_sq; }
+    scalar_t sum_w_yc_sq_value() const { return sum_w_yc_sq; }
+    int n_equations_value() const { return n_equations; }
+
+    af::shared<scalar_t> grad_scale_factor() const {
+      check();
+      return as_shared(grad_scale_factor_);
+    }
+    af::shared<scalar_t> right_hand_side() const {
+      check();
+      return as_shared(right_hand_side_);
+    }
+    af::shared<scalar_t> blocks() const {
+      check();
+      return as_shared(block_data);
+    }
+
+    template <class T1, class T2, class T3>
+    void add_residuals_omp(int, int, int, T1 const &, T2 const &, T3 const &) {
+      SMTBX_NOT_IMPLEMENTED();
+    }
+    template <class T1, class T2>
+    void add_residuals_omp(int, int, int, T1 const &, T2 const &) {
+      SMTBX_NOT_IMPLEMENTED();
+    }
+    template <class T1, class T2, class T3, class T4, class T5, class T6,
+              class T7>
+    void add_equations_omp(int, int, int, int, int, T1 &, T2 &, T3 &, T4 const &,
+                           T5 &, T6 const &, T7 const &) {
+      SMTBX_NOT_IMPLEMENTED();
+    }
+
+  private:
+    void allocate() {
+      yo_dot_grad_yc.assign(n_params, 0);
+      yc_dot_grad_yc.assign(n_params, 0);
+      block_data.assign(blocks_->data_size(), 0);
+      sum_w_yo_sq = sum_w_yc_sq = sum_w_yo_yc = 0;
+      objective_ = 0;
+      scale_factor_ = given_scale;
+      n_equations = 0;
+      finalised = false;
+    }
+    void check() const { SMTBX_ASSERT(finalised); }
+
+    int n_params;
+    scalar_t given_scale;
+    boost::shared_ptr<block_structure> blocks_;
+    std::vector<scalar_t> yo_dot_grad_yc, yc_dot_grad_yc, block_data;
+    std::vector<scalar_t> grad_scale_factor_, right_hand_side_;
+    mutable std::vector<scalar_t> gathered;
     std::vector<scalar_t> equation_row;
     scalar_t sum_w_yo_sq, sum_w_yc_sq, sum_w_yo_yc;
     scalar_t scale_factor_, objective_;

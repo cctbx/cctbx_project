@@ -66,6 +66,19 @@ if not libtbx.env.module_is_installed("smtbx"):
     env_smtbx_boost_python_ext.Prepend(LIBS=["cctbx"])
     Export("env_smtbx_boost_python_ext")
 
+    # Maximum-likelihood refinement needs the alpha/beta (sigma_A) estimator,
+    # which lives in mmtbx/max_lik. It is built here rather than by depending
+    # on the mmtbx module: configuring mmtbx drags in ccp4io, and with it MTZ,
+    # which Olex2 must not ship. The estimator itself needs none of that - its
+    # only mmtbx header is mmtbx/error.h, an auto-generated wrapper over
+    # scitbx/error_utils.h - so the two sources compile against the include
+    # path smtbx already has.
+    #
+    # Skipped when mmtbx is configured, because then mmtbx builds the same
+    # extension and two scons targets for one output is an error.
+    if not libtbx.env.has_module("mmtbx"):
+      SConscript("max_lik/SConscript")
+
     SConscript("stl/SConscript")
     SConscript("array_family/SConscript")
     SConscript("refinement/boost_python/SConscript")
