@@ -38,7 +38,7 @@ from cctbx import xray
 from scitbx.array_family import flex
 from scitbx.lstbx import normal_eqns_solving
 from smtbx_refinement_least_squares_ext import (
-  build_design_matrix, build_design_matrix_single)
+  build_design_matrix, build_design_matrix_single, ml_data)
 import sys
 
 
@@ -74,7 +74,25 @@ class linearised_problem(object):
       reparametrisation.jacobian_transpose_matching_grad_fc()
     self.n_parameters = jacobian_transpose.n_rows
 
-    summary = self._summary_accumulator(ls)
+    # The likelihood, if one was asked for. Leaving it out is what made MLF and
+    # MLI take exactly the least-squares step: the design matrix is what the
+    # conjugate gradients solve against, so a target which does not reach it
+    # does not reach the refinement either, however faithfully it is reported
+    # afterwards. It showed as MLI and MLF refining to bit-identical
+    # coordinates while both differed from least squares -- the difference
+    # being the accumulator, which was switched, and not the target, which was
+    # not.
+    #
+    # Settled before the accumulator is made, because build_ml_data also fixes
+    # the scale this cycle holds, from the same Fc alpha and beta were
+    # estimated against, and the accumulator has to be given that one.
+    ml = ml_data()
+    if getattr(ls, 'ml_target', None) is not None:
+      ls.check_maximum_likelihood_accumulator()
+      ml = ls.build_ml_data(f_mask_data, fc_correction, scale_factor)
+      scale_factor = ls.ml_scale_factor
+
+    summary = self._summary_accumulator(ls, scale_factor)
 
     # One pass builds J and, in the same pass, the summary over it: the scale
     # factor, the right hand side and the preconditioner blocks. Recovering
@@ -95,7 +113,7 @@ class linearised_problem(object):
       summary, ls.observations, f_mask_data, ls.weighting_scheme, scale_factor,
       ls.one_h_linearisation, jacobian_transpose, fc_correction, False,
       getattr(ls, 'may_parallelise', False), False,
-      getattr(ls, 'max_memory', 300))
+      getattr(ls, 'max_memory', 300), ml)
 
     # The builder keeps the design matrix and does the products against it, so
     # nothing here holds a copy of it.
@@ -120,6 +138,12 @@ class linearised_problem(object):
     self.grad_scale_factor = summary.grad_scale_factor()
     self.residuals = (ls.observations.fo_sq.data()
                       - self.scale_factor*self.observables)
+    # residuals and weights are a matched pair only for least squares: a
+    # likelihood weights an effective observation which is not fo_sq, so the
+    # objective has to come from the accumulator that formed both
+    self.target_objective = (summary.objective()
+                             if getattr(ls, 'ml_target', None) is not None
+                             else None)
     self._right_hand_side = summary.right_hand_side()
     self._blocks = summary.blocks().as_numpy_array()
 
@@ -146,20 +170,37 @@ class linearised_problem(object):
         self.extra_weights*flex.pow2(self.extra_residuals))
     return residual/2
 
-  def _summary_accumulator(self, ls):
+  def _summary_accumulator(self, ls, scale_factor):
     """ What the reflection pass accumulates besides whatever it stores.
 
     The blocks have to be settled before the pass which fills them, the
     accumulator gathering each block's own outer product as it goes, so this
     has to happen first and not on demand afterwards.
+
+    Under a likelihood the scale is held rather than solved for. alpha and beta
+    were estimated with it folded in, so the effective observation already
+    carries it and an accumulator which recovers one of its own by variable
+    projection applies a second on top. That is the same requirement
+    crystallographic_ls_class meets by choosing the fixed-scale normal
+    equations, and this is its counterpart on the path which forms no normal
+    matrix.
     """
     from smtbx_refinement_least_squares_ext import (
-      separable_scale_factor_summary)
+      separable_scale_factor_summary, fixed_scale_factor_summary)
     self.blocks = self.parameter_blocks(ls)
     self.block_parameters = flex.int([int(i) for b in self.blocks for i in b])
     self.block_sizes = flex.int([len(b) for b in self.blocks])
-    return separable_scale_factor_summary(
-      self.n_parameters, self.block_parameters, self.block_sizes)
+    if getattr(ls, 'ml_target', None) is None:
+      return separable_scale_factor_summary(
+        self.n_parameters, self.block_parameters, self.block_sizes)
+    if scale_factor is None:
+      raise RuntimeError(
+        "maximum likelihood needs a scale factor to hold fixed, and this "
+        "cycle was given none: alpha and beta are estimated with one folded "
+        "in, so there is no meaningful system to build without it")
+    return fixed_scale_factor_summary(
+      self.n_parameters, scale_factor,
+      self.block_parameters, self.block_sizes)
 
   def _jacobian_times(self, v):
     """ J v, undoing the sqrt(w) the stored matrix carries. """
@@ -477,12 +518,21 @@ class normal_matrix_problem(linearised_problem):
     self.observables = ls.fc_sq.data()
     self.weights = ls.weights
     self.f_calc = ls.f_calc.data()
-    self.scale_factor = ls.optimal_scale_factor()
+    # ls.scale_factor(), not optimal_scale_factor(): under a likelihood the
+    # accumulator holds its own scale at one and the crystallographic one is
+    # fitted alongside. This value is handed back to the next cycle as the
+    # override and is what the statistics are reported at.
+    self.scale_factor = ls.scale_factor()
     yo = ls.observations.fo_sq.data()
     self.sum_w_yo_sq = flex.sum(self.weights*yo*yo)
     self.weighted_observables_sq = flex.sum(
       self.weights*self.observables*self.observables)
     self.residuals = yo - self.scale_factor*self.observables
+    # see linearised_problem: the build above already formed the likelihood's
+    # own objective, from the effective observations these residuals are not
+    self.target_objective = (ls.objective_data_only
+                             if getattr(ls, 'ml_target', None) is not None
+                             else None)
 
     # the restraints are already in A and b, build_up having added them, so
     # there are no extra rows to carry here
@@ -559,6 +609,15 @@ class matrix_free_problem(linearised_problem):
   def __init__(self, ls, scale_factor, f_mask_data=None):
     from smtbx_refinement_least_squares_ext import (
       separable_scale_factor_summary)
+    if getattr(ls, 'ml_target', None) is not None:
+      # this mode rebuilds with a separable-scale accumulator on every matrix
+      # product, and the likelihood has no second scale for it to project out
+      raise RuntimeError(
+        "maximum likelihood (ml_target=%r) has no matrix-free mode: the "
+        "products are formed with a separable-scale accumulator, which "
+        "solves for a scale the likelihood has already absorbed into alpha. "
+        "Refine in 'stored' or 'normal_matrix' mode, or raise the memory "
+        "budget so one of them is chosen." % (ls.ml_target,))
     reparametrisation = ls.reparametrisation
     self.fc_correction = reparametrisation.fc_correction
     if self.fc_correction is None:
@@ -645,9 +704,23 @@ def report_state(problem, ls):
   ls.fc_sq = observations.fo_sq.array(
     data=problem.observables, sigmas=None).set_observation_type_xray_intensity()
   ls.weights = problem.weights
-  ls.overridden_scale_factor = problem.scale_factor
+  if getattr(ls, 'ml_target', None) is not None:
+    # problem.scale_factor is the accumulator's, which a likelihood holds at
+    # one; R1, wR2 and the difference map want the Fo/Fc scale, and reporting
+    # them at one makes a working refinement look like a destroyed structure
+    ls.ml_crystallographic_scale = \
+      ls.crystallographic_scale_factor(problem.observables)
+    ls.overridden_scale_factor = ls.ml_crystallographic_scale
+  else:
+    ls.overridden_scale_factor = problem.scale_factor
 
-  weighted_residual = flex.sum(problem.weights*flex.pow2(problem.residuals))
+  target_objective = getattr(problem, 'target_objective', None)
+  if target_objective is not None:
+    # a likelihood: sum_w_yo_sq is over the effective observations too, so
+    # the pair is consistent and the goodness of fit means what it says
+    weighted_residual = 2*target_objective*problem.sum_w_yo_sq
+  else:
+    weighted_residual = flex.sum(problem.weights*flex.pow2(problem.residuals))
   ls.objective_data_only = weighted_residual/(2*problem.sum_w_yo_sq)
   degrees_of_freedom = problem.residuals.size() - problem.n_parameters
   if degrees_of_freedom > 0:
@@ -928,9 +1001,22 @@ class cgls_iterations(normal_eqns_solving.iterations):
     # is a full Gauss-Newton build; without them a gradient-free pass suffices.
     # The scale-factor override stays in place either way, so the final wR2 and
     # goodness of fit are weighted with the scale factor the last cycle used.
+    # Taken before the closing build, which clears the override as obsolete -
+    # and for an objective-only close it is obsolete without being replaced.
+    ls.solver_scale_factor = ls.scale_factor()
     if bracketed:
       self.non_linear_ls.build_up(
         objective_only=not self.compute_standard_uncertainties)
+    # The scale factor the run finished on, kept past the override.
+    #
+    # This method works the scale out for itself each cycle and hands it over
+    # through overridden_scale_factor, which build_up then clears as obsolete.
+    # That is right when the closing build was a full one -- the normal
+    # equations carry their own scale afterwards. When the standard
+    # uncertainties were declined there is no such build, so a later full one
+    # (covariance_matrix does one on demand) would weight the data with
+    # whatever scale the *opening* objective-only pass left behind, which is
+    # from before the refinement moved anything.
     ls.overridden_scale_factor = None
 
   def open_the_run(self, ls):

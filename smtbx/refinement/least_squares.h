@@ -15,6 +15,7 @@
 #include <smtbx/error.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
 #include <smtbx/refinement/least_squares_twinning.h>
+#include <smtbx/refinement/ml_target.h>
 #include <smtbx/refinement/weighting_schemes.h>
 
 #include <algorithm>
@@ -327,7 +328,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       bool objective_only = false,
       bool may_parallelise = false,
       bool use_openmp = false,
-      int max_memory = 300)
+      int max_memory = 300,
+      ml_data<FloatType> const& ml = ml_data<FloatType>())
       :
       reflections_(reflections),
       f_mask_data(f_mask_data),
@@ -340,6 +342,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       built(false),
       use_openmp(use_openmp),
       max_memory(max_memory),
+      ml(ml),
       f_calc_(reflections.size()),
       observables_(reflections.size()),
       weights_(reflections.size()),
@@ -362,6 +365,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        */
       SMTBX_ASSERT(!(build_design_matrix && objective_only));
       check_dispersion_correction();
+      check_maximum_likelihood();
     }
 
     /** @brief Refuse a radial f'/f'' correction on twinned data.
@@ -380,6 +384,31 @@ namespace smtbx { namespace refinement { namespace least_squares {
       SMTBX_ASSERT(!(dc && dc->grad && reflections_.is_twinned()));
     }
 
+    /** @brief What maximum likelihood cannot be combined with, refused up front.
+
+    The likelihood is a statement about one amplitude and its distribution, so
+    the things it cannot be mixed with are the ones that change what the
+    computed observable means:
+
+    - twinning, because the components are summed as intensities and the
+      amplitudes of different components do not add;
+    - a non-trivial Fc correction (extinction, SWAT), because it returns an
+      intensity multiplier which has no place in the amplitude distribution;
+    - anything that is not one alpha, beta, epsilon and centric flag per
+      reflection.
+
+    Each of these would otherwise produce numbers rather than an error, which is
+    the worse outcome. OpenMP is refused separately, in build().
+    */
+    void check_maximum_likelihood() const {
+      if (!ml.active()) {
+        return;
+      }
+      SMTBX_ASSERT(ml.is_consistent_with(reflections_.size()));
+      SMTBX_ASSERT(!reflections_.is_twinned());
+      SMTBX_ASSERT(fc_cr.is_trivial());
+    }
+
     template<class NormalEquations>
     build_design_matrix_and_normal_equations(
       NormalEquations& normal_equations,
@@ -394,7 +423,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       bool objective_only = false,
       bool may_parallelise = false,
       bool use_openmp = false,
-      int max_memory = 300)
+      int max_memory = 300,
+      ml_data<FloatType> const& ml = ml_data<FloatType>())
       :
       reflections_(reflections),
       f_mask_data(f_mask_data),
@@ -407,6 +437,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       built(false),
       use_openmp(use_openmp),
       max_memory(max_memory),
+      ml(ml),
       f_calc_(reflections.size()),
       observables_(reflections.size()),
       weights_(reflections.size()),
@@ -422,6 +453,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       // as above: refused before anything is built
       SMTBX_ASSERT(!(build_design_matrix && objective_only));
       check_dispersion_correction();
+      check_maximum_likelihood();
       build(normal_equations, weighting_scheme);
     }
 
@@ -446,6 +478,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
         //!!
         scitbx::matrix::tensors::initialise<FloatType>();
 #if defined(_OPENMP)
+        /* The OpenMP accumulation calls add_equations_omp, which is specialised
+           per accumulator in normal_equations_omp.h and is not provided for the
+           fixed-scale accumulator maximum likelihood uses. Refusing here beats
+           discovering it as a throw from inside a parallel region, and beats
+           far more a specialisation that silently accumulates the wrong matrix.
+         */
+        SMTBX_ASSERT(!(use_openmp && ml.active()));
         if (use_openmp) {
           typedef accumulate_reflection_chunk_omp<NormalEquations>
             accumulate_reflection_chunk_omp_t;
@@ -577,7 +616,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
               fc_correction_ptr_t(fc_cr.fork()),
               objective_only,
               f_calc_.ref(), observables_.ref(), weights_.ref(),
-              design_matrix_));
+              design_matrix_, ml));
           accumulators.push_back(accumulator);
           pool.push_back(boost::shared_ptr<boost::thread>(
             new boost::thread(boost::ref(*accumulator))));
@@ -624,7 +663,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           fc_correction_ptr_t(fc_cr.fork()),
           objective_only,
           f_calc_.ref(), observables_.ref(), weights_.ref(),
-          design_matrix_);
+          design_matrix_, ml);
         job();
         if (job.exception_) {
           throw *job.exception_.get();
@@ -779,6 +818,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::ref<FloatType> observables;
       af::ref<FloatType> weights;
       af::versa<StoreType, af::c_grid<2> > &design_matrix;
+      /* Held by reference, not copied per worker. It is read-only and indexed
+         by i_h, so unlike f_calc_function and fc_cr there is nothing in it to
+         fork - and a copy would refcount its af::shared members, which is not
+         atomic, so workers destroying their copies would race. The builder owns
+         it and outlives every worker.
+       */
+      ml_data<FloatType> const& ml;
       bool running;
       accumulate_reflection_chunk(
         builder_base<FloatType>& parent,
@@ -797,7 +843,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::ref<std::complex<FloatType> > f_calc,
         af::ref<FloatType> observables,
         af::ref<FloatType> weights,
-        af::versa<StoreType, af::c_grid<2> > &design_matrix)
+        af::versa<StoreType, af::c_grid<2> > &design_matrix,
+        ml_data<FloatType> const& ml)
       : parent(parent),
         scheduler(scheduler),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
@@ -810,6 +857,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         objective_only(objective_only), compute_grad(!objective_only),
         f_calc(f_calc), observables(observables), weights(weights),
         design_matrix(design_matrix),
+        ml(ml),
         running(true)
       {}
 
@@ -920,12 +968,58 @@ namespace smtbx { namespace refinement { namespace least_squares {
               }
               observables[i_h] = observable;
 
-              FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-                reflections.sig(i_h), observable, h, scale_factor);
+              FloatType weight, y_obs = reflections.fo_sq(i_h);
+              if (ml.active()) {
+                /* Maximum likelihood: the accumulator receives an effective
+                   observation and weight in place of the measured intensity
+                   and the weighting scheme, so that the equations it forms are
+                   those of the likelihood. See smtbx/refinement/ml_target.h.
+
+                   A reflection the target cannot use is given zero weight
+                   rather than skipped, keeping observables and weights at one
+                   entry per reflection for everything downstream.
+                 */
+                FloatType yo_eff, w_eff;
+                if (ml.is_free(i_h)) {
+                  /* Held out of the target sum: alpha and beta are estimated
+                     on the free set, so including it here would make that
+                     estimate self-referential. Zero weight and zero residual.
+                   */
+                  yo_eff = observable;
+                  w_eff = 0;
+                }
+                else if (ml.is_intensity()) {
+                  // the intensity target needs the measured sigma, which is
+                  // the whole of what distinguishes it from the amplitude one
+                  mli_effective_observation(
+                    reflections.fo_sq(i_h), reflections.sig(i_h), observable,
+                    ml.alpha[i_h], ml.beta[i_h],
+                    ml.scale_factor(),
+                    ml.epsilon[i_h], ml.centric[i_h],
+                    yo_eff, w_eff);
+                }
+                else {
+                  /* ml.scale_factor(), not the builder's: alpha carries the
+                     scale it was estimated against, and the builder's is the
+                     crystallographic one R1 and the difference map read.
+                   */
+                  ml_effective_observation(
+                    reflections.fo_sq(i_h), reflections.sig(i_h), observable,
+                    ml.alpha[i_h], ml.beta[i_h],
+                    ml.scale_factor(),
+                    ml.epsilon[i_h], ml.centric[i_h],
+                    yo_eff, w_eff);
+                }
+                y_obs = yo_eff;
+                weight = w_eff;
+              }
+              else {
+                weight = weighting_scheme(reflections.fo_sq(i_h),
+                  reflections.sig(i_h), observable, h, scale_factor);
+              }
               weights[i_h] = weight;
               if (objective_only) {
-                normal_equations.add_residual(observable,
-                  reflections.fo_sq(i_h), weight);
+                normal_equations.add_residual(observable, y_obs, weight);
               }
               else if (fast) {
                 if (build_design_matrix) {
@@ -936,7 +1030,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                    the gradients were written into.
                  */
                 normal_equations.commit_equation(observable, grad,
-                  reflections.fo_sq(i_h), weight);
+                  y_obs, weight);
               }
               else {
                 if (fc_cr->grad) {
@@ -955,7 +1049,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   }
                 }
                 normal_equations.add_equation(observable,
-                  gradients.ref(), reflections.fo_sq(i_h), weight);
+                  gradients.ref(), y_obs, weight);
                 if (build_design_matrix) {
                   store_design_row(design_matrix, i_h, grad, n_params, weight);
                 }
@@ -992,6 +1086,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
       use_openmp,
       built;
     int max_memory;
+    /* Empty unless this is a maximum-likelihood build. Held by value, but the
+       arrays inside it are references owned by the caller for the duration of
+       the build - the same lifetime `reflections_` has.
+     */
+    ml_data<FloatType> ml;
 
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
@@ -1041,12 +1140,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
        bool objective_only = false,
        bool may_parallelise = false,
        bool use_openmp = false,
-       int max_memory = 300)
+       int max_memory = 300,
+       ml_data<FloatType> const& ml = ml_data<FloatType>())
        : parent_t(
         normal_equations,
         reflections, f_mask_data, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, fc_cr,
-        objective_only, may_parallelise, use_openmp, max_memory)
+        objective_only, may_parallelise, use_openmp, max_memory, ml)
     {}
      virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
        SMTBX_NOT_IMPLEMENTED();
@@ -1098,12 +1198,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
        bool objective_only = false,
        bool may_parallelise = false,
        bool use_openmp = false,
-       int max_memory = 300)
+       int max_memory = 300,
+       ml_data<FloatType> const& ml = ml_data<FloatType>())
        : parent_t(
         normal_equations,
         reflections, f_mask_data, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, fc_cr,
-        objective_only, may_parallelise, use_openmp, max_memory)
+        objective_only, may_parallelise, use_openmp, max_memory, ml)
     {}
 
     virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {

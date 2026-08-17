@@ -654,7 +654,15 @@ def exercise_without_standard_uncertainties():
   print("\tdeclining the s.u. leaves the objective at %.8e either way"
         % refined[False][0])
 
-  # and the s.u. really are the only thing given up
+  # and the s.u. really are the only thing given up -- and not even those, if
+  # they are later asked for.
+  #
+  # What must never happen is a covariance matrix left over from an earlier
+  # build: it would describe a model the run has since moved away from, which
+  # is worse than none at all. So the closing build is still declined, and the
+  # flag says so; a caller which wants the matrix causes one to be built, at
+  # the parameters the run finished on. exercise_declined_s_u_can_still_be_
+  # asked_for holds that matrix to the one a full closing build would give.
   ls = least_squares_for(shaken_structure(), observations,
                          consistent_weighting)
 
@@ -662,15 +670,11 @@ def exercise_without_standard_uncertainties():
     compute_standard_uncertainties = False
 
   no_su(ls, n_max_iterations=20, mode='stored')
-  try:
-    ls.covariance_matrix_and_annotations()
-  except Exception:
-    pass          # no normal matrix to invert, which is the whole point
-  else:
-    # a matrix left over from an earlier build would be worse than none: it
-    # would describe a model the run has since moved away from
-    raise AssertionError(
-      "a covariance matrix was available after declining to build one")
+  assert not ls.normal_equations_are_complete, \
+    "declining the s.u. still built the normal equations"
+  ls.covariance_matrix_and_annotations()
+  assert ls.normal_equations_are_complete, \
+    "the covariance matrix came from somewhere other than a fresh build"
 
 
 def exercise_no_flag_shadows_a_method():
@@ -722,6 +726,56 @@ def exercise_no_flag_shadows_a_method():
   print("\tno bool flag shadows a method it is mixed in beside")
 
 
+def exercise_declined_s_u_can_still_be_asked_for():
+  """ Declining the s.u. shall cost the closing build, not the covariance.
+
+  An objective-only close leaves the restraints and the origin fixing standing
+  in the normal equations and nothing from the data, so most rows are empty.
+  Inverting that used to fail in Cholesky on the first row no restraint
+  happened to touch, reported against whichever parameter that was - which on
+  a real structure sent an investigation after a perfectly well determined
+  hydrogen. A caller which wants the covariance matrix now gets it, built on
+  demand, and it must be the same matrix as if the s.u. had been asked for up
+  front: same model, same equations.
+  """
+  observations = observations_from(reference_structure())
+  cov = {}
+
+  for wanted in (True, False):
+    ls = least_squares_for(shaken_structure(), observations,
+                           consistent_weighting)
+
+    class iterations(cgls.cgls_iterations):
+      compute_standard_uncertainties = wanted
+
+    iterations(ls, n_max_iterations=5, mode='stored')
+    assert ls.normal_equations_are_complete == wanted, wanted
+    cov[wanted] = ls.covariance_matrix()
+    # having built them once, it does not build them again
+    assert ls.normal_equations_are_complete
+    assert cov[wanted].size() == ls.covariance_matrix().size()
+
+  a, b = cov[True], cov[False]
+  assert a.size() == b.size(), (a.size(), b.size())
+  # Not to 1e-12: the two are independent accumulations of the same sums in a
+  # different order relative to the rest of the run. The failure this guards
+  # against - the closing build weighted with the scale the *opening* pass
+  # left behind, from before the refinement moved anything - showed as 0.9.
+  worst = 0
+  for i in range(a.size()):
+    worst = max(worst, abs(a[i] - b[i])/max(abs(a[i]), abs(b[i]), 1e-300))
+  assert worst < 1e-8, worst
+
+  # a plain Gauss-Newton build is complete, and an objective-only one is not
+  ls = least_squares_for(shaken_structure(), observations,
+                         consistent_weighting)
+  ls.build_up()
+  assert ls.normal_equations_are_complete
+  ls.build_up(objective_only=True)
+  assert not ls.normal_equations_are_complete
+  print("\tthe s.u. can be declined and still asked for, to %.1e" % worst)
+
+
 def run():
   exercise_step_matches_cholesky()
   exercise_block_preconditioner()
@@ -739,6 +793,7 @@ def run():
   exercise_refinement()
   exercise_standard_uncertainties()
   exercise_without_standard_uncertainties()
+  exercise_declined_s_u_can_still_be_asked_for()
   print('OK')
 
 
