@@ -325,25 +325,48 @@ def exercise_tail_parameters_are_consistent():
   finalise(), parameter_map() and everything peeling the covariance diagonal
   from the end have to agree on that; Olex2's does, by subtracting the blocks
   in order.
+
+  Checked in two arrangements rather than one. This test originally put EXTI
+  and thickness in the same reparametrisation, which stopped being a legal
+  combination when refining EXTI against an N-beam model was refused: EXTI is
+  then dropped and never gets a grad_index, so the ordering assertion could not
+  hold. The two tail parameters are therefore placed one at a time, which
+  covers the same bookkeeping, and the refusal itself is asserted rather than
+  left as the reason a test fails.
   """
   from smtbx.refinement import constraints
   xs = structure_with_anomalous_scatterers()
+  ct = smtbx_utils().connectivity_table(xs)
+
+  # thickness present: EXTI is refused and contributes no parameter
   exti = xray.shelx_extinction_correction(xs.unit_cell(), 0.71073, 0.001)
   exti.grad = True
   thickness = xray.thickness(1000., True)
   dc = correction(xs, 3, per_atom=True)
   reparametrisation = constraints.reparametrisation(
-    structure=xs, constraints=[],
-    connectivity_table=smtbx_utils().connectivity_table(xs),
+    structure=xs, constraints=[], connectivity_table=ct,
     fc_correction=exti, thickness=thickness, dispersion_radial=dc)
   n = reparametrisation.jacobian_transpose.n_rows
-  # exti, then thickness, then all of ours, and nothing after
-  assert exti.grad_index == n - 1 - 1 - dc.n_param, (exti.grad_index, n)
-  assert thickness.grad_index == n - 1 - dc.n_param
+  assert exti.grad_index == -1, exti.grad_index
+  # thickness, then all of ours, and nothing after
+  assert thickness.grad_index == n - 1 - dc.n_param, (thickness.grad_index, n)
   assert dc.grad_index == n - dc.n_param
   assert dc.n_param == 3*3  # three anomalous scatterers, three terms each
   assert reparametrisation.parameter_map().n_parameters == n, (
     reparametrisation.parameter_map().n_parameters, n)
+
+  # no thickness: EXTI takes the same slot the thickness had, ahead of ours
+  exti2 = xray.shelx_extinction_correction(xs.unit_cell(), 0.71073, 0.001)
+  exti2.grad = True
+  dc2 = correction(xs, 3, per_atom=True)
+  reparametrisation2 = constraints.reparametrisation(
+    structure=xs, constraints=[], connectivity_table=ct,
+    fc_correction=exti2, dispersion_radial=dc2)
+  n2 = reparametrisation2.jacobian_transpose.n_rows
+  assert exti2.grad_index == n2 - 1 - dc2.n_param, (exti2.grad_index, n2)
+  assert dc2.grad_index == n2 - dc2.n_param
+  assert reparametrisation2.parameter_map().n_parameters == n2, (
+    reparametrisation2.parameter_map().n_parameters, n2)
 
 
 def exercise_twinning_is_refused():
