@@ -13,6 +13,8 @@
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
 #include <sstream>
+#include <cmath>
+#include <vector>
 #if defined(_OPENMP)
   #include <omp.h>
 #endif
@@ -65,6 +67,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Construct a least-squares problem with the given number of unknowns.
     linear_ls(int n_parameters)
       : solved_(false),
+        n_accumulated_(0),
         normal_matrix_(n_parameters),
         right_hand_side_(n_parameters)
     {}
@@ -76,6 +79,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// and right hand side b
     linear_ls(symmetric_matrix_t const &a, vector_t const &b)
       : solved_(false),
+        // Handed a matrix outright: it counts as accumulated, or the guard
+        // below would treat a caller-supplied system as "never built".
+        n_accumulated_(1),
         normal_matrix_(a),
         right_hand_side_(b)
     {
@@ -87,6 +93,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                       af::const_ref<scalar_t> const &a_row,
                       scalar_t w)
     {
+      ++n_accumulated_;
       scalar_t *p = normal_matrix_.begin();
       for (int i=0; i<n_parameters(); ++i)  {
         right_hand_side_[i] += w * a_row[i] * b_i;
@@ -127,6 +134,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     void update_matrix(sparse::matrix<scalar_t> const &at_w_a,
                        vector_t const &a_t_w_b,
                        bool negate_right_hand_side){
+      ++n_accumulated_;
       normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
       if (negate_right_hand_side) right_hand_side_ -= a_t_w_b.const_ref();
       else                        right_hand_side_ += a_t_w_b.const_ref();
@@ -136,6 +144,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
       solved_ = false;
+      n_accumulated_ = 0;
       std::fill(normal_matrix_.begin(), normal_matrix_.end(), scalar_t(0));
       std::fill(right_hand_side_.begin(), right_hand_side_.end(), scalar_t(0));
     }
@@ -157,6 +166,96 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
      */
     void solve() {
       using scitbx::matrix::cholesky::u_transpose_u_decomposition_in_place;
+      int const n = n_parameters();
+
+      /* Jacobi (symmetric diagonal) preconditioning, i.e. decompose
+         \f$ A' = D^{-1} A D^{-1} \f$ with \f$ D = \mathrm{diag}(\sqrt{A_{ii}}) \f$
+         rather than A itself.
+
+         Why: crystallographic normal matrices routinely span many orders of
+         magnitude between parameter types, and the decomposition's backward
+         error goes like \f$ n \epsilon \lambda_{max} \f$ -- a property of the
+         *largest* eigenvalue. When the weakest parameter's eigenvalue is
+         smaller than that, whether a pivot stays positive is decided by
+         rounding rather than by the data, so the same model succeeds on one
+         build and throws "not positive definite" on another.
+
+         Measured on an electron-diffraction N-beam refinement (131 parameters,
+         a refined sample thickness among them): lambda_min 8.5e-08 against a
+         rounding floor of 7.5e-08 -- a margin of 1.1. Scaling takes the
+         effective condition number from 3.0e13 to about 9, and the margin with
+         it. The thickness row is 1e-07 where the ADP rows are 1e+06; that
+         spread is a choice of units, not a statement about the data, and the
+         decomposition should not be sensitive to it.
+
+         This is *not* damping: A' and A have the same solution in exact
+         arithmetic, no term is added, and nothing is regularised away. A
+         genuinely undetermined parameter still fails, at the same index, which
+         is what makes the error message worth reading.
+       */
+      /* Parameters no observation touches are frozen rather than fought over.
+
+         For a normal matrix \f$ A = M^T W M \f$ with positive weights,
+         \f$ A_{ii} = \sum_k w_k M_{ki}^2 = 0 \f$ forces column i of the design
+         matrix to vanish identically -- so the whole row, the whole column and
+         the right-hand side entry are zero too. Such a parameter is not merely
+         ill-determined, it is absent from the system: freezing it at a zero
+         shift provably cannot change any other parameter's shift, because
+         nothing is coupled to it.
+
+         Without this the decomposition fails at that pivot and the whole cycle
+         is lost, reporting only an index. That has been a recurring failure in
+         both the X-ray and the electron-diffraction paths, because there are
+         many ways to end up with a live parameter nothing constrains: a
+         rotatable AFIX group whose hydrogens are all fixed, an atom at zero
+         occupancy, a parameter left refining after everything it acts on has
+         been fixed.
+
+         `zero_diagonal_indices()` reports what was frozen so a caller can say
+         so. Silence would be worse than the crash: a user is entitled to know
+         that a parameter they asked to refine carried no information.
+       */
+      zero_diagonal_indices_.clear();
+      std::vector<scalar_t> d(n, scalar_t(1));
+      {
+        scalar_t const *p = normal_matrix_.begin();
+        for (int i=0; i<n; ++i) {
+          scalar_t a_ii = *p;
+          if (a_ii > 0) d[i] = std::sqrt(a_ii);
+          else zero_diagonal_indices_.push_back(i);
+          p += (n - i);            // start of the next packed row
+        }
+      }
+      /* The indices are *recorded*, not acted on: an unconstrained parameter
+         still fails the decomposition, exactly as before.
+
+         Freezing them at a zero shift was tried and reverted. It is sound in
+         isolation -- for \f$ A = M^T W M \f$ a zero diagonal forces the whole
+         row, column and rhs to vanish, so the parameter is decoupled -- but it
+         cannot be told apart from the state CGLS leaves behind when it
+         declines to build normal equations. There, restraints and origin
+         fixing still accumulate (`cgls.py` calls
+         `build_up(objective_only=True)`), so "was anything accumulated" does
+         not separate the two either; freezing then manufactures an identity
+         and hands back a covariance matrix describing no model, which
+         `tst_cgls.exercise_without_standard_uncertainties` rightly rejects.
+
+         It would also not have helped the case that prompted it. Olex2's
+         electron-diffraction dump for a failing thickness step shows a 1x1
+         matrix with diagonal 0 **and gradient 0**: the derivative never
+         reached the normal equations at all. Letting that "succeed" would
+         refine nothing while reporting success, which is worse than the
+         failure it replaces.
+       */
+
+      {
+        scalar_t *p = normal_matrix_.begin();
+        for (int i=0; i<n; ++i) {
+          right_hand_side_[i] /= d[i];
+          for (int j=i; j<n; ++j) *p++ /= (d[i]*d[j]);
+        }
+      }
+
       u_transpose_u_decomposition_in_place<scalar_t> cholesky(normal_matrix_);
       if(cholesky.failure) {
         std::ostringstream buffer;
@@ -166,6 +265,27 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
       SCITBX_ASSERT(!cholesky.failure);
       cholesky.solve_in_place(right_hand_side_);
+
+      /* Undo the scaling, in both things a caller can still reach.
+
+         The solution first: solving A' y = b' gives \f$ y = D x \f$, so the
+         step is \f$ x = D^{-1} y \f$.
+
+         Then the factor. `cholesky_factor()` stays live after solve() and
+         `smtbx.refinement.least_squares.covariance_matrix()` inverts it for
+         every ESD the user ever sees, so it must be the factor of A and not of
+         A'. From \f$ U'^T U' = D^{-1} A D^{-1} \f$ it follows that
+         \f$ U = U' D \f$ satisfies \f$ U^T U = A \f$ -- one multiplication per
+         stored element, by the scale of its *column*. Without this the ESDs
+         would be wrong by \f$ d_i d_j \f$ and nothing would announce it.
+       */
+      for (int i=0; i<n; ++i) right_hand_side_[i] /= d[i];
+      {
+        scalar_t *p = normal_matrix_.begin();
+        for (int i=0; i<n; ++i) {
+          for (int j=i; j<n; ++j) *p++ *= d[j];
+        }
+      }
       solved_ = true;
     }
 
@@ -185,10 +305,24 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       return right_hand_side_.array();
     }
 
+    /// Parameters frozen by the last solve() because nothing constrained them
+    /** Empty in a healthy refinement. A non-empty result names parameters the
+        user asked to refine and no observation touched -- worth reporting.
+     */
+    af::shared<int> zero_diagonal_indices() const {
+      af::shared<int> result;
+      for (std::size_t i=0; i<zero_diagonal_indices_.size(); ++i) {
+        result.push_back(zero_diagonal_indices_[i]);
+      }
+      return result;
+    }
+
   public:
     bool solved_;
+    std::size_t n_accumulated_;
     symmetric_matrix_owning_ref_t normal_matrix_;
     vector_owning_ref_t right_hand_side_;
+    std::vector<int> zero_diagonal_indices_;
   };
 
 
@@ -714,6 +848,292 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
     vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;
+    bool finalised_;
+    non_linear_ls<scalar_t> reduced_ls;
+  };
+
+  /// Non-linear L.S. with a scale factor that is given, not optimised away.
+  /** Same model \f$y_o \approx K y_c(x)\f$ and the same accumulation as
+      non_linear_ls_with_separable_scale_factor, but \f$K\f$ is held fixed:
+
+      \f[ A = K^2 \sum_i w_i \nabla y_{c,i} \nabla y_{c,i}^T, \quad
+          b = K \sum_i w_i (y_{o,i} - K y_{c,i}) \nabla y_{c,i} \f]
+
+      This exists for maximum-likelihood refinement. There the accumulator is
+      fed an *effective* observation and weight derived from the likelihood, so
+      that \f$ w(y_o - K y_c) \f$ is the likelihood gradient; variable
+      projection would then solve for a second scale factor on top of the one
+      already inside the likelihood's alpha and beta, and the fixed point of
+      that is not the maximum of the likelihood.
+
+      The public surface is deliberately identical to the separable class, down
+      to optimal_scale_factor(), so that everything built on that one -
+      smtbx's crystallographic_ls, the restraints, the solvers - takes this by
+      substitution rather than by special-casing.
+   */
+  template <typename FloatType,
+            template<typename> class SumOfRank1Updates=matrix::sum_of_symmetric_rank_1_updates>
+  class non_linear_ls_with_fixed_scale_factor
+  {
+  public:
+    SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
+    typedef SumOfRank1Updates<FloatType> sum_of_rank_1_updates_t;
+
+    non_linear_ls_with_fixed_scale_factor(
+      int n_parameters,
+      bool normalised=false,
+      std::size_t accumulator_buffer_bytes=0)
+      : yo_dot_yc(0), yc_sq(0), yo_sq(0),
+        k_(1),
+        n_params(n_parameters),
+        n_data(0),
+        normalised_(normalised),
+        grad_yc_dot_grad_yc(n_parameters, accumulator_buffer_bytes),
+        yo_dot_grad_yc(n_parameters),
+        yc_dot_grad_yc(n_parameters),
+        finalised_(false),
+        reduced_ls(n_parameters)
+    {}
+
+    int n_parameters() const { return n_params; }
+
+    std::size_t n_equations() const {
+      return finalised() ? reduced_ls.n_equations() : n_data;
+    }
+
+    std::size_t dof() const { return n_equations() - n_parameters(); }
+
+    bool normalised() const { return normalised_; }
+
+    /// The scale factor this works at. Set it before finalise().
+    void set_scale_factor(scalar_t k) {
+      SCITBX_ASSERT(!finalised());
+      k_ = k;
+    }
+
+    void add_residual(scalar_t yc, scalar_t yo, scalar_t w) {
+      n_data++;
+      yo_sq += w * yo * yo;
+      yo_dot_yc += w * yo * yc;
+      yc_sq += w * yc * yc;
+    }
+
+    void add_equation(scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
+                      scalar_t yo, scalar_t w)
+    {
+      SCITBX_ASSERT(grad_yc.size() == n_params);
+      SCITBX_ASSERT(!finalised());
+      add_equation(yc, grad_yc.begin(), yo, w);
+    }
+
+    void add_equation(scalar_t yc, scalar_t const *grad_yc,
+                      scalar_t yo, scalar_t w)
+    {
+      add_residual(yc, yo, w);
+      grad_yc_dot_grad_yc.add(grad_yc, w);
+      for (int i=0; i<n_params; ++i) {
+        yo_dot_grad_yc[i] += w * yo * grad_yc[i];
+        yc_dot_grad_yc[i] += w * yc * grad_yc[i];
+      }
+    }
+
+    scalar_t *open_equation() {
+      return grad_yc_dot_grad_yc.open_row();
+    }
+    void commit_equation(scalar_t yc, scalar_t const *grad_yc,
+                         scalar_t yo, scalar_t w)
+    {
+      add_residual(yc, yo, w);
+      for (int i=0; i<n_params; ++i) {
+        yo_dot_grad_yc[i] += w * yo * grad_yc[i];
+        yc_dot_grad_yc[i] += w * yc * grad_yc[i];
+      }
+      grad_yc_dot_grad_yc.commit_row(w);
+    }
+
+    void add_equations(af::const_ref<scalar_t> const &yc,
+                       af::const_ref<scalar_t, af::mat_grid> const &jacobian_yc,
+                       af::const_ref<scalar_t> const &yo,
+                       af::const_ref<scalar_t> const &w)
+    {
+      SCITBX_ASSERT(   yc.size() == jacobian_yc.n_rows()
+                    && (!w.size() || yc.size() == w.size()))
+                   (yc.size())(jacobian_yc.n_rows())(w.size());
+      SCITBX_ASSERT(jacobian_yc.n_columns() == n_parameters())
+                   (jacobian_yc.n_columns())(n_parameters());
+      for (int i=0; i<yc.size(); ++i) {
+        add_equation(yc[i], &jacobian_yc(i, 0), yo[i], w.size() ? w[i] : 1);
+      }
+    }
+
+    static std::size_t omp_matrix_scratch(int n_parameters, int threads) {
+      return sum_of_rank_1_updates_t::omp_matrix_scratch(n_parameters, threads);
+    }
+
+#if defined(_OPENMP)
+    void add_residuals_omp(const int& n,
+      const int& start,
+      const int& threads,
+      af::const_ref<scalar_t> const& yc,
+      af::const_ref<scalar_t> const& yo,
+      af::const_ref<scalar_t> const& w)
+    {
+      n_data += n;
+      scalar_t temp2 = 0, temp3 = 0, temp4 = 0;
+#pragma omp parallel for reduction(+:temp2, temp3, temp4) num_threads(threads)
+      for (int i = start; i < start + n; i++) {
+        scalar_t const temp1 = w[i] * yo[i];
+        temp2 += temp1 * yo[i];
+        temp3 += temp1 * yc[i];
+        temp4 += w[i] * yc[i] * yc[i];
+      }
+      yo_sq += temp2;
+      yo_dot_yc += temp3;
+      yc_sq += temp4;
+    }
+
+    void add_residuals_omp(const int& n,
+      const int& start,
+      const int& threads,
+      af::const_ref<scalar_t> const& yc,
+      af::const_ref<scalar_t> const& yo)
+    {
+      n_data += n;
+      scalar_t temp1 = 0, temp2 = 0, temp3 = 0;
+#pragma omp parallel for reduction(+:temp1, temp2, temp3) num_threads(threads)
+      for (int i = start; i < start + n; i++) {
+        temp1 += yo[i] * yo[i];
+        temp2 += yo[i] * yc[i];
+        temp3 += yc[i] * yc[i];
+      }
+      yo_sq += temp1;
+      yo_dot_yc += temp2;
+      yc_sq += temp3;
+    }
+
+    /// Not provided: the caller must not take the OpenMP path with this.
+    /** The separable class has this specialised per accumulator in
+        normal_equations_omp.h. Rather than a second set of specialisations for
+        a path maximum likelihood does not need yet, this refuses loudly - which
+        is better than a silently wrong normal matrix.
+     */
+    void add_equations_omp(const int& n_ref,
+      const int& n_par,
+      const int& chunk_size,
+      const int& start,
+      const int& threads,
+      std::vector<FloatType>& matrix,
+      std::vector<FloatType>& yo_dot_grad_yc_,
+      std::vector<FloatType>& yc_dot_grad_yc_,
+      af::const_ref<scalar_t> const& yc,
+      std::vector<FloatType> const& jacobian_yc,
+      af::const_ref<scalar_t> const& yo,
+      af::const_ref<scalar_t> const& w)
+    {
+      throw SCITBX_NOT_IMPLEMENTED();
+    }
+#endif
+
+    non_linear_ls_with_fixed_scale_factor
+    &operator+=(non_linear_ls_with_fixed_scale_factor const &other) {
+      SCITBX_ASSERT(!finalised());
+      SCITBX_ASSERT(!other.finalised());
+      n_data += other.n_data;
+      yo_sq += other.yo_sq;
+      yo_dot_yc += other.yo_dot_yc;
+      yc_sq += other.yc_sq;
+
+      grad_yc_dot_grad_yc += other.grad_yc_dot_grad_yc;
+      yo_dot_grad_yc += other.yo_dot_grad_yc;
+      yc_dot_grad_yc += other.yc_dot_grad_yc;
+
+      return *this;
+    }
+
+    scalar_t sum_w_yo_sq() const {
+      SCITBX_ASSERT(finalised());
+      return yo_sq;
+    }
+
+    /// The scale factor in use. Fixed, so nothing was optimised to get it.
+    /** Named as in the separable class on purpose: callers ask for the scale
+        the equations were built at, and that question has an answer here too.
+     */
+    scalar_t optimal_scale_factor() const {
+      return k_;
+    }
+
+    scalar_t objective() const {
+      SCITBX_ASSERT(finalised());
+      return reduced_ls.objective();
+    }
+
+    scalar_t chi_sq() const {
+      SCITBX_ASSERT(finalised());
+      return (r_sq + 2*(reduced_ls.objective() - objective_))/dof();
+    }
+
+    void finalise(bool objective_only=false) {
+      SCITBX_ASSERT(!finalised() && n_equations())(n_equations());
+      finalised_ = true;
+
+      grad_yc_dot_grad_yc.finalise();
+      a = grad_yc_dot_grad_yc;
+
+      scalar_t k_sq = k_*k_;
+      r_sq = yo_sq - 2*k_*yo_dot_yc + k_sq*yc_sq;
+      objective_ = r_sq/2;
+      if (normalised()) objective_ /= yo_sq;
+
+      vector_owning_ref_t b = yo_dot_grad_yc;
+      reduced_ls = non_linear_ls<scalar_t>(n_data,
+                                           objective_, b.array(), a.array());
+
+      if (objective_only) return;
+
+      for (int i=0; i<n_params; ++i) {
+        b[i] = k_*(yo_dot_grad_yc[i] - k_*yc_dot_grad_yc[i]);
+      }
+      if (k_ != 1) {
+        scalar_t *pa = a.begin();
+        for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
+          *pa++ *= k_sq;
+        }
+      }
+      if (normalised()) {
+        a /= yo_sq;
+        b /= yo_sq;
+      }
+    }
+
+    bool finalised() const { return finalised_; }
+
+    linear_ls<scalar_t> &step_equations() {
+      return reduced_problem().step_equations();
+    }
+
+    non_linear_ls<scalar_t> &reduced_problem() {
+      SCITBX_ASSERT(finalised());
+      return reduced_ls;
+    }
+
+    void reset() {
+      n_data = 0;
+      yo_dot_yc = 0; yc_sq = 0; yo_sq = 0;
+      grad_yc_dot_grad_yc.reset();
+      std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));
+      std::fill(yc_dot_grad_yc.begin(), yc_dot_grad_yc.end(), scalar_t(0));
+      finalised_ = false;
+    }
+
+  private:
+    scalar_t yo_dot_yc, yo_sq, yc_sq, r_sq, objective_, k_;
+    int n_params;
+    std::size_t n_data;
+    bool normalised_;
+    sum_of_rank_1_updates_t grad_yc_dot_grad_yc;
+    symmetric_matrix_owning_ref_t a;
+    vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc;
     bool finalised_;
     non_linear_ls<scalar_t> reduced_ls;
   };

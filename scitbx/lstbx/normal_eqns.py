@@ -160,3 +160,40 @@ if libtbx.env.has_module('fast_linalg'):
 
 non_linear_ls_with_separable_scale_factor = \
   non_linear_ls_with_separable_scale_factor_BLAS_2
+
+
+non_linear_ls_with_fixed_scale_factor_description = """\
+* non-linear L.S. at a scale factor which is given rather than optimised
+"""
+
+class non_linear_ls_with_fixed_scale_factor_BLAS_2(
+  ext.non_linear_ls_with_fixed_scale_factor__level_2_blas_impl,
+  non_linear_ls_mixin):
+
+  @property
+  def description(self):
+    return (non_linear_ls_with_fixed_scale_factor_description +
+            "* slow normal matrix computation\n")
+
+  @property
+  def debug_info(self):
+    return ""
+
+
+if libtbx.env.has_module('fast_linalg'):
+  class non_linear_ls_with_fixed_scale_factor_BLAS_3(
+    ext.non_linear_ls_with_fixed_scale_factor__level_3_blas_impl,
+    non_linear_ls_mixin):
+
+    @property
+    def description(self):
+      return (non_linear_ls_with_fixed_scale_factor_description +
+              "* fast normal matrix computation")
+
+    @property
+    def debug_info(self):
+      return ""
+
+
+non_linear_ls_with_fixed_scale_factor = \
+  non_linear_ls_with_fixed_scale_factor_BLAS_2

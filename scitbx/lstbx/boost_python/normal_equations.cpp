@@ -5,6 +5,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/return_arg.hpp>
 
 
 namespace scitbx { namespace lstbx { namespace normal_equations {
@@ -48,6 +49,7 @@ namespace boost_python {
         .def("normal_matrix_packed_u", &wt::normal_matrix)
         .def("right_hand_side", &wt::right_hand_side)
         .def("cholesky_factor_packed_u", &wt::cholesky_factor)
+        .def("zero_diagonal_indices", &wt::zero_diagonal_indices)
         .def("solution", &wt::solution)
         ;
     }
@@ -167,6 +169,58 @@ namespace boost_python {
     }
   };
 
+  template <typename FloatType, template<typename> class SumOfRank1Updates>
+  struct non_linear_ls_with_fixed_scale_factor_wrapper
+  {
+    typedef non_linear_ls_with_fixed_scale_factor<FloatType,
+                                                  SumOfRank1Updates>
+            wt;
+    typedef typename wt::scalar_t scalar_t;
+
+    static void add_equation(wt &self,
+                             scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
+                             scalar_t yo, scalar_t w)
+    {
+      self.add_equation(yc, grad_yc, yo, w);
+    }
+
+    static void wrap(std::string const &name) {
+      using namespace boost::python;
+      return_internal_reference<> rir;
+      class_<wt>(name.c_str(), no_init)
+        .def(init<int, bool, std::size_t>
+             ((arg("n_parameters"),
+               arg("normalised")=false,
+               arg("accumulator_buffer_bytes")=0)))
+        .add_property("n_parameters", &wt::n_parameters)
+        .add_property("n_equations", &wt::n_equations)
+        .add_property("dof", &wt::dof)
+        .def("set_scale_factor", &wt::set_scale_factor, arg("k"))
+        .def("add_residual",
+             &wt::add_residual,
+             (arg("y_calc"), arg("y_obs"), arg("weight")))
+        .def("add_equation", add_equation,
+             (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
+        .def("add_equations", &wt::add_equations,
+             (arg("ys_calc"), arg("jacobian_y_calc"), arg("ys_obs"),
+              arg("weights")))
+        .def("finalise", &wt::finalise, arg("objective_only")=false)
+        .add_property("finalised", &wt::finalised)
+        .def("reset", &wt::reset)
+        /* Exposed here although the separable class does not expose it: the
+           merge is how the threaded build combines per-thread accumulators, and
+           being able to reach it from Python is what makes that testable. */
+        .def("__iadd__", &wt::operator+=, return_self<>())
+        .def("optimal_scale_factor", &wt::optimal_scale_factor)
+        .def("sum_w_yo_sq", &wt::sum_w_yo_sq)
+        .def("objective", &wt::objective)
+        .def("chi_sq", &wt::chi_sq)
+        .def("step_equations", &wt::step_equations, rir)
+        .def("reduced_problem", &wt::reduced_problem, rir)
+        ;
+    }
+  };
+
   void wrap_normal_equations() {
     linear_ls_wrapper<double>::wrap("linear_ls");
     non_linear_ls_wrapper<double>::wrap("non_linear_ls");
@@ -177,6 +231,13 @@ namespace boost_python {
     non_linear_ls_with_separable_scale_factor_wrapper<
       double, matrix::rank_n_update>
       ::wrap(basename + "__level_3_blas_impl");
+    std::string fixed("non_linear_ls_with_fixed_scale_factor");
+    non_linear_ls_with_fixed_scale_factor_wrapper<
+      double, matrix::sum_of_symmetric_rank_1_updates>
+      ::wrap(fixed + "__level_2_blas_impl");
+    non_linear_ls_with_fixed_scale_factor_wrapper<
+      double, matrix::rank_n_update>
+      ::wrap(fixed + "__level_3_blas_impl");
   }
 
 }}}}
