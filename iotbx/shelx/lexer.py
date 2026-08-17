@@ -93,6 +93,11 @@ class command_stream(object):
 
   _include_filename_pat = re.compile(r"""(\+)(.*)""")
 
+  # a number carrying a standard uncertainty, as a CIF writes them: 1.234(5)
+  _number_with_esd_pat = re.compile(r"""
+    ^ ( [+-]? (?: \d+ \.? \d* | \. \d+ ) (?: [eE] [+-]? \d+ )? ) \( \d+ \) $
+    """, re.X)
+
   def __iter__(self):
     """
     Yields the commands in self.file as tuples:
@@ -184,11 +189,31 @@ class command_stream(object):
       return (cmd, tuple(sfac_args))
     return None
 
+  def _number(self, arg):
+    """ A numeric argument, which may carry a standard uncertainty
+
+    ShelXL itself never writes one, but Olex2 records the temperature as
+    "TEMP -153(2)", and other programs bracket a number the way a CIF does.
+    Rejecting the whole file over it is the wrong answer: the uncertainty is
+    not something this parser has anywhere to put, so the value is taken and
+    the bracket dropped.
+
+    Raises ValueError, like float, when the argument is not a number at all -
+    the caller falls back to reading it as an atom name.
+    """
+    try:
+      return float(arg)
+    except ValueError:
+      m = self._number_with_esd_pat.match(arg)
+      if m is None:
+        raise
+      return float(m.group(1))
+
   def _parse_general_case(self, cmd, cmd_residue, arguments, i, li):
     toks = []
     for j,arg in enumerate(arguments):
       try:
-        toks.append(float(arg))
+        toks.append(self._number(arg))
       except ValueError:
         if cmd == 'RESI':
           toks.append(arg)
