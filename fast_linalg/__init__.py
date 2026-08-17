@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import os
 import sys
 import boost_adaptbx.boost.python as bp
 try:
@@ -35,34 +36,45 @@ def find_new_layout_libs():
           os.path.join(Path(os.path.dirname(numpy.__file__)).parent.absolute(), "numpy%s" %dir_name)]
   return find_dlls(dirs)
 
-if not env.initialised and try_to_initialise:
-  if sys.platform[:3] == "win":
-    lib_path = "openblas.dll"
-  else:
-    lib_path = "libopenblas.so"
-  try:
-    env.initialise(lib_path)
-    if env.initialised:
-      print("Successfully initialised OpenBlas at %s:" %lib_path)
-      print(env.build_config)
-    else:
-      print("Located OpenBlas but could not initialise")
-  except Exception:
-    import os
+def find_extra_dll_libs():
+  """ OpenBLAS in scipy/extra-dll, an older Windows layout
+
+  Covered by neither find_old_layout_libs (scipy/.libs) nor
+  find_new_layout_libs (a sibling scipy.libs).
+  """
+  import scipy
+  return find_dlls([os.path.join(os.path.dirname(scipy.__file__),
+                                 "extra-dll")])
+
+def candidate_libraries():
+  """ Shared libraries to try, in order of cost
+
+  A generator, so that the numpy and scipy imports done by the finders are only
+  paid for if the plain name on the system search path does not work.
+  """
+  yield "openblas.dll" if sys.platform[:3] == "win" else "libopenblas.so"
+  for finder in (find_new_layout_libs, find_old_layout_libs,
+                 find_extra_dll_libs):
     try:
-      files = find_new_layout_libs()
-      if not files:
-        files = find_old_layout_libs()
-      if not files:
-        print("Could not locate usable OpenBlas")
-      for lib_file in files:
-        try:
-          env.initialise(lib_file.encode("utf-8"))
-        except Exception:
-          continue
-        if env.initialised:
-          print("Successfully initialised OpenBlas from %s:" %lib_file)
-          print(env.build_config)
-          break
-    except Exception as e:
-      print("Could not initialise OpenBlas: %s" %e)
+      for path in finder():
+        yield path
+    except Exception:
+      continue
+
+# initialise() has two distinct failure modes: it may raise, or it may return
+# leaving initialised False when the library was found but its symbols did not
+# resolve. Both mean this candidate is unusable, so both move on to the next.
+if not env.initialised and try_to_initialise:
+  tried = 0
+  for lib_file in candidate_libraries():
+    tried += 1
+    try:
+      env.initialise(lib_file)
+    except Exception:
+      continue
+    if env.initialised:
+      print("Successfully initialised OpenBlas from %s:" %lib_file)
+      print(env.build_config)
+      break
+  if not env.initialised:
+    print("Could not initialise OpenBlas: %d candidate(s) tried" %tried)
