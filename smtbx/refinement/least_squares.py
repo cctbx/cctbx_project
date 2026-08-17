@@ -600,7 +600,34 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None,
       self.taken_step = None
 
     def goof(self):
+      if self.ml_target is not None:
+        return self.least_squares_statistics()[1]
       return math.sqrt(self.chi_sq_data_only)
+
+    def least_squares_statistics(self):
+      """ wR2 and the goodness of fit as a least-squares run would report them.
+
+      Under a likelihood the accumulator's objective is over effective
+      observations weighted by a curvature, so a wR2 or a goodness of fit built
+      from it is not comparable with a least-squares run: crambin reports 0.08
+      where a fitted model should be near one, and the number moves when the
+      target changes rather than when the model does.
+
+      These are the ordinary quantities - measured intensities, the
+      refinement's own weighting scheme, the crystallographic scale - so
+      choosing between targets compares like with like. The likelihood is still
+      what is being minimised; this only describes the model it reaches.
+      """
+      fo_sq = self.observations.fo_sq
+      yo, yc = fo_sq.data(), self.fc_sq.data()
+      k = self.scale_factor()
+      w = self.weighting_scheme(yo, fo_sq.sigmas(), yc, fo_sq.indices(), k)
+      r = yo - k*yc
+      weighted = flex.sum(w*r*r)
+      denom = flex.sum(w*yo*yo)
+      wr2 = math.sqrt(weighted/denom) if denom > 0 else 0.
+      dof = yo.size() - self.n_parameters
+      return wr2, (math.sqrt(weighted/dof) if dof > 0 else 0.)
 
     def variance_goof_factor(self):
       """ What a variance from the inverse normal matrix has to be scaled by.
@@ -635,6 +662,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None,
 
     def wR2(self, cutoff_factor=None):
       if cutoff_factor is None:
+        if self.ml_target is not None:
+          return self.least_squares_statistics()[0]
         return math.sqrt(2*self.objective_data_only)
       fo_sq = self.observations.fo_sq
       strong = fo_sq.data() >= cutoff_factor*fo_sq.sigmas()
