@@ -11,21 +11,19 @@ four documents because nothing re-derived it.
 **Regenerated after every change that moves a number.** If a figure here
 disagrees with another document, this one is right and the other is stale.
 
-## Two kinds of document
+## Current-state documents
 
-**Current-state** — must be true now, and are reconciled whenever a number
-moves: this file, `EXTRACTOR_ARCHITECTURE.md`,
-`EXTRACTOR_REQUIREMENTS_v2.md`, `DESIGN.md`, `HANDOFF.md`, `INSTALL.md`,
-`UNPARSED_INVENTORY.md`.
+These must be true now, and are reconciled whenever a number moves: this
+file, `EXTRACTOR_ARCHITECTURE.md`, `EXTRACTOR_REQUIREMENTS_v2.md`,
+`DESIGN.md`, `HANDOFF.md`, `INSTALL.md`, `UNPARSED_INVENTORY.md`.
 
-**Records** — true as of their date and **never edited afterwards**:
-`PREDICTIONS.md`, `REVIEW_P0_P2.md`, `FLAT_LOG_AUDIT*.md`,
-`PROCEDURE_REVIEW_REQUEST.md`, `TEST_TIER_PLAN_v2.md`,
-`IMPROVEMENT_PLAN.md`, `REVIEW_AND_NEXT.md`. A pre-registered prediction
-rewritten after the fact is not a prediction, and a review edited to match
-what was later built is not a review. Where they quote a figure that has
-since moved, the figure was correct when written and the current value is
-here.
+The development **records** — pre-registered predictions, the P0–P2 and
+flat-log audits, the procedure review, the test-tier and improvement
+plans — were kept alongside these during development and were **never
+edited after their date**: a prediction rewritten after the fact is not
+a prediction, and a review edited to match what was later built is not a
+review. They were removed from the repository before release; where one
+quoted a figure that has since moved, the current value is here.
 
 **Corpora**
 
