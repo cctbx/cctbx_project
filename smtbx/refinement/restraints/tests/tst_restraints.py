@@ -139,6 +139,51 @@ class chirality_restraint_test_case(geometry_restraints_test_case):
   proxies = manager.chirality_proxies
   restraint_t = geom.chirality
 
+def exercise_coincident_bond_similarity():
+  """A SADI one of whose pairs has collapsed to a point.
+
+  bond_similarity divides by each bond length to get the direction to restrain
+  along. Two atoms of a pair at the same point made that 0/0, and six NaN went
+  into the design matrix - which then spread through the normal matrix, so the
+  Cholesky failure named an unrelated atom. Same shape as the coplanar FLAT
+  case, in a much commoner restraint.
+
+  Unlike the dihedral, nothing diverges on the way in: the numerator carries a
+  factor of the bond vector, so it cancels the length and the entries stay at
+  25 down to 1e-12 A. Only the exact coincidence is a problem, so the check is
+  simply that it produces no NaN and still restrains the pair that is fine.
+  """
+  from cctbx import crystal, xray
+  cs = crystal.symmetry(unit_cell=(50, 50, 50, 90, 90, 90),
+                        space_group_symbol="P1")
+
+  def row(sep):
+    xs = xray.structure(crystal_symmetry=cs)
+    for i, s in enumerate([(0., 0., 0.), (1.5, 0., 0.),
+                           (5., 0., 0.), (5. + sep, 0., 0.)]):
+      sc = xray.scatterer(label="C%d" % i, scattering_type="C",
+                          site=[c / 50. for c in s])
+      sc.flags.set_grad_site(True)
+      xs.add_scatterer(sc)
+    proxy = geometry_restraints.bond_similarity_proxy(
+      i_seqs=[(0, 1), (2, 3)], weights=(1.0, 1.0))
+    mgr = restraints.manager(
+      bond_similarity_proxies=
+        geometry_restraints.shared_bond_similarity_proxy([proxy]))
+    eqns = mgr.build_linearised_eqns(xs, xs.parameter_map())
+    return list(eqns.design_matrix.as_dense_matrix())
+
+  for sep in (1.5, 1e-6, 1e-12, 0.):
+    r = row(sep)
+    assert [v for v in r if v != v] == [], "NaN at separation %g" % sep
+    assert [v for v in r if abs(v) == float("inf")] == [], (
+      "inf at separation %g" % sep)
+    # the intact pair still has to be restrained, or the guard has thrown the
+    # whole restraint away rather than the one direction it cannot define
+    assert max(abs(v) for v in r) > 1e-6, (
+      "separation %g left nothing of the restraint" % sep)
+
+
 def exercise_degenerate_dihedral():
   """A torsion about an axis a terminal atom is sitting on.
 
@@ -588,6 +633,7 @@ def exercise_ls_restraints(options):
   chirality_restraint_test_case().run()
   exercise_coplanar_chirality()
   exercise_degenerate_dihedral()
+  exercise_coincident_bond_similarity()
 
   isotropic_adp_test_case().run()
   adp_similarity_test_case().run()
