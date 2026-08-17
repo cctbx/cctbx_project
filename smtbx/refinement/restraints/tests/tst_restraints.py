@@ -139,6 +139,78 @@ class chirality_restraint_test_case(geometry_restraints_test_case):
   proxies = manager.chirality_proxies
   restraint_t = geom.chirality
 
+def exercise_degenerate_dihedral():
+  """A torsion about an axis a terminal atom is sitting on.
+
+  The row of a dihedral restraint scales as 1/(perpendicular distance of the
+  terminal atom from the central bond axis), so it does not converge to zero
+  at the degeneracy the way the comment in dihedral.h used to claim - it
+  diverges. Measured on the linearised row, 5.7e3 for an ordinary geometry
+  against 5.7e11 with a terminal atom 1e-8 A off the axis. Nothing is NaN, so
+  nothing complains; the normal matrix is simply singular and the Cholesky
+  failure names an unrelated atom.
+
+  Two things have to hold. Where the geometry is sound the row must still be
+  the true derivative, which is checked against finite differences of delta -
+  a guard that quietly changed the mathematics would be worse than the
+  divergence. Where it is degenerate the row must be refused outright rather
+  than returned enormous.
+  """
+  from cctbx import crystal, xray
+  cs = crystal.symmetry(unit_cell=(50, 50, 50, 90, 90, 90),
+                        space_group_symbol="P1")
+
+  def row_for(offset):
+    xs = xray.structure(crystal_symmetry=cs)
+    sites = [(0., offset, 0.), (0., 0., 0.), (1., 0., 0.), (1., offset, 0.5)]
+    for i, s in enumerate(sites):
+      sc = xray.scatterer(label="C%d" % i, scattering_type="C",
+                          site=[c / 50. for c in s])
+      sc.flags.set_grad_site(True)
+      xs.add_scatterer(sc)
+    proxy = geometry_restraints.dihedral_proxy(
+      (0, 1, 2, 3), angle_ideal=0., weight=100)
+    mgr = restraints.manager(
+      dihedral_proxies=geometry_restraints.shared_dihedral_proxy([proxy]))
+    eqns = mgr.build_linearised_eqns(xs, xs.parameter_map())
+    return xs, proxy, list(eqns.design_matrix.as_dense_matrix())
+
+  # sound geometry: the row is the derivative of delta, checked numerically
+  xs, proxy, row = row_for(1.0)
+  assert [v for v in row if v != v] == [], "NaN in a well conditioned row"
+  assert max(abs(v) for v in row) > 1e-6, "a sound dihedral gave a zero row"
+
+  eps = 1e-6
+  sites_cart = xs.sites_cart().deep_copy()
+  fd = []
+  for i in range(len(sites_cart)):
+    for j in range(3):
+      deltas = []
+      for sign in (1, -1):
+        sc = sites_cart.deep_copy()
+        s = list(sc[i]); s[j] += sign * eps; sc[i] = s
+        deltas.append(geometry_restraints.dihedral(
+          sites=[sc[k] for k in proxy.i_seqs], angle_ideal=0.,
+          weight=100, periodicity=1).delta)
+      fd.append((deltas[0] - deltas[1]) / (2 * eps))
+  # the design matrix is in fractional coordinates, the finite differences in
+  # Cartesian, so compare after the same change of basis the linearisation does
+  orth = cs.unit_cell().orthogonalization_matrix()
+  fd_frac = []
+  for i in range(len(sites_cart)):
+    g = fd[3 * i:3 * i + 3]
+    fd_frac.extend([orth[0] * g[0], orth[4] * g[1], orth[8] * g[2]])
+  assert approx_equal(row, fd_frac, 1e-3), (row, fd_frac)
+
+  # degenerate geometry: refused, not enormous
+  for offset in (1e-4, 1e-6, 1e-8, 0.):
+    _, _, row = row_for(offset)
+    assert [v for v in row if v != v] == [], "NaN at offset %g" % offset
+    assert max(abs(v) for v in row) == 0, (
+      "offset %g gave a row of %g, which the normal matrix cannot carry"
+      % (offset, max(abs(v) for v in row)))
+
+
 def exercise_coplanar_chirality():
   """A chirality restraint whose sites are exactly coplanar.
 
@@ -515,6 +587,7 @@ def exercise_ls_restraints(options):
   dihedral_restraint_test_case().run()
   chirality_restraint_test_case().run()
   exercise_coplanar_chirality()
+  exercise_degenerate_dihedral()
 
   isotropic_adp_test_case().run()
   adp_similarity_test_case().run()
