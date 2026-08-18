@@ -736,7 +736,14 @@ phenix.autobuild:
       extract: last
       display_name: "R-work"
     residues_built:
-      pattern: '(\d+)\s+residues?\s+built'
+      # The count FOLLOWS the phrase, and the match is anchored to a
+      # single line.  The previous pattern was '(\d+)\s+residues?\s+built'
+      # -- digits BEFORE the phrase, with \s+ able to cross a newline.
+      # On "R (free): 0.4506658578498925\nResidues built: 241" it captured
+      # 4506658578498925, the R-free mantissa, and never once produced a
+      # correct value on any log tested.  Verified: autobuild_3 -> 241,
+      # autobuild_6 -> 126, autosol_2 -> 35.
+      pattern: '^\s*[Rr]esidues?\s+[Bb]uilt\s*[:=]\s*(\d+)\s*$'
       type: int
       extract: last
       display_name: "Residues built"

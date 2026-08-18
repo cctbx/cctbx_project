@@ -1197,10 +1197,17 @@ def perceive(state):
     # Log metrics trend details for debugging
     consecutive_rsr = metrics_trend.get("consecutive_rsr", 0)
     consecutive_refines = metrics_trend.get("consecutive_refines", 0)
+    # The cap that actually stops a repeated program is
+    # check_consecutive_program_cap (below, ~line 1461), which fires at 3
+    # for ANY program.  metrics_analyzer's EXCESSIVE_REFINEMENT rule at 5
+    # is shadowed by it and never fires, so "stop at 5" misinformed
+    # anyone reading the log.
     if consecutive_rsr > 0:
-        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (stop at 5)" % consecutive_rsr)
+        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (cap 3)"
+                     % consecutive_rsr)
     if consecutive_refines > 0:
-        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (stop at 5)" % consecutive_refines)
+        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (cap 3)"
+                     % consecutive_refines)
 
     trend_summary = metrics_trend.get("trend_summary", "")
     if trend_summary:
@@ -1735,6 +1742,17 @@ def plan(state):
                 # refinement — this means the agent is stuck in a loop (e.g.,
                 # fallback keeps picking refine because ligandfit can't be built).
                 # Indefinite suppression would burn cycles without progress.
+                # NOTE (2026-08): this carve-out is currently unreachable.
+                # It keys on metrics_analyzer's EXCESSIVE_REFINEMENT reason,
+                # which requires 5 consecutive refines -- but
+                # check_consecutive_program_cap stops the run at 3 and
+                # returns from perceive long before this point.  The loop
+                # it describes ("fallback keeps picking refine because
+                # ligandfit can't be built") is therefore already caught
+                # upstream, by a cap that applies to every program rather
+                # than refinement alone.  Kept, not deleted: if the cap is
+                # ever raised or made program-specific, this becomes live
+                # again and is the right behaviour.
                 if "EXCESSIVE" in reason:
                     state = _log(state,
                         "PLAN: AUTO-STOP triggered despite after_program=%s — "
