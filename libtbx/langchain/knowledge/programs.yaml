@@ -1113,6 +1113,37 @@ phenix.map_to_model:
     nproc:
       flag: "nproc={value}"
       type: int
+    # Added 2026-08 after an audit found user directives being silently
+    # discarded.  build_command emits only keys listed here, so a
+    # parameter the user asked for and the program supports was dropped
+    # with no error -- while the LLM's reasoning, written from the
+    # directives, stated it was being applied.  Observed: a run whose
+    # directives carried build_in_regions=False and
+    # include_phase_and_build=False, whose reasoning said "Running the
+    # quick pass with the specified options (...)", and whose command
+    # carried neither.
+    #
+    # PHIL paths taken from `phenix.map_to_model --show-defaults=3`.
+    # Each of these occurs exactly once in that output, so the mapping
+    # is unambiguous.  Two other candidates from the same audit were
+    # deliberately NOT added: real_space_refine's `run` (a multi-choice
+    # list where a partial value silently disables defaults) and
+    # `remove_outliers` (two candidate paths, neither matching the
+    # likely user intent) -- we cannot set either correctly from a bare
+    # key=value directive.
+    thoroughness:
+      flag: "strategy.thoroughness={value}"
+      type: string
+      hint: "quick, medium (default), thorough or extra_thorough"
+    build_in_regions:
+      flag: "strategy.build_in_regions={value}"
+      type: boolean
+    include_phase_and_build:
+      flag: "strategy.include_phase_and_build={value}"
+      type: boolean
+    asymmetric_map:
+      flag: "reconstruction_symmetry.asymmetric_map={value}"
+      type: boolean
 
   invariants:
     - name: requires_map_input
