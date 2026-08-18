@@ -4310,11 +4310,36 @@ FINAL REPORT:"""
         if directives:
             stop_cond = directives.get("stop_conditions", {})
             if stop_cond:
+                # after_program is NOT a hard stop (perceive_checks, v112.78):
+                # it is a minimum-run guarantee, and the plan may run further
+                # programs after the named one.  Reporting it as a flat
+                # "Stop Condition" told the reader the run would stop there
+                # when it often does not -- observed on a SAD run that
+                # continued for four cycles past the named program.
+                #
+                # It is also frequently DERIVED rather than stated.  The
+                # extractor warns that a preprocessor header such as
+                # "Primary Goal: ... using AutoSol" can fabricate an
+                # after_program directive the user never gave, which is why
+                # "Stop Condition:" is stripped from preprocessed advice.
+                # `stop_after_requested` is the extractor's own flag for
+                # "the RAW instruction explicitly asked to stop here", so
+                # the report distinguishes the two rather than presenting a
+                # derived directive as the user's.
+                requested = bool(stop_cond.get("stop_after_requested"))
                 stop_parts = []
                 if stop_cond.get("after_program"):
-                    stop_parts.append(
-                        "stop after %s" % stop_cond['after_program'])
+                    if requested:
+                        stop_parts.append(
+                            "stop after %s (requested)"
+                            % stop_cond['after_program'])
+                    else:
+                        stop_parts.append(
+                            "run at least %s (inferred from the goal; "
+                            "later programs may still run)"
+                            % stop_cond['after_program'])
                 if stop_cond.get("after_cycle"):
+                    # after_cycle IS a hard stop.
                     stop_parts.append(
                         "stop after cycle %s" % stop_cond['after_cycle'])
                 if stop_parts:

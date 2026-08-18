@@ -1323,7 +1323,19 @@ def perceive(state):
         )
 
         # === EMIT SANITY_CHECK EVENT ===
-        red_flags = [i.message for i in sanity_result.issues if i.severity == "red_flag"]
+        # SanityChecker assigns severity "critical" or "warning" -- never
+        # "red_flag".  Filtering on "red_flag" here made this list ALWAYS
+        # empty, so the structured event reported no red flags on exactly
+        # the runs that had them.  The abort itself was unaffected
+        # (should_abort comes from the critical count) and abort_message
+        # was correct, which is why nothing surfaced the mismatch.
+        #
+        # "red_flag" is the name this pipeline uses for a critical sanity
+        # issue -- see abort_on_red_flags and stop_reason="red_flag" --
+        # so the EVENT keeps that name and the SEVERITY it filters on is
+        # corrected to the one the checker actually emits.
+        red_flags = [i.message for i in sanity_result.issues
+                     if i.severity == "critical"]
         warnings = [i.message for i in sanity_result.issues if i.severity == "warning"]
         state = _emit(state, EventType.SANITY_CHECK,
             passed=not sanity_result.should_abort,
