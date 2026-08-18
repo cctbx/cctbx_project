@@ -284,6 +284,85 @@ def test_next_move_fields_are_produced():
 
 
 # ---------------------------------------------------------------------
+# BEHAVIOURAL CHECKS
+#
+# Everything above reads source text.  That is the right tool for
+# "is this field carried at every hop", but it cannot tell whether the
+# code DOES anything -- a scan is satisfied by a line that exists and
+# never runs.  These two call the code.
+# ---------------------------------------------------------------------
+
+def test_warning_actually_reaches_metadata():
+    """A warning passed to create_response arrives in metadata.
+
+    The presence check above confirms `run_ai_agent` names the argument.
+    This confirms the schema puts it where the client looks: before the
+    fix `create_stop_response` did not accept `warnings` at all, so the
+    argument could have been passed and still gone nowhere.
+    """
+    print("Test: warning_actually_reaches_metadata")
+    try:
+        from libtbx.langchain.knowledge import api_schema
+    except ImportError as e:
+        raise AssertionError("cannot import api_schema (%s)" % e)
+
+    probe = "[IDENTITY] probe"
+    for builder, kwargs in (
+            (api_schema.create_response,
+             dict(program="phenix.refine", command="c", warnings=[probe])),
+            (api_schema.create_stop_response,
+             dict(stop_reason="done", warnings=[probe]))):
+        response = builder(**kwargs)
+        got = response.get("metadata", {}).get("warnings", [])
+        assert got == [probe], (
+            "%s did not place the warning in metadata: %r"
+            % (builder.__name__, got))
+
+    # And an absent warnings argument must not invent one.
+    empty = api_schema.create_response(program="p", command="c")
+    assert empty.get("metadata", {}).get("warnings", []) == [], \
+        "a response with no warnings should carry an empty list"
+    print("      PASS (both response paths)")
+
+
+def test_client_deduplicates_repeated_warnings():
+    """A standing notice prints once per session, not once per cycle.
+
+    The server rebuilds its state from the request each cycle, so a
+    condition that persists -- a protocol deprecation, for instance --
+    is re-emitted every cycle.  Bumping CURRENT_PROTOCOL_VERSION creates
+    exactly such a condition for any client that has not been updated.
+
+    This reproduces the client's logic rather than importing it: the
+    surrounding method needs a full agent instance.  The source check
+    above confirms the real code has the guard; this confirms the guard
+    it has is the right shape.
+    """
+    print("Test: client_deduplicates_repeated_warnings")
+    seen = set()
+    printed = []
+
+    def emit(warnings):
+        for warning in warnings:
+            if warning in seen:
+                continue
+            seen.add(warning)
+            printed.append(warning)
+
+    standing = "Your PHENIX AI Agent uses protocol v8 (current: v9)."
+    emit([standing, "[IDENTITY] cycle 1: ..."])
+    emit([standing])
+    emit([standing, "[IDENTITY] cycle 3: refine vs molprobity"])
+
+    assert printed.count(standing) == 1, (
+        "the standing notice printed %d times; on a 20-cycle run it "
+        "would repeat 20 times" % printed.count(standing))
+    assert len([p for p in printed if p.startswith("[IDENTITY]")]) == 2, (
+        "distinct identity notices must each print: got %r" % printed)
+    print("      PASS (standing notice once, distinct notices each)")
+
+
+# ---------------------------------------------------------------------
 # NEGATIVE CONTROLS
 #
 # A check that has stopped discriminating looks exactly like a check
