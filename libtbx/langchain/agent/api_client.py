@@ -35,6 +35,7 @@ from libtbx.langchain.agent.transport import (
     sanitize_request,
     sanitize_response,
     get_transport_config,
+    truncate_log_head_tail,
 )
 TRANSPORT_AVAILABLE = True
 
@@ -372,14 +373,30 @@ def build_request_v2(
         "abort_on_warnings": bool(abort_on_warnings),
     }
 
-    # Sanitize log_content with quoted string truncation
-    # This handles large data dumps like pdb70_text='...'
-    sanitized_log_content = sanitize_for_transport(
+    # Sanitize log_content with quoted string truncation, then keep the
+    # head AND the tail rather than the head alone.
+    #
+    # Order matters and follows sanitize_for_transport's own documented
+    # sequence: markers, quotes, tabs, control characters, THEN length.
+    # So quote truncation runs first with max_len=None -- it can shrink
+    # a log substantially on its own (autosol_2.log: 466,667 -> 275,444)
+    # and anything that then fits under the cap is sent whole -- and the
+    # head+tail cut is applied last, in place of the plain max_len
+    # truncation.
+    #
+    # Why not max_len=50000: truncate_string keeps the HEAD, and every
+    # final metric in a program log is at the END.  Measured over the six
+    # production logs above the cap, head-only preserved 2 of 17 metrics
+    # and fabricated values at the cut (residues_built 3802 ->
+    # 47352879980392415).  See truncate_log_head_tail for the split
+    # measurement.
+    _cleaned_log = sanitize_for_transport(
         log_content or "",
-        max_len=50000,
+        max_len=None,
         truncate_quotes=True,
         quote_max_len=500
     )
+    sanitized_log_content = truncate_log_head_tail(_cleaned_log)
 
     # Also sanitize user_advice (user could input tabs)
     sanitized_user_advice = sanitize_string(user_advice or "", max_len=10000)
