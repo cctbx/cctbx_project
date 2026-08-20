@@ -186,8 +186,7 @@ class Program(ProgramTemplate):
             ``model`` (empty when capping is disabled).
         cap_original_elements : list of str
             Element each cap atom carried before being replaced by H,
-            parallel to ``cap_iseqs``; needed by consumers that rebuild
-            restraints on the sub-model.
+            parallel to ``cap_iseqs``.
         cap_anchor_iseqs : list of int
             Sorted, unique positional indices of the QM-region heavy atoms
             the caps are bonded to.  In-memory only; not written to the

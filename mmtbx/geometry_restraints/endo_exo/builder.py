@@ -40,10 +40,7 @@ endo_exo_region {
   cap_original_elements = None
     .type = strings
     .help = "Element each cap atom carried before being replaced by H, \
-parallel to cap_atoms.  Downstream consumers that rebuild restraints on \
-the sub-model need to restore these elements for the duration of \
-pdb_interpretation (so the monomer-library lookup matches), then \
-switch back to H for electron counting."
+parallel to cap_atoms."
   seed_atoms = None
     .type = ints
     .help = "Indices of seed atoms in the QM-region output file (the metal \
@@ -690,14 +687,12 @@ class QMRegionBuilder(object):
         *cap_indices*).
     cap_anchor_indices : list of int
         Sorted, unique positional indices of the QM-region heavy atoms the caps
-        are bonded to (their anchors), so downstream tools can pin the severed
-        boundary bonds at both ends without re-deriving the connectivity.
+        are bonded to (their anchors).
     sym_image_provenance : dict
         ``{sub-model i_seq: ((chain, resseq, resname, name, altloc),
         symmetry_operation_xyz)}`` for each materialized symmetry-image atom: the
         ASU parent's selection identity (not the atom object, whose parent chain
-        dangles once this model is freed) plus the symmetry op, so a metal-ligand
-        bond to a symmetry-image donor can be emitted against its ASU parent.
+        dangles once this model is freed) plus the symmetry op.
     """
     import iotbx.pdb
     import mmtbx.model as mmtbx_model
@@ -815,12 +810,8 @@ class QMRegionBuilder(object):
     def _lookup_node(iseq, op_xyz):
       return atom_for_node.get((iseq, op_xyz))
 
-    # Apply hydrogen capping on the materialized atoms.  Remember the
-    # cap atom's original element so downstream consumers that rebuild
-    # restraints can temporarily restore it (pdb_interpretation matches
-    # name + element against the monomer library; the H we stamp here
-    # would clash with the library's expected element for that name
-    # inside non-standard residues).
+    # Apply hydrogen capping on the materialized atoms, recording each cap
+    # atom's original element before it is overwritten with H.
     orig_element_for_iseq = {}
     anchor_iseq_by_cap = {}
     if self.params.capping.enable:
@@ -861,12 +852,10 @@ class QMRegionBuilder(object):
     # Symmetry-image provenance (in-memory hand-off): map each materialized
     # symmetry-image atom's sub-model i_seq to its ASU parent's selection
     # identity (chain, resseq, resname, name, altloc) plus the symmetry_operation
-    # that generated it. A downstream tool restrains a metal-ligand bond to such
-    # a donor via geometry_restraints.edits (atom_1 vs symmetry_operation *
-    # atom_2), building atom_2's selection from that identity. The identity is
-    # captured here, not the atom object: the object's parent chain dangles once
-    # this (filtered) model is freed after the region is returned. Angles cannot
-    # cross symmetry, so only bonds benefit.
+    # that generated it. The identity is captured here, not the atom object:
+    # the object's parent chain dangles once this (filtered) model is freed
+    # after the region is returned. Angles cannot cross symmetry, so only
+    # bonds benefit.
     sym_image_provenance = {}
     for (parent_iseq, op_xyz), atom in atom_for_node.items():
       if op_xyz == identity_xyz:
@@ -887,8 +876,8 @@ class QMRegionBuilder(object):
 
     mmCIF is emitted alongside the PDB because mmCIF stores the element in
     ``_atom_site.type_symbol`` as a first-class field, so capped atoms keep
-    their hydrogen identity through downstream re-parsing instead of being
-    silently re-classified from their atom names.
+    their hydrogen identity when re-parsed instead of being silently
+    re-classified from their atom names.
 
     Parameters
     ----------
@@ -917,11 +906,9 @@ class QMRegionBuilder(object):
                      seed_indices, selection_string):
     """Write the per-region sidecar PHIL file as ``<file_name>.phil``.
 
-    The sidecar carries metadata needed by downstream tools: which atoms
-    are hydrogen caps (so the QM driver can freeze them), which atoms
-    seeded the region (so the charge/spin classifier knows the metal or
-    user-selected anchor), and the original selection string for
-    provenance.
+    The sidecar records which atoms are hydrogen caps, the element each
+    carried beforehand, which atoms seeded the region, and the original
+    selection string.
 
     Parameters
     ----------
@@ -931,8 +918,7 @@ class QMRegionBuilder(object):
         Sorted 0-based positional indices of cap atoms in the output file.
     cap_original_elements : list of str
         Element symbol each cap atom carried before being replaced by H
-        (parallel to *cap_indices*); needed by downstream consumers that
-        rebuild restraints on the sub-model.
+        (parallel to *cap_indices*).
     seed_indices : list of int
         Sorted 0-based positional indices of seed atoms in the output file.
     selection_string : str or None
