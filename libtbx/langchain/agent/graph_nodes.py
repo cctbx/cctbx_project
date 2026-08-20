@@ -608,8 +608,19 @@ def perceive(state):
     # Some extractors return the FIRST match, but we need the FINAL value.
     # Always re-extract using our robust last-match method to be safe.
     if log_text:
-        last_r_free = patterns.extract_last_float("metrics.r_free", log_text, flags=re.IGNORECASE)
-        last_r_work = patterns.extract_last_float("metrics.r_work", log_text, flags=re.IGNORECASE)
+        # Use the shared r_factors helper, NOT patterns.extract_last_float.
+        #
+        # The generic pattern locates the LABEL and takes the first
+        # number after it.  In every paired form Phenix emits --
+        # R/Rfree=0.21/0.27, R and R-free: 0.20 0.26, R/R-free: 0.5/0.54
+        # -- that number is the R-WORK column.  The value drove stop
+        # decisions: at 2.5 A the success threshold is 0.23, so a
+        # misread 0.21 stopped a run that a correct 0.27 would have
+        # continued.  Seen in production as "R-free: 0.2000 (was
+        # 0.2617)".  It also passed 999.90 through as an R-free.
+        from libtbx.langchain.agent.r_factors import (
+            extract_last_r_factors, r_factors_are_consistent)
+        last_r_free, last_r_work = extract_last_r_factors(log_text)
 
         if last_r_free is not None:
             # Only override if we found a value and it differs
@@ -617,6 +628,19 @@ def perceive(state):
             if analysis is None:
                 analysis = {}
             analysis["r_free"] = last_r_free
+
+        # R-free is computed on reflections held out of refinement, so it
+        # cannot be below R-work.  An inversion means a column was
+        # misread.  Report it rather than acting on it silently; the
+        # tolerance allows for two legitimately close values rounded
+        # differently (a run recorded 0.21 against 0.2107).
+        if not r_factors_are_consistent(last_r_free, last_r_work):
+            state = _log(state,
+                "PERCEIVE: WARNING r_free (%s) is below r_work (%s) -- at "
+                "least one was read from the wrong column; not using them"
+                % (last_r_free, last_r_work))
+            last_r_free = None
+            last_r_work = None
 
         if last_r_work is not None:
             if analysis is None:
@@ -1512,11 +1536,12 @@ def _fallback_extract_metrics(log_text):
 
     # R-free and R-work: Use extract_last_float because refinement logs
     # contain multiple values (one per macro cycle) and we want the FINAL one
-    r_free = patterns.extract_last_float("metrics.r_free", log_text, flags=re.IGNORECASE)
+    # Shared helper -- see the note at the other call site.  This
+    # fallback had the same column defect.
+    from libtbx.langchain.agent.r_factors import extract_last_r_factors
+    r_free, r_work = extract_last_r_factors(log_text)
     if r_free is not None:
         analysis["r_free"] = r_free
-
-    r_work = patterns.extract_last_float("metrics.r_work", log_text, flags=re.IGNORECASE)
     if r_work is not None:
         analysis["r_work"] = r_work
 
