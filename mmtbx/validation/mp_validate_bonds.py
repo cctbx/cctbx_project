@@ -11,6 +11,7 @@ from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
 from scitbx.array_family import flex
 from cctbx import geometry_restraints
+from cctbx.geometry_restraints.linking_class import linking_class
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
 from math import sqrt
@@ -96,6 +97,16 @@ class mp_angle(atoms):
              self.atoms_info[2].name, self.score ]
 
 # analysis objects
+# Metal coordination, hydrogen bonds, basepairs, edits and cif_links share these proxy
+# arrays but their sigmas are observed population spreads, not covalent-library sigmas,
+# so sigma scores do not mean the same thing. restraints.py (mp.geo) has always filtered
+# this way. SS BOND is kept: disulfides are covalent, sigma 0.020 A vs N-CA at 0.019.
+def _scoreable_origin_ids():
+  origin_ids = linking_class()
+  return set([origin_ids.get_origin_id('covalent geometry'),
+              origin_ids.get_origin_id('SS BOND')])
+
+
 class mp_bonds(validation):
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Bond lengths"
@@ -131,7 +142,10 @@ class mp_bonds(validation):
       flags=flags,
       sites_cart=sites_cart)
     bond_proxies = pair_proxies.bond_proxies
+    scoreable = _scoreable_origin_ids()
     for proxy in bond_proxies.simple:
+      if proxy.origin_id not in scoreable:
+        continue
       restraint = geometry_restraints.bond(
         sites_cart=sites_cart,
         proxy=proxy)
@@ -249,7 +263,10 @@ class mp_angles(validation):
     sites_cart = pdb_atoms.extract_xyz()
     flags = geometry_restraints.flags.flags(default=True)
     i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    scoreable = _scoreable_origin_ids()
     for proxy in geometry_restraints_manager.angle_proxies:
+      if proxy.origin_id not in scoreable:
+        continue
       restraint = geometry_restraints.angle(
         sites_cart=sites_cart,
         proxy=proxy)
