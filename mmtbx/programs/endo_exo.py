@@ -2,9 +2,8 @@
 
 Grows a QM region around each seed site (metal atoms by default, or a
 user-supplied selection) by breadth-first traversal of the covalent graph,
-optionally caps dangling bonds with hydrogen atoms, estimates the net charge
-of the surrounding region, and writes a PDB file, an mmCIF file, and a
-sidecar PHIL file per seed.
+optionally caps dangling bonds with hydrogen atoms, and writes a PDB file, an
+mmCIF file, and a sidecar PHIL file per seed.
 
 Usage (via dispatcher):
 
@@ -110,17 +109,6 @@ seed region."
 of its atoms is within this distance (Angstrom) of any seed atom in that \
 group. Ignored when scope=global."
 }
-terminal_charges {
-  enable = False
-    .type = bool
-    .help = "If True, estimate free peptide termini charges inside the truncated QM region."
-  n_terminus = 1
-    .type = int(value_min=0, value_max=1)
-    .help = "Charge assigned to each detected free N-terminus when terminal_charges.enable=True."
-  c_terminus = -1
-    .type = int(value_min=-1, value_max=0)
-    .help = "Charge assigned to each detected free C-terminus when terminal_charges.enable=True."
-}
 write_files = True
   .type = bool
   .help = "If True (default), write a PDB, an mmCIF, and a sidecar PHIL \
@@ -141,10 +129,9 @@ class Program(ProgramTemplate):
 
   description = '''
   Grows a QM region around each seed site by BFS, optionally caps dangling
-  bonds with hydrogen atoms, estimates the net charge, and writes a PDB
-  file, an mmCIF file, and a sidecar PHIL file per seed.  Seeds are all
-  metals in the structure unless a custom selection string is provided
-  via the ``selection`` parameter.
+  bonds with hydrogen atoms, and writes a PDB file, an mmCIF file, and a
+  sidecar PHIL file per seed.  Seeds are all metals in the structure unless
+  a custom selection string is provided via the ``selection`` parameter.
   '''
 
   datatypes = ['model', 'phil']
@@ -188,8 +175,6 @@ class Program(ProgramTemplate):
             are written as ``file_name + '.pdb'`` and ``file_name + '.cif'``.
         n_atoms : int
             Number of atoms in the QM region.
-        charge_summary : dict
-            As returned by :meth:`ChargeEstimator.calculate`.
         model : mmtbx.model.manager
             Truncated sub-model with caps applied, carrying no restraints
             manager. For in-memory use.
@@ -199,6 +184,19 @@ class Program(ProgramTemplate):
         cap_iseqs : list of int
             Sorted 0-based positional indices of the cap atoms inside
             ``model`` (empty when capping is disabled).
+        cap_original_elements : list of str
+            Element each cap atom carried before being replaced by H,
+            parallel to ``cap_iseqs``; needed by consumers that rebuild
+            restraints on the sub-model.
+        cap_anchor_iseqs : list of int
+            Sorted, unique positional indices of the QM-region heavy atoms
+            the caps are bonded to.  In-memory only; not written to the
+            sidecar.
+        sym_image_provenance : dict
+            ``{i_seq: ((chain, resseq, resname, name, altloc),
+            symmetry_operation_xyz)}`` for each materialized symmetry-image
+            atom, so a bond to one can be restrained against its ASU parent.
+            In-memory only; not written to the sidecar.
         selection_string : str or None
             The CCTBX selection string that produced this seed group, or
             ``None`` for metal-scan groups.

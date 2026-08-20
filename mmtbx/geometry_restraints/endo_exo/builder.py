@@ -1,8 +1,8 @@
 """QMRegionBuilder: the per-seed QM-region extraction pipeline.
 
 Orchestrates seed discovery, covalent-graph construction, BFS region growth,
-hydrogen capping, charge estimation, and (optionally) writing a PDB, mmCIF,
-and sidecar PHIL file per seed.  Decoupled from the ProgramTemplate / data
+hydrogen capping, and (optionally) writing a PDB, mmCIF, and sidecar PHIL
+file per seed.  Decoupled from the ProgramTemplate / data
 manager so it can be driven directly in memory: construct with a params
 object, then call :meth:`run` with a model.
 """
@@ -28,7 +28,6 @@ from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
-from mmtbx.geometry_restraints.endo_exo.charge import ChargeEstimator
 
 
 # Sidecar PHIL emitted alongside each QM-region PDB/mmCIF.  Indices are
@@ -83,12 +82,6 @@ class QMRegionBuilder(object):
     )
     self._region_grower = QMRegionGrower(
       self._bond_cut_detector,
-      log=self.logger,
-    )
-    self._charge_estimator = ChargeEstimator(
-      include_terminal_charges=self.params.terminal_charges.enable,
-      n_terminus_charge=self.params.terminal_charges.n_terminus,
-      c_terminus_charge=self.params.terminal_charges.c_terminus,
       log=self.logger,
     )
 
@@ -360,9 +353,9 @@ class QMRegionBuilder(object):
     Returns
     -------
     dict
-        Keys: ``file_name``, ``n_atoms``, ``charge_summary``, ``model``,
-        ``seed_iseqs``, ``cap_iseqs``, ``cap_original_elements``,
-        ``cap_anchor_iseqs``, ``sym_image_provenance``, ``selection_string``.
+        Keys: ``file_name``, ``n_atoms``, ``model``, ``seed_iseqs``,
+        ``cap_iseqs``, ``cap_original_elements``, ``cap_anchor_iseqs``,
+        ``sym_image_provenance``, ``selection_string``.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
@@ -378,9 +371,6 @@ class QMRegionBuilder(object):
      cap_anchor_indices, sym_image_provenance) = self._materialize_qm_region(
       model, visited_nodes, cap_nodes, seeds)
 
-    charge_summary = self._charge_estimator.calculate(model=model_sel)
-    self._charge_estimator.show(seed_index, charge_summary, out=self.logger)
-
     file_name = self._make_output_filename(
       seed_index, seeds, selection_str=selection_str
     )
@@ -394,7 +384,6 @@ class QMRegionBuilder(object):
     return {
       'file_name': file_name,
       'n_atoms': model_sel.get_number_of_atoms(),
-      'charge_summary': charge_summary,
       # In-memory hand-off: the truncated sub-model (no restraints manager)
       # and the positional indices of seed and cap atoms inside it, plus the
       # heavy-atom anchor each cap is bonded to (kept in memory only, not the
