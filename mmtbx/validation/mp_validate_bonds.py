@@ -11,6 +11,7 @@ from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
 from scitbx.array_family import flex
 from cctbx import geometry_restraints
+from cctbx.geometry_restraints.linking_class import linking_class
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
 from math import sqrt
@@ -96,6 +97,38 @@ class mp_angle(atoms):
              self.atoms_info[2].name, self.score ]
 
 # analysis objects
+# Restraint classes whose deviations are meaningful as sigma scores.
+#
+# The geometry restraints manager holds far more than covalent geometry: metal
+# coordination, hydrogen bonds, basepair stacking/parallelity/planarity, user edits and
+# cif_links all live in the same proxy arrays, tagged by origin_id. Scoring them here is
+# a category error, because a sigma score only means "deviation relative to how tightly
+# this bond type is known", and the non-covalent sigmas are not that.
+#
+# Metal coordination is the clearest case. Its sigmas come from
+# mmtbx/conformation_dependent_library/metal_coordination_library.py, which tabulates the
+# observed spread of well-ordered sites: Cys3His1 zinc gives Zn-SG 2.318 +/- 0.027 A over
+# 912 observations. That 0.027 A is a population standard deviation from high-resolution
+# structures, not the uncertainty of the model being judged, so an ordinary 0.5 A
+# coordination deviation in a 2.9 A cryo-EM model scores 18.9 sigma and reads like a
+# broken covalent bond. Measured on 7BTF, 7 of 9 reported bond outliers were zinc
+# coordination.
+#
+# SS BOND is kept deliberately. Disulfides are genuine covalent bonds and their restraints
+# come from the ordinary library (sigma 0.020 A, indistinguishable from N-CA at 0.019 or
+# CA-C at 0.021), so their sigma scores mean what they appear to mean.
+#
+# mmtbx/validation/restraints.py, which mp.geo uses, has always filtered this way (it
+# passes origin_id to get_sorted() for bonds and skips non-covalent proxies in
+# _get_sorted()); it restricts to covalent geometry alone. Not filtering here was an
+# oversight in this module rather than a deliberate difference.
+def _scoreable_origin_ids():
+  """origin_ids whose sigmas are covalent-library sigmas, so sigma scores are valid."""
+  origin_ids = linking_class()
+  return set([origin_ids.get_origin_id('covalent geometry'),
+              origin_ids.get_origin_id('SS BOND')])
+
+
 class mp_bonds(validation):
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Bond lengths"
@@ -131,7 +164,12 @@ class mp_bonds(validation):
       flags=flags,
       sites_cart=sites_cart)
     bond_proxies = pair_proxies.bond_proxies
+    scoreable = _scoreable_origin_ids()
     for proxy in bond_proxies.simple:
+      # Skip non-covalent restraints. See _scoreable_origin_ids above. This must come
+      # before any counter is touched, so n_total counts what was actually validated.
+      if proxy.origin_id not in scoreable:
+        continue
       restraint = geometry_restraints.bond(
         sites_cart=sites_cart,
         proxy=proxy)
@@ -249,7 +287,12 @@ class mp_angles(validation):
     sites_cart = pdb_atoms.extract_xyz()
     flags = geometry_restraints.flags.flags(default=True)
     i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    scoreable = _scoreable_origin_ids()
     for proxy in geometry_restraints_manager.angle_proxies:
+      # Same filter as mp_bonds; the metal coordination library restrains angles too
+      # (Cys3His1 zinc gives SG-ZN-SG 112.15 +/- 3.96 deg).
+      if proxy.origin_id not in scoreable:
+        continue
       restraint = geometry_restraints.angle(
         sites_cart=sites_cart,
         proxy=proxy)
