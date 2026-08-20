@@ -69,33 +69,32 @@ MIN_SUPPORTED_PROTOCOL_VERSION = 1
 # ---------------------------------------------------------------------------
 # REGISTERING A FIELD HERE DOES NOT MAKE IT CROSS THE BOUNDARY.
 #
-# session_info is not transported as a whole.  It passes through THREE
-# EXPLICIT ALLOW-LISTS, and a field absent from ANY of them is dropped
+# session_info is not transported as a whole.  It passes through TWO
+# EXPLICIT ALLOW-LISTS, and a field absent from either is dropped
 # silently -- normalize_session_info then supplies the default and
 # nothing looks wrong:
 #
 #     ai_agent.py        session_info["x"] = ...            (produce)
 #     api_client.build_session_state                        (COPY: allow-list 1)
-#     api_client.build_request_v2                           (COPY: allow-list 2)
-#         normalized_session_state["x"] = session_state["x"]
+#     api_client.build_request_v2                           (passes session_state
+#                                                            through unchanged)
 #     run_ai_agent.run   session_info["x"] = session_state["x"]
-#                                                           (COPY: allow-list 3)
+#                                                           (COPY: allow-list 2)
 #     perceive / consumers  session_info.get("x", default)  (consume)
 #
-# THE MIDDLE ONE IS EASY TO MISS.  An earlier version of this header
-# called it "build_request_v2 / transport" and treated it as plumbing.
-# It is not: it rebuilds normalized_session_state field by field, adding
-# nothing and transforming nothing, and SEVEN declared-and-consumed
-# fields were subsequently found to be dropped there --
-# log_program, log_cycle, client_protocol_version, structure_model,
-# validation_history, model_is_placed, input_has_ligand.
-#
-# Two of those seven were fixes that had already been made and marked
+# THERE USED TO BE A THIRD.  build_request_v2 rebuilt session_state
+# field by field -- a second allow-list twenty lines after
+# build_session_state built the dict, adding nothing and sanitizing
+# nothing.  ELEVEN declared-and-consumed fields were lost there across
+# two audits, including two fixes that had been made and marked
 # verified: client_protocol_version ("the server saw v1 for every
 # client") and log_program (the entire purpose of protocol v9, which
 # had therefore never once worked).  Both were applied at allow-list 1
-# and discarded at allow-list 2, while a check that searched
+# and discarded at the second, while a check that searched
 # api_client.py for the field name passed.
+#
+# That block now passes session_state through, applying only coercions
+# and derived flags.  Do not reintroduce an enumeration there.
 #
 # So this list is neither necessary nor sufficient for transport:
 #
@@ -116,9 +115,6 @@ MIN_SUPPORTED_PROTOCOL_VERSION = 1
 # in the wrong function.
 #
 # Also run tests/tst_transport_surfaces.py.
-#
-# The duplication between allow-lists 1 and 2 is scheduled for removal;
-# see FIX_AFTER_RELEASE.md.
 # ---------------------------------------------------------------------------
 
 SESSION_INFO_FIELDS = [

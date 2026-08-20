@@ -301,126 +301,32 @@ def build_request_v2(
             })
 
     # Build session_state
-    normalized_session_state = {}
-    if session_state:
-        if session_state.get("resolution") is not None:
-            normalized_session_state["resolution"] = float(session_state["resolution"])
-        if session_state.get("experiment_type"):
-            normalized_session_state["experiment_type"] = session_state["experiment_type"]
-        if session_state.get("rfree_mtz"):
-            normalized_session_state["rfree_mtz"] = session_state["rfree_mtz"]
-        if session_state.get("best_files"):
-            normalized_session_state["best_files"] = dict(session_state["best_files"])
-        if session_state.get("directives"):
-            normalized_session_state["directives"] = dict(session_state["directives"])
-        # Error recovery state
-        if session_state.get("force_retry_program"):
-            normalized_session_state["force_retry_program"] = session_state["force_retry_program"]
-        if session_state.get("recovery_strategies"):
-            normalized_session_state["recovery_strategies"] = dict(session_state["recovery_strategies"])
-        # Explicit program request
-        if session_state.get("explicit_program"):
-            normalized_session_state["explicit_program"] = session_state["explicit_program"]
-        # Resume flag — new advice on a completed workflow (Q1 fix)
-        if session_state.get("advice_changed"):
-            normalized_session_state["advice_changed"] = True
-        # S2L: client-side model CRYST1 cell for server-side placement check
-        if session_state.get("unplaced_model_cell"):
-            normalized_session_state["unplaced_model_cell"] = session_state["unplaced_model_cell"]
-        # Parameter blacklist for command post-processing
-        if session_state.get("bad_inject_params"):
-            normalized_session_state["bad_inject_params"] = session_state["bad_inject_params"]
-        # P4: session-blocked programs
-        if session_state.get("session_blocked_programs"):
-            normalized_session_state["session_blocked_programs"] = (
-                session_state["session_blocked_programs"])
-        # ASU copy count (copies feature)
-        if session_state.get("asu_copies"):
-            normalized_session_state["asu_copies"] = session_state["asu_copies"]
-        # Plan-driven program injection (v114.1 plan_has_pending_stages /
-        # plan_next_stage_programs; v120 Option 2a plan_current_unrun_lead_program).
-        # build_request_v2 IS the single transport chokepoint for BOTH LocalAgent
-        # and RemoteAgent (LocalAgent runs the identical encode/decode path), so
-        # whatever is not whitelisted here is dropped IDENTICALLY in both — these
-        # entries are required for the plan fields to reach PERCEIVE on either
-        # route, and adding them here preserves server==local parity by
-        # construction.
-        # v9 and earlier fields that were declared, consumed, and never
-        # carried.  build_request_v2 rebuilds session_state field by
-        # field, so anything not listed here is dropped with no error --
-        # the server simply behaves as though the client never knew it.
-        #
-        # Measured: 18 of 27 fields crossed; 9 did not; 7 of those 9 are
-        # read by run_ai_agent or graph_nodes.  Two were fixes already
-        # made and marked verified:
-        #
-        #   client_protocol_version -- the server saw protocol v1 for
-        #     every client.  The fix was applied one function earlier,
-        #     in build_session_state, and discarded here.
-        #   log_program / log_cycle -- protocol v9's whole purpose, so
-        #     the server would stop guessing the program from log text.
-        #     It had never once worked.  On a production run, content
-        #     detection was wrong on 5 of 6 cycles: phenix.refine logs
-        #     parsed with phenix.autosol patterns, and an autobuild log
-        #     parsed as phenix.autobuild_denmod, which declares no
-        #     metrics -- so a generic fallback supplied every value,
-        #     returning an R-work column as R-free.
-        #
-        # PARITY: these are added HERE, at the single chokepoint both
-        # LocalAgent and RemoteAgent pass through, never in either agent
-        # -- so server==local parity holds by construction, the same
-        # argument the plan fields above rely on.
-        #
-        # Guarded on presence, not truthiness, wherever a legitimate
-        # value could be falsy.
-        if session_state.get("log_program"):
-            normalized_session_state["log_program"] = (
-                session_state["log_program"])
-        if session_state.get("log_cycle") is not None:
-            normalized_session_state["log_cycle"] = (
-                session_state["log_cycle"])
-        if session_state.get("client_protocol_version") is not None:
-            normalized_session_state["client_protocol_version"] = (
-                session_state["client_protocol_version"])
-        if session_state.get("structure_model"):
-            normalized_session_state["structure_model"] = (
-                session_state["structure_model"])
-        if session_state.get("validation_history"):
-            normalized_session_state["validation_history"] = (
-                session_state["validation_history"])
-        # Booleans: `in` rather than truthiness, so a future False can
-        # cross.  The server still reads them with .get() truthiness, so
-        # False is not yet distinguishable end to end -- recorded in
-        # tst_session_state_round_trip rather than silently accepted.
-        if "model_is_placed" in session_state:
-            normalized_session_state["model_is_placed"] = (
-                session_state["model_is_placed"])
-        if "input_has_ligand" in session_state:
-            normalized_session_state["input_has_ligand"] = (
-                session_state["input_has_ligand"])
+    # session_state passes through unchanged apart from the coercions
+    # and derived flags below.
+    #
+    # This block used to re-list every field by name -- a second
+    # allow-list twenty lines after build_session_state built the dict.
+    # It added nothing, transformed almost nothing, and applied no
+    # sanitization, yet a field missing from the list was dropped with
+    # no error.  Eleven fields were lost that way across two audits,
+    # including two fixes that had been made and marked verified.
+    #
+    # PARITY: this is the single chokepoint both LocalAgent and
+    # RemoteAgent pass through.  Nothing may be added in either agent.
+    normalized_session_state = dict(session_state or {})
 
-        if session_state.get("plan_has_pending_stages"):
-            normalized_session_state["plan_has_pending_stages"] = True
-        if session_state.get("plan_next_stage_programs"):
-            normalized_session_state["plan_next_stage_programs"] = (
-                session_state["plan_next_stage_programs"])
-        if session_state.get("plan_current_unrun_lead_program"):
-            normalized_session_state["plan_current_unrun_lead_program"] = (
-                session_state["plan_current_unrun_lead_program"])
+    if normalized_session_state.get("resolution") is not None:
+        normalized_session_state["resolution"] = float(
+            normalized_session_state["resolution"])
+    for _key in ("best_files", "directives", "recovery_strategies"):
+        if normalized_session_state.get(_key):
+            normalized_session_state[_key] = dict(
+                normalized_session_state[_key])
+    if normalized_session_state.get("advice_changed"):
+        normalized_session_state["advice_changed"] = True
+    if normalized_session_state.get("plan_next_stage_programs"):
+        normalized_session_state["plan_has_pending_stages"] = True
 
-        # v120: input-MTZ R-free presence (tri-state).  `is not None` guard so
-        # confirmed-False is not dropped at this wire chokepoint (see the same
-        # rationale in build_session_state).
-        if session_state.get("input_mtz_has_rfree") is not None:
-            normalized_session_state["input_mtz_has_rfree"] = (
-                session_state["input_mtz_has_rfree"])
-
-        # v120.2: per-file R-free map travels the same wire chokepoint.
-        if session_state.get("mtz_rfree_map") is not None:
-            normalized_session_state["mtz_rfree_map"] = (
-                session_state["mtz_rfree_map"])
-
-    # Build settings
     settings = {
         "provider": provider or "google",
         "abort_on_red_flags": bool(abort_on_red_flags),

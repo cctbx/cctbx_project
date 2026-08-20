@@ -431,8 +431,8 @@ that server-side code needs to read must be carried at **every** hop:
 
 ```
 ai_agent.py session_info["X"]
-  → build_session_state()      [api_client.py]
-  → build_request_v2()         [api_client.py]  ← THE WIRE WHITELIST
+  → build_session_state()      [api_client.py]  ← THE WIRE WHITELIST
+  → build_request_v2()         [api_client.py]  (passes session_state through)
   → create_request()           [api_schema.py]
   → apply_request_defaults()   [api_schema.py]  (additive only)
   → transport encode/decode    [transport.py]
@@ -440,8 +440,23 @@ ai_agent.py session_info["X"]
   → graph_nodes.py PERCEIVE    session_info.get("X")
 ```
 
-**The single chokepoint is the `build_request_v2()` wire whitelist** —
-an explicit per-field copy; unlisted keys are dropped.
+**The whitelist is `build_session_state()`** — an explicit per-field
+copy; unlisted keys never enter `session_state` at all.
+
+**`build_request_v2()` used to hold a SECOND whitelist**, twenty lines
+later in the same file, re-enumerating everything the first had just
+built. Eleven fields were lost there across two audits, including two
+fixes that had been made and marked verified —
+`client_protocol_version` and `log_program`, the latter being the whole
+purpose of protocol v9, which had therefore never once worked. It now
+passes `session_state` through, applying only coercions and derived
+flags. **Do not reintroduce an enumeration there.**
+
+`build_request_v2()` remains the **parity chokepoint**: both
+`LocalAgent` and `RemoteAgent` call it exactly once and add nothing to
+`session_state` afterwards. Anything added in either agent instead
+would break `server == local`, and the failure would be invisible in
+whichever mode was not being exercised.
 
 **Failure mode, and note how it differs from Path 1.** An omission here
 drops the field **identically for local and server**, so **parity stays

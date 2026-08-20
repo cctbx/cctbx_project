@@ -784,17 +784,35 @@ and the protocol version it was introduced in.
 See DEVELOPER_GUIDE.md §8 (Backward Compatibility & Contract) for the
 full contract system.
 
-**Critical: the transport triple.** Every new
+**Critical: the transport pair.** Every new
 `session_info` field that must survive across cycles
-also requires updates to three whitelists — missing
-any one silently drops the value between cycles:
+requires updates to two whitelists — missing either
+silently drops the value between cycles:
 
 1. `build_session_state()` return dict in
    `agent/api_client.py`
-2. `build_request_v2()` normalization allowlist in
-   `agent/api_client.py`
-3. `session_state → session_info` mapping in
+2. `session_state → session_info` mapping in
    `phenix_ai/run_ai_agent.py`
+
+**It used to be three.** `build_request_v2()` held a
+second allow-list that re-enumerated every field
+`build_session_state()` had just produced, adding
+nothing and sanitizing nothing. Eleven fields were
+lost there across two audits — including two fixes
+that had been made and marked verified,
+`client_protocol_version` and `log_program` (the whole
+purpose of protocol v9, which had therefore never once
+worked). It now passes `session_state` through and
+applies only coercions and derived flags. **Do not
+reintroduce an enumeration there.**
+
+Whichever way you add a field, verify it with
+`phenix_regression/ai_tools/tst_session_state_round_trip.py`,
+which asserts every field `build_session_state`
+produces arrives in the request. Grepping
+`api_client.py` for a field name is **not** sufficient
+— that is exactly the check that passed while the
+value was being dropped.
 
 `normalize_session_info()` in `contract.py` is safe —
 it only fills defaults for explicitly defined fields;
