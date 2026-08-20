@@ -912,12 +912,11 @@ class manager(object):
 
   def _get_and_set_n_water_and_sync_fmodel_and_model_and_update_maps(self):
     n_water = self.model.solvent_selection().count(True)
-    if n_water!=self.n_water:
-      self.fmodel.update_xray_structure(
-        xray_structure = self.model.get_xray_structure(),
-        update_f_calc  = True,
-        update_f_mask  = True)
-      self._get_maps()
+    self.fmodel.update_xray_structure(
+      xray_structure = self.model.get_xray_structure(),
+      update_f_calc  = True,
+      update_f_mask  = True)
+    self._get_maps()
     self.n_water = n_water
 
   def _assert_same_model(self):
