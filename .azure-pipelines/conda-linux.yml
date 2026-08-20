@@ -153,6 +153,24 @@ jobs:
       echo $(System.DefinitionID)
     displayName: Show System variables
 
+  - script: |
+      sudo mkdir -p /tmp/empty_dir
+      sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_opt/hostedtoolcache
+      for d in \
+          lib/jvm \
+          local/.ghcup \
+          local/lib/android \
+          local/share/powershell \
+          share/dotnet \
+          share/swift \
+        ; do
+        echo Deleting $d
+        sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_usr/$d
+      done
+      df -h
+    displayName: Clean up host image
+    continueOnError: true
+
   # download daily cached build directory for builds
   # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
   # always do builds from scratch for "Weekly" pipeline

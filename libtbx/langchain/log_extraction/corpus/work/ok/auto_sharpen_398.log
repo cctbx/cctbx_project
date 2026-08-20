@@ -1,0 +1,312 @@
+
+Auto-sharpen a map
+
+Command used: phenix.auto_sharpen /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_B/.phenix/project_data/auto_sharpen_398.eff
+
+input_files {
+  map_file = None
+  half_map_file = None
+  external_map_file = None
+  map_coeffs_file = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_B/map_coeffs_1.mtz"
+  map_coeffs_labels = "FWT,PHWT"
+  pdb_file = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_B/p9.pdb"
+  ncs_file = None
+  seq_file = None
+  input_weight_map_pickle_file = None
+}
+output_files {
+  shifted_map_file = "shifted_map.ccp4"
+  sharpened_map_file = "sharpened_map.ccp4"
+  shifted_sharpened_map_file = None
+  sharpened_map_coeffs_file = "sharpened_map_coeffs.mtz"
+  output_weight_map_pickle_file = "weight_map_pickle_file.pkl"
+  output_directory = None
+}
+crystal_info {
+  is_crystal = None
+  resolution = None
+  solvent_content = None
+  solvent_content_iterations = 3
+  molecular_mass = None
+  ncs_copies = None
+  wang_radius = None
+  buffer_radius = None
+  pseudo_likelihood = None
+}
+map_modification {
+  b_iso = None
+  b_sharpen = None
+  b_blur_hires = 200
+  resolution_dependent_b = None
+  normalize_amplitudes_in_resdep = False
+  d_min_ratio = 0.833
+  scale_max = 100000
+  input_d_cut = None
+  rmsd = None
+  rmsd_resolution_factor = 0.25
+  fraction_complete = None
+  auto_sharpen = True
+  auto_sharpen_methods = no_sharpening b_iso *b_iso_to_d_cut \
+                         resolution_dependent model_sharpening \
+                         half_map_sharpening target_b_iso_to_d_cut \
+                         external_map_sharpening None
+  box_in_auto_sharpen = False
+  density_select_in_auto_sharpen = True
+  density_select_threshold_in_auto_sharpen = None
+  allow_box_if_b_iso_set = False
+  soft_mask = True
+  use_weak_density = False
+  discard_if_worse = None
+  local_sharpening = None
+  local_aniso_in_local_sharpening = None
+  overall_before_local = True
+  select_sharpened_map = None
+  read_sharpened_maps = None
+  write_sharpened_maps = None
+  smoothing_radius = None
+  box_center = None
+  box_size = 30 30 30
+  target_n_overlap = 10
+  restrict_map_size = None
+  remove_aniso = True
+  max_box_fraction = 0.5
+  density_select_max_box_fraction = 0.95
+  cc_cut = 0.2
+  max_cc_for_rescale = 0.2
+  scale_using_last = 3
+  mask_atoms = True
+  mask_atoms_atom_radius = 3
+  value_outside_atoms = None
+  k_sharpen = 10
+  iterate = False
+  optimize_b_blur_hires = False
+  optimize_d_cut = None
+  adjust_region_weight = True
+  region_weight_method = initial_ratio *delta_ratio b_iso
+  region_weight_factor = 1
+  region_weight_buffer = 0.1
+  target_b_iso_ratio = 5.9
+  target_b_iso_model_scale = 0
+  signal_min = 3
+  search_b_min = None
+  search_b_max = None
+  search_b_n = None
+  residual_target = None
+  sharpening_target = None
+  require_improvement = None
+  region_weight = None
+  sa_percent = None
+  fraction_occupied = None
+  n_bins = None
+  regions_to_keep = None
+  max_regions_to_test = None
+  eps = None
+  k_sol = 0.35
+  b_sol = 50
+}
+control {
+  verbose = False
+  resolve_size = None
+  ignore_map_limitations = None
+  multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+  queue_run_command = None
+  nproc = 1
+}
+job_title = "GUI_crystals testing autosharpen"
+gui {
+  output_dir = None
+}
+Map coefficients read from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_B/map_coeffs_1.mtz with labels FWT,PHWT
+Resolution from map_coeffs is    4.00 A
+Assuming this is crystallographic data as map coefficients read
+Estimated solvent content: 0.59
+================================================================================
+
+Running auto_sharpen to get sharpening parameters
+
+================================================================================
+Using map_box based on input model
+Using map_box with model and mask_atoms
+Using soft mask
+Getting map as box now
+
+===== phenix.map_box: extract box with model and map around selected atoms ====
+
+job_title = None
+pdb_file = None
+map_coefficients_file = None
+label = None
+ccp4_map_file = None
+mask_file_name = None
+target_ncs_au_file = None
+selection = "all"
+selection_radius = 3
+box_cushion = 3
+mask_atoms = True
+mask_atoms_atom_radius = 3
+write_mask_file = False
+set_outside_to_mean_inside = False
+resolution_factor = 0.25
+map_scale_factor = None
+scale_max = 99999
+resolution = None
+output_format = xplor *mtz *ccp4
+output_file_name_prefix = None
+mask_select = False
+density_select = False
+density_select_threshold = 0.05
+get_half_height_width = True
+symmetry = None
+symmetry_file = None
+sequence_file = None
+molecular_mass = None
+solvent_content = None
+extract_unique = False
+use_cubic_boxing = None
+stay_inside_current_map = None
+increase_box_cushion_and_atom_radius_for_soft_mask = True
+soft_mask_extract_unique = True
+mask_expand_ratio = 1
+regions_to_keep = None
+keep_low_density = True
+chain_type = None *PROTEIN DNA RNA
+soft_mask = True
+invert_mask = False
+soft_mask_radius = 4.003759658
+lower_bounds = None
+upper_bounds = None
+bounds_are_absolute = False
+keep_map_size = False
+keep_origin = True
+keep_input_unit_cell_and_grid = False
+output_unit_cell = None
+output_unit_cell_grid = None
+output_origin_grid_units = None
+output_origin_match_this_file = None
+bounds_match_this_file = None
+output_external_origin = None
+restrict_map_size = False
+ignore_symmetry_conflicts = False
+wrapping = None
+check_wrapping = False
+output_ccp4_map_mean = None
+output_ccp4_map_sd = None
+output_map_label = None
+remove_output_map_labels = None
+invert_hand = False
+gui {
+  output_dir = None
+}
+Increasing box_cushion by mask_atoms_atom_radius for soft mask
+
+                         ----------pdb model----------                         
+
+No symmetry available
+
+ ----------Extracting box around selected atoms and writing output files---------- 
+
+
+Soft mask will be applied to outside of map box
+
+WARNING: boxed map goes outside original map and wrapping=False
+...setting unknown values to zero
+Mask radius around atoms increased by soft_mask_radius
+Applying mask around atoms with radius of 7.0 A
+Mask will be soft with radius of 4.0 A
+Setting gridding of unit cell of final map to be at (86, 46, 55)
+
+Box cell dimensions: (81.66, 43.68, 49.61) A
+Working origin moved from grid position of: (68, 6, 3) to (0, 0, 0) 
+Working origin moved from  coordinates of: (64.57, 5.70, 2.71) A to (0, 0, 0)
+
+
+Local solvent fraction:    0.77
+Using small map to identify optimal sharpening
+Box map grid: 86  46  55
+Box map cell:   81.66   43.68   49.61   90.00   90.00   90.00  
+
+Getting original b_iso...
+
+Removing aniso in data before analysis
+
+Removing anisotropy with b_cart=(  25.92,   8.15,   4.72)
+
+Effective B-iso =   12.93
+
+Setting Wilson B =   0.0 A
+Getting map coeffs from model with 1061 atoms..
+Setting overall b_iso to     0.0 for model 
+Effective b_iso of adjusted model map:    48.6 A**2
+
+Setting up model sharpening
+
+Using model-based sharpening
+
+Effective b_iso of observed data:   12.9 A**2
+Setting rmsd to   1.0 A based on resolution of   4.0 A
+Setting b_eff for fall-off at  25.2 A**2 based on model uncertainty of   1.0 A
+Estimated fraction complete is  0.01 based on low_res CC of  0.10
+
+Effective B value for CC*: 500.000 A**2 
+
+Fraction complete ( 0.01) is less than minimum ( 0.05)...
+Skipping scaling
+
+Average CC: -0.007
+
+Scale factors vs resolution:
+Note 1: CC* estimated from sqrt(2*CC/(1+CC))
+Note 2: CC estimated by fitting (smoothing) for values < 0.2
+Note 3: Scale = A  CC*  rmsFc/rmsFo (A is normalization)
+  d_min     rmsFo       rmsFc    CC       FIT   Scale 
+  13.43    23885.0    23885.0   0.049    0.049   1.00 
+   7.98    21002.8     8565.6  -0.099   -0.099   1.00 
+   6.71    20829.0     7497.9  -0.060   -0.060   1.00 
+   5.97    20334.3     7473.5   0.044    0.044   1.00 
+   5.47    21614.5     8256.7   0.036    0.036   1.00 
+   5.13    24680.6     8639.2   0.009    0.009   1.00 
+   4.85    27966.6     8747.6  -0.083   -0.083   1.00 
+   4.63    30088.1     9144.1  -0.069   -0.069   1.00 
+   4.44    30610.3     8976.4  -0.040   -0.040   1.00 
+   4.28    29289.4     8162.8  -0.039   -0.039   1.00 
+   4.14    26367.7     7583.2   0.011    0.011   1.00 
+   4.01    21246.9     7331.3   0.029    0.029   1.00 
+   3.90    15754.2     6767.3  -0.000   -0.000   1.00 
+   3.80    11199.5     6749.7   0.068    0.068   1.00 
+   3.71     7289.2     6632.8   0.053    0.053   1.00 
+   3.63     5508.4     6487.5  -0.009   -0.009   1.00 
+   3.56     4197.0     6250.4   0.019    0.019   1.00 
+   3.49     3561.9     6243.0  -0.027   -0.027   1.00 
+   3.42     2965.0     5952.3  -0.021   -0.021   1.00 
+   3.36     2722.4     6120.3  -0.009   -0.009   1.00 
+
+Initial b_iso for map:  12.9 A**2     After applying scaling:  12.9 A**2
+    0.0       12.9    0.0     1.901   37.258      0.0           0.009
+
+Restoring original symmetry to best sharpening info
+(113.949, 113.949,  32.474,  90.000,  90.000,  90.000) 
+================================================================================
+
+Done running auto_sharpen to get sharpening parameters
+
+================================================================================
+================================================================================
+
+Applying final sharpening to entire map
+================================================================================
+
+Removing aniso from map before sharpening
+
+Removing anisotropy with b_cart=(   3.13,   3.13,  -5.02)
+
+
+Effective b_iso of observed data:    0.4 A**2
+
+Initial b_iso for map:   0.4 A**2     After applying scaling:   0.4 A**2
+
+Wrote sharpened map in original location with origin at (0, 0, 0)
+to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_B/Autosharpen_398/sharpened_map.ccp4
+
+Wrote sharpened map_coeffs (origin at 0,0,0)
+ to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_B/Autosharpen_398/sharpened_map_coeffs.mtz
+

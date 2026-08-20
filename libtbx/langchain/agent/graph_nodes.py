@@ -551,12 +551,57 @@ def perceive(state):
     metrics_history = derive_metrics_from_history(history)
 
     # 2. Extract metrics from current log
+    #
+    # The dispatching client knows which program produced log_text and
+    # sends it as session_info["log_program"] (contract v9).  Use it.
+    # Content matching is wrong on 10 of 19 real logs, and the label is
+    # not cosmetic: analyze_metrics_trend gates its success stop on
+    #     any(m["program"] in ("phenix.molprobity", "phenix.model_vs_data"))
+    # so a mislabelled cycle can satisfy the guard that exists to prevent
+    # declaring success before validation has run.  Observed: a
+    # phenix.refine log labelled phenix.molprobity.
+    #
+    # None when the client is older, or cannot confirm the program; then
+    # extract_all_metrics infers as before.
+    _log_program = session_info.get("log_program")
     try:
         from phenix.phenix_ai.log_parsers import extract_all_metrics
-        analysis = extract_all_metrics(log_text)
+        if _log_program:
+            analysis = extract_all_metrics(log_text, program=_log_program)
+        else:
+            analysis = extract_all_metrics(log_text)
     except ImportError:
         # Fallback if log_parsers not available
         analysis = _fallback_extract_metrics(log_text)
+
+    # The client's program is authoritative for the label.
+    #
+    # extract_all_metrics already sets metrics["program"] = program when
+    # the argument is supplied, so this is a no-op on that path.  It
+    # matters for _fallback_extract_metrics below, which ignores the
+    # argument entirely and labels from its own detection -- and that
+    # name would otherwise reach metrics_history and the validation
+    # gate.
+    if _log_program and isinstance(analysis, dict):
+        _detected = analysis.get("program")
+        if _detected and _detected != _log_program:
+            _msg = ("cycle %s: log identified as %s by content matching, "
+                    "but the client ran %s -- using the client's program"
+                    % (state.get("cycle_number"), _detected, _log_program))
+            state = _log(state, "PERCEIVE: %s" % _msg)
+            # debug_log is not echoed at normal verbosity and is not
+            # persisted in agent_session.json, so an override would leave
+            # no trace an operator can see.  warnings IS surfaced by the
+            # client (ai_agent.py prints it via vlog.quiet) and travels
+            # the same response path for local and remote alike.
+            #
+            # One line per affected cycle, not per run: server state is
+            # rebuilt from the request each cycle, so there is nowhere to
+            # accumulate a per-run total.
+            state = {**state,
+                     "warnings": list(state.get("warnings", []))
+                                 + ["[IDENTITY] %s" % _msg]}
+        analysis["program"] = _log_program
 
     # 2b. CRITICAL: Ensure we have the LAST r_free/r_work values
     # Refinement logs contain multiple R-free values (one per macro cycle).
@@ -1152,10 +1197,17 @@ def perceive(state):
     # Log metrics trend details for debugging
     consecutive_rsr = metrics_trend.get("consecutive_rsr", 0)
     consecutive_refines = metrics_trend.get("consecutive_refines", 0)
+    # The cap that actually stops a repeated program is
+    # check_consecutive_program_cap (below, ~line 1461), which fires at 3
+    # for ANY program.  metrics_analyzer's EXCESSIVE_REFINEMENT rule at 5
+    # is shadowed by it and never fires, so "stop at 5" misinformed
+    # anyone reading the log.
     if consecutive_rsr > 0:
-        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (stop at 5)" % consecutive_rsr)
+        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (cap 3)"
+                     % consecutive_rsr)
     if consecutive_refines > 0:
-        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (stop at 5)" % consecutive_refines)
+        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (cap 3)"
+                     % consecutive_refines)
 
     trend_summary = metrics_trend.get("trend_summary", "")
     if trend_summary:
@@ -1278,7 +1330,19 @@ def perceive(state):
         )
 
         # === EMIT SANITY_CHECK EVENT ===
-        red_flags = [i.message for i in sanity_result.issues if i.severity == "red_flag"]
+        # SanityChecker assigns severity "critical" or "warning" -- never
+        # "red_flag".  Filtering on "red_flag" here made this list ALWAYS
+        # empty, so the structured event reported no red flags on exactly
+        # the runs that had them.  The abort itself was unaffected
+        # (should_abort comes from the critical count) and abort_message
+        # was correct, which is why nothing surfaced the mismatch.
+        #
+        # "red_flag" is the name this pipeline uses for a critical sanity
+        # issue -- see abort_on_red_flags and stop_reason="red_flag" --
+        # so the EVENT keeps that name and the SEVERITY it filters on is
+        # corrected to the one the checker actually emits.
+        red_flags = [i.message for i in sanity_result.issues
+                     if i.severity == "critical"]
         warnings = [i.message for i in sanity_result.issues if i.severity == "warning"]
         state = _emit(state, EventType.SANITY_CHECK,
             passed=not sanity_result.should_abort,
@@ -1678,6 +1742,17 @@ def plan(state):
                 # refinement — this means the agent is stuck in a loop (e.g.,
                 # fallback keeps picking refine because ligandfit can't be built).
                 # Indefinite suppression would burn cycles without progress.
+                # NOTE (2026-08): this carve-out is currently unreachable.
+                # It keys on metrics_analyzer's EXCESSIVE_REFINEMENT reason,
+                # which requires 5 consecutive refines -- but
+                # check_consecutive_program_cap stops the run at 3 and
+                # returns from perceive long before this point.  The loop
+                # it describes ("fallback keeps picking refine because
+                # ligandfit can't be built") is therefore already caught
+                # upstream, by a cap that applies to every program rather
+                # than refinement alone.  Kept, not deleted: if the cap is
+                # ever raised or made program-specific, this becomes live
+                # again and is the right behaviour.
                 if "EXCESSIVE" in reason:
                     state = _log(state,
                         "PLAN: AUTO-STOP triggered despite after_program=%s — "
@@ -3340,7 +3415,9 @@ def _build_with_new_builder(state):
         # poor to salvage by adjustment.
         _last_rfree = None
         for h in reversed(state.get("history", [])):
-            _m = h.get("metrics", {})
+            # "analysis" is the declared HISTORY_ENTRY_FIELDS key; this
+            # was the single site reading the old "metrics" spelling.
+            _m = h.get("analysis", {})
             if "r_free" in _m:
                 try:
                     _last_rfree = float(_m["r_free"])

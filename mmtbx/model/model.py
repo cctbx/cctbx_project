@@ -241,90 +241,129 @@ class restraints_scale_manager(object):
       self.original_angle_weights.append(proxy.weight)
       self.current_angle_weights.append(proxy.weight)
     self.scale_counts_angles = flex.int(self.original_angle_weights.size(), 0)
+    #
+    self.b_tracker = {}
+    #
+    self.b_scaled = {}
+    self.a_scaled = {}
 
   def scale_bonds(self, factor, cutoff, second_factor=2, one_time_scale=None):
+    def _prod(data): return math.prod(float(row[0].split()[1]) for row in data)
     g = self.model.get_restraints_manager().geometry
     bond_proxies_simple, asu = g.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
     sites_frac = self.model.get_sites_frac()
+    #
+    # SCALE by map unconditionally
+    #
+    #for k, proxy in enumerate(bond_proxies_simple):
+    #  i_seq, j_seq = proxy.i_seqs
+    #  if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
+    #  key = (i_seq,j_seq)
+    #  #ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+    #  ots = min(one_time_scale[i_seq], one_time_scale[j_seq])
+    #  consensus_scale = min(10, 1/ots)
+    #
+    #  dist_ideal = proxy.distance_ideal
+    #  dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
+    #  delta = abs(dist_ideal-dist_model)
+    #
+    #  if key in self.b_scaled: continue
+    #  self.b_scaled[key]=True
+    #  proxy.weight = proxy.weight * consensus_scale
+    #  self.current_bond_weights[k] = proxy.weight
+    #
+    #  self.b_tracker.setdefault(key, []).append(["%6.4f %6.4f %8.4f"%(delta, consensus_scale, proxy.weight)])
+    #
+    #for k, v in self.b_tracker.items():
+    #  print("%4d %4d"%k, v)
+    #
+    #
     for k, proxy in enumerate(bond_proxies_simple):
       i_seq, j_seq = proxy.i_seqs
       if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
       dist_ideal = proxy.distance_ideal
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
-      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+      if one_time_scale is not None:
+        ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+      #
+      # 920
+      #consensus_scale = self.linear_scale(value=delta, argmin=0.01, argmax=0.04)
+      # 921
+      #consensus_scale = 1
+      #if delta > 0.03:  consensus_scale = self.scale_up(ots)
+      #if delta < 0.02: consensus_scale = self.scale_down(ots)
+      # 922
+      #consensus_scale = 1
+      #if delta > 0.030: consensus_scale = 2.0 #self.scale_up_b(ots)
+      #if delta < 0.015: consensus_scale = 0.5 #self.scale_down_b(ots)
+      #consensus_scale = self.linear_consensus_scale(delta)
+      #
+      #consensus_scale = 1
+      #if delta > 0.030: consensus_scale = 1.2 #self.scale_up_b(ots)
+      #if delta < 0.015: consensus_scale = 0.8 #self.scale_down_b(ots)
 
       consensus_scale = 1
-      if delta > 0.03: consensus_scale = 2
+      if ots<0.5:
+        if delta > 0.040: consensus_scale = 2.0
+      else:
+        if delta > 0.060: consensus_scale = 2.0
+      if delta < 0.010: consensus_scale = 0.5
 
-      if ots >= 0.8:
-        if delta < 0.025: consensus_scale = 0.5
-      if ots < 0.8 and ots >=0.6:
-        if delta < 0.02: consensus_scale = 0.5
-      if ots < 0.6 and ots >= 0.4:
-        if delta < 0.015: consensus_scale = 0.5
-      if ots < 0.4:
-        if delta > 0.02: consensus_scale = 2
+      key = (i_seq, j_seq)
+      self.b_tracker.setdefault(key, []).append(["%6.4f %6.4f"%(delta, consensus_scale)])
 
-
-      #consensus_scale = 1
-      #if ots < 0.6: cutoff = 0.02
-      #else:         cutoff = 0.03
-      #
-      #if delta > cutoff:
-      #  if self.scale_counts_bonds[k]==0:
-      #    consensus_scale = factor
-      #    self.scale_counts_bonds[k] += 1
-      #  else:
-      #    consensus_scale = second_factor
-      #
-      #if delta < 0.01 and ots > 0.6:
-      #  consensus_scale = 1./second_factor**2
-      #if delta < 0.01 and ots <= 0.6:
-      #  consensus_scale = 1./1.5
+      total = _prod(data=self.b_tracker[key])
+      if total > factor: consensus_scale = factor/total
+      self.b_tracker[key][-1] = ["%6.4f %6.4f" % (delta, consensus_scale)]
 
       proxy.weight = proxy.weight * consensus_scale
       self.current_bond_weights[k] = proxy.weight
+    #
+    for k, v in self.b_tracker.items():
+      print("%4d %4d"%k, v, "%10.4f"%_prod(v))
 
   def scale_angles(self, factor, cutoff, second_factor=2, one_time_scale=None):
     g = self.model.get_restraints_manager().geometry
     sites_cart = self.model.get_sites_cart()
+    #
+    # SCALE by map unconditionally
+    #
+    #for k, proxy in enumerate(g.angle_proxies):
+    #  i_seq,j_seq,k_seq = proxy.i_seqs
+    #  if self.hd_selection[i_seq] or \
+    #     self.hd_selection[j_seq] or \
+    #     self.hd_selection[k_seq]: continue
+    #  key = (i_seq,j_seq,k_seq)
+    #  if key in self.a_scaled: continue
+    #  self.a_scaled[key]=True
+    #  ots = min(one_time_scale[i_seq], one_time_scale[j_seq], one_time_scale[k_seq])
+    #  consensus_scale = min(10, 1/ots)
+    #  proxy.weight = proxy.weight * consensus_scale
+    #  self.current_angle_weights[k] = proxy.weight
+
     for k, proxy in enumerate(g.angle_proxies):
       i_seq,j_seq,k_seq = proxy.i_seqs
+      if self.hd_selection[i_seq] or \
+         self.hd_selection[j_seq] or \
+         self.hd_selection[k_seq]: continue
       angle_ideal = proxy.angle_ideal
       sites = (sites_cart[i_seq], sites_cart[j_seq], sites_cart[k_seq])
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
-      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
-
-      consensus_scale = 1
-      if delta > 3.0: consensus_scale = 2
-
-      if ots >= 0.8:
-        if delta < 2.5: consensus_scale = 0.5
-      if ots < 0.8 and ots >=0.6:
-        if delta < 2.0: consensus_scale = 0.5
-      if ots < 0.6 and ots >= 0.4:
-        if delta < 1.5: consensus_scale = 0.5
-      if ots < 0.4:
-        if delta > 2.0: consensus_scale = 2
-
+      if one_time_scale is not None:
+        ots = (one_time_scale[i_seq]+one_time_scale[j_seq]+one_time_scale[k_seq])/3
+      # 920
+      #consensus_scale = self.linear_scale(value=delta, argmin=1.0, argmax=6.0)
+      # 921
       #consensus_scale = 1
-      #if ots < 0.6: cutoff = 3.0
-      #else:         cutoff = 5.0
-      #if delta > cutoff:
-      #  if self.scale_counts_angles[k]==0:
-      #    consensus_scale = factor
-      #    self.scale_counts_angles[k] += 1
-      #  else:
-      #    consensus_scale = second_factor
-      #if delta < 1.5 and ots > 0.6:
-      #  consensus_scale = 1./second_factor**2
-      #if delta < 1.5 and ots <= 0.6:
-      #  consensus_scale = 1./1.5
-
-
+      #if delta > 3.0: consensus_scale = self.scale_up(ots)
+      #if delta < 2.0: consensus_scale = self.scale_down(ots)
+      # 922
+      consensus_scale = 1
+      if delta > 3.0: consensus_scale = 2.0
+      if delta < 1.5: consensus_scale = 0.5
 
       proxy.weight = proxy.weight * consensus_scale
       self.current_angle_weights[k] = proxy.weight
@@ -3006,7 +3045,7 @@ class manager(object):
 
   def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False,
                              ignore_h_with_dof = False):
-    assert self.riding_h_manager is None
+    if self.riding_h_manager is not None: return
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
     self.riding_h_manager = riding.manager(
@@ -3031,6 +3070,53 @@ class manager(object):
         sites_cart=sites_cart,
         selection_bool = flags)
       self.set_sites_cart(sites_cart)
+    # AD HOC fix for the riding H issue for water START
+    sct = self.get_scattering_table()
+    dist_ideal = 0.85
+    if sct in ["neutron", "electron"]: dist_ideal = 0.98
+    def idealize_water_geometry(
+        o_xyz, h1_xyz, h2_xyz, dist_ideal=dist_ideal, angle_ideal=103.91):
+      """
+      Computes idealized H-O-H coordinates. O remains entirely fixed.
+      H positions are adjusted minimally by preserving their plane and bisector.
+      """
+      O  = matrix.col(o_xyz)
+      H1 = matrix.col(h1_xyz)
+      H2 = matrix.col(h2_xyz)
+      v1 = H1 - O
+      v2 = H2 - O
+      n = v1.cross(v2)
+      if n.length() < 1e-6: n = v1.ortho().normalize()
+      else:                 n = n.normalize()
+      b = (v1.normalize() + v2.normalize()).normalize()
+      half_angle = angle_ideal / 2.0
+      rao = b.rotate_around_origin
+      new_v1 = rao(axis=n, angle=-half_angle, deg=True) * dist_ideal
+      new_v2 = rao(axis=n, angle= half_angle, deg=True) * dist_ideal
+      new_H1 = O + new_v1
+      new_H2 = O + new_v2
+      return new_H1.elems, new_H2.elems
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.get_hierarchy().models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            if (get_class(name=ag.resname) != "common_water"): continue
+            o_atom = None
+            h_atoms = []
+            for a in ag.atoms():
+              element = a.element.strip().upper()
+              if element == "O":          o_atom = a
+              elif element in ["H", "D"]: h_atoms.append(a)
+            if o_atom is not None and len(h_atoms) == 2:
+              h1_new, h2_new = idealize_water_geometry(
+                o_xyz  = o_atom.xyz,
+                h1_xyz = h_atoms[0].xyz,
+                h2_xyz = h_atoms[1].xyz)
+              h_atoms[0].xyz = h1_new
+              h_atoms[1].xyz = h2_new
+    self.set_sites_cart( self.get_hierarchy().atoms().extract_xyz() )
+    # AD HOC fix for the riding H issue for water END
 
   def get_hierarchy(self):
     """
