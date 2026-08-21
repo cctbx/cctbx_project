@@ -108,13 +108,29 @@ class AgentSession:
       Provenance for the per-message stamp (``Message.verbose``): whether the
       host's verbose mode is on. ``None`` (default) -- the host has no such
       concept; messages stay unstamped. Never read back to configure anything.
+  tool_round_note : callable, optional
+      ``note(agent) -> str or None``, asked once per tool round after the
+      tools ran. Text it returns rides that round's tool-result message as
+      an EPHEMERAL block (``EPHEMERAL_BLOCK_KEY``): the model reads it on
+      its very next call, inside the turn, and the session strips it before
+      the following round, so it is never re-sent with a stale reading nor
+      persisted. This is the in-turn delivery path for a note whose moment
+      is mid-turn -- the context-pressure handoff, whose send-time delivery
+      never arrives in a run that is one long turn. A raising provider is
+      logged and skipped; the tool results are never at risk.
   """
 
   def __init__(self, agent, conversation, storage, tools, policy,
                profile, depth=0, on_event=None, log=None,
                approvals=None, autosave_interval_s=5.0, clock=None,
-               attachment_conv_id=None, verbose=None):
+               attachment_conv_id=None, verbose=None, tool_round_note=None):
     self.agent = agent
+    self.tool_round_note = tool_round_note
+    # True from the moment a round note is attached until a later round
+    # yields a real model event -- i.e. while the note may never have been
+    # read (the next request raised, or came back as an AgentError). The host
+    # reads it at turn end to re-arm exactly the notes that never landed.
+    self.round_note_in_flight = False
     self.conv = conversation
     self.storage = storage
     self.attachment_conv_id = (attachment_conv_id if attachment_conv_id
@@ -229,6 +245,7 @@ class AgentSession:
     self.approvals.begin_turn()
     self._pending_approval_calls.clear()
     _drain_stale_cancelled(self.question_queue)
+    self.round_note_in_flight = False
     self.conv.append(user_message)
     # Reconcile the conversation meta to the model/backend actually running
     # this turn. A conversation continued under a different model/backend
@@ -322,6 +339,17 @@ class AgentSession:
         return assistant_msg
 
       tool_result_msg = self._dispatch_and_build_results(tool_calls, cancel)
+      # Every ephemeral note now in the conversation -- the send-time nudge on
+      # the user message, or the previous round's tool-round note -- rode the
+      # request that just returned, so the model has read it once. Strip them
+      # BEFORE attaching this round's note, so an API backend (which resends
+      # the whole conversation every round) never repeats a note with a frozen
+      # reading, and the fresh note is the only one the next request carries.
+      self._strip_ephemeral_blocks()
+      # Not on a cancelled round: it sends no further request, so a note
+      # attached here would be consumed without ever being read.
+      if not cancel.is_set():
+        self._attach_round_note(tool_result_msg)
       self.conv.append(tool_result_msg)
       self._checkpoint_iteration()                 # per-iteration disk cadence
 
@@ -335,6 +363,38 @@ class AgentSession:
         # same ordering constraint: after this iteration's appends.
         self.on_event(TurnDone(stop_reason="cancelled", finish=CANCELLED))
         return assistant_msg
+
+  def _strip_ephemeral_blocks(self):
+    """Drop every ephemeral block from the live conversation, in place.
+
+    Only the in-memory messages: the storage layer already refuses to persist
+    them. Content lists are edited in place because the Message objects are
+    shared with the UI and with ``persistable_prefix``.
+    """
+    from qttbx.widgets.chat.agent.conversation import is_ephemeral_block
+    for msg in self.conv.messages:
+      if any(is_ephemeral_block(b) for b in msg.content):
+        msg.content[:] = [b for b in msg.content if not is_ephemeral_block(b)]
+
+  def _attach_round_note(self, tool_result_msg):
+    """Append the ``tool_round_note`` provider's text, if any, to this
+    round's tool-result message as an ephemeral block. See the constructor.
+    Best-effort: the note is scaffolding around the tool results, and a
+    failure computing it must not cost the round."""
+    provider = self.tool_round_note
+    if provider is None:
+      return
+    try:
+      text = provider(self.agent)
+    except Exception as exc:
+      print("chat: tool-round note skipped: %s" % exc, file=self.log)
+      return
+    if not text:
+      return
+    from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+    tool_result_msg.content.append(ContentBlock(
+      type="text", data={"text": text, EPHEMERAL_BLOCK_KEY: True}))
+    self.round_note_in_flight = True
 
   def _maybe_autosave(self, partial_msg=None):
     """Throttled mid-turn persistence (top-level sessions only).
@@ -412,6 +472,14 @@ class AgentSession:
     answered = []
     last_committed = None
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
+      # A real model event means the request carrying any round note went
+      # out and was answered; an AgentError event, or a cancel that landed
+      # before any content (a bare TurnDone(cancelled)), means it was not.
+      if self.round_note_in_flight and not (
+          isinstance(event, AgentError)
+          or (isinstance(event, TurnDone)
+              and event.stop_reason == "cancelled")):
+        self.round_note_in_flight = False
       self.on_event(event)
       _accumulate(msg, event, tool_calls, answered, self.storage,
                   self.attachment_conv_id)
