@@ -271,13 +271,54 @@ def exercise_ramalyze_json(test_mmcif=False):
   assert rmjson_dict['summary_results'][""]['num_residues'] == 725, "tst_ramalyze json output summary total num_residues not matching previous value"
   return rmjson_dict
 
+def exercise_ramalyze_pdb_vs_cif():
+  """PDB and mmCIF input must give the same answer.
+
+  Deliberately does NOT use phenix_regression. The absolute counts in
+  exercise_ramalyze_json() are properties of jcm.pdb and still need that repository, but
+  "do the two input formats agree" can be answered by any structure, so this uses a
+  cctbx-owned model and therefore runs in a cctbx-only build.
+
+  That matters because the old form of this check crashed rather than skipped: the
+  phenix_regression guard did a bare `return`, and __main__ then subscripted the None it
+  got back, so a cctbx-only checkout reported a TypeError out of ramalyze rather than a
+  missing input file.
+  """
+  model_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/p9.pdb",
+    test=os.path.isfile)
+  if (model_file is None):
+    print("Skipping exercise_ramalyze_pdb_vs_cif(): p9.pdb not available")
+    return
+  if (find_rotarama_data_dir(optional=True) is None):
+    print("Skipping exercise_ramalyze_pdb_vs_cif(): rotarama_data not available")
+    return
+  with open(model_file) as f:
+    pdb_str = f.read()
+  dm = DataManager()
+  dm.process_model_str("pdb", pdb_str)
+  from_pdb = json.loads(ramalyze.ramalyze(
+    pdb_hierarchy=dm.get_model("pdb").get_hierarchy(), outliers_only=False).as_JSON())
+  dm.process_model_str("cif", convert_string_to_cif_long(
+    pdb_str, chain_addition="LONGCHAIN"))
+  from_cif = json.loads(ramalyze.ramalyze(
+    pdb_hierarchy=dm.get_model("cif").get_hierarchy(), outliers_only=False).as_JSON())
+  assert len(from_pdb['flat_results']) > 0, \
+    "ramalyze produced nothing for p9.pdb, so the comparison below is vacuous"
+  assert from_pdb['summary_results'] == from_cif['summary_results'], \
+    "ramalyze summary results differ between pdb and cif input"
+
 if (__name__ == "__main__"):
   t0=time.time()
   exercise_ramalyze()
   exercise_favored_regions()
   exercise_constants()
+  exercise_ramalyze_pdb_vs_cif()
   rm_dict = exercise_ramalyze_json()
   rm_dict_cif = exercise_ramalyze_json(test_mmcif=True)
-  assert rm_dict['summary_results'] == rm_dict_cif['summary_results'], "tst_ramalyze summary results changed between pdb and cif version"
+  # Both are None when phenix_regression is absent. The format-equivalence check above
+  # covers that case without it.
+  if rm_dict is not None and rm_dict_cif is not None:
+    assert rm_dict['summary_results'] == rm_dict_cif['summary_results'], "tst_ramalyze summary results changed between pdb and cif version"
   print("Time: %6.4f"%(time.time()-t0))
   print("OK")
