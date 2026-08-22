@@ -167,60 +167,26 @@ class QMRegionGrower:
 
         visited.add(neighbour)
 
-        if frozenset((curr_iseq, nbr_iseq)) in forced_cut_bonds:
-          print('Forced cut (preferred-cut fallback) between:', file=self.log)
-          print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          self._try_mark_cap(
-            neighbour, current, cap_candidates, visited,
-            seed_nodes, adjacency, atoms, queue,
-          )
-          continue
+        reason = self._cut_reason(
+          curr_iseq, nbr_iseq, curr_op, curr_resname, curr_cut_detector,
+          forced_cut_bonds, visited, adjacency, atoms)
 
-        if curr_cut_detector.is_cc_single_sp3_bond(
-            curr_resname, atoms[curr_iseq], atoms[nbr_iseq], adjacency):
-          print('Found C-C single bond between:', file=self.log)
-          print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          self._try_mark_cap(
-            neighbour, current, cap_candidates, visited,
-            seed_nodes, adjacency, atoms, queue,
-          )
-          continue
-
-        if self.bond_cut_detector.is_ca_c_bond(
-            atoms[curr_iseq], atoms[nbr_iseq], adjacency):
-          if self._any_amide_of_current_residue_in_visited(
-              curr_iseq, curr_op, visited, atoms):
-            print('Found backbone CA-C bond between:', file=self.log)
-            print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
-            print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
+        if reason is not None:
+          # A forced cut is the fallback's way of overriding the rules, so
+          # it is not subject to the refusal.
+          refusal = None
+          if frozenset((curr_iseq, nbr_iseq)) not in forced_cut_bonds:
+            refusal = self._cut_refusal(
+              current, neighbour, visited, adjacency, atoms)
+          if refusal is None:
+            self._log_bond(reason, curr_iseq, nbr_iseq, atoms)
             self._try_mark_cap(
               neighbour, current, cap_candidates, visited,
               seed_nodes, adjacency, atoms, queue,
             )
             continue
-
-        if self.bond_cut_detector.is_ca_n_bond(
-            atoms[curr_iseq], atoms[nbr_iseq], adjacency):
-          if self._any_amide_of_next_residue_in_visited(
-              curr_iseq, curr_op, visited, atoms):
-            print('Found backbone CA-N bond between:', file=self.log)
-            print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
-            print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
-            self._try_mark_cap(
-              neighbour, current, cap_candidates, visited,
-              seed_nodes, adjacency, atoms, queue,
-            )
-            continue
+          self._log_bond(f'{reason} (not taken, {refusal})',
+                         curr_iseq, nbr_iseq, atoms)
 
         queue.append(neighbour)
 
@@ -448,6 +414,130 @@ class QMRegionGrower:
         dist[nb] = dist[cur] + 1
         queue.append(nb)
     return ca_iseq, dist
+
+  def _log_bond(self, message, iseq_a, iseq_b, atoms):
+    """Print *message* followed by the two atom records."""
+    print(f'{message} between:', file=self.log)
+    print('  ' + atoms[iseq_a].format_atom_record().rstrip(), file=self.log)
+    print('  ' + atoms[iseq_b].format_atom_record().rstrip(), file=self.log)
+
+  def _cut_reason(self, curr_iseq, nbr_iseq, curr_op, curr_resname,
+                  cut_detector, forced_cut_bonds, visited, adjacency, atoms):
+    """Return why the bond ``curr -> nbr`` is cuttable, or ``None``.
+
+    The CA-C rule additionally refuses to cut away a terminal carboxylate,
+    which capping would replace with a single hydrogen.  This covers that
+    one group only: the sidechain rules still cut through ASP, GLU, LYS and
+    ARG at their configured bonds, and the N-terminal amine is not
+    protected, so a region is not charge-preserving in general.
+
+    Parameters
+    ----------
+    curr_iseq, nbr_iseq : int
+    curr_op : cctbx.sgtbx.rt_mx
+        Symmetry image of the current node.
+    curr_resname : str
+    cut_detector : BondCutDetector
+        Detector to use for the sidechain rule; may differ from
+        ``self.bond_cut_detector`` for overgrowth residues.
+    forced_cut_bonds : set of frozenset
+    visited : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    str or None
+    """
+    if frozenset((curr_iseq, nbr_iseq)) in forced_cut_bonds:
+      return 'Forced cut (preferred-cut fallback)'
+
+    if cut_detector.is_cc_single_sp3_bond(
+        curr_resname, atoms[curr_iseq], atoms[nbr_iseq], adjacency):
+      return 'Found C-C single bond'
+
+    if (self.bond_cut_detector.is_ca_c_bond(
+          atoms[curr_iseq], atoms[nbr_iseq], adjacency)
+        and not self._is_terminal_carboxylate(nbr_iseq, adjacency, atoms)
+        and self._any_amide_of_current_residue_in_visited(
+          curr_iseq, curr_op, visited, atoms)):
+      return 'Found backbone CA-C bond'
+
+    if (self.bond_cut_detector.is_ca_n_bond(
+          atoms[curr_iseq], atoms[nbr_iseq], adjacency)
+        and self._any_amide_of_next_residue_in_visited(
+          curr_iseq, curr_op, visited, atoms)):
+      return 'Found backbone CA-N bond'
+
+    return None
+
+  @staticmethod
+  def _is_terminal_carboxylate(iseq, adjacency, atoms):
+    """Return ``True`` if the atom at *iseq* is a terminal carboxylate carbon.
+
+    Read off the graph rather than from atom names, so that a terminal
+    oxygen named OT1/OT2 counts and a stray OXT on a mid-chain residue
+    does not: the carbon must carry two oxygens, which a mid-chain
+    carbonyl does not, and no nitrogen in another residue, which a
+    peptide bond would supply.
+
+    A chain break has one oxygen and reads as False, which is intended:
+    only a neutral carbonyl leaves when that bond is cut.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    residue_group = atoms[iseq].parent().parent()
+    oxygens = 0
+    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[neighbour_iseq]
+      element = other.element.strip().upper()
+      if element == 'O':
+        oxygens += 1
+      elif element == 'N' and other.parent().parent() != residue_group:
+        return False  # the chain continues, so this is not a terminus
+    return oxygens >= 2
+
+  @staticmethod
+  def _cut_refusal(anchor, cap, visited, adjacency, atoms):
+    """Return why the cut ``anchor -> cap`` must not be made, or ``None``.
+
+    A cap may keep only its anchor as a covalent neighbour inside the
+    region.  Refuse the cut when the far atom is already bonded to another
+    atom in the region, and let BFS continue through the bond instead.
+
+    One case cannot be seen here: BFS may reach a neighbour of the cap
+    later, by a route that does not exist yet.  That one is repaired
+    afterwards by :meth:`_demote_cap_candidate`, along with a bond inside
+    a ring, where the cut detaches nothing.
+
+    Parameters
+    ----------
+    anchor, cap : (int, rt_mx)
+    visited : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    str or None
+    """
+    cap_iseq, cap_op = cap
+    for (nb_iseq, edge_op) in adjacency[cap_iseq]:
+      if atoms[nb_iseq].element_is_hydrogen():
+        continue
+      nb_node = (nb_iseq, _canon_op(cap_op.multiply(edge_op)))
+      if nb_node != anchor and nb_node in visited:
+        return (f'far atom is already bonded to '
+                f'{atoms[nb_iseq].name.strip()} in the region')
+    return None
 
   def _demote_cap_candidate(self, cap, cap_candidates, visited,
                             seed_nodes, adjacency, atoms, queue,

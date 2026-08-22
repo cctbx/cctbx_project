@@ -1387,6 +1387,175 @@ def exercise_region_invariants():
           + "; ".join(bad))
 
 
+_TRIPEPTIDE_PDB = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   1      10.000  10.000  10.000  1.00 10.00           N
+ATOM      2  CA  ALA A   1      11.458  10.000  10.000  1.00 10.00           C
+ATOM      3  C   ALA A   1      12.009  11.420  10.000  1.00 10.00           C
+ATOM      4  O   ALA A   1      11.257  12.394  10.000  1.00 10.00           O
+ATOM      5  CB  ALA A   1      11.987   9.230  11.207  1.00 10.00           C
+ATOM      6  N   CYS A   2      13.339  11.540  10.000  1.00 10.00           N
+ATOM      7  CA  CYS A   2      13.998  12.840  10.000  1.00 10.00           C
+ATOM      8  C   CYS A   2      15.508  12.660  10.000  1.00 10.00           C
+ATOM      9  O   CYS A   2      16.010  11.535  10.000  1.00 10.00           O
+ATOM     10  CB  CYS A   2      13.560  13.680  11.200  1.00 10.00           C
+ATOM     11  SG  CYS A   2      14.100  15.400  11.200  1.00 10.00           S
+ATOM     12  N   ALA A   3      16.230  13.780  10.000  1.00 10.00           N
+ATOM     13  CA  ALA A   3      17.690  13.790  10.000  1.00 10.00           C
+ATOM     14  C   ALA A   3      18.220  15.220  10.000  1.00 10.00           C
+ATOM     15  O   ALA A   3      17.450  16.180  10.000  1.00 10.00           O
+ATOM     16  CB  ALA A   3      18.230  13.010  11.200  1.00 10.00           C
+ATOM     17  OXT ALA A   3      19.450  15.380  10.000  1.00 10.00           O
+END
+"""
+
+
+def _atom_names_by_residue(result):
+  """Return ``{resseq: set of atom names}`` for a region."""
+  hierarchy = result["model"].get_hierarchy()
+  out = {}
+  for atom in hierarchy.atoms():
+    resseq = atom.parent().parent().resseq.strip()
+    out.setdefault(resseq, set()).add(atom.name.strip())
+  return out
+
+
+def exercise_terminal_carboxylate_kept():
+  """Cutting CA-C away from a carboxylate would change the region's charge.
+
+  A terminal -COO(-) replaced by a single hydrogen silently takes its
+  negative charge with it, so that cut is refused and the carboxylate is
+  retained whether or not the radius search reached it.  A chain break is
+  not the same case: only a neutral carbonyl leaves there, so it is still
+  cut and capped."""
+  seed = ["chain A and resseq 2 and name SG"]
+  reached = _run_endo_exo_params(
+    _TRIPEPTIDE_PDB, selection=seed, buffer__radius=4.0)[0]
+  not_reached = _run_endo_exo_params(
+    _TRIPEPTIDE_PDB, selection=seed, buffer__radius=3.0)[0]
+
+  for tag, result in (("radius 4.0", reached), ("radius 3.0", not_reached)):
+    names = _atom_names_by_residue(result)
+    assert "3" in names, f"{tag}: C-terminal residue absent"
+    assert {"C", "O", "OXT"} <= names["3"], (
+      f"{tag}: carboxylate not retained, got {sorted(names['3'])}")
+
+  # Whether OXT sat inside the sphere must not decide whether the
+  # carboxylate survives.
+  assert _atom_names_by_residue(reached)["3"] == \
+      _atom_names_by_residue(not_reached)["3"], (
+    "C-terminal residue depends on the search radius")
+
+  # Same peptide with OXT removed is a chain break, not a terminus: the
+  # cut must still be made, leaving a capped C rather than a carbonyl
+  # carbon with an unsatisfied valence.
+  broken = _TRIPEPTIDE_PDB.replace(
+    "ATOM     17  OXT ALA A   3      19.450  15.380  10.000  1.00 10.00"
+    "           O\n", "")
+  assert "OXT" not in broken
+  result = _run_endo_exo_params(
+    broken, selection=seed, buffer__radius=3.0)[0]
+  hierarchy = result["model"].get_hierarchy()
+  atoms = list(hierarchy.atoms())
+  caps = set(result["cap_iseqs"])
+  for i, atom in enumerate(atoms):
+    if atom.parent().parent().resseq.strip() != "3":
+      continue
+    if atom.name.strip() != "C":
+      continue
+    assert i in caps, (
+      "at a chain break the carbonyl C must be capped, not retained "
+      "with an unsatisfied valence")
+    break
+  else:
+    raise AssertionError("residue 3 C absent from the region")
+
+
+def exercise_terminal_carboxylate_detection():
+  """A carboxylate terminus is recognised from the graph, not from names.
+
+  Two oxygens on the carbonyl carbon and no nitrogen in another residue.
+  So a terminal oxygen named OT1/OT2 counts, and a stray OXT on a
+  mid-chain residue does not, because that carbon still carries a peptide
+  nitrogen."""
+  from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+  from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
+
+  def _verdicts(pdb_str):
+    pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+    model = mmtbx.model.manager(model_input=pdb_in)
+    model.process(make_restraints=True)
+    grm = model.get_restraints_manager().geometry
+    sites_cart = model.get_sites_cart()
+    simple, asu = grm.get_all_bond_proxies(sites_cart=sites_cart)
+    mappings = grm.pair_proxies(
+      sites_cart=sites_cart).bond_proxies.asu_mappings()
+    adjacency = AtomGraphBuilder().build_adjacency(simple, asu, mappings)
+    hierarchy = model.get_hierarchy()
+    atoms = hierarchy.atoms()
+    out = {}
+    for i, atom in enumerate(atoms):
+      if atom.name.strip() != "C":
+        continue
+      resseq = atom.parent().parent().resseq.strip()
+      out[resseq] = QMRegionGrower._is_terminal_carboxylate(i, adjacency, atoms)
+    return out
+
+  # Residue 3 is the real C-terminus; 1 and 2 are mid-chain.
+  assert _verdicts(_TRIPEPTIDE_PDB) == {"1": False, "2": False, "3": True}
+
+  # Legacy naming: the terminal oxygen is OT2, not OXT.
+  legacy = _TRIPEPTIDE_PDB.replace(" OXT ALA A   3", " OT2 ALA A   3")
+  assert _verdicts(legacy) == {"1": False, "2": False, "3": True}, (
+    "a terminus named OT2 must still be recognised")
+
+  # A stray OXT on a mid-chain residue is not a terminus: its carbonyl
+  # carbon still carries the next residue's nitrogen.
+  stray = _TRIPEPTIDE_PDB.replace(
+    "END",
+    "ATOM     18  OXT ALA A   1      12.700  11.500   9.100  1.00 10.00"
+    "           O\nEND")
+  assert _verdicts(stray) == {"1": False, "2": False, "3": True}, (
+    "a mid-chain residue with a stray OXT must not read as a terminus")
+
+
+def exercise_cut_not_made_into_the_region():
+  """A cut is refused when the far atom is already bonded into the region.
+
+  Capping there would leave the cap covalently bonded to a region atom
+  that is not its anchor.  Refusing produces the same region while leaving
+  less for the cap repair to undo afterwards."""
+  from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+
+  demotions = {"n": 0}
+  original = QMRegionGrower._demote_cap_candidate
+
+  def counting(self, *args, **kwargs):
+    demotions["n"] += 1
+    return original(self, *args, **kwargs)
+
+  QMRegionGrower._demote_cap_candidate = counting
+  try:
+    for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
+      for radius in (4.0, 5.0, 6.0, 7.0):
+        for preferred in (True, False):
+          result = _run_endo_exo_params(
+            pdb_str, buffer__radius=radius,
+            capping__preferred_cuts=preferred)[0]
+          assert not region_invariant_violations(result), (
+            f"radius={radius} preferred_cuts={preferred}")
+  finally:
+    QMRegionGrower._demote_cap_candidate = original
+
+  # Repairs still happen, for the cases no cut-time rule can see: a bond
+  # inside a ring, and a neighbour of the cap that BFS reaches only later.
+  # The bound is what matters -- more than this means cuts are being made
+  # that were knowably wrong when they were made.
+  assert demotions["n"] <= 1, (
+    f"expected at most 1 cap repair over these 16 regions, "
+    f"got {demotions['n']}")
+
+
 def run():
   exercise_submodel_shape()
   exercise_cys_coordination()
@@ -1405,6 +1574,9 @@ def run():
   exercise_element_filter()
   exercise_depth_and_skip_search()
   exercise_write_files_roundtrip()
+  exercise_terminal_carboxylate_kept()
+  exercise_terminal_carboxylate_detection()
+  exercise_cut_not_made_into_the_region()
   # engine unit tests
   exercise_canon_op()
   exercise_hydrogen_capper()
