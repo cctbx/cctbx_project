@@ -36,11 +36,12 @@ master_sidecar_phil_str = """
 endo_exo_region {
   cap_atoms = None
     .type = ints
-    .help = "Indices of hydrogen cap atoms in the QM-region output file."
+    .help = "Indices of the boundary atoms in the QM-region output file; \
+None when the region has none."
   cap_original_elements = None
     .type = strings
-    .help = "Element each cap atom carried before being replaced by H, \
-parallel to cap_atoms."
+    .help = "Element each boundary atom carried before capping, parallel to \
+cap_atoms."
   seed_atoms = None
     .type = ints
     .help = "Indices of seed atoms in the QM-region output file (the metal \
@@ -683,8 +684,9 @@ class QMRegionBuilder(object):
     cap_indices : list of int
         Positional indices of cap atoms in *model_sel*.
     cap_original_elements : list of str
-        Element each cap carried before being replaced by H (parallel to
-        *cap_indices*).
+        Element each cap atom carried before capping (parallel to
+        *cap_indices*); unchanged from the emitted element when
+        ``capping.enable`` is False.
     cap_anchor_indices : list of int
         Sorted, unique positional indices of the QM-region heavy atoms the caps
         are bonded to (their anchors).
@@ -810,20 +812,25 @@ class QMRegionBuilder(object):
     def _lookup_node(iseq, op_xyz):
       return atom_for_node.get((iseq, op_xyz))
 
-    # Apply hydrogen capping on the materialized atoms, recording each cap
-    # atom's original element before it is overwritten with H.
-    orig_element_for_iseq = {}
-    anchor_iseq_by_cap = {}
-    if self.params.capping.enable:
-      for cap_node, anchor_node in cap_nodes.items():
-        cap_iseq_orig, cap_op = cap_node
-        anchor_iseq_orig, anchor_op = anchor_node
-        cap_atom = _lookup_node(cap_iseq_orig, cap_op.as_xyz())
-        anchor_atom = _lookup_node(anchor_iseq_orig, anchor_op.as_xyz())
-        if cap_atom is not None:
-          orig_element_for_iseq[cap_atom] = cap_atom.element.strip()
-          if anchor_atom is not None:
-            anchor_iseq_by_cap[cap_atom] = anchor_atom.i_seq
+    # Record each boundary atom's element and anchor, then cap.  The record
+    # describes the region boundary, which exists whether or not a hydrogen
+    # is placed there, so only the placement is gated on capping.enable.
+    orig_element_by_cap = {}
+    anchor_atom_by_cap = {}
+    for cap_node, anchor_node in cap_nodes.items():
+      cap_iseq_orig, cap_op = cap_node
+      anchor_iseq_orig, anchor_op = anchor_node
+      cap_atom = _lookup_node(cap_iseq_orig, cap_op.as_xyz())
+      anchor_atom = _lookup_node(anchor_iseq_orig, anchor_op.as_xyz())
+      if cap_atom is None:
+        continue
+      orig_element_by_cap[cap_atom] = cap_atom.element.strip()
+      if anchor_atom is not None:
+        # Hold the atom, not its i_seq: the copies made above do not carry a
+        # final i_seq until the hierarchy is wrapped in a model below, so
+        # reading it here yields the pre-copy value for every symmetry image.
+        anchor_atom_by_cap[cap_atom] = anchor_atom
+      if self.params.capping.enable:
         self._capper.cap_atom(anchor_atom, cap_atom)
 
     # Assemble the final mmtbx.model.manager
@@ -832,9 +839,9 @@ class QMRegionBuilder(object):
       pdb_hierarchy=out_root,
       crystal_symmetry=cs)
 
-    # ``atom_by_key`` already holds the materialized atoms; their
-    # ``.i_seq`` is the post-cap value after ``reset_serial`` above and
-    # is not changed by ``mmtbx_model.manager`` wrapping the hierarchy.
+    # ``atom_for_node`` already holds the materialized atoms.  Every index
+    # below is read only after the wrapping above, which is what gives the
+    # copied atoms their final ``.i_seq``.
     seed_indices = sorted(
       a.i_seq for a in (_lookup_node(s.i_seq, identity_xyz)
                         for s in seeds) if a is not None)
@@ -843,11 +850,13 @@ class QMRegionBuilder(object):
                    for (iseq, op) in cap_nodes) if a is not None),
       key=lambda a: a.i_seq)
     cap_indices = [a.i_seq for a in cap_atoms_sorted]
-    cap_original_elements = [orig_element_for_iseq.get(a, 'C')
+    # Indexed, not ``.get``: both lists are built from ``cap_nodes`` with the
+    # same not-None filter, so a missing entry is a bug worth raising on.
+    cap_original_elements = [orig_element_by_cap[a]
                              for a in cap_atoms_sorted]
     cap_anchor_indices = sorted(set(
-      anchor_iseq_by_cap[a] for a in cap_atoms_sorted
-      if a in anchor_iseq_by_cap))
+      anchor_atom_by_cap[a].i_seq for a in cap_atoms_sorted
+      if a in anchor_atom_by_cap))
 
     # Symmetry-image provenance (in-memory hand-off): map each materialized
     # symmetry-image atom's sub-model i_seq to its ASU parent's selection
@@ -925,12 +934,18 @@ class QMRegionBuilder(object):
         The CCTBX selection string that seeded the region, or ``None`` for
         metal-scan regions.
     """
+    # An empty list formats as a bare ``key =``, which does not parse back, so
+    # empty lists are written as None (the declared default) instead.
+    def _or_none(values):
+      values = list(values)
+      return values or None
+
     sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
     sidecar_phil_extract = sidecar_phil.extract()
-    sidecar_phil_extract.endo_exo_region.cap_atoms = list(cap_indices)
-    sidecar_phil_extract.endo_exo_region.cap_original_elements = list(
+    sidecar_phil_extract.endo_exo_region.cap_atoms = _or_none(cap_indices)
+    sidecar_phil_extract.endo_exo_region.cap_original_elements = _or_none(
       cap_original_elements)
-    sidecar_phil_extract.endo_exo_region.seed_atoms = list(seed_indices)
+    sidecar_phil_extract.endo_exo_region.seed_atoms = _or_none(seed_indices)
     sidecar_phil_extract.endo_exo_region.selection_string = selection_string
     sidecar_phil_path = file_name + '.phil'
     with open(sidecar_phil_path, 'w') as file:

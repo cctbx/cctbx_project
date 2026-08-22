@@ -1073,6 +1073,320 @@ def exercise_special_position_water_dedup():
     f"off-axis water 301 should keep both symmetry copies; got {counts}")
 
 
+_ALTLOC_PDB = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   1       5.000   5.000   5.000  1.00 10.00           N
+ATOM      2  CA  ALA A   1       6.500   5.000   5.000  1.00 10.00           C
+ATOM      3  C   ALA A   1       7.000   6.400   5.000  1.00 10.00           C
+ATOM      4  O   ALA A   1       6.300   7.400   5.000  1.00 10.00           O
+ATOM      5  CB AALA A   1       7.000   4.200   6.200  0.30 10.00           C
+ATOM      6  CB BALA A   1       7.000   4.200   3.800  0.70 10.00           C
+END
+"""
+
+
+def _run_endo_exo_params(pdb_str, **overrides):
+  """Drive the program with dotted PHIL overrides (``__`` for ``.``).
+
+  Returns the full result list rather than a single region, so it can drive
+  the knobs that change how many regions are produced, or that raise."""
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  dm = DataManager(["model"])
+  dm.add_model("model", model)
+  dm.set_default_model("model")
+  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  params = master.extract()
+  params.write_files = False
+  for dotted, value in overrides.items():
+    scope = params
+    parts = dotted.split("__")
+    for part in parts[:-1]:
+      scope = getattr(scope, part)
+    setattr(scope, parts[-1], value)
+  prog = EndoexoProgram(dm, params, master_phil=master, logger=io.StringIO())
+  prog.validate()
+  prog.run()
+  return prog.get_results()
+
+
+def region_invariant_violations(result, cap_bond=1.1, tol=1.0e-4):
+  """Return a list of cap-invariant violations in a capped region *result*.
+
+  Assumes ``capping.enable=True``.  The sub-model carries no restraints
+  manager, so the anchor is identified as each cap's nearest heavy atom;
+  the assertions are then against exact expected values rather than a
+  bond-length threshold.  Checks:
+
+  * every cap carries element H;
+  * every cap sits *cap_bond* Angstrom from its nearest heavy atom, which is
+    where :class:`HydrogenCapper` puts it;
+  * the set of those anchors equals ``cap_anchor_iseqs`` exactly;
+  * ``cap_iseqs`` has no duplicates, is in range, and is disjoint from
+    ``seed_iseqs``;
+  * ``cap_original_elements`` is parallel to ``cap_iseqs``.
+  """
+  # Keep the hierarchy referenced: atoms taken from a discarded one dangle.
+  hierarchy = result["model"].get_hierarchy()
+  atoms = list(hierarchy.atoms())
+  caps = list(result["cap_iseqs"])
+  bad = []
+
+  if len(result["cap_original_elements"]) != len(caps):
+    bad.append("cap_original_elements is not parallel to cap_iseqs")
+  if len(set(caps)) != len(caps):
+    bad.append(f"cap_iseqs has duplicates: {caps}")
+  if any(ci < 0 or ci >= len(atoms) for ci in caps):
+    bad.append(f"cap_iseqs out of range for {len(atoms)} atoms: {caps}")
+  overlap = set(caps) & set(result["seed_iseqs"])
+  if overlap:
+    bad.append(f"atoms are both cap and seed: {sorted(overlap)}")
+
+  observed_anchors = set()
+  for ci in caps:
+    if ci < 0 or ci >= len(atoms):
+      continue
+    if atoms[ci].element.strip().upper() != "H":
+      bad.append(f"cap {ci} ({atoms[ci].name.strip()}) element is "
+                 f"{atoms[ci].element.strip()!r}, expected H")
+    heavy = sorted(((atoms[ci].distance(a), j) for j, a in enumerate(atoms)
+                    if j != ci and not a.element_is_hydrogen()))
+    if not heavy:
+      bad.append(f"cap {ci} has no heavy atom to anchor to")
+      continue
+    distance, anchor = heavy[0]
+    if abs(distance - cap_bond) > tol:
+      bad.append(f"cap {ci} ({atoms[ci].name.strip()}) sits {distance:.3f} A "
+                 f"from its nearest heavy atom, expected {cap_bond}")
+    observed_anchors.add(anchor)
+
+  if observed_anchors != set(result["cap_anchor_iseqs"]):
+    bad.append(f"cap_anchor_iseqs {sorted(result['cap_anchor_iseqs'])} does "
+               f"not match the anchors actually used "
+               f"{sorted(observed_anchors)}")
+  return bad
+
+
+def exercise_capping_disabled():
+  """capping.enable gates the hydrogen placement, not the bookkeeping.
+
+  With capping off the boundary atoms stay in the region carrying their
+  original element and position, leaving dangling bonds, but they are still
+  reported in ``cap_iseqs`` with their anchors, and ``cap_original_elements``
+  reports the element actually present."""
+  for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
+    on = _run_endo_exo_params(pdb_str, capping__enable=True)[0]
+    off = _run_endo_exo_params(pdb_str, capping__enable=False)[0]
+
+    assert on["n_atoms"] == off["n_atoms"], (on["n_atoms"], off["n_atoms"])
+    assert on["cap_iseqs"] == off["cap_iseqs"], "cap set must not depend on capping"
+    assert on["cap_anchor_iseqs"] == off["cap_anchor_iseqs"], (
+      "anchors must be recorded whether or not a hydrogen is placed")
+    assert len(on["cap_iseqs"]) > 0, "fixture is expected to have caps"
+
+    assert on["cap_original_elements"] == off["cap_original_elements"], (
+      on["cap_original_elements"], off["cap_original_elements"])
+
+    on_hier = on["model"].get_hierarchy()
+    off_hier = off["model"].get_hierarchy()
+    on_atoms = list(on_hier.atoms())
+    off_atoms = list(off_hier.atoms())
+    for k, ci in enumerate(on["cap_iseqs"]):
+      assert on_atoms[ci].element.strip().upper() == "H", (
+        f"capping on: cap {ci} should be H")
+      assert off_atoms[ci].element.strip() == on["cap_original_elements"][k], (
+        f"capping off: cap {ci} should keep its original element")
+
+
+def exercise_altloc_filter():
+  """_apply_altloc_filter keeps one conformer per residue group.
+
+  'auto' takes the highest mean occupancy, a letter takes that letter, an
+  absent letter falls back to the highest occupancy, and 'all' disables the
+  filter.  The shared blank-altloc backbone is kept in every mode."""
+  from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+
+  def _filter(altloc):
+    pdb_in = iotbx.pdb.input(source_info=None, lines=_ALTLOC_PDB.split("\n"))
+    model = mmtbx.model.manager(model_input=pdb_in)
+    master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+    params = master.extract()
+    params.altloc = altloc
+    builder = QMRegionBuilder(params, logger=io.StringIO())
+    return builder._apply_altloc_filter(model).get_hierarchy()
+
+  def _cb_altlocs(altloc):
+    hierarchy = _filter(altloc)
+    return sorted(a.parent().altloc.strip() for a in hierarchy.atoms()
+                  if a.name.strip() == "CB")
+
+  # CB is present as altloc A at occupancy 0.30 and B at 0.70.  B is listed
+  # second, so picking it distinguishes "highest occupancy" from "first".
+  assert _cb_altlocs("auto") == ["B"], _cb_altlocs("auto")
+  assert _cb_altlocs("A") == ["A"], _cb_altlocs("A")
+  assert _cb_altlocs("B") == ["B"], _cb_altlocs("B")
+  assert _cb_altlocs("all") == ["A", "B"], _cb_altlocs("all")
+  assert _cb_altlocs("Z") == ["B"], _cb_altlocs("Z")
+
+  for mode in ("auto", "A", "B", "all", "Z"):
+    hierarchy = _filter(mode)
+    names = {a.name.strip() for a in hierarchy.atoms()}
+    assert {"N", "CA", "C", "O"} <= names, (mode, names)
+
+
+def exercise_element_filter():
+  """element_filter restricts which metals seed a region; a miss raises Sorry.
+
+  Driven on a two-metal model so that filtering to one element is
+  distinguishable from ignoring the filter."""
+  from libtbx.utils import Sorry
+
+  # A Zn well away from the Fe site, so it seeds its own region.
+  zn = ("HETATM  700 ZN    ZN A  56      20.000  20.000  20.000"
+        "  1.00 10.00          ZN\n")
+  two_metals = _1BQ8_FE_SPHERE_PDB.replace("END\n", zn + "END\n") \
+    if "END\n" in _1BQ8_FE_SPHERE_PDB else _1BQ8_FE_SPHERE_PDB + zn
+
+  def _seed_elements(results):
+    out = []
+    for res in results:
+      hierarchy = res["model"].get_hierarchy()
+      atoms = list(hierarchy.atoms())
+      out.append(sorted(atoms[i].element.strip().upper()
+                        for i in res["seed_iseqs"]))
+    return sorted(out)
+
+  both = _run_endo_exo_params(two_metals)
+  assert len(both) == 2, f"expected one region per metal, got {len(both)}"
+  assert _seed_elements(both) == [["FE"], ["ZN"]], _seed_elements(both)
+
+  only_fe = _run_endo_exo_params(two_metals, element_filter=["FE"])
+  assert len(only_fe) == 1, f"element_filter=FE should give 1 region, got {len(only_fe)}"
+  assert _seed_elements(only_fe) == [["FE"]], _seed_elements(only_fe)
+
+  only_zn = _run_endo_exo_params(two_metals, element_filter=["ZN"])
+  assert len(only_zn) == 1, f"element_filter=ZN should give 1 region, got {len(only_zn)}"
+  assert _seed_elements(only_zn) == [["ZN"]], _seed_elements(only_zn)
+
+  try:
+    _run_endo_exo_params(_1BQ8_FE_SPHERE_PDB, element_filter=["ZN"])
+  except Sorry:
+    pass
+  else:
+    raise AssertionError("element_filter=ZN on an Fe-only model should Sorry")
+
+
+def exercise_depth_and_skip_search():
+  """max_search_depth does not bound the region, and a metal seed alone
+  cannot expand.
+
+  Growth is bounded by the cut rules rather than by a hop count, so every
+  ``max_search_depth`` yields the same region.  With ``buffer.skip_search``
+  the seed is the metal alone, and metal coordination bonds are absent from
+  the graph (``link_metals=False``), so there is nothing to expand through."""
+  for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
+    sizes = {_run_endo_exo_params(pdb_str, max_search_depth=d)[0]["n_atoms"]
+             for d in (0, 1, 2, 3, 10)}
+    assert len(sizes) == 1, f"max_search_depth changed the region: {sizes}"
+
+    skipped = _run_endo_exo_params(pdb_str, buffer__skip_search=True)[0]
+    # The region is exactly the seed set: nothing was added by the radius
+    # search, and a metal has no covalent edge to expand along.
+    assert sorted(skipped["seed_iseqs"]) == list(range(skipped["n_atoms"])), (
+      skipped["seed_iseqs"], skipped["n_atoms"])
+    assert skipped["cap_iseqs"] == [], skipped["cap_iseqs"]
+
+
+def exercise_write_files_roundtrip():
+  """write_files emits a PDB, an mmCIF and a sidecar that re-parses.
+
+  The sidecar indices address the written atoms, and cap_atoms point at
+  hydrogens."""
+  import os
+  import shutil
+  import tempfile
+
+  from mmtbx.geometry_restraints.endo_exo.builder import master_sidecar_phil_str
+
+  tmp = tempfile.mkdtemp(prefix="tst_endo_exo_")
+  cwd = os.getcwd()
+  try:
+    os.chdir(tmp)
+    result = _run_endo_exo_params(_1BQ8_FE_SPHERE_PDB, write_files=True)[0]
+    stem = os.path.basename(result["file_name"])
+    for ext in (".pdb", ".cif", ".phil"):
+      assert os.path.isfile(stem + ext), f"missing {stem + ext}"
+
+    # Fetch against the schema so the values come back typed, which also
+    # checks the sidecar carries nothing the schema does not declare.
+    schema = libtbx.phil.parse(master_sidecar_phil_str)
+    written_phil = libtbx.phil.parse(file_name=stem + ".phil")
+    unused = []
+    region = schema.fetch(
+      source=written_phil,
+      track_unused_definitions=unused).extract().endo_exo_region
+    assert not unused, f"sidecar has undeclared parameters: {unused}"
+    assert list(region.cap_atoms) == list(result["cap_iseqs"]), (
+      region.cap_atoms, result["cap_iseqs"])
+    assert list(region.seed_atoms) == list(result["seed_iseqs"]), (
+      region.seed_atoms, result["seed_iseqs"])
+    assert list(region.cap_original_elements) == list(
+      result["cap_original_elements"])
+    assert region.selection_string is None
+
+    pdb_in = iotbx.pdb.input(file_name=stem + ".pdb")
+    written = pdb_in.construct_hierarchy()
+    watoms = list(written.atoms())
+    assert len(watoms) == result["n_atoms"], (len(watoms), result["n_atoms"])
+    assert pdb_in.crystal_symmetry() is not None, "written PDB lost CRYST1"
+    for ci in region.cap_atoms:
+      assert watoms[ci].element.strip().upper() == "H", (
+        f"sidecar cap index {ci} does not address a hydrogen in the PDB")
+
+    # The mmCIF copy exists so the capped atoms keep their element through a
+    # re-parse rather than being re-derived from their (heavy-atom) names.
+    cif_in = iotbx.pdb.input(file_name=stem + ".cif")
+    cif_hier = cif_in.construct_hierarchy()
+    catoms = list(cif_hier.atoms())
+    assert len(catoms) == result["n_atoms"], (len(catoms), result["n_atoms"])
+    assert ([a.element.strip().upper() for a in catoms]
+            == [a.element.strip().upper() for a in watoms]), (
+      "mmCIF and PDB copies disagree on elements")
+    for ci in region.cap_atoms:
+      assert catoms[ci].element.strip().upper() == "H", (
+        f"sidecar cap index {ci} does not address a hydrogen in the mmCIF")
+
+    # A region with no caps must still write a sidecar that re-parses: an
+    # empty list cannot be expressed in PHIL, so it is written as None.
+    capless = _run_endo_exo_params(
+      _1BQ8_FE_SPHERE_PDB, write_files=True, buffer__skip_search=True)[0]
+    capless_stem = os.path.basename(capless["file_name"])
+    assert capless["cap_iseqs"] == [], capless["cap_iseqs"]
+    capless_region = schema.fetch(source=libtbx.phil.parse(
+      file_name=capless_stem + ".phil")).extract().endo_exo_region
+    assert capless_region.cap_atoms is None, capless_region.cap_atoms
+    assert capless_region.seed_atoms is not None
+  finally:
+    os.chdir(cwd)
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def exercise_region_invariants():
+  """Every capped region satisfies the cap invariants across radii and both
+  preferred-cut settings."""
+  for name, pdb_str in (("1BQ8", _1BQ8_FE_SPHERE_PDB),
+                        ("2C2U", _2C2U_FE_SPHERE_PDB)):
+    for radius in (4.0, 5.0, 6.0, 7.0):
+      for preferred in (True, False):
+        result = _run_endo_exo_params(
+          pdb_str, buffer__radius=radius,
+          capping__preferred_cuts=preferred)[0]
+        bad = region_invariant_violations(result)
+        assert not bad, (
+          f"{name} radius={radius} preferred_cuts={preferred}: "
+          + "; ".join(bad))
+
+
 def run():
   exercise_submodel_shape()
   exercise_cys_coordination()
@@ -1084,6 +1398,13 @@ def run():
   exercise_2c2u_sym_image_provenance()
   exercise_special_position_water_dedup()
   exercise_selection_seed_terminates()
+  exercise_region_invariants()
+  # parameter coverage
+  exercise_capping_disabled()
+  exercise_altloc_filter()
+  exercise_element_filter()
+  exercise_depth_and_skip_search()
+  exercise_write_files_roundtrip()
   # engine unit tests
   exercise_canon_op()
   exercise_hydrogen_capper()

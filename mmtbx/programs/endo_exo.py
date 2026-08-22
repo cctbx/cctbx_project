@@ -182,11 +182,13 @@ class Program(ProgramTemplate):
             Sorted 0-based positional indices of the seed atoms inside
             ``model``.
         cap_iseqs : list of int
-            Sorted 0-based positional indices of the cap atoms inside
-            ``model`` (empty when capping is disabled).
+            Sorted 0-based positional indices of the boundary atoms inside
+            ``model``.  Populated whether or not capping is enabled; with
+            ``capping.enable=False`` these atoms keep their original element
+            and position, leaving dangling bonds.
         cap_original_elements : list of str
-            Element each cap atom carried before being replaced by H,
-            parallel to ``cap_iseqs``.
+            Element each cap atom carried before capping, parallel to
+            ``cap_iseqs``.
         cap_anchor_iseqs : list of int
             Sorted, unique positional indices of the QM-region heavy atoms
             the caps are bonded to.  In-memory only; not written to the
