@@ -198,6 +198,36 @@ class AtomGraphBuilder:
       mask = self.atoms_within_radius_string(center_atom, model, radius)
     return mask
 
+  def _pair_sym_table(self, model, radius):
+    """Return the whole-structure pair-symmetry table for *radius*.
+
+    Covers every close contact in the structure, so it depends on the model
+    and the radius but not on which seed is being grown; it is built once
+    and reused across seeds.  On a large structure it dominates the cost of
+    growing a region, and scales with the cube of the radius.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+    radius : float
+
+    Returns
+    -------
+    cctbx.crystal.pair_sym_table
+    """
+    key = (id(model), radius)
+    if getattr(self, '_sym_table_key', None) != key:
+      pair_asu_table = model.get_xray_structure().pair_asu_table(
+        distance_cutoff=radius)
+      # ``all_interactions_from_inside_asu=True`` enumerates every close
+      # contact of an ASU atom rather than collapsing site-symmetry-
+      # equivalent pairs (see add_seed_contact_edges).
+      self._sym_table = pair_asu_table.extract_pair_sym_table(
+        skip_j_seq_less_than_i_seq=False,
+        all_interactions_from_inside_asu=True)
+      self._sym_table_key = key
+    return self._sym_table
+
   def seed_sym_nodes_within_radius(self, seeds, model, radius):
     """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
 
@@ -226,14 +256,7 @@ class AtomGraphBuilder:
         Non-identity atom-image nodes within *radius* of a seed.
     """
     identity_xyz = _canon_op(sgtbx.rt_mx()).as_xyz()
-    xs = model.get_xray_structure()
-    pat = xs.pair_asu_table(distance_cutoff=radius)
-    # ``all_interactions_from_inside_asu=True`` enumerates every close
-    # contact of an ASU atom rather than collapsing site-symmetry-equivalent
-    # pairs (see add_seed_contact_edges).
-    sym_table = pat.extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=False,
-      all_interactions_from_inside_asu=True)
+    sym_table = self._pair_sym_table(model, radius)
     nodes = set()
     for seed in seeds:
       for j_seq, rt_mx_ji_list in dict(sym_table[seed.i_seq]).items():
