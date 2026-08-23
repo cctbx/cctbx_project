@@ -282,11 +282,11 @@ class QMRegionGrower:
                   visited, adjacency, atoms):
     """Return why the bond ``curr -> nbr`` is cuttable, or ``None``.
 
-    The CA-C rule additionally refuses to cut away a terminal carboxylate,
-    which capping would replace with a single hydrogen.  This covers that
-    one group only: the sidechain rules still cut through ASP, GLU, LYS and
-    ARG at their configured bonds, and the N-terminal amine is not
-    protected, so a region is not charge-preserving in general.
+    Both backbone rules refuse to cut away a charged chain terminus, which
+    capping would replace with a single hydrogen: the carboxylate on the
+    CA-C side, the amine on the CA-N side.  The sidechain rules still cut
+    ASP, GLU, LYS and ARG at their configured bonds when BFS arrives from
+    the backbone, so a region is not charge-preserving in general.
 
     Parameters
     ----------
@@ -308,15 +308,14 @@ class QMRegionGrower:
 
     if (self.bond_cut_detector.is_ca_c_bond(
           atoms[curr_iseq], atoms[nbr_iseq], adjacency)
-        and not self._is_terminal_carboxylate(nbr_iseq, adjacency, atoms)
-        and self._any_amide_of_current_residue_in_visited(
-          curr_iseq, curr_op, visited, atoms)):
+        and not self._is_terminal_carboxylate(nbr_iseq, adjacency, atoms)):
       return 'Found backbone CA-C bond'
 
     if (self.bond_cut_detector.is_ca_n_bond(
           atoms[curr_iseq], atoms[nbr_iseq], adjacency)
+        and not self._is_terminal_amine(nbr_iseq, adjacency, atoms)
         and self._any_amide_of_next_residue_in_visited(
-          curr_iseq, curr_op, visited, atoms)):
+          curr_iseq, curr_op, visited, adjacency, atoms)):
       return 'Found backbone CA-N bond'
 
     return None
@@ -354,6 +353,51 @@ class QMRegionGrower:
       elif element == 'N' and other.parent().parent() != residue_group:
         return False  # the chain continues, so this is not a terminus
     return oxygens >= 2
+
+  @staticmethod
+  def _is_terminal_amine(iseq, adjacency, atoms):
+    """Return ``True`` if the atom at *iseq* is a chain-terminal nitrogen.
+
+    The mirror of :meth:`_is_terminal_carboxylate`: capping this nitrogen
+    replaces an amino group with a single hydrogen, so a cut here changes
+    the chemistry rather than truncating it.  Read off the graph, so it
+    holds for proline, whose N carries CD as well as CA within its own
+    residue, and does not depend on the atom being named N.
+
+    A nitrogen mid-chain carries the preceding residue's carbonyl carbon
+    and reads as False.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    if atoms[iseq].element.strip().upper() != 'N':
+      return False
+    residue_group = atoms[iseq].parent().parent()
+    on_backbone = False
+    hydrogens = 0
+    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[neighbour_iseq]
+      if other.element_is_hydrogen():
+        hydrogens += 1
+        continue
+      if other.element.strip().upper() != 'C':
+        continue
+      if other.parent().parent() != residue_group:
+        return False  # a peptide bond, so the chain continues
+      if other.name.strip().upper() == 'CA':
+        on_backbone = True
+    # A sidechain nitrogen also carries only its own residue's carbons, so
+    # require the one bonded to CA.  A free amino group holds more than the
+    # single hydrogen an amide does, which is what separates a real
+    # terminus from a chain the model happens to stop short of.
+    return on_backbone and hydrogens >= 2
 
   @staticmethod
   def _cut_refusal(anchor, cap, visited, adjacency, atoms):
@@ -582,35 +626,23 @@ class QMRegionGrower:
       return False
     return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
 
-  def _any_amide_of_current_residue_in_visited(self, atom_idx, sym_op,
-                                               visited, atoms):
-    """Return ``True`` if any amide atom of *atom_idx*'s residue, under
-    *sym_op*, is in *visited*.
-
-    Parameters
-    ----------
-    atom_idx : int
-    sym_op : cctbx.sgtbx.rt_mx
-        Symmetry image of the residue to check.
-    visited : set of (int, rt_mx)
-    atoms : flex array of iotbx.pdb.hierarchy.atom
-
-    Returns
-    -------
-    bool
-    """
-    residue_group = atoms[atom_idx].parent().parent()
-    return self._any_amide_in_residue_group_in_visited(
-      residue_group, sym_op, visited)
-
   def _any_amide_of_next_residue_in_visited(self, atom_idx, sym_op,
-                                            visited, atoms):
+                                            visited, adjacency, atoms):
     """Return ``True`` if any amide atom of the next residue, under
     *sym_op*, is in *visited*.
 
-    Uses positional order in the chain's ``residue_groups()`` list rather
-    than arithmetic on resseq, so insertion codes and non-contiguous
-    numbering are handled correctly.
+    Cutting CA-N prunes the chain backwards, so CA keeps its place in the
+    region only through C, and this asks whether that direction is already
+    there.  It reads the growing region rather than the frozen seed set:
+    keying on the seeds makes the answer change with the radius, so an atom
+    kept by a narrow sphere is cut away by a wider one, which is a worse
+    failure than the traversal-order sensitivity noted below.
+
+    The next residue is the one holding the N that C is bonded to, followed
+    along the peptide bond rather than taken from the chain's residue
+    order: a structure carved out around a metal keeps whatever residues
+    fall inside the sphere, so the neighbour in that list is routinely
+    across a gap and not bonded at all.
 
     Parameters
     ----------
@@ -618,6 +650,7 @@ class QMRegionGrower:
     sym_op : cctbx.sgtbx.rt_mx
         Symmetry image of the residue to check.
     visited : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
 
     Returns
@@ -625,17 +658,21 @@ class QMRegionGrower:
     bool
     """
     residue_group = atoms[atom_idx].parent().parent()
-    chain = residue_group.parent()
-
-    rg_list = list(chain.residue_groups())
-    try:
-      current_pos = rg_list.index(residue_group)
-    except ValueError:
+    carbonyl_iseq = next(
+      (residue_atom.i_seq
+       for atom_group in residue_group.atom_groups()
+       for residue_atom in atom_group.atoms()
+       if residue_atom.name.strip().upper() == 'C'), None)
+    if carbonyl_iseq is None:
       return False
 
-    if current_pos + 1 >= len(rg_list):
-      return False
-
-    next_residue_group = rg_list[current_pos + 1]
-    return self._any_amide_in_residue_group_in_visited(
-      next_residue_group, sym_op, visited)
+    for neighbour_iseq in _neighbour_iseqs(adjacency, carbonyl_iseq):
+      other = atoms[neighbour_iseq]
+      if other.element.strip().upper() != 'N':
+        continue
+      other_group = other.parent().parent()
+      if other_group.memory_id() == residue_group.memory_id():
+        continue
+      return self._any_amide_in_residue_group_in_visited(
+        other_group, sym_op, visited)
+    return False

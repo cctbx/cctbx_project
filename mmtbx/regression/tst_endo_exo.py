@@ -1200,6 +1200,86 @@ def _asu_bond_proxies(pdb_str, distance_cutoff=3.2):
   return list(sorted_asu_proxies.asu), pair_asu_table.asu_mappings()
 
 
+# Chain A holds 1-2 bonded and 9 detached, so residue 2's neighbour in
+# residue_groups() order is residue 9, which it shares no bond with.  A region
+# carved around a metal looks like this routinely: whatever fell inside the
+# sphere, with gaps between.
+_CHAIN_GAP_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 10.00           N
+ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00 10.00           C
+ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00 10.00           C
+ATOM      4  O   ALA A   1       1.251   2.390   0.000  1.00 10.00           O
+ATOM      5  CB  ALA A   1       1.988  -0.773  -1.199  1.00 10.00           C
+ATOM      6  N   ALA A   2       3.332   1.540   0.000  1.00 10.00           N
+ATOM      7  CA  ALA A   2       3.970   2.850   0.000  1.00 10.00           C
+ATOM      8  C   ALA A   2       5.480   2.700   0.000  1.00 10.00           C
+ATOM      9  O   ALA A   2       6.200   3.690   0.000  1.00 10.00           O
+ATOM     10  CB  ALA A   2       3.560   3.640   1.240  1.00 10.00           C
+ATOM     11  N   ALA A   9       3.000   2.000   6.000  1.00 10.00           N
+ATOM     12  CA  ALA A   9       4.458   2.000   6.000  1.00 10.00           C
+ATOM     13  C   ALA A   9       5.009   3.420   6.000  1.00 10.00           C
+ATOM     14  O   ALA A   9       4.251   4.390   6.000  1.00 10.00           O
+ATOM     15  CB  ALA A   9       4.988   1.227   4.801  1.00 10.00           C
+END
+"""
+
+
+def exercise_next_residue_follows_the_peptide_bond():
+  """The CA-N guard asks about the residue bonded to this one's C, not the
+  one that happens to come next in ``chain.residue_groups()``.
+
+  Cutting CA-N prunes the chain backwards, so CA holds its place in the
+  region only through C; the guard checks that direction is already there.
+  Reading the chain's residue order instead answers about a residue across
+  a gap, which on a carved-out region is the normal case rather than a
+  corner one."""
+  pdb_in = iotbx.pdb.input(
+    source_info=None, lines=_CHAIN_GAP_PDB.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  model.process(make_restraints=True)
+  geometry = model.get_restraints_manager().geometry
+  sites_cart = model.get_sites_cart()
+  simple, asu = geometry.get_all_bond_proxies(sites_cart=sites_cart)
+  asu_mappings = geometry.pair_proxies(
+    sites_cart=sites_cart).bond_proxies.asu_mappings()
+  adjacency = AtomGraphBuilder().build_adjacency(simple, asu, asu_mappings)
+
+  hierarchy = model.get_hierarchy()
+  atoms = list(hierarchy.atoms())
+  identity = _canon_op(sgtbx.rt_mx())
+  grower = QMRegionGrower(
+    BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
+    log=io.StringIO())
+
+  order = [rg.resseq.strip() for rg in list(hierarchy.chains())[0].
+           residue_groups()]
+  assert order == ["1", "2", "9"], f"fixture changed shape: {order}"
+
+  def nodes_of(resseq):
+    return {(i_seq, identity) for i_seq, atom in enumerate(atoms)
+            if atom.parent().parent().resseq.strip() == resseq}
+
+  def ca_of(resseq):
+    return next(i_seq for i_seq, atom in enumerate(atoms)
+                if atom.parent().parent().resseq.strip() == resseq
+                and atom.name.strip() == "CA")
+
+  # Residue 9 is next in residue order but shares no bond with residue 2,
+  # so it does not hold residue 2 in the region. Reading the chain order
+  # here answers True and the CA-N cut is taken on a false premise.
+  assert grower._any_amide_of_next_residue_in_visited(
+    ca_of("2"), identity, nodes_of("9"), adjacency, atoms) is False
+
+  # Residue 2 really is bonded to residue 1, through C(1)-N(2).
+  assert grower._any_amide_of_next_residue_in_visited(
+    ca_of("1"), identity, nodes_of("2"), adjacency, atoms) is True
+
+  # Bonded, but not in the region yet.
+  assert grower._any_amide_of_next_residue_in_visited(
+    ca_of("1"), identity, set(), adjacency, atoms) is False
+
+
 def exercise_build_adjacency():
   """Intra-ASU bonds carry the identity op on both directed edges;
   symmetry-crossing bonds carry the rt_mx forward and its inverse on the
@@ -1633,6 +1713,251 @@ def _atom_names_by_residue(result):
   return out
 
 
+def _protonated_graph(pdb_str):
+  """Return ``(model, atoms, adjacency)`` for *pdb_str*, hydrogens placed.
+
+  The model is returned so callers hold it: atoms taken from a hierarchy
+  nothing references dangle."""
+  from mmtbx.hydrogens import reduce_hydrogen
+
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  model.process(make_restraints=True)
+  placer = reduce_hydrogen.place_hydrogens(model=model, keep_existing_H=False)
+  placer.run()
+  model = placer.get_model()
+  model.process(make_restraints=True)
+
+  geometry = model.get_restraints_manager().geometry
+  sites_cart = model.get_sites_cart()
+  simple, asu = geometry.get_all_bond_proxies(sites_cart=sites_cart)
+  asu_mappings = geometry.pair_proxies(
+    sites_cart=sites_cart).bond_proxies.asu_mappings()
+  adjacency = AtomGraphBuilder().build_adjacency(simple, asu, asu_mappings)
+  return model, list(model.get_hierarchy().atoms()), adjacency
+
+
+def exercise_radius_only_grows_the_region():
+  """Raising ``buffer.radius`` adds atoms and never takes any away.
+
+  The knob is swept throughout these tests but nothing pins what it does.
+  A cut rule firing on the wider sphere but not the narrower one would
+  drop atoms as the radius grew, which a plain count hides and a subset
+  check does not."""
+  for pdb_str, overrides in (
+      (_1BQ8_FE_SPHERE_PDB, {}),):
+    previous = None
+    # 5.0 -> 6.0 is the step that matters: it is where a guard keyed on the
+    # seed set drops TRP 37 as the sphere widens.
+    for radius in (4.0, 5.0, 6.0, 8.0):
+      results = _run_endo_exo_protonated(
+        pdb_str, buffer__radius=radius, **overrides)
+      present = set()
+      for result in results:
+        hierarchy = result["model"].get_hierarchy()
+        for atom in hierarchy.atoms():
+          residue_group = atom.parent().parent()
+          present.add((residue_group.parent().id.strip(),
+                       residue_group.resseq.strip(),
+                       atom.parent().resname.strip(),
+                       atom.name.strip()))
+      if previous is not None:
+        lost = previous - present
+        assert not lost, (
+          f"radius {radius} dropped {len(lost)} atom(s) kept at the smaller "
+          f"radius, e.g. {sorted(lost)[:4]}")
+      previous = present
+
+
+def exercise_region_does_not_depend_on_queue_order():
+  """The region is the same however BFS orders its queue.
+
+  This has to reorder the queue itself.  Handing ``grow_by_depth`` the
+  seeds in a different order proves nothing: it collects them into a set on
+  the way in, so the ordering is gone before BFS starts, and a test written
+  that way passes against code that is plainly racy.
+
+  Cap assignment is compared as well as composition, since a cap landing on
+  the other side of a bond leaves the atom count untouched.
+
+  Radius 8 is deliberately left out: it is the one radius on this fixture
+  that is not settled, GLU 48's nitrogen coming out a cap or an interior
+  atom depending on which node leaves the queue first, because the CA-N
+  guard asks whether the next residue has been reached yet.  Keying that
+  guard on the seed set makes it deterministic but costs radius
+  monotonicity, dropping nine atoms of TRP 37 as the sphere widens, which
+  is the worse trade.  Settling it against the finished region, the way the
+  stranding repair does, is the fix."""
+  original = QMRegionGrower._grow_until_exhausted
+  outcomes = {}
+  try:
+    for trial in range(3):
+      # Fixed reorderings rather than random ones, so a failure here
+      # reproduces exactly.
+      def reordered(self, queue, *args, _trial=trial, **kwargs):
+        items = list(queue)
+        items = items[_trial:] + items[:_trial]
+        if _trial % 2:
+          items.reverse()
+        queue.clear()
+        queue.extend(items)
+        return original(self, queue, *args, **kwargs)
+
+      QMRegionGrower._grow_until_exhausted = reordered
+      signature = []
+      for radius in (7.0,):
+        for result in _run_endo_exo_protonated(
+            _1BQ8_FE_SPHERE_PDB, buffer__radius=radius):
+          hierarchy = result["model"].get_hierarchy()
+          caps = set(result["cap_iseqs"])
+          signature.append((
+            radius,
+            tuple(sorted(
+              (atom.parent().parent().resseq.strip(), atom.name.strip())
+              for i_seq, atom in enumerate(hierarchy.atoms())
+              if i_seq not in caps)),
+            tuple(sorted(result["cap_iseqs"])),
+            tuple(sorted(result["cap_anchor_iseqs"])),
+          ))
+      outcomes.setdefault(tuple(signature), []).append(trial)
+  finally:
+    QMRegionGrower._grow_until_exhausted = original
+
+  assert len(outcomes) == 1, (
+    f"queue order changed the region: {len(outcomes)} distinct outcomes, "
+    f"grouped as {sorted(outcomes.values())}")
+
+
+def exercise_amide_unit_is_never_split():
+  """A retained backbone carbonyl keeps both its oxygen and its amide
+  nitrogen.
+
+  This is what makes a truncated backbone come out as CH3CONHCH3. Neither
+  C-O nor the peptide C-N is a cut site, so BFS reaching a carbonyl carbon
+  always continues through both: the amide is carried whole or left out
+  entirely, and the cuts fall on CA-C and CA-N either side of it. A cap
+  appearing on the oxygen or the nitrogen would mean an amide carved in
+  half, leaving an aldehyde or a bare amine in the QM region."""
+  for pdb_str, overrides in (
+      (_1BQ8_FE_SPHERE_PDB, {}),
+      (_TRIPEPTIDE_PDB, {"selection": ["chain A and resseq 2 and name SG"]})):
+    for radius in (7.0,):
+      results = _run_endo_exo_protonated(
+        pdb_str, buffer__radius=radius, **overrides)
+      for result in results:
+        hierarchy = result["model"].get_hierarchy()
+        atoms = list(hierarchy.atoms())
+        caps = set(result["cap_iseqs"])
+        partners = [(j, element) for j, element in (
+          (j, other.element.strip().upper()) for j, other in enumerate(atoms))
+          if element in ("O", "N")]
+        for i_seq, atom in enumerate(atoms):
+          if i_seq in caps or atom.name.strip() != "C":
+            continue
+          if atom.parent().resname.strip() == "HOH":
+            continue
+          oxygens, nitrogens = [], []
+          for j_seq, element in partners:
+            if j_seq == i_seq or atom.distance(atoms[j_seq]) > 1.45:
+              continue
+            (oxygens if element == "O" else nitrogens).append(j_seq)
+          where = (f"{atom.parent().resname.strip()}"
+                   f"{atom.parent().parent().resseq.strip()} at radius "
+                   f"{radius}")
+          assert any(j not in caps for j in oxygens), (
+            f"{where}: carbonyl oxygen capped away, leaving a bare carbon")
+          # A C-terminus has no amide nitrogen at all, which is fine; one
+          # that exists must not have been replaced by a hydrogen.
+          assert not nitrogens or any(j not in caps for j in nitrogens), (
+            f"{where}: amide nitrogen capped away, splitting the peptide "
+            f"unit")
+
+
+def exercise_terminal_amine_is_not_any_nitrogen():
+  """The amine guard covers the chain terminus and nothing else.
+
+  Two ways to get this wrong, both of which fired while writing it. A
+  sidechain nitrogen carries only its own residue's carbons, exactly as a
+  terminus does, so LYS NZ and TRP NE1 read as termini unless the test
+  asks for the one bonded to CA. And a residue whose predecessor is simply
+  absent from the file looks terminal too; a region carved around a metal
+  is full of those, and what separates them is that an amide nitrogen
+  keeps one hydrogen where a free amino group keeps more."""
+  _model, atoms, adjacency = _protonated_graph(_1BQ8_FE_SPHERE_PDB)
+
+  def nitrogen(resseq, name):
+    return next(i_seq for i_seq, atom in enumerate(atoms)
+                if atom.parent().parent().resseq.strip() == resseq
+                and atom.name.strip() == name)
+
+  # Sidechain nitrogens, one of them carrying three hydrogens.
+  for resseq, name in (("7", "NZ"), ("37", "NE1")):
+    assert QMRegionGrower._is_terminal_amine(
+      nitrogen(resseq, name), adjacency, atoms) is False, (
+      f"sidechain nitrogen {resseq}/{name} read as a chain terminus")
+
+  # Backbone nitrogens whose preceding residue is outside this extract.
+  # They keep the single amide hydrogen, so they are not free amines.
+  for resseq in ("5", "37", "48"):
+    assert QMRegionGrower._is_terminal_amine(
+      nitrogen(resseq, "N"), adjacency, atoms) is False, (
+      f"residue {resseq} is mid-chain, its predecessor merely absent")
+
+
+def exercise_terminal_amine_kept():
+  """Cutting CA-N away from the N-terminus would change the region's charge.
+
+  The mirror of :func:`exercise_terminal_carboxylate_kept`: a terminal
+  -NH3(+) replaced by a single hydrogen silently takes its positive charge
+  with it, so that cut is refused.  A nitrogen mid-chain carries the
+  preceding carbonyl carbon and is still cut."""
+  seed = ["chain A and resseq 2 and name SG"]
+  for radius in (3.0, 5.0):
+    result = _run_endo_exo_protonated(
+      _TRIPEPTIDE_PDB, selection=seed, buffer__radius=radius)[0]
+    hierarchy = result["model"].get_hierarchy()
+    caps = set(result["cap_iseqs"])
+    for i_seq, atom in enumerate(hierarchy.atoms()):
+      residue_group = atom.parent().parent()
+      if residue_group.resseq.strip() != "1" or atom.name.strip() != "N":
+        continue
+      assert i_seq not in caps, (
+        f"at radius {radius} the N-terminal amine was capped away")
+
+  # The mid-chain nitrogen of residue 2 carries C of residue 1, so it is
+  # not a terminus and the guard must not protect it.  Hydrogens have to be
+  # on: a free amino group is told from an amide by how many it carries.
+  from mmtbx.hydrogens import reduce_hydrogen
+
+  pdb_in = iotbx.pdb.input(
+    source_info=None, lines=_TRIPEPTIDE_PDB.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  model.process(make_restraints=True)
+  placer = reduce_hydrogen.place_hydrogens(model=model, keep_existing_H=False)
+  placer.run()
+  model = placer.get_model()
+  model.process(make_restraints=True)
+  geometry = model.get_restraints_manager().geometry
+  sites_cart = model.get_sites_cart()
+  simple, asu = geometry.get_all_bond_proxies(sites_cart=sites_cart)
+  asu_mappings = geometry.pair_proxies(
+    sites_cart=sites_cart).bond_proxies.asu_mappings()
+  adjacency = AtomGraphBuilder().build_adjacency(simple, asu, asu_mappings)
+  atoms = list(model.get_hierarchy().atoms())
+
+  def nitrogen_of(resseq):
+    return next(i_seq for i_seq, atom in enumerate(atoms)
+                if atom.parent().parent().resseq.strip() == resseq
+                and atom.name.strip() == "N")
+
+  assert QMRegionGrower._is_terminal_amine(
+    nitrogen_of("1"), adjacency, atoms) is True
+  for resseq in ("2", "3"):
+    assert QMRegionGrower._is_terminal_amine(
+      nitrogen_of(resseq), adjacency, atoms) is False, (
+      f"residue {resseq}'s nitrogen is mid-chain, not a terminus")
+
+
 def exercise_terminal_carboxylate_kept():
   """Cutting CA-C away from a carboxylate would change the region's charge.
 
@@ -1903,6 +2228,11 @@ def run():
   exercise_ligand_keeps_its_coordinating_group()
   exercise_symmetry_images_truncate_alike()
   exercise_terminal_carboxylate_kept()
+  exercise_terminal_amine_kept()
+  exercise_terminal_amine_is_not_any_nitrogen()
+  exercise_amide_unit_is_never_split()
+  exercise_radius_only_grows_the_region()
+  exercise_region_does_not_depend_on_queue_order()
   exercise_terminal_carboxylate_detection()
   exercise_cut_not_made_into_the_region()
   # engine unit tests
@@ -1918,6 +2248,7 @@ def run():
   exercise_bond_cut_backbone()
   exercise_consumed_preferred_cut()
   exercise_cut_depends_on_where_bfs_arrives()
+  exercise_next_residue_follows_the_peptide_bond()
   exercise_build_adjacency()
   print(format_cpu_times())
   print("OK")
