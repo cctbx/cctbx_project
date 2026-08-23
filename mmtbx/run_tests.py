@@ -318,6 +318,7 @@ general_tests = [
   "$D/validation/regression/tst_molprobity_2.py",
   "$D/validation/regression/tst_molprobity_3.py",
   "$D/validation/regression/tst_mp_validate_bonds.py",
+  "$D/validation/regression/tst_utils.py",
   "$D/validation/regression/tst_hydrogen_addition_clashscore.py",
   "$D/validation/regression/tst_symmetry_SS.py",
   "$D/validation/regression/tst_do_flips_clashscore.py",
