@@ -75,7 +75,7 @@ capping {
     .help = "Whether to perform capping of boundary atoms based on heuristics. If False, the output QM region will have uncapped dangling bonds."
   preferred_cuts = True
     .type = bool
-    .help = "Whether to use preferred cut atoms for each residue type when identifying candidate bonds for capping, instead of relying on heuristics alone."
+    .help = "Consult the per-residue table of preferred cut bonds before the geometric heuristic, and allow the heuristic only on bonds nearer the backbone than the table entry."
 }
 include_waters_in_convex_hull = True
   .type = bool

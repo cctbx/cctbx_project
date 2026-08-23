@@ -28,6 +28,10 @@ class QMRegionGrower:
       Destination for diagnostic messages.
   """
 
+  #: Bound on alternating grow/reattach rounds, so a pathological graph
+  #: cannot spin here.
+  max_repair_rounds = 20
+
   def __init__(self, bond_cut_detector, log=None):
     self.bond_cut_detector = bond_cut_detector
     self.log = log
@@ -50,8 +54,8 @@ class QMRegionGrower:
     Whenever a cuttable bond ``current -> neighbour`` is encountered,
     *neighbour* is marked visited so BFS will not expand past it, and
     ``(neighbour, current)`` is stored as a tentative cap via
-    :meth:`_try_mark_cap`.  Two situations promote a tentative cap back to
-    interior:
+    :meth:`_try_mark_cap`.  Three situations promote a tentative cap back
+    to interior:
 
     * **Re-encounter**: *neighbour* is later reached from a different
       node.  The cap is then a regular interior node on at least two
@@ -61,6 +65,10 @@ class QMRegionGrower:
       :meth:`_try_mark_cap`).  Both nodes are promoted to interior; this
       catches the edge case the re-encounter check cannot see, since
       cap candidates are never themselves enqueued.
+    * **Stranding**: an atom is left with no heavy neighbour but caps, so
+      one of them is restored by :meth:`_reattach_stranded`.  Growth and
+      reattachment alternate until the region stops changing, since
+      restoring a cap re-opens BFS through it.
 
     Together these guarantee that every surviving cap candidate has only
     its recorded anchor as a QM-region neighbour.
@@ -100,6 +108,39 @@ class QMRegionGrower:
     cap_candidates = {}
     queue = deque(seed_nodes)
 
+    rounds = 0
+    while True:
+      self._grow_until_exhausted(queue, visited, cap_candidates, seed_nodes,
+                                 adjacency, atoms)
+      rounds += 1
+      if not self._reattach_stranded(visited, cap_candidates, seed_nodes,
+                                     adjacency, atoms, queue):
+        break
+      if rounds > self.max_repair_rounds:
+        print(f'Giving up reattaching stranded atoms after {rounds} rounds.',
+              file=self.log)
+        break
+
+    print(
+      f'Found {len(cap_candidates)} candidate atoms for hydrogen capping '
+      f'based on heuristics.',
+      file=self.log,
+    )
+    return visited, cap_candidates
+
+  def _grow_until_exhausted(self, queue, visited, cap_candidates, seed_nodes,
+                            adjacency, atoms):
+    """Run BFS until *queue* empties, marking caps at cuttable bonds.
+
+    Parameters
+    ----------
+    queue : collections.deque
+    visited : set of (int, rt_mx)
+    cap_candidates : dict
+    seed_nodes : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+    """
     while queue:
       current = queue.popleft()
       curr_iseq, curr_op = current
@@ -140,12 +181,75 @@ class QMRegionGrower:
 
         queue.append(neighbour)
 
-    print(
-      f'Found {len(cap_candidates)} candidate atoms for hydrogen capping '
-      f'based on heuristics.',
-      file=self.log,
-    )
-    return visited, cap_candidates
+  def _reattach_stranded(self, visited, cap_candidates, seed_nodes,
+                         adjacency, atoms, queue):
+    """Restore one bond for every heavy atom the cuts left unattached.
+
+    An atom whose every heavy neighbour in the region is a cap comes out
+    as a lone fragment: a methane where a sidechain carbon was clipped out
+    of the middle of its own residue, or where the buffer sphere caught a
+    methyl hydrogen but not its carbon.  Whether that happens cannot be
+    decided while BFS runs, because a bond it has yet to traverse looks
+    exactly like one it is about to cut; it is only well defined once the
+    region is complete.
+
+    The cap restored is the one reaching nearest the backbone, so what
+    survives is the attachment toward the mainchain rather than a
+    sidechain stub, and the choice is a function of the finished region
+    rather than of the order BFS ran.
+
+    Parameters
+    ----------
+    visited : set of (int, rt_mx)
+        Modified in-place, via :meth:`_demote_cap_candidate`.
+    cap_candidates : dict
+        Modified in-place.
+    seed_nodes : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+    queue : collections.deque
+        Demoted caps are re-enqueued, so BFS resumes through them.
+
+    Returns
+    -------
+    int
+        Number of atoms reattached.
+    """
+    reattached = 0
+    for node in sorted(visited, key=lambda n: (n[0], n[1].as_xyz())):
+      iseq, op = node
+      if node in cap_candidates or atoms[iseq].element_is_hydrogen():
+        continue
+
+      held = False
+      caps_on_it = []
+      for (nb_iseq, edge_op) in adjacency[iseq]:
+        if atoms[nb_iseq].element_is_hydrogen():
+          continue
+        neighbour = (nb_iseq, _canon_op(op.multiply(edge_op)))
+        if neighbour not in visited:
+          continue
+        if neighbour in cap_candidates:
+          caps_on_it.append(neighbour)
+        else:
+          held = True
+          break
+      if held or not caps_on_it:
+        continue
+
+      hops = BondCutDetector._hops_to_ca(atoms[iseq], adjacency)
+      unranked = len(hops) + 1
+
+      def rank(candidate, _hops=hops, _unranked=unranked):
+        name = atoms[candidate[0]].name.strip().upper()
+        return (_hops.get(name, _unranked), candidate[0])
+
+      self._demote_cap_candidate(
+        min(caps_on_it, key=rank), cap_candidates, visited,
+        seed_nodes, adjacency, atoms, queue, protected={node})
+      reattached += 1
+
+    return reattached
 
   def grow_region(self, seed_atoms, adjacency, model, max_depth=3):
     """Grow the QM region around *seed_atoms*.

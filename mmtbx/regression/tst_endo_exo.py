@@ -927,6 +927,38 @@ def exercise_cut_refused_when_it_would_strand_the_anchor():
     f"kept {sorted(kept)}")
 
 
+def exercise_no_atom_is_left_unattached():
+  """No heavy atom comes out of a region bonded only to caps.
+
+  GLU 48 at radius 7 is the reachable case: CB sits in the buffer sphere
+  while both of its heavy bonds, CA-CB and CB-CG, are cuttable, so the
+  cuts leave it as a free methane.  Which of the two bonds should survive
+  cannot be settled while BFS runs, since a bond it has yet to traverse
+  looks like one it is about to cut, so it is settled afterwards."""
+  # Caps are hydrogens by the time a region is materialised, so an atom cut
+  # away from everything shows up as a heavy atom with no heavy neighbour.
+  # A metal ion or a water oxygen is legitimately alone; a carbon is not.
+  for radius in (5.0, 6.0, 7.0, 8.0):
+    for result in _run_endo_exo_protonated(
+        _1BQ8_FE_SPHERE_PDB, buffer__radius=radius):
+      hierarchy = result["model"].get_hierarchy()
+      atoms = list(hierarchy.atoms())
+      heavy = [
+        (i_seq, atom) for i_seq, atom in enumerate(atoms)
+        if not atom.element_is_hydrogen()
+      ]
+      for i_seq, atom in heavy:
+        if atom.element.strip().upper() != "C":
+          continue
+        assert any(
+          j_seq != i_seq and atom.distance(other) <= 1.95
+          for j_seq, other in heavy
+        ), (
+          f"at radius {radius}, {atom.parent().resname.strip()} "
+          f"{atom.parent().parent().resseq.strip()}/{atom.name.strip()} "
+          f"was cut away from every heavy neighbour")
+
+
 def exercise_bond_cut_backbone():
   """``is_ca_c_bond`` / ``is_ca_n_bond`` fire only on a genuine, bonded
   CA->C and CA->N pair (direction and adjacency both matter)."""
@@ -1882,6 +1914,7 @@ def run():
   exercise_preferred_cut_rows()
   exercise_preferred_cuts_without_a_cut()
   exercise_cut_refused_when_it_would_strand_the_anchor()
+  exercise_no_atom_is_left_unattached()
   exercise_bond_cut_backbone()
   exercise_consumed_preferred_cut()
   exercise_cut_depends_on_where_bfs_arrives()
