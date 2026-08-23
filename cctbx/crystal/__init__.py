@@ -566,9 +566,8 @@ class symmetry(object):
     This is the same cache change_of_basis_op_to_nearest_setting builds and
     uses internally; it is exposed here for bulk / vectorized callers that
     need to compare many candidate cells against self's settings at once
-    (see cctbx.uctbx.near_minimum.bulk_query_frame_distances and
-    cctbx/command_line/search_nearest_cell.py for a worked example) without
-    reaching into private attributes.
+    (see cctbx/command_line/search_nearest_cell.py for a worked example)
+    without reaching into private attributes.
 
     Parameters
     ----------

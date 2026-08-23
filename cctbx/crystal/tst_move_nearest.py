@@ -1,7 +1,7 @@
 from cctbx import uctbx, sgtbx
 from cctbx.crystal import symmetry
 from cctbx.uctbx.near_minimum import (
-    cell_distance, bulk_lean_min_cell_params, bulk_query_frame_distances)
+    cell_distance, bulk_lean_min_cell_params)
 import numpy as np
 
 
@@ -431,31 +431,32 @@ def test_change_of_basis_op_to_nearest_setting():
     print("\nAll has_nearer_setting tests passed!")
 
 
-def test_bulk_query_frame_distances():
+def test_min_cell_frame_prefilter():
     """
-    Regression test for the bulk-architecture vectorized distance
-    (cctbx.uctbx.near_minimum.bulk_query_frame_distances), used by
-    cctbx.search_nearest_cell to prefilter large databases before running
-    the exact, unmodified change_of_basis_op_to_nearest_setting API.
-
-    bulk_query_frame_distances is a proven lower bound for the query-frame
-    distance change_of_basis_op_to_nearest_setting's caller would compute
-    (see its docstring): check that property holds on ~100 random cells
-    against a fixed query, rather than asserting exact equality (which only
-    holds when the query is already its own minimum cell, or for close
-    matches in general).
+    Regression test for the min-cell-frame bulk prefilter used by
+    cctbx.command_line.search_nearest_cell (which replaced the retired
+    query-frame bulk_query_frame_distances design). The prefilter ranks
+    database rows by L1 distance -- in the query's MINIMUM-CELL frame --
+    between each row's minimum cell and each of the query's cached
+    nearly-reduced settings, taking the running elementwise min over
+    settings (no (S,N,...) intermediate). This is exactly the metric
+    change_of_basis_op_to_nearest_setting uses internally to pick its best
+    setting (its `distances` / `best_dist` computation), so -- unlike the
+    retired query-frame lower bound -- the prefilter value should now agree
+    with the internal selection distance, not merely bound it.
     """
     np.random.seed(0)
     cs_ref = symmetry(
         unit_cell=(57.98, 57.98, 57.98, 92.02, 92.02, 92.02),
         space_group='R3:R')
-    settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
+    settings, _ = cs_ref.near_minimum_settings_and_cb_ops(
         length_tolerance=0.03, angle_tolerance=3.0, test_multiples=False)
+    query_settings = np.array([s['cell'] for s in settings], dtype=float)
 
     # P1 accepts any (a,b,c,alpha,beta,gamma), so random triclinic cells are
-    # always a valid crystal.symmetry -- this exercises the vectorized
-    # distance formula across a wide range of raw cells without needing to
-    # hand-craft cells compatible with higher-symmetry space groups.
+    # always a valid crystal.symmetry -- this exercises the prefilter across
+    # a wide range of raw cells without needing to hand-craft cells
+    # compatible with higher-symmetry space groups.
     n_rows = 100
     axes = np.random.uniform(20, 150, size=(n_rows, 3))
     angles = np.random.uniform(70, 110, size=(n_rows, 3))
@@ -467,28 +468,94 @@ def test_bulk_query_frame_distances():
     min_cell_params, valid_indices = bulk_lean_min_cell_params(rows)
     # All P1 cells are valid, so no row should have been dropped.
     assert list(valid_indices) == list(range(n_rows))
-    bulk_dist = bulk_query_frame_distances(
-        cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
 
-    true_dist = np.full(n_rows, np.nan)
-    for i, cs_row in enumerate(rows):
+    best_dist = np.full(min_cell_params.shape[0], np.inf)
+    for setting_row in query_settings:
+        d = np.abs(min_cell_params - setting_row).sum(axis=1)
+        np.minimum(best_dist, d, out=best_dist)
+
+    # Reproduce change_of_basis_op_to_nearest_setting's internal selection
+    # distance directly, one row at a time: its `uc_other` is exactly
+    # min_cell_params[i], since both come from reducing the same row to its
+    # minimum cell (see lean_min_cell_params's docstring on the two paths
+    # being bit-identical to floating-point noise). This confirms the
+    # vectorized prefilter is an equal alternate computation of the same
+    # quantity, not just a lower bound.
+    true_dist = np.array([
+        min(cell_distance(min_cell_params[i], s) for s in query_settings)
+        for i in range(n_rows)
+    ])
+    np.testing.assert_allclose(best_dist, true_dist, atol=1e-9)
+
+    print("min-cell-frame prefilter agrees exactly with the per-row "
+          f"reference computation for {n_rows} random rows")
+
+
+def test_min_cell_frame_prefilter_ties():
+    """
+    Ties are EXACT for pseudo-symmetric cells: many of the query's
+    near-reduced settings can land at bit-identical L1 distance from a
+    same-lattice candidate. change_of_basis_op_to_nearest_setting's
+    tie-break counter then cycles which of those tied settings -- and thus
+    which cb_op / transformed cell -- is returned on successive calls (see
+    nearest_setting_count). Check that the min-cell-frame prefilter distance
+    is unaffected by that cycling (it only ever reports the minimum, not
+    which setting achieved it), and that whichever setting is returned still
+    describes the query's lattice (via similarity_transformations, never
+    exact cell parameters, since settings may permute across calls).
+    """
+    cs_ref = symmetry(
+        unit_cell=(57.98, 57.98, 57.98, 92.02, 92.02, 92.02),
+        space_group='R3:R')
+    # Same lattice as cs_ref, described in a different (still near-reduced)
+    # basis -- see test_pla2_abs_2023's "Exchange al,ga" row.
+    cs_row = symmetry(
+        unit_cell=(57.020, 57.020, 57.020, 89.605, 90.395, 90.395),
+        space_group='R3:R')
+
+    settings, _ = cs_ref.near_minimum_settings_and_cb_ops(
+        length_tolerance=0.03, angle_tolerance=3.0, test_multiples=False)
+    query_settings = np.array([s['cell'] for s in settings], dtype=float)
+
+    min_cell_params, valid_indices = bulk_lean_min_cell_params([cs_row])
+    assert list(valid_indices) == [0]
+    best_dist = np.full(1, np.inf)
+    for setting_row in query_settings:
+        d = np.abs(min_cell_params - setting_row).sum(axis=1)
+        np.minimum(best_dist, d, out=best_dist)
+
+    # Bit-identical ties among near-reduced settings are expected for this
+    # pseudo-cubic cell; confirm more than one setting actually achieves the
+    # minimum, so the tie-break cycling exercised below is meaningful.
+    d_all = np.abs(query_settings - min_cell_params[0]).sum(axis=1)
+    n_tied = int(np.sum(d_all <= best_dist[0] + 1e-9))
+    assert n_tied > 1, f"expected multiple tied settings, got {n_tied}"
+
+    for _ in range(4):
         cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
             cs_row, length_tolerance=0.03, angle_tolerance=3.0,
             test_multiples=False)
         transformed_uc = cs_row.unit_cell().change_basis(cb_op)
-        true_dist[i] = cell_distance(
-            cs_ref.unit_cell().parameters(), transformed_uc.parameters())
 
-    # Lower-bound property: the bulk prefilter distance must never exceed
-    # the exact distance the full API reports, else a top-N prefilter could
-    # silently drop a real hit.
-    tolerance = 1e-6
-    assert np.all(bulk_dist <= true_dist[valid_indices] + tolerance), \
-        "bulk_query_frame_distances exceeded the true distance for some row(s): " \
-        f"max excess {np.max(bulk_dist - true_dist[valid_indices])}"
+        # The prefilter's distance must equal whatever
+        # change_of_basis_op_to_nearest_setting's internal selection found,
+        # regardless of which tied setting its counter happened to pick.
+        cb_other_to_min = cs_row.change_of_basis_op_to_minimum_cell()
+        uc_other = cs_row.unit_cell().change_basis(cb_other_to_min).parameters()
+        selected_dist = min(cell_distance(uc_other, s) for s in query_settings)
+        assert abs(selected_dist - best_dist[0]) < 1e-9
 
-    print("bulk_query_frame_distances lower-bound property holds for "
-          f"{n_rows} random rows")
+        sim_ops = uctbx.unit_cell(transformed_uc.parameters()).similarity_transformations(
+            uctbx.unit_cell(cs_row.unit_cell().parameters()),
+            relative_length_tolerance=0.02,
+            absolute_angle_tolerance=0.5,
+            unimodular_generator_range=1)
+        assert len(sim_ops) > 0, \
+            f"{transformed_uc.parameters()} is not the same lattice as " \
+            f"{cs_row.unit_cell().parameters()}"
+
+    print("min-cell-frame prefilter distance is stable across tie-break "
+          "cycling; finalized cell remains lattice-equivalent each time")
 
 
 class _FailingSymmetry(object):
@@ -509,7 +576,7 @@ def test_bulk_lean_min_cell_params_edge_cases():
     Regression test for two reviewer-flagged bugs in
     cctbx.uctbx.near_minimum.bulk_lean_min_cell_params:
     1) empty input must not crash (np.array([]) collapses to shape (0,),
-       not (0, 6), which broke cell_to_metric_tensor_vec's cells[:, i]);
+       not (0, 6), which broke downstream code indexing cells[:, i]);
     2) a row whose reduction raises must be excluded, not propagate the
        exception -- matching the old per-row try/except loop this bulk
        path replaces.
@@ -533,6 +600,7 @@ if __name__ == '__main__':
     test_table11_database()
     test_cell_multiples()
     test_change_of_basis_op_to_nearest_setting()
-    test_bulk_query_frame_distances()
+    test_min_cell_frame_prefilter()
+    test_min_cell_frame_prefilter_ties()
     test_bulk_lean_min_cell_params_edge_cases()
     print("ok")

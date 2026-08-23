@@ -20,8 +20,7 @@ import numpy as np
 import iotbx.phil
 from cctbx import crystal
 from cctbx import sgtbx
-from cctbx.uctbx.near_minimum import (
-  cell_distance, bulk_lean_min_cell_params, bulk_query_frame_distances)
+from cctbx.uctbx.near_minimum import bulk_lean_min_cell_params
 from libtbx.utils import Sorry
 
 master_phil_str = """
@@ -154,19 +153,24 @@ def run(args, out=sys.stdout):
         file=out)
   t0 = time.time()
 
-  # Bulk architecture: (1) get every row's minimum-cell params via the lean
-  # path (no change_of_basis_op object construction); (2) one batched numpy
-  # distance computation between the query's cached nearly-reduced settings
-  # and all rows, taking the min over settings per row; (3) run the
-  # unmodified, exact change_of_basis_op_to_nearest_setting API on only the
-  # top-M candidates by bulk distance for the final ranking. Bulk distance
-  # is always <= the true distance (see bulk_query_frame_distances'
-  # docstring), so this re-verification step can only ever promote a
-  # borderline candidate into the top-M, never drop a real hit.
+  # Bulk architecture, ranking in the query's MINIMUM-CELL frame to match
+  # change_of_basis_op_to_nearest_setting's own internal selection criterion
+  # (it picks its best setting by minimizing cell_distance(other's minimum
+  # cell, setting['cell']) over self's cached nearly-reduced settings -- see
+  # crystal.symmetry.change_of_basis_op_to_nearest_setting): (1) get the
+  # query's S nearly-reduced settings once, as an (S,6) array of their cell
+  # parameters; (2) get every database row's minimum-cell params via the
+  # lean path (no change_of_basis_op object construction), as an (N,6)
+  # array; (3) for each of the S settings, take the elementwise L1 distance
+  # to all N rows and keep a running elementwise minimum -- no (S,N,...)
+  # intermediate is ever built; (4) run the unmodified, exact
+  # change_of_basis_op_to_nearest_setting API on only the top-M candidates
+  # by this minimum-cell-frame distance for the final ranking.
   settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
     length_tolerance=params.length_tolerance,
     angle_tolerance=params.angle_tolerance,
     test_multiples=False)
+  query_settings = np.array([s['cell'] for s in settings], dtype=float)  # (S,6)
 
   # bulk_lean_min_cell_params silently drops rows whose reduction raises
   # (mirroring the old per-row try/except loop); valid_indices maps each
@@ -174,14 +178,21 @@ def run(args, out=sys.stdout):
   # dropped row is simply never a bulk-prefilter candidate.
   min_cell_params, valid_indices = bulk_lean_min_cell_params(
     [cs_row for _, cs_row in rows])
-  bulk_dist = bulk_query_frame_distances(
-    cs_ref.unit_cell().parameters(), cbi_near_ops, min_cell_params)
+
+  best_dist = np.full(min_cell_params.shape[0], np.inf)
+  for setting_row in query_settings:
+    d = np.abs(min_cell_params - setting_row).sum(axis=1)
+    np.minimum(best_dist, d, out=best_dist)
 
   margin = max(100, 10 * params.n_results)
-  candidate_order = valid_indices[np.argsort(bulk_dist)[:margin]]
+  top_idx = np.argpartition(best_dist, margin)[:margin] \
+    if margin < len(best_dist) else np.arange(len(best_dist))
+  top_idx = top_idx[np.argsort(best_dist[top_idx])]
+  candidate_order = valid_indices[top_idx]
+  candidate_dist = best_dist[top_idx]
 
   results = []
-  for idx in candidate_order:
+  for idx, dist in zip(candidate_order, candidate_dist):
     pdb_code, cs_row = rows[idx]
     try:
       cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
@@ -192,7 +203,6 @@ def run(args, out=sys.stdout):
     except Exception:
       continue  # search failure, same bucket as parse failures
     transformed_uc = cs_row.unit_cell().change_basis(cb_op)
-    dist = cell_distance(cs_ref.unit_cell().parameters(), transformed_uc.parameters())
     reindexed = not cb_op.is_identity_op()
     results.append((dist, pdb_code, transformed_uc.parameters(), reindexed))
   elapsed = time.time() - t0
