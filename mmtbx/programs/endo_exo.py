@@ -76,15 +76,6 @@ capping {
   preferred_cuts = True
     .type = bool
     .help = "Whether to use preferred cut atoms for each residue type when identifying candidate bonds for capping, instead of relying on heuristics alone."
-  preferred_cuts_fallback = False
-    .type = bool
-    .help = "Only effective when preferred_cuts=True. When a preferred-cut \
-bond ends up with both endpoints inside the region (e.g. the radius search \
-seeded atoms on both sides of it, so the preferred cut can no longer be \
-made), fall back to the geometric C-C heuristic to re-cut inward of it and \
-trim the resulting backbone overgrowth. Never trims atoms inside 'radius'. \
-No effect when preferred_cuts=False (the geometric heuristic already \
-applies to every bond)."
 }
 include_waters_in_convex_hull = True
   .type = bool

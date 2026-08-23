@@ -8,8 +8,8 @@ from collections import deque
 from cctbx import sgtbx
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
-from mmtbx.geometry_restraints.endo_exo.cutting import (
-  BondCutDetector, PREFERRED_CUTS)
+from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
+
 
 
 class QMRegionGrower:
@@ -31,17 +31,12 @@ class QMRegionGrower:
   def __init__(self, bond_cut_detector, log=None):
     self.bond_cut_detector = bond_cut_detector
     self.log = log
-    # Used only by the preferred-cut fallback: when a preferred cut is no
-    # longer achievable we re-cut inward with the pure geometric C-C
-    # heuristic, regardless of the residue's PREFERRED_CUTS entry.
-    self._geom_detector = BondCutDetector(use_preferred_cuts=False, log=log)
 
   # ------------------------------------------------------------------
   # Public interface
   # ------------------------------------------------------------------
 
-  def grow_by_depth(self, seed_atoms, adjacency, model, max_depth=3,
-                    forced_cut_bonds=None, geometric_for_overgrowth=False):
+  def grow_by_depth(self, seed_atoms, adjacency, model, max_depth=3):
     """Symmetry-aware BFS over ``(iseq, sym_op)`` nodes, recording cap
     candidates by pruning.
 
@@ -84,19 +79,6 @@ class QMRegionGrower:
     model : mmtbx.model.manager
     max_depth : int, optional
         Kept for API compatibility; currently unused.  Default is 3.
-    forced_cut_bonds : set of frozenset, optional
-        Bonds (each a ``frozenset({iseq_a, iseq_b})``) to treat as
-        cuttable regardless of residue type or geometry.  Matched on the
-        bare iseq pair, so every symmetry image of the bond is cut.  Used
-        by :meth:`grow_region` (preferred-cut fallback) to re-cut residues
-        whose preferred cut became unachievable.
-    geometric_for_overgrowth : bool, optional
-        When ``True``, residues with no seed (radius) atom (i.e. those
-        reached purely as BFS backbone overgrowth) defer to the
-        geometric C-C sp3 heuristic instead of their ``PREFERRED_CUTS``
-        entry.  The heuristic cuts at the first sp3 C-C bond along the
-        BFS path (typically CA-CB), trimming such residues to backbone.
-        Residues carrying a seed atom keep their preferred cuts.
 
     Returns
     -------
@@ -108,34 +90,12 @@ class QMRegionGrower:
         neighbour.
     """
     atoms = model.get_hierarchy().atoms()
-    forced_cut_bonds = forced_cut_bonds or set()
     identity = _canon_op(sgtbx.rt_mx())
     # Seeds may be bare iseqs (identity image) or pre-built (iseq, op)
     # nodes (symmetry images from the symmetry-aware radius search);
     # normalise both to nodes.
     seed_nodes = {s if isinstance(s, tuple) else (s, identity)
                   for s in seed_atoms}
-    # iseqs belonging to a residue that contains at least one seed
-    # (radius) atom.  Residues absent from this set are pure BFS
-    # overgrowth and, when geometric_for_overgrowth is on, defer to the
-    # geometric C-C heuristic.  Empty (and unused) otherwise.
-    #
-    # APPROXIMATION: keyed on bare iseq, so the sym_op is dropped.  With
-    # symmetry-aware seeding the same residue can appear under several ops,
-    # and "has a seed" is really a per-(residue, op) property.  Here, if
-    # ANY image of a residue carries a seed, every image is treated as
-    # seeded -> uses preferred cuts. This errs toward the preferred cut
-    # (the pre-overgrowth-rule behaviour), so it can only over-include, not
-    # break. It bites only when one image of a residue coordinates (seeded)
-    # while another image of the SAME residue is pure overgrowth in the same
-    # sphere (rare). To make it exact, key on (residue, op) instead.
-    residue_has_seed_iseqs = set()
-    if geometric_for_overgrowth:
-      for (s_iseq, _s_op) in seed_nodes:
-        residue_group = atoms[s_iseq].parent().parent()
-        for atom_group in residue_group.atom_groups():
-          for residue_atom in atom_group.atoms():
-            residue_has_seed_iseqs.add(residue_atom.i_seq)
     visited = set(seed_nodes)
     cap_candidates = {}
     queue = deque(seed_nodes)
@@ -144,12 +104,6 @@ class QMRegionGrower:
       current = queue.popleft()
       curr_iseq, curr_op = current
       curr_resname = atoms[curr_iseq].parent().resname.strip().upper()
-      # Overgrowth residues (no seed atom) defer to the geometric C-C
-      # heuristic; seeded residues keep their configured (preferred) cuts.
-      if geometric_for_overgrowth and curr_iseq not in residue_has_seed_iseqs:
-        curr_cut_detector = self._geom_detector
-      else:
-        curr_cut_detector = self.bond_cut_detector
 
       for (nbr_iseq, edge_op) in list(adjacency[curr_iseq]):
         nbr_op = _canon_op(curr_op.multiply(edge_op))
@@ -168,16 +122,12 @@ class QMRegionGrower:
         visited.add(neighbour)
 
         reason = self._cut_reason(
-          curr_iseq, nbr_iseq, curr_op, curr_resname, curr_cut_detector,
-          forced_cut_bonds, visited, adjacency, atoms)
+          curr_iseq, nbr_iseq, curr_op, curr_resname, visited, adjacency,
+          atoms)
 
         if reason is not None:
-          # A forced cut is the fallback's way of overriding the rules, so
-          # it is not subject to the refusal.
-          refusal = None
-          if frozenset((curr_iseq, nbr_iseq)) not in forced_cut_bonds:
-            refusal = self._cut_refusal(
-              current, neighbour, visited, adjacency, atoms)
+          refusal = self._cut_refusal(
+            current, neighbour, visited, adjacency, atoms)
           if refusal is None:
             self._log_bond(reason, curr_iseq, nbr_iseq, atoms)
             self._try_mark_cap(
@@ -197,52 +147,17 @@ class QMRegionGrower:
     )
     return visited, cap_candidates
 
-  def grow_region(self, seed_atoms, adjacency, model, max_depth=3,
-                  preferred_cut_fallback=False):
-    """Grow the QM region, optionally re-cutting residues whose preferred
-    cut became unachievable.
+  def grow_region(self, seed_atoms, adjacency, model, max_depth=3):
+    """Grow the QM region around *seed_atoms*.
 
-    Single public entry point.  With ``preferred_cut_fallback=False`` this
-    is exactly one :meth:`grow_by_depth` pass.  With it ``True`` two things
-    happen, both of which defer to the geometric C-C sp3 heuristic when the
-    preferred cut is not the right boundary:
-
-    * **Overgrowth residues**: residues with no seed (radius) atom use
-      the geometric heuristic from the start (see
-      ``geometric_for_overgrowth`` on :meth:`grow_by_depth`), so a residue
-      reached only as backbone overgrowth is cut at its first sp3 C-C bond
-      (typically CA-CB) rather than at its preferred site.
-    * **Consumed preferred cuts**: the pass is repeated, accumulating
-      geometric fallback cuts, until no new ones are found (below).
-
-    A preferred cut is "consumed" when both of its endpoints end up
-    interior to the region, typically because the radius search seeded
-    atoms on both sides of it.  The canonical cut can then no longer be
-    made, and BFS walks inward through the (now interior) sidechain into
-    the backbone.  For each such residue this computes the outermost
-    geometric C-C cut inward of the consumed bond, adds it to a
-    ``forced_cut_bonds`` set, and re-runs :meth:`grow_by_depth`.  The trim
-    follows from re-running: an atom survives only if it is still reachable
-    from a seed without crossing a cut, so the backbone overgrowth (and
-    anything dragged in through it) falls away on its own.  Seeds
-    (including all radius atoms) are never trimmed, so the radius floor is
-    preserved.
-
-    The loop terminates because each round either adds a genuinely new
-    forced cut or returns none: once a residue's fallback cut is already
-    in ``forced_cut_bonds`` it is filtered out and the loop stops, even
-    though the preferred bond stays nominally consumed.  In practice it is
-    two passes (discover, then apply-and-confirm).
+    Single public entry point; delegates to :meth:`grow_by_depth`.
 
     Parameters
     ----------
-    seed_atoms : set of int
+    seed_atoms : set of int or (int, rt_mx)
     adjacency : collections.defaultdict of set
     model : mmtbx.model.manager
     max_depth : int, optional
-    preferred_cut_fallback : bool, optional
-        When ``False`` (default) a single :meth:`grow_by_depth` pass is
-        returned unchanged.
 
     Returns
     -------
@@ -250,170 +165,8 @@ class QMRegionGrower:
     cap_candidates : dict
         Same contract as :meth:`grow_by_depth`.
     """
-    forced_cut_bonds = set()
-    while True:
-      visited, cap_candidates = self.grow_by_depth(
-        seed_atoms, adjacency, model, max_depth=max_depth,
-        forced_cut_bonds=forced_cut_bonds,
-        geometric_for_overgrowth=preferred_cut_fallback)
-      if not preferred_cut_fallback:
-        return visited, cap_candidates
-      new_cuts = self._fallback_cuts_for_consumed_preferred(
-        visited, cap_candidates, adjacency, model, existing=forced_cut_bonds)
-      if not new_cuts:
-        return visited, cap_candidates
-      forced_cut_bonds |= new_cuts
-
-  def _fallback_cuts_for_consumed_preferred(self, visited, cap_candidates,
-                                            adjacency, model, existing):
-    """Return geometric fallback cuts for residues whose preferred cut is
-    consumed (both endpoints interior and not actually cut).
-
-    Parameters
-    ----------
-    visited : set of (int, rt_mx)
-    cap_candidates : dict
-        ``{cap_node: anchor_node}`` from the last BFS pass.
-    adjacency : collections.defaultdict of set
-    model : mmtbx.model.manager
-    existing : set of frozenset
-        Forced cuts already applied; results in this set are filtered out
-        (this is what lets :meth:`grow_region` terminate).
-
-    Returns
-    -------
-    set of frozenset
-        New ``frozenset({iseq_a, iseq_b})`` bonds to force-cut.
-    """
-    atoms = model.get_hierarchy().atoms()
-    new_cuts = set()
-    handled = set()
-    for (iseq, op) in visited:
-      atom = atoms[iseq]
-      preferred = PREFERRED_CUTS.get(atom.parent().resname.strip().upper())
-      if not preferred:
-        continue
-      name = atom.name.strip().upper()
-      if name not in preferred:
-        continue
-      partner = self._sibling_in_residue(atom, (preferred - {name}).pop())
-      if partner is None or (partner.i_seq, op) not in visited:
-        continue
-      bond = frozenset((iseq, partner.i_seq))
-      if bond in handled:
-        continue
-      handled.add(bond)
-      # If one endpoint is the cap of the other, the preferred cut actually
-      # fired: the bond is the boundary, not consumed.  Leave it.
-      if (cap_candidates.get((iseq, op)) == (partner.i_seq, op) or
-          cap_candidates.get((partner.i_seq, op)) == (iseq, op)):
-        continue
-      ca_iseq, dist = self._residue_ca_distances(iseq, adjacency, atoms)
-      if ca_iseq is None:
-        continue
-      d_self, d_partner = dist.get(iseq), dist.get(partner.i_seq)
-      if d_self is None or d_partner is None:
-        continue
-      # Cut from the backbone-side endpoint (covalently closer to CA),
-      # keeping the tip (functional-group) side.
-      if d_self <= d_partner:
-        cut_iseq, keep_iseq = iseq, partner.i_seq
-      else:
-        cut_iseq, keep_iseq = partner.i_seq, iseq
-      fallback = self._first_geom_cut_inward(
-        cut_iseq, keep_iseq, dist, adjacency, atoms)
-      if fallback is not None and fallback not in existing:
-        new_cuts.add(fallback)
-    return new_cuts
-
-  def _first_geom_cut_inward(self, cut_iseq, keep_iseq, dist, adjacency,
-                             atoms):
-    """Walk from *cut_iseq* toward CA (away from *keep_iseq*) and return
-    the first bond that passes the geometric C-C heuristic.
-
-    Parameters
-    ----------
-    cut_iseq : int
-        Backbone-side endpoint of the consumed preferred bond.
-    keep_iseq : int
-        Tip-side endpoint (the step direction is away from this).
-    dist : dict
-        ``{iseq: covalent-distance-to-CA}`` within the residue, from
-        :meth:`_residue_ca_distances`.
-    adjacency : collections.defaultdict of set
-    atoms : flex array of iotbx.pdb.hierarchy.atom
-
-    Returns
-    -------
-    frozenset or None
-        ``frozenset({iseq_a, iseq_b})`` of the first geometric cut, or
-        ``None`` if CA is reached without one (the existing backbone cut
-        rules then apply on the next BFS pass).
-    """
-    cur, prev = cut_iseq, keep_iseq
-    while True:
-      # Heavy neighbour strictly closer to CA, within the residue, not
-      # where we came from.  min() picks the closest if a branch forks.
-      candidates = [
-        nb for nb in _neighbour_iseqs(adjacency, cur)
-        if nb != prev and nb in dist and dist[nb] < dist[cur]
-        and not atoms[nb].element_is_hydrogen()]
-      if not candidates:
-        return None
-      nxt = min(candidates, key=lambda n: dist[n])
-      if self._geom_detector.is_cc_single_sp3_bond(
-          None, atoms[cur], atoms[nxt], adjacency):
-        return frozenset((cur, nxt))
-      prev, cur = cur, nxt
-
-  @staticmethod
-  def _sibling_in_residue(atom, name):
-    """Return the atom named *name* in *atom*'s residue group, or None."""
-    for ag in atom.parent().parent().atom_groups():
-      for sibling in ag.atoms():
-        if sibling.name.strip().upper() == name:
-          return sibling
-    return None
-
-  @staticmethod
-  def _residue_ca_distances(iseq, adjacency, atoms):
-    """Return ``(ca_iseq, {iseq: hops-to-CA})`` over the covalent graph
-    restricted to the residue group of *iseq*.
-
-    Returns ``(None, {})`` if the residue has no CA atom.
-
-    Parameters
-    ----------
-    iseq : int
-    adjacency : collections.defaultdict of set
-    atoms : flex array of iotbx.pdb.hierarchy.atom
-
-    Returns
-    -------
-    (int or None, dict)
-    """
-    rg = atoms[iseq].parent().parent()
-    rg_iseqs = {a.i_seq for ag in rg.atom_groups() for a in ag.atoms()}
-    ca_iseq = None
-    for ag in rg.atom_groups():
-      for a in ag.atoms():
-        if a.name.strip().upper() == 'CA':
-          ca_iseq = a.i_seq
-          break
-      if ca_iseq is not None:
-        break
-    if ca_iseq is None:
-      return None, {}
-    dist = {ca_iseq: 0}
-    queue = deque([ca_iseq])
-    while queue:
-      cur = queue.popleft()
-      for nb in _neighbour_iseqs(adjacency, cur):
-        if nb in dist or nb not in rg_iseqs:
-          continue
-        dist[nb] = dist[cur] + 1
-        queue.append(nb)
-    return ca_iseq, dist
+    return self.grow_by_depth(seed_atoms, adjacency, model,
+                              max_depth=max_depth)
 
   def _log_bond(self, message, iseq_a, iseq_b, atoms):
     """Print *message* followed by the two atom records."""
@@ -422,7 +175,7 @@ class QMRegionGrower:
     print('  ' + atoms[iseq_b].format_atom_record().rstrip(), file=self.log)
 
   def _cut_reason(self, curr_iseq, nbr_iseq, curr_op, curr_resname,
-                  cut_detector, forced_cut_bonds, visited, adjacency, atoms):
+                  visited, adjacency, atoms):
     """Return why the bond ``curr -> nbr`` is cuttable, or ``None``.
 
     The CA-C rule additionally refuses to cut away a terminal carboxylate,
@@ -437,10 +190,6 @@ class QMRegionGrower:
     curr_op : cctbx.sgtbx.rt_mx
         Symmetry image of the current node.
     curr_resname : str
-    cut_detector : BondCutDetector
-        Detector to use for the sidechain rule; may differ from
-        ``self.bond_cut_detector`` for overgrowth residues.
-    forced_cut_bonds : set of frozenset
     visited : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
@@ -449,10 +198,7 @@ class QMRegionGrower:
     -------
     str or None
     """
-    if frozenset((curr_iseq, nbr_iseq)) in forced_cut_bonds:
-      return 'Forced cut (preferred-cut fallback)'
-
-    if cut_detector.is_cc_single_sp3_bond(
+    if self.bond_cut_detector.is_cc_single_sp3_bond(
         curr_resname, atoms[curr_iseq], atoms[nbr_iseq], adjacency):
       return 'Found C-C single bond'
 
@@ -513,6 +259,16 @@ class QMRegionGrower:
     region.  Refuse the cut when the far atom is already bonded to another
     atom in the region, and let BFS continue through the bond instead.
 
+    The near atom is guarded too, but only against being left with no
+    heavy neighbour at all: a residue entered at its own terminal atom,
+    where the sphere caught a hydrogen whose carbon lies outside it, is cut
+    at the one bond that atom has and falls out of the region as a free
+    fragment.  That test reads the covalent graph, which does not change as
+    BFS runs.  Asking instead which of the near atom's neighbours are in
+    the region would also catch a single atom clipped out of the middle of
+    a chain, but the answer depends on the order BFS arrived, and a region
+    that varies between runs of the same input is the worse failure.
+
     One case cannot be seen here: BFS may reach a neighbour of the cap
     later, by a route that does not exist yet.  That one is repaired
     afterwards by :meth:`_demote_cap_candidate`, along with a bond inside
@@ -537,7 +293,15 @@ class QMRegionGrower:
       if nb_node != anchor and nb_node in visited:
         return (f'far atom is already bonded to '
                 f'{atoms[nb_iseq].name.strip()} in the region')
-    return None
+
+    anchor_iseq, anchor_op = anchor
+    for (nb_iseq, edge_op) in adjacency[anchor_iseq]:
+      if atoms[nb_iseq].element_is_hydrogen():
+        continue
+      if (nb_iseq, _canon_op(anchor_op.multiply(edge_op))) != cap:
+        return None
+    return (f'near atom {atoms[anchor_iseq].name.strip()} has no other '
+            f'heavy neighbour to hold it in the region')
 
   def _demote_cap_candidate(self, cap, cap_candidates, visited,
                             seed_nodes, adjacency, atoms, queue,

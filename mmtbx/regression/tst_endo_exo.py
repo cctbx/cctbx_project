@@ -22,7 +22,7 @@ QM region around two contrasting Fe sites:
 from __future__ import absolute_import, division, print_function
 
 import io
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import iotbx.pdb
 import libtbx.phil
@@ -38,7 +38,8 @@ from cctbx import geometry_restraints, sgtbx
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op
 from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
-from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
+from mmtbx.geometry_restraints.endo_exo.cutting import (
+  BondCutDetector, PREFERRED_CUTS)
 from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
 from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 
@@ -760,6 +761,172 @@ def exercise_bond_cut_heuristic():
   assert det.is_cc_single_sp3_bond("XXX", ca, cb, adj) is False
 
 
+def exercise_proline_ring_is_never_cut():
+  """PRO's empty PREFERRED_CUTS entry vetoes its sidechain outright.
+
+  The ring closes back onto the residue's own N, so one cut detaches
+  nothing and two strand the atoms between them.
+
+  The region half seeds mid-ring on purpose. Growing from the metal, BFS
+  reaches PRO at CA or N and demotion heals whatever it cuts, so the ring
+  comes out whole either way and pins nothing; entering at CG cuts both
+  ways out of it at once and nothing is left to trigger a repair."""
+  by_name = _atoms_by_name(_CC_PDB)
+  ca, cb = by_name["CA"], by_name["CB"]
+  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+
+  adj = {}
+  _edge(adj, ca.i_seq, cb.i_seq)
+  for d in (101, 102, 103):
+    _edge(adj, ca.i_seq, d)
+  for d in (201, 202, 203):
+    _edge(adj, cb.i_seq, d)
+
+  # Same atoms, same graph: cuttable for a residue absent from the table,
+  # refused for PRO. An entry of None rather than frozenset() fails here.
+  assert det.is_cc_single_sp3_bond("XXX", ca, cb, adj) is True
+  assert det.is_cc_single_sp3_bond("PRO", ca, cb, adj) is False
+
+  # The veto is the entry, not the knob: turning preferred cuts off puts
+  # PRO back on the geometric path like any untabled residue.
+  off = BondCutDetector(use_preferred_cuts=False, log=io.StringIO())
+  assert off.is_cc_single_sp3_bond("PRO", ca, cb, adj) is True
+
+  ring = {"N", "CA", "CB", "CG", "CD"}
+  for seed in ("resseq 40 and name CG", "resseq 45 and name CG"):
+    result = _run_endo_exo_protonated(
+      _1BQ8_FE_SPHERE_PDB, buffer__skip_search=True, selection=[seed])[0]
+    hierarchy = result["model"].get_hierarchy()
+    caps = set(result["cap_iseqs"])
+    present = {
+      atom.name.strip()
+      for i_seq, atom in enumerate(hierarchy.atoms())
+      if atom.parent().resname.strip() == "PRO" and i_seq not in caps
+      and atom.name.strip() in ring
+    }
+    assert present == ring, (
+      f"PRO seeded at '{seed}' came out in pieces: {sorted(present)}")
+
+
+# What each PREFERRED_CUTS row must leave attached to the sidechain, stated
+# as the chemistry rather than as a restatement of the table: cutting the
+# named bond reduces the residue to the minimal model compound of its
+# functional group.
+_PREFERRED_CUT_FRAGMENTS = {
+  "ALA": {"CB"},                                              # methane
+  "ARG": {"CD", "NE", "CZ", "NH1", "NH2"},                    # methylguanidine
+  "ASN": {"CB", "CG", "OD1", "ND2"},                          # acetamide
+  "ASP": {"CB", "CG", "OD1", "OD2"},                          # acetate
+  "CYS": {"CB", "SG"},                                        # methanethiol
+  "GLN": {"CG", "CD", "OE1", "NE2"},                          # acetamide
+  "GLU": {"CG", "CD", "OE1", "OE2"},                          # acetate
+  "HIS": {"CB", "CG", "ND1", "CD2", "CE1", "NE2"},            # methylimidazole
+  "ILE": {"CB", "CG1", "CG2", "CD1"},                         # butane
+  "LEU": {"CG", "CD1", "CD2"},                                # propane
+  "LYS": {"CE", "NZ"},                                        # methylamine
+  "MET": {"CG", "SD", "CE"},                                  # dimethyl sulfide
+  "PHE": {"CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"},      # toluene
+  "SER": {"CB", "OG"},                                        # methanol
+  "THR": {"CB", "OG1", "CG2"},                                # propan-2-ol
+  "TRP": {"CB", "CG", "CD1", "CD2", "NE1", "CE2", "CE3",
+          "CZ2", "CZ3", "CH2"},                               # methylindole
+  "TYR": {"CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ", "OH"},  # cresol
+  "VAL": {"CB", "CG1", "CG2"},                                # propane
+}
+
+
+def _ideal_heavy_bonds(resname):
+  """Return ``{atom name: set of bonded atom names}`` for the ideal monomer.
+
+  Read from the monomer library rather than from a fixture, so the check
+  does not depend on which residues a test structure happens to contain."""
+  from mmtbx.monomer_library import server
+
+  comp = server.server().get_comp_comp_id_direct(resname)
+  adjacency = {}
+  for bond in comp.bond_list:
+    name1 = bond.atom_id_1.strip()
+    name2 = bond.atom_id_2.strip()
+    if name1.startswith("H") or name2.startswith("H"):
+      continue
+    adjacency.setdefault(name1, set()).add(name2)
+    adjacency.setdefault(name2, set()).add(name1)
+  return adjacency
+
+
+def exercise_preferred_cut_rows():
+  """Each PREFERRED_CUTS row names a real bond of the ideal monomer, and
+  cutting it severs exactly the fragment the row exists to retain.
+
+  Asserting the fragment, not merely that the named atoms are bonded, is
+  what makes this a pin: LEU ``{CA, CB}`` is a genuine bond and still
+  retains CD1/CD2, but it drags an extra carbon into the region."""
+  covered = {r for r, e in PREFERRED_CUTS.items() if e}
+  assert covered == set(_PREFERRED_CUT_FRAGMENTS), (
+    "PREFERRED_CUTS and the expected fragments have drifted apart: "
+    f"{sorted(covered ^ set(_PREFERRED_CUT_FRAGMENTS))}")
+
+  for resname, expected in sorted(_PREFERRED_CUT_FRAGMENTS.items()):
+    entry = PREFERRED_CUTS[resname]
+    assert len(entry) == 2, f"{resname} entry names {len(entry)} atoms"
+    name1, name2 = sorted(entry)
+    adjacency = _ideal_heavy_bonds(resname)
+    assert name2 in adjacency.get(name1, ()), (
+      f"{resname} entry {name1}-{name2} is not a bond of the ideal monomer")
+
+    # Sever the bond, then collect what is no longer reachable from CA.
+    adjacency[name1].discard(name2)
+    adjacency[name2].discard(name1)
+    reachable = {"CA"}
+    queue = deque(["CA"])
+    while queue:
+      current = queue.popleft()
+      for neighbour in adjacency.get(current, ()):
+        if neighbour not in reachable:
+          reachable.add(neighbour)
+          queue.append(neighbour)
+
+    fragment = set(adjacency) - reachable
+    assert fragment == expected, (
+      f"{resname} cut at {name1}-{name2} retains {sorted(fragment)}, "
+      f"expected {sorted(expected)}")
+
+
+def exercise_preferred_cuts_without_a_cut():
+  """GLY and PRO are the two rows that name no bond, and they mean
+  different things: GLY is absent from the table (geometric rule applies),
+  PRO is present but empty (its sidechain is never cut)."""
+  assert PREFERRED_CUTS["GLY"] is None
+  assert PREFERRED_CUTS["PRO"] == frozenset()
+
+
+def exercise_cut_refused_when_it_would_strand_the_anchor():
+  """A residue entered at a terminal sidechain atom is not cut away from
+  itself.
+
+  ALA 44's CB has one heavy neighbour, CA, and the table names precisely
+  that bond.  Reached at CB -- which happens when the buffer sphere
+  catches a methyl hydrogen whose own carbon lies outside it -- the cut
+  would leave CB with nothing holding it in the region, and it would come
+  out as a free methane.  The guard reads the covalent graph, so it does
+  not depend on where BFS arrived from."""
+  result = _run_endo_exo_protonated(
+    _1BQ8_FE_SPHERE_PDB, buffer__skip_search=True,
+    selection=["resseq 44 and name CB"])[0]
+  hierarchy = result["model"].get_hierarchy()
+  caps = set(result["cap_iseqs"])
+  kept = {
+    atom.name.strip()
+    for i_seq, atom in enumerate(hierarchy.atoms())
+    if atom.parent().parent().resseq.strip() == "44"
+    and i_seq not in caps and not atom.element_is_hydrogen()
+  }
+  assert "CB" in kept, "the seeded atom itself left the region"
+  assert "CA" in kept, (
+    f"ALA 44 CB was cut from its only heavy neighbour and stranded: "
+    f"kept {sorted(kept)}")
+
+
 def exercise_bond_cut_backbone():
   """``is_ca_c_bond`` / ``is_ca_n_bond`` fire only on a genuine, bonded
   CA->C and CA->N pair (direction and adjacency both matter)."""
@@ -802,17 +969,15 @@ ATOM     13  HG3 LYS A 296      46.955  45.175  49.324  1.00  4.18           H
 """
 
 
-def exercise_preferred_cut_fallback():
+def exercise_consumed_preferred_cut():
   """Reproduce the 1RYO Fe / LYS A 296 case: the radius search seeds CD
   and NZ (4.8 / 4.3 A from the Fe) while CE sits just outside (5.0 A), so
-  the LYS preferred cut CD-CE ends up with both endpoints interior and can
+  the LYS preferred cut CD-CE has both endpoints inside the region and can
   no longer be made.
 
-  Baseline ``grow_by_depth`` then walks inward past CD into the backbone
-  (CG, CB, CA, N pulled in; C capped).  ``grow_region`` with
-  ``preferred_cut_fallback=True`` detects the consumed cut and re-cuts at
-  CD-CG with the geometric heuristic, trimming the region to just the
-  {CD, CE, NZ} tip with CG as the cap."""
+  The geometric heuristic then takes the next sp3 C-C bond, CD-CG, leaving
+  the {CD, CE, NZ} tip capped at CG rather than walking inward through the
+  sidechain and dragging the backbone in."""
   pdb_in = iotbx.pdb.input(
     source_info=None, lines=_LYS_296_PDB.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
@@ -846,21 +1011,17 @@ def exercise_preferred_cut_fallback():
                 if i not in cap_iseqs and elem_of[i] not in ("H", "D")}
     return interior, {name_of[i] for i in cap_iseqs}
 
-  # Baseline: preferred cut consumed -> overgrowth into the backbone.
-  v0, c0 = grower.grow_by_depth(seeds, adjacency, model)
-  interior0, _caps0 = _split(v0, c0)
-  assert {"N", "CA", "CB", "CG"} <= interior0, (
-    f"baseline should pull the backbone in; interior={sorted(interior0)}")
-
-  # Fallback: re-cut at CD-CG, trimming everything inward of it.
-  v1, c1 = grower.grow_region(
-    seeds, adjacency, model, preferred_cut_fallback=True)
-  interior1, caps1 = _split(v1, c1)
-  assert interior1 == {"CD", "CE", "NZ"}, (
-    f"fallback interior drifted: expected {{CD, CE, NZ}}, got "
-    f"{sorted(interior1)}")
-  assert caps1 == {"CG"}, (
-    f"fallback cap drifted: expected {{CG}}, got {sorted(caps1)}")
+  for label, (visited, caps) in (
+      ("grow_by_depth", grower.grow_by_depth(seeds, adjacency, model)),
+      ("grow_region", grower.grow_region(seeds, adjacency, model))):
+    interior, cap_names = _split(visited, caps)
+    assert interior == {"CD", "CE", "NZ"}, (
+      f"{label}: expected the {{CD, CE, NZ}} tip, got {sorted(interior)}")
+    assert cap_names == {"CG"}, (
+      f"{label}: expected CG as the cap, got {sorted(cap_names)}")
+    assert not ({"N", "CA", "CB"} & interior), (
+      f"{label}: the backbone must not be pulled in; "
+      f"interior={sorted(interior)}")
 
 
 # Real 1RYO chain-A LEU 62 - ASP 63 dipeptide (peptide bond LEU62 C - ASP63
@@ -895,15 +1056,14 @@ ATOM    897  HB3 ASP A  63      44.829  51.668  53.041  1.00  4.42           H
 """
 
 
-def exercise_overgrowth_geometric_cut():
-  """A residue with no seed (radius) atom is pure backbone overgrowth and,
-  under preferred_cut_fallback, defers to the geometric C-C heuristic.
+def exercise_cut_depends_on_where_bfs_arrives():
+  """Where BFS meets a residue decides where it is cut.
 
-  ASP 63 is the radius-seeded ligand; LEU 62 enters only via the peptide
-  bond.  Baseline (preferred cuts) trims LEU at its preferred CB-CG site,
-  keeping CB.  With the overgrowth rule LEU is cut at the first sp3 C-C
-  bond instead -- CA-CB -- so CB becomes the cap and the rest of the
-  sidechain (CG, CD1, CD2) is dropped."""
+  ASP 63 is seeded through its sidechain, so BFS reaches its configured
+  CA-CB bond from the tip and the carboxylate survives.  LEU 62 enters
+  only via the peptide bond; its configured CB-CG bond lies further along
+  the sidechain than BFS would otherwise go, so the geometric heuristic
+  takes CA-CB first and CG, CD1 and CD2 are dropped."""
   pdb_in = iotbx.pdb.input(
     source_info=None, lines=_LEU62_ASP63_PDB.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
@@ -948,22 +1108,43 @@ def exercise_overgrowth_geometric_cut():
                 if n not in caps_leu and elem_of[leu[n]] not in ("H", "D")}
     return interior, caps_leu, present
 
-  # Baseline: LEU keeps CB and caps CG (its preferred CB-CG cut).
-  v0, c0 = grower.grow_by_depth(seeds, adjacency, model)
-  interior0, caps0, _present0 = _leu_atoms(v0, c0)
-  assert "CB" in interior0 and "CG" in caps0, (
-    f"baseline LEU should cut at CB-CG; interior={sorted(interior0)} "
-    f"caps={sorted(caps0)}")
+  # LEU is a spectator, so it is cut at CA-CB and its sidechain beyond CB
+  # is dropped.  Both entry points agree.
+  for label, (visited, caps) in (
+      ("grow_by_depth", grower.grow_by_depth(seeds, adjacency, model)),
+      ("grow_region", grower.grow_region(seeds, adjacency, model))):
+    _interior, caps_leu, present = _leu_atoms(visited, caps)
+    assert "CB" in caps_leu, (
+      f"{label}: spectator LEU should cap CB (CA-CB cut); "
+      f"caps={sorted(caps_leu)}")
+    assert not ({"CG", "CD1", "CD2"} & present), (
+      f"{label}: spectator LEU sidechain beyond CB should be dropped; "
+      f"present={sorted(present)}")
 
-  # Overgrowth rule: LEU defers to the geometric heuristic and cuts CA-CB.
-  v1, c1 = grower.grow_region(
-    seeds, adjacency, model, preferred_cut_fallback=True)
-  interior1, caps1, present1 = _leu_atoms(v1, c1)
-  assert "CB" in caps1, (
-    f"overgrowth LEU should cap CB (CA-CB cut); caps={sorted(caps1)}")
-  assert not ({"CG", "CD1", "CD2"} & present1), (
-    f"overgrowth LEU sidechain beyond CB should be dropped; "
-    f"present={sorted(present1)}")
+  # ASP coordinates through its sidechain, so it keeps its preferred cut
+  # rather than being trimmed at CA-CB.
+  visited, caps = grower.grow_by_depth(seeds, adjacency, model)
+  cap_iseqs = {c[0] for c in caps}
+  asp_present = {name_of[i] for (i, _o) in visited if resseq_of[i] == "63"}
+  asp_caps = {name_of[i] for i in cap_iseqs if resseq_of[i] == "63"}
+  assert "CB" not in asp_caps, (
+    f"coordinating ASP must not be cut at CA-CB; caps={sorted(asp_caps)}")
+  assert {"CB", "CG", "OD1", "OD2"} <= asp_present, (
+    f"coordinating ASP should keep its sidechain; "
+    f"present={sorted(asp_present)}")
+
+  # Backbone-only seeding is not coordination: seed ASP's mainchain alone
+  # and its sidechain is trimmed like any other spectator.
+  backbone_seeds = {asp[n] for n in ("N", "CA", "C", "O")}
+  visited, caps = grower.grow_by_depth(backbone_seeds, adjacency, model)
+  cap_iseqs = {c[0] for c in caps}
+  asp_caps = {name_of[i] for i in cap_iseqs if resseq_of[i] == "63"}
+  asp_present = {name_of[i] for (i, _o) in visited if resseq_of[i] == "63"}
+  assert "CB" in asp_caps, (
+    f"backbone-seeded ASP should be cut at CA-CB; caps={sorted(asp_caps)}")
+  assert not ({"CG", "OD1", "OD2"} & asp_present), (
+    f"backbone-seeded ASP sidechain should be dropped; "
+    f"present={sorted(asp_present)}")
 
 
 def _simple_bond_proxies(pdb_str):
@@ -1471,6 +1652,118 @@ def exercise_terminal_carboxylate_kept():
     raise AssertionError("residue 3 C absent from the region")
 
 
+def _run_endo_exo_protonated(pdb_str, **overrides):
+  """As :func:`_run_endo_exo_params`, with hydrogens placed first.
+
+  The sidechain cut heuristic reads covalent degree, so it discriminates
+  only on a protonated model, which is how the program is used."""
+  from mmtbx.hydrogens import reduce_hydrogen
+
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  model.process(make_restraints=True)
+  placer = reduce_hydrogen.place_hydrogens(model=model, keep_existing_H=False)
+  placer.run()
+  model = placer.get_model()
+
+  dm = DataManager(["model"])
+  dm.add_model("model", model)
+  dm.set_default_model("model")
+  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  params = master.extract()
+  params.write_files = False
+  for dotted, value in overrides.items():
+    scope = params
+    parts = dotted.split("__")
+    for part in parts[:-1]:
+      scope = getattr(scope, part)
+    setattr(scope, parts[-1], value)
+  prog = EndoexoProgram(dm, params, master_phil=master, logger=io.StringIO())
+  prog.validate()
+  prog.run()
+  return prog.get_results()
+
+
+def exercise_scaffold_residue_keeps_no_functional_group():
+  """A residue reached through its backbone keeps no functional group.
+
+  Lys 7 of 1BQ8 comes within 5.88 A of the Fe through its backbone N,
+  while its sidechain lies 7.9-11.3 A out, so BFS arrives from the
+  mainchain and never from the tip.  Its configured cut is CD-CE, which
+  BFS would only reach after walking the whole sidechain; the geometric
+  heuristic takes the first sp3 C-C instead.  The ammonium must not
+  survive at any radius, though atoms the sphere itself demanded do."""
+  for radius in (5.0, 6.0, 7.0, 8.0, 9.0):
+    result = _run_endo_exo_protonated(
+      _1BQ8_FE_SPHERE_PDB, buffer__radius=radius)[0]
+    hierarchy = result["model"].get_hierarchy()
+    heavy = set()
+    for atom in hierarchy.atoms():
+      if atom.element_is_hydrogen():
+        continue
+      if atom.parent().parent().resseq.strip() == "7":
+        heavy.add(atom.name.strip())
+    if not heavy:
+      continue  # outside the region at this radius
+    assert {"N", "CA", "C", "O"} <= heavy, (
+      f"radius {radius}: Lys 7 lost backbone atoms: {sorted(heavy)}")
+    assert not ({"CD", "CE", "NZ"} & heavy), (
+      f"radius {radius}: Lys 7 is reached through its backbone, so its "
+      f"ammonium must not survive; got {sorted(heavy)}")
+
+
+def exercise_ligand_keeps_its_coordinating_group():
+  """A residue reached from its tip is cut at its configured bond.
+
+  BFS enters the Cys ligands of 1BQ8 at SG, so it meets the CA-CB entry
+  first and the thiolate survives."""
+  result = _run_endo_exo_protonated(_1BQ8_FE_SPHERE_PDB)[0]
+  hierarchy = result["model"].get_hierarchy()
+  by_res = {}
+  for atom in hierarchy.atoms():
+    if atom.element_is_hydrogen():
+      continue
+    if atom.parent().resname.strip() != "CYS":
+      continue
+    rg = atom.parent().parent()
+    by_res.setdefault(rg.resseq.strip(), set()).add(atom.name.strip())
+  assert by_res, "no Cys ligands in the region"
+  for resseq, names in sorted(by_res.items()):
+    assert {"CB", "SG"} <= names, (
+      f"coordinating Cys {resseq} lost its thiolate: {sorted(names)}")
+
+
+def exercise_symmetry_images_truncate_alike():
+  """Symmetry images of one residue are truncated the same way.
+
+  On the 2C2U fixture the metal sits on a 3-fold, so several images of one
+  residue enter the region; each is grown from its own seeds and they must
+  agree."""
+  result = _run_endo_exo_protonated(
+    _2C2U_FE_SPHERE_PDB, buffer__radius=6.0)[0]
+  hierarchy = result["model"].get_hierarchy()
+  # One shape per residue COPY: union the atom groups of a residue group,
+  # so a shared backbone plus an altloc'd sidechain counts once rather than
+  # as two shapes.  Each symmetry image lands in its own chain.
+  shapes = {}
+  for chain in hierarchy.chains():
+    for rg in chain.residue_groups():
+      names = set()
+      resname = ""
+      for ag in rg.atom_groups():
+        resname = resname or ag.resname.strip()
+        names.update(a.name.strip() for a in ag.atoms()
+                     if not a.element_is_hydrogen())
+      if names:
+        shapes.setdefault((resname, rg.resseq.strip()), set()).add(
+          frozenset(names))
+  assert shapes, "region is empty"
+  for (resname, resseq), variants in sorted(shapes.items()):
+    assert len(variants) == 1, (
+      f"{resname} {resseq} truncated differently across symmetry images: "
+      f"{[sorted(v) for v in variants]}")
+
+
 def exercise_terminal_carboxylate_detection():
   """A carboxylate terminus is recognised from the graph, not from names.
 
@@ -1574,6 +1867,9 @@ def run():
   exercise_element_filter()
   exercise_depth_and_skip_search()
   exercise_write_files_roundtrip()
+  exercise_scaffold_residue_keeps_no_functional_group()
+  exercise_ligand_keeps_its_coordinating_group()
+  exercise_symmetry_images_truncate_alike()
   exercise_terminal_carboxylate_kept()
   exercise_terminal_carboxylate_detection()
   exercise_cut_not_made_into_the_region()
@@ -1582,9 +1878,13 @@ def run():
   exercise_hydrogen_capper()
   exercise_bond_cut_preferred()
   exercise_bond_cut_heuristic()
+  exercise_proline_ring_is_never_cut()
+  exercise_preferred_cut_rows()
+  exercise_preferred_cuts_without_a_cut()
+  exercise_cut_refused_when_it_would_strand_the_anchor()
   exercise_bond_cut_backbone()
-  exercise_preferred_cut_fallback()
-  exercise_overgrowth_geometric_cut()
+  exercise_consumed_preferred_cut()
+  exercise_cut_depends_on_where_bfs_arrives()
   exercise_build_adjacency()
   print(format_cpu_times())
   print("OK")

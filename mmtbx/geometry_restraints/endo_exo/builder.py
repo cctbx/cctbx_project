@@ -105,15 +105,6 @@ class QMRegionBuilder(object):
     self.model_name = model_name
     self.default_output_filename = default_output_filename
 
-    if (self.params.capping.preferred_cuts_fallback
-        and not self.params.capping.preferred_cuts):
-      print(
-        'Note: capping.preferred_cuts_fallback=True has no effect because '
-        'capping.preferred_cuts=False (the geometric heuristic already applies '
-        'to every bond).',
-        file=self.logger,
-      )
-
     # Only the bond graph is needed: CDL ideals never reach the adjacency, and
     # flipping would move input coordinates for no gain here. Metal auto-linking
     # and the metal coordination library are off too, so the graph holds only
@@ -357,11 +348,7 @@ class QMRegionBuilder(object):
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
-      qm_atoms, adjacency, model, max_depth=self.params.max_search_depth,
-      preferred_cut_fallback=(
-        self.params.capping.preferred_cuts
-        and self.params.capping.preferred_cuts_fallback),
-    )
+      qm_atoms, adjacency, model, max_depth=self.params.max_search_depth)
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
 
