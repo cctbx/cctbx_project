@@ -657,19 +657,7 @@ phenix.autobuild:
         extensions: [.mtz, .sca, .hkl, .sdf]
         flag: "data="
         description: "Reflection data - prefer phased MTZ from phaser/refine"
-        # overall_best_final_refine: an AutoSol output that AutoBuild
-        # rejects.  It carries HL coefficients without PHIB/FOM, and
-        # AutoBuild requires both or neither:
-        #     -->Please either specify PHIB and HL coeffs or neither
-        #     You currently have: F-obs SIGF-obs None None HLA HLB HLC HLD
-        #     Sorry AutoBuild failed
-        # It failed that way once in five p9-sad runs (AIAgent_202); the
-        # other four picked overall_best_refine_data.mtz, which carries
-        # the phases and works.  Nothing distinguished the two, so the
-        # choice fell to ordering.  The sibling .pdb of the same stem is
-        # unaffected -- exclusions are per-slot and the model slot has
-        # its own patterns.
-        exclude_patterns: [map_coeffs, denmod_map, overall_best_final_refine]
+        exclude_patterns: [map_coeffs, denmod_map]
       sequence:
         extensions: [.fa, .fasta, .seq, .dat]
         flag: "seq_file="
