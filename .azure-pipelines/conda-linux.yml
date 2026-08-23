@@ -93,6 +93,7 @@ jobs:
         libXdamage \
         libXfixes \
         libXxf86vm \
+        rsync \
         wget \
         xorg-x11-server-Xvfb
     displayName: Install dependencies for CentOS
@@ -137,6 +138,7 @@ jobs:
         libxss1 \
         locales \
         pciutils \
+        rsync \
         subversion \
         unzip \
         wget

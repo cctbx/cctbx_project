@@ -948,14 +948,24 @@ ai_agent.py: session.get_all_bad_inject_params()   # v120: merged static ∪ lea
 **`session_info` field plumbing contract (parity-critical).**  Any value that
 `ai_agent.py` puts into the per-cycle `session_info` dict and that server-side code
 (PERCEIVE / BUILD / the gate) needs to read must be carried at EVERY hop of the
-shared transport path, or it is silently dropped:
+shared transport path, or it is silently dropped.
+
+**The wire whitelist is `build_session_state()`.**  Until 2026-08
+`build_request_v2()` held a second one, re-enumerating everything the first had
+just produced; eleven fields were lost there across two audits, including
+`log_program` — the whole purpose of protocol v9, which had therefore never once
+worked.  It now passes `session_state` through.  It remains the **parity
+chokepoint**: both agents call it exactly once and neither adds to
+`session_state` afterwards.  Verify any new field with
+`phenix_regression/ai_tools/tst_session_state_round_trip.py`, not by grepping
+`api_client.py` for the name.
 
 ```
 ai_agent.py session_info["X"]
   → build_session_state()        [api_client.py]   session_info → session_state
   → build_request_v2()           [api_client.py]   session_state → normalized_session_state
-                                                    (the WIRE WHITELIST — an explicit
-                                                     per-field copy; unlisted keys are dropped)
+                                                    (passes session_state THROUGH; applies
+                                                     only coercions and derived flags)
   → create_request()             [api_schema.py]   dict(session_state), no filter
   → apply_request_defaults()     [api_schema.py]   additive only (fills defaults,
                                                     never strips; the session_state
@@ -1019,11 +1029,20 @@ consumers (2 in `metrics_analyzer`, 6 in `thinking_agent`) reading a key that ne
 arrived, while `graph_nodes` read the other spelling and worked.  One working
 consumer masked the rest.
 
-**`tests/tst_transport_surfaces.py` now enforces this mechanically** for every field
+**`tests/tst_transport_surfaces.py` enforces this mechanically** for every field
 in every declared surface: a producer exists, each allow-list hop carries it, a
 consumer exists, and no key is renamed in flight.  It reads the sources as text so
 it runs without a full PHENIX environment, and it FAILS rather than skips when a
-source is unreadable.  Six occurrences of one failure mode — all in code whose
+source is unreadable.
+
+**But a text scan has a limit, and it cost seven more fields.**  Because it
+matches source text, a check is satisfied by the field name appearing *anywhere*
+in the file — including in the wrong function.  `client_protocol_version` and
+`log_program` were both "verified" this way while `build_request_v2` discarded
+the value 300 lines below where the name appeared.  For the value actually
+crossing, use `phenix_regression/ai_tools/tst_session_state_round_trip.py`, which
+runs `build_session_state` → `build_request_v2` and compares key sets.  Text
+scans and round-trip checks answer different questions; keep both.  Six occurrences of one failure mode — all in code whose
 author had this section available — is the case for a check rather than a
 paragraph.
 

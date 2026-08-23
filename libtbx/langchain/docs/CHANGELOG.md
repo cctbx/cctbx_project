@@ -1,4 +1,108 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4 / v121 / v121.1
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4 / v121 / v121.1 / v121.2
+
+## Version 121.2 (the transport chain: seven dropped fields, and every metric they broke)
+
+### Summary
+
+v121.1 fixed four dropped transport fields. This release found that
+**`log_program` — the whole point of protocol v9 — had never once
+worked**, and traced the consequences through five further defects, each
+of which had been masking the next.
+
+`build_request_v2()` rebuilt `session_state` field by field, a **second
+allow-list** twenty lines after `build_session_state()` produced the
+dict. Seven declared-and-consumed fields were dropped there, including
+two fixes already made and marked verified. The verifier check for both
+passed the whole time: it searched `api_client.py` for the field name,
+which was present — in the wrong function.
+
+With `log_program` absent, the server guessed the program from log text.
+On one production run that was **wrong on 5 of 6 cycles**: `phenix.refine`
+logs parsed with `phenix.autosol` patterns, and an `autobuild` log parsed
+as `phenix.autobuild_denmod`, which declares no metrics at all. With no
+registry patterns, a generic fallback supplied every value — and its
+pattern took the first number after an `R-free` label, which in every
+paired form Phenix emits is the **R-work** column.
+
+Those values drove stop decisions. At 2.5 Å the success threshold is
+0.23, so a misread 0.21 stopped a run that a correct 0.27 would have
+continued.
+
+### Fixed
+
+**Seven `session_state` fields now cross the boundary** — `log_program`,
+`log_cycle`, `client_protocol_version`, `structure_model`,
+`validation_history`, `model_is_placed`, `input_has_ligand`. Confirmed
+live by metrics only one program can produce: `Residues Built: 121`
+(autobuild) and `Bayes Cc: 17.90` (autosol).
+
+**The duplicate allow-list is gone.** `build_request_v2()` now passes
+`session_state` through, applying only coercions and derived flags — 120
+lines replaced by 26. It remains the parity chokepoint; both agents call
+it exactly once and neither adds to `session_state` afterwards.
+
+**A latent `KeyError` the fix activated.** A misindented debug line
+inside the `log_cycle` guard indexed `session_state["explicit_program"]`
+with `[]`. Dormant only while `log_cycle` never crossed; the moment it
+did, every cycle ended with *"No command was generated for program
+'unknown'"*.
+
+**R-factors read the right column.** One shared `r_factors` helper
+replaces three misreading sites. Handles every form found in 21 logs —
+`R/Rfree=0.21/0.27`, `R and R-free: 0.20 0.26`, `R/R-free: 0.5/0.54`,
+`R: 0.21 Rfree: 0.27` — and rejects values ≥ 1.0, so `999.90` no longer
+reaches a metric. Adds an R-free ≥ R-work guard with a 0.005 tolerance.
+
+**`bayes_cc` recovered.** The quoted-string truncator's pattern could
+cross newlines, so an odd apostrophe count — 3,975 in one autosol log,
+from Python-style label lists — paired quotes thousands of lines apart.
+All 61 "long" spans were artefacts; one destroyed `bayes_cc`. Change D
+now preserves **7 of 7** metrics rather than 6.
+
+**Geometry metrics take the last plausible value.** `re.search` returned
+an early macro-cycle, and an optional `RMSD` with an unbounded number
+captured counts and degrees: `Unresolved non-hydrogen angles: 12`,
+`target_angle = 180`, `Bonds: 150`.
+
+**`residues_built` anchored to a line.** The old pattern captured digits
+*before* the phrase, crossing newlines, and returned the R-free mantissa
+`4506658578498925` as a residue count. It had never once been correct.
+
+**The agent's own summary block is stripped before extraction.** Reading
+it back was circular — an extraction error rewritten as apparent program
+output.
+
+**`map_to_model` can express four user directives** it previously
+discarded; 6 of 23 program-scoped directives were real, supported, and
+silently dropped.
+
+**Sanity events filter on a severity the checker emits.** `red_flag` is
+never assigned, so the list was always empty on exactly the runs that
+had critical issues.
+
+**Two `webbrowser.open` calls replaced by `load_url`.**
+
+### Testing
+
+Ten modules in `phenix_regression/ai_tools/`, all mutation-tested. The
+two that matter most for this release:
+
+- `tst_session_state_round_trip.py` — asserts every field
+  `build_session_state` produces arrives in the request. It failed
+  before the fix, naming exactly the seven, and passes through the
+  refactor **unchanged**, because it asserts the property rather than
+  the mechanism.
+- `tst_server_session_state_access.py` — a static AST check that every
+  `session_state["X"]` sits inside a guard testing `X`, plus a
+  behavioural check across 16 session shapes.
+
+### Note
+
+**A source scan confirms a line exists; it does not confirm a value
+crosses.** Two verifier checks passed on broken code for as long as the
+defect existed. `contract.py` now says so, and points at the round-trip
+test.
+
 
 ## Version 121.1 (transport-surface audit: four dropped fields, one rename, and a test)
 

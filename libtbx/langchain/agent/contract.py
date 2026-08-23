@@ -75,11 +75,26 @@ MIN_SUPPORTED_PROTOCOL_VERSION = 1
 # nothing looks wrong:
 #
 #     ai_agent.py        session_info["x"] = ...            (produce)
-#     api_client.build_session_state                        (COPY: allow-list)
-#     build_request_v2 / transport
+#     api_client.build_session_state                        (COPY: allow-list 1)
+#     api_client.build_request_v2                           (passes session_state
+#                                                            through unchanged)
 #     run_ai_agent.run   session_info["x"] = session_state["x"]
-#                                                           (COPY: allow-list)
+#                                                           (COPY: allow-list 2)
 #     perceive / consumers  session_info.get("x", default)  (consume)
+#
+# THERE USED TO BE A THIRD.  build_request_v2 rebuilt session_state
+# field by field -- a second allow-list twenty lines after
+# build_session_state built the dict, adding nothing and sanitizing
+# nothing.  ELEVEN declared-and-consumed fields were lost there across
+# two audits, including two fixes that had been made and marked
+# verified: client_protocol_version ("the server saw v1 for every
+# client") and log_program (the entire purpose of protocol v9, which
+# had therefore never once worked).  Both were applied at allow-list 1
+# and discarded at the second, while a check that searched
+# api_client.py for the field name passed.
+#
+# That block now passes session_state through, applying only coercions
+# and derived flags.  Do not reintroduce an enumeration there.
 #
 # So this list is neither necessary nor sufficient for transport:
 #
@@ -90,9 +105,16 @@ MIN_SUPPORTED_PROTOCOL_VERSION = 1
 #   - build_session_state also carries fields NOT declared here, e.g.
 #     structure_model, strategy_memory, validation_history, user_advice.
 #
-# Four defects of exactly this shape were found in one audit (log_program,
-# state["warnings"], client_protocol_version, mtz_rfree_map).  When adding
-# a field, add the two copies as well, and run tests/tst_transport_surfaces.py.
+# Eleven defects of exactly this shape have been found across two audits.
+#
+# WHEN ADDING A FIELD: add ALL THREE copies, then run
+#     phenix_regression/ai_tools/tst_session_state_round_trip.py
+# which asserts that every field build_session_state produces arrives in
+# the request.  It is the only check here that tests the VALUE crossing
+# rather than the NAME appearing -- a source scan is satisfied by a line
+# in the wrong function.
+#
+# Also run tests/tst_transport_surfaces.py.
 # ---------------------------------------------------------------------------
 
 SESSION_INFO_FIELDS = [

@@ -227,7 +227,25 @@ CONTROL_CHAR_PATTERN = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 # Pattern to match single-quoted strings
 # Captures content between single quotes (non-greedy for nested quotes)
-SINGLE_QUOTED_PATTERN = re.compile(r"'([^']*)'")
+# A quoted string does not span lines.
+#
+# Without \n in the negated class this pattern pairs an apostrophe with
+# one thousands of lines away.  autosol logs are full of Python-style
+# label lists -- ['HLAM', 'HLBM', 'HLCM', 'HLDM'] -- 3,975 apostrophes in
+# one log, an ODD number, so pairing runs away.  Every span the
+# truncator then judged "long" (61 of them, up to 16,754 characters) was
+# an artefact that crossed hundreds of newlines, and truncating them
+# deleted real log content.
+#
+# Measured consequence: autosol_2.log's bayes_cc sits at 98.5% of the
+# file, inside a 1,283-character phantom span, and was destroyed before
+# any truncation policy saw it.  That is why change D scored 6 of 7
+# metrics rather than 7.  With \n excluded it survives at 27.5.
+#
+# No corpus log contains a genuine single-LINE quoted dump over 500
+# characters, so nothing this truncator was written for is lost -- the
+# pdb70_text case it targets is one line by construction.
+SINGLE_QUOTED_PATTERN = re.compile(r"'([^'\n]*)'")
 
 
 # =============================================================================
