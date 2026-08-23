@@ -1361,6 +1361,104 @@ def exercise_next_residue_follows_the_peptide_bond():
     ca_of("1"), identity, set(), adjacency, atoms) is False
 
 
+# Four zinc ions at the corners of a tetrahedron, a water at its centre and
+# another far outside it.  Neither test structure puts a water inside a
+# region's hull at any radius, so this needs a fixture built for it.
+_HULL_WATER_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A   1      34.000  34.000  34.000  1.00 10.00          ZN
+HETATM    2 ZN    ZN A   2      34.000  26.000  26.000  1.00 10.00          ZN
+HETATM    3 ZN    ZN A   3      26.000  34.000  26.000  1.00 10.00          ZN
+HETATM    4 ZN    ZN A   4      26.000  26.000  34.000  1.00 10.00          ZN
+HETATM    5  O   HOH A   5      30.400  30.100  29.700  1.00 10.00           O
+HETATM    6  O   HOH A   6      52.000  52.000  52.000  1.00 10.00           O
+END
+"""
+
+# The same idea under P 1 2 1, where -x,y,-z carries the hull centre
+# (20, 30, 20) onto (40, 30, 40).  The water sits there, so its own position
+# is nowhere near the hull and only its symmetry image falls inside.
+_HULL_WATER_SYMMETRY_PDB = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1 ZN    ZN A   1      24.000  34.000  24.000  1.00 10.00          ZN
+HETATM    2 ZN    ZN A   2      24.000  26.000  16.000  1.00 10.00          ZN
+HETATM    3 ZN    ZN A   3      16.000  34.000  16.000  1.00 10.00          ZN
+HETATM    4 ZN    ZN A   4      16.000  26.000  24.000  1.00 10.00          ZN
+HETATM    5  O   HOH A   5      40.000  30.000  40.000  1.00 10.00           O
+END
+"""
+
+
+def _hull_water_nodes(pdb_str, enabled=True):
+  """Run ``_add_hull_waters`` over a hull made of the fixture's zinc ions.
+
+  The method reads only the crystal symmetry, the sites and the hierarchy,
+  so the fixture needs no restraints and the builder is used without its
+  usual setup."""
+  from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  atoms = list(model.get_hierarchy().atoms())
+  identity = _canon_op(sgtbx.rt_mx())
+
+  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  params = master.extract()
+  params.include_waters_in_convex_hull = enabled
+  builder = QMRegionBuilder.__new__(QMRegionBuilder)
+  builder.params = params
+  builder.logger = io.StringIO()
+
+  visited = {(i_seq, identity) for i_seq, atom in enumerate(atoms)
+             if atom.element.strip().upper() == "ZN"}
+  assert len(visited) == 4, f"fixture changed: {len(visited)} hull vertices"
+  return model, atoms, visited, builder._add_hull_waters(model, visited)
+
+
+def exercise_hull_waters():
+  """A water inside the region's convex hull is pulled in; one outside is
+  not, and the knob turns the whole thing off.
+
+  Worth pinning because it is reached on real structures -- 8FUM adds 23
+  water atoms this way around Fe at radius 8 -- while no test structure
+  here triggers it at any radius."""
+  model, atoms, visited, out = _hull_water_nodes(_HULL_WATER_PDB)
+  assert model is not None
+  added = {atoms[i_seq].parent().parent().resseq.strip()
+           for i_seq, _op in out - visited}
+  assert added == {"5"}, (
+    f"expected only the water at the hull centre, got {sorted(added)}")
+
+  _model, _atoms, visited_off, out_off = _hull_water_nodes(
+    _HULL_WATER_PDB, enabled=False)
+  assert out_off == visited_off, (
+    "include_waters_in_convex_hull=False still added waters")
+
+
+def exercise_hull_waters_use_symmetry_images():
+  """A water is taken under the operation that brings it into the hull.
+
+  Its own position is far outside, so a search reading only the deposited
+  coordinates would find nothing here.  The operation recorded has to be
+  the space-group one composed with the lattice shift carrying the water to
+  its nearest image, since that pair is what places the atom when the
+  region is materialised."""
+  model, atoms, visited, out = _hull_water_nodes(_HULL_WATER_SYMMETRY_PDB)
+  assert (model.crystal_symmetry().space_group().type().lookup_symbol()
+          == "P 1 2 1")
+  new = out - visited
+  assert len(new) == 1, f"expected one water image, got {len(new)}"
+
+  identity_xyz = _canon_op(sgtbx.rt_mx()).as_xyz()
+  (i_seq, op), = new
+  assert atoms[i_seq].parent().resname.strip() == "HOH"
+  assert op.as_xyz() != identity_xyz, (
+    "the water was taken at its deposited position, which is outside the "
+    "hull")
+  assert op.as_xyz() == "-x+1,y,-z+1", (
+    f"expected the 2-fold composed with its lattice shift, got {op.as_xyz()}")
+
+
 def exercise_build_adjacency():
   """Intra-ASU bonds carry the identity op on both directed edges;
   symmetry-crossing bonds carry the rt_mx forward and its inverse on the
@@ -2411,6 +2509,8 @@ def run():
   exercise_cut_depends_on_where_bfs_arrives()
   exercise_next_residue_follows_the_peptide_bond()
   exercise_next_residue_considers_every_bonded_nitrogen()
+  exercise_hull_waters()
+  exercise_hull_waters_use_symmetry_images()
   exercise_build_adjacency()
   print(format_cpu_times())
   print("OK")
