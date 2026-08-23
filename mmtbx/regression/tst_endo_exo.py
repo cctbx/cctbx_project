@@ -835,14 +835,28 @@ _PREFERRED_CUT_FRAGMENTS = {
 }
 
 
+_MONOMER_SERVER = []
+
+
+def _monomer_server():
+  """Return a shared monomer library server.
+
+  Constructing one re-reads the library's CIF files, which costs far more
+  than every lookup made of it here put together, and it holds no cache of
+  its own."""
+  from mmtbx.monomer_library import server
+
+  if not _MONOMER_SERVER:
+    _MONOMER_SERVER.append(server.server())
+  return _MONOMER_SERVER[0]
+
+
 def _ideal_heavy_bonds(resname):
   """Return ``{atom name: set of bonded atom names}`` for the ideal monomer.
 
   Read from the monomer library rather than from a fixture, so the check
   does not depend on which residues a test structure happens to contain."""
-  from mmtbx.monomer_library import server
-
-  comp = server.server().get_comp_comp_id_direct(resname)
+  comp = _monomer_server().get_comp_comp_id_direct(resname)
   adjacency = {}
   for bond in comp.bond_list:
     name1 = bond.atom_id_1.strip()
@@ -1223,6 +1237,73 @@ ATOM     14  O   ALA A   9       4.251   4.390   6.000  1.00 10.00           O
 ATOM     15  CB  ALA A   9       4.988   1.227   4.801  1.00 10.00           C
 END
 """
+
+
+# ALA 1's carbonyl carbon carries two nitrogens in other residues: the real
+# successor ALA 2, and an NH2 amide cap.  Both bonds arise from proximity, so
+# no LINK record is needed for a carbonyl to end up with a second nitrogen.
+_TWO_NITROGEN_PDB = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 10.00           N
+ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00 10.00           C
+ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00 10.00           C
+ATOM      4  O   ALA A   1       1.251   2.390   0.000  1.00 10.00           O
+ATOM      5  CB  ALA A   1       1.988  -0.773  -1.199  1.00 10.00           C
+ATOM      6  N   ALA A   2       3.332   1.540   0.000  1.00 10.00           N
+ATOM      7  CA  ALA A   2       3.970   2.850   0.000  1.00 10.00           C
+ATOM      8  C   ALA A   2       5.480   2.700   0.000  1.00 10.00           C
+ATOM      9  O   ALA A   2       6.200   3.690   0.000  1.00 10.00           O
+ATOM     10  CB  ALA A   2       3.560   3.640   1.240  1.00 10.00           C
+HETATM   11  N   NH2 B   9       2.009   1.420   1.330  1.00 10.00           N
+END
+"""
+
+
+def exercise_next_residue_considers_every_bonded_nitrogen():
+  """A carbonyl carrying two nitrogens is judged on both, not on whichever
+  the graph offers first.
+
+  An amidated C-terminus or an isopeptide bond puts a second nitrogen on a
+  carbonyl carbon, and the adjacency is a set, so stopping at the first
+  match picks between them by hash order: whichever is not picked reads as
+  absent, and the CA-N cut is then taken or refused on a false premise.
+  Asserting both directions pins that without depending on the ordering, as
+  the wrong answer under a first-match rule falls on one side or the
+  other."""
+  _model, atoms, adjacency = _protonated_graph(_TWO_NITROGEN_PDB)
+  identity = _canon_op(sgtbx.rt_mx())
+  grower = QMRegionGrower(
+    BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
+    log=io.StringIO())
+
+  def nodes_of(chain_id, resseq):
+    return {(i_seq, identity) for i_seq, atom in enumerate(atoms)
+            if atom.parent().parent().resseq.strip() == resseq
+            and atom.parent().parent().parent().id.strip() == chain_id}
+
+  carbonyl = next(i_seq for i_seq, atom in enumerate(atoms)
+                  if atom.name.strip() == "C"
+                  and atom.parent().parent().resseq.strip() == "1")
+  bonded_nitrogens = [
+    j_seq for j_seq, _op in adjacency[carbonyl]
+    if atoms[j_seq].element.strip().upper() == "N"
+    and atoms[j_seq].parent().parent().resseq.strip() != "1"
+  ]
+  assert len(bonded_nitrogens) == 2, (
+    f"fixture changed shape: C of residue 1 has {len(bonded_nitrogens)} "
+    f"nitrogen neighbours in other residues, expected 2")
+
+  ca_1 = next(i_seq for i_seq, atom in enumerate(atoms)
+              if atom.name.strip() == "CA"
+              and atom.parent().parent().resseq.strip() == "1")
+
+  for chain_id, resseq, description in (
+      ("A", "2", "the peptide successor"),
+      ("B", "9", "the amide cap")):
+    assert grower._any_amide_of_next_residue_in_visited(
+      ca_1, identity, nodes_of(chain_id, resseq), adjacency, atoms) is True, (
+      f"{description} is bonded to this carbonyl and in the region, but the "
+      f"forward direction was reported absent")
 
 
 def exercise_next_residue_follows_the_peptide_bond():
@@ -1746,27 +1827,38 @@ def exercise_radius_only_grows_the_region():
   check does not."""
   for pdb_str, overrides in (
       (_1BQ8_FE_SPHERE_PDB, {}),):
-    previous = None
+    previous, previous_interior = None, None
     # 5.0 -> 6.0 is the step that matters: it is where a guard keyed on the
     # seed set drops TRP 37 as the sphere widens.
     for radius in (4.0, 5.0, 6.0, 8.0):
       results = _run_endo_exo_protonated(
         pdb_str, buffer__radius=radius, **overrides)
-      present = set()
+      present, interior = set(), set()
       for result in results:
         hierarchy = result["model"].get_hierarchy()
-        for atom in hierarchy.atoms():
+        caps = set(result["cap_iseqs"])
+        for i_seq, atom in enumerate(hierarchy.atoms()):
           residue_group = atom.parent().parent()
-          present.add((residue_group.parent().id.strip(),
-                       residue_group.resseq.strip(),
-                       atom.parent().resname.strip(),
-                       atom.name.strip()))
+          key = (residue_group.parent().id.strip(),
+                 residue_group.resseq.strip(),
+                 atom.parent().resname.strip(),
+                 atom.name.strip())
+          present.add(key)
+          if i_seq not in caps:
+            interior.add(key)
       if previous is not None:
         lost = previous - present
         assert not lost, (
           f"radius {radius} dropped {len(lost)} atom(s) kept at the smaller "
           f"radius, e.g. {sorted(lost)[:4]}")
-      previous = present
+        # Capping leaves the name alone, so an atom demoted from interior
+        # to a cap still matches above; that is a loss of chemistry rather
+        # than of an atom, and has to be looked for separately.
+        demoted = previous_interior - interior
+        assert not demoted, (
+          f"radius {radius} turned {len(demoted)} interior atom(s) into "
+          f"caps, e.g. {sorted(demoted)[:4]}")
+      previous, previous_interior = present, interior
 
 
 def exercise_region_does_not_depend_on_queue_order():
@@ -1795,8 +1887,11 @@ def exercise_region_does_not_depend_on_queue_order():
       # Fixed reorderings rather than random ones, so a failure here
       # reproduces exactly.
       def reordered(self, queue, *args, _trial=trial, **kwargs):
+        # Rotate by at least one and reverse on alternate trials, so no
+        # trial leaves the order untouched.
         items = list(queue)
-        items = items[_trial:] + items[:_trial]
+        shift = _trial + 1
+        items = items[shift:] + items[:shift]
         if _trial % 2:
           items.reverse()
         queue.clear()
@@ -1838,29 +1933,40 @@ def exercise_amide_unit_is_never_split():
   entirely, and the cuts fall on CA-C and CA-N either side of it. A cap
   appearing on the oxygen or the nitrogen would mean an amide carved in
   half, leaving an aldehyde or a bare amine in the QM region."""
+  checked = 0
   for pdb_str, overrides in (
       (_1BQ8_FE_SPHERE_PDB, {}),
-      (_TRIPEPTIDE_PDB, {"selection": ["chain A and resseq 2 and name SG"]})):
-    for radius in (7.0,):
-      results = _run_endo_exo_protonated(
-        pdb_str, buffer__radius=radius, **overrides)
-      for result in results:
+      (_2C2U_FE_SPHERE_PDB, {})):
+    for radius in (5.0, 7.0):
+      for result in _run_endo_exo_protonated(
+          pdb_str, buffer__radius=radius, **overrides):
         hierarchy = result["model"].get_hierarchy()
         atoms = list(hierarchy.atoms())
         caps = set(result["cap_iseqs"])
-        partners = [(j, element) for j, element in (
-          (j, other.element.strip().upper()) for j, other in enumerate(atoms))
-          if element in ("O", "N")]
+        # Capping sets the element to H but leaves the name alone, so a
+        # severed nitrogen still reads as "N" and no longer reads as
+        # nitrogen.  Ask what each atom WAS, or the check walks straight
+        # past the atoms it exists to catch.
+        was = {i_seq: atom.element.strip().upper()
+               for i_seq, atom in enumerate(atoms)}
+        was.update({
+          i_seq: element.strip().upper() for i_seq, element
+          in zip(result["cap_iseqs"], result["cap_original_elements"])})
+        partners = [i_seq for i_seq, element in was.items()
+                    if element in ("O", "N")]
+
         for i_seq, atom in enumerate(atoms):
           if i_seq in caps or atom.name.strip() != "C":
             continue
           if atom.parent().resname.strip() == "HOH":
             continue
           oxygens, nitrogens = [], []
-          for j_seq, element in partners:
+          for j_seq in partners:
+            # A cap sits 1.1 A from its anchor, so it stays within reach
+            # of the carbonyl it was cut from and is still found here.
             if j_seq == i_seq or atom.distance(atoms[j_seq]) > 1.45:
               continue
-            (oxygens if element == "O" else nitrogens).append(j_seq)
+            (oxygens if was[j_seq] == "O" else nitrogens).append(j_seq)
           where = (f"{atom.parent().resname.strip()}"
                    f"{atom.parent().parent().resseq.strip()} at radius "
                    f"{radius}")
@@ -1871,6 +1977,60 @@ def exercise_amide_unit_is_never_split():
           assert not nitrogens or any(j not in caps for j in nitrogens), (
             f"{where}: amide nitrogen capped away, splitting the peptide "
             f"unit")
+          checked += len(nitrogens)
+
+  assert checked > 30, (
+    f"only {checked} carbonyl-nitrogen pairs examined; the nitrogen half "
+    f"of this check is not exercising anything")
+
+
+# An N-terminal proline, whose secondary nitrogen carries two hydrogens
+# rather than the three of a primary amine.
+_PROLINE_NTERM_PDB = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   PRO A   1       8.872   7.421   8.563  1.00  3.42           N
+ATOM      2  CA  PRO A   1       8.561   7.954   9.916  1.00  3.79           C
+ATOM      3  C   PRO A   1       8.613   9.480   9.954  1.00  3.62           C
+ATOM      4  O   PRO A   1       8.148  10.060  10.929  1.00  5.67           O
+ATOM      5  CB  PRO A   1       9.655   7.382  10.800  1.00  4.40           C
+ATOM      6  CG  PRO A   1      10.750   7.051   9.885  1.00  5.10           C
+ATOM      7  CD  PRO A   1      10.139   6.613   8.599  1.00  3.49           C
+ATOM      8  N   ALA A   2       9.180  10.100   8.930  1.00  3.50           N
+ATOM      9  CA  ALA A   2       9.290  11.550   8.850  1.00  3.60           C
+ATOM     10  C   ALA A   2      10.010  11.960   7.570  1.00  3.70           C
+ATOM     11  O   ALA A   2      10.400  11.100   6.780  1.00  3.80           O
+ATOM     12  CB  ALA A   2       7.910  12.190   8.880  1.00  3.90           C
+END
+"""
+
+
+def exercise_terminal_amine_covers_proline():
+  """An N-terminal proline is protected too.
+
+  Its nitrogen is secondary, carrying CD as well as CA within its own
+  residue, so a free proline terminus holds two hydrogens where a primary
+  amine holds three.  A guard demanding three would quietly stop protecting
+  every proline terminus, and no other fixture here has one."""
+  _model, atoms, adjacency = _protonated_graph(_PROLINE_NTERM_PDB)
+
+  def nitrogen(resseq):
+    return next(i_seq for i_seq, atom in enumerate(atoms)
+                if atom.parent().parent().resseq.strip() == resseq
+                and atom.name.strip() == "N")
+
+  proline_n = nitrogen("1")
+  hydrogens = sum(1 for j_seq, _op in adjacency[proline_n]
+                  if atoms[j_seq].element_is_hydrogen())
+  assert hydrogens == 2, (
+    f"fixture changed: the proline terminus carries {hydrogens} hydrogens, "
+    f"expected 2, so it no longer pins the threshold")
+
+  assert QMRegionGrower._is_terminal_amine(
+    proline_n, adjacency, atoms) is True, (
+    "an N-terminal proline was not recognised as a chain terminus")
+  assert QMRegionGrower._is_terminal_amine(
+    nitrogen("2"), adjacency, atoms) is False, (
+    "the mid-chain nitrogen following proline was called a terminus")
 
 
 def exercise_terminal_amine_is_not_any_nitrogen():
@@ -2229,6 +2389,7 @@ def run():
   exercise_symmetry_images_truncate_alike()
   exercise_terminal_carboxylate_kept()
   exercise_terminal_amine_kept()
+  exercise_terminal_amine_covers_proline()
   exercise_terminal_amine_is_not_any_nitrogen()
   exercise_amide_unit_is_never_split()
   exercise_radius_only_grows_the_region()
@@ -2249,6 +2410,7 @@ def run():
   exercise_consumed_preferred_cut()
   exercise_cut_depends_on_where_bfs_arrives()
   exercise_next_residue_follows_the_peptide_bond()
+  exercise_next_residue_considers_every_bonded_nitrogen()
   exercise_build_adjacency()
   print(format_cpu_times())
   print("OK")

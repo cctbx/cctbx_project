@@ -635,8 +635,7 @@ class QMRegionGrower:
     region only through C, and this asks whether that direction is already
     there.  It reads the growing region rather than the frozen seed set:
     keying on the seeds makes the answer change with the radius, so an atom
-    kept by a narrow sphere is cut away by a wider one, which is a worse
-    failure than the traversal-order sensitivity noted below.
+    kept by a narrow sphere is cut away by a wider one.
 
     The next residue is the one holding the N that C is bonded to, followed
     along the peptide bond rather than taken from the chain's residue
@@ -644,11 +643,20 @@ class QMRegionGrower:
     fall inside the sphere, so the neighbour in that list is routinely
     across a gap and not bonded at all.
 
+    Every such nitrogen is considered, not the first one the graph happens
+    to offer.  A carbonyl carbon can carry more than one -- an amidated
+    C-terminus or an isopeptide bond puts a second there, and no LINK
+    record is needed for one to appear -- and the adjacency is a set, so
+    stopping at the first would pick between them by hash order.  Each
+    candidate is looked up under the operation that reaches it, composed
+    with *sym_op*, since the bond followed may itself cross a symmetry
+    boundary.
+
     Parameters
     ----------
     atom_idx : int
     sym_op : cctbx.sgtbx.rt_mx
-        Symmetry image of the residue to check.
+        Symmetry image of the residue holding *atom_idx*.
     visited : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
@@ -658,21 +666,22 @@ class QMRegionGrower:
     bool
     """
     residue_group = atoms[atom_idx].parent().parent()
-    carbonyl_iseq = next(
-      (residue_atom.i_seq
-       for atom_group in residue_group.atom_groups()
-       for residue_atom in atom_group.atoms()
-       if residue_atom.name.strip().upper() == 'C'), None)
-    if carbonyl_iseq is None:
-      return False
+    carbonyl_iseqs = [
+      residue_atom.i_seq
+      for atom_group in residue_group.atom_groups()
+      for residue_atom in atom_group.atoms()
+      if residue_atom.name.strip().upper() == 'C'
+    ]
 
-    for neighbour_iseq in _neighbour_iseqs(adjacency, carbonyl_iseq):
-      other = atoms[neighbour_iseq]
-      if other.element.strip().upper() != 'N':
-        continue
-      other_group = other.parent().parent()
-      if other_group.memory_id() == residue_group.memory_id():
-        continue
-      return self._any_amide_in_residue_group_in_visited(
-        other_group, sym_op, visited)
+    for carbonyl_iseq in carbonyl_iseqs:
+      for (neighbour_iseq, edge_op) in adjacency[carbonyl_iseq]:
+        other = atoms[neighbour_iseq]
+        if other.element.strip().upper() != 'N':
+          continue
+        other_group = other.parent().parent()
+        if other_group.memory_id() == residue_group.memory_id():
+          continue
+        if self._any_amide_in_residue_group_in_visited(
+            other_group, _canon_op(sym_op.multiply(edge_op)), visited):
+          return True
     return False
