@@ -769,6 +769,7 @@ def test_search_nearest_cell_matches_direct_computation():
         "space_group=%s" % query_sg,
         "data_file=%s" % csv_path,
         "n_results=%d" % len(sgs_ucs),
+        "metric=cellparams",
     ]
     run_out = io.StringIO()
     search_nearest_cell.run(query_args, out=run_out)
