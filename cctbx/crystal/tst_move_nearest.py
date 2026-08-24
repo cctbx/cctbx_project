@@ -1,3 +1,5 @@
+import io
+
 from cctbx import uctbx, sgtbx
 from cctbx.crystal import symmetry
 from cctbx.uctbx.near_minimum import cell_distance
@@ -587,6 +589,225 @@ def test_min_cell_frame_prefilter_ties():
           "cycling; finalized cell remains lattice-equivalent each time")
 
 
+def test_fetch_and_search_symmetry_construction_agree():
+    """
+    Pins fetch_pdb_cells.py's private `_crystal_symmetry_from_row` and
+    search_nearest_cell.py's inline :R-retry block inside `load_pdb_cells`
+    together. Per Decision 3 of the fetch/precompute plan, these are two
+    independently duplicated copies of the same bare-rhombohedral-retry
+    logic (no shared helper module in cctbx/command_line/); this test
+    catches silent divergence between them.
+    """
+    from cctbx.command_line import fetch_pdb_cells, search_nearest_cell
+
+    # (pdb_id, a, b, c, alpha, beta, gamma, space_group_symbol): a few
+    # ordinary symbols, a bare rhombohedral symbol needing the :R retry (at
+    # two different pseudo-cubic cells -- see test_pla2_abs_2023), an
+    # explicit :H rhombohedral symbol that should NOT need a retry, and one
+    # row that should fail both variants.
+    rows_in = [
+        ('synC2a', 49.021, 52.475, 96.609, 90, 96.53, 90, 'C2'),
+        ('synP2a', 33.429, 95.775, 33.665, 90, 101.67, 90, 'P2'),
+        ('synP1a', 40.157, 41.867, 97.795, 91.11, 92.73, 107.18, 'P1'),
+        ('synC222', 37.656, 54.197, 95.677, 90, 90, 90, 'C222'),
+        ('synP4a', 29.130, 29.130, 94.257, 90, 90, 90, 'P4'),
+        ('synP3a', 33.200, 33.200, 96.040, 90, 90, 120, 'P3'),
+        ('synRhomA', 57.98, 57.98, 57.98, 92.02, 92.02, 92.02, 'R 3 2'),
+        ('synRhomB', 57.10, 57.10, 57.10, 89.75, 89.75, 89.75, 'R 3 2'),
+        ('synHexR3', 80.36, 80.36, 99.44, 90, 90, 120, 'R3:H'),
+        ('synBad', 10, 10, 10, 90, 90, 90, 'not a real symbol'),
+        ('synP222', 31.760, 33.552, 94.998, 90, 90, 90, 'P222'),
+        ('synC2b', 54.646, 79.135, 103.244, 90, 102.08, 90, 'C2'),
+    ]
+    expect_fail = {'synBad'}
+
+    sg_info_cache = {}
+    direct_cs = {}
+    for pdb_id, a, b, c, al, be, ga, sg in rows_in:
+        try:
+            cs = fetch_pdb_cells._crystal_symmetry_from_row(
+                a, b, c, al, be, ga, sg, sg_info_cache)
+        except Exception:
+            assert pdb_id in expect_fail, \
+                f"{pdb_id} unexpectedly failed _crystal_symmetry_from_row"
+            continue
+        assert pdb_id not in expect_fail, \
+            f"{pdb_id} unexpectedly succeeded in _crystal_symmetry_from_row"
+        direct_cs[pdb_id] = cs
+    assert set(direct_cs) == {r[0] for r in rows_in} - expect_fail
+
+    # Feed the same rows through the real CSV writer (process_entry-shaped
+    # dicts, Z filled with a placeholder), then load them back through
+    # search_nearest_cell's independent inline :R-retry copy.
+    base_rows = [
+        {
+            'pdb_id': pdb_id, 'unit_cell_a': a, 'unit_cell_b': b,
+            'unit_cell_c': c, 'unit_cell_alpha': al, 'unit_cell_beta': be,
+            'unit_cell_gamma': ga, 'unit_cell_Z': 1, 'space_group': sg,
+        }
+        for pdb_id, a, b, c, al, be, ga, sg in rows_in
+    ]
+    csv_path = '/Users/dwpaley/daily/20251120/.tmp/tst_symmetry_equiv.csv'
+    fetch_pdb_cells.write_cells_csv(base_rows, csv_path, out=io.StringIO())
+
+    loaded_rows, n_skipped, _ = search_nearest_cell.load_pdb_cells(csv_path)
+    loaded_cs = dict(loaded_rows)
+
+    assert n_skipped == len(expect_fail), \
+        f"expected {len(expect_fail)} skipped rows, got {n_skipped}"
+    assert set(loaded_cs) == set(direct_cs)
+
+    for pdb_id, cs_direct in direct_cs.items():
+        cs_loaded = loaded_cs[pdb_id]
+        np.testing.assert_allclose(
+            cs_direct.unit_cell().parameters(),
+            cs_loaded.unit_cell().parameters(),
+            rtol=1e-6, atol=1e-6,
+            err_msg=f"{pdb_id}: unit cell mismatch between the two code paths")
+        assert cs_direct.space_group_info().type().number() == \
+            cs_loaded.space_group_info().type().number(), \
+            f"{pdb_id}: space group mismatch between the two code paths"
+
+    print("fetch_pdb_cells._crystal_symmetry_from_row and "
+          "search_nearest_cell.load_pdb_cells agree on "
+          f"{len(direct_cs)} rows, including a bare-rhombohedral :R retry; "
+          f"{len(expect_fail)} row(s) correctly rejected by both")
+
+
+def test_search_nearest_cell_matches_direct_computation():
+    """
+    Ground-truth check for cctbx.search_nearest_cell.run() against a
+    synthetic augmented CSV. Replaces the retired "precomputed vs
+    on-the-fly fallback" comparison (there is no fallback path anymore --
+    see Decision 2 of the fetch/precompute plan). The augmented CSV's
+    min-cell columns are computed in-process via
+    fetch_pdb_cells.write_cells_csv (the same precompute step
+    cctbx.fetch_pdb_cells performs on a real fetch), and the expected
+    per-row distances are computed independently: reduce each row to its
+    minimum cell and take the minimum cell_distance to any of the query's
+    nearly-reduced settings -- exactly the quantity run() reports as
+    "Distance" (see test_min_cell_frame_prefilter's proof that the
+    min-cell-frame prefilter agrees exactly with this per-row computation).
+    """
+    from cctbx.command_line import fetch_pdb_cells, search_nearest_cell
+
+    # Table 12's cells (test_table11_database) plus a few cells from the
+    # a2a/pla2 tables, for a synthetic database spanning several space
+    # groups.
+    sgs_ucs = [
+        ['C2',   [ 49.021,  52.475,  96.609,  90,  96.53,  90     ]], # 1rgx
+        ['P2',   [ 33.429,  95.775,  33.665,  90, 101.67,  90     ]], # 1r8m
+        ['P1',   [ 40.157,  41.867,  97.795,  91.11, 92.73, 107.18]], # 2fxo
+        ['C222', [ 37.656,  54.197,  95.677,  90,  90,     90     ]], # 4rne
+        ['C2',   [ 57.933,  56.341,  99.721,  90,  98.86,  90     ]], # 3mgd
+        ['C222', [ 40.328,  50.126,  94.237,  90,  90,     90     ]], # 5yo3
+        ['C222', [ 40.218,  60.641,  96.119,  90,  90,     90     ]], # 4gzn
+        ['C2',   [195.72,   37.420,  40.280,  90,  94.66,  90     ]], # 3vvw
+        ['P2',   [ 33.078,  33.621,  99.138,  90,  96.75,  90     ]], # 4bhv
+        ['C2',   [ 54.646,  79.135, 103.244,  90, 102.08,  90     ]], # 3ihu
+        ['C222', [ 36.429,  53.884,  94.219,  90,  90,     90     ]], # 5wou
+        ['C2',   [ 56.616,  40.408,  99.617,  90, 102.28,  90     ]], # 3nhm
+        ['P4',   [ 29.130,  29.130,  94.257,  90,  90,     90     ]], # 5k2l
+        ['P2',   [ 26.152,  94.356,  29.196,  90,  97.19,  90     ]], # 3t47
+        ['P4',   [ 31.376,  31.376,  94.804,  90,  90,     90     ]], # 4ruv
+        ['C2',   [ 86.371,  34.743,  99.839,  90, 101.49,  90     ]], # 5ed9
+        ['C222', [ 32.180,  62.520,  95.760,  90,  90,     90     ]], # 1sip
+        ['C222', [ 62.700,  32.200,  96.100,  90,  90,     90     ]], # 2sam
+        ['C222', [ 62.300,  32.100,  96.300,  90,  90,     90     ]], # 1ytj
+        ['C222', [ 34.790,  73.610,  95.900,  90,  90,     90     ]], # 4hhx
+        ['P222', [ 31.760,  33.552,  94.998,  90,  90,     90     ]], # 3w92
+        ['P3',   [ 33.200,  33.200,  96.040,  90,  90,    120     ]], # 167d
+        ['P4',   [ 31.237,  31.237,  93.848,  90,  90,     90     ]], # 4qeg
+        ['C2',   [200.700,  38.350,  34.100,  90,  91.35,  90     ]], # 2ygg
+        ['P2',   [ 37.966,  95.258,  42.611,  90, 112.58,  90     ]], # 1oz7
+        ['P222', [ 30.584,  34.753,  94.679,  90,  90,     90     ]], # 6nfs
+        ['C2',   [ 39.741, 183.767, 140.649,  90,  90,      90    ]], # a2a
+        ['P2',   [ 40.160, 142.899,  92.417,  90, 102.480,  90    ]], # a2a
+        ['R3:R', [ 57.98,   57.98,   57.98,   92.02, 92.02, 92.02 ]], # pla2
+        ['C2',   [ 80.95,   80.57,   57.1,    90,  90.35,   90    ]], # pla2
+    ]
+
+    pdb_ids = [f"synt{i:03d}" for i in range(len(sgs_ucs))]
+
+    # Build the augmented CSV in-process via the real writer, exercising the
+    # same precompute step cctbx.fetch_pdb_cells performs on a real fetch.
+    base_rows = []
+    for pdb_id, (sg, uc) in zip(pdb_ids, sgs_ucs):
+        a, b, c, al, be, ga = uc
+        base_rows.append({
+            'pdb_id': pdb_id, 'unit_cell_a': a, 'unit_cell_b': b,
+            'unit_cell_c': c, 'unit_cell_alpha': al, 'unit_cell_beta': be,
+            'unit_cell_gamma': ga, 'unit_cell_Z': 1, 'space_group': sg,
+        })
+    csv_path = '/Users/dwpaley/daily/20251120/.tmp/tst_search_ground_truth.csv'
+    fetch_pdb_cells.write_cells_csv(base_rows, csv_path, out=io.StringIO())
+
+    # Ground truth, computed independently of both write_cells_csv and
+    # search_nearest_cell.run(): the query is row 0's own cell/space group,
+    # so it should be its own nearest match at ~0 distance.
+    query_sg, query_uc = sgs_ucs[0]
+    cs_ref = symmetry(unit_cell=query_uc, space_group=query_sg)
+    settings, _ = cs_ref.near_minimum_settings_and_cb_ops(
+        length_tolerance=0.03, angle_tolerance=3.0, test_multiples=False)
+    query_settings = [s['cell'] for s in settings]
+
+    expected_dist = {}
+    for pdb_id, (sg, uc) in zip(pdb_ids, sgs_ucs):
+        cs_row = symmetry(unit_cell=uc, space_group=sg)
+        cb_to_min = cs_row.change_of_basis_op_to_minimum_cell()
+        uc_min = cs_row.unit_cell().change_basis(cb_to_min).parameters()
+        expected_dist[pdb_id] = min(
+            cell_distance(uc_min, s) for s in query_settings)
+
+    best_pdb_id = min(expected_dist, key=expected_dist.get)
+    assert best_pdb_id == pdb_ids[0], \
+        "query cell (synt000) should be its own nearest match"
+    assert expected_dist[pdb_ids[0]] < 1e-6
+
+    query_args = [
+        "unit_cell=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f" % tuple(query_uc),
+        "space_group=%s" % query_sg,
+        "data_file=%s" % csv_path,
+        "n_results=%d" % len(sgs_ucs),
+    ]
+    run_out = io.StringIO()
+    search_nearest_cell.run(query_args, out=run_out)
+    lines = run_out.getvalue().splitlines()
+
+    header_idx = next(i for i, line in enumerate(lines) if line.startswith("Rank"))
+    data_lines = [l for l in lines[header_idx + 1:] if l.strip()]
+    assert len(data_lines) > 0
+
+    actual = []
+    for line in data_lines:
+        tok = line.split()
+        actual.append((tok[1], float(tok[2])))
+
+    # Top hit: the query's own cell/space group, at ~0 distance.
+    rank1_pdb, rank1_dist = actual[0]
+    assert rank1_pdb == pdb_ids[0], \
+        f"expected top hit {pdb_ids[0]}, got {rank1_pdb}"
+    assert rank1_dist < 1e-3, \
+        f"expected ~0 distance for exact match, got {rank1_dist}"
+
+    # Sane ranking: non-decreasing distance, every reported row present
+    # (n_results covers the whole synthetic table), and every reported
+    # row's printed distance agrees with the independently computed ground
+    # truth (matched by pdb code, not position -- exact ties among returned
+    # rows are not required to break in any particular order).
+    dists = [d for _, d in actual]
+    assert dists == sorted(dists), "run() output is not sorted by distance"
+    actual_order = [p for p, _ in actual]
+    assert set(actual_order) == set(pdb_ids)
+    for pdb_id, dist in actual:
+        assert abs(dist - expected_dist[pdb_id]) < 1e-3, \
+            f"{pdb_id}: run() reported {dist}, expected {expected_dist[pdb_id]}"
+
+    print("search_nearest_cell.run() ranking matches independent "
+          f"ground-truth computation for {len(sgs_ucs)} synthetic rows "
+          f"(top hit: {rank1_pdb} at distance {rank1_dist:.6f})")
+
+
 if __name__ == '__main__':
     test_a2a_abs_2023()
     test_pla2_abs_2023()
@@ -595,4 +816,6 @@ if __name__ == '__main__':
     test_change_of_basis_op_to_nearest_setting()
     test_min_cell_frame_prefilter()
     test_min_cell_frame_prefilter_ties()
+    test_fetch_and_search_symmetry_construction_agree()
+    test_search_nearest_cell_matches_direct_computation()
     print("ok")
