@@ -28,8 +28,12 @@ class QMRegionGrower:
       Destination for diagnostic messages.
   """
 
-  #: Bound on alternating grow/reattach rounds, so a pathological graph
-  #: cannot spin here.
+  #: Backstop on alternating grow/reattach rounds.  The loop is expected to
+  #: end well inside it: the visited set only grows, a node is enqueued only
+  #: while absent from it, and a demoted cap stays visited so it cannot be
+  #: capped again, which means each round leaves strictly fewer caps to
+  #: demote.  Two rounds is the most any region here has taken.  This exists
+  #: so that breaking one of those properties is slow rather than a hang.
   max_repair_rounds = 20
 
   def __init__(self, bond_cut_detector, log=None):
@@ -54,17 +58,12 @@ class QMRegionGrower:
     Whenever a cuttable bond ``current -> neighbour`` is encountered,
     *neighbour* is marked visited so BFS will not expand past it, and
     ``(neighbour, current)`` is stored as a tentative cap via
-    :meth:`_try_mark_cap`.  Three situations promote a tentative cap back
+    :meth:`_try_mark_cap`.  Two situations promote a tentative cap back
     to interior:
 
     * **Re-encounter**: *neighbour* is later reached from a different
       node.  The cap is then a regular interior node on at least two
       paths, so it is demoted via :meth:`_demote_cap_candidate`.
-    * **Adjacent-cap conflict**: the would-be cap is directly bonded to
-      an existing cap candidate (detected at cap-creation time inside
-      :meth:`_try_mark_cap`).  Both nodes are promoted to interior; this
-      catches the edge case the re-encounter check cannot see, since
-      cap candidates are never themselves enqueued.
     * **Stranding**: an atom is left with no heavy neighbour but caps, so
       one of them is restored by :meth:`_reattach_stranded`.  Growth and
       reattachment alternate until the region stops changing, since
@@ -354,6 +353,104 @@ class QMRegionGrower:
         return False  # the chain continues, so this is not a terminus
     return oxygens >= 2
 
+  def _any_amide_in_residue_group_in_visited(self, residue_group, sym_op,
+                                             visited):
+    """Return ``True`` if any backbone amide atom of *residue_group*, under
+    the given ``sym_op`` symmetry image, is in *visited*.
+
+    "Amide atoms" here means the backbone N, C, and O atoms across all
+    alternate conformations of the residue group. Each amide atom is
+    looked up in *visited* as a node ``(i_seq, sym_op)``, so two
+    different symmetry images of the same residue are treated as
+    distinct.
+
+    Parameters
+    ----------
+    residue_group : iotbx.pdb.hierarchy.residue_group
+    sym_op : cctbx.sgtbx.rt_mx
+        Symmetry image of the residue to check.
+    visited : set of (int, rt_mx)
+
+    Returns
+    -------
+    bool
+    """
+    amide_atom_names = {'N', 'C', 'O'}
+    amide_i_seqs = [
+      residue_atom.i_seq
+      for atom_group in residue_group.atom_groups()
+      for residue_atom in atom_group.atoms()
+      if residue_atom.name.strip().upper() in amide_atom_names
+    ]
+    if not amide_i_seqs:
+      return False
+    return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
+
+  def _any_amide_of_next_residue_in_visited(self, atom_idx, sym_op,
+                                            visited, adjacency, atoms):
+    """Return ``True`` if any amide atom of the next residue, under
+    *sym_op*, is in *visited*.
+
+    Cutting CA-N prunes the chain backwards, so CA keeps its place in the
+    region only through C, and this asks whether that direction is already
+    there.  It reads the growing region rather than the frozen seed set:
+    keying on the seeds makes the answer change with the radius, so an atom
+    kept by a narrow sphere is cut away by a wider one.
+
+    The next residue is the one holding the N that C is bonded to, followed
+    along the peptide bond rather than taken from the chain's residue
+    order: a structure carved out around a metal keeps whatever residues
+    fall inside the sphere, so the neighbour in that list is routinely
+    across a gap and not bonded at all.
+
+    Every such nitrogen is considered, not the first one the graph happens
+    to offer.  A carbonyl carbon can carry more than one -- an amidated
+    C-terminus or an isopeptide bond puts a second there, and no LINK
+    record is needed for one to appear -- and the adjacency is a set, so
+    stopping at the first would pick between them by hash order.  Each
+    candidate is looked up under the operation that reaches it, composed
+    with *sym_op*, since the bond followed may itself cross a symmetry
+    boundary.
+
+    Parameters
+    ----------
+    atom_idx : int
+    sym_op : cctbx.sgtbx.rt_mx
+        Symmetry image of the residue holding *atom_idx*.
+    visited : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    residue_group = atoms[atom_idx].parent().parent()
+    carbonyl_iseqs = [
+      residue_atom.i_seq
+      for atom_group in residue_group.atom_groups()
+      for residue_atom in atom_group.atoms()
+      if residue_atom.name.strip().upper() == 'C'
+    ]
+
+    for carbonyl_iseq in carbonyl_iseqs:
+      for (neighbour_iseq, edge_op) in adjacency[carbonyl_iseq]:
+        other = atoms[neighbour_iseq]
+        if other.element.strip().upper() != 'N':
+          continue
+        other_group = other.parent().parent()
+        # The same residue under a different symmetry image is a different
+        # residue here.  A polymer with one residue per asymmetric unit is
+        # bonded to its own image, and skipping that leaves the chain with
+        # no next residue, so the cut is refused however far BFS walks.
+        if (other_group.memory_id() == residue_group.memory_id()
+            and _canon_op(edge_op).as_xyz() == 'x,y,z'):
+          continue
+        if self._any_amide_in_residue_group_in_visited(
+            other_group, _canon_op(sym_op.multiply(edge_op)), visited):
+          return True
+    return False
+
   @staticmethod
   def _is_terminal_amine(iseq, adjacency, atoms):
     """Return ``True`` if the atom at *iseq* is a chain-terminal nitrogen.
@@ -484,17 +581,10 @@ class QMRegionGrower:
     protected : set of (int, rt_mx), optional
         Additional nodes to skip when discarding.
     """
-    cap_iseq, cap_op = cap
+    cap_iseq, _cap_op = cap
     print('Demoting cap candidate:', file=self.log)
     print('  ' + atoms[cap_iseq].format_atom_record().rstrip(), file=self.log)
-    original_anchor = cap_candidates.pop(cap)
-    protected = set(protected) | {original_anchor}
-    for (nb_iseq, edge_op) in adjacency[cap_iseq]:
-      nb_node = (nb_iseq, _canon_op(cap_op.multiply(edge_op)))
-      if nb_node in protected or nb_node in seed_nodes:
-        continue
-      visited.discard(nb_node)
-      cap_candidates.pop(nb_node, None)
+    cap_candidates.pop(cap)
     queue.append(cap)
 
   def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
@@ -531,25 +621,6 @@ class QMRegionGrower:
     queue : collections.deque
         BFS queue; *candidate* is appended to it if promoted to interior.
     """
-    cand_iseq, cand_op = candidate
-    conflicting = []
-    for (nb_iseq, edge_op) in adjacency[cand_iseq]:
-      nb_node = (nb_iseq, _canon_op(cand_op.multiply(edge_op)))
-      if nb_node == anchor:
-        continue
-      if nb_node in cap_candidates:
-        conflicting.append(nb_node)
-    if conflicting:
-      print('Adjacent-cap conflict; promoting to interior:', file=self.log)
-      print('  ' + atoms[cand_iseq].format_atom_record().rstrip(),
-            file=self.log)
-      for c in conflicting:
-        self._demote_cap_candidate(
-          c, cap_candidates, visited, seed_nodes, adjacency,
-          atoms, queue, protected={anchor, candidate},
-        )
-      queue.append(candidate)
-      return
     cap_candidates[candidate] = anchor
 
   def grow_by_distance(self, start_atom_index, adjacency, model,
@@ -592,96 +663,3 @@ class QMRegionGrower:
   # ------------------------------------------------------------------
   # Private helpers - amide-group checks
   # ------------------------------------------------------------------
-
-  def _any_amide_in_residue_group_in_visited(self, residue_group, sym_op,
-                                             visited):
-    """Return ``True`` if any backbone amide atom of *residue_group*, under
-    the given ``sym_op`` symmetry image, is in *visited*.
-
-    "Amide atoms" here means the backbone N, C, and O atoms across all
-    alternate conformations of the residue group. Each amide atom is
-    looked up in *visited* as a node ``(i_seq, sym_op)``, so two
-    different symmetry images of the same residue are treated as
-    distinct.
-
-    Parameters
-    ----------
-    residue_group : iotbx.pdb.hierarchy.residue_group
-    sym_op : cctbx.sgtbx.rt_mx
-        Symmetry image of the residue to check.
-    visited : set of (int, rt_mx)
-
-    Returns
-    -------
-    bool
-    """
-    amide_atom_names = {'N', 'C', 'O'}
-    amide_i_seqs = [
-      residue_atom.i_seq
-      for atom_group in residue_group.atom_groups()
-      for residue_atom in atom_group.atoms()
-      if residue_atom.name.strip().upper() in amide_atom_names
-    ]
-    if not amide_i_seqs:
-      return False
-    return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
-
-  def _any_amide_of_next_residue_in_visited(self, atom_idx, sym_op,
-                                            visited, adjacency, atoms):
-    """Return ``True`` if any amide atom of the next residue, under
-    *sym_op*, is in *visited*.
-
-    Cutting CA-N prunes the chain backwards, so CA keeps its place in the
-    region only through C, and this asks whether that direction is already
-    there.  It reads the growing region rather than the frozen seed set:
-    keying on the seeds makes the answer change with the radius, so an atom
-    kept by a narrow sphere is cut away by a wider one.
-
-    The next residue is the one holding the N that C is bonded to, followed
-    along the peptide bond rather than taken from the chain's residue
-    order: a structure carved out around a metal keeps whatever residues
-    fall inside the sphere, so the neighbour in that list is routinely
-    across a gap and not bonded at all.
-
-    Every such nitrogen is considered, not the first one the graph happens
-    to offer.  A carbonyl carbon can carry more than one -- an amidated
-    C-terminus or an isopeptide bond puts a second there, and no LINK
-    record is needed for one to appear -- and the adjacency is a set, so
-    stopping at the first would pick between them by hash order.  Each
-    candidate is looked up under the operation that reaches it, composed
-    with *sym_op*, since the bond followed may itself cross a symmetry
-    boundary.
-
-    Parameters
-    ----------
-    atom_idx : int
-    sym_op : cctbx.sgtbx.rt_mx
-        Symmetry image of the residue holding *atom_idx*.
-    visited : set of (int, rt_mx)
-    adjacency : collections.defaultdict of set
-    atoms : flex array of iotbx.pdb.hierarchy.atom
-
-    Returns
-    -------
-    bool
-    """
-    residue_group = atoms[atom_idx].parent().parent()
-    carbonyl_iseqs = [
-      residue_atom.i_seq
-      for atom_group in residue_group.atom_groups()
-      for residue_atom in atom_group.atoms()
-      if residue_atom.name.strip().upper() == 'C'
-    ]
-
-    for carbonyl_iseq in carbonyl_iseqs:
-      for (neighbour_iseq, edge_op) in adjacency[carbonyl_iseq]:
-        other = atoms[neighbour_iseq]
-        if other.element.strip().upper() != 'N':
-          continue
-        other_group = other.parent().parent()
-        if other_group.memory_id() == residue_group.memory_id():
-          continue
-        if self._any_amide_in_residue_group_in_visited(
-            other_group, _canon_op(sym_op.multiply(edge_op)), visited):
-          return True
-    return False

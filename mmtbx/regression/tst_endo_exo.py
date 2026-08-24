@@ -1547,182 +1547,6 @@ def _asu_bond_proxies(pdb_str, distance_cutoff=3.2):
   return list(sorted_asu_proxies.asu), pair_asu_table.asu_mappings()
 
 
-# Chain A holds 1-2 bonded and 9 detached, so residue 2's neighbour in
-# residue_groups() order is residue 9, which it shares no bond with.  A region
-# carved around a metal looks like this routinely: whatever fell inside the
-# sphere, with gaps between.
-_CHAIN_GAP_PDB = """\
-CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
-ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 10.00           N
-ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00 10.00           C
-ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00 10.00           C
-ATOM      4  O   ALA A   1       1.251   2.390   0.000  1.00 10.00           O
-ATOM      5  CB  ALA A   1       1.988  -0.773  -1.199  1.00 10.00           C
-ATOM      6  H1  ALA A   1      -0.297   0.455   0.705  1.00 10.00           H
-ATOM      7  H2  ALA A   1      -0.297   0.383  -0.746  1.00 10.00           H
-ATOM      8  H3  ALA A   1      -0.297  -0.838   0.041  1.00 10.00           H
-ATOM      9  HA  ALA A   1       1.769  -0.441   0.806  1.00 10.00           H
-ATOM     10  HB1 ALA A   1       1.668  -0.352  -2.012  1.00 10.00           H
-ATOM     11  HB2 ALA A   1       1.668  -1.688  -1.152  1.00 10.00           H
-ATOM     12  HB3 ALA A   1       2.958  -0.760  -1.179  1.00 10.00           H
-ATOM     13  N   ALA A   2       3.332   1.540   0.000  1.00 10.00           N
-ATOM     14  CA  ALA A   2       3.970   2.850   0.000  1.00 10.00           C
-ATOM     15  C   ALA A   2       5.480   2.700   0.000  1.00 10.00           C
-ATOM     16  O   ALA A   2       6.200   3.690   0.000  1.00 10.00           O
-ATOM     17  CB  ALA A   2       3.560   3.640   1.240  1.00 10.00           C
-ATOM     18  H   ALA A   2       3.881   0.878   0.000  1.00 10.00           H
-ATOM     19  HA  ALA A   2       3.689   3.334  -0.792  1.00 10.00           H
-ATOM     20  HB1 ALA A   2       3.834   3.150   2.031  1.00 10.00           H
-ATOM     21  HB2 ALA A   2       2.597   3.753   1.238  1.00 10.00           H
-ATOM     22  HB3 ALA A   2       3.995   4.507   1.220  1.00 10.00           H
-ATOM     23  N   ALA A   9       3.000   2.000   6.000  1.00 10.00           N
-ATOM     24  CA  ALA A   9       4.458   2.000   6.000  1.00 10.00           C
-ATOM     25  C   ALA A   9       5.009   3.420   6.000  1.00 10.00           C
-ATOM     26  O   ALA A   9       4.251   4.390   6.000  1.00 10.00           O
-ATOM     27  CB  ALA A   9       4.988   1.227   4.801  1.00 10.00           C
-ATOM     28  H   ALA A   9       2.650   2.785   6.041  1.00 10.00           H
-ATOM     29  HA  ALA A   9       4.769   1.559   6.806  1.00 10.00           H
-ATOM     30  HB1 ALA A   9       4.668   1.648   3.988  1.00 10.00           H
-ATOM     31  HB2 ALA A   9       4.668   0.312   4.848  1.00 10.00           H
-ATOM     32  HB3 ALA A   9       5.958   1.240   4.821  1.00 10.00           H
-END
-"""
-
-
-# ALA 1's carbonyl carbon carries two nitrogens in other residues: the real
-# successor ALA 2, and an NH2 amide cap.  Both bonds arise from proximity, so
-# no LINK record is needed for a carbonyl to end up with a second nitrogen.
-_TWO_NITROGEN_PDB = """\
-CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
-ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 10.00           N
-ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00 10.00           C
-ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00 10.00           C
-ATOM      4  O   ALA A   1       1.251   2.390   0.000  1.00 10.00           O
-ATOM      5  CB  ALA A   1       1.988  -0.773  -1.199  1.00 10.00           C
-ATOM      6  H1  ALA A   1      -0.297   0.455   0.705  1.00 10.00           H
-ATOM      7  H2  ALA A   1      -0.297   0.383  -0.746  1.00 10.00           H
-ATOM      8  H3  ALA A   1      -0.297  -0.838   0.041  1.00 10.00           H
-ATOM      9  HA  ALA A   1       1.769  -0.441   0.806  1.00 10.00           H
-ATOM     10  HB1 ALA A   1       1.668  -0.352  -2.012  1.00 10.00           H
-ATOM     11  HB2 ALA A   1       1.668  -1.688  -1.152  1.00 10.00           H
-ATOM     12  HB3 ALA A   1       2.958  -0.760  -1.179  1.00 10.00           H
-ATOM     13  N   ALA A   2       3.332   1.540   0.000  1.00 10.00           N
-ATOM     14  CA  ALA A   2       3.970   2.850   0.000  1.00 10.00           C
-ATOM     15  C   ALA A   2       5.480   2.700   0.000  1.00 10.00           C
-ATOM     16  O   ALA A   2       6.200   3.690   0.000  1.00 10.00           O
-ATOM     17  CB  ALA A   2       3.560   3.640   1.240  1.00 10.00           C
-ATOM     18  H   ALA A   2       3.881   0.878   0.000  1.00 10.00           H
-ATOM     19  HA  ALA A   2       3.689   3.334  -0.792  1.00 10.00           H
-ATOM     20  HB1 ALA A   2       3.834   3.150   2.031  1.00 10.00           H
-ATOM     21  HB2 ALA A   2       2.597   3.753   1.238  1.00 10.00           H
-ATOM     22  HB3 ALA A   2       3.995   4.507   1.220  1.00 10.00           H
-HETATM   23  N   NH2 B   9       2.009   1.420   1.330  1.00 10.00           N
-END
-"""
-
-
-def exercise_next_residue_considers_every_bonded_nitrogen():
-  """A carbonyl carrying two nitrogens is judged on both, not on whichever
-  the graph offers first.
-
-  An amidated C-terminus or an isopeptide bond puts a second nitrogen on a
-  carbonyl carbon, and the adjacency is a set, so stopping at the first
-  match picks between them by hash order: whichever is not picked reads as
-  absent, and the CA-N cut is then taken or refused on a false premise.
-  Asserting both directions pins that without depending on the ordering, as
-  the wrong answer under a first-match rule falls on one side or the
-  other."""
-  _model, atoms, adjacency = _protonated_graph(_TWO_NITROGEN_PDB)
-  identity = _canon_op(sgtbx.rt_mx())
-  grower = QMRegionGrower(
-    BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
-    log=io.StringIO())
-
-  def nodes_of(chain_id, resseq):
-    return {(i_seq, identity) for i_seq, atom in enumerate(atoms)
-            if atom.parent().parent().resseq.strip() == resseq
-            and atom.parent().parent().parent().id.strip() == chain_id}
-
-  carbonyl = next(i_seq for i_seq, atom in enumerate(atoms)
-                  if atom.name.strip() == "C"
-                  and atom.parent().parent().resseq.strip() == "1")
-  bonded_nitrogens = [
-    j_seq for j_seq, _op in adjacency[carbonyl]
-    if atoms[j_seq].element.strip().upper() == "N"
-    and atoms[j_seq].parent().parent().resseq.strip() != "1"
-  ]
-  assert len(bonded_nitrogens) == 2, (
-    f"fixture changed shape: C of residue 1 has {len(bonded_nitrogens)} "
-    f"nitrogen neighbours in other residues, expected 2")
-
-  ca_1 = next(i_seq for i_seq, atom in enumerate(atoms)
-              if atom.name.strip() == "CA"
-              and atom.parent().parent().resseq.strip() == "1")
-
-  for chain_id, resseq, description in (
-      ("A", "2", "the peptide successor"),
-      ("B", "9", "the amide cap")):
-    assert grower._any_amide_of_next_residue_in_visited(
-      ca_1, identity, nodes_of(chain_id, resseq), adjacency, atoms) is True, (
-      f"{description} is bonded to this carbonyl and in the region, but the "
-      f"forward direction was reported absent")
-
-
-def exercise_next_residue_follows_the_peptide_bond():
-  """The CA-N guard asks about the residue bonded to this one's C, not the
-  one that happens to come next in ``chain.residue_groups()``.
-
-  Cutting CA-N prunes the chain backwards, so CA holds its place in the
-  region only through C; the guard checks that direction is already there.
-  Reading the chain's residue order instead answers about a residue across
-  a gap, which on a carved-out region is the normal case rather than a
-  corner one."""
-  pdb_in = iotbx.pdb.input(
-    source_info=None, lines=_CHAIN_GAP_PDB.split("\n"))
-  model = mmtbx.model.manager(model_input=pdb_in)
-  model.process(make_restraints=True)
-  geometry = model.get_restraints_manager().geometry
-  sites_cart = model.get_sites_cart()
-  simple, asu = geometry.get_all_bond_proxies(sites_cart=sites_cart)
-  asu_mappings = geometry.pair_proxies(
-    sites_cart=sites_cart).bond_proxies.asu_mappings()
-  adjacency = AtomGraphBuilder().build_adjacency(simple, asu, asu_mappings)
-
-  hierarchy = model.get_hierarchy()
-  atoms = list(hierarchy.atoms())
-  identity = _canon_op(sgtbx.rt_mx())
-  grower = QMRegionGrower(
-    BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
-    log=io.StringIO())
-
-  order = [rg.resseq.strip() for rg in list(hierarchy.chains())[0].
-           residue_groups()]
-  assert order == ["1", "2", "9"], f"fixture changed shape: {order}"
-
-  def nodes_of(resseq):
-    return {(i_seq, identity) for i_seq, atom in enumerate(atoms)
-            if atom.parent().parent().resseq.strip() == resseq}
-
-  def ca_of(resseq):
-    return next(i_seq for i_seq, atom in enumerate(atoms)
-                if atom.parent().parent().resseq.strip() == resseq
-                and atom.name.strip() == "CA")
-
-  # Residue 9 is next in residue order but shares no bond with residue 2,
-  # so it does not hold residue 2 in the region. Reading the chain order
-  # here answers True and the CA-N cut is taken on a false premise.
-  assert grower._any_amide_of_next_residue_in_visited(
-    ca_of("2"), identity, nodes_of("9"), adjacency, atoms) is False
-
-  # Residue 2 really is bonded to residue 1, through C(1)-N(2).
-  assert grower._any_amide_of_next_residue_in_visited(
-    ca_of("1"), identity, nodes_of("2"), adjacency, atoms) is True
-
-  # Bonded, but not in the region yet.
-  assert grower._any_amide_of_next_residue_in_visited(
-    ca_of("1"), identity, set(), adjacency, atoms) is False
-
-
 # Four zinc ions at the corners of a regular tetrahedron, with waters placed
 # to pin the hull rather than merely a bounding sphere.  Neither test
 # structure puts a water inside a region's hull at any radius, so this needs a
@@ -2462,6 +2286,48 @@ def exercise_region_invariants():
           + "; ".join(bad))
 
 
+# One alanine per asymmetric unit in a 3.6 A cell: the chain leaves the
+# unit through a lattice translation, so the residue after it is itself.
+_POLYMER_PDB = """\
+CRYST1    3.600   20.000   20.000  90.00  90.00  90.00 P 1
+ATOM      1 N    ALA A   1      -1.200   0.000   0.000  1.00 20.00           N
+ATOM      2 CA   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
+ATOM      3 C    ALA A   1       1.000   1.050   0.000  1.00 20.00           C
+ATOM      4 O    ALA A   1       0.700   2.220   0.000  1.00 20.00           O
+ATOM      5 CB   ALA A   1       0.550  -0.800  -1.200  1.00 20.00           C
+END
+"""
+
+
+# Tris on a zinc: a ligand that names an atom C and an atom N, both
+# bonded entirely within the residue.  Protonated with mmtbx.reduce2.
+_TRS_LIGAND_PDB = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+HETATM    1 N    TRS A 401       0.849   0.849   0.849  1.00 20.00           N
+HETATM    2 C    TRS A 401       0.000   0.000   0.000  1.00 20.00           C
+HETATM    3 C1   TRS A 401       0.883  -0.883  -0.883  1.00 20.00           C
+HETATM    4 C2   TRS A 401      -0.883   0.883  -0.883  1.00 20.00           C
+HETATM    5 C3   TRS A 401      -0.883  -0.883   0.883  1.00 20.00           C
+HETATM    6 O1   TRS A 401       1.709  -1.709  -1.709  1.00 20.00           O
+HETATM    7 O2   TRS A 401      -1.709   1.709  -1.709  1.00 20.00           O
+HETATM    8 O3   TRS A 401      -1.709  -1.709   1.709  1.00 20.00           O
+HETATM    9  H11 TRS A 401       1.118  -0.020  -0.594  1.00 20.00           H
+HETATM   10  H12 TRS A 401      -0.020  -1.078  -0.504  1.00 20.00           H
+HETATM   11  H21 TRS A 401       0.056   1.024  -0.677  1.00 20.00           H
+HETATM   12  H22 TRS A 401      -1.156   0.076  -0.423  1.00 20.00           H
+HETATM   13  H31 TRS A 401       0.024  -1.078   0.579  1.00 20.00           H
+HETATM   14  H32 TRS A 401      -1.124  -0.023   0.522  1.00 20.00           H
+HETATM   15  HN1 TRS A 401       0.366   1.367   1.388  1.00 20.00           H
+HETATM   16  HN2 TRS A 401       1.367   1.388   0.366  1.00 20.00           H
+HETATM   17  HN3 TRS A 401       1.388   0.366   1.367  1.00 20.00           H
+HETATM   18  HO1 TRS A 401       1.284  -2.413  -1.755  1.00 20.00           H
+HETATM   19  HO2 TRS A 401      -1.250   2.372  -1.979  1.00 20.00           H
+HETATM   20  HO3 TRS A 401      -2.466  -1.687   1.364  1.00 20.00           H
+HETATM   21 ZN    ZN A 402       2.061   2.061   2.061  1.00 20.00          ZN
+END
+"""
+
+
 _TRIPEPTIDE_PDB = """\
 CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
 ATOM      1  N   ALA A   1      10.000  10.000  10.000  1.00 10.00           N
@@ -3008,6 +2874,244 @@ def exercise_terminal_carboxylate_detection():
     "a mid-chain residue with a stray OXT must not read as a terminus")
 
 
+def exercise_polymer_bonded_to_its_own_image_terminates():
+  """A polymer with one residue per asymmetric unit stops growing.
+
+  The chain leaves the asymmetric unit through a lattice translation, so the
+  residue after this one is this one, under another symmetry image.  The
+  CA-N cut is what bounds the walk, and its guard asks whether the next
+  residue has been reached; comparing residue groups alone answers "there is
+  no next residue" forever and BFS follows the chain out of the crystal.
+
+  Driven on a hand-built adjacency because the point is the graph, and
+  bounded by counting neighbour lookups, because the failure is a hang."""
+  from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+  from mmtbx.geometry_restraints.endo_exo.util import _canon_op as canon
+
+  class BoundedAdjacency(dict):
+    """Raise rather than hang if growth does not settle."""
+    def __init__(self, *args, budget=500):
+      dict.__init__(self, *args)
+      self.budget = budget
+
+    def __getitem__(self, key):
+      self.budget -= 1
+      if self.budget < 0:
+        raise RuntimeError("growth did not terminate")
+      return dict.get(self, key, set())
+
+  pdb_in = iotbx.pdb.input(source_info=None,
+                           lines=_POLYMER_PDB.split("\n"))
+  model = mmtbx.model.manager(model_input=pdb_in)
+  atoms = model.get_hierarchy().atoms()
+  iseq = {atom.name.strip(): atom.i_seq for atom in atoms}
+
+  identity = canon(sgtbx.rt_mx())
+  forward = canon(sgtbx.rt_mx("x+1,y,z"))
+  backward = canon(sgtbx.rt_mx("x-1,y,z"))
+
+  adjacency = BoundedAdjacency()
+  def bond(first, second, there, back):
+    adjacency.setdefault(iseq[first], set()).add((iseq[second], there))
+    adjacency.setdefault(iseq[second], set()).add((iseq[first], back))
+
+  bond("N", "CA", identity, identity)
+  bond("CA", "C", identity, identity)
+  bond("CA", "CB", identity, identity)
+  bond("C", "O", identity, identity)
+  # The peptide bond crosses a lattice translation, so the chain is endless.
+  bond("C", "N", forward, backward)
+
+  grower = QMRegionGrower(
+    BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
+    log=io.StringIO())
+  visited, caps = grower.grow_by_depth(
+    {(iseq["CA"], identity)}, adjacency, model)
+
+  assert len(visited) < 20, f"region grew to {len(visited)} nodes"
+  images = {op.as_xyz() for (_iseq, op) in visited}
+  assert len(images) <= 2, f"growth ran through {len(images)} symmetry images"
+
+
+def exercise_growth_converges_in_a_couple_of_rounds():
+  """Growth and stranding repair alternate only a round or two.
+
+  They terminate because the visited set only grows, a node is enqueued
+  only while absent from it, and a demoted cap stays visited so it cannot
+  be capped again -- each round therefore leaves strictly fewer caps to
+  demote.  ``max_repair_rounds`` is a backstop for that reasoning being
+  wrong, not a working limit, so a region approaching it means one of those
+  properties has been broken and the loop is no longer known to end."""
+  from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+
+  original = QMRegionGrower._grow_until_exhausted
+  grow_by_depth = QMRegionGrower.grow_by_depth
+  passes, current = [], [0]
+
+  def counting_grow(self, *args, **kwargs):
+    current[0] += 1
+    return original(self, *args, **kwargs)
+
+  # Counted per region rather than on a zero return from the repair: a region
+  # that gives up through the max_repair_rounds backstop must still be
+  # counted, or the worse the regression the less it records.
+  def counting_region(self, *args, **kwargs):
+    current[0] = 0
+    try:
+      return grow_by_depth(self, *args, **kwargs)
+    finally:
+      passes.append(current[0])
+
+  QMRegionGrower._grow_until_exhausted = counting_grow
+  QMRegionGrower.grow_by_depth = counting_region
+  try:
+    for pdb_str, overrides in (
+        (_1BQ8_FE_SPHERE_PDB, {}),
+        (_2C2U_FE_SPHERE_PDB, {})):
+      for radius in (4.0, 6.0, 8.0):
+        _run_endo_exo_params(pdb_str, buffer__radius=radius, **overrides)
+  finally:
+    QMRegionGrower._grow_until_exhausted = original
+    QMRegionGrower.grow_by_depth = grow_by_depth
+
+  assert len(passes) == 6, (
+    f"expected one count per region, got {len(passes)}")
+  assert max(passes) == 1, (
+    f"a region took {max(passes)} growth passes; the loop is converging "
+    f"more slowly than the reasoning behind max_repair_rounds allows")
+
+
+def exercise_open_valences_are_reported():
+  """An atom whose neighbour is missing from the model is named in the log.
+
+  Capping covers bonds this code severs.  Where the input stops mid-chain,
+  in a disordered loop or at the edge of an extract, there is no bond to
+  sever and none to cap, so a nitrogen or carbonyl carbon reaches the
+  region a bond short.  Nothing here can place the missing atom, so it is
+  reported rather than repaired, and a real terminus -- which is not short
+  of anything -- is not reported.
+
+  1BQ8 runs from residue 45 to 48, so PRO 45's carbonyl has no following
+  nitrogen once the sphere is wide enough to keep it."""
+  def note_for(pdb_str, radius, selection=None):
+    pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+    model = mmtbx.model.manager(model_input=pdb_in)
+    dm = DataManager(["model"])
+    dm.add_model("model", model)
+    dm.set_default_model("model")
+    master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+    params = master.extract()
+    params.write_files = False
+    params.buffer.radius = radius
+    if selection is not None:
+      params.selection = [selection]
+    log = io.StringIO()
+    program = EndoexoProgram(dm, params, master_phil=master, logger=log)
+    program.validate()
+    program.run()
+    return [line for line in log.getvalue().split("\n")
+            if "a bond short" in line]
+
+  # The whole set, not the number of lines: there is only ever one line, so
+  # a count of it cannot fail, and a predicate that names extra atoms -- a
+  # cap about to become a hydrogen, say -- would go unnoticed.
+  def atoms_named(pdb_str, radius, selection=None):
+    lines = note_for(pdb_str, radius, selection)
+    if not lines:
+      return set()
+    assert len(lines) == 1, f"expected one note, got {lines}"
+    return set(lines[0].rsplit(": ", 1)[1].rstrip(".").split(", "))
+
+  # The extract jumps 45 -> 48, so PRO 45's carbonyl has no following
+  # nitrogen and GLU 48's nitrogen no preceding carbonyl.
+  assert atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0) == {"PRO 45 C", "GLU 48 N"}, (
+    atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0))
+
+  # Narrower, and the same carbonyl is capped away instead: nothing to say.
+  assert not note_for(_1BQ8_FE_SPHERE_PDB, 5.0), (
+    "reported an open valence where the atom is not in the region")
+
+  # Symmetry images of one atom are one problem, named once.  The extract
+  # skips residue 91 and stops at 93, so two carbonyls have no following
+  # nitrogen and one nitrogen has no preceding carbonyl.
+  assert atoms_named(_2C2U_FE_SPHERE_PDB, 7.0) == {
+    "ARG 92 N", "ASP 93 C", "PHE 90 C"}, (
+      atoms_named(_2C2U_FE_SPHERE_PDB, 7.0))
+
+  # Only a peptide backbone has a neighbouring residue to be missing.  Tris
+  # names an atom C and an atom N; the C is quaternary and complete, and
+  # there is no residue next to either to be absent.
+  assert not atoms_named(_TRS_LIGAND_PDB, 5.0, selection="resname ZN"), (
+    atoms_named(_TRS_LIGAND_PDB, 5.0, selection="resname ZN"))
+
+  # The tripeptide is whole, and its own termini are not short of anything.
+  assert not note_for(_TRIPEPTIDE_PDB, 8.0,
+                      selection="chain A and resseq 2 and name SG"), (
+    "a complete molecule should report nothing")
+
+
+def exercise_surviving_cap_has_only_its_anchor():
+  """A cap that survives growth is bonded to its anchor and nothing else
+  in the region.
+
+  This is what keeps the repair machinery small.  Two branches it used to
+  carry -- invalidating a demoted cap's neighbours, and promoting two
+  adjacent caps to interior -- exist only for regions that break this, and
+  were removed once measurement showed they never ran.  Their absence is
+  safe exactly as long as this holds, so it is checked rather than implied.
+
+  Checked on the grower's own state: once a region is materialised the caps
+  are hydrogens 1.1 A from their anchors, which no longer shows which region
+  atoms they were bonded to.
+
+  Driven through the program rather than by seeding the grower here, because
+  most of a region is symmetry images -- which hand-built seeds within a
+  radius of the metal do not produce, leaving the composed-operator path the
+  invariant most depends on unexamined."""
+  from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+  from mmtbx.geometry_restraints.endo_exo.util import _canon_op as canon
+
+  grow_by_depth = QMRegionGrower.grow_by_depth
+  regions = []
+
+  def capturing(self, seeds, adjacency, model, *args, **kwargs):
+    visited, caps = grow_by_depth(
+      self, seeds, adjacency, model, *args, **kwargs)
+    regions.append((visited, dict(caps), adjacency, model))
+    return visited, caps
+
+  QMRegionGrower.grow_by_depth = capturing
+  try:
+    for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
+      for radius in (5.0, 7.0):
+        _run_endo_exo_params(pdb_str, buffer__radius=radius)
+  finally:
+    QMRegionGrower.grow_by_depth = grow_by_depth
+
+  assert len(regions) == 4, f"expected four regions, got {len(regions)}"
+  checked, under_symmetry = 0, 0
+  for (visited, caps, adjacency, model) in regions:
+    atoms = model.get_hierarchy().atoms()
+    assert set(caps) <= visited, "a cap is recorded outside the region"
+    for cap, anchor in caps.items():
+      cap_iseq, cap_op = cap
+      if cap_op.as_xyz() != "x,y,z":
+        under_symmetry += 1
+      for (nb_iseq, edge_op) in adjacency[cap_iseq]:
+        if atoms[nb_iseq].element_is_hydrogen():
+          continue
+        neighbour = (nb_iseq, canon(cap_op.multiply(edge_op)))
+        if neighbour == anchor or neighbour not in visited:
+          continue
+        raise AssertionError(
+          f"cap {atoms[cap_iseq].name.strip()} is also bonded to "
+          f"{atoms[nb_iseq].name.strip()} in the region")
+      checked += 1
+
+  assert checked > 20, f"only {checked} caps examined"
+  assert under_symmetry, "no cap under a symmetry image was examined"
+
+
 def exercise_cut_not_made_into_the_region():
   """A cut is refused when the far atom is already bonded into the region.
 
@@ -3079,6 +3183,10 @@ def run():
   exercise_radius_only_grows_the_region()
   exercise_region_does_not_depend_on_queue_order()
   exercise_terminal_carboxylate_detection()
+  exercise_polymer_bonded_to_its_own_image_terminates()
+  exercise_growth_converges_in_a_couple_of_rounds()
+  exercise_open_valences_are_reported()
+  exercise_surviving_cap_has_only_its_anchor()
   exercise_cut_not_made_into_the_region()
   # engine unit tests
   exercise_canon_op()
@@ -3093,8 +3201,6 @@ def run():
   exercise_bond_cut_backbone()
   exercise_consumed_preferred_cut()
   exercise_cut_depends_on_where_bfs_arrives()
-  exercise_next_residue_follows_the_peptide_bond()
-  exercise_next_residue_considers_every_bonded_nitrogen()
   exercise_hbond_partners()
   exercise_hbond_partner_symmetry_composition()
   exercise_hull_waters()

@@ -22,7 +22,8 @@ from scitbx import matrix
 
 from scipy.spatial import ConvexHull
 
-from mmtbx.geometry_restraints.endo_exo.util import _canon_op
+from mmtbx.geometry_restraints.endo_exo.util import (
+  _canon_op, _neighbour_iseqs)
 from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
 from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
@@ -354,6 +355,7 @@ class QMRegionBuilder(object):
       qm_atoms, adjacency, model, max_depth=self.params.max_search_depth)
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
+    self._report_open_valences(model, visited_nodes, cap_nodes, adjacency)
 
     (model_sel, seed_indices, cap_indices, cap_original_elements,
      cap_anchor_indices, sym_image_provenance) = self._materialize_qm_region(
@@ -438,6 +440,77 @@ class QMRegionBuilder(object):
     qm_nodes |= self._include_nodes_for(seeds, model)
     qm_nodes |= self._hbond_partner_nodes(model, qm_nodes)
     return qm_nodes
+
+  def _report_open_valences(self, model, visited_nodes, cap_nodes, adjacency):
+    """Name region atoms whose backbone partner is missing from the model.
+
+    Capping covers bonds this code severs.  A residue whose neighbour was
+    never deposited, in a disordered loop or at the edge of an extract, has
+    no bond to sever and none to cap, so its nitrogen or carbonyl carbon
+    reaches the region a bond short and is a radical centre in whatever is
+    run on it afterwards.  Nothing here can place the missing atom, so it
+    is reported rather than repaired.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+    visited_nodes : set of (int, sgtbx.rt_mx)
+    cap_nodes : dict
+    adjacency : collections.defaultdict of set
+    """
+    atoms = model.get_hierarchy().atoms()
+    # Keyed on the atom, not the node: symmetry images of one atom are one
+    # problem, reported once.
+    open_valences = set()
+    for (iseq, _op) in visited_nodes:
+      if (iseq, _op) in cap_nodes:
+        continue
+      atom = atoms[iseq]
+      name = atom.name.strip().upper()
+      if name not in ('N', 'C') or atom.element.strip().upper() not in ('N', 'C'):
+        continue
+      residue_group = atom.parent().parent()
+      partner = 'C' if name == 'N' else 'N'
+      hydrogens = 0
+      oxygens = 0
+      on_backbone = False
+      for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+        other = atoms[neighbour_iseq]
+        if other.element_is_hydrogen():
+          hydrogens += 1
+          continue
+        if other.parent().parent() != residue_group:
+          if other.name.strip().upper() == partner:
+            break                     # the chain continues, nothing missing
+          continue                    # some other link, not the backbone one
+        other_name = other.name.strip().upper()
+        if other_name == 'CA' and other.element.strip().upper() == 'C':
+          on_backbone = True
+        if other.element.strip().upper() == 'O':
+          oxygens += 1
+      else:
+        # Only a peptide backbone has a residue next to it to be missing.
+        # A ligand naming an atom N or C -- Tris names both -- is bonded
+        # entirely within itself, and is short of nothing.
+        if not on_backbone:
+          continue
+        # A real terminus is not short of anything: an amine carries its
+        # own hydrogens, a carboxylate its second oxygen.
+        if name == 'C' and oxygens >= 2:
+          continue
+        if name == 'N' and hydrogens >= 2:
+          continue
+        open_valences.add(
+          f'{atom.parent().resname.strip()} '
+          f'{residue_group.resseq.strip()} {atom.name.strip()}')
+
+    if open_valences:
+      print(
+        f'Note: {len(open_valences)} atom(s) in this region are a bond '
+        f'short because the neighbouring residue is absent from the model: '
+        f'{", ".join(sorted(open_valences))}.',
+        file=self.logger,
+      )
 
   def _hbond_partner_nodes(self, model, qm_nodes):
     """Return nodes for atoms hydrogen-bonded to one already in *qm_nodes*.
