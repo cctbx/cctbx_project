@@ -808,6 +808,284 @@ def test_search_nearest_cell_matches_direct_computation():
           f"(top hit: {rank1_pdb} at distance {rank1_dist:.6f})")
 
 
+def test_cell_metrics_against_scalar_reference():
+    """
+    Independent scalar reimplementation (plain `math`, no numpy) of each
+    non-v7 SAUC formula from cell_metrics.py's features()/distance(),
+    checked at high precision. This is what catches degrees-vs-radians,
+    column order, weight order and broadcasting mistakes that a
+    self-consistent vectorized-only test would miss.
+    """
+    import math
+    from cctbx.uctbx import cell_metrics as cm
+
+    def scalar_features(metric, p):
+        a, b, c, al_d, be_d, ga_d = p
+        al, be, ga = math.radians(al_d), math.radians(be_d), math.radians(ga_d)
+        if metric == 'cellparams':
+            return list(p)
+        if metric in ('l1', 'l2'):
+            return [a, b, c, al * (b + c) / 2, be * (a + c) / 2, ga * (a + b) / 2]
+        g1, g2, g3 = a * a, b * b, c * c
+        g4, g5, g6 = 2*b*c*math.cos(al), 2*a*c*math.cos(be), 2*a*b*math.cos(ga)
+        if metric == 'ncdist':
+            return [g1, g2, g3, g4, g5, g6]
+        if metric == 's6':
+            return [g4/2, g5/2, g6/2, -g1-g5/2-g6/2, -g2-g4/2-g6/2, -g3-g4/2-g5/2]
+        body = g1 + g2 + g3 + min(g4+g5+g6, -g4-g5+g6, -g4+g5-g6, g4-g5-g6)
+        return [g1, g2, g3, g2+g3-abs(g4), g1+g3-abs(g5), g1+g2-abs(g6), body]
+
+    def scalar_distance(metric, f1, f2):
+        d = [y - x for x, y in zip(f1, f2)]
+        if metric == 'cellparams':
+            return sum(abs(x) for x in d)
+        if metric == 'l1':
+            return sum(abs(x) for x in d) / math.sqrt(6)
+        if metric == 'l2':
+            return math.sqrt(sum(x*x for x in d))
+        if metric in ('ncdist', 's6'):
+            return 0.1 * sum(x*x for x in d) ** 0.25
+        w = [1, 1, 1, .5, .5, .5, 1/3]
+        return 0.1 * sum(wi*x*x for wi, x in zip(w, d)) ** 0.25
+
+    np.random.seed(10)
+    n = 20
+    cells = np.column_stack([
+        np.random.uniform(10, 100, n), np.random.uniform(10, 100, n),
+        np.random.uniform(10, 100, n), np.random.uniform(70, 110, n),
+        np.random.uniform(70, 110, n), np.random.uniform(70, 110, n),
+    ])
+    ref = [15.3, 22.7, 31.1, 88.5, 91.2, 95.7]
+
+    for metric in ('cellparams', 'l1', 'l2', 'ncdist', 's6', 'dc7unsrt'):
+        f_ref = cm.features(metric, ref)
+        assert cm.features(metric, np.array(ref)).shape == f_ref.shape  # (6,) input
+        f_batch = cm.features(metric, cells)  # (N,6) input
+        assert f_batch.shape == (n, len(f_ref))
+        scalar_rows = [scalar_features(metric, cells[i]) for i in range(n)]
+        np.testing.assert_allclose(f_batch, scalar_rows, rtol=1e-12)
+        np.testing.assert_allclose(f_ref, scalar_features(metric, ref), rtol=1e-12)
+
+        d_vec = cm.distance(metric, f_ref, f_batch)  # (6,) vs (N,6) broadcast
+        d_scalar = [scalar_distance(metric, scalar_features(metric, ref), row)
+                    for row in scalar_rows]
+        np.testing.assert_allclose(d_vec, d_scalar, rtol=1e-12)
+
+    print("cell_metrics formulas match independent scalar reimplementation "
+          f"for {n} random cells across 6 metrics")
+
+
+def test_ncdist_matches_compiled_NCDist():
+    """
+    The compiled Andrews-Bernstein NCDist additionally searches G6
+    reduction boundaries, so it is always <= the local (non-boundary-
+    searching) ncdist metric, with equality for a pair whose reduced cells
+    sit in the interior of their Niggli domains (verified during planning:
+    agreement to 1e-13 for a nearby pair).
+    """
+    import math
+    from cctbx.uctbx import cell_metrics as cm
+    from cctbx.uctbx.determine_unit_cell import NCDist
+
+    np.random.seed(11)
+    n = 15
+    for _ in range(n):
+        p1 = np.random.uniform(20, 150, 3).tolist() + np.random.uniform(80, 100, 3).tolist()
+        p2 = np.random.uniform(20, 150, 3).tolist() + np.random.uniform(80, 100, 3).tolist()
+        g1, g2 = cm.features('ncdist', p1), cm.features('ncdist', p2)
+        oracle = 0.1 * math.sqrt(NCDist(list(g1), list(g2)))
+        ours = cm.distance('ncdist', g1, g2)
+        assert oracle <= ours + 1e-9, (oracle, ours)
+
+    # Near pair: no reduction boundary lies between them, so the compiled
+    # oracle and the local formula must agree closely.
+    p1 = [40.0, 55.0, 70.0, 89.0, 91.0, 90.5]
+    p2 = [40.02, 55.03, 69.98, 89.05, 90.95, 90.45]
+    g1, g2 = cm.features('ncdist', p1), cm.features('ncdist', p2)
+    oracle = 0.1 * math.sqrt(NCDist(list(g1), list(g2)))
+    ours = cm.distance('ncdist', g1, g2)
+    assert abs(oracle - ours) < 1e-9, (oracle, ours)
+
+    print("local ncdist metric agrees with compiled NCDist oracle "
+          f"(<= for {n} random pairs, equal within 1e-9 for a near pair)")
+
+
+def test_cell_distance_is_the_cellparams_metric():
+    """
+    near_minimum.cell_distance is kept as tst_move_nearest.py's independent
+    judge (see _assert_nearest_setting_matches); pin it exactly equal to
+    the named 'cellparams' metric so the two cannot silently diverge.
+    """
+    from cctbx.uctbx import cell_metrics as cm
+
+    np.random.seed(12)
+    n = 20
+    for _ in range(n):
+        p1 = np.random.uniform(10, 200, 3).tolist() + np.random.uniform(60, 120, 3).tolist()
+        p2 = np.random.uniform(10, 200, 3).tolist() + np.random.uniform(60, 120, 3).tolist()
+        direct = cell_distance(p1, p2)
+        via_metric = cm.distance(
+            'cellparams', cm.features('cellparams', p1), cm.features('cellparams', p2))
+        np.testing.assert_allclose(float(via_metric), direct, rtol=1e-15)
+
+    print("near_minimum.cell_distance == cell_metrics.distance('cellparams', ...) "
+          f"for {n} random pairs")
+
+
+def test_v7_is_a_lattice_invariant():
+    """
+    v7 is a lattice invariant: reindexing a minimum cell by a unimodular
+    change of basis and re-minimising must reproduce the same v7 vector
+    (see cell_metrics.py's v7 branch of features()). Also pins one value
+    against the 4-line recipe (niggli_cell + reciprocal().minimum_cell(),
+    sorted triples) inlined here rather than imported from scratch code.
+    """
+    from cctbx.uctbx import cell_metrics as cm
+
+    p = [20.1, 25.3, 31.7, 88.0, 92.0, 95.0]
+    mc = uctbx.unit_cell(p).minimum_cell()
+    cb_op = sgtbx.change_of_basis_op('y,z,x+y')
+    remc = mc.change_basis(cb_op).minimum_cell()
+
+    f1 = cm.features('v7', mc.parameters())
+    f2 = cm.features('v7', remc.parameters())
+    assert f1.shape == (7,)
+    np.testing.assert_allclose(f1, f2, atol=1e-8)
+
+    d = sorted(mc.niggli_cell().parameters()[:3])
+    r = sorted(1.0 / x for x in mc.reciprocal().minimum_cell().parameters()[:3])[::-1]
+    manual = d + r + [mc.volume() ** (1. / 3.)]
+    np.testing.assert_allclose(f1, manual, rtol=1e-12)
+
+    print("v7 feature vector is invariant under reindexing + re-minimisation, "
+          "and matches the 4-line reference recipe")
+
+
+def test_metric_ties_are_exact():
+    """
+    Regression guard for the plot_uc_cloud tie-cycling behaviour (see the
+    Domain Knowledge note on nearest_setting_count): every non-v7 metric
+    must produce bit-identical ties among the pla2 pseudo-cubic pair's
+    near-reduced settings (measured during planning: 6-18 tied settings
+    per metric, see test_min_cell_frame_prefilter_ties for the same pair),
+    and change_of_basis_op_to_nearest_setting must still cycle across
+    multiple tied cb_ops while every returned cell stays lattice-
+    equivalent to the input.
+
+    The cycling check uses metric='l1': for this particular pair, the
+    identity cb_op happens to be among the tied settings under
+    cellparams/ncdist/s6/dc7unsrt (verified both before and after the
+    metric-threading change -- this is pre-existing identity-preference
+    behaviour, not something introduced by metric threading), so those
+    metrics deterministically return identity here and never exercise
+    cycling. l1/l2 do not include identity among their ties for this pair
+    and so exercise the cycling path that plot_uc_cloud depends on.
+    """
+    from cctbx.uctbx import cell_metrics as cm
+
+    cs_ref = symmetry(
+        unit_cell=(57.98, 57.98, 57.98, 92.02, 92.02, 92.02), space_group='R3:R')
+    cs_row = symmetry(
+        unit_cell=(57.020, 57.020, 57.020, 89.605, 90.395, 90.395), space_group='R3:R')
+
+    settings, _ = cs_ref.near_minimum_settings_and_cb_ops(
+        length_tolerance=0.03, angle_tolerance=3.0, test_multiples=False)
+    query_settings = np.array([s['cell'] for s in settings], dtype=float)
+    cb_to_min = cs_row.change_of_basis_op_to_minimum_cell()
+    uc_other = cs_row.unit_cell().change_basis(cb_to_min).parameters()
+
+    for metric in ('cellparams', 'l1', 'l2', 'ncdist', 's6', 'dc7unsrt'):
+        f_settings = cm.features(metric, query_settings)
+        f_other = cm.features(metric, np.asarray(uc_other))
+        d = cm.distance(metric, f_other, f_settings)
+        n_tied = int((d == d.min()).sum())
+        assert n_tied > 1, f"{metric}: expected bit-exact ties, got {n_tied}"
+
+    observed_xyz = set()
+    for _ in range(4):
+        cb_op = cs_ref.change_of_basis_op_to_nearest_setting(
+            cs_row, length_tolerance=0.03, angle_tolerance=3.0,
+            test_multiples=False, metric='l1')
+        observed_xyz.add(cb_op.as_xyz())
+        transformed = cs_row.unit_cell().change_basis(cb_op)
+        sim_ops = uctbx.unit_cell(transformed.parameters()).similarity_transformations(
+            uctbx.unit_cell(cs_row.unit_cell().parameters()),
+            relative_length_tolerance=0.02, absolute_angle_tolerance=0.5,
+            unimodular_generator_range=1)
+        assert len(sim_ops) > 0, \
+            f"{transformed.parameters()} is not the same lattice as " \
+            f"{cs_row.unit_cell().parameters()}"
+
+    assert len(observed_xyz) >= 2, \
+        f"expected cycling across >= 2 cb_ops, got {observed_xyz}"
+
+    print("ties are bit-exact under every non-v7 metric; nearest_setting "
+          f"cycled across {len(observed_xyz)} distinct cb_ops over 4 calls")
+
+
+def test_search_nearest_cell_metric_rankings():
+    """
+    Each of the 7 metric= choices must produce a sane ranking on a
+    synthetic database (built the same way as
+    test_search_nearest_cell_matches_direct_computation): the query's own
+    cell should rank first at ~0 distance, and reported distances should
+    be non-decreasing. Cross-metric orderings below rank 1 are NOT
+    asserted -- ties are exact and per-metric orderings of near-equal
+    cells are not ground truth (see test_metric_ties_are_exact).
+    """
+    from cctbx.command_line import fetch_pdb_cells, search_nearest_cell
+    from cctbx.uctbx import cell_metrics as cm
+
+    sgs_ucs = [
+        ['C2',   [49.021, 52.475, 96.609, 90, 96.53, 90]],        # 1rgx
+        ['P2',   [33.429, 95.775, 33.665, 90, 101.67, 90]],       # 1r8m
+        ['P1',   [40.157, 41.867, 97.795, 91.11, 92.73, 107.18]], # 2fxo
+        ['C222', [37.656, 54.197, 95.677, 90, 90, 90]],           # 4rne
+        ['R3:R', [57.98, 57.98, 57.98, 92.02, 92.02, 92.02]],     # pla2
+        ['C2',   [80.95, 80.57, 57.1, 90, 90.35, 90]],            # pla2
+    ]
+    pdb_ids = [f"synm{i:03d}" for i in range(len(sgs_ucs))]
+    base_rows = [
+        {'pdb_id': pdb_id, 'unit_cell_a': uc[0], 'unit_cell_b': uc[1],
+         'unit_cell_c': uc[2], 'unit_cell_alpha': uc[3], 'unit_cell_beta': uc[4],
+         'unit_cell_gamma': uc[5], 'unit_cell_Z': 1, 'space_group': sg}
+        for pdb_id, (sg, uc) in zip(pdb_ids, sgs_ucs)
+    ]
+    csv_path = '/Users/dwpaley/daily/20251120/.tmp/tst_search_metrics.csv'
+    fetch_pdb_cells.write_cells_csv(base_rows, csv_path, out=io.StringIO())
+
+    query_sg, query_uc = sgs_ucs[0]
+    query_args = [
+        "unit_cell=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f" % tuple(query_uc),
+        "space_group=%s" % query_sg,
+        "data_file=%s" % csv_path,
+        "n_results=%d" % len(sgs_ucs),
+    ]
+    for m in cm.METRICS:
+        run_out = io.StringIO()
+        search_nearest_cell.run(query_args + ["metric=%s" % m], out=run_out)
+        lines = run_out.getvalue().splitlines()
+        header_idx = next(i for i, l in enumerate(lines) if l.startswith("Rank"))
+        data_lines = [l for l in lines[header_idx + 1:] if l.strip()]
+        assert len(data_lines) > 0, m
+
+        actual = []
+        for line in data_lines:
+            tok = line.split()
+            actual.append((tok[1], float(tok[2])))
+
+        rank1_pdb, rank1_dist = actual[0]
+        assert rank1_pdb == pdb_ids[0], \
+            f"{m}: expected top hit {pdb_ids[0]}, got {rank1_pdb}"
+        assert rank1_dist < 1e-3, f"{m}: expected ~0 distance, got {rank1_dist}"
+
+        dists = [d for _, d in actual]
+        assert dists == sorted(dists), f"{m}: run() output is not sorted by distance"
+
+    print("search_nearest_cell.run() ranks the query's own cell first "
+          f"at ~0 distance, sorted, for all {len(cm.METRICS)} metrics")
+
+
 if __name__ == '__main__':
     test_a2a_abs_2023()
     test_pla2_abs_2023()
@@ -818,4 +1096,10 @@ if __name__ == '__main__':
     test_min_cell_frame_prefilter_ties()
     test_fetch_and_search_symmetry_construction_agree()
     test_search_nearest_cell_matches_direct_computation()
+    test_cell_metrics_against_scalar_reference()
+    test_ncdist_matches_compiled_NCDist()
+    test_cell_distance_is_the_cellparams_metric()
+    test_v7_is_a_lattice_invariant()
+    test_metric_ties_are_exact()
+    test_search_nearest_cell_metric_rankings()
     print("ok")
