@@ -24,7 +24,8 @@ from libtbx.utils import format_float_with_standard_uncertainty \
 import math
 from scitbx import matrix
 import scitbx.cubicle_neighbors
-from cctbx.uctbx.near_minimum import find_near_minimum_settings, cell_distance
+from cctbx.uctbx.near_minimum import find_near_minimum_settings
+from cctbx.uctbx import cell_metrics
 import numpy as np
 from fractions import Fraction
 from functools import reduce
@@ -511,7 +512,8 @@ class symmetry(object):
     return self.unit_cell() is None or self.space_group() is None
 
   def _ensure_near_minimum_cache(self, length_tolerance, angle_tolerance,
-                                  test_multiples):
+                                  test_multiples,
+                                  metric=cell_metrics.DEFAULT_METRIC):
     """
     Build (if not already cached for these parameters) self's nearly-reduced
     settings and the composed change-of-basis operators that map a
@@ -522,7 +524,7 @@ class symmetry(object):
     disagree about how the cache is built or keyed.
     """
     if not hasattr(self, '_near_minimum_cache') or \
-       getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance, test_multiples):
+       getattr(self, '_near_minimum_cache_params', None) != (length_tolerance, angle_tolerance, test_multiples, metric):
       mc_self = self.minimum_cell()
       settings = find_near_minimum_settings(
         mc_self.unit_cell(),
@@ -531,7 +533,9 @@ class symmetry(object):
         test_multiples=test_multiples
       )
       self._near_minimum_cache = settings
-      self._near_minimum_cache_params = (length_tolerance, angle_tolerance, test_multiples)
+      self._near_minimum_cache_params = (length_tolerance, angle_tolerance, test_multiples, metric)
+      self._near_minimum_setting_features = cell_metrics.features(
+        metric, np.array([s['cell'] for s in settings]))
       cbi_self = self.change_of_basis_op_to_minimum_cell().inverse()
       self._near_minimum_cbi_self = cbi_self
 
@@ -558,7 +562,8 @@ class symmetry(object):
 
   def near_minimum_settings_and_cb_ops(self, length_tolerance=0.03,
                                         angle_tolerance=3.0,
-                                        test_multiples=False):
+                                        test_multiples=False,
+                                        metric=cell_metrics.DEFAULT_METRIC):
     """
     Public accessor for self's cached nearly-reduced settings and their
     composed change-of-basis operators back to self's original setting.
@@ -577,6 +582,10 @@ class symmetry(object):
         Tolerance for angle perturbations in degrees (default 3.0)
     test_multiples : bool
         Whether to test multiples of the unit cell (default False)
+    metric : str
+        Distance metric used to select the nearest setting (default
+        `cctbx.uctbx.cell_metrics.DEFAULT_METRIC`). See
+        `cctbx.uctbx.cell_metrics.METRICS` for the available choices.
 
     Returns
     -------
@@ -595,13 +604,14 @@ class symmetry(object):
         setting dicts and change_of_basis_op objects -- are still shared
         with the cache and should be treated as read-only.
     """
-    self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples)
+    self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples, metric)
     return list(self._near_minimum_cache), list(self._near_minimum_cbi_near_ops)
 
   def change_of_basis_op_to_nearest_setting(self, other,
                                              length_tolerance=0.03,
                                              angle_tolerance=3.0,
-                                             test_multiples=False):
+                                             test_multiples=False,
+                                             metric=cell_metrics.DEFAULT_METRIC):
     """
     Compute the change-of-basis operator that transforms 'other' to the
     setting nearest to self.
@@ -619,6 +629,11 @@ class symmetry(object):
         Tolerance for angle perturbations in degrees (default 3.0)
     test_multiples : bool
         Whether to test multiples of the unit cell (default False)
+    metric : str
+        Distance metric used to select the nearest setting (default
+        `cctbx.uctbx.cell_metrics.DEFAULT_METRIC`). See
+        `cctbx.uctbx.cell_metrics.METRICS` for the available choices.
+        `v7` is a lattice invariant and cannot select a setting.
 
     Returns
     -------
@@ -626,9 +641,10 @@ class symmetry(object):
         The change-of-basis operator to transform 'other' to the nearest
         setting of self. Apply this directly to 'other' (not to its minimum cell).
     """
+    assert metric != 'v7', "v7 is a lattice invariant and cannot select a setting"
 
     # Get or compute cached nearly-reduced settings for self
-    self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples)
+    self._ensure_near_minimum_cache(length_tolerance, angle_tolerance, test_multiples, metric)
     settings = self._near_minimum_cache
     cbi_near_ops = self._near_minimum_cbi_near_ops
 
@@ -638,9 +654,12 @@ class symmetry(object):
     cb_other_to_min = other.change_of_basis_op_to_minimum_cell()
     uc_other = other.unit_cell().change_basis(cb_other_to_min).parameters()
 
-    # Compute distances for each nearly-reduced setting
-    distances = [cell_distance(uc_other, setting['cell']) for setting in settings]
-    best_dist = min(distances)
+    # Compute distances for each nearly-reduced setting (vectorized)
+    distances = cell_metrics.distance(
+      metric,
+      cell_metrics.features(metric, np.asarray(uc_other)),
+      self._near_minimum_setting_features)
+    best_dist = distances.min()
     tolerance = 1e-7
     tied_indices = [i for i, d in enumerate(distances) if abs(d - best_dist) <= tolerance]
 
@@ -677,7 +696,8 @@ class symmetry(object):
   def has_nearer_setting(self, other,
                          length_tolerance=0.03,
                          angle_tolerance=3.0,
-                         test_multiples=False):
+                         test_multiples=False,
+                         metric=cell_metrics.DEFAULT_METRIC):
     """
     Check if 'other' has a setting that is nearer to self than its current setting.
 
@@ -694,6 +714,10 @@ class symmetry(object):
         Tolerance for angle perturbations in degrees (default 3.0)
     test_multiples : bool
         Whether to test multiples of the unit cell (default False)
+    metric : str
+        Distance metric used to select the nearest setting (default
+        `cctbx.uctbx.cell_metrics.DEFAULT_METRIC`). See
+        `cctbx.uctbx.cell_metrics.METRICS` for the available choices.
 
     Returns
     -------
@@ -704,7 +728,8 @@ class symmetry(object):
       other,
       length_tolerance=length_tolerance,
       angle_tolerance=angle_tolerance,
-      test_multiples=test_multiples
+      test_multiples=test_multiples,
+      metric=metric
     )
     # Check if the operator is identity (x,y,z)
     return not cb_op.is_identity_op()
@@ -712,7 +737,8 @@ class symmetry(object):
   def nearest_setting(self, other,
                       length_tolerance=0.03,
                       angle_tolerance=3.0,
-                      test_multiples=False):
+                      test_multiples=False,
+                      metric=cell_metrics.DEFAULT_METRIC):
     """
     Find the setting of 'other' that is nearest to self.
 
@@ -736,6 +762,11 @@ class symmetry(object):
         Tolerance for angle perturbations in degrees (default 3.0)
     test_multiples : bool
         Whether to test multiples of the unit cell (default False)
+    metric : str
+        Distance metric used to select the nearest setting (default
+        `cctbx.uctbx.cell_metrics.DEFAULT_METRIC`). See
+        `cctbx.uctbx.cell_metrics.METRICS` for the available choices.
+        `v7` is a lattice invariant and cannot select a setting.
 
     Returns
     -------
@@ -749,7 +780,8 @@ class symmetry(object):
       other,
       length_tolerance=length_tolerance,
       angle_tolerance=angle_tolerance,
-      test_multiples=test_multiples
+      test_multiples=test_multiples,
+      metric=metric
     )
 
     # Apply transformation to other (the operator now includes the full transformation)
