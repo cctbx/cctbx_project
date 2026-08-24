@@ -1,7 +1,6 @@
 from cctbx import uctbx, sgtbx
 from cctbx.crystal import symmetry
-from cctbx.uctbx.near_minimum import (
-    cell_distance, bulk_lean_min_cell_params)
+from cctbx.uctbx.near_minimum import cell_distance
 import numpy as np
 
 
@@ -465,7 +464,22 @@ def test_min_cell_frame_prefilter():
         cell = tuple(axes[i]) + tuple(angles[i])
         rows.append(symmetry(unit_cell=cell, space_group='P1'))
 
-    min_cell_params, valid_indices = bulk_lean_min_cell_params(rows)
+    # Standard-API replacement for the retired bulk_lean_min_cell_params: a
+    # row whose minimum_cell() raises is excluded, not propagated; empty
+    # input yields (0, 6)/(0,)-shaped arrays, matching the old bulk helper's
+    # shape-safety.
+    min_cell_params_list = []
+    valid_indices_list = []
+    for i, cs in enumerate(rows):
+        try:
+            p = cs.minimum_cell().unit_cell().parameters()
+        except Exception:
+            continue
+        min_cell_params_list.append(p)
+        valid_indices_list.append(i)
+    min_cell_params = np.array(min_cell_params_list) if min_cell_params_list \
+        else np.empty((0, 6))
+    valid_indices = np.array(valid_indices_list, dtype=int)
     # All P1 cells are valid, so no row should have been dropped.
     assert list(valid_indices) == list(range(n_rows))
 
@@ -517,7 +531,20 @@ def test_min_cell_frame_prefilter_ties():
         length_tolerance=0.03, angle_tolerance=3.0, test_multiples=False)
     query_settings = np.array([s['cell'] for s in settings], dtype=float)
 
-    min_cell_params, valid_indices = bulk_lean_min_cell_params([cs_row])
+    # Standard-API replacement for the retired bulk_lean_min_cell_params (see
+    # test_min_cell_frame_prefilter above).
+    min_cell_params_list = []
+    valid_indices_list = []
+    for i, cs in enumerate([cs_row]):
+        try:
+            p = cs.minimum_cell().unit_cell().parameters()
+        except Exception:
+            continue
+        min_cell_params_list.append(p)
+        valid_indices_list.append(i)
+    min_cell_params = np.array(min_cell_params_list) if min_cell_params_list \
+        else np.empty((0, 6))
+    valid_indices = np.array(valid_indices_list, dtype=int)
     assert list(valid_indices) == [0]
     best_dist = np.full(1, np.inf)
     for setting_row in query_settings:
@@ -558,42 +585,6 @@ def test_min_cell_frame_prefilter_ties():
           "cycling; finalized cell remains lattice-equivalent each time")
 
 
-class _FailingSymmetry(object):
-    """
-    Duck-typed stand-in for a crystal.symmetry whose minimum-cell reduction
-    fails, to exercise bulk_lean_min_cell_params's per-row exception
-    handling. A real pathological crystal.symmetry can't easily be
-    constructed for this purpose since the constructor itself already
-    guards against incompatible space-group/cell combinations.
-    """
-
-    def space_group(self):
-        raise RuntimeError("simulated reduction failure")
-
-
-def test_bulk_lean_min_cell_params_edge_cases():
-    """
-    Regression test for two reviewer-flagged bugs in
-    cctbx.uctbx.near_minimum.bulk_lean_min_cell_params:
-    1) empty input must not crash (np.array([]) collapses to shape (0,),
-       not (0, 6), which broke downstream code indexing cells[:, i]);
-    2) a row whose reduction raises must be excluded, not propagate the
-       exception -- matching the old per-row try/except loop this bulk
-       path replaces.
-    """
-    params, valid_indices = bulk_lean_min_cell_params([])
-    assert params.shape == (0, 6)
-    assert valid_indices.shape == (0,)
-
-    good = symmetry(unit_cell=(10, 11, 12, 90, 90, 90), space_group='P1')
-    rows = [good, _FailingSymmetry(), good]
-    params, valid_indices = bulk_lean_min_cell_params(rows)
-    assert list(valid_indices) == [0, 2], valid_indices
-    assert params.shape == (2, 6), params.shape
-
-    print("bulk_lean_min_cell_params edge cases (empty input, failing row) ok")
-
-
 if __name__ == '__main__':
     test_a2a_abs_2023()
     test_pla2_abs_2023()
@@ -602,5 +593,4 @@ if __name__ == '__main__':
     test_change_of_basis_op_to_nearest_setting()
     test_min_cell_frame_prefilter()
     test_min_cell_frame_prefilter_ties()
-    test_bulk_lean_min_cell_params_edge_cases()
     print("ok")
