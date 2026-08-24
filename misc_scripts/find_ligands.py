@@ -52,7 +52,7 @@ def get_mtz_dict(path):
     #
     #if(cntr==10000): break
     #
-    #if code != "6p1y": continue
+    #if code != "5nmw": continue
     #
     file_name = "/".join([path,l])
     #assert os.path.isfile(file_name) # Terribly runtime expensive
@@ -131,135 +131,172 @@ def check_maps2(tfofc, fofc, sites_cart, unit_cell):
     return False
   return True
 
-
-
-from scitbx.array_family import flex
-from cctbx import crystal, sgtbx
 import iotbx.pdb
-import iotbx.pdb.utils
+from cctbx import crystal, sgtbx
+from scitbx.array_family import flex
 
-def extract_ligand_environment(hierarchy, ligand_iselection, crystal_symmetry, distmax):
-    """
-    Extracts the ligand and all complete surrounding residues within distmax.
-    Explicitly transforms symmetry-related residues to map them next to the ligand,
-    assigning them unique chain IDs to prevent duplicate atom label errors.
+def extract_ligand_environment(pdb_hierarchy, ligand_iselection, crystal_symmetry, distmax):
+  """
+  Extracts a ligand and its surrounding environment, explicitly applying
+  crystal symmetry to map interacting symmetry-related residues next to the ligand.
 
-    Returns None if any extracted residue has an alternative conformation.
-    """
-    sites_cart = hierarchy.atoms().extract_xyz()
-    n_atoms = sites_cart.size()
+  This function creates a new PDB hierarchy containing the specified ligand
+  and any complete residue that has at least one atom within `distmax` of
+  any ligand atom. If an interacting residue comes from a symmetry-related
+  molecule, the required rigid-body transformation is explicitly applied to
+  its coordinates.
 
-    # 1. Create a boolean selection array for the ligand
-    ligand_sel = flex.bool(n_atoms, False)
-    ligand_sel.set_selected(ligand_iselection, True)
+  To avoid duplicate atom-label errors, symmetry-transformed chains are
+  assigned new, unique chain IDs starting with the prefix 'S' (e.g., chain 'A'
+  becomes 'SA').
 
-    unit_cell = crystal_symmetry.unit_cell()
-    sps = crystal_symmetry.special_position_settings()
+  Importantly, if consecutive residues from the same original chain are mapped
+  by the *same* symmetry operation, they are kept together as consecutive
+  residues within the *same* single chain ID (e.g., 'SA'). Numerical suffixes
+  (e.g., 'SA1', 'SA2') are only appended if the *same original chain* interacts
+  with the ligand via *multiple, distinct* symmetry operations. This isolates
+  distinct symmetry mappings of the same chain into separate new chains to
+  prevent unphysical spatial jumps and duplicate residue labels.
 
-    # 2. Use special_position_settings to account for crystal symmetry
-    asu_mappings = sps.asu_mappings(buffer_thickness=distmax)
-    asu_mappings.process_sites_cart(
-        original_sites=sites_cart,
-        site_symmetry_table=sps.site_symmetry_table(sites_cart)
-    )
+  If any of the extracted residues contain alternative conformations (altlocs),
+  the extraction is aborted.
+  """
+  # Ensure ligand_iselection is a standard set of integers (i_seqs)
+  if isinstance(ligand_iselection, flex.bool):
+      ligand_iselection = ligand_iselection.iselection()
+  ligand_set = set(ligand_iselection)
 
-    pair_generator = crystal.neighbors_fast_pair_generator(
-        asu_mappings=asu_mappings,
-        distance_cutoff=distmax
-    )
+  # Map each i_seq to its corresponding residue_group and chain
+  iseq_to_rg = {}
+  rg_to_chain = {}
+  for model in pdb_hierarchy.models():
+      for chain in model.chains():
+          for rg in chain.residue_groups():
+              for atom in rg.atoms():
+                  iseq_to_rg[atom.i_seq] = rg
+              rg_to_chain[rg] = chain
 
-    # 3. Map each i_seq to its parent residue_group and chain ID for easy retrieval
-    atom_to_rg = {}
-    rg_to_chain_id = {}
-    for model in hierarchy.models():
-        for chain in model.chains():
-            for rg in chain.residue_groups():
-                for atom in rg.atoms():
-                    atom_to_rg[atom.i_seq] = rg
-                rg_to_chain_id[rg] = chain.id
+  # Helper function to check if a residue group has alternative conformations
+  def has_altlocs(rg):
+      if len(rg.atom_groups()) > 1:
+          return True
+      for ag in rg.atom_groups():
+          if ag.altloc.strip() != '':
+              return True
+      return False
 
-    # 4. Collect required residue groups and their specific symmetry operations
-    env_rgs = {}
+  sites_cart = pdb_hierarchy.atoms().extract_xyz()
 
-    identity_op = sgtbx.rt_mx("x,y,z")
-    for i_seq in ligand_iselection:
-        rg = atom_to_rg[i_seq]
-        env_rgs[(rg, str(identity_op))] = (rg, identity_op, rg_to_chain_id[rg])
+  # Setup symmetry and map atoms across unit cell boundaries
+  sst = crystal_symmetry.special_position_settings().site_symmetry_table(sites_cart=sites_cart)
+  conn_asu_mappings = crystal_symmetry.special_position_settings().asu_mappings(buffer_thickness=distmax)
+  conn_asu_mappings.process_sites_cart(
+      original_sites=sites_cart,
+      site_symmetry_table=sst
+  )
 
-    for pair in pair_generator:
-        i_in_lig = ligand_sel[pair.i_seq]
-        j_in_lig = ligand_sel[pair.j_seq]
+  pair_generator = crystal.neighbors_fast_pair_generator(
+      conn_asu_mappings,
+      distance_cutoff=distmax)
 
-        if not i_in_lig and not j_in_lig:
-            continue
+  # Dictionary to store required RGs grouped by transformation and chain:
+  # extracted[op_str][chain_id] = set(rgs)
+  extracted = {}
+  identity_op = sgtbx.rt_mx("x,y,z").as_xyz()
 
-        if i_in_lig:
-            rt_mx_i = asu_mappings.get_rt_mx_i(pair)
-            rt_mx_j = asu_mappings.get_rt_mx_j(pair)
-            rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+  # Step 1. Always include the full ligand in its original position
+  for iseq in ligand_set:
+      rg = iseq_to_rg[iseq]
+      chain_id = rg_to_chain[rg].id
+      extracted.setdefault(identity_op, {}).setdefault(chain_id, set()).add(rg)
 
-            rg_j = atom_to_rg[pair.j_seq]
-            env_rgs[(rg_j, str(rt_mx_ji))] = (rg_j, rt_mx_ji, rg_to_chain_id[rg_j])
+  # Step 2. Collect all interacting residues, mapped back to the ligand's environment
+  for pair in pair_generator:
+      i_seq = pair.i_seq
+      j_seq = pair.j_seq
 
-        if j_in_lig:
-            rt_mx_i = asu_mappings.get_rt_mx_i(pair)
-            rt_mx_j = asu_mappings.get_rt_mx_j(pair)
-            rt_mx_ij = rt_mx_j.inverse().multiply(rt_mx_i)
+      rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
+      rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
 
-            rg_i = atom_to_rg[pair.i_seq]
-            env_rgs[(rg_i, str(rt_mx_ij))] = (rg_i, rt_mx_ij, rg_to_chain_id[rg_i])
+      if i_seq in ligand_set:
+          op = rt_mx_i.inverse().multiply(rt_mx_j)
+          rg = iseq_to_rg[j_seq]
+          chain_id = rg_to_chain[rg].id
+          extracted.setdefault(op.as_xyz(), {}).setdefault(chain_id, set()).add(rg)
 
-    # 5. Build the new hierarchy
-    new_hierarchy = iotbx.pdb.hierarchy.root()
-    new_model = iotbx.pdb.hierarchy.model()
-    new_hierarchy.append_model(new_model)
+      if j_seq in ligand_set:
+          op = rt_mx_j.inverse().multiply(rt_mx_i)
+          rg = iseq_to_rg[i_seq]
+          chain_id = rg_to_chain[rg].id
+          extracted.setdefault(op.as_xyz(), {}).setdefault(chain_id, set()).add(rg)
 
-    chains_dict = {}
+  # Step 3. Validate that none of the extracted residues have alternative conformations
+  for op_str, chain_dict in extracted.items():
+      for chain_id, rgs in chain_dict.items():
+          for rg in rgs:
+              if has_altlocs(rg):
+                  return None
 
-    # Pre-generate all valid PDB chain IDs ("A", "B", ... "AA", "AB"...)
-    available_chain_ids = iotbx.pdb.utils.all_chain_ids()
+  # Step 4. Construct the new hierarchy
+  new_hierarchy = iotbx.pdb.hierarchy.root()
+  new_model = iotbx.pdb.hierarchy.model()
+  new_hierarchy.append_model(new_model)
 
-    # Remove chain IDs that are already used in the original hierarchy to be safe
-    for cid in hierarchy.chain_ids():
-        if cid in available_chain_ids:
-            available_chain_ids.remove(cid)
+  used_chain_ids = set()
 
-    for (rg, rt_mx, chain_id) in env_rgs.values():
+  # 4a. Add residues from the identity operation first (original chains stay together)
+  if identity_op in extracted:
+      chain_dict = extracted[identity_op]
+      for chain_id in sorted(chain_dict.keys()):
+          new_chain = iotbx.pdb.hierarchy.chain(id=chain_id)
+          used_chain_ids.add(chain_id)
 
-        # Reject if the residue has an alternative conformation
-        if len(rg.atom_groups()) > 1 or rg.atom_groups()[0].altloc.strip() != "":
-            return None
+          # Sort RGs by residue sequence & insert code to maintain consecutive order
+          rgs = sorted(list(chain_dict[chain_id]), key=lambda x: (x.resseq_as_int(), x.icode))
+          for rg in rgs:
+              new_chain.append_residue_group(rg.detached_copy())
+          new_model.append_chain(new_chain)
 
-        rt_str = str(rt_mx)
+  # 4b. Add residues from explicit symmetry operations
+  unit_cell = crystal_symmetry.unit_cell()
 
-        # Determine the chain ID to use for this specific (chain, symmetry_operation) pair
-        if (chain_id, rt_str) not in chains_dict:
+  for op_str, chain_dict in sorted(extracted.items()):
+      if op_str == identity_op:
+          continue
 
-            # If it is the original ASU position, keep the original chain ID
-            if rt_mx.is_unit_mx():
-                new_chain_id = chain_id
-            else:
-                # If it is a symmetry mate, pop a completely new chain ID
-                new_chain_id = available_chain_ids.pop(0)
+      rt_mx = sgtbx.rt_mx(op_str)
 
-            new_chain = iotbx.pdb.hierarchy.chain(id=new_chain_id)
-            chains_dict[(chain_id, rt_str)] = new_chain
-            new_model.append_chain(new_chain)
+      for chain_id in sorted(chain_dict.keys()):
+          # Create a unique chain ID starting with 'S'
+          base_new_id = "S" + chain_id.strip()
+          new_id = base_new_id
+          suffix = 1
+          while new_id in used_chain_ids:
+              new_id = base_new_id + str(suffix)
+              suffix += 1
+          used_chain_ids.add(new_id)
 
-        rg_copy = rg.detached_copy()
+          new_chain = iotbx.pdb.hierarchy.chain(id=new_id)
 
-        # Apply the exact symmetry operation so the residue maps right next to the ligand
-        if not rt_mx.is_unit_mx():
-            for atom in rg_copy.atoms():
-                site_frac = unit_cell.fractionalize(atom.xyz)
-                new_site_frac = rt_mx * site_frac
-                atom.xyz = unit_cell.orthogonalize(new_site_frac)
+          # Sorted iteration guarantees that sequential pairs remain adjacent
+          rgs = sorted(list(chain_dict[chain_id]), key=lambda x: (x.resseq_as_int(), x.icode))
 
-        chains_dict[(chain_id, rt_str)].append_residue_group(rg_copy)
+          for rg in rgs:
+              new_rg = rg.detached_copy()
 
-    new_hierarchy.atoms().reset_i_seq()
+              # Apply the symmetry operator to rotate/translate the rigid-body residue
+              for atom in new_rg.atoms():
+                  site_frac = unit_cell.fractionalize(atom.xyz)
+                  new_site_frac = rt_mx * site_frac
+                  atom.xyz = unit_cell.orthogonalize(new_site_frac)
 
-    return new_hierarchy
+              new_chain.append_residue_group(new_rg)
+          new_model.append_chain(new_chain)
+
+  # Clean indices
+  new_hierarchy.atoms().reset_i_seq()
+  return new_hierarchy
+
 
 def get_maps(miller_arrays):
   def _get_real_map(mc):
@@ -351,7 +388,7 @@ def run_one(args):
       return None
     for i, ls in enumerate(ligand_selections):
       around_ligand = extract_ligand_environment(
-        hierarchy         = h,
+        pdb_hierarchy     = h,
         ligand_iselection = ls,
         crystal_symmetry  = cs,
         distmax           = 4.0)
