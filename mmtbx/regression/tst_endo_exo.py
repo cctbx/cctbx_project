@@ -2097,6 +2097,42 @@ def exercise_capping_disabled():
         f"capping off: cap {ci} should keep its original element")
 
 
+def exercise_special_position_partial_overlap():
+  """A group straddling a symmetry element does not duplicate a nucleus.
+
+  A ligand with one atom ON a rotation axis and the rest off it has an image
+  that coincides only in part.  Dropping only groups that coincide ENTIRELY
+  keeps such an image whole, and the shared atoms then sit two to a place,
+  which no QM code can run.
+
+  Altlocs are the reason the comparison is per parent atom group rather than
+  positional: two conformers share their backbone and would otherwise cancel
+  each other, so both modes are checked here as well."""
+  for radius in (4.0, 5.0, 6.0):
+    result = _run_endo_exo_params(
+      _SPECIAL_PARTIAL_PDB, buffer__radius=radius, selection=["resname ZN"])
+    atoms = list(result[0]["model"].get_hierarchy().atoms())
+    assert len(atoms) > 10, f"region collapsed to {len(atoms)} atoms"
+    for i, atom in enumerate(atoms):
+      for other in atoms[i + 1:]:
+        assert atom.distance(other) > 0.5, (
+          f"{atom.name.strip()} and {other.name.strip()} coincide at "
+          f"{atom.distance(other):.3f} A, r={radius}")
+
+  # The image is dropped whole, not trimmed to the atoms that coincide.
+  names = sorted(atom.name.strip() for atom in atoms)
+  assert names.count("C") == 1, f"central carbon appears {names.count('C')}x"
+
+  # Disorder is not symmetry: both conformers survive altloc=all.
+  for mode, expected in (("auto", {".", "B"}), ("all", {".", "A", "B"})):
+    result = _run_endo_exo_params(
+      _ALTLOC_PDB, buffer__radius=4.0, altloc=mode,
+      selection=["name CA"], buffer__skip_search=True)
+    hierarchy = result[0]["model"].get_hierarchy()
+    present = {ag.altloc.strip() or "." for ag in hierarchy.atom_groups()}
+    assert present == expected, f"altloc={mode} gave {present}"
+
+
 def exercise_altloc_filter():
   """_apply_altloc_filter keeps one conformer per residue group.
 
@@ -2295,6 +2331,35 @@ ATOM      2 CA   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
 ATOM      3 C    ALA A   1       1.000   1.050   0.000  1.00 20.00           C
 ATOM      4 O    ALA A   1       0.700   2.220   0.000  1.00 20.00           O
 ATOM      5 CB   ALA A   1       0.550  -0.800  -1.200  1.00 20.00           C
+END
+"""
+
+
+# Tris on the 2-fold of P 1 2 1, central C on the axis and every other
+# heavy atom off it, so the symmetry image coincides only in part.
+_SPECIAL_PARTIAL_PDB = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1 N    TRS A 401       0.849   5.849   0.849  1.00 20.00           N
+HETATM    2 C    TRS A 401       0.000   5.000   0.000  1.00 20.00           C
+HETATM    3 C1   TRS A 401       0.883   4.117  -0.883  1.00 20.00           C
+HETATM    4 C2   TRS A 401      -0.883   5.883  -0.883  1.00 20.00           C
+HETATM    5 C3   TRS A 401      -0.883   4.117   0.883  1.00 20.00           C
+HETATM    6 O1   TRS A 401       1.709   3.291  -1.709  1.00 20.00           O
+HETATM    7 O2   TRS A 401      -1.709   6.709  -1.709  1.00 20.00           O
+HETATM    8 O3   TRS A 401      -1.709   3.291   1.709  1.00 20.00           O
+HETATM    9  H11 TRS A 401       1.118   4.980  -0.594  1.00 20.00           H
+HETATM   10  H12 TRS A 401      -0.020   3.922  -0.504  1.00 20.00           H
+HETATM   11  H21 TRS A 401       0.056   6.024  -0.677  1.00 20.00           H
+HETATM   12  H22 TRS A 401      -1.156   5.076  -0.423  1.00 20.00           H
+HETATM   13  H31 TRS A 401       0.024   3.922   0.579  1.00 20.00           H
+HETATM   14  H32 TRS A 401      -1.124   4.977   0.522  1.00 20.00           H
+HETATM   15  HN1 TRS A 401       0.366   6.367   1.388  1.00 20.00           H
+HETATM   16  HN2 TRS A 401       1.367   6.388   0.366  1.00 20.00           H
+HETATM   17  HN3 TRS A 401       1.388   5.366   1.367  1.00 20.00           H
+HETATM   18  HO1 TRS A 401       1.284   2.587  -1.755  1.00 20.00           H
+HETATM   19  HO2 TRS A 401      -1.250   7.372  -1.979  1.00 20.00           H
+HETATM   20  HO3 TRS A 401      -2.466   3.313   1.364  1.00 20.00           H
+HETATM   21 ZN    ZN A 402       2.061   7.061   2.061  1.00 20.00          ZN
 END
 """
 
@@ -3168,6 +3233,7 @@ def run():
   exercise_region_invariants()
   # parameter coverage
   exercise_capping_disabled()
+  exercise_special_position_partial_overlap()
   exercise_altloc_filter()
   exercise_element_filter()
   exercise_depth_and_skip_search()

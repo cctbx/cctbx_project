@@ -932,22 +932,35 @@ class QMRegionBuilder(object):
     # two disorder H apart), so a group whose heavy atoms all coincide with kept
     # ones is dropped whole. 0.2 A tolerance absorbs the coordinate drift.
     POS_TOL = 0.2
-    seen_heavy = defaultdict(list)  # (element, name) -> [kept heavy atom, ...]
+    # Compared only against other images of the SAME parent atom group, so two
+    # altlocs of a residue -- which share their backbone positions and are both
+    # wanted under altloc=all -- never cancel each other.  Any coincidence at
+    # all drops the group: a group straddling the axis has some atoms on it and
+    # some off, and keeping it would put two nuclei in one place.
+    seen_images = defaultdict(list)  # parent group -> [(op_xyz, heavy atom), ]
     atom_for_node = {}  # (parent_iseq, op_xyz) -> surviving atom
     for ch in list(out_hier_model.chains()):
       for rg in list(ch.residue_groups()):
         for ag in list(rg.atom_groups()):
           heavy = [a for a in ag.atoms() if not a.element_is_hydrogen()]
-          is_duplicate = bool(heavy) and all(
-            any(a.distance(prev) < POS_TOL
-                for prev in seen_heavy[(a.element.strip(), a.name.strip())])
-            for a in heavy)
+          is_duplicate = False
+          if heavy:
+            parent_iseq, op_xyz = node_of_atom[heavy[0]]
+            group_key = parent_atoms[parent_iseq].parent().memory_id()
+            other_images = [kept for (kept_op, kept) in seen_images[group_key]
+                            if kept_op != op_xyz]
+            is_duplicate = any(
+              a.distance(prev) < POS_TOL
+              for a in heavy for prev in other_images)
           if is_duplicate:
             rg.remove_atom_group(ag)
             continue
           for atom in ag.atoms():
             if not atom.element_is_hydrogen():
-              seen_heavy[(atom.element.strip(), atom.name.strip())].append(atom)
+              iseq_of, op_of = node_of_atom[atom]
+              seen_images[
+                parent_atoms[iseq_of].parent().memory_id()].append(
+                  (op_of, atom))
             atom_for_node[node_of_atom[atom]] = atom
         if len(list(rg.atom_groups())) == 0:
           ch.remove_residue_group(rg)
