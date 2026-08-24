@@ -20,6 +20,7 @@ import numpy as np
 import iotbx.phil
 from cctbx import crystal
 from cctbx import sgtbx
+from cctbx.uctbx import cell_metrics
 from libtbx.utils import Sorry
 
 master_phil_str = """
@@ -45,13 +46,24 @@ max_search_index = 10
   .type = int
   .help = "Currently unused: change_of_basis_op_to_nearest_setting does not" \
           "expose this knob; the internal find_near_minimum_settings default applies"
+metric = cellparams l1 l2 *ncdist v7 s6 dc7unsrt
+  .type = choice
+  .help = "Distance metric used to rank database cells against the query." \
+          " cellparams is the historical placeholder (L1 on raw cell" \
+          " parameters), kept so old numbers reproduce; the rest are the" \
+          " local (unpermuted) forms of the six SAUC metrics, SAUC-scaled." \
+          " s6 and dc7unsrt omit SAUC's own permutation minimization. v7 is" \
+          " a lattice invariant, so it cannot select a setting -- ranking" \
+          " skips the settings enumeration entirely, and the setting" \
+          " displayed for each hit is chosen with ncdist instead."
 """
 
 master_phil = iotbx.phil.parse(master_phil_str)
 
 usage_string = """\
 cctbx.search_nearest_cell unit_cell=39.741,183.767,140.649,90,90,90 \\
-  space_group=C222 data_file=pdb_crystallography_data.csv n_results=10
+  space_group=C222 data_file=pdb_crystallography_data.csv n_results=10 \\
+  metric=ncdist
 
 Search a PDB unit-cell database (CSV) for the entries nearest a query cell.
 The nearly-reduced settings of the query cell are computed once; each database
@@ -162,6 +174,11 @@ def run(args, out=sys.stdout):
 
   print("Query: unit_cell=%s  space_group=%s" % (
     cs_ref.unit_cell(), cs_ref.space_group_info()), file=out)
+  print("Metric: %s" % params.metric, file=out)
+  if params.metric == 'v7':
+    print("  (v7 is a lattice invariant and cannot select a setting;"
+          " displayed settings are chosen with %s)" % cell_metrics.DEFAULT_METRIC,
+          file=out)
 
   rows, n_skipped, precomputed = load_pdb_cells(params.data_file)
   print("Loaded %d cells from %s (%d skipped: unparsable space group or cell)" % (
@@ -173,35 +190,51 @@ def run(args, out=sys.stdout):
 
   # Bulk architecture, ranking in the query's MINIMUM-CELL frame to match
   # change_of_basis_op_to_nearest_setting's own internal selection criterion
-  # (it picks its best setting by minimizing cell_distance(other's minimum
-  # cell, setting['cell']) over self's cached nearly-reduced settings -- see
-  # crystal.symmetry.change_of_basis_op_to_nearest_setting): (1) get the
-  # query's S nearly-reduced settings once, as an (S,6) array of their cell
-  # parameters; (2) get every database row's minimum-cell params via the
-  # lean path (no change_of_basis_op object construction), as an (N,6)
-  # array; (3) for each of the S settings, take the elementwise L1 distance
-  # to all N rows and keep a running elementwise minimum -- no (S,N,...)
-  # intermediate is ever built; (4) run the unmodified, exact
-  # change_of_basis_op_to_nearest_setting API on only the top-M candidates
-  # by this minimum-cell-frame distance for the final ranking.
-  settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
-    length_tolerance=params.length_tolerance,
-    angle_tolerance=params.angle_tolerance,
-    test_multiples=False)
-  query_settings = np.array([s['cell'] for s in settings], dtype=float)  # (S,6)
+  # (it picks its best setting by minimizing cell_metrics.distance(metric,
+  # ...) between other's minimum cell and self's cached nearly-reduced
+  # settings -- see crystal.symmetry.change_of_basis_op_to_nearest_setting):
+  # (1) get the query's S nearly-reduced settings once, as an (S,6) array of
+  # their cell parameters; (2) get every database row's minimum-cell params
+  # via the lean path (no change_of_basis_op object construction), as an
+  # (N,6) array; (3) for each of the S settings, take the elementwise
+  # cell_metrics distance to all N rows and keep a running elementwise
+  # minimum -- no (S,N,...) intermediate is ever built; (4) run the
+  # unmodified, exact change_of_basis_op_to_nearest_setting API on only the
+  # top-M candidates by this minimum-cell-frame distance for the final
+  # ranking. v7 is a lattice invariant (identical for every setting of one
+  # lattice), so for it step (1)/(3) collapse to a single query-vs-database
+  # comparison with no settings loop, and the displayed setting in step (4)
+  # is chosen with the default metric instead (see display_metric below).
+  if params.metric == 'v7':
+    display_metric = cell_metrics.DEFAULT_METRIC
+    query_feat = cell_metrics.features(
+      'v7', np.asarray(cs_ref.minimum_cell().unit_cell().parameters()))
+    valid_mask = ~np.isnan(precomputed).any(axis=1)
+    valid_indices = np.nonzero(valid_mask)[0]
+    db_feat = cell_metrics.features('v7', precomputed[valid_mask])
+    best_dist = cell_metrics.distance('v7', query_feat, db_feat)
+  else:
+    display_metric = params.metric
+    settings, cbi_near_ops = cs_ref.near_minimum_settings_and_cb_ops(
+      length_tolerance=params.length_tolerance,
+      angle_tolerance=params.angle_tolerance,
+      test_multiples=False,
+      metric=params.metric)
+    query_settings = np.array([s['cell'] for s in settings], dtype=float)  # (S,6)
+    query_feat = cell_metrics.features(params.metric, query_settings)  # (S,k)
 
-  # min-cell params are precomputed (see fetch_pdb_cells.py) and loaded
-  # directly from the CSV; a row whose min-cell columns were blank at
-  # precompute time (reduction failure) is NaN here and excluded via
-  # valid_mask, mirroring the old per-row try/except loop's behavior.
-  valid_mask = ~np.isnan(precomputed).any(axis=1)
-  min_cell_params = precomputed[valid_mask]
-  valid_indices = np.nonzero(valid_mask)[0]
+    # min-cell params are precomputed (see fetch_pdb_cells.py) and loaded
+    # directly from the CSV; a row whose min-cell columns were blank at
+    # precompute time (reduction failure) is NaN here and excluded via
+    # valid_mask, mirroring the old per-row try/except loop's behavior.
+    valid_mask = ~np.isnan(precomputed).any(axis=1)
+    valid_indices = np.nonzero(valid_mask)[0]
+    db_feat = cell_metrics.features(params.metric, precomputed[valid_mask])  # (N,k)
 
-  best_dist = np.full(min_cell_params.shape[0], np.inf)
-  for setting_row in query_settings:
-    d = np.abs(min_cell_params - setting_row).sum(axis=1)
-    np.minimum(best_dist, d, out=best_dist)
+    best_dist = np.full(db_feat.shape[0], np.inf)
+    for q_row in query_feat:
+      np.minimum(best_dist, cell_metrics.distance(params.metric, q_row, db_feat),
+                 out=best_dist)
 
   margin = max(100, 10 * params.n_results)
   top_idx = np.argpartition(best_dist, margin)[:margin] \
@@ -218,7 +251,8 @@ def run(args, out=sys.stdout):
         cs_row,
         length_tolerance=params.length_tolerance,
         angle_tolerance=params.angle_tolerance,
-        test_multiples=False)
+        test_multiples=False,
+        metric=display_metric)
     except Exception:
       continue  # search failure, same bucket as parse failures
     transformed_uc = cs_row.unit_cell().change_basis(cb_op)
