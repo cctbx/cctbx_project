@@ -20,7 +20,6 @@ import numpy as np
 import iotbx.phil
 from cctbx import crystal
 from cctbx import sgtbx
-from cctbx.uctbx.near_minimum import bulk_lean_min_cell_params
 from libtbx.utils import Sorry
 
 master_phil_str = """
@@ -32,7 +31,7 @@ space_group = None
   .help = "Query space group, e.g. space_group=C222"
 data_file = None
   .type = path
-  .help = "PDB cell CSV (pdb_id,a,b,c,alpha,beta,gamma,Z,space_group), e.g. data/pdb_crystallography_data.csv"
+  .help = "Augmented PDB cell CSV (15 columns: pdb_id,a,b,c,alpha,beta,gamma,Z,space_group,min_cell_a,min_cell_b,min_cell_c,min_cell_alpha,min_cell_beta,min_cell_gamma), written by cctbx.fetch_pdb_cells, e.g. data/pdb_crystallography_data.csv"
 n_results = 10
   .type = int
   .help = "Number of top matches to display"
@@ -63,26 +62,29 @@ Each match is reported transformed into the query's setting."""
 
 
 def load_pdb_cells(path):
-  """Parse a PDB cell CSV (pdb_id,a,b,c,alpha,beta,gamma,Z,space_group) into
-  a list of (pdb_code, crystal.symmetry) tuples.
+  """Parse an augmented PDB cell CSV (15 columns, written by
+  cctbx.fetch_pdb_cells) into (rows, n_skipped, min_cell_params).
 
-  Rows whose space group symbol or cell parameters cannot be turned into a
-  valid crystal.symmetry are silently skipped; the caller is responsible for
-  reporting the total skip count (per-row warnings would flood the terminal
-  over ~200k rows).
+  rows: list of (pdb_code, crystal.symmetry) built from columns 0-8, same
+    semantics as before (skip-and-count on unparsable pdb_id/cell/space
+    group).
+  n_skipped: int, same semantics as before.
+  min_cell_params: (N, 6) float ndarray, N == len(rows), row-aligned with
+    `rows`. A row whose min-cell columns (9-14) are blank (precompute-time
+    reduction failure) has all 6 entries as np.nan; the caller derives
+    (min_cell_params_valid, valid_indices) via
+    `~np.isnan(min_cell_params).any(axis=1)`.
 
-  Some rows store a rhombohedral-setting cell (a=b=c, alpha=beta=gamma != 90)
-  under a bare R space-group symbol (e.g. "R 3 2"); cctbx's bare-symbol
-  default assumes hexagonal axes (gamma=120) and rejects such a cell as
-  incompatible. Before counting such a row as a skip, retry once against the
-  explicit rhombohedral setting of the same symbol (symbol + ' :R'). The
-  ':R' variant's sg_info is cached under its own key, separate from the bare
-  symbol's cache entry, so a symbol that needs the retry is still only
-  reparsed once across the whole file (not once per row that shares it), and
-  a symbol that already succeeds bare is never shadowed by this fallback.
+  Assumes the augmented 15-column format unconditionally -- there is no
+  legacy plain-CSV fallback. A file lacking the 6 trailing min-cell columns
+  (e.g. an old 9-column data/pdb_crystallography_data.csv snapshot) will
+  raise IndexError on the first data row, since the min-cell fields are read
+  by direct positional indexing (entry[9]..entry[14]); regenerate such a
+  file with cctbx.fetch_pdb_cells.
   """
   rows = []
   n_skipped = 0
+  min_cell_rows = []
   sg_info_cache = {}
   with open(path) as f:
     for i, line in enumerate(f):
@@ -95,6 +97,9 @@ def load_pdb_cells(path):
         sg_str = entry[8]
         if sg_str not in sg_info_cache:
           sg_info_cache[sg_str] = sgtbx.space_group_info(symbol=sg_str)
+        # Mirrors fetch_pdb_cells.py's _crystal_symmetry_from_row (own inline
+        # copy, not shared -- see tst_move_nearest.py's equivalence test that
+        # pins the two together).
         try:
           cs = crystal.symmetry(
             unit_cell=(a, b, c, al, be, ga),
@@ -110,7 +115,20 @@ def load_pdb_cells(path):
         n_skipped += 1
         continue
       rows.append((pdb_code, cs))
-  return rows, n_skipped
+      # Direct indexing (not a entry[9:15] slice) so a short/truncated data
+      # row raises IndexError immediately rather than silently producing a
+      # shorter-than-6 (or all-NaN) min-cell tuple.
+      min_cell_entry = []
+      for j in (9, 10, 11, 12, 13, 14):
+        x = entry[j]
+        try:
+          min_cell_entry.append(float(x))
+        except Exception:
+          min_cell_entry.append(np.nan)
+      min_cell_rows.append(tuple(min_cell_entry))
+  min_cell_params = np.array(min_cell_rows, dtype=float) if min_cell_rows \
+    else np.empty((0, 6))
+  return rows, n_skipped, min_cell_params
 
 
 def run(args, out=sys.stdout):
@@ -145,7 +163,7 @@ def run(args, out=sys.stdout):
   print("Query: unit_cell=%s  space_group=%s" % (
     cs_ref.unit_cell(), cs_ref.space_group_info()), file=out)
 
-  rows, n_skipped = load_pdb_cells(params.data_file)
+  rows, n_skipped, precomputed = load_pdb_cells(params.data_file)
   print("Loaded %d cells from %s (%d skipped: unparsable space group or cell)" % (
     len(rows), params.data_file, n_skipped), file=out)
 
@@ -172,12 +190,13 @@ def run(args, out=sys.stdout):
     test_multiples=False)
   query_settings = np.array([s['cell'] for s in settings], dtype=float)  # (S,6)
 
-  # bulk_lean_min_cell_params silently drops rows whose reduction raises
-  # (mirroring the old per-row try/except loop); valid_indices maps each
-  # surviving row in min_cell_params back to its position in `rows`, so a
-  # dropped row is simply never a bulk-prefilter candidate.
-  min_cell_params, valid_indices = bulk_lean_min_cell_params(
-    [cs_row for _, cs_row in rows])
+  # min-cell params are precomputed (see fetch_pdb_cells.py) and loaded
+  # directly from the CSV; a row whose min-cell columns were blank at
+  # precompute time (reduction failure) is NaN here and excluded via
+  # valid_mask, mirroring the old per-row try/except loop's behavior.
+  valid_mask = ~np.isnan(precomputed).any(axis=1)
+  min_cell_params = precomputed[valid_mask]
+  valid_indices = np.nonzero(valid_mask)[0]
 
   best_dist = np.full(min_cell_params.shape[0], np.inf)
   for setting_row in query_settings:
