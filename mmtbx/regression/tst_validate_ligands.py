@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import time, os, traceback
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import mmtbx.model
 import iotbx.pdb
+import iotbx.phil
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
@@ -66,6 +67,8 @@ def run():
   run_test20()
   run_test21()
   run_test22()
+  run_test23()
+  run_test24()
 
 # ------------------------------------------------------------------------------
 
@@ -1307,6 +1310,120 @@ END
 '''
 
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+
+_gol_and_protein_shells_pdb_str = '''
+CRYST1   60.000   40.000   40.000  90.00  90.00  90.00 P 1
+SCALE1      0.016667  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.025000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.025000        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.500   6.350   4.700  1.00 20.00           O
+ATOM      7  N   ALA B   1       7.220   4.050   8.500  1.00 30.00           N
+ATOM      8  CA  ALA B   1       8.678   4.050   8.500  1.00 30.00           C
+ATOM      9  C   ALA B   1       9.229   5.470   8.500  1.00 30.00           C
+ATOM     10  O   ALA B   1       8.471   6.440   8.500  1.00 30.00           O
+ATOM     11  CB  ALA B   1       9.508   2.750   8.500  1.00 30.00           C
+ATOM     12  N   ALA B   2       8.500   6.350   0.700  1.00 40.00           N
+ATOM     13  CA  ALA B   2       9.958   6.350   0.700  1.00 40.00           C
+ATOM     14  C   ALA B   2      10.509   7.770   0.700  1.00 40.00           C
+ATOM     15  O   ALA B   2       9.751   8.740   0.700  1.00 40.00           O
+ATOM     16  CB  ALA B   2      10.788   5.050   0.700  1.00 40.00           C
+ATOM     17  N   ALA B   3      22.000   5.000   5.000  1.00 50.00           N
+ATOM     18  CA  ALA B   3      23.458   5.000   5.000  1.00 50.00           C
+ATOM     19  C   ALA B   3      24.009   6.420   5.000  1.00 50.00           C
+ATOM     20  O   ALA B   3      23.251   7.390   5.000  1.00 50.00           O
+ATOM     21  CB  ALA B   3      24.288   3.700   5.000  1.00 50.00           C
+END
+'''
+
+def _gol_and_protein_shells_manager(within_radius=None):
+  """Manager for a GOL with three ALA residues at controlled distances.
+
+  Closest approach of each ALA to the GOL: B/1 ~2.8 A (inside the 3 A
+  default), B/2 ~4.0 A (outside 3 A, inside 5 A), B/3 >7 A (outside both).
+  """
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_and_protein_shells_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  if within_radius is not None:
+    params.within_radius = within_radius
+  vl_manager = val_lig_mod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def _within_resids(vl_manager):
+  """resseq of the residues selected as the ligand environment."""
+  lr = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  ph_within = lr._ph.select(lr.get_adps().isel_within_noH)
+  return sorted(rg.resseq_as_int() for rg in ph_within.residue_groups())
+
+def run_test23():
+  print('test23')
+  # default radius is 3 A: only the ALA at ~2.8 A is part of the environment
+  vl_default = _gol_and_protein_shells_manager()
+  assert vl_default.params.within_radius == 3.0, vl_default.params.within_radius
+  assert _within_resids(vl_default) == [1], _within_resids(vl_default)
+
+  # widening to 5 A pulls in the ALA at ~4.0 A, but not the one beyond 7 A
+  vl_wide = _gol_and_protein_shells_manager(within_radius=5.0)
+  assert _within_resids(vl_wide) == [1, 2], _within_resids(vl_wide)
+
+  # the mean B of the environment follows the selection (B = 30 vs 40)
+  adps_default = find_lr(
+    vl_default, 'resname GOL and chain A and resseq 1').get_adps()
+  adps_wide = find_lr(
+    vl_wide, 'resname GOL and chain A and resseq 1').get_adps()
+  assert approx_equal(adps_default.b_mean_within, 30.0, eps=0.01)
+  assert approx_equal(adps_wide.b_mean_within, 35.0, eps=0.01)
+
+  # narrowing to 2 A leaves the environment empty
+  vl_narrow = _gol_and_protein_shells_manager(within_radius=2.0)
+  assert _within_resids(vl_narrow) == [], _within_resids(vl_narrow)
+
+# ------------------------------------------------------------------------------
+
+def run_test24():
+  print('test24')
+  # the 2-5 A bounds are enforced for library callers, not only through phil
+  for bad_radius in [0.0, 1.9, 5.1]:
+    try:
+      _gol_and_protein_shells_manager(within_radius=bad_radius)
+    except Sorry as e:
+      assert 'within_radius' in str(e), str(e)
+    else:
+      raise AssertionError(
+        'no Sorry raised for within_radius=%s' % bad_radius)
+
+  # the bounds themselves are accepted
+  for good_radius in [2.0, 5.0]:
+    _gol_and_protein_shells_manager(within_radius=good_radius)
+
+  # the phil bounds and the library-level bounds must not drift apart
+  obj = val_lig_mod.master_params().get(
+    'validate_ligands.within_radius').objects[0]
+  assert obj.type.value_min == val_lig_mod.WITHIN_RADIUS_MIN, obj.type.value_min
+  assert obj.type.value_max == val_lig_mod.WITHIN_RADIUS_MAX, obj.type.value_max
+
+  # and phil itself rejects an out-of-range value on the command line
+  try:
+    val_lig_mod.master_params().fetch(
+      source=iotbx.phil.parse('validate_ligands.within_radius=7')).extract()
+  except RuntimeError as e:
+    assert 'maximum allowed value' in str(e), str(e)
+  else:
+    raise AssertionError('phil accepted within_radius=7')
 
 # ------------------------------------------------------------------------------
 
