@@ -77,6 +77,9 @@ capping {
     .type = bool
     .help = "Consult the per-residue table of preferred cut bonds before the geometric heuristic, and allow the heuristic only on bonds nearer the backbone than the table entry."
 }
+include_hbond_partners = False
+  .type = bool
+  .help = "Whether to seed the QM region with atoms hydrogen-bonded to it, so a bond is not left with only one of its two partners. The added atoms are cut and capped like any other, so a cut can land further out and leave an atom capped that was not before. Requires hydrogens."
 include_waters_in_convex_hull = True
   .type = bool
   .help = "Whether to check for water molecules inside the convex hull of the selected QM region and add them to the QM region if found."
@@ -142,6 +145,9 @@ class Program(ProgramTemplate):
         raise Sorry(
           f"Invalid selection string '{sel_str}': {e}"
         )
+
+    if not model.has_hd():
+      raise Sorry('Model has no hydrogens. Add them and run again.')
 
   def run(self):
     """Build the QM region(s) by delegating to :class:`QMRegionBuilder`."""

@@ -123,6 +123,9 @@ class QMRegionBuilder(object):
     model = self._apply_altloc_filter(model)
 
     self._include_nodes = self._resolve_residues_to_include(model)
+    # Hydrogen bonds are found once per run and reused across seed groups.
+    # They index this model's atoms, so they cannot outlive it.
+    self._hbond_cache = None
 
     seed_finder = SeedFinder()
     selection_strings = [s for s in (self.params.selection or []) if s]
@@ -433,7 +436,90 @@ class QMRegionBuilder(object):
         seeds, model, self.params.buffer.radius
       )
     qm_nodes |= self._include_nodes_for(seeds, model)
+    qm_nodes |= self._hbond_partner_nodes(model, qm_nodes)
     return qm_nodes
+
+  def _hbond_partner_nodes(self, model, qm_nodes):
+    """Return nodes for atoms hydrogen-bonded to one already in *qm_nodes*.
+
+    A region cut by distance runs through hydrogen bonds, leaving a donor
+    without its acceptor.  Adding the far atom as a seed rather than as a
+    finished fragment lets the cut rules shape it like anything else, so a
+    partner glutamate arrives as acetate rather than a whole residue.
+
+    Only partners of the nodes as they stand are taken, and they are not
+    themselves followed, so a region cannot walk across a surface one
+    hydrogen bond at a time.  Reading the seeds rather than the grown
+    region keeps the answer independent of BFS order, and makes a wider
+    sphere give a superset of a narrower one.
+
+    No-op when ``params.include_hbond_partners`` is ``False``.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+    qm_nodes : set of (int, sgtbx.rt_mx)
+
+    Returns
+    -------
+    set of (int, sgtbx.rt_mx)
+        Partner nodes not already in *qm_nodes*.
+    """
+    if not self.params.include_hbond_partners:
+      return set()
+
+    ops_by_iseq = defaultdict(list)
+    for iseq, op in qm_nodes:
+      ops_by_iseq[iseq].append(op)
+
+    partners = set()
+    for record in self._hydrogen_bonds(model):
+      donor = record.atom_D.index
+      acceptor = record.atom_A.index
+      # The operation relates the two halves of the bond, and which half it
+      # moves depends on which atom of the pair is the hydrogen.
+      if record.atom_H.index == record.i:
+        near, far = donor, acceptor
+      else:
+        near, far = acceptor, donor
+      for this, other, forward in ((near, far, True), (far, near, False)):
+        if this not in ops_by_iseq:
+          continue
+        step = record.symop if forward else record.symop.inverse()
+        for op in ops_by_iseq[this]:
+          node = (other, _canon_op(op.multiply(step)))
+          if node not in qm_nodes:
+            partners.add(node)
+
+    if partners:
+      print(
+        f'Adding {len(partners)} atom nodes hydrogen-bonded to the QM '
+        f'region.',
+        file=self.logger,
+      )
+    return partners
+
+  def _hydrogen_bonds(self, model):
+    """Return the model's hydrogen bonds, found once and reused.
+
+    The search covers the whole structure and does not depend on which seed
+    is being grown, while costing seconds on a large one.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+
+    Returns
+    -------
+    list of libtbx.introspection.group_args
+    """
+    from mmtbx.nci import hbond
+
+    if getattr(self, '_hbond_cache', None) is None:
+      if not model.has_hd():
+        raise Sorry('Model has no hydrogens. Add them and run again.')
+      self._hbond_cache = hbond.find(model=model).result
+    return self._hbond_cache
 
   def _resolve_residues_to_include(self, model):
     """Identity-op nodes for every atom of every residue group touched by
