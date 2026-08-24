@@ -328,6 +328,15 @@ in each bin to the average number per bin:""")
       frame.Show()
 
 class ColorBox(wx.lib.colourselect.ColourSelect):
+  def __init__(self, parent, id=-1, label="", colour=None, *args, **kwds):
+    if (colour is None):
+      colour = wx.Colour(-1, -1, -1, 255)   # ColourSelect's own default
+    elif isinstance(colour, (tuple, list)):
+      # Phoenix wx.Colour rejects float components
+      colour = wx.Colour(*[int(round(c)) for c in colour])
+    wx.lib.colourselect.ColourSelect.__init__(self, parent, id, label, colour,
+      *args, **kwds)
+
   def OnClick(self, event):
     pass
 

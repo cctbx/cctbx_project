@@ -175,6 +175,11 @@ def _add_plot_cases():
     ("wxtbx.polygon.ColorBox",
         lambda p: ColorBox(parent=p),
         False, ""),
+    # mmtbx.polygon.output.hsv2rgb colours arrive as float triples; Phoenix
+    # wx.Colour rejects floats
+    ("wxtbx.polygon.ColorBox(float colour)",
+        lambda p: ColorBox(p, -1, "", (240.0, 127.5, 0.0), size=(24, 24)),
+        False, ""),
   ])
 
   # PolygonPanel requires an mmtbx.polygon.output.renderer (which itself
