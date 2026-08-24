@@ -4,6 +4,7 @@ from libtbx.utils import null_out, Sorry
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
+from cctbx.array_family import flex
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
@@ -69,6 +70,8 @@ def run():
   run_test22()
   run_test23()
   run_test24()
+  run_test25()
+  run_test26()
 
 # ------------------------------------------------------------------------------
 
@@ -1342,15 +1345,22 @@ ATOM     21  CB  ALA B   3      24.288   3.700   5.000  1.00 50.00           C
 END
 '''
 
-def _gol_and_protein_shells_manager(within_radius=None):
+def _gol_and_protein_shells_manager(within_radius=None, ala_b=None):
   """Manager for a GOL with three ALA residues at controlled distances.
 
   Closest approach of each ALA to the GOL: B/1 ~2.8 A (inside the 3 A
   default), B/2 ~4.0 A (outside 3 A, inside 5 A), B/3 >7 A (outside both).
   """
+  pdb_str = _gol_and_protein_shells_pdb_str
+  if ala_b is not None:
+    # overwrite the B-factor column (61-66) of every ALA atom
+    pdb_str = "\n".join(
+      (ln[:60] + '%6.2f' % ala_b + ln[66:])
+      if (ln.startswith('ATOM') and ' ALA ' in ln) else ln
+      for ln in pdb_str.split("\n"))
   model = mmtbx.model.manager(
     model_input = iotbx.pdb.input(
-      lines=_gol_and_protein_shells_pdb_str.split("\n"), source_info=None),
+      lines=pdb_str.split("\n"), source_info=None),
     log = null_out())
   model.set_stop_for_unknowns(False)
   model.process(make_restraints=True)
@@ -1424,6 +1434,77 @@ def run_test24():
     assert 'maximum allowed value' in str(e), str(e)
   else:
     raise AssertionError('phil accepted within_radius=7')
+
+# ------------------------------------------------------------------------------
+
+def run_test25():
+  print('test25')
+  # 3 atoms beyond +-3 sigma out of 47 is 6.4%. Rounding the fraction to two
+  # decimals before scaling quantised this to whole percent and reported 6.0.
+  values = flex.double([0.0]*44 + [3.5, -4.0, 7.0])
+  assert values.size() == 47
+  pb = val_lig_mod.percent_bad_at_atom_centers(values)
+  assert approx_equal(pb, 100.0*3/47, eps=1.e-9), pb
+  assert round(pb, 1) == 6.4, pb
+
+  # the cutoff is inclusive at exactly +-3 sigma, on both signs
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([3.0, 0.0, 0.0, 0.0])) == 25.0
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([-3.0, 0.0, 0.0, 0.0])) == 25.0
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([2.999, -2.999, 0.0, 0.0])) == 0.0
+
+  # a ligand with no non-H atoms gives no percentage, not ZeroDivisionError
+  assert val_lig_mod.percent_bad_at_atom_centers(flex.double()) == 0.0
+
+  # the +-3 sigma cutoff is one named constant
+  assert val_lig_mod.FOFC_SIGMA_CUTOFF == 3.0, val_lig_mod.FOFC_SIGMA_CUTOFF
+
+  # an explicit cutoff overrides it
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([3.5, 0.0, 0.0, 0.0]), cutoff=4.0) == 0.0
+
+# ------------------------------------------------------------------------------
+
+def run_test26():
+  print('test26')
+  # GOL has B = 20 throughout; the ALA at ~2.8 A has B = 30, the one at
+  # ~4.0 A has B = 40. b_ratio is ligand B over environment B.
+  def _adps(vl):
+    return find_lr(vl, 'resname GOL and chain A and resseq 1').get_adps()
+
+  adps = _adps(_gol_and_protein_shells_manager())
+  assert approx_equal(adps.b_mean, 20.0, eps=0.01), adps.b_mean
+  assert approx_equal(adps.b_mean_within, 30.0, eps=0.01), adps.b_mean_within
+  assert approx_equal(adps.b_ratio, 20.0/30.0, eps=1.e-6), adps.b_ratio
+
+  # the ratio follows the environment selection
+  adps_wide = _adps(_gol_and_protein_shells_manager(within_radius=5.0))
+  assert approx_equal(adps_wide.b_ratio, 20.0/35.0, eps=1.e-6), adps_wide.b_ratio
+
+  # empty environment -> no ratio, rather than TypeError on None
+  adps_narrow = _adps(_gol_and_protein_shells_manager(within_radius=2.0))
+  assert adps_narrow.b_mean_within is None
+  assert adps_narrow.b_ratio is None, adps_narrow.b_ratio
+
+  # zero environment B -> no ratio, rather than ZeroDivisionError
+  adps_zero = _adps(_gol_and_protein_shells_manager(ala_b=0.0))
+  assert approx_equal(adps_zero.b_mean_within, 0.0, eps=0.01)
+  assert adps_zero.b_ratio is None, adps_zero.b_ratio
+
+  # it reaches the snapshot the GUI and CSV are built from
+  vl = _gol_and_protein_shells_manager()
+  snap = find_lr(vl, 'resname GOL and chain A and resseq 1').as_picklable_snapshot()
+  assert approx_equal(snap.adps.b_ratio, 20.0/30.0, eps=1.e-6), snap.adps.b_ratio
+
+  # and it is shown in the log table
+  from six.moves import cStringIO as StringIO
+  sio = StringIO()
+  vl.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'B ratio' in text, text
+  assert '0.67' in text, text
 
 # ------------------------------------------------------------------------------
 
