@@ -429,7 +429,7 @@ class QMRegionBuilder(object):
         qm_nodes.add((seed.i_seq, identity))
     else:
       for seed in seeds:
-        mask = self._graph_builder.atoms_within_radius_best(
+        mask = self._graph_builder.atoms_within_radius(
           seed, model, self.params.buffer.radius
         )
         for iseq in mask.iselection():
@@ -650,7 +650,7 @@ class QMRegionBuilder(object):
     # reusing the graph builder's cached KD-tree.
     near = flex.bool(model.get_number_of_atoms(), False)
     for seed in seeds:
-      near = near | self._graph_builder.atoms_within_radius_best(
+      near = near | self._graph_builder.atoms_within_radius(
         seed, model, scope.proximity)
     near_iseqs = set(near.iselection())
 

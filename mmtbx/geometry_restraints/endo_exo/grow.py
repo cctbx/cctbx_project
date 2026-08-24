@@ -623,43 +623,6 @@ class QMRegionGrower:
     """
     cap_candidates[candidate] = anchor
 
-  def grow_by_distance(self, start_atom_index, adjacency, model,
-                       max_distance=5.0):
-    """Expand from *start_atom_index* by BFS within *max_distance*.
-
-    Only neighbours whose distance from the start atom is within
-    *max_distance* are added to the visited set and enqueued.
-
-    Parameters
-    ----------
-    start_atom_index : int
-    adjacency : collections.defaultdict of set
-    model : mmtbx.model.manager
-    max_distance : float, optional
-        Default is 5.0 Angstrom.
-
-    Returns
-    -------
-    set of int
-        i_seqs of atoms in the grown region.
-    """
-    atoms = model.get_hierarchy().atoms()
-    start_atom = atoms[start_atom_index]
-    visited = {start_atom_index}
-    queue = deque([start_atom_index])
-
-    while queue:
-      curr_idx = queue.popleft()
-      for neighbor in adjacency[curr_idx]:
-        if neighbor in visited:
-          continue
-        if start_atom.distance(atoms[neighbor]) > max_distance:
-          continue
-        visited.add(neighbor)
-        queue.append(neighbor)
-
-    return visited
-
   # ------------------------------------------------------------------
   # Private helpers - amide-group checks
   # ------------------------------------------------------------------

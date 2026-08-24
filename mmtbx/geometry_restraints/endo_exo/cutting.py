@@ -56,8 +56,7 @@ class BondCutDetector:
   # Public interface
   # ------------------------------------------------------------------
 
-  def is_cc_single_sp3_bond(self, resname, atom1, atom2, adjacency,
-                             atoms_by_i_seq=None):
+  def is_cc_single_sp3_bond(self, resname, atom1, atom2, adjacency):
     """Return ``True`` if the bond atom1->atom2 is a suitable C-C capping site.
 
     The residue's ``PREFERRED_CUTS`` entry is consulted first: it names the
@@ -65,7 +64,7 @@ class BondCutDetector:
     for, and BFS arriving from that group reaches it first.  A bond the
     entry does not name falls through to a geometric heuristic, which cuts
     at any sp3 C-C: both atoms carbon, bonded, separated by 1.42-1.68 A,
-    both of degree 4, and neither carbon looking unsaturated.  That is what
+    and both of degree 4.  That is what
     trims a residue held only as scaffold, whose preferred bond BFS never
     reaches from the sidechain side.
 
@@ -82,9 +81,6 @@ class BondCutDetector:
     atom2 : iotbx.pdb.hierarchy.atom
     adjacency : dict
         Local covalent graph.
-    atoms_by_i_seq : dict or None, optional
-        Map ``{i_seq: atom}`` used for the unsaturation check.  Only
-        consulted in the geometric branch.
 
     Returns
     -------
@@ -115,11 +111,6 @@ class BondCutDetector:
 
     if len(nbr1) != 4 or len(_neighbour_iseqs(adjacency, atom2.i_seq)) != 4:
       return False
-
-    if atoms_by_i_seq is not None:
-      if self._looks_unsaturated(atom1, adjacency, atoms_by_i_seq) or \
-         self._looks_unsaturated(atom2, adjacency, atoms_by_i_seq):
-        return False
 
     return True
 
@@ -242,29 +233,3 @@ class BondCutDetector:
       (hops[a.name.strip().upper()] for a in (atom1, atom2)
        if a.name.strip().upper() in hops), default=None)
     return bond_depth is not None and bond_depth < entry_depth
-
-  @staticmethod
-  def _looks_unsaturated(carbon_atom, adjacency, atoms_by_i_seq):
-    """Return ``True`` if *carbon_atom* appears to be in an unsaturated environment.
-
-    Parameters
-    ----------
-    carbon_atom : iotbx.pdb.hierarchy.atom
-    adjacency : dict
-    atoms_by_i_seq : dict
-
-    Returns
-    -------
-    bool
-    """
-    for neighbor_i_seq in _neighbour_iseqs(adjacency, carbon_atom.i_seq):
-      neighbor_atom = atoms_by_i_seq.get(neighbor_i_seq)
-      if neighbor_atom is None:
-        continue
-      neighbor_element = neighbor_atom.element.strip().upper()
-      dist = carbon_atom.distance(neighbor_atom)
-      if neighbor_element in {'O', 'N', 'S'} and dist < 1.34:
-        return True
-      if neighbor_element == 'C' and dist < 1.42:
-        return True
-    return False

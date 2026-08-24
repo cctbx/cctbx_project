@@ -119,7 +119,7 @@ class AtomGraphBuilder:
 
     return added_edges
 
-  def atoms_within_radius(self, center_atom, model, radius):
+  def _atoms_within_radius_kdtree(self, center_atom, model, radius):
     """Return a boolean mask for atoms within *radius* of *center_atom*.
 
     Uses a KD-tree for O(n log n) neighbour lookup.  The tree is built
@@ -145,7 +145,7 @@ class AtomGraphBuilder:
       selected[idx] = True
     return selected
 
-  def atoms_within_radius_string(self, center_atom, model, radius):
+  def _atoms_within_radius_selection(self, center_atom, model, radius):
     """Select atoms within *radius* using CCTBX selection syntax.
 
     Parameters
@@ -176,7 +176,7 @@ class AtomGraphBuilder:
     selection_str = f'within({radius}, ({center_selector}))'
     return model.selection(selection_str)
 
-  def atoms_within_radius_best(self, center_atom, model, radius):
+  def atoms_within_radius(self, center_atom, model, radius):
     """Return a boolean mask for atoms within *radius* of *center_atom*.
 
     Uses the cached KD-tree path; falls back to the CCTBX selection-string
@@ -193,9 +193,9 @@ class AtomGraphBuilder:
     -------
     cctbx.array_family.flex.bool
     """
-    mask = self.atoms_within_radius(center_atom, model, radius)
+    mask = self._atoms_within_radius_kdtree(center_atom, model, radius)
     if mask.count(True) == 0:
-      mask = self.atoms_within_radius_string(center_atom, model, radius)
+      mask = self._atoms_within_radius_selection(center_atom, model, radius)
     return mask
 
   def _pair_sym_table(self, model, radius):
@@ -231,7 +231,7 @@ class AtomGraphBuilder:
   def seed_sym_nodes_within_radius(self, seeds, model, radius):
     """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
 
-    The KD-tree radius search (:meth:`atoms_within_radius_best`) only sees
+    The KD-tree radius search (:meth:`atoms_within_radius`) only sees
     ASU atoms, so a metal on or near a special position misses the
     symmetry-related copies of its coordinating residues that are
     physically inside the buffer sphere.  This enumerates those copies via
