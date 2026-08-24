@@ -31,7 +31,7 @@ space_group = None
   .help = "Query space group, e.g. space_group=C222"
 data_file = None
   .type = path
-  .help = "PDB cell CSV (pdb_id,a,b,c,alpha,beta,gamma,Z,space_group), e.g. data/pdb_crystallography_data.csv"
+  .help = "Augmented PDB cell CSV (15 columns: pdb_id,a,b,c,alpha,beta,gamma,Z,space_group,min_cell_a,min_cell_b,min_cell_c,min_cell_alpha,min_cell_beta,min_cell_gamma), written by cctbx.fetch_pdb_cells, e.g. data/pdb_crystallography_data.csv"
 n_results = 10
   .type = int
   .help = "Number of top matches to display"
@@ -75,11 +75,12 @@ def load_pdb_cells(path):
     (min_cell_params_valid, valid_indices) via
     `~np.isnan(min_cell_params).any(axis=1)`.
 
-  Raises libtbx.utils.Sorry if the file's header row has fewer than 15
-  comma-separated fields (a legacy 9-column CSV, e.g. the old
-  data/pdb_crystallography_data.csv, that was never run through
-  cctbx.fetch_pdb_cells): "data_file has only N columns; regenerate an
-  augmented file with cctbx.fetch_pdb_cells output_file=<path>".
+  Assumes the augmented 15-column format unconditionally -- there is no
+  legacy plain-CSV fallback. A file lacking the 6 trailing min-cell columns
+  (e.g. an old 9-column data/pdb_crystallography_data.csv snapshot) will
+  raise IndexError on the first data row, since the min-cell fields are read
+  by direct positional indexing (entry[9]..entry[14]); regenerate such a
+  file with cctbx.fetch_pdb_cells.
   """
   rows = []
   n_skipped = 0
@@ -88,11 +89,6 @@ def load_pdb_cells(path):
   with open(path) as f:
     for i, line in enumerate(f):
       if i == 0:
-        n_cols = len(line.strip().split(','))
-        if n_cols < 15:
-          raise Sorry(
-            "data_file has only %d columns; regenerate an augmented file "
-            "with cctbx.fetch_pdb_cells output_file=<path>" % n_cols)
         continue  # header row
       entry = line.strip().split(',')
       try:
@@ -119,8 +115,12 @@ def load_pdb_cells(path):
         n_skipped += 1
         continue
       rows.append((pdb_code, cs))
+      # Direct indexing (not a entry[9:15] slice) so a short/truncated data
+      # row raises IndexError immediately rather than silently producing a
+      # shorter-than-6 (or all-NaN) min-cell tuple.
       min_cell_entry = []
-      for x in entry[9:15]:
+      for j in (9, 10, 11, 12, 13, 14):
+        x = entry[j]
         try:
           min_cell_entry.append(float(x))
         except Exception:

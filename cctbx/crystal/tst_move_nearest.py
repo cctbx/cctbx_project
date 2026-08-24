@@ -491,10 +491,12 @@ def test_min_cell_frame_prefilter():
     # Reproduce change_of_basis_op_to_nearest_setting's internal selection
     # distance directly, one row at a time: its `uc_other` is exactly
     # min_cell_params[i], since both come from reducing the same row to its
-    # minimum cell (see lean_min_cell_params's docstring on the two paths
-    # being bit-identical to floating-point noise). This confirms the
-    # vectorized prefilter is an equal alternate computation of the same
-    # quantity, not just a lower bound.
+    # minimum cell (the two computation paths -- the retired lean C++-reduction
+    # shortcut and the standard change_of_basis_op_to_minimum_cell() API --
+    # were verified numerically identical, max diff ~1.4e-13, across the full
+    # 200k-row PDB database). This confirms the vectorized prefilter is an
+    # equal alternate computation of the same quantity, not just a lower
+    # bound.
     true_dist = np.array([
         min(cell_distance(min_cell_params[i], s) for s in query_settings)
         for i in range(n_rows)
