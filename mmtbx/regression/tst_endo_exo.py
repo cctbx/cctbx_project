@@ -22,6 +22,7 @@ QM region around two contrasting Fe sites:
 from __future__ import absolute_import, division, print_function
 
 import io
+import random
 from collections import defaultdict, deque
 
 import iotbx.pdb
@@ -2513,55 +2514,61 @@ def exercise_region_does_not_depend_on_queue_order():
   the way in, so the ordering is gone before BFS starts, and a test written
   that way passes against code that is plainly racy.
 
-  Cap assignment is compared as well as composition, since a cap landing on
-  the other side of a bond leaves the atom count untouched.
+  Shuffled rather than rotated.  ``visited`` is pre-seeded with the whole
+  seed set, hundreds of nodes, so rotating the start point leaves relative
+  order intact and barely perturbs anything: three rotations collapse to
+  two behaviours.  The shuffles are seeded, so a failure reproduces exactly.
 
-  Radius 8 is deliberately left out: it is the one radius on this fixture
-  that is not settled, GLU 48's nitrogen coming out a cap or an interior
-  atom depending on which node leaves the queue first, because the CA-N
-  guard asks whether the next residue has been reached yet.  Keying that
-  guard on the seed set makes it deterministic but costs radius
-  monotonicity, dropping nine atoms of TRP 37 as the sphere widens, which
-  is the worse trade.  Settling it against the finished region, the way the
-  stranding repair does, is the fix."""
+  Radius 8 on 1BQ8 is the configuration that ever varied, and 2C2U is here
+  for the composed-operator path rather than for a race of its own.  Each
+  region costs seconds to grow, so the sweep is kept to those.
+
+  Compared on the grower's own state.  The materialised region cannot show
+  which anchor a cap belongs to -- ``cap_anchor_iseqs`` is deduplicated, so
+  it is not parallel to ``cap_iseqs`` -- and a cap swapping anchors leaves
+  every atom count untouched."""
+  from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
+
   original = QMRegionGrower._grow_until_exhausted
-  outcomes = {}
-  try:
-    for trial in range(3):
-      # Fixed reorderings rather than random ones, so a failure here
-      # reproduces exactly.
-      def reordered(self, queue, *args, _trial=trial, **kwargs):
-        # Rotate by at least one and reverse on alternate trials, so no
-        # trial leaves the order untouched.
-        items = list(queue)
-        shift = _trial + 1
-        items = items[shift:] + items[:shift]
-        if _trial % 2:
-          items.reverse()
-        queue.clear()
-        queue.extend(items)
-        return original(self, queue, *args, **kwargs)
+  grow_by_depth = QMRegionGrower.grow_by_depth
+  captured = []
+  trial = [0]
 
-      QMRegionGrower._grow_until_exhausted = reordered
-      signature = []
-      for radius in (7.0,):
-        for result in _run_endo_exo_params(
-            _1BQ8_FE_SPHERE_PDB, buffer__radius=radius):
-          hierarchy = result["model"].get_hierarchy()
-          caps = set(result["cap_iseqs"])
-          signature.append((
-            radius,
-            tuple(sorted(
-              (atom.parent().parent().resseq.strip(), atom.name.strip())
-              for i_seq, atom in enumerate(hierarchy.atoms())
-              if i_seq not in caps)),
-            tuple(sorted(result["cap_iseqs"])),
-            tuple(sorted(result["cap_anchor_iseqs"])),
-          ))
-      outcomes.setdefault(tuple(signature), []).append(trial)
+  def reordered(self, queue, *args, **kwargs):
+    rng = random.Random(trial[0])
+    items = list(queue)
+    rng.shuffle(items)
+    queue.clear()
+    queue.extend(items)
+    return original(self, queue, *args, **kwargs)
+
+  def capturing(self, seeds, adjacency, model, *args, **kwargs):
+    visited, caps = grow_by_depth(
+      self, seeds, adjacency, model, *args, **kwargs)
+    captured.append((
+      tuple(sorted((iseq, op.as_xyz()) for (iseq, op) in visited)),
+      tuple(sorted(((cap[0], cap[1].as_xyz()),
+                    (anchor[0], anchor[1].as_xyz()))
+                   for cap, anchor in caps.items())),
+    ))
+    return visited, caps
+
+  outcomes = {}
+  QMRegionGrower._grow_until_exhausted = reordered
+  QMRegionGrower.grow_by_depth = capturing
+  try:
+    for index in range(4):
+      trial[0] = index
+      captured.clear()
+      for pdb_str, radius in ((_1BQ8_FE_SPHERE_PDB, 8.0),
+                              (_2C2U_FE_SPHERE_PDB, 7.0)):
+        _run_endo_exo_params(pdb_str, buffer__radius=radius)
+      outcomes.setdefault(tuple(captured), []).append(index)
   finally:
     QMRegionGrower._grow_until_exhausted = original
+    QMRegionGrower.grow_by_depth = grow_by_depth
 
+  assert outcomes, "no region was grown"
   assert len(outcomes) == 1, (
     f"queue order changed the region: {len(outcomes)} distinct outcomes, "
     f"grouped as {sorted(outcomes.values())}")
@@ -2628,6 +2635,40 @@ def exercise_amide_unit_is_never_split():
     f"of this check is not exercising anything")
 
 
+# A proline whose preceding residue is absent: its ring nitrogen holds
+# CA and CD and no hydrogen at all.  CD is a carbon bearing no oxygen,
+# so it must not be mistaken for an acyl group.
+_PROLINE_GAP_PDB = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   PRO A   2       8.872   7.421   8.563  1.00  3.42           N
+ATOM      2  CA  PRO A   2       8.561   7.954   9.916  1.00  3.79           C
+ATOM      3  C   PRO A   2       8.613   9.480   9.954  1.00  3.62           C
+ATOM      4  O   PRO A   2       8.148  10.060  10.929  1.00  5.67           O
+ATOM      5  CB  PRO A   2       9.655   7.382  10.800  1.00  4.40           C
+ATOM      6  CG  PRO A   2      10.750   7.051   9.885  1.00  5.10           C
+ATOM      7  CD  PRO A   2      10.139   6.613   8.599  1.00  3.49           C
+ATOM      8  HA  PRO A   2       7.697   7.631  10.217  1.00  3.79           H
+ATOM      9  HB2 PRO A   2       9.935   8.046  11.450  1.00  4.40           H
+ATOM     10  HB3 PRO A   2       9.331   6.589  11.254  1.00  4.40           H
+ATOM     11  HG2 PRO A   2      11.301   7.837   9.747  1.00  5.10           H
+ATOM     12  HG3 PRO A   2      11.282   6.336  10.267  1.00  5.10           H
+ATOM     13  HD2 PRO A   2      10.713   6.829   7.847  1.00  3.49           H
+ATOM     14  HD3 PRO A   2       9.948   5.662   8.608  1.00  3.49           H
+ATOM     15  N   ALA A   3       9.180  10.100   8.930  1.00  3.50           N
+ATOM     16  CA  ALA A   3       9.290  11.550   8.850  1.00  3.60           C
+ATOM     17  C   ALA A   3      10.010  11.960   7.570  1.00  3.70           C
+ATOM     18  O   ALA A   3      10.400  11.100   6.780  1.00  3.80           O
+ATOM     19  CB  ALA A   3       7.910  12.190   8.880  1.00  3.90           C
+ATOM     20  OXT ALA A   3      10.190  13.160   7.330  1.00  3.80           O
+ATOM     21  H   ALA A   3       9.518   9.694   8.251  1.00  3.50           H
+ATOM     22  HA  ALA A   3       9.795  11.869   9.615  1.00  3.60           H
+ATOM     23  HB1 ALA A   3       7.468  11.948   9.709  1.00  3.90           H
+ATOM     24  HB2 ALA A   3       7.395  11.867   8.124  1.00  3.90           H
+ATOM     25  HB3 ALA A   3       8.008  13.154   8.826  1.00  3.90           H
+END
+"""
+
+
 # An N-terminal proline, whose secondary nitrogen carries two hydrogens
 # rather than the three of a primary amine.
 _PROLINE_NTERM_PDB = """\
@@ -2689,6 +2730,146 @@ def exercise_terminal_amine_covers_proline():
   assert QMRegionGrower._is_terminal_amine(
     nitrogen("2"), adjacency, atoms) is False, (
     "the mid-chain nitrogen following proline was called a terminus")
+
+
+def exercise_chain_break_amine_is_not_any_nitrogen():
+  """The chain-break guard covers a backbone nitrogen whose predecessor is
+  absent, and nothing else.
+
+  The predicate decides a cut on its own, without consulting the growing
+  region, so nothing downstream will catch it being too broad.  Three ways
+  to get it wrong: a sidechain nitrogen carrying one hydrogen (TRP NE1)
+  reads as a chain break unless the CA bond is required; a mid-chain
+  nitrogen reads as one unless the preceding carbonyl vetoes it; and a real
+  N-terminus reads as one unless the hydrogen count separates them."""
+  _model, atoms, adjacency = _protonated_graph(_1BQ8_FE_SPHERE_PDB)
+
+  def nitrogen(resseq, name):
+    return next(i_seq for i_seq, atom in enumerate(atoms)
+                if atom.parent().parent().resseq.strip() == resseq
+                and atom.name.strip() == name)
+
+  # 1BQ8 runs 5-12, 37-45, 48-49: three backbone nitrogens have no
+  # preceding residue in the file.
+  for resseq in ("5", "37", "48"):
+    assert QMRegionGrower._is_chain_break_amine(
+      nitrogen(resseq, "N"), adjacency, atoms) is True, (
+      f"residue {resseq} starts a chain break and was not recognised")
+
+  # Mid-chain nitrogens carry the preceding carbonyl and are not breaks.
+  # 40 is proline, whose N also carries CD within its own residue.
+  for resseq in ("6", "7", "40", "45", "49"):
+    assert QMRegionGrower._is_chain_break_amine(
+      nitrogen(resseq, "N"), adjacency, atoms) is False, (
+      f"residue {resseq} is mid-chain, its predecessor is present")
+
+  # Sidechain nitrogens are not backbone nitrogens, whatever their
+  # hydrogen count.  TRP NE1 carries exactly one, as an amide does, and is
+  # the case the CA bond requirement exists for.
+  for resseq, name in (("37", "NE1"), ("7", "NZ")):
+    assert QMRegionGrower._is_chain_break_amine(
+      nitrogen(resseq, name), adjacency, atoms) is False, (
+      f"sidechain nitrogen {resseq}/{name} read as a chain break")
+
+  # Nor is anything that is not a nitrogen.  A backbone carbonyl carbon
+  # satisfies every other clause -- bonded to its own CA, carrying no
+  # hydrogen, and its one neighbour in another residue is named N rather
+  # than C, so the peptide bond does not veto it.
+  for resseq in ("6", "48"):
+    assert QMRegionGrower._is_chain_break_amine(
+      nitrogen(resseq, "C"), adjacency, atoms) is False, (
+      f"carbonyl carbon {resseq}/C read as a chain-break nitrogen")
+
+  # An acyl group is not always the previous residue's atom named C.  Read
+  # from the ideal monomers so the N-acylated residues are covered whether
+  # or not a fixture happens to contain one: FME names its formyl carbon
+  # CN, AYA its acetyl CT, SAC its C1A, and all three sit in the residue's
+  # own atom group.  Each is a complete amide.
+  monomers = _monomer_server()
+  identity = _canon_op(sgtbx.rt_mx())
+  for code, expected in (("FME", False), ("AYA", False), ("SAC", False),
+                         ("MSE", True), ("ALA", True)):
+    comp = monomers.get_comp_comp_id_direct(code)
+    root = iotbx.pdb.hierarchy.root()
+    hier_model = iotbx.pdb.hierarchy.model()
+    root.append_model(hier_model)
+    chain = iotbx.pdb.hierarchy.chain(id="A")
+    hier_model.append_chain(chain)
+    residue_group = iotbx.pdb.hierarchy.residue_group(resseq="   1")
+    chain.append_residue_group(residue_group)
+    atom_group = iotbx.pdb.hierarchy.atom_group(resname=code)
+    residue_group.append_atom_group(atom_group)
+    index = {}
+    for position, entry in enumerate(comp.atom_list):
+      atom = iotbx.pdb.hierarchy.atom()
+      atom.name = entry.atom_id.strip().ljust(4)
+      atom.element = entry.type_symbol.strip().rjust(2)
+      atom.xyz = (position * 2.0, 0, 0)
+      atom_group.append_atom(atom)
+      index[entry.atom_id.strip()] = position
+    ideal_atoms = list(root.atoms())
+    ideal_adjacency = defaultdict(set)
+    for bond in comp.bond_list:
+      first, second = bond.atom_id_1.strip(), bond.atom_id_2.strip()
+      if first in index and second in index:
+        ideal_adjacency[index[first]].add((index[second], identity))
+        ideal_adjacency[index[second]].add((index[first], identity))
+    for position, atom in enumerate(ideal_atoms):
+      if atom.name.strip().upper() != "N":
+        continue
+      assert QMRegionGrower._is_chain_break_amine(
+        position, ideal_adjacency, ideal_atoms) is expected, (
+        f"{code} nitrogen read as chain break {not expected}")
+
+  # Hydrogens are counted by element, not by name.  A neutron structure
+  # names them D and this is the same terminus, so a name-based count would
+  # see none and cut a real amine away.
+  deuterated = []
+  for line in _TRIPEPTIDE_PDB.split("\n"):
+    if line.startswith(("ATOM", "HETATM")) and line[76:78].strip() == "H":
+      line = (line[:12] + line[12:16].replace("H", "D", 1)
+              + line[16:76] + " D" + line[78:])
+    deuterated.append(line)
+  _m5, atoms5, adjacency5 = _protonated_graph("\n".join(deuterated))
+  heavy_water_n = next(
+    i for i, a in enumerate(atoms5)
+    if a.parent().parent().resseq.strip() == "1" and a.name.strip() == "N")
+  assert QMRegionGrower._is_chain_break_amine(
+    heavy_water_n, adjacency5, atoms5) is False, (
+    "a deuterated N-terminus read as a chain break")
+
+  # A ring carbon is not an acyl carbon.  A proline at a chain break holds
+  # CA and CD and no hydrogen, and CD carries no oxygen, so the nitrogen is
+  # genuinely short and the ring must not be read as its amide.
+  _m4, atoms4, adjacency4 = _protonated_graph(_PROLINE_GAP_PDB)
+  gap_proline_n = next(
+    i for i, a in enumerate(atoms4)
+    if a.parent().resname.strip() == "PRO" and a.name.strip() == "N")
+  assert QMRegionGrower._is_chain_break_amine(
+    gap_proline_n, adjacency4, atoms4) is True, (
+    "a proline at a chain break was not recognised")
+
+  # A real N-terminus is not a chain break: it carries its own hydrogens.
+  _m2, atoms2, adjacency2 = _protonated_graph(_TRIPEPTIDE_PDB)
+  first_n = next(i for i, a in enumerate(atoms2)
+                 if a.parent().parent().resseq.strip() == "1"
+                 and a.name.strip() == "N")
+  assert QMRegionGrower._is_chain_break_amine(
+    first_n, adjacency2, atoms2) is False, (
+    "a real N-terminus read as a chain break")
+
+  # The threshold from the other side.  An N-terminal proline is secondary
+  # and holds exactly two hydrogens, so it is the case that separates
+  # "fewer than two" from "two or fewer"; the `not _is_terminal_amine`
+  # conjunct in _cut_reason hides a wrong answer here, which is why it is
+  # asked of the predicate directly.
+  _m3, atoms3, adjacency3 = _protonated_graph(_PROLINE_NTERM_PDB)
+  proline_n = next(i for i, a in enumerate(atoms3)
+                   if a.parent().parent().resseq.strip() == "1"
+                   and a.name.strip() == "N")
+  assert QMRegionGrower._is_chain_break_amine(
+    proline_n, adjacency3, atoms3) is False, (
+    "an N-terminal proline read as a chain break")
 
 
 def exercise_terminal_amine_is_not_any_nitrogen():
@@ -3088,8 +3269,11 @@ def exercise_open_valences_are_reported():
     return set(lines[0].rsplit(": ", 1)[1].rstrip(".").split(", "))
 
   # The extract jumps 45 -> 48, so PRO 45's carbonyl has no following
-  # nitrogen and GLU 48's nitrogen no preceding carbonyl.
-  assert atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0) == {"PRO 45 C", "GLU 48 N"}, (
+  # nitrogen.  GLU 48's nitrogen has no preceding one either, but it is far
+  # enough out to be cut and capped, and a cap is not short of anything.
+  # A nitrogen like it inside the radius floor is a seed, never cut-tested,
+  # and is still reported: see ARG 92 below.
+  assert atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0) == {"PRO 45 C"}, (
     atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0))
 
   # Narrower, and the same carbonyl is capped away instead: nothing to say.
@@ -3098,7 +3282,8 @@ def exercise_open_valences_are_reported():
 
   # Symmetry images of one atom are one problem, named once.  The extract
   # skips residue 91 and stops at 93, so two carbonyls have no following
-  # nitrogen and one nitrogen has no preceding carbonyl.
+  # nitrogen and one nitrogen has no preceding carbonyl.  ARG 92's nitrogen
+  # is a seed, so it is retained rather than capped and stays reportable.
   assert atoms_named(_2C2U_FE_SPHERE_PDB, 7.0) == {
     "ARG 92 N", "ASP 93 C", "PHE 90 C"}, (
       atoms_named(_2C2U_FE_SPHERE_PDB, 7.0))
@@ -3244,6 +3429,7 @@ def run():
   exercise_terminal_carboxylate_kept()
   exercise_terminal_amine_kept()
   exercise_terminal_amine_covers_proline()
+  exercise_chain_break_amine_is_not_any_nitrogen()
   exercise_terminal_amine_is_not_any_nitrogen()
   exercise_amide_unit_is_never_split()
   exercise_radius_only_grows_the_region()

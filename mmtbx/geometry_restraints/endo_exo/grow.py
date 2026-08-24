@@ -313,8 +313,9 @@ class QMRegionGrower:
     if (self.bond_cut_detector.is_ca_n_bond(
           atoms[curr_iseq], atoms[nbr_iseq], adjacency)
         and not self._is_terminal_amine(nbr_iseq, adjacency, atoms)
-        and self._any_amide_of_next_residue_in_visited(
-          curr_iseq, curr_op, visited, adjacency, atoms)):
+        and (self._is_chain_break_amine(nbr_iseq, adjacency, atoms)
+             or self._any_amide_of_next_residue_in_visited(
+               curr_iseq, curr_op, visited, adjacency, atoms))):
       return 'Found backbone CA-N bond'
 
     return None
@@ -450,6 +451,63 @@ class QMRegionGrower:
             other_group, _canon_op(sym_op.multiply(edge_op)), visited):
           return True
     return False
+
+  @staticmethod
+  def _is_chain_break_amine(iseq, adjacency, atoms):
+    """Return ``True`` if *iseq* is a backbone nitrogen whose preceding
+    residue is absent from the model.
+
+    Such a nitrogen cannot be made into an amide by anything here: the
+    carbonyl it would need was never deposited.  Retaining it imports a
+    two-coordinate nitrogen into the region, while cutting CA-N replaces it
+    with a capping hydrogen and leaves a methyl.  The cut is therefore
+    always the better of the two, and this says so without consulting the
+    growing region, which is what makes the answer independent of the order
+    BFS happens to reach the residue in.
+
+    The carbonyl is looked for in the GRAPH, as a bonded carbon carrying an
+    oxygen, rather than by name and residue.  An acyl group is not always
+    the previous residue's atom named C: N-formyl and N-acetyl residues
+    carry their own (FME names it CN, AYA CT, SAC C1A), a lipidated one
+    reaches it through a LINK, and a polymer with a single residue per
+    asymmetric unit finds it on its own symmetry image.  Each of those is a
+    complete amide, and naming the atom would call all of them broken.
+
+    A real N-terminus is excluded by hydrogen count, as in
+    :meth:`_is_terminal_amine`: an amine carries its own hydrogens where a
+    chain break carries one.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    atom = atoms[iseq]
+    if atom.element.strip().upper() != 'N':
+      return False
+    rg = atom.parent().parent()
+    on_backbone = False
+    hydrogens = 0
+    for j in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[j]
+      if other.element_is_hydrogen():
+        hydrogens += 1
+        continue
+      if other.element.strip().upper() != 'C':
+        continue
+      if (other.name.strip().upper() == 'CA'
+          and other.parent().parent() == rg):
+        on_backbone = True
+        continue
+      if any(atoms[k].element.strip().upper() == 'O'
+             for k in _neighbour_iseqs(adjacency, j)):
+        return False              # a carbonyl, so this nitrogen has its amide
+    return on_backbone and hydrogens < 2
 
   @staticmethod
   def _is_terminal_amine(iseq, adjacency, atoms):
