@@ -206,7 +206,7 @@ def convert_xyz_value_list(values, null_value=0.0):
         assert (isinstance(z, int) or isinstance(z, float))
         z_values[j].append(z)
       else :
-        z_values[j].append(numpy.NaN)
+        z_values[j].append(numpy.nan)
       #  z_values[j].append(null_value)
   return (numpy.array(x_values), numpy.array(y_values), numpy.array(z_values))
 

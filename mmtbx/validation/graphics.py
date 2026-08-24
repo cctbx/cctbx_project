@@ -141,7 +141,7 @@ class residue_bin(slots_getstate_setstate):
       if (residue is not None):
         y.append(residue.get_real_space_plot_values())
       else :
-        y.append([numpy.NaN] * 4)
+        y.append([numpy.nan] * 4)
     return numpy.array(y).transpose()
 
   def get_outlier_plot_values(self):
@@ -151,7 +151,7 @@ class residue_bin(slots_getstate_setstate):
       if (residue is not None):
         y.append(residue.get_outlier_plot_values())
       else :
-        y.append([numpy.NaN] * 4)
+        y.append([numpy.nan] * 4)
     return numpy.array(y).transpose()
 
 class residue_binner(object):

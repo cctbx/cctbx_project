@@ -949,7 +949,7 @@ class residue_multi_criterion(residue):
         return values
     if (use_numpy_NaN):
       import numpy
-      return [ numpy.NaN ] * 4
+      return [ numpy.nan ] * 4
     else :
       return [ None ] * 4
 
@@ -975,7 +975,7 @@ class residue_multi_criterion(residue):
       import numpy
       y_ = []
       for yval in y :
-        if (yval is None) : y_.append(numpy.NaN)
+        if (yval is None) : y_.append(numpy.nan)
         else :              y_.append(yval)
       return y_
     return y

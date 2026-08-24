@@ -39,6 +39,30 @@ def exercise_protein():
   assert (out2.getvalue() == out1.getvalue())
   dump("tst_molprobity.pkl", result)
   mc = result.as_multi_criterion_view()
+  # GUI multi-criterion plot path: no real-space data here, so every residue
+  # (and every bin gap) is padded with numpy.nan
+  import math
+  y_limits = mc.get_y_limits()
+  assert set(y_limits.keys()) == {"rho", "b", "cc"}
+  assert all(math.isnan(v) for v in y_limits["rho"]), y_limits
+  binner = mc.binned_data()
+  assert len(binner.bins) > 0
+  for res_bin in binner.bins:
+    rs_values = res_bin.get_real_space_plot_values()
+    assert rs_values.shape == (4, res_bin.n_res())
+    assert all(math.isnan(v) for v in rs_values.flat)
+    outlier_values = res_bin.get_outlier_plot_values()
+    assert outlier_values.shape == (4, res_bin.n_res())
+  # gaps between residues are padded with None and also plot as numpy.nan
+  from mmtbx.validation import graphics
+  res_bin = graphics.residue_bin()
+  res_bin.add_residue(mc.data()[0])
+  res_bin.add_empty(2)
+  assert res_bin.n_res() == 3
+  for values in (res_bin.get_real_space_plot_values(),
+                 res_bin.get_outlier_plot_values()):
+    assert values.shape == (4, 3)
+    assert all(math.isnan(v) for v in values[:, 1:].flat)
   assert (result.neutron_stats is None)
   mpscore = result.molprobity_score()
   # percentiles
