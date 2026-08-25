@@ -2140,12 +2140,11 @@ class RunBlockDialog(BaseDialog):
                         size=(600, 600),
                         *args, **kwargs)
 
-    # Run block start / end points (choice widgets)
-
-    self.phil_panel = wx.Panel(self)
-    phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
-    self.phil_sizer = wx.StaticBoxSizer(phil_box)
-    self.phil_panel.SetSizer(self.phil_sizer)
+    # Load dispatcher phil scope and initialise working scope from stored extra_phil_str
+    from xfel.ui import load_phil_scope_from_dispatcher
+    self.phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
+    self.working_phil_scope = self.phil_scope.fetch(
+      parse(block.extra_phil_str or ''))
 
     if self.is_lcls:
       self.format_panel = wx.Panel(self)
@@ -2158,17 +2157,6 @@ class RunBlockDialog(BaseDialog):
     self.runblock_panel = ScrolledPanel(self, size=(550, 225))
     self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runblock_sizer)
-
-    # Extra phil
-    self.phil = gctr.PHILBox(self.phil_panel,
-                             btn_import=True,
-                             btn_import_label='Import PHIL',
-                             btn_export=False,
-                             btn_default=True,
-                             btn_default_label='Default PHIL',
-                             ctr_size=(-1, 100),
-                             ctr_value=str(block.extra_phil_str))
-    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     if self.is_lcls:
       # Extra format options text ctrl (user can put in anything they want)
@@ -2284,6 +2272,18 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
+    # Reference geometry
+    self.reference_geometry = gctr.TextButtonCtrl(
+      self.runblock_panel,
+      label='Reference geometry:',
+      label_style='normal',
+      label_size=(160, -1),
+      big_button=True,
+      big_button_label='Browse...',
+      value='')
+    self.runblock_sizer.Add(self.reference_geometry, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
     # Comment
     self.comment = gctr.TextButtonCtrl(self.runblock_panel,
                                        label='Comment:',
@@ -2293,11 +2293,15 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
     if self.is_lcls:
       self.main_sizer.Add(self.format_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Edit PHIL button
+    self.btn_edit_phil = wx.Button(self, label='Edit PHIL')
+    self.main_sizer.Add(self.btn_edit_phil, flag=wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM,
                         border=10)
 
     # Dialog control
@@ -2308,14 +2312,17 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
-    self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
+    self.Bind(wx.EVT_BUTTON, self.onEditPhil, self.btn_edit_phil)
     if self.is_lcls:
       self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onReferenceGeometryBrowse,
+              id=self.reference_geometry.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     self.fill_in_fields()
+    self.sync_controls()
     self.configure_controls()
     self.Layout()
     self.runblock_panel.SetupScrolling()
@@ -2328,20 +2335,26 @@ class RunBlockDialog(BaseDialog):
   def onSpecifyEnd(self, e):
     self.runblocks_end.Enable()
 
-  def onImportPhil(self, e):
-    phil_dlg = wx.FileDialog(self,
-                             message="Load phil file",
-                             defaultDir=os.curdir,
-                             defaultFile="*",
-                             wildcard="*.phil",
-                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-                             )
-    if phil_dlg.ShowModal() == wx.ID_OK:
-      phil_file = phil_dlg.GetPaths()[0]
-      with open(phil_file, 'r') as phil:
-        phil_contents = phil.read()
-      self.phil.ctr.SetValue(phil_contents)
-    phil_dlg.Destroy()
+  def onEditPhil(self, e):
+    edit_dlg = EditPhilDialog(self, db=self.db,
+                              read_only=False,
+                              phil_scope=self.phil_scope,
+                              working_phil_scope=self.working_phil_scope)
+    edit_dlg.Fit()
+    if edit_dlg.ShowModal() == wx.ID_OK:
+      new_str = edit_dlg.phil_box.GetValue()
+      self.working_phil_scope = self.phil_scope.fetch(parse(new_str))
+      self.sync_controls()
+    edit_dlg.Destroy()
+
+  def onReferenceGeometryBrowse(self, e):
+    dlg = wx.FileDialog(self,
+                        message='Select reference geometry file',
+                        defaultDir=os.curdir,
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+      self.reference_geometry.ctr.SetValue(dlg.GetPaths()[0])
+    dlg.Destroy()
 
   def onImportFormat(self, e):
     phil_dlg = wx.FileDialog(self,
@@ -2393,9 +2406,16 @@ class RunBlockDialog(BaseDialog):
                         'Warning!', wx.ICON_EXCLAMATION)
           return
 
+    # Merge reference_geometry widget value into working scope, then compute diff
+    ref_geom = self.reference_geometry.ctr.GetValue().strip()
+    if ref_geom and ref_geom != 'None':
+      self.working_phil_scope = self.working_phil_scope.fetch(
+        parse('input.reference_geometry = %s' % ref_geom))
+    extra_phil_str = self.phil_scope.fetch_diff(self.working_phil_scope).as_str() or None
+
     rg_dict = dict(active=True,
                    open=rg_open,
-                   extra_phil_str=self.phil.ctr.GetValue(),
+                   extra_phil_str=extra_phil_str,
                    untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue().strip(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
@@ -2456,11 +2476,20 @@ class RunBlockDialog(BaseDialog):
 
     e.Skip()
 
+  def sync_controls(self):
+    ''' Populate widgets from the current working_phil_scope. '''
+    try:
+      params = self.working_phil_scope.extract()
+      ref_geom = params.input.reference_geometry
+      self.reference_geometry.ctr.SetValue(str(ref_geom) if ref_geom and ref_geom != 'None' else '')
+    except Exception:
+      self.reference_geometry.ctr.SetValue('')
+
   def fill_in_fields(self):
     ''' If previous rungroups exist in trial, fill in fields in nascent block '''
     if len(self.all_blocks) > 0:
       last = self.all_blocks[-1]
-      self.phil.ctr.SetValue(str(last.extra_phil_str))
+      self.working_phil_scope = self.phil_scope.fetch(parse(last.extra_phil_str or ''))
       if self.is_lcls:
         self.address.ctr.SetValue(str(last.detector_address))
         self.format.ctr.SetValue(str(last.extra_format_str))
