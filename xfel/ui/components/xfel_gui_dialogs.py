@@ -100,6 +100,7 @@ class SettingsDialog(BaseDialog):
   def __init__(self, parent, params,
                label_style='bold',
                content_style='normal',
+               lock_db=False,
                *args, **kwargs):
 
     BaseDialog.__init__(self, parent,
@@ -110,6 +111,11 @@ class SettingsDialog(BaseDialog):
 
     self.params = params
     self.drop_tables = False
+    # When True (i.e. the GUI is already running and connected), the database
+    # connection and experiment tag must not change, as that would require a
+    # full GUI refresh. This disables the relevant controls and blocks loading
+    # a project whose connection settings differ from the current ones.
+    self.lock_db = lock_db
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -125,6 +131,10 @@ class SettingsDialog(BaseDialog):
                                        big_button_size=(130, -1),
                                        value=exp_tag)
     self.main_sizer.Add(self.db_cred, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.lock_db:
+      # Cannot change DB credentials or experiment tag while connected.
+      self.db_cred.btn_big.Disable()
+      self.db_cred.ctr.Disable()
 
     # Facility control
     self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -286,6 +296,18 @@ class SettingsDialog(BaseDialog):
         return  # cancelled; keep the dialog open
     e.Skip()
 
+  @staticmethod
+  def connection_signature(params):
+    ''' Return the settings that determine which database/tables the live GUI
+        talks to. If any of these change, the GUI must be restarted, so a
+        running (locked) session refuses to load a project that alters them.
+        Operational-only db fields (verbose, logging_batch_size) and the
+        local-server launch settings (db.server.*) are excluded, as they do
+        not affect an already-established connection. '''
+    db = params.db
+    return (params.experiment_tag,
+            db.host, db.name, db.user, db.password, db.port)
+
   def fill_fields_from_params(self):
     ''' Push the current self.params into every widget on the dialog. Used after
         loading a settings bundle so switching projects refreshes the whole UI.
@@ -334,6 +356,17 @@ class SettingsDialog(BaseDialog):
       except Exception as exc:
         wx.MessageBox('Unable to load project "%s":\n%s' % (name, str(exc)),
                       'Load Project', wx.OK | wx.ICON_ERROR)
+        dlg.Destroy()
+        return
+      # While the GUI is connected, refuse a project whose database connection
+      # or experiment tag differs, since applying it would require a restart.
+      if self.lock_db and \
+         self.connection_signature(new_params) != self.connection_signature(self.params):
+        wx.MessageBox(
+          'Loading project "%s" would change the database connection or '
+          'experiment tag, which requires restarting the GUI. Project not '
+          'loaded.' % name,
+          'Load Project', wx.OK | wx.ICON_ERROR)
         dlg.Destroy()
         return
       set_current_project(name)
