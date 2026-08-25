@@ -114,6 +114,7 @@ class SettingsDialog(BaseDialog):
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Experiment tag and DB Credentials button
+    exp_tag = self.params.experiment_tag if self.params.experiment_tag is not None else ""
     self.db_cred = gctr.TextButtonCtrl(self,
                                        name='db_cred',
                                        label='Experiment Tag',
@@ -122,10 +123,8 @@ class SettingsDialog(BaseDialog):
                                        big_button=True,
                                        big_button_label='DB Credentials...',
                                        big_button_size=(130, -1),
-                                       value=self.params.experiment_tag if self.params.experiment_tag is not None else "")
-    self.main_sizer.Add(self.db_cred,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+                                       value=exp_tag)
+    self.main_sizer.Add(self.db_cred, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Facility control
     self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -183,30 +182,35 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
+    self.btn_load_project = gctr.Button(self, name='load_project', label='Load Project...')
+    self.btn_save_project = gctr.Button(self, name='save_project', label='Save Project As...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_OK.SetDefault()
     self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
 
-    button_sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    button_sizer.AddMany([#(self.btn_mp),
+    button_sizer = wx.FlexGridSizer(1, 6, 0, 10)
+    button_sizer.AddMany([(self.btn_load_project),
+                          (self.btn_save_project),
                           (self.btn_op),
                           (0,0),
                           (self.btn_OK),
                           (self.btn_cancel)])
 
-    button_sizer.AddGrowableCol(1)
+    button_sizer.AddGrowableCol(3)
     self.main_sizer.Add(button_sizer,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
     self.SetSizerAndFit(self.main_sizer)
 
-    self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onAdvanced, id=self.btn_op.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.output.btn_big.GetId())
     self.Bind(wx.EVT_CHOICE, self.onFacilityChoice)
     self.Bind(wx.EVT_BUTTON, self.onFacilityOptions, id=self.btn_facility_options.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onLoadProject, id=self.btn_load_project.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onSaveProjectAs, id=self.btn_save_project.GetId())
 
     self.setup_facility_options()
 
@@ -270,8 +274,105 @@ class SettingsDialog(BaseDialog):
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
 
   def onOK(self, e):
+    from xfel.ui import get_current_project
     self.update_settings()
+    # Settings are persisted to the current project's bundle. If there is no
+    # project yet (e.g. a fresh setup), require the user to name one before
+    # closing, otherwise there is nowhere to save.
+    if get_current_project() is None:
+      wx.MessageBox('Please name a project to save these settings.',
+                    'Save Project', wx.OK | wx.ICON_INFORMATION)
+      if self.save_project_as() is None:
+        return  # cancelled; keep the dialog open
     e.Skip()
+
+  def fill_fields_from_params(self):
+    ''' Push the current self.params into every widget on the dialog. Used after
+        loading a settings bundle so switching projects refreshes the whole UI.
+        The mp / db / facility-option sub-dialogs read self.params directly, so
+        replacing self.params is enough for those. '''
+    lower_choices = ['lcls', 'standalone']
+    try:
+      self.facility.ctr.SetSelection(lower_choices.index(self.params.facility.name))
+    except ValueError:
+      pass
+
+    experiment = None
+    if self.params.facility.name == 'lcls':
+      experiment = self.params.facility.lcls.experiment
+    self.experiment.ctr.SetValue(experiment if experiment is not None else '')
+
+    if self.params.output_folder in (None, ''):
+      self.output.ctr.SetValue(os.path.abspath(os.curdir))
+    else:
+      self.output.ctr.SetValue(self.params.output_folder)
+
+    self.db_cred.ctr.SetValue(
+      self.params.experiment_tag if self.params.experiment_tag is not None else '')
+
+    self.setup_facility_options()
+
+  def onLoadProject(self, e):
+    from xfel.ui import (list_settings_projects, load_project_settings,
+                         get_current_project, set_current_project)
+    projects = list_settings_projects()
+    if not projects:
+      wx.MessageBox('No saved projects found in the settings directory.',
+                    'Load Project', wx.OK | wx.ICON_INFORMATION)
+      return
+
+    dlg = wx.SingleChoiceDialog(self, 'Select a project to load:',
+                                'Load Project', projects)
+    # Preselect the current project if it is one of the saved bundles
+    current = get_current_project()
+    if current in projects:
+      dlg.SetSelection(projects.index(current))
+    if dlg.ShowModal() == wx.ID_OK:
+      name = dlg.GetStringSelection()
+      try:
+        new_params = load_project_settings(name)
+      except Exception as exc:
+        wx.MessageBox('Unable to load project "%s":\n%s' % (name, str(exc)),
+                      'Load Project', wx.OK | wx.ICON_ERROR)
+        dlg.Destroy()
+        return
+      set_current_project(name)
+      # Mutate the existing params object in place rather than rebinding, so the
+      # MainWindow and the OnInit save path (which share this object) see the
+      # newly loaded configuration.
+      self.params.__dict__.update(new_params.__dict__)
+      self.fill_fields_from_params()
+    dlg.Destroy()
+
+  def onSaveProjectAs(self, e):
+    self.save_project_as()
+
+  def save_project_as(self):
+    ''' Prompt for a project name and save the current params to its bundle.
+        Returns the saved name, or None if the user cancelled or the save
+        failed. '''
+    from xfel.ui import (save_project_settings, get_current_project,
+                         set_current_project)
+    self.update_settings()
+    default_name = get_current_project() or ''
+    dlg = wx.TextEntryDialog(self, 'Project name (saved as settings_<name>.phil):',
+                             'Save Project As', default_name)
+    saved = None
+    if dlg.ShowModal() == wx.ID_OK:
+      name = dlg.GetValue().strip()
+      if not name:
+        wx.MessageBox('Please provide a project name.',
+                      'Save Project As', wx.OK | wx.ICON_WARNING)
+      else:
+        try:
+          save_project_settings(self.params, name)
+          set_current_project(name)
+          saved = name
+        except Exception as exc:
+          wx.MessageBox('Unable to save project "%s":\n%s' % (name, str(exc)),
+                        'Save Project As', wx.OK | wx.ICON_ERROR)
+    dlg.Destroy()
+    return saved
 
 
 class DBCredentialsDialog(BaseDialog):
