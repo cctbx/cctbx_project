@@ -2,8 +2,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import math
-
 import iotbx.pdb
 import iotbx.pdb.hierarchy
 from cctbx.array_family import flex
