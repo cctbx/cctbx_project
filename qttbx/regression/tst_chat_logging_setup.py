@@ -64,19 +64,19 @@ def exercise_prune_keeps_only_log_keep_most_recent():
     seeded = []
     base_mtime = 1_000_000_000.0
     for i in range(10):
-      p = log_dir / ("chat-seed-%02d.log" % i)
+      p = log_dir / ("agent-seed-%02d.log" % i)
       p.write_text("seed %d" % i)
       mtime = base_mtime + i  # later index => more recent
       os.utime(p, (mtime, mtime))
       seeded.append((p, mtime))
     log, path = open_session_log(chat_root=tmp)
     try:
-      surviving = sorted(log_dir.glob("chat-*.log"))
+      surviving = sorted(log_dir.glob("agent-*.log"))
       # The newly created log should exist.
       assert path.exists()
       # Pre-existing survivors: LOG_KEEP most-recent by mtime.
       expected_survivors = {p for p, _ in seeded[-LOG_KEEP:]}
-      actual_seeded = {p for p in surviving if p.name.startswith("chat-seed-")}
+      actual_seeded = {p for p in surviving if p.name.startswith("agent-seed-")}
       assert actual_seeded == expected_survivors, (
         actual_seeded, expected_survivors)
       # Total files on disk: LOG_KEEP pre-existing + 1 newly created.
@@ -146,8 +146,57 @@ def exercise_open_raw_log_rotates_and_is_raw():
     shutil.rmtree(tmp)
 
 
+def exercise_log_dir_and_files_are_owner_only():
+  """On a shared project dir the chat logs (only best-effort-redacted, and the
+  raw coot log un-redacted) must not be world-readable: the logs dir is created
+  0700 and each log file 0600 via an explicit chmod, not the ambient umask.
+  POSIX-only (Windows perms don't map)."""
+  if os.name != "posix":
+    return
+  import stat
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log, path = open_session_log(chat_root=tmp)
+    try:
+      log_dir = tmp / "logs"
+      assert stat.S_IMODE(log_dir.stat().st_mode) == 0o700, \
+        oct(stat.S_IMODE(log_dir.stat().st_mode))
+      assert stat.S_IMODE(Path(path).stat().st_mode) == 0o600, \
+        oct(stat.S_IMODE(Path(path).stat().st_mode))
+    finally:
+      log.close()
+    # The raw (un-redacted) coot capture log is tightened too.
+    fh, rawpath = open_raw_log(tmp, "coot")
+    try:
+      assert stat.S_IMODE(Path(rawpath).stat().st_mode) == 0o600, \
+        oct(stat.S_IMODE(Path(rawpath).stat().st_mode))
+    finally:
+      fh.close()
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_log_is_named_for_the_command():
+  """The session log is ``agent-<TS>.log``, matching the `phenix.agent`
+  command whose run it records. Nothing pinned the name before, so the
+  prefix could drift away from the command without a test noticing."""
+  tmp = Path(tempfile.mkdtemp())
+  try:
+    log, path = open_session_log(chat_root=tmp)
+    try:
+      assert Path(path).name.startswith("agent-"), path
+      assert Path(path).name.endswith(".log"), path
+      assert Path(path).parent == tmp / "logs", path
+    finally:
+      log.close()
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_open_session_log_creates_dir_and_writes()
+  exercise_session_log_is_named_for_the_command()
+  exercise_log_dir_and_files_are_owner_only()
   exercise_redact_secrets_handles_anthropic_keys()
   exercise_redact_secrets_handles_authorization_header()
   exercise_redact_secrets_passes_clean_text()

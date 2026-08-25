@@ -1,6 +1,6 @@
 """Multi-line chat input with attachments, drag-drop, paste, and buttons.
 
-The button row holds Save chat / Auto-approve / attach / Send.
+The button row holds Save chat / Auto-approve / search / attach / Send.
 
 The Send button's label flips to 'Stop' when ``set_busy(True)`` is
 called; ``click_send`` emits ``stop`` in that mode. Attachments are
@@ -54,12 +54,16 @@ class MessageInput(QtWidgets.QWidget):
   attachment_rejected = QtCore.Signal(str)
   save_chat = QtCore.Signal()                      # 'Save chat' button click
   auto_approve_changed = QtCore.Signal(bool)       # checked state
+  search_clicked = QtCore.Signal()                 # 🔍 button click
+  goto_conversation_start = QtCore.Signal()        # Ctrl+Home in editor
+  goto_conversation_end = QtCore.Signal()          # Ctrl+End in editor
 
   # Idle placeholder text. The assistant name defaults to "Claude" but is
   # rewritten per session by ChatWindow via set_assistant_name() so the box
   # names the active backend (GPT / Gemini / …). ChatWindow also swaps in a
-  # cycling 'Thinking...' placeholder while a turn is in flight and restores
-  # the idle one on turn_done.
+  # cycling 'Thinking...' placeholder while a turn is in flight. turn_done
+  # now carries the full TurnDone event; only a TERMINAL finish returns the
+  # idle placeholder and unlocks the composer.
   _PLACEHOLDER_FMT = "Message %s...  (Ctrl/Cmd+Enter to send)"
   DEFAULT_PLACEHOLDER = _PLACEHOLDER_FMT % "Claude"
 
@@ -70,6 +74,14 @@ class MessageInput(QtWidgets.QWidget):
   def __init__(self, parent=None):
     super().__init__(parent)
     self._busy = False
+    # Optional 0-arg callable -> bool consulted by click_send BEFORE the draft
+    # is consumed. Returning False refuses the send and KEEPS the typed text
+    # and attachments in place: the `send` signal is fire-and-forget (the
+    # widget clears itself right after emitting), so a host window that can
+    # reject a send (e.g. a turn still in flight) must gate it here -- a
+    # rejection inside its slot would come after the draft was already wiped.
+    # The gate owns any user feedback (status banner).
+    self.send_gate = None
     self._attachments = []          # list[dict]
     self._max_image_bytes = self._MAX_IMAGE_BYTES
     # Up/Down input history. The recall list is supplied per conversation
@@ -104,6 +116,12 @@ class MessageInput(QtWidgets.QWidget):
     # reset_placeholder restores this dim value.
     self._dim_placeholder_color = (
       self._edit.palette().color(QtGui.QPalette.PlaceholderText))
+    # Cache the last-applied placeholder text + dim so set_placeholder can skip
+    # the palette re-polish (dim unchanged) and the viewport repaint (text
+    # unchanged) -- the in-flight 'Thinking...' spinner drives it ~8x/s. Seeded
+    # to the dim idle text set above.
+    self._placeholder_text = self._idle_placeholder
+    self._placeholder_dim = True
     layout.addWidget(self._edit)
     # Button row below the edit. Save chat sits on the left; the
     # auto-approve toggle sits in the centre (flanked by stretches so
@@ -129,6 +147,11 @@ class MessageInput(QtWidgets.QWidget):
     self._auto_approve_btn.toggled.connect(self._on_auto_approve_toggled)
     button_row.addWidget(self._auto_approve_btn)
     button_row.addStretch(1)
+    self._search_btn = QtWidgets.QToolButton(self)
+    self._search_btn.setText("🔍")
+    self._search_btn.setToolTip("Search conversation (Ctrl+F / ⌘F)")
+    self._search_btn.clicked.connect(self._on_search_clicked)
+    button_row.addWidget(self._search_btn)
     self._attach_btn = QtWidgets.QToolButton(self)
     self._attach_btn.setText("@")    # ASCII-safe; UI later replaces with icon
     self._attach_btn.setToolTip("Attach an image")
@@ -138,6 +161,9 @@ class MessageInput(QtWidgets.QWidget):
     self._button.clicked.connect(self.click_send)
     button_row.addWidget(self._button)
     layout.addLayout(button_row)
+    # Focusing the composite lands in the editor -- the search bar's
+    # close path refocuses the input via setFocus().
+    self.setFocusProxy(self._edit)
 
   # ---- text helpers --------------------------------------------------------
 
@@ -228,18 +254,54 @@ class MessageInput(QtWidgets.QWidget):
         for the 'Thinking...' verb cycle so the verbs aren't visually
         muted.
     """
-    palette = self._edit.palette()
-    target_color = (
-      self._dim_placeholder_color if dim
-      else palette.color(QtGui.QPalette.Text))
-    palette.setColor(QtGui.QPalette.PlaceholderText, target_color)
-    self._edit.setPalette(palette)
-    self._edit.setPlaceholderText(text or "")
-    # QPlainTextEdit only repaints the cursor area on placeholder
-    # change when focused, so the user sees a stale tail (just the
-    # first letter of the new verb updates). Force the viewport to
-    # repaint the whole placeholder region.
-    self._edit.viewport().update()
+    text = text or ""
+    changed = False
+    # Only rebuild the palette when the dim state actually changed: the palette
+    # depends solely on `dim`, so re-applying it (a style re-polish) on every
+    # spinner tick -- which holds dim constant -- is pure waste.
+    if dim != self._placeholder_dim:
+      palette = self._edit.palette()
+      target_color = (
+        self._dim_placeholder_color if dim
+        else QtWidgets.QApplication.palette().color(QtGui.QPalette.Text))
+      palette.setColor(QtGui.QPalette.PlaceholderText, target_color)
+      self._edit.setPalette(palette)
+      self._placeholder_dim = dim
+      changed = True
+    # Only re-set the text (and repaint) when it actually changed.
+    if text != self._placeholder_text:
+      self._edit.setPlaceholderText(text)
+      self._placeholder_text = text
+      changed = True
+    if changed:
+      # QPlainTextEdit only repaints the cursor area on placeholder change
+      # when focused, so the user sees a stale tail (just the first letter of
+      # the new verb updates). Force the viewport to repaint the whole
+      # placeholder region.
+      self._edit.viewport().update()
+
+  def changeEvent(self, event):
+    """Re-resolve the placeholder colour on an app theme (palette) switch.
+
+    set_placeholder caches the applied dim state and skips re-writing the
+    explicitly-set PlaceholderText palette role while it's unchanged. That role
+    does not follow a theme switch on its own, so without this a 'Thinking...'
+    cue begun before a light->dark switch would keep its old (near-black) colour
+    and render dark-on-dark for the rest of the turn. Invalidate the cached dim
+    state and re-apply against the new palette (a rare event, so the ~8x/s
+    fast-path stays cheap)."""
+    super().changeEvent(event)
+    et = event.type()
+    # Guard construction: a PaletteChange can arrive before _build_ui seeds the
+    # placeholder cache.
+    if et in (QtCore.QEvent.PaletteChange, QtCore.QEvent.ThemeChange) \
+       and hasattr(self, "_placeholder_text"):
+      self._dim_placeholder_color = (
+        QtWidgets.QApplication.palette().color(QtGui.QPalette.PlaceholderText))
+      dim = self._placeholder_dim
+      self._placeholder_dim = None                 # force set_placeholder to re-apply
+      self.set_placeholder(
+        self._placeholder_text, dim=True if dim is None else dim)
 
   def reset_placeholder(self):
     """Restore the idle placeholder (per-session text + dim colour)."""
@@ -389,6 +451,9 @@ class MessageInput(QtWidgets.QWidget):
   def _on_save_chat_clicked(self, _checked=False):
     self.save_chat.emit()
 
+  def _on_search_clicked(self, _checked=False):
+    self.search_clicked.emit()
+
   # ---- auto-approve --------------------------------------------------------
 
   def _on_auto_approve_toggled(self, checked):
@@ -424,6 +489,9 @@ class MessageInput(QtWidgets.QWidget):
     msg = self.text().strip()
     if not msg and not self._attachments:
       return
+    if self.send_gate is not None and not self.send_gate():
+      # Refused (e.g. a turn in flight): the draft stays in the composer.
+      return
     atts = list(self._attachments)
     self._attachments = []
     self._refresh_chip_bar()
@@ -457,9 +525,13 @@ class MessageInput(QtWidgets.QWidget):
     """
     if md is None:
       return
+    # elif, not a second if: a payload that carries BOTH image data and a
+    # local file:// URL (some apps/clipboards populate both) must yield ONE
+    # attachment. Two independent ifs attached the image twice -- once as
+    # 'pasted.png' here, once by reading the dropped file below.
     if md.hasImage():
       self._handle_qimage(md.imageData())
-    if md.hasUrls():
+    elif md.hasUrls():
       for url in md.urls():
         if url.isLocalFile():
           self._handle_file(url.toLocalFile())
@@ -479,11 +551,34 @@ class MessageInput(QtWidgets.QWidget):
     import mimetypes
     mime, _ = mimetypes.guess_type(path)
     if mime is None:
+      # Extension mimetypes can't map -> we can't confirm an allowed image
+      # type, so reject via the same attachment_rejected path a known-
+      # unsupported mime uses rather than returning silently (no signal,
+      # no status).
+      self.attachment_rejected.emit(
+        "Could not determine attachment type: %s" % path)
+      return
+    # Validate the guessed mime BEFORE opening/reading the file. Reading first
+    # (as this method used to) meant a dropped multi-GB file with a non-None
+    # but disallowed mime (e.g. video/quicktime) was pulled entirely into
+    # memory on the GUI thread -- freezing the event loop, risking MemoryError
+    # -- only for attach_bytes to reject it afterwards. Reject here instead,
+    # via the same attachment_rejected path attach_bytes uses for a disallowed
+    # mime, so behaviour is unchanged for the user -- just moved earlier, and
+    # the bytes are never read.
+    if mime not in self._ALLOWED_MIMES:
+      self.attachment_rejected.emit(
+        "Unsupported attachment type: %s" % mime)
       return
     try:
       with open(path, "rb") as fh:
         data = fh.read()
-    except OSError:
+    except OSError as exc:
+      # Surface the read failure via attachment_rejected instead of
+      # swallowing it silently; carry the OSError detail so it isn't
+      # discarded bare.
+      self.attachment_rejected.emit(
+        "Could not read attachment %s: %s" % (path, exc))
       return
     import os
     self.attach_bytes(data, mime, filename=os.path.basename(path))
@@ -503,6 +598,21 @@ class MessageInput(QtWidgets.QWidget):
         if mods & (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier):
           self.click_send()
           return True
+      # Exact Ctrl+Home / Ctrl+End are conversation navigation, not
+      # composer cursor movement: the editor claims document-nav keys
+      # via ShortcutOverride, so window-level Go to Start/End shortcuts
+      # could never fire while it has focus -- and it holds focus
+      # almost always. A stray KeypadModifier (numpad Home/End) counts
+      # as the same chord; Shift selections and every other combo stay
+      # native.
+      if (key in (QtCore.Qt.Key_Home, QtCore.Qt.Key_End)
+          and (mods & ~QtCore.Qt.KeypadModifier)
+              == QtCore.Qt.ControlModifier):
+        if key == QtCore.Qt.Key_Home:
+          self.goto_conversation_start.emit()
+        else:
+          self.goto_conversation_end.emit()
+        return True
       # Plain Up / Down recall the input history (shell-style), but only at
       # the first / last line so multi-line editing and Shift-selection are
       # left alone.

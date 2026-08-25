@@ -75,6 +75,48 @@ def exercise_subclass_with_methods_instantiable():
 
   g = GoodAgent()
   assert g.name == "good"
+  # Optional capability hooks are declared on the ABC with False defaults --
+  # protocol, not duck-typing. A GUI probing callable(getattr(...)) instead
+  # would misroute any backend that grows a same-named method: the auth
+  # recovery dispatches on reload_credentials()' RETURN (True = reloaded,
+  # retry; False = fall through to the key prompt) and on uses_env_api_key().
+  assert g.submit_approval(object()) is False
+  assert g.submit_question_answer("rid", {}) is False
+  assert g.reload_credentials() is False
+  assert g.uses_env_api_key() is False
+
+
+def exercise_note_context_tokens_is_a_high_water_mark():
+  """The peak never falls, and a missing reading leaves it STANDING.
+
+  `note_context_tokens` is where the four backends' copies of this rule were
+  consolidated, and it had no test of its own -- the rule was only checked
+  through two backends, near-verbatim, so the shared function nobody owned was
+  the one place it could break silently.
+
+  The invariant that matters is the second one. Prompt size falls legitimately
+  all the time (a shorter turn, a cleared context), and `context_tokens` is
+  read to decide whether a handoff threshold was CROSSED. Lowering it on a
+  smaller later reading discards exactly that fact.
+  """
+  from qttbx.widgets.chat.agent.base import note_context_tokens
+
+  class _Agent(object):
+    last_context_tokens = 0
+
+  agent = _Agent()
+  assert note_context_tokens(agent, 100) == 100
+  assert note_context_tokens(agent, 250) == 250          # rises
+  assert note_context_tokens(agent, 40) == 250           # never falls
+  # Unreported: both spellings a backend uses for "no usage payload".
+  assert note_context_tokens(agent, 0) == 250
+  assert note_context_tokens(agent, None) == 250
+  assert agent.last_context_tokens == 250, agent.last_context_tokens
+  # And it is a free function, not a method: ClaudeCodeAgent duck-types the
+  # agent contract, so a method would raise AttributeError on that backend.
+  from qttbx.widgets.chat.agent.base import Agent as _Base
+  assert not hasattr(_Base, "note_context_tokens"), \
+    "note_context_tokens became a method; the duck-typed backend loses it"
 
 
 # ---- event dataclasses ---------------------------------------------------
@@ -212,7 +254,7 @@ def exercise_message_assistant_with_usage():
 def exercise_conversation_meta_defaults():
   m = ConversationMeta(id="01HX",
                        title="Test",
-                       profile_name="phenix_expert",
+                       profile_name="phenix_assistant",
                        model="claude-opus-4-7",
                        created_at=now(),
                        updated_at=now())
@@ -223,10 +265,10 @@ def exercise_conversation_meta_defaults():
 
 
 def exercise_conversation_new():
-  c = Conversation.new(profile_name="phenix_expert",
+  c = Conversation.new(profile_name="phenix_assistant",
                        model="claude-opus-4-7",
                        title="New chat")
-  assert c.meta.profile_name == "phenix_expert"
+  assert c.meta.profile_name == "phenix_assistant"
   assert c.meta.model == "claude-opus-4-7"
   assert c.meta.title == "New chat"
   assert isinstance(c.meta.id, str) and len(c.meta.id) > 0
@@ -256,7 +298,7 @@ def exercise_subagent_record():
     parent_conversation_id="01HX",
     parent_tool_use_id="toolu_1",
     task="monitor job",
-    profile_name="phenix_expert_subagent",
+    profile_name="phenix_assistant_subagent",
     model="claude-opus-4-7",
     started_at=now(),
     finished_at=now(),
@@ -271,13 +313,48 @@ def exercise_now_returns_datetime():
   assert isinstance(now(), datetime)
 
 
+def exercise_classify_error_text_matches_whole_phrases_only():
+  """classify_error_text matches WHOLE signal phrases -- the expiry/revoke
+  signals must carry their qualifying noun ('token expired', 'session has
+  expired', 'token has been revoked', ...). Bare 'expired'/'revoked'
+  substrings classified a TLS 'certificate has expired' (proxy, clock skew)
+  or a provider's expired *uploaded file* as an auth failure -- driving the
+  wrong banner and, on claude_code, the credential-reload + auto-retry
+  machinery for non-auth errors. The documented legacy traps stay pinned
+  too: the 'rate' inside 'generate'/'moderate' and the 'auth' inside
+  'author' must not match, and a message carrying both a rate and an auth
+  signal reads as the recoverable rate limit."""
+  from qttbx.widgets.chat.agent.base import classify_error_text
+  for text in ("The access token expired",
+               "Your token has expired -- please sign in again",
+               "Session expired",
+               "your session has expired",
+               "access token revoked by the administrator",
+               "OAuth token has been revoked"):
+    assert classify_error_text(text) == "auth", text
+  for text in ("certificate has expired",              # TLS / proxy, not auth
+               "The uploaded file has expired",        # provider file expiry
+               "the share link was revoked",           # not a credential
+               "failed to generate content",           # 'rate' in 'generate'
+               "response was flagged as moderate",     # 'rate' in 'moderate'
+               "unknown author"):                      # 'auth' in 'author'
+    assert classify_error_text(text) is None, text
+  # Rate stays recognized, and wins over auth when both signals appear (a
+  # quota window is recoverable -- favor the retryable read).
+  assert classify_error_text("429 Too Many Requests") == "rate_limited"
+  assert classify_error_text(
+    "quota exceeded for this oauth client") == "rate_limited"
+
+
 def exercise():
   # base
   exercise_tool_spec_basic()
   exercise_agent_is_abstract()
   exercise_subclass_must_implement_methods()
   exercise_subclass_with_methods_instantiable()
+  exercise_classify_error_text_matches_whole_phrases_only()
   # events
+  exercise_note_context_tokens_is_a_high_water_mark()
   exercise_text_delta()
   exercise_thinking_with_signature()
   exercise_thinking_default_signature()

@@ -5,8 +5,9 @@ The runner owns:
 - the ``AgentSession`` (no Qt dependency itself)
 - a worker ``QThread`` that runs ``session.run_turn``
 - the ``CancelToken`` for the current turn
-- the approval queue and the question queue (both shared with the session)
-  so the GUI Stop button can flush a ``_Cancelled`` sentinel into each
+- the question queue (shared with the session) so the GUI Stop button can
+  flush a ``_Cancelled`` sentinel into it; tool approvals instead cancel via
+  ``session.approvals.cancel_turn()``
 """
 
 import queue
@@ -108,8 +109,15 @@ class QtAgentRunner(QtCore.QObject):
   - ``server_tool_result(object)`` — ``ServerToolResult``
   - ``image_emitted(object)``
   - ``ask_user_question_requested(object)`` — ``AskUserQuestionRequested``
-  - ``turn_done(str)`` — stop_reason
+  - ``turn_done(object)`` — the full ``TurnDone`` event; carries
+    ``stop_reason`` and the canonical ``finish`` (the window routes
+    iteration-boundary vs terminal on ``finish``)
   - ``error(str, bool, str)`` — message, recoverable, kind
+  - ``idle()`` — the turn's worker/thread have been torn down and
+    ``is_busy()`` is False again. Emitted once per turn, after the turn's
+    terminal event (``turn_done`` / ``error``); a slot may synchronously
+    start the next turn. ``shutdown()`` does NOT emit it (teardown callers
+    manage their own state).
 
   Thread affinity: ``start_turn``, ``cancel``, ``submit_approval``,
   ``submit_question_answer``, and ``wait_for_idle`` must be called from the
@@ -126,8 +134,9 @@ class QtAgentRunner(QtCore.QObject):
   server_tool_result = QtCore.Signal(object)
   image_emitted = QtCore.Signal(object)
   ask_user_question_requested = QtCore.Signal(object)
-  turn_done = QtCore.Signal(str)
+  turn_done = QtCore.Signal(object)
   error = QtCore.Signal(str, bool, str)
+  idle = QtCore.Signal()
 
   def __init__(self, session, parent=None):
     super().__init__(parent)
@@ -135,12 +144,9 @@ class QtAgentRunner(QtCore.QObject):
     self._thread = None
     self._worker = None
     self._cancel = CancelToken()
-    # Queues the session worker parks on — the GUI flushes _Cancelled
-    # sentinels into these on cancel so a parked get() wakes up. The
-    # approval queue (tool approval) and the question queue
-    # (phenix_ask_user_question) are both blocking points.
-    self._pending_approval_queues = [self.session.approval_queue,
-                                     self.session.question_queue]
+    # Only the question queue still uses the sentinel-flush wake-up; approvals
+    # now wake via ApprovalCoordinator.cancel_turn().
+    self._question_cancel_queues = [self.session.question_queue]
 
   # ---- public API ----------------------------------------------------------
 
@@ -175,30 +181,33 @@ class QtAgentRunner(QtCore.QObject):
   def cancel(self):
     """Cancel the in-flight turn.
 
-    Sets the cancel token AND flushes ``_Cancelled`` sentinels into every
-    parked approval queue so a worker blocked on ``queue.get()`` wakes up.
-    No-op when no turn is running. Must be called from the GUI thread.
+    Sets the cancel token, cancels any pending tool approval via
+    ``session.approvals.cancel_turn()``, and flushes a ``_Cancelled``
+    sentinel into the question queue so a worker blocked on ``queue.get()``
+    wakes up. No-op when no turn is running. Must be called from the GUI
+    thread.
     """
     if not self.is_busy():
       # No worker to cancel; pushing a sentinel now would mis-cancel the
       # next turn (the queue is shared with the session).
       return
     self._cancel.set()
-    for q in self._pending_approval_queues:
-      # Approval queues are unbounded queue.Queue; put_nowait never blocks.
+    self.session.approvals.cancel_turn()
+    for q in self._question_cancel_queues:      # question queue only
+      # An unbounded queue.Queue; put_nowait never blocks.
       q.put_nowait(_Cancelled())
 
   def submit_approval(self, response):
     """Route a ``ToolApprovalResponse`` from the GUI to whoever asked.
 
-    Tries ``agent.submit_approval`` first: backends that gate tool
-    execution via a provider-side callback (e.g. the Claude Code SDK's
-    ``can_use_tool``) own their own pending requests and resolve them
-    themselves. If the agent doesn't recognize the ``request_id``, the
-    response goes to the session's approval queue (the path for tools the
-    session dispatches directly), but only while a turn is in flight -- a
-    late click after the turn has ended is dropped so it can't leak into
-    the next turn.
+    First persists any remember='tool' choice on the GUI thread --
+    ``session.record_approval_remember`` (API backends) and
+    ``agent.submit_approval`` (claude_code) -- BEFORE resolving, so a click
+    that races a cancel still records "always allow". Then resolves the
+    decision through the session's ApprovalCoordinator, but only while a turn
+    is in flight: a late click after the turn ended is dropped (the is_busy
+    gate) so it can't leak into the next turn. ``agent.submit_approval`` now
+    returns False for every backend, so the coordinator is always the resolver.
 
     Must be called from the GUI thread.
 
@@ -207,15 +216,24 @@ class QtAgentRunner(QtCore.QObject):
     response : ToolApprovalResponse
         The user's approval decision to route.
     """
-    handled = self.session.agent.submit_approval(response)
-    if not handled and self.is_busy():
-      # Queue for the session worker only while a turn is actually in
-      # flight. A late click on a still-visible card after the turn ended
-      # (e.g. the user hit Stop, then clicked Approve) would otherwise sit
-      # unconsumed and be applied to the NEXT turn's first approval -- the
-      # same stale-item leak cancel() guards against via is_busy().
-      self.session.approval_queue.put(response)
-    if response.decision == "deny_and_stop":
+    handled = False
+    if self.is_busy():
+      # A live turn: persist any remember='tool' on the GUI thread BEFORE the
+      # coordinator resolves (API backends via the session, claude_code via
+      # agent.submit_approval), so a click racing a cancel still records "always
+      # allow", then resolve. An idle click on a stale card records NOTHING and
+      # is dropped -- it must not grant a standing session auto-approve for a
+      # tool that never ran (recording above this gate was finding-1's bug).
+      self.session.record_approval_remember(response)
+      self.session.agent.submit_approval(response)
+      handled = self.session.approvals.submit(response)
+    # A deny_and_stop cancels the in-flight turn -- but only when this response
+    # belongs to it: the agent owned it (claude_code's can_use_tool callback),
+    # or it answers the approval the session worker is parked on. A stale card's
+    # stop from an abandoned earlier turn must NOT cancel an unrelated later
+    # turn (the same hazard cancel()'s is_busy() guard addresses).
+    if response.decision == "deny_and_stop" and (
+        handled or self.session.owns_pending_approval(response.request_id)):
       self._cancel.set()
 
   def submit_question_answer(self, request_id, answers):
@@ -226,9 +244,9 @@ class QtAgentRunner(QtCore.QObject):
     them itself. The API backends inherit the ``Agent`` base default
     (returns ``False``) and so fall through to the session's
     ``submit_question_answer`` -- the path a ``phenix_ask_user_question``
-    builtin parks on. Every backend is an ``Agent`` subclass, so the
-    method is always present (a direct call, mirroring ``submit_approval``
-    above).
+    builtin parks on. Every backend exposes the ``Agent`` contract (the API
+    backends subclass it; claude_code duck-types it), so the method is always
+    present (a direct call, mirroring ``submit_approval`` above).
 
     Must be called from the GUI thread.
 
@@ -255,8 +273,8 @@ class QtAgentRunner(QtCore.QObject):
   def wait_for_idle(self, timeout_ms=5000):
     """Block until the current turn finishes.
 
-    Used by tests; the GUI never calls this. Must be called from the GUI
-    thread.
+    Called by the GUI on the conversation-switch and close teardown paths
+    (ChatWindow) and by tests. Must be called from the GUI thread.
 
     Parameters
     ----------
@@ -266,6 +284,31 @@ class QtAgentRunner(QtCore.QObject):
     if self._thread is None:
       return
     self._thread.wait(timeout_ms)
+
+  def shutdown(self, timeout_ms=2000):
+    """Synchronously stop and join the worker thread from the GUI thread.
+
+    Unlike ``wait_for_idle`` -- which only ``wait()``s and relies on the queued
+    ``_on_worker_finished`` slot to ``quit()`` the thread's ``exec()`` loop, a
+    slot that cannot run while the GUI thread is blocked in that ``wait()`` --
+    this quits the thread's event loop itself, then joins it. Call it on
+    teardown (``closeEvent`` / conversation switch, after ``cancel()``) so the
+    ``QThread`` is actually finished before the runner/window is destroyed;
+    otherwise ``wait()`` blocks the full timeout and the still-running thread
+    aborts with "QThread: Destroyed while thread is still running". Idempotent;
+    must be called from the GUI thread.
+    """
+    thread = self._thread
+    if thread is None:
+      return
+    thread.quit()               # ask the thread's exec() loop to exit
+    thread.wait(timeout_ms)     # then join it (bounded)
+    thread.deleteLater()
+    worker = self._worker
+    if worker is not None:
+      worker.deleteLater()
+    self._thread = None
+    self._worker = None
 
   # ---- event routing -------------------------------------------------------
 
@@ -291,15 +334,15 @@ class QtAgentRunner(QtCore.QObject):
     elif isinstance(ev, AskUserQuestionRequested):
       self.ask_user_question_requested.emit(ev)
     elif isinstance(ev, TurnDone):
-      self.turn_done.emit(ev.stop_reason)
+      self.turn_done.emit(ev)
     elif isinstance(ev, AgentError):
       self.error.emit(ev.message, ev.recoverable, ev.kind or "")
 
   def _on_worker_finished(self):
-    """Tear down the finished worker/thread and drain the approval queue.
+    """Tear down the finished worker/thread and drain the question queue.
 
     Runs on the GUI thread when the turn's worker emits ``finished``.
-    Draining here removes any approval item left by a click during
+    Draining here removes any question answer left by a click during
     teardown -- submitted while ``is_busy()`` was still true (so the
     submit_approval guard let it through) but after the worker had stopped
     consuming. The next turn cannot start until this slot clears
@@ -314,9 +357,14 @@ class QtAgentRunner(QtCore.QObject):
       self._worker.deleteLater()
     self._thread = None
     self._worker = None
-    for q in self._pending_approval_queues:
+    for q in self._question_cancel_queues:
       while True:
         try:
           q.get_nowait()
         except queue.Empty:
           break
+    # Announce end-of-turn teardown LAST -- is_busy() is False and the stale
+    # question answers are drained, so a slot may synchronously start the next
+    # turn (the chat window fires its deferred auth retry from here instead of
+    # polling is_busy() on a timer).
+    self.idle.emit()

@@ -64,7 +64,7 @@ def run(args):
            params.db.name is not None and len(params.db.name) > 0
     import getpass
     if params.db.server.root_password:
-            rootw = params.db.server.root_password
+      rootpw = params.db.server.root_password
     else:
       print("Initializing")
       print("You must specify a root password")
@@ -106,7 +106,6 @@ def run(args):
     params.db.name = ''
     print("Changing password")
     app = db_application(params)
-    rootpw = params.db.server.root_password
     app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(rootpw))
     params.db.password = rootpw
     print("Creating empty database %s"%new_db)

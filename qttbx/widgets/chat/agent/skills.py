@@ -236,11 +236,23 @@ class SkillLoader:
     if not isinstance(requires, list):
       requires = [requires]
     requires = [str(r) for r in requires]
+    # `mode` decides how the body surfaces: "always" inlines it in the system
+    # prompt, "on_demand" fetches it via the load_skill tool. An unknown value
+    # (e.g. the hyphen typo `mode: on-demand`) is NEITHER, which silently makes
+    # the body permanently unreachable -- assemble_system_prompt only inlines
+    # when mode=="always" and tools() only registers load_skill when some skill
+    # is mode=="on_demand". Normalize an unrecognized value to "always" (so the
+    # body at least stays inlined) and warn, rather than store the bad string.
+    mode = str(frontmatter.get("mode", "always"))
+    if mode not in ("always", "on_demand"):
+      print("skill '%s': unknown mode '%s'; defaulting to 'always'"
+            % (frontmatter["name"], mode), file=self.log)
+      mode = "always"
     return Skill(
       name=str(frontmatter["name"]),
       path=path.resolve(),
       description=str(frontmatter["description"]),
-      mode=str(frontmatter.get("mode", "always")),
+      mode=mode,
       body=body,
       requires=requires,
     )

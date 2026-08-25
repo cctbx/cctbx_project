@@ -275,6 +275,18 @@ class atoms(entity):
         return True
     return False
 
+  def get_consensus_altloc(self):
+    """
+    Altloc shared by the atoms in this result, or '' if none of them are in an
+    alternate conformation.  Unlike get_altloc(), atoms from conflicting
+    altlocs return '' rather than raising, so this is safe to call while
+    serializing results for arbitrary models.
+    """
+    altlocs = set(a.altloc for a in self.atoms_info if a.altloc.strip() != '')
+    if (len(altlocs) == 1):
+      return altlocs.pop()
+    return ''
+
   def nest_dict(self, level_list, upper_dict):
     inner_dict = {}
     if len(level_list) > 0:
@@ -282,7 +294,15 @@ class atoms(entity):
       try:
         upper_dict[getattr(self, next_level)] = self.nest_dict(level_list[1:], inner_dict)
       except AttributeError:
-        upper_dict[getattr(self.atoms_info[0], next_level)] = self.nest_dict(level_list[1:], inner_dict)
+        if (next_level == "altloc"):
+          # A multi-atom result can span residues where only some of the atoms
+          # are in an alternate conformation (e.g. a C-N-CA angle whose second
+          # residue has altlocs).  Keying on atoms_info[0] alone labels those
+          # as blank, which merges the A and B results into one bucket.
+          key = self.get_consensus_altloc()
+        else:
+          key = getattr(self.atoms_info[0], next_level)
+        upper_dict[key] = self.nest_dict(level_list[1:], inner_dict)
     else:
       return [json.loads(self.as_JSON())]
     return upper_dict

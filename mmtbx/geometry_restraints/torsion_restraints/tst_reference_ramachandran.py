@@ -10,6 +10,9 @@ from cctbx import geometry_restraints
 from libtbx.utils import Sorry, null_out
 
 from mmtbx.geometry_restraints import ramachandran
+from mmtbx.validation import ramalyze
+from mmtbx.building.loop_closure.starting_conformations import set_rama_angles
+from mmtbx.building.loop_closure.utils import get_phi_psi_atoms
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import (
   reference_model,
   reference_model_params,
@@ -94,32 +97,6 @@ ATOM     12  CA  ALA A   3      -5.268  -4.493 -21.614  1.00  0.00           C
 ATOM     13  C   ALA A   3      -6.485  -5.236 -22.153  1.00  0.00           C
 ATOM     14  O   ALA A   3      -6.565  -5.533 -23.345  1.00  0.00           O
 ATOM     15  CB  ALA A   3      -4.200  -5.500 -21.150  1.00  0.00           C
-END
-"""
-
-# Same 3-residue chain, residue-2 phi/psi rotated to ~(-8.5, +41.4) (vs the
-# helical (-68.5, -38.6) in _pdb_tri), then idealized: bonds and angles at
-# cctbx monomer-library targets and torsions held at the rotated values via
-# reference_model. The geometry is now self-consistent — a working model
-# minimized with phi/psi pinned to these values can overlay the reference
-# exactly. Generated offline; this is the captured snapshot.
-_pdb_tri_reference = """\
-CRYST1   30.000   30.000   60.000  90.00  90.00  90.00 P 1
-ATOM      1  N   ALA A   1      -6.790  -4.206 -16.547  1.00  0.00           N
-ATOM      2  CA  ALA A   1      -8.167  -3.859 -16.878  1.00  0.00           C
-ATOM      3  C   ALA A   1      -8.250  -3.213 -18.257  1.00  0.00           C
-ATOM      4  O   ALA A   1      -9.170  -3.504 -19.009  1.00  0.00           O
-ATOM      5  CB  ALA A   1      -8.750  -2.933 -15.821  1.00  0.00           C
-ATOM      6  N   ALA A   2      -7.242  -2.379 -18.548  1.00  0.00           N
-ATOM      7  CA  ALA A   2      -6.952  -1.601 -19.761  1.00  0.00           C
-ATOM      8  C   ALA A   2      -7.775  -1.820 -21.033  1.00  0.00           C
-ATOM      9  O   ALA A   2      -7.207  -1.848 -22.130  1.00  0.00           O
-ATOM     10  CB  ALA A   2      -5.478  -1.806 -20.124  1.00  0.00           C
-ATOM     11  N   ALA A   3      -9.089  -1.977 -20.922  1.00  0.00           N
-ATOM     12  CA  ALA A   3      -9.943  -2.156 -22.090  1.00  0.00           C
-ATOM     13  C   ALA A   3     -10.012  -0.879 -22.922  1.00  0.00           C
-ATOM     14  O   ALA A   3     -10.325  -0.918 -24.112  1.00  0.00           O
-ATOM     15  CB  ALA A   3     -11.338  -2.588 -21.665  1.00  0.00           C
 END
 """
 
@@ -476,8 +453,8 @@ def exercise_minimization_drives_to_reference_target():
   target has been overridden from a reference hierarchy.
 
   Run A — stock oldfield target (nearest favorable point on Rama8000).
-  Run B — override active; target comes from _pdb_tri_reference where
-  residue 2's phi/psi were cleanly rotated to a non-helical conformation.
+  Run B — override active; target is a reference with residue 2 rotated to a
+  favored beta conformation (favored, so it is imported as a target).
 
   Assertions:
     1. The two runs end in different places.
@@ -525,9 +502,9 @@ def exercise_minimization_drives_to_reference_target():
   _dump("0_initial.geo", refined_model.restraints_as_geo())
   angle_0 = _get_rama_single_angles(refined_model.get_hierarchy())
 
-  # Reference: hardcoded 3-residue chain with residue 2 phi/psi rotated.
-  ref_h = iotbx.pdb.input(
-    source_info=None, lines=_pdb_tri_reference).construct_hierarchy()
+  # Reference: the 3-residue chain with residue 2 rotated to a *favored* beta
+  # conformation, far from the helical start, so the override imports it.
+  ref_h = _reference_with_rama({2: (-120.0, 130.0)}, pdb_str=_pdb_tri)
   ref_sites = ref_h.atoms().extract_xyz()
   phi_ref_target, psi_ref_target = _compute_phi_psi(
     ref_sites, target_proxy.get_i_seqs())
@@ -652,6 +629,85 @@ def exercise_existing_reference_dihedral_restraints_kept():
     "reference_dihedral_proxies should still be populated"
 
 
+def _reference_with_rama(res_targets, pdb_str=_pdb_helix):
+  """Return a copy of `pdb_str` with the given residues' (phi, psi) set to the
+  requested values. res_targets = {resseq_int: (phi, psi)}; residues not listed
+  keep their original angles. Uses set_rama_angles, which rotates about the
+  backbone bonds so each targeted residue's phi/psi is set exactly while the
+  others are preserved."""
+  h = iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+  angles = []
+  for ps_atoms in get_phi_psi_atoms(h, omega=True):
+    ca = ps_atoms[0][0][2]  # CA atom of this residue (phi atoms = C,N,CA,C)
+    resseq = ca.parent().parent().resseq_as_int()
+    angles.append(res_targets.get(resseq, (None, None)))
+  new_h, _ = set_rama_angles(h, angles)
+  return new_h
+
+
+def exercise_skip_non_favored_reference():
+  """Only a *favored* reference residue may serve as an oldfield target.
+  Reference residues in allowed or outlier Ramachandran regions are skipped and
+  keep their default (nearest-favored) target."""
+  # Reference: helix with residue 4 pushed into an allowed region and residue 6
+  # into an outlier region; every other residue stays favored-helical.
+  ref_h = _reference_with_rama({4: (-140.0, 80.0), 6: (-50.0, 100.0)})
+
+  model = _build_model_with_oldfield_rama()
+  mgr = _get_rama_manager(model)
+  before = [tuple(t) for t in mgr.target_phi_psi]
+
+  p = reference_model_params.extract()
+  p.reference_model.ramachandran_targets.enabled = True
+  rm = reference_model(
+    model=model,
+    reference_hierarchy_list=[ref_h],
+    reference_file_list=None,
+    params=p.reference_model,
+    log=null_out())
+  n_changed = rm.apply_ramachandran_targets(mgr)
+  after = [tuple(t) for t in mgr.target_phi_psi]
+
+  # Classify each mapped proxy's reference (phi, psi) with the manager's own
+  # rama_eval -- the exact scorer the implementation uses -- keeping the
+  # reference angles so we can check favored proxies were imported verbatim.
+  fn = rm.reference_file_list[0]
+  ref_sites = rm.sites_cart_ref[fn]
+  mm = rm.match_map[fn]
+  buckets = {ramalyze.RAMALYZE_FAVORED: [], ramalyze.RAMALYZE_ALLOWED: [],
+             ramalyze.RAMALYZE_OUTLIER: []}
+  ref_angles = {}
+  for i, proxy in enumerate(mgr._oldfield_proxies):
+    ref_iseqs = tuple(mm.get(j) for j in proxy.get_i_seqs())
+    if None in ref_iseqs:
+      continue
+    phi_ref, psi_ref = _compute_phi_psi(ref_sites, ref_iseqs)
+    ref_angles[i] = (phi_ref, psi_ref)
+    rama_key = ramalyze.res_types_dict[proxy.residue_type]
+    ev = mgr.rama_eval.evaluate_score(
+      rama_key, mgr.rama_eval.get_score(rama_key, phi_ref, psi_ref))
+    buckets[ev].append(i)
+
+  # Precondition: the reference exercises all three categories.
+  assert buckets[ramalyze.RAMALYZE_FAVORED], "expected favored reference residues"
+  assert buckets[ramalyze.RAMALYZE_ALLOWED], \
+    "test setup: expected an allowed reference residue"
+  assert buckets[ramalyze.RAMALYZE_OUTLIER], \
+    "test setup: expected an outlier reference residue"
+
+  # Favored -> imported verbatim; allowed and outlier -> skipped (default kept).
+  for i in buckets[ramalyze.RAMALYZE_FAVORED]:
+    phi_ref, psi_ref = ref_angles[i]
+    assert (abs(after[i][0] - phi_ref) < 1.e-6
+            and abs(after[i][1] - psi_ref) < 1.e-6), \
+      "favored reference should be imported (proxy %d)" % i
+  for i in buckets[ramalyze.RAMALYZE_ALLOWED] + buckets[ramalyze.RAMALYZE_OUTLIER]:
+    assert after[i] == before[i], \
+      "non-favored reference must be skipped (proxy %d)" % i
+  assert n_changed == len(buckets[ramalyze.RAMALYZE_FAVORED]), \
+    (n_changed, len(buckets[ramalyze.RAMALYZE_FAVORED]))
+
+
 def run(args):
   exercise_phil_defaults()
   exercise_apply_noop_when_disabled()
@@ -664,6 +720,7 @@ def run(args):
   exercise_raises_when_no_rama_manager()
   exercise_minimization_drives_to_reference_target()
   exercise_existing_reference_dihedral_restraints_kept()
+  exercise_skip_non_favored_reference()
   print("OK")
 
 

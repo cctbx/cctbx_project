@@ -13,10 +13,20 @@ from libtbx import group_args
 from cctbx import miller
 from cctbx import crystal
 from libtbx.str_utils import make_sub_header
+from libtbx.utils import Sorry
 import mmtbx.maps.polder
 import mmtbx.maps.correlation
 import mmtbx.ligands.rdkit_utils as rdkit_utils
 from iotbx import mrcfile
+
+# Bounds on validate_ligands.within_radius. Kept in sync with the value_min /
+# value_max of the phil parameter below (checked by tst_validate_ligands).
+WITHIN_RADIUS_MIN = 2.0
+WITHIN_RADIUS_MAX = 5.0
+
+# mFo-DFc cutoff (sigma) for calling a ligand atom centre, or a grid point in a
+# difference blob, "bad". Applied symmetrically to positive and negative peaks.
+FOFC_SIGMA_CUTOFF = 3.0
 
 master_params_str = """
 validate_ligands {
@@ -29,6 +39,15 @@ ligand_code = None
 nproc = 1
   .type = int
   .input_size = 60
+within_radius = 3.0
+  .type = float(value_min=2, value_max=5)
+  .short_caption = Environment radius (A)
+  .help = "Radius (A) around the ligand that defines its environment ('sites'): \
+the residues used for the surrounding-ADP comparison and for the sites RSCC. A \
+residue is included when any of its atoms falls inside the radius. The upper \
+bound is deliberate: the same radius selects the atoms removed from the model \
+before the sites omit map is recomputed, and deleting a wide shell degrades the \
+scaling and makes that map noisier and more bias-prone."
 model_fn_reduce2 = None
   .type = path
 save_fragment_png = False
@@ -108,6 +127,18 @@ def _partner_id_str(partner):
   return '%s %s %d (altloc %s)' % (
     partner.resname, partner.chain, partner.resseq, partner.altloc.strip())
 
+def percent_bad_at_atom_centers(fofc_map_values, cutoff=FOFC_SIGMA_CUTOFF):
+  '''
+  Percentage of ligand atoms whose mFo-DFc value reaches +/- cutoff sigma.
+  Returns 0 for an empty selection.
+  '''
+  n = fofc_map_values.size()
+  if n == 0:
+    return 0.
+  n_bad = (fofc_map_values <= -cutoff).count(True) + \
+          (fofc_map_values >=  cutoff).count(True)
+  return 100. * n_bad / n
+
 def map_coefficients_as_mtz_object(fmodel, fill_missing=False, isotropize=True):
   '''
   Build an MTZ object with 2mFo-DFc and mFo-DFc map coefficients from an fmodel.
@@ -149,6 +180,11 @@ class manager(list):
     self.log   = log
     self.fmodel = fmodel
     self.map_manager = map_manager
+
+    if not (WITHIN_RADIUS_MIN <= self.params.within_radius
+                             <= WITHIN_RADIUS_MAX):
+      raise Sorry('within_radius must be between %s and %s A (got %s).' %
+        (WITHIN_RADIUS_MIN, WITHIN_RADIUS_MAX, self.params.within_radius))
 
   # ----------------------------------------------------------------------------
 
@@ -296,7 +332,7 @@ class manager(list):
            if lr.get_ccs() else '-')},
 
       {'headers': ['% bad', 'map values', 'Fo-Fc'], 'width': 12,
-       'data_fn': lambda lr: f"{lr.get_map_values().percent_bad_at_atom_centers}" if lr.get_map_values() else 'NA'},
+       'data_fn': lambda lr: f"{lr.get_map_values().percent_bad_at_atom_centers:.1f}" if lr.get_map_values() else 'NA'},
 
       {'headers': ['', 'bad', 'blobs #'], 'width': 9,
        'data_fn': lambda lr: f"{lr.get_map_values().n_bad_blobs}" if lr.get_map_values() else 'NA'},
@@ -309,14 +345,20 @@ class manager(list):
        'data_fn': lambda lr: f"{lr.get_overlaps().n_hbonds}" if lr.get_overlaps() and lr.get_overlaps().n_hbonds != 0 else '-'},
       {'headers': ['', 'ADPs', 'min   max   mean'], 'width': 21,
        'data_fn': lambda lr: f"{lr.get_adps().b_min:^7.1f}{lr.get_adps().b_max:^7.1f}{lr.get_adps().b_mean:^7.1f}"},
+      {'headers': ['B ratio', 'ligand/', 'sites'], 'width': 9,
+       'data_fn': lambda lr: (f"{lr.get_adps().b_ratio:.2f}"
+           if lr.get_adps() and lr.get_adps().b_ratio is not None else '-')},
       {'headers': ['', 'occupancies', 'min   max   mean'], 'width': 21,
        'data_fn': lambda lr: f"{lr.get_occupancies().occ_min:^7.1f}{lr.get_occupancies().occ_max:^7.1f}{lr.get_occupancies().occ_mean:^7.1f}"},
       {'headers': ['bond', 'rmsz', 'outliers'], 'width': 17,
-       'data_fn': lambda lr: f"{lr.get_rmsds().bond_rmsz:.2f}  {lr.get_rmsds().bond_n_outliers}({lr.get_rmsds().bond_n})"},
+       'data_fn': lambda lr: (f"{lr.get_rmsds().bond_rmsz:.2f}  {lr.get_rmsds().bond_n_outliers}({lr.get_rmsds().bond_n})"
+           if lr.get_rmsds() and lr.get_rmsds().bond_n else '-')},
       {'headers': ['angle', 'rmsz', 'outliers'], 'width': 17,
-       'data_fn': lambda lr: f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"},
+       'data_fn': lambda lr: (f"{lr.get_rmsds().angle_rmsz:.2f}  {lr.get_rmsds().angle_n_outliers}({lr.get_rmsds().angle_n})"
+           if lr.get_rmsds() and lr.get_rmsds().angle_n else '-')},
       {'headers': ['dihedral', 'rmsz', 'outliers'], 'width': 17,
-       'data_fn': lambda lr: f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"},
+       'data_fn': lambda lr: (f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"
+           if lr.get_rmsds() and lr.get_rmsds().dihedral_n else '-')},
       {'headers': ['', 'missing', 'heavy atoms'], 'width': 22,
        'data_fn': lambda lr: (
            f"{lr.get_missing_atoms().n_missing_heavy} "
@@ -328,6 +370,16 @@ class manager(list):
            ('! ' if lr.get_alt_conf().flag == 'inspect' else '')
            + _alt_conf_short(lr.get_alt_conf()))},
     ]
+
+    # The 'sites' sub-row (environment RSCC and ADPs) is written into these two
+    # columns; grab them here so the lookup below survives reordering.
+    def _column(headers):
+      for c in columns:
+        if c['headers'] == headers:
+          return c
+      return None
+    col_rscc_overall = _column(['', 'RSCC', 'overall'])
+    col_adps         = _column(['', 'ADPs', 'min   max   mean'])
 
     # --- From here, the code is generic and builds the table from the config above ---
 
@@ -349,24 +401,30 @@ class manager(list):
       data_cells = [f"{c['data_fn'](lr):^{c['width']}}" for c in columns]
       print("|".join(data_cells), file=out)
 
-      # Print the 'sites' ADP info if available
+      # Print the 'sites' ADP info if available. sites_b_str must be reset per
+      # ligand: it is filled in one conditional and used in another, so a stale
+      # value would otherwise be printed for the next ligand.
       adps = lr.get_adps()
+      sites_b_str = None
       if adps and adps.b_min_within is not None:
         sites_b_str = f"{adps.b_min_within:^7.1f}{adps.b_max_within:^7.1f}{adps.b_mean_within:^7.1f}"
       ccs = lr.get_ccs()
       if ccs and ccs.rscc_sites is not None:
         sites_cc_str = f"{lr.get_ccs().rscc_sites:.2f}"
-        # Build the sites row cell by cell to guarantee alignment
+        # Build the sites row cell by cell to guarantee alignment. The target
+        # columns are looked up by header rather than hard-coded, so the row
+        # cannot silently drift out of register if 'columns' is reordered.
         sites_row_cells = []
         for i, col in enumerate(columns):
           if i == 0:
-            sites_row_cells.append(f"{'sites':^{col['width']}}")
-          elif i == 1: # The RSCC column
-            sites_row_cells.append(f"{sites_cc_str:^{col['width']}}")
-          elif i == 8: # The ADPs column
-            sites_row_cells.append(f"{sites_b_str:^{col['width']}}")
+            text = 'sites'
+          elif col is col_rscc_overall:
+            text = sites_cc_str
+          elif col is col_adps and sites_b_str is not None:
+            text = sites_b_str
           else:
-            sites_row_cells.append(f"{'':^{col['width']}}")
+            text = ''
+          sites_row_cells.append(f"{text:^{col['width']}}")
         print("|".join(sites_row_cells), file=out)
 
       print(separator, file=out)
@@ -438,7 +496,8 @@ class manager(list):
 #         print(clashes_result.clashes_str, file=self.log)
 
   def show_sites_within(self):
-    make_sub_header(' Sites within 3 A', out=self.log)
+    make_sub_header(' Sites within %g A' % self.params.within_radius,
+                    out=self.log)
     for lr in self:
       adps    = lr.get_adps()
       isel_within_noH = adps.isel_within_noH
@@ -504,7 +563,7 @@ class ligand_result(object):
       #'_polder_ccs'  : 'get_polder_ccs',
     }
 
-    self.within_radius = 3.0
+    self.within_radius = params.within_radius
 
     self._set_internals()
     self.d_min = None
@@ -852,6 +911,13 @@ class ligand_result(object):
     b_isos_within = xrs_within_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
     b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
 
+    # Ligand B relative to the B of its environment. Undefined when the ligand
+    # has no environment within within_radius (b_mean_within is None) or when
+    # that environment has zero mean B.
+    b_ratio = None
+    if b_mean_within:
+      b_ratio = b_mean / b_mean_within
+
     self._adps = group_args(
       n_iso           = n_iso,
       n_aniso         = n_aniso,
@@ -862,6 +928,7 @@ class ligand_result(object):
       b_min_within    = b_min_within,
       b_max_within    = b_max_within,
       b_mean_within   = b_mean_within,
+      b_ratio         = b_ratio,
       isel_within_noH = self.isel_within_noH
       )
 
@@ -1334,10 +1401,7 @@ class ligand_result(object):
       #print(_a.id_str(), map_val)
       fofc_map_values.append(map_val)
 
-    percent_bad = 0
-    n_neg = (fofc_map_values <= -3).count(True)
-    n_pos = (fofc_map_values >= 3).count(True)
-    percent_bad = round((n_neg + n_pos)/ self._atoms_ligand_noH.size(), 2)*100
+    percent_bad = percent_bad_at_atom_centers(fofc_map_values)
 
     # 2. count grid points in blobs
     sites_cart = self._atoms_ligand_noH.extract_xyz()
@@ -1360,8 +1424,8 @@ class ligand_result(object):
 #      map_data    = _m1,
 #      labels      = flex.std_string([""]))
 
-    co_pos = maptbx.connectivity(map_data=_m1, threshold=3.)
-    co_neg = maptbx.connectivity(map_data=-1*_m1, threshold=3.)
+    co_pos = maptbx.connectivity(map_data=_m1, threshold=FOFC_SIGMA_CUTOFF)
+    co_neg = maptbx.connectivity(map_data=-1*_m1, threshold=FOFC_SIGMA_CUTOFF)
     map_result_pos = co_pos.result()
     peaks_pos = list(co_pos.regions())[1:]
     peaks_neg = list(co_neg.regions())[1:]
@@ -1490,6 +1554,11 @@ class ligand_result(object):
     missing_idxs = getattr(self, '_draw_missing_idxs', None)
     if frag_mol is None or rdkit_frags is None:
       return None
+    # No bonds (e.g. a ligand with no restraints/monomer entry) means every
+    # atom is its own fragment -- the figure is a meaningless grid of
+    # disconnected atoms, so don't draw one.
+    if frag_mol.GetNumBonds() == 0:
+      return None
     frag_cc_list = None
     if frag_ccs_plain:
       frag_cc_list = [frag_ccs_plain[i] for i in sorted(frag_ccs_plain)]
@@ -1577,6 +1646,7 @@ class ligand_result(object):
         b_min_within  = _f(adps.b_min_within)  if adps is not None else None,
         b_max_within  = _f(adps.b_max_within)  if adps is not None else None,
         b_mean_within = _f(adps.b_mean_within) if adps is not None else None,
+        b_ratio       = _f(adps.b_ratio)       if adps is not None else None,
       ) if adps is not None else None,
       occupancies = group_args(
         occ_min  = _f(occs.occ_min)  if occs is not None else None,

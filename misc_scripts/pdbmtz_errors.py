@@ -16,7 +16,8 @@ def process(f):
   return result, example+full
 
 def run():
-  epath = pdbmtz.replace("/mtz_files", "/errors/")
+  epath = pdbmtz.replace("/data", "/errors/")
+  print(pdbmtz)
   d = {}
   cntr = 0
   for f in os.listdir(epath):

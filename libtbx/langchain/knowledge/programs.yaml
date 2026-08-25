@@ -736,7 +736,14 @@ phenix.autobuild:
       extract: last
       display_name: "R-work"
     residues_built:
-      pattern: '(\d+)\s+residues?\s+built'
+      # The count FOLLOWS the phrase, and the match is anchored to a
+      # single line.  The previous pattern was '(\d+)\s+residues?\s+built'
+      # -- digits BEFORE the phrase, with \s+ able to cross a newline.
+      # On "R (free): 0.4506658578498925\nResidues built: 241" it captured
+      # 4506658578498925, the R-free mantissa, and never once produced a
+      # correct value on any log tested.  Verified: autobuild_3 -> 241,
+      # autobuild_6 -> 126, autosol_2 -> 35.
+      pattern: '^\s*[Rr]esidues?\s+[Bb]uilt\s*[:=]\s*(\d+)\s*$'
       type: int
       extract: last
       display_name: "Residues built"
@@ -1106,6 +1113,37 @@ phenix.map_to_model:
     nproc:
       flag: "nproc={value}"
       type: int
+    # Added 2026-08 after an audit found user directives being silently
+    # discarded.  build_command emits only keys listed here, so a
+    # parameter the user asked for and the program supports was dropped
+    # with no error -- while the LLM's reasoning, written from the
+    # directives, stated it was being applied.  Observed: a run whose
+    # directives carried build_in_regions=False and
+    # include_phase_and_build=False, whose reasoning said "Running the
+    # quick pass with the specified options (...)", and whose command
+    # carried neither.
+    #
+    # PHIL paths taken from `phenix.map_to_model --show-defaults=3`.
+    # Each of these occurs exactly once in that output, so the mapping
+    # is unambiguous.  Two other candidates from the same audit were
+    # deliberately NOT added: real_space_refine's `run` (a multi-choice
+    # list where a partial value silently disables defaults) and
+    # `remove_outliers` (two candidate paths, neither matching the
+    # likely user intent) -- we cannot set either correctly from a bare
+    # key=value directive.
+    thoroughness:
+      flag: "strategy.thoroughness={value}"
+      type: string
+      hint: "quick, medium (default), thorough or extra_thorough"
+    build_in_regions:
+      flag: "strategy.build_in_regions={value}"
+      type: boolean
+    include_phase_and_build:
+      flag: "strategy.include_phase_and_build={value}"
+      type: boolean
+    asymmetric_map:
+      flag: "reconstruction_symmetry.asymmetric_map={value}"
+      type: boolean
 
   invariants:
     - name: requires_map_input
@@ -1607,14 +1645,57 @@ phenix.ligandfit:
         type: ligand
 
   log_parsing:
+    # Rewritten to match what phenix.ligandfit actually writes. The
+    # previous 'Correlation Coefficient:' / 'Real-space R:' patterns
+    # matched nothing in either corpus log.
+    #
+    # All patterns are line-anchored so an earlier candidate line or a
+    # sentence containing the same phrase cannot steal the match. The
+    # final summary block may repeat ("This fit is the new best one"),
+    # so summary metrics take the LAST occurrence; the starting CCs are
+    # reported once per ligand search and take the FIRST.
     ligand_cc:
-      pattern: '[Cc]orrelation\s+[Cc]oefficient\s*[:=]\s*([\d.]+)'
+      pattern: '(?m)^\s*CC to map:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      fallback_pattern: '(?m)^\s*cc_overall\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
       type: float
-      display_name: "Ligand CC"
-    ligand_rsr:
-      pattern: '[Rr]eal[-_\s]?[Ss]pace\s+R\s*[:=]\s*([\d.]+)'
+      extract: last
+      display_name: "Ligand CC to map"
+    ligand_score:
+      pattern: '(?m)^\s*Overall score:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
       type: float
-      display_name: "Ligand RSR"
+      extract: last
+      display_name: "Ligand fit score"
+    atoms_placed:
+      pattern: '(?m)^\s*Atoms placed:\s*(\d+)\s+of\s+\d+\s*$'
+      type: int
+      extract: last
+      display_name: "Ligand atoms placed"
+    atoms_total:
+      pattern: '(?m)^\s*Atoms placed:\s*\d+\s+of\s+(\d+)\s*$'
+      type: int
+      extract: last
+      display_name: "Ligand atoms total"
+    n_ligands:
+      pattern: '(?m)^\s*number_of_ligands\s+(\d+)\s*$'
+      type: int
+      extract: last
+      display_name: "Ligands placed"
+    # Two distinct starting CCs are reported. starting_cc in the JSON
+    # summary equals the GLOBAL "Starting CC of ligand as input to map"
+    # (verified: 0.714/0.714 and 0.069/0.069 in the two corpus logs),
+    # not the local one. Both are kept because they can differ sharply
+    # -- 0.714 global vs 0.24 local in the bromodomain run.
+    starting_cc:
+      pattern: '(?m)^\s*starting_cc\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      fallback_pattern: '(?m)^\s*Starting CC of ligand as input to map:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      type: float
+      extract: first
+      display_name: "Ligand starting CC (global)"
+    starting_local_cc:
+      pattern: '(?m)^\s*Starting local CC of ligand as input to map:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*$'
+      type: float
+      extract: first
+      display_name: "Ligand starting CC (local)"
 
   command: "phenix.ligandfit {model} {map_coeffs_mtz} {ligand}"
 

@@ -1012,13 +1012,12 @@ class manager(Base_geometry):
     return len(self.planarity_proxies.proxy_select(
       origin_id=specific_origin_id))
 
-  def get_hbond_proxies_iseqs(self):
-    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+  def _bond_proxies_iseqs_by_origin_id(self, specific_origin_id):
     result = []
     try:
       pair_proxies = self.pair_proxies()
     except AssertionError as e:
-      # This is in case when somebody tries to access hbonds when
+      # This is in case when somebody tries to access proxies when
       # grm is not ready. See e.g. phenix/refinement/runtime.py
       # class refinement_status, grm.get_hbond_proxies_iseqs()
       if "pair_proxies not defined already." in e.args:
@@ -1036,6 +1035,14 @@ class manager(Base_geometry):
         for p in asu_p:
           result.append((p.i_seq, p.j_seq))
     return result
+
+  def get_hbond_proxies_iseqs(self):
+    return self._bond_proxies_iseqs_by_origin_id(
+      origin_ids.get_origin_id('hydrogen bonds'))
+
+  def get_edits_bond_proxies_iseqs(self):
+    return self._bond_proxies_iseqs_by_origin_id(
+      origin_ids.get_origin_id('edits'))
 
   def new_included_bonded_atoms(self, proxies, sites_cart,
       site_symmetry_table, nonbonded_types, nonbonded_charges,

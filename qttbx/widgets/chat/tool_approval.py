@@ -3,9 +3,9 @@
 For a single ``ToolApprovalRequest`` the card shows the tool and four
 buttons: Approve / Deny / Always allow / Stop. For a batch (multiple
 requests sharing ``batch_id``) the card collapses to Approve all /
-Deny all / Stop. The worker receives batched responses in dispatch
-order so the session's ``_dispatch_and_build_results`` loop can pair
-each response with its request.
+Deny all / Stop. Each response carries its ``request_id``; the
+``ApprovalCoordinator`` pairs it with the matching pending request, so
+responses need not arrive in dispatch order.
 """
 
 import json
@@ -80,6 +80,22 @@ class ToolApprovalCard(QtWidgets.QFrame):
   def click_stop(self):
     self._emit("deny_and_stop")
 
+  def finalize(self):
+    """Disable this card WITHOUT emitting a decision.
+
+    Called when the card's turn ends while still undecided (the user stopped
+    the turn) so a later click can't emit a stale response into a subsequent
+    turn -- the approval-misroute guard. Marks the card decided (so ``_emit``
+    won't fire), disables its buttons, and hides it, mirroring the
+    post-decision state. A no-op once a real decision has been emitted.
+    """
+    if self._decided:
+      return
+    self._decided = True
+    if self._buttons_widget is not None:
+      self._buttons_widget.setEnabled(False)
+    self.hide()
+
   # ---- UI build ------------------------------------------------------------
 
   def _rebuild(self):
@@ -130,16 +146,22 @@ class ToolApprovalCard(QtWidgets.QFrame):
     layout = QtWidgets.QHBoxLayout(box)
     layout.setContentsMargins(0, 0, 0, 0)
     if len(self._requests) <= 1:
+      # Offer "Always allow this tool" only when the request permits it; a
+      # request with allow_remember=False (e.g. a destructive recovery tool)
+      # must not grant standing per-tool auto-approval.
+      allow_remember = (getattr(self._requests[0], "allow_remember", True)
+                        if self._requests else True)
       approve = QtWidgets.QPushButton("Approve", box)
-      always = QtWidgets.QCheckBox("Always allow this tool", box)
-      always.toggled.connect(self.set_remember_tool)
       deny = QtWidgets.QPushButton("Deny", box)
       stop = QtWidgets.QPushButton("Stop", box)
       approve.clicked.connect(self.click_approve_all)
       deny.clicked.connect(self.click_deny_all)
       stop.clicked.connect(self.click_stop)
       layout.addWidget(approve)
-      layout.addWidget(always)
+      if allow_remember:
+        always = QtWidgets.QCheckBox("Always allow this tool", box)
+        always.toggled.connect(self.set_remember_tool)
+        layout.addWidget(always)
       layout.addWidget(deny)
       layout.addStretch(1)
       layout.addWidget(stop)
@@ -159,6 +181,8 @@ class ToolApprovalCard(QtWidgets.QFrame):
   # ---- emit ----------------------------------------------------------------
 
   def _emit(self, decision):
+    if self._decided:
+      return               # already decided or finalized -- never emit twice
     remember = "none"
     if decision == "approve" and self._remember_tool:
       remember = "tool"

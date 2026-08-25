@@ -19,7 +19,8 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
   profile : object
       Active profile; ``name`` and ``model`` attributes are reported.
   storage : object
-      Storage object; ``project_dir`` and ``chat_root`` are reported.
+      Storage object; ``project_dir`` and ``root`` (the chat-data root,
+      reported as ``chat_root``) are read off it.
   log_path : str or pathlib.Path, optional
       Log file to tail. When ``None``, no log section is included.
   log_tail_lines : int, optional
@@ -31,7 +32,7 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
       The assembled diagnostics report, terminated by a newline.
   """
   lines = []
-  lines.append("PhenixChat diagnostics")
+  lines.append("PhenixAgent diagnostics")
   lines.append("=" * 40)
   lines.append("timestamp: %s" % datetime.datetime.now().isoformat(
     timespec="seconds"))
@@ -53,16 +54,20 @@ def build_diagnostics(profile, storage, log_path=None, log_tail_lines=200):
   lines.append("")
   lines.append("Storage:")
   lines.append("  project_dir: %s" % getattr(storage, "project_dir", "?"))
-  lines.append("  chat_root:   %s" % getattr(storage, "chat_root", "?"))
+  lines.append("  chat_root:   %s" % getattr(storage, "root", "?"))
 
   if log_path is not None:
+    import collections
     lines.append("")
     lines.append("Recent log (%s):" % log_path)
     lines.append("-" * 40)
     try:
+      # Tail with a bounded deque so only the last log_tail_lines are ever held
+      # in memory -- a huge session log must not be slurped whole on the GUI
+      # thread the way fh.readlines()[-N:] would.
       with open(log_path, "r", encoding="utf-8", errors="replace") as fh:
-        log_lines = fh.readlines()
-      for line in log_lines[-log_tail_lines:]:
+        log_lines = collections.deque(fh, maxlen=log_tail_lines)
+      for line in log_lines:
         lines.append(line.rstrip("\n"))
     except OSError:
       lines.append("(log file not readable)")

@@ -21,6 +21,20 @@ from qttbx.widgets.chat.question_card import QuestionCard
 from qttbx.widgets.chat.tool_approval import ToolApprovalCard
 
 
+def _is_tool_result_answer(message):
+  """True for a user message whose blocks are ALL tool_result -- the answering
+  message the session appends after an assistant tool_use turn (a dispatched
+  batch, or claude_code's observed results). On reload these fold into the
+  bubble holding the matching tool_use cells; a text or mixed user message (the
+  user's own input, the turn-cap marker) is left as its own bubble.
+  """
+  if getattr(message, "role", None) != "user":
+    return False
+  content = getattr(message, "content", None) or []
+  return bool(content) and all(
+    getattr(b, "type", None) == "tool_result" for b in content)
+
+
 class ConversationView(QtWidgets.QScrollArea):
   """Scrollable streaming view of bubbles, approval cards, and questions.
 
@@ -44,8 +58,9 @@ class ConversationView(QtWidgets.QScrollArea):
     self._storage = storage
     self._conv_id = conv_id
     # Current backend's assistant display name; the fallback for bubbles /
-    # question cards with no per-message backend stamp. ChatWindow sets it
-    # via set_assistant_label().
+    # question cards with no per-message backend stamp. Fixed for the
+    # ChatWindow session (backend/profile don't change) and set here at
+    # construction; set_assistant_label() can update it later (used by tests).
     self._assistant_label = assistant_label or "Assistant"
     self.setWidgetResizable(True)
     self._container = QtWidgets.QWidget(self)
@@ -73,6 +88,10 @@ class ConversationView(QtWidgets.QScrollArea):
     # first growth: maximum jumps up while value stays put, so we'd
     # decide we were 'no longer at bottom' and stop following.
     self._follow_bottom = True
+    # While another feature holds the viewport (a search-match
+    # navigation, a future jump-to-error), add_message must not
+    # re-assert follow-bottom (see set_autofollow_held).
+    self._autofollow_held = False
     bar = self.verticalScrollBar()
     bar.actionTriggered.connect(self._on_user_scroll_action)
     # When a bubble grows (auto_height resize, new cell appended) the
@@ -97,7 +116,21 @@ class ConversationView(QtWidgets.QScrollArea):
     """
     self._assistant_label = name or "Assistant"
 
-  def add_message(self, message):
+  def add_message(self, message, fold_tool_results=False):
+    # On reload (fold_tool_results=True), an answering tool_result message folds
+    # into the bubble that holds its tool_use cells (the preceding assistant
+    # message) instead of becoming its own bubble: each result transitions its
+    # tool_use cell out of 'running' and renders inline, so a reloaded turn
+    # shows one cell per tool -- the call and its result together -- rather than
+    # a bank of stuck-'running' call cells followed by a detached bank of
+    # 'result' cells. A result with no matching cell falls back to its own cell
+    # (MessageBubble._add_block's orphan path), so nothing is dropped. Live
+    # callers keep the default: a streamed tool_result batch is its own bubble.
+    if fold_tool_results and self._bubbles and _is_tool_result_answer(message):
+      target = self._bubbles[-1]
+      target.fold_tool_results(message.content)
+      self._maybe_scroll_to_bottom()
+      return target
     bubble = MessageBubble(message, parent=self._container,
                            storage=self._storage, conv_id=self._conv_id,
                            assistant_label=self._assistant_label)
@@ -106,8 +139,11 @@ class ConversationView(QtWidgets.QScrollArea):
     self._bubbles.append(bubble)
     # A new message is something the user wants to see -- either they
     # just sent it themselves, or the runner is appending a response
-    # for them. Re-assert follow regardless of where the scroll was.
-    self._follow_bottom = True
+    # for them. Re-assert follow regardless of where the scroll was --
+    # UNLESS a viewport hold is engaged (batched mid-turn tool-result
+    # messages land here; see set_autofollow_held).
+    if not self._autofollow_held:
+      self._follow_bottom = True
     self._maybe_scroll_to_bottom()
     return bubble
 
@@ -136,6 +172,11 @@ class ConversationView(QtWidgets.QScrollArea):
         self._in_progress.cancel_running_tools()
       self._in_progress.message.stop_reason = stop_reason
       self._in_progress = None
+    # An approval card the turn left undecided must not stay clickable into a
+    # later turn (approval-misroute guard); the same holds for a question card
+    # the turn left unanswered (a late Submit would misroute).
+    self.finalize_pending_approvals()
+    self.finalize_pending_questions()
     self._approval_by_batch.clear()                # batches don't carry over
 
   def append_text_delta_to_current(self, text):
@@ -161,28 +202,43 @@ class ConversationView(QtWidgets.QScrollArea):
     self._in_progress.append_block(block)
     self._maybe_scroll_to_bottom()
 
-  def finish_tool_cell(self, tool_use_id):
-    """Mark a tool cell on the in-progress bubble as finished (not cancelled).
+  def finish_tool_cell(self, tool_use_id, is_error=False, result=None):
+    """Mark a tool cell on the in-progress bubble as finished or failed.
 
-    The claude_code backend dispatches tools inside its SDK subprocess and
-    renders their results in a SEPARATE bubble, so it never calls
-    ``set_tool_use_finished`` on the live tool_use cell -- the cell would stay
-    ``running`` until the turn ends. Observing the result is the signal that
-    the tool actually completed, so transition the matching in-progress cell to
-    the finished terminal state here. Without it, ``finalize_assistant_bubble``'s
-    Stop-time sweep (``cancel_running_tools``) would mislabel a COMPLETED tool
-    ``cancelled``. No-op when there is no in-progress bubble or no cell matches
-    ``tool_use_id`` (e.g. an API backend that already finished the cell itself).
+    The claude_code backend runs its tools inside the SDK subprocess, bypassing
+    the session's dispatch loop -- the path that finishes an API backend's cell
+    by delivering its tool_result. So nothing else finishes the live tool_use
+    cell; observing the result is the signal that the tool completed, and this
+    call transitions the matching in-progress cell to a terminal state. Without
+    it the cell stays ``running`` until the turn ends, and
+    ``finalize_assistant_bubble``'s Stop-time sweep (``cancel_running_tools``)
+    would mislabel a COMPLETED tool ``cancelled``. No-op when there is no
+    in-progress bubble or no cell matches ``tool_use_id`` (e.g. an API backend
+    that already finished the cell itself).
+
+    ``is_error`` transitions the cell to the failed state (carrying ``result``
+    as the error text) rather than finished, so a failed in-subprocess tool is
+    reported live in the same red state the reloaded view shows -- otherwise the
+    failure reads as a neutral success until the next reload / conversation
+    switch rebuilds the view.
 
     Parameters
     ----------
     tool_use_id : str
         Identifier of the tool_use cell to finish (matches the originating
         ``ToolUseRequested.id``).
+    is_error : bool, optional
+        Whether the observed result was an error.
+    result : str, optional
+        Flattened result text; shown as the error detail when ``is_error``.
     """
     if self._in_progress is None:
       return
-    self._in_progress.set_tool_use_finished(tool_use_id)
+    if is_error:
+      self._in_progress.set_tool_use_finished(
+        tool_use_id, error=result or "error")
+    else:
+      self._in_progress.set_tool_use_finished(tool_use_id)
 
   # ---- approval API --------------------------------------------------------
 
@@ -221,6 +277,21 @@ class ConversationView(QtWidgets.QScrollArea):
   def _on_card_decided(self, responses):
     self.approval_decided.emit(responses)
 
+  def finalize_pending_approvals(self):
+    """Finalize (disable) every still-undecided approval card.
+
+    A card left undecided when its turn ends must not stay clickable: a later
+    click would route a stale response into the NEXT turn (the approval-misroute
+    bug), since the approval path matches on ``is_busy()`` alone, not the
+    request id. Called from ``ChatWindow._on_stop`` (killing stale-card
+    clickability at once, before the session's synthesized terminal
+    cancel ``TurnDone`` arrives queued) and from
+    ``finalize_assistant_bubble`` (the normal / error turn-end paths).
+    """
+    for card in self._approval_cards:
+      if not card.is_decided():
+        card.finalize()
+
   # ---- question API --------------------------------------------------------
 
   def add_question_request(self, req):
@@ -244,6 +315,22 @@ class ConversationView(QtWidgets.QScrollArea):
 
   def _on_question_answered(self, request_id, answers):
     self.question_answered.emit(request_id, answers)
+
+  def finalize_pending_questions(self):
+    """Finalize (disable) every still-unanswered question card.
+
+    The QuestionCard analogue of ``finalize_pending_approvals``: a card left
+    unanswered when its turn ends must not stay clickable, because a late
+    Submit carries a ``request_id`` the parked worker no longer waits on -- the
+    answer is silently dropped while the stale card lingers with Submit
+    enabled. Called from the same turn-end paths: ``ChatWindow._on_stop``
+    (killing stale-card clickability at once, before the session's synthesized
+    terminal cancel ``TurnDone`` arrives queued) and
+    ``finalize_assistant_bubble`` (normal / error turn-end).
+    """
+    for card in self._question_cards:
+      if not card.is_resolved():
+        card.finalize()
 
   # ---- clear ---------------------------------------------------------------
 
@@ -272,6 +359,94 @@ class ConversationView(QtWidgets.QScrollArea):
   def approval_card_count(self):
     return len(self._approval_cards)
 
+  def searchable_cells(self):
+    """Flatten each bubble's searchable cells, bubbles in display order.
+
+    Returns
+    -------
+    list of (str, QtWidgets.QWidget)
+        ``(kind, widget)`` pairs; kind in {"text", "thinking", "tool"}.
+    """
+    cells = []
+    for b in self._bubbles:
+      cells.extend(b.searchable_cells())
+    return cells
+
+  def set_autofollow_held(self, held):
+    """Hold auto-follow-bottom while another feature owns the viewport.
+
+    Engaging the hold disengages follow-bottom IN THE SAME TICK and
+    suppresses ``add_message``'s follow re-assert. Both must happen
+    synchronously at navigation time, not in a deferred scroll: a
+    message streamed between the navigation and its deferred
+    ``ensure_child_rect_visible`` would otherwise see follow still
+    engaged and schedule its own deferred snap-to-bottom, which fires
+    AFTER the navigation scroll and yanks the viewport off the target.
+    While held, ``add_message`` skips the re-assert, and ONLY that: a
+    manual scroll back to the bottom still re-engages follow through
+    the ``actionTriggered`` refresh path. Releasing the hold leaves
+    follow-bottom alone -- it re-engages through those normal paths,
+    never as a side effect of release.
+
+    Parameters
+    ----------
+    held : bool
+        True while another feature (search-match navigation, ...)
+        holds the viewport.
+    """
+    self._autofollow_held = bool(held)
+    if self._autofollow_held:
+      self._follow_bottom = False
+
+  def scroll_to_top(self):
+    """Jump to the first message and stop following the bottom.
+
+    An engaged autofollow hold is left alone: follow is off either
+    way, and the hold keeps suppressing ``add_message``'s follow
+    re-assert while its owner (e.g. an open search) still wants it.
+    """
+    self._follow_bottom = False
+    bar = self.verticalScrollBar()
+    bar.setValue(bar.minimum())
+
+  def scroll_to_bottom(self):
+    """Jump to the latest message and resume following the bottom.
+
+    Releases any autofollow hold: an explicit jump to the end abandons
+    the position the hold was protecting, and the user's intent is to
+    track new content again.
+    """
+    self._autofollow_held = False
+    self._follow_bottom = True
+    bar = self.verticalScrollBar()
+    bar.setValue(bar.maximum())
+
+  def ensure_child_rect_visible(self, widget, rect, margin=80):
+    """Scroll a rect of a child widget into view and hold the viewport.
+
+    Engages the autofollow hold (see ``set_autofollow_held``) so the
+    revealed position is not immediately snapped away by follow-bottom.
+
+    Parameters
+    ----------
+    widget : QtWidgets.QWidget
+        The child (text cell) holding the target.
+    rect : QtCore.QRect
+        Target rectangle in the widget's *viewport* coordinates
+        (``cursorRect()``'s frame of reference; the cells are all
+        NoFrame today so widget and viewport origins coincide, but the
+        contract names the viewport).
+    margin : int, optional
+        Vertical margin keeping the target comfortably inside the view
+        rather than hugging an edge.
+    """
+    self._follow_bottom = False
+    self._autofollow_held = True
+    viewport = getattr(widget, "viewport", None)
+    origin = viewport() if viewport is not None else widget
+    pt = origin.mapTo(self._container, rect.topLeft())
+    self.ensureVisible(pt.x(), pt.y(), 0, margin)
+
   # ---- internals -----------------------------------------------------------
 
   def _insert_widget(self, w):
@@ -288,7 +463,19 @@ class ConversationView(QtWidgets.QScrollArea):
     """
     if action == QtWidgets.QAbstractSlider.SliderNoAction:
       return
-    # Defer until after Qt updates value() for the action.
+    bar = self.verticalScrollBar()
+    # sliderPosition already reflects this action's target -- Qt updates it
+    # before emitting actionTriggered and commits value() only after -- so
+    # disengage follow SYNCHRONOUSLY once the user has moved away from the
+    # bottom. Deferring this (all we used to do) loses the race with a
+    # streaming delta: rangeChanged fires _on_range_changed while _follow_bottom
+    # is still True, snapping the viewport back to the bottom and stranding the
+    # user, and the deferred refresh then reads that snapped-back position and
+    # re-asserts follow. Re-engaging is still left to the deferred
+    # _refresh_follow_state (which reads the committed value), so a scroll that
+    # lands back at the bottom resumes following. Same 24 px band as the refresh.
+    if bar.sliderPosition() < bar.maximum() - 24:
+      self._follow_bottom = False
     QtCore.QTimer.singleShot(0, self._refresh_follow_state)
 
   def _refresh_follow_state(self):
@@ -311,6 +498,12 @@ class ConversationView(QtWidgets.QScrollArea):
     QtCore.QTimer.singleShot(0, self._do_scroll_to_bottom)
 
   def _do_scroll_to_bottom(self):
+    # Re-check at fire time: follow may have been disengaged (a
+    # navigation engaged the autofollow hold) between the deferred
+    # schedule and this call -- a stale snap here would yank the
+    # viewport off the position the user just navigated to.
+    if not self._follow_bottom:
+      return
     bar = self.verticalScrollBar()
     bar.setValue(bar.maximum())
 

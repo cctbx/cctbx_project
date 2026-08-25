@@ -1,0 +1,439 @@
+
+============================== Collecting inputs ==============================
+
+
+                   ----------Processing X-ray data----------                   
+
+
+============================== Scattering factors =============================
+
+
+                ----------X-ray scattering dictionary----------                
+
+Number of scattering types: 4
+  Type Number    sf(0)   Gaussians
+   S       5     15.91       1
+   O     199      7.97       1
+   N     179      6.97       1
+   C     678      5.97       1
+  sf(0) = scattering factor at diffraction angle 0.
+Number of scatterers: 1061
+At special positions: 0
+Unit cell: (113.949, 113.949, 32.474, 90, 90, 90)
+Space group: I 4 (No. 79)
+
+End of input processing
+Start FEM...
+Create un-sharpened fmodel...
+   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask
+ 28.487-11.003   97.00    86    11 0.3268   774.539   739.171 1.038 0.983 0.242
+ 10.899-8.693   100.00    94     6 0.1937   775.877   758.766 1.147 0.989 0.220
+  8.594-6.794   100.00   185    20 0.2306   638.564   608.537 1.189 0.991 0.219
+  6.771-5.352    99.75   365    37 0.2865   635.578   615.566 1.391 0.992 0.221
+  5.331-4.214    99.75   734    72 0.2212   881.719   845.717 1.605 0.992 0.223
+  4.209-4.004   100.00   244    27 0.2214   838.331   807.767 1.837 0.993 0.300
+
+r_work=0.2369 r_free=0.2616
+Max B subtracted from atoms and used to sharpen map: 13.75
+Create fmodel...
+   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask
+ 28.487-11.003   97.00    86    11 0.3308   823.065   773.433 1.072 0.999 0.255
+ 10.899-8.693   100.00    94     6 0.1931   824.486   810.673 1.176 1.003 0.243
+  8.594-6.794   100.00   185    20 0.2301   678.570   654.140 1.186 1.003 0.230
+  6.771-5.352    99.75   365    37 0.2854   675.398   651.428 1.324 1.001 0.246
+  5.331-4.214    99.75   734    72 0.2211   936.959   900.323 1.453 0.994 0.260
+  4.209-4.004   100.00   244    27 0.2213   890.854   856.224 1.590 0.991 0.370
+
+r_work=0.2367 r_free=0.2623
+Compute initial maps...
+Finding typical atom volumes...
+FEM loop: done so far: 1%FEM loop: done so far: 2%FEM loop: done so far: 3%FEM loop: done so far: 4%FEM loop: done so far: 5%FEM loop: done so far: 6%FEM loop: done so far: 7%FEM loop: done so far: 8%FEM loop: done so far: 9%FEM loop: done so far: 10%FEM loop: done so far: 11%FEM loop: done so far: 12%FEM loop: done so far: 13%FEM loop: done so far: 14%FEM loop: done so far: 15%FEM loop: done so far: 16%FEM loop: done so far: 17%FEM loop: done so far: 18%FEM loop: done so far: 19%FEM loop: done so far: 20%FEM loop: done so far: 21%FEM loop: done so far: 22%FEM loop: done so far: 23%FEM loop: done so far: 24%FEM loop: done so far: 25%FEM loop: done so far: 26%FEM loop: done so far: 27%FEM loop: done so far: 28%FEM loop: done so far: 29%FEM loop: done so far: 30%FEM loop: done so far: 31%FEM loop: done so far: 32%FEM loop: done so far: 33%FEM loop: done so far: 34%FEM loop: done so far: 35%FEM loop: done so far: 36%FEM loop: done so far: 37%FEM loop: done so far: 38%FEM loop: done so far: 39%FEM loop: done so far: 40%FEM loop: done so far: 41%FEM loop: done so far: 42%FEM loop: done so far: 43%FEM loop: done so far: 44%FEM loop: done so far: 45%FEM loop: done so far: 46%FEM loop: done so far: 47%FEM loop: done so far: 48%FEM loop: done so far: 49%FEM loop: done so far: 50%FEM loop: done so far: 51%FEM loop: done so far: 52%FEM loop: done so far: 53%FEM loop: done so far: 54%FEM loop: done so far: 55%FEM loop: done so far: 56%FEM loop: done so far: 57%FEM loop: done so far: 58%FEM loop: done so far: 59%FEM loop: done so far: 60%FEM loop: done so far: 61%FEM loop: done so far: 62%FEM loop: done so far: 63%FEM loop: done so far: 64%FEM loop: done so far: 65%FEM loop: done so far: 66%FEM loop: done so far: 67%FEM loop: done so far: 68%FEM loop: done so far: 69%FEM loop: done so far: 70%FEM loop: done so far: 71%FEM loop: done so far: 72%FEM loop: done so far: 73%FEM loop: done so far: 74%FEM loop: done so far: 75%FEM loop: done so far: 76%FEM loop: done so far: 77%FEM loop: done so far: 78%FEM loop: done so far: 79%FEM loop: done so far: 80%FEM loop: done so far: 81%FEM loop: done so far: 82%FEM loop: done so far: 83%FEM loop: done so far: 84%FEM loop: done so far: 85%FEM loop: done so far: 86%FEM loop: done so far: 87%FEM loop: done so far: 88%FEM loop: done so far: 89%FEM loop: done so far: 90%FEM loop: done so far: 91%FEM loop: done so far: 92%FEM loop: done so far: 93%FEM loop: done so far: 94%FEM loop: done so far: 95%FEM loop: done so far: 96%FEM loop: done so far: 97%FEM loop: done so far: 98%FEM loop: done so far: 99%FEM loop: done so far: 100%
+Running Resolve density modificaiton
+Obtained Resolve filter
+ n1, n2, n3 (n_real)  : (61, 61, 19)
+ points per box edge: 10 10 3
+ number of boxes    : 343
+r(curr,min,max,mean)=0.2549 0.2549 0.2549 0.2549 1 343
+r(curr,min,max,mean)=0.2552 0.2549 0.2552 0.2551 2 343
+r(curr,min,max,mean)=0.2540 0.2540 0.2552 0.2547 3 343
+r(curr,min,max,mean)=0.2539 0.2539 0.2552 0.2545 4 343
+r(curr,min,max,mean)=0.2544 0.2539 0.2552 0.2545 5 343
+r(curr,min,max,mean)=0.2549 0.2539 0.2552 0.2546 6 343
+r(curr,min,max,mean)=0.2570 0.2539 0.2570 0.2549 7 343
+r(curr,min,max,mean)=0.2566 0.2539 0.2570 0.2551 8 343
+r(curr,min,max,mean)=0.2570 0.2539 0.2570 0.2553 9 343
+r(curr,min,max,mean)=0.2578 0.2539 0.2578 0.2556 10 343
+r(curr,min,max,mean)=0.2565 0.2539 0.2578 0.2557 11 343
+r(curr,min,max,mean)=0.2560 0.2539 0.2578 0.2557 12 343
+r(curr,min,max,mean)=0.2558 0.2539 0.2578 0.2557 13 343
+r(curr,min,max,mean)=0.2578 0.2539 0.2578 0.2558 14 343
+r(curr,min,max,mean)=0.2595 0.2539 0.2595 0.2561 15 343
+r(curr,min,max,mean)=0.2599 0.2539 0.2599 0.2563 16 343
+r(curr,min,max,mean)=0.2585 0.2539 0.2599 0.2565 17 343
+r(curr,min,max,mean)=0.2567 0.2539 0.2599 0.2565 18 343
+r(curr,min,max,mean)=0.2568 0.2539 0.2599 0.2565 19 343
+r(curr,min,max,mean)=0.2588 0.2539 0.2599 0.2566 20 343
+r(curr,min,max,mean)=0.2594 0.2539 0.2599 0.2567 21 343
+r(curr,min,max,mean)=0.2609 0.2539 0.2609 0.2569 22 343
+r(curr,min,max,mean)=0.2614 0.2539 0.2614 0.2571 23 343
+r(curr,min,max,mean)=0.2573 0.2539 0.2614 0.2571 24 343
+r(curr,min,max,mean)=0.2558 0.2539 0.2614 0.2571 25 343
+r(curr,min,max,mean)=0.2553 0.2539 0.2614 0.2570 26 343
+r(curr,min,max,mean)=0.2574 0.2539 0.2614 0.2570 27 343
+r(curr,min,max,mean)=0.2602 0.2539 0.2614 0.2571 28 343
+r(curr,min,max,mean)=0.2558 0.2539 0.2614 0.2571 29 343
+r(curr,min,max,mean)=0.2573 0.2539 0.2614 0.2571 30 343
+r(curr,min,max,mean)=0.2578 0.2539 0.2614 0.2571 31 343
+r(curr,min,max,mean)=0.2588 0.2539 0.2614 0.2572 32 343
+r(curr,min,max,mean)=0.2574 0.2539 0.2614 0.2572 33 343
+r(curr,min,max,mean)=0.2555 0.2539 0.2614 0.2571 34 343
+r(curr,min,max,mean)=0.2570 0.2539 0.2614 0.2571 35 343
+r(curr,min,max,mean)=0.2546 0.2539 0.2614 0.2571 36 343
+r(curr,min,max,mean)=0.2571 0.2539 0.2614 0.2571 37 343
+r(curr,min,max,mean)=0.2584 0.2539 0.2614 0.2571 38 343
+r(curr,min,max,mean)=0.2588 0.2539 0.2614 0.2571 39 343
+r(curr,min,max,mean)=0.2574 0.2539 0.2614 0.2571 40 343
+r(curr,min,max,mean)=0.2551 0.2539 0.2614 0.2571 41 343
+r(curr,min,max,mean)=0.2573 0.2539 0.2614 0.2571 42 343
+r(curr,min,max,mean)=0.2561 0.2539 0.2614 0.2571 43 343
+r(curr,min,max,mean)=0.2582 0.2539 0.2614 0.2571 44 343
+r(curr,min,max,mean)=0.2586 0.2539 0.2614 0.2571 45 343
+r(curr,min,max,mean)=0.2585 0.2539 0.2614 0.2572 46 343
+r(curr,min,max,mean)=0.2585 0.2539 0.2614 0.2572 47 343
+r(curr,min,max,mean)=0.2587 0.2539 0.2614 0.2572 48 343
+r(curr,min,max,mean)=0.2601 0.2539 0.2614 0.2573 49 343
+r(curr,min,max,mean)=0.2548 0.2539 0.2614 0.2572 50 343
+r(curr,min,max,mean)=0.2544 0.2539 0.2614 0.2572 51 343
+r(curr,min,max,mean)=0.2551 0.2539 0.2614 0.2571 52 343
+r(curr,min,max,mean)=0.2554 0.2539 0.2614 0.2571 53 343
+r(curr,min,max,mean)=0.2555 0.2539 0.2614 0.2571 54 343
+r(curr,min,max,mean)=0.2550 0.2539 0.2614 0.2570 55 343
+r(curr,min,max,mean)=0.2575 0.2539 0.2614 0.2570 56 343
+r(curr,min,max,mean)=0.2565 0.2539 0.2614 0.2570 57 343
+r(curr,min,max,mean)=0.2570 0.2539 0.2614 0.2570 58 343
+r(curr,min,max,mean)=0.2577 0.2539 0.2614 0.2570 59 343
+r(curr,min,max,mean)=0.2587 0.2539 0.2614 0.2571 60 343
+r(curr,min,max,mean)=0.2585 0.2539 0.2614 0.2571 61 343
+r(curr,min,max,mean)=0.2578 0.2539 0.2614 0.2571 62 343
+r(curr,min,max,mean)=0.2575 0.2539 0.2614 0.2571 63 343
+r(curr,min,max,mean)=0.2592 0.2539 0.2614 0.2571 64 343
+r(curr,min,max,mean)=0.2590 0.2539 0.2614 0.2572 65 343
+r(curr,min,max,mean)=0.2568 0.2539 0.2614 0.2572 66 343
+r(curr,min,max,mean)=0.2569 0.2539 0.2614 0.2572 67 343
+r(curr,min,max,mean)=0.2585 0.2539 0.2614 0.2572 68 343
+r(curr,min,max,mean)=0.2603 0.2539 0.2614 0.2572 69 343
+r(curr,min,max,mean)=0.2608 0.2539 0.2614 0.2573 70 343
+r(curr,min,max,mean)=0.2625 0.2539 0.2625 0.2574 71 343
+r(curr,min,max,mean)=0.2666 0.2539 0.2666 0.2575 72 343
+r(curr,min,max,mean)=0.2626 0.2539 0.2666 0.2576 73 343
+r(curr,min,max,mean)=0.2605 0.2539 0.2666 0.2576 74 343
+r(curr,min,max,mean)=0.2571 0.2539 0.2666 0.2576 75 343
+r(curr,min,max,mean)=0.2616 0.2539 0.2666 0.2576 76 343
+r(curr,min,max,mean)=0.2727 0.2539 0.2727 0.2578 77 343
+r(curr,min,max,mean)=0.2662 0.2539 0.2727 0.2579 78 343
+r(curr,min,max,mean)=0.2709 0.2539 0.2727 0.2581 79 343
+r(curr,min,max,mean)=0.2692 0.2539 0.2727 0.2582 80 343
+r(curr,min,max,mean)=0.2628 0.2539 0.2727 0.2583 81 343
+r(curr,min,max,mean)=0.2572 0.2539 0.2727 0.2583 82 343
+r(curr,min,max,mean)=0.2577 0.2539 0.2727 0.2583 83 343
+r(curr,min,max,mean)=0.2632 0.2539 0.2727 0.2583 84 343
+r(curr,min,max,mean)=0.2561 0.2539 0.2727 0.2583 85 343
+r(curr,min,max,mean)=0.2576 0.2539 0.2727 0.2583 86 343
+r(curr,min,max,mean)=0.2595 0.2539 0.2727 0.2583 87 343
+r(curr,min,max,mean)=0.2598 0.2539 0.2727 0.2583 88 343
+r(curr,min,max,mean)=0.2580 0.2539 0.2727 0.2583 89 343
+r(curr,min,max,mean)=0.2571 0.2539 0.2727 0.2583 90 343
+r(curr,min,max,mean)=0.2600 0.2539 0.2727 0.2583 91 343
+r(curr,min,max,mean)=0.2565 0.2539 0.2727 0.2583 92 343
+r(curr,min,max,mean)=0.2587 0.2539 0.2727 0.2583 93 343
+r(curr,min,max,mean)=0.2588 0.2539 0.2727 0.2583 94 343
+r(curr,min,max,mean)=0.2581 0.2539 0.2727 0.2583 95 343
+r(curr,min,max,mean)=0.2581 0.2539 0.2727 0.2583 96 343
+r(curr,min,max,mean)=0.2576 0.2539 0.2727 0.2583 97 343
+r(curr,min,max,mean)=0.2610 0.2539 0.2727 0.2583 98 343
+r(curr,min,max,mean)=0.2563 0.2539 0.2727 0.2583 99 343
+r(curr,min,max,mean)=0.2584 0.2539 0.2727 0.2583 100 343
+r(curr,min,max,mean)=0.2581 0.2539 0.2727 0.2583 101 343
+r(curr,min,max,mean)=0.2573 0.2539 0.2727 0.2583 102 343
+r(curr,min,max,mean)=0.2576 0.2539 0.2727 0.2583 103 343
+r(curr,min,max,mean)=0.2595 0.2539 0.2727 0.2583 104 343
+r(curr,min,max,mean)=0.2664 0.2539 0.2727 0.2584 105 343
+r(curr,min,max,mean)=0.2560 0.2539 0.2727 0.2584 106 343
+r(curr,min,max,mean)=0.2575 0.2539 0.2727 0.2584 107 343
+r(curr,min,max,mean)=0.2566 0.2539 0.2727 0.2583 108 343
+r(curr,min,max,mean)=0.2554 0.2539 0.2727 0.2583 109 343
+r(curr,min,max,mean)=0.2584 0.2539 0.2727 0.2583 110 343
+r(curr,min,max,mean)=0.2605 0.2539 0.2727 0.2583 111 343
+r(curr,min,max,mean)=0.2714 0.2539 0.2727 0.2585 112 343
+r(curr,min,max,mean)=0.2644 0.2539 0.2727 0.2585 113 343
+r(curr,min,max,mean)=0.2662 0.2539 0.2727 0.2586 114 343
+r(curr,min,max,mean)=0.2575 0.2539 0.2727 0.2586 115 343
+r(curr,min,max,mean)=0.2564 0.2539 0.2727 0.2585 116 343
+r(curr,min,max,mean)=0.2563 0.2539 0.2727 0.2585 117 343
+r(curr,min,max,mean)=0.2570 0.2539 0.2727 0.2585 118 343
+r(curr,min,max,mean)=0.2607 0.2539 0.2727 0.2585 119 343
+r(curr,min,max,mean)=0.2709 0.2539 0.2727 0.2586 120 343
+r(curr,min,max,mean)=0.2775 0.2539 0.2775 0.2588 121 343
+r(curr,min,max,mean)=0.2706 0.2539 0.2775 0.2589 122 343
+r(curr,min,max,mean)=0.2651 0.2539 0.2775 0.2589 123 343
+r(curr,min,max,mean)=0.2571 0.2539 0.2775 0.2589 124 343
+r(curr,min,max,mean)=0.2566 0.2539 0.2775 0.2589 125 343
+r(curr,min,max,mean)=0.2680 0.2539 0.2775 0.2590 126 343
+r(curr,min,max,mean)=0.2682 0.2539 0.2775 0.2590 127 343
+r(curr,min,max,mean)=0.2800 0.2539 0.2800 0.2592 128 343
+r(curr,min,max,mean)=0.2809 0.2539 0.2809 0.2594 129 343
+r(curr,min,max,mean)=0.2777 0.2539 0.2809 0.2595 130 343
+r(curr,min,max,mean)=0.2677 0.2539 0.2809 0.2596 131 343
+r(curr,min,max,mean)=0.2626 0.2539 0.2809 0.2596 132 343
+r(curr,min,max,mean)=0.2680 0.2539 0.2809 0.2597 133 343
+r(curr,min,max,mean)=0.2652 0.2539 0.2809 0.2597 134 343
+r(curr,min,max,mean)=0.2682 0.2539 0.2809 0.2598 135 343
+r(curr,min,max,mean)=0.2705 0.2539 0.2809 0.2599 136 343
+r(curr,min,max,mean)=0.2674 0.2539 0.2809 0.2599 137 343
+r(curr,min,max,mean)=0.2660 0.2539 0.2809 0.2600 138 343
+r(curr,min,max,mean)=0.2659 0.2539 0.2809 0.2600 139 343
+r(curr,min,max,mean)=0.2686 0.2539 0.2809 0.2601 140 343
+r(curr,min,max,mean)=0.2691 0.2539 0.2809 0.2601 141 343
+r(curr,min,max,mean)=0.2734 0.2539 0.2809 0.2602 142 343
+r(curr,min,max,mean)=0.2659 0.2539 0.2809 0.2603 143 343
+r(curr,min,max,mean)=0.2588 0.2539 0.2809 0.2602 144 343
+r(curr,min,max,mean)=0.2555 0.2539 0.2809 0.2602 145 343
+r(curr,min,max,mean)=0.2554 0.2539 0.2809 0.2602 146 343
+r(curr,min,max,mean)=0.2595 0.2539 0.2809 0.2602 147 343
+r(curr,min,max,mean)=0.2551 0.2539 0.2809 0.2601 148 343
+r(curr,min,max,mean)=0.2561 0.2539 0.2809 0.2601 149 343
+r(curr,min,max,mean)=0.2555 0.2539 0.2809 0.2601 150 343
+r(curr,min,max,mean)=0.2577 0.2539 0.2809 0.2601 151 343
+r(curr,min,max,mean)=0.2584 0.2539 0.2809 0.2601 152 343
+r(curr,min,max,mean)=0.2596 0.2539 0.2809 0.2601 153 343
+r(curr,min,max,mean)=0.2669 0.2539 0.2809 0.2601 154 343
+r(curr,min,max,mean)=0.2603 0.2539 0.2809 0.2601 155 343
+r(curr,min,max,mean)=0.2630 0.2539 0.2809 0.2601 156 343
+r(curr,min,max,mean)=0.2566 0.2539 0.2809 0.2601 157 343
+r(curr,min,max,mean)=0.2568 0.2539 0.2809 0.2601 158 343
+r(curr,min,max,mean)=0.2576 0.2539 0.2809 0.2601 159 343
+r(curr,min,max,mean)=0.2583 0.2539 0.2809 0.2600 160 343
+r(curr,min,max,mean)=0.2822 0.2539 0.2822 0.2602 161 343
+r(curr,min,max,mean)=0.2624 0.2539 0.2822 0.2602 162 343
+r(curr,min,max,mean)=0.2655 0.2539 0.2822 0.2602 163 343
+r(curr,min,max,mean)=0.2609 0.2539 0.2822 0.2602 164 343
+r(curr,min,max,mean)=0.2593 0.2539 0.2822 0.2602 165 343
+r(curr,min,max,mean)=0.2578 0.2539 0.2822 0.2602 166 343
+r(curr,min,max,mean)=0.2590 0.2539 0.2822 0.2602 167 343
+r(curr,min,max,mean)=0.2742 0.2539 0.2822 0.2603 168 343
+r(curr,min,max,mean)=0.2640 0.2539 0.2822 0.2603 169 343
+r(curr,min,max,mean)=0.2723 0.2539 0.2822 0.2604 170 343
+r(curr,min,max,mean)=0.2685 0.2539 0.2822 0.2604 171 343
+r(curr,min,max,mean)=0.2653 0.2539 0.2822 0.2605 172 343
+r(curr,min,max,mean)=0.2593 0.2539 0.2822 0.2605 173 343
+r(curr,min,max,mean)=0.2605 0.2539 0.2822 0.2605 174 343
+r(curr,min,max,mean)=0.2704 0.2539 0.2822 0.2605 175 343
+r(curr,min,max,mean)=0.2727 0.2539 0.2822 0.2606 176 343
+r(curr,min,max,mean)=0.2753 0.2539 0.2822 0.2607 177 343
+r(curr,min,max,mean)=0.2839 0.2539 0.2839 0.2608 178 343
+r(curr,min,max,mean)=0.2869 0.2539 0.2869 0.2609 179 343
+r(curr,min,max,mean)=0.2855 0.2539 0.2869 0.2611 180 343
+r(curr,min,max,mean)=0.2812 0.2539 0.2869 0.2612 181 343
+r(curr,min,max,mean)=0.2823 0.2539 0.2869 0.2613 182 343
+r(curr,min,max,mean)=0.2768 0.2539 0.2869 0.2614 183 343
+r(curr,min,max,mean)=0.2816 0.2539 0.2869 0.2615 184 343
+r(curr,min,max,mean)=0.2799 0.2539 0.2869 0.2616 185 343
+r(curr,min,max,mean)=0.2763 0.2539 0.2869 0.2617 186 343
+r(curr,min,max,mean)=0.2749 0.2539 0.2869 0.2617 187 343
+r(curr,min,max,mean)=0.2789 0.2539 0.2869 0.2618 188 343
+r(curr,min,max,mean)=0.2875 0.2539 0.2875 0.2620 189 343
+r(curr,min,max,mean)=0.2777 0.2539 0.2875 0.2621 190 343
+r(curr,min,max,mean)=0.2879 0.2539 0.2879 0.2622 191 343
+r(curr,min,max,mean)=0.2842 0.2539 0.2879 0.2623 192 343
+r(curr,min,max,mean)=0.2810 0.2539 0.2879 0.2624 193 343
+r(curr,min,max,mean)=0.2765 0.2539 0.2879 0.2625 194 343
+r(curr,min,max,mean)=0.2772 0.2539 0.2879 0.2625 195 343
+r(curr,min,max,mean)=0.2826 0.2539 0.2879 0.2627 196 343
+r(curr,min,max,mean)=0.2536 0.2536 0.2879 0.2626 197 343
+r(curr,min,max,mean)=0.2541 0.2536 0.2879 0.2626 198 343
+r(curr,min,max,mean)=0.2546 0.2536 0.2879 0.2625 199 343
+r(curr,min,max,mean)=0.2534 0.2534 0.2879 0.2625 200 343
+r(curr,min,max,mean)=0.2541 0.2534 0.2879 0.2624 201 343
+r(curr,min,max,mean)=0.2550 0.2534 0.2879 0.2624 202 343
+r(curr,min,max,mean)=0.2594 0.2534 0.2879 0.2624 203 343
+r(curr,min,max,mean)=0.2598 0.2534 0.2879 0.2624 204 343
+r(curr,min,max,mean)=0.2609 0.2534 0.2879 0.2624 205 343
+r(curr,min,max,mean)=0.2577 0.2534 0.2879 0.2623 206 343
+r(curr,min,max,mean)=0.2566 0.2534 0.2879 0.2623 207 343
+r(curr,min,max,mean)=0.2568 0.2534 0.2879 0.2623 208 343
+r(curr,min,max,mean)=0.2552 0.2534 0.2879 0.2623 209 343
+r(curr,min,max,mean)=0.2760 0.2534 0.2879 0.2623 210 343
+r(curr,min,max,mean)=0.2570 0.2534 0.2879 0.2623 211 343
+r(curr,min,max,mean)=0.2581 0.2534 0.2879 0.2623 212 343
+r(curr,min,max,mean)=0.2561 0.2534 0.2879 0.2622 213 343
+r(curr,min,max,mean)=0.2560 0.2534 0.2879 0.2622 214 343
+r(curr,min,max,mean)=0.2561 0.2534 0.2879 0.2622 215 343
+r(curr,min,max,mean)=0.2547 0.2534 0.2879 0.2622 216 343
+r(curr,min,max,mean)=0.2787 0.2534 0.2879 0.2622 217 343
+r(curr,min,max,mean)=0.2617 0.2534 0.2879 0.2622 218 343
+r(curr,min,max,mean)=0.2708 0.2534 0.2879 0.2623 219 343
+r(curr,min,max,mean)=0.2755 0.2534 0.2879 0.2623 220 343
+r(curr,min,max,mean)=0.2762 0.2534 0.2879 0.2624 221 343
+r(curr,min,max,mean)=0.2749 0.2534 0.2879 0.2624 222 343
+r(curr,min,max,mean)=0.2680 0.2534 0.2879 0.2625 223 343
+r(curr,min,max,mean)=0.2898 0.2534 0.2898 0.2626 224 343
+r(curr,min,max,mean)=0.2713 0.2534 0.2898 0.2626 225 343
+r(curr,min,max,mean)=0.2849 0.2534 0.2898 0.2627 226 343
+r(curr,min,max,mean)=0.2888 0.2534 0.2898 0.2628 227 343
+r(curr,min,max,mean)=0.2875 0.2534 0.2898 0.2630 228 343
+r(curr,min,max,mean)=0.2831 0.2534 0.2898 0.2630 229 343
+r(curr,min,max,mean)=0.2735 0.2534 0.2898 0.2631 230 343
+r(curr,min,max,mean)=0.2748 0.2534 0.2898 0.2631 231 343
+r(curr,min,max,mean)=0.2759 0.2534 0.2898 0.2632 232 343
+r(curr,min,max,mean)=0.2843 0.2534 0.2898 0.2633 233 343
+r(curr,min,max,mean)=0.2800 0.2534 0.2898 0.2634 234 343
+r(curr,min,max,mean)=0.2746 0.2534 0.2898 0.2634 235 343
+r(curr,min,max,mean)=0.2735 0.2534 0.2898 0.2634 236 343
+r(curr,min,max,mean)=0.2742 0.2534 0.2898 0.2635 237 343
+r(curr,min,max,mean)=0.2735 0.2534 0.2898 0.2635 238 343
+r(curr,min,max,mean)=0.2747 0.2534 0.2898 0.2636 239 343
+r(curr,min,max,mean)=0.2887 0.2534 0.2898 0.2637 240 343
+r(curr,min,max,mean)=0.2852 0.2534 0.2898 0.2638 241 343
+r(curr,min,max,mean)=0.2901 0.2534 0.2901 0.2639 242 343
+r(curr,min,max,mean)=0.2880 0.2534 0.2901 0.2640 243 343
+r(curr,min,max,mean)=0.2867 0.2534 0.2901 0.2641 244 343
+r(curr,min,max,mean)=0.2818 0.2534 0.2901 0.2641 245 343
+r(curr,min,max,mean)=0.2546 0.2534 0.2901 0.2641 246 343
+r(curr,min,max,mean)=0.2555 0.2534 0.2901 0.2641 247 343
+r(curr,min,max,mean)=0.2555 0.2534 0.2901 0.2640 248 343
+r(curr,min,max,mean)=0.2543 0.2534 0.2901 0.2640 249 343
+r(curr,min,max,mean)=0.2552 0.2534 0.2901 0.2640 250 343
+r(curr,min,max,mean)=0.2551 0.2534 0.2901 0.2639 251 343
+r(curr,min,max,mean)=0.2569 0.2534 0.2901 0.2639 252 343
+r(curr,min,max,mean)=0.2573 0.2534 0.2901 0.2639 253 343
+r(curr,min,max,mean)=0.2574 0.2534 0.2901 0.2638 254 343
+r(curr,min,max,mean)=0.2568 0.2534 0.2901 0.2638 255 343
+r(curr,min,max,mean)=0.2556 0.2534 0.2901 0.2638 256 343
+r(curr,min,max,mean)=0.2564 0.2534 0.2901 0.2638 257 343
+r(curr,min,max,mean)=0.2559 0.2534 0.2901 0.2637 258 343
+r(curr,min,max,mean)=0.2592 0.2534 0.2901 0.2637 259 343
+r(curr,min,max,mean)=0.2643 0.2534 0.2901 0.2637 260 343
+r(curr,min,max,mean)=0.2645 0.2534 0.2901 0.2637 261 343
+r(curr,min,max,mean)=0.2645 0.2534 0.2901 0.2637 262 343
+r(curr,min,max,mean)=0.2620 0.2534 0.2901 0.2637 263 343
+r(curr,min,max,mean)=0.2612 0.2534 0.2901 0.2637 264 343
+r(curr,min,max,mean)=0.2628 0.2534 0.2901 0.2637 265 343
+r(curr,min,max,mean)=0.2715 0.2534 0.2901 0.2637 266 343
+r(curr,min,max,mean)=0.2727 0.2534 0.2901 0.2638 267 343
+r(curr,min,max,mean)=0.2757 0.2534 0.2901 0.2638 268 343
+r(curr,min,max,mean)=0.2798 0.2534 0.2901 0.2639 269 343
+r(curr,min,max,mean)=0.2789 0.2534 0.2901 0.2639 270 343
+r(curr,min,max,mean)=0.2836 0.2534 0.2901 0.2640 271 343
+r(curr,min,max,mean)=0.2807 0.2534 0.2901 0.2641 272 343
+r(curr,min,max,mean)=0.2959 0.2534 0.2959 0.2642 273 343
+r(curr,min,max,mean)=0.2732 0.2534 0.2959 0.2642 274 343
+r(curr,min,max,mean)=0.2817 0.2534 0.2959 0.2643 275 343
+r(curr,min,max,mean)=0.2851 0.2534 0.2959 0.2643 276 343
+r(curr,min,max,mean)=0.2858 0.2534 0.2959 0.2644 277 343
+r(curr,min,max,mean)=0.2892 0.2534 0.2959 0.2645 278 343
+r(curr,min,max,mean)=0.2815 0.2534 0.2959 0.2646 279 343
+r(curr,min,max,mean)=0.2886 0.2534 0.2959 0.2647 280 343
+r(curr,min,max,mean)=0.2738 0.2534 0.2959 0.2647 281 343
+r(curr,min,max,mean)=0.2806 0.2534 0.2959 0.2647 282 343
+r(curr,min,max,mean)=0.2775 0.2534 0.2959 0.2648 283 343
+r(curr,min,max,mean)=0.2764 0.2534 0.2959 0.2648 284 343
+r(curr,min,max,mean)=0.2760 0.2534 0.2959 0.2649 285 343
+r(curr,min,max,mean)=0.2738 0.2534 0.2959 0.2649 286 343
+r(curr,min,max,mean)=0.2708 0.2534 0.2959 0.2649 287 343
+r(curr,min,max,mean)=0.2686 0.2534 0.2959 0.2649 288 343
+r(curr,min,max,mean)=0.2777 0.2534 0.2959 0.2650 289 343
+r(curr,min,max,mean)=0.2714 0.2534 0.2959 0.2650 290 343
+r(curr,min,max,mean)=0.2657 0.2534 0.2959 0.2650 291 343
+r(curr,min,max,mean)=0.2689 0.2534 0.2959 0.2650 292 343
+r(curr,min,max,mean)=0.2662 0.2534 0.2959 0.2650 293 343
+r(curr,min,max,mean)=0.2663 0.2534 0.2959 0.2650 294 343
+r(curr,min,max,mean)=0.2578 0.2534 0.2959 0.2650 295 343
+r(curr,min,max,mean)=0.2592 0.2534 0.2959 0.2650 296 343
+r(curr,min,max,mean)=0.2578 0.2534 0.2959 0.2650 297 343
+r(curr,min,max,mean)=0.2561 0.2534 0.2959 0.2649 298 343
+r(curr,min,max,mean)=0.2565 0.2534 0.2959 0.2649 299 343
+r(curr,min,max,mean)=0.2558 0.2534 0.2959 0.2649 300 343
+r(curr,min,max,mean)=0.2596 0.2534 0.2959 0.2649 301 343
+r(curr,min,max,mean)=0.2576 0.2534 0.2959 0.2648 302 343
+r(curr,min,max,mean)=0.2593 0.2534 0.2959 0.2648 303 343
+r(curr,min,max,mean)=0.2587 0.2534 0.2959 0.2648 304 343
+r(curr,min,max,mean)=0.2596 0.2534 0.2959 0.2648 305 343
+r(curr,min,max,mean)=0.2603 0.2534 0.2959 0.2648 306 343
+r(curr,min,max,mean)=0.2583 0.2534 0.2959 0.2647 307 343
+r(curr,min,max,mean)=0.2599 0.2534 0.2959 0.2647 308 343
+r(curr,min,max,mean)=0.2611 0.2534 0.2959 0.2647 309 343
+r(curr,min,max,mean)=0.2627 0.2534 0.2959 0.2647 310 343
+r(curr,min,max,mean)=0.2644 0.2534 0.2959 0.2647 311 343
+r(curr,min,max,mean)=0.2637 0.2534 0.2959 0.2647 312 343
+r(curr,min,max,mean)=0.2623 0.2534 0.2959 0.2647 313 343
+r(curr,min,max,mean)=0.2664 0.2534 0.2959 0.2647 314 343
+r(curr,min,max,mean)=0.2753 0.2534 0.2959 0.2647 315 343
+r(curr,min,max,mean)=0.2692 0.2534 0.2959 0.2647 316 343
+r(curr,min,max,mean)=0.2777 0.2534 0.2959 0.2648 317 343
+r(curr,min,max,mean)=0.2847 0.2534 0.2959 0.2648 318 343
+r(curr,min,max,mean)=0.2908 0.2534 0.2959 0.2649 319 343
+r(curr,min,max,mean)=0.2930 0.2534 0.2959 0.2650 320 343
+r(curr,min,max,mean)=0.2892 0.2534 0.2959 0.2651 321 343
+r(curr,min,max,mean)=0.2979 0.2534 0.2979 0.2652 322 343
+r(curr,min,max,mean)=0.2737 0.2534 0.2979 0.2652 323 343
+r(curr,min,max,mean)=0.2852 0.2534 0.2979 0.2653 324 343
+r(curr,min,max,mean)=0.2936 0.2534 0.2979 0.2654 325 343
+r(curr,min,max,mean)=0.2960 0.2534 0.2979 0.2655 326 343
+r(curr,min,max,mean)=0.2932 0.2534 0.2979 0.2655 327 343
+r(curr,min,max,mean)=0.2921 0.2534 0.2979 0.2656 328 343
+r(curr,min,max,mean)=0.2960 0.2534 0.2979 0.2657 329 343
+r(curr,min,max,mean)=0.2680 0.2534 0.2979 0.2657 330 343
+r(curr,min,max,mean)=0.2738 0.2534 0.2979 0.2658 331 343
+r(curr,min,max,mean)=0.2777 0.2534 0.2979 0.2658 332 343
+r(curr,min,max,mean)=0.2781 0.2534 0.2979 0.2658 333 343
+r(curr,min,max,mean)=0.2760 0.2534 0.2979 0.2659 334 343
+r(curr,min,max,mean)=0.2750 0.2534 0.2979 0.2659 335 343
+r(curr,min,max,mean)=0.2709 0.2534 0.2979 0.2659 336 343
+r(curr,min,max,mean)=0.2570 0.2534 0.2979 0.2659 337 343
+r(curr,min,max,mean)=0.2572 0.2534 0.2979 0.2658 338 343
+r(curr,min,max,mean)=0.2577 0.2534 0.2979 0.2658 339 343
+r(curr,min,max,mean)=0.2577 0.2534 0.2979 0.2658 340 343
+r(curr,min,max,mean)=0.2592 0.2534 0.2979 0.2658 341 343
+r(curr,min,max,mean)=0.2588 0.2534 0.2979 0.2658 342 343
+r(curr,min,max,mean)=0.2604 0.2534 0.2979 0.2657 343 343
+b_sharp: -100.0 skewness: 1.5727 kurtosis: 4.6022
+b_sharp:  -95.0 skewness: 1.6070 kurtosis: 4.7315
+b_sharp:  -90.0 skewness: 1.6416 kurtosis: 4.8647
+b_sharp:  -85.0 skewness: 1.6766 kurtosis: 5.0012
+b_sharp:  -80.0 skewness: 1.7115 kurtosis: 5.1406
+b_sharp:  -75.0 skewness: 1.7464 kurtosis: 5.2823
+b_sharp:  -70.0 skewness: 1.7808 kurtosis: 5.4255
+b_sharp:  -65.0 skewness: 1.8146 kurtosis: 5.5696
+b_sharp:  -60.0 skewness: 1.8475 kurtosis: 5.7136
+b_sharp:  -55.0 skewness: 1.8792 kurtosis: 5.8567
+b_sharp:  -50.0 skewness: 1.9093 kurtosis: 5.9978
+b_sharp:  -45.0 skewness: 1.9376 kurtosis: 6.1360
+b_sharp:  -40.0 skewness: 1.9636 kurtosis: 6.2702
+b_sharp:  -35.0 skewness: 1.9872 kurtosis: 6.3994
+b_sharp:  -30.0 skewness: 2.0080 kurtosis: 6.5226
+b_sharp:  -25.0 skewness: 2.0256 kurtosis: 6.6388
+b_sharp:  -20.0 skewness: 2.0399 kurtosis: 6.7472
+b_sharp:  -15.0 skewness: 2.0506 kurtosis: 6.8470
+b_sharp:  -10.0 skewness: 2.0575 kurtosis: 6.9376
+b_sharp:   -5.0 skewness: 2.0605 kurtosis: 7.0184
+b_sharp:    0.0 skewness: 2.0594 kurtosis: 7.0890
+b_sharp:    5.0 skewness: 2.0542 kurtosis: 7.1493
+b_sharp:   10.0 skewness: 2.0450 kurtosis: 7.1992
+b_sharp:   15.0 skewness: 2.0317 kurtosis: 7.2388
+b_sharp:   20.0 skewness: 2.0145 kurtosis: 7.2682
+b_sharp:   25.0 skewness: 1.9936 kurtosis: 7.2879
+b_sharp:   30.0 skewness: 1.9691 kurtosis: 7.2983
+b_sharp:   35.0 skewness: 1.9413 kurtosis: 7.3000
+b_sharp:   40.0 skewness: 1.9104 kurtosis: 7.2937
+b_sharp:   45.0 skewness: 1.8767 kurtosis: 7.2799
+b_sharp:   50.0 skewness: 1.8406 kurtosis: 7.2595
+b_sharp:   55.0 skewness: 1.8023 kurtosis: 7.2331
+b_sharp:   60.0 skewness: 1.7622 kurtosis: 7.2015
+b_sharp:   65.0 skewness: 1.7206 kurtosis: 7.1654
+b_sharp:   70.0 skewness: 1.6778 kurtosis: 7.1255
+b_sharp:   75.0 skewness: 1.6340 kurtosis: 7.0825
+b_sharp:   80.0 skewness: 1.5897 kurtosis: 7.0368
+b_sharp:   85.0 skewness: 1.5449 kurtosis: 6.9891
+b_sharp:   90.0 skewness: 1.5001 kurtosis: 6.9398
+b_sharp:   95.0 skewness: 1.4553 kurtosis: 6.8895
+Best sharpening B-factor: 35

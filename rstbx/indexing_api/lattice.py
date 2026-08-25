@@ -174,16 +174,10 @@ class _():
     import copy
     new_detector = copy.deepcopy(old_detector)
 
-    if len(new_detector) > 1 and len(new_detector.hierarchy()) > 1:
-      h = new_detector.hierarchy()
-      h.set_local_frame(fast_axis=h.get_fast_axis(),
-                        slow_axis=h.get_slow_axis(),
-                        origin=matrix.col(h.get_origin()) + origin_offset)
-    else:
-      for panel in new_detector:
-        panel.set_local_frame(fast_axis=panel.get_fast_axis(),
-                              slow_axis=panel.get_slow_axis(),
-                              origin=matrix.col(panel.get_origin()) + origin_offset)
+    h = new_detector.hierarchy()
+    h.set_frame(fast_axis=h.get_fast_axis(),
+                slow_axis=h.get_slow_axis(),
+                origin=matrix.col(h.get_origin()) + origin_offset)
 
     return new_detector
 

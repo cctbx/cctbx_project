@@ -7,6 +7,8 @@ Without storage, image cells fall back to a sha256-tagged placeholder."""
 
 import json
 
+from qttbx.widgets.chat.agent.conversation import is_ephemeral_block
+
 
 def conversation_to_markdown(conv, storage=None):
   """Return a markdown string representing ``conv``.
@@ -65,7 +67,21 @@ def conversation_to_markdown(conv, storage=None):
     out.append("## %s" % role)
     out.append("")
     for block in msg.content or []:
-      rendered = _render_block(block, storage, conv.meta.id)
+      # Ephemeral blocks (a transient context-pressure note) reach the model in
+      # the live conversation but are never persisted -- and this export is a
+      # SECOND serializer of that same in-memory conversation, so it must apply
+      # the same filter storage.save does, or 'Save chat' leaks the note in the
+      # window before the next send strips it from conv.messages.
+      if is_ephemeral_block(block):
+        continue
+      try:
+        rendered = _render_block(block, storage, conv.meta.id)
+      except Exception:
+        # Honor the docstring's resilience contract: a malformed block (e.g. a
+        # tool_result whose `content` is a truthy non-iterable, which makes
+        # `for inner in content` raise TypeError) degrades to a placeholder so
+        # one bad block can't sink the whole 'Save chat' export.
+        rendered = "*[unknown block]*"
       if rendered:
         out.append(rendered)
         out.append("")
@@ -104,6 +120,26 @@ def _fmt_ts(ts):
     return str(ts)
 
 
+def _fence_for(text):
+  """Return a backtick code fence long enough to enclose ``text`` verbatim.
+
+  A fenced code block is closed by the first line holding a run of backticks
+  at least as long as the opening fence, so a ``` inside ``text`` would break
+  out of a fixed 3-backtick fence and let the rest render as live markdown.
+  Per CommonMark, pick a fence one backtick longer than the longest backtick
+  run in ``text`` (never fewer than 3), which no inner run can close early."""
+  longest = 0
+  run = 0
+  for ch in text or "":
+    if ch == "`":
+      run += 1
+      if run > longest:
+        longest = run
+    else:
+      run = 0
+  return "`" * max(3, longest + 1)
+
+
 def _render_block(block, storage, conv_id):
   t = getattr(block, "type", None)
   data = getattr(block, "data", None) or {}
@@ -119,7 +155,8 @@ def _render_block(block, storage, conv_id):
       payload = json.dumps(data.get("input", {}), indent=2, default=str)
     except Exception:
       payload = repr(data.get("input"))
-    return "```tool-use %s\n%s\n```" % (name, payload)
+    fence = _fence_for(payload)
+    return "%stool-use %s\n%s\n%s" % (fence, name, payload, fence)
   if t == "tool_result":
     return _render_tool_result(data, storage, conv_id)
   return "*[unknown block: %s]*" % (t or "")
@@ -152,7 +189,9 @@ def _resolve_attachment_path(storage, conv_id, sha):
 def _render_tool_result(data, storage, conv_id):
   content = data.get("content", []) or []
   if isinstance(content, str):
-    return "```tool-result\n%s\n```" % content.rstrip()
+    body = content.rstrip()
+    fence = _fence_for(body)
+    return "%stool-result\n%s\n%s" % (fence, body, fence)
   parts = []
   images = []
   for inner in content:
@@ -168,7 +207,8 @@ def _render_tool_result(data, storage, conv_id):
       parts.append("[%s]" % (it or "block"))
   out = []
   if parts:
-    out.append("```tool-result\n%s\n```" % "\n".join(
-      p for p in parts if p))
+    body = "\n".join(p for p in parts if p)
+    fence = _fence_for(body)
+    out.append("%stool-result\n%s\n%s" % (fence, body, fence))
   out.extend(images)
   return "\n\n".join(out)

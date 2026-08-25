@@ -169,6 +169,64 @@ def exercise_untrusted_input_rendered_as_plain_text():
     assert l.textFormat() == QtCore.Qt.PlainText, l.text()
 
 
+def exercise_allow_remember_hides_checkbox():
+  """A request with allow_remember=False yields a card without the
+  'Always allow this tool' checkbox; the default (True) keeps it."""
+  from qttbx.widgets.chat.tool_approval import ToolApprovalCard
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+
+  def _checkbox_labels(card):
+    return [w.text() for w in card.findChildren(QtWidgets.QCheckBox)]
+
+  # Default (allow_remember=True) keeps the "Always allow this tool" checkbox.
+  card_default = ToolApprovalCard()
+  card_default.set_requests([ToolApprovalRequest(
+    request_id="r1", tool_name="phenix_start_job", tool_source="mcp:phenix",
+    input={}, risk="write", batch_id=None)])
+  assert "Always allow this tool" in _checkbox_labels(card_default)
+
+  # allow_remember=False suppresses it (a destructive tool opts out of the
+  # standing per-tool auto-approval the checkbox grants).
+  card_no_remember = ToolApprovalCard()
+  card_no_remember.set_requests([ToolApprovalRequest(
+    request_id="r2", tool_name="coot_close_unresponsive",
+    tool_source="mcp:phenix_agent", input={}, risk="destructive",
+    batch_id=None, allow_remember=False)])
+  assert "Always allow this tool" not in _checkbox_labels(card_no_remember)
+
+
+def exercise_finalize_disables_card_without_emitting():
+  """finalize() disables an undecided card WITHOUT emitting a decision, so a
+  later stray/queued click can't route a stale response into a subsequent turn
+  (the approval-misroute guard). A no-op once a real decision has emitted."""
+  from qttbx.widgets.chat.tool_approval import ToolApprovalCard
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  init_default_app_font(app)
+  card = ToolApprovalCard()
+  card.set_requests([_req()])
+  decisions = []
+  card.decided.connect(lambda resps: decisions.append(resps))
+  assert not card.is_decided()
+  card.finalize()
+  assert card.is_decided()                       # marked decided (finalized)
+  assert card.isHidden()                         # collapsed like a decided card
+  assert not card._buttons_widget.isEnabled()    # buttons disabled
+  # A later click on the abandoned card must NOT emit a stale response.
+  card.click_stop()
+  card.click_approve_all()
+  assert decisions == [], decisions
+  # finalize() after a real decision is a harmless no-op (no re-emit).
+  card2 = ToolApprovalCard()
+  card2.set_requests([_req()])
+  d2 = []
+  card2.decided.connect(lambda resps: d2.append(resps))
+  card2.click_approve_all()
+  assert len(d2) == 1
+  card2.finalize()
+  assert len(d2) == 1, d2
+
+
 def exercise():
   exercise_single_card_approve_emits_response()
   exercise_single_card_deny_and_stop()
@@ -177,7 +235,9 @@ def exercise():
   exercise_remember_tool_checkbox_sets_remember_field()
   exercise_card_hides_and_disables_buttons_after_click()
   exercise_is_decided_reflects_decision_state()
+  exercise_finalize_disables_card_without_emitting()
   exercise_untrusted_input_rendered_as_plain_text()
+  exercise_allow_remember_hides_checkbox()
 
 
 if __name__ == "__main__":

@@ -547,7 +547,7 @@ class refine_adp(object):
     return n_iterations, n_fun
 
   def run_lbfgs(self):
-    if(self.model.get_ncs_groups() is None or
+    if(not self.model.ncs_constraints_present() or
        not self.all_params.ncs.constraints.apply_to_adp):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations = self.individual_adp_params.iso.max_number_of_iterations)

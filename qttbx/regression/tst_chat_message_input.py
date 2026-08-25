@@ -58,6 +58,37 @@ def exercise_set_busy_toggles_to_stop():
   w.set_busy(False)
 
 
+def exercise_send_gate_refusal_keeps_the_draft():
+  """A refused send_gate must keep the draft. The `send` signal is
+  fire-and-forget -- click_send clears the composer right after emitting --
+  so a host window that rejects the send from its slot (turn in flight) is
+  too late: the typed text and attachments are already wiped. The gate runs
+  BEFORE the draft is consumed; on False nothing is emitted and the text +
+  attachments stay put, ready for the user to re-send."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  received = []
+  w.send.connect(lambda msg, atts: received.append((msg, atts)))
+  allow = [False]
+  w.send_gate = lambda: allow[0]
+  w.set_text("precious draft")
+  w.attach_bytes(b"\x89PNG\r\n\x1a\n123", "image/png", filename="x.png")
+  n_atts = len(w._attachments)
+  assert n_atts == 1, w._attachments
+  w.click_send()
+  assert received == [], "a gated-off send still emitted"
+  assert w.text() == "precious draft", "refused send wiped the typed text"
+  assert len(w._attachments) == n_atts, "refused send dropped attachments"
+  # Gate opens: the same draft sends normally and the composer clears.
+  allow[0] = True
+  w.click_send()
+  assert len(received) == 1 and received[0][0] == "precious draft", received
+  assert w.text() == "" and w._attachments == []
+
+
 def exercise_attach_bytes_appears_in_send_payload():
   from qttbx.widgets.chat.message_input import MessageInput
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
@@ -162,6 +193,30 @@ def exercise_save_chat_button_emits_signal():
   assert fired == [True], fired
 
 
+def exercise_search_button_next_to_attach_emits_signal():
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  got = []
+  w.search_clicked.connect(lambda: got.append(True))
+  w._search_btn.click()
+  assert got == [True], got
+  # Lower-right placement: 🔍 sits immediately left of the @ button.
+  # The buttons share the button row; assert relative order by x() after
+  # a resize+show pass.
+  w.resize(600, 120)
+  w.show()
+  app.processEvents()
+  assert w._search_btn.x() < w._attach_btn.x()
+  assert w._search_btn.y() == w._attach_btn.y()
+  # Focus proxy: focusing the composite lands in the editor (used by
+  # the search bar's close-refocus path).
+  assert w.focusProxy() is w._edit
+  w.hide()
+
+
 def exercise_placeholder_set_and_reset():
   """set_placeholder swaps the edit's placeholderText; reset returns
   to MessageInput.DEFAULT_PLACEHOLDER. Used by ChatWindow to cycle
@@ -202,6 +257,80 @@ def exercise_placeholder_dim_flag_controls_palette_role():
   w.reset_placeholder()
   assert w._edit.palette().color(QtGui.QPalette.PlaceholderText) == \
     dim_color
+
+
+def exercise_set_placeholder_skips_redundant_palette_and_text():
+  """The in-flight 'Thinking...' spinner calls set_placeholder ~8x/s with dim
+  unchanged and only the trailing glyph changing. set_placeholder must NOT
+  rebuild the palette (a style re-polish) when dim is unchanged, nor re-set the
+  text (which forces a viewport repaint) when the text is identical -- else it
+  re-polishes + repaints the whole input 8x/s for a turn's duration."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  pal, txt, vp = [], [], []
+
+  class _CountingViewport:
+    def update(self, *a):
+      vp.append(1)
+
+  fake_vp = _CountingViewport()
+  w._edit.setPalette = lambda p: pal.append(1)
+  w._edit.setPlaceholderText = lambda t: txt.append(t)
+  w._edit.viewport = lambda: fake_vp
+  # Enter the cue: dim flips to False (one palette apply) + first frame set +
+  # one repaint.
+  w.set_placeholder("Thinking... -", dim=False)
+  assert pal == [1], pal
+  assert txt == ["Thinking... -"], txt
+  assert len(vp) == 1, vp
+  # Spinner ticks: dim stays False (no palette rebuild), the glyph changes each
+  # tick (text re-set + one repaint each).
+  w.set_placeholder("Thinking... \\", dim=False)
+  w.set_placeholder("Thinking... |", dim=False)
+  assert pal == [1], "palette rebuilt while dim unchanged"
+  assert txt == ["Thinking... -", "Thinking... \\", "Thinking... |"], txt
+  assert len(vp) == 3, vp                     # exactly one repaint per changed frame
+  # An identical frame repeats -> nothing: no palette, no text, NO repaint.
+  w.set_placeholder("Thinking... |", dim=False)
+  assert txt == ["Thinking... -", "Thinking... \\", "Thinking... |"], \
+    "text re-set on an identical frame"
+  assert pal == [1], pal
+  assert len(vp) == 3, "repainted on an identical frame"
+
+
+def exercise_set_placeholder_reresolves_on_theme_change():
+  """A theme (palette) switch mid-'Thinking...' must not leave the placeholder
+  frozen at the old theme's colour. set_placeholder caches the applied dim state
+  and skips re-writing the explicitly-set PlaceholderText role, so a
+  PaletteChange must invalidate that cache and re-resolve -- else a light->dark
+  switch renders the spinning cue dark-on-dark (unreadable) for the rest of the
+  turn (the pre-cache code self-healed on the next verb swap)."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  saved = QtWidgets.QApplication.palette()
+  try:
+    w = MessageInput()
+    # Enter the in-flight cue (dim=False -> full-contrast Text colour).
+    w.set_placeholder("Refining... |", dim=False)
+    before = w._edit.palette().color(QtGui.QPalette.PlaceholderText)
+    # Simulate the OS auto-appearance switch: the app's Text colour changes.
+    new_text = QtGui.QColor(123, 45, 67)
+    assert before != new_text, before.name()          # distinct so the test bites
+    pal = QtWidgets.QApplication.palette()
+    pal.setColor(QtGui.QPalette.Text, new_text)
+    QtWidgets.QApplication.setPalette(pal)
+    QtCore.QCoreApplication.sendEvent(
+      w, QtCore.QEvent(QtCore.QEvent.PaletteChange))
+    after = w._edit.palette().color(QtGui.QPalette.PlaceholderText)
+    assert after == new_text, (before.name(), after.name(), new_text.name())
+  finally:
+    QtWidgets.QApplication.setPalette(saved)
 
 
 def exercise_set_assistant_name_updates_placeholder():
@@ -383,6 +512,56 @@ def exercise_dropped_file_url_not_inserted_as_text():
   assert txt == "", repr(txt)
 
 
+def exercise_disallowed_file_is_not_read_before_mime_rejection():
+  """[Regression] A dropped local file whose guessed mime is not an allowed
+  image type must be rejected BEFORE its bytes are read. The old _handle_file
+  read the ENTIRE file into memory on the GUI thread first, so dropping a
+  multi-GB file with a non-None but disallowed mime (e.g. video/quicktime)
+  could freeze the event loop / MemoryError only for attach_bytes to reject
+  it afterwards. The rejection must still travel the existing
+  attachment_rejected path -- just moved earlier, before any read."""
+  import builtins
+  import mimetypes
+  import tempfile
+  from qttbx.qt import QtCore
+  w = _new_input()
+  fd, path = tempfile.mkstemp(suffix=".mov")   # -> video/quicktime, disallowed
+  try:
+    os.write(fd, b"not really a movie")
+    os.close(fd)
+    # Guard the premise: the guessed mime is non-None yet not an allowed type,
+    # so the file would sail past the `mime is None` early-return and reach the
+    # read in the buggy code.
+    mime, _ = mimetypes.guess_type(path)
+    assert mime is not None and mime not in w._ALLOWED_MIMES, mime
+    warned = []
+    w.attachment_rejected.connect(lambda msg: warned.append(msg))
+    # Sentinel: record any attempt to open THIS file for binary reading. A read
+    # before the mime check fires this; the fix must not open the file at all.
+    reads = []
+    real_open = builtins.open
+    def _spy_open(f, mode="r", *a, **k):
+      if f == path and "b" in mode and ("r" in mode or "+" in mode):
+        reads.append(f)
+      return real_open(f, mode, *a, **k)
+    builtins.open = _spy_open
+    try:
+      md = QtCore.QMimeData()
+      md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+      w._edit.insertFromMimeData(md)
+    finally:
+      builtins.open = real_open
+    # (a) Rejected via the same attachment_rejected path a disallowed in-memory
+    # attachment uses, and nothing was attached.
+    assert warned, "expected attachment_rejected for a disallowed file type"
+    assert mime in warned[0], warned
+    assert w.attachment_count() == 0, w._attachments
+    # (b) The file's bytes were NOT read before the mime was rejected.
+    assert reads == [], "disallowed file must not be read before validation"
+  finally:
+    os.remove(path)
+
+
 def exercise_pasted_remote_url_inserts_as_text():
   """[Regression] A pasted/dropped REMOTE (http/https) URL must paste as TEXT,
   not be swallowed by the attachment chokepoint -- only local files / images
@@ -415,20 +594,130 @@ def exercise_pasted_image_via_chokepoint_attaches():
   assert w._edit.toPlainText() == "", repr(w._edit.toPlainText())
 
 
+def exercise_mixed_image_and_file_url_attaches_once():
+  """[Regression] A single drop/paste payload carrying BOTH image data
+  (hasImage) AND a local file:// URL (hasUrls) must produce exactly ONE
+  attachment, not two. _handle_dropped_mime used two independent if-branches,
+  so a mixed payload attached the image once as 'pasted.png' and again by
+  reading the dropped file -- a double-attach."""
+  import tempfile
+  from qttbx.qt import QtCore, QtGui
+  w = _new_input()
+  # A real, readable PNG on disk so the file branch WOULD attach it (making
+  # the double-attach observable) in the buggy code.
+  img = QtGui.QImage(8, 8, QtGui.QImage.Format_RGB32)
+  img.fill(QtGui.QColor(10, 20, 30))
+  fd, path = tempfile.mkstemp(suffix=".png")
+  os.close(fd)
+  try:
+    assert img.save(path, "PNG"), "could not write temp PNG"
+    md = QtCore.QMimeData()
+    md.setImageData(img)
+    md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+    w._edit.insertFromMimeData(md)
+    assert w.attachment_count() == 1, w._attachments
+  finally:
+    os.remove(path)
+
+
+def exercise_unknown_extension_file_is_rejected():
+  """[Regression] A dropped local file whose extension mimetypes cannot map
+  (guess_type -> None) must be rejected via attachment_rejected, not returned
+  silently -- consistent with the explicit rejection for a known-unsupported
+  mime. _handle_file used to `return` on the None-mime path with no signal."""
+  import mimetypes
+  import tempfile
+  from qttbx.qt import QtCore
+  w = _new_input()
+  fd, path = tempfile.mkstemp(suffix=".zzzunknown")   # unmappable extension
+  try:
+    os.write(fd, b"whatever")
+    os.close(fd)
+    mime, _ = mimetypes.guess_type(path)
+    assert mime is None, mime           # premise: guess_type cannot map it
+    warned = []
+    w.attachment_rejected.connect(lambda msg: warned.append(msg))
+    md = QtCore.QMimeData()
+    md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+    w._edit.insertFromMimeData(md)
+    assert warned, "expected attachment_rejected for an unmappable file type"
+    assert w.attachment_count() == 0, w._attachments
+  finally:
+    os.remove(path)
+
+
+def exercise_unreadable_file_is_rejected():
+  """[Regression] A dropped local file with an allowed image extension whose
+  bytes cannot be read (open raises OSError -- here because the path does not
+  exist) must be rejected via attachment_rejected rather than swallowed. The
+  handler used to `except OSError: return` -- no signal, and the error was
+  discarded bare."""
+  from qttbx.qt import QtCore
+  w = _new_input()
+  # Allowed extension so the mime checks pass and we reach open(); the path
+  # does not exist so open raises FileNotFoundError (an OSError).
+  path = "/no/such/dir/definitely-missing.png"
+  warned = []
+  w.attachment_rejected.connect(lambda msg: warned.append(msg))
+  md = QtCore.QMimeData()
+  md.setUrls([QtCore.QUrl.fromLocalFile(path)])
+  w._edit.insertFromMimeData(md)
+  assert warned, "expected attachment_rejected for an unreadable file"
+  assert w.attachment_count() == 0, w._attachments
+
+
+def exercise_ctrl_home_end_emit_goto_signals():
+  """Exact Ctrl+Home / Ctrl+End on the editor emit the conversation
+  navigation signals (the editor claims document-nav keys via
+  ShortcutOverride, so window-level shortcuts can never fire while it
+  has focus -- and it holds focus almost always). A stray
+  KeypadModifier counts as the same chord; plain Home/End and Shift
+  selections stay native to the editor."""
+  from qttbx.qt import QtCore, QtGui
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  got = {"start": 0, "end": 0}
+  w.goto_conversation_start.connect(
+    lambda: got.__setitem__("start", got["start"] + 1))
+  w.goto_conversation_end.connect(
+    lambda: got.__setitem__("end", got["end"] + 1))
+  def key(k, mods=QtCore.Qt.NoModifier):
+    app.sendEvent(w._edit, QtGui.QKeyEvent(QtCore.QEvent.KeyPress, k, mods))
+  key(QtCore.Qt.Key_Home, QtCore.Qt.ControlModifier)
+  key(QtCore.Qt.Key_End, QtCore.Qt.ControlModifier)
+  assert (got["start"], got["end"]) == (1, 1), got
+  key(QtCore.Qt.Key_Home,
+      QtCore.Qt.ControlModifier | QtCore.Qt.KeypadModifier)
+  assert got["start"] == 2, got
+  key(QtCore.Qt.Key_Home)
+  key(QtCore.Qt.Key_Home,
+      QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier)
+  key(QtCore.Qt.Key_End, QtCore.Qt.ShiftModifier)
+  assert (got["start"], got["end"]) == (2, 1), got
+
+
 def exercise():
+  exercise_ctrl_home_end_emit_goto_signals()
   exercise_send_signal_carries_text_and_empty_attachments()
   exercise_pasted_remote_url_inserts_as_text()
   exercise_pasted_image_via_chokepoint_attaches()
   exercise_empty_send_is_no_op()
   exercise_set_busy_toggles_to_stop()
+  exercise_send_gate_refusal_keeps_the_draft()
   exercise_attach_bytes_appears_in_send_payload()
   exercise_unsupported_mime_is_dropped_with_warning()
   exercise_oversized_image_is_resampled()
   exercise_oversized_webp_is_reencoded_with_jpeg_mime()
   exercise_save_chat_button_emits_signal()
+  exercise_search_button_next_to_attach_emits_signal()
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()
+  exercise_set_placeholder_skips_redundant_palette_and_text()
+  exercise_set_placeholder_reresolves_on_theme_change()
   exercise_set_assistant_name_updates_placeholder()
   exercise_up_arrow_recalls_previous_inputs()
   exercise_down_arrow_walks_forward_and_restores_draft()
@@ -437,6 +726,10 @@ def exercise():
   exercise_set_history_swaps_recall_list_and_resets_navigation()
   exercise_set_history_drops_blank_entries()
   exercise_dropped_file_url_not_inserted_as_text()
+  exercise_disallowed_file_is_not_read_before_mime_rejection()
+  exercise_mixed_image_and_file_url_attaches_once()
+  exercise_unknown_extension_file_is_rejected()
+  exercise_unreadable_file_is_rejected()
 
 
 if __name__ == "__main__":

@@ -352,6 +352,32 @@ def exercise_mapping_requires_coerced_and_does_not_abort_batch():
     shutil.rmtree(tmp)
 
 
+def exercise_unknown_mode_normalizes_and_warns():
+  """A typo'd `mode` (e.g. `on-demand` with a hyphen) is NEITHER 'always' nor
+  'on_demand'. Stored verbatim it makes the skill body permanently unreachable:
+  assemble_system_prompt only inlines the body when mode=='always', and tools()
+  only registers load_skill when some skill is mode=='on_demand'. _load_one must
+  normalize an unknown mode to a valid one (default 'always' so the body stays
+  inlined) and warn on the loader's log rather than keep the invalid string."""
+  import io
+  tmp = tempfile.mkdtemp()
+  try:
+    builtin = os.path.join(tmp, "builtin")
+    os.makedirs(builtin)
+    _make_skill(builtin, "typo_mode", mode="on-demand")   # hyphen, not on_demand
+    log = io.StringIO()
+    loader = SkillLoader(builtin_path=Path(builtin), log=log)
+    skill = loader.load_default()[0]
+    # Normalized to a valid mode, not the invalid 'on-demand' string.
+    assert skill.mode in ("always", "on_demand"), skill.mode
+    assert skill.mode == "always", skill.mode
+    # ... and a one-line warning naming the bad mode was logged.
+    assert "on-demand" in log.getvalue(), log.getvalue()
+    assert "mode" in log.getvalue().lower(), log.getvalue()
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_tools_returns_empty_for_no_skills():
   """Section 8.5: the skill tools are only useful when skills exist;
   with an empty list, tools() returns no entries so we don't pollute
@@ -653,6 +679,7 @@ def exercise():
   exercise_non_string_scalar_requires_does_not_drop_batch()
   exercise_mapping_requires_coerced_and_does_not_abort_batch()
   exercise_assemble_system_prompt_includes_descriptions()
+  exercise_unknown_mode_normalizes_and_warns()
   exercise_tools_returns_empty_for_no_skills()
   exercise_tools_returns_two_when_all_always_mode()
   exercise_tools_returns_three_when_any_on_demand()

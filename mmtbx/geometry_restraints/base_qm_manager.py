@@ -211,6 +211,7 @@ class base_manager():
     from mmtbx.ligands.electrons import default_metal_charges
     from mmtbx.monomer_library.pdb_interpretation import ad_hoc_single_atom_residue_element_types
     for atom in self.atoms:
+      if atom.element.upper() in ['F']: continue
       if atom.element.upper() in ad_hoc_single_atom_residue_element_types:
         if atom.element.capitalize() not in default_metal_charges:
           print(f'\n\n  Atom\n    {atom.quote()}\n  may need an atomic charge. The charge is currently {self.charge}.\n\n')

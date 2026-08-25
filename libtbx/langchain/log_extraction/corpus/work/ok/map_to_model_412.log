@@ -1,0 +1,2338 @@
+Starting phenix.map_to_model
+on Thu Aug 13 12:52:42 2026 by terwill
+===============================================================================
+
+Processing files:
+-------------------------------------------------------------------------------
+
+  Found phil, /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/.phenix/project_data/map_to_model_412.eff
+
+Processing PHIL parameters:
+-------------------------------------------------------------------------------
+
+  Adding PHIL files:
+  ------------------
+    /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/.phenix/project_data/map_to_model_412.eff
+
+Processing files from PHIL:
+-------------------------------------------------------------------------------
+
+  Found sequence, /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat
+
+  Files not used by program:
+  --------------------------
+  /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/map_coeffs_1.mtz
+
+Final processed PHIL parameters:
+-------------------------------------------------------------------------------
+  data_manager {
+    sequence_files = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat"
+    default_sequence = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat"
+    phil_files = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/.phenix/project_data/map_to_model_412.eff"
+    default_phil = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/.phenix/project_data/map_to_model_412.eff"
+  }
+  input_files {
+    map_coeffs_file = /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/map_coeffs_1.mtz
+    map_coeffs_labels = FWT,PHWT
+    seq_file = /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat
+  }
+  crystal_info {
+    scattering_table = *n_gaussian wk1995 it1992 electron neutron
+    is_crystal = True
+    resolution = 4.0
+  }
+  reconstruction_symmetry {
+    asymmetric_map = False
+  }
+  strategy {
+    thoroughness = *quick medium thorough extra_thorough
+    quick_debug = True
+  }
+  control {
+    nproc = 4
+  }
+  job_title = """GUI_crystals testing map_to_model"""
+
+
+Starting job
+===============================================================================
+
+*******************************************************************************
+Detected PHENIX_OVERWRITE_ALL environment variable
+Setting output.overwrite to True
+Unset PHENIX_OVERWRITE_ALL if overwriting is not desired
+*******************************************************************************
+
+Validating inputs
+
+Setting parameters
+Set truncate_at_d_min = True as map_coeffs_file is supplied
+
+Chain types considered will be: PROTEIN
+Skipping combine_models as thoroughness =  quick
+Skipping final refinement as thoroughness = quick
+
+Setting parameters for quick run...
+Set trace_and_build.final_connect_chains = True
+Set strategy.split_and_join = True
+Set strategy.vary_sharpening = [75, -75, -125]
+Set strategy.trace_outside_model = False
+Set strategy.retry_long_branches = None
+Set strategy.fix_insertions_deletions = False
+Set trace_and_build.n_short_min = 20
+Set trace_and_build.n_short_max = 200
+Set trace_and_build.n_short_delta = 40
+Set strategy.keep_longest_model = False
+Set strategy.high_density_from_model = None
+Set strategy.vary_high_density_from_model = False
+Set strategy.build_in_regions = False
+Set strategy.include_phase_and_build = None
+Set strategy.include_helices_strands_only = None
+Set map_modification.soft_mask = False
+Set strategy.nmodels_for_phase_and_build = 2
+Set iterative_ss_refine.refine_cycles = 2
+Set refinement.number_of_sa_models = 2
+Set refinement.number_of_trials = 2
+Set refinement.number_of_macro_cycles = 2
+Set refinement.number_of_build_cycles = 2
+Set rebuilding.rebuild_cycles = 1
+Set iterative_ss_refine.parallel_runs = 1
+Set strategy.extend_with_resolve = False
+Set strategy.rearrange_before_assign_sequence = False
+Set strategy.min_segment_length = 15
+Set trace_and_build.length_variants_to_try = 2
+Set trace_and_build.tnb_refine_cycles = 1
+Adding parameters for quick_debug run (just for testing)
+region_b_sharpen = 0.
+nmodels_for_phase_and_build = 1
+thorough_resolve_model_building = False
+ss_refine_ncycle = 1
+
+************************************************************
+          PHENIX map_to_model   Thu Aug 13 12:52:42 2026
+************************************************************
+
+Working directory:  /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412 
+
+PHENIX VERSION:  dev-svn 
+
+
+Reading input data
+
+Sequence read from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat with 141 residues in 1 chains
+Setting use_sg_symmetry=True as this is a crystal.
+Setting density_select=False as this is a crystal.
+Setting box_ncs_au=False as this is a crystal.
+
+Parameters for this cycle:
+input_files {
+  map_coeffs_file = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/map_coeffs_1.mtz"
+  map_coeffs_labels = "FWT,PHWT"
+  map_file = None
+  seq_file = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat"
+  ncs_file = None
+  model_file = None
+  starting_model_is_from_box_map_au = False
+  sharpen_with_starting_model = True
+  include_starting_model = True
+  target_ncs_au_file = None
+  partial_model = None
+  partial_model_type = init_PROTEIN init_RNA init_DNA \
+                       helices_strands_only_PROTEIN build_rna_helices_RNA \
+                       standard_PROTEIN standard_RNA standard_DNA \
+                       *final_PROTEIN final_RNA final_DNA
+  trace_chain_pdb_in = None
+  info_pickle_file = None
+  input_map_id_start = 1
+  input_map_id_end = None
+  seed_ca_in = None
+  seed_ca_only = False
+  model_pickle_file = None
+  pdb_to_shift = None
+  reverse_shift = False
+}
+output_files {
+  params_out = "map_to_model_params.eff"
+  pdb_out = "map_to_model.pdb"
+  pdb_out_unique = "map_to_model_unique.pdb"
+  sharpened_map_file = "sharpened_map.ccp4"
+  pdb_out_reverse = "map_to_model_reverse.pdb"
+  protein_mask_file = None
+  region_model_suffix = ""
+  shifted_pdb = "shifted_pdb.pdb"
+  output_directory = "map_to_model_0"
+  final_output_directory = None
+  segmentation_directory = "segmented_maps_0"
+  display_in_coot = False
+}
+crystal_info {
+  chain_types = *PROTEIN DNA RNA
+  minimum_fraction = 0.001
+  scattering_table = *n_gaussian wk1995 it1992 electron neutron
+  is_crystal = True
+  use_sg_symmetry = True
+  minimum_resolution = 2.5
+  resolution = 4
+  solvent_content = None
+  solvent_content_iterations = 3
+  truncate_at_d_min = True
+  map_inside_box = True
+  space_group = None
+  unit_cell = None
+  chain_type = PROTEIN DNA RNA
+  sequence = "
+
+LVLKWVMSTKYVEAGELKEGSYVVIDGEPCRVVEIEKSKTGKHGSAKARIVAVGVFDGGKRTLSLPVDAQVEVPIIEKFTAQILSVSGDVIQLMDMRDYKTIEVPMKYVEEEAKGRLAPGAEVEVWQILDRYKIIRVKG"
+  origin_frac = None
+  solvent_fraction = None
+}
+reconstruction_symmetry {
+  symmetry = None
+  find_symmetry = None
+  unique_part_only = True
+  asymmetric_map = False
+  ncs_center = None
+  optimize_center = None
+  helical_rot_deg = None
+  helical_trans_z_angstrom = None
+  two_fold_along_x = None
+  random_points = None
+  n_rescore = None
+  op_max = None
+  tol_r = 0.02
+  abs_tol_t = 2
+  rel_tol_t = 0.05
+  max_helical_operators = None
+  require_helical_or_point_group_symmetry = None
+}
+map_modification {
+  magnification = None
+  b_iso = None
+  b_sharpen = None
+  b_blur_hires = 200
+  resolution_dependent_b_sharpen = None
+  normalize_amplitudes_in_resdep = False
+  d_min_ratio = 0.833
+  input_d_cut = None
+  rmsd = None
+  rmsd_resolution_factor = 0.25
+  auto_sharpen = False
+  auto_sharpen_regions = False
+  auto_sharpen_methods = no_sharpening b_iso *b_iso_to_d_cut \
+                         resolution_dependent model_sharpening \
+                         half_map_sharpening target_b_iso_to_d_cut None
+  local_sharpening = None
+  local_aniso_in_local_sharpening = None
+  overall_before_local = True
+  box_in_auto_sharpen = False
+  density_select_in_auto_sharpen = False
+  allow_box_if_b_iso_set = False
+  soft_mask = False
+  max_box_fraction = None
+  density_select_max_box_fraction = None
+  use_weak_density = False
+  k_sharpen = None
+  iterate = False
+  optimize_b_blur_hires = False
+  optimize_d_cut = None
+  region_weight_method = initial_ratio *delta_ratio b_iso
+  search_b_min = None
+  search_b_max = None
+  search_b_n = None
+  residual_target = None
+  sharpening_target = None
+  target_b_iso_ratio = 5.9
+  region_weight = 40
+  discard_if_worse = None
+  sa_percent = 30
+  fraction_occupied = 0.2
+  n_bins = 20
+  max_regions_to_test = 30
+  eps = None
+}
+strategy {
+  keep_longest_model = False
+  build_new_model = True
+  cycles = 1
+  cycle_auto_sharpen = True
+  density_select = False
+  density_select_threshold = None
+  soft_mask_in_density_select = False
+  get_half_height_width = None
+  box_ncs_au = False
+  segment = True
+  build_in_regions = False
+  include_trace_and_build = True
+  include_phase_and_build = False
+  include_helices_strands_only = False
+  max_segments = None
+  min_segments = 1
+  min_segment_length = 15
+  split_and_join = False
+  trace_outside_model = False
+  retry_long_branches = False
+  correct_segments = False
+  vary_sharpening = None
+  vary_high_density_from_model = False
+  high_density_from_model = False
+  fix_insertions_deletions = False
+  max_nproc_for_build_one_model = 30
+  nmodels_for_phase_and_build = 1
+  score_with_cc_in_phase_and_build = True
+  include_reverse = False
+  reverse_only = False
+  thoroughness = *quick medium thorough extra_thorough
+  quick_debug = True
+  pdb_in_only = None
+  assign_sequence = None
+  rerun_with_avail_seq = True
+  split_using_alignment = False
+  rearrange_before_assign_sequence = False
+  sequence_from_map_before_fit_loops = True
+  create_gap_length = None
+  fit_loops_before_assign_sequence = True
+  extend_with_resolve = False
+  min_percent_assigned_for_assign_sequence = 25
+}
+segmentation {
+  value_outside_mask = None
+  min_relative_helical_cc_to_keep = 0.9
+  add_neighbors = True
+  select_au_box = None
+  n_ops_to_use_au_box = None
+  n_au_box = None
+  lower_bounds = None
+  upper_bounds = None
+}
+trace_and_build {
+  find_chains = True
+  extend_chains = False
+  connect_chains = False
+  find_helices_strands = True
+  tnb_refine_cycles = 1
+  n_short_min = 20
+  n_short_max = 20
+  n_short_delta = 40
+  allow_reverse = False
+  length_variants_to_try = 1
+  final_connect_chains = True
+  mean_density_ratio = None
+}
+region_sharpening {
+  include_original_map = False
+  only_original_map = False
+  region_b_sharpen = 0
+  region_b_sharpen_low = -105
+  region_b_sharpen_high = 0
+  region_b_sharpen_delta = 15
+}
+resolve_model_building {
+  run_resolve_model_building = None
+  thorough_resolve_model_building = False
+  run_helices_strands_only = False
+}
+trace_chain {
+  run_trace_chain = False
+  rho_cut_min = 2
+  target_angle = 180
+  rho_cut_min_low = 1
+  rho_cut_min_high = 5
+  rho_cut_min_delta = None
+  rat_pair_min = 0.5
+  dist_ca_tol_max = 0.8
+  dist_ca_tol_start = 0.1
+  rad_sep_trace = 0.75
+  n_atoms_total_scale = 3.33
+  target_p_ratio = 3
+  target_n_ratio = 3
+  max_triple_ratio = 10
+  max_pent_ratio = 10
+  atom_target_ratio = 0.45
+  build_both_directions = False
+  min_end_correl = 0.5
+  add_side_chains = True
+}
+crossing {
+  combine_models = True
+  standard_merge = None
+  extend_in_merge = False
+  use_cc_in_combine_extend = None
+  merge_remainder = True
+  merge_by_segment_correlation = True
+  merge_second_model = True
+  remove_poor_fragments = True
+  remove_poor_fragments_minimum_rna = 0.2
+  wang_radius = 5
+  cc_min = 0.4
+  assignment_weight = 0.2
+  cc_min_rna = 0.25
+  overlap_tolerance = None
+  ncs_clash_threshold = 2
+  remove_outside_cell = None
+}
+refinement {
+  refine = False
+  refine_adp = False
+  number_of_sa_models = 2
+  number_of_trials = 1
+  number_of_macro_cycles = 1
+  number_of_build_cycles = 2
+}
+rebuilding {
+  rebuild = False
+  rebuild_cycles = 1
+  trace_loops = True
+  trace_loops_target_time = 60
+  loop_lib = False
+  rebuild_length = 8
+  rebuild_length_worst = 6
+  offset_length = 3
+  rebuild_length_loop_lib = 3
+  offset_length_loop_lib = 1
+  start_res = None
+  end_res = None
+  worst_rebuild_percent = 10
+  target_insert = None
+  target_insert_offset = None
+}
+iterative_ss_refine {
+  iterative_ss = False
+  ss_refine_ncycle = 1
+  refine_cycles = 1
+  parallel_runs = 1
+  combine_annotations = False
+  replace_side_chains = True
+  regularize = True
+}
+mr_rosetta {
+  run_mr_rosetta = False
+  rosetta_models = 20
+  relax_models = 5
+  rosetta_fixed_seed = None
+}
+control {
+  multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+  queue_run_command = None
+  nproc = 4
+  max_dirs = 1000
+  build_only = False
+  build_and_refine_only = False
+  skip_combine_models = True
+  skip_final_refinement = True
+  stop_after_segment_and_split_map = False
+  split_up_job = False
+  run_split_jobs = False
+  split_jobs_commands_directory = "commands"
+  split_jobs_logs_directory = "logs"
+  split_jobs_source_command = None
+  remove_pdb_block = None
+  do_only_one_thing = None
+  stop_after_combine_chain_types = False
+  model_start = None
+  model_end = None
+  resolve_size = None
+  coarse_grid = None
+  random_seed = 77151
+  verbose = False
+  comparison_model = None
+  carry_on = False
+  memory_check = None
+  em_side_density = None
+  em_side_density_in_tnb = False
+  ignore_map_limitations = None
+}
+gui {
+  output_dir = None
+}
+
+End of parameters for this cycle
+
+Setting parameters
+
+Chain types considered will be: PROTEIN
+
+Setting parameters for quick run...
+Set strategy.vary_sharpening = [75, -75, -125]
+Adding parameters for quick_debug run (just for testing)
+
+Running segment_and_split_map to split map into parts
+
+
+Array assignments:
+map_coeffs : FWT  PHWT
+
+Map coefficients read from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/map_coeffs_1.mtz with labels FWT,PHWT
+Map resolution:    4.00 A  Cell: (113.949, 113.949, 32.474, 90, 90, 90)
+
+Truncating map coefficients at resolution of    4.00 A
+
+B-iso before sharpening    4.99
+B-iso after sharpening by region_b_sharpen =   0.0 is    4.99
+
+Calculating map from map coefficients
+Calculated map from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/map_coeffs_1.mtz, converted to P1 and wrote to map_to_model_0/map_as_p1.ccp4
+Space group symmetry written as NCS operators to map_to_model_0/ncs_from_symmetry.ncs_spec
+
+Segment_and_split_map
+
+Command used: segment_and_split_map map_file = map_to_model_0/map_as_p1.ccp4 verbose = False add_neighbors = True is_crystal = True use_sg_symmetry = True resolution = 4.0 solvent_content_iterations = 3 tol_r = 0.02 abs_tol_t = 2.0 rel_tol_t = 0.05 normalize_amplitudes_in_resdep = False d_min_ratio = 0.833 auto_sharpen = False b_blur_hires = 200.0 rmsd_resolution_factor = 0.25 overall_before_local = True box_in_auto_sharpen = False density_select_in_auto_sharpen = False use_weak_density = False allow_box_if_b_iso_set = False region_weight_method = delta_ratio target_b_iso_ratio = 5.9 region_weight = 40.0 sa_percent = 30.0 fraction_occupied = 0.2 n_bins = 20 max_regions_to_test = 30 density_select = false box_ncs_au = False ncs_file = map_to_model_0/ncs_from_symmetry.ncs_spec seq_file = /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat auto_sharpen_methods = *b_iso_to_d_cut soft_mask = False soft_mask_in_density_select = False space_group = I 4  unit_cell = 113.9489974975586 113.9489974975586 32.4739990234375 90.0 90.0 90.0 output_directory = segmented_maps_0 sharpened_map_file = sharpened_map.ccp4
+
+input_files {
+  seq_file = "/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat"
+  map_file = "map_to_model_0/map_as_p1.ccp4"
+  half_map_file = None
+  external_map_file = None
+  ncs_file = "map_to_model_0/ncs_from_symmetry.ncs_spec"
+  pdb_file = None
+  pdb_to_restore = None
+  info_file = None
+  target_ncs_au_file = None
+  input_weight_map_pickle_file = None
+}
+output_files {
+  magnification_map_file = "magnification_map.ccp4"
+  magnification_ncs_file = "magnification_ncs.ncs_spec"
+  shifted_map_file = "shifted_map.ccp4"
+  shifted_sharpened_map_file = "shifted_sharpened_map.ccp4"
+  sharpened_map_file = "sharpened_map.ccp4"
+  shifted_pdb_file = "shifted_pdb.pdb"
+  shifted_ncs_file = "shifted_ncs.ncs_spec"
+  shifted_used_ncs_file = "shifted_used_ncs.ncs_spec"
+  output_directory = "segmented_maps_0"
+  box_map_file = "box_map_au.ccp4"
+  box_mask_file = "box_mask_au.ccp4"
+  box_buffer = 5
+  au_output_file_stem = "shifted_au"
+  write_intermediate_maps = False
+  write_output_maps = True
+  remainder_map_file = "remainder_map.ccp4"
+  output_info_file = "segment_and_split_map_info.pkl"
+  restored_pdb = None
+  output_weight_map_pickle_file = "weight_map_pickle_file.pkl"
+}
+crystal_info {
+  chain_type = *None PROTEIN RNA DNA
+  sequence = None
+  is_crystal = True
+  use_sg_symmetry = True
+  resolution = 4
+  space_group = "I 4"
+  unit_cell = 113.9489975 113.9489975 32.47399902 90 90 90
+  original_unit_cell = None
+  original_unit_cell_grid = None
+  molecular_mass = None
+  solvent_content = None
+  solvent_content_iterations = 3
+  wang_radius = None
+  buffer_radius = None
+  pseudo_likelihood = None
+}
+reconstruction_symmetry {
+  symmetry = None
+  include_helical_symmetry = True
+  must_be_consistent_with_space_group_number = None
+  symmetry_center = None
+  optimize_center = False
+  helical_rot_deg = None
+  helical_trans_z_angstrom = None
+  max_helical_optimizations = 2
+  max_helical_ops_to_check = 5
+  max_helical_rotations_to_check = None
+  two_fold_along_x = None
+  smallest_object = None
+  score_basis = ncs_score cc *None
+  scale_weight_fractional_translation = 1.05
+  random_points = 100
+  identify_ncs_id = True
+  min_ncs_cc = 0.75
+  n_rescore = 5
+  op_max = 14
+  tol_r = 0.02
+  abs_tol_t = 2
+  max_helical_operators = None
+  rel_tol_t = 0.05
+  require_helical_or_point_group_symmetry = False
+}
+map_modification {
+  magnification = None
+  b_iso = None
+  b_sharpen = None
+  b_blur_hires = 200
+  resolution_dependent_b = None
+  normalize_amplitudes_in_resdep = False
+  d_min_ratio = 0.833
+  scale_max = 100000
+  input_d_cut = None
+  rmsd = None
+  rmsd_resolution_factor = 0.25
+  fraction_complete = None
+  regions_to_keep = None
+  auto_sharpen = False
+  auto_sharpen_methods = no_sharpening b_iso *b_iso_to_d_cut \
+                         resolution_dependent model_sharpening \
+                         half_map_sharpening target_b_iso_to_d_cut None
+  box_in_auto_sharpen = False
+  density_select_in_auto_sharpen = False
+  density_select_threshold_in_auto_sharpen = None
+  allow_box_if_b_iso_set = False
+  soft_mask = False
+  use_weak_density = False
+  discard_if_worse = None
+  local_sharpening = None
+  local_aniso_in_local_sharpening = None
+  overall_before_local = True
+  select_sharpened_map = None
+  read_sharpened_maps = None
+  write_sharpened_maps = None
+  smoothing_radius = None
+  box_center = None
+  box_size = 40 40 40
+  target_n_overlap = 10
+  restrict_map_size = None
+  restrict_z_turns_for_helical_symmetry = 1
+  restrict_z_distance_for_helical_symmetry = None
+  remove_aniso = True
+  cc_cut = 0.2
+  max_cc_for_rescale = 0.2
+  scale_using_last = 3
+  max_box_fraction = 0.5
+  density_select_max_box_fraction = 0.95
+  mask_atoms = True
+  mask_atoms_atom_radius = 3
+  value_outside_atoms = None
+  k_sharpen = 10
+  iterate = False
+  optimize_b_blur_hires = False
+  optimize_d_cut = None
+  adjust_region_weight = True
+  region_weight_method = initial_ratio *delta_ratio b_iso
+  region_weight_factor = 1
+  region_weight_buffer = 0.1
+  region_weight_default = 30
+  target_b_iso_ratio = 5.9
+  signal_min = 3
+  target_b_iso_model_scale = 0
+  search_b_min = -100
+  search_b_max = 300
+  search_b_n = 21
+  residual_target = "adjusted_sa"
+  sharpening_target = "adjusted_sa"
+  region_weight = 40
+  sa_percent = 30
+  fraction_occupied = 0.2
+  n_bins = 20
+  max_regions_to_test = 30
+  eps = None
+  k_sol = 0.35
+  b_sol = 50
+}
+segmentation {
+  select_au_box = None
+  n_ops_to_use_au_box = 25
+  n_au_box = 5
+  lower_bounds = None
+  upper_bounds = None
+  density_select = False
+  density_select_threshold = 0.05
+  get_half_height_width = None
+  box_ncs_au = False
+  cell_cutoff_for_solvent_from_mask = 150
+  mask_padding_fraction = 0.025
+  fraction_of_max_mask_threshold = 0.05
+  mask_threshold = None
+  grid_spacing_for_au = 3
+  radius = None
+  value_outside_mask = 0
+  density_threshold = None
+  starting_density_threshold = None
+  iteration_fraction = 0.2
+  max_overlap_fraction = 0.05
+  remove_bad_regions_percent = 1
+  require_complete = True
+  split_if_possible = True
+  write_all_regions = False
+  max_per_au = None
+  max_per_au_ratio = 5
+  min_ratio_of_ncs_copy_to_first = 0.5
+  min_ratio = 0.1
+  max_ratio_to_target = 3
+  min_ratio_to_target = 0.3
+  min_volume = 10
+  residues_per_region = 50
+  seeds_to_try = 10
+  iterate_with_remainder = True
+  weight_rad_gyr = 0.1
+  expand_size = None
+  expand_target = 1.5
+  mask_additional_expand_size = 1
+  mask_expand_ratio = 1
+  exclude_points_in_ncs_copies = True
+  add_neighbors = True
+  add_neighbors_dist = 1
+}
+control {
+  verbose = False
+  shift_only = None
+  sharpen_only = None
+  check_ncs = None
+  resolve_size = None
+  quick = True
+  memory_check = True
+  save_box_map_ncs_au = False
+  write_files = True
+  multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+  queue_run_command = None
+  nproc = 1
+}
+Read sequence from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat
+Reading ncs from map_to_model_0/ncs_from_symmetry.ncs_spec
+Reading NCS information from:  map_to_model_0/ncs_from_symmetry.ncs_spec
+
+Total of 8 NCS operators read
+
+
+Map size is 0.00 GB.  This will require about 0.0 GB of memory
+for this stage of analysis
+
+Total memory on this computer is about 16.0 GB.
+Reading ncs from map_to_model_0/ncs_from_symmetry.ncs_spec
+Reading NCS information from:  map_to_model_0/ncs_from_symmetry.ncs_spec
+
+Total of 8 NCS operators read
+
+Origin for input map is at (    0.00,     0.00,     0.00)
+Cell dimensions of this map are: (  113.95,   113.95,    32.47)
+Wrote shifted, sharpened map to segmented_maps_0/shifted_sharpened_map.ccp4
+Expand size (grid units): 2 (about  1.9 A) 
+
+Total of 8 NCS operators read
+
+This NCS is crystal symmetry
+
+Shifting model based on origin shift (if any)
+Coordinate shift is (   0.00,    0.00,    0.00)
+Wrote shifted map to segmented_maps_0/shifted_map.ccp4
+Wrote 8 NCS operators for shifted map to segmented_maps_0/shifted_ncs.ncs_spec
+NCS file:segmented_maps_0/shifted_ncs.ncs_spec   Operators: 8
+Unique part of sequences:
+Numbers of copies of sequences: [1]
+Number of copies of all sequences is: 1
+Copies: 1  base copies: 1  Sequence: LVLKWVMSTKYVEAGELKEGSYVVIDGEPCRVVEIEKSKTGKHGSAKARIVAVGVFDGGKRTLSLPVDAQVEVPIIEKFTAQILSVSGDVIQLMDMRDYKTIEVPMKYVEEEAKGRLAPGAEVEVWQILDRYKIIRVKG
+NOTE: 1 copies of unique portion but ncs_copies = 8
+Still using ncs_copies = 8
+
+Chain types considered: PROTEIN
+
+Solvent content from composition:    0.64
+Cell volume: 421654.5  NCS copies: 8   Volume of unique chains: 18806.7
+Total residues: 1112  Volume of all chains: 150453.6  Solvent fraction: 0.643 
+Solvent fraction from composition:    0.64 
+
+ ==========  Summary of segmentation_info:  ======== 
+
+Created: Thu Aug 13 12:52:43 2026
+
+Input files used:
+
+Map file:map_to_model_0/map_as_p1.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+NCS file:map_to_model_0/ncs_from_symmetry.ncs_spec   Operators: 8
+Sequence file:/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat    Residues: 139
+
+Working unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+Estimated total number of residues: 1112
+Estimated solvent fraction: 0.643
+
+No origin offset applied
+
+Shifted/sharpened map, pdb and ncs files created (after origin offset):
+
+Map file:segmented_maps_0/shifted_map.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+NCS file:segmented_maps_0/shifted_ncs.ncs_spec   Operators: 8
+
+==================================================
+
+
+Getting connectivity
+
+Checking possible cutoffs for region identification
+Scale:   0.950
+Cutoff will be threshold of    0.80 marking    35.7% of cell
+
+Best threshold:  0.86
+
+
+New threshold is    0.86
+
+Identifying NCS-related regions.Total regions to consider: 40
+origin: (0, 0, 0)
+last: (120, 120, 36)
+focus: (120, 120, 36)
+all: (120, 120, 36)
+Identity operator is 0
+All equiv groups:
+Total NCS groups: 5
+Maximum length of group: 15
+New best selected: rms:    10.2: [1, 16, 23, 30, 39] 
+New best selected: rms:     7.1: [4, 11, 20, 26, 35] 
+New best selected: rms:     6.8: [5, 12, 22, 29, 37] 
+Best selected so far: rms:     6.8: [5, 12, 22, 29, 37] 
+
+Try 1 for optimizing regions
+Optimized best selected: rms:     6.8: [5, 12, 22, 29, 37] 
+
+Available selected regions: 5 ...
+
+Adding neighbor groups...
+GROUP  5 : [1, 2, 3, 4, 6, 7, 8]
+GROUP  12 : [9, 10, 11, 13, 14, 15, 16]
+GROUP  22 : [17, 18, 19, 20, 21, 23, 24]
+GROUP  29 : [25, 26, 27, 28, 30, 31, 32]
+GROUP  37 : [33, 34, 35, 36, 38, 39, 40]
+
+Final selected regions with rms of   6.75:  5 12 22 29 37 
+NCS operators used:  0 
+NCS-related regions (not used): 35 
+
+Creating remaining mask and map
+
+Iterating with remainder density
+
+Iteration tracking data:
+
+ ==========  Summary of segmentation_info:  ======== 
+
+Created: Thu Aug 13 12:52:43 2026
+
+Input files used:
+
+Map file:map_to_model_0/map_as_p1.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+NCS file:map_to_model_0/ncs_from_symmetry.ncs_spec   Operators: 8
+Sequence file:/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat    Residues: 139
+
+Working unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+Estimated total number of residues: 222
+Estimated solvent fraction: 0.929
+
+No origin offset applied
+
+Shifted/sharpened map, pdb and ncs files created (after origin offset):
+
+Map file:segmented_maps_0/shifted_map.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+NCS file:segmented_maps_0/shifted_ncs.ncs_spec   Operators: 8
+
+==================================================
+
+
+Getting connectivity
+
+Checking possible cutoffs for region identification
+Scale:   0.950
+Starting density threshold is:   0.857
+Cutoff will be threshold of    0.77 marking     7.1% of cell
+
+Best threshold:  0.25
+
+
+New threshold is    0.25
+
+Identifying NCS-related regions.Total regions to consider: 96
+origin: (0, 0, 0)
+last: (120, 120, 36)
+focus: (120, 120, 36)
+all: (120, 120, 36)
+Identity operator is 0
+All equiv groups:
+Total NCS groups: 12
+Maximum length of group: 5
+New best selected: rms:     8.3: [8, 13, 22, 29, 37] 
+Best selected so far: rms:     8.3: [8, 13, 22, 29, 37] 
+
+Try 1 for optimizing regions
+Optimized best selected: rms:     7.6: [7, 13, 22, 29, 37] 
+
+Try 2 for optimizing regions
+Optimized best selected: rms:     7.6: [7, 13, 22, 29, 37] 
+
+Available selected regions: 5 ...
+
+Adding neighbor groups...
+GROUP  7 : [1, 2, 3, 4, 5, 6, 8]
+GROUP  8 : [1, 2, 3, 4, 5, 6, 7]
+GROUP  13 : [9, 10, 11, 12, 14, 15, 16]
+GROUP  22 : [17, 18, 19, 20, 21, 23, 24]
+GROUP  29 : [25, 26, 27, 28, 30, 31, 32]
+GROUP  37 : [33, 34, 35, 36, 38, 39, 40]
+
+Final selected regions with rms of   8.41:  7 8 13 22 29 37 
+NCS operators used:  0 7 
+NCS-related regions (not used): 34 
+Final NCS ops used:  [0, 7]
+NCS file:segmented_maps_0/shifted_used_ncs.ncs_spec   Operators: 2
+
+Setting up but not writing output maps
+
+Radius for AU identification:    2.67 A
+Highest value in SD map is    2.10. Mean is    0.00 .  Lowest is   -0.27 
+Cutoff will be threshold marking about     7.1% of cell
+Model region of map (density above   0.407 ) includes     7.2% of map
+Points in starting mask: 41573
+Points in overall mask: 37120
+Points in both: 5362
+New size of overall mask:  41573
+Points in au: 41573  in ncs: 0  (total     8.0%)   both: 0 Not marked: 476827
+
+Expanding NCS AU if necessary...
+Size of AU mask: 41573  Current size of AU: 41573
+New size of AU mask: 41573
+Original bounds:    53     67      0  to   110    113     35
+Updated bounds:     52     64      0  to   112    115     35
+Using entire input map (box_ncs_au = False)
+
+Making two types of maps for AU of NCS mask and map with buffer of 5 grid units 
+in each direction around AU
+
+Combining remainder id 7 with original id 5 (overlaps = 29)
+
+Combining remainder id 8 with original id 22 (overlaps = 24)
+
+Combining remainder id 13 with original id 29 (overlaps = 54)
+
+Combining remainder id 22 with original id 29 (overlaps = 92)
+
+Combining remainder id 29 with original id 5 (overlaps = 28)
+
+Combining remainder id 37 with original id 37 (overlaps = 132)
+Final NCS ops used:  [0, 7]
+NCS file:segmented_maps_0/shifted_used_ncs.ncs_spec   Operators: 2
+
+Writing output maps
+Atoms written to segmented_maps_0/shifted_au_atoms.pdb
+
+Radius for AU identification:    2.67 A
+Highest value in SD map is    8.40. Mean is    0.00 .  Lowest is   -1.22 
+Cutoff will be threshold marking about    35.7% of cell
+Model region of map (density above   0.033 ) includes    35.8% of map
+Points in starting mask: 64820
+Points in overall mask: 185608
+Points in both: 32732
+New size of overall mask:  64820
+Points in au: 64820  in ncs: 0  (total    12.5%)   both: 0 Not marked: 453580
+
+Expanding NCS AU if necessary...
+Size of AU mask: 64820  Current size of AU: 64820
+New size of AU mask: 64820
+Original bounds:    30     67      0  to   110    113     35
+Updated bounds:     28     64      0  to   112    115     35
+Using entire input map (box_ncs_au = False)
+
+Making two types of maps for AU of NCS mask and map with buffer of 5 grid units 
+in each direction around AU
+Both types of maps have the same origin and overlay on segmented_maps_0/shifted_map.ccp4
+
+The standard maps (segmented_maps_0/segmented_maps_0/shifted_au_mask.ccp4, segmented_maps_0/segmented_maps_0/shifted_au_map.ccp4) have the 
+original cell dimensions.
+These maps show only the unique (NCS AU) part of the map.
+
+The cut out box_maps (segmented_maps_0/box_mask_au.ccp4, segmented_maps_0/box_map_au.ccp4) have 
+smaller cell dimensions.
+These maps also show only the unique part of the map and have this
+unique part cut out.
+
+Output NCS AU mask:  segmented_maps_0/shifted_au_mask.ccp4
+Output NCS AU map:  segmented_maps_0/shifted_au_map.ccp4
+Output NCS au as box (cut out) mask:  segmented_maps_0/box_mask_au.ccp4 
+Output NCS au as box (cut out) map:  segmented_maps_0/box_map_au.ccp4 
+
+Writing out region maps. These superimpose on the NCS AU map 
+and mask segmented_maps_0/box_map_au.ccp4, segmented_maps_0/box_mask_au.ccp4
+
+Writing region 5 (including remainder region 7) (including remainder region 29) to segmented_maps_0/map_5.ccp4
+Atoms representation written to segmented_maps_0/atoms_5.pdb
+Atoms written to segmented_maps_0/atoms_5.pdb
+Writing region 12 to segmented_maps_0/map_12.ccp4
+Atoms representation written to segmented_maps_0/atoms_12.pdb
+Atoms written to segmented_maps_0/atoms_12.pdb
+Writing region 22 (including remainder region 8) to segmented_maps_0/map_22.ccp4
+Atoms representation written to segmented_maps_0/atoms_22.pdb
+Atoms written to segmented_maps_0/atoms_22.pdb
+Writing region 29 (including remainder region 13) (including remainder region 22) to segmented_maps_0/map_29.ccp4
+Atoms representation written to segmented_maps_0/atoms_29.pdb
+Atoms written to segmented_maps_0/atoms_29.pdb
+Writing region 37 (including remainder region 37) to segmented_maps_0/map_37.ccp4
+Atoms representation written to segmented_maps_0/atoms_37.pdb
+Atoms written to segmented_maps_0/atoms_37.pdb
+Skipping remainder region 7 (already written out)
+Skipping remainder region 8 (already written out)
+Skipping remainder region 13 (already written out)
+Skipping remainder region 22 (already written out)
+Skipping remainder region 29 (already written out)
+Skipping remainder region 37 (already written out)
+
+ ==========  Summary of segmentation_info:  ======== 
+
+Created: Thu Aug 13 12:52:43 2026
+
+Input files used:
+
+Map file:map_to_model_0/map_as_p1.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+NCS file:map_to_model_0/ncs_from_symmetry.ncs_spec   Operators: 8
+Sequence file:/Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/seq.dat    Residues: 139
+
+Working unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+Estimated total number of residues: 1112
+Estimated solvent fraction: 0.643
+
+No origin offset applied
+
+Shifted/sharpened map, pdb and ncs files created (after origin offset):
+
+Map file:segmented_maps_0/shifted_map.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+NCS file:segmented_maps_0/shifted_ncs.ncs_spec   Operators: 8
+
+Output PDB file with dummy atoms representing the NCS AU:
+PDB file:segmented_maps_0/shifted_au_atoms.pdb 
+
+Output map files showing just the NCS AU (same size 
+and location as input map:
+
+Mask file:segmented_maps_0/shifted_au_mask.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+Map file:segmented_maps_0/shifted_au_map.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+
+Output cut-out map files trimmed to contain just the 
+NCS AU (superimposed on input map, note origin offset):
+
+Mask file:segmented_maps_0/box_mask_au.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+Map file:segmented_maps_0/box_map_au.ccp4 
+   Origin: 0  0  0   Extent: 120  120  36
+   Map unit cell: 113.9  113.9  32.5    90.0  90.0  90.0 
+
+Output PDB files representing one region of connected density.
+These are useful for marking where to look in cut-out map files.
+PDB file:segmented_maps_0/atoms_5.pdb 
+PDB file:segmented_maps_0/atoms_12.pdb 
+PDB file:segmented_maps_0/atoms_22.pdb 
+PDB file:segmented_maps_0/atoms_29.pdb 
+PDB file:segmented_maps_0/atoms_37.pdb 
+
+Output cut-out map files trimmed to contain just one region of 
+connected density (superimposed on  input map, note origin offset):
+
+Map file:segmented_maps_0/map_5.ccp4 ID: 1 Map ID: map_5.ccp4
+   Origin: 25  62  0   Extent: 85  54  36
+   Map unit cell: 80.7  51.3  32.5    90.0  90.0  90.0 
+Map file:segmented_maps_0/map_12.ccp4 ID: 2 Map ID: map_12.ccp4
+   Origin: 34  73  0   Extent: 30  33  36
+   Map unit cell: 28.5  31.3  32.5    90.0  90.0  90.0 
+Map file:segmented_maps_0/map_22.ccp4 ID: 3 Map ID: map_22.ccp4
+   Origin: 54  65  0   Extent: 62  54  36
+   Map unit cell: 58.9  51.3  32.5    90.0  90.0  90.0 
+Map file:segmented_maps_0/map_29.ccp4 ID: 4 Map ID: map_29.ccp4
+   Origin: 55  64  0   Extent: 30  48  36
+   Map unit cell: 28.5  45.6  32.5    90.0  90.0  90.0 
+Map file:segmented_maps_0/map_37.ccp4 ID: 5 Map ID: map_37.ccp4
+   Origin: 65  69  0   Extent: 25  23  36
+   Map unit cell: 23.7  21.8  32.5    90.0  90.0  90.0 
+
+==================================================
+
+
+Writing summary information to: segmented_maps_0/segment_and_split_map_info.pkl
+
+To restore original position of a PDB file built into these maps, use:
+phenix.segment_and_split_map info_file = segmented_maps_0/segment_and_split_map_info.pkl pdb_to_restore = mypdb.pdb
+
+As no sharpening is done, sharpened map file is same as input map 
+file (map_to_model_0/map_as_p1.ccp4)
+Done with segment_and_split_map
+Running on region 1
+
+================================================================================
+Running model-building looking for chain types: PROTEIN
+================================================================================
+
+
+Getting overall information from segmented_maps_0/shifted_au_map.ccp4
+Getting original map coeffs from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/map_coeffs_1.mtz as overall_map_coeffs
+
+Array assignments:
+map_coeffs : FWT  PHWT
+
+Overall map coefficients read from None with labels FWT,PHWT
+Using overall map for box_map as is_crystal = True
+
+Generating overall map based on segmented_maps_0/shifted_au_map.ccp4
+
+Sequence file for PROTEIN written to map_to_model_0/sequence_PROTEIN.dat
+
+Running model-building looking for PROTEIN
+
+Using NCS from segmented_maps_0/shifted_used_ncs.ncs_spec (offset) in combine_models
+
+Using full crystal symmetry for merging
+Running trace_and_build with high_density_from_model = False
+
+--------------------------------------------------------------------------------
+
+Running model-building on entire model for chain type PROTEIN
+
+Estimating solvent content for entire structure ...
+
+Initial estimate of solvent fraction: None
+New estimated solvent fraction:    0.59
+
+Running phase_and_build (trace_and_build) on entire structure for chain type PROTEIN
+
+
+Average grid spacing for this map is: 0.93 A 
+Created directory map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build
+Set non_expanded_atoms_radius as  1.00 (slightly greater than grid spacing)
+Set n_tries_target_p = 2 as quick = True
+Set n_tries_p_ratio = 5 as quick = True
+Set create_loop_maps = True 
+
+Input parameters for trace_and_build:
+
+input_files {
+  map_file = None
+  model_file = None
+  seq_file = None
+  marker_model_file = None
+  trace_model_file = None
+  input_scoring_file = None
+  fixed_model = None
+  placement_pickle_file = None
+}
+output_files {
+  pdb_out = "map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build.pdb"
+  output_scoring_file = None
+  output_model_file = None
+  output_marker_model_file = None
+  output_placement_pickle_file = None
+  temp_dir = "map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build"
+}
+crystal_info {
+  resolution = 4
+  scattering_table = *n_gaussian wk1995 it1992 electron neutron
+  chain_type = *PROTEIN
+  ca_ca_distance = 3.8
+  solvent_content = None
+  solvent_content_iterations = 3
+  use_mask_if_present = True
+  sequence = "LVLKWVMSTKYVEAGELKEGSYVVIDGEPCRVVEIEKSKTGKHGSAKARIVAVGVFDGGKRTLSLPVDAQVEVPIIEKFTAQILSVSGDVIQLMDMRDYKTIEVPMKYVEEEAKGRLAPGAEVEVWQILDRYKIIRVKG"
+  wrapping = False
+  origin_cart = None
+}
+strategy {
+  get_path_length_only = False
+  find_chains = True
+  extend_chains = False
+  connect_chains = False
+  length_variants_to_try = 1
+  allow_reverse = False
+  morph_ca_only = False
+  trace_outside_model = False
+  correct_segments = False
+  chains_from_fixed_model = True
+  rerun_with_avail_seq = False
+  mask_side_chains = False
+  same_chain_rmsd_max = 1
+  local_trace = True
+  split_and_join = False
+  test_threshold_fixed_segments = False
+  require_ends_in_region = False
+  try_alternate_joins = False
+  skip_path_if_missing = True
+  split_at_low_density = True
+  rejoin_split_fragments = True
+  trim_ends_and_join = False
+  keep_main_chain_path = False
+  high_density_from_model = False
+  max_grid_spacing = 1.4
+  target_grid_spacing = 1.2
+  min_grid_spacing = 0.8
+  target_min_grid_spacing = 1
+  pare_model = False
+  remove_clashes = True
+  trim_ends_extra_points = 1
+  min_sd_ratio = 0.1
+  sd_ratio_pare_model = 2.5
+  box_buffer = 5
+  box_size = 150 150 150
+  box_overlap_ratio = 3
+  vary_sharpening = None
+  maximum_duplication = 0.5
+  target_n_overlap = 10
+  ends_only = True
+  minimum_new_chain_length = 15
+  similar_threshold_ratio = 0.1
+  max_merge_cycles = 100
+  minimum_extension_length = 10
+  minimum_extension_improvement = 2
+  weight_path_by_density = True
+  weight_fixed_segments_by_density = False
+  final_connect_chains = True
+  path_density_weight = 2
+  min_weight_ratio = 0.0001
+  target_trim_length = 7.5
+  max_branch_length = 10
+  max_fract_non_contiguous = 0.25
+  max_fractional_branch_length = 0.5
+  matching_end_dist = 3
+  sharing_end_dist = 12
+  create_loop_maps = True
+  max_points_per_region_ratio = 1.5
+  max_points_per_region_ever = 12000
+  max_points_per_region = 4000
+  max_new_chains = 1
+  regions_for_new_chains = 3
+  max_loops = 10
+  half_window = 2
+  max_loop_iterations = 999
+  spacing = 1
+  intervals = 10
+  mean_density_ratio = 2
+  min_sd_to_mean = 0.2
+  residues_to_have_middle = 10
+  min_points_in_region = 10
+  max_points_in_region = 3000
+  sd_density_ratio = 0.5
+  threshold = None
+  threshold_low = None
+  threshold_high = None
+  save_threshold_info = False
+  threshold_from_model = False
+  test_threshold = False
+  sd_ratio_intervals = 1
+  sd_ratio_create = 1
+  sd_ratio = 2
+  min_fixed_model_segment_length = 4
+  mean_ratio = 0.25
+  minimum_fraction_intervals_to_try = 0.67
+  retry_long_branches = False
+  max_fraction_long_branches = 0.4
+  skip_remainder_on_non_completion = True
+  n_tries_furthest_length = 3
+  recent_fraction_length = 8
+  expand_size = 1
+  build_segments = True
+  first_cycle_for_fixing = None
+  score_cc_mask_offset = 0.5
+}
+trace_and_build {
+  min_segment_length = 15
+  max_segments = None
+  min_segments = 1
+  fix_insertions_deletions = False
+  convincing_delta_score = 10
+  find_helices_strands = True
+  minimum_length_angstroms_helices_strands = 12
+  trim_chains = True
+  min_dist_ik = 4.5
+  fill_gaps = True
+  tolerance_residue_distance = 2
+  dot_min = -0.2
+  minimum_length = 2
+  max_gap_residues = 2
+  max_trim_ends = 1
+  max_gap_dist = 3
+  minimum_relative_density = 0.5
+  get_marker_atoms_by_segment = True
+  minimum_size_marker_atoms_by_segment = 3375000
+  morph_segments = True
+  morphing_iterations = 3
+  points_per_atom = 3
+  shift_radius = 2
+  minimum_sites = 4
+  smoothing_window = 5
+  main_chain_radius = 1.5
+  side_chain_radius = 3
+  mask_atoms_radius = 2.5
+  delta_atoms_radius = 2
+  non_expanded_atoms_radius = 1
+  exclude_residues = 3
+  shell_radius = 0.5
+  cluster_width_ratio = 0.2
+  minimum_vector = 1
+  pruning_ratio = 3
+  n_short_min = 20
+  n_short_max = 20
+  n_short_delta = 40
+  ca_ca_distance_tol = 1
+  ca_ca_distance_tol_curves = 1
+  ca_ca_distance_curves = 3
+  residues_defining_curves = 3
+  sites_to_delete = 3
+  add_group = True
+  n_add_group = 10
+  n_tries_factor = 2
+  sites_cart_split_size = 1000
+}
+weights {
+  weight_vdw = 10
+  weight_ca_ca_dist = 1
+  weight_proximity_to_known_position = 0.5
+  weight_chain_follows_trace = 10
+  distance_chain_follows_trace = 0.5
+  weight_target_length = 0.5
+  weight_density = 1
+  weight_cc_mask_score = 1
+  weight_seq_score = 1
+  weight_x_gly_score = 1
+  weight_refine_rmsd = 0
+}
+trace_chain {
+  helices_strands_cc_min = 0.35
+  use_all_trace_chains = False
+  n_overlap = 2
+  n_random_frag = 100
+  n_sift_nona = 2
+  dist_ca_tol_start = 0.4
+  dist_ca_tol_max = 0.6
+  reject_ca_z_score = 2.5
+  reject_ca_fraction = 0.5
+  cc_ratio_min = None
+  combine_models_score_min = 3
+  rho_cut_min = 0.75
+  target_angle = 180
+  rho_cut_min_low = 1
+  rho_cut_min_high = 5
+  rho_cut_min_delta = None
+  rat_pair_min = 0.5
+  rad_sep_trace = 0.6
+  target_p_ratio = 4
+  target_n_ratio = 1
+  max_triple_ratio = None
+  max_pent_ratio = None
+  n_atoms_total_scale = 3
+  atom_target_ratio = 1
+  min_end_correl = 0.5
+  add_side_chains = True
+  user_end_ratio = 2
+  user_end_length = 3
+  rad_user = 2.5
+  time_per_volume = 5
+  n_tries_target_p = 2
+  n_tries_p_ratio = 5
+}
+sequencing {
+  random_sequences = None
+  positive_gap_penalty = None
+  negative_gap_penalty = None
+  max_gap_length = None
+  minimum_crossover_length = None
+  minimum_alignment_length = None
+  minimum_crossover_segment_length = 10
+  too_far_crossover = 0.75
+  too_much_further_crossover = 0.5
+  score_by_residue_groups = None
+  split_using_alignment = False
+}
+rebuilding {
+  refine = False
+  refine_b = None
+  refine_cycles = 1
+  good_enough_cc = None
+  minimum_contact_distance = 3
+  split_with_sequence = None
+  rebuild_length_worst = 15
+  max_insert_or_delete = 1
+  time_per_residue = 1
+  try_as_is = None
+  split_loop = None
+  mask_secondary_structure_in_split_loop = True
+  try_insertions = None
+  try_deletions = None
+  max_rebuild_cycles = None
+  macro_cycles = None
+  start_rebuild = None
+  end_rebuild = None
+  rebuild_segment = 1
+  min_z_score = 2.5
+  min_average_z_score = 2
+}
+control {
+  multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+  queue_run_command = None
+  nproc = 4
+  random_seed = 171731
+  verbose = False
+  write_maps = True
+  skip_temp_dir = None
+  trace_only = False
+  use_starting_model_ca_directly = False
+  use_starting_model_ca_as_guide = False
+  return_trace_fragments = False
+  quick = True
+  superquick = False
+  max_dirs = 1000
+  resolve_size = None
+  coarse_grid = None
+  em_side_density = False
+}
+gui {
+  output_dir = None
+}
+
+ =============================================================================== 
+            Estimating solvent content...
+ =============================================================================== 
+
+
+Initial estimate of solvent fraction: None
+New estimated solvent fraction:    0.52
+
+Solvent content estimate: 0.52 
+
+ =============================================================================== 
+ Creating fixed model with find_helices_stands 
+
+Reading fixed model (helices/strands model,  shifted location) from /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/find_helices_strands/helices_strands_shifted.pdb
+Fixed model obtained with 79 residues 
+Moved model chains with 69 residues inside box
+Wrote helices_strands model to map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/helices_strands.pdb
+
+Merging chains in fixed model with combine_models
+
+Running combine models on 69 residues in 1 models
+After combine models: 69 residues in 13 models
+Merged fixed model obtained with 69 residues 
+Wrote merged helices_strands model to map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/helices_strands_merged.pdb
+
+Using 69 fixed CA positions from map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/helices_strands_merged.pdb to start trace_chain
+Fixed model has 13 segments
+
+
+Setting up 13 fragments in parallel on 4 processors
+
+
+ =============================================================================== 
+  Log for fixed model segment 1  (others not shown unless verbose = True)  
+ =============================================================================== 
+
+
+ =============================================================================== 
+  End of log for fixed model segment 1  (others not shown unless verbose = True)  
+ =============================================================================== 
+
+
+ =============================================================================== 
+Running trace in 1 boxes of size [150, 150, 150] or less with overlap 10 
+ =============================================================================== 
+
+
+Setting up 1 local analyses in parallel on 1 processors
+
+
+ =============================================================================== 
+  Log for local analysis 1  (others not shown unless verbose = True)  
+ =============================================================================== 
+
+
+ =============================================================================== 
+ Tracing density in local box 1 :  (0, 0, 0) - (120, 120, 36)  
+ =============================================================================== 
+
+
+Average grid spacing for this map is: 0.93 A 
+Created directory map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/trace_1
+
+Input parameters for trace_and_build:
+
+input_files {
+  map_file = None
+  model_file = None
+  seq_file = None
+  marker_model_file = None
+  trace_model_file = None
+  input_scoring_file = None
+  fixed_model = None
+  placement_pickle_file = None
+}
+output_files {
+  pdb_out = None
+  output_scoring_file = None
+  output_model_file = None
+  output_marker_model_file = None
+  output_placement_pickle_file = None
+  temp_dir = "map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/trace_1"
+}
+crystal_info {
+  resolution = 4
+  scattering_table = *n_gaussian wk1995 it1992 electron neutron
+  chain_type = *PROTEIN
+  ca_ca_distance = 3.8
+  solvent_content = 0.516592145
+  solvent_content_iterations = 3
+  use_mask_if_present = True
+  sequence = "LVLKWVMSTKYVEAGELKEGSYVVIDGEPCRVVEIEKSKTGKHGSAKARIVAVGVFDGGKRTLSLPVDAQVEVPIIEKFTAQILSVSGDVIQLMDMRDYKTIEVPMKYVEEEAKGRLAPGAEVEVWQILDRYKIIRVKG"
+  wrapping = False
+  origin_cart = None
+}
+strategy {
+  get_path_length_only = False
+  find_chains = True
+  extend_chains = False
+  connect_chains = False
+  length_variants_to_try = 1
+  allow_reverse = False
+  morph_ca_only = False
+  trace_outside_model = False
+  correct_segments = False
+  chains_from_fixed_model = True
+  rerun_with_avail_seq = False
+  mask_side_chains = False
+  same_chain_rmsd_max = 1
+  local_trace = False
+  split_and_join = False
+  test_threshold_fixed_segments = False
+  require_ends_in_region = False
+  try_alternate_joins = False
+  skip_path_if_missing = True
+  split_at_low_density = True
+  rejoin_split_fragments = True
+  trim_ends_and_join = False
+  keep_main_chain_path = False
+  high_density_from_model = False
+  max_grid_spacing = 1.4
+  target_grid_spacing = None
+  min_grid_spacing = 0.8
+  target_min_grid_spacing = 1
+  pare_model = False
+  remove_clashes = True
+  trim_ends_extra_points = 1
+  min_sd_ratio = 0.1
+  sd_ratio_pare_model = 2.5
+  box_buffer = 5
+  box_size = 150 150 150
+  box_overlap_ratio = 3
+  vary_sharpening = None
+  maximum_duplication = 0.5
+  target_n_overlap = 10
+  ends_only = True
+  minimum_new_chain_length = 15
+  similar_threshold_ratio = 0.1
+  max_merge_cycles = 100
+  minimum_extension_length = 10
+  minimum_extension_improvement = 2
+  weight_path_by_density = True
+  weight_fixed_segments_by_density = False
+  final_connect_chains = True
+  path_density_weight = 2
+  min_weight_ratio = 0.0001
+  target_trim_length = 7.5
+  max_branch_length = 10
+  max_fract_non_contiguous = 0.25
+  max_fractional_branch_length = 0.5
+  matching_end_dist = 3
+  sharing_end_dist = 12
+  create_loop_maps = True
+  max_points_per_region_ratio = 1.5
+  max_points_per_region_ever = 12000
+  max_points_per_region = 4000
+  max_new_chains = 1
+  regions_for_new_chains = 3
+  max_loops = 10
+  half_window = 2
+  max_loop_iterations = 999
+  spacing = 1
+  intervals = 10
+  mean_density_ratio = 2
+  min_sd_to_mean = 0.2
+  residues_to_have_middle = 10
+  min_points_in_region = 10
+  max_points_in_region = 3000
+  sd_density_ratio = 0.5
+  threshold = None
+  threshold_low = None
+  threshold_high = None
+  save_threshold_info = False
+  threshold_from_model = False
+  test_threshold = False
+  sd_ratio_intervals = 1
+  sd_ratio_create = 1
+  sd_ratio = 2
+  min_fixed_model_segment_length = 4
+  mean_ratio = 0.25
+  minimum_fraction_intervals_to_try = 0.67
+  retry_long_branches = False
+  max_fraction_long_branches = 0.4
+  skip_remainder_on_non_completion = True
+  n_tries_furthest_length = 3
+  recent_fraction_length = 8
+  expand_size = 1
+  build_segments = True
+  first_cycle_for_fixing = None
+  score_cc_mask_offset = 0.5
+}
+trace_and_build {
+  min_segment_length = 15
+  max_segments = None
+  min_segments = 1
+  fix_insertions_deletions = False
+  convincing_delta_score = 10
+  find_helices_strands = False
+  minimum_length_angstroms_helices_strands = 12
+  trim_chains = True
+  min_dist_ik = 4.5
+  fill_gaps = True
+  tolerance_residue_distance = 2
+  dot_min = -0.2
+  minimum_length = 2
+  max_gap_residues = 2
+  max_trim_ends = 1
+  max_gap_dist = 3
+  minimum_relative_density = 0.5
+  get_marker_atoms_by_segment = True
+  minimum_size_marker_atoms_by_segment = 3375000
+  morph_segments = True
+  morphing_iterations = 3
+  points_per_atom = 3
+  shift_radius = 2
+  minimum_sites = 4
+  smoothing_window = 5
+  main_chain_radius = 1.5
+  side_chain_radius = 3
+  mask_atoms_radius = 2.5
+  delta_atoms_radius = 2
+  non_expanded_atoms_radius = 1
+  exclude_residues = 3
+  shell_radius = 0.5
+  cluster_width_ratio = 0.2
+  minimum_vector = 1
+  pruning_ratio = 3
+  n_short_min = 20
+  n_short_max = 20
+  n_short_delta = 40
+  ca_ca_distance_tol = 1
+  ca_ca_distance_tol_curves = 1
+  ca_ca_distance_curves = 3
+  residues_defining_curves = 3
+  sites_to_delete = 3
+  add_group = True
+  n_add_group = 10
+  n_tries_factor = 2
+  sites_cart_split_size = 1000
+}
+weights {
+  weight_vdw = 10
+  weight_ca_ca_dist = 1
+  weight_proximity_to_known_position = 0.5
+  weight_chain_follows_trace = 10
+  distance_chain_follows_trace = 0.5
+  weight_target_length = 0.5
+  weight_density = 1
+  weight_cc_mask_score = 1
+  weight_seq_score = 1
+  weight_x_gly_score = 1
+  weight_refine_rmsd = 0
+}
+trace_chain {
+  helices_strands_cc_min = 0.35
+  use_all_trace_chains = False
+  n_overlap = 2
+  n_random_frag = 100
+  n_sift_nona = 2
+  dist_ca_tol_start = 0.4
+  dist_ca_tol_max = 0.6
+  reject_ca_z_score = 2.5
+  reject_ca_fraction = 0.5
+  cc_ratio_min = None
+  combine_models_score_min = 3
+  rho_cut_min = 0.75
+  target_angle = 180
+  rho_cut_min_low = 1
+  rho_cut_min_high = 5
+  rho_cut_min_delta = None
+  rat_pair_min = 0.5
+  rad_sep_trace = 0.6
+  target_p_ratio = 4
+  target_n_ratio = 1
+  max_triple_ratio = None
+  max_pent_ratio = None
+  n_atoms_total_scale = 3
+  atom_target_ratio = 1
+  min_end_correl = 0.5
+  add_side_chains = True
+  user_end_ratio = 2
+  user_end_length = 3
+  rad_user = 2.5
+  time_per_volume = 5
+  n_tries_target_p = 2
+  n_tries_p_ratio = 5
+}
+sequencing {
+  random_sequences = None
+  positive_gap_penalty = None
+  negative_gap_penalty = None
+  max_gap_length = None
+  minimum_crossover_length = None
+  minimum_alignment_length = None
+  minimum_crossover_segment_length = 10
+  too_far_crossover = 0.75
+  too_much_further_crossover = 0.5
+  score_by_residue_groups = None
+  split_using_alignment = False
+}
+rebuilding {
+  refine = False
+  refine_b = None
+  refine_cycles = 1
+  good_enough_cc = None
+  minimum_contact_distance = 3
+  split_with_sequence = None
+  rebuild_length_worst = 15
+  max_insert_or_delete = 1
+  time_per_residue = 1
+  try_as_is = None
+  split_loop = None
+  mask_secondary_structure_in_split_loop = True
+  try_insertions = None
+  try_deletions = None
+  max_rebuild_cycles = None
+  macro_cycles = None
+  start_rebuild = None
+  end_rebuild = None
+  rebuild_segment = 1
+  min_z_score = 2.5
+  min_average_z_score = 2
+}
+control {
+  multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+  queue_run_command = None
+  nproc = 1
+  random_seed = 171731
+  verbose = False
+  write_maps = False
+  skip_temp_dir = None
+  trace_only = True
+  use_starting_model_ca_directly = False
+  use_starting_model_ca_as_guide = False
+  return_trace_fragments = False
+  quick = True
+  superquick = False
+  max_dirs = 1000
+  resolve_size = 12
+  coarse_grid = None
+  em_side_density = False
+}
+gui {
+  output_dir = None
+}
+
+Looking for connections and segments in model
+Starting number of fragments: 11
+Guess of mean density at atoms: 2.014 +/- 0.504 
+
+Examining thresholds from 1.006 to 13.171 in 10 intervals
+
+ =============================================================================== 
+ Examining map at threshold of 13.171 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 11.819 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 10.467 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 9.116 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 7.764 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 6.412 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 5.061 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 3.709 
+ ===============================================================================
+
+ =============================================================================== 
+ Examining map at threshold of 2.357 
+ ===============================================================================
+
+New segment of density found with length 25.7 A at threshold of 2.357
+ Creating new fragment and naming it 14 at threshold of 2.357
+ Finding best path for fragment 14
+ Longest branch from this path of length 27.03 A is 4.14 A 
+
+New segment of density found with length 24.4 A at threshold of 2.357
+ Creating new fragment and naming it 15 at threshold of 2.357
+ Finding best path for fragment 15
+ Longest branch from this path of length 26.85 A is 6.04 A 
+
+New segment of density found with length 24.4 A at threshold of 2.357
+ Creating new fragment and naming it 16 at threshold of 2.357
+ Finding best path for fragment 16
+ Longest branch from this path of length 26.85 A is 6.04 A 
+
+New segment of density found with length 24.4 A at threshold of 2.357
+ Creating new fragment and naming it 17 at threshold of 2.357
+ Finding best path for fragment 17
+ Longest branch from this path of length 26.85 A is 6.04 A 
+
+New segment of density found with length 24.4 A at threshold of 2.357
+ Creating new fragment and naming it 18 at threshold of 2.357
+ Finding best path for fragment 18
+ Longest branch from this path of length 26.85 A is 6.04 A 
+
+New segment of density found with length 25.7 A at threshold of 2.357
+ Creating new fragment and naming it 19 at threshold of 2.357
+ Finding best path for fragment 19
+ Longest branch from this path of length 29.55 A is 4.14 A 
+
+New segment of density found with length 22.6 A at threshold of 2.357
+ Creating new fragment and naming it 20 at threshold of 2.357
+ Finding best path for fragment 20
+ Longest branch from this path of length 25.05 A is 6.04 A 
+
+New segment of density found with length 22.6 A at threshold of 2.357
+ Creating new fragment and naming it 21 at threshold of 2.357
+ Finding best path for fragment 21
+ Longest branch from this path of length 25.05 A is 6.04 A 
+
+New segment of density found with length 22.6 A at threshold of 2.357
+ Creating new fragment and naming it 22 at threshold of 2.357
+ Finding best path for fragment 22
+ Longest branch from this path of length 25.05 A is 6.04 A 
+
+New segment of density found with length 22.6 A at threshold of 2.357
+ Creating new fragment and naming it 23 at threshold of 2.357
+ Finding best path for fragment 23
+ Longest branch from this path of length 25.05 A is 6.04 A 
+
+ =============================================================================== 
+ Examining map at threshold of 1.006 
+ ===============================================================================
+
+ Total of 21 fragments:
+
+  Region   Size   Length (A)   Branch (A)  Parents   Children
+     18     747      26.9        6.0              []          None
+     17     747      26.9        6.0              []          None
+     16     747      26.9        6.0              []          None
+     15     747      26.9        6.0              []          None
+     23     720      25.0        6.0              []          None
+     22     720      25.0        6.0              []          None
+     21     720      25.0        6.0              []          None
+     20     720      25.0        6.0              []          None
+      8     709      24.5        1.6            None          None
+     19     683      29.6        4.1              []          None
+     14     683      27.0        4.1              []          None
+      7     586      20.0        2.3            None          None
+     13     531      18.9        1.3            None          None
+      9     530      15.7        2.6            None          None
+      4     527      15.7        2.5            None          None
+     10     521      15.4        2.6            None          None
+     12     520      17.4        1.6            None          None
+      2     518      14.8        2.5            None          None
+      6     515      17.5        2.3            None          None
+      1     490      17.1        2.3            None          None
+     11     428      13.9        2.6            None          None
+
+ Constructed trace model with 391 points from 21 fragments
+
+ =============================================================================== 
+ Done tracing density in local box 1 :  (0, 0, 0) - (120, 120, 36)  
+ ===============================================================================
+
+ Total of 21 fragments after create_loop_maps 
+
+ =============================================================================== 
+ End of log for local analysis 1  (others not shown unless verbose = True)  
+ =============================================================================== 
+
+
+ =============================================================================== 
+    Sorted fragments from all boxes: 
+ =============================================================================== 
+
+
+ Total of 21 fragments:
+
+  Region   Size   Length (A)   Branch (A)  Parents   Children
+     19     683      29.6        4.1              []          None
+     14     683      27.0        4.1              []          None
+     15     747      26.9        6.0              []          None
+     18     747      26.9        6.0              []          None
+     17     747      26.9        6.0              []          None
+     16     747      26.9        6.0              []          None
+     21     720      25.0        6.0              []          None
+     22     720      25.0        6.0              []          None
+     20     720      25.0        6.0              []          None
+     23     720      25.0        6.0              []          None
+      8     709      24.5        1.6            None          None
+      7     586      20.0        2.3            None          None
+     13     531      18.9        1.3            None          None
+      6     515      17.5        2.3            None          None
+     12     520      17.4        1.6            None          None
+      1     490      17.1        2.3            None          None
+      9     530      15.7        2.6            None          None
+      4     527      15.7        2.5            None          None
+     10     521      15.4        2.6            None          None
+      2     518      14.8        2.5            None          None
+     11     428      13.9        2.6            None          None
+Removing duplicates...
+
+ =============================================================================== 
+   Sorted fragments after removing duplicates: 
+ =============================================================================== 
+
+
+ Total of 21 fragments:
+
+  Region   Size   Length (A)   Branch (A)  Parents   Children
+     19     683      29.6        4.1              []          None
+     14     683      27.0        4.1              []          None
+     15     747      26.9        6.0              []          None
+     18     747      26.9        6.0              []          None
+     17     747      26.9        6.0              []          None
+     16     747      26.9        6.0              []          None
+     21     720      25.0        6.0              []          None
+     22     720      25.0        6.0              []          None
+     20     720      25.0        6.0              []          None
+     23     720      25.0        6.0              []          None
+      8     709      24.5        1.6            None          None
+      7     586      20.0        2.3            None          None
+     13     531      18.9        1.3            None          None
+      6     515      17.5        2.3            None          None
+     12     520      17.4        1.6            None          None
+      1     490      17.1        2.3            None          None
+      9     530      15.7        2.6            None          None
+      4     527      15.7        2.5            None          None
+     10     521      15.4        2.6            None          None
+      2     518      14.8        2.5            None          None
+     11     428      13.9        2.6            None          None
+
+ =============================================================================== 
+    Sorted fragments after merging: 
+ =============================================================================== 
+
+
+ Total of 21 fragments:
+
+  Region   Size   Length (A)   Branch (A)  Parents   Children
+     19     683      29.6        4.1              []          None
+     14     683      27.0        4.1              []          None
+     15     747      26.9        6.0              []          None
+     18     747      26.9        6.0              []          None
+     17     747      26.9        6.0              []          None
+     16     747      26.9        6.0              []          None
+     21     720      25.0        6.0              []          None
+     22     720      25.0        6.0              []          None
+     20     720      25.0        6.0              []          None
+     23     720      25.0        6.0              []          None
+      8     709      24.5        1.6            None          None
+      7     586      20.0        2.3            None          None
+     13     531      18.9        1.3            None          None
+      6     515      17.5        2.3            None          None
+     12     520      17.4        1.6            None          None
+      1     490      17.1        2.3            None          None
+      4     527      15.7        2.5            None          None
+      9     530      15.7        2.6            None          None
+     10     521      15.4        2.6            None          None
+      2     518      14.8        2.5            None          None
+     11     428      13.9        2.6            None          None
+
+ =============================================================================== 
+ Total of 21 region maps available
+ 
+ ===============================================================================
+NOTE: maps cut out from original map data
+ Wrote path file for region 19 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_19.pdb
+ Wrote path file for region 14 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_14.pdb
+ Wrote path file for region 15 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_15.pdb
+ Wrote path file for region 18 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_18.pdb
+ Wrote path file for region 17 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_17.pdb
+ Wrote path file for region 16 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_16.pdb
+ Wrote path file for region 21 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_21.pdb
+ Wrote path file for region 22 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_22.pdb
+ Wrote path file for region 20 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_20.pdb
+ Wrote path file for region 23 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_23.pdb
+ Wrote path file for region 8 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_8.pdb
+ Wrote path file for region 7 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_7.pdb
+ Wrote path file for region 13 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_13.pdb
+ Wrote path file for region 6 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_6.pdb
+ Wrote path file for region 12 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_12.pdb
+ Wrote path file for region 1 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_1.pdb
+ Wrote path file for region 9 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_9.pdb
+ Wrote path file for region 4 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_4.pdb
+ Wrote path file for region 10 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_10.pdb
+ Wrote path file for region 2 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_2.pdb
+ Wrote path file for region 11 to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/path_11.pdb
+
+Wrote coot commands to /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/coot_run.scm
+
+ Constructed trace model with 391 points from 21 fragments
+
+ =============================================================================== 
+            Tracing chain and combining with fixed model
+ =============================================================================== 
+
+
+Total of 21 segments with 391 marker atoms obtained
+Atoms found: CA 
+
+ =============================================================================== 
+            Selecting longest segments
+ =============================================================================== 
+
+Skipping segment  2 and remaining with approximate length = 7.1 residues or less
+
+Number of segments after sorting: 1
+Segment   Sites (approx)
+1       8 
+
+ =============================================================================== 
+            Creating new backbone trace...
+ =============================================================================== 
+
+
+Setting up local chain path...
+
+Setting up marker points in small boxes
+Total marker sites for segment 1: 165 
+Added 165 of 165 marker sites for segment 1
+Total of 165 marker sites found
+
+Removing weak marker points (focus on main chain)
+Replaced sites_cart_marker: 165
+Marker sites after trimming: 31  Mean density: 3.39 
+
+Selecting marker points in shells around path of chain...
+Morphing path of chain to be near marker points...
+
+Cycle 1 of morphing chain trace 
+
+ =============================================================================== 
+            Morphing each segment
+ =============================================================================== 
+
+
+Running segment morphing on 1 segments in parallel on 1 processors
+
+RMS shift (segment 1): 0.46 A for 76 sites
+Replaced sites_cart_marker: 165
+Marker sites after trimming: 34  Mean density: 3.30 
+Cycle 2 of morphing chain trace 
+
+ =============================================================================== 
+            Morphing each segment
+ =============================================================================== 
+
+
+Running segment morphing on 1 segments in parallel on 1 processors
+
+RMS shift (segment 1): 0.14 A for 61 sites
+Replaced sites_cart_marker: 165
+Marker sites after trimming: 34  Mean density: 3.30 
+Cycle 3 of morphing chain trace 
+
+ =============================================================================== 
+            Morphing each segment
+ =============================================================================== 
+
+
+Running segment morphing on 1 segments in parallel on 1 processors
+
+RMS shift (segment 1): 0.08 A for 61 sites
+Replaced sites_cart_marker: 165
+Marker sites after trimming: 35  Mean density: 3.25 
+
+ =============================================================================== 
+            Building chain for each segment
+ =============================================================================== 
+
+ =============================================================================== 
+            Running build_chains on segment 1
+ =============================================================================== 
+
+ =============================================================================== 
+            Finding CB positions from clustered CB direction vectors segment 1
+ =============================================================================== 
+
+ CB direction-vector clusters found for segment 1: 2
+
+ =============================================================================== 
+            Inserting CA if necessary segment 1
+ =============================================================================== 
+
+ Expecting to add about  5 sites to 2 already there given path length of 29.4 A
+
+ Creating composite model for segment 1 with 5 CA and 2 CB atoms
+
+ =============================================================================== 
+           
+ Creating all-atom models in forward direction only
+
+ =============================================================================== 
+
+Scoring 1 new all-atom models 
+Creating all-atom model for model 1
+
+ =============================================================================== 
+ Running refine_ca to refine and make full model for forward segment 1  version 1 
+ =============================================================================== 
+
+
+Input parameters for refine_ca_model:
+
+input_files {
+  map_file = None
+  model_file = None
+}
+output_files {
+  target_output_format = *None pdb mmcif
+  pdb_out = None
+  temp_dir = None
+}
+crystal_info {
+  resolution = 4
+  scattering_table = n_gaussian wk1995 it1992 *electron neutron
+  chain_type = *PROTEIN
+  ca_ca_distance = 3.8
+  solvent_content = 0.516592145
+  solvent_content_iterations = 3
+  cb_up_from_ca = 1.36
+  cb_right_from_ca = 0.68
+  cb_scale = 0.8
+  origin_cart = None
+}
+refine {
+  refine_group_length = 10
+  refine_in_groups = False
+  refine_start = None
+  refine_end = None
+  residual_start = None
+  residual_end = None
+  max_iterations = 10
+}
+weights {
+  weight_ca_ca_dist = 1
+  weight_cb = 5
+  weight_proximity_to_initial_position = 0.5
+  weight_density = -1
+  weight_cb_density = -5
+}
+control {
+  nproc = 1
+  random_seed = 171731
+  resolve_size = None
+  ignore_symmetry_conflicts = False
+  verbose = False
+  skip_optimization = False
+  max_dirs = 1000
+}
+gui {
+  output_dir = None
+}
+Residue numbers included in analysis: 1:5
+Residue numbers included in refinement : 1:5
+Total of 5 CA atoms in analysis
+Total of 1 CB atoms used in analysis 
+Mean initial density at CA sites (not normalized): 3.82 
+
+Optimizing CA/CB positions ...
+
+
+Analysis of refined CA/CB model
+
+
+Rms from initial positions: 0.41 A . Score: 0.20 
+
+Rms deviation from CA-CA distance of 3.80 A:   0.98 A . Score: 0.98 
+
+Rms CB from initial positions: 0.00 A . Score: 0.02 
+
+Mean normalized density at 9 CA and mid-point sites: 0.82 
+Mean normalized density at 3 CB sites: 0.69 
+Density score: 1.72 
+
+Total sites for density: 9 (5 sites, 3 mid-point, 1 mid-mid-point, 3 CB )
+
+Mean normalized density at 9 CA and mid-point sites: 0.82 
+Mean normalized density at 3 CB sites: 0.69 
+
+Total sites for density: 9 (5 sites, 3 mid-point, 1 mid-mid-point, 3 CB )
+
+Total score (low is better): 2.93 
+================================================================================
+Taking model with 5 residues 
+Scoring 1 all-atom models 
+
+Added 1 versions of model 1
+
+ =============================================================================== 
+           
+ Taking forward direction only for segment 1
+ =============================================================================== 
+
+
+ =============================================================================== 
+           
+ Taking forward direction only for segment 1
+
+ =============================================================================== 
+            Results after building each segment
+ =============================================================================== 
+
+
+Results for segment 1: 5 residues and score of 4.00
+
+ =============================================================================== 
+            Writing out working models
+ ===============================================================================
+
+Wrote subdivided morphed backbone trace for segment 1 as sites in map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/final_sites_1.pdb
+Wrote full model for segment 1 with 5 residues in map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/best_model_1.pdb
+
+ =============================================================================== 
+            Creating new model from 1 segments...
+ =============================================================================== 
+
+Combining 1 segments to create new model
+Segment 1 with score of 4.00
+
+Running combine models on 5 residues in 1 models
+Final model with 5 residues and score of 4.00
+
+Final model written in temp directory to map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/trace_and_build.pdb
+Final overall model with 5 residues written to map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/trace_and_build.pdb
+
+
+Model from trace_and_build for PROTEIN building written to: map_to_model_0/model_trace_and_build_PROTEIN_1.pdb
+
+Writing (shifted) output model
+
+Shifting hierarchy...starting centroid: (  66.62,   88.61,   27.16) 
+Shifted centroid: (  66.62,   88.61,   27.16) 
+
+Temporarily shifting again (compare with box_overall_map)
+Starting centroid: (  66.62,   88.61,   27.16) 
+Ending centroid matching box_overall_map: (  66.62,   88.61,   27.16)
+ 
+Map-model CC:   0.59 (discarding shifted model)
+
+Working centroid model-building object: (  66.62,   88.61,   27.16) 
+
+Model-building info for region ALL:  Chains: 1  Residues: 5 
+Model-map CC (local):  0.59 
+Model in map_to_model_0/model_trace_and_build_PROTEIN_1.pdb
+Model 1 centroid at: (  66.62,   88.61,   27.16) 
+Shifting from the position of the shifted map to the position 
+of the original map.
+Coordinate shift: (   0.00,    0.00,    0.00) 
+Wrote shifted pdb file to map_to_model_0/model_trace_and_build_PROTEIN_1_shifted.pdb
+Wrote model from trace_and_build for PROTEIN building 
+(original coordinate system) to map_to_model_0/model_trace_and_build_PROTEIN_1_shifted.pdb
+CALLBACK: standard model map_to_model_0/model_trace_and_build_PROTEIN_1_shifted.pdb with CC = 0.59 
+
+Writing (shifted) output model
+
+Shifting hierarchy...starting centroid: (  66.62,   88.61,   27.16) 
+Shifted centroid: (  66.62,   88.61,   27.16) 
+
+Temporarily shifting again (compare with box_overall_map)
+Starting centroid: (  66.62,   88.61,   27.16) 
+Ending centroid matching box_overall_map: (  66.62,   88.61,   27.16)
+ 
+Map-model CC:   0.59 (discarding shifted model)
+
+Working centroid model-building object: (  66.62,   88.61,   27.16) 
+
+Merged model for PROTEIN building (matching e.g., box_map_au.ccp4) written to: map_to_model_0/model_PROTEIN.pdb
+
+Model-building info for region ALL:  Chains: 1  Residues: 5 
+Model-map CC (local):  0.59 
+Model in map_to_model_0/model_PROTEIN.pdb
+Model 1 centroid at: (  66.62,   88.61,   27.16) 
+Shifting from the position of the shifted map to the position 
+of the original map.
+Coordinate shift: (   0.00,    0.00,    0.00) 
+Wrote shifted pdb file to map_to_model_0/model_PROTEIN_shifted.pdb
+Wrote model from merged PROTEIN building 
+(original coordinate system) to map_to_model_0/model_PROTEIN_shifted.pdb
+CALLBACK: Merged model map_to_model_0/model_PROTEIN_shifted.pdb with CC = 0.59 
+
+   For tracking_data run, models are superimposed on shifted map (original
+     offset to put  origin at (0, 0, 0).  Shifted au map is cut-out version of
+        shifted map, shifted a second time to origin.
+   Shifting models to match shifted au map: move from shifted map to
+     shifted au map before merging.
+    
+
+Merging models from build of PROTEIN 
+
+Map-model CC after merging:    0.59 
+Wrote unrefined model (offset coordinates) to map_to_model_0/unrefined_model_box_au_map_shifted.pdb
+Wrote matching map to map_to_model_0/box_au_map_shifted.ccp4
+
+Shifting models back to match shifted map now...
+
+Writing (shifted) output model
+
+Shifting hierarchy...starting centroid: (  66.62,   88.61,   27.16) 
+Shifted centroid: (  66.62,   88.61,   27.16) 
+
+Working centroid model-building object: (  66.62,   88.61,   27.16) 
+
+Merged models (all chain types) in map_to_model_0/final_model_PROTEIN.pdb 
+
+Model-building info for region ALL:  Chains: 1  Residues: 5 
+Model-map CC (local):  0.59 
+Model in map_to_model_0/final_model_PROTEIN.pdb
+Model 1 centroid at: (  66.62,   88.61,   27.16) 
+Shifting from the position of the shifted map to the position 
+of the original map.
+Coordinate shift: (   0.00,    0.00,    0.00) 
+Wrote shifted pdb file to map_to_model_0/final_model_PROTEIN_shifted.pdb
+Wrote refined model (original coordinate system) to map_to_model_0/final_model_PROTEIN_shifted.pdb
+CALLBACK Model file: map_to_model_0/final_model_PROTEIN_shifted.pdb with CC = 0.59 
+
+Model-building info for region ALL:  Chains: 1  Residues: 5 
+Model-map CC (local):  0.59 
+Model in map_to_model_0/final_model_PROTEIN.pdb
+Model 1 centroid at: (  66.62,   88.61,   27.16) 
+Output crystal symmetry: I 4 (No. 79)
+
+Final offset model with 5 residues written to map_to_model_0/map_to_model.pdb
+Final model copied to map_to_model.pdb
+CALLBACK: Final model map_to_model.pdb with CC = 0.59 
+
+Coot run file with tracing and local maps: /Users/terwill/Downloads/GUI_TESTS/CRYSTALS_C/MapToModel_412/map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/coot_run.scm 
+
+Output model from trace and build: map_to_model_0/TEMP_BUILD_ONE_trace_and_build_PROTEIN_1/tnb/trace_and_build/trace_and_build.pdb
+Finished with map_to_model
+
+===============================================================================
+Job complete
+usr+sys time: 78.45 seconds
+wall clock time: 86.93 seconds

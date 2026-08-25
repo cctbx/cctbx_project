@@ -28,6 +28,19 @@ def _log_path(chat_root, prefix):
   return chat_root / "logs" / ("%s-%s.log" % (prefix, ts))
 
 
+def _restrict(path, mode):
+  """Best-effort tighten permissions on ``path`` (POSIX; a near-no-op on
+  Windows). Chat logs carry only-best-effort-redacted tracebacks and the raw
+  coot log is un-redacted, so on a shared project dir they must not be
+  world-readable -- set the mode explicitly rather than trust the ambient
+  umask. A chmod failure must never stop a log from opening."""
+  import os
+  try:
+    os.chmod(str(path), mode)
+  except OSError:
+    pass
+
+
 def _prepare_log(chat_root, prefix):
   """Create ``chat_root/logs``, prune old ``<prefix>-*.log``, return a new path.
 
@@ -38,6 +51,7 @@ def _prepare_log(chat_root, prefix):
   """
   log_dir = chat_root / "logs"
   log_dir.mkdir(parents=True, exist_ok=True)
+  _restrict(log_dir, 0o700)
   _prune_old_logs(log_dir, "%s-*.log" % prefix)
   return _log_path(chat_root, prefix)
 
@@ -50,7 +64,9 @@ def _open_log(chat_root, prefix):
   (same ``LOG_KEEP``, separate globs). The caller owns the returned handle.
   """
   path = _prepare_log(chat_root, prefix)
-  return _RedactingLog(open(path, "w", buffering=1, encoding="utf-8")), path
+  fh = open(path, "w", buffering=1, encoding="utf-8")
+  _restrict(path, 0o600)
+  return _RedactingLog(fh), path
 
 
 def open_raw_log(chat_root, prefix):
@@ -68,13 +84,19 @@ def open_raw_log(chat_root, prefix):
       The open append-mode handle and its path; the caller owns the handle.
   """
   path = _prepare_log(chat_root, prefix)
-  return open(path, "a", encoding="utf-8"), path
+  fh = open(path, "a", encoding="utf-8")
+  _restrict(path, 0o600)
+  return fh, path
 
 
 def open_session_log(chat_root):
   """Open a redacting session log, creating the dir and pruning old logs.
 
   The caller owns the returned handle and must close it.
+
+  Named ``agent-<TS>.log``. Rotation globs on that prefix, so session logs
+  written under the former ``chat-`` name are not pruned by it and stay
+  until removed by hand.
 
   Parameters
   ----------
@@ -86,7 +108,7 @@ def open_session_log(chat_root):
   tuple of (_RedactingLog, pathlib.Path)
       The open, line-buffered, redacting log handle and its path.
   """
-  return _open_log(chat_root, "chat")
+  return _open_log(chat_root, "agent")
 
 
 def open_debug_log(chat_root):
@@ -94,7 +116,7 @@ def open_debug_log(chat_root):
 
   Distinct from :func:`open_session_log`: only created when the launcher
   is invoked with ``--debug``. Collects what would otherwise be lost
-  when ``phenix.chat`` runs without a visible terminal -- uncaught
+  when ``phenix.agent`` runs without a visible terminal -- uncaught
   exceptions, ``AgentError`` events surfaced by the runner, and (for the
   claude_code backend) the SDK's ``debug_stderr`` stream. Same
   ``LOG_KEEP`` rotation as session logs but tracked separately so debug

@@ -1855,7 +1855,6 @@ def assess_cryoem_errors(
         mmm=None,
         d_min=None,
         half_maps_provided=False,
-        determine_ordered_volume=True,
         sphere_cent=None,
         radius=None,
         double_map_box=False,
@@ -1877,9 +1876,9 @@ def assess_cryoem_errors(
     target region
 
   Optional arguments:
-  determine_ordered_volume: flag for whether ordered volume should be assessed
-    (only applicable for half-maps)
-  ordered_mask_id: identifier for mask defining ordered volume
+  ordered_mask_id: identifier for mask defining ordered volume, already
+    present in mmm (e.g. added by add_ordered_volume_mask). Ordered volume
+    is assessed (only applicable for half-maps) iff this is not None.
   sphere_cent: center of sphere defining target region for analysis
     default is center of map
   radius: radius of sphere
@@ -1888,13 +1887,11 @@ def assess_cryoem_errors(
   shift_map_origin: should map coefficients be shifted to correspond to
     original origin, rather than the origin being the corner of the box,
     default True
-  define_ordered_volume: should ordered volume over full map be evaluated, to
-    compare with cutout volume,
-    default True
   keep_full_map: don't mask or box the input map
     default False, use with caution
   verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
   """
+  determine_ordered_volume = (ordered_mask_id is not None)
 
   if verbosity > 0:
     print("\nPrepare map for docking by assessing signal and errors", file=log)
@@ -2342,7 +2339,6 @@ def run():
                         mmm=mmm,
                         d_min=d_min,
                         half_maps_provided=half_maps_provided,
-                        determine_ordered_volume=determine_ordered_volume,
                         sphere_cent=sphere_cent,
                         radius=radius,
                         double_map_box=double_map_box,

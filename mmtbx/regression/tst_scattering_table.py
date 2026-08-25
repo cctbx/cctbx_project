@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 import time, os
+import pickle
 import iotbx.pdb
 import mmtbx.model
 from cctbx import crystal
@@ -55,8 +56,10 @@ def tst000():
         if deep_copy:
           model = model.deep_copy()
         xrs = model.get_xray_structure()
-        assert (xrs.scattering_type_registry_params.table == table)
-        assert (xrs.get_scattering_table() == table)
+        actual1 = xrs.scattering_type_registry_params.table
+        assert actual1 == table, f"Expected {table}, got {actual1}"
+        actual2 = xrs.get_scattering_table()
+        assert actual2 == table, f"Expected {table}, got {actual2}"
 
 # ------------------------------------------------------------------------------
 
@@ -202,6 +205,56 @@ def tst003():
 
 # ------------------------------------------------------------------------------
 
+def tst004():
+  """
+  Test scattering table consistency after pickling a model.
+
+  mmtbx.model.manager.__getstate__ drops _xray_structure before pickling, so
+  the unpickled model rebuilds it lazily from the hierarchy. Without restoring
+  the scattering table the rebuilt xray_structure silently falls back to the
+  default table and then computes *different* structure factors than the model
+  that was pickled.
+
+  Returns
+  -------
+  None
+
+  Raises
+  ------
+  AssertionError
+      If the scattering table, its d_min, or the resulting scattering factors
+      differ between the original and the unpickled model.
+  """
+  def gaussians(model):
+    reg = model.get_xray_structure().scattering_type_registry()
+    return dict((k, (v.n_terms(), tuple(v.array_of_a()), tuple(v.array_of_b()),
+                     v.c()))
+                for k, v in reg.as_type_gaussian_dict().items())
+  for table in ["n_gaussian", "wk1995", "it1992", "electron"]:
+    for d_min in [None, 2.0]:
+      pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+      model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+      model.setup_scattering_dictionaries(scattering_table=table, d_min=d_min)
+      expected = gaussians(model)
+      #
+      unpickled = pickle.loads(pickle.dumps(model, -1))
+      xrs = unpickled.get_xray_structure()
+      # the table must have survived the round trip ...
+      assert (xrs.get_scattering_table() == table), \
+        "table %s d_min %s: got %s" % (table, d_min, xrs.get_scattering_table())
+      assert (xrs.scattering_type_registry_params.table == table)
+      # ... together with the d_min it was set up with, because "n_gaussian"
+      # at a different d_min is a different table
+      assert (xrs.scattering_type_registry_params.d_min == d_min), \
+        "table %s d_min %s: got %s" % (
+          table, d_min, xrs.scattering_type_registry_params.d_min)
+      # and, most importantly, the actual scattering factors must be identical
+      assert (gaussians(unpickled) == expected), \
+        "table %s d_min %s: scattering factors changed by pickling" % (
+          table, d_min)
+
+# ------------------------------------------------------------------------------
+
 if(__name__ == "__main__"):
   """
   Run the scattering table tests.
@@ -212,6 +265,7 @@ if(__name__ == "__main__"):
      the xray_structure retrieved from the fmodel object
   - `tst002()`: Ensure consistency after xrs.select()
   - `tst003()`: illustrate toy example
+  - `tst004()`: Ensure consistency after pickling a model
 
   Returns
   -------
@@ -222,4 +276,5 @@ if(__name__ == "__main__"):
   tst001()
   tst002()
   tst003() # toy example
+  tst004()
   print("OK. Time: %8.3f"%(time.time()-t0))

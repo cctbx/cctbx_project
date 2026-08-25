@@ -14,22 +14,50 @@ from qttbx.widgets.chat.markdown_view import MarkdownView
 
 
 class _ThinkingCell(QtWidgets.QFrame):
+  """Italic grey ``[thinking] ...`` cell.
+
+  The text renders in a read-only, frameless, transparent, auto-height
+  QPlainTextEdit -- the same recipe as ToolCallDisclosure's args/result
+  views -- rather than a QLabel, so conversation search can highlight
+  matches with the same extra-selections machinery as every other text
+  cell. QPlainTextEdit has no rich-text path, so model-controlled text
+  stays literal; as a side effect the text becomes mouse-selectable,
+  matching the markdown cells.
+  """
+
   def __init__(self, text, parent=None):
     super().__init__(parent)
     self.setFrameShape(QtWidgets.QFrame.NoFrame)
     layout = QtWidgets.QVBoxLayout(self)
     layout.setContentsMargins(6, 2, 6, 2)
-    label = QtWidgets.QLabel("[thinking] %s" % (text or ""), self)
-    # Thinking text is model-controlled: render literally (no rich text).
-    label.setTextFormat(QtCore.Qt.PlainText)
-    label.setWordWrap(True)
-    label.setStyleSheet("color: palette(mid); font-style: italic;")
-    layout.addWidget(label)
-    self._label = label
+    view = QtWidgets.QPlainTextEdit(self)
+    view.setReadOnly(True)
+    view.setFrameStyle(QtWidgets.QFrame.NoFrame)
+    # Italic goes on the QFont (not the stylesheet) so the
+    # fontMetrics-based auto-height math measures the rendered font.
+    font = view.font()
+    font.setItalic(True)
+    view.setFont(font)
+    view.setStyleSheet("background: transparent; color: palette(mid);")
+    # The old QLabel had no inner document margin; drop QPlainTextEdit's
+    # default 4 px so the text inset stays pixel-compatible.
+    view.document().setDocumentMargin(0)
+    view.setPlainText("[thinking] %s" % (text or ""))
+    from qttbx.widgets.chat.auto_height import set_auto_height
+    set_auto_height(view)
+    layout.addWidget(view)
+    self.view = view
 
   def append(self, text):
-    cur = self._label.text()
-    self._label.setText(cur + (text or ""))
+    if not text:
+      return
+    cursor = self.view.textCursor()
+    cursor.movePosition(QtGui.QTextCursor.End)
+    cursor.insertText(text)
+
+  def searchable_cells(self):
+    """This cell's searchable text: the inner view, kind ``"thinking"``."""
+    return [("thinking", self.view)]
 
 
 class _ImageCell(QtWidgets.QFrame):
@@ -41,8 +69,8 @@ class _ImageCell(QtWidgets.QFrame):
 
   ``clicked(conv_id, sha256)`` is the only public signal -- it
   propagates up through MessageBubble.image_clicked and
-  ConversationView.image_clicked to ChatWindow._on_image_clicked, which
-  uses the two strings to look up the artifact in the side panel.
+  ConversationView.image_clicked to the application's image-click handler,
+  which uses the two strings to look up the artifact in the side panel.
 
   Parameters
   ----------
@@ -335,29 +363,6 @@ class MessageBubble(QtWidgets.QFrame):
     else:
       self._text_view.append_markdown(text or "")
 
-  def add_text(self, text):
-    """Append a text block to the bubble.
-
-    The first call gets the bold-prefixed role marker (``You:`` for user
-    turns, the backend's display name -- e.g. ``Claude:`` / ``GPT:`` -- for
-    assistant turns); subsequent calls render as plain markdown. Also
-    mirrors into ``message.content`` so ``combined_text()`` stays
-    consistent.
-
-    Returns
-    -------
-    MarkdownView
-        The shared text view the block was appended to.
-    """
-    self._append_text_markdown(text)
-    last = self.message.content[-1] if self.message.content else None
-    if last is not None and last.type == "text":
-      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
-    else:
-      self.message.content.append(
-        ContentBlock(type="text", data={"text": text or ""}))
-    return self._text_view
-
   def first_text_cell_html(self):
     """Return the HTML of the first text cell.
 
@@ -373,6 +378,30 @@ class MessageBubble(QtWidgets.QFrame):
     if hasattr(self._first_text_cell, "toHtml"):
       return self._first_text_cell.toHtml()
     return self._first_text_cell.text()
+
+  def searchable_cells(self):
+    """Ordered ``(kind, widget)`` pairs of this bubble's searchable text.
+
+    Each cell class reports its own pairs through the duck-typed
+    ``searchable_cells()`` protocol (MarkdownView -> ``"text"``, a
+    thinking cell -> ``"thinking"``, a tool disclosure -> its ``"tool"``
+    args/result views); the bubble just concatenates them. Walks the
+    layout -- NOT ``_thinking_cell``, which only ever points at the
+    LAST thinking cell (``_add_block`` overwrites it per thinking
+    block) -- so every cell appears, in display order.
+
+    Returns
+    -------
+    list of (str, QtWidgets.QWidget)
+        Scope-key / text-widget pairs in display order.
+    """
+    cells = []
+    for i in range(self._layout.count()):
+      w = self._layout.itemAt(i).widget()
+      report = getattr(w, "searchable_cells", None)
+      if report is not None:
+        cells.extend(report())
+    return cells
 
   # ---- image cells --------------------------------------------------------
 
@@ -462,9 +491,11 @@ class MessageBubble(QtWidgets.QFrame):
     elapsed : optional
         Elapsed-time suffix appended to the finished status when set.
     result : optional
-        Result payload rendered into the cell when set.
+        Result payload rendered into the cell body when set.
     error : optional
-        Error message; transitions the cell to a failed state when set.
+        Error message; transitions the cell to a failed state when set and
+        is rendered into the cell body. Independent of ``result`` -- pass
+        both and the body shows the partial output followed by the error.
     cancelled : bool, optional
         When true, transitions the cell to a cancelled state.
     """
@@ -474,7 +505,19 @@ class MessageBubble(QtWidgets.QFrame):
     if cancelled:
       cell.set_status("cancelled", color="cancelled")
     elif error is not None:
-      cell.set_status("failed: %s" % error, color="error")
+      # The error text goes in the BODY, never inlined into the header: the
+      # header renders a one-line '<name> (<status>)' summary, and a
+      # force-killed Coot bridge yields a ~230-char MCP connection error.
+      # Bulk tool output belongs in the body's result view, which wraps and
+      # auto-heights. The header still says 'failed', so a collapsed cell
+      # still reads as failed.
+      cell.set_status("failed", color="error")
+      # Never drop the error. Both parameters are documented and independent,
+      # so a caller with partial output *and* a failure passes both -- the old
+      # header inlined the error unconditionally, and showing only the result
+      # would leave nothing in the UI to say what went wrong. Chronological
+      # order: what the tool managed to emit, then why it died.
+      result = error if result is None else "%s\n\n%s" % (result, error)
     else:
       suffix = ", %s" % elapsed if elapsed else ""
       cell.set_status("finished%s" % suffix, color="default")
@@ -493,19 +536,46 @@ class MessageBubble(QtWidgets.QFrame):
       if cell.is_running():
         self.set_tool_use_finished(tool_id, cancelled=True)
 
+  def fold_tool_results(self, blocks):
+    """Fold a following message's tool_result blocks into THIS bubble.
+
+    Used on reload to attach each answering tool_result to the tool_use cell it
+    matches (by tool_use_id) in this bubble -- transitioning that cell out of
+    'running' and rendering its result (or error) inline -- so a reloaded turn
+    shows one cell per tool instead of separate 'running' call cells and a
+    detached bank of 'result' cells. Reuses ``_add_block``, so a result whose
+    tool_use is NOT in this bubble still falls back to its own cell and nothing
+    is dropped.
+
+    Parameters
+    ----------
+    blocks : list of ContentBlock
+        The answering message's content; only tool_result blocks are folded.
+    """
+    for block in blocks or []:
+      if getattr(block, "type", None) == "tool_result":
+        self._add_block(block)
+
   # ---- streaming -----------------------------------------------------------
+
+  def _mirror_text_block(self, block_type, text):
+    """Mirror a streamed delta into ``message.content``: extend the last block
+    when it is already ``block_type``, else append a new one. Keeps
+    message.content in sync with what streamed into the bubble (the bubble is
+    the source of truth for on-screen content) so ``combined_text()`` stays
+    consistent. Shared by ``append_text_delta`` ('text') and
+    ``append_thinking_delta`` ('thinking')."""
+    last = self.message.content[-1] if self.message.content else None
+    if last is not None and last.type == block_type:
+      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
+    else:
+      self.message.content.append(
+        ContentBlock(type=block_type, data={"text": text or ""}))
 
   def append_text_delta(self, text):
     """Append a streamed text delta to the bubble and message content."""
     self._append_text_markdown(text)
-    # Keep message.content in sync so combined_text() reflects what was
-    # streamed in (the bubble is the source of truth for on-screen content).
-    last = self.message.content[-1] if self.message.content else None
-    if last is not None and last.type == "text":
-      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
-    else:
-      self.message.content.append(
-        ContentBlock(type="text", data={"text": text or ""}))
+    self._mirror_text_block("text", text)
 
   def append_thinking_delta(self, text):
     """Append a streamed thinking delta to the bubble and message content."""
@@ -513,14 +583,7 @@ class MessageBubble(QtWidgets.QFrame):
       self._thinking_cell = _ThinkingCell("", self)
       self._layout.addWidget(self._thinking_cell)
     self._thinking_cell.append(text)
-    # Mirror into message.content (same shape as append_text_delta): extend
-    # the LAST block only if it is thinking; otherwise append a new one.
-    last = self.message.content[-1] if self.message.content else None
-    if last is not None and last.type == "thinking":
-      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
-    else:
-      self.message.content.append(
-        ContentBlock(type="thinking", data={"text": text or ""}))
+    self._mirror_text_block("thinking", text)
 
   def append_block(self, block):
     """Append a new ContentBlock to the in-progress bubble.
@@ -535,7 +598,7 @@ class MessageBubble(QtWidgets.QFrame):
     self.message.content.append(block)
     self._add_block(block)
 
-  # ---- introspection (for tests + sidebar previews) -----------------------
+  # ---- introspection (for tests) ------------------------------------------
 
   def combined_text(self):
     """Return a flat-text representation of the bubble's content.

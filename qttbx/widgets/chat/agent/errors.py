@@ -23,9 +23,9 @@ class AgentError(AgentEvent):
   ``recoverable=True`` means the UI can offer a retry button (rate limit,
   5xx, network); ``recoverable=False`` is a hard fail (auth, bad request).
 
-  ``kind`` is an optional short classifier (e.g. ``'auth'``,
-  ``'rate_limit'``, ``'network'``, ``'internal'``) that the GUI can use to
-  pick an icon or copy.
+  ``kind`` is an optional short classifier (the values produced today are
+  ``'auth'``, ``'rate_limited'``, and ``'internal'``) that the GUI can use
+  to pick an icon or copy.
   """
   message: str = ""
   recoverable: bool = True
@@ -33,13 +33,15 @@ class AgentError(AgentEvent):
 
 
 def map_httpx_sdk_error(sdk_module, exc):
-  """Map an httpx-based SDK exception (openai or anthropic) onto an AgentError.
+  """Map an httpx-based SDK exception (openai, anthropic, or portkey) onto an
+  AgentError.
 
-  The openai and anthropic SDKs share an exception hierarchy in which
-  ``AuthenticationError`` / ``RateLimitError`` / ``APIConnectionError`` /
-  ``APIStatusError`` are all subclasses of ``APIError``. Both chat backends map
+  The openai, anthropic, and portkey_ai SDKs share an exception hierarchy in
+  which ``AuthenticationError`` / ``RateLimitError`` / ``APIConnectionError`` /
+  ``APIStatusError`` are all subclasses of ``APIError``. The chat backends map
   that hierarchy onto ``AgentError`` with one policy, parameterized here by the
-  SDK module so a single implementation serves both:
+  SDK module (each backend supplies its own via ``_error_sdk_module``) so a
+  single implementation serves all three:
 
     AuthenticationError -> recoverable=False, kind="auth"
     RateLimitError      -> recoverable=True,  kind="rate_limited"
@@ -53,8 +55,8 @@ def map_httpx_sdk_error(sdk_module, exc):
   Parameters
   ----------
   sdk_module : module
-      The provider SDK (``openai`` or ``anthropic``) supplying the exception
-      classes the isinstance ladder tests against.
+      The provider SDK (``openai``, ``anthropic``, or ``portkey_ai``) supplying
+      the exception classes the isinstance ladder tests against.
   exc : Exception
       The exception raised by the SDK call.
 

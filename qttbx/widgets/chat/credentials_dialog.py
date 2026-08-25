@@ -101,16 +101,19 @@ class CredentialsDialog(QtWidgets.QDialog):
     self.reject()
 
   def _on_save(self):
-    self._result_value = self._value_edit.text()
+    # Strip surrounding whitespace: a pasted key routinely carries a trailing
+    # newline / stray spaces, which would otherwise reach the SDK and get the
+    # Authorization header rejected by httpx as a spurious auth failure.
+    self._result_value = self._value_edit.text().strip()
     self.accept()
 
 
 class AnthropicCredentialsDialog(CredentialsDialog):
   """Anthropic-specific credential prompt."""
 
-  TITLE = "PhenixChat needs an Anthropic API key"
+  TITLE = "PhenixAgent needs an Anthropic API key"
   INSTRUCTIONS = (
-    "PhenixChat uses Claude (Anthropic). You need an API key to start "
+    "PhenixAgent uses Claude (Anthropic). You need an API key to start "
     "chatting.<br><br>"
     "Get a key at "
     "<a href='https://console.anthropic.com'>console.anthropic.com</a>.<br><br>"

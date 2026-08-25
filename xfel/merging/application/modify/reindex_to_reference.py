@@ -103,11 +103,13 @@ class reindex_to_reference(worker):
     def get_correlation(cb_op=None):
       """ Helper function to get CC to the reference given an operator """
       # Build a miller array for the experiment reflections
-      exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], True)
+      exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], not self.params.merging.merge_anomalous)
       exp_intensities = miller.array(exp_miller_indices, exp_reflections['intensity.sum.value'],
                                      flex.sqrt(exp_reflections['intensity.sum.variance']))
       if cb_op:
         exp_intensities = exp_intensities.change_basis(cb_op).map_to_asu()
+      else:
+        exp_intensities = exp_intensities.map_to_asu()
 
       # Extract an array of HKLs from the model to match the experiment HKLs
       matching_indices = miller.match_multi_indices(miller_indices_unique = model_intensities.indices(), miller_indices = exp_intensities.indices())

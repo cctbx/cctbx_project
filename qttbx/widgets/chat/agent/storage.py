@@ -2,7 +2,7 @@
 
 Layout::
 
-    <project_dir>/.phenix_chat/
+    <project_dir>/.phenix_agent/
       index.json
       conversations/<conv_id>/
         meta.json
@@ -29,11 +29,21 @@ from pathlib import Path
 
 from qttbx.widgets.chat.agent.conversation import (
   Attachment, ContentBlock, Conversation, ConversationMeta, Message,
-  SubagentRecord, TokenUsage)
+  SubagentRecord, TokenUsage, is_ephemeral_block)
 from qttbx.widgets.chat.agent.paths import chat_root_for
 
 
 _SCHEMA_VERSION = "1.0"
+
+#: What index.json is expected to CONTAIN, as distinct from the on-disk format
+#: it is written in. Bumped when a new class of row starts being listed, so an
+#: index cached before that change is rebuilt rather than served stale. Kept
+#: separate from _SCHEMA_VERSION because nothing about the file's format
+#: changed -- raising that would reject conversation documents an older build
+#: still reads perfectly well.
+#:
+#: 1: conversations only.  2: + read-only subagent transcript views.
+_VIEWS_GENERATION = 2
 
 # An atomic-write temp file older than this is treated as an orphan left by a
 # hard kill and swept (see ConversationStorage.sweep_stale_tmp). Well above any
@@ -42,7 +52,7 @@ _TMP_STALE_SECONDS = 3600
 
 
 class ConversationStorage:
-  """Read and write conversations under a project's ``.phenix_chat/`` dir.
+  """Read and write conversations under a project's ``.phenix_agent/`` dir.
 
   Construction does not touch the filesystem. Directories appear lazily on
   first write.
@@ -82,7 +92,15 @@ class ConversationStorage:
       try:
         with open(index_path, encoding="utf-8") as fh:
           data = json.load(fh)
-        return [_meta_from_dict(d) for d in data.get("conversations", [])]
+        # An index written before subagent transcripts were listed contains
+        # no view rows, and the cache is preferred over the scan -- so without
+        # this check every review that already exists on disk stays invisible
+        # until some unrelated save happens to rebuild. Self-healing: the
+        # rebuild below stamps the current generation.
+        if int(data.get("views_generation", 0)) >= _VIEWS_GENERATION:
+          return [_meta_from_dict(d) for d in data.get("conversations", [])]
+        print("storage: index.json predates subagent views; rebuilding",
+              file=self.log)
       except Exception as e:
         print("storage: index.json unreadable (%s); rebuilding"
               % e, file=self.log)
@@ -111,6 +129,9 @@ class ConversationStorage:
         ``schema_version`` is unsupported.
     """
     from libtbx.utils import Sorry
+    view = split_subagent_view_id(conv_id)
+    if view is not None:
+      return self._load_subagent_view(*view)
     conv_dir = self._conv_dir(conv_id)
     if not conv_dir.exists():
       raise Sorry("Conversation not found: %s" % conv_id)
@@ -138,6 +159,19 @@ class ConversationStorage:
     # Attachments and subagents loaded on demand.
     return Conversation(meta=meta, messages=messages,
                         attachments={}, subagents=[])
+
+  def _load_subagent_view(self, parent_id, sub_id):
+    """Build a read-only Conversation from a stored subagent record.
+
+    The record already holds the child's whole transcript, so this is a view,
+    not a copy: nothing is written, and the returned meta is marked
+    ``readonly`` so the window refuses to save, rename or continue it.
+    """
+    record = self.load_subagent(parent_id, sub_id)
+    return Conversation(
+      meta=self._subagent_view_meta(parent_id, record),
+      messages=list(record.messages),
+      attachments={}, subagents=[record])
 
   def save(self, conv, reindex=True):
     """Write ``meta.json`` and ``messages.json`` atomically, optionally reindex.
@@ -167,6 +201,15 @@ class ConversationStorage:
         previous turn-end time on the next launch (sidebar order and startup
         auto-restore) until a later reindexing save heals it -- nothing is lost.
     """
+    # A readonly view owns no directory -- writing one would fork the child's
+    # transcript into a second, divergent copy that the parent's record no
+    # longer matches. Refused loudly rather than silently skipped: a caller
+    # that reaches here has a bug (the window gates on meta.readonly), and a
+    # no-op would let it report a save that never happened.
+    if getattr(conv.meta, "readonly", False):
+      from libtbx.utils import Sorry
+      raise Sorry("Conversation '%s' is a read-only transcript and cannot be "
+                  "saved." % conv.meta.id)
     self._ensure_root()
     conv_dir = self._conv_dir(conv.meta.id)
     conv_dir.mkdir(parents=True, exist_ok=True)
@@ -209,6 +252,13 @@ class ConversationStorage:
     """
     import shutil
     from libtbx.utils import Sorry
+    # A child transcript is part of its parent's record, not a conversation of
+    # its own: deleting it here would strip evidence out of a conversation the
+    # user did not ask to change. Deleting the parent still takes its reviews
+    # with it, which is the only place that decision belongs.
+    if split_subagent_view_id(conv_id) is not None:
+      raise Sorry("'%s' is a read-only transcript belonging to another "
+                  "conversation; delete that conversation instead." % conv_id)
     # _conv_dir validates conv_id via _safe_segment (rejects path
     # separators / '..' / absolute ids), so the join cannot escape the
     # chat root.
@@ -294,12 +344,20 @@ class ConversationStorage:
   # ---- subagents -----------------------------------------------------------
 
   def store_subagent(self, conv_id, record):
-    """Write a subagent record atomically under the conversation."""
+    """Write a subagent record atomically under the conversation, then reindex.
+
+    The reindex is what puts the finished child in the sidebar: the index is a
+    cache of conversation metas and ``list_conversations`` prefers it, so
+    without this the review would exist on disk but stay invisible until some
+    unrelated save happened to rebuild the index. Storing a record happens once
+    per child, so the O(N) rescan is not on any hot path.
+    """
     self._ensure_root()
     sub_dir = self._conv_dir(conv_id) / "subagents"
     sub_dir.mkdir(parents=True, exist_ok=True)
     path = sub_dir / ("%s.json" % _safe_segment(record.sub_id, "subagent"))
     _atomic_write_json(path, _subagent_to_dict(record))
+    self._refresh_index()
 
   def load_subagent(self, conv_id, sub_id):
     """Load a subagent record by its id.
@@ -340,7 +398,7 @@ class ConversationStorage:
   def acquire_conversation_lock(self, conv_id):
     """Try to publish this process's ``.open`` marker for a conversation.
 
-    Two phenix.chat processes on one project must not both drive a single
+    Two phenix.agent processes on one project must not both drive a single
     conversation: ``save`` is a whole-file rewrite, so the last to finish a turn
     silently clobbers the other's messages. The marker holds ``<pid>@<hostname>``
     and is published ATOMICALLY -- written to a unique temp, then ``os.link``ed
@@ -547,8 +605,15 @@ class ConversationStorage:
   # ---- internal ------------------------------------------------------------
 
   def _ensure_root(self):
+    # 0700 on the root + conversations dir denies other users traversal into
+    # every conversation beneath, so the transcripts, the claude_session.jsonl,
+    # and attachments are not world-readable on a shared project dir regardless
+    # of per-file mode (files are also written 0600 via _atomic_write).
     self.root.mkdir(parents=True, exist_ok=True)
-    (self.root / "conversations").mkdir(exist_ok=True)
+    _restrict(self.root, 0o700)
+    convs = self.root / "conversations"
+    convs.mkdir(exist_ok=True)
+    _restrict(convs, 0o700)
 
   def sweep_stale_tmp(self):
     """Best-effort, once-per-instance removal of orphaned atomic-write temps.
@@ -611,6 +676,7 @@ class ConversationStorage:
     """
     _atomic_write_json(self.root / "index.json", {
       "schema_version": _SCHEMA_VERSION,
+      "views_generation": _VIEWS_GENERATION,
       "conversations": [_meta_to_dict(m) for m in metas],
     })
 
@@ -628,7 +694,80 @@ class ConversationStorage:
       except Exception as e:
         print("storage: skipping unreadable %s (%s)"
               % (meta_path, e), file=self.log)
+        # A conversation whose meta is unreadable still gets its subagents
+        # listed below: the child transcripts are separate files and are
+        # readable on their own, and losing a review because its parent's
+        # meta was corrupted would discard the one artifact that cannot be
+        # regenerated.
+      out.extend(self._scan_subagent_metas(conv_dir))
     return out
+
+  def _scan_subagent_metas(self, conv_dir):
+    """Synthesize read-only conversation metas from a parent's subagents/.
+
+    A finished child is a full transcript that nothing else surfaces -- it is
+    written under the parent and was, until now, reachable only by reading the
+    JSON by hand. Listing it as a conversation costs no duplication: the
+    record stays the single copy, and this builds a view of it.
+
+    Derived rather than promoted to a real directory on purpose. There is one
+    copy of the data, deleting the parent takes its reviews with it, and
+    records written before this existed appear without a migration.
+    """
+    sub_dir = conv_dir / "subagents"
+    if not sub_dir.is_dir():
+      return []
+    out = []
+    for path in sorted(sub_dir.glob("*.json")):
+      try:
+        record = _subagent_from_dict(_read_json(path))
+        out.append(self._subagent_view_meta(conv_dir.name, record))
+      except Exception as e:
+        print("storage: skipping unreadable %s (%s)" % (path, e), file=self.log)
+    return out
+
+  def _subagent_view_meta(self, parent_id, record):
+    from .subagent import subagent_conversation_title
+    return ConversationMeta(
+      id=subagent_view_id(parent_id, record.sub_id),
+      title=subagent_conversation_title(record),
+      profile_name=record.profile_name or "",
+      model=record.model or "",
+      backend="",
+      created_at=record.started_at,
+      updated_at=record.finished_at or record.started_at,
+      readonly=True,
+    )
+
+
+# ---- read-only subagent views ----------------------------------------------
+
+#: Joins a parent conversation id to a subagent id to address a child's
+#: transcript. Chosen because it cannot occur in either half (both are hex-ish
+#: ids) and because it is not a path separator -- these ids are never joined
+#: into a path, and `_safe_segment` would reject one that tried.
+_VIEW_SEP = "~"
+
+
+def subagent_view_id(parent_id, sub_id):
+  """Address a child transcript as a conversation id."""
+  return "%s%s%s" % (parent_id, _VIEW_SEP, sub_id)
+
+
+def split_subagent_view_id(conv_id):
+  """Split a subagent view id, or return ``None`` for an ordinary id.
+
+  Self-describing on purpose: ``load`` decides what a conversation id refers
+  to from the id alone, with no index lookup, so a stale or corrupt index
+  cannot make a child transcript unopenable.
+  """
+  raw = str(conv_id)
+  if raw.count(_VIEW_SEP) != 1:
+    return None
+  parent_id, _, sub_id = raw.partition(_VIEW_SEP)
+  if not parent_id or not sub_id:
+    return None
+  return parent_id, sub_id
 
 
 # ---- serialization helpers -------------------------------------------------
@@ -680,7 +819,7 @@ def _read_json(path):
   (ERROR_ACCESS_DENIED): a concurrent writer's ``os.replace`` -- the atomic-write
   final step -- briefly holds the target, so a reader that opens in that window
   fails, the mirror image of the ``_atomic_replace`` write-side sharing violation
-  (another phenix.chat process saving, or the worker's autosave racing a
+  (another phenix.agent process saving, or the worker's autosave racing a
   ``load`` / sidebar scan). A short bounded backoff (up to
   ``_REPLACE_RETRY_SECONDS``) wins the gap; a genuinely unreadable path (a real
   EACCES / read-only tree) still surfaces once the deadline passes, so ``load``'s
@@ -906,7 +1045,7 @@ def _pid_alive_windows(pid):
 
 
 # Longest the final replace retries a Windows sharing violation before giving up.
-# On Windows a concurrent reader holding the target open -- another phenix.chat
+# On Windows a concurrent reader holding the target open -- another phenix.agent
 # process's load() / list_conversations() on the same project -- blocks the
 # replace: CPython's open() grants FILE_SHARE_READ|WRITE but NOT
 # FILE_SHARE_DELETE, so MoveFileEx can't take the delete access os.replace needs
@@ -946,11 +1085,21 @@ def _atomic_replace(tmp, path):
       delay = min(delay * 2, 0.05)
 
 
+def _restrict(path, mode):
+  """Best-effort tighten permissions (POSIX; a near-no-op on Windows). Chat
+  transcripts / session files must not be world-readable on a shared project
+  dir. Swallow errors: a perms tweak must never break a save."""
+  try:
+    os.chmod(str(path), mode)
+  except OSError:
+    pass
+
+
 def _atomic_write(path, mode, write_fn):
   # Write to a UNIQUE sibling .tmp via write_fn(handle), then atomically rename
   # it into place. The pid+uuid tag means two concurrent writers -- two threads
   # (a worker-thread mid-turn autosave racing the GUI's turn-end save) or even
-  # two phenix.chat processes on the same project dir -- never share a tmp, so
+  # two phenix.agent processes on the same project dir -- never share a tmp, so
   # each replace stays atomic and it is last-writer-wins. The replace goes through
   # _atomic_replace so a Windows reader holding the target open only delays the
   # write briefly instead of failing it. If the write (or replace) fails partway,
@@ -962,6 +1111,7 @@ def _atomic_write(path, mode, write_fn):
   try:
     with open(tmp, mode) as fh:
       write_fn(fh)
+    _restrict(tmp, 0o600)          # the rename carries the tightened mode in
     _atomic_replace(tmp, path)
     replaced = True
   finally:
@@ -984,6 +1134,15 @@ def _atomic_write_bytes(path, data):
 def _json_default(o):
   if isinstance(o, datetime):
     return o.isoformat()
+  # Defense in depth: a single value a backend failed to normalize to a
+  # JSON-native form (e.g. a provider SDK's pydantic result object that slipped
+  # through) must not make the whole conversation permanently unsaveable.
+  # Coerce a pydantic model (mode="json" -> fully JSON-native) instead of
+  # raising and losing every turn from here on. A genuinely unknown object
+  # still raises, so a real serialization bug is surfaced rather than masked.
+  dump = getattr(o, "model_dump", None)
+  if callable(dump):
+    return dump(mode="json")
   raise TypeError("Not JSON serializable: %r" % o)
 
 
@@ -1019,7 +1178,7 @@ def _check_schema_version(doc, source):
     from libtbx.utils import Sorry
     raise Sorry(
       "%s: schema_version '%s' is not supported by this client "
-      "(expected '%s'). Update PhenixChat or use a compatible version."
+      "(expected '%s'). Update PhenixAgent or use a compatible version."
       % (source, version, _SCHEMA_VERSION))
 
 
@@ -1036,6 +1195,7 @@ def _meta_to_dict(m):
     "pinned": m.pinned,
     "summary": m.summary,
     "agent_session_id": m.agent_session_id,
+    "readonly": m.readonly,
     "schema_version": m.schema_version,
   }
 
@@ -1053,6 +1213,7 @@ def _meta_from_dict(d):
     pinned=d.get("pinned", False),
     summary=d.get("summary", ""),
     agent_session_id=d.get("agent_session_id"),
+    readonly=d.get("readonly", False),
     schema_version=d.get("schema_version", _SCHEMA_VERSION),
   )
 
@@ -1126,10 +1287,15 @@ def persistable_prefix(messages):
 
 
 def _message_to_dict(m):
+  # Ephemeral blocks (e.g. a transient context-pressure note) reach the model
+  # in the live conversation but are never persisted -- dropped here, at the
+  # single serialization choke point every save path funnels through, so no
+  # writer can leak one to disk regardless of how the save was triggered.
   out = {
     "role": m.role,
     "timestamp": m.timestamp,
-    "content": [_content_block_to_dict(b) for b in m.content],
+    "content": [_content_block_to_dict(b) for b in m.content
+                if not is_ephemeral_block(b)],
   }
   if m.stop_reason is not None:
     out["stop_reason"] = m.stop_reason
@@ -1139,6 +1305,8 @@ def _message_to_dict(m):
     out["model"] = m.model
   if m.backend is not None:
     out["backend"] = m.backend
+  if m.verbose is not None:
+    out["verbose"] = m.verbose
   return out
 
 
@@ -1154,6 +1322,10 @@ def _message_from_dict(d):
     usage=usage,
     model=d.get("model"),
     backend=d.get("backend"),
+    # Coerced: a hand-edited non-bool ("no", 1, ...) must load as None
+    # (unstamped), not be stored and re-persisted by the next save --
+    # cementing junk in a three-state field.
+    verbose=(d["verbose"] if isinstance(d.get("verbose"), bool) else None),
   )
 
 
@@ -1169,6 +1341,8 @@ def _subagent_to_dict(r):
     "started_at": r.started_at,
     "finished_at": r.finished_at,
     "final_text": r.final_text,
+    "incomplete_reason": r.incomplete_reason,
+    "subject_digests": dict(r.subject_digests or {}),
     "token_usage": asdict(r.token_usage),
     "messages": [_message_to_dict(m) for m in r.messages],
   }
@@ -1185,6 +1359,10 @@ def _subagent_from_dict(d):
     started_at=_parse_dt(d["started_at"]),
     finished_at=_parse_dt(d["finished_at"]),
     final_text=d.get("final_text", ""),
+    # Absent in records written before the field existed: those predate the
+    # distinction, and "" (complete) is the only reading their prose supports.
+    incomplete_reason=d.get("incomplete_reason", ""),
+    subject_digests=dict(d.get("subject_digests") or {}),
     token_usage=_token_usage_from_dict(d.get("token_usage", {})),
     messages=[_message_from_dict(m) for m in d.get("messages", [])],
   )

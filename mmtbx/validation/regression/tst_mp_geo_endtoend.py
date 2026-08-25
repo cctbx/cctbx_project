@@ -4,13 +4,35 @@ import time
 import libtbx.load_env
 import os
 
+def _find_2erl():
+  """Locate 2ERL_noH.pdb, preferring the cctbx-owned copy.
+
+  This model is vendored into mmtbx/regression/pdbs so the test runs in a cctbx-only
+  build. It used to be taken only from phenix_regression, and with no guard at all: when
+  that repository was absent find_in_repositories returned None and the very next line
+  did 'pdb='+None, so the test died with a TypeError from string concatenation rather
+  than reporting a missing input file.
+
+  The assertions below are exact counts for this particular structure, which carries
+  alternate conformations on purpose, so a substitute model would not do; the file itself
+  has to travel with the test. phenix_regression is still consulted as a fallback.
+  """
+  for relative_path in ("mmtbx/regression/pdbs/2ERL_noH.pdb",
+                        "phenix_regression/pdb/2ERL_noH.pdb"):
+    found = libtbx.env.find_in_repositories(
+      relative_path=relative_path, test=os.path.isfile)
+    if (found is not None):
+      return found
+  return None
+
 def test_size_of_mp_geo_result():
   """This is an end-to-end test of mp_geo.
 The sample file contains alternate conformations.
 """
-  regression_pdb = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/2ERL_noH.pdb",
-    test=os.path.isfile)
+  regression_pdb = _find_2erl()
+  if (regression_pdb is None):
+    print("Skipping: 2ERL_noH.pdb not available")
+    return
   args = ['pdb='+regression_pdb,
           'out_file=chiral_volume_validation_endtoend.out',
           'outliers_only=False',
@@ -41,9 +63,10 @@ def test_size_of_mp_geo_result_outliers_only():
   """This is an end-to-end test of mp_geo using the outlier_only flag.
 The sample file contains alternate conformations.
 """
-  regression_pdb = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/2ERL_noH.pdb",
-    test=os.path.isfile)
+  regression_pdb = _find_2erl()
+  if (regression_pdb is None):
+    print("Skipping: 2ERL_noH.pdb not available")
+    return
   args = ['pdb='+regression_pdb,
           'out_file=chiral_volume_validation_endtoend_outliers_only.out',
           'outliers_only=True',

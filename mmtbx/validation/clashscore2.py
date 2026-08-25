@@ -64,6 +64,7 @@ class clashscore2(validation):
       verbose=False,
       do_flips=False,
       save_probe_output=False,
+      ignore_missing_restraints=False,
       out=sys.stdout):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
@@ -98,6 +99,7 @@ class clashscore2(validation):
       verbose=verbose,
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
+      ignore_missing_restraints=ignore_missing_restraints,
       log=out)
 
     # Save the hydrogenated model for downstream use (e.g. kinemage generation)
@@ -106,12 +108,13 @@ class clashscore2(validation):
     # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
     # of it for each submodel.
+    ro = data_manager_model.get_restraint_objects()
     data_manager_model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = data_manager_model.get_hierarchy(),
       stop_for_unknowns = False,
       crystal_symmetry  = data_manager_model.crystal_symmetry(),
-      restraint_objects = None,
+      restraint_objects = ro,
       log               = None)
     original_model = data_manager_model.deep_copy()
 
@@ -138,7 +141,7 @@ class clashscore2(validation):
         pdb_hierarchy     = r,
         stop_for_unknowns = False,
         crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = None,
+        restraint_objects = ro,
         log               = None)
 
       if verbose:
@@ -598,6 +601,7 @@ def check_and_add_hydrogen(
         verbose=False,
         n_hydrogen_cut_off=0,
         do_flips=False,
+        ignore_missing_restraints=False,
         log=None,
         stop_for_unknowns=True):
   """
@@ -612,6 +616,12 @@ def check_and_add_hydrogen(
     verbose (bool): verbosity of printout
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
+    ignore_missing_restraints (bool): when False (default), raise a Sorry if
+      restraints were not found for some residues (e.g. unknown ligands). When
+      True, continue on a best-effort basis: those residues simply get no
+      hydrogens added, and the rest of the model is still analyzed. This also
+      relaxes stop_for_unknowns for the re-process step, since a residue with no
+      restraints necessarily leaves atoms with unknown energy types.
 
   Returns:
     (model): Model with hydrogens added
@@ -652,7 +662,13 @@ def check_and_add_hydrogen(
       nuclear         = nuclear,
       keep_existing_H = False,
       probe_phil      = probe_parameters,
-      stop_for_unknowns = stop_for_unknowns,
+      # Best-effort mode has to open both gates: raise_on_missing covers the
+      # "no restraints for this residue" check, and stop_for_unknowns covers the
+      # unknown-atom-type check in the re-process that follows. Relaxing only the
+      # first still aborts the run on the second. Mirrors the pairing already used
+      # by mmtbx/programs/validate_ligands.py.
+      stop_for_unknowns = stop_for_unknowns and not ignore_missing_restraints,
+      raise_on_missing = not ignore_missing_restraints,
       log             = log)
     return data_manager_model, True
   else:

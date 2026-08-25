@@ -32,12 +32,12 @@ def phenix_server_env(project_dir):
   Returns
   -------
   dict
-      ``{"PHENIX_PROJECT_DIR": ..., "PHENIX_CHAT_HOME": ...}``.
+      ``{"PHENIX_PROJECT_DIR": ..., "PHENIX_AGENT_HOME": ...}``.
   """
   from qttbx.widgets.chat.agent.paths import chat_root_for
   return {
     "PHENIX_PROJECT_DIR": str(project_dir),
-    "PHENIX_CHAT_HOME": str(chat_root_for(project_dir)),
+    "PHENIX_AGENT_HOME": str(chat_root_for(project_dir)),
   }
 
 
@@ -367,7 +367,7 @@ class McpServerConnection:
 
     Starts from os.environ, merges the server's own sanitized env, then --
     only when the server opts in via inject_phenix_env (default True) --
-    overlays the authoritative PHENIX_PROJECT_DIR / PHENIX_CHAT_HOME.
+    overlays the authoritative PHENIX_PROJECT_DIR / PHENIX_AGENT_HOME.
 
     Returns
     -------

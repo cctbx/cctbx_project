@@ -35,6 +35,7 @@ from libtbx.langchain.agent.transport import (
     sanitize_request,
     sanitize_response,
     get_transport_config,
+    truncate_log_head_tail,
 )
 TRANSPORT_AVAILABLE = True
 
@@ -123,6 +124,27 @@ def build_session_state(session_info, session_resolution=None):
         # (e.g. {"phenix.refine": ["ignore_symmetry_conflicts"]})
         if session_info.get("bad_inject_params"):
             session_state["bad_inject_params"] = session_info["bad_inject_params"]
+
+        # The protocol version the client reports.  Without this the
+        # server falls back to session_info.get("client_protocol_version",
+        # 1) and concludes every client is v1: check_client_version has
+        # therefore never rejected anything, and get_deprecation_warnings
+        # fires for every client on every cycle, including current ones.
+        # Harmless while state["warnings"] was not forwarded; visible to
+        # every user now that it is.
+        if session_info.get("client_protocol_version") is not None:
+            session_state["client_protocol_version"] = \
+                session_info["client_protocol_version"]
+
+        # v9: the program that produced log_content, named by the client.
+        # Sent only when the history entry and the log file name agree.
+        # NOTE the truthiness test: both are None when the client cannot
+        # confirm the program, and None must not be forwarded -- the
+        # server's normalize_session_info supplies the same default.
+        if session_info.get("log_program"):
+            session_state["log_program"] = session_info["log_program"]
+        if session_info.get("log_cycle") is not None:
+            session_state["log_cycle"] = session_info["log_cycle"]
 
         # Thinking agent (v113): accumulated scientific understanding
         if session_info.get("strategy_memory"):
@@ -253,7 +275,13 @@ def build_request_v2(
             sanitized_metrics = sanitize_dict_recursive(raw_metrics, max_len_per_string=500)
 
             normalized_history.append({
-                "cycle": h.get("cycle_number", h.get("cycle", len(normalized_history) + 1)),
+                # HISTORY_ENTRY_FIELDS declares "cycle_number".  Sending
+                # "cycle" made metrics_analyzer fall back to the loop
+                # index (entry.get("cycle_number", cycle_num)), which
+                # diverges as soon as history is filtered -- and
+                # get_history_for_agent DOES filter, emitting only cycles
+                # having both a command and a result.
+                "cycle_number": h.get("cycle_number", h.get("cycle", len(normalized_history) + 1)),
                 "program": sanitize_string(h.get("program", ""), max_len=100),
                 "command": sanitize_string(h.get("command", ""), max_len=1000),
                 "result": sanitize_for_transport(
@@ -263,90 +291,72 @@ def build_request_v2(
                     quote_max_len=200
                 ),
                 "output_files": h.get("output_files", []),
-                "metrics": sanitized_metrics,
+                # HISTORY_ENTRY_FIELDS declares "analysis", and
+                # get_history_for_agent (session.py:2280) already
+                # translates cycle["metrics"] into it.  Renaming back to
+                # "metrics" here left 8 of the 9 consumers reading a key
+                # that never arrived: derive_metrics_from_history (2
+                # sites) and thinking_agent (6 sites) both got {}.
+                "analysis": sanitized_metrics,
             })
 
     # Build session_state
-    normalized_session_state = {}
-    if session_state:
-        if session_state.get("resolution") is not None:
-            normalized_session_state["resolution"] = float(session_state["resolution"])
-        if session_state.get("experiment_type"):
-            normalized_session_state["experiment_type"] = session_state["experiment_type"]
-        if session_state.get("rfree_mtz"):
-            normalized_session_state["rfree_mtz"] = session_state["rfree_mtz"]
-        if session_state.get("best_files"):
-            normalized_session_state["best_files"] = dict(session_state["best_files"])
-        if session_state.get("directives"):
-            normalized_session_state["directives"] = dict(session_state["directives"])
-        # Error recovery state
-        if session_state.get("force_retry_program"):
-            normalized_session_state["force_retry_program"] = session_state["force_retry_program"]
-        if session_state.get("recovery_strategies"):
-            normalized_session_state["recovery_strategies"] = dict(session_state["recovery_strategies"])
-        # Explicit program request
-        if session_state.get("explicit_program"):
-            normalized_session_state["explicit_program"] = session_state["explicit_program"]
-        # Resume flag — new advice on a completed workflow (Q1 fix)
-        if session_state.get("advice_changed"):
-            normalized_session_state["advice_changed"] = True
-        # S2L: client-side model CRYST1 cell for server-side placement check
-        if session_state.get("unplaced_model_cell"):
-            normalized_session_state["unplaced_model_cell"] = session_state["unplaced_model_cell"]
-        # Parameter blacklist for command post-processing
-        if session_state.get("bad_inject_params"):
-            normalized_session_state["bad_inject_params"] = session_state["bad_inject_params"]
-        # P4: session-blocked programs
-        if session_state.get("session_blocked_programs"):
-            normalized_session_state["session_blocked_programs"] = (
-                session_state["session_blocked_programs"])
-        # ASU copy count (copies feature)
-        if session_state.get("asu_copies"):
-            normalized_session_state["asu_copies"] = session_state["asu_copies"]
-        # Plan-driven program injection (v114.1 plan_has_pending_stages /
-        # plan_next_stage_programs; v120 Option 2a plan_current_unrun_lead_program).
-        # build_request_v2 IS the single transport chokepoint for BOTH LocalAgent
-        # and RemoteAgent (LocalAgent runs the identical encode/decode path), so
-        # whatever is not whitelisted here is dropped IDENTICALLY in both — these
-        # entries are required for the plan fields to reach PERCEIVE on either
-        # route, and adding them here preserves server==local parity by
-        # construction.
-        if session_state.get("plan_has_pending_stages"):
-            normalized_session_state["plan_has_pending_stages"] = True
-        if session_state.get("plan_next_stage_programs"):
-            normalized_session_state["plan_next_stage_programs"] = (
-                session_state["plan_next_stage_programs"])
-        if session_state.get("plan_current_unrun_lead_program"):
-            normalized_session_state["plan_current_unrun_lead_program"] = (
-                session_state["plan_current_unrun_lead_program"])
+    # session_state passes through unchanged apart from the coercions
+    # and derived flags below.
+    #
+    # This block used to re-list every field by name -- a second
+    # allow-list twenty lines after build_session_state built the dict.
+    # It added nothing, transformed almost nothing, and applied no
+    # sanitization, yet a field missing from the list was dropped with
+    # no error.  Eleven fields were lost that way across two audits,
+    # including two fixes that had been made and marked verified.
+    #
+    # PARITY: this is the single chokepoint both LocalAgent and
+    # RemoteAgent pass through.  Nothing may be added in either agent.
+    normalized_session_state = dict(session_state or {})
 
-        # v120: input-MTZ R-free presence (tri-state).  `is not None` guard so
-        # confirmed-False is not dropped at this wire chokepoint (see the same
-        # rationale in build_session_state).
-        if session_state.get("input_mtz_has_rfree") is not None:
-            normalized_session_state["input_mtz_has_rfree"] = (
-                session_state["input_mtz_has_rfree"])
+    if normalized_session_state.get("resolution") is not None:
+        normalized_session_state["resolution"] = float(
+            normalized_session_state["resolution"])
+    for _key in ("best_files", "directives", "recovery_strategies"):
+        if normalized_session_state.get(_key):
+            normalized_session_state[_key] = dict(
+                normalized_session_state[_key])
+    if normalized_session_state.get("advice_changed"):
+        normalized_session_state["advice_changed"] = True
+    if normalized_session_state.get("plan_next_stage_programs"):
+        normalized_session_state["plan_has_pending_stages"] = True
 
-        # v120.2: per-file R-free map travels the same wire chokepoint.
-        if session_state.get("mtz_rfree_map") is not None:
-            normalized_session_state["mtz_rfree_map"] = (
-                session_state["mtz_rfree_map"])
-
-    # Build settings
     settings = {
         "provider": provider or "google",
         "abort_on_red_flags": bool(abort_on_red_flags),
         "abort_on_warnings": bool(abort_on_warnings),
     }
 
-    # Sanitize log_content with quoted string truncation
-    # This handles large data dumps like pdb70_text='...'
-    sanitized_log_content = sanitize_for_transport(
+    # Sanitize log_content with quoted string truncation, then keep the
+    # head AND the tail rather than the head alone.
+    #
+    # Order matters and follows sanitize_for_transport's own documented
+    # sequence: markers, quotes, tabs, control characters, THEN length.
+    # So quote truncation runs first with max_len=None -- it can shrink
+    # a log substantially on its own (autosol_2.log: 466,667 -> 275,444)
+    # and anything that then fits under the cap is sent whole -- and the
+    # head+tail cut is applied last, in place of the plain max_len
+    # truncation.
+    #
+    # Why not max_len=50000: truncate_string keeps the HEAD, and every
+    # final metric in a program log is at the END.  Measured over the six
+    # production logs above the cap, head-only preserved 2 of 17 metrics
+    # and fabricated values at the cut (residues_built 3802 ->
+    # 47352879980392415).  See truncate_log_head_tail for the split
+    # measurement.
+    _cleaned_log = sanitize_for_transport(
         log_content or "",
-        max_len=50000,
+        max_len=None,
         truncate_quotes=True,
         quote_max_len=500
     )
+    sanitized_log_content = truncate_log_head_tail(_cleaned_log)
 
     # Also sanitize user_advice (user could input tabs)
     sanitized_user_advice = sanitize_string(user_advice or "", max_len=10000)

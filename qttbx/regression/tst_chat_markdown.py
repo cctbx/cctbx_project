@@ -101,6 +101,58 @@ def exercise_loadresource_refuses_local_file():
     shutil.rmtree(d)
 
 
+def exercise_escape_approx_tildes_is_narrow():
+  """The tilde filter is deliberately narrow: only a lone '~' immediately
+  before a digit (the '~2.5' "approximately" shorthand) is escaped. A real
+  '~~word~~' / '~word~', a '~/path', and a bare '~' are all left untouched,
+  so deliberate strikethrough and ordinary tildes render unchanged."""
+  from qttbx.widgets.chat.markdown_view import _escape_approx_tildes as esc
+  assert esc('~0.02 and ~0.001') == r'\~0.02 and \~0.001'
+  assert esc('resolution ~2.5 A') == r'resolution \~2.5 A'
+  assert esc('drop ~~this~~ now') == 'drop ~~this~~ now'    # double tilde
+  assert esc('a ~word~ here') == 'a ~word~ here'            # '~' before letter
+  assert esc('path ~/data/x.pdb') == 'path ~/data/x.pdb'   # '~' before slash
+  assert esc('no tildes here') == 'no tildes here'
+
+
+def exercise_escape_approx_tildes_skips_code():
+  """The tilde filter must leave code alone: a '~<digit>' inside an inline
+  `code` span or a fenced code block is literal code (a version like ~1.2.0,
+  a size like ~5GB), where GFM strikethrough never applies and a backslash
+  would show up verbatim. Only prose '~<digit>' is still escaped."""
+  from qttbx.widgets.chat.markdown_view import _escape_approx_tildes as esc
+  # Inline code span: the tilde stays literal (no spurious backslash).
+  assert esc('pin `~1.2.0` please') == 'pin `~1.2.0` please'
+  # Fenced code block: the tilde stays literal inside the fence.
+  fenced = 'run:\n```\nsize = ~5GB\n```\ndone'
+  assert esc(fenced) == fenced
+  # Prose is still escaped -- the strikethrough guard is not regressed.
+  assert esc('about ~5 apples') == r'about \~5 apples'
+  assert esc('costs ~0.02 and ~0.001') == r'costs \~0.02 and \~0.001'
+
+
+def exercise_approx_tilde_not_rendered_as_strikethrough():
+  """End-to-end: two '~<number>' approximate values in one block (the second
+  closable because it follows a quote) would be paired by Qt's GFM parser and
+  struck. append_markdown escapes them first, so nothing is struck and the
+  tildes survive as literal text. The precondition check pins that the raw
+  input genuinely strikes, so the test fails if the filter is removed."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.markdown_view import MarkdownView, _MD_FEATURES
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  raw = 'costs ~0.02 rather than the "~0.001" I estimated'
+  probe = QtGui.QTextDocument()
+  probe.setMarkdown(raw, _MD_FEATURES)
+  assert "line-through" in probe.toHtml().lower(), "input no longer strikes"
+  v = MarkdownView()
+  v.append_markdown(raw)
+  assert "line-through" not in v.document().toHtml().lower()
+  plain = v.toPlainText()
+  assert "~0.02" in plain and "~0.001" in plain, repr(plain)
+
+
 # ---- conversation_to_markdown export -------------------------------------
 
 
@@ -166,6 +218,27 @@ def exercise_thinking_blocks_are_skipped():
   assert "the answer is 42" in md, md
 
 
+def exercise_ephemeral_blocks_are_skipped():
+  """An ephemeral block (e.g. a transient context-pressure note) reaches the
+  model in the live conversation but must never appear in an export.
+
+  ``conversation_to_markdown`` is a SECOND serializer of the in-memory
+  conversation, independent of ``storage.save``; between a delivering turn and
+  the next send the note sits in ``conv.messages``, so without the same
+  ``is_ephemeral_block`` filter a 'Save chat' then leaks it under the user's
+  own heading. The sibling text in the same message must survive."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "my real question"}),
+    ContentBlock(type="text", data={"text": "[system note] 80% used",
+                                    EPHEMERAL_BLOCK_KEY: True})]))
+  md = conversation_to_markdown(conv)
+  assert "my real question" in md, md
+  assert "system note" not in md, md
+
+
 def exercise_tool_use_renders_as_fenced_block():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
@@ -191,6 +264,27 @@ def exercise_tool_result_renders_text_content_in_fence():
   assert "```tool-result" in md, md
   assert "status: running" in md, md
   assert "last: 3 min ago" in md, md
+
+
+def exercise_tool_result_fence_outlasts_inner_backticks():
+  """A tool_result whose own text contains a ``` code fence must not break out
+  of the export's code fence. Per CommonMark the exporter opens with a fence
+  one backtick longer than the longest inner backtick run (never fewer than 3),
+  so the inner ``` stays inside the block and the prose after it is not
+  promoted to live markdown."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  inner = "log start\n```\ndef f(): return 1\n```\nAFTER_FENCE: done"
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_1",
+      "content": [ContentBlock(type="text", data={"text": inner})],
+      "is_error": False})]))
+  md = conversation_to_markdown(conv)
+  # The longest inner run is 3 backticks, so the fence is 4; the whole tool
+  # output (its own ``` fences and the line after them) is preserved verbatim
+  # between the 4-backtick open/close rather than breaking out of the fence.
+  assert "````tool-result\n%s\n````" % inner in md, md
 
 
 def exercise_image_renders_link_to_attachment_when_storage_present():
@@ -286,6 +380,29 @@ def exercise_malformed_block_does_not_crash():
   assert "[unknown block: surprise]" in md, md
 
 
+def exercise_tool_result_non_iterable_content_does_not_sink_export():
+  """The module docstring promises a malformed block falls back to a
+  placeholder so a single bad block doesn't sink the export. A tool_result
+  whose `content` is a truthy NON-iterable (e.g. a JSON number) makes
+  `for inner in content` raise TypeError in _render_tool_result; without a
+  per-block guard in conversation_to_markdown that TypeError aborts the whole
+  'Save chat'. The export must catch it, emit a placeholder for the bad block,
+  and still render the good blocks on either side."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "before bad block"}),
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_1",
+      "content": 42,                 # truthy non-iterable -> TypeError in loop
+      "is_error": False}),
+    ContentBlock(type="text", data={"text": "after bad block"})]))
+  md = conversation_to_markdown(conv)              # must NOT raise
+  assert "before bad block" in md, md
+  assert "after bad block" in md, md
+  assert "[unknown block]" in md, md
+
+
 def exercise_ends_with_newline():
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
@@ -302,16 +419,22 @@ def exercise():
   exercise_auto_height_no_scrollbar()
   exercise_raw_html_in_markdown_is_not_rendered_as_rich_text()
   exercise_loadresource_refuses_local_file()
+  exercise_escape_approx_tildes_is_narrow()
+  exercise_escape_approx_tildes_skips_code()
+  exercise_approx_tilde_not_rendered_as_strikethrough()
   exercise_header_renders_title_meta_and_separator()
   exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()
   exercise_thinking_blocks_are_skipped()
+  exercise_ephemeral_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()
+  exercise_tool_result_fence_outlasts_inner_backticks()
   exercise_image_renders_link_to_attachment_when_storage_present()
   exercise_image_resolves_via_public_conv_dir_accessor()
   exercise_image_without_storage_falls_back_to_placeholder()
   exercise_malformed_block_does_not_crash()
+  exercise_tool_result_non_iterable_content_does_not_sink_export()
   exercise_ends_with_newline()
 
 

@@ -34,6 +34,10 @@ class ToolApprovalRequest(AgentEvent):
       Risk level: ``'read'``, ``'write'``, or ``'destructive'``.
   batch_id : str, optional
       Identifier grouping requests issued together in one batch.
+  allow_remember : bool, optional
+      Whether the approval card may offer 'Always allow this tool'
+      (standing per-tool auto-approval). Defaults to ``True``; a
+      destructive tool sets ``False`` to force a decision every time.
   """
   request_id: str
   tool_name: str
@@ -41,6 +45,7 @@ class ToolApprovalRequest(AgentEvent):
   input: dict
   risk: str                        # 'read' | 'write' | 'destructive'
   batch_id: str = None
+  allow_remember: bool = True      # False -> card omits "Always allow this tool"
 
 
 @dataclass
@@ -61,6 +66,42 @@ class ToolApprovalResponse:
   request_id: str
   decision: str                    # 'approve' | 'deny' | 'deny_and_stop'
   remember: str = "none"           # 'none' | 'tool'
+
+
+def record_tool_remember(response, tool_name_of, allow_remember, remember):
+  """Apply a remember='tool' approval to a backend's session-allow sink.
+
+  The single implementation of the remember='tool' contract, shared by both
+  backends -- the API path (``AgentSession``) and the SDK path
+  (``ClaudeCodeAgent``), which differ only in where the request_id->tool_name
+  map, the opt-out recheck, and the allow set live. Records nothing unless the
+  user APPROVED with remember='tool' AND the tool still permits being remembered
+  (the data-layer opt-out floor, enforced here rather than trusting the card's
+  checkbox). Called on the GUI thread BEFORE the coordinator resolves the
+  future, so a click that races a cancel still records "always allow".
+
+  Parameters
+  ----------
+  response : ToolApprovalResponse
+      The user's decision.
+  tool_name_of : callable
+      ``request_id -> tool_name or None`` (the per-request map recorded at
+      ``open``). Returns None for a backend that never surfaced this request, so
+      that backend's call is a no-op -- which is how the runner can hand every
+      response to both backends and have exactly one record it.
+  allow_remember : callable
+      ``tool_name -> bool``; a False vetoes recording (e.g. a force-close tool
+      registered ``allow_remember=False``).
+  remember : callable
+      ``tool_name -> None``; the sink that marks the tool session-allowed.
+  """
+  if (getattr(response, "decision", None) != "approve"
+      or getattr(response, "remember", "none") != "tool"):
+    return
+  tool_name = tool_name_of(response.request_id)
+  if tool_name is None or not allow_remember(tool_name):
+    return
+  remember(tool_name)
 
 
 class _Cancelled:
@@ -206,6 +247,7 @@ class _ToolEntry:
   source: str                      # 'builtin' | 'skill' | 'mcp:<server>'
   handler: object = None           # callable; signature varies by source
   risk: str = "write"
+  allow_remember: bool = True      # False -> approval card hides "Always allow"
 
 
 class ToolRegistry:
@@ -222,7 +264,7 @@ class ToolRegistry:
 
   # ---- registration --------------------------------------------------------
 
-  def register_builtin(self, spec, handler, risk="write"):
+  def register_builtin(self, spec, handler, risk="write", allow_remember=True):
     """Register a built-in tool under ``spec.name``.
 
     Built-ins take precedence: a same-named non-builtin tool (skill or MCP)
@@ -230,9 +272,14 @@ class ToolRegistry:
     trusted built-in and inherit its pre-authorization. This enforces the
     registry's built-in > skill > MCP collision order regardless of
     registration order (production registers MCP before these built-ins).
+
+    ``allow_remember=False`` marks a tool whose approval card must not offer
+    'Always allow this tool' -- a destructive tool that should be re-confirmed
+    on every call rather than granted standing per-tool auto-approval.
     """
     self._add(spec.name, _ToolEntry(
-      spec=spec, source="builtin", handler=handler, risk=risk),
+      spec=spec, source="builtin", handler=handler, risk=risk,
+      allow_remember=allow_remember),
       overwrite=True)
 
   def register_skill_tool(self, spec, handler):
@@ -292,6 +339,11 @@ class ToolRegistry:
   def risk_of(self, name):
     """Return a tool's risk level, defaulting to ``write`` if unknown."""
     return self._entries[name].risk if name in self._entries else "write"
+
+  def allow_remember_of(self, name):
+    """Whether the approval card may offer 'Always allow this tool' for
+    ``name``. Defaults to True for unknown names."""
+    return self._entries[name].allow_remember if name in self._entries else True
 
   # ---- invocation ----------------------------------------------------------
 

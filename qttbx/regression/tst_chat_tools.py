@@ -218,6 +218,52 @@ def exercise_approval_request_is_agent_event():
   assert isinstance(req, AgentEvent)
 
 
+def exercise_allow_remember_of():
+  """register_builtin carries allow_remember; default True, overridable False."""
+  reg = ToolRegistry(log=null_out())
+  spec_a = ToolSpec(name="a", description="", input_schema={})
+  spec_b = ToolSpec(name="b", description="", input_schema={})
+  reg.register_builtin(spec_a, handler=lambda *a, **k: "", risk="write")
+  reg.register_builtin(spec_b, handler=lambda *a, **k: "", risk="destructive",
+                       allow_remember=False)
+  assert reg.allow_remember_of("a") is True
+  assert reg.allow_remember_of("b") is False
+  assert reg.allow_remember_of("missing") is True     # safe default
+
+
+def exercise_record_tool_remember():
+  """The single implementation of the remember='tool' contract that both
+  backends delegate to (API via AgentSession, SDK via ClaudeCodeAgent), differing
+  only in the lookup map / recheck / sink they pass. Records via the sink iff the
+  user APPROVED with remember='tool' AND the tool still permits being remembered
+  (the data-layer opt-out floor, independent of the card's checkbox)."""
+  from qttbx.widgets.chat.agent.tools import record_tool_remember
+  names = {"r1": "phenix_start_job", "r2": "coot_close_unresponsive"}
+  allow = {"phenix_start_job": True, "coot_close_unresponsive": False}
+
+  def _run(response):
+    sunk = []
+    record_tool_remember(response, tool_name_of=names.get,
+                         allow_remember=allow.get, remember=sunk.append)
+    return sunk
+
+  # approve + remember='tool' + rememberable -> recorded.
+  assert _run(ToolApprovalResponse(request_id="r1", decision="approve",
+                                   remember="tool")) == ["phenix_start_job"]
+  # decision != approve -> nothing.
+  assert _run(ToolApprovalResponse(request_id="r1", decision="deny",
+                                   remember="tool")) == []
+  # remember != 'tool' -> nothing.
+  assert _run(ToolApprovalResponse(request_id="r1", decision="approve",
+                                   remember="none")) == []
+  # unknown request id (no tool_name) -> nothing.
+  assert _run(ToolApprovalResponse(request_id="zzz", decision="approve",
+                                   remember="tool")) == []
+  # opt-out tool (allow_remember False) -> nothing, even on approve+tool.
+  assert _run(ToolApprovalResponse(request_id="r2", decision="approve",
+                                   remember="tool")) == []
+
+
 def exercise():
   exercise_policy_resolve_default()
   exercise_policy_explicit_tool_beats_default()
@@ -234,6 +280,8 @@ def exercise():
   exercise_register_ask_user_question_builtin()
   exercise_approval_request_response_dataclasses()
   exercise_approval_request_is_agent_event()
+  exercise_allow_remember_of()
+  exercise_record_tool_remember()
 
 
 if __name__ == "__main__":

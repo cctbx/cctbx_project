@@ -249,11 +249,18 @@ class restraints_scale_manager(object):
     sites_frac = self.model.get_sites_frac()
     for k, proxy in enumerate(bond_proxies_simple):
       i_seq, j_seq = proxy.i_seqs
-      #if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
+      if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
       dist_ideal = proxy.distance_ideal
       dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
       delta = abs(dist_ideal-dist_model)
-      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+
+      ots = 0
+      for it in [one_time_scale[i_seq],
+                 one_time_scale[j_seq]]:
+        ots += it
+        assert it >=0 and it <= 1, it
+      ots = ots/2
+
       consensus_scale = 1
       if ots < 0.6: cutoff = 0.02
       else:         cutoff = 0.03
@@ -275,11 +282,20 @@ class restraints_scale_manager(object):
     sites_cart = self.model.get_sites_cart()
     for k, proxy in enumerate(g.angle_proxies):
       i_seq,j_seq,k_seq = proxy.i_seqs
+      if self.hd_selection[i_seq] or self.hd_selection[j_seq] or self.hd_selection[k_seq]: continue
       angle_ideal = proxy.angle_ideal
       sites = (sites_cart[i_seq], sites_cart[j_seq], sites_cart[k_seq])
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
-      ots = (one_time_scale[i_seq]+one_time_scale[j_seq])/2
+
+      ots = 0
+      for it in [one_time_scale[i_seq],
+                 one_time_scale[j_seq],
+                 one_time_scale[k_seq]]:
+        ots += it
+        assert it >=0 and it <= 1, it
+      ots = ots/3
+
       consensus_scale = 1
       if ots < 0.6: cutoff = 3.0
       else:         cutoff = 5.0
@@ -625,6 +641,15 @@ class manager(object):
   def get_scattering_table(self):
     return self.get_xray_structure().get_scattering_table()
 
+  def get_scattering_table_d_min(self):
+    """d_min the current scattering table was set up with, None if unknown.
+
+    Needed whenever a scattering table is restored after xray_structure has
+    been rebuilt: "n_gaussian" with d_min of None, 1 or 3 are all different.
+    """
+    if(self.scattering_dict_info is None): return None
+    return self.scattering_dict_info.d_min
+
   def get_xray_structure(self, force=False):
     if force: self._xray_structure = None
     if(self._xray_structure is None):
@@ -780,6 +805,29 @@ class manager(object):
     # Restore methods from pdb hierarchy
     if self._pdb_hierarchy:
       self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
+
+    # __getstate__ drops _xray_structure, so it gets rebuilt from the hierarchy
+    # without a scattering table and silently falls back to the default one.
+    # scattering_dict_info survives pickling, so use it to put the table back.
+    self._restore_scattering_dictionaries()
+
+  def _restore_scattering_dictionaries(self):
+    """Re-apply the scattering table remembered by scattering_dict_info.
+
+    For use after _xray_structure has been dropped and rebuilt: the rebuilt one
+    carries no table, and without this the model would quietly compute
+    structure factors from a different table than it was set up with. Restores
+    d_min too, since "n_gaussian" means a different table for a different d_min.
+    """
+    sdi = self.scattering_dict_info
+    if(sdi is None): return
+    # no (complete) crystal symmetry means no xray_structure to set a table on
+    if(self.get_xray_structure() is None): return
+    self.setup_scattering_dictionaries(
+      scattering_table           = sdi.scattering_table,
+      d_min                      = sdi.d_min,
+      set_inelastic_form_factors = sdi.set_inelastic_form_factors,
+      iff_wavelength             = sdi.iff_wavelength)
 
   def __repr__(self):
     """
@@ -1145,6 +1193,7 @@ class manager(object):
 
       # Reset _crystal_symmetry
       scattering_table = xrs.scattering_type_registry().last_table()
+      scattering_table_d_min = self.get_scattering_table_d_min()
       scatterers = xrs.scatterers()
       sp = crystal.special_position_settings(crystal_symmetry)
       self._xray_structure = xray.structure(sp, scatterers) # new symmetry
@@ -1163,7 +1212,9 @@ class manager(object):
 
       # Set up scattering table if there was one before
       if scattering_table:
-        self.setup_scattering_dictionaries(scattering_table = scattering_table)
+        self.setup_scattering_dictionaries(
+          scattering_table = scattering_table,
+          d_min            = scattering_table_d_min)
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
@@ -2146,8 +2197,10 @@ class manager(object):
         run_clash_guard           = False):
     self._processed = True
     SAVE_scatering_table = None
+    SAVE_scatering_table_d_min = None
     if self._xray_structure is not None:
       SAVE_scatering_table = self._xray_structure.get_scattering_table()
+      SAVE_scatering_table_d_min = self.get_scattering_table_d_min()
     if(pdb_interpretation_params is not None):
       self.unset_restraints_manager()
     if(pdb_interpretation_params is None):
@@ -2244,9 +2297,12 @@ class manager(object):
     self.unset_processed_pdb_file()
     # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
-    # Ensure we did not loose scattering_table
+    # Ensure we did not loose scattering_table (and the d_min it was set up
+    # with: "n_gaussian" means a different table for a different d_min)
     if SAVE_scatering_table is not None:
-      self.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+      self.setup_scattering_dictionaries(
+        scattering_table = SAVE_scatering_table,
+        d_min            = SAVE_scatering_table_d_min)
 
   def get_missing_atoms(self):
     if self._missing_atoms is None:
@@ -2858,7 +2914,8 @@ class manager(object):
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
-    self._xray_structure.scattering_type_registry_params.table = scattering_table
+    # Record d_min as well as the "n_gaussian" table depends d_min.
+    self._xray_structure.set_scattering_table(scattering_table, d_min = d_min)
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_searched_tls_selections(self, nproc, log):
@@ -2932,7 +2989,7 @@ class manager(object):
 
   def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False,
                              ignore_h_with_dof = False):
-    assert self.riding_h_manager is None
+    if self.riding_h_manager is not None: return
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
     self.riding_h_manager = riding.manager(
@@ -2957,6 +3014,53 @@ class manager(object):
         sites_cart=sites_cart,
         selection_bool = flags)
       self.set_sites_cart(sites_cart)
+    # AD HOC fix for the riding H issue for water START
+    sct = self.get_scattering_table()
+    dist_ideal = 0.85
+    if sct in ["neutron", "electron"]: dist_ideal = 0.98
+    def idealize_water_geometry(
+        o_xyz, h1_xyz, h2_xyz, dist_ideal=dist_ideal, angle_ideal=103.91):
+      """
+      Computes idealized H-O-H coordinates. O remains entirely fixed.
+      H positions are adjusted minimally by preserving their plane and bisector.
+      """
+      O  = matrix.col(o_xyz)
+      H1 = matrix.col(h1_xyz)
+      H2 = matrix.col(h2_xyz)
+      v1 = H1 - O
+      v2 = H2 - O
+      n = v1.cross(v2)
+      if n.length() < 1e-6: n = v1.ortho().normalize()
+      else:                 n = n.normalize()
+      b = (v1.normalize() + v2.normalize()).normalize()
+      half_angle = angle_ideal / 2.0
+      rao = b.rotate_around_origin
+      new_v1 = rao(axis=n, angle=-half_angle, deg=True) * dist_ideal
+      new_v2 = rao(axis=n, angle= half_angle, deg=True) * dist_ideal
+      new_H1 = O + new_v1
+      new_H2 = O + new_v2
+      return new_H1.elems, new_H2.elems
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.get_hierarchy().models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            if (get_class(name=ag.resname) != "common_water"): continue
+            o_atom = None
+            h_atoms = []
+            for a in ag.atoms():
+              element = a.element.strip().upper()
+              if element == "O":          o_atom = a
+              elif element in ["H", "D"]: h_atoms.append(a)
+            if o_atom is not None and len(h_atoms) == 2:
+              h1_new, h2_new = idealize_water_geometry(
+                o_xyz  = o_atom.xyz,
+                h1_xyz = h_atoms[0].xyz,
+                h2_xyz = h_atoms[1].xyz)
+              h_atoms[0].xyz = h1_new
+              h_atoms[1].xyz = h2_new
+    self.set_sites_cart( self.get_hierarchy().atoms().extract_xyz() )
+    # AD HOC fix for the riding H issue for water END
 
   def get_hierarchy(self):
     """
@@ -3955,6 +4059,7 @@ class manager(object):
       crystal_symmetry           = self._crystal_symmetry,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,
+      stop_for_unknowns          = self._stop_for_unknowns,
       expand_with_mtrix          = False,
       pdb_hierarchy              = new_pdb_hierarchy,
       log                        = self.log)
@@ -3992,10 +4097,13 @@ class manager(object):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
     if(SAVE_scatering_table is not None and
-       SAVE_scatering_table in known_scattering_tables and
-       SAVE_scatering_table != "n_gaussian" # setting this requires d_min!!!!!!!
-       ):
-      new.setup_scattering_dictionaries(scattering_table=SAVE_scatering_table)
+       SAVE_scatering_table in known_scattering_tables):
+      # d_min matters: "n_gaussian" at d_min=None, 1 or 3 are three different
+      # tables. sdi (propagated above) remembers the d_min the table was set
+      # up with, so restore the table with it.
+      new.setup_scattering_dictionaries(
+        scattering_table = SAVE_scatering_table,
+        d_min            = None if sdi is None else sdi.d_min)
     return new
 
   def number_of_ordered_solvent_molecules(self):
@@ -4072,15 +4180,14 @@ class manager(object):
     return n_old_atoms - n_new_atoms
 
   def remove_solvent(self):
-    result = self.select(selection = ~self.solvent_selection())
-    return result
+    return self.select(selection = ~self.solvent_selection())
 
   def remove_hydrogens(self):
     if self.has_hd():
       noh_selection = self.selection("not (element H or element D)")
       return self.select(noh_selection)
     else:
-      return self
+      return self.deep_copy()
 
   def show_occupancy_statistics(self, out=None, text=""):
     global time_model_show
@@ -4341,7 +4448,9 @@ class manager(object):
         restraint_objects  = self._restraint_objects,
         monomer_parameters = self._monomer_parameters,
         log                = null_out())
-      m.setup_scattering_dictionaries(scattering_table=scattering_table)
+      m.setup_scattering_dictionaries(
+        scattering_table = scattering_table,
+        d_min            = self.get_scattering_table_d_min())
       m.process(make_restraints=True,
         pdb_interpretation_params = self.get_current_pdb_interpretation_params())
     else:

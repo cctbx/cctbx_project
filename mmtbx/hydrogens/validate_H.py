@@ -154,7 +154,10 @@ class validate_H(object):
               missing.append(missing_list)
               conformers.append(conformer.altloc)
               xyzs.append(xyz)
-              id_strings.append(residue.id_str())
+              # suppress_segid=-1: keep the segid when it is unique across the
+              # residue, but degrade gracefully (blank segid) instead of raising
+              # when H/D atoms carry a different segid than their parent atoms.
+              id_strings.append(residue.id_str(suppress_segid=-1))
           if missing:
             # if all conformers lack the same H atoms, only add once
             if len([list(tupl) for tupl in {tuple(item) for item in missing }]) == 1:

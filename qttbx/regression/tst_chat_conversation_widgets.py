@@ -38,6 +38,14 @@ def _user(text="hi"):
     ContentBlock(type="text", data={"text": text})])
 
 
+# The shape of error a force-killed Coot bridge produces: long, single-line,
+# and routed to the failing tool's disclosure cell.
+LONG_TOOL_ERROR = (
+  "MCP error -32000: Connection closed. Failed to connect to the Coot RPC "
+  "bridge at 127.0.0.1:44100: [Errno 61] Connection refused. The Coot "
+  "process may have exited or been killed; restart Coot and retry.")
+
+
 def _png_bytes(width=10, height=10):
   from qttbx.qt import QtCore, QtGui
   img = QtGui.QImage(width, height, QtGui.QImage.Format_ARGB32)
@@ -111,9 +119,9 @@ def exercise_finalize_non_cancel_leaves_running_cells_untouched():
 
 
 def exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it():
-  """[F#2] claude_code dispatches tools in its SDK subprocess and renders the
-  results in a SEPARATE bubble -- it never calls set_tool_use_finished on the
-  live tool_use cell, so the cell stays 'running'. ConversationView's
+  """[F#2] claude_code runs its tools in the SDK subprocess, bypassing the
+  session dispatch that finishes an API backend's cell -- so nothing finishes
+  the live tool_use cell and it stays 'running'. ConversationView's
   finish_tool_cell (driven by ChatWindow._on_tool_result_observed when a result
   is observed) must transition the matching in-progress cell to the finished
   terminal state. Otherwise the Stop-time sweep -- finalize_assistant_bubble(
@@ -165,6 +173,117 @@ def exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble():
   v.finish_tool_cell("unknown_id")          # unknown id on the bubble -> no raise
 
 
+def exercise_reload_folds_tool_results_into_matching_tool_cells():
+  """[F#2] On reload, an answering tool_result message folds into the bubble
+  holding its tool_use cells instead of becoming its own bubble: the reloaded
+  turn shows one finished cell per tool (call + result), not a stuck-'running'
+  call cell plus a detached 'result' cell.
+
+  add_message(..., fold_tool_results=True) is the reload path (ChatWindow.
+  _rebuild_view). Pins: (a) no extra bubble for the answer, (b) the matching
+  cell leaves 'running' and shows 'finished', (c) an is_error result shows
+  'failed', and (d) the default (live) path still gives the answer its own
+  bubble and leaves the call cell running (the legacy shape this retires)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+
+  def _assistant_with_tool(tid):
+    return Message(role="assistant", timestamp=now(), content=[
+      ContentBlock(type="text", data={"text": "working"}),
+      ContentBlock(type="tool_use", data={
+        "id": tid, "name": "phenix_get_status", "input": {}})])
+
+  def _answer(tid, text, is_error=False):
+    return Message(role="user", timestamp=now(), content=[
+      ContentBlock(type="tool_result", data={
+        "tool_use_id": tid,
+        "content": [ContentBlock(type="text", data={"text": text})],
+        "is_error": is_error})])
+
+  # Reload: an assistant tool_use turn, then its answering tool_result message.
+  v = ConversationView()
+  v.add_message(_assistant_with_tool("t1"), fold_tool_results=True)
+  assert v.bubble_count() == 1
+  cell = v.bubbles()[-1]._tool_cells_by_id["t1"]
+  assert cell.is_running()                        # nothing has answered it yet
+  v.add_message(_answer("t1", "Job 1: done"), fold_tool_results=True)
+  # (a) folded -- no second bubble for the answer.
+  assert v.bubble_count() == 1, \
+    "answering tool_result must fold into the assistant bubble, not add one"
+  # (b) the matching cell left 'running' and shows the finished result.
+  assert not cell.is_running(), "folded result must finish the tool cell"
+  assert "finished" in cell.header_button.text(), cell.header_button.text()
+
+  # (c) a failed observed result folds as an error cell.
+  v.add_message(_assistant_with_tool("t2"), fold_tool_results=True)
+  err_cell = v.bubbles()[-1]._tool_cells_by_id["t2"]
+  v.add_message(_answer("t2", "boom", is_error=True), fold_tool_results=True)
+  assert not err_cell.is_running()
+  assert "failed" in err_cell.header_button.text(), err_cell.header_button.text()
+
+  # (d) default (live) path is unchanged: the answer is its own bubble and the
+  # call cell stays 'running' -- the orphan/legacy reload shape this fix retires.
+  v2 = ConversationView()
+  v2.add_message(_assistant_with_tool("t3"))
+  v2.add_message(_answer("t3", "done"))
+  assert v2.bubble_count() == 2
+  assert v2.bubbles()[0]._tool_cells_by_id["t3"].is_running()
+
+
+def exercise_finish_tool_cell_error_marks_cell_failed():
+  """A failed observed tool (is_error=True) finishes its LIVE cell as 'failed',
+  not neutral 'finished' -- so a failure the user is watching is reported at
+  once, matching the reloaded view (which renders the persisted is_error
+  tool_result as a red cell). A successful finish stays 'finished'."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bub = v.start_assistant_bubble()
+  for tid in ("bad", "good"):
+    v.append_block_to_current(ContentBlock(type="tool_use", data={
+      "id": tid, "name": "Bash", "input": {}}))
+  v.finish_tool_cell("bad", is_error=True, result="exit status 1")
+  v.finish_tool_cell("good")
+  bad = bub._tool_cells_by_id["bad"]
+  good = bub._tool_cells_by_id["good"]
+  assert not bad.is_running() and "failed" in bad.header_button.text(), \
+    bad.header_button.text()
+  assert not good.is_running() and "finished" in good.header_button.text(), \
+    good.header_button.text()
+
+
+def exercise_failed_tool_cell_does_not_floor_the_view_width():
+  """A failed tool's error text must not pin the view's width.
+
+  The bubbles track the window because ConversationView is a
+  setWidgetResizable QScrollArea -- but only while nothing inside floors the
+  container's minimum width. The disclosure header is a QToolButton, whose
+  minimumSizeHint is its FULL text width and which never elides, so routing a
+  long error into it floored the container: the bubbles stopped tracking the
+  window, a horizontal scrollbar appeared, and every message was clipped.
+  Seen for real when a force-killed Coot made mcp__coot__* calls fail with a
+  long MCP connection error. One such cell anywhere in the conversation pins
+  the whole view, even scrolled out of sight.
+  """
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  v = ConversationView()
+  bub = v.add_message(_user("hello"))
+  bub.add_tool_use_cell(tool_id="t1", name="mcp__coot__run_python", args={})
+  bub.set_tool_use_finished(tool_id="t1", error=LONG_TOOL_ERROR)
+  v.resize(1100, 700)
+  v.show()
+  app.processEvents()
+  v.resize(500, 700)
+  app.processEvents()
+  assert v.widget().width() <= v.viewport().width(), (
+    "container %d exceeds viewport %d -- a failed tool cell floored the view"
+    % (v.widget().width(), v.viewport().width()))
+  assert v.horizontalScrollBar().maximum() == 0, (
+    "horizontal scrollbar appeared (max=%d); bubbles no longer track the "
+    "window width" % v.horizontalScrollBar().maximum())
+
+
 def exercise_set_assistant_label_flows_to_new_bubbles():
   """set_assistant_label provides the fallback name for new assistant bubbles
   that carry no per-message backend stamp (the live streaming case)."""
@@ -173,7 +292,7 @@ def exercise_set_assistant_label_flows_to_new_bubbles():
   v = ConversationView()
   v.set_assistant_label("Gemini")
   bubble = v.start_assistant_bubble()
-  bubble.add_text("hello")
+  bubble.append_text_delta("hello")
   assert "Gemini" in bubble.first_text_cell_html()
 
 
@@ -191,6 +310,39 @@ def exercise_question_card_uses_assistant_label():
   card = v._question_cards[-1]
   labels = [w.text() for w in card.findChildren(QtWidgets.QLabel)]
   assert any("Gemini needs an answer" in t for t in labels), labels
+
+
+def exercise_stop_finalizes_pending_question_cards():
+  """A turn stopped while a QuestionCard is still awaiting an answer must
+  finalize that card (disable Submit + hide it) -- the same sweep the pending
+  approval cards get. Otherwise the stale card stays clickable and a late
+  Submit carries a request_id the parked worker no longer waits on, so the
+  answer is silently dropped. finalize_assistant_bubble is the normal/error
+  turn-end path; on a parked cancel ChatWindow._on_stop sweeps immediately,
+  then the session's synthesized terminal cancel TurnDone finalizes via this
+  same path afterwards (queued)."""
+  from qttbx.widgets.chat.agent.events import AskUserQuestionRequested
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  v.start_assistant_bubble()
+  v.add_question_request(AskUserQuestionRequested(
+    request_id="r1",
+    questions=[{"question": "Which?",
+                "options": [{"label": "a"}, {"label": "b"}]}]))
+  card = v._question_cards[-1]
+  assert card._buttons_widget.isEnabled()            # live: Submit clickable
+  fired = []
+  card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
+  # The user hits Stop -> the turn finalizes.
+  v.finalize_assistant_bubble("cancelled")
+  # The undecided question card must be swept: Submit disabled + card hidden.
+  assert not card._buttons_widget.isEnabled(), \
+    "stopped question card must have Submit disabled"
+  assert card.isHidden(), "stopped question card must be hidden"
+  # A late click on the finalized card must not emit a stale answer.
+  card.click_submit()
+  assert fired == [], "a finalized question card must not emit a late answer"
 
 
 def exercise_batched_approval_coalesces_by_batch_id():
@@ -360,6 +512,32 @@ def exercise_streaming_deltas_do_not_yank_user_who_scrolled_up():
   # the bottom. Allow some slack since the bubble's growth changes
   # bar.maximum() (value stays put but the gap from max widens).
   assert bar.value() < bar.maximum() - 24, (bar.value(), bar.maximum(), mid)
+
+
+def exercise_scroll_up_disengages_follow_synchronously_during_growth():
+  """During streaming, a manual scroll-up must disengage follow-mode
+  SYNCHRONOUSLY. If _on_user_scroll_action only DEFERS the follow re-eval
+  (singleShot), _follow_bottom is still True when the next delta's
+  rangeChanged fires -> _on_range_changed snaps the viewport back to the
+  bottom, and the deferred refresh (reading the snapped-back position) then
+  re-asserts follow. The user could never scroll away to re-read mid-stream."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  bar = v.verticalScrollBar()
+  bar.setRange(0, 500)
+  v._follow_bottom = True
+  bar.setValue(120)                    # user parked well above the bottom
+  # A real user scroll-up action (wheel / arrow / drag). It must flip follow
+  # off NOW, not on a later event-loop turn.
+  v._on_user_scroll_action(QtWidgets.QAbstractSlider.SliderSingleStepSub)
+  assert not v._follow_bottom, \
+    "scroll-up did not disengage follow-mode synchronously"
+  # A streaming delta grows the content before the deferred refresh runs;
+  # rangeChanged must NOT yank the viewport back to the new bottom.
+  bar.setRange(0, 600)
+  v._on_range_changed(0, 600)
+  assert bar.value() != bar.maximum(), (bar.value(), bar.maximum())
 
 
 def exercise_range_change_while_following_snaps_to_new_max():
@@ -601,6 +779,27 @@ def exercise_list_rename_with_same_title_is_no_op():
     lambda cid, title: renames.append((cid, title)))
   w._list.item(0).setText("Conv 0")
   assert renames == [], renames
+
+
+def exercise_list_rename_normalises_padded_title_in_display():
+  """A committed rename to a padded title emits and stores the whitespace-
+  STRIPPED title, so the row's DISPLAYED text must be stripped to match --
+  otherwise the visible row shows '  Notes  ' while the stored/emitted title is
+  'Notes', a mismatch that lingers for a whole in-flight turn (the busy path
+  skips the sidebar repopulate that would otherwise redraw it)."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  w.set_conversations([_meta(0)])
+  w.select_index(0)
+  renames = []
+  w.rename_requested.connect(
+    lambda cid, title: renames.append((cid, title)))
+  w.click_rename()                                   # opens the editor
+  w._list.item(0).setText("  Notes  ")               # commit a padded title
+  assert renames == [("id0", "Notes")], renames      # emitted stripped
+  assert w._cached_title("id0") == "Notes", w._cached_title("id0")   # stored stripped
+  assert w._list.item(0).text() == "Notes", w._list.item(0).text()  # displayed too
 
 
 def exercise_list_rename_button_with_no_selection_is_no_op():
@@ -909,6 +1108,30 @@ def exercise_list_action_button_debounces_on_label_flip():
   assert w._del_btn.isEnabled(), "a repeat in the same state must not debounce"
 
 
+def exercise_list_selection_change_clears_stale_unlock_target():
+  """Changing the selection must reset the shared Delete/Unlock button
+  SYNCHRONOUSLY. The async lock re-check that re-arms Unlock for a locked row
+  runs later (off-thread scan -> _sync_action_button_to_selection), so a stale
+  'Unlock B' target left over from a previously-selected locked row must NOT
+  survive into a newly-selected UNLOCKED row -- otherwise a click during the scan
+  fires unlock_requested for B, the wrong, no-longer-selected conversation. The
+  debounce only guards LABEL FLIPS, not selection changes, so the reset has to
+  happen in _on_row_changed."""
+  from qttbx.widgets.chat.conversation_list import ConversationList
+  _qapp()
+  w = ConversationList()
+  # id1 (row 1) locked, id2 (row 2) not.
+  w.set_conversations([_meta(0), _meta(1), _meta(2)], locked_ids={"id1"})
+  w.select_index(1)                                     # select locked row B
+  w.set_unlock_button("id1")                            # a scan armed Unlock B
+  assert w._del_btn.text() == "Unlock" and w._unlock_target == "id1"
+  w.select_index(2)                                     # select UNLOCKED row C
+  # Before any async scan reconciles, the button must no longer be armed to
+  # unlock B (else a click here unlocks the wrong conversation).
+  assert w._unlock_target != "id1", w._unlock_target
+  assert w._del_btn.text() == "Delete", w._del_btn.text()
+
+
 def exercise_list_return_suppression_flag_auto_clears():
   """The post-rename Return guard must self-clear on the NEXT event-loop turn
   (QTimer.singleShot(0)), not linger. closeEditor also fires on a focus-out
@@ -936,8 +1159,12 @@ def exercise():
   exercise_finalize_non_cancel_leaves_running_cells_untouched()
   exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it()
   exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble()
+  exercise_reload_folds_tool_results_into_matching_tool_cells()
+  exercise_finish_tool_cell_error_marks_cell_failed()
+  exercise_failed_tool_cell_does_not_floor_the_view_width()
   exercise_set_assistant_label_flows_to_new_bubbles()
   exercise_question_card_uses_assistant_label()
+  exercise_stop_finalizes_pending_question_cards()
   exercise_batched_approval_coalesces_by_batch_id()
   exercise_two_batches_two_cards()
   exercise_solo_request_without_batch_id_gets_own_card()
@@ -946,6 +1173,7 @@ def exercise():
   exercise_image_click_propagates_to_view()
   exercise_add_message_always_scrolls_to_bottom()
   exercise_streaming_deltas_do_not_yank_user_who_scrolled_up()
+  exercise_scroll_up_disengages_follow_synchronously_during_growth()
   exercise_range_change_while_following_snaps_to_new_max()
   exercise_list_populate_and_select()
   exercise_list_set_active_marks_one_row_with_checkmark()
@@ -962,6 +1190,7 @@ def exercise():
   exercise_list_single_click_does_not_activate()
   exercise_list_empty_rename_is_rejected_and_reverted()
   exercise_list_rename_with_same_title_is_no_op()
+  exercise_list_rename_normalises_padded_title_in_display()
   exercise_list_rename_button_with_no_selection_is_no_op()
   exercise_list_select_id_selects_without_activating()
   exercise_list_select_id_unknown_is_noop()
@@ -979,6 +1208,7 @@ def exercise():
   exercise_list_lock_mid_rename_closes_editor_and_blocks_rename()
   exercise_list_revert_last_rename_restores_pre_edit_title()
   exercise_list_action_button_debounces_on_label_flip()
+  exercise_list_selection_change_clears_stale_unlock_target()
 
 
 if __name__ == "__main__":

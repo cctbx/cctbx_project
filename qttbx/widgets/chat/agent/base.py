@@ -20,9 +20,65 @@ class ToolSpec:
   name: str
   description: str
   input_schema: dict           # JSON Schema
+  risk: str = "read"           # 'read' | 'write' | 'destructive' (claude_code card)
+  allow_remember: bool = True  # False -> approval card omits "Always allow this tool"
 
 
-class Agent(ABC):
+class AttachmentScope:
+  """Where an agent's transcript files -- and therefore reads -- its images.
+
+  A mixin rather than an ``Agent`` method because the backends do not share one
+  base: ``ClaudeCodeAgent`` is duck-typed and inherits from nothing, while the
+  HTTP backends come through :class:`Agent`. Both re-send image blocks, so both
+  need the same answer, and a second copy of the rule would drift.
+
+  The pair exists because the write and the read had drifted apart already.
+  ``AgentSession`` writes an emitted image under its ``attachment_conv_id``,
+  which for a SUBAGENT is the PARENT's conversation -- a child conversation is
+  never saved, so its bytes and its record both live under the parent. The
+  agents meanwhile resolved image blocks against ``conversation.meta.id``, the
+  CHILD's. Writing to one id and reading from another means a child handed an
+  image by a tool cannot send it back on its next round: the load raises,
+  mid-turn, on an attachment that was on disk the whole time.
+  """
+
+  def set_attachment_conv_id(self, conv_id):
+    """Note which conversation this session FILES attachments under.
+
+    ``AgentSession`` calls this once, at construction, duck-typed. For a
+    top-level session the answer is the conversation the agent is driving and
+    this changes nothing.
+
+    Parameters
+    ----------
+    conv_id : str
+        The conversation id whose ``attachments/`` directory holds this
+        transcript's bytes.
+    """
+    self._attachment_conv_id = conv_id
+
+  def attachment_conv_id_for(self, conversation):
+    """The id to LOAD this transcript's attachments from.
+
+    What :meth:`set_attachment_conv_id` was told, when a session told it;
+    otherwise the conversation's own id, which is the right answer for an agent
+    driven without a session (tests, direct callers) and the behavior that
+    predates the hook.
+
+    Parameters
+    ----------
+    conversation : Conversation
+        The conversation being streamed.
+
+    Returns
+    -------
+    str
+    """
+    return (getattr(self, "_attachment_conv_id", None)
+            or conversation.meta.id)
+
+
+class Agent(AttachmentScope, ABC):
   """Provider-agnostic chat agent.
 
   Implementations live in ``phenix.gui.chat``. ``AgentSession``
@@ -33,7 +89,31 @@ class Agent(ABC):
   # Subclasses set these as class attributes (or instance attributes in
   # __init__).
   name: str
-  model: str
+  model: str                    # the model REQUESTED for this agent
+
+  #: Optional. The model that actually produced the most recent response,
+  #: when the backend reports one. Distinct from ``model`` because they can
+  #: differ: a backend able to switch models inside a conversation
+  #: (claude_code's ``/model``) answers with something other than what was
+  #: configured, and a provider resolving an alias answers with a dated id.
+  #: ``AgentSession`` stamps the message and the conversation meta from this
+  #: when set, and NEVER writes it back into ``model`` -- doing so would pin
+  #: the version an alias exists to keep current. Reset at ``stream_turn``
+  #: entry so a stale reading cannot outlive the turn that observed it.
+  observed_model = None
+
+  #: Peak per-API-CALL prompt size seen so far, for the context-pressure
+  #: monitor. Maintained by :func:`note_context_tokens`; the window zeroes it
+  #: on a conversation switch, so it is effectively a per-conversation
+  #: high-water mark. ``0`` means "nothing measured yet", never "context
+  #: empty".
+  #:
+  #: A HIGH-WATER MARK rather than the latest reading, because the prompt
+  #: usually grows across a turn's tool loop while ``cache_read`` can dip on a
+  #: miss, and the monitor wants the worst case. It must never be taken from a
+  #: whole-turn total that sums every iteration of a backend's internal tool
+  #: loop: that overstates the context by the number of calls in the turn.
+  last_context_tokens = 0
 
   @abstractmethod
   def stream_turn(self, conversation, tools, cancel):
@@ -105,15 +185,15 @@ class Agent(ABC):
     """Forward a user approval decision to the agent if it owns the request.
 
     The default implementation returns ``False`` -- the agent didn't
-    originate the request, so the runner should fall through to the
-    session's approval queue.
+    originate the request, so the runner resolves it through the
+    session's ApprovalCoordinator instead.
 
     Backends that gate tool execution via a provider-side callback
     (e.g. the Claude Code SDK's ``can_use_tool``) override this to
-    fulfill a pending future when ``response.request_id`` matches one
-    they emitted. Returning ``True`` tells the runner the request was
-    handled here and should NOT also land in the session queue (which
-    is parked on a different tool's approval).
+    persist any remember choice before the coordinator resolves the
+    future. Returning ``True`` would tell the runner the request was
+    fully handled here; the claude_code override returns ``False`` so
+    the decision still flows through the shared coordinator.
 
     Parameters
     ----------
@@ -152,6 +232,46 @@ class Agent(ABC):
     -------
     bool
         ``True`` if the agent owned ``request_id``, else ``False``.
+    """
+    return False
+
+  def reload_credentials(self):
+    """Refresh this agent's credentials in place ahead of an auth retry.
+
+    The default returns ``False`` -- API-key backends hold nothing that can
+    be reloaded in place; they recover through the credentials dialog
+    (``credentials_dialog_class`` + ``set_api_key``), so the caller falls
+    through to that prompt. A backend whose credentials live outside the
+    process (e.g. claude_code's CLI OAuth login, re-read from disk when its
+    subprocess respawns) overrides this to refresh them and return ``True``.
+
+    Declared on the ABC so the capability is protocol, not duck-typing: a
+    GUI probing ``callable(getattr(agent, "reload_credentials"))`` would
+    silently misroute any future backend that grows a same-named method.
+
+    Returns
+    -------
+    bool
+        ``True`` when credentials were reloaded and the failed turn is
+        worth retrying; ``False`` to recover via the key prompt instead.
+    """
+    return False
+
+  def uses_env_api_key(self):
+    """True when this agent's auth is an API key injected via its process
+    environment / launch flags rather than a key the agent holds (or an
+    external login). The default is ``False``.
+
+    The GUI uses this to pick the auth-failure recovery and banner: an
+    env-delivered key can only be replaced interactively (``set_api_key``)
+    -- a live process never sees a later parent-shell export -- so
+    ``True`` routes to the key prompt even when the backend also supports
+    ``reload_credentials``.
+
+    Returns
+    -------
+    bool
+        ``True`` for env/flag-delivered key auth, else ``False``.
     """
     return False
 
@@ -254,7 +374,17 @@ def anthropic_image_block(mime, data):
 # inside "generate"/"moderate" and `"auth" in text` matches "author".
 _AUTH_SIGNALS = ("authentication", "authenticated", "unauthorized",
                  "authorization", "permission", "api key", "api_key",
-                 "oauth", "login")
+                 "oauth", "login",
+                 # A mid-session credential expiry/revoke -- the target of the
+                 # claude_code auth-reload path -- often reads "token expired" /
+                 # "session expired" / "token has been revoked" with none of
+                 # the words above. WHOLE phrases only (with their has/been
+                 # variants), per the rule above: a bare "expired"/"revoked"
+                 # would classify a TLS "certificate has expired" or a
+                 # provider's expired uploaded file as an auth failure.
+                 "token expired", "token has expired",
+                 "session expired", "session has expired",
+                 "token revoked", "token has been revoked")
 _RATE_SIGNALS = ("rate limit", "rate-limit", "rate_limit", "ratelimit",
                  "429", "quota", "resource_exhausted", "resource exhausted")
 
@@ -373,3 +503,94 @@ def close_client(client):
       closer()
     except Exception:
       pass
+
+
+class HttpClientAgent(Agent):
+  """Shared base for the HTTP/SDK-client API backends (Anthropic, OpenAI-
+  compatible, Portkey, Gemini).
+
+  Codifies the api-key rotation dance -- build a fresh client for the new key
+  (re-applying ``base_url`` + any subclass kwargs) and release the old client's
+  connection pool -- so each backend doesn't re-implement ``set_api_key``. The
+  subprocess-shaped ``claude_code`` backend is a plain ``Agent`` (no HTTP client
+  to rotate), which is why this refinement lives one level below the ABC rather
+  than on ``Agent`` itself. Subclasses store the client on ``self.client`` and a
+  0-arg-per-key factory on ``self._client_factory``; they vary only in how the
+  client is built (``_rebuild_client``) and what extra kwargs it takes
+  (``_client_extra_kwargs``).
+  """
+
+  def set_api_key(self, key):
+    """Rebuild the provider client with a new API key (runtime re-auth) and
+    release the old client's connection pool.
+
+    Called by ChatWindow when the user supplies a new key via the credentials
+    dialog. The next ``stream_turn`` uses the new client. Shared by every
+    HTTP-client backend; subclasses vary only in ``_rebuild_client``.
+    """
+    old = getattr(self, "client", None)
+    self.client = self._rebuild_client(key)
+    close_client(old)               # release the prior client's pool
+
+  def _rebuild_client(self, key):
+    """Construct a fresh provider client for ``key``.
+
+    Default: call the stored ``self._client_factory`` with ``_client_kwargs``.
+    Gemini overrides this because its google-genai client isn't
+    ``factory(**kwargs)``-shaped.
+    """
+    return self._client_factory(**self._client_kwargs(key))
+
+  def _client_kwargs(self, key):
+    """Build the provider client constructor kwargs.
+
+    ``api_key`` always; ``base_url`` only when set (so the SDK default endpoint
+    isn't overridden with an explicit ``None``); plus any subclass extras from
+    ``_client_extra_kwargs`` (e.g. Portkey's ``virtual_key`` / ``config``).
+    Shared by ``__init__`` and ``set_api_key`` so construction and key rotation
+    can't diverge.
+    """
+    kwargs = {"api_key": key}
+    if getattr(self, "base_url", None):
+      kwargs["base_url"] = self.base_url
+    kwargs.update(self._client_extra_kwargs())
+    return kwargs
+
+  def _client_extra_kwargs(self):
+    """Extra client-constructor kwargs folded into ``_client_kwargs``.
+
+    Base returns none; subclasses (e.g. ``PortkeyAgent``) override to inject
+    provider-specific client kwargs such as ``virtual_key`` / ``config``.
+    """
+    return {}
+
+
+def note_context_tokens(agent, measured):
+  """Fold one per-call prompt-size reading into *agent*'s high-water mark.
+
+  A free function, not a method: ``ClaudeCodeAgent`` DUCK-TYPES the agent
+  contract rather than deriving from :class:`Agent`, so a method here would
+  reach three of the four backends and raise ``AttributeError`` on the fourth.
+
+  Shared because it was four separate copies of the same two lines whose
+  COMMENTS had already drifted: two of the four documented what happens when a
+  response carries no usage payload and two did not, leaving the invariant that
+  matters -- a missing reading leaves the peak STANDING, since lowering it
+  would discard a crossed threshold -- written down in half the places it
+  holds.
+
+  Parameters
+  ----------
+  agent : object
+      Anything carrying ``last_context_tokens``.
+  measured : int or None
+      Prompt size for one API call; ``0`` / ``None`` when unreported.
+
+  Returns
+  -------
+  int
+      The peak after folding in *measured*.
+  """
+  if measured and measured > agent.last_context_tokens:
+    agent.last_context_tokens = measured
+  return agent.last_context_tokens

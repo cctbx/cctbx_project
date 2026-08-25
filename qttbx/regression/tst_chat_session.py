@@ -1,6 +1,5 @@
 import io
 import json
-import queue
 import shutil
 import tempfile
 import threading
@@ -13,9 +12,11 @@ from qttbx.widgets.chat.agent.base import (
 from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, TokenUsage, now)
 from qttbx.widgets.chat.agent.errors import CancelToken, TurnCancelled
+from qttbx.widgets.chat.agent.events import CANCELLED
 from qttbx.widgets.chat.agent.events import (
   AskUserQuestionRequested, ServerToolResult, ServerToolUsed, TextDelta,
-  ToolUseRequested, TurnDone, TokenUsage as TokenUsageEvent)
+  ToolResultObserved, ToolUseRequested, TurnDone,
+  TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.profile import Profile
 from qttbx.widgets.chat.agent.session import AgentSession
 from qttbx.widgets.chat.agent.storage import ConversationStorage
@@ -51,7 +52,8 @@ class FakeAgent(Agent):
 
 
 def _new_test_session(turn_scripts, project_dir=None, max_depth=1, agent=None,
-                      clock=None, autosave_interval_s=5.0, depth=0):
+                      clock=None, autosave_interval_s=5.0, depth=0,
+                      tool_round_note=None):
   """Build a session with an in-memory queue and minimal profile."""
   if project_dir is None:
     project_dir = tempfile.mkdtemp()
@@ -72,8 +74,55 @@ def _new_test_session(turn_scripts, project_dir=None, max_depth=1, agent=None,
     depth=depth,
     log=null_out(),
     clock=clock,
-    autosave_interval_s=autosave_interval_s)
+    autosave_interval_s=autosave_interval_s,
+    tool_round_note=tool_round_note)
   return session, project_dir
+
+
+def _answer_surfaced_approvals(session, decision="deny"):
+  """Answer each ToolApprovalRequest the session surfaces from a SEPARATE
+  thread, modelling production: the worker thread registers + emits the card and
+  then blocks in _await_approval's fut.result() WITHOUT holding the lock, while
+  the GUI thread submits the decision. on_event now runs UNDER the coordinator
+  lock, so a test must never submit inline from it (that re-enters the lock on
+  the worker thread and deadlocks) -- it hands the request to the answering
+  thread instead.
+
+  Returns (captured, on_event, stop): install on_event as session.on_event,
+  inspect captured after the calls, and call stop() to join the thread.
+  """
+  import queue as _queue
+  import threading as _threading
+  from qttbx.widgets.chat.agent.tools import (
+    ToolApprovalRequest, ToolApprovalResponse)
+  captured = []
+  surfaced = _queue.Queue()
+  done = _threading.Event()
+
+  def _on_event(ev):
+    captured.append(ev)
+    if isinstance(ev, ToolApprovalRequest):
+      surfaced.put(ev)
+
+  def _answer():
+    while not done.is_set():
+      try:
+        req = surfaced.get(timeout=0.05)
+      except _queue.Empty:
+        continue
+      # Carry the surfaced id (the real card echoes req.request_id) so
+      # _await_approval matches it instead of dropping it as a stale click.
+      session.approvals.submit(ToolApprovalResponse(
+        request_id=req.request_id, decision=decision))
+
+  th = _threading.Thread(target=_answer, daemon=True)
+  th.start()
+
+  def _stop():
+    done.set()
+    th.join(timeout=2)
+
+  return captured, _on_event, _stop
 
 
 # ---- tests -----------------------------------------------------------------
@@ -119,6 +168,137 @@ def exercise_assistant_messages_stamped_with_model_and_backend():
       assert m.backend == "anthropic", m.backend   # profile.backend
   finally:
     shutil.rmtree(tmp)
+
+
+def exercise_assistant_messages_stamped_with_verbose():
+  """Each assistant message records the session's verbose flag as
+  provenance, alongside model/backend: True/False when the host app has the
+  concept (phenix.agent threads --verbose into the session), None from a
+  host that does not (the constructor default) -- so pre-stamp messages and
+  foreign apps stay unstamped, and a transcript resumed without the flag
+  shows WHERE the mode flipped instead of pretending it was never on."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    session.verbose = True
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, CancelToken())
+    assistants = [m for m in session.conv.messages if m.role == "assistant"]
+    assert assistants, "expected an assistant message"
+    for m in assistants:
+      assert m.verbose is True, m.verbose
+    # User messages carry no stamp -- provenance describes what PRODUCED a
+    # reply, and the user produced theirs.
+    for m in session.conv.messages:
+      if m.role == "user":
+        assert m.verbose is None, m.verbose
+  finally:
+    shutil.rmtree(tmp)
+  # The default: a session never told about the concept stamps None.
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, CancelToken())
+    for m in session.conv.messages:
+      if m.role == "assistant":
+        assert m.verbose is None, m.verbose
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_verbose_is_normalized_at_construction():
+  """The CONSTRUCTOR owns the three-state normalization the phenix seams
+  defer to: None stays None (a host without the concept), and any other
+  value is coerced to a bool. Pinned here because the other verbose tests
+  assign session.verbose after construction and bypass this seam."""
+  session, tmp = _new_test_session([])
+  try:
+    from qttbx.widgets.chat.agent.session import AgentSession
+    def _mk(v):
+      return AgentSession(agent=session.agent, conversation=session.conv,
+                          storage=session.storage, tools=session.tools,
+                          policy=session.policy, profile=session.profile,
+                          verbose=v)
+    assert _mk(None).verbose is None
+    assert _mk(True).verbose is True
+    assert _mk(False).verbose is False
+    assert _mk(1).verbose is True          # coerced, not stored raw
+    assert _mk("").verbose is False
+    assert session.verbose is None         # the default
+  finally:
+    shutil.rmtree(tmp)
+
+
+class _SwitchingAgent(FakeAgent):
+  """A backend that answers with a different model than it was asked for.
+
+  What `/model` mid-conversation looks like from the session's side: the
+  request said one thing, the reply reports another.
+  """
+
+  def __init__(self, *args, answers_with=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    self._answers_with = answers_with
+
+  def stream_turn(self, conversation, tools, cancel):
+    self.observed_model = None          # reset per turn, as claude_code does
+    for event in super().stream_turn(conversation, tools, cancel):
+      if self._answers_with:
+        self.observed_model = self._answers_with
+      yield event
+
+
+def exercise_the_observed_model_reaches_the_message_and_the_meta():
+  """Both surfaces, because they are read for different things: the meta names
+  the conversation in the sidebar, the per-message stamp preserves the
+  per-turn history a switch makes non-uniform."""
+  agent = _SwitchingAgent([[TextDelta(text="hi"),
+                            TurnDone(stop_reason="end_turn")]],
+                          answers_with="claude-opus-4-8-20260115")
+  agent.model = "opus"
+  session, tmp = _new_test_session(None, agent=agent)
+  try:
+    _run_text_turn(session)
+    assistant = [m for m in session.conv.messages if m.role == "assistant"]
+    assert assistant, session.conv.messages
+    assert assistant[-1].model == "claude-opus-4-8-20260115", assistant[-1].model
+    assert session.conv.meta.model == "claude-opus-4-8-20260115", \
+      session.conv.meta.model
+  finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def exercise_the_requested_model_is_never_overwritten():
+  """The one-way rule. Writing the observed id back into `agent.model` would
+  send it as the NEXT turn's request, silently pinning a version the alias was
+  chosen to avoid -- and the failure would be invisible, since everything
+  would keep working on a frozen model."""
+  agent = _SwitchingAgent([[TextDelta(text="hi"),
+                            TurnDone(stop_reason="end_turn")]],
+                          answers_with="claude-opus-4-8-20260115")
+  agent.model = "opus"
+  session, tmp = _new_test_session(None, agent=agent)
+  try:
+    _run_text_turn(session)
+    assert agent.model == "opus", \
+      "the observed model was written back into the request"
+  finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def exercise_the_base_declares_observed_model():
+  """Read with getattr, but declared so a backend author finds the contract
+  rather than inventing a second name for it."""
+  from qttbx.widgets.chat.agent.base import Agent
+  assert getattr(Agent, "observed_model", "missing") is None, \
+    "Agent no longer declares observed_model"
 
 
 def exercise_reconciles_meta_model_and_backend_on_continue():
@@ -324,8 +504,9 @@ def exercise_tool_denied_returns_is_error():
 
 
 def exercise_cancel_while_awaiting_approval():
-  """The deadlock-fix path: worker parked on approval queue, GUI pushes
-  _Cancelled sentinel, worker raises TurnCancelled, turn ends."""
+  """The deadlock-fix path: worker parked on the coordinator future; the
+  runner cancels the turn via cancel_turn(); the worker raises
+  TurnCancelled, the turn ends."""
   session, tmp = _new_test_session([
     [ToolUseRequested(id="t1", name="echo", input={}),
      TurnDone(stop_reason="tool_use")],
@@ -336,10 +517,6 @@ def exercise_cancel_while_awaiting_approval():
       ToolSpec(name="echo", description="echo",
                input_schema={"type": "object"}),
       handler=lambda **kw: "x", risk="write")
-
-    # Wire a real Queue for approvals.
-    approval_queue = queue.Queue()
-    session.approval_queue = approval_queue
 
     cancel = CancelToken()
     user_msg = Message(role="user", content=[
@@ -373,7 +550,7 @@ def exercise_cancel_while_awaiting_approval():
 
     # GUI side: set cancel + push sentinel (Section 10.4 mechanism).
     cancel.set()
-    approval_queue.put(_Cancelled())
+    session.approvals.cancel_turn()          # was: approval_queue.put(_Cancelled())
 
     t.join(timeout=5.0)
     assert not t.is_alive(), "worker did not unblock — deadlock"
@@ -416,19 +593,6 @@ def exercise_max_turns_cap():
     shutil.rmtree(tmp)
 
 
-def exercise_add_subagent_usage_aggregates():
-  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
-  try:
-    session.add_subagent_usage("sa_1",
-                               TokenUsage(input=100, output=50))
-    session.add_subagent_usage("sa_2",
-                               TokenUsage(input=200, output=70))
-    assert session._subagent_usage_by_id["sa_1"].input == 100
-    assert session._subagent_usage_by_id["sa_2"].output == 70
-  finally:
-    shutil.rmtree(tmp)
-
-
 def exercise_token_usage_event_carries_all_fields_to_message():
   """A TokenUsage event accumulates into the assistant message's usage as a
   stored TokenUsage with every field preserved (the event -> stored
@@ -436,7 +600,8 @@ def exercise_token_usage_event_carries_all_fields_to_message():
   usage field added later is covered automatically."""
   session, tmp = _new_test_session([
     [TextDelta(text="hi"),
-     TokenUsageEvent(input=11, output=22, cache_read=33, cache_creation=44),
+     TokenUsageEvent(input=11, output=22, cache_read=33, cache_creation=44,
+                     context_tokens=55),
      TurnDone(stop_reason="end_turn")],
   ])
   try:
@@ -446,7 +611,8 @@ def exercise_token_usage_event_carries_all_fields_to_message():
     assistant = session.run_turn(user_msg, cancel)
     assert isinstance(assistant.usage, TokenUsage), type(assistant.usage)
     assert assistant.usage == TokenUsage(
-      input=11, output=22, cache_read=33, cache_creation=44), assistant.usage
+      input=11, output=22, cache_read=33, cache_creation=44,
+      context_tokens=55), assistant.usage
   finally:
     shutil.rmtree(tmp)
 
@@ -470,17 +636,18 @@ def exercise_deny_and_stop_ends_turn():
                input_schema={"type": "object"}),
       handler=lambda **kw: "should-not-run",
       risk="write")
-    approval_queue = queue.Queue()
-    session.approval_queue = approval_queue
-    # Pre-load the queue with a deny_and_stop response so the worker
-    # doesn't actually have to block.
-    approval_queue.put(ToolApprovalResponse(
-      request_id="ignored",  # session uses internally-generated ids
-      decision="deny_and_stop"))
+    # Deliver Deny+Stop from a separate thread once the card is surfaced -- the
+    # production split: the worker blocks in _await_approval's fut.result()
+    # while the GUI thread submits (on_event runs under the coordinator lock, so
+    # answering inline from it would re-enter and deadlock).
+    _captured, on_event, stop = _answer_surfaced_approvals(
+      session, decision="deny_and_stop")
+    session.on_event = on_event
     cancel = CancelToken()
     user_msg = Message(role="user", content=[
       ContentBlock(type="text", data={"text": "hi"})], timestamp=now())
     assistant = session.run_turn(user_msg, cancel)
+    stop()
     # The assistant message gets finalized with stop_reason="cancelled"
     # (turn unwinds without asking the model again).
     assert assistant.stop_reason == "cancelled"
@@ -536,6 +703,165 @@ def exercise_server_tool_events_accumulate_without_dispatch():
     assert len(session.conv.messages) == 2, len(session.conv.messages)
   finally:
     shutil.rmtree(tmp)
+
+
+# ---- claude_code observed-result answering -------------------------------
+# The claude_code backend runs its OWN tool loop inside the SDK subprocess and
+# surfaces each executed result as a ToolResultObserved -- its tool_use blocks
+# still reach the session as ToolUseRequested (populating tool_calls), but the
+# turn ends with a normal end_turn, NOT 'tool_use'. The session must answer the
+# pending tool_uses with their REAL observed results instead of fabricating
+# 'Cancelled by user.' errors, which otherwise surface on resume as bogus
+# 'result (error)' entries.
+
+
+def exercise_observed_results_answer_completed_claude_code_tools():
+  """[Major] A claude_code turn (tool_use answered by ToolResultObserved, then a
+  normal end_turn) must NOT fabricate a 'Cancelled by user.' result for the
+  completed tool, and must commit the iteration as an (assistant tool_use, user
+  tool_result) pair whose REAL answer keeps persistable_prefix from trimming the
+  committed assistant -- the turn then ends in the final assistant text message
+  (the unified, API-matching shape), not a skipped/trailing unanswered
+  tool_use."""
+  from qttbx.widgets.chat.agent.storage import persistable_prefix
+  session, tmp = _new_test_session([
+    [TextDelta(text="Checking. "),
+     ToolUseRequested(id="t1", name="phenix_get_status", input={"job": "1"}),
+     ToolResultObserved(tool_use_id="t1", content="Job 1: done",
+                        name="phenix_get_status", input={"job": "1"}),
+     TextDelta(text="It finished."),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "status?"})], timestamp=now())
+    assistant = session.run_turn(user_msg, cancel)
+    assert assistant.stop_reason == "end_turn", assistant.stop_reason
+    # The tool_use is answered with the REAL result, is_error=False.
+    tr_msgs = [m for m in session.conv.messages if m.role == "user"
+               and m.content and m.content[0].type == "tool_result"]
+    assert len(tr_msgs) == 1, [m.role for m in session.conv.messages]
+    block = tr_msgs[0].content[0]
+    assert block.data["tool_use_id"] == "t1", block.data
+    assert block.data["is_error"] is False, "completed tool marked as error"
+    text = block.data["content"][0].data["text"]
+    assert "Job 1: done" in text, text
+    # No fabricated cancel anywhere in the conversation.
+    for m in session.conv.messages:
+      for b in m.content:
+        if b.type == "tool_result":
+          assert "Cancelled by user" not in \
+            b.data["content"][0].data["text"], b.data
+    # The whole turn survives persistence in the unified (API-matching) shape:
+    # the completed iteration committed as an (assistant tool_use, user
+    # tool_result) pair and the trailing text landed as the final assistant, so
+    # the turn ends in that final assistant message. Because the committed
+    # tool_use is answered by a REAL tool_result (not a skipped/trailing
+    # unanswered tool_use), persistable_prefix trims NOTHING -- a skipped answer
+    # would leave a trailing unanswered assistant tool_use and drop that
+    # committed assistant turn.
+    kept = persistable_prefix(session.conv.messages)
+    assert len(kept) == len(session.conv.messages), [m.role for m in kept]
+    roles = [m.role for m in kept]
+    assert roles == ["user", "assistant", "user", "assistant"], roles
+    assert kept[-1].role == "assistant", roles
+    assert any(m.role == "assistant" for m in kept), [m.role for m in kept]
+    session.storage.save(session.conv)
+    p = session.storage.conv_dir(session.conv.meta.id) / "messages.json"
+    reloaded = json.load(open(p, encoding="utf-8"))["messages"]
+    amsg = next(m for m in reloaded if m["role"] == "assistant")
+    assert any(b["type"] == "tool_use" for b in amsg["content"]), amsg
+    assert "Cancelled by user" not in json.dumps(reloaded), \
+      "fabricated cancel persisted to messages.json"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_partial_observed_answers_mix_real_and_cancelled():
+  """A claude_code turn cut short after one of two tools ran: the observed tool
+  gets its real result, the un-observed one still gets 'Cancelled by user.' so
+  the transcript never orphans a tool_use."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="phenix_get_status", input={}),
+     ToolResultObserved(tool_use_id="t1", content="ran", name="phenix_get_status",
+                        input={}),
+     ToolUseRequested(id="t2", name="phenix_get_status", input={}),
+     TurnDone(stop_reason="cancelled")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "go"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    answers = {}
+    for m in session.conv.messages:
+      for b in m.content:
+        if b.type == "tool_result":
+          answers[b.data["tool_use_id"]] = (
+            b.data["is_error"], b.data["content"][0].data["text"])
+    assert set(answers) == {"t1", "t2"}, answers
+    assert answers["t1"] == (False, "ran"), answers["t1"]
+    assert answers["t2"][0] is True and \
+      "Cancelled by user" in answers["t2"][1], answers["t2"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_observed_error_result_preserves_is_error():
+  """A claude_code tool that FAILED in its SDK subprocess -- a ToolResultObserved
+  with is_error=True -- must be answered with an is_error tool_result, not
+  recorded as a success, so a resumed conversation shows the failure rather than
+  a muted 'success' cell."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="Bash", input={"command": "false"}),
+     ToolResultObserved(tool_use_id="t1", content="exit status 1",
+                        name="Bash", input={"command": "false"},
+                        is_error=True),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    cancel = CancelToken()
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "run it"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    results = [b for m in session.conv.messages for b in m.content
+               if b.type == "tool_result"]
+    assert len(results) == 1, [m.role for m in session.conv.messages]
+    block = results[0]
+    assert block.data["tool_use_id"] == "t1", block.data
+    assert block.data["is_error"] is True, "observed failure recorded as success"
+    assert "exit status 1" in block.data["content"][0].data["text"], block.data
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_observed_content_blocks_normalizes_shapes():
+  """_observed_content_blocks (which builds each claude_code answer block) keeps
+  text verbatim, reduces base64-bearing blocks (image / document) to a compact
+  ``[<type>]`` placeholder so no blob inlines into the transcript, JSON-encodes
+  small structured items, and maps empty / None to an empty text block."""
+  from qttbx.widgets.chat.agent.session import _observed_content_blocks
+
+  def _texts(blocks):
+    return [b.data["text"] for b in blocks]
+
+  assert _texts(_observed_content_blocks("hi")) == ["hi"]        # string verbatim
+  blocks = _observed_content_blocks([
+    {"type": "text", "text": "ok"},
+    {"type": "image", "source": {"type": "base64", "data": "AAAA"}},
+    {"type": "document", "source": {"type": "base64", "data": "BBBB"}},
+    {"type": "tool_reference", "id": "r1"}])
+  t = _texts(blocks)
+  assert t[0] == "ok", t
+  assert t[1] == "[image]", t
+  assert t[2] == "[document]", t                                 # base64 doc, not blob
+  assert "AAAA" not in "".join(t) and "BBBB" not in "".join(t), t
+  assert "tool_reference" in t[3], t                             # small item -> JSON
+  # empty list / empty string / None all normalize to one empty text block.
+  assert _texts(_observed_content_blocks([])) == [""]
+  assert _texts(_observed_content_blocks("")) == [""]
+  assert _texts(_observed_content_blocks(None)) == [""]
 
 
 # ---- phenix_ask_user_question (API-backend ask-user parity) --------------
@@ -1060,6 +1386,219 @@ def _register_echo(session):
     risk="write")
 
 
+class _SnapshotAgent(FakeAgent):
+  """FakeAgent that records, per round, the messages it was handed -- i.e.
+  what an API backend would actually send -- as (role, [block data dicts])."""
+  def __init__(self, turn_scripts):
+    super().__init__(turn_scripts)
+    self.requests = []
+
+  def stream_turn(self, conversation, tools, cancel):
+    self.requests.append(
+      [(m.role, [dict(b.data) for b in m.content])
+       for m in conversation.messages])
+    return super().stream_turn(conversation, tools, cancel)
+
+
+def _round_texts(request):
+  return [b.get("text") for _role, blocks in request for b in blocks
+          if "text" in b]
+
+
+def exercise_tool_round_note_rides_the_tool_result_for_one_round():
+  """A ``tool_round_note`` provider is asked once per tool round, AFTER the
+  tools ran; its text rides the round's tool-result message as an EPHEMERAL
+  block -- so the model reads it on the very next call, inside the turn --
+  and is stripped before the round after that, so it is never re-sent with a
+  stale reading nor persisted. This is the in-turn delivery path the
+  context-pressure handoff needs: an autonomous run is one turn, and a note
+  that waits for the next user send never arrives."""
+  from qttbx.widgets.chat.agent.conversation import (
+    EPHEMERAL_BLOCK_KEY, is_ephemeral_block)
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [ToolUseRequested(id="t2", name="echo", input={"text": "two"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="Done."), TurnDone(stop_reason="end_turn")],
+  ])
+  asked = []
+  def _note(seen_agent):
+    asked.append(seen_agent)
+    return "NOTE-1" if len(asked) == 1 else None
+  session, tmp = _new_test_session([], agent=agent, tool_round_note=_note)
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    final = session.run_turn(user_msg, CancelToken())
+    assert final.stop_reason == "end_turn"
+    # Asked once per tool round (two), with the session's agent.
+    assert asked == [agent, agent], asked
+    # Round 2's request carries the note, on the tool-result message, tagged
+    # ephemeral; round 3's does not, while the tool results themselves stay.
+    r2, r3 = agent.requests[1], agent.requests[2]
+    assert "NOTE-1" in _round_texts(r2), _round_texts(r2)
+    role, blocks = r2[-1]
+    assert role == "user" and blocks[0].get("tool_use_id") == "t1", blocks
+    assert blocks[-1].get("text") == "NOTE-1" and blocks[-1].get(
+      EPHEMERAL_BLOCK_KEY), blocks[-1]
+    assert "NOTE-1" not in _round_texts(r3), _round_texts(r3)
+    assert [b.get("tool_use_id") for _r, bl in r3 for b in bl
+            if "tool_use_id" in b] == ["t1", "t2"]
+    # Nothing ephemeral survives the turn in memory or on disk.
+    assert not any(is_ephemeral_block(b) for m in session.conv.messages
+                   for b in m.content)
+    saved = session.storage.load(session.conv.meta.id)
+    assert not any(is_ephemeral_block(b) for m in saved.messages
+                   for b in m.content)
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_tool_round_note_provider_failure_never_breaks_the_turn():
+  """The note is scaffolding: a provider that raises is logged and skipped,
+  and the round's tool results still reach the model untouched."""
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="Done."), TurnDone(stop_reason="end_turn")],
+  ])
+  def _boom(_agent):
+    raise RuntimeError("no reading")
+  session, tmp = _new_test_session([], agent=agent, tool_round_note=_boom)
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    final = session.run_turn(user_msg, CancelToken())
+    assert final.stop_reason == "end_turn"
+    role, blocks = agent.requests[1][-1]
+    assert role == "user" and [b.get("tool_use_id") for b in blocks] == ["t1"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_tool_round_note_is_not_attached_to_a_cancelled_round():
+  """A round whose dispatch set the cancel token (deny_and_stop, a Stop during
+  an approval) never sends another request, so a note attached to it would be
+  consumed without being read. The provider is not asked at all."""
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="stop", input={}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  asked = []
+  def _note(seen_agent):
+    asked.append(seen_agent)
+    return "NOTE"
+  session, tmp = _new_test_session([], agent=agent, tool_round_note=_note)
+  try:
+    def _stop(name, input, cancel, session, tool_use_id):
+      cancel.set()
+      return "stopping"
+    session.tools.register_builtin(
+      ToolSpec(name="stop", description="stop",
+               input_schema={"type": "object"}),
+      handler=_stop, risk="write")
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert asked == [], asked
+    assert session.round_note_in_flight is False
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_round_note_in_flight_says_whether_the_next_request_went_out():
+  """The host cannot tell from outside whether a note attached at round N was
+  ever read: a 429 on round N+1's request, or a backend reporting the failure
+  as an AgentError event, means it was not. The session records it -- True
+  from attach until a round yields a real model event -- so the host can
+  re-arm exactly the notes that never landed, and no others."""
+  from qttbx.widgets.chat.agent.events import AgentError
+  # Next request fails outright (raised): the note never went out.
+  class _Raises(_SnapshotAgent):
+    def stream_turn(self, conversation, tools, cancel):
+      if len(self.requests) == 1:
+        self.requests.append("raised")
+        raise RuntimeError("429")
+      return super().stream_turn(conversation, tools, cancel)
+  agent = _Raises([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    try:
+      session.run_turn(user_msg, CancelToken())
+      assert False, "expected the raise"
+    except RuntimeError:
+      pass
+    assert session.round_note_in_flight is True
+  finally:
+    shutil.rmtree(tmp)
+  # Next request fails as an AgentError EVENT: still not read.
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [AgentError(message="boom", recoverable=True, kind="")],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is True
+    # A new turn starts clean -- even one that itself yields only an error,
+    # which would leave a stale True standing without the reset at entry.
+    agent.turn_scripts.append(
+      [AgentError(message="boom again", recoverable=True, kind="")])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is False
+  finally:
+    shutil.rmtree(tmp)
+  # Stop while the note-carrying request streams, before any content: the
+  # backend yields only TurnDone(cancelled). Not read either -- the send-time
+  # note re-arms in this case, and so must this one.
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [TurnDone(stop_reason="cancelled", finish=CANCELLED)],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is True
+  finally:
+    shutil.rmtree(tmp)
+  # Next request succeeds: read.
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="Done."), TurnDone(stop_reason="end_turn")],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is False
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_autosave_over_tool_use_turn_is_crash_safe():
   """A mid-turn autosave that fires as the model streams a tool_use must NOT
   persist a snapshot ending in that unanswered tool_use: an assistant tool_use
@@ -1092,38 +1631,6 @@ def exercise_autosave_over_tool_use_turn_is_crash_safe():
     shutil.rmtree(tmp)
 
 
-def exercise_autosave_checkpoints_after_tool_result():
-  """The after-tool-result checkpoint (run_turn's _maybe_autosave() with no
-  partial_msg) persists a committed-only snapshot -- tail=[] -- ending in the
-  tool_result, reindex=False. This is the crash checkpoint for a long tool
-  dispatch; the throttle is arranged to cross only after the tool_result is
-  appended, exercising the partial_msg=None branch a text-only stream never
-  reaches."""
-  clock = _ManualClock()
-  script = [
-    [TextDelta(text="calling"),
-     ToolUseRequested(id="t1", name="echo", input={"text": "hi"}),
-     TurnDone(stop_reason="tool_use")],
-    [TextDelta(text="done"),
-     TurnDone(stop_reason="end_turn")],
-  ]
-  # Stay under 5s through turn-1 streaming (t=1,2); the TurnDone delta (t=8)
-  # pushes past 5s so the post-tool-result checkpoint fires on the committed
-  # [user, assistant(tool_use), tool_result]; turn-2 events add no time.
-  agent = _TimedFakeAgent(script, clock, deltas=[1.0, 1.0, 6.0, 0.0, 0.0])
-  session, tmp = _new_test_session(script, agent=agent, clock=clock,
-                                   autosave_interval_s=5.0)
-  try:
-    _register_echo(session)
-    saves = _install_save_recorder(session)
-    _run_text_turn(session)
-    assert any(s.nmsgs == 3 and not s.orphan_tail and s.reindex is False
-               for s in saves), \
-      [(s.nmsgs, s.orphan_tail, s.reindex) for s in saves]
-  finally:
-    shutil.rmtree(tmp)
-
-
 def exercise_autosave_throttle_measured_from_turn_start():
   """run_turn resets _last_autosave to the current clock at turn start, so the
   throttle is measured from turn start -- NOT the __init__ default of 0.0. With
@@ -1145,22 +1652,591 @@ def exercise_autosave_throttle_measured_from_turn_start():
     shutil.rmtree(tmp)
 
 
+def exercise_checkpoint_fires_immediately_after_tool_result():
+  """A completed tool iteration checkpoints to disk IMMEDIATELY (no 5s
+  throttle): with a clock that never advances, the old throttled call could
+  never fire, so the recorded nmsgs==3 save (user, assistant tool_use,
+  tool_result) proves the unthrottled _checkpoint_iteration replaced it.
+  reindex=False keeps the index rescan off the hot loop, and the persisted
+  snapshot must not end in an unanswered tool_use (the crash-safety invariant
+  that absorbs the old window-level orphan-tool_use save test)."""
+  clock = _ManualClock()
+  script = [
+    [TextDelta(text="calling"),
+     ToolUseRequested(id="t1", name="echo", input={"text": "hi"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="done"),
+     TurnDone(stop_reason="end_turn")],
+  ]
+  agent = _TimedFakeAgent(script, clock, deltas=[0.0] * 10)
+  session, tmp = _new_test_session(script, agent=agent, clock=clock,
+                                   autosave_interval_s=5.0)
+  try:
+    _register_echo(session)
+    saves = _install_save_recorder(session)
+    _run_text_turn(session)
+    hits = [s for s in saves if s.nmsgs == 3]
+    assert hits, [(s.nmsgs, s.reindex) for s in saves]
+    assert all(s.reindex is False for s in hits), hits
+    assert all(not s.orphan_tail for s in saves), saves
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_checkpoint_floor_coalesces_rapid_iterations():
+  """Two tool iterations 0.1s apart: the first checkpoints, the second lands
+  inside the 250ms floor and is skipped -- a rapid tool burst coalesces
+  instead of rewriting messages.json per iteration. (The skipped iteration
+  is still committed in memory and reaches disk with the next save.)"""
+  clock = _ManualClock()
+  script = [
+    [ToolUseRequested(id="t1", name="echo", input={"text": "a"}),
+     TurnDone(stop_reason="tool_use")],
+    [ToolUseRequested(id="t2", name="echo", input={"text": "b"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="done"), TurnDone(stop_reason="end_turn")],
+  ]
+  # One 0.1s tick per event: every gap stays far under both the 5s autosave
+  # interval and 250ms floor except the first checkpoint (floor starts unset).
+  agent = _TimedFakeAgent(script, clock, deltas=[0.1] * 12)
+  session, tmp = _new_test_session(script, agent=agent, clock=clock,
+                                   autosave_interval_s=5.0)
+  try:
+    _register_echo(session)
+    saves = _install_save_recorder(session)
+    _run_text_turn(session)
+    assert len(saves) == 1, [(s.nmsgs, s.reindex) for s in saves]
+    assert saves[0].nmsgs == 3, saves
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_checkpoint_floor_resets_per_turn():
+  """The 250ms coalescing floor must not leak across turns: a NEW turn's
+  first completed iteration checkpoints even when it lands within the floor
+  of the PREVIOUS turn's last checkpoint. run_turn resets the floor sentinel
+  at turn start (mirroring the autosave-clock reset), so the per-iteration
+  freshness contract holds per turn, not per wall-clock window."""
+  clock = _ManualClock()
+  script = [
+    [ToolUseRequested(id="t1", name="echo", input={"text": "a"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="done"), TurnDone(stop_reason="end_turn")],
+    [ToolUseRequested(id="t2", name="echo", input={"text": "b"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="done2"), TurnDone(stop_reason="end_turn")],
+  ]
+  # 10ms per event: turn 2's iteration completes ~40ms after turn 1's
+  # checkpoint -- far inside the floor, so only the per-turn reset lets it
+  # write.
+  agent = _TimedFakeAgent(script, clock, deltas=[0.01] * 16)
+  session, tmp = _new_test_session(script, agent=agent, clock=clock,
+                                   autosave_interval_s=5.0)
+  try:
+    _register_echo(session)
+    saves = _install_save_recorder(session)
+    _run_text_turn(session, "one")
+    first_turn_saves = len(saves)
+    assert first_turn_saves >= 1, [(s.nmsgs, s.reindex) for s in saves]
+    _run_text_turn(session, "two")
+    assert len(saves) > first_turn_saves, \
+      ("turn 2's first iteration was floor-skipped",
+       [(s.nmsgs, s.reindex) for s in saves])
+    assert all(not s.orphan_tail for s in saves), saves
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_claude_code_iterations_commit_as_alternating_pairs():
+  """A claude_code-style turn (tool results observed in-stream, single
+  terminal TurnDone) commits each completed iteration into the conversation
+  as an (assistant tool_use, user tool_results) pair -- the SAME transcript
+  shape the API backends produce -- and checkpoints it to disk mid-turn."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="Checking. "),
+     ToolUseRequested(id="t1", name="phenix_get_status", input={"job": "1"}),
+     ToolResultObserved(tool_use_id="t1", content="Job 1: done",
+                        name="phenix_get_status", input={"job": "1"}),
+     TextDelta(text="It finished."),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    saves = _install_save_recorder(session)
+    final = _run_text_turn(session, "status?")
+    roles = [m.role for m in session.conv.messages]
+    assert roles == ["user", "assistant", "user", "assistant"], roles
+    committed = session.conv.messages[1]
+    assert committed.stop_reason == "tool_use", committed.stop_reason
+    assert any(b.type == "tool_use" for b in committed.content)
+    results = session.conv.messages[2]
+    assert [b.data["tool_use_id"] for b in results.content] == ["t1"]
+    assert final.stop_reason == "end_turn", final.stop_reason
+    assert final.content[0].data["text"] == "It finished."
+    # The pair reached disk DURING the turn (run_turn itself never saves at
+    # turn end, so any recorded save proves the mid-turn checkpoint).
+    assert any(s.nmsgs == 3 and s.reindex is False and not s.orphan_tail
+               for s in saves), [(s.nmsgs, s.reindex) for s in saves]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_parallel_tool_uses_commit_once_all_answered_in_order():
+  """Two tool_uses in one assistant burst commit as ONE pair only after BOTH
+  results are observed, results ordered by tool_use order (t1, t2) even when
+  observed out of order (t2 first)."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="a", input={}),
+     ToolUseRequested(id="t2", name="b", input={}),
+     ToolResultObserved(tool_use_id="t2", content="B", name="b", input={}),
+     ToolResultObserved(tool_use_id="t1", content="A", name="a", input={}),
+     TextDelta(text="both done"),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    _run_text_turn(session, "go")
+    roles = [m.role for m in session.conv.messages]
+    assert roles == ["user", "assistant", "user", "assistant"], roles
+    committed = session.conv.messages[1]
+    assert [b.data["id"] for b in committed.content
+            if b.type == "tool_use"] == ["t1", "t2"]
+    results = session.conv.messages[2]
+    assert [b.data["tool_use_id"] for b in results.content] == ["t1", "t2"]
+    texts = [b.data["content"][0].data["text"] for b in results.content]
+    assert texts == ["A", "B"], texts
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_two_sequential_iterations_commit_two_pairs():
+  """Sequential iterations inside one claude_code turn commit as two
+  alternating pairs, then the trailing text lands as the final assistant."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="a", input={}),
+     ToolResultObserved(tool_use_id="t1", content="A", name="a", input={}),
+     ToolUseRequested(id="t2", name="b", input={}),
+     ToolResultObserved(tool_use_id="t2", content="B", name="b", input={}),
+     TextDelta(text="done"),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    _run_text_turn(session, "go")
+    roles = [m.role for m in session.conv.messages]
+    assert roles == ["user", "assistant", "user", "assistant", "user",
+                     "assistant"], roles
+    assert session.conv.messages[1].stop_reason == "tool_use"
+    assert session.conv.messages[3].stop_reason == "tool_use"
+    assert session.conv.messages[5].stop_reason == "end_turn"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_observed_result_for_unknown_tool_use_never_commits():
+  """An observed result whose id matches no pending tool_use neither triggers
+  a commit nor leaks into the committed results (same drop semantics the
+  turn-end by_id assembly always had)."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="a", input={}),
+     ToolResultObserved(tool_use_id="zz", content="stray", name="?", input={}),
+     ToolResultObserved(tool_use_id="t1", content="A", name="a", input={}),
+     TextDelta(text="done"),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    _run_text_turn(session, "go")
+    results = session.conv.messages[2]
+    assert [b.data["tool_use_id"] for b in results.content] == ["t1"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_empty_residual_folds_usage_and_stop_onto_last_commit():
+  """A turn ending right on a tool result (no trailing text) leaves an
+  EMPTY residual assistant carrying the terminal stop_reason and usage
+  (claude_code emits usage once, from the terminal ResultMessage).
+  Appending it would be trimmed on save, silently dropping usage -- so it
+  folds onto the last committed assistant instead, and run_turn returns
+  that message."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="a", input={}),
+     ToolResultObserved(tool_use_id="t1", content="A", name="a", input={}),
+     TokenUsageEvent(input=7, output=3),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    final = _run_text_turn(session, "go")
+    roles = [m.role for m in session.conv.messages]
+    assert roles == ["user", "assistant", "user"], roles
+    committed = session.conv.messages[1]
+    assert final is committed, (final, committed)
+    assert committed.stop_reason == "end_turn", committed.stop_reason
+    assert committed.usage is not None and committed.usage.input == 7
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_cancelled_empty_residual_folds_stop_without_usage_clobber():
+  """The cancel flavor of the fold: no usage arrives (the agent's cancel
+  path discards the ResultMessage), so only stop_reason folds -- usage on
+  the committed message must not be clobbered to None."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="a", input={}),
+     ToolResultObserved(tool_use_id="t1", content="A", name="a", input={}),
+     TurnDone(stop_reason="cancelled")],
+  ])
+  try:
+    final = _run_text_turn(session, "go")
+    roles = [m.role for m in session.conv.messages]
+    assert roles == ["user", "assistant", "user"], roles
+    assert final.stop_reason == "cancelled", final.stop_reason
+    assert final.usage is None
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_propagates_allow_remember():
+  """A builtin registered allow_remember=False surfaces a request with
+  allow_remember False; a normal tool surfaces True. _resolve_and_approve
+  must stamp the minted ToolApprovalRequest from the registry so the card
+  can suppress 'Always allow this tool' for a destructive tool."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    session.tools.register_builtin(
+      ToolSpec(name="keepme", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="destructive", allow_remember=False)
+    session.tools.register_builtin(
+      ToolSpec(name="normaltool", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="write")
+    session.policy = ToolPolicy(default="ask")
+    # Answer each surfaced request from a separate thread (on_event runs under
+    # the coordinator lock; inline submit would re-enter and deadlock). We only
+    # care about the ToolApprovalRequests surfaced, not the answers.
+    captured, on_event, stop = _answer_surfaced_approvals(session)
+    session.on_event = on_event
+    session._resolve_and_approve(
+      ToolUseRequested(id="t1", name="keepme", input={}), batch_id=None)
+    session._resolve_and_approve(
+      ToolUseRequested(id="t2", name="normaltool", input={}), batch_id=None)
+    stop()
+    reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
+    assert len(reqs) == 2, reqs
+    assert reqs[0].allow_remember is False, reqs[0]
+    assert reqs[1].allow_remember is True, reqs[1]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_destructive_always_cards():
+  """A1: a destructive / allow_remember=False builtin ALWAYS surfaces a card,
+  even under a permissive tool_policy (default 'allow'); a normal tool under the
+  same policy auto-approves without a card."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([[TurnDone(stop_reason="end_turn")]])
+  try:
+    session.tools.register_builtin(
+      ToolSpec(name="killtool", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="destructive", allow_remember=False)
+    session.tools.register_builtin(
+      ToolSpec(name="readtool", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="read")
+    session.policy = ToolPolicy(default="allow")     # permissive
+    # Destructive: forced to a card despite default='allow'. Answer surfaced
+    # requests from a separate thread (on_event runs under the coordinator lock;
+    # inline submit would re-enter and deadlock).
+    captured, on_event, stop = _answer_surfaced_approvals(session)
+    session.on_event = on_event
+    d = session._resolve_and_approve(
+      ToolUseRequested(id="t1", name="killtool", input={}), batch_id=None)
+    reqs = [e for e in captured if isinstance(e, ToolApprovalRequest)]
+    assert len(reqs) == 1 and d == "deny", (reqs, d)
+    # Normal read tool under the same allow policy: auto-approved, no card.
+    r = session._resolve_and_approve(
+      ToolUseRequested(id="t2", name="readtool", input={}), batch_id=None)
+    assert r == "approve", r
+    assert not [e for e in captured[1:] if isinstance(e, ToolApprovalRequest)]
+    # A destructive tool that STILL offers 'Always allow' (allow_remember=True)
+    # is NOT force-carded -- else its shown checkbox would do nothing (#1). The
+    # floor is scoped to the opt-out flag, not risk.
+    session.tools.register_builtin(
+      ToolSpec(name="rememberkill", description="", input_schema={}),
+      handler=lambda *a, **k: "", risk="destructive", allow_remember=True)
+    before = len([e for e in captured if isinstance(e, ToolApprovalRequest)])
+    r2 = session._resolve_and_approve(
+      ToolUseRequested(id="t3", name="rememberkill", input={}), batch_id=None)
+    assert r2 == "approve", r2
+    assert len([e for e in captured if isinstance(e, ToolApprovalRequest)]) \
+        == before, "destructive+rememberable must not be force-carded"
+    stop()
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_cancel_landing_before_open_does_not_wedge():
+  """A Stop landing after the dispatch cancel-check but before _await_approval
+  opens its future must not park the worker forever. The runner sets the cancel
+  token and then approvals.cancel_turn(), which CLOSES the coordinator; the
+  subsequent open() returns a pre-cancelled future without registering or
+  emitting, so _await_approval's fut.result() wakes cancelled and raises
+  TurnCancelled instead of blocking. (The closed flag superseded the earlier
+  post-open token re-check: cancel and open are now serialized under one lock.)"""
+  import threading
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  try:
+    session.policy = ToolPolicy(default="ask")
+    session.tools.register_builtin(
+      ToolSpec(name="echo", description="echo",
+               input_schema={"type": "object"}),
+      handler=lambda **kw: "x", risk="write")
+    cancel = CancelToken()
+    session.cancel = cancel                       # run_turn sets this per turn
+    session.approvals.begin_turn()
+    # Simulate a Stop landing before open(): the runner sets the token, then
+    # cancel_turn() runs on the (still-empty) registry.
+    cancel.set()
+    session.approvals.cancel_turn()
+    req = ToolApprovalRequest(
+      request_id="r1", tool_name="echo", tool_source="builtin",
+      input={}, risk="write", batch_id=None, allow_remember=True)
+    box = []
+
+    def _run():
+      try:
+        session._await_approval(req)
+      except TurnCancelled:
+        box.append("cancelled")
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=2.0)
+    assert not t.is_alive(), \
+      "worker wedged: _await_approval blocked on a future a Stop already passed"
+    assert box == ["cancelled"], box
+    assert not session.approvals.owns("r1"), \
+      "open() on the closed coordinator must not register the future"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_run_turn_cancels_pending_approval_on_exit():
+  """A turn that ends with an approval still open (subprocess-death style) must
+  leave the coordinator registry empty -- run_turn cancel_turn()s in a finally,
+  so owns() is False when idle and no pending task is destroyed at exit."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalRequest
+  session, tmp = _new_test_session([])
+  try:
+    box = {}
+
+    class _OpensApprovalAgent(Agent):
+      name = "opens"
+      model = "opens-1"
+
+      def stream_turn(self, conversation, tools, cancel):
+        # Open an approval future the way claude_code's _on_can_use_tool would,
+        # then end the turn WITHOUT it resolving (as on a subprocess death).
+        req = ToolApprovalRequest(
+          request_id="r1", tool_name="t", tool_source="builtin",
+          input={}, risk="write", batch_id=None, allow_remember=True)
+        box["fut"] = session.approvals.open(req, lambda ev: None)
+        yield TurnDone(stop_reason="end_turn")
+
+      def resolve_credentials(self, cli_override=None):
+        return "k"
+
+      def credentials_dialog_class(self):
+        return object
+
+    session.agent = _OpensApprovalAgent()
+    user = Message(role="user", timestamp=now(),
+                   content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user, CancelToken())
+    assert not session.approvals.owns("r1"), "pending approval leaked past turn end"
+    assert box["fut"].cancelled(), "pending future not cancelled at turn end"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_api_remember_recorded_before_resolve_survives_cancel():
+  """The API-backend remember='tool' persistence runs in record_approval_remember
+  (GUI thread, before the coordinator resolves) via the request->tool map, so a
+  click racing a cancel still records 'always allow' -- parity with claude_code
+  (whose recording lives in submit_approval, likewise pre-resolve)."""
+  from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
+  session, tmp = _new_test_session([])
+  try:
+    session.policy = ToolPolicy(default="ask")
+    session.tools.register_builtin(
+      ToolSpec(name="echo", description="echo",
+               input_schema={"type": "object"}),
+      handler=lambda **kw: "x", risk="write")
+    # Simulate _resolve_and_approve having surfaced request r1 for tool 'echo'.
+    session._pending_approval_calls = {"r1": "echo"}
+    assert session.policy.resolve("echo") == "ask"          # not yet remembered
+    session.record_approval_remember(ToolApprovalResponse(
+      request_id="r1", decision="approve", remember="tool"))
+    assert session.policy.resolve("echo") == "allow"        # now session-allowed
+  finally:
+    shutil.rmtree(tmp)
+
+
+# ---- synthesized terminal TurnDone on cancel short-circuits --------------
+# _run_turn's two cancel short-circuits (pre-dispatch, post-dispatch)
+# historically returned with no event, leaving the stale intermediate
+# finish=tool_use as the last TurnDone consumers saw. Each now synthesizes a
+# terminal TurnDone(stop_reason=cancelled, finish=cancelled) AFTER the residual
+# appends, restoring one terminal TurnDone per completed turn.
+
+
+def exercise_cancel_before_dispatch_synthesizes_terminal_turndone():
+  """Cancel landing between a tool_use-stop response and dispatch exits
+  run_turn's short-circuit, which historically emitted NO event -- leaving
+  GUI/headless consumers with a stale intermediate finish=TOOL_USE as the
+  last word. The session now synthesizes the terminal
+  TurnDone(cancelled) AFTER the residual appends, restoring the
+  one-terminal-TurnDone-per-turn invariant."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "x"}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  try:
+    _register_echo(session)
+    cancel = CancelToken()
+    seen = []
+    at_emit = []
+    def _on_event(ev):
+      seen.append(ev)
+      if isinstance(ev, TurnDone) and ev.stop_reason == "tool_use":
+        cancel.set()                 # lands before dispatch
+      elif isinstance(ev, TurnDone) and ev.stop_reason == "cancelled":
+        # Snapshot, AT the synthesized terminal emit, whether this turn's
+        # residual answer is already on the conversation. run_turn is driven on
+        # this thread, so the closure runs synchronously inside the emit; a
+        # post-hoc conv check cannot see the emit-vs-append order (conv.append
+        # fires no event), so only this in-closure snapshot discriminates it.
+        at_emit.append(any(
+          b.type == "tool_result" and b.data.get("tool_use_id") == "t1"
+          for m in session.conv.messages for b in m.content))
+    session.on_event = _on_event
+    user_msg = Message(role="user", content=[
+      ContentBlock(type="text", data={"text": "go"})], timestamp=now())
+    session.run_turn(user_msg, cancel)
+    cancelled = [e for e in seen if isinstance(e, TurnDone)
+                 and e.stop_reason == "cancelled"]
+    assert len(cancelled) == 1, [
+      (e.stop_reason, e.finish) for e in seen if isinstance(e, TurnDone)]
+    assert cancelled[0].finish == "cancelled", cancelled[0]
+    assert isinstance(seen[-1], TurnDone) and seen[-1] is cancelled[0], \
+      seen[-1]
+    # The residual appends preceded the emit: at the sole cancelled emit the
+    # tool_use was already answered on the conversation (at_emit == [True]).
+    # This closure snapshot -- not the post-hoc conv shape below -- is what
+    # proves the ordering, since reordering the emit before the appends leaves
+    # the final conv shape identical and only flips at_emit to [False].
+    assert at_emit == [True], at_emit
+    results = [b for m in session.conv.messages for b in m.content
+               if b.type == "tool_result"]
+    assert results and results[0].data["tool_use_id"] == "t1"
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_cancel_during_dispatch_synthesizes_terminal_turndone():
+  """A tool handler that sets the cancel token (the deny_and_stop shape)
+  exits through the post-dispatch short-circuit -- the second historically
+  event-less return. One synthesized terminal TurnDone(cancelled), emitted
+  last."""
+  session, tmp = _new_test_session([
+    [ToolUseRequested(id="t1", name="boom", input={}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  try:
+    session.tools.register_builtin(
+      ToolSpec(name="boom", description="sets cancel",
+               input_schema={"type": "object"}),
+      handler=lambda name, input, cancel, session, tool_use_id:
+        (cancel.set(), "stopped")[1],
+      risk="write")
+    seen = []
+    at_emit = []
+    def _on_event(ev):
+      seen.append(ev)
+      if isinstance(ev, TurnDone) and ev.stop_reason == "cancelled":
+        # As in the pre-dispatch test: snapshot inside the synchronous emit
+        # whether the post-dispatch residual (the boom tool_result) is already
+        # appended. Proves the emit lands after conv.append(tool_result_msg).
+        at_emit.append(any(
+          b.type == "tool_result" and b.data.get("tool_use_id") == "t1"
+          for m in session.conv.messages for b in m.content))
+    session.on_event = _on_event
+    _run_text_turn(session, "go")
+    cancelled = [e for e in seen if isinstance(e, TurnDone)
+                 and e.stop_reason == "cancelled"]
+    assert len(cancelled) == 1 and cancelled[0].finish == "cancelled", [
+      (e.stop_reason, e.finish) for e in seen if isinstance(e, TurnDone)]
+    assert seen[-1] is cancelled[0], seen[-1]
+    # Residual appended before the emit (post-dispatch short-circuit).
+    assert at_emit == [True], at_emit
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_streaming_cancel_synthesizes_no_second_terminal():
+  """A cancel the AGENT detected mid-stream already carries its own terminal
+  TurnDone(cancelled); the session must not add a second one (that path
+  returns through the terminal branch, not a short-circuit)."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="partial"),
+     TurnDone(stop_reason="cancelled", finish="cancelled")],
+  ])
+  try:
+    seen = []
+    session.on_event = seen.append
+    _run_text_turn(session, "go")
+    cancelled = [e for e in seen if isinstance(e, TurnDone)
+                 and e.stop_reason == "cancelled"]
+    assert len(cancelled) == 1, [
+      (e.stop_reason, e.finish) for e in seen if isinstance(e, TurnDone)]
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise():
   exercise_simple_text_turn()
   exercise_assistant_messages_stamped_with_model_and_backend()
+  exercise_assistant_messages_stamped_with_verbose()
+  exercise_session_verbose_is_normalized_at_construction()
+  exercise_the_observed_model_reaches_the_message_and_the_meta()
+  exercise_the_requested_model_is_never_overwritten()
+  exercise_the_base_declares_observed_model()
   exercise_reconciles_meta_model_and_backend_on_continue()
   exercise_tool_use_loop_completes()
   exercise_cancel_after_tool_use_does_not_orphan_tool_use()
   exercise_cancel_during_streaming_does_not_orphan_tool_use()
   exercise_cancel_during_multi_tool_streaming_answers_all()
+  exercise_cancel_before_dispatch_synthesizes_terminal_turndone()
+  exercise_cancel_during_dispatch_synthesizes_terminal_turndone()
+  exercise_streaming_cancel_synthesizes_no_second_terminal()
   exercise_builtin_handler_receives_tool_use_id()
   exercise_tool_denied_returns_is_error()
   exercise_cancel_while_awaiting_approval()
+  exercise_cancel_landing_before_open_does_not_wedge()
+  exercise_run_turn_cancels_pending_approval_on_exit()
+  exercise_api_remember_recorded_before_resolve_survives_cancel()
   exercise_max_turns_cap()
-  exercise_add_subagent_usage_aggregates()
+  exercise_tool_round_note_rides_the_tool_result_for_one_round()
+  exercise_tool_round_note_provider_failure_never_breaks_the_turn()
+  exercise_tool_round_note_is_not_attached_to_a_cancelled_round()
+  exercise_round_note_in_flight_says_whether_the_next_request_went_out()
   exercise_token_usage_event_carries_all_fields_to_message()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()
+  exercise_observed_results_answer_completed_claude_code_tools()
+  exercise_partial_observed_answers_mix_real_and_cancelled()
+  exercise_observed_error_result_preserves_is_error()
+  exercise_observed_content_blocks_normalizes_shapes()
   exercise_await_question_answer_returns_preseeded_answers()
   exercise_await_question_answer_cancel_raises_turn_cancelled()
   exercise_submit_question_answer_routes_only_matching_id()
@@ -1178,8 +2254,18 @@ def exercise():
   exercise_autosave_skipped_for_subagent()
   exercise_autosave_noop_without_storage()
   exercise_autosave_over_tool_use_turn_is_crash_safe()
-  exercise_autosave_checkpoints_after_tool_result()
   exercise_autosave_throttle_measured_from_turn_start()
+  exercise_checkpoint_fires_immediately_after_tool_result()
+  exercise_checkpoint_floor_coalesces_rapid_iterations()
+  exercise_checkpoint_floor_resets_per_turn()
+  exercise_claude_code_iterations_commit_as_alternating_pairs()
+  exercise_parallel_tool_uses_commit_once_all_answered_in_order()
+  exercise_two_sequential_iterations_commit_two_pairs()
+  exercise_observed_result_for_unknown_tool_use_never_commits()
+  exercise_empty_residual_folds_usage_and_stop_onto_last_commit()
+  exercise_cancelled_empty_residual_folds_stop_without_usage_clobber()
+  exercise_session_propagates_allow_remember()
+  exercise_session_destructive_always_cards()
 
 
 if __name__ == "__main__":

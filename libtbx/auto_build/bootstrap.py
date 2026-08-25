@@ -2110,6 +2110,7 @@ class MOLPROBITYBuilder(Builder):
   # Configure for these cctbx packages
   LIBTBX = [
     'mmtbx',
+    'xcif',
   ]
   LIBTBX_EXTRA = [
   ]
@@ -2147,6 +2148,7 @@ class PhaserBuilder(CCIBuilder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'xcif',
     'scitbx',
     'crys3d',
     'libtbx',
@@ -2245,6 +2247,7 @@ class CCTBXLiteBuilder(CCIBuilder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'xcif',
     'cctbx_website',
     'scitbx',
     'serialtbx',
