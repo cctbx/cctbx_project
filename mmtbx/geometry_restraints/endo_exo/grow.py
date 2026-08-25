@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function
 from collections import deque
 
 from cctbx import sgtbx
+from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
@@ -451,6 +452,91 @@ class QMRegionGrower:
             other_group, _canon_op(sym_op.multiply(edge_op)), visited):
           return True
     return False
+
+  @staticmethod
+  def _has_later_polymer_residue(atom):
+    """Return ``True`` if a polymer residue follows *atom*'s in its chain.
+
+    What separates the two readings of a carbonyl that has lost its bond.
+    A residue with polymer after it sits at an interior gap, so the missing
+    partner is the next residue's nitrogen; one with nothing after it ends
+    the chain, so what is missing is the second carboxylate oxygen.
+
+    Solvent is ignored, or a water numbered above the last residue would
+    make every chain look interior.
+
+    Parameters
+    ----------
+    atom : iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    residue_group = atom.parent().parent()
+    chain = residue_group.parent()
+    if chain is None:
+      return False
+    root = chain.parent()
+    chains = ([other for other in root.chains() if other.id == chain.id]
+              if root is not None else [chain])
+    here = residue_group.resseq_as_int()
+    for other_chain in chains:
+      for other in other_chain.residue_groups():
+        if other.resseq_as_int() <= here:
+          continue
+        if any(common_residue_names_get_class(group.resname)
+               == 'common_amino_acid' for group in other.atom_groups()):
+          return True
+    return False
+
+  @staticmethod
+  def _is_chain_break_carbonyl(iseq, adjacency, atoms):
+    """Return ``True`` if *iseq* is a backbone carbonyl carbon whose following
+    residue is absent from the model.
+
+    The mirror of :meth:`_is_chain_break_amine` on the other half of the same
+    severed peptide bond.  Such a carbon holds its own CA and O and nothing
+    else, so it is a bond short and reaches the region as an acyl centre.
+    Unlike the nitrogen half this one cannot be cut away instead: the cut
+    would delete the carbonyl oxygen, which is frequently what coordinates
+    the metal.
+
+    A genuine C-terminus is excluded by oxygen count, as in
+    :meth:`_is_terminal_carboxylate`: a carboxylate carries two where a
+    truncated carbonyl carries one.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    atom = atoms[iseq]
+    if atom.element.strip().upper() != 'C':
+      return False
+    if atom.name.strip().upper() != 'C':
+      return False
+    residue_group = atom.parent().parent()
+    on_backbone = False
+    oxygens = 0
+    for j in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[j]
+      element = other.element.strip().upper()
+      name = other.name.strip().upper()
+      if element == 'N':
+        return False                # the chain continues into the next residue
+      if element == 'O':
+        oxygens += 1
+        continue
+      if (element == 'C' and name == 'CA'
+          and other.parent().parent() == residue_group):
+        on_backbone = True
+    return on_backbone and oxygens == 1
 
   @staticmethod
   def _is_chain_break_amine(iseq, adjacency, atoms):

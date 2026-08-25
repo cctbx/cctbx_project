@@ -22,10 +22,12 @@ QM region around two contrasting Fe sites:
 from __future__ import absolute_import, division, print_function
 
 import io
+import math
 import random
 from collections import defaultdict, deque
 
 import iotbx.pdb
+from iotbx.pdb import common_residue_names_get_class
 import libtbx.phil
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, format_cpu_times
@@ -37,7 +39,8 @@ from scitbx import matrix
 from cctbx import geometry_restraints, sgtbx
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op
-from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
+from mmtbx.geometry_restraints.endo_exo.capping import (
+  AMINE_HYDROGEN_NAMES, HydrogenCapper)
 from mmtbx.geometry_restraints.endo_exo.cutting import (
   BondCutDetector, PREFERRED_CUTS)
 from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
@@ -3227,6 +3230,374 @@ def exercise_growth_converges_in_a_couple_of_rounds():
     f"more slowly than the reasoning behind max_repair_rounds allows")
 
 
+def exercise_chain_break_carbonyl_is_completed():
+  """A carbonyl carbon the input left a bond short leaves as an amide.
+
+  The other half of a severed peptide bond.  Unlike the nitrogen half this
+  one guesses nothing: the carbon holds its own CA and O, so the missing
+  nitrogen is fixed by sp2 planarity.  It also cannot be cut away instead,
+  because the cut would delete a carbonyl oxygen that is often what
+  coordinates the metal.
+
+  Clearance is asserted over every added atom, not just bonding: a bond
+  proxy is a monomer-library lookup and is satisfied wherever the atom
+  actually sits, so on its own it cannot see two nuclei in one place."""
+  from libtbx.utils import null_out
+
+  # r=9 as well as r=7: the appended hydrogens reorder 39 atoms there, which
+  # is what the index-stability check below exists to catch.
+  # PHE 90 has residues after it, so its carbonyl is restored as an amide;
+  # ASP 93 is the last polymer residue in the extract, so its carbonyl is
+  # completed as a carboxylate instead -- one added atom rather than three.
+  for mode, radius, expected_added, expected_resnames in (
+      ("r=7", 7.0, 15, {"ARG", "NH2", "ASP"}),
+      ("r=9", 9.0, 18, {"ARG", "NH2", "ASP"})):
+    result = _run_endo_exo_params(
+      _2C2U_FE_SPHERE_PDB, buffer__radius=radius)[0]
+    submodel = result["model"]
+    atoms = list(submodel.get_hierarchy().atoms())
+    completed = result["completed_iseqs"]
+    assert len(completed) == expected_added, (
+      f"{mode}: completed {len(completed)} atoms, expected {expected_added}")
+
+    # Added atoms are not caps: a consumer round-trips a cap through its
+    # original element, and these have none.
+    assert not set(completed) & set(result["cap_iseqs"]), (
+      f"{mode}: an added atom is listed as a cap")
+    assert {atoms[i].parent().resname.strip()
+            for i in completed} == expected_resnames, (
+      f"{mode}: added into "
+      f"{sorted({atoms[i].parent().resname.strip() for i in completed})}")
+
+    # Every added atom must BOND.  Rebuild restraints the way a consumer
+    # does, with cap elements restored first.
+    for i_seq, element in zip(result["cap_iseqs"],
+                              result["cap_original_elements"]):
+      atoms[i_seq].set_element(element)
+    rebuilt = mmtbx.model.manager(
+      model_input=None, pdb_hierarchy=submodel.get_hierarchy(),
+      crystal_symmetry=submodel.crystal_symmetry(), log=null_out())
+    params = rebuilt.get_current_pdb_interpretation_params()
+    params.pdb_interpretation.restraints_library.mcl = False
+    params.pdb_interpretation.automatic_linking.link_metals = False
+    rebuilt.process(pdb_interpretation_params=params, make_restraints=True)
+    geometry = rebuilt.get_restraints_manager().geometry
+    simple, _asu = geometry.get_all_bond_proxies(
+      sites_cart=rebuilt.get_sites_cart())
+    degree = {}
+    neighbours = {}
+    for proxy in simple:
+      first, second = proxy.i_seqs
+      degree[first] = degree.get(first, 0) + 1
+      degree[second] = degree.get(second, 0) + 1
+      neighbours.setdefault(first, []).append(second)
+      neighbours.setdefault(second, []).append(first)
+    rebuilt_atoms = list(rebuilt.get_hierarchy().atoms())
+    for i_seq in completed:
+      assert degree.get(i_seq, 0) >= 1, (
+        f"{mode}: added {rebuilt_atoms[i_seq].name.strip()} has no bond; the "
+        f"monomer library did not accept it")
+
+    # No backbone carbonyl is left a bond short.  Either repair satisfies it:
+    # an amide nitrogen where the chain continues, a second carboxylate
+    # oxygen where it ends.
+    caps = set(result["cap_iseqs"])
+    short = []
+    for i, a in enumerate(rebuilt_atoms):
+      if i in caps or a.name.strip().upper() != "C":
+        continue
+      if a.element.strip().upper() != "C":
+        continue
+      partners = [rebuilt_atoms[j] for j in neighbours.get(i, [])]
+      has_nitrogen = any(p.name.strip().upper() == "N" for p in partners)
+      oxygens = sum(1 for p in partners
+                    if p.element.strip().upper() == "O")
+      if not has_nitrogen and oxygens < 2:
+        short.append(
+          f"{a.parent().resname.strip()}"
+          f"{a.parent().parent().resseq.strip()}")
+    assert not short, f"{mode}: carbonyls still a bond short: {short}"
+
+    # Clearance, over every added atom.  `degree >= 1` above is a monomer
+    # library lookup and is satisfied wherever the atom actually sits, so on
+    # its own it cannot see two nuclei placed on top of each other -- which
+    # is exactly what a wrong angle or a wrong torsion produces.
+    bonded = {i: set(neighbours.get(i, ())) for i in completed}
+    for i_seq in completed:
+      for other, atom in enumerate(rebuilt_atoms):
+        if other == i_seq or other in bonded[i_seq]:
+          continue
+        separation = rebuilt_atoms[i_seq].distance(atom)
+        assert separation > 1.4, (
+          f"{mode}: added {rebuilt_atoms[i_seq].name.strip()} sits "
+          f"{separation:.3f} A from "
+          f"{atom.parent().resname.strip()}"
+          f"{atom.parent().parent().resseq.strip()}/{atom.name.strip()}")
+
+    # Every recorded index must still name the same atom after a consumer
+    # re-processes the region.  pdb_interpretation sorts by default, and an
+    # atom appended at the end of its group moves to the front of the
+    # hydrogen block, so a consumer told to free `completed_atoms` would
+    # free a sidechain hydrogen instead.
+    def identity(atom):
+      return (atom.parent().parent().parent().id.strip(),
+              atom.parent().parent().resseq.strip(),
+              atom.name.strip(), atom.parent().altloc)
+    recorded = [identity(atoms[i]) for i in completed]
+    for position, i_seq in enumerate(completed):
+      assert identity(rebuilt_atoms[i_seq]) == recorded[position], (
+        f"{mode}: completed_iseqs[{position}] recorded "
+        f"{recorded[position]} but after re-processing that index holds "
+        f"{identity(rebuilt_atoms[i_seq])}")
+
+    # The restored amide bond is a real one, not merely present.
+    amide_n = [i for i in completed
+               if rebuilt_atoms[i].parent().resname.strip() == "NH2"
+               and rebuilt_atoms[i].name.strip() == "N"]
+    assert amide_n, f"{mode}: no restored amide nitrogen"
+    for i_seq in amide_n:
+      carbon = next(j for j in neighbours[i_seq]
+                    if rebuilt_atoms[j].name.strip() == "C")
+      length = rebuilt_atoms[i_seq].distance(rebuilt_atoms[carbon])
+      assert 1.25 < length < 1.40, (
+        f"{mode}: restored C-N is {length:.3f} A, not an amide bond")
+
+
+def exercise_completed_amide_follows_its_altloc():
+  """A repair inherits the conformer of the atom it repairs.
+
+  Two conformers of one backbone give two truncated carbonyls, so two amides
+  are restored.  Created blank they read as whole residues that coexist, and
+  interpretation bonds each to BOTH conformers' carbonyl carbons and to the
+  other amide's nitrogen -- an N-N bond between two atoms that are alternates
+  of each other."""
+  from libtbx.utils import null_out
+
+  # 1BQ8 rather than the tripeptide: residue 44 removed so GLY 43's carbonyl
+  # is short, with 45 and beyond still following it, so this exercises the
+  # AMIDE path.  Were 43 the last polymer residue it would be completed as a
+  # carboxylate instead, which is a different repair.  GLY 43 is then split
+  # over two conformers, B displaced so the two are distinguishable.
+  gapped = [line for line in _1BQ8_FE_SPHERE_PDB.split("\n")
+            if not (line.startswith(("ATOM", "HETATM"))
+                    and line[22:26].strip() == "44")]
+  split = []
+  for line in gapped:
+    if line.startswith(("ATOM", "HETATM")) and line[22:26].strip() == "43":
+      split.append(line[:16] + "A" + line[17:54] + "  0.50" + line[60:])
+      shifted = float(line[30:38]) + 0.40
+      split.append(line[:16] + "B" + line[17:30] + "%8.3f" % shifted
+                   + line[38:54] + "  0.50" + line[60:])
+    else:
+      split.append(line)
+
+  result = _run_endo_exo_params(
+    "\n".join(split), buffer__radius=8.0, altloc="all",
+    selection=["chain A and resseq 43 and name C"],
+    buffer__skip_search=True)[0]
+  submodel = result["model"]
+  atoms = list(submodel.get_hierarchy().atoms())
+  restored = [i for i, a in enumerate(atoms)
+              if a.parent().resname.strip() == "NH2"]
+  assert restored, "no amide restored"
+  assert {atoms[i].parent().altloc for i in restored} == {"A", "B"}, (
+    f"restored amides carry altlocs "
+    f"{sorted({atoms[i].parent().altloc or '-' for i in restored})}")
+
+  for i_seq, element in zip(result["cap_iseqs"],
+                            result["cap_original_elements"]):
+    atoms[i_seq].set_element(element)
+  rebuilt = mmtbx.model.manager(
+    model_input=None, pdb_hierarchy=submodel.get_hierarchy(),
+    crystal_symmetry=submodel.crystal_symmetry(), log=null_out())
+  params = rebuilt.get_current_pdb_interpretation_params()
+  params.pdb_interpretation.restraints_library.mcl = False
+  params.pdb_interpretation.automatic_linking.link_metals = False
+  rebuilt.process(pdb_interpretation_params=params, make_restraints=True)
+  simple, _asu = rebuilt.get_restraints_manager().geometry.get_all_bond_proxies(
+    sites_cart=rebuilt.get_sites_cart())
+  rebuilt_atoms = list(rebuilt.get_hierarchy().atoms())
+
+  # Each restored nitrogen bonds to one carbonyl, in its own conformer, and
+  # to nothing in the other.
+  for i_seq in restored:
+    if rebuilt_atoms[i_seq].name.strip() != "N":
+      continue
+    altloc = rebuilt_atoms[i_seq].parent().altloc
+    partners = [rebuilt_atoms[j] for proxy in simple
+                for j in proxy.i_seqs
+                if i_seq in proxy.i_seqs and j != i_seq]
+    carbons = [a for a in partners if a.name.strip() == "C"]
+    assert len(carbons) == 1, (
+      f"amide {altloc} bonds to {len(carbons)} carbonyl carbons")
+    for other in partners:
+      other_altloc = other.parent().altloc
+      assert other_altloc in ("", altloc), (
+        f"amide {altloc} bonds across to conformer {other_altloc}")
+
+
+def exercise_chain_break_amine_is_completed():
+  """A nitrogen the input left two-coordinate leaves as a neutral amine.
+
+  Cutting cannot reach these: a nitrogen inside the buffer sphere is a seed,
+  so its CA-N bond is never cut-tested, and it would arrive carrying an
+  unpaired electron next to the metal.  One added hydrogen makes it R-NH2,
+  which repairs the valence and keeps the N-H hydrogen bond that capping the
+  nitrogen away would have destroyed.
+
+  The added atom must BOND.  A hydrogen whose name the monomer library does
+  not know for that residue is accepted silently and left with no bond proxy
+  at all, which is a free hydrogen radical rather than an error, so this
+  rebuilds restraints the way a consumer does -- cap elements restored -- and
+  checks the graph rather than the atom count."""
+  from libtbx.utils import null_out
+
+  arg92 = {("A", "92", "ARG"), ("B", "92", "ARG"), ("C", "92", "ARG")}
+  for pdb_str, radius, expected, residues in (
+      # One per symmetry image of ARG 92, at two radii so the count is not a
+      # knife-edge at one.
+      (_2C2U_FE_SPHERE_PDB, 7.0, 3, arg92),
+      (_2C2U_FE_SPHERE_PDB, 8.0, 3, arg92),
+      # The extract starts at 89, so a wider sphere brings a second chain
+      # break into the region.
+      (_2C2U_FE_SPHERE_PDB, 9.0, 6,
+       arg92 | {("A", "89", "ARG"), ("B", "89", "ARG"), ("C", "89", "ARG")}),
+      # 1BQ8's breaks are cut rather than completed at this radius.
+      (_1BQ8_FE_SPHERE_PDB, 7.0, 0, set())):
+    result = _run_endo_exo_params(pdb_str, buffer__radius=radius)[0]
+    submodel = result["model"]
+    atoms = list(submodel.get_hierarchy().atoms())
+    # Water hydrogens are named H1/H2 too, so the name alone is not enough:
+    # any fixture carrying protonated waters would be miscounted.
+    added = [i for i, a in enumerate(atoms)
+             if a.name.strip() in AMINE_HYDROGEN_NAMES
+             and a.element_is_hydrogen()
+             and common_residue_names_get_class(
+               a.parent().resname) == "common_amino_acid"]
+    assert len(added) == expected, (
+      f"expected {expected} completed amine(s), got {len(added)}")
+    # Which residue, not merely how many: three hydrogens on the wrong
+    # nitrogen would satisfy a count.
+    where = {(a.parent().parent().parent().id.strip(),
+              a.parent().parent().resseq.strip(),
+              a.parent().resname.strip()) for a in
+             (atoms[i] for i in added)}
+    assert where == residues, f"completed {sorted(where)}, expected {sorted(residues)}"
+    if not added:
+      continue
+
+    # Atoms added after the numbering pass would be written with a blank
+    # serial, which nothing downstream would flag.
+    serials = [a.serial.strip() for a in atoms]
+    assert "" not in serials, "an added atom carries a blank serial"
+    assert len(set(serials)) == len(serials), (
+      f"serials are not unique: {len(serials)} atoms, "
+      f"{len(set(serials))} distinct")
+
+    # The recorded indices must still point where they did before the
+    # insertion: a shifted cap_iseq makes a consumer restore the wrong
+    # atom's element when it rebuilds restraints.
+    for i_seq, element in zip(result["cap_iseqs"],
+                              result["cap_original_elements"]):
+      assert atoms[i_seq].element.strip().upper() == "H", (
+        f"cap_iseqs[{i_seq}] points at "
+        f"{atoms[i_seq].name.strip()}, not a capping hydrogen")
+    for i_seq in result["cap_anchor_iseqs"]:
+      assert not atoms[i_seq].element_is_hydrogen(), (
+        f"cap_anchor_iseqs[{i_seq}] points at a hydrogen")
+
+    # Restore cap elements first, as a consumer does before interpreting.
+    for i_seq, element in zip(result["cap_iseqs"],
+                              result["cap_original_elements"]):
+      atoms[i_seq].set_element(element)
+    rebuilt = mmtbx.model.manager(
+      model_input=None, pdb_hierarchy=submodel.get_hierarchy(),
+      crystal_symmetry=submodel.crystal_symmetry(), log=null_out())
+    params = rebuilt.get_current_pdb_interpretation_params()
+    params.pdb_interpretation.restraints_library.mcl = False
+    params.pdb_interpretation.automatic_linking.link_metals = False
+    rebuilt.process(pdb_interpretation_params=params, make_restraints=True)
+    geometry = rebuilt.get_restraints_manager().geometry
+    simple, _asu = geometry.get_all_bond_proxies(
+      sites_cart=rebuilt.get_sites_cart())
+    degree = {}
+    for proxy in simple:
+      first, second = proxy.i_seqs
+      degree[first] = degree.get(first, 0) + 1
+      degree[second] = degree.get(second, 0) + 1
+    # Geometry, not just connectivity.  The distance to the nitrogen is
+    # 1.01 by construction for any direction at all, so it pins nothing on
+    # its own: what matters is that the hydrogen points AWAY from what the
+    # nitrogen already carries.  Reversing that direction still bonds, and
+    # still reads as a completed amine, while putting two nuclei 0.9 A
+    # apart.  Hence the angle and the clearance.
+    for i_seq in added:
+      hydrogen = atoms[i_seq]
+      nitrogen = next(
+        a for a in hydrogen.parent().atoms() if a.name.strip() == "N")
+      separation = hydrogen.distance(nitrogen)
+      assert abs(separation - 1.01) < 1e-3, (
+        f"added hydrogen sits {separation:.3f} A from its nitrogen")
+      alpha = next(
+        (a for a in hydrogen.parent().atoms() if a.name.strip() == "CA"), None)
+      if alpha is not None:
+        cosine = sum(
+          (hydrogen.xyz[k] - nitrogen.xyz[k]) * (alpha.xyz[k] - nitrogen.xyz[k])
+          for k in range(3)) / (separation * alpha.distance(nitrogen))
+        angle = math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
+        assert angle > 90.0, (
+          f"added hydrogen folds back onto the residue: H-N-CA {angle:.0f} deg")
+      nearest = min(
+        (hydrogen.distance(other), other.name.strip())
+        for j, other in enumerate(atoms) if j != i_seq and j != nitrogen.i_seq)
+      assert nearest[0] > 1.4, (
+        f"added hydrogen sits {nearest[0]:.2f} A from {nearest[1]}")
+      assert hydrogen.occ == nitrogen.occ and hydrogen.b == nitrogen.b, (
+        "added hydrogen does not carry its nitrogen's occupancy and B")
+
+    for i_seq in added:
+      assert degree.get(i_seq, 0) == 1, (
+        f"added hydrogen {atoms[i_seq].name.strip()} has "
+        f"{degree.get(i_seq, 0)} bonds; the monomer library did not accept "
+        f"its name")
+
+  # Proline is the case that counts substituents rather than hydrogens.  Its
+  # ring nitrogen holds CA and CD and, mid-chain, no hydrogen at all, so a
+  # count of the hydrogens alone asks for two and puts the second on top of
+  # the first -- two nuclei in one place, which no QM code survives.
+  gapped = "\n".join(
+    line for line in _1BQ8_FE_SPHERE_PDB.split("\n")
+    if not (line.startswith(("ATOM", "HETATM"))
+            and line[22:26].strip() == "44"))
+  result = _run_endo_exo_params(gapped, buffer__radius=8.0)[0]
+  atoms = list(result["model"].get_hierarchy().atoms())
+  proline_n = next(
+    a for a in atoms
+    if a.parent().resname.strip() == "PRO"
+    and a.parent().parent().resseq.strip() == "45"
+    and a.name.strip() == "N")
+  bonded = [a for a in atoms if a is not proline_n
+            and proline_n.distance(a) < 1.6]
+  assert len(bonded) == 3, (
+    f"proline nitrogen carries {len(bonded)} substituents: "
+    f"{sorted(a.name.strip() for a in bonded)}")
+  for first in range(len(bonded)):
+    for second in range(first + 1, len(bonded)):
+      separation = bonded[first].distance(bonded[second])
+      assert separation > 1.0, (
+        f"{bonded[first].name.strip()} and {bonded[second].name.strip()} "
+        f"sit {separation:.3f} A apart on the proline nitrogen")
+
+  # Turning capping off leaves the nitrogen alone, as it leaves caps alone.
+  result = _run_endo_exo_params(
+    _2C2U_FE_SPHERE_PDB, buffer__radius=7.0, capping__enable=False)[0]
+  assert not [a for a in result["model"].get_hierarchy().atoms()
+              if a.name.strip() in AMINE_HYDROGEN_NAMES
+              and common_residue_names_get_class(
+                a.parent().resname) == "common_amino_acid"], (
+    "completed an amine with capping disabled")
+
+
 def exercise_open_valences_are_reported():
   """An atom whose neighbour is missing from the model is named in the log.
 
@@ -3239,7 +3610,7 @@ def exercise_open_valences_are_reported():
 
   1BQ8 runs from residue 45 to 48, so PRO 45's carbonyl has no following
   nitrogen once the sphere is wide enough to keep it."""
-  def note_for(pdb_str, radius, selection=None):
+  def note_for(pdb_str, radius, selection=None, **overrides):
     pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
     model = mmtbx.model.manager(model_input=pdb_in)
     dm = DataManager(["model"])
@@ -3251,6 +3622,12 @@ def exercise_open_valences_are_reported():
     params.buffer.radius = radius
     if selection is not None:
       params.selection = [selection]
+    for dotted, value in overrides.items():
+      scope = params
+      parts = dotted.split("__")
+      for part in parts[:-1]:
+        scope = getattr(scope, part)
+      setattr(scope, parts[-1], value)
     log = io.StringIO()
     program = EndoexoProgram(dm, params, master_phil=master, logger=log)
     program.validate()
@@ -3261,32 +3638,39 @@ def exercise_open_valences_are_reported():
   # The whole set, not the number of lines: there is only ever one line, so
   # a count of it cannot fail, and a predicate that names extra atoms -- a
   # cap about to become a hydrogen, say -- would go unnoticed.
-  def atoms_named(pdb_str, radius, selection=None):
-    lines = note_for(pdb_str, radius, selection)
+  def atoms_named(pdb_str, radius, selection=None, **overrides):
+    lines = note_for(pdb_str, radius, selection, **overrides)
     if not lines:
       return set()
     assert len(lines) == 1, f"expected one note, got {lines}"
     return set(lines[0].rsplit(": ", 1)[1].rstrip(".").split(", "))
 
-  # The extract jumps 45 -> 48, so PRO 45's carbonyl has no following
-  # nitrogen.  GLU 48's nitrogen has no preceding one either, but it is far
-  # enough out to be cut and capped, and a cap is not short of anything.
-  # A nitrogen like it inside the radius floor is a seed, never cut-tested,
-  # and is still reported: see ARG 92 below.
-  assert atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0) == {"PRO 45 C"}, (
+  # With capping on there is nothing left to report: both halves of every
+  # severed peptide bond are repaired, the nitrogen to an amine and the
+  # carbonyl to an amide.  The note and the repair are complementary, so the
+  # capping-off runs below are what carry the content here.
+  assert not note_for(_1BQ8_FE_SPHERE_PDB, 8.0), (
     atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0))
+  assert not note_for(_2C2U_FE_SPHERE_PDB, 7.0), (
+    atoms_named(_2C2U_FE_SPHERE_PDB, 7.0))
 
-  # Narrower, and the same carbonyl is capped away instead: nothing to say.
-  assert not note_for(_1BQ8_FE_SPHERE_PDB, 5.0), (
-    "reported an open valence where the atom is not in the region")
-
-  # Symmetry images of one atom are one problem, named once.  The extract
-  # skips residue 91 and stops at 93, so two carbonyls have no following
-  # nitrogen and one nitrogen has no preceding carbonyl.  ARG 92's nitrogen
-  # is a seed, so it is retained rather than capped and stays reportable.
-  assert atoms_named(_2C2U_FE_SPHERE_PDB, 7.0) == {
+  # Capping off repairs nothing, so every defect is named.  The 1BQ8 extract
+  # jumps 45 -> 48, so PRO 45's carbonyl has no following nitrogen; 2C2U
+  # skips 91 and stops at 93, giving two such carbonyls plus a nitrogen with
+  # no preceding one, each named once however many symmetry images carry it.
+  # GLU 48's nitrogen is absent from both lists: capping.enable gates only
+  # the hydrogen placement, not the cut, so it is a cap node either way and
+  # a cap is not short of anything.
+  assert atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0,
+                     capping__enable=False) == {"PRO 45 C"}, (
+    atoms_named(_1BQ8_FE_SPHERE_PDB, 8.0, capping__enable=False))
+  assert atoms_named(_2C2U_FE_SPHERE_PDB, 7.0, capping__enable=False) == {
     "ARG 92 N", "ASP 93 C", "PHE 90 C"}, (
-      atoms_named(_2C2U_FE_SPHERE_PDB, 7.0))
+      atoms_named(_2C2U_FE_SPHERE_PDB, 7.0, capping__enable=False))
+
+  # Narrower, and the carbonyl is outside the region altogether.
+  assert not note_for(_1BQ8_FE_SPHERE_PDB, 5.0, capping__enable=False), (
+    "reported an open valence where the atom is not in the region")
 
   # Only a peptide backbone has a neighbouring residue to be missing.  Tris
   # names an atom C and an atom N; the C is quaternary and complete, and
@@ -3437,6 +3821,9 @@ def run():
   exercise_terminal_carboxylate_detection()
   exercise_polymer_bonded_to_its_own_image_terminates()
   exercise_growth_converges_in_a_couple_of_rounds()
+  exercise_chain_break_carbonyl_is_completed()
+  exercise_completed_amide_follows_its_altloc()
+  exercise_chain_break_amine_is_completed()
   exercise_open_valences_are_reported()
   exercise_surviving_cap_has_only_its_anchor()
   exercise_cut_not_made_into_the_region()

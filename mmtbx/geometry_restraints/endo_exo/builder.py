@@ -43,6 +43,12 @@ None when the region has none."
     .type = strings
     .help = "Element each boundary atom carried before capping, parallel to \
 cap_atoms."
+  completed_atoms = None
+    .type = ints
+    .help = "Indices of atoms this run ADDED to repair a valence the input \
+model left open at a chain break; they are not caps and carry no original \
+element.  Their positions are constructed, not measured, so a consumer may \
+wish to leave them free to relax."
   seed_atoms = None
     .type = ints
     .help = "Indices of seed atoms in the QM-region output file (the metal \
@@ -319,6 +325,9 @@ class QMRegionBuilder(object):
     Parameters
     ----------
     seeds : list of iotbx.pdb.hierarchy.atom
+    adjacency : collections.defaultdict of set
+        Tagged adjacency of the parent model, used to find nitrogens
+        the input left two-coordinate.
     label : str, optional
         Human-readable label.  Default is ``'seeds'``.
     """
@@ -355,11 +364,18 @@ class QMRegionBuilder(object):
       qm_atoms, adjacency, model, max_depth=self.params.max_search_depth)
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
-    self._report_open_valences(model, visited_nodes, cap_nodes, adjacency)
 
     (model_sel, seed_indices, cap_indices, cap_original_elements,
-     cap_anchor_indices, sym_image_provenance) = self._materialize_qm_region(
-      model, visited_nodes, cap_nodes, seeds)
+     cap_anchor_indices, sym_image_provenance,
+     completed_nodes, completed_indices) = self._materialize_qm_region(
+      model, visited_nodes, cap_nodes, seeds, adjacency)
+
+    # Reported after materialisation, and told what it actually repaired: a
+    # nitrogen that was completed is no longer short, and one the repair
+    # could not reach still is.  Gating this on the predicate instead would
+    # let the two disagree and silence a defect that is still there.
+    self._report_open_valences(
+      model, visited_nodes, cap_nodes, adjacency, completed_nodes)
 
     file_name = self._make_output_filename(
       seed_index, seeds, selection_str=selection_str
@@ -369,7 +385,7 @@ class QMRegionBuilder(object):
         model_sel, model.crystal_symmetry(), file_name)
       self._write_sidecar(
         file_name, cap_indices, cap_original_elements,
-        seed_indices, selection_str)
+        seed_indices, selection_str, completed_indices)
 
     return {
       'file_name': file_name,
@@ -383,6 +399,10 @@ class QMRegionBuilder(object):
       'cap_iseqs': cap_indices,
       'cap_original_elements': cap_original_elements,
       'cap_anchor_iseqs': cap_anchor_indices,
+      # Atoms added to repair an open valence: constructed positions, not
+      # measured ones, and not caps.  A consumer that freezes caps may want
+      # these free instead, so a wrong constructed torsion can relax out.
+      'completed_iseqs': completed_indices,
       # {sub-model i_seq: ((chain, resseq, resname, name, altloc),
       # symmetry_operation_xyz)} for symmetry-image atoms, so a metal-ligand bond
       # to one can be restrained against its ASU parent (kept in memory only, not
@@ -441,7 +461,8 @@ class QMRegionBuilder(object):
     qm_nodes |= self._hbond_partner_nodes(model, qm_nodes)
     return qm_nodes
 
-  def _report_open_valences(self, model, visited_nodes, cap_nodes, adjacency):
+  def _report_open_valences(self, model, visited_nodes, cap_nodes, adjacency,
+                            completed_nodes=frozenset()):
     """Name region atoms whose backbone partner is missing from the model.
 
     Capping covers bonds this code severs.  A residue whose neighbour was
@@ -468,6 +489,11 @@ class QMRegionBuilder(object):
       atom = atoms[iseq]
       name = atom.name.strip().upper()
       if name not in ('N', 'C') or atom.element.strip().upper() not in ('N', 'C'):
+        continue
+      # A nitrogen materialisation actually completed is not short of
+      # anything, so reporting it would send a consumer looking for a radical
+      # centre that is not there.  One it could not reach is still reported.
+      if (iseq, _op) in completed_nodes:
         continue
       residue_group = atom.parent().parent()
       partner = 'C' if name == 'N' else 'N'
@@ -795,7 +821,7 @@ class QMRegionBuilder(object):
     return visited_nodes | new_nodes
 
   def _materialize_qm_region(self, model, visited_nodes, cap_nodes,
-                              seeds):
+                              seeds, adjacency):
     """Build a materialized QM sub-model from the BFS nodes.
 
     Nodes carrying the same ``i_seq`` but different ``sym_op`` are
@@ -992,6 +1018,83 @@ class QMRegionBuilder(object):
       if self.params.capping.enable:
         self._capper.cap_atom(anchor_atom, cap_atom)
 
+    # Complete any two-coordinate backbone nitrogen the input left short.
+    # These are the ones the cut rules never reach: a nitrogen inside the
+    # buffer sphere is a seed, so its CA-N bond is never cut-tested, and it
+    # would otherwise arrive as an aminyl centre.  Gated with capping since
+    # both answer the same question, what to do with a severed valence.
+    completed_amines = []
+    completed_atoms = []
+    if self.params.capping.enable:
+      cap_atoms = set(orig_element_by_cap)
+      for (iseq, op) in sorted(visited_nodes):
+        if (iseq, op) in cap_nodes:
+          continue
+        if not QMRegionGrower._is_chain_break_amine(
+            iseq, adjacency, parent_atoms):
+          continue
+        nitrogen = _lookup_node(iseq, op.as_xyz())
+        if nitrogen is None or nitrogen in cap_atoms:
+          continue
+        neighbours = [
+          neighbour for neighbour in (
+            _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
+            for (j, edge_op) in adjacency[iseq])
+          if neighbour is not None]
+        added = self._capper.complete_amine(nitrogen, neighbours)
+        if added:
+          completed_amines.append((iseq, op))
+          completed_atoms.extend(added)
+
+      # The other half of the same severed peptide bond.  This one guesses
+      # nothing: the carbon holds its CA and O, so the missing nitrogen is
+      # fixed by sp2 planarity.  It cannot be cut away instead, because the
+      # cut would delete a carbonyl oxygen that often coordinates the metal.
+      for (iseq, op) in sorted(visited_nodes):
+        if (iseq, op) in cap_nodes:
+          continue
+        if not QMRegionGrower._is_chain_break_carbonyl(
+            iseq, adjacency, parent_atoms):
+          continue
+        carbon = _lookup_node(iseq, op.as_xyz())
+        if carbon is None or carbon in cap_atoms:
+          continue
+        neighbours = [
+          neighbour for neighbour in (
+            _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
+            for (j, edge_op) in adjacency[iseq])
+          if neighbour is not None]
+        # Which repair depends on whether the chain continues past this
+        # residue.  Later polymer means an interior gap, so the missing
+        # partner is the next residue's nitrogen; nothing later means the
+        # chain ends here and what is missing is the second carboxylate
+        # oxygen, which depositors often leave unmodelled.
+        if QMRegionGrower._has_later_polymer_residue(parent_atoms[iseq]):
+          added = self._capper.complete_carbonyl(carbon, neighbours)
+        else:
+          added = self._capper.complete_carboxylate(carbon, neighbours)
+        if added:
+          completed_amines.append((iseq, op))
+          completed_atoms.extend(added)
+    if completed_amines:
+      # Sorted before anything is indexed.  A consumer re-processing the
+      # region runs pdb_interpretation with sort_atoms on by default, and an
+      # atom appended at the end of its group is moved to the front of the
+      # hydrogen block, shifting every index recorded after it -- a consumer
+      # told to free `completed_atoms` would free a sidechain hydrogen
+      # instead.  A region with no repair is already in this order, so this
+      # only reorders what the repair itself disturbed, and leaves the
+      # consumer's own sort with nothing to do.
+      out_root.sort_atoms_in_place()
+      # And renumbered after, so serials follow the final order rather than
+      # being blank on the appended atoms.
+      out_root.atoms().reset_serial()
+      print(
+        f'Repaired {len(completed_amines)} open valence(s) left by a gap in '
+        f'the input model, adding {len(completed_atoms)} atom(s).',
+        file=self.logger,
+      )
+
     # Assemble the final mmtbx.model.manager
     model_sel = mmtbx_model.manager(
       model_input=None,
@@ -1013,6 +1116,7 @@ class QMRegionBuilder(object):
     # same not-None filter, so a missing entry is a bug worth raising on.
     cap_original_elements = [orig_element_by_cap[a]
                              for a in cap_atoms_sorted]
+    completed_indices = sorted(a.i_seq for a in completed_atoms)
     cap_anchor_indices = sorted(set(
       anchor_atom_by_cap[a].i_seq for a in cap_atoms_sorted
       if a in anchor_atom_by_cap))
@@ -1037,7 +1141,8 @@ class QMRegionBuilder(object):
       sym_image_provenance[atom.i_seq] = (ident, op_xyz)
 
     return (model_sel, seed_indices, cap_indices, cap_original_elements,
-            cap_anchor_indices, sym_image_provenance)
+            cap_anchor_indices, sym_image_provenance,
+            frozenset(completed_amines), completed_indices)
 
   def _write_submodel(self, model_sel, crystal_symmetry, file_name):
     """Write *model_sel* as both a PDB and an mmCIF file.
@@ -1071,7 +1176,7 @@ class QMRegionBuilder(object):
     )
 
   def _write_sidecar(self, file_name, cap_indices, cap_original_elements,
-                     seed_indices, selection_string):
+                     seed_indices, selection_string, completed_indices=()):
     """Write the per-region sidecar PHIL file as ``<file_name>.phil``.
 
     The sidecar records which atoms are hydrogen caps, the element each
@@ -1104,6 +1209,8 @@ class QMRegionBuilder(object):
     sidecar_phil_extract.endo_exo_region.cap_atoms = _or_none(cap_indices)
     sidecar_phil_extract.endo_exo_region.cap_original_elements = _or_none(
       cap_original_elements)
+    sidecar_phil_extract.endo_exo_region.completed_atoms = _or_none(
+      completed_indices)
     sidecar_phil_extract.endo_exo_region.seed_atoms = _or_none(seed_indices)
     sidecar_phil_extract.endo_exo_region.selection_string = selection_string
     sidecar_phil_path = file_name + '.phil'
