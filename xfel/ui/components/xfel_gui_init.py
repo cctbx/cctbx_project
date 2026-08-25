@@ -1430,8 +1430,8 @@ class MainWindow(wx.Frame):
 
   def onSettings(self, e):
     settings_dlg = dlg.SettingsDialog(self,
-                                      params=self.params)
-    settings_dlg.db_cred.btn_big.Disable()
+                                      params=self.params,
+                                      lock_db=True)
     settings_dlg.SetTitle('Settings')
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
