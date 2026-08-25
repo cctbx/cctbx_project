@@ -12,7 +12,7 @@ Description : XFEL UI Custom Dialogs
 import time
 import os
 import wx
-from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
+from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection, ColumnSorterMixin
 from wx.lib.scrolledpanel import ScrolledPanel
 from iotbx.phil import parse
 from xfel.ui.db.task import task_types
@@ -91,6 +91,86 @@ class BaseDialog(wx.Dialog):
 
 
 # --------------------------------- Dialogs ---------------------------------- #
+
+class ProjectListDialog(BaseDialog, ColumnSorterMixin):
+  ''' Dialog for choosing a project to load. Lists each project's name and
+      last-modified time in a two-column report; clicking either column header
+      sorts by that column (the time column sorts chronologically). '''
+
+  def __init__(self, parent, current=None, *args, **kwargs):
+    BaseDialog.__init__(self, parent, *args, **kwargs)
+
+    from xfel.ui import list_settings_projects, settings_file_for_project
+
+    self.projlist = wx.ListCtrl(self,
+                                style=wx.LC_REPORT | wx.LC_SINGLE_SEL |
+                                      wx.BORDER_SUNKEN,
+                                size=(420, 300))
+    self.projlist.InsertColumn(0, 'Project')
+    self.projlist.InsertColumn(1, 'Last Modified')
+
+    # ColumnSorterMixin sorts on the values in itemDataMap, keyed by each row's
+    # item data. Store the raw mtime (a float) so the time column sorts
+    # chronologically rather than as text.
+    self.itemDataMap = {}
+    for key, name in enumerate(list_settings_projects()):
+      mtime = os.path.getmtime(settings_file_for_project(name))
+      display = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
+      row = self.projlist.InsertItem(self.projlist.GetItemCount(), name)
+      self.projlist.SetItem(row, 1, display)
+      self.projlist.SetItemData(row, key)
+      self.itemDataMap[key] = (name, mtime)
+
+    self.projlist.SetColumnWidth(0, 200)
+    self.projlist.SetColumnWidth(1, 200)
+
+    ColumnSorterMixin.__init__(self, 2)
+    # Default view: most recently modified first (column 1, descending).
+    self.SortListItems(1, 0)
+
+    # Select the current project *after* sorting: SortListItems reorders the
+    # physical rows, so the insertion index no longer identifies the row. Match
+    # by name against the post-sort order instead.
+    if current is not None:
+      for row in range(self.projlist.GetItemCount()):
+        if self.projlist.GetItemText(row, 0) == current:
+          self.projlist.Select(row)
+          self.projlist.Focus(row)
+          self.projlist.EnsureVisible(row)
+          break
+
+    self.main_sizer.Add(self.projlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    button_sizer = wx.StdDialogButtonSizer()
+    self.btn_OK = wx.Button(self, wx.ID_OK)
+    self.btn_OK.SetDefault()
+    self.btn_cancel = wx.Button(self, wx.ID_CANCEL)
+    button_sizer.AddButton(self.btn_OK)
+    button_sizer.AddButton(self.btn_cancel)
+    button_sizer.Realize()
+    self.main_sizer.Add(button_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Double-clicking a row accepts the selection.
+    self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onItemActivated, self.projlist)
+
+    self.SetTitle('Load Project')
+    self.envelope.Fit(self)
+
+  def GetListCtrl(self):
+    # Required by ColumnSorterMixin.
+    return self.projlist
+
+  def onItemActivated(self, e):
+    if self.projlist.GetFirstSelected() != -1:
+      self.EndModal(wx.ID_OK)
+
+  def GetSelectedProject(self):
+    ''' Return the name of the selected project, or None if none is selected. '''
+    row = self.projlist.GetFirstSelected()
+    if row == -1:
+      return None
+    return self.projlist.GetItemText(row, 0)
+
 
 class SettingsDialog(BaseDialog):
   ''' Initial settings for cctbx.xfel; accepts DB credentials (may be
@@ -337,45 +417,41 @@ class SettingsDialog(BaseDialog):
   def onLoadProject(self, e):
     from xfel.ui import (list_settings_projects, load_project_settings,
                          get_current_project, set_current_project)
-    projects = list_settings_projects()
-    if not projects:
+    if not list_settings_projects():
       wx.MessageBox('No saved projects found in the settings directory.',
                     'Load Project', wx.OK | wx.ICON_INFORMATION)
       return
 
-    dlg = wx.SingleChoiceDialog(self, 'Select a project to load:',
-                                'Load Project', projects)
-    # Preselect the current project if it is one of the saved bundles
-    current = get_current_project()
-    if current in projects:
-      dlg.SetSelection(projects.index(current))
-    if dlg.ShowModal() == wx.ID_OK:
-      name = dlg.GetStringSelection()
-      try:
-        new_params = load_project_settings(name)
-      except Exception as exc:
-        wx.MessageBox('Unable to load project "%s":\n%s' % (name, str(exc)),
-                      'Load Project', wx.OK | wx.ICON_ERROR)
-        dlg.Destroy()
-        return
-      # While the GUI is connected, refuse a project whose database connection
-      # or experiment tag differs, since applying it would require a restart.
-      if self.lock_db and \
-         self.connection_signature(new_params) != self.connection_signature(self.params):
-        wx.MessageBox(
-          'Loading project "%s" would change the database connection or '
-          'experiment tag, which requires restarting the GUI. Project not '
-          'loaded.' % name,
-          'Load Project', wx.OK | wx.ICON_ERROR)
-        dlg.Destroy()
-        return
-      set_current_project(name)
-      # Mutate the existing params object in place rather than rebinding, so the
-      # MainWindow and the OnInit save path (which share this object) see the
-      # newly loaded configuration.
-      self.params.__dict__.update(new_params.__dict__)
-      self.fill_fields_from_params()
+    dlg = ProjectListDialog(self, current=get_current_project())
+    dlg.Center()
+    accepted = dlg.ShowModal() == wx.ID_OK
+    name = dlg.GetSelectedProject() if accepted else None
     dlg.Destroy()
+    if name is None:
+      return
+
+    try:
+      new_params = load_project_settings(name)
+    except Exception as exc:
+      wx.MessageBox('Unable to load project "%s":\n%s' % (name, str(exc)),
+                    'Load Project', wx.OK | wx.ICON_ERROR)
+      return
+    # While the GUI is connected, refuse a project whose database connection
+    # or experiment tag differs, since applying it would require a restart.
+    if self.lock_db and \
+       self.connection_signature(new_params) != self.connection_signature(self.params):
+      wx.MessageBox(
+        'Loading project "%s" would change the database connection or '
+        'experiment tag, which requires restarting the GUI. Project not '
+        'loaded.' % name,
+        'Load Project', wx.OK | wx.ICON_ERROR)
+      return
+    set_current_project(name)
+    # Mutate the existing params object in place rather than rebinding, so the
+    # MainWindow and the OnInit save path (which share this object) see the
+    # newly loaded configuration.
+    self.params.__dict__.update(new_params.__dict__)
+    self.fill_fields_from_params()
 
   def onSaveProjectAs(self, e):
     self.save_project_as()
