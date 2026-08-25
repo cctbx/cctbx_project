@@ -3631,11 +3631,7 @@ class DatasetPanel(wx.Panel):
     self.add_sizer = wx.BoxSizer(wx.VERTICAL)
     self.add_panel.SetSizer(self.add_sizer)
 
-    # Add "New task" button to a separate sizer (so it is always on bottom)
-    self.btn_add_task = wx.Button(self.add_panel, label='New Task',
-                                   size=(200, -1))
-    self.btn_select_tasks = wx.Button(self.add_panel, label='Select Tasks',
-                                       size=(200, -1))
+    # Edit button and active checkbox for the dataset
     self.btn_edit_dataset = wx.BitmapButton(self.add_panel,
                                             bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active Dataset')
@@ -3643,12 +3639,6 @@ class DatasetPanel(wx.Panel):
     self.chk_sizer.Add(self.btn_edit_dataset)
     self.chk_sizer.Add(self.chk_active, flag=wx.EXPAND)
 
-    self.add_sizer.Add(self.btn_add_task,
-                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                       border=10)
-    self.add_sizer.Add(self.btn_select_tasks,
-                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                       border=10)
     self.add_sizer.Add(self.chk_sizer,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_LEFT,
                        border=10)
@@ -3658,8 +3648,6 @@ class DatasetPanel(wx.Panel):
     self.main_sizer.Add(self.add_panel, flag=wx.ALL, border=5)
 
     # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onAddTask, self.btn_add_task)
-    self.Bind(wx.EVT_BUTTON, self.onSelectTasks, self.btn_select_tasks)
     self.Bind(wx.EVT_BUTTON, self.onEditDataset, self.btn_edit_dataset)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
@@ -3671,62 +3659,100 @@ class DatasetPanel(wx.Panel):
     else:
       self.dataset.active = False
 
-  def onAddTask(self, e):
-    task_dlg = dlg.TaskDialog(self, dataset=self.dataset,
-                                    db=self.db)
-    task_dlg.Fit()
+  def _extract_task_params(self, task):
+    """Extract key parameters from PHIL text for display."""
+    if not task.parameters:
+      return None
 
-    if (task_dlg.ShowModal() == wx.ID_OK):
-      self.refresh_dataset()
-    task_dlg.Destroy()
+    params = []
+    for line in task.parameters.split('\n'):
+      line = line.strip()
+      if 'd_min' in line and '=' in line:
+        # Extract d_min value
+        try:
+          parts = line.split('=')
+          if len(parts) >= 2:
+            val = parts[1].strip()
+            # Remove any comments or extra text
+            val = val.split('#')[0].strip()
+            if val:
+              params.append("d_min {}".format(val))
+        except:
+          pass
+      elif 'scaling.model' in line and '=' in line:
+        # Extract scaling.model basename
+        try:
+          parts = line.split('=')
+          if len(parts) >= 2:
+            path = parts[1].strip()
+            path = path.split('#')[0].strip()
+            basename = path.split('/')[-1] if path else ""
+            if basename:
+              params.append("model: {}".format(basename))
+        except:
+          pass
 
-  def onSelectTasks(self, e):
-    tasksel_dlg = dlg.SelectTasksDialog(self, dataset=self.dataset,
-                                           db=self.db)
-    tasksel_dlg.Fit()
-
-    if (tasksel_dlg.ShowModal() == wx.ID_OK):
-      self.refresh_dataset()
-    tasksel_dlg.Destroy()
+    return " — " + ", ".join(params) if params else None
 
   def refresh_dataset(self):
     self.dataset_comment.SetLabel(self.dataset.comment if self.dataset.comment is not None else "")
     self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
                                self.dataset.name[:min(len(self.dataset.name), 20)]
                                if self.dataset.name is not None else ""))
+    tasks = self.dataset.tasks
     self.task_sizer.Clear(delete_windows=True)
+
+    # Wrap summary text to (roughly) the column width so nothing is clipped.
+    wrap_width = max(self.GetClientSize()[0] - 40, 150)
+
+    def add_line(text):
+      lbl = wx.StaticText(self.task_panel, label=text, style=wx.ALIGN_LEFT)
+      lbl.Wrap(wrap_width)
+      self.task_sizer.Add(lbl,
+                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
+                          border=5)
+
+    # Show tags
     tags = self.dataset.tags
     if tags:
-      tags_text = "Tags: " + ",".join([t.name for t in tags])
+      add_line("Tags: " + ", ".join([t.name for t in tags]))
     else:
-      tags_text = "No tags selected"
-    label = wx.StaticText(self.task_panel, label = tags_text)
-    self.task_sizer.Add(label,
-                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                        border=5)
-    for task in self.dataset.tasks:
-      self.draw_task_button(task)
+      add_line("No tags selected")
+
+    # Show pipeline summary
+    if tasks:
+      # Show trial once if available
+      if tasks[0].trial:
+        add_line("Trial: {}".format(tasks[0].trial.trial))
+
+      # Map task type to friendly label
+      type_map = {
+        'indexing': 'Indexing',
+        'ensemble_refinement': 'Ensemble refinement',
+        'scaling': 'Scaling',
+        'merging': 'Merging',
+        'phenix': 'Phenix'
+      }
+
+      # Show each task in the pipeline
+      for idx, task in enumerate(tasks, 1):
+        friendly_type = type_map.get(task.type, task.type)
+        task_text = "{}. {}".format(idx, friendly_type)
+
+        # Add parameters for scaling/merging
+        if task.type in ['scaling', 'merging']:
+          params_text = self._extract_task_params(task)
+          if params_text:
+            task_text += params_text
+
+        add_line(task_text)
+
+      # Show version info if available
+      if self.dataset.latest_version:
+        add_line("Latest: v{:03d}".format(self.dataset.latest_version.version))
+
     self.task_panel.Layout()
     self.task_panel.SetupScrolling(scrollToTop=False)
-
-  def draw_task_button(self, task):
-    ''' Add new run block button '''
-    new_task = gctr.TaskCtrl(self.task_panel, task=task)
-    self.Bind(wx.EVT_BUTTON, self.onTaskOptions, new_task.new_task)
-    self.task_sizer.Add(new_task,
-                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                        border=5)
-
-  def onTaskOptions(self, e):
-    ''' Open dialog and change task options '''
-    task = e.GetEventObject().task
-    task_dlg = dlg.TaskDialog(self, task=task,
-                                    db=self.db)
-    task_dlg.Fit()
-
-    if (task_dlg.ShowModal() == wx.ID_OK):
-      wx.CallAfter(self.refresh_dataset)
-    task_dlg.Destroy()
 
   def onEditDataset(self, e):
     new_dataset_dlg = dlg.DatasetDialog(self, db=self.db, dataset=self.dataset, new=False)

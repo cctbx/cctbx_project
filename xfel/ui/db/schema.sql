@@ -534,6 +534,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `mydb`.`dataset_task` (
   `dataset_id` INT NOT NULL,
   `task_id` INT NOT NULL,
+  `sequence` INT NULL,
   PRIMARY KEY (`dataset_id`, `task_id`),
   INDEX `fk_dataset_has_task_task1_idx` (`task_id` ASC),
   INDEX `fk_dataset_has_task_dataset1_idx` (`dataset_id` ASC),
