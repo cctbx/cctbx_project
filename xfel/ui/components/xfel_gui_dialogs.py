@@ -3459,6 +3459,320 @@ class EditPhilDialog(BaseDialog):
         return
     e.Skip()
 
+# ---------------------------------------------------------------------------
+# Dataset pipeline dialog
+#
+# A dataset is (still) composed of an ordered list of Task rows. Rather than
+# forcing the user to hand-assemble those tasks one raw-PHIL dialog at a time,
+# the DatasetDialog below presents the whole pipeline at once: identity + run
+# selection (single trial + tags) + a small set of shared parameters + a stack
+# of pipeline "stages". Each stage maps to one Task and exposes a handful of
+# friendly controls, with a per-stage "Edit PHIL" escape hatch (mirroring the
+# TrialDialog pattern) for the guts. On save the dialog creates/updates the
+# underlying Task rows and assigns their pipeline order via dataset_task.sequence
+# so submit_all_jobs (which chains strictly by task order) is unaffected.
+#
+# The friendly-control values, plus the shared parameters, are the source of
+# truth for the parameters they map. Everything else (dispatch.step_list,
+# filter.algorithm, and anything the user adds through Edit PHIL) rides along in
+# each stage's working_phil_scope and is preserved via fetch_diff, so hand
+# authored datasets round-trip losslessly.
+# ---------------------------------------------------------------------------
+
+DATASET_STAGE_LABELS = {
+  'indexing'            : 'Indexing',
+  'ensemble_refinement' : 'Ensemble refinement',
+  'scaling'             : 'Scaling',
+  'merging'             : 'Merging',
+  'phenix'              : 'Phenix',
+}
+
+# Default non-default parameters for a brand new stage (from phil/new/*). These
+# seed the friendly controls (and carry the fixed dispatch.step_list etc.).
+DATASET_SHARED_MODEL_DEFAULT = '/global/cfs/cdirs/m5149/als_2026_06/pdb/8P1C.pdb'
+
+DATASET_ENSEMBLE_DEFAULT_PHIL = """
+time_varying_refinement.pre_split = True
+reintegration.integration.recruitment.expand_nave_parameters = True
+"""
+
+DATASET_SCALING_DEFAULT_PHIL = """
+dispatch.step_list = input balance model_scaling modify filter scale postrefine statistics_unitcell statistics_beam model_statistics statistics_resolution
+filter.outlier.min_corr = -1
+filter.algorithm = unit_cell
+filter.unit_cell.value.relative_length_tolerance = 0.1
+select.algorithm = significance_filter
+select.significance_filter.sigma = 0.1
+scaling.model = %s
+scaling.resolution_scalar = 0.96
+merging.d_min = 1.5
+merging.merge_anomalous = True
+statistics.n_bins = 20
+output.save_experiments_and_reflections = True
+""" % DATASET_SHARED_MODEL_DEFAULT
+
+DATASET_MERGING_DEFAULT_PHIL = """
+dispatch.step_list = input model_scaling statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
+scaling.model = %s
+scaling.resolution_scalar = 0.96
+statistics.n_bins = 20
+merging.d_min = 1.5
+merging.merge_anomalous = True
+""" % DATASET_SHARED_MODEL_DEFAULT
+
+DATASET_PHENIX_TEMPLATE = """phenix.command <PREVIOUS_TASK_MTZ>
+# The first line above is the command to run (edit it). These keywords are
+# substituted at runtime: <PREVIOUS_TASK_MTZ>, <DATASET_NAME>, <DATASET_VERSION>.
+# Add any PHIL parameters for the command on the lines below.
+"""
+
+DATASET_STAGE_DEFAULT_PHIL = {
+  'ensemble_refinement' : DATASET_ENSEMBLE_DEFAULT_PHIL,
+  'scaling'             : DATASET_SCALING_DEFAULT_PHIL,
+  'merging'             : DATASET_MERGING_DEFAULT_PHIL,
+}
+
+
+class DatasetStagePanel(wx.Panel):
+  ''' One pipeline stage = one Task. Holds friendly controls for its task type
+      plus (for PHIL-backed types) a working_phil_scope and an Edit PHIL button. '''
+
+  def __init__(self, parent, dialog, task_type,
+               task=None, enabled=True, removable=False):
+    wx.Panel.__init__(self, parent)
+    from xfel.ui.db.task import Task, task_scope, task_types as _task_types
+
+    self.dialog = dialog
+    self.db = dialog.db
+    self.task_type = task_type
+    self.task = task
+    self.removable = removable
+    self.scope = task_scope[_task_types.index(task_type)]
+    self.toggle_ctrls = []
+
+    box = wx.StaticBox(self, label=DATASET_STAGE_LABELS.get(task_type, task_type))
+    self.sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
+    self.SetSizer(self.sizer)
+
+    # Header: include checkbox (+ Edit PHIL / Remove buttons)
+    header = wx.BoxSizer(wx.HORIZONTAL)
+    if task_type == 'indexing':
+      self.enable_chk = None
+    else:
+      self.enable_chk = wx.CheckBox(self, label='Include this stage')
+      self.enable_chk.SetValue(enabled)
+      header.Add(self.enable_chk, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+      self.Bind(wx.EVT_CHECKBOX, lambda e: self._update_enabled_state(), self.enable_chk)
+    header.AddStretchSpacer()
+
+    self.btn_edit = None
+    if task_type not in ('indexing', 'phenix'):
+      self.btn_edit = gctr.Button(self, label='Edit PHIL', size=(110, -1))
+      header.Add(self.btn_edit, flag=wx.ALL, border=5)
+      self.Bind(wx.EVT_BUTTON, self.onEditPhil, self.btn_edit)
+    if removable:
+      self.btn_remove = gctr.Button(self, label='Remove', size=(90, -1))
+      header.Add(self.btn_remove, flag=wx.ALL, border=5)
+      self.Bind(wx.EVT_BUTTON, self.onRemove, self.btn_remove)
+    self.sizer.Add(header, flag=wx.EXPAND)
+
+    # PHIL scope (skip for indexing, which inherits the trial, and phenix, which
+    # is raw text with no dispatcher scope).
+    self.phil_scope = None
+    self.working_phil_scope = None
+    if task_type not in ('indexing', 'phenix'):
+      _, self.phil_scope = Task.get_phil_scope(self.db, task_type)
+      if task is not None and task.parameters:
+        seed = task.parameters
+      else:
+        seed = DATASET_STAGE_DEFAULT_PHIL.get(task_type, "")
+      self.working_phil_scope = self.phil_scope.fetch(parse(seed))
+
+    self.body = wx.BoxSizer(wx.VERTICAL)
+    self.sizer.Add(self.body, flag=wx.EXPAND | wx.ALL, border=5)
+    self._build_controls()
+    self.sync_controls()
+    self._update_enabled_state()
+
+  # -- construction helpers --------------------------------------------------
+  def _add_body(self, ctrl, toggle=True):
+    self.body.Add(ctrl, flag=wx.EXPAND | wx.TOP | wx.BOTTOM, border=4)
+    if toggle:
+      self.toggle_ctrls.append(ctrl)
+
+  def _build_controls(self):
+    t = self.task_type
+    if t == 'indexing':
+      note = wx.StaticText(self, label='Uses the selected trial\'s processing '
+                                       'parameters. No extra settings.')
+      self.body.Add(note, flag=wx.ALL, border=4)
+    elif t == 'ensemble_refinement':
+      self.chk_pre_split = wx.CheckBox(self, label='Pre-split experiments')
+      self.chk_expand_nave = wx.CheckBox(self, label='Expand Nave parameters on reintegration')
+      self._add_body(self.chk_pre_split)
+      self._add_body(self.chk_expand_nave)
+    elif t == 'scaling':
+      self.min_corr = gctr.TextButtonCtrl(self, label='Min. correlation:',
+                                           label_size=(220, -1), label_style='normal',
+                                           ghost_button=False)
+      self.rel_tol = gctr.TextButtonCtrl(self, label='Unit cell rel. length tol.:',
+                                          label_size=(220, -1), label_style='normal',
+                                          ghost_button=False)
+      self.sigma = gctr.TextButtonCtrl(self, label='Significance filter sigma:',
+                                        label_size=(220, -1), label_style='normal',
+                                        ghost_button=False)
+      self.chk_save_expt = wx.CheckBox(self, label='Save experiments and reflections')
+      self._add_body(self.min_corr)
+      self._add_body(self.rel_tol)
+      self._add_body(self.sigma)
+      self._add_body(self.chk_save_expt)
+    elif t == 'merging':
+      note = wx.StaticText(self, label='Uses the shared parameters above '
+                                       '(model, d_min, resolution scalar, bins, '
+                                       'merge anomalous).')
+      self.body.Add(note, flag=wx.ALL, border=4)
+    elif t == 'phenix':
+      hint = wx.StaticText(self, label='Command + PHIL. Keywords: '
+                                       '<PREVIOUS_TASK_MTZ>, <DATASET_NAME>, '
+                                       '<DATASET_VERSION>')
+      self.body.Add(hint, flag=wx.ALL, border=4)
+      self.phenix_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(550, 150))
+      if self.task is not None and self.task.parameters:
+        self.phenix_box.SetValue(self.task.parameters)
+      else:
+        self.phenix_box.SetValue(DATASET_PHENIX_TEMPLATE)
+      self._add_body(self.phenix_box)
+
+  # -- state -----------------------------------------------------------------
+  def is_enabled(self):
+    return True if self.enable_chk is None else self.enable_chk.GetValue()
+
+  def _update_enabled_state(self):
+    if self.enable_chk is None:
+      return
+    state = self.enable_chk.GetValue()
+    for w in self.toggle_ctrls:
+      w.Enable(state)
+    if self.btn_edit is not None:
+      self.btn_edit.Enable(state)
+
+  # -- PHIL sync (mirrors TrialDialog) ---------------------------------------
+  def sync_controls(self):
+    ''' working_phil_scope -> friendly controls '''
+    if self.working_phil_scope is None:
+      return
+    def sv(ctrl, val):
+      ctrl.SetValue("" if val is None else str(val))
+    p = self.working_phil_scope.extract()
+    t = self.task_type
+    if t == 'ensemble_refinement':
+      self.chk_pre_split.SetValue(bool(p.time_varying_refinement.pre_split))
+      self.chk_expand_nave.SetValue(
+        bool(p.reintegration.integration.recruitment.expand_nave_parameters))
+    elif t == 'scaling':
+      sv(self.min_corr.ctr, p.filter.outlier.min_corr)
+      sv(self.rel_tol.ctr, p.filter.unit_cell.value.relative_length_tolerance)
+      sv(self.sigma.ctr, p.select.significance_filter.sigma)
+      self.chk_save_expt.SetValue(bool(p.output.save_experiments_and_reflections))
+
+  def _build_phil_str(self):
+    ''' friendly controls (+ shared params) -> PHIL string fragment '''
+    def str_or_none(ctrl):
+      return ctrl.GetValue() if ctrl.GetValue() else "None"
+    t = self.task_type
+    if t == 'ensemble_refinement':
+      return ("time_varying_refinement.pre_split = %s\n"
+              "reintegration.integration.recruitment.expand_nave_parameters = %s\n"
+              % (self.chk_pre_split.GetValue(), self.chk_expand_nave.GetValue()))
+    s = self.dialog.get_shared_values()
+    if t == 'scaling':
+      return ("""
+      filter.outlier.min_corr = %s
+      filter.unit_cell.value.relative_length_tolerance = %s
+      select.significance_filter.sigma = %s
+      scaling.model = %s
+      scaling.resolution_scalar = %s
+      merging.d_min = %s
+      merging.merge_anomalous = %s
+      statistics.n_bins = %s
+      output.save_experiments_and_reflections = %s
+      """ % (str_or_none(self.min_corr.ctr),
+             str_or_none(self.rel_tol.ctr),
+             str_or_none(self.sigma.ctr),
+             s['model'] or 'None', s['resolution_scalar'], s['d_min'],
+             s['merge_anomalous'], s['n_bins'], self.chk_save_expt.GetValue()))
+    if t == 'merging':
+      return ("""
+      scaling.model = %s
+      scaling.resolution_scalar = %s
+      merging.d_min = %s
+      merging.merge_anomalous = %s
+      statistics.n_bins = %s
+      """ % (s['model'] or 'None', s['resolution_scalar'], s['d_min'],
+             s['merge_anomalous'], s['n_bins']))
+    return ""
+
+  def _fetch(self, phil_str):
+    ''' fetch phil_str onto working_phil_scope, tracking unused definitions '''
+    params = None
+    msg = None
+    try:
+      working, unused = self.working_phil_scope.fetch(
+        parse(phil_str), track_unused_definitions=True)
+    except Exception as e:
+      msg = '\n%s parameters could not be parsed:\n%s\n' % (self.task_type, str(e))
+    else:
+      if len(unused) > 0:
+        lines = '\n'.join(['  %s' % str(u) for u in unused])
+        msg = 'The following %s definitions were not recognized:\n%s\n' % (
+          self.task_type, lines)
+      try:
+        params = working.extract()
+      except Exception as e:
+        if msg is None: msg = ""
+        msg += '\nOne or more %s values could not be parsed:\n%s\n' % (
+          self.task_type, str(e))
+      else:
+        self.working_phil_scope = working
+    return params, msg
+
+  def push_scope(self):
+    ''' Push friendly control values into working_phil_scope. Returns an error
+        message string, or None on success. '''
+    if self.task_type in ('indexing', 'phenix'):
+      return None
+    _, msg = self._fetch(self._build_phil_str())
+    return msg
+
+  def get_parameters(self):
+    ''' The parameters string to store on the Task. Assumes push_scope() has
+        already run for PHIL-backed stages. '''
+    if self.task_type == 'indexing':
+      return self.task.parameters if (self.task is not None and self.task.parameters) else ""
+    if self.task_type == 'phenix':
+      return self.phenix_box.GetValue()
+    return self.phil_scope.fetch_diff(self.working_phil_scope).as_str()
+
+  # -- events ----------------------------------------------------------------
+  def onEditPhil(self, e):
+    msg = self.push_scope()
+    if msg is not None:
+      self.dialog._warn(msg + '\nFix the parameters and try again')
+      return
+    edit_dlg = EditPhilDialog(self.dialog, db=self.db, read_only=False,
+                              phil_scope=self.phil_scope,
+                              working_phil_scope=self.working_phil_scope)
+    edit_dlg.Fit()
+    if edit_dlg.ShowModal() == wx.ID_OK:
+      _, msg = self._fetch(edit_dlg.phil_box.GetValue())
+      if msg is None:
+        self.sync_controls()
+    edit_dlg.Destroy()
+
+  def onRemove(self, e):
+    self.dialog.remove_stage(self)
+
+
 class DatasetDialog(BaseDialog):
   def __init__(self, parent, db,
                new=True,
@@ -3470,65 +3784,119 @@ class DatasetDialog(BaseDialog):
     self.db = db
     self.new = new
     self.dataset = dataset
+    self.stages = []
+    self.removed_tasks = []
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 600),
+                        size=(800, 780),
                         *args, **kwargs)
 
-    self.name = gctr.TextButtonCtrl(self,
-                                    label='Name:',
-                                    label_size=(100, -1),
-                                    label_style='bold',
+    self.all_trials = db.get_all_trials()
+    self.all_trial_numbers = [str(t.trial) for t in self.all_trials]
+
+    # Scrolling body (the pipeline stack can get tall)
+    self.scroll = ScrolledPanel(self, size=(760, 640))
+    self.scroll_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.scroll.SetSizer(self.scroll_sizer)
+
+    # --- identity ---
+    self.name = gctr.TextButtonCtrl(self.scroll, label='Name:',
+                                    label_size=(100, -1), label_style='bold',
                                     ghost_button=False)
-
-    self.comment = gctr.TextButtonCtrl(self,
-                                       label='Comment:',
-                                       label_size=(100, -1),
-                                       label_style='bold',
+    self.comment = gctr.TextButtonCtrl(self.scroll, label='Comment:',
+                                       label_size=(100, -1), label_style='bold',
                                        ghost_button=False)
+    self.scroll_sizer.Add(self.name, flag=wx.EXPAND | wx.ALL, border=8)
+    self.scroll_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL, border=8)
 
-    self.tag_checklist = gctr.CheckListCtrl(self,
-                                        label='Tags:',
-                                        label_size=(200, -1),
-                                        label_style='normal',
-                                        ctrl_size=(150, 100),
-                                        direction='vertical',
-                                        choices=[])
+    # --- run selection ---
+    run_box = wx.StaticBox(self.scroll, label='Run selection')
+    run_sizer = wx.StaticBoxSizer(run_box, wx.VERTICAL)
+    self.trial = gctr.ChoiceCtrl(self.scroll, label='Trial:',
+                                 label_size=(100, -1), ctrl_size=(150, -1),
+                                 choices=self.all_trial_numbers)
+    self.tag_checklist = gctr.CheckListCtrl(self.scroll, label='Tags:',
+                                            label_size=(100, -1),
+                                            label_style='normal',
+                                            ctrl_size=(200, 100),
+                                            direction='vertical', choices=[])
+    self.selection_type_radio = gctr.RadioCtrl(self.scroll, label='Tag operator:',
+                                               label_style='normal',
+                                               label_size=(100, -1),
+                                               direction='horizontal',
+                                               items={'inter': 'intersection',
+                                                      'union': 'union'})
+    run_sizer.Add(self.trial, flag=wx.EXPAND | wx.ALL, border=5)
+    run_sizer.Add(self.tag_checklist, flag=wx.EXPAND | wx.ALL, border=5)
+    run_sizer.Add(self.selection_type_radio, flag=wx.EXPAND | wx.ALL, border=5)
+    self.scroll_sizer.Add(run_sizer, flag=wx.EXPAND | wx.ALL, border=8)
 
-    self.selection_type_radio = gctr.RadioCtrl(self,
-                                           label='',
-                                           label_style='normal',
-                                           label_size=(-1, -1),
-                                           direction='horizontal',
-                                           items={'inter':'intersection',
-                                                  'union':'union'})
+    # --- shared parameters (used by scaling + merging) ---
+    shared_box = wx.StaticBox(self.scroll, label='Shared parameters (scaling + merging)')
+    shared_sizer = wx.StaticBoxSizer(shared_box, wx.VERTICAL)
+    self.shared_model = gctr.TextButtonCtrl(self.scroll, label='Reference model:',
+                                            label_size=(160, -1), label_style='normal',
+                                            ctrl_size=(360, -1),
+                                            big_button=True, big_button_label='Browse...',
+                                            ghost_button=False)
+    self.shared_d_min = gctr.SpinCtrl(self.scroll, label='High res. limit (d_min):',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(150, -1), ctrl_value='1.5',
+                                      ctrl_min=0.1, ctrl_max=100.0, ctrl_step=0.1,
+                                      ctrl_digits=2)
+    self.shared_resolution_scalar = gctr.SpinCtrl(self.scroll,
+                                      label='Resolution scalar:',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(150, -1), ctrl_value='0.96',
+                                      ctrl_min=0.0, ctrl_max=2.0, ctrl_step=0.01,
+                                      ctrl_digits=3)
+    self.shared_n_bins = gctr.SpinCtrl(self.scroll, label='Number of bins:',
+                                       label_size=(200, -1), label_style='normal',
+                                       ctrl_size=(150, -1), ctrl_value='20',
+                                       ctrl_min=1, ctrl_max=1000, ctrl_step=1,
+                                       ctrl_digits=0)
+    self.shared_merge_anomalous = wx.CheckBox(self.scroll, label='Merge anomalous')
+    shared_sizer.Add(self.shared_model, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_d_min, flag=wx.ALL, border=5)
+    shared_sizer.Add(self.shared_resolution_scalar, flag=wx.ALL, border=5)
+    shared_sizer.Add(self.shared_n_bins, flag=wx.ALL, border=5)
+    shared_sizer.Add(self.shared_merge_anomalous, flag=wx.ALL, border=5)
+    self.scroll_sizer.Add(shared_sizer, flag=wx.EXPAND | wx.ALL, border=8)
+    self.Bind(wx.EVT_BUTTON, self.onBrowseModel, self.shared_model.btn_big)
 
-    self.main_sizer.Add(self.name,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.comment,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.tag_checklist,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.selection_type_radio,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
+    # --- pipeline ---
+    pipeline_box = wx.StaticBox(self.scroll, label='Pipeline')
+    self.pipeline_static_sizer = wx.StaticBoxSizer(pipeline_box, wx.VERTICAL)
+    self.pipeline_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.pipeline_static_sizer.Add(self.pipeline_sizer, flag=wx.EXPAND)
+
+    add_row = wx.BoxSizer(wx.HORIZONTAL)
+    self.add_choice = gctr.ChoiceCtrl(self.scroll, label='Add stage:',
+                                      label_size=(80, -1), ctrl_size=(150, -1),
+                                      choices=['scaling', 'phenix'])
+    self.add_choice.ctr.SetSelection(0)
+    self.btn_add_stage = gctr.Button(self.scroll, label='Add', size=(80, -1))
+    add_row.Add(self.add_choice, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+    add_row.Add(self.btn_add_stage, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+    self.pipeline_static_sizer.Add(add_row, flag=wx.EXPAND | wx.TOP, border=5)
+    self.scroll_sizer.Add(self.pipeline_static_sizer, flag=wx.EXPAND | wx.ALL, border=8)
+    self.Bind(wx.EVT_BUTTON, self.onAddStage, self.btn_add_stage)
+
+    self.main_sizer.Add(self.scroll, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+    self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
-    self.Layout()
-
+    # --- populate ---
     if self.new:
       self.SetTitle('New Dataset Settings')
       self.selection_type_radio.inter.SetValue(1)
+      if self.all_trial_numbers:
+        self.trial.ctr.SetSelection(len(self.all_trial_numbers) - 1)
     else:
       self.SetTitle('Dataset Settings')
       self.name.ctr.SetValue(str(self.dataset.name))
@@ -3538,38 +3906,198 @@ class DatasetDialog(BaseDialog):
       elif self.dataset.tag_operator == "intersection":
         self.selection_type_radio.inter.SetValue(1)
       else:
-        assert False
+        self.selection_type_radio.inter.SetValue(1)
 
-    # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
-
-    # Initialize tag list
+    # tag list
     self.all_tags = db.get_all_tags()
     tag_names = [t.name for t in self.all_tags]
     self.dataset_tagnames = [t.name for t in self.dataset.tags] if self.dataset is not None else []
     if tag_names:
       self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
-      checked = [tag_idx for tag_idx, tag_name in enumerate(tag_names) if tag_name in self.dataset_tagnames]
+      checked = [i for i, n in enumerate(tag_names) if n in self.dataset_tagnames]
       self.tag_checklist.ctr.SetCheckedItems(checked)
+
+    self._build_stages()
+    self._select_initial_trial()
+    self.sync_shared_controls()
+    self._rebuild_pipeline()
+
+    self.scroll.SetupScrolling(scrollToTop=True)
+    self.Layout()
+
+  # -- shared params ---------------------------------------------------------
+  def get_shared_values(self):
+    return {
+      'model'             : self.shared_model.ctr.GetValue().strip(),
+      'resolution_scalar' : self.shared_resolution_scalar.ctr.GetValue(),
+      'd_min'             : self.shared_d_min.ctr.GetValue(),
+      'merge_anomalous'   : self.shared_merge_anomalous.GetValue(),
+      'n_bins'            : self.shared_n_bins.ctr.GetValue(),
+    }
+
+  def sync_shared_controls(self):
+    ''' Seed the shared controls from the scaling stage (preferred) or merging
+        stage working scope, falling back to the built-in defaults. '''
+    src = None
+    for s in self.stages:
+      if s.task_type == 'scaling' and s.working_phil_scope is not None:
+        src = s
+        break
+    if src is None:
+      for s in self.stages:
+        if s.task_type == 'merging' and s.working_phil_scope is not None:
+          src = s
+          break
+    if src is None:
+      self.shared_model.ctr.SetValue(DATASET_SHARED_MODEL_DEFAULT)
+      return
+    p = src.working_phil_scope.extract()
+    self.shared_model.ctr.SetValue(p.scaling.model or "")
+    if p.scaling.resolution_scalar is not None:
+      self.shared_resolution_scalar.ctr.SetValue(float(p.scaling.resolution_scalar))
+    if p.merging.d_min is not None:
+      self.shared_d_min.ctr.SetValue(float(p.merging.d_min))
+    if p.statistics.n_bins is not None:
+      self.shared_n_bins.ctr.SetValue(int(p.statistics.n_bins))
+    self.shared_merge_anomalous.SetValue(bool(p.merging.merge_anomalous))
+
+  def onBrowseModel(self, e):
+    dlg = wx.FileDialog(self, message="Select reference model",
+                        defaultDir=os.curdir, wildcard="*",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+      self.shared_model.ctr.SetValue(dlg.GetPaths()[0])
+    dlg.Destroy()
+
+  # -- stage management ------------------------------------------------------
+  def _append_stage(self, task_type, task=None, enabled=True, removable=False):
+    stage = DatasetStagePanel(self.scroll, self, task_type,
+                              task=task, enabled=enabled, removable=removable)
+    self.stages.append(stage)
+    return stage
+
+  def _build_stages(self):
+    if self.new:
+      self._append_stage('indexing', enabled=True)
+      self._append_stage('ensemble_refinement', enabled=True)
+      self._append_stage('scaling', enabled=True)
+      self._append_stage('merging', enabled=True)
+      return
+
+    # Existing dataset: group tasks by type (dataset.tasks is already ordered),
+    # then lay stages out in canonical order (locals then globals) so the
+    # local-before-global invariant submit_all_jobs assumes always holds.
+    by_type = {}
+    for t in self.dataset.tasks:
+      by_type.setdefault(t.type, []).append(t)
+
+    idx = by_type.get('indexing', [])
+    self._append_stage('indexing', task=(idx[0] if idx else None), enabled=True)
+
+    ens = by_type.get('ensemble_refinement', [])
+    self._append_stage('ensemble_refinement',
+                       task=(ens[0] if ens else None), enabled=bool(ens))
+
+    scals = by_type.get('scaling', [])
+    if scals:
+      for j, t in enumerate(scals):
+        self._append_stage('scaling', task=t, enabled=True, removable=(j > 0))
+    else:
+      self._append_stage('scaling', enabled=False)
+
+    mrgs = by_type.get('merging', [])
+    if mrgs:
+      for j, t in enumerate(mrgs):
+        self._append_stage('merging', task=t, enabled=True, removable=(j > 0))
+    else:
+      self._append_stage('merging', enabled=False)
+
+    for t in by_type.get('phenix', []):
+      self._append_stage('phenix', task=t, enabled=True, removable=True)
+
+  def _first_global_index(self):
+    for i, s in enumerate(self.stages):
+      if s.scope == 'global':
+        return i
+    return len(self.stages)
+
+  def onAddStage(self, e):
+    t = self.add_choice.ctr.GetStringSelection()
+    if t == 'scaling':
+      scaling_positions = [i for i, s in enumerate(self.stages)
+                           if s.task_type == 'scaling']
+      pos = (scaling_positions[-1] + 1) if scaling_positions else self._first_global_index()
+      stage = DatasetStagePanel(self.scroll, self, 'scaling',
+                                enabled=True, removable=True)
+      self.stages.insert(pos, stage)
+    elif t == 'phenix':
+      self._append_stage('phenix', enabled=True, removable=True)
+    self.sync_shared_controls()
+    self._rebuild_pipeline()
+
+  def remove_stage(self, stage):
+    if stage.task is not None:
+      self.removed_tasks.append(stage.task)
+    self.pipeline_sizer.Detach(stage)
+    self.stages.remove(stage)
+    stage.Destroy()
+    self._rebuild_pipeline()
+
+  def _rebuild_pipeline(self):
+    self.pipeline_sizer.Clear(delete_windows=False)
+    for s in self.stages:
+      self.pipeline_sizer.Add(s, flag=wx.EXPAND | wx.ALL, border=5)
+    self.scroll.Layout()
+    self.scroll.SetupScrolling(scrollToTop=False)
+    self.scroll.FitInside()
+    self.Layout()
+
+  def _select_initial_trial(self):
+    if not self.all_trial_numbers:
+      return
+    if not self.new:
+      for s in self.stages:
+        if s.task is not None and s.task.trial is not None:
+          num = str(s.task.trial.trial)
+          if num in self.all_trial_numbers:
+            self.trial.ctr.SetSelection(self.all_trial_numbers.index(num))
+          return
+
+  # -- helpers ---------------------------------------------------------------
+  def _warn(self, msg):
+    dlg = wx.MessageDialog(self, message=msg, caption='Warning',
+                           style=wx.OK | wx.ICON_EXCLAMATION)
+    dlg.ShowModal()
+    dlg.Destroy()
 
   def onOK(self, e):
     name = self.name.ctr.GetValue()
     comment = self.comment.ctr.GetValue()
-    if self.selection_type_radio.union.GetValue() == 1:
-      mode = 'union'
-    else:
-      mode = 'intersection'
+    mode = 'union' if self.selection_type_radio.union.GetValue() == 1 else 'intersection'
 
+    if not self.all_trials:
+      self._warn('No trials exist yet. Create a trial before building a dataset.')
+      return
+    trial = self.all_trials[self.all_trial_numbers.index(self.trial.ctr.GetStringSelection())]
+
+    # Validate every enabled PHIL-backed stage before touching the database.
+    for s in self.stages:
+      if s.is_enabled():
+        msg = s.push_scope()
+        if msg is not None:
+          self._warn(msg + '\nFix the parameters and press OK again')
+          return
+
+    # Identity
     if self.new:
-      self.dataset = self.db.create_dataset(name = name,
-                                            comment = comment,
-                                            active = False,
-                                            tag_operator = mode)
+      self.dataset = self.db.create_dataset(name=name, comment=comment,
+                                            active=False, tag_operator=mode)
     else:
       self.dataset.name = name
       self.dataset.comment = comment
       self.dataset.tag_operator = mode
 
+    # Tags
     checked = self.tag_checklist.ctr.GetCheckedItems()
     for tag_idx, tag in enumerate(self.all_tags):
       if tag_idx in checked:
@@ -3578,6 +4106,30 @@ class DatasetDialog(BaseDialog):
       else:
         if tag.name in self.dataset_tagnames:
           self.dataset.remove_tag(tag)
+
+    # Remove tasks for explicitly removed or disabled stages
+    for task in self.removed_tasks:
+      self.dataset.remove_task(task)
+    self.removed_tasks = []
+    for s in self.stages:
+      if (not s.is_enabled()) and s.task is not None:
+        self.dataset.remove_task(s.task)
+        s.task = None
+
+    # Create / update tasks for enabled stages, assigning pipeline order.
+    ordered = [s for s in self.stages if s.is_enabled()]
+    for i, s in enumerate(ordered):
+      parameters = s.get_parameters()
+      if s.task is None:
+        task = self.db.create_task(type=s.task_type, trial_id=trial.id,
+                                   parameters=parameters)
+        self.dataset.add_task(task, sequence=i)
+        s.task = task
+      else:
+        s.task.type = s.task_type
+        s.task.trial_id = trial.id
+        s.task.parameters = parameters
+        self.dataset.set_task_sequence(s.task, i)
 
     e.Skip()
 
