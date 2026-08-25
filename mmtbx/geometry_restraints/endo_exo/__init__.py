@@ -6,9 +6,9 @@ covalent graph and caps dangling bonds with hydrogens.  The
 orchestrates the per-seed pipeline; the individual engine classes live in
 the sibling modules (seeds, graph, cutting, grow, capping).
 
-Submodules are imported directly (e.g. ``from
-mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder``) so that
-the lightweight engine pieces can be used without pulling in the full
+This package re-exports nothing; submodules are imported directly, as in
+``from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder``,
+so that a single engine piece can be used without importing the whole
 pipeline.
 """
 

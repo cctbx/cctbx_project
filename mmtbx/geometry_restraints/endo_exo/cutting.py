@@ -24,9 +24,8 @@ PREFERRED_CUTS = {
   'MET': {'CB', 'CG'},
   'PHE': {'CA', 'CB'},
   # Proline's sidechain closes back onto its own N, so no single bond
-  # detaches it: cutting one ring bond severs nothing and cutting two
-  # strands the atoms between them.  An empty entry means the sidechain is
-  # never cut, leaving the backbone rules to bound the residue.
+  # detaches it.  An empty entry means the sidechain is never cut, leaving
+  # the backbone rules to bound the residue.
   'PRO': frozenset(),
   'SER': {'CA', 'CB'},
   'THR': {'CA', 'CB'},
@@ -59,14 +58,12 @@ class BondCutDetector:
   def is_cc_single_sp3_bond(self, resname, atom1, atom2, adjacency):
     """Return ``True`` if the bond atom1->atom2 is a suitable C-C capping site.
 
-    The residue's ``PREFERRED_CUTS`` entry is consulted first: it names the
-    bond that retains the group a coordinating residue is in the region
-    for, and BFS arriving from that group reaches it first.  A bond the
-    entry does not name falls through to a geometric heuristic, which cuts
-    at any sp3 C-C: both atoms carbon, bonded, separated by 1.42-1.68 A,
-    and both of degree 4.  That is what
-    trims a residue held only as scaffold, whose preferred bond BFS never
-    reaches from the sidechain side.
+    The residue's ``PREFERRED_CUTS`` entry is consulted first: a bond it
+    names is a cut site, and a bond it does not name is a cut site only if
+    it lies nearer the backbone than the named bond.  Such a bond is then
+    tested against a geometric heuristic, which accepts any sp3 C-C bond:
+    both atoms carbon, bonded, separated by 1.42-1.68 A, and both of
+    degree 4.
 
     An entry may be empty, meaning the residue has no cuttable sidechain
     bond at all; the backbone rules then bound it on their own.  Setting
@@ -100,8 +97,6 @@ class BondCutDetector:
     if atom2.element.strip().upper() != 'C':
       return False
     nbr1 = _neighbour_iseqs(adjacency, atom1.i_seq)
-    # Defensive: the BFS only offers bonded pairs, but bad input (a missing
-    # bond proxy) would otherwise reach the degree test below.
     if atom2.i_seq not in nbr1:
       return False
 
@@ -159,8 +154,8 @@ class BondCutDetector:
     """Return ``{atom name: bonds from CA}`` within *atom*'s residue group.
 
     Empty if the residue has no CA, or if *atom* carries no hierarchy to
-    ask (a standalone atom built outside a model).  Hydrogens are
-    included; they are leaves and never affect a comparison between two
+    ask, as for a standalone atom built outside a model.  Hydrogens are
+    included; being leaves, they never affect a comparison between two
     heavy atoms.
 
     Parameters
@@ -201,13 +196,12 @@ class BondCutDetector:
 
     The table entry names the bond that retains a residue's functional
     group, so a bond further out along the sidechain must not be cut
-    instead: doing so severs the group the entry exists to keep, and can
-    strand a lone carbon between two cuts.  A bond nearer the backbone is
-    fair game, and is what trims a residue BFS reached from the mainchain.
+    instead: doing so severs that group, and can strand a lone carbon
+    between two cuts.
 
-    Measured in bonds from CA, so it does not depend on which end of the
-    bond BFS arrived from.  Residues with no CA fall through as ``True``,
-    leaving the geometric heuristic in charge.
+    Depth is measured in bonds from CA, so the result does not depend on
+    which end of the bond the traversal arrived from.  Residues with no CA
+    fall through as ``True``, leaving the geometric heuristic in charge.
 
     Parameters
     ----------

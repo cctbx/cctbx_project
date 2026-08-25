@@ -1,4 +1,4 @@
-"""mmtbx.endo_exo: QM region builder with BFS expansion and hydrogen capping.
+"""mmtbx.endo_exo: QM region builder with hydrogen capping.
 
 Grows a QM region around each seed site (metal atoms by default, or a
 user-supplied selection) by breadth-first traversal of the covalent graph,
@@ -35,31 +35,29 @@ master_phil_str = """
 selection = None
   .type = str
   .multiple = True
-  .help = "Atom selection string(s) for the initial seed region(s). Each entry produces one QM region output file. \
-May be specified multiple times (e.g. selection='chain A and resseq 100' selection='chain B and resseq 200'). \
-If no selection is given, all metals in the structure are used as seeds (one output per metal)."
+  .help = "Atom selection string for a seed region; each entry produces one \
+QM region output. If no selection is given, every metal in the structure is \
+used as a seed, one output per metal."
 element_filter = None
   .type = str
   .multiple = True
-  .help = "Restrict the element-scan seed search to atoms of these element(s) \
-(e.g. element_filter=Fe, or element_filter=Fe element_filter=Cu). Element \
-symbols are case-insensitive and need not be metals. Only consulted when no \
-`selection` is given; if any selection is provided, the explicit selection \
-wins. Default (no values): seed on every metal found by \
-mmtbx.geometry_restraints.qmi.metals."
+  .help = "Restrict the seed search to atoms of these element(s). Element \
+symbols are case-insensitive and need not be metals. Consulted only when no \
+`selection` is given."
 altloc = auto
   .type = str
-  .help = "Which altloc letter to retain per residue.  'auto' (default) picks the \
-highest mean-occupancy non-blank altloc per residue.  A specific letter (e.g. 'A', 'B') \
-keeps that letter, falling back to the highest-occupancy altloc with a warning if the \
-letter is absent from a residue.  'all' disables altloc filtering."
+  .help = "Which altloc to retain per residue. 'auto' keeps the non-blank \
+altloc of highest mean occupancy, a letter keeps that altloc and falls back \
+to the highest-occupancy one where the letter is absent, and 'all' retains \
+every altloc."
 buffer {
   radius = 5.0
     .type = float(value_min=0)
     .help = "Radius of the buffer region around the selected scatterer."
   skip_search = False
     .type = bool
-    .help = "If True, the initial radius search is skipped and only the seed atoms themselves seed the QM region (BFS expansion still applies)."
+    .help = "Skip the initial radius search, so the region starts from the \
+seed atoms alone. Expansion along bonds still applies."
 }
 # contact_cutoff removed: its seed-contact edges let the BFS drift across the
 # lattice forever; the radius search covers what it did.
@@ -68,21 +66,28 @@ buffer {
 #   .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
 max_search_depth = 3
   .type = int(value_min=0)
-  .help = "Maximum BFS depth from any atom within the QM region."
+  .help = "Maximum number of bonds traversed outwards from any atom already \
+in the QM region."
 capping {
   enable = True
     .type = bool
-    .help = "Whether to perform capping of boundary atoms based on heuristics. If False, the output QM region will have uncapped dangling bonds."
+    .help = "Whether to cap boundary atoms with hydrogens. If False, the QM \
+region is written with dangling bonds."
   preferred_cuts = True
     .type = bool
-    .help = "Consult the per-residue table of preferred cut bonds before the geometric heuristic, and allow the heuristic only on bonds nearer the backbone than the table entry."
+    .help = "Consult the per-residue table of preferred cut bonds before the \
+geometric cut heuristic."
 }
 include_hbond_partners = False
   .type = bool
-  .help = "Whether to seed the QM region with atoms hydrogen-bonded to it, so a bond is not left with only one of its two partners. The added atoms are cut and capped like any other, so a cut can land further out and leave an atom capped that was not before. Requires hydrogens."
+  .help = "Whether to seed the QM region with atoms hydrogen bonded to it, so \
+that a hydrogen bond is not left with only one of its two partners. The added \
+seeds also shift where residues are cut, so the region can lose atoms as well \
+as gain them. Requires hydrogens."
 include_waters_in_convex_hull = True
   .type = bool
-  .help = "Whether to check for water molecules inside the convex hull of the selected QM region and add them to the QM region if found."
+  .help = "Whether to add water molecules lying inside the convex hull of the \
+selected QM region."
 residues_to_include
   .help = "Residues to include in the output whole, exempt from the sidechain \
 cut rules. Leave 'selection' unset to disable."
@@ -90,8 +95,7 @@ cut rules. Leave 'selection' unset to disable."
   selection = None
     .type = str
     .help = "CCTBX selection string, e.g. 'chain A and resseq 50-100'. \
-Expanded to whole residue groups, so a partial match still pulls in the \
-complete residue."
+Matches are expanded to whole residue groups."
   scope = *per_seed global
     .type = choice
     .help = "per_seed: add an included residue only to the region of a seed \
@@ -99,33 +103,30 @@ it lies within 'proximity' of. global: add every included residue to every \
 seed region."
   proximity = 5.0
     .type = float(value_min=0)
-    .help = "per_seed only. A residue is included in a seed's region if any \
-of its atoms is within this distance (Angstrom) of any seed atom in that \
-group. Ignored when scope=global."
+    .help = "Distance (Angstrom) within which an included residue is added to \
+a seed's region. Used only when scope=per_seed."
 }
 write_files = True
   .type = bool
-  .help = "If True (default), write a PDB, an mmCIF, and a sidecar PHIL \
-file per seed to the current working directory. Set to False when calling \
-the program in-memory (e.g. via Program(...).run() + get_results()) and \
-the per-seed Model objects are consumed directly without a disk round-trip."
+  .help = "Whether to write a PDB, an mmCIF, and a sidecar PHIL file per seed \
+to the current working directory."
 """
 
 
 class Program(ProgramTemplate):
-  """Extract QM regions with BFS expansion and hydrogen capping.
+  """Extract QM regions with hydrogen capping.
 
   Seeds the QM region either from all metals in the structure (default) or
   from a user-supplied CCTBX selection string (``selection`` parameter).
-  The heavy lifting is delegated to
+  The work is delegated to
   :class:`mmtbx.geometry_restraints.endo_exo.builder.QMRegionBuilder`.
   """
 
   description = '''
-  Grows a QM region around each seed site by BFS, optionally caps dangling
-  bonds with hydrogen atoms, and writes a PDB file, an mmCIF file, and a
-  sidecar PHIL file per seed.  Seeds are all metals in the structure unless
-  a custom selection string is provided via the ``selection`` parameter.
+  Grows a QM region around each seed site, optionally caps dangling bonds
+  with hydrogen atoms, and writes a PDB file, an mmCIF file, and a sidecar
+  PHIL file per seed.  Seeds are all metals in the structure unless a custom
+  selection string is provided via the ``selection`` parameter.
   '''
 
   datatypes = ['model', 'phil']

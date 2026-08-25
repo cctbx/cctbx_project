@@ -12,14 +12,13 @@ from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 
 
-
 class QMRegionGrower:
   """Grow a QM region by BFS traversal of a covalent graph.
 
-  The grower stops BFS at "cuttable" bonds (sidechain C-C sp3 cuts and
-  backbone CA-C / CA-N cuts) and records the far atom as a tentative cap.
-  It does **not** actually place hydrogens; cap placement is performed by
-  :class:`HydrogenCapper` at the calling site after sub-model selection.
+  BFS stops at cuttable bonds (sidechain C-C sp3 cuts and backbone CA-C /
+  CA-N cuts) and records the far atom as a tentative cap.  Hydrogens are not
+  placed here: cap placement is performed by :class:`HydrogenCapper` at the
+  calling site, after sub-model selection.
 
   Parameters
   ----------
@@ -29,12 +28,11 @@ class QMRegionGrower:
       Destination for diagnostic messages.
   """
 
-  #: Backstop on alternating grow/reattach rounds.  The loop is expected to
-  #: end well inside it: the visited set only grows, a node is enqueued only
-  #: while absent from it, and a demoted cap stays visited so it cannot be
-  #: capped again, which means each round leaves strictly fewer caps to
-  #: demote.  Two rounds is the most any region here has taken.  This exists
-  #: so that breaking one of those properties is slow rather than a hang.
+  #: Backstop on alternating grow/reattach rounds.  The loop ends well inside
+  #: it: the visited set only grows, a node is enqueued only while absent from
+  #: it, and a demoted cap stays visited so it cannot be capped again, so each
+  #: round leaves strictly fewer caps to demote.  The bound turns a violation
+  #: of one of those properties into a slow run rather than a hang.
   max_repair_rounds = 20
 
   def __init__(self, bond_cut_detector, log=None):
@@ -54,7 +52,9 @@ class QMRegionGrower:
     ``(j_seq, edge_op)`` composes with the current node's op to
     produce the neighbour node
     ``(j_seq, current_op.multiply(edge_op))``. Lattice translations
-    and point-group symmetry are therefore handled uniformly.
+    and point-group symmetry are therefore handled uniformly.  Seed
+    nodes are placed in *visited* before the traversal starts, so they
+    are never cut-tested and never become caps.
 
     Whenever a cuttable bond ``current -> neighbour`` is encountered,
     *neighbour* is marked visited so BFS will not expand past it, and
@@ -86,7 +86,7 @@ class QMRegionGrower:
         not mutated.
     model : mmtbx.model.manager
     max_depth : int, optional
-        Kept for API compatibility; currently unused.  Default is 3.
+        Accepted for signature compatibility and unused.  Default is 3.
 
     Returns
     -------
@@ -185,18 +185,18 @@ class QMRegionGrower:
                          adjacency, atoms, queue):
     """Restore one bond for every heavy atom the cuts left unattached.
 
-    An atom whose every heavy neighbour in the region is a cap comes out
-    as a lone fragment: a methane where a sidechain carbon was clipped out
-    of the middle of its own residue, or where the buffer sphere caught a
-    methyl hydrogen but not its carbon.  Whether that happens cannot be
-    decided while BFS runs, because a bond it has yet to traverse looks
-    exactly like one it is about to cut; it is only well defined once the
+    An atom whose every heavy neighbour in the region is a cap comes out as
+    a lone fragment, for instance a methane where a sidechain carbon was
+    clipped out of the middle of its own residue, or where the buffer sphere
+    caught a methyl hydrogen but not its carbon.  Whether that happens cannot
+    be decided while BFS runs, because a bond it has yet to traverse looks
+    exactly like one it is about to cut; it is well defined only once the
     region is complete.
 
     The cap restored is the one reaching nearest the backbone, so what
-    survives is the attachment toward the mainchain rather than a
-    sidechain stub, and the choice is a function of the finished region
-    rather than of the order BFS ran.
+    survives is the attachment toward the mainchain rather than a sidechain
+    stub, and the choice is a function of the finished region rather than of
+    the order BFS ran.
 
     Parameters
     ----------
@@ -284,9 +284,7 @@ class QMRegionGrower:
 
     Both backbone rules refuse to cut away a charged chain terminus, which
     capping would replace with a single hydrogen: the carboxylate on the
-    CA-C side, the amine on the CA-N side.  The sidechain rules still cut
-    ASP, GLU, LYS and ARG at their configured bonds when BFS arrives from
-    the backbone, so a region is not charge-preserving in general.
+    CA-C side, the amine on the CA-N side.
 
     Parameters
     ----------
@@ -331,8 +329,8 @@ class QMRegionGrower:
     carbonyl does not, and no nitrogen in another residue, which a
     peptide bond would supply.
 
-    A chain break has one oxygen and reads as False, which is intended:
-    only a neutral carbonyl leaves when that bond is cut.
+    A chain break carries one oxygen and so reads as False; cutting there
+    leaves a neutral carbonyl.
 
     Parameters
     ----------
@@ -395,9 +393,8 @@ class QMRegionGrower:
 
     Cutting CA-N prunes the chain backwards, so CA keeps its place in the
     region only through C, and this asks whether that direction is already
-    there.  It reads the growing region rather than the frozen seed set:
-    keying on the seeds makes the answer change with the radius, so an atom
-    kept by a narrow sphere is cut away by a wider one.
+    there.  The question is put to the growing region rather than to the
+    seed set.
 
     The next residue is the one holding the N that C is bonded to, followed
     along the peptide bond rather than taken from the chain's residue
@@ -405,14 +402,12 @@ class QMRegionGrower:
     fall inside the sphere, so the neighbour in that list is routinely
     across a gap and not bonded at all.
 
-    Every such nitrogen is considered, not the first one the graph happens
-    to offer.  A carbonyl carbon can carry more than one -- an amidated
-    C-terminus or an isopeptide bond puts a second there, and no LINK
-    record is needed for one to appear -- and the adjacency is a set, so
-    stopping at the first would pick between them by hash order.  Each
-    candidate is looked up under the operation that reaches it, composed
-    with *sym_op*, since the bond followed may itself cross a symmetry
-    boundary.
+    Every such nitrogen is considered.  A carbonyl carbon can carry more
+    than one (an amidated C-terminus or an isopeptide bond puts a second
+    there), and the adjacency is a set, so stopping at the first would
+    choose between them by hash order.  Each candidate is looked up under
+    the operation that reaches it, composed with *sym_op*, since the bond
+    followed may itself cross a symmetry boundary.
 
     Parameters
     ----------
@@ -441,10 +436,11 @@ class QMRegionGrower:
         if other.element.strip().upper() != 'N':
           continue
         other_group = other.parent().parent()
-        # The same residue under a different symmetry image is a different
-        # residue here.  A polymer with one residue per asymmetric unit is
-        # bonded to its own image, and skipping that leaves the chain with
-        # no next residue, so the cut is refused however far BFS walks.
+        # The same residue under a different symmetry image counts as a
+        # different residue.  A polymer with one residue per asymmetric unit
+        # is bonded to its own image, and skipping that would leave the chain
+        # with no next residue, so the cut would be refused however far BFS
+        # walks.
         if (other_group.memory_id() == residue_group.memory_id()
             and _canon_op(edge_op).as_xyz() == 'x,y,z'):
           continue
@@ -457,13 +453,13 @@ class QMRegionGrower:
   def _has_later_polymer_residue(atom):
     """Return ``True`` if a polymer residue follows *atom*'s in its chain.
 
-    What separates the two readings of a carbonyl that has lost its bond.
+    This separates the two readings of a carbonyl that has lost its bond.
     A residue with polymer after it sits at an interior gap, so the missing
     partner is the next residue's nitrogen; one with nothing after it ends
     the chain, so what is missing is the second carboxylate oxygen.
 
-    Solvent is ignored, or a water numbered above the last residue would
-    make every chain look interior.
+    Solvent is ignored, since a water numbered above the last residue would
+    otherwise make every chain look interior.
 
     Parameters
     ----------
@@ -498,9 +494,8 @@ class QMRegionGrower:
     The mirror of :meth:`_is_chain_break_amine` on the other half of the same
     severed peptide bond.  Such a carbon holds its own CA and O and nothing
     else, so it is a bond short and reaches the region as an acyl centre.
-    Unlike the nitrogen half this one cannot be cut away instead: the cut
-    would delete the carbonyl oxygen, which is frequently what coordinates
-    the metal.
+    Cutting it away instead is not an option, since the cut would delete the
+    carbonyl oxygen, which is frequently what coordinates the metal.
 
     A genuine C-terminus is excluded by oxygen count, as in
     :meth:`_is_terminal_carboxylate`: a carboxylate carries two where a
@@ -543,21 +538,20 @@ class QMRegionGrower:
     """Return ``True`` if *iseq* is a backbone nitrogen whose preceding
     residue is absent from the model.
 
-    Such a nitrogen cannot be made into an amide by anything here: the
+    Such a nitrogen cannot be made into an amide by anything here, since the
     carbonyl it would need was never deposited.  Retaining it imports a
-    two-coordinate nitrogen into the region, while cutting CA-N replaces it
-    with a capping hydrogen and leaves a methyl.  The cut is therefore
-    always the better of the two, and this says so without consulting the
-    growing region, which is what makes the answer independent of the order
-    BFS happens to reach the residue in.
+    two-coordinate nitrogen into the region, whereas cutting CA-N replaces
+    it with a capping hydrogen and leaves a methyl, so the cut is preferred.
+    The test does not consult the growing region, so the answer does not
+    depend on the order BFS reaches the residue in.
 
-    The carbonyl is looked for in the GRAPH, as a bonded carbon carrying an
+    The carbonyl is looked for in the graph, as a bonded carbon carrying an
     oxygen, rather than by name and residue.  An acyl group is not always
     the previous residue's atom named C: N-formyl and N-acetyl residues
-    carry their own (FME names it CN, AYA CT, SAC C1A), a lipidated one
-    reaches it through a LINK, and a polymer with a single residue per
-    asymmetric unit finds it on its own symmetry image.  Each of those is a
-    complete amide, and naming the atom would call all of them broken.
+    carry their own under residue-specific names, a lipidated one reaches it
+    through a LINK, and a polymer with a single residue per asymmetric unit
+    finds it on its own symmetry image.  Each of those is a complete amide,
+    and naming the atom would call all of them broken.
 
     A real N-terminus is excluded by hydrogen count, as in
     :meth:`_is_terminal_amine`: an amine carries its own hydrogens where a
@@ -653,10 +647,7 @@ class QMRegionGrower:
     where the sphere caught a hydrogen whose carbon lies outside it, is cut
     at the one bond that atom has and falls out of the region as a free
     fragment.  That test reads the covalent graph, which does not change as
-    BFS runs.  Asking instead which of the near atom's neighbours are in
-    the region would also catch a single atom clipped out of the middle of
-    a chain, but the answer depends on the order BFS arrived, and a region
-    that varies between runs of the same input is the worse failure.
+    BFS runs, so the refusal does not depend on the order BFS arrived in.
 
     One case cannot be seen here: BFS may reach a neighbour of the cap
     later, by a route that does not exist yet.  That one is repaired
@@ -697,14 +688,9 @@ class QMRegionGrower:
                             protected=set()):
     """Promote *cap* (a node) back to interior and re-open BFS through it.
 
-    Removes *cap* from ``cap_candidates`` and re-enqueues it so the BFS
-    can reach the neighbours that were previously hidden behind the cut.
-    Every other covalent-neighbour node of *cap* is discarded from
-    ``visited`` (and from ``cap_candidates``) so it can be rediscovered
-    through the now-interior cap.  Three sets of nodes are protected
-    from this discard: seeds, the cap's original anchor (a confirmed
-    interior node whose subtree was already explored), and any
-    nodes in *protected*.
+    *cap* is removed from ``cap_candidates`` and re-enqueued, so BFS
+    continues through the bond that was cut and reaches the neighbours
+    hidden behind it.
 
     Parameters
     ----------
@@ -713,9 +699,7 @@ class QMRegionGrower:
     cap_candidates : dict
         ``{cap_node: anchor_node}``; modified in-place.
     visited : set of (int, rt_mx)
-        Modified in-place.
     seed_nodes : set of (int, rt_mx)
-        Seed nodes; always protected from discard.
     adjacency : collections.defaultdict of set
         Read-only; tagged ``{i_seq: {(j_seq, edge_op), ...}}``.
     atoms : cctbx.array_family.flex array
@@ -723,7 +707,6 @@ class QMRegionGrower:
     queue : collections.deque
         BFS queue; *cap* is appended for further expansion.
     protected : set of (int, rt_mx), optional
-        Additional nodes to skip when discarding.
     """
     cap_iseq, _cap_op = cap
     print('Demoting cap candidate:', file=self.log)
@@ -733,40 +716,23 @@ class QMRegionGrower:
 
   def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
                      seed_nodes, adjacency, atoms, queue):
-    """Record *candidate* (a node) as a cap with *anchor* (a node),
-    unless that would create an adjacent-cap conflict.
-
-    A conflict arises if *candidate* shares a covalent bond with an
-    existing cap candidate: capping both would leave each with a
-    non-anchor QM-region neighbour and place two Hs at chemically
-    nonsensical positions.  In that case the conflicting cap(s) are
-    demoted to interior and *candidate* is also promoted to interior
-    (enqueued for further BFS expansion).
+    """Record *candidate* (a node) as a cap anchored at *anchor* (a node).
 
     Parameters
     ----------
     candidate : (int, rt_mx)
-        Node of the would-be cap (the atom on the far side of the
-        cuttable bond).
+        Node of the cap: the atom on the far side of the cuttable bond.
     anchor : (int, rt_mx)
-        Node of the would-be anchor (the atom on the QM-region side
-        of the cuttable bond).
+        Node of the anchor: the atom on the QM-region side of the cuttable
+        bond.
     cap_candidates : dict
         ``{cap_node: anchor_node}``; modified in-place.
     visited : set of (int, rt_mx)
-        Modified in-place via :meth:`_demote_cap_candidate` if a conflict
-        is found.
     seed_nodes : set of (int, rt_mx)
-        Passed through to demotion.
     adjacency : collections.defaultdict of set
         Read-only.
     atoms : cctbx.array_family.flex array
-        Atom objects indexed by i_seq, used for log messages.
+        Atom objects indexed by i_seq.
     queue : collections.deque
-        BFS queue; *candidate* is appended to it if promoted to interior.
     """
     cap_candidates[candidate] = anchor
-
-  # ------------------------------------------------------------------
-  # Private helpers - amide-group checks
-  # ------------------------------------------------------------------

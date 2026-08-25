@@ -10,22 +10,22 @@ from cctbx.array_family import flex
 from scitbx import matrix
 
 #: Names a backbone nitrogen's added hydrogens may take.  The monomer library
-#: bonds these to N; a name outside the set leaves the atom in the hierarchy
-#: with no bond proxy at all, which is a free hydrogen radical rather than an
-#: error, so the names here are restricted to ones it accepts.
+#: bonds these to N; a name it does not know for the residue is accepted with
+#: no bond proxy at all, leaving a free hydrogen rather than raising an error,
+#: so the names here are restricted to ones it recognises.
 AMINE_HYDROGEN_NAMES = ('H1', 'H2', 'H3')
 
 
 def _free_resseq(chain):
   """Return a residue sequence number no residue in *chain*'s id is using.
 
-  The LOWEST free number, not one past the highest.  A chain with a gap in
+  The lowest free number, not one past the highest.  A chain with a gap in
   it has unused numbers below its maximum by definition, so this stays
-  inside the four characters a PDB file allows, where counting up from the
-  maximum reaches hybrid-36 as soon as anything -- a water, typically -- is
-  numbered 9999.  Hybrid-36 holds such a value in the hierarchy and mmCIF
-  decodes it back to a plain integer, but it is a cctbx convention rather
-  than a standard, so it is worth not needing.
+  inside the four characters a PDB file allows; counting up from the maximum
+  reaches hybrid-36 as soon as anything (a water, typically) is numbered
+  9999.  Hybrid-36 holds such a value in the hierarchy and mmCIF decodes it
+  back to a plain integer, but it is a cctbx convention rather than a
+  standard.
 
   Taken over every chain object sharing the id, not just this one: a TER
   between polymer and solvent splits them, and numbering within one alone
@@ -61,6 +61,9 @@ class HydrogenCapper:
   def cap_atom(self, anchor, cap):
     """Move *cap* to a hydrogen position 1.1 A along the anchor->cap vector.
 
+    The cap's element is set to H; its name is left alone, so it keeps the
+    name of the heavy atom it replaces.
+
     Parameters
     ----------
     anchor : iotbx.pdb.hierarchy.atom or None
@@ -74,7 +77,6 @@ class HydrogenCapper:
     assert v_norm > 1e-6, "anchor and cap must be distinct atoms"
     u = v / v_norm
     cap.set_element('H')
-    # cap.set_name(('H' + cap.name.strip()).rjust(4))
     cap.set_xyz(tuple(flex.double(anchor.xyz) + u * 1.1))
     print('Capped atom:', file=self.log)
     print('  ' + anchor.format_atom_record().rstrip(), file=self.log)
@@ -84,31 +86,21 @@ class HydrogenCapper:
     """Add hydrogens to *nitrogen* until it is a neutral primary amine.
 
     A backbone nitrogen whose preceding residue is absent from the model
-    arrives short of a bond.  Capping cannot help: there is nothing to
-    sever and nothing to replace, so the atom reaches the region carrying
-    an unpaired electron and a QM code reads it as a radical, an amide
-    anion, or whatever its charge heuristic decides.  Hydrogens are added
-    until it carries three substituents, which repairs the valence and
-    restores the charge the residue has in an unbroken chain.
+    arrives short of a bond.  Capping cannot help, since there is nothing to
+    sever and nothing to replace, so the atom reaches the region carrying an
+    unpaired electron and a QM code reads it as a radical, an amide anion,
+    or whatever its charge heuristic decides.  Hydrogens are added until it
+    carries three substituents, which repairs the valence and restores the
+    charge the residue has in an unbroken chain.
 
-    What it does not do is rescue a hydrogen bond: a nitrogen near enough
-    to the metal to reach here keeps its own amide hydrogen either way, and
-    one far enough out to be cut is cut before this runs.  It also stands
-    the new hydrogen in the volume the missing carbonyl carbon occupied, so
-    a contact that is covalent in the full structure can read as a hydrogen
-    bond in the region.  Restoring the acyl group rather than a hydrogen
-    would avoid both, and would reach the carbonyl half of the same break.
+    As many as are missing are added, since the nitrogen may arrive with a
+    single amide hydrogen or with none at all.  The count is over
+    substituents rather than hydrogens, so proline's ring nitrogen, which
+    already holds CA and CD, gets one and becomes a secondary amine.
 
-    As many as are missing, not one: the nitrogen may arrive with a single
-    amide hydrogen or with none at all, and adding one to a bare nitrogen
-    would leave exactly the two-coordinate centre this exists to remove.
-    Counted over substituents rather than hydrogens, so proline's ring
-    nitrogen, which already holds CA and CD, gets one and becomes a
-    secondary amine.
-
-    These ADD atoms rather than converting one, so they are not caps: they
-    have no element to restore and must stay out of ``cap_iseqs``, which
-    consumers round-trip through the original element to build restraints.
+    These atoms are added rather than converted, so they are not caps: they
+    have no original element to restore and must stay out of ``cap_iseqs``,
+    which consumers round-trip through that element to build restraints.
 
     Parameters
     ----------
@@ -127,9 +119,8 @@ class HydrogenCapper:
     if atom_group is None:
       return []
     placed = list(neighbours)
-    # Counted over EVERY substituent, not just the hydrogens: a neutral amine
-    # nitrogen carries three.  Proline's ring nitrogen already holds CA and CD,
-    # so it needs one and asking for two puts the second on top of the first.
+    # Counted over every substituent, not just the hydrogens: a neutral amine
+    # nitrogen carries three.
     wanted = 3 - len(placed)
     added = []
     for _ in range(max(0, wanted)):
@@ -140,8 +131,8 @@ class HydrogenCapper:
 
       # Away from everything already on the nitrogen: the sum of the unit
       # vectors to them points into the crowd, so its negation points at the
-      # vacancy.  Hydrogens placed here count, or the second would land on
-      # the first.
+      # vacancy.  Hydrogens placed by this loop are included, or the second
+      # would land on the first.
       units = []
       for other in placed:
         v = flex.double(other.xyz) - flex.double(nitrogen.xyz)
@@ -193,12 +184,12 @@ class HydrogenCapper:
     """Cap *carbon* with an NH2 residue, restoring the amide.
 
     The mirror of :meth:`complete_amine` on the other half of a severed
-    peptide bond.  Where the nitrogen half has to guess a torsion, this one
-    guesses nothing: the carbon already holds its CA and its O, so the
-    missing nitrogen is fixed by sp2 planarity and the two hydrogens by the
-    amide plane.  Restoring the amide rather than adding a hydrogen matters
-    here because a backbone carbonyl oxygen is often what coordinates the
-    metal, and an aldehyde understates its donor strength.
+    peptide bond.  The carbon already holds its CA and its O, so the missing
+    nitrogen is fixed by sp2 planarity and the two hydrogens by the amide
+    plane, leaving no free dihedral to choose.  Restoring the amide rather
+    than adding a hydrogen matters here because a backbone carbonyl oxygen
+    is often what coordinates the metal, and an aldehyde understates its
+    donor strength.
 
     Placed as a separate residue group, since the parent residue already has
     an atom named N.  ``NH2`` is the monomer library's own C-terminal amide
@@ -288,17 +279,17 @@ class HydrogenCapper:
   def complete_carboxylate(self, carbon, neighbours):
     """Add OXT to *carbon*, completing a C-terminal carboxylate.
 
-    The other reading of a carbonyl carbon that has lost a bond.  Where a
-    later residue exists in the chain the gap is interior and the carbon is
-    missing an amide (see :meth:`complete_carbonyl`); where none does, the
-    chain genuinely ends there and what is missing is the second carboxylate
-    oxygen, which a depositor often leaves unmodelled.
+    This is the other reading of a carbonyl carbon that has lost a bond.
+    Where a later residue exists in the chain the gap is interior and the
+    carbon is missing an amide (see :meth:`complete_carbonyl`); where none
+    does, the chain ends there and what is missing is the second
+    carboxylate oxygen, which is often left unmodelled.
 
-    Determined by the same geometry as the amide nitrogen: the third
+    The position follows the same geometry as the amide nitrogen: the third
     substituent on an sp2 carbon, fixed by the CA and O already present,
-    with no free dihedral.  Unlike the amide this needs no new residue
-    group -- OXT belongs to the residue's own -- and it gives the residue
-    the -1 a C-terminus carries.
+    with no free dihedral.  No new residue group is needed, since OXT
+    belongs to the residue's own, and the addition gives the residue the -1
+    charge a C-terminus carries.
 
     Parameters
     ----------

@@ -19,10 +19,14 @@ class AtomGraphBuilder:
   Each edge is tagged with the ``rt_mx_ji`` operation that brings atom
   *j* into contact with atom *i*. Intra-ASU bonds carry the identity
   operation; symmetry-crossing bonds carry the corresponding
-  ``rt_mx_ji`` from ``bond_proxies_asu``.
+  ``rt_mx_ji`` from ``bond_proxies_asu``.  Traversal therefore visits
+  ``(i_seq, rt_mx)`` nodes rather than bare atoms, composing each node's
+  operation with the edge operation as it moves along a bond, and lattice
+  translations and point-group symmetry are handled uniformly.
 
-  This unification lets the downstream BFS treat lattice translations
-  and point-group symmetry uniformly.
+  The proxies come from a restraints manager built with metal linking
+  disabled, so metal-donor coordination bonds are absent from the graph
+  and the region does not grow through a metal centre.
   """
 
   def build_adjacency(self, bond_proxies_simple, bond_proxies_asu,
@@ -122,8 +126,7 @@ class AtomGraphBuilder:
   def _atoms_within_radius_kdtree(self, center_atom, model, radius):
     """Return a boolean mask for atoms within *radius* of *center_atom*.
 
-    Uses a KD-tree for O(n log n) neighbour lookup.  The tree is built
-    once per *model* and reused across calls.
+    The KD-tree is built once per *model* and reused across calls.
 
     Parameters
     ----------
@@ -202,9 +205,8 @@ class AtomGraphBuilder:
     """Return the whole-structure pair-symmetry table for *radius*.
 
     Covers every close contact in the structure, so it depends on the model
-    and the radius but not on which seed is being grown; it is built once
-    and reused across seeds.  On a large structure it dominates the cost of
-    growing a region, and scales with the cube of the radius.
+    and the radius but not on which seed is being grown.  It is built once
+    and reused across seeds.
 
     Parameters
     ----------
@@ -231,16 +233,15 @@ class AtomGraphBuilder:
   def seed_sym_nodes_within_radius(self, seeds, model, radius):
     """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
 
-    The KD-tree radius search (:meth:`atoms_within_radius`) only sees
-    ASU atoms, so a metal on or near a special position misses the
-    symmetry-related copies of its coordinating residues that are
-    physically inside the buffer sphere.  This enumerates those copies via
-    ``pair_asu_table`` (the same mechanism :meth:`add_seed_contact_edges`
-    uses for coordination edges) and returns one ``(j_seq, rt_mx_ji)``
-    node per atom-image within *radius* of any seed.
+    The KD-tree radius search (:meth:`atoms_within_radius`) only sees ASU
+    atoms, so a seed on or near a special position misses the
+    symmetry-related copies of its neighbouring residues that lie inside
+    the buffer sphere.  This enumerates those copies via
+    ``pair_asu_table`` and returns one ``(j_seq, rt_mx_ji)`` node per
+    atom-image within *radius* of any seed.
 
-    Only **non-identity** images are returned; the identity image is
-    already covered by the KD-tree search, so the caller unions the two.
+    Only non-identity images are returned; the identity image is already
+    covered by the KD-tree search, so the caller unions the two.
 
     Parameters
     ----------

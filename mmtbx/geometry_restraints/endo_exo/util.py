@@ -9,10 +9,10 @@ from cctbx import sgtbx
 def _canon_op(op):
   """Return a hash-stable copy of *op*.
 
-  cctbx's ``sgtbx.rt_mx`` has an inconsistent ``__hash__`` vs
-  ``__eq__`` after composition: two operations that compare equal
-  can hash to different values, which breaks set / dict membership.
-  Round-tripping through the canonical xyz string fixes it.
+  ``sgtbx.rt_mx`` has an inconsistent ``__hash__`` and ``__eq__`` after
+  composition: two operations that compare equal can hash to different
+  values, which breaks set and dict membership.  Round-tripping through
+  the canonical xyz string makes the hash consistent.
   """
   return sgtbx.rt_mx(op.as_xyz())
 
@@ -21,8 +21,8 @@ def _neighbour_iseqs(adjacency, i_seq):
   """Return the set of bare neighbour i_seqs for *i_seq* in the tagged
   adjacency, dropping the per-edge ``sym_op``.
 
-  Used by bond-cut detection and degree counting where only covalent
-  connectivity matters, not which symmetry image the neighbour belongs
-  to.
+  For callers such as bond-cut detection and degree counting, to which
+  only covalent connectivity matters and not the symmetry image a
+  neighbour belongs to.
   """
   return {j for (j, _op) in adjacency.get(i_seq, set())}
