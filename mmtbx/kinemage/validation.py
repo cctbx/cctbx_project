@@ -1063,14 +1063,31 @@ def build_kinemage_from_model(
     The kinemage string.
   """
   if model.get_restraints_manager() is None:
-    model.process(make_restraints=True)
+    # The kinemage only needs bonded topology and covalent-geometry restraints.
+    # Skip the plain-pair table: on a multi-model ensemble the models are
+    # spatially superimposed, so that table is quadratic in the number of
+    # models (a 21-model NMR entry costs several GB through it).  Use the
+    # don't-abort interpretation switches so a viewer-support fallback does not
+    # refuse models the caller could analyze (e.g. an NMR ensemble whose dummy
+    # CRYST1 cell fails the volume-vs-atom-count check once enough superimposed
+    # models are present).
+    import mmtbx.model
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
+    p.pdb_interpretation.allow_polymer_cross_special_position = True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+    p.pdb_interpretation.proceed_with_excessive_length_bonds = True
+    model.process(make_restraints=True, pdb_interpretation_params=p,
+                  plain_pairs_radius=0.01)
 
   hierarchy = model.get_hierarchy()
   geometry = model.get_restraints_manager().geometry
 
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   sites_cart = hierarchy.atoms().extract_xyz()
-  flags = geometry_restraints.flags.flags(default=True)
+  # Only bond proxies are consumed below; leave the nonbonded lists out, which
+  # would also be quadratic on superimposed ensemble models.
+  flags = geometry_restraints.flags.flags(default=True, nonbonded=False)
   pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
   bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
