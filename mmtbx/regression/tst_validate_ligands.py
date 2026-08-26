@@ -72,6 +72,7 @@ def run():
   run_test24()
   run_test25()
   run_test26()
+  run_test27()
 
 # ------------------------------------------------------------------------------
 
@@ -1505,6 +1506,54 @@ def run_test26():
   text = sio.getvalue()
   assert 'B ratio' in text, text
   assert '0.67' in text, text
+
+# ------------------------------------------------------------------------------
+
+def run_test27():
+  print('test27')
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  # biotin has three chiral centres, the NAG sugar four; none is an outlier
+  btn_a = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN').get_rmsds()
+  assert btn_a.chirality_n == 3, btn_a.chirality_n
+  assert btn_a.chirality_n_outliers == 0, btn_a.chirality_n_outliers
+  assert approx_equal(btn_a.chirality_rmsd, 0.2318, eps=0.005), btn_a.chirality_rmsd
+
+  btn_b = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN').get_rmsds()
+  assert btn_b.chirality_n == 3, btn_b.chirality_n
+  assert approx_equal(btn_b.chirality_rmsd, 0.4550, eps=0.005), btn_b.chirality_rmsd
+
+  nag = find_lr(vl_manager, 'chain A and resseq 600 and resname NAG').get_rmsds()
+  assert nag.chirality_n == 4, nag.chirality_n
+  assert approx_equal(nag.chirality_rmsd, 0.1913, eps=0.005), nag.chirality_rmsd
+
+  # it reaches the snapshot the GUI and CSV are built from
+  snap = find_lr(vl_manager,
+    'chain A and resseq 400 and resname BTN').as_picklable_snapshot()
+  assert snap.rmsds.chirality_n == 3, snap.rmsds.chirality_n
+  assert approx_equal(snap.rmsds.chirality_rmsd, 0.2318, eps=0.005)
+
+  # a ligand with no chiral centre reports zero rather than failing
+  gol = find_lr(_gol_and_protein_shells_manager(),
+                'resname GOL and chain A and resseq 1').get_rmsds()
+  assert gol.chirality_n == 0, gol.chirality_n
+  assert gol.chirality_rmsd == 0.0, gol.chirality_rmsd
+
+  # a ligand without restraints does not raise
+  nr = find_lr(_gol_and_norestraints_manager(),
+               'resname 7Q8 and chain A and resseq 2').get_rmsds()
+  assert nr.chirality_n == 0, nr.chirality_n
+
+  # and it is shown in the log table
+  from six.moves import cStringIO as StringIO
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'chirality' in text, text
+  assert '0(3)' in text, text
 
 # ------------------------------------------------------------------------------
 

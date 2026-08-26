@@ -359,6 +359,9 @@ class manager(list):
       {'headers': ['dihedral', 'rmsz', 'outliers'], 'width': 17,
        'data_fn': lambda lr: (f"{lr.get_rmsds().dihedral_rmsz:.2f}  {lr.get_rmsds().dihedral_n_outliers}({lr.get_rmsds().dihedral_n})"
            if lr.get_rmsds() and lr.get_rmsds().dihedral_n else '-')},
+      {'headers': ['chirality', 'rmsd', 'outliers'], 'width': 17,
+       'data_fn': lambda lr: (f"{lr.get_rmsds().chirality_rmsd:.2f}  {lr.get_rmsds().chirality_n_outliers}({lr.get_rmsds().chirality_n})"
+           if lr.get_rmsds() and lr.get_rmsds().chirality_n else '-')},
       {'headers': ['', 'missing', 'heavy atoms'], 'width': 22,
        'data_fn': lambda lr: (
            f"{lr.get_missing_atoms().n_missing_heavy} "
@@ -651,6 +654,10 @@ class ligand_result(object):
     #print('dihedral rmsd',dihedral.mean)
     dihedral_z = stats.dihedral(return_rmsZ=True)
 
+    # Chirality has no rmsZ counterpart: stats.chirality() takes no
+    # return_rmsZ argument, so only the rmsd is available.
+    chirality = stats.chirality()
+
     plane = stats.planarity()
     #print('plane rmsd', plane.mean)
 
@@ -668,7 +675,9 @@ class ligand_result(object):
       angle_rmsz = angle_z.mean,
       angle_n     = angle.n,
       angle_n_outliers = len(angle.outliers),
-      #chirality_rmsd = geo.chirality.mean,
+      chirality_rmsd = chirality.mean,
+      chirality_n    = chirality.n,
+      chirality_n_outliers = len(chirality.outliers),
       planarity_rmsd = plane.mean,
       dihedral_rmsd = dihedral.mean,
       dihedral_rmsz = dihedral_z.mean,
@@ -1663,6 +1672,9 @@ class ligand_result(object):
         dihedral_rmsz       = _f(rmsds.dihedral_rmsz)       if rmsds is not None else None,
         dihedral_n          = _i(rmsds.dihedral_n)           if rmsds is not None else None,
         dihedral_n_outliers = _i(rmsds.dihedral_n_outliers)  if rmsds is not None else None,
+        chirality_rmsd      = _f(rmsds.chirality_rmsd)       if rmsds is not None else None,
+        chirality_n         = _i(rmsds.chirality_n)          if rmsds is not None else None,
+        chirality_n_outliers = _i(rmsds.chirality_n_outliers) if rmsds is not None else None,
       ) if rmsds is not None else None,
       map_values = group_args(
         percent_bad_at_atom_centers = _f(mapv.percent_bad_at_atom_centers) if mapv is not None else None,
