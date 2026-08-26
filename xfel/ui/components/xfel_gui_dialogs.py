@@ -3533,12 +3533,23 @@ DATASET_STAGE_DEFAULT_PHIL = {
 }
 
 
+_LINK_BITMAPS = {}
+def _link_bitmap(linked):
+  ''' Lazily load + cache the link/unlink icons. Bitmaps can only be created
+      after a wx.App exists, so this must not run at import time. '''
+  key = 'linked' if linked else 'unlinked'
+  if key not in _LINK_BITMAPS:
+    _LINK_BITMAPS[key] = wx.Bitmap('{}/16x16/{}.png'.format(icons, key))
+  return _LINK_BITMAPS[key]
+
+
 class DatasetStagePanel(wx.Panel):
   ''' One pipeline stage = one Task. Holds friendly controls for its task type
       plus (for PHIL-backed types) a working_phil_scope and an Edit PHIL button. '''
 
   def __init__(self, parent, dialog, task_type,
-               task=None, enabled=True, removable=False):
+               task=None, enabled=True, removable=False,
+               linked=False, is_in_dataset=True):
     wx.Panel.__init__(self, parent)
     from xfel.ui.db.task import Task, task_scope, task_types as _task_types
 
@@ -3549,6 +3560,12 @@ class DatasetStagePanel(wx.Panel):
     self.removable = removable
     self.scope = task_scope[_task_types.index(task_type)]
     self.toggle_ctrls = []
+
+    # Shared-task state
+    self.linked = linked          # True → task belongs to another dataset too
+    self.is_in_dataset = is_in_dataset  # False → join row not yet inserted
+    self.phil_was_edited = False  # True → user chose "Edit (affects all)"
+    self._detach_original_task = None  # holds old task when detaching
 
     box = wx.StaticBox(self, label=DATASET_STAGE_LABELS.get(task_type, task_type))
     self.sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
@@ -3564,6 +3581,15 @@ class DatasetStagePanel(wx.Panel):
       header.Add(self.enable_chk, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
       self.Bind(wx.EVT_CHECKBOX, lambda e: self._update_enabled_state(), self.enable_chk)
     header.AddStretchSpacer()
+
+    # Link/unlink icon button — present for all non-indexing stages. The icon
+    # shows whether this stage's task is shared with other datasets; the details
+    # (which datasets) live in the tooltip. Click to link/re-link/unlink.
+    self.btn_link = None
+    if task_type != 'indexing':
+      self.btn_link = gctr.BitmapButton(self, bitmap=_link_bitmap(False))
+      header.Add(self.btn_link, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+      self.Bind(wx.EVT_BUTTON, self.onLinkFrom, self.btn_link)
 
     self.btn_edit = None
     if task_type not in ('indexing', 'phenix'):
@@ -3592,6 +3618,7 @@ class DatasetStagePanel(wx.Panel):
     self.sizer.Add(self.body, flag=wx.EXPAND | wx.ALL, border=5)
     self._build_controls()
     self.sync_controls()
+    self._update_link_display()
     self._update_enabled_state()
 
   # -- construction helpers --------------------------------------------------
@@ -3655,6 +3682,10 @@ class DatasetStagePanel(wx.Panel):
       w.Enable(state)
     if self.btn_edit is not None:
       self.btn_edit.Enable(state)
+    # btn_link is always active regardless of the enable checkbox so that the
+    # user can link/unlink even when a stage is temporarily disabled.
+    if self.btn_link is not None:
+      self.btn_link.Enable(True)
 
   # -- PHIL sync (mirrors TrialDialog) ---------------------------------------
   def sync_controls(self):
@@ -3685,12 +3716,25 @@ class DatasetStagePanel(wx.Panel):
               "reintegration.integration.recruitment.expand_nave_parameters = %s\n"
               % (self.chk_pre_split.GetValue(), self.chk_expand_nave.GetValue()))
     s = self.dialog.get_shared_values()
+    # cctbx.xfel.merge wants exactly one of: a reference model, or a unit cell
+    # plus space group. Emit both keys either way so switching modes clears the
+    # other in the working scope.
+    if s['model_mode'] == 'unknown':
+      model_lines = ("scaling.model = None\n"
+                     "scaling.unit_cell = %s\n"
+                     "scaling.space_group = %s"
+                     % (s['unit_cell'] or 'None', s['space_group'] or 'None'))
+    else:
+      model_lines = ("scaling.model = %s\n"
+                     "scaling.unit_cell = None\n"
+                     "scaling.space_group = None"
+                     % (s['model'] or 'None'))
     if t == 'scaling':
       return ("""
       filter.outlier.min_corr = %s
       filter.unit_cell.value.relative_length_tolerance = %s
       select.significance_filter.sigma = %s
-      scaling.model = %s
+      %s
       scaling.resolution_scalar = %s
       merging.d_min = %s
       merging.merge_anomalous = %s
@@ -3699,16 +3743,16 @@ class DatasetStagePanel(wx.Panel):
       """ % (str_or_none(self.min_corr.ctr),
              str_or_none(self.rel_tol.ctr),
              str_or_none(self.sigma.ctr),
-             s['model'] or 'None', s['resolution_scalar'], s['d_min'],
+             model_lines, s['resolution_scalar'], s['d_min'],
              s['merge_anomalous'], s['n_bins'], self.chk_save_expt.GetValue()))
     if t == 'merging':
       return ("""
-      scaling.model = %s
+      %s
       scaling.resolution_scalar = %s
       merging.d_min = %s
       merging.merge_anomalous = %s
       statistics.n_bins = %s
-      """ % (s['model'] or 'None', s['resolution_scalar'], s['d_min'],
+      """ % (model_lines, s['resolution_scalar'], s['d_min'],
              s['merge_anomalous'], s['n_bins']))
     return ""
 
@@ -3755,6 +3799,39 @@ class DatasetStagePanel(wx.Panel):
 
   # -- events ----------------------------------------------------------------
   def onEditPhil(self, e):
+    if self.linked:
+      self._onEditPhilShared()
+      return
+    self._do_edit_phil()
+
+  def _onEditPhilShared(self):
+    datasets = self.db.get_datasets_for_task(self.task.id)
+    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
+    others = [d for d in datasets if d.id != exclude_id] if exclude_id else datasets
+    names = ', '.join(d.name for d in others[:5])
+    if len(others) > 5:
+      names += ', ...'
+    msg = ("This task is shared with %d other dataset(s): %s.\n\n"
+           "  • Edit (affects all): parameter changes apply to every dataset using this task.\n"
+           "  • Detach & Edit: create a private copy for this dataset only.\n"
+           "  • Cancel: no changes.") % (len(others), names or '(none yet)')
+    dlg = wx.MessageDialog(self.dialog, message=msg, caption='Shared Task',
+                           style=wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+    dlg.SetYesNoCancelLabels('Edit (affects all)', 'Detach && Edit', 'Cancel')
+    result = dlg.ShowModal()
+    dlg.Destroy()
+    if result == wx.ID_YES:
+      self.phil_was_edited = True
+      self._do_edit_phil()
+    elif result == wx.ID_NO:
+      self._detach_original_task = self.task
+      self.task = None
+      self.linked = False
+      self.is_in_dataset = False
+      self._update_link_display()
+      self._do_edit_phil()
+
+  def _do_edit_phil(self):
     msg = self.push_scope()
     if msg is not None:
       self.dialog._warn(msg + '\nFix the parameters and try again')
@@ -3768,6 +3845,91 @@ class DatasetStagePanel(wx.Panel):
       if msg is None:
         self.sync_controls()
     edit_dlg.Destroy()
+
+  def _linked_others(self):
+    ''' Other datasets (besides this one) that share this stage's task. '''
+    if self.task is None:
+      return []
+    datasets = self.db.get_datasets_for_task(self.task.id)
+    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
+    return [d for d in datasets if d.id != exclude_id] if exclude_id else list(datasets)
+
+  def _update_link_display(self):
+    if self.btn_link is None:
+      return
+    if self.linked and self.task is not None:
+      others = self._linked_others()
+      if others:
+        names = ', '.join(d.name for d in others[:5])
+        if len(others) > 5:
+          names += ', …'
+        tip = 'Shared with: %s\nClick to re-link or unlink.' % names
+      else:
+        tip = 'Shared task. Click to re-link or unlink.'
+      self.btn_link.SetBitmap(_link_bitmap(True))
+      self.btn_link.SetToolTip(tip)
+    else:
+      self.btn_link.SetBitmap(_link_bitmap(False))
+      self.btn_link.SetToolTip(
+        'Not shared. Click to link this %s stage to a task from another '
+        'dataset.' % self.task_type)
+
+  def _unlink(self):
+    ''' Detach from a shared task, making this stage's parameters private.
+        A fresh owned task is created from the current PHIL on OK. '''
+    self.task = None
+    self.linked = False
+    self.is_in_dataset = False
+    self.phil_was_edited = False
+    self._detach_original_task = None
+    self.sync_controls()
+    self._update_link_display()
+
+  def onLinkFrom(self, e):
+    all_datasets = self.db.get_all_datasets()
+    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
+    choices = []
+    for dataset in all_datasets:
+      if dataset.id == exclude_id:
+        continue
+      for task in dataset.tasks:
+        if task.type == self.task_type:
+          choices.append((dataset, task))
+
+    UNLINK = '— Unlink (make a private copy) —'
+    labels = ['%s — task #%d' % (d.name, t.id) for d, t in choices]
+    if self.linked:
+      labels = [UNLINK] + labels
+
+    if not labels:
+      wx.MessageBox('No other datasets have a %s task to link.' % self.task_type,
+                    'Link Task', wx.OK | wx.ICON_INFORMATION, self.dialog)
+      return
+
+    dlg = wx.SingleChoiceDialog(self.dialog,
+                                'Choose a %s task to link:' % self.task_type,
+                                'Link Task from Another Dataset',
+                                labels)
+    if dlg.ShowModal() == wx.ID_OK:
+      sel = dlg.GetSelection()
+      if self.linked and sel == 0:
+        self._unlink()
+      else:
+        idx = sel - 1 if self.linked else sel
+        chosen_dataset, chosen_task = choices[idx]
+        # If this stage had an owned task, queue its join-row removal.
+        if self.task is not None and not self.linked:
+          self.dialog.removed_tasks.append(self.task)
+        self.task = chosen_task
+        self.linked = True
+        self.is_in_dataset = False
+        self.phil_was_edited = False
+        self._detach_original_task = None
+        if self.phil_scope is not None and chosen_task.parameters:
+          self.working_phil_scope = self.phil_scope.fetch(parse(chosen_task.parameters))
+        self.sync_controls()
+        self._update_link_display()
+    dlg.Destroy()
 
   def onRemove(self, e):
     self.dialog.remove_stage(self)
@@ -3836,11 +3998,22 @@ class DatasetDialog(BaseDialog):
     # --- shared parameters (used by scaling + merging) ---
     shared_box = wx.StaticBox(self.scroll, label='Shared parameters (scaling + merging)')
     shared_sizer = wx.StaticBoxSizer(shared_box, wx.VERTICAL)
+    self.model_mode_radio = gctr.RadioCtrl(self.scroll, label='Reference:',
+                                           label_style='normal', label_size=(160, -1),
+                                           direction='horizontal',
+                                           items={'known': 'Known reference model',
+                                                  'unknown': 'No reference model'})
     self.shared_model = gctr.TextButtonCtrl(self.scroll, label='Reference model:',
                                             label_size=(160, -1), label_style='normal',
                                             ctrl_size=(360, -1),
                                             big_button=True, big_button_label='Browse...',
                                             ghost_button=False)
+    self.shared_unit_cell = gctr.TextButtonCtrl(self.scroll, label='Unit cell:',
+                                                label_size=(160, -1), label_style='normal',
+                                                ctrl_size=(360, -1), ghost_button=False)
+    self.shared_space_group = gctr.TextButtonCtrl(self.scroll, label='Space group:',
+                                                  label_size=(160, -1), label_style='normal',
+                                                  ctrl_size=(360, -1), ghost_button=False)
     self.shared_d_min = gctr.SpinCtrl(self.scroll, label='High res. limit (d_min):',
                                       label_size=(200, -1), label_style='normal',
                                       ctrl_size=(150, -1), ctrl_value='1.5',
@@ -3858,13 +4031,19 @@ class DatasetDialog(BaseDialog):
                                        ctrl_min=1, ctrl_max=1000, ctrl_step=1,
                                        ctrl_digits=0)
     self.shared_merge_anomalous = wx.CheckBox(self.scroll, label='Merge anomalous')
+    shared_sizer.Add(self.model_mode_radio, flag=wx.EXPAND | wx.ALL, border=5)
     shared_sizer.Add(self.shared_model, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_unit_cell, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_space_group, flag=wx.EXPAND | wx.ALL, border=5)
     shared_sizer.Add(self.shared_d_min, flag=wx.ALL, border=5)
     shared_sizer.Add(self.shared_resolution_scalar, flag=wx.ALL, border=5)
     shared_sizer.Add(self.shared_n_bins, flag=wx.ALL, border=5)
     shared_sizer.Add(self.shared_merge_anomalous, flag=wx.ALL, border=5)
     self.scroll_sizer.Add(shared_sizer, flag=wx.EXPAND | wx.ALL, border=8)
     self.Bind(wx.EVT_BUTTON, self.onBrowseModel, self.shared_model.btn_big)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.known)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.unknown)
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial.ctr)
 
     # --- pipeline ---
     pipeline_box = wx.StaticBox(self.scroll, label='Pipeline')
@@ -3927,17 +4106,73 @@ class DatasetDialog(BaseDialog):
 
   # -- shared params ---------------------------------------------------------
   def get_shared_values(self):
+    known = self.model_mode_radio.known.GetValue()
     return {
-      'model'             : self.shared_model.ctr.GetValue().strip(),
+      'model_mode'        : 'known' if known else 'unknown',
+      'model'             : self.shared_model.ctr.GetValue().strip() if known else '',
+      'unit_cell'         : self.shared_unit_cell.ctr.GetValue().strip(),
+      'space_group'       : self.shared_space_group.ctr.GetValue().strip(),
       'resolution_scalar' : self.shared_resolution_scalar.ctr.GetValue(),
       'd_min'             : self.shared_d_min.ctr.GetValue(),
       'merge_anomalous'   : self.shared_merge_anomalous.GetValue(),
       'n_bins'            : self.shared_n_bins.ctr.GetValue(),
     }
 
+  def _selected_trial(self):
+    if not self.all_trials:
+      return None
+    sel = self.trial.ctr.GetStringSelection()
+    if not sel or sel not in self.all_trial_numbers:
+      return None
+    return self.all_trials[self.all_trial_numbers.index(sel)]
+
+  def _trial_symmetry(self):
+    ''' Return (unit_cell_str, space_group_str) from the selected trial's known
+        symmetry, or (None, None) if unavailable. '''
+    trial = self._selected_trial()
+    if trial is None or not trial.target_phil_str:
+      return None, None
+    try:
+      from xfel.ui import load_phil_scope_from_dispatcher
+      phil_scope = load_phil_scope_from_dispatcher(self.db.params.dispatcher)
+      params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+      uc = params.indexing.known_symmetry.unit_cell
+      sg = params.indexing.known_symmetry.space_group
+      return (str(uc).strip('()') if uc else None,
+              str(sg) if sg else None)
+    except Exception:
+      return None, None
+
+  def _populate_symmetry_from_trial(self, overwrite=False):
+    ''' Fill the shared unit cell / space group from the selected trial. With
+        overwrite=False only empty fields are filled. '''
+    uc, sg = self._trial_symmetry()
+    if uc and (overwrite or not self.shared_unit_cell.ctr.GetValue().strip()):
+      self.shared_unit_cell.ctr.SetValue(uc)
+    if sg and (overwrite or not self.shared_space_group.ctr.GetValue().strip()):
+      self.shared_space_group.ctr.SetValue(sg)
+
+  def _update_model_mode(self, e=None):
+    ''' Enable the model field for "known", or the cell / space group fields for
+        "unknown". '''
+    known = self.model_mode_radio.known.GetValue()
+    self.shared_model.Enable(known)
+    self.shared_unit_cell.Enable(not known)
+    self.shared_space_group.Enable(not known)
+    if not known:
+      self._populate_symmetry_from_trial(overwrite=False)
+    if e is not None:
+      e.Skip()
+
+  def onTrialChoice(self, e):
+    self._populate_symmetry_from_trial(overwrite=True)
+    e.Skip()
+
   def sync_shared_controls(self):
     ''' Seed the shared controls from the scaling stage (preferred) or merging
-        stage working scope, falling back to the built-in defaults. '''
+        stage working scope, falling back to the built-in defaults. Then
+        pre-populate the unit cell / space group from the trial if not already
+        provided. '''
     src = None
     for s in self.stages:
       if s.task_type == 'scaling' and s.working_phil_scope is not None:
@@ -3950,9 +4185,26 @@ class DatasetDialog(BaseDialog):
           break
     if src is None:
       self.shared_model.ctr.SetValue(DATASET_SHARED_MODEL_DEFAULT)
+      self.model_mode_radio.known.SetValue(1)
+      self._populate_symmetry_from_trial(overwrite=False)
+      self._update_model_mode()
       return
     p = src.working_phil_scope.extract()
-    self.shared_model.ctr.SetValue(p.scaling.model or "")
+    model = p.scaling.model
+    uc = p.scaling.unit_cell
+    sg = p.scaling.space_group
+    self.shared_model.ctr.SetValue(model or "")
+    if uc is not None:
+      self.shared_unit_cell.ctr.SetValue(str(uc).strip('()'))
+    if sg is not None:
+      self.shared_space_group.ctr.SetValue(str(sg))
+    # A stored model means "known"; a stored cell with no model means "unknown".
+    if model:
+      self.model_mode_radio.known.SetValue(1)
+    elif uc is not None:
+      self.model_mode_radio.unknown.SetValue(1)
+    else:
+      self.model_mode_radio.known.SetValue(1)
     if p.scaling.resolution_scalar is not None:
       self.shared_resolution_scalar.ctr.SetValue(float(p.scaling.resolution_scalar))
     if p.merging.d_min is not None:
@@ -3960,6 +4212,8 @@ class DatasetDialog(BaseDialog):
     if p.statistics.n_bins is not None:
       self.shared_n_bins.ctr.SetValue(int(p.statistics.n_bins))
     self.shared_merge_anomalous.SetValue(bool(p.merging.merge_anomalous))
+    self._populate_symmetry_from_trial(overwrite=False)
+    self._update_model_mode()
 
   def onBrowseModel(self, e):
     dlg = wx.FileDialog(self, message="Select reference model",
@@ -3970,9 +4224,11 @@ class DatasetDialog(BaseDialog):
     dlg.Destroy()
 
   # -- stage management ------------------------------------------------------
-  def _append_stage(self, task_type, task=None, enabled=True, removable=False):
+  def _append_stage(self, task_type, task=None, enabled=True, removable=False,
+                    linked=False, is_in_dataset=True):
     stage = DatasetStagePanel(self.scroll, self, task_type,
-                              task=task, enabled=enabled, removable=removable)
+                              task=task, enabled=enabled, removable=removable,
+                              linked=linked, is_in_dataset=is_in_dataset)
     self.stages.append(stage)
     return stage
 
@@ -3991,29 +4247,40 @@ class DatasetDialog(BaseDialog):
     for t in self.dataset.tasks:
       by_type.setdefault(t.type, []).append(t)
 
+    def _is_linked(task):
+      ''' True if this task is also used by at least one other dataset. '''
+      if task is None:
+        return False
+      others = self.db.get_datasets_for_task(task.id)
+      return any(d.id != self.dataset.id for d in others)
+
     idx = by_type.get('indexing', [])
     self._append_stage('indexing', task=(idx[0] if idx else None), enabled=True)
 
     ens = by_type.get('ensemble_refinement', [])
+    t_ens = ens[0] if ens else None
     self._append_stage('ensemble_refinement',
-                       task=(ens[0] if ens else None), enabled=bool(ens))
+                       task=t_ens, enabled=bool(ens), linked=_is_linked(t_ens))
 
     scals = by_type.get('scaling', [])
     if scals:
       for j, t in enumerate(scals):
-        self._append_stage('scaling', task=t, enabled=True, removable=(j > 0))
+        self._append_stage('scaling', task=t, enabled=True, removable=(j > 0),
+                           linked=_is_linked(t))
     else:
       self._append_stage('scaling', enabled=False)
 
     mrgs = by_type.get('merging', [])
     if mrgs:
       for j, t in enumerate(mrgs):
-        self._append_stage('merging', task=t, enabled=True, removable=(j > 0))
+        self._append_stage('merging', task=t, enabled=True, removable=(j > 0),
+                           linked=_is_linked(t))
     else:
       self._append_stage('merging', enabled=False)
 
     for t in by_type.get('phenix', []):
-      self._append_stage('phenix', task=t, enabled=True, removable=True)
+      self._append_stage('phenix', task=t, enabled=True, removable=True,
+                         linked=_is_linked(t))
 
   def _first_global_index(self):
     for i, s in enumerate(self.stages):
@@ -4080,6 +4347,22 @@ class DatasetDialog(BaseDialog):
       return
     trial = self.all_trials[self.all_trial_numbers.index(self.trial.ctr.GetStringSelection())]
 
+    # Reference model / symmetry: cctbx.xfel.merge requires exactly one of a
+    # reference model, or both a unit cell and a space group.
+    needs_model = any(s.is_enabled() and s.task_type in ('scaling', 'merging')
+                      for s in self.stages)
+    if needs_model:
+      sv = self.get_shared_values()
+      if sv['model_mode'] == 'known':
+        if not sv['model']:
+          self._warn('Select a reference model, or choose "No reference model" '
+                     'and provide a unit cell and space group.')
+          return
+      elif not sv['unit_cell'] or not sv['space_group']:
+        self._warn('No reference model selected: provide both a unit cell and a '
+                   'space group (these can be pre-filled from the trial).')
+        return
+
     # Validate every enabled PHIL-backed stage before touching the database.
     for s in self.stages:
       if s.is_enabled():
@@ -4107,7 +4390,9 @@ class DatasetDialog(BaseDialog):
         if tag.name in self.dataset_tagnames:
           self.dataset.remove_tag(tag)
 
-    # Remove tasks for explicitly removed or disabled stages
+    # Remove tasks for explicitly removed or disabled stages.
+    # For linked tasks, remove_task only drops the join row — the Task row and
+    # any other datasets' join rows are untouched.
     for task in self.removed_tasks:
       self.dataset.remove_task(task)
     self.removed_tasks = []
@@ -4117,15 +4402,43 @@ class DatasetDialog(BaseDialog):
         s.task = None
 
     # Create / update tasks for enabled stages, assigning pipeline order.
+    #
+    # Four cases:
+    #   (a) task is None (new or detached) → create a fresh Task row.
+    #   (b) linked, join row not yet inserted → add_task only; update
+    #       parameters only if the user explicitly chose "Edit (affects all)".
+    #   (c) linked, join row already exists, not edited → just update sequence.
+    #   (d) owned (or edited-shared) → update type/trial/parameters + sequence.
     ordered = [s for s in self.stages if s.is_enabled()]
     for i, s in enumerate(ordered):
       parameters = s.get_parameters()
+
       if s.task is None:
+        # (a) New or detached stage: create a fresh Task row.
+        if s._detach_original_task is not None:
+          self.dataset.remove_task(s._detach_original_task)
+          s._detach_original_task = None
         task = self.db.create_task(type=s.task_type, trial_id=trial.id,
                                    parameters=parameters)
         self.dataset.add_task(task, sequence=i)
         s.task = task
+        s.is_in_dataset = True
+        s.linked = False
+
+      elif s.linked and not s.is_in_dataset:
+        # (b) Newly linked task — insert the join row, optionally update params.
+        self.dataset.add_task(s.task, sequence=i)
+        s.is_in_dataset = True
+        if s.phil_was_edited:
+          s.task.trial_id = trial.id
+          s.task.parameters = parameters
+
+      elif s.linked and not s.phil_was_edited:
+        # (c) Linked, already in dataset, not edited — only reorder.
+        self.dataset.set_task_sequence(s.task, i)
+
       else:
+        # (d) Owned task or linked task the user chose "Edit (affects all)" for.
         s.task.type = s.task_type
         s.task.trial_id = trial.id
         s.task.parameters = parameters
