@@ -324,8 +324,11 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
         "output.report_vdws=False",
         "output.write_files=False",
         # No @group line: the dots belong in a @subgroup of the structure's
-        # kinemage group, not in a separate group with its own button.
+        # kinemage group, not in a separate group with its own button.  The
+        # group button used to double as the all-dots control, so put a
+        # master={dots} on every dot list instead.
         "output.add_group_line=False",
+        "output.add_group_name_master_line=True",
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
@@ -398,8 +401,11 @@ def make_probe_dots_from_model(model_manager, per_model=False):
         "output.write_files=False",
         # No @group line: the dots are appended to the structure's kinemage
         # group by the callers, so they belong in a @subgroup of it rather
-        # than in a separate group with its own button in viewers.
+        # than in a separate group with its own button in viewers.  The group
+        # button used to double as the all-dots control, so put a
+        # master={dots} on every dot list instead.
         "output.add_group_line=False",
+        "output.add_group_name_master_line=True",
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
