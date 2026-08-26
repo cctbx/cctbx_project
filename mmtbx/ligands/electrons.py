@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model
+import random
 import sys
 import time
 
@@ -125,6 +126,15 @@ class electron_distribution(dict):
     self.specific_atom_charges = specific_atom_charges
     self.specific_atom_multiplicities = specific_atom_multiplicities
     self.atoms_with_charges_set = []
+    # The ring solver below retries with a reshuffled bond order.  Use a private
+    # generator with a fixed seed, not the `random` module: the module-level one
+    # made the resulting charge depend on unrelated global RNG state, so the same
+    # file gave different charges on different runs (a heme cluster spanned six
+    # electrons over twelve repeats), and it also consumed the caller's random
+    # stream.  Cycles the solver never resolved are recorded in
+    # `unresolved_cycles` so a consumer can decline to trust the charge.
+    self._ring_rng = random.Random(0)
+    self.unresolved_cycles = []
     if log is None:
       self.logger = sys.stdout
     else:
@@ -142,7 +152,10 @@ class electron_distribution(dict):
           self[atom.i_seq]=default_metal_charges[atom.element.capitalize()]*-1
           # self[atom.i_seq]=None
         else:
-          print(atom.quote())
+          # No default charge for this metal; the caller must supply one via
+          # specific_atom_charges.  Report it to the log rather than stdout, so
+          # a caller that passed log=null_out() is not printed at.
+          print(atom.quote(), file=self.logger)
           # assert 0, ' charge not found for %s' % atom.quote()
       else:
         self[atom.i_seq] = e
@@ -666,7 +679,6 @@ class electron_distribution(dict):
           i_seqs = subtract.pop()
           self._subtract_electron_from_bond(i_seqs)
         for filter_non_tetra_coordinate in range(2,-1,-1):
-          import random
           # cycle=_sort_on_element(cycle, self.atoms)
           for i_seq, j_seq in cycle:
             if filter_non_tetra_coordinate:
@@ -680,7 +692,18 @@ class electron_distribution(dict):
                                                        self.atoms[j_seq].quote(),
                                                        self))
         cycle_charge_count=self.get_cycle_charge_count(cycle)
-        random.shuffle(cycle)
+        self._ring_rng.shuffle(cycle)
+      if cycle_charge_count:
+        # Retries exhausted with charge still on the ring: the assignment kept
+        # here is whichever partial one the last shuffle reached, not a solved
+        # one.  A porphyrin never resolves.
+        #
+        # Record BOTH endpoints of every ring bond.  `tmp` above holds only
+        # each bond's source atom, which for a 6-ring is 5 distinct atoms, and
+        # a consumer testing membership against it would treat the omitted ring
+        # atoms as trustworthy.
+        self.unresolved_cycles.append(
+          tuple(sorted({i_seq for bond in cycle for i_seq in bond[:2]})))
     if verbose: print('  Double & rings : %0.1fs' % (time.time()-t0))
     #
     # hyper and triple

@@ -89,7 +89,8 @@ OXIDATION_PRIORS = {
 # crystal [42], but predict_oxidation() overrides it toward Fe(III) on a ferric
 # donor signature (tyrosinate [50], hard-anionic-O charge <= -2 [37, 44]) and
 # back toward Fe(II) on a ferrous one (2-His-1-carboxylate facial triad [41], an
-# all-thiolate Fe(S-Cys)n set [49]), with the confidence set accordingly.
+# rubredoxin-type Fe(S-Cys)4 set, now read as FERRIC [76, 77, 78]), with the
+# confidence set accordingly.
 #
 # SPIN INVARIANT (load-bearing): the multiplicity commit is HIGH-SPIN by default
 # and flips to low spin ONLY in predict_spin's heme branch (octahedral d4-d7 with
@@ -140,8 +141,15 @@ def _heme_oxidation(summary):
     # Anionic axial O (Tyr phenolate; catalase-type ferric). The carboxylate
     # limb of q_hard is HSAB-extrapolated: no characterised axial-carboxylate
     # heme, but the direction (anionic O favours the harder Fe(III)) holds.
-    return group_args(oxidation=3, confidence=CONF_MEDIUM,
-                      reason="heme, anionic axial O (phenolate/catalase-type ferric)")
+    #
+    # This limb fires on a SINGLE anionic group, unlike the non-heme -2
+    # threshold, so a charge the bond graph supplied is load-bearing here on its
+    # own and the reason must say so rather than asserting a phenolate.
+    why = "heme, anionic axial O (phenolate/catalase-type ferric)"
+    n_bg = getattr(summary, "n_anionic_unplaced", 0)
+    if n_bg:
+      why += f", {n_bg} anionic O group(s) read from the ligand bond graph"
+    return group_args(oxidation=3, confidence=CONF_MEDIUM, reason=why)
   if summary.n_cys_s >= 1:                                             # [51]
     # Coordinating Cys thiolate (charge < 0; neutral Met thioether is not counted
     # in n_cys_s). Heme-c peripheral thioether Cys sit off the metal and are
@@ -195,7 +203,9 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
   - Fe non-heme: donor hardness commits ferrous vs ferric, Fe(III) being the
     harder acid [37, 44]; a coordinating tyrosinate is a ferric diagnostic [50];
     the 2-His-1-carboxylate facial triad is the ferrous oxygenase motif [41]; an
-    all-thiolate Fe(S-Cys)n set stays ferrous on a soft-S guard [49]; otherwise
+    a rubredoxin-type Fe(S-Cys)4 set commits FERRIC at LOW confidence
+    [76, 77, 78], the ferrous reservoir case and photoreduction being carried in
+    the confidence rather than the state [84, 87]; otherwise
     the ferrous photoreduction lean [42].
   - Mn: dominant Mn(II) default [56, 57], overridden to Mn(III) by the SOD-fold
     signature (5-coordinate trigonal-bipyramidal 3-His/carboxylate/solvent,
@@ -236,12 +246,37 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
           and summary.n_tyrosinate == 0):
         return group_args(oxidation=2, confidence=CONF_HIGH,
                           reason="2-His-1-carboxylate facial triad")
-      if summary.n_cys_s >= 2 and summary.q_hard == 0:                  # [49]
-        return group_args(oxidation=2, confidence=CONF_LOW,
-                          reason="all-thiolate soft-S donor set")
+      # Rubredoxin-type Fe(S-Cys)4: FERRIC as isolated. Rubredoxin is purified
+      # and crystallised as the red oxidised protein, is auto-oxidisable in air
+      # [76], is high-spin Fe(III) by Mossbauer [77], and its couple sits near
+      # -50 to 0 mV, far below O2/H2O, so a protein handled without a reductant
+      # is ferric [78]. This REPLACES an inverted guard that read the same donor
+      # set as ferrous; its citation [49] documents a site crystallised oxidised
+      # and reduced only by adding dithionite, and never supported the ferrous
+      # direction.
+      #
+      # Deliberately narrow: exactly four donors, all Cys thiolate, nothing else
+      # (cn == 4 with four Cys residues admits no fifth donor). Broader forms
+      # mis-fire. Nitrile hydratase (3 Cys-derived S + backbone N, CN 5) is a
+      # LOW-SPIN Fe(III) [86] that this must not touch, and a >=2-Cys form also
+      # catches every [2Fe-2S] iron, which presents 2 Cys S + 2 inorganic S.
+      #
+      # LOW confidence, and the reason says why: the site is ferrous in reservoir
+      # and carrier roles (e.g. the rubredoxin-like centre of
+      # 3-hydroxyanthranilate-3,4-dioxygenase [87], deposited ferrous many times
+      # over), and a crystal at routine dose is partly photoreduced regardless
+      # [84], so no single structure's Fe-S distances settle it.
+      if cn == 4 and summary.n_cys_s == 4:                     # [76, 77, 78]
+        return group_args(oxidation=3, confidence=CONF_LOW,
+                          reason="rubredoxin-type Fe(S-Cys)4, ferric as "
+                                 "isolated; ferrous in reservoir roles and "
+                                 "photoreduced at routine dose")
       if summary.q_hard <= -2:                                         # [37, 44]
-        return group_args(oxidation=3, confidence=CONF_MEDIUM,
-                          reason="hard anionic O charge <= -2")
+        why = "hard anionic O charge <= -2"
+        n_bg = getattr(summary, "n_anionic_unplaced", 0)
+        if n_bg:
+          why += f", {n_bg} anionic O group(s) read from the ligand bond graph"
+        return group_args(oxidation=3, confidence=CONF_MEDIUM, reason=why)
     return group_args(oxidation=2, confidence=CONF_LOW,                 # [42]
                       reason="no ferric signature (ferrous lean)")
 
@@ -272,6 +307,36 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
   return group_args(oxidation=default if default is not None else accessible[0],
                     confidence=CONF_LOW,
                     reason="no robust discriminator (dominant default)")
+
+
+def oxidation_uses_donors(element):
+  """Whether :func:`predict_oxidation`'s branch for *element* reads the donor
+  summary at all.
+
+  Only the Fe and Mn branches dereference ``summary``; Zn and Mg short-circuit on
+  a single accessible state, and Cu decides from CN and CShM class alone. Callers
+  use this to tell "the donor evidence was empty" (which should lower confidence)
+  from "the donor evidence was irrelevant" (which should not): capping a Zn whose
+  oxidation is definitional would contradict its own reason string.
+
+  MUST track predict_oxidation: if a branch starts or stops reading *summary*,
+  update this. Covered by tst_qmi.
+  """
+  return metals.normalize_element(element) in ("Fe", "Mn")
+
+
+def oxidation_uses_donor_charge(element):
+  """Whether :func:`predict_oxidation`'s branch for *element* reads
+  ``summary.q_hard``, as opposed to the motif counts.
+
+  Only Fe does, in both its heme and non-heme limbs. Mn reads the summary but
+  keys on motifs (n_his / n_carboxylate / n_tyrosinate) and never on q_hard, so
+  an anionic charge recovered from the bond graph is not evidence for a Mn site
+  and must not lift its confidence cap.
+
+  MUST track predict_oxidation, as :func:`oxidation_uses_donors` must.
+  """
+  return metals.normalize_element(element) == "Fe"
 
 
 def _aufbau_unpaired(n, levels):

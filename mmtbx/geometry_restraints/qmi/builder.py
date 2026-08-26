@@ -31,6 +31,7 @@ from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
+from mmtbx.geometry_restraints.qmi import donor_perception
 from mmtbx.geometry_restraints.qmi import donors, electronic, shape, util
 from mmtbx.geometry_restraints.qmi import (
   bvs, provenance, qm, restraints, sanity, sigma)
@@ -335,7 +336,7 @@ class QMRestraintsBuilder(object):
     # Oxidation: a user value wins; else BVS (when use_bvs) or the predictor.
     if user_ox is not None:
       ox, ox_conf, ox_reason = user_ox, electronic.CONF_HIGH, "user-supplied"
-    elif self.use_bvs and bvs_est is not None:
+    elif self.use_bvs and bvs_est is not None and bvs_est.best is not None:
       ox, ox_conf, ox_reason = (bvs_est.best, electronic.CONF_MEDIUM,
                                 "BVS most-likely")
     else:
@@ -362,30 +363,108 @@ class QMRestraintsBuilder(object):
       mult, low_spin = unpaired + 1, sp.low_spin
       spin_conf, spin_reason = sp.confidence, sp.reason
 
-    if user_ox is None and self.use_bvs and bvs_est is not None:
+    if (user_ox is None and self.use_bvs and bvs_est is not None
+        and bvs_est.best is not None):
       source = "bvs"           # BVS set the oxidation (matches the branch above)
     elif user_ox is not None or user_mult is not None:
       source = "user-supplied"
     else:
       source = "guessed"
+
+    # An empty donor summary is not the same as an inconclusive one. When
+    # classify() placed no donor into any motif (summary.motif_evidence False),
+    # the predictor decided with NO donor information and its reason string
+    # ("no ferric signature") reads as a finding rather than as an absence. Cap
+    # the confidence and say so. A user-supplied state is unaffected: it did not
+    # come from the donors. See docs/donor_classification_generalisation.md.
+    confidence = electronic.min_confidence(ox_conf, spin_conf)
+    # Only when the committed oxidation actually came FROM the donor summary. A
+    # user override, a BVS-sourced state, a single-accessible-state metal (Zn,
+    # Mg) and Cu (decided on CN/geometry) are all unaffected by empty donor
+    # evidence, so capping them would contradict their own reason strings.
+    from_donors = (source == "guessed"
+                   and electronic.oxidation_uses_donors(metal_element))
+    # Evidence can come from either pass: a motif the residue names placed, or an
+    # anionic group only the bond graph could see. A site with neither decided on
+    # nothing. The bond-graph term counts only where the element's rules actually
+    # read q_hard: Mn keys on motifs alone, so a recovered charge tells it
+    # nothing and must not lift its cap.
+    informed = (getattr(summary, "motif_evidence", True)
+                or (getattr(summary, "n_anionic_unplaced", 0) > 0
+                    and electronic.oxidation_uses_donor_charge(metal_element)))
+    blind = from_donors and summary is not None and not informed
+    if blind:
+      confidence = electronic.CONF_LOW
+      ox_reason = f"{ox_reason}; NO donor was classified, so this is a default"
+
     return group_args(
       oxidation_state=ox, multiplicity=mult, low_spin=low_spin,
-      state_source=source,
-      confidence=electronic.min_confidence(ox_conf, spin_conf),
+      state_source=source, confidence=confidence,
       oxidation_reason=ox_reason, spin_reason=spin_reason, skipped=None)
 
-  def _donor_summary(self, atoms, donor_iseqs):
+  def _donor_perception(self, submodel, metal_iseq, metal_element, cap_iseqs,
+                        cap_original_elements):
+    """Bond-graph perception of the cluster, or None when it is unavailable.
+
+    Built on a COPY of the sub-model, deliberately.  Interpreting a model to get
+    its bond graph also normalises it (symmetric side chains are renamed), and
+    the real sub-model must reach ``region.pdb`` and the frozen partition exactly
+    as endo_exo produced it, so the perception is not allowed to perturb
+    anything the QM path sees.  The extra interpretation costs a few tenths of a
+    second per site.
+
+    The metal needs a charge before ``electrons`` will run (Fe/Mn/Co/Ni are
+    absent from its default table), which would be circular here since the
+    oxidation state is what we are trying to predict.  It is not: with
+    ``link_metals`` off the metal is an isolated node in the graph, so no donor
+    charge depends on the value.  A placeholder is passed and only the donors are
+    read back.
+
+    Never raises: a cluster the monomer library cannot interpret (an unknown
+    ligand) leaves the predictor on the residue-name path it used before, rather
+    than turning a prediction into a crash.
+    """
+    try:
+      probe = submodel.deep_copy()
+      qm.ensure_restraints(probe, cap_iseqs=cap_iseqs,
+                           cap_original_elements=cap_original_elements)
+      dist = quantum_interface.electrons(
+        probe, return_atom_valences=True, log=null_out(),
+        specific_atom_charges=[group_args(
+          atom_selection=f"element {metal_element}", charge=2)])
+      return donor_perception.from_electron_distribution(
+        probe.get_hierarchy().atoms(), dist, metal_iseqs=[metal_iseq])
+    except Exception as exc:                  # Sorry, AssertionError, KeyError
+      # electrons.py raises bare asserts, whose message is empty, so take the
+      # type when there is no text: indexing splitlines() on "" raises inside
+      # the handler and destroys the failure this exists to absorb.
+      detail = (str(exc) or type(exc).__name__).splitlines()[0][:70]
+      print(f"  donor charge unavailable ({type(exc).__name__}: {detail}); "
+            f"residue names only", file=self.logger)
+      return None
+
+  def _donor_summary(self, atoms, donor_iseqs, perception=None):
     """Classify the first-shell donors into the coordination summary the
     committing predictor reads (:func:`donors.summarize`): heme (FeN4) topology
     plus donor hardness, from residue/element identity only (no bond lengths).
-    None when there are no donors."""
+    None when there are no donors.
+
+    *perception* adds each donor's bond-graph resonance-group charge, which
+    :func:`donors.summarize` uses only where the residue names ran out. A group
+    on a ring the Lewis walk never solved carries no charge here: its value is
+    where that walk stopped, not what it concluded."""
     descs = []
     for i in donor_iseqs:
       a = atoms[i]
       c = donors.classify(a.element, a.parent().resname)
+      gid = gq = None
+      if perception is not None and perception.group_is_resolved(i):
+        gid = perception.resonance_group(i)
+        gq = perception.group_charge(i)
       descs.append(group_args(element=c.element, kind=c.kind,
                               charge=c.charge, strong_axial=c.strong_axial,
-                              res_id=util.residue_key(a)))
+                              res_id=util.residue_key(a),
+                              group_id=gid, group_charge=gq))
     return donors.summarize(descs) if descs else None
 
   def _bvs_estimate(self, atoms, metal_iseq, metal_element, donor_iseqs):
@@ -460,11 +539,21 @@ class QMRestraintsBuilder(object):
     if bvs_est is not None:
       vstr = ", ".join(f"{q:+d}:{v:.2f}"
                        for q, v in sorted(bvs_est.valences.items()))
-      print(f"Site {index}: BVS most-likely ox={bvs_est.best:+d} "
-            f"(V {vstr}; observed geometry, high-resolution only)",
-            file=self.logger)
+      if bvs_est.best is None:
+        print(f"Site {index}: BVS no verdict, parameter coverage differs "
+              f"between candidate states (V {vstr})", file=self.logger)
+      else:
+        print(f"Site {index}: BVS most-likely ox={bvs_est.best:+d} "
+              f"(V {vstr}; observed geometry, high-resolution only)",
+              file=self.logger)
 
-    summary = self._donor_summary(atoms, donor_iseqs)
+    # Donor perception: the residue-name classification, plus the resonance-group
+    # charge the bond graph already knows and the name whitelist cannot see (a
+    # citrate, a phosphate). Runs on every path including predict_only, since a
+    # prediction is exactly what it improves.
+    perception = self._donor_perception(submodel, metal_iseq, metal_element,
+                                        cap_iseqs, cap_original_elements)
+    summary = self._donor_summary(atoms, donor_iseqs, perception=perception)
 
     # The frozen/free partition is state-independent and, with endo_exo's cap
     # anchors, needs no restraints manager, so compute it ONCE per site and share
@@ -521,6 +610,17 @@ class QMRestraintsBuilder(object):
       prefix = "predicted: " if state.state_source == "guessed" else ""
       print(f"  {prefix}oxidation ({state.oxidation_reason}); "
             f"spin ({state.spin_reason})", file=self.logger)
+    # Advisory BVS against the committed state. Reported here rather than at the
+    # BVS line above, which runs before the state is resolved. Also covers
+    # predict_only, which returns just below.
+    if (bvs_est is not None and bvs_est.best is not None
+        and bvs_est.best != state.oxidation_state
+        and state.state_source != "bvs"):
+      why = " (close call)" if bvs_est.close_call else ""
+      print(f"  BVS disagrees: observed distances favour "
+            f"ox={bvs_est.best:+d}{why}; committed "
+            f"ox={state.oxidation_state:+d} stands (BVS is advisory)",
+            file=self.logger)
 
     if self.predict_only:   # stop before the QM optimisation; prediction only
       return [group_args(
@@ -545,7 +645,8 @@ class QMRestraintsBuilder(object):
       site_dir, state.state_source, emit_angles=emit_angles,
       sym_image_provenance=sym_image_provenance,
       low_spin=state.low_spin, confidence=state.confidence,
-      oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason)]
+      oxidation_reason=state.oxidation_reason, spin_reason=state.spin_reason,
+      donor_summary=summary)]
 
   def _coordination_number(self, geom):
     """Coordinative coordination number for the electronic predictor: the
@@ -631,7 +732,8 @@ class QMRestraintsBuilder(object):
           emit_angles=emit_angles, sym_image_provenance=sym_image_provenance,
           confidence=(pred.confidence if is_pred else None),
           oxidation_reason=(pred.oxidation_reason if is_pred else None),
-          spin_reason=(pred.spin_reason if is_pred else None)))
+          spin_reason=(pred.spin_reason if is_pred else None),
+          donor_summary=summary))
       except Exception as exc:
         # One state's QM failing must not abort the scan: states=all deliberately
         # enumerates SCF-fragile states. Record the skip and run the rest.
@@ -747,7 +849,7 @@ class QMRestraintsBuilder(object):
                  bvs_est, oxidation, multiplicity, charge, work_dir,
                  state_source, emit_angles=True, sym_image_provenance=None,
                  low_spin=None, confidence=None,
-                 oxidation_reason=None, spin_reason=None):
+                 oxidation_reason=None, spin_reason=None, donor_summary=None):
     """Run the constrained opt + Hessian + restraint assembly for a single
     (oxidation, multiplicity, charge) state in *work_dir* (writing optimized.pdb
     and qmi.edits there), returning the per-state result group_args."""
@@ -811,7 +913,8 @@ class QMRestraintsBuilder(object):
     site_lines = provenance.site_block(
       metal_element, site_tag, oxidation, multiplicity, charge, state_source,
       confidence, oxidation_reason, spin_reason, bvs_est, sigma_origin,
-      site_restraints.n_skipped_symmetry, n_perturb, sanity=site_sanity)
+      site_restraints.n_skipped_symmetry, n_perturb, sanity=site_sanity,
+      donor_summary=donor_summary)
     edits = restraints.as_edits_phil(
       site_restraints, header="\n".join(self._provenance + site_lines))
     if work_dir is not None:

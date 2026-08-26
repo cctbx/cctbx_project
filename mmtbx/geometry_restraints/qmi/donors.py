@@ -95,15 +95,50 @@ def summarize(donors):
   counts (per residue, so a bidentate carboxylate counts once) drive the Fe
   oxidation call.
 
+  UNCLASSIFIED DONORS. :func:`classify` recognises donors by residue name, so a
+  donor on a cofactor, buffer or substrate ligand falls through to ``het_*`` with
+  charge 0 and contributes to no motif count. That is silent: the predictor then
+  reads zero carboxylates and ``q_hard = 0`` for a site that may be strongly
+  anionic. 6G7Q (an Fe chelated by two citrates) produced a summary bit-for-bit
+  identical to passing no donors at all, and committed the ferrous fallthrough.
+  So the count is reported: ``n_unclassified`` excludes the porphyrin N that the
+  FeN4 test above legitimately consumes, and ``motif_evidence`` is False when NO
+  donor contributed any motif count, i.e. the summary carries no information.
+  See docs/donor_classification_generalisation.md.
+
+  BOND-GRAPH CHARGE. A donor may additionally carry ``group_charge`` (the formal
+  charge on its resonance group) and ``group_id`` (that group's identity), read
+  from the bond graph by :mod:`mmtbx.geometry_restraints.qmi.donor_perception`.
+  It is used ONLY for donors the residue-name pass could not place, and only for
+  hard O, so the motif counts, both HIGH-confidence rules, and every state the
+  whitelist already gets right are bit-for-bit unaffected; the charge fills the
+  hole the whitelist leaves rather than replacing what it knows.
+
+  Each anionic group contributes exactly -1 however negative it is, so a
+  carbonate at -2 does not count double. Note the unit is the resonance GROUP,
+  not the residue: for the twenty standard residues the two coincide (one
+  carboxylate per Asp/Glu), so nothing the whitelist counts is rescaled, but a
+  multi-arm het ligand contributes one -1 PER COORDINATING ARM. That is
+  deliberate, and it is what makes a mono-citrate reach the ferric threshold on
+  its own; the consequence to be aware of is that a single het residue can
+  therefore reach ``q_hard = -2``, which no single whitelisted residue can.
+  Restricting to O keeps the rule's HSAB reading [37, 44] honest and, as a side
+  effect, excludes the porphyrin macrocycle (whose pyrrole N carry the ring
+  charge) from a heme's ``q_hard``.
+
   Returns group_args(heme, n_axial, axial_all_strong, n_carboxylate,
-  n_tyrosinate, n_cys_s, n_his, n_water_o, q_hard).
+  n_tyrosinate, n_cys_s, n_his, n_water_o, q_hard, n_unclassified,
+  unclassified, motif_evidence, n_anionic_unplaced).
   """
   donors = list(donors)
-  n_by_res = {}
-  for d in donors:
+  # Indices, not object identity: a caller may legitimately pass the same
+  # descriptor object more than once (e.g. [desc] * 4), and id() would then
+  # collapse them into one.
+  n_idx_by_res = {}
+  for i, d in enumerate(donors):
     if d.element == "N":
-      n_by_res.setdefault(d.res_id, []).append(d)
-  heme_res = next((r for r, ns in n_by_res.items() if len(ns) >= 4), None)
+      n_idx_by_res.setdefault(d.res_id, []).append(i)
+  heme_res = next((r for r, ix in n_idx_by_res.items() if len(ix) >= 4), None)
   heme = heme_res is not None
   axial = [d for d in donors if d.res_id != heme_res] if heme else []
 
@@ -119,6 +154,36 @@ def summarize(donors):
   n_his = _count("his_n")
   n_water_o = _count("water_o")
 
+  # Donors classify() could not place. A porphyrin N is het_n but IS consumed,
+  # by the FeN4 test above, so exclude the macrocycle from the count.
+  consumed = set()
+  if heme:
+    # Only the four N the FeN4 test consumed are explained; a fifth N on the
+    # same residue (an intramolecular axial, as in cobalamin) or a macrocycle
+    # propionate O is NOT, and must still be reported.
+    consumed = set(n_idx_by_res[heme_res][:4])
+  unplaced = [d for i, d in enumerate(donors)
+              if str(d.kind).startswith("het_") and i not in consumed]
+  # `heme` is deliberately NOT evidence here: it is derived from het_n donors
+  # the residue-name classifier failed to place, so counting it would report a
+  # 100%-unclassified site (a chlorophyll Mg, an Fe tetraaza chelate) as
+  # informative. Only donors classify() actually placed count.
+  motif_evidence = any((n_carboxylate, n_tyrosinate, n_cys_s, n_his, n_water_o))
+
+  # Anionic hard-O groups among the donors the residue-name pass could not place
+  # (see BOND-GRAPH CHARGE above). Deduped by resonance group, so the two O of
+  # one carboxylate arm count once and the two arms of a citrate count twice.
+  anionic_groups = set()
+  for d in unplaced:
+    q = getattr(d, "group_charge", None)
+    if d.element == "O" and q is not None and q < 0:
+      gid = getattr(d, "group_id", None)
+      # Fall back to object identity only when there is genuinely no group id;
+      # an EMPTY group id is still an id, and `or` would silently drop two
+      # donors of one group into two separate counts.
+      anionic_groups.add(gid if gid is not None else id(d))
+  n_anionic_unplaced = len(anionic_groups)
+
   return group_args(
     heme=heme,
     n_axial=len(axial),
@@ -127,8 +192,20 @@ def summarize(donors):
     n_tyrosinate=n_tyrosinate,
     n_cys_s=n_cys_s,
     n_his=n_his,
+    # Donors the residue-name classifier could not place, and whether ANY motif
+    # evidence survived. motif_evidence False means the predictor is deciding
+    # with no donor information at all.
+    n_unclassified=len(unplaced),
+    unclassified=sorted({f"{d.res_id[-1] if isinstance(d.res_id, tuple) else d.res_id}"
+                         f".{d.element}" for d in unplaced}),
+    motif_evidence=motif_evidence,
+    # Anionic hard-O groups recovered from the bond graph for donors the
+    # residue-name pass could not place (0 when no bond graph was available).
+    n_anionic_unplaced=n_anionic_unplaced,
     # Coordinating water O (aquo/hydroxo; both modelled as HOH). For a heme every
     # non-porphyrin donor is axial, so this is the axial-water count there.
     n_water_o=n_water_o,
-    # Hard anionic O charge (carboxylate + tyrosinate), one -1 per group.
-    q_hard=-(n_carboxylate + n_tyrosinate))
+    # Hard anionic O charge, one -1 per group: the carboxylates and tyrosinates
+    # the residue names identify, plus the anionic O groups only the bond graph
+    # can see (a citrate, a phosphate, a carbonate).
+    q_hard=-(n_carboxylate + n_tyrosinate + n_anionic_unplaced))

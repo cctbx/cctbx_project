@@ -95,12 +95,16 @@ def settings_block(engine, radius, max_depth, free_radius, freeze_waters,
 def site_block(metal_element, site_tag, oxidation, multiplicity, charge,
                state_source, confidence, oxidation_reason, spin_reason,
                bvs_est, sigma_origin, n_skipped_symmetry, n_perturb,
-               sanity=None):
+               sanity=None, donor_summary=None):
   """The per-site provenance lines (committed state + how it was decided).
 
   *sanity* is the :func:`mmtbx.geometry_restraints.qmi.sanity.check_site` result
   (or None); any atypical / implausible emitted distances are flagged here
-  (Sec 9.4, flag-not-fix), with a per-bond detail line."""
+  (Sec 9.4, flag-not-fix), with a per-bond detail line.
+
+  *donor_summary* is the :func:`mmtbx.geometry_restraints.qmi.donors.summarize`
+  result (or None); donors the residue-name classifier could not place are
+  reported so an empty donor summary is never silent."""
   src = state_source + (f"/{confidence}" if confidence else "")
   lines = [f"site {site_tag}: {metal_element} ox={oxidation:+d} "
            f"mult={multiplicity} charge={charge:+d}  [source={src}]"]
@@ -112,7 +116,52 @@ def site_block(metal_element, site_tag, oxidation, multiplicity, charge,
   if reasons:
     lines.append("  " + "; ".join(reasons))
   if bvs_est is not None:
-    lines.append(f"  BVS most-likely ox={bvs_est.best:+d} (advisory)")
+    if getattr(bvs_est, "coverage_asymmetric", False):
+      # Candidate states were summed over different bond counts, so the
+      # comparison is meaningless; report the refusal rather than a biased
+      # winner (e.g. Mn(3+) has no vendored S parameters).
+      lines.append("  BVS: no verdict, parameter coverage differs between "
+                   "candidate states (advisory)")
+    else:
+      margin = getattr(bvs_est, "margin", None)
+      note = ""
+      if margin is not None:
+        note = f", margin {margin:.2f}"
+        if getattr(bvs_est, "close_call", False):
+          note += " (close call: not stable against re-refinement [84])"
+      lines.append(f"  BVS most-likely ox={bvs_est.best:+d}{note} (advisory)")
+      # The advisory and the committed state can disagree, and until now the
+      # header printed both without ever saying so: a reader had to notice the
+      # contradiction unaided. Say it. This does NOT promote BVS to a decider
+      # (it is a bond-length function, and the restraint qmi emits moves the
+      # very lengths it reads [84]); it makes the disagreement actionable.
+      # No redox-lability test is needed: a BVS verdict exists only where two or
+      # more oxidation states are accessible, which is that condition.
+      if bvs_est.best != oxidation and state_source != "bvs":
+        lines.append(f"  BVS DISAGREES with the committed ox={oxidation:+d} "
+                     f"(advisory, from observed bond lengths)")
+        if bvs_est.close_call:
+          lines.append("    the margin is a close call, so the disagreement is "
+                       "not itself evidence against the commit [84]")
+        if state_source != "user-supplied":
+          lines.append(f"    to commit ox={bvs_est.best:+d} instead, add a "
+                       f"metal_state block; states=reasonable emits both")
+  # Donors the residue-name classifier could not place. Silence here is what let
+  # a bis-citrate Fe commit a ferrous default off an empty summary.
+  n_unc = getattr(donor_summary, "n_unclassified", 0) if donor_summary else 0
+  if n_unc:
+    which = ", ".join(getattr(donor_summary, "unclassified", []) or [])
+    n_bg = getattr(donor_summary, "n_anionic_unplaced", 0)
+    if n_bg:
+      # The residue name told us nothing, but the bond graph did: report the
+      # charge that actually informed the state.
+      tail = (f"; {n_bg} anionic O group(s) recovered from the bond graph "
+              f"(q_hard {donor_summary.q_hard:+d})")
+    elif not getattr(donor_summary, "motif_evidence", True):
+      tail = "; NO donor was classified, the state is a default"
+    else:
+      tail = ""
+    lines.append(f"  unclassified donors: {n_unc} ({which}){tail}")
   flags = [f"sigmas: {sigma_origin}"]
   if n_perturb:
     outcome = "recovered" if sigma_origin == "hessian" else "unresolved"

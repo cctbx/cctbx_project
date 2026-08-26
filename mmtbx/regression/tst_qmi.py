@@ -31,6 +31,7 @@ from mmtbx.geometry_restraints.qmi import (
   util)
 from mmtbx.geometry_restraints.qmi import electronic as el
 from mmtbx.geometry_restraints.qmi import donors as D
+from mmtbx.geometry_restraints.qmi import metal_protonation as mp
 from mmtbx.geometry_restraints.qmi.builder import QMRestraintsBuilder
 
 
@@ -1174,9 +1175,13 @@ def exercise_electronic():
                 ("O", "ASP", "OD1", ("A", 3))])
   ft = el.predict_oxidation("Fe", "octahedral", 6, triad)
   assert ft.oxidation == 2 and ft.confidence == el.CONF_HIGH     # facial triad
+  # Rubredoxin-type Fe(S-Cys)4 is FERRIC as isolated [76, 77, 78]. This assertion
+  # previously read ox == 2, from a soft-S guard whose own citation [49] never
+  # supported the ferrous direction; see exercise_rubredoxin_ferric for the full
+  # rule and the donor sets it must NOT catch.
   rubr = summ([("S", "CYS", "SG", ("A", i)) for i in (1, 2, 3, 4)])
   fr = el.predict_oxidation("Fe", "tetrahedral", 4, rubr)
-  assert fr.oxidation == 2 and fr.confidence == el.CONF_LOW      # soft-S guard
+  assert fr.oxidation == 3 and fr.confidence == el.CONF_LOW      # rubredoxin-type
   fb = el.predict_oxidation("Fe", "octahedral", 6, None)
   assert fb.oxidation == 2 and fb.confidence == el.CONF_LOW      # ferrous lean
 
@@ -1362,6 +1367,399 @@ def exercise_bvs():
   # No vendored parameters for any candidate -> None; valence_sum guard.
   assert bvs.estimate_oxidation("Zn", (2,), [("Xx", 2.0)]) is None
   assert bvs.valence_sum("Zn", 2, [("Xx", 2.0)]) == (None, 0)
+
+
+def exercise_bvs_hygiene():
+  """BVS reliability guards: unchecked-row selection, the close-call margin, and
+  the asymmetric-coverage refusal (with the None-verdict paths that refusal
+  opens up)."""
+  # bvparm2020.cif lists rows in decreasing reliability, but its header warns
+  # that rows marked 'unchecked' are unreliable. Where a checked alternative
+  # follows, it wins. Both of these are load-bearing for qmi.
+  assert bvs.valence_params("Fe", 2, "S") == (2.125, 0.37)   # not the 2.12 unchecked row
+  assert bvs.valence_params("Cu", 1, "O") == (1.601, 0.335)  # not (1.610, 0.37); B changes too
+
+  # Margin = the gap in |V - q| between the winner and the runner-up. A
+  # well-separated site is not a close call; a marginal one is. The threshold
+  # matters because BVS discriminates on ~0.01-0.06 A of bond length, less than
+  # the spread between re-refinements of one crystal [84].
+  wide = bvs.estimate_oxidation("Fe", (2, 3), [("O", 2.15)] * 6)
+  assert wide.best == 2 and wide.margin > bvs.CLOSE_CALL_MARGIN
+  assert not wide.close_call, wide.margin
+  tight = bvs.estimate_oxidation("Fe", (2, 3), [("O", 2.09)] * 6)
+  assert tight.margin < bvs.CLOSE_CALL_MARGIN and tight.close_call, tight.margin
+
+  # A single accessible state has nothing to compare against, so there is no
+  # margin and the result must not masquerade as a discriminated verdict.
+  one = bvs.estimate_oxidation("Zn", (2,), [("O", 1.97)] * 4)
+  assert one.best == 2 and one.margin is None and not one.close_call
+
+  # Asymmetric parameter coverage: Mn(2+) has an S row, Mn(3+) does not, so a
+  # mixed Mn thiolate site would sum the two candidates over different bond
+  # counts and silently push the verdict to Mn(II). Refuse instead.
+  mn = bvs.estimate_oxidation("Mn", (2, 3), [("S", 2.40), ("N", 2.20), ("O", 2.10)])
+  assert mn.coverage_asymmetric and mn.best is None
+  assert mn.n_by_state[2] != mn.n_by_state[3], mn.n_by_state
+
+  # best=None must not crash its consumers. Provenance reports the refusal, and
+  # _resolve_state falls through to the predictor instead of committing None,
+  # with the source label following the branch that actually decided.
+  lines = provenance.site_block("Mn", "Mn_A1", 2, 6, 0, "guessed", "low",
+                                "r", "s", mn, "hessian", 0, 0)
+  assert any("no verdict" in ln for ln in lines), lines
+  b = QMRestraintsBuilder(use_bvs=True, logger=null_out())
+  st = b._resolve_state("Mn", None, "octahedral", 6, None, bvs_est=mn)
+  assert st.oxidation_state is not None and st.state_source == "guessed"
+
+  # The margin and the close-call warning reach the header.
+  note = provenance.site_block("Fe", "Fe_A1", 2, 5, 0, "guessed", "low", "r",
+                               "s", tight, "hessian", 0, 0)
+  assert any("close call" in ln for ln in note), note
+
+
+def exercise_unclassified_donors():
+  """Donors the residue-name classifier could not place must be counted and
+  surfaced, and must lower confidence ONLY where the oxidation actually came
+  from the donor summary."""
+  def desc(elx, rn, rid):
+    c = D.classify(elx, rn)
+    return group_args(element=c.element, kind=c.kind, charge=c.charge,
+                      strong_axial=c.strong_axial, res_id=("A", rid, "", rn))
+
+  # A ligand no whitelist covers (citrate here, but the rule is general: any
+  # het_* kind) contributes to no motif count, so the summary carries nothing.
+  cit = D.summarize([desc("O", "FLC", "402")] * 3 + [desc("O", "FLC", "403")] * 3)
+  assert cit.n_unclassified == 6 and not cit.motif_evidence
+  assert cit.unclassified == ["FLC.O"], cit.unclassified
+
+  # A heme's four pyrrole N ARE explained, by the FeN4 topology test, so they
+  # are not reported as unclassified. But `heme` is NOT motif evidence: it is
+  # derived from unplaced het_n donors, so a 100%-het macrocycle must still read
+  # as uninformative.
+  heme = D.summarize([desc("N", "HEM", "350")] * 4
+                     + [desc("N", "HIS", "169"), desc("O", "HOH", "678")])
+  assert heme.heme and heme.n_unclassified == 0 and heme.motif_evidence
+  chl = D.summarize([desc("N", "CLA", "1")] * 4)
+  assert chl.heme and not chl.motif_evidence, "heme must not count as evidence"
+  # Only the four N the test consumed are excused; a fifth N on the same residue
+  # (an intramolecular axial, as in cobalamin) is still unexplained.
+  cbl = D.summarize([desc("N", "B12", "1")] * 5)
+  assert cbl.n_unclassified == 1, cbl.n_unclassified
+
+  # Partial: motif evidence survives, so the site is reported but not capped.
+  part = D.summarize([desc("O", "ASP", "60"), desc("O", "TYR", "92"),
+                      desc("N", "HIS", "250"), desc("O", "CO3", "402")])
+  assert part.n_unclassified == 1 and part.motif_evidence
+
+  b = QMRestraintsBuilder(logger=null_out())
+  # Fires: Fe reads the donor summary, and here it is empty.
+  fe = b._resolve_state("Fe", None, "octahedral", 6, cit)
+  assert fe.confidence == el.CONF_LOW
+  assert "NO donor was classified" in fe.oxidation_reason, fe.oxidation_reason
+  # Does NOT fire where the donor evidence is irrelevant to the oxidation: a
+  # single accessible state (Mg/Zn) is definitional, and Cu decides on CN and
+  # geometry. Capping those would contradict their own reason strings.
+  mg = b._resolve_state("Mg", None, "octahedral", 6,
+                        D.summarize([desc("O", "GNP", "201")] * 6))
+  assert mg.confidence == el.CONF_HIGH, mg.oxidation_reason
+  assert "NO donor was classified" not in (mg.oxidation_reason or "")
+  cu = b._resolve_state("Cu", None, "octahedral", 6,
+                        D.summarize([desc("O", "LIG", "1")] * 6))
+  assert cu.confidence == el.CONF_HIGH, cu.oxidation_reason
+  # The helper the cap keys on must track predict_oxidation's branches.
+  assert el.oxidation_uses_donors("Fe") and el.oxidation_uses_donors("Mn")
+  assert not el.oxidation_uses_donors("Zn") and not el.oxidation_uses_donors("Cu")
+
+  # And it reaches the .edits header, so an empty summary is never silent.
+  lines = provenance.site_block("Fe", "Fe_A401", 2, 5, 0, "guessed", "low",
+                                fe.oxidation_reason, "s", None, "hessian", 0, 0,
+                                donor_summary=cit)
+  assert any("unclassified donors: 6" in ln for ln in lines), lines
+
+
+def exercise_rubredoxin_ferric():
+  """Rubredoxin-type Fe(S-Cys)4 commits FERRIC, and the rule is narrow enough to
+  leave every neighbouring donor set alone."""
+  def desc(elx, rn, rid):
+    c = D.classify(elx, rn)
+    return group_args(element=c.element, kind=c.kind, charge=c.charge,
+                      strong_axial=c.strong_axial, res_id=("A", rid, "", rn))
+  def ox(cn, ds, geom=None):
+    return el.predict_oxidation(
+      "Fe", geom or ("tetrahedral" if cn == 4 else "octahedral"), cn,
+      D.summarize(ds))
+
+  # Exactly four Cys thiolates, nothing else: ferric as isolated [76, 77, 78],
+  # LOW confidence because the site is ferrous in reservoir roles [87] and
+  # partly photoreduced at routine dose [84].
+  rd = ox(4, [desc("S", "CYS", str(i)) for i in (5, 8, 38, 41)])
+  assert rd.oxidation == 3, rd.reason
+  assert rd.confidence == el.CONF_LOW                  # never medium or high
+  assert "rubredoxin-type" in rd.reason
+  assert "ferrous" in rd.reason and "photoreduced" in rd.reason  # names the ambiguity
+  # High-spin d5 -> sextet, from the same donor set.
+  st = el.predict_state("Fe", "tetrahedral", 4,
+                        D.summarize([desc("S", "CYS", str(i)) for i in (5, 8, 38, 41)]))
+  assert st.oxidation_state == 3 and st.multiplicity == 6
+
+  # NOT caught: nitrile hydratase (3 Cys-derived S + backbone N, CN 5) is a
+  # LOW-SPIN Fe(III) [86]; committing it ferric here would be right for the wrong
+  # reason and would still carry the wrong spin, so the rule must not fire.
+  nhase = ox(5, [desc("S", "CYS", str(i)) for i in (1, 2, 3)]
+             + [desc("N", "ALA", "4"), desc("N", "ALA", "5")])
+  assert "rubredoxin-type" not in nhase.reason, nhase.reason
+
+  # NOT caught: every [2Fe-2S] iron presents 2 Cys S + 2 inorganic S, which the
+  # previous >=2-Cys form of this rule swallowed. (The mononuclear gate upstream
+  # is the real defence; this is belt and braces.)
+  fes = ox(4, [desc("S", "CYS", "1"), desc("S", "CYS", "2"),
+               desc("S", "SF4", "9"), desc("S", "SF4", "9")])
+  assert "rubredoxin-type" not in fes.reason, fes.reason
+
+  # NOT caught: a fifth donor means it is not a rubredoxin-type site.
+  plus_w = ox(5, [desc("S", "CYS", str(i)) for i in (1, 2, 3, 4)]
+              + [desc("O", "HOH", "9")])
+  assert "rubredoxin-type" not in plus_w.reason, plus_w.reason
+  # NOT caught: superoxide-reductase centre II (4 His + 1 Cys) is ferrous.
+  sor = ox(5, [desc("N", "HIS", str(i)) for i in (1, 2, 3, 4)]
+           + [desc("S", "CYS", "5")])
+  assert sor.oxidation == 2, sor.reason
+
+  # Unchanged neighbours: the two HIGH-confidence Fe rules must not move.
+  triad = ox(6, [desc("N", "HIS", "1"), desc("N", "HIS", "2"),
+                 desc("O", "ASP", "3")]
+             + [desc("O", "HOH", str(i)) for i in (7, 8, 9)])
+  assert triad.oxidation == 2 and triad.confidence == el.CONF_HIGH
+  tyr = ox(6, [desc("O", "TYR", "92"), desc("O", "TYR", "191"),
+               desc("O", "ASP", "60"), desc("N", "HIS", "250"),
+               desc("O", "CO3", "402"), desc("O", "CO3", "402")])
+  assert tyr.oxidation == 3 and tyr.confidence == el.CONF_HIGH
+
+
+def exercise_dose_pair_invariance():
+  """A radiation-damaged twin must get the SAME committed state, and the
+  advisory disagreement that follows must be reported rather than buried.
+
+  9TA4 and 9TA6 are one rubredoxin crystal measured at 50 kGy and then at 1 MGy
+  [84]. Every refinement-robust feature is identical between them (4 Cys S,
+  CN 4, tetrahedral, charge -1); only the Fe-S distances differ, by 0.037 A,
+  which matches a full chemical reduction of the same protein (5NW3 -> 5OME,
+  0.0368 A). So the predictor MUST return the same state for both: that is the
+  invariant, not an oversight. Letting the distances decide instead would be
+  circular, since qmi's own restraint moves them [84].
+  """
+  def desc(elx, rn, rid):
+    c = D.classify(elx, rn)
+    return group_args(element=c.element, kind=c.kind, charge=c.charge,
+                      strong_axial=c.strong_axial, res_id=("A", rid, "", rn))
+  cys4 = [desc("S", "CYS", str(i)) for i in (6, 9, 39, 42)]
+  summary = D.summarize(cys4)
+
+  # Same donors, same answer, deliberately: dose is not a donor property.
+  low, high = (el.predict_oxidation("Fe", "tetrahedral", 4, summary)
+               for _ in range(2))
+  assert low.oxidation == high.oxidation == 3, (low.oxidation, high.oxidation)
+  assert low.confidence == high.confidence == el.CONF_LOW
+  assert low.reason == high.reason
+  assert "photoreduced" in low.reason, low.reason
+
+  # The observed geometries DO differ, and BVS sees it. Real deposited Fe-S
+  # distances, measured from 9TA4 and 9TA6.
+  d_low = (2.2821, 2.2573, 2.3204, 2.2620)      # 9TA4, 50 kGy,  mean 2.2804
+  d_high = (2.3243, 2.2910, 2.3528, 2.2999)     # 9TA6, 1 MGy,   mean 2.3170
+  est_low = bvs.estimate_oxidation("Fe", (2, 3), [("S", d) for d in d_low])
+  est_high = bvs.estimate_oxidation("Fe", (2, 3), [("S", d) for d in d_high])
+  assert est_low.best == 3 and not est_low.close_call, est_low.margin
+  assert est_high.best == 2 and est_high.close_call, est_high.margin
+  # ...and the high-dose verdict is a knife edge: an order of magnitude less
+  # separation than the low-dose one, well under CLOSE_CALL_MARGIN.
+  assert est_high.margin < 0.1 < est_low.margin, (est_low.margin,
+                                                  est_high.margin)
+
+  # The disagreement must reach the .edits header, with the close-call caveat
+  # and the override, and must NOT appear where BVS agrees.
+  hi = provenance.site_block("Fe", "Fe_A101", 3, 6, -1, "guessed", "low",
+                             low.reason, "s", est_high, "hessian", 0, 0)
+  assert any("BVS DISAGREES" in ln for ln in hi), hi
+  assert any("close call" in ln for ln in hi), hi
+  assert any("metal_state" in ln for ln in hi), hi
+  lo = provenance.site_block("Fe", "Fe_A101", 3, 6, -1, "guessed", "low",
+                             low.reason, "s", est_low, "hessian", 0, 0)
+  assert not any("BVS DISAGREES" in ln for ln in lo), lo
+  # A user who already chose the state is told of the disagreement but not
+  # advised to use the override they have plainly already found.
+  usr = provenance.site_block("Fe", "Fe_A101", 3, 6, -1, "user-supplied", "",
+                              low.reason, "s", est_high, "hessian", 0, 0)
+  assert any("BVS DISAGREES" in ln for ln in usr), usr
+  assert not any("metal_state" in ln for ln in usr), usr
+  # And a BVS-sourced state cannot disagree with itself.
+  src = provenance.site_block("Fe", "Fe_A101", 2, 5, -2, "bvs", "low",
+                              low.reason, "s", est_high, "hessian", 0, 0)
+  assert not any("BVS DISAGREES" in ln for ln in src), src
+
+
+def exercise_donor_perception():
+  """The bond-graph perception layer: a delocalised charge must be read off the
+  resonance GROUP, since a Lewis walk parks it on one arbitrary member."""
+  from mmtbx.geometry_restraints.qmi import donor_perception as P
+  # Acetate: C(methyl)-C(carboxyl)(-O)(-O), charge parked on ONE oxygen.
+  ace = P.DonorPerception(["C", "C", "O", "O"],
+                          [(0, 1), (1, 2), (1, 3)], charges={2: -1})
+  assert ace.resonance_group(2) == (2, 3) == ace.resonance_group(3)
+  # The point of the whole exercise: the uncharged oxygen is the coordinating
+  # one about half the time, and reading the ATOM there gives 0.
+  assert ace.charges.get(3, 0) == 0
+  assert ace.group_charge(2) == -1 and ace.group_charge(3) == -1
+  # Deduped by group: a bidentate carboxylate is ONE anionic group, not two.
+  assert ace.group_charges([2, 3]) == {(2, 3): -1}
+
+  # A metal is never a substituent: a donor bonded to one must not look
+  # saturated, or every sigma-count rule downstream misfires.
+  with_m = P.DonorPerception(["C", "C", "O", "O", "Fe"],
+                             [(0, 1), (1, 2), (1, 3), (2, 4)], charges={2: -1},
+                             metal_iseqs=[4])
+  assert with_m.heavy_neighbours(2) == [1]
+  assert with_m.resonance_group(2) == (2, 3)
+  assert with_m.n_sigma(2) == 1
+
+  # Sigma count and H: a hydroxyl O has 2 (one C, one H), an alkoxide 1.
+  roh = P.DonorPerception(["C", "O", "H"], [(0, 1), (1, 2)])
+  assert roh.n_sigma(1) == 2 and roh.bonded_h(1) == [2]
+  assert roh.resonance_group(1) == (1,), "a hydroxyl is its own group"
+
+  # A group on a ring the Lewis walk never solved is reported untrusted rather
+  # than handed over as a result.
+  ring = P.DonorPerception(["C", "O"], [(0, 1)], charges={1: -1},
+                           unresolved_iseqs=[0, 1])
+  assert not ring.group_is_resolved(1)
+  assert ace.group_is_resolved(2), "a resolved group stays usable"
+  # The PARENT counts as much as the group. A terminal O hanging off an unsolved
+  # aromatic ring is its own group and never intersects the ring, so checking
+  # the group alone would call an unsolved phenolate trustworthy.
+  phenol = P.DonorPerception(["C", "O"], [(0, 1)], charges={1: -1},
+                             unresolved_iseqs=[0])
+  assert phenol.resonance_group(1) == (1,)
+  assert not phenol.group_is_resolved(1), "parent on an unsolved ring"
+
+  # The charge of a group is not always all on its terminal atoms. A nitro
+  # group is formally neutral: N is +1 and one O is -1, so reading the oxygens
+  # alone gives -1 for a fragment that carries no charge.
+  nitro = P.DonorPerception(["C", "N", "O", "O"],
+                            [(0, 1), (1, 2), (1, 3)], charges={1: 1, 2: -1})
+  assert nitro.group_charge(2) == 0, nitro.group_charge(2)
+  # Including the parent leaves the ordinary anions exactly where they were,
+  # since their parent atoms are formally neutral...
+  assert ace.group_charge(2) == -1
+  pho = P.DonorPerception(["P", "O", "O", "O", "O"],
+                          [(0, 1), (0, 2), (0, 3), (0, 4)],
+                          charges={1: -1, 2: -1, 3: -1})
+  assert pho.group_charge(1) == -3, pho.group_charge(1)
+  # ...and corrects a sulfate written zwitterionically, S(2+) with four O(-),
+  # which the terminal atoms alone would read as -4.
+  sul = P.DonorPerception(["S", "O", "O", "O", "O"],
+                          [(0, 1), (0, 2), (0, 3), (0, 4)],
+                          charges={0: 2, 1: -1, 2: -1, 3: -1, 4: -1})
+  assert sul.group_charge(1) == -2, sul.group_charge(1)
+
+
+def exercise_bond_graph_donor_charge():
+  """Anionic charge the residue names cannot see is recovered from the bond
+  graph, and ONLY where the names ran out."""
+  def desc(elx, rn, rid, gid=None, gq=None):
+    c = D.classify(elx, rn)
+    return group_args(element=c.element, kind=c.kind, charge=c.charge,
+                      strong_axial=c.strong_axial, res_id=("A", rid, "", rn),
+                      group_id=gid, group_charge=gq)
+
+  # Bis-citrate Fe (6G7Q): four carboxylate groups plus two neutral hydroxyls,
+  # none of them on any residue-name whitelist.
+  cit = D.summarize(
+    [desc("O", "FLC", "402", gid=(1,), gq=-1),
+     desc("O", "FLC", "402", gid=(2,), gq=-1),
+     desc("O", "FLC", "402", gid=(3,), gq=0),      # hydroxyl, neutral
+     desc("O", "FLC", "403", gid=(4,), gq=-1),
+     desc("O", "FLC", "403", gid=(5,), gq=-1),
+     desc("O", "FLC", "403", gid=(6,), gq=0)])
+  assert cit.n_anionic_unplaced == 4, cit.n_anionic_unplaced
+  assert cit.q_hard == -4, cit.q_hard
+  # ...and that is enough to commit the ferric state the whitelist alone missed.
+  fe = el.predict_oxidation("Fe", "octahedral", 6, cit)
+  assert fe.oxidation == 3 and fe.confidence == el.CONF_MEDIUM, fe.reason
+  assert "bond graph" in fe.reason, fe.reason
+
+  # A group is counted ONCE however many of its atoms coordinate: a bidentate
+  # carboxylate presents -1, not -2.
+  bi = D.summarize([desc("O", "FLC", "402", gid=(1,), gq=-1),
+                    desc("O", "FLC", "402", gid=(1,), gq=-1)])
+  assert bi.n_anionic_unplaced == 1 and bi.q_hard == -1
+
+  # Capped at -1 per group, so the calibrated q_hard thresholds keep their
+  # meaning: a carbonate at -2 does not count double.
+  carb = D.summarize([desc("O", "CO3", "402", gid=(1,), gq=-2)])
+  assert carb.q_hard == -1, carb.q_hard
+
+  # Donors the residue names DID place are untouched, so nothing the whitelist
+  # already gets right can be double-counted or overridden.
+  asp = D.summarize([desc("O", "ASP", "60", gid=(1,), gq=-1),
+                     desc("O", "TYR", "92", gid=(2,), gq=-1)])
+  assert asp.n_anionic_unplaced == 0 and asp.q_hard == -2
+
+  # Hard O only. Porphyrin pyrrole N carry the macrocycle charge, and letting
+  # them into q_hard would make EVERY heme ferric; a thiolate S is soft and has
+  # no business in a rule cited to hard-oxygen HSAB.
+  # A 5-coordinate His heme (deoxy globin / resting peroxidase) is the sharp
+  # case: it has no anionic axial ligand at all, so if the macrocycle's own
+  # charge leaked into q_hard the ferric limb would fire on the ONE thing the
+  # heme rules are written to ignore.
+  heme = D.summarize([desc("N", "HEM", "350", gid=(i,), gq=-1)
+                      for i in range(4)]
+                     + [desc("N", "HIS", "169")])
+  assert heme.heme and heme.n_anionic_unplaced == 0 and heme.q_hard == 0
+  fe_heme = el.predict_oxidation("Fe", "square_pyramidal", 5, heme)
+  assert fe_heme.oxidation == 2, fe_heme.reason
+  soft = D.summarize([desc("S", "SF4", "1", gid=(i,), gq=-1) for i in range(4)])
+  assert soft.n_anionic_unplaced == 0 and soft.q_hard == 0
+
+  # No bond graph (an uninterpretable ligand): the predictor falls back to the
+  # residue names it used before, and says the state is a default.
+  none = D.summarize([desc("O", "FLC", "402") for _ in range(6)])
+  assert none.n_anionic_unplaced == 0 and none.q_hard == 0
+  assert not none.motif_evidence
+
+  # A group id that is falsy but present must not fall back to object identity,
+  # or two donors of ONE group would count as two.
+  same = D.summarize([desc("O", "FLC", "402", gid=(), gq=-1),
+                      desc("O", "FLC", "402", gid=(), gq=-1)])
+  assert same.n_anionic_unplaced == 1, same.n_anionic_unplaced
+
+  # The heme limb fires on a SINGLE anionic group, so a bond-graph charge is
+  # load-bearing there on its own and the reason must disclose it rather than
+  # asserting a phenolate it has not seen.
+  heme_ox = D.summarize([desc("N", "HEM", "350", gid=(i,)) for i in range(4)]
+                        + [desc("O", "LIG", "9", gid=(9,), gq=-1)])
+  assert heme_ox.heme and heme_ox.q_hard == -1
+  fe_ax = el.predict_oxidation("Fe", "octahedral", 6, heme_ox)
+  assert fe_ax.oxidation == 3 and "bond graph" in fe_ax.reason, fe_ax.reason
+
+  # Mn reads the donor summary but never q_hard, so a recovered charge is not
+  # evidence for a Mn site and must not lift its confidence cap.
+  b = QMRestraintsBuilder(logger=null_out())
+  mn = b._resolve_state("Mn", None, "octahedral", 6, cit)
+  assert mn.confidence == el.CONF_LOW, mn.oxidation_reason
+  assert "NO donor was classified" in mn.oxidation_reason, mn.oxidation_reason
+  # ...whereas for Fe, which does read it, the cap correctly lifts.
+  fe_state = b._resolve_state("Fe", None, "octahedral", 6, cit)
+  assert "NO donor was classified" not in (fe_state.oxidation_reason or "")
+  assert el.oxidation_uses_donor_charge("Fe")
+  assert not el.oxidation_uses_donor_charge("Mn")
+
+  # The recovered charge reaches the .edits header, and replaces the
+  # "state is a default" note, which would now be untrue.
+  lines = provenance.site_block("Fe", "Fe_A401", 3, 6, 0, "guessed", "medium",
+                                fe.reason, "s", None, "hessian", 0, 0,
+                                donor_summary=cit)
+  assert any("recovered from the bond graph" in ln for ln in lines), lines
+  assert not any("state is a default" in ln for ln in lines), lines
 
 
 def exercise_atcun_deprotonation():
@@ -1581,6 +1979,195 @@ def exercise_run_constrained_opt_dispatch():
     (orca_manager.orca_manager, xtb_manager.xtb_manager) = saved
 
 
+# ---------------------------------------------------------------------------
+# metal_protonation (the rules, decided separately from applying them)
+#
+# protonation.py is exercised above through deprotonate_metal_donors, which
+# walks a hierarchy. These cover the rule module underneath it, whose point is
+# that decide() answers from facts alone, with no structure in sight, so a
+# protonation program can call it from inside a placement loop before the
+# hydrogen in question exists.
+# ---------------------------------------------------------------------------
+_MP_ZN_CYS_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  CB  CYS A   1       9.000  10.000  10.000  1.00 20.00           C
+ATOM      2  SG  CYS A   1      10.400  10.000  10.000  1.00 20.00           S
+ATOM      3  HG  CYS A   1      10.800  10.900  10.000  1.00 20.00           H
+HETATM    4 ZN    ZN A 100      12.500  10.000  10.000  1.00 20.00          ZN
+END
+"""
+
+_MP_NA_CYS_PDB = _MP_ZN_CYS_PDB.replace(
+  "HETATM    4 ZN    ZN A 100", "HETATM    4 NA    NA A 100").replace(
+  "          ZN", "          NA")
+
+# A HIP His coordinating through ND1 (the site above uses NE2), so the
+# coordinating ring N is the one the nearest-metal pick has to find.
+_MP_HIS_HIP_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  CG  HIS A   1       8.000  10.000  10.000  1.00 20.00           C
+ATOM      2  ND1 HIS A   1       9.100   9.200  10.000  1.00 20.00           N
+ATOM      3  CD2 HIS A   1       8.400  11.300  10.000  1.00 20.00           C
+ATOM      4  CE1 HIS A   1      10.100  10.050  10.000  1.00 20.00           C
+ATOM      5  NE2 HIS A   1       9.700  11.300  10.000  1.00 20.00           N
+ATOM      6  HD1 HIS A   1       9.150   8.200  10.000  1.00 20.00           H
+ATOM      7  HE2 HIS A   1      10.200  12.100  10.000  1.00 20.00           H
+HETATM    8 ZN    ZN A 100      11.300   8.600  10.000  1.00 20.00          ZN
+END
+"""
+
+
+def _mp_hier(pdb_str):
+  return iotbx.pdb.input(source_info=None,
+                         lines=pdb_str.splitlines()).construct_hierarchy()
+
+
+def _mp_cutoff(_metal_element, _donor_element):
+  return 3.0
+
+
+def _mp_metals(hier):
+  return [a for a in hier.atoms()
+          if a.element.strip().capitalize() in ("Zn", "Na", "Cu", "Ni", "Fe")]
+
+
+def exercise_rules_decide_is_pure():
+  """The oracle answers from facts alone, with no structure in sight."""
+  thiolate = mp.decide(mp.donor_facts("CYS", "SG", "S", "Zn", 2.3,
+                                      h_names=["HG"]))
+  assert thiolate.action == mp.REMOVE_H, thiolate.reason
+  assert thiolate.h_name == "HG" and thiolate.mark_acceptor
+
+  # Already anionic: nothing to do, and no pretending otherwise.
+  done = mp.decide(mp.donor_facts("CYS", "SG", "S", "Zn", 2.3, h_names=[]))
+  assert done.action == mp.KEEP, done.reason
+
+  # HSAB gate: a hard, low-charge ion does not induce a thiolate [37, 38].
+  soft_gate = mp.decide(mp.donor_facts("CYS", "SG", "S", "Na", 2.8,
+                                       h_names=["HG"]))
+  assert soft_gate.action == mp.KEEP and soft_gate.rule == "hsab-gate"
+  # ...but a carboxylate is anionic by pH whatever the metal, so it is NOT
+  # gated: it fires on the same hard ion the thiolate rule refuses.
+  acid = mp.decide(mp.donor_facts("GLU", "OE1", "O", "Na", 2.4,
+                                  h_names=["HE2"]))
+  assert acid.action == mp.REMOVE_H, acid.reason
+
+
+def exercise_rules_histidine_stays_neutral():
+  """A coordinating His must never become an imidazolate."""
+  # Both ring N protonated: drop the coordinating one, leaving a neutral ring.
+  hip = mp.decide(mp.donor_facts("HIS", "ND1", "N", "Zn", 2.1,
+                                 h_names=["HD1"], partner_h_names=["HE2"]))
+  assert hip.action == mp.REMOVE_H and hip.rule == "his-hip"
+
+  # Only the coordinating N protonated: the wrong tautomer. The proton MOVES
+  # across the ring; removing it would strip the ring's last proton.
+  taut = mp.decide(mp.donor_facts("HIS", "ND1", "N", "Zn", 2.1,
+                                  h_names=["HD1"], partner_h_names=[]))
+  assert taut.action == mp.MOVE_TO_PARTNER, taut.reason
+  assert taut.new_name == "HE2", taut.new_name
+  # Deuterium keeps its isotope through the rename.
+  d_taut = mp.decide(mp.donor_facts("HIS", "NE2", "N", "Zn", 2.1,
+                                    h_names=["DE2"], partner_h_names=[]))
+  assert d_taut.new_name == "DD1", d_taut.new_name
+
+  # Coordinating N already bare: correct neutral tautomer, leave it alone.
+  ok = mp.decide(mp.donor_facts("HIS", "NE2", "N", "Zn", 2.1, h_names=[],
+                                partner_h_names=["HD1"]))
+  assert ok.action == mp.KEEP
+
+
+def exercise_rules_atcun():
+  """ATCUN N-terminal deprotonation, and its gate."""
+  amine = mp.decide(mp.donor_facts("GLY", "N", "N", "Cu", 2.0,
+                                   h_names=["H1", "H2", "H3"],
+                                   is_standard_aa=True))
+  assert amine.action == mp.REMOVE_H and amine.rule == "atcun-amine"
+  # Which of the three equivalent H goes is geometry, not chemistry, so the
+  # rule names the criterion instead of guessing an atom.
+  assert amine.h_select == "nearest_to_metal" and amine.h_name is None
+
+  amidate = mp.decide(mp.donor_facts("ALA", "N", "N", "Cu", 2.0,
+                                     h_names=["H"], is_standard_aa=True))
+  assert amidate.action == mp.REMOVE_H and amidate.rule == "atcun-amidate"
+
+  # Only Cu/Ni do this biologically; a Zn backbone N keeps its amide H.
+  zn = mp.decide(mp.donor_facts("ALA", "N", "N", "Zn", 2.0, h_names=["H"],
+                                is_standard_aa=True))
+  assert zn.action == mp.KEEP and zn.rule == "atcun-gate"
+
+
+def exercise_rules_observed_hydrogens():
+  """An OBSERVED hydrogen is data. The default refuses to delete it."""
+  facts = mp.donor_facts("CYS", "SG", "S", "Zn", 2.3, h_names=["HG"],
+                         h_observed=True)
+  assert mp.decide(facts).action == mp.KEEP
+  assert mp.decide(facts).rule == "observed-h"
+  # A caller that knows the H is placed rather than measured can say so.
+  loose = mp.default_policy(deprotonate_observed_h=True)
+  assert mp.decide(facts, policy=loose).action == mp.REMOVE_H
+
+
+def exercise_rules_policy_is_data():
+  """The metal sets are choices a caller may override, not laws."""
+  facts = mp.donor_facts("CYS", "SG", "S", "Pb", 2.6, h_names=["HG"])
+  assert mp.decide(facts).action == mp.KEEP     # Pb is not in the default set
+  extended = mp.default_policy(
+    anion_inducing_metals=frozenset(mp.ANION_INDUCING_METALS | {"Pb"}))
+  assert mp.decide(facts, policy=extended).action == mp.REMOVE_H
+
+
+def exercise_rules_propose_mutates_nothing():
+  """propose() is read-only; apply_changes() is what changes the structure."""
+  hier = _mp_hier(_MP_ZN_CYS_PDB)
+  before = hier.atoms().size()
+  changes = mp.propose(hier, _mp_metals(hier), _mp_cutoff)
+  assert len(changes) == 1, [e.rule for e in changes]
+  assert hier.atoms().size() == before, "propose must not mutate"
+  assert changes[0].action == mp.REMOVE_H and changes[0].rule == "anionic-donor"
+  # The change identifies its hydrogen in a way that survives a re-sort.
+  assert changes[0].h_id[4] == "CYS" and changes[0].h_id[5] == "HG"
+  counts = mp.apply_changes(hier, changes)
+  assert counts.n_removed == 1
+  assert hier.atoms().size() == before - 1
+  assert "HG" not in [a.name.strip() for a in hier.atoms()]
+
+  # The same donor at a hard ion is left alone, end to end.
+  na = _mp_hier(_MP_NA_CYS_PDB)
+  assert mp.propose(na, _mp_metals(na), _mp_cutoff) == []
+
+
+def exercise_rules_propose_his_tautomer():
+  """A doubly-protonated coordinating His loses exactly one proton."""
+  hier = _mp_hier(_MP_HIS_HIP_PDB)
+  changes = mp.propose(hier, _mp_metals(hier), _mp_cutoff)
+  assert len(changes) == 1, [(e.rule, e.h_id) for e in changes]
+  assert changes[0].rule == "his-hip"
+  # The metal is nearest ND1, so that is the coordinating ring N.
+  assert changes[0].donor_atom.name.strip() == "ND1", changes[0].donor_atom.name
+  assert changes[0].h_id[5] == "HD1"
+  mp.apply_changes(hier, changes)
+  names = [a.name.strip() for a in hier.atoms()]
+  assert "HD1" not in names and "HE2" in names, names
+
+
+def exercise_rules_apply_does_not_sort():
+  """A caller may hold i_seq-indexed structures, so the applier must not
+  silently reorder their atoms. qmi's own wrapper re-sorts afterwards; that is
+  its choice to make, not the rule module's."""
+  hier = _mp_hier(_MP_ZN_CYS_PDB)
+  order_before = [a.name.strip() for a in hier.atoms()]
+  changes = mp.propose(hier, _mp_metals(hier), _mp_cutoff)
+  mp.apply_changes(hier, changes)
+  order_after = [a.name.strip() for a in hier.atoms()]
+  assert order_after == [n for n in order_before if n != "HG"], order_after
+
+
+def exercise_rules_no_metals_is_a_noop():
+  hier = _mp_hier(_MP_ZN_CYS_PDB)
+  assert mp.propose(hier, [], _mp_cutoff) == []
+
+
 def run():
   exercise_metals()
   exercise_hessian_parse()
@@ -1611,6 +2198,15 @@ def run():
   exercise_deprotonation_donor_families()
   exercise_deprotonation_metal_gating()
   exercise_atcun_deprotonation()
+  exercise_rules_decide_is_pure()
+  exercise_rules_histidine_stays_neutral()
+  exercise_rules_atcun()
+  exercise_rules_observed_hydrogens()
+  exercise_rules_policy_is_data()
+  exercise_rules_propose_mutates_nothing()
+  exercise_rules_propose_his_tautomer()
+  exercise_rules_apply_does_not_sort()
+  exercise_rules_no_metals_is_a_noop()
   exercise_water_protonation()
   exercise_state_override()
   exercise_shape()
@@ -1619,6 +2215,12 @@ def run():
   exercise_donors()
   exercise_predict_only()
   exercise_bvs()
+  exercise_bvs_hygiene()
+  exercise_unclassified_donors()
+  exercise_rubredoxin_ferric()
+  exercise_donor_perception()
+  exercise_bond_graph_donor_charge()
+  exercise_dose_pair_invariance()
   exercise_program()
 
 
