@@ -323,6 +323,9 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
         "output.separate_worse_clashes=True",
         "output.report_vdws=False",
         "output.write_files=False",
+        # No @group line: the dots belong in a @subgroup of the structure's
+        # kinemage group, not in a separate group with its own button.
+        "output.add_group_line=False",
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
@@ -386,6 +389,10 @@ def make_probe_dots_from_model(model_manager):
         "output.separate_worse_clashes=True",
         "output.report_vdws=False",
         "output.write_files=False",
+        # No @group line: the dots are appended to the structure's kinemage
+        # group by the callers, so they belong in a @subgroup of it rather
+        # than in a separate group with its own button in viewers.
+        "output.add_group_line=False",
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
@@ -395,6 +402,11 @@ def make_probe_dots_from_model(model_manager):
                           master_phil=parser.master_phil, logger=null_out())
       p2.overrideModel(sub_model)
       dots, output = p2.run()
+      if len(hierarchy.models()) > 1:
+        # Label each model's dots subgroup so the buttons are telling them
+        # apart in a multi-model kinemage.
+        output = output.replace("@subgroup dominant {self dots}",
+          "@subgroup dominant {self dots m%s}" % m.id.strip(), 1)
       probe_return += output
       if os.path.exists(tempName):
         os.unlink(tempName)
