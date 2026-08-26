@@ -3712,6 +3712,25 @@ class DatasetPanel(wx.Panel):
                           flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
                           border=5)
 
+    def add_task_line(text, shared_with=None):
+      ''' A task summary line, optionally prefixed with a link icon whose
+          tooltip lists the datasets it is shared with. '''
+      if not shared_with:
+        add_line(text)
+        return
+      row = wx.BoxSizer(wx.HORIZONTAL)
+      bmp = wx.StaticBitmap(self.task_panel,
+                            bitmap=wx.Bitmap('{}/16x16/linked.png'.format(icons)))
+      tip = 'Shared with: %s' % ', '.join(shared_with)
+      bmp.SetToolTip(tip)
+      row.Add(bmp, flag=wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, border=4)
+      lbl = wx.StaticText(self.task_panel, label=text, style=wx.ALIGN_LEFT)
+      lbl.Wrap(wrap_width - 24)
+      row.Add(lbl, proportion=1, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.task_sizer.Add(row,
+                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
+                          border=5)
+
     # Show tags
     tags = self.dataset.tags
     if tags:
@@ -3745,7 +3764,11 @@ class DatasetPanel(wx.Panel):
           if params_text:
             task_text += params_text
 
-        add_line(task_text)
+        # Annotate tasks that are shared with other datasets via a link icon.
+        sharing = self.db.get_datasets_for_task(task.id)
+        shared_with = [d.name for d in sharing if d.id != self.dataset.id]
+
+        add_task_line(task_text, shared_with)
 
       # Show version info if available
       if self.dataset.latest_version:
