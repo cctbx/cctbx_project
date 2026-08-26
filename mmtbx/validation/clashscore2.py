@@ -30,6 +30,68 @@ def remove_models_except_index(model_manager, model_index):
                 hierarchy.remove_model(model=model)
     return model_manager
 
+def _submodel_atom_key(atom):
+  """Identity key for an atom that is stable across the models of an ensemble
+  (all models in a multi-model file are required to share composition)."""
+  ag = atom.parent()
+  rg = ag.parent()
+  chain = rg.parent()
+  return (chain.id, rg.resseq, rg.icode, ag.altloc, ag.resname, atom.name)
+
+def _atom_index_by_key(hierarchy):
+  """Map each atom's identity key to its index in hierarchy.atoms() order.
+  Returns None if any two atoms share a key, since the mapping would then be
+  ambiguous."""
+  ret = {}
+  for i, a in enumerate(hierarchy.atoms()):
+    key = _submodel_atom_key(a)
+    if key in ret:
+      return None
+    ret[key] = i
+  return ret
+
+def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
+  """Return a deep copy of the processed master model manager whose atoms carry
+  the coordinates, occupancies, and B factors of the matching atoms in the given
+  single-model hierarchy.  The copy keeps the master's restraints and atom-type
+  information, so probe2 does not need to process it again.  Returns None when
+  the hierarchy's atoms do not correspond one-to-one with the master's (for
+  example a malformed ensemble whose models differ in composition), in which
+  case the caller should fall back to processing the model.
+  """
+  from scitbx.array_family import flex
+  if key_to_index is None:
+    return None
+  atoms = hierarchy.atoms()
+  n = len(key_to_index)
+  if len(atoms) != n:
+    return None
+  sites = flex.vec3_double(n)
+  occs = flex.double(n)
+  bs = flex.double(n)
+  assigned = [False] * n
+  for a in atoms:
+    idx = key_to_index.get(_submodel_atom_key(a))
+    if idx is None or assigned[idx]:
+      return None
+    assigned[idx] = True
+    sites[idx] = a.xyz
+    occs[idx] = a.occ
+    bs[idx] = a.b
+  work = processed_master.deep_copy()
+  # model.select() (which deep_copy() uses) does not carry the monomer mappings
+  # that model.selection() needs for keywords like "backbone" and "sidechain".
+  # The copy shares the master's atom layout, so the master's mappings remain
+  # valid for it.  Prime the atom selection cache as well because selection()
+  # hands the raw cache attribute to the selection manager.
+  work._all_monomer_mappings = processed_master._all_monomer_mappings
+  work.get_atom_selection_cache()
+  for i, wa in enumerate(work.get_hierarchy().atoms()):
+    wa.set_occ(occs[i])
+    wa.set_b(bs[i])
+  work.set_sites_cart(sites)
+  return work
+
 class clashscore2(validation):
   __slots__ = validation.__slots__ + [
     "clashscore",
@@ -122,27 +184,80 @@ class clashscore2(validation):
     n_models = len(pdb_hierarchy.models())
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
-    for i_mod, model in enumerate(pdb_hierarchy.models()):
 
-      # Select only the current submodel from the hierarchy
-      submodel = original_model.deep_copy()
-      remove_models_except_index(submodel, i_mod)
+    # All models of an ensemble are required to share composition, so their
+    # restraints (and per-atom energy/H-bond types) are identical; only the
+    # coordinates (and possibly occupancies and B factors) differ.  Rather than
+    # letting probe2 process each model separately (which re-reads the monomer
+    # library and re-interprets the model every time), process one model with
+    # probe2's own interpretation parameters and keep it as a pristine master.
+    # Each model then gets a deep copy of the master carrying its own atom
+    # parameters.  probe2 can add Phantom Hydrogens to the hierarchy it is
+    # given, which is why each run gets its own copy rather than the master
+    # itself.  If a model's atoms do not correspond one-to-one with the
+    # master's, fall back to processing that model as before.
+    original_hierarchy = original_model.get_hierarchy()
+    processed_master = None
+    master_key_to_index = None
+    for i_mod, model in enumerate(pdb_hierarchy.models()):
 
       # Construct a hierarchy for the current submodel
       r = iotbx.pdb.hierarchy.root()
-      mdc = submodel.get_hierarchy().models()[0].detached_copy()
+      mdc = original_hierarchy.models()[i_mod].detached_copy()
       r.append_model(mdc)
 
       occ_max = flex.max(r.atoms().extract_occ())
 
-      # Make yet another model for the new hierarchy
-      subset_model_manager = mmtbx.model.manager(
-        model_input       = None,
-        pdb_hierarchy     = r,
-        stop_for_unknowns = False,
-        crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = ro,
-        log               = None)
+      work_model_manager = None
+      model_is_processed = False
+      if processed_master is None:
+        # Build a model manager for this submodel and try to process it into
+        # the master whose restraints later models will reuse.
+        master = mmtbx.model.manager(
+          model_input       = None,
+          pdb_hierarchy     = r,
+          stop_for_unknowns = False,
+          crystal_symmetry  = original_model.crystal_symmetry(),
+          restraint_objects = ro,
+          log               = None)
+        try:
+          try:
+            master.process(make_restraints=True,
+              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear))
+          except Exception:
+            # Fix up bogus unit cell when it occurs by checking crystal
+            # symmetry, the same way probe2's run() does, then retry.
+            master.add_crystal_symmetry_if_necessary()
+            master.process(make_restraints=True,
+              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear))
+          if master.get_restraints_manager() is not None:
+            processed_master = master
+            master_key_to_index = _atom_index_by_key(master.get_hierarchy())
+            # Use the same copy-and-transfer path as later models (an identity
+            # transfer here) so that every probe2 run gets the same kind of
+            # model and the master itself stays pristine.
+            work_model_manager = _copy_of_master_with_atoms_from(
+              processed_master, master_key_to_index, r)
+            model_is_processed = work_model_manager is not None
+        except Exception:
+          # Leave processed_master unset; probe2 will process (and report
+          # errors for) this model itself below.
+          pass
+      else:
+        work_model_manager = _copy_of_master_with_atoms_from(
+          processed_master, master_key_to_index, r)
+        model_is_processed = work_model_manager is not None
+
+      if work_model_manager is None:
+        # Fall back to the unprocessed per-model manager; probe2 processes it.
+        work_model_manager = mmtbx.model.manager(
+          model_input       = None,
+          pdb_hierarchy     = r,
+          stop_for_unknowns = False,
+          crystal_symmetry  = original_model.crystal_symmetry(),
+          restraint_objects = ro,
+          log               = None)
+        model_is_processed = False
 
       if verbose:
         print("\nFinding clashes with mmtbx.probe2...\n")
@@ -156,7 +271,8 @@ class clashscore2(validation):
         verbose=verbose,
         model_id=model.id,
         save_probe_output=save_probe_output)
-      self.probe_clashscore_manager.run_probe_clashscore(data_manager, subset_model_manager)
+      self.probe_clashscore_manager.run_probe_clashscore(data_manager,
+        work_model_manager, processed=model_is_processed)
 
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
@@ -473,7 +589,11 @@ class probe_clashscore_manager(object):
   # We have to take both the original data manager, which is from the model
   # without hydrogens, and the hydrogenated modified model because we need one
   # to construct a Probe2 program and the other to replace its model to run on.
-  def run_probe_clashscore(self, data_manager, hydrogenated_model):
+  # When processed is True, the hydrogenated model has already had restraints
+  # made on it with probe2's interpretation parameters (see
+  # probe2.getPdbInterpretationParams()) and probe2 will reuse them rather than
+  # processing the model again.
+  def run_probe_clashscore(self, data_manager, hydrogenated_model, processed=False):
     self.n_clashes = 0
     self.n_clashes_b_cutoff = 0
     self.clashscore_b_cutoff = None
@@ -481,6 +601,15 @@ class probe_clashscore_manager(object):
     self.clashscore = None
     self.n_atoms = 0
     self.natoms_b_cutoff = 0
+
+    # probe2's run() can add Phantom Hydrogens to the hierarchy of the model it
+    # is given.  When we are reusing a processed model and will run probe2 a
+    # second time below, keep a pristine copy for that second run so that the
+    # first run's additions do not confuse it (the unprocessed path instead
+    # re-processes the model, which handles this).
+    pristine_model = None
+    if self.save_probe_output and processed:
+      pristine_model = hydrogenated_model.deep_copy()
 
     # Construct override parameters and then run probe2 using them and delete the resulting
     # temporary file.
@@ -500,7 +629,7 @@ class probe_clashscore_manager(object):
     parser.parse_args(args)
     p2 = probe2.Program(data_manager, parser.working_phil.extract(),
                        master_phil=parser.master_phil, logger=null_out())
-    p2.overrideModel(hydrogenated_model)
+    p2.overrideModel(hydrogenated_model, processed=processed)
     dots, output = p2.run()
     probe_json = output
     os.unlink(tempName)
@@ -540,7 +669,10 @@ class probe_clashscore_manager(object):
         parser.parse_args(args)
         p2 = probe2.Program(data_manager, parser.working_phil.extract(),
                            master_phil=parser.master_phil, logger=null_out())
-        p2.overrideModel(hydrogenated_model)
+        if pristine_model is not None:
+          p2.overrideModel(pristine_model, processed=True)
+        else:
+          p2.overrideModel(hydrogenated_model, processed=processed)
         dots, output = p2.run()
         self.probe_json = output
         os.unlink(tempName)

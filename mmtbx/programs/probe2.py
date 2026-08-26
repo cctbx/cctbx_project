@@ -425,6 +425,28 @@ def _condense(dotInfoList, condense):
 
 # ------------------------------------------------------------------------------
 
+def getPdbInterpretationParams(useNeutronDistances = False):
+  '''
+    Get the PDB interpretation parameters that probe2 uses when it processes a
+    model to make restraints.  A caller that processes a model itself and then
+    passes it to overrideModel() with processed=True must process with these
+    same parameters (and a matching use_neutron_distances setting) so that the
+    behavior is the same as if probe2 had processed the model.
+  '''
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.use_neutron_distances = useNeutronDistances
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+  # We need to turn this on because without it the interpretation is
+  # renaming atoms to be more correct.  Unfortunately, this causes the
+  # dot names to no longer match the input file.
+  p.pdb_interpretation.flip_symmetric_amino_acids=False
+  return p
+
+# ------------------------------------------------------------------------------
+
 def _totalInteractionCount(chainCounts):
   '''
     Find the total count of interactions of any type for the specified chain-pair type.
@@ -1894,12 +1916,21 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def overrideModel(self, model):
+  def overrideModel(self, model, processed = False):
     '''This is a hack to let another program harness probe2 without having to write a
     new model file for it to read. After initializing probe2, but before calling
     run(), call this function to override the model that it should use.
+    :param processed: When True, the model has already had restraints made on it
+    using the parameters returned by getPdbInterpretationParams() (with a matching
+    use_neutron_distances setting) and run() will not process it again.  This lets
+    a caller that runs probe2 on many models with identical composition (for example
+    the models of an NMR ensemble) process one of them and reuse the restraints
+    for the others.  Note that run() can add Phantom Hydrogens to the hierarchy of
+    the model it is given (for waters with no explicit Hydrogens), so a caller that
+    reuses a processed model across runs should hand each run a deep copy.
     '''
     self.model = model
+    self._modelAlreadyProcessed = processed
 
 # ------------------------------------------------------------------------------
 
@@ -1924,18 +1955,15 @@ Note:
     make_sub_header('Compute neighbor lists', out=self.logger)
 
     self.model.set_stop_for_unknowns(False)
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
-    # We need to turn this on because without it the interpretation is
-    # renaming atoms to be more correct.  Unfortunately, this causes the
-    # dot names to no longer match the input file.
-    p.pdb_interpretation.flip_symmetric_amino_acids=False
+    p = getPdbInterpretationParams(self.params.use_neutron_distances)
+    # If the model handed to overrideModel() was already processed with these
+    # interpretation parameters, we can use its restraints directly rather than
+    # re-processing, which re-reads the monomer library and re-interprets the model.
+    alreadyProcessed = ( getattr(self, '_modelAlreadyProcessed', False)
+      and (self.model.get_restraints_manager() is not None) )
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      if not alreadyProcessed:
+        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
