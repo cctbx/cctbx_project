@@ -91,15 +91,12 @@ def _deep_copy_with_selection_support(model):
   work.get_atom_selection_cache()
   return work
 
-def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
-  """Return a deep copy of the processed master model manager whose atoms carry
-  the coordinates, occupancies, and B factors of the matching atoms in the given
-  single-model hierarchy.  The copy keeps the master's restraints and atom-type
-  information, so probe2 does not need to process it again.  Returns None when
-  the hierarchy's atoms do not correspond one-to-one with the master's (for
-  example a malformed ensemble whose models differ in composition), in which
-  case the caller should fall back to processing the model.
-  """
+def _gather_atom_parameters(key_to_index, hierarchy):
+  """Collect the coordinates, occupancies, and B factors of the atoms in the
+  given single-model hierarchy, ordered by the master's atom indices.  Returns
+  (sites, occs, bs) or None when the hierarchy's atoms do not correspond
+  one-to-one with the master's (for example a malformed ensemble whose models
+  differ in composition)."""
   from scitbx.array_family import flex
   if key_to_index is None:
     return None
@@ -119,12 +116,42 @@ def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
     sites[idx] = a.xyz
     occs[idx] = a.occ
     bs[idx] = a.b
-  work = _deep_copy_with_selection_support(processed_master)
-  for i, wa in enumerate(work.get_hierarchy().atoms()):
+  return (sites, occs, bs)
+
+def _apply_atom_parameters(manager, sites, occs, bs):
+  """Write the given per-atom parameters onto the manager's atoms in index
+  order, keeping the hierarchy and xray structure coordinates in sync."""
+  for i, wa in enumerate(manager.get_hierarchy().atoms()):
     wa.set_occ(occs[i])
     wa.set_b(bs[i])
-  work.set_sites_cart(sites)
+  manager.set_sites_cart(sites)
+
+def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
+  """Return a deep copy of the processed master model manager whose atoms carry
+  the coordinates, occupancies, and B factors of the matching atoms in the given
+  single-model hierarchy.  The copy keeps the master's restraints and atom-type
+  information, so probe2 does not need to process it again.  Returns None when
+  the hierarchy's atoms do not correspond one-to-one with the master's, in
+  which case the caller should fall back to processing the model.
+  """
+  data = _gather_atom_parameters(key_to_index, hierarchy)
+  if data is None:
+    return None
+  work = _deep_copy_with_selection_support(processed_master)
+  _apply_atom_parameters(work, *data)
   return work
+
+def _hierarchy_contains_waters(hierarchy):
+  """True if any residue in the hierarchy is a water.  probe2's run() adds
+  Phantom Hydrogens to the hierarchy of the model it is given when waters lack
+  explicit Hydrogens, so a model manager may only be reused across probe2 runs
+  when it contains no waters at all."""
+  import iotbx.pdb
+  for ag in hierarchy.atom_groups():
+    if iotbx.pdb.common_residue_names_get_class(
+        name=ag.resname) == "common_water":
+      return True
+  return False
 
 class clashscore2(validation):
   __slots__ = validation.__slots__ + [
@@ -212,8 +239,6 @@ class clashscore2(validation):
       crystal_symmetry  = data_manager_model.crystal_symmetry(),
       restraint_objects = ro,
       log               = None)
-    original_model = data_manager_model.deep_copy()
-
     pdb_hierarchy = data_manager_model.get_hierarchy()
     n_models = len(pdb_hierarchy.models())
     use_segids = utils.use_segids_in_place_of_chainids(
@@ -224,15 +249,20 @@ class clashscore2(validation):
     # coordinates (and possibly occupancies and B factors) differ.  Rather than
     # letting probe2 process each model separately (which re-reads the monomer
     # library and re-interprets the model every time), process one model with
-    # probe2's own interpretation parameters and keep it as a pristine master.
-    # Each model then gets a deep copy of the master carrying its own atom
-    # parameters.  probe2 can add Phantom Hydrogens to the hierarchy it is
-    # given, which is why each run gets its own copy rather than the master
-    # itself.  If a model's atoms do not correspond one-to-one with the
-    # master's, fall back to processing that model as before.
-    original_hierarchy = original_model.get_hierarchy()
+    # probe2's own interpretation parameters and reuse it: when the model has
+    # no waters, probe2 cannot modify it (it only adds Phantom Hydrogens to
+    # waters), so the SAME manager is reused for every model with each model's
+    # atom parameters written in place.  This keeps memory flat; making a deep
+    # copy per model was found to permanently grow the native heap by tens of
+    # MB per model on large models.  When waters are present, each run gets a
+    # deep copy of the pristine master instead, since probe2 may attach
+    # Phantom Hydrogens to the hierarchy it is given.  If a model's atoms do
+    # not correspond one-to-one with the master's, fall back to processing
+    # that model as before.
+    original_hierarchy = pdb_hierarchy
     processed_master = None
     master_key_to_index = None
+    master_reusable = False   # no waters: reuse the master manager in place
     for i_mod, model in enumerate(pdb_hierarchy.models()):
 
       # Construct a hierarchy for the current submodel
@@ -251,7 +281,7 @@ class clashscore2(validation):
           model_input       = None,
           pdb_hierarchy     = r,
           stop_for_unknowns = False,
-          crystal_symmetry  = original_model.crystal_symmetry(),
+          crystal_symmetry  = data_manager_model.crystal_symmetry(),
           restraint_objects = ro,
           log               = None)
         try:
@@ -267,16 +297,29 @@ class clashscore2(validation):
           if master.get_restraints_manager() is not None:
             processed_master = master
             master_key_to_index = _atom_index_by_key(master.get_hierarchy())
-            # Use the same copy-and-transfer path as later models (an identity
-            # transfer here) so that every probe2 run gets the same kind of
-            # model and the master itself stays pristine.
-            work_model_manager = _copy_of_master_with_atoms_from(
-              processed_master, master_key_to_index, r)
-            model_is_processed = work_model_manager is not None
+            master_reusable = not _hierarchy_contains_waters(
+              master.get_hierarchy())
+            if master_reusable:
+              work_model_manager = processed_master
+              model_is_processed = True
+            else:
+              # Use the same copy-and-transfer path as later models (an
+              # identity transfer here) so that every probe2 run gets the same
+              # kind of model and the master itself stays pristine.
+              work_model_manager = _copy_of_master_with_atoms_from(
+                processed_master, master_key_to_index, r)
+              model_is_processed = work_model_manager is not None
         except Exception:
           # Leave processed_master unset; probe2 will process (and report
           # errors for) this model itself below.
           pass
+      elif master_reusable:
+        # Write this model's atom parameters onto the shared master in place.
+        data = _gather_atom_parameters(master_key_to_index, r)
+        if data is not None:
+          _apply_atom_parameters(processed_master, *data)
+          work_model_manager = processed_master
+          model_is_processed = True
       else:
         work_model_manager = _copy_of_master_with_atoms_from(
           processed_master, master_key_to_index, r)
@@ -288,7 +331,7 @@ class clashscore2(validation):
           model_input       = None,
           pdb_hierarchy     = r,
           stop_for_unknowns = False,
-          crystal_symmetry  = original_model.crystal_symmetry(),
+          crystal_symmetry  = data_manager_model.crystal_symmetry(),
           restraint_objects = ro,
           log               = None)
         model_is_processed = False
