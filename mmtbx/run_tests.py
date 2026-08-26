@@ -73,6 +73,7 @@ general_tests = [
   "$D/polygon/tst_polygon_data.py",
   "$D/chemical_components/tst.py",
   "$D/regression/tst_add_h_to_water.py",
+  "$D/regression/tst_ordered_solvent.py",
   "$D/rotamer/rotamer_eval.py",
   "$D/regression/tst_pdbtools.py",
   "$D/real_space/tst.py",
@@ -88,6 +89,7 @@ general_tests = [
   "$D/refinement/tst_refinement_flags.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
+  "$D/geometry_restraints/torsion_restraints/tst_ter_records.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_hbond.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_ramachandran.py",
   # model tests, some more elsewhere in this file
