@@ -30,6 +30,35 @@ def remove_models_except_index(model_manager, model_index):
                 hierarchy.remove_model(model=model)
     return model_manager
 
+# Cache of parsed probe2 parameter sets, keyed by the argument strings that
+# produce them.  Building a CCTBXParser and parsing the phil arguments is pure
+# text processing whose result is identical for identical arguments, but it
+# costs on the order of 0.1 s and was being redone for every model of an
+# ensemble.  The per-run output file name is deliberately not part of the
+# arguments; it is patched into the freshly extracted parameters instead, so
+# every model of an ensemble (whose occupancy fraction is almost always the
+# same) shares one parse.  A model with a different occupancy fraction simply
+# gets its own cache entry, keeping the behavior identical to parsing anew.
+_probe2_phil_cache = {}
+
+def _probe2_params_from_args(args, output_filename):
+  """Return (master_phil, params) for running probe2 with the given argument
+  strings, using a cached parse when the same arguments have been seen before.
+  A fresh params object is extracted per call (so callers can mutate it
+  freely), with params.output.filename set to output_filename."""
+  key = tuple(args)
+  cached = _probe2_phil_cache.get(key)
+  if cached is None:
+    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program,
+      logger=null_out())
+    parser.parse_args(list(args))
+    cached = (parser.master_phil, parser.working_phil)
+    _probe2_phil_cache[key] = cached
+  master_phil, working_phil = cached
+  params = working_phil.extract()
+  params.output.filename = output_filename
+  return master_phil, params
+
 def _submodel_atom_key(atom):
   """Identity key for an atom that is stable across the models of an ensemble
   (all models in a multi-model file are required to share composition)."""
@@ -49,6 +78,18 @@ def _atom_index_by_key(hierarchy):
       return None
     ret[key] = i
   return ret
+
+def _deep_copy_with_selection_support(model):
+  """Deep-copy a processed model manager, keeping model.selection() working.
+  model.select() (which deep_copy() uses) does not carry the monomer mappings
+  that selection() needs for keywords like "backbone" and "sidechain".  The
+  copy shares the original's atom layout, so the original's mappings remain
+  valid for it.  Prime the atom selection cache as well because selection()
+  hands the raw cache attribute to the selection manager."""
+  work = model.deep_copy()
+  work._all_monomer_mappings = model._all_monomer_mappings
+  work.get_atom_selection_cache()
+  return work
 
 def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
   """Return a deep copy of the processed master model manager whose atoms carry
@@ -78,14 +119,7 @@ def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
     sites[idx] = a.xyz
     occs[idx] = a.occ
     bs[idx] = a.b
-  work = processed_master.deep_copy()
-  # model.select() (which deep_copy() uses) does not carry the monomer mappings
-  # that model.selection() needs for keywords like "backbone" and "sidechain".
-  # The copy shares the master's atom layout, so the master's mappings remain
-  # valid for it.  Prime the atom selection cache as well because selection()
-  # hands the raw cache attribute to the selection manager.
-  work._all_monomer_mappings = processed_master._all_monomer_mappings
-  work.get_atom_selection_cache()
+  work = _deep_copy_with_selection_support(processed_master)
   for i, wa in enumerate(work.get_hierarchy().atoms()):
     wa.set_occ(occs[i])
     wa.set_b(bs[i])
@@ -609,26 +643,24 @@ class probe_clashscore_manager(object):
     # re-processes the model, which handles this).
     pristine_model = None
     if self.save_probe_output and processed:
-      pristine_model = hydrogenated_model.deep_copy()
+      pristine_model = _deep_copy_with_selection_support(hydrogenated_model)
 
     # Construct override parameters and then run probe2 using them and delete the resulting
-    # temporary file.
+    # temporary file.  The parse is cached, so all models of an ensemble share it.
     tempName = tempfile.mktemp()
-    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
     args = [
       "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
       "target_selection='occupancy > {}'".format(self.occupancy_frac),
       "use_neutron_distances={}".format(self.nuclear),
       "approach=once",
-      "output.filename='{}'".format(tempName),
       "output.format=json",
       "output.condensed={}".format(self.condensed_probe),
       "output.report_vdws=False",
       "ignore_lack_of_explicit_hydrogens=True",
     ]
-    parser.parse_args(args)
-    p2 = probe2.Program(data_manager, parser.working_phil.extract(),
-                       master_phil=parser.master_phil, logger=null_out())
+    master_phil, probe2_params = _probe2_params_from_args(args, tempName)
+    p2 = probe2.Program(data_manager, probe2_params,
+                       master_phil=master_phil, logger=null_out())
     p2.overrideModel(hydrogenated_model, processed=processed)
     dots, output = p2.run()
     probe_json = output
@@ -656,19 +688,17 @@ class probe_clashscore_manager(object):
       # roughly doubles the total runtime.
       if self.save_probe_output:
         tempName = tempfile.mktemp()
-        parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
         args = [
           "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
           "target_selection='occupancy > {}'".format(self.occupancy_frac),
           "use_neutron_distances={}".format(self.nuclear),
           "approach=once",
-          "output.filename='{}'".format(tempName),
           "output.format=json",
           "ignore_lack_of_explicit_hydrogens=True",
         ]
-        parser.parse_args(args)
-        p2 = probe2.Program(data_manager, parser.working_phil.extract(),
-                           master_phil=parser.master_phil, logger=null_out())
+        master_phil, probe2_params = _probe2_params_from_args(args, tempName)
+        p2 = probe2.Program(data_manager, probe2_params,
+                           master_phil=master_phil, logger=null_out())
         if pristine_model is not None:
           p2.overrideModel(pristine_model, processed=True)
         else:
