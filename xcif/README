@@ -1,0 +1,11 @@
+AI-tool used to develop xcif module.
+
+Claude Opus 4.6, 4.8 (Anthropic) and Gemini 3.1 Pro, 3.5 Pro (Google) were
+used via chat interfaces, and Claude Code with Opus 4.6 and
+Opus 4.8 (Anthropic) as a coding agent. The assistants were used to propose
+candidate implementations, refactorings, tests and debugging strategies.
+
+The human authors specified the parser requirements, interpreted the relevant
+CIF behaviour, designed and approved the validation tests, and reviewed,
+verified, and accepted or rejected every change; they are responsible for
+the final implementation. No AI tool is listed as an author.
