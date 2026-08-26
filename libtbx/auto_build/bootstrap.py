@@ -1057,17 +1057,17 @@ class xia2_module(SourceModule):
 
 class kokkos_module(SourceModule):
   module = 'kokkos'
-  anonymous = ['git', '-b 4.2.00',
+  anonymous = ['git', '-b 4.7.03',
                'git@github.com:kokkos/kokkos.git',
                'https://github.com/kokkos/kokkos.git',
-               'https://github.com/kokkos/kokkos/archive/refs/tags/4.2.00.zip']
+               'https://github.com/kokkos/kokkos/archive/refs/tags/4.7.03.zip']
 
 class kokkos_kernels_module(SourceModule):
   module = 'kokkos-kernels'
-  anonymous = ['git', '-b 4.2.00',
+  anonymous = ['git', '-b 4.7.03',
                'git@github.com:kokkos/kokkos-kernels.git',
                'https://github.com/kokkos/kokkos-kernels.git',
-               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/4.2.00.zip']
+               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/4.7.03.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
