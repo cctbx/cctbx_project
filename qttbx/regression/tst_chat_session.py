@@ -12,6 +12,7 @@ from qttbx.widgets.chat.agent.base import (
 from qttbx.widgets.chat.agent.conversation import (
   ContentBlock, Conversation, Message, TokenUsage, now)
 from qttbx.widgets.chat.agent.errors import CancelToken, TurnCancelled
+from qttbx.widgets.chat.agent.events import CANCELLED
 from qttbx.widgets.chat.agent.events import (
   AskUserQuestionRequested, ServerToolResult, ServerToolUsed, TextDelta,
   ToolResultObserved, ToolUseRequested, TurnDone,
@@ -51,7 +52,8 @@ class FakeAgent(Agent):
 
 
 def _new_test_session(turn_scripts, project_dir=None, max_depth=1, agent=None,
-                      clock=None, autosave_interval_s=5.0, depth=0):
+                      clock=None, autosave_interval_s=5.0, depth=0,
+                      tool_round_note=None):
   """Build a session with an in-memory queue and minimal profile."""
   if project_dir is None:
     project_dir = tempfile.mkdtemp()
@@ -72,7 +74,8 @@ def _new_test_session(turn_scripts, project_dir=None, max_depth=1, agent=None,
     depth=depth,
     log=null_out(),
     clock=clock,
-    autosave_interval_s=autosave_interval_s)
+    autosave_interval_s=autosave_interval_s,
+    tool_round_note=tool_round_note)
   return session, project_dir
 
 
@@ -163,6 +166,72 @@ def exercise_assistant_messages_stamped_with_model_and_backend():
     for m in assistants:
       assert m.model == "fake", m.model            # FakeAgent.model
       assert m.backend == "anthropic", m.backend   # profile.backend
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_assistant_messages_stamped_with_verbose():
+  """Each assistant message records the session's verbose flag as
+  provenance, alongside model/backend: True/False when the host app has the
+  concept (phenix.agent threads --verbose into the session), None from a
+  host that does not (the constructor default) -- so pre-stamp messages and
+  foreign apps stay unstamped, and a transcript resumed without the flag
+  shows WHERE the mode flipped instead of pretending it was never on."""
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    session.verbose = True
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, CancelToken())
+    assistants = [m for m in session.conv.messages if m.role == "assistant"]
+    assert assistants, "expected an assistant message"
+    for m in assistants:
+      assert m.verbose is True, m.verbose
+    # User messages carry no stamp -- provenance describes what PRODUCED a
+    # reply, and the user produced theirs.
+    for m in session.conv.messages:
+      if m.role == "user":
+        assert m.verbose is None, m.verbose
+  finally:
+    shutil.rmtree(tmp)
+  # The default: a session never told about the concept stamps None.
+  session, tmp = _new_test_session([
+    [TextDelta(text="hi"), TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    session.run_turn(user_msg, CancelToken())
+    for m in session.conv.messages:
+      if m.role == "assistant":
+        assert m.verbose is None, m.verbose
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_session_verbose_is_normalized_at_construction():
+  """The CONSTRUCTOR owns the three-state normalization the phenix seams
+  defer to: None stays None (a host without the concept), and any other
+  value is coerced to a bool. Pinned here because the other verbose tests
+  assign session.verbose after construction and bypass this seam."""
+  session, tmp = _new_test_session([])
+  try:
+    from qttbx.widgets.chat.agent.session import AgentSession
+    def _mk(v):
+      return AgentSession(agent=session.agent, conversation=session.conv,
+                          storage=session.storage, tools=session.tools,
+                          policy=session.policy, profile=session.profile,
+                          verbose=v)
+    assert _mk(None).verbose is None
+    assert _mk(True).verbose is True
+    assert _mk(False).verbose is False
+    assert _mk(1).verbose is True          # coerced, not stored raw
+    assert _mk("").verbose is False
+    assert session.verbose is None         # the default
   finally:
     shutil.rmtree(tmp)
 
@@ -1317,6 +1386,219 @@ def _register_echo(session):
     risk="write")
 
 
+class _SnapshotAgent(FakeAgent):
+  """FakeAgent that records, per round, the messages it was handed -- i.e.
+  what an API backend would actually send -- as (role, [block data dicts])."""
+  def __init__(self, turn_scripts):
+    super().__init__(turn_scripts)
+    self.requests = []
+
+  def stream_turn(self, conversation, tools, cancel):
+    self.requests.append(
+      [(m.role, [dict(b.data) for b in m.content])
+       for m in conversation.messages])
+    return super().stream_turn(conversation, tools, cancel)
+
+
+def _round_texts(request):
+  return [b.get("text") for _role, blocks in request for b in blocks
+          if "text" in b]
+
+
+def exercise_tool_round_note_rides_the_tool_result_for_one_round():
+  """A ``tool_round_note`` provider is asked once per tool round, AFTER the
+  tools ran; its text rides the round's tool-result message as an EPHEMERAL
+  block -- so the model reads it on the very next call, inside the turn --
+  and is stripped before the round after that, so it is never re-sent with a
+  stale reading nor persisted. This is the in-turn delivery path the
+  context-pressure handoff needs: an autonomous run is one turn, and a note
+  that waits for the next user send never arrives."""
+  from qttbx.widgets.chat.agent.conversation import (
+    EPHEMERAL_BLOCK_KEY, is_ephemeral_block)
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [ToolUseRequested(id="t2", name="echo", input={"text": "two"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="Done."), TurnDone(stop_reason="end_turn")],
+  ])
+  asked = []
+  def _note(seen_agent):
+    asked.append(seen_agent)
+    return "NOTE-1" if len(asked) == 1 else None
+  session, tmp = _new_test_session([], agent=agent, tool_round_note=_note)
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    final = session.run_turn(user_msg, CancelToken())
+    assert final.stop_reason == "end_turn"
+    # Asked once per tool round (two), with the session's agent.
+    assert asked == [agent, agent], asked
+    # Round 2's request carries the note, on the tool-result message, tagged
+    # ephemeral; round 3's does not, while the tool results themselves stay.
+    r2, r3 = agent.requests[1], agent.requests[2]
+    assert "NOTE-1" in _round_texts(r2), _round_texts(r2)
+    role, blocks = r2[-1]
+    assert role == "user" and blocks[0].get("tool_use_id") == "t1", blocks
+    assert blocks[-1].get("text") == "NOTE-1" and blocks[-1].get(
+      EPHEMERAL_BLOCK_KEY), blocks[-1]
+    assert "NOTE-1" not in _round_texts(r3), _round_texts(r3)
+    assert [b.get("tool_use_id") for _r, bl in r3 for b in bl
+            if "tool_use_id" in b] == ["t1", "t2"]
+    # Nothing ephemeral survives the turn in memory or on disk.
+    assert not any(is_ephemeral_block(b) for m in session.conv.messages
+                   for b in m.content)
+    saved = session.storage.load(session.conv.meta.id)
+    assert not any(is_ephemeral_block(b) for m in saved.messages
+                   for b in m.content)
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_tool_round_note_provider_failure_never_breaks_the_turn():
+  """The note is scaffolding: a provider that raises is logged and skipped,
+  and the round's tool results still reach the model untouched."""
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="Done."), TurnDone(stop_reason="end_turn")],
+  ])
+  def _boom(_agent):
+    raise RuntimeError("no reading")
+  session, tmp = _new_test_session([], agent=agent, tool_round_note=_boom)
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    final = session.run_turn(user_msg, CancelToken())
+    assert final.stop_reason == "end_turn"
+    role, blocks = agent.requests[1][-1]
+    assert role == "user" and [b.get("tool_use_id") for b in blocks] == ["t1"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_tool_round_note_is_not_attached_to_a_cancelled_round():
+  """A round whose dispatch set the cancel token (deny_and_stop, a Stop during
+  an approval) never sends another request, so a note attached to it would be
+  consumed without being read. The provider is not asked at all."""
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="stop", input={}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  asked = []
+  def _note(seen_agent):
+    asked.append(seen_agent)
+    return "NOTE"
+  session, tmp = _new_test_session([], agent=agent, tool_round_note=_note)
+  try:
+    def _stop(name, input, cancel, session, tool_use_id):
+      cancel.set()
+      return "stopping"
+    session.tools.register_builtin(
+      ToolSpec(name="stop", description="stop",
+               input_schema={"type": "object"}),
+      handler=_stop, risk="write")
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert asked == [], asked
+    assert session.round_note_in_flight is False
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_round_note_in_flight_says_whether_the_next_request_went_out():
+  """The host cannot tell from outside whether a note attached at round N was
+  ever read: a 429 on round N+1's request, or a backend reporting the failure
+  as an AgentError event, means it was not. The session records it -- True
+  from attach until a round yields a real model event -- so the host can
+  re-arm exactly the notes that never landed, and no others."""
+  from qttbx.widgets.chat.agent.events import AgentError
+  # Next request fails outright (raised): the note never went out.
+  class _Raises(_SnapshotAgent):
+    def stream_turn(self, conversation, tools, cancel):
+      if len(self.requests) == 1:
+        self.requests.append("raised")
+        raise RuntimeError("429")
+      return super().stream_turn(conversation, tools, cancel)
+  agent = _Raises([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    try:
+      session.run_turn(user_msg, CancelToken())
+      assert False, "expected the raise"
+    except RuntimeError:
+      pass
+    assert session.round_note_in_flight is True
+  finally:
+    shutil.rmtree(tmp)
+  # Next request fails as an AgentError EVENT: still not read.
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [AgentError(message="boom", recoverable=True, kind="")],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is True
+    # A new turn starts clean -- even one that itself yields only an error,
+    # which would leave a stale True standing without the reset at entry.
+    agent.turn_scripts.append(
+      [AgentError(message="boom again", recoverable=True, kind="")])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is False
+  finally:
+    shutil.rmtree(tmp)
+  # Stop while the note-carrying request streams, before any content: the
+  # backend yields only TurnDone(cancelled). Not read either -- the send-time
+  # note re-arms in this case, and so must this one.
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [TurnDone(stop_reason="cancelled", finish=CANCELLED)],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is True
+  finally:
+    shutil.rmtree(tmp)
+  # Next request succeeds: read.
+  agent = _SnapshotAgent([
+    [ToolUseRequested(id="t1", name="echo", input={"text": "one"}),
+     TurnDone(stop_reason="tool_use")],
+    [TextDelta(text="Done."), TurnDone(stop_reason="end_turn")],
+  ])
+  session, tmp = _new_test_session([], agent=agent,
+                                   tool_round_note=lambda a: "NOTE")
+  try:
+    _register_echo(session)
+    user_msg = Message(role="user", timestamp=now(),
+                       content=[ContentBlock(type="text", data={"text": "hi"})])
+    session.run_turn(user_msg, CancelToken())
+    assert session.round_note_in_flight is False
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_autosave_over_tool_use_turn_is_crash_safe():
   """A mid-turn autosave that fires as the model streams a tool_use must NOT
   persist a snapshot ending in that unanswered tool_use: an assistant tool_use
@@ -1924,6 +2206,8 @@ def exercise_streaming_cancel_synthesizes_no_second_terminal():
 def exercise():
   exercise_simple_text_turn()
   exercise_assistant_messages_stamped_with_model_and_backend()
+  exercise_assistant_messages_stamped_with_verbose()
+  exercise_session_verbose_is_normalized_at_construction()
   exercise_the_observed_model_reaches_the_message_and_the_meta()
   exercise_the_requested_model_is_never_overwritten()
   exercise_the_base_declares_observed_model()
@@ -1942,6 +2226,10 @@ def exercise():
   exercise_run_turn_cancels_pending_approval_on_exit()
   exercise_api_remember_recorded_before_resolve_survives_cancel()
   exercise_max_turns_cap()
+  exercise_tool_round_note_rides_the_tool_result_for_one_round()
+  exercise_tool_round_note_provider_failure_never_breaks_the_turn()
+  exercise_tool_round_note_is_not_attached_to_a_cancelled_round()
+  exercise_round_note_in_flight_says_whether_the_next_request_went_out()
   exercise_token_usage_event_carries_all_fields_to_message()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()

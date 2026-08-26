@@ -16,10 +16,10 @@ class SeedFinder:
     """Return atom objects whose element matches *element_filter*.
 
     Delegates to ``mmtbx.geometry_restraints.qmi.metals.metal_atoms``. When
-    *element_filter* is given, its element symbols are passed straight through
-    as the ``metals=`` argument, restricting the scan to those element(s),
-    which need not be metals. When ``None``, the canonical ``METALS``
-    recognition list is used as the default filter.
+    *element_filter* is given, its symbols are passed as the ``metals=``
+    argument, restricting the scan to those element(s), which need not be
+    metals. When ``None``, the canonical ``METALS`` recognition list is used
+    as the filter.
 
     Parameters
     ----------

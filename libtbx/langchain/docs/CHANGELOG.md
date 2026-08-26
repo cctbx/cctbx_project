@@ -1,4 +1,366 @@
-# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4
+# CHANGELOG — v116 / v117 / v117.1 / v117.2 / v117.3 / v118 / v119 / v120 / v120.2 / v120.4 / v121 / v121.1 / v121.2
+
+## Version 121.2 (the transport chain: seven dropped fields, and every metric they broke)
+
+### Summary
+
+v121.1 fixed four dropped transport fields. This release found that
+**`log_program` — the whole point of protocol v9 — had never once
+worked**, and traced the consequences through five further defects, each
+of which had been masking the next.
+
+`build_request_v2()` rebuilt `session_state` field by field, a **second
+allow-list** twenty lines after `build_session_state()` produced the
+dict. Seven declared-and-consumed fields were dropped there, including
+two fixes already made and marked verified. The verifier check for both
+passed the whole time: it searched `api_client.py` for the field name,
+which was present — in the wrong function.
+
+With `log_program` absent, the server guessed the program from log text.
+On one production run that was **wrong on 5 of 6 cycles**: `phenix.refine`
+logs parsed with `phenix.autosol` patterns, and an `autobuild` log parsed
+as `phenix.autobuild_denmod`, which declares no metrics at all. With no
+registry patterns, a generic fallback supplied every value — and its
+pattern took the first number after an `R-free` label, which in every
+paired form Phenix emits is the **R-work** column.
+
+Those values drove stop decisions. At 2.5 Å the success threshold is
+0.23, so a misread 0.21 stopped a run that a correct 0.27 would have
+continued.
+
+### Fixed
+
+**Seven `session_state` fields now cross the boundary** — `log_program`,
+`log_cycle`, `client_protocol_version`, `structure_model`,
+`validation_history`, `model_is_placed`, `input_has_ligand`. Confirmed
+live by metrics only one program can produce: `Residues Built: 121`
+(autobuild) and `Bayes Cc: 17.90` (autosol).
+
+**The duplicate allow-list is gone.** `build_request_v2()` now passes
+`session_state` through, applying only coercions and derived flags — 120
+lines replaced by 26. It remains the parity chokepoint; both agents call
+it exactly once and neither adds to `session_state` afterwards.
+
+**A latent `KeyError` the fix activated.** A misindented debug line
+inside the `log_cycle` guard indexed `session_state["explicit_program"]`
+with `[]`. Dormant only while `log_cycle` never crossed; the moment it
+did, every cycle ended with *"No command was generated for program
+'unknown'"*.
+
+**R-factors read the right column.** One shared `r_factors` helper
+replaces three misreading sites. Handles every form found in 21 logs —
+`R/Rfree=0.21/0.27`, `R and R-free: 0.20 0.26`, `R/R-free: 0.5/0.54`,
+`R: 0.21 Rfree: 0.27` — and rejects values ≥ 1.0, so `999.90` no longer
+reaches a metric. Adds an R-free ≥ R-work guard with a 0.005 tolerance.
+
+**`bayes_cc` recovered.** The quoted-string truncator's pattern could
+cross newlines, so an odd apostrophe count — 3,975 in one autosol log,
+from Python-style label lists — paired quotes thousands of lines apart.
+All 61 "long" spans were artefacts; one destroyed `bayes_cc`. Change D
+now preserves **7 of 7** metrics rather than 6.
+
+**Geometry metrics take the last plausible value.** `re.search` returned
+an early macro-cycle, and an optional `RMSD` with an unbounded number
+captured counts and degrees: `Unresolved non-hydrogen angles: 12`,
+`target_angle = 180`, `Bonds: 150`.
+
+**`residues_built` anchored to a line.** The old pattern captured digits
+*before* the phrase, crossing newlines, and returned the R-free mantissa
+`4506658578498925` as a residue count. It had never once been correct.
+
+**The agent's own summary block is stripped before extraction.** Reading
+it back was circular — an extraction error rewritten as apparent program
+output.
+
+**`map_to_model` can express four user directives** it previously
+discarded; 6 of 23 program-scoped directives were real, supported, and
+silently dropped.
+
+**Sanity events filter on a severity the checker emits.** `red_flag` is
+never assigned, so the list was always empty on exactly the runs that
+had critical issues.
+
+**Two `webbrowser.open` calls replaced by `load_url`.**
+
+### Testing
+
+Ten modules in `phenix_regression/ai_tools/`, all mutation-tested. The
+two that matter most for this release:
+
+- `tst_session_state_round_trip.py` — asserts every field
+  `build_session_state` produces arrives in the request. It failed
+  before the fix, naming exactly the seven, and passes through the
+  refactor **unchanged**, because it asserts the property rather than
+  the mechanism.
+- `tst_server_session_state_access.py` — a static AST check that every
+  `session_state["X"]` sits inside a guard testing `X`, plus a
+  behavioural check across 16 session shapes.
+
+### Note
+
+**A source scan confirms a line exists; it does not confirm a value
+crosses.** Two verifier checks passed on broken code for as long as the
+defect existed. `contract.py` now says so, and points at the round-trip
+test.
+
+
+## Version 121.1 (transport-surface audit: four dropped fields, one rename, and a test)
+
+### Summary
+
+An audit of the four transport surfaces declared in `agent/contract.py`
+found **four fields that were declared, consumed, and never carried**,
+and **one payload renamed in flight**. All five passed every existing
+test: the contract tests check that a field is *declared* and that a
+consumer *reads* it, never that a producer *sends* it or that the hops
+preserve it.
+
+### Fixed
+
+**`log_program` / `log_cycle` (protocol v9).** The dispatching client now
+names the program that produced `log_content`, instead of the server
+matching markers against the log text. Content matching was wrong on
+**10 of 19** real logs; the resolver is 18/19. The label is not
+cosmetic — `analyze_metrics_trend` gates its success stop on
+`any(m["program"] in ("phenix.molprobity", "phenix.model_vs_data"))`,
+so a mislabelled cycle **satisfies the guard that exists to prevent
+declaring success before validation has run.** Observed live: a
+`phenix.refine` log labelled `phenix.molprobity`, with `r_free = 0.1722`
+recorded where refine's own value was `0.1871`.
+
+**`state["warnings"]` never reached the client.** `create_response` was
+called without `warnings=` and `create_stop_response` did not accept the
+argument, so the deprecation channel described in `DEVELOPER_GUIDE.md`
+had never carried anything. Client-side de-duplication added: the server
+rebuilds state per request, so a standing condition would otherwise
+repeat every cycle.
+
+**`client_protocol_version` never reached the server.** The server read
+the contract default `1` for every client. `check_client_version` had
+therefore never rejected anything, and `get_deprecation_warnings` fired
+for every client on every cycle — invisible only because the channel
+above was also broken.
+
+**`mtz_rfree_map` never reached the server.** Forwarded into
+`session_state`, never rebuilt into `session_info`;
+`command_builder.py:283` reads `session_info.get("mtz_rfree_map")`.
+**This is the v120.2 parity fix** — the field written so that local and
+server builds behave identically was itself inert on the server path.
+
+**The per-cycle metrics dict was renamed in flight.** `session.py:2280`
+translates `cycle["metrics"]` to the declared name `analysis`;
+`build_request_v2` renamed it back to `metrics` one hop later. **8 of 9
+consumers read `analysis` and got `{}`** — 2 in `metrics_analyzer`, 6 in
+`thinking_agent`, so THINK's historical reasoning was blind too.
+`graph_nodes` read the other spelling and worked, which masked it.
+Measured: **7 of 7 production cycles delivered `{}`**.
+
+**`cycle_number` was renamed to `cycle`**, so `metrics_analyzer` fell
+back to the loop index. Benign on dense history;
+`get_history_for_agent` filters incomplete cycles, so **one aborted
+cycle renumbered every later entry.**
+
+### Removed
+
+- `process_log` — declared in `NEXT_MOVE_FIELDS`, consumed by
+  `ai_agent.py` (an "AGENT THOUGHT PROCESS" block), never produced. That
+  block had never printed. Removed at both ends; `strategy`, which was
+  already being sent, is now declared.
+- Two `result.analysis` fallbacks in `ai_agent.py` — `api_client` sets
+  the field to `""` unconditionally, so both were unreachable and both
+  swallowed their exceptions.
+
+### Added
+
+**`tests/tst_transport_surfaces.py`** — nine checks plus two negative
+controls, registered in `run_all_tests.py`. For every declared field: a
+producer exists, each allow-list hop carries it, a consumer exists, no
+key is renamed in flight. Verified both ways: 9 pass on the fixed tree,
+4 fail on a copy with the fixes reverted.
+
+`contract.py`'s header now states that **registering a field there does
+not make it cross the boundary**, with the five-hop path and the fields
+that travel as top-level arguments instead.
+
+### Not fixed, recorded
+
+- `red_flag_issues` is declared, sent as `metadata["red_flags"]` on the
+  stop path only, and read under neither name. Whether stop-time red
+  flags should reach the user is a product decision.
+- `rfree_resolution` and `model_hetatm_residues` are declared and
+  produced with no carrier and no consumer; annotated in `contract.py`
+  rather than removed, so removal stays deliberate.
+
+### Note
+
+**This failure mode is documented.** `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`
+§6a describes the hop chain and records three v120 fields that
+"round-tripped nowhere for exactly this reason". It then happened four
+more times. The guidelines now point at the test.
+
+---
+
+## Version 121 (ai_analysis standard mode: single-call replacement — six measured defects removed)
+
+### Summary
+
+`phenix.ai_analysis` standard mode no longer summarises, chunks or
+retrieves. The report path is now: read the log → resolve the program →
+**one long-context LLM call on the whole log** → report. `summary_file`
+is filled by a deterministic reader of the log, with no LLM involved.
+
+Six defects were measured in the old path and are removed by
+construction — there is no longer a component that can exhibit them.
+
+| # | defect | measured |
+|---|---|---|
+| 1 | the analysis step read a ~1 KB summary, not the log | **0.7–8.4% of the log retained** on 6 of 7 logs |
+| 2 | `_custom_log_chunker` dropped everything after `Citations` when *"Files are in the directory"* appeared | **7 of 20 corpus logs; 59% of a 304 KB log** |
+| 3 | the program was misidentified: the server path never derived the name from the file name, so content substrings decided | **6 wrong of 20**; an xtriage log identified as `phenix.phaser` |
+| 4 | a fabricated program name was written into the prompt: `"Log file for phenix.xtriage_1"` | **19 of 20 named a program that does not exist** |
+| 5 | retrieval keyed on a query built from a scrape that always returned `''` and a field always `""` | query **byte-identical for every log**, 4 captured runs |
+| 6 | the summariser could emit more than it was given | **382,721 chars from 156,951** (one line ×4,328, appearing twice in the source), **byte-identical across two runs**; and **2,026,595 from 312,011** |
+
+### Result
+
+- head to head on the 8 logs with a captured old-path report:
+  **21 rubric checks passed against 16 — better on 3, tied on 5, worse
+  on none**;
+- against a whole-log single call on `claude-sonnet-4-6`:
+  `[20, 8, 3, 5, 4]` against `[20, 7, 3, 5, 3]`;
+- **run-to-run flip rate 2% (2 of 100 cells)** across two uncached
+  passes over 20 logs, against **8% (2 of 25)** for the old path.
+
+### Code changes
+
+`analysis/program_identity.py` (new) — caller → log banner → file name
+→ refuse, every result validated against `knowledge/programs.yaml`.
+**20 of 20, zero wrong, zero refused** on both corpus shapes. Records
+`source` and `authoritative`: a file name is *inferred*, since registry
+membership proves a name exists, not that it is right.
+
+`analysis/analysis_request.py` (new) — builds the single call. The log
+is embedded **once, byte for byte**, with a SHA-256 travelling alongside
+so a caller can verify before sending. No header is written when the
+program is unresolved.
+
+`analysis/report_verifier.py` (new) — shadow mode, logs only. Number
+support allowing rounding, thousands separators, scientific notation and
+truncation; **false-positive rate 10% in-sample, 23% held out**, with
+detection unaffected (one injected figure caught 20 of 20). The entire
+residual is one category, the R-free/R-work gap.
+
+`analysis/orientation_strip.py` (new) — fills `summary_file`
+deterministically. Previously the report was written to both files:
+**byte-identical on 40 of 40 outputs across two passes**. Now
+**382–1033 characters** and identical on 0 of 20. Imports the extractor
+from `log_extraction/`; **no second copy is vendored**.
+
+`analysis/analyzer.py` — retrieval removed; sends the prepared payload.
+
+`utils/run_utils.py` — `analysis_payload` and `program_identity` added
+to the `log_info` object.
+
+`phenix_ai/run_ai_analysis.py` — request construction replaces
+`summarize_log`; **four gates on `log_info.summary` corrected**, not
+one. The gate inside `analyze_summary_with_rag` was missed first time
+and rejected every request with *"Sorry: No summary to analyze"*.
+
+`programs/ai_analysis.py` — the resolver replaces
+`get_program_name_from_log_file_name`; the fabricated header is gone.
+
+### RAG database no longer required for standard mode
+
+Retrieval was removed but **five places still gated on its database**;
+three blocked the report path. Observed in production: **anthropic
+refused to run** for want of a database the code no longer reads.
+
+- `_LLM_ONLY_MODES` now includes `'standard'`;
+- the `raise Sorry("run phenix.install_ai_tools")` in `run_job_locally`
+  became `ai_db_dir = None`;
+- a database error in `run()` is logged rather than aborting.
+
+**This changed 13 of 16 routing combinations for standard mode.** All
+are cases where the user asked for local execution (`run_on_server=False`,
+8 cases) or the provider is local-only (`ollama`, 4 cases) or
+`FORCE_NO_AI_SERVER=1` with no database (1 case). **The default path —
+`run_on_server=True`, provider `google`, `FORCE` unset — is unchanged.**
+
+**Release note:** a user who sets `run_on_server=False` and has no API
+key previously got a silent server submission; they now get a local run
+that fails for want of a key. That honours the flag they set, but it is
+a visible change.
+
+### Statements in earlier entries that this makes false
+
+- **v120, line 317** — *"An actual embeddings query failure (only
+  reachable via `phenix.ai_analysis standard`/RAG, never the agent)"*.
+  Standard mode no longer reaches embeddings for retrieval.
+- **v120, line 329** — *"`analysis/summarizer.py` (portkey chunk
+  sizes)"* as part of the RAG path. `summarizer.py` is no longer
+  reachable from `run()`; verified on the module-local call graph.
+- **v120, line 333** — *"Anthropic is intentionally **not** a
+  database-build provider (no native embeddings)"*. Still true of the
+  database, but it no longer prevents `phenix.ai_analysis` from running:
+  anthropic completed a 659 KB log in 40.8 s wall with no database.
+
+### Large logs
+
+Tested on a real 659 KB AutoBuild log (13,973 lines as analysed here), 2.2× larger than
+anything in the corpus, on **three providers**:
+
+| provider | words | figures traced to the log | deepest citation |
+|---|---|---|---|
+| google | 368 | 14 | **99.8%** |
+| openai | 551 | 34 | **99.8%** |
+| anthropic | 615 | 32 | **99.8%** |
+
+**All three read to the end of the log**, and openai and anthropic cite
+from ~3% to 99.8%. The deterministic summary is byte-identical across
+all three.
+
+**Not established:** behaviour above ~660 KB. No multi-megabyte log has
+been run, and no size threshold or reduction exists. **Do not enable
+this for arbitrary user logs until one does** — an LLM summary above a
+threshold would reintroduce defect 6 at exactly the sizes where it
+fires.
+
+### Tests
+
+`tst_program_identity.py` 15 · `tst_analysis_request.py` 12 ·
+`tst_report_verifier.py` 15 · `tst_mode_isolation.py` 15 ·
+`tst_summary_file.py` 16 — **73, registered in
+`tests/run_all_tests.py`**. Each skips when its data directory is
+absent and **fails loudly when a variable is set but wrong**.
+
+### Deploy set (14 files)
+
+    langchain/analysis/  program_identity.py  analysis_request.py
+                         report_verifier.py   orientation_strip.py
+                         analyzer.py
+    langchain/utils/     run_utils.py
+    langchain/tests/     run_all_tests.py  tst_program_identity.py
+                         tst_analysis_request.py  tst_report_verifier.py
+                         tst_mode_isolation.py    tst_summary_file.py
+    phenix/programs/     ai_analysis.py
+    phenix/phenix_ai/    run_ai_analysis.py
+
+### Known follow-up
+
+- **`analyze_summary_with_rag` is a misnomer** — it does no RAG. Its
+  `embeddings` and `db_dir` arguments are unused on the report path and
+  are kept only so callers need not change. Rename with its callers.
+- **`setup_llms` still constructs embeddings** for a report path that
+  does not use them. Wasted, not harmful.
+- **`_extract_output_files` returns `[]`** on both the summary and the
+  report. Pre-existing; the extractor exposes no output-file structure.
+- **The verifier is shadow-only** and writes to `log_info.debug_log`,
+  which is never echoed.
+- **No check reaches a fluent wrong claim.** The old path's
+  *"enantiomorphic space groups I 4 and I 41"* scores clean on
+  everything here.
+
+---
 
 ## Version 120.4 (R-free lock reconciliation: selected-file generate decision + lock reconciliation, widened to undetermined — v120.3 → v120.4)
 
@@ -316,7 +678,10 @@ no-access key.  For anthropic, embeddings delegate to a default provider
 An actual embeddings *query* failure (only reachable via
 `phenix.ai_analysis standard`/RAG, never the agent) surfaces a clear
 execution-time error echoing the raw upstream message rather than
-matching on `"Unauthorized"`.
+matching on `"Unauthorized"`.  **[SUPERSEDED by v121: `standard` mode no
+longer retrieves, so this failure is not reachable from
+`phenix.ai_analysis` at all.  The remaining embeddings-query sites are
+the database-build tools and `run_query_docs.py`.]**
 
 Call sites updated to route portkey/anthropic: `agent/api_client.py`
 (`_call_portkey_llm` + dispatch), `agent/directive_extractor.py`
@@ -327,10 +692,14 @@ site), `agent/thinking_agent.py` (`_get_rate_handler`).  The embeddings/
 RAG database path was completed end-to-end: `utils/run_utils.py`
 (`validate_api_keys` gates both providers; `get_db_dir_for_provider`
 gained `docs_db_portkey`), `analysis/summarizer.py` (portkey chunk
-sizes), `run_query_docs.py` (accepts both), and the database-build tools
+sizes) **[SUPERSEDED by v121: `summarizer.py` is no longer reachable
+from `run_ai_analysis.run()`; its chunk sizes are on no live path]**, `run_query_docs.py` (accepts both), and the database-build tools
 `command_line/rebuild_ai_database.py` + `update_ai_database.py` (accept
 `portkey` from argv with key-check).  Anthropic is intentionally **not**
-a database-build provider (no native embeddings).  `get_ai_db_dir` /
+a database-build provider (no native embeddings).  **[Still true of the
+database as of v121 — but it no longer prevents `phenix.ai_analysis`
+from running: `standard` mode needs no database, and anthropic
+completed a 659 KB log in 40.8 s wall with no `docs_db_anthropic`.]**  `get_ai_db_dir` /
 `have_ai_database` in `phenix_ai/utilities.py` are provider-agnostic
 (string interpolation → `docs_db_<provider>`) and needed no change.
 

@@ -1,7 +1,7 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
 import time
-import os
+import os, sys
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -418,13 +418,19 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
   if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
   validate_super_cell_cluster(buffer_model, qmr.selection)
   buffer_model.unset_restraints_manager()
-  buffer_model.log=null_out()
+  if not debug:
+    buffer_model.log=null_out()
+  else:
+    buffer_model.log=sys.stdout
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
   buffer_model.process(make_restraints=True)
   add_additional_hydrogen_atoms_to_model(buffer_model,
                                          use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
-  buffer_model.log=null_out()
+  if not debug:
+    buffer_model.log=null_out()
+  else:
+    buffer_model.log=sys.stdout
   if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
   buffer_model.process(make_restraints=True)
   ligand_atoms = ligand_model.get_atoms()

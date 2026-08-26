@@ -1,0 +1,9 @@
+{
+ "autobuild_4_bromodomain.log": "phenix.autobuild",
+ "autosol_2_p9.log": "phenix.autosol",
+ "find_reference_14.log": "phenix.find_reference",
+ "molprobity_4_esterase.log": "phenix.molprobity",
+ "predict_and_build_2_7mjs.log": "phenix.predict_and_build",
+ "refine_5_beta_blip.log": "phenix.refine",
+ "xtriage_1_p9.log": "phenix.xtriage"
+}

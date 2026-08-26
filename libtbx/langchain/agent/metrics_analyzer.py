@@ -481,6 +481,22 @@ def _analyze_xray_trend(metrics_history, resolution, result):
             return result
 
     # 3. EXCESSIVE REFINEMENT: 5+ consecutive refines
+    # SHADOWED (2026-08): unreachable in the running agent.
+    #
+    # check_consecutive_program_cap (perceive_checks) stops ANY program
+    # repeated 3 times in a SUCCESS tail.  graph_nodes calls it
+    # unconditionally with the default cap and returns from perceive on
+    # trigger, so a 4th consecutive refine cannot occur and a 5th is
+    # unreachable.
+    #
+    # Kept rather than deleted because the scopes differ: this counts
+    # refinement specifically, the cap counts any program.  If the cap is
+    # ever raised or made program-specific, this becomes live again.
+    #
+    # The threshold of 5 is NOT the intended behaviour today: on the
+    # p9-sad run, three refine cycles was judged correct and five too
+    # many.  Anyone reviving this rule should re-set the threshold rather
+    # than assume 5.
     if consecutive >= 5:
         result["should_stop"] = True
         result["reason"] = "EXCESSIVE: %d consecutive refinement cycles" % consecutive
@@ -588,6 +604,22 @@ def _analyze_cryoem_trend(metrics_history, result):
             return result
 
     # 3. EXCESSIVE: 5+ consecutive real_space_refine
+    # SHADOWED (2026-08): unreachable in the running agent.
+    #
+    # check_consecutive_program_cap (perceive_checks) stops ANY program
+    # repeated 3 times in a SUCCESS tail.  graph_nodes calls it
+    # unconditionally with the default cap and returns from perceive on
+    # trigger, so a 4th consecutive real_space_refine cannot occur and a 5th is
+    # unreachable.
+    #
+    # Kept rather than deleted because the scopes differ: this counts
+    # refinement specifically, the cap counts any program.  If the cap is
+    # ever raised or made program-specific, this becomes live again.
+    #
+    # The threshold of 5 is NOT the intended behaviour today: on the
+    # p9-sad run, three refine cycles was judged correct and five too
+    # many.  Anyone reviving this rule should re-set the threshold rather
+    # than assume 5.
     if consecutive >= 5:
         result["should_stop"] = True
         result["reason"] = "EXCESSIVE: %d consecutive refinement cycles" % consecutive

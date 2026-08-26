@@ -1,0 +1,210 @@
+Starting find_reference
+on Wed Jul  8 09:27:42 2026 by oleg
+===============================================================================
+
+Processing files:
+-------------------------------------------------------------------------------
+
+  Found phil, /Users/oleg/Documents/phenix/testing/GUI/find_reference/.phenix/project_data/find_reference_14.eff
+
+Processing PHIL parameters:
+-------------------------------------------------------------------------------
+
+  Adding PHIL files:
+  ------------------
+    /Users/oleg/Documents/phenix/testing/GUI/find_reference/.phenix/project_data/find_reference_14.eff
+
+Final processed PHIL parameters:
+-------------------------------------------------------------------------------
+  data_manager {
+    model {
+      file = "/Users/oleg/Documents/phenix/testing/GUI/find_reference/9gsg.cif"
+    }
+    default_model = "/Users/oleg/Documents/phenix/testing/GUI/find_reference/9gsg.cif"
+    phil_files = "/Users/oleg/Documents/phenix/testing/GUI/find_reference/.phenix/project_data/find_reference_14.eff"
+    default_phil = "/Users/oleg/Documents/phenix/testing/GUI/find_reference/.phenix/project_data/find_reference_14.eff"
+  }
+  output_phil_format = refine *rsr
+  superpose_reference_on_target = False
+  trim_reference_to_target = False
+  job_title = """9gsg again"""
+
+
+Starting job
+===============================================================================
+Validating inputs
+Inputs OK
+Working with chain A, 939 residues
+Setting up RCSB server query:
+  executing HTTP request...
+  Chain sequence: GCTMEELRSLMELRGTEAVVKIKETYGDTEAICRRLKTSPVEGLPGTAPDLEKRKQIFGQNFIPPKKPKTFLQLVWEALQDVTLIILEIAAIISLGLSFYHPAGWIEGAAILLSVICVVLVTAFNDWSKEKQFRGLFTVVRAGQVVQIPVAEIVVGDIAQIKYGDLLPADGLFIQGNDLKIDESSLTGESDQVRKSVDKDPMLLSGTHVMEGSGRMVVTAVGVNSQTGIIFTLLGAKSVLQGKLTKLAVQIGKAGLVMSAITVIILVLYFTVDTFVVNKKPWLTEVYVQYFVKFFIIGVTVLVVAVPEGLPLAVTISLAYSVKKMMKDNNLVRHLDACETMGNATAICSDKTGTLTTNRMTVVQAYVGDVHYKEIPDPSSINAKTLELLVNAIAINSAYTTKILPPEKEGALPRQVGNKTECGLLGFVLDLRQDYEPVRSQMPEEKLYKVYTFNSVRKSMSTVIKMPDESFRMYSKGASEIVLKKCCKILSGAGEARVFRPRDRDEMVKKVIEPMACDGLRTICVAYRDFPSSPEPDWDNENDILNELTCICVVGIEDPVRPEVPEAIRKCQRAGITVRMVTGDNINTARAIAIKCGIIHPGEDFLCLEGKEFNRRIRNEKGEIEQERIDKIWPKLRVLARSSPTDKHTLVKGIIDSTHTEQRQVVAVTGDGTNDGPALKKADVGFAMGIAGTDVAKEASDIILTDDNFSSIVKAVMWGRNVYDSISKFLQFQLTVNVVAVIVAFTGACITQDSPLKAVQMLWVNLIMDTFASLALATEPPTETLLLRKPYGRNKPLISRTMMKNILGHAVYQLTLIFTLLFVGEKMFQIDSGRNAPLHSPPSEHYTIIFNTFVMMQLFNEINARKIHGERNVFDGIFRNPIFCTIVLGTFAIQIVIVQFGGKPFSCSPLQLDQWMWCIFIGLGELVWGQVIATIPTSR
+  Reference search results (9): ['9GSD.A', '9GSE.A', '9GSF.A', '9GSG.A', '9GSH.A', '9GSI.A', '9GSY.A', '9GTB.A', 'AF_AFQ9R0K7F1.A']
+  ====
+  Compressed search results (9): ['9GSD.A', '9GSE.A', '9GSF.A', '9GSG.A', '9GSH.A', '9GSI.A', '9GSY.A', '9GTB.A', 'AF_AFQ9R0K7F1.A']
+  Total 9 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    AF_AFQ9R0K7F1: 25.25, 74.75;
+    9GSD: 1000.0 None, None, None; 0.09, 0.79, 4.87;
+    9GSE: 1000.0 None, None, None; 0.0, 1.59, 8.88;
+    9GSF: 1000.0 None, None, None; 0.09, 1.69, 6.21;
+    9GSG: 1000.0 None, None, None; 0.09, 0.0, 6.92;
+    9GSH: 1000.0 None, None, None; 0.09, 1.6, 7.46;
+    9GSI: 1000.0 None, None, None; 0.22, 0.87, 6.02;
+    9GSY: 1000.0 None, None, None; 0.0, 1.1, 3.76;
+    9GTB: 1000.0 None, None, None; 0.32, 2.08, 10.08;
+    Skipping 9GSD.A - not x-ray and not computational
+    Skipping 9GSE.A - not x-ray and not computational
+    Skipping 9GSF.A - not x-ray and not computational
+    Skipping 9GSG.A - not x-ray and not computational
+    Skipping 9GSH.A - not x-ray and not computational
+    Skipping 9GSI.A - not x-ray and not computational
+    Skipping 9GSY.A - not x-ray and not computational
+    Skipping 9GTB.A - not x-ray and not computational
+  my sorting:
+  Total 1 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    AF_AFQ9R0K7F1: 25.25, 74.75;
+  Total 1 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    AF_AFQ9R0K7F1: 25.25, 74.75;
+model id and URL: AF_AFQ9R0K7F1 https://alphafold.ebi.ac.uk/files/AF-Q9R0K7-F1-model_v6.cif
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  9303
+  cutted_ref_m atom size:  9303
+    Sequence similarity for AF_AFQ9R0K7F1.A: 1.0
+      PBSs: 6.802, 10.827, {'A': 'A'}
+      RMSDs: 9.393, 25.099
+  Total 1 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    AF_AFQ9R0K7F1: 25.25, 74.75; 1.000; 9.393 25.099, 6.802 10.827 
+  Picked homology model: AF_AFQ9R0K7F1.A
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  9303
+  cutted_ref_m atom size:  9303
+  Final atom size of reference chain:  9303
+  Result appended with:  ('A', 'A', rcsb_entry_info(AF_AFQ9R0K7F1), {'sort_value_1': 25.25, 'total_residues': 939, 'seq_identity': 1.0, 'xyz_pbs': 6.801805553863128, 'tor_pbs': 10.827338296523711, 'xyz_rmsd': 9.39269881739334, 'tor_rmsd': 25.09894307513425, 'sort_value_2': 25.25})
+Working with chain B, 214 residues
+Setting up RCSB server query:
+  executing HTTP request...
+  Chain sequence: KPRIVTSEEVIIRESLLPVTLQCNLTSSSHTLMYSYWTRNGVELTATRKNASNMEYRINKPRAEDSGEYHCVYHFVSAPKANATIEVKAAPDITGHKRSENKNEGQDAMMYCKSVGYPHPEWIWRKKENGVFEEISNSSGRFFITNKENYTELSIVNLQITEDPGEYECNATNSIGSASVSTVLRVRSHLAPLWPFLGILAEIIILVVIIVVYE
+  Reference search results (11): ['2WV3.A', '6A69.B', '9GSD.B', '9GSE.B', '9GSF.B', '9GSG.B', '9GSH.B', '9GTB.B', 'AF_AFP97300F1.A', 'AF_AFP97546F1.A', 'AF_AFQ9Y639F1.A']
+  ====
+  Compressed search results (11): ['2WV3.A', '6A69.B', '9GSD.B', '9GSE.B', '9GSF.B', '9GSG.B', '9GSH.B', '9GTB.B', 'AF_AFP97300F1.A', 'AF_AFP97546F1.A', 'AF_AFQ9Y639F1.A']
+  Total 11 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    2WV3: 0.6512 1.95, 0.2076, 0.2486; 0.0, 1.79, 8.79;
+    AF_AFP97546F1: 12.53, 87.47;
+    AF_AFP97300F1: 12.87, 87.13;
+    AF_AFQ9Y639F1: 13.54, 86.46;
+    6A69: 1000.0 None, None, None; 0.1, None, 7.57;
+    9GSD: 1000.0 None, None, None; 0.09, 0.79, 4.87;
+    9GSE: 1000.0 None, None, None; 0.0, 1.59, 8.88;
+    9GSF: 1000.0 None, None, None; 0.09, 1.69, 6.21;
+    9GSG: 1000.0 None, None, None; 0.09, 0.0, 6.92;
+    9GSH: 1000.0 None, None, None; 0.09, 1.6, 7.46;
+    9GTB: 1000.0 None, None, None; 0.32, 2.08, 10.08;
+    Skipping 6A69.B - not x-ray and not computational
+    Skipping 9GSD.B - not x-ray and not computational
+    Skipping 9GSE.B - not x-ray and not computational
+    Skipping 9GSF.B - not x-ray and not computational
+    Skipping 9GSG.B - not x-ray and not computational
+    Skipping 9GSH.B - not x-ray and not computational
+    Skipping 9GTB.B - not x-ray and not computational
+  my sorting:
+  Total 4 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    2WV3: 0.6512 1.95, 0.2076, 0.2486; 0.0, 1.79, 8.79;
+    AF_AFP97546F1: 12.53, 87.47;
+    AF_AFP97300F1: 12.87, 87.13;
+    AF_AFQ9Y639F1: 13.54, 86.46;
+  Total 4 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    2WV3: 0.6512 1.95, 0.2076, 0.2486; 0.0, 1.79, 8.79;
+    AF_AFP97546F1: 12.53, 87.47;
+    AF_AFP97300F1: 12.87, 87.13;
+    AF_AFQ9Y639F1: 13.54, 86.46;
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  1667
+  cutted_ref_m atom size:  1495
+    Sequence similarity for 2WV3.A: 0.8504672897196262
+      PBSs: 1.479, 12.305, {'B': 'A'}
+      RMSDs: 1.420, 25.363
+model id and URL: AF_AFP97546F1 https://alphafold.ebi.ac.uk/files/AF-P97546-F1-model_v6.cif
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  3089
+  cutted_ref_m atom size:  3089
+    Sequence similarity for AF_AFP97546F1.A: 0.9766355140186916
+      PBSs: 1.740, 10.082, {'B': 'A'}
+      RMSDs: 2.706, 22.121
+model id and URL: AF_AFP97300F1 https://alphafold.ebi.ac.uk/files/AF-P97300-F1-model_v6.cif
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  3121
+  cutted_ref_m atom size:  3121
+    Sequence similarity for AF_AFP97300F1.A: 1.0
+      PBSs: 0.924, 9.759, {'B': 'A'}
+      RMSDs: 1.131, 21.564
+model id and URL: AF_AFQ9Y639F1 https://alphafold.ebi.ac.uk/files/AF-Q9Y639-F1-model_v6.cif
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  3122
+  cutted_ref_m atom size:  3122
+    Sequence similarity for AF_AFQ9Y639F1.A: 0.9205607476635514
+      PBSs: 1.114, 10.038, {'B': 'A'}
+      RMSDs: 1.294, 22.419
+  Total 4 items
+    pdb id, score, resolution, rwork, rfree; rama, rota, clash; seq_sim; xyz_rmsd, tor_rmsd, xyz_pbs, tor_pbs; first 1000 items
+    pdb id, score, pLDDT; seq_sim; rsmds; 
+    2WV3: 0.8007 1.95, 0.2076, 0.2486; 0.0, 1.79, 8.79; 0.850; 1.420 25.363, 1.479 12.305 
+    AF_AFP97300F1: 12.87, 87.13; 1.000; 1.131 21.564, 0.924 9.759 
+    AF_AFP97546F1: 14.87, 87.47; 0.977; 2.706 22.121, 1.740 10.082 
+    AF_AFQ9Y639F1: 21.48, 86.46; 0.921; 1.294 22.419, 1.114 10.038 
+  Picked homology model: 2WV3.A
+  ref label --> chain: 'A' --> 'A' 
+  ref_m atom size:  1667
+  cutted_ref_m atom size:  1495
+  Final atom size of reference chain:  1495
+  Result appended with:  ('B', 'A', rcsb_entry_info(2WV3), {'sort_value_1': 0.6512, 'total_residues': 214, 'seq_identity': 0.8504672897196262, 'xyz_pbs': 1.4789457825781471, 'tor_pbs': 12.30479564043068, 'xyz_rmsd': 1.4198582893527032, 'tor_rmsd': 25.362687082140155, 'sort_value_2': 0.8007})
+Working with chain A, 2 residues
+  Skipping - not protein or too few residues.
+Working with chain B, 6 residues
+  Skipping - not protein or too few residues.
+Working with chain A, 10 residues
+  Skipping - not protein or too few residues.
+SELF RESULT:
+   ('A', 'A', rcsb_entry_info(AF_AFQ9R0K7F1), {'sort_value_1': 25.25, 'total_residues': 939, 'seq_identity': 1.0, 'xyz_pbs': 6.801805553863128, 'tor_pbs': 10.827338296523711, 'xyz_rmsd': 9.39269881739334, 'tor_rmsd': 25.09894307513425, 'sort_value_2': 25.25})
+   ('B', 'A', rcsb_entry_info(2WV3), {'sort_value_1': 0.6512, 'total_residues': 214, 'seq_identity': 0.8504672897196262, 'xyz_pbs': 1.4789457825781471, 'tor_pbs': 12.30479564043068, 'xyz_rmsd': 1.4198582893527032, 'tor_rmsd': 25.362687082140155, 'sort_value_2': 0.8007})
+Overall macromolecule coverage: 0.9722 (cutoff: 0.0)
+  Saved reference file reference_for_chain_A_AF_AFQ9R0K7F1.cif
+  Saved reference file reference_for_chain_B_2WV3.cif
+reference_model {
+  search_options {
+    chain_similarity_threshold = 0.01
+  }
+  enabled=True
+  file=reference_for_chain_A_AF_AFQ9R0K7F1.pdb
+  file=reference_for_chain_B_2WV3.pdb
+
+  reference_group {
+    reference = chain A
+    selection = chain A
+    file_name = reference_for_chain_A_AF_AFQ9R0K7F1.pdb
+  }
+  reference_group {
+    reference = chain A
+    selection = chain B
+    file_name = reference_for_chain_B_2WV3.pdb
+  }
+}
+
+Writing parameters to:  9gsg_references_000.eff
+
+===============================================================================
+Job complete
+usr+sys time: 65.21 seconds
+wall clock time: 76.91 seconds

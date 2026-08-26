@@ -58,10 +58,18 @@ def test_build_request_v2_handles_analysis_key():
       history=history
     )
 
-    # Check that metrics were extracted from 'analysis' key
+    # Check that metrics were extracted from 'analysis' key.
+    #
+    # v121.1: build_request_v2 now EMITS "analysis" as well as accepting
+    # it.  HISTORY_ENTRY_FIELDS declares that name and
+    # session.get_history_for_agent already produces it; the old
+    # rename to "metrics" left 8 of 9 consumers reading a key that
+    # never arrived, and 7 of 7 production cycles delivered {}.
+    # This test's subject -- that the "analysis" key is ACCEPTED on
+    # input -- is unchanged.
     normalized_history = request["history"]
     assert_equal(len(normalized_history), 1)
-    metrics = normalized_history[0]["metrics"]
+    metrics = normalized_history[0]["analysis"]
 
     assert_equal(metrics.get("resolution"), 2.5)
     assert_equal(metrics.get("has_anomalous"), True)
@@ -105,7 +113,8 @@ def test_build_request_v2_handles_metrics_key():
     )
 
     normalized_history = request["history"]
-    metrics = normalized_history[0]["metrics"]
+    # Input key is "metrics" here, output is always "analysis" (v121.1).
+    metrics = normalized_history[0]["analysis"]
 
     assert_equal(metrics.get("resolution"), 2.5)
     assert_equal(metrics.get("has_anomalous"), True)
@@ -170,7 +179,11 @@ def test_analyze_history_extracts_anomalous_from_metrics():
   try:
     from agent.workflow_state import _analyze_history
 
-    # After transport, the key is 'metrics' not 'analysis'
+    # Historic transport shape: the key used to be 'metrics'.  Since
+    # v121.1 the transport emits 'analysis', but _analyze_history reads
+    # entry.get("analysis", entry.get("metrics", {})) -- it accepts
+    # both -- so this fixture still exercises the fallback branch and is
+    # kept deliberately.
     history = [
       {
         "program": "phenix.xtriage",

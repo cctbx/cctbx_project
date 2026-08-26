@@ -15,6 +15,11 @@ from cctbx.geometry_restraints.linking_class import linking_class
 from cctbx.maptbx.box import shift_and_box_model
 import math
 
+from cctbx import crystal
+from scitbx import matrix
+from cctbx.array_family import flex
+from libtbx import group_args
+
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
 
@@ -275,58 +280,6 @@ def h1_h2_from_A_X_d_angles(A, X, d, ang1_deg, ang2_deg):
     raise ValueError(
     "Cannot produce distinct H1 and H2 for these inputs (overlap unavoidable).")
 
-def point_H_from_A_X_d_angle(A, X, d, ang_deg):
-  """
-  AI generated code.
-
-  Prompt: In 3D. Find coordinates of point H, if we know its distance d from
-  point X, we know the angle (H,X,A). Coordinates of points A,X are known. Need
-  a function in python. Angles are in degrees. Only inputs are: coordinates of A
-  and X, distance d and angle (H,X,A). Use pure python. If solution is not
-  unique, just pick any one.
-
-  Return one valid 3D point H such that:
-    |H - X| = d
-    angle(H, X, A) = ang_deg  (degrees)
-
-  Inputs: A, X are (x,y,z) tuples/lists; d is float; ang_deg is float.
-  Pure python. Picks an arbitrary but deterministic plane (uses global Z as
-  reference).
-  """
-  def v_sub(a, b): return (a[0]-b[0], a[1]-b[1], a[2]-b[2])
-  def v_add(a, b): return (a[0]+b[0], a[1]+b[1], a[2]+b[2])
-  def v_mul(s, v): return (s*v[0], s*v[1], s*v[2])
-  def dot(a, b): return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
-  def norm(v): return math.sqrt(dot(v, v))
-  def unit(v, eps=1e-12):
-    n = norm(v)
-    if n < eps:
-      raise ValueError("Cannot normalize near-zero vector.")
-    return (v[0]/n, v[1]/n, v[2]/n)
-  if d < 0:
-    raise ValueError("d must be non-negative.")
-  AX = v_sub(A, X)
-  if norm(AX) < 1e-12:
-    raise ValueError("A and X coincide; angle(H, X, A) is undefined.")
-  if d == 0:
-    return (float(X[0]), float(X[1]), float(X[2]))
-  u = unit(AX)  # direction from X to A
-  # Pick a perpendicular direction v using a reference axis (deterministic)
-  ref = (0.0, 0.0, 1.0)
-  if abs(dot(u, ref)) > 0.99:   # too parallel to Z, use Y
-    ref = (0.0, 1.0, 0.0)
-  # v_raw = ref - (ref·u)u  (component of ref perpendicular to u)
-  v_raw = v_sub(ref, v_mul(dot(ref, u), u))
-  if norm(v_raw) < 1e-12:       # very rare fallback
-    ref = (1.0, 0.0, 0.0)
-    v_raw = v_sub(ref, v_mul(dot(ref, u), u))
-  v = unit(v_raw)
-  th = math.radians(ang_deg)
-  c, s = math.cos(th), math.sin(th)
-  direction = v_add(v_mul(c, u), v_mul(s, v))  # choose the "+ side" arbitrarily
-  H = v_add(X, v_mul(d, direction))
-  return H
-
 def find_H1_H2(X, d, angle_deg):
   """
   AI generated code.
@@ -358,120 +311,6 @@ def find_H1_H2(X, d, angle_deg):
         z)
   return H1, H2
 
-def workaround_001(model, selection, log=None):
-  if selection.size()==0: return None
-  atoms = model.get_hierarchy().atoms()
-  # Collect info about H to build, i_seqs if these H are in selection
-  h_to_opt = {}
-  sites_cart = model.get_sites_cart()
-  def _format_rid(i):
-    resname = atoms[i].parent().resname.strip()
-    resseq  = atoms[i].parent().parent().resseq.strip()
-    cid     = atoms[i].parent().parent().parent().id.strip()
-    return  "%s_%s_%s"%(resname, cid, resseq)
-  for i in selection:
-    h_to_opt[i] = group_args(
-      site_cart = sites_cart[i],
-      elementX  = None,
-      d         = None, # X-H bond distance
-      a         = None, # X-H bond angle
-      bond      = None, # i_seq of X
-      angle     = None, # i_seq of A
-      plane     = None) # i_seqs of plane -- not user for now
-  g = model.get_restraints_manager().geometry
-  # Look in bonds:
-  bp_simple, asu = g.get_all_bond_proxies(sites_cart = sites_cart)
-  for bp in bp_simple:
-    i_seqs = bp.i_seqs
-    for j in selection:
-      if j in i_seqs:
-        if log is not None:
-          print(j, " (%s) is found in bond "%_format_rid(j), list(i_seqs),file=log)
-        L = [x for x in i_seqs if x not in set(selection)]
-        if len(L)==0: continue
-        if len(L)>1: raise ValueError("It should really be 1.")
-        h_to_opt[j].bond = L[0]
-        h_to_opt[j].d = bp.distance_ideal
-        h_to_opt[j].elementX = atoms[L[0]].element.strip().upper()
-  # Look in angles:
-  for ap in g.angle_proxies:
-    i_seqs = ap.i_seqs
-    for j in selection:
-      if j in i_seqs:
-        if log is not None:
-          print(j, " (%s) is found in angle "%_format_rid(j), list(i_seqs),file=log)
-        L = [x for x in i_seqs if x != h_to_opt[j].bond and
-             x not in set(selection)]
-        if len(L)==0: continue
-        #if len(L)>1: raise ValueError("It should really be 1.")
-        h_to_opt[j].angle = L[0]
-        h_to_opt[j].a = ap.angle_ideal
-  # Look in planes
-  for dp in g.dihedral_proxies:
-    i_seqs = dp.i_seqs
-    for j in selection:
-      if j in i_seqs:
-        L = (lambda t: t if len(t) >= 3 else None)([x for x in (L or [])
-             if x not in set(selection)])
-        if L is None: continue
-        if log is not None:
-          print(j, " (%s) is found in torsion "%_format_rid(j), L,log=None)
-        h_to_opt[j].plane = L
-  # Look in torsions
-  for pp in g.planarity_proxies:
-    i_seqs = pp.i_seqs
-    for j in selection:
-      if j in i_seqs:
-        L = (lambda t: t if len(t) >= 3 else None)([x for x in (L or [])
-             if x not in set(selection)])
-        if L is None: continue
-        if log is not None:
-          print(j, " (%s) is found in plane "%_format_rid(j), L, file=log)
-        h_to_opt[j].plane = L
-  #
-  new_h_to_remove = []
-  for k,v in h_to_opt.items():
-    cntr = 0
-    for bp in bp_simple:
-      i_seqs = bp.i_seqs
-      if v.bond in i_seqs: cntr+=1
-    if v.elementX=="N" and cntr>3: new_h_to_remove.append(k)
-    if v.elementX=="C" and cntr>4: new_h_to_remove.append(k)
-    if v.elementX=="O" and cntr>2: new_h_to_remove.append(k)
-  #print("new_h_to_remove:",new_h_to_remove)
-  h_to_opt = {k: v for k, v in h_to_opt.items() if k not in set(new_h_to_remove)}
-  # key = i_seq of X, values = i_seqs of H to build
-  xh = {}
-  for k,v in h_to_opt.items():
-    xh.setdefault(v.bond,[]).append(k)
-  # Build
-  sel_built = flex.size_t()
-  for k,v in xh.items():
-    if len(v)==1: # Build X-H
-      h = h_to_opt[v[0]]
-      if h.angle is None or h.bond is None: continue
-      p = point_H_from_A_X_d_angle(
-        A       = sites_cart[h.angle],
-        X       = sites_cart[h.bond],
-        d       = h.d,
-        ang_deg = h.a)
-      i_seq = v[0]
-      atoms[i_seq].xyz = p
-      sel_built.append(i_seq)
-    elif len(v)==2: # Build H-X-H
-      h1,h2 = h_to_opt[v[0]], h_to_opt[v[1]]
-      if h1.angle is None or h1.bond is None: continue
-      p1,p2 = h1_h2_from_A_X_d_angles(
-        A = sites_cart[h1.angle],
-        X = sites_cart[h1.bond],
-        d = h1.d, ang1_deg=h1.a, ang2_deg=h2.a)
-      for pair in [[v[0], p1], [v[1], p2]]:
-        i_seq, p = pair
-        atoms[i_seq].xyz = p
-        sel_built.append(i_seq)
-  # Return list of what was not built
-  return flex.size_t(list(set(selection) - set(sel_built)))
-
 def workaround_002(model, selection):
   h = model.get_hierarchy()
   atoms = h.atoms()
@@ -491,6 +330,149 @@ def workaround_002(model, selection):
           p1, p2 = find_H1_H2(X=X, d=0.85, angle_deg=103.91)
           atoms[ij[0]].xyz = p1
           atoms[ij[1]].xyz = p2
+
+def workarounds_00345(model,
+                      cutoff_003=1.1,
+                      s_c_cutoff=1.9,
+                      ch_s_cutoff=1.1,
+                      non_h_distance_cutoff=1.65):
+    """
+    Combined functionality of workaround_003, 004, and 005.
+    Finds clashing H/D atoms based on specific geometry parameters,
+    accounting for altlocs and crystal symmetry, and strips them from the model.
+    """
+    pdb_hierarchy = model.get_hierarchy()
+    restraints_manager = model.get_restraints_manager()
+    atoms = pdb_hierarchy.atoms()
+    sites_cart = atoms.extract_xyz()
+    # SHARED SETUP: Build bond connectivity dict once
+    if hasattr(restraints_manager, "geometry"):
+      bond_proxies_simple, asu = \
+        restraints_manager.geometry.get_all_bond_proxies(sites_cart=sites_cart)
+    else:
+      bond_proxies_simple = restraints_manager.pair_proxies(
+        sites_cart=sites_cart).bond_proxies.simple
+    bonds = {}
+    for proxy in bond_proxies_simple:
+      i, j = proxy.i_seqs
+      bonds.setdefault(i, []).append(j)
+      bonds.setdefault(j, []).append(i)
+    # 2. SHARED SETUP: Pre-filter atoms into target lists for speedup
+    s_atoms = []
+    c_atoms = []
+    o_atoms = []
+    non_h_atoms = []
+    asc = pdb_hierarchy.atom_selection_cache()
+    h_sel = asc.selection("element H or element D")
+    h_iseqs = h_sel.iselection()
+    for atom in atoms:
+      if not atom.element_is_hydrogen():
+        non_h_atoms.append(atom)
+        elem = atom.element.strip().upper()
+        if elem == 'S': s_atoms.append(atom)
+        elif elem == 'C': c_atoms.append(atom)
+        elif elem == 'O': o_atoms.append(atom)
+    remove_selection = flex.size_t()
+    # =========================================================================
+    # WORKAROUND 003 LOGIC: Symmetry-mapped clashing H/D atoms
+    # =========================================================================
+    if h_iseqs.size() >= 2:
+      fsc0 = restraints_manager.geometry.shell_sym_tables[0].\
+        full_simple_connectivity()
+      crystal_symmetry = restraints_manager.geometry.crystal_symmetry
+      unit_cell = crystal_symmetry.unit_cell()
+      sps = crystal_symmetry.special_position_settings()
+      h_sites_cart = sites_cart.select(h_sel)
+      asu_mappings = sps.asu_mappings(
+        buffer_thickness=cutoff_003, sites_cart=h_sites_cart)
+      pair_generator = crystal.neighbors_fast_pair_generator(
+        asu_mappings=asu_mappings, distance_cutoff=cutoff_003)
+      for pair in pair_generator:
+        orig_h_i = h_iseqs[pair.i_seq]
+        orig_h_j = h_iseqs[pair.j_seq]
+        altloc_i = atoms[orig_h_i].parent().altloc.strip()
+        altloc_j = atoms[orig_h_j].parent().altloc.strip()
+        if altloc_i and altloc_j and altloc_i != altloc_j: continue
+        bonded_to_i = fsc0[orig_h_i]
+        bonded_to_j = fsc0[orig_h_j]
+        if len(bonded_to_i) != 1 or len(bonded_to_j) != 1: continue
+        rt_mx_i = asu_mappings.get_rt_mx_i(pair)
+        rt_mx_j = asu_mappings.get_rt_mx_j(pair)
+        site_frac_i = unit_cell.fractionalize(atoms[bonded_to_i[0]].xyz)
+        sym_site_cart_i = unit_cell.orthogonalize(rt_mx_i * site_frac_i)
+        site_frac_j = unit_cell.fractionalize(atoms[bonded_to_j[0]].xyz)
+        sym_site_cart_j = unit_cell.orthogonalize(rt_mx_j * site_frac_j)
+        heavy_dist = (matrix.col(sym_site_cart_i) -
+                      matrix.col(sym_site_cart_j)).length()
+        h_dist = pair.dist_sq ** 0.5
+        if h_dist < 1.0 and heavy_dist < 1.6:
+          remove_selection.append(orig_h_i)
+          remove_selection.append(orig_h_j)
+    # =========================================================================
+    # WORKAROUND 004 LOGIC: S-C Hydrogen 4-atom cluster distances
+    # =========================================================================
+    for s_atom in s_atoms:
+      sulfur_H = None
+      for idx in bonds.get(s_atom.i_seq, []):
+        if atoms[idx].element_is_hydrogen():
+          sulfur_H = atoms[idx]
+          break
+      if not sulfur_H: continue
+      alt_s = s_atom.parent().altloc.strip()
+      for c_atom in c_atoms:
+        alt_c = c_atom.parent().altloc.strip()
+        if alt_s and alt_c and alt_s != alt_c: continue
+        if s_atom.distance(c_atom) <= s_c_cutoff:
+          for idx in bonds.get(c_atom.i_seq, []):
+            c_h_atom = atoms[idx]
+            if c_h_atom.element_is_hydrogen():
+              alt_sh = sulfur_H.parent().altloc.strip()
+              alt_ch = c_h_atom.parent().altloc.strip()
+              # Verify altloc compatibility for all 4 atoms
+              if len({alt for alt in [alt_s, alt_sh, alt_c, alt_ch] if alt})> 1:
+                continue
+              if c_h_atom.distance(s_atom) < ch_s_cutoff:
+                remove_selection.append(sulfur_H.i_seq)
+                remove_selection.append(c_h_atom.i_seq)
+    # =========================================================================
+    # WORKAROUND 005 LOGIC: Oxygen-Hydrogen distance geometries
+    # =========================================================================
+    for o_atom in o_atoms:
+      alt_o = o_atom.parent().altloc.strip()
+      h_neighbors = [atoms[idx] for idx in bonds.get(o_atom.i_seq, [])
+                     if atoms[idx].element_is_hydrogen()]
+      if not h_neighbors: continue
+      non_h_neighbors = []
+      for other_atom in non_h_atoms:
+        if other_atom.i_seq == o_atom.i_seq: continue
+        alt_other = other_atom.parent().altloc.strip()
+        if alt_o and alt_other and alt_o != alt_other: continue
+        if o_atom.distance(other_atom) <= non_h_distance_cutoff:
+          non_h_neighbors.append(other_atom)
+      # Base altloc requirements from O and its bonded Hs
+      core_altlocs = {alt_o} if alt_o else set()
+      for h in h_neighbors:
+        alt_h = h.parent().altloc.strip()
+        if alt_h: core_altlocs.add(alt_h)
+      if len(core_altlocs) > 1: continue
+      states_to_check = core_altlocs if core_altlocs else {''}
+      if not core_altlocs:
+        for nh in non_h_neighbors:
+          alt_nh = nh.parent().altloc.strip()
+          if alt_nh: states_to_check.add(alt_nh)
+      for state in states_to_check:
+        compatible_nh = [nh for nh in non_h_neighbors
+                         if nh.parent().altloc.strip() in ('', state)]
+        if len(compatible_nh) == 2:
+          for rh in h_neighbors:
+            remove_selection.append(rh.i_seq)
+          break
+    # =========================================================================
+    # RETURN: Invert selection and drop flagged atoms from model
+    # =========================================================================
+    if remove_selection.size() == 0: return model
+    remove_selection = flex.bool(model.size(), remove_selection)
+    return model.select(~remove_selection)
 
 class place_hydrogens():
   '''
@@ -689,14 +671,7 @@ class place_hydrogens():
       [bool(x) for x in riding_h_manager.h_parameterization])
     sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
 
-    # XXX DEAL WITH WATER IN ANOTHER workaround_00x
     water_selection = self.model.solvent_selection()
-    # workaround_001 is now superseded by the corrected no-dihedral handling
-    # in mmtbx/hydrogens/connectivity.py::process_a0_angles_and_third_neighbors_without_dihedral.
-    # sel_h_not_in_para = workaround_001(
-    #   model     = self.model,
-    #   selection = (sel_h_not_in_para.select(~water_selection)).iselection())
-    # sel_h_not_in_para = flex.bool(self.model.size(), sel_h_not_in_para)
 
     if not self.exclude_water and water_selection.count(True)>0:
       workaround_002(
@@ -790,6 +765,8 @@ class place_hydrogens():
               msg="chain %s resseq %s resname %s misses:"
               if 0: # Hold off printing untill verbosity is added
                 print(msg%(c.id, r.resseq, r.resname), ma)
+
+    self.model = workarounds_00345(model=self.model)
 
     if self.print_time:
       self.print_times()
@@ -1316,37 +1293,3 @@ The following H atoms were not placed because they could not be parameterized
 
 # ==============================================================================
 
-## stub for reduce parameters
-## TODO can be parameters or phil, depending on how many options are really needed
-#reduce_master_params_str = """
-#flip_NQH = True
-#  .type = bool
-#  .help = add H and rotate and flip NQH groups
-#search_time_limit = 600
-#  .type = int
-#  .help = max seconds to spend in exhaustive search (default=600)
-#"""
-#
-#def optimize(model):
-#  """
-#  Carry out reduce optimization
-#
-#  Parameters
-#  ----------
-#  model
-#      mmtbx model object that contains H atoms
-#      H atoms should be at approprite distances
-#
-#  Returns
-#  -------
-#  model
-#      mmtbx model object with optimized H atoms
-#  """
-#  # hierarchy object --> has hierarchy of structure
-#  pdb_hierarchy = model.get_hierarchy()
-#  # geometry restraints manager --> info about ideal bonds, angles; what atoms are bonded, etc.
-#  grm = model.get_restraints_manager()
-#
-#  print("Reduce optimization happens here")
-#
-#  return model

@@ -16,6 +16,29 @@ This module provides two types of validation:
 All program and parameter information is loaded dynamically from the
 programs.yaml file, so this validator stays in sync automatically.
 
+NOTE ON STOP CONDITIONS (audit, 2026-08)
+----------------------------------------
+`get_stop_reason_from_directives` and the two helpers it calls,
+`_check_stop_conditions` and `_check_max_program_cycles`, have NO
+CALLERS anywhere in modules/.  The live implementation of the
+r_free_target / map_cc_target hard stops is
+
+    agent/perceive_checks.py :: check_directive_stop
+
+which `graph_nodes.perceive()` calls each cycle.
+
+The two are not duplicates and that is why this copy was kept:
+
+  * perceive_checks reads `current_metrics` -- the dict returned by
+    extract_all_metrics for the cycle just finished;
+  * the code here reads the metrics out of HISTORY ENTRIES, which is a
+    different source and a different failure mode.
+
+`tests/tst_directives_integration.py` is the only test that exercises
+the history-reading path, so deleting this would remove that coverage.
+If you are changing stop behaviour, change perceive_checks -- this file
+will not affect a running agent.
+
 Pre-validation usage:
     from agent.directive_validator import validate_directives
 
@@ -975,6 +998,9 @@ def augment_intent_with_directives(intent, directives):
 
 
 def get_stop_reason_from_directives(directives, cycle_number, last_program, history=None):
+    # UNREFERENCED as of 2026-08: nothing in modules/ calls this.  The
+    # live hard-stop check is perceive_checks.check_directive_stop.  See
+    # the note in the module docstring before changing or deleting it.
     """
     Check if stop conditions are met and return reason.
 
@@ -1034,10 +1060,17 @@ def _check_stop_conditions(directives, cycle_number=None, last_program=None, his
         return True, f"Completed {after_program} (stop after this program)"
 
     # Check R-free target
+    #
+    # Accept both spellings.  HISTORY_ENTRY_FIELDS declares "analysis",
+    # and since v121.1 build_request_v2 emits that name; older payloads
+    # and session records carry "metrics".  Reading only "metrics" here
+    # would silently yield {} on any current transported history, so the
+    # target would never be reached and the stop would never fire.
+    # Same pattern as agent/workflow_state.py.
     r_free_target = stop_conditions.get("r_free_target")
     if r_free_target is not None and history:
         for entry in reversed(history):
-            metrics = entry.get("metrics", {})
+            metrics = entry.get("analysis", entry.get("metrics", {}))
             r_free = metrics.get("r_free")
             if r_free is not None and r_free <= r_free_target:
                 return True, f"R-free {r_free:.3f} reached target {r_free_target}"
@@ -1046,7 +1079,7 @@ def _check_stop_conditions(directives, cycle_number=None, last_program=None, his
     map_cc_target = stop_conditions.get("map_cc_target")
     if map_cc_target is not None and history:
         for entry in reversed(history):
-            metrics = entry.get("metrics", {})
+            metrics = entry.get("analysis", entry.get("metrics", {}))
             map_cc = metrics.get("map_cc") or metrics.get("cc_mask")
             if map_cc is not None and map_cc >= map_cc_target:
                 return True, f"Map CC {map_cc:.3f} reached target {map_cc_target}"

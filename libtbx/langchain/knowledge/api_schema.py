@@ -681,6 +681,7 @@ def create_stop_response(
     debug_log=None,
     server_version=None,
     events=None,
+    warnings=None,
 ):
     """
     Create a v2 stop response.
@@ -705,6 +706,7 @@ def create_stop_response(
         debug_log=debug_log,
         server_version=server_version,
         events=events,
+        warnings=warnings,
     )
 
     if final_metrics:

@@ -112,11 +112,12 @@ qm_selection_specs = '''
     .type = choice
 '''
 
-def get_qm_package_scope(validate=True, verbose=False):
+def get_qm_package_scope(default_package=None, validate=True, verbose=False):
+  if default_package is None: default_package='mopac'
   programs = ''
   for package, (func, var) in program_options.items():
     if func(os.environ, var):
-      if package=='mopac':
+      if package==default_package:
         programs += ' *%s' % package
       else:
         programs += ' %s' % package
@@ -125,7 +126,7 @@ def get_qm_package_scope(validate=True, verbose=False):
     assert programs, 'Need to set some parameters for QM programs %s' % program_options
   return qm_package_scope % programs
 
-def get_qm_restraints_scope(validate=True, verbose=False):
+def get_qm_restraints_scope(default_package=None, validate=True, verbose=False):
   qm_restraints_scope = '''
 qm_restraints
   .multiple = True
@@ -204,12 +205,14 @@ gradients
   %s
 }
 '''
-  qm_package_scope_filled = get_qm_package_scope(validate=validate ,verbose=verbose)
+  qm_package_scope_filled = get_qm_package_scope(default_package=default_package,
+                                                 validate=validate,
+                                                 verbose=verbose)
   qm_restraints_scope = qm_restraints_scope % (qm_selection_specs % ('*',''),
                                                qm_package_scope_filled)
   return qm_restraints_scope
 
-def get_qm_gradients_scope(validate=True, verbose=False):
+def get_qm_gradients_scope(default_package=None, validate=True, verbose=False):
   qm_gradients_scope = '''
 qm_gradients
   .multiple = True
@@ -218,7 +221,9 @@ qm_gradients
   %s
 }
 '''
-  qm_package_scope_filled = get_qm_package_scope(validate=validate, verbose=verbose)
+  qm_package_scope_filled = get_qm_package_scope(default_package=default_package,
+                                                 validate=validate,
+                                                 verbose=verbose)
   qm_gradients_scope = qm_gradients_scope % (qm_selection_specs % ('','*'),
                                                qm_package_scope_filled)
   return qm_gradients_scope

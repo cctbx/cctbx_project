@@ -1,14 +1,14 @@
 """endo_exo: QM-region builder engine.
 
 Grows a QM region around seed sites by breadth-first traversal of the
-covalent graph, caps dangling bonds with hydrogens, and estimates the net
-charge of the region.  The :class:`~mmtbx.geometry_restraints.endo_exo.builder.QMRegionBuilder`
+covalent graph and caps dangling bonds with hydrogens.  The
+:class:`~mmtbx.geometry_restraints.endo_exo.builder.QMRegionBuilder`
 orchestrates the per-seed pipeline; the individual engine classes live in
-the sibling modules (seeds, graph, cutting, grow, capping, charge).
+the sibling modules (seeds, graph, cutting, grow, capping).
 
-Submodules are imported directly (e.g. ``from
-mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder``) so that
-the lightweight engine pieces can be used without pulling in the full
+This package re-exports nothing; submodules are imported directly, as in
+``from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder``,
+so that a single engine piece can be used without importing the whole
 pipeline.
 """
 

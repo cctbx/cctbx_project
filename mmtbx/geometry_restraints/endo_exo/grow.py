@@ -6,19 +6,19 @@ from __future__ import absolute_import, division, print_function
 from collections import deque
 
 from cctbx import sgtbx
+from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
-from mmtbx.geometry_restraints.endo_exo.cutting import (
-  BondCutDetector, PREFERRED_CUTS)
+from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 
 
 class QMRegionGrower:
   """Grow a QM region by BFS traversal of a covalent graph.
 
-  The grower stops BFS at "cuttable" bonds (sidechain C-C sp3 cuts and
-  backbone CA-C / CA-N cuts) and records the far atom as a tentative cap.
-  It does **not** actually place hydrogens; cap placement is performed by
-  :class:`HydrogenCapper` at the calling site after sub-model selection.
+  BFS stops at cuttable bonds (sidechain C-C sp3 cuts and backbone CA-C /
+  CA-N cuts) and records the far atom as a tentative cap.  Hydrogens are not
+  placed here: cap placement is performed by :class:`HydrogenCapper` at the
+  calling site, after sub-model selection.
 
   Parameters
   ----------
@@ -28,20 +28,22 @@ class QMRegionGrower:
       Destination for diagnostic messages.
   """
 
+  #: Backstop on alternating grow/reattach rounds.  The loop ends well inside
+  #: it: the visited set only grows, a node is enqueued only while absent from
+  #: it, and a demoted cap stays visited so it cannot be capped again, so each
+  #: round leaves strictly fewer caps to demote.  The bound turns a violation
+  #: of one of those properties into a slow run rather than a hang.
+  max_repair_rounds = 20
+
   def __init__(self, bond_cut_detector, log=None):
     self.bond_cut_detector = bond_cut_detector
     self.log = log
-    # Used only by the preferred-cut fallback: when a preferred cut is no
-    # longer achievable we re-cut inward with the pure geometric C-C
-    # heuristic, regardless of the residue's PREFERRED_CUTS entry.
-    self._geom_detector = BondCutDetector(use_preferred_cuts=False, log=log)
 
   # ------------------------------------------------------------------
   # Public interface
   # ------------------------------------------------------------------
 
-  def grow_by_depth(self, seed_atoms, adjacency, model, max_depth=3,
-                    forced_cut_bonds=None, geometric_for_overgrowth=False):
+  def grow_by_depth(self, seed_atoms, adjacency, model, max_depth=3):
     """Symmetry-aware BFS over ``(iseq, sym_op)`` nodes, recording cap
     candidates by pruning.
 
@@ -50,22 +52,23 @@ class QMRegionGrower:
     ``(j_seq, edge_op)`` composes with the current node's op to
     produce the neighbour node
     ``(j_seq, current_op.multiply(edge_op))``. Lattice translations
-    and point-group symmetry are therefore handled uniformly.
+    and point-group symmetry are therefore handled uniformly.  Seed
+    nodes are placed in *visited* before the traversal starts, so they
+    are never cut-tested and never become caps.
 
     Whenever a cuttable bond ``current -> neighbour`` is encountered,
     *neighbour* is marked visited so BFS will not expand past it, and
     ``(neighbour, current)`` is stored as a tentative cap via
-    :meth:`_try_mark_cap`.  Two situations promote a tentative cap back to
-    interior:
+    :meth:`_try_mark_cap`.  Two situations promote a tentative cap back
+    to interior:
 
     * **Re-encounter**: *neighbour* is later reached from a different
       node.  The cap is then a regular interior node on at least two
       paths, so it is demoted via :meth:`_demote_cap_candidate`.
-    * **Adjacent-cap conflict**: the would-be cap is directly bonded to
-      an existing cap candidate (detected at cap-creation time inside
-      :meth:`_try_mark_cap`).  Both nodes are promoted to interior; this
-      catches the edge case the re-encounter check cannot see, since
-      cap candidates are never themselves enqueued.
+    * **Stranding**: an atom is left with no heavy neighbour but caps, so
+      one of them is restored by :meth:`_reattach_stranded`.  Growth and
+      reattachment alternate until the region stops changing, since
+      restoring a cap re-opens BFS through it.
 
     Together these guarantee that every surviving cap candidate has only
     its recorded anchor as a QM-region neighbour.
@@ -83,20 +86,7 @@ class QMRegionGrower:
         not mutated.
     model : mmtbx.model.manager
     max_depth : int, optional
-        Kept for API compatibility; currently unused.  Default is 3.
-    forced_cut_bonds : set of frozenset, optional
-        Bonds (each a ``frozenset({iseq_a, iseq_b})``) to treat as
-        cuttable regardless of residue type or geometry.  Matched on the
-        bare iseq pair, so every symmetry image of the bond is cut.  Used
-        by :meth:`grow_region` (preferred-cut fallback) to re-cut residues
-        whose preferred cut became unachievable.
-    geometric_for_overgrowth : bool, optional
-        When ``True``, residues with no seed (radius) atom (i.e. those
-        reached purely as BFS backbone overgrowth) defer to the
-        geometric C-C sp3 heuristic instead of their ``PREFERRED_CUTS``
-        entry.  The heuristic cuts at the first sp3 C-C bond along the
-        BFS path (typically CA-CB), trimming such residues to backbone.
-        Residues carrying a seed atom keep their preferred cuts.
+        Accepted for signature compatibility and unused.  Default is 3.
 
     Returns
     -------
@@ -108,48 +98,53 @@ class QMRegionGrower:
         neighbour.
     """
     atoms = model.get_hierarchy().atoms()
-    forced_cut_bonds = forced_cut_bonds or set()
     identity = _canon_op(sgtbx.rt_mx())
     # Seeds may be bare iseqs (identity image) or pre-built (iseq, op)
     # nodes (symmetry images from the symmetry-aware radius search);
     # normalise both to nodes.
     seed_nodes = {s if isinstance(s, tuple) else (s, identity)
                   for s in seed_atoms}
-    # iseqs belonging to a residue that contains at least one seed
-    # (radius) atom.  Residues absent from this set are pure BFS
-    # overgrowth and, when geometric_for_overgrowth is on, defer to the
-    # geometric C-C heuristic.  Empty (and unused) otherwise.
-    #
-    # APPROXIMATION: keyed on bare iseq, so the sym_op is dropped.  With
-    # symmetry-aware seeding the same residue can appear under several ops,
-    # and "has a seed" is really a per-(residue, op) property.  Here, if
-    # ANY image of a residue carries a seed, every image is treated as
-    # seeded -> uses preferred cuts. This errs toward the preferred cut
-    # (the pre-overgrowth-rule behaviour), so it can only over-include, not
-    # break. It bites only when one image of a residue coordinates (seeded)
-    # while another image of the SAME residue is pure overgrowth in the same
-    # sphere (rare). To make it exact, key on (residue, op) instead.
-    residue_has_seed_iseqs = set()
-    if geometric_for_overgrowth:
-      for (s_iseq, _s_op) in seed_nodes:
-        residue_group = atoms[s_iseq].parent().parent()
-        for atom_group in residue_group.atom_groups():
-          for residue_atom in atom_group.atoms():
-            residue_has_seed_iseqs.add(residue_atom.i_seq)
     visited = set(seed_nodes)
     cap_candidates = {}
     queue = deque(seed_nodes)
 
+    rounds = 0
+    while True:
+      self._grow_until_exhausted(queue, visited, cap_candidates, seed_nodes,
+                                 adjacency, atoms)
+      rounds += 1
+      if not self._reattach_stranded(visited, cap_candidates, seed_nodes,
+                                     adjacency, atoms, queue):
+        break
+      if rounds > self.max_repair_rounds:
+        print(f'Giving up reattaching stranded atoms after {rounds} rounds.',
+              file=self.log)
+        break
+
+    print(
+      f'Found {len(cap_candidates)} candidate atoms for hydrogen capping '
+      f'based on heuristics.',
+      file=self.log,
+    )
+    return visited, cap_candidates
+
+  def _grow_until_exhausted(self, queue, visited, cap_candidates, seed_nodes,
+                            adjacency, atoms):
+    """Run BFS until *queue* empties, marking caps at cuttable bonds.
+
+    Parameters
+    ----------
+    queue : collections.deque
+    visited : set of (int, rt_mx)
+    cap_candidates : dict
+    seed_nodes : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+    """
     while queue:
       current = queue.popleft()
       curr_iseq, curr_op = current
       curr_resname = atoms[curr_iseq].parent().resname.strip().upper()
-      # Overgrowth residues (no seed atom) defer to the geometric C-C
-      # heuristic; seeded residues keep their configured (preferred) cuts.
-      if geometric_for_overgrowth and curr_iseq not in residue_has_seed_iseqs:
-        curr_cut_detector = self._geom_detector
-      else:
-        curr_cut_detector = self.bond_cut_detector
 
       for (nbr_iseq, edge_op) in list(adjacency[curr_iseq]):
         nbr_op = _canon_op(curr_op.multiply(edge_op))
@@ -167,116 +162,106 @@ class QMRegionGrower:
 
         visited.add(neighbour)
 
-        if frozenset((curr_iseq, nbr_iseq)) in forced_cut_bonds:
-          print('Forced cut (preferred-cut fallback) between:', file=self.log)
-          print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          self._try_mark_cap(
-            neighbour, current, cap_candidates, visited,
-            seed_nodes, adjacency, atoms, queue,
-          )
-          continue
+        reason = self._cut_reason(
+          curr_iseq, nbr_iseq, curr_op, curr_resname, visited, adjacency,
+          atoms)
 
-        if curr_cut_detector.is_cc_single_sp3_bond(
-            curr_resname, atoms[curr_iseq], atoms[nbr_iseq], adjacency):
-          print('Found C-C single bond between:', file=self.log)
-          print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                file=self.log)
-          self._try_mark_cap(
-            neighbour, current, cap_candidates, visited,
-            seed_nodes, adjacency, atoms, queue,
-          )
-          continue
-
-        if self.bond_cut_detector.is_ca_c_bond(
-            atoms[curr_iseq], atoms[nbr_iseq], adjacency):
-          if self._any_amide_of_current_residue_in_visited(
-              curr_iseq, curr_op, visited, atoms):
-            print('Found backbone CA-C bond between:', file=self.log)
-            print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
-            print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
+        if reason is not None:
+          refusal = self._cut_refusal(
+            current, neighbour, visited, adjacency, atoms)
+          if refusal is None:
+            self._log_bond(reason, curr_iseq, nbr_iseq, atoms)
             self._try_mark_cap(
               neighbour, current, cap_candidates, visited,
               seed_nodes, adjacency, atoms, queue,
             )
             continue
-
-        if self.bond_cut_detector.is_ca_n_bond(
-            atoms[curr_iseq], atoms[nbr_iseq], adjacency):
-          if self._any_amide_of_next_residue_in_visited(
-              curr_iseq, curr_op, visited, atoms):
-            print('Found backbone CA-N bond between:', file=self.log)
-            print('  ' + atoms[curr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
-            print('  ' + atoms[nbr_iseq].format_atom_record().rstrip(),
-                  file=self.log)
-            self._try_mark_cap(
-              neighbour, current, cap_candidates, visited,
-              seed_nodes, adjacency, atoms, queue,
-            )
-            continue
+          self._log_bond(f'{reason} (not taken, {refusal})',
+                         curr_iseq, nbr_iseq, atoms)
 
         queue.append(neighbour)
 
-    print(
-      f'Found {len(cap_candidates)} candidate atoms for hydrogen capping '
-      f'based on heuristics.',
-      file=self.log,
-    )
-    return visited, cap_candidates
+  def _reattach_stranded(self, visited, cap_candidates, seed_nodes,
+                         adjacency, atoms, queue):
+    """Restore one bond for every heavy atom the cuts left unattached.
 
-  def grow_region(self, seed_atoms, adjacency, model, max_depth=3,
-                  preferred_cut_fallback=False):
-    """Grow the QM region, optionally re-cutting residues whose preferred
-    cut became unachievable.
+    An atom whose every heavy neighbour in the region is a cap comes out as
+    a lone fragment, for instance a methane where a sidechain carbon was
+    clipped out of the middle of its own residue, or where the buffer sphere
+    caught a methyl hydrogen but not its carbon.  Whether that happens cannot
+    be decided while BFS runs, because a bond it has yet to traverse looks
+    exactly like one it is about to cut; it is well defined only once the
+    region is complete.
 
-    Single public entry point.  With ``preferred_cut_fallback=False`` this
-    is exactly one :meth:`grow_by_depth` pass.  With it ``True`` two things
-    happen, both of which defer to the geometric C-C sp3 heuristic when the
-    preferred cut is not the right boundary:
-
-    * **Overgrowth residues**: residues with no seed (radius) atom use
-      the geometric heuristic from the start (see
-      ``geometric_for_overgrowth`` on :meth:`grow_by_depth`), so a residue
-      reached only as backbone overgrowth is cut at its first sp3 C-C bond
-      (typically CA-CB) rather than at its preferred site.
-    * **Consumed preferred cuts**: the pass is repeated, accumulating
-      geometric fallback cuts, until no new ones are found (below).
-
-    A preferred cut is "consumed" when both of its endpoints end up
-    interior to the region, typically because the radius search seeded
-    atoms on both sides of it.  The canonical cut can then no longer be
-    made, and BFS walks inward through the (now interior) sidechain into
-    the backbone.  For each such residue this computes the outermost
-    geometric C-C cut inward of the consumed bond, adds it to a
-    ``forced_cut_bonds`` set, and re-runs :meth:`grow_by_depth`.  The trim
-    follows from re-running: an atom survives only if it is still reachable
-    from a seed without crossing a cut, so the backbone overgrowth (and
-    anything dragged in through it) falls away on its own.  Seeds
-    (including all radius atoms) are never trimmed, so the radius floor is
-    preserved.
-
-    The loop terminates because each round either adds a genuinely new
-    forced cut or returns none: once a residue's fallback cut is already
-    in ``forced_cut_bonds`` it is filtered out and the loop stops, even
-    though the preferred bond stays nominally consumed.  In practice it is
-    two passes (discover, then apply-and-confirm).
+    The cap restored is the one reaching nearest the backbone, so what
+    survives is the attachment toward the mainchain rather than a sidechain
+    stub, and the choice is a function of the finished region rather than of
+    the order BFS ran.
 
     Parameters
     ----------
-    seed_atoms : set of int
+    visited : set of (int, rt_mx)
+        Modified in-place, via :meth:`_demote_cap_candidate`.
+    cap_candidates : dict
+        Modified in-place.
+    seed_nodes : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+    queue : collections.deque
+        Demoted caps are re-enqueued, so BFS resumes through them.
+
+    Returns
+    -------
+    int
+        Number of atoms reattached.
+    """
+    reattached = 0
+    for node in sorted(visited, key=lambda n: (n[0], n[1].as_xyz())):
+      iseq, op = node
+      if node in cap_candidates or atoms[iseq].element_is_hydrogen():
+        continue
+
+      held = False
+      caps_on_it = []
+      for (nb_iseq, edge_op) in adjacency[iseq]:
+        if atoms[nb_iseq].element_is_hydrogen():
+          continue
+        neighbour = (nb_iseq, _canon_op(op.multiply(edge_op)))
+        if neighbour not in visited:
+          continue
+        if neighbour in cap_candidates:
+          caps_on_it.append(neighbour)
+        else:
+          held = True
+          break
+      if held or not caps_on_it:
+        continue
+
+      hops = BondCutDetector._hops_to_ca(atoms[iseq], adjacency)
+      unranked = len(hops) + 1
+
+      def rank(candidate, _hops=hops, _unranked=unranked):
+        name = atoms[candidate[0]].name.strip().upper()
+        return (_hops.get(name, _unranked), candidate[0])
+
+      self._demote_cap_candidate(
+        min(caps_on_it, key=rank), cap_candidates, visited,
+        seed_nodes, adjacency, atoms, queue, protected={node})
+      reattached += 1
+
+    return reattached
+
+  def grow_region(self, seed_atoms, adjacency, model, max_depth=3):
+    """Grow the QM region around *seed_atoms*.
+
+    Single public entry point; delegates to :meth:`grow_by_depth`.
+
+    Parameters
+    ----------
+    seed_atoms : set of int or (int, rt_mx)
     adjacency : collections.defaultdict of set
     model : mmtbx.model.manager
     max_depth : int, optional
-    preferred_cut_fallback : bool, optional
-        When ``False`` (default) a single :meth:`grow_by_depth` pass is
-        returned unchanged.
 
     Returns
     -------
@@ -284,137 +269,68 @@ class QMRegionGrower:
     cap_candidates : dict
         Same contract as :meth:`grow_by_depth`.
     """
-    forced_cut_bonds = set()
-    while True:
-      visited, cap_candidates = self.grow_by_depth(
-        seed_atoms, adjacency, model, max_depth=max_depth,
-        forced_cut_bonds=forced_cut_bonds,
-        geometric_for_overgrowth=preferred_cut_fallback)
-      if not preferred_cut_fallback:
-        return visited, cap_candidates
-      new_cuts = self._fallback_cuts_for_consumed_preferred(
-        visited, cap_candidates, adjacency, model, existing=forced_cut_bonds)
-      if not new_cuts:
-        return visited, cap_candidates
-      forced_cut_bonds |= new_cuts
+    return self.grow_by_depth(seed_atoms, adjacency, model,
+                              max_depth=max_depth)
 
-  def _fallback_cuts_for_consumed_preferred(self, visited, cap_candidates,
-                                            adjacency, model, existing):
-    """Return geometric fallback cuts for residues whose preferred cut is
-    consumed (both endpoints interior and not actually cut).
+  def _log_bond(self, message, iseq_a, iseq_b, atoms):
+    """Print *message* followed by the two atom records."""
+    print(f'{message} between:', file=self.log)
+    print('  ' + atoms[iseq_a].format_atom_record().rstrip(), file=self.log)
+    print('  ' + atoms[iseq_b].format_atom_record().rstrip(), file=self.log)
+
+  def _cut_reason(self, curr_iseq, nbr_iseq, curr_op, curr_resname,
+                  visited, adjacency, atoms):
+    """Return why the bond ``curr -> nbr`` is cuttable, or ``None``.
+
+    Both backbone rules refuse to cut away a charged chain terminus, which
+    capping would replace with a single hydrogen: the carboxylate on the
+    CA-C side, the amine on the CA-N side.
 
     Parameters
     ----------
+    curr_iseq, nbr_iseq : int
+    curr_op : cctbx.sgtbx.rt_mx
+        Symmetry image of the current node.
+    curr_resname : str
     visited : set of (int, rt_mx)
-    cap_candidates : dict
-        ``{cap_node: anchor_node}`` from the last BFS pass.
-    adjacency : collections.defaultdict of set
-    model : mmtbx.model.manager
-    existing : set of frozenset
-        Forced cuts already applied; results in this set are filtered out
-        (this is what lets :meth:`grow_region` terminate).
-
-    Returns
-    -------
-    set of frozenset
-        New ``frozenset({iseq_a, iseq_b})`` bonds to force-cut.
-    """
-    atoms = model.get_hierarchy().atoms()
-    new_cuts = set()
-    handled = set()
-    for (iseq, op) in visited:
-      atom = atoms[iseq]
-      preferred = PREFERRED_CUTS.get(atom.parent().resname.strip().upper())
-      if not preferred:
-        continue
-      name = atom.name.strip().upper()
-      if name not in preferred:
-        continue
-      partner = self._sibling_in_residue(atom, (preferred - {name}).pop())
-      if partner is None or (partner.i_seq, op) not in visited:
-        continue
-      bond = frozenset((iseq, partner.i_seq))
-      if bond in handled:
-        continue
-      handled.add(bond)
-      # If one endpoint is the cap of the other, the preferred cut actually
-      # fired: the bond is the boundary, not consumed.  Leave it.
-      if (cap_candidates.get((iseq, op)) == (partner.i_seq, op) or
-          cap_candidates.get((partner.i_seq, op)) == (iseq, op)):
-        continue
-      ca_iseq, dist = self._residue_ca_distances(iseq, adjacency, atoms)
-      if ca_iseq is None:
-        continue
-      d_self, d_partner = dist.get(iseq), dist.get(partner.i_seq)
-      if d_self is None or d_partner is None:
-        continue
-      # Cut from the backbone-side endpoint (covalently closer to CA),
-      # keeping the tip (functional-group) side.
-      if d_self <= d_partner:
-        cut_iseq, keep_iseq = iseq, partner.i_seq
-      else:
-        cut_iseq, keep_iseq = partner.i_seq, iseq
-      fallback = self._first_geom_cut_inward(
-        cut_iseq, keep_iseq, dist, adjacency, atoms)
-      if fallback is not None and fallback not in existing:
-        new_cuts.add(fallback)
-    return new_cuts
-
-  def _first_geom_cut_inward(self, cut_iseq, keep_iseq, dist, adjacency,
-                             atoms):
-    """Walk from *cut_iseq* toward CA (away from *keep_iseq*) and return
-    the first bond that passes the geometric C-C heuristic.
-
-    Parameters
-    ----------
-    cut_iseq : int
-        Backbone-side endpoint of the consumed preferred bond.
-    keep_iseq : int
-        Tip-side endpoint (the step direction is away from this).
-    dist : dict
-        ``{iseq: covalent-distance-to-CA}`` within the residue, from
-        :meth:`_residue_ca_distances`.
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
 
     Returns
     -------
-    frozenset or None
-        ``frozenset({iseq_a, iseq_b})`` of the first geometric cut, or
-        ``None`` if CA is reached without one (the existing backbone cut
-        rules then apply on the next BFS pass).
+    str or None
     """
-    cur, prev = cut_iseq, keep_iseq
-    while True:
-      # Heavy neighbour strictly closer to CA, within the residue, not
-      # where we came from.  min() picks the closest if a branch forks.
-      candidates = [
-        nb for nb in _neighbour_iseqs(adjacency, cur)
-        if nb != prev and nb in dist and dist[nb] < dist[cur]
-        and not atoms[nb].element_is_hydrogen()]
-      if not candidates:
-        return None
-      nxt = min(candidates, key=lambda n: dist[n])
-      if self._geom_detector.is_cc_single_sp3_bond(
-          None, atoms[cur], atoms[nxt], adjacency):
-        return frozenset((cur, nxt))
-      prev, cur = cur, nxt
+    if self.bond_cut_detector.is_cc_single_sp3_bond(
+        curr_resname, atoms[curr_iseq], atoms[nbr_iseq], adjacency):
+      return 'Found C-C single bond'
 
-  @staticmethod
-  def _sibling_in_residue(atom, name):
-    """Return the atom named *name* in *atom*'s residue group, or None."""
-    for ag in atom.parent().parent().atom_groups():
-      for sibling in ag.atoms():
-        if sibling.name.strip().upper() == name:
-          return sibling
+    if (self.bond_cut_detector.is_ca_c_bond(
+          atoms[curr_iseq], atoms[nbr_iseq], adjacency)
+        and not self._is_terminal_carboxylate(nbr_iseq, adjacency, atoms)):
+      return 'Found backbone CA-C bond'
+
+    if (self.bond_cut_detector.is_ca_n_bond(
+          atoms[curr_iseq], atoms[nbr_iseq], adjacency)
+        and not self._is_terminal_amine(nbr_iseq, adjacency, atoms)
+        and (self._is_chain_break_amine(nbr_iseq, adjacency, atoms)
+             or self._any_amide_of_next_residue_in_visited(
+               curr_iseq, curr_op, visited, adjacency, atoms))):
+      return 'Found backbone CA-N bond'
+
     return None
 
   @staticmethod
-  def _residue_ca_distances(iseq, adjacency, atoms):
-    """Return ``(ca_iseq, {iseq: hops-to-CA})`` over the covalent graph
-    restricted to the residue group of *iseq*.
+  def _is_terminal_carboxylate(iseq, adjacency, atoms):
+    """Return ``True`` if the atom at *iseq* is a terminal carboxylate carbon.
 
-    Returns ``(None, {})`` if the residue has no CA atom.
+    Read off the graph rather than from atom names, so that a terminal
+    oxygen named OT1/OT2 counts and a stray OXT on a mid-chain residue
+    does not: the carbon must carry two oxygens, which a mid-chain
+    carbonyl does not, and no nitrogen in another residue, which a
+    peptide bond would supply.
+
+    A chain break carries one oxygen and so reads as False; cutting there
+    leaves a neutral carbonyl.
 
     Parameters
     ----------
@@ -424,172 +340,18 @@ class QMRegionGrower:
 
     Returns
     -------
-    (int or None, dict)
+    bool
     """
-    rg = atoms[iseq].parent().parent()
-    rg_iseqs = {a.i_seq for ag in rg.atom_groups() for a in ag.atoms()}
-    ca_iseq = None
-    for ag in rg.atom_groups():
-      for a in ag.atoms():
-        if a.name.strip().upper() == 'CA':
-          ca_iseq = a.i_seq
-          break
-      if ca_iseq is not None:
-        break
-    if ca_iseq is None:
-      return None, {}
-    dist = {ca_iseq: 0}
-    queue = deque([ca_iseq])
-    while queue:
-      cur = queue.popleft()
-      for nb in _neighbour_iseqs(adjacency, cur):
-        if nb in dist or nb not in rg_iseqs:
-          continue
-        dist[nb] = dist[cur] + 1
-        queue.append(nb)
-    return ca_iseq, dist
-
-  def _demote_cap_candidate(self, cap, cap_candidates, visited,
-                            seed_nodes, adjacency, atoms, queue,
-                            protected=set()):
-    """Promote *cap* (a node) back to interior and re-open BFS through it.
-
-    Removes *cap* from ``cap_candidates`` and re-enqueues it so the BFS
-    can reach the neighbours that were previously hidden behind the cut.
-    Every other covalent-neighbour node of *cap* is discarded from
-    ``visited`` (and from ``cap_candidates``) so it can be rediscovered
-    through the now-interior cap.  Three sets of nodes are protected
-    from this discard: seeds, the cap's original anchor (a confirmed
-    interior node whose subtree was already explored), and any
-    nodes in *protected*.
-
-    Parameters
-    ----------
-    cap : (int, rt_mx)
-        Node of the cap candidate being demoted.
-    cap_candidates : dict
-        ``{cap_node: anchor_node}``; modified in-place.
-    visited : set of (int, rt_mx)
-        Modified in-place.
-    seed_nodes : set of (int, rt_mx)
-        Seed nodes; always protected from discard.
-    adjacency : collections.defaultdict of set
-        Read-only; tagged ``{i_seq: {(j_seq, edge_op), ...}}``.
-    atoms : cctbx.array_family.flex array
-        Atom objects indexed by i_seq, used for log messages.
-    queue : collections.deque
-        BFS queue; *cap* is appended for further expansion.
-    protected : set of (int, rt_mx), optional
-        Additional nodes to skip when discarding.
-    """
-    cap_iseq, cap_op = cap
-    print('Demoting cap candidate:', file=self.log)
-    print('  ' + atoms[cap_iseq].format_atom_record().rstrip(), file=self.log)
-    original_anchor = cap_candidates.pop(cap)
-    protected = set(protected) | {original_anchor}
-    for (nb_iseq, edge_op) in adjacency[cap_iseq]:
-      nb_node = (nb_iseq, _canon_op(cap_op.multiply(edge_op)))
-      if nb_node in protected or nb_node in seed_nodes:
-        continue
-      visited.discard(nb_node)
-      cap_candidates.pop(nb_node, None)
-    queue.append(cap)
-
-  def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
-                     seed_nodes, adjacency, atoms, queue):
-    """Record *candidate* (a node) as a cap with *anchor* (a node),
-    unless that would create an adjacent-cap conflict.
-
-    A conflict arises if *candidate* shares a covalent bond with an
-    existing cap candidate: capping both would leave each with a
-    non-anchor QM-region neighbour and place two Hs at chemically
-    nonsensical positions.  In that case the conflicting cap(s) are
-    demoted to interior and *candidate* is also promoted to interior
-    (enqueued for further BFS expansion).
-
-    Parameters
-    ----------
-    candidate : (int, rt_mx)
-        Node of the would-be cap (the atom on the far side of the
-        cuttable bond).
-    anchor : (int, rt_mx)
-        Node of the would-be anchor (the atom on the QM-region side
-        of the cuttable bond).
-    cap_candidates : dict
-        ``{cap_node: anchor_node}``; modified in-place.
-    visited : set of (int, rt_mx)
-        Modified in-place via :meth:`_demote_cap_candidate` if a conflict
-        is found.
-    seed_nodes : set of (int, rt_mx)
-        Passed through to demotion.
-    adjacency : collections.defaultdict of set
-        Read-only.
-    atoms : cctbx.array_family.flex array
-        Atom objects indexed by i_seq, used for log messages.
-    queue : collections.deque
-        BFS queue; *candidate* is appended to it if promoted to interior.
-    """
-    cand_iseq, cand_op = candidate
-    conflicting = []
-    for (nb_iseq, edge_op) in adjacency[cand_iseq]:
-      nb_node = (nb_iseq, _canon_op(cand_op.multiply(edge_op)))
-      if nb_node == anchor:
-        continue
-      if nb_node in cap_candidates:
-        conflicting.append(nb_node)
-    if conflicting:
-      print('Adjacent-cap conflict; promoting to interior:', file=self.log)
-      print('  ' + atoms[cand_iseq].format_atom_record().rstrip(),
-            file=self.log)
-      for c in conflicting:
-        self._demote_cap_candidate(
-          c, cap_candidates, visited, seed_nodes, adjacency,
-          atoms, queue, protected={anchor, candidate},
-        )
-      queue.append(candidate)
-      return
-    cap_candidates[candidate] = anchor
-
-  def grow_by_distance(self, start_atom_index, adjacency, model,
-                       max_distance=5.0):
-    """Expand from *start_atom_index* by BFS within *max_distance*.
-
-    Only neighbours whose distance from the start atom is within
-    *max_distance* are added to the visited set and enqueued.
-
-    Parameters
-    ----------
-    start_atom_index : int
-    adjacency : collections.defaultdict of set
-    model : mmtbx.model.manager
-    max_distance : float, optional
-        Default is 5.0 Angstrom.
-
-    Returns
-    -------
-    set of int
-        i_seqs of atoms in the grown region.
-    """
-    atoms = model.get_hierarchy().atoms()
-    start_atom = atoms[start_atom_index]
-    visited = {start_atom_index}
-    queue = deque([start_atom_index])
-
-    while queue:
-      curr_idx = queue.popleft()
-      for neighbor in adjacency[curr_idx]:
-        if neighbor in visited:
-          continue
-        if start_atom.distance(atoms[neighbor]) > max_distance:
-          continue
-        visited.add(neighbor)
-        queue.append(neighbor)
-
-    return visited
-
-  # ------------------------------------------------------------------
-  # Private helpers - amide-group checks
-  # ------------------------------------------------------------------
+    residue_group = atoms[iseq].parent().parent()
+    oxygens = 0
+    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[neighbour_iseq]
+      element = other.element.strip().upper()
+      if element == 'O':
+        oxygens += 1
+      elif element == 'N' and other.parent().parent() != residue_group:
+        return False  # the chain continues, so this is not a terminus
+    return oxygens >= 2
 
   def _any_amide_in_residue_group_in_visited(self, residue_group, sym_op,
                                              visited):
@@ -624,42 +386,36 @@ class QMRegionGrower:
       return False
     return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
 
-  def _any_amide_of_current_residue_in_visited(self, atom_idx, sym_op,
-                                               visited, atoms):
-    """Return ``True`` if any amide atom of *atom_idx*'s residue, under
-    *sym_op*, is in *visited*.
-
-    Parameters
-    ----------
-    atom_idx : int
-    sym_op : cctbx.sgtbx.rt_mx
-        Symmetry image of the residue to check.
-    visited : set of (int, rt_mx)
-    atoms : flex array of iotbx.pdb.hierarchy.atom
-
-    Returns
-    -------
-    bool
-    """
-    residue_group = atoms[atom_idx].parent().parent()
-    return self._any_amide_in_residue_group_in_visited(
-      residue_group, sym_op, visited)
-
   def _any_amide_of_next_residue_in_visited(self, atom_idx, sym_op,
-                                            visited, atoms):
+                                            visited, adjacency, atoms):
     """Return ``True`` if any amide atom of the next residue, under
     *sym_op*, is in *visited*.
 
-    Uses positional order in the chain's ``residue_groups()`` list rather
-    than arithmetic on resseq, so insertion codes and non-contiguous
-    numbering are handled correctly.
+    Cutting CA-N prunes the chain backwards, so CA keeps its place in the
+    region only through C, and this asks whether that direction is already
+    there.  The question is put to the growing region rather than to the
+    seed set.
+
+    The next residue is the one holding the N that C is bonded to, followed
+    along the peptide bond rather than taken from the chain's residue
+    order: a structure carved out around a metal keeps whatever residues
+    fall inside the sphere, so the neighbour in that list is routinely
+    across a gap and not bonded at all.
+
+    Every such nitrogen is considered.  A carbonyl carbon can carry more
+    than one (an amidated C-terminus or an isopeptide bond puts a second
+    there), and the adjacency is a set, so stopping at the first would
+    choose between them by hash order.  Each candidate is looked up under
+    the operation that reaches it, composed with *sym_op*, since the bond
+    followed may itself cross a symmetry boundary.
 
     Parameters
     ----------
     atom_idx : int
     sym_op : cctbx.sgtbx.rt_mx
-        Symmetry image of the residue to check.
+        Symmetry image of the residue holding *atom_idx*.
     visited : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
 
     Returns
@@ -667,17 +423,316 @@ class QMRegionGrower:
     bool
     """
     residue_group = atoms[atom_idx].parent().parent()
+    carbonyl_iseqs = [
+      residue_atom.i_seq
+      for atom_group in residue_group.atom_groups()
+      for residue_atom in atom_group.atoms()
+      if residue_atom.name.strip().upper() == 'C'
+    ]
+
+    for carbonyl_iseq in carbonyl_iseqs:
+      for (neighbour_iseq, edge_op) in adjacency[carbonyl_iseq]:
+        other = atoms[neighbour_iseq]
+        if other.element.strip().upper() != 'N':
+          continue
+        other_group = other.parent().parent()
+        # The same residue under a different symmetry image counts as a
+        # different residue.  A polymer with one residue per asymmetric unit
+        # is bonded to its own image, and skipping that would leave the chain
+        # with no next residue, so the cut would be refused however far BFS
+        # walks.
+        if (other_group.memory_id() == residue_group.memory_id()
+            and _canon_op(edge_op).as_xyz() == 'x,y,z'):
+          continue
+        if self._any_amide_in_residue_group_in_visited(
+            other_group, _canon_op(sym_op.multiply(edge_op)), visited):
+          return True
+    return False
+
+  @staticmethod
+  def _has_later_polymer_residue(atom):
+    """Return ``True`` if a polymer residue follows *atom*'s in its chain.
+
+    This separates the two readings of a carbonyl that has lost its bond.
+    A residue with polymer after it sits at an interior gap, so the missing
+    partner is the next residue's nitrogen; one with nothing after it ends
+    the chain, so what is missing is the second carboxylate oxygen.
+
+    Solvent is ignored, since a water numbered above the last residue would
+    otherwise make every chain look interior.
+
+    Parameters
+    ----------
+    atom : iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    residue_group = atom.parent().parent()
     chain = residue_group.parent()
-
-    rg_list = list(chain.residue_groups())
-    try:
-      current_pos = rg_list.index(residue_group)
-    except ValueError:
+    if chain is None:
       return False
+    root = chain.parent()
+    chains = ([other for other in root.chains() if other.id == chain.id]
+              if root is not None else [chain])
+    here = residue_group.resseq_as_int()
+    for other_chain in chains:
+      for other in other_chain.residue_groups():
+        if other.resseq_as_int() <= here:
+          continue
+        if any(common_residue_names_get_class(group.resname)
+               == 'common_amino_acid' for group in other.atom_groups()):
+          return True
+    return False
 
-    if current_pos + 1 >= len(rg_list):
+  @staticmethod
+  def _is_chain_break_carbonyl(iseq, adjacency, atoms):
+    """Return ``True`` if *iseq* is a backbone carbonyl carbon whose following
+    residue is absent from the model.
+
+    The mirror of :meth:`_is_chain_break_amine` on the other half of the same
+    severed peptide bond.  Such a carbon holds its own CA and O and nothing
+    else, so it is a bond short and reaches the region as an acyl centre.
+    Cutting it away instead is not an option, since the cut would delete the
+    carbonyl oxygen, which is frequently what coordinates the metal.
+
+    A genuine C-terminus is excluded by oxygen count, as in
+    :meth:`_is_terminal_carboxylate`: a carboxylate carries two where a
+    truncated carbonyl carries one.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    atom = atoms[iseq]
+    if atom.element.strip().upper() != 'C':
       return False
+    if atom.name.strip().upper() != 'C':
+      return False
+    residue_group = atom.parent().parent()
+    on_backbone = False
+    oxygens = 0
+    for j in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[j]
+      element = other.element.strip().upper()
+      name = other.name.strip().upper()
+      if element == 'N':
+        return False                # the chain continues into the next residue
+      if element == 'O':
+        oxygens += 1
+        continue
+      if (element == 'C' and name == 'CA'
+          and other.parent().parent() == residue_group):
+        on_backbone = True
+    return on_backbone and oxygens == 1
 
-    next_residue_group = rg_list[current_pos + 1]
-    return self._any_amide_in_residue_group_in_visited(
-      next_residue_group, sym_op, visited)
+  @staticmethod
+  def _is_chain_break_amine(iseq, adjacency, atoms):
+    """Return ``True`` if *iseq* is a backbone nitrogen whose preceding
+    residue is absent from the model.
+
+    Such a nitrogen cannot be made into an amide by anything here, since the
+    carbonyl it would need was never deposited.  Retaining it imports a
+    two-coordinate nitrogen into the region, whereas cutting CA-N replaces
+    it with a capping hydrogen and leaves a methyl, so the cut is preferred.
+    The test does not consult the growing region, so the answer does not
+    depend on the order BFS reaches the residue in.
+
+    The carbonyl is looked for in the graph, as a bonded carbon carrying an
+    oxygen, rather than by name and residue.  An acyl group is not always
+    the previous residue's atom named C: N-formyl and N-acetyl residues
+    carry their own under residue-specific names, a lipidated one reaches it
+    through a LINK, and a polymer with a single residue per asymmetric unit
+    finds it on its own symmetry image.  Each of those is a complete amide,
+    and naming the atom would call all of them broken.
+
+    A real N-terminus is excluded by hydrogen count, as in
+    :meth:`_is_terminal_amine`: an amine carries its own hydrogens where a
+    chain break carries one.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    atom = atoms[iseq]
+    if atom.element.strip().upper() != 'N':
+      return False
+    rg = atom.parent().parent()
+    on_backbone = False
+    hydrogens = 0
+    for j in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[j]
+      if other.element_is_hydrogen():
+        hydrogens += 1
+        continue
+      if other.element.strip().upper() != 'C':
+        continue
+      if (other.name.strip().upper() == 'CA'
+          and other.parent().parent() == rg):
+        on_backbone = True
+        continue
+      if any(atoms[k].element.strip().upper() == 'O'
+             for k in _neighbour_iseqs(adjacency, j)):
+        return False              # a carbonyl, so this nitrogen has its amide
+    return on_backbone and hydrogens < 2
+
+  @staticmethod
+  def _is_terminal_amine(iseq, adjacency, atoms):
+    """Return ``True`` if the atom at *iseq* is a chain-terminal nitrogen.
+
+    The mirror of :meth:`_is_terminal_carboxylate`: capping this nitrogen
+    replaces an amino group with a single hydrogen, so a cut here changes
+    the chemistry rather than truncating it.  Read off the graph, so it
+    holds for proline, whose N carries CD as well as CA within its own
+    residue, and does not depend on the atom being named N.
+
+    A nitrogen mid-chain carries the preceding residue's carbonyl carbon
+    and reads as False.
+
+    Parameters
+    ----------
+    iseq : int
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    bool
+    """
+    if atoms[iseq].element.strip().upper() != 'N':
+      return False
+    residue_group = atoms[iseq].parent().parent()
+    on_backbone = False
+    hydrogens = 0
+    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+      other = atoms[neighbour_iseq]
+      if other.element_is_hydrogen():
+        hydrogens += 1
+        continue
+      if other.element.strip().upper() != 'C':
+        continue
+      if other.parent().parent() != residue_group:
+        return False  # a peptide bond, so the chain continues
+      if other.name.strip().upper() == 'CA':
+        on_backbone = True
+    # A sidechain nitrogen also carries only its own residue's carbons, so
+    # require the one bonded to CA.  A free amino group holds more than the
+    # single hydrogen an amide does, which is what separates a real
+    # terminus from a chain the model happens to stop short of.
+    return on_backbone and hydrogens >= 2
+
+  @staticmethod
+  def _cut_refusal(anchor, cap, visited, adjacency, atoms):
+    """Return why the cut ``anchor -> cap`` must not be made, or ``None``.
+
+    A cap may keep only its anchor as a covalent neighbour inside the
+    region.  Refuse the cut when the far atom is already bonded to another
+    atom in the region, and let BFS continue through the bond instead.
+
+    The near atom is guarded too, but only against being left with no
+    heavy neighbour at all: a residue entered at its own terminal atom,
+    where the sphere caught a hydrogen whose carbon lies outside it, is cut
+    at the one bond that atom has and falls out of the region as a free
+    fragment.  That test reads the covalent graph, which does not change as
+    BFS runs, so the refusal does not depend on the order BFS arrived in.
+
+    One case cannot be seen here: BFS may reach a neighbour of the cap
+    later, by a route that does not exist yet.  That one is repaired
+    afterwards by :meth:`_demote_cap_candidate`, along with a bond inside
+    a ring, where the cut detaches nothing.
+
+    Parameters
+    ----------
+    anchor, cap : (int, rt_mx)
+    visited : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+    atoms : flex array of iotbx.pdb.hierarchy.atom
+
+    Returns
+    -------
+    str or None
+    """
+    cap_iseq, cap_op = cap
+    for (nb_iseq, edge_op) in adjacency[cap_iseq]:
+      if atoms[nb_iseq].element_is_hydrogen():
+        continue
+      nb_node = (nb_iseq, _canon_op(cap_op.multiply(edge_op)))
+      if nb_node != anchor and nb_node in visited:
+        return (f'far atom is already bonded to '
+                f'{atoms[nb_iseq].name.strip()} in the region')
+
+    anchor_iseq, anchor_op = anchor
+    for (nb_iseq, edge_op) in adjacency[anchor_iseq]:
+      if atoms[nb_iseq].element_is_hydrogen():
+        continue
+      if (nb_iseq, _canon_op(anchor_op.multiply(edge_op))) != cap:
+        return None
+    return (f'near atom {atoms[anchor_iseq].name.strip()} has no other '
+            f'heavy neighbour to hold it in the region')
+
+  def _demote_cap_candidate(self, cap, cap_candidates, visited,
+                            seed_nodes, adjacency, atoms, queue,
+                            protected=set()):
+    """Promote *cap* (a node) back to interior and re-open BFS through it.
+
+    *cap* is removed from ``cap_candidates`` and re-enqueued, so BFS
+    continues through the bond that was cut and reaches the neighbours
+    hidden behind it.
+
+    Parameters
+    ----------
+    cap : (int, rt_mx)
+        Node of the cap candidate being demoted.
+    cap_candidates : dict
+        ``{cap_node: anchor_node}``; modified in-place.
+    visited : set of (int, rt_mx)
+    seed_nodes : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+        Read-only; tagged ``{i_seq: {(j_seq, edge_op), ...}}``.
+    atoms : cctbx.array_family.flex array
+        Atom objects indexed by i_seq, used for log messages.
+    queue : collections.deque
+        BFS queue; *cap* is appended for further expansion.
+    protected : set of (int, rt_mx), optional
+    """
+    cap_iseq, _cap_op = cap
+    print('Demoting cap candidate:', file=self.log)
+    print('  ' + atoms[cap_iseq].format_atom_record().rstrip(), file=self.log)
+    cap_candidates.pop(cap)
+    queue.append(cap)
+
+  def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
+                     seed_nodes, adjacency, atoms, queue):
+    """Record *candidate* (a node) as a cap anchored at *anchor* (a node).
+
+    Parameters
+    ----------
+    candidate : (int, rt_mx)
+        Node of the cap: the atom on the far side of the cuttable bond.
+    anchor : (int, rt_mx)
+        Node of the anchor: the atom on the QM-region side of the cuttable
+        bond.
+    cap_candidates : dict
+        ``{cap_node: anchor_node}``; modified in-place.
+    visited : set of (int, rt_mx)
+    seed_nodes : set of (int, rt_mx)
+    adjacency : collections.defaultdict of set
+        Read-only.
+    atoms : cctbx.array_family.flex array
+        Atom objects indexed by i_seq.
+    queue : collections.deque
+    """
+    cap_candidates[candidate] = anchor

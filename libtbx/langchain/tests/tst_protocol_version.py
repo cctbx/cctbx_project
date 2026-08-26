@@ -80,22 +80,49 @@ def test_min_supported_at_least_one():
     print("  PASS")
 
 
-def test_current_protocol_version_is_8():
-    """v120.2 bumped CURRENT to 8.
+def test_current_protocol_version_is_9():
+    """v121 bumped CURRENT to 9.
 
     Change-detector: this documents the current protocol version as a
     conscious decision.  v116.10 Phase 2 set it to 5; v120 bumped it to 6
     for the plan_current_unrun_lead_program field (Option 2a reactive-
     deviation hold), then to 7 for the input_mtz_has_rfree field
     (client-extracted R-free presence), then to 8 for the mtz_rfree_map
-    field (per-file R-free map, v120.2 parity fix).
-    If a future phase bumps to 9 or higher, update this test (or remove it).
+    field (per-file R-free map, v120.2 parity fix), then to 9 for the
+    log_program / log_cycle fields -- the dispatching client naming the
+    program that produced log_content, rather than the server matching
+    markers against the log text.
+    If a future phase bumps to 10 or higher, update this test (or
+    remove it).
     """
-    print("Test: current_protocol_version_is_8")
-    assert contract.CURRENT_PROTOCOL_VERSION == 8, (
-        "v120.2 set CURRENT_PROTOCOL_VERSION to 8; "
-        "current value is %d. If this is intentional (e.g. v9 added), "
+    print("Test: current_protocol_version_is_9")
+    assert contract.CURRENT_PROTOCOL_VERSION == 9, (
+        "v121 set CURRENT_PROTOCOL_VERSION to 9; "
+        "current value is %d. If this is intentional (e.g. v10 added), "
         "update this test." % contract.CURRENT_PROTOCOL_VERSION)
+    print("  PASS")
+
+
+def test_log_program_fields_registered():
+    """log_program and log_cycle exist, default to None, and are v9.
+
+    The default MUST be None.  Nothing requires a client to send a
+    registered field, so an older client -- or a GUI-invoked analysis
+    that never dispatched a program -- omits them, normalize_session_info
+    fills the default, and the server falls back to inferring the program
+    from the log text as before.  A non-None default would make the
+    absent case indistinguishable from a real value.
+    """
+    print("Test: log_program_fields_registered")
+    fields = {name: (default, ver)
+              for name, default, ver, _desc in contract.SESSION_INFO_FIELDS}
+    for name in ("log_program", "log_cycle"):
+        assert name in fields, "%s is not registered in SESSION_INFO_FIELDS" % name
+        default, ver = fields[name]
+        assert default is None, (
+            "%s must default to None so an absent value is distinguishable "
+            "from a real one; got %r" % (name, default))
+        assert ver == 9, "%s should be version 9; got %s" % (name, ver)
     print("  PASS")
 
 

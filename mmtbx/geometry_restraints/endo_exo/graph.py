@@ -19,10 +19,14 @@ class AtomGraphBuilder:
   Each edge is tagged with the ``rt_mx_ji`` operation that brings atom
   *j* into contact with atom *i*. Intra-ASU bonds carry the identity
   operation; symmetry-crossing bonds carry the corresponding
-  ``rt_mx_ji`` from ``bond_proxies_asu``.
+  ``rt_mx_ji`` from ``bond_proxies_asu``.  Traversal therefore visits
+  ``(i_seq, rt_mx)`` nodes rather than bare atoms, composing each node's
+  operation with the edge operation as it moves along a bond, and lattice
+  translations and point-group symmetry are handled uniformly.
 
-  This unification lets the downstream BFS treat lattice translations
-  and point-group symmetry uniformly.
+  The proxies come from a restraints manager built with metal linking
+  disabled, so metal-donor coordination bonds are absent from the graph
+  and the region does not grow through a metal centre.
   """
 
   def build_adjacency(self, bond_proxies_simple, bond_proxies_asu,
@@ -119,11 +123,10 @@ class AtomGraphBuilder:
 
     return added_edges
 
-  def atoms_within_radius(self, center_atom, model, radius):
+  def _atoms_within_radius_kdtree(self, center_atom, model, radius):
     """Return a boolean mask for atoms within *radius* of *center_atom*.
 
-    Uses a KD-tree for O(n log n) neighbour lookup.  The tree is built
-    once per *model* and reused across calls.
+    The KD-tree is built once per *model* and reused across calls.
 
     Parameters
     ----------
@@ -145,7 +148,7 @@ class AtomGraphBuilder:
       selected[idx] = True
     return selected
 
-  def atoms_within_radius_string(self, center_atom, model, radius):
+  def _atoms_within_radius_selection(self, center_atom, model, radius):
     """Select atoms within *radius* using CCTBX selection syntax.
 
     Parameters
@@ -176,7 +179,7 @@ class AtomGraphBuilder:
     selection_str = f'within({radius}, ({center_selector}))'
     return model.selection(selection_str)
 
-  def atoms_within_radius_best(self, center_atom, model, radius):
+  def atoms_within_radius(self, center_atom, model, radius):
     """Return a boolean mask for atoms within *radius* of *center_atom*.
 
     Uses the cached KD-tree path; falls back to the CCTBX selection-string
@@ -193,24 +196,52 @@ class AtomGraphBuilder:
     -------
     cctbx.array_family.flex.bool
     """
-    mask = self.atoms_within_radius(center_atom, model, radius)
+    mask = self._atoms_within_radius_kdtree(center_atom, model, radius)
     if mask.count(True) == 0:
-      mask = self.atoms_within_radius_string(center_atom, model, radius)
+      mask = self._atoms_within_radius_selection(center_atom, model, radius)
     return mask
+
+  def _pair_sym_table(self, model, radius):
+    """Return the whole-structure pair-symmetry table for *radius*.
+
+    Covers every close contact in the structure, so it depends on the model
+    and the radius but not on which seed is being grown.  It is built once
+    and reused across seeds.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+    radius : float
+
+    Returns
+    -------
+    cctbx.crystal.pair_sym_table
+    """
+    key = (id(model), radius)
+    if getattr(self, '_sym_table_key', None) != key:
+      pair_asu_table = model.get_xray_structure().pair_asu_table(
+        distance_cutoff=radius)
+      # ``all_interactions_from_inside_asu=True`` enumerates every close
+      # contact of an ASU atom rather than collapsing site-symmetry-
+      # equivalent pairs (see add_seed_contact_edges).
+      self._sym_table = pair_asu_table.extract_pair_sym_table(
+        skip_j_seq_less_than_i_seq=False,
+        all_interactions_from_inside_asu=True)
+      self._sym_table_key = key
+    return self._sym_table
 
   def seed_sym_nodes_within_radius(self, seeds, model, radius):
     """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
 
-    The KD-tree radius search (:meth:`atoms_within_radius_best`) only sees
-    ASU atoms, so a metal on or near a special position misses the
-    symmetry-related copies of its coordinating residues that are
-    physically inside the buffer sphere.  This enumerates those copies via
-    ``pair_asu_table`` (the same mechanism :meth:`add_seed_contact_edges`
-    uses for coordination edges) and returns one ``(j_seq, rt_mx_ji)``
-    node per atom-image within *radius* of any seed.
+    The KD-tree radius search (:meth:`atoms_within_radius`) only sees ASU
+    atoms, so a seed on or near a special position misses the
+    symmetry-related copies of its neighbouring residues that lie inside
+    the buffer sphere.  This enumerates those copies via
+    ``pair_asu_table`` and returns one ``(j_seq, rt_mx_ji)`` node per
+    atom-image within *radius* of any seed.
 
-    Only **non-identity** images are returned; the identity image is
-    already covered by the KD-tree search, so the caller unions the two.
+    Only non-identity images are returned; the identity image is already
+    covered by the KD-tree search, so the caller unions the two.
 
     Parameters
     ----------
@@ -226,14 +257,7 @@ class AtomGraphBuilder:
         Non-identity atom-image nodes within *radius* of a seed.
     """
     identity_xyz = _canon_op(sgtbx.rt_mx()).as_xyz()
-    xs = model.get_xray_structure()
-    pat = xs.pair_asu_table(distance_cutoff=radius)
-    # ``all_interactions_from_inside_asu=True`` enumerates every close
-    # contact of an ASU atom rather than collapsing site-symmetry-equivalent
-    # pairs (see add_seed_contact_edges).
-    sym_table = pat.extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=False,
-      all_interactions_from_inside_asu=True)
+    sym_table = self._pair_sym_table(model, radius)
     nodes = set()
     for seed in seeds:
       for j_seq, rt_mx_ji_list in dict(sym_table[seed.i_seq]).items():

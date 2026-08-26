@@ -289,6 +289,29 @@ def extract_partial_occupancy_selections(hierarchy):
             result.append([i_seqs])
   return result
 
+def occupancy_selections_wrapper(
+      model,
+      add_water                          = False,
+      other_individual_selection_strings = None,
+      other_constrained_groups           = None,
+      remove_selection                   = None,
+      as_flex_arrays                     = True,
+      constrain_correlated_3d_groups     = False,
+      log                                = None,
+      ungrouped                          = False):
+  result = occupancy_selections(
+    model                              = model,
+    add_water                          = add_water,
+    other_individual_selection_strings = other_individual_selection_strings,
+    other_constrained_groups           = other_constrained_groups,
+    remove_selection                   = remove_selection,
+    as_flex_arrays                     = as_flex_arrays,
+    constrain_correlated_3d_groups     = constrain_correlated_3d_groups,
+    log                                = log)
+  if ungrouped:
+    result = [[v] for sub in result for v in sub]
+  return result
+
 def occupancy_selections(
       model,
       add_water                          = False,

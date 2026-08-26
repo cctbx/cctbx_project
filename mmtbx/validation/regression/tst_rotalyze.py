@@ -328,11 +328,45 @@ def exercise_rotalyze_json(test_mmcif=False):
   assert rtjson_dict['summary_results'][""]['num_residues'] == 643, "tst_rotalyze json output summary total num_residues not matching previous value"
   return rtjson_dict
 
+def exercise_rotalyze_pdb_vs_cif():
+  """PDB and mmCIF input must give the same answer.
+
+  Deliberately does NOT use phenix_regression. The absolute counts in the json exercise
+  are properties of that specific structure and still need that repository, but "do the
+  two input formats agree" can be answered by any model, so this uses a cctbx-owned one
+  and therefore runs in a cctbx-only build.
+
+  That matters because the old form of this check crashed rather than skipped: the
+  phenix_regression guard did a bare `return`, and the caller then subscripted the None
+  it got back, reporting a TypeError instead of a missing input file.
+  """
+  model_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/p9.pdb",
+    test=os.path.isfile)
+  if (model_file is None):
+    print("Skipping exercise_rotalyze_pdb_vs_cif(): p9.pdb not available")
+    return
+  with open(model_file) as f:
+    pdb_str = f.read()
+  dm = DataManager()
+  dm.process_model_str("pdb", pdb_str)
+  from_pdb = json.loads(rotalyze.rotalyze(pdb_hierarchy=dm.get_model("pdb").get_hierarchy(), outliers_only=False).as_JSON())
+  dm.process_model_str("cif", convert_string_to_cif_long(
+    pdb_str, chain_addition="LONGCHAIN"))
+  from_cif = json.loads(rotalyze.rotalyze(pdb_hierarchy=dm.get_model("cif").get_hierarchy(), outliers_only=False).as_JSON())
+  assert len(from_pdb['flat_results']) > 0, \
+    "rotalyze produced nothing for p9.pdb, so the comparison below is vacuous"
+  assert from_pdb['summary_results'] == from_cif['summary_results'], \
+    "rotalyze summary results differ between pdb and cif input"
+
 if (__name__ == "__main__"):
   exercise_rotalyze()
   exercise_2()
+  exercise_rotalyze_pdb_vs_cif()
   rt_dict = exercise_rotalyze_json()
   rt_dict_cif = exercise_rotalyze_json(test_mmcif=True)
-  assert rt_dict['summary_results'] == rt_dict_cif['summary_results'], "tst_rotalyze summary results changed between pdb and cif version"
+  # Both are None without phenix_regression; the check above covers that case.
+  if rt_dict is not None and rt_dict_cif is not None:
+    assert rt_dict['summary_results'] == rt_dict_cif['summary_results'], "tst_rotalyze summary results changed between pdb and cif version"
 
   print("OK")

@@ -155,7 +155,8 @@ class ErrorAnalyzer:
     # =========================================================================
 
     def analyze(self, log_text: str, program: str,
-                context: Dict[str, Any], session) -> Optional[ErrorRecovery]:
+                context: Dict[str, Any], session,
+                full_log: Optional[str] = None) -> Optional[ErrorRecovery]:
         """
         Analyze log text for recoverable errors.
 
@@ -193,7 +194,32 @@ class ErrorAnalyzer:
             return None
 
         # 3. Extract structured information
-        error_info = self._extract_error_info(log_text, error_type)
+        #
+        # DETECT on log_text, EXTRACT from full_log.  They differ:
+        # ai_agent passes result_text -- the error truncated to 500
+        # characters -- as log_text, and some extractions need a line
+        # that sits OUTSIDE that window.
+        #
+        # autobuild_hl_without_phib is file-keyed and reads the offending
+        # MTZ from "Getting column labels from <X> for input data file".
+        # On a real run that line sat 182 characters BEFORE the error
+        # block begins, so it was never inside the 500-character window;
+        # _resolve_add_parameters then correctly declined (it will not
+        # fire a recovery whose flag would key to "") and the recovery
+        # could never run at all.
+        #
+        # Why not simply pass the whole log as log_text: detection would
+        # see it too, and rfree_flags_missing's pattern "No array of
+        # R-free flags found" appears as an INFORMATIONAL line in polder
+        # logs that SUCCEED.  A polder failure for an unrelated reason
+        # would then be offered force_retry phenix.refine -- a wrong
+        # recovery that this split avoids.  Detection keeps the error
+        # text; only extraction gets the wider context.
+        #
+        # full_log defaults to log_text, so existing callers are
+        # unaffected.
+        error_info = self._extract_error_info(
+            log_text, error_type, full_log=full_log)
         if not error_info:
             return None
 
@@ -283,7 +309,8 @@ class ErrorAnalyzer:
     # =========================================================================
 
     def _extract_error_info(self, log_text: str,
-                            error_type: str) -> Optional[Dict[str, Any]]:
+                            error_type: str,
+                            full_log: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Extract structured information from error message.
 
@@ -324,11 +351,24 @@ class ErrorAnalyzer:
         # reaches the reselected data MTZ -> silent no-op.  Fall back to the
         # "Using ... for refinement" line (also last-match).
         if error_def.get("resolution") == "add_parameters":
+            # ONLY this branch reads full_log.  The file line lives
+            # outside the 500-character error window ai_agent passes, so
+            # without it the recovery keys to "" and declines -- which is
+            # why autobuild_hl_without_phib had never once fired.
+            #
+            # Deliberately NOT applied to the other branches.
+            # ambiguous_data_labels extracts its label CHOICES from text
+            # printed INSIDE the error block; given the whole log it
+            # picks up an earlier, unrelated "Possible choices" section
+            # and selects a label from a previous failure.  Measured:
+            # IMEAN (correct) becomes FP (from a prior block).
+            search_text = full_log or log_text
             ms = re.findall(
                 r"Getting column labels from (\S+\.mtz) for input data file",
-                log_text)
+                search_text)
             if not ms:
-                ms = re.findall(r"Using (\S+\.mtz) for refinement", log_text)
+                ms = re.findall(
+                    r"Using (\S+\.mtz) for refinement", search_text)
             return {"resolution": "add_parameters",
                     "affected_file": ms[-1] if ms else ""}
 

@@ -362,6 +362,11 @@ def create_log_info_object(existing_summary=None, existing_analysis=None, debug_
     next_move=None,
     history_record=None,
     debug_log=debug_log,
+    # Single-call path.  Both are read in run_ai_analysis.run() before
+    # they are written -- group_args raises on an unknown attribute, so
+    # they must be declared here or the first read fails.
+    analysis_payload=None,
+    program_identity=None,
   )
 
 # =============================================================================

@@ -63,9 +63,9 @@ def exercise_save_then_load_roundtrip():
 
 def exercise_meta_backend_and_per_turn_stamp_roundtrip():
   """The conversation meta carries a backend; each assistant message
-  carries the model + backend that produced it. Both survive a
-  save/load round-trip (older files without the fields load with empty
-  defaults -- covered by the other round-trip tests)."""
+  carries the model + backend + verbose flag that produced it. All survive
+  a save/load round-trip (older files without the fields load with None
+  defaults -- the user message below doubles as the absent-field case)."""
   tmp, storage = _new_storage()
   try:
     conv = Conversation.new(profile_name="phenix_assistant",
@@ -80,7 +80,14 @@ def exercise_meta_backend_and_per_turn_stamp_roundtrip():
                         content=[ContentBlock(type="text",
                                               data={"text": "hello"})],
                         timestamp=now(), stop_reason="end_turn",
-                        model="claude-opus-4-8", backend="anthropic"))
+                        model="claude-opus-4-8", backend="anthropic",
+                        verbose=True))
+    conv.append(Message(role="assistant",
+                        content=[ContentBlock(type="text",
+                                              data={"text": "later"})],
+                        timestamp=now(), stop_reason="end_turn",
+                        model="claude-opus-4-8", backend="anthropic",
+                        verbose=False))
     storage.save(conv)
     loaded = storage.load(conv.meta.id)
     assert loaded.meta.backend == "anthropic"
@@ -88,11 +95,33 @@ def exercise_meta_backend_and_per_turn_stamp_roundtrip():
     assert last.role == "assistant"
     assert last.model == "claude-opus-4-8", last.model
     assert last.backend == "anthropic", last.backend
+    # All THREE stamp states survive: `is`, not truthy -- a truthy-only
+    # serializer would collapse the False stamp (produced without verbose)
+    # into the None one (unstamped), which is the exact regression the
+    # three-state field exists to prevent.
+    assert loaded.messages[-2].verbose is True, loaded.messages[-2].verbose
+    assert last.verbose is False, last.verbose
     # The user message has no stamp; the fields default to None.
     assert loaded.messages[0].model is None
     assert loaded.messages[0].backend is None
+    assert loaded.messages[0].verbose is None
   finally:
     shutil.rmtree(tmp)
+
+
+def exercise_verbose_stamp_coerces_junk_to_none():
+  """A hand-edited messages.json with `"verbose": "no"` must not cement junk
+  in the three-state field: a non-bool loads as None (unstamped), so the
+  next save writes no key at all instead of re-persisting the junk."""
+  from qttbx.widgets.chat.agent.storage import _message_from_dict
+  m = _message_from_dict({"role": "assistant",
+                          "timestamp": "2024-01-01T00:00:00",
+                          "content": [], "verbose": "no"})
+  assert m.verbose is None, repr(m.verbose)
+  m = _message_from_dict({"role": "assistant",
+                          "timestamp": "2024-01-01T00:00:00",
+                          "content": [], "verbose": False})
+  assert m.verbose is False, repr(m.verbose)
 
 
 def exercise_atomic_write_interruption_leaves_prior_intact():
@@ -1312,6 +1341,7 @@ def exercise():
   exercise_conversation_tree_is_owner_only()
   exercise_save_then_load_roundtrip()
   exercise_meta_backend_and_per_turn_stamp_roundtrip()
+  exercise_verbose_stamp_coerces_junk_to_none()
   exercise_atomic_write_interruption_leaves_prior_intact()
   exercise_attachment_dedup_by_sha256()
   exercise_index_listing()

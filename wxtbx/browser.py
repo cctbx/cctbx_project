@@ -206,12 +206,18 @@ class HtmlPanel(wx.html.HtmlWindow):
     base_url = fields[0]
     self.LoadPage(base_url)
     if (len(fields) > 1):
-      anchor = fields[1]
-      if (self.HasAnchor(anchor)):
-        # XXX calling self.ScrollToAnchor() directly doesn't work!
-        wx.CallAfter(self.ScrollToAnchor, anchor)
-      else :
-        print("Missing anchor %s" % anchor)
+      # XXX calling self.ScrollToAnchor() directly doesn't work!
+      wx.CallAfter(self._scroll_to_anchor, fields[1])
+
+  def _scroll_to_anchor(self, anchor):
+    # wx.html.HtmlWindow.HasAnchor() existed only in wxPython Classic, and
+    # the HtmlCell.Find() call it wrapped crashes under Phoenix, so let
+    # ScrollToAnchor() do the existence check, muting its warning popup
+    no_log = wx.LogNull()
+    found = self.ScrollToAnchor(anchor)
+    del no_log
+    if (not found):
+      print("Missing anchor %s" % anchor)
 
 if __name__ == "__main__" :
   app = wx.App(0)
