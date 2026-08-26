@@ -3533,6 +3533,23 @@ DATASET_STAGE_DEFAULT_PHIL = {
 }
 
 
+def get_trial_symmetry(db, trial):
+  ''' Return (unit_cell_str, space_group_str) from a trial's known symmetry, or
+      (None, None) if unavailable. Shared by the dataset dialog and wizard. '''
+  if trial is None or not trial.target_phil_str:
+    return None, None
+  try:
+    from xfel.ui import load_phil_scope_from_dispatcher
+    phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
+    params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+    uc = params.indexing.known_symmetry.unit_cell
+    sg = params.indexing.known_symmetry.space_group
+    return (str(uc).strip('()') if uc else None,
+            str(sg) if sg else None)
+  except Exception:
+    return None, None
+
+
 _LINK_BITMAPS = {}
 def _link_bitmap(linked):
   ''' Lazily load + cache the link/unlink icons. Bitmaps can only be created
@@ -3608,11 +3625,27 @@ class DatasetStagePanel(wx.Panel):
     self.working_phil_scope = None
     if task_type not in ('indexing', 'phenix'):
       _, self.phil_scope = Task.get_phil_scope(self.db, task_type)
+      default_seed = DATASET_STAGE_DEFAULT_PHIL.get(task_type, "")
       if task is not None and task.parameters:
         seed = task.parameters
       else:
-        seed = DATASET_STAGE_DEFAULT_PHIL.get(task_type, "")
-      self.working_phil_scope = self.phil_scope.fetch(parse(seed))
+        seed = default_seed
+      try:
+        self.working_phil_scope = self.phil_scope.fetch(parse(seed))
+      except Exception:
+        # Stored parameters may be corrupt: a long "strings"-type value (e.g.
+        # dispatch.step_list) is emitted by as_str() with a backslash
+        # line-continuation, and the DB round-trip (db_proxy uses string
+        # interpolation, so MySQL treats "\" as an escape char) can eat the
+        # backslash, leaving a bare continuation line that fails to parse.
+        # Repair by rejoining continuation lines onto the previous line; if that
+        # still fails, fall back to the stage defaults so the dialog opens
+        # instead of crashing.
+        try:
+          self.working_phil_scope = self.phil_scope.fetch(
+            parse(_repair_phil_str(seed)))
+        except Exception:
+          self.working_phil_scope = self.phil_scope.fetch(parse(default_seed))
 
     self.body = wx.BoxSizer(wx.VERTICAL)
     self.sizer.Add(self.body, flag=wx.EXPAND | wx.ALL, border=5)
@@ -3795,7 +3828,12 @@ class DatasetStagePanel(wx.Panel):
       return self.task.parameters if (self.task is not None and self.task.parameters) else ""
     if self.task_type == 'phenix':
       return self.phenix_box.GetValue()
-    return self.phil_scope.fetch_diff(self.working_phil_scope).as_str()
+    # Use a very large print_width so long "strings"-type values (e.g.
+    # dispatch.step_list) are emitted on a single line rather than wrapped with
+    # a backslash line-continuation. The DB layer (db_proxy) stores values via
+    # string interpolation, so MySQL consumes the backslash on the round-trip,
+    # corrupting the continuation and breaking re-parse on reload.
+    return self.phil_scope.fetch_diff(self.working_phil_scope).as_str(print_width=100000)
 
   # -- events ----------------------------------------------------------------
   def onEditPhil(self, e):
@@ -4129,19 +4167,7 @@ class DatasetDialog(BaseDialog):
   def _trial_symmetry(self):
     ''' Return (unit_cell_str, space_group_str) from the selected trial's known
         symmetry, or (None, None) if unavailable. '''
-    trial = self._selected_trial()
-    if trial is None or not trial.target_phil_str:
-      return None, None
-    try:
-      from xfel.ui import load_phil_scope_from_dispatcher
-      phil_scope = load_phil_scope_from_dispatcher(self.db.params.dispatcher)
-      params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
-      uc = params.indexing.known_symmetry.unit_cell
-      sg = params.indexing.known_symmetry.space_group
-      return (str(uc).strip('()') if uc else None,
-              str(sg) if sg else None)
-    except Exception:
-      return None, None
+    return get_trial_symmetry(self.db, self._selected_trial())
 
   def _populate_symmetry_from_trial(self, overwrite=False):
     ''' Fill the shared unit cell / space group from the selected trial. With
@@ -4222,6 +4248,48 @@ class DatasetDialog(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       self.shared_model.ctr.SetValue(dlg.GetPaths()[0])
     dlg.Destroy()
+
+  def populate_from_wizard(self, values):
+    ''' Set every control from a plain dict produced by the new-dataset wizard,
+        so that commit() creates the dataset exactly as if the user had filled
+        in this full dialog. Unspecified fields keep the dialog defaults. '''
+    if 'name' in values:
+      self.name.ctr.SetValue(values['name'] or '')
+    if 'comment' in values:
+      self.comment.ctr.SetValue(values['comment'] or '')
+
+    tnum = values.get('trial_number')
+    if tnum is not None and str(tnum) in self.all_trial_numbers:
+      self.trial.ctr.SetSelection(self.all_trial_numbers.index(str(tnum)))
+
+    wanted_tags = set(values.get('tags', []))
+    checked = [i for i in range(self.tag_checklist.ctr.GetCount())
+               if self.tag_checklist.ctr.GetString(i) in wanted_tags]
+    self.tag_checklist.ctr.SetCheckedItems(checked)
+
+    if values.get('tag_operator') == 'union':
+      self.selection_type_radio.union.SetValue(1)
+    else:
+      self.selection_type_radio.inter.SetValue(1)
+
+    if values.get('model_mode') == 'unknown':
+      self.model_mode_radio.unknown.SetValue(1)
+      self.shared_unit_cell.ctr.SetValue(values.get('unit_cell', '') or '')
+      self.shared_space_group.ctr.SetValue(values.get('space_group', '') or '')
+    else:
+      self.model_mode_radio.known.SetValue(1)
+      self.shared_model.ctr.SetValue(values.get('model', '') or '')
+    self._update_model_mode()
+
+    if values.get('d_min') is not None:
+      self.shared_d_min.ctr.SetValue(float(values['d_min']))
+    if values.get('n_bins') is not None:
+      self.shared_n_bins.ctr.SetValue(int(values['n_bins']))
+
+    for s in self.stages:
+      if s.task_type == 'ensemble_refinement' and s.enable_chk is not None:
+        s.enable_chk.SetValue(bool(values.get('ensemble_refinement', False)))
+        s._update_enabled_state()
 
   # -- stage management ------------------------------------------------------
   def _append_stage(self, task_type, task=None, enabled=True, removable=False,
@@ -4338,13 +4406,22 @@ class DatasetDialog(BaseDialog):
     dlg.Destroy()
 
   def onOK(self, e):
+    msg = self.commit()
+    if msg is not None:
+      self._warn(msg)
+      return
+    e.Skip()
+
+  def commit(self):
+    ''' Validate the dialog and create/update the dataset + its tasks. Returns
+        an error message string on failure (nothing written), or None on
+        success. Callable programmatically (e.g. from the new-dataset wizard). '''
     name = self.name.ctr.GetValue()
     comment = self.comment.ctr.GetValue()
     mode = 'union' if self.selection_type_radio.union.GetValue() == 1 else 'intersection'
 
     if not self.all_trials:
-      self._warn('No trials exist yet. Create a trial before building a dataset.')
-      return
+      return 'No trials exist yet. Create a trial before building a dataset.'
     trial = self.all_trials[self.all_trial_numbers.index(self.trial.ctr.GetStringSelection())]
 
     # Reference model / symmetry: cctbx.xfel.merge requires exactly one of a
@@ -4355,21 +4432,18 @@ class DatasetDialog(BaseDialog):
       sv = self.get_shared_values()
       if sv['model_mode'] == 'known':
         if not sv['model']:
-          self._warn('Select a reference model, or choose "No reference model" '
-                     'and provide a unit cell and space group.')
-          return
+          return ('Select a reference model, or choose "No reference model" '
+                  'and provide a unit cell and space group.')
       elif not sv['unit_cell'] or not sv['space_group']:
-        self._warn('No reference model selected: provide both a unit cell and a '
-                   'space group (these can be pre-filled from the trial).')
-        return
+        return ('No reference model selected: provide both a unit cell and a '
+                'space group (these can be pre-filled from the trial).')
 
     # Validate every enabled PHIL-backed stage before touching the database.
     for s in self.stages:
       if s.is_enabled():
         msg = s.push_scope()
         if msg is not None:
-          self._warn(msg + '\nFix the parameters and press OK again')
-          return
+          return msg + '\nFix the parameters and press OK again'
 
     # Identity
     if self.new:
@@ -4444,7 +4518,284 @@ class DatasetDialog(BaseDialog):
         s.task.parameters = parameters
         self.dataset.set_task_sequence(s.task, i)
 
-    e.Skip()
+    return None
+
+
+class DatasetWizard(BaseDialog):
+  ''' A guided, 3-page front-end for creating a new dataset. It collects only
+      the common choices (trial + tags, known/unknown structure, a few merging
+      options) and then delegates the actual creation to DatasetDialog.commit(),
+      so there is a single source of truth for how datasets + tasks are built.
+      The full DatasetDialog remains available for editing afterwards. '''
+
+  def __init__(self, parent, db, label_style='bold', content_style='normal',
+               *args, **kwargs):
+    self.db = db
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, size=(720, 560),
+                        *args, **kwargs)
+    self.SetTitle('New Dataset Wizard')
+
+    # BaseDialog adds main_sizer to its envelope at proportion 0, so main_sizer
+    # only claims its minimum height. Stretch it to fill the dialog so the
+    # page area can absorb the slack and pin the nav row to the bottom.
+    self.envelope.GetItem(self.main_sizer).SetProportion(1)
+
+    self.all_trials = db.get_all_trials()
+    self.all_trial_numbers = [str(t.trial) for t in self.all_trials]
+    self.all_tags = db.get_all_tags()
+
+    self.pages = []          # list of (title, panel)
+    self.page = 0
+
+    # Step title header
+    self.step_lbl = wx.StaticText(self, label='')
+    f = self.step_lbl.GetFont()
+    f.SetWeight(wx.FONTWEIGHT_BOLD)
+    f.SetPointSize(f.GetPointSize() + 2)
+    self.step_lbl.SetFont(f)
+    self.main_sizer.Add(self.step_lbl, flag=wx.ALL, border=12)
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.LEFT | wx.RIGHT,
+                        border=8)
+
+    # Page container
+    self.page_panel = wx.Panel(self)
+    self.page_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.page_panel.SetSizer(self.page_sizer)
+    self.main_sizer.Add(self.page_panel, 1, flag=wx.EXPAND | wx.ALL, border=12)
+
+    self._build_page1()
+    self._build_page2()
+    self._build_page3()
+
+    # Navigation buttons, pinned to the bottom under a separator line. The
+    # page_panel above takes all the stretch (proportion 1), so this row stays
+    # anchored to the bottom edge of the dialog.
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.LEFT | wx.RIGHT,
+                        border=8)
+    nav = wx.BoxSizer(wx.HORIZONTAL)
+    self.btn_cancel = wx.Button(self, wx.ID_CANCEL, 'Cancel')
+    self.btn_back = wx.Button(self, label='< Back')
+    self.btn_next = wx.Button(self, label='Next >')
+    nav.Add(self.btn_cancel, flag=wx.RIGHT, border=5)
+    nav.AddStretchSpacer()
+    nav.Add(self.btn_back, flag=wx.RIGHT, border=5)
+    nav.Add(self.btn_next)
+    self.main_sizer.Add(nav, flag=wx.EXPAND | wx.ALL, border=12)
+    self.Bind(wx.EVT_BUTTON, self.onBack, self.btn_back)
+    self.Bind(wx.EVT_BUTTON, self.onNext, self.btn_next)
+
+    # Fix the window to a size that fits the widest page. We deliberately do NOT
+    # Fit() to the current page: page 1 is narrower than page 2, and fitting to
+    # it would clip the reference-model row's Browse button on page 2.
+    self.SetMinSize((720, 540))
+    self.SetSize((720, 560))
+    self._show_page(0)
+
+  # ---- page construction ----------------------------------------------------
+
+  def _build_page1(self):
+    p = wx.Panel(self.page_panel)
+    s = wx.BoxSizer(wx.VERTICAL)
+    self.name = gctr.TextButtonCtrl(p, label='Name:', label_size=(120, -1),
+                                    label_style='bold', ghost_button=False)
+    self.trial = gctr.ChoiceCtrl(p, label='Trial:', label_size=(120, -1),
+                                 ctrl_size=(150, -1),
+                                 choices=self.all_trial_numbers)
+    self.tag_checklist = gctr.CheckListCtrl(p, label='Tags:', label_size=(120, -1),
+                                            label_style='normal',
+                                            ctrl_size=(240, 160),
+                                            direction='vertical', choices=[])
+    self.selection_type_radio = gctr.RadioCtrl(p, label='Tag operator:',
+                                               label_style='normal',
+                                               label_size=(120, -1),
+                                               direction='horizontal',
+                                               items={'inter': 'intersection',
+                                                      'union': 'union'})
+    tag_names = [t.name for t in self.all_tags]
+    if tag_names:
+      self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
+    if self.all_trial_numbers:
+      self.trial.ctr.SetSelection(len(self.all_trial_numbers) - 1)
+    self.selection_type_radio.inter.SetValue(1)
+    for c in (self.name, self.trial, self.tag_checklist, self.selection_type_radio):
+      s.Add(c, flag=wx.EXPAND | wx.ALL, border=6)
+    p.SetSizer(s)
+    self.page_sizer.Add(p, 1, flag=wx.EXPAND)
+    self.pages.append(('Trial & tags', p))
+
+  def _build_page2(self):
+    p = wx.Panel(self.page_panel)
+    s = wx.BoxSizer(wx.VERTICAL)
+    intro = wx.StaticText(p, label='Will merging use a known reference '
+                          'structure, or an unknown structure specified by a '
+                          'unit cell and space group?')
+    intro.Wrap(560)
+    self.model_mode_radio = gctr.RadioCtrl(p, label='Structure:',
+                                           label_style='normal', label_size=(120, -1),
+                                           direction='vertical',
+                                           items={'known': 'Known reference model',
+                                                  'unknown': 'Unknown structure '
+                                                  '(unit cell + space group)'})
+    self.shared_model = gctr.TextButtonCtrl(p, label='Reference model:',
+                                            label_size=(120, -1), label_style='normal',
+                                            ctrl_size=(320, -1),
+                                            big_button=True, big_button_label='Browse...',
+                                            big_button_size=(120, -1),
+                                            ghost_button=False)
+    self.shared_unit_cell = gctr.TextButtonCtrl(p, label='Unit cell:',
+                                                label_size=(120, -1), label_style='normal',
+                                                ctrl_size=(320, -1), ghost_button=False)
+    self.shared_space_group = gctr.TextButtonCtrl(p, label='Space group:',
+                                                  label_size=(120, -1), label_style='normal',
+                                                  ctrl_size=(320, -1), ghost_button=False)
+    s.Add(intro, flag=wx.ALL, border=6)
+    for c in (self.model_mode_radio, self.shared_model, self.shared_unit_cell,
+              self.shared_space_group):
+      s.Add(c, flag=wx.EXPAND | wx.ALL, border=6)
+    p.SetSizer(s)
+    self.page_sizer.Add(p, 1, flag=wx.EXPAND)
+    self.pages.append(('Structure', p))
+
+    self.model_mode_radio.known.SetValue(1)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.known)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.unknown)
+    self.Bind(wx.EVT_BUTTON, self.onBrowseModel, self.shared_model.btn_big)
+
+  def _build_page3(self):
+    p = wx.Panel(self.page_panel)
+    s = wx.BoxSizer(wx.VERTICAL)
+    self.chk_ensemble = wx.CheckBox(p, label='Include ensemble refinement')
+    self.chk_ensemble.SetValue(True)
+    self.shared_d_min = gctr.SpinCtrl(p, label='High res. limit (d_min):',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(150, -1), ctrl_value='1.5',
+                                      ctrl_min=0.1, ctrl_max=100.0, ctrl_step=0.1,
+                                      ctrl_digits=2)
+    self.shared_n_bins = gctr.SpinCtrl(p, label='Number of bins:',
+                                       label_size=(200, -1), label_style='normal',
+                                       ctrl_size=(150, -1), ctrl_value='20',
+                                       ctrl_min=1, ctrl_max=1000, ctrl_step=1,
+                                       ctrl_digits=0)
+    s.Add(self.chk_ensemble, flag=wx.ALL, border=10)
+    s.Add(self.shared_d_min, flag=wx.EXPAND | wx.ALL, border=6)
+    s.Add(self.shared_n_bins, flag=wx.EXPAND | wx.ALL, border=6)
+    p.SetSizer(s)
+    self.page_sizer.Add(p, 1, flag=wx.EXPAND)
+    self.pages.append(('Options', p))
+
+  # ---- structure page helpers ----------------------------------------------
+
+  def _selected_trial(self):
+    if not self.all_trials:
+      return None
+    sel = self.trial.ctr.GetStringSelection()
+    if not sel or sel not in self.all_trial_numbers:
+      return None
+    return self.all_trials[self.all_trial_numbers.index(sel)]
+
+  def _update_model_mode(self, e=None):
+    known = self.model_mode_radio.known.GetValue()
+    self.shared_model.Enable(known)
+    self.shared_unit_cell.Enable(not known)
+    self.shared_space_group.Enable(not known)
+    if not known:
+      uc, sg = get_trial_symmetry(self.db, self._selected_trial())
+      if uc and not self.shared_unit_cell.ctr.GetValue().strip():
+        self.shared_unit_cell.ctr.SetValue(uc)
+      if sg and not self.shared_space_group.ctr.GetValue().strip():
+        self.shared_space_group.ctr.SetValue(sg)
+    if e is not None:
+      e.Skip()
+
+  def onBrowseModel(self, e):
+    fdlg = wx.FileDialog(self, message="Select reference model",
+                         defaultDir=os.curdir, wildcard="*",
+                         style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if fdlg.ShowModal() == wx.ID_OK:
+      self.shared_model.ctr.SetValue(fdlg.GetPaths()[0])
+    fdlg.Destroy()
+
+  # ---- navigation -----------------------------------------------------------
+
+  def _show_page(self, i):
+    self.page = i
+    for j, (title, panel) in enumerate(self.pages):
+      self.page_sizer.Show(j, j == i)
+    self.step_lbl.SetLabel('Step %d of %d — %s'
+                           % (i + 1, len(self.pages), self.pages[i][0]))
+    self.btn_back.Enable(i > 0)
+    self.btn_next.SetLabel('Finish' if i == len(self.pages) - 1 else 'Next >')
+    if i == 1:
+      self._update_model_mode()
+    self.page_panel.Layout()
+    self.Layout()
+
+  def onBack(self, e):
+    if self.page > 0:
+      self._show_page(self.page - 1)
+
+  def onNext(self, e):
+    err = self._validate_page(self.page)
+    if err:
+      wx.MessageBox(err, 'Incomplete', wx.OK | wx.ICON_WARNING, self)
+      return
+    if self.page < len(self.pages) - 1:
+      self._show_page(self.page + 1)
+    else:
+      self._finish()
+
+  def _validate_page(self, i):
+    if i == 0:
+      if not self.all_trials:
+        return 'No trials exist yet. Create a trial before building a dataset.'
+      if not self.name.ctr.GetValue().strip():
+        return 'Please enter a name for the dataset.'
+    elif i == 1:
+      if self.model_mode_radio.known.GetValue():
+        if not self.shared_model.ctr.GetValue().strip():
+          return 'Select a reference model, or choose the unknown-structure option.'
+      else:
+        if not self.shared_unit_cell.ctr.GetValue().strip() or \
+           not self.shared_space_group.ctr.GetValue().strip():
+          return 'Provide both a unit cell and a space group.'
+    return None
+
+  # ---- finish ---------------------------------------------------------------
+
+  def _collect_values(self):
+    trial = self._selected_trial()
+    tags = [self.tag_checklist.ctr.GetString(i)
+            for i in self.tag_checklist.ctr.GetCheckedItems()]
+    known = self.model_mode_radio.known.GetValue()
+    return {
+      'name': self.name.ctr.GetValue().strip(),
+      'trial_number': trial.trial if trial is not None else None,
+      'tags': tags,
+      'tag_operator': 'union' if self.selection_type_radio.union.GetValue() == 1
+                      else 'intersection',
+      'model_mode': 'known' if known else 'unknown',
+      'model': self.shared_model.ctr.GetValue().strip(),
+      'unit_cell': self.shared_unit_cell.ctr.GetValue().strip(),
+      'space_group': self.shared_space_group.ctr.GetValue().strip(),
+      'd_min': self.shared_d_min.ctr.GetValue(),
+      'n_bins': self.shared_n_bins.ctr.GetValue(),
+      'ensemble_refinement': self.chk_ensemble.GetValue(),
+    }
+
+  def _finish(self):
+    values = self._collect_values()
+    # Delegate creation to the full dialog (built but never shown) so all the
+    # PHIL assembly, validation and task wiring stays in one place.
+    backing = DatasetDialog(self, self.db)
+    backing.populate_from_wizard(values)
+    err = backing.commit()
+    backing.Destroy()
+    if err:
+      wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
+      return
+    self.EndModal(wx.ID_OK)
+
 
 class TaskDialog(BaseDialog):
   def __init__(self, parent, db,

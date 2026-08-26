@@ -3364,11 +3364,13 @@ class DatasetTab(BaseTab):
     self.dataset_sizer.Add(new_dataset, flag=wx.EXPAND | wx.ALL, border=10)
 
   def onAddDataset(self, e):
-    new_dataset_dlg = dlg.DatasetDialog(self, db=self.main.db)
-    new_dataset_dlg.Fit()
+    # New datasets are created through the guided wizard; the full dialog is
+    # still used for editing an existing dataset (the magnifying glass button).
+    wizard = dlg.DatasetWizard(self, db=self.main.db)
 
-    if new_dataset_dlg.ShowModal() == wx.ID_OK:
+    if wizard.ShowModal() == wx.ID_OK:
       self.refresh_datasets()
+    wizard.Destroy()
 
   def onFilter(self, e):
     self.refresh_datasets()
