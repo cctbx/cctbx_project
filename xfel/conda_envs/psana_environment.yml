@@ -12,7 +12,7 @@ dependencies:
  - scons
 
  # psana
- - psana
+ - psana=4.0.66 # https://github.com/lcls-psana/pytools/issues/1
 
  # python
  - python
