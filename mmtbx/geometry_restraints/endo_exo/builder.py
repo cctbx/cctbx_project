@@ -1230,7 +1230,7 @@ class QMRegionBuilder(object):
     sidecar_phil_path = file_name + '.phil'
     with open(sidecar_phil_path, 'w') as file:
       sidecar_phil.format(sidecar_phil_extract).show(out=file)
-    print(f'Wrote sidecar to {sidecar_phil_path}', file=self.logger)
+    print(f'Wrote sidecar file to {sidecar_phil_path}', file=self.logger)
 
   def _make_output_filename(self, seed_index, seeds, selection_str=None):
     """Build the output filename stem from the model name and seed identity.

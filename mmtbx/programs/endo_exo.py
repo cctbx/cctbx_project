@@ -136,6 +136,8 @@ class Program(ProgramTemplate):
     """Validate user inputs before :meth:`run` is called."""
     if not self.data_manager.has_models():
       raise Sorry('No model provided. Please supply a PDB or mmCIF file.')
+    if self.params.selection is None:
+      raise Sorry('No selection="" given.' )
 
     model = self.data_manager.get_model()
     selection_strings = [s for s in (self.params.selection or []) if s]
