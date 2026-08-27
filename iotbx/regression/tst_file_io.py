@@ -596,6 +596,102 @@ def test_dm_combined_cif():
     shutil.rmtree(tmp)
   print('test_dm_combined_cif OK')
 
+def test_dm_combined_cif_phil_roundtrip():
+  '''regression from the 2026-06 iotbx.file_io rework, not yet fixed.
+
+  A model mmCIF that carries embedded ligand restraint blocks (comp_<LIG>, which
+  mmtbx.model.manager.model_as_mmcif writes for every model with a restraints
+  manager -- i.e. all phenix.refine / AutoBuild output containing a ligand) is
+  a "combined CIF": DataManager.process_file registers it as both model and
+  restraint, and export_phil_scope lists it under restraint_files as well as
+  model.file. load_phil_scope then calls process_restraint_file(force=False)
+  -> iotbx.file_io.reader._read_restraint, which requires
+  get_file_type(path) == 'restraint'; but get_file_type resolves a combined CIF
+  to its single primary type (model outranks restraint), so the DataManager
+  rejects the very file it just wrote ("... is not a recognized restraints
+  file"). Consequence: a phenix.refine .eff produced from such a model cannot
+  be reloaded (GUI or command line).
+
+  Expected invariant: whatever export_phil_scope writes, load_phil_scope
+  accepts.
+
+  When it regressed: 2026-06-13, commits aedd7b904f ("iotbx.file_io: fast file
+  type detection ...") and fe9ec34f84 ("iotbx.data_manager: ... single-parse via
+  iotbx.file_io"). Before them process_restraint_file used any_file, which
+  typed a model mmCIF as 'pdb', so a model could never enter restraint_files;
+  the combined-CIF multi-role registration (_process_combined_cif) and the
+  primary-type check in _read_restraint both arrived with the rework, and only
+  the former is force-aware.
+
+  Fix options (either makes this test pass):
+    (B) root cause -- in iotbx.file_io.reader._read_restraint accept a file
+        when 'restraint' in detection._cif_datatypes(filename, cif_engine)
+        instead of requiring get_file_type(filename) == 'restraint'. Restores
+        the export/load invariant and also lets a user pass
+        restraint_files=<model_with_ligand.cif> deliberately.
+    (A) policy -- in DataManager._process_combined_cif skip the 'restraint'
+        role when the file was also added as 'model', so a model mmCIF is a
+        model only (the pre-rework behavior; the .eff stays clean). Reverses
+        the intended multi-role design of the rework, so it is the
+        originator's call; can be combined with (B).'''
+  from iotbx.data_manager import DataManager
+  from libtbx.utils import Sorry
+  import iotbx.pdb, tempfile, shutil
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb = ('CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1\n'
+           'ATOM      1  N   GLY A   1       5.000   5.000   5.000  1.00 20.00           N\n'
+           'ATOM      2  CA  GLY A   1       6.458   5.000   5.000  1.00 20.00           C\n'
+           'HETATM    3  S   SO4 A 101      12.000  12.000  12.000  1.00 20.00           S\n'
+           'HETATM    4  O1  SO4 A 101      13.450  12.000  12.000  1.00 20.00           O\n'
+           'END\n')
+    pin = iotbx.pdb.input(source_info=None, lines=pdb)
+    mcif = pin.construct_hierarchy().as_mmcif_string(
+      crystal_symmetry=pin.crystal_symmetry())
+    # the restraint block model_as_mmcif appends for a ligand (abridged)
+    comp_block = '''
+data_comp_SO4
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+SO4 S S S 0.000
+SO4 O1 O O -0.500
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+SO4 S O1 single 1.450 0.020
+'''
+    p = os.path.join(tmp, 'refined_model.cif')
+    with open(p, 'w') as f:
+      f.write(mcif + comp_block)
+    refine_types = ['model', 'phil', 'miller_array', 'restraint']
+    dm = DataManager(refine_types)
+    added = sorted(dm.process_file(p))
+    assert added == ['model', 'restraint'], added
+    phil = dm.export_phil_scope()
+    assert p in phil.extract().data_manager.restraint_files
+    # a fresh DataManager must accept the PHIL the first one exported
+    dm2 = DataManager(refine_types)
+    try:
+      dm2.load_phil_scope(phil)
+    except Sorry as e:
+      raise AssertionError(
+        'UR-15863: load_phil_scope rejected the PHIL that export_phil_scope '
+        'wrote for a model mmCIF with embedded restraint blocks: %s' % e)
+    assert dm2.get_model_names() == dm.get_model_names(), dm2.get_model_names()
+    assert dm2.get_restraint_names() == dm.get_restraint_names(), \
+      dm2.get_restraint_names()
+  finally:
+    shutil.rmtree(tmp)
+  print('test_dm_combined_cif_phil_roundtrip OK')
+
 def test_text_reclassification():
   '''A text file whose content is PHIL but whose extension says ncs_spec is
   detected as phil (content wins). This is the tst_ncs_1.py .ncs-PHIL bug.'''
@@ -1091,6 +1187,7 @@ if __name__ == '__main__':
   test_process_file_returns_empty_on_read_failure()
   test_dm_process_file_cif_engine()
   test_dm_combined_cif()
+  test_dm_combined_cif_phil_roundtrip()
   test_cif_compression_detection()
   test_dm_json_opt_in()
   test_process_files_loop()
