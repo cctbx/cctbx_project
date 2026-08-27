@@ -323,10 +323,8 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
         "output.separate_worse_clashes=True",
         "output.report_vdws=False",
         "output.write_files=False",
-        # No @group line: the dots belong in a @subgroup of the structure's
-        # kinemage group, not in a separate group with its own button.  The
-        # group button used to double as the all-dots control, so put a
-        # master={dots} on every dot list instead.
+        # Dots nest as a @subgroup of the structure's group; master={dots}
+        # on each list keeps an all-dots control.
         "output.add_group_line=False",
         "output.add_group_name_master_line=True",
         "count_dots=False",
@@ -352,11 +350,9 @@ def make_probe_dots_from_model(model_manager, per_model=False):
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
   already has hydrogens placed (e.g. from clashscore2).
 
-  When per_model is True, returns a list with one kinemage-text section per
-  MODEL in the hierarchy (each labeled plain "self dots", ready to nest inside
-  that model's own kinemage group).  When False, returns the concatenated
-  string, with the subgroups labeled per model ("self dots m1", ...) when the
-  file has more than one model so their buttons can be told apart.
+  per_model=True returns one section per MODEL (labeled plain "self dots",
+  for nesting in per-model groups); False returns the concatenated string
+  with per-model labels ("self dots m1", ...) on multi-model files.
   """
   try:
     from mmtbx.programs import probe2
@@ -399,11 +395,8 @@ def make_probe_dots_from_model(model_manager, per_model=False):
         "output.separate_worse_clashes=True",
         "output.report_vdws=False",
         "output.write_files=False",
-        # No @group line: the dots are appended to the structure's kinemage
-        # group by the callers, so they belong in a @subgroup of it rather
-        # than in a separate group with its own button in viewers.  The group
-        # button used to double as the all-dots control, so put a
-        # master={dots} on every dot list instead.
+        # Dots nest as a @subgroup of the structure's group; master={dots}
+        # on each list keeps an all-dots control.
         "output.add_group_line=False",
         "output.add_group_name_master_line=True",
         "count_dots=False",
@@ -424,8 +417,7 @@ def make_probe_dots_from_model(model_manager, per_model=False):
   if per_model:
     return sections
   if len(sections) > 1:
-    # Label each model's dots subgroup so the buttons can be told apart when
-    # all of the sections share one kinemage group.
+    # Distinguish the buttons when all sections share one group.
     for i_mod, m in enumerate(hierarchy.models()):
       sections[i_mod] = sections[i_mod].replace(
         "@subgroup dominant {self dots}",
@@ -990,13 +982,10 @@ def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                       plain_coils=False,
                       counter_start=0,
                       ribbon_counter_start=0):
-  """Emit the contents of one kinemage group (sticks, validation markup,
-  ribbons, probe dots) for the given hierarchy: everything that goes between a
-  "@group" line and the footer.  The counter_start/ribbon_counter_start values
-  seed the stick and ribbon color rotations so that a multi-model builder that
-  emits one group per model keeps the same per-model color progression as the
-  single-group layout.  Returns (text, counter, ribbon_counter) with the
-  updated rotation counters."""
+  """Emit one kinemage group's contents (sticks, markup, ribbons, dots):
+  everything between a "@group" line and the footer.  counter_start /
+  ribbon_counter_start seed the color rotations so per-model groups keep the
+  single-group color progression.  Returns (text, counter, ribbon_counter)."""
   kin_out = ""
   initiated_chains = []
   validated_chains = []
@@ -1084,13 +1073,10 @@ def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
 def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
                                keep_hydrogens, include_cablam_wheels,
                                plain_coils):
-  """Build a kinemage for a multi-model file with one animatable group per
-  MODEL ("@group {mN pdbID} dominant animate"), each containing that model's
-  sticks, validation markup, ribbons, and probe dots, so viewers can animate
-  through the models.  Each model is interpreted and validated separately: the
-  models of an ensemble are spatially superimposed, so per-model restraints
-  are both correct (no cross-model pairs) and linear in the number of
-  models."""
+  """One animatable group per MODEL ("@group {mN pdbID} dominant animate"),
+  each with that model's sticks, markup, ribbons, and dots.  Each model is
+  interpreted and validated separately (correct for superimposed ensembles,
+  and linear in the model count)."""
   import mmtbx.model
   from libtbx.utils import null_out
   hierarchy = model.get_hierarchy()
@@ -1104,9 +1090,8 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
   elif probe_dots_kin == "":
     dots_sections = [""] * n_models
   else:
-    # A legacy concatenated string: split it at the probe2 caption headers
-    # and strip the per-model subgroup labels, since each section now nests
-    # inside its own model group.
+    # Legacy concatenated string: split at probe2 caption headers and strip
+    # the per-model labels, since sections nest in per-model groups now.
     import re
     parts = [s for s in re.split(r'(?m)(?=^@caption)', probe_dots_kin) if s]
     if len(parts) == n_models:
@@ -1116,8 +1101,7 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
           "@subgroup dominant {self dots m%s}" % m.id.strip(),
           "@subgroup dominant {self dots}", 1)
     else:
-      # Cannot attribute the text to models; emit the groups without dots and
-      # append the caller's text after the last group.
+      # Unattributable text: emit groups without dots, append it at the end.
       dots_sections = None
   if dots_sections is not None and len(dots_sections) != n_models:
     dots_sections = None
@@ -1127,8 +1111,7 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
   p.pdb_interpretation.allow_polymer_cross_special_position = True
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
   p.pdb_interpretation.proceed_with_excessive_length_bonds = True
-  # Keep atom names as deposited so the sticks match the probe2 dot labels
-  # (probe2 interprets with the same setting).
+  # Deposited atom names, matching probe2's dot labels.
   p.pdb_interpretation.flip_symmetric_amino_acids = False
 
   kin_out = get_default_header()
@@ -1255,11 +1238,9 @@ def build_kinemage_from_model(
   Returns:
     The kinemage string.
 
-  Multi-model files get one animatable kinemage group per MODEL (see
-  _build_multimodel_kinemage); on that path any injected validator results are
-  ignored and the validations are re-run per model, and probe_dots_kin may be
-  a list with one section per model (from make_probe_dots_from_model with
-  per_model=True), a legacy concatenated string, or "" to suppress dots.
+  Multi-model files get one animatable group per MODEL (injected validator
+  results are ignored and re-run per model; probe_dots_kin may be a per-model
+  list, a concatenated string, or "" to suppress dots).
   """
   if len(model.get_hierarchy().models()) > 1:
     return _build_multimodel_kinemage(
@@ -1267,14 +1248,10 @@ def build_kinemage_from_model(
       probe_dots_kin=probe_dots_kin, keep_hydrogens=keep_hydrogens,
       include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils)
   if model.get_restraints_manager() is None:
-    # The kinemage only needs bonded topology and covalent-geometry restraints.
-    # Skip the plain-pair table: on a multi-model ensemble the models are
-    # spatially superimposed, so that table is quadratic in the number of
-    # models (a 21-model NMR entry costs several GB through it).  Use the
-    # don't-abort interpretation switches so a viewer-support fallback does not
-    # refuse models the caller could analyze (e.g. an NMR ensemble whose dummy
-    # CRYST1 cell fails the volume-vs-atom-count check once enough superimposed
-    # models are present).
+    # Only bonded topology and covalent geometry are consumed here: skip the
+    # plain-pair table (quadratic for superimposed ensemble models) and use
+    # the don't-abort switches (an NMR dummy CRYST1 cell can fail the
+    # volume-vs-atom-count check).
     import mmtbx.model
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
     p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
@@ -1289,8 +1266,8 @@ def build_kinemage_from_model(
 
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   sites_cart = hierarchy.atoms().extract_xyz()
-  # Only bond proxies are consumed below; leave the nonbonded lists out, which
-  # would also be quadratic on superimposed ensemble models.
+  # Only bond proxies are consumed; nonbonded lists would be quadratic on
+  # superimposed ensemble models.
   flags = geometry_restraints.flags.flags(default=True, nonbonded=False)
   pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
