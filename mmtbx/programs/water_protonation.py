@@ -15,6 +15,9 @@ from libtbx.str_utils import make_sub_header
 
 from mmtbx.hydrogens import water_protonation
 
+# Cap on how many single-H waters are listed individually in the report.
+_MAX_LISTED_WATERS = 20
+
 master_phil_str = '''
 oh_distance = *auto neutron xray
   .type = choice(multi=False)
@@ -24,10 +27,10 @@ element = *auto H D
   .type = choice(multi=False)
   .short_caption = Hydrogen element
   .help = "Element for the placed water hydrogens: H, D, or auto (D for DOD residues, H for HOH)."
-reorient_existing = False
-  .type = bool
-  .short_caption = Reorient existing water H
-  .help = "Strip any H already on waters and re-place them, instead of leaving already-protonated waters untouched (the default)."
+existing_h = *keep complete reorient
+  .type = choice(multi=False)
+  .short_caption = Waters that already carry H
+  .help = "What to do with a water that already carries H: keep leaves it untouched, complete builds the missing partner on the cone of the existing proton for a water carrying a single H, reorient strips all water H and re-places both."
 lone_pair = False
   .type = bool
   .short_caption = Lone-pair-directed placement
@@ -79,8 +82,11 @@ Output:
   <model-stem>_waters_protonated.<ext> unless output.file_name is given. The
   format follows the input (output.target_output_format overrides it).
 
-By default it is idempotent: waters that already carry H are left untouched
-(reorient_existing=True strips and re-places them).
+By default it is idempotent: waters that already carry H are left untouched.
+That includes a water carrying a single H, since omitting the second proton
+is a common way of writing hydroxide; those are reported rather than
+completed. existing_h=complete builds the missing partner on the existing
+proton's cone, and existing_h=reorient strips all water H and re-places both.
 '''
   datatypes = ['model', 'phil']
   master_phil_str = master_phil_str
@@ -156,27 +162,29 @@ By default it is idempotent: waters that already carry H are left untouched
       water_protonation._clash_row(label, stats, self.logger)
 
     make_sub_header('Placing water hydrogens', out=self.logger)
-    kept_label = water_protonation.place_water_hydrogens(
+    result = water_protonation.place_water_hydrogens(
       hier,
       oh_length          = oh,
       element            = placer_element,
       n_refine           = self.params.refine.max_sweeps,
       refine_tol         = self.params.refine.tolerance,
       n_basin            = self.params.basin.rounds,
-      reorient_existing  = self.params.reorient_existing,
+      existing_h         = self.params.existing_h,
       lone_pair_directed = self.params.lone_pair,
       joint              = self.params.joint,
       on_state           = on_state if report_stats else None)
 
     n_after = self._count_water_h(hier)
     self.n_added = n_after - n_before
-    self.kept_label = kept_label
+    self.kept_label = result.kept_label
+    self.partial_waters = result.partial_waters
     if not report_stats:
       print(self._summary(n_before, n_after), file=self.logger)
     elif header["printed"]:
-      if kept_label is not None:
-        print(f"  kept: {kept_label}", file=self.logger)
+      if result.kept_label is not None:
+        print(f"  kept: {result.kept_label}", file=self.logger)
       self._print_residual_contacts(hier)
+    self._print_partial_waters(result.partial_waters)
 
     self.model = model
     self._write_output(model)
@@ -218,12 +226,47 @@ By default it is idempotent: waters that already carry H are left untouched
 
   def _summary(self, n_before, n_now):
     added = n_now - n_before
-    # With reorient_existing the existing H were stripped and re-placed, so
-    # report the reoriented count (the net change alone reads as "+0").
-    if self.params.reorient_existing and n_before:
+    # With existing_h=reorient the existing H were stripped and re-placed,
+    # so report the reoriented count (the net change alone reads as "+0").
+    if self.params.existing_h == "reorient" and n_before:
       return (f"water H/D atoms: {n_before} -> {n_now} "
               f"(reoriented {n_before}, +{added})")
     return f"water H/D atoms: {n_before} -> {n_now} (+{added})"
+
+  def _print_partial_waters(self, partial):
+    """Report the waters that carried exactly one H on input.
+
+    Omitting one proton from a water is a common way of writing hydroxide,
+    so these are called out whatever ``existing_h`` did with them. Any that
+    coordinate a metal are annotated with the cation and its distance.
+    """
+    if not partial:
+      return
+    tail = {
+      "kept": ("carry a single H and were left untouched (possible "
+               "hydroxides); existing_h=complete adds the missing partner"),
+      "completed": ("carried a single H and were completed; any intended as "
+                    "hydroxide are now water"),
+      "stripped": "carried a single H and were stripped and re-protonated",
+    }
+    # Grouped, because one mode can produce more than one outcome: a water
+    # whose H sits on its O has no cone axis and is left alone even under
+    # existing_h=complete.
+    for action in ("completed", "stripped", "kept"):
+      group = [p for p in partial if p[2] == action]
+      if not group:
+        continue
+      n_metal = sum(1 for _, metal, _ in group if metal is not None)
+      head = f"{len(group)} water(s) {tail[action]}"
+      if n_metal:
+        head += f" ({n_metal} metal-coordinated)"
+      print(f"  {head}:", file=self.logger)
+      for rid, metal, _ in group[:_MAX_LISTED_WATERS]:
+        note = f"  [{metal[0]} {metal[1]:.2f} A]" if metal is not None else ""
+        print(f"    {rid}{note}", file=self.logger)
+      if len(group) > _MAX_LISTED_WATERS:
+        print(f"    ... and {len(group) - _MAX_LISTED_WATERS} more",
+              file=self.logger)
 
   def _print_residual_contacts(self, hier):
     """List the residual inter-water H-H contacts (< 2.0 A) with residue IDs,
@@ -248,4 +291,5 @@ By default it is idempotent: waters that already carry H are left untouched
       model            = self.model,
       n_added          = self.n_added,
       kept_label       = self.kept_label,
+      partial_waters   = self.partial_waters,
       output_file_name = self.output_file_name)

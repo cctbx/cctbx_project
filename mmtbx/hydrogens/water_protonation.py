@@ -22,6 +22,7 @@ import math
 import random
 
 import iotbx.pdb
+from libtbx import group_args
 from scitbx import matrix
 from scipy.spatial import KDTree
 
@@ -79,12 +80,45 @@ _WATER_BASIN_RELAX = 2        # relaxation sweeps after each random kick
 # Cations within _WATER_CATION_RADIUS of the water O are treated as
 # repellers (hemisphere constraint), not acceptors.
 _WATER_CATION_ELEMENTS = frozenset({
-  "LI", "NA", "K", "RB", "CS",
-  "MG", "CA", "SR", "BA",
-  "MN", "FE", "CO", "NI", "CU", "ZN", "CD", "HG",
-  "AL",
+  "LI", "NA", "K", "RB", "CS",                                    # alkali
+  "BE", "MG", "CA", "SR", "BA",                                   # alkaline earth
+  "SC", "TI", "V", "CR", "MN", "FE", "CO", "NI", "CU", "ZN",      # 3d
+  "Y", "ZR", "NB", "MO", "TC", "RU", "RH", "PD", "AG", "CD",      # 4d
+  "HF", "TA", "W", "RE", "OS", "IR", "PT", "AU", "HG",            # 5d
+  "AL", "GA", "IN", "SN", "SB", "TL", "PB", "BI",                 # p-block
+  "LA", "CE", "PR", "ND", "PM", "SM", "EU", "GD",                 # lanthanides
+  "TB", "DY", "HO", "ER", "TM", "YB", "LU",
+  "TH", "U",                                                      # actinides
 })
 _WATER_CATION_RADIUS = 3.0
+# Tighter cutoff for *reporting* whether a water is metal-coordinated (a
+# first-shell M-O bond is ~1.9-2.4 A). The repulsion radius above is
+# deliberately looser, so it is not reused for this question.
+_WATER_METAL_COORD_RADIUS = 2.6
+# Minimum cos(angle) between a fixed O-H1 and an acceptor direction for
+# that acceptor to count as the one H1 already donates to (~45 deg).
+_WATER_H1_ACC_ALIGN = 0.7
+
+
+def _has_deuterium(hier):
+  """True if the model carries any D atom.
+
+  Only neutron and joint X-ray/neutron refinements model deuterium, so this
+  is the structure-only signal for which canonical O-H distance applies. It
+  is what ``_detect_neutron`` falls back to when the deposited experiment
+  type is absent or inconclusive.
+
+  Parameters
+  ----------
+  hier : iotbx.pdb.hierarchy.root
+      Model hierarchy.
+
+  Returns
+  -------
+  bool
+      True if any atom has element D.
+  """
+  return any(a.element.strip().upper() == "D" for a in hier.atoms())
 
 
 def _is_water(resname):
@@ -148,7 +182,7 @@ def _strip_water_hydrogens(hier):
   return n
 
 
-def _new_h_atom(name, element, xyz, occ, b):
+def _new_h_atom(name, element, xyz, occ, b, hetero=False):
   """Build a hierarchy atom for a placed water H.
 
   The atom is given a blank segid, like the parent O.
@@ -165,6 +199,9 @@ def _new_h_atom(name, element, xyz, occ, b):
       Occupancy (inherited from the parent O).
   b : float
       B factor (inherited from the parent O).
+  hetero : bool, optional
+      HETATM flag (inherited from the parent O, so the placed H are
+      written as the same record type as the water they belong to).
 
   Returns
   -------
@@ -178,7 +215,33 @@ def _new_h_atom(name, element, xyz, occ, b):
   atom.occ = occ
   atom.b = b
   atom.segid = " " * 4
+  atom.hetero = hetero
   return atom
+
+
+def _free_proton_name(existing_names, element):
+  """First of ``<element>1`` / ``<element>2`` not already used in a residue.
+
+  A water being completed already carries one proton, which may be named
+  either H1 or H2, so the new one takes whichever slot is free.
+
+  Parameters
+  ----------
+  existing_names : set of str
+      Stripped atom names already present in the residue.
+  element : str
+      Element symbol (``"H"`` or ``"D"``).
+
+  Returns
+  -------
+  str or None
+      A 4-character PDB atom name, or None if both slots are taken.
+  """
+  for di in (1, 2):
+    name = f"{element}{di}"
+    if name not in existing_names:
+      return f" {name} "
+  return None
 
 
 def _ortho_frame(d1):
@@ -260,11 +323,15 @@ def _kick_water(record, placed_coords, oh_length, cos_hoh, sin_hoh, rng):
   azimuth, updating the water's placed-H coordinates and atoms in place.
   Used to kick a water out of its local minimum during basin-hopping.
 
+  A water being completed carries a fixed O-H1 (its deposited proton), so
+  only the cone azimuth is randomized there; the axis itself is never
+  kicked.
+
   Parameters
   ----------
   record : tuple
-      Per-water record ``(o_xyz, own_idx, slots)`` (see
-      ``place_water_hydrogens``); only ``o_xyz`` and ``slots`` are used.
+      Per-water record ``(o_xyz, own_idx, slots, fixed_d1)`` (see
+      ``place_water_hydrogens``); ``own_idx`` is unused.
   placed_coords : list of tuple
       Global list of placed-H coordinates, updated in place.
   oh_length : float
@@ -274,8 +341,8 @@ def _kick_water(record, placed_coords, oh_length, cos_hoh, sin_hoh, rng):
   rng : random.Random
       Seeded RNG.
   """
-  o_xyz, _own_idx, slots = record
-  d1 = _rand_unit(rng)
+  o_xyz, _own_idx, slots, fixed_d1 = record
+  d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
   helper = matrix.col((1.0, 0.0, 0.0))
   if abs(d1.dot(helper)) > 0.95:
     helper = matrix.col((0.0, 1.0, 0.0))
@@ -411,9 +478,9 @@ class _WaterHydrogenPlacer(object):
   place. See :func:`place_water_hydrogens` for the parameter semantics.
   """
 
-  def __init__(self, hier, oh_length=_WATER_OH_NEUTRON, element=None,
+  def __init__(self, hier, oh_length=None, element=None,
                n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
-               n_basin=0, reorient_existing=False, lone_pair_directed=False,
+               n_basin=0, existing_h="keep", lone_pair_directed=False,
                joint=False, on_state=None):
     self.hier = hier
     self.oh_length = oh_length
@@ -421,7 +488,7 @@ class _WaterHydrogenPlacer(object):
     self.n_refine = n_refine
     self.refine_tol = refine_tol
     self.n_basin = n_basin
-    self.reorient_existing = reorient_existing
+    self.existing_h = existing_h
     self.lone_pair_directed = lone_pair_directed
     self.joint = joint
     self.on_state = on_state
@@ -434,9 +501,13 @@ class _WaterHydrogenPlacer(object):
     self.placed_tree = None
     self.pending_tree = None
     self.n_built = 0
-    # Per-water records (o_xyz, own_idx, [(atom, slot, di), ...]); the
-    # refinement/basin passes re-place each against the final environment.
+    # Per-water records (o_xyz, own_idx, [(atom, slot, di), ...], fixed_d1);
+    # the refinement/basin passes re-place each against the final
+    # environment, holding fixed_d1 (a deposited O-H1) where there is one.
     self.records = []
+    # Waters that carried exactly one H on input: (residue id, metal, action)
+    # where metal is (element, distance) or None. Reported by the caller.
+    self.partial_waters = []
 
   def _clearances(self, cands, own_idx, own_slots):
     """Batched clearance test over candidate H positions.
@@ -502,7 +573,40 @@ class _WaterHydrogenPlacer(object):
             ok[ci] = False
     return list(zip(best, ok))
 
-  def _place_one(self, o_xyz, own_idx, own_slots):
+  def _nearest_cation(self, o_xyz, own_idx):
+    """Closest metal cation coordinating a water O, if any.
+
+    Uses ``_WATER_METAL_COORD_RADIUS`` (a first-shell bond), not the looser
+    ``_WATER_CATION_RADIUS`` used for proton repulsion. Reporting only; it
+    does not affect placement.
+
+    Parameters
+    ----------
+    o_xyz : tuple of float
+        Coordinates of the water O.
+    own_idx : set of int
+        Static-atom indices belonging to this water (excluded).
+
+    Returns
+    -------
+    tuple or None
+        ``(element, distance)`` of the closest coordinating cation, or None.
+    """
+    o = matrix.col(o_xyz)
+    best = None
+    for i in self.static_tree.query_ball_point(tuple(o_xyz),
+                                               _WATER_METAL_COORD_RADIUS):
+      if i in own_idx:
+        continue
+      el = self.atoms[i].element.strip().upper()
+      if el not in _WATER_CATION_ELEMENTS:
+        continue
+      d = (matrix.col(self.atoms[i].xyz) - o).length()
+      if best is None or d < best[1]:
+        best = (el, d)
+    return best
+
+  def _place_one(self, o_xyz, own_idx, own_slots, fixed_d1=None):
     """Compute the two H positions for one water O.
 
     Clash-aware against the current environment (the water's own static
@@ -516,6 +620,12 @@ class _WaterHydrogenPlacer(object):
         Static-atom indices belonging to this water (excluded).
     own_slots : set of int
         Placed-H slot indices belonging to this water (excluded).
+    fixed_d1 : scitbx.matrix.col or None, optional
+        Unit O-H1 direction to hold fixed instead of searching for one,
+        used when completing a water that already carries one proton. The
+        returned ``h1_xyz`` then just restates that direction at the
+        canonical bond length and the caller ignores it; only ``h2_xyz``
+        is new.
 
     Returns
     -------
@@ -621,7 +731,7 @@ class _WaterHydrogenPlacer(object):
     # ordered acceptor pair, a "tilt" direction off one acceptor away from
     # the other (so H1 can sit between two acceptors); each viable H1 gets an
     # H2 cone. Falls through to the greedy path if no clash-free pair exists.
-    if self.joint and acc_dirs:
+    if fixed_d1 is None and self.joint and acc_dirs:
       hoh_rad = math.radians(_WATER_HOH_DEG)
       tilts = [_tilt_dir(acc_dirs[a], acc_dirs[b], hoh_rad)
                for a in range(len(acc_dirs))
@@ -657,24 +767,37 @@ class _WaterHydrogenPlacer(object):
       if best_pair is not None:
         return best_pair
 
-    d1 = None
-    h1_acc = None
-    for k, i in enumerate(acceptors):
-      if acc_res[k][1] and cation_ok(acc_pts[k]):  # ok and away from cations
-        d1 = acc_dirs[k]
-        h1_acc = i
-        break
-    if d1 is None:
-      sph_dirs = [matrix.col(v).normalize() for v in _WATER_FALLBACK_DIRECTIONS]
-      sph_pts = [o_xyz + self.oh_length * dv for dv in sph_dirs]
-      cand_dirs = acc_dirs + sph_dirs
-      cand_pts = acc_pts + sph_pts
-      cand_res = acc_res + self._clearances(sph_pts, own_idx, own_slots)
-      best_j = max(
-        range(len(cand_dirs)),
-        key=lambda j: (cation_ok(cand_pts[j]),
-                       cand_res[j][1], cand_res[j][0]))
-      d1 = cand_dirs[best_j]
+    if fixed_d1 is not None:
+      # Completing a half-modelled water: H1 is the deposited proton, so
+      # its direction is given rather than searched. Identify the acceptor
+      # it already donates to, so H2 below aims at a different one.
+      d1 = fixed_d1
+      h1_acc = None
+      best_align = _WATER_H1_ACC_ALIGN
+      for k, i in enumerate(acceptors):
+        align = acc_dirs[k].dot(d1)
+        if align > best_align:
+          best_align = align
+          h1_acc = i
+    else:
+      d1 = None
+      h1_acc = None
+      for k, i in enumerate(acceptors):
+        if acc_res[k][1] and cation_ok(acc_pts[k]):  # ok and away from cations
+          d1 = acc_dirs[k]
+          h1_acc = i
+          break
+      if d1 is None:
+        sph_dirs = [matrix.col(v).normalize() for v in _WATER_FALLBACK_DIRECTIONS]
+        sph_pts = [o_xyz + self.oh_length * dv for dv in sph_dirs]
+        cand_dirs = acc_dirs + sph_dirs
+        cand_pts = acc_pts + sph_pts
+        cand_res = acc_res + self._clearances(sph_pts, own_idx, own_slots)
+        best_j = max(
+          range(len(cand_dirs)),
+          key=lambda j: (cation_ok(cand_pts[j]),
+                         cand_res[j][1], cand_res[j][0]))
+        d1 = cand_dirs[best_j]
     h1_xyz = o_xyz + self.oh_length * d1
 
     # Orthonormal frame for the H2 cone (d1, p, q mutually perpendicular)
@@ -723,9 +846,10 @@ class _WaterHydrogenPlacer(object):
     self.placed_tree = KDTree(self.placed_coords) if self.placed_coords else None
     self.pending_tree = None
     self.n_built = len(self.placed_coords)
-    for o_xyz, own_idx, slots in self.records:
+    for o_xyz, own_idx, slots, fixed_d1 in self.records:
       own_slots = {slot for _, slot, _ in slots}
-      h_xyz = dict(zip((1, 2), self._place_one(o_xyz, own_idx, own_slots)))
+      h_xyz = dict(zip((1, 2),
+                       self._place_one(o_xyz, own_idx, own_slots, fixed_d1)))
       for atom, slot, di in slots:
         self.placed_coords[slot] = tuple(h_xyz[di])
         atom.set_xyz(tuple(h_xyz[di]))
@@ -739,7 +863,7 @@ class _WaterHydrogenPlacer(object):
         Per-slot placed-H coordinates to restore (a snapshot of
         ``placed_coords``).
     """
-    for _, _, slots in self.records:
+    for _, _, slots, _ in self.records:
       for atom, slot, di in slots:
         self.placed_coords[slot] = coords[slot]
         atom.set_xyz(coords[slot])
@@ -757,7 +881,7 @@ class _WaterHydrogenPlacer(object):
     self.pending_tree = None
     self.n_built = len(self.placed_coords)
     bad = []
-    for ri, (o_xyz, own_idx, slots) in enumerate(self.records):
+    for ri, (o_xyz, own_idx, slots, _fixed) in enumerate(self.records):
       own_slots = {slot for _, slot, _ in slots}
       pts = [matrix.col(self.placed_coords[slot]) for _, slot, _ in slots]
       if any(not ok for _, ok in self._clearances(pts, own_idx, own_slots)):
@@ -771,7 +895,22 @@ class _WaterHydrogenPlacer(object):
     :func:`place_water_hydrogens`).
     """
     hier = self.hier
-    if self.reorient_existing:
+    # O-H length: an explicit value wins, else pick it from the structure.
+    # Resolved before stripping, which would remove the D that the choice
+    # keys on. The CLI resolves this itself from the deposited experiment
+    # type, which is better evidence than the D atoms alone.
+    if self.oh_length is None:
+      self.oh_length = (_WATER_OH_NEUTRON if _has_deuterium(hier)
+                        else _WATER_OH_XRAY)
+    # Waters carrying exactly one H on input. A missing second proton is a
+    # common way of writing hydroxide, so these are never completed unless
+    # asked; they are recorded here (before any stripping) and reported by
+    # the caller in every mode.
+    single_h = {ag.memory_id() for ag in hier.atom_groups()
+                if _is_water(ag.resname)
+                and sum(1 for a in ag.atoms()
+                        if a.element.strip().upper() in ("H", "D")) == 1}
+    if self.existing_h == "reorient":
       _strip_water_hydrogens(hier)
 
     atoms = list(hier.atoms())
@@ -823,29 +962,58 @@ class _WaterHydrogenPlacer(object):
     for ag in hier.atom_groups():
       if not _is_water(ag.resname):
         continue
-      if len(ag.atoms()) >= 3:
-        continue  # already protonated
       o = next((a for a in ag.atoms()
                 if a.element.strip().upper() == "O"), None)
       if o is None:
         continue
+      # A water with one H is completed only on request, and then H2 goes on
+      # the cone of the proton that is actually there, not a recomputed one.
+      existing = [a for a in ag.atoms()
+                  if a.element.strip().upper() in ("H", "D")]
+      fixed_d1 = None
+      skip = len(existing) >= 2          # already protonated
+      if existing and not skip:
+        if self.existing_h != "complete":
+          skip = True
+        else:
+          v = matrix.col(existing[0].xyz) - matrix.col(o.xyz)
+          if v.length() < 1e-3:
+            skip = True  # H coincident with O: no direction for a cone
+          else:
+            fixed_d1 = v.normalize()
+      is_single = ag.memory_id() in single_h
+      if skip and not is_single:
+        continue                         # nothing to place and nothing to say
       own_idx = {pos_by_id[a.memory_id()] for a in ag.atoms()
                  if a.memory_id() in pos_by_id}
+      # Report what actually happened to this water, not what the mode asks
+      # for in general: a degenerate one is left alone even under complete.
+      if is_single:
+        action = ("stripped" if self.existing_h == "reorient"
+                  else "completed" if fixed_d1 is not None else "kept")
+        self.partial_waters.append(
+          (_water_id(ag), self._nearest_cation(o.xyz, own_idx), action))
+      if skip:
+        continue
       crowd = sum(
         1 for j in self.static_tree.query_ball_point(o.xyz, _WATER_CLEARANCE_RADIUS)
         if j not in own_idx)
-      waters.append((crowd, ag, o, own_idx))
+      waters.append((crowd, ag, o, own_idx, fixed_d1, existing))
     waters.sort(key=lambda w: w[0], reverse=True)
 
     # Initial greedy pass over the ordered waters, each avoiding the H already
     # placed on earlier ones (prefix + pending trees, refreshed below).
-    # ``records`` keeps per-water (o_xyz, own_idx, placed-H slots) so the
-    # refinement sweeps can re-place each water against the *final*
+    # ``records`` keeps per-water (o_xyz, own_idx, placed-H slots, fixed_d1)
+    # so the refinement sweeps can re-place each water against the *final*
     # environment, breaking the order-dependence of the greedy pass.
-    self.records = []   # list of (o_xyz, own_idx, [(atom, slot, di), ...])
-    for crowd, ag, o, own_idx in waters:
+    self.records = []   # (o_xyz, own_idx, [(atom, slot, di), ...], fixed_d1)
+    for crowd, ag, o, own_idx, fixed_d1, existing in waters:
+      # An explicit element wins; else a proton already on this water is
+      # better evidence of intent than the residue name.
       if self.element is not None:
         proton_element = self.element
+      elif existing:
+        proton_element = existing[0].element.strip().upper()
       else:
         proton_element = "D" if ag.resname.strip().upper() == "DOD" else "H"
       o_xyz = matrix.col(o.xyz)
@@ -862,20 +1030,25 @@ class _WaterHydrogenPlacer(object):
       else:
         pending = self.placed_coords[self.n_built:]
         self.pending_tree = KDTree(pending) if pending else None
-      h_xyz = dict(zip((1, 2), self._place_one(o_xyz, own_idx, set())))
+      h_xyz = dict(zip((1, 2),
+                       self._place_one(o_xyz, own_idx, set(), fixed_d1)))
 
+      # Completing a water builds only the cone proton (role 2); the
+      # deposited one stays where it is. Names are assigned from whichever
+      # of H1/H2 is free, since the deposited proton may hold either.
       slots = []
-      for di in (1, 2):
-        proton_name = f" {proton_element}{di} "
-        if proton_name.strip() in existing_names:
+      for di in ((2,) if fixed_d1 is not None else (1, 2)):
+        proton_name = _free_proton_name(existing_names, proton_element)
+        if proton_name is None:
           continue
+        existing_names.add(proton_name.strip())
         atom = _new_h_atom(proton_name, proton_element,
-                           tuple(h_xyz[di]), o.occ, o.b)
+                           tuple(h_xyz[di]), o.occ, o.b, o.hetero)
         ag.append_atom(atom)
         slots.append((atom, len(self.placed_coords), di))
         self.placed_coords.append(tuple(h_xyz[di]))
       if slots:
-        self.records.append((o_xyz, own_idx, slots))
+        self.records.append((o_xyz, own_idx, slots, fixed_d1))
 
     # Refinement sweeps: re-place each water against the *final* set of all
     # placed H (its own excluded), so a water no longer ignores neighbours
@@ -937,10 +1110,10 @@ class _WaterHydrogenPlacer(object):
     return best_label if (self.n_refine or self.n_basin) else None
 
 
-def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
+def place_water_hydrogens(hier, oh_length=None, element=None,
                           n_refine=_WATER_REFINE_SWEEPS,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
-                          reorient_existing=False, lone_pair_directed=False,
+                          existing_h="keep", lone_pair_directed=False,
                           joint=False, on_state=None):
   """Place the two H on every bare water, H-bond-aware.
 
@@ -973,7 +1146,15 @@ def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
   seen. New H inherit the parent O's occupancy and B factor.
 
   Modifies *hier* in place. By default it is idempotent: water residues
-  already carrying H are left untouched.
+  already carrying H are left untouched. A water carrying exactly one H is
+  left alone too, since omitting the second proton is a common way of
+  writing hydroxide; ``existing_h="complete"`` builds the missing partner
+  on the cone of the deposited proton instead.
+
+  ``oh_length`` defaults to picking the canonical distance from the model:
+  neutron if it carries any D atom, X-ray otherwise. ``mmtbx.naiad`` reads
+  the deposited experiment type instead, which is stronger evidence, and
+  passes the result explicitly.
 
   This is a thin wrapper around :class:`_WaterHydrogenPlacer`; the
   parameters and return value are documented here.
@@ -982,9 +1163,9 @@ def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
   ----------
   hier : iotbx.pdb.hierarchy.root
       Model hierarchy; modified in place.
-  oh_length : float, optional
-      O-H bond length in A (default neutron, 0.984; pass
-      ``_WATER_OH_XRAY`` = 0.957 for X-ray-style placement).
+  oh_length : float or None, optional
+      O-H bond length in A. None (default) picks ``_WATER_OH_NEUTRON``
+      (0.984) if the model contains D, else ``_WATER_OH_XRAY`` (0.957).
   element : str or None, optional
       Element of the placed atoms: ``"H"`` or ``"D"`` forces that element
       on every water; None (default) picks per residue -- ``"D"`` for DOD,
@@ -1003,9 +1184,11 @@ def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
       restarts from the best state, randomly re-orients the waters still in
       a clash, relaxes, and keeps the result if it improved (deterministic,
       seeded). Helps only where a better orientation exists.
-  reorient_existing : bool, optional
-      If True, strip any H already on waters and re-place every water from
-      scratch; otherwise already-protonated waters are left untouched.
+  existing_h : str, optional
+      What to do with a water that already carries H: ``"keep"``
+      (default, leave it untouched), ``"complete"`` (a water with exactly
+      one H gets its partner built on that proton's cone, inheriting its
+      element), or ``"reorient"`` (strip all water H and re-place both).
   lone_pair_directed : bool, optional
       If True, each O-H aims at an acceptor's lone-pair lobe (estimated
       from the acceptor's bonded-neighbour geometry) rather than its
@@ -1025,16 +1208,24 @@ def place_water_hydrogens(hier, oh_length=_WATER_OH_NEUTRON, element=None,
 
   Returns
   -------
-  str or None
-      The label of the kept state (``"initial"``, ``"sweep N"`` or
-      ``"basin N.M"``) when refinement or basin-hopping ran, else None.
+  libtbx.group_args
+      ``kept_label``: the label of the kept state (``"initial"``,
+      ``"sweep N"`` or ``"basin N.M"``) when refinement or basin-hopping
+      ran, else None. ``partial_waters``: one
+      ``(residue_id, metal, action)`` per water that carried exactly one H
+      on input, where ``metal`` is ``(element, distance)`` for a
+      coordinating cation or None, and ``action`` is ``"kept"``,
+      ``"completed"`` or ``"stripped"`` after ``existing_h``.
   """
-  return _WaterHydrogenPlacer(
+  placer = _WaterHydrogenPlacer(
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
     refine_tol=refine_tol, n_basin=n_basin,
-    reorient_existing=reorient_existing,
+    existing_h=existing_h,
     lone_pair_directed=lone_pair_directed, joint=joint,
-    on_state=on_state).run()
+    on_state=on_state)
+  kept_label = placer.run()
+  return group_args(kept_label=kept_label,
+                    partial_waters=placer.partial_waters)
 
 
 def _water_clash_stats(hier):
@@ -1119,6 +1310,26 @@ def _atom_id(a):
           f"{rg.resseq.strip()} {a.name.strip()}")
 
 
+def _water_id(ag):
+  """Compact residue identity for a water, e.g. ``"HOH A 863"``.
+
+  Parameters
+  ----------
+  ag : iotbx.pdb.hierarchy.atom_group
+      The water atom group.
+
+  Returns
+  -------
+  str
+      ``"<resname> <chain> <resseq>"``, with the altloc appended in
+      parentheses when the group has one.
+  """
+  rg = ag.parent()
+  alt = ag.altloc.strip()
+  return (f"{ag.resname.strip()} {rg.parent().id.strip()} {rg.resseq.strip()}"
+          + (f" ({alt})" if alt else ""))
+
+
 def _worst_water_clashes(hier):
   """Closest inter-water H-H contacts -- the offenders behind the counts.
 
@@ -1181,6 +1392,6 @@ def _detect_neutron(pdb_in, hier):
       return True, f"experiment type {exp!r}"
     if exp.is_xray() or exp.is_electron_microscopy():
       return False, f"experiment type {exp!r}"
-  if any(a.element.strip().upper() == "D" for a in hier.atoms()):
+  if _has_deuterium(hier):
     return True, "D atoms present (no conclusive experiment metadata)"
   return False, "no neutron signal (assuming X-ray)"

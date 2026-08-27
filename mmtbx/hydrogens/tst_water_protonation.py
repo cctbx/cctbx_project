@@ -29,18 +29,42 @@ to get wrong:
 
 * **Idempotency.** A water that already carries two H is left untouched.
 
-* **Reorient existing.** With ``reorient_existing`` a protonated water whose
-  H point the wrong way is stripped and re-placed toward its acceptor; the
-  default leaves it alone.
+* **Single-H water (possible hydroxide).** A water carrying one H is left
+  untouched by default and reported; ``existing_h="complete"`` builds the
+  partner on the *deposited* proton's cone (the regression for building it
+  on a recomputed one, which gave an arbitrary H-O-H angle);
+  ``existing_h="reorient"`` strips and re-places both.
+
+* **Metal annotation.** The single-H report flags a coordinating cation
+  using a first-shell cutoff, so a metal inside the looser proton-repulsion
+  radius but beyond a bond is not flagged.
+
+* **Reorient existing.** With ``existing_h="reorient"`` a protonated water
+  whose H point the wrong way is stripped and re-placed toward its
+  acceptor; the default leaves it alone.
+
+* **HETATM record type.** Placed H inherit the parent O's HETATM flag.
+
+* **Heavy cations repel.** The cation set is not limited to the first row:
+  a Pt keeps both protons out of its hemisphere.
 
 * **Refinement.** A tight cluster of bare waters clashes after the greedy
   pass; the relaxation sweeps must reduce the count of close H-H contacts.
+
+* **A completed water stays completed.** In a clashing cluster where half
+  the waters carry a deposited proton, the refinement sweeps and basin
+  kicks must leave every deposited proton where it is and keep each new
+  partner on its cone, rather than re-deriving the O-H1 axis.
 
 * **Element override.** ``element="D"`` forces deuterium (named ``D1``/``D2``)
   onto an HOH water; the default places H.
 
 * **Experiment detection.** ``_detect_neutron`` reads the experiment type
   (EXPDTA / ``_exptl.method``) and falls back to the presence of D atoms.
+
+* **O-H length auto-selection.** With no ``oh_length`` the placer takes the
+  neutron distance for a model carrying D and the X-ray distance otherwise;
+  an explicit value overrides both.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -127,6 +151,28 @@ HETATM    4  O   ACA D   1       2.700   0.000   0.000  1.00 10.00           O
 END
 """
 
+# A water carrying a single H (a common way of writing hydroxide), with one
+# acceptor along +x. The deposited proton points along +y, well off the
+# acceptor, so completing it must build the partner on *that* proton's cone.
+_SINGLE_H_WATER_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  H1  HOH W   1       0.000   0.957   0.000  1.00 10.00           H
+HETATM    3  O   ACA D   1       2.700   0.000   0.000  1.00 10.00           O
+END
+"""
+
+# Single-H water coordinating an Mg at 2.1 A: the report must flag it. The
+# FAR copy moves the Mg to 2.9 A, inside the proton-repulsion radius but
+# beyond a first-shell bond, so it must not be flagged.
+_MG_SINGLE_H_PDB = """\
+HETATM    1 MG    MG A   1      -2.100   0.000   0.000  1.00 10.00          MG
+HETATM    2  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    3  H1  HOH W   1       0.000   0.957   0.000  1.00 10.00           H
+END
+"""
+
+_MG_SINGLE_H_FAR_PDB = _MG_SINGLE_H_PDB.replace("-2.100", "-2.900")
+
 # Six bare waters on a tight 2.8 A grid with no other acceptors: the greedy
 # pass leaves at least one close H-H contact that refinement relaxes.
 _WATER_CLUSTER_PDB = """\
@@ -136,6 +182,27 @@ HETATM    3  O   HOH W   3       2.800   0.000   0.000  1.00 10.00           O
 HETATM    4  O   HOH W   4       2.800   2.800   0.000  1.00 10.00           O
 HETATM    5  O   HOH W   5       5.600   0.000   0.000  1.00 10.00           O
 HETATM    6  O   HOH W   6       5.600   2.800   0.000  1.00 10.00           O
+END
+"""
+
+
+# Half the waters of a clashing 2.6 A cube carry a deposited H. Completing
+# them exercises refinement and basin-hopping with fixed-axis records in
+# play: the deposited protons must not move and the partners must stay on
+# their cones through every sweep and kick.
+_MIXED_CLUSTER_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  O   HOH W   2       0.000   0.000   2.600  1.00 10.00           O
+HETATM    3  H1  HOH W   2       0.000   0.957   2.600  1.00 10.00           H
+HETATM    4  O   HOH W   3       0.000   2.600   0.000  1.00 10.00           O
+HETATM    5  O   HOH W   4       0.000   2.600   2.600  1.00 10.00           O
+HETATM    6  H1  HOH W   4       0.000   3.557   2.600  1.00 10.00           H
+HETATM    7  O   HOH W   5       2.600   0.000   0.000  1.00 10.00           O
+HETATM    8  O   HOH W   6       2.600   0.000   2.600  1.00 10.00           O
+HETATM    9  H1  HOH W   6       2.600   0.957   2.600  1.00 10.00           H
+HETATM   10  O   HOH W   7       2.600   2.600   0.000  1.00 10.00           O
+HETATM   11  O   HOH W   8       2.600   2.600   2.600  1.00 10.00           O
+HETATM   12  H1  HOH W   8       2.600   3.557   2.600  1.00 10.00           H
 END
 """
 
@@ -219,7 +286,7 @@ def exercise_acceptor_directed():
       f"placed H too close to a non-water atom: {d:.3f} A")
 
   oh = (matrix.col(hs["H1"].xyz) - matrix.col(o.xyz)).length()
-  assert abs(oh - wp._WATER_OH_NEUTRON) < 1e-3, f"O-H length off: {oh:.3f}"
+  assert abs(oh - wp._WATER_OH_XRAY) < 1e-3, f"O-H length off: {oh:.3f}"
   ang = math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
   assert abs(ang - wp._WATER_HOH_DEG) < 1.0, f"H-O-H angle off: {ang:.1f}"
 
@@ -314,7 +381,7 @@ def exercise_joint_balances_acceptors():
 
 
 def exercise_reorient_existing():
-  """``reorient_existing`` strips the existing (mis-oriented) H and
+  """``existing_h="reorient"`` strips the existing (mis-oriented) H and
   re-places them toward the acceptor; the default leaves them as-is."""
   acc = matrix.col((2.700, 0.000, 0.000))
 
@@ -329,20 +396,103 @@ def exercise_reorient_existing():
     "default run must not reorient existing H toward the acceptor")
 
   redone = _hierarchy(_BAD_PROTONATED_PDB)
-  wp.place_water_hydrogens(redone, n_refine=0, reorient_existing=True)
+  wp.place_water_hydrogens(redone, n_refine=0, existing_h="reorient")
   _, hs = _water_atoms(redone)
   assert len(hs) == 2, f"reorient must leave exactly two H; got {sorted(hs)}"
   assert best_align(redone) > 0.9, (
-    "reorient_existing should re-place an H toward the acceptor")
+    'existing_h="reorient" should re-place an H toward the acceptor')
+
+
+def exercise_single_h_water():
+  """A water with one H is a possible hydroxide: untouched and reported by
+  default, and completed on the *deposited* proton's cone on request."""
+  acc = matrix.col((2.700, 0.000, 0.000))
+  h1_in = matrix.col((0.000, 0.957, 0.000))
+
+  kept = _hierarchy(_SINGLE_H_WATER_PDB)
+  res = wp.place_water_hydrogens(kept, n_refine=0)
+  o, hs = _water_atoms(kept)
+  assert len(hs) == 1, (
+    f"default must not complete a single-H water; got {sorted(hs)}")
+  assert (matrix.col(hs["H1"].xyz) - h1_in).length() < 1e-6, (
+    "the deposited proton must not move")
+  assert [r[2] for r in res.partial_waters] == ["kept"]
+
+  done = _hierarchy(_SINGLE_H_WATER_PDB)
+  res = wp.place_water_hydrogens(done, n_refine=0, existing_h="complete")
+  o, hs = _water_atoms(done)
+  assert len(hs) == 2, f"complete must add the partner; got {sorted(hs)}"
+  assert (matrix.col(hs["H1"].xyz) - h1_in).length() < 1e-6, (
+    "completing must not move the deposited proton")
+  O = matrix.col(o.xyz)
+  ang = math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
+  assert abs(ang - wp._WATER_HOH_DEG) < 1e-3, (
+    f"H-O-H must be canonical against the deposited H; got {ang:.2f} deg")
+  assert abs((matrix.col(hs["H2"].xyz) - O).length()
+             - wp._WATER_OH_XRAY) < 1e-6, "new O-H length"
+  assert _unit(hs["H2"], o).dot((acc - O).normalize()) > 0.9, (
+    "the new proton should aim at the acceptor")
+  assert [r[2] for r in res.partial_waters] == ["completed"]
+
+  redone = _hierarchy(_SINGLE_H_WATER_PDB)
+  res = wp.place_water_hydrogens(redone, n_refine=0, existing_h="reorient")
+  o, hs = _water_atoms(redone)
+  assert len(hs) == 2, f"reorient must give two H; got {sorted(hs)}"
+  assert (matrix.col(hs["H1"].xyz) - h1_in).length() > 0.1, (
+    "reorient must re-place the deposited proton")
+  assert [r[2] for r in res.partial_waters] == ["stripped"]
+
+
+def exercise_single_h_metal_annotation():
+  """The single-H report flags a coordinating cation, using a first-shell
+  cutoff rather than the looser proton-repulsion radius."""
+  near = wp.place_water_hydrogens(
+    _hierarchy(_MG_SINGLE_H_PDB), n_refine=0).partial_waters
+  assert len(near) == 1, f"expected one single-H water; got {near}"
+  rid, metal, action = near[0]
+  assert rid == "HOH W 1", rid
+  assert action == "kept"
+  assert metal is not None, "a 2.1 A Mg should be reported as coordinating"
+  assert metal[0] == "MG" and abs(metal[1] - 2.100) < 1e-3, metal
+
+  far = wp.place_water_hydrogens(
+    _hierarchy(_MG_SINGLE_H_FAR_PDB), n_refine=0).partial_waters
+  assert len(far) == 1 and far[0][1] is None, (
+    f"a 2.9 A Mg is inside the repulsion radius but is not a bond; got {far}")
+
+
+def exercise_hetatm_flag():
+  """Placed H inherit the parent O's HETATM flag, so a HETATM water does
+  not acquire ATOM-record protons."""
+  hier = _hierarchy(_TWO_ACCEPTOR_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0)
+  o, hs = _water_atoms(hier)
+  assert o.hetero, "fixture water should be a HETATM"
+  for name, a in sorted(hs.items()):
+    assert a.hetero == o.hetero, (
+      f"{name} must match the parent O record type")
+
+
+def exercise_heavy_cation_repulsion():
+  """The cation set is not limited to the first row: a Pt keeps both
+  protons out of its hemisphere just as an Mg does."""
+  hier = _hierarchy(_MG_WATER_PDB.replace("MG", "PT"))
+  wp.place_water_hydrogens(hier, n_refine=0)
+  o, hs = _water_atoms(hier)
+  O = matrix.col(o.xyz)
+  cd = (matrix.col((2.500, 0.000, 0.000)) - O).normalize()
+  for name, h in sorted(hs.items()):
+    assert (matrix.col(h.xyz) - O).dot(cd) <= 1e-9, (
+      f"{name} must stay out of the Pt hemisphere")
 
 
 def exercise_refinement_reduces_clashes():
   """Refinement relaxes the water-water H clashes the greedy pass leaves in
   a tight cluster."""
   greedy = _hierarchy(_WATER_CLUSTER_PDB)
-  wp.place_water_hydrogens(greedy, n_refine=0)
+  wp.place_water_hydrogens(greedy, n_refine=0, oh_length=wp._WATER_OH_NEUTRON)
   refined = _hierarchy(_WATER_CLUSTER_PDB)
-  wp.place_water_hydrogens(refined, n_refine=5)
+  wp.place_water_hydrogens(refined, n_refine=5, oh_length=wp._WATER_OH_NEUTRON)
 
   n_greedy = wp._water_clash_stats(greedy)[1]
   n_refined = wp._water_clash_stats(refined)[1]
@@ -350,6 +500,42 @@ def exercise_refinement_reduces_clashes():
     f"cluster should clash without refinement (got {n_greedy})")
   assert n_refined < n_greedy, (
     f"refinement should reduce close contacts ({n_greedy} -> {n_refined})")
+
+
+def exercise_completed_water_survives_refinement():
+  """Refinement sweeps and basin kicks must hold a completed water's O-H1
+  axis fixed: the deposited proton never moves and the partner stays on its
+  cone, instead of the axis being re-derived from the environment."""
+  hier = _hierarchy(_MIXED_CLUSTER_PDB)
+  before = {}
+  for ag in hier.atom_groups():
+    for a in ag.atoms():
+      if a.element.strip().upper() == "H":
+        before[(ag.parent().resseq.strip(), a.name.strip())] = tuple(a.xyz)
+  assert len(before) == 4, f"fixture should deposit four H; got {len(before)}"
+
+  states = []
+  res = wp.place_water_hydrogens(
+    hier, n_refine=3, n_basin=2, existing_h="complete",
+    oh_length=wp._WATER_OH_NEUTRON,
+    on_state=lambda label, stats: states.append(stats[1]))
+  assert len(res.partial_waters) == 4
+  # The point of the fixture: refinement and basin-hopping really do run.
+  assert len(states) > 1 and max(states) > 0, (
+    f"fixture must clash so the sweeps engage; states={states}")
+
+  for ag in hier.atom_groups():
+    o = next(a for a in ag.atoms() if a.element.strip().upper() == "O")
+    hs = [a for a in ag.atoms() if a.element.strip().upper() == "H"]
+    assert len(hs) == 2, f"every water should end with two H; got {len(hs)}"
+    for a in hs:
+      key = (ag.parent().resseq.strip(), a.name.strip())
+      if key in before:
+        moved = (matrix.col(a.xyz) - matrix.col(before[key])).length()
+        assert moved < 1e-9, f"deposited {key} moved {moved:.3f} A"
+    ang = math.degrees(_unit(hs[0], o).angle(_unit(hs[1], o)))
+    assert abs(ang - wp._WATER_HOH_DEG) < 0.1, (
+      f"H-O-H {ang:.2f} deg on water {ag.parent().resseq.strip()}")
 
 
 def exercise_element_override():
@@ -365,6 +551,40 @@ def exercise_element_override():
   assert set(hs) == {"D1", "D2"}, f"element='D' should place D; got {sorted(hs)}"
   for d in hs.values():
     assert d.element.strip().upper() == "D", "placed atom element must be D"
+
+
+def exercise_oh_length_auto():
+  """With no ``oh_length`` the placer picks the canonical distance from the
+  model: neutron where D is present, X-ray otherwise. An explicit value
+  overrides the choice in either direction."""
+
+  def oh(hier):
+    o, hs = _water_atoms(hier)
+    lengths = [(matrix.col(h.xyz) - matrix.col(o.xyz)).length()
+               for h in hs.values()]
+    assert max(lengths) - min(lengths) < 1e-6, lengths
+    return lengths[0]
+
+  # Hydrogenous model: X-ray.
+  xray = _hierarchy(_TWO_ACCEPTOR_PDB)
+  wp.place_water_hydrogens(xray, n_refine=0)
+  assert abs(oh(xray) - wp._WATER_OH_XRAY) < 1e-6, (
+    f"an H-only model should get the X-ray length; got {oh(xray):.3f}")
+
+  # A D anywhere in the model means neutron, even on another residue.
+  deut = _hierarchy(_TWO_ACCEPTOR_PDB.replace(
+    "HETATM    3  O   ACB D   2       4.299   5.000   7.711  1.00 10.00           O",
+    "HETATM    3  D   ACB D   2       4.299   5.000   7.711  1.00 10.00           D"))
+  wp.place_water_hydrogens(deut, n_refine=0)
+  assert abs(oh(deut) - wp._WATER_OH_NEUTRON) < 1e-6, (
+    f"a model carrying D should get the neutron length; got {oh(deut):.3f}")
+
+  # An explicit value wins over the heuristic.
+  forced = _hierarchy(_TWO_ACCEPTOR_PDB)
+  wp.place_water_hydrogens(forced, n_refine=0,
+                           oh_length=wp._WATER_OH_NEUTRON)
+  assert abs(oh(forced) - wp._WATER_OH_NEUTRON) < 1e-6, (
+    "an explicit oh_length must override the heuristic")
 
 
 def exercise_detect_neutron():
@@ -396,8 +616,14 @@ def run():
   exercise_joint_balances_acceptors()
   exercise_idempotent()
   exercise_reorient_existing()
+  exercise_single_h_water()
+  exercise_single_h_metal_annotation()
+  exercise_hetatm_flag()
+  exercise_heavy_cation_repulsion()
   exercise_refinement_reduces_clashes()
+  exercise_completed_water_survives_refinement()
   exercise_element_override()
+  exercise_oh_length_auto()
   exercise_detect_neutron()
   print(format_cpu_times())
   print("OK")
