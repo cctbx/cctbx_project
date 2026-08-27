@@ -43,7 +43,7 @@ _WATER_NH_BOND = 1.3          # max N-H distance for the "N carries an H" test (
 _WATER_BOND_HEAVY = 1.9       # max heavy-heavy bond distance for lobe geometry (A)
 _WATER_HBOND_HA = 1.8         # nominal H...acceptor distance for the lobe target (A)
 _WATER_SP2_LOBE_DEG = 60.0    # half-angle of the two sp2 carbonyl/-late lobes
-_WATER_CONE_SAMPLES = 18      # angular samples around the O-H1 cone
+_WATER_CONE_SAMPLES = 36      # angular samples around the O-H1 cone
 # Element-aware "clash-free" thresholds. A candidate H must clear every
 # heavy atom by _WATER_MIN_CLEARANCE and every hydrogen (and cation) by
 # the larger _WATER_MIN_H_CLEARANCE. ~1.5 A still admits a genuine
@@ -803,17 +803,14 @@ class _WaterHydrogenPlacer(object):
     # Orthonormal frame for the H2 cone (d1, p, q mutually perpendicular)
     p, q = _ortho_frame(d1)
 
-    # H2: directed at the nearest acceptor not used by H1. Sample the cone
-    # and rank each angle (away-from-cation, clash-free, acceptor
-    # alignment, clearance); acceptor alignment only counts once the
-    # higher-priority constraints are met, and the clearest angle wins if
-    # none satisfies them.
-    target = None
-    for i in acceptors:
-      if i == h1_acc:
-        continue
-      target = accept_dir(i)
-      break
+    # H2: sample the cone and rank each angle (away-from-cation, clash-free,
+    # acceptor alignment, clearance); acceptor alignment only counts once the
+    # higher-priority constraints are met, and the clearest angle wins if none
+    # satisfies them. Alignment is scored against every acceptor H1 did not
+    # take, keeping the best: H2 is confined to the H-O-H cone, so an acceptor
+    # well off that cone cannot be reached, and ranking against that one alone
+    # leaves the term flat across the cone and decides the angle on clearance.
+    targets = [accept_dir(i) for i in acceptors if i != h1_acc]
 
     cone_dirs = []
     for k in range(_WATER_CONE_SAMPLES):
@@ -829,7 +826,7 @@ class _WaterHydrogenPlacer(object):
       min_dist, ok = cone_res[k]
       cat_ok = cation_ok(cone_pts[k])
       good = cat_ok and ok
-      align = d2.dot(target) if target is not None else 0.0
+      align = max((d2.dot(t) for t in targets), default=0.0)
       key = (cat_ok, ok, align if good else 0.0, min_dist)
       if best_key is None or key > best_key:
         best_key = key

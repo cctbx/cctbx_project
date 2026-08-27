@@ -48,6 +48,11 @@ to get wrong:
 * **Heavy cations repel.** The cation set is not limited to the first row:
   a Pt keeps both protons out of its hemisphere.
 
+* **H2 aims at a reachable acceptor.** H2 is confined to the H-O-H cone about
+  O-H1, so an acceptor well off that cone cannot be donated to. The nearest
+  free acceptor being unreachable must not stop H2 from aiming at a further
+  one that lies on the cone.
+
 * **Refinement.** A tight cluster of bare waters clashes after the greedy
   pass; the relaxation sweeps must reduce the count of close H-H contacts.
 
@@ -172,6 +177,17 @@ END
 """
 
 _MG_SINGLE_H_FAR_PDB = _MG_SINGLE_H_PDB.replace("-2.100", "-2.900")
+
+# H1 goes to ACA (+x, nearest). ACB is the next nearest but sits only 30 deg
+# off the O-H1 axis, so no point on the 104.5 deg cone can aim at it. ACC is
+# further away yet lies exactly on the cone, so it is the one H2 can donate to.
+_UNREACHABLE_ACCEPTOR_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  O   ACA D   1       2.700   0.000   0.000  1.00 10.00           O
+HETATM    3  O   ACB E   1       2.425   1.400   0.000  1.00 10.00           O
+HETATM    4  O   ACC F   1      -0.725  -2.807   0.000  1.00 10.00           O
+END
+"""
 
 # Six bare waters on a tight 2.8 A grid with no other acceptors: the greedy
 # pass leaves at least one close H-H contact that refinement relaxes.
@@ -486,6 +502,23 @@ def exercise_heavy_cation_repulsion():
       f"{name} must stay out of the Pt hemisphere")
 
 
+def exercise_h2_reachable_acceptor():
+  """H2 aims at an acceptor it can actually reach on the H-O-H cone, not at
+  the nearest free one when that lies off the cone."""
+  hier = _hierarchy(_UNREACHABLE_ACCEPTOR_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0)
+  o, hs = _water_atoms(hier)
+  assert len(hs) == 2, sorted(hs)
+  O = matrix.col(o.xyz)
+  aca = (matrix.col((2.700, 0.000, 0.000)) - O).normalize()
+  acc = (matrix.col((-0.725, -2.807, 0.000)) - O).normalize()
+  d1, d2 = _unit(hs["H1"], o), _unit(hs["H2"], o)
+  assert d1.dot(aca) > 0.99, f"H1 should take the nearest acceptor; got {d1.dot(aca):.3f}"
+  assert d2.dot(acc) > 0.9, (
+    f"H2 should aim at the reachable acceptor on the cone; "
+    f"alignment {d2.dot(acc):.3f}")
+
+
 def exercise_refinement_reduces_clashes():
   """Refinement relaxes the water-water H clashes the greedy pass leaves in
   a tight cluster."""
@@ -620,6 +653,7 @@ def run():
   exercise_single_h_metal_annotation()
   exercise_hetatm_flag()
   exercise_heavy_cation_repulsion()
+  exercise_h2_reachable_acceptor()
   exercise_refinement_reduces_clashes()
   exercise_completed_water_survives_refinement()
   exercise_element_override()
