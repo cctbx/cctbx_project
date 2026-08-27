@@ -34,36 +34,21 @@ def test_backward_compat_reexport():
 def _make_fixtures(tmpdir):
   '''Create one real file of each datatype; return {key: path}. Keys that are
   not datatype names (model_cif) are noted in the tests.'''
-  import iotbx.pdb
-  from cctbx import crystal, miller
-  from cctbx.array_family import flex
   from iotbx.map_model_manager import map_model_manager
+  parts = _combined_cif_parts()
   paths = {}
 
-  pdb_str = '''CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
-ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
-ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
-ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
-ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
-END
-'''
   p = os.path.join(tmpdir, 'm.pdb')
-  with open(p, 'w') as f: f.write(pdb_str)
+  with open(p, 'w') as f: f.write(parts['pdb'])
   paths['model'] = p
 
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  cif_str = pdb_inp.construct_hierarchy().as_mmcif_string(
-    crystal_symmetry=pdb_inp.crystal_symmetry())
   p = os.path.join(tmpdir, 'm.cif')
-  with open(p, 'w') as f: f.write(cif_str)
+  with open(p, 'w') as f: f.write(parts['model'])
   paths['model_cif'] = p
 
-  cs = crystal.symmetry((10, 10, 10, 90, 90, 90), 'P1')
-  ms = miller.set(cs, flex.miller_index([(1, 0, 0), (0, 1, 0), (0, 0, 1)]),
-                  anomalous_flag=False)
-  ma = miller.array(ms, data=flex.double([1., 2., 3.]))
   p = os.path.join(tmpdir, 'r.mtz')
-  ma.as_mtz_dataset(column_root_label='F').mtz_object().write(p)
+  parts['miller_array_object'].as_mtz_dataset(
+    column_root_label='F').mtz_object().write(p)
   paths['miller_array'] = p
 
   mmm = map_model_manager()
@@ -72,21 +57,8 @@ END
   mmm.map_manager().write_map(p)
   paths['real_map'] = p
 
-  restraint_cif = '''data_comp_list
-loop_
-_chem_comp.id
-_chem_comp.name
-TST Test
-data_comp_TST
-loop_
-_chem_comp_atom.comp_id
-_chem_comp_atom.atom_id
-_chem_comp_atom.type_symbol
- TST C1 C
- TST C2 C
-'''
   p = os.path.join(tmpdir, 'r.cif')
-  with open(p, 'w') as f: f.write(restraint_cif)
+  with open(p, 'w') as f: f.write(parts['restraint'])
   paths['restraint'] = p
 
   p = os.path.join(tmpdir, 's.seq')
@@ -503,86 +475,176 @@ def test_process_files_loop_skips_unparseable():
     shutil.rmtree(tmp)
   print('test_process_files_loop_skips_unparseable OK')
 
+# the standard PDBx chemical-component categories a wwPDB deposition carries
+# inside its model block (abridged from 1yjp.cif); not restraint content
+_WWPDB_CHEM_COMP_LOOPS = (
+  '\nloop_\n_chem_comp_atom.comp_id\n_chem_comp_atom.atom_id\n'
+  '_chem_comp_atom.type_symbol\n_chem_comp_atom.pdbx_aromatic_flag\n'
+  '_chem_comp_atom.pdbx_stereo_config\n_chem_comp_atom.pdbx_ordinal\n'
+  'GLY N  N N N 1\nGLY CA C N N 2\n'
+  'loop_\n_chem_comp_bond.comp_id\n_chem_comp_bond.atom_id_1\n'
+  '_chem_comp_bond.atom_id_2\n_chem_comp_bond.value_order\n'
+  '_chem_comp_bond.pdbx_aromatic_flag\n_chem_comp_bond.pdbx_stereo_config\n'
+  '_chem_comp_bond.pdbx_ordinal\n'
+  'GLY N CA SING N N 1\n')
+
+# a monomer-library modifications file (mod_ blocks only)
+_MOD_ONLY_RESTRAINT = (
+  'data_mod_list\nloop_\n_chem_mod.id\n_chem_mod.name\n'
+  '_chem_mod.comp_id\n_chem_mod.group_id\n'
+  'DEL-OXT "delete OXT" . peptide\n'
+  'data_mod_DEL-OXT\nloop_\n_chem_mod_atom.mod_id\n'
+  '_chem_mod_atom.function\n_chem_mod_atom.atom_id\n'
+  '_chem_mod_atom.new_atom_id\n_chem_mod_atom.new_type_symbol\n'
+  '_chem_mod_atom.new_type_energy\n_chem_mod_atom.new_charge\n'
+  'DEL-OXT delete OXT . . . .\n')
+
+
+
+# an energy-library override (the layout of chem_data/mon_lib/ener_lib.cif),
+# a legitimate restraint_files input: mmtbx.utils feeds it to ener_lib
+_ENERGY_LIBRARY = (
+  'data_energy\nloop_\n_lib_atom.type\n_lib_atom.weight\n_lib_atom.hb_type\n'
+  '_lib_atom.vdw_radius\n_lib_atom.vdwh_radius\n_lib_atom.ion_radius\n'
+  '_lib_atom.element\n_lib_atom.valency\n_lib_atom.sp\n'
+  'C 12.011 N 1.88 1.88 . C 4 3\n')
+
+_COMBINED_CIF_PARTS = {}
+
+def _combined_cif_parts():
+  '''Text for one block of each CIF datatype ('model', 'miller_array',
+  'restraint'), sharing one crystal symmetry; plus the PDB text the model was
+  built from ('pdb') and the miller array ('miller_array_object') for writing
+  the same reflections in other formats. The single source of model /
+  reflection / restraint fixture content in this file. Built once per run.'''
+  if _COMBINED_CIF_PARTS:
+    return dict(_COMBINED_CIF_PARTS)
+  import iotbx.pdb, iotbx.cif
+  from cctbx import miller
+  from cctbx.array_family import flex
+  pdb = ('CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1\n'
+         'ATOM      1  N   GLY A   1       5.000   5.000   5.000  1.00 20.00           N\n'
+         'ATOM      2  CA  GLY A   1       6.458   5.000   5.000  1.00 20.00           C\n'
+         'HETATM    3  S   SO4 A 101      12.000  12.000  12.000  1.00 20.00           S\n'
+         'HETATM    4  O1  SO4 A 101      13.450  12.000  12.000  1.00 20.00           O\n'
+         'END\n')
+  pin = iotbx.pdb.input(source_info=None, lines=pdb)
+  cs = pin.crystal_symmetry()
+  ma = miller.array(
+    miller.set(cs, flex.miller_index([(1,0,0),(0,1,0),(0,0,1),(1,1,0)]),
+               anomalous_flag=False),
+    data=flex.double([1.,2.,3.,4.]),
+    sigmas=flex.double([.1,.1,.1,.1])).set_observation_type_xray_amplitude()
+  refl = iotbx.cif.model.cif()
+  refl['refl'] = ma.as_cif_block(array_type='meas')
+  _COMBINED_CIF_PARTS.update({
+    'pdb': pdb,
+    'miller_array_object': ma,
+    'model': pin.construct_hierarchy().as_mmcif_string(crystal_symmetry=cs),
+    'miller_array': str(refl),
+    'restraint': ('data_comp_SO4\n'
+                  'loop_\n_chem_comp_atom.comp_id\n_chem_comp_atom.atom_id\n'
+                  '_chem_comp_atom.type_symbol\n_chem_comp_atom.type_energy\n'
+                  '_chem_comp_atom.partial_charge\n'
+                  'SO4 S S S 0.000\nSO4 O1 O O -0.500\n'
+                  'loop_\n_chem_comp_bond.comp_id\n_chem_comp_bond.atom_id_1\n'
+                  '_chem_comp_bond.atom_id_2\n_chem_comp_bond.type\n'
+                  '_chem_comp_bond.value_dist\n_chem_comp_bond.value_dist_esd\n'
+                  'SO4 S O1 single 1.450 0.020\n'),
+  })
+  return dict(_COMBINED_CIF_PARTS)
+
+def _single_block_model_reflections_cif():
+  '''A combined CIF whose single data block carries both the model and the
+  _refln loop (as opposed to the one-block-per-datatype text that joining
+  _combined_cif_parts values produces).'''
+  import iotbx.cif
+  parts = _combined_cif_parts()
+  combo = iotbx.cif.reader(input_string=parts['model']).model()
+  refl = iotbx.cif.reader(input_string=parts['miller_array']).model()['refl']
+  combo[list(combo.keys())[0]].update(refl)
+  return str(combo)
+
 def test_cif_datatypes():
   '''_cif_datatypes parses a CIF (xcif) and reports every datatype present;
   a model's bare _chem_comp / _reflns stats must not be read as restraint /
   miller_array.'''
   from iotbx.file_io.detection import _cif_datatypes
   from iotbx.file_io import get_file_type
-  import iotbx.pdb, iotbx.cif, tempfile, shutil
-  from cctbx import miller
-  from cctbx.array_family import flex
+  import tempfile, shutil
+  parts = _combined_cif_parts()
   tmp = tempfile.mkdtemp()
   try:
-    pdb = ('CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2\n'
-           'ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N\n'
-           'ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C\n'
-           'END\n')
-    pin = iotbx.pdb.input(source_info=None, lines=pdb)
-    cs = pin.crystal_symmetry()
-    mcif = pin.construct_hierarchy().as_mmcif_string(crystal_symmetry=cs)
-    ma = miller.array(
-      miller.set(cs, flex.miller_index([(1,0,0),(0,1,0),(0,0,1),(1,1,0)]),
-                 anomalous_flag=False),
-      data=flex.double([1., 2., 3., 4.])).set_observation_type_xray_amplitude()
-    refl_block = ma.as_cif_block(array_type='meas')
     def write(name, text):
       p = os.path.join(tmp, name)
       with open(p, 'w') as f: f.write(text)
       return p
     # model-only (carries a bare _chem_comp list)
-    pm = write('model.cif', mcif)
+    pm = write('model.cif', parts['model'])
     assert _cif_datatypes(pm) == {'model'}, _cif_datatypes(pm)
     assert get_file_type(pm) == 'model'
     # model + injected _reflns statistics -> still just model (not miller_array)
     pm2 = write('model_reflns.cif',
-                mcif + '\nloop_\n_reflns.d_resolution_high\n_reflns.number_obs\n 1.80 1234\n')
+                parts['model'] + '\nloop_\n_reflns.d_resolution_high\n'
+                '_reflns.number_obs\n 1.80 1234\n')
     assert _cif_datatypes(pm2) == {'model'}, _cif_datatypes(pm2)
+    # wwPDB-style model: the deposited model block carries the standard PDBx
+    # _chem_comp_atom/_chem_comp_bond categories -> still just model
+    pm3 = write('wwpdb_model.cif', parts['model'] + _WWPDB_CHEM_COMP_LOOPS)
+    assert _cif_datatypes(pm3) == {'model'}, _cif_datatypes(pm3)
+    assert get_file_type(pm3) == 'model'
+    # phenix.refine names the model block after the output prefix, so a
+    # comp_/link_/mod_ block name alone does not make a restraint
+    for block in ('mod_1_refine', 'link_model_refine', 'comp_1_refine'):
+      pm4 = write(block + '.cif',
+                  parts['model'].replace('data_phenix', 'data_' + block, 1))
+      assert _cif_datatypes(pm4) == {'model'}, (block, _cif_datatypes(pm4))
+      assert get_file_type(pm4) == 'model', (block, get_file_type(pm4))
     # reflections-only
-    cm = iotbx.cif.model.cif(); cm['refl'] = refl_block
-    pr = write('refl.cif', str(cm))
+    pr = write('refl.cif', parts['miller_array'])
     assert _cif_datatypes(pr) == {'miller_array'}, _cif_datatypes(pr)
-    # restraint (monomer library)
-    pres = write('restr.cif',
-                 'data_comp_list\nloop_\n_chem_comp.id\nTST\ndata_comp_TST\n'
-                 'loop_\n_chem_comp_atom.comp_id\n_chem_comp_atom.atom_id\n'
-                 '_chem_comp_atom.type_symbol\n TST C1 C\n')
+    # restraint (monomer library comp_ block)
+    pres = write('restr.cif', parts['restraint'])
     assert _cif_datatypes(pres) == {'restraint'}, _cif_datatypes(pres)
     assert get_file_type(pres) == 'restraint'
-    # combined model + reflections
-    combo = iotbx.cif.reader(input_string=mcif).model()
-    combo[list(combo.keys())[0]].update(refl_block)
-    pc = write('combined.cif', str(combo))
+    # restraint files consisting only of link_ or mod_ blocks (block name is
+    # the signature, as in mmtbx.monomer_library.server)
+    plink = write('link.cif',
+                  'data_link_list\nloop_\n_chem_link.id\nTSTL\ndata_link_TSTL\n'
+                  'loop_\n_chem_link_bond.link_id\n_chem_link_bond.atom_1_comp_id\n'
+                  '_chem_link_bond.atom_id_1\n TSTL 1 C1\n')
+    assert _cif_datatypes(plink) == {'restraint'}, _cif_datatypes(plink)
+    pmod = write('mod.cif', _MOD_ONLY_RESTRAINT)
+    assert _cif_datatypes(pmod) == {'restraint'}, _cif_datatypes(pmod)
+    # an energy-library override is a restraint too (consumed by ener_lib)
+    pener = write('energy.cif', _ENERGY_LIBRARY)
+    assert _cif_datatypes(pener) == {'restraint'}, _cif_datatypes(pener)
+    assert get_file_type(pener) == 'restraint'
+    # combined model + reflections in one data block
+    pc = write('combined.cif', _single_block_model_reflections_cif())
     assert _cif_datatypes(pc) == {'model', 'miller_array'}, _cif_datatypes(pc)
     # get_file_type returns the precedence primary (miller_array)
     assert get_file_type(pc) == 'miller_array', get_file_type(pc)
+    # combined as one block per datatype
+    pc2 = write('combined_blocks.cif',
+                parts['model'] + parts['miller_array'] + parts['restraint'])
+    assert _cif_datatypes(pc2) == {'model', 'miller_array', 'restraint'}, \
+      _cif_datatypes(pc2)
+    assert get_file_type(pc2) == 'miller_array', get_file_type(pc2)
   finally:
     shutil.rmtree(tmp)
   print('test_cif_datatypes OK')
 
 def test_dm_combined_cif():
-  '''A CIF with model + reflections loads as every supported type, each object.'''
+  '''A single-block CIF carrying model + reflections loads as every supported
+  type, each with its object (the one-block-per-datatype layout is covered by
+  test_dm_combined_cif_all_combinations).'''
   from iotbx.data_manager import DataManager
-  import iotbx.pdb, iotbx.cif, tempfile, shutil
-  from cctbx import miller
-  from cctbx.array_family import flex
+  import tempfile, shutil
   tmp = tempfile.mkdtemp()
   try:
-    pdb = ('CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2\n'
-           'ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N\n'
-           'ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C\n'
-           'END\n')
-    pin = iotbx.pdb.input(source_info=None, lines=pdb)
-    cs = pin.crystal_symmetry()
-    mcif = pin.construct_hierarchy().as_mmcif_string(crystal_symmetry=cs)
-    ma = miller.array(
-      miller.set(cs, flex.miller_index([(1,0,0),(0,1,0),(0,0,1),(1,1,0)]),
-                 anomalous_flag=False),
-      data=flex.double([1.,2.,3.,4.])).set_observation_type_xray_amplitude()
-    combo = iotbx.cif.reader(input_string=mcif).model()
-    combo[list(combo.keys())[0]].update(ma.as_cif_block(array_type='meas'))
     p = os.path.join(tmp, 'combined.cif')
-    with open(p, 'w') as f: f.write(str(combo))
+    with open(p, 'w') as f: f.write(_single_block_model_reflections_cif())
     # supports both -> loads as both, each with its object
     dm = DataManager(['model', 'miller_array'])
     assert sorted(dm.process_file(p)) == ['miller_array', 'model']
@@ -596,101 +658,221 @@ def test_dm_combined_cif():
     shutil.rmtree(tmp)
   print('test_dm_combined_cif OK')
 
-def test_dm_combined_cif_phil_roundtrip():
-  '''regression from the 2026-06 iotbx.file_io rework, not yet fixed.
+def test_dm_combined_cif_all_combinations():
+  '''Every non-empty combination of {model, miller_array, restraint} in one CIF
+  loads as exactly the types present that the DataManager supports, and the
+  exported PHIL reloads into a fresh DataManager with the same files. The
+  DataManager axis is every non-empty combination of the same three types, so
+  each of the 49 (file, DataManager) cells is exercised -- including the ones
+  where the CIF's precedence winner is a type the DataManager does not support
+  and the supported type(s) must still be extracted.
 
-  A model mmCIF that carries embedded ligand restraint blocks (comp_<LIG>, which
-  mmtbx.model.manager.model_as_mmcif writes for every model with a restraints
-  manager -- i.e. all phenix.refine / AutoBuild output containing a ligand) is
-  a "combined CIF": DataManager.process_file registers it as both model and
-  restraint, and export_phil_scope lists it under restraint_files as well as
-  model.file. load_phil_scope then calls process_restraint_file(force=False)
-  -> iotbx.file_io.reader._read_restraint, which requires
-  get_file_type(path) == 'restraint'; but get_file_type resolves a combined CIF
-  to its single primary type (model outranks restraint), so the DataManager
-  rejects the very file it just wrote ("... is not a recognized restraints
-  file"). Consequence: a phenix.refine .eff produced from such a model cannot
-  be reloaded (GUI or command line).
-
-  Expected invariant: whatever export_phil_scope writes, load_phil_scope
-  accepts.
-
-  When it regressed: 2026-06-13, commits aedd7b904f ("iotbx.file_io: fast file
-  type detection ...") and fe9ec34f84 ("iotbx.data_manager: ... single-parse via
-  iotbx.file_io"). Before them process_restraint_file used any_file, which
-  typed a model mmCIF as 'pdb', so a model could never enter restraint_files;
-  the combined-CIF multi-role registration (_process_combined_cif) and the
-  primary-type check in _read_restraint both arrived with the rework, and only
-  the former is force-aware.
-
-  Fix options (either makes this test pass):
-    (B) root cause -- in iotbx.file_io.reader._read_restraint accept a file
-        when 'restraint' in detection._cif_datatypes(filename, cif_engine)
-        instead of requiring get_file_type(filename) == 'restraint'. Restores
-        the export/load invariant and also lets a user pass
-        restraint_files=<model_with_ligand.cif> deliberately.
-    (A) policy -- in DataManager._process_combined_cif skip the 'restraint'
-        role when the file was also added as 'model', so a model mmCIF is a
-        model only (the pre-rework behavior; the .eff stays clean). Reverses
-        the intended multi-role design of the rework, so it is the
-        originator's call; can be combined with (B).'''
+  The blocks are always written model first: iotbx.pdb.mmcif reads the first
+  data block, so a combined CIF with the model block elsewhere loads as its
+  other types only (see DataManager.process_file).'''
   from iotbx.data_manager import DataManager
+  from iotbx.file_io.detection import _cif_datatypes, _cif_block_datatypes
   from libtbx.utils import Sorry
-  import iotbx.pdb, tempfile, shutil
+  import itertools, tempfile, shutil
+  parts = _combined_cif_parts()
+  order = ['model', 'miller_array', 'restraint']
+  combos = [c for n in range(1, 4) for c in itertools.combinations(order, n)]
+  assert len(combos) == 7
+  dm_types = dict(('+'.join(c), list(c) + ['phil']) for c in combos)
   tmp = tempfile.mkdtemp()
   try:
-    pdb = ('CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1\n'
-           'ATOM      1  N   GLY A   1       5.000   5.000   5.000  1.00 20.00           N\n'
-           'ATOM      2  CA  GLY A   1       6.458   5.000   5.000  1.00 20.00           C\n'
-           'HETATM    3  S   SO4 A 101      12.000  12.000  12.000  1.00 20.00           S\n'
-           'HETATM    4  O1  SO4 A 101      13.450  12.000  12.000  1.00 20.00           O\n'
-           'END\n')
-    pin = iotbx.pdb.input(source_info=None, lines=pdb)
-    mcif = pin.construct_hierarchy().as_mmcif_string(
-      crystal_symmetry=pin.crystal_symmetry())
-    # the restraint block model_as_mmcif appends for a ligand (abridged)
-    comp_block = '''
-data_comp_SO4
-loop_
-_chem_comp_atom.comp_id
-_chem_comp_atom.atom_id
-_chem_comp_atom.type_symbol
-_chem_comp_atom.type_energy
-_chem_comp_atom.partial_charge
-SO4 S S S 0.000
-SO4 O1 O O -0.500
-loop_
-_chem_comp_bond.comp_id
-_chem_comp_bond.atom_id_1
-_chem_comp_bond.atom_id_2
-_chem_comp_bond.type
-_chem_comp_bond.value_dist
-_chem_comp_bond.value_dist_esd
-SO4 S O1 single 1.450 0.020
-'''
-    p = os.path.join(tmp, 'refined_model.cif')
-    with open(p, 'w') as f:
-      f.write(mcif + comp_block)
-    refine_types = ['model', 'phil', 'miller_array', 'restraint']
-    dm = DataManager(refine_types)
-    added = sorted(dm.process_file(p))
-    assert added == ['model', 'restraint'], added
-    phil = dm.export_phil_scope()
-    assert p in phil.extract().data_manager.restraint_files
-    # a fresh DataManager must accept the PHIL the first one exported
-    dm2 = DataManager(refine_types)
-    try:
-      dm2.load_phil_scope(phil)
-    except Sorry as e:
-      raise AssertionError(
-        'UR-15863: load_phil_scope rejected the PHIL that export_phil_scope '
-        'wrote for a model mmCIF with embedded restraint blocks: %s' % e)
-    assert dm2.get_model_names() == dm.get_model_names(), dm2.get_model_names()
-    assert dm2.get_restraint_names() == dm.get_restraint_names(), \
-      dm2.get_restraint_names()
+    for combo in combos:
+      p = os.path.join(tmp, '+'.join(combo) + '.cif')
+      with open(p, 'w') as f:
+        f.write(''.join(parts[k] for k in combo))   # combo follows `order`
+      assert sorted(_cif_datatypes(p)) == sorted(combo), (combo, _cif_datatypes(p))
+      for label, types in dm_types.items():
+        dm = DataManager(types)
+        expected = sorted(t for t in combo if t in types)
+        assert sorted(dm.process_file(p)) == expected, (combo, label)
+        phil = dm.export_phil_scope()
+        dm2 = DataManager(types)
+        try:
+          dm2.load_phil_scope(phil)
+        except Sorry as e:
+          raise AssertionError((combo, label, str(e)))
+        for t in order:
+          # the file is loaded, exported and reloaded as datatype t iff the
+          # CIF contains t and the DataManager supports t
+          present = t in expected
+          if dm.supports(t):
+            assert (p in dm._get_names(t)) == present, (combo, label, t)
+            assert dm2._get_names(t) == dm._get_names(t), (combo, label, t)
+          if present:
+            assert getattr(dm2, 'get_%s' % t)(p) is not None, (combo, label, t)
+            if t == 'restraint':
+              # only restraint blocks are kept (model / reflection blocks dropped)
+              stored = dm2.get_restraint(p)
+              assert all('restraint' in _cif_block_datatypes(n, b)
+                         for n, b in stored.items()), (combo, label, list(stored))
   finally:
     shutil.rmtree(tmp)
-  print('test_dm_combined_cif_phil_roundtrip OK')
+  print('test_dm_combined_cif_all_combinations OK')
+
+def test_get_file_type_valid_types_combined_cif():
+  '''With valid_types, get_file_type picks the primary datatype among the
+  allowed ones, so a combined CIF resolves to a supported type it contains
+  rather than None; DataManager.get_file_type therefore agrees with
+  DataManager.process_file. A CIF lacking every allowed type is None.'''
+  from iotbx.file_io import get_file_type
+  from iotbx.data_manager import DataManager
+  import tempfile, shutil
+  parts = _combined_cif_parts()
+  tmp = tempfile.mkdtemp()
+  try:
+    p3 = os.path.join(tmp, 'three.cif')
+    with open(p3, 'w') as f:
+      f.write(parts['model'] + parts['miller_array'] + parts['restraint'])
+    assert get_file_type(p3) == 'miller_array'
+    assert get_file_type(p3, valid_types=['restraint']) == 'restraint'
+    assert get_file_type(p3, valid_types=['model']) == 'model'
+    assert get_file_type(p3, valid_types=['model', 'restraint']) == 'model'
+    assert get_file_type(p3, valid_types=['phil', 'sequence']) is None
+    pm = os.path.join(tmp, 'model.cif')
+    with open(pm, 'w') as f: f.write(parts['model'])
+    assert get_file_type(pm, valid_types=['restraint']) is None
+    for types in (['model'], ['restraint'], ['miller_array']):
+      dm = DataManager(types + ['phil'])
+      assert dm.get_file_type(p3) == types[0], (types, dm.get_file_type(p3))
+      assert dm.process_file(p3) == types, (types, dm.process_file(p3))
+  finally:
+    shutil.rmtree(tmp)
+  print('test_get_file_type_valid_types_combined_cif OK')
+
+def test_dm_combined_cif_logs_reader_failure():
+  '''When one datatype of a combined CIF fails to load, process_file still
+  returns the others and reports the failure on the logger instead of
+  swallowing it (a non-empty return would otherwise hide it).'''
+  from iotbx.data_manager import DataManager
+  from libtbx.utils import Sorry
+  from six.moves import StringIO
+  import tempfile, shutil
+  parts = _combined_cif_parts()
+  tmp = tempfile.mkdtemp()
+  try:
+    p = os.path.join(tmp, 'three.cif')
+    with open(p, 'w') as f:
+      f.write(parts['model'] + parts['miller_array'] + parts['restraint'])
+    log = StringIO()
+    dm = DataManager(['model', 'miller_array', 'restraint', 'phil'], logger=log)
+    def _fail(filename):
+      raise Sorry('simulated model reader failure')
+    dm.process_model_file = _fail
+    assert sorted(dm.process_file(p)) == ['miller_array', 'restraint']
+    text = log.getvalue()
+    assert 'not loaded as model' in text, text
+    assert 'simulated model reader failure' in text, text
+    assert dm.get_miller_array(p) is not None and dm.get_restraint(p) is not None
+    # a real rejection: a _refln loop of indices only parses as a CIF with
+    # reflections but yields no arrays; the file must not stay registered as
+    # a miller_array (export_phil_scope would fail on it)
+    p2 = os.path.join(tmp, 'idx_only.cif')
+    with open(p2, 'w') as f:
+      f.write(parts['model'] + 'loop_\n_refln.index_h\n_refln.index_k\n'
+              '_refln.index_l\n1 0 0\n0 1 0\n')
+    log2 = StringIO()
+    dm2 = DataManager(['model', 'miller_array', 'restraint', 'phil'], logger=log2)
+    assert dm2.process_file(p2) == ['model'], dm2.process_file(p2)
+    assert 'not loaded as miller_array' in log2.getvalue(), log2.getvalue()
+    assert dm2.get_miller_array_names() == [], dm2.get_miller_array_names()
+    dm2.export_phil_scope()    # must not raise
+  finally:
+    shutil.rmtree(tmp)
+  print('test_dm_combined_cif_logs_reader_failure OK')
+
+def test_read_file_restraint_gate():
+  '''read_file(file_type='restraint') accepts a CIF iff it contains a
+  restraint block (comp_/link_/mod_), regardless of what else it contains; it
+  rejects a CIF with no such block -- content-less, model-only (including a
+  wwPDB-style model carrying _chem_comp_atom/_chem_comp_bond categories),
+  reflections-only -- and non-CIF text, and get_file_type agrees that a
+  content-less CIF is nothing (None). A file that cannot be read (truncated
+  compressor, no read permission) is a Sorry saying why, never a raw
+  exception, from read_file and from DataManager.process_file alike.'''
+  from iotbx.file_io import read_file, get_file_type
+  from libtbx.utils import Sorry
+  import tempfile, shutil
+  parts = _combined_cif_parts()
+  accept = {
+    'restraint': parts['restraint'],
+    'model+restraint': parts['model'] + parts['restraint'],
+    'miller_array+restraint': parts['miller_array'] + parts['restraint'],
+    'all_three': parts['model'] + parts['miller_array'] + parts['restraint'],
+    'mod_only': _MOD_ONLY_RESTRAINT,
+    'energy_library': _ENERGY_LIBRARY,
+  }
+  reject = {
+    'prefix_named_model': parts['model'].replace('data_phenix',
+                                                 'data_mod_1_refine', 1),
+    'cell_only': 'data_x\n_cell.length_a 20.0\n',   # a CIF with no restraint block
+    'zero_bytes': '',
+    'model': parts['model'],
+    'wwpdb_model': parts['model'] + _WWPDB_CHEM_COMP_LOOPS,
+    'miller_array': parts['miller_array'],
+    'model+miller_array': parts['model'] + parts['miller_array'],
+    'not_cif': 'this is not a CIF file\n%%% ^^^ {{{\n',
+  }
+  import iotbx.file_io.detection as _detection
+  def _no_detection_parse(*args, **kwds):
+    raise AssertionError('restraint read must classify its own parse')
+  tmp = tempfile.mkdtemp()
+  orig = _detection._cif_datatypes
+  try:
+    for name, text in accept.items():
+      p = os.path.join(tmp, name + '.cif')
+      with open(p, 'w') as f: f.write(text)
+      # accepted from the reader's single parse, without a detection parse
+      _detection._cif_datatypes = _no_detection_parse
+      r = read_file(p, file_type='restraint')
+      assert r.data_type == 'restraint', (name, r.data_type)
+      blocks = r.file_object.model()
+      assert any('restraint' in _detection._cif_block_datatypes(n, b)
+                 for n, b in blocks.items()), (name, list(blocks.keys()))
+    _detection._cif_datatypes = orig
+    for name, text in reject.items():
+      p = os.path.join(tmp, name + '.cif')
+      with open(p, 'w') as f: f.write(text)
+      try:
+        read_file(p, file_type='restraint')
+        raise AssertionError('%s should not read as restraint' % name)
+      except Sorry as e:
+        assert 'not a recognized restraints file' in str(e), (name, str(e))
+      if name in ('cell_only', 'zero_bytes'):
+        assert get_file_type(p) is None, (name, get_file_type(p))
+    # unreadable: a Sorry that says why, from every entry point
+    import gzip
+    from iotbx.data_manager import DataManager
+    good = (parts['model'] + parts['restraint']).encode()
+    gz = gzip.compress(good)
+    unreadable = {}
+    trunc = os.path.join(tmp, 'truncated.cif.gz')
+    with open(trunc, 'wb') as f: f.write(gz[:len(gz) // 2])
+    unreadable[trunc] = 'could not be decompressed'
+    noperm = os.path.join(tmp, 'noperm.cif')
+    with open(noperm, 'wb') as f: f.write(good)
+    os.chmod(noperm, 0)
+    if not os.access(noperm, os.R_OK):      # not effective when run as root
+      unreadable[noperm] = "Couldn't read the file"
+    try:
+      for p, expected in unreadable.items():
+        assert get_file_type(p) is None, (p, get_file_type(p))
+        assert DataManager(['model', 'restraint', 'phil']).process_file(p) == []
+        try:
+          read_file(p, file_type='restraint')
+          raise AssertionError('%s should not be readable' % p)
+        except Sorry as e:
+          assert expected in str(e), (p, str(e))
+    finally:
+      os.chmod(noperm, 0o644)
+  finally:
+    _detection._cif_datatypes = orig
+    shutil.rmtree(tmp)
+  print('test_read_file_restraint_gate OK')
 
 def test_text_reclassification():
   '''A text file whose content is PHIL but whose extension says ncs_spec is
@@ -799,10 +981,7 @@ def test_cif_compression_detection():
   try:
     cif = os.path.join(tmp, 'lig.cif')
     with open(cif, 'w') as f:
-      f.write('data_comp_list\nloop_\n_chem_comp.id\n_chem_comp.name\nTST Test\n'
-              'data_comp_TST\nloop_\n_chem_comp_atom.comp_id\n'
-              '_chem_comp_atom.atom_id\n_chem_comp_atom.type_symbol\n'
-              ' TST C1 C\n TST C2 C\n')
+      f.write(_combined_cif_parts()['restraint'])
     with open(cif, 'rb') as f:
       raw = f.read()
     # .gz already worked; .xz exercises the fix (same code path as .lzma/.zst)
@@ -833,6 +1012,14 @@ def test_corrupt_compressed_no_warning():
     with gzip.open(trunc, 'wb') as f: f.write(b'ATOM line\n' * 5000)
     with open(trunc, 'r+b') as f: f.truncate(30)
     cases.append(trunc)
+    # the same two failures on the CIF path (xcif routing through smart_open)
+    bad_cif = os.path.join(tmp, 'bad.cif.xz')
+    with open(bad_cif, 'wb') as f: f.write(b'this is not valid xz compressed data')
+    cases.append(bad_cif)
+    trunc_cif = os.path.join(tmp, 'trunc.cif.gz')
+    with gzip.open(trunc_cif, 'wb') as f: f.write(b'data_x\n_a.b 1\n' * 5000)
+    with open(trunc_cif, 'r+b') as f: f.truncate(30)
+    cases.append(trunc_cif)
     for p in cases:
       with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('always')
@@ -1138,7 +1325,7 @@ def test_any_file_fallback_engages():
   import tempfile, shutil
   tmp = tempfile.mkdtemp()
   orig = _reader._read_direct
-  def _boom(filename, datatype, force=False):
+  def _boom(filename, datatype):
     raise Sorry('forced direct-reader failure')
   try:
     paths = _make_fixtures(tmp)
@@ -1187,7 +1374,10 @@ if __name__ == '__main__':
   test_process_file_returns_empty_on_read_failure()
   test_dm_process_file_cif_engine()
   test_dm_combined_cif()
-  test_dm_combined_cif_phil_roundtrip()
+  test_dm_combined_cif_all_combinations()
+  test_get_file_type_valid_types_combined_cif()
+  test_dm_combined_cif_logs_reader_failure()
+  test_read_file_restraint_gate()
   test_cif_compression_detection()
   test_dm_json_opt_in()
   test_process_files_loop()

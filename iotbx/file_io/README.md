@@ -22,12 +22,17 @@ from iotbx.file_io import get_file_type, read_file, FileIOResult
 get_file_type(path, valid_types=None, verify=True, logger=None, cif_engine='xcif')
     # -> datatype str | None  (never raises)
 
-read_file(path, file_type=None, cif_engine='xcif', force=False)
+read_file(path, file_type=None, cif_engine='xcif')
     # -> FileIOResult(data_type, file_object, reader)  (raises Sorry on failure)
 ```
 
 - `valid_types` — restrict the answer to a set of datatypes; a detected type not
-  in the set yields `None`. (The DataManager passes its own `datatypes` here.)
+  in the set yields `None`. For a CIF containing several datatypes the primary
+  (`miller_array` > `model` > `restraint`) is chosen *among the allowed ones*,
+  so `get_file_type(model_plus_restraints.cif, valid_types=['restraint'])` is
+  `'restraint'`. (The DataManager passes its own `datatypes` here, which keeps
+  `DataManager.get_file_type` consistent with `DataManager.process_file` for
+  combined CIFs.)
 - `verify` — when `True` (default), confirm the extension's guess against the
   file's content; when `False`, trust the extension.
 
@@ -55,7 +60,8 @@ needed:
      types that can collide (see *Reclassifying* below).
 6. **`any_file` fallback** — whenever the cheap tiers are inconclusive, defer to
    a full `any_file` parse, so detection is never *less* capable than `any_file`.
-7. **Filter** by `valid_types`.
+7. **Filter** by `valid_types` (for a combined CIF, choose the primary among the
+   allowed datatypes).
 
 The whole body is wrapped so the **never-raises** contract holds: expected
 errors (missing/unreadable file, decompression failure, parse error) become
@@ -198,20 +204,44 @@ existing format reader and wraps the result:
 The datatypes that were once `any_file`-backed now read **directly** via the
 readers above; `any_file` is retained only as a fallback during the deprecation
 window (a direct read leaves `FileIOResult.reader is None`, while the fallback
-sets it to the `any_file` input). When a reader auto-detects, `read_file` accepts
-the parse only if the detected type matches (raising `Sorry` on a mismatch);
-`force=True` parses as the requested type instead — the mechanism that pulls a
-single datatype out of a combined CIF.
+sets it to the `any_file` input).
+
+`read_file(path, file_type=X)` reads the file *as* `X`, and a CIF that contains
+`X` among other content is accepted: each direct reader extracts its own part
+(the model reader the *first* data block, the reflection reader the `_refln`
+loop), and the `restraint` reader parses the file once and accepts it iff the
+parsed model has a restraint block — a `comp_`/`link_`/`mod_` block carrying a
+restraint category (or a `*_list` block), or an `energy` library block with
+`_lib_*` items — which is what `mmtbx.monomer_library.server`'s `mon_lib_srv`
+and `ener_lib` consume. Neither half is a signature on its own: a wwPDB model
+file carries the PDBx `_chem_comp_atom`/`_chem_comp_bond` categories inside
+its model block, and phenix.refine names the model block after the output
+prefix (`data_mod_1_refine`); both are models only. So a "combined CIF" (a
+refined model with embedded ligand
+restraints, or model + reflections) reads as any of its types, which is what
+lets `DataManager.load_phil_scope` re-read every file `export_phil_scope`
+wrote. On the `any_file` fallback, `read_file` accepts an auto-detected parse
+only if the detected type matches the request.
 
 A compressed file whose underlying reader cannot read the compressor directly is
 transparently decompressed to a temp file and retried; `.Z` is decompressed via
 `gunzip`. `FileIOResult.file_content` is an alias for `file_object`
 (mirroring `any_file`).
 
-`DataManager.process_file(path)` ties the two layers together: it calls
-`get_file_type`, then the matching `process_<datatype>_file` (which uses
-`read_file`). If detection picks a type but the reader rejects the content, it
-reports the file as unused (`[]`) rather than raising.
+`DataManager.process_file(path)` ties the two layers together. For a
+`.cif`/`.mmcif` it classifies the content (`detection._cif_datatypes`) and
+registers the file as **every** datatype it contains that the DataManager
+supports (a combined CIF becomes `model` and `restraint`, or `miller_array` and
+`model`, ...), each via its `process_<datatype>_file`; a type whose reader
+rejects the content is skipped with a message on the DataManager's logger
+(visible when the DataManager was given one, as `cli_parser` does) while the
+others still load. Note that `iotbx.pdb.mmcif` reads the *first* data
+block, so a combined CIF loads as a model only when its model block comes
+first (as `mmtbx.model.manager.model_as_mmcif` writes it). For anything else
+`process_file` calls `get_file_type`, then the matching
+`process_<datatype>_file` (which uses `read_file`). If detection picks a type
+but the reader rejects the content, it reports the file as unused (`[]`)
+rather than raising.
 
 ---
 

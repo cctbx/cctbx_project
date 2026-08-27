@@ -47,7 +47,7 @@ class FileIOResult(object):
     return self.file_object
 
 
-def _read_with_any_file(filename, datatype, force=False):
+def _read_with_any_file(filename, datatype):
   '''
   Parse an any_file-backed datatype and wrap it in a FileIOResult.
 
@@ -57,10 +57,6 @@ def _read_with_any_file(filename, datatype, force=False):
       The filepath to parse
   datatype : str
       The expected DataManager datatype
-  force : bool, optional
-      If True, force any_file to parse filename as datatype (used to extract a
-      specific type from a combined CIF that auto-detect would resolve to the
-      precedence winner)
 
   Returns
   -------
@@ -72,12 +68,6 @@ def _read_with_any_file(filename, datatype, force=False):
   Sorry
       If the file is missing or does not parse as the expected datatype
   '''
-  if force:
-    a = any_file(filename, force_type=any_file_type[datatype],
-                 raise_sorry_if_errors=True)
-    if a.file_object is None:
-      raise Sorry('%s is not a valid %s file' % (filename, datatype))
-    return FileIOResult(datatype, a.file_object, reader=a)
   # auto-detect + parse in one pass (mirrors the historical process_<type>_file),
   # then validate so a wrong-type file yields the canonical clean message rather
   # than a parser-internal error. any_file raises "Couldn't find the file" when
@@ -88,7 +78,7 @@ def _read_with_any_file(filename, datatype, force=False):
   return FileIOResult(datatype, a.file_object, reader=a)
 
 
-def _read_restraint(filename, cif_engine, force=False):
+def _read_restraint(filename, cif_engine):
   '''
   Read a restraint CIF and wrap the iotbx.cif reader in a FileIOResult.
 
@@ -98,9 +88,6 @@ def _read_restraint(filename, cif_engine, force=False):
       The filepath of the restraint CIF
   cif_engine : str
       The CIF engine passed to iotbx.cif.reader (e.g. 'xcif' or 'ucif')
-  force : bool, optional
-      If True, skip the restraint type check (a combined CIF will not detect as
-      'restraint' but still carries restraint data)
 
   Returns
   -------
@@ -110,16 +97,41 @@ def _read_restraint(filename, cif_engine, force=False):
   Raises
   ------
   Sorry
-      If the file is missing or is not a recognized restraints file
+      If the file is missing, cannot be read, or is not a recognized
+      restraints file
+  ValueError
+      If cif_engine is not a known engine
   '''
   if not os.path.isfile(filename):
     raise Sorry("Couldn't find the file %s" % filename)
-  # cheaply confirm this really is a restraint CIF (reject model/reflection
-  # CIFs) before the parse, preserving the historical message
-  if not force and get_file_type(filename) != 'restraint':
-    raise Sorry('%s is not a recognized restraints file' % filename)
+  # parse once, then classify the parsed model: a CIF is a restraints file iff
+  # it has a restraint block (see detection._cif_block_datatypes: what
+  # mon_lib_srv / ener_lib consume), whatever else it contains -- a combined
+  # model with embedded ligand restraints is accepted even though
+  # get_file_type resolves it to its precedence winner. An I/O error is a
+  # Sorry that says so; an undecodable, corrupt-compressed or non-CIF file
+  # gets the historical message (read_file then retries via decompression);
+  # a bad cif_engine is a ValueError.
   import iotbx.cif
-  reader = iotbx.cif.reader(file_path=filename, strict=False, engine=cif_engine)
+  from iotbx.file_io.detection import _cif_model_datatypes, _check_cif_engine
+  from iotbx.file_io.detection import _UNREADABLE
+  _check_cif_engine(cif_engine)
+  reader, types = None, None
+  try:
+    reader = iotbx.cif.reader(file_path=filename, strict=False, engine=cif_engine)
+    types = _cif_model_datatypes(reader.model())
+  except (IOError, OSError) as e:
+    raise Sorry("Couldn't read the file %s: %s"
+                % (filename, getattr(e, 'strerror', None) or e))
+  except _UNREADABLE:
+    pass
+  if types is None:
+    raise Sorry('%s is not a recognized restraints file' % filename)
+  if 'restraint' not in types:
+    raise Sorry('%s is not a recognized restraints file (no comp_/link_/mod_ '
+                'restraint block or energy library; a bare chemical-component '
+                'entry such as a CCD download needs restraints generated '
+                'first, e.g. with phenix.elbow)' % filename)
   return FileIOResult('restraint', reader, reader=None)
 
 
@@ -407,7 +419,7 @@ def _read_sequence(filename, datatype):
   return FileIOResult(datatype, objects, reader=None)
 
 
-def _read_direct(filename, datatype, force=False):
+def _read_direct(filename, datatype):
   '''
   Read an any_file-backed datatype by calling the underlying format reader
   directly (no any_file).
@@ -421,10 +433,6 @@ def _read_direct(filename, datatype, force=False):
       The filepath to read.
   datatype : str
       The DataManager datatype to read it as.
-  force : bool, optional
-      Accepted for signature parity with the any_file fallback; the direct
-      readers parse the file as `datatype` regardless (a combined CIF reads as
-      the requested block via the underlying reader).
 
   Returns
   -------
@@ -453,7 +461,7 @@ def _read_direct(filename, datatype, force=False):
   raise Sorry('no direct reader for datatype %r' % datatype)
 
 
-def _dispatch_read(filename, datatype, cif_engine, force=False):
+def _dispatch_read(filename, datatype, cif_engine):
   '''
   Route filename to the reader for its datatype.
 
@@ -465,9 +473,6 @@ def _dispatch_read(filename, datatype, cif_engine, force=False):
       The DataManager datatype to read it as
   cif_engine : str
       The CIF engine forwarded to the restraint reader
-  force : bool, optional
-      If True, force the datatype-specific reader to extract datatype from a
-      combined CIF (json/yaml ignore it)
 
   Returns
   -------
@@ -480,7 +485,7 @@ def _dispatch_read(filename, datatype, cif_engine, force=False):
       If datatype cannot be read by any reader, or the underlying reader fails
   '''
   if datatype == 'restraint':
-    return _read_restraint(filename, cif_engine, force=force)
+    return _read_restraint(filename, cif_engine)
   if datatype == 'json':
     return _read_json(filename)
   if datatype == 'yaml':
@@ -489,7 +494,7 @@ def _dispatch_read(filename, datatype, cif_engine, force=False):
     if not os.path.isfile(filename):
       raise Sorry("Couldn't find the file %s" % filename)
     try:
-      return _read_direct(filename, datatype, force=force)
+      return _read_direct(filename, datatype)
     except Exception:
       # any_file fallback for the deprecation window. The direct readers call the
       # same parsers any_file does, so any failure here is a direct-reader gap (a
@@ -500,11 +505,11 @@ def _dispatch_read(filename, datatype, cif_engine, force=False):
       # this mirrors _read_json/_read_yaml's except Exception. TODO(any_file-
       # deprecation): drop this try/except once direct readers + tests cover every
       # any_file-backed datatype.
-      return _read_with_any_file(filename, datatype, force=force)
+      return _read_with_any_file(filename, datatype)
   raise Sorry('Cannot read %s as datatype %r' % (filename, datatype))
 
 
-def _read_decompressed(filename, datatype, cif_engine, force=False):
+def _read_decompressed(filename, datatype, cif_engine):
   '''
   Decompress filename to a temp file carrying the inner extension and read that.
 
@@ -521,8 +526,6 @@ def _read_decompressed(filename, datatype, cif_engine, force=False):
       The DataManager datatype to read it as
   cif_engine : str
       The CIF engine forwarded to the restraint reader
-  force : bool, optional
-      If True, force the reader to extract datatype from a combined CIF
 
   Returns
   -------
@@ -573,7 +576,7 @@ def _read_decompressed(filename, datatype, cif_engine, force=False):
       with open(tmp, 'wb') as out:
         out.write(data)
     try:
-      return _dispatch_read(tmp, datatype, cif_engine, force)
+      return _dispatch_read(tmp, datatype, cif_engine)
     except Sorry as e:
       # preserve the specific message but report the original filename, not tmp
       raise Sorry(str(e).replace(tmp, filename))
@@ -584,7 +587,7 @@ def _read_decompressed(filename, datatype, cif_engine, force=False):
       pass
 
 
-def read_file(filename, file_type=None, cif_engine='xcif', force=False):
+def read_file(filename, file_type=None, cif_engine='xcif'):
   '''
   Parse filename once and return a FileIOResult.
 
@@ -602,9 +605,6 @@ def read_file(filename, file_type=None, cif_engine='xcif', force=False):
       detected.
   cif_engine : str, optional
       The CIF engine forwarded to the restraint reader
-  force : bool, optional
-      If True, force the reader to extract file_type from a combined CIF that
-      auto-detect would otherwise resolve to the precedence winner
 
   Returns
   -------
@@ -624,12 +624,12 @@ def read_file(filename, file_type=None, cif_engine='xcif', force=False):
       raise Sorry("Couldn't find the file %s" % filename)
     raise Sorry('%s is not a recognized file type' % filename)
   try:
-    return _dispatch_read(filename, datatype, cif_engine, force)
+    return _dispatch_read(filename, datatype, cif_engine)
   except Sorry:
     # the file may use a compressor the underlying reader cannot read directly
     # (text readers handle .gz/.Z; mrcfile handles .gz; the MTZ reader handles
     # none) -> decompress to a temp file and retry once.
     _, _, compress_ext = splitext(filename)
     if (compress_ext is not None) and os.path.isfile(filename):
-      return _read_decompressed(filename, datatype, cif_engine, force)
+      return _read_decompressed(filename, datatype, cif_engine)
     raise

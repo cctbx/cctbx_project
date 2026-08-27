@@ -184,10 +184,18 @@ class MillerArrayDataManager(DataManagerBase):
     return self._has_data(MillerArrayDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_miller_array_file(self, filename, force=False):
+  def process_miller_array_file(self, filename):
     if filename not in self.get_miller_array_names():
-      self._process_file(MillerArrayDataManager.datatype, filename, force=force)
-      self._filter_miller_array_child_datatypes(filename)
+      from libtbx.utils import Sorry
+      self._process_file(MillerArrayDataManager.datatype, filename)
+      try:
+        self._filter_miller_array_child_datatypes(filename)
+      except Sorry:
+        # the file parsed but holds no usable arrays (e.g. a _refln loop of
+        # indices only): do not leave it registered as a miller_array, or
+        # export_phil_scope would fail on it
+        self._remove(MillerArrayDataManager.datatype, filename)
+        raise
     return filename
 
   def _detect_miller_array_array_type(self, array):
