@@ -93,6 +93,11 @@ class llgi(object):
   scatfrac are smooth functions of resolution only, estimated/refined
   within phenix.refine and supplied as miller.arrays broadcasting one value
   per reflection (see mmtbx sigmaA/ScatFrac estimator).
+
+  Argument types: f_eff, dobs, sigmaa and scatfrac are miller.array
+  objects (this class calls .data() on them internally); teps and resn
+  are plain flex.double arrays already matching f_eff's index order (no
+  .data() call needed/made on these two).
   """
 
   def __init__(self,

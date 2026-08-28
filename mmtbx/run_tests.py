@@ -106,6 +106,7 @@ general_tests = [
   "$D/regression/model/tst_restrain_selection_to_self_or_neighbors.py",
   #
   "$D/regression/tst_fmodel.py",
+  "$D/regression/tst_llgi_data.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
