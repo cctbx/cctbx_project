@@ -175,6 +175,55 @@ def exercise_gradient_descent_direction():
   stepped_val = target_work(stepped).target_work()
   assert stepped_val < base_val, (base_val, stepped_val)
 
+def exercise_sigmaa_scatfrac_finite_difference_gradients():
+  # Verifies llgi.h's d_target_one_h_over_sigmaa_scatfrac (used by the
+  # sigmaA(resolution)/ScatFrac(resolution) B-spline estimator, see
+  # doc/llgi_target_design.md sec. 5.2) against central finite differences
+  # of llgi_sigmaa_scatfrac_target_and_gradients' summed target -- through
+  # the actual compiled/bound code path, not just the standalone hand
+  # derivation this function's math was originally checked against.
+  # Mixes centric and acentric reflections in one call (unlike
+  # exercise_finite_difference_gradients, which uses a uniform flag per
+  # call) since d_target_one_h_over_sigmaa_scatfrac's centric/acentric
+  # branches share no code with each other or with
+  # d_target_one_h_over_fc's branches.
+  n_refl = 8
+  inputs = make_inputs(n_refl, centric=False, seed=7)
+  inputs["centric_flags"] = flex.bool(
+    [(i % 3 == 0) for i in range(n_refl)])
+  selection = flex.bool([True] * n_refl)
+
+  def run(sigmaa, scatfrac):
+    return ext.llgi_sigmaa_scatfrac_target_and_gradients(
+      f_eff=inputs["f_eff"],
+      selection=selection,
+      f_calc=inputs["f_calc"],
+      dobs=inputs["dobs"],
+      sigmaa=sigmaa,
+      scatfrac=scatfrac,
+      scale_factor=1.0,
+      teps=inputs["teps"],
+      resn=inputs["resn"],
+      centric_flags=inputs["centric_flags"])
+
+  result = run(inputs["sigmaa"], inputs["scatfrac"])
+  ana_dsigmaa = result.d_target_by_dsigmaa()
+  ana_dscatfrac = result.d_target_by_dscatfrac()
+  eps = 1.e-6
+  for i in range(n_refl):
+    sa_p = inputs["sigmaa"].deep_copy(); sa_p[i] += eps
+    sa_m = inputs["sigmaa"].deep_copy(); sa_m[i] -= eps
+    fd_dsigmaa = (run(sa_p, inputs["scatfrac"]).target()
+                  - run(sa_m, inputs["scatfrac"]).target()) / (2 * eps)
+    assert approx_equal(ana_dsigmaa[i], fd_dsigmaa, eps=5.e-5), (
+      i, ana_dsigmaa[i], fd_dsigmaa)
+    sf_p = inputs["scatfrac"].deep_copy(); sf_p[i] += eps
+    sf_m = inputs["scatfrac"].deep_copy(); sf_m[i] -= eps
+    fd_dscatfrac = (run(inputs["sigmaa"], sf_p).target()
+                    - run(inputs["sigmaa"], sf_m).target()) / (2 * eps)
+    assert approx_equal(ana_dscatfrac[i], fd_dscatfrac, eps=5.e-5), (
+      i, ana_dscatfrac[i], fd_dscatfrac)
+
 def exercise():
   exercise_finite_difference_gradients(centric=False)
   exercise_finite_difference_gradients(centric=True)
@@ -182,6 +231,7 @@ def exercise():
   exercise_negative_variance_guard()
   exercise_scatfrac_sensitivity()
   exercise_gradient_descent_direction()
+  exercise_sigmaa_scatfrac_finite_difference_gradients()
   print("OK")
 
 if (__name__ == "__main__"):
