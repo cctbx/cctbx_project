@@ -1748,6 +1748,57 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def llgi_data(self):
     return getattr(self, "_llgi_data", None)
 
+  def update_llgi_sigmaa_scatfrac(self, params=None):
+    """ (Re-)fit sigmaA(resolution) and ScatFrac(resolution) against the
+    current model (self.f_calc()) and attach the result to this
+    manager's llgi_data (see set_llgi_data()), for use by the llgi
+    refinement target.
+
+    Mirrors update_all_scales(): called explicitly, once per macrocycle,
+    from the refinement driver (see doc/llgi_target_design.md sec. 5,
+    "Trigger point"), not from inside mmtbx.refinement.targets.py's
+    target_functor.__init__ (which, like the "ml" target's use of
+    manager.alpha_beta(), just reads whatever manager.llgi_data()
+    currently holds -- it does not estimate sigmaA/ScatFrac itself).
+
+    Requires llgi_data (dobs/feff/teps/resn) to already be attached (see
+    set_llgi_data(), phenix.refinement.llgi_data.get_llgi_data()); raises
+    Sorry if not. See mmtbx.refinement.llgi_sigmaa for the actual B-spline/
+    LBFGS estimation (estimate_llgi_sigmaa_scatfrac): sigmaA and ScatFrac
+    are not jointly identifiable from the LLGI target alone (D =
+    Dobs*sigmaA/sqrt(ScatFrac) is the only combined quantity the target
+    sees), so ScatFrac is computed first as a direct empirical ratio
+    (full reflection set) and held fixed while sigmaA is fit against LLGI
+    (R-free/test set only, matching how sigmaA is meant to respond to
+    model quality without being validated against the data it was fit
+    to).
+    """
+    llgi_data = self.llgi_data()
+    if(llgi_data is None):
+      raise Sorry(
+        "update_llgi_sigmaa_scatfrac() requires LLGI data (DOBS/FEFF/"
+        "TEPS/RESN) to already be attached via set_llgi_data().")
+    import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
+    f_obs = self.f_obs()
+    result = llgi_sigmaa.estimate_llgi_sigmaa_scatfrac(
+      f_eff         = llgi_data.feff.data(),
+      r_free_flags  = self.r_free_flags().data(),
+      f_calc        = self.f_calc().data(),
+      dobs          = llgi_data.dobs.data(),
+      teps          = llgi_data.teps.data(),
+      resn          = llgi_data.resn.data(),
+      centric_flags = f_obs.centric_flags().data(),
+      d_star_sq     = f_obs.d_star_sq().data(),
+      scale_factor  = self.scale_ml_wrapper(),
+      params        = params)
+    updated = group_args(
+      dobs=llgi_data.dobs, feff=llgi_data.feff, teps=llgi_data.teps,
+      resn=llgi_data.resn, info=getattr(llgi_data, "info", None),
+      sigmaa=f_obs.array(data=result.sigmaa),
+      scatfrac=f_obs.array(data=result.scatfrac))
+    self.set_llgi_data(updated)
+    return result
+
   def f_obs_scaled(self, include_fom=False):
     scale = 1.0 / self.k_total()
     if include_fom:
