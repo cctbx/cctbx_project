@@ -82,6 +82,47 @@ class max_like(object):
       integration_step_size=self.integration_step_size,
       compute_gradients=compute_gradients)
 
+class llgi(object):
+  """ sigmaA-parameterised log-likelihood-gain-of-intensities target,
+  operating directly on unnormalized Feff/Fcalc (see
+  cctbx/xray/targets/llgi.h for the change-of-variables derivation from
+  phasertng's E-scale LLGI functor).
+
+  f_eff, dobs, teps and resn are precomputed per reflection
+  (phasertng.nacelle's FEFF, DOBS, TEPS and RESN columns); sigmaa and
+  scatfrac are smooth functions of resolution only, estimated/refined
+  within phenix.refine and supplied as miller.arrays broadcasting one value
+  per reflection (see mmtbx sigmaA/ScatFrac estimator).
+  """
+
+  def __init__(self,
+        f_eff,
+        r_free_flags,
+        dobs,
+        sigmaa,
+        scatfrac,
+        scale_factor,
+        teps,
+        resn):
+    adopt_init_args(self, locals())
+    self.centric_flags = f_eff.centric_flags().data()
+
+  def __call__(self, f_calc, compute_gradients):
+    assert f_calc.unit_cell().is_similar_to(self.f_eff.unit_cell())
+    assert f_calc.space_group() == self.f_eff.space_group()
+    return ext.llgi_target_and_gradients(
+      f_eff=self.f_eff.data(),
+      r_free_flags=self.r_free_flags.data(),
+      f_calc=f_calc.data(),
+      dobs=self.dobs.data(),
+      sigmaa=self.sigmaa.data(),
+      scatfrac=self.scatfrac.data(),
+      scale_factor=self.scale_factor,
+      teps=self.teps,
+      resn=self.resn,
+      centric_flags=self.centric_flags,
+      compute_gradients=compute_gradients)
+
 class unified_least_squares_residual(object):
   """ A least-square residual functor for refinement against F or F^2. """
 

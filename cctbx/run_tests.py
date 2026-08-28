@@ -22,6 +22,7 @@ tst_list = [
   ["$D/regression/tst_xray.py", "I41/acd"],
   "$D/xray/targets/tst_r1.py",
   "$D/xray/targets/tst_shelxl_wght_ls.py",
+  "$D/xray/targets/tst_llgi.py",
   "$D/xray/boost_python/tst_f_model.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",

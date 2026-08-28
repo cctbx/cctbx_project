@@ -6,6 +6,7 @@
 #include <cctbx/xray/targets/mlf.h>
 #include <cctbx/xray/targets/mli.h>
 #include <cctbx/xray/targets/mlhl.h>
+#include <cctbx/xray/targets/llgi.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
@@ -250,6 +251,43 @@ namespace {
     }
   };
 
+  struct llgi_wrappers
+  {
+    typedef llgi::target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<common_results> >(
+          "llgi_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          bool>((
+            arg("f_eff"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("compute_gradients"))))
+      ;
+    }
+  };
+
   struct r_factor_wrappers
   {
     //typedef r_factor w_t;
@@ -290,6 +328,7 @@ namespace boost_python {
     targets::boost_python::mlf_wrappers::wrap();
     targets::boost_python::mli_wrappers::wrap();
     targets::boost_python::mlhl_wrappers::wrap();
+    targets::boost_python::llgi_wrappers::wrap();
     targets::boost_python::r_factor_wrappers::wrap();
   }
 
