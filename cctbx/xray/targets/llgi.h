@@ -3,6 +3,7 @@
 
 #include <scitbx/constants.h>
 #include <scitbx/math/bessel.h>
+#include <utility>
 
 namespace cctbx { namespace xray { namespace targets { namespace llgi {
 
@@ -183,6 +184,85 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     return -d_target_over_fc;
   }
 
+  //! Gradient of the LLGI target for one Miller index w.r.t. sigmaA and
+  //! ScatFrac, for use by a sigmaA(resolution)/ScatFrac(resolution)
+  //! estimator (see doc/llgi_target_design.md sec. 5) that parameterises
+  //! both as B-spline curves and optimises their coefficients directly
+  //! against the LLGI target.
+  /*! Unlike d_target_one_h_over_fc (whose chain rule through EC = D*fc is
+      simple because V does not depend on fc), D = dobs*sigmaa/sqrt(
+      scatfrac) enters *both* EC = D*fc *and* V = teps*resn^2*(teps-D^2),
+      so this derivative genuinely differs from, and is not obtainable by
+      symmetry from, d_target_one_h_over_fc. Derived by hand and verified
+      against central finite differences (both centric and acentric,
+      max abs error ~1e-9) before being committed here; see also
+      tst_llgi.py's exercise_d_target_over_d_sigmaa_scatfrac. Returns
+      (d target/d sigmaa, d target/d scatfrac); both already include the
+      sign flip matching target_one_h's minimize-me convention.
+  */
+  inline
+  std::pair<double, double>
+  d_target_one_h_over_sigmaa_scatfrac(
+    double feff,
+    double fc,
+    double dobs,
+    double sigmaa,
+    double scatfrac,
+    double k,
+    double teps,
+    double resn,
+    bool centric)
+  {
+    CCTBX_ASSERT(teps > 0);
+    CCTBX_ASSERT(resn > 0);
+    if(k <= 0.0) k = 1.0;
+    if (dobs <= 0.0 || sigmaa <= 0.0 || scatfrac <= 0.0
+        || feff <= 0.0 || fc <= 0.0) {
+      return std::make_pair(0.0, 0.0);
+    }
+    double d = dobs * (sigmaa / std::sqrt(scatfrac)) * k;
+    double v_e = teps - d * d;
+    if (v_e <= 0.0) {
+      return std::make_pair(0.0, 0.0);
+    }
+    double resn_sq = resn * resn;
+    double v = teps * resn_sq * v_e;
+    double ec = d * fc;
+    double ec_sq = ec * ec;
+    // dV_by_dD = teps*resn^2 * d(teps - D^2)/dD = -2*D*teps*resn^2
+    double dv_by_dd = -2. * d * teps * resn_sq;
+    // term1 + term2: derivative of ll_core = -(log(V/(teps^2 resn^2))
+    // + (feff^2+EC^2)/V) w.r.t. D.
+    double term1 = -(1. / v) * dv_by_dd;
+    double term2 = -(2. * ec * fc * v - (feff * feff + ec_sq) * dv_by_dd)
+                   / (v * v);
+    double d_ll_core_by_dd = term1 + term2;
+    double dll_by_dd; // d(ll)/dD, ll in gain form (pre sign-flip)
+    if(!centric) {
+      double x = 2. * feff * ec / v;
+      double bess_term = scitbx::math::bessel::i1_over_i0(x);
+      // dX_by_dD = 2*feff*(fc*V - EC*dV_by_dD)/V^2
+      double dx_by_dd = 2. * feff * (fc * v - ec * dv_by_dd) / (v * v);
+      dll_by_dd = d_ll_core_by_dd + bess_term * dx_by_dd;
+    }
+    else {
+      double x_half = feff * ec / v; // = X/2, matching llgi.h's centric X
+      double bess_term = std::tanh(x_half);
+      // d(x_half)_by_dD = feff*(fc*V - EC*dV_by_dD)/V^2
+      double dxhalf_by_dd = feff * (fc * v - ec * dv_by_dd) / (v * v);
+      dll_by_dd = d_ll_core_by_dd / 2.0 + bess_term * dxhalf_by_dd;
+    }
+    // Sign-flipped to match target_one_h's minimization convention
+    // (target_one_h returns -ll).
+    double d_target_by_dd = -dll_by_dd;
+    // Chain rule through D = dobs*sigmaa*k/sqrt(scatfrac):
+    double dd_by_dsigmaa = dobs * k / std::sqrt(scatfrac);
+    double dd_by_dscatfrac = -d / (2. * scatfrac);
+    double d_target_by_dsigmaa = d_target_by_dd * dd_by_dsigmaa;
+    double d_target_by_dscatfrac = d_target_by_dd * dd_by_dscatfrac;
+    return std::make_pair(d_target_by_dsigmaa, d_target_by_dscatfrac);
+  }
+
   //! LLGI (log-likelihood-gain-of-intensities) target function and
   //! gradients.
   /*! sigmaA-parameterised alternative to the alpha/beta-based mlf target
@@ -257,6 +337,95 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         target_work_ = target_work * one_over_n_work;
         if (rffs.n_test != 0) {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
+        }
+      }
+  };
+
+  //! Summed LLGI target and per-reflection d(target)/d(sigmaa),
+  //! d(target)/d(scatfrac), for a selected set of reflections (in
+  //! practice, the R-free/test set -- see doc/llgi_target_design.md sec.
+  //! 5.2), for use by a sigmaA(resolution)/ScatFrac(resolution) B-spline
+  //! coefficient optimiser. Unlike target_and_gradients (used for the
+  //! atomic-parameter refinement target, gradient w.r.t. Fcalc, work-set
+  //! normalised), this class:
+  //!  - includes every selected reflection in the summed target/gradients
+  //!    (no separate work/test split -- the caller already restricts
+  //!    `selection` to the desired set, typically r_free_flags itself),
+  //!  - returns *per-reflection*, not per-work-set-index, gradient
+  //!    arrays (same size and order as the inputs), leaving the chain
+  //!    rule through B-spline coefficients (a fixed design matrix, linear
+  //!    in the coefficients) to the Python-side estimator,
+  //!  - takes sigmaa/scatfrac as already-evaluated per-reflection values
+  //!    (i.e. the spline curve evaluated at each reflection's resolution,
+  //!    computed Python-side) rather than a resolution parameterisation
+  //!    itself, keeping this class's C++ math independent of the spline
+  //!    representation.
+  class sigmaa_scatfrac_target_and_gradients
+  {
+    protected:
+      double target_;
+      af::shared<double> d_target_by_dsigmaa_;
+      af::shared<double> d_target_by_dscatfrac_;
+
+    public:
+      double target() const { return target_; }
+      af::shared<double> const& d_target_by_dsigmaa() const {
+        return d_target_by_dsigmaa_;
+      }
+      af::shared<double> const& d_target_by_dscatfrac() const {
+        return d_target_by_dscatfrac_;
+      }
+
+      sigmaa_scatfrac_target_and_gradients(
+        af::const_ref<double> const& f_eff,
+        af::const_ref<bool> const& selection,
+        af::const_ref<std::complex<double> > const& f_calc,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<double> const& scatfrac,
+        double scale_factor,
+        af::const_ref<double> const& teps,
+        af::const_ref<double> const& resn,
+        af::const_ref<bool> const& centric_flags)
+      :
+        target_(0),
+        d_target_by_dsigmaa_(f_eff.size(), 0.0),
+        d_target_by_dscatfrac_(f_eff.size(), 0.0)
+      {
+        CCTBX_ASSERT(selection.size() == f_eff.size());
+        CCTBX_ASSERT(f_calc.size() == f_eff.size());
+        CCTBX_ASSERT(dobs.size() == f_eff.size());
+        CCTBX_ASSERT(sigmaa.size() == f_eff.size());
+        CCTBX_ASSERT(scatfrac.size() == f_eff.size());
+        CCTBX_ASSERT(teps.size() == f_eff.size());
+        CCTBX_ASSERT(resn.size() == f_eff.size());
+        CCTBX_ASSERT(centric_flags.size() == f_eff.size());
+        std::size_t n_selected = 0;
+        for(std::size_t i=0;i<f_eff.size();i++) {
+          if (!selection[i]) continue;
+          n_selected++;
+          double feff = f_eff[i];
+          double fc = std::abs(f_calc[i]);
+          double do_ = dobs[i];
+          double sa = sigmaa[i];
+          double sf = scatfrac[i];
+          double tp = teps[i];
+          double rn = resn[i];
+          bool c = centric_flags[i];
+          target_ += target_one_h(
+            feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
+          std::pair<double, double> grad = d_target_one_h_over_sigmaa_scatfrac(
+            feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
+          d_target_by_dsigmaa_[i] = grad.first;
+          d_target_by_dscatfrac_[i] = grad.second;
+        }
+        if (n_selected > 0) {
+          double one_over_n = 1. / n_selected;
+          target_ *= one_over_n;
+          for(std::size_t i=0;i<f_eff.size();i++) {
+            d_target_by_dsigmaa_[i] *= one_over_n;
+            d_target_by_dscatfrac_[i] *= one_over_n;
+          }
         }
       }
   };
