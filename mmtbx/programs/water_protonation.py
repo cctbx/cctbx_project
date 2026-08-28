@@ -217,7 +217,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       1 for ag in hier.atom_groups()
       if water_protonation._is_water(ag.resname)
       for a in ag.atoms()
-      if a.element.strip().upper() in ("H", "D"))
+      if a.element_is_hydrogen())
 
   def _summary(self, n_before, n_now):
     added = n_now - n_before

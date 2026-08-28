@@ -176,7 +176,7 @@ def _strip_water_hydrogens(hier):
     if not _is_water(ag.resname):
       continue
     for a in list(ag.atoms()):
-      if a.element.strip().upper() in ("H", "D"):
+      if a.element_is_hydrogen():
         ag.remove_atom(a)
         n += 1
   return n
@@ -258,10 +258,7 @@ def _ortho_frame(d1):
       Two unit vectors ``p, q`` with ``(d1, p, q)`` mutually perpendicular
       -- the frame for sampling the H2 cone around ``d1``.
   """
-  helper = matrix.col((1.0, 0.0, 0.0))
-  if abs(d1.dot(helper)) > 0.95:
-    helper = matrix.col((0.0, 1.0, 0.0))
-  p = (helper - d1 * d1.dot(helper)).normalize()
+  p = d1.ortho().normalize()
   return p, d1.cross(p)
 
 
@@ -311,11 +308,7 @@ def _kick_water(record, placed_coords, oh_length, cos_hoh, sin_hoh, rng):
   """
   o_xyz, _own_idx, slots, fixed_d1 = record
   d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
-  helper = matrix.col((1.0, 0.0, 0.0))
-  if abs(d1.dot(helper)) > 0.95:
-    helper = matrix.col((0.0, 1.0, 0.0))
-  p = (helper - d1 * d1.dot(helper)).normalize()
-  q = d1.cross(p)
+  p, q = _ortho_frame(d1)
   theta = rng.uniform(0.0, 2.0 * math.pi)
   d2 = cos_hoh * d1 + sin_hoh * (math.cos(theta) * p + math.sin(theta) * q)
   dirs = {1: d1, 2: d2}
@@ -353,7 +346,7 @@ def _sp2_plane_normal(atoms, static_tree, c, exclude):
   for k in static_tree.query_ball_point(atoms[c].xyz, _WATER_BOND_HEAVY):
     if k == c or k == exclude:
       continue
-    if atoms[k].element.strip().upper() in ("H", "D"):
+    if atoms[k].element_is_hydrogen():
       continue
     v = matrix.col(atoms[k].xyz) - C
     if v.length() > _WATER_BOND_HEAVY:
@@ -407,9 +400,10 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
     for j in static_tree.query_ball_point(a.xyz, _WATER_BOND_HEAVY):
       if j == i:
         continue
-      ej = atoms[j].element.strip().upper()
       d = (matrix.col(atoms[j].xyz) - A).length()
-      if (d <= _WATER_NH_BOND) if ej in ("H", "D") else (d <= _WATER_BOND_HEAVY):
+      lim = (_WATER_NH_BOND if atoms[j].element_is_hydrogen()
+             else _WATER_BOND_HEAVY)
+      if d <= lim:
         nbrs.append(j)
     bond_dirs = [(matrix.col(atoms[j].xyz) - A).normalize() for j in nbrs]
     if not bond_dirs:
@@ -830,7 +824,7 @@ class _WaterHydrogenPlacer(object):
     single_h = {ag.memory_id() for ag in hier.atom_groups()
                 if _is_water(ag.resname)
                 and sum(1 for a in ag.atoms()
-                        if a.element.strip().upper() in ("H", "D")) == 1}
+                        if a.element_is_hydrogen()) == 1}
     if self.existing_h == "reorient":
       _strip_water_hydrogens(hier)
 
@@ -845,7 +839,7 @@ class _WaterHydrogenPlacer(object):
     # placement and refinement proceed.
     self.static_coords = [tuple(a.xyz) for a in atoms]
     self.static_tree = KDTree(self.static_coords)
-    self.static_is_h = [a.element.strip().upper() in ("H", "D") for a in atoms]
+    self.static_is_h = [a.element_is_hydrogen() for a in atoms]
     # Key by memory_id() (stable C++ identity), not id(): iotbx returns a
     # fresh Python wrapper on each atom access, so id() is not stable across
     # the hier.atoms() and ag.atoms() calls used to build the per-water
@@ -890,7 +884,7 @@ class _WaterHydrogenPlacer(object):
       # A water with one H is completed only on request, and then H2 goes on
       # the cone of the proton that is actually there, not a recomputed one.
       existing = [a for a in ag.atoms()
-                  if a.element.strip().upper() in ("H", "D")]
+                  if a.element_is_hydrogen()]
       fixed_d1 = None
       skip = len(existing) >= 2          # already protonated
       if existing and not skip:
@@ -1168,7 +1162,7 @@ def _water_clash_stats(hier):
       continue
     wid = ag.memory_id()
     for a in ag.atoms():
-      if a.element.strip().upper() in ("H", "D"):
+      if a.element_is_hydrogen():
         wh.append((tuple(a.xyz), wid))
   if len(wh) < 2:
     return len(wh), 0, 0, 0, None
@@ -1265,7 +1259,7 @@ def _worst_water_clashes(hier):
       continue
     wid = ag.memory_id()
     for a in ag.atoms():
-      if a.element.strip().upper() in ("H", "D"):
+      if a.element_is_hydrogen():
         wh.append((tuple(a.xyz), wid, a))
   if len(wh) < 2:
     return []
