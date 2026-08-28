@@ -152,6 +152,43 @@ def exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data():
   else:
     assert False, "expected Sorry to be raised"
 
+def exercise_llgi_data_survives_select_and_update_all_scales():
+  # Real bug, found running target=llgi against a real (non-synthetic)
+  # dataset for the first time: manager.select() (used internally by
+  # manager.remove_outliers(), itself called from every ordinary
+  # f_model_all_scales.compute() / bulk-solvent-and-scaling pass -- not
+  # a rare code path) constructs a *fresh* manager(...) object directly,
+  # separately from the self.__init__(...) re-init path
+  # set_target_name/_validate_and_set_llgi_data's docstrings already
+  # discuss. Before llgi_data was threaded through select()'s manager(...)
+  # call the same way abcd already was, this silently dropped llgi_data
+  # on the very first bulk-solvent-and-scaling step of a real refinement,
+  # producing a "no LLGI data provided" Sorry despite it having been
+  # attached and even used successfully one step earlier -- a much more
+  # commonly hit path than the low-resolution-outlier self.__init__(...)
+  # branch this test's sibling coverage (implicitly, via
+  # exercise_update_llgi_sigmaa_scatfrac_enables_target_functor) does not
+  # exercise at all.
+  fmodel = build_fmodel()
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  fmodel.update_llgi_sigmaa_scatfrac()
+  assert fmodel.llgi_data() is not None
+  # select() with an all-True selection (a deep_copy, in effect) must
+  # still carry llgi_data (all components, including sigmaa/scatfrac)
+  # through to the new manager.
+  selection = flex.bool(fmodel.f_obs().data().size(), True)
+  new_fmodel = fmodel.select(selection=selection, deep_copy_xray_structure=False)
+  assert new_fmodel.llgi_data() is not None
+  assert getattr(new_fmodel.llgi_data(), "sigmaa", None) is not None
+  assert getattr(new_fmodel.llgi_data(), "scatfrac", None) is not None
+  assert new_fmodel.llgi_data().dobs.indices().all_eq(
+    new_fmodel.f_obs().indices())
+  # target_functor() must still succeed on the selected copy without
+  # needing update_llgi_sigmaa_scatfrac() to be called again.
+  new_fmodel.target_functor()
+
 def exercise():
   exercise_set_llgi_data_ok()
   exercise_set_llgi_data_mismatched_indices()
@@ -160,6 +197,7 @@ def exercise():
   exercise_target_functor_reports_missing_sigmaa_scatfrac()
   exercise_update_llgi_sigmaa_scatfrac_enables_target_functor()
   exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data()
+  exercise_llgi_data_survives_select_and_update_all_scales()
   print("OK")
 
 if (__name__ == "__main__"):

@@ -350,6 +350,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
          f_part2                      = None,
          f_calc                       = None,
          abcd                         = None,
+         llgi_data                    = None,
          epsilons                     = None,
          sf_and_grads_accuracy_params = None,
          target_name                  = "ml",
@@ -412,6 +413,14 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self._r_free_flags = r_free_flags
     assert type(f_obs) == type(r_free_flags)
     self._hl_coeffs = abcd
+    # Validated the same way set_llgi_data() validates a post-construction
+    # attach; done here too so llgi_data survives every self.__init__(...)
+    # re-init call site in this file (e.g. update_all_scales()'s outlier-
+    # removal branch), which previously silently dropped it since it was
+    # not a constructor parameter -- caught testing target=llgi against a
+    # real (not synthetic) dataset, where that branch's r_work_low()>0.7
+    # condition triggered on the very first run.
+    self._validate_and_set_llgi_data(llgi_data)
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
     self.sfg_params = sf_and_grads_accuracy_params
@@ -691,6 +700,31 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       new_hl_coeffs = self.hl_coeffs().select(selection=selection)
     else:
       new_hl_coeffs = None
+    llgi_data = self.llgi_data()
+    if(llgi_data is not None):
+      # Select every component the same way new_hl_coeffs is selected
+      # just above -- this is the general-purpose select()/deep_copy()
+      # path (used well beyond just outlier removal: e.g. remove_
+      # outliers() inside f_model_all_scales.compute(), called from every
+      # ordinary bulk-solvent-and-scaling pass, not only the resolution-
+      # filtering branch in update_all_scales() that a narrower fix
+      # elsewhere in this file already handles), so missing it here was
+      # caught as the actual cause of target=llgi failing on the very
+      # first real (non-synthetic) refinement run tried, at the first
+      # ordinary bss (bulk-solvent-and-scaling) macrocycle step -- not
+      # only in the rarer low-resolution-outlier-removal branch.
+      def _sel(array):
+        return None if array is None else array.select(selection=selection)
+      new_llgi_data = group_args(
+        dobs=_sel(llgi_data.dobs),
+        feff=_sel(llgi_data.feff),
+        teps=_sel(llgi_data.teps),
+        resn=_sel(llgi_data.resn),
+        info=_sel(getattr(llgi_data, "info", None)),
+        sigmaa=_sel(getattr(llgi_data, "sigmaa", None)),
+        scatfrac=_sel(getattr(llgi_data, "scatfrac", None)))
+    else:
+      new_llgi_data = None
     if(self.mask_manager is not None):
       new_mask_manager = self.mask_manager.select(selection = selection) # XXX
     else:
@@ -731,6 +765,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       sf_and_grads_accuracy_params = deepcopy(self.sfg_params),
       target_name                  = self.target_name,
       abcd                         = new_hl_coeffs,
+      llgi_data                    = new_llgi_data,
       epsilons                     = self.epsilons.select(selection),
       alpha_beta_params            = deepcopy(self.alpha_beta_params),
       xray_structure               = xrs,
@@ -1533,6 +1568,27 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           abcd = self.hl_coeffs()
           if(abcd is not None):
             abcd = self.hl_coeffs().common_set(f_obs)
+          llgi_data = self.llgi_data()
+          if(llgi_data is not None):
+            # Re-common_set every component (including sigmaa/scatfrac,
+            # if already attached by update_llgi_sigmaa_scatfrac() --
+            # all components share f_obs's index set) against the
+            # resolution-filtered f_obs, mirroring how abcd is handled
+            # just above. target_name is being reset to "ml" below
+            # regardless; the next updatellgisigmaa/settarget macrocycle
+            # task will refresh sigmaa/scatfrac against the (possibly
+            # resolution-filtered) data before the llgi target is used
+            # again.
+            def _cs(array):
+              return None if array is None else array.common_set(f_obs)
+            llgi_data = group_args(
+              dobs=_cs(llgi_data.dobs),
+              feff=_cs(llgi_data.feff),
+              teps=_cs(llgi_data.teps),
+              resn=_cs(llgi_data.resn),
+              info=_cs(getattr(llgi_data, "info", None)),
+              sigmaa=_cs(getattr(llgi_data, "sigmaa", None)),
+              scatfrac=_cs(getattr(llgi_data, "scatfrac", None)))
           self.__init__(
              f_obs                        = f_obs,
              r_free_flags                 = self.r_free_flags().common_set(f_obs),
@@ -1541,6 +1597,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
              f_calc                       = self.f_calc()      .common_set(f_obs),
              f_mask = [f.common_set(f_obs) for f in self.f_masks()],
              abcd                         = abcd,
+             llgi_data                    = llgi_data,
              epsilons                     = None,
              sf_and_grads_accuracy_params = self.sfg_params,
              target_name                  = "ml",
@@ -1719,20 +1776,21 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     else:
       return self.arrays.hl_coeffs
 
-  def set_llgi_data(self, llgi_data):
-    """ Attach precomputed per-reflection LLGI data (dobs, feff, teps, resn,
-    and optionally info), typically produced once per dataset by
-    phasertng.nacelle and read in by phenix.refine's LLGI ingestion code
-    (see phenix.refinement.llgi_data). llgi_data is expected to be a
-    group_args (or similar) exposing .dobs, .feff, .teps, .resn as
-    miller.array objects on the same index set as f_obs(), plus an
-    optional .info. Unlike alpha/beta (computed on demand by this
-    manager, see alpha_beta()), this data is supplied externally and is
-    not itself invalidated by structural updates, so no cache-reset wiring
-    analogous to alpha_beta_cache is required here.
+  def _validate_and_set_llgi_data(self, llgi_data):
+    """ Shared validation for llgi_data, called both from __init__
+    (llgi_data is a constructor parameter, like abcd/HL coefficients, so
+    it survives every self.__init__(...) re-init call site in this
+    file -- see update_all_scales()'s outlier-removal branch) and from
+    set_llgi_data() (for attaching/replacing it on an already-constructed
+    manager, e.g. from phenix.refinement.llgi_data.get_llgi_data() after
+    reading a reflection file). llgi_data is expected to be a group_args
+    (or similar) exposing .dobs, .feff, .teps, .resn as miller.array
+    objects on the same index set as f_obs(), plus optional .info,
+    .sigmaa, .scatfrac (the latter two attached later by
+    update_llgi_sigmaa_scatfrac(), not required here).
     """
     if(llgi_data is not None):
-      f_obs = self.f_obs()
+      f_obs = self._f_obs
       for name in ["dobs", "feff", "teps", "resn"]:
         array = getattr(llgi_data, name, None)
         if(array is None):
@@ -1744,6 +1802,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             "it must be completed/common_set against f_obs before being "
             "attached to the fmodel manager.") % name)
     self._llgi_data = llgi_data
+
+  def set_llgi_data(self, llgi_data):
+    """ Attach precomputed per-reflection LLGI data (dobs, feff, teps, resn,
+    and optionally info), typically produced once per dataset by
+    phasertng.nacelle and read in by phenix.refine's LLGI ingestion code
+    (see phenix.refinement.llgi_data). Unlike alpha/beta (computed on
+    demand by this manager, see alpha_beta()), this data is supplied
+    externally and is not itself invalidated by structural updates, so no
+    cache-reset wiring analogous to alpha_beta_cache is required here.
+    See _validate_and_set_llgi_data() for the validation performed.
+    """
+    self._validate_and_set_llgi_data(llgi_data)
 
   def llgi_data(self):
     return getattr(self, "_llgi_data", None)
