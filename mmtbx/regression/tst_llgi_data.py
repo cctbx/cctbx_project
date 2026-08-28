@@ -116,12 +116,50 @@ def exercise_target_functor_reports_missing_sigmaa_scatfrac():
   else:
     assert False, "expected Sorry to be raised"
 
+def exercise_update_llgi_sigmaa_scatfrac_enables_target_functor():
+  # Once mmtbx.refinement.llgi_sigmaa's estimator exists (it does now --
+  # see tst_llgi_sigmaa.py for its own correctness tests), calling
+  # fmodel.update_llgi_sigmaa_scatfrac() should attach sigmaa/scatfrac to
+  # llgi_data and let target_functor() succeed, completing the gap
+  # exercise_target_functor_reports_missing_sigmaa_scatfrac documents.
+  fmodel = build_fmodel()
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  assert getattr(fmodel.llgi_data(), "sigmaa", None) is None
+  fmodel.update_llgi_sigmaa_scatfrac()
+  assert getattr(fmodel.llgi_data(), "sigmaa", None) is not None
+  assert getattr(fmodel.llgi_data(), "scatfrac", None) is not None
+  # dobs/feff/teps/resn must survive the update unchanged.
+  assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
+  result = fmodel.target_functor()
+  core_result = result(compute_gradients=True)
+  # A finite target_work is enough here (correctness of the underlying
+  # estimator and target math is covered by tst_llgi_sigmaa.py and
+  # cctbx/xray/targets/tst_llgi.py respectively) -- this test is only
+  # about the plumbing between update_llgi_sigmaa_scatfrac() and
+  # target_functor() actually working end to end.
+  import math
+  assert math.isfinite(core_result.core_result.target_work())
+
+def exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data():
+  fmodel = build_fmodel()
+  assert fmodel.llgi_data() is None
+  try:
+    fmodel.update_llgi_sigmaa_scatfrac()
+  except Sorry:
+    pass
+  else:
+    assert False, "expected Sorry to be raised"
+
 def exercise():
   exercise_set_llgi_data_ok()
   exercise_set_llgi_data_mismatched_indices()
   exercise_set_llgi_data_missing_component()
   exercise_set_target_name_llgi_requires_data()
   exercise_target_functor_reports_missing_sigmaa_scatfrac()
+  exercise_update_llgi_sigmaa_scatfrac_enables_target_functor()
+  exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data()
   print("OK")
 
 if (__name__ == "__main__"):
