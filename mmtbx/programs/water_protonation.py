@@ -35,10 +35,6 @@ lone_pair = False
   .type = bool
   .short_caption = Lone-pair-directed placement
   .help = "Aim each O-H at an acceptor lone-pair lobe (derived from its bonded-neighbour geometry) rather than its nucleus, for better D-H...A angles."
-joint = False
-  .type = bool
-  .short_caption = Joint H1/H2 optimization
-  .help = "Optimize both O-H together: pick the orientation that best satisfies two acceptors at once, instead of placing H1 greedily then H2 on its cone. Slower; falls back to greedy in crowded pockets."
 refine
   .short_caption = Refinement sweeps
 {
@@ -171,7 +167,6 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       n_basin            = self.params.basin.rounds,
       existing_h         = self.params.existing_h,
       lone_pair_directed = self.params.lone_pair,
-      joint              = self.params.joint,
       on_state           = on_state if report_stats else None)
 
     n_after = self._count_water_h(hier)

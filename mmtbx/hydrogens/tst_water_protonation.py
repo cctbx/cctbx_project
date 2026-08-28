@@ -23,10 +23,6 @@ to get wrong:
   at a carbonyl O's sp2 lone-pair lobe (~120 deg off the C=O axis) rather
   than its nucleus; off by default it aims at the nucleus.
 
-* **Joint H1/H2 placement.** With two acceptors too acute (60 deg) for both
-  H-bonds from an on-acceptor H1, ``joint`` balances the pair so the worse
-  H-bond is much better than greedy's leftover.
-
 * **Idempotency.** A water that already carries two H is left untouched.
 
 * **Single-H water (possible hydroxide).** A water carrying one H is left
@@ -125,16 +121,6 @@ HETATM    2  O   ACO A   1       0.000   0.000   0.000  1.00 10.00           O
 HETATM    3  C   ACO A   1      -1.220   0.000   0.000  1.00 10.00           C
 HETATM    4  C   ACO A   1      -1.950   1.260   0.000  1.00 10.00           C
 HETATM    5  C   ACO A   1      -1.950  -1.260   0.000  1.00 10.00           C
-END
-"""
-
-# A water flanked by two acceptor O only 60 deg apart -- too acute for the
-# 104.5 deg H-O-H to hit both from an on-acceptor H1. Greedy nails one and
-# leaves the other poorly aligned; joint placement balances the two.
-_TWO_ACCEPTOR_60_PDB = """\
-HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
-HETATM    2  O   ACA D   1       2.800   0.000   0.000  1.00 10.00           O
-HETATM    3  O   ACB E   1       1.400   2.424   0.000  1.00 10.00           O
 END
 """
 
@@ -368,32 +354,6 @@ def exercise_lone_pair_directed():
   assert off > 135.0, f"default should aim near the nucleus (got {off:.1f} deg)"
   assert abs(on - 120.0) < 15.0, (
     f"lone-pair placement should give a ~120 deg C=O...H angle (got {on:.1f})")
-
-
-def exercise_joint_balances_acceptors():
-  """With two acceptors too acute (60 deg) for both H-bonds from an
-  on-acceptor H1, joint placement balances them -- the worse of the two
-  H-bonds is markedly better than greedy's leftover."""
-  a = matrix.col((2.800, 0.000, 0.000))
-  b = matrix.col((1.400, 2.424, 0.000))
-
-  def worse_alignment(joint):
-    hier = _hierarchy(_TWO_ACCEPTOR_60_PDB)
-    wp.place_water_hydrogens(hier, n_refine=0, joint=joint)
-    o, hs = _water_atoms(hier)
-    da = (a - matrix.col(o.xyz)).normalize()
-    db = (b - matrix.col(o.xyz)).normalize()
-    align_a = max(_unit(h, o).dot(da) for h in hs.values())
-    align_b = max(_unit(h, o).dot(db) for h in hs.values())
-    return min(align_a, align_b)        # quality of the worse H-bond
-
-  greedy = worse_alignment(False)
-  joint = worse_alignment(True)
-  assert joint > greedy + 0.1, (
-    f"joint should balance the two H-bonds (worse-bond align "
-    f"{greedy:.2f} -> {joint:.2f})")
-  assert joint > 0.85, (
-    f"joint's worse H-bond should still be good (got {joint:.2f})")
 
 
 def exercise_reorient_existing():
@@ -646,7 +606,6 @@ def run():
   exercise_cation_repulsion()
   exercise_protonated_n_not_acceptor()
   exercise_lone_pair_directed()
-  exercise_joint_balances_acceptors()
   exercise_idempotent()
   exercise_reorient_existing()
   exercise_single_h_water()

@@ -265,38 +265,6 @@ def _ortho_frame(d1):
   return p, d1.cross(p)
 
 
-def _tilt_dir(dir_a, dir_b, hoh_rad):
-  """H1 direction near one acceptor but tilted so H2 can reach a second.
-
-  The returned direction is near acceptor ``dir_a`` but tilted *away* from
-  acceptor ``dir_b`` in their shared plane, so an H2 on H1's H-O-H cone can
-  reach ``dir_b`` -- the balanced two-acceptor placement. When the
-  acceptors subtend angle phi, each H ends up ``(104.5 - phi) / 2`` off its
-  acceptor, so both H-bonds are near-ideal.
-
-  Parameters
-  ----------
-  dir_a : scitbx.matrix.col
-      Unit direction toward the first acceptor.
-  dir_b : scitbx.matrix.col
-      Unit direction toward the second acceptor.
-  hoh_rad : float
-      Target H-O-H angle in radians.
-
-  Returns
-  -------
-  scitbx.matrix.col
-      The tilted H1 unit direction, or ``dir_a`` if the two acceptors are
-      collinear.
-  """
-  w = dir_b - dir_a * dir_a.dot(dir_b)
-  if w.length() < 1e-6:
-    return dir_a
-  w = w.normalize()
-  delta = (hoh_rad - dir_a.angle(dir_b)) / 2.0
-  return (dir_a * math.cos(delta) - w * math.sin(delta)).normalize()
-
-
 def _rand_unit(rng):
   """A random unit vector (rejection-free Gaussian normalization).
 
@@ -481,7 +449,7 @@ class _WaterHydrogenPlacer(object):
   def __init__(self, hier, oh_length=None, element=None,
                n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
                n_basin=0, existing_h="keep", lone_pair_directed=False,
-               joint=False, on_state=None):
+               on_state=None):
     self.hier = hier
     self.oh_length = oh_length
     self.element = element
@@ -490,7 +458,6 @@ class _WaterHydrogenPlacer(object):
     self.n_basin = n_basin
     self.existing_h = existing_h
     self.lone_pair_directed = lone_pair_directed
-    self.joint = joint
     self.on_state = on_state
 
     # Placed-H state (the two KDTrees and their coordinate backing store),
@@ -723,49 +690,6 @@ class _WaterHydrogenPlacer(object):
     acc_dirs = [accept_dir(i) for i in acceptors]
     acc_pts = [o_xyz + self.oh_length * dv for dv in acc_dirs]
     acc_res = self._clearances(acc_pts, own_idx, own_slots) if acc_pts else []
-
-    # Joint H1/H2 search (opt-in): pick the (H1, H2) orientation maximizing
-    # the summed acceptor alignment of both protons, among clash-free,
-    # cation-OK placements -- balancing the two H-bonds instead of greedily
-    # perfecting H1. H1 candidates are the acceptor directions plus, for each
-    # ordered acceptor pair, a "tilt" direction off one acceptor away from
-    # the other (so H1 can sit between two acceptors); each viable H1 gets an
-    # H2 cone. Falls through to the greedy path if no clash-free pair exists.
-    if fixed_d1 is None and self.joint and acc_dirs:
-      hoh_rad = math.radians(_WATER_HOH_DEG)
-      tilts = [_tilt_dir(acc_dirs[a], acc_dirs[b], hoh_rad)
-               for a in range(len(acc_dirs))
-               for b in range(len(acc_dirs)) if a != b]
-      d1_dirs = acc_dirs + tilts
-      d1_pts = acc_pts + [o_xyz + self.oh_length * dv for dv in tilts]
-      d1_res = acc_res + self._clearances(d1_pts[len(acc_pts):], own_idx, own_slots)
-
-      def _align(dh):
-        return max((dh.dot(a) for a in acc_dirs), default=0.0)
-
-      viable = [m for m in range(len(d1_dirs))
-                if d1_res[m][1] and cation_ok(d1_pts[m])]
-      cone = []                       # (m, d2) for each viable H1 m
-      for m in viable:
-        fp, fq = _ortho_frame(d1_dirs[m])
-        for k in range(_WATER_CONE_SAMPLES):
-          th = 2.0 * math.pi * k / _WATER_CONE_SAMPLES
-          cone.append((m, self.cos_hoh * d1_dirs[m]
-                       + self.sin_hoh * (math.cos(th) * fp + math.sin(th) * fq)))
-      cone_pts = [o_xyz + self.oh_length * d2 for _, d2 in cone]
-      cone_res = self._clearances(cone_pts, own_idx, own_slots) if cone else []
-      a1 = {m: _align(d1_dirs[m]) for m in viable}
-      best_s = None
-      best_pair = None
-      for idx, (m, d2) in enumerate(cone):
-        if not cone_res[idx][1] or not cation_ok(cone_pts[idx]):
-          continue
-        s = a1[m] + _align(d2)
-        if best_s is None or s > best_s:
-          best_s = s
-          best_pair = (d1_pts[m], cone_pts[idx])
-      if best_pair is not None:
-        return best_pair
 
     if fixed_d1 is not None:
       # Completing a half-modelled water: H1 is the deposited proton, so
@@ -1111,7 +1035,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
                           n_refine=_WATER_REFINE_SWEEPS,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
                           existing_h="keep", lone_pair_directed=False,
-                          joint=False, on_state=None):
+                          on_state=None):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias -- HOH, DOD,
@@ -1190,12 +1114,6 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       If True, each O-H aims at an acceptor's lone-pair lobe (estimated
       from the acceptor's bonded-neighbour geometry) rather than its
       nucleus, for better D-H...A angles.
-  joint : bool, optional
-      If True, optimize both O-H together (the orientation maximizing the
-      summed acceptor alignment of the pair) rather than greedily fixing H1
-      then placing H2 -- so a water flanked by two acceptors can donate
-      well to both. Falls back to the greedy path where no clash-free pair
-      exists.
   on_state : callable, optional
       If given, called as ``on_state(label, stats)`` once the placement
       reaches each state -- ``"initial"`` after the greedy pass, then
@@ -1218,7 +1136,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
     refine_tol=refine_tol, n_basin=n_basin,
     existing_h=existing_h,
-    lone_pair_directed=lone_pair_directed, joint=joint,
+    lone_pair_directed=lone_pair_directed,
     on_state=on_state)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
