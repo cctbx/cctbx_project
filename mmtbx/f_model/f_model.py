@@ -1603,6 +1603,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     if (target_name == "ls"): target_name = "ls_wunit_k1"
     if(target_name=="mlhl" and self._hl_coeffs is None):
       raise Sorry("Using MLHL target requires HL present: no HL provided.")
+    if(target_name=="llgi" and self.llgi_data() is None):
+      raise Sorry(
+        "Using LLGI target requires precomputed LLGI data (DOBS/FEFF/"
+        "TEPS/RESN) present: none provided.")
     self._target_name = target_name
 
   def determine_n_bins(self,
@@ -1714,6 +1718,35 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       return self._hl_coeffs
     else:
       return self.arrays.hl_coeffs
+
+  def set_llgi_data(self, llgi_data):
+    """ Attach precomputed per-reflection LLGI data (dobs, feff, teps, resn,
+    and optionally info), typically produced once per dataset by
+    phasertng.nacelle and read in by phenix.refine's LLGI ingestion code
+    (see phenix.refinement.llgi_data). llgi_data is expected to be a
+    group_args (or similar) exposing .dobs, .feff, .teps, .resn as
+    miller.array objects on the same index set as f_obs(), plus an
+    optional .info. Unlike alpha/beta (computed on demand by this
+    manager, see alpha_beta()), this data is supplied externally and is
+    not itself invalidated by structural updates, so no cache-reset wiring
+    analogous to alpha_beta_cache is required here.
+    """
+    if(llgi_data is not None):
+      f_obs = self.f_obs()
+      for name in ["dobs", "feff", "teps", "resn"]:
+        array = getattr(llgi_data, name, None)
+        if(array is None):
+          raise Sorry(
+            "LLGI data is missing required component '%s'." % name)
+        if(not array.indices().all_eq(f_obs.indices())):
+          raise Sorry((
+            "LLGI data component '%s' does not match f_obs indices; "
+            "it must be completed/common_set against f_obs before being "
+            "attached to the fmodel manager.") % name)
+    self._llgi_data = llgi_data
+
+  def llgi_data(self):
+    return getattr(self, "_llgi_data", None)
 
   def f_obs_scaled(self, include_fom=False):
     scale = 1.0 / self.k_total()
