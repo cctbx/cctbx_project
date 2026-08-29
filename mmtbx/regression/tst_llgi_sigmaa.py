@@ -148,10 +148,76 @@ def exercise_scatfrac_uses_full_set_sigmaa_uses_test_set_only():
   argspec2 = inspect.getfullargspec(llgi_sigmaa.estimate_llgi_sigmaa)
   assert "r_free_flags" in argspec2.args
 
+def exercise_scatfrac_robust_to_single_outlier_reflection():
+  # Real bug, found running target=llgi against real (2g38) data: a
+  # single reflection whose |Fcalc| happened to swing ~10x between two
+  # ordinary macrocycles of refinement (small Resn amplified its squared
+  # contribution) inflated an entire ~1600-reflection high-resolution
+  # bin's ScatFrac estimate by ~10x on its own -- traced to
+  # estimate_llgi_scatfrac averaging the per-reflection ratio
+  # Fcalc_i^2/(Teps_i*Resn_i^2) directly (mean(X/Y)) rather than summing
+  # numerator and denominator separately before dividing (ratio of
+  # sums, equivalently ratio of means) -- mathematically different
+  # quantities for a heavy-tailed numerator, and the mean-of-ratios
+  # version is far more sensitive to a single extreme value.
+  #
+  # Getting this test to actually reproduce the failure took two tries:
+  # a first attempt used a CONSTANT Resn across the bin, under which
+  # mean(X/Y) and ratio-of-sums(X,Y) are algebraically identical (both
+  # reduce to mean(X)/constant) -- so it could not distinguish the fixed
+  # code from the buggy code at all, and passed even before the fix was
+  # applied. The real bug specifically needs Resn to vary substantially
+  # WITHIN one resolution bin (confirmed on real data: Resn ranged
+  # ~1.97-183 within a single ~1600-reflection high-resolution bin, a
+  # ~93x spread, std/mean ~0.86 -- resolution alone does not pin down
+  # Resn tightly) and the outlier to sit at unusually SMALL Resn (as it
+  # did in the real case) -- only then does averaging the ratio directly
+  # (dividing by that reflection's own tiny Resn^2 before any averaging)
+  # diverge from summing numerator and denominator separately.
+  n_refl = 200
+  random_state = random.Random(13)
+  d_star_sq = flex.double([0.22 + 0.001 * i for i in range(n_refl)])
+  teps = flex.double(n_refl, 1.0)
+  # Resn varying log-uniformly across a ~90x range within the bin,
+  # matching the real data's spread.
+  resn_list = [
+    math.exp(random_state.uniform(math.log(2.0), math.log(180.0)))
+    for i in range(n_refl)]
+  true_scatfrac = 0.6
+  f_calc_list = []
+  for i in range(n_refl):
+    mean_fc_sq_i = true_scatfrac * teps[i] * resn_list[i] ** 2
+    fc_mag = math.sqrt(random_state.expovariate(1.0 / mean_fc_sq_i))
+    phase = random_state.uniform(0.0, 2.0 * math.pi)
+    f_calc_list.append(complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
+  # Implant one outlier at the SMALLEST Resn in the bin (matching the
+  # real failure exactly), with a moderately (10x sqrt-scale) elevated
+  # |Fcalc| relative to what that reflection's own small Resn would
+  # typically produce.
+  small_resn_idx = min(range(n_refl), key=lambda i: resn_list[i])
+  mean_fc_sq_outlier = true_scatfrac * teps[small_resn_idx] * resn_list[small_resn_idx] ** 2
+  f_calc_list[small_resn_idx] = complex(10.0 * math.sqrt(mean_fc_sq_outlier), 0.0)
+  f_calc = flex.complex_double(f_calc_list)
+  resn = flex.double(resn_list)
+  centric_flags = flex.bool(n_refl, False)
+
+  scatfrac_fit = llgi_sigmaa.estimate_llgi_scatfrac(
+    f_calc=f_calc, teps=teps, resn=resn, d_star_sq=d_star_sq,
+    centric_flags=centric_flags, n_coeffs=4, spline_degree=3, n_bins=1)
+  fitted = flex.mean(scatfrac_fit)
+  # A single outlier reflection (even a large one) at small Resn should
+  # not be able to drag the ratio-of-sums fit far from the true value --
+  # this specific construction reproduces a ~50% relative overestimate
+  # under the pre-fix mean-of-ratios implementation (empirically
+  # checked against a standalone reimplementation of both formulas
+  # during development of this fix), well outside this bound.
+  assert abs(fitted - true_scatfrac) < 0.15, (fitted, true_scatfrac)
+
 def exercise():
   exercise_recovers_known_curves()
   exercise_convenience_wrapper_matches_two_step()
   exercise_scatfrac_uses_full_set_sigmaa_uses_test_set_only()
+  exercise_scatfrac_robust_to_single_outlier_reflection()
   print("OK")
 
 if (__name__ == "__main__"):

@@ -1888,6 +1888,57 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       sigmaa=f_obs.array(data=result.sigmaa),
       scatfrac=f_obs.array(data=result.scatfrac))
     self.set_llgi_data(updated)
+    # TEMPORARY diagnostic dump for real-data evaluation runs, gated on
+    # an env var so it is inert for every normal user/test. Not intended
+    # to be a permanent feature; revert once the evaluation is done. See
+    # doc/llgi_target_design.md sec. 9 step 5.
+    import os
+    dump_dir = os.environ.get("LLGI_SIGMAA_DUMP_DIR")
+    if(dump_dir):
+      import time
+      os.makedirs(dump_dir, exist_ok=True)
+      idx = len([f for f in os.listdir(dump_dir)
+                 if f.startswith("call_") and f.endswith(".txt")
+                 and not f.endswith("_meta.txt")])
+      path = os.path.join(dump_dir, "call_%03d.txt" % idx)
+      fc_abs = flex.abs(self.f_model().data())
+      fcalc_raw_abs = flex.abs(self.f_calc().data())
+      k_iso = self.k_isotropic()
+      k_aniso = self.k_anisotropic()
+      k = self.scale_ml_wrapper()
+      if(k is None): k = float("nan")
+      f_masks_list = self.f_masks()
+      k_masks_list = self.k_masks()
+      fmask_abs = (flex.abs(f_masks_list[0].data())
+                   if f_masks_list else flex.double(fc_abs.size(), 0.0))
+      kmask0 = (k_masks_list[0]
+                if k_masks_list else flex.double(fc_abs.size(), 0.0))
+      # Index-alignment check: llgi_data.feff was selected via manager.
+      # select() (flex.bool positional selection) alongside f_obs, so
+      # their indices() should be identical, position for position. A
+      # mismatch here would mean f_eff[i] and f_obs.d_star_sq()[i] refer
+      # to different reflections -- a silent misalignment, not a
+      # statistical/formula bug.
+      feff_indices_match = llgi_data.feff.indices().all_eq(f_obs.indices())
+      with open(path.replace(".txt", "_meta.txt"), "w") as fmeta:
+        fmeta.write("feff_indices_match_f_obs: %s\n" % feff_indices_match)
+        fmeta.write("f_obs size: %d\n" % f_obs.indices().size())
+        fmeta.write("llgi_data.feff size: %d\n" % llgi_data.feff.indices().size())
+      indices = f_obs.indices()
+      with open(path, "w") as f:
+        f.write("h k l d_star_sq sigmaa scatfrac fc_abs k_iso k_aniso "
+                 "k_scale feff teps resn fcalc_raw_abs fmask_abs kmask0\n")
+        d_star_sq_data = f_obs.d_star_sq().data()
+        for i in range(f_obs.indices().size()):
+          hkl = indices[i]
+          f.write("%d %d %d %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f "
+                   "%.6f %.6f %.6f %.6f\n" % (
+            hkl[0], hkl[1], hkl[2],
+            d_star_sq_data[i], result.sigmaa[i], result.scatfrac[i],
+            fc_abs[i], k_iso[i], k_aniso[i], k,
+            llgi_data.feff.data()[i], llgi_data.teps.data()[i],
+            llgi_data.resn.data()[i], fcalc_raw_abs[i], fmask_abs[i],
+            kmask0[i]))
     return result
 
   def f_obs_scaled(self, include_fom=False):
