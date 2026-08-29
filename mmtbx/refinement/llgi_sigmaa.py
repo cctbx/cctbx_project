@@ -110,46 +110,60 @@ def estimate_llgi_scatfrac(
       spline_degree=3,
       n_bins=20):
   """ Fit ScatFrac(resolution) as a B-spline curve by weighted least-
-  squares to per-bin *mean* ratios (not a raw per-reflection fit -- see
-  "Binning and weighting" below), using the empirical ratio
-  r_i = (scale_factor*Fcalc_i)^2/(Teps_i*Resn_i^2), whose expectation, by
-  construction of Teps/Resn (see llgi.h and doc/llgi_target_design.md sec.
-  4.2), is ScatFrac -- the fraction of total scattering accounted for by
-  the model as a function of resolution. This is a direct empirical
-  calculation, NOT an LLGI-likelihood fit: sigmaA and ScatFrac are not
-  jointly identifiable from the LLGI target alone (D = Dobs*sigmaA/
-  sqrt(ScatFrac) is the only combined quantity the target sees, so a
-  joint LBFGS fit of both curves has a degenerate ridge along which
-  target value is unchanged -- confirmed empirically before this design
-  was adopted; see doc/llgi_target_design.md sec. 5.2). Computing
-  ScatFrac this way instead breaks that degeneracy: sigmaA (see
-  estimate_llgi_sigmaa) is then fit against LLGI with ScatFrac already
-  fixed.
+  squares to per-bin RATIO-OF-SUMS estimates (not a mean of per-
+  reflection ratios -- see "Binning, point estimate, and weighting"
+  below), using sum(scale_factor*Fcalc_i)^2)/sum(Teps_i*Resn_i^2) within
+  each bin, whose expectation, by construction of Teps/Resn (see llgi.h
+  and doc/llgi_target_design.md sec. 4.2), is ScatFrac -- the fraction of
+  total scattering accounted for by the model as a function of
+  resolution. This is a direct empirical calculation, NOT an LLGI-
+  likelihood fit: sigmaA and ScatFrac are not jointly identifiable from
+  the LLGI target alone (D = Dobs*sigmaA/sqrt(ScatFrac) is the only
+  combined quantity the target sees, so a joint LBFGS fit of both curves
+  has a degenerate ridge along which target value is unchanged --
+  confirmed empirically before this design was adopted; see doc/
+  llgi_target_design.md sec. 5.2). Computing ScatFrac this way instead
+  breaks that degeneracy: sigmaA (see estimate_llgi_sigmaa) is then fit
+  against LLGI with ScatFrac already fixed.
 
-  Binning and weighting (added after an earlier, unweighted per-
-  reflection least-squares version was found, on real data, to badly
-  overestimate ScatFrac at high resolution -- see doc/
-  llgi_target_design.md sec. 5.2.2 for the full account): r_i is, under a
-  Wilson-distribution assumption for |Fcalc|^2 within a narrow resolution
-  range, itself Wilson/exponential(-like) distributed with
-  Var(r_i) = ScatFrac^2 for acentric reflections and 2*ScatFrac^2 for
-  centric (a standard factor-of-2 relationship) -- i.e. large individual
-  values are not outliers, they are the expected heavy-tailed shape of
-  the distribution, and squaring in the denominator (small Resn at high
-  resolution) makes a handful of high-|Fcalc| reflections dominate an
-  unweighted per-reflection fit. This function instead: (1) bins
-  reflections into n_bins equal-population-ish bins by d_star_sq
-  (numpy.array_split on the sorted metric), (2) computes each bin's mean
-  ratio r_bar and an effective sample size n_eff = n_acentric +
-  n_centric/2 (correcting for centric reflections' 2x variance), (3) fits
-  the B-spline in LOG space (z(x) = ln ScatFrac(x)) rather than to
-  ScatFrac directly -- by the delta method, Var(ln r_bar) ~= 1/n_eff
-  (verified numerically against both acentric and centric Monte Carlo
-  simulation), so weighting by n_eff directly in log-space is both
-  simpler and better-motivated than carrying Var(r_bar) = ScatFrac^2/
-  n_eff (circular, since ScatFrac is the unknown) through an untransformed
-  fit. Fitting in log-space also guarantees ScatFrac > 0 automatically, a
-  loose end the earlier unweighted version needed an ad hoc clip for.
+  Binning, point estimate, and weighting (the point estimate itself was
+  corrected after both an earlier unweighted per-reflection fit, AND a
+  later per-bin MEAN-of-ratios fit, were each found, on real data, to
+  badly overestimate ScatFrac at high resolution -- see doc/
+  llgi_target_design.md sec. 5.2.2/5.2.3 for the full account of both):
+  the per-reflection ratio r_i = (scale_factor*Fcalc_i)^2/(Teps_i*
+  Resn_i^2) is, under a Wilson-distribution assumption for |Fcalc|^2
+  within a narrow resolution range, itself Wilson/exponential(-like)
+  distributed with Var(r_i) = ScatFrac^2 for acentric reflections and
+  2*ScatFrac^2 for centric (a standard factor-of-2 relationship) -- i.e.
+  large individual values are not outliers, they are the expected heavy-
+  tailed shape of the distribution. Averaging r_i directly (mean(X/Y))
+  lets a single extreme |Fcalc_i| dominate the bin average on its own,
+  since squaring happens before any averaging; this was observed
+  directly on real data -- a single reflection whose |Fcalc| swung ~10x
+  between two macrocycles of ordinary refinement inflated an entire
+  ~1600-reflection bin's mean ratio by ~10x on its own (bin median was
+  unaffected). The fix is to sum numerator and denominator SEPARATELY
+  across the bin first, then divide (ratio(sum(X), sum(Y)), equivalently
+  the ratio of the bin means) -- mathematically distinct from mean(X/Y)
+  for a heavy-tailed X, and far more robust to exactly this kind of
+  single-reflection swing, since the sum of many Fcalc^2 values averages
+  out before the division happens. This function: (1) bins reflections
+  into n_bins equal-population-ish bins by d_star_sq (numpy.array_split
+  on the sorted metric), (2) computes each bin's ratio-of-sums estimate
+  r_bar and an effective sample size n_eff = n_acentric + n_centric/2
+  (correcting for centric reflections' 2x variance), (3) fits the
+  B-spline in LOG space (z(x) = ln ScatFrac(x)) rather than to ScatFrac
+  directly -- by the delta method, Var(ln r_bar) ~= 1/n_eff (re-derived
+  and verified numerically for the ratio-of-sums estimator specifically,
+  confirming the 1/n scaling carries over unchanged from the original
+  single-reflection-ratio derivation -- only the point estimate itself
+  needed to change, not the weighting), so weighting by n_eff directly
+  in log-space is both simpler and better-motivated than carrying
+  Var(r_bar) = ScatFrac^2/n_eff (circular, since ScatFrac is the
+  unknown) through an untransformed fit. Fitting in log-space also
+  guarantees ScatFrac > 0 automatically, a loose end an earlier version
+  needed an ad hoc clip for.
 
   scale_factor: the same overall scale factor k used elsewhere in the
   LLGI target (llgi.h's `k`, typically manager.scale_ml_wrapper()) --
@@ -174,7 +188,7 @@ def estimate_llgi_scatfrac(
   teps_np = teps.as_numpy_array()
   resn_np = resn.as_numpy_array()
   fc_abs_sq = ((flex.abs(f_calc) * scale_factor) ** 2).as_numpy_array()
-  ratio = fc_abs_sq / (teps_np * resn_np ** 2)
+  denom = teps_np * resn_np ** 2
   d_star_sq_np = d_star_sq.as_numpy_array()
   is_centric = centric_flags.as_numpy_array()
 
@@ -187,7 +201,28 @@ def estimate_llgi_scatfrac(
   for idx in bin_indices:
     if(len(idx) == 0):
       continue
-    r_bar = ratio[idx].mean()
+    # Ratio of bin SUMS (sum(Fcalc^2) / sum(Teps*Resn^2)), NOT the mean of
+    # the n per-reflection ratios Fcalc_i^2/(Teps_i*Resn_i^2). These are
+    # mathematically different quantities for a heavy-tailed numerator
+    # (mean(X/Y) != mean(X)/mean(Y) in general), and the per-reflection-
+    # ratio-mean version was found, on real data, to be badly distorted
+    # by a small number of individual reflections with large |Fcalc| --
+    # squaring in the denominator (small Resn at high resolution)
+    # inflates that single reflection's own ratio term directly, before
+    # any averaging happens, so it dominates the bin mean even at n~1600
+    # (traced to a specific reflection whose |Fcalc| happened to swing
+    # ~10x between two macrocycles of real refinement -- a real, if
+    # extreme, per-reflection Fcalc change, not a bug in Fcalc/Resn/Teps
+    # themselves; the bug was averaging the ratio rather than the ratio
+    # of averages). The sum-ratio construction lets Fcalc^2 values
+    # average out *before* dividing by the (roughly constant within a
+    # narrow bin) denominator, which is far more robust to exactly this
+    # kind of outlier. Re-derived and numerically verified (Monte Carlo)
+    # that Var(sum-ratio) = ScatFrac^2/n, the same 1/n scaling as the
+    # original (single-reflection-ratio) derivation, so the n_eff
+    # weighting and log-space delta-method argument below are unaffected
+    # by this fix -- only the point estimate itself needed to change.
+    r_bar = fc_abs_sq[idx].sum() / denom[idx].sum()
     if(r_bar <= 0):
       continue
     n_acentric = np.count_nonzero(~is_centric[idx])
