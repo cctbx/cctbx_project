@@ -86,7 +86,8 @@ def exercise_recovers_known_curves():
 
   scatfrac_fit = llgi_sigmaa.estimate_llgi_scatfrac(
     f_calc=data["f_calc"], teps=data["teps"], resn=data["resn"],
-    d_star_sq=data["d_star_sq"], n_coeffs=6)
+    d_star_sq=data["d_star_sq"], centric_flags=data["centric_flags"],
+    n_coeffs=6)
   scatfrac_err = flex.mean(flex.abs(scatfrac_fit - data["scatfrac_true"]))
   assert scatfrac_err < 0.05, scatfrac_err
 
@@ -116,7 +117,8 @@ def exercise_convenience_wrapper_matches_two_step():
 
   scatfrac_fit = llgi_sigmaa.estimate_llgi_scatfrac(
     f_calc=data["f_calc"], teps=data["teps"], resn=data["resn"],
-    d_star_sq=data["d_star_sq"], n_coeffs=8)
+    d_star_sq=data["d_star_sq"], centric_flags=data["centric_flags"],
+    n_coeffs=8)
   step2 = llgi_sigmaa.estimate_llgi_sigmaa(
     f_eff=data["f_eff"], r_free_flags=r_free_flags, f_calc=data["f_calc"],
     dobs=data["dobs"], scatfrac=scatfrac_fit, teps=data["teps"],

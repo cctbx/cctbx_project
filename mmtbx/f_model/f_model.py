@@ -1820,9 +1820,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def update_llgi_sigmaa_scatfrac(self, params=None):
     """ (Re-)fit sigmaA(resolution) and ScatFrac(resolution) against the
-    current model (self.f_calc()) and attach the result to this
-    manager's llgi_data (see set_llgi_data()), for use by the llgi
-    refinement target.
+    current model (self.f_model(), i.e. bulk-solvent- and scale-corrected
+    -- see the f_calc= call below for why raw f_calc() is wrong here) and
+    attach the result to this manager's llgi_data (see set_llgi_data()),
+    for use by the llgi refinement target.
 
     Mirrors update_all_scales(): called explicitly, once per macrocycle,
     from the refinement driver (see doc/llgi_target_design.md sec. 5,
@@ -1850,10 +1851,30 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         "TEPS/RESN) to already be attached via set_llgi_data().")
     import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
     f_obs = self.f_obs()
+    # f_model() (bulk solvent + k_isotropic + k_anisotropic applied), not
+    # the raw atomic-model f_calc(): this is what the llgi target
+    # functor itself is actually evaluated against during minimization
+    # (mmtbx/refinement/targets.py's target_result.d_target_d_f_calc_work
+    # confirms the convention every ML-family target uses -- gradients
+    # w.r.t. f_calc are always derived via k_anisotropic/k_isotropic-
+    # scaled f_model, and ml_sad's target_functor explicitly passes
+    # f_calc=manager.f_model() for the same reason). Using raw f_calc()
+    # here instead (an earlier version of this method did) was caught as
+    # a real bug on real data: it produced a wildly implausible, steeply
+    # resolution-dependent ScatFrac (up to ~30-40x, when it should stay
+    # order-1) on a dataset with substantial anisotropic diffraction
+    # (elongated 40.9x46.8x283A cell), because raw f_calc lacks the
+    # k_isotropic correction (which itself ranged 1.03-2.21 across
+    # resolution on that dataset) that both Feff/Resn (derived from the
+    # real, anisotropy-affected experimental data) and f_model() already
+    # reflect. scale_ml_wrapper() (an overall scalar k, distinct from the
+    # per-reflection k_isotropic/k_anisotropic already folded into
+    # f_model()) is passed through unchanged, matching how llgi.h's own
+    # scale_factor argument is used elsewhere.
     result = llgi_sigmaa.estimate_llgi_sigmaa_scatfrac(
       f_eff         = llgi_data.feff.data(),
       r_free_flags  = self.r_free_flags().data(),
-      f_calc        = self.f_calc().data(),
+      f_calc        = self.f_model().data(),
       dobs          = llgi_data.dobs.data(),
       teps          = llgi_data.teps.data(),
       resn          = llgi_data.resn.data(),

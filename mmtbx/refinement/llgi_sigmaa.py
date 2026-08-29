@@ -21,27 +21,51 @@ llgi_sigmaa_scatfrac_params = iotbx.phil.parse("""\
     .type = int
     .expert_level = 3
     .help = "Degree of the clamped B-spline basis used for both curves."
+  n_scatfrac_bins = 20
+    .type = int
+    .expert_level = 3
+    .help = "Number of d*^2 bins ScatFrac's per-reflection Fcalc^2/" \
+            "(Teps*Resn^2) ratio is averaged over before spline-fitting " \
+            "in log space, weighted by each bin's effective reflection " \
+            "count (n_acentric + n_centric/2). See " \
+            "mmtbx.refinement.llgi_sigmaa.estimate_llgi_scatfrac."
   max_iterations = 100
     .type = int
     .expert_level = 3
 """)
 
-def _b_spline_design_matrix(x, n_coeffs, degree):
+def _b_spline_design_matrix(x, n_coeffs, degree, x_range=None):
   """ Clamped B-spline design matrix B[i,k] = B_k(x[i]), for a basis with
-  interior knots evenly spaced over [min(x), max(x)] (mapped internally to
-  [0,1] and back, so this works for any x range including d*^2). Returns
-  a numpy array of shape (len(x), n_coeffs). Since a curve z(x) = design
-  @ coeffs is linear in coeffs, this matrix needs to be built only once
-  per macrocycle (x -- the resolution metric per reflection -- does not
+  interior knots evenly spaced over x_range (mapped internally to [0,1]
+  and back, so this works for any x range including d*^2). Returns a
+  numpy array of shape (len(x), n_coeffs). Since a curve z(x) = design @
+  coeffs is linear in coeffs, this matrix needs to be built only once per
+  macrocycle (x -- the resolution metric per reflection -- does not
   change during a sigmaA/ScatFrac fit) and is reused every LBFGS
   iteration (for sigmaA) or in a single least-squares solve (for
   ScatFrac); see doc/llgi_target_design.md sec. 5.2.
+
+  x_range: (x_min, x_max) to normalise against. If None, derived from
+  x itself (the historical default, fine when this function is called
+  once against the full reflection set). MUST be passed explicitly and
+  consistently when this function is called more than once for the same
+  fit against different x arrays (e.g. once against per-bin centres to
+  solve for spline coefficients, once against the full per-reflection
+  array to evaluate the fitted curve) -- otherwise the two calls
+  normalise x differently (bin centres never span the full data's
+  min/max) and the resulting coefficients get silently misapplied when
+  evaluated on the second array. Caught while adding per-bin fitting to
+  estimate_llgi_scatfrac, which calls this function twice for exactly
+  that reason.
   """
   import numpy as np
   from scipy.interpolate import BSpline
   x = np.asarray(x, dtype=float)
-  x_min = float(x.min())
-  x_max = float(x.max())
+  if(x_range is None):
+    x_min = float(x.min())
+    x_max = float(x.max())
+  else:
+    x_min, x_max = x_range
   if(x_max <= x_min):
     # Degenerate resolution range (e.g. a single reflection, or all
     # reflections at identical resolution): fall back to a constant
@@ -80,24 +104,52 @@ def estimate_llgi_scatfrac(
       teps,
       resn,
       d_star_sq,
+      centric_flags,
       scale_factor=1.0,
       n_coeffs=8,
-      spline_degree=3):
-  """ Fit ScatFrac(resolution) as a B-spline curve by ordinary weighted
-  least-squares against the empirical per-reflection ratio
-  (scale_factor*Fcalc)^2/(Teps*Resn^2), whose shell mean is, by
+      spline_degree=3,
+      n_bins=20):
+  """ Fit ScatFrac(resolution) as a B-spline curve by weighted least-
+  squares to per-bin *mean* ratios (not a raw per-reflection fit -- see
+  "Binning and weighting" below), using the empirical ratio
+  r_i = (scale_factor*Fcalc_i)^2/(Teps_i*Resn_i^2), whose expectation, by
   construction of Teps/Resn (see llgi.h and doc/llgi_target_design.md sec.
-  4.2), an estimate of ScatFrac -- the fraction of total scattering
-  accounted for by the model as a function of resolution. This is a
-  direct empirical calculation, NOT an LLGI-likelihood fit: sigmaA and
-  ScatFrac are not jointly identifiable from the LLGI target alone
-  (D = Dobs*sigmaA/sqrt(ScatFrac) is the only combined quantity the
-  target sees, so a joint LBFGS fit of both curves has a degenerate ridge
-  along which target value is unchanged -- confirmed empirically before
-  this design was adopted; see doc/llgi_target_design.md sec. 5.2).
-  Computing ScatFrac this way instead breaks that degeneracy: sigmaA
-  (see estimate_llgi_sigmaa) is then fit against LLGI with ScatFrac
-  already fixed.
+  4.2), is ScatFrac -- the fraction of total scattering accounted for by
+  the model as a function of resolution. This is a direct empirical
+  calculation, NOT an LLGI-likelihood fit: sigmaA and ScatFrac are not
+  jointly identifiable from the LLGI target alone (D = Dobs*sigmaA/
+  sqrt(ScatFrac) is the only combined quantity the target sees, so a
+  joint LBFGS fit of both curves has a degenerate ridge along which
+  target value is unchanged -- confirmed empirically before this design
+  was adopted; see doc/llgi_target_design.md sec. 5.2). Computing
+  ScatFrac this way instead breaks that degeneracy: sigmaA (see
+  estimate_llgi_sigmaa) is then fit against LLGI with ScatFrac already
+  fixed.
+
+  Binning and weighting (added after an earlier, unweighted per-
+  reflection least-squares version was found, on real data, to badly
+  overestimate ScatFrac at high resolution -- see doc/
+  llgi_target_design.md sec. 5.2.2 for the full account): r_i is, under a
+  Wilson-distribution assumption for |Fcalc|^2 within a narrow resolution
+  range, itself Wilson/exponential(-like) distributed with
+  Var(r_i) = ScatFrac^2 for acentric reflections and 2*ScatFrac^2 for
+  centric (a standard factor-of-2 relationship) -- i.e. large individual
+  values are not outliers, they are the expected heavy-tailed shape of
+  the distribution, and squaring in the denominator (small Resn at high
+  resolution) makes a handful of high-|Fcalc| reflections dominate an
+  unweighted per-reflection fit. This function instead: (1) bins
+  reflections into n_bins equal-population-ish bins by d_star_sq
+  (numpy.array_split on the sorted metric), (2) computes each bin's mean
+  ratio r_bar and an effective sample size n_eff = n_acentric +
+  n_centric/2 (correcting for centric reflections' 2x variance), (3) fits
+  the B-spline in LOG space (z(x) = ln ScatFrac(x)) rather than to
+  ScatFrac directly -- by the delta method, Var(ln r_bar) ~= 1/n_eff
+  (verified numerically against both acentric and centric Monte Carlo
+  simulation), so weighting by n_eff directly in log-space is both
+  simpler and better-motivated than carrying Var(r_bar) = ScatFrac^2/
+  n_eff (circular, since ScatFrac is the unknown) through an untransformed
+  fit. Fitting in log-space also guarantees ScatFrac > 0 automatically, a
+  loose end the earlier unweighted version needed an ad hoc clip for.
 
   scale_factor: the same overall scale factor k used elsewhere in the
   LLGI target (llgi.h's `k`, typically manager.scale_ml_wrapper()) --
@@ -106,31 +158,64 @@ def estimate_llgi_scatfrac(
   the experimental data), so it must be rescaled by k for this ratio to
   mean what "fraction of total scattering, ~1 for a complete model"
   requires. Omitting this (an earlier draft of this function did) can
-  give wildly implausible ScatFrac values (e.g. in the thousands) whenever
-  Fcalc's absolute scale differs from Feff/Resn's, as was caught testing
-  against a real (if crudely scaled) mmtbx.f_model.manager rather than
-  only hand-constructed unit-scale test arrays.
+  give wildly implausible ScatFrac values whenever Fcalc's absolute scale
+  differs from Feff/Resn's, as was caught testing against a real (if
+  crudely scaled) mmtbx.f_model.manager rather than only hand-constructed
+  unit-scale test arrays.
 
   Uses the FULL reflection set (not R-free/test-set-only), since this is
   an empirical intensity ratio, not a likelihood optimisation at risk of
   overfitting to the set it is validated against.
 
   Returns a flex.double, one ScatFrac value per input reflection
-  (evaluated at that reflection's own d_star_sq), clamped to a small
-  positive floor for numerical safety in downstream 1/sqrt(scatfrac)
-  divisions.
+  (evaluated at that reflection's own d_star_sq).
   """
   import numpy as np
   teps_np = teps.as_numpy_array()
   resn_np = resn.as_numpy_array()
   fc_abs_sq = ((flex.abs(f_calc) * scale_factor) ** 2).as_numpy_array()
-  target_ratio = fc_abs_sq / (teps_np * resn_np ** 2)
-  design = _b_spline_design_matrix(
-    d_star_sq.as_numpy_array(), n_coeffs, spline_degree)
+  ratio = fc_abs_sq / (teps_np * resn_np ** 2)
+  d_star_sq_np = d_star_sq.as_numpy_array()
+  is_centric = centric_flags.as_numpy_array()
+
+  order = np.argsort(d_star_sq_np)
+  n_bins_eff = max(1, min(n_bins, len(order)))
+  bin_indices = np.array_split(order, n_bins_eff)
+  bin_x = []
+  bin_log_ratio = []
+  bin_weight = []
+  for idx in bin_indices:
+    if(len(idx) == 0):
+      continue
+    r_bar = ratio[idx].mean()
+    if(r_bar <= 0):
+      continue
+    n_acentric = np.count_nonzero(~is_centric[idx])
+    n_centric = np.count_nonzero(is_centric[idx])
+    n_eff = n_acentric + 0.5 * n_centric
+    if(n_eff <= 0):
+      continue
+    bin_x.append(d_star_sq_np[idx].mean())
+    bin_log_ratio.append(np.log(r_bar))
+    bin_weight.append(n_eff)
+  bin_x = np.array(bin_x)
+  bin_log_ratio = np.array(bin_log_ratio)
+  bin_weight = np.array(bin_weight)
+
+  # Both design matrices below MUST share the same normalisation range
+  # (the full dataset's d*^2 range, not the narrower range spanned by
+  # bin centres) -- see _b_spline_design_matrix's x_range docstring.
+  x_range = (float(d_star_sq_np.min()), float(d_star_sq_np.max()))
+  design_bins = _b_spline_design_matrix(
+    bin_x, n_coeffs, spline_degree, x_range=x_range)
+  sqrt_w = np.sqrt(bin_weight)
   coeffs, _residuals, _rank, _sv = np.linalg.lstsq(
-    design, target_ratio, rcond=None)
-  fitted = design.dot(coeffs)
-  fitted = np.clip(fitted, 1.e-4, None)
+    design_bins * sqrt_w[:, None], bin_log_ratio * sqrt_w, rcond=None)
+
+  design_all = _b_spline_design_matrix(
+    d_star_sq_np, n_coeffs, spline_degree, x_range=x_range)
+  fitted_log = design_all.dot(coeffs)
+  fitted = np.exp(fitted_log)
   return flex.double(fitted)
 
 class llgi_sigmaa_target_evaluator(object):
@@ -316,8 +401,10 @@ def estimate_llgi_sigmaa_scatfrac(
     params = llgi_sigmaa_scatfrac_params.extract()
   scatfrac = estimate_llgi_scatfrac(
     f_calc=f_calc, teps=teps, resn=resn, d_star_sq=d_star_sq,
+    centric_flags=centric_flags,
     scale_factor=scale_factor,
-    n_coeffs=params.n_scatfrac_coeffs, spline_degree=params.spline_degree)
+    n_coeffs=params.n_scatfrac_coeffs, spline_degree=params.spline_degree,
+    n_bins=params.n_scatfrac_bins)
   sigmaa_result = estimate_llgi_sigmaa(
     f_eff=f_eff, r_free_flags=r_free_flags, f_calc=f_calc, dobs=dobs,
     scatfrac=scatfrac, teps=teps, resn=resn, centric_flags=centric_flags,
