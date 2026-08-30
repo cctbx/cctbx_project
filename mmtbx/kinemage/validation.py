@@ -344,7 +344,9 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       pass
   return probe_return
 
-def make_probe_dots_from_model(model_manager, per_model=False):
+def make_probe_dots_from_model(model_manager, per_model=False,
+                               approach="self", source_selection=None,
+                               target_selection=None):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
@@ -353,6 +355,11 @@ def make_probe_dots_from_model(model_manager, per_model=False):
   per_model=True returns one section per MODEL (labeled plain "self dots",
   for nesting in per-model groups); False returns the concatenated string
   with per-model labels ("self dots m1", ...) on multi-model files.
+
+  approach, source_selection and target_selection pass through to probe2 and
+  default to its previous behaviour. They let a caller skip contacts probe
+  cannot interpret: with no restraints for a residue it has no bonds to
+  exclude, so every intra-residue pair reads as a clash.
   """
   try:
     from mmtbx.programs import probe2
@@ -389,7 +396,7 @@ def make_probe_dots_from_model(model_manager, per_model=False):
       parser = iotbx.cli_parser.CCTBXParser(
         program_class=probe2.Program, logger=null_out())
       args = [
-        "approach=self",
+        "approach=%s" % approach,
         "output.format=kinemage",
         "output.filename='%s'" % tempName,
         "output.separate_worse_clashes=True",
@@ -402,6 +409,11 @@ def make_probe_dots_from_model(model_manager, per_model=False):
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
+      # Quoted: unquoted, a selection parses as several phil arguments.
+      if source_selection is not None:
+        args.append("source_selection='%s'" % source_selection)
+      if target_selection is not None:
+        args.append("target_selection='%s'" % target_selection)
       parser.parse_args(args)
       dm = parser.data_manager
       p2 = probe2.Program(dm, parser.working_phil.extract(),
