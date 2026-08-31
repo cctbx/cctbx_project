@@ -30,22 +30,15 @@ def remove_models_except_index(model_manager, model_index):
                 hierarchy.remove_model(model=model)
     return model_manager
 
-# Cache of parsed probe2 parameter sets, keyed by the argument strings that
-# produce them.  Building a CCTBXParser and parsing the phil arguments is pure
-# text processing whose result is identical for identical arguments, but it
-# costs on the order of 0.1 s and was being redone for every model of an
-# ensemble.  The per-run output file name is deliberately not part of the
-# arguments; it is patched into the freshly extracted parameters instead, so
-# every model of an ensemble (whose occupancy fraction is almost always the
-# same) shares one parse.  A model with a different occupancy fraction simply
-# gets its own cache entry, keeping the behavior identical to parsing anew.
+# Parsed probe2 phil keyed by argument strings.  The per-run output file
+# name is patched into each freshly extracted params object rather than
+# parsed, so all models of an ensemble share one parse.
 _probe2_phil_cache = {}
 
 def _probe2_params_from_args(args, output_filename):
-  """Return (master_phil, params) for running probe2 with the given argument
-  strings, using a cached parse when the same arguments have been seen before.
-  A fresh params object is extracted per call (so callers can mutate it
-  freely), with params.output.filename set to output_filename."""
+  """Return (master_phil, params) for the given probe2 arguments, parsing
+  at most once per distinct argument list.  Each call extracts a fresh params
+  object with params.output.filename set to output_filename."""
   key = tuple(args)
   cached = _probe2_phil_cache.get(key)
   if cached is None:
@@ -80,12 +73,10 @@ def _atom_index_by_key(hierarchy):
   return ret
 
 def _deep_copy_with_selection_support(model):
-  """Deep-copy a processed model manager, keeping model.selection() working.
-  model.select() (which deep_copy() uses) does not carry the monomer mappings
-  that selection() needs for keywords like "backbone" and "sidechain".  The
-  copy shares the original's atom layout, so the original's mappings remain
-  valid for it.  Prime the atom selection cache as well because selection()
-  hands the raw cache attribute to the selection manager."""
+  """Deep-copy a processed model manager, keeping model.selection() working:
+  deep_copy() drops the monomer mappings that selection keywords like
+  "backbone" need, and the copy's identical atom layout keeps the original's
+  valid."""
   work = model.deep_copy()
   work._all_monomer_mappings = model._all_monomer_mappings
   work.get_atom_selection_cache()
@@ -244,21 +235,12 @@ class clashscore2(validation):
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
 
-    # All models of an ensemble are required to share composition, so their
-    # restraints (and per-atom energy/H-bond types) are identical; only the
-    # coordinates (and possibly occupancies and B factors) differ.  Rather than
-    # letting probe2 process each model separately (which re-reads the monomer
-    # library and re-interprets the model every time), process one model with
-    # probe2's own interpretation parameters and reuse it: when the model has
-    # no waters, probe2 cannot modify it (it only adds Phantom Hydrogens to
-    # waters), so the SAME manager is reused for every model with each model's
-    # atom parameters written in place.  This keeps memory flat; making a deep
-    # copy per model was found to permanently grow the native heap by tens of
-    # MB per model on large models.  When waters are present, each run gets a
-    # deep copy of the pristine master instead, since probe2 may attach
-    # Phantom Hydrogens to the hierarchy it is given.  If a model's atoms do
-    # not correspond one-to-one with the master's, fall back to processing
-    # that model as before.
+    # Ensemble models share composition, so restraints are made once on a
+    # master model and reused.  With no waters probe2 cannot modify the model
+    # (its only mutation is adding Phantom Hydrogens to waters), so the master
+    # itself is reused with each model's atom parameters written in place;
+    # with waters each probe2 run gets a deep copy.  Any atom mismatch falls
+    # back to per-model processing.
     original_hierarchy = pdb_hierarchy
     processed_master = None
     master_key_to_index = None
@@ -303,9 +285,7 @@ class clashscore2(validation):
               work_model_manager = processed_master
               model_is_processed = True
             else:
-              # Use the same copy-and-transfer path as later models (an
-              # identity transfer here) so that every probe2 run gets the same
-              # kind of model and the master itself stays pristine.
+              # Identity transfer, keeping the master pristine.
               work_model_manager = _copy_of_master_with_atoms_from(
                 processed_master, master_key_to_index, r)
               model_is_processed = work_model_manager is not None
@@ -679,11 +659,8 @@ class probe_clashscore_manager(object):
     self.n_atoms = 0
     self.natoms_b_cutoff = 0
 
-    # probe2's run() can add Phantom Hydrogens to the hierarchy of the model it
-    # is given.  When we are reusing a processed model and will run probe2 a
-    # second time below, keep a pristine copy for that second run so that the
-    # first run's additions do not confuse it (the unprocessed path instead
-    # re-processes the model, which handles this).
+    # probe2 can add Phantom Hydrogens to the model it runs on; keep a
+    # pristine copy for the second (save_probe_output) run.
     pristine_model = None
     if self.save_probe_output and processed:
       pristine_model = _deep_copy_with_selection_support(hydrogenated_model)

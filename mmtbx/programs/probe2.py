@@ -427,11 +427,9 @@ def _condense(dotInfoList, condense):
 
 def getPdbInterpretationParams(useNeutronDistances = False):
   '''
-    Get the PDB interpretation parameters that probe2 uses when it processes a
-    model to make restraints.  A caller that processes a model itself and then
-    passes it to overrideModel() with processed=True must process with these
-    same parameters (and a matching use_neutron_distances setting) so that the
-    behavior is the same as if probe2 had processed the model.
+    PDB interpretation parameters probe2 uses to make restraints.  A caller that
+    pre-processes a model for overrideModel(processed=True) must use these same
+    parameters, and a matching use_neutron_distances.
   '''
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.use_neutron_distances = useNeutronDistances
@@ -1920,14 +1918,11 @@ Note:
     '''This is a hack to let another program harness probe2 without having to write a
     new model file for it to read. After initializing probe2, but before calling
     run(), call this function to override the model that it should use.
-    :param processed: When True, the model has already had restraints made on it
-    using the parameters returned by getPdbInterpretationParams() (with a matching
-    use_neutron_distances setting) and run() will not process it again.  This lets
-    a caller that runs probe2 on many models with identical composition (for example
-    the models of an NMR ensemble) process one of them and reuse the restraints
-    for the others.  Note that run() can add Phantom Hydrogens to the hierarchy of
-    the model it is given (for waters with no explicit Hydrogens), so a caller that
-    reuses a processed model across runs should hand each run a deep copy.
+    :param processed: When True, restraints were already made with
+    getPdbInterpretationParams() and run() will not process the model again, which
+    lets a caller reuse one interpretation across the models of an ensemble.
+    run() can add Phantom Hydrogens to the hierarchy (waters with no explicit H),
+    so each run needs its own deep copy.
     '''
     self.model = model
     self._modelAlreadyProcessed = processed

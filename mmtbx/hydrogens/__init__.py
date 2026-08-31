@@ -592,11 +592,9 @@ def default_probe_phil():
 
 def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
       probe_phil, raise_on_missing, log):
-  """Placement + orientation/flip optimization for a model, without the final
-  interpretation-only re-process.  Returns the hydrogenated model.  Raises
-  Sorry right after placement (before optimizing) when restraints were not
-  found for some residues and raise_on_missing is set, matching the original
-  order of operations."""
+  """Placement + orientation/flip optimization, without the final
+  interpretation-only re-process.  Raises Sorry after placement (before
+  optimizing) when restraints are missing and raise_on_missing is set."""
   from mmtbx.hydrogens import reduce_hydrogen
   from mmtbx.reduce import Optimizers
   o = reduce_hydrogen.place_hydrogens(
@@ -644,14 +642,9 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
 
   hierarchy = model.get_hierarchy()
   if len(hierarchy.models()) > 1:
-    # Hydrogenate a multi-model file one model at a time.  The models of an
-    # ensemble are spatially superimposed, so making restraints on the whole
-    # file at once is quadratic in the number of models (every atom sees
-    # nonbonded neighbors from every model); a 21-model NMR entry was measured
-    # to peak over 13 GB that way.  Placement and optimization are per-model
-    # operations (the flip Optimizer already treats each MODEL independently),
-    # so per-model processing gives the same hydrogens with memory
-    # proportional to a single model.
+    # One model at a time: superimposed ensemble models make whole-file
+    # restraints quadratic in the model count, and placement and flip
+    # optimization are per-model operations anyway.
     cs = model.crystal_symmetry()
     ro = model.get_restraint_objects()
     combined = iotbx.pdb.hierarchy.root()
@@ -683,9 +676,8 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
       model, do_flips, nuclear, keep_existing_H, probe_phil,
       raise_on_missing, log)
 
-  # Re-process for output safety (matches clashscore2: avoids a pair_proxies crash
-  # when writing mmCIF). No restraints are needed afterwards, and an
-  # interpretation-only process is linear in the number of models.
+  # Re-process for output safety (avoids a pair_proxies crash when writing
+  # mmCIF).  Interpretation-only, which stays linear in the model count.
   model.get_hierarchy().sort_atoms_in_place()
   model.get_hierarchy().atoms().reset_serial()
   p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
