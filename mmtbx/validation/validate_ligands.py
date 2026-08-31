@@ -1450,9 +1450,14 @@ class ligand_result(object):
     peaks_neg = list(co_neg.regions())[1:]
     n_peaks_pos = len(peaks_pos)
     n_peaks_neg = len(peaks_neg)
+    # Positive and negative blobs are reported separately as well as pooled.
     percent_bad_blobs = 0
+    percent_blobs_pos = 0
+    percent_blobs_neg = 0
     if sel.size() != 0:
-      percent_bad_blobs = 100*(sum(peaks_pos)+sum(peaks_neg))/sel.size()
+      percent_blobs_pos = 100*sum(peaks_pos)/sel.size()
+      percent_blobs_neg = 100*sum(peaks_neg)/sel.size()
+      percent_bad_blobs = percent_blobs_pos + percent_blobs_neg
 
     #print('percent bad blobs', round(percent_bad_blobs, 3)*100.0)
     #print('number of bad peaks pos, neg', n_peaks_pos, n_peaks_neg)
@@ -1464,7 +1469,11 @@ class ligand_result(object):
       fofc_map_values = fofc_map_values,
       percent_bad_at_atom_centers     = percent_bad,
       n_bad_blobs = n_peaks_pos+ n_peaks_neg,
-      percent_bad_blobs = percent_bad_blobs
+      percent_bad_blobs = percent_bad_blobs,
+      n_blobs_pos = n_peaks_pos,
+      n_blobs_neg = n_peaks_neg,
+      percent_blobs_pos = percent_blobs_pos,
+      percent_blobs_neg = percent_blobs_neg
       )
 
     return self._map_values
@@ -1690,6 +1699,10 @@ class ligand_result(object):
         percent_bad_at_atom_centers = _f(mapv.percent_bad_at_atom_centers) if mapv is not None else None,
         n_bad_blobs                 = _i(mapv.n_bad_blobs)                 if mapv is not None else None,
         percent_bad_blobs           = _f(mapv.percent_bad_blobs)           if mapv is not None else None,
+        n_blobs_pos                 = _i(mapv.n_blobs_pos)                 if mapv is not None else None,
+        n_blobs_neg                 = _i(mapv.n_blobs_neg)                 if mapv is not None else None,
+        percent_blobs_pos           = _f(mapv.percent_blobs_pos)           if mapv is not None else None,
+        percent_blobs_neg           = _f(mapv.percent_blobs_neg)           if mapv is not None else None,
       ) if mapv is not None else None,
       fragment_png_bytes = fragment_png_bytes,
       missing_atoms = group_args(

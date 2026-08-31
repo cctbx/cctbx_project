@@ -74,6 +74,7 @@ def run():
   run_test26()
   run_test27()
   run_test28()
+  run_test29()
 
 # ------------------------------------------------------------------------------
 
@@ -1619,6 +1620,35 @@ def run_test28():
     assert ac.flag == 'ok', (ac.flag, ac.reason)
     seen += 1
   assert seen == 2, seen
+
+# ------------------------------------------------------------------------------
+
+def run_test29():
+  print('test29')
+  # get_map_values must report positive and negative difference blobs
+  # separately.
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  seen = 0
+  for lr in vl_manager:
+    mv = lr.get_map_values()
+    if mv is None: continue
+    seen += 1
+    # the split fields exist and are non-negative
+    for attr in ('n_blobs_pos', 'n_blobs_neg',
+                 'percent_blobs_pos', 'percent_blobs_neg'):
+      assert hasattr(mv, attr), attr
+      assert getattr(mv, attr) >= 0, (attr, getattr(mv, attr))
+    # and they reconstruct the pooled values that were reported before
+    assert mv.n_blobs_pos + mv.n_blobs_neg == mv.n_bad_blobs, (
+      mv.n_blobs_pos, mv.n_blobs_neg, mv.n_bad_blobs)
+    assert approx_equal(mv.percent_blobs_pos + mv.percent_blobs_neg,
+                        mv.percent_bad_blobs, eps=1.e-6), (
+      mv.percent_blobs_pos, mv.percent_blobs_neg, mv.percent_bad_blobs)
+  assert seen > 0, 'no ligand had map values'
 
 # ------------------------------------------------------------------------------
 
