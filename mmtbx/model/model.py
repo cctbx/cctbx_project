@@ -3216,16 +3216,36 @@ class manager(object):
   def reset_occupancy_for_hydrogens_simple(self):
     """
     Set occupancy of H to be the same as the parent.
+
+    Exception: an H sitting in an alternate-conformation atom group whose
+    parent heavy atom is in the blank-altloc group belongs to that conformer
+    alone. Copying the shared parent's occupancy into every copy would make a
+    single hydrogen exist at a total occupancy of n_altlocs. Such copies take
+    their own conformer's occupancy instead.
     """
     if(self.restraints_manager is None): return
     hd_sel = self.get_hd_selection()
     if(hd_sel.count(True) > 0):
       assert self._xray_structure is not None
-      xh_conn_table = self.xh_connectivity_table()
+      atoms = self.get_hierarchy().atoms()
+      # Representative occupancy of each alternate conformer, taken over its
+      # non-H atoms. H are excluded because they are what is being assigned.
+      conformer_occ = {}
+      for ag in self.get_hierarchy().atom_groups():
+        if(not ag.altloc.strip()): continue
+        values = [a.occ for a in ag.atoms() if not a.element_is_hydrogen()]
+        if(len(values) > 0):
+          conformer_occ[ag.memory_id()] = sum(values)/len(values)
       occ = self.get_occ()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
-        occ[i_h] = occ[i_x]
+        ag_h = atoms[i_h].parent()
+        if(ag_h.altloc.strip()
+           and not atoms[i_x].parent().altloc.strip()
+           and ag_h.memory_id() in conformer_occ):
+          occ[i_h] = conformer_occ[ag_h.memory_id()]
+        else:
+          occ[i_h] = occ[i_x]
       self.set_occupancies(values = occ)
 
   def reset_occupancies_for_hydrogens(self):

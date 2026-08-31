@@ -734,10 +734,20 @@ class ligand_result(object):
   # ----------------------------------------------------------------------------
 
   def _conformer_occ(self, altloc, rg):
+    '''
+    Mean occupancy of one alternate conformer, over non-H atoms only.
+
+    Defensive: a conformer's occupancy is a property of its heavy atoms, so
+    hydrogens are excluded rather than trusted. Any model whose H occupancies
+    disagree with their parents would shift the conformer occupancies and make
+    the sum check meaningless.
+    '''
     occs = flex.double()
     for ag in rg.atom_groups():
-      if ag.altloc.strip() == altloc:
-        occs.extend(ag.atoms().extract_occ())
+      if ag.altloc.strip() != altloc: continue
+      for atom in ag.atoms():
+        if atom.element_is_hydrogen(): continue
+        occs.append(atom.occ)
     if occs.size() == 0:
       return 0.0
     return flex.mean(occs)
