@@ -896,103 +896,94 @@ Note:
         for e in excluded:
           atomSet.discard(e)
 
-        # Check each dot to see if it interacts with non-bonded nearby target atoms.
+        # Batched: one C++ call for all of this atom's dots, rather than one
+        # crossing per dot.  Only dots needing handling come back (Ignore and
+        # non-overlapping annular dots are dropped); dotOffset identifies each.
         srcDots = self._dots[src]
         scale = self.params.overlap_scale_factor
-        for dotvect in srcDots:
+        interacting = list(atomSet)
+        for res in self._dotScorer.check_dots(src, srcDots, probeRadius, interacting, excluded, scale):
 
-          # Find out if there is an interaction
-          res = self._dotScorer.check_dot(src, dotvect, probeRadius, list(atomSet), excluded, scale)
-
-          # Classify the interaction and store appropriate results unless we should
-          # ignore the result because there was not valid overlap.
+          # Classify the interaction and store appropriate results.
           overlapType = res.overlapType
+          dotvect = res.dotOffset
 
-          # If the overlap type is NoOverlap, check dot to make sure it is not annular.
-          # This excludes dots that are further from the contact than dots could be at
-          # the ideal just-touched contact.
-          if overlapType == probeExt.OverlapType.NoOverlap and res.annular:
+          # If the cause of the dot is not in the target set, we ignore the dot.
+          if not res.cause in targetSet:
             continue
 
-          # Handle any dots that should not be ignored.
-          if overlapType != probeExt.OverlapType.Ignore:
+          # If the overlap type is not a Hydrogen bond, then check the occupancy of atoms where
+          # at least one of the pair is on the "" or " " alternate conformation to make sure the
+          # sum of their occupancies is greater than 1.
+          if overlapType != probeExt.OverlapType.HydrogenBond:
+            if (src.parent().altloc in ['',' ']) or (res.cause.parent().altloc in ['',' ']):
+              if src.occ + res.cause.occ <= 1:
+                continue
 
-            # If the cause of the dot is not in the target set, we ignore the dot.
-            if not res.cause in targetSet:
-              continue
+          # See whether this dot is allowed based on our parameters.
+          spo = self.params.output
+          show = False
+          interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
+          if interactionType == probeExt.InteractionType.Invalid:
+            print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
+            continue
 
-            # If the overlap type is not a Hydrogen bond, then check the occupancy of atoms where
-            # at least one of the pair is on the "" or " " alternate conformation to make sure the
-            # sum of their occupancies is greater than 1.
-            if overlapType != probeExt.OverlapType.HydrogenBond:
-              if (src.parent().altloc in ['',' ']) or (res.cause.parent().altloc in ['',' ']):
-                if src.occ + res.cause.occ <= 1:
-                  continue
+          # Main branch if we're reporting other than bad clashes
+          if (not spo.only_report_bad_clashes):
+            # We are reporting other than bad clashes, see if our type is being reported
+            if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
+              show = True
+            elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
+              show = True
+            elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
+              show = True
+          else:
+            # We are only reporting bad clashes.  See if we're reporting clashes and this is
+            # a bad one.
+            if (spo.report_clashes and interactionType in [
+                  probeExt.InteractionType.Bump, probeExt.InteractionType.BadBump]):
+              show = True
 
-            # See whether this dot is allowed based on our parameters.
-            spo = self.params.output
-            show = False
-            interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
-            if interactionType == probeExt.InteractionType.Invalid:
-              print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
-              continue
+          # If we're not showing this one, skip to the next
+          if not show:
+            continue
 
-            # Main branch if we're reporting other than bad clashes
-            if (not spo.only_report_bad_clashes):
-              # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
-                show = True
-              elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
-                show = True
-              elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
-                show = True
-            else:
-              # We are only reporting bad clashes.  See if we're reporting clashes and this is
-              # a bad one.
-              if (spo.report_clashes and interactionType in [
-                    probeExt.InteractionType.Bump, probeExt.InteractionType.BadBump]):
-                show = True
+          # Determine the ptmaster (main/side chain interaction type) and keep track of
+          # counts for each type.
+          causeMainChain = self._inMainChain[res.cause]
+          causeSideChain = self._inSideChain[res.cause]
+          causeHet = self._inHet[res.cause]
+          ptmaster = ' '
+          if srcMainChain and causeMainChain:
+            if (not srcHet) and (not causeHet): # This may be a redundant check
+              ptmaster = 'M'
+              self._MCMCCount[interactionType] += 1
+          elif srcSideChain and causeSideChain:
+            if (not srcHet) and (not causeHet): # This may be a redundant check
+              ptmaster = 'S'
+              self._SCSCCount[interactionType] += 1
+          elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
+            if (not srcHet) and (not causeHet): # This may be a redundant check
+              ptmaster = 'P'
+              self._MCSCCount[interactionType] += 1
+          else:
+            ptmaster = 'O'
+            self._otherCount[interactionType] += 1
 
-            # If we're not showing this one, skip to the next
-            if not show:
-              continue
+          # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
+          # the (negative because it is magnitude) overlap.
+          loc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
+          dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
+          if dvLen > 0:
+            spikeScale = (srcVdw - res.overlap) / dvLen
+            spikeloc = (srcXYZ[0]+dotvect[0]*spikeScale,
+                        srcXYZ[1]+dotvect[1]*spikeScale,
+                        srcXYZ[2]+dotvect[2]*spikeScale)
+          else:
+            spikeloc = loc
 
-            # Determine the ptmaster (main/side chain interaction type) and keep track of
-            # counts for each type.
-            causeMainChain = self._inMainChain[res.cause]
-            causeSideChain = self._inSideChain[res.cause]
-            causeHet = self._inHet[res.cause]
-            ptmaster = ' '
-            if srcMainChain and causeMainChain:
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'M'
-                self._MCMCCount[interactionType] += 1
-            elif srcSideChain and causeSideChain:
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'S'
-                self._SCSCCount[interactionType] += 1
-            elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'P'
-                self._MCSCCount[interactionType] += 1
-            else:
-              ptmaster = 'O'
-              self._otherCount[interactionType] += 1
-
-            # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
-            # the (negative because it is magnitude) overlap.
-            loc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
-            dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
-            if dvLen > 0:
-              spikeScale = (srcVdw - res.overlap) / dvLen
-              spikeloc = (srcXYZ[0]+dotvect[0]*spikeScale,
-                          srcXYZ[1]+dotvect[1]*spikeScale,
-                          srcXYZ[2]+dotvect[2]*spikeScale)
-            else:
-              spikeloc = loc
-
-            # Save the dot
-            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
+          # Save the dot
+          self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
 
 # ------------------------------------------------------------------------------
 
