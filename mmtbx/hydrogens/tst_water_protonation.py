@@ -60,6 +60,10 @@ to get wrong:
 * **Element override.** ``element="D"`` forces deuterium (named ``D1``/``D2``)
   onto an HOH water; the default places H.
 
+* **Environment hydrogen count.** ``count_environment_hydrogens`` counts H and
+  D outside water residues and ignores the waters themselves, so a model whose
+  only hydrogens sit on its waters reads as zero.
+
 * **Experiment detection.** ``_detect_neutron`` reads the experiment type
   (EXPDTA / ``_exptl.method``) and falls back to the presence of D atoms.
 
@@ -205,6 +209,20 @@ HETATM    9  H1  HOH W   6       2.600   0.957   2.600  1.00 10.00           H
 HETATM   10  O   HOH W   7       2.600   2.600   0.000  1.00 10.00           O
 HETATM   11  O   HOH W   8       2.600   2.600   2.600  1.00 10.00           O
 HETATM   12  H1  HOH W   8       2.600   3.557   2.600  1.00 10.00           H
+END
+"""
+
+
+# A protonated residue (one H, one D) beside a water that also carries H.
+# Only the residue's two count.
+_ENV_H_PDB = """\
+ATOM      1  N   ASN A   1      -1.500   0.000   0.000  1.00 20.00           N
+ATOM      2  H   ASN A   1      -2.000   0.800   0.000  1.00 20.00           H
+ATOM      3  CG  ASN A   1      -2.500   0.500   0.000  1.00 20.00           C
+ATOM      4  D   ASN A   1      -3.000   1.200   0.000  1.00 20.00           D
+HETATM    5  O   HOH W   1       1.500   0.000   0.000  1.00 25.00           O
+HETATM    6  H1  HOH W   1       0.516   0.000   0.000  1.00 25.00           H
+HETATM    7  H2  HOH W   1       1.746   0.953   0.000  1.00 25.00           H
 END
 """
 
@@ -580,6 +598,35 @@ def exercise_oh_length_auto():
     "an explicit oh_length must override the heuristic")
 
 
+def exercise_environment_hydrogen_count():
+  """``count_environment_hydrogens`` counts H and D outside the waters, and
+  is not fooled by a model whose only hydrogens are on its waters."""
+  assert wp.count_environment_hydrogens(_hierarchy(_ENV_H_PDB)) == 2
+
+  # Waters keep their H; the residue loses its two.
+  bare = "\n".join(l for l in _ENV_H_PDB.split("\n")
+                    if " H   ASN" not in l and " D   ASN" not in l)
+  hier = _hierarchy(bare)
+  assert wp.count_environment_hydrogens(hier) == 0, (
+    "hydrogens on waters must not count as environment hydrogens")
+  assert sum(1 for a in hier.atoms() if a.element_is_hydrogen()) == 2, (
+    "the water H should still be present")
+
+  # DOD is a water alias too, so deuterium on it must not count either.
+  dod = "\n".join(
+    (l.replace("HOH", "DOD").replace(" H1 ", " D1 ").replace(" H2 ", " D2 ")
+      .replace("           H", "           D")) if "HOH" in l else l
+    for l in _ENV_H_PDB.split("\n"))
+  hier = _hierarchy(dod)
+  water_d = [a for a in hier.atoms()
+             if a.parent().resname.strip() == "DOD" and a.element.strip() == "D"]
+  assert len(water_d) == 2, f"fixture should carry two water D; got {len(water_d)}"
+  assert wp.count_environment_hydrogens(hier) == 2
+
+  # Solvent-only model.
+  assert wp.count_environment_hydrogens(_hierarchy(_WATER_CLUSTER_PDB)) == 0
+
+
 def exercise_detect_neutron():
   """``_detect_neutron`` prefers the experiment type, then D-atom presence."""
   def pdb_in(lines):
@@ -617,6 +664,7 @@ def run():
   exercise_completed_water_survives_refinement()
   exercise_element_override()
   exercise_oh_length_auto()
+  exercise_environment_hydrogen_count()
   exercise_detect_neutron()
   print(format_cpu_times())
   print("OK")

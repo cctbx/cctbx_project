@@ -15,7 +15,6 @@ from libtbx.str_utils import make_sub_header
 
 from mmtbx.hydrogens import water_protonation
 
-# Cap on how many single-H waters are listed individually in the report.
 _MAX_LISTED_WATERS = 20
 
 master_phil_str = '''
@@ -96,7 +95,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    # Non-negativity of the int params is enforced by value_min=0 in the PHIL.
+    self._warn_if_environment_unprotonated(self.data_manager.get_model())
 
   # ----------------------------------------------------------------------------
 
@@ -221,12 +220,31 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
 
   def _summary(self, n_before, n_now):
     added = n_now - n_before
-    # With existing_h=reorient the existing H were stripped and re-placed,
-    # so report the reoriented count (the net change alone reads as "+0").
+    # The net change alone reads as "+0" after a reorient.
     if self.params.existing_h == "reorient" and n_before:
       return (f"water H/D atoms: {n_before} -> {n_now} "
               f"(reoriented {n_before}, +{added})")
     return f"water H/D atoms: {n_before} -> {n_now} (+{added})"
+
+  def _warn_if_environment_unprotonated(self, model):
+    """Warn when nothing outside the waters carries a hydrogen.
+
+    ``model.has_hd()`` is a cached whole-model property, so it settles the
+    common case without walking the hierarchy. It cannot decide on its own:
+    it spans the waters too, and so is True for this program's own output,
+    where only the waters carry H.
+    """
+    hier = model.get_hierarchy()
+    if not any(not water_protonation._is_water(ag.resname)
+               for ag in hier.atom_groups()):
+      return  # solvent-only model: there is nothing else to protonate
+    if model.has_hd() and water_protonation.count_environment_hydrogens(hier):
+      return
+    print("warning: the model has no hydrogens outside its waters. Placement "
+          "tests candidate positions against the surrounding atoms and reads "
+          "a bonded H to tell a donor N from an acceptor, so without them the "
+          "orientations degrade towards random. Protonating the rest of the "
+          "model first is advisable.", file=self.logger)
 
   def _print_partial_waters(self, partial):
     """Report the waters that carried exactly one H on input.
@@ -244,9 +262,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
                     "hydroxide are now water"),
       "stripped": "carried a single H and were stripped and re-protonated",
     }
-    # Grouped, because one mode can produce more than one outcome: a water
-    # whose H sits on its O has no cone axis and is left alone even under
-    # existing_h=complete.
+    # One mode can produce more than one outcome.
     for action in ("completed", "stripped", "kept"):
       group = [p for p in partial if p[2] == action]
       if not group:
