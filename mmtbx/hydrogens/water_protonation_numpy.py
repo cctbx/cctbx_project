@@ -472,11 +472,9 @@ class _WaterHydrogenPlacer(object):
     self.on_state = on_state
 
     # Placed-H coordinates, one slot per placed proton, set up in run():
-    # placed_np is the same data as an (n, 3) array and placed_snap its
-    # start-of-sweep copy (see _apply_sweep).
+    # placed_np is the same data as an (n, 3) array.
     self.placed_coords = []
     self.placed_np = None
-    self.placed_snap = None
     # (water index, [(atom, slot, di), ...], fixed_d1)
     self.records = []
     # (residue id, (metal element, distance) or None, action)
@@ -595,17 +593,6 @@ class _WaterHydrogenPlacer(object):
       dy = cands[:, 1, None] - Q[None, :, 1]
       dz = cands[:, 2, None] - Q[None, :, 2]
       d = dx * dx + dy * dy + dz * dz
-      if self.placed_snap is not None:
-        # A relaxation sweep moves placed H while it runs and keeps the
-        # spatial index it built at the start: a neighbour is *found* at
-        # its start-of-sweep position but *measured* at its live one.
-        # Reproduced here, quirk and all.
-        S = self.placed_snap[nbr_slots]
-        sx = cands[:, 0, None] - S[None, :, 0]
-        sy = cands[:, 1, None] - S[None, :, 1]
-        sz = cands[:, 2, None] - S[None, :, 2]
-        d = np.where(sx * sx + sy * sy + sz * sz
-                     <= _WATER_CLEARANCE_RADIUS ** 2, d, np.inf)
       np.minimum(best, d.min(axis=1), out=best)
       ok &= ~(d < _WATER_MIN_H_CLEARANCE ** 2).any(axis=1)
     return np.sqrt(best), ok
@@ -914,11 +901,9 @@ class _WaterHydrogenPlacer(object):
 
     Re-places every recorded water against the current positions of all the
     others (its own H excluded), updating ``placed_coords`` and the atoms in
-    place. ``placed_snap`` freezes the positions the neighbour search sees,
-    reproducing the spatial index the sweep would otherwise build once and
-    then mutate underneath.
+    place. A water placed later in the sweep therefore sees the H the
+    earlier ones just moved, at the position they now hold.
     """
-    self.placed_snap = self.placed_np.copy()
     for wi, slots, fixed_d1 in self.records:
       self._store(slots, *self._place_one(wi, self.w_nbr_slots[wi], fixed_d1))
 
@@ -946,7 +931,6 @@ class _WaterHydrogenPlacer(object):
         Indices into ``records`` of waters with a placed H that fails the
         clash gate.
     """
-    self.placed_snap = None
     bad = []
     for ri, (wi, slots, _fixed) in enumerate(self.records):
       pts = self.placed_np[[slot for _, slot, _ in slots]]
@@ -1104,7 +1088,6 @@ class _WaterHydrogenPlacer(object):
     self.w_geom = [None] * n
     self.placed_coords = []
     self.placed_np = np.zeros((2 * n, 3))
-    self.placed_snap = None
     self.slot_wid = np.zeros(2 * n, dtype=np.int64)
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
     self.w_wnbr = []

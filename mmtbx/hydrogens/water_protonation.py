@@ -88,7 +88,6 @@ _WATER_CATION_ELEMENTS = frozenset({
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to count as donated to
-_INF = float("inf")
 
 
 def _has_deuterium(hier):
@@ -630,11 +629,9 @@ class _WaterHydrogenPlacer(object):
     self.on_state = on_state
 
     # Placed-H coordinates, one slot per placed proton, set up in run():
-    # placed_xyz is the same data as a flex.vec3_double and placed_snap its
-    # start-of-sweep copy (see _apply_sweep).
+    # placed_xyz is the same data as a flex.vec3_double.
     self.placed_coords = []
     self.placed_xyz = None
-    self.placed_snap = None
     # (water index, [(atom, slot, di), ...], fixed_d1)
     self.records = []
     # (residue id, (metal element, distance) or None, action)
@@ -771,15 +768,6 @@ class _WaterHydrogenPlacer(object):
       ct = cands.select(ik)
       dx, dy, dz = (ct - self.placed_xyz.select(nbr_slots).select(im)).parts()
       d = flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
-      if self.placed_snap is not None:
-        # A relaxation sweep moves placed H while it runs and keeps the
-        # spatial index it built at the start: a neighbour is *found* at
-        # its start-of-sweep position but *measured* at its live one.
-        # Reproduced here, quirk and all.
-        sx, sy, sz = (ct
-                      - self.placed_snap.select(nbr_slots).select(im)).parts()
-        sd = flex.pow2(sx) + flex.pow2(sy) + flex.pow2(sz)
-        d.set_selected(sd > _WATER_CLEARANCE_RADIUS ** 2, _INF)
       bad = (d < _WATER_MIN_H_CLEARANCE ** 2).iselection()
       if bad.size():
         cl.ok.set_selected(bad / m, False)
@@ -1089,11 +1077,9 @@ class _WaterHydrogenPlacer(object):
 
     Re-places every recorded water against the current positions of all the
     others (its own H excluded), updating ``placed_coords`` and the atoms in
-    place. ``placed_snap`` freezes the positions the neighbour search sees,
-    reproducing the spatial index the sweep would otherwise build once and
-    then mutate underneath.
+    place. A water placed later in the sweep therefore sees the H the
+    earlier ones just moved, at the position they now hold.
     """
-    self.placed_snap = self.placed_xyz.deep_copy()
     for wi, slots, fixed_d1 in self.records:
       self._store(slots, *self._place_one(wi, self.w_nbr_slots[wi], fixed_d1))
 
@@ -1121,7 +1107,6 @@ class _WaterHydrogenPlacer(object):
         Indices into ``records`` of waters with a placed H that fails the
         clash gate.
     """
-    self.placed_snap = None
     bad = []
     for ri, (wi, slots, _fixed) in enumerate(self.records):
       pts = self.placed_xyz.select(
@@ -1283,7 +1268,6 @@ class _WaterHydrogenPlacer(object):
     self.w_geom = [None] * n
     self.placed_coords = []
     self.placed_xyz = flex.vec3_double(2 * n, (0.0, 0.0, 0.0))
-    self.placed_snap = None
     self.slot_wid = flex.size_t(2 * n, 0)
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
     self.w_wnbr = []
