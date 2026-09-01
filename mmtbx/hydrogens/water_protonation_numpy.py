@@ -935,6 +935,8 @@ class _WaterHydrogenPlacer(object):
     if t < 0:
       return True   # never placed against the finished set of water H
     moved_at = self.w_moved_at
+    if moved_at[wi] > t:
+      return True   # moved since it was last placed, i.e. kicked
     for wj in self.w_wnbr[wi]:
       if moved_at[wj] > t:
         return True
@@ -960,23 +962,36 @@ class _WaterHydrogenPlacer(object):
           self.w_moved_at[wi] = self.tick
       self.w_placed_at[wi] = self.tick
 
-  def _restore(self, coords):
-    """Reset all placed H to a coordinate snapshot.
+  def _snapshot(self):
+    """Capture the placed-H state: coordinates and both stamp arrays.
+
+    Whether a water may be skipped is a function of the coordinates and the
+    stamps together, so the two are captured and restored as one.
+
+    Returns
+    -------
+    tuple
+        ``(coords, placed_at, moved_at)``.
+    """
+    return (list(self.placed_coords), list(self.w_placed_at),
+            list(self.w_moved_at))
+
+  def _restore(self, snap):
+    """Reset all placed H to a snapshot from :meth:`_snapshot`.
 
     Parameters
     ----------
-    coords : list of tuple
-        Per-slot placed-H coordinates to restore (a snapshot of
-        ``placed_coords``).
+    snap : tuple
+        ``(coords, placed_at, moved_at)``.
     """
+    coords, placed_at, moved_at = snap
     for _wi, slots, _fixed in self.records:
       for atom, slot, di in slots:
         self.placed_coords[slot] = coords[slot]
         self.placed_np[slot] = coords[slot]
         atom.set_xyz(coords[slot])
-    # The snapshot is a state the waters were not all placed against, so
-    # no placement stamp survives it: the next sweep re-places every water.
-    self.w_placed_at = [-1] * len(self.w_placed_at)
+    self.w_placed_at = list(placed_at)
+    self.w_moved_at = list(moved_at)
 
   def _clashing_records(self):
     """Find records whose placed H still clash.
@@ -1259,7 +1274,7 @@ class _WaterHydrogenPlacer(object):
       self.on_state("initial", stats)
     prev_n20 = stats[1] if stats is not None else None
     best_n20 = prev_n20
-    best_coords = list(self.placed_coords) if (self.n_refine or self.n_basin) else None
+    best_coords = self._snapshot() if (self.n_refine or self.n_basin) else None
     best_label = "initial"
     for i in range(self.n_refine):
       self._apply_sweep()
@@ -1268,7 +1283,7 @@ class _WaterHydrogenPlacer(object):
         self.on_state(f"sweep {i + 1}", stats)
       if best_n20 is None or stats[1] < best_n20:
         best_n20 = stats[1]
-        best_coords = list(self.placed_coords)
+        best_coords = self._snapshot()
         best_label = f"sweep {i + 1}"
       if self.refine_tol and prev_n20 is not None and prev_n20 - stats[1] < self.refine_tol:
         break  # gain below tolerance -- converged
@@ -1296,7 +1311,7 @@ class _WaterHydrogenPlacer(object):
             self.on_state(label, stats)
           if best_n20 is None or stats[1] < best_n20:
             best_n20 = stats[1]
-            best_coords = list(self.placed_coords)
+            best_coords = self._snapshot()
             best_label = label
 
     if best_coords is not None:
