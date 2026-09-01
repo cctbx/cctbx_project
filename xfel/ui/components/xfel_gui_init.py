@@ -3671,28 +3671,22 @@ class DatasetPanel(wx.Panel):
       line = line.strip()
       if 'd_min' in line and '=' in line:
         # Extract d_min value
-        try:
-          parts = line.split('=')
-          if len(parts) >= 2:
-            val = parts[1].strip()
-            # Remove any comments or extra text
-            val = val.split('#')[0].strip()
-            if val:
-              params.append("d_min {}".format(val))
-        except:
-          pass
+        parts = line.split('=')
+        if len(parts) >= 2:
+          val = parts[1].strip()
+          # Remove any comments or extra text
+          val = val.split('#')[0].strip()
+          if val:
+            params.append("d_min {}".format(val))
       elif 'scaling.model' in line and '=' in line:
         # Extract scaling.model basename
-        try:
-          parts = line.split('=')
-          if len(parts) >= 2:
-            path = parts[1].strip()
-            path = path.split('#')[0].strip()
-            basename = path.split('/')[-1] if path else ""
-            if basename:
-              params.append("model: {}".format(basename))
-        except:
-          pass
+        parts = line.split('=')
+        if len(parts) >= 2:
+          path = parts[1].strip()
+          path = path.split('#')[0].strip()
+          basename = path.split('/')[-1] if path else ""
+          if basename:
+            params.append("model: {}".format(basename))
 
     return " — " + ", ".join(params) if params else None
 
