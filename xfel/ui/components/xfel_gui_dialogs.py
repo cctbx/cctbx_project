@@ -415,8 +415,7 @@ class SettingsDialog(BaseDialog):
     self.setup_facility_options()
 
   def onLoadProject(self, e):
-    from xfel.ui import (list_settings_projects, load_project_settings,
-                         get_current_project, set_current_project)
+    from xfel.ui import list_settings_projects, load_project_settings, get_current_project, set_current_project
     if not list_settings_projects():
       wx.MessageBox('No saved projects found in the settings directory.',
                     'Load Project', wx.OK | wx.ICON_INFORMATION)
@@ -460,8 +459,7 @@ class SettingsDialog(BaseDialog):
     ''' Prompt for a project name and save the current params to its bundle.
         Returns the saved name, or None if the user cancelled or the save
         failed. '''
-    from xfel.ui import (save_project_settings, get_current_project,
-                         set_current_project)
+    from xfel.ui import save_project_settings, get_current_project, set_current_project
     self.update_settings()
     default_name = get_current_project() or ''
     dlg = wx.TextEntryDialog(self, 'Project name (saved as settings_<name>.phil):',
