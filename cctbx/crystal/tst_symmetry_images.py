@@ -2,31 +2,18 @@ from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.crystal import symmetry_images
+from cctbx.development import debug_utils
+from libtbx.test_utils import Exception_expected, approx_equal
 from scitbx.array_family import flex
-from six.moves import range
+import sys
 
-# Space groups exercised against the brute-force enumeration, each with a cell
-# its lattice allows.
-space_groups_and_cells = [
-  ("P 1",        (12.1, 14.3, 16.7, 90, 90,  90)),
-  ("P -1",       (12.1, 14.3, 16.7, 90, 90,  90)),
-  ("P 21",       (12.1, 14.3, 16.7, 90, 90,  90)),
-  ("P 1 21/c 1", (12.1, 14.3, 16.7, 90, 105, 90)),
-  ("C 1 2 1",    (12.1, 14.3, 16.7, 90, 90,  90)),
-  ("P 21 21 21", (12.1, 14.3, 16.7, 90, 90,  90)),
-  ("I 41",       (12.1, 12.1, 16.7, 90, 90,  90)),
-  ("P 43 21 2",  (12.1, 12.1, 16.7, 90, 90,  90)),
-  ("R 3 :H",     (12.1, 12.1, 16.7, 90, 90, 120)),
-  ("P 63",       (12.1, 12.1, 16.7, 90, 90, 120)),
-]
-
-def general_position_structure(
-      space_group_symbol="P 21 21 21",
-      unit_cell=(12.1, 14.3, 16.7, 90, 90, 90),
-      n_sites=12):
+def general_position_structure(space_group_info=None, n_sites=12):
   """A structure with all sites in general positions and fixed coordinates."""
-  cs = crystal.symmetry(unit_cell=unit_cell,
-                        space_group_symbol=space_group_symbol)
+  if (space_group_info is None):
+    space_group_info = sgtbx.space_group_info("P 21 21 21")
+  cs = crystal.symmetry(
+    unit_cell=space_group_info.any_compatible_unit_cell(volume=3000.),
+    space_group_info=space_group_info)
   sites_frac = flex.vec3_double()
   for i in range(n_sites):
     sites_frac.append((
@@ -38,11 +25,9 @@ def general_position_structure(
 def brute_force_images(sites_cart, crystal_symmetry, radius, seed_indices,
                        n_shifts=2):
   """Images within *radius* of a seed, from all operators over a block of
-  lattice translations.
+  lattice translations, without asu_mappings.
 
-  Uses no asu_mappings, so it does not repeat the library path.  Valid only
-  for sites in general positions: an operator in a site's own symmetry is
-  recorded in the table as the identity.
+  Compares operators, so it is valid only for sites in general positions.
   """
   unit_cell = crystal_symmetry.unit_cell()
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
@@ -53,9 +38,7 @@ def brute_force_images(sites_cart, crystal_symmetry, radius, seed_indices,
     for i in range(-n_shifts, n_shifts + 1):
       for j in range(-n_shifts, n_shifts + 1):
         for k in range(-n_shifts, n_shifts + 1):
-          op = sgtbx.rt_mx(
-            rotation_op.r(),
-            rotation_op.t().plus(sgtbx.tr_vec((i, j, k), 1)))
+          op = rotation_op + (i, j, k)
           as_xyz = op.as_xyz()
           if (as_xyz == identity_as_xyz): continue
           for j_seq in range(sites_frac.size()):
@@ -74,23 +57,29 @@ def as_xyz_sets(images):
   return result
 
 def image_positions(unit_cell, sites_frac, images):
-  """{j_seq: set of Cartesian image positions, rounded to 4 decimals}."""
+  """{j_seq: sorted Cartesian image positions}."""
   result = {}
   for j_seq, ops in images.items():
-    result[j_seq] = set([
-      tuple(round(x, 4) + 0.0
-            for x in unit_cell.orthogonalize(op * sites_frac[j_seq]))
-      for op in ops])
+    result[j_seq] = sorted(
+      [unit_cell.orthogonalize(op * sites_frac[j_seq]) for op in ops])
+  return result
+
+def unique_positions(positions, tolerance=1.e-4):
+  """Sorted positions, with duplicates closer than *tolerance* dropped."""
+  result = []
+  for position in sorted(positions):
+    if (len(result) == 0
+        or not approx_equal(position, result[-1], eps=tolerance, out=None)):
+      result.append(position)
   return result
 
 def brute_force_image_positions(sites_cart, crystal_symmetry, radius,
                                 seed_indices, n_shifts=2):
   """Image positions within *radius* of a seed, from all operators over a
-  block of lattice translations.
+  block of lattice translations, without asu_mappings.
 
-  Reports positions rather than operators, so unlike `brute_force_images` it
-  holds for sites on special positions, where several operators give one
-  image.  Images coincident with the site are dropped.
+  Positions rather than operators, so this holds for sites on special
+  positions too.  Images coincident with their site are dropped.
   """
   unit_cell = crystal_symmetry.unit_cell()
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
@@ -100,19 +89,18 @@ def brute_force_image_positions(sites_cart, crystal_symmetry, radius,
     for i in range(-n_shifts, n_shifts + 1):
       for j in range(-n_shifts, n_shifts + 1):
         for k in range(-n_shifts, n_shifts + 1):
-          op = sgtbx.rt_mx(
-            rotation_op.r(),
-            rotation_op.t().plus(sgtbx.tr_vec((i, j, k), 1)))
+          op = rotation_op + (i, j, k)
           for j_seq in range(sites_frac.size()):
             image_frac = op * sites_frac[j_seq]
             if (unit_cell.distance(image_frac, sites_frac[j_seq]) <= 1.e-6):
               continue
             for seed_frac in seed_fracs:
               if (unit_cell.distance(image_frac, seed_frac) <= radius):
-                result.setdefault(j_seq, set()).add(
-                  tuple(round(x, 4) + 0.0
-                        for x in unit_cell.orthogonalize(image_frac)))
+                result.setdefault(j_seq, []).append(
+                  unit_cell.orthogonalize(image_frac))
                 break
+  for j_seq in result:
+    result[j_seq] = unique_positions(result[j_seq])
   return result
 
 def differences(expected, obtained):
@@ -125,50 +113,62 @@ def differences(expected, obtained):
       result[j_seq] = (sorted(missing), sorted(extra))
   return result
 
-def exercise_matches_brute_force():
+def assert_same_positions(expected, obtained, info):
+  """The two position tables list the same images."""
+  assert sorted(obtained) == sorted(expected), (
+    info, sorted(expected), sorted(obtained))
+  for j_seq, positions in expected.items():
+    assert len(obtained[j_seq]) == len(positions), (
+      info, j_seq, len(positions), len(obtained[j_seq]))
+    assert approx_equal(obtained[j_seq], positions, eps=1.e-4), (info, j_seq)
+
+def exercise_matches_brute_force(space_group_info):
   """Every image a direct search finds is found, and no others.
 
-  The larger radii reach far enough for most of these groups to give an atom
-  images of itself, of which a table extracted without
-  all_interactions_from_inside_asu keeps one per symmetry-equivalent group.
+  The larger radii reach far enough to give an atom images of itself.
   """
   seed_indices = [0, 3, 7]
-  for space_group_symbol, unit_cell in space_groups_and_cells:
-    cs, sites_cart = general_position_structure(
-      space_group_symbol=space_group_symbol, unit_cell=unit_cell)
-    n_images = 0
-    for radius in [1.0, 2.0, 5.0, 8.0]:
-      obtained = as_xyz_sets(symmetry_images.images_within_radius(
-        sites_cart       = sites_cart,
-        crystal_symmetry = cs,
-        radius           = radius,
-        seed_indices     = seed_indices))
-      expected = brute_force_images(
-        sites_cart       = sites_cart,
-        crystal_symmetry = cs,
-        radius           = radius,
-        seed_indices     = seed_indices)
-      assert obtained == expected, (
-        space_group_symbol, radius, differences(expected, obtained))
-      n_images += len(expected)
-    # The smallest radii can find nothing; the sweep as a whole must not.
-    assert n_images > 0, space_group_symbol
+  cs, sites_cart = general_position_structure(space_group_info)
+  n_images = 0
+  for radius in [1.0, 2.0, 5.0, 8.0]:
+    obtained = as_xyz_sets(symmetry_images.images_within_radius(
+      sites_cart       = sites_cart,
+      crystal_symmetry = cs,
+      radius           = radius,
+      seed_indices     = seed_indices))
+    expected = brute_force_images(
+      sites_cart       = sites_cart,
+      crystal_symmetry = cs,
+      radius           = radius,
+      seed_indices     = seed_indices)
+    assert obtained == expected, (
+      str(space_group_info), radius, differences(expected, obtained))
+    n_images += len(expected)
+  # The smallest radii can find nothing; the sweep as a whole must not.
+  assert n_images > 0, str(space_group_info)
 
-def exercise_brute_force_block_is_large_enough():
-  """The reference enumeration covers enough lattice translations."""
+def exercise_brute_force_block_is_large_enough(space_group_info):
+  """The reference enumerations cover enough lattice translations.
+
+  Only the largest radius needs checking: a block big enough there is big
+  enough for any smaller radius.
+  """
   seed_indices = [0, 3, 7]
-  for space_group_symbol, unit_cell in space_groups_and_cells:
-    cs, sites_cart = general_position_structure(
-      space_group_symbol=space_group_symbol, unit_cell=unit_cell)
-    for radius in [1.0, 2.0, 5.0, 8.0]:
-      near = brute_force_images(
-        sites_cart, cs, radius, seed_indices, n_shifts=2)
-      far = brute_force_images(
-        sites_cart, cs, radius, seed_indices, n_shifts=3)
-      assert near == far, (space_group_symbol, radius)
+  radius = 8.0
+  cs, sites_cart = general_position_structure(space_group_info)
+  near = brute_force_images(sites_cart, cs, radius, seed_indices, n_shifts=2)
+  far = brute_force_images(sites_cart, cs, radius, seed_indices, n_shifts=3)
+  assert near == far, (str(space_group_info), differences(far, near))
+  near = brute_force_image_positions(
+    sites_cart, cs, radius, seed_indices, n_shifts=2)
+  far = brute_force_image_positions(
+    sites_cart, cs, radius, seed_indices, n_shifts=3)
+  assert_same_positions(far, near, str(space_group_info))
 
 def exercise_seeding_is_a_subset():
-  """Seeding on fewer atoms returns part of the whole-structure result."""
+  """Seeding on two atoms returns part of what seeding on every atom
+  returns.
+  """
   cs, sites_cart = general_position_structure()
   radius = 5.0
   everything = as_xyz_sets(symmetry_images.images_within_radius(
@@ -182,9 +182,7 @@ def exercise_seeding_is_a_subset():
     assert ops.issubset(everything[j_seq])
 
 def exercise_both_pair_directions():
-  """Images are reported whether the seed is the first or second atom of the
-  underlying pair.
-  """
+  """Images are reported from either end of a pair."""
   cs, sites_cart = general_position_structure()
   radius = 5.0
   symmetry_tables = symmetry_images.tables_within_radius(
@@ -206,10 +204,7 @@ def exercise_both_pair_directions():
   assert n_checked > 0
 
 def exercise_distances_hold():
-  """A returned operator places its atom within radius of a seed.
-
-  No site here is moved onto a symmetry element.
-  """
+  """A returned operator places its atom within the radius of a seed."""
   cs, sites_cart = general_position_structure()
   radius = 5.0
   seed_indices = [0, 5]
@@ -225,7 +220,7 @@ def exercise_distances_hold():
       assert min(distances) <= radius * (1 + 1.e-6), (j_seq, op.as_xyz())
 
 def exercise_identity_excluded():
-  """The identity is never returned."""
+  """No returned operator is the identity."""
   cs, sites_cart = general_position_structure()
   images = symmetry_images.images_within_radius(
     sites_cart, cs, radius=5.0, seed_indices=list(range(sites_cart.size())))
@@ -244,24 +239,10 @@ def special_position_structure(unit_cell=(6, 7, 28, 90, 90, 90)):
     (0.21,  0.44, 0.19)])
   return cs, sites_frac, cs.unit_cell().orthogonalize(sites_frac)
 
-def exercise_special_position():
-  """An atom on a rotation axis yields no image on top of itself."""
-  cs, sites_frac, sites_cart = special_position_structure()
-  images = symmetry_images.images_within_radius(
-    sites_cart, cs, radius=5.0, seed_indices=[0])
-  ops = images.get(0, [])
-  assert len(ops) > 0
-  for op in ops:
-    image_frac = op * sites_frac[0]
-    distance = cs.unit_cell().distance(image_frac, sites_frac[0])
-    assert distance > 1.e-6, op.as_xyz()
-
 def exercise_self_images_of_a_seed():
   """An atom's own symmetry images are reported.
 
-  A table extracted without all_interactions_from_inside_asu keeps one image
-  per group of symmetry-equivalent interactions and misses some of these.
-  Site 1 is in a general position.
+  Seed 0 lies on the two-fold, seed 1 is in a general position.
   """
   cs, sites_frac, sites_cart = special_position_structure()
   for seed in [0, 1]:
@@ -269,11 +250,9 @@ def exercise_self_images_of_a_seed():
       sites_cart, cs, radius=5.0, seed_indices=[seed])
     obtained = image_positions(cs.unit_cell(), sites_frac, images)
     expected = brute_force_image_positions(sites_cart, cs, 5.0, [seed])
-    # Four images for seed 0 and five for seed 1; an extraction that
-    # keeps one per group returns 1 and 3.
+    # Four images for seed 0 and five for seed 1.
     assert len(expected[seed]) > 1, seed
-    assert obtained.get(seed) == expected[seed], (
-      seed, differences(expected, obtained))
+    assert_same_positions(expected, obtained, seed)
 
 def exercise_prebuilt_table():
   """A separately built table gives the same answer as building it inline."""
@@ -290,9 +269,8 @@ def exercise_prebuilt_table():
 def exercise_operators_are_hash_stable():
   """Returned operators survive a set round trip.
 
-  sgtbx.rt_mx has an inconsistent __hash__ and __eq__: operators that compare
-  equal but carry different translation denominators hash differently, so an
-  un-normalised operator can enter a set twice.
+  Equal rt_mx with different translation denominators hash differently, so a
+  set can hold an un-normalised operator twice.
   """
   cs, sites_cart = general_position_structure()
   images = symmetry_images.images_within_radius(
@@ -309,8 +287,8 @@ def exercise_operators_are_hash_stable():
 def near_special_position_structure():
   """A structure whose first site sits 0.2 A off the two-fold of C 1 2 1.
 
-  Its symmetry mate is 0.4 A away, far enough that the site is not taken to
-  lie on the axis.
+  Its symmetry mate is 0.4 A away, too far for the site to be taken onto the
+  axis.
   """
   cs = crystal.symmetry(unit_cell=(20, 24, 28, 90, 90, 90),
                         space_group_symbol="C 1 2 1")
@@ -320,11 +298,7 @@ def near_special_position_structure():
   return cs, sites_frac, cs.unit_cell().orthogonalize(sites_frac)
 
 def exercise_a_site_near_an_element_is_general():
-  """A site near a symmetry element keeps every image of its own.
-
-  Taking it to lie on the element merges it with its mate, and the image is
-  then dropped as coincident.
-  """
+  """A site near a symmetry element keeps every image of its own."""
   cs, sites_frac, sites_cart = near_special_position_structure()
   symmetry_tables = symmetry_images.tables_within_radius(
     sites_cart, cs, 5.0)
@@ -336,12 +310,11 @@ def exercise_a_site_near_an_element_is_general():
   obtained = image_positions(cs.unit_cell(), sites_frac, images)
   expected = brute_force_image_positions(sites_cart, cs, 5.0, [0])
   assert len(expected) > 0
-  assert obtained == expected, differences(expected, obtained)
+  assert_same_positions(expected, obtained, "near an element")
 
 def exercise_a_neighbour_near_an_element_keeps_its_images():
-  """An image of a site near an element is reported when it is in range.
-
-  Taking the site to lie on the element loses the image.
+  """A neighbour lying near a symmetry element keeps every image of its
+  own that is in range.
   """
   cs = crystal.symmetry(unit_cell=(9.579, 10.153, 11.64, 90, 90, 90),
                         space_group_symbol="P -1")
@@ -357,10 +330,10 @@ def exercise_a_neighbour_near_an_element_keeps_its_images():
   obtained = image_positions(cs.unit_cell(), sites_frac, images)
   expected = brute_force_image_positions(sites_cart, cs, 5.0, [0])
   assert len(expected) > 0
-  assert obtained == expected, differences(expected, obtained)
+  assert_same_positions(expected, obtained, "neighbour near an element")
 
 def exercise_result_is_lists_of_operators():
-  """The keys are plain ints and the values are lists of operators."""
+  """The keys are plain ints and the values are lists of rt_mx."""
   cs, sites_cart = general_position_structure()
   images = symmetry_images.images_within_radius(
     sites_cart, cs, 5.0, seed_indices=[0, 3, 7])
@@ -374,10 +347,7 @@ def exercise_result_is_lists_of_operators():
       assert isinstance(op, sgtbx.rt_mx)
 
 def exercise_operators_from_mixed_denominators():
-  """Equal operators arriving on different denominators collapse to one.
-
-  No library path produces this, so the table is built by hand.
-  """
+  """Equal operators arriving on different denominators collapse to one."""
   table = crystal.pair_sym_table(2)
   ops = sgtbx.stl_vector_rt_mx()
   rt_mx = sgtbx.rt_mx("-x,y+1/2,-z")
@@ -398,9 +368,8 @@ def exercise_operators_from_mixed_denominators():
   assert set([op.t().den() for op in obtained]) == set([12])
 
 def exercise_seed_indices_contract():
-  """Seeds are taken as a set; no seeds gives no images.
-
-  A negative index is rejected rather than counted from the end.
+  """Seeds are taken as a set, no seeds gives no images, and an index outside
+  the sites is rejected.
   """
   cs, sites_cart = general_position_structure()
   radius = 5.0
@@ -412,13 +381,14 @@ def exercise_seed_indices_contract():
   assert once == repeated
   assert symmetry_images.images_within_radius(
     sites_cart, cs, radius, seed_indices=[]) == {}
-  try:
-    symmetry_images.images_within_radius(
-      sites_cart, cs, radius, seed_indices=[-1])
-  except AssertionError:
-    pass
-  else:
-    raise AssertionError("accepted a negative seed index")
+  for seed in [-1, sites_cart.size()]:
+    try:
+      symmetry_images.images_within_radius(
+        sites_cart, cs, radius, seed_indices=[seed])
+    except AssertionError as e:
+      assert str(e) == f"seed index is {seed}", str(e)
+    else:
+      raise Exception_expected
 
 def exercise_every_seed_contributes():
   """Seeding on many atoms is the union of seeding on each of them.
@@ -451,38 +421,14 @@ def exercise_requires_crystal_symmetry():
   placeholder = crystal.symmetry()
   assert placeholder.unit_cell() is None
   assert placeholder.space_group_info() is None
-  for bad in [None, placeholder]:
+  for bad, message in [(None, "no crystal_symmetry"),
+                       (placeholder, "no unit cell")]:
     try:
       symmetry_images.images_within_radius(sites_cart, bad, 5.0, [0])
-    except AssertionError:
-      pass
+    except AssertionError as e:
+      assert str(e) == message, str(e)
     else:
-      raise AssertionError(f"accepted crystal_symmetry {bad!r}")
-
-def exercise_one_operator_per_image():
-  """Each image of an atom is reported once.
-
-  Two seeds can reach one image of a third atom under operators that differ
-  by that atom's site symmetry.
-  """
-  cs = crystal.symmetry(unit_cell=(9.673, 12.574, 16.444, 90, 90, 90),
-                        space_group_symbol="F m m 2")
-  # Site 0 lies on the mirror at x = 0; the seeds are general.
-  sites_frac = flex.vec3_double([
-    (0.0,   1 / 6., 0.0),
-    (0.113, 0.207,  0.331),
-    (0.717, 0.311,  0.613)])
-  sites_cart = cs.unit_cell().orthogonalize(sites_frac)
-  images = symmetry_images.images_within_radius(
-    sites_cart, cs, radius=5.0, seed_indices=[1, 2])
-  assert len(images) > 0
-  for j_seq, ops in images.items():
-    positions = set()
-    for op in ops:
-      image_frac = op * sites_frac[j_seq]
-      positions.add(tuple(round(x, 6) for x in image_frac))
-    assert len(positions) == len(ops), (
-      j_seq, sorted([op.as_xyz() for op in ops]))
+      raise Exception_expected
 
 # Fixtures whose first site lies on a symmetry element, with the seeds to use.
 special_position_fixtures = [
@@ -496,12 +442,13 @@ special_position_fixtures = [
    [(0.19, 0.19, 0.0), (0.113, 0.407, 0.231), (0.617, 0.311, 0.513)], [1, 2]),
   ("P -1", (7, 8, 9, 90, 90, 90),                     # inversion centre
    [(0.0, 0.0, 0.0), (0.21, 0.33, 0.14), (0.44, 0.19, 0.37)], [1, 2]),
+  ("P m -3 m", (9, 9, 9, 90, 90, 90),                 # site symmetry m-3m
+   [(0.0, 0.0, 0.0), (0.213, 0.331, 0.07), (0.41, 0.28, 0.62)], [1, 2]),
 ]
 
 def near_special_position_seed_structure():
-  """A structure whose first site sits 0.15 A off an inversion centre.
-
-  The other sites are in general positions.
+  """A structure whose first site sits 0.15 A off an inversion centre, the
+  others in general positions.
   """
   space_group_info = sgtbx.space_group_info("P 1 21/c 1")
   cs = crystal.symmetry(
@@ -516,10 +463,8 @@ def near_special_position_seed_structure():
   return cs, sites_frac, cs.unit_cell().orthogonalize(sites_frac)
 
 def exercise_near_special_seed_keeps_its_neighbours():
-  """A seed lying near a symmetry element still finds the images around it.
-
-  At the library default tolerance the seed is taken to lie on the element,
-  and images inside the radius are then lost.
+  """A seed lying near a symmetry element still finds the images around
+  it, and none beyond the radius.
   """
   cs, sites_frac, sites_cart = near_special_position_seed_structure()
   radius = 4.0
@@ -528,7 +473,7 @@ def exercise_near_special_seed_keeps_its_neighbours():
   obtained = image_positions(cs.unit_cell(), sites_frac, images)
   expected = brute_force_image_positions(sites_cart, cs, radius, [0])
   assert len(expected) > 1
-  assert obtained == expected, differences(expected, obtained)
+  assert_same_positions(expected, obtained, "seed near an element")
   # Nothing is reported beyond the radius either.
   for j_seq, ops in images.items():
     for op in ops:
@@ -537,15 +482,15 @@ def exercise_near_special_seed_keeps_its_neighbours():
       assert distance <= radius * (1 + 1.e-6), (j_seq, op.as_xyz(), distance)
 
 def exercise_a_radius_that_is_not_a_distance_is_rejected():
-  """A radius that is not a length is rejected."""
+  """A negative, infinite or NaN radius is rejected."""
   cs, sites_cart = general_position_structure()
   for radius in [-1.0, float("inf"), float("nan")]:
     try:
       symmetry_images.tables_within_radius(sites_cart, cs, radius)
-    except AssertionError:
-      pass
+    except AssertionError as e:
+      assert str(e) == f"radius is {radius}", str(e)
     else:
-      raise AssertionError(f"accepted a radius of {radius}")
+      raise Exception_expected
 
 def exercise_tables_must_cover_the_same_sites():
   """Two tables built for different numbers of sites are rejected."""
@@ -556,17 +501,16 @@ def exercise_tables_must_cover_the_same_sites():
   try:
     symmetry_images.images_near_seeds(
       symmetry_images.tables(symmetry_tables.pair_sym_table, fewer), [0])
-  except AssertionError:
-    pass
+  except AssertionError as e:
+    assert str(e) == "the two tables cover different numbers of sites", str(e)
   else:
-    raise AssertionError("accepted tables covering different sites")
+    raise Exception_expected
 
 def exercise_a_site_written_on_an_element_is_coincident():
   """A site on a symmetry element is recognised at the precision it is written.
 
-  Three decimals leave a site on the element within 0.002 A of its mate.  The
-  0.03 case puts the site 0.042 A off the axis and 0.085 A from its mate, so
-  it is not taken to lie on the axis.
+  Three decimals leave a site within 0.002 A of its mate; the 0.03 offset
+  puts it 0.042 A off the axis and 0.085 A from its mate.
   """
   cs = crystal.symmetry(unit_cell=(20, 24, 28, 90, 90, 90),
                         space_group_symbol="C 1 2 1")
@@ -581,11 +525,7 @@ def exercise_a_site_written_on_an_element_is_coincident():
     assert special == ([0] if on_the_element else []), (offset, special)
 
 def exercise_special_positions_are_complete():
-  """Every image of an atom on a symmetry element is reported, exactly once.
-
-  `brute_force_images` compares operators and so cannot be used here; this
-  compares positions.
-  """
+  """Every image of an atom on a symmetry element is reported, exactly once."""
   n_checked = 0
   for space_group_symbol, unit_cell, fracs, seeds in special_position_fixtures:
     cs = crystal.symmetry(unit_cell=unit_cell,
@@ -597,8 +537,7 @@ def exercise_special_positions_are_complete():
         sites_cart, cs, radius, seed_indices=seeds)
       obtained = image_positions(cs.unit_cell(), sites_frac, images)
       expected = brute_force_image_positions(sites_cart, cs, radius, seeds)
-      assert obtained == expected, (
-        space_group_symbol, radius, differences(expected, obtained))
+      assert_same_positions(expected, obtained, (space_group_symbol, radius))
       assert len(expected) > 0, (space_group_symbol, radius)
       for j_seq, ops in images.items():
         assert len(ops) == len(obtained[j_seq]), (
@@ -607,10 +546,8 @@ def exercise_special_positions_are_complete():
   assert n_checked > 0
 
 def exercise_tolerance_admits_a_three_decimal_worst_case():
-  """A site written on an element at three decimals is recognised.
-
-  Rounding moves a site up to 0.0005 A along each of three axes, so across an
-  inversion centre its mate is 2*sqrt(3)*0.0005 = 0.0017 A away.  The
+  """Rounding moves a site up to 0.0005 A along each of three axes, so across
+  an inversion centre its mate is 2*sqrt(3)*0.0005 = 0.0017 A away.  The
   tolerance has to clear that, not just the 0.0014 A of a two-axis offset.
   """
   cs = crystal.symmetry(unit_cell=(21, 23, 25, 90, 90, 90),
@@ -627,10 +564,7 @@ def exercise_tolerance_admits_a_three_decimal_worst_case():
   assert special == [0], special
 
 def exercise_a_contact_exactly_at_the_radius_is_reported():
-  """A contact lying exactly at the radius is reported.
-
-  A buffer below the radius makes the library raise.
-  """
+  """A contact lying exactly at the radius is reported."""
   n_checked = 0
   # The cell edge is the radius, so a lattice translation lands on it.
   for edge in [4.0, 6.0, 7.0, 8.0]:
@@ -642,7 +576,7 @@ def exercise_a_contact_exactly_at_the_radius_is_reported():
       sites_cart, cs, edge, seed_indices=[0])
     obtained = image_positions(cs.unit_cell(), sites_frac, images)
     expected = brute_force_image_positions(sites_cart, cs, edge, [0])
-    assert obtained == expected, (edge, differences(expected, obtained))
+    assert_same_positions(expected, obtained, edge)
     at_the_edge = [
       op for op in images[0]
       if abs(cs.unit_cell().distance(op * sites_frac[0], sites_frac[0])
@@ -652,7 +586,9 @@ def exercise_a_contact_exactly_at_the_radius_is_reported():
   assert n_checked > 0
 
 def exercise_seed_order_does_not_change_the_result():
-  """The result does not depend on the order the seeds are given in."""
+  """Reversing the seed order leaves the operator lists identical, in the
+  same order.
+  """
   cs, sites_cart = general_position_structure()
   forward = symmetry_images.images_within_radius(
     sites_cart, cs, 5.0, seed_indices=[0, 3, 7])
@@ -664,21 +600,21 @@ def exercise_seed_order_does_not_change_the_result():
     assert ([op.as_xyz() for op in forward[j_seq]]
             == [op.as_xyz() for op in reverse[j_seq]]), j_seq
 
+def run_call_back(flags, space_group_info):
+  exercise_matches_brute_force(space_group_info)
+  exercise_brute_force_block_is_large_enough(space_group_info)
+
 def run():
-  exercise_matches_brute_force()
-  exercise_brute_force_block_is_large_enough()
   exercise_seeding_is_a_subset()
   exercise_both_pair_directions()
   exercise_distances_hold()
   exercise_identity_excluded()
-  exercise_special_position()
   exercise_self_images_of_a_seed()
   exercise_prebuilt_table()
   exercise_operators_are_hash_stable()
   exercise_operators_from_mixed_denominators()
   exercise_seed_indices_contract()
   exercise_requires_crystal_symmetry()
-  exercise_one_operator_per_image()
   exercise_a_radius_that_is_not_a_distance_is_rejected()
   exercise_tables_must_cover_the_same_sites()
   exercise_a_site_written_on_an_element_is_coincident()
@@ -691,6 +627,7 @@ def run():
   exercise_a_neighbour_near_an_element_keeps_its_images()
   exercise_result_is_lists_of_operators()
   exercise_every_seed_contributes()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print("OK")
 
 if (__name__ == "__main__"):

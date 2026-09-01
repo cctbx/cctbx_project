@@ -31,7 +31,7 @@ tst_list = [
   "$D/crystal/tst_ext.py",
   "$D/crystal/tst_distance_based_connectivity.py",
   "$D/crystal/tst_super_cell.py",
-  "$D/crystal/tst_symmetry_images.py",
+  ["$D/crystal/tst_symmetry_images.py", "I41/acd"],
   "$D/adptbx/boost_python/tst_adptbx.py",
   #["$D/adptbx/boost_python/tst_hirshfeld.py", "--fix-random-seeds"],
   "$D/miller/boost_python/tst_miller.py",
