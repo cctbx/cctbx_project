@@ -124,10 +124,8 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     print(f"water hydrogen element: {element_desc}", file=self.logger)
 
     # Consistency warning: deuterium is modelled only from neutron (or joint)
-    # data, whose O-D distances are the longer neutron value. Placing D at the
-    # shorter X-ray length is geometrically inconsistent, so warn. The reverse
-    # (H at the neutron length, e.g. a hydrogenous neutron structure) is
-    # legitimate, so it is not flagged.
+    # data, whose O-D distances are the longer neutron value. The reverse (H at
+    # the neutron length) is legitimate and is not flagged.
     places_d = (placer_element == "D"
                 or (placer_element is None
                     and any(ag.resname.strip().upper() == "DOD"
@@ -143,9 +141,9 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     n_before = self._count_water_h(hier)
     report_stats = self.params.stats
 
-    # Stream the clash table as the sweeps complete. The summary line and
-    # header print lazily on the first state (after the greedy pass, when the
-    # H count is final), then each row is printed as its sweep finishes.
+    # Stream the clash table as the sweeps complete: the summary and header
+    # print lazily on the first state, when the H count is final, then each
+    # row as its sweep finishes.
     header = {"printed": False}
     def on_state(label, stats):
       if not header["printed"]:
@@ -212,11 +210,9 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
 
   @staticmethod
   def _count_water_h(hier):
-    return sum(
-      1 for ag in hier.atom_groups()
-      if water_protonation._is_water(ag.resname)
-      for a in ag.atoms()
-      if a.element_is_hydrogen())
+    return sum(water_protonation._n_hd(ag)
+               for ag in hier.atom_groups()
+               if water_protonation._is_water(ag.resname))
 
   def _summary(self, n_before, n_now):
     added = n_now - n_before
@@ -229,10 +225,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
   def _warn_if_environment_unprotonated(self, model):
     """Warn when nothing outside the waters carries a hydrogen.
 
-    ``model.has_hd()`` is a cached whole-model property, so it settles the
-    common case without walking the hierarchy. It cannot decide on its own:
-    it spans the waters too, and so is True for this program's own output,
-    where only the waters carry H.
+    ``model.has_hd()`` spans the waters too, so it cannot settle this alone.
     """
     hier = model.get_hierarchy()
     if not any(not water_protonation._is_water(ag.resname)
@@ -249,9 +242,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
   def _print_partial_waters(self, partial):
     """Report the waters that carried exactly one H on input.
 
-    Omitting one proton from a water is a common way of writing hydroxide,
-    so these are called out whatever ``existing_h`` did with them. Any that
-    coordinate a metal are annotated with the cation and its distance.
+    Metal-coordinating ones are annotated with the cation and its distance.
     """
     if not partial:
       return
