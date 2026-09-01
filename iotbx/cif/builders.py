@@ -550,12 +550,6 @@ class miller_array_builder(crystal_symmetry_builder):
                 continue
               datastrarray = refln_loop[label]
               if label in remaininglabls:
-                labels = basearraylabels + [label]  + labelsuffix
-                lablsufx = jlablsufx
-                millarr = self.flex_std_string_as_miller_array(
-                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                  scale_group_code=scale_group)
-                # millarr will be None for column data not matching w_id,crys_id,scale_group values
                 if (label.endswith('wavelength_id') or
                  label.endswith('crystal_id') or # get full array if any of these labels, not just subsets
                  label.endswith('scale_group_code')):
@@ -564,6 +558,13 @@ class miller_array_builder(crystal_symmetry_builder):
                     scale_group_code=None)
                   lablsufx = ""
                   labels = basearraylabels + [label]
+                else:
+                  labels = basearraylabels + [label]  + labelsuffix
+                  lablsufx = jlablsufx
+                  millarr = self.flex_std_string_as_miller_array(
+                    datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                    scale_group_code=scale_group)
+                # millarr will be None for column data not matching w_id,crys_id,scale_group values
                 if millarr is None: continue
                 otype = self.guess_observationtype(label)
                 if otype is not None:
