@@ -632,6 +632,12 @@ class _WaterHydrogenPlacer(object):
     # placed_xyz is the same data as a flex.vec3_double.
     self.placed_coords = []
     self.placed_xyz = None
+    # Active-set bookkeeping for the relaxation sweeps (see _dirty), sized
+    # in run(): the tick at which each water was last placed and the tick
+    # at which its H last moved, off one monotonic counter.
+    self.w_placed_at = []
+    self.w_moved_at = []
+    self.tick = 0
     # (water index, [(atom, slot, di), ...], fixed_d1)
     self.records = []
     # (residue id, (metal element, distance) or None, action)
@@ -1065,23 +1071,70 @@ class _WaterHydrogenPlacer(object):
     return h1_xyz, cone_pts[int(rows[flex.max_index(c_cl.best_at(rows))])]
 
   def _store(self, slots, h1, h2):
-    """Write one water's new H positions to the model and the arrays."""
+    """Write one water's new H positions to the model and the arrays.
+
+    Returns True if any of them is not where it already was -- what the
+    sweep's active set is stamped from (see :meth:`_dirty`).
+    """
+    moved = False
     for atom, slot, di in slots:
       xyz = h1 if di == 1 else h2
+      if xyz != self.placed_coords[slot]:
+        moved = True
       self.placed_coords[slot] = xyz
       self.placed_xyz[slot] = xyz
       atom.set_xyz(xyz)
+    return moved
+
+  def _dirty(self, wi):
+    """Whether re-placing water ``wi`` could move its H.
+
+    A water is placed against its static surroundings, which never move,
+    and the placed H of its neighbouring waters -- ``w_wnbr[wi]``, the same
+    set ``w_nbr_slots[wi]`` is built from. If none of those H has moved
+    since this water was last placed, the placement re-derives exactly the
+    two positions it already holds, so the sweep can skip it. Waters are
+    stamped with a monotonic tick, bumped once per water per sweep, so a
+    neighbour that moves earlier in the *same* sweep still counts.
+
+    Parameters
+    ----------
+    wi : int
+        Index of the water.
+
+    Returns
+    -------
+    bool
+        True if the water must be re-placed.
+    """
+    t = self.w_placed_at[wi]
+    if t < 0:
+      return True   # never placed against the finished set of water H
+    moved_at = self.w_moved_at
+    for wj in self.w_wnbr[wi]:
+      if moved_at[wj] > t:
+        return True
+    return False
 
   def _apply_sweep(self):
     """Run one relaxation sweep.
 
-    Re-places every recorded water against the current positions of all the
-    others (its own H excluded), updating ``placed_coords`` and the atoms in
-    place. A water placed later in the sweep therefore sees the H the
-    earlier ones just moved, at the position they now hold.
+    Re-places every recorded water whose neighbourhood has changed against
+    the current positions of all the others (its own H excluded), updating
+    ``placed_coords`` and the atoms in place. A water placed later in the
+    sweep therefore sees the H the earlier ones just moved, at the position
+    they now hold. The waters whose neighbours have not moved since they
+    were last placed would re-derive the positions they already hold, so
+    they are skipped: the result is the same as sweeping all of them, and
+    later sweeps touch only the shrinking active set (see :meth:`_dirty`).
     """
     for wi, slots, fixed_d1 in self.records:
-      self._store(slots, *self._place_one(wi, self.w_nbr_slots[wi], fixed_d1))
+      self.tick += 1
+      if self._dirty(wi):
+        if self._store(slots,
+                       *self._place_one(wi, self.w_nbr_slots[wi], fixed_d1)):
+          self.w_moved_at[wi] = self.tick
+      self.w_placed_at[wi] = self.tick
 
   def _restore(self, coords):
     """Reset all placed H to a coordinate snapshot.
@@ -1097,6 +1150,9 @@ class _WaterHydrogenPlacer(object):
         self.placed_coords[slot] = coords[slot]
         self.placed_xyz[slot] = coords[slot]
         atom.set_xyz(coords[slot])
+    # The snapshot is a state the waters were not all placed against, so
+    # no placement stamp survives it: the next sweep re-places every water.
+    self.w_placed_at = [-1] * len(self.w_placed_at)
 
   def _clashing_records(self):
     """Find records whose placed H still clash.
@@ -1138,9 +1194,11 @@ class _WaterHydrogenPlacer(object):
     ct, st = math.cos(theta), math.sin(theta)
     d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
                for c in range(3))
-    self._store(slots,
-                tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
-                tuple(o[c] + self.oh_length * d2[c] for c in range(3)))
+    self.tick += 1
+    if self._store(slots,
+                   tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
+                   tuple(o[c] + self.oh_length * d2[c] for c in range(3))):
+      self.w_moved_at[wi] = self.tick
 
   def run(self):
     """Place H on every bare water, refine, optionally basin-hop, keep best.
@@ -1271,6 +1329,11 @@ class _WaterHydrogenPlacer(object):
     self.slot_wid = flex.size_t(2 * n, 0)
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
     self.w_wnbr = []
+    # Every water is dirty for the first sweep: the greedy pass placed each
+    # one against the H of the earlier waters only.
+    self.w_placed_at = [-1] * n
+    self.w_moved_at = [0] * n
+    self.tick = 0
     if n:
       o_pts = flex.vec3_double([w[1].xyz for w in waters])
       # Order most-crowded first: a water boxed in by many neighbours is the
