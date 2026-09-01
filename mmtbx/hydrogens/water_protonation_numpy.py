@@ -13,7 +13,7 @@ hierarchy in place. The :class:`mmtbx.programs.water_protonation.Program`
 wraps it with DataManager I/O, experiment-aware defaults, and a clash
 report; the command-line dispatcher is ``mmtbx.naiad``.
 
-Needs ``scipy`` (KDTree); the vectorised work is ``scitbx.array_family.flex``.
+Needs ``numpy`` and ``scipy`` (KDTree).
 """
 
 from __future__ import absolute_import, division, print_function
@@ -23,8 +23,8 @@ import random
 
 import iotbx.pdb
 from libtbx import group_args
+import numpy as np
 from scitbx import matrix
-from scitbx.array_family import flex
 from scipy.spatial import KDTree
 
 
@@ -88,7 +88,6 @@ _WATER_CATION_ELEMENTS = frozenset({
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to count as donated to
-_INF = float("inf")
 
 
 def _has_deuterium(hier):
@@ -170,132 +169,24 @@ _WATER_FALLBACK_DIRECTIONS = _fibonacci_sphere(64)
 
 # Empty neighbour-slot list, shared so the common "no placed H nearby" case
 # allocates nothing.
-_EMPTY_SLOTS = flex.size_t()
+_EMPTY_SLOTS = np.zeros(0, dtype=np.intp)
 
 
-def _as_vec3(tuples):
-  """Build a flex.vec3_double, tolerating the empty case."""
-  return flex.vec3_double(tuples) if tuples else flex.vec3_double()
-
-
-# Index arrays for the (candidate x neighbour) block, keyed by its shape.
-# The block is flattened row-major -- candidate i occupies ``[i * m, (i+1) * m)``
-# -- so the neighbour axis is contiguous and a row is a plain slice. The two
-# arrays only depend on the shape, so they are built once and shared by every
-# water with that shape.
-_TILE_CACHE = {}
-
-
-def _tile(k, m):
-  """``(cand_index, nbr_index)`` for a flattened (k, m) block."""
-  t = _TILE_CACHE.get((k, m))
-  if t is None:
-    t = (flex.size_t([i for i in range(k) for _ in range(m)]),
-         flex.size_t(list(range(m)) * k))
-    _TILE_CACHE[(k, m)] = t
-  return t
-
-
-def _row_mins(d, k, m, rows):
-  """Per-row minima of a flattened (k, m) block, for selected rows.
-
-  flex has no segmented reduction, so the block is sorted once and each
-  row's smallest entry read off the permutation -- one C++ sort whatever
-  the number of rows wanted, which beats slicing rows out one at a time
-  for everything but the single-row case. Exact either way: no arithmetic
-  touches the values, and ``min`` is order-independent.
-
-  Parameters
-  ----------
-  d : scitbx.array_family.flex.double
-      The block, flattened row-major.
-  k, m : int
-      Block shape.
-  rows : scitbx.array_family.flex.size_t
-      Rows whose minimum is wanted.
-
-  Returns
-  -------
-  scitbx.array_family.flex.double
-      One minimum per entry of ``rows``.
-  """
-  n = rows.size()
-  if n == 0:
-    return flex.double()
-  if n == 1:
-    i = int(rows[0]) * m
-    return flex.double(1, flex.min(d[i:i + m]))
-  # Descending order, then scatter into a per-row slot: the last write for a
-  # row is its smallest entry, so every row ends up holding its own minimum.
-  perm = flex.sort_permutation(d).reversed()
-  mi = flex.size_t(k, 0)
-  mi.set_selected(perm / m, perm)
-  return d.select(mi).select(rows)
-
-
-def _rank_top(cat, ok):
-  """Rows of maximal ``2 * cat + ok`` rank, and that rank.
-
-  Reproduces ``rank = cat * 2 + ok; top = rank == rank.max()`` without
-  materialising the rank array: the four ranks are just the four
-  combinations of the two booleans, so the highest non-empty one is the
-  answer.
-
-  Returns
-  -------
-  tuple
-      ``(top, rank)`` -- a flex.bool over the candidates and the rank value.
-  """
-  both = cat & ok
-  if both.count(True):
-    return both, 3
-  if cat.count(True):
-    return cat, 2          # cat & ~ok, and cat & ok is empty
-  if ok.count(True):
-    return ok, 1           # ~cat & ok, and cat is empty
-  return flex.bool(cat.size(), True), 0
-
-
-def _cat_ok(cat, pts, o):
-  """Whether each candidate is clear of every nearby cation.
-
-  True where the candidate is in the hemisphere away from every nearby
-  cation, i.e. ``(H - O).(cation - O) <= 0`` for all of them.
-
-  Parameters
-  ----------
-  cat : list of tuple
-      O->cation unit directions.
-  pts : scitbx.array_family.flex.vec3_double
-      Candidate H positions.
-  o : tuple of float
-      Water O coordinates.
-
-  Returns
-  -------
-  scitbx.array_family.flex.bool
-      One entry per candidate.
-  """
-  ok = flex.bool(pts.size(), True)
-  if not cat:
-    return ok
-  dx, dy, dz = (pts - o).parts()
-  for c in cat:
-    bad = (dx * c[0] + dy * c[1] + dz * c[2] > 0.0).iselection()
-    if bad.size():
-      ok.set_selected(bad, False)
-  return ok
+def _as_np(cols):
+  """Stack scitbx col vectors into an (n, 3) float array."""
+  if not cols:
+    return np.zeros((0, 3))
+  return np.array([c.elems for c in cols], dtype=float)
 
 
 # The H2 cone is sampled at fixed azimuths, so its cosines and sines are
 # constants; likewise the normalized fallback sphere.
-_CONE_COS = flex.double([math.cos(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
-                         for k in range(_WATER_CONE_SAMPLES)])
-_CONE_SIN = flex.double([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
-                         for k in range(_WATER_CONE_SAMPLES)])
-_FALLBACK_DIRS = [matrix.col(v).normalize().elems
-                  for v in _WATER_FALLBACK_DIRECTIONS]
-_FALLBACK_FX = _as_vec3(_FALLBACK_DIRS)
+_CONE_COS = np.array([math.cos(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
+                      for k in range(_WATER_CONE_SAMPLES)])
+_CONE_SIN = np.array([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
+                      for k in range(_WATER_CONE_SAMPLES)])
+_FALLBACK_NP = _as_np([matrix.col(v).normalize()
+                       for v in _WATER_FALLBACK_DIRECTIONS])
 
 
 def _ortho_frame(d1):
@@ -305,28 +196,27 @@ def _ortho_frame(d1):
 
   Parameters
   ----------
-  d1 : tuple of float
-      Unit direction (the O-H1 axis).
+  d1 : numpy.ndarray
+      Unit direction (the O-H1 axis), shape (3,).
 
   Returns
   -------
-  tuple of tuple
+  tuple of numpy.ndarray
       Two unit vectors ``p, q`` with ``(d1, p, q)`` mutually perpendicular
       -- the frame for sampling the H2 cone around ``d1``.
   """
   x, y, z = d1[0], d1[1], d1[2]
   a, b, c = abs(x), abs(y), abs(z)
   if c <= a and c <= b:
-    p = (-y, x, 0.0)
+    p = np.array((-y, x, 0.0))
   elif b <= a and b <= c:
-    p = (-z, 0.0, x)
+    p = np.array((-z, 0.0, x))
   else:
-    p = (0.0, -z, y)
-  n = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2])
-  p = (p[0] / n, p[1] / n, p[2] / n)
-  return p, (y * p[2] - p[1] * z,
-             z * p[0] - p[2] * x,
-             x * p[1] - p[0] * y)
+    p = np.array((0.0, -z, y))
+  p = p / math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2])
+  return p, np.array((y * p[2] - p[1] * z,
+                      z * p[0] - p[2] * x,
+                      x * p[1] - p[0] * y))
 
 
 def _rand_unit(rng):
@@ -339,14 +229,14 @@ def _rand_unit(rng):
 
   Returns
   -------
-  tuple of float
+  numpy.ndarray
       A uniformly random unit vector.
   """
   while True:
-    v = (rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))
+    v = np.array((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1)))
     n = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
     if n > 1e-6:
-      return (v[0] / n, v[1] / n, v[2] / n)
+      return v / n
 
 
 def _strip_water_hydrogens(hier):
@@ -545,54 +435,6 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
   return lobes
 
 
-class _Clearance(object):
-  """The result of one clearance test (see :meth:`_WaterHydrogenPlacer._clear`).
-
-  Holds the pass/fail flag per candidate and the squared-distance blocks it
-  came from, so the clearance *distance* -- needed only to break ties among
-  the top-ranked candidates -- can be reduced out of them on demand instead
-  of for every candidate. A block already reduced to its per-candidate
-  minima (the cached static block of an invariant candidate set) is carried
-  in ``mins`` instead.
-  """
-
-  __slots__ = ("ok", "blocks", "mins", "k")
-
-  def __init__(self, k):
-    self.ok = flex.bool(k, True)
-    self.blocks = []   # (flattened (k, m) squared-distance block, m)
-    self.mins = []     # per-candidate minima of already-reduced blocks
-    self.k = k
-
-  def best_at(self, rows):
-    """Clearance distance of the given candidates.
-
-    Parameters
-    ----------
-    rows : scitbx.array_family.flex.size_t
-        Candidate indices.
-
-    Returns
-    -------
-    scitbx.array_family.flex.double
-        Distance to the nearest non-own atom within
-        ``_WATER_CLEARANCE_RADIUS``, or the search radius if nothing is
-        near, one entry per requested candidate.
-    """
-    if rows.size() == 0:
-      return flex.double()
-    best = flex.double(rows.size(), _WATER_CLEARANCE_RADIUS ** 2)
-    for mins in self.mins:
-      v = mins.select(rows)
-      s = v < best
-      best.set_selected(s, v.select(s))
-    for d, m in self.blocks:
-      v = _row_mins(d, self.k, m, rows)
-      s = v < best
-      best.set_selected(s, v.select(s))
-    return flex.sqrt(best)
-
-
 class _WaterHydrogenPlacer(object):
   """The H-bond-aware water-hydrogen placer (engine behind
   :func:`place_water_hydrogens`).
@@ -630,10 +472,10 @@ class _WaterHydrogenPlacer(object):
     self.on_state = on_state
 
     # Placed-H coordinates, one slot per placed proton, set up in run():
-    # placed_xyz is the same data as a flex.vec3_double and placed_snap its
+    # placed_np is the same data as an (n, 3) array and placed_snap its
     # start-of-sweep copy (see _apply_sweep).
     self.placed_coords = []
-    self.placed_xyz = None
+    self.placed_np = None
     self.placed_snap = None
     # (water index, [(atom, slot, di), ...], fixed_d1)
     self.records = []
@@ -647,35 +489,24 @@ class _WaterHydrogenPlacer(object):
     ----------
     wi : int
         Index of the water being placed.
-    cands : scitbx.array_family.flex.vec3_double
-        Candidate H positions.
+    cands : numpy.ndarray
+        Candidate H positions, shape (k, 3).
 
     Returns
     -------
     tuple
-        ``(d, m, ok)``: the flattened (k, m) squared-distance block, its
-        neighbour count, and whether each candidate clears every one of
-        them. ``m`` is zero (and ``d`` None) when the water has no static
-        neighbour at all.
+        ``(d, ok)``: the (k, m) squared-distance block and whether each
+        candidate clears every one of those neighbours. ``d`` is None when
+        the water has no static neighbour at all.
     """
-    k = cands.size()
     P = self.w_sxyz[wi]
-    m = P.size()
-    ok = flex.bool(k, True)
-    if not m:
-      return None, 0, ok
-    ik, im = _tile(k, m)
-    # Squared distances go through parts() and pow2, never .dot() or
-    # .norms(): those contract to fused multiply-add in C++, while the engine
-    # this reproduces rounds every step, so they differ in the last ulp and
-    # flip threshold tests. flex.pow2 is also ~11x faster than dx * dx. The
-    # same applies to every other squared distance in this file.
-    dx, dy, dz = (cands.select(ik) - P.select(im)).parts()
-    d = flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
-    bad = (d < self.w_sthr[wi].select(im)).iselection()
-    if bad.size():
-      ok.set_selected(bad / m, False)
-    return d, m, ok
+    if not len(P):
+      return None, np.ones(len(cands), dtype=bool)
+    dx = cands[:, 0, None] - P[None, :, 0]
+    dy = cands[:, 1, None] - P[None, :, 1]
+    dz = cands[:, 2, None] - P[None, :, 2]
+    d = dx * dx + dy * dy + dz * dz
+    return d, ~(d < self.w_sthr[wi][None, :]).any(axis=1)
 
   def _static_clear(self, wi, cands, key):
     """Static half of the clearance test, reduced and cached per water.
@@ -690,9 +521,9 @@ class _WaterHydrogenPlacer(object):
     ----------
     wi : int
         Index of the water being placed.
-    cands : scitbx.array_family.flex.vec3_double
-        Candidate H positions; an invariant set (the acceptor directions or
-        the fallback sphere).
+    cands : numpy.ndarray
+        Candidate H positions, shape (k, 3); an invariant set (the acceptor
+        directions or the fallback sphere).
     key : str
         Slot of the water's geometry dict to cache under.
 
@@ -706,10 +537,8 @@ class _WaterHydrogenPlacer(object):
     g = self.w_geom[wi]
     st = g[key]
     if st is None:
-      d, m, ok = self._static_block(wi, cands)
-      k = cands.size()
-      st = g[key] = (ok, _row_mins(d, k, m, flex.size_t_range(k)) if m
-                     else None)
+      d, ok = self._static_block(wi, cands)
+      st = g[key] = (ok, None if d is None else d.min(axis=1))
     return st
 
   def _clear(self, wi, cands, nbr_slots, static_key=None):
@@ -728,9 +557,9 @@ class _WaterHydrogenPlacer(object):
     ----------
     wi : int
         Index of the water being placed.
-    cands : scitbx.array_family.flex.vec3_double
-        Candidate H positions.
-    nbr_slots : scitbx.array_family.flex.size_t
+    cands : numpy.ndarray
+        Candidate H positions, shape (k, 3).
+    nbr_slots : numpy.ndarray
         Placed-H slots that may lie near this water (its own excluded).
     static_key : str or None, optional
         Geometry-dict slot holding the cached static half of the test, for
@@ -740,51 +569,75 @@ class _WaterHydrogenPlacer(object):
 
     Returns
     -------
-    _Clearance
-        Carries ``ok`` -- whether each candidate clears every heavy atom by
-        ``_WATER_MIN_CLEARANCE`` and every hydrogen (static or placed) by
-        ``_WATER_MIN_H_CLEARANCE`` -- and the squared-distance blocks the
-        clearance distances are read back from. Those distances (the
-        distance to the nearest non-own atom within
-        ``_WATER_CLEARANCE_RADIUS``, or the search radius if nothing is
-        near) are only ever wanted for the few top-ranked candidates, so
-        they are left to :meth:`_Clearance.best_at` rather than reduced for
-        every candidate here.
+    tuple of numpy.ndarray
+        ``(min_dist, ok)``, one entry per candidate: the distance to the
+        nearest non-own atom within ``_WATER_CLEARANCE_RADIUS`` (the search
+        radius if nothing is near, a soft tie-breaker) and whether the
+        candidate clears every heavy atom by ``_WATER_MIN_CLEARANCE`` and
+        every hydrogen (static or placed) by ``_WATER_MIN_H_CLEARANCE``.
     """
     # Squared distances throughout: the thresholds and the cap are exact
     # squares and sqrt is monotone, so both the comparisons and the
     # per-candidate minimum are unchanged.
-    k = cands.size()
-    cl = _Clearance(k)
+    best = np.full(len(cands), _WATER_CLEARANCE_RADIUS ** 2)
     if static_key is not None:
       ok, mins = self._static_clear(wi, cands, static_key)
-      cl.ok = ok.deep_copy()
+      ok = ok.copy()
       if mins is not None:
-        cl.mins.append(mins)
+        np.minimum(best, mins, out=best)
     else:
-      d, m, cl.ok = self._static_block(wi, cands)
-      if m:
-        cl.blocks.append((d, m))
-    m = nbr_slots.size()
-    if m:
-      ik, im = _tile(k, m)
-      ct = cands.select(ik)
-      dx, dy, dz = (ct - self.placed_xyz.select(nbr_slots).select(im)).parts()
-      d = flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
+      d, ok = self._static_block(wi, cands)
+      if d is not None:
+        np.minimum(best, d.min(axis=1), out=best)
+    if len(nbr_slots):
+      Q = self.placed_np[nbr_slots]
+      dx = cands[:, 0, None] - Q[None, :, 0]
+      dy = cands[:, 1, None] - Q[None, :, 1]
+      dz = cands[:, 2, None] - Q[None, :, 2]
+      d = dx * dx + dy * dy + dz * dz
       if self.placed_snap is not None:
         # A relaxation sweep moves placed H while it runs and keeps the
         # spatial index it built at the start: a neighbour is *found* at
         # its start-of-sweep position but *measured* at its live one.
         # Reproduced here, quirk and all.
-        sx, sy, sz = (ct
-                      - self.placed_snap.select(nbr_slots).select(im)).parts()
-        sd = flex.pow2(sx) + flex.pow2(sy) + flex.pow2(sz)
-        d.set_selected(sd > _WATER_CLEARANCE_RADIUS ** 2, _INF)
-      bad = (d < _WATER_MIN_H_CLEARANCE ** 2).iselection()
-      if bad.size():
-        cl.ok.set_selected(bad / m, False)
-      cl.blocks.append((d, m))
-    return cl
+        S = self.placed_snap[nbr_slots]
+        sx = cands[:, 0, None] - S[None, :, 0]
+        sy = cands[:, 1, None] - S[None, :, 1]
+        sz = cands[:, 2, None] - S[None, :, 2]
+        d = np.where(sx * sx + sy * sy + sz * sz
+                     <= _WATER_CLEARANCE_RADIUS ** 2, d, np.inf)
+      np.minimum(best, d.min(axis=1), out=best)
+      ok &= ~(d < _WATER_MIN_H_CLEARANCE ** 2).any(axis=1)
+    return np.sqrt(best), ok
+
+  @staticmethod
+  def _cat_ok(cat, pts, o):
+    """Whether each candidate is clear of every nearby cation.
+
+    True where the candidate is in the hemisphere away from every nearby
+    cation, i.e. ``(H - O).(cation - O) <= 0`` for all of them.
+
+    Parameters
+    ----------
+    cat : numpy.ndarray
+        O->cation unit directions, shape (m, 3).
+    pts : numpy.ndarray
+        Candidate H positions, shape (k, 3).
+    o : numpy.ndarray
+        Water O coordinates, shape (3,).
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean, one entry per candidate.
+    """
+    if not len(cat):
+      return np.ones(len(pts), dtype=bool)
+    dx = pts[:, 0, None] - o[0]
+    dy = pts[:, 1, None] - o[1]
+    dz = pts[:, 2, None] - o[2]
+    dp = dx * cat[None, :, 0] + dy * cat[None, :, 1] + dz * cat[None, :, 2]
+    return (dp <= 0.0).all(axis=1)
 
   def _stats(self):
     """:func:`_water_clash_stats` from the engine's own arrays.
@@ -800,31 +653,22 @@ class _WaterHydrogenPlacer(object):
     """
     ns = len(self.placed_coords)
     if ns:
-      X = self.placed_xyz[:ns].concatenate(self.wh_xyz)
-      W = self.slot_wid[:ns].concatenate(self.wh_wid)
+      X = np.concatenate((self.placed_np[:ns], self.wh_xyz))
+      W = np.concatenate((self.slot_wid[:ns], self.wh_wid))
     else:
       X, W = self.wh_xyz, self.wh_wid
-    n = X.size()
+    n = len(X)
     if n < 2:
       return n, 0, 0, 0, None
-    pairs = KDTree(X.as_numpy_array()).query_pairs(2.0, output_type="ndarray")
+    pairs = KDTree(X).query_pairs(2.0, output_type="ndarray")
+    if len(pairs):
+      pairs = pairs[W[pairs[:, 0]] != W[pairs[:, 1]]]  # drop same-water H
     if not len(pairs):
       return n, 0, 0, 0, None
-    # KDTree hands back an (n, 2) ndarray; take it into flex here and stay
-    # there. flex flattens it row-major, so the pair members are the even
-    # and odd entries.
-    p = flex.size_t(pairs)
-    i = p.select(flex.size_t_range(0, p.size(), 2))
-    j = p.select(flex.size_t_range(1, p.size(), 2))
-    keep = (W.select(i) != W.select(j)).iselection()  # drop same-water H
-    if not keep.size():
-      return n, 0, 0, 0, None
-    i = i.select(keep)
-    j = j.select(keep)
-    dx, dy, dz = (X.select(i) - X.select(j)).parts()
-    d = flex.sqrt(flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz))
-    return (n, d.size(), (d < 1.8).count(True), (d < 1.5).count(True),
-            flex.min(d))
+    D = X[pairs[:, 0]] - X[pairs[:, 1]]
+    d = np.sqrt(D[:, 0] * D[:, 0] + D[:, 1] * D[:, 1] + D[:, 2] * D[:, 2])
+    return (n, int(len(d)), int((d < 1.8).sum()), int((d < 1.5).sum()),
+            float(d.min()))
 
   def _nearest_cation(self, o_xyz, own_idx):
     """Closest metal cation coordinating a water O, if any.
@@ -877,12 +721,11 @@ class _WaterHydrogenPlacer(object):
     -------
     dict
         ``o`` (O coordinates), ``acceptors`` (atom indices, nearest first),
-        ``acc_dirs``/``acc_pts`` (O-H unit directions as tuples and the H
-        positions built from them), ``cat`` (O->cation unit directions),
-        ``sph`` (the lazily built fallback-sphere H positions) and
-        ``acc_static``/``sph_static`` (the cached static half of the
-        clearance test for those two candidate sets, see
-        :meth:`_static_clear`).
+        ``acc_dirs``/``acc_pts`` (O-H unit directions and H positions for
+        them), ``cat`` (O->cation unit directions), ``sph`` (the lazily
+        built fallback-sphere H positions) and ``acc_static``/``sph_static``
+        (the cached static half of the clearance test for those two
+        candidate sets, see :meth:`_static_clear`).
     """
     g = self.w_geom[wi]
     if g is not None:
@@ -939,13 +782,13 @@ class _WaterHydrogenPlacer(object):
         continue
       cation_dirs.append(v.normalize())
 
-    o = o_xyz.elems
-    acc_dirs = [accept_dir(i).elems for i in acceptors]
+    o = np.array(o_xyz.elems, dtype=float)
+    acc_dirs = _as_np([accept_dir(i) for i in acceptors])
     g = {"o": o,
          "acceptors": acceptors,
          "acc_dirs": acc_dirs,
-         "acc_pts": _as_vec3(acc_dirs) * self.oh_length + o,
-         "cat": [c.elems for c in cation_dirs],
+         "acc_pts": o + self.oh_length * acc_dirs,
+         "cat": _as_np(cation_dirs),
          "sph": None,
          "acc_static": None,
          "sph_static": None}
@@ -962,9 +805,9 @@ class _WaterHydrogenPlacer(object):
     ----------
     wi : int
         Index of the water being placed.
-    nbr_slots : scitbx.array_family.flex.size_t
+    nbr_slots : numpy.ndarray
         Placed-H slots that may lie near this water (its own excluded).
-    fixed_d1 : tuple of float or None, optional
+    fixed_d1 : numpy.ndarray or None, optional
         Unit O-H1 direction to hold fixed instead of searching for one,
         used when completing a water that already carries one proton. The
         returned ``h1_xyz`` then just restates that direction at the
@@ -973,7 +816,7 @@ class _WaterHydrogenPlacer(object):
 
     Returns
     -------
-    tuple of tuple
+    tuple of numpy.ndarray
         ``(h1_xyz, h2_xyz)``, the placed H1 and H2 positions.
     """
     g = self._water_geom(wi)
@@ -984,9 +827,8 @@ class _WaterHydrogenPlacer(object):
     cat = g["cat"]
     na = len(acceptors)
     if na:
-      acc_cl = self._clear(wi, acc_pts, nbr_slots, "acc_static")
-      acc_ok = acc_cl.ok
-      acc_cat = _cat_ok(cat, acc_pts, o)
+      acc_best, acc_ok = self._clear(wi, acc_pts, nbr_slots, "acc_static")
+      acc_cat = self._cat_ok(cat, acc_pts, o)
 
     # H1: nearest acceptor giving a placement that is away from cations and
     # clash-free; else the best direction over acceptors + a dense fallback
@@ -999,8 +841,8 @@ class _WaterHydrogenPlacer(object):
       h1_k = -1
       best_align = _WATER_H1_ACC_ALIGN
       for k in range(na):
-        a = acc_dirs[k]
-        align = a[0] * d1[0] + a[1] * d1[1] + a[2] * d1[2]
+        align = (acc_dirs[k, 0] * d1[0] + acc_dirs[k, 1] * d1[1]
+                 + acc_dirs[k, 2] * d1[2])
         if align > best_align:
           best_align = align
           h1_k = k
@@ -1014,74 +856,57 @@ class _WaterHydrogenPlacer(object):
           break
       if d1 is None:
         if g["sph"] is None:
-          g["sph"] = _FALLBACK_FX * self.oh_length + o
+          g["sph"] = o + self.oh_length * _FALLBACK_NP
         sph_pts = g["sph"]
-        s_cl = self._clear(wi, sph_pts, nbr_slots, "sph_static")
-        s_cat = _cat_ok(cat, sph_pts, o)
+        s_best, s_ok = self._clear(wi, sph_pts, nbr_slots, "sph_static")
+        s_cat = self._cat_ok(cat, sph_pts, o)
         if na:
-          cand_ok = acc_ok.concatenate(s_cl.ok)
-          cand_cat = acc_cat.concatenate(s_cat)
+          cand_dirs = np.concatenate((acc_dirs, _FALLBACK_NP))
+          cand_best = np.concatenate((acc_best, s_best))
+          cand_ok = np.concatenate((acc_ok, s_ok))
+          cand_cat = np.concatenate((acc_cat, s_cat))
         else:
-          cand_ok, cand_cat = s_cl.ok, s_cat
+          cand_dirs, cand_best, cand_ok, cand_cat = (
+            _FALLBACK_NP, s_best, s_ok, s_cat)
         # (cation-ok, clash-free) as one rank, then clearance, first wins.
-        top = _rank_top(cand_cat, cand_ok)[0]
-        rows = top.iselection()
-        if na:
-          # The candidates are the acceptors then the fallback sphere; each
-          # half reads its clearances back from its own test.
-          lo = rows.select(rows < na)
-          hi = rows.select(~(rows < na)) - na
-          vals = acc_cl.best_at(lo).concatenate(s_cl.best_at(hi))
-          b = flex.max_index(vals)
-          pick = int(lo[b]) if b < lo.size() else na + int(hi[b - lo.size()])
-        else:
-          pick = int(rows[flex.max_index(s_cl.best_at(rows))])
-        d1 = acc_dirs[pick] if pick < na else _FALLBACK_DIRS[pick - na]
-    h1_xyz = (o[0] + self.oh_length * d1[0],
-              o[1] + self.oh_length * d1[1],
-              o[2] + self.oh_length * d1[2])
+        rank = cand_cat.astype(np.int8) * 2 + cand_ok
+        top = rank == rank.max()
+        d1 = cand_dirs[int(np.argmax(np.where(top, cand_best, -np.inf)))]
+    h1_xyz = o + self.oh_length * d1
 
     # Orthonormal frame for the H2 cone (d1, p, q mutually perpendicular)
     p, q = _ortho_frame(d1)
 
     # H2: rank the cone angles by (away-from-cation, clash-free, best
     # alignment over the acceptors H1 did not take, clearance).
-    ns = _WATER_CONE_SAMPLES
-    cone_dirs = ((flex.vec3_double(ns, p) * _CONE_COS
-                  + flex.vec3_double(ns, q) * _CONE_SIN) * self.sin_hoh
-                 + (self.cos_hoh * d1[0], self.cos_hoh * d1[1],
-                    self.cos_hoh * d1[2]))
-    cone_pts = cone_dirs * self.oh_length + o
-    c_cl = self._clear(wi, cone_pts, nbr_slots)
-    c_cat = _cat_ok(cat, cone_pts, o)
+    cone_dirs = (self.cos_hoh * d1
+                 + self.sin_hoh * (_CONE_COS[:, None] * p
+                                   + _CONE_SIN[:, None] * q))
+    cone_pts = o + self.oh_length * cone_dirs
+    c_best, c_ok = self._clear(wi, cone_pts, nbr_slots)
+    c_cat = self._cat_ok(cat, cone_pts, o)
 
-    top, rank = _rank_top(c_cat, c_cl.ok)
-    # The alignment term only ever separates candidates that are both
-    # cation-ok and clash-free (rank 3); below that it is zero for every
-    # candidate still in the running and cannot break any tie, so the dot
-    # products are not worth computing.
-    use = [k for k in range(na) if k != h1_k]
-    if rank == 3 and use:
-      dx, dy, dz = cone_dirs.parts()
-      align = None
-      for k in use:
-        a = acc_dirs[k]
-        dot = dx * a[0] + dy * a[1] + dz * a[2]
-        if align is None:
-          align = dot
-        else:
-          s = dot > align
-          align.set_selected(s, dot.select(s))
-      top = top & (align == flex.max(align.select(top)))
-    rows = top.iselection()
-    return h1_xyz, cone_pts[int(rows[flex.max_index(c_cl.best_at(rows))])]
+    if na - (h1_k >= 0):
+      dots = (cone_dirs[:, 0, None] * acc_dirs[None, :, 0]
+              + cone_dirs[:, 1, None] * acc_dirs[None, :, 1]
+              + cone_dirs[:, 2, None] * acc_dirs[None, :, 2])
+      if h1_k >= 0:
+        dots[:, h1_k] = -np.inf
+      align = dots.max(axis=1)
+    else:
+      align = np.zeros(_WATER_CONE_SAMPLES)
+    rank = c_cat.astype(np.int8) * 2 + c_ok
+    top = rank == rank.max()
+    a3 = np.where(c_cat & c_ok, align, 0.0)
+    top &= a3 == np.where(top, a3, -np.inf).max()
+    return h1_xyz, cone_pts[int(np.argmax(np.where(top, c_best, -np.inf)))]
 
   def _store(self, slots, h1, h2):
     """Write one water's new H positions to the model and the arrays."""
     for atom, slot, di in slots:
-      xyz = h1 if di == 1 else h2
+      xyz = tuple((h1 if di == 1 else h2).tolist())
       self.placed_coords[slot] = xyz
-      self.placed_xyz[slot] = xyz
+      self.placed_np[slot] = xyz
       atom.set_xyz(xyz)
 
   def _apply_sweep(self):
@@ -1093,7 +918,7 @@ class _WaterHydrogenPlacer(object):
     reproducing the spatial index the sweep would otherwise build once and
     then mutate underneath.
     """
-    self.placed_snap = self.placed_xyz.deep_copy()
+    self.placed_snap = self.placed_np.copy()
     for wi, slots, fixed_d1 in self.records:
       self._store(slots, *self._place_one(wi, self.w_nbr_slots[wi], fixed_d1))
 
@@ -1109,7 +934,7 @@ class _WaterHydrogenPlacer(object):
     for _wi, slots, _fixed in self.records:
       for atom, slot, di in slots:
         self.placed_coords[slot] = coords[slot]
-        self.placed_xyz[slot] = coords[slot]
+        self.placed_np[slot] = coords[slot]
         atom.set_xyz(coords[slot])
 
   def _clashing_records(self):
@@ -1124,9 +949,8 @@ class _WaterHydrogenPlacer(object):
     self.placed_snap = None
     bad = []
     for ri, (wi, slots, _fixed) in enumerate(self.records):
-      pts = self.placed_xyz.select(
-        flex.size_t([slot for _, slot, _ in slots]))
-      if not self._clear(wi, pts, self.w_nbr_slots[wi]).ok.all_eq(True):
+      pts = self.placed_np[[slot for _, slot, _ in slots]]
+      if not self._clear(wi, pts, self.w_nbr_slots[wi])[1].all():
         bad.append(ri)
     return bad
 
@@ -1150,12 +974,9 @@ class _WaterHydrogenPlacer(object):
     d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
     p, q = _ortho_frame(d1)
     theta = rng.uniform(0.0, 2.0 * math.pi)
-    ct, st = math.cos(theta), math.sin(theta)
-    d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
-               for c in range(3))
-    self._store(slots,
-                tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
-                tuple(o[c] + self.oh_length * d2[c] for c in range(3)))
+    d2 = self.cos_hoh * d1 + self.sin_hoh * (math.cos(theta) * p
+                                             + math.sin(theta) * q)
+    self._store(slots, o + self.oh_length * d1, o + self.oh_length * d2)
 
   def run(self):
     """Place H on every bare water, refine, optionally basin-hop, keep best.
@@ -1187,13 +1008,13 @@ class _WaterHydrogenPlacer(object):
 
     # Static neighbours (protein, ligands, water O, any pre-existing H) are
     # fixed, so the KDTree over them is built once. The water H we place are
-    # tracked separately, by slot, in placed_coords/placed_xyz.
-    self.static_xyz = sel.extract_xyz()
-    self.static_tree = KDTree(self.static_xyz.as_numpy_array())
-    self.static_is_h = flex.bool([a.element_is_hydrogen() for a in atoms])
-    self.static_thr = flex.double(len(atoms), _WATER_MIN_CLEARANCE ** 2)
-    self.static_thr.set_selected(self.static_is_h,
-                                 _WATER_MIN_H_CLEARANCE ** 2)
+    # tracked separately, by slot, in placed_coords/placed_np.
+    self.static_np = sel.extract_xyz().as_numpy_array()
+    self.static_tree = KDTree(self.static_np)
+    self.static_is_h = np.array([a.element_is_hydrogen() for a in atoms],
+                                dtype=bool)
+    self.static_thr = np.where(self.static_is_h, _WATER_MIN_H_CLEARANCE ** 2,
+                               _WATER_MIN_CLEARANCE ** 2)
     # Key by memory_id() (stable C++ identity), not id(): iotbx returns a
     # fresh Python wrapper on each atom access, so id() is not stable across
     # the hier.atoms() and ag.atoms() calls used to build the per-water
@@ -1208,10 +1029,10 @@ class _WaterHydrogenPlacer(object):
     # filtered. Inert on an unprotonated model (no H -> no N flagged -> every
     # N stays an acceptor).
     self.donor_n = set()
-    h_idx = self.static_is_h.iselection()
-    if h_idx.size():
+    h_idx = np.nonzero(self.static_is_h)[0]
+    if len(h_idx):
       for i, nbrs in zip(h_idx, self.static_tree.query_ball_point(
-          self.static_xyz.select(h_idx).as_numpy_array(), _WATER_NH_BOND,
+          self.static_np[h_idx], _WATER_NH_BOND,
           return_sorted=False)):
         for j in nbrs:
           if j != i and atoms[j].element.strip().upper() == "N":
@@ -1259,7 +1080,7 @@ class _WaterHydrogenPlacer(object):
           if v.length() < 1e-3:
             skip = True  # H coincident with O: no direction for a cone
           else:
-            fixed_d1 = v.normalize().elems
+            fixed_d1 = np.array(v.normalize().elems, dtype=float)
       is_single = (ag.memory_id() in single_h if single_h is not None
                    else len(existing) == 1)
       if skip and not is_single:
@@ -1272,8 +1093,8 @@ class _WaterHydrogenPlacer(object):
       if skip:
         continue
       waters.append((ag, o, own_idx, fixed_d1, existing, names, wgid))
-    self.wh_xyz = _as_vec3(wh_xyz)
-    self.wh_wid = flex.size_t(wh_wid) if wh_wid else flex.size_t()
+    self.wh_xyz = np.array(wh_xyz, dtype=float) if wh_xyz else np.zeros((0, 3))
+    self.wh_wid = np.array(wh_wid, dtype=np.int64)
 
     # Per-water constants. Neither the static atoms nor the water O move, so
     # every neighbour list the placement needs is built once, here, and
@@ -1282,13 +1103,13 @@ class _WaterHydrogenPlacer(object):
     n = len(waters)
     self.w_geom = [None] * n
     self.placed_coords = []
-    self.placed_xyz = flex.vec3_double(2 * n, (0.0, 0.0, 0.0))
+    self.placed_np = np.zeros((2 * n, 3))
     self.placed_snap = None
-    self.slot_wid = flex.size_t(2 * n, 0)
+    self.slot_wid = np.zeros(2 * n, dtype=np.int64)
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
     self.w_wnbr = []
     if n:
-      o_pts = flex.vec3_double([w[1].xyz for w in waters])
+      o_pts = np.array([w[1].xyz for w in waters], dtype=float)
       # Order most-crowded first: a water boxed in by many neighbours is the
       # hardest to satisfy, so placing it while few water H are fixed gives
       # it the most freedom; roomy waters have options left over and adapt
@@ -1296,40 +1117,39 @@ class _WaterHydrogenPlacer(object):
       # (excluding the water's own atoms).
       crowd = [sum(1 for j in nb if j not in waters[k][2]) for k, nb in
                enumerate(self.static_tree.query_ball_point(
-                 o_pts.as_numpy_array(), _WATER_CLEARANCE_RADIUS,
+                 o_pts, _WATER_CLEARANCE_RADIUS,
                  return_sorted=False))]
       order = sorted(range(n), key=lambda k: crowd[k], reverse=True)
       waters = [waters[k] for k in order]
-      o_pts = o_pts.select(flex.size_t(order))
-      o_np = o_pts.as_numpy_array()
+      o_pts = o_pts[order]
       self.w_own = [w[2] for w in waters]
       self.w_o_col = [matrix.col(w[1].xyz) for w in waters]
       # query_ball_point leaves a single point's indices unsorted but sorts
       # a batch's; the acceptor order is the tie-break of the nearest-first
       # sort, so the batch must not sort either.
       self.w_acc_raw = self.static_tree.query_ball_point(
-        o_np, _WATER_ACCEPTOR_RADIUS, return_sorted=False)
+        o_pts, _WATER_ACCEPTOR_RADIUS, return_sorted=False)
       self.w_cat_raw = self.static_tree.query_ball_point(
-        o_np, _WATER_CATION_RADIUS, return_sorted=False)
+        o_pts, _WATER_CATION_RADIUS, return_sorted=False)
       # One static-neighbour block per water: every candidate H lies on the
       # O-H sphere about the O, so a single ball of oh_length + clearance
       # covers every candidate's own clearance ball.
       self.w_sxyz = []
       self.w_sthr = []
       for wi, nb in enumerate(self.static_tree.query_ball_point(
-          o_np, self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
+          o_pts, self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
           return_sorted=False)):
         own = self.w_own[wi]
-        idx = flex.size_t([int(j) for j in nb if j not in own])
-        self.w_sxyz.append(self.static_xyz.select(idx))
-        self.w_sthr.append(self.static_thr.select(idx))
+        idx = np.array([j for j in nb if j not in own], dtype=np.intp)
+        self.w_sxyz.append(self.static_np[idx])
+        self.w_sthr.append(self.static_thr[idx])
       # A placed H sits within oh_length of its own O, so only waters whose
       # O lie within clearance + 2 oh_length can ever hold one near this
       # water's candidates. A neighbour map over the (fixed) water O
       # therefore replaces the growing KDTree over the placed H outright.
       self.w_wnbr = [[j for j in nb if j != wi] for wi, nb in
-                     enumerate(KDTree(o_np).query_ball_point(
-                       o_np,
+                     enumerate(KDTree(o_pts).query_ball_point(
+                       o_pts,
                        _WATER_CLEARANCE_RADIUS + 2.0 * self.oh_length + 0.01,
                        return_sorted=False))]
 
@@ -1343,7 +1163,7 @@ class _WaterHydrogenPlacer(object):
     def nbr_slots(wi):
       """Placed-H slots of every water neighbouring water ``wi``."""
       nbr = [s for wj in self.w_wnbr[wi] for s in slots_of[wj]]
-      return flex.size_t(nbr) if nbr else _EMPTY_SLOTS
+      return np.array(nbr, dtype=np.intp) if nbr else _EMPTY_SLOTS
 
     for wi in range(n):
       ag, o, own_idx, fixed_d1, existing, existing_names, wgid = waters[wi]
@@ -1363,14 +1183,14 @@ class _WaterHydrogenPlacer(object):
         if proton_name is None:
           continue
         existing_names.add(proton_name.strip())
-        xyz = h1 if di == 1 else h2
+        xyz = tuple((h1 if di == 1 else h2).tolist())
         atom = _new_h_atom(proton_name, proton_element, xyz, o.occ, o.b,
                            o.hetero)
         ag.append_atom(atom)
         slot = len(self.placed_coords)
         slots.append((atom, slot, di))
         self.placed_coords.append(xyz)
-        self.placed_xyz[slot] = xyz
+        self.placed_np[slot] = xyz
         self.slot_wid[slot] = wgid
       if slots:
         self.records.append((wi, slots, fixed_d1))
