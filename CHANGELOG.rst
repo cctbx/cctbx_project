@@ -1,3 +1,14 @@
+2026.8
+======
+
+* Added NumPy 2 support for flex arrays and plotting code
+* Graded MolProbity geometry, peptide, and RNA outliers by severity,
+  and added per-model animated kinemages for multi-model files
+* Fixed mmCIF output splitting chains at residues with unrecognized
+  names, and let iotbx.file_io read CIFs with mixed content
+* Added building of water hydrogens from difference maps and fixed
+  mmtbx.reduce2 hydrogen placement for several ligand cases
+
 2026.7
 ======
 
