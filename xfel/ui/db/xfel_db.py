@@ -976,6 +976,17 @@ class xfel_db_application(db_application):
     by_id = {task.id: task for task in tasks}
     return [by_id[int(tid)] for tid in task_ids if int(tid) in by_id]
 
+  def get_datasets_for_task(self, task_id):
+    ''' Return all Dataset objects that include task_id in their pipeline. '''
+    tag = self.params.experiment_tag
+    query = "SELECT dataset_id FROM `%s_dataset_task` WHERE task_id = %d" % (tag, task_id)
+    cursor = self.execute_query(query)
+    ids = [row[0] for row in cursor.fetchall()]
+    if not ids:
+      return []
+    return self.get_all_x(Dataset, "dataset",
+                          where="WHERE dataset.id IN (%s)" % ",".join(str(i) for i in ids))
+
   def create_dataset_version(self, **kwargs):
     return DatasetVersion(self, **kwargs)
 
