@@ -599,9 +599,18 @@ def run_test09():
       assert ccs is not None
       assert hasattr(ccs, 'rscc')
       assert -1 <= ccs.rscc <= 1
-      assert ccs.rscc_sites is None   # map path never computes sites RSCC
-    # Well-fitted ligand: CC with its own model map should be positive
-    assert find_lr(vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs().rscc > 0.5
+      # a ligand with nothing inside within_radius still has no sites RSCC
+      assert ccs.rscc_sites is None or -1 <= ccs.rscc_sites <= 1
+    # Well-fitted ligand: CC with its own model map should be positive.
+    ccs_btn = find_lr(
+      vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs()
+    # eps is deliberately tighter than in run_test04: an all-atom mask gives
+    # 0.934 here, so anything looser would not notice hydrogen re-entering the
+    # mask.
+    assert approx_equal(ccs_btn.rscc, 0.918, eps=0.01), ccs_btn.rscc
+    # Biotin is buried in avidin, so it has an environment
+    assert approx_equal(ccs_btn.rscc_sites, 0.937, eps=0.01), ccs_btn.rscc_sites
+    assert ccs_btn.frag_ccs
   finally:
     if os.path.isfile(map_fn):
       os.remove(map_fn)
