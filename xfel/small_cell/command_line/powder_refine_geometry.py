@@ -130,7 +130,7 @@ class Script(object):
 
         if params.unit_cell is not None and params.space_group is not None:
             print(f"Using unit_cell: {params.unit_cell}")
-            print(f"Using space_group: {params.space_group.info()}")
+            print(f"Using space_group: {params.space_group.symbol_and_number()}")
         else:
             print(f"Reference d-spacings: {params.reference_d_spacings}")
 

@@ -429,7 +429,8 @@ class Basis:
             'C': lambda x: (x[0] + x[1]) % 2 == 0,
             'I': lambda x: (x[0] + x[1] + x[2]) % 2 == 0,
             'F': lambda x: x[0]%2 == x[1]%2 == x[2]%2,
-            'hR': lambda x: (-x[0] + x[1] + x[2]) % 3 == 0
+            'hR': lambda x: (-x[0] + x[1] + x[2]) % 3 == 0,
+            'R': lambda x: (-x[0] + x[1] + x[2]) % 3 == 0,
         }
         lattice_condition = lattice_condition_dict[self.centering]
         lattice_mask = np.array([lattice_condition(row) for row in indices])
@@ -1959,8 +1960,8 @@ def reduce_2d_cell(a, b, gamma_deg):
 
 
 def run():
-    QMIN=.03
-    QMAX=.5
+    QMIN=.05
+    QMAX=.45
     recon = LatticeReconstruction(qmax=QMAX)
 
     fn1 = sys.argv[1]
@@ -1970,9 +1971,12 @@ def run():
     data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
     data_orig = data
     data = np.vstack((data, data2))
-    data_red = np.array([reduce_2d_cell(*item) for item in tqdm(data_orig)])
-    data_red2 = np.vstack((data_red[:,1], data_red[:,0], data_red[:,2])).transpose()
-    data_red_all = np.vstack((data_red, data_red2))
+    mask = (data[:, 0] >= QMIN) & (data[:, 0] <= QMAX) & \
+       (data[:, 1] >= QMIN) & (data[:, 1] <= QMAX)
+    data = data[mask]
+    #data_red = np.array([reduce_2d_cell(*item) for item in tqdm(data_orig)])
+    #data_red2 = np.vstack((data_red[:,1], data_red[:,0], data_red[:,2])).transpose()
+    #data_red_all = np.vstack((data_red, data_red2))
 
 
     if len(sys.argv)==3 and False:
@@ -2013,7 +2017,7 @@ def run():
       basis_fom1_fom2.sort(key=lambda x:x[2], reverse=True)
       for i, b in enumerate(basis_fom1_fom2[:20]):
           print(i, b[0], round(b[1], 1), round(b[2], 1))
-      i_sb1 = int(input('Sub-basis 1? '))
+      i_sb1 = int(input('Sub-basis 1? [0]') or 0)
       sb1 = basis_fom1_fom2[i_sb1]
       sb1 = sb1[0]
 
@@ -2036,7 +2040,7 @@ def run():
         for i, c in enumerate(all_cells):
             c.match_pairs(recon.all_pairs)
             print(i, '\t', c.index_percent(), '\t', str(c))
-        i_cell = int(input('Cell? '))
+        i_cell = int(input('Cell? [0]') or 0)
         sb1 = all_cells[i_cell]
         for _ in range(3):
             sb1.reindex_pairs()
@@ -2045,54 +2049,54 @@ def run():
 
 
     # Manual lattice expansion
-#    print('manual selection start')
-#    import IPython;IPython.embed()
-#    qvals_1 = np.linalg.norm(sb1.points, axis=1)
-#
-#    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qmin=QMIN, qmax=QMAX)
-#    triplets = cl2.select_triplets(title="Lattice expansion")
-#    assert len(triplets) == 2
-#    pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
-#    matches = [sb1.match(p) for p in pairs]
-#    indexed_pairs = []
-#    for m in matches:
-#        assert m[1] == 'one_vector'
-#        indexed_pairs.append(m[0])
-#    recon.sub_basis = sb1
-#    import IPython;IPython.embed()
-#    best_basis, best_params, fig = find_best_3d_basis(recon, *indexed_pairs, delta_range=(-2,2), steps=11)
-#    plt.show()
+    if sys.argv[2]=='manual':
+      print('manual selection start')
+      qvals_1 = np.linalg.norm(sb1.points, axis=1)
+
+      cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qmin=QMIN, qmax=QMAX)
+      triplets = cl2.select_triplets(title="Lattice expansion")
+      assert len(triplets) == 2
+      pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
+      matches = [sb1.match(p) for p in pairs]
+      indexed_pairs = []
+      for m in matches:
+          assert m[1] == 'one_vector'
+          indexed_pairs.append(m[0])
+      recon.sub_basis = sb1
+      best_basis, best_params, fig = find_best_3d_basis(recon, *indexed_pairs, delta_range=(-2,2), steps=11)
+      plt.show()
 
     # Auto lattice expansion
-    recon.sub_basis = sb1
-    one_vec = [x for x in sb1.all_pairs if x[2]=='one_vector']
-    one_vec.sort(key=lambda x:x[1].q2)
-    to_try = []
-    for i in range(len(one_vec)-1):
-        pair1 = one_vec[i][1]
-        pair2 = one_vec[i+1][1]
-        if np.abs(pair1.q2-pair2.q2)<.001 and np.abs(pair1.q1-pair2.q1)>.005:
-            to_try.append((pair1, pair2))
-    results = []
-    for i, pair in enumerate(to_try):
-        try:
-            basis, params, _ = find_best_3d_basis(
-                recon, *pair, delta_range=(0,0), steps=1, plot=False,
-                verbose=False
-            )
-            results.append((i, basis, params['fom'], params['pct']))
-        except AttributeError:
-            pass
-        except Exception as e:
-            raise
-            print(i)
-    results.sort(key=lambda x:x[2], reverse=True)
-    for i_results, (i, basis, fom, pct) in enumerate(results[:50]):
-        print(i_results, '\t', pct, '\t', basis)
-    i_results_best = int(input('lattice: [0] ') or 0)
-    i_best = results[i_results_best][0]
-    best_basis, best_params, fig = find_best_3d_basis(recon, *to_try[i_best], delta_range=(-2,2), steps=11)
-    plt.show()
+    else:
+      recon.sub_basis = sb1
+      one_vec = [x for x in sb1.all_pairs if x[2]=='one_vector']
+      one_vec.sort(key=lambda x:x[1].q2)
+      to_try = []
+      for i in range(len(one_vec)-1):
+          pair1 = one_vec[i][1]
+          pair2 = one_vec[i+1][1]
+          if np.abs(pair1.q2-pair2.q2)<.001 and np.abs(pair1.q1-pair2.q1)>.005:
+              to_try.append((pair1, pair2))
+      results = []
+      for i, pair in enumerate(to_try):
+          try:
+              basis, params, _ = find_best_3d_basis(
+                  recon, *pair, delta_range=(0,0), steps=1, plot=False,
+                  verbose=False
+              )
+              results.append((i, basis, params['fom'], params['pct']))
+          except AttributeError:
+              pass
+          except Exception as e:
+              raise
+              print(i)
+      results.sort(key=lambda x:x[2], reverse=True)
+      for i_results, (i, basis, fom, pct) in enumerate(results[:30]):
+          print(i_results, '\t', pct, '\t', basis)
+      i_results_best = int(input('lattice: [0] ') or 0)
+      i_best = results[i_results_best][0]
+      best_basis, best_params, fig = find_best_3d_basis(recon, *to_try[i_best], delta_range=(-.5,.5), steps=11, plot=False)
+      plt.show()
 
     best_basis.match_pairs(recon.all_pairs)
     for _ in range(6):
@@ -2110,7 +2114,7 @@ def run():
         for i, c in enumerate(all_cells):
             c.match_pairs(recon.all_pairs)
             print(i, '\t', c.index_percent(), '\t', str(c))
-        i_cell = int(input('Cell? '))
+        i_cell = int(input('Cell? [0]') or 0)
         best_basis = all_cells[i_cell]
         for _ in range(3):
             best_basis.reindex_pairs()
@@ -2136,7 +2140,7 @@ def run():
         symmetrized_bases.append((constr_basis, constr_basis.index_percent()))
             
     for i, b in enumerate(symmetrized_bases): print(str(i) + '\t' + str(b[0]) + ' ' + str(b[1]))
-    i_final = int(input('Choice: '))
+    i_final = int(input('Choice: [0]') or 0)
     final_basis = symmetrized_bases[i_final][0]
     final_points_1 = np.vstack((final_basis.q1_values, final_basis.q2_values, final_basis.theta_values*180/np.pi)).T
     final_points_2 = np.vstack((final_basis.q2_values, final_basis.q1_values, final_basis.theta_values*180/np.pi)).T
@@ -2151,7 +2155,6 @@ def run():
     cl_final = ManualClusterer(data, n_maxima=0, qvals_1=final_qvals, qmin=QMIN, qmax=QMAX, points=final_points)
     _ = cl_final.select_triplets()
 
-    import IPython;IPython.embed()
 
 if __name__=="__main__":
     run()

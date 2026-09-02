@@ -12,14 +12,77 @@ from scipy.optimize import minimize
 import matplotlib
 matplotlib.use('TkAgg')
 
+def fit_gaussian_peak(points, initial_center, bandwidths):
+    """Fit 3D Gaussian to refine peak location"""
+    from scipy.optimize import minimize
+
+    def negative_log_likelihood(params):
+        center = params[:3]
+        # Gaussian kernel with anisotropic bandwidths
+        diff = (points - center) / bandwidths
+        distances_sq = np.sum(diff**2, axis=1)
+        log_prob = -0.5 * distances_sq
+        return -np.sum(log_prob)  # Negative for minimization
+
+    result = minimize(
+        negative_log_likelihood,
+        initial_center,
+        method='BFGS'
+    )
+
+    if result.success:
+        return result.x
+    else:
+        return initial_center  # Fall back to grid position
+
+def has_saddle_between(peak1, peak2, hist_smooth, edges, bin_width, prominence_threshold=0.5):
+    """Check if there's a significant saddle between two peaks"""
+    # Sample points along the line between peaks
+    n_samples = 50
+    t = np.linspace(0, 1, n_samples)
+    line_points = peak1[np.newaxis, :] * (1 - t[:, np.newaxis]) + peak2[np.newaxis, :] * t[:, np.newaxis]
+
+    # Convert to bin indices
+    bin_indices = []
+    for dim in range(3):
+        indices = np.searchsorted(edges[dim], line_points[:, dim]) - 1
+        indices = np.clip(indices, 0, hist_smooth.shape[dim] - 1)
+        bin_indices.append(indices)
+
+    # Get density along the line
+    line_densities = hist_smooth[bin_indices[0], bin_indices[1], bin_indices[2]]
+
+    # Find minimum along path
+    min_density = np.min(line_densities)
+
+    # Get densities at the two peaks
+    peak1_idx = [np.searchsorted(edges[i], peak1[i]) - 1 for i in range(3)]
+    peak2_idx = [np.searchsorted(edges[i], peak2[i]) - 1 for i in range(3)]
+    peak1_idx = [np.clip(idx, 0, hist_smooth.shape[i] - 1) for i, idx in enumerate(peak1_idx)]
+    peak2_idx = [np.clip(idx, 0, hist_smooth.shape[i] - 1) for i, idx in enumerate(peak2_idx)]
+
+    density1 = hist_smooth[tuple(peak1_idx)]
+    density2 = hist_smooth[tuple(peak2_idx)]
+
+    # Check prominence: saddle should be significantly lower than both peaks
+    lower_peak = min(density1, density2)
+    prominence = (lower_peak - min_density) / lower_peak
+
+    result = prominence > prominence_threshold
+    return result
+
 
 class ManualClusterer:
     def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500,
                  qvals_1=None, qvals_2=None, sb1_callback=None, recon=None,
-                 qmin=.1, qmax=.5, points=None):
+                 qmin=.1, qmax=.5, points=None, n_shortest=500):
+        if len(data) > 1000000:
+            indices = np.random.choice(len(data), size=1000000, replace=False)
+            data = data[indices]
         self.data = data
         self.bandwidths = np.array(bandwidths)
         self.n_maxima = n_maxima
+        self.n_shortest = n_shortest
         self.qvals_1 = qvals_1
         self.qvals_2 = qvals_2
         self.sb1_qvals = None
@@ -39,7 +102,8 @@ class ManualClusterer:
         
         # Compute KDE maxima
         if n_maxima > 0:
-            self.compute_slice_maxima()
+            self.compute_pf_maxima()
+            self.points = self.kde_maxima
         
 
     def select_qvals(self, title="Select q-value ranges"):
@@ -248,7 +312,7 @@ class ManualClusterer:
 
         # Take a random subsample (5%) for evaluation
         n_sample = max(int(len(normalized_data) * 0.05), 100000)  # At least 1000 points
-        n_sample = 600000
+        n_sample = 200000
         n_sample = min(n_sample, len(normalized_data))  # Can't sample more than we have
         print(f'{n_sample=}')
 
@@ -330,6 +394,128 @@ class ManualClusterer:
 
 
         print(f"Found {len(self.kde_maxima)} KDE maxima from {n_sample} sampled points")
+
+    def compute_pf_maxima(self):
+        # Define bins with 2x oversampling
+        bin_width = self.bandwidths / 2.0
+
+        bins = [
+            np.arange(0.05, 0.5 + bin_width[0], bin_width[0]),
+            np.arange(0.05, 0.5 + bin_width[1], bin_width[1]),
+            np.arange(10, 160 + bin_width[2], bin_width[2])
+        ]
+
+        print(f'Creating histogram with shape: {[len(b)-1 for b in bins]}')
+
+        from scipy.spatial import cKDTree
+
+        # Build tree once at start
+        tree = cKDTree(self.data / self.bandwidths)
+
+        # Create 3D histogram
+        hist, edges = np.histogramdd(self.data, bins=bins)
+
+        # Smooth with gaussian (sigma ~ 1 bin to merge nearby peaks)
+        from scipy import ndimage
+        hist_smooth = ndimage.gaussian_filter(hist, sigma=1)
+
+        # Find local maxima
+        max_filtered = ndimage.maximum_filter(hist_smooth, size=10)
+        peaks = (hist_smooth == max_filtered)
+
+        # Threshold to remove noise peaks
+        threshold = hist_smooth.max() * 0.01  # Adjust as needed
+        peaks &= (hist_smooth > threshold)
+
+        print(f'Found {peaks.sum()} initial peaks')
+
+        # Get peak coordinates in bin indices
+        peak_indices = np.argwhere(peaks)
+        peak_values = hist_smooth[peaks]
+
+        # Convert bin indices to actual coordinates
+        peak_coords = np.array([
+            edges[0][peak_indices[:, 0]] + bin_width[0]/2,
+            edges[1][peak_indices[:, 1]] + bin_width[1]/2,
+            edges[2][peak_indices[:, 2]] + bin_width[2]/2
+        ]).T
+
+        # Apply your domain filters
+        valid_mask = np.ones(len(peak_coords), dtype=bool)
+
+        q1, q2, th = peak_coords[:, 0], peak_coords[:, 1], peak_coords[:, 2]
+        valid_mask &= (np.abs(q1 - q2) >= 2 * self.bandwidths[0])
+        valid_mask &= (th >= 8) & (th <= 160)
+
+        peak_coords = peak_coords[valid_mask]
+        peak_values = peak_values[valid_mask]
+        sortkey = peak_values
+        #sortkey = -1* (peak_coords[:,0] + peak_coords[:,1])
+
+        # Sort by density
+        sorted_indices = np.argsort(sortkey)[::-1]
+
+        # Filter by minimum distance (your safety_factor logic)
+        min_dist = 10.0  # In your normalized space this was 5
+        final_peaks = []
+        final_values = []
+
+        for idx in sorted_indices:
+            if len(final_peaks) >= self.n_maxima:
+                break
+
+            candidate = peak_coords[idx]
+
+            # Check if it's a true local maximum
+            if len(final_peaks) > 0:
+                # Option 1: Saddle test
+                is_separate = all(
+                    has_saddle_between(
+                        candidate, accepted, hist_smooth, edges, bin_width, prominence_threshold=0.8
+                    )
+                    for accepted in final_peaks
+                    if np.linalg.norm((candidate - accepted) / bin_width) < 180  # Normalized distance
+                )
+
+                # Option 2: Gradient test (faster)
+                # is_separate = is_local_maximum(candidate, hist_smooth, edges, bin_width, final_peaks)
+
+                if not is_separate:
+                    continue
+
+            final_peaks.append(candidate)
+            final_values.append(peak_values[idx])
+
+        # Refine peak locations by fitting Gaussians
+        refined_peaks = []
+
+        for i, peak in enumerate(final_peaks):
+            if i % 100 == 0:
+                print(f'Refining peak {i}/{len(final_peaks)}')
+
+            # Select points within 2x bandwidth
+            normalized_peak = peak / self.bandwidths
+            indices = tree.query_ball_point(normalized_peak, r=2.0)
+            nearby_points = self.data[indices]
+
+            if len(nearby_points) >= 5:  # Need enough points to fit
+                refined_peak = fit_gaussian_peak(
+                    nearby_points, peak, self.bandwidths
+                )
+                refined_peaks.append(refined_peak)
+            else:
+                print('fallback')
+                refined_peaks.append(peak)  # Not enough points, keep grid location
+
+        self.kde_maxima = np.array(refined_peaks)
+        self.kde_values = np.array(final_values)
+
+        # Final sorting
+        sort_vals = self.kde_maxima[:, 0] + self.kde_maxima[:, 1]
+        final_indices = np.argsort(sort_vals)[:self.n_shortest]
+        self.kde_maxima = self.kde_maxima[final_indices]
+        self.kde_values = self.kde_values[final_indices]
+
 
     def compute_slice_maxima(self, n_q1_peaks=30, min_q1=0.10, max_q1=0.35,
                              slice_width=0.002, max_peaks_per_slice=100,

@@ -192,7 +192,6 @@ class Spotfinder_radial_average:
       xyzobses = refls_sel['xyzobs.px.value']
       intensities = refls_sel['intensity.sum.value']
       panels = refls_sel['panel']
-      shoeboxes = refls_sel['shoebox']
 
       if params.angle_histogram.enable: 
         r1max, r1min = params.angle_histogram.range1
@@ -310,7 +309,7 @@ class Spotfinder_radial_average:
     d_max_inv = 1/params.d_max
     d_min_inv = 1/params.d_min
     xvalues = np.linspace(d_max_inv, d_min_inv, params.n_bins)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 3))
 
     ps_maxes = [max(ps) for ps in self.panelsums]
     ps_max = max(ps_maxes)
@@ -340,13 +339,13 @@ class Spotfinder_radial_average:
     if params.augment:
       plt.plot(*augment(self.experiments, self.reflections, params.d_min, params.d_max))
     ax.set_xlim(d_max_inv, d_min_inv)
-#    ax.get_xaxis().set_major_formatter(tick.FuncFormatter(
-#      lambda x, _: "{:.3f}".format(1/x)))
+    ax.get_xaxis().set_major_formatter(tick.FuncFormatter(
+      lambda x, _: "{:.3f}".format(1/x)))
 
     if params.output.xy_file:
       with open(params.output.xy_file, 'w') as f:
         for x,y in zip(xvalues, yvalues):
-          f.write("{:.6f}\t{}\n".format(1/x, y))
+          f.write("{:.6f}\t{}\n".format(x, y))
 
     # Now plot the predicted peak positions if requested
     if params.unit_cell or params.space_group:
@@ -364,13 +363,15 @@ class Spotfinder_radial_average:
         plt.plot((d,d),(pplot_min,0), 'r-', linewidth=1)
 
     if params.output.plot_file:
+      fig.tight_layout()
       plt.savefig(params.output.plot_file)
 
     if params.plot.interactive and params.output.peak_file:
       backend_list = ["TkAgg","QtAgg"]
-      assert (plt.get_backend() in backend_list), """Matplotlib backend not compatible with interactive peak picking.
-You can set the MPLBACKEND environment varibale to change this.
-Currently supported options: %s""" %backend_list
+      print(plt.get_backend())
+#      assert (plt.get_backend() in backend_list), """Matplotlib backend not compatible with interactive peak picking.
+#You can set the MPLBACKEND environment varibale to change this.
+#Currently supported options: %s""" %backend_list
       #If a peak list output file is specified, do interactive peak picking:
       with open(params.output.peak_file, 'w') as f:
         vertical_line = ax.axvline(color='r', lw=0.8, ls='--', x=xvalues[1])

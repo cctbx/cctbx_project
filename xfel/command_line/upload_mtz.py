@@ -9,6 +9,7 @@ try:
   import fcntl
 except ImportError:
   fcntl = None
+fcntl=None
 
 
 help_message = """

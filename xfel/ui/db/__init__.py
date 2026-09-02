@@ -10,6 +10,8 @@ except ImportError as e:
 
 def get_run_path(rootpath, trial, rungroup, run, task=None):
   import os
+  if trial is None or run is None:
+    return
   try:
     p = os.path.join(rootpath, "r%04d"%int(run.run), "%03d_rg%03d"%(trial.trial, rungroup.id))
   except ValueError:
@@ -65,7 +67,7 @@ def get_db_connection(params, block=True, autocommit=True):
     password = params.db.password
 
   retry_count = 0
-  retry_max = 20
+  retry_max = 10
   sleep_time = 0.1
   while retry_count < retry_max:
     try:
@@ -75,7 +77,8 @@ def get_db_connection(params, block=True, autocommit=True):
           host=params.db.host,
           db=params.db.name,
           port=params.db.port,
-          autocommit=autocommit
+          autocommit=autocommit,
+          connect_timeout=1,
       )
       return dbobj
     except Exception as e:
@@ -89,6 +92,7 @@ def get_db_connection(params, block=True, autocommit=True):
         print("MySQL can't create a new thread. Retry", retry_count)
       else:
         raise e
+      print(str(e))
       import time
       time.sleep(sleep_time)
       sleep_time *= 2

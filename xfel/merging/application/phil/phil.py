@@ -733,6 +733,8 @@ statistics {
         .type = float
       d_max = 20
         .type = float
+      mask = None
+        .type = path
     }
     group_by_identifier_prefix = False
       .type = bool

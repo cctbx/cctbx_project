@@ -3,8 +3,9 @@ from __future__ import division
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from dials.array_family import flex
-from libtbx.mpi4py import MPI
 import sys, glob
+import matplotlib.pyplot as plt
+
 
 help_str = """
 Make a cake plot from DIALS spotfinder spots
@@ -30,36 +31,25 @@ mpirun cctbx.xfel.small_cell.cake_plot_prep "<path>/*_strong.expt>"
 """
 
 def run(args):
-  comm = MPI.COMM_WORLD
-  rank = comm.Get_rank()  # each process in MPI has a unique id, 0-indexed
-  size = comm.Get_size()  # size: number of processes running in this job
-
   if "-h" in args or "--help" in args:
     if rank == 0:
       print(help_str)
     return
 
-  if rank == 0:
-    from dxtbx.command_line.image_average import splitit
-    filenames = []
-    for arg in sys.argv[1:]:
-      filenames.extend(glob.glob(arg))
-    if not filenames:
-      sys.exit("No data found")
-    filenames = splitit(filenames, size)
-  else:
-    filenames = None
-
-  filenames = comm.scatter(filenames, root=0)
+  filenames = []
+  for arg in sys.argv[1:]:
+    filenames.extend(glob.glob(arg))
+  if not filenames:
+    sys.exit("No data found")
 
   x, y = flex.double(), flex.double()
   det = None
   for fn in filenames:
     print (fn)
-    try:
-      refls = flex.reflection_table.from_file(fn.split('_strong.expt')[0] + "_strong.refl")
-    except OSError:
-      continue
+    #try:
+    refls = flex.reflection_table.from_file(fn.split('_strong.expt')[0] + "_strong.refl")
+    #except OSError:
+    #  continue
     expts = ExperimentList.from_file(fn, check_format=False)
     for expt_id, expt in enumerate(expts):
       subset = refls.select(expt_id == refls['id'])
@@ -84,23 +74,21 @@ def run(args):
     d = flex.double()
     azi = flex.double()
 
-  if rank == 0:
-    def saveit():
-      np.save(f, x.as_numpy_array())
-      np.save(f, y.as_numpy_array())
-      np.save(f, d.as_numpy_array())
-      np.save(f, azi.as_numpy_array())
-
-    import numpy as np
-    with open('cake.npy', 'wb') as f:
-      saveit()
-      for i in range(1,size):
-        print('waiting for', i)
-        x,y,d,azi = comm.recv(source=i)
-        saveit()
-  else:
-    print('rank', rank, 'sending')
-    comm.send((x,y,d,azi), dest=0)
+  import numpy as np
+  fig, axes = plt.subplots(1, 1, figsize=(6, 3))
+  axes.plot(
+    1/d.as_numpy_array(), azi.as_numpy_array(),
+    marker='.', linestyle='none',
+    markersize=0.5, alpha=0.5
+    )
+  axes.set_ylabel('Azimuthal Angle')
+  axes.set_xlabel(r'Resolution ($\mathrm{\AA}$)')
+  x_ticks = np.array([10, 5, 2, 1])
+  axes.set_xticks(1/x_ticks)
+  axes.set_xticklabels(x_ticks)
+  fig.tight_layout()
+  plt.show()
 
 if __name__ == "__main__":
   run(sys.argv[1:])
+

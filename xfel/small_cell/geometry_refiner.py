@@ -30,7 +30,7 @@ class PowderGeometryRefiner:
         # Compute reference d-spacings from unit_cell and space_group if provided
         if params.unit_cell is not None and params.space_group is not None:
             print(f"Computing d-spacings from unit_cell={params.unit_cell} "
-                  f"and space_group={params.space_group.info()}")
+                  f"and space_group={params.space_group.symbol_and_number()}")
 
             # Get beam and detector for resolution calculation
             beam = experiments[0].beam
@@ -39,7 +39,7 @@ class PowderGeometryRefiner:
             d_max = params.d_max
 
             # Average unit cell over space group
-            unit_cell = params.space_group.average_unit_cell(params.unit_cell)
+            unit_cell = params.unit_cell
 
             # Generate Miller indices within resolution range
             generator = miller.index_generator(unit_cell, params.space_group.type(), False, d_min)
@@ -47,7 +47,7 @@ class PowderGeometryRefiner:
 
             # Compute d-spacings and filter by resolution range
             all_spacings = unit_cell.d(indices)
-            spacings_in_range = flex.sorted([d for d in all_spacings if d_min <= d <= d_max])
+            spacings_in_range = flex.sorted(flex.double([d for d in all_spacings if d_min <= d <= d_max]))
 
             self.reference_d = np.array(spacings_in_range)
             print(f"Generated {len(self.reference_d)} reference d-spacings in range "

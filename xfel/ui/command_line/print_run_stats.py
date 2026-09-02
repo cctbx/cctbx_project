@@ -54,9 +54,9 @@ def run(args):
           s1 = set(params.run_tags)
           s2 = set(tag.name for tag in run.tags)
           # union?
-          #if not s1.intersection(s2): continue
+          if not s1.intersection(s2): continue
           # intersection
-          if not all([t in s1.intersection(s2) for t in s1]): continue
+          #if not all([t in s1.intersection(s2) for t in s1]): continue
 
         runs.append(run.run)
         run_ids.append(run.id)

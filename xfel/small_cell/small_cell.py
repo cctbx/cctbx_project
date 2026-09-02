@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from six.moves import zip
+import copy
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -924,196 +925,223 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   beam = imageset.get_beam()
   s0 = col(beam.get_s0())
 
-  lattice_results = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
-  if not lattice_results:
-    return None
+  if horiz_phil.indexing.stills.reflection_subsampling.enable:
+    all_reflections = copy.deepcopy(reflections)
+    subsets = range(
+        horiz_phil.indexing.stills.reflection_subsampling.step_start,
+        horiz_phil.indexing.stills.reflection_subsampling.step_stop
+        - horiz_phil.indexing.stills.reflection_subsampling.step_size,
+        -horiz_phil.indexing.stills.reflection_subsampling.step_size,
+    )
+  else:
+    subsets = [100]
+  for i_subset, pct in enumerate(subsets):
+    if pct != 100:
+      reflections = all_reflections.select(
+          flex.random_permutation(len(all_reflections))
+      )[: int(len(all_reflections) * pct / 100)]
 
-  max_clique_len, all_spots_len, ori, indexed = lattice_results
-  integrated_count = 0
-
-  if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
-    write_cell(ori,beam,indexed,horiz_phil)
-
-  indexed_hkls = flex.vec2_double()
-  indexed_intensities = flex.double()
-  indexed_sigmas = flex.double()
-
-  if ori is not None: # ok to integrate
-    results = []
-    buffers = []
-    backgrounds = []
-    indexed_hkls = flex.miller_index()
-    indexed_intensities = flex.double()
-    indexed_sigmas = flex.double()
-    mapped_predictions = flex.vec2_double()
-    mapped_panels = flex.size_t()
-    max_signal = flex.double()
-    xyzobs = flex.vec3_double()
-    xyzvar = flex.vec3_double()
-    shoeboxes = flex.shoebox()
-    s1 = flex.vec3_double()
-    bbox = flex.int6()
-
-    raw_data = imageset[0]
-    if not isinstance(raw_data, tuple):
-      raw_data = (raw_data,)
-    rmsd = 0
-    rmsd_n = 0
-    for spot in indexed:
-      if spot.pred is None: continue
-      peakpix = []
-      peakvals = []
-      tmp = []
-      is_bad = False
-      panel = detector[spot.pred_panel_id]
-      panel_raw_data = raw_data[spot.pred_panel_id]
-      for p in spot.peak_pixels:
-        #if is_bad_pixel(panel_raw_data,p):
-        #  is_bad = True
-        #  break
-        p = (p[0]+.5,p[1]+.5)
-        peakpix.append(p)
-        tmp.append(p)
-        peakvals.append(panel_raw_data[int(p[1]),int(p[0])])
-      if is_bad: continue
-
-      buffers.append(grow_by(peakpix,1))
-
-      tmp.extend(buffers[-1])
-      backgrounds.append(grow_by(tmp,1))
-      tmp.extend(backgrounds[-1])
-      backgrounds[-1].extend(grow_by(tmp,1))
-
-      background = []
-      bg_vals = []
-      raw_bg_sum = 0
-      for p in backgrounds[-1]:
-        try:
-          i = panel_raw_data[int(p[1]),int(p[0])]
-        except IndexError:
-          continue
-        if i is not None and i > 0:
-          background.append(p)
-          bg_vals.append(i)
-          raw_bg_sum += i
-
-      ret = reject_background_outliers(background, bg_vals)
-      if ret is None:
-        print("Not enough background pixels to integrate spot %d"%spot.ID)
+    
+    try:
+      lattice_results = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
+      if not lattice_results:
         continue
-      background, bg_vals = ret
-      backgrounds[-1] = background
 
-      bp_a,bp_b,bp_c = get_background_plane_parameters(bg_vals, background)
+      max_clique_len, all_spots_len, ori, indexed = lattice_results
+      integrated_count = 0
 
-      intensity = 0
-      bg_peak = 0
-      for v,p in zip(peakvals,peakpix):
-        intensity += v - (bp_a*p[0] + bp_b*p[1] + bp_c)
-        bg_peak += bp_a*p[0] + bp_b*p[1] + bp_c
+      if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
+        write_cell(ori,beam,indexed,horiz_phil)
 
-      gain = panel.get_gain()
-      sigma = math.sqrt(gain * (intensity + bg_peak + ((len(peakvals)/len(bg_vals))**2) * raw_bg_sum))
+      indexed_hkls = flex.vec2_double()
+      indexed_intensities = flex.double()
+      indexed_sigmas = flex.double()
 
-      print("ID: %3d, ohkl: %s, ahkl: %s, I: %9.1f, sigI: %9.1f, RDiff: %9.6f"%( \
-        spot.ID, spot.hkl.get_ohkl_str(), spot.hkl.get_ahkl_str(), intensity, sigma,
-        (sqr(ori.reciprocal_matrix())*spot.hkl.ohkl - spot.xyz).length()))
+      if ori is not None: # ok to integrate
+        results = []
+        buffers = []
+        backgrounds = []
+        indexed_hkls = flex.miller_index()
+        indexed_intensities = flex.double()
+        indexed_sigmas = flex.double()
+        mapped_predictions = flex.vec2_double()
+        mapped_panels = flex.size_t()
+        max_signal = flex.double()
+        xyzobs = flex.vec3_double()
+        xyzvar = flex.vec3_double()
+        shoeboxes = flex.shoebox()
+        s1 = flex.vec3_double()
+        bbox = flex.int6()
 
-      max_sig = panel_raw_data[int(spot.spot_dict['xyzobs.px.value'][1]),int(spot.spot_dict['xyzobs.px.value'][0])]
+        raw_data = imageset[0]
+        if not isinstance(raw_data, tuple):
+          raw_data = (raw_data,)
+        rmsd = 0
+        rmsd_n = 0
+        for spot in indexed:
+          if spot.pred is None: continue
+          peakpix = []
+          peakvals = []
+          tmp = []
+          is_bad = False
+          panel = detector[spot.pred_panel_id]
+          panel_raw_data = raw_data[spot.pred_panel_id]
+          for p in spot.peak_pixels:
+            #if is_bad_pixel(panel_raw_data,p):
+            #  is_bad = True
+            #  break
+            p = (p[0]+.5,p[1]+.5)
+            peakpix.append(p)
+            tmp.append(p)
+            peakvals.append(panel_raw_data[int(p[1]),int(p[0])])
+          if is_bad: continue
 
-      s = "Orig HKL: % 4d % 4d % 4d "%(spot.hkl.ohkl.elems)
-      s = s + "Asu HKL: % 4d % 4d % 4d "%(spot.hkl.ahkl.elems)
-      s = s + "I: % 10.1f sigI: % 8.1f I/sigI: % 8.1f "%(intensity, sigma, intensity/sigma)
-      s = s + "Size (pix): %3d Max pix val: %6d\n"%(len(spot.peak_pixels),max_sig)
-      results.append(s)
+          buffers.append(grow_by(peakpix,1))
 
-      if spot.pred is None:
-        mapped_predictions.append((spot.spot_dict['xyzobs.px.value'][0], spot.spot_dict['xyzobs.px.value'][1]))
-        mapped_panels.append(spot.spot_dict['panel'])
+          tmp.extend(buffers[-1])
+          backgrounds.append(grow_by(tmp,1))
+          tmp.extend(backgrounds[-1])
+          backgrounds[-1].extend(grow_by(tmp,1))
+
+          background = []
+          bg_vals = []
+          raw_bg_sum = 0
+          for p in backgrounds[-1]:
+            try:
+              i = panel_raw_data[int(p[1]),int(p[0])]
+            except IndexError:
+              continue
+            if i is not None and i > 0:
+              background.append(p)
+              bg_vals.append(i)
+              raw_bg_sum += i
+
+          ret = reject_background_outliers(background, bg_vals)
+          if ret is None:
+            print("Not enough background pixels to integrate spot %d"%spot.ID)
+            continue
+          background, bg_vals = ret
+          backgrounds[-1] = background
+
+          bp_a,bp_b,bp_c = get_background_plane_parameters(bg_vals, background)
+
+          intensity = 0
+          bg_peak = 0
+          for v,p in zip(peakvals,peakpix):
+            intensity += v - (bp_a*p[0] + bp_b*p[1] + bp_c)
+            bg_peak += bp_a*p[0] + bp_b*p[1] + bp_c
+
+          gain = panel.get_gain()
+          sigma = math.sqrt(gain * (intensity + bg_peak + ((len(peakvals)/len(bg_vals))**2) * raw_bg_sum))
+
+          print("ID: %3d, ohkl: %s, ahkl: %s, I: %9.1f, sigI: %9.1f, RDiff: %9.6f"%( \
+            spot.ID, spot.hkl.get_ohkl_str(), spot.hkl.get_ahkl_str(), intensity, sigma,
+            (sqr(ori.reciprocal_matrix())*spot.hkl.ohkl - spot.xyz).length()))
+
+          max_sig = panel_raw_data[int(spot.spot_dict['xyzobs.px.value'][1]),int(spot.spot_dict['xyzobs.px.value'][0])]
+
+          s = "Orig HKL: % 4d % 4d % 4d "%(spot.hkl.ohkl.elems)
+          s = s + "Asu HKL: % 4d % 4d % 4d "%(spot.hkl.ahkl.elems)
+          s = s + "I: % 10.1f sigI: % 8.1f I/sigI: % 8.1f "%(intensity, sigma, intensity/sigma)
+          s = s + "Size (pix): %3d Max pix val: %6d\n"%(len(spot.peak_pixels),max_sig)
+          results.append(s)
+
+          if spot.pred is None:
+            mapped_predictions.append((spot.spot_dict['xyzobs.px.value'][0], spot.spot_dict['xyzobs.px.value'][1]))
+            mapped_panels.append(spot.spot_dict['panel'])
+          else:
+            mapped_predictions.append((spot.pred[0],spot.pred[1]))
+            mapped_panels.append(spot.pred_panel_id)
+          xyzobs.append(spot.spot_dict['xyzobs.px.value'])
+          xyzvar.append(spot.spot_dict['xyzobs.px.variance'])
+          shoeboxes.append(spot.spot_dict['shoebox'])
+
+          indexed_hkls.append(spot.hkl.ohkl.elems)
+          indexed_intensities.append(intensity)
+          indexed_sigmas.append(sigma)
+          max_signal.append(max_sig)
+          s1.append(s0+spot.xyz)
+          bbox.append(spot.spot_dict['bbox'])
+
+          if spot.pred is not None:
+            rmsd_n += 1
+            rmsd += measure_distance(col((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1])),col(spot.pred))**2
+
+        if len(results) >= horiz_phil.small_cell.min_spots_to_integrate:
+          # Uncomment to get a text version of the integration results
+          #f = open(os.path.splitext(os.path.basename(path))[0] + ".int","w")
+          #for line in results:
+          #  f.write(line)
+          #f.close()
+
+          if write_output:
+            info = dict(
+              xbeam = refined_bcx,
+              ybeam = refined_bcy,
+              distance = distance,
+              wavelength = wavelength,
+              pointgroup = horiz_phil.small_cell.spacegroup,
+              observations = [cctbx.miller.set(sym,indexed_hkls).array(indexed_intensities,indexed_sigmas)],
+              mapped_predictions = [mapped_predictions],
+              mapped_panels = [mapped_panels],
+              model_partialities = [None],
+              sa_parameters = [None],
+              max_signal = [max_signal],
+              current_orientation = [ori],
+              current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], # identity.  only support primitive lattices.
+              pixel_size = pixel_size,
+            )
+            G = open("int-" + os.path.splitext(os.path.basename(path))[0] +".pickle","wb")
+            import pickle
+            pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
+
+          crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
+          experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
+          if write_output:
+            experiments.as_file(
+              os.path.splitext(os.path.basename(path).strip())[0] + "_integrated.expt"
+            )
+
+          refls = flex.reflection_table()
+          refls['id'] = flex.int(len(indexed_hkls), 0)
+          refls['panel'] = mapped_panels
+          refls['intensity.sum.value'] = indexed_intensities
+          refls['intensity.sum.variance'] = indexed_sigmas**2
+          refls['xyzobs.px.value'] = xyzobs
+          refls['xyzobs.px.variance'] = xyzvar
+          refls['miller_index'] = indexed_hkls
+          refls['xyzcal.px'] = flex.vec3_double(mapped_predictions.parts()[0], mapped_predictions.parts()[1], flex.double(len(mapped_predictions), 0))
+          refls['shoebox'] = shoeboxes
+          refls['entering'] = flex.bool(len(refls), False)
+          refls['s1'] = s1
+          refls['bbox'] = bbox
+
+          refls.centroid_px_to_mm(experiments)
+
+          refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
+          if write_output:
+            refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.refl")
+
+          print("cctbx.small_cell: integrated %d spots."%len(results), end=' ')
+          integrated_count = len(results)
+        else:
+          raise RuntimeError("cctbx.small_cell: not enough spots to integrate (%d)."%len(results))
+
+        if rmsd_n > 0:
+          print(" RMSD: %f"%math.sqrt((1/rmsd_n)*rmsd))
+        else:
+          print(" Cannot calculate RMSD.  Not enough integrated spots or not enough clique spots near predictions.")
+
+      print("IMAGE STATS %s: spots %5d, max clique: %5d, integrated %5d spots"%(path,all_spots_len,max_clique_len,integrated_count))
+    except Exception:
+      if i_subset == len(subsets)-1:
+        raise
       else:
-        mapped_predictions.append((spot.pred[0],spot.pred[1]))
-        mapped_panels.append(spot.pred_panel_id)
-      xyzobs.append(spot.spot_dict['xyzobs.px.value'])
-      xyzvar.append(spot.spot_dict['xyzobs.px.variance'])
-      shoeboxes.append(spot.spot_dict['shoebox'])
-
-      indexed_hkls.append(spot.hkl.ohkl.elems)
-      indexed_intensities.append(intensity)
-      indexed_sigmas.append(sigma)
-      max_signal.append(max_sig)
-      s1.append(s0+spot.xyz)
-      bbox.append(spot.spot_dict['bbox'])
-
-      if spot.pred is not None:
-        rmsd_n += 1
-        rmsd += measure_distance(col((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1])),col(spot.pred))**2
-
-    if len(results) >= horiz_phil.small_cell.min_spots_to_integrate:
-      # Uncomment to get a text version of the integration results
-      #f = open(os.path.splitext(os.path.basename(path))[0] + ".int","w")
-      #for line in results:
-      #  f.write(line)
-      #f.close()
-
-      if write_output:
-        info = dict(
-          xbeam = refined_bcx,
-          ybeam = refined_bcy,
-          distance = distance,
-          wavelength = wavelength,
-          pointgroup = horiz_phil.small_cell.spacegroup,
-          observations = [cctbx.miller.set(sym,indexed_hkls).array(indexed_intensities,indexed_sigmas)],
-          mapped_predictions = [mapped_predictions],
-          mapped_panels = [mapped_panels],
-          model_partialities = [None],
-          sa_parameters = [None],
-          max_signal = [max_signal],
-          current_orientation = [ori],
-          current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], # identity.  only support primitive lattices.
-          pixel_size = pixel_size,
-        )
-        G = open("int-" + os.path.splitext(os.path.basename(path))[0] +".pickle","wb")
-        import pickle
-        pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
-
-      crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
-      experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
-      if write_output:
-        experiments.as_file(
-          os.path.splitext(os.path.basename(path).strip())[0] + "_integrated.expt"
-        )
-
-      refls = flex.reflection_table()
-      refls['id'] = flex.int(len(indexed_hkls), 0)
-      refls['panel'] = mapped_panels
-      refls['intensity.sum.value'] = indexed_intensities
-      refls['intensity.sum.variance'] = indexed_sigmas**2
-      refls['xyzobs.px.value'] = xyzobs
-      refls['xyzobs.px.variance'] = xyzvar
-      refls['miller_index'] = indexed_hkls
-      refls['xyzcal.px'] = flex.vec3_double(mapped_predictions.parts()[0], mapped_predictions.parts()[1], flex.double(len(mapped_predictions), 0))
-      refls['shoebox'] = shoeboxes
-      refls['entering'] = flex.bool(len(refls), False)
-      refls['s1'] = s1
-      refls['bbox'] = bbox
-
-      refls.centroid_px_to_mm(experiments)
-
-      refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
-      if write_output:
-        refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.refl")
-
-      print("cctbx.small_cell: integrated %d spots."%len(results), end=' ')
-      integrated_count = len(results)
+        continue
     else:
-      raise RuntimeError("cctbx.small_cell: not enough spots to integrate (%d)."%len(results))
+      print('indexed on subset ', i_subset)
+      break
 
-    if rmsd_n > 0:
-      print(" RMSD: %f"%math.sqrt((1/rmsd_n)*rmsd))
-    else:
-      print(" Cannot calculate RMSD.  Not enough integrated spots or not enough clique spots near predictions.")
-
-  print("IMAGE STATS %s: spots %5d, max clique: %5d, integrated %5d spots"%(path,all_spots_len,max_clique_len,integrated_count))
   return max_clique_len, experiments, refls
 
 def spots_rmsd(spots):
