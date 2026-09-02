@@ -359,7 +359,7 @@ class barbed_wire_analysis():
   def analyze_contacts(self):
     for chain in self.res_list:
       i, j = 0, 5  # window of 5 res
-      while j < len(self.res_list[chain]):
+      while j <= len(self.res_list[chain]):
         res_slice = self.res_list[chain][i:j]
         total_packing = sum([r.packing_contact_count() for r in res_slice])
         total_heavy_atoms = sum([r.heavy_atom_count for r in res_slice])
@@ -538,7 +538,7 @@ class barbed_wire_analysis():
   def predictalyze(self):
     for chain in self.res_list:
       i, j = 0, 3  # window of 3 res
-      while j < len(self.res_list[chain]):
+      while j <= len(self.res_list[chain]):
         res_slice = self.res_list[chain][i:j]
         r = res_slice[1]
         if r.packing_quality is None:
