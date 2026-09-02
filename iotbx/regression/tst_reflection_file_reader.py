@@ -5,7 +5,9 @@ tested more thoroughly elsewhere.
 """
 
 from __future__ import absolute_import, division, print_function
+import gzip
 from iotbx import reflection_file_reader
+from libtbx.test_utils import approx_equal
 
 def exercise_sigma_filtering():
   xds_raw = """\
@@ -71,6 +73,67 @@ def exercise_sigma_filtering():
   assert (ma[0].size() == 3)
 
 
+def exercise_gzipped_cif():
+  """any_reflection_file must read a gzipped reflection cif directly: the
+  format probes that read the raw bytes as text used to raise
+  UnicodeDecodeError before the cif reader was tried, so the DataManager
+  fell back to any_file (which allocates ~800 MB probing for a CCP4 map)
+  and then to a decompressed temp file."""
+  cif_text = """\
+data_test
+_cell.length_a 10
+_cell.length_b 20
+_cell.length_c 30
+_cell.angle_alpha 90
+_cell.angle_beta 90
+_cell.angle_gamma 90
+_symmetry.space_group_name_H-M 'P 21 21 21'
+loop_
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.status
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+0 0 2 o 10.5 1.0
+0 2 0 f 20.5 2.0
+1 1 1 o 30.5 3.0
+1 2 3 o 40.5 4.0
+2 1 3 o ? ?
+"""
+  plain = "tst_iotbx_hkl_reader.cif"
+  gz = plain + ".gz"
+  with open(plain, "w") as f:
+    f.write(cif_text)
+  with gzip.open(gz, "wt") as f:
+    f.write(cif_text)
+  expected = reflection_file_reader.any_reflection_file(plain).as_miller_arrays()
+  hkl_in = reflection_file_reader.any_reflection_file(gz)
+  assert hkl_in.file_type() == "cif", hkl_in.file_type()
+  arrays = hkl_in.as_miller_arrays()
+  assert len(arrays) == len(expected) == 2, (len(arrays), len(expected))
+  for a, e in zip(arrays, expected):
+    assert a.info().labels == e.info().labels, (a.info().labels, e.info().labels)
+    assert a.indices().all_eq(e.indices())
+    if a.is_real_array():
+      assert approx_equal(a.data(), e.data())
+      assert approx_equal(a.sigmas(), e.sigmas())
+  # the DataManager path must succeed on the direct read, without falling
+  # back to any_file or to a decompressed temp file
+  from iotbx.file_io import reader as file_io_reader
+  def no_fallback(*args, **kwds):
+    raise AssertionError("gzipped cif went through the any_file fallback")
+  saved = (file_io_reader._read_with_any_file, file_io_reader._read_decompressed)
+  file_io_reader._read_with_any_file = no_fallback
+  file_io_reader._read_decompressed = no_fallback
+  try:
+    result = file_io_reader.read_file(gz, file_type="miller_array")
+  finally:
+    file_io_reader._read_with_any_file, file_io_reader._read_decompressed = saved
+  assert result.file_object.file_type() == "cif"
+  assert len(result.file_object.as_miller_arrays()) == 2
+
 if (__name__ == "__main__"):
   exercise_sigma_filtering()
+  exercise_gzipped_cif()
   print("OK")

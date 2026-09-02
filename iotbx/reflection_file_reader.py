@@ -67,6 +67,7 @@ from iotbx.option_parser import option_parser
 from cctbx import miller
 from cctbx import crystal
 from libtbx import easy_pickle
+from libtbx import smart_open
 from libtbx.utils import Sorry, detect_binary_file
 import sys, os, os.path
 import re
@@ -97,7 +98,34 @@ def _cif_prefilter(file_name):
       return l.strip().lower().startswith('data_')
   return False
 
+def _try_cif_reader(file_name):
+  """Returns the iotbx.cif.reader for a reflection cif, None otherwise."""
+  try:
+    # The cif parser uses a lot of memory when reading a file with millions
+    # of words (like an xds_ascii file). Thus we filter out obvious non-cif
+    # files.
+    assert _cif_prefilter(file_name)
+    content = cif_reader(file_path=file_name)
+    looks_like_a_reflection_file = False
+    for block in content.model().values():
+      if '_refln_index_h' in block or '_refln.index_h' in block:
+        looks_like_a_reflection_file = True
+        break
+    if not looks_like_a_reflection_file:
+      raise RuntimeError
+  except KeyboardInterrupt: raise
+  except Exception: return None
+  return content
+
 def try_all_readers(file_name):
+  if file_name.endswith(smart_open.compressed_suffixes):
+    # Of the readers below only iotbx.cif.reader decompresses (through
+    # smart_open); the others read the raw bytes, and the text readers fail
+    # on compressed input with a UnicodeDecodeError that is not one of the
+    # format errors they catch.
+    content = _try_cif_reader(file_name)
+    if content is not None: return ("cif", content)
+    return (None, None)
   try: content = mtz.object(file_name=file_name)
   except RuntimeError: pass
   else: return ("ccp4_mtz", content)
@@ -135,22 +163,8 @@ def try_all_readers(file_name):
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("shelx_hklf", content)
-  try:
-    # The cif parser uses a lot of memory when reading a file with millions
-    # of words (like an xds_ascii file). Thus we filter out obvious non-cif
-    # files.
-    assert _cif_prefilter(file_name)
-    content = cif_reader(file_path=file_name)
-    looks_like_a_reflection_file = False
-    for block in content.model().values():
-      if '_refln_index_h' in block or '_refln.index_h' in block:
-        looks_like_a_reflection_file = True
-        break
-    if not looks_like_a_reflection_file:
-      raise RuntimeError
-  except KeyboardInterrupt: raise
-  except Exception: pass
-  else: return ("cif", content)
+  content = _try_cif_reader(file_name)
+  if content is not None: return ("cif", content)
   try:
     with open(file_name) as fh:
       content = xds_ascii_reader(fh)
