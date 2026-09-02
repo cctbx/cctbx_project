@@ -52,16 +52,13 @@ DEFAULT_ENGINE = "xcif"
 _VALID_ENGINES = ("ucif", "xcif")
 
 
-_XCIF_COMPRESSED_SUFFIXES = (".gz", ".Z", ".bz2", ".xz", ".lzma", ".zst", ".zstd")
-
-
 def _xcif_can_use_parse_file(file_path):
   """True when file_path is safe to hand to xcif_ext.parse_file (which
   memory-maps). False for compressed files; smart_open handles those,
   parse_file does not."""
   if file_path is None:
     return False
-  return not file_path.endswith(_XCIF_COMPRESSED_SUFFIXES)
+  return not file_path.endswith(smart_open.compressed_suffixes)
 
 
 def _walk_xcif_doc(builder, doc):
