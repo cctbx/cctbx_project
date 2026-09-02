@@ -113,19 +113,24 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
   def process_map_coefficients_file(self, filename):
     self.process_miller_array_file(filename)
 
-  def filter_map_coefficients_arrays(self, filename):
+  def filter_map_coefficients_arrays(self, filename, miller_arrays=None):
     '''
     Populate data structures by checking labels in miller_arrays to determine
     type and by setting all complex miller arrays as map coefficients
+
+    miller_arrays: the file's arrays if already built (see
+    MillerArrayDataManager._build_miller_arrays); built here otherwise.
     '''
+    if miller_arrays is None:
+      miller_arrays = self._build_miller_arrays(filename)
     # check for labels
     known_labels = mtz_map_coefficient_labels.union(cif_map_coefficient_labels)
     datatype = MapCoefficientsDataManager.datatype
-    self._child_filter_arrays(datatype, filename, known_labels)
+    self._child_filter_arrays(datatype, filename, known_labels,
+                              miller_arrays=miller_arrays)
 
     # check for complex arrays
     data = self.get_miller_array(filename)
-    miller_arrays = data.as_miller_arrays()
     current_labels = []
     labels = []
     types = {}

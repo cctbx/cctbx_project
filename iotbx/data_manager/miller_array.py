@@ -230,9 +230,12 @@ class MillerArrayDataManager(DataManagerBase):
       array_type = 'nonsense'
     return array_type
 
-  def filter_miller_array_arrays(self, filename):
+  def filter_miller_array_arrays(self, filename, miller_arrays=None):
     '''
     Populate data structures with all arrays
+
+    miller_arrays: the file's arrays if already built (see
+    _build_miller_arrays); built here otherwise.
     '''
     if filename not in self._miller_array_arrays.keys():
       self._miller_array_arrays[filename] = {}
@@ -240,9 +243,8 @@ class MillerArrayDataManager(DataManagerBase):
       self._miller_array_types[filename] = {}
     if filename not in self._miller_array_array_types.keys():
       self._miller_array_array_types[filename] = {}
-    merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
-    miller_arrays = self.get_miller_array(filename).\
-      as_miller_arrays(merge_equivalents=merge_equivalents)
+    if miller_arrays is None:
+      miller_arrays = self._build_miller_arrays(filename)
     labels = []
     for array in miller_arrays:
       label = array.info().label_string()
@@ -530,8 +532,11 @@ fmodel {
     setattr(self, '_custom_%s_phil' % datatype,
             iotbx.phil.parse(custom_phil_str, process_includes=True))
 
-    # add to child datatypes
-    MillerArrayDataManager.miller_array_child_datatypes.append(datatype)
+    # add to child datatypes (a class-level list shared by every DataManager
+    # in the process; without the guard each DataManager() appended again and
+    # the k-th one filtered, and built, every file k times over)
+    if datatype not in MillerArrayDataManager.miller_array_child_datatypes:
+      MillerArrayDataManager.miller_array_child_datatypes.append(datatype)
 
     return custom_phil_str
 
@@ -808,12 +813,23 @@ user_selected_labels: %s
     types = self._get_array_array_types(datatype, filename)
     return types.get(label, getattr(self, self._default_array_type_str % datatype))
 
+  def _build_miller_arrays(self, filename):
+    '''
+    The miller arrays of a processed file. as_miller_arrays() runs the full
+    builder (seconds on a large cif), so the filters share one call.
+    '''
+    merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
+    return self.get_miller_array(filename).as_miller_arrays(
+      merge_equivalents=merge_equivalents)
+
   def _filter_miller_array_child_datatypes(self, filename):
-    # filter arrays (e.g self.filter_map_coefficients_arrays)
+    # filter arrays (e.g self.filter_map_coefficients_arrays), all from one
+    # build of the file
+    miller_arrays = self._build_miller_arrays(filename)
     for datatype in MillerArrayDataManager.miller_array_child_datatypes:
       function_name = 'filter_%s_arrays' % datatype
       if hasattr(self, function_name):
-        getattr(self, function_name)(filename)
+        getattr(self, function_name)(filename, miller_arrays=miller_arrays)
 
   def _check_miller_array_default_filename(self, datatype, filename=None):
     '''
@@ -896,7 +912,8 @@ user_selected_labels: %s
       raise Sorry('%s does not have any arrays labeled %s' %
                   (filename, label))
 
-  def _child_filter_arrays(self, datatype, filename, known_labels):
+  def _child_filter_arrays(self, datatype, filename, known_labels,
+                           miller_arrays=None):
     '''
     Populate data structures by checking labels in miller arrays to determine
     child type
@@ -908,8 +925,8 @@ user_selected_labels: %s
     user_labels[filename] = []
 
     data = self.get_miller_array(filename)
-    merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
-    miller_arrays = data.as_miller_arrays(merge_equivalents=merge_equivalents)
+    if miller_arrays is None:
+      miller_arrays = self._build_miller_arrays(filename)
     labels = []
     types = {}
     # array_types = {}
