@@ -71,19 +71,26 @@ class single_contact():
 #TODO update to Reduce2 and Probe2 - clashscore2 will be likely template
 def do_probe(model):
   from libtbx import easy_run
+  import shutil
+  import tempfile
 
-  pdblines = model.get_hierarchy().as_pdb_string()
-  probe_temp = open("probe_contacts_temp.pdb", "w")
-  print(pdblines, file=probe_temp)
-  probe_temp.close()
-  cmd = "phenix.reduce -noflip probe_contacts_temp.pdb"
-  reduce_run = easy_run.fully_buffered(cmd).stdout_lines
-  probe_temp = open("probe_contacts_temp.pdb", "w")
-  for line in reduce_run:
-    print(line, file=probe_temp)
-  probe_temp.close()
-  cmd = "phenix.probe -u -con -self -mc ALL probe_contacts_temp.pdb"
-  probe_run = easy_run.fully_buffered(cmd).stdout_lines
+  # A private directory per call. The name used to be fixed and relative, so two
+  # analyses running at once in one process read each other's file: contacts
+  # came back for the wrong model, or from a half-written one, without raising.
+  tmp_dir = tempfile.mkdtemp(prefix='barbed_wire_probe_')
+  try:
+    pdb_path = os.path.join(tmp_dir, "probe_contacts_temp.pdb")
+    with open(pdb_path, "w") as probe_temp:
+      print(model.get_hierarchy().as_pdb_string(), file=probe_temp)
+    cmd = 'phenix.reduce -noflip "%s"' % pdb_path
+    reduce_run = easy_run.fully_buffered(cmd).stdout_lines
+    with open(pdb_path, "w") as probe_temp:
+      for line in reduce_run:
+        print(line, file=probe_temp)
+    cmd = 'phenix.probe -u -con -self -mc ALL "%s"' % pdb_path
+    probe_run = easy_run.fully_buffered(cmd).stdout_lines
+  finally:
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
   contacts = []
   for line in probe_run:
@@ -98,7 +105,6 @@ def do_probe(model):
   # a single atom pair can appear in multiple categories
   # this sort->dict means that each atom pair gets a single contact entry of the highest priority type
   # lower priority types get overwritten by higher (eg 'so' is stored first, then overwritten by 'bo' if present)
-  os.remove("probe_contacts_temp.pdb")  # cleanup
   return contact_dict
 
 class alphafold_chunk():
