@@ -5,54 +5,190 @@ from cctbx import uctbx
 import cctbx.crystal
 import iotbx.pdb.utils
 import boost_adaptbx.boost.python as bp
+import libtbx
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 
-def get_siiu(pdb_hierarchy, crystal_symmetry, select_within_radius):
-  sites_cart = pdb_hierarchy.atoms().extract_xyz()
-  sst = crystal_symmetry.special_position_settings().site_symmetry_table(
-    sites_cart = sites_cart)
+# A site whose symmetry mate is within this distance is taken to lie on a
+# symmetry element and is moved onto it.  Coordinates written to three
+# decimals leave such a site within 0.002 A of its mate.
+min_distance_sym_equiv_coincident = 1.e-2
+
+class sym_equiv_tables(libtbx.slots_getstate_setstate):
+  """The tables get_siiu reads.
+
+  Both must be built from the same sites; neither records which, so a
+  mismatched pair gives wrong equivalents.
+  """
+
+  __slots__ = ["pair_sym_table", "site_symmetry_table"]
+
+  def __init__(self, pair_sym_table, site_symmetry_table):
+    self.pair_sym_table = pair_sym_table
+    self.site_symmetry_table = site_symmetry_table
+
+def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
+                         min_distance_sym_equiv=None):
+  """Pair and site symmetry tables covering every contact within radius.
+
+  Neither depends on the selection, so one build serves many of them.
+
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+  crystal_symmetry : cctbx.crystal.symmetry
+  radius : float
+      In Angstrom.
+  min_distance_sym_equiv : float, optional
+      min_distance_sym_equiv_coincident by default.
+
+  Returns
+  -------
+  sym_equiv_tables
+  """
+  # An empty crystal_symmetry is truthy, so test the members.
+  assert crystal_symmetry is not None, "no crystal_symmetry"
+  assert crystal_symmetry.unit_cell() is not None, "no unit cell"
+  assert crystal_symmetry.space_group() is not None, "no space group"
+  assert 0 <= radius < float("inf"), "radius is %s" % radius
+  if (min_distance_sym_equiv is None):
+    min_distance_sym_equiv = min_distance_sym_equiv_coincident
+  sps = crystal_symmetry.special_position_settings(
+    min_distance_sym_equiv=min_distance_sym_equiv)
+  site_symmetry_table = sps.site_symmetry_table(sites_cart=sites_cart)
+  # add_all_pairs searches to distance_cutoff*(1+is_inside_epsilon()), which
+  # defaults to 1e-6; the buffer matches.
+  pair_asu_table = sps.pair_asu_table(
+    distance_cutoff               = radius,
+    sites_cart                    = sites_cart,
+    site_symmetry_table           = site_symmetry_table,
+    asu_mappings_buffer_thickness = radius * (1 + 1.e-6))
+  # all_interactions_from_inside_asu keeps every operator of a group of
+  # symmetry-equivalent interactions.
+  return sym_equiv_tables(
+    pair_sym_table = pair_asu_table.extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq       = False,
+      all_interactions_from_inside_asu = True),
+    site_symmetry_table = site_symmetry_table)
+
+def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
+             select_within_radius=None, sites_cart=None, selection=None,
+             buffer=1, min_distance_sym_equiv=0.5, symmetry_tables=None):
+  """Symmetry equivalents within select_within_radius+buffer of the selection.
+
+  Parameters
+  ----------
+  pdb_hierarchy : iotbx.pdb.hierarchy.root, optional
+      Supplies sites_cart when that is not given.
+  crystal_symmetry : cctbx.crystal.symmetry
+  select_within_radius : float
+      In Angstrom.
+  sites_cart : flex.vec3_double, optional
+  selection : iterable of int, optional
+      The sites to search around; all of them by default.
+  buffer : float
+  min_distance_sym_equiv : float
+      Pass min_distance_sym_equiv_coincident to keep a site written on a
+      symmetry element where it is.
+  symmetry_tables : sym_equiv_tables, optional
+      From get_sym_equiv_tables, to search several selections without
+      rebuilding them.
+
+  Returns
+  -------
+  tuple
+      ``({j_seq: [rt_mx_ji]}, [rt_mx_ji])``.  Applying rt_mx_ji to the
+      fractional coordinates of site j_seq places that equivalent near a
+      selected site, plus the distinct operators among them.  Operators
+      carry denominators (1, 12), so equal operators hash equally.  One
+      operator per equivalent, and an equivalent coincident with its site
+      is dropped.
+  """
+  if (symmetry_tables is None):
+    if (sites_cart is None):
+      assert pdb_hierarchy is not None, "no sites_cart and no pdb_hierarchy"
+      sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    # +1 is nonbonded buffer, to match nonbonded_distance_cutoff
+    symmetry_tables = get_sym_equiv_tables(
+      sites_cart             = sites_cart,
+      crystal_symmetry       = crystal_symmetry,
+      radius                 = select_within_radius + buffer,
+      min_distance_sym_equiv = min_distance_sym_equiv)
+  if (selection is None):
+    selection = range(symmetry_tables.pair_sym_table.size())
+  matrices_by_j_seq = {}
+  normalised = {}
+  by_j_seq = {}
+  pair_sym_table = symmetry_tables.pair_sym_table
+  site_symmetry_table = symmetry_tables.site_symmetry_table
+  assert site_symmetry_table.indices().size() == pair_sym_table.size(), (
+    "the two tables cover different numbers of sites")
+  for i_seq in sorted(set(selection)):
+    assert 0 <= i_seq < pair_sym_table.size(), "selection index is %s" % i_seq
+    for j_seq, rt_mx_ji_list in pair_sym_table[i_seq].items():
+      by_key = None
+      # stl_vector_rt_mx has no __iter__, so a for-in loop falls back to the
+      # __getitem__ protocol and costs one C++ exception per vector.
+      for i_op in range(len(rt_mx_ji_list)):
+        rt_mx_ji = rt_mx_ji_list[i_op]
+        # Site j's own symmetry operators are recorded as the identity, so
+        # this drops them as well.
+        if (rt_mx_ji.is_unit_mx()): continue
+        if (by_key is None):
+          # matrices() builds a fresh tuple on each call, so cache it; None
+          # records a general position.
+          if (j_seq in matrices_by_j_seq):
+            site_symmetry_matrices = matrices_by_j_seq[j_seq]
+          elif (site_symmetry_table.is_special_position(j_seq)):
+            site_symmetry_matrices = site_symmetry_table.get(j_seq).matrices()
+            matrices_by_j_seq[j_seq] = site_symmetry_matrices
+          else:
+            site_symmetry_matrices = matrices_by_j_seq[j_seq] = None
+          by_key = by_j_seq.get(j_seq)
+          if (by_key is None):
+            by_key = by_j_seq[j_seq] = {}
+        if (site_symmetry_matrices is not None):
+          # The canonical coset member, so a union of selections gives the
+          # union of the results.  min() orders by rt_mx.__lt__, the
+          # ordering of space_group.make_tidy().
+          rt_mx_ji = min([rt_mx_ji.multiply(matrix)
+                          for matrix in site_symmetry_matrices])
+        # Equal operators hash equally only on equal denominators, so the
+        # normalised operator is the key.  A miss on an equal operator
+        # normalises it twice, which is harmless.
+        key = normalised.get(rt_mx_ji)
+        if (key is None):
+          key = normalised[rt_mx_ji] = rt_mx_ji.new_denominators(1, 12)
+        by_key[key] = None
   siiu = {}
-  # +1 is nonbonded buffer, to match nonbonded_distance_cutoff
-  cutoff = select_within_radius+1
-  conn_asu_mappings = crystal_symmetry.special_position_settings().\
-    asu_mappings(buffer_thickness=cutoff)
-  conn_asu_mappings.process_sites_cart(
-    original_sites      = sites_cart,
-    site_symmetry_table = sst)
-  conn_pair_asu_table = cctbx.crystal.pair_asu_table(
-    asu_mappings=conn_asu_mappings)
-  conn_pair_asu_table.add_all_pairs(
-    distance_cutoff=cutoff)
-  pair_generator = cctbx.crystal.neighbors_fast_pair_generator(
-    conn_asu_mappings,
-    distance_cutoff=cutoff)
-  all_ops_mat = []
-  all_ops = []
-  for pair in pair_generator:
-    rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
-    rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
-    rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
-    #print(rt_mx_ji, str(rt_mx_ji))
-    if str(rt_mx_ji)=="x,y,z": continue
-    siiu.setdefault(pair.j_seq, []).append(rt_mx_ji)
-    as_xyz = rt_mx_ji.as_xyz()
-    if(not as_xyz in all_ops):
-      all_ops.append(as_xyz)
-      all_ops_mat.append(rt_mx_ji)
-  for k,v in zip(siiu.keys(), siiu.values()): # remove duplicates!
-    siiu[k] = list(set(v))
-  return siiu, all_ops_mat
+  for j_seq, by_key in by_j_seq.items():
+    siiu[j_seq] = list(by_key)
+  # Every operator that reached a by_key is in normalised, on denominators
+  # (1, 12) and so hashing consistently.
+  return siiu, list(dict.fromkeys(normalised.values()))
 
-def apply_symop_sites_cart(sites_cart, op, fm, om):
-  sites_frac = fm * sites_cart
-  sites_frac_copy = flex.vec3_double(
-    [op*site_frac for site_frac in sites_frac])
-  return om*sites_frac_copy
+def sym_equiv_sites_cart(sites_cart, unit_cell, rt_mx, selection=None):
+  """Cartesian sites imaged by rt_mx.
 
-def apply_symop_inplace_chain(chain, op, fm, om):
-  sites_cart = chain.atoms().extract_xyz()
-  sites_cart_copy = apply_symop_sites_cart(sites_cart, op, fm, om)
-  chain.atoms().set_xyz(sites_cart_copy)
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+  unit_cell : cctbx.uctbx.unit_cell
+  rt_mx : cctbx.sgtbx.rt_mx
+  selection : flex.size_t, optional
+      The sites to image; all of them by default.
+
+  Returns
+  -------
+  flex.vec3_double
+  """
+  if (selection is not None):
+    sites_cart = sites_cart.select(selection)
+  return ((unit_cell.matrix_cart(rt_mx.r()) * sites_cart)
+          + unit_cell.orthogonalize(rt_mx.t().as_double()))
+
+def apply_symop_inplace_chain(chain, op, unit_cell):
+  chain.atoms().set_xyz(sym_equiv_sites_cart(
+    sites_cart=chain.atoms().extract_xyz(), unit_cell=unit_cell, rt_mx=op))
 
 class manager(object):
   def __init__(self,
@@ -70,8 +206,7 @@ class manager(object):
     self.siiu                 = siiu
     self.pdb_hierarchy        = pdb_hierarchy
     self.chain_op_dict        = {}
-    self.fm = crystal_symmetry.unit_cell().fractionalization_matrix()
-    self.om = crystal_symmetry.unit_cell().orthogonalization_matrix()
+    self.unit_cell = crystal_symmetry.unit_cell()
     #
     assert pdb_hierarchy.models_size() == 1, "one model is expected"
     # Get operators
@@ -100,7 +235,8 @@ class manager(object):
         cntr+=1
         chain_dc.id = new_id
         new_ids.append(new_id)
-        apply_symop_inplace_chain(chain=chain_dc, op=op, fm=self.fm, om=self.om)
+        apply_symop_inplace_chain(
+          chain=chain_dc, op=op, unit_cell=self.unit_cell)
         new_chains.append(chain_dc)
       self.chain_op_dict[op] = new_ids
     for c in new_chains:
@@ -206,7 +342,8 @@ class manager(object):
     for op, cids in zip(self.chain_op_dict.keys(), self.chain_op_dict.values()):
       sel_str = " or ".join(["chain %s"%it for it in cids])
       sel = self.scasc.selection(sel_str)
-      sites_cart_copy = apply_symop_sites_cart(sites_cart, op, self.fm, self.om)
+      sites_cart_copy = sym_equiv_sites_cart(
+        sites_cart=sites_cart, unit_cell=self.unit_cell, rt_mx=op)
       all_xyz.set_selected(sel, sites_cart_copy)
     self.super_cell_hierarchy.atoms().set_xyz(all_xyz)
     self.super_sphere_hierarchy = self.super_cell_hierarchy.select(
