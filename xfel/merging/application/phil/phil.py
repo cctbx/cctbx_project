@@ -328,6 +328,16 @@ modify
 }
 """
 
+export_phil = """
+export
+  .help = Condense all expt + refl, output a single batch MTZ for Careless
+  {
+  output_label = None
+    .type = str
+    .help = If output_label is not None, worker writes a batch MTZ file.
+}
+"""
+
 select_phil = """
 select
   .help = The select section accepts or rejects specified reflections
@@ -898,6 +908,7 @@ modify.cosym.use_curvatures=False
 """
 
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
+              export_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil + lunus_phil + \
               publish_phil + diffbragg_phil + monitor_phil + filter_global_phil + \
