@@ -81,7 +81,7 @@ namespace {
   {
     using namespace boost::python;
     class_<atom_tmp_sentinel,
-           std::auto_ptr<atom_tmp_sentinel>,
+           boost::shared_ptr<atom_tmp_sentinel>,
            boost::noncopyable>("atom_data_tmp_sentinel", no_init);
     typedef scitbx::af::boost_python::shared_wrapper<atom> wat;
     class_<wat::w_t> wa = wat::wrap("af_shared_atom");

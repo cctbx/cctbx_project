@@ -105,6 +105,9 @@ namespace scitbx { namespace matrix {
 
     /// Called after after all rank-1 updates have been performed
     void finalise() {
+      if (cols == 0) {
+        return;
+      }
       std::size_t const rows = a.size()/cols;
       // A^T A = [A^T] [A^T]^T and A^T is the column-major version of
       // the row-major A

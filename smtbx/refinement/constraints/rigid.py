@@ -127,7 +127,7 @@ class idealised_fragment(object):
   def __init__(self):
     self.default_lengths = {
       "Cp"  : (1.42,),
-      "Cp*" : (1.42, 1.063),
+      "Cp*" : (1.42, 1.063), #Cp-Me length = l[0]*l[1]
       "Ph"  : (1.39,),
       "Naphthalene" : (1.39,)
       }
@@ -173,7 +173,7 @@ class idealised_fragment(object):
     if fragment == "Cp*":
       r = 0.5*lengths[0]/math.cos(54*math.pi/180)
       res = self.generate_ring(5, r)
-      for i in self.generate_ring(5, r+lengths[1]):
+      for i in self.generate_ring(5, r+lengths[0]*lengths[1]):
         res.append(i)
       return res
     if fragment == "Naphthalene":

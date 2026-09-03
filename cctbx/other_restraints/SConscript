@@ -1,0 +1,9 @@
+Import("env_cctbx_boost_python_ext")
+env_bpl = env_cctbx_boost_python_ext.Clone()
+env_bpl.Prepend(LIBS=["cctbx"])
+env_bpl.SharedLibrary(
+  target="#lib/cctbx_other_restraints_ext",
+  source=[
+    "sump_bpl.cpp",
+    "other_restraints_ext.cpp",
+    ])

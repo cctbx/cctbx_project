@@ -1976,15 +1976,15 @@ def exercise_extinction_correction():
   p = 0.001*pow(wavelength,3)*fc_sq/uc.sin_two_theta(h, wavelength)
   c_v = pow(1+extinction_val*p,-0.5)
   c_g = -0.5*fc_sq*p*pow(1+p*extinction_val,-1.5)
-  assert approx_equal(c[0], c_v)
-  assert approx_equal(c[1], c_g)
+  assert approx_equal(c, c_v)
+  assert approx_equal(ec.grad_value, c_g)
   #now try numerical differentiation and compare
   step = 1e-8
-  c_g_n = -ec.compute(h, fc_sq, False)[0]
+  c_g_n = -ec.compute(h, fc_sq, False)
   ec.value += step
-  c_g_n += ec.compute(h, fc_sq, False)[0]
+  c_g_n += ec.compute(h, fc_sq, False)
   c_g_n = c_g_n*fc_sq/step
-  assert approx_equal(c[1], c_g_n)
+  assert approx_equal(ec.grad_value, c_g_n)
 
 def exercise_r_factor():
   f_obs  = flex.double([1,2,3,4,5,6,7,8,9])
@@ -2000,7 +2000,98 @@ def exercise_r_factor():
   assert approx_equal(r.scale_ls(), 0.1)
   assert approx_equal(r.scale_ls(), 0.1)
 
+def exercise_scatterer_id():
+  import random
+  # must import this for x.element_info() to work!!!
+  from cctbx.xray import ext
+  num = 200
+  base_id_16, range_16 = 100.0, 1600
+  base_id_1, range_1 = 1000.0, 1000
+  for i in range(num):
+    a = float(random.randint(-range_16, range_16))/base_id_16
+    b = float(random.randint(-range_16, range_16))/base_id_16
+    c = float(random.randint(-range_16, range_16))/base_id_16
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 3)
+    id  = ext.scatterer_id_2_16(x.get_id_2_16(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.0025)
+
+    a = float(random.randint(-range_1, range_1))/base_id_1
+    b = float(random.randint(-range_1, range_1))/base_id_1
+    c = float(random.randint(-range_1, range_1))/base_id_1
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 3)
+    id  = ext.scatterer_id_2_1(x.get_id_2_1(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.0000077)
+
+    a = float(random.randint(-range_16, range_16))/base_id_16
+    b = float(random.randint(-range_16, range_16))/base_id_16
+    c = float(random.randint(-range_16, range_16))/base_id_16
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 31)
+    id  = ext.scatterer_id_5_16(x.get_id_5_16(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.004)
+
+    a = float(random.randint(-range_1, range_1))/base_id_1
+    b = float(random.randint(-range_1, range_1))/base_id_1
+    c = float(random.randint(-range_1, range_1))/base_id_1
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 31)
+    id  = ext.scatterer_id_5_1(x.get_id_5_1(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.00002)
+
+def exercise_scatterer_lookup():
+  from smtbx import development
+  xray_structure = development.sucrose()
+  scatterers = xray_structure.scatterers()
+  names = ["2_16", "2_1", "5_16", "5_1"]
+  for name in names:
+    sl = xray_structure.get_scatterer_lookup(name)
+    for sc in scatterers:
+      id = sl.get_id(sc.atomic_number, sc.site)
+      sc = sl.find(id) # this will assert on failure
+      #sc.show(unit_cell=xray_structure.unit_cell())
+
+def exercise_scatterer_lookup_cart():
+  from smtbx import development
+  from cctbx.xray import ext
+  import random
+  xray_structure = development.sucrose()
+  unit_cell = xray_structure.unit_cell()
+  scatterers = xray_structure.scatterers()
+  lookup = xray_structure.get_scatterer_lookup_cart()
+  for sc in scatterers:
+    id = ext.scatterer_id_5_16(sc.get_id_5_16())
+    sc1 = lookup.find_fractional(id.get_crd(), id.get_z(), eps=0.01)
+    assert sc1.label == sc.label
+
+  sdata = []
+  for sc in scatterers:
+    data = random.randint(0, 31)
+    sdata.append(data)
+
+  lookup = xray_structure.get_scatterer_lookup_cart(sdata)
+  for i, sc in enumerate(scatterers):
+    id = ext.scatterer_id_5_16(sc.get_id_5_16(sdata[i]))
+    sc1 = lookup.find_fractional(id.get_crd(), id.get_z(), sdata[i], eps=0.01)
+    assert sc1.label == sc.label
+
 def run():
+  exercise_scatterer_lookup_cart()
+  exercise_scatterer_lookup()
+  exercise_scatterer_id()
   exercise_scattering_type_registry_1()
   exercise_r_factor()
   exercise_extinction_correction()

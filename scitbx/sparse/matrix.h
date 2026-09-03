@@ -318,6 +318,24 @@ public:
     return result;
   }
 
+  friend
+    af::shared<std::complex<T> > operator*(matrix const& a,
+      af::const_ref<std::complex<T> > const& w)
+  {
+    af::shared<std::complex<T> > res(a.n_rows());
+    for (int j = 0; j < a.n_cols(); ++j) {
+      for (typename matrix<T>::const_row_iterator p = a.col(j).begin();
+        p != a.col(j).end();
+        ++p)
+      {
+        typename matrix<T>::index_type i = p.index();
+        typename matrix<T>::value_type a_ij = *p;
+        res[i] += a_ij * w[j];
+      }
+    }
+    return res;
+  }
+
   /// Accessor for a dense matrix that would correspond to this
   af::mat_grid expression_accessor(af::mat_grid const &proto) const {
     return af::mat_grid(n_rows(), n_cols());

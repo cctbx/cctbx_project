@@ -1424,7 +1424,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
       if (x<1e-13){
         x=1e-13;
       }
-      FloatType m = std::tanh(x)*a*fc/(eb);;
+      FloatType m = std::tanh(x)*a*fc/(eb);
       result = -fo/eb + m;
       return (result);
     }
