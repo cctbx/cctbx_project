@@ -396,6 +396,10 @@ def workarounds_00345(model,
         bonded_to_i = fsc0[orig_h_i]
         bonded_to_j = fsc0[orig_h_j]
         if len(bonded_to_i) != 1 or len(bonded_to_j) != 1: continue
+        # An already-perceived bond between the two parent atoms means there is
+        # no missing link here.  The close H..H contact is then an artifact of
+        # the as-placed torsion, which the methyl/OH rotators resolve later.
+        if bonded_to_i[0] in fsc0[bonded_to_j[0]]: continue
         rt_mx_i = asu_mappings.get_rt_mx_i(pair)
         rt_mx_j = asu_mappings.get_rt_mx_j(pair)
         site_frac_i = unit_cell.fractionalize(atoms[bonded_to_i[0]].xyz)
@@ -752,8 +756,6 @@ class place_hydrogens():
     #if not self.exclude_water:
     #  self.model.add_hydrogens(1., occupancy=0.)
 
-    self.n_H_final = self.model.get_hd_selection().count(True)
-
     # List missing H
     mon_lib_srv = self.model.get_mon_lib_srv()
     for m in self.model.get_hierarchy().models():
@@ -767,6 +769,7 @@ class place_hydrogens():
                 print(msg%(c.id, r.resseq, r.resname), ma)
 
     self.model = workarounds_00345(model=self.model)
+    self.n_H_final = self.model.get_hd_selection().count(True)
 
     if self.print_time:
       self.print_times()
