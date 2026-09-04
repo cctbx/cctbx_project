@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import os, sys
 import iotbx
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 
 packing_quality_key = ["no packing", "underpacked", "marginal packing", "well packed"]  # indices 0,1,2,3
 
@@ -113,11 +113,14 @@ def do_probe(model, hydrogens="reduce", contacts="probe"):
       cmd = ('mmtbx.probe2 approach=self source_selection="all" '
              'output.format=raw output.condensed=True '
              'output.file_name="%s" "%s"' % (raw_path, pdb_path))
-      easy_run.fully_buffered(cmd)
-      probe_run = []
-      if os.path.exists(raw_path):
-        with open(raw_path) as raw:
-          probe_run = raw.read().splitlines()
+      run = easy_run.fully_buffered(cmd)
+      if not os.path.exists(raw_path):
+        # Without this the analysis would run to completion on zero contacts and
+        # report every residue as unpacked, which looks like a result.
+        raise Sorry("probe2 wrote no output.\n%s\n%s"
+                    % (cmd, "\n".join(run.stderr_lines[-20:])))
+      with open(raw_path) as raw:
+        probe_run = raw.read().splitlines()
     else:
       cmd = 'phenix.probe -u -con -self -mc ALL "%s"' % pdb_path
       probe_run = easy_run.fully_buffered(cmd).stdout_lines
