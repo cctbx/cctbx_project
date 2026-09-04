@@ -135,6 +135,122 @@ class combine(object):
       result = result.customized_copy(data = result.data()*sw)
     return result
 
+class electron_density_map_llgi(object):
+  """ LLGI-native counterpart to electron_density_map -- builds
+  2mFo-DFc/mFo-DFc-style map coefficients using Feff and the LLGI
+  target's own D/fom (see mmtbx.f_model.manager.
+  map_calculation_helper_llgi's docstring for the full derivation and
+  correspondence to the ordinary ML alpha/beta/fom), instead of Fobs and
+  a fresh generic ML alpha/beta/fom fit.
+
+  Deliberately a SEPARATE class from electron_density_map, not a
+  target-aware branch inside it -- mirrors mmtbx.f_model.manager.
+  r_work_llgi()'s own separation from r_work() (see
+  llgi_r_factors_available()'s docstring): electron_density_map is
+  relied on by many non-LLGI callers (ml, mlhl, twin targets) that
+  assume it is always Fobs-based, so it is left completely untouched;
+  this class is reached only by callers that explicitly ask for the
+  LLGI-native map (see mmtbx.f_model.manager.map_coefficients_llgi()).
+
+  Reuses fo_fc_scales/combine UNCHANGED (both already only depend on
+  centric_flags/.size(), which are identical whether sourced from f_obs
+  or Feff, since Feff is always index-matched to f_obs -- see
+  llgi_r_factors_available()'s own docstring) -- only the
+  map_calculation_helper passed in differs (map_calculation_helper_llgi()
+  instead of map_calculation_helper()).
+
+  Special-case maps (anomalous, anomalous_residual, phaser_sad_llg,
+  Fcalc-only) and use_shelx_weight are NOT supported here -- none of
+  those are meaningful extensions of the LLGI target's own likelihood
+  (anomalous/SAD analysis and SHELX weighting are independent features
+  layered on the classic ML machinery, not yet ported to LLGI); raises
+  NotImplementedError if requested, rather than silently falling back to
+  an F-obs-based answer.
+  """
+
+  def __init__(self, fmodel):
+    self.fmodel = fmodel
+    self.mch = None
+
+  def map_coefficients(self,
+                       map_type,
+                       acentrics_scale = 2.0,
+                       centrics_pre_scale = 1.0,
+                       exclude_free_r_reflections=False,
+                       isotropize=True,
+                       sharp=False):
+    map_name_manager = mmtbx.map_names(map_name_string = map_type)
+    if(map_name_manager.anomalous or map_name_manager.anomalous_residual
+       or map_name_manager.phaser_sad_llg):
+      raise NotImplementedError(
+        "electron_density_map_llgi does not support anomalous/"
+        "anomalous_residual/phaser_sad_llg map types; these features "
+        "have not been ported to the LLGI target.")
+    mnm = mmtbx.map_names(map_name_string = map_type)
+    if(mnm.k==0 and abs(mnm.n)==1):
+      # Fcalc-only map: no observed-amplitude dependence at all, so the
+      # F-obs vs Feff distinction is moot -- reuse electron_density_map
+      # unchanged rather than duplicating this special case.
+      return electron_density_map(fmodel=self.fmodel).map_coefficients(
+        map_type=map_type)
+    if(self.mch is None):
+      self.mch = self.fmodel.map_calculation_helper_llgi()
+    ffs = fo_fc_scales(
+      fmodel          = self.fmodel,
+      map_type_str    = map_type,
+      acentrics_scale = acentrics_scale,
+      centrics_scale  = centrics_pre_scale)
+    fo_scale, fc_scale = ffs.fo_scale, ffs.fc_scale
+    coeffs = combine(
+      fmodel                 = self.fmodel,
+      map_type_str           = map_type,
+      fo_scale               = fo_scale,
+      fc_scale               = fc_scale,
+      map_calculation_helper = self.mch,
+      use_shelx_weight       = False,
+      shelx_weight_parameter = None).map_coefficients()
+    r_free_flags = None
+    scale_default = 1. / (self.fmodel.k_isotropic()*self.fmodel.k_anisotropic())
+    scale_array = coeffs.customized_copy(data=scale_default)
+    if (exclude_free_r_reflections):
+      if (coeffs.anomalous_flag()):
+        coeffs = coeffs.average_bijvoet_mates()
+      r_free_flags = self.fmodel.r_free_flags()
+      if (r_free_flags.anomalous_flag()):
+        r_free_flags = r_free_flags.average_bijvoet_mates()
+        scale_array = scale_array.average_bijvoet_mates()
+      coeffs = coeffs.select(~r_free_flags.data())
+      scale_array = scale_array.select(~r_free_flags.data())
+    if(isotropize):
+      if (scale_array.anomalous_flag()) and (not coeffs.anomalous_flag()):
+        scale_array = scale_array.average_bijvoet_mates()
+      scale = scale_array.data()
+      coeffs = coeffs.customized_copy(data = coeffs.data()*scale)
+    if(sharp):
+      ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
+      from cctbx import adptbx
+      b = flex.mean(self.fmodel.xray_structure.extract_u_iso_or_u_equiv() *
+        adptbx.u_as_b(1))/2
+      k_sharp = 1./flex.exp(-ss * b)
+      coeffs = coeffs.customized_copy(data = coeffs.data()*k_sharp)
+    return coeffs
+
+  def fft_map(self,
+              resolution_factor = 1/3.,
+              symmetry_flags = None,
+              map_coefficients = None,
+              map_type = None,
+              acentrics_scale = 2.0,
+              centrics_pre_scale = 1.0):
+    if(map_coefficients is None):
+      map_coefficients = self.map_coefficients(
+        map_type           = map_type,
+        acentrics_scale    = acentrics_scale,
+        centrics_pre_scale = centrics_pre_scale)
+    return map_coefficients.fft_map(
+      resolution_factor = resolution_factor,
+      symmetry_flags    = symmetry_flags)
+
 class electron_density_map(object):
 
   def __init__(self,

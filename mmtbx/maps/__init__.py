@@ -358,12 +358,33 @@ def compute_f_calc(fmodel, params):
     coeffs = coeffs_partial_set
   return coeffs
 
+def _llgi_map_coefficients_supported(fmodel, mnm, params):
+  """ True when fmodel is in llgi mode AND the requested map is one
+  electron_density_map_llgi actually supports (see its docstring):
+  no fill_missing (a separate, F-obs-shaped bulk-solvent-refit
+  machinery not yet ported -- see mmtbx.f_model.manager.
+  map_calculation_helper_llgi's docstring), no anomalous/
+  anomalous_residual/phaser_sad_llg (SAD analysis, a separate future
+  task). Callers should fall back to the ordinary (F-obs/ML) path,
+  NOT silently produce wrong output, whenever this is False but
+  fmodel.llgi_r_factors_available() is True -- see
+  map_coefficients_from_fmodel's own fallback-logging.
+  """
+  if(not fmodel.llgi_r_factors_available()):
+    return False
+  if(params is not None and getattr(params, "fill_missing_f_obs", False)):
+    return False
+  if(mnm.anomalous or mnm.anomalous_residual or mnm.phaser_sad_llg):
+    return False
+  return True
+
 def map_coefficients_from_fmodel(
       params,
       fmodel = None,
       map_calculation_server = None,
       post_processing_callback=None,
-      pdb_hierarchy=None):
+      pdb_hierarchy=None,
+      log=None):
   assert [fmodel, map_calculation_server].count(None) == 1
   from mmtbx import map_tools
   import mmtbx
@@ -379,21 +400,38 @@ def map_coefficients_from_fmodel(
      mnm.phaser_sad_llg):
     return None
   if(fmodel is not None):
-    e_map_obj = fmodel.electron_density_map()
+    if(_llgi_map_coefficients_supported(fmodel, mnm, params)):
+      e_map_obj = fmodel.electron_density_map_llgi()
+    else:
+      if(log is not None and fmodel.llgi_r_factors_available()):
+        print(
+          "  LLGI map coefficients not yet supported for map_type=%s "
+          "(fill_missing_f_obs=%s); using the ordinary F-obs-based map "
+          "instead." % (params.map_type,
+            getattr(params, "fill_missing_f_obs", None)), file=log)
+      e_map_obj = fmodel.electron_density_map()
     xrs = fmodel.xray_structure
   else:
     e_map_obj = map_calculation_server
     xrs = map_calculation_server.fmodel.xray_structure
   coeffs = None
-  coeffs = e_map_obj.map_coefficients(
-    map_type           = params.map_type,
-    acentrics_scale    = params.acentrics_scale,
-    centrics_pre_scale = params.centrics_pre_scale,
-    fill_missing       = params.fill_missing_f_obs,
-    isotropize         = params.isotropize,
-    exclude_free_r_reflections=params.exclude_free_r_reflections,
-    pdb_hierarchy=pdb_hierarchy,
-    merge_anomalous=True)
+  if(isinstance(e_map_obj, map_tools.electron_density_map_llgi)):
+    coeffs = e_map_obj.map_coefficients(
+      map_type           = params.map_type,
+      acentrics_scale    = params.acentrics_scale,
+      centrics_pre_scale = params.centrics_pre_scale,
+      isotropize         = params.isotropize,
+      exclude_free_r_reflections=params.exclude_free_r_reflections)
+  else:
+    coeffs = e_map_obj.map_coefficients(
+      map_type           = params.map_type,
+      acentrics_scale    = params.acentrics_scale,
+      centrics_pre_scale = params.centrics_pre_scale,
+      fill_missing       = params.fill_missing_f_obs,
+      isotropize         = params.isotropize,
+      exclude_free_r_reflections=params.exclude_free_r_reflections,
+      pdb_hierarchy=pdb_hierarchy,
+      merge_anomalous=True)
   if (coeffs is None) : return None
   if(params.sharpening):
     from mmtbx import map_tools
@@ -462,18 +500,36 @@ class compute_map_coefficients(object):
             (hasattr(post_processing_callback, "__call__")))
     self.mtz_dataset = mtz_dataset
     coeffs = None
-    # Avoid doing slow calculation several times!
-    map_calculation_server = fmodel.electron_density_map()
+    # Avoid doing slow calculation several times! (Only valid as a
+    # single shared server when every map in params ends up on the SAME
+    # path -- see the llgi_r_factors_available() branch below, where
+    # different map types in the same params list can need DIFFERENT
+    # servers, e.g. 2FOFCWT's fill_missing_f_obs=True falls back to the
+    # ordinary ML server while FOFCWT uses the LLGI one -- so per-call
+    # dispatch (fmodel=fmodel, not a single shared map_calculation_server)
+    # is used there instead, at the cost of map_calculation_helper_llgi()
+    # potentially being rebuilt once per map type.)
+    map_calculation_server = None
+    if(not fmodel.llgi_r_factors_available()):
+      map_calculation_server = fmodel.electron_density_map()
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
         if(fmodel.is_twin_fmodel_manager()) and (mcp.isotropize):
           mcp.isotropize = False
-        coeffs = map_coefficients_from_fmodel(
-          map_calculation_server   = map_calculation_server,
-          params                   = mcp,
-          post_processing_callback = post_processing_callback,
-          pdb_hierarchy            = pdb_hierarchy)
+        if(map_calculation_server is not None):
+          coeffs = map_coefficients_from_fmodel(
+            map_calculation_server   = map_calculation_server,
+            params                   = mcp,
+            post_processing_callback = post_processing_callback,
+            pdb_hierarchy            = pdb_hierarchy)
+        else:
+          coeffs = map_coefficients_from_fmodel(
+            fmodel                   = fmodel,
+            params                   = mcp,
+            post_processing_callback = post_processing_callback,
+            pdb_hierarchy            = pdb_hierarchy,
+            log                      = log)
         if("mtz" in mcp.format and coeffs is not None):
           if coeffs.anomalous_flag():
             coeffs = coeffs.average_bijvoet_mates()

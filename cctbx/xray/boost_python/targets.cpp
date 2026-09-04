@@ -7,6 +7,7 @@
 #include <cctbx/xray/targets/mli.h>
 #include <cctbx/xray/targets/mlhl.h>
 #include <cctbx/xray/targets/llgi.h>
+#include <cctbx/xray/targets/llgi_e.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
@@ -327,6 +328,66 @@ namespace {
     }
   };
 
+  struct llgi_e_sigmaa_wrappers
+  {
+    typedef llgi_e::sigmaa_target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>(
+          "llgi_e_sigmaa_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&>((
+            arg("e_eff"),
+            arg("selection"),
+            arg("e_model"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("centric_flags"))))
+        .def("target", &w_t::target)
+        .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())
+      ;
+    }
+  };
+
+  struct llgi_e_emodel_wrappers
+  {
+    typedef llgi_e::emodel_target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>(
+          "llgi_e_emodel_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&>((
+            arg("e_eff"),
+            arg("selection"),
+            arg("e_model"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("centric_flags"))))
+        .def("target", &w_t::target)
+        .def("d_target_by_demodel", &w_t::d_target_by_demodel, ccr())
+      ;
+    }
+  };
+
   struct r_factor_wrappers
   {
     //typedef r_factor w_t;
@@ -369,6 +430,8 @@ namespace boost_python {
     targets::boost_python::mlhl_wrappers::wrap();
     targets::boost_python::llgi_wrappers::wrap();
     targets::boost_python::llgi_sigmaa_scatfrac_wrappers::wrap();
+    targets::boost_python::llgi_e_sigmaa_wrappers::wrap();
+    targets::boost_python::llgi_e_emodel_wrappers::wrap();
     targets::boost_python::r_factor_wrappers::wrap();
   }
 
