@@ -383,7 +383,6 @@ class miller_array_builder(crystal_symmetry_builder):
   def __init__(self, cif_block, base_array_info=None, wavelengths=None):
     crystal_symmetry_builder.__init__(self, cif_block)
     self._arrays = OrderedDict()
-    self._origarrays = OrderedDict() # used for presenting raw data tables in HKLviewer
     basearraylabels = []
     if base_array_info is not None:
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
@@ -432,7 +431,6 @@ class miller_array_builder(crystal_symmetry_builder):
       wavelbl = []
       cryslbl = []
       scalegrplbl = []
-      self._origarrays["HKLs"] = self.indices
       alllabels = list(sorted(refln_loop.keys()))
       remaininglabls = alllabels[:] # deep copy the list
       # Parse labels matching cif column conventions
@@ -570,14 +568,6 @@ class miller_array_builder(crystal_symmetry_builder):
                 millarr.set_info(base_array_info.customized_copy(labels= labels,
                                                   wavelength=wavelengths.get(w_id, None)))
                 self._arrays[ label + lablsufx ] = millarr
-              origarr = self.flex_std_string_as_miller_array(
-                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                  scale_group_code=scale_group,
-                  allowNaNs=True)
-              newlabel = label.replace("_refln.", "")
-              newlabel2 = newlabel.replace("_refln_", "")
-              if origarr: # want only genuine miller arrays
-                self._origarrays[newlabel2 + jlablsufx ] = origarr.data()
     # Convert any groups of I+,I-,SigI+,SigI- (or amplitudes) arrays into anomalous arrays
     # i.e. both friedel mates in the same array
     for key, array in six.iteritems(self._arrays.copy()):
@@ -796,12 +786,8 @@ class miller_array_builder(crystal_symmetry_builder):
   def get_selection(self, value,
                     wavelength_id=None,
                     crystal_id=None,
-                    scale_group_code=None,
-                    allowNaNs = False):
-    if allowNaNs:
-      selection = flex.bool(value.size(), True)
-    else:
-      selection = ~((value == '.') | (value == '?'))
+                    scale_group_code=None):
+    selection = ~((value == '.') | (value == '?'))
     if self.wavelength_id_array is not None and wavelength_id is not None:
       selection &= (self.wavelength_id_array.data() == wavelength_id)
     if self.crystal_id_array is not None and crystal_id is not None:
@@ -848,14 +834,12 @@ class miller_array_builder(crystal_symmetry_builder):
   def flex_std_string_as_miller_array(self, value,
                                       wavelength_id=None,
                                       crystal_id=None,
-                                      scale_group_code=None,
-                                      allowNaNs = False):
+                                      scale_group_code=None):
     # Create a miller_array object of only the data and indices matching the
     # wavelength_id, crystal_id and scale_group_code submitted or full array if these are None
     selection = self.get_selection(
       value, wavelength_id=wavelength_id,
-      crystal_id=crystal_id, scale_group_code=scale_group_code,
-      allowNaNs=allowNaNs)
+      crystal_id=crystal_id, scale_group_code=scale_group_code)
     data = value.select(selection)
     try:
       data = flex.int(data)
@@ -872,14 +856,6 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def arrays(self):
     return self._arrays
-
-
-  def origarrays(self):
-    """
-    return dictionary of raw data found in cif file cast into flex.double arrays
-    or just string arrays as a fall back.
-    """
-    return self._origarrays
 
 
 def as_flex_double(array, key):

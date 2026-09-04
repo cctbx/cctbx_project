@@ -112,9 +112,8 @@ def exercise(anomalous):
   assert len(auto_anomalous_calls) == 3, (len(auto_anomalous_calls), auto_anomalous_calls)
   assert sorted(auto_anomalous_calls) == sorted([n, n - len(missing_a), n - len(missing_b)]), \
     (auto_anomalous_calls, n, len(missing_a), len(missing_b))
-  # One conversion per column in the arrays pass (FWT, PHWT, F, sigF, I, sigI,
-  # 3 ids, status = 10) plus one per column for origarrays (10).
-  assert n_conversions == 20, n_conversions
+  # One conversion per column (FWT, PHWT, F, sigF, I, sigI, 3 ids, status).
+  assert n_conversions == 10, n_conversions
 
 def run():
   exercise(anomalous=True)
