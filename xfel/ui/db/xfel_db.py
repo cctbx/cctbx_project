@@ -293,6 +293,20 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_experiment` MODIFY COLUMN crystal_cell_id INT"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility: add sequence column to dataset_task
+      query = "SHOW columns FROM `%s_dataset_task`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'sequence' not in column_names:
+        print("Upgrading to version 5.6 of mysql database schema")
+        query = """
+          ALTER TABLE `%s_dataset_task`
+          ADD COLUMN sequence INT NULL
+        """%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -951,12 +965,27 @@ class xfel_db_application(db_application):
   def get_dataset_tasks(self, dataset_id):
     tag = self.params.experiment_tag
     query = """SELECT d_t.task_id FROM `%s_dataset_task` d_t
-               WHERE d_t.dataset_id = %d""" % (tag, dataset_id)
+               WHERE d_t.dataset_id = %d
+               ORDER BY d_t.sequence IS NULL, d_t.sequence, d_t.task_id""" % (tag, dataset_id)
     cursor = self.execute_query(query)
     task_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(task_ids) == 0:
       return []
-    return self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+    tasks = self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+    # Reorder tasks to match the sequence order from the database
+    by_id = {task.id: task for task in tasks}
+    return [by_id[int(tid)] for tid in task_ids if int(tid) in by_id]
+
+  def get_datasets_for_task(self, task_id):
+    ''' Return all Dataset objects that include task_id in their pipeline. '''
+    tag = self.params.experiment_tag
+    query = "SELECT dataset_id FROM `%s_dataset_task` WHERE task_id = %d" % (tag, task_id)
+    cursor = self.execute_query(query)
+    ids = [row[0] for row in cursor.fetchall()]
+    if not ids:
+      return []
+    return self.get_all_x(Dataset, "dataset",
+                          where="WHERE dataset.id IN (%s)" % ",".join(str(i) for i in ids))
 
   def create_dataset_version(self, **kwargs):
     return DatasetVersion(self, **kwargs)

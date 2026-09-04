@@ -12,7 +12,7 @@ Description : XFEL UI Custom Dialogs
 import time
 import os
 import wx
-from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
+from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection, ColumnSorterMixin
 from wx.lib.scrolledpanel import ScrolledPanel
 from iotbx.phil import parse
 from xfel.ui.db.task import task_types
@@ -92,6 +92,86 @@ class BaseDialog(wx.Dialog):
 
 # --------------------------------- Dialogs ---------------------------------- #
 
+class ProjectListDialog(BaseDialog, ColumnSorterMixin):
+  ''' Dialog for choosing a project to load. Lists each project's name and
+      last-modified time in a two-column report; clicking either column header
+      sorts by that column (the time column sorts chronologically). '''
+
+  def __init__(self, parent, current=None, *args, **kwargs):
+    BaseDialog.__init__(self, parent, *args, **kwargs)
+
+    from xfel.ui import list_settings_projects, settings_file_for_project
+
+    self.projlist = wx.ListCtrl(self,
+                                style=wx.LC_REPORT | wx.LC_SINGLE_SEL |
+                                      wx.BORDER_SUNKEN,
+                                size=(420, 300))
+    self.projlist.InsertColumn(0, 'Project')
+    self.projlist.InsertColumn(1, 'Last Modified')
+
+    # ColumnSorterMixin sorts on the values in itemDataMap, keyed by each row's
+    # item data. Store the raw mtime (a float) so the time column sorts
+    # chronologically rather than as text.
+    self.itemDataMap = {}
+    for key, name in enumerate(list_settings_projects()):
+      mtime = os.path.getmtime(settings_file_for_project(name))
+      display = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
+      row = self.projlist.InsertItem(self.projlist.GetItemCount(), name)
+      self.projlist.SetItem(row, 1, display)
+      self.projlist.SetItemData(row, key)
+      self.itemDataMap[key] = (name, mtime)
+
+    self.projlist.SetColumnWidth(0, 200)
+    self.projlist.SetColumnWidth(1, 200)
+
+    ColumnSorterMixin.__init__(self, 2)
+    # Default view: most recently modified first (column 1, descending).
+    self.SortListItems(1, 0)
+
+    # Select the current project *after* sorting: SortListItems reorders the
+    # physical rows, so the insertion index no longer identifies the row. Match
+    # by name against the post-sort order instead.
+    if current is not None:
+      for row in range(self.projlist.GetItemCount()):
+        if self.projlist.GetItemText(row, 0) == current:
+          self.projlist.Select(row)
+          self.projlist.Focus(row)
+          self.projlist.EnsureVisible(row)
+          break
+
+    self.main_sizer.Add(self.projlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    button_sizer = wx.StdDialogButtonSizer()
+    self.btn_OK = wx.Button(self, wx.ID_OK)
+    self.btn_OK.SetDefault()
+    self.btn_cancel = wx.Button(self, wx.ID_CANCEL)
+    button_sizer.AddButton(self.btn_OK)
+    button_sizer.AddButton(self.btn_cancel)
+    button_sizer.Realize()
+    self.main_sizer.Add(button_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Double-clicking a row accepts the selection.
+    self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onItemActivated, self.projlist)
+
+    self.SetTitle('Load Project')
+    self.envelope.Fit(self)
+
+  def GetListCtrl(self):
+    # Required by ColumnSorterMixin.
+    return self.projlist
+
+  def onItemActivated(self, e):
+    if self.projlist.GetFirstSelected() != -1:
+      self.EndModal(wx.ID_OK)
+
+  def GetSelectedProject(self):
+    ''' Return the name of the selected project, or None if none is selected. '''
+    row = self.projlist.GetFirstSelected()
+    if row == -1:
+      return None
+    return self.projlist.GetItemText(row, 0)
+
+
 class SettingsDialog(BaseDialog):
   ''' Initial settings for cctbx.xfel; accepts DB credentials (may be
   separate dialog), populates experiment name / tag, separate dialog for
@@ -100,6 +180,7 @@ class SettingsDialog(BaseDialog):
   def __init__(self, parent, params,
                label_style='bold',
                content_style='normal',
+               lock_db=False,
                *args, **kwargs):
 
     BaseDialog.__init__(self, parent,
@@ -110,10 +191,16 @@ class SettingsDialog(BaseDialog):
 
     self.params = params
     self.drop_tables = False
+    # When True (i.e. the GUI is already running and connected), the database
+    # connection and experiment tag must not change, as that would require a
+    # full GUI refresh. This disables the relevant controls and blocks loading
+    # a project whose connection settings differ from the current ones.
+    self.lock_db = lock_db
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Experiment tag and DB Credentials button
+    exp_tag = self.params.experiment_tag if self.params.experiment_tag is not None else ""
     self.db_cred = gctr.TextButtonCtrl(self,
                                        name='db_cred',
                                        label='Experiment Tag',
@@ -122,10 +209,12 @@ class SettingsDialog(BaseDialog):
                                        big_button=True,
                                        big_button_label='DB Credentials...',
                                        big_button_size=(130, -1),
-                                       value=self.params.experiment_tag if self.params.experiment_tag is not None else "")
-    self.main_sizer.Add(self.db_cred,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+                                       value=exp_tag)
+    self.main_sizer.Add(self.db_cred, flag=wx.EXPAND | wx.ALL, border=10)
+    if self.lock_db:
+      # Cannot change DB credentials or experiment tag while connected.
+      self.db_cred.btn_big.Disable()
+      self.db_cred.ctr.Disable()
 
     # Facility control
     self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -183,30 +272,35 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
+    self.btn_load_project = gctr.Button(self, name='load_project', label='Load Project...')
+    self.btn_save_project = gctr.Button(self, name='save_project', label='Save Project As...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_OK.SetDefault()
     self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
 
-    button_sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    button_sizer.AddMany([#(self.btn_mp),
+    button_sizer = wx.FlexGridSizer(1, 6, 0, 10)
+    button_sizer.AddMany([(self.btn_load_project),
+                          (self.btn_save_project),
                           (self.btn_op),
                           (0,0),
                           (self.btn_OK),
                           (self.btn_cancel)])
 
-    button_sizer.AddGrowableCol(1)
+    button_sizer.AddGrowableCol(3)
     self.main_sizer.Add(button_sizer,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
     self.SetSizerAndFit(self.main_sizer)
 
-    self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onAdvanced, id=self.btn_op.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.output.btn_big.GetId())
     self.Bind(wx.EVT_CHOICE, self.onFacilityChoice)
     self.Bind(wx.EVT_BUTTON, self.onFacilityOptions, id=self.btn_facility_options.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onLoadProject, id=self.btn_load_project.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onSaveProjectAs, id=self.btn_save_project.GetId())
 
     self.setup_facility_options()
 
@@ -270,8 +364,122 @@ class SettingsDialog(BaseDialog):
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
 
   def onOK(self, e):
+    from xfel.ui import get_current_project
     self.update_settings()
+    # Settings are persisted to the current project's bundle. If there is no
+    # project yet (e.g. a fresh setup), require the user to name one before
+    # closing, otherwise there is nowhere to save.
+    if get_current_project() is None:
+      wx.MessageBox('Please name a project to save these settings.',
+                    'Save Project', wx.OK | wx.ICON_INFORMATION)
+      if self.save_project_as() is None:
+        return  # cancelled; keep the dialog open
     e.Skip()
+
+  @staticmethod
+  def connection_signature(params):
+    ''' Return the settings that determine which database/tables the live GUI
+        talks to. If any of these change, the GUI must be restarted, so a
+        running (locked) session refuses to load a project that alters them.
+        Operational-only db fields (verbose, logging_batch_size) and the
+        local-server launch settings (db.server.*) are excluded, as they do
+        not affect an already-established connection. '''
+    db = params.db
+    return (params.experiment_tag,
+            db.host, db.name, db.user, db.password, db.port)
+
+  def fill_fields_from_params(self):
+    ''' Push the current self.params into every widget on the dialog. Used after
+        loading a settings bundle so switching projects refreshes the whole UI.
+        The mp / db / facility-option sub-dialogs read self.params directly, so
+        replacing self.params is enough for those. '''
+    lower_choices = ['lcls', 'standalone']
+    try:
+      self.facility.ctr.SetSelection(lower_choices.index(self.params.facility.name))
+    except ValueError:
+      pass
+
+    experiment = None
+    if self.params.facility.name == 'lcls':
+      experiment = self.params.facility.lcls.experiment
+    self.experiment.ctr.SetValue(experiment if experiment is not None else '')
+
+    if self.params.output_folder in (None, ''):
+      self.output.ctr.SetValue(os.path.abspath(os.curdir))
+    else:
+      self.output.ctr.SetValue(self.params.output_folder)
+
+    self.db_cred.ctr.SetValue(
+      self.params.experiment_tag if self.params.experiment_tag is not None else '')
+
+    self.setup_facility_options()
+
+  def onLoadProject(self, e):
+    from xfel.ui import list_settings_projects, load_project_settings, get_current_project, set_current_project
+    if not list_settings_projects():
+      wx.MessageBox('No saved projects found in the settings directory.',
+                    'Load Project', wx.OK | wx.ICON_INFORMATION)
+      return
+
+    dlg = ProjectListDialog(self, current=get_current_project())
+    dlg.Center()
+    accepted = dlg.ShowModal() == wx.ID_OK
+    name = dlg.GetSelectedProject() if accepted else None
+    dlg.Destroy()
+    if name is None:
+      return
+
+    try:
+      new_params = load_project_settings(name)
+    except Exception as exc:
+      wx.MessageBox('Unable to load project "%s":\n%s' % (name, str(exc)),
+                    'Load Project', wx.OK | wx.ICON_ERROR)
+      return
+    # While the GUI is connected, refuse a project whose database connection
+    # or experiment tag differs, since applying it would require a restart.
+    if self.lock_db and \
+       self.connection_signature(new_params) != self.connection_signature(self.params):
+      wx.MessageBox(
+        'Loading project "%s" would change the database connection or '
+        'experiment tag, which requires restarting the GUI. Project not '
+        'loaded.' % name,
+        'Load Project', wx.OK | wx.ICON_ERROR)
+      return
+    set_current_project(name)
+    # Mutate the existing params object in place rather than rebinding, so the
+    # MainWindow and the OnInit save path (which share this object) see the
+    # newly loaded configuration.
+    self.params.__dict__.update(new_params.__dict__)
+    self.fill_fields_from_params()
+
+  def onSaveProjectAs(self, e):
+    self.save_project_as()
+
+  def save_project_as(self):
+    ''' Prompt for a project name and save the current params to its bundle.
+        Returns the saved name, or None if the user cancelled or the save
+        failed. '''
+    from xfel.ui import save_project_settings, get_current_project, set_current_project
+    self.update_settings()
+    default_name = get_current_project() or ''
+    dlg = wx.TextEntryDialog(self, 'Project name (saved as settings_<name>.phil):',
+                             'Save Project As', default_name)
+    saved = None
+    if dlg.ShowModal() == wx.ID_OK:
+      name = dlg.GetValue().strip()
+      if not name:
+        wx.MessageBox('Please provide a project name.',
+                      'Save Project As', wx.OK | wx.ICON_WARNING)
+      else:
+        try:
+          save_project_settings(self.params, name)
+          set_current_project(name)
+          saved = name
+        except Exception as exc:
+          wx.MessageBox('Unable to save project "%s":\n%s' % (name, str(exc)),
+                        'Save Project As', wx.OK | wx.ICON_ERROR)
+    dlg.Destroy()
+    return saved
 
 
 class DBCredentialsDialog(BaseDialog):
@@ -2140,12 +2348,11 @@ class RunBlockDialog(BaseDialog):
                         size=(600, 600),
                         *args, **kwargs)
 
-    # Run block start / end points (choice widgets)
-
-    self.phil_panel = wx.Panel(self)
-    phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
-    self.phil_sizer = wx.StaticBoxSizer(phil_box)
-    self.phil_panel.SetSizer(self.phil_sizer)
+    # Load dispatcher phil scope and initialise working scope from stored extra_phil_str
+    from xfel.ui import load_phil_scope_from_dispatcher
+    self.phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
+    self.working_phil_scope = self.phil_scope.fetch(
+      parse(block.extra_phil_str or ''))
 
     if self.is_lcls:
       self.format_panel = wx.Panel(self)
@@ -2158,17 +2365,6 @@ class RunBlockDialog(BaseDialog):
     self.runblock_panel = ScrolledPanel(self, size=(550, 225))
     self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runblock_sizer)
-
-    # Extra phil
-    self.phil = gctr.PHILBox(self.phil_panel,
-                             btn_import=True,
-                             btn_import_label='Import PHIL',
-                             btn_export=False,
-                             btn_default=True,
-                             btn_default_label='Default PHIL',
-                             ctr_size=(-1, 100),
-                             ctr_value=str(block.extra_phil_str))
-    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     if self.is_lcls:
       # Extra format options text ctrl (user can put in anything they want)
@@ -2284,6 +2480,18 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
+    # Reference geometry
+    self.reference_geometry = gctr.TextButtonCtrl(
+      self.runblock_panel,
+      label='Reference geometry:',
+      label_style='normal',
+      label_size=(160, -1),
+      big_button=True,
+      big_button_label='Browse...',
+      value='')
+    self.runblock_sizer.Add(self.reference_geometry, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
     # Comment
     self.comment = gctr.TextButtonCtrl(self.runblock_panel,
                                        label='Comment:',
@@ -2293,11 +2501,15 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
     if self.is_lcls:
       self.main_sizer.Add(self.format_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Edit PHIL button
+    self.btn_edit_phil = wx.Button(self, label='Edit PHIL')
+    self.main_sizer.Add(self.btn_edit_phil, flag=wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM,
                         border=10)
 
     # Dialog control
@@ -2308,14 +2520,17 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
-    self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
+    self.Bind(wx.EVT_BUTTON, self.onEditPhil, self.btn_edit_phil)
     if self.is_lcls:
       self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onReferenceGeometryBrowse,
+              id=self.reference_geometry.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     self.fill_in_fields()
+    self.sync_controls()
     self.configure_controls()
     self.Layout()
     self.runblock_panel.SetupScrolling()
@@ -2328,20 +2543,26 @@ class RunBlockDialog(BaseDialog):
   def onSpecifyEnd(self, e):
     self.runblocks_end.Enable()
 
-  def onImportPhil(self, e):
-    phil_dlg = wx.FileDialog(self,
-                             message="Load phil file",
-                             defaultDir=os.curdir,
-                             defaultFile="*",
-                             wildcard="*.phil",
-                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-                             )
-    if phil_dlg.ShowModal() == wx.ID_OK:
-      phil_file = phil_dlg.GetPaths()[0]
-      with open(phil_file, 'r') as phil:
-        phil_contents = phil.read()
-      self.phil.ctr.SetValue(phil_contents)
-    phil_dlg.Destroy()
+  def onEditPhil(self, e):
+    edit_dlg = EditPhilDialog(self, db=self.db,
+                              read_only=False,
+                              phil_scope=self.phil_scope,
+                              working_phil_scope=self.working_phil_scope)
+    edit_dlg.Fit()
+    if edit_dlg.ShowModal() == wx.ID_OK:
+      new_str = edit_dlg.phil_box.GetValue()
+      self.working_phil_scope = self.phil_scope.fetch(parse(new_str))
+      self.sync_controls()
+    edit_dlg.Destroy()
+
+  def onReferenceGeometryBrowse(self, e):
+    dlg = wx.FileDialog(self,
+                        message='Select reference geometry file',
+                        defaultDir=os.curdir,
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+      self.reference_geometry.ctr.SetValue(dlg.GetPaths()[0])
+    dlg.Destroy()
 
   def onImportFormat(self, e):
     phil_dlg = wx.FileDialog(self,
@@ -2393,9 +2614,16 @@ class RunBlockDialog(BaseDialog):
                         'Warning!', wx.ICON_EXCLAMATION)
           return
 
+    # Merge reference_geometry widget value into working scope, then compute diff
+    ref_geom = self.reference_geometry.ctr.GetValue().strip()
+    if ref_geom and ref_geom != 'None':
+      self.working_phil_scope = self.working_phil_scope.fetch(
+        parse('input.reference_geometry = %s' % ref_geom))
+    extra_phil_str = self.phil_scope.fetch_diff(self.working_phil_scope).as_str() or None
+
     rg_dict = dict(active=True,
                    open=rg_open,
-                   extra_phil_str=self.phil.ctr.GetValue(),
+                   extra_phil_str=extra_phil_str,
                    untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue().strip(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
@@ -2456,11 +2684,20 @@ class RunBlockDialog(BaseDialog):
 
     e.Skip()
 
+  def sync_controls(self):
+    ''' Populate widgets from the current working_phil_scope. '''
+    try:
+      params = self.working_phil_scope.extract()
+      ref_geom = params.input.reference_geometry
+      self.reference_geometry.ctr.SetValue(str(ref_geom) if ref_geom and ref_geom != 'None' else '')
+    except Exception:
+      self.reference_geometry.ctr.SetValue('')
+
   def fill_in_fields(self):
     ''' If previous rungroups exist in trial, fill in fields in nascent block '''
     if len(self.all_blocks) > 0:
       last = self.all_blocks[-1]
-      self.phil.ctr.SetValue(str(last.extra_phil_str))
+      self.working_phil_scope = self.phil_scope.fetch(parse(last.extra_phil_str or ''))
       if self.is_lcls:
         self.address.ctr.SetValue(str(last.detector_address))
         self.format.ctr.SetValue(str(last.extra_format_str))
@@ -3220,6 +3457,632 @@ class EditPhilDialog(BaseDialog):
         return
     e.Skip()
 
+# ---------------------------------------------------------------------------
+# Dataset pipeline dialog
+#
+# A dataset is (still) composed of an ordered list of Task rows. Rather than
+# forcing the user to hand-assemble those tasks one raw-PHIL dialog at a time,
+# the DatasetDialog below presents the whole pipeline at once: identity + run
+# selection (single trial + tags) + a small set of shared parameters + a stack
+# of pipeline "stages". Each stage maps to one Task and exposes a handful of
+# friendly controls, with a per-stage "Edit PHIL" escape hatch (mirroring the
+# TrialDialog pattern) for the guts. On save the dialog creates/updates the
+# underlying Task rows and assigns their pipeline order via dataset_task.sequence
+# so submit_all_jobs (which chains strictly by task order) is unaffected.
+#
+# The friendly-control values, plus the shared parameters, are the source of
+# truth for the parameters they map. Everything else (dispatch.step_list,
+# filter.algorithm, and anything the user adds through Edit PHIL) rides along in
+# each stage's working_phil_scope and is preserved via fetch_diff, so hand
+# authored datasets round-trip losslessly.
+# ---------------------------------------------------------------------------
+
+DATASET_STAGE_LABELS = {
+  'indexing'            : 'Indexing',
+  'ensemble_refinement' : 'Ensemble refinement',
+  'scaling'             : 'Scaling',
+  'merging'             : 'Merging',
+  'phenix'              : 'Phenix',
+}
+
+# Default non-default parameters for a brand new stage (from phil/new/*). These
+# seed the friendly controls (and carry the fixed dispatch.step_list etc.).
+DATASET_SHARED_MODEL_DEFAULT = '/global/cfs/cdirs/m5149/als_2026_06/pdb/8P1C.pdb'
+
+DATASET_ENSEMBLE_DEFAULT_PHIL = """
+time_varying_refinement.pre_split = True
+reintegration.integration.recruitment.expand_nave_parameters = True
+"""
+
+DATASET_SCALING_DEFAULT_PHIL = """
+dispatch.step_list = input balance model_scaling modify filter scale postrefine statistics_unitcell statistics_beam model_statistics statistics_resolution
+filter.outlier.min_corr = -1
+filter.algorithm = unit_cell
+filter.unit_cell.value.relative_length_tolerance = 0.1
+select.algorithm = significance_filter
+select.significance_filter.sigma = 0.1
+scaling.model = %s
+scaling.resolution_scalar = 0.96
+merging.d_min = 1.5
+merging.merge_anomalous = True
+statistics.n_bins = 20
+output.save_experiments_and_reflections = True
+""" % DATASET_SHARED_MODEL_DEFAULT
+
+DATASET_MERGING_DEFAULT_PHIL = """
+dispatch.step_list = input model_scaling statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
+scaling.model = %s
+scaling.resolution_scalar = 0.96
+statistics.n_bins = 20
+merging.d_min = 1.5
+merging.merge_anomalous = True
+""" % DATASET_SHARED_MODEL_DEFAULT
+
+DATASET_PHENIX_TEMPLATE = """phenix.command <PREVIOUS_TASK_MTZ>
+# The first line above is the command to run (edit it). These keywords are
+# substituted at runtime: <PREVIOUS_TASK_MTZ>, <DATASET_NAME>, <DATASET_VERSION>.
+# Add any PHIL parameters for the command on the lines below.
+"""
+
+DATASET_STAGE_DEFAULT_PHIL = {
+  'ensemble_refinement' : DATASET_ENSEMBLE_DEFAULT_PHIL,
+  'scaling'             : DATASET_SCALING_DEFAULT_PHIL,
+  'merging'             : DATASET_MERGING_DEFAULT_PHIL,
+}
+
+
+def get_trial_symmetry(db, trial):
+  ''' Return (unit_cell_str, space_group_str) from a trial's known symmetry, or
+      (None, None) if unavailable. Shared by the dataset dialog and wizard. '''
+  if trial is None or not trial.target_phil_str:
+    return None, None
+  try:
+    from xfel.ui import load_phil_scope_from_dispatcher
+    phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
+    params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+    uc = params.indexing.known_symmetry.unit_cell
+    sg = params.indexing.known_symmetry.space_group
+    return (str(uc).strip('()') if uc else None,
+            str(sg) if sg else None)
+  except Exception:
+    return None, None
+
+
+_LINK_BITMAPS = {}
+def _link_bitmap(linked):
+  ''' Lazily load + cache the link/unlink icons. Bitmaps can only be created
+      after a wx.App exists, so this must not run at import time. '''
+  key = 'linked' if linked else 'unlinked'
+  if key not in _LINK_BITMAPS:
+    _LINK_BITMAPS[key] = wx.Bitmap('{}/16x16/{}.png'.format(icons, key))
+  return _LINK_BITMAPS[key]
+
+
+class DatasetStagePanel(wx.Panel):
+  ''' One pipeline stage = one Task. Holds friendly controls for its task type
+      plus (for PHIL-backed types) a working_phil_scope and an Edit PHIL button. '''
+
+  def __init__(self, parent, dialog, task_type,
+               task=None, enabled=True, removable=False,
+               linked=False, is_in_dataset=True):
+    wx.Panel.__init__(self, parent)
+    from xfel.ui.db.task import Task, task_scope, task_types as _task_types
+
+    self.dialog = dialog
+    self.db = dialog.db
+    self.task_type = task_type
+    self.task = task
+    self.removable = removable
+    self.scope = task_scope[_task_types.index(task_type)]
+    self.toggle_ctrls = []
+
+    # Shared-task state
+    self.linked = linked          # True → task belongs to another dataset too
+    self.is_in_dataset = is_in_dataset  # False → join row not yet inserted
+    self.phil_was_edited = False  # True → user chose "Edit (affects all)"
+    self._detach_original_task = None  # holds old task when detaching
+
+    box = wx.StaticBox(self, label=DATASET_STAGE_LABELS.get(task_type, task_type))
+    self.sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
+    self.SetSizer(self.sizer)
+
+    # Header: include checkbox (+ Edit PHIL / Remove buttons)
+    header = wx.BoxSizer(wx.HORIZONTAL)
+    if task_type == 'indexing':
+      self.enable_chk = None
+    else:
+      self.enable_chk = wx.CheckBox(self, label='Include this stage')
+      self.enable_chk.SetValue(enabled)
+      header.Add(self.enable_chk, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+      self.Bind(wx.EVT_CHECKBOX, lambda e: self._update_enabled_state(), self.enable_chk)
+    header.AddStretchSpacer()
+
+    # Link/unlink icon button — present for all non-indexing stages. The icon
+    # shows whether this stage's task is shared with other datasets; the details
+    # (which datasets) live in the tooltip. Click to link/re-link/unlink.
+    self.btn_link = None
+    if task_type != 'indexing':
+      self.btn_link = gctr.BitmapButton(self, bitmap=_link_bitmap(False))
+      header.Add(self.btn_link, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+      self.Bind(wx.EVT_BUTTON, self.onLinkFrom, self.btn_link)
+
+    self.btn_edit = None
+    if task_type not in ('indexing', 'phenix'):
+      self.btn_edit = gctr.Button(self, label='Edit PHIL', size=(110, -1))
+      header.Add(self.btn_edit, flag=wx.ALL, border=5)
+      self.Bind(wx.EVT_BUTTON, self.onEditPhil, self.btn_edit)
+    if removable:
+      self.btn_remove = gctr.Button(self, label='Remove', size=(90, -1))
+      header.Add(self.btn_remove, flag=wx.ALL, border=5)
+      self.Bind(wx.EVT_BUTTON, self.onRemove, self.btn_remove)
+    self.sizer.Add(header, flag=wx.EXPAND)
+
+    # PHIL scope (skip for indexing, which inherits the trial, and phenix, which
+    # is raw text with no dispatcher scope).
+    self.phil_scope = None
+    self.working_phil_scope = None
+    if task_type not in ('indexing', 'phenix'):
+      _, self.phil_scope = Task.get_phil_scope(self.db, task_type)
+      default_seed = DATASET_STAGE_DEFAULT_PHIL.get(task_type, "")
+      if task is not None and task.parameters:
+        seed = task.parameters
+      else:
+        seed = default_seed
+      try:
+        self.working_phil_scope = self.phil_scope.fetch(parse(seed))
+      except Exception:
+        # Stored parameters may be corrupt: a long "strings"-type value (e.g.
+        # dispatch.step_list) is emitted by as_str() with a backslash
+        # line-continuation, and the DB round-trip (db_proxy uses string
+        # interpolation, so MySQL treats "\" as an escape char) can eat the
+        # backslash, leaving a bare continuation line that fails to parse.
+        # Repair by rejoining continuation lines onto the previous line; if that
+        # still fails, fall back to the stage defaults so the dialog opens
+        # instead of crashing.
+        try:
+          self.working_phil_scope = self.phil_scope.fetch(
+            parse(_repair_phil_str(seed)))
+        except Exception:
+          self.working_phil_scope = self.phil_scope.fetch(parse(default_seed))
+
+    self.body = wx.BoxSizer(wx.VERTICAL)
+    self.sizer.Add(self.body, flag=wx.EXPAND | wx.ALL, border=5)
+    self._build_controls()
+    self.sync_controls()
+    self._update_link_display()
+    self._update_enabled_state()
+
+  # -- construction helpers --------------------------------------------------
+  def _add_body(self, ctrl, toggle=True):
+    self.body.Add(ctrl, flag=wx.EXPAND | wx.TOP | wx.BOTTOM, border=4)
+    if toggle:
+      self.toggle_ctrls.append(ctrl)
+
+  def _build_controls(self):
+    t = self.task_type
+    if t == 'indexing':
+      note = wx.StaticText(self, label='Uses the selected trial\'s processing '
+                                       'parameters. No extra settings.')
+      self.body.Add(note, flag=wx.ALL, border=4)
+    elif t == 'ensemble_refinement':
+      self.chk_pre_split = wx.CheckBox(self, label='Pre-split experiments')
+      self.chk_expand_nave = wx.CheckBox(self, label='Expand Nave parameters on reintegration')
+      self._add_body(self.chk_pre_split)
+      self._add_body(self.chk_expand_nave)
+    elif t == 'scaling':
+      self.min_corr = gctr.TextButtonCtrl(self, label='Min. correlation:',
+                                           label_size=(220, -1), label_style='normal',
+                                           ghost_button=False)
+      self.rel_tol = gctr.TextButtonCtrl(self, label='Unit cell rel. length tol.:',
+                                          label_size=(220, -1), label_style='normal',
+                                          ghost_button=False)
+      self.sigma = gctr.TextButtonCtrl(self, label='Significance filter sigma:',
+                                        label_size=(220, -1), label_style='normal',
+                                        ghost_button=False)
+      # Unit-cell cluster filter (consumes the covariance pickle written by the
+      # Unit Cells tab). When enabled it drives filter.unit_cell.algorithm =
+      # cluster; when disabled the plain relative-tolerance (value) filter above
+      # is used instead. The two modes are mutually exclusive.
+      self.chk_use_cluster = wx.CheckBox(
+        self, label='Filter by unit-cell cluster (from Unit Cells tab)')
+      self.cluster_file_panel = wx.Panel(self)
+      cf_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      cf_label = wx.StaticText(self.cluster_file_panel, label='Cluster file:',
+                               size=(220, -1))
+      self.cluster_file = wx.Choice(self.cluster_file_panel, choices=[])
+      self.btn_browse_cluster = gctr.Button(self.cluster_file_panel, label='Browse...')
+      cf_sizer.Add(cf_label, flag=wx.ALIGN_CENTER_VERTICAL)
+      cf_sizer.Add(self.cluster_file, proportion=1,
+                   flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=5)
+      cf_sizer.Add(self.btn_browse_cluster, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.cluster_file_panel.SetSizer(cf_sizer)
+      self.cluster_component = gctr.TextButtonCtrl(self, label='Cluster component:',
+                                                   label_size=(220, -1), label_style='normal',
+                                                   ghost_button=False)
+      self.cluster_mahalanobis = gctr.TextButtonCtrl(self, label='Mahalanobis cutoff:',
+                                                     label_size=(220, -1), label_style='normal',
+                                                     ghost_button=False)
+      self._cluster_paths = []
+      self._populate_cluster_choices()
+      self._add_body(self.min_corr)
+      self._add_body(self.rel_tol)
+      self._add_body(self.chk_use_cluster)
+      self._add_body(self.cluster_file_panel)
+      self._add_body(self.cluster_component)
+      self._add_body(self.cluster_mahalanobis)
+      self._add_body(self.sigma)
+      self.Bind(wx.EVT_CHECKBOX, lambda e: self._sync_cluster_enabled(),
+                self.chk_use_cluster)
+      self.Bind(wx.EVT_BUTTON, self.onBrowseCluster, self.btn_browse_cluster)
+    elif t == 'merging':
+      note = wx.StaticText(self, label='Uses the shared parameters above '
+                                       '(model, d_min, resolution scalar, bins, '
+                                       'merge anomalous).')
+      self.body.Add(note, flag=wx.ALL, border=4)
+    elif t == 'phenix':
+      hint = wx.StaticText(self, label='Command + PHIL. Keywords: '
+                                       '<PREVIOUS_TASK_MTZ>, <DATASET_NAME>, '
+                                       '<DATASET_VERSION>')
+      self.body.Add(hint, flag=wx.ALL, border=4)
+      self.phenix_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(550, 150))
+      if self.task is not None and self.task.parameters:
+        self.phenix_box.SetValue(self.task.parameters)
+      else:
+        self.phenix_box.SetValue(DATASET_PHENIX_TEMPLATE)
+      self._add_body(self.phenix_box)
+
+  # -- cluster filter helpers (scaling stage only) ---------------------------
+  def _discover_cluster_files(self):
+    ''' Cluster covariance pickles written by the Unit Cells tab, i.e.
+        <output_folder>/cluster/cluster_*.pickle. '''
+    import glob
+    out = self.db.params.output_folder
+    if not out:
+      return []
+    return sorted(glob.glob(os.path.join(out, 'cluster', 'cluster_*.pickle')))
+
+  def _populate_cluster_choices(self, extra=None):
+    ''' (Re)fill the cluster-file dropdown, keeping full paths in _cluster_paths.
+        extra lets an out-of-tree path (e.g. one already stored on the task, or
+        chosen via Browse) appear in the list even if it is not under
+        output_folder/cluster. '''
+    paths = self._discover_cluster_files()
+    if extra not in (None, 'None', '') and extra not in paths:
+      paths.append(extra)
+    self._cluster_paths = paths
+    self.cluster_file.Set([os.path.basename(p) for p in paths])
+
+  def _selected_cluster_path(self):
+    idx = self.cluster_file.GetSelection()
+    if idx == wx.NOT_FOUND or idx >= len(self._cluster_paths):
+      return None
+    return self._cluster_paths[idx]
+
+  def _select_cluster_path(self, path):
+    self._populate_cluster_choices(extra=path)
+    if path not in (None, 'None', '') and path in self._cluster_paths:
+      self.cluster_file.SetSelection(self._cluster_paths.index(path))
+
+  def _sync_cluster_enabled(self):
+    ''' Enable exactly one of the two unit-cell filter modes. Assumes the stage
+        itself is enabled (only called in that case). '''
+    use = self.chk_use_cluster.GetValue()
+    self.rel_tol.Enable(not use)
+    for w in (self.cluster_file_panel, self.cluster_component,
+              self.cluster_mahalanobis):
+      w.Enable(use)
+
+  def onBrowseCluster(self, e):
+    out = self.db.params.output_folder
+    cluster_dir = os.path.join(out, 'cluster') if out else None
+    if cluster_dir and os.path.isdir(cluster_dir):
+      default_dir = cluster_dir
+    else:
+      default_dir = out or os.getcwd()
+    dlg = wx.FileDialog(self, message='Select cluster covariance pickle',
+                        defaultDir=default_dir,
+                        wildcard='Pickle files (*.pickle)|*.pickle|All files (*)|*',
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+      self._select_cluster_path(dlg.GetPath())
+    dlg.Destroy()
+
+  # -- state -----------------------------------------------------------------
+  def is_enabled(self):
+    return True if self.enable_chk is None else self.enable_chk.GetValue()
+
+  def _update_enabled_state(self):
+    if self.enable_chk is None:
+      return
+    state = self.enable_chk.GetValue()
+    for w in self.toggle_ctrls:
+      w.Enable(state)
+    if self.btn_edit is not None:
+      self.btn_edit.Enable(state)
+    # btn_link is always active regardless of the enable checkbox so that the
+    # user can link/unlink even when a stage is temporarily disabled.
+    if self.btn_link is not None:
+      self.btn_link.Enable(True)
+    # Within an enabled scaling stage, only one unit-cell filter mode is active.
+    if state and self.task_type == 'scaling' and \
+       getattr(self, 'chk_use_cluster', None) is not None:
+      self._sync_cluster_enabled()
+
+  # -- PHIL sync (mirrors TrialDialog) ---------------------------------------
+  def sync_controls(self):
+    ''' working_phil_scope -> friendly controls '''
+    if self.working_phil_scope is None:
+      return
+    def sv(ctrl, val):
+      ctrl.SetValue("" if val is None else str(val))
+    p = self.working_phil_scope.extract()
+    t = self.task_type
+    if t == 'ensemble_refinement':
+      self.chk_pre_split.SetValue(bool(p.time_varying_refinement.pre_split))
+      self.chk_expand_nave.SetValue(
+        bool(p.reintegration.integration.recruitment.expand_nave_parameters))
+    elif t == 'scaling':
+      sv(self.min_corr.ctr, p.filter.outlier.min_corr)
+      sv(self.rel_tol.ctr, p.filter.unit_cell.value.relative_length_tolerance)
+      sv(self.sigma.ctr, p.select.significance_filter.sigma)
+      # unit-cell cluster filter mode
+      cov = p.filter.unit_cell.cluster.covariance
+      self.chk_use_cluster.SetValue(p.filter.unit_cell.algorithm == 'cluster')
+      self._select_cluster_path(cov.file)
+      sv(self.cluster_component.ctr, cov.component)
+      sv(self.cluster_mahalanobis.ctr, cov.mahalanobis)
+
+  def _build_phil_str(self):
+    ''' friendly controls (+ shared params) -> PHIL string fragment '''
+    def str_or_none(ctrl):
+      return ctrl.GetValue() if ctrl.GetValue() else "None"
+    t = self.task_type
+    if t == 'ensemble_refinement':
+      return ("time_varying_refinement.pre_split = %s\n"
+              "reintegration.integration.recruitment.expand_nave_parameters = %s\n"
+              % (self.chk_pre_split.GetValue(), self.chk_expand_nave.GetValue()))
+    s = self.dialog.get_shared_values()
+    # cctbx.xfel.merge wants exactly one of: a reference model, or a unit cell
+    # plus space group. Emit both keys either way so switching modes clears the
+    # other in the working scope.
+    if s['model_mode'] == 'unknown':
+      model_lines = ("scaling.model = None\n"
+                     "scaling.unit_cell = %s\n"
+                     "scaling.space_group = %s"
+                     % (s['unit_cell'] or 'None', s['space_group'] or 'None'))
+    else:
+      model_lines = ("scaling.model = %s\n"
+                     "scaling.unit_cell = None\n"
+                     "scaling.space_group = None"
+                     % (s['model'] or 'None'))
+    if t == 'scaling':
+      # Two mutually exclusive unit-cell filter modes. Emit both algorithm keys
+      # either way so switching modes overwrites the other in the working scope.
+      if self.chk_use_cluster.GetValue():
+        filter_lines = ("filter.algorithm = unit_cell\n"
+                        "      filter.unit_cell.algorithm = cluster\n"
+                        "      filter.unit_cell.cluster.algorithm = covariance\n"
+                        "      filter.unit_cell.cluster.covariance.file = %s\n"
+                        "      filter.unit_cell.cluster.covariance.component = %s\n"
+                        "      filter.unit_cell.cluster.covariance.mahalanobis = %s"
+                        % (self._selected_cluster_path() or 'None',
+                           str_or_none(self.cluster_component.ctr),
+                           str_or_none(self.cluster_mahalanobis.ctr)))
+      else:
+        filter_lines = ("filter.algorithm = unit_cell\n"
+                        "      filter.unit_cell.algorithm = value\n"
+                        "      filter.unit_cell.value.relative_length_tolerance = %s"
+                        % str_or_none(self.rel_tol.ctr))
+      return ("""
+      filter.outlier.min_corr = %s
+      %s
+      select.significance_filter.sigma = %s
+      %s
+      scaling.resolution_scalar = %s
+      merging.d_min = %s
+      merging.merge_anomalous = %s
+      statistics.n_bins = %s
+      output.save_experiments_and_reflections = True
+      """ % (str_or_none(self.min_corr.ctr),
+             filter_lines,
+             str_or_none(self.sigma.ctr),
+             model_lines, s['resolution_scalar'], s['d_min'],
+             s['merge_anomalous'], s['n_bins']))
+    if t == 'merging':
+      return ("""
+      %s
+      scaling.resolution_scalar = %s
+      merging.d_min = %s
+      merging.merge_anomalous = %s
+      statistics.n_bins = %s
+      """ % (model_lines, s['resolution_scalar'], s['d_min'],
+             s['merge_anomalous'], s['n_bins']))
+    return ""
+
+  def _fetch(self, phil_str):
+    ''' fetch phil_str onto working_phil_scope, tracking unused definitions '''
+    params = None
+    msg = None
+    try:
+      working, unused = self.working_phil_scope.fetch(
+        parse(phil_str), track_unused_definitions=True)
+    except Exception as e:
+      msg = '\n%s parameters could not be parsed:\n%s\n' % (self.task_type, str(e))
+    else:
+      if len(unused) > 0:
+        lines = '\n'.join(['  %s' % str(u) for u in unused])
+        msg = 'The following %s definitions were not recognized:\n%s\n' % (
+          self.task_type, lines)
+      try:
+        params = working.extract()
+      except Exception as e:
+        if msg is None: msg = ""
+        msg += '\nOne or more %s values could not be parsed:\n%s\n' % (
+          self.task_type, str(e))
+      else:
+        self.working_phil_scope = working
+    return params, msg
+
+  def push_scope(self):
+    ''' Push friendly control values into working_phil_scope. Returns an error
+        message string, or None on success. '''
+    if self.task_type in ('indexing', 'phenix'):
+      return None
+    _, msg = self._fetch(self._build_phil_str())
+    return msg
+
+  def get_parameters(self):
+    ''' The parameters string to store on the Task. Assumes push_scope() has
+        already run for PHIL-backed stages. '''
+    if self.task_type == 'indexing':
+      return self.task.parameters if (self.task is not None and self.task.parameters) else ""
+    if self.task_type == 'phenix':
+      return self.phenix_box.GetValue()
+    # Use a very large print_width so long "strings"-type values (e.g.
+    # dispatch.step_list) are emitted on a single line rather than wrapped with
+    # a backslash line-continuation. The DB layer (db_proxy) stores values via
+    # string interpolation, so MySQL consumes the backslash on the round-trip,
+    # corrupting the continuation and breaking re-parse on reload.
+    return self.phil_scope.fetch_diff(self.working_phil_scope).as_str(print_width=100000)
+
+  # -- events ----------------------------------------------------------------
+  def onEditPhil(self, e):
+    if self.linked:
+      self._onEditPhilShared()
+      return
+    self._do_edit_phil()
+
+  def _onEditPhilShared(self):
+    datasets = self.db.get_datasets_for_task(self.task.id)
+    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
+    others = [d for d in datasets if d.id != exclude_id] if exclude_id else datasets
+    names = ', '.join(d.name for d in others[:5])
+    if len(others) > 5:
+      names += ', ...'
+    msg = ("This task is shared with %d other dataset(s): %s.\n\n"
+           "  • Edit (affects all): parameter changes apply to every dataset using this task.\n"
+           "  • Detach & Edit: create a private copy for this dataset only.\n"
+           "  • Cancel: no changes.") % (len(others), names or '(none yet)')
+    dlg = wx.MessageDialog(self.dialog, message=msg, caption='Shared Task',
+                           style=wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+    dlg.SetYesNoCancelLabels('Edit (affects all)', 'Detach && Edit', 'Cancel')
+    result = dlg.ShowModal()
+    dlg.Destroy()
+    if result == wx.ID_YES:
+      self.phil_was_edited = True
+      self._do_edit_phil()
+    elif result == wx.ID_NO:
+      self._detach_original_task = self.task
+      self.task = None
+      self.linked = False
+      self.is_in_dataset = False
+      self._update_link_display()
+      self._do_edit_phil()
+
+  def _do_edit_phil(self):
+    msg = self.push_scope()
+    if msg is not None:
+      self.dialog._warn(msg + '\nFix the parameters and try again')
+      return
+    edit_dlg = EditPhilDialog(self.dialog, db=self.db, read_only=False,
+                              phil_scope=self.phil_scope,
+                              working_phil_scope=self.working_phil_scope)
+    edit_dlg.Fit()
+    if edit_dlg.ShowModal() == wx.ID_OK:
+      _, msg = self._fetch(edit_dlg.phil_box.GetValue())
+      if msg is None:
+        self.sync_controls()
+    edit_dlg.Destroy()
+
+  def _linked_others(self):
+    ''' Other datasets (besides this one) that share this stage's task. '''
+    if self.task is None:
+      return []
+    datasets = self.db.get_datasets_for_task(self.task.id)
+    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
+    return [d for d in datasets if d.id != exclude_id] if exclude_id else list(datasets)
+
+  def _update_link_display(self):
+    if self.btn_link is None:
+      return
+    if self.linked and self.task is not None:
+      others = self._linked_others()
+      if others:
+        names = ', '.join(d.name for d in others[:5])
+        if len(others) > 5:
+          names += ', …'
+        tip = 'Shared with: %s\nClick to re-link or unlink.' % names
+      else:
+        tip = 'Shared task. Click to re-link or unlink.'
+      self.btn_link.SetBitmap(_link_bitmap(True))
+      self.btn_link.SetToolTip(tip)
+    else:
+      self.btn_link.SetBitmap(_link_bitmap(False))
+      self.btn_link.SetToolTip(
+        'Not shared. Click to link this %s stage to a task from another '
+        'dataset.' % self.task_type)
+
+  def _unlink(self):
+    ''' Detach from a shared task, making this stage's parameters private.
+        A fresh owned task is created from the current PHIL on OK. '''
+    self.task = None
+    self.linked = False
+    self.is_in_dataset = False
+    self.phil_was_edited = False
+    self._detach_original_task = None
+    self.sync_controls()
+    self._update_link_display()
+
+  def onLinkFrom(self, e):
+    all_datasets = self.db.get_all_datasets()
+    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
+    choices = []
+    for dataset in all_datasets:
+      if dataset.id == exclude_id:
+        continue
+      for task in dataset.tasks:
+        if task.type == self.task_type:
+          choices.append((dataset, task))
+
+    UNLINK = '— Unlink (make a private copy) —'
+    labels = ['%s — task #%d' % (d.name, t.id) for d, t in choices]
+    if self.linked:
+      labels = [UNLINK] + labels
+
+    if not labels:
+      wx.MessageBox('No other datasets have a %s task to link.' % self.task_type,
+                    'Link Task', wx.OK | wx.ICON_INFORMATION, self.dialog)
+      return
+
+    dlg = wx.SingleChoiceDialog(self.dialog,
+                                'Choose a %s task to link:' % self.task_type,
+                                'Link Task from Another Dataset',
+                                labels)
+    if dlg.ShowModal() == wx.ID_OK:
+      sel = dlg.GetSelection()
+      if self.linked and sel == 0:
+        self._unlink()
+      else:
+        idx = sel - 1 if self.linked else sel
+        chosen_dataset, chosen_task = choices[idx]
+        # If this stage had an owned task, queue its join-row removal.
+        if self.task is not None and not self.linked:
+          self.dialog.removed_tasks.append(self.task)
+        self.task = chosen_task
+        self.linked = True
+        self.is_in_dataset = False
+        self.phil_was_edited = False
+        self._detach_original_task = None
+        if self.phil_scope is not None and chosen_task.parameters:
+          self.working_phil_scope = self.phil_scope.fetch(parse(chosen_task.parameters))
+        self.sync_controls()
+        self._update_link_display()
+    dlg.Destroy()
+
+  def onRemove(self, e):
+    self.dialog.remove_stage(self)
+
+
 class DatasetDialog(BaseDialog):
   def __init__(self, parent, db,
                new=True,
@@ -3231,65 +4094,136 @@ class DatasetDialog(BaseDialog):
     self.db = db
     self.new = new
     self.dataset = dataset
+    self.stages = []
+    self.removed_tasks = []
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 600),
+                        size=(800, 780),
                         *args, **kwargs)
 
-    self.name = gctr.TextButtonCtrl(self,
-                                    label='Name:',
-                                    label_size=(100, -1),
-                                    label_style='bold',
+    self.all_trials = db.get_all_trials()
+    self.all_trial_numbers = [str(t.trial) for t in self.all_trials]
+
+    # Scrolling body (the pipeline stack can get tall)
+    self.scroll = ScrolledPanel(self, size=(760, 640))
+    self.scroll_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.scroll.SetSizer(self.scroll_sizer)
+
+    # --- identity ---
+    self.name = gctr.TextButtonCtrl(self.scroll, label='Name:',
+                                    label_size=(100, -1), label_style='bold',
                                     ghost_button=False)
-
-    self.comment = gctr.TextButtonCtrl(self,
-                                       label='Comment:',
-                                       label_size=(100, -1),
-                                       label_style='bold',
+    self.comment = gctr.TextButtonCtrl(self.scroll, label='Comment:',
+                                       label_size=(100, -1), label_style='bold',
                                        ghost_button=False)
+    self.scroll_sizer.Add(self.name, flag=wx.EXPAND | wx.ALL, border=8)
+    self.scroll_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL, border=8)
 
-    self.tag_checklist = gctr.CheckListCtrl(self,
-                                        label='Tags:',
-                                        label_size=(200, -1),
-                                        label_style='normal',
-                                        ctrl_size=(150, 100),
-                                        direction='vertical',
-                                        choices=[])
+    # --- run selection ---
+    run_box = wx.StaticBox(self.scroll, label='Run selection')
+    run_sizer = wx.StaticBoxSizer(run_box, wx.VERTICAL)
+    self.trial = gctr.ChoiceCtrl(self.scroll, label='Trial:',
+                                 label_size=(100, -1), ctrl_size=(150, -1),
+                                 choices=self.all_trial_numbers)
+    self.tag_checklist = gctr.CheckListCtrl(self.scroll, label='Tags:',
+                                            label_size=(100, -1),
+                                            label_style='normal',
+                                            ctrl_size=(200, 100),
+                                            direction='vertical', choices=[])
+    self.selection_type_radio = gctr.RadioCtrl(self.scroll, label='Tag operator:',
+                                               label_style='normal',
+                                               label_size=(100, -1),
+                                               direction='horizontal',
+                                               items={'inter': 'intersection',
+                                                      'union': 'union'})
+    run_sizer.Add(self.trial, flag=wx.EXPAND | wx.ALL, border=5)
+    run_sizer.Add(self.tag_checklist, flag=wx.EXPAND | wx.ALL, border=5)
+    run_sizer.Add(self.selection_type_radio, flag=wx.EXPAND | wx.ALL, border=5)
+    self.scroll_sizer.Add(run_sizer, flag=wx.EXPAND | wx.ALL, border=8)
 
-    self.selection_type_radio = gctr.RadioCtrl(self,
-                                           label='',
-                                           label_style='normal',
-                                           label_size=(-1, -1),
+    # --- shared parameters (used by scaling + merging) ---
+    shared_box = wx.StaticBox(self.scroll, label='Shared parameters (scaling + merging)')
+    shared_sizer = wx.StaticBoxSizer(shared_box, wx.VERTICAL)
+    self.model_mode_radio = gctr.RadioCtrl(self.scroll, label='Reference:',
+                                           label_style='normal', label_size=(160, -1),
                                            direction='horizontal',
-                                           items={'inter':'intersection',
-                                                  'union':'union'})
+                                           items={'known': 'Known reference model',
+                                                  'unknown': 'No reference model'})
+    self.shared_model = gctr.TextButtonCtrl(self.scroll, label='Reference model:',
+                                            label_size=(160, -1), label_style='normal',
+                                            ctrl_size=(360, -1),
+                                            big_button=True, big_button_label='Browse...',
+                                            ghost_button=False)
+    self.shared_unit_cell = gctr.TextButtonCtrl(self.scroll, label='Unit cell:',
+                                                label_size=(160, -1), label_style='normal',
+                                                ctrl_size=(360, -1), ghost_button=False)
+    self.shared_space_group = gctr.TextButtonCtrl(self.scroll, label='Space group:',
+                                                  label_size=(160, -1), label_style='normal',
+                                                  ctrl_size=(360, -1), ghost_button=False)
+    self.shared_d_min = gctr.SpinCtrl(self.scroll, label='High res. limit (d_min):',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(150, -1), ctrl_value='1.5',
+                                      ctrl_min=0.1, ctrl_max=100.0, ctrl_step=0.1,
+                                      ctrl_digits=2)
+    self.shared_resolution_scalar = gctr.SpinCtrl(self.scroll,
+                                      label='Resolution scalar:',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(150, -1), ctrl_value='0.96',
+                                      ctrl_min=0.0, ctrl_max=2.0, ctrl_step=0.01,
+                                      ctrl_digits=3)
+    self.shared_n_bins = gctr.SpinCtrl(self.scroll, label='Number of bins:',
+                                       label_size=(200, -1), label_style='normal',
+                                       ctrl_size=(150, -1), ctrl_value='20',
+                                       ctrl_min=1, ctrl_max=1000, ctrl_step=1,
+                                       ctrl_digits=0)
+    self.shared_merge_anomalous = wx.CheckBox(self.scroll, label='Merge anomalous')
+    shared_sizer.Add(self.model_mode_radio, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_model, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_unit_cell, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_space_group, flag=wx.EXPAND | wx.ALL, border=5)
+    shared_sizer.Add(self.shared_d_min, flag=wx.ALL, border=5)
+    shared_sizer.Add(self.shared_resolution_scalar, flag=wx.ALL, border=5)
+    shared_sizer.Add(self.shared_n_bins, flag=wx.ALL, border=5)
+    shared_sizer.Add(self.shared_merge_anomalous, flag=wx.ALL, border=5)
+    self.scroll_sizer.Add(shared_sizer, flag=wx.EXPAND | wx.ALL, border=8)
+    self.Bind(wx.EVT_BUTTON, self.onBrowseModel, self.shared_model.btn_big)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.known)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.unknown)
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial.ctr)
 
-    self.main_sizer.Add(self.name,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.comment,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.tag_checklist,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.selection_type_radio,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
+    # --- pipeline ---
+    pipeline_box = wx.StaticBox(self.scroll, label='Pipeline')
+    self.pipeline_static_sizer = wx.StaticBoxSizer(pipeline_box, wx.VERTICAL)
+    self.pipeline_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.pipeline_static_sizer.Add(self.pipeline_sizer, flag=wx.EXPAND)
+
+    add_row = wx.BoxSizer(wx.HORIZONTAL)
+    self.add_choice = gctr.ChoiceCtrl(self.scroll, label='Add stage:',
+                                      label_size=(80, -1), ctrl_size=(150, -1),
+                                      choices=['scaling', 'phenix'])
+    self.add_choice.ctr.SetSelection(0)
+    self.btn_add_stage = gctr.Button(self.scroll, label='Add', size=(80, -1))
+    add_row.Add(self.add_choice, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+    add_row.Add(self.btn_add_stage, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+    self.pipeline_static_sizer.Add(add_row, flag=wx.EXPAND | wx.TOP, border=5)
+    self.scroll_sizer.Add(self.pipeline_static_sizer, flag=wx.EXPAND | wx.ALL, border=8)
+    self.Bind(wx.EVT_BUTTON, self.onAddStage, self.btn_add_stage)
+
+    self.main_sizer.Add(self.scroll, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+    self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
-    self.Layout()
-
+    # --- populate ---
     if self.new:
       self.SetTitle('New Dataset Settings')
       self.selection_type_radio.inter.SetValue(1)
+      if self.all_trial_numbers:
+        self.trial.ctr.SetSelection(len(self.all_trial_numbers) - 1)
     else:
       self.SetTitle('Dataset Settings')
       self.name.ctr.SetValue(str(self.dataset.name))
@@ -3299,38 +4233,338 @@ class DatasetDialog(BaseDialog):
       elif self.dataset.tag_operator == "intersection":
         self.selection_type_radio.inter.SetValue(1)
       else:
-        assert False
+        self.selection_type_radio.inter.SetValue(1)
 
-    # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
-
-    # Initialize tag list
+    # tag list
     self.all_tags = db.get_all_tags()
     tag_names = [t.name for t in self.all_tags]
     self.dataset_tagnames = [t.name for t in self.dataset.tags] if self.dataset is not None else []
     if tag_names:
       self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
-      checked = [tag_idx for tag_idx, tag_name in enumerate(tag_names) if tag_name in self.dataset_tagnames]
+      checked = [i for i, n in enumerate(tag_names) if n in self.dataset_tagnames]
       self.tag_checklist.ctr.SetCheckedItems(checked)
 
+    self._build_stages()
+    self._select_initial_trial()
+    self.sync_shared_controls()
+    self._rebuild_pipeline()
+
+    self.scroll.SetupScrolling(scrollToTop=True)
+    self.Layout()
+
+  # -- shared params ---------------------------------------------------------
+  def get_shared_values(self):
+    known = self.model_mode_radio.known.GetValue()
+    return {
+      'model_mode'        : 'known' if known else 'unknown',
+      'model'             : self.shared_model.ctr.GetValue().strip() if known else '',
+      'unit_cell'         : self.shared_unit_cell.ctr.GetValue().strip(),
+      'space_group'       : self.shared_space_group.ctr.GetValue().strip(),
+      'resolution_scalar' : self.shared_resolution_scalar.ctr.GetValue(),
+      'd_min'             : self.shared_d_min.ctr.GetValue(),
+      'merge_anomalous'   : self.shared_merge_anomalous.GetValue(),
+      'n_bins'            : self.shared_n_bins.ctr.GetValue(),
+    }
+
+  def _selected_trial(self):
+    if not self.all_trials:
+      return None
+    sel = self.trial.ctr.GetStringSelection()
+    if not sel or sel not in self.all_trial_numbers:
+      return None
+    return self.all_trials[self.all_trial_numbers.index(sel)]
+
+  def _trial_symmetry(self):
+    ''' Return (unit_cell_str, space_group_str) from the selected trial's known
+        symmetry, or (None, None) if unavailable. '''
+    return get_trial_symmetry(self.db, self._selected_trial())
+
+  def _populate_symmetry_from_trial(self, overwrite=False):
+    ''' Fill the shared unit cell / space group from the selected trial. With
+        overwrite=False only empty fields are filled. '''
+    uc, sg = self._trial_symmetry()
+    if uc and (overwrite or not self.shared_unit_cell.ctr.GetValue().strip()):
+      self.shared_unit_cell.ctr.SetValue(uc)
+    if sg and (overwrite or not self.shared_space_group.ctr.GetValue().strip()):
+      self.shared_space_group.ctr.SetValue(sg)
+
+  def _update_model_mode(self, e=None):
+    ''' Enable the model field for "known", or the cell / space group fields for
+        "unknown". '''
+    known = self.model_mode_radio.known.GetValue()
+    self.shared_model.Enable(known)
+    self.shared_unit_cell.Enable(not known)
+    self.shared_space_group.Enable(not known)
+    if not known:
+      self._populate_symmetry_from_trial(overwrite=False)
+    if e is not None:
+      e.Skip()
+
+  def onTrialChoice(self, e):
+    self._populate_symmetry_from_trial(overwrite=True)
+    e.Skip()
+
+  def sync_shared_controls(self):
+    ''' Seed the shared controls from the scaling stage (preferred) or merging
+        stage working scope, falling back to the built-in defaults. Then
+        pre-populate the unit cell / space group from the trial if not already
+        provided. '''
+    src = None
+    for s in self.stages:
+      if s.task_type == 'scaling' and s.working_phil_scope is not None:
+        src = s
+        break
+    if src is None:
+      for s in self.stages:
+        if s.task_type == 'merging' and s.working_phil_scope is not None:
+          src = s
+          break
+    if src is None:
+      self.shared_model.ctr.SetValue(DATASET_SHARED_MODEL_DEFAULT)
+      self.model_mode_radio.known.SetValue(1)
+      self._populate_symmetry_from_trial(overwrite=False)
+      self._update_model_mode()
+      return
+    p = src.working_phil_scope.extract()
+    model = p.scaling.model
+    uc = p.scaling.unit_cell
+    sg = p.scaling.space_group
+    self.shared_model.ctr.SetValue(model or "")
+    if uc is not None:
+      self.shared_unit_cell.ctr.SetValue(str(uc).strip('()'))
+    if sg is not None:
+      self.shared_space_group.ctr.SetValue(str(sg))
+    # A stored model means "known"; a stored cell with no model means "unknown".
+    if model:
+      self.model_mode_radio.known.SetValue(1)
+    elif uc is not None:
+      self.model_mode_radio.unknown.SetValue(1)
+    else:
+      self.model_mode_radio.known.SetValue(1)
+    if p.scaling.resolution_scalar is not None:
+      self.shared_resolution_scalar.ctr.SetValue(float(p.scaling.resolution_scalar))
+    if p.merging.d_min is not None:
+      self.shared_d_min.ctr.SetValue(float(p.merging.d_min))
+    if p.statistics.n_bins is not None:
+      self.shared_n_bins.ctr.SetValue(int(p.statistics.n_bins))
+    self.shared_merge_anomalous.SetValue(bool(p.merging.merge_anomalous))
+    self._populate_symmetry_from_trial(overwrite=False)
+    self._update_model_mode()
+
+  def onBrowseModel(self, e):
+    dlg = wx.FileDialog(self, message="Select reference model",
+                        defaultDir=os.curdir, wildcard="*",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+      self.shared_model.ctr.SetValue(dlg.GetPaths()[0])
+    dlg.Destroy()
+
+  def populate_from_wizard(self, values):
+    ''' Set every control from a plain dict produced by the new-dataset wizard,
+        so that commit() creates the dataset exactly as if the user had filled
+        in this full dialog. Unspecified fields keep the dialog defaults. '''
+    if 'name' in values:
+      self.name.ctr.SetValue(values['name'] or '')
+    if 'comment' in values:
+      self.comment.ctr.SetValue(values['comment'] or '')
+
+    tnum = values.get('trial_number')
+    if tnum is not None and str(tnum) in self.all_trial_numbers:
+      self.trial.ctr.SetSelection(self.all_trial_numbers.index(str(tnum)))
+
+    wanted_tags = set(values.get('tags', []))
+    checked = [i for i in range(self.tag_checklist.ctr.GetCount())
+               if self.tag_checklist.ctr.GetString(i) in wanted_tags]
+    self.tag_checklist.ctr.SetCheckedItems(checked)
+
+    if values.get('tag_operator') == 'union':
+      self.selection_type_radio.union.SetValue(1)
+    else:
+      self.selection_type_radio.inter.SetValue(1)
+
+    if values.get('model_mode') == 'unknown':
+      self.model_mode_radio.unknown.SetValue(1)
+      self.shared_unit_cell.ctr.SetValue(values.get('unit_cell', '') or '')
+      self.shared_space_group.ctr.SetValue(values.get('space_group', '') or '')
+    else:
+      self.model_mode_radio.known.SetValue(1)
+      self.shared_model.ctr.SetValue(values.get('model', '') or '')
+    self._update_model_mode()
+
+    if values.get('d_min') is not None:
+      self.shared_d_min.ctr.SetValue(float(values['d_min']))
+    if values.get('n_bins') is not None:
+      self.shared_n_bins.ctr.SetValue(int(values['n_bins']))
+
+    for s in self.stages:
+      if s.task_type == 'ensemble_refinement' and s.enable_chk is not None:
+        s.enable_chk.SetValue(bool(values.get('ensemble_refinement', False)))
+        s._update_enabled_state()
+
+  # -- stage management ------------------------------------------------------
+  def _append_stage(self, task_type, task=None, enabled=True, removable=False,
+                    linked=False, is_in_dataset=True):
+    stage = DatasetStagePanel(self.scroll, self, task_type,
+                              task=task, enabled=enabled, removable=removable,
+                              linked=linked, is_in_dataset=is_in_dataset)
+    self.stages.append(stage)
+    return stage
+
+  def _build_stages(self):
+    if self.new:
+      self._append_stage('indexing', enabled=True)
+      self._append_stage('ensemble_refinement', enabled=True)
+      self._append_stage('scaling', enabled=True)
+      self._append_stage('merging', enabled=True)
+      return
+
+    # Existing dataset: group tasks by type (dataset.tasks is already ordered),
+    # then lay stages out in canonical order (locals then globals) so the
+    # local-before-global invariant submit_all_jobs assumes always holds.
+    by_type = {}
+    for t in self.dataset.tasks:
+      by_type.setdefault(t.type, []).append(t)
+
+    def _is_linked(task):
+      ''' True if this task is also used by at least one other dataset. '''
+      if task is None:
+        return False
+      others = self.db.get_datasets_for_task(task.id)
+      return any(d.id != self.dataset.id for d in others)
+
+    idx = by_type.get('indexing', [])
+    self._append_stage('indexing', task=(idx[0] if idx else None), enabled=True)
+
+    ens = by_type.get('ensemble_refinement', [])
+    t_ens = ens[0] if ens else None
+    self._append_stage('ensemble_refinement',
+                       task=t_ens, enabled=bool(ens), linked=_is_linked(t_ens))
+
+    scals = by_type.get('scaling', [])
+    if scals:
+      for j, t in enumerate(scals):
+        self._append_stage('scaling', task=t, enabled=True, removable=(j > 0),
+                           linked=_is_linked(t))
+    else:
+      self._append_stage('scaling', enabled=False)
+
+    mrgs = by_type.get('merging', [])
+    if mrgs:
+      for j, t in enumerate(mrgs):
+        self._append_stage('merging', task=t, enabled=True, removable=(j > 0),
+                           linked=_is_linked(t))
+    else:
+      self._append_stage('merging', enabled=False)
+
+    for t in by_type.get('phenix', []):
+      self._append_stage('phenix', task=t, enabled=True, removable=True,
+                         linked=_is_linked(t))
+
+  def _first_global_index(self):
+    for i, s in enumerate(self.stages):
+      if s.scope == 'global':
+        return i
+    return len(self.stages)
+
+  def onAddStage(self, e):
+    t = self.add_choice.ctr.GetStringSelection()
+    if t == 'scaling':
+      scaling_positions = [i for i, s in enumerate(self.stages)
+                           if s.task_type == 'scaling']
+      pos = (scaling_positions[-1] + 1) if scaling_positions else self._first_global_index()
+      stage = DatasetStagePanel(self.scroll, self, 'scaling',
+                                enabled=True, removable=True)
+      self.stages.insert(pos, stage)
+    elif t == 'phenix':
+      self._append_stage('phenix', enabled=True, removable=True)
+    self.sync_shared_controls()
+    self._rebuild_pipeline()
+
+  def remove_stage(self, stage):
+    if stage.task is not None:
+      self.removed_tasks.append(stage.task)
+    self.pipeline_sizer.Detach(stage)
+    self.stages.remove(stage)
+    stage.Destroy()
+    self._rebuild_pipeline()
+
+  def _rebuild_pipeline(self):
+    self.pipeline_sizer.Clear(delete_windows=False)
+    for s in self.stages:
+      self.pipeline_sizer.Add(s, flag=wx.EXPAND | wx.ALL, border=5)
+    self.scroll.Layout()
+    self.scroll.SetupScrolling(scrollToTop=False)
+    self.scroll.FitInside()
+    self.Layout()
+
+  def _select_initial_trial(self):
+    if not self.all_trial_numbers:
+      return
+    if not self.new:
+      for s in self.stages:
+        if s.task is not None and s.task.trial is not None:
+          num = str(s.task.trial.trial)
+          if num in self.all_trial_numbers:
+            self.trial.ctr.SetSelection(self.all_trial_numbers.index(num))
+          return
+
+  # -- helpers ---------------------------------------------------------------
+  def _warn(self, msg):
+    dlg = wx.MessageDialog(self, message=msg, caption='Warning',
+                           style=wx.OK | wx.ICON_EXCLAMATION)
+    dlg.ShowModal()
+    dlg.Destroy()
+
   def onOK(self, e):
+    msg = self.commit()
+    if msg is not None:
+      self._warn(msg)
+      return
+    e.Skip()
+
+  def commit(self):
+    ''' Validate the dialog and create/update the dataset + its tasks. Returns
+        an error message string on failure (nothing written), or None on
+        success. Callable programmatically (e.g. from the new-dataset wizard). '''
     name = self.name.ctr.GetValue()
     comment = self.comment.ctr.GetValue()
-    if self.selection_type_radio.union.GetValue() == 1:
-      mode = 'union'
-    else:
-      mode = 'intersection'
+    mode = 'union' if self.selection_type_radio.union.GetValue() == 1 else 'intersection'
 
+    if not self.all_trials:
+      return 'No trials exist yet. Create a trial before building a dataset.'
+    trial = self.all_trials[self.all_trial_numbers.index(self.trial.ctr.GetStringSelection())]
+
+    # Reference model / symmetry: cctbx.xfel.merge requires exactly one of a
+    # reference model, or both a unit cell and a space group.
+    needs_model = any(s.is_enabled() and s.task_type in ('scaling', 'merging')
+                      for s in self.stages)
+    if needs_model:
+      sv = self.get_shared_values()
+      if sv['model_mode'] == 'known':
+        if not sv['model']:
+          return ('Select a reference model, or choose "No reference model" '
+                  'and provide a unit cell and space group.')
+      elif not sv['unit_cell'] or not sv['space_group']:
+        return ('No reference model selected: provide both a unit cell and a '
+                'space group (these can be pre-filled from the trial).')
+
+    # Validate every enabled PHIL-backed stage before touching the database.
+    for s in self.stages:
+      if s.is_enabled():
+        msg = s.push_scope()
+        if msg is not None:
+          return msg + '\nFix the parameters and press OK again'
+
+    # Identity
     if self.new:
-      self.dataset = self.db.create_dataset(name = name,
-                                            comment = comment,
-                                            active = False,
-                                            tag_operator = mode)
+      self.dataset = self.db.create_dataset(name=name, comment=comment,
+                                            active=False, tag_operator=mode)
     else:
       self.dataset.name = name
       self.dataset.comment = comment
       self.dataset.tag_operator = mode
 
+    # Tags
     checked = self.tag_checklist.ctr.GetCheckedItems()
     for tag_idx, tag in enumerate(self.all_tags):
       if tag_idx in checked:
@@ -3340,7 +4574,338 @@ class DatasetDialog(BaseDialog):
         if tag.name in self.dataset_tagnames:
           self.dataset.remove_tag(tag)
 
-    e.Skip()
+    # Remove tasks for explicitly removed or disabled stages.
+    # For linked tasks, remove_task only drops the join row — the Task row and
+    # any other datasets' join rows are untouched.
+    for task in self.removed_tasks:
+      self.dataset.remove_task(task)
+    self.removed_tasks = []
+    for s in self.stages:
+      if (not s.is_enabled()) and s.task is not None:
+        self.dataset.remove_task(s.task)
+        s.task = None
+
+    # Create / update tasks for enabled stages, assigning pipeline order.
+    #
+    # Four cases:
+    #   (a) task is None (new or detached) → create a fresh Task row.
+    #   (b) linked, join row not yet inserted → add_task only; update
+    #       parameters only if the user explicitly chose "Edit (affects all)".
+    #   (c) linked, join row already exists, not edited → just update sequence.
+    #   (d) owned (or edited-shared) → update type/trial/parameters + sequence.
+    ordered = [s for s in self.stages if s.is_enabled()]
+    for i, s in enumerate(ordered):
+      parameters = s.get_parameters()
+
+      if s.task is None:
+        # (a) New or detached stage: create a fresh Task row.
+        if s._detach_original_task is not None:
+          self.dataset.remove_task(s._detach_original_task)
+          s._detach_original_task = None
+        task = self.db.create_task(type=s.task_type, trial_id=trial.id,
+                                   parameters=parameters)
+        self.dataset.add_task(task, sequence=i)
+        s.task = task
+        s.is_in_dataset = True
+        s.linked = False
+
+      elif s.linked and not s.is_in_dataset:
+        # (b) Newly linked task — insert the join row, optionally update params.
+        self.dataset.add_task(s.task, sequence=i)
+        s.is_in_dataset = True
+        if s.phil_was_edited:
+          s.task.trial_id = trial.id
+          s.task.parameters = parameters
+
+      elif s.linked and not s.phil_was_edited:
+        # (c) Linked, already in dataset, not edited — only reorder.
+        self.dataset.set_task_sequence(s.task, i)
+
+      else:
+        # (d) Owned task or linked task the user chose "Edit (affects all)" for.
+        s.task.type = s.task_type
+        s.task.trial_id = trial.id
+        s.task.parameters = parameters
+        self.dataset.set_task_sequence(s.task, i)
+
+    return None
+
+
+class DatasetWizard(BaseDialog):
+  ''' A guided, 3-page front-end for creating a new dataset. It collects only
+      the common choices (trial + tags, known/unknown structure, a few merging
+      options) and then delegates the actual creation to DatasetDialog.commit(),
+      so there is a single source of truth for how datasets + tasks are built.
+      The full DatasetDialog remains available for editing afterwards. '''
+
+  def __init__(self, parent, db, label_style='bold', content_style='normal',
+               *args, **kwargs):
+    self.db = db
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, size=(720, 560),
+                        *args, **kwargs)
+    self.SetTitle('New Dataset Wizard')
+
+    # BaseDialog adds main_sizer to its envelope at proportion 0, so main_sizer
+    # only claims its minimum height. Stretch it to fill the dialog so the
+    # page area can absorb the slack and pin the nav row to the bottom.
+    self.envelope.GetItem(self.main_sizer).SetProportion(1)
+
+    self.all_trials = db.get_all_trials()
+    self.all_trial_numbers = [str(t.trial) for t in self.all_trials]
+    self.all_tags = db.get_all_tags()
+
+    self.pages = []          # list of (title, panel)
+    self.page = 0
+
+    # Step title header
+    self.step_lbl = wx.StaticText(self, label='')
+    f = self.step_lbl.GetFont()
+    f.SetWeight(wx.FONTWEIGHT_BOLD)
+    f.SetPointSize(f.GetPointSize() + 2)
+    self.step_lbl.SetFont(f)
+    self.main_sizer.Add(self.step_lbl, flag=wx.ALL, border=12)
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.LEFT | wx.RIGHT,
+                        border=8)
+
+    # Page container
+    self.page_panel = wx.Panel(self)
+    self.page_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.page_panel.SetSizer(self.page_sizer)
+    self.main_sizer.Add(self.page_panel, 1, flag=wx.EXPAND | wx.ALL, border=12)
+
+    self._build_page1()
+    self._build_page2()
+    self._build_page3()
+
+    # Navigation buttons, pinned to the bottom under a separator line. The
+    # page_panel above takes all the stretch (proportion 1), so this row stays
+    # anchored to the bottom edge of the dialog.
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.LEFT | wx.RIGHT,
+                        border=8)
+    nav = wx.BoxSizer(wx.HORIZONTAL)
+    self.btn_cancel = wx.Button(self, wx.ID_CANCEL, 'Cancel')
+    self.btn_back = wx.Button(self, label='< Back')
+    self.btn_next = wx.Button(self, label='Next >')
+    nav.Add(self.btn_cancel, flag=wx.RIGHT, border=5)
+    nav.AddStretchSpacer()
+    nav.Add(self.btn_back, flag=wx.RIGHT, border=5)
+    nav.Add(self.btn_next)
+    self.main_sizer.Add(nav, flag=wx.EXPAND | wx.ALL, border=12)
+    self.Bind(wx.EVT_BUTTON, self.onBack, self.btn_back)
+    self.Bind(wx.EVT_BUTTON, self.onNext, self.btn_next)
+
+    # Fix the window to a size that fits the widest page. We deliberately do NOT
+    # Fit() to the current page: page 1 is narrower than page 2, and fitting to
+    # it would clip the reference-model row's Browse button on page 2.
+    self.SetMinSize((720, 540))
+    self.SetSize((720, 560))
+    self._show_page(0)
+
+  # ---- page construction ----------------------------------------------------
+
+  def _build_page1(self):
+    p = wx.Panel(self.page_panel)
+    s = wx.BoxSizer(wx.VERTICAL)
+    self.name = gctr.TextButtonCtrl(p, label='Name:', label_size=(120, -1),
+                                    label_style='bold', ghost_button=False)
+    self.trial = gctr.ChoiceCtrl(p, label='Trial:', label_size=(120, -1),
+                                 ctrl_size=(150, -1),
+                                 choices=self.all_trial_numbers)
+    self.tag_checklist = gctr.CheckListCtrl(p, label='Tags:', label_size=(120, -1),
+                                            label_style='normal',
+                                            ctrl_size=(240, 160),
+                                            direction='vertical', choices=[])
+    self.selection_type_radio = gctr.RadioCtrl(p, label='Tag operator:',
+                                               label_style='normal',
+                                               label_size=(120, -1),
+                                               direction='horizontal',
+                                               items={'inter': 'intersection',
+                                                      'union': 'union'})
+    tag_names = [t.name for t in self.all_tags]
+    if tag_names:
+      self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
+    if self.all_trial_numbers:
+      self.trial.ctr.SetSelection(len(self.all_trial_numbers) - 1)
+    self.selection_type_radio.inter.SetValue(1)
+    for c in (self.name, self.trial, self.tag_checklist, self.selection_type_radio):
+      s.Add(c, flag=wx.EXPAND | wx.ALL, border=6)
+    p.SetSizer(s)
+    self.page_sizer.Add(p, 1, flag=wx.EXPAND)
+    self.pages.append(('Trial & tags', p))
+
+  def _build_page2(self):
+    p = wx.Panel(self.page_panel)
+    s = wx.BoxSizer(wx.VERTICAL)
+    intro = wx.StaticText(p, label='Will merging use a known reference '
+                          'structure, or an unknown structure specified by a '
+                          'unit cell and space group?')
+    intro.Wrap(560)
+    self.model_mode_radio = gctr.RadioCtrl(p, label='Structure:',
+                                           label_style='normal', label_size=(120, -1),
+                                           direction='vertical',
+                                           items={'known': 'Known reference model',
+                                                  'unknown': 'Unknown structure '
+                                                  '(unit cell + space group)'})
+    self.shared_model = gctr.TextButtonCtrl(p, label='Reference model:',
+                                            label_size=(120, -1), label_style='normal',
+                                            ctrl_size=(320, -1),
+                                            big_button=True, big_button_label='Browse...',
+                                            big_button_size=(120, -1),
+                                            ghost_button=False)
+    self.shared_unit_cell = gctr.TextButtonCtrl(p, label='Unit cell:',
+                                                label_size=(120, -1), label_style='normal',
+                                                ctrl_size=(320, -1), ghost_button=False)
+    self.shared_space_group = gctr.TextButtonCtrl(p, label='Space group:',
+                                                  label_size=(120, -1), label_style='normal',
+                                                  ctrl_size=(320, -1), ghost_button=False)
+    s.Add(intro, flag=wx.ALL, border=6)
+    for c in (self.model_mode_radio, self.shared_model, self.shared_unit_cell,
+              self.shared_space_group):
+      s.Add(c, flag=wx.EXPAND | wx.ALL, border=6)
+    p.SetSizer(s)
+    self.page_sizer.Add(p, 1, flag=wx.EXPAND)
+    self.pages.append(('Structure', p))
+
+    self.model_mode_radio.known.SetValue(1)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.known)
+    self.Bind(wx.EVT_RADIOBUTTON, self._update_model_mode, self.model_mode_radio.unknown)
+    self.Bind(wx.EVT_BUTTON, self.onBrowseModel, self.shared_model.btn_big)
+
+  def _build_page3(self):
+    p = wx.Panel(self.page_panel)
+    s = wx.BoxSizer(wx.VERTICAL)
+    self.chk_ensemble = wx.CheckBox(p, label='Include ensemble refinement')
+    self.chk_ensemble.SetValue(True)
+    self.shared_d_min = gctr.SpinCtrl(p, label='High res. limit (d_min):',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(150, -1), ctrl_value='1.5',
+                                      ctrl_min=0.1, ctrl_max=100.0, ctrl_step=0.1,
+                                      ctrl_digits=2)
+    self.shared_n_bins = gctr.SpinCtrl(p, label='Number of bins:',
+                                       label_size=(200, -1), label_style='normal',
+                                       ctrl_size=(150, -1), ctrl_value='20',
+                                       ctrl_min=1, ctrl_max=1000, ctrl_step=1,
+                                       ctrl_digits=0)
+    s.Add(self.chk_ensemble, flag=wx.ALL, border=10)
+    s.Add(self.shared_d_min, flag=wx.EXPAND | wx.ALL, border=6)
+    s.Add(self.shared_n_bins, flag=wx.EXPAND | wx.ALL, border=6)
+    p.SetSizer(s)
+    self.page_sizer.Add(p, 1, flag=wx.EXPAND)
+    self.pages.append(('Options', p))
+
+  # ---- structure page helpers ----------------------------------------------
+
+  def _selected_trial(self):
+    if not self.all_trials:
+      return None
+    sel = self.trial.ctr.GetStringSelection()
+    if not sel or sel not in self.all_trial_numbers:
+      return None
+    return self.all_trials[self.all_trial_numbers.index(sel)]
+
+  def _update_model_mode(self, e=None):
+    known = self.model_mode_radio.known.GetValue()
+    self.shared_model.Enable(known)
+    self.shared_unit_cell.Enable(not known)
+    self.shared_space_group.Enable(not known)
+    if not known:
+      uc, sg = get_trial_symmetry(self.db, self._selected_trial())
+      if uc and not self.shared_unit_cell.ctr.GetValue().strip():
+        self.shared_unit_cell.ctr.SetValue(uc)
+      if sg and not self.shared_space_group.ctr.GetValue().strip():
+        self.shared_space_group.ctr.SetValue(sg)
+    if e is not None:
+      e.Skip()
+
+  def onBrowseModel(self, e):
+    fdlg = wx.FileDialog(self, message="Select reference model",
+                         defaultDir=os.curdir, wildcard="*",
+                         style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if fdlg.ShowModal() == wx.ID_OK:
+      self.shared_model.ctr.SetValue(fdlg.GetPaths()[0])
+    fdlg.Destroy()
+
+  # ---- navigation -----------------------------------------------------------
+
+  def _show_page(self, i):
+    self.page = i
+    for j, (title, panel) in enumerate(self.pages):
+      self.page_sizer.Show(j, j == i)
+    self.step_lbl.SetLabel('Step %d of %d — %s'
+                           % (i + 1, len(self.pages), self.pages[i][0]))
+    self.btn_back.Enable(i > 0)
+    self.btn_next.SetLabel('Finish' if i == len(self.pages) - 1 else 'Next >')
+    if i == 1:
+      self._update_model_mode()
+    self.page_panel.Layout()
+    self.Layout()
+
+  def onBack(self, e):
+    if self.page > 0:
+      self._show_page(self.page - 1)
+
+  def onNext(self, e):
+    err = self._validate_page(self.page)
+    if err:
+      wx.MessageBox(err, 'Incomplete', wx.OK | wx.ICON_WARNING, self)
+      return
+    if self.page < len(self.pages) - 1:
+      self._show_page(self.page + 1)
+    else:
+      self._finish()
+
+  def _validate_page(self, i):
+    if i == 0:
+      if not self.all_trials:
+        return 'No trials exist yet. Create a trial before building a dataset.'
+      if not self.name.ctr.GetValue().strip():
+        return 'Please enter a name for the dataset.'
+    elif i == 1:
+      if self.model_mode_radio.known.GetValue():
+        if not self.shared_model.ctr.GetValue().strip():
+          return 'Select a reference model, or choose the unknown-structure option.'
+      else:
+        if not self.shared_unit_cell.ctr.GetValue().strip() or \
+           not self.shared_space_group.ctr.GetValue().strip():
+          return 'Provide both a unit cell and a space group.'
+    return None
+
+  # ---- finish ---------------------------------------------------------------
+
+  def _collect_values(self):
+    trial = self._selected_trial()
+    tags = [self.tag_checklist.ctr.GetString(i)
+            for i in self.tag_checklist.ctr.GetCheckedItems()]
+    known = self.model_mode_radio.known.GetValue()
+    return {
+      'name': self.name.ctr.GetValue().strip(),
+      'trial_number': trial.trial if trial is not None else None,
+      'tags': tags,
+      'tag_operator': 'union' if self.selection_type_radio.union.GetValue() == 1
+                      else 'intersection',
+      'model_mode': 'known' if known else 'unknown',
+      'model': self.shared_model.ctr.GetValue().strip(),
+      'unit_cell': self.shared_unit_cell.ctr.GetValue().strip(),
+      'space_group': self.shared_space_group.ctr.GetValue().strip(),
+      'd_min': self.shared_d_min.ctr.GetValue(),
+      'n_bins': self.shared_n_bins.ctr.GetValue(),
+      'ensemble_refinement': self.chk_ensemble.GetValue(),
+    }
+
+  def _finish(self):
+    values = self._collect_values()
+    # Delegate creation to the full dialog (built but never shown) so all the
+    # PHIL assembly, validation and task wiring stays in one place.
+    backing = DatasetDialog(self, self.db)
+    backing.populate_from_wizard(values)
+    err = backing.commit()
+    backing.Destroy()
+    if err:
+      wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
+      return
+    self.EndModal(wx.ID_OK)
+
 
 class TaskDialog(BaseDialog):
   def __init__(self, parent, db,
