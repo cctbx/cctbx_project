@@ -214,6 +214,15 @@ is then compared against an Fcalc map.
         file=self.logger)
       m = self._remove_element_x(m)
 
+    if has_map:
+      # Adopt the map's crystal symmetry before anything else touches the model.
+      # A cryo-EM model usually carries only a dummy CRYST1 (1 1 1 P 1), and
+      # with no real symmetry reduce2 puts a P1 box around the model and moves
+      # the coordinates into it. map_model_manager later relabels the model with
+      # the map's symmetry but does not move it back.
+      m.set_crystal_symmetry(
+        self.data_manager.get_real_map(map_fn).crystal_symmetry())
+
     self.working_model = None
 
     if self.params.run_reduce2:

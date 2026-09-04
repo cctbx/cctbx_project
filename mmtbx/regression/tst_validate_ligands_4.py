@@ -35,6 +35,7 @@ def run():
   run_test31()
   run_test32()
   run_test33()
+  run_test34()
 
 # ------------------------------------------------------------------------------
 
@@ -231,6 +232,51 @@ def run_test33():
       raise AssertionError('expected Sorry for map + reflection data')
   finally:
     for fn in (pdb_fn, map_fn, mtz_fn):
+      if os.path.isfile(fn):
+        os.remove(fn)
+
+# ------------------------------------------------------------------------------
+
+def run_test34():
+  '''A cryo-EM model with only a dummy CRYST1 must stay in the map frame.
+
+  Deposited cryo-EM models routinely carry "CRYST1 1 1 1 P 1", which is no
+  symmetry at all. reduce2 then boxes the model in P1 and moves the coordinates
+  into that box; map_model_manager relabels the model with the map's symmetry
+  afterwards but does not move it back, so the model ends up far from the
+  density and every correlation collapses to ~0. Observed on 9c4o/emd_45192:
+  RSCC 0.90 with run_reduce2=False, 0.00 with it on.
+  '''
+  print('test34')
+  from iotbx.cli_parser import run_program
+  from mmtbx.programs import validate_ligands as val_lig
+
+  # map is built in the real cell; the model on disk advertises none of it
+  model = _model()
+  mm = _simulated_map_manager(model)
+  dummy_cryst1 = _map_pdb_str.replace(
+    'CRYST1   30.000   40.000   30.000  90.00  90.00  90.00 P 1',
+    'CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1')
+  assert 'CRYST1    1.000' in dummy_cryst1
+
+  pdb_fn = 'tst_validate_ligands_4c.pdb'
+  map_fn = 'tst_validate_ligands_4c.map'
+  with open(pdb_fn, 'w') as fh:
+    fh.write(dummy_cryst1)
+  mm.write_map(map_fn)
+  try:
+    result = run_program(
+      program_class = val_lig.Program,
+      # run_reduce2 left at its default (True): that is what triggers the move
+      args          = [pdb_fn, map_fn,
+                       'validate_ligands.resolution=%s' % D_MIN],
+      logger        = null_out())
+    lr = find_lr(result.ligand_manager, LIG_SEL)
+    ccs = lr.get_ccs()
+    assert ccs is not None and ccs.rscc is not None
+    assert ccs.rscc > 0.9, ccs.rscc
+  finally:
+    for fn in (pdb_fn, map_fn):
       if os.path.isfile(fn):
         os.remove(fn)
 
