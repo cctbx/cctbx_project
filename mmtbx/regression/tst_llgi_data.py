@@ -189,6 +189,114 @@ def exercise_llgi_data_survives_select_and_update_all_scales():
   # needing update_llgi_sigmaa_scatfrac() to be called again.
   new_fmodel.target_functor()
 
+def build_larger_fmodel(seed=20):
+  # A bigger, higher-resolution structure than build_fmodel() above --
+  # needed for update_llgi_e_bulk_solvent tests, since the E-scale bulk-
+  # solvent inner loop's Chebyshev/kernel-based SigmaP fit and its
+  # sigmaA spline fit both want more than the ~15-atom/2.5A structure
+  # build_fmodel() uses for the simpler set_llgi_data-only tests.
+  random.seed(seed)
+  flex.set_random_seed(seed)
+  x = random_structure.xray_structure(
+    space_group_info       = sgtbx.space_group_info("P 21 21 21"),
+    elements                = (("O", "N", "C") * 60),
+    volume_per_atom         = 200,
+    min_distance            = 1.5,
+    general_positions_only  = True,
+    random_u_iso            = True)
+  fc = x.structure_factors(d_min=1.7, algorithm="direct").f_calc()
+  f_obs = abs(fc)
+  r_free_flags = f_obs.generate_r_free_flags(fraction=0.1)
+  fmodel = mmtbx.f_model.manager(
+    xray_structure = x,
+    f_obs          = f_obs,
+    r_free_flags   = r_free_flags)
+  fmodel.update_all_scales()
+  return fmodel
+
+def make_e_scale_llgi_arrays(f_obs, seed=21):
+  # Synthetic-but-plausible nacelle-like dobs/feff/resn (TEPS == 1
+  # throughout -- tNCS is not supported, see phenix.refinement.
+  # llgi_data.check_teps_no_tncs), sized against f_obs's CURRENT index
+  # set (i.e. AFTER any outlier removal update_all_scales() may already
+  # have performed -- see mmtbx.refinement.llgi_e_bulk_solvent.
+  # run_inner_loop's docstring for why this ordering matters).
+  from libtbx import group_args
+  n = f_obs.size()
+  epsilons = f_obs.epsilons().data().as_double()
+  rnd = random.Random(seed)
+  dobs = f_obs.array(
+    data=flex.double([0.5 + 0.4 * rnd.random() for i in range(n)]))
+  feff = f_obs.array(data=f_obs.data() * flex.double(
+    [0.9 + 0.2 * rnd.random() for i in range(n)]))
+  resn = f_obs.array(data=flex.sqrt(epsilons) * flex.double(
+    [rnd.uniform(2.0, 6.0) for i in range(n)]))
+  teps = f_obs.array(data=flex.double(n, 1.0))
+  return group_args(dobs=dobs, feff=feff, teps=teps, resn=resn, info=None)
+
+def exercise_update_llgi_e_bulk_solvent_updates_k_mask():
+  fmodel = build_larger_fmodel(seed=22)
+  llgi_data = make_e_scale_llgi_arrays(fmodel.f_obs(), seed=23)
+  fmodel.set_llgi_data(llgi_data)
+
+  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+  params = llgi_e_bulk_solvent.llgi_e_bulk_solvent_params.extract()
+  # Explicitly the two-stage (LLGI-driven bulk solvent) path: this test
+  # asserts k_mask CHANGES, which only happens when Stage 2 runs.
+  # fix_bulk_solvent_from_ls now defaults to True, which deliberately
+  # leaves k_mask untouched (see mmtbx.regression.
+  # tst_llgi_e_bulk_solvent.exercise_fixed_bulk_solvent_leaves_k_mask_
+  # untouched for the default path's own coverage).
+  params.fix_bulk_solvent_from_ls = False
+  params.max_inner_iterations = 3
+  params.sigmaa_max_iterations = 20
+  params.bulk_solvent_max_iterations = 15
+
+  k_mask_before = flex.double(fmodel.k_masks()[0])
+  result = fmodel.update_llgi_e_bulk_solvent(params=params)
+  k_mask_after = flex.double(fmodel.k_masks()[0])
+
+  assert result.n_iterations >= 1
+  assert flex.max(flex.abs(k_mask_before - k_mask_after)) > 0
+  # update_llgi_e_bulk_solvent must NOT touch llgi_data.sigmaa/scatfrac
+  # (the F-scale curve consumed directly by the llgi coordinate-
+  # refinement target, mmtbx/refinement/targets.py) -- the E-scale
+  # sigmaA fit it computes internally is a genuinely different curve
+  # and must stay separate. See that method's docstring.
+  assert not hasattr(fmodel.llgi_data(), "sigmaa") or \
+    fmodel.llgi_data().sigmaa is None
+  assert not hasattr(fmodel.llgi_data(), "scatfrac") or \
+    fmodel.llgi_data().scatfrac is None
+
+def exercise_update_llgi_e_bulk_solvent_requires_llgi_data():
+  fmodel = build_larger_fmodel(seed=24)
+  try:
+    fmodel.update_llgi_e_bulk_solvent()
+  except Sorry as e:
+    assert "LLGI data" in str(e)
+  else:
+    raise RuntimeError("Expected Sorry for missing LLGI data.")
+
+def exercise_e_scale_bulk_solvent_phil_scope_parses():
+  # The refinement.llgi_data.e_scale_bulk_solvent phil scope (phenix/
+  # phenix/refinement/__init__.params) must parse and its "include scope
+  # mmtbx.refinement.llgi_e_bulk_solvent.llgi_e_bulk_solvent_params"
+  # directive must resolve to the same fields run_inner_loop expects
+  # (n_sigmap_nodes, k_sol_min/max, etc.) alongside its own .enabled
+  # switch -- exercised directly against mmtbx.refinement.
+  # llgi_e_bulk_solvent's own phil scope (not the full phenix
+  # __init__.params file, which is outside this module's reach) to catch
+  # any field-name drift between the two without a phenix-side test.
+  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+  extract = llgi_e_bulk_solvent.llgi_e_bulk_solvent_params.extract()
+  for name in ("n_sigmap_nodes", "auto_kernel_number", "n_sigmaa_coeffs",
+               "spline_degree", "sigmaa_max_iterations", "k_sol_min",
+               "k_sol_max", "b_sol_min", "b_sol_max",
+               "bulk_solvent_max_iterations", "max_inner_iterations",
+               "convergence_tolerance", "sigmaa_curvature_weight",
+               "fix_bulk_solvent_from_ls"):
+    assert hasattr(extract, name), name
+
 def exercise():
   exercise_set_llgi_data_ok()
   exercise_set_llgi_data_mismatched_indices()
@@ -198,6 +306,9 @@ def exercise():
   exercise_update_llgi_sigmaa_scatfrac_enables_target_functor()
   exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data()
   exercise_llgi_data_survives_select_and_update_all_scales()
+  exercise_update_llgi_e_bulk_solvent_updates_k_mask()
+  exercise_update_llgi_e_bulk_solvent_requires_llgi_data()
+  exercise_e_scale_bulk_solvent_phil_scope_parses()
   print("OK")
 
 if (__name__ == "__main__"):

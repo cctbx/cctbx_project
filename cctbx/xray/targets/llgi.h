@@ -102,26 +102,44 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     double ec = d * fc; // F-scale analog of EC = |DobsSigaEcalc|
     double ec_sq = ec * ec;
     double x = 2. * feff * ec / v; // function.cc: X (scale-invariant)
-    // function.cc: wll = EOBS^2/teps; EOBS^2 = feff^2/(teps*resn^2), so
-    // wll = feff^2/(teps^2*resn^2).
-    double wll = feff_sq / (teps * teps_resn_sq);
+    // Symmetrised form (F-scale analog of the simplification in llgi_e.h).
+    // phasertng's function.cc carries the Wilson/null-hypothesis baseline
+    // as a separate additive wll = EOBS^2/teps = feff^2/(teps^2*resn^2),
+    // added after subtracting feff^2/V. Those two feff terms collapse:
+    //
+    //   -feff^2/V + feff^2/(teps^2*resn^2) = -(d^2/teps)*feff^2/V
+    //
+    // (using V = teps*resn^2*(teps - d^2)), so the gain follows directly
+    // by scaling feff^2, mirroring how ec_sq = (d*fc)^2 scales fc^2 -- no
+    // separate baseline term to add and subtract.
+    //
+    // IMPORTANT: on the F-scale the multiplier is d^2/TEPS, NOT the plain
+    // d^2 that appears in llgi_e.h. The two coincide only at TEPS == 1
+    // (which is why the E-scale form, where TEPS is identically 1, takes
+    // the simpler shape). Since tNCS support (TEPS != 1) is deferred but
+    // intended, using a plain d^2 here would silently bake in a wrong
+    // formula in exactly the case that support is meant to enable:
+    // checked numerically, at TEPS = 2 the plain-d^2 form gives -0.618
+    // where the correct value is -1.395. Verified algebraically (sympy)
+    // and numerically against the original three-term form over ~39k
+    // randomised cases spanning TEPS in [1,3], centric and acentric,
+    // agreeing to ~1e-9 relative (that residual is ln_of_i0's own
+    // tabulated-approximation noise, not a difference between the forms).
+    double ee_sq = (d * d / teps) * feff_sq; // symmetric partner of ec_sq
     double ll;
     if(!centric) {
       // function.cc: log(V_E/teps) = log(v/(teps*resn^2)/teps)
       //                            = log(v/(teps^2*resn^2))
-      ll = -(std::log(v / (teps * teps_resn_sq)) + (feff_sq + ec_sq) / v);
+      ll = -(std::log(v / (teps * teps_resn_sq)) + (ee_sq + ec_sq) / v);
       ll += scitbx::math::bessel::ln_of_i0(x); // function.cc: tbl_alogchI0
-      ll += wll;
     }
     else {
-      wll /= 2.0;
       double ll_core = -(std::log(v / (teps * teps_resn_sq))
-                          + (feff_sq + ec_sq) / v);
+                          + (ee_sq + ec_sq) / v);
       double x_half = x / 2.0;
       // function.cc: tbl_alogch(X) approximates log(cosh(X)).
       double ln_cosh = x_half + std::log((1. + std::exp(-2. * x_half)) / 2.);
       ll = ll_core / 2.0 + ln_cosh;
-      ll += wll;
     }
     // ll is the log-likelihood-gain; negate to match this file's (and
     // mlf.h's) minimize-me convention.

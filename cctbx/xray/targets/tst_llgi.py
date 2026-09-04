@@ -224,6 +224,120 @@ def exercise_sigmaa_scatfrac_finite_difference_gradients():
     assert approx_equal(ana_dscatfrac[i], fd_dscatfrac, eps=5.e-5), (
       i, ana_dscatfrac[i], fd_dscatfrac)
 
+def _reference_target_original_three_term_form(
+      f_eff, f_calc, dobs, sigmaa, scatfrac, k, teps, resn, centric):
+  """ The ORIGINAL, phasertng-shaped LLGI target for one reflection: the
+  Wilson/null-hypothesis baseline carried as a separate additive term
+  wll = EOBS^2/teps = feff^2/(teps^2*resn^2), added after subtracting
+  feff^2/V. llgi.h now instead folds those two feff terms together into a
+  single -(d^2/teps)*feff^2/V (see its target_one_h comments); this is an
+  independent reimplementation of the pre-simplification form, kept here
+  so the equivalence is pinned by a test rather than only by the algebra.
+  """
+  from scitbx.math import bessel_ln_of_i0
+  d = dobs * (sigmaa / math.sqrt(scatfrac)) * k
+  resn_sq = resn * resn
+  v_e = teps - d * d
+  if(v_e <= 0.0):
+    return 0.0
+  v = teps * resn_sq * v_e
+  teps_resn_sq = teps * resn_sq
+  feff_sq = f_eff * f_eff
+  ec_sq = (d * f_calc) ** 2
+  x = 2.0 * f_eff * (d * f_calc) / v
+  wll = feff_sq / (teps * teps_resn_sq)
+  if(not centric):
+    ll = -(math.log(v / (teps * teps_resn_sq)) + (feff_sq + ec_sq) / v)
+    ll += bessel_ln_of_i0(x)
+    ll += wll
+  else:
+    wll /= 2.0
+    ll_core = -(math.log(v / (teps * teps_resn_sq)) + (feff_sq + ec_sq) / v)
+    x_half = x / 2.0
+    ln_cosh = x_half + math.log((1.0 + math.exp(-2.0 * x_half)) / 2.0)
+    ll = ll_core / 2.0 + ln_cosh + wll
+  return -ll
+
+def exercise_symmetrised_form_matches_original():
+  # llgi.h's target_one_h was simplified to be symmetric in feff and fc:
+  # the separate additive wll baseline was folded into the feff^2 term,
+  # giving -(d^2/teps)*feff^2/V as the partner of -(d*fc)^2/V. Verify that
+  # simplification changes nothing, against an independent Python
+  # reimplementation of the original three-term form.
+  #
+  # The teps != 1 cases matter specifically: on the F-scale the folded
+  # multiplier is d^2/TEPS, not the plain d^2 that the E-scale form
+  # (llgi_e.h, where TEPS is identically 1) uses. The two agree only at
+  # TEPS == 1, so a plain-d^2 F-scale implementation would pass every
+  # existing test (all of which use teps == 1) and be wrong precisely
+  # where deferred tNCS support is meant to land. At teps = 2 the two
+  # differ by more than a factor of two.
+  import random
+  rnd = random.Random(7)
+  n_checked = 0
+  for trial in range(400):
+    f_eff = rnd.uniform(0.05, 30.0)
+    fc_mag = rnd.uniform(0.05, 30.0)
+    dobs = rnd.uniform(0.4, 0.99)
+    sigmaa = rnd.uniform(0.05, 0.95)
+    scatfrac = rnd.uniform(0.3, 1.4)
+    k = rnd.uniform(0.5, 1.5)
+    # Deliberately include teps != 1 (the case no other test covers).
+    teps = 1.0 if (trial % 2 == 0) else rnd.uniform(1.0, 3.0)
+    resn = rnd.uniform(0.5, 20.0)
+    for centric in (False, True):
+      expected = _reference_target_original_three_term_form(
+        f_eff, fc_mag, dobs, sigmaa, scatfrac, k, teps, resn, centric)
+      phase = 0.37 * trial
+      result = ext.llgi_target_and_gradients(
+        f_eff         = flex.double([f_eff]),
+        r_free_flags  = flex.bool([False]),
+        f_calc        = flex.complex_double([complex(
+          fc_mag * math.cos(phase), fc_mag * math.sin(phase))]),
+        dobs          = flex.double([dobs]),
+        sigmaa        = flex.double([sigmaa]),
+        scatfrac      = flex.double([scatfrac]),
+        scale_factor  = k,
+        teps          = flex.double([teps]),
+        resn          = flex.double([resn]),
+        centric_flags = flex.bool([centric]),
+        compute_gradients = False)
+      # target() is the sum over the work set (one reflection here).
+      assert approx_equal(result.target(), expected, eps=1.e-9), (
+        result.target(), expected, teps, centric)
+      n_checked += 1
+  assert n_checked == 800, n_checked  # 400 trials x {acentric, centric}
+
+def exercise_symmetrised_form_is_symmetric_in_feff_and_fc():
+  # The point of the simplification: with the baseline folded in, the
+  # target depends on feff and fc through the symmetric pair
+  # (d^2/teps)*feff^2 and (d*fc)^2 (plus the Bessel argument, itself
+  # symmetric in the two). At teps == 1 and k == 1 the substitution
+  # feff <-> fc must therefore leave the target unchanged.
+  import random
+  rnd = random.Random(13)
+  for trial in range(200):
+    a = rnd.uniform(0.05, 20.0)
+    b = rnd.uniform(0.05, 20.0)
+    dobs = rnd.uniform(0.4, 0.99)
+    sigmaa = rnd.uniform(0.05, 0.9)
+    for centric in (False, True):
+      def t(f_eff, fc_mag):
+        return ext.llgi_target_and_gradients(
+          f_eff         = flex.double([f_eff]),
+          r_free_flags  = flex.bool([False]),
+          f_calc        = flex.complex_double([complex(fc_mag, 0.0)]),
+          dobs          = flex.double([dobs]),
+          sigmaa        = flex.double([sigmaa]),
+          scatfrac      = flex.double([1.0]),
+          scale_factor  = 1.0,
+          teps          = flex.double([1.0]),
+          resn          = flex.double([1.0]),
+          centric_flags = flex.bool([centric]),
+          compute_gradients = False).target()
+      assert approx_equal(t(a, b), t(b, a), eps=1.e-10), (
+        t(a, b), t(b, a), a, b, centric)
+
 def exercise():
   exercise_finite_difference_gradients(centric=False)
   exercise_finite_difference_gradients(centric=True)
@@ -232,6 +346,8 @@ def exercise():
   exercise_scatfrac_sensitivity()
   exercise_gradient_descent_direction()
   exercise_sigmaa_scatfrac_finite_difference_gradients()
+  exercise_symmetrised_form_matches_original()
+  exercise_symmetrised_form_is_symmetric_in_feff_and_fc()
   print("OK")
 
 if (__name__ == "__main__"):

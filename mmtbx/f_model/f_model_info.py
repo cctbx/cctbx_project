@@ -113,9 +113,20 @@ class info(object):
     else:
       self.twin_fraction = None
       self.twin_law = None
-    self.r_work = fmodel.r_work()
-    self.r_free = fmodel.r_free()
-    self.r_all = fmodel.r_all()
+    # R-work/R-free/R-all: Feff-based (matching what sigmaA/ScatFrac and
+    # the LLGI coordinate-refinement target itself are actually fit
+    # against -- see mmtbx.f_model.manager.r_work_llgi's docstring)
+    # whenever llgi_r_factors_available(); F-obs-based (unchanged from
+    # always-prior behaviour) otherwise.
+    self._r_factors_are_llgi = fmodel.llgi_r_factors_available()
+    if(self._r_factors_are_llgi):
+      self.r_work = fmodel.r_work_llgi()
+      self.r_free = fmodel.r_free_llgi()
+      self.r_all = fmodel.r_all_llgi()
+    else:
+      self.r_work = fmodel.r_work()
+      self.r_free = fmodel.r_free()
+      self.r_all = fmodel.r_all()
     self.target_work = fmodel.target_w()
     self.target_free = fmodel.target_t()
     self.wilson_b = fmodel.wilson_b()
@@ -180,17 +191,42 @@ class info(object):
     if(tpr.size() != 0):
       tpr_w = tpr.select(fmodel.arrays.work_sel)
       tpr_t = tpr.select(fmodel.arrays.free_sel)
-    fo_t = fmodel.f_obs_free()
-    fc_t = fmodel.f_model_scaled_with_k1_t()
-    fo_w = fmodel.f_obs_work()
-    fc_w = fmodel.f_model_scaled_with_k1_w()
+    # "Observed amplitude" basis for this whole table: Feff (with an
+    # Feff-derived k1 scale) instead of F-obs whenever
+    # fmodel.llgi_r_factors_available() (target=llgi and llgi_data
+    # attached -- see mmtbx.f_model.manager.r_work_llgi's docstring),
+    # matching r_work_llgi()/r_free_llgi()/r_all_llgi()'s own basis so
+    # this per-bin table and the top-level summary numbers (self.r_work
+    # etc., set above) agree on what "R-factor" means. fmodel.r_work()/
+    # bins() themselves are deliberately left F-obs-based always -- see
+    # that same docstring for why this info() object switches basis
+    # explicitly instead.
+    if(self._r_factors_are_llgi):
+      feff = fmodel.llgi_data().feff
+      k1_t = _scale_helper(
+        num=feff.select(fmodel.arrays.free_sel).data(),
+        den=flex.abs(fmodel.f_model_free().data()))
+      k1_w = _scale_helper(
+        num=feff.select(fmodel.arrays.work_sel).data(),
+        den=flex.abs(fmodel.f_model_work().data()))
+      f_obs_all = feff
+      fo_t = feff.select(fmodel.arrays.free_sel)
+      fc_t = fo_t.array(data=k1_t * fmodel.f_model_free().data())
+      fo_w = feff.select(fmodel.arrays.work_sel)
+      fc_w = fo_w.array(data=k1_w * fmodel.f_model_work().data())
+    else:
+      f_obs_all = fmodel.f_obs()
+      fo_t = fmodel.f_obs_free()
+      fc_t = fmodel.f_model_scaled_with_k1_t()
+      fo_w = fmodel.f_obs_work()
+      fc_w = fmodel.f_model_scaled_with_k1_w()
     alpha_t, beta_t = fmodel.alpha_beta_t()
     if (n_bins is None) or (n_bins < 1):
       n_bins = fmodel.determine_n_bins(
         free_reflections_per_bin=free_reflections_per_bin,
         max_n_bins=max_number_of_bins)
-    fmodel.f_obs().setup_binner(n_bins=n_bins)
-    fo_t.use_binning_of(fmodel.f_obs())
+    f_obs_all.setup_binner(n_bins=n_bins)
+    fo_t.use_binning_of(f_obs_all)
     fc_t.use_binning_of(fo_t)
     fo_w.use_binning_of(fo_t)
     fc_w.use_binning_of(fo_t)
@@ -201,8 +237,8 @@ class info(object):
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
       sel_w = fo_w.binner().selection(i_bin)
-      sel_all = fmodel.f_obs().binner().selection(i_bin)
-      sel_fo_all = fmodel.f_obs().select(sel_all)
+      sel_all = f_obs_all.binner().selection(i_bin)
+      sel_fo_all = f_obs_all.select(sel_all)
       sel_fo_t = fo_t.select(sel_t)
       sel_fc_t = fc_t.select(sel_t)
       sel_fo_w = fo_w.select(sel_w)

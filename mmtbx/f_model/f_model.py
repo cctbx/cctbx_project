@@ -1289,12 +1289,28 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     # add to self (fmodel)
     self.update(f_part1 = f_part1)
 
-  def bins(self):
+  def _bins_amplitudes_llgi(self):
+    """ Feff-based counterpart to bins()'s own (self.f_obs(),
+    self.f_model_scaled_with_k1()) pair -- see bins_llgi()'s docstring.
+    Returns (feff_array, feff_scaled_model_array), both miller.array
+    objects on self.f_obs()'s index set. Only meant to be called when
+    llgi_r_factors_available() is True.
+    """
+    feff = self.llgi_data().feff
+    k1 = _scale_helper(num=feff.data(), den=flex.abs(self.f_model().data()))
+    f_model_scaled = feff.array(data=k1 * self.f_model().data())
+    return feff, f_model_scaled
+
+  def _bins_core(self, f_obs, f_model):
+    """ Shared per-resolution-shell summary table logic for bins()/
+    bins_llgi() -- f_obs/f_model already chosen by the caller (F-obs- or
+    Feff-based respectively); see bins_llgi()'s docstring for why this
+    is a separate method pair rather than bins() itself switching basis
+    implicitly.
+    """
     k_masks       = self.k_masks()
     k_isotropic   = self.k_isotropic()
     k_anisotropic = self.k_anisotropic()
-    f_model       = self.f_model_scaled_with_k1()
-    f_obs         = self.f_obs()
     work_flags    =~self.r_free_flags().data()
     free_flags    = self.r_free_flags().data()
     result = []
@@ -1329,6 +1345,21 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         r       = r,
         km      = km))
     return result
+
+  def bins(self):
+    return self._bins_core(self.f_obs(), self.f_model_scaled_with_k1())
+
+  def bins_llgi(self):
+    """ Feff-based counterpart to bins() -- the per-resolution-shell
+    summary table, evaluated against llgi_data.feff instead of f_obs(),
+    matching r_work_llgi()/r_free_llgi()/r_all_llgi()'s own basis (see
+    r_work_llgi()'s docstring for the rationale, and
+    llgi_r_factors_available()'s docstring for why bins() itself is left
+    F-obs-based always rather than switching implicitly). Requires
+    llgi_r_factors_available().
+    """
+    f_obs, f_model = self._bins_amplitudes_llgi()
+    return self._bins_core(f_obs, f_model)
 
   def show_short(self, show_k_mask=True, log=None, prefix=""):
     if(log is None): log = sys.stdout
@@ -1850,6 +1881,35 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         "update_llgi_sigmaa_scatfrac() requires LLGI data (DOBS/FEFF/"
         "TEPS/RESN) to already be attached via set_llgi_data().")
     import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
+    if(params is None):
+      params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
+    if(params.estimate_scatfrac_by_likelihood):
+      # Alternative scheme (see llgi_sigmaa_scatfrac_params.estimate_
+      # scatfrac_by_likelihood's help and mmtbx.refinement.
+      # llgi_e_bulk_solvent.estimate_sigmaa_e_then_scatfrac_f's
+      # docstring): sigmaA via the E-scale LLGI target first (where
+      # ScatFrac does not appear, so no degeneracy), then ScatFrac via
+      # the F-scale LLGI target with sigmaA fixed -- instead of a moment
+      # estimator. Needs fmodel itself (for f_model_no_aniso_scale), not
+      # just the llgi_data arrays, hence living in llgi_e_bulk_solvent
+      # rather than being callable the same way as the default branch
+      # below.
+      import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+      f_obs = self.f_obs()
+      result = llgi_e_bulk_solvent.estimate_sigmaa_e_then_scatfrac_f(
+        self,
+        dobs = llgi_data.dobs.data(),
+        feff = llgi_data.feff.data(),
+        resn = llgi_data.resn.data(),
+        scatfrac_params = params)
+      updated = group_args(
+        dobs=llgi_data.dobs, feff=llgi_data.feff, teps=llgi_data.teps,
+        resn=llgi_data.resn, info=getattr(llgi_data, "info", None),
+        sigmaa=f_obs.array(data=result.sigmaa),
+        scatfrac=f_obs.array(data=result.scatfrac))
+      self.set_llgi_data(updated)
+      self._llgi_sigmaa_scatfrac_dump(f_obs, llgi_data, result)
+      return result
     f_obs = self.f_obs()
     # f_model() (bulk solvent + k_isotropic + k_anisotropic applied), not
     # the raw atomic-model f_calc(): this is what the llgi target
@@ -1888,57 +1948,121 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       sigmaa=f_obs.array(data=result.sigmaa),
       scatfrac=f_obs.array(data=result.scatfrac))
     self.set_llgi_data(updated)
-    # TEMPORARY diagnostic dump for real-data evaluation runs, gated on
-    # an env var so it is inert for every normal user/test. Not intended
-    # to be a permanent feature; revert once the evaluation is done. See
-    # doc/llgi_target_design.md sec. 9 step 5.
+    self._llgi_sigmaa_scatfrac_dump(f_obs, llgi_data, result)
+    return result
+
+  def _llgi_sigmaa_scatfrac_dump(self, f_obs, llgi_data, result):
+    """ TEMPORARY diagnostic dump for real-data evaluation runs, gated on
+    an env var so it is inert for every normal user/test. Not intended
+    to be a permanent feature; revert once the evaluation is done. See
+    doc/llgi_target_design.md sec. 9 step 5. Shared by both
+    update_llgi_sigmaa_scatfrac branches (the default moment-estimator
+    scheme and the E-then-F likelihood scheme, params.estimate_scatfrac_
+    by_likelihood) so per-macrocycle sigmaA/ScatFrac curves can be
+    captured identically regardless of which scheme produced them.
+    """
     import os
     dump_dir = os.environ.get("LLGI_SIGMAA_DUMP_DIR")
-    if(dump_dir):
-      import time
-      os.makedirs(dump_dir, exist_ok=True)
-      idx = len([f for f in os.listdir(dump_dir)
-                 if f.startswith("call_") and f.endswith(".txt")
-                 and not f.endswith("_meta.txt")])
-      path = os.path.join(dump_dir, "call_%03d.txt" % idx)
-      fc_abs = flex.abs(self.f_model().data())
-      fcalc_raw_abs = flex.abs(self.f_calc().data())
-      k_iso = self.k_isotropic()
-      k_aniso = self.k_anisotropic()
-      k = self.scale_ml_wrapper()
-      if(k is None): k = float("nan")
-      f_masks_list = self.f_masks()
-      k_masks_list = self.k_masks()
-      fmask_abs = (flex.abs(f_masks_list[0].data())
-                   if f_masks_list else flex.double(fc_abs.size(), 0.0))
-      kmask0 = (k_masks_list[0]
-                if k_masks_list else flex.double(fc_abs.size(), 0.0))
-      # Index-alignment check: llgi_data.feff was selected via manager.
-      # select() (flex.bool positional selection) alongside f_obs, so
-      # their indices() should be identical, position for position. A
-      # mismatch here would mean f_eff[i] and f_obs.d_star_sq()[i] refer
-      # to different reflections -- a silent misalignment, not a
-      # statistical/formula bug.
-      feff_indices_match = llgi_data.feff.indices().all_eq(f_obs.indices())
-      with open(path.replace(".txt", "_meta.txt"), "w") as fmeta:
-        fmeta.write("feff_indices_match_f_obs: %s\n" % feff_indices_match)
-        fmeta.write("f_obs size: %d\n" % f_obs.indices().size())
-        fmeta.write("llgi_data.feff size: %d\n" % llgi_data.feff.indices().size())
-      indices = f_obs.indices()
-      with open(path, "w") as f:
-        f.write("h k l d_star_sq sigmaa scatfrac fc_abs k_iso k_aniso "
-                 "k_scale feff teps resn fcalc_raw_abs fmask_abs kmask0\n")
-        d_star_sq_data = f_obs.d_star_sq().data()
-        for i in range(f_obs.indices().size()):
-          hkl = indices[i]
-          f.write("%d %d %d %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f "
-                   "%.6f %.6f %.6f %.6f\n" % (
-            hkl[0], hkl[1], hkl[2],
-            d_star_sq_data[i], result.sigmaa[i], result.scatfrac[i],
-            fc_abs[i], k_iso[i], k_aniso[i], k,
-            llgi_data.feff.data()[i], llgi_data.teps.data()[i],
-            llgi_data.resn.data()[i], fcalc_raw_abs[i], fmask_abs[i],
-            kmask0[i]))
+    if(not dump_dir):
+      return
+    os.makedirs(dump_dir, exist_ok=True)
+    idx = len([f for f in os.listdir(dump_dir)
+               if f.startswith("call_") and f.endswith(".txt")
+               and not f.endswith("_meta.txt")])
+    path = os.path.join(dump_dir, "call_%03d.txt" % idx)
+    fc_abs = flex.abs(self.f_model().data())
+    fcalc_raw_abs = flex.abs(self.f_calc().data())
+    k_iso = self.k_isotropic()
+    k_aniso = self.k_anisotropic()
+    k = self.scale_ml_wrapper()
+    if(k is None): k = float("nan")
+    f_masks_list = self.f_masks()
+    k_masks_list = self.k_masks()
+    fmask_abs = (flex.abs(f_masks_list[0].data())
+                 if f_masks_list else flex.double(fc_abs.size(), 0.0))
+    kmask0 = (k_masks_list[0]
+              if k_masks_list else flex.double(fc_abs.size(), 0.0))
+    # Index-alignment check: llgi_data.feff was selected via manager.
+    # select() (flex.bool positional selection) alongside f_obs, so
+    # their indices() should be identical, position for position. A
+    # mismatch here would mean f_eff[i] and f_obs.d_star_sq()[i] refer
+    # to different reflections -- a silent misalignment, not a
+    # statistical/formula bug.
+    feff_indices_match = llgi_data.feff.indices().all_eq(f_obs.indices())
+    with open(path.replace(".txt", "_meta.txt"), "w") as fmeta:
+      fmeta.write("feff_indices_match_f_obs: %s\n" % feff_indices_match)
+      fmeta.write("f_obs size: %d\n" % f_obs.indices().size())
+      fmeta.write("llgi_data.feff size: %d\n" % llgi_data.feff.indices().size())
+    indices = f_obs.indices()
+    with open(path, "w") as f:
+      f.write("h k l d_star_sq sigmaa scatfrac fc_abs k_iso k_aniso "
+               "k_scale feff teps resn fcalc_raw_abs fmask_abs kmask0\n")
+      d_star_sq_data = f_obs.d_star_sq().data()
+      for i in range(f_obs.indices().size()):
+        hkl = indices[i]
+        f.write("%d %d %d %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f "
+                 "%.6f %.6f %.6f %.6f\n" % (
+          hkl[0], hkl[1], hkl[2],
+          d_star_sq_data[i], result.sigmaa[i], result.scatfrac[i],
+          fc_abs[i], k_iso[i], k_aniso[i], k,
+          llgi_data.feff.data()[i], llgi_data.teps.data()[i],
+          llgi_data.resn.data()[i], fcalc_raw_abs[i], fmask_abs[i],
+          kmask0[i]))
+
+  def update_llgi_e_bulk_solvent(self, params=None):
+    """ (Re-)fit the bulk-solvent model (k_sol, B_sol) by alternating
+    E-scale LLGI-likelihood fits of sigmaA(resolution) (R-free only) and
+    the bulk-solvent parameters (working set only) -- see doc/
+    llgi_target_design.md's "An E-Scale LLGI Target for Bulk Solvent &
+    SigmaA" design note, sec. 7 -- in place of the usual least-squares
+    bulk-solvent fit inside update_all_scales(). Updates this manager's
+    k_mask (via self.update(k_mask=...), done inside
+    mmtbx.refinement.llgi_e_bulk_solvent.run_inner_loop itself) in place.
+
+    Deliberately does NOT touch this manager's llgi_data/sigmaa
+    (update_llgi_sigmaa_scatfrac's F-scale sigmaA/ScatFrac curve, used
+    directly by the F-scale llgi coordinate-refinement target -- see
+    mmtbx/refinement/targets.py). The E-scale sigmaA fit run_inner_loop
+    computes internally is a genuinely different curve (E-value-scale,
+    no ScatFrac term, fit purely to drive this bulk-solvent step) and
+    must not overwrite that slot. The normal per-macrocycle order (see
+    phenix.refinement.macro_cycle.py) is: bss (LS scale + bulk solvent +
+    anisotropy) -> this method (if enabled, overwrites bss's LS bulk-
+    solvent result with the E-scale fit) -> update_llgi_sigmaa_scatfrac
+    (refits the F-scale sigmaA/ScatFrac curve against the now-updated
+    f_model(), same as it always does).
+
+    Requires llgi_data (dobs/feff/resn) to already be attached (see
+    set_llgi_data(), phenix.refinement.llgi_data.get_llgi_data()) --
+    Eeff = Feff/RESN needs FEFF/RESN, and Dobs is needed directly by the
+    E-scale LLGI target itself; raises Sorry if not attached. Also
+    requires TEPS == 1 for every reflection (tNCS is not yet supported by
+    the LLGI target at all -- see phenix.refinement.llgi_data.
+    check_teps_no_tncs, which already enforces this at data-load time,
+    so llgi_data.teps is not even consulted here).
+
+    params: extracted phenix.refinement.__init__.params's
+    refinement.llgi_data.e_scale_bulk_solvent phil scope (the .enabled
+    switch is the caller's responsibility to check; this method itself
+    unconditionally runs when called), or a plain
+    mmtbx.refinement.llgi_e_bulk_solvent.llgi_e_bulk_solvent_params
+    extract, or None for defaults.
+
+    Returns the group_args from run_inner_loop (.sigmaa, .k_sol, .b_sol,
+    .n_iterations, .converged, .history), for diagnostics/logging.
+    """
+    llgi_data = self.llgi_data()
+    if(llgi_data is None):
+      raise Sorry(
+        "update_llgi_e_bulk_solvent() requires LLGI data (DOBS/FEFF/"
+        "RESN) to already be attached via set_llgi_data().")
+    import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+    result = llgi_e_bulk_solvent.run_inner_loop(
+      fmodel = self,
+      dobs   = llgi_data.dobs.data(),
+      feff   = llgi_data.feff.data(),
+      resn   = llgi_data.resn.data(),
+      params = params)
     return result
 
   def f_obs_scaled(self, include_fom=False):
@@ -2294,6 +2418,128 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     else: omega = None
     return omega
 
+  def llgi_r_factors_available(self):
+    """ True when Feff-based LLGI R-factors (r_work_llgi()/r_free_llgi()/
+    r_all_llgi(), and the Feff-based reporting that calls them --
+    info()/bins() in llgi mode) can be computed: target=llgi AND
+    llgi_data is actually attached (mirrors set_target_name's own "llgi
+    requires llgi_data" check -- llgi_data can briefly be None even with
+    target_name=="llgi", e.g. before phenix.refinement.llgi_data.
+    get_llgi_data()/set_llgi_data() has run, so this checks both rather
+    than assuming target_name alone implies llgi_data is present). Feff,
+    unlike f_obs, is always index-matched to f_obs() by construction
+    (see set_llgi_data()/_validate_and_set_llgi_data() and every
+    select()/outlier-removal call site that carries llgi_data through in
+    lockstep -- see llgi_data's own group_args rebuilding in select()
+    and update_all_scales()), so no extra index-matching is needed here.
+
+    IMPORTANT: r_work()/r_free()/r_all() (and everything built on them --
+    bins(), the ordinary F-obs bss consistency checks in
+    mmtbx.bulk_solvent.f_model_all_scales, twin-fraction refinement,
+    etc.) are DELIBERATELY left F-obs-based always, regardless of
+    target_name -- see r_work_llgi()'s docstring for why this is a
+    separate, explicitly-named set of methods rather than a change to
+    r_work()/r_free()/r_all()'s existing meaning.
+    """
+    return self.target_name == "llgi" and self.llgi_data() is not None
+
+  def _r_factor_amplitudes_llgi(self, type):
+    """ Feff-based counterpart to _r_factor's own f_obs/f_model_scaled_
+    with_k1* pair -- returns (feff_array_data, feff_scaled_model_data),
+    both plain flex.double, matched index-for-index. Only meant to be
+    called when llgi_r_factors_available() is True (see its docstring
+    for the requires_llgi_data etc. cases -- not guarded here so callers
+    that already checked get a clear AttributeError on self.llgi_data()
+    being None rather than a silent f_obs fallback with a different
+    meaning than the caller asked for).
+
+    type: "work", "free", or "all".
+
+    The k1 scale factor is recomputed against Feff here (via
+    _scale_helper, the same least-squares ratio scale_k1/_w/_t use for
+    F-obs) rather than reusing scale_k1's F-obs-derived value: the two
+    observed-amplitude scales (Feff, F-obs) need not agree, so an
+    F-obs-derived scale applied to an Feff-vs-Fmodel residual would not
+    actually be the least-squares-optimal scale for THAT residual,
+    making the resulting "R-factor" not a genuine R_scale-style minimum.
+    """
+    feff = self.llgi_data().feff
+    if(type == "work"):
+      feff_sel = feff.select(self.arrays.work_sel)
+      f_model = self.f_model_work().data()
+    elif(type == "free"):
+      feff_sel = feff.select(self.arrays.free_sel)
+      f_model = self.f_model_free().data()
+    else:
+      assert type == "all", type
+      feff_sel = feff
+      f_model = self.f_model().data()
+    feff_data = feff_sel.data()
+    k1 = _scale_helper(num=feff_data, den=flex.abs(f_model))
+    return feff_data, k1 * f_model
+
+  def _r_factor_llgi(self, type="work", d_min=None, d_max=None,
+        d_spacings=None, selection=None):
+    """ Feff-based counterpart to _r_factor, same d_min/d_max/selection
+    filtering logic, used only by r_work_llgi()/r_free_llgi()/
+    r_all_llgi(). See llgi_r_factors_available()'s docstring for why
+    this is a separate method rather than a change to _r_factor's own
+    (always F-obs-based) behaviour.
+    """
+    global time_r_factors
+    if(type not in ("work", "free", "all")): raise RuntimeError
+    f_obs, f_model = self._r_factor_amplitudes_llgi(type)
+    if(selection is not None): assert [d_min, d_max].count(None) == 2
+    if([d_min, d_max].count(None) < 2):
+      assert selection is None and d_spacings is not None
+    timer = user_plus_sys_time()
+    if(d_min is not None or d_max is not None):
+      keep = flex.bool(d_spacings.size(), True)
+      if (d_max is not None): keep &= d_spacings <= d_max
+      if (d_min is not None): keep &= d_spacings >= d_min
+      f_obs   = f_obs.select(keep)
+      f_model = f_model.select(keep)
+    if(selection is not None):
+      f_obs   = f_obs.select(selection)
+      f_model = f_model.select(selection)
+    result = abs(mmtbx.bulk_solvent.r_factor(f_obs, f_model, 1.0))
+    time_r_factors += timer.elapsed()
+    if(result >= 1.e+9): result = None
+    return result
+
+  def r_work_llgi(self, d_min=None, d_max=None, selection=None):
+    """ Feff-based counterpart to r_work(): the observed-amplitude scale
+    sigmaA, ScatFrac, and the LLGI coordinate-refinement target itself
+    are actually fit against (see mmtbx.refinement.targets.
+    target_functor's llgi branch and mmtbx.refinement.llgi_sigmaa/
+    llgi_e_bulk_solvent), rather than f_obs. Requires
+    llgi_r_factors_available() (raises AttributeError on self.llgi_data()
+    being None otherwise -- check first if that is a possibility, e.g.
+    before llgi_data has been attached). r_work() itself is left
+    F-obs-based always -- see llgi_r_factors_available()'s docstring.
+    """
+    return self._r_factor_llgi(
+      type       = "work",
+      d_min      = d_min,
+      d_max      = d_max,
+      d_spacings = self.arrays.d_spacings_work,
+      selection  = selection)
+
+  def r_free_llgi(self, d_min=None, d_max=None, selection=None):
+    """ Feff-based counterpart to r_free() -- see r_work_llgi()'s
+    docstring. """
+    return self._r_factor_llgi(
+      type       = "free",
+      d_min      = d_min,
+      d_max      = d_max,
+      d_spacings = self.arrays.d_spacings_free,
+      selection  = selection)
+
+  def r_all_llgi(self):
+    """ Feff-based counterpart to r_all() -- see r_work_llgi()'s
+    docstring. """
+    return self._r_factor_llgi(type="all")
+
   def _r_factor(self,
                 type="work",
                 d_min=None,
@@ -2647,6 +2893,154 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       free_reflections_per_bin = free_reflections_per_bin,
       interpolation            = interpolation)
 
+  def map_calculation_helper_llgi(self):
+    """ LLGI-native counterpart to map_calculation_helper() -- provides
+    the same (.f_obs, .f_model, .alpha, .beta, .fom) interface that
+    mmtbx.map_tools.combine/electron_density_map consume to build
+    2mFo-DFc/mFo-DFc-style map coefficients, but derived from the LLGI
+    target's OWN already-fitted quantities against Feff, instead of a
+    fresh generic ML alpha/beta/fom fit (maxlik.alpha_beta_est_manager)
+    against f_obs.
+
+    E-SCALE, anisotropy-free (Eeff/Emodel, no ScatFrac) -- see doc/
+    llgi_target_design.md's E-scale map-coefficient note. An earlier
+    version of this method used the F-scale llgi.h formula directly
+    (D = Dobs*(sigmaA/sqrt(ScatFrac))*k against Feff/fmodel.f_model()
+    WITH k_anisotropic); a real-data comparison found that formula's
+    maps degrading at high resolution relative to structure factors
+    computed from the full deposition, traced to a mismatch between
+    phenix's own LS-fitted anisotropic scale and whatever anisotropy
+    phasertng.nacelle assumed when it computed FEFF/DOBS/RESN. Since
+    established elsewhere in this design (mmtbx.refinement.
+    llgi_e_bulk_solvent's own E-scale sigmaA/bulk-solvent target,
+    update_llgi_sigmaa_scatfrac's default estimate_scatfrac_by_likelihood
+    scheme) that sigmaA itself is always determined from anisotropy-free
+    Eeff/Emodel with no ScatFrac term, this method now builds map
+    coefficients from EXACTLY those same quantities, rather than mixing
+    an anisotropy- and ScatFrac-bearing F-scale formula downstream of an
+    anisotropy-free sigmaA fit.
+
+    Requires llgi_r_factors_available() (target=llgi and llgi_data
+    attached, including its .sigmaa -- see that method's docstring, and
+    llgi_data.teps/resn); raises AttributeError otherwise (self.
+    llgi_data() is None, or .sigmaa not yet attached) rather than
+    silently falling back to the ML fit, matching r_work_llgi()'s own
+    contract. llgi_data.scatfrac is NOT required/consulted (there is no
+    ScatFrac term on the E-scale at all -- see llgi_e.h's target_one_h
+    docstring).
+
+    Derivation (mmtbx.refinement.llgi_e_bulk_solvent's build_e_eff/
+    build_e_model/f_model_no_aniso_scale, reused UNCHANGED so this is
+    identical to what sigmaA was actually fit against under the default
+    scheme, not a re-derivation):
+      Eeff   = Feff / (sqrt(TEPS) * RESN)
+      Emodel = f_model_no_aniso_scale / sqrt(EPS * SigmaP)
+      D      = Dobs * sigmaA                       (no ScatFrac, no k)
+      V      = TEPS - D^2
+      X      = 2 * D * Eeff * Emodel / V
+      fom    = I1(X)/I0(X) (acentric) or tanh(X/2) (centric)
+    and the (2*m*Eeff - D*Emodel) bracket rescaled back to the F-scale
+    by sqrt(TEPS)*RESN (Eeff's own normalisation, inverted), giving:
+      2*m*Feff - Dobs*sigmaA*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP)
+        *f_model_no_aniso_scale
+    Packaged for mmtbx.map_tools.combine's existing, UNCHANGED ml_map
+    branch (fc_part = f_model.data()*fc_scale*alpha.data()) by folding
+    ALL of D's scalar rescale factors (sqrt(TEPS)*RESN/sqrt(EPS*SigmaP),
+    not just D=Dobs*sigmaA itself) into .alpha, and setting .f_model to
+    f_model_no_aniso_scale directly (NOT fmodel.f_model() -- deliberately
+    excludes k_anisotropic, unlike every other .f_model in this
+    codebase; combine() only ever multiplies .f_model by .alpha and a
+    scalar fc_scale, so this folding is exact, not an approximation):
+      .f_obs   -- Feff (llgi_data.feff), in place of F-obs.
+      .f_model -- f_model_no_aniso_scale (k_isotropic*(Fcalc+bulk),
+                  k_anisotropic excluded).
+      .alpha   -- Dobs*sigmaA*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP) (D's
+                  usual meaning, D=Dobs*sigmaA, times the F-scale
+                  rescale combine() needs since .f_model here is NOT on
+                  Emodel's own normalised scale).
+      .beta    -- TEPS - D^2 (V, D=Dobs*sigmaA plain, no rescale --
+                  matches llgi_e.h's own "v" exactly, unlike the old
+                  F-scale beta which needed a separate TEPS*RESN^2
+                  factor folded in for ScatFrac reasons that do not
+                  apply here). Exposed for API completeness/diagnostics
+                  (matching map_calculation_helper()'s own .beta), not
+                  consumed by mmtbx.map_tools.combine.
+      .fom     -- I1(X)/I0(X) (acentric) or tanh(X/2) (centric), X =
+                  2*Eeff*D*Emodel/V -- the E-scale Bessel-ratio figure of
+                  merit (llgi_e.h's own d_target_one_h_over_emodel uses
+                  exactly this "bess_term"), evaluated directly here
+                  against Eeff/Emodel/D/V.
+
+    Reflections where D<=0, sigmaA<=0, Dobs<=0, Eeff<=0, Emodel<=0, or
+    V<=0 (llgi_e.h's own "no contribution" guards -- see target_one_h)
+    get fom=0, alpha=0, matching how those reflections contribute
+    nothing to the E-scale LLGI target itself.
+    """
+    if(self.llgi_data() is None):
+      raise AttributeError(
+        "map_calculation_helper_llgi requires llgi_data (FEFF/DOBS/TEPS/"
+        "RESN, plus sigmaa already attached by "
+        "update_llgi_sigmaa_scatfrac) -- none attached.")
+    llgi_data = self.llgi_data()
+    sigmaa = getattr(llgi_data, "sigmaa", None)
+    if(sigmaa is None):
+      raise AttributeError(
+        "map_calculation_helper_llgi requires sigmaa already attached "
+        "to llgi_data (see update_llgi_sigmaa_scatfrac()) -- not yet "
+        "available.")
+    import scitbx.math
+    import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+    class result(object):
+      def __init__(self, fmodel):
+        feff = llgi_data.feff
+        f_obs = fmodel.f_obs()
+        epsilons = f_obs.epsilons().data().as_double()
+        d_star_sq = f_obs.d_star_sq().data()
+        fmnas = llgi_e_bulk_solvent.f_model_no_aniso_scale(fmodel)
+        e_model_result = llgi_e_bulk_solvent.build_e_model(
+          fmnas.data(), epsilons, d_star_sq)
+        e_model_abs = flex.abs(e_model_result.e_model)
+        sigma_p = e_model_result.sigma_p
+        eeff = llgi_e_bulk_solvent.build_e_eff(
+          feff.data(), llgi_data.resn.data())
+        self.f_obs = feff
+        self.f_model = fmnas
+        dobs = llgi_data.dobs.data()
+        sa = sigmaa.data()
+        teps = llgi_data.teps.data()
+        resn = llgi_data.resn.data()
+        n = feff.data().size()
+        # D = Dobs*sigmaA -- no ScatFrac, no k (llgi_e.h's target_one_h
+        # has neither).
+        valid = (sa > 0) & (dobs > 0)
+        d = flex.double(n, 0.0)
+        d.set_selected(valid, dobs * sa)
+        # Rescale D by sqrt(TEPS)*RESN/sqrt(EPS*SigmaP) so that .f_model
+        # (f_model_no_aniso_scale, plain F-scale) times .alpha reproduces
+        # D*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP)*f_model_no_aniso_scale
+        # exactly -- see this method's own docstring.
+        sqrt_teps = flex.sqrt(teps.set_selected(teps <= 0, 1.0))
+        inv_sqrt_eps_sigmap = 1.0 / flex.sqrt(epsilons * sigma_p)
+        alpha_data = d * sqrt_teps * resn * inv_sqrt_eps_sigmap
+        self.alpha = feff.array(data=alpha_data)
+        # V = TEPS - D^2 (llgi_e.h's own "v" exactly -- no extra RESN^2/
+        # ScatFrac factor needed on the E-scale).
+        v = teps - d * d
+        valid = valid & (v > 0)
+        self.beta = feff.array(data=v)
+        valid = valid & (e_model_abs > 0) & (eeff > 0)
+        v_safe = v.set_selected(~valid, 1.0)
+        ec = d * e_model_abs
+        x = 2.0 * eeff * ec / v_safe
+        centric_flags = feff.centric_flags().data()
+        fom = flex.double(n, 0.0)
+        acentric_fom = scitbx.math.bessel_i1_over_i0(x)
+        centric_fom = flex.tanh(x / 2.0)
+        fom.set_selected(valid & ~centric_flags, acentric_fom)
+        fom.set_selected(valid & centric_flags, centric_fom)
+        self.fom = fom
+    return result(fmodel=self)
+
   def f_model_phases_as_hl_coefficients(self, map_calculation_helper,
         k_blur=None, b_blur=None):
     if(map_calculation_helper is not None):
@@ -2710,6 +3104,23 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def map_coefficients(self, **kwds):
     emap = self.electron_density_map()
+    return emap.map_coefficients(**kwds)
+
+  def electron_density_map_llgi(self):
+    """ LLGI-native counterpart to electron_density_map() -- see
+    mmtbx.map_tools.electron_density_map_llgi's docstring and
+    map_calculation_helper_llgi()'s docstring for the full derivation.
+    Requires llgi_r_factors_available() (raises AttributeError via
+    map_calculation_helper_llgi() otherwise, the first time map
+    coefficients are actually computed -- not eagerly here, matching
+    electron_density_map()'s own lazy construction).
+    """
+    return map_tools.electron_density_map_llgi(fmodel = self)
+
+  def map_coefficients_llgi(self, **kwds):
+    """ LLGI-native counterpart to map_coefficients() -- see
+    electron_density_map_llgi()'s docstring. """
+    emap = self.electron_density_map_llgi()
     return emap.map_coefficients(**kwds)
 
   def _get_real_map(self, **kwds):

@@ -128,6 +128,64 @@ class llgi(object):
       centric_flags=self.centric_flags,
       compute_gradients=compute_gradients)
 
+class llgi_e_sigmaa(object):
+  """ Thin wrapper around ext.llgi_e_sigmaa_target_and_gradients (cctbx/
+  xray/targets/llgi_e.h), the E-scale sigmaA(resolution) fit target used
+  by the LLGI bulk-solvent design (doc/llgi_target_design.md, "An
+  E-Scale LLGI Target for Bulk Solvent & SigmaA", sec. 5). Unlike llgi
+  above, this is not a gradient-w.r.t.-Fcalc target for the atomic-
+  parameter LBFGS loop: it is called directly by the Python-side sigmaA
+  B-spline estimator (mmtbx.refinement.llgi_sigmaa), with sigmaa already
+  evaluated per-reflection (the spline curve evaluated at each
+  reflection's resolution), and returns per-reflection d(target)/
+  d(sigmaa) for that estimator's own chain rule through the spline
+  design matrix -- exactly mirroring how llgi_sigmaa_scatfrac_target_
+  and_gradients is used on the F-scale side.
+
+  e_eff, e_model, dobs and sigmaa are plain flex.double arrays (no
+  .data() calls made here -- unlike llgi above, callers are expected to
+  have already extracted .data() from any miller.array inputs, since
+  e_model in particular is typically a derived quantity with no natural
+  miller.array of its own within one inner-loop iteration).
+  """
+
+  def __init__(self, e_eff, dobs, centric_flags):
+    adopt_init_args(self, locals())
+
+  def __call__(self, e_model, sigmaa, selection):
+    return ext.llgi_e_sigmaa_target_and_gradients(
+      e_eff=self.e_eff,
+      selection=selection,
+      e_model=e_model,
+      dobs=self.dobs,
+      sigmaa=sigmaa,
+      centric_flags=self.centric_flags)
+
+class llgi_e_emodel(object):
+  """ Thin wrapper around ext.llgi_e_emodel_target_and_gradients (cctbx/
+  xray/targets/llgi_e.h), the E-scale bulk-solvent fit target used by the
+  LLGI bulk-solvent design (doc/llgi_target_design.md sec. 6). Returns
+  per-reflection d(target)/d(Emodel) for the Python-side chain rule into
+  d(k_sol, B_sol) (via d(Emodel)/d(f_model_no_aniso_scale) and the
+  existing mmtbx.bulk_solvent derivative code), with sigmaA held fixed
+  (already evaluated per-reflection) for this stage.
+
+  Same argument-type convention as llgi_e_sigmaa above: plain flex.double
+  arrays throughout, no .data() calls made here.
+  """
+
+  def __init__(self, e_eff, dobs, centric_flags):
+    adopt_init_args(self, locals())
+
+  def __call__(self, e_model, sigmaa, selection):
+    return ext.llgi_e_emodel_target_and_gradients(
+      e_eff=self.e_eff,
+      selection=selection,
+      e_model=e_model,
+      dobs=self.dobs,
+      sigmaa=sigmaa,
+      centric_flags=self.centric_flags)
+
 class unified_least_squares_residual(object):
   """ A least-square residual functor for refinement against F or F^2. """
 
