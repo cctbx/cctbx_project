@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from cctbx.xray import ext
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-import math
 
 def make_inputs(n_refl, centric, seed=0):
   # Deterministic pseudo-random-ish inputs (no RNG dependency) covering a
