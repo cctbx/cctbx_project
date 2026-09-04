@@ -925,9 +925,14 @@ class UnitCellSentinel(Thread):
           if params.input.feature_vector:
             figure = self.parent.run_window.unitcell_tab.figure
             _params = params
+            # Run the clustering here on the worker thread (heavy numeric work,
+            # no GUI interaction). Only the drawing into the embedded figure must
+            # happen on the main thread, so build the plot manager now and pass
+            # it into the CallAfter closure purely for rendering. Keeping a
+            # reference here also lets us write the covariance pickle below.
+            plots = dbscan_plot_manager(_params)
             def _draw_cluster():
               figure.clear()
-              plots = dbscan_plot_manager(_params)
               plots.wrap_3D_features(fig=figure, embedded=True)
               figure.canvas.draw_idle()
             wx.CallAfter(_draw_cluster)
