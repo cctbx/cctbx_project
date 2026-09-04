@@ -275,18 +275,20 @@ class manager(object):
       mask_value_outside_molecule = 0,
       radii                       = radii,
       wrapping                    = False)
-    # Select the inside of the mask (discard the rest). This is super-sphere
+    # Select the inside of the mask (discard the rest). This is super-sphere.
+    # The mask is read for every atom at once, rather than one call per atom.
+    nx, ny, nz = n_real
+    fx, fy, fz = (fm_ss*self.super_cell_hierarchy.atoms().extract_xyz()).parts()
+    grid_index = ((((fx*nx).iround() % nx) * ny
+                   + ((fy*ny).iround() % ny)) * nz
+                  + ((fz*nz).iround() % nz))
+    inside_atom = mask.as_1d().select(grid_index.as_size_t()) == 1
     for chain in self.super_cell_hierarchy.chains():
       for rg in chain.residue_groups():
-        sites_frac = fm_ss * rg.atoms().extract_xyz()
-        inside = False
-        for site_frac in sites_frac:
-          if(mask.value_at_closest_grid_point(site_frac)==1):
-            inside = True
-            break
-        if(not inside):
+        i_seqs = rg.atoms().extract_i_seq()
+        if(not inside_atom.select(i_seqs).count(True)):
           #chain.remove_residue_group(rg)
-          self.keep_selection.set_selected(rg.atoms().extract_i_seq(), False)
+          self.keep_selection.set_selected(i_seqs, False)
     if(debug_files):
       self.super_cell_hierarchy.write_pdb_file(file_name="ss_cut.pdb",
         crystal_symmetry = box.crystal_symmetry())
