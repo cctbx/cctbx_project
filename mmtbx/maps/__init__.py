@@ -361,19 +361,23 @@ def compute_f_calc(fmodel, params):
 def _llgi_map_coefficients_supported(fmodel, mnm, params):
   """ True when fmodel is in llgi mode AND the requested map is one
   electron_density_map_llgi actually supports (see its docstring):
-  no fill_missing (a separate, F-obs-shaped bulk-solvent-refit
-  machinery not yet ported -- see mmtbx.f_model.manager.
-  map_calculation_helper_llgi's docstring), no anomalous/
-  anomalous_residual/phaser_sad_llg (SAD analysis, a separate future
-  task). Callers should fall back to the ordinary (F-obs/ML) path,
-  NOT silently produce wrong output, whenever this is False but
+  fill_missing is supported only via the default "f_model" method
+  (mmtbx.map_tools.fill_missing_f_obs_llgi/model_missing_reflections_
+  llgi -- Dobs*sigmaA*Emodel*sqrt(TEPS)*RESN in place of D*Fc); the
+  "dsf"/"resolve_dm" alternatives are not yet wired through the LLGI
+  path (see electron_density_map_llgi's own docstring). Also excludes
+  anomalous/anomalous_residual/phaser_sad_llg (SAD analysis, a separate
+  future task). Callers should fall back to the ordinary (F-obs/ML)
+  path, NOT silently produce wrong output, whenever this is False but
   fmodel.llgi_r_factors_available() is True -- see
   map_coefficients_from_fmodel's own fallback-logging.
   """
   if(not fmodel.llgi_r_factors_available()):
     return False
   if(params is not None and getattr(params, "fill_missing_f_obs", False)):
-    return False
+    fill_missing_method = getattr(params, "fill_missing_method", "f_model")
+    if(fill_missing_method not in ("f_model", None, False)):
+      return False
   if(mnm.anomalous or mnm.anomalous_residual or mnm.phaser_sad_llg):
     return False
   return True
@@ -420,6 +424,7 @@ def map_coefficients_from_fmodel(
       map_type           = params.map_type,
       acentrics_scale    = params.acentrics_scale,
       centrics_pre_scale = params.centrics_pre_scale,
+      fill_missing       = params.fill_missing_f_obs,
       isotropize         = params.isotropize,
       exclude_free_r_reflections=params.exclude_free_r_reflections)
   else:

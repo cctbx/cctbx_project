@@ -544,27 +544,93 @@ def exercise_map_coefficients_from_fmodel_dispatches_to_llgi():
   assert approx_equal(
     list(coeffs_direct.data()), list(coeffs_via_dispatch.data()), eps=0.0)
 
-def exercise_map_coefficients_from_fmodel_falls_back_for_fill_missing():
-  # fill_missing_f_obs=True is not yet supported by the LLGI path (see
-  # electron_density_map_llgi's docstring) -- must fall back to the
-  # ordinary ML/F-obs map, NOT raise and NOT silently produce an
-  # unfilled/wrong-basis result.
+def exercise_map_coefficients_from_fmodel_fills_missing_llgi_natively():
+  # fill_missing_f_obs=True (default fill_missing_method="f_model") IS
+  # now supported by the LLGI path (mmtbx.map_tools.fill_missing_f_obs_
+  # llgi/model_missing_reflections_llgi -- Dobs*sigmaA*Emodel*sqrt(TEPS)
+  # *RESN in place of D*Fc) -- must route through electron_density_map_
+  # llgi, NOT fall back to the ordinary ML/F-obs map the way it used to
+  # before that was implemented.
   import mmtbx.maps
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=31)
   coeffs = mmtbx.maps.map_coefficients_from_fmodel(
     params=_mcp("2mFo-DFc", fill_missing_f_obs=True), fmodel=fmodel)
   assert coeffs is not None
-  # Should match the ordinary ML fill_missing path exactly (same basis,
-  # same fill), not the LLGI (Feff-based, no-fill) one.
+  # Should match fmodel.map_coefficients_llgi(..., fill_missing=True)
+  # directly (the actual LLGI-native fill path), NOT the ordinary ML
+  # fill_missing path (different formula/basis entirely).
+  llgi_filled = fmodel.map_coefficients_llgi(
+    map_type="2mFo-DFc", fill_missing=True)
+  assert coeffs.indices().all_eq(llgi_filled.indices())
+  assert approx_equal(
+    list(coeffs.data()), list(llgi_filled.data()), eps=1.e-10)
   ml_coeffs = fmodel.map_coefficients(
     map_type="2mFo-DFc", fill_missing=True)
-  assert coeffs.indices().all_eq(ml_coeffs.indices())
-  assert approx_equal(
-    list(coeffs.data()), list(ml_coeffs.data()), eps=1.e-10)
+  diff = flex.max(flex.abs(coeffs.data() - ml_coeffs.data()))
+  assert diff > 1.e-3, diff
   # And should be MORE reflections than the LLGI (unfilled) coefficients
   # would have, confirming fill_missing actually took effect.
-  llgi_coeffs = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
-  assert coeffs.indices().size() >= llgi_coeffs.indices().size()
+  llgi_unfilled = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
+  assert coeffs.indices().size() >= llgi_unfilled.indices().size()
+
+def build_llgi_fmodel_with_gaps(n_atoms=60, d_min=1.9, seed=0, feff_scale=1.0,
+      keep_fraction=0.85):
+  """ Like build_llgi_fmodel, but with a random subset of reflections
+  DROPPED after building the (otherwise complete, by construction --
+  x.structure_factors() generates every symmetry-allowed index at that
+  resolution, so build_fmodel's own fmodel never has genuinely missing
+  reflections) starting set -- giving model_missing_reflections_llgi/
+  model_missing_reflections something real to fill back in, for
+  exercise_llgi_fill_missing_matches_hand_computation.
+  """
+  random.seed(seed + 500)
+  fmodel = build_fmodel(n_atoms=n_atoms, d_min=d_min, seed=seed)
+  f_obs = fmodel.f_obs()
+  keep_sel = flex.bool([
+    random.random() < keep_fraction for i in range(f_obs.indices().size())])
+  fmodel = fmodel.select(keep_sel)
+  llgi_data = synthetic_llgi_data(fmodel, seed=seed + 100,
+    feff_scale=feff_scale)
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  fmodel.update_llgi_sigmaa_scatfrac()
+  return fmodel
+
+def exercise_llgi_fill_missing_matches_hand_computation():
+  # Verify model_missing_reflections_llgi.get_missing()'s actual formula
+  # end to end: for each MISSING reflection (lone to the unfilled LLGI
+  # coefficients), the fill value's MAGNITUDE must equal sigmaA(d)*
+  # |Emodel|*sqrt(TEPS)*RESN (TEPS==1, Dobs treated as 1 -- see that
+  # class's own docstring), computed independently here from mmtbx.
+  # refinement.llgi_e_bulk_solvent's own building blocks (reused, since
+  # re-deriving SigmaP/B-spline-sigmaA fitting from scratch a second,
+  # independent way is out of scope for this check -- this test's
+  # purpose is confirming the ASSEMBLY, not re-verifying machinery
+  # already covered by mmtbx.regression.tst_llgi_e_bulk_solvent).
+  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+  from mmtbx import map_tools as mt
+  fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
+  llgi_unfilled = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
+  llgi_filled = fmodel.map_coefficients_llgi(
+    map_type="2mFo-DFc", fill_missing=True)
+  assert llgi_filled.indices().size() > llgi_unfilled.indices().size(), (
+    "test fixture has no genuinely missing reflections to check against "
+    "-- increase d_min or n_atoms so some systematic absences/gaps "
+    "exist.")
+  missing_only = llgi_filled.lone_set(llgi_unfilled)
+  assert missing_only.indices().size() > 0
+
+  mro = mt.model_missing_reflections_llgi(fmodel=fmodel, coeffs=llgi_unfilled)
+  missing_computed = mro.get_missing()
+  # Match indices between the two independently-obtained missing sets
+  # (llgi_filled's lone_set vs get_missing()'s own return) before
+  # comparing magnitudes.
+  a, b = missing_only.common_sets(missing_computed)
+  assert a.indices().size() == missing_only.indices().size(), (
+    "index mismatch between complete_with's lone_set and get_missing()'s "
+    "own f_calc_missing-based index set")
+  assert approx_equal(
+    list(flex.abs(a.data())), list(flex.abs(b.data())), eps=1.e-6)
 
 def exercise_map_coefficients_from_fmodel_ml_target_unaffected():
   # An ordinary ml-target fmodel (no llgi_data at all) must be routed
@@ -584,25 +650,38 @@ def exercise_map_coefficients_from_fmodel_ml_target_unaffected():
 
 def exercise_compute_map_coefficients_mixed_dispatch():
   # compute_map_coefficients (the class driver.py's .mtz writer uses)
-  # must handle a params list with a MIX of LLGI-supported (mFo-DFc) and
-  # LLGI-unsupported (2mFo-DFc with fill_missing_f_obs=True) requests in
-  # the SAME call, each routed correctly -- this is the actual default
-  # phenix.refine map list shape (customizations/maps.params).
+  # must handle a params list with a MIX of LLGI-supported (mFo-DFc,
+  # 2mFo-DFc with fill_missing_f_obs=True -- now natively supported, see
+  # exercise_map_coefficients_from_fmodel_fills_missing_llgi_natively)
+  # and LLGI-unsupported (anomalous difference map -- SAD analysis, not
+  # ported to LLGI) requests in the SAME call, each routed correctly.
   import mmtbx.maps
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=33)
   params = [
     _mcp("2mFo-DFc", fill_missing_f_obs=True),
     _mcp("mFo-DFc", fill_missing_f_obs=False),
+    _mcp("anom", fill_missing_f_obs=False),
   ]
   for p in params:
     p.format = ["mtz"]
   cmo = mmtbx.maps.compute_map_coefficients(fmodel=fmodel, params=params)
+  # Only 2 entries: compute_map_coefficients only appends a map_coeffs
+  # entry when coeffs is not None (see its own source) -- the anomalous
+  # request (this fmodel's f_obs is non-anomalous, so BOTH the LLGI and
+  # ML paths return None for it) contributes nothing to the list. The
+  # point of including it here is that dispatch doesn't raise/crash on
+  # an unsupported map type mixed in with supported ones, not that it
+  # produces a placeholder entry.
   assert len(cmo.map_coeffs) == 2
-  # First (2mFo-DFc, fill_missing=True) should match the ML fallback.
-  ml_2fofc = fmodel.map_coefficients(map_type="2mFo-DFc", fill_missing=True)
+  # First (2mFo-DFc, fill_missing=True) should now match the LLGI-native
+  # fill path, NOT the ML fallback (that was the old, since-superseded
+  # behaviour).
+  llgi_2fofc_filled = fmodel.map_coefficients_llgi(
+    map_type="2mFo-DFc", fill_missing=True)
   assert approx_equal(
-    list(cmo.map_coeffs[0].data()), list(ml_2fofc.data()), eps=1.e-10)
-  # Second (mFo-DFc, no fill) should match the LLGI path.
+    list(cmo.map_coeffs[0].data()), list(llgi_2fofc_filled.data()),
+    eps=1.e-10)
+  # Second (mFo-DFc, no fill) should match the (unfilled) LLGI path.
   llgi_fofc = fmodel.map_coefficients_llgi(map_type="mFo-DFc")
   assert approx_equal(
     list(cmo.map_coeffs[1].data()), list(llgi_fofc.data()), eps=1.e-10)
@@ -622,7 +701,8 @@ def exercise():
   exercise_map_coefficients_llgi_rejects_anomalous()
   exercise_mfo_dfc_llgi_differs_from_2mfo_dfc_llgi()
   exercise_map_coefficients_from_fmodel_dispatches_to_llgi()
-  exercise_map_coefficients_from_fmodel_falls_back_for_fill_missing()
+  exercise_map_coefficients_from_fmodel_fills_missing_llgi_natively()
+  exercise_llgi_fill_missing_matches_hand_computation()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()
   exercise_compute_map_coefficients_mixed_dispatch()
   print("OK")
