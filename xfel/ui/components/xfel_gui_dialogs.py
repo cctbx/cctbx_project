@@ -3704,7 +3704,6 @@ class DatasetStagePanel(wx.Panel):
                                                      ghost_button=False)
       self._cluster_paths = []
       self._populate_cluster_choices()
-      self.chk_save_expt = wx.CheckBox(self, label='Save experiments and reflections')
       self._add_body(self.min_corr)
       self._add_body(self.rel_tol)
       self._add_body(self.chk_use_cluster)
@@ -3712,7 +3711,6 @@ class DatasetStagePanel(wx.Panel):
       self._add_body(self.cluster_component)
       self._add_body(self.cluster_mahalanobis)
       self._add_body(self.sigma)
-      self._add_body(self.chk_save_expt)
       self.Bind(wx.EVT_CHECKBOX, lambda e: self._sync_cluster_enabled(),
                 self.chk_use_cluster)
       self.Bind(wx.EVT_BUTTON, self.onBrowseCluster, self.btn_browse_cluster)
@@ -3827,7 +3825,6 @@ class DatasetStagePanel(wx.Panel):
       sv(self.min_corr.ctr, p.filter.outlier.min_corr)
       sv(self.rel_tol.ctr, p.filter.unit_cell.value.relative_length_tolerance)
       sv(self.sigma.ctr, p.select.significance_filter.sigma)
-      self.chk_save_expt.SetValue(bool(p.output.save_experiments_and_reflections))
       # unit-cell cluster filter mode
       cov = p.filter.unit_cell.cluster.covariance
       self.chk_use_cluster.SetValue(p.filter.unit_cell.algorithm == 'cluster')
@@ -3885,12 +3882,12 @@ class DatasetStagePanel(wx.Panel):
       merging.d_min = %s
       merging.merge_anomalous = %s
       statistics.n_bins = %s
-      output.save_experiments_and_reflections = %s
+      output.save_experiments_and_reflections = True
       """ % (str_or_none(self.min_corr.ctr),
              filter_lines,
              str_or_none(self.sigma.ctr),
              model_lines, s['resolution_scalar'], s['d_min'],
-             s['merge_anomalous'], s['n_bins'], self.chk_save_expt.GetValue()))
+             s['merge_anomalous'], s['n_bins']))
     if t == 'merging':
       return ("""
       %s
