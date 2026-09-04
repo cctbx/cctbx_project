@@ -6,7 +6,6 @@ from cctbx.xray import ext
 import mmtbx.f_model
 from libtbx import group_args
 from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry
 import random, math
 
 def build_fmodel(n_atoms=60, d_min=1.9, seed=0, space_group="P 21 21 21"):
