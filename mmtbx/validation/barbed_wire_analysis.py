@@ -69,7 +69,13 @@ class single_contact():
     self.contactId = ",".join([self.srcAtomid, self.trgAtomid])
 
 #TODO update to Reduce2 and Probe2 - clashscore2 will be likely template
-def do_probe(model):
+def do_probe(model, hydrogens="reduce", contacts="probe"):
+  """Contacts for one model. hydrogens selects reduce or reduce2, contacts
+  selects probe or probe2; the defaults are what barbed wire has always run.
+
+  reduce2 changes 1-3% of hydrogens, all on rotatable OH, SH and NH3 groups,
+  which is enough to move a residue across the packing_quality >= 1 boundary.
+  reduce2 + probe2 costs roughly 8-12x the default on the contact step."""
   from libtbx import easy_run
   import shutil
   import tempfile
@@ -80,15 +86,41 @@ def do_probe(model):
   tmp_dir = tempfile.mkdtemp(prefix='barbed_wire_probe_')
   try:
     pdb_path = os.path.join(tmp_dir, "probe_contacts_temp.pdb")
-    with open(pdb_path, "w") as probe_temp:
-      print(model.get_hierarchy().as_pdb_string(), file=probe_temp)
-    cmd = 'phenix.reduce -noflip "%s"' % pdb_path
-    reduce_run = easy_run.fully_buffered(cmd).stdout_lines
-    with open(pdb_path, "w") as probe_temp:
-      for line in reduce_run:
-        print(line, file=probe_temp)
-    cmd = 'phenix.probe -u -con -self -mc ALL "%s"' % pdb_path
-    probe_run = easy_run.fully_buffered(cmd).stdout_lines
+    if hydrogens == "reduce2":
+      from mmtbx.hydrogens import place_and_optimize_hydrogens
+      # On a copy: reduce2 works from the model object, and the analyses after
+      # add_contacts() expect the heavy-atom model they were handed.
+      h_model = model.deep_copy()
+      h_model.add_crystal_symmetry_if_necessary()
+      h_model = place_and_optimize_hydrogens(
+        model=h_model, do_flips=False, nuclear=False, keep_existing_H=True,
+        raise_on_missing=False, stop_for_unknowns=False, log=null_out())
+      with open(pdb_path, "w") as probe_temp:
+        print(h_model.get_hierarchy().as_pdb_string(), file=probe_temp)
+    else:
+      with open(pdb_path, "w") as probe_temp:
+        print(model.get_hierarchy().as_pdb_string(), file=probe_temp)
+      cmd = 'phenix.reduce -noflip "%s"' % pdb_path
+      reduce_run = easy_run.fully_buffered(cmd).stdout_lines
+      with open(pdb_path, "w") as probe_temp:
+        for line in reduce_run:
+          print(line, file=probe_temp)
+    if contacts == "probe2":
+      # Equivalent to probe1's -u -con -self -mc ALL. Two defaults differ:
+      # probe2 restricts source_selection to occupancy > 0.33, and it enables
+      # include_mainchain_mainchain, which probe1 leaves off without -mc.
+      raw_path = os.path.join(tmp_dir, "probe_contacts_temp.txt")
+      cmd = ('mmtbx.probe2 approach=self source_selection="all" '
+             'output.format=raw output.condensed=True '
+             'output.file_name="%s" "%s"' % (raw_path, pdb_path))
+      easy_run.fully_buffered(cmd)
+      probe_run = []
+      if os.path.exists(raw_path):
+        with open(raw_path) as raw:
+          probe_run = raw.read().splitlines()
+    else:
+      cmd = 'phenix.probe -u -con -self -mc ALL "%s"' % pdb_path
+      probe_run = easy_run.fully_buffered(cmd).stdout_lines
   finally:
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -214,7 +246,9 @@ class predicted_residue():
             "ca_xyz":self.caxyz}
 
 class barbed_wire_analysis():
-  def __init__(self, model):
+  def __init__(self, model, hydrogens="reduce", contacts="probe"):
+    self.hydrogens = hydrogens
+    self.contacts = contacts
     self.res_dict = {}  # keyed for easy lookup
     self.res_list = {}  # separated by chain, ordered for finding sequence-related residues
     self.chunk_list = []
@@ -335,7 +369,7 @@ class barbed_wire_analysis():
           self.res_dict[resid].out_omega = True
 
   def add_contacts(self, model):
-    contacts = do_probe(model)
+    contacts = do_probe(model, hydrogens=self.hydrogens, contacts=self.contacts)
     for c in contacts.values():
       if self.are_same_ss_element(c.srcResid, c.trgResid):
         # only interested in packing between different elements

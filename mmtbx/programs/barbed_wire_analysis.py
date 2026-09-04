@@ -32,6 +32,16 @@ output
     .short_caption = Choose modes for selection string or file
     .help = Choose modes for selection string or file, subset of 123456, joined by +, eg 1+3
 }
+
+hydrogens = *reduce reduce2
+  .type = choice
+  .short_caption = Hydrogen placement
+  .help = Which hydrogen placement to run before contacts are measured
+
+contacts = *probe probe2
+  .type = choice
+  .short_caption = Contact measurement
+  .help = Which contact program to measure packing with
 ''' #+ Helpers.probe_phil_parameters
 
 class Program(ProgramTemplate):
@@ -69,7 +79,8 @@ phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file modes
 
   def run(self):
     model = self.data_manager.get_model()
-    bwa = barbed_wire_analysis.barbed_wire_analysis(model)
+    bwa = barbed_wire_analysis.barbed_wire_analysis(
+      model, hydrogens=self.params.hydrogens, contacts=self.params.contacts)
     if self.params.output.file_name:
       out = open(self.params.output.file_name, "w")
     elif self.params.output.filename:
