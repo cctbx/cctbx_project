@@ -3679,11 +3679,43 @@ class DatasetStagePanel(wx.Panel):
       self.sigma = gctr.TextButtonCtrl(self, label='Significance filter sigma:',
                                         label_size=(220, -1), label_style='normal',
                                         ghost_button=False)
+      # Unit-cell cluster filter (consumes the covariance pickle written by the
+      # Unit Cells tab). When enabled it drives filter.unit_cell.algorithm =
+      # cluster; when disabled the plain relative-tolerance (value) filter above
+      # is used instead. The two modes are mutually exclusive.
+      self.chk_use_cluster = wx.CheckBox(
+        self, label='Filter by unit-cell cluster (from Unit Cells tab)')
+      self.cluster_file_panel = wx.Panel(self)
+      cf_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      cf_label = wx.StaticText(self.cluster_file_panel, label='Cluster file:',
+                               size=(220, -1))
+      self.cluster_file = wx.Choice(self.cluster_file_panel, choices=[])
+      self.btn_browse_cluster = gctr.Button(self.cluster_file_panel, label='Browse...')
+      cf_sizer.Add(cf_label, flag=wx.ALIGN_CENTER_VERTICAL)
+      cf_sizer.Add(self.cluster_file, proportion=1,
+                   flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=5)
+      cf_sizer.Add(self.btn_browse_cluster, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.cluster_file_panel.SetSizer(cf_sizer)
+      self.cluster_component = gctr.TextButtonCtrl(self, label='Cluster component:',
+                                                   label_size=(220, -1), label_style='normal',
+                                                   ghost_button=False)
+      self.cluster_mahalanobis = gctr.TextButtonCtrl(self, label='Mahalanobis cutoff:',
+                                                     label_size=(220, -1), label_style='normal',
+                                                     ghost_button=False)
+      self._cluster_paths = []
+      self._populate_cluster_choices()
       self.chk_save_expt = wx.CheckBox(self, label='Save experiments and reflections')
       self._add_body(self.min_corr)
       self._add_body(self.rel_tol)
+      self._add_body(self.chk_use_cluster)
+      self._add_body(self.cluster_file_panel)
+      self._add_body(self.cluster_component)
+      self._add_body(self.cluster_mahalanobis)
       self._add_body(self.sigma)
       self._add_body(self.chk_save_expt)
+      self.Bind(wx.EVT_CHECKBOX, lambda e: self._sync_cluster_enabled(),
+                self.chk_use_cluster)
+      self.Bind(wx.EVT_BUTTON, self.onBrowseCluster, self.btn_browse_cluster)
     elif t == 'merging':
       note = wx.StaticText(self, label='Uses the shared parameters above '
                                        '(model, d_min, resolution scalar, bins, '
@@ -3701,6 +3733,62 @@ class DatasetStagePanel(wx.Panel):
         self.phenix_box.SetValue(DATASET_PHENIX_TEMPLATE)
       self._add_body(self.phenix_box)
 
+  # -- cluster filter helpers (scaling stage only) ---------------------------
+  def _discover_cluster_files(self):
+    ''' Cluster covariance pickles written by the Unit Cells tab, i.e.
+        <output_folder>/cluster/cluster_*.pickle. '''
+    import glob
+    out = self.db.params.output_folder
+    if not out:
+      return []
+    return sorted(glob.glob(os.path.join(out, 'cluster', 'cluster_*.pickle')))
+
+  def _populate_cluster_choices(self, extra=None):
+    ''' (Re)fill the cluster-file dropdown, keeping full paths in _cluster_paths.
+        extra lets an out-of-tree path (e.g. one already stored on the task, or
+        chosen via Browse) appear in the list even if it is not under
+        output_folder/cluster. '''
+    paths = self._discover_cluster_files()
+    if extra not in (None, 'None', '') and extra not in paths:
+      paths.append(extra)
+    self._cluster_paths = paths
+    self.cluster_file.Set([os.path.basename(p) for p in paths])
+
+  def _selected_cluster_path(self):
+    idx = self.cluster_file.GetSelection()
+    if idx == wx.NOT_FOUND or idx >= len(self._cluster_paths):
+      return None
+    return self._cluster_paths[idx]
+
+  def _select_cluster_path(self, path):
+    self._populate_cluster_choices(extra=path)
+    if path not in (None, 'None', '') and path in self._cluster_paths:
+      self.cluster_file.SetSelection(self._cluster_paths.index(path))
+
+  def _sync_cluster_enabled(self):
+    ''' Enable exactly one of the two unit-cell filter modes. Assumes the stage
+        itself is enabled (only called in that case). '''
+    use = self.chk_use_cluster.GetValue()
+    self.rel_tol.Enable(not use)
+    for w in (self.cluster_file_panel, self.cluster_component,
+              self.cluster_mahalanobis):
+      w.Enable(use)
+
+  def onBrowseCluster(self, e):
+    out = self.db.params.output_folder
+    cluster_dir = os.path.join(out, 'cluster') if out else None
+    if cluster_dir and os.path.isdir(cluster_dir):
+      default_dir = cluster_dir
+    else:
+      default_dir = out or os.getcwd()
+    dlg = wx.FileDialog(self, message='Select cluster covariance pickle',
+                        defaultDir=default_dir,
+                        wildcard='Pickle files (*.pickle)|*.pickle|All files (*)|*',
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+      self._select_cluster_path(dlg.GetPath())
+    dlg.Destroy()
+
   # -- state -----------------------------------------------------------------
   def is_enabled(self):
     return True if self.enable_chk is None else self.enable_chk.GetValue()
@@ -3717,6 +3805,10 @@ class DatasetStagePanel(wx.Panel):
     # user can link/unlink even when a stage is temporarily disabled.
     if self.btn_link is not None:
       self.btn_link.Enable(True)
+    # Within an enabled scaling stage, only one unit-cell filter mode is active.
+    if state and self.task_type == 'scaling' and \
+       getattr(self, 'chk_use_cluster', None) is not None:
+      self._sync_cluster_enabled()
 
   # -- PHIL sync (mirrors TrialDialog) ---------------------------------------
   def sync_controls(self):
@@ -3736,6 +3828,12 @@ class DatasetStagePanel(wx.Panel):
       sv(self.rel_tol.ctr, p.filter.unit_cell.value.relative_length_tolerance)
       sv(self.sigma.ctr, p.select.significance_filter.sigma)
       self.chk_save_expt.SetValue(bool(p.output.save_experiments_and_reflections))
+      # unit-cell cluster filter mode
+      cov = p.filter.unit_cell.cluster.covariance
+      self.chk_use_cluster.SetValue(p.filter.unit_cell.algorithm == 'cluster')
+      self._select_cluster_path(cov.file)
+      sv(self.cluster_component.ctr, cov.component)
+      sv(self.cluster_mahalanobis.ctr, cov.mahalanobis)
 
   def _build_phil_str(self):
     ''' friendly controls (+ shared params) -> PHIL string fragment '''
@@ -3761,9 +3859,26 @@ class DatasetStagePanel(wx.Panel):
                      "scaling.space_group = None"
                      % (s['model'] or 'None'))
     if t == 'scaling':
+      # Two mutually exclusive unit-cell filter modes. Emit both algorithm keys
+      # either way so switching modes overwrites the other in the working scope.
+      if self.chk_use_cluster.GetValue():
+        filter_lines = ("filter.algorithm = unit_cell\n"
+                        "      filter.unit_cell.algorithm = cluster\n"
+                        "      filter.unit_cell.cluster.algorithm = covariance\n"
+                        "      filter.unit_cell.cluster.covariance.file = %s\n"
+                        "      filter.unit_cell.cluster.covariance.component = %s\n"
+                        "      filter.unit_cell.cluster.covariance.mahalanobis = %s"
+                        % (self._selected_cluster_path() or 'None',
+                           str_or_none(self.cluster_component.ctr),
+                           str_or_none(self.cluster_mahalanobis.ctr)))
+      else:
+        filter_lines = ("filter.algorithm = unit_cell\n"
+                        "      filter.unit_cell.algorithm = value\n"
+                        "      filter.unit_cell.value.relative_length_tolerance = %s"
+                        % str_or_none(self.rel_tol.ctr))
       return ("""
       filter.outlier.min_corr = %s
-      filter.unit_cell.value.relative_length_tolerance = %s
+      %s
       select.significance_filter.sigma = %s
       %s
       scaling.resolution_scalar = %s
@@ -3772,7 +3887,7 @@ class DatasetStagePanel(wx.Panel):
       statistics.n_bins = %s
       output.save_experiments_and_reflections = %s
       """ % (str_or_none(self.min_corr.ctr),
-             str_or_none(self.rel_tol.ctr),
+             filter_lines,
              str_or_none(self.sigma.ctr),
              model_lines, s['resolution_scalar'], s['d_min'],
              s['merge_anomalous'], s['n_bins'], self.chk_save_expt.GetValue()))
