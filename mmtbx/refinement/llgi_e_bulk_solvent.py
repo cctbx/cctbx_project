@@ -167,7 +167,7 @@ def _auto_kernel_width(d_star_sq, number=50):
   return kernel_width
 
 def build_sigma_p(f_model_no_aniso_scale, d_star_sq, n_nodes=15,
-      auto_kernel_number=50):
+      auto_kernel_number=50, d_star_sq_eval=None):
   """ SigmaP(d*^2): a smoothed, EPSILON-FREE resolution trend of
   |f_model_no_aniso_scale|^2, per doc/llgi_target_design.md's E-scale
   design note sec. 4. Deliberately calls the low-level mmtbx.scaling.
@@ -194,9 +194,26 @@ def build_sigma_p(f_model_no_aniso_scale, d_star_sq, n_nodes=15,
   bandwidth parameter).
 
   Returns a flex.double, one SigmaP value per input reflection (evaluated
-  at that reflection's own d_star_sq). Recomputed once per inner-loop
-  iteration (sec. 7 of the design note), since f_model_no_aniso_scale
-  changes with the bulk-solvent model.
+  at that reflection's own d_star_sq, or at d_star_sq_eval instead if
+  given -- see below). Recomputed once per inner-loop iteration (sec. 7
+  of the design note), since f_model_no_aniso_scale changes with the
+  bulk-solvent model.
+
+  d_star_sq_eval: if given, evaluate the FITTED curve (fit against
+  f_model_no_aniso_scale/d_star_sq as usual) at this DIFFERENT set of
+  d_star_sq values instead of the ones the curve was fit against -- for
+  a genuinely disjoint reflection set with no f_model_no_aniso_scale of
+  its own (e.g. mmtbx.map_tools.model_missing_reflections_llgi's missing
+  -reflection map-coefficient fill, which has no observed data at all to
+  build a fresh SigmaP fit from). Clamped to [d_star_sq.min(),
+  d_star_sq.max()] before evaluating -- unlike the B-spline sigmaA fit's
+  own scipy extrapolate=False (silently zero outside the fit range),
+  chebyshev_polynome IS a genuine polynomial and will extrapolate
+  without complaint if asked to, which for a resolution trend fit this
+  way could blow up arbitrarily outside the range it was actually
+  constrained by data; clamping to the nearest endpoint's fitted value
+  avoids that failure mode, matching e_sigmaa_target_evaluator.
+  evaluate_at's own clamping convention.
   """
   d_star_sq_np = d_star_sq.as_numpy_array()
   d_star_sq_low = float(d_star_sq_np.min())
@@ -224,7 +241,14 @@ def build_sigma_p(f_model_no_aniso_scale, d_star_sq, n_nodes=15,
     n_nodes, nodes, log_mean_at_nodes)
   poly = chebyshev_polynome(
     n_nodes, d_star_sq_low, d_star_sq_high, fit.coefs)
-  fitted_log = poly.f(d_star_sq)
+  if(d_star_sq_eval is None):
+    eval_at = d_star_sq
+  else:
+    import numpy as np
+    eval_np = np.clip(
+      d_star_sq_eval.as_numpy_array(), d_star_sq_low, d_star_sq_high)
+    eval_at = flex.double(eval_np.tolist())
+  fitted_log = poly.f(eval_at)
   return flex.exp(fitted_log)
 
 def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
@@ -592,7 +616,7 @@ class e_sigmaa_target_evaluator(object):
   def __init__(self,
         e_eff, test_selection, e_model, dobs, centric_flags,
         sigmaa_design, n_sigmaa_coeffs, max_iterations=100,
-        curvature_weight=0.0):
+        curvature_weight=0.0, spline_degree=3):
     self.e_eff = e_eff
     self.test_selection = test_selection
     self.e_model = e_model
@@ -601,6 +625,14 @@ class e_sigmaa_target_evaluator(object):
     self.sigmaa_design = sigmaa_design  # numpy array, (n_refl, n_coeffs)
     self.n_sigmaa_coeffs = n_sigmaa_coeffs
     self.curvature_weight = curvature_weight
+    # Only needed by evaluate_at() (re-evaluating the fitted curve at
+    # NEW d_star_sq values, e.g. missing reflections for map-coefficient
+    # fill-missing) -- NOT used anywhere in the fit itself, which only
+    # ever consults the already-built sigmaa_design above; kept as a
+    # plain default-valued constructor argument (not re-derived from
+    # sigmaa_design, which has no record of what degree built it) so
+    # existing callers that don't pass it keep working unchanged.
+    self._spline_degree = spline_degree
     # Unconstrained starting point: z=0 maps (via the sigmoid) to
     # sigmaA=0.5, a neutral starting guess (matches llgi_sigmaa's).
     self.x = flex.double(n_sigmaa_coeffs, 0.0)
@@ -644,6 +676,44 @@ class e_sigmaa_target_evaluator(object):
     sigmaa, _ = self._current_sigmaa()
     return flex.double(sigmaa)
 
+  def evaluate_at(self, d_star_sq, x_range):
+    """ Evaluate the ALREADY-FITTED sigmaA(d) curve (this evaluator's own
+    converged B-spline coefficients, self.x) at an arbitrary new set of
+    d_star_sq values -- e.g. a missing-reflection index set, for map-
+    coefficient fill-missing (mmtbx.map_tools.model_missing_reflections_
+    llgi) -- rather than the design matrix this evaluator was actually
+    fit against (self.sigmaa_design, built from the OBSERVED reflection
+    set's own d_star_sq).
+
+    x_range MUST be the same (x_min, x_max) pair the fit's own design
+    matrix was built with (see _b_spline_design_matrix's own docstring
+    on why this must be passed explicitly and consistently) -- the
+    caller (estimate_e_sigmaa) records this as .x_range in its own
+    result for exactly this purpose.
+
+    Points outside x_range are CLAMPED to the nearest endpoint's fitted
+    value, not extrapolated: _b_spline_design_matrix builds its design
+    matrix with scipy's extrapolate=False, so a genuinely out-of-range
+    point would otherwise silently get an all-zero design row (and
+    hence sigmaA=_sigmoid(0)=0.5, a meaningless default, not a curve
+    value) -- clamping avoids that failure mode for e.g. a missing
+    reflection at lower resolution than anything in the observed set
+    (a plausible case for systematic absences / detector gaps).
+
+    Returns a flex.double, one sigmaA value per input d_star_sq.
+    """
+    import numpy as np
+    d_star_sq_np = np.asarray(d_star_sq, dtype=float)
+    x_min, x_max = x_range
+    d_star_sq_clamped = np.clip(d_star_sq_np, x_min, x_max)
+    design = _b_spline_design_matrix(
+      d_star_sq_clamped, self.n_sigmaa_coeffs, self._spline_degree,
+      x_range=x_range)
+    coeffs = np.array(self.x)
+    z = design.dot(coeffs)
+    sigmaa, _ = _sigmoid(z)
+    return flex.double(sigmaa)
+
 def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
       d_star_sq, n_coeffs=8, spline_degree=3, max_iterations=100,
       curvature_weight=0.0):
@@ -653,8 +723,14 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
   fitted curve at every reflection.
 
   Returns a group_args with .sigmaa (flex.double, one value per input
-  reflection) and .target (final fitted LLGI target value on the test
-  set, for diagnostics/logging).
+  reflection), .target (final fitted LLGI target value on the test set,
+  for diagnostics/logging), .x_range (the (d_star_sq_min, d_star_sq_max)
+  the fit's B-spline design matrix was actually built against), and
+  .evaluate_at (a bound method, evaluator.evaluate_at, for re-evaluating
+  this SAME fitted curve at NEW d_star_sq values -- e.g. mmtbx.map_tools
+  .model_missing_reflections_llgi's own missing-reflection fill; pass
+  x_range=result.x_range to it, exactly as documented on evaluate_at's
+  own docstring).
   """
   n_refl = e_eff.size()
   assert r_free_flags.size() == n_refl
@@ -667,8 +743,10 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     raise RuntimeError(
       "No R-free/test-set reflections available for the E-scale LLGI "
       "sigmaA fit.")
+  d_star_sq_np = d_star_sq.as_numpy_array()
+  x_range = (float(d_star_sq_np.min()), float(d_star_sq_np.max()))
   sigmaa_design = _b_spline_design_matrix(
-    d_star_sq.as_numpy_array(), n_coeffs, spline_degree)
+    d_star_sq_np, n_coeffs, spline_degree, x_range=x_range)
   evaluator = e_sigmaa_target_evaluator(
     e_eff=e_eff,
     test_selection=r_free_flags,
@@ -678,12 +756,15 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     sigmaa_design=sigmaa_design,
     n_sigmaa_coeffs=n_coeffs,
     max_iterations=max_iterations,
-    curvature_weight=curvature_weight)
+    curvature_weight=curvature_weight,
+    spline_degree=spline_degree)
   sigmaa = evaluator.sigmaa()
   final_result = xray_ext.llgi_e_sigmaa_target_and_gradients(
     e_eff=e_eff, selection=r_free_flags, e_model=e_model, dobs=dobs,
     sigmaa=sigmaa, centric_flags=centric_flags)
-  return group_args(sigmaa=sigmaa, target=final_result.target())
+  return group_args(
+    sigmaa=sigmaa, target=final_result.target(), x_range=x_range,
+    evaluate_at=evaluator.evaluate_at)
 
 def estimate_e_sigmaa_fixed_bulk_solvent(
       fmodel, dobs, feff, resn, params=None):
