@@ -189,9 +189,44 @@ def exercise_symlinks_in_relocatable_path():
     l = relocatable_path(absolute_path(cwd), link, resolve_symlinks=False)
     assert abs(l) == link
 
+def exercise_relocatable_path_ordering():
+  """
+  relocatable_path must be sortable (libtbx.refresh sorts include files).
+  """
+  import os
+  from libtbx.path import absolute_path, relocatable_path
+  anchor = absolute_path(os.getcwd())
+  b = relocatable_path(anchor, "dispatcher_include_b.sh")
+  a = relocatable_path(anchor, "dispatcher_include_a.sh")
+  c = relocatable_path(anchor, "dispatcher_include_c.sh")
+  # ordering follows the absolute path
+  assert a < b
+  assert not (b < a)
+  assert b > a
+  assert not (a < a)
+  paths = [b, c, a]
+  paths.sort()
+  assert [p.basename() for p in paths] == [
+    "dispatcher_include_a.sh",
+    "dispatcher_include_b.sh",
+    "dispatcher_include_c.sh"]
+  assert sorted([c, a, b])[0] is a
+  assert min(b, c, a) is a
+  # paths on different anchors still order by absolute path
+  other = relocatable_path(absolute_path(os.sep), "zzz")
+  assert (a < other) == (abs(a) < abs(other))
+  # comparing against a non-path raises TypeError, not AttributeError
+  try:
+    a < "dispatcher_include_a.sh"
+  except TypeError:
+    pass
+  else:
+    raise AssertionError("expected TypeError comparing path with str")
+
 def run(args):
   assert len(args) == 0
   exercise_relpath()
+  exercise_relocatable_path_ordering()
   exercise_move_old_create_new_directory()
   from libtbx.path import random_new_directory_name
   assert len(random_new_directory_name()) == len("tmp_dir_00000000")
