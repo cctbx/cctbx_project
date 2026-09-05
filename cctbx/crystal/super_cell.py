@@ -167,7 +167,7 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
   return siiu, list(dict.fromkeys(normalised.values()))
 
 def sym_equiv_sites_cart(sites_cart, unit_cell, rt_mx, selection=None):
-  """Cartesian sites imaged by rt_mx.
+  """The symmetry-equivalent sites rt_mx generates.
 
   Parameters
   ----------
@@ -175,7 +175,7 @@ def sym_equiv_sites_cart(sites_cart, unit_cell, rt_mx, selection=None):
   unit_cell : cctbx.uctbx.unit_cell
   rt_mx : cctbx.sgtbx.rt_mx
   selection : flex.size_t, optional
-      The sites to image; all of them by default.
+      The sites to transform; all of them by default.
 
   Returns
   -------
