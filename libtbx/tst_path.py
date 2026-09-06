@@ -213,7 +213,9 @@ def exercise_relocatable_path_ordering():
   assert sorted([c, a, b])[0] is a
   assert min(b, c, a) is a
   # paths on different anchors still order by absolute path
-  other = relocatable_path(absolute_path(os.sep), "zzz")
+  # (os.path.abspath(os.sep) gives the drive root on Windows; a bare
+  # os.sep is not absolute there on Python >= 3.13)
+  other = relocatable_path(absolute_path(os.path.abspath(os.sep)), "zzz")
   assert (a < other) == (abs(a) < abs(other))
   # comparing against a non-path raises TypeError, not AttributeError
   try:
