@@ -143,6 +143,11 @@ def do_probe(model, hydrogens="reduce", contacts="probe"):
   return contact_dict
 
 class alphafold_chunk():
+  #This is a group of sequenctial residues all sharing the same mode assessment
+  #  e.g. "Barbed wire" or "Predictive". Arguments are a list of string resid's
+  #  for the member residues, and a single string prediction type.
+  #The class contains methods for adding and removing residues and a method for
+  #  returning an atom selection string.
   def __init__(self, res_list, prediction_type):
     self.members = [r for r in res_list]
     self.prediction_type = prediction_type
@@ -160,7 +165,9 @@ class alphafold_chunk():
     return self.start.split(',')[0]
 
   def as_selection_string(self):
-    # resid is "chain,resseq"
+    #This function returns the atom selection syntax string for the member residues of the chunk.
+    #It is intended for use in selecting residues that match a desired mode for later use.
+    #  resid format is "chain,resseq"
     chain = self.start.split(',')[0]
     start_res = self.start.split(',')[1].strip()
     end_res = self.end.split(',')[1].strip()
@@ -184,6 +191,9 @@ class alphafold_chunk():
       r.feedback = new_prediction_type
 
 class predicted_residue():
+  #This class holds barbed wire analysis information for an individual residue
+  #It is mostly a data structure, with analysis happening elsewhere using windows
+  #  of several of these residue object.
   def __init__(self, rg):
     self.chain = rg.parent().id
     self.resseq = rg.resseq
@@ -214,12 +224,18 @@ class predicted_residue():
     self.text_code = ['','','','','',''] #is this okay
 
   def find_ca_plddt(self, rg):
+    #AlphaFold2 residues are expected to have the same pLDDT for all their atoms,
+    #  so pLDDT from the CA represents the whole residue.
     for atom in rg.atoms():
       if atom.name == " CA ":
         return atom.xyz, atom.b
     return None, None
 
+  #TODO: update to exclude H atoms from count, as future proofing
   def find_heavy_atom_count(self, rg):
+    #Number of atoms in the residue. Used in calculating denstiy of packing contacts.
+    #AlphaFold structures are expected not to include hydrogens.
+    #Until TODO fulfilled, models with hydrogens will appear underpacked.
     # print(rg.atom_groups()[0].resname, len(rg.atoms()))
     return (len(rg.atoms()))
 
@@ -249,18 +265,23 @@ class predicted_residue():
             "ca_xyz":self.caxyz}
 
 class barbed_wire_analysis():
+  #This is the main class for barbed wire analysis.
+  #It accepts a model and on intialization runs validations and performs analysis of the results
   def __init__(self, model, hydrogens="reduce", contacts="probe"):
+    #Initialize parameters and data structures
     self.hydrogens = hydrogens
     self.contacts = contacts
     self.res_dict = {}  # keyed for easy lookup
     self.res_list = {}  # separated by chain, ordered for finding sequence-related residues
     self.chunk_list = []
 
+    #Load model and understanding of secondary structure
     hierarchy = model.get_hierarchy()
     self.load_residues(hierarchy)
+    self.add_secondary_structure(model, hierarchy)
     ##print('\n'.join(bwa.res_dict.keys()))
 
-    self.add_secondary_structure(model, hierarchy)
+    #Run structure validation programs
     self.add_contacts(model)
     self.analyze_contacts()
     self.add_ramalyze(hierarchy)
@@ -268,11 +289,16 @@ class barbed_wire_analysis():
     self.add_omegalyze(hierarchy)
     self.add_covalent_geometry(model)
 
+    #Run Alphafold-specific analyses to synthesize validation results into
+    #  AlphaFold behavior annotations
     self.predictalyze()
     self.merge_analyses()
     self.merge_small_chunks()
 
   def load_residues(self, hierarchy):
+    #loads residue group objects from a hierarchy into two local data structures:
+    #  1. self.res_dict, a dictionary of residue objects keyed by resid for easy lookup
+    #  2. self.res_list, actually a dictionary keyed by chain, of a sequence-ordered lists of residue objects
     for chain in hierarchy.chains():
       self.res_list[chain.id] = [] #chain.id is already whitespace stripped
       for rg in chain.residue_groups():
@@ -281,6 +307,14 @@ class barbed_wire_analysis():
         self.res_list[chain.id].append(r)
 
   def add_secondary_structure(self, model, hierarchy):
+    #loads secondary structure annotation
+    #secondary structure search method is currently "from_ca" for
+    #  maximum protability/ minimum dependency and because the analysis needs
+    #  to find secondary structure in Pseudostructure regions which may have
+    #  poor hydrogen bonding. "cablam" might be an acceptable alternative, but
+    #  probably needs more development.
+    #analysis is currently concerned only with the broad helix and sheet
+    #  categories and whether residues share the same secondary structure feature
     from mmtbx.secondary_structure import sec_str_master_phil_str
     from mmtbx.secondary_structure import manager as ss_manager
     asc = model.get_atom_selection_cache()
@@ -329,6 +363,9 @@ class barbed_wire_analysis():
           r.ss_index = sheet_id
 
   def are_same_ss_element(self, resid1, resid2):
+    #Checks whether two residues are in the same helix or sheet.
+    #This matters for contact analysis, which excludes contacts between
+    #  residues in the same secondaary structure element
     res1 = self.res_dict[resid1]
     res2 = self.res_dict[resid2]
     if not (res1.ss_type and res2.ss_type):
@@ -344,6 +381,9 @@ class barbed_wire_analysis():
     return True
 
   def add_ramalyze(self, hierarchy):
+    #Run ramalyze and parse results
+    #  Rama outliers are marked
+    #  Residues in a characteristic high-phi/high-psi regions of the Rama plot are marked
     from mmtbx.validation import ramalyze
     rama_results = ramalyze.ramalyze(pdb_hierarchy=hierarchy,
                                      outliers_only=False)
@@ -357,6 +397,7 @@ class barbed_wire_analysis():
         self.res_dict[resid].rama_high_phi = True
 
   def add_omegalyze(self, hierarchy):
+    #Run omegalyze and parse results
     from mmtbx.validation import omegalyze
     omega_results = omegalyze.omegalyze(pdb_hierarchy=hierarchy,
                                         nontrans_only=True)
@@ -426,6 +467,9 @@ class barbed_wire_analysis():
         j += 1
 
   def add_covalent_geometry(self, model):
+    #Run bond angle validation
+    #Analysis is focused on backbone geometry, especially the C-N-CA angle,
+    #  which shows characteristic bahavior in barbed wire regions of AlphaFold2
     from mmtbx.validation.mp_validate_bonds import mp_angles
     from mmtbx.model import manager
     from libtbx.utils import null_out
@@ -460,6 +504,8 @@ class barbed_wire_analysis():
         self.res_dict[resid].out_geom_cnca = True
 
   def add_cablam(self, hierarchy):
+    #Run cablam and parse results
+    #Outliers and CA Geom Outliers are considered significant
     from mmtbx.validation import cablam
     cablam_results = cablam.cablamalyze(pdb_hierarchy=hierarchy,
                                         outliers_only=True,
@@ -473,6 +519,10 @@ class barbed_wire_analysis():
         self.res_dict[resid].out_ca_geom = True
 
   def categorize_outliers(self, res_slice):
+    #Assess the validation results for residues in a 3-residue window and
+    #  determine whether the involved residues have signature barded wire outliers
+    #Also updates the text_code field used in text output
+    #Accepts a 3-member list of predicted_residue objects
     #Certain outliers are signatures of barbed wire
     #  c-n-ca, cis-nonPro and all twisted, top right rama
     r0 = res_slice[0]
@@ -509,6 +559,10 @@ class barbed_wire_analysis():
 
     #Look at a window of 3 residues. If the local density of backbone outliers is high,
     #  center residue is assumed barbed-wire-like
+    #High local density of a backbone outlier is usually defined as at least 2 out of
+    #  the 3 residues in the window being an outlier for a given validation.
+    #Barbed-wire-like high_outlier_density is marked True if at least two validations
+    #  show high outlier density for the window.
     rama = 0
     omega = 0
     cablam = 0
@@ -573,6 +627,14 @@ class barbed_wire_analysis():
     return is_barbed_like, text_code
 
   def predictalyze(self):
+    #This is the final residue-level analysis of AlphaFold modes
+    #  Combines pLDDT, packing quality, and validation outliers
+    #High pLDDT, high packing = "Predictive"
+    #High pLDDT, low packing = "Unpacked high pLDDT"
+    #High pLDDT, many outliers = "Unphysical"
+    #Low pLDDT, high packing, few outliers = "Near-predictive"
+    #Low pLDDT, low packing, few outliers = "Pseudostructure"
+    #Low pLDDT, low packing, many outliers = "Barbed wire"
     for chain in self.res_list:
       i, j = 0, 3  # window of 3 res
       while j <= len(self.res_list[chain]):
@@ -610,12 +672,16 @@ class barbed_wire_analysis():
         r.text_code = ''.join(r.text_code)
 
   def merge_analyses(self):
+    #Residues are initially assessed individually. This method creates "chunks"
+    #  of sequentially adjacent residues with the same feedback value
+    #See also alphafold_chunk class
     chunk_list = []
     for chain in self.res_list:
       prev_r = None
       current_chunk = []
       for r in self.res_list[chain]:
         if prev_r is None:
+          #TODO add handling for chain breaks (append to chunklist and start new chunk)
           current_chunk.append(r.resid)
           prev_r = r
           continue
@@ -711,8 +777,10 @@ class barbed_wire_analysis():
     self.remove_empty_chunks()
 
   def remove_empty_chunks(self):
+    #During merge_small_chunks, some chunks have all their residues moved to other chunks.
+    #  This cleans up the now-empty chunks
     i = len(self.chunk_list) - 1
-    while i >= 0:
+    while i >= 0: #TODO: check this while loop; I stopped most of the others a cycle too early
       c = self.chunk_list[i]
       if len(c.members) == 0:
         self.chunk_list.pop(i)
@@ -737,6 +805,7 @@ class barbed_wire_analysis():
     #  chunk.
     #This case arises after merge_small_chunks reassigns some chunks'
     #  prediction types for smoothing
+    #Chunks may become newly adjacent after running remove_empty_chunks
     i = 0
     while i < len(self.chunk_list):
       c = self.chunk_list[i]
@@ -753,6 +822,7 @@ class barbed_wire_analysis():
       i += 1
 
   def count_assessed(self):
+    #Counts residues with a populated feedback field
     #residues near chain termini are not assessed
     count = 0
     for chain in self.res_list:
@@ -762,6 +832,7 @@ class barbed_wire_analysis():
     return count
 
   def count_assessed_in_chain(self, chain):
+    #Counts residues with a populated feedback field, for a specified chain
     count = 0
     for c in self.res_list:
       if not c == chain:
@@ -772,6 +843,7 @@ class barbed_wire_analysis():
     return count
 
   def count_by_type(self, prediction_type):
+    #Counts residues with a feedback field matching a specified prediction_type
     count = 0
     for chain in self.res_list:
       for r in self.res_list[chain]:
@@ -780,6 +852,7 @@ class barbed_wire_analysis():
     return count
 
   def count_by_type_in_chain(self, prediction_type, chain):
+    #Counts residues with a feedback field matching a specified prediction_type, for a specified chain
     count = 0
     for c in self.res_list:
       if not c == chain:
@@ -791,15 +864,22 @@ class barbed_wire_analysis():
 
   # ----------------------OUTPUT---------------------
   def as_text_residues(self, out=sys.stdout):
+    #Prints text feedback for each individual residue
     for chain in self.res_list:
       for r in self.res_list[chain]:
         print(r.as_text(), file=out)
 
   def as_text_chunks(self, out=sys.stdout):
+    #Prints text feedback reporting each chunk of prediction behavior
     for c in self.chunk_list:
       print(c.start, "to", c.end, c.prediction_type, len(c.members), file=out)
 
   def as_json(self, out=sys.stdout):
+    #json-formatted output, contains:
+    #  flat results for each individual residue
+    #  enumeration of chunks of prediction behavior
+    #  lists of residue identifiers groups by prediction type category
+    #  summary of model-level statistics
     import json
     j = {"flat_results":[],
          "chunks":[],
@@ -847,6 +927,7 @@ class barbed_wire_analysis():
   def as_kinemage(self, out=sys.stdout):
     # colored ball at each CA, color based on current synthesis
     # label with bc--go- style text showing components of decision
+    # this markup kinemage file is intended to be appended to an existing model kinemage
     prediction_types = ["Predictive", "Unpacked high pLDDT", "Near-predictive",
                             "Pseudostructure", "Barbed wire", "Unphysical"]
     colors = {"Predictive":"sky",
@@ -918,6 +999,7 @@ class barbed_wire_analysis():
 
   def as_selection_string(self, modes=['1', '3']):
     #Return the selection syntax string for residues matching selected prediction modes
+    #prediction modes are mapped to numbers to avoid misspelling by users
     mode_dict = {"1":"Predictive",
                  "2":"Unpacked high pLDDT",
                  "3":"Near-predictive",
