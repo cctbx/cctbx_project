@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from scitbx.array_family import flex
 from cctbx import uctbx
-import cctbx.crystal
 import iotbx.pdb.utils
 import boost_adaptbx.boost.python as bp
 import libtbx
