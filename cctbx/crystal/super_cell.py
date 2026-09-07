@@ -151,9 +151,10 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
           # ordering of space_group.make_tidy().
           rt_mx_ji = min([rt_mx_ji.multiply(matrix)
                           for matrix in site_symmetry_matrices])
-        # Equal operators hash equally only on equal denominators, so the
-        # normalised operator is the key.  A miss on an equal operator
-        # normalises it twice, which is harmless.
+        # The key is the operator as it arrived, the value that operator on
+        # denominators (1, 12).  Equal operators hash equally only on equal
+        # denominators, so a lookup misses when one arrives on others; that
+        # costs a second normalisation and nothing else.
         key = normalised.get(rt_mx_ji)
         if (key is None):
           key = normalised[rt_mx_ji] = rt_mx_ji.new_denominators(1, 12)
@@ -161,8 +162,8 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
   siiu = {}
   for j_seq, by_key in by_j_seq.items():
     siiu[j_seq] = list(by_key)
-  # Every operator that reached a by_key is in normalised, on denominators
-  # (1, 12) and so hashing consistently.
+  # The values are the normalised operators, which hash consistently, so
+  # equal ones collapse here however they arrived.
   return siiu, list(dict.fromkeys(normalised.values()))
 
 def sym_equiv_sites_cart(sites_cart, unit_cell, rt_mx, selection=None):
