@@ -279,9 +279,10 @@ class manager(object):
     # The mask is read for every atom at once, rather than one call per atom.
     nx, ny, nz = n_real
     fx, fy, fz = (fm_ss*self.super_cell_hierarchy.atoms().extract_xyz()).parts()
-    grid_index = ((((fx*nx).iround() % nx) * ny
-                   + ((fy*ny).iround() % ny)) * nz
-                  + ((fz*nz).iround() % nz))
+    # closest_grid_point puts a tie on the lower index: ceil(x - 1/2).
+    grid_index = (((flex.ceil(fx*nx - 0.5).iround() % nx) * ny
+                   + (flex.ceil(fy*ny - 0.5).iround() % ny)) * nz
+                  + (flex.ceil(fz*nz - 0.5).iround() % nz))
     inside_atom = mask.as_1d().select(grid_index.as_size_t()) == 1
     for chain in self.super_cell_hierarchy.chains():
       for rg in chain.residue_groups():
