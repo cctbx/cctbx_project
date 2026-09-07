@@ -1,8 +1,91 @@
 from __future__ import absolute_import, division, print_function
+import functools
 from cctbx import sgtbx
 from six.moves import range
 from six.moves import zip
 #from cctbx import crystal
+
+# --------------------------------------------------------------------------------------
+# Per-space-group "plan" cache
+#
+# The set of candidate change-of-basis operations, and *which* of them preserve the input
+# space group, depend ONLY on the input space group (its number and its setting) -- never
+# on the unit cell. find_best_cell.__init__ is called millions of times (it is the
+# dominant cost of dials.stills_process indexing) but across only a few hundred distinct
+# space-group settings, so this space-group-level work is constant per setting and is
+# wastefully recomputed on every call.
+#
+# We therefore compute, once per distinct input space group, a "plan": which branch applies
+# (the cheap early-return cases, monoclinic, or orthorhombic) plus the list of pre-VALIDATED
+# base change-of-basis ops (those that map the space group to itself). The per-call path then
+# does only cell-level work -- apply each validated op to the actual unit cell, compare, keep
+# the best -- with no candidate generation, no op construction, no space-group filtering, and
+# no space_group_type build (the last per-call bottleneck once the rest was hoisted).
+#
+# The plan is keyed on the input space group OBJECT. crystal.symmetry always tidies its
+# group, so it is hashable, and hashing it (~0.5 us) is ~460x cheaper than building
+# space_group_info().type() (~230 us) just to obtain a Hall-symbol key. Equal groups hash and
+# compare equal regardless of how they were built, so the keying is exact.
+#
+# Validity of an op is `input_sgi.change_basis(op).group() == input_sg`, which is purely a
+# space-group test (cell-independent) -- identical to the per-iteration filter the old code
+# ran inline -- so caching it is behavior-preserving. new_denominators() returns a fresh op
+# and does not mutate its receiver, so the cached base ops are safe to reuse across calls.
+#
+# Both caches are functools.lru_cache(maxsize=None): unbounded (the key space is only a few
+# hundred space groups) and process-lifetime. Use _best_cell_plan.cache_clear() /
+# .cache_info() to reset or inspect.
+# --------------------------------------------------------------------------------------
+
+@functools.lru_cache(maxsize=None)
+def _standard_info_for(space_group_number):
+  standard_info = sgtbx.space_group_info(
+    symbol=space_group_number,
+    table_id="A1983")
+  cb_op_std_ref = standard_info.type().cb_op()
+  ends_with_colon_2 = str(standard_info).endswith(":2")
+  return (standard_info, cb_op_std_ref, ends_with_colon_2)
+
+@functools.lru_cache(maxsize=None)
+def _best_cell_plan(input_sg):
+  # Keyed on the input space group object itself: it is hashable (crystal.symmetry always
+  # tidies its group) and hashing it costs ~0.5 us, versus ~230 us to build
+  # space_group_info().type(). Keying here means that space_group_type build -- the per-call
+  # bottleneck once everything else was hoisted -- happens only on a cache miss, i.e. once
+  # per distinct space group rather than on every one of the millions of calls.
+  input_sgi = sgtbx.space_group_info(group=input_sg)
+  space_group_number = input_sgi.type().number()
+  if (space_group_number == 1):
+    return ("niggli", None, None)
+  if (space_group_number < 3 or space_group_number >= 75):
+    return ("identity", None, None)
+  standard_info, cb_op_std_ref, std_ends_with_colon_2 = _standard_info_for(space_group_number)
+  cb_op_inp_ref = input_sgi.type().cb_op()
+  cb_op_std_inp = cb_op_inp_ref.inverse() * cb_op_std_ref
+  assert standard_info.group().change_basis(cb_op_std_inp) == input_sg
+  if (space_group_number <= 15):
+    branch = "monoclinic"
+    two_fold_info = sgtbx.rot_mx_info(input_sg(1).r())
+    assert abs(two_fold_info.type()) == 2
+    ev = list(two_fold_info.ev())
+    assert ev.count(0) == 2
+    unique_axis = ev.index(1)
+    candidate_mxs = sgtbx.find_affine(input_sg).cb_mx()
+  else:
+    branch = "orthorhombic"
+    assert not std_ends_with_colon_2
+    unique_axis = None
+    candidate_mxs = sgtbx.space_group("P 4 3*").change_basis(cb_op_std_inp)
+  # Build each base op once (from the xyz string -- the rt_mx matrix overload makes
+  # boost.python probe numpy's mat3/vec3 converters) and keep only the ops that preserve
+  # the space group. The filter is purely a space-group test, so it is the same selection
+  # the old per-iteration `alt_symmetry.space_group() == input_sg` check made.
+  valid_base_ops = []
+  for mx in candidate_mxs:
+    base_op = sgtbx.change_of_basis_op(mx.as_xyz())
+    if (input_sgi.change_basis(base_op).group() == input_sg):
+      valid_base_ops.append(base_op)
+  return (branch, valid_base_ops, unique_axis)
 
 class find_best_cell(object):
 
@@ -12,77 +95,92 @@ class find_best_cell(object):
         best_monoclinic_beta=True):
     if (angular_tolerance is None):
       angular_tolerance = 3
-    self._all_cells = []
-    space_group_number = input_symmetry.space_group_info().type().number()
-    if (space_group_number == 1):
+    # symmetry() and all_cells() are built lazily (see those accessors). The dominant
+    # production caller -- crystal.symmetry.change_of_basis_op_to_best_cell -- uses only
+    # cb_op(), so the per-call work below avoids constructing any crystal.symmetry object:
+    # the best cell is selected by comparing UNIT CELLS, computed as
+    # input_sg.average_unit_cell(input_uc.change_basis(cb_op)). That is bit-identical to the
+    # unit cell crystal.symmetry.change_basis would produce (its force_compatible_unit_cell
+    # path calls the same average_unit_cell), so the selection is unchanged; the full
+    # crystal.symmetry objects are only materialized if symmetry()/all_cells() are called.
+    self._input_symmetry = input_symmetry
+    self._cb_ops = None        # per-iteration cb_ops, in order -> recipe for all_cells()
+    self._best_index = None    # index into _cb_ops of the best cell; None => input is best
+    self._symmetry = None      # built lazily, or set directly for the early-return cases
+    self._all_cells = None     # built lazily, or set directly for the early-return cases
+    input_sg = input_symmetry.space_group()
+    branch, valid_base_ops, unique_axis = _best_cell_plan(input_sg)
+    if (branch == "niggli"):
       self._cb_op = input_symmetry.change_of_basis_op_to_niggli_cell()
       self._symmetry = input_symmetry.change_basis(self._cb_op)
-      self._all_cells.append(self._symmetry)
+      self._all_cells = [self._symmetry]
       return
-    if (space_group_number < 3 or space_group_number >= 75):
+    if (branch == "identity"):
       self._cb_op = sgtbx.change_of_basis_op()
       self._symmetry = input_symmetry
-      self._all_cells.append(self._symmetry)
+      self._all_cells = [input_symmetry]
       return
-    standard_info = sgtbx.space_group_info(
-      symbol=space_group_number,
-      table_id="A1983")
-    cb_op_inp_ref = input_symmetry.space_group_info().type().cb_op()
-    cb_op_std_ref = standard_info.type().cb_op()
-    cb_op_std_inp = cb_op_inp_ref.inverse() * cb_op_std_ref
-    assert standard_info.group().change_basis(cb_op_std_inp) == input_symmetry.space_group()
+    input_uc = input_symmetry.unit_cell()
     best_cb_op = sgtbx.change_of_basis_op()
-    best_symmetry = input_symmetry
-    if (space_group_number <= 15):
-      two_fold_info = sgtbx.rot_mx_info(input_symmetry.space_group()(1).r())
-      assert abs(two_fold_info.type()) == 2
-      ev = list(two_fold_info.ev())
-      assert ev.count(0) == 2
-      unique_axis = ev.index(1)
-      affine = sgtbx.find_affine(input_symmetry.space_group())
-      for cb_mx in affine.cb_mx():
-        cb_op = sgtbx.change_of_basis_op(cb_mx).new_denominators(best_cb_op)
-        alt_symmetry = input_symmetry.change_basis(cb_op)
-        if (alt_symmetry.space_group() == input_symmetry.space_group()):
-          if (best_monoclinic_beta and unique_axis == 1):
-            cb_op_best_beta = alt_symmetry.unit_cell() \
-              .change_of_basis_op_for_best_monoclinic_beta()
-            if (not cb_op_best_beta.is_identity_op()):
-              cb_op.update(cb_op_best_beta)
-              alt_symmetry = input_symmetry.change_basis(cb_op)
-          self._all_cells.append(alt_symmetry)
-          cmp_result = best_symmetry.unit_cell().compare_monoclinic(
-            other=alt_symmetry.unit_cell(),
-            unique_axis=unique_axis,
-            angular_tolerance=angular_tolerance)
-          if (cmp_result > 0):
-            best_cb_op = cb_op
-            best_symmetry = alt_symmetry
+    best_uc = input_uc
+    cb_ops = []
+    if (branch == "monoclinic"):
+      do_best_beta = (best_monoclinic_beta and unique_axis == 1)
+      for base_op in valid_base_ops:
+        cb_op = base_op.new_denominators(best_cb_op)
+        alt_uc = input_sg.average_unit_cell(input_uc.change_basis(cb_op))
+        if (do_best_beta):
+          cb_op_best_beta = alt_uc.change_of_basis_op_for_best_monoclinic_beta()
+          if (not cb_op_best_beta.is_identity_op()):
+            cb_op.update(cb_op_best_beta)
+            alt_uc = input_sg.average_unit_cell(input_uc.change_basis(cb_op))
+        cb_ops.append(cb_op)
+        cmp_result = best_uc.compare_monoclinic(
+          other=alt_uc,
+          unique_axis=unique_axis,
+          angular_tolerance=angular_tolerance)
+        if (cmp_result > 0):
+          best_cb_op = cb_op
+          best_uc = alt_uc
+          self._best_index = len(cb_ops) - 1
     else:
-      assert not str(standard_info).endswith(":2")
-      affine_group = sgtbx.space_group("P 4 3*").change_basis(
-        cb_op_std_inp)
-      for affine_s in affine_group:
-        cb_op = sgtbx.change_of_basis_op(affine_s) \
-          .new_denominators(best_cb_op)
-        alt_symmetry = input_symmetry.change_basis(cb_op)
-        if (alt_symmetry.space_group() == input_symmetry.space_group()):
-          self._all_cells.append(alt_symmetry)
-          cmp_result = best_symmetry.unit_cell().compare_orthorhombic(
-            alt_symmetry.unit_cell())
-          if (cmp_result > 0):
-            best_cb_op = cb_op
-            best_symmetry = alt_symmetry
+      for base_op in valid_base_ops:
+        cb_op = base_op.new_denominators(best_cb_op)
+        alt_uc = input_sg.average_unit_cell(input_uc.change_basis(cb_op))
+        cb_ops.append(cb_op)
+        cmp_result = best_uc.compare_orthorhombic(alt_uc)
+        if (cmp_result > 0):
+          best_cb_op = cb_op
+          best_uc = alt_uc
+          self._best_index = len(cb_ops) - 1
     self._cb_op = best_cb_op
-    self._symmetry = best_symmetry
+    self._cb_ops = cb_ops
 
   def cb_op(self):
     return self._cb_op
 
   def symmetry(self):
+    # The best symmetry: input_symmetry itself when no alternative beat it (_best_index is
+    # None, best_cb_op is identity), else the best alternative -- shared with the
+    # corresponding all_cells() entry so the two return the same object, as before.
+    if (self._symmetry is None):
+      if (self._best_index is None):
+        self._symmetry = self._input_symmetry
+      elif (self._all_cells is not None):
+        self._symmetry = self._all_cells[self._best_index]
+      else:
+        self._symmetry = self._input_symmetry.change_basis(self._cb_op)
     return self._symmetry
 
   def all_cells(self):
+    if (self._all_cells is None):
+      cells = [self._input_symmetry.change_basis(cb) for cb in self._cb_ops]
+      if (self._best_index is not None):
+        if (self._symmetry is not None):
+          cells[self._best_index] = self._symmetry   # keep identity with symmetry()
+        else:
+          self._symmetry = cells[self._best_index]
+      self._all_cells = cells
     return self._all_cells
 
 
