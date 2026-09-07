@@ -173,18 +173,6 @@ class alphafold_chunk():
     end_res = self.end.split(',')[1].strip()
     return "(chain %s and resseq %s:%s)" % (chain, start_res, end_res)
 
-  def add_to_start(self, resid):
-    self.members.insert(0, resid)
-
-  def add_to_end(self, resid):
-    self.members.append(resid)
-
-  def remove_from_start(self):
-    return self.members.pop(0)
-
-  def remove_from_end(self):
-    return self.members.pop(-1)
-
   def change_prediction_type(self, new_prediction_type):
     self.prediction_type = new_prediction_type
     for r in self.members:
@@ -593,39 +581,6 @@ class barbed_wire_analysis():
     else:
       r1.high_outlier_density = False
 
-  def has_barbed_wire_errors(self, res_slice):
-    #Look at a window of 3 residues. If the local density of backbone outliers is high,
-    #  center residue is assumed barbed-wire-like
-    rama = 0
-    omega = 0
-    cablam = 0
-    geom = 0
-    psi = 0
-    for r in res_slice:
-      if r.out_rama: rama += 1
-      if r.out_cablam: cablam += 1
-      if r.out_omega: omega += 1
-      if r.out_geom: geom += 1
-      if r.rama_high_psi: psi += 1
-    score = 0
-    if rama >= 1 and psi == 3:  # all in high-psi region, plus at least 1 outlier
-      score += 1
-      text_code[2] = 'r'
-    if omega >= 2:
-      score += 1
-      text_code[3] = 'o'
-    if cablam >= 2:
-      score += 1
-      text_code[4] = 'c'
-    if geom >= 2:
-      score += 1
-      text_code[5] = 'g'
-    if score >= 2:
-      is_barbed_like = True
-    else:
-      is_barbed_like = False
-    return is_barbed_like, text_code
-
   def predictalyze(self):
     #This is the final residue-level analysis of AlphaFold modes
     #  Combines pLDDT, packing quality, and validation outliers
@@ -743,39 +698,6 @@ class barbed_wire_analysis():
     self.merge_similar_chunks()
     self.remove_empty_chunks()
 
-  def old_merge_small_chunks(self):
-    i = 0
-    while i < len(self.chunk_list):
-      c = self.chunk_list[i]
-      if (i - 1 < 0) or (i + 1 >= len(self.chunk_list)):
-        i += 1
-        continue
-      prev_c = self.chunk_list[i - 1]
-      next_c = self.chunk_list[i + 1]
-      if len(c.members) > 2 or c.prediction_type != "Pseudostructure":#"Unpacked possible":
-        i += 1
-        continue
-      if prev_c.prediction_type == "Barbed wire":
-        for r in c.members:
-          if self.res_dict[r].has_any_validation_errors():
-            prev_c.add_to_end(c.remove_from_start())
-          else:
-            break
-      if len(c.members) == 0:
-        i += 1
-        continue
-      else:
-        if next_c.prediction_type == "Barbed wire":
-          for r in reversed(c.members):
-            if self.res_dict[r].has_any_validation_errors(): #This step has not been added to the new version yet
-              next_c.add_to_start(c.remove_from_end())
-            else:
-              break
-      i += 1
-    self.remove_empty_chunks()
-    self.old_merge_similar_chunks()
-    self.remove_empty_chunks()
-
   def remove_empty_chunks(self):
     #During merge_small_chunks, some chunks have all their residues moved to other chunks.
     #  This cleans up the now-empty chunks
@@ -785,20 +707,6 @@ class barbed_wire_analysis():
       if len(c.members) == 0:
         self.chunk_list.pop(i)
       i -= 1
-
-  def old_merge_similar_chunks(self):
-    i = 0
-    while True:
-      if i+1 >= len(self.chunk_list):
-        #len changes if there's a pop, so fully check it each time
-        break
-      c = self.chunk_list[i]
-      next_c = self.chunk_list[i+1]
-      if c.prediction_type == next_c.prediction_type:
-        c.members = prev_c.members + c.members + next_c.members
-        self.chunk_list.pop(i+1)
-      else: #only iterate if the next chunk doesn't match
-        i+1
 
   def merge_similar_chunks(self):
     #Adjacent chunks with the same prediction type are collapsed into a single
@@ -961,41 +869,6 @@ class barbed_wire_analysis():
       print("@labellist{labels} color= %s master= {bwa_labels}" % colors[prediction_type], file=out)
       for kinline in labels[prediction_type]:
         print(kinline, file=out)
-
-  def old_as_kinemage(self, out=sys.stdout):
-    # colored ball at each CA, color based on current synthesis
-    # label with bc--go- style text showing components of decision
-    balls = []
-    labels = []
-    for r in self.res_list:
-      if not r.feedback:
-        continue
-      ball_color = None
-      if r.feedback == "Predictive":
-        ball_color = "sky"
-      elif r.feedback == "Unphysical":
-        ball_color = "purple"
-      elif r.feedback == "Barbed wire":
-        ball_color = "hotpink"
-      elif r.feedback == "Pseudostructure": #"Unpacked possible":
-        ball_color = "gold"
-      elif r.feedback == "Near-predictive":
-        ball_color = 'green'
-      elif r.feedback == "Unpacked high pLDDT":
-        ball_color = 'gray'
-      else:
-        ball_color = 'brown'
-      ballline = "{%s %s %s}%s %.3f %.3f %.3f" % (r.resid, r.feedback, r.text_code, ball_color, r.caxyz[0], r.caxyz[1], r.caxyz[2])
-      labelline = "{  %s}%s %.3f %.3f %.3f" % (r.text_code, ball_color, r.caxyz[0], r.caxyz[1], r.caxyz[2])
-      balls.append(ballline)
-      labels.append(labelline)
-    print("@group {bwa markup}", file=out)
-    print("@balllist {bwa balls} radius=0.6", file=out)
-    for line in balls:
-      print(line, file=out)
-    print("@labellist {bwa labels}", file=out)
-    for line in labels:
-      print(line, file=out)
 
   def as_selection_string(self, modes=['1', '3']):
     #Return the selection syntax string for residues matching selected prediction modes
