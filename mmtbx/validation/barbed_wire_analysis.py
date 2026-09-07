@@ -640,7 +640,7 @@ class barbed_wire_analysis():
     #  priority. Afterwards, stray barbed wire is merged into pseudostructure.
     #Barbed-wire is never promoted to near-predictive, and near-predictive is never demoted.
     i, j = 0, 3  # window of 3 chunks
-    while j < len(self.chunk_list):
+    while j <= len(self.chunk_list):
       c = self.chunk_list[i:j]
       if len(c[1].members) > 2:
         i += 1; j += 1
@@ -663,7 +663,7 @@ class barbed_wire_analysis():
     #Barbed wire if merged in a separate pass so that barbed wire "wins" in regions that alternate
     #  between short segments of barbed wire and pseudostructure
     i, j = 0, 3  # window of 3 chunks
-    while j < len(self.chunk_list):
+    while j <= len(self.chunk_list):
       c = self.chunk_list[i:j]
       if len(c[1].members) > 2:
         i += 1; j += 1
