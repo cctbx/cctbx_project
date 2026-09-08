@@ -296,6 +296,10 @@ def add_solvent_to_model_inplace(
     hierarchy = model.get_hierarchy(), new_chain = new_solvent_chain)
   model._update_atom_selection_cache()
   model.get_hierarchy().atoms().reset_i_seq()
+  # Existing atoms keep their old serials across model.select() (the filter
+  # steps), so serials derived from model.size() can collide with them.
+  # Renumber everything to keep serials unique in PDB/mmCIF output.
+  model.get_hierarchy().atoms_reset_serial()
   model.unset_processed_pdb_file()
   # Force-update xray_structure
   # This is done THIS WAY to keep scattering_table
