@@ -49,6 +49,10 @@ n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
   .help = Mode for placing H3 at terminal nitrogen.
+exclude_water = True
+  .type = bool
+  .short_caption = Add H to water if False
+  .help = Add H to water if False
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
@@ -1042,7 +1046,7 @@ NOTES:
       model = self.model,
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water = True,
+      exclude_water = self.params.exclude_water,
       stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )
