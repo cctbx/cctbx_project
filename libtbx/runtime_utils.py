@@ -341,22 +341,28 @@ class detached_process_client(detached_base):
     elif os.path.exists(self.abort_file):
       self.callback_abort()
     elif os.path.exists(self.result_file):
+      # the file may still be being written, so retry for a while; if it can
+      # never be loaded (e.g. unpickling raises), report that as a job error
+      # so the caller stops polling instead of retrying forever
       max_retries = 5
-      error_text = None
+      load_error = None
       for retry in range(max_retries):
         try:
           result = easy_pickle.load(self.result_file)
-        except Exception:
-          pass
+        except Exception as e:
+          load_error = e
+          load_traceback = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+          time.sleep(retry+1)
         else:
+          load_error = None
           time.sleep(1)
           self.check_stdout()
           self.check_status()
           self.callback_final(result)
           break
-        time.sleep(retry+1)
-      if retry == max_retries-1:
+      if load_error is not None:
         print("There was an error with loading '%s'." % self.result_file)
+        self.callback_error(load_error, load_traceback)
     else :
       self.finished = False
       return
