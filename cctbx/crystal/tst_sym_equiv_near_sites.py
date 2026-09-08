@@ -83,11 +83,15 @@ def sym_equiv_positions(unit_cell, sites_frac, equivalents):
   return result
 
 def unique_positions(positions, tolerance=1.e-4):
-  """Sorted positions, with duplicates closer than *tolerance* dropped."""
+  """Positions, with duplicates closer than *tolerance* dropped.
+
+  Compares against every position kept: two positions can share a coordinate
+  to within rounding, so sorting does not bring duplicates together.
+  """
   result = []
-  for position in sorted(positions):
-    if (len(result) == 0
-        or not approx_equal(position, result[-1], eps=tolerance, out=None)):
+  for position in positions:
+    if (not True in [approx_equal(position, kept, eps=tolerance, out=None)
+                     for kept in result]):
       result.append(position)
   return result
 
@@ -131,14 +135,26 @@ def differences(expected, obtained):
       result[j_seq] = (sorted(missing), sorted(extra))
   return result
 
-def assert_same_positions(expected, obtained, info):
-  """The two position tables list the same equivalents."""
+def assert_same_positions(expected, obtained, info, tolerance=1.e-4):
+  """The two position tables list the same equivalents, in any order.
+
+  Two positions can share a coordinate to within rounding, so their order
+  after sorting is not the same on every platform; each position is matched
+  to one of its own instead.
+  """
   assert sorted(obtained) == sorted(expected), (
     info, sorted(expected), sorted(obtained))
   for j_seq, positions in expected.items():
-    assert len(obtained[j_seq]) == len(positions), (
-      info, j_seq, len(positions), len(obtained[j_seq]))
-    assert approx_equal(obtained[j_seq], positions, eps=1.e-4), (info, j_seq)
+    unmatched = list(obtained[j_seq])
+    assert len(unmatched) == len(positions), (
+      info, j_seq, len(positions), len(unmatched))
+    for position in positions:
+      for i_candidate, candidate in enumerate(unmatched):
+        if (approx_equal(position, candidate, eps=tolerance, out=None)):
+          del unmatched[i_candidate]
+          break
+      else:
+        raise AssertionError((info, j_seq, position, obtained[j_seq]))
 
 def exercise_matches_brute_force(space_group_info):
   """Every equivalent a direct search finds is found, and no others.
