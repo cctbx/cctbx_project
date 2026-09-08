@@ -4,7 +4,6 @@ from cctbx.crystal import super_cell
 import mmtbx.model
 import libtbx.load_env
 from libtbx.utils import null_out
-import math
 from scitbx.array_family import flex
 
 pdb_str_1yjp = """
