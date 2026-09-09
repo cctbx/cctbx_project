@@ -73,13 +73,7 @@ def exercise_sigma_filtering():
   assert (ma[0].size() == 3)
 
 
-def exercise_gzipped_cif():
-  """any_reflection_file must read a gzipped reflection cif directly: the
-  format probes that read the raw bytes as text used to raise
-  UnicodeDecodeError before the cif reader was tried, so the DataManager
-  fell back to any_file (which allocates ~800 MB probing for a CCP4 map)
-  and then to a decompressed temp file."""
-  cif_text = """\
+reflection_cif_text = """\
 data_test
 _cell.length_a 10
 _cell.length_b 20
@@ -101,6 +95,14 @@ _refln.F_meas_sigma_au
 1 2 3 o 40.5 4.0
 2 1 3 o ? ?
 """
+
+def exercise_gzipped_cif():
+  """any_reflection_file must read a gzipped reflection cif directly: the
+  format probes that read the raw bytes as text used to raise
+  UnicodeDecodeError before the cif reader was tried, so the DataManager
+  fell back to any_file (which allocates ~800 MB probing for a CCP4 map)
+  and then to a decompressed temp file."""
+  cif_text = reflection_cif_text
   plain = "tst_iotbx_hkl_reader.cif"
   gz = plain + ".gz"
   with open(plain, "w") as f:
@@ -133,7 +135,74 @@ _refln.F_meas_sigma_au
   assert result.file_object.file_type() == "cif"
   assert len(result.file_object.as_miller_arrays()) == 2
 
+def exercise_cif_probe_order():
+  """A file that passes the cif prefilter goes to the cif reader before the
+  text probes. On a 114 MB reflection cif the SHELX and CNS readers used to
+  parse the whole file and fail before the cif reader was tried (0.67 s of a
+  2.8 s any_reflection_file read). The result for every file is unchanged:
+  a non-cif that passes the prefilter fails the cif reader and goes down the
+  same chain as before."""
+  from cctbx import crystal, miller
+  from cctbx.array_family import flex
+  from libtbx import group_args
+  calls = []
+  # count the two expensive text probes through the names the probe chain
+  # uses; the reader classes themselves stay untouched (the SHELX one calls
+  # super() through its module-level name)
+  saved = (reflection_file_reader.shelx_hklf,
+           reflection_file_reader.cns_index_fobs_sigma_reader)
+  def counting(name, module):
+    def wrapper(*args, **kwds):
+      calls.append(name)
+      return module.reader(*args, **kwds)
+    return group_args(reader=wrapper)
+  reflection_file_reader.shelx_hklf = counting("shelx", saved[0])
+  reflection_file_reader.cns_index_fobs_sigma_reader = counting("cns", saved[1])
+  try:
+    # a plain reflection cif: read as cif, no text probe runs
+    plain = "tst_iotbx_probe_order.cif"
+    with open(plain, "w") as f:
+      f.write(reflection_cif_text)
+    hkl_in = reflection_file_reader.any_reflection_file(plain)
+    assert hkl_in.file_type() == "cif", hkl_in.file_type()
+    assert calls == [], calls
+    # the same content without a cif extension: the first line decides
+    no_ext = "tst_iotbx_probe_order.txt"
+    with open(no_ext, "w") as f:
+      f.write(reflection_cif_text)
+    hkl_in = reflection_file_reader.any_reflection_file(no_ext)
+    assert hkl_in.file_type() == "cif", hkl_in.file_type()
+    assert calls == [], calls
+    # a SHELX hklf file named .cif: the cif reader fails, the chain continues
+    hklf_as_cif = "tst_iotbx_probe_order_hklf.cif"
+    with open(hklf_as_cif, "w") as f:
+      f.write("""\
+   1   0   0   10.00    1.00
+   0   1   0   20.00    2.00
+   0   0   1   30.00    3.00
+   1   1   1   40.00    4.00
+   0   0   0    0.00    0.00
+""")
+    hkl_in = reflection_file_reader.any_reflection_file(hklf_as_cif)
+    assert hkl_in.file_type() == "shelx_hklf", hkl_in.file_type()
+    assert "shelx" in calls, calls
+    # an mtz: binary input must not trip the text prefilter
+    mtz_name = "tst_iotbx_probe_order.mtz"
+    cs = crystal.symmetry(
+      unit_cell=(10, 20, 30, 90, 90, 90), space_group_symbol="P 21 21 21")
+    ms = miller.build_set(cs, anomalous_flag=False, d_min=3)
+    ma = ms.array(
+      data=flex.double(ms.size(), 1.0),
+      sigmas=flex.double(ms.size(), 0.1)).set_observation_type_xray_amplitude()
+    ma.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_name)
+    hkl_in = reflection_file_reader.any_reflection_file(mtz_name)
+    assert hkl_in.file_type() == "ccp4_mtz", hkl_in.file_type()
+  finally:
+    (reflection_file_reader.shelx_hklf,
+     reflection_file_reader.cns_index_fobs_sigma_reader) = saved
+
 if (__name__ == "__main__"):
   exercise_sigma_filtering()
   exercise_gzipped_cif()
+  exercise_cif_probe_order()
   print("OK")

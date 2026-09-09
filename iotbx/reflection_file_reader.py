@@ -88,23 +88,22 @@ def unpickle_miller_arrays(file_name):
   return result
 
 def _cif_prefilter(file_name):
+  """Cheap test that file_name may be a cif: the extension, or a first
+  non-comment line starting with data_."""
   f_root, f_ext = os.path.splitext(file_name)
   if f_ext.lower() == '.gz': f_root, f_ext = os.path.splitext(f_root)
   if f_ext.lower() in ['.cif', '.mmcif', '.dic']: return True
-  with open(file_name) as f:
+  with open(file_name, 'rb') as f:
     for l in f:
-      if l.strip().startswith('#'): continue
-      if not l.strip(): continue
-      return l.strip().lower().startswith('data_')
+      l = l.strip()
+      if l.startswith(b'#'): continue
+      if not l: continue
+      return l.lower().startswith(b'data_')
   return False
 
 def _try_cif_reader(file_name):
   """Returns the iotbx.cif.reader for a reflection cif, None otherwise."""
   try:
-    # The cif parser uses a lot of memory when reading a file with millions
-    # of words (like an xds_ascii file). Thus we filter out obvious non-cif
-    # files.
-    assert _cif_prefilter(file_name)
     content = cif_reader(file_path=file_name)
     looks_like_a_reflection_file = False
     for block in content.model().values():
@@ -123,8 +122,9 @@ def try_all_readers(file_name):
     # smart_open); the others read the raw bytes, and the text readers fail
     # on compressed input with a UnicodeDecodeError that is not one of the
     # format errors they catch.
-    content = _try_cif_reader(file_name)
-    if content is not None: return ("cif", content)
+    if _cif_prefilter(file_name):
+      content = _try_cif_reader(file_name)
+      if content is not None: return ("cif", content)
     return (None, None)
   try: content = mtz.object(file_name=file_name)
   except RuntimeError: pass
@@ -134,6 +134,12 @@ def try_all_readers(file_name):
     except KeyboardInterrupt: raise
     except Exception: pass
     else: return ("cctbx.miller.array", content)
+  # A file that looks like a cif goes to the cif reader before the text
+  # probes below since it is more likely to be cif.
+  if _cif_prefilter(file_name):
+    content = _try_cif_reader(file_name)
+    if content is not None: return ("cif", content)
+  # If it is not a reflection cif after all, check the rest.
   try:
     with open(file_name) as fh:
       content = cns_reflection_reader.cns_reflection_file(fh)
@@ -163,8 +169,6 @@ def try_all_readers(file_name):
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("shelx_hklf", content)
-  content = _try_cif_reader(file_name)
-  if content is not None: return ("cif", content)
   try:
     with open(file_name) as fh:
       content = xds_ascii_reader(fh)
