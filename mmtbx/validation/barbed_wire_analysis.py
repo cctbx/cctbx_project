@@ -657,9 +657,11 @@ class barbed_wire_analysis():
     #  are merged into that type
     #This is primarily for clean presentation, reducing visual fragmentation
     #  Though 2 residues of pseudo in the middle of lots of barbed isn't very believable
-    #As the least defined behavior, merging pseudostructure into barbed wire ot near-predictive takes
+    #As the least defined behavior, merging pseudostructure into barbed wire or near-predictive takes
     #  priority. Afterwards, stray barbed wire is merged into pseudostructure.
     #Barbed-wire is never promoted to near-predictive, and near-predictive is never demoted.
+    #Added since publication: Unpacked high pLDDT is promoted to Predictive if surrounded by predictive.
+    #  We found some predictive beta strands with isolated unpacked residues
     i, j = 0, 3  # window of 3 chunks
     while j <= len(self.chunk_list):
       c = self.chunk_list[i:j]
@@ -680,8 +682,13 @@ class barbed_wire_analysis():
           c[1].prediction_type = "Unphysical"
           for resid in c[1].members:
             self.res_dict[resid].feedback = "Unphysical"
+      elif c[1].prediction_type == "Unpacked high pLDDT":
+        if c[0].prediction_type == "Predictive" and c[0].prediction_type == c[2].prediction_type:
+          c[1].prediction_type = "Predictive"
+          for resid in c[1].members:
+            self.res_dict[resid].feedback = "Predictive"
       i += 1; j += 1
-    #Barbed wire if merged in a separate pass so that barbed wire "wins" in regions that alternate
+    #Barbed wire is merged in a separate pass so that barbed wire "wins" in regions that alternate
     #  between short segments of barbed wire and pseudostructure
     i, j = 0, 3  # window of 3 chunks
     while j <= len(self.chunk_list):
