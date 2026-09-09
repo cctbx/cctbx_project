@@ -635,6 +635,31 @@ def test_cif_datatypes():
     shutil.rmtree(tmp)
   print('test_cif_datatypes OK')
 
+def test_cif_datatypes_without_model():
+  '''Under xcif, _cif_datatypes reads block and tag names from the parsed
+  Document and never builds the iotbx.cif model, whose walker copies every
+  loop column out of the parser first (0.36 s of a 0.72 s get_file_type on a
+  114 MB reflection cif, for nine tag names). Classification itself is
+  covered by test_cif_datatypes.'''
+  import iotbx.cif
+  from iotbx.file_io.detection import _cif_datatypes
+  import tempfile, shutil
+  tmp = tempfile.mkdtemp()
+  try:
+    p = os.path.join(tmp, 'refl.cif')
+    with open(p, 'w') as f: f.write(_combined_cif_parts()['miller_array'])
+    saved = iotbx.cif.reader
+    def no_model(*args, **kwds):
+      raise AssertionError('detection built the iotbx.cif model')
+    iotbx.cif.reader = no_model
+    try:
+      assert _cif_datatypes(p, 'xcif') == {'miller_array'}
+    finally:
+      iotbx.cif.reader = saved
+  finally:
+    shutil.rmtree(tmp)
+  print('test_cif_datatypes_without_model OK')
+
 def test_dm_combined_cif():
   '''A single-block CIF carrying model + reflections loads as every supported
   type, each with its object (the one-block-per-datatype layout is covered by
@@ -1373,6 +1398,7 @@ if __name__ == '__main__':
   test_dm_process_file_and_get_file_type()
   test_process_file_returns_empty_on_read_failure()
   test_dm_process_file_cif_engine()
+  test_cif_datatypes_without_model()
   test_dm_combined_cif()
   test_dm_combined_cif_all_combinations()
   test_get_file_type_valid_types_combined_cif()
