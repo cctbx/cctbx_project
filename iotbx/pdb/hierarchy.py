@@ -2426,10 +2426,14 @@ class _():
             ag.remove_atom(atom)
           rg = ag.parent()
           rg.remove_atom_group(ag)
-          chain = rg.parent()
-          chain.remove_residue_group(rg)
-          if chain.atoms_size() == 0:
-            model.remove_chain(chain)
+          # Only detach the residue group once it holds no more atom groups:
+          # it may still contain other atom groups (e.g. alt. confs.) that are
+          # visited later in this loop and need rg.parent() to be valid.
+          if rg.atom_groups_size() == 0:
+            chain = rg.parent()
+            chain.remove_residue_group(rg)
+            if chain.atoms_size() == 0:
+              model.remove_chain(chain)
         else:
           residues[key] = ag
 
