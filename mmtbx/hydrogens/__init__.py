@@ -590,20 +590,13 @@ def default_probe_phil():
   return iotbx.phil.parse(
     reduce2.master_phil_str, process_includes=True).extract().probe
 
-def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
-      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
-      raise_on_missing=True, log=None):
-  """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
-  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
-
-  :param raise_on_missing: When True (default), raise Sorry if restraints were
-    not found for some residues (no H placed there). Set False for best-effort
-    callers (e.g. the MolProbity kinemage view) that prefer to produce results
-    for the rest of the structure rather than fail on a few problem residues."""
+def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
+      probe_phil, raise_on_missing, log):
+  """Placement + orientation/flip optimization, without the final
+  interpretation-only re-process.  Raises Sorry after placement (before
+  optimizing) when restraints are missing and raise_on_missing is set."""
   from mmtbx.hydrogens import reduce_hydrogen
   from mmtbx.reduce import Optimizers
-  if log is None: log = sys.stdout
-  if probe_phil is None: probe_phil = default_probe_phil()
   o = reduce_hydrogen.place_hydrogens(
     model                 = model,
     use_neutron_distances = nuclear,
@@ -622,7 +615,7 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   model = o.get_model()
   # Optimize H orientations (and flips if do_flips) on the freshly placed model:
   # it already carries restraints from place_hydrogens. ORDER MATTERS -- the
-  # re-process below drops restraints, so it must come AFTER the Optimizer
+  # re-process afterwards drops restraints, so it must come AFTER the Optimizer
   # (this mirrors clashscore2.check_and_add_hydrogen).
   opt = Optimizers.Optimizer(
     probe_phil, do_flips, model, modelIndex=None,
@@ -631,9 +624,60 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   # Delete any hydrogens that we've been asked to delete.
   for a in opt.getHydrogensToDelete():
     a.parent().remove_atom(a)
+  return model
 
-  # Re-process for output safety (matches clashscore2: avoids a pair_proxies crash
-  # when writing mmCIF). No restraints are needed afterwards.
+def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
+      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
+      raise_on_missing=True, log=None):
+  """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
+  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
+
+  :param raise_on_missing: When True (default), raise Sorry if restraints were
+    not found for some residues (no H placed there). Set False for best-effort
+    callers (e.g. the MolProbity kinemage view) that prefer to produce results
+    for the rest of the structure rather than fail on a few problem residues."""
+  from mmtbx.hydrogens import reduce_hydrogen
+  if log is None: log = sys.stdout
+  if probe_phil is None: probe_phil = default_probe_phil()
+
+  hierarchy = model.get_hierarchy()
+  if len(hierarchy.models()) > 1:
+    # One model at a time: superimposed ensemble models make whole-file
+    # restraints quadratic in the model count, and placement and flip
+    # optimization are per-model operations anyway.
+    cs = model.crystal_symmetry()
+    ro = model.get_restraint_objects()
+    combined = iotbx.pdb.hierarchy.root()
+    for m in hierarchy.models():
+      r = iotbx.pdb.hierarchy.root()
+      r.append_model(m.detached_copy())
+      sub = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = r,
+        stop_for_unknowns = False,
+        crystal_symmetry  = cs,
+        restraint_objects = ro,
+        log               = None)
+      sub = _place_and_optimize_core(
+        sub, do_flips, nuclear, keep_existing_H, probe_phil,
+        raise_on_missing, log)
+      sub_model = sub.get_hierarchy().models()[0].detached_copy()
+      sub_model.id = m.id
+      combined.append_model(sub_model)
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = combined,
+      stop_for_unknowns = False,
+      crystal_symmetry  = cs,
+      restraint_objects = ro,
+      log               = None)
+  else:
+    model = _place_and_optimize_core(
+      model, do_flips, nuclear, keep_existing_H, probe_phil,
+      raise_on_missing, log)
+
+  # Re-process for output safety (avoids a pair_proxies crash when writing
+  # mmCIF).  Interpretation-only, which stays linear in the model count.
   model.get_hierarchy().sort_atoms_in_place()
   model.get_hierarchy().atoms().reset_serial()
   p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)

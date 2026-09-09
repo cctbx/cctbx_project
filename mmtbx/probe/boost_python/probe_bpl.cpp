@@ -40,7 +40,14 @@ void set_atom_i_seq(iotbx::pdb::hierarchy::atom& atom, int i_seq) {
   atom.data->i_seq = i_seq;
 }
 
+/// @brief Helper function to expose CheckDotResult::dotOffset as a Python tuple
+/// (there is no to-Python converter registered for the Point type itself).
+boost::python::tuple check_dot_result_dot_offset(DotScorer::CheckDotResult const& r) {
+  return boost::python::make_tuple(r.dotOffset[0], r.dotOffset[1], r.dotOffset[2]);
+}
+
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dot_overloads, DotScorer::check_dot, 5, 6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dots_overloads, DotScorer::check_dots, 5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(interaction_type_overloads, DotScorer::interaction_type, 2, 3)
 
 BOOST_PYTHON_MODULE(mmtbx_probe_ext)
@@ -101,7 +108,12 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .add_property("overlap", &DotScorer::CheckDotResult::overlap)
     .add_property("gap", &DotScorer::CheckDotResult::gap)
     .add_property("annular", &DotScorer::CheckDotResult::annular)
+    .add_property("dotOffset", make_function(check_dot_result_dot_offset))
     ;
+  // Define the flex array wrapping for this class because check_dots() returns
+  // a vector of them.
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared<DotScorer::CheckDotResult> >();
 
   class_<DotScorer::ScoreDotsResult>("ScoreDotsResult", init<>())
     .add_property("valid", &DotScorer::ScoreDotsResult::valid)
@@ -140,6 +152,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("point_inside_atoms", &DotScorer::point_inside_atoms)
     .def("trim_dots", &DotScorer::trim_dots)
     .def("check_dot", &DotScorer::check_dot, check_dot_overloads())
+    .def("check_dots", &DotScorer::check_dots, check_dots_overloads())
     .def("count_surface_dots", &DotScorer::count_surface_dots)
     .def("score_dots", &DotScorer::score_dots)
     .def("interaction_type", &DotScorer::interaction_type, interaction_type_overloads())

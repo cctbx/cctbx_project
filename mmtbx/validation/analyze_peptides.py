@@ -67,6 +67,9 @@ def analyze(pdb_hierarchy):
                       prev_atoms = prev_res.atoms()
                       prev_resname = prev_res.resname
                       prev_resid = prev_res.resid()
+                      if get_omega(prev_atoms=prev_atoms, atoms=atoms) is None:
+                        # incomplete backbone or chain break: no peptide bond
+                        continue
                       is_cis = is_cis_peptide(prev_atoms=prev_atoms,
                                               atoms=atoms)
                       is_trans = is_trans_peptide(prev_atoms=prev_atoms,
@@ -111,6 +114,7 @@ def get_omega(prev_atoms, atoms):
 
 def is_cis_peptide(prev_atoms, atoms):
   omega = get_omega(prev_atoms, atoms)
+  if(omega is None): return False
   if(omega > -30 and omega < 30):
     return True
   else:
@@ -118,6 +122,7 @@ def is_cis_peptide(prev_atoms, atoms):
 
 def is_trans_peptide(prev_atoms, atoms):
   omega = get_omega(prev_atoms, atoms)
+  if(omega is None): return False
   if( (omega > 150 and omega <= 180) or
       (omega >= -180 and omega < -150) ):
     return True

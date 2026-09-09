@@ -323,6 +323,10 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
         "output.separate_worse_clashes=True",
         "output.report_vdws=False",
         "output.write_files=False",
+        # Dots nest as a @subgroup of the structure's group; master={dots}
+        # on each list keeps an all-dots control.
+        "output.add_group_line=False",
+        "output.add_group_name_master_line=True",
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
@@ -340,11 +344,22 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       pass
   return probe_return
 
-def make_probe_dots_from_model(model_manager):
+def make_probe_dots_from_model(model_manager, per_model=False,
+                               approach="self", source_selection=None,
+                               target_selection=None):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
   already has hydrogens placed (e.g. from clashscore2).
+
+  per_model=True returns one section per MODEL (labeled plain "self dots",
+  for nesting in per-model groups); False returns the concatenated string
+  with per-model labels ("self dots m1", ...) on multi-model files.
+
+  approach, source_selection and target_selection pass through to probe2 and
+  default to its previous behaviour. They let a caller skip contacts probe
+  cannot interpret: with no restraints for a residue it has no bonds to
+  exclude, so every intra-residue pair reads as a clash.
   """
   try:
     from mmtbx.programs import probe2
@@ -355,7 +370,7 @@ def make_probe_dots_from_model(model_manager):
     return ""
 
   hierarchy = model_manager.get_hierarchy()
-  probe_return = ""
+  sections = []
   for i_mod, m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
     mdc = m.detached_copy()
@@ -373,6 +388,7 @@ def make_probe_dots_from_model(model_manager):
       log=null_out())
 
     # Run probe2 in kinemage output mode
+    section = ""
     try:
       import iotbx.cli_parser
 
@@ -380,27 +396,45 @@ def make_probe_dots_from_model(model_manager):
       parser = iotbx.cli_parser.CCTBXParser(
         program_class=probe2.Program, logger=null_out())
       args = [
-        "approach=self",
+        "approach=%s" % approach,
         "output.format=kinemage",
         "output.filename='%s'" % tempName,
         "output.separate_worse_clashes=True",
         "output.report_vdws=False",
         "output.write_files=False",
+        # Dots nest as a @subgroup of the structure's group; master={dots}
+        # on each list keeps an all-dots control.
+        "output.add_group_line=False",
+        "output.add_group_name_master_line=True",
         "count_dots=False",
         "ignore_lack_of_explicit_hydrogens=True",
       ]
+      # Quoted: unquoted, a selection parses as several phil arguments.
+      if source_selection is not None:
+        args.append("source_selection='%s'" % source_selection)
+      if target_selection is not None:
+        args.append("target_selection='%s'" % target_selection)
       parser.parse_args(args)
       dm = parser.data_manager
       p2 = probe2.Program(dm, parser.working_phil.extract(),
                           master_phil=parser.master_phil, logger=null_out())
       p2.overrideModel(sub_model)
       dots, output = p2.run()
-      probe_return += output
+      section = output
       if os.path.exists(tempName):
         os.unlink(tempName)
     except Exception:
       pass
-  return probe_return
+    sections.append(section)
+  if per_model:
+    return sections
+  if len(sections) > 1:
+    # Distinguish the buttons when all sections share one group.
+    for i_mod, m in enumerate(hierarchy.models()):
+      sections[i_mod] = sections[i_mod].replace(
+        "@subgroup dominant {self dots}",
+        "@subgroup dominant {self dots m%s}" % m.id.strip(), 1)
+  return "".join(sections)
 
 
 def cbeta_dev(outliers, chain_id=None):
@@ -933,9 +967,42 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
   if altid_controls != "":
     kin_out += altid_controls
   kin_out += "@group {%s} dominant animate\n" % pdbID
+  body, dummy_counter, dummy_ribbon_counter = _build_group_body(
+      hierarchy=hierarchy, bond_hash=bond_hash,
+      i_seq_name_hash=i_seq_name_hash, pdbID=pdbID,
+      rot_outliers=rot_outliers, rama_result=rama_result, cb_result=cb_result,
+      restraints_result=restraints_result, keep_hydrogens=keep_hydrogens,
+      omega_result=omega_result, rna_puckers_result=rna_puckers_result,
+      suite_result=suite_result, cablam_result=cablam_result,
+      probe_dots_kin=probe_dots_kin, ss_bonds=ss_bonds, sites_cart=sites_cart,
+      ss_annotation=ss_annotation,
+      include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils)
+  kin_out += body
+  kin_out += get_footer()
+  return kin_out
+
+def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
+                      rot_outliers, rama_result, cb_result,
+                      restraints_result, keep_hydrogens,
+                      omega_result=None, rna_puckers_result=None,
+                      suite_result=None,
+                      cablam_result=None,
+                      probe_dots_kin=None,
+                      ss_bonds=None, sites_cart=None,
+                      ss_annotation=None,
+                      include_cablam_wheels=False,
+                      plain_coils=False,
+                      counter_start=0,
+                      ribbon_counter_start=0):
+  """Emit one kinemage group's contents (sticks, markup, ribbons, dots):
+  everything between a "@group" line and the footer.  counter_start /
+  ribbon_counter_start seed the color rotations so per-model groups keep the
+  single-group color progression.  Returns (text, counter, ribbon_counter)."""
+  kin_out = ""
   initiated_chains = []
   validated_chains = []
-  counter = 0
+  counter = counter_start
+  ribbon_counter = ribbon_counter_start
   for model in hierarchy.models():
     for chain in model.chains():
       if chain.id not in initiated_chains:
@@ -992,7 +1059,6 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     consolidate_sheets(ss_map)
 
     ribbon_kin = ""
-    ribbon_counter = 0
     for model in hierarchy.models():
       has_dna = any(chain_has_DNA(c) for c in model.chains())
       has_rna = any(chain_has_RNA(c) for c in model.chains())
@@ -1014,6 +1080,128 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     kin_out += probe_dots_kin
   else:
     kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
+  return kin_out, counter, ribbon_counter
+
+def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
+                               keep_hydrogens, include_cablam_wheels,
+                               plain_coils):
+  """One animatable group per MODEL ("@group {mN pdbID} dominant animate"),
+  each with that model's sticks, markup, ribbons, and dots.  Each model is
+  interpreted and validated separately (correct for superimposed ensembles,
+  and linear in the model count)."""
+  import mmtbx.model
+  from libtbx.utils import null_out
+  hierarchy = model.get_hierarchy()
+  n_models = len(hierarchy.models())
+
+  # Per-model probe dots sections.
+  if probe_dots_kin is None:
+    dots_sections = make_probe_dots_from_model(model, per_model=True)
+  elif isinstance(probe_dots_kin, (list, tuple)):
+    dots_sections = list(probe_dots_kin)
+  elif probe_dots_kin == "":
+    dots_sections = [""] * n_models
+  else:
+    # Legacy concatenated string: split at probe2 caption headers and strip
+    # the per-model labels, since sections nest in per-model groups now.
+    import re
+    parts = [s for s in re.split(r'(?m)(?=^@caption)', probe_dots_kin) if s]
+    if len(parts) == n_models:
+      dots_sections = parts
+      for i_mod, m in enumerate(hierarchy.models()):
+        dots_sections[i_mod] = dots_sections[i_mod].replace(
+          "@subgroup dominant {self dots m%s}" % m.id.strip(),
+          "@subgroup dominant {self dots}", 1)
+    else:
+      # Unattributable text: emit groups without dots, append it at the end.
+      dots_sections = None
+  if dots_sections is not None and len(dots_sections) != n_models:
+    dots_sections = None
+
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
+  p.pdb_interpretation.allow_polymer_cross_special_position = True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds = True
+  # Deposited atom names, matching probe2's dot labels.
+  p.pdb_interpretation.flip_symmetric_amino_acids = False
+
+  kin_out = get_default_header()
+  altid_controls = get_altid_controls(hierarchy=hierarchy)
+  if altid_controls != "":
+    kin_out += altid_controls
+  counter = 0
+  ribbon_counter = 0
+  for i_mod, m in enumerate(hierarchy.models()):
+    r = pdb.hierarchy.root()
+    r.append_model(m.detached_copy())
+    sub = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = r,
+      stop_for_unknowns = False,
+      crystal_symmetry  = model.crystal_symmetry(),
+      restraint_objects = model.get_restraint_objects(),
+      log               = null_out())
+    sub.process(make_restraints=True, pdb_interpretation_params=p)
+    sub_h = sub.get_hierarchy()
+    geometry = sub.get_restraints_manager().geometry
+
+    i_seq_name_hash = build_name_hash(pdb_hierarchy=sub_h)
+    sites_cart = sub_h.atoms().extract_xyz()
+    flags = geometry_restraints.flags.flags(default=True, nonbonded=False)
+    pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
+    bond_hash = _build_bond_hash(pair_proxies.bond_proxies, i_seq_name_hash)
+    ss_bonds = _build_ss_bond_list(pair_proxies.bond_proxies, i_seq_name_hash)
+
+    has_protein = any(chain.is_protein()
+                      for mdl in sub_h.models() for chain in mdl.chains())
+    has_rna = any(chain.is_na()
+                  for mdl in sub_h.models() for chain in mdl.chains())
+    rot_outliers = rotalyze(pdb_hierarchy=sub_h, outliers_only=True)
+    rama_result = ramalyze(pdb_hierarchy=sub_h, outliers_only=True)
+    cb_result = cbetadev(pdb_hierarchy=sub_h, outliers_only=True)
+    omega_result = omegalyze.omegalyze(
+        pdb_hierarchy=sub_h, nontrans_only=True, out=None, quiet=True)
+    cablam_result = None
+    if has_protein:
+      from mmtbx.validation.cablam import cablamalyze
+      cablam_result = cablamalyze(
+          pdb_hierarchy=sub_h, outliers_only=True, out=null_out(), quiet=True)
+    rna_puckers_result = None
+    suite_result = None
+    if has_rna:
+      rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=sub_h)
+      from mmtbx.suitename.suitealyze import suitealyze
+      suite_result = suitealyze(pdb_hierarchy=sub_h, outliers_only=True)
+    from mmtbx.validation.restraints import combined as _restraints_combined
+    restraints_result = _restraints_combined(
+        pdb_hierarchy=sub_h,
+        xray_structure=sub.get_xray_structure(),
+        geometry_restraints_manager=geometry,
+        ignore_hd=True,
+        outliers_only=True)
+
+    model_label = m.id.strip()
+    if len(model_label) == 0:
+      model_label = str(i_mod + 1)
+    kin_out += "@group {m%s %s} dominant animate\n" % (model_label, pdbID)
+    dots = dots_sections[i_mod] if dots_sections is not None else ""
+    body, counter, ribbon_counter = _build_group_body(
+        hierarchy=sub_h, bond_hash=bond_hash,
+        i_seq_name_hash=i_seq_name_hash, pdbID=pdbID,
+        rot_outliers=rot_outliers, rama_result=rama_result,
+        cb_result=cb_result, restraints_result=restraints_result,
+        keep_hydrogens=keep_hydrogens, omega_result=omega_result,
+        rna_puckers_result=rna_puckers_result, suite_result=suite_result,
+        cablam_result=cablam_result, probe_dots_kin=dots,
+        ss_bonds=ss_bonds, sites_cart=sites_cart,
+        ss_annotation=ss_annotation,
+        include_cablam_wheels=include_cablam_wheels,
+        plain_coils=plain_coils,
+        counter_start=counter, ribbon_counter_start=ribbon_counter)
+    kin_out += body
+  if dots_sections is None and isinstance(probe_dots_kin, str):
+    kin_out += probe_dots_kin
   kin_out += get_footer()
   return kin_out
 
@@ -1061,16 +1249,38 @@ def build_kinemage_from_model(
 
   Returns:
     The kinemage string.
+
+  Multi-model files get one animatable group per MODEL (injected validator
+  results are ignored and re-run per model; probe_dots_kin may be a per-model
+  list, a concatenated string, or "" to suppress dots).
   """
+  if len(model.get_hierarchy().models()) > 1:
+    return _build_multimodel_kinemage(
+      model=model, pdbID=pdbID, ss_annotation=ss_annotation,
+      probe_dots_kin=probe_dots_kin, keep_hydrogens=keep_hydrogens,
+      include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils)
   if model.get_restraints_manager() is None:
-    model.process(make_restraints=True)
+    # Only bonded topology and covalent geometry are consumed here: skip the
+    # plain-pair table (quadratic for superimposed ensemble models) and use
+    # the don't-abort switches (an NMR dummy CRYST1 cell can fail the
+    # volume-vs-atom-count check).
+    import mmtbx.model
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
+    p.pdb_interpretation.allow_polymer_cross_special_position = True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+    p.pdb_interpretation.proceed_with_excessive_length_bonds = True
+    model.process(make_restraints=True, pdb_interpretation_params=p,
+                  plain_pairs_radius=0.01)
 
   hierarchy = model.get_hierarchy()
   geometry = model.get_restraints_manager().geometry
 
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   sites_cart = hierarchy.atoms().extract_xyz()
-  flags = geometry_restraints.flags.flags(default=True)
+  # Only bond proxies are consumed; nonbonded lists would be quadratic on
+  # superimposed ensemble models.
+  flags = geometry_restraints.flags.flags(default=True, nonbonded=False)
   pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
   bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)

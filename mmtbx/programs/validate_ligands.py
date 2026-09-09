@@ -58,10 +58,15 @@ class Program(ProgramTemplate):
 
   description = '''
 phenix.validate_ligands model.pdb data.mtz
+phenix.validate_ligands model.pdb map.mrc [resolution=3.0]
 phenix.validate_ligands model.pdb
 
 Print out basic statistics for residue(s) with the given code(s), including
 RSCC.
+
+To validate against X-ray data, pass the reflection file, so that omit maps can
+be computed. To validate against a cryo-EM map, supply a map file. The ligand
+is then compared against an Fcalc map.
 '''
 
   datatypes = ['model', 'phil', 'restraint', 'miller_array', 'real_map']
@@ -80,6 +85,12 @@ RSCC.
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
+
+    if (self.data_manager.get_default_miller_array_name() is not None and
+        self.data_manager.get_default_real_map_name() is not None):
+      raise Sorry(
+        'Please supply either reflection data (for X-ray) \n'
+        'or a map (for cryo-EM), not both.')
 
   # ---------------------------------------------------------------------------
 
@@ -109,6 +120,28 @@ RSCC.
   def _remove_element_x(model):
     '''Drop pseudo-atoms with element "X"; they choke pdb_interpretation.'''
     return model.select(~model.selection('element X'))
+
+  # ---------------------------------------------------------------------------
+
+  def set_map_resolution(self, mmm):
+    '''
+    Settle the resolution used to compute the cryo-EM Fcalc map.
+    '''
+    d_min = self.params.validate_ligands.resolution
+    if d_min is not None:
+      print('Using supplied map resolution: %.2f A' % d_min, file=self.logger)
+      return
+    try:
+      d_min = mmm.resolution()
+    except Exception:
+      d_min = None
+    if d_min is None:
+      raise Sorry('Could not determine the resolution of the input map. '
+                  'Please supply it with validate_ligands.resolution=<d_min>.')
+    print('Map resolution estimated from the map: %.2f A '
+          '(override with validate_ligands.resolution=)' % d_min,
+          file=self.logger)
+    self.params.validate_ligands.resolution = d_min
 
   # ---------------------------------------------------------------------------
 
@@ -181,6 +214,15 @@ RSCC.
         file=self.logger)
       m = self._remove_element_x(m)
 
+    if has_map:
+      # Adopt the map's crystal symmetry before anything else touches the model.
+      # A cryo-EM model usually carries only a dummy CRYST1 (1 1 1 P 1), and
+      # with no real symmetry reduce2 puts a P1 box around the model and moves
+      # the coordinates into it. map_model_manager later relabels the model with
+      # the map's symmetry but does not move it back.
+      m.set_crystal_symmetry(
+        self.data_manager.get_real_map(map_fn).crystal_symmetry())
+
     self.working_model = None
 
     if self.params.run_reduce2:
@@ -207,9 +249,12 @@ RSCC.
       # Map inputs are cryo-EM; electron scattering is physically correct here
       # regardless of the phil default (scattering_table only applies to the
       # fmodel/reflection path).
+      print('Map input: treating as a cryo-EM map, using electron scattering '
+            'factors.', file=self.logger)
       self.working_model.setup_scattering_dictionaries(scattering_table='electron')
       # keep the registered model in sync with the boxed map model
       self.data_manager.add_model(_model_fn, self.working_model)
+      self.set_map_resolution(mmm = mmm)
 
     ro = self.working_model.get_restraint_objects()
     if ro is None: ro=[]

@@ -818,8 +818,6 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
   with open(filename, 'wb') as f:
     f.write(png_bytes)
 
-  print(f"PNG saved to {filename}")
-
 # ------------------------------------------------------------------------------
 
 def get_prop_safe(rd_obj, prop):

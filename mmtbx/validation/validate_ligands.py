@@ -28,10 +28,25 @@ WITHIN_RADIUS_MAX = 5.0
 # difference blob, "bad". Applied symmetrically to positive and negative peaks.
 FOFC_SIGMA_CUTOFF = 3.0
 
+# Radius (A) of the spheres around the selected atoms that define the grid
+# points entering a real-space correlation. The two paths deliberately differ:
+#
+#   MAP  (cryo-EM, get_ccs_map): experimental map vs Fcalc of the whole model.
+#     2.0 A. This gave the widest spread between a correct and an absent ligand
+#     at resolutions tested. May be adapted once more tests are done.
+#   XRAY (get_ccs_miller): 2mFo-DFc omit map vs DFmodel. 1.5 A. .
+CC_MASK_RADIUS_MAP  = 2.0
+CC_MASK_RADIUS_XRAY = 1.5
+
 master_params_str = """
 validate_ligands {
 resolution = None
   .type = float
+  .short_caption = Map resolution (A)
+  .input_size = 80
+  .help = "Resolution (A) of the input cryo-EM map. Leave blank to estimate it \
+from the map itself. Ignored when reflection data are supplied, where the \
+resolution comes from the data."
 ligand_code = None
   .type = str
   .multiple = True
@@ -84,10 +99,12 @@ def master_params():
 
 def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
                          delta_weak=0.20, obs_floor=0.30, balance_ratio=1.5,
-                         overall_floor=0.70):
+                         overall_floor=0.70, check_balance=True):
   # Single "inspect fragments" flag. (A) a fragment far below the whole ligand
   # (localized weak density); (B) ordered fragments at inconsistent
   # observed-vs-model density scales (occupancy/B imbalance).
+  #
+  # check_balance turns (B) off.
   reasons = []
   n = len(frag_ccs)
   if n and cc_overall is not None and cc_overall >= overall_floor:
@@ -95,7 +112,8 @@ def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
     if cc_min <= cc_overall - delta_weak:
       reasons.append('(A) fragment %d RSCC %.2f << overall %.2f'
                      % (frag_ccs.index(cc_min) + 1, cc_min, cc_overall))
-  balances = [(i, frag_mod[i] / frag_obs[i]) for i in range(n)
+  balances = [] if not check_balance else \
+             [(i, frag_mod[i] / frag_obs[i]) for i in range(n)
               if frag_obs[i] >= obs_floor and frag_obs[i] > 0 and frag_mod[i] > 0]
   if len(balances) >= 2:
     hi = max(balances, key=lambda t: t[1])
@@ -180,6 +198,10 @@ class manager(list):
     self.log   = log
     self.fmodel = fmodel
     self.map_manager = map_manager
+
+    if self.fmodel is not None and self.map_manager is not None:
+      raise Sorry('Got both reflection data and a map. Please supply only one:'
+                  'a map file for cryo-EM and a reflection file for X-ray data.')
 
     if not (WITHIN_RADIUS_MIN <= self.params.within_radius
                              <= WITHIN_RADIUS_MAX):
@@ -572,6 +594,8 @@ class ligand_result(object):
     self.d_min = None
     if self.fmodel is not None:
       self.d_min = self.fmodel.f_obs().d_min()
+    elif self.map_manager is not None:
+      self.d_min = params.resolution
 
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
@@ -734,10 +758,20 @@ class ligand_result(object):
   # ----------------------------------------------------------------------------
 
   def _conformer_occ(self, altloc, rg):
+    '''
+    Mean occupancy of one alternate conformer, over non-H atoms only.
+
+    Defensive: a conformer's occupancy is a property of its heavy atoms, so
+    hydrogens are excluded rather than trusted. Any model whose H occupancies
+    disagree with their parents would shift the conformer occupancies and make
+    the sum check meaningless.
+    '''
     occs = flex.double()
     for ag in rg.atom_groups():
-      if ag.altloc.strip() == altloc:
-        occs.extend(ag.atoms().extract_occ())
+      if ag.altloc.strip() != altloc: continue
+      for atom in ag.atoms():
+        if atom.element_is_hydrogen(): continue
+        occs.append(atom.occ)
     if occs.size() == 0:
       return 0.0
     return flex.mean(occs)
@@ -1176,10 +1210,10 @@ class ligand_result(object):
     if self._ccs is not None:
       return self._ccs
 
-    if self.fmodel is not None:
-      ccs = self.get_ccs_miller()
     if self.map_manager is not None:
       ccs = self.get_ccs_map()
+    else:
+      ccs = self.get_ccs_miller()
 
     if ccs is None:
       return None
@@ -1190,52 +1224,91 @@ class ligand_result(object):
 
   # ----------------------------------------------------------------------------
 
+  def _map_data_in_sigma(self):
+    '''
+    The experimental map put on a mean-0, sd-1 scale.
+
+    The correlation itself is scale invariant, so this does not change any CC.
+    The per-fragment mean observed density needs it: a cryo-EM map has an
+    arbitrary scale, so the means are only comparable between runs once the map
+    is on a common scale.
+    '''
+    md = self.map_manager.map_data()
+    sd = md.sample_standard_deviation()
+    if sd == 0:
+      return md
+    return (md - flex.mean(md)) / sd
+
+  # ----------------------------------------------------------------------------
+
   def get_ccs_map(self):
-    sele = self.model.selection(string=self.sel_str)
-    cs = self.map_manager.crystal_symmetry()
-    # experimental map
-    m1 = self.map_manager.map_data()
+    '''
+    Real-space correlations against a cryo-EM map: experimental map vs an
+    Fcalc map of the whole model, over grid points within CC_MASK_RADIUS_MAP of
+    the selected heavy atoms.
+    '''
+    if self.d_min is None:
+      raise Sorry('A resolution is needed to compute map correlations. '
+                  'Set validate_ligands.resolution=<d_min>.')
 
-    crystal_gridding = maptbx.crystal_gridding(
-     unit_cell             = self.map_manager.unit_cell(),
-     space_group_info      = cs.space_group_info(),
-     pre_determined_n_real = m1.accessor().all())
-
-    # model map including ligand
-    f_calc = self._xrs.structure_factors(d_min=self.params.resolution).f_calc()
-    fft_map = miller.fft_map(
-      crystal_gridding     = crystal_gridding,
-      fourier_coefficients = f_calc)
-    del f_calc
-    fft_map.apply_sigma_scaling()
-    m2 = fft_map.real_map_unpadded()
-
+    cc_calculator = mmtbx.maps.correlation.\
+      from_map_and_xray_structure_or_fmodel(
+        xray_structure = self._xrs,
+        map_data       = self._map_data_in_sigma(),
+        d_min          = self.d_min)
+    m1 = cc_calculator.map_data    # experimental, sigma-normalized
+    m2 = cc_calculator.map_model   # Fcalc, sigma-scaled
     maptbx.assert_same_gridding(m1, m2)
 
-    sites_cart = self.model.get_sites_cart().select(sele)
-    sel = maptbx.grid_indices_around_sites(
-      unit_cell  = cs.unit_cell(),
-      fft_n_real = m1.focus(),
-      fft_m_real = m1.all(),
-      sites_cart = sites_cart,
-      site_radii = flex.double(sites_cart.size(), 2.0))
-    #m1 = m1.set_selected(m1<0, 0)
-    #m2 = m2.set_selected(m1<0, 0)
-    cc = flex.linear_correlation(
-      x=m1.select(sel).as_1d(),
-      y=m2.select(sel).as_1d()).coefficient()
+    cs = self.model.crystal_symmetry()
+    sc = self.model.get_sites_cart()
 
-    ccs = group_args(
-          rscc = cc,
-          rscc_sites = None,
-          frag_ccs = None,
-          frag_obs = None,
-          frag_mod = None,
-          fragment_flag = None,
-          fragment_reason = None,
+    def _cc(isel, return_means=False):
+      return self.compute_cc(m1, m2, cs, sc.select(isel),
+                             return_means = return_means,
+                             radius       = CC_MASK_RADIUS_MAP)
+
+    cc_total = _cc(self.ligand_isel_noH)
+
+    # ----- RSCC per ligand fragment -----
+    frag_ccs = {}
+    frag_obs = {}
+    frag_mod = {}
+    for isel in self.ligand_rigid_components_isels:
+      isel_noH = isel.intersection(self.ligand_isel_noH)
+      cc, obs_mean, mod_mean = _cc(isel_noH, return_means=True)
+      frag_ccs[isel] = cc
+      frag_obs[isel] = obs_mean
+      frag_mod[isel] = mod_mean
+
+    # ----- RSCC for sites -----
+    # The environment's fit: a local reference for how good the map is there.
+    cc_total_sites = None
+    if self.isel_within_noH.size() != 0:
+      cc_total_sites = _cc(self.isel_within_noH)
+
+    # ----- save -----
+    # ToDo: the balance check (B) needs testing on cryo-EM maps
+    fcp = self.params.frag_consistency
+    consistency = fragment_consistency(
+      cc_overall    = cc_total,
+      frag_ccs      = list(frag_ccs.values()),
+      frag_obs      = list(frag_obs.values()),
+      frag_mod      = list(frag_mod.values()),
+      delta_weak    = fcp.delta_weak,
+      obs_floor     = fcp.obs_floor,
+      balance_ratio = fcp.balance_ratio,
+      check_balance = False)
+
+    return group_args(
+          rscc = cc_total,
+          rscc_sites = cc_total_sites,
+          frag_ccs = frag_ccs,
+          frag_obs = frag_obs,
+          frag_mod = frag_mod,
+          fragment_flag = consistency.flag,
+          fragment_reason = consistency.reason,
        )
-
-    return ccs
 
   # ----------------------------------------------------------------------------
 
@@ -1349,15 +1422,16 @@ class ligand_result(object):
 
   # ----------------------------------------------------------------------------
 
-  def compute_cc(self, m1, m2, cs, sites_cart, return_means=False):
-    # site radii: ad-hoc 1.5 A around each atom (resolution/B-factor
-    # dependence ignored; good enough here).
+  def compute_cc(self, m1, m2, cs, sites_cart, return_means=False,
+                 radius=CC_MASK_RADIUS_XRAY):
+    # Fixed site radii; resolution/B-factor dependence is ignored on purpose,
+    # see the CC_MASK_RADIUS_* comments.
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = cs.unit_cell(),
       fft_n_real = m1.focus(),
       fft_m_real = m1.all(),
       sites_cart = sites_cart,
-      site_radii = flex.double(sites_cart.size(), 1.5))
+      site_radii = flex.double(sites_cart.size(), radius))
     x = m1.select(sel).as_1d()
     y = m2.select(sel).as_1d()
     cc = flex.linear_correlation(x=x, y=y).coefficient()
@@ -1440,9 +1514,14 @@ class ligand_result(object):
     peaks_neg = list(co_neg.regions())[1:]
     n_peaks_pos = len(peaks_pos)
     n_peaks_neg = len(peaks_neg)
+    # Positive and negative blobs are reported separately as well as pooled.
     percent_bad_blobs = 0
+    percent_blobs_pos = 0
+    percent_blobs_neg = 0
     if sel.size() != 0:
-      percent_bad_blobs = 100*(sum(peaks_pos)+sum(peaks_neg))/sel.size()
+      percent_blobs_pos = 100*sum(peaks_pos)/sel.size()
+      percent_blobs_neg = 100*sum(peaks_neg)/sel.size()
+      percent_bad_blobs = percent_blobs_pos + percent_blobs_neg
 
     #print('percent bad blobs', round(percent_bad_blobs, 3)*100.0)
     #print('number of bad peaks pos, neg', n_peaks_pos, n_peaks_neg)
@@ -1454,7 +1533,11 @@ class ligand_result(object):
       fofc_map_values = fofc_map_values,
       percent_bad_at_atom_centers     = percent_bad,
       n_bad_blobs = n_peaks_pos+ n_peaks_neg,
-      percent_bad_blobs = percent_bad_blobs
+      percent_bad_blobs = percent_bad_blobs,
+      n_blobs_pos = n_peaks_pos,
+      n_blobs_neg = n_peaks_neg,
+      percent_blobs_pos = percent_blobs_pos,
+      percent_blobs_neg = percent_blobs_neg
       )
 
     return self._map_values
@@ -1680,6 +1763,10 @@ class ligand_result(object):
         percent_bad_at_atom_centers = _f(mapv.percent_bad_at_atom_centers) if mapv is not None else None,
         n_bad_blobs                 = _i(mapv.n_bad_blobs)                 if mapv is not None else None,
         percent_bad_blobs           = _f(mapv.percent_bad_blobs)           if mapv is not None else None,
+        n_blobs_pos                 = _i(mapv.n_blobs_pos)                 if mapv is not None else None,
+        n_blobs_neg                 = _i(mapv.n_blobs_neg)                 if mapv is not None else None,
+        percent_blobs_pos           = _f(mapv.percent_blobs_pos)           if mapv is not None else None,
+        percent_blobs_neg           = _f(mapv.percent_blobs_neg)           if mapv is not None else None,
       ) if mapv is not None else None,
       fragment_png_bytes = fragment_png_bytes,
       missing_atoms = group_args(

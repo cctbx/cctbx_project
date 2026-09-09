@@ -262,18 +262,37 @@ class restraints_scale_manager(object):
       ots = ots/2
 
       consensus_scale = 1
-      if ots < 0.6: cutoff = 0.02
-      else:         cutoff = 0.03
+
+      OTS_THRESHOLD = 0.5 # 929
+
+      #if ots < 0.6: cutoff = 0.02 # 925a2
+      #else:         cutoff = 0.03 # 925a2
+
+      if ots < OTS_THRESHOLD: cutoff = 0.03 # 926
+      else:                   cutoff = 0.04 # 926
+
       if delta > cutoff:
         if self.scale_counts_bonds[k]==0:
           consensus_scale = factor
           self.scale_counts_bonds[k] += 1
         else:
           consensus_scale = second_factor
-      if delta < 0.01 and ots > 0.6:
-        consensus_scale = 1./second_factor**2
-      if delta < 0.01 and ots <= 0.6:
-        consensus_scale = 1./1.5
+
+      #if delta < 0.01 and ots > 0.6:          # 926
+      #  consensus_scale = 1./second_factor**2 # 926
+      #if delta < 0.01 and ots <= 0.6:         # 926
+      #  consensus_scale = 1./1.5              # 926
+
+      #if delta < 0.015 and ots > 0.6:          # 927
+      #  consensus_scale = 1./second_factor**2  # 927
+      #if delta < 0.015 and ots <= 0.6:         # 927
+      #  consensus_scale = 1./1.5               # 927
+
+      if delta < 0.015 and ots > OTS_THRESHOLD:          # 928
+        consensus_scale = 1./second_factor**2  # 928
+      if delta < 0.010 and ots <= OTS_THRESHOLD:         # 928
+        consensus_scale = 1./1.5               # 928
+
       proxy.weight = proxy.weight * consensus_scale
       self.current_bond_weights[k] = proxy.weight
 
@@ -288,6 +307,8 @@ class restraints_scale_manager(object):
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
 
+      OTS_THRESHOLD = 0.5 # 929
+
       ots = 0
       for it in [one_time_scale[i_seq],
                  one_time_scale[j_seq],
@@ -297,17 +318,17 @@ class restraints_scale_manager(object):
       ots = ots/3
 
       consensus_scale = 1
-      if ots < 0.6: cutoff = 3.0
-      else:         cutoff = 5.0
+      if ots < OTS_THRESHOLD: cutoff = 3.0
+      else:                   cutoff = 5.0
       if delta > cutoff:
         if self.scale_counts_angles[k]==0:
           consensus_scale = factor
           self.scale_counts_angles[k] += 1
         else:
           consensus_scale = second_factor
-      if delta < 1.5 and ots > 0.6:
+      if delta < 1.5 and ots > OTS_THRESHOLD:
         consensus_scale = 1./second_factor**2
-      if delta < 1.5 and ots <= 0.6:
+      if delta < 1.5 and ots <= OTS_THRESHOLD:
         consensus_scale = 1./1.5
       proxy.weight = proxy.weight * consensus_scale
       self.current_angle_weights[k] = proxy.weight
@@ -3195,16 +3216,36 @@ class manager(object):
   def reset_occupancy_for_hydrogens_simple(self):
     """
     Set occupancy of H to be the same as the parent.
+
+    Exception: an H sitting in an alternate-conformation atom group whose
+    parent heavy atom is in the blank-altloc group belongs to that conformer
+    alone. Copying the shared parent's occupancy into every copy would make a
+    single hydrogen exist at a total occupancy of n_altlocs. Such copies take
+    their own conformer's occupancy instead.
     """
     if(self.restraints_manager is None): return
     hd_sel = self.get_hd_selection()
     if(hd_sel.count(True) > 0):
       assert self._xray_structure is not None
-      xh_conn_table = self.xh_connectivity_table()
+      atoms = self.get_hierarchy().atoms()
+      # Representative occupancy of each alternate conformer, taken over its
+      # non-H atoms. H are excluded because they are what is being assigned.
+      conformer_occ = {}
+      for ag in self.get_hierarchy().atom_groups():
+        if(not ag.altloc.strip()): continue
+        values = [a.occ for a in ag.atoms() if not a.element_is_hydrogen()]
+        if(len(values) > 0):
+          conformer_occ[ag.memory_id()] = sum(values)/len(values)
       occ = self.get_occ()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
-        occ[i_h] = occ[i_x]
+        ag_h = atoms[i_h].parent()
+        if(ag_h.altloc.strip()
+           and not atoms[i_x].parent().altloc.strip()
+           and ag_h.memory_id() in conformer_occ):
+          occ[i_h] = conformer_occ[ag_h.memory_id()]
+        else:
+          occ[i_h] = occ[i_x]
       self.set_occupancies(values = occ)
 
   def reset_occupancies_for_hydrogens(self):

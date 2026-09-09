@@ -5,7 +5,9 @@ import sys
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import pdb_interpretation
 from six.moves import cStringIO as StringIO
-from libtbx.utils import format_cpu_times
+from libtbx.utils import format_cpu_times, Sorry
+import iotbx.pdb
+from mmtbx.secondary_structure import nucleic_acids
 
 protein_pdb_str = """
 ATOM      1  N   SER C   2      34.351  13.914  38.850  1.00 25.20           N
@@ -768,6 +770,30 @@ def exercise_both(mon_lib_srv, ener_lib, log):
   assert grm.get_n_hangle_proxies() == 134
 
 
+def exercise_saenger_class_mismatch():
+  # Wrong Saenger class for a base pair must produce an informative message.
+  h = iotbx.pdb.input(source_info=None,
+      lines=rna_pdb_str).construct_hierarchy()
+  ags = {}
+  for ag in h.atom_groups():
+    ags[(ag.parent().parent().id, ag.parent().resseq_as_int())] = ag
+  a1 = ags[('A', 1)].atoms()[0]  # DG A 1
+  a2 = ags[('B', 20)].atoms()[0] # DC B 20
+  assert ags[('A', 1)].resname.strip() == 'DG'
+  assert ags[('B', 20)].resname.strip() == 'DC'
+  hbonds = nucleic_acids.get_h_bonds_for_particular_basepair((a1, a2), 19)
+  assert len(hbonds) == 3, len(hbonds)
+  try:
+    nucleic_acids.get_h_bonds_for_particular_basepair((a1, a2), 20)
+  except Sorry as e:
+    msg = str(e)
+    assert "A-U" in msg, msg
+    assert "DG A   1" in msg, msg
+    assert "DC B  20" in msg, msg
+  else:
+    raise AssertionError("Sorry not raised for wrong Saenger class")
+
+
 if __name__ == "__main__":
   if (not libtbx.env.has_module(name="ksdssp")):
     print("Skipping KSDSSP tests: ksdssp module not available.")
@@ -779,5 +805,6 @@ if __name__ == "__main__":
     exercise_protein(mon_lib_srv, ener_lib, log)
     exercise_rna(mon_lib_srv, ener_lib, log)
     exercise_both(mon_lib_srv, ener_lib, log)
+  exercise_saenger_class_mismatch()
   print(format_cpu_times())
   print("OK")

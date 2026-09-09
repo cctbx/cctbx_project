@@ -5,7 +5,7 @@ import iotbx.pdb
 from libtbx.utils import null_out
 from mmtbx.hydrogens import reduce_hydrogen
 
-def run():
+def run_00():
   """
   Exercise adding H to water
   """
@@ -29,7 +29,26 @@ HETATM  846  O   HOH A 511       4.272   0.767 -10.242  1.00  7.02           O
       assert xyz in expected
   assert cntr==2
 
+def run_01():
+  """
+  Exercise adding H to water: make sure workaround does not remove them
+  """
+  pdb_str = """
+CRYST1   19.465   21.432   29.523  90.00  90.00  90.00 P 21 21 21    4
+HETATM  151  O   HOH A1006       9.937  14.244   1.856  0.50  8.38           O
+HETATM  165  O   HOH A1106       9.290  13.738   1.763  0.50 18.99           O
+HETATM  157  O   HOH A1012      -0.833  19.856   2.677  0.50 12.16           O
+HETATM  166  O   HOH A1112      -0.886  20.218   1.931  0.50  9.08           O
+END
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  o = reduce_hydrogen.place_hydrogens(model = model, exclude_water = False)
+  o.run()
+  assert o.get_model().get_xray_structure().hd_selection().count(True)==8
+
 if (__name__ == "__main__"):
   t0 = time.time()
-  run()
+  run_00()
+  run_01()
   print("OK. Time: %8.3f"%(time.time()-t0))

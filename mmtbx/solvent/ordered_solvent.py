@@ -296,6 +296,10 @@ def add_solvent_to_model_inplace(
     hierarchy = model.get_hierarchy(), new_chain = new_solvent_chain)
   model._update_atom_selection_cache()
   model.get_hierarchy().atoms().reset_i_seq()
+  # Existing atoms keep their old serials across model.select() (the filter
+  # steps), so serials derived from model.size() can collide with them.
+  # Renumber everything to keep serials unique in PDB/mmCIF output.
+  model.get_hierarchy().atoms_reset_serial()
   model.unset_processed_pdb_file()
   # Force-update xray_structure
   # This is done THIS WAY to keep scattering_table
@@ -566,10 +570,13 @@ def create_water_chain(water_residue_groups, chain_id, start_resseq=1):
 
 def add_chain_to_hierarchy(hierarchy, new_chain):
   """
-  Appends a new chain to the hierarchy as a completely separate chain object,
-  even if a chain with the same ID already exists.
-  It safely renumbers the new chain to prevent numbering collisions without
-  disturbing existing data structures.
+  Adds the residues of new_chain to the hierarchy. If the last chain of the
+  model has the same ID, the residues are appended to that chain object so
+  that all waters of one chain stay in one chain object (one label_asym_id
+  in mmCIF). Otherwise new_chain is appended as a separate chain. Either
+  way the new atoms end up at the end of the atom sequence, which the
+  caller relies on. The new residues are renumbered to prevent resseq
+  collisions without disturbing existing data structures.
   """
   # Find the highest existing resseq for this chain ID across the hierarchy
   highest_resseq = 0
@@ -594,10 +601,20 @@ def add_chain_to_hierarchy(hierarchy, new_chain):
     rg.resseq = iotbx.pdb.resseq_encode(value=current_resseq)
     rg.icode = " "
     previous_incoming_resid = incoming_resid
-  # Append the new chain as a separate entity (least intrusive method)
   if hierarchy.models_size() == 0:
     hierarchy.append_model(iotbx.pdb.hierarchy.model())
-  hierarchy.models()[0].append_chain(new_chain.detached_copy())
+  chains = hierarchy.models()[0].chains()
+  if len(chains) > 0 and chains[-1].id == new_chain.id:
+    # Merge into the existing chain object. Only the last chain qualifies:
+    # appending to an earlier chain would put the new atoms in the middle of
+    # the atom sequence.
+    target_chain = chains[-1]
+    for rg in new_chain.residue_groups():
+      new_rg = rg.detached_copy()
+      new_rg.link_to_previous = True # no BREAK record between waters
+      target_chain.append_residue_group(residue_group=new_rg)
+  else:
+    hierarchy.models()[0].append_chain(new_chain.detached_copy())
   # Re-index the atoms in the hierarchy
   hierarchy.atoms().reset_i_seq()
   return hierarchy

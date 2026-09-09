@@ -408,6 +408,11 @@ data_manager
     miller_array, and/or restraint content is added as every one of those types
     that this DataManager supports. Idempotent.
 
+    The model reader (iotbx.pdb.mmcif) reads the first data block, so a
+    combined CIF is loaded as a model only when its model block comes first
+    (as mmtbx.model.manager.model_as_mmcif writes it); otherwise the model is
+    skipped with a message on the logger and the other types still load.
+
     Parameters
     ----------
     filename : str
@@ -431,29 +436,47 @@ data_manager
       cif_types = _cif_datatypes(filename, cif_engine)
       if cif_types:
         return self._process_combined_cif(filename, cif_types, cif_engine)
+      if cif_types is not None:
+        return []          # parsed as CIF but holds none of the datatypes
     datatype = self.get_file_type(filename)
     if datatype is None:
       return []
-    process_function = 'process_%s_file' % datatype
-    if not hasattr(self, process_function):
-      return []
+    if self._process_as(datatype, filename, cif_engine):
+      return [datatype]
+    return []
+
+  def _process_as(self, datatype, filename, cif_engine):
+    '''
+    Load filename as datatype via process_<datatype>_file.
+
+    Returns
+    -------
+    bool
+        True if loaded; False if there is no such method or the reader
+        rejected the content (a detection false-positive, or e.g. a model
+        block that is not the first data block), in which case the reason
+        goes to the logger rather than escaping as a Sorry -- callers report
+        the file as unused. Note a DataManager built without a logger has a
+        silent multi_out(); cli_parser supplies one.
+    '''
+    process_function = getattr(self, 'process_%s_file' % datatype, None)
+    if process_function is None:
+      return False
     try:
       if datatype == 'restraint':
-        getattr(self, process_function)(filename, cif_engine=cif_engine)
+        process_function(filename, cif_engine=cif_engine)
       else:
-        getattr(self, process_function)(filename)
-    except Sorry:
-      # detection picked a datatype but the type-specific reader rejected the
-      # content (a detection false-positive); report the file as unused ([]),
-      # matching the combined-CIF branch and this method's contract, rather than
-      # letting the Sorry escape to callers that trust the return value.
-      return []
-    return [datatype]
+        process_function(filename)
+    except Sorry as e:
+      print('  %s not loaded as %s: %s' % (filename, datatype, e),
+            file=self.logger)
+      return False
+    return True
 
   def _process_combined_cif(self, filename, cif_types, cif_engine):
     '''
     Add a CIF as every datatype it contains that this DataManager supports,
-    each force-extracted with its own reader.
+    each extracted with its own reader.
 
     Parameters
     ----------
@@ -469,21 +492,9 @@ data_manager
     list of str
         The datatypes actually added
     '''
-    added = []
-    for datatype in ('miller_array', 'model', 'restraint'):  # precedence order
-      if (datatype not in self.datatypes) or (datatype not in cif_types):
-        continue
-      try:
-        if datatype == 'restraint':
-          self.process_restraint_file(filename, cif_engine=cif_engine, force=True)
-        elif datatype == 'model':
-          self.process_model_file(filename, force=True)
-        else:
-          self.process_miller_array_file(filename, force=True)
-        added.append(datatype)
-      except Sorry:
-        pass  # content present but did not parse as that type
-    return added
+    return [datatype for datatype in ('miller_array', 'model', 'restraint')
+            if (datatype in self.datatypes) and (datatype in cif_types)
+            and self._process_as(datatype, filename, cif_engine)]
 
   # ---------------------------------------------------------------------------
   def set_default_output_filename(self, filename):
@@ -614,9 +625,9 @@ data_manager
     return self._check_count(
       datatype, actual_n, expected_n, exact_count, raise_sorry)
 
-  def _process_file(self, datatype, filename, force=False):
+  def _process_file(self, datatype, filename):
     if filename not in self._get_names(datatype):
-      result = read_file(filename, file_type=datatype, force=force)
+      result = read_file(filename, file_type=datatype)
       self._add(datatype, filename, result.file_object)
     return filename
 

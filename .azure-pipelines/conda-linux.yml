@@ -45,7 +45,11 @@ jobs:
 
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
-    options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
+    options: --name ci-container --privileged
+    volumes:
+      - /usr/bin/docker:/tmp/docker:ro
+      - /usr:/tmp/host_usr:rw
+      - /opt:/tmp/host_opt:rw
 
   variables:
     - name: artifact_name

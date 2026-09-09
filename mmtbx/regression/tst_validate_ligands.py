@@ -73,6 +73,8 @@ def run():
   run_test25()
   run_test26()
   run_test27()
+  run_test28()
+  run_test29()
 
 # ------------------------------------------------------------------------------
 
@@ -597,9 +599,18 @@ def run_test09():
       assert ccs is not None
       assert hasattr(ccs, 'rscc')
       assert -1 <= ccs.rscc <= 1
-      assert ccs.rscc_sites is None   # map path never computes sites RSCC
-    # Well-fitted ligand: CC with its own model map should be positive
-    assert find_lr(vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs().rscc > 0.5
+      # a ligand with nothing inside within_radius still has no sites RSCC
+      assert ccs.rscc_sites is None or -1 <= ccs.rscc_sites <= 1
+    # Well-fitted ligand: CC with its own model map should be positive.
+    ccs_btn = find_lr(
+      vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs()
+    # eps is deliberately tighter than in run_test04: an all-atom mask gives
+    # 0.934 here, so anything looser would not notice hydrogen re-entering the
+    # mask.
+    assert approx_equal(ccs_btn.rscc, 0.918, eps=0.01), ccs_btn.rscc
+    # Biotin is buried in avidin, so it has an environment
+    assert approx_equal(ccs_btn.rscc_sites, 0.937, eps=0.01), ccs_btn.rscc_sites
+    assert ccs_btn.frag_ccs
   finally:
     if os.path.isfile(map_fn):
       os.remove(map_fn)
@@ -1554,6 +1565,99 @@ def run_test27():
   text = sio.getvalue()
   assert 'chirality' in text, text
   assert '0(3)' in text, text
+
+# ------------------------------------------------------------------------------
+
+_gol_bad_h_occupancy_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    4  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    5  C3 AGOL A   1       7.100   6.400   5.000  0.60 20.00           C
+HETATM    6  O3 AGOL A   1       8.500   6.350   4.700  0.60 20.00           O
+HETATM    7  H31AGOL A   1       6.700   7.000   5.700  1.00 20.00           H
+HETATM    8  HO3AGOL A   1       8.900   7.100   4.900  1.00 20.00           H
+HETATM    9  C3 BGOL A   1       7.000   6.500   5.200  0.40 20.00           C
+HETATM   10  O3 BGOL A   1       8.400   6.500   4.900  0.40 20.00           O
+HETATM   11  H31BGOL A   1       6.600   7.100   5.900  1.00 20.00           H
+HETATM   12  HO3BGOL A   1       8.800   7.200   5.100  1.00 20.00           H
+END
+'''
+
+def run_test28():
+  print('test28')
+  # A DELIBERATELY MALFORMED model: only part of the ligand is split - C1, C2,
+  # O1 and O2 are shared (blank altloc, occupancy 1.00) while C3/O3 are alt
+  # confs A (0.60) and B (0.40) - and the hydrogens on the split atoms carry
+  # occupancy 1.00 instead of following their parents.
+  #
+  # The protonation here is incomplete, which does not matter: the point
+  # is that _conformer_occ must derive a conformer's occupancy from its HEAVY
+  # atoms and so be unaffected by whatever the H occupancies happen to be.
+  #
+  # Without that, averaging the H in gives conformers of 0.80/0.70 summing to
+  # 1.50, and a correctly modelled ligand is flagged.
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_bad_h_occupancy_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl = val_lig_mod.manager(model=model, fmodel=None, map_manager=None,
+                           params=params, log=null_out())
+  vl.run()
+
+  seen = 0
+  for lr in vl:
+    ac = lr.get_alt_conf()
+    assert ac.state == 'alt_conf', ac.state
+    assert sorted(ac.altlocs) == ['A', 'B'], ac.altlocs
+    occ = ac.occupancy
+    assert occ is not None
+    # the conformers themselves, from the heavy atoms alone
+    expected_self = 0.60 if lr.altloc.strip() == 'A' else 0.40
+    assert approx_equal(occ.self_occ, expected_self, eps=1.e-6), (
+      lr.altloc, occ.self_occ)
+    assert approx_equal(occ.occ_sum, 1.0, eps=1.e-6), occ.occ_sum
+    assert occ.sum_ok is True, occ.occ_sum
+    assert ac.flag == 'ok', (ac.flag, ac.reason)
+    seen += 1
+  assert seen == 2, seen
+
+# ------------------------------------------------------------------------------
+
+def run_test29():
+  print('test29')
+  # get_map_values must report positive and negative difference blobs
+  # separately.
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  seen = 0
+  for lr in vl_manager:
+    mv = lr.get_map_values()
+    if mv is None: continue
+    seen += 1
+    # the split fields exist and are non-negative
+    for attr in ('n_blobs_pos', 'n_blobs_neg',
+                 'percent_blobs_pos', 'percent_blobs_neg'):
+      assert hasattr(mv, attr), attr
+      assert getattr(mv, attr) >= 0, (attr, getattr(mv, attr))
+    # and they reconstruct the pooled values that were reported before
+    assert mv.n_blobs_pos + mv.n_blobs_neg == mv.n_bad_blobs, (
+      mv.n_blobs_pos, mv.n_blobs_neg, mv.n_bad_blobs)
+    assert approx_equal(mv.percent_blobs_pos + mv.percent_blobs_neg,
+                        mv.percent_bad_blobs, eps=1.e-6), (
+      mv.percent_blobs_pos, mv.percent_blobs_neg, mv.percent_bad_blobs)
+  assert seen > 0, 'no ligand had map values'
 
 # ------------------------------------------------------------------------------
 

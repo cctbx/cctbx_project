@@ -1419,6 +1419,53 @@ class _():
     assert self.atoms_size() > iseq
     return self.get_label_asym_id(self.atoms()[iseq].parent().parent())
 
+  def _residue_groups_are_backbone_linked(self, rg_prev, rg_next):
+    """True if rg_prev and rg_next are joined by a peptide (C-N) or a
+    phosphodiester (O3'-P) bond, judged by the inter-atomic distance."""
+    def get_atom(residue_group, name):
+      for ag in residue_group.atom_groups():
+        atom = ag.get_atom(name)
+        if atom is not None:
+          return atom
+      return None
+    # (atom in the preceding residue, atom in the following residue)
+    backbone_link_atom_names = (("C", "N"), ("O3'", "P"))
+    max_distance = 2.0 # Angstrom
+    for name_prev, name_next in backbone_link_atom_names:
+      a_prev = get_atom(rg_prev, name_prev)
+      if a_prev is None: continue
+      a_next = get_atom(rg_next, name_next)
+      if a_next is not None and a_prev.distance(a_next) < max_distance:
+        return True
+    return False
+
+  def _residue_group_kinds(self, chain):
+    """Classify every residue_group of the chain as 'poly', 'water' or
+    'ligand' for label_asym_id / label_seq_id assignment. A residue whose name
+    is not in the residue class tables (e.g. a ligand code given to a modified
+    amino acid, UNK, caps) is a polymer residue if it is backbone-linked to a
+    neighbouring residue group of the chain; otherwise it is a ligand."""
+    # residue classes that are polymer residues regardless of geometry
+    polymer_residue_classes = ('common_amino_acid', 'modified_amino_acid',
+      'd_amino_acid', 'common_rna_dna', 'modified_rna_dna')
+    rgs = chain.residue_groups()
+    result = []
+    for i, rg in enumerate(rgs):
+      residue_class = common_residue_names_get_class(
+        rg.atom_groups()[0].resname.strip())
+      if residue_class in polymer_residue_classes:
+        kind = 'poly'
+      elif residue_class == 'common_water':
+        kind = 'water'
+      elif ((i > 0 and self._residue_groups_are_backbone_linked(rgs[i-1], rg))
+            or (i+1 < len(rgs) and
+                self._residue_groups_are_backbone_linked(rg, rgs[i+1]))):
+        kind = 'poly'
+      else:
+        kind = 'ligand'
+      result.append(kind)
+    return result
+
   def get_label_asym_id(self, residue_group):
     """Return the label_asym_id for this residue group"""
     if not hasattr(self, '_lai_lookup'):
@@ -1430,28 +1477,18 @@ class _():
       for model in self.models():
         for chain in model.chains():
           previous = None
-          for rg in chain.residue_groups():
-            resname = rg.atom_groups()[0].resname.strip()
-            residue_class = common_residue_names_get_class(resname)
-            rg_mid = rg.memory_id()
-            if residue_class in ['common_amino_acid', 'modified_amino_acid',
-                'common_rna_dna', 'modified_rna_dna']:
-              if previous != 'poly' and previous is not None:
-                number_label_asym_id += 1
-              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
-              previous = 'poly'
-            elif residue_class in ['common_water']:
-              if previous != 'water' and previous is not None:
-                number_label_asym_id += 1
-              previous = 'water'
-              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
-            else: # ligand
+          for rg, kind in zip(chain.residue_groups(),
+                              self._residue_group_kinds(chain)):
+            if kind == 'ligand':
+              # every ligand gets its own label_asym_id
               if previous is not None:
                 number_label_asym_id += 1
-              previous = 'ligand'
-              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+            elif previous != kind and previous is not None:
+              # a polymer or water run starts
+              number_label_asym_id += 1
+            self._lai_lookup[rg.memory_id()] = label_asym_ids[number_label_asym_id]
+            previous = kind
           number_label_asym_id += 1 # up for each chain
-          previous = None
         number_label_asym_id += 1 # up for each model
     rg_mid = residue_group.memory_id()
     result = self._lai_lookup.get(rg_mid, None)
@@ -1488,17 +1525,16 @@ class _():
       for model in self.models():
         for chain in model.chains():
           label_seq_id = 0
-          for rg in chain.residue_groups():
+          for rg, kind in zip(chain.residue_groups(),
+                              self._residue_group_kinds(chain)):
+            cur_ac_key = chain.id + rg.resseq + rg.icode
+            if cur_ac_key != prev_ac_key:
+              label_seq_id += 1
+              prev_ac_key = cur_ac_key
+            label_seq_id_str = '.'
+            if kind == 'poly':
+              label_seq_id_str = str(label_seq_id)
             for ag in rg.atom_groups():
-              cur_ac_key = chain.id + rg.resseq + rg.icode
-              if cur_ac_key != prev_ac_key:
-                label_seq_id += 1
-                prev_ac_key = cur_ac_key
-              label_seq_id_str='.'
-              comp_id = ag.resname.strip()
-              residue_class = common_residue_names_get_class(comp_id)
-              if residue_class in ['common_amino_acid', 'modified_amino_acid']:
-                label_seq_id_str = str(label_seq_id)
               self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
     return self._label_seq_id_dict[atom_group.memory_id()]
 

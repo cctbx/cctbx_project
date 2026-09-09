@@ -497,8 +497,17 @@ class rcsb_entry_info(object):
 
   def get_experimental_method(self):
     return self._get_value(['exptl', 0, 'method'])
+  def get_experimental_methods(self):
+    """All _exptl.method values in RCSB order; [] if none. Joint entries
+    (e.g. X-ray + neutron) have more than one."""
+    exptl = self._get_value(['exptl'])
+    if not exptl:
+      return []
+    return [e.get('method') for e in exptl if e.get('method') is not None]
   def is_xray(self):
-    return self.get_experimental_method() == "X-RAY DIFFRACTION"
+    """True only for pure X-ray entries. Joint X-ray/neutron refinements,
+    neutron, electron crystallography (MicroED) and EM are not x-ray."""
+    return self.get_experimental_methods() == ["X-RAY DIFFRACTION"]
   def get_resolution(self):
     return self._get_value(['refine', 0, 'ls_d_res_high'], float)
   def get_rwork(self):

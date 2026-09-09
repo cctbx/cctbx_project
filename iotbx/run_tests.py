@@ -53,6 +53,7 @@ tst_list_base = [
   "$D/cif/tests/tst_parser.py",
   "$D/cif/tests/tst_citations.py",
   "$D/cif/tests/tst_model_builder.py",
+  "$D/cif/tests/tst_miller_array_builder.py",
   "$D/shelx/tst_lex_parse_build.py",
   "$D/shelx/tst_hklf.py",
   "$D/shelx/tst_writer.py",

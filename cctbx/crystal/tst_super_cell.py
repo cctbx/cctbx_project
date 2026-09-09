@@ -1047,75 +1047,84 @@ def exercise_00(nonbonded_distance_cutoff=4.5, write_files=False):
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
     print("Skipping exercise(): chem_data directory not available")
     return
-  if(write_files):
-    with open("input.pdb","w") as fo:
-      fo.write(pdb_str_1yjp)
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1yjp)
-  m = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-  p = m.get_default_pdb_interpretation_params()
-  p.pdb_interpretation.nonbonded_distance_cutoff = nonbonded_distance_cutoff
-  m.process(make_restraints=True, pdb_interpretation_params=p)
-  # Figure symmetry interactions internally
-  sc1 = super_cell.manager(
-    pdb_hierarchy        = m.get_hierarchy(),
-    crystal_symmetry     = m.crystal_symmetry(),
-    select_within_radius = nonbonded_distance_cutoff)
-  if(write_files):
-    sc1.super_sphere_hierarchy.write_pdb_file(file_name="sc1.pdb",
-      crystal_symmetry = sc1.cs_super_sphere)
-  # Take symmetry interactions from restraints
-  siiu = m.get_restraints_manager().geometry.pair_proxies().nonbonded_proxies.\
-     get_symmetry_interacting_indices_unique(
-       sites_cart = m.get_hierarchy().atoms().extract_xyz())
-  sc2 = super_cell.manager(
-    pdb_hierarchy        = m.get_hierarchy(),
-    crystal_symmetry     = m.crystal_symmetry(),
-    select_within_radius = nonbonded_distance_cutoff,
-    siiu                 = siiu)
-  if(write_files):
-    sc2.super_sphere_hierarchy.write_pdb_file(file_name="sc2.pdb",
-      crystal_symmetry = sc2.cs_super_sphere)
-  # Check both ways produce the same models (chain/residue order can vary)
-  assert sc1.super_sphere_hierarchy.atoms().size()==\
-         sc2.super_sphere_hierarchy.atoms().size()
+  files = [pdb_str_huge_box,
+           pdb_str_one_chain,
+           pdb_str_1yjp,
+           pdb_str_3q2c,
+           pdb_str_fraction]
+  for i, pdb_str in enumerate(files):
+    if(write_files):
+      with open(f"input_{i}.pdb", "w") as fo:
+        fo.write(pdb_str)
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    m = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+    p = m.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.nonbonded_distance_cutoff = nonbonded_distance_cutoff
+    m.process(make_restraints=True, pdb_interpretation_params=p)
+    sites_cart = m.get_sites_cart()
+    # Figure symmetry interactions internally
+    sc1 = super_cell.manager(
+      pdb_hierarchy        = m.get_hierarchy(),
+      crystal_symmetry     = m.crystal_symmetry(),
+      select_within_radius = nonbonded_distance_cutoff)
+    if(write_files):
+      sc1.super_sphere_hierarchy.write_pdb_file(file_name=f"sc1_{i}.pdb",
+        crystal_symmetry = sc1.cs_super_sphere)
+    # Take symmetry interactions from restraints
+    siiu = m.get_restraints_manager().geometry.pair_proxies(
+      sites_cart=sites_cart).nonbonded_proxies.\
+        get_symmetry_interacting_indices_unique(sites_cart = sites_cart)
+    sc2 = super_cell.manager(
+      pdb_hierarchy        = m.get_hierarchy(),
+      crystal_symmetry     = m.crystal_symmetry(),
+      select_within_radius = nonbonded_distance_cutoff,
+      siiu                 = siiu)
+    if(write_files):
+      sc2.super_sphere_hierarchy.write_pdb_file(file_name=f"sc2_{i}.pdb",
+        crystal_symmetry = sc2.cs_super_sphere)
+    # Check both ways produce same size models (chain/residue order can vary)
+    assert sc1.super_sphere_hierarchy.atoms().size()==\
+           sc2.super_sphere_hierarchy.atoms().size()
 
 def exercise_01():
   """
   When increasing Rss make sure models with smaller Rss are exact subset of
   models with larger Rss (exercises the bug fix found by Goska).
   """
-  def dist(r1,r2):
-    return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
-  coords = []
-  for Rss in range(0,11):
-    #print(Rss)
-    pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_3q2c)
-    h = pdb_inp.construct_hierarchy()
-    h.atoms().reset_i_seq()
-    ss = super_cell.manager(
-      pdb_hierarchy = h,
-      crystal_symmetry = pdb_inp.crystal_symmetry(),
-      select_within_radius=Rss,
-      siiu=None)
-    coords.append(ss.super_sphere_hierarchy.atoms().extract_xyz())
-  for i, ri in enumerate(coords):
-    for j, rj in enumerate(coords):
-      if(i<j):
-        for site_i in ri:
-          found = False
-          for site_j in rj:
-            d = dist(site_i, site_j)
-            if(d<1.e-2):
-              found = True
-              break
-          assert found
+  files = [pdb_str_huge_box,
+           pdb_str_one_chain,
+           pdb_str_1yjp,
+           pdb_str_3q2c,
+           pdb_str_fraction]
+
+  for file_idx, pdb_str in enumerate(files):
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    crystal_symmetry = pdb_inp.crystal_symmetry()
+    base_hierarchy = pdb_inp.construct_hierarchy()
+    coords = []
+    for Rss in range(0, 11):
+      h = base_hierarchy.deep_copy()
+      h.atoms().reset_i_seq()
+      ss = super_cell.manager(
+        pdb_hierarchy=h,
+        crystal_symmetry=crystal_symmetry,
+        select_within_radius=Rss,
+        siiu=None)
+      coords.append(ss.super_sphere_hierarchy.atoms().extract_xyz())
+    for idx_i, ri in enumerate(coords):
+      for idx_j, rj in enumerate(coords):
+        if idx_i < idx_j:
+          for site_i in ri:
+            distances_sq = (rj - site_i).dot()
+            assert flex.min(distances_sq) < 1.e-4
 
 def _grad_from_ss(expansion):
   pdb_hierarchy_super = expansion.super_sphere_hierarchy
   ss_crystal_symmetry = expansion.cs_super_sphere
-  selection = flex.bool(pdb_hierarchy_super.atoms().size(), False)
-  selection = selection.set_selected(
-    flex.size_t(range(expansion.pdb_hierarchy.atoms().size())), True)
+  n_core_atoms = expansion.pdb_hierarchy.atoms().size()
+  n_super_atoms = pdb_hierarchy_super.atoms().size()
+  selection = flex.bool(n_super_atoms, False)
+  selection.set_selected(flex.size_t_range(n_core_atoms), True)
   model = mmtbx.model.manager(
     model_input       = None,
     pdb_hierarchy     = pdb_hierarchy_super,
@@ -1125,57 +1134,65 @@ def _grad_from_ss(expansion):
   rm = model.get_restraints_manager()
   es = rm.geometry.energies_sites(
     sites_cart        = model.get_sites_cart(),
-    compute_gradients =True)
+    compute_gradients = True)
   return es.gradients.select(selection)
 
 def exercise_02():
   """
   Check expansion via gradients.
   """
-  for pdb_str in [pdb_str_huge_box,
-                  pdb_str_one_chain,
-                  pdb_str_1yjp,
-                  pdb_str_3q2c,
-                  pdb_str_fraction]:
-    # gradients usual way
+  from mmtbx import hydrogens as reduce_switch
+  files = [pdb_str_huge_box,
+           pdb_str_one_chain,
+           pdb_str_1yjp,
+           pdb_str_3q2c,
+           pdb_str_fraction]
+  for i, pdb_str in enumerate(files):
     pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-    h = pdb_inp.construct_hierarchy()
-    model = mmtbx.model.manager(
-      model_input       = None,
-      pdb_hierarchy     = h,
-      crystal_symmetry  = pdb_inp.crystal_symmetry(),
-      log               = null_out())
-    model.process(make_restraints=True, grm_normalization=True)
-    rm = model.get_restraints_manager()
-    es = rm.geometry.energies_sites(
-      sites_cart        = model.get_sites_cart(),
-      compute_gradients = True)
-    g1 = es.gradients
-    # gradients via expansion
-    expansion = super_cell.manager(
-      pdb_hierarchy        = model.get_hierarchy(),
-      crystal_symmetry     = model.crystal_symmetry(),
-      select_within_radius = 5,
-      box_buffer_layer     = 3)
-    g2 = _grad_from_ss(expansion)
-    # compare gradinets by means of distance
-    dist = flex.sqrt((g1 - g2).dot())
-    assert flex.max(dist) < 1.e-6, flex.max(dist)
-    #
-    # scramble sites_cart
-    for it in [1,2]:
-      r = model.get_hierarchy().atoms().extract_xyz()
-      rs = flex.vec3_double(r.as_double()*3 + flex.random_double(r.as_double().size()))
-      expansion.update(sites_cart = rs, debug=True)
-      g3 = _grad_from_ss(expansion)
-      dist = flex.sqrt((g1 - g3).dot())
-      assert flex.max(dist) > 100., flex.max(dist) # some number like this, typically 300-600
-      # set original sites
-      expansion.update(sites_cart = r, debug=True)
-      g4 = _grad_from_ss(expansion)
-      dist = flex.sqrt((g1 - g4).dot())
+    base_h = pdb_inp.construct_hierarchy()
+    crystal_symmetry = pdb_inp.crystal_symmetry()
+    for addH in [True, False]:
+      h = base_h.deep_copy()
+      model = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = h,
+        crystal_symmetry  = crystal_symmetry,
+        log               = null_out())
+      if addH:
+        model = reduce_switch.add_hydrogens(
+          model=model, old=False, log=null_out())
+      model.process(make_restraints=True, grm_normalization=True)
+      rm = model.get_restraints_manager()
+      sites_cart = model.get_sites_cart()
+      es = rm.geometry.energies_sites(
+        sites_cart        = sites_cart,
+        compute_gradients = True)
+      g1 = es.gradients
+      # gradients via expansion
+      expansion = super_cell.manager(
+        pdb_hierarchy        = model.get_hierarchy(),
+        crystal_symmetry     = model.crystal_symmetry(),
+        select_within_radius = 5.5,
+        box_buffer_layer     = 3)
+      g2 = _grad_from_ss(expansion)
+      # compare gradients by means of distance
+      dist = flex.sqrt((g1 - g2).dot())
       assert flex.max(dist) < 1.e-6, flex.max(dist)
-
+      # scramble sites_cart
+      for it in [1,2]:
+        r = model.get_sites_cart()
+        # Scramble
+        rs_double = r.as_double() * 3 + flex.random_double(r.size() * 3)
+        rs = flex.vec3_double(rs_double)
+        expansion.update(sites_cart = rs, debug=True)
+        g3 = _grad_from_ss(expansion)
+        dist = flex.sqrt((g1 - g3).dot())
+        assert flex.max(dist) > 100., flex.max(dist) # typically 300-600
+        # set original sites
+        expansion.update(sites_cart = r, debug=True)
+        g4 = _grad_from_ss(expansion)
+        dist = flex.sqrt((g1 - g4).dot())
+        assert flex.max(dist) < 1.e-6, flex.max(dist)
 
 if(__name__ == "__main__"):
   exercise_00()

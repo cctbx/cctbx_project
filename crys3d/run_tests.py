@@ -4,7 +4,10 @@ from libtbx import test_utils
 import libtbx.load_env
 
 
-tst_list = [ "$D/regression/tst_hklinfo.py" ]
+tst_list = [
+  "$D/regression/tst_hklinfo.py",
+  "$D/regression/tst_origarrays_from_cif.py",
+]
 tst_list_expected_unstable = [
    # fails sometimes due to websocket connection problem to webbrowser
    "$D/regression/tst_websocket.py",

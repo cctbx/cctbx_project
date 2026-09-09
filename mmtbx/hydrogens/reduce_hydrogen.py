@@ -366,10 +366,11 @@ def workarounds_00345(model,
     h_sel = asc.selection("element H or element D")
     h_iseqs = h_sel.iselection()
     for atom in atoms:
+      if get_class(name=atom.parent().resname) == "common_water": continue
       if not atom.element_is_hydrogen():
         non_h_atoms.append(atom)
         elem = atom.element.strip().upper()
-        if elem == 'S': s_atoms.append(atom)
+        if   elem == 'S': s_atoms.append(atom)
         elif elem == 'C': c_atoms.append(atom)
         elif elem == 'O': o_atoms.append(atom)
     remove_selection = flex.size_t()
@@ -395,7 +396,18 @@ def workarounds_00345(model,
         if altloc_i and altloc_j and altloc_i != altloc_j: continue
         bonded_to_i = fsc0[orig_h_i]
         bonded_to_j = fsc0[orig_h_j]
+        # Avoid stripping H from some HOH
+        parent_i = atoms[bonded_to_i[0]]
+        parent_j = atoms[bonded_to_j[0]]
+        if(get_class(name=parent_i.parent().resname) == "common_water" or
+           get_class(name=parent_j.parent().resname) == "common_water"):
+          continue
+        #
         if len(bonded_to_i) != 1 or len(bonded_to_j) != 1: continue
+        # An already-perceived bond between the two parent atoms means there is
+        # no missing link here.  The close H..H contact is then an artifact of
+        # the as-placed torsion, which the methyl/OH rotators resolve later.
+        if bonded_to_i[0] in fsc0[bonded_to_j[0]]: continue
         rt_mx_i = asu_mappings.get_rt_mx_i(pair)
         rt_mx_j = asu_mappings.get_rt_mx_j(pair)
         site_frac_i = unit_cell.fractionalize(atoms[bonded_to_i[0]].xyz)
@@ -465,6 +477,7 @@ def workarounds_00345(model,
                          if nh.parent().altloc.strip() in ('', state)]
         if len(compatible_nh) == 2:
           for rh in h_neighbors:
+            if get_class(name=rh.parent().resname) == "common_water": continue
             remove_selection.append(rh.i_seq)
           break
     # =========================================================================
@@ -752,8 +765,6 @@ class place_hydrogens():
     #if not self.exclude_water:
     #  self.model.add_hydrogens(1., occupancy=0.)
 
-    self.n_H_final = self.model.get_hd_selection().count(True)
-
     # List missing H
     mon_lib_srv = self.model.get_mon_lib_srv()
     for m in self.model.get_hierarchy().models():
@@ -765,8 +776,8 @@ class place_hydrogens():
               msg="chain %s resseq %s resname %s misses:"
               if 0: # Hold off printing untill verbosity is added
                 print(msg%(c.id, r.resseq, r.resname), ma)
-
     self.model = workarounds_00345(model=self.model)
+    self.n_H_final = self.model.get_hd_selection().count(True)
 
     if self.print_time:
       self.print_times()
@@ -931,7 +942,6 @@ class place_hydrogens():
                 .set_segid(new_segid=segid))
 
               ag.append_atom(a)
-
     return pdb_hierarchy
 
 # ------------------------------------------------------------------------------
@@ -1292,4 +1302,3 @@ The following H atoms were not placed because they could not be parameterized
     print()
 
 # ==============================================================================
-
