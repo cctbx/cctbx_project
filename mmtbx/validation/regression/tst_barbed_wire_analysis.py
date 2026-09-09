@@ -9,6 +9,7 @@ from libtbx.utils import format_cpu_times
 from iotbx.data_manager import DataManager
 from mmtbx.validation.barbed_wire_analysis import (
     barbed_wire_analysis, predicted_residue)
+from mmtbx.validation.barbed_wire_analysis import alphafold_chunk
 
 CATEGORIES = set(["Predictive", "Near-predictive", "Unpacked high pLDDT",
                   "Pseudostructure", "Barbed wire", "Unphysical"])
@@ -55,6 +56,11 @@ class fake_residue(predicted_residue):
                  'out_ca_geom'):
       setattr(self, flag, None)
 
+class feedback_residue():
+  """A residue-like object containing only a feedback parameter.
+  For use with smoothing tests."""
+  def __init__(self, feedback):
+    self.feedback = feedback
 
 def exercise_decision_table():
   """Every branch of predictalyze(), without running the external tools.
@@ -162,9 +168,97 @@ def exercise_model(name, spec):
   assert not left, (name, sorted(left))
   return set(f for f in feedback if f)
 
+def build_bwa_for_smoothing(assignment_list):
+  """Makes a barbed_wire_analysis object for testing """
+  bwa = object.__new__(barbed_wire_analysis)
+  bwa.res_dict = {}
+  bwa.chunk_list = []
+  for assignment in assignment_list:
+    chunk = alphafold_chunk(res_list = assignment[0], prediction_type = assignment[1])
+    bwa.chunk_list.append(chunk)
+    for resid in assignment[0]:
+      bwa.res_dict[resid] = feedback_residue(assignment[1])
+  return bwa
+
+def exercise_smoothing():
+  #Test that surrounded pseudostructure becomes barbed wire
+  assignment_list = [[["A,___1"], "Pseudostructure"],
+                     [["A,___2"], "Barbed wire"],
+                     [["A,___3"], "Pseudostructure"],
+                     [["A,___4"], "Barbed wire"],
+                     [["A,___5"], "Pseudostructure"],
+                     [["A,___6"], "Barbed wire"]
+                    ]
+  bwa = build_bwa_for_smoothing(assignment_list)
+  bwa.merge_small_chunks()
+  assert len(bwa.chunk_list) == 2
+  assert (len(bwa.chunk_list[0].members), bwa.chunk_list[0].prediction_type) == (1, "Pseudostructure")
+  assert (len(bwa.chunk_list[1].members), bwa.chunk_list[1].prediction_type) == (5, "Barbed wire")
+
+  #Test that barbed wire and near-predictive do not interact in smoothing
+  assignment_list = [[["A,___1"], "Near-predictive"],
+                     [["A,___2"], "Barbed wire"],
+                     [["A,___3"], "Near-predictive"],
+                     [["A,___4"], "Barbed wire"],
+                     [["A,___5"], "Near-predictive"],
+                     [["A,___6"], "Barbed wire"]
+                    ]
+  bwa = build_bwa_for_smoothing(assignment_list)
+  bwa.merge_small_chunks()
+  assert len(bwa.chunk_list) == 6
+  #Only checking the middle residues
+  assert (len(bwa.chunk_list[2].members), bwa.chunk_list[2].prediction_type) == (1, "Near-predictive")
+  assert (len(bwa.chunk_list[3].members), bwa.chunk_list[3].prediction_type) == (1, "Barbed wire")
+
+  #Test that surrounded pseudostructure is promoted to near-predictive
+  assignment_list = [[["A,___1"], "Near-predictive"],
+                     [["A,___2"], "Pseudostructure"],
+                     [["A,___3"], "Near-predictive"],
+                     [["A,___4"], "Pseudostructure"],
+                     [["A,___5"], "Near-predictive"],
+                     [["A,___6"], "Pseudostructure"]
+                    ]
+  bwa = build_bwa_for_smoothing(assignment_list)
+  bwa.merge_small_chunks()
+  assert len(bwa.chunk_list) == 2
+  assert (len(bwa.chunk_list[0].members), bwa.chunk_list[0].prediction_type) == (5, "Near-predictive")
+  assert (len(bwa.chunk_list[1].members), bwa.chunk_list[1].prediction_type) == (1, "Pseudostructure")
+
+  #Test that smoothing works on 2-residue chunks
+  assignment_list = [[["A,___1"], "Pseudostructure"],
+                     [["A,___2", "A,___3"], "Barbed wire"],
+                     [["A,___4", "A,___5"], "Pseudostructure"],
+                     [["A,___6", "A,___7"], "Barbed wire"],
+                     [["A,___8", "A,___9", "A,__10"], "Pseudostructure"],
+                     [["A,__11", "A,__12"], "Barbed wire"]
+                    ]
+  bwa = build_bwa_for_smoothing(assignment_list)
+  bwa.merge_small_chunks()
+  assert len(bwa.chunk_list) == 4
+  assert (len(bwa.chunk_list[0].members), bwa.chunk_list[0].prediction_type) == (1, "Pseudostructure")
+  assert (len(bwa.chunk_list[1].members), bwa.chunk_list[1].prediction_type) == (6, "Barbed wire")
+  assert (len(bwa.chunk_list[2].members), bwa.chunk_list[2].prediction_type) == (3, "Pseudostructure")
+  assert (len(bwa.chunk_list[3].members), bwa.chunk_list[3].prediction_type) == (2, "Barbed wire")
+
+  #Test that surrounded unpacked is promoted to predictive
+  #This is a new behavior added after journal publication
+  assignment_list = [[["A,___1"], "Predictive"],
+                     [["A,___2", "A,___3"], "Unpacked high pLDDT"],
+                     [["A,___4", "A,___5"], "Predictive"],
+                     [["A,___6", "A,___7"], "Unpacked high pLDDT"],
+                     [["A,___8", "A,___9"], "Predictive"],
+                     [["A,__10", "A,__11"], "Unpacked high pLDDT"]
+                    ]
+  bwa = build_bwa_for_smoothing(assignment_list)
+  bwa.merge_small_chunks()
+  assert len(bwa.chunk_list) == 2
+  assert (len(bwa.chunk_list[0].members), bwa.chunk_list[0].prediction_type) == (9, "Predictive")
+  assert (len(bwa.chunk_list[1].members), bwa.chunk_list[1].prediction_type) == (2, "Unpacked high pLDDT")
 
 def main():
+  print("testing barbed_wire_analysis...")
   exercise_decision_table()
+  print("Decision table OK")
   cwd = os.getcwd()
   tmp = tempfile.mkdtemp()
   seen = set()
@@ -177,6 +271,9 @@ def main():
     shutil.rmtree(tmp, ignore_errors=True)
   if seen:
     assert seen == CATEGORIES, CATEGORIES - seen
+  print("Model analysis OK")
+  exercise_smoothing()
+  print("Smoothing OK")
   print(format_cpu_times())
   print("OK")
 
