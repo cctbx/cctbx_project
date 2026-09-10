@@ -13,7 +13,14 @@ def get_help(path, scope = master_phil_scope):
 tooltips = {
   # Settings dialog
   'db_cred_ctr': get_help('experiment_tag'),
-  'db_cred_btn_big': 'Set up database credentials the GUI will use to connect with',
+  'db_cred_btn_big': 'Set up database credentials the GUI will use to connect with. '
+                     'Disabled while the GUI is running — restart to change connection settings.',
+  'load_project': 'Load a saved project bundle (experiment tag, database, output folder, and '
+                  'multiprocessing settings) from ~/.cctbx.xfel/settings_<name>.phil. '
+                  'While the GUI is running, changing the database connection or experiment tag '
+                  'is not allowed; a full restart is required for those changes.',
+  'save_project': 'Save the current settings as a named project bundle to '
+                  '~/.cctbx.xfel/settings_<name>.phil.',
   'facility_ctr': get_help('facility.name'),
   'btn_facility_options': 'Facility specific options',
   'experiment_ctr': get_help('facility.lcls.experiment'),
@@ -87,6 +94,24 @@ tooltips = {
   'rg_energy_ctr': 'Energy override for all images (eV)',
   'rg_two_thetas': 'Two 2θ values (deg). The ratio of high/low is used to check for presence of solvent on each image. ' + \
                    'Defaults are the water ring and a low resolution ring',
+  # Ensemble refinement / MergingStats dialogs
+  'nnodes_tder': 'Number of nodes for Time-Dependent Ensemble Refinement.',
+  # EnergyDialog
+  'skip_images': 'Number of images to skip at the start of the dataset.',
+  'num_images': 'Maximum number of frames to average.',
+  # Dataset scaling stage — unit-cell cluster filter
+  'chk_use_cluster': 'When checked, filter lattices using a covariance model previously '
+                     'computed on the Unit Cells tab. When unchecked, the relative-length '
+                     'tolerance filter (above) is used instead.',
+  'cluster_file': 'Covariance pickle file written by the Unit Cells tab '
+                  '(output_folder/cluster/cluster_<name>.pickle). '
+                  'Use Browse to select a file outside the default location.',
+  'browse_cluster': 'Browse for a covariance pickle file outside the default cluster directory.',
+  'cluster_component': 'Index of the Gaussian mixture component to filter on (0 = largest cluster). '
+                       'The Unit Cells tab labels components in the same order.',
+  'cluster_mahalanobis': 'Maximum Mahalanobis distance from the cluster centre for a lattice to be '
+                         'accepted (essentially a sigma cutoff for the multivariate Gaussian). '
+                         'Default is 4.0.',
 }
 
 def setup_tooltip(obj):
