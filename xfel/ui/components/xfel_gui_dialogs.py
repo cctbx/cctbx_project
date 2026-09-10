@@ -19,6 +19,7 @@ from xfel.ui.db.task import task_types
 import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
+from xfel.ui.components.tooltips import setup_tooltip
 from xfel.ui.components.submission_tracker import QueueInterrogator
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
@@ -1125,7 +1126,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       ctrl_value='%d'%(params.mp.nnodes_tder or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
-    self.nnodes_tder.SetToolTip('Time Dependent Ensemble Refinement')
+    setup_tooltip(self.nnodes_tder)
     self.jobtype_nnodes_sizer.Add(self.nnodes_tder, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_scale = gctr.SpinCtrl(self,
@@ -1815,6 +1816,7 @@ class AveragingDialog(BaseDialog):
 
     # Image Average Options
     self.skip_images = gctr.SpinCtrl(self,
+                                   name='skip_images',
                                    label='Skip Images:',
                                    label_style='bold',
                                    label_size=(150, -1),
@@ -1831,6 +1833,7 @@ class AveragingDialog(BaseDialog):
                                    items={'all': 'Use all images',
                                           'specify': 'Specify total images'})
     self.num_images = gctr.SpinCtrl(self,
+                                   name='num_images',
                                    label='Number Images:',
                                    label_style='bold',
                                    label_size=(150, -1),
@@ -1841,8 +1844,6 @@ class AveragingDialog(BaseDialog):
     self.main_sizer.Add(self.skip_images, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.num_images_type, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.num_images, flag=wx.EXPAND | wx.ALL, border=10)
-    self.skip_images.SetToolTip('Number of images to skip at the start of the dataset')
-    self.num_images.SetToolTip('Maximum number of frames to average.')
     self.Bind(wx.EVT_RADIOBUTTON, self.onAllImages, self.num_images_type.all)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyImages, self.num_images_type.specify)
     self.num_images.Disable()
@@ -3684,22 +3685,25 @@ class DatasetStagePanel(wx.Panel):
       # cluster; when disabled the plain relative-tolerance (value) filter above
       # is used instead. The two modes are mutually exclusive.
       self.chk_use_cluster = wx.CheckBox(
-        self, label='Filter by unit-cell cluster (from Unit Cells tab)')
+        self, name='chk_use_cluster', label='Filter by unit-cell cluster (from Unit Cells tab)')
       self.cluster_file_panel = wx.Panel(self)
       cf_sizer = wx.BoxSizer(wx.HORIZONTAL)
       cf_label = wx.StaticText(self.cluster_file_panel, label='Cluster file:',
                                size=(220, -1))
-      self.cluster_file = wx.Choice(self.cluster_file_panel, choices=[])
-      self.btn_browse_cluster = gctr.Button(self.cluster_file_panel, label='Browse...')
+      self.cluster_file = wx.Choice(self.cluster_file_panel, name='cluster_file', choices=[])
+      self.btn_browse_cluster = gctr.Button(self.cluster_file_panel,
+                                             name='browse_cluster', label='Browse...')
       cf_sizer.Add(cf_label, flag=wx.ALIGN_CENTER_VERTICAL)
       cf_sizer.Add(self.cluster_file, proportion=1,
                    flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=5)
       cf_sizer.Add(self.btn_browse_cluster, flag=wx.ALIGN_CENTER_VERTICAL)
       self.cluster_file_panel.SetSizer(cf_sizer)
-      self.cluster_component = gctr.TextButtonCtrl(self, label='Cluster component:',
+      self.cluster_component = gctr.TextButtonCtrl(self, name='cluster_component',
+                                                   label='Cluster component:',
                                                    label_size=(220, -1), label_style='normal',
                                                    ghost_button=False)
-      self.cluster_mahalanobis = gctr.TextButtonCtrl(self, label='Mahalanobis cutoff:',
+      self.cluster_mahalanobis = gctr.TextButtonCtrl(self, name='cluster_mahalanobis',
+                                                     label='Mahalanobis cutoff:',
                                                      label_size=(220, -1), label_style='normal',
                                                      ghost_button=False)
       self._cluster_paths = []
@@ -3711,6 +3715,8 @@ class DatasetStagePanel(wx.Panel):
       self._add_body(self.cluster_component)
       self._add_body(self.cluster_mahalanobis)
       self._add_body(self.sigma)
+      setup_tooltip(self.chk_use_cluster)
+      setup_tooltip(self.cluster_file)
       self.Bind(wx.EVT_CHECKBOX, lambda e: self._sync_cluster_enabled(),
                 self.chk_use_cluster)
       self.Bind(wx.EVT_BUTTON, self.onBrowseCluster, self.btn_browse_cluster)
