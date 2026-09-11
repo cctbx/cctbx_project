@@ -605,18 +605,29 @@ def _ch2_groups(elements, bond_pairs, sites):
       result.append((p, hv, hs, sites))
   return result
 
-def _dictionary_sites(source_info):
-  '''Ideal sites from a restraint file, if it has coordinates (geostd ligands).'''
+def _dictionary_sites(source_info, resname):
+  '''
+  Ideal sites of resname from its restraint file, if it has coordinates
+  (geostd ligands). One file can define several ligands with the same names.
+  '''
   if not source_info or not source_info.startswith("file:"): return None
   import iotbx.cif
   try: cif_model = iotbx.cif.reader(file_path=source_info[5:].strip()).model()
   except Exception: return None
-  for block in cif_model.values():
-    if "_chem_comp_atom.atom_id" in block and "_chem_comp_atom.x" in block:
-      xyz = zip(*[block["_chem_comp_atom.%s" % k] for k in "xyz"])
-      return dict((name.strip('"'), tuple(float(v) for v in t))
-        for name, t in zip(block["_chem_comp_atom.atom_id"], xyz)
-        if "?" not in t and "." not in t)
+  for block_name, block in cif_model.items():
+    if not ("_chem_comp_atom.atom_id" in block and "_chem_comp_atom.x" in block):
+      continue
+    names = block["_chem_comp_atom.atom_id"]
+    if "_chem_comp_atom.comp_id" in block:
+      comp_ids = [c.strip() for c in block["_chem_comp_atom.comp_id"]]
+    elif block_name == "comp_%s" % resname:
+      comp_ids = [resname] * len(names)
+    else: continue
+    xyz = zip(*[block["_chem_comp_atom.%s" % k] for k in "xyz"])
+    sites = dict((name.strip('"'), tuple(float(v) for v in t))
+      for comp_id, name, t in zip(comp_ids, names, xyz)
+      if comp_id == resname and "?" not in t and "." not in t)
+    if sites: return sites
   return None
 
 def _ch2_references(resname, mon_lib_srv, cache):
@@ -643,7 +654,7 @@ def _ch2_references(resname, mon_lib_srv, cache):
   try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
   except Exception: cc = None
   if cc is not None:
-    sites = _dictionary_sites(cc.source_info)
+    sites = _dictionary_sites(cc.source_info, resname)
     if sites:
       elements = dict((a.atom_id, a.type_symbol.strip().upper())
         for a in cc.atom_list)
