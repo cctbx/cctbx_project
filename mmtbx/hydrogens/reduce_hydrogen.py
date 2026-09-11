@@ -1245,6 +1245,7 @@ class place_hydrogens():
     parent_dict = {}
     bonds = {}
     bond_lengths = {}
+    ideal_distance = {}
     for proxy in all_proxies:
       if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
       elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
@@ -1253,6 +1254,7 @@ class place_hydrogens():
       bonds[i].append(j)
       bonds.setdefault(j,[])
       bonds[j].append(i)
+      ideal_distance[frozenset((i, j))] = proxy.distance_ideal
       # Exception for HIS HD1 and HE2
       if (atoms[i].parent().resname == 'HIS' and
         atoms[i].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
@@ -1309,7 +1311,12 @@ class place_hydrogens():
       if _residue(atoms[i]) != _residue(atoms[j]): return 1
       orders = _bond_orders(atoms[i].parent().resname.strip(), mon_lib_srv,
                             order_cache)
-      return orders.get(frozenset((atoms[i].name.strip(), atoms[j].name.strip())), 1)
+      order = orders.get(frozenset((atoms[i].name.strip(), atoms[j].name.strip())), 1)
+      # A multiple bond the link reaction consumed is single in the model (5p9j
+      # CAA=CAD at 1.60 A). 0.1 A is half the single-double gap.
+      if (order > 1 and atoms[i].distance(atoms[j]) >
+          ideal_distance.get(frozenset((i, j)), 0) + 0.1): return 1
+      return order
     for i_seq in sorted(reversed(list(sel_remove)), key=_drop_order):
       j_seq=parent_dict[i_seq]
       # need to add the use of atomic charge

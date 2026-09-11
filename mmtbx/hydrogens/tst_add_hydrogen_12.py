@@ -566,6 +566,126 @@ loop_
    HETATM 55 H9 . 1S6 B 401 ? 14.52793 12.17332 13.90639 1.000 25.99000 H ? B ? . H9 1
 """
 
+CYS_1E8_A_701_5p9j_H = """
+data_default
+_cell.length_a                    20.405
+_cell.length_b                    18.624
+_cell.length_c                    24.173
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 90.000
+_space_group.crystal_system       triclinic
+_space_group.IT_number            1
+_space_group.name_H-M_alt         'P 1'
+_space_group.name_Hall            ' P 1'
+_symmetry.space_group_name_H-M    'P 1'
+_symmetry.space_group_name_Hall   ' P 1'
+_symmetry.Int_Tables_number       1
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+   1 x,y,z
+
+loop_
+  _struct_asym.id
+   A
+   B
+
+loop_
+  _chem_comp.id
+   1E8
+   CYS
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.auth_atom_id
+  _atom_site.pdbx_PDB_model_num
+   ATOM 1 N . CYS A 481 ? 20.64500 10.93100 -2.08000 1.000 12.93000 N ? A ? 1 N 1
+   ATOM 2 CA . CYS A 481 ? 20.49100 12.18700 -1.34600 1.000 13.38000 C ? A ? 1 CA 1
+   ATOM 3 C . CYS A 481 ? 20.15500 13.39300 -2.28300 1.000 12.24000 C ? A ? 1 C 1
+   ATOM 4 O . CYS A 481 ? 20.70800 13.48400 -3.37800 1.000 12.28000 O ? A ? 1 O 1
+   ATOM 5 CB . CYS A 481 ? 21.73800 12.53100 -0.60400 1.000 16.61000 C ? A ? 1 CB 1
+   ATOM 6 SG . CYS A 481 ? 23.18400 12.84300 -1.46700 1.000 21.18000 S ? A ? 1 SG 1
+   ATOM 7 H . CYS A 481 ? 21.38034 10.51695 -1.91435 1.000 12.93000 H ? A ? 1 H 1
+   ATOM 8 HA . CYS A 481 ? 19.75846 12.05695 -0.72361 1.000 13.38000 H ? A ? 1 HA 1
+   ATOM 9 HB2 . CYS A 481 ? 21.55411 13.33106 -0.08729 1.000 16.61000 H ? A ? 1 HB2 1
+   ATOM 10 HB3 . CYS A 481 ? 21.93307 11.78971 -0.00958 1.000 16.61000 H ? A ? 1 HB3 1
+   HETATM 11 C2 . 1E8 A 701 ? 19.02900 5.21000 -0.50200 1.000 13.21000 C ? B ? . C2 1
+   HETATM 12 C4 . 1E8 A 701 ? 20.28700 6.08700 1.10600 1.000 13.59000 C ? B ? . C4 1
+   HETATM 13 C5 . 1E8 A 701 ? 19.24400 5.77000 2.04500 1.000 13.49000 C ? B ? . C5 1
+   HETATM 14 C6 . 1E8 A 701 ? 18.03500 5.20200 1.58300 1.000 12.52000 C ? B ? . C6 1
+   HETATM 15 CAA . 1E8 A 701 ? 24.63600 11.91400 -0.79600 1.000 20.77000 C ? B ? . CAA 1
+   HETATM 16 CAD . 1E8 A 701 ? 24.92600 10.40100 -1.22500 1.000 21.68000 C ? B ? . CAD 1
+   HETATM 17 CAE . 1E8 A 701 ? 14.68100 8.43700 10.02900 1.000 18.37000 C ? B ? . CAE 1
+   HETATM 18 CAF . 1E8 A 701 ? 14.53900 8.01300 8.70900 1.000 17.58000 C ? B ? . CAF 1
+   HETATM 19 CAG . 1E8 A 701 ? 15.73100 7.99400 10.79500 1.000 20.38000 C ? B ? . CAG 1
+   HETATM 20 CAI . 1E8 A 701 ? 15.45800 7.20100 8.14300 1.000 17.54000 C ? B ? . CAI 1
+   HETATM 21 CAJ . 1E8 A 701 ? 16.63400 7.08200 10.22600 1.000 18.02000 C ? B ? . CAJ 1
+   HETATM 22 CAK . 1E8 A 701 ? 18.22700 4.86000 6.45400 1.000 17.33000 C ? B ? . CAK 1
+   HETATM 23 CAL . 1E8 A 701 ? 18.40300 7.30100 6.65500 1.000 17.38000 C ? B ? . CAL 1
+   HETATM 24 CAM . 1E8 A 701 ? 18.76600 4.95500 5.19700 1.000 16.86000 C ? B ? . CAM 1
+   HETATM 25 CAN . 1E8 A 701 ? 19.00400 7.37700 5.43000 1.000 17.48000 C ? B ? . CAN 1
+   HETATM 26 CAO . 1E8 A 701 ? 24.94400 7.93300 1.76700 1.000 23.32000 C ? B ? . CAO 1
+   HETATM 27 CAP . 1E8 A 701 ? 23.79100 6.99400 2.16100 1.000 22.36000 C ? B ? . CAP 1
+   HETATM 28 CAQ . 1E8 A 701 ? 24.37500 9.39500 1.60100 1.000 21.53000 C ? B ? . CAQ 1
+   HETATM 29 CAR . 1E8 A 701 ? 22.23400 8.54000 0.82600 1.000 21.89000 C ? B ? . CAR 1
+   HETATM 30 CAW . 1E8 A 701 ? 23.70200 9.56100 -0.81100 1.000 21.67000 C ? B ? . CAW 1
+   HETATM 31 CAY . 1E8 A 701 ? 16.53900 6.77700 8.91700 1.000 16.54000 C ? B ? . CAY 1
+   HETATM 32 CAZ . 1E8 A 701 ? 18.00500 6.03200 7.18600 1.000 17.48000 C ? B ? . CAZ 1
+   HETATM 33 CBA . 1E8 A 701 ? 19.10900 6.22100 4.67500 1.000 15.69000 C ? B ? . CBA 1
+   HETATM 34 CBB . 1E8 A 701 ? 19.75700 6.27700 3.36000 1.000 14.48000 C ? B ? . CBB 1
+   HETATM 35 CBE . 1E8 A 701 ? 22.53200 7.12700 1.26100 1.000 17.72000 C ? B ? . CBE 1
+   HETATM 36 N1 . 1E8 A 701 ? 17.99600 4.90600 0.25100 1.000 12.40000 N ? B ? . N1 1
+   HETATM 37 N3 . 1E8 A 701 ? 20.16500 5.77400 -0.20900 1.000 13.78000 N ? B ? . N3 1
+   HETATM 38 NAB . 1E8 A 701 ? 16.99300 4.96200 2.34400 1.000 12.25000 N ? B ? . NAB 1
+   HETATM 39 NAU . 1E8 A 701 ? 20.95600 6.78500 3.15200 1.000 15.16000 N ? B ? . NAU 1
+   HETATM 40 NBF . 1E8 A 701 ? 21.24000 6.66000 1.80100 1.000 15.50000 N ? B ? . NBF 1
+   HETATM 41 NBG . 1E8 A 701 ? 23.47700 9.23700 0.49700 1.000 21.51000 N ? B ? . NBG 1
+   HETATM 42 OAC . 1E8 A 701 ? 22.89600 9.27100 -1.71900 1.000 19.14000 O ? B ? . OAC 1
+   HETATM 43 OAV . 1E8 A 701 ? 17.47300 5.89900 8.44600 1.000 18.42000 O ? B ? . OAV 1
+   HETATM 44 H2 . 1E8 A 701 ? 18.92474 4.98035 -1.39715 1.000 13.21000 H ? B ? . H2 1
+   HETATM 45 HAA . 1E8 A 701 ? 24.54193 11.91159 0.12923 1.000 20.77000 H ? B ? . HAA 1
+   HETATM 46 HAD . 1E8 A 701 ? 25.69512 10.09215 -1.64686 1.000 21.68000 H ? B ? . HAD 1
+   HETATM 47 HAE . 1E8 A 701 ? 14.05938 9.02476 10.39373 1.000 18.37000 H ? B ? . HAE 1
+   HETATM 48 HAF . 1E8 A 701 ? 13.80547 8.28939 8.20856 1.000 17.58000 H ? B ? . HAF 1
+   HETATM 49 HAG . 1E8 A 701 ? 15.84523 8.28814 11.66983 1.000 20.38000 H ? B ? . HAG 1
+   HETATM 50 HAI . 1E8 A 701 ? 15.37420 6.92935 7.25752 1.000 17.54000 H ? B ? . HAI 1
+   HETATM 51 HAJ . 1E8 A 701 ? 17.29672 6.68712 10.74540 1.000 18.02000 H ? B ? . HAJ 1
+   HETATM 52 HAK . 1E8 A 701 ? 18.01806 4.02225 6.79957 1.000 17.33000 H ? B ? . HAK 1
+   HETATM 53 HAL . 1E8 A 701 ? 18.25037 8.07442 7.14839 1.000 17.38000 H ? B ? . HAL 1
+   HETATM 54 HAM . 1E8 A 701 ? 18.90046 4.18084 4.69951 1.000 16.86000 H ? B ? . HAM 1
+   HETATM 55 HAN . 1E8 A 701 ? 19.33341 8.18735 5.11421 1.000 17.48000 H ? B ? . HAN 1
+   HETATM 56 HAO . 1E8 A 701 ? 25.63758 7.92235 2.44504 1.000 23.32000 H ? B ? . HAO 1
+   HETATM 57 HAP . 1E8 A 701 ? 24.10072 6.07559 2.12228 1.000 22.36000 H ? B ? . HAP 1
+   HETATM 58 HAQ . 1E8 A 701 ? 23.90860 9.70947 2.39124 1.000 21.53000 H ? B ? . HAQ 1
+   HETATM 59 HAR . 1E8 A 701 ? 21.65458 8.53129 0.04812 1.000 21.89000 H ? B ? . HAR 1
+   HETATM 60 HBE . 1E8 A 701 ? 22.77149 6.53823 0.52827 1.000 17.72000 H ? B ? . HBE 1
+   HETATM 61 HAAA . 1E8 A 701 ? 25.39181 12.40303 -1.02946 1.000 20.77000 H ? B ? . HAAA 1
+   HETATM 62 HAOA . 1E8 A 701 ? 25.35221 7.64009 0.93726 1.000 23.32000 H ? B ? . HAOA 1
+   HETATM 63 HAPA . 1E8 A 701 ? 23.53309 7.17385 3.07863 1.000 22.36000 H ? B ? . HAPA 1
+   HETATM 64 HAQA . 1E8 A 701 ? 25.06494 10.04723 1.40233 1.000 21.53000 H ? B ? . HAQA 1
+   HETATM 65 HARA . 1E8 A 701 ? 21.77717 9.01561 1.53734 1.000 21.89000 H ? B ? . HARA 1
+   HETATM 66 HNAA . 1E8 A 701 ? 16.99677 5.14091 3.18518 1.000 12.25000 H ? B ? . HNAA 1
+   HETATM 67 HNAB . 1E8 A 701 ? 16.27145 4.61777 2.02704 1.000 12.25000 H ? B ? . HNAB 1
+"""
+
 def tst_00():
   '''
     4zeb: ARA O2 - TT7 P4 phosphodiester (1.59 A, no LINK record) -> no HO2.
@@ -611,12 +731,25 @@ def tst_04():
                  sel_str  = "(resname 1S6 and name H1) or (resname SER and name HG)",
                  optimize = True)
 
+def tst_05():
+  '''
+    5p9j: CYS 481 SG - CAA ibrutinib (Michael adduct), labelled with the free
+    drug code 1E8. Its dictionary still has CAA=CAD, which the reaction consumed
+    (CAA-CAD 1.60 A): CAA keeps both H (HAA, HAAA); SG -> no HG.
+    Limitation, kept on purpose: 1E8 gives CAD one trigonal H (HAD); the adduct
+    has two. The PDB uses the reacted form 8E8.
+  '''
+  compare_models(pdb_str  = CYS_1E8_A_701_5p9j_H,
+                 sel_str  = "resname CYS and name HG",
+                 optimize = True)
+
 def run():
   tst_00()
   tst_01()
   tst_02()
   tst_03()
   tst_04()
+  tst_05()
 
 if __name__ == '__main__':
   run()
