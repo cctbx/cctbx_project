@@ -19,7 +19,7 @@ from xfel.ui.db.task import task_types
 import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
-from xfel.ui.components.tooltips import setup_tooltip
+from xfel.ui.components.tooltips import setup_tooltip, tooltips
 from xfel.ui.components.submission_tracker import QueueInterrogator
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
@@ -2908,6 +2908,7 @@ class TrialDialog(BaseDialog):
       d_min = trial.d_min if trial.d_min is not None else 1.5
 
     self.trial_info = gctr.TwoButtonCtrl(self,
+                                         name='trial_info',
                                          label='Trial number:',
                                          label_size=(100, -1),
                                          label_style='normal',
@@ -2919,6 +2920,7 @@ class TrialDialog(BaseDialog):
                                          button2_size=(120, -1),
                                          value="{}".format(trial_number))
     self.trial_comment = gctr.TextButtonCtrl(self,
+                                             name='trial_comment',
                                              label='Comment:',
                                              label_size=(100, -1),
                                              label_style='normal',
@@ -2936,6 +2938,7 @@ class TrialDialog(BaseDialog):
     self.chk_integrate = wx.CheckBox(self.overall_panel,
                                      label='Integrate')
     self.min_spots = gctr.TextButtonCtrl(self.overall_panel,
+                                         name='min_spots',
                                          label='Min spots',
                                          label_size=(-1, -1),
                                          label_style='normal',
@@ -2953,41 +2956,49 @@ class TrialDialog(BaseDialog):
     self.spotfinding_panel.SetSizer(self.spotfinding_sizer)
 
     self.min_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                             name='min_spot_size',
                                              label='Min spot size',
                                              label_size=(-1, -1),
                                              label_style='normal',
                                              ghost_button=False)
     self.max_spot_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                             name='max_spot_size',
                                              label='Max spot size',
                                              label_size=(-1, -1),
                                              label_style='normal',
                                              ghost_button=False)
     self.sigma_background = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                               name='sigma_background',
                                                label='Sigma background',
                                                label_size=(-1, -1),
                                                label_style='normal',
                                                ghost_button=False)
     self.sigma_strong = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                            name='sigma_strong',
                                             label='Sigma strong',
                                             label_size=(-1, -1),
                                             label_style='normal',
                                             ghost_button=False)
     self.global_threshold = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                                name='global_threshold',
                                                 label='Global threshold',
                                                 label_size=(-1, -1),
                                                 label_style='normal',
                                                 ghost_button=False)
     self.gain = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                    name='gain',
                                     label='Gain',
                                     label_size=(-1, -1),
                                     label_style='normal',
                                     ghost_button=False)
     self.kernel_size = gctr.TextButtonCtrl(self.spotfinding_panel,
+                                          name='kernel_size',
                                           label='Kernel size',
                                           label_size=(-1, -1),
                                           label_style='normal',
                                           ghost_button=False)
     self.threshold_algorithm = gctr.ChoiceCtrl(self.spotfinding_panel,
+                                               name='threshold_algorithm',
                                                label='Threshold algorithm:',
                                                label_size=(200, -1),
                                                label_style='normal',
@@ -3012,21 +3023,25 @@ class TrialDialog(BaseDialog):
     self.indexing_ctrl_sizer = wx.FlexGridSizer(4, 2, 10, 10)
 
     self.unit_cell = gctr.TextButtonCtrl(self.indexing_panel,
+                                         name='unit_cell',
                                          label='Unit cell:',
                                          label_size=(100, -1),
                                          label_style='normal',
                                          ghost_button=False)
     self.space_group = gctr.TextButtonCtrl(self.indexing_panel,
+                                           name='space_group',
                                            label='Space group:',
                                            label_size=(150, -1),
                                            label_style='normal',
                                            ghost_button=False)
     self.d_min_indexing = gctr.TextButtonCtrl(self.indexing_panel,
+                                              name='d_min_indexing',
                                               label='d_min indexing:',
                                               label_size=(150, -1),
                                               label_style='normal',
                                               ghost_button=False)
     self.max_lattices = gctr.TextButtonCtrl(self.indexing_panel,
+                                            name='max_lattices',
                                             label='Max lattices:',
                                             label_size=(150, -1),
                                             label_style='normal',
@@ -3044,6 +3059,7 @@ class TrialDialog(BaseDialog):
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
     self.copy_runblocks = gctr.ChoiceCtrl(self,
+                                          name='copy_runblocks',
                                           label='Copy runblocks from',
                                           label_style='normal',
                                           label_size=(180, -1),
@@ -3592,9 +3608,11 @@ class DatasetStagePanel(wx.Panel):
     if task_type == 'indexing':
       self.enable_chk = None
     else:
-      self.enable_chk = wx.CheckBox(self, label='Include this stage')
+      chk_panel, self.enable_chk = self._shielded(
+        lambda p: wx.CheckBox(p, label='Include this stage'))
       self.enable_chk.SetValue(enabled)
-      header.Add(self.enable_chk, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+      self.enable_chk.SetToolTip(tooltips.get('enable_chk'))
+      header.Add(chk_panel, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
       self.Bind(wx.EVT_CHECKBOX, lambda e: self._update_enabled_state(), self.enable_chk)
     header.AddStretchSpacer()
 
@@ -3659,6 +3677,21 @@ class DatasetStagePanel(wx.Panel):
     if toggle:
       self.toggle_ctrls.append(ctrl)
 
+  def _shielded(self, factory):
+    # Bare native controls (wx.CheckBox etc.) lose their tooltips on wxGTK when
+    # placed directly in this panel's StaticBoxSizer region: the StaticBox
+    # overlay swallows their hover events. Parenting them to the StaticBox fixes
+    # the tooltip but offsets them by the box border when a nested sizer
+    # positions them. Housing the control in an intermediate wx.Panel (parented
+    # to self) avoids both problems -- the same approach as cluster_file_panel.
+    # factory(parent) builds the control; returns (wrapper_panel, control).
+    panel = wx.Panel(self)
+    sizer = wx.BoxSizer(wx.VERTICAL)
+    ctrl = factory(panel)
+    sizer.Add(ctrl, flag=wx.EXPAND)
+    panel.SetSizer(sizer)
+    return panel, ctrl
+
   def _build_controls(self):
     t = self.task_type
     if t == 'indexing':
@@ -3666,31 +3699,39 @@ class DatasetStagePanel(wx.Panel):
                                        'parameters. No extra settings.')
       self.body.Add(note, flag=wx.ALL, border=4)
     elif t == 'ensemble_refinement':
-      self.chk_pre_split = wx.CheckBox(self, label='Pre-split experiments')
-      self.chk_expand_nave = wx.CheckBox(self, label='Expand Nave parameters on reintegration')
-      self._add_body(self.chk_pre_split)
-      self._add_body(self.chk_expand_nave)
+      pre_panel, self.chk_pre_split = self._shielded(
+        lambda p: wx.CheckBox(p, label='Pre-split experiments'))
+      nave_panel, self.chk_expand_nave = self._shielded(
+        lambda p: wx.CheckBox(p, label='Expand Nave parameters on reintegration'))
+      self.chk_pre_split.SetToolTip(tooltips.get('chk_pre_split'))
+      self.chk_expand_nave.SetToolTip(tooltips.get('chk_expand_nave'))
+      self._add_body(pre_panel)
+      self._add_body(nave_panel)
     elif t == 'scaling':
-      self.min_corr = gctr.TextButtonCtrl(self, label='Min. correlation:',
+      self.min_corr = gctr.TextButtonCtrl(self, name='scale_min_corr',
+                                           label='Min. correlation:',
                                            label_size=(220, -1), label_style='normal',
                                            ghost_button=False)
-      self.rel_tol = gctr.TextButtonCtrl(self, label='Unit cell rel. length tol.:',
+      self.rel_tol = gctr.TextButtonCtrl(self, name='scale_rel_tol',
+                                          label='Unit cell rel. length tol.:',
                                           label_size=(220, -1), label_style='normal',
                                           ghost_button=False)
-      self.sigma = gctr.TextButtonCtrl(self, label='Significance filter sigma:',
+      self.sigma = gctr.TextButtonCtrl(self, name='scale_sigma',
+                                        label='Significance filter sigma:',
                                         label_size=(220, -1), label_style='normal',
                                         ghost_button=False)
       # Unit-cell cluster filter (consumes the covariance pickle written by the
       # Unit Cells tab). When enabled it drives filter.unit_cell.algorithm =
       # cluster; when disabled the plain relative-tolerance (value) filter above
       # is used instead. The two modes are mutually exclusive.
-      self.chk_use_cluster = wx.CheckBox(
-        self, name='chk_use_cluster', label='Filter by unit-cell cluster (from Unit Cells tab)')
+      cluster_chk_panel, self.chk_use_cluster = self._shielded(
+        lambda p: wx.CheckBox(
+          p, label='Filter by unit-cell cluster (from Unit Cells tab)'))
       self.cluster_file_panel = wx.Panel(self)
       cf_sizer = wx.BoxSizer(wx.HORIZONTAL)
       cf_label = wx.StaticText(self.cluster_file_panel, label='Cluster file:',
                                size=(220, -1))
-      self.cluster_file = wx.Choice(self.cluster_file_panel, name='cluster_file', choices=[])
+      self.cluster_file = wx.Choice(self.cluster_file_panel, choices=[])
       self.btn_browse_cluster = gctr.Button(self.cluster_file_panel,
                                              name='browse_cluster', label='Browse...')
       cf_sizer.Add(cf_label, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -3710,13 +3751,13 @@ class DatasetStagePanel(wx.Panel):
       self._populate_cluster_choices()
       self._add_body(self.min_corr)
       self._add_body(self.rel_tol)
-      self._add_body(self.chk_use_cluster)
+      self._add_body(cluster_chk_panel)
       self._add_body(self.cluster_file_panel)
       self._add_body(self.cluster_component)
       self._add_body(self.cluster_mahalanobis)
       self._add_body(self.sigma)
-      setup_tooltip(self.chk_use_cluster)
-      setup_tooltip(self.cluster_file)
+      self.chk_use_cluster.SetToolTip(tooltips.get('chk_use_cluster'))
+      self.cluster_file.SetToolTip(tooltips.get('cluster_file'))
       self.Bind(wx.EVT_CHECKBOX, lambda e: self._sync_cluster_enabled(),
                 self.chk_use_cluster)
       self.Bind(wx.EVT_BUTTON, self.onBrowseCluster, self.btn_browse_cluster)
@@ -4138,7 +4179,8 @@ class DatasetDialog(BaseDialog):
                                             label_style='normal',
                                             ctrl_size=(200, 100),
                                             direction='vertical', choices=[])
-    self.selection_type_radio = gctr.RadioCtrl(self.scroll, label='Tag operator:',
+    self.selection_type_radio = gctr.RadioCtrl(self.scroll, name='selection_type_radio',
+                                               label='Tag operator:',
                                                label_style='normal',
                                                label_size=(100, -1),
                                                direction='horizontal',
@@ -4150,41 +4192,47 @@ class DatasetDialog(BaseDialog):
     self.scroll_sizer.Add(run_sizer, flag=wx.EXPAND | wx.ALL, border=8)
 
     # --- shared parameters (used by scaling + merging) ---
+    # Controls in a StaticBoxSizer must be parented to the StaticBox itself (not
+    # the surrounding panel). On wxGTK, mixing parents breaks the box layout, and
+    # a bare native control parented to the panel has its hover events swallowed
+    # by the StaticBox overlay (suppressing its tooltip).
     shared_box = wx.StaticBox(self.scroll, label='Shared parameters (scaling + merging)')
     shared_sizer = wx.StaticBoxSizer(shared_box, wx.VERTICAL)
-    self.model_mode_radio = gctr.RadioCtrl(self.scroll, label='Reference:',
+    self.model_mode_radio = gctr.RadioCtrl(shared_box, name='model_mode_radio',
+                                           label='Reference:',
                                            label_style='normal', label_size=(160, -1),
                                            direction='horizontal',
                                            items={'known': 'Known reference model',
                                                   'unknown': 'No reference model'})
-    self.shared_model = gctr.TextButtonCtrl(self.scroll, label='Reference model:',
+    self.shared_model = gctr.TextButtonCtrl(shared_box, name='shared_model', label='Reference model:',
                                             label_size=(160, -1), label_style='normal',
                                             ctrl_size=(360, -1),
                                             big_button=True, big_button_label='Browse...',
                                             ghost_button=False)
-    self.shared_unit_cell = gctr.TextButtonCtrl(self.scroll, label='Unit cell:',
+    self.shared_unit_cell = gctr.TextButtonCtrl(shared_box, name='shared_unit_cell', label='Unit cell:',
                                                 label_size=(160, -1), label_style='normal',
                                                 ctrl_size=(360, -1), ghost_button=False)
-    self.shared_space_group = gctr.TextButtonCtrl(self.scroll, label='Space group:',
+    self.shared_space_group = gctr.TextButtonCtrl(shared_box, name='shared_space_group', label='Space group:',
                                                   label_size=(160, -1), label_style='normal',
                                                   ctrl_size=(360, -1), ghost_button=False)
-    self.shared_d_min = gctr.SpinCtrl(self.scroll, label='High res. limit (d_min):',
+    self.shared_d_min = gctr.SpinCtrl(shared_box, name='shared_d_min', label='High res. limit (d_min):',
                                       label_size=(200, -1), label_style='normal',
                                       ctrl_size=(150, -1), ctrl_value='1.5',
                                       ctrl_min=0.1, ctrl_max=100.0, ctrl_step=0.1,
                                       ctrl_digits=2)
-    self.shared_resolution_scalar = gctr.SpinCtrl(self.scroll,
+    self.shared_resolution_scalar = gctr.SpinCtrl(shared_box, name='shared_resolution_scalar',
                                       label='Resolution scalar:',
                                       label_size=(200, -1), label_style='normal',
                                       ctrl_size=(150, -1), ctrl_value='0.96',
                                       ctrl_min=0.0, ctrl_max=2.0, ctrl_step=0.01,
                                       ctrl_digits=3)
-    self.shared_n_bins = gctr.SpinCtrl(self.scroll, label='Number of bins:',
+    self.shared_n_bins = gctr.SpinCtrl(shared_box, name='shared_n_bins', label='Number of bins:',
                                        label_size=(200, -1), label_style='normal',
                                        ctrl_size=(150, -1), ctrl_value='20',
                                        ctrl_min=1, ctrl_max=1000, ctrl_step=1,
                                        ctrl_digits=0)
-    self.shared_merge_anomalous = wx.CheckBox(self.scroll, label='Merge anomalous')
+    self.shared_merge_anomalous = wx.CheckBox(shared_box, label='Merge anomalous')
+    self.shared_merge_anomalous.SetToolTip(tooltips.get('shared_merge_anomalous'))
     shared_sizer.Add(self.model_mode_radio, flag=wx.EXPAND | wx.ALL, border=5)
     shared_sizer.Add(self.shared_model, flag=wx.EXPAND | wx.ALL, border=5)
     shared_sizer.Add(self.shared_unit_cell, flag=wx.EXPAND | wx.ALL, border=5)
