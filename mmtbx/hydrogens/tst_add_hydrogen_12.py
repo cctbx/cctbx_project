@@ -455,6 +455,117 @@ loop_
    HETATM 81 H2'2 . BGS A 962 ? 11.28275 11.02652 9.64902 0.980 22.10000 H ? D ? . H2'2 1
 """
 
+SER_1S6_B_401_4jxg_H = """
+data_default
+_cell.length_a                    26.871
+_cell.length_b                    26.430
+_cell.length_c                    30.452
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 90.000
+_cell.volume                      21627.027
+_space_group.crystal_system       triclinic
+_space_group.IT_number            1
+_space_group.name_H-M_alt         'P 1'
+_space_group.name_Hall            ' P 1'
+_symmetry.space_group_name_H-M    'P 1'
+_symmetry.space_group_name_Hall   ' P 1'
+_symmetry.Int_Tables_number       1
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+   1 x,y,z
+
+
+loop_
+  _struct_asym.id
+   A
+   B
+
+
+loop_
+  _chem_comp.id
+   1S6
+   SER
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.auth_atom_id
+  _atom_site.pdbx_PDB_model_num
+   ATOM 1 CA . SER B 64 ? 8.81200 8.39800 16.90000 1.000 15.06000 C ? A ? 1 CA 1
+   ATOM 2 C . SER B 64 ? 7.91100 7.42700 16.14500 1.000 14.26000 C ? A ? 1 C 1
+   ATOM 3 O . SER B 64 ? 6.73200 7.73500 16.00400 1.000 14.43000 O ? A ? 1 O 1
+   ATOM 4 CB . SER B 64 ? 8.99800 9.60700 16.06900 1.000 14.19000 C ? A ? 1 CB 1
+   ATOM 5 OG . SER B 64 ? 9.58500 10.62900 16.88900 1.000 18.69000 O ? A ? 1 OG 1
+   ATOM 6 HA . SER B 64 ? 8.39678 8.64128 17.74220 1.000 15.06000 H ? A ? 1 HA 1
+   ATOM 7 HB2 . SER B 64 ? 9.58884 9.40492 15.32672 1.000 14.19000 H ? A ? 1 HB2 1
+   ATOM 8 HB3 . SER B 64 ? 8.13857 9.90943 15.73611 1.000 14.19000 H ? A ? 1 HB3 1
+   HETATM 9 N . 1S6 B 401 ? 12.79500 11.93900 17.59000 1.000 18.86000 N ? B ? . N 1
+   HETATM 10 CA . 1S6 B 401 ? 11.42400 12.12000 17.09200 1.000 19.06000 C ? B ? . CA 1
+   HETATM 11 C . 1S6 B 401 ? 10.94500 10.77700 16.75200 1.000 20.57000 C ? B ? . C 1
+   HETATM 12 CB . 1S6 B 401 ? 11.11600 12.95200 15.88600 1.000 20.89000 C ? B ? . CB 1
+   HETATM 13 OXT . 1S6 B 401 ? 11.61000 9.86800 16.33900 1.000 18.23000 O ? B ? . OXT 1
+   HETATM 14 CAA . 1S6 B 401 ? 14.03300 11.13000 21.26800 1.000 32.84000 C ? B ? . CAA 1
+   HETATM 15 CAB . 1S6 B 401 ? 14.15300 12.81400 13.28200 1.000 25.99000 C ? B ? . CAB 1
+   HETATM 16 CAC . 1S6 B 401 ? 12.14600 13.93700 12.44400 1.000 25.23000 C ? B ? . CAC 1
+   HETATM 17 CAI . 1S6 B 401 ? 16.74200 14.85600 14.79300 1.000 40.47000 C ? B ? . CAI 1
+   HETATM 18 CAJ . 1S6 B 401 ? 17.25700 13.55800 14.88000 1.000 42.42000 C ? B ? . CAJ 1
+   HETATM 19 CAK . 1S6 B 401 ? 15.94700 15.38000 15.83700 1.000 37.93000 C ? B ? . CAK 1
+   HETATM 20 CAL . 1S6 B 401 ? 16.99500 12.74200 16.00800 1.000 40.13000 C ? B ? . CAL 1
+   HETATM 21 CAM . 1S6 B 401 ? 15.73300 14.56600 16.96500 1.000 33.61000 C ? B ? . CAM 1
+   HETATM 22 CAT . 1S6 B 401 ? 11.40700 11.19200 12.64000 1.000 27.95000 C ? B ? . CAT 1
+   HETATM 23 CAU . 1S6 B 401 ? 13.30600 12.76400 18.43000 1.000 25.25000 C ? B ? . CAU 1
+   HETATM 24 CAV . 1S6 B 401 ? 14.85300 11.69600 20.19200 1.000 29.93000 C ? B ? . CAV 1
+   HETATM 25 CAW . 1S6 B 401 ? 16.22500 13.25900 17.04000 1.000 34.14000 C ? B ? . CAW 1
+   HETATM 26 CAX . 1S6 B 401 ? 15.94500 12.52600 18.25000 1.000 30.72000 C ? B ? . CAX 1
+   HETATM 27 CAY . 1S6 B 401 ? 14.64300 12.41800 18.95200 1.000 26.52000 C ? B ? . CAY 1
+   HETATM 28 CBB . 1S6 B 401 ? 11.93000 11.82800 13.87300 1.000 23.23000 C ? B ? . CBB 1
+   HETATM 29 CBC . 1S6 B 401 ? 12.69300 13.18100 13.63400 1.000 25.84000 C ? B ? . CBC 1
+   HETATM 30 NAN . 1S6 B 401 ? 16.89500 11.99800 19.11900 1.000 28.67000 N ? B ? . NAN 1
+   HETATM 31 NAP . 1S6 B 401 ? 10.81600 12.16100 14.72600 1.000 22.89000 N ? B ? . NAP 1
+   HETATM 32 OAE . 1S6 B 401 ? 12.15000 10.48600 11.98300 1.000 29.05000 O ? B ? . OAE 1
+   HETATM 33 OAF . 1S6 B 401 ? 12.77300 13.75600 18.76700 1.000 24.58000 O ? B ? . OAF 1
+   HETATM 34 OAH . 1S6 B 401 ? 10.23400 11.45800 12.25800 1.000 26.16000 O ? B ? . OAH 1
+   HETATM 35 OAQ . 1S6 B 401 ? 16.23400 11.51900 20.23100 1.000 35.16000 O ? B ? . OAQ 1
+   HETATM 36 SAR . 1S6 B 401 ? 12.56500 13.90400 15.25800 1.000 25.33000 S ? B ? . SAR 1
+   HETATM 37 H2 . 1S6 B 401 ? 13.26111 11.27083 17.31450 1.000 18.86000 H ? B ? . H2 1
+   HETATM 38 H3 . 1S6 B 401 ? 10.99886 12.62089 17.80562 1.000 19.06000 H ? B ? . H3 1
+   HETATM 39 H10 . 1S6 B 401 ? 14.73583 13.58930 13.29238 1.000 25.99000 H ? B ? . H10 1
+   HETATM 40 H11 . 1S6 B 401 ? 12.28065 13.43222 11.62671 1.000 25.23000 H ? B ? . H11 1
+   HETATM 41 H12 . 1S6 B 401 ? 12.59092 14.79370 12.34903 1.000 25.23000 H ? B ? . H12 1
+   HETATM 42 H13 . 1S6 B 401 ? 11.19522 14.09813 12.54869 1.000 25.23000 H ? B ? . H13 1
+   HETATM 43 H15 . 1S6 B 401 ? 16.92349 15.37715 14.04442 1.000 40.47000 H ? B ? . H15 1
+   HETATM 44 H16 . 1S6 B 401 ? 17.78009 13.22191 14.18839 1.000 42.42000 H ? B ? . H16 1
+   HETATM 45 H17 . 1S6 B 401 ? 15.57676 16.23151 15.78447 1.000 37.93000 H ? B ? . H17 1
+   HETATM 46 H18 . 1S6 B 401 ? 17.33651 11.87787 16.04748 1.000 40.13000 H ? B ? . H18 1
+   HETATM 47 H19 . 1S6 B 401 ? 15.24962 14.90823 17.68203 1.000 33.61000 H ? B ? . H19 1
+   HETATM 48 H20 . 1S6 B 401 ? 10.46662 11.38623 14.99014 1.000 22.89000 H ? B ? . H20 1
+   HETATM 49 H22 . 1S6 B 401 ? 12.55077 11.21208 14.29274 1.000 23.23000 H ? B ? . H22 1
+   HETATM 50 H4 . 1S6 B 401 ? 10.41422 13.55999 16.16664 1.000 20.89000 H ? B ? . H4 1
+   HETATM 51 H5 . 1S6 B 401 ? 13.92351 11.76473 21.99328 1.000 32.84000 H ? B ? . H5 1
+   HETATM 52 H6 . 1S6 B 401 ? 14.44127 10.32929 21.63279 1.000 32.84000 H ? B ? . H6 1
+   HETATM 53 H7 . 1S6 B 401 ? 13.14977 10.89257 20.94485 1.000 32.84000 H ? B ? . H7 1
+   HETATM 54 H8 . 1S6 B 401 ? 14.22646 12.42015 12.39860 1.000 25.99000 H ? B ? . H8 1
+   HETATM 55 H9 . 1S6 B 401 ? 14.52793 12.17332 13.90639 1.000 25.99000 H ? B ? . H9 1
+"""
+
 def tst_00():
   '''
     4zeb: ARA O2 - TT7 P4 phosphodiester (1.59 A, no LINK record) -> no HO2.
@@ -490,11 +601,22 @@ def tst_03():
                  sel_str  = "resname LYS and resseq 96 and name HZ*",
                  optimize = True)
 
+def tst_04():
+  '''
+    4jxg: SER 64 OG - 1S6 C acyl-enzyme ester (1.38 A, LINK deposited). C is
+    then a carbonyl (CA, =OXT, OG) -> no H1; SER OG -> no HG.
+    Known issue, kept on purpose: H20 (ring N NAP) is on the face 1.92 A from C.
+  '''
+  compare_models(pdb_str  = SER_1S6_B_401_4jxg_H,
+                 sel_str  = "(resname 1S6 and name H1) or (resname SER and name HG)",
+                 optimize = True)
+
 def run():
   tst_00()
   tst_01()
   tst_02()
   tst_03()
+  tst_04()
 
 if __name__ == '__main__':
   run()

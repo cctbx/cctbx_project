@@ -419,6 +419,31 @@ def name_prochiral_h(hierarchy, mon_lib_srv):
             if (v_ideal > 0) != (v_model > 0):
               h1.name, h2.name = h2.name, h1.name
 
+def _bond_orders(resname, mon_lib_srv, cache):
+  '''
+  Double (2) and triple (3) bonds by atom-name pair; anything else counts 1.
+  Restraint dictionary first, CCD overrides (PDB names).
+  '''
+  if resname in cache: return cache[resname]
+  orders = {}
+  try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
+  except Exception: cc = None
+  if cc is not None:
+    for b in cc.bond_list:
+      o = {"double": 2, "triple": 3}.get(str(b.type).strip().lower())
+      if o: orders[frozenset((b.atom_id_1, b.atom_id_2))] = o
+  from mmtbx.chemical_components import get_cif_dictionary
+  try: cc_cif = get_cif_dictionary(resname)
+  except Exception: cc_cif = None
+  if cc_cif:
+    for b in cc_cif.get('_chem_comp_bond', []):
+      key = frozenset((b.atom_id_1, b.atom_id_2))
+      o = {"DOUB": 2, "TRIP": 3}.get(str(b.value_order).strip().upper())
+      if o: orders[key] = o
+      else: orders.pop(key, None)
+  cache[resname] = orders
+  return orders
+
 class place_hydrogens():
   '''
   Add H atoms to a model
@@ -1011,11 +1036,23 @@ class place_hydrogens():
                if elements[n].strip() not in ('H', 'D') and n not in partners]
       if not partners or len(heavy) < 2: return float('inf')
       return min(atoms[i_seq].distance(atoms[p]) for p in partners)
+    # Count bond orders, not neighbours: an acyl-enzyme ester carbon (CA, =O,
+    # link to SER OG) has no room for H (4jxg). Links count 1.
+    mon_lib_srv = self.model.get_mon_lib_srv()
+    order_cache = {}
+    def _residue(atom):
+      rg = atom.parent().parent()
+      return (rg.parent().id, rg.resid(), atom.parent().resname.strip())
+    def _bond_order(i, j):
+      if _residue(atoms[i]) != _residue(atoms[j]): return 1
+      orders = _bond_orders(atoms[i].parent().resname.strip(), mon_lib_srv,
+                            order_cache)
+      return orders.get(frozenset((atoms[i].name.strip(), atoms[j].name.strip())), 1)
     for i_seq in sorted(reversed(list(sel_remove)), key=_drop_order):
       j_seq=parent_dict[i_seq]
       # need to add the use of atomic charge
       valences=get_valences(elements[j_seq])
-      number_of_bonds=len(bonds[j_seq])
+      number_of_bonds=sum(_bond_order(j_seq, n) for n in bonds[j_seq])
       if number_of_bonds in valences:
         # remove this H from delection
         remove_from_sel_remove.append(i_seq) # ??
