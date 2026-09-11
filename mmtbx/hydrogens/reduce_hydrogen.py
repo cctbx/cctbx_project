@@ -14,11 +14,271 @@ from cctbx.geometry_restraints.linking_class import linking_class
 #
 from cctbx.maptbx.box import shift_and_box_model
 import math
+from cctbx import crystal
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
 
-# ==============================================================================
+def get_ligand_interactions(model, dist_min, cutoff_cno, cutoff_sp):
+  """
+  Finds distance pairs between ligand atoms and non-ligand/other ligand atoms.
+
+  Args:
+  model: mmtbx.model.manager object
+  dist_min: Minimum distance threshold
+  cutoff_cno: Distance cutoff for pairs exclusively containing C/N/O (
+    or halogens)
+  cutoff_sp: Distance cutoff for pairs containing S or P
+
+  Returns:
+      List of tuples containing (i_seq, j_seq) for interacting atoms.
+  """
+  pdb_hierarchy = model.get_hierarchy()
+  xrs = model.get_xray_structure()
+  n_seq = xrs.scatterers().size()
+  atom_type = [-1] * n_seq
+  is_sp = [False] * n_seq
+  ligand_id_counter = 1
+  get_class = iotbx.pdb.common_residue_names_get_class
+  # 1. Pre-computation: Classify all atoms
+  for model_ in pdb_hierarchy.models():
+    for chain in model_.chains():
+      for residue_group in chain.residue_groups():
+        # Check for single-atom ions and filter out hydrogens
+        non_h_atoms = [a for a in residue_group.atoms()
+                       if a.element.strip().upper() not in ["H", "D"]]
+        if len(non_h_atoms) == 0: continue # Ignore entirely
+        resname = residue_group.unique_resnames()[0]
+        r_class = get_class(resname)
+        is_water = (r_class == "common_water")
+        is_protein = (r_class in ["common_amino_acid", "modified_amino_acid"])
+        is_na = (r_class in ["common_rna_dna", "modified_rna_dna",
+                             "ccp4_mon_lib_rna_dna"])
+        is_single_atom = (len(non_h_atoms) == 1)
+        # Skip conditions
+        if is_water or is_single_atom: pass # Left as -1
+        # Ligand Assignment
+        elif not is_protein and not is_na:
+          for a in residue_group.atoms():
+            e = a.element.strip().upper()
+            if e not in ["H", "D"]:
+              atom_type[a.i_seq] = ligand_id_counter
+              if e in ["S", "P"]:
+                is_sp[a.i_seq] = True
+          ligand_id_counter += 1
+        # Non-ligand (Protein/Nucleic Acid) Assignment
+        else:
+          for a in residue_group.atoms():
+            e = a.element.strip().upper()
+            if e not in ["H", "D"]:
+              atom_type[a.i_seq] = 0
+              if e in ["S", "P"]:
+                is_sp[a.i_seq] = True
+  # Setup distance comparisons
+  max_cutoff = max(cutoff_cno, cutoff_sp)
+  max_cutoff_sq = max_cutoff ** 2
+  min_cutoff_sq = dist_min ** 2
+  cutoff_cno_sq = cutoff_cno ** 2
+  cutoff_sp_sq = cutoff_sp ** 2
+  # 2. Spatial Search using CCTBX neighbors_fast_pair_generator
+  asu_mappings = xrs.asu_mappings(buffer_thickness=max_cutoff)
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    asu_mappings=asu_mappings,
+    distance_cutoff=max_cutoff
+  )
+  pairs = []
+  # 3. Fast inner loop
+  for pair in pair_generator:
+    i_seq = pair.i_seq
+    j_seq = pair.j_seq
+    ti = atom_type[i_seq]
+    tj = atom_type[j_seq]
+    # Check a: Exclude ignored entities (water, H, single-atoms)
+    if ti == -1 or tj == -1: continue
+    # Check b: Must involve at least one ligand
+    if ti == 0 and tj == 0: continue
+    # Check c: Exclude intra-ligand bonds (same ligand ID and same symmetry
+    # operator)
+    if ti == tj and pair.j_sym == 0: continue
+    dist_sq = pair.dist_sq
+    # Check d: Minimum distance threshold
+    if dist_sq < min_cutoff_sq: continue
+    # Check e: Element-specific cutoff check
+    if is_sp[i_seq] or is_sp[j_seq]:
+      if dist_sq <= cutoff_sp_sq:
+        pairs.append((i_seq, j_seq))
+    else:
+      if dist_sq <= cutoff_cno_sq:
+        pairs.append((i_seq, j_seq))
+  return pairs
+
+def get_incorrect_hydrogens_for_bond(model, i_seq_A, i_seq_B):
+  """
+  Given an mmtbx.model.manager and the sequence indices (i_seqs) of two atoms
+  presumed to be covalently bonded, determines whether their current protonation
+  states are consistent with the formation of that bond.
+
+  It applies a two-step clearance:
+  1. Severe Clash Override: Purges any hydrogen physically occupying the
+     incoming bond vector.
+  2. Valency Quota: Identifies remaining excess hydrogens and removes the ones
+     most sterically hindered by the new bond neighborhood.
+  """
+  atoms = model.get_atoms()
+  sites_cart = model.get_sites_cart()
+  atom_A = atoms[i_seq_A]
+  atom_B = atoms[i_seq_B]
+  #
+  # Retrieve Restraints Manager and extract connectivity
+  grm = model.get_restraints_manager()
+  bond_proxies_simple, _ = grm.geometry.get_all_bond_proxies(
+    sites_cart=sites_cart)
+  #
+  connectivity = {}
+  for bp in bond_proxies_simple:
+    i, j = bp.i_seqs
+    connectivity.setdefault(i, []).append(j)
+    connectivity.setdefault(j, []).append(i)
+  #
+  mon_lib_srv = model.get_mon_lib_srv()
+  #
+  def get_bond_order(a1, a2):
+    if a1.parent().id_str() == a2.parent().id_str():
+      resname = a1.parent().resname.strip().upper()
+      comp = mon_lib_srv.get_comp_comp_id_direct(resname)
+      if comp is not None:
+        for bond in comp.bond_list:
+          id1, id2 = bond.atom_id_1.strip(), bond.atom_id_2.strip()
+          n1, n2 = a1.name.strip(), a2.name.strip()
+          if (id1 == n1 and id2 == n2) or (id1 == n2 and id2 == n1):
+            btype = bond.type.lower()
+            if 'double' in btype: return 2.0
+            if 'triple' in btype: return 3.0
+            if 'deloc' in btype or 'aromatic' in btype: return 1.5
+            return 1.0
+    return 1.0
+  #
+  def get_formal_charge(atom):
+    c_str = atom.charge.strip()
+    if c_str:
+      try:
+        rv = int(c_str[-1]+c_str[:-1]) if c_str[-1] in ['+','-'] else int(c_str)
+        return rv
+      except ValueError:
+        pass
+    resname = atom.parent().resname.strip().upper()
+    comp = mon_lib_srv.get_comp_comp_id_direct(resname)
+    if comp is not None:
+      for a in comp.atom_list:
+        if a.atom_id.strip() == atom.name.strip():
+          if hasattr(a, 'charge'):
+            c_lib = str(a.charge).strip()
+            if c_lib and c_lib != '.':
+              try:
+                return int(c_lib[-1]+c_lib[:-1]) if c_lib[-1] in ['+','-'] else int(c_lib)
+              except ValueError:
+                pass
+    return 0
+  #
+  def get_ideal_valence(atom):
+    el = atom.element.strip().upper()
+    charge = get_formal_charge(atom)
+    if el == 'C': return 4
+    if el == 'N': return 3 + charge
+    if el == 'O': return 2 + charge
+    if el == 'S': return 2 + charge
+    if el == 'P': return 5
+    if el in ['F', 'CL', 'BR', 'I']: return 1
+    return 0
+  #
+  excess_h_iseqs = []
+  #
+  # Distance threshold for an impossible geometric overlap (e.g. H pointing
+  # directly into the incoming heavy atom)
+  SEVERE_CLASH_DIST = 1.5
+  #
+  for target_iseq in [i_seq_A, i_seq_B]:
+    target_atom = atoms[target_iseq]
+    ideal_val = get_ideal_valence(target_atom)
+    if ideal_val == 0: continue
+    neighbors = connectivity.get(target_iseq, [])
+    heavy_order_sum = 0.0
+    h_neighbors = []
+    for n_iseq in neighbors:
+      n_atom = atoms[n_iseq]
+      if n_atom.element.strip().upper() in ['H', 'D', 'T']:
+        h_neighbors.append(n_atom)
+      else:
+        heavy_order_sum += get_bond_order(target_atom, n_atom)
+    other_iseq = i_seq_B if target_iseq == i_seq_A else i_seq_A
+    other_site = sites_cart[other_iseq]
+    if other_iseq not in neighbors: heavy_order_sum += 1.0
+    heavy_order_rounded = int(math.floor(heavy_order_sum))
+    expected_h = max(0, ideal_val - heavy_order_rounded)
+    # ----------------------------------------------------------------------
+    # STEP 1: Severe Clash Override
+    # If a hydrogen occupies the incoming bond's vector it must be removed,
+    # even if removing it drops the atom below its expected valency.
+    # ----------------------------------------------------------------------
+    surviving_h_neighbors = []
+    for h_atom in h_neighbors:
+      h_site = sites_cart[h_atom.i_seq]
+      dist_to_other = math.sqrt((h_site[0] - other_site[0])**2 +
+                                (h_site[1] - other_site[1])**2 +
+                                (h_site[2] - other_site[2])**2)
+      if dist_to_other < SEVERE_CLASH_DIST:
+        # Severe clash detected; mark for removal immediately
+        excess_h_iseqs.append(h_atom.i_seq)
+      else:
+        surviving_h_neighbors.append(h_atom)
+    # ----------------------------------------------------------------------
+    # STEP 2: Valency Quota Check
+    # Now evaluate ONLY the surviving hydrogens against the valency limit.
+    # ----------------------------------------------------------------------
+    current_h_count = len(surviving_h_neighbors)
+    if current_h_count > expected_h:
+      num_to_remove = int(current_h_count - expected_h)
+      clash_set_iseqs = [other_iseq]
+      iters=connectivity.get(target_iseq, []) + connectivity.get(other_iseq, [])
+      for n_iseq in iters:
+        if n_iseq != target_iseq and n_iseq != other_iseq:
+          if atoms[n_iseq].element.strip().upper() not in ['H', 'D', 'T']:
+            clash_set_iseqs.append(n_iseq)
+      def min_distance_to_clash_set(h_atom):
+        h_site = sites_cart[h_atom.i_seq]
+        min_dist = float('inf')
+        for c_iseq in clash_set_iseqs:
+          c_site = sites_cart[c_iseq]
+          dist = math.sqrt((h_site[0] - c_site[0])**2 +
+                           (h_site[1] - c_site[1])**2 +
+                           (h_site[2] - c_site[2])**2)
+          if dist < min_dist: min_dist = dist
+        return min_dist
+      surviving_h_neighbors.sort(
+        key=lambda h: (min_distance_to_clash_set(h), h.i_seq))
+      excess_h_iseqs.extend(
+        [h.i_seq for h in surviving_h_neighbors[:num_to_remove]])
+  #
+  return excess_h_iseqs
+
+def workaround_003(model):
+  pairs = get_ligand_interactions(
+    model=model, dist_min=1.1, cutoff_cno=1.6, cutoff_sp=1.9)
+  remove_selection = []
+  for pair in pairs:
+    badH_i_seqs = get_incorrect_hydrogens_for_bond(
+      model   = model,
+      i_seq_A = pair[0],
+      i_seq_B = pair[1])
+    if len(badH_i_seqs)>0:
+      remove_selection.extend(badH_i_seqs)
+  removed = 0
+  if len(remove_selection)>0:
+    badH_i_seqs = flex.size_t(badH_i_seqs)
+    removed = badH_i_seqs.size()
+    keep_selection = ~flex.bool(model.size(), badH_i_seqs)
+    model = model.select(keep_selection)
+  return model, removed
 
 def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
@@ -723,6 +983,8 @@ class place_hydrogens():
     # TODO: this should be ideally done *after* reduce optimization
     #if not self.exclude_water:
     #  self.model.add_hydrogens(1., occupancy=0.)
+
+    self.model, _ = workaround_003(model = self.model)
 
     # List missing H
     mon_lib_srv = self.model.get_mon_lib_srv()
