@@ -630,18 +630,33 @@ def _dictionary_sites(source_info, resname):
     if sites: return sites
   return None
 
+def _ccd_describes(cc, resname):
+  '''
+  False if resname's restraints come from a user file: the CCD may use the code
+  for another molecule (CCD LIG is C15H11N3). geostd/mon_lib and reduce2's own
+  auto_<code> dictionaries are built from the CCD.
+  '''
+  if cc is None: return True
+  parts = str(cc.source_info).replace("file:", "").strip().replace("\\", "/").split("/")
+  return ("chem_data" in parts or
+          (parts[-1].startswith("auto_") and parts[-1][5:].strip() == resname))
+
 def _ch2_references(resname, mon_lib_srv, cache):
   '''
   CH2 centres with ideal sites. CCD first: it defines PDB names, and geostd
   amino acids carry no coordinates. Then the restraint dictionary, for ligands
   whose H names differ from the CCD (VPH). geostd MAN names H61/H62 opposite
-  to the CCD.
+  to the CCD. A user restraint file is used alone.
   '''
   if resname in cache: return cache[resname]
   from mmtbx.chemical_components import get_cif_dictionary
   result = []
-  try: cc_cif = get_cif_dictionary(resname)
-  except Exception: cc_cif = None
+  try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
+  except Exception: cc = None
+  cc_cif = None
+  if _ccd_describes(cc, resname):
+    try: cc_cif = get_cif_dictionary(resname)
+    except Exception: cc_cif = None
   if cc_cif:
     sites, elements = {}, {}
     for a in cc_cif.get('_chem_comp_atom', []):
@@ -693,7 +708,8 @@ def name_prochiral_h(hierarchy, mon_lib_srv):
 def _bond_orders(resname, mon_lib_srv, cache):
   '''
   Double (2) and triple (3) bonds by atom-name pair; anything else counts 1.
-  Restraint dictionary first, CCD overrides (PDB names).
+  Restraint dictionary first, CCD overrides (PDB names) unless the dictionary
+  is a user file.
   '''
   if resname in cache: return cache[resname]
   orders = {}
@@ -704,8 +720,10 @@ def _bond_orders(resname, mon_lib_srv, cache):
       o = {"double": 2, "triple": 3}.get(str(b.type).strip().lower())
       if o: orders[frozenset((b.atom_id_1, b.atom_id_2))] = o
   from mmtbx.chemical_components import get_cif_dictionary
-  try: cc_cif = get_cif_dictionary(resname)
-  except Exception: cc_cif = None
+  cc_cif = None
+  if _ccd_describes(cc, resname):
+    try: cc_cif = get_cif_dictionary(resname)
+    except Exception: cc_cif = None
   if cc_cif:
     for b in cc_cif.get('_chem_comp_bond', []):
       key = frozenset((b.atom_id_1, b.atom_id_2))
