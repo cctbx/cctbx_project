@@ -31,10 +31,6 @@ from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
 from xfel.ui.db.xfel_db import xfel_db_application
 
-#from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
-#from prime.postrefine.mod_input import master_phil
-from iota.utils.utils import Capturing, set_base_dir
-
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
 import getpass
@@ -789,136 +785,6 @@ class RunStatsSentinel(Thread):
       figure.canvas.draw_idle()
     wx.CallAfter(_draw)
 
-# ----------------------------- Spotfinder Sentinel ---------------------------- #
-
-# Set up events for monitoring spotfinder results against a set threshold
-tp_EVT_SPOTFINDER_REFRESH = wx.NewEventType()
-EVT_SPOTFINDER_REFRESH = wx.PyEventBinder(tp_EVT_SPOTFINDER_REFRESH, 1)
-
-class RefreshSpotfinder(wx.PyCommandEvent):
-  ''' Send event when finished all cycles  '''
-  def __init__(self, etype, eid, result=None):
-    wx.PyCommandEvent.__init__(self, etype, eid)
-    self.result = result
-  def GetValue(self):
-    return self.result
-
-class SpotfinderSentinel(Thread):
-  ''' Worker thread for spotfinder stats; generated so that the GUI does not lock up when
-      processing is running '''
-
-  def __init__(self,
-               parent,
-               active=True):
-    Thread.__init__(self)
-    self.parent = parent
-    self.active = active
-    self.output = self.parent.params.output_folder
-    self.number_of_pickles = 0
-    self.info = {}
-    self.run_numbers = []
-    self.stats = []
-    self.spot_length_stats = []
-    self.run_tags = []
-    self.run_statuses = []
-
-    # on initialization (and restart), make sure spotfinder stats drawn from scratch
-    self.parent.run_window.spotfinder_tab.redraw_windows = True
-
-  def post_refresh(self):
-    evt = RefreshSpotfinder(tp_EVT_SPOTFINDER_REFRESH, -1, self.info)
-    wx.PostEvent(self.parent.run_window.spotfinder_tab, evt)
-
-  def run(self):
-    # one time post for an initial update
-    self.post_refresh()
-    self.db = xfel_db_application(self.parent.params)
-
-    while self.active:
-      try:
-        wx.CallAfter(self.parent.run_window.spotfinder_light.change_status, 'idle')
-        self.plot_stats_static()
-        self.post_refresh()
-        self.info = {}
-        wx.CallAfter(self.parent.run_window.spotfinder_light.change_status, 'on')
-        time.sleep(5)
-      except Exception as e:
-        print(e)
-        wx.CallAfter(self.parent.run_window.spotfinder_light.change_status, 'alert')
-        break
-
-  def refresh_stats(self):
-    from xfel.ui.db.stats import SpotfinderStats
-    from xfel.ui.components.spotfinder_scraper import get_spot_length_stats
-    import copy
-    if self.parent.run_window.spotfinder_tab.trial_no is not None:
-      trial = self.db.get_trial(
-        trial_number=self.parent.run_window.spotfinder_tab.trial_no)
-      selected_runs = copy.deepcopy(self.parent.run_window.spotfinder_tab.selected_runs)
-      self.run_numbers = []
-      trial_ids = []
-      rungroup_ids = []
-      self.stats = []
-      self.spot_length_stats = []
-      self.trgr = {}
-      self.run_tags = []
-      self.run_statuses = []
-      self.output = self.parent.params.output_folder
-      for rg in trial.rungroups:
-        for run in rg.runs:
-          if run.run not in self.run_numbers and run.run in selected_runs:
-            self.run_numbers.append(run.run)
-            trial_ids.append(trial.id)
-            rungroup_ids.append(rg.id)
-            self.trgr[run.run] = (trial, rg, run)
-            # spot count
-            sf_stats = SpotfinderStats(self.db, run.run, trial.trial, rg.id)()
-            self.stats.append(sf_stats)
-            self.run_tags.append([tag.name for tag in run.tags])
-            # spot lengths
-            if self.parent.params.dispatcher == "cxi.xtc_process": #LABELIT backend
-              outdir = "integration"
-            else:
-              outdir = "out"
-            run_outdir = os.path.join(get_run_path(self.output, trial, rg, run), outdir)
-            try:
-              self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
-            except OSError:
-              print("Outdir %s no longer accessible." % run_outdir)
-            except Exception as e:
-              print(e)
-              from dials.array_family import flex
-              self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
-
-      jobs = self.db.get_all_jobs()
-      for idx in range(len(self.run_numbers)):
-        run_no = self.run_numbers[idx]
-        rg_id = rungroup_ids[idx]
-        t_id = trial_ids[idx]
-        for job in jobs:
-          if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
-            self.run_statuses.append(job.status)
-
-  def plot_stats_static(self):
-    from xfel.ui.components.spotfinder_plotter import plot_multirun_spotfinder_stats
-    self.refresh_stats()
-    sizex, sizey = self.parent.run_window.spotfinder_tab.spotfinder_panelsize
-    self.parent.run_window.spotfinder_tab.png = plot_multirun_spotfinder_stats(
-      self.stats, self.run_numbers,
-      spot_length_stats=self.spot_length_stats,
-      interactive=False,
-      run_tags=self.run_tags,
-      run_statuses=self.run_statuses,
-      n_min=self.parent.run_window.spotfinder_tab.n_min,
-      minimalist=self.parent.run_window.spotfinder_tab.entire_expt,
-      easy_run=True,
-      xsize=(sizex-25)/85, ysize=sizey/95,
-      high_vis=self.parent.high_vis)
-      # convert px to inches with fudge factor for scaling inside borders
-    self.parent.run_window.spotfinder_tab.redraw_windows = True
-
-# ---------------------------- Image Dumping Thread ---------------------------- #
-
 class ImageDumpThread(Thread):
   def __init__(self,
                command):
@@ -1059,9 +925,14 @@ class UnitCellSentinel(Thread):
           if params.input.feature_vector:
             figure = self.parent.run_window.unitcell_tab.figure
             _params = params
+            # Run the clustering here on the worker thread (heavy numeric work,
+            # no GUI interaction). Only the drawing into the embedded figure must
+            # happen on the main thread, so build the plot manager now and pass
+            # it into the CallAfter closure purely for rendering. Keeping a
+            # reference here also lets us write the covariance pickle below.
+            plots = dbscan_plot_manager(_params)
             def _draw_cluster():
               figure.clear()
-              plots = dbscan_plot_manager(_params)
               plots.wrap_3D_features(fig=figure, embedded=True)
               figure.canvas.draw_idle()
             wx.CallAfter(_draw_cluster)
@@ -1324,7 +1195,6 @@ class MainWindow(wx.Frame):
     self.calib_worker = None
     self.job_sentinel = None
     self.job_monitor = None
-    self.spotfinder_sentinel = None
     self.runstats_sentinel = None
     self.unitcell_sentinel = None
     self.mergingstats_sentinel = None
@@ -1433,7 +1303,6 @@ class MainWindow(wx.Frame):
       self.stop_calib_worker()
       self.stop_job_sentinel()
       self.stop_job_monitor()
-    #self.stop_spotfinder_sentinel()
     self.stop_runstats_sentinel()
     self.stop_unitcell_sentinel()
     self.stop_mergingstats_sentinel()
@@ -1502,18 +1371,6 @@ class MainWindow(wx.Frame):
         self.prg_sentinel.join()
     self.run_window.prg_light.change_status('off')
 
-  def start_spotfinder_sentinel(self):
-    self.spotfinder_sentinel = SpotfinderSentinel(self, active=True)
-    self.spotfinder_sentinel.start()
-    self.run_window.spotfinder_light.change_status('on')
-
-  def stop_spotfinder_sentinel(self, block = True):
-    if self.spotfinder_sentinel is not None and self.spotfinder_sentinel.active:
-      self.spotfinder_sentinel.active = False
-      if block:
-        self.spotfinder_sentinel.join()
-    self.run_window.spotfinder_light.change_status('off')
-
   def start_runstats_sentinel(self):
     self.runstats_sentinel = RunStatsSentinel(self, active=True)
     self.runstats_sentinel.start()
@@ -1578,8 +1435,8 @@ class MainWindow(wx.Frame):
 
   def onSettings(self, e):
     settings_dlg = dlg.SettingsDialog(self,
-                                      params=self.params)
-    settings_dlg.db_cred.btn_big.Disable()
+                                      params=self.params,
+                                      lock_db=True)
     settings_dlg.SetTitle('Settings')
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
@@ -1624,14 +1481,6 @@ class MainWindow(wx.Frame):
       if self.calib_worker is None or not self.calib_worker.active:
         self.start_calib_worker()
         self.run_window.calib_light.change_status('on')
-    # Disabled
-    #elif name == self.run_window.spotfinder_tab.name:
-    #  if self.job_monitor is None or not self.job_monitor.active:
-    #    self.start_job_monitor()
-    #    self.run_window.jmn_light.change_status('on')
-    #  if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
-    #    self.start_spotfinder_sentinel()
-    #    self.run_window.spotfinder_light.change_status('on')
     elif name == self.run_window.trials_tab.name:
       self.run_window.trials_tab.refresh_trials()
     elif name == self.run_window.runstats_tab.name:
@@ -1652,8 +1501,6 @@ class MainWindow(wx.Frame):
       if self.mergingstats_sentinel is None or not self.mergingstats_sentinel.active:
         self.start_mergingstats_sentinel()
         self.run_window.mergingstats_light.change_status('on')
-    #elif name == self.run_window.merge_tab.name:
-    #  self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
     name = self.run_window.main_nbook.GetPageText((self.run_window.main_nbook.GetSelection()))
@@ -1665,14 +1512,6 @@ class MainWindow(wx.Frame):
       if self.calib_worker.active:
         self.stop_calib_worker(block = False)
         self.run_window.calib_light.change_status('off')
-    # Disabled
-    #elif name == self.run_window.spotfinder_tab.name:
-    #  if self.job_monitor.active:
-    #    self.stop_job_monitor(block = False)
-    #    self.run_window.jmn_light.change_status('off')
-    #  if self.spotfinder_sentinel.active:
-    #    self.stop_spotfinder_sentinel(block = False)
-    #    self.run_window.spotfinder_light.change_status('off')
     elif name == self.run_window.runstats_tab.name:
       if not self.params.monitoring_mode and self.job_monitor.active:
         self.stop_job_monitor(block = False)
@@ -1712,21 +1551,17 @@ class RunWindow(wx.Panel):
     self.energy_tab = EnergyTab(self.main_nbook, main=self.parent)
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
-    #self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent) # Disabled
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
     self.datasets_tab = DatasetTab(self.main_nbook, main=self.parent)
-    #self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.mergingstats_tab = MergingStatsTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, self.runs_tab.name)
     self.main_nbook.AddPage(self.energy_tab, self.energy_tab.name)
     self.main_nbook.AddPage(self.trials_tab, self.trials_tab.name)
     self.main_nbook.AddPage(self.jobs_tab, self.jobs_tab.name)
-    #self.main_nbook.AddPage(self.spotfinder_tab, self.spotfinder_tab.name) # Disabled
     self.main_nbook.AddPage(self.runstats_tab, self.runstats_tab.name)
     self.main_nbook.AddPage(self.unitcell_tab, self.unitcell_tab.name)
     self.main_nbook.AddPage(self.datasets_tab, self.datasets_tab.name)
-    #self.main_nbook.AddPage(self.merge_tab, self.merge_tab.name)
     self.main_nbook.AddPage(self.mergingstats_tab, self.mergingstats_tab.name)
 
     self.sentinel_box = wx.FlexGridSizer(1, 7, 0, 20)
@@ -1734,7 +1569,6 @@ class RunWindow(wx.Panel):
     self.calib_light = gctr.SentinelStatus(self.main_panel, label='Calib Worker')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
-    #self.spotfinder_light = gctr.SentinelStatus(self.main_panel, label='Spotfinder Sentinel')
     self.runstats_light = gctr.SentinelStatus(self.main_panel, label='Run Stats Sentinel')
     self.unitcell_light = gctr.SentinelStatus(self.main_panel, label='Unit Cell Sentinel')
     self.mergingstats_light = gctr.SentinelStatus(self.main_panel, label='Merging Stats Sentinel')
@@ -1742,7 +1576,6 @@ class RunWindow(wx.Panel):
     self.sentinel_box.Add(self.calib_light)
     self.sentinel_box.Add(self.job_light)
     self.sentinel_box.Add(self.jmn_light)
-    #self.sentinel_box.Add(self.spotfinder_light)
     self.sentinel_box.Add(self.runstats_light)
     self.sentinel_box.Add(self.unitcell_light)
     self.sentinel_box.Add(self.mergingstats_light)
@@ -2640,221 +2473,8 @@ class JobsTab(BaseTab):
       else:
         self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
 
-class SpotfinderTab(BaseTab):
-  def __init__(self, parent, main):
-    BaseTab.__init__(self, parent=parent)
-    self.name = 'Spotfinder'
 
-    self.main = main
-    self.all_trials = []
-    self.trial_no = None
-    self.trial = None
-    self.all_runs = []
-    self.selected_runs = []
-    self.tag_trial_changed = True
-    self.tag_runs_changed = True
-    self.tag_last_five = False
-    self.entire_expt = False
-    self.png = None
-    self.static_bitmap = None
-    self.redraw_windows = True
-    self.n_min = 4
-
-    self.spotfinder_panel = wx.Panel(self, size=(100, 100))
-    self.spotfinder_panelsize = self.spotfinder_panel.GetSize()
-    self.spotfinder_box = wx.StaticBox(self.spotfinder_panel, label='Run Statistics')
-    self.spotfinder_sizer = wx.StaticBoxSizer(self.spotfinder_box, wx.HORIZONTAL)
-    self.spotfinder_panel.SetSizer(self.spotfinder_sizer)
-
-    self.trial_number = gctr.ChoiceCtrl(self,
-                                        label='Trial:',
-                                        label_size=(90, -1),
-                                        label_style='normal',
-                                        ctrl_size=(100, -1),
-                                        choices=[])
-    self.last_five_runs =  wx.Button(self,
-                                     label='Auto plot last five runs',
-                                     size=(200, -1))
-    self.plot_entire_expt = wx.Button(self,
-                                     label='Auto plot entire experiment',
-                                     size=(200,-1))
-    self.n_min_selector = gctr.OptionCtrl(self,
-                                          label='minimum # spots:',
-                                          label_size=(160, -1),
-                                          ctrl_size=(30, -1),
-                                          items=[('n_min', 4)])
-    self.run_numbers =  gctr.CheckListCtrl(self,
-                                           label='Selected runs:',
-                                           label_size=(200, -1),
-                                           label_style='normal',
-                                           ctrl_size=(150, 224),
-                                           direction='vertical',
-                                           choices=[])
-
-    self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 4)
-
-    options_box = wx.StaticBox(self, label='Display Options')
-    self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
-    self.options_opt_sizer = wx.GridBagSizer(1, 1)
-
-    self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
-                               flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.last_five_runs, pos=(1, 0),
-                               flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.plot_entire_expt, pos=(2, 0),
-                               flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.n_min_selector, pos=(3, 0),
-                               flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(8, 1),
-                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
-                               border=10)
-    self.options_box_sizer.Add(self.options_opt_sizer)
-    self.bottom_sizer.Add(self.options_box_sizer)
-
-    self.main_sizer.Add(self.spotfinder_panel, 1,
-                        flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.bottom_sizer, 0,
-                        flag=wx.EXPAND | wx.ALL, border=10)
-
-    # Bindings
-    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
-    self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
-    self.Bind(wx.EVT_BUTTON, self.onEntireExpt, self.plot_entire_expt)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onNMin, self.n_min_selector.n_min)
-    self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
-    self.Bind(EVT_SPOTFINDER_REFRESH, self.onRefresh)
-    self.Bind(wx.EVT_SIZE, self.OnSize)
-
-  def OnSize(self, e):
-    self.spotfinder_panelsize = self.spotfinder_panel.GetSize()
-    e.Skip()
-
-  def onTrialChoice(self, e):
-    trial_idx = self.trial_number.ctr.GetSelection()
-    if trial_idx == 0:
-      self.trial_no = None
-      self.trial = None
-      self.run_numbers.ctr.Clear()
-      self.all_runs = []
-      self.selected_runs = []
-    else:
-      trial_no = self.trial_number.ctr.GetClientData(trial_idx)
-      if trial_no is not None:
-        self.trial_no = int(trial_no)
-        self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
-        self.spotfinder_box.SetLabel('Spotfinder Results - Trial {}'.format(self.trial_no))
-        self.find_runs()
-
-  def onRunChoice(self, e):
-    self.tag_last_five = False
-    self.entire_expt = False
-    run_numbers_selected = self.run_numbers.ctr.GetCheckedStrings()
-    if self.trial is not None:
-      self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
-      self.main.run_window.spotfinder_light.change_status('idle')
-
-  def find_trials(self):
-    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    new_trials = [i for i in all_db_trials if i not in self.all_trials]
-    if len(new_trials) > 0:
-      self.trial_number.ctr.Clear()
-      self.all_trials = [None] + all_db_trials
-      for trial in self.all_trials:
-        if trial is None:
-          entry = 'None'
-          self.trial_number.ctr.Append(entry)
-          self.trial_number.ctr.SetClientData(0, None)
-        else:
-          entry = trial
-          self.trial_number.ctr.Append(entry)
-          item_idx = self.trial_number.ctr.FindString(entry)
-          self.trial_number.ctr.SetClientData(item_idx, trial)
-
-      if self.trial_no is not None:
-        self.trial_number.ctr.SetSelection(self.trial_no)
-      else:
-        self.trial_number.ctr.SetSelection(0)
-
-  def find_runs(self):
-    self.run_numbers.ctr.Clear()
-    if self.trial is not None:
-      self.runs_available = [str(r.run) for r in self.trial.runs]
-      if len(self.all_runs) > 0:
-        self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
-
-  def onRefresh(self, e):
-    self.refresh_trials()
-    self.refresh_runs()
-    if self.tag_last_five:
-      self.select_last_n_runs(5)
-    elif self.entire_expt:
-      self.select_all()
-    if self.redraw_windows:
-      self.plot_static_spotfinder_stats()
-      self.redraw_windows = False
-    if self.trial is not None:
-      self.spotfinder_box.SetLabel('Spotfinder Results - Trial {}'.format(self.trial_no))
-    else:
-      self.spotfinder_box.SetLabel('Spotfinder Results - No trial selected')
-
-  def refresh_trials(self):
-    if self.all_trials == []:
-      self.find_trials()
-    avail_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    for t in avail_trials:
-      if t not in self.all_trials:
-        self.trial_number.ctr.Append(t)
-        self.all_trials.append(t)
-        item_idx = self.trial_number.ctr.FindString(t)
-        self.trial_number.ctr.SetClientData(item_idx, t)
-
-  def refresh_runs(self):
-    if self.all_runs == []:
-      self.find_runs()
-    if self.trial is not None:
-      avail_runs = [str(r.run) for r in self.trial.runs]
-      for r in avail_runs:
-        if r not in self.all_runs:
-          self.run_numbers.ctr.Append(r)
-          self.all_runs.append(r)
-
-  def plot_static_spotfinder_stats(self):
-    if self.png is not None:
-      if self.static_bitmap is not None:
-        self.static_bitmap.Destroy()
-      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap = wx.StaticBitmap(
-        self.spotfinder_panel, wx.ID_ANY, wx.Bitmap(img))
-      self.spotfinder_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
-      self.spotfinder_panel.SetSizer(self.spotfinder_sizer)
-      self.spotfinder_panel.Layout()
-
-  def select_last_n_runs(self, n):
-    if self.trial is not None:
-      self.selected_runs = [r.run for r in self.trial.runs][-n:]
-
-  def select_all(self):
-    if self.trial is not None:
-      self.selected_runs = [r.run for r in self.trial.runs]
-
-  def onLastFiveRuns(self, e):
-    self.entire_expt = False
-    self.tag_last_five = True
-    self.select_last_n_runs(5)
-    self.main.run_window.spotfinder_light.change_status('idle')
-
-  def onEntireExpt(self, e):
-    self.entire_expt = True
-    self.tag_last_five = False
-    self.select_all()
-    self.main.run_window.spotfinder_light.change_status('idle')
-
-  def onNMin(self, e):
-    n_min = self.n_min_selector.n_min.GetValue()
-    if n_min.isdigit():
-      self.n_min = int(n_min)
-
-class RunStatsTab(SpotfinderTab):
+class RunStatsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
     self.name = 'Run Stats'
@@ -3355,6 +2975,64 @@ class RunStatsTab(SpotfinderTab):
           for p in image_paths]
         self.dump_timestamps(params, ts_list, shot_paths)
 
+  def find_trials(self):
+    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    new_trials = [i for i in all_db_trials if i not in self.all_trials]
+    if len(new_trials) > 0:
+      self.trial_number.ctr.Clear()
+      self.all_trials = [None] + all_db_trials
+      for trial in self.all_trials:
+        if trial is None:
+          entry = 'None'
+          self.trial_number.ctr.Append(entry)
+          self.trial_number.ctr.SetClientData(0, None)
+        else:
+          entry = trial
+          self.trial_number.ctr.Append(entry)
+          item_idx = self.trial_number.ctr.FindString(entry)
+          self.trial_number.ctr.SetClientData(item_idx, trial)
+
+      if self.trial_no is not None:
+        self.trial_number.ctr.SetSelection(self.trial_no)
+      else:
+        self.trial_number.ctr.SetSelection(0)
+
+  def find_runs(self):
+    self.run_numbers.ctr.Clear()
+    if self.trial is not None:
+      self.runs_available = [str(r.run) for r in self.trial.runs]
+      if len(self.all_runs) > 0:
+        self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
+
+  def refresh_trials(self):
+    if self.all_trials == []:
+      self.find_trials()
+    avail_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    for t in avail_trials:
+      if t not in self.all_trials:
+        self.trial_number.ctr.Append(t)
+        self.all_trials.append(t)
+        item_idx = self.trial_number.ctr.FindString(t)
+        self.trial_number.ctr.SetClientData(item_idx, t)
+
+  def refresh_runs(self):
+    if self.all_runs == []:
+      self.find_runs()
+    if self.trial is not None:
+      avail_runs = [str(r.run) for r in self.trial.runs]
+      for r in avail_runs:
+        if r not in self.all_runs:
+          self.run_numbers.ctr.Append(r)
+          self.all_runs.append(r)
+
+  def select_last_n_runs(self, n):
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs][-n:]
+
+  def select_all(self):
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs]
+
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
@@ -3691,11 +3369,13 @@ class DatasetTab(BaseTab):
     self.dataset_sizer.Add(new_dataset, flag=wx.EXPAND | wx.ALL, border=10)
 
   def onAddDataset(self, e):
-    new_dataset_dlg = dlg.DatasetDialog(self, db=self.main.db)
-    new_dataset_dlg.Fit()
+    # New datasets are created through the guided wizard; the full dialog is
+    # still used for editing an existing dataset (the magnifying glass button).
+    wizard = dlg.DatasetWizard(self, db=self.main.db)
 
-    if new_dataset_dlg.ShowModal() == wx.ID_OK:
+    if wizard.ShowModal() == wx.ID_OK:
       self.refresh_datasets()
+    wizard.Destroy()
 
   def onFilter(self, e):
     self.refresh_datasets()
@@ -3824,396 +3504,6 @@ class MergingStatsTab(BaseTab):
       self.plots_panel.SetSizer(self.plots_sizer)
       self.plots_panel.Layout()
 
-class MergeTab(BaseTab):
-
-  def __init__(self, parent, main, prefix='prime'):
-    BaseTab.__init__(self, parent=parent)
-    self.name = 'Merge'
-
-    self.main = main
-    self.prefix = prefix
-    self.prime_filename = '{}.phil'.format(self.prefix)
-    self.output = self.main.params.output_folder
-    self.run_paths = []
-    self.trial_no = None
-    self.all_trials = []
-    self.all_tags = []
-    self.selected_tags = []
-    self.run_paths = []
-
-    self.prime_panel = PRIMEInputWindow(self)
-    self.toolbar = wx.ToolBar(self, style=wx.TB_HORZ_TEXT | wx.TB_FLAT)
-    self.tb_btn_def = self.toolbar.AddTool(wx.ID_ANY, label=' Defaults',
-                          bitmap=wx.Bitmap('{}/24x24/def.png'.format(icons)),
-                          bmpDisabled=wx.NullBitmap,
-                          shortHelp='Default Settings',
-                          longHelp='Generate default PRIME settings')
-    self.tb_btn_load = self.toolbar.AddTool(wx.ID_OPEN, label=' Load PHIL',
-                          bitmap=wx.Bitmap('{}/24x24/open.png'.format(icons)),
-                          bmpDisabled=wx.NullBitmap,
-                          shortHelp='Load PHIL file',
-                          longHelp='Load PHIL file with PRIME settings')
-    self.tb_btn_save = self.toolbar.AddTool(wx.ID_SAVE, label=' Save PHIL',
-                          bitmap=wx.Bitmap('{}/24x24/save.png'.format(icons)),
-                          bmpDisabled=wx.NullBitmap,
-                          shortHelp='Save PHIL file',
-                          longHelp='Save PHIL file with PRIME settings')
-    self.tb_btn_cmd = self.toolbar.AddTool(wx.ID_ANY, label=' Command',
-                          bitmap=wx.Bitmap('{}/24x24/term.png'.format(icons)),
-                          bmpDisabled=wx.NullBitmap,
-                          shortHelp='PRIME Command',
-                          longHelp='Output PRIME command to stdout')
-    self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), False)
-    self.toolbar.AddSeparator()
-    self.tb_btn_run = self.toolbar.AddTool(wx.ID_ANY, label=' Run PRIME',
-                          bitmap=wx.Bitmap('{}/24x24/run.png'.format(icons)),
-                          bmpDisabled=wx.NullBitmap,
-                          shortHelp='Run PRIME',
-                          longHelp='Scale, merge and post-refine with PRIME')
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-    self.toolbar.Realize()
-
-    # Modify PRIME input window to hide input control
-    self.prime_panel.inp_box.Hide()
-    self.prime_panel.out_box.ctr.SetValue(self.output)
-
-    # Input box
-    self.input_panel = wx.Panel(self)
-    input_box = wx.StaticBox(self.input_panel, label='PRIME Input')
-    self.input_box_sizer = wx.StaticBoxSizer(input_box, wx.HORIZONTAL)
-    self.input_panel.SetSizer(self.input_box_sizer)
-
-    self.trial_number = gctr.ChoiceCtrl(self.input_panel,
-                                        label='Trial:',
-                                        label_size=(80, -1),
-                                        label_style='normal',
-                                        ctrl_size=(140, -1),
-                                        choices=[])
-    self.tag_title = wx.StaticText(self.input_panel, label='Tags:')
-    self.tag_list = gctr.CheckListCtrl(self.input_panel,
-                                       ctrl_size=(200, 100),
-                                       choices=[],
-                                       direction='vertical')
-    self.opt_prefix = gctr.OptionCtrl(self.input_panel,
-                                      label='List prefix:',
-                                      label_size=(80, -1),
-                                      ctrl_size=(140, -1),
-                                      items=[('prefix', 'prime')])
-    self.input_number = wx.StaticText(self.input_panel,
-                                      label='0 images in 0 folders:')
-    self.input_list = wx.TextCtrl(self.input_panel,
-                                  style=wx.TE_MULTILINE | wx.TE_READONLY)
-
-    self.trial_tag_sizer = wx.GridBagSizer(2, 3)
-    self.trial_tag_sizer.Add(self.opt_prefix, pos=(0, 0))
-    self.trial_tag_sizer.Add(self.trial_number, pos=(1, 0),
-                             flag=wx.TOP, border=10)
-    self.trial_tag_sizer.Add(self.tag_title, pos=(0, 1),
-                             flag=wx.LEFT | wx.EXPAND,
-                             border=15)
-    self.trial_tag_sizer.Add(self.tag_list, pos=(1, 1),
-                             flag=wx.LEFT | wx.EXPAND,
-                             border=15)
-    self.trial_tag_sizer.Add(self.input_number, pos=(0, 2),
-                             flag=wx.LEFT | wx.EXPAND | wx.ALIGN_RIGHT,
-                             border=15)
-    self.trial_tag_sizer.Add(self.input_list, pos=(1, 2),
-                             flag=wx.LEFT | wx.EXPAND | wx.ALIGN_RIGHT,
-                             border=15)
-    self.input_box_sizer.Add(self.trial_tag_sizer, 1, flag=wx.ALL | wx.EXPAND,
-                             border=10)
-    self.trial_tag_sizer.AddGrowableCol(2)
-    self.trial_tag_sizer.AddGrowableRow(1)
-    self.main_sizer.Add(self.toolbar, border=10,
-                        flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
-    self.main_sizer.Add(self.input_panel, proportion=1,
-                        flag=wx.ALL | wx.EXPAND, border=10)
-    self.main_sizer.Add(self.prime_panel, border=10,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.EXPAND)
-
-
-    self.Bind(wx.EVT_TEXT, self.onInput, self.input_list)
-    #self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
-    #self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
-    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
-    self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_cmd)
-    self.Bind(wx.EVT_TOOL, self.onLoad, self.tb_btn_load)
-    self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
-
-  def onTagCheck(self, e):
-    checked_items = self.tag_list.ctr.GetCheckedStrings()
-    self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
-                          in checked_items]
-    self.find_integrated_pickles()
-
-  def onTrialChoice(self, e):
-    trial_idx = self.trial_number.ctr.GetSelection()
-    if self.trial_number.ctr.GetClientData(trial_idx) == 0:
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-      self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), False)
-      self.tag_list.ctr.Clear()
-      self.input_list.SetValue('')
-    elif self.trial_number.ctr.GetClientData(trial_idx) != self.trial_no:
-      self.trial_no = self.trial_number.ctr.GetClientData(trial_idx)
-      self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
-      self.find_tags()
-      self.find_integrated_pickles()
-
-  def find_tags(self):
-    self.tag_list.ctr.Clear()
-    self.tags = []
-    self.tag_names = []
-    tag_ids = []
-    for run in self.trial.runs:
-      for tag in run.tags:
-        if tag.id not in tag_ids:
-          self.tags.append(tag)
-          tag_ids.append(tag.id)
-          self.tag_names.append(tag.name)
-    self.tag_title.SetLabel('Tags for trial {}:'.format(self.trial.trial))
-    if self.tag_names:
-      self.tag_list.ctr.InsertItems(items=self.tag_names, pos=0)
-
-  def find_trials(self):
-    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    new_trials = [i for i in all_db_trials if i not in self.all_trials]
-    if len(new_trials) > 0:
-      self.trial_number.ctr.Clear()
-      self.all_trials = [None] + \
-                        [str(i.trial) for i in self.main.db.get_all_trials()]
-      for trial in self.all_trials:
-        if trial is not None:
-          entry = 'Trial {}'.format(trial)
-          self.trial_number.ctr.Append(entry)
-          item_idx = self.trial_number.ctr.FindString(entry)
-          self.trial_number.ctr.SetClientData(item_idx, trial)
-        else:
-          entry = '-- select a trial --'
-          self.trial_number.ctr.Append(entry)
-          self.trial_number.ctr.SetClientData(0, None)
-
-      if self.trial_no is not None:
-        self.trial_number.ctr.SetSelection(self.trial_no)
-      else:
-        self.trial_number.ctr.SetSelection(0)
-
-  def find_integrated_pickles(self):
-
-    # Find runblock paths associated with the trial
-    run_numbers = []
-    run_ids = []
-    self.run_paths = []
-    if self.main.params.dispatcher == "cxi.xtc_process": #LABELIT backend
-      integration_dir = "integration"
-    else:
-      integration_dir = "out"
-    for rb in self.trial.rungroups:
-      for run in rb.runs:
-        if run.run not in run_numbers:
-          if len(self.selected_tags) == 0:
-            self.run_paths.append(os.path.join(
-              get_run_path(self.output, self.trial, rb, run), integration_dir))
-            run_numbers.append(run.run)
-          else:
-            for tag_id in [int(t.id) for t in self.selected_tags]:
-              if tag_id in [int(t.id) for t in run.tags]:
-                run_ids.append(int(run.id))
-                self.run_paths.append(os.path.join(
-                  get_run_path(self.output, self.trial, rb, run), integration_dir))
-                break
-
-    # Display paths in input list text control
-    input_paths = '\n'.join(self.run_paths)
-    self.input_list.SetValue(input_paths)
-
-    # Find appropriate integration pickles in runblock paths
-    self.all_pickles = []
-    for path in self.run_paths:
-      try:
-        pickles = [os.path.join(path, i) for i in os.listdir(path) if
-                   i.endswith('pickle') and 'int-' in i]
-        self.all_pickles = self.all_pickles + pickles
-      except OSError as error:
-        print('Folder not found: {}'.format(path))
-        continue
-
-    self.input_number.SetLabel('{} images in {} folders:'
-                               ''.format(len(self.all_pickles),
-                                         len(self.run_paths)))
-
-  def onInput(self, e):
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
-    self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), True)
-
-  def onLoad(self, e):
-    # Extract params from file
-    load_dlg = wx.FileDialog(self,
-                             message="Load script file",
-                             defaultDir=os.curdir,
-                             defaultFile="*.phil",
-                             wildcard="*.phil",
-                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-                             )
-    if load_dlg.ShowModal() == wx.ID_OK:
-      script = load_dlg.GetPaths()[0]
-      out_dir = os.path.dirname(script)
-      self.prime_filename = os.path.basename(script)
-      self.load_script(out_dir=out_dir)
-    load_dlg.Destroy()
-
-  def load_script(self, out_dir):
-    ''' Loads PRIME script '''
-    import iotbx.phil as ip
-
-    script = os.path.join(out_dir, self.prime_filename)
-    user_phil = ip.parse(open(script).read())
-    self.pparams = master_phil.fetch(sources=[user_phil]).extract()
-    self.prime_panel.pparams = self.pparams
-
-    if len(self.pparams.data) > 0:
-      self.prime_panel.inp_box.ctr.SetValue(str(self.pparams.data[0]))
-    current_dir = os.path.dirname(self.pparams.run_no)
-    self.prime_panel.out_box.ctr.SetValue(str(current_dir))
-    if str(self.prime_panel.out_box.ctr.GetValue).lower() == '':
-      self.prime_panel.out_box.ctr.SetValue(self.out_dir)
-    if str(self.pparams.title).lower() != 'none':
-      self.prime_panel.title_box.ctr.SetValue(str(self.pparams.title))
-    if str(self.pparams.hklisoin).lower() != 'none':
-      self.prime_panel.ref_box.ctr.SetValue(str(self.pparams.hklisoin))
-    elif str(self.pparams.hklrefin).lower() != 'none':
-      self.prime_panel.ref_box.ctr.SetValue(str(self.pparams.hklrefin))
-      self.prime_panel.opt_chk_useref.SetValue(True)
-    if str(self.pparams.n_residues).lower() == 'none':
-      self.prime_panel.opt_spc_nres.SetValue(500)
-    else:
-      self.prime_panel.opt_spc_nres.SetValue(int(self.pparams.n_residues))
-    self.prime_panel.opt_spc_nproc.SetValue(int(self.pparams.n_processors))
-
-  def onSave(self, e):
-    self.init_settings()
-
-    # Generate text of params
-    final_phil = master_phil.format(python_object=self.pparams)
-    with Capturing() as txt_output:
-      final_phil.show()
-    txt_out = ''
-    for one_output in txt_output:
-      txt_out += one_output + '\n'
-
-    # Save param file
-    save_dlg = wx.FileDialog(self,
-                             message="Save PRIME Script",
-                             defaultDir=os.curdir,
-                             defaultFile="*.phil",
-                             wildcard="*.phil",
-                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
-                             )
-    if save_dlg.ShowModal() == wx.ID_OK:
-      with open(save_dlg.GetPath(), 'w') as savefile:
-        savefile.write(txt_out)
-
-  def onIsoRef(self, e):
-    if self.prime_panel.ref_box.ctr.GetValue() != '':
-      self.prime_panel.opt_chk_useref.Enable()
-    else:
-      self.prime_panel.opt_chk_useref.Disable()
-
-  def init_settings(self):
-
-    # Determine where/what PRIME folders are
-    prime_dir = os.path.join(self.output, 'prime')
-    self.working_dir = os.path.join(prime_dir, 'trial_{}'.format(self.trial_no))
-    if not os.path.exists(prime_dir):
-      os.mkdir(prime_dir)
-    if not os.path.exists(self.working_dir):
-      os.mkdir(self.working_dir)
-
-    # Write list of pickles to file
-    list_prefix = self.opt_prefix.prefix.GetValue()
-    if list_prefix == None or list_prefix == '':
-      list_prefix = 'prime'
-    self.pickle_path_file = os.path.join(self.working_dir,
-                           '{}_trial_{}.lst'.format(list_prefix, self.trial_no))
-    print('Saving list of pickles to ', self.pickle_path_file)
-
-    with open(self.pickle_path_file, 'w') as lfile:
-      for pickle in self.all_pickles:
-        lfile.write('{}\n'.format(pickle))
-
-    self.pparams = self.prime_panel.pparams
-    self.pparams.data = [self.pickle_path_file]
-    self.pparams.run_no = set_base_dir(out_dir=self.working_dir)
-    self.out_dir = self.prime_panel.out_box.ctr.GetValue()
-    self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
-    if str(self.prime_panel.ref_box.ctr.GetValue()).lower() != '':
-      self.pparams.hklisoin = self.prime_panel.ref_box.ctr.GetValue()
-      if self.prime_panel.opt_chk_useref.GetValue():
-        self.pparams.hklrefin = self.prime_panel.ref_box.ctr.GetValue()
-    self.pparams.n_residues = self.prime_panel.opt_spc_nres.GetValue()
-    self.pparams.n_processors = self.prime_panel.opt_spc_nproc.GetValue()
-
-  def onRun(self, e):
-    # Run full processing
-
-    from xfel.util.mp import get_lsf_submit_command
-    from xfel.ui import settings_dir
-    import datetime
-    import copy
-
-    params = copy.deepcopy(self.main.params)
-    params.mp.nproc = self.prime_panel.opt_spc_nproc.GetValue()
-
-    # Generate script filename (w/ timestamp)
-    ts = '{:%Y%m%d_%H%M%S}'.format(datetime.datetime.now())
-    script_filename = 'trial_{:03d}_{}.sh'.format(int(self.trial_no), ts)
-
-    self.init_settings()
-    prime_phil = master_phil.format(python_object=self.pparams)
-
-    with Capturing() as output:
-      prime_phil.show()
-
-    txt_out = ''
-    for one_output in output:
-      txt_out += one_output + '\n'
-
-    prime_file = os.path.join(settings_dir, self.prime_filename)
-    out_file = os.path.join(self.working_dir, 'stdout.log')
-    with open(prime_file, 'w') as pf:
-      pf.write(txt_out)
-
-    if params.mp.method == 'local':
-      command=None
-    else:
-      job_name = 'prime_t{}'.format(self.trial_no)
-      cmd = '-J {} prime.postrefine {}'.format(job_name, prime_file)
-      submit_path = os.path.join(settings_dir, script_filename)
-      command = str(get_lsf_submit_command(cmd, submit_path, self.working_dir,
-                                           params.mp)())
-
-    if e.GetId() == self.tb_btn_run.GetId():
-      self.prime_run_window = PRIMERunWindow(self, -1,
-                                             title='PRIME Output',
-                                             params=self.pparams,
-                                             prime_file=prime_file,
-                                             # out_file=out_file,
-                                             mp_method=params.mp.method,
-                                             command=command)
-      self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
-                                            ''.format(user, 'python')).stdout_lines
-
-      self.prime_run_window.Show(True)
-
-    elif e.GetId() == self.tb_btn_cmd.GetId():
-      print('Submission command:')
-      print(command)
-
-    # Try and write files to created folder
-
-
-# ------------------------------- UI Elements -------------------------------- #
 
 class TrialPanel(wx.Panel):
   ''' A scrolled panel that contains run blocks and trial controls '''
@@ -4348,11 +3638,7 @@ class DatasetPanel(wx.Panel):
     self.add_sizer = wx.BoxSizer(wx.VERTICAL)
     self.add_panel.SetSizer(self.add_sizer)
 
-    # Add "New task" button to a separate sizer (so it is always on bottom)
-    self.btn_add_task = wx.Button(self.add_panel, label='New Task',
-                                   size=(200, -1))
-    self.btn_select_tasks = wx.Button(self.add_panel, label='Select Tasks',
-                                       size=(200, -1))
+    # Edit button and active checkbox for the dataset
     self.btn_edit_dataset = wx.BitmapButton(self.add_panel,
                                             bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active Dataset')
@@ -4360,12 +3646,6 @@ class DatasetPanel(wx.Panel):
     self.chk_sizer.Add(self.btn_edit_dataset)
     self.chk_sizer.Add(self.chk_active, flag=wx.EXPAND)
 
-    self.add_sizer.Add(self.btn_add_task,
-                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                       border=10)
-    self.add_sizer.Add(self.btn_select_tasks,
-                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                       border=10)
     self.add_sizer.Add(self.chk_sizer,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_LEFT,
                        border=10)
@@ -4375,8 +3655,6 @@ class DatasetPanel(wx.Panel):
     self.main_sizer.Add(self.add_panel, flag=wx.ALL, border=5)
 
     # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onAddTask, self.btn_add_task)
-    self.Bind(wx.EVT_BUTTON, self.onSelectTasks, self.btn_select_tasks)
     self.Bind(wx.EVT_BUTTON, self.onEditDataset, self.btn_edit_dataset)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
@@ -4388,62 +3666,117 @@ class DatasetPanel(wx.Panel):
     else:
       self.dataset.active = False
 
-  def onAddTask(self, e):
-    task_dlg = dlg.TaskDialog(self, dataset=self.dataset,
-                                    db=self.db)
-    task_dlg.Fit()
+  def _extract_task_params(self, task):
+    """Extract key parameters from PHIL text for display."""
+    if not task.parameters:
+      return None
 
-    if (task_dlg.ShowModal() == wx.ID_OK):
-      self.refresh_dataset()
-    task_dlg.Destroy()
+    params = []
+    for line in task.parameters.split('\n'):
+      line = line.strip()
+      if 'd_min' in line and '=' in line:
+        # Extract d_min value
+        parts = line.split('=')
+        if len(parts) >= 2:
+          val = parts[1].strip()
+          # Remove any comments or extra text
+          val = val.split('#')[0].strip()
+          if val:
+            params.append("d_min {}".format(val))
+      elif 'scaling.model' in line and '=' in line:
+        # Extract scaling.model basename
+        parts = line.split('=')
+        if len(parts) >= 2:
+          path = parts[1].strip()
+          path = path.split('#')[0].strip()
+          basename = path.split('/')[-1] if path else ""
+          if basename:
+            params.append("model: {}".format(basename))
 
-  def onSelectTasks(self, e):
-    tasksel_dlg = dlg.SelectTasksDialog(self, dataset=self.dataset,
-                                           db=self.db)
-    tasksel_dlg.Fit()
-
-    if (tasksel_dlg.ShowModal() == wx.ID_OK):
-      self.refresh_dataset()
-    tasksel_dlg.Destroy()
+    return " — " + ", ".join(params) if params else None
 
   def refresh_dataset(self):
     self.dataset_comment.SetLabel(self.dataset.comment if self.dataset.comment is not None else "")
     self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
                                self.dataset.name[:min(len(self.dataset.name), 20)]
                                if self.dataset.name is not None else ""))
+    tasks = self.dataset.tasks
     self.task_sizer.Clear(delete_windows=True)
+
+    # Wrap summary text to (roughly) the column width so nothing is clipped.
+    wrap_width = max(self.GetClientSize()[0] - 40, 150)
+
+    def add_line(text):
+      lbl = wx.StaticText(self.task_panel, label=text, style=wx.ALIGN_LEFT)
+      lbl.Wrap(wrap_width)
+      self.task_sizer.Add(lbl,
+                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
+                          border=5)
+
+    def add_task_line(text, shared_with=None):
+      ''' A task summary line, optionally prefixed with a link icon whose
+          tooltip lists the datasets it is shared with. '''
+      if not shared_with:
+        add_line(text)
+        return
+      row = wx.BoxSizer(wx.HORIZONTAL)
+      bmp = wx.StaticBitmap(self.task_panel,
+                            bitmap=wx.Bitmap('{}/16x16/linked.png'.format(icons)))
+      tip = 'Shared with: %s' % ', '.join(shared_with)
+      bmp.SetToolTip(tip)
+      row.Add(bmp, flag=wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, border=4)
+      lbl = wx.StaticText(self.task_panel, label=text, style=wx.ALIGN_LEFT)
+      lbl.Wrap(wrap_width - 24)
+      row.Add(lbl, proportion=1, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.task_sizer.Add(row,
+                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
+                          border=5)
+
+    # Show tags
     tags = self.dataset.tags
     if tags:
-      tags_text = "Tags: " + ",".join([t.name for t in tags])
+      add_line("Tags: " + ", ".join([t.name for t in tags]))
     else:
-      tags_text = "No tags selected"
-    label = wx.StaticText(self.task_panel, label = tags_text)
-    self.task_sizer.Add(label,
-                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                        border=5)
-    for task in self.dataset.tasks:
-      self.draw_task_button(task)
+      add_line("No tags selected")
+
+    # Show pipeline summary
+    if tasks:
+      # Show trial once if available
+      if tasks[0].trial:
+        add_line("Trial: {}".format(tasks[0].trial.trial))
+
+      # Map task type to friendly label
+      type_map = {
+        'indexing': 'Indexing',
+        'ensemble_refinement': 'Ensemble refinement',
+        'scaling': 'Scaling',
+        'merging': 'Merging',
+        'phenix': 'Phenix'
+      }
+
+      # Show each task in the pipeline
+      for idx, task in enumerate(tasks, 1):
+        friendly_type = type_map.get(task.type, task.type)
+        task_text = "{}. {}".format(idx, friendly_type)
+
+        # Add parameters for scaling/merging
+        if task.type in ['scaling', 'merging']:
+          params_text = self._extract_task_params(task)
+          if params_text:
+            task_text += params_text
+
+        # Annotate tasks that are shared with other datasets via a link icon.
+        sharing = self.db.get_datasets_for_task(task.id)
+        shared_with = [d.name for d in sharing if d.id != self.dataset.id]
+
+        add_task_line(task_text, shared_with)
+
+      # Show version info if available
+      if self.dataset.latest_version:
+        add_line("Latest: v{:03d}".format(self.dataset.latest_version.version))
+
     self.task_panel.Layout()
     self.task_panel.SetupScrolling(scrollToTop=False)
-
-  def draw_task_button(self, task):
-    ''' Add new run block button '''
-    new_task = gctr.TaskCtrl(self.task_panel, task=task)
-    self.Bind(wx.EVT_BUTTON, self.onTaskOptions, new_task.new_task)
-    self.task_sizer.Add(new_task,
-                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                        border=5)
-
-  def onTaskOptions(self, e):
-    ''' Open dialog and change task options '''
-    task = e.GetEventObject().task
-    task_dlg = dlg.TaskDialog(self, task=task,
-                                    db=self.db)
-    task_dlg.Fit()
-
-    if (task_dlg.ShowModal() == wx.ID_OK):
-      wx.CallAfter(self.refresh_dataset)
-    task_dlg.Destroy()
 
   def onEditDataset(self, e):
     new_dataset_dlg = dlg.DatasetDialog(self, db=self.db, dataset=self.dataset, new=False)

@@ -13,7 +13,14 @@ def get_help(path, scope = master_phil_scope):
 tooltips = {
   # Settings dialog
   'db_cred_ctr': get_help('experiment_tag'),
-  'db_cred_btn_big': 'Set up database credentials the GUI will use to connect with',
+  'db_cred_btn_big': 'Set up database credentials the GUI will use to connect with. '
+                     'Disabled while the GUI is running — restart to change connection settings.',
+  'load_project': 'Load a saved project bundle (experiment tag, database, output folder, and '
+                  'multiprocessing settings) from ~/.cctbx.xfel/settings_<name>.phil. '
+                  'While the GUI is running, changing the database connection or experiment tag '
+                  'is not allowed; a full restart is required for those changes.',
+  'save_project': 'Save the current settings as a named project bundle to '
+                  '~/.cctbx.xfel/settings_<name>.phil.',
   'facility_ctr': get_help('facility.name'),
   'btn_facility_options': 'Facility specific options',
   'experiment_ctr': get_help('facility.lcls.experiment'),
@@ -87,8 +94,125 @@ tooltips = {
   'rg_energy_ctr': 'Energy override for all images (eV)',
   'rg_two_thetas': 'Two 2θ values (deg). The ratio of high/low is used to check for presence of solvent on each image. ' + \
                    'Defaults are the water ring and a low resolution ring',
+  # StartDBDialog / DBCredentialsDialog
+  'basedir': 'Directory where the MySQL server data files will be stored. '
+             'Defaults to <output_folder>/MySql.',
+  'db_root_password': 'Root password for the MySQL server. Only required when '
+                      'starting a local server via "Start DB Server".',
+  'start_db': 'Launch a local MySQL server process using the directory and '
+              'password specified above.',
+  'db_OK': 'Confirm database credentials and close this dialog.',
+  # Ensemble refinement / MergingStats dialogs
+  'nnodes_tder': 'Number of nodes for Time-Dependent Ensemble Refinement.',
+  # EnergyDialog
+  'skip_images': 'Number of images to skip at the start of the dataset.',
+  'num_images': 'Maximum number of frames to average.',
+  # TrialDialog — trial meta
+  'trial_info': 'Trial number for this processing run. Use "Import PHIL" to load '
+                'parameters from a file, or "Edit PHIL" to modify them directly.',
+  'trial_comment': 'Optional note attached to this trial (stored in the database).',
+  'copy_runblocks': 'Initialise this trial\'s run blocks by copying them from '
+                    'an existing trial.',
+  # TrialDialog — overall / spotfinding
+  'min_spots': 'Minimum number of strong spots required to attempt indexing an image.',
+  'min_spot_size': 'Minimum number of pixels a connected region must have to be '
+                   'counted as a spot (filters single-pixel noise).',
+  'max_spot_size': 'Maximum number of pixels a spot may have (filters ice rings '
+                   'and bad pixels).',
+  'sigma_background': 'Local background standard-deviation multiplier for the '
+                      'dispersion spotfinder. Lower values are more sensitive.',
+  'sigma_strong': 'Minimum signal-to-noise ratio above background for a pixel to '
+                  'be counted as part of a spot.',
+  'global_threshold': 'Absolute intensity threshold; pixels below this value are '
+                      'never counted as signal regardless of local background.',
+  'gain': 'Detector gain in ADU/photon. Used to convert pixel values to photon '
+          'counts for the dispersion algorithm.',
+  'kernel_size': 'Size of the local background estimation kernel in pixels '
+                 '(the neighbourhood used to estimate mean and standard deviation).',
+  'threshold_algorithm': 'Spotfinding threshold algorithm. "dispersion" is the '
+                         'standard method; "dispersion_extended" is more aggressive '
+                         'at low resolution; "radial_profile" uses radial background subtraction.',
+  # TrialDialog — indexing
+  'unit_cell': 'Target unit cell parameters (a b c α β γ) to guide indexing.',
+  'space_group': 'Target space group for indexing (e.g. "P 21 21 21").',
+  'd_min_indexing': 'High-resolution cutoff used during indexing (Å). Reflections '
+                    'beyond this limit are ignored.',
+  'max_lattices': 'Maximum number of lattices to find per image. Values greater '
+                  'than 1 enable multi-lattice indexing.',
+  # DatasetDialog — shared settings applied to all stages
+  'shared_model': 'Path to the reference model (MTZ or PDB) used for scaling and '
+                  'merging. Click Browse to select a file.',
+  'shared_unit_cell': 'Unit cell parameters (a b c α β γ) applied to all stages '
+                      'in this dataset.',
+  'shared_space_group': 'Space group applied to all stages in this dataset '
+                        '(e.g. "P 21 21 21").',
+  'shared_d_min': 'High-resolution cutoff for scaling and merging (Å).',
+  'shared_resolution_scalar': 'Scalar multiplied by d_min to set the internal '
+                              'resolution limit. Values less than 1 extend slightly '
+                              'beyond d_min.',
+  'shared_n_bins': 'Number of resolution shells used in statistics output tables '
+                   'and plots.',
+  'shared_merge_anomalous': 'When checked, Friedel mates are merged and anomalous '
+                            'signal is not preserved. Uncheck for anomalous phasing.',
+  # DatasetDialog scaling stage friendly controls
+  'scale_min_corr': 'Minimum Pearson correlation coefficient between a lattice\'s '
+                    'intensities and the reference model. Lattices below this '
+                    'threshold are rejected before merging.',
+  'scale_rel_tol': 'Maximum fractional difference in unit cell edge length allowed '
+                   'versus the reference cell (value-mode filter). Superseded by '
+                   'the cluster filter when that mode is enabled.',
+  'scale_sigma': 'Significance filter: for each image, select the highest resolution bin '
+                 'with I/σ above this cutoff.',
+  # DatasetTab filter
+  'filter': 'Filter the dataset list by name. Type any substring to narrow the list.',
+  # UnitCellTab
+  'uc_plot_eps': 'DBSCAN epsilon: maximum distance between two unit cells to be '
+                 'considered neighbours when forming clusters. Smaller values '
+                 'produce tighter, more selective clusters.',
+  # Dataset scaling stage — unit-cell cluster filter
+  'chk_use_cluster': 'When checked, filter lattices using a covariance model previously '
+                     'computed on the Unit Cells tab. When unchecked, the relative-length '
+                     'tolerance filter (above) is used instead.',
+  'cluster_file': 'Covariance pickle file written by the Unit Cells tab '
+                  '(output_folder/cluster/cluster_<name>.pickle). '
+                  'Use Browse to select a file outside the default location.',
+  'browse_cluster': 'Browse for a covariance pickle file outside the default cluster directory.',
+  'cluster_component': 'Index of the Gaussian mixture component to filter on (0 = largest cluster). '
+                       'The Unit Cells tab labels components in the same order.',
+  'cluster_mahalanobis': 'Maximum Mahalanobis distance from the cluster centre for a lattice to be '
+                         'accepted (essentially a sigma cutoff for the multivariate Gaussian). '
+                         'Default is 4.0.',
+  # Dataset stage checkboxes and radio groups
+  'enable_chk': 'Include this stage in the dataset processing pipeline. Uncheck to skip '
+                'the stage without losing its configured settings.',
+  'chk_pre_split': 'Chunk the processing results locally for better chunk sizes or on the '
+                   'cluster. On the cluster is faster but less accurate for counting '
+                   'chunk sizes.',
+  'chk_expand_nave': 'During reintegration, expand the mosaic (Nave) parameters to '
+                     'catch more integrated reflections',
+  'selection_type_radio': 'How to combine the selected tags: "intersection" keeps runs '
+                          'matching ALL selected tags; "union" keeps runs matching ANY '
+                          'selected tag.',
+  'model_mode_radio': 'Whether a known reference model is supplied for scaling and merging. '
+                      'Choose "No reference model" to scale and merge without one.',
 }
 
 def setup_tooltip(obj):
-  obj.SetToolTip(tooltips.get(obj.Name))
+  # Look up the tooltip by the widget's name. Two naming conventions coexist:
+  # inner widgets of composite controls are named "<panel>_ctr"/"<panel>_btn_big"
+  # and register their own keys, while composite panels register a key under the
+  # bare panel name. When a bare-name key matches, propagate it down to every
+  # child widget so the tip shows no matter which sub-widget the pointer is over
+  # (on wxGTK a tooltip set only on the parent panel is not shown over a child
+  # native control). Children that already carry their own tip are left alone.
+  tip = tooltips.get(obj.Name)
+  if not tip:
+    return
+  _apply_tooltip(obj, tip, is_root=True)
+
+def _apply_tooltip(widget, tip, is_root=False):
+  if is_root or not widget.GetToolTipText():
+    widget.SetToolTip(tip)
+  for child in widget.GetChildren():
+    _apply_tooltip(child, tip)
 
