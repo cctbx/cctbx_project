@@ -54,9 +54,10 @@ def test_001():
   '''
     A bond the restraints already know about is not a missing link.
 
-    workarounds_00345 removes a pair of H closer than 1.0 A whose parent heavy
-    atoms are within 1.6 A, on the premise that the parents carry an unperceived
-    bond and so should never have been hydrogenated. A real bond satisfies that
+    workarounds_00345 (since removed: the missing links are now perceived)
+    removed a pair of H closer than 1.0 A whose parent heavy atoms were within
+    1.6 A, on the premise that the parents carry an unperceived bond and so
+    should never have been hydrogenated. A real bond satisfies that
     distance test too. Residues are hydrogenated with methyls at an arbitrary
     torsion and rotated to staggered later, so an as-placed methyl can sit
     eclipsed against its own parent's H: here THR 5 CB-CG2 is an ordinary 1.52 A
@@ -81,8 +82,8 @@ def test_002():
   '''
     The reported H count is the count in the model that is returned.
 
-    n_H_final was taken before workarounds_00345 ran, so any H the workaround
-    removed was still counted: 4RXN reported 372 added and wrote 370. The number
+    n_H_final was taken before workarounds_00345 (since removed) ran, so any H
+    it removed was still counted: 4RXN reported 372 added and wrote 370. The number
     is only printed, never asserted on, so a silent deletion stayed invisible
     from both ends.
   '''

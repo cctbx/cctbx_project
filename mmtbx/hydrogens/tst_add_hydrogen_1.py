@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys, time
 import mmtbx.model
 import iotbx.pdb
-from mmtbx.hydrogens import reduce_hydrogen
+from mmtbx.hydrogens import reduce_hydrogen, place_and_optimize_hydrogens
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
@@ -36,9 +36,13 @@ def write_models(model_initial, model_h_added):
 
 def compare_models(pdb_str,
                    contains     = None,
-                   not_contains = None):
+                   not_contains = None,
+                   sel_str      = None,
+                   optimize     = False):
   '''
     Function to compare model with new H to the known answer (pdb_str)
+    optimize=True: full reduce2 (placement + Optimizer), needed when pdb_str is
+    reduce2 output; placement alone leaves rotatable OH up to 1 A off (4zeb).
   '''
   debug = '--debug' in sys.argv
   #
@@ -62,13 +66,22 @@ def compare_models(pdb_str,
 
   #model_h_added = reduce.add(model = model_without_h)
   # place H atoms again
-  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
-  try:
-    reduce_add_h_obj.run()
-  except Exception as e:
-    assert 0
-  #
-  model_h_added = reduce_add_h_obj.get_model()
+  if optimize:
+    model_h_added = place_and_optimize_hydrogens(
+      model             = model_without_h,
+      keep_existing_H   = False,
+      stop_for_unknowns = False,
+      raise_on_missing  = False,
+      log               = null_out())
+    model_h_added.unset_riding_h_manager()
+  else:
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
+    try:
+      reduce_add_h_obj.run()
+    except Exception as e:
+      assert 0
+    #
+    model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()
 
   # For debugging
@@ -78,7 +91,11 @@ def compare_models(pdb_str,
   ph_h_added = model_h_added.get_hierarchy()
   if not ph_initial.is_similar_hierarchy(other=ph_h_added):
     write_models(model_initial, model_h_added)
-  assert ph_initial.is_similar_hierarchy(other=ph_h_added), 'Diffs\n%s\n====\n%s' % (ph_initial.show(),ph_h_added.show())
+    ids_initial = set(a.id_str() for a in ph_initial.atoms())
+    ids_added   = set(a.id_str() for a in ph_h_added.atoms())
+    # both empty: same atoms, different order
+    assert 0, 'only in answer: %s\nonly in output: %s' % (
+      sorted(ids_initial - ids_added), sorted(ids_added - ids_initial))
 
   number_h_added = hd_sel_h_added.count(True)
   assert(number_h_expected == number_h_added)
@@ -90,6 +107,9 @@ def compare_models(pdb_str,
     assert (not_contains not in h_names_added)
   if contains:
     assert (contains in h_names_added)
+  if sel_str:
+    sel = model_h_added.selection(string = sel_str)
+    assert sel.count(True)==0, [a.id_str() for a in ph_h_added.atoms().select(sel)]
 
   sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
   sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
@@ -194,8 +214,8 @@ ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
 ATOM      5  H1  GLY A   1      -8.200   4.928   6.298  1.00 16.77           H
 ATOM      6  H2  GLY A   1      -9.618   5.243   6.252  1.00 16.77           H
 ATOM      7  H3  GLY A   1      -9.183   3.904   6.613  1.00 16.77           H
-ATOM      8  HA3 GLY A   1      -9.929   3.858   4.426  1.00 16.57           H
-ATOM      9  HA2 GLY A   1      -8.861   4.970   4.084  1.00 16.57           H
+ATOM      8  HA3 GLY A   1      -8.861   4.970   4.084  1.00 16.57           H
+ATOM      9  HA2 GLY A   1      -9.929   3.858   4.426  1.00 16.57           H
 ATOM     10  N   ASN A   2      -7.656   2.923   3.155  1.00 15.02           N
 ATOM     11  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
 ATOM     12  C   ASN A   2      -5.241   2.537   3.427  1.00 13.13           C
@@ -277,8 +297,8 @@ ATOM     13  HD2 PHE H   1       7.828   5.668  10.337  1.00 15.00           H
 ATOM     14  HD1 PHE H   1       5.762   4.120   7.225  1.00 15.00           H
 ATOM     16  HE1 PHE H   1       4.460   2.836   8.708  1.00 15.00           H
 ATOM     17  HA  PHE H   1       6.622   7.575   7.683  1.00 15.00           H
-ATOM     18  HB3 PHE H   1       8.101   5.258   6.982  1.00 15.00           H
-ATOM     19  HB2 PHE H   1       8.507   6.227   8.174  1.00 15.00           H
+ATOM     18  HB3 PHE H   1       8.507   6.227   8.174  1.00 15.00           H
+ATOM     19  HB2 PHE H   1       8.101   5.258   6.982  1.00 15.00           H
 TER
 """
 
@@ -311,8 +331,8 @@ ATOM      5  CB  CYS A  12     -52.861 -12.775 -13.466  1.00103.91           C
 ATOM      6  SG  CYS A  12     -54.064 -13.357 -14.680  1.00106.39           S
 ATOM      7  H   CYS A  12     -50.242 -13.776 -11.889  1.00 95.50           H
 ATOM      8  HA  CYS A  12     -52.194 -14.542 -12.667  1.00103.68           H
-ATOM      9  HB2 CYS A  12     -52.438 -11.981 -13.828  1.00103.91           H
-ATOM     10  HB3 CYS A  12     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM      9  HB2 CYS A  12     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM     10  HB3 CYS A  12     -52.438 -11.981 -13.828  1.00103.91           H
 TER
 """
 
@@ -332,8 +352,8 @@ ATOM      9  H3  PRO A   1     -50.063 -11.383  -9.046  1.00 87.52           H
 ATOM     10  HA  PRO A   1     -49.092 -12.241 -10.748  1.00 88.41           H
 ATOM     11  HB2 PRO A   1     -48.804 -14.764  -9.574  1.00 78.46           H
 ATOM     12  HB3 PRO A   1     -47.671 -13.864 -10.232  1.00 78.46           H
-ATOM     13  HG2 PRO A   1     -47.455 -12.604  -8.409  1.00 80.77           H
-ATOM     14  HG3 PRO A   1     -47.760 -14.017  -7.748  1.00 80.77           H
+ATOM     13  HG2 PRO A   1     -47.760 -14.017  -7.748  1.00 80.77           H
+ATOM     14  HG3 PRO A   1     -47.455 -12.604  -8.409  1.00 80.77           H
 ATOM     15  HD2 PRO A   1     -49.899 -13.480  -7.321  1.00 92.02           H
 ATOM     16  HD3 PRO A   1     -49.246 -12.038  -7.175  1.00 92.02           H
 ATOM     17  N   CYS A   2     -50.777 -13.205 -12.246  1.00 95.50           N
@@ -344,8 +364,8 @@ ATOM     21  CB  CYS A   2     -52.861 -12.775 -13.466  1.00103.91           C
 ATOM     22  SG  CYS A   2     -54.064 -13.357 -14.680  1.00106.39           S
 ATOM     23  H   CYS A   2     -50.361 -12.536 -12.590  1.00 95.50           H
 ATOM     24  HA  CYS A   2     -52.147 -14.558 -12.653  1.00103.68           H
-ATOM     25  HB2 CYS A   2     -52.438 -11.981 -13.828  1.00103.91           H
-ATOM     26  HB3 CYS A   2     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM     25  HB2 CYS A   2     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM     26  HB3 CYS A   2     -52.438 -11.981 -13.828  1.00103.91           H
 ATOM     28  N   LYS A   3     -50.756 -15.600 -14.375  1.00105.98           N
 ATOM     29  CA  LYS A   3     -50.135 -16.230 -15.528  1.00115.21           C
 ATOM     30  C   LYS A   3     -50.110 -17.740 -15.357  1.00105.26           C
@@ -357,12 +377,12 @@ ATOM     35  CE  LYS A   3     -45.456 -15.678 -13.663  1.00112.21           C
 ATOM     36  NZ  LYS A   3     -44.063 -15.229 -13.941  1.00110.68           N
 ATOM     37  H   LYS A   3     -50.849 -16.122 -13.698  1.00105.98           H
 ATOM     38  HA  LYS A   3     -50.648 -16.015 -16.323  1.00115.21           H
-ATOM     39  HB2 LYS A   3     -48.755 -14.746 -15.882  1.00110.03           H
-ATOM     40  HB3 LYS A   3     -48.332 -16.141 -16.514  1.00110.03           H
+ATOM     39  HB2 LYS A   3     -48.332 -16.141 -16.514  1.00110.03           H
+ATOM     40  HB3 LYS A   3     -48.755 -14.746 -15.882  1.00110.03           H
 ATOM     41  HG2 LYS A   3     -48.120 -15.488 -13.782  1.00100.14           H
 ATOM     42  HG3 LYS A   3     -47.738 -16.907 -14.386  1.00100.14           H
-ATOM     43  HD2 LYS A   3     -46.409 -14.501 -15.041  1.00101.77           H
-ATOM     44  HD3 LYS A   3     -46.017 -15.929 -15.616  1.00101.77           H
+ATOM     43  HD2 LYS A   3     -46.017 -15.929 -15.616  1.00101.77           H
+ATOM     44  HD3 LYS A   3     -46.409 -14.501 -15.041  1.00101.77           H
 ATOM     45  HE2 LYS A   3     -45.789 -15.178 -12.902  1.00112.21           H
 ATOM     46  HE3 LYS A   3     -45.432 -16.625 -13.453  1.00112.21           H
 ATOM     47  HZ1 LYS A   3     -43.731 -15.679 -14.633  1.00110.68           H
@@ -387,8 +407,8 @@ ATOM      9  H3  PRO A   1     -50.986 -12.543  -8.958  1.00 87.52           H
 ATOM     10  HA  PRO A   1     -49.092 -12.241 -10.748  1.00 88.41           H
 ATOM     11  HB2 PRO A   1     -48.804 -14.764  -9.574  1.00 78.46           H
 ATOM     12  HB3 PRO A   1     -47.671 -13.864 -10.232  1.00 78.46           H
-ATOM     13  HG2 PRO A   1     -47.455 -12.604  -8.409  1.00 80.77           H
-ATOM     14  HG3 PRO A   1     -47.760 -14.017  -7.748  1.00 80.77           H
+ATOM     13  HG2 PRO A   1     -47.760 -14.017  -7.748  1.00 80.77           H
+ATOM     14  HG3 PRO A   1     -47.455 -12.604  -8.409  1.00 80.77           H
 ATOM     15  HD2 PRO A   1     -49.899 -13.480  -7.321  1.00 92.02           H
 ATOM     16  HD3 PRO A   1     -49.246 -12.038  -7.175  1.00 92.02           H
 ATOM     17  N   CYS A   2     -50.777 -13.205 -12.246  1.00 95.50           N
@@ -399,8 +419,8 @@ ATOM     21  CB  CYS A   2     -52.861 -12.775 -13.466  1.00103.91           C
 ATOM     22  SG  CYS A   2     -54.064 -13.357 -14.680  1.00106.39           S
 ATOM     23  H   CYS A   2     -50.361 -12.536 -12.590  1.00 95.50           H
 ATOM     24  HA  CYS A   2     -52.147 -14.558 -12.653  1.00103.68           H
-ATOM     25  HB2 CYS A   2     -52.438 -11.981 -13.828  1.00103.91           H
-ATOM     26  HB3 CYS A   2     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM     25  HB2 CYS A   2     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM     26  HB3 CYS A   2     -52.438 -11.981 -13.828  1.00103.91           H
 ATOM     28  N   LYS A   3     -50.756 -15.600 -14.375  1.00105.98           N
 ATOM     29  CA  LYS A   3     -50.135 -16.230 -15.528  1.00115.21           C
 ATOM     30  C   LYS A   3     -50.110 -17.740 -15.357  1.00105.26           C
@@ -412,12 +432,12 @@ ATOM     35  CE  LYS A   3     -45.456 -15.678 -13.663  1.00112.21           C
 ATOM     36  NZ  LYS A   3     -44.063 -15.229 -13.941  1.00110.68           N
 ATOM     37  H   LYS A   3     -50.849 -16.122 -13.698  1.00105.98           H
 ATOM     38  HA  LYS A   3     -50.648 -16.015 -16.323  1.00115.21           H
-ATOM     39  HB2 LYS A   3     -48.755 -14.746 -15.882  1.00110.03           H
-ATOM     40  HB3 LYS A   3     -48.332 -16.141 -16.514  1.00110.03           H
+ATOM     39  HB2 LYS A   3     -48.332 -16.141 -16.514  1.00110.03           H
+ATOM     40  HB3 LYS A   3     -48.755 -14.746 -15.882  1.00110.03           H
 ATOM     41  HG2 LYS A   3     -48.120 -15.488 -13.782  1.00100.14           H
 ATOM     42  HG3 LYS A   3     -47.738 -16.907 -14.386  1.00100.14           H
-ATOM     43  HD2 LYS A   3     -46.409 -14.501 -15.041  1.00101.77           H
-ATOM     44  HD3 LYS A   3     -46.017 -15.929 -15.616  1.00101.77           H
+ATOM     43  HD2 LYS A   3     -46.017 -15.929 -15.616  1.00101.77           H
+ATOM     44  HD3 LYS A   3     -46.409 -14.501 -15.041  1.00101.77           H
 ATOM     45  HE2 LYS A   3     -45.789 -15.178 -12.902  1.00112.21           H
 ATOM     46  HE3 LYS A   3     -45.432 -16.625 -13.453  1.00112.21           H
 ATOM     47  HZ1 LYS A   3     -43.731 -15.679 -14.633  1.00110.68           H
@@ -448,8 +468,8 @@ ATOM     16  CB  CYS A 222     -23.463  10.894   4.313  1.00 11.23           C
 ATOM     17  SG  CYS A 222     -22.792  10.598   5.958  1.00 11.91           S
 ATOM     18  H   CYS A 222     -26.153  10.408   5.705  1.00  8.82           H
 ATOM     19  HA  CYS A 222     -25.188  12.029   4.746  1.00  8.99           H
-ATOM     20  HB2 CYS A 222     -23.004  11.661   3.936  1.00 11.23           H
-ATOM     21  HB3 CYS A 222     -23.291  10.107   3.773  1.00 11.23           H
+ATOM     20  HB2 CYS A 222     -23.291  10.107   3.773  1.00 11.23           H
+ATOM     21  HB3 CYS A 222     -23.004  11.661   3.936  1.00 11.23           H
 TER
 """
 
@@ -467,8 +487,8 @@ ATOM      9  CE1 HIS A  44       5.476  43.005   6.544  1.00 11.24           C
 ATOM     10  NE2 HIS A  44       6.065  42.976   5.358  1.00  9.90           N
 ATOM     11  H   HIS A  44       5.757  38.876   4.190  1.00  7.72           H
 ATOM     12  HA  HIS A  44       7.678  38.811   5.022  1.00  8.00           H
-ATOM     13  HB2 HIS A  44       7.801  39.819   7.181  1.00 11.03           H
-ATOM     14  HB3 HIS A  44       6.290  39.418   7.471  1.00 11.03           H
+ATOM     13  HB2 HIS A  44       6.290  39.418   7.471  1.00 11.03           H
+ATOM     14  HB3 HIS A  44       7.801  39.819   7.181  1.00 11.03           H
 ATOM     15  HD1 HIS A  44       5.404  41.639   7.941  1.00  9.47           H
 ATOM     16  HD2 HIS A  44       7.148  41.462   4.485  1.00 10.66           H
 ATOM     17  HE1 HIS A  44       4.986  43.717   6.887  1.00 11.24           H
@@ -488,8 +508,8 @@ ATOM     30  CB BSER A  60       9.680  41.954  15.550  0.50 12.25           C
 ATOM     31  OG BSER A  60      10.939  41.568  16.145  0.66 17.46           O
 ATOM     32  H  BSER A  60       7.882  39.617  16.063  1.00  9.28           H
 ATOM     33  HA BSER A  60       8.196  41.138  14.493  1.00  8.34           H
-ATOM     34  HB2BSER A  60       9.099  42.306  16.243  0.50 12.25           H
-ATOM     35  HB3BSER A  60       9.845  42.634  14.878  0.50 12.25           H
+ATOM     34  HB2BSER A  60       9.845  42.634  14.878  0.50 12.25           H
+ATOM     35  HB3BSER A  60       9.099  42.306  16.243  0.50 12.25           H
 ATOM     36  HG BSER A  60      11.303  42.234  16.504  0.66 17.46           H
 ATOM     37  N   HIS A  61      10.095  40.969  12.694  1.00  7.19           N
 ATOM     38  CA  HIS A  61      10.687  40.443  11.504  1.00  7.24           C
@@ -522,8 +542,8 @@ ATOM     64  CE2 PHE A  62      16.297  34.631   8.988  1.00 14.14           C
 ATOM     65  CZ  PHE A  62      16.979  34.320  10.172  1.00 13.67           C
 ATOM     66  H   PHE A  62      11.741  38.462  10.375  1.00  7.37           H
 ATOM     67  HA  PHE A  62      13.822  37.850  11.895  1.00  7.69           H
-ATOM     68  HB2 PHE A  62      13.263  37.018   9.278  1.00  9.12           H
-ATOM     69  HB3 PHE A  62      12.756  36.263  10.581  1.00  9.12           H
+ATOM     68  HB2 PHE A  62      12.756  36.263  10.581  1.00  9.12           H
+ATOM     69  HB3 PHE A  62      13.263  37.018   9.278  1.00  9.12           H
 ATOM     70  HD1 PHE A  62      15.165  36.096  12.171  1.00 10.92           H
 ATOM     71  HD2 PHE A  62      14.714  35.544   8.230  1.00 12.32           H
 ATOM     72  HE1 PHE A  62      17.109  34.816  12.114  1.00 13.49           H

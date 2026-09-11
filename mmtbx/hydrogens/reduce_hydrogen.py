@@ -15,11 +15,6 @@ from cctbx.geometry_restraints.linking_class import linking_class
 from cctbx.maptbx.box import shift_and_box_model
 import math
 
-from cctbx import crystal
-from scitbx import matrix
-from cctbx.array_family import flex
-from libtbx import group_args
-
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
 
@@ -331,161 +326,98 @@ def workaround_002(model, selection):
           atoms[ij[0]].xyz = p1
           atoms[ij[1]].xyz = p2
 
-def workarounds_00345(model,
-                      cutoff_003=1.1,
-                      s_c_cutoff=1.9,
-                      ch_s_cutoff=1.1,
-                      non_h_distance_cutoff=1.65):
-    """
-    Combined functionality of workaround_003, 004, and 005.
-    Finds clashing H/D atoms based on specific geometry parameters,
-    accounting for altlocs and crystal symmetry, and strips them from the model.
-    """
-    pdb_hierarchy = model.get_hierarchy()
-    restraints_manager = model.get_restraints_manager()
-    atoms = pdb_hierarchy.atoms()
-    sites_cart = atoms.extract_xyz()
-    # SHARED SETUP: Build bond connectivity dict once
-    if hasattr(restraints_manager, "geometry"):
-      bond_proxies_simple, asu = \
-        restraints_manager.geometry.get_all_bond_proxies(sites_cart=sites_cart)
-    else:
-      bond_proxies_simple = restraints_manager.pair_proxies(
-        sites_cart=sites_cart).bond_proxies.simple
-    bonds = {}
-    for proxy in bond_proxies_simple:
-      i, j = proxy.i_seqs
-      bonds.setdefault(i, []).append(j)
-      bonds.setdefault(j, []).append(i)
-    # 2. SHARED SETUP: Pre-filter atoms into target lists for speedup
-    s_atoms = []
-    c_atoms = []
-    o_atoms = []
-    non_h_atoms = []
-    asc = pdb_hierarchy.atom_selection_cache()
-    h_sel = asc.selection("element H or element D")
-    h_iseqs = h_sel.iselection()
-    for atom in atoms:
-      if get_class(name=atom.parent().resname) == "common_water": continue
-      if not atom.element_is_hydrogen():
-        non_h_atoms.append(atom)
-        elem = atom.element.strip().upper()
-        if   elem == 'S': s_atoms.append(atom)
-        elif elem == 'C': c_atoms.append(atom)
-        elif elem == 'O': o_atoms.append(atom)
-    remove_selection = flex.size_t()
-    # =========================================================================
-    # WORKAROUND 003 LOGIC: Symmetry-mapped clashing H/D atoms
-    # =========================================================================
-    if h_iseqs.size() >= 2:
-      fsc0 = restraints_manager.geometry.shell_sym_tables[0].\
-        full_simple_connectivity()
-      crystal_symmetry = restraints_manager.geometry.crystal_symmetry
-      unit_cell = crystal_symmetry.unit_cell()
-      sps = crystal_symmetry.special_position_settings()
-      h_sites_cart = sites_cart.select(h_sel)
-      asu_mappings = sps.asu_mappings(
-        buffer_thickness=cutoff_003, sites_cart=h_sites_cart)
-      pair_generator = crystal.neighbors_fast_pair_generator(
-        asu_mappings=asu_mappings, distance_cutoff=cutoff_003)
-      for pair in pair_generator:
-        orig_h_i = h_iseqs[pair.i_seq]
-        orig_h_j = h_iseqs[pair.j_seq]
-        altloc_i = atoms[orig_h_i].parent().altloc.strip()
-        altloc_j = atoms[orig_h_j].parent().altloc.strip()
-        if altloc_i and altloc_j and altloc_i != altloc_j: continue
-        bonded_to_i = fsc0[orig_h_i]
-        bonded_to_j = fsc0[orig_h_j]
-        # Avoid stripping H from some HOH
-        parent_i = atoms[bonded_to_i[0]]
-        parent_j = atoms[bonded_to_j[0]]
-        if(get_class(name=parent_i.parent().resname) == "common_water" or
-           get_class(name=parent_j.parent().resname) == "common_water"):
-          continue
-        #
-        if len(bonded_to_i) != 1 or len(bonded_to_j) != 1: continue
-        # An already-perceived bond between the two parent atoms means there is
-        # no missing link here.  The close H..H contact is then an artifact of
-        # the as-placed torsion, which the methyl/OH rotators resolve later.
-        if bonded_to_i[0] in fsc0[bonded_to_j[0]]: continue
-        rt_mx_i = asu_mappings.get_rt_mx_i(pair)
-        rt_mx_j = asu_mappings.get_rt_mx_j(pair)
-        site_frac_i = unit_cell.fractionalize(atoms[bonded_to_i[0]].xyz)
-        sym_site_cart_i = unit_cell.orthogonalize(rt_mx_i * site_frac_i)
-        site_frac_j = unit_cell.fractionalize(atoms[bonded_to_j[0]].xyz)
-        sym_site_cart_j = unit_cell.orthogonalize(rt_mx_j * site_frac_j)
-        heavy_dist = (matrix.col(sym_site_cart_i) -
-                      matrix.col(sym_site_cart_j)).length()
-        h_dist = pair.dist_sq ** 0.5
-        if h_dist < 1.0 and heavy_dist < 1.6:
-          remove_selection.append(orig_h_i)
-          remove_selection.append(orig_h_j)
-    # =========================================================================
-    # WORKAROUND 004 LOGIC: S-C Hydrogen 4-atom cluster distances
-    # =========================================================================
-    for s_atom in s_atoms:
-      sulfur_H = None
-      for idx in bonds.get(s_atom.i_seq, []):
-        if atoms[idx].element_is_hydrogen():
-          sulfur_H = atoms[idx]
-          break
-      if not sulfur_H: continue
-      alt_s = s_atom.parent().altloc.strip()
-      for c_atom in c_atoms:
-        alt_c = c_atom.parent().altloc.strip()
-        if alt_s and alt_c and alt_s != alt_c: continue
-        if s_atom.distance(c_atom) <= s_c_cutoff:
-          for idx in bonds.get(c_atom.i_seq, []):
-            c_h_atom = atoms[idx]
-            if c_h_atom.element_is_hydrogen():
-              alt_sh = sulfur_H.parent().altloc.strip()
-              alt_ch = c_h_atom.parent().altloc.strip()
-              # Verify altloc compatibility for all 4 atoms
-              if len({alt for alt in [alt_s, alt_sh, alt_c, alt_ch] if alt})> 1:
-                continue
-              if c_h_atom.distance(s_atom) < ch_s_cutoff:
-                remove_selection.append(sulfur_H.i_seq)
-                remove_selection.append(c_h_atom.i_seq)
-    # =========================================================================
-    # WORKAROUND 005 LOGIC: Oxygen-Hydrogen distance geometries
-    # =========================================================================
-    for o_atom in o_atoms:
-      alt_o = o_atom.parent().altloc.strip()
-      h_neighbors = [atoms[idx] for idx in bonds.get(o_atom.i_seq, [])
-                     if atoms[idx].element_is_hydrogen()]
-      if not h_neighbors: continue
-      non_h_neighbors = []
-      for other_atom in non_h_atoms:
-        if other_atom.i_seq == o_atom.i_seq: continue
-        alt_other = other_atom.parent().altloc.strip()
-        if alt_o and alt_other and alt_o != alt_other: continue
-        if o_atom.distance(other_atom) <= non_h_distance_cutoff:
-          non_h_neighbors.append(other_atom)
-      # Base altloc requirements from O and its bonded Hs
-      core_altlocs = {alt_o} if alt_o else set()
-      for h in h_neighbors:
-        alt_h = h.parent().altloc.strip()
-        if alt_h: core_altlocs.add(alt_h)
-      if len(core_altlocs) > 1: continue
-      states_to_check = core_altlocs if core_altlocs else {''}
-      if not core_altlocs:
-        for nh in non_h_neighbors:
-          alt_nh = nh.parent().altloc.strip()
-          if alt_nh: states_to_check.add(alt_nh)
-      for state in states_to_check:
-        compatible_nh = [nh for nh in non_h_neighbors
-                         if nh.parent().altloc.strip() in ('', state)]
-        if len(compatible_nh) == 2:
-          for rh in h_neighbors:
-            if get_class(name=rh.parent().resname) == "common_water": continue
-            remove_selection.append(rh.i_seq)
-          break
-    # =========================================================================
-    # RETURN: Invert selection and drop flagged atoms from model
-    # =========================================================================
-    if remove_selection.size() == 0: return model
-    remove_selection = flex.bool(model.size(), remove_selection)
-    return model.select(~remove_selection)
+def _chiral_volume(c, a, b, h):
+  c, a, b, h = [matrix.col(x) for x in (c, a, b, h)]
+  return (a - c).dot((b - c).cross(h - c))
+
+def _ch2_groups(elements, bond_pairs, sites):
+  '''Heavy atoms with exactly two H and two heavy neighbours, all sites known.'''
+  neighbors = {}
+  for i, j in bond_pairs:
+    neighbors.setdefault(i, []).append(j)
+    neighbors.setdefault(j, []).append(i)
+  result = []
+  for p, ns in neighbors.items():
+    if elements.get(p) in ('H', 'D'): continue
+    hs = tuple(sorted(n for n in ns if elements.get(n) in ('H', 'D')))
+    hv = tuple(sorted(n for n in ns if elements.get(n) not in ('H', 'D')))
+    if len(hs) == 2 and len(hv) == 2 and all(n in sites for n in (p,)+hv+hs):
+      result.append((p, hv, hs, sites))
+  return result
+
+def _dictionary_sites(source_info):
+  '''Ideal sites from a restraint file, if it has coordinates (geostd ligands).'''
+  if not source_info or not source_info.startswith("file:"): return None
+  import iotbx.cif
+  try: cif_model = iotbx.cif.reader(file_path=source_info[5:].strip()).model()
+  except Exception: return None
+  for block in cif_model.values():
+    if "_chem_comp_atom.atom_id" in block and "_chem_comp_atom.x" in block:
+      xyz = zip(*[block["_chem_comp_atom.%s" % k] for k in "xyz"])
+      return dict((name.strip('"'), tuple(float(v) for v in t))
+        for name, t in zip(block["_chem_comp_atom.atom_id"], xyz)
+        if "?" not in t and "." not in t)
+  return None
+
+def _ch2_references(resname, mon_lib_srv, cache):
+  '''
+  CH2 centres with ideal sites. CCD first: it defines PDB names, and geostd
+  amino acids carry no coordinates. Then the restraint dictionary, for ligands
+  whose H names differ from the CCD (VPH). geostd MAN names H61/H62 opposite
+  to the CCD.
+  '''
+  if resname in cache: return cache[resname]
+  from mmtbx.chemical_components import get_cif_dictionary
+  result = []
+  try: cc_cif = get_cif_dictionary(resname)
+  except Exception: cc_cif = None
+  if cc_cif:
+    sites, elements = {}, {}
+    for a in cc_cif.get('_chem_comp_atom', []):
+      elements[a.atom_id] = a.type_symbol.strip().upper()
+      t = [getattr(a, "pdbx_model_Cartn_%s_ideal" % k, "?") for k in "xyz"]
+      if "?" not in t and "." not in t:
+        sites[a.atom_id] = tuple(float(v) for v in t)
+    result += _ch2_groups(elements, [(b.atom_id_1, b.atom_id_2)
+      for b in cc_cif.get('_chem_comp_bond', [])], sites)
+  try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
+  except Exception: cc = None
+  if cc is not None:
+    sites = _dictionary_sites(cc.source_info)
+    if sites:
+      elements = dict((a.atom_id, a.type_symbol.strip().upper())
+        for a in cc.atom_list)
+      result += _ch2_groups(elements, [(b.atom_id_1, b.atom_id_2)
+        for b in cc.bond_list], sites)
+  cache[resname] = result
+  return result
+
+def name_prochiral_h(hierarchy, mon_lib_srv):
+  '''
+  Riding places the two H of a CH2 in processing order, so about half get each
+  other's name (1akg: 16 of 38 vs CCD). Swap names to match ideal chirality.
+  '''
+  cache, done = {}, set()
+  for m in hierarchy.models():
+    for c in m.chains():
+      for conformer in c.conformers():
+        for r in conformer.residues():
+          groups = _ch2_references(r.resname.strip(), mon_lib_srv, cache)
+          if not groups: continue
+          atoms = dict((a.name.strip(), a) for a in r.atoms())
+          for p, hv, hs, sites in groups:
+            if not all(n in atoms for n in (p,)+hv+hs): continue
+            if atoms[p].i_seq in done: continue # first source wins
+            if any(atoms[p].distance(atoms[n]) > 2.0 for n in hv+hs): continue
+            done.add(atoms[p].i_seq)
+            h1, h2 = atoms[hs[0]], atoms[hs[1]]
+            v_ideal = _chiral_volume(sites[p], sites[hv[0]], sites[hv[1]],
+                                     sites[hs[0]])
+            v_model = _chiral_volume(atoms[p].xyz, atoms[hv[0]].xyz,
+                                     atoms[hv[1]].xyz, h1.xyz)
+            if abs(v_ideal) < 0.5 or abs(v_model) < 0.5: continue # flat
+            if (v_ideal > 0) != (v_model > 0):
+              h1.name, h2.name = h2.name, h1.name
 
 class place_hydrogens():
   '''
@@ -757,6 +689,8 @@ class place_hydrogens():
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
     # --------------------------------------------------------------------------
     t0 = time.time()
+    # CH2 names must be stereo-correct before a link picks which H to drop
+    name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv())
     self.exclude_H_on_links()
     self.time_remove_H_on_links = round(time.time()-t0, 2)
 
@@ -776,7 +710,6 @@ class place_hydrogens():
               msg="chain %s resseq %s resname %s misses:"
               if 0: # Hold off printing untill verbosity is added
                 print(msg%(c.id, r.resseq, r.resname), ma)
-    self.model = workarounds_00345(model=self.model)
     self.n_H_final = self.model.get_hd_selection().count(True)
 
     if self.print_time:
@@ -1002,6 +935,7 @@ class place_hydrogens():
     elements = self.model.get_hierarchy().atoms().extract_element()
     exclusion_iseqs = list()
     exclusion_dict = dict()
+    link_partners = dict()
     all_proxies = [p for p in bond_proxies_simple]
     for proxy in asu:
       all_proxies.append(proxy)
@@ -1014,6 +948,9 @@ class place_hydrogens():
         exclusion_iseqs.extend([i,j])
         exclusion_dict[i] = proxy.origin_id
         exclusion_dict[j] = proxy.origin_id
+        if isinstance(proxy, ext.bond_simple_proxy): # asu partner needs rt_mx
+          link_partners.setdefault(i, []).append(j)
+          link_partners.setdefault(j, []).append(i)
     sel_remove = flex.size_t()
 
     # Find H atoms bound to linked atoms
@@ -1064,7 +1001,17 @@ class place_hydrogens():
       for i_seq in sel_remove:
         print('remove?',atoms[i_seq].quote())
     remove_from_sel_remove=[]
-    for ii, i_seq in reversed(list(enumerate(sel_remove))):
+    # Parent with >= 2 other heavy neighbours: the H on the link partner's site
+    # goes first (8oji VPH H4 sits 0.86 A from S1). Terminal parents (NH3,
+    # CH3) have conventional names: old order, lowest number survives.
+    def _drop_order(i_seq):
+      parent = parent_dict[i_seq]
+      partners = link_partners.get(parent, [])
+      heavy = [n for n in set(bonds.get(parent, []))
+               if elements[n].strip() not in ('H', 'D') and n not in partners]
+      if not partners or len(heavy) < 2: return float('inf')
+      return min(atoms[i_seq].distance(atoms[p]) for p in partners)
+    for i_seq in sorted(reversed(list(sel_remove)), key=_drop_order):
       j_seq=parent_dict[i_seq]
       # need to add the use of atomic charge
       valences=get_valences(elements[j_seq])

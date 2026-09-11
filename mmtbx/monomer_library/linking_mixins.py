@@ -450,6 +450,16 @@ class linking_mixins(object):
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
     initial_pair_asu_table_table = bond_asu_table.table().deep_copy()
+    n_links = {}
+    def _may_link_again(atom, distance):
+      # Past maximum_per_atom_links only at covalent distance and with free
+      # valence: 2b5z LYS NZ carries two BGS (both LINKs deposited).
+      if distance > linking_setup.other_bond_cutoff: return False
+      valence = linking_setup.neutral_valence.get(atom.element.strip().upper())
+      if valence is None: return False
+      heavy = [j for j in initial_pair_asu_table_table[atom.i_seq].keys()
+               if not atoms[j].element_is_hydrogen()]
+      return len(heavy) + n_links.get(atom.i_seq, 0) < valence
     for ii, item in enumerate(nonbonded_proxies.sorted_value_proxies_generator(
         by_value="delta",
         sites_cart=sites_cart,
@@ -699,11 +709,13 @@ Residue classes
         if names in done[key]: continue
       if atom1.parent().altloc==atom2.parent().altloc:
         if atom1_key:
-          if atom1_key in done: continue
+          if atom1_key in done and not _may_link_again(atom1, distance): continue
           done[atom1_key] = key
+          n_links[atom1.i_seq] = n_links.get(atom1.i_seq, 0) + 1
         if atom2_key:
-          if atom2_key in done: continue
+          if atom2_key in done and not _may_link_again(atom2, distance): continue
           done[atom2_key] = key
+          n_links[atom2.i_seq] = n_links.get(atom2.i_seq, 0) + 1
       if verbose: print(done)
       #
       current_number_of_links = len(done.setdefault(key, []))
