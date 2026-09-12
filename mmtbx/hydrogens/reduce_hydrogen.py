@@ -1013,7 +1013,9 @@ class place_hydrogens():
     #if not self.exclude_water:
     #  self.model.add_hydrogens(1., occupancy=0.)
 
-    self.model, _ = workaround_003(model = self.model)
+    # Its cases are now handled by linking, bond orders and the HIS exception;
+    # on 4us9 it removed the hemiaminal H that must stay (tst_add_hydrogen_12).
+    #self.model, _ = workaround_003(model = self.model)
 
     # List missing H
     mon_lib_srv = self.model.get_mon_lib_srv()
@@ -1275,6 +1277,14 @@ class place_hydrogens():
     bonds = {}
     bond_lengths = {}
     ideal_distance = {}
+    # Exception for HIS HD1 and HE2, unless the ring N carries a covalent link:
+    # then the mover has no protonation choice left (4us9 HIS 752 NE2 - 3PL C).
+    # Metal coordination stays with the optimizer's ion lock-down.
+    def _his_exception(i_h, i_parent):
+      if atoms[i_h].parent().resname != 'HIS': return False
+      if atoms[i_h].name.strip() not in ['HD1','DD1', 'HE2', 'DE2']: return False
+      return (i_parent not in exclusion_iseqs or
+              exclusion_dict.get(i_parent) == origin_ids['metal coordination'])
     for proxy in all_proxies:
       if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
       elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
@@ -1284,11 +1294,8 @@ class place_hydrogens():
       bonds.setdefault(j,[])
       bonds[j].append(i)
       ideal_distance[frozenset((i, j))] = proxy.distance_ideal
-      # Exception for HIS HD1 and HE2
-      if (atoms[i].parent().resname == 'HIS' and
-        atoms[i].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
-      if (atoms[j].parent().resname == 'HIS' and
-        atoms[j].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
+      if _his_exception(i, j): continue
+      if _his_exception(j, i): continue
       if(elements[i] in ["H","D"] and j in exclusion_iseqs):
         if i not in sel_remove:
           sel_remove.append(i)

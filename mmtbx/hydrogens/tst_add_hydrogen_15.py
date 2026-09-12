@@ -91,77 +91,6 @@ loop_
    HETATM 147 SAR . 1S6 B 401 ? 12.56500 13.90400 15.25800 1.000 25.33000 S ? B ? . SAR 1
 """
 
-str_3PL_A_912_4us9 = """
-data_default
-_cell.length_a                    21.842
-_cell.length_b                    26.490
-_cell.length_c                    22.894
-_cell.angle_alpha                 90.000
-_cell.angle_beta                  90.000
-_cell.angle_gamma                 90.000
-_cell.volume                      13246.306
-_space_group.crystal_system       triclinic
-_space_group.IT_number            1
-_space_group.name_H-M_alt         'P 1'
-_space_group.name_Hall            ' P 1'
-_symmetry.space_group_name_H-M    'P 1'
-_symmetry.space_group_name_Hall   ' P 1'
-_symmetry.Int_Tables_number       1
-_refine.pdbx_stereochemistry_target_values 'GeoStd + Monomer Library + CDL v1.2'
-_refine.B_iso_mean                10.57
-loop_
-  _space_group_symop.id
-  _space_group_symop.operation_xyz
-   1 x,y,z
-
-loop_
-  _chem_comp.id
-   3PL
-   HIS
-
-loop_
-  _atom_site.group_PDB
-  _atom_site.id
-  _atom_site.label_atom_id
-  _atom_site.label_alt_id
-  _atom_site.label_comp_id
-  _atom_site.auth_asym_id
-  _atom_site.auth_seq_id
-  _atom_site.pdbx_PDB_ins_code
-  _atom_site.Cartn_x
-  _atom_site.Cartn_y
-  _atom_site.Cartn_z
-  _atom_site.occupancy
-  _atom_site.B_iso_or_equiv
-  _atom_site.type_symbol
-  _atom_site.pdbx_formal_charge
-  _atom_site.label_asym_id
-  _atom_site.label_entity_id
-  _atom_site.label_seq_id
-  _atom_site.auth_atom_id
-  _atom_site.pdbx_PDB_model_num
-   ATOM 34 N . HIS A 752 ? 9.40500 21.49000 12.92100 1.000 8.01412 N ? A ? 5 N 1
-   ATOM 35 CA . HIS A 752 ? 9.00100 20.18900 13.44200 1.000 8.26941 C ? A ? 5 CA 1
-   ATOM 36 C . HIS A 752 ? 9.40200 20.03100 14.89900 1.000 8.04570 C ? A ? 5 C 1
-   ATOM 37 O . HIS A 752 ? 10.52200 20.36500 15.29600 1.000 10.26439 O ? A ? 5 O 1
-   ATOM 38 CB . HIS A 752 ? 9.65800 19.09800 12.56200 1.000 9.30112 C ? A ? 5 CB 1
-   ATOM 39 CG . HIS A 752 ? 9.42400 17.69700 13.01200 1.000 10.39862 C ? A ? 5 CG 1
-   ATOM 40 ND1 . HIS A 752 ? 8.17700 17.14900 13.23700 1.000 12.12251 N ? A ? 5 ND1 1
-   ATOM 41 CD2 . HIS A 752 ? 10.31600 16.71400 13.23500 1.000 11.75141 C ? A ? 5 CD2 1
-   ATOM 42 CE1 . HIS A 752 ? 8.31500 15.89000 13.61800 1.000 12.34359 C ? A ? 5 CE1 1
-   ATOM 43 NE2 . HIS A 752 ? 9.60800 15.59400 13.60600 1.000 12.01460 N ? A ? 5 NE2 1
-   HETATM 50 CA . 3PL A 912 ? 10.99700 13.77100 12.67200 1.000 13.99641 C ? B ? . CA 1
-   HETATM 51 C . 3PL A 912 ? 10.09200 14.36000 13.79500 1.000 13.98852 C ? B ? . C 1
-   HETATM 52 O . 3PL A 912 ? 10.97000 14.23500 14.96100 1.000 17.46788 O ? B ? . O 1
-   HETATM 53 CB . 3PL A 912 ? 10.22000 13.83500 11.39900 1.000 13.20158 C ? B ? . CB 1
-   HETATM 54 CG . 3PL A 912 ? 10.98800 13.23200 10.23100 1.000 12.58835 C ? B ? . CG 1
-   HETATM 55 CD1 . 3PL A 912 ? 10.38400 12.29200 9.38200 1.000 12.71995 C ? B ? . CD1 1
-   HETATM 56 CD2 . 3PL A 912 ? 12.31900 13.71100 9.87200 1.000 13.87272 C ? B ? . CD2 1
-   HETATM 57 CE1 . 3PL A 912 ? 11.11900 11.77700 8.32500 1.000 13.20948 C ? B ? . CE1 1
-   HETATM 58 CE2 . 3PL A 912 ? 12.98700 13.16800 8.74100 1.000 13.85166 C ? B ? . CE2 1
-   HETATM 59 CZ . 3PL A 912 ? 12.28300 12.27100 7.88900 1.000 13.27264 C ? B ? . CZ 1
-"""
-
 str_3W9_A_601_4x0u = """
 data_default
 _cell.length_a                    25.096
@@ -561,16 +490,6 @@ args = [
     sel_B   = "resname 1S6 and name C",
     d_AB    = 1.37487,
     badh    = ["chain B resseq  401 resname 1S6 name  H1"]
-  ),
-
-  group_args(
-    prefix  = "3PL_A_912_4us9",
-    pdb_str = str_3PL_A_912_4us9,
-    sel_A   = "resname HIS and name NE2",
-    sel_B   = "resname 3PL and name C",
-    d_AB    = 1.33892979,
-    badh    = ["chain A resseq  752 resname HIS name  HE2",
-               "chain A resseq  912 resname 3PL name  H"]
   ),
 
   group_args(

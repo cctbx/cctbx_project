@@ -686,6 +686,92 @@ loop_
    HETATM 67 HNAB . 1E8 A 701 ? 16.27145 4.61777 2.02704 1.000 12.25000 H ? B ? . HNAB 1
 """
 
+HIS_3PL_A_912_4us9_H = """
+data_default
+_cell.length_a                    21.842
+_cell.length_b                    26.490
+_cell.length_c                    22.894
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 90.000
+_cell.volume                      13246.306
+_space_group.crystal_system       triclinic
+_space_group.IT_number            1
+_space_group.name_H-M_alt         'P 1'
+_space_group.name_Hall            ' P 1'
+_symmetry.space_group_name_H-M    'P 1'
+_symmetry.space_group_name_Hall   ' P 1'
+_symmetry.Int_Tables_number       1
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+   1 x,y,z
+
+loop_
+  _chem_comp.id
+   3PL
+   HIS
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.auth_atom_id
+  _atom_site.pdbx_PDB_model_num
+   ATOM 1 N . HIS A 752 ? 9.40500 21.49000 12.92100 1.000 8.01000 N ? A ? 5 N 1
+   ATOM 2 CA . HIS A 752 ? 9.00100 20.18900 13.44200 1.000 8.27000 C ? A ? 5 CA 1
+   ATOM 3 C . HIS A 752 ? 9.40200 20.03100 14.89900 1.000 8.05000 C ? A ? 5 C 1
+   ATOM 4 O . HIS A 752 ? 10.52200 20.36500 15.29600 1.000 10.26000 O ? A ? 5 O 1
+   ATOM 5 CB . HIS A 752 ? 9.65800 19.09800 12.56200 1.000 9.30000 C ? A ? 5 CB 1
+   ATOM 6 CG . HIS A 752 ? 9.42400 17.69700 13.01200 1.000 10.40000 C ? A ? 5 CG 1
+   ATOM 7 ND1 . HIS A 752 ? 8.17700 17.14900 13.23700 1.000 12.12000 N ? A ? 5 ND1 1
+   ATOM 8 CD2 . HIS A 752 ? 10.31600 16.71400 13.23500 1.000 11.75000 C ? A ? 5 CD2 1
+   ATOM 9 CE1 . HIS A 752 ? 8.31500 15.89000 13.61800 1.000 12.34000 C ? A ? 5 CE1 1
+   ATOM 10 NE2 . HIS A 752 ? 9.60800 15.59400 13.60600 1.000 12.01000 N ? A ? 5 NE2 1
+   ATOM 11 H . HIS A 752 ? 9.99690 21.89007 13.39976 1.000 8.01000 H ? A ? 5 H 1
+   ATOM 12 HA . HIS A 752 ? 8.03681 20.08767 13.41097 1.000 8.27000 H ? A ? 5 HA 1
+   ATOM 13 HB2 . HIS A 752 ? 9.30517 19.17650 11.66186 1.000 9.30000 H ? A ? 5 HB2 1
+   ATOM 14 HB3 . HIS A 752 ? 10.61681 19.24478 12.55648 1.000 9.30000 H ? A ? 5 HB3 1
+   ATOM 15 HD1 . HIS A 752 ? 7.42812 17.56147 13.14403 1.000 12.12000 H ? A ? 5 HD1 1
+   ATOM 16 HD2 . HIS A 752 ? 11.24008 16.77966 13.15341 1.000 11.75000 H ? A ? 5 HD2 1
+   ATOM 17 HE1 . HIS A 752 ? 7.62517 15.31243 13.85347 1.000 12.34000 H ? A ? 5 HE1 1
+   HETATM 18 CA . 3PL A 912 ? 10.99700 13.77100 12.67200 1.000 14.00000 C ? B ? . CA 1
+   HETATM 19 C . 3PL A 912 ? 10.09200 14.36000 13.79500 1.000 13.99000 C ? B ? . C 1
+   HETATM 20 O . 3PL A 912 ? 10.97000 14.23500 14.96100 1.000 17.47000 O ? B ? . O 1
+   HETATM 21 CB . 3PL A 912 ? 10.22000 13.83500 11.39900 1.000 13.20000 C ? B ? . CB 1
+   HETATM 22 CG . 3PL A 912 ? 10.98800 13.23200 10.23100 1.000 12.59000 C ? B ? . CG 1
+   HETATM 23 CD1 . 3PL A 912 ? 10.38400 12.29200 9.38200 1.000 12.72000 C ? B ? . CD1 1
+   HETATM 24 CD2 . 3PL A 912 ? 12.31900 13.71100 9.87200 1.000 13.87000 C ? B ? . CD2 1
+   HETATM 25 CE1 . 3PL A 912 ? 11.11900 11.77700 8.32500 1.000 13.21000 C ? B ? . CE1 1
+   HETATM 26 CE2 . 3PL A 912 ? 12.98700 13.16800 8.74100 1.000 13.85000 C ? B ? . CE2 1
+   HETATM 27 CZ . 3PL A 912 ? 12.28300 12.27100 7.88900 1.000 13.27000 C ? B ? . CZ 1
+   HETATM 28 H . 3PL A 912 ? 9.38632 13.76477 13.90733 1.000 13.99000 H ? B ? . H 1
+   HETATM 29 HA1 . 3PL A 912 ? 11.81649 14.28671 12.61388 1.000 14.00000 H ? B ? . HA1 1
+   HETATM 30 HA2 . 3PL A 912 ? 11.23673 12.85816 12.89592 1.000 14.00000 H ? B ? . HA2 1
+   HETATM 31 HB1 . 3PL A 912 ? 9.37861 13.36629 11.51419 1.000 13.20000 H ? B ? . HB1 1
+   HETATM 32 HB2 . 3PL A 912 ? 10.00124 14.75972 11.20421 1.000 13.20000 H ? B ? . HB2 1
+   HETATM 33 HD1 . 3PL A 912 ? 9.50649 12.01997 9.52649 1.000 12.72000 H ? B ? . HD1 1
+   HETATM 34 HD2 . 3PL A 912 ? 12.72999 14.37084 10.38249 1.000 13.87000 H ? B ? . HD2 1
+   HETATM 35 HE1 . 3PL A 912 ? 10.77434 11.03190 7.88804 1.000 13.21000 H ? B ? . HE1 1
+   HETATM 36 HE2 . 3PL A 912 ? 13.87056 13.39683 8.56252 1.000 13.85000 H ? B ? . HE2 1
+   HETATM 37 HZ . 3PL A 912 ? 12.62190 12.03596 7.05545 1.000 13.27000 H ? B ? . HZ 1
+"""
+
 def tst_00():
   '''
     4zeb: ARA O2 - TT7 P4 phosphodiester (1.59 A, no LINK record) -> no HO2.
@@ -743,6 +829,18 @@ def tst_05():
                  sel_str  = "resname CYS and name HG",
                  optimize = True)
 
+def tst_06():
+  '''
+    4us9: HIS 752 NE2 - 3PL C (LINK deposited, 1.34 A). The aldehyde became a
+    hemiaminal: C-O is 1.46 A and C is tetrahedral, so C keeps its H, while the
+    linked ring N cannot: NE2 has CD2, CE1 and the link -> no HE2.
+    Limitation, kept on purpose: the aldehyde dictionary has no H on O, so the
+    hemiaminal OH is missing. From tst_add_hydrogen_15 (workaround_003).
+  '''
+  compare_models(pdb_str  = HIS_3PL_A_912_4us9_H,
+                 sel_str  = "resname HIS and resseq 752 and name HE2",
+                 optimize = True)
+
 def run():
   tst_00()
   tst_01()
@@ -750,6 +848,7 @@ def run():
   tst_03()
   tst_04()
   tst_05()
+  tst_06()
 
 if __name__ == '__main__':
   run()
