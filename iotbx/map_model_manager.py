@@ -5210,11 +5210,12 @@ class map_model_manager(object):
 
     If the anisotropy of either map cannot be determined (the anisotropic
     scaling fit can fail, in which case _get_aniso_of_map returns None),
-    or if the two B-cart values are present but differ in length
-    (a defensive case, not expected to occur),
     b_sharpen is returned as None and the summary text states that the
-    effective B-sharpen is not available, instead of an exception being
-    raised.
+    effective B-sharpen is not available, instead of the subtraction
+    raising an exception.
+
+    The test that the two b_cart values have equal length is defensive
+    only: _get_aniso_of_map returns either None or six numbers.
     """
     prev_b_cart = self._get_aniso_of_map(d_min = d_min,
       map_id = previous_map_id)
@@ -5243,7 +5244,7 @@ class map_model_manager(object):
         flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
     else:
       print("Effective B-sharpen: not available "+
-        "(anisotropy of the two maps could not be compared)", file = f)
+        "(anisotropy of one or both maps could not be determined)", file = f)
 
     result = group_args(
      group_args_type = 'aniso_before_and_after for %s' %(previous_map_id),
