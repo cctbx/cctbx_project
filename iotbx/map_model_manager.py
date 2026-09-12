@@ -5267,6 +5267,31 @@ class map_model_manager(object):
    '''
    Remove anisotropy from map, optionally remove anisotropy specified by
     aniso_b_cart and b_iso
+
+   If remove_from_all_maps is True, anisotropy is removed in place from the
+    maps listed in map_ids (all the maps in this manager if map_ids is None),
+    skipping masks and any model maps listed in model_map_ids_to_leave_as_is,
+    and the overall anisotropy (aniso_b_cart as supplied, or as obtained
+    from the map with id map_id) is returned.  Otherwise no map is modified
+    and the result is returned as a new map_manager; see below for when the
+    correction is actually applied.
+
+   Note that b_iso must be supplied as well for aniso_b_cart (as supplied,
+    or as obtained from the map with id map_id) to be applied as one common
+    correction.  In the case where a map is returned (remove_from_all_maps
+    is False), if b_iso is not supplied then aniso_b_cart is not applied at
+    all: the anisotropy is fitted again from the map coefficients that are
+    being corrected, and that separate fit, not aniso_b_cart, is what is
+    removed; and if that fit fails, no anisotropy at all is removed from
+    them.  Supply b_iso whenever aniso_b_cart is to be removed.
+
+   Returns None if the overall anisotropy could not be determined (that is,
+    aniso_b_cart was not supplied and it could not be obtained from the map
+    with id map_id).  This applies to both cases (remove_from_all_maps True
+    or False).  In that case NO anisotropy is removed from anything: no map
+    is modified and no map is returned.  A note is printed to the log, but a
+    caller that does not test the returned value has no other way to tell
+    that nothing was done.
    '''
    assert map_coeffs or d_min or map_id
    from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
@@ -5279,13 +5304,17 @@ class map_model_manager(object):
       assert self.get_map_manager_by_id(map_id)
       map_coeffs = self.get_map_manager_by_id(map_id
         ).map_as_fourier_coefficients(d_min = d_min)
-      f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
    if not d_min:
      d_min = map_coeffs.d_min()
 
 
    if (not aniso_b_cart):
      aniso_b_cart = self._get_aniso_of_map(d_min = d_min, map_id = map_id)
+
+   if not aniso_b_cart:  # could not get it...remove nothing and return None
+     print("Unable to determine overall anisotropy of map '%s'; "%(map_id)+
+       "no anisotropy will be removed", file = self.log)
+     return None
 
 
    if remove_from_all_maps:  # remove in place from all maps
@@ -5322,6 +5351,7 @@ class map_model_manager(object):
           "   %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f  " %(
       tuple(aniso_b_cart)),file = self.log)
 
+     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
      analyze_aniso = analyze_aniso_object()
      analyze_aniso.set_up_aniso_correction(f_array=f_array,
          b_iso = b_iso,
@@ -5331,7 +5361,7 @@ class map_model_manager(object):
 
      return self.map_manager(
         ).fourier_coefficients_as_map_manager(
-         scaled_f_array.phase_transfer(phase_source=f_array_info.phases,
+         scaled_f_array.phase_transfer(phase_source=phases,
          deg=True))
 
   def _get_aniso_of_map(self, d_min = None, map_id = 'map_manager'):

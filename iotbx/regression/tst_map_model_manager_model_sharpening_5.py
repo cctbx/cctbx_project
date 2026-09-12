@@ -130,10 +130,85 @@ def test_02():
     assert info.text.find('not available') > -1
 
 
+def test_03():
+  """Removing anisotropy when the overall anisotropy is not available"""
+
+  from libtbx.test_utils import approx_equal
+  from scitbx.array_family import flex
+  from six.moves import StringIO
+
+  # Cheap map_model_manager: no data files, no chem_data.  Two non-mask maps
+  #  so that removal from all maps means something
+  mmm = map_model_manager()
+  mmm.set_log(None)
+  mmm.generate_map(d_min = 3)
+  mmm.add_map_manager_by_id(map_id = 'previous_map',
+     map_manager = mmm.map_manager().deep_copy())
+
+  # Supply the anisotropy of the map ourselves.  None is what
+  #  _get_aniso_of_map returns when the anisotropic scaling fit failed
+  aniso_b_cart_to_return = [None]
+  def get_aniso_of_map(d_min = None, map_id = None):
+    return aniso_b_cart_to_return[0]
+  mmm._get_aniso_of_map = get_aniso_of_map
+
+  def get_all_map_data():
+    map_data_dict = {}
+    for map_id in mmm.map_id_list():
+      map_data_dict[map_id] = mmm.get_map_manager_by_id(map_id
+         ).map_data().deep_copy()
+    return map_data_dict
+
+  def assert_all_maps_unchanged(map_data_dict):
+    # Any anisotropy correction moves map values by an amount comparable to
+    #  the variation in the map itself, so the largest change anywhere in a
+    #  map, in units of that map's own standard deviation, is zero only if
+    #  the map was left alone
+    assert len(map_data_dict) > 1
+    for map_id in map_data_dict.keys():
+      original = map_data_dict[map_id].as_1d()
+      current = mmm.get_map_manager_by_id(map_id).map_data().as_1d()
+      assert current.size() == original.size()
+      sd = original.sample_standard_deviation()
+      assert sd > 0
+      biggest_change = flex.max(flex.abs(current - original))
+      assert approx_equal(biggest_change/sd, 0., eps = 1.e-6)
+
+  # Not available, remove from all maps: no map is touched, the log says
+  #  why, and the log does not claim that anything was removed
+  aniso_b_cart_to_return[0] = None
+  map_data_dict = get_all_map_data()
+  f = StringIO()
+  mmm.set_log(f)
+  result = mmm.remove_anisotropy(d_min = 3, b_iso = 30,
+     map_id = 'map_manager', remove_from_all_maps = True)
+  mmm.set_log(None)
+  assert result is None
+  assert_all_maps_unchanged(map_data_dict)
+  assert f.getvalue().find('Unable to determine overall anisotropy') > -1
+  assert f.getvalue().find('Removed anisotropy from map') < 0
+
+  # Not available, returning a map instead: nothing to return and again
+  #  no map is touched
+  map_data_dict = get_all_map_data()
+  result = mmm.remove_anisotropy(d_min = 3, b_iso = 30,
+     map_id = 'map_manager', remove_from_all_maps = False)
+  assert result is None
+  assert_all_maps_unchanged(map_data_dict)
+
+  # Available, returning a map: a map_manager on the same grid comes back
+  aniso_b_cart_to_return[0] = (10., 20., 30., 1., 2., 3.)
+  result = mmm.remove_anisotropy(d_min = 3, b_iso = 30,
+     map_id = 'map_manager', remove_from_all_maps = False)
+  assert result is not None
+  assert result.map_data().all() == mmm.map_manager().map_data().all()
+
+
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):
   test_02()
+  test_03()
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_01(method = 'model_sharpen')
   else:
