@@ -5206,12 +5206,25 @@ class map_model_manager(object):
 
   def _get_aniso_before_and_after(self, d_min = None,
     map_id = None, previous_map_id = None):
-    """Calculate anisotropy of map before and after sharpening"""
+    """Calculate anisotropy of map before and after sharpening
+
+    If the anisotropy of either map cannot be determined (the anisotropic
+    scaling fit can fail, in which case _get_aniso_of_map returns None),
+    or if the two B-cart values are present but differ in length
+    (a defensive case, not expected to occur),
+    b_sharpen is returned as None and the summary text states that the
+    effective B-sharpen is not available, instead of an exception being
+    raised.
+    """
     prev_b_cart = self._get_aniso_of_map(d_min = d_min,
       map_id = previous_map_id)
     new_b_cart = self._get_aniso_of_map(d_min = d_min,
       map_id = map_id)
-    b_sharpen = tuple(flex.double(prev_b_cart) - flex.double(new_b_cart))
+    if (prev_b_cart is not None) and (new_b_cart is not None) and \
+        (len(prev_b_cart) == len(new_b_cart)):
+      b_sharpen = tuple(flex.double(prev_b_cart) - flex.double(new_b_cart))
+    else:  # anisotropy missing for one or both maps, or b_cart lengths differ
+      b_sharpen = None
 
     from six.moves import StringIO
     f = StringIO()
@@ -5228,6 +5241,9 @@ class map_model_manager(object):
        tuple(b_sharpen)), file = f)
       print("Effective average B-sharpen: %.2f A**2" %(
         flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
+    else:
+      print("Effective B-sharpen: not available "+
+        "(anisotropy of the two maps could not be compared)", file = f)
 
     result = group_args(
      group_args_type = 'aniso_before_and_after for %s' %(previous_map_id),
