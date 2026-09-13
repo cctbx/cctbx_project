@@ -321,7 +321,16 @@ modify
       }
     }
   reindex_to_abc
-    .help = Apply a reindexing operator
+    .help = Apply a reindexing operator, with mandatory change_of_basis_op \
+            and space_group. Supports the case of reindexing with space group \
+            change, e.g. photosystem I with change_of_basis_op=a,-c-a,b and \
+            monoclinic input P21 changing to space_group=P6. Merging is in \
+            two steps with dispatch.step_list=input,balance, \
+            model_scaling[old model],modify,filter,modify_reindex_to_abc \
+            followed by step_list=input,balance,model_scaling[new model], \
+            modify_cosym,scale,postrefine,statistics_unitcell,statistics_beam,\
+            model_statistics,statistics_resolution,group,errors_merge, \
+            statistics_intensity,merge,statistics_intensity_cxi
     {
       include scope dials.command_line.reindex.phil_scope
     }
