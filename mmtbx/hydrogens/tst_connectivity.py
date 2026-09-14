@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+from cctbx import crystal
 from mmtbx.hydrogens import connectivity
 from libtbx.utils import null_out
 
@@ -118,7 +119,72 @@ def exercise():
   assert (angle_list == angle_ctrl), '1-3 neighbors and angle_ideal are wrong'
   assert (third_nb_dict == third_nb_ctrl), '1-4 neighbors are wrong'
 
+#----------------------------------------------------
+# ARG 63 altloc B of 6b8f. HH22 is at fractional x = -0.001, right on the ASU
+# boundary. phenix.fit_h processes the model under the PDB cell and the fmodel
+# setup then puts the MTZ cell (7e-6 A smaller) on the same geometry manager
+# without reprocessing; that moves HH22 across the boundary, so NH2-HH22 becomes
+# a symmetry bond. This checks that the dihedral loop skips such an H instead
+# of dereferencing None.
+#----------------------------------------------------
+
+pdb_str_arg63 = """\
+CRYST1  180.040  180.040  180.040  90.00  90.00  90.00 F 4 3 2
+ATOM      1  CA BARG A  63       5.193  32.311  31.420  0.47  6.93           C
+ATOM      2  CB BARG A  63       3.750  31.902  31.178  0.47  8.28           C
+ATOM      3  CG BARG A  63       3.238  30.969  32.226  0.47 10.10           C
+ATOM      4  CD BARG A  63       1.820  30.536  31.904  0.47  9.82           C
+ATOM      5  NE BARG A  63       1.703  29.805  30.654  0.47 10.85           N
+ATOM      6  CZ BARG A  63       0.543  29.497  30.085  0.47 12.24           C
+ATOM      7  NH1BARG A  63      -0.592  29.880  30.645  0.47 12.44           N
+ATOM      8  NH2BARG A  63       0.549  28.828  28.932  0.47 14.99           N
+ATOM      9  HA BARG A  63       5.246  32.760  32.278  0.47  8.32           H
+ATOM     10  HB2BARG A  63       3.191  32.695  31.183  0.47  9.94           H
+ATOM     11  HB3BARG A  63       3.686  31.455  30.320  0.47  9.94           H
+ATOM     12  HG2BARG A  63       3.800  30.179  32.258  0.47 12.13           H
+ATOM     13  HG3BARG A  63       3.234  31.418  33.086  0.47 12.13           H
+ATOM     14  HD2BARG A  63       1.499  29.961  32.616  0.47 11.79           H
+ATOM     15  HD3BARG A  63       1.259  31.325  31.841  0.47 11.79           H
+ATOM     16  HE BARG A  63       2.419  29.473  30.313  0.47 13.03           H
+ATOM     17 HH11BARG A  63      -0.580  30.315  31.387  0.47 14.94           H
+ATOM     18 HH12BARG A  63      -1.343  29.683  30.274  0.47 14.94           H
+ATOM     19 HH21BARG A  63       1.295  28.589  28.577  0.47 17.99           H
+ATOM     20 HH22BARG A  63      -0.194  28.625  28.549  0.47 17.99           H
+TER
+END
+"""
+
+def exercise_symmetry_bond():
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_arg63.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    log         = null_out())
+  model.process(make_restraints=True)
+  # Shrink the cell by 7e-6 A on the processed model, as the fmodel setup does.
+  model.set_crystal_symmetry(crystal.symmetry(
+    unit_cell          = (180.0399932861, 180.0399932861, 180.0399932861,
+                          90, 90, 90),
+    space_group_symbol = "F 4 3 2"))
+  geometry = model.get_restraints_manager().geometry
+  bond_proxies_simple, asu = geometry.get_all_bond_proxies(
+    sites_cart = model.get_sites_cart())
+  # Without a symmetry bond the test would pass for the wrong reason.
+  assert (asu.size() > 0), 'no symmetry bond, test does not exercise the bug'
+
+  connectivity_manager = connectivity.determine_connectivity(
+    pdb_hierarchy       = model.get_hierarchy(),
+    geometry_restraints = geometry)
+  h_connectivity = connectivity_manager.h_connectivity
+
+  # add_slipped must give the H of the symmetry bond its entry back
+  hd_sel = model.get_hd_selection()
+  without_entry = [model.get_hierarchy().atoms()[ih].name.strip()
+    for ih in range(len(hd_sel))
+      if hd_sel[ih] and h_connectivity[ih] is None]
+  assert (not without_entry), 'H atoms without connectivity: %s' % without_entry
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
+  exercise_symmetry_bond()
   print("OK. Time: %8.3f"%(time.time()-t0))
