@@ -772,6 +772,97 @@ loop_
    HETATM 37 HZ . 3PL A 912 ? 12.62190 12.03596 7.05545 1.000 13.27000 H ? B ? . HZ 1
 """
 
+CYS_3W9_A_601_4x0u_H = """
+data_default
+_cell.length_a                    25.096
+_cell.length_b                    22.062
+_cell.length_c                    30.107
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 90.000
+_cell.volume                      16669.281
+_space_group.crystal_system       triclinic
+_space_group.IT_number            1
+_space_group.name_H-M_alt         'P 1'
+_space_group.name_Hall            ' P 1'
+_symmetry.space_group_name_H-M    'P 1'
+_symmetry.space_group_name_Hall   ' P 1'
+_symmetry.Int_Tables_number       1
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+   1 x,y,z
+
+loop_
+  _struct_asym.id
+   A
+   B
+
+loop_
+  _chem_comp.id
+   3W9
+   CYS
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.auth_atom_id
+  _atom_site.pdbx_PDB_model_num
+   ATOM 1 N . CYS A 302 ? 8.55600 8.63000 20.64900 1.000 24.11000 N ? A ? 1 N 1
+   ATOM 2 CA . CYS A 302 ? 8.21100 7.20500 20.49100 1.000 23.67000 C ? A ? 1 CA 1
+   ATOM 3 C . CYS A 302 ? 9.07800 6.44400 21.47600 1.000 21.51000 C ? A ? 1 C 1
+   ATOM 4 O . CYS A 302 ? 8.74900 5.33300 21.81800 1.000 25.29000 O ? A ? 1 O 1
+   ATOM 5 CB . CYS A 302 ? 8.34800 6.68500 19.04800 1.000 27.99000 C ? A ? 1 CB 1
+   ATOM 6 SG . CYS A 302 ? 10.02600 6.75500 18.49100 1.000 38.77000 S ? A ? 1 SG 1
+   ATOM 7 H . CYS A 302 ? 8.83890 9.00345 19.92782 1.000 24.11000 H ? A ? 1 H 1
+   ATOM 8 HA . CYS A 302 ? 7.27019 7.05378 20.67243 1.000 23.67000 H ? A ? 1 HA 1
+   ATOM 9 HB2 . CYS A 302 ? 8.05142 5.76222 19.01032 1.000 27.99000 H ? A ? 1 HB2 1
+   ATOM 10 HB3 . CYS A 302 ? 7.80660 7.23186 18.45747 1.000 27.99000 H ? A ? 1 HB3 1
+   HETATM 11 C03 . 3W9 A 601 ? 14.40300 10.25200 13.03700 1.000 46.87000 C ? B ? . C03 1
+   HETATM 12 C04 . 3W9 A 601 ? 14.32800 7.79100 12.50800 1.000 41.87000 C ? B ? . C04 1
+   HETATM 13 C05 . 3W9 A 601 ? 12.96900 8.72600 14.39700 1.000 44.66000 C ? B ? . C05 1
+   HETATM 14 C06 . 3W9 A 601 ? 15.64800 10.53800 13.85800 1.000 47.42000 C ? B ? . C06 1
+   HETATM 15 C07 . 3W9 A 601 ? 13.32700 7.46400 11.41600 1.000 43.70000 C ? B ? . C07 1
+   HETATM 16 C08 . 3W9 A 601 ? 12.61400 9.79600 15.21900 1.000 42.66000 C ? B ? . C08 1
+   HETATM 17 C09 . 3W9 A 601 ? 12.41100 7.47100 14.65100 1.000 45.77000 C ? B ? . C09 1
+   HETATM 18 C10 . 3W9 A 601 ? 11.71900 9.61800 16.27100 1.000 40.92000 C ? B ? . C10 1
+   HETATM 19 C11 . 3W9 A 601 ? 11.51600 7.28800 15.70400 1.000 42.76000 C ? B ? . C11 1
+   HETATM 20 C12 . 3W9 A 601 ? 11.17000 8.36300 16.51700 1.000 41.86000 C ? B ? . C12 1
+   HETATM 21 C13 . 3W9 A 601 ? 10.20300 8.20300 17.65700 1.000 43.81000 C ? B ? . C13 1
+   HETATM 22 N02 . 3W9 A 601 ? 13.88000 8.91600 13.33000 1.000 43.96000 N ? B ? . N02 1
+   HETATM 23 O01 . 3W9 A 601 ? 9.53600 9.17400 17.98000 1.000 36.78000 O ? B ? . O01 1
+   HETATM 24 H2 . 3W9 A 601 ? 11.49159 10.34331 16.80683 1.000 40.92000 H ? B ? . H2 1
+   HETATM 25 H3 . 3W9 A 601 ? 12.96774 10.64469 15.07939 1.000 42.66000 H ? B ? . H3 1
+   HETATM 26 H10 . 3W9 A 601 ? 12.47009 7.22795 11.80445 1.000 43.70000 H ? B ? . H10 1
+   HETATM 27 H11 . 3W9 A 601 ? 14.58541 10.31750 12.08656 1.000 46.87000 H ? B ? . H11 1
+   HETATM 28 H12 . 3W9 A 601 ? 13.70892 10.90707 13.21032 1.000 46.87000 H ? B ? . H12 1
+   HETATM 29 H13 . 3W9 A 601 ? 15.99652 11.42257 13.66575 1.000 47.42000 H ? B ? . H13 1
+   HETATM 30 H14 . 3W9 A 601 ? 16.34776 9.89445 13.66544 1.000 47.42000 H ? B ? . H14 1
+   HETATM 31 H15 . 3W9 A 601 ? 15.45668 10.49384 14.80792 1.000 47.42000 H ? B ? . H15 1
+   HETATM 32 H4 . 3W9 A 601 ? 12.62587 6.73593 14.12337 1.000 45.77000 H ? B ? . H4 1
+   HETATM 33 H5 . 3W9 A 601 ? 11.15456 6.44483 15.85671 1.000 42.76000 H ? B ? . H5 1
+   HETATM 34 H6 . 3W9 A 601 ? 15.19573 8.00451 12.13069 1.000 41.87000 H ? B ? . H6 1
+   HETATM 35 H7 . 3W9 A 601 ? 14.47829 7.02368 13.08205 1.000 41.87000 H ? B ? . H7 1
+   HETATM 36 H8 . 3W9 A 601 ? 13.64188 6.71700 10.88332 1.000 43.70000 H ? B ? . H8 1
+   HETATM 37 H9 . 3W9 A 601 ? 13.20255 8.22932 10.83317 1.000 43.70000 H ? B ? . H9 1
+"""
+
 def tst_00():
   '''
     4zeb: ARA O2 - TT7 P4 phosphodiester (1.59 A, no LINK record) -> no HO2.
@@ -841,6 +932,17 @@ def tst_06():
                  sel_str  = "resname HIS and resseq 752 and name HE2",
                  optimize = True)
 
+def tst_07():
+  '''
+    4x0u: CYS 302 SG - 3W9 C13 acyl-enzyme thioester (1.68 A, no LINK record).
+    The free ligand is an aryl aldehyde; C13 keeps its C=O (1.22 A) and gains
+    SG, so it is trigonal with three substituents -> no H1. SG is linked and
+    CYS has no HG. From tst_add_hydrogen_15.
+  '''
+  compare_models(pdb_str  = CYS_3W9_A_601_4x0u_H,
+                 sel_str  = "(resname 3W9 and name H1) or (resname CYS and name HG)",
+                 optimize = True)
+
 def run():
   tst_00()
   tst_01()
@@ -849,6 +951,7 @@ def run():
   tst_04()
   tst_05()
   tst_06()
+  tst_07()
 
 if __name__ == '__main__':
   run()
