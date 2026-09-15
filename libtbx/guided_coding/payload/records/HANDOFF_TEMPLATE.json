@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "_about": "The state file. One per repository, at .claude/records/HANDOFF.json, machine-local. A Worker reads it at session start, rewrites it at every stage boundary and whenever scope, a hold, a provisional decision, the tree lock, the reviewed version or publication permission changes, and makes the final rewrite at closeout from the change record. Every value is either observed or names the record line it came from. A reader that does not recognise schema_version must not read this file as a version it knows: it stops the state-dependent action, or reconstructs the state by a bounded manual reading of the record, and says which it did.",
+  "written_at": "<date read from the clock, with timezone>",
+  "written_from": "<change record file this was generated from>",
+  "installed_release": "<package revision, from MANIFEST.sha256>",
+  "open_change": {
+    "change_id": "<id or null>",
+    "status": "<open | closed>",
+    "stage": "<0-10 or null>",
+    "authorized_scope": "<the files and behaviour the approved plan covers, in one line>",
+    "endpoint": "<where the Worker stops for the Developer, from the plan>"
+  },
+  "holds": [
+    {"what": "<the held action>", "by": "<who set it>", "since": "<clock>", "released": false}
+  ],
+  "provisional_decisions": [
+    {"id": "P1", "assumed": "<the branch taken>", "why_cheapest_to_undo": "<one line>", "if_no": "<what changes>", "depends_on_it": ["<later decision or artifact>"], "status": "<open | accepted | reversed>", "carried_by_versions": ["<candidate revision or file hash>"]}
+  ],
+  "checks_that_apply": ["<decisive test>", "<regression checks named in the plan>"],
+  "reviewed_version": "<candidate identity the fresh review read, or null>",
+  "publication_permitted": false,
+  "publication_basis": "<the Developer decision or waiver that permits it, or null>",
+  "tree_lock_held": false,
+  "next_step": "<one plain sentence>"
+}
