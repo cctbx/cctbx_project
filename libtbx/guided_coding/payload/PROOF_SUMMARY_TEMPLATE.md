@@ -34,6 +34,8 @@ Numbers, not adjectives.
 
 ## 6. The verdict
 
+For a change to data (expected outputs, tables, generated files): say what did NOT change (scientific or numeric values) separately from what did (layout, names, text), and where the developer reclassified rows the instrument flagged, keep the instrument's raw count in the sentence.
+
 One of:
 - **Complete.** The problem is fixed, the evidence is in this packet, and here is what remains open (list it, or say "nothing").
 - **Complete with limits.** As above, naming precisely what was NOT established - platforms not tested, paths never exercised, questions still unanswered.

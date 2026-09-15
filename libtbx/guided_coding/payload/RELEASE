@@ -1,1 +1,1 @@
-guided_coding 1.0 (libtbx package release 1; payload from r48 plus the r49 findings) 2026-09-14
+guided_coding 1.1 (I-A, I-B, M7 with git isolation; finding-based errata rule; bundle rule; parser from libtbx; private per-run work dir) 2026-09-15

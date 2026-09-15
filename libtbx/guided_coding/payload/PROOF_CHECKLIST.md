@@ -11,7 +11,7 @@ VERIFIED and RECORDED are different acts and are never blurred. VERIFIED is used
 4. The decisive test passes on the candidate - execution evidence quoted.
 5. Counterbalance runs (new pinned test) or old-and-new-forms runs (changed existing test) or discrimination runs (repair-added parts) are present where the testing rules require them.
 6. Every named regression check ran on BOTH sides with execution evidence; candidate-only fallbacks carry the developer's recorded acceptance.
-7. The server suite baseline and final rosters are compared as rosters - every difference classified - or the profile names no suite (NOT APPLICABLE) or the developer's override is quoted (WAIVED).
+7. The server suite baseline and final rosters are compared as rosters with `libtbx.test_utils.t96_roster` (`libtbx.python -c 'from libtbx.test_utils import t96_roster'`; the Worker states its file hash) - every difference classified - or the profile names no suite (NOT APPLICABLE) or the developer's override is quoted (WAIVED).
 8. The cross-repository output search reports per repository, with not-searched distinguished from no-hits.
 9. The change conforms to the coding standards document named in CLAUDE.local.md, or deviations are listed with reasons.
 10. Every review and self-review finding has a written disposition; repairs are within the allowance or carry the developer's grant.

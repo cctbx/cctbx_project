@@ -16,7 +16,7 @@
 
 ## 2. The standing constraint
 
-Prompts, Markdown, and configuration - plus exactly one small program, the `libtbx.guided_coding` command that installs, verifies and removes them, with its own test. No orchestration program beyond that, no harness, no daemon. When a problem can only be solved by writing software that would drive the procedure, the honest answer is that it is out of scope, not a smaller program pretending otherwise. Tools built *by* the procedure for its own use (the roster parser) are changes to the codebase, run through the ordinary workflow, not procedure text.
+Prompts, Markdown, and configuration - plus exactly one small program, the `libtbx.guided_coding` command (install, verify, remove, status, adopt-profile), with its own test. No orchestration program beyond that, no harness, no daemon. When a problem can only be solved by writing software that would drive the procedure, the honest answer is that it is out of scope, not a smaller program pretending otherwise. Tools built *by* the procedure for its own use (the roster parser) are changes to the codebase, run through the ordinary workflow, not procedure text.
 
 ## 3. One revision at a time
 

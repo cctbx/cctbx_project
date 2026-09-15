@@ -88,7 +88,15 @@ ATTENDED USE ONLY until the shakedown - including its interruption drill - has p
 - **Reading results.** The suite EXITS 0 WHILE REPORTING FAILURES, so process exit status is never a verdict - rosters are parsed from log content only. Every `bash -lc` command emits a stray PROFILE line from the login profile; strip it by pattern, never by dropping `-l`, which the environment needs. The suite requires an EMPTY working directory: each run gets a fresh empty directory inside the workspace with its log written OUTSIDE that directory.
 - **A dead link is not a stopped job.** Severing the ssh connection never means the remote side stopped; remote processes may persist for minutes after. Establish remote state by the checks above, never by the state of the link.
 
-## Changes to untracked procedure files (the parser, the self-test, other `.claude/tools/`)
+## Files a refresh rewrites
+
+When a round runs `libtbx.refresh` (or anything that regenerates files), the protected inventory captured BEFORE the round includes, by content, every ignored file the refresh is known to rewrite (version files, generated examples); after the restore each is compared by content and any that differ are copied back from the capture, with the regenerated copies kept as evidence. A file rewritten without a prior capture cannot be shown restored.
+
+## The roster parser
+
+Roster comparisons use `libtbx.test_utils.t96_roster` from the cctbx_project tree (`from libtbx.test_utils import t96_roster` under `libtbx.python`, from any repository); its registered test is `libtbx/tst_t96_roster.py`. The Worker records the parser file's sha256 beside every comparison. The procedure ships no copy of its own.
+
+## Changes to untracked procedure files (other `.claude/` tools)
 
 The live-tree recipe above assumes tracked files and `git diff`; the procedure's own tools are untracked and excluded from git. For a change to one of them: construction and verification run on COPIES in fresh scratch directories outside the tree, never on the installed files; identities are file hashes recorded before and after every round, not blob ids; the tree fingerprint of the installed `.claude/` files is taken before and after and must be unchanged; the tree lock is still held during any execution. The reviewer receives the two file versions and their hashes, not a `git diff`. The result is STAGED under `.claude/records/delivery-<change-id>/` with its hashes and shipped by the Guide in the next package revision; a Worker never installs it.
 

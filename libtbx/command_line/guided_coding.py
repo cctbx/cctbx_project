@@ -1,6 +1,5 @@
-from __future__ import absolute_import, division, print_function
-# LIBTBX_SET_DISPATCHER_NAME libtbx.guided_coding
 """Install, verify, or remove the GuidedCoding procedure in a repository.
+(libtbx.guided_coding, package release 1.1)
 
 Usage:
   libtbx.guided_coding install <repository-path>   place or upgrade the
@@ -35,8 +34,16 @@ Rules, each earned in use:
     files already placed stay placed. Every replaced file was backed up
     first (the backup path is in the capture), so nothing is lost, but the
     repository can be left between two releases until install is re-run.
-  - Platforms: macOS and Linux. On Windows the command refuses to run; the
-    procedure it installs is not supported there. ALLOW_OPEN_CHANGE=yes in the environment overrides a stale
+  - Platforms: macOS and Linux. On Windows the command refuses to run before
+    creating anything; the procedure it installs is not supported there.
+  - The command's own git call ignores every user-level git setting that
+    could hide a file: the global and system configuration (GIT_CONFIG_GLOBAL,
+    GIT_CONFIG_NOSYSTEM, git 2.32+) AND, for every git version, the excludes
+    file and the untracked-files setting, overridden on the command line
+    (-c core.excludesFile=/dev/null, --untracked-files=all). git's default
+    excludes file ~/.config/git/ignore is covered by the -c override.
+  - Each run's capture and backups live in one private directory created
+    atomically under the temp directory, named guided_coding_<date>_<random>. ALLOW_OPEN_CHANGE=yes in the environment overrides a stale
     record, never the lock.
   - Every replaced file is backed up; every placed file is re-hashed
     afterwards; the capture goes to ~/Downloads without overwriting a
@@ -60,6 +67,8 @@ This module has no libtbx imports on purpose: it runs the same way under
 libtbx.python and under plain python3, and its own test exercises it under
 python3 against scratch repositories.
 """
+from __future__ import absolute_import, division, print_function
+# LIBTBX_SET_DISPATCHER_NAME libtbx.guided_coding
 import hashlib
 import io
 import json
@@ -155,10 +164,25 @@ def rel_of(p):
   return p[2:] if p.startswith("./") else p
 
 
+_WORK_DIR = None
+
+
+def work_dir():
+  """One private directory per process for this command's capture and
+  backups, created atomically by mkdtemp directly under the temp directory
+  (TMPDIR), with the date in its name so it is easy to find and to remove.
+  No shared or predictable parent is ever created or followed."""
+  global _WORK_DIR
+  if _WORK_DIR is None:
+    _WORK_DIR = tempfile.mkdtemp(prefix="guided_coding_%s_" % time.strftime("%Y-%m-%d"))
+  return _WORK_DIR
+
+
 class Log(object):
   def __init__(self, name):
     self.lines = []
-    fd, self.path = tempfile.mkstemp(prefix=name + ".", suffix=".txt")
+    fd, self.path = tempfile.mkstemp(prefix=name + ".", suffix=".txt",
+                                     dir=work_dir())
     os.close(fd)
     self.name = name
 
@@ -248,6 +272,21 @@ def multiply_linked(path):
     return False
   import stat as _stat
   return _stat.S_ISREG(st.st_mode) and st.st_nlink > 1
+
+
+GIT_ISOLATION_FLAGS = ["-c", "core.excludesFile=" + os.devnull,
+                       "-c", "status.showUntrackedFiles=all"]
+
+
+def git_env():
+  """Environment for the command's own git calls: the user's global and the
+  system git configuration are ignored (git 2.32+ honours these variables;
+  older gits ignore them, which is why the FLAGS below carry the same
+  isolation for every git version)."""
+  env = dict(os.environ)
+  env["GIT_CONFIG_GLOBAL"] = os.devnull
+  env["GIT_CONFIG_NOSYSTEM"] = "1"
+  return env
 
 
 def is_git_repo(repo):
@@ -409,7 +448,7 @@ def cmd_install(repo, log):
     raise Stop("%d locally modified file(s). Nothing was installed or "
                "replaced. Send this capture to the Guide." % len(conflicts))
 
-  backup = tempfile.mkdtemp(prefix="guided_coding_backup.")
+  backup = tempfile.mkdtemp(prefix="guided_coding_backup.", dir=work_dir())
   _BACKUP[repo] = backup
 
   # Old hidden profile -> CLAUDE.local.md, only when it is ours.
@@ -522,7 +561,9 @@ def cmd_install(repo, log):
     log("Excludes: removed the old %s line(s) written by earlier installs - "
         "a project CLAUDE.md is no longer hidden from git." % ", ".join(dropped))
   try:
-    out = subprocess.check_output(["git", "-C", repo, "status", "--porcelain"])
+    out = subprocess.check_output(["git"] + GIT_ISOLATION_FLAGS +
+                                  ["-C", repo, "status", "--porcelain",
+                                   "--untracked-files=all"], env=git_env())
     if re.search(rb"^\?\? (\.claude|CLAUDE\.local\.md)", out, re.M):
       raise Stop("'.claude/' or CLAUDE.local.md appears in git status despite "
                  "the excludes - send this capture to the Guide.")
@@ -731,11 +772,10 @@ def main(argv):
     print(__doc__)
     return 2
   cmd = argv[0]
-  log = Log("guided_coding_" + cmd)
   if sys.platform.startswith("win"):
-    log("STOP: GuidedCoding supports macOS and Linux; Windows is not supported.")
-    log.finish()
+    print("STOP: GuidedCoding supports macOS and Linux; Windows is not supported.")
     return 2
+  log = Log("guided_coding_" + cmd)
   try:
     if cmd == "install":
       cmd_install(argv[1], log)
