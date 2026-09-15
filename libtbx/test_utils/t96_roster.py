@@ -52,7 +52,7 @@
 # what any parser can distinguish.  That is a real mode of the harness rather
 # than a hypothesis: at verbosity EXTRA_VERBOSE (2, "for nightly builds")
 # parallel.py's determine_result_status() prints result.error_lines raw and
-# unindented.  At the verbosity this procedure runs, captured output reaches
+# unindented.  At the default verbosity (1), captured output reaches
 # the log only four-space indented.
 #
 # One reported field is not column-0 anchored.  not_all_finished is matched on
@@ -1359,8 +1359,8 @@ def compare_rosters(baseline, candidate):
       itself (for example the test's printed output, if the log kept it).
       None of the three enters ``blocking``.
       A roster comparison is NOT a clean result while
-      ``needs_classification`` is non-empty and its commands are unclassified
-      in the change's record: an empty ``blocking`` says nothing was lost,
+      ``needs_classification`` is non-empty and its commands have not yet
+      been classified: an empty ``blocking`` says nothing was lost,
       not that every failure failed the same way.
 
       Every command in ``new_failures`` blocks, by the rule's second clause.
