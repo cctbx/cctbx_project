@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEST_TMPDIR = None   # set by run_all: TMPDIR for every command the test runs
@@ -30,6 +31,10 @@ def run(args, env_extra=None, cwd=None):
   env["PYTHONDONTWRITEBYTECODE"] = "1"
   if TEST_TMPDIR:
     env["TMPDIR"] = TEST_TMPDIR
+  env["GIT_CONFIG_GLOBAL"] = os.devnull
+  env["GIT_CONFIG_NOSYSTEM"] = "1"
+  if GIT_HOME:
+    env["XDG_CONFIG_HOME"] = os.path.join(GIT_HOME, ".config")
   if env_extra:
     env.update(env_extra)
   p = subprocess.Popen([sys.executable, CMD] + list(args), stdout=subprocess.PIPE,
@@ -38,10 +43,36 @@ def run(args, env_extra=None, cwd=None):
   return p.returncode, out
 
 
+GIT_HOME = None   # set by run_all: a scratch HOME/XDG_CONFIG_HOME for git calls
+
+
+def git_env():
+  """The test's own git calls see none of the user's git settings: a scratch
+  HOME and XDG_CONFIG_HOME (so git's default excludes file ~/.config/git/
+  ignore is never read), the global and system configuration ignored
+  (git 2.32+), and - for every git version - the excludes file and the
+  untracked-files setting overridden by flags on each call."""
+  env = dict(os.environ)
+  env["GIT_CONFIG_GLOBAL"] = os.devnull
+  env["GIT_CONFIG_NOSYSTEM"] = "1"
+  if GIT_HOME:
+    env["HOME"] = GIT_HOME
+    env["XDG_CONFIG_HOME"] = os.path.join(GIT_HOME, ".config")
+  return env
+
+
+GIT_FLAGS = ["-c", "core.excludesFile=" + os.devnull, "-c", "status.showUntrackedFiles=all"]
+
+
+def git_status(repo):
+  return subprocess.check_output(["git"] + GIT_FLAGS + ["-C", repo, "status", "--porcelain",
+                                  "--untracked-files=all"], env=git_env())
+
+
 def make_repo(root, name):
   repo = os.path.join(root, "modules", name)
   os.makedirs(repo)
-  subprocess.check_call(["git", "init", "-q", repo])
+  subprocess.check_call(["git"] + GIT_FLAGS + ["init", "-q", repo], env=git_env())
   return repo
 
 
@@ -62,7 +93,7 @@ def exercise_fresh_install_verify_rerun_remove(root, home):
   manifest = os.path.join(repo, ".claude", "MANIFEST.sha256")
   assert os.path.isfile(manifest)
   # excludes written; git sees nothing
-  st = subprocess.check_output(["git", "-C", repo, "status", "--porcelain"])
+  st = git_status(repo)
   assert st.strip() == b"", st
   rc, out = run(["verify", repo], {"HOME": home})
   assert rc == 0 and "NOT_OK=0" in out, out
@@ -321,14 +352,14 @@ def exercise_profile_collision_and_git_visibility(root, home):
   assert rc == 0 and "may be yours" in out, out
   ex = [l.strip() for l in io.open(excl, encoding="utf-8")]
   assert "/CLAUDE.md" in ex, ex
-  st = subprocess.check_output(["git", "-C", repo, "status", "--porcelain"]).decode()
+  st = git_status(repo).decode()
   assert "CLAUDE.md" not in st, st
   # a colleague's CLAUDE.md with no exclude line is visible after install
   repo2 = make_repo(root, "visible")
   write(os.path.join(repo2, "CLAUDE.md"), u"# a colleague's project file\n")
   rc, out = run(["install", repo2], {"HOME": home})
   assert rc == 0, out
-  st = subprocess.check_output(["git", "-C", repo2, "status", "--porcelain"]).decode()
+  st = git_status(repo2).decode()
   assert "?? CLAUDE.md" in st, st
   # RELEASE is a payload file: a symlink at its destination refuses the install
   repo3 = make_repo(root, "release")
@@ -594,18 +625,78 @@ def exercise_hard_link_aliases(root, home):
   assert open(ext_e, "rb").read() == before
 
 
+def exercise_usage_and_git_isolation(root, home):
+  """No arguments or an unknown subcommand prints the usage text, never
+  'None' (I-B); a global git excludes file hiding CLAUDE.md does not fool the
+  command or the test (M7); captures and backups land under a dated
+  guided_coding/ directory of TMPDIR."""
+  rc, out = run([], {"HOME": home})
+  assert rc == 2 and "Install, verify, or remove" in out and out.split("\n")[0].strip() != "None", out
+  rc, out = run(["frobnicate", "x"], {"HOME": home})
+  assert rc == 2 and "Install, verify, or remove" in out, out
+  gx = os.path.join(root, "global_excludes")
+  write(gx, u"CLAUDE.md\n")
+  gc = os.path.join(root, "gitconfig_global")
+  write(gc, u"[core]\n\texcludesFile = %s\n[status]\n\tshowUntrackedFiles = no\n" % gx)
+  repo = make_repo(root, "isolated")
+  write(os.path.join(repo, "CLAUDE.md"), u"# a colleague's project file\n")
+  # git's DEFAULT excludes file, read even when the global config is empty
+  xdg = os.path.join(root, "hostile_xdg")
+  write(os.path.join(xdg, "git", "ignore"), u"CLAUDE.md\n.claude/\n")
+  hostile = {"HOME": home, "GIT_CONFIG_GLOBAL": gc, "GIT_CONFIG_NOSYSTEM": "1",
+             "XDG_CONFIG_HOME": xdg}
+  # the command must succeed under the hostile global config (it isolates itself)
+  rc, out = run(["install", repo], hostile)
+  assert rc == 0, out
+  # a raw git status under that config hides CLAUDE.md (via the default excludes
+  # file even with an empty global config); the test's helper does not, and
+  # neither do the command's checks under the same hostile environment
+  env = dict(os.environ); env.update(hostile)
+  raw = subprocess.check_output(["git", "-C", repo, "status", "--porcelain"], env=env).decode()
+  assert "CLAUDE.md" not in raw, raw
+  env2 = dict(env); env2["GIT_CONFIG_GLOBAL"] = os.devnull
+  raw2 = subprocess.check_output(["git", "-C", repo, "status", "--porcelain"], env=env2).decode()
+  assert "CLAUDE.md" not in raw2, "the default excludes file did not hide it: " + raw2
+  assert "?? CLAUDE.md" in git_status(repo).decode()
+  # the command's excludes check is not vacuous under the hostile environment:
+  # its exact isolated git call must still SEE .claude/ once the repository's
+  # own exclude line is removed, despite the default excludes file hiding it
+  assert "Excludes verified." in out, out
+  excl = os.path.join(repo, ".git", "info", "exclude")
+  kept = [l for l in io.open(excl, encoding="utf-8") if l.strip() != ".claude/"]
+  with io.open(excl, "w", encoding="utf-8") as f:
+    f.writelines(kept)
+  iso = subprocess.check_output(["git", "-c", "core.excludesFile=" + os.devnull,
+                                 "-c", "status.showUntrackedFiles=all", "-C", repo,
+                                 "status", "--porcelain", "--untracked-files=all"], env=env).decode()
+  assert ".claude/" in iso, "the command's isolated status did not see .claude/: " + iso
+  with io.open(excl, "a", encoding="utf-8") as f:
+    f.write(u".claude/\n")
+  stamp = "guided_coding_%s_" % time.strftime("%Y-%m-%d")
+  runs = [n for n in os.listdir(TEST_TMPDIR) if n.startswith(stamp)]
+  assert runs, os.listdir(TEST_TMPDIR)
+  # a symlink where a shared parent would have been is never followed: there is no shared parent
+  assert not os.path.lexists(os.path.join(TEST_TMPDIR, "guided_coding"))
+
+
 def run_all():
-  import time
-  if sys.platform.startswith("win"):
-    rc, out = run(["status", HERE])
-    assert rc == 2 and "Windows is not supported" in out, out
-    print("Skipping tst_guided_coding: GuidedCoding supports macOS and Linux only.")
-    print("OK")
-    return
-  global TEST_TMPDIR
+  global TEST_TMPDIR, GIT_HOME
   root = tempfile.mkdtemp(prefix="tst_guided_coding.")
   TEST_TMPDIR = os.path.join(root, "tmp")
   os.makedirs(TEST_TMPDIR)
+  GIT_HOME = os.path.join(root, "githome")
+  os.makedirs(os.path.join(GIT_HOME, ".config", "git"))
+  if sys.platform.startswith("win"):
+    win_home = os.path.join(root, "winhome")
+    os.makedirs(os.path.join(win_home, "Downloads"))
+    rc, out = run(["status", HERE], {"HOME": win_home, "USERPROFILE": win_home,
+                                     "TEMP": TEST_TMPDIR, "TMP": TEST_TMPDIR})
+    assert rc == 2 and "Windows is not supported" in out, out
+    assert os.listdir(os.path.join(win_home, "Downloads")) == [], "the refusal wrote a capture"
+    shutil.rmtree(root, ignore_errors=True)
+    print("Skipping tst_guided_coding: GuidedCoding supports macOS and Linux only.")
+    print("OK")
+    return
   home = os.path.join(root, "home")
   os.makedirs(os.path.join(home, "Downloads"))
   groups = [
@@ -622,6 +713,7 @@ def run_all():
     exercise_adopt_profile_preflight,
     exercise_capture_non_regular_file,
     exercise_hard_link_aliases,
+    exercise_usage_and_git_isolation,
   ]
   t0 = time.time()
   try:
