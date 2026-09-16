@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Sat Jul 18 09:25:53 2026
+The date of file generation: Sat Sep  5 00:20:43 2026
 """
 from __future__ import absolute_import, division, print_function
 
@@ -484,6 +484,7 @@ lookup = {
   "A1DIB" : "?",
   "A1E0B" : "?",
   "A1E3Y" : "?",
+  "A1E9U" : "?",
   "A1EAK" : "?",
   "A1EBP" : "?",
   "A1ECH" : "?",
@@ -498,6 +499,7 @@ lookup = {
   "A1I9P" : "?",
   "A1I9S" : "?",
   "A1IBZ" : "?",
+  "A1ICL" : "?",
   "A1IJ4" : "?",
   "A1IJE" : "?",
   "A1IJP" : "?",
@@ -525,6 +527,7 @@ lookup = {
   "A1L7N" : "?",
   "A1L97" : "?",
   "A1L9X" : "?",
+  "A1MDN" : "?",
   "A1MFG" : "?",
   "A1MFI" : "?",
   "A5R" : "?",
@@ -1156,6 +1159,8 @@ lookup = {
   "A1AMC" : "A",
   "A1AT6" : "A",
   "A1AT7" : "A",
+  "A1CM8" : "A",
+  "A1CM9" : "A",
   "A1CTT" : "A",
   "A1EUR" : "A",
   "A1H5W" : "A",
@@ -1571,6 +1576,7 @@ lookup = {
   "A1AZ2" : "H",
   "A1I9G" : "H",
   "A1IQX" : "H",
+  "A1JCN" : "H",
   "B3U" : "H",
   "DDE" : "H",
   "E9V" : "H",
@@ -1716,6 +1722,7 @@ lookup = {
   "CLG" : "K",
   "CLH" : "K",
   "CYJ" : "K",
+  "D8R" : "K",
   "DLS" : "K",
   "DM0" : "K",
   "DNL" : "K",
