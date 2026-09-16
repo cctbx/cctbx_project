@@ -807,6 +807,35 @@ class RefreshUnitCell(wx.PyCommandEvent):
   def __init__(self, etype, eid):
     wx.PyCommandEvent.__init__(self, etype, eid)
 
+# Which unit cell parameters vary independently, and so are worth clustering on,
+# for each crystal system. None means the cell has too few degrees of freedom to
+# cluster. Note the lengths alone are used where the angles are free but not
+# informative, as for monoclinic and triclinic cells.
+CLUSTERING_FEATURE_VECTORS = {
+  "Triclinic": "a,b,c",
+  "Monoclinic": "a,b,c",
+  "Orthorhombic": "a,b,c",
+  "Tetragonal": "a,c",
+  "Hexagonal": "a,c",
+  "Cubic": None,
+}
+
+def clustering_feature_vector(sginfo):
+  ''' The feature vector to cluster the cells of a space group on, or None if
+      the crystal system has too few free parameters to be worth clustering.
+
+      Trigonal groups need more than the crystal system to decide, because they
+      are used with either of two cell settings and the free parameters differ:
+      on hexagonal axes a equals b and gamma is 120, leaving a and c free, while
+      on rhombohedral axes a, b and c are all equal, as are the three angles,
+      leaving a and alpha. Both report a crystal system of Trigonal, so ask cctbx
+      for a cell obeying the symmetry and read the setting off its gamma. '''
+  crystal_system = sginfo.group().crystal_system()
+  if crystal_system != "Trigonal":
+    return CLUSTERING_FEATURE_VECTORS.get(crystal_system)
+  gamma = sginfo.any_compatible_unit_cell(volume=1.e6).parameters()[5]
+  return "a,c" if abs(gamma - 120.) < 1.e-6 else "a,alpha"
+
 class UnitCellSentinel(Thread):
   ''' Worker thread for unit cell analysis; generated so that the GUI does not lock up when
       processing is running '''
@@ -824,15 +853,6 @@ class UnitCellSentinel(Thread):
 
   def run(self):
     import xfel.ui.components.xfel_gui_plotter as pltr
-
-    feature_vectors = {
-      "Triclinic": "a,b,c",
-      "Monoclinic": "a,b,c",
-      "Orthorhombic": "a,b,c",
-      "Tetragonal": "a,c",
-      "Hexagonal": "a,c",
-      "Cubic": None,
-    }
 
     # one time post for an initial update
     self.post_refresh()
@@ -920,7 +940,7 @@ class UnitCellSentinel(Thread):
 
           sginfo = space_group_info(params.input.space_group)
           cs = sginfo.group().crystal_system()
-          params.input.feature_vector = feature_vectors.get(cs)
+          params.input.feature_vector = clustering_feature_vector(sginfo)
 
           if params.input.feature_vector:
             figure = self.parent.run_window.unitcell_tab.figure
