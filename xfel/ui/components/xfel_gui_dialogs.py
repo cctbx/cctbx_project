@@ -599,77 +599,195 @@ class DBCredentialsDialog(BaseDialog):
         self.chk_drop_tables.SetValue(False)
     e.Skip()
 
+  def _wait_for_server(self, submission_id, timeout=120):
+    ''' Poll a freshly launched local server until the configured account can
+        log in to the configured database, or until the server dies. Returns None
+        on success, or a message describing the failure. Note it is not enough to
+        wait for the port to open: when the server initializes a new database it
+        goes on to create the database and the account afterwards, so a client
+        that connects as soon as the port answers is rejected. '''
+    from xfel.ui.db import get_db_connection
+    interrogator = QueueInterrogator(self.params.mp.method)
+    deadline = time.time() + timeout
+    last_error = None
+    busy = wx.BusyInfo('Waiting for the database server to start...')
+    try:
+      while time.time() < deadline:
+        try:
+          # block=False so this loop, not the connector, controls the retries
+          get_db_connection(self.params, block=False).close()
+          return None
+        except Exception as exc:
+          last_error = exc
+        if interrogator.query(str(submission_id)) == 'DONE':
+          return 'The server process exited before it started accepting connections.'
+        time.sleep(1)
+        wx.GetApp().Yield()
+    finally:
+      del busy
+    return 'Timed out after %d seconds waiting for the server to accept connections. ' \
+           'Last error was: %s' % (timeout, str(last_error))
+
+  def _server_error_log(self):
+    ''' Tail of the launched server's stderr, for reporting startup failures. '''
+    try:
+      with open(os.path.join(self.params.output_folder, 'submit.err')) as f:
+        lines = f.read().strip().split('\n')
+    except IOError:
+      return ''
+    return '\n'.join(lines[-20:])
+
   def onStartDB(self, e):
     self.start_db_dialog = StartDBDialog(self, self.params)
-    if (self.start_db_dialog.ShowModal() == wx.ID_OK):
-      self.params.db.server.root_password = self.start_db_dialog.get_db_root_psswd.ctr.GetValue()
-      self.params.db.server.basedir = self.start_db_dialog.get_db_basedir.ctr.GetValue()
+    if (self.start_db_dialog.ShowModal() != wx.ID_OK):
+      return
 
-      def _submit_start_server_job(params):
-        from xfel.command_line.submit_job import do_submit
-        assert self.params.db.user is not None, "DB User not defined!"
-        assert self.params.db.password is not None, "Password for DB User not defined!"
-        assert self.params.db.server.root_password is not None, "Root password for DB not defined!"
-        assert self.params.db.server.basedir is not None, "Base directory for DB not defined!"
+    # The server is launched from self.params, but the credentials it should
+    # create the database with are whatever is currently typed into this dialog,
+    # which is only copied back to self.params when this dialog is accepted. Pull
+    # them across now so that starting the server and pressing OK afterwards
+    # agree on which database is being talked to.
+    self.params.db.name = self.db_name.ctr.GetValue()
+    self.params.db.user = self.db_user.ctr.GetValue()
+    self.params.db.password = self.db_password.ctr.GetValue()
+    try:
+      self.params.db.port = int(self.db_port.ctr.GetValue())
+    except ValueError:
+      wx.MessageBox('DB port number must be an integer.', 'Start Database',
+                    wx.OK | wx.ICON_ERROR)
+      return
+    if self.params.mp.method == 'local':
+      # A locally launched server is reached over the loopback interface. The
+      # client library treats 'localhost' as a request for a unix socket, whose
+      # path it would not know, so be explicit about the address.
+      self.params.db.host = '127.0.0.1'
+    else:
+      self.params.db.host = self.db_host.ctr.GetValue()
+    self.db_host.ctr.SetValue(self.params.db.host)
 
+    self.params.db.server.root_password = self.start_db_dialog.get_db_root_psswd.ctr.GetValue()
+    self.params.db.server.basedir = self.start_db_dialog.get_db_basedir.ctr.GetValue()
+
+    missing = [label for label, value in
+               [('DB name', self.params.db.name),
+                ('DB user name', self.params.db.user),
+                ('DB password', self.params.db.password),
+                ('DB base directory', self.params.db.server.basedir)]
+               if not value]
+    # The root password is only consulted when the database is initialized, so
+    # only insist on it if this is a new base directory.
+    if not os.path.exists(self.params.db.server.basedir) and \
+       not self.params.db.server.root_password:
+      missing.append('DB root password')
+    if missing:
+      wx.MessageBox('Cannot start the server, the following are not set:\n  %s'
+                    % '\n  '.join(missing), 'Start Database', wx.OK | wx.ICON_ERROR)
+      return
+
+    if not self.params.output_folder:
+      wx.MessageBox('Cannot start the server, no output folder is set.',
+                    'Start Database', wx.OK | wx.ICON_ERROR)
+      return
+    if not os.path.exists(self.params.output_folder):
+      os.makedirs(self.params.output_folder)
+
+    submit_path = os.path.join(self.params.output_folder, "launch_server_submit.sh")
+    encapsulated_path = os.path.join(self.params.output_folder, "launch_server_submit_submit.sh")
+
+    def _submit_start_server_job(params):
+      from xfel.command_line.submit_job import do_submit
+      import copy
+      new_params = copy.deepcopy(params)
+      new_params.mp.use_mpi = False
+      # The server is a single process: the multiprocessing settings configured
+      # for processing jobs are not meaningful for it.
+      new_params.mp.nproc = 1
+      # db.password has to be included: when the server initializes a new
+      # database it creates this account, and without it the account would be
+      # created with an empty password and the GUI could not then log in.
+      new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.password=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.db.password, params.db.name, params.db.server.root_password)]
+      return do_submit('cctbx.xfel.ui_server',
+                       submit_path,
+                       new_params.output_folder,
+                       new_params.mp,
+                       log_name="my_SQL.log",
+                       err_name="my_SQL.err",
+                       job_name='cctbx_start_mysql'
+                      )
+
+    def _cleanup_submit_scripts():
+      ''' The submission scripts carry the root password on the command line, so
+          they are removed once they have served their purpose. '''
+      for path in (submit_path, encapsulated_path):
         try:
-          import copy
-          new_params = copy.deepcopy(params)
-          new_params.mp.use_mpi = False
-          new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.db.name, params.db.server.root_password)]
-          submit_path = os.path.join(params.output_folder, "launch_server_submit.sh")
-          submission_id = do_submit('cctbx.xfel.ui_server',
-                                    submit_path,
-                                    new_params.output_folder,
-                                    new_params.mp,
-                                    log_name="my_SQL.log",
-                                    err_name="my_SQL.err",
-                                    job_name='cctbx_start_mysql'
-                                   )
-          #remove root password from params
-          if submission_id:
-            if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
-              attempts = 10
-              q = QueueInterrogator(self.params.mp.method)
-              for i in range(attempts):
-                status = q.query(submission_id)
-                if status == 'RUN':
-                  hostname = q.get_mysql_server_hostname(submission_id)
-                  if hostname:
-                    self.params.db.host = hostname
-                  else:
-                    print("Unable to find hostname running MySQL server from SLURM. Submission ID: ", submission_id)
-                else:
-                  print("Waiting for job to start. Submission ID: %s, status: %s"%(submission_id, status))
-                  time.sleep(1)
-            elif self.params.mp.method == 'local':
-              self.params.db.host = params.db.host
+          os.remove(path)
+        except OSError:
+          pass
+
+    try:
+      submission_id = _submit_start_server_job(self.params)
+    except Exception as exc:
+      _cleanup_submit_scripts()
+      wx.MessageBox('Could not start the MySQL server:\n%s\n\n%s'
+                    % (str(exc), self._server_error_log()),
+                    'Start Database', wx.OK | wx.ICON_ERROR)
+      return
+
+    if not submission_id:
+      _cleanup_submit_scripts()
+      wx.MessageBox('Could not submit the job to start the MySQL server.',
+                    'Start Database', wx.OK | wx.ICON_ERROR)
+      return
+
+    # In local mode the spawned shell reads the submission script as it runs, so
+    # it cannot be deleted yet. Take away everyone else's access to the password
+    # it contains immediately, and delete it once the server is up.
+    try:
+      os.chmod(submit_path, 0o700)
+    except OSError:
+      pass
+    try:
+      os.remove(encapsulated_path)
+    except OSError:
+      pass
+
+    if self.params.mp.method == 'local':
+      error = self._wait_for_server(submission_id)
+    else:
+      error = None
+      if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
+        attempts = 10
+        q = QueueInterrogator(self.params.mp.method)
+        for i in range(attempts):
+          status = q.query(submission_id)
+          if status == 'RUN':
+            hostname = q.get_mysql_server_hostname(submission_id)
+            if hostname:
+              self.params.db.host = hostname
+              self.db_host.ctr.SetValue(hostname)
             else:
-              print("Unable to find hostname running MySQL server on ", self.params.mp.method)
-              print("Submission ID: ", submission_id)
-
-            self.params.db.port = int(params.db.port)
-            self.params.db.name = params.db.name
-            self.params.db.user = params.db.user
-            self.params.db.password = params.db.password
-            self.params.db.server.root_password = ''
-            self.params.db.server.basedir = params.db.server.basedir
-
-            os.remove(os.path.join(self.params.output_folder, "launch_server_submit.sh"))
-            os.remove(os.path.join(self.params.output_folder, "launch_server_submit_submit.sh"))
+              print("Unable to find hostname running MySQL server from SLURM. Submission ID: ", submission_id)
+            break
           else:
-            print('couldn\'t submit job')
-        except RuntimeError:
-          print("Couldn\'t submit job to start MySql DB.")
-          print("Check if all phil parameters required to launch jobs exists.")
+            print("Waiting for job to start. Submission ID: %s, status: %s"%(submission_id, status))
+            time.sleep(1)
+      else:
+        print("Unable to find hostname running MySQL server on ", self.params.mp.method)
+        print("Submission ID: ", submission_id)
 
-      _submit_start_server_job(self.params)
-      db_file_location = self.params.db.server.basedir
-      self.launch_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
-      msg_text = "DB will be located in\n" + str(db_file_location)
-      self.db_start_box = wx.MessageBox(msg_text,"DB Info", wx.OK | wx.ICON_INFORMATION)
-      print("Started DB")
-      self.Close()
+    self.params.db.server.root_password = ''
+    _cleanup_submit_scripts()
+
+    if error:
+      wx.MessageBox('The MySQL server did not start.\n%s\n\n%s'
+                    % (error, self._server_error_log()),
+                    'Start Database', wx.OK | wx.ICON_ERROR)
+      return
+
+    wx.MessageBox("DB will be located in\n" + str(self.params.db.server.basedir),
+                  "DB Info", wx.OK | wx.ICON_INFORMATION)
+    print("Started DB")
+    self.Close()
 
 class StartDBDialog(BaseDialog):
   ''' Dialog to start DB '''
@@ -683,8 +801,10 @@ class StartDBDialog(BaseDialog):
     self.start_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.start_db_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
     self.start_db_sizer3 = wx.BoxSizer(wx.HORIZONTAL)
-    self.start_db_sizer4 = wx.BoxSizer(wx.HORIZONTAL)
-    self.vsiz = wx.BoxSizer(wx.VERTICAL)
+    # Each of these rows goes into main_sizer at the bottom of this function, and
+    # nowhere else. A sizer added to a parent sizer is owned by that parent and
+    # deleted with it, so adding one to two parents double frees it when the
+    # dialog is torn down, which aborts the process in wxSizerItem::Free.
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
@@ -693,12 +813,10 @@ class StartDBDialog(BaseDialog):
     warn_icon = wx.ArtProvider.GetBitmap(wx.ART_WARNING, wx.ART_OTHER, (50, 50))
     self.staticbmp = wx.StaticBitmap(self, -1, warn_icon, pos=(1, 1))
     self.start_db_sizer.Add(self.staticbmp, flag=wx.ALL)
-    self.vsiz.Add(self.start_db_sizer, 0)
     font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.FONTWEIGHT_NORMAL, False)
     warning_label1 = wx.StaticText(self, wx.ID_STATIC, 'This will start the server! Make sure the server is not already running!')
     warning_label1.SetFont(font)
     self.start_db_sizer.Add(warning_label1, 0, wx.ALL | wx.RIGHT)
-    self.vsiz.Add(self.start_db_sizer, 0, wx.ALL, 20)
     self.get_db_basedir = gctr.TextButtonCtrl(self,
                                               name='basedir',
                                               label='DB Base Directory',
@@ -708,7 +826,6 @@ class StartDBDialog(BaseDialog):
                                               value=os.path.join(self.params.output_folder, 'MySql')
                                               )
     self.start_db_sizer2.Add(self.get_db_basedir)
-    self.vsiz.Add(self.start_db_sizer2, 0, wx.ALL, 40)
     self.get_db_root_psswd = gctr.TextButtonCtrl(self,
                                                  name='db_root_password',
                                                  label='DB Root Password',
@@ -723,7 +840,6 @@ class StartDBDialog(BaseDialog):
     self.start_db_OK_btn = wx.Button(self, label="OK", id=wx.ID_OK)
     self.start_db_sizer3.Add(self.start_db_cancel_btn)
     self.start_db_sizer3.Add(self.start_db_OK_btn)
-    self.vsiz.Add(self.start_db_sizer3, 0, wx.ALL, 60)
     self.main_sizer.Add(self.start_db_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer2, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer3, flag=wx.EXPAND | wx.ALL, border=10)
