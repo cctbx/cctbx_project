@@ -511,14 +511,18 @@ class manager(list):
   #         cc_two_fofc, cc_fofc, fofc_min, fofc_max, fofc_mean, file = self.log)
 
 
-#   def show_nonbonded_overlaps(self):
-#     '''
-#     Print results for overlaps
-#     '''
-#     for id_tuple, ligand_dict in self.items():
-#       for altloc, lr in ligand_dict.items():
-#         clashes_result = lr.get_overlaps()
-#         print(clashes_result.clashes_str, file=self.log)
+  def show_nonbonded_overlaps(self):
+    '''
+    Print results for overlaps
+    '''
+    make_sub_header(' Nonbonded overlaps', out=self.log)
+    for lr in self:
+      clashes_result = lr.get_overlaps()
+      print('\n' + lr.id_str, file=self.log)
+      if clashes_result is None:
+        print('Model has no H atoms: overlaps not computed', file=self.log)
+        continue
+      print(clashes_result.clashes_str, file=self.log)
 
   def show_sites_within(self):
     make_sub_header(' Sites within %g A' % self.params.within_radius,
@@ -1613,9 +1617,9 @@ class ligand_result(object):
 #    hbonds.show(log=sys.stdout)
 #    ligand_hbonds.show(log=sys.stdout)
 
-    #string_io = StringIO()
-    #ligand_clashes.show(log=string_io, show_clashscore=False)
-    #print(string_io.getvalue())
+    string_io = StringIO()
+    ligand_clashes.show(log=string_io, show_clashscore=False,
+      show_header=False)
 
     results = ligand_clashes.get_results()
 
@@ -1624,7 +1628,7 @@ class ligand_result(object):
       clashscore     = results.clashscore,
       n_clashes_sym  = results.n_clashes_sym,
       #clashscore_sym = results.clashscore_sym,
-      #clashes_str    = string_io.getvalue(),
+      clashes_str    = string_io.getvalue(),
       #clashes_dict   = clashes._clashes_dict,
       n_hbonds = results_hbonds.n_hbonds)
 

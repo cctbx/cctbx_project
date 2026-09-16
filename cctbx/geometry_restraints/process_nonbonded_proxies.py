@@ -142,11 +142,12 @@ class clashes(object):
     self.sort_clashes()
 
 
-  def show(self, log=null_out(), show_clashscore=True):
+  def show(self, log=null_out(), show_clashscore=True, show_header=True):
     """
     Print all clashes in a table.
     """
-    make_sub_header(' Nonbonded overlaps', out=log)
+    if show_header:
+      make_sub_header(' Nonbonded overlaps', out=log)
     if self._clashes_dict:
       # General information
       results = self.get_results()
@@ -161,7 +162,7 @@ class clashes(object):
       labels =  ["Overlapping residues info","model distance","overlap",
                  "symmetry"]
       lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
-      table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
+      table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2f}|{:^15}|'
       print('\n' + lbl_str.format(*labels), file=log)
       print('-'*78, file=log)
       atoms = self.model.get_atoms()

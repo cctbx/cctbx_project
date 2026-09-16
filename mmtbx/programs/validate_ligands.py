@@ -331,6 +331,7 @@ is then compared against an Fcalc map.
     ligand_manager.show_ligand_counts()
     ligand_manager.show_fragmentation()
     ligand_manager.show_sites_within()
+    ligand_manager.show_nonbonded_overlaps()
     ligand_manager.show_table(out=self.logger)
 
     self.ligand_manager = ligand_manager
