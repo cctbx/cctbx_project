@@ -1234,7 +1234,7 @@ class calculate_dihedrals(object):
                pair_asu_table,
                sites_frac,
                dihedral_defs=None, #angle definition
-               skip_j_seq_less_than_i_seq=True,
+               generate_all=True, #will use dihedral_defs first, then the complimentary set
                covariance_matrix=None,
                cell_covariance_matrix=None,
                parameter_map=None,
@@ -1266,6 +1266,7 @@ class calculate_dihedrals(object):
             return False
         return True
 
+    generated_set = set()
     asu_mappings = self.pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
     if self.covariance_matrix is not None:
@@ -1274,6 +1275,15 @@ class calculate_dihedrals(object):
         self.covariance_matrix, unit_cell, self.parameter_map)
     if self.dihedral_defs is not None:
       for ad in self.dihedral_defs:
+        #check if reverse is in already
+        reversed_ = (ad.seqs[3], ad.seqs[2], ad.seqs[1], ad.seqs[0],
+                     ad.rt_mxs[3], ad.rt_mxs[2], ad.rt_mxs[1], ad.rt_mxs[0])
+        if reversed_ in generated_set:
+          continue
+        normal_ = (*ad.seqs, *ad.rt_mxs)
+        if normal_ in generated_set:
+          continue
+        generated_set.add(normal_)
         sites = []
         for i in range(0,4):
           site_frac = ad.rt_mxs[i] * self.sites_frac[ad.seqs[i]]
@@ -1292,22 +1302,23 @@ class calculate_dihedrals(object):
         else:
           var = None
         yield dihedral(angle_, ad.seqs, ad.rt_mxs, variance=var)
+    if not self.generate_all:
       return
     table = self.pair_asu_table.table()
     for i_seq,i_asu_dict in enumerate(table):
       rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
       i_site_frac = self.sites_frac[i_seq]
       for j_seq,j_sym_groups in i_asu_dict.items():
-        if j_seq < i_seq: continue
         rt_mx_j0_inv = asu_mappings.get_rt_mx(j_seq, 0).inverse()
         for j_sym_group in j_sym_groups:
           for j_sym_idx,j_sym in enumerate(j_sym_group):
             rt_mx_j = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
             j_site_frac = rt_mx_j * self.sites_frac[j_seq]
+            if j_site_frac == i_site_frac:
+              continue
             for k_seq, k_sym_groups in table[j_seq].items():
-              if k_seq < i_seq: continue
               if (self.conformer_indices is not None and
-                  self.conformer_indices[j_seq] !=
+                  self.conformer_indices[i_seq] !=
                   self.conformer_indices[k_seq]):
                 continue
               rt_mx_k0_inv = asu_mappings.get_rt_mx(k_seq, 0).inverse()
@@ -1316,25 +1327,25 @@ class calculate_dihedrals(object):
                 for k_sym_idx,k_sym in enumerate(k_sym_group):
                   rt_mx_k = rt_mx_kj.multiply(asu_mappings.get_rt_mx(k_seq, k_sym))
                   k_site_frac = rt_mx_k *  self.sites_frac[k_seq]
-                  if k_site_frac == i_site_frac:
+                  if k_site_frac in (i_site_frac, j_site_frac):
                     continue
                   if unit_cell.distance(j_site_frac, k_site_frac) > self.max_d:
                     continue
+                  if unit_cell.angle(i_site_frac, j_site_frac, k_site_frac) > self.max_angle:
+                    continue
                   rt_mx_lk = rt_mx_k.multiply(rt_mx_k0_inv)
                   for l_seq, l_sym_groups in table[k_seq].items():
-                    if l_seq < i_seq: continue
                     if (self.conformer_indices is not None and
-                        self.conformer_indices[k_seq] !=
+                        self.conformer_indices[j_seq] !=
                         self.conformer_indices[l_seq]):
                       continue
                     for l_sym_group in l_sym_groups:
                       for l_sym_idx, l_sym in enumerate(l_sym_group):
                         rt_mx_l = rt_mx_lk.multiply(asu_mappings.get_rt_mx(l_seq, l_sym))
                         l_site_frac = rt_mx_l *  self.sites_frac[l_seq]
-                        if l_site_frac in (i_site_frac, j_site_frac):
+                        if l_site_frac in (i_site_frac, j_site_frac, k_site_frac):
                           continue
-                        if unit_cell.angle(i_site_frac, j_site_frac, k_site_frac) > self.max_angle or\
-                           unit_cell.angle(j_site_frac, k_site_frac, l_site_frac) > self.max_angle:
+                        if unit_cell.angle(j_site_frac, k_site_frac, l_site_frac) > self.max_angle:
                           continue
                         rt_mxs = [sgtbx.rt_mx(), rt_mx_j, rt_mx_k, rt_mx_l]
                         sites = [i_site_frac, j_site_frac, k_site_frac, l_site_frac]
@@ -1350,7 +1361,20 @@ class calculate_dihedrals(object):
                         for i in range(0, 4):
                           sites[i] = rt_mxs[i].inverse() * sites[i]
                           rt_mxs[i] = rt_mx_inv.multiply(rt_mxs[i])
-                          sites[i] = unit_cell.orthogonalize(rt_mxs[i] * sites[i])
+                          new_site = rt_mxs[i] * sites[i]
+                          if sites[i] == new_site: # check for special position
+                            rt_mxs[i] = sgtbx.rt_mx()
+                          sites[i] = unit_cell.orthogonalize(new_site)
+
+                        #check if reverse is in already
+                        reversed_ = (l_seq, k_seq, j_seq, i_seq, rt_mxs[3], rt_mxs[2], rt_mxs[1], rt_mxs[0])
+                        if reversed_ in generated_set:
+                          continue
+                        normal_ = (i_seq, j_seq, k_seq, l_seq, rt_mxs[0], rt_mxs[1], rt_mxs[2], rt_mxs[3])
+                        if normal_ in generated_set:
+                          continue
+                        generated_set.add(normal_)
+
                         a = geometry.dihedral(sites)
                         angle_ = a.dihedral_model
                         self.dihedrals.append(angle_)

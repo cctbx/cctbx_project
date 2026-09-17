@@ -7,15 +7,15 @@
 #include <iosfwd>
 
 #include <boost/config.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include "cut.h"
-
 namespace cctbx { namespace sgtbx { namespace asu {
 
   class facet_collection
   {
   public:
-    typedef std::auto_ptr<facet_collection> pointer;
+    typedef boost::shared_ptr<facet_collection> pointer;
 
     virtual bool is_inside(const rvector3_t &p) const = 0;
     virtual bool is_inside(const scitbx::af::int3 &num,

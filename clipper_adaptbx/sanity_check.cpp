@@ -36,10 +36,10 @@ show_as_unsigned(const char* label, FloatType const& x)
     printf("  no matching integer type");
   }
   printf("\n");
-  std::cout << "  is_nan:  " << Util::is_nan(x) << std::endl;;
-  std::cout << "  isnan:   " << Util::isnan(x) << std::endl;;
-  std::cout << "  is_null: " << Util::is_null(x) << std::endl;;
-  std::cout << "  x!=x:    " << (x!=x) << std::endl;;
+  std::cout << "  is_nan:  " << Util::is_nan(x) << std::endl;
+  std::cout << "  isnan:   " << Util::isnan(x) << std::endl;
+  std::cout << "  is_null: " << Util::is_null(x) << std::endl;
+  std::cout << "  x!=x:    " << (x!=x) << std::endl;
 #if defined(FP_NAN) && !defined(__APPLE__)
   std::cout << "  isnanf() system macro: " << isnanf(x) << std::endl;
   std::cout << "  isnan()  system macro: " << isnan(x) << std::endl;

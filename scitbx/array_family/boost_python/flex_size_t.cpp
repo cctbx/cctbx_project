@@ -141,6 +141,6 @@ namespace {
   WRAP_FLEX(uint8, uint8_t);
   WRAP_FLEX(uint16, uint16_t);
   WRAP_FLEX(uint32, uint32_t);
-  // WRAP_FLEX(uint64, uint64_t);  // wrapped as size_t
+  WRAP_FLEX(uint64, uint64_t);  // wrapped as size_t
 
 }}} // namespace scitbx::af::boost_python
