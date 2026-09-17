@@ -14,7 +14,21 @@ types = {
   "Multiplicity": ("Intensity Statistics (all accepted experiments)", 14, 6, 3),
   "Completeness": ("Intensity Statistics (all accepted experiments)", 14, 5, 2),
   "CC1/2": ("Table of Scaling Results", 6, 5, 2),
-  "Merged I/sigI": ("Intensity Statistics (all accepted experiments)", 14, 11, 7),
+  "Merged I/sigI": ("Intensity Statistics (all accepted experiments)", 14, 11, 8),
+}
+
+# How each statistic is drawn: its colour, and which y axis it belongs on.
+# 'percent' is the left axis, 'ratio' the right one, for the quantities that are
+# not percentages. Every key scrape() can return needs an entry, including both
+# forms of 'accepted', or plotting fails with a KeyError; unknown keys fall back
+# to the next colour in the matplotlib cycle rather than bringing the tab down.
+plot_styles = {
+  "% accepted":    ('orange', 'percent'),
+  "# accepted":    ('orange', 'ratio'),
+  "Multiplicity":  ('red',    'ratio'),
+  "Completeness":  ('green',  'percent'),
+  "CC1/2":         ('blue',   'percent'),
+  "Merged I/sigI": ('purple', 'ratio'),
 }
 
 class Scraper(object):
@@ -80,20 +94,25 @@ class Scraper(object):
     from matplotlib.ticker import FuncFormatter
     import numpy as np
     import math
+
+    # scrape() returns None when the log has no accepted lattices table, which
+    # is the case while a merging job is still early in its run. Return no plot
+    # rather than failing, matching how plot_many_results skips such results.
+    # Callers treat None as 'nothing new to draw'.
+    if not results:
+      return None
+
     fig = plt.figure()
     ax = ax1 = fig.gca()
     ax2 = ax1.twinx()
 
-    colors = {
-      "% accepted": 'orange',
-      "Multiplicity": 'red',
-      "Completeness": 'green',
-      "CC1/2": 'blue'
-    }
+    right_axis_names = []
 
     for name in results:
-      if name == 'Multiplicity':
+      color, axis = plot_styles.get(name, (None, 'percent'))
+      if axis == 'ratio':
         ax = ax2
+        right_axis_names.append(name)
       else:
         ax = ax1
 
@@ -104,7 +123,7 @@ class Scraper(object):
         bin_num, d_max, d_min, value = data
         x.append((d_max+d_min)/2)
         y.append(value)
-      ax.plot(1/(np.array(x)**2), y, '-', label = name, color = colors[name])
+      ax.plot(1/(np.array(x)**2), y, '-', label = name, color = color)
 
     def resolution(x, pos):
       if x <= 0:
@@ -114,7 +133,9 @@ class Scraper(object):
     ax1.xaxis.set_major_formatter(formatter)
     ax1.set_xlabel(r'Resolution ${\AA}$')
     ax1.set_ylabel('%')
-    ax2.set_ylabel('Multiplicity')
+    # Name the right axis after whatever ended up on it, rather than assuming
+    # multiplicity is the only thing there.
+    ax2.set_ylabel(' / '.join(right_axis_names) if right_axis_names else 'Multiplicity')
     handles, labels = ax1.get_legend_handles_labels()
     handles.extend(ax2.get_legend_handles_labels()[0])
     labels.extend(ax2.get_legend_handles_labels()[1])
