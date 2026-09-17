@@ -339,6 +339,168 @@ def test_no_unit_cell():
   assert approx_equal(results.clashscore, 593, eps=2.0), results.clashscore
 
 
+
+def hbond_names(manager):
+  '''
+  (H name, acceptor name) for every H bond found
+  '''
+  atoms = manager.model.get_atoms()
+  return set((atoms[h].name.strip(), atoms[a].name.strip())
+             for d, h, a in manager.get_hbonds()._hbonds_dict)
+
+
+def clash_names(manager):
+  atoms = manager.model.get_atoms()
+  return set(tuple(sorted((atoms[i].name.strip(), atoms[j].name.strip())))
+             for i, j in manager.get_clashes()._clashes_dict)
+
+
+def test_hbond_intramolecular():
+  '''
+  Intramolecular H bonds are H bonds, not clashes (FMN from 7x32).
+    HO2' ... O4'   H...A 1.91  D...A 2.66  D-H...A 147  (5 bonds H to A)
+    HO3' ... O3P   H...A 1.79  D...A 2.61  D-H...A 162  (7 bonds H to A)
+  '''
+  manager = pnp.manager(model = obtain_model(raw_records_hbond))
+  hbonds = hbond_names(manager)
+  assert ("HO2'", "O4'") in hbonds, hbonds
+  assert ("HO3'", "O3P") in hbonds, hbonds
+  assert ("HH21", "O1P") in hbonds, hbonds
+  clashes = clash_names(manager)
+  assert ("HO2'", "O4'") not in clashes, clashes
+  assert ("HO3'", "O3P") not in clashes, clashes
+
+
+def test_hbond_bond_path():
+  '''
+  H and acceptor fewer than 5 bonds apart cannot form an H bond, even if the
+  geometry cutoffs are loosened enough to accept them:
+    HO4' ... O5'   4 bonds   D-H...A 115
+    HN3  ... O2    3 bonds   D-H...A  71, D...A 2.25
+  '''
+  params = pnp.h_bond()
+  params.a_DHA_cutoff = 60
+  params.d_DA_cutoff  = [2.0, 4.1]
+  manager = pnp.manager(
+    model         = obtain_model(raw_records_hbond),
+    h_bond_params = params)
+  hbonds = hbond_names(manager)
+  assert ("HO2'", "O4'") in hbonds, hbonds
+  assert ("HO4'", "O5'") not in hbonds, hbonds
+  assert ("HN3", "O2") not in hbonds, hbonds
+  assert ("HN3", "O4") not in hbonds, hbonds
+
+
+def test_hbond_same_resseq_other_chain():
+  '''
+  Residues in different chains with the same resseq can form H bonds.
+  '''
+  records = raw_records_hbond.replace('ARG C 207', 'ARG B 301')
+  manager = pnp.manager(model = obtain_model(records))
+  hbonds = hbond_names(manager)
+  assert ("HH21", "O1P") in hbonds, hbonds
+
+
+def test_hbond_symmetry_indices():
+  '''
+  An H bond across a symmetry operator is stored under the i_seqs of the real
+  donor, H and acceptor, not those of the symmetry-moved copies. ARG is moved
+  by one cell edge, so its H bond to FMN O1P needs the operator x-1,y,z. Both
+  atom orders, so the H is once i_seq and once j_seq of the proxy.
+  '''
+  lines = raw_records_hbond.splitlines()
+  arg = [l for l in lines if l[17:20] == 'ARG']
+  fmn = [l for l in lines if l[17:20] == 'FMN']
+  cryst1 = [l for l in lines if l.startswith('CRYST1')]
+  arg_shifted = ['%s%8.3f%s' % (l[:30], float(l[30:38]) + 30.0, l[38:])
+                 for l in arg]
+  for body in (arg_shifted + fmn, fmn + arg_shifted):
+    manager = pnp.manager(model = obtain_model('\n'.join(cryst1 + body)))
+    atoms = manager.model.get_atoms()
+    triples = [tuple(atoms[k].name.strip() for k in key)
+               for key in manager.get_hbonds()._hbonds_dict]
+    assert ('NH2', 'HH21', 'O1P') in triples, triples
+
+# FMN C 301 and ARG C 207 from 7x32 (flipped FMN, refined, reduce2 H)
+raw_records_hbond = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM  10233  N   ARG C 207       6.600  14.504  17.458  1.00 20.00           N
+ATOM  10234  CA  ARG C 207       7.081  13.652  18.533  1.00 20.00           C
+ATOM  10235  C   ARG C 207       5.910  13.321  19.445  1.00 20.00           C
+ATOM  10236  O   ARG C 207       5.000  14.135  19.625  1.00 20.00           O
+ATOM  10237  CB  ARG C 207       8.202  14.322  19.355  1.00 20.00           C
+ATOM  10238  CG  ARG C 207       9.467  14.655  18.565  1.00 20.00           C
+ATOM  10239  CD  ARG C 207      10.231  13.389  18.192  1.00 20.00           C
+ATOM  10240  NE  ARG C 207      11.530  13.691  17.593  1.00 20.00           N
+ATOM  10241  CZ  ARG C 207      11.719  14.097  16.339  1.00 20.00           C
+ATOM  10242  NH1 ARG C 207      10.701  14.322  15.515  1.00 20.00           N
+ATOM  10243  NH2 ARG C 207      12.960  14.283  15.900  1.00 20.00           N
+ATOM  10244  H   ARG C 207       6.040  15.105  17.714  1.00 20.00           H
+ATOM  10245  HA  ARG C 207       7.464  12.845  18.156  1.00 20.00           H
+ATOM  10246  HB2 ARG C 207       8.457  13.722  20.073  1.00 20.00           H
+ATOM  10247  HB3 ARG C 207       7.860  15.153  19.721  1.00 20.00           H
+ATOM  10248  HG2 ARG C 207      10.047  15.215  19.105  1.00 20.00           H
+ATOM  10249  HG3 ARG C 207       9.225  15.119  17.748  1.00 20.00           H
+ATOM  10250  HD2 ARG C 207      10.381  12.860  18.991  1.00 20.00           H
+ATOM  10251  HD3 ARG C 207       9.712  12.880  17.549  1.00 20.00           H
+ATOM  10252  HE  ARG C 207      12.226  13.599  18.089  1.00 20.00           H
+ATOM  10253 HH11 ARG C 207      10.850  14.584  14.709  1.00 20.00           H
+ATOM  10254 HH12 ARG C 207       9.894  14.206  15.787  1.00 20.00           H
+ATOM  10255 HH21 ARG C 207      13.096  14.545  15.092  1.00 20.00           H
+ATOM  10256 HH22 ARG C 207      13.627  14.141  16.424  1.00 20.00           H
+TER
+HETATM10419  C1' FMN C 301      15.479   9.560   9.748  1.00 20.00           C
+HETATM10420  C10 FMN C 301      16.202   7.776   8.262  1.00 20.00           C
+HETATM10421  C2  FMN C 301      15.454   7.836   6.075  1.00 20.00           C
+HETATM10422  C2' FMN C 301      14.281   9.392  10.704  1.00 20.00           C
+HETATM10423  C3' FMN C 301      14.020  10.704  11.466  1.00 20.00           C
+HETATM10424  C4  FMN C 301      16.939   5.968   6.683  1.00 20.00           C
+HETATM10425  C4' FMN C 301      12.734  10.754  12.306  1.00 20.00           C
+HETATM10426  C4A FMN C 301      16.936   6.559   8.049  1.00 20.00           C
+HETATM10427  C5' FMN C 301      12.614  12.094  13.014  1.00 20.00           C
+HETATM10428  C5A FMN C 301      17.679   6.524  10.206  1.00 20.00           C
+HETATM10429  C6  FMN C 301      18.457   5.874  11.187  1.00 20.00           C
+HETATM10430  C7  FMN C 301      18.555   6.353  12.467  1.00 20.00           C
+HETATM10431  C7M FMN C 301      19.380   5.647  13.501  1.00 20.00           C
+HETATM10432  C8  FMN C 301      17.873   7.542  12.798  1.00 20.00           C
+HETATM10433  C8M FMN C 301      18.016   8.072  14.198  1.00 20.00           C
+HETATM10434  C9  FMN C 301      17.108   8.204  11.846  1.00 20.00           C
+HETATM10435  C9A FMN C 301      16.996   7.718  10.523  1.00 20.00           C
+HETATM10436  N1  FMN C 301      15.492   8.380   7.333  1.00 20.00           N
+HETATM10437  N10 FMN C 301      16.247   8.321   9.524  1.00 20.00           N
+HETATM10438  N3  FMN C 301      16.163   6.655   5.799  1.00 20.00           N
+HETATM10439  N5  FMN C 301      17.639   5.970   8.965  1.00 20.00           N
+HETATM10440  O1P FMN C 301      13.431  15.133  13.274  1.00 20.00           O
+HETATM10441  O2  FMN C 301      14.820   8.331   5.144  1.00 20.00           O
+HETATM10442  O2' FMN C 301      13.128   8.972   9.955  1.00 20.00           O
+HETATM10443  O2P FMN C 301      13.446  15.163  10.763  1.00 20.00           O1-
+HETATM10444  O3' FMN C 301      15.127  10.988  12.284  1.00 20.00           O
+HETATM10445  O3P FMN C 301      15.033  13.583  12.009  1.00 20.00           O
+HETATM10446  O4  FMN C 301      17.623   5.014   6.351  1.00 20.00           O
+HETATM10447  O4' FMN C 301      11.612  10.589  11.424  1.00 20.00           O
+HETATM10448  O5' FMN C 301      12.563  13.129  12.035  1.00 20.00           O
+HETATM10449  P   FMN C 301      13.711  14.329  12.002  1.00 20.00           P
+HETATM10450  H2' FMN C 301      14.492   8.687  11.336  1.00 20.00           H
+HETATM10451  H3' FMN C 301      13.883  11.355  10.760  1.00 20.00           H
+HETATM10452  H4' FMN C 301      12.755  10.030  12.951  1.00 20.00           H
+HETATM10453  H6  FMN C 301      18.905   5.101  10.930  1.00 20.00           H
+HETATM10454  H9  FMN C 301      16.666   8.982  12.099  1.00 20.00           H
+HETATM10455  HN3 FMN C 301      16.098   6.343   5.000  1.00 20.00           H
+HETATM10456 H1'1 FMN C 301      16.097  10.218  10.103  1.00 20.00           H
+HETATM10457 H1'2 FMN C 301      15.171   9.865   8.880  1.00 20.00           H
+HETATM10458 H5'1 FMN C 301      11.815  12.104  13.564  1.00 20.00           H
+HETATM10459 H5'2 FMN C 301      13.372  12.221  13.606  1.00 20.00           H
+HETATM10460 HM71 FMN C 301      19.744   6.278  14.141  1.00 20.00           H
+HETATM10461 HM72 FMN C 301      20.121   5.176  13.088  1.00 20.00           H
+HETATM10462 HM73 FMN C 301      18.845   5.000  13.986  1.00 20.00           H
+HETATM10463 HM81 FMN C 301      18.146   7.347  14.829  1.00 20.00           H
+HETATM10464 HM82 FMN C 301      17.223   8.564  14.463  1.00 20.00           H
+HETATM10465 HM83 FMN C 301      18.777   8.669  14.264  1.00 20.00           H
+HETATM10466 HO2' FMN C 301      12.499   9.521  10.114  1.00 20.00           H
+HETATM10467 HO3' FMN C 301      15.270  11.825  12.238  1.00 20.00           H
+HETATM10468 HO4' FMN C 301      11.328  11.361  11.208  1.00 20.00           H
+"""
+
 raw_records_0 = """
 CRYST1   80.020   97.150   49.850  90.00  90.00  90.00 C 2 2 21
 ATOM   1271  N   ILE A  83      31.347   4.310 -43.960  1.00  9.97           N
@@ -798,4 +960,8 @@ if (__name__ == "__main__"):
   test_small_cell()
   test_manager_and_clashes_functions()
   test_no_unit_cell()
+  test_hbond_intramolecular()
+  test_hbond_bond_path()
+  test_hbond_same_resseq_other_chain()
+  test_hbond_symmetry_indices()
   print("OK. Time: %8.3f"%(time.time()-t0))

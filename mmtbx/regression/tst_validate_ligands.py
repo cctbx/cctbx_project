@@ -334,7 +334,8 @@ def run_test03():
   assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
   assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
   assert overlaps.n_clashes == 4
-  assert overlaps.n_hbonds == 2
+  # 2 as donor (HN1, HN2) + 3 as acceptor (Ser73 HG, Ala39 H, Thr40 H)
+  assert overlaps.n_hbonds == 5
   assert approx_equal(overlaps.clashscore, 13.0, eps=0.5)
   assert rmsd_result.bond_n == 17
   assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
@@ -369,7 +370,8 @@ def run_test03():
   assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
   assert approx_equal(adps.b_mean_within, 28.20, eps=0.02)
   assert overlaps.n_clashes == 6
-  assert overlaps.n_hbonds == 2
+  # 2 as donor (HN1, HN2) + 5 as acceptor (Asn12, Ser16, Ala39, Thr40, Ser73)
+  assert overlaps.n_hbonds == 7
   assert approx_equal(overlaps.clashscore, 19.3, eps=0.5)
 
 # ------------------------------------------------------------------------------

@@ -1600,9 +1600,9 @@ class ligand_result(object):
                     model        = model_within)
 
     ligand_hbonds_dict = {}
+    # iseq_tuple is (donor, H, acceptor)
     for iseq_tuple, record in hbonds_dict.items():
-      if (iseq_tuple[0] in isel_ligand_within or
-          iseq_tuple[1] in isel_ligand_within):
+      if any(i_seq in isel_ligand_within for i_seq in iseq_tuple):
         ligand_hbonds_dict[iseq_tuple] = record
 
     ligand_hbonds = pnp.hbonds(

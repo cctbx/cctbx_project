@@ -69,6 +69,51 @@ def check_if_1_5_interaction(
 
 #-------------------------------------------------------------------------------
 
+def is_within_n_bonds(i_seq, j_seq, n_bonds, full_connectivity_table):
+  """
+  True if atom j_seq can be reached from atom i_seq in n_bonds covalent bonds
+  or fewer.
+  """
+  seen = {i_seq}
+  shell = {i_seq}
+  for _ in range(n_bonds):
+    shell = set(k for i in shell for k in full_connectivity_table[i]) - seen
+    if j_seq in shell:
+      return True
+    seen |= shell
+  return False
+
+#-------------------------------------------------------------------------------
+
+def hbond_precheck(atoms, i, j, Hs, As, Ds, fsc0, min_bonds_H_A,
+                   same_copy=True):
+  """
+  Check if two atoms are potential H bond partners.
+
+  Modified from mmtbx.nci.hbond.precheck, which excludes every pair within
+  the same resseq. Here only pairs fewer than min_bonds_H_A bonds apart are
+  excluded, so intramolecular H bonds are found, and residues in different
+  chains with the same resseq are not excluded. Altlocs are not checked.
+
+  same_copy: False if the pair is related by a symmetry operator, then the
+             bond path does not apply.
+  """
+  ei, ej = atoms[i].element, atoms[j].element
+  if not ((ei in Hs or ej in Hs) and (ei in As or ej in As)):
+    return False
+  for k in [i, j]:
+    if atoms[k].element in Hs:
+      bound_to_h = fsc0[k]
+      if not bound_to_h: # exclude 'lone' H
+        return False
+      if atoms[bound_to_h[0]].element not in Ds: # use only first atom bound to H
+        return False
+  if same_copy and is_within_n_bonds(i, j, min_bonds_H_A - 1, fsc0):
+    return False
+  return True
+
+#-------------------------------------------------------------------------------
+
 def cos_vec(u, v, w):
   """
   Calculate the cosine to evaluate whether clashing atoms are inline
@@ -476,6 +521,8 @@ class h_bond(object):
     self.d_DA_cutoff  = [2.4, 4.1]
     self.a_DHA_cutoff = 120
     self.a_YAH_cutoff = [90, 180]
+    # H-D-X-Y-A (4 bonds) is a 5-membered ring, too strained for an H bond
+    self.min_bonds_H_A = 5
 
 class manager():
 
@@ -489,6 +536,7 @@ class manager():
     self.d_DA_cutoff  = h_bond_params.d_DA_cutoff
     self.a_DHA_cutoff = h_bond_params.a_DHA_cutoff
     self.a_YAH_cutoff = h_bond_params.a_YAH_cutoff
+    self.min_bonds_H_A = h_bond_params.min_bonds_H_A
     #
     self._clashes = None
     self._hbonds  = None
@@ -658,7 +706,7 @@ class manager():
     symop_str      = item[5]
     symop          = item[6]
 
-    is_candidate = hbond.precheck(
+    is_candidate = hbond_precheck(
       atoms = self.atoms,
       i = i_seq,
       j = j_seq,
@@ -666,7 +714,8 @@ class manager():
       As = self.As,
       Ds = self.Ds,
       fsc0 = fsc0,
-      tolerate_altloc=True)
+      min_bonds_H_A = self.min_bonds_H_A,
+      same_copy = (symop is None or str(symop) == 'x,y,z'))
 
     if (not is_candidate):
       return is_hbond
@@ -709,8 +758,9 @@ class manager():
         (a_DHA >= self.a_DHA_cutoff)):
       is_hbond = True
 
+      # not D.i_seq etc: symmetry-moved atoms are detached copies, i_seq 0
       self._hbonds.add_hbond(
-        hbond_tuple = (D.i_seq, H.i_seq, A.i_seq),
+        hbond_tuple = (atom_D.index, atom_H.index, atom_A.index),
         hbond_info  = [d_HA, d_DA, a_DHA, symop_str, symop, vdw_sum])
       # TODO: if several atom_x, use the first one found
       #  (show shortest or both)

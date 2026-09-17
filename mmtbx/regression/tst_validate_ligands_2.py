@@ -8,6 +8,8 @@ from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
 from mmtbx.regression.tst_validate_ligands import find_lr
+from cctbx.geometry_restraints.tst_process_nonbonded_proxies import \
+  raw_records_hbond
 
 from rdkit import RDLogger
 lg = RDLogger.logger()
@@ -18,6 +20,7 @@ lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
 def run():
   run_test01()
   run_test_get_results_fallback()
+  run_test_hbonds_ligand_acceptor()
 
 # ------------------------------------------------------------------------------
 
@@ -83,7 +86,9 @@ def run_test01():
   overlaps = lr.get_overlaps()
   assert overlaps is not None
   assert overlaps.n_clashes == 9
-  assert overlaps.n_hbonds == 3
+  # 5 of 6 via symmetry: N3A/N3B to DA 4 OP1/OP2 and DG 6 O6, DC 1 H42 to O1S,
+  # DG 6 H22 to O19. Plus N3A-HNA2 ... HOH 25.
+  assert overlaps.n_hbonds == 6
   assert approx_equal(overlaps.clashscore, 40.0, eps=0.5)
 
   # --- EDO A 43 ---
@@ -120,6 +125,26 @@ def run_test_get_results_fallback():
   assert os.path.isfile(result.working_model_fn), \
     "working_model_fn path does not exist on disk: %s" % result.working_model_fn
   print('OK: get_results fallback to original model when run_reduce2=False')
+
+# ------------------------------------------------------------------------------
+
+def run_test_hbonds_ligand_acceptor():
+  '''
+  H bonds are counted whichever side the ligand is on (FMN C 301 from 7x32):
+    NH2-HH21 (ARG C 207) ... O1P    ligand is the acceptor only
+    O2'-HO2' ... O4', O3'-HO3' ... O3P   intramolecular, not clashes
+  '''
+  print('test_hbonds_ligand_acceptor')
+  model_fn = "tst_hbonds_ligand_acceptor.pdb"
+  with open(model_fn, "w") as f:
+    f.write(raw_records_hbond)
+  result = run_program(program_class=val_lig.Program,
+    args=[model_fn, 'run_reduce2=False'], logger=null_out())
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  overlaps = lr.get_overlaps()
+  assert overlaps.n_hbonds == 3, overlaps.n_hbonds
+  assert overlaps.n_clashes == 0, overlaps.n_clashes
+  print('OK')
 
 # ------------------------------------------------------------------------------
 
