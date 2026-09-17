@@ -206,10 +206,10 @@ class clashes(object):
       # print table with all overlaps
       labels =  ["Overlapping residues info","model distance","overlap",
                  "symmetry"]
-      lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
+      lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}|'
       table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2f}|{:^15}|'
       print('\n' + lbl_str.format(*labels), file=log)
-      print('-'*78, file=log)
+      print('-'*79, file=log)
       atoms = self.model.get_atoms()
       for iseq_tuple, record in six.iteritems(self._clashes_dict):
         i_seq, j_seq = iseq_tuple
@@ -217,12 +217,15 @@ class clashes(object):
         if record[4] is not None:
           symop = record[4].as_xyz()
         else: symop = ''
-        i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
-        j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
+        # suppress_segid: a segid is appended to id_str and breaks the columns
+        i_id_str = atoms[i_seq].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
+        j_id_str = atoms[j_seq].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
         line = [i_id_str, j_id_str,round(record[0], 2),round(overlap, 2), symop]
         #print(table_str % line, file=log)
         print(table_str.format(*line), file=log)
-      print('-'*78, file=log)
+      print('-'*79, file=log)
     else:
       print('No clashes found', file=log)
 
@@ -430,28 +433,33 @@ class hbonds(object):
       result_str = '{:<18} : {:5d}'
       print(result_str.format(' Number of H bonds', results.n_hbonds), file=log)
       # print table with all H-bonds
-      title1 = ['donor', 'acceptor', 'distance', 'angle']
-      title1_str = '{:^33}|{:^16}|{:^21}|{:^14}|'
+      title1 = ['donor', 'acceptor', 'distance', 'angle', 'symmetry']
+      title1_str = '{:^33}|{:^16}|{:^21}|{:^14}|{:^15}|'
       print('\n' + title1_str.format(*title1), file=log)
       title2 =  ['X', 'H', 'A','H...A','X...A',
                  'X-H...A', 'symop']
+      # 16|16|16|10|10|14|15 plus the separators = 104
       title2_str = '{:^16}|{:^16}|{:^16}|{:^10}|{:^10}|{:^14}|{:^15}|'
       print(title2_str.format(*title2), file=log)
       table_str = '{:>16}|{:>16}|{:^16}|{:^10.2f}|{:^10.2f}|{:^14.2f}|{:^15}|'
-      print('-'*99, file=log)
+      print('-'*104, file=log)
       atoms = self.model.get_atoms()
       for iseq_tuple, record in self._hbonds_dict.items():
         iseq_x, iseq_h, iseq_a = iseq_tuple
         if record[4] is not None:
           symop = record[4].as_xyz()
         else: symop = ''
-        x_id_str = atoms[iseq_x].id_str().replace('pdb=','').replace('"','')
-        h_id_str = atoms[iseq_h].id_str().replace('pdb=','').replace('"','')
-        a_id_str = atoms[iseq_a].id_str().replace('pdb=','').replace('"','')
+        # suppress_segid: a segid is appended to id_str and breaks the columns
+        x_id_str = atoms[iseq_x].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
+        h_id_str = atoms[iseq_h].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
+        a_id_str = atoms[iseq_a].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
         line = [x_id_str, h_id_str, a_id_str, round(record[0], 2),
           round(record[1], 2), round(record[2], 2), symop]
         print(table_str.format(*line), file=log)
-      print('-'*99, file=log)
+      print('-'*104, file=log)
     else:
       print('No hbonds found', file=log)
 
@@ -506,12 +514,13 @@ class h_bond(object):
          D
         / \
 
-    A = O, N, S
+    A = O, N, S, F, Cl
     D = O, N, S
     90 <= a_YAH <= 180
     a_DHA >= 120
-    1.4 <= d_HA <= 3.0
-    2.5 <= d_DA <= 3.5
+    1.4 <= d_HA <= 2.8
+    2.4 <= d_DA <= 4.1
+    H and A at least 5 bonds apart (same copy)
   """
   def __init__(self):
     self.Hs = ["H", "D"]

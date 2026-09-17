@@ -355,6 +355,50 @@ def clash_names(manager):
              for i, j in manager.get_clashes()._clashes_dict)
 
 
+def add_segid(raw_records, segid='SEG1'):
+  '''
+  Put a segid in columns 73-76 of every atom record
+  '''
+  out = []
+  for line in raw_records.splitlines():
+    if line.startswith('ATOM') or line.startswith('HETATM'):
+      line = '%-72s%-4s%s' % (line[:72], segid, line[76:])
+    out.append(line)
+  return '\n'.join(out)
+
+
+def test_show_segid():
+  '''
+  A segid must not widen the columns of the clash table (atom id_str carries
+  the segid along).
+  '''
+  def table_rows(records):
+    string_io = StringIO()
+    get_clashes_result(raw_records=records).show(log=string_io)
+    return [l for l in string_io.getvalue().split('\n') if l.endswith('|')]
+  rows       = table_rows(raw_records_7)
+  rows_segid = table_rows(add_segid(raw_records_7))
+  assert len(rows) == len(rows_segid), (len(rows), len(rows_segid))
+  assert len(set(len(l) for l in rows_segid)) == 1, set(len(l) for l in rows_segid)
+  assert len(rows[0]) == len(rows_segid[0]), (len(rows[0]), len(rows_segid[0]))
+
+
+def test_show_table_widths():
+  '''
+  Header, separator and data rows of both tables are the same width.
+  '''
+  clashes = get_clashes_result(raw_records=raw_records_7)
+  hbonds = pnp.manager(model = obtain_model(raw_records_hbond)).get_hbonds()
+  assert clashes.get_n_clashes() > 0 and hbonds.get_n_hbonds() > 0
+  for obj in (clashes, hbonds):
+    string_io = StringIO()
+    obj.show(log=string_io)
+    lines = [l for l in string_io.getvalue().split('\n') if '|' in l or
+             set(l) == set('-')]
+    widths = set(len(l) for l in lines)
+    assert len(widths) == 1, (obj.__class__.__name__, sorted(widths))
+
+
 def test_hbond_intramolecular():
   '''
   Intramolecular H bonds are H bonds, not clashes (FMN from 7x32).
@@ -964,4 +1008,6 @@ if (__name__ == "__main__"):
   test_hbond_bond_path()
   test_hbond_same_resseq_other_chain()
   test_hbond_symmetry_indices()
+  test_show_segid()
+  test_show_table_widths()
   print("OK. Time: %8.3f"%(time.time()-t0))
