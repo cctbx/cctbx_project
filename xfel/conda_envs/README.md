@@ -36,6 +36,47 @@ $ echo $PWD/build/conda_setpaths.sh
 ```
 To activate the cctbx environment, `source` the script that was printed in the final step.
 
+## Linux build without psana
+
+psana is only needed to read XTC data from LCLS. To build without it, use
+linux_environment.yml in place of psana_environment.yml. gemmi is a normal
+dependency of that environment, so the separate --no-deps install is not needed.
+
+```
+$ mkdir cctbx; cd cctbx
+$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
+$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/linux_environment.yml
+$ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+$ bash Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/mc3
+$ source mc3/etc/profile.d/conda.sh
+$ conda env create -f linux_environment.yml -p $PWD/conda_base
+$ conda activate `pwd`/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
+    --no-boost-src hot update build
+$ echo $PWD/build/conda_setpaths.sh
+```
+To activate the cctbx environment, `source` the script that was printed in the final step.
+
+## macOS build
+
+psana is not available for macOS, so this build cannot read XTC data from LCLS. Everything else in
+cctbx.xfel is supported.
+
+```
+$ mkdir cctbx; cd cctbx
+$ curl -LO https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
+$ curl -LO https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/macos_environment.yml
+$ curl -LO https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
+$ bash Miniconda3-latest-MacOSX-arm64.sh -b -p $PWD/mc3
+$ source mc3/etc/profile.d/conda.sh
+$ conda env create -f macos_environment.yml -p $PWD/conda_base
+$ conda activate `pwd`/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=6 \
+    --no-boost-src hot update build
+$ echo $PWD/build/conda_setpaths.sh
+```
+To activate the cctbx environment, `source` the script that was printed in the final step.
+
 ## LCLS build
 
 This section is removed because the new LCLS facilities do not have the limitations of the old psana cluster.
