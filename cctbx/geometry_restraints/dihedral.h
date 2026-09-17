@@ -336,18 +336,33 @@ namespace cctbx { namespace geometry_restraints {
         return weight * term;
       }
       //! Gradient of delta with respect to the four sites.
-      /*! The formula for the gradients is singular if certain vectors
-          are collinear. However, the gradients converge to zero near
-          these singularities. To avoid numerical problems, the
-          gradients are set to zero exactly if the norms of certain
-          vectors are smaller than epsilon.
+      /*! The formula is singular when either end of the torsion becomes
+          collinear with the central bond, and the gradients do NOT converge
+          to zero there - they diverge, as 1/(|d_01| sin(0-1-2)). Measured on
+          the linearised row: 5.7e3 for an ordinary geometry, 5.7e11 with a
+          terminal atom 1e-8 A from the central axis. A row that large makes
+          the normal matrix singular in practice, and the Cholesky failure
+          that follows names an unrelated atom.
+
+          Two guards therefore. epsilon catches the exact degeneracies.
+          min_lever refuses the row while it is merely enormous: a torsion
+          about an axis that a terminal atom sits on is not determined, and
+          reporting nothing is better than reporting it with a weight 1e8
+          times everything else.
+
+          The quantity to test is the perpendicular distance of each terminal
+          atom from the central bond axis, which is |d_01 x d_21|/|d_21|. It
+          is what the row size depends on, and it covers both ways of
+          degenerating - the end angle opening out to 180 degrees, and the
+          terminal atom collapsing onto the central atom - where a test on the
+          angle alone covers only the first.
 
           See also:
             http://salilab.org/modeller/manual/manual.html,
             "Features and their derivatives"
        */
       af::tiny<scitbx::vec3<double>, 4>
-      grad_delta(double epsilon=1e-100) const
+      grad_delta(double epsilon=1e-100, double min_lever=1e-2) const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
         /*if(limit >= 0 && top_out==false){
@@ -357,10 +372,15 @@ namespace cctbx { namespace geometry_restraints {
           }
         }*/
         double d_21_norm = d_21.length_sq();
+        // n_0121_norm is |d_01 x d_21|^2, so n_0121_norm/d_21_norm is the
+        // squared perpendicular distance, in Angstrom^2
+        double min_lever_sq = min_lever * min_lever;
         if (   !have_angle_model
             || d_21_norm < epsilon
             || n_0121_norm < epsilon
-            || n_2123_norm < epsilon) {
+            || n_2123_norm < epsilon
+            || n_0121_norm < min_lever_sq * d_21_norm
+            || n_2123_norm < min_lever_sq * d_21_norm) {
           result.fill(scitbx::vec3<double>(0,0,0));
         }
         else {

@@ -179,7 +179,7 @@ namespace {
 
    class_<common>("common",init<sym_mat3<double> const&,
                                 sym_mat3<double> const&,
-                                optional<double> >())
+                                boost::python::optional<double> >())
       .def("t", &common::t)
       .def("branch_0",       &common::get_branch_0)
       .def("branch_1",       &common::get_branch_1)

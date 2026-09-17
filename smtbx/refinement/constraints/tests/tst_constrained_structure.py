@@ -21,8 +21,48 @@ class test_case(object):
   expected_mapping_to_grad_fc = None
   refinement_config = "default"
 
+  """ Pairs of labels the model cannot tell apart.
+
+  The two hydrogens of a planar XH2 group are placed by one constraint,
+  symmetrically, and exchanging them gives a structure identical in every
+  observable -- the data cannot say which label belongs to which site. A
+  refinement started from a random shake therefore lands on one assignment or
+  the other, and which one is decided by the shake.
+
+  So the stability check has to compare structures and not labels. Any pair
+  named here is put back the way round that matches the reference before the
+  comparison; a genuine failure to recover still fails, because no assignment
+  of the two will match then.
+  """
+  interchangeable_sites = ()
+
   def __init__(self, normal_eqns_solving_method):
     self.normal_eqns_solving_method = normal_eqns_solving_method
+
+  def resolve_interchangeable_sites(self, xs0, xs):
+    """ Undo an exchange of labels the data could not have decided.
+
+    Returns the structure to compare against the reference, which is a
+    reordering of the one given and not the same object -- the scatterer array
+    is permuted through select() rather than by assigning its elements, since
+    those come back as views into it and swapping two of them in place leaves
+    both holding whichever was written first.
+    """
+    if not self.interchangeable_sites:
+      return xs
+    uc = xs0.unit_cell()
+    scatterers, reference = xs.scatterers(), xs0.scatterers()
+    labels = list(scatterers.extract_labels())
+    order = list(range(scatterers.size()))
+    for a, b in self.interchangeable_sites:
+      i, j = labels.index(a), labels.index(b)
+      as_is = (uc.distance(reference[i].site, scatterers[order[i]].site)
+               + uc.distance(reference[j].site, scatterers[order[j]].site))
+      exchanged = (uc.distance(reference[i].site, scatterers[order[j]].site)
+                   + uc.distance(reference[j].site, scatterers[order[i]].site))
+      if exchanged < as_is:
+        order[i], order[j] = order[j], order[i]
+    return xs.select(flex.size_t(order))
 
   def check_reparametrisation_construction(self):
     warned_once = False
@@ -109,6 +149,7 @@ class test_case(object):
       from crys3d.qttbx.xray_structure_viewer import display
       display(xray_structure=xs)
 
+    xs = self.resolve_interchangeable_sites(xs0, xs)
     diff = xray.meaningful_site_cart_differences(xs0, xs)
     assert diff.max_absolute() < self.site_refinement_tolerance,\
            self.__class__.__name__
@@ -595,6 +636,10 @@ class saturated_test_case(test_case):
 
   H1N and H2N sites and u's have been swapped.
   """
+
+  # both are terminal_planar_xh2_sites on N2, so the refinement is free to
+  # come back with them either way round -- see test_case
+  interchangeable_sites = (('H1N', 'H2N'),)
 
   def __init__(self, m):
     test_case.__init__(self, m)

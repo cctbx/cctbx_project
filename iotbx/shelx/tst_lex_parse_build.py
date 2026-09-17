@@ -96,6 +96,38 @@ def exercise_lexing():
   except StopIteration:
     raise AssertionError
 
+def exercise_numbers_with_standard_uncertainties():
+  """ A bracketed esd on a number is read as the number
+
+  ShelXL never writes one, but Olex2 records the temperature as
+  "TEMP -153(2)" and that used to reject the entire file - while looking
+  perfectly healthy in Olex2 itself, which builds its model from its own
+  structures rather than reading back through here.
+  """
+  for text, expected in (("TEMP -153(2)\n", ('TEMP', (-153,))),
+                         ("TEMP -153\n", ('TEMP', (-153,))),
+                         ("TEMP 20.5(12)\n", ('TEMP', (20.5,))),
+                         ("SHEL 999(1) 0.83(2)\n", ('SHEL', (999, 0.83))),
+                         ("EXTI 0.0012(3)\n", ('EXTI', (0.0012,)))):
+    stream = shelx.command_stream(file=StringIO(text + "HKLF 4\n"))
+    cmd, line = next(iter(stream))
+    assert cmd == expected, (text, cmd, expected)
+
+  # an atom name is still an atom name, and nonsense is still refused
+  stream = shelx.command_stream(file=StringIO("BOND C1 C2\nHKLF 4\n"))
+  cmd, line = next(iter(stream))
+  assert cmd[0] == 'BOND'
+  assert [t.name for t in cmd[1]] == ['C1', 'C2'], cmd
+
+  try:
+    stream = shelx.command_stream(file=StringIO("TEMP 1(2)(3)\nHKLF 4\n"))
+    next(iter(stream))
+  except shelx.error:
+    pass
+  else:
+    raise AssertionError("'1(2)(3)' should not parse as a number")
+
+
 def exercise_lexing_bis():
   stream = shelx.command_stream(file=StringIO(ins_equal_sign_in_rem))
   i = iter(stream)
@@ -912,6 +944,7 @@ def exercise_wavelength():
 
 def run():
   exercise_lexing()
+  exercise_numbers_with_standard_uncertainties()
   exercise_lexing_bis()
   exercise_instruction_parsing()
   import libtbx.load_env
