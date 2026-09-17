@@ -987,7 +987,8 @@ int main() {
     # Boost issue with newer versions of clang
     # include/boost/mpl/aux_/integral_wrapper.hpp:73:31: error: integer value -1 is outside the valid range of values [0, 3] for this enumeration type
     # https://reviews.llvm.org/D150226
-    if env_etc.clang_version[0] >= 15:
+    # Fixed in Boost 1.86; flag removed in clang 20
+    if 15 <= env_etc.clang_version[0] < 20:
       base_macos_flags.append('-Wno-enum-constexpr-conversion')
 
     # Xcode 16.3 fails to build boost.geometry (Boost 1.86)
