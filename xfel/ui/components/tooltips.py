@@ -126,7 +126,9 @@ tooltips = {
   'global_threshold': 'Absolute intensity threshold; pixels below this value are '
                       'never counted as signal regardless of local background.',
   'gain': 'Detector gain in ADU/photon. Used to convert pixel values to photon '
-          'counts for the dispersion algorithm.',
+          'counts for the dispersion algorithm, and, when integration is '
+          'enabled, to scale the integrated intensity variances. Leave blank to '
+          'use the gain reported by the image format.',
   'kernel_size': 'Size of the local background estimation kernel in pixels '
                  '(the neighbourhood used to estimate mean and standard deviation).',
   'threshold_algorithm': 'Spotfinding threshold algorithm. "dispersion" is the '
