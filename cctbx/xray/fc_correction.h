@@ -17,7 +17,8 @@ namespace cctbx {
       {}
       virtual ~fc_correction() {}
       // return multiplier for Fc_sq
-      virtual FloatType compute(miller::index<> const& h,
+      virtual FloatType compute(FloatType wavelength,
+        miller::index<> const& h,
         FloatType fc_sq,
         bool compute_gradient) const = 0;
       virtual FloatType get_grad_Fc_multiplier() const = 0;
@@ -45,7 +46,8 @@ namespace cctbx {
       typedef fc_correction<FloatType> fc_correction_t;
 
       dummy_fc_correction() {}
-      virtual FloatType compute(miller::index<> const& h,
+      virtual FloatType compute(FloatType wavelength,
+        miller::index<> const& h,
         FloatType fc_sq,
         bool compute_gradient) const
       {

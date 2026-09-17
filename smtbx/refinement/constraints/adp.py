@@ -162,6 +162,7 @@ class scalar_scaled_u(object):
     from math import sqrt
     cov_diag = ls.covariance_matrix().matrix_packed_u_diagonal()
     return sqrt(cov_diag[self.scalar.index])
+
 class shared_rotating_u(object):
   """ u_eq or u_star of some scatterer constrained to be equal to
       u_iso or u_start of another scatterer

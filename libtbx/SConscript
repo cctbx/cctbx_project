@@ -368,7 +368,7 @@ if (sys.platform == "win32" or
          visual_studio_version.startswith("19.4") or\
         visual_studio_version.startswith("19.5"):
       env_base = Environment(
-        ENV=os.environ, MSVC_VERSION="14.4", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
+        ENV=os.environ, MSVC_VERSION="14.3", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 17
     elif visual_studio_version.startswith("19.5"):
@@ -832,16 +832,16 @@ int main() {
       if sys.platform.startswith('darwin'):
         env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
       if libtbx.env.build_options.cxxstd is not None:
-        for cxxstd in ['c++11', 'c++14', 'c++17']:
+        for cxxstd in ['c++11', 'c++14', 'c++17', 'c++20']:
           libtbx.env.build_options.env_cxxflags = \
             libtbx.env.build_options.env_cxxflags.replace(cxxstd, libtbx.env.build_options.cxxstd)
           libtbx.env.build_options.env_cppflags = \
             libtbx.env.build_options.env_cppflags.replace(cxxstd, libtbx.env.build_options.cxxstd)
       else:
         libtbx.env.build_options.env_cxxflags = \
-          libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
-        libtbx.env.build_options.env_cppflags = \
-          libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+        libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      libtbx.env.build_options.env_cppflags = \
+        libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
       env_etc.static_libraries = 0
     else:
       env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
@@ -1208,7 +1208,7 @@ if libtbx.env.build_options.enable_cxx11:
     cxx11_flags = ["-std=c++11"]
   elif ver(env_etc.icc_version) >= ver((10,0)):
     cxx11_flags = ["-std=c++0x"]
-  elif env_etc.msvc_version and env_etc.msvc_version >= 11 :
+  elif env_etc.msvc_version and  env_etc.msvc_version >= 11 :
     cxx11_flags = [] # no options are needed
   else:
     raise RuntimeError("Unknown C++11 flag for compiler: %s" % env_etc.compiler)
