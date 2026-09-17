@@ -30,7 +30,6 @@ import random
 from cctbx import xray
 from cctbx.array_family import flex
 from scitbx.math import bessel_i1_over_i0
-from libtbx.test_utils import approx_equal
 
 
 def d_target_d_modulus_fcalc(fo, fc, a, b, k, e, centric):

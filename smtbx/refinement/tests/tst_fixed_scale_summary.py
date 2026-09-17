@@ -25,7 +25,7 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from smtbx.refinement import least_squares
+from smtbx.refinement import least_squares # import dependency
 from smtbx_refinement_least_squares_ext import (
   fixed_scale_factor_summary, separable_scale_factor_summary, ml_data)
 import random

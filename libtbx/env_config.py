@@ -3004,7 +3004,7 @@ class pre_process_args:
       action="store",
       type="choice",
       default=default_cxxstd,
-      choices=['c++14'], # this should just be the argument to the -std flag
+      choices=['c++14', 'c++17', 'c++20'], # this should just be the argument to the -std flag
       help="Set the C++ standard. This cannot be set along with --enable_cxx11")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",

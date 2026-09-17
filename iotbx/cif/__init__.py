@@ -27,6 +27,7 @@ from libtbx.utils import detect_binary_file
 from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx import smart_open
+import math
 
 import os
 import sys

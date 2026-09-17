@@ -359,14 +359,17 @@ if (sys.platform == "win32" or
         ENV=os.environ, MSVC_VERSION="14.1", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 15
-    elif visual_studio_version.startswith("19.2") or visual_studio_version.startswith("19.3"):
+    elif visual_studio_version.startswith("19.2"):
       env_base = Environment(
         ENV=os.environ, MSVC_VERSION="14.2", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 16
-    elif visual_studio_version.startswith("19.3") or\
-         visual_studio_version.startswith("19.4") or\
-        visual_studio_version.startswith("19.5"):
+    elif visual_studio_version.startswith("19.3"):
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="14.3", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
+      env_etc.have_manifest_tool = True
+      env_etc.msvc_version = 17
+    elif visual_studio_version.startswith("19.4"):
       env_base = Environment(
         ENV=os.environ, MSVC_VERSION="14.4", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
@@ -832,7 +835,7 @@ int main() {
       if sys.platform.startswith('darwin'):
         env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
       if libtbx.env.build_options.cxxstd is not None:
-        for cxxstd in ['c++11', 'c++14', 'c++17']:
+        for cxxstd in ['c++11', 'c++14', 'c++17', 'c++20']:
           libtbx.env.build_options.env_cxxflags = \
             libtbx.env.build_options.env_cxxflags.replace(cxxstd, libtbx.env.build_options.cxxstd)
           libtbx.env.build_options.env_cppflags = \
