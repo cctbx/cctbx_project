@@ -58,6 +58,7 @@ def run():
   run_test10()
   run_test11()
   run_test12()
+  run_test_has_restraints()
   run_test13()
   run_test14()
   run_test15()
@@ -909,6 +910,27 @@ def _gol_and_unknown_ligand_manager():
     model=model, fmodel=None, map_manager=None, params=params, log=null_out())
   vl_manager.run()
   return vl_manager
+
+def run_test_has_restraints():
+  '''
+  get_missing_atoms().has_restraints says whether restraints were applied to
+  this ligand; without them the geometry rmsZ values are vacuous. J99 IS in the
+  monomer library, but the three atoms modelled here do not match its atom
+  names, so no restraints are built - a library lookup would say "known".
+  Missing atoms come from the library entry and are reported either way.
+  '''
+  print('test_has_restraints')
+  vl_manager = _gol_and_unknown_ligand_manager()
+
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol.get_missing_atoms().has_restraints is True
+  assert lr_gol.get_rmsds().bond_n > 0
+
+  lr_unknown = find_lr(vl_manager, 'resname J99 and chain A and resseq 2')
+  assert lr_unknown.get_missing_atoms().has_restraints is False
+  assert lr_unknown.get_rmsds().bond_n == 0
+  assert lr_unknown.get_missing_atoms().n_missing_heavy > 0
+
 
 def run_test21():
   print('test21')

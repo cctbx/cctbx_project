@@ -742,6 +742,12 @@ class ligand_result(object):
   def get_missing_atoms(self):
     if self._missing_atoms is not None:
       return self._missing_atoms
+    # Were restraints applied to this ligand? Without them the geometry rmsZ
+    # values are vacuous. A monomer library lookup does not answer this: the
+    # entry can exist while the atom names in the model do not match it, and
+    # then no restraints are built (while missing atoms are still reported,
+    # they come from the library entry).
+    has_restraints = self.get_rmsds().bond_n > 0
     missing_dict = self.model.get_missing_atoms() or {}
     ag = self._atoms_ligand[0].parent()
     resid_tail = ag.id_str()[1:]
@@ -756,7 +762,8 @@ class ligand_result(object):
       break
     self._missing_atoms = group_args(
       missing_heavy   = missing_heavy,
-      n_missing_heavy = len(missing_heavy))
+      n_missing_heavy = len(missing_heavy),
+      has_restraints  = has_restraints)
     return self._missing_atoms
 
   # ----------------------------------------------------------------------------
@@ -1776,6 +1783,7 @@ class ligand_result(object):
       missing_atoms = group_args(
         missing_heavy   = list(ma.missing_heavy),
         n_missing_heavy = _i(ma.n_missing_heavy),
+        has_restraints  = bool(ma.has_restraints),
       ) if ma is not None else None,
       alt_conf = group_args(
         state    = ac.state,

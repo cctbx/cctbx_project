@@ -9,7 +9,6 @@ except ImportError:
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
 from mmtbx.hydrogens import place_and_optimize_hydrogens
-from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb
 from libtbx.utils import null_out, Sorry
 from libtbx.str_utils import make_sub_header
@@ -159,10 +158,6 @@ is then compared against an Fcalc map.
           if (get_class(name=ag.resname) in exclude): continue
           print('Found ligand: ', ag.resname, file=self.logger)
           self.has_ligands = True
-          mlq, cif_object = reduce_hydrogen.mon_lib_query(
-                              residue     = ag,
-                              mon_lib_srv = model.get_mon_lib_srv(),
-                              raise_sorry = False)
 
   # ---------------------------------------------------------------------------
 
