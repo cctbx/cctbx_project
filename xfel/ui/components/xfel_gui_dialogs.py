@@ -3310,7 +3310,16 @@ class TrialDialog(BaseDialog):
     self.threshold_algorithm.ctr.SetSelection(self.threshold_algorithm.ctr.GetStrings().index(params.spotfinder.threshold.algorithm))
     self.kernel_size.ctr.SetValue(" ".join(str(k) for k in params.spotfinder.threshold.dispersion.kernel_size))
 
-    set_value(self.gain.ctr, params.spotfinder.threshold.dispersion.gain)
+    # Gain drives the spotfinder and the integration multiplier together. Prefer
+    # the spotfinder value; fall back to the integration one only when it is away
+    # from its default of 1, so a trial that never set a gain still shows an empty
+    # box rather than a 1 that would then be written back as a real gain.
+    gain = params.spotfinder.threshold.dispersion.gain
+    if gain is None:
+      detector_gain = params.integration.summation.detector_gain
+      if detector_gain is not None and detector_gain != 1:
+        gain = detector_gain
+    set_value(self.gain.ctr, gain)
     set_value(self.min_spot_size.ctr, params.spotfinder.filter.min_spot_size)
     set_value(self.sigma_background.ctr, params.spotfinder.threshold.dispersion.sigma_background)
     set_value(self.sigma_strong.ctr, params.spotfinder.threshold.dispersion.sigma_strong)
@@ -3333,6 +3342,22 @@ class TrialDialog(BaseDialog):
   def sync_phil_scope(self):
     def str_or_none(control):
       return control.GetValue() if control.GetValue() else "None"
+
+    # The gain is a property of the detector, so it applies to spotfinding and to
+    # integration alike, and dials reads whichever of the two is set (see the
+    # gain mismatch check in dials stills_process). The two differ in what an
+    # unset gain means: the spotfinder falls back to the gain from the format
+    # class, written as None, whereas the integration multiplier has no such
+    # option and takes its default of 1. Integration only reads it when it runs,
+    # so leave the parameter alone unless integration is switched on.
+    integration_phil = ""
+    if self.chk_integrate.GetValue():
+      integration_phil = f"""
+    integration {{
+      summation {{
+        detector_gain = {self.gain.ctr.GetValue() or 1}
+      }}
+    }}"""
 
     trial_phil = f"""
     dispatch {{
@@ -3375,7 +3400,7 @@ class TrialDialog(BaseDialog):
           enable = {self.chk_subsampling.GetValue()}
         }}
       }}
-    }}
+    }}{integration_phil}
     """
     params, msg = self.parse_trial_phil(trial_phil)
 
@@ -3679,6 +3704,26 @@ def get_trial_symmetry(db, trial):
             str(sg) if sg else None)
   except Exception:
     return None, None
+
+
+def get_trial_integration_phil(db, trial):
+  ''' Return the trial's integration parameters, re-expressed under the
+      reintegration scope, or "" if the trial sets none. Ensemble refinement
+      re-integrates the images as a sub step, so it should integrate them the way
+      the trial did; the gain in particular scales the integrated intensity
+      variances, and a mismatch silently changes the sigmas that reach merging. '''
+  if trial is None or not trial.target_phil_str:
+    return ""
+  try:
+    from xfel.ui import load_phil_scope_from_dispatcher
+    phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
+    diff = phil_scope.fetch_diff(phil_scope.fetch(parse(trial.target_phil_str)))
+    integration = diff.get('integration').as_str()
+  except Exception:
+    return ""
+  if not integration.strip():
+    return ""
+  return "reintegration {\n%s}\n" % integration
 
 
 _LINK_BITMAPS = {}
@@ -4416,6 +4461,7 @@ class DatasetDialog(BaseDialog):
 
     self._build_stages()
     self._select_initial_trial()
+    self._populate_integration_from_trial(overwrite=False)
     self.sync_shared_controls()
     self._rebuild_pipeline()
 
@@ -4449,6 +4495,28 @@ class DatasetDialog(BaseDialog):
         symmetry, or (None, None) if unavailable. '''
     return get_trial_symmetry(self.db, self._selected_trial())
 
+  def _populate_integration_from_trial(self, overwrite=False):
+    ''' Copy the selected trial's integration parameters into the ensemble
+        refinement stage, whose re-integration step would otherwise run with the
+        dispatcher defaults. They land in that stage's scope, so Edit PHIL shows
+        them and the user can change them there. With overwrite=False a stage
+        that already has stored parameters is left alone, so this only seeds new
+        stages; an explicit change of trial passes overwrite=True. Parameters the
+        reintegration scope does not define are dropped rather than rejected. '''
+    phil_str = get_trial_integration_phil(self.db, self._selected_trial())
+    if not phil_str:
+      return
+    for stage in self.stages:
+      if stage.task_type != 'ensemble_refinement' or stage.working_phil_scope is None:
+        continue
+      if not overwrite and stage.task is not None and stage.task.parameters:
+        continue
+      try:
+        stage.working_phil_scope, _ = stage.working_phil_scope.fetch(
+          parse(phil_str), track_unused_definitions=True)
+      except Exception:
+        continue
+
   def _populate_symmetry_from_trial(self, overwrite=False):
     ''' Fill the shared unit cell / space group from the selected trial. With
         overwrite=False only empty fields are filled. '''
@@ -4472,6 +4540,7 @@ class DatasetDialog(BaseDialog):
 
   def onTrialChoice(self, e):
     self._populate_symmetry_from_trial(overwrite=True)
+    self._populate_integration_from_trial(overwrite=True)
     e.Skip()
 
   def sync_shared_controls(self):
@@ -4570,6 +4639,12 @@ class DatasetDialog(BaseDialog):
       if s.task_type == 'ensemble_refinement' and s.enable_chk is not None:
         s.enable_chk.SetValue(bool(values.get('ensemble_refinement', False)))
         s._update_enabled_state()
+
+    # The trial is only chosen above, after __init__ seeded the stages from
+    # whichever trial the control happened to start on, and setting a choice
+    # control in code does not raise EVT_CHOICE. Re-seed against the trial the
+    # wizard actually picked.
+    self._populate_integration_from_trial(overwrite=True)
 
   # -- stage management ------------------------------------------------------
   def _append_stage(self, task_type, task=None, enabled=True, removable=False,
