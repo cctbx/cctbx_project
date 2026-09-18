@@ -15,24 +15,11 @@ question_answered so the window can push responses through the runner.
 
 from qttbx.qt import QtCore, QtWidgets
 
-from qttbx.widgets.chat.agent.conversation import Message, now
+from qttbx.widgets.chat.agent.conversation import (
+  Message, is_tool_result_answer, now)
 from qttbx.widgets.chat.message_bubble import MessageBubble
 from qttbx.widgets.chat.question_card import QuestionCard
 from qttbx.widgets.chat.tool_approval import ToolApprovalCard
-
-
-def _is_tool_result_answer(message):
-  """True for a user message whose blocks are ALL tool_result -- the answering
-  message the session appends after an assistant tool_use turn (a dispatched
-  batch, or claude_code's observed results). On reload these fold into the
-  bubble holding the matching tool_use cells; a text or mixed user message (the
-  user's own input, the turn-cap marker) is left as its own bubble.
-  """
-  if getattr(message, "role", None) != "user":
-    return False
-  content = getattr(message, "content", None) or []
-  return bool(content) and all(
-    getattr(b, "type", None) == "tool_result" for b in content)
 
 
 class ConversationView(QtWidgets.QScrollArea):
@@ -126,7 +113,7 @@ class ConversationView(QtWidgets.QScrollArea):
     # 'result' cells. A result with no matching cell falls back to its own cell
     # (MessageBubble._add_block's orphan path), so nothing is dropped. Live
     # callers keep the default: a streamed tool_result batch is its own bubble.
-    if fold_tool_results and self._bubbles and _is_tool_result_answer(message):
+    if fold_tool_results and self._bubbles and is_tool_result_answer(message):
       target = self._bubbles[-1]
       target.fold_tool_results(message.content)
       self._maybe_scroll_to_bottom()

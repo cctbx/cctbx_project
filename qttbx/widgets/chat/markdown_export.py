@@ -7,7 +7,8 @@ Without storage, image cells fall back to a sha256-tagged placeholder."""
 
 import json
 
-from qttbx.widgets.chat.agent.conversation import is_ephemeral_block
+from qttbx.widgets.chat.agent.conversation import (
+  is_ephemeral_block, is_tool_result_answer)
 
 
 def conversation_to_markdown(conv, storage=None):
@@ -25,6 +26,18 @@ def conversation_to_markdown(conv, storage=None):
 
       ## <assistant>
       <text content, possibly multiple paragraphs>
+      <tool-use fence>
+      <tool-result fence>
+
+  A tool-result answer -- the ``role="user"`` message the session appends
+  after an assistant tool_use turn, holding nothing but tool_result blocks --
+  carries the user role only because that is the Messages API shape; the
+  user did not write it. So unless it is the first message, it opens no
+  section of its own: its fences append under whatever section precedes it
+  (in a well-formed conversation, the assistant section that issued the
+  tool_use), as the reloaded window folds that message into the preceding
+  bubble. Every other user-role message heads a ``## You`` section, whether
+  the user typed it or the session appended it (the turn-cap marker).
 
   Each role block stitches the message's content blocks in order:
 
@@ -62,10 +75,15 @@ def conversation_to_markdown(conv, storage=None):
   out.append("")
   out.append("---")
   out.append("")
+  first = True
   for msg in conv.messages or []:
-    role = _role_label(msg)
-    out.append("## %s" % role)
-    out.append("")
+    # A tool-result answer folds under the preceding section (see the
+    # docstring). With nothing to fold under -- an orphan answer heading the
+    # conversation -- it keeps a role header so the output is never bare.
+    if first or not is_tool_result_answer(msg):
+      out.append("## %s" % _role_label(msg))
+      out.append("")
+    first = False
     for block in msg.content or []:
       # Ephemeral blocks (a transient context-pressure note) reach the model in
       # the live conversation but are never persisted -- and this export is a
