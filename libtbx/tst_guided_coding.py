@@ -8,7 +8,9 @@ runs gets HOME and TMPDIR inside that directory, so the command's captures
 directories (the temp directory) all land under the test's own root and go
 with it; the test never touches the system temporary directory. On Windows
 the test checks that the command refuses, prints a skip line and OK: the
-command and the procedure are for macOS and Linux only.
+command and the procedure are for macOS and Linux only. Without git on PATH
+the test prints a skip line and OK: the scratch repositories and the command
+under test both need git.
 """
 import hashlib
 import io
@@ -729,4 +731,8 @@ def run_all():
 
 
 if __name__ == "__main__":
-  run_all()
+  if shutil.which("git") is None:
+    print("Skipping tst_guided_coding: git is not available.")
+    print("OK")
+  else:
+    run_all()
