@@ -11,6 +11,7 @@ Description : XFEL UI Custom Dialogs
 
 import time
 import os
+import collections
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection, ColumnSorterMixin
 from wx.lib.scrolledpanel import ScrolledPanel
@@ -3714,9 +3715,22 @@ def get_trial_symmetry(db, trial):
 # suggestion to the user, never a silent decision.
 LATTICE_SYMMETRY_MAX_DELTA = 5.0
 
+IndexingAmbiguity = collections.namedtuple(
+  'IndexingAmbiguity', ['n_cosets', 'space_group', 'max_delta', 'lattice_symmetry'])
+
 def get_trial_indexing_ambiguity(db, trial, max_delta=LATTICE_SYMMETRY_MAX_DELTA):
-  ''' Report whether the trial's symmetry has an indexing ambiguity, as
-      (number of cosets, symmorphic space group symbol).
+  ''' Report whether the trial's symmetry has an indexing ambiguity, as an
+      IndexingAmbiguity(n_cosets, space_group, max_delta, lattice_symmetry).
+
+      max_delta is how far the cell actually is from the lattice symmetry that
+      produced the count, in degrees, and it is the number that says how much to
+      trust it. Zero means the metric symmetry is exact and the ambiguity is a
+      certainty. A non-zero value means the cell is only pseudo-symmetric and the
+      count is an inference from the tolerance: a cell 1.5 degrees from hexagonal
+      reports six indexing modes at the default tolerance, two at a tolerance of
+      one degree, and none below that. Which is right depends on whether indexing
+      actually spread the images across those settings, which the cell cannot
+      say, so report the deviation alongside the count and let the user judge.
 
       An ambiguity exists when the lattice metric supports more symmetry than the
       space group has, so a lattice can be indexed in more than one way and only
@@ -3726,36 +3740,39 @@ def get_trial_indexing_ambiguity(db, trial, max_delta=LATTICE_SYMMETRY_MAX_DELTA
       group in the same point group, keeping the centring, is what it wants for
       modify.cosym.space_group.
 
-      Returns (1, None) when there is no ambiguity, and also when the trial has no
-      known symmetry or anything else goes wrong, so that callers treat an
-      unanswerable question the same as "no ambiguity" and simply do not offer
-      cosym. '''
+      n_cosets is 1 with everything else None when there is no ambiguity, and
+      also when the trial has no known symmetry or anything else goes wrong, so
+      that callers treat an unanswerable question the same as "no ambiguity" and
+      simply do not offer cosym. '''
+  no_ambiguity = IndexingAmbiguity(1, None, None, None)
   if trial is None or not trial.target_phil_str:
-    return 1, None
+    return no_ambiguity
   try:
     from xfel.ui import load_phil_scope_from_dispatcher
     from cctbx import crystal, sgtbx
     from cctbx.sgtbx import cosets
-    from cctbx.sgtbx.lattice_symmetry import group as lattice_group
+    from cctbx.sgtbx.lattice_symmetry import group as lattice_group, find_max_delta
 
     phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
     params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
     unit_cell = params.indexing.known_symmetry.unit_cell
     space_group = params.indexing.known_symmetry.space_group
     if unit_cell is None or space_group is None:
-      return 1, None
+      return no_ambiguity
     space_group = space_group.group()
 
     # Count the cosets in the minimum cell, where the lattice group and the
     # space group share a basis.
     symmetry = crystal.symmetry(unit_cell=unit_cell, space_group=space_group)
     minimum = symmetry.change_basis(symmetry.change_of_basis_op_to_minimum_cell())
-    lattice_pg = lattice_group(minimum.unit_cell(),
-                               max_delta=max_delta).build_derived_point_group()
+    lattice = lattice_group(minimum.unit_cell(), max_delta=max_delta)
     crystal_pg = minimum.space_group().build_derived_point_group()
-    n_cosets = len(cosets.left_decomposition(lattice_pg, crystal_pg).partitions)
+    n_cosets = len(cosets.left_decomposition(lattice.build_derived_point_group(),
+                                             crystal_pg).partitions)
     if n_cosets <= 1:
-      return 1, None
+      return no_ambiguity
+    delta = find_max_delta(reduced_cell=minimum.unit_cell(), space_group=lattice)
+    lattice_symbol = str(sgtbx.space_group_info(group=lattice)).split('(')[0].strip()
 
     # The symmorphic group is quoted in the input setting, not the minimum cell.
     # Note build_derived_point_group() drops the centring, which would turn R 3
@@ -3763,9 +3780,10 @@ def get_trial_indexing_ambiguity(db, trial, max_delta=LATTICE_SYMMETRY_MAX_DELTA
     symmorphic = sgtbx.space_group(space_group.build_derived_point_group())
     symmorphic.expand_conventional_centring_type(
       space_group.conventional_centring_type_symbol())
-    return n_cosets, str(sgtbx.space_group_info(group=symmorphic))
+    return IndexingAmbiguity(n_cosets, str(sgtbx.space_group_info(group=symmorphic)),
+                             delta, lattice_symbol)
   except Exception:
-    return 1, None
+    return no_ambiguity
 
 
 def apply_cosym_to_step_list(task_type, step_list):
@@ -4616,9 +4634,8 @@ class DatasetDialog(BaseDialog):
         any of it. '''
     if not enabled:
       return
-    n_cosets, symmorphic_space_group = get_trial_indexing_ambiguity(
-      self.db, self._selected_trial())
-    if n_cosets <= 1:
+    ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial())
+    if ambiguity.n_cosets <= 1:
       return
     # Anchoring flips the mutually aligned patterns to match a reference; without
     # a model there is nothing to anchor to. The cosym README notes this is
@@ -4640,7 +4657,7 @@ class DatasetDialog(BaseDialog):
         phil_str += ('modify.cosym.space_group = "%s"\n'
                      'modify.cosym.dimensions = %d\n'
                      'modify.cosym.anchor = %s\n'
-                     % (symmorphic_space_group, n_cosets, anchor))
+                     % (ambiguity.space_group, ambiguity.n_cosets, anchor))
       try:
         stage.working_phil_scope, _ = stage.working_phil_scope.fetch(
           parse(phil_str), track_unused_definitions=True)
@@ -5217,18 +5234,28 @@ class DatasetWizard(BaseDialog):
     e.Skip()
 
   def _update_cosym_suggestion(self):
-    ''' Tick the cosym box, and say how many cosets were found, when the trial's
-        symmetry has an indexing ambiguity. Only ever a suggestion: an explicit
-        choice by the user is left alone. '''
-    n_cosets, _ = get_trial_indexing_ambiguity(self.db, self._selected_trial())
-    if n_cosets > 1:
+    ''' Tick the cosym box, and say what was found, when the trial's symmetry has
+        an indexing ambiguity. The label carries how far the cell is from the
+        lattice symmetry that implies the ambiguity, because that is what says
+        whether to believe the count: an exact metric makes it a certainty, while
+        a fraction of a degree makes it an inference from the tolerance that the
+        data may or may not bear out. Only ever a suggestion: an explicit choice
+        by the user is left alone. '''
+    ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial())
+    if ambiguity.n_cosets > 1:
+      if ambiguity.max_delta is not None and ambiguity.max_delta >= 0.005:
+        detail = 'lattice %.2f\u00b0 from %s' % (ambiguity.max_delta,
+                                                ambiguity.lattice_symmetry)
+      else:
+        detail = 'lattice is exactly %s' % ambiguity.lattice_symmetry
       self.chk_cosym.SetLabel(
-        'Resolve indexing ambiguity (cosym) \u2014 %d indexing modes found' % n_cosets)
+        'Resolve indexing ambiguity (cosym) \u2014 %d indexing modes, %s'
+        % (ambiguity.n_cosets, detail))
     else:
       self.chk_cosym.SetLabel(
         'Resolve indexing ambiguity (cosym) \u2014 none found for this symmetry')
     if not self._cosym_touched:
-      self.chk_cosym.SetValue(n_cosets > 1)
+      self.chk_cosym.SetValue(ambiguity.n_cosets > 1)
 
   def _update_model_mode(self, e=None):
     known = self.model_mode_radio.known.GetValue()
