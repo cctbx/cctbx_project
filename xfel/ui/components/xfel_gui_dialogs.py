@@ -3706,6 +3706,91 @@ def get_trial_symmetry(db, trial):
     return None, None
 
 
+# Tolerance in degrees when asking whether the unit cell metric supports a higher
+# symmetry than the space group does (the Le Page delta). This matches the
+# default that cosym itself uses, dials lattice_symmetry_max_delta, so that the
+# ambiguity reported here is the one cosym will go on to find. A cell with strong
+# pseudo-symmetry can be flagged at this tolerance, so what this feeds is a
+# suggestion to the user, never a silent decision.
+LATTICE_SYMMETRY_MAX_DELTA = 5.0
+
+def get_trial_indexing_ambiguity(db, trial, max_delta=LATTICE_SYMMETRY_MAX_DELTA):
+  ''' Report whether the trial's symmetry has an indexing ambiguity, as
+      (number of cosets, symmorphic space group symbol).
+
+      An ambiguity exists when the lattice metric supports more symmetry than the
+      space group has, so a lattice can be indexed in more than one way and only
+      the intensities can tell the settings apart. The number of ways is the
+      number of cosets of the crystal point group in the lattice point group, and
+      it is what modify.cosym wants for its number of dimensions. The symmorphic
+      group in the same point group, keeping the centring, is what it wants for
+      modify.cosym.space_group.
+
+      Returns (1, None) when there is no ambiguity, and also when the trial has no
+      known symmetry or anything else goes wrong, so that callers treat an
+      unanswerable question the same as "no ambiguity" and simply do not offer
+      cosym. '''
+  if trial is None or not trial.target_phil_str:
+    return 1, None
+  try:
+    from xfel.ui import load_phil_scope_from_dispatcher
+    from cctbx import crystal, sgtbx
+    from cctbx.sgtbx import cosets
+    from cctbx.sgtbx.lattice_symmetry import group as lattice_group
+
+    phil_scope = load_phil_scope_from_dispatcher(db.params.dispatcher)
+    params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+    unit_cell = params.indexing.known_symmetry.unit_cell
+    space_group = params.indexing.known_symmetry.space_group
+    if unit_cell is None or space_group is None:
+      return 1, None
+    space_group = space_group.group()
+
+    # Count the cosets in the minimum cell, where the lattice group and the
+    # space group share a basis.
+    symmetry = crystal.symmetry(unit_cell=unit_cell, space_group=space_group)
+    minimum = symmetry.change_basis(symmetry.change_of_basis_op_to_minimum_cell())
+    lattice_pg = lattice_group(minimum.unit_cell(),
+                               max_delta=max_delta).build_derived_point_group()
+    crystal_pg = minimum.space_group().build_derived_point_group()
+    n_cosets = len(cosets.left_decomposition(lattice_pg, crystal_pg).partitions)
+    if n_cosets <= 1:
+      return 1, None
+
+    # The symmorphic group is quoted in the input setting, not the minimum cell.
+    # Note build_derived_point_group() drops the centring, which would turn R 3
+    # into P 3, so put the conventional centring back.
+    symmorphic = sgtbx.space_group(space_group.build_derived_point_group())
+    symmorphic.expand_conventional_centring_type(
+      space_group.conventional_centring_type_symbol())
+    return n_cosets, str(sgtbx.space_group_info(group=symmorphic))
+  except Exception:
+    return 1, None
+
+
+def apply_cosym_to_step_list(task_type, step_list):
+  ''' Return step_list rewritten for an unresolved indexing ambiguity.
+
+      Scaling only prepares the data: until the ambiguity is broken, scaling and
+      postrefining against the model are not meaningful, so those steps come out.
+      Merging then runs modify_cosym to break it, and can scale and postrefine
+      once it has. Derived from the list passed in rather than hardcoded, so the
+      stage defaults stay the single source of truth. '''
+  steps = list(step_list or [])
+  if 'modify_cosym' in steps:
+    return steps                      # already a cosym step list, leave it alone
+  if task_type == 'scaling':
+    return [step for step in steps if step not in ('scale', 'postrefine')]
+  if task_type == 'merging':
+    rewritten = []
+    for step in steps:
+      rewritten.append(step)
+      if step == 'model_scaling':
+        rewritten.extend(['modify_cosym', 'scale', 'postrefine'])
+    return rewritten
+  return steps
+
+
 def get_trial_integration_phil(db, trial):
   ''' Return the trial's integration parameters, re-expressed under the
       reintegration scope, or "" if the trial sets none. Ensemble refinement
@@ -4517,6 +4602,51 @@ class DatasetDialog(BaseDialog):
       except Exception:
         continue
 
+  def _apply_cosym_from_trial(self, enabled):
+    ''' Set the scaling and merging stages up to resolve an indexing ambiguity
+        with cosym, or leave them alone if there is nothing to resolve.
+
+        Scaling drops the steps that cannot mean anything until the ambiguity is
+        broken, and merging gains modify_cosym followed by those steps. The cosym
+        parameters that follow from the symmetry are filled in too: the symmorphic
+        space group, the number of dimensions to embed in (the coset count, as the
+        cosym README prescribes), and whether to anchor the result to the
+        reference model, which is only possible when one was given. Everything
+        lands in the stage scopes, so Edit PHIL shows it all and the user can tune
+        any of it. '''
+    if not enabled:
+      return
+    n_cosets, symmorphic_space_group = get_trial_indexing_ambiguity(
+      self.db, self._selected_trial())
+    if n_cosets <= 1:
+      return
+    # Anchoring flips the mutually aligned patterns to match a reference; without
+    # a model there is nothing to anchor to. The cosym README notes this is
+    # mandatory for mark0 merging with postrefinement but is not enforced.
+    anchor = (self.model_mode_radio.known.GetValue() and
+              bool(self.shared_model.ctr.GetValue().strip()))
+    for stage in self.stages:
+      if stage.task_type not in ('scaling', 'merging') or stage.working_phil_scope is None:
+        continue
+      try:
+        step_list = stage.working_phil_scope.extract().dispatch.step_list
+      except Exception:
+        continue
+      if not step_list:
+        continue
+      phil_str = "dispatch.step_list = %s\n" % " ".join(
+        apply_cosym_to_step_list(stage.task_type, step_list))
+      if stage.task_type == 'merging':
+        phil_str += ('modify.cosym.space_group = "%s"\n'
+                     'modify.cosym.dimensions = %d\n'
+                     'modify.cosym.anchor = %s\n'
+                     % (symmorphic_space_group, n_cosets, anchor))
+      try:
+        stage.working_phil_scope, _ = stage.working_phil_scope.fetch(
+          parse(phil_str), track_unused_definitions=True)
+      except Exception:
+        continue
+
   def _populate_symmetry_from_trial(self, overwrite=False):
     ''' Fill the shared unit cell / space group from the selected trial. With
         overwrite=False only empty fields are filled. '''
@@ -4643,8 +4773,10 @@ class DatasetDialog(BaseDialog):
     # The trial is only chosen above, after __init__ seeded the stages from
     # whichever trial the control happened to start on, and setting a choice
     # control in code does not raise EVT_CHOICE. Re-seed against the trial the
-    # wizard actually picked.
+    # wizard actually picked. Cosym goes last: it reads the trial for the
+    # symmetry and the model controls for whether it can anchor.
     self._populate_integration_from_trial(overwrite=True)
+    self._apply_cosym_from_trial(values.get('cosym', False))
 
   # -- stage management ------------------------------------------------------
   def _append_stage(self, task_type, task=None, enabled=True, removable=False,
@@ -4799,6 +4931,28 @@ class DatasetDialog(BaseDialog):
         msg = s.push_scope()
         if msg is not None:
           return msg + '\nFix the parameters and press OK again'
+
+    # Resolving an indexing ambiguity and then postrefining needs a reference
+    # model: cosym aligns the patterns to each other, which fixes the indexing
+    # only up to an overall choice, and anchoring that choice to the model is
+    # what makes the result meaningful to postrefine against. The cosym README
+    # calls this mandatory and notes that nothing enforces it, so enforce it
+    # here. Checked against the stage scope rather than the wizard checkbox, so
+    # a hand-edited step list is covered too.
+    for s in self.stages:
+      if not s.is_enabled() or s.task_type != 'merging' or s.working_phil_scope is None:
+        continue
+      try:
+        p = s.working_phil_scope.extract()
+        steps = p.dispatch.step_list or []
+        anchored = bool(p.modify.cosym.anchor) and bool(p.scaling.model)
+      except Exception:
+        continue        # cannot read the scope, so cannot judge it
+      if 'modify_cosym' in steps and 'postrefine' in steps and not anchored:
+        return ('The merging stage resolves an indexing ambiguity with cosym and '
+                'then postrefines, which needs a reference model to anchor the '
+                'aligned patterns to.\nEither choose a reference model, or remove '
+                'postrefine from the merging step list.')
 
     # Identity
     if self.new:
@@ -5022,6 +5176,12 @@ class DatasetWizard(BaseDialog):
     s = wx.BoxSizer(wx.VERTICAL)
     self.chk_ensemble = wx.CheckBox(p, label='Include ensemble refinement')
     self.chk_ensemble.SetValue(True)
+    # Ticked for the user when the trial's symmetry has an indexing ambiguity,
+    # but always theirs to change: the detection depends on a metric tolerance
+    # and can flag a cell that is merely pseudo-symmetric.
+    self.chk_cosym = wx.CheckBox(p, label='Resolve indexing ambiguity (cosym)')
+    self._cosym_touched = False
+    self.Bind(wx.EVT_CHECKBOX, self._onCosymToggle, self.chk_cosym)
     self.shared_d_min = gctr.SpinCtrl(p, label='High res. limit (d_min):',
                                       label_size=(200, -1), label_style='normal',
                                       ctrl_size=(150, -1), ctrl_value='1.5',
@@ -5033,6 +5193,7 @@ class DatasetWizard(BaseDialog):
                                        ctrl_min=1, ctrl_max=1000, ctrl_step=1,
                                        ctrl_digits=0)
     s.Add(self.chk_ensemble, flag=wx.ALL, border=10)
+    s.Add(self.chk_cosym, flag=wx.ALL, border=10)
     s.Add(self.shared_d_min, flag=wx.EXPAND | wx.ALL, border=6)
     s.Add(self.shared_n_bins, flag=wx.EXPAND | wx.ALL, border=6)
     p.SetSizer(s)
@@ -5048,6 +5209,26 @@ class DatasetWizard(BaseDialog):
     if not sel or sel not in self.all_trial_numbers:
       return None
     return self.all_trials[self.all_trial_numbers.index(sel)]
+
+  def _onCosymToggle(self, e):
+    # Once the user has an opinion, stop overriding it when they navigate back
+    # and forth between the pages.
+    self._cosym_touched = True
+    e.Skip()
+
+  def _update_cosym_suggestion(self):
+    ''' Tick the cosym box, and say how many cosets were found, when the trial's
+        symmetry has an indexing ambiguity. Only ever a suggestion: an explicit
+        choice by the user is left alone. '''
+    n_cosets, _ = get_trial_indexing_ambiguity(self.db, self._selected_trial())
+    if n_cosets > 1:
+      self.chk_cosym.SetLabel(
+        'Resolve indexing ambiguity (cosym) \u2014 %d indexing modes found' % n_cosets)
+    else:
+      self.chk_cosym.SetLabel(
+        'Resolve indexing ambiguity (cosym) \u2014 none found for this symmetry')
+    if not self._cosym_touched:
+      self.chk_cosym.SetValue(n_cosets > 1)
 
   def _update_model_mode(self, e=None):
     known = self.model_mode_radio.known.GetValue()
@@ -5083,6 +5264,8 @@ class DatasetWizard(BaseDialog):
     self.btn_next.SetLabel('Finish' if i == len(self.pages) - 1 else 'Next >')
     if i == 1:
       self._update_model_mode()
+    if i == 2:
+      self._update_cosym_suggestion()
     self.page_panel.Layout()
     self.Layout()
 
@@ -5136,6 +5319,7 @@ class DatasetWizard(BaseDialog):
       'd_min': self.shared_d_min.ctr.GetValue(),
       'n_bins': self.shared_n_bins.ctr.GetValue(),
       'ensemble_refinement': self.chk_ensemble.GetValue(),
+      'cosym': self.chk_cosym.GetValue(),
     }
 
   def _finish(self):
