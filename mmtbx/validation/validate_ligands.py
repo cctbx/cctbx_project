@@ -537,24 +537,42 @@ class manager(list):
           print('    ' + c.only_residue().id_str().split('"')[1], file=self.log)
 
   def show_fragmentation(self):
+    '''
+    Fragments of every ligand copy. Copies of one ligand can differ - atoms
+    missing in one of them, different per-fragment density - so each is shown.
+    A copy whose fragments hold exactly the same atom names as one already
+    printed lists only its values, to keep the section short.
+    '''
     make_sub_header(' Fragments', out=self.log)
-    resnames = []
+    seen = {}
     for lr in self:
-      if lr.resname in resnames: continue
-      resnames.append(lr.resname)
       frag_isels = lr.ligand_rigid_components_isels
       ccs = lr.get_ccs()
       # frag_obs/frag_mod are ordered by fragment (same order as frag_isels)
       fo = list(ccs.frag_obs.values()) if (ccs and getattr(ccs, 'frag_obs', None)) else None
       fm = list(ccs.frag_mod.values()) if (ccs and getattr(ccs, 'frag_mod', None)) else None
+      frag_names = [[lr._ph.atoms()[idx].name for idx in rigid_comp]
+                    for rigid_comp in frag_isels]
+      def values(i):
+        if fo is not None and fm is not None and i < len(fo):
+          return '(obs/model %.2f/%.2f)' % (fo[i], fm[i])
+        return ''
+      key = (lr.resname, tuple(tuple(n.strip() for n in names)
+                               for names in frag_names))
       print('\n', file=self.log)
+      if key in seen:
+        print('%s  (same fragments as %s)' % (lr.id_str, seen[key]), file=self.log)
+        for i in range(len(frag_names)):
+          v = values(i)
+          if v:
+            print('  fragment %s:\t' % (i + 1), v, file=self.log)
+        continue
+      seen[key] = lr.id_str
       print(lr.id_str, file=self.log)
-      for i, rigid_comp in enumerate(frag_isels, start=1):
-        names = ", ".join(lr._ph.atoms()[idx].name for idx in rigid_comp)
-        extra = ''
-        if fo is not None and fm is not None and i - 1 < len(fo):
-          extra = '\t(obs/model %.2f/%.2f)' % (fo[i - 1], fm[i - 1])
-        print('  fragment %s:\t' % i, names + extra, file=self.log)
+      for i, names in enumerate(frag_names):
+        print('  fragment %s:\t' % (i + 1),
+              ", ".join(names) + ('\t' + values(i) if values(i) else ''),
+              file=self.log)
 
 # =============================================================================
 

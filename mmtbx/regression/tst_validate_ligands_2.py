@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time, traceback, os
 import libtbx.load_env
 from libtbx.utils import null_out
+from six.moves import cStringIO as StringIO
 import mmtbx.model
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
@@ -21,6 +22,7 @@ def run():
   run_test01()
   run_test_get_results_fallback()
   run_test_hbonds_ligand_acceptor()
+  run_test_show_fragmentation_per_copy()
 
 # ------------------------------------------------------------------------------
 
@@ -147,6 +149,54 @@ def run_test_hbonds_ligand_acceptor():
   print('OK')
 
 # ------------------------------------------------------------------------------
+
+def run_test_show_fragmentation_per_copy():
+  '''
+  Every copy appears in the Fragments section, not just the first of each
+  residue name: copies of one ligand can differ in composition (atoms missing)
+  and in their per-fragment density values, which is the comparison the
+  section exists for. A copy whose fragments are identical to one already
+  shown is listed compactly instead of repeating the atom lists.
+  '''
+  print('test_show_fragmentation_per_copy')
+  model_fn = "tst_show_fragmentation.pdb"
+  with open(model_fn, "w") as f:
+    f.write(pdb_str_fragmentation)
+  result = run_program(program_class=val_lig.Program,
+    args=[model_fn, 'run_reduce2=False'], logger=null_out())
+  sio = StringIO()
+  result.ligand_manager.show_fragmentation()
+  result.ligand_manager.log = sio
+  result.ligand_manager.show_fragmentation()
+  out = sio.getvalue()
+  flat = ' '.join(out.split())          # id_str keeps its pdb padding
+  for id_str in ('GOL A 1', 'GOL A 2', 'GOL A 3'):
+    assert id_str in flat, (id_str, out)
+  # the truncated copy has its own fragment listing
+  assert out.count('fragment 1:') >= 2, out
+
+# ------------------------------------------------------------------------------
+
+# Three glycerols: A 1 and A 2 complete and identical, A 3 missing C3/O3.
+pdb_str_fragmentation = '''
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+HETATM    1  C1  GOL A   1       5.578   9.079   8.959  1.00 20.00           C
+HETATM    2  C2  GOL A   1       5.404  10.193   9.989  1.00 20.00           C
+HETATM    3  C3  GOL A   1       4.003  10.183  10.608  1.00 20.00           C
+HETATM    4  O1  GOL A   1       5.482   7.794   9.563  1.00 20.00           O
+HETATM    5  O2  GOL A   1       5.628  11.463   9.370  1.00 20.00           O
+HETATM    6  O3  GOL A   1       3.905  11.289  11.512  1.00 20.00           O
+HETATM    7  C1  GOL A   2      15.578  19.079  18.959  1.00 20.00           C
+HETATM    8  C2  GOL A   2      15.404  20.193  19.989  1.00 20.00           C
+HETATM    9  C3  GOL A   2      14.003  20.183  20.608  1.00 20.00           C
+HETATM   10  O1  GOL A   2      15.482  17.794  19.563  1.00 20.00           O
+HETATM   11  O2  GOL A   2      15.628  21.463  19.370  1.00 20.00           O
+HETATM   12  O3  GOL A   2      13.905  21.289  21.512  1.00 20.00           O
+HETATM   13  C1  GOL A   3      25.578  29.079  28.959  1.00 20.00           C
+HETATM   14  C2  GOL A   3      25.404  30.193  29.989  1.00 20.00           C
+HETATM   15  O1  GOL A   3      25.482  27.794  29.563  1.00 20.00           O
+HETATM   16  O2  GOL A   3      25.628  31.463  29.370  1.00 20.00           O
+'''
 
 pdb_str_tst_01 = '''
 REMARK from 386D, edited in Coot to add EDO and two HOH to test specific
