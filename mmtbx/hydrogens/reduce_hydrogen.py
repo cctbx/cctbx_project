@@ -1151,7 +1151,14 @@ class place_hydrogens():
             # don't add polymer H atoms. Terminal H atoms added elsewhere
             #
             if mlq.test_for_peptide(atom_dict):
-              atom_dict = _remove_atoms(atom_dict, ['H2', 'HXT'])
+              # only terminal H: 696 geostd peptide-like ligands (6EL, NXL)
+              # name a ring/chain CH2 H 'H2'
+              terminal = {'H2': 'N', 'HXT': 'OXT'}
+              remove = []
+              for b in mlq.bond_list:
+                for h, p in [(b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)]:
+                  if terminal.get(h) == p: remove.append(h)
+              atom_dict = _remove_atoms(atom_dict, remove)
             elif mlq.test_for_rna_dna(atom_dict):
               atom_dict = _remove_atoms(atom_dict, ["HO3'", 'HO3*'])
             for k, v in six.iteritems(atom_dict):

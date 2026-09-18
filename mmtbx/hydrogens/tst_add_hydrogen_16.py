@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb, iotbx.cif
+import mmtbx.model
+from libtbx.utils import null_out
 from mmtbx.monomer_library import server
 from mmtbx.hydrogens import reduce_hydrogen
 
@@ -7,8 +9,21 @@ def run():
   test_001()
   test_002()
   test_003()
+  test_004()
+  test_005()
 
 # ------------------------------------------------------------------------------
+
+def h_names_on(pdb_str, parent_name):
+  '''Place H (no optimization); return names of the H bonded to parent_name.'''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  atoms = obj.get_model().get_hierarchy().atoms()
+  parent = [a for a in atoms if a.name.strip() == parent_name][0]
+  return sorted(a.name.strip() for a in atoms
+    if a.element.strip() == 'H' and a.distance(parent) < 1.2)
 
 def test_001():
   '''
@@ -65,6 +80,22 @@ def test_003():
   mon_lib_srv = get_user_lig_srv()
   orders = reduce_hydrogen._bond_orders("LIG", mon_lib_srv, {})
   assert orders == {}, sorted(tuple(sorted(k)) for k in orders)
+
+def test_004():
+  '''
+    6EL (5yj1) passes test_for_peptide (N, CA, C, O) but its H2 sits on ring
+    CG, not on N. The N-terminal H2 filter removed it by name: CG got 1 H.
+  '''
+  names = h_names_on(pdb_str_004, 'CG')
+  assert names == ['H2', 'H3'], names
+
+def test_005():
+  '''
+    Control: 0TD H2 is the amine H on N; a residue that is not first in the
+    chain keeps only H on N.
+  '''
+  names = h_names_on(pdb_str_005, 'N')
+  assert names == ['H'], names
 
 # ------------------------------------------------------------------------------
 
@@ -213,6 +244,46 @@ HETATM    2  C17 LIG A   1       0.000   0.000   0.000  1.00 20.00           C
 HETATM    3  C20 LIG A   1       1.520   0.000   0.000  1.00 20.00           C
 HETATM    4 H171 LIG A   1      -0.313  -0.464   0.792  1.00 20.00           H
 HETATM    5 H172 LIG A   1      -0.313  -0.464  -0.792  1.00 20.00           H
+END
+"""
+
+pdb_str_004 = """
+CRYST1  201.615  201.615  123.572  90.00  90.00 120.00 H 3
+HETATM    1  N   6EL A 501     -18.527  39.011   4.685  1.00 42.85           N
+HETATM    2  CA  6EL A 501     -19.238  37.942   3.975  1.00 41.65           C
+HETATM    3  C   6EL A 501     -19.091  38.062   2.480  1.00 39.05           C
+HETATM    4  O   6EL A 501     -18.732  39.122   1.981  1.00 35.88           O
+HETATM    5  CB  6EL A 501     -18.971  36.528   4.429  1.00 41.97           C
+HETATM    6  CG  6EL A 501     -20.045  35.653   3.781  1.00 34.50           C
+HETATM    7  CD  6EL A 501     -20.198  35.965   2.286  1.00 34.24           C
+HETATM    8  OE1 6EL A 501     -20.787  35.166   1.567  1.00 32.94           O
+HETATM    9  NE2 6EL A 501     -19.708  37.135   1.735  1.00 37.42           N
+HETATM   10  CAE 6EL A 501     -16.110  42.317   6.704  1.00 46.24           C
+HETATM   11  CAF 6EL A 501     -17.290  43.026   6.465  1.00 43.30           C
+HETATM   12  CAG 6EL A 501     -15.983  40.985   6.304  1.00 44.16           C
+HETATM   13  CAH 6EL A 501     -18.362  42.399   5.839  1.00 46.24           C
+HETATM   14  CAN 6EL A 501     -17.263  39.108   5.113  1.00 43.31           C
+HETATM   15  CAO 6EL A 501     -19.045  40.227   4.740  1.00 46.27           C
+HETATM   16  CAP 6EL A 501     -17.059  40.369   5.678  1.00 43.68           C
+HETATM   17  CAQ 6EL A 501     -18.247  41.059   5.505  1.00 41.14           C
+HETATM   18  OAC 6EL A 501     -16.455  38.154   5.201  1.00 37.79           O
+HETATM   19  OAD 6EL A 501     -20.260  40.446   4.509  1.00 36.94           O
+END
+"""
+
+pdb_str_005 = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  N   0TD A 501       9.131  12.228   9.576  1.00 20.00           N
+HETATM    2  CA  0TD A 501       9.235  10.781   9.451  1.00 20.00           C
+HETATM    3  C   0TD A 501       7.932  10.147  10.006  1.00 20.00           C
+HETATM    4  O   0TD A 501       7.556  10.575  11.117  1.00 20.00           O
+HETATM    5  CSB 0TD A 501      13.190  10.241  10.653  1.00 20.00           C
+HETATM    6  SB  0TD A 501      11.968  10.858   9.476  1.00 20.00           S
+HETATM    7  CB  0TD A 501      10.441  10.157  10.187  1.00 20.00           C
+HETATM    8  CG  0TD A 501      10.431   8.611  10.102  1.00 20.00           C
+HETATM    9  OD2 0TD A 501      10.667   8.104   8.990  1.00 20.00           O
+HETATM   10  OD1 0TD A 501      10.165   8.013  11.163  1.00 20.00           O
+HETATM   11  OXT 0TD A 501       7.383   9.269   9.316  1.00 20.00           O
 END
 """
 
