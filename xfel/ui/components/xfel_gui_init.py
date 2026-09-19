@@ -1189,6 +1189,9 @@ class MergingStatsSentinel(Thread):
     sizey = (sizey-25)/95
 
     if len(self.parent.run_window.mergingstats_tab.dataset_versions) > 1:
+      # Several versions at once: an embedding plot belongs to one merging run,
+      # so there is no single one to show.
+      self.parent.run_window.mergingstats_tab.cosym_pngs = []
       all_results = []
       for folder in self.parent.run_window.mergingstats_tab.dataset_versions:
         scraper = Scraper(folder, '#')
@@ -1197,7 +1200,13 @@ class MergingStatsSentinel(Thread):
                                                                               self.parent.run_window.mergingstats_tab.dataset_name,
                                                                               sizex, sizey, interactive=False)
     else:
-      scraper = Scraper(self.parent.run_window.mergingstats_tab.dataset_versions[0], '%')
+      from xfel.ui.db.merging_log_scraper import find_cosym_embedding_plots
+      version_path = self.parent.run_window.mergingstats_tab.dataset_versions[0]
+      # Only a path lookup, so it is safe to do on this worker thread; the tab
+      # loads and draws the images on the main thread.
+      self.parent.run_window.mergingstats_tab.cosym_pngs = find_cosym_embedding_plots(
+        version_path, self.parent.run_window.mergingstats_tab.merging_task_parameters)
+      scraper = Scraper(version_path, '%')
       results = scraper.scrape()
       self.parent.run_window.mergingstats_tab.png = scraper.plot_single_results(results,
                                                                                 self.parent.run_window.mergingstats_tab.dataset_name,
@@ -3412,8 +3421,11 @@ class MergingStatsTab(BaseTab):
     self.main = main
     self.all_datasets = []
     self.dataset_versions = []
+    self.merging_task_parameters = None
+    self.cosym_pngs = []
     self.png = None
     self.static_bitmap = None
+    self.cosym_bitmap = None
     self.redraw_windows = True
 
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -3440,10 +3452,41 @@ class MergingStatsTab(BaseTab):
     self.datasets_sizer.Add(self.dataset_version, flag=wx.EXPAND | wx.ALL, border = 5)
 
     self.plots_panel = wx.Panel(self, size=(200, 120))
-    self.mergingstats_panelsize = self.plots_panel.GetSize()
-    self.plots_box = wx.StaticBox(self.plots_panel, label='Statistics')
-    self.plots_sizer = wx.StaticBoxSizer(self.plots_box, wx.VERTICAL)
-    self.plots_panel.SetSizer(self.plots_sizer)
+    self.plots_nb = wx.Notebook(self.plots_panel)
+
+    self.stats_page = wx.Panel(self.plots_nb)
+    self.plots_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.stats_page.SetSizer(self.plots_sizer)
+
+    # The embedding plot cosym writes is the only way to tell whether it resolved
+    # the indexing ambiguity or merely produced a number, so it gets a page of its
+    # own rather than being left as a file in the output directory.
+    self.cosym_page = wx.Panel(self.plots_nb)
+    self.cosym_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.cosym_choice = gctr.ChoiceCtrl(self.cosym_page,
+                                        label='Plot:',
+                                        label_size=(50, -1),
+                                        label_style='normal',
+                                        ctrl_size=(250, -1),
+                                        choices=[])
+    self.cosym_label = wx.StaticText(self.cosym_page, label='')
+    self.cosym_image_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.cosym_sizer.Add(self.cosym_choice, 0, flag=wx.ALL, border=5)
+    self.cosym_sizer.Add(self.cosym_label, 0, flag=wx.ALL, border=5)
+    self.cosym_sizer.Add(self.cosym_image_sizer, 1, flag=wx.EXPAND)
+    self.cosym_page.SetSizer(self.cosym_sizer)
+
+    self.plots_nb.AddPage(self.stats_page, 'Statistics')
+    self.plots_nb.AddPage(self.cosym_page, 'Cosym embedding')
+    plots_panel_sizer = wx.BoxSizer(wx.VERTICAL)
+    # Without a floor GTK warns about a negative content width while laying the
+    # notebook header out inside the panel's small initial size.
+    self.plots_nb.SetMinSize((240, 120))
+    plots_panel_sizer.Add(self.plots_nb, 1, flag=wx.EXPAND)
+    self.plots_panel.SetSizer(plots_panel_sizer)
+    # The statistics figure is generated to fit its page, so measure the page
+    # rather than the panel that holds the notebook.
+    self.mergingstats_panelsize = self.stats_page.GetSize()
 
     self.tab_sizer.Add(self.datasets_panel, 0,
                        flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
@@ -3457,10 +3500,17 @@ class MergingStatsTab(BaseTab):
     self.Bind(EVT_MERGINGSTATS_REFRESH, self.onRefresh)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
     self.Bind(wx.EVT_SIZE, self.OnSize)
+    self.Bind(wx.EVT_CHOICE, self.onCosymChoice, self.cosym_choice.ctr)
 
   def OnSize(self, e):
-    self.mergingstats_panelsize = self.plots_panel.GetSize()
+    # Only record the size. Both plots are redrawn at the new size on the next
+    # refresh, which is how the statistics figure has always behaved, and it
+    # keeps resizing from rescaling an image on every event.
+    self.mergingstats_panelsize = self.stats_page.GetSize()
     e.Skip()
+
+  def onCosymChoice(self, e):
+    self._draw_cosym()
 
   def onToggleActivity(self, e):
     self.refresh_datasets()
@@ -3499,6 +3549,15 @@ class MergingStatsTab(BaseTab):
     sel = self.datasets.GetSelection()
     dataset = self.all_datasets[sel]
     self.dataset_name = dataset.name
+    # The merging task owns the cosym settings, including what its embedding plot
+    # is called. Read here, on the main thread, for the sentinel to use later.
+    self.merging_task_parameters = None
+    try:
+      for task in dataset.tasks:
+        if task.type == 'merging' and task.parameters:
+          self.merging_task_parameters = task.parameters
+    except Exception:
+      pass
     if self.dataset_version.ctr.GetSelection() == 0:
       self.dataset_versions = [version.output_path() for version in dataset.active_versions]
     else:
@@ -3509,20 +3568,86 @@ class MergingStatsTab(BaseTab):
   def onRefresh(self, e):
     self.plot_merging_stats()
 
+  def _scaled_bitmap(self, path, panel):
+    ''' Load an image and scale it to fit the panel, keeping its aspect ratio and
+        never enlarging it. Returns None when the file cannot be read, which is a
+        normal transient: these files are written by a running job and a refresh
+        can catch one part way through. '''
+    with wx.LogNull():
+      image = wx.Image(path, wx.BITMAP_TYPE_ANY)
+    if not image.IsOk():
+      return None
+    width, height = image.GetWidth(), image.GetHeight()
+    panel_width, panel_height = panel.GetSize()
+    if width > 0 and height > 0 and panel_width > 20 and panel_height > 20:
+      scale = min((panel_width - 10) / width, (panel_height - 10) / height, 1.0)
+      if scale < 1.0:
+        image = image.Scale(max(1, int(width * scale)), max(1, int(height * scale)),
+                            wx.IMAGE_QUALITY_HIGH)
+    return wx.Bitmap(image)
+
   def plot_merging_stats(self):
-    if self.png is not None:
-      if self.static_bitmap is not None:
-        try:
-          self.static_bitmap.Destroy()
-        except RuntimeError as e:
-          if "StaticBitmap has been deleted" not in str(e):
-            raise
-      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap = wx.StaticBitmap(
-        self.plots_panel, wx.ID_ANY, wx.Bitmap(img))
+    # EVT_SIZE fires once, before the tab has been laid out at its real size, and
+    # not again when a notebook page is selected, so the size recorded there can
+    # stay at its construction value until the user happens to resize the window.
+    # Take it here as well, where it is certain to be current, so the statistics
+    # figure is generated at the right size from the next refresh onwards.
+    self.mergingstats_panelsize = self.stats_page.GetSize()
+    self._draw_stats()
+    self._draw_cosym()
+
+  def _draw_stats(self):
+    ''' Draw the statistics figure, or nothing at all when there is none. Clearing
+        first matters: leaving the previous version's figure up while a different
+        one is selected reads as an answer rather than an absence. '''
+    self.plots_sizer.Clear(delete_windows=True)
+    self.static_bitmap = None
+    bitmap = self._scaled_bitmap(self.png, self.stats_page) if self.png else None
+    if bitmap is not None:
+      self.static_bitmap = wx.StaticBitmap(self.stats_page, wx.ID_ANY, bitmap)
       self.plots_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
-      self.plots_panel.SetSizer(self.plots_sizer)
-      self.plots_panel.Layout()
+    self.stats_page.Layout()
+
+  def _draw_cosym(self):
+    ''' Draw the cosym embedding plot for the current selection, or explain why
+        there is not one. '''
+    self.cosym_image_sizer.Clear(delete_windows=True)
+    self.cosym_bitmap = None
+
+    paths = [path for path in (self.cosym_pngs or []) if os.path.exists(path)]
+    names = [os.path.basename(path) for path in paths]
+    # Keep the selector in step with what was found, holding on to the user's
+    # pick across the refreshes that happen every few seconds.
+    if names != list(self.cosym_choice.ctr.GetStrings()):
+      previous = self.cosym_choice.ctr.GetStringSelection()
+      self.cosym_choice.ctr.Set(names)
+      if previous in names:
+        self.cosym_choice.ctr.SetStringSelection(previous)
+      elif names:
+        self.cosym_choice.ctr.SetSelection(0)
+    self.cosym_choice.Show(len(paths) > 1)
+
+    if not paths:
+      self.cosym_label.SetLabel(
+        'No cosym embedding plot for this selection.\nOne is written by the '
+        'merging job when modify_cosym runs, and is shown for a single dataset '
+        'version at a time.')
+      self.cosym_label.Show(True)
+      self.cosym_page.Layout()
+      return
+
+    index = min(max(0, self.cosym_choice.ctr.GetSelection()), len(paths) - 1)
+    bitmap = self._scaled_bitmap(paths[index], self.cosym_page)
+    if bitmap is None:
+      # Unreadable rather than absent: a format wx cannot display (cosym can be
+      # asked for pdf) or a file still being written.
+      self.cosym_label.SetLabel('Cannot display %s' % names[index])
+      self.cosym_label.Show(True)
+    else:
+      self.cosym_label.Show(False)
+      self.cosym_bitmap = wx.StaticBitmap(self.cosym_page, wx.ID_ANY, bitmap)
+      self.cosym_image_sizer.Add(self.cosym_bitmap, 0, flag=wx.ALL, border=3)
+    self.cosym_page.Layout()
 
 
 class TrialPanel(wx.Panel):
