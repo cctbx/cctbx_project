@@ -50,13 +50,13 @@ public:
     this_occu = _multiplier*(1 - original_occu)
  */
   dependent_occupancy(scalar_parameter *original_occu,
-                double original_multiplier,
+                double _original_multiplier,
                 double _multiplier,
                 bool _as_one,
                 scatterer_type *scatterer)
   : parameter(1),
+    original_multiplier(_original_multiplier),
     multiplier(_multiplier),
-    original_multiplier(original_multiplier),
     as_one(_as_one),
     single_asu_scatterer_parameter(scatterer)
   {

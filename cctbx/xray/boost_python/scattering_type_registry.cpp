@@ -46,13 +46,13 @@ namespace {
     }
 
     static
-    std::auto_ptr<w_t>
+    boost::shared_ptr<w_t>
     constructor_for_pickle(
       boost::python::dict const& type_index_pairs,
       boost::python::list const& unique_gaussians,
       w_t::unique_counts_t const& unique_counts)
     {
-      std::auto_ptr<w_t> self(new w_t);
+      boost::shared_ptr<w_t> self(new w_t);
       scitbx::stl::boost_python::update_map_from_dict(
         self->type_index_pairs, type_index_pairs);
       scitbx::stl::boost_python::update_vector_from_list(

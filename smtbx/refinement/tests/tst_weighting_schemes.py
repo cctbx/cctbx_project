@@ -14,7 +14,7 @@ from six.moves import range
 def exercise_optimise_shelxl_weights():
   def calc_goof(fo2, fc, w, k, n_params):
     fc2 = fc.as_intensity_array()
-    w = w(fo2.data(), fo2.sigmas(), fc2.data(), k)
+    w = w(fo2.data(), fo2.sigmas(), fc2.data(), fo2.indices(), k)
     return math.sqrt(flex.sum(
       w * flex.pow2(fo2.data() - k*fc2.data()))/(fo2.size() - n_params))
   xs = smtbx.development.sucrose()
@@ -75,7 +75,7 @@ def exercise_weighting_schemes():
     str(shelx_weighting),
     "w=1/[\\s^2^(Fo^2^)+(0.1234P)^2^+0.5678P] where P=(Fo^2^+2Fc^2^)/3")
   try:
-    shelx_weighting(fo_sq=1, sigma=1, fc_sq=1, scale_factor=None)
+    shelx_weighting(fo_sq=1, sigma=1, fc_sq=1, h=(1, 0, 0), scale_factor=None)
   except RuntimeError as e:
     assert 'SMTBX_ASSERT' in str(e)
   else:

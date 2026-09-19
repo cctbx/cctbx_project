@@ -139,7 +139,8 @@ jobs:
           set -xe
           pwd
           ln -s ./modules/cctbx_project/libtbx/auto_build/bootstrap.py .
-          python ./modules/cctbx_project/libtbx/auto_build/bootstrap.py base build --nproc=4
+          python ./modules/cctbx_project/libtbx/auto_build/bootstrap.py base build --nproc=4 \
+            --config_flags="--cxxstd=c++17"
           source ./build/setpaths.sh
           libtbx.configure \
             cma_es \
@@ -302,7 +303,8 @@ jobs:
           )
           call %CONDA%\condabin\activate.bat base
           copy .\modules\cctbx_project\libtbx\auto_build\bootstrap.py .
-          python .\modules\cctbx_project\libtbx\auto_build\bootstrap.py base build --nproc=4
+          python .\modules\cctbx_project\libtbx\auto_build\bootstrap.py base build --nproc=4 ^
+            --config_flags="--cxxstd=c++17"
           if %errorlevel% neq 0 exit /b %errorlevel%
           call .\build\setpaths.bat
           call libtbx.configure ^

@@ -86,9 +86,9 @@ class hydrogens(geometrical.any):
     pivot_element = pivot.scattering_type
     d = self.room_temperature_bond_length.get(pivot_element)
     if d is None:
-      raise InvalidConstraint(
-        "Invalid %s constraint involving %s:"
-        " ideal bond length not defined to atom type %s" %(
+      d = 1.0
+      print("Warning: %s constraint involving %s:"
+        " ideal bond length not defined to atom type %s, using 1A" %(
           self.__class__.__name__, pivot.label, pivot_element))
     if temperature is not None:
       if   temperature < -70: d += 0.02
@@ -105,12 +105,35 @@ class terminal_tetrahedral_xhn_site(hydrogens):
     if len(pivot_neighbour_site_params) != 1:
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    """The azimuth reaches the objective only through the hydrogens' own site
+    derivatives: d(obj)/d(azimuth) = sum_i d(obj)/d(site_i) . d(site_i)/d(azimuth).
+    If no constrained hydrogen has grad_site set, every term is zero, and the
+    azimuth is a refinable parameter with an identically zero row in the normal
+    matrix -- which fails the Cholesky decomposition at its first pivot.
+
+    Olex2's electron-diffraction path hits exactly this: it runs a
+    thickness-only pre-refinement ("fixing ALL parameters but thickness"), and
+    an AFIX 137/147 group left rotating through it gives "Cholesky failure /
+    the leading minor of order 1 for Scalar Parameter is not positive
+    definite". Reproduced on TyrosineED: the NH3 and hydroxyl azimuths both had
+    a diagonal of exactly 0 while the thickness row was healthy at 9.4e-08.
+
+    Not refining a rotation that nothing in the refinement can see is the
+    honest reading -- there is no information about it -- and it turns a hard
+    failure into a well-posed smaller problem.
+    """
+    scatterers = reparametrisation.structure.scatterers()
+    movable = any(scatterers[i].flags.grad_site()
+                  for i in self.constrained_site_indices)
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotating)
+                                    value=0,
+                                    variable=self.rotating and movable)
     uc = reparametrisation.structure.unit_cell()
     for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
       for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
-        if j == k: continue
+        if j == k or (k not in self.constrained_site_indices and\
+                      j not in self.constrained_site_indices):
+          continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), tetrahedral_angle)
     return reparametrisation.add(
@@ -136,6 +159,12 @@ class terminal_tetrahedral_xh3_sites(terminal_tetrahedral_xhn_site):
                                    'N' : 0.89,
                                    }
 
+class terminal_tetrahedral_xh6_sites(terminal_tetrahedral_xhn_site):
+  n_constrained_sites = 6
+  room_temperature_bond_length = { 'C' : 0.96,
+                                   'N' : 0.89,
+                                   }
+
 
 class tertiary_xh_site(hydrogens):
 
@@ -143,6 +172,7 @@ class tertiary_xh_site(hydrogens):
   room_temperature_bond_length = { 'C' : 0.98,
                                    'N' : 0.91,
                                    'B' : 0.98,
+                                   'O' : 0.85,
                                    }
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
@@ -260,11 +290,17 @@ class terminal_planar_xh2_sites(hydrogens):
         if j == k: continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), 120.0)
+    uc = reparametrisation.structure.unit_cell()
+    x_s = col(pivot_site)
+    d_s = sorted(
+        (uc.distance(s.value, x_s), i)
+        for i, s in enumerate(pivot_neighbour_substituent_site_params)
+    )
     return reparametrisation.add(
       _.terminal_planar_xh2_sites,
       pivot=pivot_site_param,
       pivot_neighbour=pivot_neighbour_site_params[0],
-      pivot_neighbour_substituent=pivot_neighbour_substituent_site_params[0],
+      pivot_neighbour_substituent=pivot_neighbour_substituent_site_params[d_s[0][1]],
       length=bond_length,
       hydrogen_0=hydrogens[0],
       hydrogen_1=hydrogens[1])
@@ -372,7 +408,7 @@ class staggered_terminal_tetrahedral_xh_site(
 
 class polyhedral_bh_site(hydrogens):
 
-  n_constrained_sites = 5
+  n_constrained_sites = 1
   room_temperature_bond_length = { 'B': 1.10,
                                    'C': 1.10, }
 
