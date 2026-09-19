@@ -11,6 +11,7 @@ def run():
   test_003()
   test_004()
   test_005()
+  test_006()
 
 # ------------------------------------------------------------------------------
 
@@ -96,6 +97,14 @@ def test_005():
   '''
   names = h_names_on(pdb_str_005, 'N')
   assert names == ['H'], names
+
+def test_006():
+  '''
+    GLZ (aminoacetaldehyde) passes test_for_peptide; its HXT is the aldehyde
+    H on C (no OXT). The C-terminal HXT filter removed it by name.
+  '''
+  names = h_names_on(pdb_str_006, 'C')
+  assert names == ['HXT'], names
 
 # ------------------------------------------------------------------------------
 
@@ -284,6 +293,15 @@ HETATM    8  CG  0TD A 501      10.431   8.611  10.102  1.00 20.00           C
 HETATM    9  OD2 0TD A 501      10.667   8.104   8.990  1.00 20.00           O
 HETATM   10  OD1 0TD A 501      10.165   8.013  11.163  1.00 20.00           O
 HETATM   11  OXT 0TD A 501       7.383   9.269   9.316  1.00 20.00           O
+END
+"""
+
+pdb_str_006 = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  N   GLZ A 501       9.839   9.850  11.172  1.00 20.00           N
+HETATM    2  CA  GLZ A 501       8.601   9.331  10.629  1.00 20.00           C
+HETATM    3  C   GLZ A 501       8.696   7.841  10.440  1.00 20.00           C
+HETATM    4  O   GLZ A 501       8.048   7.204   9.648  1.00 20.00           O
 END
 """
 
