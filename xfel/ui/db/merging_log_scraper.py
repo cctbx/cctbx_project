@@ -31,6 +31,66 @@ plot_styles = {
   "Merged I/sigI": ('purple', 'ratio'),
 }
 
+# Defaults of modify.cosym.plot, used when a merging task does not override them.
+COSYM_PLOT_FILENAME = 'cosym_embedding'
+COSYM_PLOT_FORMAT = 'png'
+
+def cosym_plot_settings(task_parameters):
+  """Read the cosym embedding plot's file name root and format from a merging
+  task's PHIL string, falling back to the cosym defaults. The string is parsed on
+  its own rather than fetched against the merge scope, which is slow to build and
+  pulls in imports that are not needed just to name a file."""
+  root, plot_format = COSYM_PLOT_FILENAME, COSYM_PLOT_FORMAT
+  if not task_parameters:
+    return root, plot_format
+  from iotbx.phil import parse
+  try:
+    scope = parse(task_parameters)
+  except Exception:
+    return root, plot_format
+
+  def value_of(path):
+    try:
+      objects = scope.get(path).objects
+    except Exception:
+      return None
+    if not objects:
+      return None
+    obj = objects[0]
+    while getattr(obj, 'objects', None):
+      obj = obj.objects[0]
+    words = getattr(obj, 'words', None)
+    if not words:
+      return None
+    return ' '.join(word.value for word in words).strip() or None
+
+  return (value_of('modify.cosym.plot.filename') or root,
+          value_of('modify.cosym.plot.format') or plot_format)
+
+def find_cosym_embedding_plots(output_path, task_parameters=None):
+  """Return the cosym embedding plots left in a merging job's output directory,
+  or [] if there are none.
+
+  modify_cosym runs in the merging task, whose output directory is the dataset
+  version's own folder, so its plots sit beside the log the statistics tables are
+  scraped from and no extra plumbing is needed to find them. One file is written
+  per plotting rank, up to modify.cosym.plot.n_max of them, named
+  <root>_<rank>.<format>. The number is an MPI rank rather than a counter, so the
+  values are neither contiguous nor stable between runs, which is why this globs
+  rather than predicting names. Sorted by that rank so the order is at least
+  stable within a run."""
+  if not output_path:
+    return []
+  root, plot_format = cosym_plot_settings(task_parameters)
+  paths = glob.glob(os.path.join(output_path, "%s_*.%s" % (root, plot_format)))
+
+  def rank_of(path):
+    stem = os.path.splitext(os.path.basename(path))[0]
+    tail = stem[len(root) + 1:]
+    return (0, int(tail)) if tail.isdigit() else (1, 0)
+
+  return sorted(paths, key=lambda path: (rank_of(path), path))
+
 class Scraper(object):
   def __init__(self, output_path, accepted):
     self.output_path = output_path
