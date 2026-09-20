@@ -14,8 +14,82 @@ types = {
   "Multiplicity": ("Intensity Statistics (all accepted experiments)", 14, 6, 3),
   "Completeness": ("Intensity Statistics (all accepted experiments)", 14, 5, 2),
   "CC1/2": ("Table of Scaling Results", 6, 5, 2),
-  "Merged I/sigI": ("Intensity Statistics (all accepted experiments)", 14, 11, 7),
+  "Merged I/sigI": ("Intensity Statistics (all accepted experiments)", 14, 11, 8),
 }
+
+# How each statistic is drawn: its colour, and which y axis it belongs on.
+# 'percent' is the left axis, 'ratio' the right one, for the quantities that are
+# not percentages. Every key scrape() can return needs an entry, including both
+# forms of 'accepted', or plotting fails with a KeyError; unknown keys fall back
+# to the next colour in the matplotlib cycle rather than bringing the tab down.
+plot_styles = {
+  "% accepted":    ('orange', 'percent'),
+  "# accepted":    ('orange', 'ratio'),
+  "Multiplicity":  ('red',    'ratio'),
+  "Completeness":  ('green',  'percent'),
+  "CC1/2":         ('blue',   'percent'),
+  "Merged I/sigI": ('purple', 'ratio'),
+}
+
+# Defaults of modify.cosym.plot, used when a merging task does not override them.
+COSYM_PLOT_FILENAME = 'cosym_embedding'
+COSYM_PLOT_FORMAT = 'png'
+
+def cosym_plot_settings(task_parameters):
+  """Read the cosym embedding plot's file name root and format from a merging
+  task's PHIL string, falling back to the cosym defaults. The string is parsed on
+  its own rather than fetched against the merge scope, which is slow to build and
+  pulls in imports that are not needed just to name a file."""
+  root, plot_format = COSYM_PLOT_FILENAME, COSYM_PLOT_FORMAT
+  if not task_parameters:
+    return root, plot_format
+  from iotbx.phil import parse
+  try:
+    scope = parse(task_parameters)
+  except Exception:
+    return root, plot_format
+
+  def value_of(path):
+    try:
+      objects = scope.get(path).objects
+    except Exception:
+      return None
+    if not objects:
+      return None
+    obj = objects[0]
+    while getattr(obj, 'objects', None):
+      obj = obj.objects[0]
+    words = getattr(obj, 'words', None)
+    if not words:
+      return None
+    return ' '.join(word.value for word in words).strip() or None
+
+  return (value_of('modify.cosym.plot.filename') or root,
+          value_of('modify.cosym.plot.format') or plot_format)
+
+def find_cosym_embedding_plots(output_path, task_parameters=None):
+  """Return the cosym embedding plots left in a merging job's output directory,
+  or [] if there are none.
+
+  modify_cosym runs in the merging task, whose output directory is the dataset
+  version's own folder, so its plots sit beside the log the statistics tables are
+  scraped from and no extra plumbing is needed to find them. One file is written
+  per plotting rank, up to modify.cosym.plot.n_max of them, named
+  <root>_<rank>.<format>. The number is an MPI rank rather than a counter, so the
+  values are neither contiguous nor stable between runs, which is why this globs
+  rather than predicting names. Sorted by that rank so the order is at least
+  stable within a run."""
+  if not output_path:
+    return []
+  root, plot_format = cosym_plot_settings(task_parameters)
+  paths = glob.glob(os.path.join(output_path, "%s_*.%s" % (root, plot_format)))
+
+  def rank_of(path):
+    stem = os.path.splitext(os.path.basename(path))[0]
+    tail = stem[len(root) + 1:]
+    return (0, int(tail)) if tail.isdigit() else (1, 0)
+
+  return sorted(paths, key=lambda path: (rank_of(path), path))
 
 class Scraper(object):
   def __init__(self, output_path, accepted):
@@ -80,20 +154,25 @@ class Scraper(object):
     from matplotlib.ticker import FuncFormatter
     import numpy as np
     import math
+
+    # scrape() returns None when the log has no accepted lattices table, which
+    # is the case while a merging job is still early in its run. Return no plot
+    # rather than failing, matching how plot_many_results skips such results.
+    # Callers treat None as 'nothing new to draw'.
+    if not results:
+      return None
+
     fig = plt.figure()
     ax = ax1 = fig.gca()
     ax2 = ax1.twinx()
 
-    colors = {
-      "% accepted": 'orange',
-      "Multiplicity": 'red',
-      "Completeness": 'green',
-      "CC1/2": 'blue'
-    }
+    right_axis_names = []
 
     for name in results:
-      if name == 'Multiplicity':
+      color, axis = plot_styles.get(name, (None, 'percent'))
+      if axis == 'ratio':
         ax = ax2
+        right_axis_names.append(name)
       else:
         ax = ax1
 
@@ -104,7 +183,7 @@ class Scraper(object):
         bin_num, d_max, d_min, value = data
         x.append((d_max+d_min)/2)
         y.append(value)
-      ax.plot(1/(np.array(x)**2), y, '-', label = name, color = colors[name])
+      ax.plot(1/(np.array(x)**2), y, '-', label = name, color = color)
 
     def resolution(x, pos):
       if x <= 0:
@@ -114,7 +193,9 @@ class Scraper(object):
     ax1.xaxis.set_major_formatter(formatter)
     ax1.set_xlabel(r'Resolution ${\AA}$')
     ax1.set_ylabel('%')
-    ax2.set_ylabel('Multiplicity')
+    # Name the right axis after whatever ended up on it, rather than assuming
+    # multiplicity is the only thing there.
+    ax2.set_ylabel(' / '.join(right_axis_names) if right_axis_names else 'Multiplicity')
     handles, labels = ax1.get_legend_handles_labels()
     handles.extend(ax2.get_legend_handles_labels()[0])
     labels.extend(ax2.get_legend_handles_labels()[1])
