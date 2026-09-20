@@ -2229,7 +2229,7 @@ class TrialsTab(BaseTab):
 
   def onAddTrial(self, e):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
-    new_trial_dlg.Fit()
+    new_trial_dlg.fit_to_screen()
 
     if new_trial_dlg.ShowModal() == wx.ID_OK:
       self.refresh_trials()
@@ -3401,6 +3401,7 @@ class DatasetTab(BaseTab):
     # New datasets are created through the guided wizard; the full dialog is
     # still used for editing an existing dataset (the magnifying glass button).
     wizard = dlg.DatasetWizard(self, db=self.main.db)
+    wizard.fit_to_screen()
 
     if wizard.ShowModal() == wx.ID_OK:
       self.refresh_datasets()
@@ -3706,7 +3707,7 @@ class TrialPanel(wx.Panel):
 
   def onViewPHIL(self, e):
     view_dlg = dlg.TrialDialog(self, db=self.db, trial=self.trial, new=False)
-    view_dlg.Fit()
+    view_dlg.fit_to_screen()
     view_dlg.ShowModal()
     view_dlg.Destroy()
 
@@ -3925,7 +3926,7 @@ class DatasetPanel(wx.Panel):
 
   def onEditDataset(self, e):
     new_dataset_dlg = dlg.DatasetDialog(self, db=self.db, dataset=self.dataset, new=False)
-    new_dataset_dlg.Fit()
+    new_dataset_dlg.fit_to_screen()
 
     if new_dataset_dlg.ShowModal() == wx.ID_OK:
       self.refresh_dataset()
