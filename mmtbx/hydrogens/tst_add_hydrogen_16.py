@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb, iotbx.cif
 import mmtbx.model
+from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from mmtbx.monomer_library import server
 from mmtbx.hydrogens import reduce_hydrogen
@@ -12,16 +13,22 @@ def run():
   test_004()
   test_005()
   test_006()
+  test_007()
+  test_008()
 
 # ------------------------------------------------------------------------------
 
-def h_names_on(pdb_str, parent_name):
-  '''Place H (no optimization); return names of the H bonded to parent_name.'''
+def place(pdb_str):
+  '''Place H (no optimization); return the atoms by name.'''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
   obj = reduce_hydrogen.place_hydrogens(model=model)
   obj.run()
-  atoms = obj.get_model().get_hierarchy().atoms()
+  return {a.name.strip(): a for a in obj.get_model().get_hierarchy().atoms()}
+
+def h_names_on(pdb_str, parent_name):
+  '''Place H (no optimization); return names of the H bonded to parent_name.'''
+  atoms = list(place(pdb_str).values())
   parent = [a for a in atoms if a.name.strip() == parent_name][0]
   return sorted(a.name.strip() for a in atoms
     if a.element.strip() == 'H' and a.distance(parent) < 1.2)
@@ -105,6 +112,39 @@ def test_006():
   '''
   names = h_names_on(pdb_str_006, 'C')
   assert names == ['HXT'], names
+
+def check_h(atoms, h, a0, a1, angle_ideal):
+  '''H sits on a0 at a plausible X-H length and H-a0-a1 angle.'''
+  d = atoms[h].distance(atoms[a0])
+  assert 0.8 < d < 1.15, (h, d)
+  angle = atoms[a0].angle(atoms[h], atoms[a1], deg=True)
+  assert approx_equal(angle, angle_ideal, eps=1.0), (h, angle)
+
+def test_007():
+  '''
+    PEO (H2O2): nothing beyond the O-O bond anchors the H dihedral, so riding H
+    cannot parameterize HO1/HO2 and they were deleted (1ng4).
+  '''
+  atoms = place(pdb_str_007)
+  assert sorted(n for n in atoms if n.startswith('H')) == ['HO1', 'HO2'], list(atoms)
+  check_h(atoms, 'HO1', 'O1', 'O2', 100.92)
+  check_h(atoms, 'HO2', 'O2', 'O1', 100.89)
+
+def test_008():
+  '''
+    MOH (methanol): same for the methyl and OH H. EOH (ethanol, anchored by the
+    third heavy atom) is the control.
+  '''
+  atoms = place(pdb_str_008)
+  hs = sorted(n for n in atoms if n.startswith('H'))
+  assert hs == ['H1', 'H2', 'H3', 'HO'], hs
+  for h, angle_ideal in [('H1', 107.79), ('H2', 112.98), ('H3', 112.94)]:
+    check_h(atoms, h, 'C', 'O', angle_ideal)
+  check_h(atoms, 'HO', 'O', 'C', 108.03)
+  for h1, h2 in [('H1', 'H2'), ('H1', 'H3'), ('H2', 'H3')]:
+    assert atoms[h1].distance(atoms[h2]) > 1.4, (h1, h2)
+  hs = sorted(n for n in place(pdb_str_008_control) if n.startswith('H'))
+  assert hs == ['H11', 'H12', 'H21', 'H22', 'H23', 'HO'], hs
 
 # ------------------------------------------------------------------------------
 
@@ -302,6 +342,28 @@ HETATM    1  N   GLZ A 501       9.839   9.850  11.172  1.00 20.00           N
 HETATM    2  CA  GLZ A 501       8.601   9.331  10.629  1.00 20.00           C
 HETATM    3  C   GLZ A 501       8.696   7.841  10.440  1.00 20.00           C
 HETATM    4  O   GLZ A 501       8.048   7.204   9.648  1.00 20.00           O
+END
+"""
+
+pdb_str_007 = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  O1  PEO A 501      14.917  15.127  15.671  1.00 20.00           O
+HETATM    2  O2  PEO A 501      15.083  15.207  14.264  1.00 20.00           O
+END
+"""
+
+pdb_str_008 = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  C   MOH A 501      12.578  10.567  10.234  1.00 20.00           C
+HETATM    2  O   MOH A 501      13.940  10.360   9.945  1.00 20.00           O
+END
+"""
+
+pdb_str_008_control = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  C1  EOH A 501      10.157  14.225  12.482  1.00 20.00           C
+HETATM    2  C2  EOH A 501      11.073  15.376  12.125  1.00 20.00           C
+HETATM    3  O   EOH A 501      10.877  13.288  13.257  1.00 20.00           O
 END
 """
 

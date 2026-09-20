@@ -967,6 +967,10 @@ class place_hydrogens():
       tertiary = self.h_on_tertiary_amide_n(bonds, atoms, elements)
       def _heavy_neighbors(iseq):
         return [m for m in set(bonds.get(iseq, [])) if elements[m] not in ('H','D')]
+      placed = flex.size_t(self.place_anchorless_h(
+        sel_h_not_in_para_but_not_lone.iselection(), bonds, _heavy_neighbors))
+      sel_h_not_in_para.set_selected(placed, False)
+      sel_h_not_in_para_but_not_lone.set_selected(placed, False)
       seen_residues = set()
       for atom in self.model.get_hierarchy().atoms().select(
           sel_h_not_in_para_but_not_lone):
@@ -1032,6 +1036,75 @@ class place_hydrogens():
 
     if self.print_time:
       self.print_times()
+
+  # ----------------------------------------------------------------------------
+
+  def place_anchorless_h(self, iseqs, bonds, heavy_neighbors):
+    '''
+    Place H that riding H cannot parameterize because the molecule has only two
+    heavy atoms (PEO, MOH): no third atom anchors the dihedral. Ideal bond and
+    angle; H on the lower-i_seq atom at 0/120/240 deg, on the other at 180 deg
+    (staggered/trans); They stay non-riding.
+    Returns the i_seqs placed.
+    '''
+    grm = self.model.get_restraints_manager().geometry
+    mon_lib_srv = self.model.get_mon_lib_srv()
+    atoms = self.model.get_hierarchy().atoms()
+    def _dict_heavy_degree(atom):
+      # heavy neighbours of this atom in its dictionary, None if unknown
+      try: cc = mon_lib_srv.get_comp_comp_id_direct(atom.parent().resname.strip())
+      except Exception: cc = None
+      if cc is None: return None
+      ad = cc.atom_dict()
+      name = atom.name.strip()
+      if name not in ad: return None
+      n = 0
+      for b in cc.bond_list:
+        for x, y in [(b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)]:
+          if x == name and y in ad and ad[y].type_symbol not in ('H', 'D'): n += 1
+      return n
+    by_parent = {}
+    for ih in iseqs:
+      parents = heavy_neighbors(ih)
+      if len(parents) != 1: continue
+      i0 = parents[0]
+      partners = heavy_neighbors(i0)
+      if len(partners) != 1: continue
+      i1 = partners[0]
+      if heavy_neighbors(i1) != [i0]: continue
+      # a truncated residue can also leave two bonded atoms: trust the dictionary
+      if _dict_heavy_degree(atoms[i0]) != 1 or _dict_heavy_degree(atoms[i1]) != 1:
+        continue
+      by_parent.setdefault((i0, i1), []).append(ih)
+    if not by_parent: return []
+    targets = set(ih for hs in by_parent.values() for ih in hs)
+    dist_ideal, angle_ideal = {}, {}
+    sites_cart = self.model.get_sites_cart()
+    bps, asu = grm.get_all_bond_proxies(sites_cart=sites_cart)
+    for p in bps:
+      for ih in set(p.i_seqs) & targets:
+        dist_ideal[ih] = p.distance_ideal
+    for p in grm.angle_proxies:
+      if p.i_seqs[0] in targets: angle_ideal[p.i_seqs[0]] = p.angle_ideal
+      if p.i_seqs[2] in targets: angle_ideal[p.i_seqs[2]] = p.angle_ideal
+    placed = []
+    for (i0, i1), hs in by_parent.items():
+      r0, r1 = matrix.col(sites_cart[i0]), matrix.col(sites_cart[i1])
+      # frame shared by both ends of the fragment
+      axis = (r1 - r0) if i0 < i1 else (r0 - r1)
+      p = axis.ortho().normalize()
+      q = axis.normalize().cross(p)
+      u = (r1 - r0).normalize()
+      offset = 0 if i0 < i1 else 180
+      for k, ih in enumerate(sorted(hs)):
+        if ih not in dist_ideal or ih not in angle_ideal: continue
+        a = math.radians(angle_ideal[ih])
+        phi = math.radians(offset + 120*k)
+        d = u*math.cos(a) + (p*math.cos(phi) + q*math.sin(phi))*math.sin(a)
+        sites_cart[ih] = r0 + d*dist_ideal[ih]
+        placed.append(ih)
+    self.model.set_sites_cart(sites_cart)
+    return placed
 
   # ----------------------------------------------------------------------------
 
