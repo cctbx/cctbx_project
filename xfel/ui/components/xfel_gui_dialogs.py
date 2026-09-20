@@ -94,6 +94,37 @@ class BaseDialog(wx.Dialog):
 
 # --------------------------------- Dialogs ---------------------------------- #
 
+  def fit_to_screen(self, fraction=0.9, client_area=None):
+    ''' Size the dialog to its contents, but never beyond the display it is on.
+        Returns True if the natural size had to be capped.
+
+        The usable area is asked of the display this dialog is actually on, which
+        is not necessarily the primary one, and it is the client area rather than
+        the whole screen so the result cannot end up behind a taskbar. Dialogs
+        that can overflow put their body in a scrolled panel, so capping the size
+        scrolls the content rather than cutting it off; the buttons are outside
+        that panel and stay reachable either way.
+
+        client_area is for tests, to stand in for a smaller screen than the one
+        actually in use. '''
+    self.Fit()
+    best = self.GetSize()
+    if client_area is None:
+      index = wx.Display.GetFromWindow(self)
+      if index == wx.NOT_FOUND:
+        index = 0
+      client_area = wx.Display(index).GetClientArea()
+    width = min(best.width, int(client_area.width * fraction))
+    height = min(best.height, int(client_area.height * fraction))
+    capped = (width, height) != (best.width, best.height)
+    if capped:
+      # Let the user drag it larger again on a screen where it nearly fits.
+      self.SetWindowStyle(self.GetWindowStyle() | wx.RESIZE_BORDER)
+      self.SetSize((width, height))
+      self.Layout()
+    self.Center()
+    return capped
+
 class ProjectListDialog(BaseDialog, ColumnSorterMixin):
   ''' Dialog for choosing a project to load. Lists each project's name and
       last-modified time in a two-column report; clicking either column header
@@ -3024,7 +3055,15 @@ class TrialDialog(BaseDialog):
       trial_number = trial.trial
       d_min = trial.d_min if trial.d_min is not None else 1.5
 
-    self.trial_info = gctr.TwoButtonCtrl(self,
+    # Everything except the buttons lives in a scrolled body, so that the dialog
+    # can be capped to the display on a small screen and the content scrolled
+    # rather than cut off. The buttons stay on the dialog itself, where they
+    # cannot be scrolled out of reach.
+    self.scroll = ScrolledPanel(self)
+    self.scroll_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.scroll.SetSizer(self.scroll_sizer)
+
+    self.trial_info = gctr.TwoButtonCtrl(self.scroll,
                                          name='trial_info',
                                          label='Trial number:',
                                          label_size=(100, -1),
@@ -3036,14 +3075,14 @@ class TrialDialog(BaseDialog):
                                          button2_label='Edit PHIL' if new else 'Show PHIL',
                                          button2_size=(120, -1),
                                          value="{}".format(trial_number))
-    self.trial_comment = gctr.TextButtonCtrl(self,
+    self.trial_comment = gctr.TextButtonCtrl(self.scroll,
                                              name='trial_comment',
                                              label='Comment:',
                                              label_size=(100, -1),
                                              label_style='normal',
                                              ghost_button=False)
 
-    self.overall_panel = wx.Panel(self)
+    self.overall_panel = wx.Panel(self.scroll)
     overall_box = wx.StaticBox(self.overall_panel, label='Overall parameters')
     self.overall_sizer = wx.StaticBoxSizer(overall_box)
     self.overall_panel.SetSizer(self.overall_sizer)
@@ -3067,7 +3106,7 @@ class TrialDialog(BaseDialog):
     self.overall_ctrl_sizer.Add(self.min_spots, flag=wx.ALL, border=10)
     self.overall_sizer.Add(self.overall_ctrl_sizer)
 
-    self.spotfinding_panel = wx.Panel(self)
+    self.spotfinding_panel = wx.Panel(self.scroll)
     spotfinding_box = wx.StaticBox(self.spotfinding_panel, label='Spotfinding parameters')
     self.spotfinding_sizer = wx.StaticBoxSizer(spotfinding_box)
     self.spotfinding_panel.SetSizer(self.spotfinding_sizer)
@@ -3133,7 +3172,7 @@ class TrialDialog(BaseDialog):
     self.spotfinding_ctrl_sizer.Add(self.threshold_algorithm, flag=wx.ALL, border=10)
     self.spotfinding_sizer.Add(self.spotfinding_ctrl_sizer)
 
-    self.indexing_panel = wx.Panel(self)
+    self.indexing_panel = wx.Panel(self.scroll)
     indexing_box = wx.StaticBox(self.indexing_panel, label='Indexing parameters')
     self.indexing_sizer = wx.StaticBoxSizer(indexing_box)
     self.indexing_panel.SetSizer(self.indexing_sizer)
@@ -3175,7 +3214,7 @@ class TrialDialog(BaseDialog):
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
-    self.copy_runblocks = gctr.ChoiceCtrl(self,
+    self.copy_runblocks = gctr.ChoiceCtrl(self.scroll,
                                           name='copy_runblocks',
                                           label='Copy runblocks from',
                                           label_style='normal',
@@ -3183,7 +3222,7 @@ class TrialDialog(BaseDialog):
                                           ctrl_size=(80, -1),
                                           choices=choices)
     self.copy_runblocks.ctr.SetSelection(0)
-    self.throttle = gctr.SpinCtrl(self,
+    self.throttle = gctr.SpinCtrl(self.scroll,
                                   name='trial_throttle',
                                   label='Percent events processed:',
                                   label_size=(180, -1),
@@ -3192,7 +3231,7 @@ class TrialDialog(BaseDialog):
                                   ctrl_value='100',
                                   ctrl_min=1,
                                   ctrl_max=100)
-    self.num_bins = gctr.SpinCtrl(self,
+    self.num_bins = gctr.SpinCtrl(self.scroll,
                                   name='trial_num_bins',
                                   label='Number of bins:',
                                   label_size=(180, -1),
@@ -3202,7 +3241,7 @@ class TrialDialog(BaseDialog):
                                   ctrl_min=1,
                                   ctrl_max=100,
                                   ctrl_step=1)
-    self.d_min = gctr.SpinCtrl(self,
+    self.d_min = gctr.SpinCtrl(self.scroll,
                                name='trial_d_min',
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
@@ -3223,16 +3262,16 @@ class TrialDialog(BaseDialog):
                                (self.num_bins),
                                (self.d_min)])
 
-    self.main_sizer.Add(self.trial_info,
+    self.scroll_sizer.Add(self.trial_info,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.trial_comment,
+    self.scroll_sizer.Add(self.trial_comment,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.overall_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.spotfinding_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.indexing_panel, flag=wx.EXPAND | wx.ALL, border=10)
+    self.scroll_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     # Dialog control
@@ -3240,6 +3279,7 @@ class TrialDialog(BaseDialog):
       dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     else:
       dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
+    self.main_sizer.Add(self.scroll, 1, flag=wx.EXPAND | wx.ALL, border=5)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -3289,6 +3329,13 @@ class TrialDialog(BaseDialog):
     self.throttle.ctr.SetValue(process_percent)
 
     # Bindings
+    # An unsized ScrolledPanel reports a tiny best size, which would collapse the
+    # dialog on Fit(). Give it the size its content wants, so the dialog's
+    # natural size is what it was before the body became scrollable, and let
+    # fit_to_screen cap it from there.
+    self.scroll.SetMinSize(self.scroll_sizer.CalcMin())
+    self.scroll.SetupScrolling(scrollToTop=True)
+
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
     self.Bind(wx.EVT_BUTTON, self.onEdit, self.trial_info.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
