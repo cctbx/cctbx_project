@@ -394,6 +394,32 @@ def bonds_in_restraints(atom, exclude_hydrogens=False):
 
 # ==============================================================================
 
+def _terminal_h(mlq, atom_dict):
+  '''
+Identify hydrogens in a peptide-like component that belong only to the
+free form: the hydrogen on OXT and all but one hydrogen on N.
+Within a chain, N forms a peptide bond with the preceding residue;
+at a true N-terminus, place_n_terminal_propeller adds the terminal
+hydrogens later.
+
+Identify these hydrogens by bond connectivity rather than atom names,
+which vary. For example, 557 geostd entries have two N-bound hydrogens but
+no atom named 'H2' (e.g. 9FZ uses H3/H4).
+  '''
+  on = {'N': [], 'OXT': []}
+  for b in mlq.bond_list:
+    for x, y in [(b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)]:
+      a = atom_dict.get(y)
+      if x in on and a is not None and a.type_symbol in ('H', 'D'):
+        on[x].append(y)
+  remove = list(on['OXT'])
+  if len(on['N']) > 1:
+    # keep the amide H: 'H'/'D' if the dictionary has it, else the first one
+    order = [a.atom_id for a in mlq.atom_list]
+    keep = sorted(on['N'], key=lambda h: (h not in ('H', 'D'), order.index(h)))[0]
+    remove.extend(h for h in on['N'] if h != keep)
+  return remove
+
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
@@ -1224,14 +1250,8 @@ class place_hydrogens():
             # don't add polymer H atoms. Terminal H atoms added elsewhere
             #
             if mlq.test_for_peptide(atom_dict):
-              # only terminal H: 696 geostd peptide-like ligands (6EL, NXL)
-              # name a ring/chain CH2 H 'H2'
-              terminal = {'H2': 'N', 'HXT': 'OXT'}
-              remove = []
-              for b in mlq.bond_list:
-                for h, p in [(b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)]:
-                  if terminal.get(h) == p: remove.append(h)
-              atom_dict = _remove_atoms(atom_dict, remove)
+              atom_dict = _remove_atoms(
+                atom_dict, _terminal_h(mlq, atom_dict))
             elif mlq.test_for_rna_dna(atom_dict):
               atom_dict = _remove_atoms(atom_dict, ["HO3'", 'HO3*'])
             for k, v in six.iteritems(atom_dict):

@@ -15,20 +15,26 @@ def run():
   test_006()
   test_007()
   test_008()
+  test_009()
 
 # ------------------------------------------------------------------------------
 
-def place(pdb_str):
-  '''Place H (no optimization); return the atoms by name.'''
+def place_atoms(pdb_str):
+  '''Place H (no optimization); return all atoms. Names repeat between
+  residues, so only single-residue models may be keyed by name (place()).'''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
   obj = reduce_hydrogen.place_hydrogens(model=model)
   obj.run()
-  return {a.name.strip(): a for a in obj.get_model().get_hierarchy().atoms()}
+  return list(obj.get_model().get_hierarchy().atoms())
+
+def place(pdb_str):
+  '''Place H in a one-residue model; return the atoms by name.'''
+  return {a.name.strip(): a for a in place_atoms(pdb_str)}
 
 def h_names_on(pdb_str, parent_name):
   '''Place H (no optimization); return names of the H bonded to parent_name.'''
-  atoms = list(place(pdb_str).values())
+  atoms = place_atoms(pdb_str)
   parent = [a for a in atoms if a.name.strip() == parent_name][0]
   return sorted(a.name.strip() for a in atoms
     if a.element.strip() == 'H' and a.distance(parent) < 1.2)
@@ -145,6 +151,32 @@ def test_008():
     assert atoms[h1].distance(atoms[h2]) > 1.4, (h1, h2)
   hs = sorted(n for n in place(pdb_str_008_control) if n.startswith('H'))
   assert hs == ['H11', 'H12', 'H21', 'H22', 'H23', 'HO'], hs
+
+def h_on(atoms, resname, resseq, parent_name):
+  '''Names of the H bonded to <parent_name> of one residue.'''
+  parent = [a for a in atoms
+    if a.name.strip() == parent_name
+    and a.parent().resname.strip() == resname
+    and a.parent().parent().resseq.strip() == resseq]
+  assert len(parent) == 1, (resname, resseq, parent_name)
+  return sorted(a.name.strip() for a in atoms
+    if a.element.strip() == 'H' and a.distance(parent[0]) < 1.3)
+
+def test_009():
+  '''
+    5nxq: 9FZ and 9G2 are in the polypeptide chain, but their dictionaries are
+    the free amino acid (N is NH2: H3/H4 and H6/H7). Both H stayed, so N had
+    four bonds. The terminal-H filter only knew the name H2.
+  '''
+  atoms = place_atoms(pdb_str_009)
+  assert len(h_on(atoms, '9FZ', '4', 'N')) == 1, h_on(atoms, '9FZ', '4', 'N')
+  assert len(h_on(atoms, '9G2', '10', 'N')) == 1, h_on(atoms, '9G2', '10', 'N')
+  # the amino acids in the same chain are unchanged
+  assert h_on(atoms, 'ILE', '5', 'N') == ['H'], h_on(atoms, 'ILE', '5', 'N')
+  assert h_on(atoms, 'GLU', '11', 'N') == ['H'], h_on(atoms, 'GLU', '11', 'N')
+  # the C9-C10 cross-link between the two ligands still removes one methyl H
+  assert len(h_on(atoms, '9FZ', '4', 'C9')) == 2, h_on(atoms, '9FZ', '4', 'C9')
+  assert len(h_on(atoms, '9G2', '10', 'C10')) == 2, h_on(atoms, '9G2', '10', 'C10')
 
 # ------------------------------------------------------------------------------
 
@@ -364,6 +396,71 @@ CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
 HETATM    1  C1  EOH A 501      10.157  14.225  12.482  1.00 20.00           C
 HETATM    2  C2  EOH A 501      11.073  15.376  12.125  1.00 20.00           C
 HETATM    3  O   EOH A 501      10.877  13.288  13.257  1.00 20.00           O
+END
+"""
+
+pdb_str_009 = """
+CRYST1   88.679  100.287  219.749  90.00  90.00  90.00 P 2 21 21
+ATOM      1  N   ILE D   3      -4.315  36.803  -4.113  1.00 99.90           N
+ATOM      2  CA  ILE D   3      -2.949  37.203  -4.414  1.00 90.56           C
+ATOM      3  C   ILE D   3      -2.949  38.463  -5.269  1.00 91.77           C
+ATOM      4  O   ILE D   3      -3.680  38.556  -6.255  1.00 91.19           O
+ATOM      5  CB  ILE D   3      -2.182  36.067  -5.114  1.00 86.55           C
+ATOM      6  CG1 ILE D   3      -2.220  34.795  -4.265  1.00 87.21           C
+ATOM      7  CG2 ILE D   3      -0.747  36.482  -5.399  1.00 77.11           C
+ATOM      8  CD1 ILE D   3      -1.760  33.558  -5.003  1.00 82.40           C
+HETATM    9  N   9FZ D   4      -2.130  39.434  -4.879  1.00 91.16           N
+HETATM   10  CA  9FZ D   4      -1.988  40.695  -5.655  1.00 89.10           C
+HETATM   11  C   9FZ D   4      -1.176  40.466  -6.907  1.00 90.90           C
+HETATM   12  O   9FZ D   4       0.010  40.188  -6.831  1.00 91.37           O
+HETATM   13  CB  9FZ D   4      -1.337  41.773  -4.798  1.00 89.28           C
+HETATM   14  C1  9FZ D   4      -1.144  43.047  -5.607  1.00 90.46           C
+HETATM   15  C2  9FZ D   4      -0.679  44.202  -4.730  1.00 97.10           C
+HETATM   16  C7  9FZ D   4      -1.020  47.117  -6.816  1.00106.60           C
+HETATM   17  C8  9FZ D   4      -1.634  45.994  -6.287  1.00107.15           C
+HETATM   18  C9  9FZ D   4      -1.906  47.950  -7.705  1.00102.31           C
+HETATM   19  N4  9FZ D   4      -0.689  45.413  -5.545  1.00104.45           N
+HETATM   20  N5  9FZ D   4       0.515  46.128  -5.583  1.00105.46           N
+HETATM   21  N6  9FZ D   4       0.267  47.232  -6.418  1.00106.68           N
+ATOM     22  N   ILE D   5      -1.820  40.576  -8.065  1.00 90.55           N
+ATOM     23  CA  ILE D   5      -1.159  40.296  -9.335  1.00 92.65           C
+ATOM     24  C   ILE D   5      -1.295  41.456 -10.315  1.00 90.25           C
+ATOM     25  O   ILE D   5      -0.639  41.471 -11.356  1.00 88.80           O
+ATOM     26  CB  ILE D   5      -1.710  39.006  -9.973  1.00 84.60           C
+ATOM     27  CG1 ILE D   5      -3.209  39.150 -10.250  1.00 82.15           C
+ATOM     28  CG2 ILE D   5      -1.432  37.800  -9.086  1.00 79.75           C
+ATOM     29  CD1 ILE D   5      -3.813  37.968 -10.971  1.00 78.88           C
+ATOM     30  N   LEU D   9       0.789  42.265 -13.727  1.00 85.51           N
+ATOM     31  CA  LEU D   9       0.169  42.262 -15.045  1.00 87.53           C
+ATOM     32  C   LEU D   9       0.491  43.540 -15.814  1.00 93.45           C
+ATOM     33  O   LEU D   9       0.677  43.508 -17.030  1.00 95.25           O
+ATOM     34  CB  LEU D   9      -1.347  42.092 -14.925  1.00 86.95           C
+ATOM     35  CG  LEU D   9      -1.825  40.801 -14.256  1.00 85.95           C
+ATOM     36  CD1 LEU D   9      -3.346  40.738 -14.220  1.00 82.56           C
+ATOM     37  CD2 LEU D   9      -1.241  39.579 -14.952  1.00 67.49           C
+HETATM   38  N   9G2 D  10       0.559  44.662 -15.103  1.00 96.10           N
+HETATM   39  CA  9G2 D  10       0.902  45.962 -15.743  1.00 97.17           C
+HETATM   40  C   9G2 D  10       2.361  46.013 -16.127  1.00 95.05           C
+HETATM   41  O   9G2 D  10       2.735  46.711 -17.055  1.00 95.78           O
+HETATM   42  CB  9G2 D  10       0.575  47.130 -14.821  1.00 95.86           C
+HETATM   43  C1  9G2 D  10      -0.906  47.477 -14.891  1.00 98.06           C
+HETATM   44  C10 9G2 D  10      -1.116  49.129  -8.268  1.00106.65           C
+HETATM   45  C2  9G2 D  10      -1.181  48.865 -14.323  1.00107.10           C
+HETATM   46  C7  9G2 D  10      -0.869  48.747 -10.699  1.00104.41           C
+HETATM   47  C8  9G2 D  10      -0.231  48.723 -11.936  1.00101.61           C
+HETATM   48  C9  9G2 D  10      -0.181  48.654  -9.359  1.00104.27           C
+HETATM   49  N4  9G2 D  10      -1.186  48.828 -12.861  1.00107.44           N
+HETATM   50  N5  9G2 D  10      -2.449  48.916 -12.275  1.00105.64           N
+HETATM   51  N6  9G2 D  10      -2.206  48.860 -10.894  1.00106.43           N
+ATOM     52  N   GLU D  11       3.190  45.273 -15.398  1.00 91.80           N
+ATOM     53  CA  GLU D  11       4.607  45.175 -15.723  1.00 97.96           C
+ATOM     54  C   GLU D  11       4.775  44.382 -17.015  1.00 99.71           C
+ATOM     55  O   GLU D  11       5.723  44.593 -17.772  1.00103.15           O
+ATOM     56  CB  GLU D  11       5.382  44.518 -14.579  1.00104.15           C
+ATOM     57  CG  GLU D  11       6.888  44.481 -14.781  1.00112.57           C
+ATOM     58  CD  GLU D  11       7.602  43.692 -13.700  1.00128.77           C
+ATOM     59  OE1 GLU D  11       6.919  43.144 -12.809  1.00117.73           O
+ATOM     60  OE2 GLU D  11       8.848  43.618 -13.744  1.00136.20           O
 END
 """
 
