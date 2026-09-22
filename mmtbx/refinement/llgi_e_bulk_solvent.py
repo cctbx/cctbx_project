@@ -70,6 +70,28 @@ llgi_e_bulk_solvent_params = iotbx.phil.parse("""\
     .type = int
     .expert_level = 3
     .help = "Max LBFGS iterations for each inner-loop bulk-solvent refit."
+  bulk_solvent_curvature_weight = 0.02
+    .type = float
+    .short_caption = Bulk-solvent per-bin curvature restraint weight (E-scale)
+    .help = "Weight of a light restraint on the second difference of the " \
+            "per-resolution-bin bulk-solvent fit's raw (pre-sigmoid, " \
+            "z-space) per-bin parameters -- see " \
+            "_bin_curvature_penalty_and_gradient. Same mechanism, same " \
+            "rationale, as sigmaa_curvature_weight, applied here because " \
+            "the per-bin bulk-solvent parameterisation (as many degrees " \
+            "of freedom as resolution bins, matching bss's own default " \
+            "per-bin fit -- see bulk_solvent_target_evaluator_binned's " \
+            "docstring) has strictly more freedom than the 2-parameter " \
+            "k_sol*exp(-b_sol*ss) form it replaces, and so is at least " \
+            "as prone -- likely more -- to the same boundary/degenerate-" \
+            "solution behaviour already documented for that simpler fit " \
+            "(see fix_bulk_solvent_from_ls's own docstring). Included " \
+            "from the start rather than added reactively; default value " \
+            "matches sigmaa_curvature_weight's own default as a starting " \
+            "point, NOT yet validated by a weight sweep on real data the " \
+            "way sigmaa_curvature_weight was -- see that parameter's own " \
+            "docstring for how sensitive this kind of restraint's default " \
+            "can be to the specific dataset. 0 disables it."
   max_inner_iterations = 10
     .type = int
     .help = "Max number of Stage-1/Stage-2 (sigmaA / bulk-solvent) " \
@@ -333,6 +355,43 @@ def ss_from_f_obs(f_obs):
   """
   return 1.0 / flex.pow2(f_obs.d_spacings().data()) / 4.0
 
+def _log_linear_k_sol_b_sol(bin_centers, k_mask_bin,
+      k_sol_min=0.0, k_sol_max=0.6, b_sol_min=0.0, b_sol_max=150.0):
+  """ Log-linear (k_sol, b_sol) POINT ESTIMATE of a fitted per-bin
+  k_mask curve -- k_mask_bin(bin_centers) -- for logging/diagnostics
+  only, NOT a claim that the curve actually is of the k_sol*
+  exp(-b_sol*ss) form (in general it is not: bss's own per-bin fit
+  bulk_solvent_target_evaluator_binned matches is a piecewise-linear
+  curve with as many degrees of freedom as there are resolution bins,
+  a strict superset of the 2-parameter exponential family). Same
+  underlying idea as mmtbx.f_model.manager.k_sol_b_sol_from_k_mask (a
+  Gaussian/log-linear fit through gaussian_fit_1d_analytical), but
+  operating directly on the (few) bin-center/bin-value pairs already in
+  hand here rather than re-deriving them from a full per-reflection
+  k_mask() array -- cheaper, and avoids needing an already-updated
+  fmodel just to produce one log line mid-loop.
+
+  Only bins with a strictly positive k_mask_bin value are used (log is
+  undefined at/below 0); if fewer than 2 such bins remain, falls back
+  to (flex.max(k_mask_bin), 0.0) -- a flat, no-decay approximation --
+  rather than raising, since this is diagnostic output only.
+  """
+  import numpy as np
+  x = np.array([c for c, v in zip(bin_centers, k_mask_bin) if v > 0])
+  y = np.array([v for v in k_mask_bin if v > 0])
+  if(len(x) < 2):
+    k_max = flex.max(k_mask_bin) if len(k_mask_bin) > 0 else 0.0
+    return float(min(max(k_max, k_sol_min), k_sol_max)), 0.0
+  # k_mask = k_sol * exp(-b_sol * ss)  =>  log(k_mask) = log(k_sol) - b_sol*ss
+  log_y = np.log(y)
+  A = np.vstack([np.ones_like(x), -x]).T
+  coeffs, _, _, _ = np.linalg.lstsq(A, log_y, rcond=None)
+  log_k_sol, b_sol = coeffs
+  k_sol = float(np.exp(log_k_sol))
+  k_sol = min(max(k_sol, k_sol_min), k_sol_max)
+  b_sol = min(max(float(b_sol), b_sol_min), b_sol_max)
+  return k_sol, b_sol
+
 def initial_k_sol_b_sol(fmodel,
       k_sol_default=0.35, b_sol_default=46.0,
       k_sol_min=0.0, k_sol_max=0.6, b_sol_min=0.0, b_sol_max=150.0):
@@ -347,30 +406,12 @@ def initial_k_sol_b_sol(fmodel,
   (a low-resolution-only Gaussian starting point, refined by a small
   local grid search on the sum-of-squares residual against k_sol*
   exp(-b_sol*ss), already clipped to [0, 0.6]/[0, 150] internally) --
-  NOT reimplemented by hand here. An earlier version of this function
-  did its own unweighted ordinary-least-squares fit of log(k_mask) =
-  log(k_sol) - b_sol*ss directly against the raw per-reflection k_mask()
-  array; on real data (2G38) this diverged badly (k_sol~2.1, b_sol~261,
-  both then silently clipped to the k_sol_max/b_sol_max bounds) while
-  fmodel.k_sol_b_sol_from_k_mask() on the SAME fmodel gave a sane
-  (k_sol=0.43, b_sol=52.98) matching bss's own reported fit exactly --
-  traced to bss's actual per-reflection k_mask() not being a clean
-  k_sol*exp(-b_sol*ss) curve (see estimate_e_sigmaa_fixed_bulk_solvent's
-  own docstring: "bss's bulk-solvent estimation is not guaranteed to
-  already be an exact k_sol*exp(-b_sol*ss) form"), which an unweighted
-  log-space OLS fit is highly sensitive to (near-zero mask values
-  dominate the log-residual). That divergent starting point, once
-  clipped to the phil bounds, was the actual root cause of the bulk-
-  solvent LBFGS fit repeatedly "pinning at a phil boundary" documented
-  elsewhere in this file: run_inner_loop's Stage 2 LBFGS was starting
-  AT the boundary already (not degenerate at the optimum, and not
-  reaching it via gradient ascent -- see the target-surface grid scan in
-  doc/llgi_target_design.md's bulk-solvent diagnostic note, which found
-  a well-defined interior minimum near (0.35-0.40, 46-80) that was
-  simply never reached because LBFGS started outside it and the bounded-
-  sigmoid reparameterisation's gradient vanishes near the tails, per
-  _bounded's own docstring). Fixed by reusing the existing, correct
-  accessor instead of re-deriving a fragile approximation to it.
+  NOT reimplemented by hand here: bss's actual per-reflection k_mask()
+  is not guaranteed to be a clean k_sol*exp(-b_sol*ss) curve (see
+  estimate_e_sigmaa_fixed_bulk_solvent's own docstring), so an
+  unweighted log-space fit against the raw array directly is sensitive
+  to near-zero mask values dominating the log-residual and can diverge
+  well outside a physically sensible range.
 
   Returns (k_sol, b_sol), both plain floats, already clipped to
   [0, 0.6]/[0, 150] by k_sol_b_sol_from_k_mask() itself; the k_sol_min/
@@ -413,6 +454,92 @@ def k_mask_and_gradients(ss, k_sol, b_sol):
   return group_args(
     k_mask=k_mask, d_by_dk_sol=d_by_dk_sol, d_by_db_sol=d_by_db_sol)
 
+def bin_ss_centers(ss, bin_selections):
+  """ Mean ss (=1/d^2/4, i.e. self.ss's own convention) of each bin in
+  bin_selections, in bin order -- the "x" coordinates the per-bin k_mask
+  curve is linearly interpolated between (mmtbx.bulk_solvent.scaler.
+  run.ss_bin_values' own [min,max,mean] triples reduced to just the
+  mean, which is what scaler.py's populate_bin_to_individual_k_mask_
+  linear_interpolation actually interpolates between -- see its x1/x2
+  local variables, both drawn from ss_bin_values[i][... ] at index 2 in
+  the caller, but simplified here to a direct per-bin mean since this
+  module does not otherwise need the [min,max] pair scaler.py keeps for
+  other purposes).
+  """
+  return flex.double([flex.mean(ss.select(sel)) for sel in bin_selections])
+
+def k_mask_binned_and_gradients(ss, bin_selections, bin_centers, k_mask_bin):
+  """ Per-resolution-bin generalisation of k_mask_and_gradients: instead
+  of the 2-parameter k_sol*exp(-b_sol*ss) form, k_mask(ss) is built by
+  piecewise-linear interpolation (in ss) between per-bin values
+  k_mask_bin[j], using the SAME bins (fmodel.bin_selections) and the
+  same linear-interpolation-toward-the-next-bin-center convention as
+  mmtbx.bulk_solvent.scaler.run.populate_bin_to_individual_k_mask_
+  linear_interpolation (see bulk_solvent.set_to_linear_interpolated,
+  mmtbx/bulk_solvent/bulk_solvent.h) -- reimplemented directly here
+  (not calling that C++ function) so the per-parameter gradient below
+  can be derived alongside it exactly, rather than only getting a
+  value with no matching derivative.
+
+  For each bin j, reflections in bin_selections[j] get:
+    k_mask_i = k_mask_bin[j] + slope_j * (ss_i - bin_centers[j])
+  where slope_j = (k_mask_bin[j+1] - k_mask_bin[j]) /
+                  (bin_centers[j+1] - bin_centers[j])
+  for j < n_bins-1, and slope_{n_bins-1} reuses slope_{n_bins-2} (the
+  last bin has no "next" bin to interpolate toward -- scaler.py's own
+  linear_interpolation call passes y2=k_mask_bin[i-1] for the final bin,
+  i.e. it interpolates using the PREVIOUS bin's value/slope instead;
+  reproduced here identically for consistency with bss's own curve).
+  Negative values are clamped to 0 (matching set_to_linear_interpolated).
+
+  d(k_mask_i)/d(k_mask_bin[j])  and  d(k_mask_i)/d(k_mask_bin[j+1])  are
+  the two nonzero partial derivatives for a reflection in bin j (all
+  other bins' parameters have zero gradient contribution from this
+  reflection -- the interpolation is purely local between adjacent bin
+  centers), obtained by differentiating the linear form above:
+    d(k_mask_i)/d(k_mask_bin[j])   = 1 - (ss_i - bin_centers[j])/(bin_centers[j+1]-bin_centers[j])
+    d(k_mask_i)/d(k_mask_bin[j+1]) =     (ss_i - bin_centers[j])/(bin_centers[j+1]-bin_centers[j])
+  (both 0 where the clamp at k_mask_i=0 is active, matching the
+  clamp's own zero local derivative there).
+
+  Returns a group_args with .k_mask (flex.double, per-reflection) and
+  .d_by_dbin (a list of flex.double, one per bin, each the same length
+  as ss -- entry j is d(k_mask)/d(k_mask_bin[j]) for every reflection,
+  zero outside the (at most two) bins whose interpolation segment
+  touches bin j).
+  """
+  n_bins = len(bin_selections)
+  assert n_bins == len(bin_centers) == len(k_mask_bin)
+  k_mask = flex.double(ss.size(), 0.0)
+  d_by_dbin = [flex.double(ss.size(), 0.0) for _ in range(n_bins)]
+  for j, sel in enumerate(bin_selections):
+    if(sel.count(True) == 0): continue
+    if(j == n_bins - 1):
+      # Last bin: interpolate using the PREVIOUS segment's slope,
+      # matching scaler.py's own y2=k_mask_bin[i-1] convention for the
+      # final bin.
+      j_lo, j_hi = max(0, j - 1), j
+    else:
+      j_lo, j_hi = j, j + 1
+    x_lo, x_hi = bin_centers[j_lo], bin_centers[j_hi]
+    y_lo, y_hi = k_mask_bin[j_lo], k_mask_bin[j_hi]
+    ss_sel = ss.select(sel)
+    if(x_hi != x_lo):
+      frac = (ss_sel - x_lo) / (x_hi - x_lo)
+    else:
+      frac = flex.double(ss_sel.size(), 0.0)
+    values = y_lo + frac * (y_hi - y_lo)
+    clamp_sel = values < 0
+    values.set_selected(clamp_sel, 0.0)
+    d_lo = 1.0 - frac
+    d_hi = frac
+    d_lo.set_selected(clamp_sel, 0.0)
+    d_hi.set_selected(clamp_sel, 0.0)
+    k_mask.set_selected(sel, values)
+    d_by_dbin[j_lo].set_selected(sel, d_by_dbin[j_lo].select(sel) + d_lo)
+    d_by_dbin[j_hi].set_selected(sel, d_by_dbin[j_hi].select(sel) + d_hi)
+  return group_args(k_mask=k_mask, d_by_dbin=d_by_dbin)
+
 def bulk_solvent_target_and_gradients(
       e_eff, selection, dobs, sigmaa, centric_flags,
       f_calc, f_mask, f_part1, f_part2, k_isotropic,
@@ -422,6 +549,11 @@ def bulk_solvent_target_and_gradients(
   Stage-2 (bulk-solvent) fit (design note sec. 6), with sigmaA(d) fixed
   (already evaluated per reflection -- the whole point of this stage is
   to hold it constant, sec. 7).
+
+  Not currently called from run_inner_loop (which uses the per-bin
+  bulk_solvent_target_and_gradients_binned instead) -- kept as a
+  standalone 2-parameter alternative alongside bulk_solvent_target_
+  evaluator, exercised only by its own regression test.
 
   Single mask shell only (design note sec. 9). f_calc, f_mask, f_part1,
   f_part2, k_isotropic are the already-scaled-except-bulk-solvent
@@ -507,6 +639,224 @@ def bulk_solvent_target_and_gradients(
     target=result.target(),
     gradients=np.array([d_target_by_dk_sol, d_target_by_db_sol]))
 
+def bulk_solvent_target_and_gradients_binned(
+      e_eff, selection, dobs, sigmaa, centric_flags,
+      f_calc, f_mask, f_part1, f_part2, k_isotropic,
+      epsilons, d_star_sq, ss, bin_selections, bin_centers, k_mask_bin,
+      n_sigmap_nodes=15, auto_kernel_number=50):
+  """ Per-resolution-bin generalisation of bulk_solvent_target_and_
+  gradients: k_mask(ss) is the piecewise-linear per-bin curve built by
+  k_mask_binned_and_gradients (matching bss's own binning/interpolation
+  scheme -- mmtbx.bulk_solvent.scaler.run's default "combo" fit, the
+  ONLY bulk-solvent model bss's fast-mode path (phenix.refine's own
+  default, fast=True always -- see f_model_all_scales.py's caller)
+  actually produces; there is no exponential-vs-per-bin comparison to
+  match for bulk solvent the way there is for the anisotropic scale
+  tensor -- see f_model_all_scales.py's _capture_scaling_b_values
+  docstring for that unrelated, purely-anisotropy-specific comparison),
+  in place of the 2-parameter k_sol*exp(-b_sol*ss) form. Same fixed-
+  SigmaP gradient approximation and same chain-rule structure as
+  bulk_solvent_target_and_gradients (see its docstring) -- only the
+  parameterisation of k_mask itself, and hence the shape of the
+  returned gradient, differs.
+
+  Because k_mask_binned_and_gradients' interpolation is purely local
+  (a reflection's k_mask only depends on its own bin's two neighbouring
+  bin-center parameters), d(target)/d(k_mask_bin[j]) has NO cross-bin
+  coupling term beyond what d_by_dbin already encodes -- it is exactly
+  sum_i [ d_target_by_demodel_i * Re(phase_i * d(Emodel_i)/d(k_mask_
+  bin[j])) ], evaluated with numpy's dot product against each bin's
+  d_by_dbin[j] array (zero outside the at-most-two bins touching that
+  parameter, so this is cheap despite the explicit sum-over-all-
+  reflections form).
+
+  Returns a group_args with .target (float) and .gradients (numpy
+  array, length len(bin_selections), one entry per bin, in bin order).
+  """
+  import numpy as np
+  k_mask_result = k_mask_binned_and_gradients(
+    ss, bin_selections, bin_centers, k_mask_bin)
+  bulk = k_mask_result.k_mask * f_mask
+  fmnas = k_isotropic * (f_calc + bulk + f_part1 + f_part2)
+  e_model_result = build_e_model(
+    fmnas, epsilons, d_star_sq,
+    n_sigmap_nodes=n_sigmap_nodes, auto_kernel_number=auto_kernel_number)
+  e_model = e_model_result.e_model
+  sigma_p = e_model_result.sigma_p
+  e_model_abs = flex.abs(e_model)
+
+  result = xray_ext.llgi_e_emodel_target_and_gradients(
+    e_eff=e_eff,
+    selection=selection,
+    e_model=e_model_abs,
+    dobs=dobs,
+    sigmaa=sigmaa,
+    centric_flags=centric_flags)
+  d_target_by_demodel = np.array(result.d_target_by_demodel())
+
+  inv_denom = 1.0 / flex.sqrt(epsilons * sigma_p)
+  e_model_abs_safe = flex.double([
+    v if v > 0 else 1.0 for v in e_model_abs])
+  phase = flex.conj(e_model) * (1.0 / e_model_abs_safe)
+
+  gradients = np.zeros(len(bin_selections))
+  for j, d_by_dbin_j in enumerate(k_mask_result.d_by_dbin):
+    if(not d_by_dbin_j.all_eq(0.0)):
+      d_fmnas_by_dbin_j = k_isotropic * f_mask * d_by_dbin_j
+      d_emodel_by_dbin_j = d_fmnas_by_dbin_j * inv_denom
+      proj_j = flex.real(phase * d_emodel_by_dbin_j)
+      gradients[j] = float(np.dot(d_target_by_demodel,
+        proj_j.as_numpy_array()))
+  return group_args(target=result.target(), gradients=gradients)
+
+def _bin_curvature_penalty_and_gradient(values, weight):
+  """ Discrete second-difference roughness penalty on a per-bin value
+  vector, R(v) = weight * sum_j (v[j-1] - 2*v[j] + v[j+1])^2 for
+  interior bins j -- same mechanism, same rationale, as mmtbx.
+  refinement.llgi_sigmaa._spline_curvature_penalty_and_gradient
+  (discourage the fit collapsing/oscillating in bins where the working
+  set is too sparse for the LLGI likelihood alone to constrain it
+  well), applied here to the RAW (pre-sigmoid, unconstrained z-space)
+  per-bin bulk-solvent parameters rather than a B-spline's coefficients
+  -- see bulk_solvent_target_evaluator_binned's own docstring for why
+  this restraint exists at all: an unconstrained (weight=0) per-bin
+  fit is exactly the kind of higher-degrees-of-freedom generalisation
+  most likely to reproduce or worsen the boundary/degenerate-solution
+  instability already documented for the plain 2-parameter Stage-2 fit
+  (see llgi_e_bulk_solvent_params.fix_bulk_solvent_from_ls's own
+  docstring), so this penalty is included from the start rather than
+  added reactively after observing that instability again here.
+
+  values: flex.double or numpy array of per-bin z-space parameters.
+  weight: float, 0 disables the penalty (returns 0.0, zero gradient).
+
+  Returns (penalty, gradient) where gradient is a numpy array the same
+  length as values.
+  """
+  import numpy as np
+  v = np.asarray(values, dtype=float)
+  n = len(v)
+  if(weight <= 0 or n < 3):
+    return 0.0, np.zeros(n)
+  second_diff = v[:-2] - 2*v[1:-1] + v[2:]
+  penalty = weight * float(np.sum(second_diff**2))
+  gradient = np.zeros(n)
+  # d(penalty)/d(v[j]) = weight * 2 * sum over interior triples touching j
+  # of (that triple's second difference) * (coefficient of v[j] in it):
+  # v[j-2]:+1, v[j-1]:-2, v[j]:+1 contributions from each triple centered
+  # at j-1, j, j+1 respectively (standard second-difference penalty
+  # gradient, same structure as _spline_curvature_penalty_and_gradient).
+  gradient[:-2] += 2*weight*second_diff
+  gradient[1:-1] += -4*weight*second_diff
+  gradient[2:] += 2*weight*second_diff
+  return penalty, gradient
+
+class bulk_solvent_target_evaluator_binned(object):
+  """ scitbx.lbfgs target evaluator optimising one k_mask value per
+  resolution bin (same bins fmodel.bin_selections already carries, set
+  by bss's own update_all_scales() call earlier in the macrocycle)
+  against the E-scale LLGI target, summed over the working set, with
+  sigmaA(d) held fixed -- the per-bin generalisation of
+  bulk_solvent_target_evaluator (see its own docstring for the
+  unconstrained-x / bounded-sigmoid convention, reused here per-bin).
+
+  A light curvature penalty (see _bin_curvature_penalty_and_gradient,
+  curvature_weight) is added to the LLGI target by default: an
+  unregularised per-bin fit has many more degrees of freedom than the
+  2-parameter form, and is thus more, not less, prone to the same
+  boundary/degenerate-solution behaviour already documented for that
+  simpler fit (see llgi_e_bulk_solvent_params.fix_bulk_solvent_from_ls).
+  """
+
+  def __init__(self,
+        e_eff, working_selection, dobs, sigmaa, centric_flags,
+        f_calc, f_mask, f_part1, f_part2, k_isotropic,
+        epsilons, d_star_sq, ss, bin_selections, bin_centers,
+        k_mask_bin_start,
+        k_mask_min=0.0, k_mask_max=1.0,
+        n_sigmap_nodes=15, auto_kernel_number=50,
+        max_iterations=50, curvature_weight=0.0):
+    self.e_eff = e_eff
+    self.working_selection = working_selection
+    self.dobs = dobs
+    self.sigmaa = sigmaa
+    self.centric_flags = centric_flags
+    self.f_calc = f_calc
+    self.f_mask = f_mask
+    self.f_part1 = f_part1
+    self.f_part2 = f_part2
+    self.k_isotropic = k_isotropic
+    self.epsilons = epsilons
+    self.d_star_sq = d_star_sq
+    self.ss = ss
+    self.bin_selections = bin_selections
+    self.bin_centers = bin_centers
+    self.k_mask_min = k_mask_min
+    self.k_mask_max = k_mask_max
+    self.n_sigmap_nodes = n_sigmap_nodes
+    self.auto_kernel_number = auto_kernel_number
+    self.curvature_weight = curvature_weight
+    import numpy as np
+    def _inv_bounded(value, lower, upper):
+      frac = (value - lower) / (upper - lower)
+      frac = min(max(frac, 1.e-6), 1.0 - 1.e-6)
+      return float(np.log(frac / (1.0 - frac)))
+    self.x = flex.double([
+      _inv_bounded(v, k_mask_min, k_mask_max) for v in k_mask_bin_start])
+    self.final_target = None
+    term_parameters = scitbx.lbfgs.termination_parameters(
+      max_iterations=max_iterations)
+    exception_handling_parameters = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound=True,
+      ignore_line_search_failed_step_at_upper_bound=True)
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=term_parameters,
+      exception_handling_params=exception_handling_parameters)
+
+  def _current_k_mask_bin(self):
+    import numpy as np
+    x_np = np.array(self.x)
+    k_mask_bin = np.zeros(len(x_np))
+    dk_mask_bin_dz = np.zeros(len(x_np))
+    for j, z in enumerate(x_np):
+      v, dv = _bounded(z, self.k_mask_min, self.k_mask_max)
+      k_mask_bin[j] = v
+      dk_mask_bin_dz[j] = dv
+    return k_mask_bin, dk_mask_bin_dz
+
+  def compute_functional_and_gradients(self):
+    import numpy as np
+    k_mask_bin, dk_mask_bin_dz = self._current_k_mask_bin()
+    result = bulk_solvent_target_and_gradients_binned(
+      e_eff=self.e_eff,
+      selection=self.working_selection,
+      dobs=self.dobs,
+      sigmaa=self.sigmaa,
+      centric_flags=self.centric_flags,
+      f_calc=self.f_calc,
+      f_mask=self.f_mask,
+      f_part1=self.f_part1,
+      f_part2=self.f_part2,
+      k_isotropic=self.k_isotropic,
+      epsilons=self.epsilons,
+      d_star_sq=self.d_star_sq,
+      ss=self.ss,
+      bin_selections=self.bin_selections,
+      bin_centers=self.bin_centers,
+      k_mask_bin=flex.double(k_mask_bin),
+      n_sigmap_nodes=self.n_sigmap_nodes,
+      auto_kernel_number=self.auto_kernel_number)
+    penalty, penalty_gradient = _bin_curvature_penalty_and_gradient(
+      np.array(self.x), self.curvature_weight)
+    self.final_target = result.target + penalty
+    g = result.gradients * dk_mask_bin_dz + penalty_gradient
+    return self.final_target, flex.double(g)
+
+  def k_mask_bin(self):
+    k_mask_bin, _ = self._current_k_mask_bin()
+    return flex.double(k_mask_bin)
+
 class bulk_solvent_target_evaluator(object):
   """ scitbx.lbfgs target evaluator optimising (k_sol, b_sol) against the
   E-scale LLGI target, summed over the working set (all reflections
@@ -516,6 +866,11 @@ class bulk_solvent_target_evaluator(object):
   bulk solvent explicitly, but the same bounded-sigmoid convention used
   for sigmaA is reused here for consistency and to keep LBFGS well-
   behaved against mmtbx's usual k_sol/b_sol ranges).
+
+  Not currently called from run_inner_loop (which uses the per-bin
+  bulk_solvent_target_evaluator_binned instead) -- kept as a standalone,
+  self-contained 2-parameter alternative, exercised only by its own
+  regression test.
   """
 
   def __init__(self,
@@ -878,10 +1233,9 @@ def estimate_sigmaa_e_then_scatfrac_f(
   to mmtbx.refinement.llgi_sigmaa.estimate_llgi_scatfrac_likelihood,
   fixing sigmaA at Step 1's result. Uses fmodel.f_model() (bulk-solvent-
   and scale-corrected), matching update_llgi_sigmaa_scatfrac's own
-  convention and rationale (raw f_calc() lacks the k_isotropic correction
-  Feff/Resn/f_model() already reflect -- see that method's docstring for
-  the real-data bug this was traced to previously). ScatFrac is NOT
-  bounded above by 1: Feff need not be on absolute scale (its scaling
+  convention: raw f_calc() lacks the k_isotropic correction Feff/Resn/
+  f_model() already reflect. ScatFrac is NOT bounded above by 1: Feff
+  need not be on absolute scale (its scaling
   assumes 50% solvent content by default), so ScatFrac can genuinely
   exceed 1 -- see llgi_scatfrac_target_evaluator's docstring.
 
@@ -1013,10 +1367,26 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
 
   e_eff = build_e_eff(feff, resn)
 
-  k_sol, b_sol = initial_k_sol_b_sol(
-    fmodel,
-    k_sol_min=params.k_sol_min, k_sol_max=params.k_sol_max,
-    b_sol_min=params.b_sol_min, b_sol_max=params.b_sol_max)
+  # Bulk solvent is fit per-resolution-bin, matching bss's own default
+  # "combo" fit -- the only bulk-solvent model phenix.refine's fast-mode
+  # bss step, its unconditional default, ever actually produces (see
+  # f_model_all_scales.py's _capture_scaling_b_values docstring for the
+  # analogous, unrelated expanal/poly/expmin choice for the anisotropic
+  # scale tensor). Reuse the SAME bins bss's update_all_scales() already
+  # set on fmodel, and seed from bss's own current per-bin k_mask
+  # (fmodel.k_masks()[0]), evaluated at each bin's center.
+  bin_selections = fmodel.bin_selections
+  if(bin_selections is None):
+    bin_selections = f_obs.log_binning()
+  bin_centers = bin_ss_centers(ss, bin_selections)
+  k_mask_current_full = fmodel.k_masks()[0]
+  k_mask_bin = flex.double([
+    flex.mean(k_mask_current_full.select(sel)) if sel.count(True) > 0
+    else 0.0
+    for sel in bin_selections])
+  k_mask_bin = flex.double([
+    min(max(float(v), params.k_sol_min), params.k_sol_max)
+    for v in k_mask_bin])
 
   history = []
   prev_bs_target = None
@@ -1036,8 +1406,9 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
     k_isotropic = fmodel.k_isotropic()
 
     # Stage 1: fit sigmaA(d) against LLG on R-free, Emodel (hence bulk
-    # solvent) held fixed at this iteration's current k_sol/b_sol.
-    k_mask_current = k_mask_and_gradients(ss, k_sol, b_sol).k_mask
+    # solvent) held fixed at this iteration's current per-bin k_mask.
+    k_mask_current = k_mask_binned_and_gradients(
+      ss, bin_selections, bin_centers, k_mask_bin).k_mask
     fmnas_current = k_isotropic * (
       f_calc + k_mask_current * f_mask + f_part1 + f_part2)
     e_model_current = build_e_model(
@@ -1053,31 +1424,36 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
       curvature_weight=params.sigmaa_curvature_weight)
     sigmaa = sigmaa_result.sigmaa
 
-    # Stage 2: fit (k_sol, b_sol) against LLG on the working set,
+    # Stage 2: fit per-bin k_mask against LLG on the working set,
     # sigmaA(d) held fixed at the value just obtained above.
-    bs_evaluator = bulk_solvent_target_evaluator(
+    bs_evaluator = bulk_solvent_target_evaluator_binned(
       e_eff=e_eff, working_selection=working_selection, dobs=dobs,
       sigmaa=sigmaa, centric_flags=centric_flags,
       f_calc=f_calc, f_mask=f_mask, f_part1=f_part1, f_part2=f_part2,
       k_isotropic=k_isotropic, epsilons=epsilons, d_star_sq=d_star_sq,
-      ss=ss, k_sol_start=k_sol, b_sol_start=b_sol,
-      k_sol_min=params.k_sol_min, k_sol_max=params.k_sol_max,
-      b_sol_min=params.b_sol_min, b_sol_max=params.b_sol_max,
+      ss=ss, bin_selections=bin_selections, bin_centers=bin_centers,
+      k_mask_bin_start=k_mask_bin,
+      k_mask_min=params.k_sol_min, k_mask_max=params.k_sol_max,
       n_sigmap_nodes=params.n_sigmap_nodes,
       auto_kernel_number=params.auto_kernel_number,
-      max_iterations=params.bulk_solvent_max_iterations)
-    k_sol, b_sol = bs_evaluator.k_sol_b_sol()
+      max_iterations=params.bulk_solvent_max_iterations,
+      curvature_weight=params.bulk_solvent_curvature_weight)
+    k_mask_bin = bs_evaluator.k_mask_bin()
     bs_target = bs_evaluator.final_target
 
     if(log is not None):
+      k_sol_point, b_sol_point = _log_linear_k_sol_b_sol(
+        bin_centers, k_mask_bin)
       print(
         "LLGI E-scale inner loop iter %d: sigmaA target=%.6f  "
-        "bulk-solvent target=%.6f  k_sol=%.4f  b_sol=%.2f" % (
-          n_iterations, sigmaa_result.target, bs_target, k_sol, b_sol),
+        "bulk-solvent target=%.6f  k_sol~%.4f  b_sol~%.2f (log-linear "
+        "point estimate of the fitted per-bin curve)" % (
+          n_iterations, sigmaa_result.target, bs_target,
+          k_sol_point, b_sol_point),
         file=log)
     history.append(group_args(
       sigmaa_target=sigmaa_result.target, bs_target=bs_target,
-      k_sol=k_sol, b_sol=b_sol))
+      k_mask_bin=k_mask_bin))
 
     if(prev_bs_target is not None and
        abs(bs_target - prev_bs_target) < params.convergence_tolerance):
@@ -1085,11 +1461,11 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
       break
     prev_bs_target = bs_target
 
-  # Push the final (k_sol, b_sol) back onto fmodel via its k_mask, per
-  # the design note's chosen mechanism (fmodel.update(k_mask=...) --
-  # mmtbx.f_model.manager has no direct k_sol/b_sol setter; see
-  # k_mask_and_gradients/initial_k_sol_b_sol's docstrings).
-  final_k_mask = k_mask_and_gradients(ss, k_sol, b_sol).k_mask
+  # Push the final per-bin k_mask curve back onto fmodel, per the design
+  # note's chosen mechanism (fmodel.update(k_mask=...) -- mmtbx.f_model.
+  # manager has no direct k_sol/b_sol or per-bin setter).
+  final_k_mask = k_mask_binned_and_gradients(
+    ss, bin_selections, bin_centers, k_mask_bin).k_mask
   fmodel.update(k_mask=[final_k_mask])
 
   # Final sigmaA fit at the converged bulk-solvent model, so the
@@ -1115,9 +1491,18 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
     max_iterations=params.sigmaa_max_iterations,
     curvature_weight=params.sigmaa_curvature_weight)
 
+  # .k_sol/.b_sol are only a log-linear POINT ESTIMATE of the actually-
+  # fitted per-bin k_mask curve (see _log_linear_k_sol_b_sol), kept for
+  # callers/log lines that expect a scalar pair (mirroring the same
+  # "point estimate, not the real fit" caveat already documented for
+  # fix_bulk_solvent_from_ls=True's own k_sol/b_sol -- see
+  # estimate_e_sigmaa_fixed_bulk_solvent). .k_mask_bin/.bin_centers
+  # carry the real fitted curve.
+  k_sol_point, b_sol_point = _log_linear_k_sol_b_sol(bin_centers, k_mask_bin)
   return group_args(
     sigmaa=final_sigmaa_result.sigmaa,
-    k_sol=k_sol, b_sol=b_sol,
+    k_sol=k_sol_point, b_sol=b_sol_point,
+    k_mask_bin=k_mask_bin, bin_centers=bin_centers,
     n_iterations=n_iterations,
     converged=converged,
     history=history)

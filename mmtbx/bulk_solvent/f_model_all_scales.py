@@ -106,34 +106,61 @@ class run(mmtbx.f_model.manager):
       print(m+" twin_fraction=%4.2f"%self.twin_fraction, file=log)
 
   def _capture_scaling_b_values(self, fast, result):
-    # Capture the anisotropic (b_cart from k_anisotropic) and isotropic
-    # (b_isotropic from k_isotropic) B-values of the bulk-solvent scaling for
-    # whichever mode actually ran (fast = analytical, slow = minimization).
-    # Returned via russ and printed later, after the block of r-factor lines.
-    import scitbx.math
+    # Capture the overall anisotropic scale (b_cart) and the overall
+    # isotropic scale (k_isotropic_overall, b_isotropic) of the
+    # bulk-solvent scaling. Returned via russ and printed later, after the
+    # block of r-factor lines.
+    #
+    # b_cart is taken directly from the fit that scaler.py (fast mode) or
+    # bulk_solvent_and_scaling.py (slow mode) already performed -- NOT
+    # recomputed here -- so whenever it is reported, it is guaranteed to
+    # be exactly the tensor actually applied to k_anisotropic(), already
+    # correctly constrained to the crystal's point-group symmetry (built
+    # from a u_star fit through self.adp_constraints; see
+    # anisotropic_scaling() in scaler.py). In fast mode, scaler.py also
+    # tries a 12-coefficient polynomial anisotropic scale (its "poly"
+    # branch) and may pick that over the b_cart-representable fit if it
+    # gives a better R-factor; a polynomial scale is not expressible as a
+    # rank-2 tensor at all (fitting one back against k_anisotropic() would
+    # only be a lossy approximation -- for real datasets this can differ
+    # from the actual applied scale by tens of percent), so b_cart is left
+    # unset (None) in that case rather than reporting a misleading
+    # approximation.
+    b_cart = None
     if(fast):
-      b_cart = getattr(result, "scale_matrices", None)
-      if(b_cart is not None and len(b_cart) > 6): b_cart = None # polynomial scale
+      captured = getattr(result, "scale_matrices", None)
+      if(captured is not None and len(captured) <= 6): b_cart = captured
     else:
       b_cart = result.b_cart()
-    b_isotropic = None
+    import scitbx.math
+    k_isotropic_overall, b_isotropic = None, None
     k_isotropic = result.k_isotropic()
     if(k_isotropic is not None and k_isotropic.size() == self.ss.size()):
-      b_isotropic = scitbx.math.gaussian_fit_1d_analytical(
-        x = flex.sqrt(self.ss), y = k_isotropic).b
+      fit = scitbx.math.gaussian_fit_1d_analytical(
+        x = flex.sqrt(self.ss), y = k_isotropic)
+      k_isotropic_overall, b_isotropic = fit.a, fit.b
     return group_args(
-      mode = "fast" if fast else "slow", b_cart = b_cart, b_isotropic = b_isotropic)
+      mode                 = "fast" if fast else "slow",
+      b_cart               = b_cart,
+      k_isotropic_overall  = k_isotropic_overall,
+      b_isotropic          = b_isotropic)
 
   def _show_scaling_b_values(self, result, log):
     i = getattr(result, "scaling_b_info", None)
     if(log is None or i is None): return
     print(file=log)
     print("bulk-solvent scaling B-values (mode: %s):" % i.mode, file=log)
-    if(i.b_cart is not None):
-      print("  b_cart:      %s" % " ".join(["%.4f" % b for b in i.b_cart]),
+    if(i.k_isotropic_overall is not None):
+      print("  k_isotropic (overall scale): %.4f" % i.k_isotropic_overall,
         file=log)
     if(i.b_isotropic is not None):
       print("  b_isotropic: %.4f" % i.b_isotropic, file=log)
+    if(i.b_cart is not None):
+      print("  k_anisotropic b_cart (b11,b22,b33,b12,b13,b23): %s" %
+        " ".join(["%.4f" % b for b in i.b_cart]), file=log)
+    else:
+      print("  k_anisotropic: not expressible as a single b_cart tensor "
+        "(higher-order anisotropic scale used)", file=log)
 
   def need_to_refine_hd_scattering_contribution(self):
     if(self.xray_structure is None): return False

@@ -300,14 +300,27 @@ def exercise_run_inner_loop_end_to_end():
   assert result.sigmaa.size() == fmodel.f_obs().size()
   for v in result.sigmaa:
     assert 0.0 < v < 1.0
+  # result.k_sol/b_sol are only a log-linear POINT ESTIMATE of the real
+  # per-bin fit (see run_inner_loop's own docstring) -- still expected
+  # to land within the phil bounds, since _log_linear_k_sol_b_sol clips
+  # to them, but no longer expected to reconstruct fmodel's actual
+  # k_mask() exactly (see below).
   assert 0.0 <= result.k_sol <= 0.6
   assert 0.0 <= result.b_sol <= 150.0
   assert len(result.history) == result.n_iterations
+  assert result.k_mask_bin.size() == len(result.bin_centers)
 
-  # fmodel's k_mask should now match the returned (k_sol, b_sol) exactly.
-  from mmtbx.f_model import ext as f_model_ext
+  # fmodel's k_mask should now match the returned per-bin curve
+  # (k_mask_bin/bin_centers), reconstructed via the same piecewise-
+  # linear interpolation run_inner_loop itself used to push the final
+  # result onto fmodel -- NOT the (k_sol, b_sol) point estimate, which
+  # is only a diagnostic summary of this curve, not the fitted model
+  # itself (see run_inner_loop's docstring for why a per-bin fit,
+  # matching bss's own default bulk-solvent model, replaced the
+  # 2-parameter exponential form here).
   ss = llgi_e_bs.ss_from_f_obs(fmodel.f_obs())
-  expected_k_mask = f_model_ext.k_mask(ss, result.k_sol, result.b_sol)
+  expected_k_mask = llgi_e_bs.k_mask_binned_and_gradients(
+    ss, fmodel.bin_selections, result.bin_centers, result.k_mask_bin).k_mask
   actual_k_mask = fmodel.k_masks()[0]
   diff = flex.max(flex.abs(
     flex.double(expected_k_mask) - flex.double(actual_k_mask)))
