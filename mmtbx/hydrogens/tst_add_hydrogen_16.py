@@ -18,6 +18,7 @@ def run():
   test_008()
   test_009()
   test_010()
+  test_011()
 
 # ------------------------------------------------------------------------------
 
@@ -180,16 +181,18 @@ def test_009():
   assert len(h_on(atoms, '9FZ', '4', 'C9')) == 2, h_on(atoms, '9FZ', '4', 'C9')
   assert len(h_on(atoms, '9G2', '10', 'C10')) == 2, h_on(atoms, '9G2', '10', 'C10')
 
-def ch2_hand(atoms, resname, resseq, parent, hv1, hv2, h2):
+def hand(atoms, resname, resseq, parent, first, second, third):
   '''
-  Sign of the chiral volume (hv1, hv2, h2) at parent: which side of the two
-  heavy neighbours the '2' hydrogen of a CH2 is named on.
+  Sign of the chiral volume (first, second, third) at parent. For a CH2 pass
+  the two heavy neighbours and the '2' hydrogen: which side that H is named on.
+  For a propeller pass two H and the heavy neighbour: the turning sense of the
+  names around the axis.
   '''
   a = dict((x.name.strip(), matrix.col(x.xyz)) for x in atoms
     if x.parent().resname.strip() == resname
     and x.parent().parent().resseq.strip() == resseq)
   p = a[parent]
-  return 1 if ((a[hv1]-p).cross(a[hv2]-p)).dot(a[h2]-p) > 0 else -1
+  return 1 if ((a[first]-p).cross(a[second]-p)).dot(a[third]-p) > 0 else -1
 
 def test_010():
   '''
@@ -200,9 +203,25 @@ def test_010():
     GLU CB/CG (the CCD agrees with itself) are the control.
   '''
   atoms = place_atoms(pdb_str_010)
-  assert ch2_hand(atoms, 'LEU', '107', 'CB', 'CA', 'CG', 'HB2') == -1
-  assert ch2_hand(atoms, 'GLU', '41', 'CB', 'CA', 'CG', 'HB2') == -1
-  assert ch2_hand(atoms, 'GLU', '41', 'CG', 'CB', 'CD', 'HG2') == -1
+  assert hand(atoms, 'LEU', '107', 'CB', 'CA', 'CG', 'HB2') == -1
+  assert hand(atoms, 'GLU', '41', 'CB', 'CA', 'CG', 'HB2') == -1
+  assert hand(atoms, 'GLU', '41', 'CG', 'CB', 'CD', 'HG2') == -1
+
+def test_011():
+  '''
+    A propeller came out as the mirror of the CCD every time: the H are still
+    superposed when check_propeller_order looks at them, so the order came from
+    the riding frame (HB1 got n=2, HB3 n=0). CH3 and NH3 alike; the CCD's two
+    coordinate sets agree for 94% of propellers, and here both say -1.
+  '''
+  atoms = place_atoms(pdb_str_011)
+  assert hand(atoms, 'ALA', '42', 'CB', 'HB1', 'HB2', 'CA') == -1
+  assert hand(atoms, 'LYS', '87', 'NZ', 'HZ1', 'HZ2', 'CE') == -1
+  atoms = place_atoms(pdb_str_010)
+  assert hand(atoms, 'LEU', '107', 'CD1', 'HD11', 'HD12', 'CG') == -1
+  assert hand(atoms, 'LEU', '107', 'CD2', 'HD21', 'HD22', 'CG') == -1
+  # the CH2 of the same residue is unchanged
+  assert hand(atoms, 'LEU', '107', 'CB', 'CA', 'CG', 'HB2') == -1
 
 # ------------------------------------------------------------------------------
 
@@ -509,6 +528,25 @@ ATOM     41  CB  LEU A 107       6.554 -17.940  10.507  1.00 31.28           C
 ATOM     42  CG  LEU A 107       6.196 -16.889   9.461  1.00 33.41           C
 ATOM     43  CD1 LEU A 107       7.334 -15.910   9.340  1.00 35.68           C
 ATOM     44  CD2 LEU A 107       5.884 -17.500   8.088  1.00 32.97           C
+END
+"""
+
+pdb_str_011 = """
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+ATOM     10  N   ALA A  42      12.752 -16.313  13.130  1.00 37.05           N
+ATOM     11  CA  ALA A  42      11.861 -16.326  11.950  1.00 41.68           C
+ATOM     12  C   ALA A  42      12.606 -15.740  10.747  1.00 42.80           C
+ATOM     13  O   ALA A  42      12.597 -16.391   9.684  1.00 36.14           O
+ATOM     14  CB  ALA A  42      10.567 -15.603  12.226  1.00 43.61           C
+ATOM     61  N   LYS A  87      14.521  55.475  65.158  1.00 16.69           N
+ATOM     62  CA  LYS A  87      13.600  54.884  64.201  1.00 17.21           C
+ATOM     63  C   LYS A  87      12.210  55.516  64.232  1.00 15.78           C
+ATOM     64  O   LYS A  87      11.790  56.116  65.226  1.00 14.71           O
+ATOM     65  CB  LYS A  87      13.500  53.368  64.403  1.00 18.88           C
+ATOM     66  CG  LYS A  87      13.338  52.939  65.839  1.00 24.38           C
+ATOM     67  CD  LYS A  87      11.961  52.424  66.104  1.00 30.22           C
+ATOM     68  CE  LYS A  87      11.700  51.121  65.394  1.00 26.16           C
+ATOM     69  NZ  LYS A  87      10.264  50.804  65.531  1.00 31.31           N
 END
 """
 

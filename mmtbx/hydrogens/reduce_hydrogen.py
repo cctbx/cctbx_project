@@ -631,8 +631,11 @@ _CCD_MODEL_CH2 = {
   'MSE': ('CB', 'CG'),
   }
 
-def _ch2_groups(elements, bond_pairs, sites):
-  '''Heavy atoms with exactly two H and two heavy neighbours, all sites known.'''
+def _h_groups(elements, bond_pairs, sites, n_h, n_heavy):
+  '''
+  Heavy atoms with exactly n_h H and n_heavy heavy neighbours, all sites known.
+  (2, 2) are the CH2 centres, (3, 1) the propellers (CH3, NH3).
+  '''
   neighbors = {}
   for i, j in bond_pairs:
     neighbors.setdefault(i, []).append(j)
@@ -642,7 +645,7 @@ def _ch2_groups(elements, bond_pairs, sites):
     if elements.get(p) in ('H', 'D'): continue
     hs = tuple(sorted(n for n in ns if elements.get(n) in ('H', 'D')))
     hv = tuple(sorted(n for n in ns if elements.get(n) not in ('H', 'D')))
-    if len(hs) == 2 and len(hv) == 2 and all(n in sites for n in (p,)+hv+hs):
+    if len(hs) == n_h and len(hv) == n_heavy and all(n in sites for n in (p,)+hv+hs):
       result.append((p, hv, hs, sites))
   return result
 
@@ -682,17 +685,21 @@ def _ccd_describes(cc, resname):
   return ("chem_data" in parts or
           (parts[-1].startswith("auto_") and parts[-1][5:].strip() == resname))
 
-def _ch2_references(resname, mon_lib_srv, cache):
+def _h_references(resname, mon_lib_srv, cache, n_h=2, n_heavy=2):
   '''
-  CH2 centres with reference sites. CCD first: it defines PDB names, and geostd
-  amino acids carry no coordinates. Then the restraint dictionary, for ligands
-  whose H names differ from the CCD (VPH). geostd MAN names H61/H62 opposite
-  to the CCD. A user restraint file is used alone.
+  CH2 centres (2, 2) or propellers (3, 1) with reference sites. CCD first: it
+  defines PDB names, and geostd amino acids carry no coordinates. Then the
+  restraint dictionary, for ligands whose H names differ from the CCD (VPH).
+  geostd MAN names H61/H62 opposite to the CCD. A user restraint file is used
+  alone.
 
-  Sites are the CCD's ideal coordinates, except for the groups in
+  Sites are the CCD's ideal coordinates, except for the CH2 groups in
   _CCD_MODEL_CH2 (see there). Each set is used whole, never mixed in a group.
+  For propellers the two CCD sets agree in 94% of groups, so the ideal set is
+  taken as it comes.
   '''
-  if resname in cache: return cache[resname]
+  cache_key = (resname, n_h)
+  if cache_key in cache: return cache[cache_key]
   from mmtbx.chemical_components import get_cif_dictionary
   result = []
   try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
@@ -714,11 +721,11 @@ def _ch2_references(resname, mon_lib_srv, cache):
     bond_pairs = [(b.atom_id_1, b.atom_id_2)
       for b in cc_cif.get('_chem_comp_bond', [])]
     # the listed groups first, so name_prochiral_h takes them over the ideal set
-    fix = _CCD_MODEL_CH2.get(resname, ())
+    fix = _CCD_MODEL_CH2.get(resname, ()) if n_h == 2 else ()
     if fix:
-      result += [g for g in _ch2_groups(elements, bond_pairs, sites['model'])
-                 if g[0] in fix]
-    result += _ch2_groups(elements, bond_pairs, sites['ideal'])
+      result += [g for g in _h_groups(elements, bond_pairs, sites['model'],
+                                      n_h, n_heavy) if g[0] in fix]
+    result += _h_groups(elements, bond_pairs, sites['ideal'], n_h, n_heavy)
   try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
   except Exception: cc = None
   if cc is not None:
@@ -726,36 +733,62 @@ def _ch2_references(resname, mon_lib_srv, cache):
     if sites:
       elements = dict((a.atom_id, a.type_symbol.strip().upper())
         for a in cc.atom_list)
-      result += _ch2_groups(elements, [(b.atom_id_1, b.atom_id_2)
-        for b in cc.bond_list], sites)
-  cache[resname] = result
+      result += _h_groups(elements, [(b.atom_id_1, b.atom_id_2)
+        for b in cc.bond_list], sites, n_h, n_heavy)
+  cache[cache_key] = result
   return result
 
-def name_prochiral_h(hierarchy, mon_lib_srv):
+def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
   '''
   Riding places the two H of a CH2 in processing order, so about half get each
-  other's name (1akg: 16 of 38 vs CCD). Swap names to match ideal chirality.
+  other's name (1akg: 16 of 38 vs CCD), and it numbers a propeller (CH3, NH3)
+  the other way round than the CCD does, every time: the H are still superposed
+  when parameterization.check_propeller_order looks at them, so the order comes
+  out of the riding frame instead. Swap names to match the reference chirality.
+  Only names change; no atom moves, and the swap survives a later riding
+  idealization, which follows the H positions it finds.
+
+  kinds selects the groups: 2 the CH2 centres, 3 the propellers. The CH2 are
+  named before exclude_H_on_links, which picks the H a link drops by position,
+  the propellers after it: a linked methyl (BGS CS in 2b5z) is a CH2 by then,
+  no longer matches a three-H reference and keeps the surviving names it had.
   '''
   cache, done = {}, set()
   for m in hierarchy.models():
     for c in m.chains():
       for conformer in c.conformers():
         for r in conformer.residues():
-          groups = _ch2_references(r.resname.strip(), mon_lib_srv, cache)
+          resname = r.resname.strip()
+          groups = []
+          if 2 in kinds:
+            groups += [(2, g) for g in
+                        _h_references(resname, mon_lib_srv, cache, 2, 2)]
+          if 3 in kinds:
+            groups += [(3, g) for g in
+                        _h_references(resname, mon_lib_srv, cache, 3, 1)]
           if not groups: continue
           atoms = dict((a.name.strip(), a) for a in r.atoms())
-          for p, hv, hs, sites in groups:
+          for n_h, (p, hv, hs, sites) in groups:
             if not all(n in atoms for n in (p,)+hv+hs): continue
             if atoms[p].i_seq in done: continue # first source wins
-            if any(atoms[p].distance(atoms[n]) > 2.0 for n in hv+hs): continue
+            # 2.4 A: C-SE is 1.96 and a modelled one reaches 2.04 (2h34 MSE),
+            # S-S 2.03; far enough below any non-bonded contact
+            if any(atoms[p].distance(atoms[n]) > 2.4 for n in hv+hs): continue
             done.add(atoms[p].i_seq)
-            h1, h2 = atoms[hs[0]], atoms[hs[1]]
-            v_ideal = _chiral_volume(sites[p], sites[hv[0]], sites[hv[1]],
-                                     sites[hs[0]])
-            v_model = _chiral_volume(atoms[p].xyz, atoms[hv[0]].xyz,
-                                     atoms[hv[1]].xyz, h1.xyz)
+            if n_h == 2:
+              # the side of the two heavy neighbours the first H is named on
+              ref = (hv[0], hv[1], hs[0])
+              swap = (hs[0], hs[1])
+            else:
+              # the turning sense of the first two H, seen from the neighbour
+              ref = (hs[0], hs[1], hv[0])
+              swap = (hs[1], hs[2])
+            v_ideal = _chiral_volume(sites[p], *[sites[n] for n in ref])
+            v_model = _chiral_volume(atoms[p].xyz,
+                                     *[atoms[n].xyz for n in ref])
             if abs(v_ideal) < 0.5 or abs(v_model) < 0.5: continue # flat
             if (v_ideal > 0) != (v_model > 0):
+              h1, h2 = atoms[swap[0]], atoms[swap[1]]
               h1.name, h2.name = h2.name, h1.name
 
 def _bond_orders(resname, mon_lib_srv, cache):
@@ -1061,8 +1094,13 @@ class place_hydrogens():
     # --------------------------------------------------------------------------
     t0 = time.time()
     # CH2 names must be stereo-correct before a link picks which H to drop
-    name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv())
+    name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
+                     kinds = (2,))
     self.exclude_H_on_links()
+    # propellers only now: a methyl that lost an H to a link is a CH2, and the
+    # names that survived it stay as they are
+    name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
+                     kinds = (3,))
     self.time_remove_H_on_links = round(time.time()-t0, 2)
 
 
