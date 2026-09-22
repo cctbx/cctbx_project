@@ -616,6 +616,21 @@ def _chiral_volume(c, a, b, h):
   c, a, b, h = [matrix.col(x) for x in (c, a, b, h)]
   return (a - c).dot((b - c).cross(h - c))
 
+# CH2 groups whose two H the CCD's ideal coordinates name with the opposite
+# hand to the same entry's model coordinates. The model hand is the one reduce
+# places and the one deposited models carry, so these read the model set.
+# Verified group by group against reduce (1bzs, 2h34). Only where an authority
+# exists: the CCD sets disagree in thousands of ligand groups, and nucleotides
+# are the other way round (for C5' the ideal set is the right one), so this is
+# a list of known-bad entries, not a preference for either set.
+_CCD_MODEL_CH2 = {
+  'ARG': ('CB', 'CG'),
+  'ILE': ('CG1',),
+  'LEU': ('CB',),
+  'MET': ('CB', 'CG'),
+  'MSE': ('CB', 'CG'),
+  }
+
 def _ch2_groups(elements, bond_pairs, sites):
   '''Heavy atoms with exactly two H and two heavy neighbours, all sites known.'''
   neighbors = {}
@@ -669,10 +684,13 @@ def _ccd_describes(cc, resname):
 
 def _ch2_references(resname, mon_lib_srv, cache):
   '''
-  CH2 centres with ideal sites. CCD first: it defines PDB names, and geostd
+  CH2 centres with reference sites. CCD first: it defines PDB names, and geostd
   amino acids carry no coordinates. Then the restraint dictionary, for ligands
   whose H names differ from the CCD (VPH). geostd MAN names H61/H62 opposite
   to the CCD. A user restraint file is used alone.
+
+  Sites are the CCD's ideal coordinates, except for the groups in
+  _CCD_MODEL_CH2 (see there). Each set is used whole, never mixed in a group.
   '''
   if resname in cache: return cache[resname]
   from mmtbx.chemical_components import get_cif_dictionary
@@ -684,14 +702,23 @@ def _ch2_references(resname, mon_lib_srv, cache):
     try: cc_cif = get_cif_dictionary(resname)
     except Exception: cc_cif = None
   if cc_cif:
-    sites, elements = {}, {}
+    elements = {}
+    sites = {'model': {}, 'ideal': {}}
     for a in cc_cif.get('_chem_comp_atom', []):
       elements[a.atom_id] = a.type_symbol.strip().upper()
-      t = [getattr(a, "pdbx_model_Cartn_%s_ideal" % k, "?") for k in "xyz"]
-      if "?" not in t and "." not in t:
-        sites[a.atom_id] = tuple(float(v) for v in t)
-    result += _ch2_groups(elements, [(b.atom_id_1, b.atom_id_2)
-      for b in cc_cif.get('_chem_comp_bond', [])], sites)
+      for key, fmt in (('model', "model_Cartn_%s"),
+                       ('ideal', "pdbx_model_Cartn_%s_ideal")):
+        t = [getattr(a, fmt % k, "?") for k in "xyz"]
+        if "?" not in t and "." not in t:
+          sites[key][a.atom_id] = tuple(float(v) for v in t)
+    bond_pairs = [(b.atom_id_1, b.atom_id_2)
+      for b in cc_cif.get('_chem_comp_bond', [])]
+    # the listed groups first, so name_prochiral_h takes them over the ideal set
+    fix = _CCD_MODEL_CH2.get(resname, ())
+    if fix:
+      result += [g for g in _ch2_groups(elements, bond_pairs, sites['model'])
+                 if g[0] in fix]
+    result += _ch2_groups(elements, bond_pairs, sites['ideal'])
   try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
   except Exception: cc = None
   if cc is not None:

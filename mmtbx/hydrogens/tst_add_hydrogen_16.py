@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb, iotbx.cif
 import mmtbx.model
+from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from mmtbx.monomer_library import server
@@ -16,6 +17,7 @@ def run():
   test_007()
   test_008()
   test_009()
+  test_010()
 
 # ------------------------------------------------------------------------------
 
@@ -177,6 +179,30 @@ def test_009():
   # the C9-C10 cross-link between the two ligands still removes one methyl H
   assert len(h_on(atoms, '9FZ', '4', 'C9')) == 2, h_on(atoms, '9FZ', '4', 'C9')
   assert len(h_on(atoms, '9G2', '10', 'C10')) == 2, h_on(atoms, '9G2', '10', 'C10')
+
+def ch2_hand(atoms, resname, resseq, parent, hv1, hv2, h2):
+  '''
+  Sign of the chiral volume (hv1, hv2, h2) at parent: which side of the two
+  heavy neighbours the '2' hydrogen of a CH2 is named on.
+  '''
+  a = dict((x.name.strip(), matrix.col(x.xyz)) for x in atoms
+    if x.parent().resname.strip() == resname
+    and x.parent().parent().resseq.strip() == resseq)
+  p = a[parent]
+  return 1 if ((a[hv1]-p).cross(a[hv2]-p)).dot(a[h2]-p) > 0 else -1
+
+def test_010():
+  '''
+    LEU HB2/HB3 came out swapped (7IT7 fragment). The CH2 reference read the
+    CCD's ideal coordinates, and for ARG CB/CG, ILE CG1, LEU CB and MET CB/CG
+    those contradict the same entry's model coordinates. The model coordinates
+    are what reduce and deposited models follow; all three groups here are -1.
+    GLU CB/CG (the CCD agrees with itself) are the control.
+  '''
+  atoms = place_atoms(pdb_str_010)
+  assert ch2_hand(atoms, 'LEU', '107', 'CB', 'CA', 'CG', 'HB2') == -1
+  assert ch2_hand(atoms, 'GLU', '41', 'CB', 'CA', 'CG', 'HB2') == -1
+  assert ch2_hand(atoms, 'GLU', '41', 'CG', 'CB', 'CD', 'HG2') == -1
 
 # ------------------------------------------------------------------------------
 
@@ -461,6 +487,28 @@ ATOM     57  CG  GLU D  11       6.888  44.481 -14.781  1.00112.57           C
 ATOM     58  CD  GLU D  11       7.602  43.692 -13.700  1.00128.77           C
 ATOM     59  OE1 GLU D  11       6.919  43.144 -12.809  1.00117.73           O
 ATOM     60  OE2 GLU D  11       8.848  43.618 -13.744  1.00136.20           O
+END
+"""
+
+pdb_str_010 = """
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   GLU A  41      14.715 -15.370  14.923  1.00 39.91           N
+ATOM      2  CA  GLU A  41      14.788 -16.780  14.439  1.00 35.65           C
+ATOM      3  C   GLU A  41      13.961 -16.899  13.156  1.00 36.25           C
+ATOM      4  O   GLU A  41      14.465 -17.527  12.205  1.00 38.69           O
+ATOM      5  CB  GLU A  41      14.321 -17.749  15.518  1.00 33.50           C
+ATOM      6  CG  GLU A  41      15.333 -17.993  16.600  1.00 35.41           C
+ATOM      7  CD  GLU A  41      16.636 -18.604  16.105  1.00 43.11           C
+ATOM      8  OE1 GLU A  41      16.630 -19.181  15.035  1.00 45.69           O
+ATOM      9  OE2 GLU A  41      17.647 -18.494  16.799  1.00 51.56           O
+ATOM     37  N   LEU A 107       4.234 -18.401  11.202  1.00 29.52           N
+ATOM     38  CA  LEU A 107       5.506 -19.021  10.766  1.00 31.21           C
+ATOM     39  C   LEU A 107       5.985 -20.013  11.824  1.00 29.33           C
+ATOM     40  O   LEU A 107       5.845 -19.764  13.033  1.00 32.67           O
+ATOM     41  CB  LEU A 107       6.554 -17.940  10.507  1.00 31.28           C
+ATOM     42  CG  LEU A 107       6.196 -16.889   9.461  1.00 33.41           C
+ATOM     43  CD1 LEU A 107       7.334 -15.910   9.340  1.00 35.68           C
+ATOM     44  CD2 LEU A 107       5.884 -17.500   8.088  1.00 32.97           C
 END
 """
 
