@@ -19,6 +19,7 @@ def run():
   test_009()
   test_010()
   test_011()
+  test_012()
 
 # ------------------------------------------------------------------------------
 
@@ -222,6 +223,31 @@ def test_011():
   assert hand(atoms, 'LEU', '107', 'CD2', 'HD21', 'HD22', 'CG') == -1
   # the CH2 of the same residue is unchanged
   assert hand(atoms, 'LEU', '107', 'CB', 'CA', 'CG', 'HB2') == -1
+
+def test_012():
+  '''
+    AMP (5msd) is a free nucleotide: its O3' is a hydroxyl, but HO3' was
+    dropped from every residue that tests as RNA/DNA, where O3' usually
+    carries the next phosphate. The H is placed now and removed only where
+    the O really is esterified (exclude_H_on_esterified_O).
+
+    The DNA control keeps no HO3' anywhere, including the 3'-terminal DC 3:
+    the monomer library entry of a polymer nucleotide has no HO3' to place.
+    Giving a 3' end its hydroxyl H is a separate gap, in the library rather
+    than here - the RNA entries A/U/G/C have no HO3' either.
+  '''
+  atoms = place_atoms(pdb_str_012)
+  assert h_on(atoms, 'AMP', '1201', "O3'") == ["HO3'"], h_on(
+    atoms, 'AMP', '1201', "O3'")
+  assert h_on(atoms, 'AMP', '1201', "O2'") == ["HO2'"]
+  atoms = place_atoms(pdb_str_012_control)
+  for resname, resseq in (('DC', '1'), ('DG', '2'), ('DC', '3')):
+    assert h_on(atoms, resname, resseq, "O3'") == [], (resname, resseq)
+  # 5GP has the same ligand-style dictionary as AMP, but here its O3' carries
+  # the phosphate of C 2 (4TNA), so the H is placed and then removed again
+  atoms = place_atoms(pdb_str_012_linked)
+  assert h_on(atoms, '5GP', '1', "O3'") == [], h_on(atoms, '5GP', '1', "O3'")
+  assert h_on(atoms, '5GP', '1', "O2'") == ["HO2'"]
 
 # ------------------------------------------------------------------------------
 
@@ -547,6 +573,145 @@ ATOM     66  CG  LYS A  87      13.338  52.939  65.839  1.00 24.38           C
 ATOM     67  CD  LYS A  87      11.961  52.424  66.104  1.00 30.22           C
 ATOM     68  CE  LYS A  87      11.700  51.121  65.394  1.00 26.16           C
 ATOM     69  NZ  LYS A  87      10.264  50.804  65.531  1.00 31.31           N
+END
+"""
+
+pdb_str_012 = """
+CRYST1   52.650   54.499   66.365  93.37  97.68 102.44 P 1
+HETATM    1  C1' AMP A1201       1.751   9.985  45.277  1.00 24.11           C
+HETATM    2  C2  AMP A1201       3.845   8.243  48.752  1.00 26.36           C
+HETATM    3  C2' AMP A1201       2.736  11.117  44.952  1.00 24.56           C
+HETATM    4  C3' AMP A1201       2.584  11.238  43.440  1.00 24.53           C
+HETATM    5  C4  AMP A1201       3.059   8.342  46.558  1.00 23.44           C
+HETATM    6  C4' AMP A1201       1.117  10.895  43.217  1.00 26.37           C
+HETATM    7  C5  AMP A1201       3.693   7.052  46.280  1.00 24.64           C
+HETATM    8  C5' AMP A1201       0.762  10.378  41.845  1.00 27.37           C
+HETATM    9  C6  AMP A1201       4.423   6.413  47.392  1.00 24.61           C
+HETATM   10  C8  AMP A1201       2.694   7.786  44.489  1.00 23.99           C
+HETATM   11  N1  AMP A1201       4.457   7.065  48.572  1.00 22.89           N
+HETATM   12  N3  AMP A1201       3.166   8.890  47.789  1.00 25.59           N
+HETATM   13  N6  AMP A1201       5.046   5.216  47.246  1.00 26.07           N
+HETATM   14  N7  AMP A1201       3.442   6.772  44.990  1.00 23.32           N
+HETATM   15  N9  AMP A1201       2.467   8.713  45.433  1.00 24.84           N
+HETATM   16  O1P AMP A1201      -0.476  10.260  39.151  1.00 31.62           O
+HETATM   17  O2' AMP A1201       2.299  12.295  45.610  1.00 27.03           O
+HETATM   18  O2P AMP A1201      -1.283   8.318  40.533  1.00 33.06           O
+HETATM   19  O3' AMP A1201       2.930  12.509  42.922  1.00 26.18           O
+HETATM   20  O3P AMP A1201      -2.715  10.330  40.359  1.00 28.38           O
+HETATM   21  O4' AMP A1201       0.851   9.868  44.194  1.00 25.17           O
+HETATM   22  O5' AMP A1201      -0.643  10.350  41.667  1.00 29.44           O
+HETATM   23  P   AMP A1201      -1.307   9.798  40.318  1.00 33.89           P
+END
+"""
+
+pdb_str_012_control = """
+CRYST1   17.880   31.420   43.900  90.00  90.00  90.00 P 21 21 21    8
+ATOM      1  O5'  DC A   1      19.545  18.136  17.917  1.00  3.07           O
+ATOM      2  C5'  DC A   1      19.769  17.119  18.884  1.00  2.46           C
+ATOM      3  C4'  DC A   1      18.610  16.148  19.001  1.00  2.19           C
+ATOM      4  O4'  DC A   1      17.462  16.852  19.514  1.00  2.62           O
+ATOM      5  C3'  DC A   1      18.161  15.506  17.674  1.00  2.26           C
+ATOM      6  O3'  DC A   1      17.782  14.139  17.875  1.00  2.47           O
+ATOM      7  C2'  DC A   1      16.906  16.282  17.315  1.00  2.41           C
+ATOM      8  C1'  DC A   1      16.340  16.624  18.692  1.00  2.34           C
+ATOM      9  N1   DC A   1      15.516  17.837  18.704  1.00  2.30           N
+ATOM     10  C2   DC A   1      14.145  17.720  18.492  1.00  2.34           C
+ATOM     11  O2   DC A   1      13.658  16.581  18.329  1.00  3.07           O
+ATOM     12  N3   DC A   1      13.385  18.831  18.454  1.00  2.35           N
+ATOM     13  C4   DC A   1      13.943  20.039  18.611  1.00  2.37           C
+ATOM     14  N4   DC A   1      13.161  21.108  18.580  1.00  2.79           N
+ATOM     15  C5   DC A   1      15.357  20.189  18.812  1.00  2.71           C
+ATOM     16  C6   DC A   1      16.103  19.061  18.841  1.00  2.68           C
+ATOM     17  P    DG A   2      18.825  12.942  17.684  1.00  2.51           P
+ATOM     18  OP1  DG A   2      19.788  13.206  16.573  1.00  3.24           O
+ATOM     19  OP2  DG A   2      17.976  11.710  17.621  1.00  3.25           O
+ATOM     20  O5'  DG A   2      19.719  12.937  19.002  1.00  2.66           O
+ATOM     21  C5'  DG A   2      19.103  12.733  20.284  1.00  2.85           C
+ATOM     22  C4'  DG A   2      20.140  13.045  21.335  1.00  2.73           C
+ATOM     23  O4'  DG A   2      20.546  14.399  21.207  1.00  2.76           O
+ATOM     24  C3'  DG A   2      19.598  12.910  22.753  1.00  2.85           C
+ATOM     25  O3'  DG A   2      19.812  11.563  23.230  1.00  3.51           O
+ATOM     26  C2'  DG A   2      20.430  13.919  23.526  1.00  3.30           C
+ATOM     27  C1'  DG A   2      20.834  14.964  22.481  1.00  2.85           C
+ATOM     28  N9   DG A   2      20.140  16.222  22.572  1.00  2.76           N
+ATOM     29  C8   DG A   2      20.744  17.451  22.654  1.00  3.56           C
+ATOM     30  N7   DG A   2      19.903  18.441  22.626  1.00  3.75           N
+ATOM     31  C5   DG A   2      18.658  17.840  22.510  1.00  2.68           C
+ATOM     32  C6   DG A   2      17.359  18.399  22.397  1.00  2.62           C
+ATOM     33  O6   DG A   2      17.067  19.612  22.382  1.00  3.52           O
+ATOM     34  N1   DG A   2      16.371  17.435  22.313  1.00  2.19           N
+ATOM     35  C2   DG A   2      16.610  16.084  22.263  1.00  1.99           C
+ATOM     36  N2   DG A   2      15.540  15.294  22.108  1.00  2.48           N
+ATOM     37  N3   DG A   2      17.814  15.534  22.356  1.00  2.10           N
+ATOM     38  C4   DG A   2      18.782  16.466  22.477  1.00  2.26           C
+ATOM     39  P    DC A   3      18.598  10.645  23.664  1.00  3.54           P
+ATOM     40  OP1  DC A   3      19.187   9.314  23.999  1.00  5.42           O
+ATOM     41  OP2  DC A   3      17.526  10.682  22.656  1.00  5.19           O
+ATOM     42  O5'  DC A   3      18.133  11.412  24.998  1.00  3.68           O
+ATOM     43  C5'  DC A   3      17.562  10.688  26.104  1.00  3.12           C
+ATOM     44  C4'  DC A   3      16.175  11.192  26.422  1.00  2.67           C
+ATOM     45  O4'  DC A   3      16.263  12.557  26.885  1.00  2.93           O
+ATOM     46  C3'  DC A   3      15.179  11.206  25.269  1.00  2.83           C
+ATOM     47  O3'  DC A   3      13.854  10.971  25.771  1.00  3.13           O
+ATOM     48  C2'  DC A   3      15.208  12.650  24.803  1.00  3.07           C
+ATOM     49  C1'  DC A   3      15.379  13.367  26.137  1.00  2.64           C
+ATOM     50  N1   DC A   3      15.979  14.696  26.016  1.00  2.59           N
+ATOM     51  C2   DC A   3      15.126  15.784  25.823  1.00  2.60           C
+ATOM     52  O2   DC A   3      13.894  15.575  25.734  1.00  3.08           O
+ATOM     53  N3   DC A   3      15.658  17.016  25.725  1.00  2.61           N
+ATOM     54  C4   DC A   3      16.987  17.184  25.770  1.00  2.65           C
+ATOM     55  N4   DC A   3      17.464  18.422  25.674  1.00  3.18           N
+ATOM     56  C5   DC A   3      17.881  16.072  25.908  1.00  3.00           C
+ATOM     57  C6   DC A   3      17.330  14.855  26.026  1.00  2.98           C
+END
+"""
+
+pdb_str_012_linked = """
+CRYST1   56.300   33.400   63.000  90.00  90.25  90.00 P 1 21 1      2
+ATOM      1  OP3 5GP A   1      23.215   5.145  51.161  1.00  0.00           O
+ATOM      2  P   5GP A   1      24.650   4.594  51.620  1.00  0.00           P
+ATOM      3  OP1 5GP A   1      24.810   3.219  51.082  1.00  0.00           O
+ATOM      4  OP2 5GP A   1      25.707   5.598  51.344  1.00  0.00           O
+ATOM      5  O5' 5GP A   1      24.476   4.546  53.204  1.00  0.00           O
+ATOM      6  C5' 5GP A   1      25.156   5.525  53.978  1.00  0.00           C
+ATOM      7  C4' 5GP A   1      25.808   4.801  55.152  1.00  0.00           C
+ATOM      8  O4' 5GP A   1      24.983   3.707  55.565  1.00  0.00           O
+ATOM      9  C3' 5GP A   1      27.185   4.241  54.785  1.00  0.00           C
+ATOM     10  O3' 5GP A   1      28.130   5.240  55.163  1.00  0.00           O
+ATOM     11  C2' 5GP A   1      27.282   3.124  55.808  1.00  0.00           C
+ATOM     12  O2' 5GP A   1      27.691   3.684  57.045  1.00  0.00           O
+ATOM     13  C1' 5GP A   1      25.833   2.612  55.903  1.00  0.00           C
+ATOM     14  N9  5GP A   1      25.681   1.623  54.832  1.00  0.00           N
+ATOM     15  C8  5GP A   1      24.865   1.712  53.755  1.00  0.00           C
+ATOM     16  N7  5GP A   1      25.012   0.580  52.989  1.00  0.00           N
+ATOM     17  C5  5GP A   1      25.874  -0.248  53.697  1.00  0.00           C
+ATOM     18  C6  5GP A   1      26.336  -1.541  53.483  1.00  0.00           C
+ATOM     19  O6  5GP A   1      25.983  -2.159  52.466  1.00  0.00           O
+ATOM     20  N1  5GP A   1      27.127  -2.122  54.405  1.00  0.00           N
+ATOM     21  C2  5GP A   1      27.481  -1.468  55.532  1.00  0.00           C
+ATOM     22  N2  5GP A   1      28.055  -2.114  56.534  1.00  0.00           N
+ATOM     23  N3  5GP A   1      27.078  -0.243  55.747  1.00  0.00           N
+ATOM     24  C4  5GP A   1      26.260   0.388  54.839  1.00  0.00           C
+ATOM     25  P     C A   2      29.640   5.301  54.591  1.00  0.00           P
+ATOM     26  OP1   C A   2      30.307   6.511  55.152  1.00  0.00           O
+ATOM     27  OP2   C A   2      29.605   5.142  53.117  1.00  0.00           O
+ATOM     28  O5'   C A   2      30.332   4.036  55.292  1.00  0.00           O
+ATOM     29  C5'   C A   2      30.763   4.137  56.639  1.00  0.00           C
+ATOM     30  C4'   C A   2      31.424   2.812  56.982  1.00  0.00           C
+ATOM     31  O4'   C A   2      30.483   1.753  56.828  1.00  0.00           O
+ATOM     32  C3'   C A   2      32.562   2.541  56.002  1.00  0.00           C
+ATOM     33  O3'   C A   2      33.772   3.124  56.479  1.00  0.00           O
+ATOM     34  C2'   C A   2      32.637   1.038  56.077  1.00  0.00           C
+ATOM     35  O2'   C A   2      33.390   0.643  57.211  1.00  0.00           O
+ATOM     36  C1'   C A   2      31.162   0.636  56.248  1.00  0.00           C
+ATOM     37  N1    C A   2      30.570   0.343  54.911  1.00  0.00           N
+ATOM     38  C2    C A   2      30.799  -0.845  54.338  1.00  0.00           C
+ATOM     39  O2    C A   2      31.777  -1.511  54.728  1.00  0.00           O
+ATOM     40  N3    C A   2      30.243  -1.143  53.141  1.00  0.00           N
+ATOM     41  C4    C A   2      29.496  -0.265  52.481  1.00  0.00           C
+ATOM     42  N4    C A   2      28.782  -0.652  51.425  1.00  0.00           N
+ATOM     43  C5    C A   2      29.284   0.988  53.032  1.00  0.00           C
+ATOM     44  C6    C A   2      29.844   1.264  54.273  1.00  0.00           C
 END
 """
 

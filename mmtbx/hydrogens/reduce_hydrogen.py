@@ -1097,6 +1097,7 @@ class place_hydrogens():
     name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
                      kinds = (2,))
     self.exclude_H_on_links()
+    self.exclude_H_on_esterified_O()
     # propellers only now: a methyl that lost an H to a link is a CH2, and the
     # names that survived it stay as they are
     name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
@@ -1129,6 +1130,36 @@ class place_hydrogens():
       self.print_times()
 
   # ----------------------------------------------------------------------------
+
+  def exclude_H_on_esterified_O(self):
+    '''
+    Remove H from an O that has two heavy neighbours: the dictionary of a free
+    molecule gives the O a hydroxyl H, but here it is an ester or an ether -
+    O3' of a nucleotide inside a chain carries the next phosphate. A polymer
+    bond has origin_id 0, so exclude_H_on_links never sees these.
+    '''
+    grm = self.model.get_restraints_manager().geometry
+    bps, asu = grm.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    elements = self.model.get_hierarchy().atoms().extract_element()
+    is_h = lambda i: elements[i].strip() in ('H', 'D')
+    # one pass over the bonds, keeping only what the oxygens carry
+    h_on_o, heavy_on_o = {}, {}
+    for proxy in list(bps) + list(asu):
+      if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
+      elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
+      else: continue
+      for i_o, other in ((i, j), (j, i)):
+        if elements[i_o].strip() != 'O': continue
+        if is_h(other): h_on_o.setdefault(i_o, set()).add(other)
+        else:           heavy_on_o.setdefault(i_o, set()).add(other)
+    remove = flex.size_t()
+    for i_o, hs in h_on_o.items():
+      if len(heavy_on_o.get(i_o, ())) > 1:
+        for i_h in sorted(hs): remove.append(i_h)
+    if remove.size():
+      sel = flex.bool(elements.size(), True).set_selected(remove, False)
+      self.model = self.model.select(sel)
 
   def place_anchorless_h(self, iseqs, bonds, heavy_neighbors):
     '''
@@ -1317,8 +1348,11 @@ class place_hydrogens():
             if mlq.test_for_peptide(atom_dict):
               atom_dict = _remove_atoms(
                 atom_dict, _terminal_h(mlq, atom_dict))
-            elif mlq.test_for_rna_dna(atom_dict):
-              atom_dict = _remove_atoms(atom_dict, ["HO3'", 'HO3*'])
+            # HO3' used to go here for every RNA/DNA residue, because in a
+            # polymer O3' carries the next phosphate. It is placed now and
+            # exclude_H_on_esterified_O drops it where the O really is
+            # esterified: a free nucleotide (AMP, IMP, U5P) and a 3' end keep
+            # their hydroxyl H.
             for k, v in six.iteritems(atom_dict):
               if(v.type_symbol=="H"):
                 expected_h.append(k)
