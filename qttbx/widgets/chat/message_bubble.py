@@ -11,53 +11,56 @@ from qttbx.qt import QtCore, QtGui, QtWidgets
 
 from qttbx.widgets.chat.agent.conversation import ContentBlock, Message, now
 from qttbx.widgets.chat.markdown_view import MarkdownView
+from qttbx.widgets.chat.tool_call_disclosure import (
+  DisclosureRow, ToolCallDisclosure)
 
 
-class _ThinkingCell(QtWidgets.QFrame):
-  """Italic grey ``[thinking] ...`` cell.
+class _ThinkingCell(DisclosureRow):
+  """Collapsible ``▾ Thinking`` row holding a thinking block.
 
-  The text renders in a read-only, frameless, transparent, auto-height
-  QPlainTextEdit -- the same recipe as ToolCallDisclosure's args/result
-  views -- rather than a QLabel, so conversation search can highlight
-  matches with the same extra-selections machinery as every other text
-  cell. QPlainTextEdit has no rich-text path, so model-controlled text
-  stays literal; as a side effect the text becomes mouse-selectable,
-  matching the markdown cells.
+  The body is the same ``MarkdownView`` a reply cell uses -- same font,
+  markdown rendered, raw HTML kept literal, local resources never loaded
+  -- with no role prefix, so a summary reads like a reply under its own
+  header. It starts OPEN: the summaries are the only account of an
+  autonomous run between tool calls, and the view-level toggle folds
+  them all when wanted.
+
+  Parameters
+  ----------
+  text : str
+      Initial thinking text (may be empty for a streaming cell).
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  expanded : bool, optional
+      Start with the body shown (the default). The view-level expand-all /
+      collapse-all switch passes its current state here so new cells
+      follow it.
   """
 
-  def __init__(self, text, parent=None):
-    super().__init__(parent)
-    self.setFrameShape(QtWidgets.QFrame.NoFrame)
-    layout = QtWidgets.QVBoxLayout(self)
-    layout.setContentsMargins(6, 2, 6, 2)
-    view = QtWidgets.QPlainTextEdit(self)
-    view.setReadOnly(True)
-    view.setFrameStyle(QtWidgets.QFrame.NoFrame)
-    # Italic goes on the QFont (not the stylesheet) so the
-    # fontMetrics-based auto-height math measures the rendered font.
-    font = view.font()
-    font.setItalic(True)
-    view.setFont(font)
-    view.setStyleSheet("background: transparent; color: palette(mid);")
-    # The old QLabel had no inner document margin; drop QPlainTextEdit's
-    # default 4 px so the text inset stays pixel-compatible.
-    view.document().setDocumentMargin(0)
-    view.setPlainText("[thinking] %s" % (text or ""))
-    from qttbx.widgets.chat.auto_height import set_auto_height
-    set_auto_height(view)
-    layout.addWidget(view)
-    self.view = view
+  def __init__(self, text, parent=None, expanded=True):
+    super().__init__(parent, expanded=expanded)
+    self.view = MarkdownView(self.body)
+    self.view.append_markdown(text or "")
+    self.body_layout.addWidget(self.view)
 
   def append(self, text):
-    if not text:
-      return
-    cursor = self.view.textCursor()
-    cursor.movePosition(QtGui.QTextCursor.End)
-    cursor.insertText(text)
+    """Append a streamed delta; the markdown re-renders like a reply's."""
+    if text:
+      self.view.append_markdown(text)
 
   def searchable_cells(self):
-    """This cell's searchable text: the inner view, kind ``"thinking"``."""
+    """This cell's searchable text: the inner view, kind ``"thinking"``.
+
+    Reported even while folded -- hidden thinking text is searchable, and
+    navigation reveals it via ``ensure_revealed``.
+    """
     return [("thinking", self.view)]
+
+  def _inner_views(self):
+    return (self.view,)
+
+  def _header_label(self):
+    return "Thinking", None
 
 
 class _ImageCell(QtWidgets.QFrame):
@@ -186,6 +189,15 @@ class MessageBubble(QtWidgets.QFrame):
   role : str, optional
       ``"user"`` or ``"assistant"`` to build an empty bubble. Mutually
       exclusive with ``message``.
+  assistant_label : str, optional
+      Display name for an assistant message that carries no per-turn
+      backend stamp (a live streaming bubble, legacy data); the
+      ConversationView supplies the current backend's name.
+  thinking_expanded : bool, optional
+      Fold state for the thinking cells this bubble creates -- at
+      construction, on a streamed delta, or via ``append_block``. The
+      ConversationView passes its expand-all / collapse-all switch;
+      ``set_thinking_expanded`` updates it. Shown by default.
 
   Raises
   ------
@@ -196,7 +208,7 @@ class MessageBubble(QtWidgets.QFrame):
   image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
 
   def __init__(self, message=None, parent=None, storage=None, conv_id=None,
-               role=None, assistant_label=None):
+               role=None, assistant_label=None, thinking_expanded=True):
     super().__init__(parent)
     # Two construction modes:
     #   * legacy: MessageBubble(message=<Message>) -- ConversationView path,
@@ -216,6 +228,11 @@ class MessageBubble(QtWidgets.QFrame):
     # by ConversationView) used when the message carries no per-turn backend
     # stamp -- e.g. a live streaming bubble, or a legacy unstamped message.
     self._assistant_label = assistant_label
+    # Default fold state for thinking cells this bubble creates -- at
+    # construction, on a streamed delta, or via append_block. Mirrors the
+    # ConversationView's expand-all / collapse-all switch at the time the
+    # bubble was built (shown, by default); set_thinking_expanded() updates it.
+    self._thinking_expanded = thinking_expanded
     # Flattened: no frame styling, no background.
     self.setFrameStyle(QtWidgets.QFrame.NoFrame)
     self._layout = QtWidgets.QVBoxLayout(self)
@@ -225,7 +242,6 @@ class MessageBubble(QtWidgets.QFrame):
     self._layout.setSpacing(4)
 
     self._text_view = None
-    self._thinking_cell = None
     self._first_text_cell = None
     self._first_text_cell_added = False
     # tool_id -> ToolCallDisclosure. Populated by both add_tool_use_cell()
@@ -244,13 +260,13 @@ class MessageBubble(QtWidgets.QFrame):
     if block.type == "text":
       self._append_text_markdown(block.data.get("text", ""))
     elif block.type == "thinking":
-      cell = _ThinkingCell(block.data.get("text", ""), self)
-      self._thinking_cell = cell
-      # Non-text cell: drop _text_view so subsequent text creates a fresh
-      # MarkdownView (otherwise text-after-thinking would merge into the
-      # pre-thinking view, breaking visual ordering).
-      self._text_view = None
-      self._layout.addWidget(cell)
+      if (block.data.get("text") or "").strip():
+        self._add_thinking_cell(block.data["text"])
+      else:
+        # A signature-only (or whitespace-only) block has nothing to show
+        # -- the export and the transcript drop it too -- but is still a
+        # non-text block, so the text after it starts a fresh view.
+        self._text_view = None
     elif block.type == "tool_use":
       # Route legacy message-replay tool_use blocks through the same
       # ToolCallDisclosure widget the runner-driven path uses, so the UI
@@ -281,7 +297,6 @@ class MessageBubble(QtWidgets.QFrame):
         # it through the same collapsed ToolCallDisclosure the live path
         # uses so bulk Phenix output (phenix_get_phil can exceed 50K
         # chars) stays hidden behind a click rather than dumped in full.
-        from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
         status = "error" if is_error else "finished"
         cell = ToolCallDisclosure(name="result", status=status, parent=self)
         cell.set_status(status, color="error" if is_error else "muted")
@@ -385,10 +400,8 @@ class MessageBubble(QtWidgets.QFrame):
     Each cell class reports its own pairs through the duck-typed
     ``searchable_cells()`` protocol (MarkdownView -> ``"text"``, a
     thinking cell -> ``"thinking"``, a tool disclosure -> its ``"tool"``
-    args/result views); the bubble just concatenates them. Walks the
-    layout -- NOT ``_thinking_cell``, which only ever points at the
-    LAST thinking cell (``_add_block`` overwrites it per thinking
-    block) -- so every cell appears, in display order.
+    args/result views); the bubble just concatenates them, walking the
+    layout so every cell appears, in display order.
 
     Returns
     -------
@@ -396,12 +409,75 @@ class MessageBubble(QtWidgets.QFrame):
         Scope-key / text-widget pairs in display order.
     """
     cells = []
-    for i in range(self._layout.count()):
-      w = self._layout.itemAt(i).widget()
+    for w in self.cells():
       report = getattr(w, "searchable_cells", None)
       if report is not None:
         cells.extend(report())
     return cells
+
+  def cells(self):
+    """This bubble's cell widgets in display order (the layout's items).
+
+    ConversationView's viewport anchoring walks these for each bubble it
+    tracks (it checks ``isinstance(w, MessageBubble)``; approval and
+    question cards are anchored whole), and ``searchable_cells`` /
+    ``thinking_cells`` filter them.
+
+    Yields
+    ------
+    QtWidgets.QWidget
+        Text views, thinking cells, tool rows and image cells.
+    """
+    for i in range(self._layout.count()):
+      w = self._layout.itemAt(i).widget()
+      if w is not None:
+        yield w
+
+  def _last_cell(self):
+    """The bottom-most cell, or ``None`` for an empty bubble."""
+    count = self._layout.count()
+    return self._layout.itemAt(count - 1).widget() if count else None
+
+  # ---- thinking fold ------------------------------------------------------
+
+  def thinking_cells(self):
+    """Every thinking cell in this bubble, in display order.
+
+    Walks the layout so all of them are reported.
+
+    Returns
+    -------
+    list of _ThinkingCell
+    """
+    return [w for w in self.cells() if isinstance(w, _ThinkingCell)]
+
+  def _add_thinking_cell(self, text):
+    """Append a thinking cell holding ``text`` (empty for a streaming one).
+
+    A non-text cell: ``_text_view`` is dropped so the text that follows
+    starts a fresh MarkdownView below it, instead of merging into the
+    view above and breaking the visual order.
+    """
+    cell = _ThinkingCell(text, self, expanded=self._thinking_expanded)
+    self._text_view = None
+    self._layout.addWidget(cell)
+    return cell
+
+  def set_thinking_expanded(self, on):
+    """Expand (``True``) or collapse (``False``) every thinking cell.
+
+    Also becomes the default for thinking cells created afterwards, so a
+    streaming bubble keeps following the switch. Per-cell hand edits are
+    simply overridden -- this is expand-all / collapse-all, not a memory.
+
+    Parameters
+    ----------
+    on : bool
+        Desired fold state for all thinking cells.
+    """
+    self._thinking_expanded = on
+    for cell in self.thinking_cells():
+      cell.set_expanded(on)
 
   # ---- image cells --------------------------------------------------------
 
@@ -463,7 +539,6 @@ class MessageBubble(QtWidgets.QFrame):
     ToolCallDisclosure
         The inserted disclosure row.
     """
-    from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
     cell = ToolCallDisclosure(name=name, status="running", parent=self)
     if args:
       cell.set_args(args)
@@ -560,11 +635,12 @@ class MessageBubble(QtWidgets.QFrame):
 
   def _mirror_text_block(self, block_type, text):
     """Mirror a streamed delta into ``message.content``: extend the last block
-    when it is already ``block_type``, else append a new one. Keeps
-    message.content in sync with what streamed into the bubble (the bubble is
-    the source of truth for on-screen content) so ``combined_text()`` stays
-    consistent. Shared by ``append_text_delta`` ('text') and
-    ``append_thinking_delta`` ('thinking')."""
+    when it is already ``block_type``, else append a new one -- the rule the
+    session applies to what it persists, so the live bubble holds the blocks
+    a reload draws from. ``append_thinking_delta`` reads the last block to
+    decide whether a delta extends the bottom cell, and mirrors even a
+    signature-only delta it does not show. Shared by ``append_text_delta``
+    ('text') and ``append_thinking_delta`` ('thinking')."""
     last = self.message.content[-1] if self.message.content else None
     if last is not None and last.type == block_type:
       last.data["text"] = (last.data.get("text", "") or "") + (text or "")
@@ -578,11 +654,42 @@ class MessageBubble(QtWidgets.QFrame):
     self._mirror_text_block("text", text)
 
   def append_thinking_delta(self, text):
-    """Append a streamed thinking delta to the bubble and message content."""
-    if self._thinking_cell is None:
-      self._thinking_cell = _ThinkingCell("", self)
-      self._layout.addWidget(self._thinking_cell)
-    self._thinking_cell.append(text)
+    """Append a streamed thinking delta to the bubble and message content.
+
+    Extends the bottom-most cell while it is a thinking cell AND the last
+    content block is its thinking block (one with visible text: a
+    signature-only or whitespace-only block has no cell); once text, a tool
+    row or any other block has landed after it, the delta starts a new cell
+    below them, so the on-screen order matches the turn's and a reload's. An
+    empty (signature-only or whitespace-only) delta that would start a cell
+    adds none: it mirrors its block, which a reload skips too while it stays
+    blank, and the text after it starts a fresh view; the first delta with
+    visible text that extends that block seeds its new cell with the block's
+    whitespace, so live and reload render alike.
+    """
+    cell = self._last_cell()
+    last = self.message.content[-1] if self.message.content else None
+    if (not isinstance(cell, _ThinkingCell)
+        or last is None or last.type != "thinking"
+        or not (last.data.get("text") or "").strip()):
+      if not (text or "").strip():
+        self._text_view = None
+        self._mirror_text_block("thinking", text)
+        return
+      # A new cell whenever the delta lands in a block other than the
+      # bottom cell's -- a new one (after a server_tool_result folded into
+      # an earlier row) or a signature-only one that has no cell -- so the
+      # live bubble cannot merge what a reload draws as two cells. A
+      # whitespace-only block is the one this delta EXTENDS (the mirror
+      # below appends to it), so the new cell is seeded with that
+      # whitespace: a leading tab or indent then renders live exactly as
+      # the stored block renders on reload.
+      seed = ""
+      if (last is not None and last.type == "thinking"
+          and not (last.data.get("text") or "").strip()):
+        seed = last.data.get("text") or ""
+      cell = self._add_thinking_cell(seed)
+    cell.append(text)
     self._mirror_text_block("thinking", text)
 
   def append_block(self, block):

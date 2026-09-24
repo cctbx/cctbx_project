@@ -1,6 +1,6 @@
 """Find-in-conversation tests: cell enumeration, scroll/pin plumbing,
-ToolCallDisclosure.expand, the SearchBar widget, and the
-ConversationSearch controller."""
+DisclosureRow.set_expanded / ensure_revealed, the SearchBar widget, and
+the ConversationSearch controller."""
 
 import os
 import sys
@@ -70,9 +70,8 @@ def exercise_bubble_searchable_cells_order_and_kinds():
 
 
 def exercise_bubble_enumerates_every_thinking_cell():
-  """A bubble can hold several thinking cells; the _thinking_cell
-  attribute only points at the LAST one (each thinking block replaces
-  it), so enumeration must walk the layout."""
+  """A bubble can hold several thinking cells; enumeration walks the
+  layout, so every one is reported, in display order."""
   app = _app()
   from qttbx.widgets.chat.message_bubble import MessageBubble
   m = Message(role="assistant", timestamp=now(), content=[
@@ -141,11 +140,15 @@ def exercise_add_message_respects_autofollow_hold():
 
 
 def exercise_expand_recalcs_collapsed_result_height():
-  """expand() must leave the inner result view at its real multi-line
-  height SYNCHRONOUSLY-after-layout, not the ~1-line height it was
-  given while hidden (sized at viewport width 0). The manual-click path
-  defers this by an event-loop tick; the search reveal path cannot
-  scroll against stale geometry."""
+  """set_expanded(True) must leave the inner result view at its real
+  height for the width it opens at, not the height it was given while
+  folded: before it was ever laid out, the plain-text view did not wrap
+  at all (its layout ignores the 100 px default width auto_height reads),
+  so each row counted as one line. Rows that wrap at the open width at
+  any font size make that folded height too short. (Short rows -- one
+  line each, folded or open -- would leave the open height equal to the
+  folded one, re-measured or not.) The manual-click path defers this by
+  an event-loop tick."""
   app = _app()
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
   host = QtWidgets.QWidget()
@@ -154,30 +157,64 @@ def exercise_expand_recalcs_collapsed_result_height():
   layout.addWidget(d)
   host.resize(400, 600)
   host.show()
-  d.set_result("\n".join("line %d" % i for i in range(40)))
+  d.set_result("\n".join("line %d " % i + "word " * 30 for i in range(40)))
   _pump(app)
   assert not d.body.isVisible()
-  one_line = d.result_view.fontMetrics().lineSpacing()
-  d.expand()
+  folded = d.result_view.height()
+  d.set_expanded(True)
   _pump(app)
   assert d.body.isVisible()
   assert d.header_button.isChecked()
-  assert d.result_view.height() > 5 * one_line, d.result_view.height()
-  # Idempotent: expanding an expanded row is a no-op, not a toggle.
-  d.expand()
+  assert d.result_view.height() > folded, (d.result_view.height(), folded)
+  # Idempotent: opening an open row is a no-op, not a toggle.
+  d.set_expanded(True)
   assert d.body.isVisible()
 
 
-def exercise_expand_calls_refresh_inner_heights_synchronously():
-  """expand() must run the inner-height refresh SYNCHRONOUSLY (before it
-  returns): the scroll-to-match caller measures geometry in the same
-  tick. Offscreen Qt corrects the height via setVisible's synchronous
-  resize regardless -- a height assertion passes with or without the
-  explicit refresh -- so the only way to pin the production contract
-  (where that resize is async) is to observe the call itself. Shadow
-  the refresh with a counter, expand once and assert it fired exactly
-  once with NO pump, then expand again (already open) and assert the
-  early-return no-op path does not fire it a second time."""
+def exercise_expand_remeasures_a_view_that_opens_at_its_old_width():
+  """set_expanded(True) re-measures the inner views before it returns even
+  when the open does not change their width -- no resize event, so
+  auto_height's resize hook stays silent. A font change made while the
+  row was folded is such a case: without the synchronous refresh the view
+  keeps the height of the old font, and a caller reading geometry in the
+  same call (the thinking switch's re-anchoring) reads the stale one --
+  so the row's size hint must carry the re-measured height too."""
+  app = _app()
+  from qttbx.widgets.chat.message_bubble import _ThinkingCell
+  saved = QtGui.QFont(app.font())
+  host = QtWidgets.QWidget()
+  try:
+    layout = QtWidgets.QVBoxLayout(host)
+    cell = _ThinkingCell("\n\n".join("Paragraph %d: " % i + "word " * 40
+                                     for i in range(4)), host)
+    layout.addWidget(cell)
+    layout.addStretch(1)
+    host.resize(500, 1400)
+    host.show()
+    _pump(app)
+    width, before = cell.view.width(), cell.view.height()
+    cell.set_expanded(False)
+    _pump(app)
+    big = QtGui.QFont(saved)
+    big.setPointSize(saved.pointSize() + 6)
+    app.setFont(big)
+    _pump(app)
+    cell.set_expanded(True)
+    assert cell.view.width() == width            # no resize on this open
+    assert cell.view.height() > before, (cell.view.height(), before)
+    assert cell.sizeHint().height() >= cell.view.height(), \
+      (cell.sizeHint().height(), cell.view.height())
+  finally:
+    app.setFont(saved)
+    host.close()
+    _pump(app)
+
+
+def exercise_expand_is_a_no_op_on_an_open_row():
+  """set_expanded(True) on a row that is already open returns at once,
+  without re-measuring: the thinking switch calls it on every cell, open
+  or not. (That an open re-measures before it returns is pinned by height
+  in exercise_expand_remeasures_a_view_that_opens_at_its_old_width.)"""
   app = _app()
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
   host = QtWidgets.QWidget()
@@ -187,17 +224,13 @@ def exercise_expand_calls_refresh_inner_heights_synchronously():
   host.resize(400, 600)
   host.show()
   d.set_result("\n".join("line %d" % i for i in range(40)))
-  _pump(app)
-  counter = {"n": 0}
-  original = d._refresh_inner_heights
-  def counting_refresh():
-    counter["n"] += 1
-    original()
-  d._refresh_inner_heights = counting_refresh
-  d.expand()
-  assert counter["n"] == 1, counter["n"]   # synchronous, before any pump
-  d.expand()                               # already expanded -> no-op
-  assert counter["n"] == 1, counter["n"]
+  d.set_expanded(True)
+  app.processEvents()
+  calls = []
+  d._refresh_inner_heights = lambda: calls.append(1)
+  d.set_expanded(True)                     # already open -> no-op
+  assert calls == [], calls
+  assert d.body.isVisible() and d.is_expanded()
 
 
 def exercise_search_bar_signals_and_defaults():
@@ -756,9 +789,11 @@ def exercise_navigate_into_collapsed_disclosure_expands_and_scrolls():
   _pump(app, ms=250)                 # expansion + deferred scroll + layout
   assert disc.body.isVisible()
   # The final scroll position points into the EXPANDED result view: the
-  # match row is inside the viewport band, which is only possible after
-  # the auto-height refresh grew the cell (stale ~1-line geometry would
-  # leave the scrollbar near bar0).
+  # match row is inside the viewport band, which is only possible once
+  # the reveal has opened the body and the deferred scroll has run
+  # against it. (Short rows: the folded view already had its full height,
+  # so this does not exercise the re-measure -- see
+  # exercise_expand_recalcs_collapsed_result_height.)
   w, start, _n = cs._matches[0]
   cursor = QtGui.QTextCursor(w.document())
   cursor.setPosition(start)
@@ -769,6 +804,35 @@ def exercise_navigate_into_collapsed_disclosure_expands_and_scrolls():
       (bar.value(), pt.y(), v.viewport().height())
 
 
+def exercise_navigate_into_folded_thinking_cell_opens_it():
+  """Navigating to a match inside a folded thinking cell must open the fold
+  (via the same ensure_revealed ancestor walk the tool disclosure uses) so
+  the highlighted text is actually on screen."""
+  app = _app()
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.conversation_search import ConversationSearch
+  v = ConversationView()
+  v.set_thinking_expanded(False)         # the toggle is ON by default
+  v.resize(500, 300)
+  v.show()
+  m = Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "a folded needle here"}),
+    ContentBlock(type="text", data={"text": "reply"})])
+  b = v.add_message(m)
+  _pump(app)
+  cell = b.thinking_cells()[0]
+  assert not cell.is_expanded()
+  assert not cell.view.isVisible()
+  cs = ConversationSearch(v)
+  cs.open()
+  cs.bar._edit.setText("folded needle")
+  assert len(cs._matches) == 1
+  cs.bar.next_requested.emit()
+  _pump(app, ms=250)
+  assert cell.is_expanded()
+  assert cell.view.isVisible()
+
+
 def exercise():
   exercise_bubble_searchable_cells_order_and_kinds()
   exercise_bubble_enumerates_every_thinking_cell()
@@ -776,7 +840,8 @@ def exercise():
   exercise_ensure_visible_disengages_follow_and_holds()
   exercise_add_message_respects_autofollow_hold()
   exercise_expand_recalcs_collapsed_result_height()
-  exercise_expand_calls_refresh_inner_heights_synchronously()
+  exercise_expand_remeasures_a_view_that_opens_at_its_old_width()
+  exercise_expand_is_a_no_op_on_an_open_row()
   exercise_search_bar_signals_and_defaults()
   exercise_search_bar_count_states()
   exercise_search_bar_keys_from_all_children()
@@ -796,6 +861,7 @@ def exercise():
   exercise_navigation_pin_engages_before_deferred_scroll()
   exercise_deferred_bottom_snap_rechecks_follow()
   exercise_navigate_into_collapsed_disclosure_expands_and_scrolls()
+  exercise_navigate_into_folded_thinking_cell_opens_it()
 
 
 if __name__ == "__main__":

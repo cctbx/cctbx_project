@@ -699,6 +699,42 @@ def exercise_ctrl_home_end_emit_goto_signals():
   assert (got["start"], got["end"]) == (2, 1), got
 
 
+def exercise_thinking_action_drives_the_button_and_any_menu():
+  """The 💭 button is a QToolButton over one checkable QAction the
+  composer owns (``thinking_action``); the window adds the SAME action to
+  its View menu, so Qt keeps every handle in step with no relay code. It
+  starts checked (showing thinking is the default) and sits immediately
+  left of 🔍."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  act = w.thinking_action
+  assert act.isCheckable() and act.isChecked()
+  assert act.text() == "Show thinking", act.text()
+  assert w._thinking_btn.defaultAction() is act
+  assert w._thinking_btn.text() == "💭", w._thinking_btn.text()
+  assert "thinking" in act.toolTip().lower()
+  got = []
+  act.toggled.connect(lambda on: got.append(on))
+  w._thinking_btn.click()                      # button -> action
+  assert not act.isChecked() and got == [False], got
+  act.setChecked(True)                         # menu/programmatic -> button
+  assert w._thinking_btn.isChecked() and got == [False, True], got
+  act.trigger()
+  assert not w._thinking_btn.isChecked() and got == [False, True, False]
+  w.resize(600, 120)
+  w.show()
+  app.processEvents()
+  assert w._thinking_btn.x() < w._search_btn.x()
+  assert w._thinking_btn.y() == w._search_btn.y()
+  row = next(w.layout().itemAt(i).layout() for i in range(w.layout().count())
+             if w.layout().itemAt(i).layout() is not None)
+  i = row.indexOf(w._thinking_btn)
+  assert row.itemAt(i + 1).widget() is w._search_btn    # immediately left
+
+
 def exercise():
   exercise_ctrl_home_end_emit_goto_signals()
   exercise_send_signal_carries_text_and_empty_attachments()
@@ -713,6 +749,7 @@ def exercise():
   exercise_oversized_webp_is_reencoded_with_jpeg_mime()
   exercise_save_chat_button_emits_signal()
   exercise_search_button_next_to_attach_emits_signal()
+  exercise_thinking_action_drives_the_button_and_any_menu()
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()

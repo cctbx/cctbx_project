@@ -64,6 +64,13 @@ class ConversationView(QtWidgets.QScrollArea):
     self._approval_by_batch = {}                   # batch_id -> ToolApprovalCard
     self._question_cards = []                      # type: list[QuestionCard]
     self._in_progress = None
+    # Expand-all / collapse-all switch for thinking cells. View state (not
+    # bubble state) so it survives clear() on a conversation switch and
+    # seeds every bubble built afterwards; the window's View menu action
+    # and the 💭 button both drive set_thinking_expanded. ON by default:
+    # the thinking summaries are the only account of an autonomous run
+    # between tool calls.
+    self._thinking_expanded = True
     # Sticky "follow the bottom" flag. True by default and re-asserted
     # whenever the user takes an action that should bring the latest
     # content into view (sends a message, the assistant starts replying).
@@ -120,7 +127,8 @@ class ConversationView(QtWidgets.QScrollArea):
       return target
     bubble = MessageBubble(message, parent=self._container,
                            storage=self._storage, conv_id=self._conv_id,
-                           assistant_label=self._assistant_label)
+                           assistant_label=self._assistant_label,
+                           thinking_expanded=self._thinking_expanded)
     bubble.image_clicked.connect(self.image_clicked)
     self._insert_widget(bubble)
     self._bubbles.append(bubble)
@@ -140,7 +148,8 @@ class ConversationView(QtWidgets.QScrollArea):
     msg = Message(role="assistant", content=[], timestamp=now())
     bubble = MessageBubble(msg, parent=self._container,
                            storage=self._storage, conv_id=self._conv_id,
-                           assistant_label=self._assistant_label)
+                           assistant_label=self._assistant_label,
+                           thinking_expanded=self._thinking_expanded)
     bubble.image_clicked.connect(self.image_clicked)
     self._insert_widget(bubble)
     self._bubbles.append(bubble)
@@ -226,6 +235,55 @@ class ConversationView(QtWidgets.QScrollArea):
         tool_use_id, error=result or "error")
     else:
       self._in_progress.set_tool_use_finished(tool_use_id)
+
+  # ---- thinking switch -----------------------------------------------------
+
+  def thinking_expanded(self):
+    """Current state of the expand-all / collapse-all thinking switch.
+
+    Returns
+    -------
+    bool
+        True when thinking cells are shown.
+    """
+    return self._thinking_expanded
+
+  def set_thinking_expanded(self, on):
+    """Expand (``True``) or collapse (``False``) every thinking cell.
+
+    Applies to every bubble on screen and seeds every bubble added later
+    (stored messages and the streaming bubble alike) until flipped back.
+    Not a memory of per-cell hand edits: it overrides them. The viewport
+    is re-anchored on the cell (or card) that crosses its top, so the
+    content the user is reading does not shift while heights change above
+    it; while following the bottom, the bottom stays the bottom. Two
+    positions cannot be kept: one inside a thinking body that folds away
+    lands on that cell's header, and when a fold leaves less than a
+    viewport of content below the anchor, the scroll range ends the view
+    at the bottom.
+
+    Parameters
+    ----------
+    on : bool
+        Desired fold state for all thinking cells.
+    """
+    on = bool(on)
+    self._thinking_expanded = on
+    anchor = self._viewport_anchor()
+    # Opening a cell makes Qt activate every visible ancestor's layout,
+    # the container's included -- once per opened cell, so expand-all
+    # would re-lay out all N bubbles N times. With the container layout
+    # disabled for the loop those activations return at once, and the
+    # restore below lays it out after the loop, in this call, anchored or
+    # following (left to the event loop, the first pass would lay the
+    # bubbles out at the container's old height and paint that).
+    self._layout.setEnabled(False)
+    try:
+      for b in self._bubbles:
+        b.set_thinking_expanded(on)
+    finally:
+      self._layout.setEnabled(True)
+    self._restore_viewport_anchor(anchor)
 
   # ---- approval API --------------------------------------------------------
 
@@ -435,6 +493,81 @@ class ConversationView(QtWidgets.QScrollArea):
     self.ensureVisible(pt.x(), pt.y(), 0, margin)
 
   # ---- internals -----------------------------------------------------------
+
+  def _anchor_units(self):
+    """The units the viewport can anchor on, in display order: every
+    bubble's cells (heights change inside a bubble, not between them) and
+    the approval / question cards, which sit between bubbles in the order
+    they arrived. Hidden widgets are skipped: a decided card stays in the
+    layout, hidden, at the geometry it had while shown, and no layout
+    pass moves it again."""
+    # Not self._layout.itemAt(): PySide2 keeps every QWidgetItem wrapper
+    # it returns alive with the layout's wrapper, and this layout outlives
+    # the items clear() deletes -- the stale wrappers are then handed out
+    # for new objects allocated at the same addresses.
+    widgets = [w for w in (self._bubbles + self._approval_cards
+                           + self._question_cards) if not w.isHidden()]
+    widgets.sort(key=self._layout.indexOf)
+    for w in widgets:
+      if isinstance(w, MessageBubble):
+        for c in w.cells():
+          yield c
+      else:
+        yield w
+
+  def _viewport_anchor(self):
+    """``(unit, offset)`` of the unit crossing the viewport's top, or
+    ``None`` while following the bottom (the bottom is then the anchor)."""
+    if self._follow_bottom:
+      return None
+    value = self.verticalScrollBar().value()
+    for unit in self._anchor_units():
+      top = unit.mapTo(self._container, QtCore.QPoint(0, 0)).y()
+      if top + unit.height() > value:
+        return unit, top - value
+    return None
+
+  def _restore_viewport_anchor(self, anchor):
+    """Re-seat the viewport after a bulk height change, synchronously.
+
+    Nothing that maps a widget may be deferred: a conversation switch can
+    land in the same event-loop window (a turn-done that switches, the
+    auth-retry re-render), and ``clear()`` reparents the bubbles to
+    nothing before their deferred deletion, so a later ``mapTo`` on one
+    of them or their cells would walk a parent chain ending in null and
+    take the process down. (Following the bottom, the range change made
+    in this call snaps to the new bottom at once; the deferred snap is
+    the backstop.)
+
+    Folding a body invalidates only that cell's layout, and the
+    container learns of it through posted layout requests, so the
+    layouts are activated bottom-up here -- an opening row has already
+    laid out its own body in ``DisclosureRow.set_expanded`` -- and the
+    scroll area is handed a layout request directly: it re-sizes the
+    container to its new hint and updates the scroll range in that one
+    call. That happens while following the bottom too, so the range
+    change snaps to the new bottom before anything paints (the bubbles
+    laid out at the old height would otherwise be painted for one pass).
+    """
+    for b in self._bubbles:
+      for cell in b.thinking_cells():
+        cell.layout().activate()
+      b.layout().activate()
+    self._layout.activate()
+    QtCore.QCoreApplication.sendEvent(
+      self, QtCore.QEvent(QtCore.QEvent.LayoutRequest))
+    if anchor is None:
+      self._maybe_scroll_to_bottom()
+      return
+    unit, offset = anchor
+    top = unit.mapTo(self._container, QtCore.QPoint(0, 0)).y()
+    value = top - offset
+    if value >= top + unit.height():
+      # The position was inside a body the switch just folded away: land
+      # on the row's header rather than past it. A position still inside
+      # the unit (a folded row's header, say) stays where it was.
+      value = top
+    self.verticalScrollBar().setValue(value)
 
   def _insert_widget(self, w):
     # Insert before the trailing stretch so widgets stack from the top.

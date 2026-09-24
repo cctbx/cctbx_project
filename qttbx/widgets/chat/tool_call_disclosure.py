@@ -1,15 +1,17 @@
-"""Single-line collapsible row used inside MessageBubble for tool calls.
+"""Collapsible rows used inside MessageBubble: tool calls and thinking.
 
-Used for tool calls and tool-approval prompts. Header:
-``▸ tool_name (status)`` -- click to expand to ``▾``. Body (hidden by
-default): pretty-printed JSON args on top, plain-text result below.
-Status text and color are settable so the runner can transition
-running → finished/failed/cancelled without restructuring the widget.
+``DisclosureRow`` is the fold: a single-line ``▸ <label>`` header that
+click-expands to ``▾`` over a body hidden by default (or shown, for a
+thinking cell). ``ToolCallDisclosure`` fills the body with pretty-printed
+JSON args on top and a plain-text result below; status text and colour are
+settable so the runner can transition running -> finished/failed/cancelled
+without restructuring the widget. The thinking cell in message_bubble is
+the other subclass.
 """
 
 import json
 
-from qttbx.qt import QtCore, QtWidgets
+from qttbx.qt import QtCore, QtGui, QtWidgets
 
 from qttbx.widgets.chat.eliding import ElidingToolButton
 
@@ -43,7 +45,168 @@ _COLORS = {
 _MAX_HEADER_STATUS = 60
 
 
-class ToolCallDisclosure(QtWidgets.QFrame):
+def set_transparent_background(view):
+  """Make a text view paint no background of its own, theme-switch safe.
+
+  The obvious recipe -- ``setStyleSheet("background: transparent;")`` --
+  has a Qt 5.15 trap: once a stylesheet-styled view has been polished,
+  it can keep the palette the stylesheet engine resolved for it, so an
+  OS light/dark switch afterwards leaves its text at the OLD theme's
+  colour. Setting the ``Base`` role transparent on the widget's own
+  palette pins only that role; ``Text`` keeps inheriting, so the view
+  follows the app palette like an unstyled widget.
+
+  Parameters
+  ----------
+  view : QtWidgets.QAbstractScrollArea
+      A QPlainTextEdit / QTextEdit style view.
+  """
+  palette = view.palette()
+  palette.setColor(QtGui.QPalette.Base, QtCore.Qt.transparent)
+  view.setPalette(palette)
+  view.viewport().setAutoFillBackground(False)
+
+
+class DisclosureRow(QtWidgets.QFrame):
+  """A ``▸ label`` header over a foldable body.
+
+  Subclasses populate ``self.body_layout`` and implement
+  ``_inner_views()`` (the auto-height views to refresh on open) and
+  ``_header_label()`` (the text after the arrow, plus a tooltip or
+  ``None``). The base constructor already renders the header
+  (``_refresh_header()`` -> ``_header_label()``), so a subclass must set
+  whatever state those read -- including any ``_refresh_header``
+  override's, e.g. the tool row's ``_color`` -- BEFORE it calls
+  ``super().__init__()``.
+
+  Parameters
+  ----------
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  expanded : bool, optional
+      Start with the body shown. Tool rows start folded.
+  """
+
+  def __init__(self, parent=None, expanded=False):
+    super().__init__(parent)
+    self.setFrameStyle(QtWidgets.QFrame.NoFrame)
+    layout = QtWidgets.QVBoxLayout(self)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(2)
+
+    # Eliding: the header renders text nobody bounds (an MCP server names
+    # its own tools, and a caller can put anything in a status). A plain
+    # QToolButton reports that whole string as its minimumSizeHint and
+    # never elides, so it floors the bubble's minimum width and with it the
+    # whole ConversationView's -- the bubbles stop tracking the window and
+    # a horizontal scrollbar appears. The base sets no colour, so the
+    # header takes the theme's text colour; a subclass may style it (the
+    # tool row colours its header per status).
+    self.header_button = ElidingToolButton(self)
+    self.header_button.setAutoRaise(True)
+    self.header_button.setCheckable(True)
+    self.header_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+    self.header_button.setCursor(QtCore.Qt.PointingHandCursor)
+    self.header_button.clicked.connect(self._on_toggled)
+    layout.addWidget(self.header_button)
+
+    # The body indents its content under the header so the fold reads as
+    # one unit.
+    self.body = QtWidgets.QWidget(self)
+    self.body_layout = QtWidgets.QVBoxLayout(self.body)
+    self.body_layout.setContentsMargins(16, 2, 0, 4)
+    self.body_layout.setSpacing(4)
+    layout.addWidget(self.body)
+    self.header_button.setChecked(bool(expanded))
+    self._sync_body_to_header()
+
+  # ---- hooks --------------------------------------------------------------
+
+  def _inner_views(self):
+    """The auto-height views in the body, refreshed when the row opens."""
+    raise NotImplementedError
+
+  def _header_label(self):
+    """``(text, tooltip)`` shown after the arrow; tooltip ``None`` leaves
+    it to the eliding button (full text only when elided)."""
+    raise NotImplementedError
+
+  # ---- public API ---------------------------------------------------------
+
+  def is_expanded(self):
+    """True when the body is shown."""
+    return self.header_button.isChecked()
+
+  def set_expanded(self, on):
+    """Show (``True``) or fold (``False``) the body programmatically.
+
+    On open, the body's views are re-measured before this returns:
+    ``ConversationView.set_thinking_expanded`` re-anchors the viewport in
+    the same call and must read real geometry (the click path defers the
+    refresh a tick; search's reveal defers its own scroll). Showing the
+    body resizes a view that opens at a new width, and auto_height's
+    resize hook re-measures it; the explicit refresh covers a view that
+    opens at the width it already had (no resize event), e.g. after a
+    font change made while it was folded. The refresh runs BEFORE the
+    body's and the row's layouts are activated, so the height it sets is
+    what the row's size hint carries out of this call. No-op when already
+    in the requested state.
+    """
+    on = bool(on)
+    if self.is_expanded() == on:
+      return
+    self.header_button.setChecked(on)
+    self._sync_body_to_header()
+    if on:
+      self._refresh_inner_heights()
+      self.body_layout.activate()
+      self.layout().activate()
+
+  def ensure_revealed(self):
+    """Reveal hidden searchable content (duck-typed protocol).
+
+    ConversationSearch walks a match's ancestors and calls this on any
+    that expose it, so the controller needs no knowledge of this class
+    or of whether the body is currently collapsed.
+    """
+    self.set_expanded(True)
+
+  # ---- internals ----------------------------------------------------------
+
+  def _sync_body_to_header(self):
+    """Show/hide the body to match the header's checked state."""
+    self.body.setVisible(self.header_button.isChecked())
+    self._refresh_header()
+
+  def _on_toggled(self):
+    self._sync_body_to_header()
+    if self.header_button.isChecked():
+      # A view that opens at a new width is re-measured by auto_height's
+      # resize hook when the layout pass assigns that width; one that
+      # opens at the width it already had gets no resize event, so
+      # re-measure it after that pass -- deferred a tick, since nothing
+      # reads geometry in the click's own call.
+      QtCore.QTimer.singleShot(0, self._refresh_inner_heights)
+
+  def _refresh_inner_heights(self):
+    for view in self._inner_views():
+      # The deferred singleShot may fire after the widget's C++ object
+      # has been destroyed (parent garbage-collected while the callback
+      # was still in Qt's event queue). Guard so a stale callback no-ops.
+      try:
+        if not view.isHidden():
+          view._auto_height_refresh()
+      except RuntimeError:
+        # 'Internal C++ object already deleted' -- widget is gone.
+        return
+
+  def _refresh_header(self):
+    arrow = "▾" if self.header_button.isChecked() else "▸"
+    text, tooltip = self._header_label()
+    self.header_button.set_full_text("%s %s" % (arrow, text), tooltip=tooltip)
+
+
+class ToolCallDisclosure(DisclosureRow):
   """Collapsible disclosure row for a single tool call.
 
   Parameters
@@ -58,34 +221,10 @@ class ToolCallDisclosure(QtWidgets.QFrame):
   """
 
   def __init__(self, name, status, parent=None):
-    super().__init__(parent)
-    self.setFrameStyle(QtWidgets.QFrame.NoFrame)
     self._name = name
     self._status = status
     self._color = "running" if status == "running" else None
-
-    layout = QtWidgets.QVBoxLayout(self)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(2)
-
-    # Eliding: the header renders a tool name and a status, neither of them
-    # bounded (an MCP server names its own tools, and a caller can put
-    # anything in a status). A plain QToolButton reports that whole string as
-    # its minimumSizeHint and never elides, so it floors the bubble's minimum
-    # width and with it the whole ConversationView's -- the bubbles stop
-    # tracking the window and a horizontal scrollbar appears.
-    self.header_button = ElidingToolButton(self)
-    self.header_button.setAutoRaise(True)
-    self.header_button.setCheckable(True)
-    self.header_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-    self.header_button.setCursor(QtCore.Qt.PointingHandCursor)
-    self.header_button.clicked.connect(self._on_toggled)
-    layout.addWidget(self.header_button)
-
-    self.body = QtWidgets.QWidget(self)
-    body_layout = QtWidgets.QVBoxLayout(self.body)
-    body_layout.setContentsMargins(16, 2, 0, 4)
-    body_layout.setSpacing(4)
+    super().__init__(parent)
 
     # Args + result views grow with their content; the outer
     # ConversationView is the sole scroller per the chat UI redesign.
@@ -105,26 +244,21 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     # generic forces a one-time ~50 ms alias scan and prints a
     # qt.qpa.fonts warning. systemFont(FixedFont) returns Menlo on
     # macOS, Consolas on Windows, etc.
-    from qttbx.qt import QtGui
     self.args_view.setFont(QtGui.QFontDatabase.systemFont(
       QtGui.QFontDatabase.FixedFont))
-    self.args_view.setStyleSheet("background: transparent;")
+    set_transparent_background(self.args_view)
     set_auto_height(self.args_view)
     self.args_view.hide()
 
     self.result_view = QtWidgets.QPlainTextEdit(self.body)
     self.result_view.setReadOnly(True)
     self.result_view.setFrameStyle(QtWidgets.QFrame.NoFrame)
-    self.result_view.setStyleSheet("background: transparent;")
+    set_transparent_background(self.result_view)
     set_auto_height(self.result_view)
     self.result_view.hide()
 
-    body_layout.addWidget(self.args_view)
-    body_layout.addWidget(self.result_view)
-    layout.addWidget(self.body)
-    self.body.hide()
-
-    self._refresh_header()
+    self.body_layout.addWidget(self.args_view)
+    self.body_layout.addWidget(self.result_view)
 
   # ---- public API ---------------------------------------------------------
 
@@ -186,34 +320,6 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     self.result_view.setPlainText(str(text))
     self.result_view.show()
 
-  def expand(self):
-    """Expand the body programmatically (search navigation).
-
-    A collapsed body's inner views were auto-height-sized while hidden
-    (``viewport().width() == 0`` -> ~1 line tall), and the manual-click
-    path defers the recalc one event-loop tick. A caller about to
-    compute geometry (scroll-to-match) needs it NOW: show the body,
-    force the layout chain so the views get real widths, then run the
-    same refresh the deferred path uses. No-op when already expanded.
-    """
-    if self.header_button.isChecked() and self.body.isVisible():
-      return
-    self.header_button.setChecked(True)
-    self._sync_body_to_header()
-    self.body.layout().activate()
-    if self.layout() is not None:
-      self.layout().activate()
-    self._refresh_inner_heights()
-
-  def ensure_revealed(self):
-    """Reveal hidden searchable content (duck-typed protocol).
-
-    ConversationSearch walks a match's ancestors and calls this on any
-    that expose it, so the controller needs no knowledge of this class
-    or of whether the body is currently collapsed.
-    """
-    self.expand()
-
   def searchable_cells(self):
     """This row's searchable text: args and result views, kind ``"tool"``.
 
@@ -232,38 +338,10 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     """
     return self._status == "running"
 
-  # ---- internals ----------------------------------------------------------
+  # ---- hooks / internals --------------------------------------------------
 
-  def _sync_body_to_header(self):
-    """Show/hide the body to match the header's checked state."""
-    self.body.setVisible(self.header_button.isChecked())
-    self._refresh_header()
-
-  def _on_toggled(self):
-    self._sync_body_to_header()
-    if self.header_button.isChecked():
-      # Args/result heights were computed when the body was hidden
-      # (viewport().width() == 0), so the inner views cached a tiny
-      # single-line height. Force a recalc after Qt has assigned real
-      # geometry to the now-visible body. Defer one tick so the
-      # layout pass has run before we ask for the viewport width.
-      QtCore.QTimer.singleShot(0, self._refresh_inner_heights)
-
-  def _refresh_inner_heights(self):
-    for view in (self.args_view, self.result_view):
-      refresh = getattr(view, "_auto_height_refresh", None)
-      if refresh is None:
-        continue
-      # The deferred singleShot may fire after the widget's C++ object
-      # has been destroyed (e.g. parent QWidget garbage-collected while
-      # the callback was still in Qt's event queue). Guard the view
-      # access so a stale callback no-ops instead of raising.
-      try:
-        if not view.isHidden():
-          refresh()
-      except RuntimeError:
-        # 'Internal C++ object already deleted' -- widget is gone.
-        return
+  def _inner_views(self):
+    return (self.args_view, self.result_view)
 
   def _status_text(self):
     """Return the status as a string.
@@ -287,8 +365,7 @@ class ToolCallDisclosure(QtWidgets.QFrame):
       return first[:_MAX_HEADER_STATUS - 1].rstrip() + "…", True
     return first, first != full
 
-  def _refresh_header(self):
-    arrow = "▾" if self.header_button.isChecked() else "▸"
+  def _header_label(self):
     status, clamped = self._header_status()
     # A clamped status keeps the whole of itself on the tooltip. Otherwise
     # leave the tooltip to the button, which shows the full header text only
@@ -297,6 +374,8 @@ class ToolCallDisclosure(QtWidgets.QFrame):
     tooltip = None
     if clamped:
       tooltip = "%s (%s)" % (self._name, self._status_text())
-    self.header_button.set_full_text(
-      "%s %s (%s)" % (arrow, self._name, status), tooltip=tooltip)
+    return "%s (%s)" % (self._name, status), tooltip
+
+  def _refresh_header(self):
+    super()._refresh_header()
     self.header_button.setStyleSheet(_COLORS.get(self._color, ""))

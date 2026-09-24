@@ -43,7 +43,8 @@ def conversation_to_markdown(conv, storage=None):
 
   - text -> emitted verbatim (already markdown from the model)
   - image -> ``![caption](path)`` or placeholder when storage absent
-  - thinking -> skipped (extended-thinking is internal, not the chat)
+  - thinking -> blockquote headed ``**Thinking**`` (the narration of a
+    claude_code run lives here; signature-only blocks are skipped)
   - tool_use -> fenced code block tagged 'tool-use' with JSON input
   - tool_result -> fenced code block tagged 'tool-result' with the text
     content; nested image blocks render as image links
@@ -166,7 +167,7 @@ def _render_block(block, storage, conv_id):
   if t == "image":
     return _render_image(data, storage, conv_id)
   if t == "thinking":
-    return ""
+    return _render_thinking(data)
   if t == "tool_use":
     name = data.get("name", "?")
     try:
@@ -178,6 +179,24 @@ def _render_block(block, storage, conv_id):
   if t == "tool_result":
     return _render_tool_result(data, storage, conv_id)
   return "*[unknown block: %s]*" % (t or "")
+
+
+def _render_thinking(data):
+  """Render a thinking block as one labelled blockquote.
+
+  Every line is quoted (a blank line becomes a bare ``>``) so a
+  multi-paragraph summary stays a single quote instead of ending at its
+  first blank line; the closing blank line the caller adds then ends the
+  quote before the next block. An empty text (a signature-only block)
+  renders nothing.
+  """
+  text = (data.get("text", "") or "").strip()
+  if not text:
+    return ""
+  lines = ["> **Thinking**", ">"]
+  for line in text.splitlines():
+    lines.append("> " + line if line.strip() else ">")
+  return "\n".join(lines)
 
 
 def _render_image(data, storage, conv_id):

@@ -204,18 +204,30 @@ def exercise_user_and_assistant_text_blocks_alternate():
   assert "## Claude\n\nhi! how can i help?\n" in md, md
 
 
-def exercise_thinking_blocks_are_skipped():
-  """Extended-thinking is internal -- exporting it would leak noise
-  into the user's archived chat."""
+def exercise_thinking_blocks_render_as_labelled_blockquote():
+  """A thinking block is the run's narration (on claude_code the summaries
+  are the only account of an autonomous run between tool calls), so Save
+  chat keeps it: a blockquote headed **Thinking**, every line quoted so a
+  multi-paragraph summary stays one quote, in its place among the other
+  blocks. Signature-only (empty) thinking is skipped."""
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
   conv.append(Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "", "signature": "sig"}),
     ContentBlock(type="thinking", data={
-      "text": "let me reason carefully", "signature": "sig"}),
+      "text": "let me reason carefully\n\n- first\n- second\n\n",
+      "signature": "sig"}),
     ContentBlock(type="text", data={"text": "the answer is 42"})]))
   md = conversation_to_markdown(conv)
-  assert "let me reason" not in md, md
-  assert "the answer is 42" in md, md
+  quote = ("> **Thinking**\n"
+           ">\n"
+           "> let me reason carefully\n"
+           ">\n"
+           "> - first\n"
+           "> - second\n")
+  assert md.count("> **Thinking**") == 1, md          # empty block skipped
+  # In its place, closed by a blank line before the next block.
+  assert quote + "\nthe answer is 42\n" in md, md
 
 
 def exercise_ephemeral_blocks_are_skipped():
@@ -533,7 +545,7 @@ def exercise():
   exercise_header_renders_title_meta_and_separator()
   exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()
-  exercise_thinking_blocks_are_skipped()
+  exercise_thinking_blocks_render_as_labelled_blockquote()
   exercise_ephemeral_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()

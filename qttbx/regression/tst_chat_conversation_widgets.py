@@ -1198,6 +1198,414 @@ def exercise_list_return_suppression_flag_auto_clears():
   assert w._suppress_next_return is False, "flag must auto-clear next loop turn"
 
 
+def exercise_set_thinking_expanded_applies_to_existing_and_new_bubbles():
+  """ConversationView.set_thinking_expanded is the expand-all /
+  collapse-all switch: it folds every thinking cell already on screen and
+  becomes the default for bubbles added afterwards (stored messages and
+  the streaming bubble alike) until flipped back. ON is the default, so
+  every 'seeds new bubbles' and 'survives clear()' claim is observed in
+  the OFF state, where a lapse would show."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  _qapp()
+  v = ConversationView()
+  assert v.thinking_expanded(), "showing thinking is the default"
+  m = Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "stored"})])
+  b0 = v.add_message(m)
+  assert b0.thinking_cells()[0].is_expanded()
+  v.set_thinking_expanded(False)
+  assert not v.thinking_expanded()
+  assert not b0.thinking_cells()[0].is_expanded()
+  b1 = v.add_message(Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "stored later"})]))
+  assert not b1.thinking_cells()[0].is_expanded(), "OFF seeds a stored bubble"
+  v.start_assistant_bubble()
+  v.append_thinking_delta_to_current("streamed")
+  b2 = v.bubbles()[-1]
+  assert not b2.thinking_cells()[0].is_expanded(), "OFF seeds the stream"
+  v.set_thinking_expanded(True)
+  for b in (b0, b1, b2):
+    assert b.thinking_cells()[0].is_expanded()
+  # The switch is view state, not bubble state: OFF survives clear() (a
+  # conversation switch rebuilds the view through clear + add_message).
+  v.set_thinking_expanded(False)
+  v.clear()
+  assert not v.add_message(m).thinking_cells()[0].is_expanded()
+
+
+def _pump(app, ms=100):
+  from qttbx.qt import QtCore
+  deadline = QtCore.QElapsedTimer()
+  deadline.start()
+  while deadline.elapsed() < ms:
+    app.processEvents(QtCore.QEventLoop.AllEvents, 25)
+
+
+def _anchor(v):
+  """(unit, offset) of the first bubble CELL crossing the viewport's top
+  -- the unit the switch anchors on when no card is there, since heights
+  change inside bubbles, not between them."""
+  from qttbx.qt import QtCore
+  bar = v.verticalScrollBar()
+  units = []
+  for b in v.bubbles():
+    units.extend(b.cells())
+  for u in units:
+    top = u.mapTo(v.widget(), QtCore.QPoint(0, 0)).y()
+    if top + u.height() > bar.value():
+      return u, top - bar.value()
+  return None, None
+
+
+def _scrolled_to(v, unit, into=0):
+  """Put ``unit``'s top ``into`` px above the viewport's top, as a user
+  scroll (so follow-bottom disengages)."""
+  from qttbx.qt import QtCore
+  app = QtWidgets.QApplication.instance()
+  bar = v.verticalScrollBar()
+  # Let any pending auto-height refresh from the initial show settle
+  # first, so the position read here is the one the switch will see.
+  _pump(app, 200)
+  target = unit.mapTo(v.widget(), QtCore.QPoint(0, 0)).y() + into
+  # A scroll only disengages follow when it lands more than 24 px above
+  # the scroll maximum (the follow band), so the target must sit above
+  # that band with room to spare: bubble heights vary by platform (font
+  # metrics, style margins), and a target that clears the band by a few
+  # px here can fall inside it elsewhere. Fail on the cause, not on the
+  # follow flag it leaves behind.
+  assert target < bar.maximum() - 24 - 48, \
+    ("target inside the follow band: build more content below it",
+     target, bar.maximum())
+  bar.setValue(target)
+  v._on_user_scroll_action(QtWidgets.QAbstractSlider.SliderMove)
+  _pump(app, 50)
+  assert not v._follow_bottom
+  assert _anchor(v) == (unit, -into), (_anchor(v), unit, into)
+
+
+def _toggle_settles(v, on):
+  """Flip the switch; return the anchor read before any event is
+  processed, after asserting the scrollbar never moves afterwards -- so
+  a restore deferred to a later tick fails (a plain read before any tick
+  passes either way: nothing has moved yet)."""
+  app = QtWidgets.QApplication.instance()
+  bar = v.verticalScrollBar()
+  v.set_thinking_expanded(on)
+  settled = (bar.value(), bar.maximum())
+  anchor = _anchor(v)
+  _pump(app, 100)
+  assert (bar.value(), bar.maximum()) == settled, \
+    ("moved after the call returned", settled, bar.value(), bar.maximum())
+  assert _anchor(v) == anchor, (anchor, _anchor(v))
+  return anchor
+
+
+def _reply_cell(v, index):
+  """The reply text view of the index-th bubble."""
+  b = v.bubbles()[index]
+  return [c for c in b.cells() if c not in b.thinking_cells()][0]
+
+
+def _thinking_view(i):
+  return Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={
+      "text": "\n".join("thought %d line %d" % (i, j) for j in range(6))}),
+    ContentBlock(type="text", data={"text": "reply %d" % i})])
+
+
+def exercise_thinking_toggle_keeps_the_viewport_anchored():
+  """Folding or opening every thinking cell changes heights INSIDE bubbles above
+  the viewport, which would shift what the user is reading. The switch
+  anchors on the cell crossing the viewport's top and keeps it at the same
+  offset, inside the call and afterwards; a viewport that was following the
+  bottom is at the new bottom when the call returns (laid out in the call,
+  so the first frame painted is the final one); and a position inside a
+  thinking body that folds away lands on that cell's header (clamped),
+  rather than scrolling the header off."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  v = ConversationView()
+  v.resize(400, 300)
+  v.show()
+  for i in range(12):
+    v.add_message(_thinking_view(i))
+  _pump(app, 100)
+  bar = v.verticalScrollBar()
+  assert bar.maximum() > 600, bar.maximum()
+  assert v._follow_bottom
+  for on in (False, True):
+    _toggle_settles(v, on)          # unmoved after the call returns
+    assert bar.value() == bar.maximum(), (on, bar.value(), bar.maximum())
+  # Reading a reply cell in the middle: it stays put, both ways.
+  reply = _reply_cell(v, 5)
+  _scrolled_to(v, reply)
+  assert _toggle_settles(v, False) == (reply, 0)
+  assert _toggle_settles(v, True) == (reply, 0)
+  # Reading inside a thinking body: the fold clamps to its header.
+  cell = v.bubbles()[6].thinking_cells()[0]
+  _scrolled_to(v, cell, into=40)
+  assert _toggle_settles(v, False) == (cell, 0)
+  assert _toggle_settles(v, True) == (cell, 0)
+
+
+def _long_turn(v, rows=20, tail=True):
+  content = []
+  for i in range(rows):
+    content.append(ContentBlock(type="thinking", data={
+      "text": "\n".join("step %d line %d" % (i, j) for j in range(8))}))
+    content.append(ContentBlock(type="tool_use", data={
+      "id": "t%d" % i, "name": "phenix_run", "input": {"i": i}}))
+  if tail:
+    content.append(ContentBlock(type="text", data={"text": "done"}))
+  return v.add_message(Message(role="assistant", timestamp=now(),
+                               content=content))
+
+
+def exercise_thinking_toggle_anchors_inside_one_long_bubble():
+  """The feature's main case is one long autonomous turn: ONE bubble whose
+  thinking cells, between its tool rows, change height above the
+  viewport. A bubble-level anchor reads as kept while the tool row the
+  user is looking at moves hundreds of pixels; the cell-level anchor
+  holds it. Anchored early enough that the folded content below still
+  fills the viewport: an anchor the scroll range cannot reach after a
+  fold is a case no anchoring can hold (set_thinking_expanded names the
+  other: a position inside a body that folds away)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  app = _qapp()
+  v = ConversationView()
+  v.resize(400, 300)
+  v.show()
+  b = _long_turn(v)
+  _pump(app, 100)
+  row = b.findChildren(ToolCallDisclosure)[4]
+  _scrolled_to(v, row)
+  assert _toggle_settles(v, False) == (row, 0)
+  assert _toggle_settles(v, True) == (row, 0)
+
+
+def exercise_thinking_toggle_leaves_a_header_position_alone():
+  """A position inside a folded row's HEADER survives a toggle unchanged:
+  the clamp is for a position inside a body that folded away, not for
+  any folded row the viewport top happens to cross (an untouched tool
+  row, a hand-folded cell, any row during expand-all)."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  app = _qapp()
+  v = ConversationView()
+  v.resize(400, 300)
+  v.show()
+  b = _long_turn(v, tail=False)
+  _pump(app, 100)
+  row = b.findChildren(ToolCallDisclosure)[4]
+  _scrolled_to(v, row, into=10)            # inside the collapsed row's header
+  assert _toggle_settles(v, False) == (row, -10)
+  assert _toggle_settles(v, True) == (row, -10)
+
+
+def exercise_thinking_toggle_opens_never_laid_out_cells_in_place():
+  """Cells built while the switch is OFF were auto-height-sized at Qt's
+  100 px default width and never laid out open; expand-all must still
+  keep the reply at the top where it is, in the call and afterwards --
+  which is what DisclosureRow.set_expanded's synchronous layout
+  activation is for."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  v = ConversationView()
+  v.resize(400, 300)
+  v.show()
+  v.set_thinking_expanded(False)
+  for i in range(20):
+    v.add_message(_thinking_view(i))
+  _pump(app, 100)
+  reply = _reply_cell(v, 7)
+  _scrolled_to(v, reply)
+  assert _toggle_settles(v, True) == (reply, 0)
+
+
+def exercise_thinking_toggle_anchors_after_a_font_change_made_while_folded():
+  """A row that reopens at the width it had gets no resize event, so only
+  DisclosureRow.set_expanded's synchronous refresh re-measures its view --
+  after a font change made while it was folded, say. The switch then
+  re-anchors in the same call, so the re-measured height must reach the
+  row, the bubble and the container before it reads them: otherwise every
+  reopened row above the reply grows only when the posted layout requests
+  land, and the reply slides down by their sum."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  saved = QtGui.QFont(app.font())
+  v = ConversationView()
+  try:
+    v.resize(400, 300)
+    v.show()
+    for i in range(20):
+      v.add_message(_thinking_view(i))    # laid out open at this width
+    _pump(app, 100)
+    first = v.bubbles()[0].thinking_cells()[0].view
+    before = first.height()
+    v.set_thinking_expanded(False)
+    _pump(app, 100)
+    big = QtGui.QFont(saved)
+    if saved.pointSizeF() > 0:
+      big.setPointSizeF(saved.pointSizeF() + 6)
+    else:                                  # a pixel-sized application font
+      big.setPixelSize(saved.pixelSize() + 8)
+    app.setFont(big)
+    _pump(app, 100)
+    reply = _reply_cell(v, 7)
+    _scrolled_to(v, reply)
+    assert _toggle_settles(v, True) == (reply, 0)
+    # And the rows really were re-measured: with no refresh at all nothing
+    # moves either, and the anchor check alone would pass.
+    assert first.height() > before, (first.height(), before)
+  finally:
+    app.setFont(saved)
+    v.close()
+    _pump(app, 50)
+
+
+def exercise_expand_all_lays_the_container_out_after_the_loop():
+  """Expand-all must stay linear in the conversation's length. Opening a cell
+  makes Qt activate every visible ancestor's layout, the container's
+  included, and one container pass walks every bubble: once per opened cell
+  is quadratic (over a second at two thousand bubbles). The switch keeps
+  the container from being laid out until every bubble is done, anchored or
+  following. The container layout's geometry() is reset by the invalidation
+  an opening cell causes and set only by a layout pass, so it must stay
+  invalid from the first bubble to the last. (The container's LayoutRequest
+  / Resize counts cannot tell: they are the same either way.)"""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  app = _qapp()
+  real = MessageBubble.set_thinking_expanded
+  for follow in (True, False):
+    v = ConversationView()
+    v.resize(400, 300)
+    v.show()
+    v.set_thinking_expanded(False)
+    for i in range(20):
+      v.add_message(_thinking_view(i))
+    _pump(app, 100)
+    if not follow:
+      _scrolled_to(v, _reply_cell(v, 6))
+    laid_out = []
+
+    def spy(self, on):
+      real(self, on)
+      laid_out.append(v._layout.geometry().isValid())
+    MessageBubble.set_thinking_expanded = spy
+    try:
+      v.set_thinking_expanded(True)
+    finally:
+      MessageBubble.set_thinking_expanded = real
+    assert laid_out == [False] * 20, (follow, laid_out)
+    assert v._layout.geometry().isValid()          # laid out in the call
+    _pump(app, 100)
+    assert v._layout.geometry().isValid()
+
+
+def exercise_thinking_toggle_ignores_a_decided_card():
+  """A decided approval card hides but stays in the layout at the geometry
+  it had while shown, under the cells that moved up into its place. A
+  viewport whose top lies in that band must anchor on the visible cell
+  there, not on the hidden card (whose stale position never moves)."""
+  from qttbx.qt import QtCore
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  v = ConversationView()
+  v.resize(600, 300)
+  v.show()
+  for i in range(8):
+    v.add_message(_thinking_view(i))
+  _pump(app, 100)
+  v.start_assistant_bubble()
+  v.append_thinking_delta_to_current("live thought")
+  v.add_approval_request(ToolApprovalRequest(
+    request_id="r1", tool_name="phenix_run", tool_source="builtin",
+    input={"x": 1}, risk="write"))
+  _pump(app, 100)
+  card = v.approval_cards()[0]
+  card.click_approve_all()                 # decided: hidden, still laid in
+  v.finalize_assistant_bubble("end_turn")
+  for i in range(8, 30):
+    v.add_message(_thinking_view(i))
+  _pump(app, 100)
+  band = card.mapTo(v.widget(), QtCore.QPoint(0, 0)).y() + 10
+  cell = next(u for b in v.bubbles() for u in b.cells()
+              if u.mapTo(v.widget(), QtCore.QPoint(0, 0)).y() + u.height()
+              > band)
+  _scrolled_to(v, cell, into=band - cell.mapTo(
+    v.widget(), QtCore.QPoint(0, 0)).y())
+  anchor = _anchor(v)
+  v.set_thinking_expanded(False)
+  assert _anchor(v)[0] is anchor[0], (_anchor(v), anchor)
+  _pump(app, 100)
+  assert _anchor(v)[0] is anchor[0], (_anchor(v), anchor)
+
+
+def exercise_anchor_walk_leaves_no_stale_layout_items():
+  """The anchor walk must not leave QWidgetItem wrappers behind. PySide2
+  keeps every wrapper QLayout.itemAt() returns alive with the layout's
+  wrapper; the view's container layout outlives the items clear()
+  deletes, so their wrappers stay registered and shiboken hands them out
+  for new objects allocated at the same addresses (a later bubble build
+  then fails with "'QWidgetItem' object has no attribute ...")."""
+  import gc
+  from qttbx.qt import QtCore, shiboken
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+
+  def layout_items():
+    # Settle first: widgets an earlier exercise left pending deletion would
+    # otherwise be deleted inside this one and release wrappers of their
+    # own, offsetting a leak.
+    QtCore.QCoreApplication.sendPostedEvents(
+      None, QtCore.QEvent.DeferredDelete)
+    gc.collect()
+    return sum(1 for w in shiboken.getAllValidWrappers()
+               if isinstance(w, QtWidgets.QWidgetItem))
+
+  base = layout_items()
+  v = ConversationView()
+  v.resize(400, 300)
+  v.show()
+  for i in range(12):
+    v.add_message(_thinking_view(i))
+  _pump(app, 100)
+  _scrolled_to(v, _reply_cell(v, 6))
+  v.set_thinking_expanded(False)
+  v.clear()
+  _pump(app, 50)
+  assert layout_items() == base, (layout_items(), base)
+
+
+def exercise_clear_right_after_a_thinking_toggle_does_not_crash():
+  """A conversation switch (clear()) can land in the same event-loop
+  window as a toggle -- a turn-done that switches conversations, the
+  auth-retry re-render. clear() reparents the bubbles to nothing before
+  their deferred deletion, so any deferred restore that still mapped a
+  bubble's position would walk a parent chain ending in null and take the
+  process down. The switch must not map a bubble or cell after it
+  returns."""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  app = _qapp()
+  v = ConversationView()
+  v.resize(400, 300)
+  v.show()
+  for i in range(8):
+    v.add_message(_thinking_view(i))
+  _pump(app, 100)
+  _scrolled_to(v, _reply_cell(v, 3))
+  v.set_thinking_expanded(False)
+  v.clear()                                # same pass, before any tick
+  _pump(app, 100)                          # a deferred pass would fire here
+  assert v.bubble_count() == 0
+  v.add_message(_thinking_view(99))
+  _pump(app, 50)
+  assert v.bubble_count() == 1
+
+
 def exercise():
   exercise_add_bubble_then_streaming_then_finalize()
   exercise_finalize_cancelled_marks_running_tool_cells_cancelled()
@@ -1209,6 +1617,16 @@ def exercise():
   exercise_finish_tool_cell_error_marks_cell_failed()
   exercise_failed_tool_cell_does_not_floor_the_view_width()
   exercise_set_assistant_label_flows_to_new_bubbles()
+  exercise_set_thinking_expanded_applies_to_existing_and_new_bubbles()
+  exercise_thinking_toggle_keeps_the_viewport_anchored()
+  exercise_thinking_toggle_anchors_inside_one_long_bubble()
+  exercise_thinking_toggle_leaves_a_header_position_alone()
+  exercise_thinking_toggle_opens_never_laid_out_cells_in_place()
+  exercise_thinking_toggle_anchors_after_a_font_change_made_while_folded()
+  exercise_expand_all_lays_the_container_out_after_the_loop()
+  exercise_thinking_toggle_ignores_a_decided_card()
+  exercise_anchor_walk_leaves_no_stale_layout_items()
+  exercise_clear_right_after_a_thinking_toggle_does_not_crash()
   exercise_question_card_uses_assistant_label()
   exercise_stop_finalizes_pending_question_cards()
   exercise_batched_approval_coalesces_by_batch_id()
