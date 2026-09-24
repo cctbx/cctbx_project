@@ -921,7 +921,8 @@ class place_hydrogens():
     t0 = time.time()
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
-      self.model = shift_and_box_model(model = self.model)
+      # Box in place: callers get their coordinates back unmoved.
+      self.model = shift_and_box_model(model = self.model, shift_model = False)
       model_has_bogus_cs = True
       #self.model.add_crystal_symmetry_if_necessary() # this is slower than shift_and_box_model!!!!
     self.time_rebox_model = round(time.time()-t0, 2)

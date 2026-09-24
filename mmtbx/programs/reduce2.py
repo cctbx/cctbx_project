@@ -1236,7 +1236,12 @@ NOTES:
     self.model = self.model.select(~self.model.selection('element X'))
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
-    self.model.add_crystal_symmetry_if_necessary()
+    # The box is for the calculation only and is not written out. Cushion 5:
+    # H added later overhang the heavy-atom box; 3 left 4.4 A to the nonbonded
+    # cutoff of 3.4 A.
+    cs = self.model.crystal_symmetry()
+    self._input_has_cs = (cs is not None) and (cs.unit_cell() is not None)
+    self.model.add_crystal_symmetry_if_necessary(box_cushion=5)
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
       self.model.process(make_restraints=False)
@@ -1354,9 +1359,9 @@ NOTES:
       # Determine whether to write a PDB or CIF file and write the appropriate text output.
       suffix = os.path.splitext(self.params.output.filename)[1]
       if suffix.lower() == ".pdb":
-        txt = self.model.model_as_pdb()
+        txt = self.model.model_as_pdb(output_cs=self._input_has_cs)
       else:
-        txt = self.model.model_as_mmcif()
+        txt = self.model.model_as_mmcif(output_cs=self._input_has_cs)
       self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',
