@@ -457,6 +457,31 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry
 
 # ==============================================================================
 
+def get_output_crystal_symmetry(model):
+  '''
+  Crystal symmetry to write out for a model that is boxed for H placement.
+  Returns the model's own symmetry; else the CRYST1 1 1 1 P 1 placeholder if
+  the input file had a cell record that cctbx discards as nonsense (cryo-EM
+  convention); else None. Call before process(), which boxes a model that has
+  no symmetry.
+  '''
+  cs = model.crystal_symmetry()
+  if (cs is not None) and (cs.unit_cell() is not None):
+    return cs
+  model_input = model.get_model_input()
+  if model_input is None:
+    return None
+  if hasattr(model_input, 'cif_block'):
+    has_cell = '_cell.length_a' in model_input.cif_block
+  else:
+    has_cell = any(line.startswith('CRYST1')
+                   for line in model_input.crystallographic_section())
+  if not has_cell:
+    return None
+  return crystal.symmetry((1, 1, 1, 90, 90, 90), 'P 1')
+
+# ==============================================================================
+
 def get_reduce_pdb_interpretation_params(use_neutron_distances):
   '''
   Create pdb_interpretation parameter scope.

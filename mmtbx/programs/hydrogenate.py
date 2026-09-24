@@ -61,8 +61,7 @@ Inputs:
     self.model = self.data_manager.get_model()
     # Checked before process(): it boxes a symmetry-less model. That box, and
     # place_hydrogens' box, are for the calculation only and are not written out.
-    cs = self.model.crystal_symmetry()
-    input_has_cs = (cs is not None) and (cs.unit_cell() is not None)
+    output_cs = reduce_hydrogen.get_output_crystal_symmetry(self.model)
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(False)
       self.model.process(make_restraints=False)
@@ -97,15 +96,19 @@ Inputs:
       self.params.output.prefix = os.path.split(os.path.splitext(
         self.data_manager.get_default_model_name())[0])[1]
 
+    if output_cs is not None:
+      self.model.set_unit_cell_crystal_symmetry(output_cs)
     if self.data_manager.get_model().input_model_format_cif():
       self.output_file_name = self.params.output.prefix+"_hydrogenate.cif"
       self.data_manager.write_model_file(
-        model_str = self.model.model_as_mmcif(output_cs=input_has_cs),
+        model_str = self.model.model_as_mmcif(
+          output_cs = output_cs is not None),
         filename  = self.output_file_name)
     else:
       self.output_file_name = self.params.output.prefix+"_hydrogenate.pdb"
       self.data_manager.write_model_file(
-        model_str = self.model.model_as_pdb(output_cs=input_has_cs),
+        model_str = self.model.model_as_pdb(
+          output_cs = output_cs is not None),
         filename  = self.output_file_name)
 
     print("Wrote file: %s" % self.output_file_name, file=self.logger)
