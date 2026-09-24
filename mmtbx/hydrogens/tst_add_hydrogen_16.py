@@ -20,6 +20,7 @@ def run():
   test_010()
   test_011()
   test_012()
+  test_013()
 
 # ------------------------------------------------------------------------------
 
@@ -181,6 +182,45 @@ def test_009():
   # the C9-C10 cross-link between the two ligands still removes one methyl H
   assert len(h_on(atoms, '9FZ', '4', 'C9')) == 2, h_on(atoms, '9FZ', '4', 'C9')
   assert len(h_on(atoms, '9G2', '10', 'C10')) == 2, h_on(atoms, '9G2', '10', 'C10')
+
+def atom_of(atoms, resname, resseq, name):
+  '''The one atom of that residue.'''
+  found = [a for a in atoms if a.name.strip() == name
+    and a.parent().resname.strip() == resname
+    and a.parent().parent().resseq.strip() == resseq]
+  assert len(found) == 1, (resname, resseq, name)
+  return found[0]
+
+def test_013():
+  '''
+    5nxq again: the amide H of a ligand in the chain. The TRANS link defines
+    C-N-H by name, so a residue whose H is called anything else (9FZ H3, 9G2
+    H6) got no such restraint, riding called it a rotatable amine H and it
+    ended up 17 deg from the preceding C. The amide H now sits where ILE 5's
+    does (the control): the three angles at N add up to 360 and it is trans to
+    the preceding O. CA-N-H comes from the link as well, since the dictionary
+    of the free amino acid gives N the sp3 amine value (9FZ 108.5 deg).
+  '''
+  atoms = place_atoms(pdb_str_013)
+  for resname, resseq, h_name, prev_resname, prev_resseq in (
+      ('9FZ', '4',  'H3', 'ILE', '3'),
+      ('9G2', '10', 'H6', 'LEU', '9'),
+      ('ILE', '5',  'H',  '9FZ', '4')):
+    n  = atom_of(atoms, resname, resseq, 'N')
+    h  = atom_of(atoms, resname, resseq, h_name)
+    ca = atom_of(atoms, resname, resseq, 'CA')
+    c  = atom_of(atoms, prev_resname, prev_resseq, 'C')
+    o  = atom_of(atoms, prev_resname, prev_resseq, 'O')
+    why = (resname, h_name)
+    assert approx_equal(n.angle(c, h, deg=True), 124.3, eps=1.0), why
+    assert approx_equal(n.angle(ca, h, deg=True), 114.0, eps=1.0), why
+    assert approx_equal(n.angle(c, h, deg=True) + n.angle(ca, h, deg=True)
+                        + n.angle(c, ca, deg=True), 360.0, eps=1.0), why
+    d = matrix.col(h.xyz) - matrix.col(n.xyz)
+    plane = ((matrix.col(c.xyz) - matrix.col(n.xyz)).cross(
+              matrix.col(ca.xyz) - matrix.col(n.xyz))).normalize()
+    assert abs(plane.dot(d)) < 0.1, (why, 'H is out of the amide plane')
+    assert 0.8 < n.distance(h) < 1.1, (why, n.distance(h))
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -534,6 +574,8 @@ ATOM     59  OE1 GLU D  11       6.919  43.144 -12.809  1.00117.73           O
 ATOM     60  OE2 GLU D  11       8.848  43.618 -13.744  1.00136.20           O
 END
 """
+
+pdb_str_013 = pdb_str_009
 
 pdb_str_010 = """
 CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1

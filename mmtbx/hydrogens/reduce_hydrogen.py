@@ -10,6 +10,7 @@ from libtbx import group_args
 from scitbx import matrix
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
+from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
 #
 from cctbx.maptbx.box import shift_and_box_model
@@ -1001,6 +1002,10 @@ class place_hydrogens():
 
     sel_h = self.model.get_hd_selection()
 
+    # Restraints a link could not resolve by atom name
+    # -----------------------------------------------
+    self.add_link_h_restraints()
+
     # Setup riding H manager
     # ----------------------
     t0 = time.time()
@@ -1130,6 +1135,109 @@ class place_hydrogens():
       self.print_times()
 
   # ----------------------------------------------------------------------------
+
+  def add_link_h_restraints(self):
+    '''
+    The peptide link defines the angle C-N-H (TRANS, 124.3 deg) and the amide
+    plane C-N-CA-H, both by atom name.
+    A residue in the chain whose amide H is called anything else - 9FZ H3,
+    9G2 H6, 1133 of the 2211 peptide-like geostd entries with an N-H - gets no
+    such restraint: pdb_interpretation only retries the v2/v3 spelling of the
+    name and then drops the definition. Nothing then fixes the H direction,
+    riding calls it a rotatable amine H, and it can end up on the preceding
+    carbonyl C (5nxq, 17 deg). Add both to this model's restraints. The plane
+    is added whole: without the H it holds three atoms, which are coplanar
+    whatever they do.
+
+    Only reduce2 places H from these restraints, so this is not the whole fix:
+    refinement has the same gap, and the proper place for it is the name
+    resolution in pdb_interpretation.
+    '''
+    srv = self.model.get_mon_lib_srv()
+    link = getattr(srv, 'link_link_id_dict', {}).get('TRANS')
+    if link is None: return
+    defs = [a for a in link.angle_list
+            if a.atom_id_2.strip() == 'N' and a.atom_id_3.strip() in ('H', 'D')
+            and a.value_angle is not None and a.value_angle_esd]
+    if not defs: return
+    angle_ideal, esd = defs[0].value_angle, defs[0].value_angle_esd
+    # CA-N-H: the dictionary of a free amino acid gives the sp3 amine value
+    # (9FZ 108.5), which does not belong to an amide N. In the plane the three
+    # angles add up to 360, so the link fixes this one too.
+    ca = [a for a in link.angle_list
+          if a.atom_id_2.strip() == 'N' and a.atom_id_3.strip() == 'CA'
+          and a.value_angle is not None]
+    ca_ideal = 360. - angle_ideal - ca[0].value_angle if ca else None
+    # the plane that carries the H, if the link has one (TRANS plane2)
+    planes = {}
+    for p in getattr(link, 'plane_list', []):
+      planes.setdefault(p.plane_id, []).append(p)
+    plane_esd = None
+    for rows in planes.values():
+      names = set(r.atom_id.strip() for r in rows)
+      if names >= set(['C', 'N', 'CA']) and names & set(['H', 'D']):
+        plane_esd = min(r.dist_esd for r in rows if r.dist_esd)
+        break
+    grm = self.model.get_restraints_manager().geometry
+    atoms = self.model.get_atoms()
+    elements = self.model.get_hierarchy().atoms().extract_element()
+    bps, asu = grm.get_all_bond_proxies(sites_cart = self.model.get_sites_cart())
+    bonds = {}
+    for proxy in list(bps) + list(asu):
+      if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
+      elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
+      else: continue
+      bonds.setdefault(i, []).append(j)
+      bonds.setdefault(j, []).append(i)
+    new, planarities, stale = [], [], []
+    known = set()
+    for proxy in grm.angle_proxies:
+      i, j, k = proxy.i_seqs
+      known.add((min(i, k), j, max(i, k)))
+    for i_h, atom in enumerate(atoms):
+      if elements[i_h].strip() not in ('H', 'D'): continue
+      heavy = [j for j in set(bonds.get(i_h, []))
+               if elements[j].strip() not in ('H', 'D')]
+      if len(heavy) != 1: continue
+      i_n = heavy[0]
+      if atoms[i_n].name.strip() != 'N': continue
+      rg_n = atoms[i_n].parent().parent()
+      for i_c in set(bonds.get(i_n, [])):
+        if atoms[i_c].name.strip() != 'C': continue
+        if atoms[i_c].parent().parent().memory_id() == rg_n.memory_id(): continue
+        key = (min(i_c, i_h), i_n, max(i_c, i_h))
+        if key in known: continue
+        known.add(key)
+        new.append(geometry_restraints.angle_proxy(
+          i_seqs      = [i_c, i_n, i_h],
+          angle_ideal = angle_ideal,
+          weight      = 1./esd**2))
+        i_ca = [j for j in set(bonds.get(i_n, []))
+                if atoms[j].name.strip() == 'CA'
+                and atoms[j].parent().parent().memory_id() == rg_n.memory_id()]
+        if plane_esd and i_ca:
+          i_seqs = [i_c, i_n, i_ca[0], i_h]
+          planarities.append(geometry_restraints.planarity_proxy(
+            i_seqs  = flex.size_t(i_seqs),
+            weights = flex.double([1./plane_esd**2]*len(i_seqs))))
+        if ca_ideal is not None and i_ca:
+          stale.append((i_ca[0], i_n, i_h))
+    # replace the amine CA-N-H of each of those residues by the amide value:
+    # proxy_remove drops a proxy only when all of its atoms are selected, so
+    # selecting the three atoms takes that angle and nothing else
+    for i_ca, i_n, i_h in stale:
+      weight = [p.weight for p in grm.angle_proxies
+                if tuple(sorted(p.i_seqs)) == tuple(sorted((i_ca, i_n, i_h)))]
+      if not weight: continue
+      sel = flex.bool(len(atoms), False)
+      for i in (i_ca, i_n, i_h): sel[i] = True
+      grm.remove_angles_in_place(selection=sel)
+      new.append(geometry_restraints.angle_proxy(
+        i_seqs      = [i_ca, i_n, i_h],
+        angle_ideal = ca_ideal,
+        weight      = weight[0]))
+    if new: grm.add_angles_in_place(new)
+    if planarities: grm.add_planarities_in_place(planarities)
 
   def exclude_H_on_esterified_O(self):
     '''
