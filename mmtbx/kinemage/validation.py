@@ -37,6 +37,10 @@ def get_master_phil():
         keep_hydrogens = False
         .type = bool
         .help = '''Keep hydrogens in input file'''
+        vdw_dots = False
+        .type = bool
+        .help = '''Include van der Waals contact dots (off in the viewer until
+                   switched on; they make the file much larger)'''
         omit_unrestrained_residues = True
         .type = bool
         .help = '''Leave residues with missing or incomplete restraints out of
@@ -317,7 +321,8 @@ def _probe_dots_note(lines):
   return "@text\n" + "".join("%s\n" % line for line in lines)
 
 def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
-                         target_selection=None, omit_unrestrained=True):
+                         target_selection=None, omit_unrestrained=True,
+                         vdw_dots=False):
   """Run probe2 on one hydrogenated model; returns kinemage dots text, with an
   @text note when residues were left out or probe2 failed.  With
   omit_unrestrained=False, residues lacking restraints raise Sorry instead."""
@@ -350,7 +355,7 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
       "output.format=kinemage",
       "output.filename='%s'" % tempName,
       "output.separate_worse_clashes=True",
-      "output.report_vdws=False",
+      "output.report_vdws=%s" % bool(vdw_dots),
       "output.write_files=False",
       # Dots nest as a @subgroup of the structure's group; master={dots}
       # on each list keeps an all-dots control.
@@ -380,13 +385,14 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
   return output + _probe_dots_note(notes)
 
 def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
-                    omit_unrestrained=True):
+                    omit_unrestrained=True, vdw_dots=False):
   """Generate probe dot kinemage output using probe2 Python API.
 
   Uses mmtbx.reduce (reduce2) for hydrogen placement and mmtbx.programs.probe2
   for contact analysis, producing kinemage-format dot output.
   restraint_objects: [(file name, cif object)] for ligands the monomer library
-  lacks; omit_unrestrained: see _run_probe2_kinemage.
+  lacks; omit_unrestrained: see _run_probe2_kinemage; vdw_dots: include van
+  der Waals contacts.
   """
   try:
     from mmtbx.hydrogens import place_and_optimize_hydrogens
@@ -426,12 +432,12 @@ def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
       model_manager.get_hierarchy().sort_atoms_in_place()
       model_manager.get_hierarchy().atoms().reset_serial()
     probe_return += _run_probe2_kinemage(model_manager,
-      omit_unrestrained=omit_unrestrained)
+      omit_unrestrained=omit_unrestrained, vdw_dots=vdw_dots)
   return probe_return
 
 def make_probe_dots_from_model(model_manager, per_model=False,
                                approach="self", source_selection=None,
-                               target_selection=None):
+                               target_selection=None, vdw_dots=False):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
@@ -472,7 +478,7 @@ def make_probe_dots_from_model(model_manager, per_model=False,
 
     sections.append(_run_probe2_kinemage(
       sub_model, approach=approach, source_selection=source_selection,
-      target_selection=target_selection))
+      target_selection=target_selection, vdw_dots=vdw_dots))
   if per_model:
     return sections
   if len(sections) > 1:
@@ -910,7 +916,8 @@ def get_default_header():
 """
   return header
 
-def get_footer():
+def get_footer(vdw_dots=False):
+  """vdw_dots: the kinemage holds vdW contact dots, to be switched off."""
   footer = """
 @master {mainchain} off
 @master {sidechain} off
@@ -920,17 +927,16 @@ def get_footer():
 @master {Rama outliers} on
 @master {Calphas} on
 @master {Virtual BB} on
-@master {vdw contact} off
 @master {small overlap} off
-@master {H-bonds} off
-@master {length dev} on
+@master {H-bond} off
+%s@master {length dev} on
 @master {angle dev} on
 @master {Cbeta dev} on
 @master {base-P perp} on
 @master {hets} on
 @master {protein ribbon} off
 @master {NA ribbon} off
-"""
+""" % ("@master {vdw contact} off\n" if vdw_dots else "")
   return footer
 
 def get_altid_controls(hierarchy):
@@ -1046,7 +1052,7 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
       ss_annotation=ss_annotation,
       include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils)
   kin_out += body
-  kin_out += get_footer()
+  kin_out += get_footer(vdw_dots="master={vdw contact}" in kin_out)
   return kin_out
 
 def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
@@ -1154,7 +1160,7 @@ def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
 
 def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
                                keep_hydrogens, include_cablam_wheels,
-                               plain_coils):
+                               plain_coils, vdw_dots=False):
   """One animatable group per MODEL ("@group {mN pdbID} dominant animate"),
   each with that model's sticks, markup, ribbons, and dots.  Each model is
   interpreted and validated separately (correct for superimposed ensembles,
@@ -1166,7 +1172,8 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
 
   # Per-model probe dots sections.
   if probe_dots_kin is None:
-    dots_sections = make_probe_dots_from_model(model, per_model=True)
+    dots_sections = make_probe_dots_from_model(model, per_model=True,
+                                               vdw_dots=vdw_dots)
   elif isinstance(probe_dots_kin, (list, tuple)):
     dots_sections = list(probe_dots_kin)
   elif probe_dots_kin == "":
@@ -1272,7 +1279,7 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
     kin_out += body
   if dots_sections is None and isinstance(probe_dots_kin, str):
     kin_out += probe_dots_kin
-  kin_out += get_footer()
+  kin_out += get_footer(vdw_dots="master={vdw contact}" in kin_out)
   return kin_out
 
 def build_kinemage_from_model(
@@ -1290,7 +1297,8 @@ def build_kinemage_from_model(
     probe_dots_kin=None,
     keep_hydrogens=False,
     include_cablam_wheels=False,
-    plain_coils=False):
+    plain_coils=False,
+    vdw_dots=False):
   """High-level kinemage builder that takes an mmtbx.model.manager.
 
   Encapsulates the i_seq_name_hash / bond_hash / ss_bonds / sites_cart plumbing
@@ -1316,6 +1324,8 @@ def build_kinemage_from_model(
       to the outlier line markup. Defaults to False for multicrit viewers.
     plain_coils: when True, omit the rear deadblack halo behind coil ribbons.
       Defaults to False.
+    vdw_dots: include van der Waals contact dots when computing probe dots
+      here (switched off in the viewer by the footer). Defaults to False.
 
   Returns:
     The kinemage string.
@@ -1328,7 +1338,8 @@ def build_kinemage_from_model(
     return _build_multimodel_kinemage(
       model=model, pdbID=pdbID, ss_annotation=ss_annotation,
       probe_dots_kin=probe_dots_kin, keep_hydrogens=keep_hydrogens,
-      include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils)
+      include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils,
+      vdw_dots=vdw_dots)
   if model.get_restraints_manager() is None:
     # Only bonded topology and covalent geometry are consumed here: skip the
     # plain-pair table (quadratic for superimposed ensemble models) and use
@@ -1405,7 +1416,7 @@ def build_kinemage_from_model(
 
   if probe_dots_kin is None:
     try:
-      probe_dots_kin = make_probe_dots_from_model(model)
+      probe_dots_kin = make_probe_dots_from_model(model, vdw_dots=vdw_dots)
     except Exception:
       probe_dots_kin = ""
 
@@ -1432,7 +1443,8 @@ def build_kinemage_from_model(
 
 def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
                   include_cablam_wheels=False, plain_coils=False,
-                  restraint_objects=None, omit_unrestrained=True):
+                  restraint_objects=None, omit_unrestrained=True,
+                  vdw_dots=False):
   if pdbID is None:
     pdbID = "PDB"
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -1529,7 +1541,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
     ss_annotation=ss_annotation,
     probe_dots_kin=make_probe_dots(hierarchy=hierarchy,
       keep_hydrogens=keep_hydrogens, restraint_objects=restraint_objects,
-      omit_unrestrained=omit_unrestrained),
+      omit_unrestrained=omit_unrestrained, vdw_dots=vdw_dots),
     include_cablam_wheels=include_cablam_wheels,
     plain_coils=plain_coils)
 
@@ -1547,6 +1559,8 @@ Options:
   pdb=input_file        input PDB file
   cif=cif_file          input custom definitions (ligands, etc.)
   keep_hydrogens=False  keep input hydrogen files (otherwise regenerate)
+  vdw_dots=False        include van der Waals contact dots (switched off in
+                        the viewer until turned on)
   omit_unrestrained_residues=True  leave residues without restraints out of
                         the contact dots (False: stop and ask for cif=)
 
@@ -1619,7 +1633,8 @@ def run(args, pdb_interpretation_params=None):
                           keep_hydrogens=work_params.kinemage.keep_hydrogens,
                           restraint_objects=restraint_objects,
                           omit_unrestrained=
-                            work_params.kinemage.omit_unrestrained_residues)
+                            work_params.kinemage.omit_unrestrained_residues,
+                          vdw_dots=work_params.kinemage.vdw_dots)
   return outfile
 
 def export_molprobity_result_as_kinemage(

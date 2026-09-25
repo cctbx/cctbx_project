@@ -1344,9 +1344,52 @@ def exercise_backbone_links():
   print("  exercise_backbone_links: OK")
 
 
+def exercise_footer_dot_masters():
+  """Dot types the footer switches must be masters probe2 emits here: the
+  overlaps and H-bonds, with vdW contacts off (report_vdws=False)."""
+  import re
+  import mmtbx_probe_ext as probeExt
+  from mmtbx.kinemage.validation import get_footer
+  it = probeExt.InteractionType
+  emitted = set(
+    probeExt.DotScorer.interaction_type_name(t).replace("_", " ")
+    for t in (it.SmallOverlap, it.Bump, it.BadBump, it.StandardHydrogenBond))
+  switched = re.findall(r"@master \{([^}]*)\}", get_footer())
+  dot_masters = [m for m in switched
+                 if "contact" in m or "overlap" in m or "H-bond" in m]
+  assert "H-bond" in dot_masters, dot_masters
+  assert set(dot_masters) <= emitted, set(dot_masters) - emitted
+  assert "{vdw contact}" in get_footer(vdw_dots=True)
+  print("  exercise_footer_dot_masters: OK")
+
+
+def exercise_run_vdw_dots():
+  """vdw_dots=True adds vdW contact lists, and the footer switches them off;
+  by default neither appears."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb_file = os.path.join(tmp, "ala.pdb")
+    with open(pdb_file, "w") as f:
+      f.write(pdb_str)
+    for vdw_dots in (False, True):
+      out = os.path.join(tmp, "ala.kin")
+      run([pdb_file, "keep_hydrogens=True", "out_file=%s" % out,
+           "vdw_dots=%s" % vdw_dots])
+      with open(out) as f:
+        content = f.read()
+      assert ("master={vdw contact}" in content) == vdw_dots, vdw_dots
+      assert ("@master {vdw contact} off" in content) == vdw_dots, vdw_dots
+  finally:
+    shutil.rmtree(tmp)
+  print("  exercise_run_vdw_dots: OK")
+
+
 def run():
   print("Testing mmtbx.kinemage.validation:")
   exercise_helper_functions()
+  exercise_footer_dot_masters()
   exercise_deleted_functions()
   exercise_altloc_handling()
   exercise_build_kinemage()
@@ -1369,6 +1412,7 @@ def run():
   exercise_probe_dots_unrestrained_ligand()
   exercise_run_with_ligand_cif()
   exercise_run_missing_file()
+  exercise_run_vdw_dots()
   print("All tests passed.")
 
 
