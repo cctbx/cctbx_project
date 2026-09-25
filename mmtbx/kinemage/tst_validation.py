@@ -425,9 +425,7 @@ def exercise_helper_functions():
   assert prev_key is None
 
   # _draw_rna_virtual_backbone with missing keys should return empty
-  vbb = _draw_rna_virtual_backbone(
-    type('MockRG', (), {'resseq_as_int': lambda self: 5})(),
-    {}, {}, {}, {}, {}, {})
+  vbb = _draw_rna_virtual_backbone(5, True, {}, {}, {}, {}, {}, {})
   assert vbb == ""
 
   print("  exercise_helper_functions: OK")
@@ -1022,7 +1020,8 @@ def exercise_draw_residue_bonds():
 
 def exercise_track_amino_acid_atom():
   """Test _track_amino_acid_atom backbone tracking for inter-residue bonds."""
-  from mmtbx.kinemage.validation import _track_amino_acid_atom
+  from mmtbx.kinemage.validation import (
+    _track_amino_acid_atom, backbone_linked_pairs)
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx import monomer_library
   from iotbx import pdb
@@ -1046,9 +1045,12 @@ def exercise_track_amino_acid_atom():
   prev_C_xyz = {}
   prev_CA_key = {}
   prev_CA_xyz = {}
-  prev_resid = None
+  prev_rg = None
+  pairs = backbone_linked_pairs(hierarchy)
 
   for rg in residue_groups:
+    linked = prev_rg is not None and (
+      chain.memory_id(), prev_rg.resid(), rg.resid()) in pairs
     cur_C_xyz = {}
     cur_C_key = {}
     cur_CA_xyz = {}
@@ -1059,7 +1061,7 @@ def exercise_track_amino_acid_atom():
       for atom in ag.atoms():
         key = "key_%s_%s" % (atom.name.strip(), rg.resseq_as_int())
         _track_amino_acid_atom(
-          atom, key, ' ', rg, prev_resid,
+          atom, key, ' ', linked,
           cur_C_xyz, cur_C_key, cur_CA_xyz, cur_CA_key,
           prev_C_key, prev_C_xyz, prev_CA_key, prev_CA_xyz,
           mc_parts, ca_parts)
@@ -1074,7 +1076,7 @@ def exercise_track_amino_acid_atom():
     prev_C_xyz = cur_C_xyz
     prev_CA_key = cur_CA_key
     prev_CA_xyz = cur_CA_xyz
-    prev_resid = rg.resid()
+    prev_rg = rg
 
   print("  exercise_track_amino_acid_atom: OK")
 
@@ -1090,14 +1092,6 @@ def exercise_track_rna_dna_atom():
       self.xyz = xyz
       self.i_seq = i_seq
 
-  class MockResidueGroup:
-    def __init__(self, resseq):
-      self._resseq = resseq
-    def resseq_as_int(self):
-      return self._resseq
-    def resid(self):
-      return "%4d " % self._resseq
-
   # Track a P atom for residue 2
   cur_O3_xyz = {}
   cur_O3_key = {}
@@ -1111,11 +1105,10 @@ def exercise_track_rna_dna_atom():
   c4_hash_xyz = {}
   mc_parts = []
 
-  rg = MockResidueGroup(2)
   p_atom = MockAtom(' P  ', (4.0, 5.0, 6.0))
 
   _track_rna_dna_atom(
-    p_atom, 'p_key_2', ' ', rg, '   1 ',
+    p_atom, 'p_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1135,7 +1128,7 @@ def exercise_track_rna_dna_atom():
   c4_atom = MockAtom(" C4'", (10.0, 11.0, 12.0))
 
   _track_rna_dna_atom(
-    c1_atom, 'c1_key_2', ' ', rg, '   1 ',
+    c1_atom, 'c1_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1143,7 +1136,7 @@ def exercise_track_rna_dna_atom():
     c4_hash_key, c4_hash_xyz,
     mc_parts)
   _track_rna_dna_atom(
-    c4_atom, 'c4_key_2', ' ', rg, '   1 ',
+    c4_atom, 'c4_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1157,7 +1150,7 @@ def exercise_track_rna_dna_atom():
   # Track O3' atom
   o3_atom = MockAtom(" O3'", (13.0, 14.0, 15.0))
   _track_rna_dna_atom(
-    o3_atom, 'o3_key_2', ' ', rg, '   1 ',
+    o3_atom, 'o3_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1311,6 +1304,46 @@ def exercise_run_missing_file():
   print("  exercise_run_missing_file: OK")
 
 
+def _vectorlist_points(kin, name):
+  """Point lines of the @vectorlist {name} lists in kin."""
+  lines = []
+  in_list = False
+  for line in kin.splitlines():
+    if line.startswith("@"):
+      in_list = line.startswith("@vectorlist {%s}" % name)
+    elif in_list:
+      lines.append(line)
+  return lines
+
+
+def exercise_backbone_links():
+  """Backbone links follow geometry, not numbering: insertion codes join,
+  a gap between consecutive numbers does not, CA-only models still trace."""
+  from mmtbx.kinemage.validation import build_name_hash, get_kin_lots
+  from iotbx import pdb
+
+  def links(lines_str, shift_last=None, ca_only=False):
+    h = pdb.input(source_info=None, lines=lines_str).construct_hierarchy()
+    if ca_only:
+      h = h.select(h.atom_selection_cache().selection("name CA"))
+    chain = h.models()[0].chains()[0]
+    if shift_last is not None:
+      for atom in chain.residue_groups()[-1].atoms():
+        atom.xyz = tuple(x + d for x, d in zip(atom.xyz, shift_last))
+    kin = get_kin_lots(chain=chain, bond_hash={},
+                       i_seq_name_hash=build_name_hash(h), pdbID="t")
+    return (len(_vectorlist_points(kin, "mc")),
+            len(_vectorlist_points(kin, "Calphas")))
+
+  assert links(pdb_str) == (2, 2)
+  icode_str = pdb_str.replace("ALA A   2 ", "ALA A   1A").replace(
+    "ALA A   3 ", "ALA A   2 ")
+  assert links(icode_str) == (2, 2), links(icode_str)
+  assert links(pdb_str, shift_last=(10, 0, 0)) == (1, 1)
+  assert links(pdb_str, ca_only=True) == (0, 2)
+  print("  exercise_backbone_links: OK")
+
+
 def run():
   print("Testing mmtbx.kinemage.validation:")
   exercise_helper_functions()
@@ -1324,6 +1357,7 @@ def run():
   exercise_draw_residue_bonds()
   exercise_track_amino_acid_atom()
   exercise_track_rna_dna_atom()
+  exercise_backbone_links()
   exercise_disulfide_bonds()
   exercise_make_multikin_with_ribbons()
   exercise_make_multikin_with_disulfide()

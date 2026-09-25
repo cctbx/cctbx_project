@@ -526,78 +526,94 @@ def _get_prev_connection(prev_key_hash, prev_xyz_hash, altloc):
     prev_xyz = prev_xyz_hash.get(' ')
   return prev_key, prev_xyz
 
-def _track_amino_acid_atom(atom, key, altloc, residue_group, prev_resid,
+def backbone_linked_pairs(hierarchy):
+  """Set of (chain memory_id, resid, next resid) for residues joined in the
+  backbone, from the linked-residue generators ramalyze and omegalyze use: by
+  C-N / O3'-P distance, or CA-CA for CA-only chains, never by numbering.
+  Keyed by the conformer's chain: selected hierarchies share atoms with their
+  source, so atom.parent() can point outside this hierarchy."""
+  from mmtbx.conformation_dependent_library import (
+    generate_protein_fragments, generate_dna_rna_fragments)
+  pairs = set()
+  for fragments in [
+      generate_protein_fragments(hierarchy, geometry=None, length=2,
+        backbone_only=False, include_non_standard_peptides=True,
+        include_d_amino_acids=True, allow_poly_ca=True),
+      generate_dna_rna_fragments(hierarchy, geometry=None, length=2,
+        include_non_standard_bases=True)]:
+    for pair in fragments:
+      chain = pair[1].parent().parent()
+      pairs.add((chain.memory_id(), pair[0].resid(), pair[1].resid()))
+  return pairs
+
+def _track_amino_acid_atom(atom, key, altloc, linked,
                            cur_C_xyz, cur_C_key, cur_CA_xyz, cur_CA_key,
                            prev_C_key, prev_C_xyz, prev_CA_key, prev_CA_xyz,
                            mc_parts, ca_parts):
   """Track backbone atoms (C, CA, N) for amino acids and add inter-residue
-  connections to mc_parts and ca_parts lists."""
+  connections to mc_parts and ca_parts lists when linked to the previous
+  residue."""
   if atom.name == ' C  ':
     cur_C_xyz[altloc] = atom.xyz
     cur_C_key[altloc] = key
   if atom.name == ' CA ':
     cur_CA_xyz[altloc] = atom.xyz
     cur_CA_key[altloc] = key
-    if len(prev_CA_key) > 0 and len(prev_CA_xyz) > 0:
-      if prev_resid is not None and \
-         int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-        prev_key, prev_xyz = _get_prev_connection(prev_CA_key, prev_CA_xyz, altloc)
-        if prev_key is not None:
-          ca_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
+    if linked and len(prev_CA_key) > 0 and len(prev_CA_xyz) > 0:
+      prev_key, prev_xyz = _get_prev_connection(prev_CA_key, prev_CA_xyz, altloc)
+      if prev_key is not None:
+        ca_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
   if atom.name == ' N  ':
-    if len(prev_C_key) > 0 and len(prev_C_xyz) > 0:
-      if prev_resid is not None and \
-         int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-        prev_key, prev_xyz = _get_prev_connection(prev_C_key, prev_C_xyz, altloc)
-        if prev_key is not None:
-          mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
+    if linked and len(prev_C_key) > 0 and len(prev_C_xyz) > 0:
+      prev_key, prev_xyz = _get_prev_connection(prev_C_key, prev_C_xyz, altloc)
+      if prev_key is not None:
+        mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
 
-def _track_rna_dna_atom(atom, key, altloc, residue_group, prev_resid,
+def _track_rna_dna_atom(atom, key, altloc, rg_index, linked,
                         cur_O3_xyz, cur_O3_key,
                         prev_O3_key, prev_O3_xyz,
                         p_hash_key, p_hash_xyz,
                         c1_hash_key, c1_hash_xyz,
                         c4_hash_key, c4_hash_xyz,
                         mc_parts):
-  """Track backbone atoms for RNA/DNA and add O3'-P connections."""
+  """Track backbone atoms for RNA/DNA and add O3'-P connections.  The P, C1'
+  and C4' hashes are keyed by rg_index, the residue group's position in the
+  chain (residue numbers repeat across insertion codes)."""
   if atom.name == " O3'":
     cur_O3_xyz[altloc] = atom.xyz
     cur_O3_key[altloc] = key
   elif atom.name == ' P  ':
-    if len(prev_O3_key) > 0 and len(prev_O3_xyz) > 0:
-      if prev_resid is not None and \
-         int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-        prev_key, prev_xyz = _get_prev_connection(prev_O3_key, prev_O3_xyz, altloc)
-        if prev_key is not None:
-          mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
-    resseq = residue_group.resseq_as_int()
-    p_hash_key[resseq] = key
-    p_hash_xyz[resseq] = atom.xyz
+    if linked and len(prev_O3_key) > 0 and len(prev_O3_xyz) > 0:
+      prev_key, prev_xyz = _get_prev_connection(prev_O3_key, prev_O3_xyz, altloc)
+      if prev_key is not None:
+        mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
+    p_hash_key[rg_index] = key
+    p_hash_xyz[rg_index] = atom.xyz
   elif atom.name == " C1'":
-    c1_hash_key[residue_group.resseq_as_int()] = key
-    c1_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+    c1_hash_key[rg_index] = key
+    c1_hash_xyz[rg_index] = atom.xyz
   elif atom.name == " C4'":
-    c4_hash_key[residue_group.resseq_as_int()] = key
-    c4_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+    c4_hash_key[rg_index] = key
+    c4_hash_xyz[rg_index] = atom.xyz
 
-def _draw_rna_virtual_backbone(residue_group, p_hash_key, p_hash_xyz,
+def _draw_rna_virtual_backbone(rg_index, linked, p_hash_key, p_hash_xyz,
                                c1_hash_key, c1_hash_xyz,
                                c4_hash_key, c4_hash_xyz):
   """Generate virtual backbone vectors for RNA/DNA residues (C4'->P->C4'->C1')."""
   vbb = ""
-  resseq = residue_group.resseq_as_int()
+  i = rg_index
   # C4'(prev) -> P(cur)
-  if (resseq - 1) in c4_hash_key and resseq in p_hash_key:
-    vbb += kin_vec(c4_hash_key[resseq-1], c4_hash_xyz[resseq-1],
-                   p_hash_key[resseq], p_hash_xyz[resseq])
+  if linked and (i - 1) in c4_hash_key and i in p_hash_key:
+    vbb += kin_vec(c4_hash_key[i-1], c4_hash_xyz[i-1],
+                   p_hash_key[i], p_hash_xyz[i])
   # P(cur) -> C4'(cur)
-  if resseq in p_hash_key and resseq in c4_hash_key:
-    vbb += kin_vec(p_hash_key[resseq], p_hash_xyz[resseq],
-                   c4_hash_key[resseq], c4_hash_xyz[resseq])
+  if i in p_hash_key and i in c4_hash_key:
+    vbb += kin_vec(p_hash_key[i], p_hash_xyz[i],
+                   c4_hash_key[i], c4_hash_xyz[i])
   # C4'(cur) -> C1'(cur)
-  if resseq in c4_hash_key and resseq in c1_hash_key:
-    vbb += kin_vec(c4_hash_key[resseq], c4_hash_xyz[resseq],
-                   c1_hash_key[resseq], c1_hash_xyz[resseq])
+  if i in c4_hash_key and i in c1_hash_key:
+    vbb += kin_vec(c4_hash_key[i], c4_hash_xyz[i],
+                   c1_hash_key[i], c1_hash_xyz[i])
   return vbb
 
 def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
@@ -664,7 +680,12 @@ def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
   return result
 
 def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
-                 show_hydrogen=True, ss_bonds=None, sites_cart=None):
+                 show_hydrogen=True, ss_bonds=None, sites_cart=None,
+                 linked_pairs=None):
+  """linked_pairs: backbone_linked_pairs() of the chain's hierarchy, computed
+  here if not given."""
+  if linked_pairs is None:
+    linked_pairs = backbone_linked_pairs(chain.parent().parent())
   mc_atoms = ["N", "CA", "C", "O", "OXT",
               "P", "OP1", "OP2", "OP3", "O5'", "C5'", "C4'", "O4'", "C1'",
               "C3'", "O3'", "C2'", "O2'"]
@@ -685,7 +706,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
     sc_h_veclist = \
       "@vectorlist {sc H} color= gray nobutton master= {sidechain} master= {H's}\n"
   ion_list = ""
-  prev_resid = None
+  prev_rg = None
   prev_C_xyz = {}
   prev_C_key = {}
   prev_CA_xyz = {}
@@ -700,7 +721,9 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
   c4_hash_xyz = {}
   drawn_bonds = []
 
-  for residue_group in chain.residue_groups():
+  for rg_index, residue_group in enumerate(chain.residue_groups()):
+    linked = prev_rg is not None and (chain.memory_id(), prev_rg.resid(),
+      residue_group.resid()) in linked_pairs
     altloc_hash = {}
     iseq_altloc = {}
     cur_C_xyz = {}
@@ -716,10 +739,8 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
           altloc_hash[atom.name.strip()] = []
         altloc_hash[atom.name.strip()].append(ag_altloc)
         iseq_altloc[atom.i_seq] = ag_altloc
-    cur_resid = residue_group.resid()
     for conformer in residue_group.conformers():
       for residue in conformer.residues():
-        cur_resid = residue.resid()
         key_hash = {}
         xyz_hash = {}
         het_hash = {}
@@ -749,7 +770,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
             mc_parts = []
             ca_parts = []
             _track_amino_acid_atom(
-              atom, key, altloc, residue_group, prev_resid,
+              atom, key, altloc, linked,
               cur_C_xyz, cur_C_key, cur_CA_xyz, cur_CA_key,
               prev_C_key, prev_C_xyz, prev_CA_key, prev_CA_xyz,
               mc_parts, ca_parts)
@@ -760,7 +781,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
           elif res_class == "common_rna_dna":
             mc_parts = []
             _track_rna_dna_atom(
-              atom, key, altloc, residue_group, prev_resid,
+              atom, key, altloc, rg_index, linked,
               cur_O3_xyz, cur_O3_key,
               prev_O3_key, prev_O3_xyz,
               p_hash_key, p_hash_xyz,
@@ -787,7 +808,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
         # Virtual backbone for RNA/DNA
         if common_residue_names_get_class(residue.resname) == "common_rna_dna":
           virtual_bb += _draw_rna_virtual_backbone(
-            residue_group, p_hash_key, p_hash_xyz,
+            rg_index, linked, p_hash_key, p_hash_xyz,
             c1_hash_key, c1_hash_xyz, c4_hash_key, c4_hash_xyz)
 
         # Draw bonds
@@ -806,7 +827,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
     prev_CA_key = cur_CA_key
     prev_C_xyz = cur_C_xyz
     prev_C_key = cur_C_key
-    prev_resid = cur_resid
+    prev_rg = residue_group
     prev_O3_key = cur_O3_key
     prev_O3_xyz = cur_O3_xyz
 
@@ -1050,6 +1071,7 @@ def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
   validated_chains = []
   counter = counter_start
   ribbon_counter = ribbon_counter_start
+  linked_pairs = backbone_linked_pairs(hierarchy)
   for model in hierarchy.models():
     for chain in model.chains():
       if chain.id not in initiated_chains:
@@ -1063,7 +1085,8 @@ def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                               pdbID=pdbID,
                               index=counter,
                               ss_bonds=ss_bonds,
-                              sites_cart=sites_cart)
+                              sites_cart=sites_cart,
+                              linked_pairs=linked_pairs)
       # Validation overlays filter by chain_id, so they only need to be
       # emitted once per unique chain ID (not once per chain segment).
       if chain.id not in validated_chains:
