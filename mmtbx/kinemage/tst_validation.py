@@ -38,6 +38,56 @@ END
 """
 
 
+# Ala plus a ligand no dictionary knows (ZZX), with an explicit H, for the
+# probe dots fallback and user-restraints tests
+pdb_unknown_ligand_str = pdb_str.replace("END\n", """\
+HETATM   16  C1  ZZX A 200       5.000   5.000  10.000  1.00 10.00           C
+HETATM   17  O1  ZZX A 200       6.430   5.000  10.000  1.00 10.00           O
+HETATM   18  HO1 ZZX A 200       6.700   5.800  10.000  1.00 10.00           H
+END
+""")
+
+zzx_cif_str = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ZZX ZZX 'test ligand' ligand 3 2 .
+data_comp_ZZX
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ZZX C1  C CH3  0
+ZZX O1  O OH1  0
+ZZX HO1 H HOH1 0
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ZZX C1 O1  single 1.430 0.020
+ZZX O1 HO1 single 0.840 0.020
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ZZX C1 O1 HO1 109.0 3.0
+"""
+
+
 # PDB with hets (SO4 ligand), ions (ZN), waters (HOH + WAT),
 # and a single-atom SO4 (like in 1nxb) to test het/ion/water handling
 pdb_het_str = """\
@@ -1204,6 +1254,63 @@ def exercise_make_multikin_with_disulfide():
   print("  exercise_make_multikin_with_disulfide: OK")
 
 
+def exercise_probe_dots_unrestrained_ligand():
+  """A ligand without restraints is left out of the dots with a note, or
+  stops the run when omission is off."""
+  from mmtbx.kinemage.validation import make_probe_dots
+  from libtbx.utils import Sorry
+  from iotbx import pdb
+  hierarchy = pdb.input(source_info=None,
+    lines=pdb_unknown_ligand_str).construct_hierarchy()
+  dots = make_probe_dots(hierarchy, keep_hydrogens=True)
+  assert "@caption probe2" in dots, "Probe dots missing for the protein"
+  assert "@text" in dots and "ZZX A 200" in dots, "Missing omission note"
+  try:
+    make_probe_dots(hierarchy, keep_hydrogens=True, omit_unrestrained=False)
+  except Sorry as e:
+    assert "ZZX A 200" in str(e)
+  else:
+    raise AssertionError("Expected Sorry with omit_unrestrained=False")
+  print("  exercise_probe_dots_unrestrained_ligand: OK")
+
+
+def exercise_run_with_ligand_cif():
+  """cif= restraints reach the probe dots, so the ligand is not omitted."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb_file = os.path.join(tmp, "lig.pdb")
+    cif_file = os.path.join(tmp, "zzx.cif")
+    with open(pdb_file, "w") as f:
+      f.write(pdb_unknown_ligand_str)
+    with open(cif_file, "w") as f:
+      f.write(zzx_cif_str)
+    for extra, expect_note in [([], True), (["cif=%s" % cif_file], False)]:
+      out = os.path.join(tmp, "lig.kin")
+      run([pdb_file, "keep_hydrogens=True", "out_file=%s" % out] + extra)
+      with open(out) as f:
+        content = f.read()
+      assert "@caption probe2" in content
+      assert ("@text" in content) == expect_note, extra
+  finally:
+    shutil.rmtree(tmp)
+  print("  exercise_run_with_ligand_cif: OK")
+
+
+def exercise_run_missing_file():
+  from mmtbx.kinemage.validation import run
+  from libtbx.utils import Sorry
+  for args in (["no_such_file.pdb"], ["pdb=no_such_file.pdb"]):
+    try:
+      run(args)
+    except Sorry as e:
+      assert "no_such_file.pdb" in str(e)
+    else:
+      raise AssertionError("Expected Sorry for %s" % args)
+  print("  exercise_run_missing_file: OK")
+
+
 def run():
   print("Testing mmtbx.kinemage.validation:")
   exercise_helper_functions()
@@ -1225,6 +1332,9 @@ def run():
   exercise_build_kinemage_from_model_toggles()
   exercise_ribbon_rendering()
   exercise_ribbon_in_kinemage()
+  exercise_probe_dots_unrestrained_ligand()
+  exercise_run_with_ligand_cif()
+  exercise_run_missing_file()
   print("All tests passed.")
 
 

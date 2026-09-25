@@ -37,6 +37,11 @@ def get_master_phil():
         keep_hydrogens = False
         .type = bool
         .help = '''Keep hydrogens in input file'''
+        omit_unrestrained_residues = True
+        .type = bool
+        .help = '''Leave residues with missing or incomplete restraints out of
+                   the contact dots, with a warning. False stops instead;
+                   supply their restraints with cif=.'''
         pdb_interpretation
           .short_caption = Model interpretation
         {
@@ -251,18 +256,142 @@ def bond_outlier_as_kinemage(self):
   return kin_text
 
 
-def make_probe_dots(hierarchy, keep_hydrogens=False):
+def _drop_unbonded_for_probe(model_manager, probe2):
+  """Process model_manager with probe2's interpretation parameters and drop
+  what probe2 cannot handle: multi-atom residues with any unbonded heavy atom
+  (missing restraints, so its intra-residue pairs would read as clashes; one
+  covalent link can still bond the rest) and H with no bonded parent (probe2
+  raises on these).  Returns (model, dropped residue ids,
+  whether the returned model is already processed)."""
+  from scitbx.array_family import flex
+  model_manager.get_hierarchy().atoms().reset_i_seq()
+  model_manager.process(make_restraints=True,
+    pdb_interpretation_params=probe2.getPdbInterpretationParams())
+  geometry = model_manager.get_restraints_manager().geometry
+  simple, asu = geometry.get_all_bond_proxies(
+    sites_cart=model_manager.get_sites_cart())
+  n_atoms = model_manager.get_number_of_atoms()
+  bonded = flex.bool(n_atoms, False)
+  for proxy in simple:
+    bonded[proxy.i_seqs[0]] = True
+    bonded[proxy.i_seqs[1]] = True
+  for proxy in asu:
+    bonded[proxy.i_seq] = True
+    bonded[proxy.j_seq] = True
+  hd = model_manager.get_hd_selection()
+  keep = bonded | ~hd
+  dropped = []
+  for ag in model_manager.get_hierarchy().atom_groups():
+    i_seqs = ag.atoms().extract_i_seq()
+    whole = len(i_seqs) > 1 and not (bonded | hd).select(i_seqs).all_eq(True)
+    if whole:
+      keep.set_selected(i_seqs, False)
+    if whole or not keep.select(i_seqs).all_eq(True):
+      rg = ag.parent()
+      res_id = "%s %s %s" % (ag.resname.strip(), rg.parent().id.strip(),
+                             rg.resid().strip())
+      if res_id not in dropped:
+        dropped.append(res_id)
+  if keep.all_eq(True):
+    return model_manager, dropped, True
+  # A fresh manager, not model.select(): selected models lose the monomer
+  # mappings probe2's backbone/sidechain selections need.
+  import mmtbx.model
+  from libtbx.utils import null_out
+  trimmed = mmtbx.model.manager(
+    model_input       = None,
+    pdb_hierarchy     = model_manager.get_hierarchy().select(keep),
+    stop_for_unknowns = False,
+    crystal_symmetry  = model_manager.crystal_symmetry(),
+    restraint_objects = model_manager.get_restraint_objects(),
+    log               = null_out())
+  return trimmed, dropped, False
+
+def _probe_dots_note(lines):
+  """Explain missing or partial probe dots in the kinemage and on stderr."""
+  import sys
+  for line in lines:
+    print("Warning: %s" % line, file=sys.stderr)
+  if len(lines) == 0:
+    return ""
+  return "@text\n" + "".join("%s\n" % line for line in lines)
+
+def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
+                         target_selection=None, omit_unrestrained=True):
+  """Run probe2 on one hydrogenated model; returns kinemage dots text, with an
+  @text note when residues were left out or probe2 failed.  With
+  omit_unrestrained=False, residues lacking restraints raise Sorry instead."""
+  from mmtbx.programs import probe2
+  import iotbx.cli_parser
+  from libtbx.utils import null_out
+  import tempfile
+  notes = []
+  output = ""
+  try:
+    model_manager, dropped, processed = _drop_unbonded_for_probe(
+      model_manager, probe2)
+  except Exception as e:
+    return _probe_dots_note(
+      ["Probe dots could not be computed: %s" % str(e).strip()])
+  if len(dropped) > 0:
+    if not omit_unrestrained:
+      raise Sorry("Missing or incomplete restraints for %s. Supply them with "
+                  "cif=, or set omit_unrestrained_residues=True to leave these "
+                  "residues out of the contact dots." % ", ".join(dropped))
+    notes.append("Probe dots omit residues with missing or incomplete "
+                 "restraints (supply a restraints CIF to include them): %s"
+                 % ", ".join(dropped))
+  try:
+    tempName = tempfile.mktemp()
+    parser = iotbx.cli_parser.CCTBXParser(
+      program_class=probe2.Program, logger=null_out())
+    args = [
+      "approach=%s" % approach,
+      "output.format=kinemage",
+      "output.filename='%s'" % tempName,
+      "output.separate_worse_clashes=True",
+      "output.report_vdws=False",
+      "output.write_files=False",
+      # Dots nest as a @subgroup of the structure's group; master={dots}
+      # on each list keeps an all-dots control.
+      "output.add_group_line=False",
+      "output.add_group_name_master_line=True",
+      "count_dots=False",
+      "ignore_lack_of_explicit_hydrogens=True",
+    ]
+    # Quoted: unquoted, a selection parses as several phil arguments.
+    if source_selection is not None:
+      args.append("source_selection='%s'" % source_selection)
+    if target_selection is not None:
+      args.append("target_selection='%s'" % target_selection)
+    parser.parse_args(args)
+    p2 = probe2.Program(parser.data_manager, parser.working_phil.extract(),
+                        master_phil=parser.master_phil, logger=null_out())
+    p2.overrideModel(model_manager, processed=processed)
+    dots, output = p2.run()
+    if os.path.exists(tempName):
+      os.unlink(tempName)
+  except Exception as e:
+    output = ""
+    notes.append("Probe dots could not be computed: %s" % str(e).strip())
+  # Note after the dots: callers split concatenated sections at "@caption".
+  if output and not output.endswith("\n"):
+    output += "\n"
+  return output + _probe_dots_note(notes)
+
+def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
+                    omit_unrestrained=True):
   """Generate probe dot kinemage output using probe2 Python API.
 
   Uses mmtbx.reduce (reduce2) for hydrogen placement and mmtbx.programs.probe2
   for contact analysis, producing kinemage-format dot output.
+  restraint_objects: [(file name, cif object)] for ligands the monomer library
+  lacks; omit_unrestrained: see _run_probe2_kinemage.
   """
   try:
-    from mmtbx.hydrogens import place_and_optimize_hydrogens, reduce_hydrogen
-    from mmtbx.programs import probe2
+    from mmtbx.hydrogens import place_and_optimize_hydrogens
     import mmtbx.model
     from libtbx.utils import null_out
-    import tempfile
   except ImportError:
     return ""
 
@@ -277,71 +406,27 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       model_input=None,
       pdb_hierarchy=r,
       stop_for_unknowns=False,
+      restraint_objects=restraint_objects,
       log=null_out())
     model_manager.add_crystal_symmetry_if_necessary()
 
     # Add and optimize hydrogens unless the caller asked to keep the input H.
-    # place_and_optimize_hydrogens places H, runs the reduce2 Optimizer (which
-    # now reports the hydrogens to delete rather than deleting them itself),
-    # removes those, and reinterprets the model so it carries the geometry probe2
-    # needs.  raise_on_missing=False keeps this best-effort for the MolProbity
-    # view: residues without restraints simply get no H (and no H-bond dots)
-    # instead of failing the whole kinemage.  use_neutron_distances is left at
-    # the reduce2 default (X-ray) here; the kinemage path does not yet expose a
-    # neutron option.
+    # raise_on_missing=False keeps this best-effort: residues without
+    # restraints get no H instead of failing the whole kinemage.  The kinemage
+    # path does not yet expose a neutron option.
     if not keep_hydrogens:
       try:
         model_manager = place_and_optimize_hydrogens(
           model_manager, do_flips=False, nuclear=False,
           keep_existing_H=False, raise_on_missing=False, log=null_out())
-      except Exception:
-        # If hydrogen placement/optimization fails, fall back to existing atoms.
-        pass
+      except Exception as e:
+        probe_return += _probe_dots_note(["Hydrogens could not be added, "
+          "so contact dots use the input atoms: %s" % str(e).strip()])
     else:
-      # Keeping the input hydrogens: still reinterpret so the model carries the
-      # geometry probe2 needs, mirroring reduce2's _ReinterpretModel.
       model_manager.get_hierarchy().sort_atoms_in_place()
       model_manager.get_hierarchy().atoms().reset_serial()
-      interp_params = reduce_hydrogen.get_reduce_pdb_interpretation_params(
-        use_neutron_distances=False)
-      interp_params.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
-      interp_params.pdb_interpretation.flip_symmetric_amino_acids = False
-      model_manager.process(
-        make_restraints=False, pdb_interpretation_params=interp_params)
-
-    # Run probe2 in kinemage output mode
-    try:
-      import iotbx.cli_parser
-
-      tempName = tempfile.mktemp()
-      parser = iotbx.cli_parser.CCTBXParser(
-        program_class=probe2.Program, logger=null_out())
-      args = [
-        "approach=self",
-        "output.format=kinemage",
-        "output.filename='%s'" % tempName,
-        "output.separate_worse_clashes=True",
-        "output.report_vdws=False",
-        "output.write_files=False",
-        # Dots nest as a @subgroup of the structure's group; master={dots}
-        # on each list keeps an all-dots control.
-        "output.add_group_line=False",
-        "output.add_group_name_master_line=True",
-        "count_dots=False",
-        "ignore_lack_of_explicit_hydrogens=True",
-      ]
-      parser.parse_args(args)
-      dm = parser.data_manager
-      p2 = probe2.Program(dm, parser.working_phil.extract(),
-                          master_phil=parser.master_phil, logger=null_out())
-      p2.overrideModel(model_manager)
-      dots, output = p2.run()
-      probe_return += output
-      if os.path.exists(tempName):
-        os.unlink(tempName)
-    except Exception:
-      # If probe2 fails, return what we have so far
-      pass
+    probe_return += _run_probe2_kinemage(model_manager,
+      omit_unrestrained=omit_unrestrained)
   return probe_return
 
 def make_probe_dots_from_model(model_manager, per_model=False,
@@ -362,10 +447,8 @@ def make_probe_dots_from_model(model_manager, per_model=False,
   exclude, so every intra-residue pair reads as a clash.
   """
   try:
-    from mmtbx.programs import probe2
     import mmtbx.model
     from libtbx.utils import null_out
-    import tempfile
   except ImportError:
     return ""
 
@@ -387,45 +470,9 @@ def make_probe_dots_from_model(model_manager, per_model=False,
       restraint_objects=model_manager.get_restraint_objects(),
       log=null_out())
 
-    # Run probe2 in kinemage output mode
-    section = ""
-    try:
-      import iotbx.cli_parser
-
-      tempName = tempfile.mktemp()
-      parser = iotbx.cli_parser.CCTBXParser(
-        program_class=probe2.Program, logger=null_out())
-      args = [
-        "approach=%s" % approach,
-        "output.format=kinemage",
-        "output.filename='%s'" % tempName,
-        "output.separate_worse_clashes=True",
-        "output.report_vdws=False",
-        "output.write_files=False",
-        # Dots nest as a @subgroup of the structure's group; master={dots}
-        # on each list keeps an all-dots control.
-        "output.add_group_line=False",
-        "output.add_group_name_master_line=True",
-        "count_dots=False",
-        "ignore_lack_of_explicit_hydrogens=True",
-      ]
-      # Quoted: unquoted, a selection parses as several phil arguments.
-      if source_selection is not None:
-        args.append("source_selection='%s'" % source_selection)
-      if target_selection is not None:
-        args.append("target_selection='%s'" % target_selection)
-      parser.parse_args(args)
-      dm = parser.data_manager
-      p2 = probe2.Program(dm, parser.working_phil.extract(),
-                          master_phil=parser.master_phil, logger=null_out())
-      p2.overrideModel(sub_model)
-      dots, output = p2.run()
-      section = output
-      if os.path.exists(tempName):
-        os.unlink(tempName)
-    except Exception:
-      pass
-    sections.append(section)
+    sections.append(_run_probe2_kinemage(
+      sub_model, approach=approach, source_selection=source_selection,
+      target_selection=target_selection))
   if per_model:
     return sections
   if len(sections) > 1:
@@ -1361,7 +1408,8 @@ def build_kinemage_from_model(
       plain_coils=plain_coils)
 
 def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
-                  include_cablam_wheels=False, plain_coils=False):
+                  include_cablam_wheels=False, plain_coils=False,
+                  restraint_objects=None, omit_unrestrained=True):
   if pdbID is None:
     pdbID = "PDB"
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -1456,6 +1504,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
     ss_bonds=ss_bonds,
     sites_cart=sites_cart,
     ss_annotation=ss_annotation,
+    probe_dots_kin=make_probe_dots(hierarchy=hierarchy,
+      keep_hydrogens=keep_hydrogens, restraint_objects=restraint_objects,
+      omit_unrestrained=omit_unrestrained),
     include_cablam_wheels=include_cablam_wheels,
     plain_coils=plain_coils)
 
@@ -1473,6 +1524,8 @@ Options:
   pdb=input_file        input PDB file
   cif=cif_file          input custom definitions (ligands, etc.)
   keep_hydrogens=False  keep input hydrogen files (otherwise regenerate)
+  omit_unrestrained_residues=True  leave residues without restraints out of
+                        the contact dots (False: stop and ask for cif=)
 
 Example:
 
@@ -1499,32 +1552,28 @@ def run(args, pdb_interpretation_params=None):
   #     break
   # if auto_cdl:
   work_params.kinemage.pdb_interpretation.restraints_library.cdl = Auto
-  if work_params.kinemage.pdb == None:
-    assert len(input_objects["pdb"]) == 1
-    file_obj = input_objects["pdb"][0]
-    file_name = file_obj.file_name
-  else:
-    file_name = work_params.kinemage.pdb
-  if file_name and os.path.exists(file_name):
+  file_name = work_params.kinemage.pdb
+  if file_name is None:
+    if len(input_objects.unused_args) > 0:
+      raise Sorry("Model file not found or not readable: %s" %
+                  " ".join(input_objects.unused_args))
+    raise Sorry("No model file given.\n" + usage())
+  if os.path.exists(file_name):
     pdb_io = pdb.input(file_name)
     pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
   else :
-    raise Sorry("PDB file does not exist")
-  assert pdb_io is not None
-  cif_file = None
-  cif_object = None
-  cif_file = work_params.kinemage.cif
+    raise Sorry("Model file not found: %s" % file_name)
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  if cif_file != None:
-    for cif in cif_file:
-      try:
-        cif_object = monomer_library.server.read_cif(file_name=cif)
-      except Exception:
-        raise Sorry("Unknown file format: %s" % show_string(cif))
-    if cif_object != None:
-      for srv in [mon_lib_srv, ener_lib]:
-        srv.process_cif_object(cif_object=cif_object)
+  restraint_objects = []
+  for cif in work_params.kinemage.cif:
+    try:
+      cif_object = monomer_library.server.read_cif(file_name=cif)
+    except Exception:
+      raise Sorry("Unknown file format: %s" % show_string(cif))
+    for srv in [mon_lib_srv, ener_lib]:
+      srv.process_cif_object(cif_object=cif_object, file_name=cif)
+    restraint_objects.append((cif, cif_object))
   if pdb_interpretation_params is None:
     #pdb_int_work_params = pdb_interpretation.master_params.extract()
     pdb_int_work_params = work_params.kinemage.pdb_interpretation
@@ -1544,7 +1593,10 @@ def run(args, pdb_interpretation_params=None):
   outfile = make_multikin(f=outfile,
                           processed_pdb_file=processed_pdb_file,
                           pdbID=pdbID,
-                          keep_hydrogens=work_params.kinemage.keep_hydrogens)
+                          keep_hydrogens=work_params.kinemage.keep_hydrogens,
+                          restraint_objects=restraint_objects,
+                          omit_unrestrained=
+                            work_params.kinemage.omit_unrestrained_residues)
   return outfile
 
 def export_molprobity_result_as_kinemage(
