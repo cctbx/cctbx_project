@@ -24,7 +24,8 @@ def get_master_phil():
         pdb = None
          .type = path
          .optional = True
-         .help = '''Enter a PDB file name'''
+         .multiple = True
+         .help = '''Enter a PDB file name (exactly one)'''
         cif = None
          .type = path
          .optional = True
@@ -1589,15 +1590,25 @@ def run(args, pdb_interpretation_params=None):
   #     break
   # if auto_cdl:
   work_params.kinemage.pdb_interpretation.restraints_library.cdl = Auto
-  file_name = work_params.kinemage.pdb
-  if file_name is None:
+  # Multiple so that a second model file, given plainly or as pdb=, is
+  # refused rather than silently replacing the first.
+  model_files = work_params.kinemage.pdb
+  if len(model_files) > 1:
+    raise Sorry("Only one model file can be given, got %d: %s" % (
+      len(model_files), ", ".join(model_files)))
+  if len(model_files) == 0:
     if len(input_objects.unused_args) > 0:
       raise Sorry("Model file not found or not readable: %s" %
                   " ".join(input_objects.unused_args))
     raise Sorry("No model file given.\n" + usage())
+  file_name = model_files[0]
   if os.path.exists(file_name):
     pdb_io = pdb.input(file_name)
-    pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
+    pdbID = os.path.basename(file_name)
+    for suffix in (".gz", ".Z"):
+      if pdbID.endswith(suffix):
+        pdbID = pdbID[:-len(suffix)]
+    pdbID = os.path.splitext(pdbID)[0]
   else :
     raise Sorry("Model file not found: %s" % file_name)
   mon_lib_srv = monomer_library.server.server()
