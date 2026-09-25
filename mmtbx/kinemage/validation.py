@@ -386,14 +386,15 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
   return output + _probe_dots_note(notes)
 
 def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
-                    omit_unrestrained=True, vdw_dots=False):
+                    omit_unrestrained=True, vdw_dots=False, per_model=False):
   """Generate probe dot kinemage output using probe2 Python API.
 
   Uses mmtbx.reduce (reduce2) for hydrogen placement and mmtbx.programs.probe2
   for contact analysis, producing kinemage-format dot output.
   restraint_objects: [(file name, cif object)] for ligands the monomer library
   lacks; omit_unrestrained: see _run_probe2_kinemage; vdw_dots: include van
-  der Waals contacts.
+  der Waals contacts; per_model: return one section per MODEL instead of the
+  joined string.
   """
   try:
     from mmtbx.hydrogens import place_and_optimize_hydrogens
@@ -402,7 +403,7 @@ def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
   except ImportError:
     return ""
 
-  probe_return = ""
+  sections = []
   for i_mod, m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
     mdc = m.detached_copy()
@@ -421,20 +422,23 @@ def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
     # raise_on_missing=False keeps this best-effort: residues without
     # restraints get no H instead of failing the whole kinemage.  The kinemage
     # path does not yet expose a neutron option.
+    h_note = ""
     if not keep_hydrogens:
       try:
         model_manager = place_and_optimize_hydrogens(
           model_manager, do_flips=False, nuclear=False,
           keep_existing_H=False, raise_on_missing=False, log=null_out())
       except Exception as e:
-        probe_return += _probe_dots_note(["Hydrogens could not be added, "
+        h_note = _probe_dots_note(["Hydrogens could not be added, "
           "so contact dots use the input atoms: %s" % str(e).strip()])
     else:
       model_manager.get_hierarchy().sort_atoms_in_place()
       model_manager.get_hierarchy().atoms().reset_serial()
-    probe_return += _run_probe2_kinemage(model_manager,
-      omit_unrestrained=omit_unrestrained, vdw_dots=vdw_dots)
-  return probe_return
+    sections.append(_run_probe2_kinemage(model_manager,
+      omit_unrestrained=omit_unrestrained, vdw_dots=vdw_dots) + h_note)
+  if per_model:
+    return sections
+  return "".join(sections)
 
 def make_probe_dots_from_model(model_manager, per_model=False,
                                approach="self", source_selection=None,
@@ -1570,6 +1574,28 @@ Example:
   phenix.kinemage pdb=1ubq.pdb cif=ligands.cif
 """
 
+def _run_multimodel(pdb_io, outfile, pdbID, restraint_objects, params):
+  """Command-line path for ensembles: one animatable group per MODEL, as
+  build_kinemage_from_model makes, with H placed per model for the dots.
+  Interpretation uses that builder's settings, not kinemage.pdb_interpretation."""
+  import mmtbx.model
+  from libtbx.utils import null_out
+  model = mmtbx.model.manager(
+    model_input       = pdb_io,
+    stop_for_unknowns = False,
+    restraint_objects = restraint_objects or None,
+    log               = null_out())
+  dots = make_probe_dots(model.get_hierarchy(),
+    keep_hydrogens=params.keep_hydrogens,
+    restraint_objects=restraint_objects,
+    omit_unrestrained=params.omit_unrestrained_residues,
+    vdw_dots=params.vdw_dots, per_model=True)
+  kin_out = build_kinemage_from_model(model, pdbID=pdbID, probe_dots_kin=dots,
+    keep_hydrogens=params.keep_hydrogens, vdw_dots=params.vdw_dots)
+  with open(outfile, 'w') as f:
+    f.write(kin_out)
+  return outfile
+
 def run(args, pdb_interpretation_params=None):
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
       raise Usage(usage())
@@ -1622,6 +1648,13 @@ def run(args, pdb_interpretation_params=None):
     for srv in [mon_lib_srv, ener_lib]:
       srv.process_cif_object(cif_object=cif_object, file_name=cif)
     restraint_objects.append((cif, cif_object))
+  if work_params.kinemage.out_file is not None:
+    outfile = work_params.kinemage.out_file
+  else :
+    outfile = pdbID+'.kin'
+  if pdb_io.construct_hierarchy().models_size() > 1:
+    return _run_multimodel(pdb_io, outfile, pdbID, restraint_objects,
+                           work_params.kinemage)
   if pdb_interpretation_params is None:
     #pdb_int_work_params = pdb_interpretation.master_params.extract()
     pdb_int_work_params = work_params.kinemage.pdb_interpretation
@@ -1634,10 +1667,6 @@ def run(args, pdb_interpretation_params=None):
         pdb_inp=pdb_io,
         params=pdb_int_work_params,
         substitute_non_crystallographic_unit_cell_if_necessary=True)
-  if work_params.kinemage.out_file is not None:
-    outfile = work_params.kinemage.out_file
-  else :
-    outfile = pdbID+'.kin'
   outfile = make_multikin(f=outfile,
                           processed_pdb_file=processed_pdb_file,
                           pdbID=pdbID,

@@ -1420,6 +1420,37 @@ def exercise_run_output_name_and_inputs():
   print("  exercise_run_output_name_and_inputs: OK")
 
 
+def exercise_run_multimodel():
+  """A multi-model file gets one animatable group per MODEL on the command
+  line, each with its own sticks and probe dots."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  atoms = [l for l in pdb_str.splitlines() if l.startswith("ATOM")]
+  lines = [pdb_str.splitlines()[0]]
+  for i_model in (1, 2):
+    lines.append("MODEL %8d" % i_model)
+    lines.extend(atoms)
+    lines.append("ENDMDL")
+  lines.append("END")
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb_file = os.path.join(tmp, "ens.pdb")
+    out = os.path.join(tmp, "ens.kin")
+    with open(pdb_file, "w") as f:
+      f.write("\n".join(lines) + "\n")
+    run([pdb_file, "keep_hydrogens=True", "out_file=%s" % out])
+    with open(out) as f:
+      content = f.read()
+    groups = [l for l in content.splitlines() if l.startswith("@group")]
+    assert groups == ["@group {m1 ens} dominant animate",
+                      "@group {m2 ens} dominant animate"], groups
+    assert content.count("@caption probe2") == 2
+    assert len(_vectorlist_points(content, "Calphas")) == 4
+  finally:
+    shutil.rmtree(tmp)
+  print("  exercise_run_multimodel: OK")
+
+
 def run():
   print("Testing mmtbx.kinemage.validation:")
   exercise_helper_functions()
@@ -1448,6 +1479,7 @@ def run():
   exercise_run_missing_file()
   exercise_run_vdw_dots()
   exercise_run_output_name_and_inputs()
+  exercise_run_multimodel()
   print("All tests passed.")
 
 
