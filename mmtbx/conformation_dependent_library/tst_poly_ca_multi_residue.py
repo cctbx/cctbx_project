@@ -66,9 +66,24 @@ def test_mixed():
   assert [twos_count_ca,threes_count_ca,fives_count_ca] == [11,8,4]
   print("OK")
 
+def test_ca_only_two_chains():
+  # allow_poly_ca must apply to every chain, not only the first
+  pdb_inp = iotbx.pdb.input(lines=ca_only.split("\n"), source_info=None)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  chain_b = pdb_hierarchy.models()[0].chains()[0].detached_copy()
+  chain_b.id = "B"
+  pdb_hierarchy.models()[0].append_chain(chain_b)
+  counts = [count_residue_sets(pdb_hierarchy=pdb_hierarchy, length=n,
+                               allow_poly_ca=True) for n in (2, 3, 5)]
+  print("Check allow_poly_ca=True on two ca-only chains")
+  print("twos:%i threes:%i fives:%i" % tuple(counts))
+  assert counts == [24, 20, 14], counts
+  print("OK")
+
 def run():
   print("Running tests")
   test_ca_only()
+  test_ca_only_two_chains()
   test_mixed()
   print("Tests complete")
   print("OK")
