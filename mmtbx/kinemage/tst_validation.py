@@ -1386,6 +1386,40 @@ def exercise_run_vdw_dots():
   print("  exercise_run_vdw_dots: OK")
 
 
+def exercise_run_output_name_and_inputs():
+  """The output is named after the whole file name, spaces and extra dots
+  included; a second model file is refused instead of silently dropped."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  from libtbx.utils import Sorry
+  tmp = tempfile.mkdtemp()
+  cwd = os.getcwd()
+  try:
+    sub = os.path.join(tmp, "dir with space")
+    os.mkdir(sub)
+    pdb_file = os.path.join(sub, "ala.refined.pdb")
+    with open(pdb_file, "w") as f:
+      f.write(pdb_str)
+    os.chdir(tmp)
+    out = run([pdb_file, "keep_hydrogens=True"])
+    assert out == "ala.refined.kin", out
+    assert os.path.exists(os.path.join(tmp, "ala.refined.kin"))
+    second = os.path.join(tmp, "second.pdb")
+    shutil.copy(pdb_file, second)
+    for args in ([pdb_file, second], ["pdb=%s" % pdb_file, "pdb=%s" % second],
+                 ["pdb=%s" % pdb_file, second], [pdb_file, "pdb=%s" % second]):
+      try:
+        run(args + ["keep_hydrogens=True"])
+      except Sorry as e:
+        assert "Only one model file" in str(e), str(e)
+      else:
+        raise AssertionError("Expected Sorry for %s" % args)
+  finally:
+    os.chdir(cwd)
+    shutil.rmtree(tmp)
+  print("  exercise_run_output_name_and_inputs: OK")
+
+
 def run():
   print("Testing mmtbx.kinemage.validation:")
   exercise_helper_functions()
@@ -1413,6 +1447,7 @@ def run():
   exercise_run_with_ligand_cif()
   exercise_run_missing_file()
   exercise_run_vdw_dots()
+  exercise_run_output_name_and_inputs()
   print("All tests passed.")
 
 
