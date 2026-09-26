@@ -695,9 +695,15 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
                  show_hydrogen=True, ss_bonds=None, sites_cart=None,
                  linked_pairs=None):
   """linked_pairs: backbone_linked_pairs() of the chain's hierarchy, computed
-  here if not given."""
+  here for this chain alone if not given."""
   if linked_pairs is None:
-    linked_pairs = backbone_linked_pairs(chain.parent().parent())
+    # From a copy re-keyed to this chain: works for a detached chain, and
+    # per-chain callers (cablam) do not rescan the whole structure.
+    root = pdb.hierarchy.root()
+    root.append_model(pdb.hierarchy.model())
+    root.models()[0].append_chain(chain.detached_copy())
+    linked_pairs = set((chain.memory_id(), prev, cur)
+      for _, prev, cur in backbone_linked_pairs(root))
   mc_atoms = ["N", "CA", "C", "O", "OXT",
               "P", "OP1", "OP2", "OP3", "O5'", "C5'", "C4'", "O4'", "C1'",
               "C3'", "O3'", "C2'", "O2'"]
