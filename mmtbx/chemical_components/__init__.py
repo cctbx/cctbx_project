@@ -70,6 +70,26 @@ data_dir = find_data_dir()
 # absent from GeoStd; see mmtbx/hydrogens/tst_add_hydrogen_5.py
 _test_aliases = {'I_S' : 'IAS',
                  '1_G' : '1MG'}
+_test_alias_files = {}
+
+def _test_alias_filename(code):
+  '''One temp file per alias per process, removed at exit.'''
+  if code not in _test_alias_files:
+    import atexit, tempfile
+    ccd_code = _test_aliases[code]
+    with open(os.path.join(data_dir, "%s" % ccd_code[0].lower(),
+                           "data_%s.cif" % ccd_code), 'r') as f:
+      lines = f.read().replace(ccd_code, code)
+    with tempfile.NamedTemporaryFile(mode='w+t', suffix='_%s.cif' % code,
+                                     delete=False) as temp_file:
+      temp_file.write(lines)
+    _test_alias_files[code] = temp_file.name
+    atexit.register(_remove_file, temp_file.name)
+  return _test_alias_files[code]
+
+def _remove_file(file_name):
+  try: os.remove(file_name)
+  except OSError: pass
 
 def get_cif_filename(code):
   if (data_dir is None): return ""
@@ -78,18 +98,7 @@ def get_cif_filename(code):
   if (len(code) == 0):
     raise Sorry("Residue code is blank.")
   elif code in _test_aliases:
-    ccd_code = _test_aliases[code]
-    f=open(os.path.join(data_dir, "%s" % ccd_code[0].lower(),
-                        "data_%s.cif" % ccd_code), 'r')
-    lines=f.read()
-    del f
-    lines=lines.replace(ccd_code, code)
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp_file:
-      print(f"File path: {temp_file.name}")
-      temp_file.write(lines)
-      temp_file.close()
-      return temp_file.name
+    return _test_alias_filename(code)
   else:
     return os.path.join(
       data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
