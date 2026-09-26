@@ -284,11 +284,12 @@ def _drop_unbonded_for_probe(model_manager, probe2):
     bonded[proxy.i_seq] = True
     bonded[proxy.j_seq] = True
   hd = model_manager.get_hd_selection()
+  bonded_or_h = bonded | hd
   keep = bonded | ~hd
   dropped = []
   for ag in model_manager.get_hierarchy().atom_groups():
     i_seqs = ag.atoms().extract_i_seq()
-    whole = len(i_seqs) > 1 and not (bonded | hd).select(i_seqs).all_eq(True)
+    whole = len(i_seqs) > 1 and not bonded_or_h.select(i_seqs).all_eq(True)
     if whole:
       keep.set_selected(i_seqs, False)
     if whole or not keep.select(i_seqs).all_eq(True):
