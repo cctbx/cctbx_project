@@ -1336,6 +1336,13 @@ def exercise_backbone_links():
             len(_vectorlist_points(kin, "Calphas")))
 
   assert links(pdb_str) == (2, 2)
+  # A detached chain (no parent hierarchy) links the same way
+  h = pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+  detached = h.models()[0].chains()[0].detached_copy()
+  kin = get_kin_lots(chain=detached, bond_hash={},
+                     i_seq_name_hash=build_name_hash(h), pdbID="t")
+  assert (len(_vectorlist_points(kin, "mc")),
+          len(_vectorlist_points(kin, "Calphas"))) == (2, 2)
   icode_str = pdb_str.replace("ALA A   2 ", "ALA A   1A").replace(
     "ALA A   3 ", "ALA A   2 ")
   assert links(icode_str) == (2, 2), links(icode_str)
