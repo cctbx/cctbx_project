@@ -66,17 +66,24 @@ def find_data_dir():
 
 data_dir = find_data_dir()
 
+# test-only codes (the CCD never uses '_') for CCD entries that must stay
+# absent from GeoStd; see mmtbx/hydrogens/tst_add_hydrogen_5.py
+_test_aliases = {'I_S' : 'IAS',
+                 '1_G' : '1MG'}
+
 def get_cif_filename(code):
   if (data_dir is None): return ""
   if (not code): return ""
   code=code.strip()
   if (len(code) == 0):
     raise Sorry("Residue code is blank.")
-  elif code=='I_S':
-    f=open(os.path.join(data_dir, "%s" % code[0].lower(), "data_IAS.cif"), 'r')
+  elif code in _test_aliases:
+    ccd_code = _test_aliases[code]
+    f=open(os.path.join(data_dir, "%s" % ccd_code[0].lower(),
+                        "data_%s.cif" % ccd_code), 'r')
     lines=f.read()
     del f
-    lines=lines.replace('IAS', 'I_S')
+    lines=lines.replace(ccd_code, code)
     import tempfile
     with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp_file:
       print(f"File path: {temp_file.name}")
