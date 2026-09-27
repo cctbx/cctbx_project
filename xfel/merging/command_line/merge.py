@@ -181,6 +181,7 @@ class Script(object):
       step += 1
       if step > 1:
         self.mpi_logger.log('')
+      self.mpi_logger.worker_step = step # private info for the export-to-careless worker
       step_desc = "STEP %d: %s"%(step, worker)
       self.mpi_logger.log(step_desc)
 
