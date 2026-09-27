@@ -492,6 +492,7 @@ molprobity_tests = [
   "$D/validation/regression/tst_molprobity_5.py",
   "$D/validation/regression/tst_experimental.py",
   "$D/validation/regression/tst_cablam_2.py",
+  "$D/kinemage/tst_validation.py",
   # automatic linking
   ["$D/monomer_library/tst_metal_coordination.py", "1"],
   ["$D/monomer_library/tst_metal_coordination.py", "2"],
