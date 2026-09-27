@@ -102,6 +102,7 @@ is then compared against an Fcalc map.
       self.working_model = place_and_optimize_hydrogens(
         model           = model,
         keep_existing_H = False,
+        optimize_his_protonation = True,
         probe_phil      = self.params.probe,
         stop_for_unknowns = False,
         raise_on_missing = False,
