@@ -203,14 +203,23 @@ def test_03():
   assert_all_maps_unchanged(map_data_dict)
   assert f.getvalue().find('Unable to determine overall anisotropy') > -1
   assert f.getvalue().find('Removed anisotropy from map') < 0
+  assert f.getvalue().find('No anisotropy correction applied') < 0
 
-  # Not available, returning a map instead: nothing to return and again
-  #  no map is touched
+  # Not available, returning a map instead: a copy of the map with no
+  #  correction applied comes back, the log says so, and no map is touched
   map_data_dict = get_all_map_data()
+  f = StringIO()
+  mmm.set_log(f)
   result = mmm.remove_anisotropy(d_min = 3, b_iso = 30,
      map_id = 'map_manager', remove_from_all_maps = False)
-  assert result is None
+  mmm.set_log(None)
+  assert result is not None
+  assert result is not mmm.map_manager()
+  assert result.map_data().as_1d().all_eq(
+     map_data_dict['map_manager'].as_1d())
   assert_all_maps_unchanged(map_data_dict)
+  assert f.getvalue().find('Unable to determine overall anisotropy') > -1
+  assert f.getvalue().find('No anisotropy correction applied') > -1
 
   # Available, returning a map: a map_manager on the same grid comes back
   aniso_b_cart_to_return[0] = (10., 20., 30., 1., 2., 3.)
@@ -338,12 +347,95 @@ def test_04():
     segment_and_split_map.get_b_iso = original_get_b_iso
 
 
+def test_05():
+  """Returning a map, anisotropy measured from the map itself: a real
+   successful measurement and a real failed one"""
+
+  from libtbx.test_utils import approx_equal
+  from scitbx.array_family import flex
+  from six.moves import StringIO
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+  from cctbx.maptbx.segment_and_split_map import get_b_iso
+
+  d_min = 3
+  added_b_cart = (60., 0., -60., 0., 0., 0.)
+
+  # Anisotropy of a map as measured by the same fit remove_anisotropy uses
+  def get_b_cart_of_map(mm):
+    f_array,phases=map_coeffs_as_fp_phi(mm.map_as_fourier_coefficients(
+      d_min = d_min))
+    b_mean,aniso_scale_and_b = get_b_iso(f_array, d_min = d_min,
+      return_aniso_scale_and_b = True)
+    return tuple(aniso_scale_and_b.b_cart)
+
+  def get_mmm():
+    mmm = map_model_manager()
+    mmm.set_log(None)
+    mmm.generate_map(d_min = d_min)
+    map_coeffs = mmm.map_manager().map_as_fourier_coefficients(
+       d_min = d_min).apply_debye_waller_factors(b_cart = added_b_cart)
+    mmm.map_manager().set_map_data(map_data =
+       mmm.map_manager().fourier_coefficients_as_map_manager(
+       map_coeffs).map_data())
+    return mmm
+
+  # Successful measurement.  The map really is anisotropic before...
+  mmm = get_mmm()
+  b_cart_before = get_b_cart_of_map(mmm.map_manager())
+  assert max(b_cart_before[:3]) - min(b_cart_before[:3]) > 100
+  mean_b_before = sum(b_cart_before[:3])/3.
+  for b_iso, b_iso_expected in ((None, mean_b_before), (30, 30)):
+    original = mmm.map_manager().map_data().deep_copy()
+    result = mmm.remove_anisotropy(d_min = d_min, b_iso = b_iso,
+       map_id = 'map_manager', remove_from_all_maps = False)
+    # ...and after, it is isotropic with the requested overall B
+    b_cart_after = get_b_cart_of_map(result)
+    assert approx_equal(b_cart_after,
+       (b_iso_expected, b_iso_expected, b_iso_expected, 0., 0., 0.),
+       eps = 1.)
+    assert result.map_data().all() == original.all()
+    assert mmm.map_manager().map_data().as_1d().all_eq(original.as_1d())
+
+  # Failed measurement: a map that is zero everywhere.  The map is returned
+  #  with no correction applied, the input map is not touched and the log
+  #  says so, both when the map is used directly and when map_coeffs for
+  #  a different map are supplied
+  mmm = get_mmm()
+  map_coeffs = mmm.map_manager().map_as_fourier_coefficients(d_min = d_min)
+  mmm.map_manager().set_map_data(
+     map_data = mmm.map_manager().map_data() * 0.)
+  original = mmm.map_manager().map_data().deep_copy()
+  expected_from_map_coeffs = mmm.map_manager(
+     ).fourier_coefficients_as_map_manager(map_coeffs).map_data()
+  assert flex.max(flex.abs(expected_from_map_coeffs.as_1d())) > 0
+  for supplied_map_coeffs, expected in (
+      (None, original),
+      (map_coeffs, expected_from_map_coeffs)):
+    f = StringIO()
+    mmm.set_log(f)
+    result = mmm.remove_anisotropy(d_min = d_min,
+       map_coeffs = supplied_map_coeffs,
+       map_id = 'map_manager', remove_from_all_maps = False)
+    mmm.set_log(None)
+    assert result is not None
+    assert result is not mmm.map_manager()
+    assert result.map_data().as_1d().all_eq(expected.as_1d())
+    assert mmm.map_manager().map_data().as_1d().all_eq(original.as_1d())
+    # For the zero map a corrected map would also be zero, so the log is
+    #  what shows that the measurement failed and nothing was applied
+    assert f.getvalue().find('Unable to determine overall anisotropy') > -1
+    assert f.getvalue().find('No anisotropy correction applied') > -1
+    # The returned map is a copy: changing it leaves the input alone
+    result.map_data().fill(1.)
+    assert mmm.map_manager().map_data().as_1d().all_eq(original.as_1d())
+
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):
   test_02()
   test_03()
   test_04()
+  test_05()
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_01(method = 'model_sharpen')
   else:

@@ -5284,13 +5284,15 @@ class map_model_manager(object):
     for every map.  If it cannot be estimated, Sorry is raised before any
     map is modified.
 
-   Returns None if the overall anisotropy could not be determined (that is,
+   If the overall anisotropy could not be determined (that is,
     aniso_b_cart was not supplied and it could not be obtained from the map
-    with id map_id).  This applies to both cases (remove_from_all_maps True
-    or False).  In that case NO anisotropy is removed from anything: no map
-    is modified and no map is returned.  A note is printed to the log, but a
-    caller that does not test the returned value has no other way to tell
-    that nothing was done.
+    with id map_id), NO anisotropy is removed from anything and no map is
+    modified.  A note is printed to the log.  If remove_from_all_maps is
+    True, None is returned, and a caller that does not test the returned
+    value has no other way to tell that nothing was done.  Otherwise a new
+    map_manager containing the map with no correction applied is returned:
+    a copy of the map with id map_id, or the map from map_coeffs if
+    map_coeffs was supplied.
    '''
    assert map_coeffs or d_min or map_id
    from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
@@ -5299,6 +5301,7 @@ class map_model_manager(object):
    if not model_map_ids_to_leave_as_is:
      model_map_ids_to_leave_as_is = []
 
+   map_coeffs_supplied = bool(map_coeffs)
    if not map_coeffs:
       assert self.get_map_manager_by_id(map_id)
       map_coeffs = self.get_map_manager_by_id(map_id
@@ -5310,10 +5313,18 @@ class map_model_manager(object):
    if (not aniso_b_cart):
      aniso_b_cart = self._get_aniso_of_map(d_min = d_min, map_id = map_id)
 
-   if not aniso_b_cart:  # could not get it...remove nothing and return None
+   if not aniso_b_cart:  # could not get it...remove nothing
      print("Unable to determine overall anisotropy of map '%s'; "%(map_id)+
        "no anisotropy will be removed", file = self.log)
-     return None
+     if remove_from_all_maps:
+       return None
+     print("No anisotropy correction applied; returning the map unchanged",
+       file = self.log)
+     if map_coeffs_supplied:
+       return self.map_manager().fourier_coefficients_as_map_manager(
+         map_coeffs)
+     else:
+       return self.get_map_manager_by_id(map_id).deep_copy()
 
    if b_iso is None:  # estimate once from the reference map, use for all
      from cctbx.maptbx.segment_and_split_map import get_b_iso
