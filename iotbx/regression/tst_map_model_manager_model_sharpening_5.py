@@ -219,12 +219,131 @@ def test_03():
   assert result is not None
   assert result.map_data().all() == mmm.map_manager().map_data().all()
 
+def test_04():
+  """A supplied aniso_b_cart is removed whether b_iso is given, None or 0"""
+
+  from libtbx.test_utils import approx_equal
+  from libtbx.utils import Sorry
+  from scitbx.array_family import flex
+  from six.moves import StringIO
+  from cctbx.maptbx import segment_and_split_map
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+  from cctbx.maptbx.refine_sharpening import analyze_aniso_object
+
+  d_min = 3
+  supplied_b_cart = (10., 20., 30., 1., 2., 3.)
+
+  # Two different maps: the generated map (the reference, map_id
+  #  'map_manager') and a blurred copy, so that the two maps give different
+  #  estimates of b_iso
+  def get_mmm():
+    mmm = map_model_manager()
+    mmm.set_log(None)
+    mmm.generate_map(d_min = d_min)
+    blurred_map_coeffs = mmm.map_manager().map_as_fourier_coefficients(
+       d_min = d_min).apply_debye_waller_factors(b_iso = 60)
+    mmm.add_map_manager_by_id(map_id = 'blurred_map',
+       map_manager = mmm.map_manager().fourier_coefficients_as_map_manager(
+       blurred_map_coeffs))
+    return mmm
+
+  def get_b_iso_of_map(mm):
+    f_array,phases=map_coeffs_as_fp_phi(mm.map_as_fourier_coefficients(
+      d_min = d_min))
+    return segment_and_split_map.get_b_iso(f_array, d_min = d_min)
+
+  # The expected result, calculated directly: remove supplied_b_cart and
+  #  leave b_iso behind
+  def get_expected_map_data(mmm, mm, b_iso):
+    map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
+    f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+    analyze_aniso = analyze_aniso_object()
+    analyze_aniso.b_cart = supplied_b_cart
+    analyze_aniso.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0]
+    scaled_f_array = analyze_aniso.apply_aniso_correction(f_array=f_array)
+    return mmm.map_manager().fourier_coefficients_as_map_manager(
+      scaled_f_array.phase_transfer(phase_source=phases, deg=True)
+      ).map_data()
+
+  def assert_same_map_data(current, expected):
+    sd = expected.as_1d().sample_standard_deviation()
+    assert sd > 0
+    biggest_change = flex.max(flex.abs(current.as_1d() - expected.as_1d()))
+    assert approx_equal(biggest_change/sd, 0., eps = 1.e-4)
+
+  mmm = get_mmm()
+  estimated_b_iso = get_b_iso_of_map(mmm.map_manager())
+  blurred_b_iso = get_b_iso_of_map(mmm.get_map_manager_by_id('blurred_map'))
+  # A b_iso estimated from each map separately would not match
+  assert abs(estimated_b_iso - blurred_b_iso) > 10
+  # Nor would 0 treated as missing, or a missing b_iso treated as 30
+  assert abs(estimated_b_iso) > 10
+  assert abs(estimated_b_iso - 30) > 10
+
+  for b_iso, b_iso_used in ((30, 30), (None, estimated_b_iso), (0, 0)):
+
+    # Remove from all maps: both maps get supplied_b_cart and the same b_iso
+    mmm = get_mmm()
+    expected = {}
+    for map_id in ('map_manager', 'blurred_map'):
+      expected[map_id] = get_expected_map_data(mmm,
+         mmm.get_map_manager_by_id(map_id), b_iso_used)
+    f = StringIO()
+    mmm.set_log(f)
+    result = mmm.remove_anisotropy(d_min = d_min,
+       aniso_b_cart = supplied_b_cart, b_iso = b_iso,
+       map_id = 'map_manager', remove_from_all_maps = True)
+    mmm.set_log(None)
+    assert tuple(result) == supplied_b_cart
+    for map_id in ('map_manager', 'blurred_map'):
+      assert_same_map_data(mmm.get_map_manager_by_id(map_id).map_data(),
+        expected[map_id])
+    if b_iso is None:
+      assert f.getvalue().find(
+        'b_iso not supplied; estimated from the reference map') > -1
+
+    # Returning a map: the reference map with supplied_b_cart removed
+    mmm = get_mmm()
+    result = mmm.remove_anisotropy(d_min = d_min,
+       aniso_b_cart = supplied_b_cart, b_iso = b_iso,
+       map_id = 'map_manager', remove_from_all_maps = False)
+    assert_same_map_data(result.map_data(),
+      get_expected_map_data(mmm, mmm.map_manager(), b_iso_used))
+
+  # b_iso cannot be estimated: Sorry is raised and no map is touched
+  original_get_b_iso = segment_and_split_map.get_b_iso
+  def failed_get_b_iso(miller_array, d_min = None,
+      return_aniso_scale_and_b = False, d_max = 100000.):
+    return 0., None
+  segment_and_split_map.get_b_iso = failed_get_b_iso
+  try:
+    for remove_from_all_maps in (True, False):
+      mmm = get_mmm()
+      map_data_dict = {}
+      for map_id in mmm.map_id_list():
+        map_data_dict[map_id] = mmm.get_map_manager_by_id(map_id
+           ).map_data().deep_copy()
+      try:
+        mmm.remove_anisotropy(d_min = d_min,
+          aniso_b_cart = supplied_b_cart, b_iso = None,
+          map_id = 'map_manager', remove_from_all_maps = remove_from_all_maps)
+      except Sorry as e:
+        assert str(e).find('Unable to estimate b_iso') > -1
+      else:
+        raise AssertionError("Expected Sorry when b_iso cannot be estimated")
+      for map_id in mmm.map_id_list():
+        assert mmm.get_map_manager_by_id(map_id).map_data().as_1d(
+          ).all_eq(map_data_dict[map_id].as_1d())
+  finally:
+    segment_and_split_map.get_b_iso = original_get_b_iso
+
 
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):
   test_02()
   test_03()
+  test_04()
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_01(method = 'model_sharpen')
   else:

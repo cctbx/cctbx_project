@@ -5276,14 +5276,13 @@ class map_model_manager(object):
     and the result is returned as a new map_manager; see below for when the
     correction is actually applied.
 
-   Note that b_iso must be supplied as well for aniso_b_cart (as supplied,
-    or as obtained from the map with id map_id) to be applied as one common
-    correction.  In the case where a map is returned (remove_from_all_maps
-    is False), if b_iso is not supplied then aniso_b_cart is not applied at
-    all: the anisotropy is fitted again from the map coefficients that are
-    being corrected, and that separate fit, not aniso_b_cart, is what is
-    removed; and if that fit fails, no anisotropy at all is removed from
-    them.  Supply b_iso whenever aniso_b_cart is to be removed.
+   aniso_b_cart (as supplied, or as obtained from the map with id map_id)
+    is always what is removed, as one common correction, and b_iso is the
+    overall B left behind.  b_iso = 0 is used as 0.  If b_iso is None it is
+    estimated once from the reference map coefficients (map_coeffs if
+    supplied, otherwise the map with id map_id) and that one value is used
+    for every map.  If it cannot be estimated, Sorry is raised before any
+    map is modified.
 
    Returns None if the overall anisotropy could not be determined (that is,
     aniso_b_cart was not supplied and it could not be obtained from the map
@@ -5316,6 +5315,17 @@ class map_model_manager(object):
        "no anisotropy will be removed", file = self.log)
      return None
 
+   if b_iso is None:  # estimate once from the reference map, use for all
+     from cctbx.maptbx.segment_and_split_map import get_b_iso
+     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+     b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
+       return_aniso_scale_and_b=True)
+     if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
+       raise Sorry("Unable to estimate b_iso from the reference map; "+
+         "supply b_iso to remove anisotropy")
+     b_iso = b_mean
+     print("b_iso not supplied; estimated from the reference map: %.2f" %(
+       b_iso), file = self.log)
 
    if remove_from_all_maps:  # remove in place from all maps
      print("Removing anisotropy from all maps", file = self.log)
