@@ -1,11 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import time, sys
 import re
-from six.moves import cStringIO as StringIO
 import iotbx.pdb
 from mmtbx import map_tools
 from cctbx import maptbx
-import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
+from mmtbx.validation import ligand_interactions
 from cctbx import adptbx
 from iotbx import phil
 from cctbx.array_family import flex
@@ -1583,80 +1582,8 @@ class ligand_result(object):
     if self._overlaps is not None:
       return self._overlaps
 
-    within_radius = 3.0
-
-    sel_within_str = '%s or (residues_within (%s, %s))' \
-      % (self.sel_str, within_radius, self.sel_str)
-
-    sel_within = self.model.selection(sel_within_str)
-    #print(sel_within.count(True))
-    model_within = self.model.select(sel_within)
-    isel_ligand_within = model_within.iselection(self.sel_str)
-
-
-    ##isel_ligand_within = sel_within.iselection()
-    #isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
-    ##sel = flex.bool([True]*len(sel_within))
-    #model_within = self.model.select(sel_within)
-    # debug
-    #_id_str = self.id_str.replace(" ", "_")
-    #fn = "site_%s.pdb" % _id_str
-    #clean_filename = re.sub(r"\s+", "_", fn)
-    #f = open(clean_filename,"w")
-    #f.write(model_within.model_as_pdb())
-    #f.close()
-    # debug end
-
-    processed_nbps = pnp.manager(model = model_within)
-    clashes = processed_nbps.get_clashes()
-    hbonds = processed_nbps.get_hbonds()
-
-    clashes_dict   = clashes._clashes_dict
-    hbonds_dict = hbonds._hbonds_dict
-
-    ligand_clashes_dict = {}
-    for iseq_tuple, record in clashes_dict.items():
-      if (iseq_tuple[0] in isel_ligand_within or
-          iseq_tuple[1] in isel_ligand_within):
-        ligand_clashes_dict[iseq_tuple] = record
-
-    ligand_clashes = pnp.clashes(
-                    clashes_dict = ligand_clashes_dict,
-                    model        = model_within)
-
-    ligand_hbonds_dict = {}
-    # iseq_tuple is (donor, H, acceptor)
-    for iseq_tuple, record in hbonds_dict.items():
-      if any(i_seq in isel_ligand_within for i_seq in iseq_tuple):
-        ligand_hbonds_dict[iseq_tuple] = record
-
-    ligand_hbonds = pnp.hbonds(
-                    hbonds_dict  = ligand_hbonds_dict,
-                    model        = model_within)
-
-    results_hbonds = ligand_hbonds.get_results()
-
-#    clashes.show(log=sys.stdout)
-#    ligand_clashes.show(log=sys.stdout)
-#
-#    hbonds.show(log=sys.stdout)
-#    ligand_hbonds.show(log=sys.stdout)
-
-    string_io = StringIO()
-    ligand_clashes.show(log=string_io, show_clashscore=False,
-      show_header=False)
-
-    results = ligand_clashes.get_results()
-
-    self._overlaps = group_args(
-      n_clashes      = results.n_clashes,
-      clashscore     = results.clashscore,
-      n_clashes_sym  = results.n_clashes_sym,
-      #clashscore_sym = results.clashscore_sym,
-      clashes_str    = string_io.getvalue(),
-      #clashes_dict   = clashes._clashes_dict,
-      n_hbonds = results_hbonds.n_hbonds)
-
+    self._overlaps = ligand_interactions.ligand_overlaps(
+      model = self.model, sel_str = self.sel_str, within_radius = 3.0)
     return self._overlaps
 
   # ----------------------------------------------------------------------------
