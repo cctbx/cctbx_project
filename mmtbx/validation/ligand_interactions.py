@@ -123,8 +123,10 @@ that can take part besides the certain charged ones are template groups neutral 
 modelled with a nonzero usual charge (protonated Asp/Glu/C-terminus, Lys or
 N-terminus with an H fewer, Arg missing an H, a protonated nucleotide phosphate;
 not His), uncertain builder groups, and neutral builder groups usually charged at
-pH 7 (builder_possible: carboxylic, phosphoric/phosphonic, sulfonic/sulfuric acid,
-1H-tetrazole: -1 per acidic OH or NH; aliphatic amine (not bonded to C=O, C=N,
+pH 7 (builder_possible: carboxylic, sulfonic/sulfuric acid, 1H-tetrazole (all four
+ring N): -1 per acidic OH or NH; phosphoric/phosphonic acid by the second pKa:
+diester -1, monoester -2, orthophosphoric and phosphonic acid -1 noted "usual
+-1/-2 near pH 7"; aliphatic amine (not bonded to C=O, C=N,
 C=S, S=O, N, O, P, a nitrile C or an aromatic atom), amidine, guanidine: +1; not
 phenol, thiol, imidazole, pyridine, aniline; capped ones skipped silently). A pair: opposite charges, each group taken as its
 modelled charge if certain and charged, else its usual charge, at least one not a
@@ -678,7 +680,7 @@ def builder_groups(r, atoms):
   return groups, dropped
 
 # Neutral groups usually charged at pH 7 on residue_molecule's molecule: (kind,
-# SMARTS, usual charge per matched H or None: +1); the first atom is the centre
+# SMARTS); the first atom is the centre
 builder_possible_smarts = (
   ("carboxylic acid", "[CX3](=[OX1;+0])[OX2;+0][#1]"),
   ("phosphoric acid", "[PX4;+0](=[OX1;+0])[OX2;+0][#1]"),
@@ -693,16 +695,17 @@ builder_possible_smarts = (
 def builder_possible(r, atoms):
   """
   Neutral groups on a residue_molecule result r (ok) that are usually charged at
-  pH 7 (builder_possible_smarts): carboxylic, phosphoric/phosphonic,
-  sulfonic/sulfuric acid, 1H-tetrazole (usual -1 per acidic OH or NH; a phosphate
-  monoester -2), aliphatic amine (primary, secondary, tertiary; not amide,
+  pH 7 (builder_possible_smarts): carboxylic, sulfonic/sulfuric acid, 1H-tetrazole
+  (usual -1 per acidic OH or NH); phosphoric/phosphonic acid by the second pKa
+  (diester, one OH: -1; monoester, two OH: -2; orthophosphoric acid and phosphonic
+  acid R-PO3H2: usual_charge -1 with the note "usual -1/-2 near pH 7 (pKa2 about
+  7)"; a phosphonate monoester -1), aliphatic amine (primary, secondary, tertiary; not amide,
   sulfonamide, aniline, enamine, hydrazine, hydrazide, hydroxylamine,
   phosphoramide, cyanamide: no N bonded to C=O, C=N, C=S, S=O, N, O, P, a nitrile
   C or an aromatic atom), amidine, guanidine (+1). Not phenol, thiol, imidazole,
   pyridine, aniline. A tetrazole only with an H on one ring N (not 1-alkyl).
-  Charged atoms: the acid's O (tetrazole: the N with H) with its resonance partners
-  (same element sharing a heavy neighbour; O terminal), the base's N (all N of an
-  amidine or guanidine); no charged atom may carry a formal charge. Groups with a
+  Charged atoms: the acid's terminal O on its centre, the tetrazole's four ring N,
+  the base's N (all N of an amidine or guanidine); no charged atom may carry a formal charge. Groups with a
   capped atom (linked, or next to a missing atom) are skipped silently. Returns
   groups as builder_groups, with charge 0 and usual_charge set, notes ["neutral as
   modelled (<source>)"].
@@ -728,36 +731,39 @@ def builder_possible(r, atoms):
         o = [n for n in heavy_nb(centre) if n.GetAtomicNum() == 8 and
           len(heavy_nb(n)) == 1]
         members = [n.GetIdx() for n in o]
-        usual = -len([n for n in o if h_count(n)])
-        if kind == "phosphoric acid" and [n for n in heavy_nb(centre) if n.GetAtomicNum() != 8]:
-          kind_ = "phosphonic acid"
+        n_oh = len([n for n in o if h_count(n)])
+        usual, note = -n_oh, None
+        kind_ = kind
+        if kind == "phosphoric acid":
+          # the second pKa decides: diester (one OH) -1, monoester (two OH) -2
+          # (pKa2 about 6); orthophosphoric and phosphonic acid -1/-2 (pKa2 about 7)
+          if [n for n in heavy_nb(centre) if n.GetAtomicNum() != 8]:
+            kind_ = "phosphonic acid"
+          usual = {1: -1, 2: -2, 3: -1}[n_oh]
+          if kind_ == "phosphonic acid" and n_oh == 2:
+            usual = -1
+          if n_oh == 3 or (kind_ == "phosphonic acid" and n_oh == 2):
+            note = "usual -1/-2 near pH 7 (pKa2 about 7)"
         elif kind == "sulfonic acid" and not [n for n in heavy_nb(centre)
             if n.GetAtomicNum() != 8]:
           kind_ = "sulfuric acid"
-        else:
-          kind_ = kind
       elif kind == "tetrazole":
-        nh = [k for k in m[1:] if h_count(mol.GetAtomWithIdx(k))]
-        if len(nh) != 1:
+        # all four ring N, whatever the tautomer; an H on one of them
+        if len([k for k in m[1:] if h_count(mol.GetAtomWithIdx(k))]) != 1:
           continue
-        a = mol.GetAtomWithIdx(nh[0])
-        members = set(nh)
-        for c in heavy_nb(a):
-          members.update([p.GetIdx() for p in heavy_nb(c) if p.GetAtomicNum() == 7 and
-            p.GetIdx() in m])
-        members, usual, kind_ = sorted(members), -1, kind
+        members, usual, kind_, note = sorted(m[1:]), -1, kind, None
       elif kind in ("guanidine", "amidine"):
-        members, usual, kind_ = list(m[1:]), 1, kind
+        members, usual, kind_, note = list(m[1:]), 1, kind, None
       else:
-        members, usual, kind_ = [m[0]], 1, kind
+        members, usual, kind_, note = [m[0]], 1, kind, None
       if [k for k in members if k not in iseq or mol.GetAtomWithIdx(k).GetFormalCharge()]:
         continue
       key = frozenset(members)
       if key in found or [f for f in found if f & key]:
         continue
-      found[key] = (kind_, m[0] if kind != "amine" else members[0], usual)
+      found[key] = (kind_, m[0] if kind != "amine" else members[0], usual, note)
   groups = []
-  for key, (kind, centre, usual) in sorted(found.items(), key=lambda x: sorted(x[0])):
+  for key, (kind, centre, usual, note) in sorted(found.items(), key=lambda x: sorted(x[0])):
     seqs = sorted([iseq[k] for k in key])
     center = iseq.get(centre, seqs[0])
     # capped (e.g. the backbone N of an in-chain modified residue): skipped
@@ -777,7 +783,8 @@ def builder_possible(r, atoms):
       state="assumed (no H)" if no_h else "modelled", center=center, charged=seqs,
       source="builder", certain=bool(r.charge_certain) and not unsure,
       metal_bound=bool(metal), charge_source=r.total_charge_source,
-      hydrogens=r.hydrogens, notes=["neutral as modelled (%s)" % "; ".join(detail)]))
+      hydrogens=r.hydrogens, notes=["neutral as modelled (%s)" % "; ".join(detail)] +
+      ([note] if note else [])))
   return groups
 
 def find_charged_groups(model, selection, fsc0=None, use_templates=True):

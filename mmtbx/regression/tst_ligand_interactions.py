@@ -1902,6 +1902,167 @@ _chem_comp_bond.value_dist_esd
  ZMT  C2   HC21 single    1.079  0.020
 ''')
 
+# orthophosphoric acid, dimethyl phosphate, methylphosphonic acid (neutral)
+zpo_cif = ('zpo.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZPO  ZPO  'ZPO' ligand 8 5 .
+
+data_comp_ZPO
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZPO  O1   O  O      0  0.000  -0.3432   1.4440   0.4866
+ ZPO  P    P  P      0  0.000   0.0234  -0.0911   0.3184
+ ZPO  O2   O  O      0  0.000   0.3759  -0.8398   1.5505
+ ZPO  O3   O  O      0  0.000   1.1592  -0.0725  -0.7919
+ ZPO  O4   O  O      0  0.000  -1.2460  -0.6656  -0.4468
+ ZPO  HO11 H  H      0  0.000  -0.7397   1.7912  -0.3323
+ ZPO  HO31 H  H      0  0.000   2.0341   0.0730  -0.3855
+ ZPO  HO41 H  H      0  0.000  -1.2638  -1.6392  -0.3991
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZPO  O1   P    single    1.587  0.020
+ ZPO  P    O2   double    1.484  0.020
+ ZPO  P    O3   single    1.588  0.020
+ ZPO  P    O4   single    1.590  0.020
+ ZPO  O1   HO11 single    0.974  0.020
+ ZPO  O3   HO31 single    0.976  0.020
+ ZPO  O4   HO41 single    0.975  0.020
+''')
+
+zdp_cif = ('zdp.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZDP  ZDP  'ZDP' ligand 14 7 .
+
+data_comp_ZDP
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZDP  C1   C  C      0  0.000  -2.1259  -0.2933   0.7323
+ ZDP  O1   O  O      0  0.000  -0.7165  -0.2426   0.8015
+ ZDP  P    P  P      0  0.000   0.0359   0.5277  -0.3879
+ ZDP  O2   O  O      0  0.000  -0.3161   0.1062  -1.7754
+ ZDP  O3   O  O      0  0.000  -0.2966   2.0686  -0.1042
+ ZDP  O4   O  O      0  0.000   1.5919   0.4419  -0.0073
+ ZDP  C2   C  C      0  0.000   2.2000  -0.8275  -0.1250
+ ZDP  HC11 H  H      0  0.000  -2.5021  -0.8181   1.6140
+ ZDP  HC12 H  H      0  0.000  -2.4393  -0.8375  -0.1627
+ ZDP  HC13 H  H      0  0.000  -2.5431   0.7172   0.7183
+ ZDP  HO31 H  H      0  0.000   0.0068   2.6227  -0.8449
+ ZDP  HC21 H  H      0  0.000   2.1528  -1.1732  -1.1612
+ ZDP  HC22 H  H      0  0.000   1.7036  -1.5482   0.5304
+ ZDP  HC23 H  H      0  0.000   3.2484  -0.7438   0.1720
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZDP  C1   O1   single    1.412  0.020
+ ZDP  O1   P    single    1.604  0.020
+ ZDP  P    O2   double    1.492  0.020
+ ZDP  P    O3   single    1.602  0.020
+ ZDP  P    O4   single    1.604  0.020
+ ZDP  O4   C2   single    1.412  0.020
+ ZDP  C1   HC11 single    1.093  0.020
+ ZDP  C1   HC12 single    1.093  0.020
+ ZDP  C1   HC13 single    1.093  0.020
+ ZDP  O3   HO31 single    0.973  0.020
+ ZDP  C2   HC21 single    1.093  0.020
+ ZDP  C2   HC22 single    1.093  0.020
+ ZDP  C2   HC23 single    1.093  0.020
+''')
+
+zpn_cif = ('zpn.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZPN  ZPN  'ZPN' ligand 10 5 .
+
+data_comp_ZPN
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZPN  C1   C  C      0  0.000   0.6771  -0.9757  -0.3907
+ ZPN  P    P  P      0  0.000   0.0093   0.4133   0.4830
+ ZPN  O1   O  O      0  0.000   0.6997   0.8075   1.7425
+ ZPN  O2   O  O      0  0.000  -0.0620   1.5929  -0.5964
+ ZPN  O3   O  O      0  0.000  -1.5510   0.0966   0.6586
+ ZPN  HC11 H  H      0  0.000   0.6423  -1.8746   0.2311
+ ZPN  HC12 H  H      0  0.000   1.7191  -0.7917  -0.6669
+ ZPN  HC13 H  H      0  0.000   0.1128  -1.1732  -1.3067
+ ZPN  HO21 H  H      0  0.000  -0.3179   2.4340  -0.1696
+ ZPN  HO31 H  H      0  0.000  -1.9294  -0.5292   0.0150
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZPN  C1   P    single    1.772  0.020
+ ZPN  P    O1   double    1.489  0.020
+ ZPN  P    O2   single    1.601  0.020
+ ZPN  P    O3   single    1.602  0.020
+ ZPN  C1   HC11 single    1.094  0.020
+ ZPN  C1   HC12 single    1.094  0.020
+ ZPN  C1   HC13 single    1.094  0.020
+ ZPN  O2   HO21 single    0.977  0.020
+ ZPN  O3   HO31 single    0.974  0.020
+''')
+
 # ------------------------------------------------------------------------------
 
 def get_model(lines=None, cifs=()):
@@ -2958,8 +3119,7 @@ def exercise_possible_salt_bridges():
 def exercise_possible_kinds():
   '''
   Neutral groups usually charged at pH 7 by SMARTS on the builder's molecule:
-  guanidine (+1, the three N), 1H-tetrazole (-1, the NH N and its resonance
-  partners), sulfonic acid (-1, the three O), a tertiary amine (+1; the amide N of
+  guanidine (+1, the three N), 1H-tetrazole (-1, all four ring N), sulfonic acid (-1, the three O), a tertiary amine (+1; the amide N of
   the same molecule is not a group); SEP in a chain: phosphoric acid, the capped
   backbone N skipped silently (not listed).
   '''
@@ -2974,7 +3134,7 @@ def exercise_possible_kinds():
       sorted([atoms[i].name.strip() for i in g['charged']]), g['notes']) for g in f.possible]
   why = ['neutral as modelled (restraint file)']
   assert rows == [('ZGN', 'guanidine', 0, 1, 'C2', ['N1', 'N2', 'N3'], why),
-    ('ZTZ', 'tetrazole', 0, -1, 'C2', ['N1', 'N2', 'N4'], why),
+    ('ZTZ', 'tetrazole', 0, -1, 'C2', ['N1', 'N2', 'N3', 'N4'], why),
     ('ZSA', 'sulfonic acid', 0, -1, 'S1', ['O1', 'O2', 'O3'], why),
     ('ZAM', 'amine', 0, 1, 'N1', ['N1'], why)], rows
   # SEP between two Gly (GeoStd SEP, HOP2 and HOP3 modelled): the phosphoric acid
@@ -3047,6 +3207,56 @@ def exercise_amine_and_tetrazole_rules():
     assert m.charged_group_failures == [], m.charged_group_failures
     assert sorted([e['residue'] for e in m.possible_salt_bridges]) == partners, (code,
       possible(m))
+
+def exercise_phosphorus_acids():
+  '''
+  Phosphorus acids by the second pKa: orthophosphoric acid -1 (noted -1/-2, not
+  -3), methyl phosphate (monoester, ZMP) -2, dimethyl phosphate (diester) -1,
+  methylphosphonic acid -1 (noted -1/-2).
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  rows = []
+  for code, cif in (('ZPO', zpo_cif), ('ZMP', zmp_cif), ('ZDP', zdp_cif), ('ZPN', zpn_cif)):
+    model = M.get_model(M.pdb_from_cif(code, cif[1]), cifs=((code, cif[1]),))
+    atoms = model.get_hierarchy().atoms()
+    f = LI.find_charged_groups(model, all_atoms(model))
+    rows += [(code, g['kind'], g['usual_charge'], sorted([atoms[i].name.strip()
+      for i in g['charged']]), g['notes'][1:]) for g in f.possible]
+  both = ['usual -1/-2 near pH 7 (pKa2 about 7)']
+  assert rows == [('ZPO', 'phosphoric acid', -1, ['O1', 'O2', 'O3', 'O4'], both),
+    ('ZMP', 'phosphoric acid', -2, ['O1P', 'O2P', 'O3P'], []),
+    ('ZDP', 'phosphoric acid', -1, ['O2', 'O3'], []),
+    ('ZPN', 'phosphonic acid', -1, ['O1', 'O2', 'O3'], both)], rows
+
+def exercise_tetrazole_ring_n():
+  '''
+  The tetrazole group takes all four ring N: an NH4 3.8 A from ZTZ's N3 (outward
+  from the ring centre; the other ring N beyond 4 A) makes a possible salt bridge
+  with N3 as the closest atom.
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  ztz = [l for l in M.pdb_from_cif('ZTZ', ztz_cif[1]).split('\n') if l.startswith('HETATM')]
+  xyz = dict([(l[12:16].strip(), [float(l[30 + 8 * k:38 + 8 * k]) for k in range(3)])
+    for l in ztz])
+  ring = ['C2', 'N1', 'N2', 'N3', 'N4']
+  centre = [sum([xyz[n][k] for n in ring]) / 5 for k in range(3)]
+  u = [xyz['N3'][k] - centre[k] for k in range(3)]
+  norm = sum([v * v for v in u]) ** 0.5
+  site = [xyz['N3'][k] + 3.8 * u[k] / norm for k in range(3)]
+  others = [sum([(xyz[n][k] - site[k]) ** 2 for k in range(3)]) ** 0.5
+    for n in ('N1', 'N2', 'N4')]
+  assert min(others) > 4.0, others
+  nh4 = placed('NH4', ('nh4.cif', geostd_text('NH4')), 'N', site, chain='B', resseq=1)
+  model = get_model(['CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1'] + ztz +
+    nh4 + ['END'], cifs=(ztz_cif,))
+  m = get_manager(model, sel='resname ZTZ')
+  (e,) = m.possible_salt_bridges
+  g = e['geometry']['charged_groups']
+  assert (e['residue'], g['closest_pair']) == ('B NH4 1', ['A ZTZ 1 N3', 'B NH4 1 N']), \
+    (e['residue'], g['closest_pair'])
+  assert approx_equal(g['min_atom_distance'], 3.8, eps=1.e-3)
+  assert g['ligand_group']['atoms'] == ['A ZTZ 1 N1', 'A ZTZ 1 N2', 'A ZTZ 1 N3',
+    'A ZTZ 1 N4']
 
 def exercise_not_possible():
   '''
@@ -3369,6 +3579,8 @@ def run():
   exercise_possible_salt_bridges()
   exercise_possible_kinds()
   exercise_amine_and_tetrazole_rules()
+  exercise_phosphorus_acids()
+  exercise_tetrazole_ring_n()
   exercise_not_possible()
   exercise_charge_types_and_ccd_match()
   exercise_builder_chain()
