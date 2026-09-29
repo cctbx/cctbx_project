@@ -1,12 +1,15 @@
 # GuidedCoding — central opt-in r10 rev12 candidate
 
-**Status:** r10 rev12 changes only the `/skills` guidance, to match the
-rev11 Mac trial; rev11 itself was reviewed (no blocking finding) and
-trialled on the intended Mac. Rev12 needs its own review before
-publication. Rev11 was the proposed successor to rejected r10 rev10. This revision refuses
+**Status (2026-09-29):** r10 rev12 changes only the `/skills` guidance, to
+match the rev11 Mac trial; rev11 itself was reviewed (no blocking finding)
+and trialled on the intended Mac. Rev12 is committed locally in
+`cctbx_project`, not published, and needs its own review before
+publication.
+
+SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below): "Status: proposed successor to rejected r10 rev10. This revision refuses
 configuration paths containing `..` before any directory creation. It has not
 been reviewed as a release,
-integrated, or used on a real repository task. The two readings
+integrated, or used on a real repository task." ("This revision" is rev11.) The two readings
 of the **earlier r09 documentation** are addressed in the revised guide;
 they are not reviews of r10 rev9. The r10 rev5 review found that a
 movable destination can still enter the packet after a preflight check;
@@ -25,7 +28,8 @@ occupied destinations. The rev10 review then found that a missing prefix
 followed by `..` could bypass registration's preflight and write inside the
 source or through a linked parent. Rev11 rejects such paths and tests all
 four reported cases. Its release packet and Desktop behavior still require
-independent review and live checks.
+independent review and live checks. (SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below): rev11 was
+reviewed and its Desktop behavior trialled; rev12 still needs review.)
 
 Keep **one procedure copy** at `cctbx_project/libtbx/guided_coding/`.
 Register it once on your machine with a symlink at

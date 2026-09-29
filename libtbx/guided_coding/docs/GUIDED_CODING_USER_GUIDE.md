@@ -20,7 +20,7 @@ cannot guess where your `cctbx_project` checkout lives. Review the path
 and any proposed change to an existing skill link. If the `skills/`
 directory was created after Claude Code started, use `/reload-skills` or
 open a new conversation. Then confirm the command itself: type `/` (in the
-Desktop app the menu lists `gc`) or run `/gc help`. Do not rely on
+Mac trial the Desktop menu listed `gc`) or run `/gc help`. Do not rely on
 `/skills`: in the Mac trial (Claude Code 2.1.284) Desktop's `/skills` did
 not list this personal skill even though `/gc` worked.
 

@@ -1,8 +1,12 @@
 # GuidedCoding r10 rev12 candidate verification
 
-This describes a proposed kit. It has not been installed in the Developer's
+**Current status (2026-09-29):** a proposed kit, committed locally in the
+Developer's `cctbx_project` and trialled on the intended Mac (Rev12
+section below); not published and not approved for Worker use.
+
+SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below): "This describes a proposed kit. It has not been installed in the Developer's
 Claude Code Desktop app, integrated into `cctbx_project`, or approved for
-Worker use.
+Worker use."
 
 ## Release and source checks
 
@@ -69,7 +73,8 @@ rejects any `..` component before directory creation. Its new unit case
 snapshots source files and directories and the other directory across fresh,
 occupied, configuration-link and skills-link endpoints. The rev11 author-side
 Linux suite ran **42 tests: 41 passed, one Mac case-insensitive test skipped**.
-No real Claude Code CLI or Desktop run was made for this rev11 candidate.
+No real Claude Code CLI or Desktop run was made for this rev11 candidate
+(true when written; SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below)).
 Read-only `/gc help` and `/gc status`, and the personal-link removal
 `/gc uninstall`, remain usable if the version gate fails. The one-time
 conversational setup is instructed to run the
@@ -116,7 +121,9 @@ Before Worker use on the intended Mac, independently test the `/` menu, `/gc`,
 and unadopted projects, a case-insensitive path probe, and the relevant
 project instruction loading (especially an `AGENTS.md` project). The
 central source and its complete release packet need independent review and
-explicit adoption. No live Mac, server, or Claude Code run is claimed here.
+explicit adoption. No live Mac, server, or Claude Code run is claimed here
+(SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below): the Mac CLI and Desktop runs are reported
+there; no server run is claimed).
 
 The earlier r09 documentation review and r10 rev3–rev10 review findings
 informed this candidate. They do not approve rev11 or rev12. The kit still has 24
