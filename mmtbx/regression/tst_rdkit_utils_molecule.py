@@ -13,9 +13,12 @@ only '?', ZSH ethanethiol (thiol H), ZNC acetate with -1 on both O (inconsistent
 ZAH acetate with -1 on O2 and an H (HO21) on O2 in the file, ZGU methylguanidinium
 with partial charges only (sum 1.548, rounds to 2), ZC5 a carbon with five H (no
 valid structure at any total), ZNM nitromethane with partial charges only (sum
-0; totals 0 and -2 both valid).
+0; -2 valid for DetermineBondOrders, but its N1-O1 single contradicts the file);
+derived in the exercises: ZAA acetic acid (from ZAH), ZZS ZSH with its Zn in the
+residue, ZAC with an explicit C=C.
+OFO (Fe-O-Fe-OH) inline from the CCD entry (ideal coordinates; Fe-O 'metal').
 Library restraint files: ACT, GOL (GeoStd coordinates), GLY and SEP (chain), SER
-(ester link).
+(ester link), HEM (CCD ideal coordinates, no H).
 '''
 import os
 import sys
@@ -535,6 +538,48 @@ _chem_comp_bond.value_dist_esd
  ZNC  C2   HC23 single   1.094  0.020
 '''
 
+ofo_cif = '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ OFO  OFO  'OFO' ligand 5 4 .
+
+data_comp_OFO
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ OFO  FE1  FE FE    ?   0.000   1.9080   0.6530  -0.7540
+ OFO  O    O  O    -2   0.000   0.8030  -0.5330   0.0040
+ OFO  FE2  FE FE    ?   0.000  -0.2920   0.9040   0.8130
+ OFO  OH   O  O    -1   0.000   0.3370   0.3450   2.6600
+ OFO  HO   H  H     0   0.000  -0.3500   0.1930   3.1650
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ OFO  FE1  O    metal    1.900  0.050
+ OFO  O    FE2  metal    1.900  0.050
+ OFO  FE2  OH   metal    1.950  0.050
+ OFO  OH   HO   single   0.960  0.020
+'''
+
 # GeoStd ACT (acetate; OXT -1) and GOL, at their dictionary coordinates
 act_pdb = '''
 CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
@@ -564,6 +609,55 @@ HETATM   11  HO2 GOL A   1      19.581  21.862  18.928  1.00 20.00           H
 HETATM   12  H31 GOL A   1      21.436  20.686  20.787  1.00 20.00           H
 HETATM   13  H32 GOL A   1      21.687  19.197  19.868  1.00 20.00           H
 HETATM   14  HO3 GOL A   1      22.634  21.254  18.977  1.00 20.00           H
+END
+'''
+
+# HEM heavy atoms at the CCD ideal coordinates (monomer library names)
+hem_pdb = '''
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+HETATM    1  CHA HEM A   1      22.451  20.827  20.221  1.00 20.00           C
+HETATM    2  CHB HEM A   1      18.190  23.025  20.485  1.00 20.00           C
+HETATM    3  CHC HEM A   1      15.972  18.774  20.043  1.00 20.00           C
+HETATM    4  CHD HEM A   1      20.248  16.558  20.152  1.00 20.00           C
+HETATM    5  C1A HEM A   1      21.505  21.846  20.321  1.00 20.00           C
+HETATM    6  C2A HEM A   1      21.753  23.203  20.408  1.00 20.00           C
+HETATM    7  C3A HEM A   1      20.543  23.826  20.482  1.00 20.00           C
+HETATM    8  C4A HEM A   1      19.574  22.851  20.430  1.00 20.00           C
+HETATM    9  CMA HEM A   1      20.337  25.316  20.587  1.00 20.00           C
+HETATM   10  CAA HEM A   1      23.106  23.870  20.422  1.00 20.00           C
+HETATM   11  CBA HEM A   1      23.658  24.190  19.036  1.00 20.00           C
+HETATM   12  CGA HEM A   1      25.033  24.851  19.038  1.00 20.00           C
+HETATM   13  O1A HEM A   1      26.038  24.112  19.090  1.00 20.00           O
+HETATM   14  O2A HEM A   1      25.083  26.098  18.986  1.00 20.00           O
+HETATM   15  C1B HEM A   1      17.164  22.091  20.335  1.00 20.00           C
+HETATM   16  C2B HEM A   1      15.800  22.363  20.274  1.00 20.00           C
+HETATM   17  C3B HEM A   1      15.119  21.141  20.109  1.00 20.00           C
+HETATM   18  C4B HEM A   1      16.120  20.169  20.131  1.00 20.00           C
+HETATM   19  CMB HEM A   1      15.147  23.720  20.299  1.00 20.00           C
+HETATM   20  CAB HEM A   1      13.635  21.025  20.019  1.00 20.00           C
+HETATM   21  CBB HEM A   1      12.835  20.079  19.586  1.00 20.00           C
+HETATM   22  C1C HEM A   1      16.921  17.751  20.009  1.00 20.00           C
+HETATM   23  C2C HEM A   1      16.664  16.387  19.886  1.00 20.00           C
+HETATM   24  C3C HEM A   1      17.898  15.709  19.888  1.00 20.00           C
+HETATM   25  C4C HEM A   1      18.856  16.711  20.045  1.00 20.00           C
+HETATM   26  CMC HEM A   1      15.317  15.732  19.722  1.00 20.00           C
+HETATM   27  CAC HEM A   1      18.035  14.227  19.788  1.00 20.00           C
+HETATM   28  CBC HEM A   1      19.042  13.439  19.486  1.00 20.00           C
+HETATM   29  C1D HEM A   1      21.274  17.504  20.145  1.00 20.00           C
+HETATM   30  C2D HEM A   1      22.629  17.270  20.120  1.00 20.00           C
+HETATM   31  C3D HEM A   1      23.256  18.479  20.132  1.00 20.00           C
+HETATM   32  C4D HEM A   1      22.268  19.444  20.186  1.00 20.00           C
+HETATM   33  CMD HEM A   1      23.335  15.939  20.068  1.00 20.00           C
+HETATM   34  CAD HEM A   1      24.746  18.711  20.116  1.00 20.00           C
+HETATM   35  CBD HEM A   1      25.371  18.845  21.502  1.00 20.00           C
+HETATM   36  CGD HEM A   1      26.848  19.231  21.497  1.00 20.00           C
+HETATM   37  O1D HEM A   1      27.135  20.446  21.449  1.00 20.00           O
+HETATM   38  O2D HEM A   1      27.694  18.313  21.540  1.00 20.00           O
+HETATM   39  NA  HEM A   1      20.161  21.624  20.337  1.00 20.00           N
+HETATM   40  NB  HEM A   1      17.380  20.750  20.265  1.00 20.00           N
+HETATM   41  NC  HEM A   1      18.259  17.968  20.123  1.00 20.00           N
+HETATM   42  ND  HEM A   1      21.042  18.847  20.193  1.00 20.00           N
+HETATM   43  FE  HEM A   1      19.209  19.793  20.272  1.00 20.00          FE
 END
 '''
 
@@ -719,6 +813,8 @@ def exercise_carboxylate():
       r = build(get_model(pdb_from_cif(code, text), cifs=((code, text),)))
     assert r.ok, r.reason
     assert (r.total_charge, r.total_charge_source) == (-1, 'formal charges')
+    assert r.charge_certain is True and r.hydrogens == 'model'
+    assert r.h_differences == [] and r.uncertain_atoms == []
     assert smiles(r) == 'CC(=O)[O-]', smiles(r)
     assert r.differences == dict(bonds=[], charges=[]), r.differences
     assert r.caps == [] and r.added_h == []
@@ -756,13 +852,14 @@ def exercise_triphosphate():
 
 def exercise_partial_charges():
   '''
-  Partial charges only, 'coval' bonds: no formal charges, so the totals are
-  searched from the rounded sum (-1), which is the only valid one; a charge column
-  of only '?' counts as missing.
+  Partial charges only, 'coval' bonds: no formal charges, so the totals -4..+4 are
+  searched; -1 is the only plausible one (-3 charges a carbon), uncertain; a charge
+  column of only '?' counts as missing.
   '''
   r = build(get_model(pdb_from_cif('ZPC', zpc_cif), cifs=(('ZPC', zpc_cif),)))
   assert r.ok, r.reason
-  assert (r.total_charge, r.total_charge_source) == (-1, 'model H'), r.total_charge_source
+  assert (r.total_charge, r.total_charge_source) == (-1, 'search'), r.total_charge_source
+  assert r.charge_certain is False
   assert r.search['valid'] == [-3, -1] and r.search['set_aside'] == [-3], r.search
   assert r.search['calls'] == 9
   assert smiles(r) == 'CC(=O)[O-]'
@@ -778,13 +875,14 @@ def exercise_partial_charges():
   zqm = '\n'.join(lines)
   r = build(get_model(pdb_from_cif('ZQM', zqm), cifs=(('ZQM', zqm),)))
   assert r.ok, r.reason
-  assert (r.total_charge, r.total_charge_source) == (-1, 'model H')
+  assert (r.total_charge, r.total_charge_source, r.charge_certain) == (-1, 'search', False)
 
 def exercise_chain_residue():
   '''
   SEP between two Gly: caps on N and C (polymer bonds), OXT absent and not capped,
   the phosphate as modelled (HOP2 and HOP3: neutral; GeoStd SEP has no charge
-  column, so the total comes from the search: 0 is the only valid one).
+  column, so the total comes from the search: 0 is the only valid one; -2, with a
+  single C-O, contradicts the file's C=O).
   '''
   model = get_model(chain_pdb)
   r = build(model, resseq=2)
@@ -796,7 +894,9 @@ def exercise_chain_residue():
   assert sorted([atoms[i].name.strip() for i in r.linked]) == ['C', 'N']
   assert r.missing_neighbour == []
   assert 'OXT' not in names(r)
-  assert (r.total_charge, r.total_charge_source) == (0, 'model H'), r.search
+  assert (r.total_charge, r.total_charge_source) == (0, 'search'), r.search
+  assert r.search['disagree'] == {-2: ['C-O: restraint file 2, RDKit 1']}, r.search
+  assert r.hydrogens == 'model' and r.h_differences == []
   assert charged(r) == []
   p = [b for b in r.mol.GetBonds() if 'P' in (b.GetBeginAtom().GetSymbol(),
     b.GetEndAtom().GetSymbol()) and b.GetBondType() == Chem.BondType.DOUBLE]
@@ -812,12 +912,18 @@ def exercise_chain_residue():
   r = build(model, resseq=2)
   assert r.ok, r.reason
   assert len(r.added_h) == 6 and len(r.caps) == 2
+  assert r.hydrogens == 'restraint file (no H in the model)' and r.h_differences == []
+  assert sorted(r.uncertain_atoms) == ['N', 'O2P', 'O3P'], r.uncertain_atoms
   n = [a for a in r.mol.GetAtoms() if a.HasProp('_Name') and a.GetProp('_Name') == 'N'][0]
   assert sorted([x.GetSymbol() for x in n.GetNeighbors()]) == ['C', 'H', 'H']
   assert charged(r) == []
 
 def exercise_covalent_link():
-  '''An acyl ester to Ser OG: a cap on the ligand's C, OXT (leaving) not capped: no carboxylate.'''
+  '''
+  An acyl ester to Ser OG: a cap on the ligand's C, OXT (leaving) not capped: no
+  carboxylate. An ether GOL C3-O1 GOL: the link replaces the leaving O3, C3 keeps
+  both H.
+  '''
   model = get_model(ester_pdb, edits=ester_edits)
   r = build(model, chain='B', resseq=2)
   assert r.ok, r.reason
@@ -827,6 +933,27 @@ def exercise_covalent_link():
   assert r.missing_neighbour == []
   assert r.total_charge == 0 and charged(r) == []
   assert smiles(r) == 'CC=O', smiles(r)
+  # GOL A without O3, its C3 bonded to O1 of GOL B (O3 the leaving atom): the link
+  # replaces O3, not an H, so C3 keeps H31 and H32 (model H, and without H)
+  a = [l for l in gol_pdb.split('\n') if l[12:16].strip() not in ('O3', 'HO3', 'END')]
+  b = [l[:21] + 'B' + l[22:30] + '%8.3f' % (float(l[30:38]) + 6.0) + l[38:]
+    for l in gol_pdb.split('\n') if l.startswith('HETATM')]
+  edits = zinc_edits.replace('chain A and resseq 1 and name S1',
+    'chain A and resseq 1 and name C3').replace('chain Z and resseq 1 and name ZN',
+    'chain B and resseq 1 and name O1').replace('2.30', '1.43')
+  model = get_model('\n'.join(a + b + ['END']), edits=edits)
+  r = build(model)
+  assert r.ok, r.reason
+  atoms = model.get_hierarchy().atoms()
+  assert [(c['kind'], atoms[c['on']].name.strip(), atoms[c['partner']].name.strip())
+    for c in r.caps] == [('linked', 'C3', 'O1')]
+  assert r.hydrogens == 'model' and r.h_differences == []
+  assert smiles(r) == 'CC(O)CO', smiles(r)
+  no_h = [l for l in a if not (l.startswith('HETATM') and l[12:16].strip().startswith('H'))]
+  r = build(get_model('\n'.join(no_h + b + ['END']), edits=edits))
+  assert r.ok, r.reason
+  assert sorted([r.mol.GetAtomWithIdx(k).GetProp('_Name') for k in r.added_h]) == [
+    'H11', 'H12', 'H2', 'H31', 'H32', 'HO1', 'HO2']
 
 def exercise_metal():
   '''A thiolate on Zn: the thiol H missing on a metal-bound S counts as a deprotonation.'''
@@ -846,8 +973,17 @@ def exercise_metal():
   assert [atoms[i].name.strip() for i in r.metal_bound] == ['S1']
   assert r.total_charge == -1
   assert [x for x in r.charge_notes if 'deprotonation' in x], r.charge_notes
+  assert r.h_differences == [dict(atom='S1', model=0, restraint_file=1,
+    kind='deprotonation', added=[])], r.h_differences
+  assert r.hydrogens == 'model' and r.uncertain_atoms == []
   assert smiles(r) == 'CC[S-]', smiles(r)
   assert 'ZN' not in [a.GetSymbol().upper() for a in r.mol.GetAtoms()]
+  # the Zn belongs to another residue: not in the fragments
+  rg = [g for g in model.get_hierarchy().residue_groups() if g.parent().id == 'A'][0]
+  rc = rdkit_utils.residue_rigid_components(model, rg)
+  assert rc.approximate is None
+  assert [sorted([atoms[i].name.strip() for i in c]) for c in rc.components] == [
+    ['C1', 'C2', 'HC11', 'HC12', 'HC21', 'HC22', 'HC23', 'S1']]
 
 def exercise_no_h():
   '''A residue without H: the restraint file's H added (acetate: three).'''
@@ -855,6 +991,8 @@ def exercise_no_h():
   r = build(get_model(pdb))
   assert r.ok, r.reason
   assert len(r.added_h) == 3 and r.total_charge == -1
+  assert r.hydrogens == 'restraint file (no H in the model)'
+  assert r.h_differences == [] and r.uncertain_atoms == []
   assert smiles(r) == 'CC(=O)[O-]'
   assert [r.rdkit_to_iseq.get(k) for k in r.added_h] == [None] * 3
 
@@ -900,44 +1038,176 @@ def exercise_split_oxygen():
     assert [atoms[i].parent().altloc for i in oxt] == [alt]
     assert r.mol.GetNumAtoms() == 7
 
-def exercise_search():
+def exercise_formal_total():
   '''
-  Total by search: the formal total fails or is absent. ZAH (-1 on O2, the model
-  has HO21): 0, "model H", protonation differs; ZNC (-1 on both O): -1 (-3 is valid
-  only as C[C-]([O-])[O-] and set aside); ZGU (partial sum 1.548 -> 2, wrong): +1.
+  With formal charges the total is fixed (no search): ZAH (-1 on O2, the model has
+  the file's HO21) and ZNC (-1 on both O) fail with the reason.
   '''
   r = build(get_model(pdb_from_cif('ZAH', zah_cif), cifs=(('ZAH', zah_cif),)))
-  assert r.ok, r.reason
-  assert (r.total_charge, r.total_charge_source) == (0, 'model H')
-  assert [n for n in r.charge_notes if n.startswith("the model's protonation differs")]
-  assert smiles(r) == 'CC(=O)O'
-  assert r.search['calls'] == 9 and r.search['valid'] == [-2, 0], r.search
-  assert r.search['set_aside'] == [-2]
+  assert not r.ok and r.mol is None and r.fragment_mol is None
+  assert r.reason.startswith('DetermineBondOrders fails for ZAH with the formal total -1:'), \
+    r.reason
+  assert r.search['calls'] == 1 and r.total_charge is None and r.charge_certain is None
   r = build(get_model(pdb_from_cif('ZNC', znc_cif), cifs=(('ZNC', znc_cif),)))
-  assert r.ok, r.reason
-  assert (r.total_charge, r.total_charge_source) == (-1, 'model H')
-  assert r.search['set_aside'] == [-3] and r.search['valid'] == [-3, -1], r.search
-  assert smiles(r) == 'CC(=O)[O-]'
+  assert not r.ok
+  assert r.reason.startswith('DetermineBondOrders fails for ZNC with the formal total -2:'), \
+    r.reason
+  assert r.search['calls'] == 1
+
+def exercise_search():
+  '''
+  No formal charges: the totals -4..+4, one plausible total taken, uncertain. ZGU
+  (partial sum 1.548): +1 (-1 contradicts the file's C2=N2); ZNM: 0 (-2 as
+  CN([O-])[O-] contradicts the file's N1=O1); ZNM with 'coval' bonds: -2 and 0 both
+  valid, ambiguous.
+  '''
   r = build(get_model(pdb_from_cif('ZGU', zgu_cif), cifs=(('ZGU', zgu_cif),)))
   assert r.ok, r.reason
-  assert (r.total_charge, r.total_charge_source) == (1, 'model H'), (r.total_charge,
-    r.total_charge_source, r.search)
+  assert (r.total_charge, r.total_charge_source, r.charge_certain) == (1, 'search', False)
   assert 'sum of partial charges 1.548' in r.charge_notes, r.charge_notes
   assert smiles(r) in ('CNC(=[NH2+])N', 'CN=C([NH3+])N', 'C[NH+]=C(N)N', 'CNC(N)=[NH2+]'), smiles(r)
+  assert r.search['calls'] == 9 and r.search['valid'] == [1], r.search
+  assert r.search['disagree'] == {-1: ['C2-N2: restraint file 2, RDKit 1']}, r.search
   assert r.search['seconds'] >= 0
-  # several valid totals (nitromethane: 0, and -2 as CN([O-])[O-]): the rounded
-  # partial-charge total decides; if it is not among them, ambiguous
   r = build(get_model(pdb_from_cif('ZNM', znm_cif), cifs=(('ZNM', znm_cif),)))
   assert r.ok, r.reason
-  assert (r.total_charge, r.total_charge_source) == (0, 'partial charges'), r.search
-  assert r.search['valid'] == [-2, 0], r.search
-  assert [n for n in r.charge_notes if 'the rounded partial-charge total 0 taken' in n]
+  assert (r.total_charge, r.total_charge_source, r.charge_certain) == (0, 'search', False)
+  assert r.search['valid'] == [0], r.search
+  assert r.search['disagree'] == {-2: ['N1-O1: restraint file 2, RDKit 1']}, r.search
   assert smiles(r) == 'C[N+](=O)[O-]'
-  plus = znm_cif.replace(' ZNM  C1   C  C   -0.300', ' ZNM  C1   C  C    0.700')
-  assert plus != znm_cif
-  r = build(get_model(pdb_from_cif('ZNM', plus), cifs=(('ZNM', plus),)))
-  assert not r.ok and r.reason == 'ambiguous total charge for ZNM: DetermineBondOrders ' \
-    'succeeds with -2 +0', r.reason
+  coval = znm_cif.replace(' double ', ' coval  ').replace(' single ', ' coval  ')
+  assert coval != znm_cif
+  r = build(get_model(pdb_from_cif('ZNM', coval), cifs=(('ZNM', coval),)))
+  assert not r.ok and r.reason == 'ambiguous total charge for ZNM (no formal charges): ' \
+    '-2 +0', r.reason
+
+def exercise_hydrogen_contract():
+  '''
+  The restraint file is the reference protonation. ZAC without HC21: HC21 added,
+  total -1, C-C single, certain. ZAA (acetic acid) without the O-H: HO21 added, O2
+  uncertain. A ZSH disulfide with the thiol H kept: the link cap replaces HS11, so
+  the model's H is extra: failure, approximate fragments flagged.
+  '''
+  r = build(get_model(pdb_from_cif('ZAC', zac_cif, drop=('HC21',)), cifs=(('ZAC', zac_cif),)))
+  assert r.ok, r.reason
+  assert (r.total_charge, r.total_charge_source, r.charge_certain) == (-1, 'formal charges',
+    True)
+  assert smiles(r) == 'CC(=O)[O-]', smiles(r)
+  c = [b for b in r.mol.GetBonds() if b.GetBeginAtom().GetSymbol() == 'C' and
+    b.GetEndAtom().GetSymbol() == 'C']
+  assert len(c) == 1 and c[0].GetBondType() == Chem.BondType.SINGLE
+  assert r.hydrogens == 'completed from the restraint file'
+  assert r.h_differences == [dict(atom='C2', model=2, restraint_file=3, kind='added',
+    added=['HC21'])], r.h_differences
+  assert r.uncertain_atoms == []
+  assert [r.mol.GetAtomWithIdx(k).GetProp('_Name') for k in r.added_h] == ['HC21']
+  assert [r.rdkit_to_iseq.get(k) for k in r.added_h] == [None]
+  assert 'H added from the restraint file: HC21' in r.charge_notes, r.charge_notes
+  zaa = zah_cif.replace('ZAH', 'ZAA').replace(' ZAA  O2   O  O    -1 ',
+    ' ZAA  O2   O  O     0 ').replace(' ZAA  C1   O1   deloc ', ' ZAA  C1   O1   double'
+    ).replace(' ZAA  C1   O2   deloc ', ' ZAA  C1   O2   single')
+  assert zaa.count('double') == 1 and zaa.count('-1 ') == 0
+  r = build(get_model(pdb_from_cif('ZAA', zaa, drop=('HO21',)), cifs=(('ZAA', zaa),)))
+  assert r.ok, r.reason
+  assert (r.total_charge, r.charge_certain) == (0, True)
+  assert smiles(r) == 'CC(=O)O', smiles(r)
+  assert r.h_differences == [dict(atom='O2', model=0, restraint_file=1, kind='added',
+    added=['HO21'])], r.h_differences
+  assert r.uncertain_atoms == ['O2']
+  # disulfide: two ZSH, S1-S1 bonded by an edit
+  a = pdb_from_cif('ZSH', zsh_cif).split('\n')
+  b = [l[:21] + 'B' + l[22:30] + '%8.3f' % (-float(l[30:38]) + 45.4686) + l[38:]
+    for l in a if l.startswith('HETATM')]
+  edits = zinc_edits.replace('chain Z and resseq 1 and name ZN',
+    'chain B and resseq 1 and name S1').replace('2.30', '2.05')
+  model = get_model('\n'.join(a[:-1] + b + ['END']), cifs=(('ZSH', zsh_cif),), edits=edits)
+  rg = [g for g in model.get_hierarchy().residue_groups() if g.parent().id == 'A'][0]
+  with captured() as c:
+    rc = rdkit_utils.residue_rigid_components(model, rg)
+  r = rc.molecule
+  assert not r.ok and r.reason == 'H not in the restraint file: S1: 1 H in the model, ' \
+    '0 in the restraint file', r.reason
+  assert r.h_differences == [dict(atom='S1', model=1, restraint_file=0, kind='extra',
+    added=[])], r.h_differences
+  assert rc.approximate == 'approximate: ' + r.reason
+  assert sorted([i for comp in rc.components for i in comp]) == list(range(9))
+  assert c.text == '', repr(c.text)
+
+def exercise_bond_order_agreement():
+  '''
+  A structure is accepted only if its bonds agree with the file's explicit orders:
+  ZAC with C2-C1 'double' (the model's CH3 allows only a single bond): failure
+  listing the bond. Resonance partners apart (ZGU's C2=N3 against the file's C2=N2,
+  exercise_search).
+  '''
+  cc = zac_cif.replace(' ZAC  C2   C1   single ', ' ZAC  C2   C1   double ')
+  assert cc != zac_cif
+  r = build(get_model(pdb_from_cif('ZAC', cc), cifs=(('ZAC', cc),)))
+  assert not r.ok and r.reason == 'bond orders disagree with the restraint file for ZAC ' \
+    'at the formal total -1: C2-C1: restraint file 2, RDKit 1', r.reason
+
+def exercise_metal_fragments():
+  '''
+  The residue's metals are in the fragments (dative bonds from the residue's atoms,
+  not cut). HEM (no H): all 43 heavy atoms, Fe with the porphyrin, as with the
+  pre-B1 route (22f62b3fc6). ZZS (ZSH with its Zn in the residue, thiol H missing):
+  deprotonation, S1 with the Zn (as pre-B1). OFO: the bare oxide fails
+  DetermineBondOrders; the approximate molecule keeps the metals (dative bonds):
+  one component (as pre-B1).
+  '''
+  model = get_model(hem_pdb)
+  atoms = model.get_hierarchy().atoms()
+  rc = rdkit_utils.residue_rigid_components(model, model.get_hierarchy().only_residue_group())
+  assert rc.approximate is None, rc.approximate
+  part = sorted([sorted([atoms[i].name.strip() for i in c]) for c in rc.components])
+  assert part == [['C1A', 'C1B', 'C1C', 'C1D', 'C2A', 'C2B', 'C2C', 'C2D', 'C3A', 'C3B',
+    'C3C', 'C3D', 'C4A', 'C4B', 'C4C', 'C4D', 'CAA', 'CAD', 'CHA', 'CHB', 'CHC', 'CHD',
+    'CMA', 'CMB', 'CMC', 'CMD', 'FE', 'NA', 'NB', 'NC', 'ND'], ['CAB', 'CBB'],
+    ['CAC', 'CBC'], ['CBA', 'CGA', 'O1A', 'O2A'], ['CBD', 'CGD', 'O1D', 'O2D']], part
+  r = rc.molecule
+  assert sorted([atoms[i].name.strip() for i in r.metal_bound]) == ['NA', 'NB', 'NC', 'ND']
+  fe = [a for a in r.fragment_mol.GetAtoms() if a.GetSymbol() == 'Fe']
+  assert len(fe) == 1 and atoms[r.fragment_to_iseq[fe[0].GetIdx()]].name.strip() == 'FE'
+  assert sorted([(b.GetBeginAtom().GetSymbol(), str(b.GetBondType()))
+    for b in fe[0].GetBonds()]) == [('N', 'DATIVE')] * 4
+  assert 'Fe' not in [a.GetSymbol() for a in r.mol.GetAtoms()]
+  assert r.charge_certain is False
+  # Zn in the residue
+  zzs = zsh_cif.replace('ZSH', 'ZZS').replace("'ZZS' ligand 9 3", "'ZZS' ligand 10 4")
+  zzs = zzs.replace(' ZZS  HS11 H  H     0   0.000   1.9180   1.0419  -0.1009\n',
+    ' ZZS  HS11 H  H     0   0.000   1.9180   1.0419  -0.1009\n'
+    ' ZZS  ZN1  ZN ZN    0   0.000   3.5394   1.0507   1.8340\n')
+  zzs = zzs.rstrip('\n') + '\n ZZS  S1   ZN1  metal    2.300  0.050\n'
+  assert zzs.count('ZN1') == 2
+  model = get_model(pdb_from_cif('ZZS', zzs, drop=('HS11',)), cifs=(('ZZS', zzs),))
+  atoms = model.get_hierarchy().atoms()
+  rc = rdkit_utils.residue_rigid_components(model, model.get_hierarchy().only_residue_group())
+  r = rc.molecule
+  assert r.ok and rc.approximate is None, r.reason
+  assert r.total_charge == -1 and [d['kind'] for d in r.h_differences] == ['deprotonation']
+  assert Chem.MolToSmiles(Chem.RemoveHs(r.fragment_mol)) == 'CC[S-]->[Zn]', \
+    Chem.MolToSmiles(r.fragment_mol)
+  part = sorted([sorted([atoms[i].name.strip() for i in c if atoms[i].element.strip() != 'H'])
+    for c in rc.components])
+  assert part == [['C1', 'C2'], ['S1', 'ZN1']], part
+  assert sorted([i for c in rc.components for i in c]) == list(range(model.get_number_of_atoms()))
+  # OFO: approximate, with the metals
+  model = get_model(pdb_from_cif('OFO', ofo_cif), cifs=(('OFO', ofo_cif),))
+  atoms = model.get_hierarchy().atoms()
+  rg = model.get_hierarchy().only_residue_group()
+  with captured() as c:
+    rc = rdkit_utils.residue_rigid_components(model, rg)
+  assert rc.approximate.startswith('approximate: DetermineBondOrders fails for OFO with '
+    'the formal total -3:'), rc.approximate
+  assert [sorted([atoms[i].name.strip() for i in comp]) for comp in rc.components] == [
+    ['FE1', 'FE2', 'HO', 'O', 'OH']], rc.components
+  mol, rdkit_to_iseq = rdkit_utils.approximate_residue_molecule(model, rg)
+  assert sorted([atoms[i].name.strip() for i in rdkit_to_iseq.values()]) == [
+    'FE1', 'FE2', 'HO', 'O', 'OH']
+  bonds = sorted([(b.GetBeginAtom().GetSymbol(), b.GetEndAtom().GetSymbol(),
+    str(b.GetBondType())) for b in mol.GetBonds()])
+  assert bonds == [('O', 'Fe', 'DATIVE')] * 3 + [('O', 'H', 'SINGLE')], bonds
+  assert c.text == '', repr(c.text)
 
 def exercise_split_neighbour():
   '''The Gly after SEP split into A and B: SEP's C still gets one cap (one partner N).'''
@@ -958,16 +1228,16 @@ def exercise_split_neighbour():
 
 def exercise_failure():
   '''
-  A carbon with five bonds (ZC5): no valid structure at the formal total or any
-  total -4..+4; failure with the reason, no molecule, nothing printed.
+  A carbon with five bonds (ZC5): DetermineBondOrders fails at the formal total
+  (no search); failure with the reason, no molecule, nothing printed.
   '''
   model = get_model(pdb_from_cif('ZC5', zc5_cif), cifs=(('ZC5', zc5_cif),))
   with captured() as c:
     r = build(model)
   assert not r.ok and r.mol is None and r.fragment_mol is None
-  assert r.reason.startswith('no valid structure for ZC5 with total charges -4..+4 '
-    '(formal total 0:'), r.reason
-  assert r.search['calls'] == 9 and r.search['valid'] == []
+  assert r.reason.startswith('DetermineBondOrders fails for ZC5 with the formal total 0:'), \
+    r.reason
+  assert r.search['calls'] == 1 and r.search['valid'] == []
   assert c.text == '', repr(c.text)
 
 def exercise_rigid_components():
@@ -998,7 +1268,8 @@ def exercise_rigid_components():
   rg = model.get_hierarchy().only_residue_group()
   with captured() as c:
     rc = rdkit_utils.residue_rigid_components(model, rg)
-  assert rc.approximate.startswith('approximate: no valid structure for ZC5'), rc.approximate
+  assert rc.approximate.startswith('approximate: DetermineBondOrders fails for ZC5'), \
+    rc.approximate
   assert sorted([i for comp in rc.components for i in comp]) == list(range(6))
   assert c.text == '', repr(c.text)
   png = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
@@ -1026,7 +1297,11 @@ def run():
   exercise_no_h()
   exercise_missing_heavy_atoms()
   exercise_split_oxygen()
+  exercise_formal_total()
   exercise_search()
+  exercise_hydrogen_contract()
+  exercise_bond_order_agreement()
+  exercise_metal_fragments()
   exercise_split_neighbour()
   exercise_failure()
   exercise_rigid_components()
