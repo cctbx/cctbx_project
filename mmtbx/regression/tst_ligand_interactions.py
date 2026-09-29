@@ -867,6 +867,281 @@ ATOM      4  CA  GLY B  52A      5.000   2.000   3.000  1.00 20.00           C
 END
 '''
 
+# Gly-Asp-Lys-Arg-His-Gly, beta strand from the sequence (ss_idealization), H by
+# reduce2 (N-terminal H1-H3, His HD1 and HE2; no OXT)
+gdkrhg_model_str = '''
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+ATOM      1  N   GLY A   1      27.961   0.504   1.988  1.00  0.00           N
+ATOM      2  CA  GLY A   1      29.153   0.205   2.773  1.00  0.00           C
+ATOM      3  C   GLY A   1      30.420   0.562   2.003  1.00  0.00           C
+ATOM      4  O   GLY A   1      30.753  -0.077   1.005  1.00  0.00           O
+ATOM      5  H1  GLY A   1      27.977   0.034   1.233  1.00  0.00           H
+ATOM      6  H2  GLY A   1      27.236   0.288   2.456  1.00  0.00           H
+ATOM      7  H3  GLY A   1      27.942   1.373   1.796  1.00  0.00           H
+ATOM      8  HA2 GLY A   1      29.136   0.714   3.598  1.00  0.00           H
+ATOM      9  HA3 GLY A   1      29.174  -0.741   2.986  1.00  0.00           H
+ATOM     10  N   ASP A   2      31.123   1.587   2.474  1.00  0.00           N
+ATOM     11  CA  ASP A   2      32.355   2.031   1.832  1.00  0.00           C
+ATOM     12  C   ASP A   2      33.552   1.851   2.758  1.00  0.00           C
+ATOM     13  O   ASP A   2      33.675   2.539   3.772  1.00  0.00           O
+ATOM     14  CB  ASP A   2      32.236   3.500   1.416  1.00  0.00           C
+ATOM     15  CG  ASP A   2      33.431   3.977   0.614  1.00  0.00           C
+ATOM     16  OD1 ASP A   2      33.540   3.602  -0.573  1.00  0.00           O
+ATOM     17  OD2 ASP A   2      34.261   4.727   1.168  1.00  0.00           O
+ATOM     18  H   ASP A   2      30.906   2.045   3.169  1.00  0.00           H
+ATOM     19  HA  ASP A   2      32.507   1.498   1.036  1.00  0.00           H
+ATOM     20  HB3 ASP A   2      32.169   4.050   2.212  1.00  0.00           H
+ATOM     21  HB2 ASP A   2      31.443   3.611   0.869  1.00  0.00           H
+ATOM     22  N   LYS A   3      34.434   0.922   2.403  1.00  0.00           N
+ATOM     23  CA  LYS A   3      35.624   0.650   3.202  1.00  0.00           C
+ATOM     24  C   LYS A   3      36.893   0.975   2.422  1.00  0.00           C
+ATOM     25  O   LYS A   3      37.227   0.298   1.450  1.00  0.00           O
+ATOM     26  CB  LYS A   3      35.644  -0.817   3.641  1.00  0.00           C
+ATOM     27  CG  LYS A   3      34.550  -1.184   4.630  1.00  0.00           C
+ATOM     28  CD  LYS A   3      34.642  -2.643   5.046  1.00  0.00           C
+ATOM     29  CE  LYS A   3      33.535  -3.015   6.019  1.00  0.00           C
+ATOM     30  NZ  LYS A   3      33.606  -4.445   6.426  1.00  0.00           N
+ATOM     31  H   LYS A   3      34.366   0.432   1.699  1.00  0.00           H
+ATOM     32  HA  LYS A   3      35.607   1.207   3.996  1.00  0.00           H
+ATOM     33  HB3 LYS A   3      36.497  -1.003   4.063  1.00  0.00           H
+ATOM     34  HB2 LYS A   3      35.532  -1.377   2.857  1.00  0.00           H
+ATOM     35  HG2 LYS A   3      34.637  -0.634   5.424  1.00  0.00           H
+ATOM     36  HG3 LYS A   3      33.683  -1.038   4.219  1.00  0.00           H
+ATOM     37  HD3 LYS A   3      35.495  -2.800   5.480  1.00  0.00           H
+ATOM     38  HD2 LYS A   3      34.560  -3.207   4.261  1.00  0.00           H
+ATOM     39  HE2 LYS A   3      33.615  -2.469   6.817  1.00  0.00           H
+ATOM     40  HE3 LYS A   3      32.675  -2.863   5.597  1.00  0.00           H
+ATOM     41  HZ1 LYS A   3      33.529  -4.969   5.711  1.00  0.00           H
+ATOM     42  HZ3 LYS A   3      32.947  -4.633   6.994  1.00  0.00           H
+ATOM     43  HZ2 LYS A   3      34.385  -4.610   6.823  1.00  0.00           H
+ATOM     44  N   ARG A   4      37.598   2.015   2.856  1.00  0.00           N
+ATOM     45  CA  ARG A   4      38.832   2.432   2.201  1.00  0.00           C
+ATOM     46  C   ARG A   4      40.027   2.284   3.136  1.00  0.00           C
+ATOM     47  O   ARG A   4      40.148   3.009   4.124  1.00  0.00           O
+ATOM     48  CB  ARG A   4      38.719   3.886   1.729  1.00 10.00           C
+ATOM     49  CG  ARG A   4      37.617   4.134   0.703  1.00 10.00           C
+ATOM     50  CD  ARG A   4      37.883   3.436  -0.629  1.00 10.00           C
+ATOM     51  NE  ARG A   4      39.078   3.951  -1.302  1.00 10.00           N
+ATOM     52  CZ  ARG A   4      39.739   3.351  -2.295  1.00 10.00           C
+ATOM     53  NH1 ARG A   4      39.359   2.176  -2.796  1.00 10.00           N
+ATOM     54  NH2 ARG A   4      40.810   3.945  -2.804  1.00 10.00           N
+ATOM     55  H   ARG A   4      37.381   2.499   3.533  1.00  0.00           H
+ATOM     56  HA  ARG A   4      38.983   1.869   1.426  1.00  0.00           H
+ATOM     57  HB3 ARG A   4      39.561   4.145   1.323  1.00 10.00           H
+ATOM     58  HB2 ARG A   4      38.535   4.447   2.498  1.00 10.00           H
+ATOM     59  HG3 ARG A   4      37.550   5.087   0.534  1.00 10.00           H
+ATOM     60  HG2 ARG A   4      36.777   3.800   1.054  1.00 10.00           H
+ATOM     61  HD2 ARG A   4      38.012   2.488  -0.470  1.00 10.00           H
+ATOM     62  HD3 ARG A   4      37.124   3.574  -1.217  1.00 10.00           H
+ATOM     63  HE  ARG A   4      39.382   4.709  -1.033  1.00 10.00           H
+ATOM     64 HH11 ARG A   4      39.807   1.816  -3.436  1.00 10.00           H
+ATOM     65 HH12 ARG A   4      38.666   1.777  -2.479  1.00 10.00           H
+ATOM     66 HH21 ARG A   4      41.246   3.571  -3.444  1.00 10.00           H
+ATOM     67 HH22 ARG A   4      41.069   4.704  -2.494  1.00 10.00           H
+ATOM     68  N   HIS A   5      40.907   1.340   2.818  1.00  0.00           N
+ATOM     69  CA  HIS A   5      42.094   1.095   3.630  1.00  0.00           C
+ATOM     70  C   HIS A   5      43.367   1.388   2.841  1.00  0.00           C
+ATOM     71  O   HIS A   5      43.701   0.675   1.896  1.00  0.00           O
+ATOM     72  CB  HIS A   5      42.110  -0.354   4.123  1.00  0.00           C
+ATOM     73  CG  HIS A   5      40.982  -0.690   5.047  1.00  0.00           C
+ATOM     74  ND1 HIS A   5      40.946  -0.276   6.360  1.00  0.00           N
+ATOM     75  CD2 HIS A   5      39.847  -1.402   4.846  1.00  0.00           C
+ATOM     76  CE1 HIS A   5      39.840  -0.718   6.930  1.00  0.00           C
+ATOM     77  NE2 HIS A   5      39.154  -1.404   6.033  1.00  0.00           N
+ATOM     78  H   HIS A   5      40.839   0.825   2.133  1.00  0.00           H
+ATOM     79  HA  HIS A   5      42.076   1.681   4.403  1.00  0.00           H
+ATOM     80  HB3 HIS A   5      42.940  -0.512   4.600  1.00  0.00           H
+ATOM     81  HB2 HIS A   5      42.050  -0.945   3.356  1.00  0.00           H
+ATOM     82  HD1 HIS A   5      41.550   0.197   6.748  1.00  0.00           H
+ATOM     83  HD2 HIS A   5      39.586  -1.812   4.053  1.00  0.00           H
+ATOM     84  HE1 HIS A   5      39.587  -0.571   7.813  1.00  0.00           H
+ATOM     85  HE2 HIS A   5      38.397  -1.789   6.170  1.00  0.00           H
+ATOM     86  N   GLY A   6      44.072   2.443   3.238  1.00  0.00           N
+ATOM     87  CA  GLY A   6      45.309   2.832   2.570  1.00  0.00           C
+ATOM     88  C   GLY A   6      46.501   2.716   3.514  1.00  0.00           C
+ATOM     89  O   GLY A   6      46.622   3.477   4.474  1.00  0.00           O
+ATOM     90  H   GLY A   6      43.854   2.953   3.895  1.00  0.00           H
+ATOM     91  HA3 GLY A   6      45.240   3.751   2.266  1.00  0.00           H
+ATOM     92  HA2 GLY A   6      45.461   2.256   1.804  1.00  0.00           H
+END
+'''
+
+# DC 1 - DG 2 from tst_add_hydrogen_16 (DNA control), H by reduce2
+dna_model_str = '''
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+ATOM      1  O5'  DC A   1      19.545  18.136  17.917  1.00  3.07           O
+ATOM      2  C5'  DC A   1      19.769  17.119  18.884  1.00  2.46           C
+ATOM      3  C4'  DC A   1      18.610  16.148  19.001  1.00  2.19           C
+ATOM      4  O4'  DC A   1      17.462  16.852  19.514  1.00  2.62           O
+ATOM      5  C3'  DC A   1      18.161  15.506  17.674  1.00  2.26           C
+ATOM      6  O3'  DC A   1      17.782  14.139  17.875  1.00  2.47           O
+ATOM      7  C2'  DC A   1      16.906  16.282  17.315  1.00  2.41           C
+ATOM      8  C1'  DC A   1      16.340  16.624  18.692  1.00  2.34           C
+ATOM      9  N1   DC A   1      15.516  17.837  18.704  1.00  2.30           N
+ATOM     10  C2   DC A   1      14.145  17.720  18.492  1.00  2.34           C
+ATOM     11  O2   DC A   1      13.658  16.581  18.329  1.00  3.07           O
+ATOM     12  N3   DC A   1      13.385  18.831  18.454  1.00  2.35           N
+ATOM     13  C4   DC A   1      13.943  20.039  18.611  1.00  2.37           C
+ATOM     14  N4   DC A   1      13.161  21.108  18.580  1.00  2.79           N
+ATOM     15  C5   DC A   1      15.357  20.189  18.812  1.00  2.71           C
+ATOM     16  C6   DC A   1      16.103  19.061  18.841  1.00  2.68           C
+ATOM     17  H5'  DC A   1      19.913  17.537  19.747  1.00  2.46           H
+ATOM     18 H5''  DC A   1      20.566  16.624  18.636  1.00  2.46           H
+ATOM     19  H4'  DC A   1      18.857  15.438  19.613  1.00  2.19           H
+ATOM     20  H3'  DC A   1      18.861  15.595  17.008  1.00  2.26           H
+ATOM     21 H2''  DC A   1      17.117  17.083  16.809  1.00  2.41           H
+ATOM     22  H2'  DC A   1      16.287  15.738  16.802  1.00  2.41           H
+ATOM     23  H1'  DC A   1      15.829  15.876  19.039  1.00  2.34           H
+ATOM     24  H41  DC A   1      12.314  21.018  18.461  1.00  2.79           H
+ATOM     25  H42  DC A   1      13.500  21.892  18.679  1.00  2.79           H
+ATOM     26  H5   DC A   1      15.744  21.028  18.918  1.00  2.71           H
+ATOM     27  H6   DC A   1      17.024  19.120  18.955  1.00  2.68           H
+ATOM     28  P    DG A   2      18.825  12.942  17.684  1.00  2.51           P
+ATOM     29  OP1  DG A   2      19.788  13.206  16.573  1.00  3.24           O
+ATOM     30  OP2  DG A   2      17.976  11.710  17.621  1.00  3.25           O
+ATOM     31  O5'  DG A   2      19.719  12.937  19.002  1.00  2.66           O
+ATOM     32  C5'  DG A   2      19.103  12.733  20.284  1.00  2.85           C
+ATOM     33  C4'  DG A   2      20.140  13.045  21.335  1.00  2.73           C
+ATOM     34  O4'  DG A   2      20.546  14.399  21.207  1.00  2.76           O
+ATOM     35  C3'  DG A   2      19.598  12.910  22.753  1.00  2.85           C
+ATOM     36  O3'  DG A   2      19.812  11.563  23.230  1.00  3.51           O
+ATOM     37  C2'  DG A   2      20.430  13.919  23.526  1.00  3.30           C
+ATOM     38  C1'  DG A   2      20.834  14.964  22.481  1.00  2.85           C
+ATOM     39  N9   DG A   2      20.140  16.222  22.572  1.00  2.76           N
+ATOM     40  C8   DG A   2      20.744  17.451  22.654  1.00  3.56           C
+ATOM     41  N7   DG A   2      19.903  18.441  22.626  1.00  3.75           N
+ATOM     42  C5   DG A   2      18.658  17.840  22.510  1.00  2.68           C
+ATOM     43  C6   DG A   2      17.359  18.399  22.397  1.00  2.62           C
+ATOM     44  O6   DG A   2      17.067  19.612  22.382  1.00  3.52           O
+ATOM     45  N1   DG A   2      16.371  17.435  22.313  1.00  2.19           N
+ATOM     46  C2   DG A   2      16.610  16.084  22.263  1.00  1.99           C
+ATOM     47  N2   DG A   2      15.540  15.294  22.108  1.00  2.48           N
+ATOM     48  N3   DG A   2      17.814  15.534  22.356  1.00  2.10           N
+ATOM     49  C4   DG A   2      18.782  16.466  22.477  1.00  2.26           C
+ATOM     50 H5''  DG A   2      18.338  13.321  20.384  1.00  2.85           H
+ATOM     51  H5'  DG A   2      18.807  11.813  20.370  1.00  2.85           H
+ATOM     52  H4'  DG A   2      20.914  12.473  21.215  1.00  2.73           H
+ATOM     53  H3'  DG A   2      18.657  13.137  22.813  1.00  2.85           H
+ATOM     54 H2''  DG A   2      19.908  14.325  24.236  1.00  3.30           H
+ATOM     55  H2'  DG A   2      21.213  13.497  23.912  1.00  3.30           H
+ATOM     56  H1'  DG A   2      21.789  15.119  22.557  1.00  2.85           H
+ATOM     57  H8   DG A   2      21.664  17.564  22.723  1.00  3.56           H
+ATOM     58  H1   DG A   2      15.553  17.699  22.291  1.00  2.19           H
+ATOM     59  H21  DG A   2      14.755  15.640  22.047  1.00  2.48           H
+ATOM     60  H22  DG A   2      15.638  14.440  22.070  1.00  2.48           H
+END
+'''
+
+# N-methylpyridinium and nitromethane (RDKit embedding; formal charges, explicit orders)
+zpy_cif = ('zpy.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZPY  ZPY  'ZPY' ligand 15 7 .
+
+data_comp_ZPY
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZPY  CM   C  C     0   0.000  -2.1240  -0.2930  -0.3397
+ ZPY  N1   N  N     1   0.000  -0.6851  -0.0938  -0.0998
+ ZPY  C2   C  C     0   0.000  -0.1762   1.1597  -0.0920
+ ZPY  C3   C  C     0   0.000   1.1812   1.3698   0.1225
+ ZPY  C4   C  C     0   0.000   2.0158   0.2782   0.3244
+ ZPY  C5   C  C     0   0.000   1.4792  -1.0026   0.3054
+ ZPY  C6   C  C     0   0.000   0.1162  -1.1675   0.0874
+ ZPY  HCM1 H  H     0   0.000  -2.4531  -1.1950   0.1827
+ ZPY  HCM2 H  H     0   0.000  -2.6746   0.5688   0.0462
+ ZPY  HCM3 H  H     0   0.000  -2.2648  -0.3943  -1.4186
+ ZPY  HC21 H  H     0   0.000  -0.8620   1.9853  -0.2597
+ ZPY  HC31 H  H     0   0.000   1.5872   2.3792   0.1305
+ ZPY  HC41 H  H     0   0.000   3.0819   0.4252   0.4935
+ ZPY  HC51 H  H     0   0.000   2.1208  -1.8680   0.4580
+ ZPY  HC61 H  H     0   0.000  -0.3423  -2.1520   0.0593
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZPY  CM   N1   single   1.472  0.020
+ ZPY  N1   C2   aromatic  1.353  0.020
+ ZPY  C2   C3   aromatic  1.390  0.020
+ ZPY  C3   C4   aromatic  1.389  0.020
+ ZPY  C4   C5   aromatic  1.389  0.020
+ ZPY  C5   C6   aromatic  1.390  0.020
+ ZPY  C6   N1   aromatic  1.353  0.020
+ ZPY  CM   HCM1 single   1.093  0.020
+ ZPY  CM   HCM2 single   1.093  0.020
+ ZPY  CM   HCM3 single   1.093  0.020
+ ZPY  C2   HC21 single   1.086  0.020
+ ZPY  C3   HC31 single   1.088  0.020
+ ZPY  C4   HC41 single   1.089  0.020
+ ZPY  C5   HC51 single   1.088  0.020
+ ZPY  C6   HC61 single   1.086  0.020
+''')
+
+znx_cif = ('znx.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZNX  ZNX  'ZNX' ligand 7 4 .
+
+data_comp_ZNX
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZNX  C1   C  C     0   0.000  -0.6519  -0.0458   0.0124
+ ZNX  N1   N  N     1   0.000   0.8315   0.0577  -0.0234
+ ZNX  O1   O  O     0   0.000   1.4709  -0.9962   0.0763
+ ZNX  O2   O  O    -1   0.000   1.3133   1.1917  -0.1300
+ ZNX  HC11 H  H     0   0.000  -0.9554   0.0310   1.0581
+ ZNX  HC12 H  H     0   0.000  -0.9400  -1.0097  -0.4127
+ ZNX  HC13 H  H     0   0.000  -1.0683   0.7713  -0.5807
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZNX  C1   N1   single   1.487  0.020
+ ZNX  N1   O1   double   1.237  0.020
+ ZNX  N1   O2   single   1.237  0.020
+ ZNX  C1   HC11 single   1.092  0.020
+ ZNX  C1   HC12 single   1.092  0.020
+ ZNX  C1   HC13 single   1.092  0.020
+''')
+
 # ------------------------------------------------------------------------------
 
 def get_model(lines=None, cifs=()):
@@ -1452,7 +1727,8 @@ def salt_bridges(m):
 
 def exercise_salt_bridges():
   '''
-  Salt bridges on inline models (ideal CCD/GeoStd geometry; charges from the H):
+  Salt bridges on inline models (ideal CCD/GeoStd geometry; ligand groups from the
+  builder, amino acids by template):
     ACT 1 with Lys 10 (NZ...OXT 2.85 A, NZ-HZ1...OXT H-bond) and Arg 20;
     ACT 2 with His 30 (HD1 and HE2), Asp 40 (same charge), Lys 50 (5.0 A);
     NH4 3 with Asp 60; the neutral model: acetic acid (ACY, custom restraints)
@@ -1461,8 +1737,9 @@ def exercise_salt_bridges():
   model = get_model(salt_model_str.split('\n'))
   m1 = get_manager(model, sel='chain A and resseq 1')
   assert m1.charged_groups == [dict(kind='carboxylate', charge=-1, usual_charge=None,
-    state='modelled', source='rules', altloc='', atoms=['A ACT 1 O', 'A ACT 1 OXT'],
-    residue='A ACT 1')], m1.charged_groups
+    state='modelled', source='builder', altloc='', atoms=['A ACT 1 O', 'A ACT 1 OXT'],
+    residue='A ACT 1', certain=True, metal_bound=False, charge_source='formal charges',
+    hydrogens='model', notes=[])], m1.charged_groups
   sb = dict([(e['residue'], e) for e in salt_bridges(m1)])
   assert sorted(sb) == ['B LYS 10', 'C ARG 20'], sorted(sb)
   lys = sb['B LYS 10']
@@ -1545,20 +1822,277 @@ def exercise_salt_bridge_symmetry():
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
-  the model): the perceived -1 conflicts with the dictionary's 0 and is reported.
+  the model): the builder takes the file's charges, DetermineBondOrders fails at
+  total 0, so ACT has no groups (listed), no salt bridge, and its formal charges
+  are not compared. The conflict status itself: a dictionary charge differing from
+  the perception with the same H.
   '''
   model = get_model(salt_sym_model_str.split('\n'), cifs=(act_conflict_cif,))
   m = get_manager(model, sel='chain A and resseq 1')
-  (c,) = m.formal_charge_conflicts()
-  assert (c['residue'], c['source'], c['group'], c['atoms'], c['dictionary_charge'],
-    c['perceived_charge'], c['file']) == ('A ACT 1', 'restraints', 'carboxylate',
-    ['C', 'O', 'OXT'], 0, -1, 'act_conflict.cif'), c
-  assert [x['status'] for x in m.formal_charges if x['residue'] == 'A ACT 1' and
-    x['source'] == 'CCD'] == ['agrees']
-  assert len(salt_bridges(m)) == 1
+  assert m.charged_groups == [] and len(salt_bridges(m)) == 0
+  (f,) = m.charged_group_failures
+  assert f['residue'] == 'A ACT 1' and f['reason'].startswith(
+    'DetermineBondOrders fails for ACT with the formal total 0:'), f
+  act = [x for x in m.formal_charges if x['residue'] == 'A ACT 1']
+  assert [(x['source'], x['file'], x['status'].startswith(
+    'not compared (residue_molecule failed: ')) for x in act] == [
+    ('restraints', 'act_conflict.cif', True), ('CCD', None, True)], act
+  assert m.formal_charge_conflicts() == []
+  d = dict(atoms=dict(C=('C', 0), O=('O', 0), OXT=('O', 0)), h=dict(C=set(), O=set(),
+    OXT=set()))
+  c = m._charge_check('A ACT 1', 'restraints', 'x.cif', 'carboxylate', ['C', 'O', 'OXT'],
+    ['C', 'O', 'OXT'], -1, d, dict(C=set(), O=set(), OXT=set()))
+  assert (c['status'], c['dictionary_charge'], c['perceived_charge']) == ('conflict', 0, -1)
+  m.formal_charges.append(c)
   log = StringIO()
   m.show(log=log)
   assert 'formal-charge conflicts' in log.getvalue()
+  assert 'residues without charged groups (residue_molecule failed):' in log.getvalue()
+
+def builder_rows(model, found):
+  atoms = model.get_hierarchy().atoms()
+  return sorted([(LI.residue_label(atoms[g['center']], g['resname']), g['kind'], g['charge'],
+    atoms[g['center']].name.strip(), tuple(sorted([atoms[i].name.strip() for i in g['charged']])),
+    g['certain'], g['metal_bound']) for g in found.groups if g['source'] == 'builder'])
+
+def exercise_builder_groups():
+  '''
+  Non-standard residues: groups from rdkit_utils.residue_molecule (fixtures of
+  tst_rdkit_utils_molecule). Taurine zwitterion ZZW: ammonium and sulfonate;
+  methyl triphosphate ZTP: -1, -1, -2 (-4); N-methylpyridinium: "other"; nitro:
+  no group (balanced by the bonded O-); partial charges only (ZPC): uncertain;
+  carboxylate O on a Zn of another residue: metal_bound; ZZW's N linked to an
+  acetyl C: dropped (capped); ACT ester-linked to Ser OG: no carboxylate; ZC5: the
+  builder fails, listed, no groups.
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  def found_for(model):
+    return LI.find_charged_groups(model, all_atoms(model))
+  model = M.get_model(M.pdb_from_cif('ZZW', M.zzw_cif), cifs=(('ZZW', M.zzw_cif),))
+  f = found_for(model)
+  assert builder_rows(model, f) == [
+    ('A ZZW 1', 'ammonium', 1, 'N1', ('N1',), True, False),
+    ('A ZZW 1', 'sulfonate', -1, 'S1', ('O1', 'O2', 'O3'), True, False)], builder_rows(model, f)
+  g = f.groups[0]
+  assert (g['source'], g['charge_source'], g['hydrogens'], g['state'], g['notes'],
+    g['usual_charge']) == ('builder', 'formal charges', 'model', 'modelled', [], None), g
+  # an N-H missing in the model: completed from the file, the ammonium uncertain
+  model = M.get_model(M.pdb_from_cif('ZZW', M.zzw_cif, drop=('HN13',)),
+    cifs=(('ZZW', M.zzw_cif),))
+  f = found_for(model)
+  assert [(g['kind'], g['certain'], g['notes']) for g in f.groups] == [
+    ('ammonium', False, ['H completed from the restraint file on N1']),
+    ('sulfonate', True, [])], f.groups
+  # without H: assumed, the file's H not held against the groups
+  hs = [l.split()[1] for l in M.zzw_cif.split('\n') if l.startswith(' ZZW ') and
+    len(l.split()) == 9 and l.split()[2] == 'H']
+  model = M.get_model(M.pdb_from_cif('ZZW', M.zzw_cif, drop=hs), cifs=(('ZZW', M.zzw_cif),))
+  f = found_for(model)
+  assert [(g['kind'], g['certain'], g['state']) for g in f.groups] == [
+    ('ammonium', True, 'assumed (no H)'), ('sulfonate', True, 'assumed (no H)')], f.groups
+  model = M.get_model(M.pdb_from_cif('ZTP', M.ztp_cif), cifs=(('ZTP', M.ztp_cif),))
+  rows = sorted(builder_rows(model, found_for(model)), key=lambda r: r[3])
+  assert [(r[1], r[2], r[3], r[4]) for r in rows] == [
+    ('phosphate', -1, 'P1', ('O11', 'O12')), ('phosphate', -1, 'P2', ('O21', 'O22')),
+    ('phosphate', -2, 'P3', ('O31', 'O32', 'O33'))], rows
+  model = get_model(pdb_from_cif_text('ZPY', zpy_cif[1]), cifs=(zpy_cif,))
+  assert builder_rows(model, found_for(model)) == [
+    ('A ZPY 1', 'other', 1, 'N1', ('N1',), True, False)]
+  model = get_model(pdb_from_cif_text('ZNX', znx_cif[1]), cifs=(znx_cif,))
+  f = found_for(model)
+  assert f.groups == [] and f.failures == [] and f.dropped == []
+  # partial charges only: uncertain, not paired with the ZZW ammonium 3 A away
+  model = M.get_model(M.pdb_from_cif('ZPC', M.zpc_cif), cifs=(('ZPC', M.zpc_cif),))
+  f = found_for(model)
+  (g,) = f.groups
+  assert (g['kind'], g['charge'], g['certain'], g['charge_source']) == ('carboxylate', -1,
+    False, 'search'), g
+  assert g['notes'] == ['total charge by search (no formal charges)']
+  lines = [l for l in M.pdb_from_cif('ZPC', M.zpc_cif).split('\n') if l.startswith('HETATM')]
+  o1 = [float(x) for x in [l for l in lines if l[12:16] == ' O1 '][0][30:54].split()]
+  zzw = [l for l in M.pdb_from_cif('ZZW', M.zzw_cif).split('\n') if l.startswith('HETATM')]
+  n1 = [float(x) for x in [l for l in zzw if l[12:16] == ' N1 '][0][30:54].split()]
+  shift = [o1[0] - n1[0] + 3.0, o1[1] - n1[1], o1[2] - n1[2]]
+  moved = [l[:21] + 'B' + l[22:30] + ''.join(['%8.3f' % (float(l[30 + 8 * k:38 + 8 * k]) +
+    shift[k]) for k in range(3)]) + l[54:] for l in zzw]
+  model = M.get_model('\n'.join(['CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1'] +
+    lines + moved + ['END']), cifs=(('ZPC', M.zpc_cif), ('ZZW', M.zzw_cif)))
+  f = found_for(model)
+  assert [(g['resname'], g['kind'], g['certain']) for g in f.groups] == [
+    ('ZPC', 'carboxylate', False), ('ZZW', 'ammonium', True), ('ZZW', 'sulfonate', True)], \
+    [(g['resname'], g['kind'], g['certain']) for g in f.groups]
+  def with_zpc(groups):
+    return [p for p in LI.charged_group_pairs(model, groups, 4.0) if 0 in p[:2]]
+  assert with_zpc(f.groups) == []
+  assert len(with_zpc([dict(g, certain=True) for g in f.groups])) == 2
+  # carboxylate O on a Zn
+  b = iotbx.cif.reader(input_string=M.zac_cif).model()['comp_ZAC']
+  xyz = dict([(n, [float(b['_chem_comp_atom.%s' % c][k]) + 20 for c in 'xyz'])
+    for k, n in enumerate(b['_chem_comp_atom.atom_id'])])
+  o, c = xyz['O2'], xyz['C1']
+  d = [o[k] - c[k] for k in range(3)]
+  n = sum([v * v for v in d]) ** 0.5
+  zn = 'HETATM   99 ZN    ZN Z   1    %8.3f%8.3f%8.3f  1.00 20.00          ZN' % tuple(
+    [o[k] + 2.0 * d[k] / n for k in range(3)])
+  edits = M.zinc_edits.replace('name S1', 'name O2').replace('2.30', '2.00')
+  model = M.get_model(M.pdb_from_cif('ZAC', M.zac_cif, extra=(zn,)), cifs=(('ZAC', M.zac_cif),),
+    edits=edits)
+  f = found_for(model)
+  assert builder_rows(model, f) == [('A ZAC 1', 'carboxylate', -1, 'C1', ('O1', 'O2'), True,
+    True)], builder_rows(model, f)
+  assert f.groups[0]['notes'] == ['metal-bound: O2']
+  # ZZW N1 bonded to an acetyl C (one N-H less): the ammonium's N is capped
+  a = M.pdb_from_cif('ZZW', M.zzw_cif, drop=('HN13',)).split('\n')
+  acetyl = [l[:17] + 'ZAC B' + l[22:] for l in M.pdb_from_cif('ZAC', M.zac_cif,
+    drop=('O2',)).split('\n') if l.startswith('HETATM')]
+  edits = M.zinc_edits.replace('chain A and resseq 1 and name S1',
+    'chain A and resseq 1 and name N1').replace('chain Z and resseq 1 and name ZN',
+    'chain B and resseq 1 and name C1').replace('2.30', '1.33')
+  model = M.get_model('\n'.join(a[:-1] + acetyl + ['END']), cifs=(('ZZW', M.zzw_cif),
+    ('ZAC', M.zac_cif)), edits=edits)
+  f = found_for(model)
+  assert [(g['resname'], g['kind']) for g in f.groups] == [('ZZW', 'sulfonate')], f.groups
+  assert f.dropped == [dict(residue='A ZZW 1', altloc='', kind='ammonium', charge=1,
+    atoms=['N1'], reason='capped: N1 linked to B ZAC 1 C1')], f.dropped
+  # ACT B 2 ester-linked to Ser OG: no carboxylate
+  model = M.get_model(M.ester_pdb, edits=M.ester_edits)
+  f = found_for(model)
+  assert [g for g in f.groups if g['resname'] == 'ACT'] == [] and f.failures == []
+  # builder failure
+  model = M.get_model(M.pdb_from_cif('ZC5', M.zc5_cif), cifs=(('ZC5', M.zc5_cif),))
+  f = found_for(model)
+  assert f.groups == [] and [x['residue'] for x in f.failures] == ['A ZC5 1']
+  assert f.failures[0]['reason'].startswith('DetermineBondOrders fails for ZC5')
+  # the manager: ZZW 6 A away gives probe2 polar H
+  zzw = [l[:21] + 'B' + l[22:30] + '%8.3f' % (float(l[30:38]) + 6.0) + l[38:]
+    for l in M.pdb_from_cif('ZZW', M.zzw_cif).split('\n') if l.startswith('HETATM')]
+  zc5 = M.pdb_from_cif('ZC5', M.zc5_cif).split('\n')
+  model = M.get_model('\n'.join(zc5[:-1] + zzw + ['END']), cifs=(('ZC5', M.zc5_cif),
+    ('ZZW', M.zzw_cif)))
+  m = get_manager(model, sel='resname ZC5')
+  assert m.charged_groups == [] and m.charged_group_failures == f.failures
+  assert m.as_dict()['charged_group_failures'] == f.failures
+  assert [(x['source'], x['status'].startswith('not compared (residue_molecule failed: '))
+    for x in m.formal_charges if x['residue'] == 'A ZC5 1'] == [('restraints', True)], \
+    m.formal_charges
+  log = StringIO()
+  m.show(log=log)
+  assert 'residues without charged groups (residue_molecule failed):' in log.getvalue()
+  assert '    A ZC5 1: DetermineBondOrders fails for ZC5' in log.getvalue()
+
+def pdb_from_cif_text(code, text):
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  return M.pdb_from_cif(code, text).split('\n')
+
+def exercise_builder_chain():
+  '''
+  SEP between two Gly with a SEP restraint file without HOP2/HOP3 (GeoStd's SEP is
+  the neutral acid) and the model without them: the phosphate from the builder,
+  -2, uncertain (no formal charges: total by search); the backbone is not a group
+  (caps on N and C). With GeoStd's SEP and HOP2/HOP3 modelled: no group.
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  from mmtbx.monomer_library import server
+  import os
+  model = M.get_model(M.chain_pdb)
+  f = LI.find_charged_groups(model, all_atoms(model))
+  assert [g for g in f.groups if g['resname'] == 'SEP'] == [] and f.failures == []
+  text = open(os.path.join(server.server().geostd_path, 's', 'data_SEP.cif')).read()
+  dianion = '\n'.join([l for l in text.split('\n') if 'HOP2' not in l and 'HOP3' not in l])
+  pdb = '\n'.join([l for l in M.chain_pdb.split('\n') if l[12:16].strip() not in ('HOP2',
+    'HOP3')])
+  model = M.get_model(pdb, cifs=(('SEP', dianion),))
+  f = LI.find_charged_groups(model, all_atoms(model))
+  rows = builder_rows(model, f)
+  assert rows == [('A SEP 2', 'phosphate', -2, 'P', ('O1P', 'O2P', 'O3P'), False, False)], rows
+  (g,) = [g for g in f.groups if g['resname'] == 'SEP']
+  assert g['charge_source'] == 'search' and g['hydrogens'] == 'model'
+
+def exercise_templates_vs_builder():
+  '''
+  Gly-Asp-Lys-Arg-His-Gly, H complete (reduce2): the templates and the builder
+  (use_templates=False) give the same side-chain groups; the builder's are
+  uncertain (the amino-acid restraint files have no formal charges: total by
+  search). The N-terminal Gly with H1-H3 fails in the builder (the in-chain GLY
+  file has one H on N); the C-terminal Gly without OXT: no group either way (the
+  builder caps its C for the absent residue).
+  '''
+  model = get_model(gdkrhg_model_str.split('\n'))
+  atoms = model.get_hierarchy().atoms()
+  t = LI.find_charged_groups(model, all_atoms(model))
+  b = LI.find_charged_groups(model, all_atoms(model), use_templates=False)
+  def core(groups):
+    return sorted([(LI.residue_label(atoms[g['center']]), g['kind'], g['charge'],
+      tuple(sorted([atoms[i].name.strip() for i in g['charged']]))) for g in groups
+      if g['charge']])
+  side = [r for r in core(t.groups) if r[0] != 'A GLY 1']
+  assert side == [('A ARG 4', 'guanidinium', 1, ('NE', 'NH1', 'NH2')),
+    ('A ASP 2', 'carboxylate', -1, ('OD1', 'OD2')), ('A HIS 5', 'imidazolium', 1, ('ND1', 'NE2')),
+    ('A LYS 3', 'ammonium', 1, ('NZ',))], side
+  assert core(b.groups) == side, core(b.groups)
+  assert [r for r in core(t.groups) if r[0] == 'A GLY 1'] == [('A GLY 1', 'ammonium', 1,
+    ('N',))]
+  assert set([(g['source'], g['certain'], g['charge_source']) for g in b.groups]) == set(
+    [('builder', False, 'search')])
+  assert set([(g['source'], g['certain']) for g in t.groups]) == set([('template', True)])
+  assert [(x['residue'], x['reason']) for x in b.failures] == [('A GLY 1',
+    'H not in the restraint file: N: 3 H in the model, 1 in the restraint file')]
+  assert t.failures == [] and t.missing == []
+  # the C-terminal Gly without OXT: the absent following residue capped (not an
+  # acylium cation), neutral
+  from mmtbx.ligands import rdkit_utils
+  rg = [x for x in model.get_hierarchy().residue_groups() if x.resseq_as_int() == 6][0]
+  r = rdkit_utils.residue_molecule(model, rg)
+  assert r.ok and r.total_charge == 0, r.reason
+  assert sorted([(c['kind'], atoms[c['on']].name.strip(), c['partner'] if c['kind'] ==
+    'missing' else atoms[c['partner']].name.strip()) for c in r.caps]) == [
+    ('linked', 'N', 'C'), ('missing', 'C', '(no following residue)')], r.caps
+
+def exercise_nucleotides():
+  '''
+  Nucleotides by name: DG 2 in the chain -1 (OP1, OP2); DG with OP3 (5' phosphate)
+  -2; with HOP3 on OP3 -1; without H the charge at pH 7 ("assumed (no H)"); DC 1
+  without P: no group.
+  '''
+  lines = [l for l in dna_model_str.split('\n') if l.startswith('ATOM')]
+  def rows(lines):
+    model = get_model(['CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1'] + lines +
+      ['END'])
+    return group_rows(model, LI.find_charged_groups(model, all_atoms(model)).groups)
+  assert rows(lines) == [('A DG 2', 'phosphate', -1, -1, 'modelled', '', 'template',
+    ('OP1', 'OP2'))], rows(lines)
+  o3 = [l for l in lines if l[12:16] == " O3'" and l[22:26] == '   1'][0]
+  dg = [l for l in lines if l[22:26] == '   2']
+  op3 = o3[:12] + ' OP3  DG A   2' + o3[26:]
+  assert rows(dg + [op3]) == [('A DG 2', 'phosphate', -2, -2, 'modelled', '', 'template',
+    ('OP1', 'OP2', 'OP3'))]
+  hop3 = op3[:12] + 'HOP3' + op3[16:30] + '%8.3f' % (float(op3[30:38]) + 0.96) + \
+    op3[38:76] + ' H'
+  assert rows(dg + [op3, hop3])[0][2:5] == (-1, -2, 'modelled')
+  no_h = [l for l in lines if l[76:78].strip() != 'H']
+  assert rows(no_h) == [('A DG 2', 'phosphate', -1, -1, 'assumed (no H)', '', 'template',
+    ('OP1', 'OP2'))]
+  assert rows([l for l in dg if l[76:78].strip() != 'H'] + [op3])[0][2:5] == (-2, -2,
+    'assumed (no H)')
+
+def exercise_termini():
+  '''
+  Without H, the N-terminus is assumed +1 only for the first residue of its chain:
+  LYS 50 (no H) of templates_model_str as residue 1 and 5 of a chain: residue 1
+  only. Neither has OXT: chain breaks, no C-terminal group and no missing OXT.
+  '''
+  lys = [l for l in templates_model_str.split('\n') if l[17:26] == 'LYS B  50']
+  first = [l[:21] + 'X   1' + l[26:] for l in lys]
+  fifth = [l[:21] + 'X   5' + l[26:30] + '%8.3f' % (float(l[30:38]) + 20) + l[38:] for l in lys]
+  model = get_model(['CRYST1  200.000  200.000  200.000  90.00  90.00  90.00 P 1'] + first +
+    fifth + ['END'])
+  f = LI.find_charged_groups(model, all_atoms(model))
+  assert group_rows(model, f.groups) == [
+    ('X LYS 1', 'ammonium', 1, 1, 'assumed (no H)', '', 'template', ('N',)),
+    ('X LYS 1', 'ammonium', 1, 1, 'assumed (no H)', '', 'template', ('NZ',)),
+    ('X LYS 5', 'ammonium', 1, 1, 'assumed (no H)', '', 'template', ('NZ',))], \
+    group_rows(model, f.groups)
+  assert f.missing == []
 
 def all_atoms(model):
   return flex.bool(model.get_number_of_atoms(), True)
@@ -1572,8 +2106,9 @@ def group_rows(model, groups, charged_only=False):
 
 def exercise_charged_groups():
   '''
-  Every group kind on the salt fixtures (charged groups); for H-complete,
-  altloc-free standard residues the templates and the rules give the same groups.
+  Every group kind on the salt fixtures (charged groups): the standard residues by
+  template, ACT and NH4 from the builder (templates vs builder:
+  exercise_templates_vs_builder).
   '''
   model = get_model(salt_model_str.split('\n'))
   atoms = model.get_hierarchy().atoms()
@@ -1582,23 +2117,22 @@ def exercise_charged_groups():
   assert kinds == [('ammonium', 1, 'LYS'), ('ammonium', 1, 'LYS'), ('ammonium', 1, 'NH4'),
     ('carboxylate', -1, 'ACT'), ('carboxylate', -1, 'ACT'), ('carboxylate', -1, 'ASP'),
     ('carboxylate', -1, 'ASP'), ('guanidinium', 1, 'ARG'), ('imidazolium', 1, 'HIS')], kinds
-  rules = LI.find_charged_groups(model, all_atoms(model), use_templates=False)
-  def core(groups):
-    return sorted([(g['kind'], g['charge'], g['center'], tuple(sorted(g['charged'])))
-      for g in groups if g['charge']])
-  assert core(found.groups) == core(rules.groups)
   assert set([g['source'] for g in found.groups if g['resname'] in ('LYS', 'ARG', 'HIS',
     'ASP')]) == set(['template'])
-  assert set([g['source'] for g in rules.groups]) == set(['rules'])
-  assert set([g['usual_charge'] for g in rules.groups]) == set([None])
+  builder = [g for g in found.groups if g['resname'] in ('ACT', 'NH4')]
+  assert sorted(set([(g['resname'], g['source'], g['certain'], g['usual_charge'],
+    g['charge_source']) for g in builder])) == [('ACT', 'builder', True, None,
+    'formal charges'), ('NH4', 'builder', True, None, 'restraint file')], builder
+  assert found.failures == [] and found.dropped == []
 
 def exercise_amino_acid_templates():
   '''
   Charge as modelled from the H on the group atoms, the charge at pH 7 recorded:
   Asp with HD2 neutral, His with HD1 only neutral and with HD1 and HE2 charged,
   Lys with two H on NZ neutral, a residue without H assumed at pH 7 and flagged,
-  Arg complete charged; the N-terminal N (two H here) neutral; a missing OXT is
-  reported and the C-terminal group skipped.
+  Arg complete charged; the N-terminal N (two H here) neutral; without H (Lys 50,
+  not the chain's first residue) no N-terminal group; no OXT: chain breaks, no
+  C-terminal group and nothing reported.
   '''
   model = get_model(templates_model_str.split('\n'))
   found = LI.find_charged_groups(model, all_atoms(model))
@@ -1614,15 +2148,14 @@ def exercise_amino_acid_templates():
   nterm = [r for r in group_rows(model, found.groups) if r[7] == ('N',)]
   assert [(r[0], r[2], r[4]) for r in nterm] == [('B ARG 60', 0, 'modelled'),
     ('B ASP 10', 0, 'modelled'), ('B HIS 20', 0, 'modelled'), ('B HIS 30', 0, 'modelled'),
-    ('B LYS 40', 0, 'modelled'), ('B LYS 50', 1, 'assumed (no H)')], nterm
-  assert sorted([(x['residue'], x['kind'], x['atoms']) for x in found.missing]) == [
-    (r, 'carboxylate', ['OXT']) for r in ('B ARG 60', 'B ASP 10', 'B HIS 20', 'B HIS 30',
-    'B LYS 40', 'B LYS 50')]
+    ('B LYS 40', 0, 'modelled')], nterm
+  assert found.missing == []
 
 def exercise_conformers():
   '''
   Per conformer: Asp/Asn microheterogeneity gives the carboxylate for Asp (A)
-  only; an Asp split into A and B next to a blank-altloc ligand ammonium makes one
+  only (the residue split into two residue groups: the N-terminal N of each
+  conformer); an Asp split into A and B next to a blank-altloc ligand ammonium makes one
   salt bridge per conformer; with the ligand split too, A pairs only with A and B
   with B (all four distances within 4 A).
   '''
@@ -1632,8 +2165,7 @@ def exercise_conformers():
   assert rows == [('B ASP 10', 'carboxylate', -1, -1, 'modelled', 'A', 'template',
     ('OD1', 'OD2'))], rows
   assert [g['resname'] for g in found.groups if g['altloc'] == 'B'] == ['ASN']
-  assert sorted([(x['residue'], x['altloc']) for x in found.missing]) == [
-    ('B ASN 10', 'B'), ('B ASP 10', 'A')]
+  assert found.missing == []
   atoms = model.get_hierarchy().atoms()
   assert [LI.residue_label(atoms[g['center']], g['resname']) for g in found.groups
     if g['altloc'] == 'B'] == ['B ASN 10']
@@ -1710,6 +2242,11 @@ def run():
   exercise_charged_groups()
   exercise_amino_acid_templates()
   exercise_conformers()
+  exercise_builder_groups()
+  exercise_builder_chain()
+  exercise_templates_vs_builder()
+  exercise_nucleotides()
+  exercise_termini()
   exercise_group_scope()
   exercise_salt_bridges()
   exercise_salt_bridge_symmetry()

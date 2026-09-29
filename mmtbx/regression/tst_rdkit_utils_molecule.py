@@ -781,6 +781,16 @@ def charged(r):
   return sorted([(a.GetProp('_Name'), a.GetFormalCharge()) for a in r.mol.GetAtoms()
     if a.GetFormalCharge()])
 
+def zzs_cif():
+  '''ZSH with a Zn in the residue bonded to S1 ('metal').'''
+  t = zsh_cif.replace('ZSH', 'ZZS').replace("'ZZS' ligand 9 3", "'ZZS' ligand 10 4")
+  t = t.replace(' ZZS  HS11 H  H     0   0.000   1.9180   1.0419  -0.1009\n',
+    ' ZZS  HS11 H  H     0   0.000   1.9180   1.0419  -0.1009\n'
+    ' ZZS  ZN1  ZN ZN    0   0.000   3.5394   1.0507   1.8340\n')
+  t = t.rstrip('\n') + '\n ZZS  S1   ZN1  metal    2.300  0.050\n'
+  assert t.count('ZN1') == 2
+  return t
+
 class captured(object):
   '''Everything written to the process's stdout and stderr (file descriptors).'''
   def __enter__(self):
@@ -1041,18 +1051,76 @@ def exercise_split_oxygen():
 def exercise_formal_total():
   '''
   With formal charges the total is fixed (no search): ZAH (-1 on O2, the model has
-  the file's HO21) and ZNC (-1 on both O) fail with the reason.
+  the file's HO21) and ZNC (-1 on both O) fail with the reason, after the input,
+  canonical and 10 random atom orders (12 calls).
   '''
   r = build(get_model(pdb_from_cif('ZAH', zah_cif), cifs=(('ZAH', zah_cif),)))
   assert not r.ok and r.mol is None and r.fragment_mol is None
   assert r.reason.startswith('DetermineBondOrders fails for ZAH with the formal total -1:'), \
     r.reason
-  assert r.search['calls'] == 1 and r.total_charge is None and r.charge_certain is None
+  assert r.search['calls'] == 12 and r.total_charge is None and r.charge_certain is None
+  assert r.reason.endswith(' (also in the canonical and 10 random atom orders)'), r.reason
   r = build(get_model(pdb_from_cif('ZNC', znc_cif), cifs=(('ZNC', znc_cif),)))
   assert not r.ok
   assert r.reason.startswith('DetermineBondOrders fails for ZNC with the formal total -2:'), \
     r.reason
-  assert r.search['calls'] == 1
+  assert r.search['calls'] == 12 and r.search['order'] is None
+
+def exercise_file_first():
+  '''
+  Every bond between the heavy atoms present has an explicit order and the file has
+  formal charges: the molecule from the file (ZAA acetic acid; ZSH thiolate on a
+  Zn of the residue, the deprotonation applied to S1), no DetermineBondOrders call.
+  Otherwise DetermineBondOrders, retried in other atom orders: GeoStd AQS with
+  C1A-C2A made 'coval' fails in the input order at +2 and succeeds in a random one.
+  '''
+  zaa = zah_cif.replace('ZAH', 'ZAA').replace(' ZAA  O2   O  O    -1 ',
+    ' ZAA  O2   O  O     0 ').replace(' ZAA  C1   O1   deloc ', ' ZAA  C1   O1   double'
+    ).replace(' ZAA  C1   O2   deloc ', ' ZAA  C1   O2   single')
+  r = build(get_model(pdb_from_cif('ZAA', zaa), cifs=(('ZAA', zaa),)))
+  assert r.ok, r.reason
+  assert (r.total_charge, r.total_charge_source, r.charge_certain) == (0,
+    'restraint file', True)
+  assert r.search['calls'] == 0 and smiles(r) == 'CC(=O)O'
+  model = get_model(pdb_from_cif('ZZS', zzs_cif(), drop=('HS11',)), cifs=(('ZZS', zzs_cif()),))
+  r = build(model)
+  assert r.ok and (r.total_charge, r.total_charge_source) == (-1, 'restraint file'), r.reason
+  assert charged(r) == [('S1', -1)]
+  # ZAC ('deloc' C-O): DetermineBondOrders
+  r = build(get_model(pdb_from_cif('ZAC', zac_cif), cifs=(('ZAC', zac_cif),)))
+  assert r.total_charge_source == 'formal charges' and r.search['order'] == 'input'
+  import re
+  from mmtbx.monomer_library import server
+  path = os.path.join(server.server().geostd_path, 'a', 'data_AQS.cif')
+  text = open(path).read()
+  coval = re.sub(r'( AQS\s+C1A\s+C2A\s+)single', r'\1coval ', text)
+  assert coval != text
+  r = build(get_model(pdb_from_cif('AQS', text), cifs=(('AQS', text),)))
+  assert r.ok and r.total_charge_source == 'restraint file', r.reason
+  r = build(get_model(pdb_from_cif('AQS', coval), cifs=(('AQS', coval),)))
+  assert r.ok, r.reason
+  assert (r.total_charge, r.total_charge_source) == (2, 'formal charges')
+  assert r.search['order'].startswith('random (seed ') and r.search['calls'] > 2, r.search
+  assert 'DetermineBondOrders succeeded in the %s atom order' % r.search['order'] in \
+    r.charge_notes
+  assert r.differences['bonds'] == [], r.differences
+
+def exercise_peptide_ends():
+  '''
+  A peptide restraint file whose unlinked N or C has a valence open gets a cap for
+  the absent neighbour residue: GeoStd 4GJ (N-CA and N-H single, no H2) alone:
+  capped N, ok; GeoStd MH6 (imine N=CA, no H2): no cap, ok.
+  '''
+  from mmtbx.monomer_library import server
+  geostd = server.server().geostd_path
+  for code, capped in (('4GJ', True), ('MH6', False)):
+    text = open(os.path.join(geostd, code[0].lower(), 'data_%s.cif' % code)).read()
+    model = get_model(pdb_from_cif(code, text), cifs=((code, text),))
+    r = build(model)
+    assert r.ok, (code, r.reason)
+    atoms = model.get_hierarchy().atoms()
+    caps = [(atoms[c['on']].name.strip(), c['partner']) for c in r.caps]
+    assert caps == ([('N', '(no preceding residue)')] if capped else []), (code, caps)
 
 def exercise_search():
   '''
@@ -1144,16 +1212,18 @@ def exercise_bond_order_agreement():
   assert cc != zac_cif
   r = build(get_model(pdb_from_cif('ZAC', cc), cifs=(('ZAC', cc),)))
   assert not r.ok and r.reason == 'bond orders disagree with the restraint file for ZAC ' \
-    'at the formal total -1: C2-C1: restraint file 2, RDKit 1', r.reason
+    'at the formal total -1: C2-C1: restraint file 2, RDKit 1 (also in the canonical ' \
+    'and 10 random atom orders)', r.reason
 
 def exercise_metal_fragments():
   '''
   The residue's metals are in the fragments (dative bonds from the residue's atoms,
   not cut). HEM (no H): all 43 heavy atoms, Fe with the porphyrin, as with the
   pre-B1 route (22f62b3fc6). ZZS (ZSH with its Zn in the residue, thiol H missing):
-  deprotonation, S1 with the Zn (as pre-B1). OFO: the bare oxide fails
-  DetermineBondOrders; the approximate molecule keeps the metals (dative bonds):
-  one component (as pre-B1).
+  deprotonation, S1 with the Zn (as pre-B1). OFO: from the file (oxide -2, hydroxide
+  -1), one component (as pre-B1); with the oxide's charge '?' (counted 0) no
+  structure, and the approximate molecule keeps the metals (dative bonds): one
+  component.
   '''
   model = get_model(hem_pdb)
   atoms = model.get_hierarchy().atoms()
@@ -1173,12 +1243,7 @@ def exercise_metal_fragments():
   assert 'Fe' not in [a.GetSymbol() for a in r.mol.GetAtoms()]
   assert r.charge_certain is False
   # Zn in the residue
-  zzs = zsh_cif.replace('ZSH', 'ZZS').replace("'ZZS' ligand 9 3", "'ZZS' ligand 10 4")
-  zzs = zzs.replace(' ZZS  HS11 H  H     0   0.000   1.9180   1.0419  -0.1009\n',
-    ' ZZS  HS11 H  H     0   0.000   1.9180   1.0419  -0.1009\n'
-    ' ZZS  ZN1  ZN ZN    0   0.000   3.5394   1.0507   1.8340\n')
-  zzs = zzs.rstrip('\n') + '\n ZZS  S1   ZN1  metal    2.300  0.050\n'
-  assert zzs.count('ZN1') == 2
+  zzs = zzs_cif()
   model = get_model(pdb_from_cif('ZZS', zzs, drop=('HS11',)), cifs=(('ZZS', zzs),))
   atoms = model.get_hierarchy().atoms()
   rc = rdkit_utils.residue_rigid_components(model, model.get_hierarchy().only_residue_group())
@@ -1191,14 +1256,25 @@ def exercise_metal_fragments():
     for c in rc.components])
   assert part == [['C1', 'C2'], ['S1', 'ZN1']], part
   assert sorted([i for c in rc.components for i in c]) == list(range(model.get_number_of_atoms()))
-  # OFO: approximate, with the metals
+  # OFO: from the file
   model = get_model(pdb_from_cif('OFO', ofo_cif), cifs=(('OFO', ofo_cif),))
+  atoms = model.get_hierarchy().atoms()
+  rc = rdkit_utils.residue_rigid_components(model, model.get_hierarchy().only_residue_group())
+  assert rc.approximate is None and rc.molecule.total_charge_source == 'restraint file'
+  assert Chem.MolToSmiles(rc.molecule.fragment_mol) == '[H][O-]->[Fe]<-[O-2]->[Fe]', \
+    Chem.MolToSmiles(rc.molecule.fragment_mol)
+  assert [sorted([atoms[i].name.strip() for i in comp]) for comp in rc.components] == [
+    ['FE1', 'FE2', 'HO', 'O', 'OH']], rc.components
+  # the oxide's charge '?': approximate, with the metals
+  q = ofo_cif.replace(' OFO  O    O  O    -2 ', ' OFO  O    O  O     ? ')
+  assert q != ofo_cif
+  model = get_model(pdb_from_cif('OFO', q), cifs=(('OFO', q),))
   atoms = model.get_hierarchy().atoms()
   rg = model.get_hierarchy().only_residue_group()
   with captured() as c:
     rc = rdkit_utils.residue_rigid_components(model, rg)
   assert rc.approximate.startswith('approximate: DetermineBondOrders fails for OFO with '
-    'the formal total -3:'), rc.approximate
+    'the formal total -1:'), rc.approximate
   assert [sorted([atoms[i].name.strip() for i in comp]) for comp in rc.components] == [
     ['FE1', 'FE2', 'HO', 'O', 'OH']], rc.components
   mol, rdkit_to_iseq = rdkit_utils.approximate_residue_molecule(model, rg)
@@ -1237,7 +1313,7 @@ def exercise_failure():
   assert not r.ok and r.mol is None and r.fragment_mol is None
   assert r.reason.startswith('DetermineBondOrders fails for ZC5 with the formal total 0:'), \
     r.reason
-  assert r.search['calls'] == 1 and r.search['valid'] == []
+  assert r.search['calls'] == 12 and r.search['valid'] == []
   assert c.text == '', repr(c.text)
 
 def exercise_rigid_components():
@@ -1298,6 +1374,8 @@ def run():
   exercise_missing_heavy_atoms()
   exercise_split_oxygen()
   exercise_formal_total()
+  exercise_file_first()
+  exercise_peptide_ends()
   exercise_search()
   exercise_hydrogen_contract()
   exercise_bond_order_agreement()

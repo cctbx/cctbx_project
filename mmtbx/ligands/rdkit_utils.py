@@ -1256,7 +1256,11 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   bond to an atom outside the residue (polymer bond, covalent link; links counted
   once per partner atom (chain, residue, name), whatever its altloc), one per
   restraint-file heavy atom missing from the model (on its present neighbour,
-  unless that neighbour is linked: the link replaces the leaving atom).
+  unless that neighbour is linked: the link replaces the leaving atom), one on an
+  unlinked, uncharged N or C of a peptide restraint file whose file bonds leave one
+  valence open (the absent neighbour residue): explicit orders summing to 2 on N or
+  3 on C (N with only CA and H; not an imine N=CA), else two file neighbours (e.g.
+  a monomer-library in-chain file without OXT).
 
   Hydrogens: the restraint file is the reference protonation. Per heavy atom, the
   file's H minus those replaced by link caps (one per cap, less the atom's missing
@@ -1268,7 +1272,15 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   Without any H in the conformer: the file's H on every atom (no deprotonation).
 
   Total charge: the file's formal charges (_chem_comp_atom.charge) over the atoms
-  present, minus the deprotonations; if DetermineBondOrders fails with it: failure.
+  present, minus the deprotonations.
+  File first: with formal charges, and an explicit single/double/triple/aromatic
+  order in the file for every bond between the heavy atoms present, the molecule
+  takes the file's orders and charges (a deprotonated atom's charge lowered by its
+  deprotonations); used (source "restraint file") if it sanitizes without radicals
+  at that total. Otherwise DetermineBondOrders at that total, in the input atom
+  order, then RDKit's canonical order, then 10 seeded random orders (it depends on
+  the order); the first that succeeds and agrees with the file is taken
+  (search["order"]); none: failure.
   Without formal charges: the totals -4..+4; valid: DetermineBondOrders succeeds and
   the bonds agree with the file; totals whose structure charges a carbon set aside
   when others are valid; one left: taken, charge_certain False; else failure.
@@ -1285,9 +1297,9 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   hydrogens ("model", "completed from the restraint file", "restraint file (no H
   in the model)"), h_differences [dict(atom, model, restraint_file, kind:
   added/deprotonation/extra, added)], uncertain_atoms (names of heteroatoms whose
-  H come from the restraint file), total_charge, total_charge_source (formal
-  charges / search), charge_certain, search (calls, seconds, valid, set_aside,
-  disagree), charge_notes, differences (information: bonds against the file's
+  H come from the restraint file; uncertain_iseqs: their i_seqs), total_charge, total_charge_source (restraint
+  file / formal charges / search), charge_certain, search (calls, seconds, valid,
+  set_aside, disagree, order), charge_notes, differences (information: bonds against the file's
   explicit bonds one by one, aromatic apart; formal charges against the file's,
   resonance-equivalent atoms apart), seconds, resname.
   """
@@ -1299,6 +1311,7 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   result = group_args(ok=False, reason=None, mol=None, fragment_mol=None,
     rdkit_to_iseq={}, fragment_to_iseq={}, caps=[], linked=[], missing_neighbour=[],
     metal_bound=[], added_h=[], hydrogens=None, h_differences=[], uncertain_atoms=[],
+    uncertain_iseqs=[],
     total_charge=None, total_charge_source=None, charge_certain=None, charge_notes=[],
     differences=dict(bonds=[], charges=[]), seconds=None, resname=None, search=None)
   def fail(reason):
@@ -1401,13 +1414,31 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
     "DNA", "RNA")
   polymer_pairs = (("N", "C"), ("C", "N"), ("P", "O3'"), ("O3'", "P"), ("P", "O3*"),
     ("O3*", "P"))
+  # a peptide chain end where the file leaves the link's valence open (unlinked N or
+  # C, uncharged, explicit orders summing to 2 on N or 3 on C, e.g. N-CA, N-H of a
+  # peptide-linking file; not an imine N=CA): the absent neighbour residue capped
+  if polymer and group != "DNA" and group != "RNA":
+    kinds = {"sing": 1, "doub": 2, "trip": 3}
+    file_orders = {}
+    for b in comp.bond_list:
+      t = kinds.get((b.type or "").strip().lower()[:4])
+      for x in (b.atom_id_1.strip(), b.atom_id_2.strip()):
+        file_orders.setdefault(x, []).append(t)
+    for n, valence, where in (("N", 3, "preceding"), ("C", 4, "following")):
+      i = present_names.get(n)
+      o = file_orders.get(n, [])
+      q = cif_types.formal_charge_and_problem(getattr(d_atoms.get(n), "charge", None))[0]
+      # orders not explicit (e.g. monomer library 'coval'): two file neighbours
+      open_ = (sum(o) == valence - 1) if None not in o else len(o) == 2
+      if i is not None and i not in linked and o and not q and open_:
+        missing_caps.append((i, "(no %s residue)" % where))
   caps_on = {}
   for i, k in links:
     if polymer and (atoms[i].name.strip(), atoms[k].name.strip()) in polymer_pairs:
       continue
     caps_on[i] = caps_on.get(i, 0) + 1
   # hydrogens against the restraint file, per heavy atom
-  deprotonations, to_add, extra = 0, {}, []
+  deprotonations, deprotonated, to_add, extra = 0, {}, {}, []
   for i in heavy:
     n = dict_name[i]
     hs = d_h(n)
@@ -1423,6 +1454,7 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
     elif has_h and i in metal_bound:
       diff["kind"] = "deprotonation"
       deprotonations += want - len(mine)
+      deprotonated[i] = want - len(mine)
       result.charge_notes.append("%s: %d restraint-file H missing on a metal-bound "
         "atom, counted as deprotonation" % (n, want - len(mine)))
     else:
@@ -1433,6 +1465,7 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
       diff["added"] = new
       if el(i) != "C":
         result.uncertain_atoms.append(n)
+        result.uncertain_iseqs.append(i)
     if has_h:
       result.h_differences.append(diff)
   if not has_h:
@@ -1527,13 +1560,15 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   # the file's explicit bond orders between heavy atoms present
   rd_of_name = dict([(dict_name[i], idx[i]) for i in present])
   orders = {"sing": 1, "doub": 2, "trip": 3}
-  explicit = {}
+  explicit, file_type = {}, {}
   for b in comp.bond_list:
     a1, a2 = b.atom_id_1.strip(), b.atom_id_2.strip()
     t = (b.type or "").strip().lower()[:4]
-    if a1 in rd_of_name and a2 in rd_of_name and t in orders and \
+    if a1 in rd_of_name and a2 in rd_of_name and \
         d_el.get(a1) not in ("H", "D") and d_el.get(a2) not in ("H", "D"):
-      explicit[(a1, a2)] = orders[t]
+      file_type[frozenset([a1, a2])] = t
+      if t in orders:
+        explicit[(a1, a2)] = orders[t]
   rd_order = {Chem.BondType.SINGLE: 1, Chem.BondType.DOUBLE: 2, Chem.BondType.TRIPLE: 3}
   def disagreements(m):
     got = {}
@@ -1553,26 +1588,95 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
         bad -= set(members)
     return ["%s-%s: restraint file %d, RDKit %d" % (p[0], p[1], explicit[p], got[p])
       for p in sorted(bad)]
-  def attempt(total):
-    m = Chem.RWMol(mol)
+  def attempt(total, order=None):
+    """DetermineBondOrders on mol, the atoms renumbered by order (then back)."""
+    m = Chem.RWMol(mol if order is None else Chem.RenumberAtoms(mol, order))
     try:
       rdDetermineBonds.DetermineBondOrders(m, charge=total, allowChargedFragments=True,
         embedChiral=True)
       Chem.SanitizeMol(m)
-      return m, None
     except Exception as e:
       return None, first_line(e)
-  result.search = dict(calls=0, seconds=0.0, valid=[], set_aside=[], disagree={})
-  if formal_total is not None:
-    result.search["calls"] += 1
-    m, error = attempt(formal_total)
+    if order is not None:
+      back = [0] * len(order)
+      for k, i in enumerate(order):
+        back[i] = k
+      m = Chem.RWMol(Chem.RenumberAtoms(m, back))
+    return m, None
+  def from_file():
+    """mol with the file's bond orders and formal charges (less the deprotonations); None unless sanitized without radicals."""
+    m = Chem.RWMol(mol)
+    kinds = {"sing": Chem.BondType.SINGLE, "doub": Chem.BondType.DOUBLE,
+      "trip": Chem.BondType.TRIPLE, "arom": Chem.BondType.AROMATIC}
+    for i, k in bonds:
+      if is_h(i) or is_h(k):
+        continue
+      bond = m.GetBondBetweenAtoms(idx[i], idx[k])
+      t = kinds[file_type[frozenset([dict_name[i], dict_name[k]])]]
+      bond.SetBondType(t)
+      if t == Chem.BondType.AROMATIC:
+        bond.SetIsAromatic(True)
+        m.GetAtomWithIdx(idx[i]).SetIsAromatic(True)
+        m.GetAtomWithIdx(idx[k]).SetIsAromatic(True)
+    for i in present:
+      q = cif_types.formal_charge_and_problem(getattr(d_atoms[dict_name[i]], "charge",
+        None))[0] if dict_name[i] in d_atoms else None
+      m.GetAtomWithIdx(idx[i]).SetFormalCharge((q or 0) - deprotonated.get(i, 0))
+    try:
+      Chem.SanitizeMol(m)
+      Chem.AssignRadicals(m)
+    except Exception:
+      return None
+    if [a for a in m.GetAtoms() if a.GetNumRadicalElectrons()] or \
+        Chem.GetFormalCharge(m) != formal_total:
+      return None
+    return m
+  result.search = dict(calls=0, seconds=0.0, valid=[], set_aside=[], disagree={},
+    order=None)
+  heavy_bonds = [frozenset([dict_name[i], dict_name[k]]) for i, k in bonds
+    if not is_h(i) and not is_h(k)]
+  m = None
+  if formal_total is not None and not [p for p in heavy_bonds if file_type.get(p) not in
+      ("sing", "doub", "trip", "arom")]:
+    m = from_file()
+    if m is not None:
+      mol, total, source, certain = m, formal_total, "restraint file", True
+  if m is not None:
+    pass
+  elif formal_total is not None:
+    # the input atom order, RDKit's canonical order, 10 seeded random orders
+    import random
+    probe = Chem.Mol(mol)
+    probe.UpdatePropertyCache(strict=False)
+    ranks = list(Chem.CanonicalRankAtoms(probe, breakTies=True))
+    trials = [("input", None), ("canonical", sorted(range(len(ranks)),
+      key=lambda i: ranks[i]))]
+    for seed in range(10):
+      order = list(range(len(ranks)))
+      random.Random(seed).shuffle(order)
+      trials.append(("random (seed %d)" % seed, order))
+    first = None
+    for label, order in trials:
+      result.search["calls"] += 1
+      m, error = attempt(formal_total, order)
+      bad = disagreements(m) if m is not None else None
+      if first is None:
+        first = (error, bad)
+      if m is not None and not bad:
+        result.search["order"] = label
+        break
+      m = None
     if m is None:
-      return fail("DetermineBondOrders fails for %s with the formal total %d: %s" % (
-        resname, formal_total, error))
-    bad = disagreements(m)
-    if bad:
+      error, bad = first
+      tail = " (also in the canonical and 10 random atom orders)"
+      if error is not None:
+        return fail("DetermineBondOrders fails for %s with the formal total %d: %s%s" % (
+          resname, formal_total, error, tail))
       return fail("bond orders disagree with the restraint file for %s at the formal "
-        "total %d: %s" % (resname, formal_total, "; ".join(bad)))
+        "total %d: %s%s" % (resname, formal_total, "; ".join(bad), tail))
+    if result.search["order"] != "input":
+      result.charge_notes.append("DetermineBondOrders succeeded in the %s atom order" %
+        result.search["order"])
     mol, total, source, certain = m, formal_total, "formal charges", True
   else:
     t_search = time.time()
