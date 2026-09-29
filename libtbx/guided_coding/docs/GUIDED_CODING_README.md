@@ -5,11 +5,11 @@ bytecode an installer's precompile step writes beside listed modules (the
 tools never load it) and keeps refusing any other unlisted code. r10 rev12
 changed only the `/skills` guidance, to
 match the rev11 Mac trial; rev11 itself was reviewed (no blocking finding)
-and trialled on the intended Mac. Rev12 is committed locally in
-`cctbx_project`, not published, and needs its own review before
+and trialled on the intended Mac. Rev13 is committed locally in
+`cctbx_project`, not published, and needs an outside review before
 publication.
 
-SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below): "Status: proposed successor to rejected r10 rev10. This revision refuses
+SUPERSEDED 2026-09-29 (rev12; see the Rev12 section of GUIDED_CODING_VERIFICATION.md): "Status: proposed successor to rejected r10 rev10. This revision refuses
 configuration paths containing `..` before any directory creation. It has not
 been reviewed as a release,
 integrated, or used on a real repository task." ("This revision" is rev11.) The two readings
@@ -31,7 +31,7 @@ occupied destinations. The rev10 review then found that a missing prefix
 followed by `..` could bypass registration's preflight and write inside the
 source or through a linked parent. Rev11 rejects such paths and tests all
 four reported cases. Its release packet and Desktop behavior still require
-independent review and live checks. (SUPERSEDED 2026-09-29 (rev12; see the Rev12 section below): rev11 was
+independent review and live checks. (SUPERSEDED 2026-09-29 (rev12; see the Rev12 section of GUIDED_CODING_VERIFICATION.md): rev11 was
 reviewed and its Desktop behavior trialled; rev12 still needs review.)
 
 Keep **one procedure copy** at `cctbx_project/libtbx/guided_coding/`.

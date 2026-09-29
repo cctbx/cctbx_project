@@ -5,6 +5,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import py_compile
 import shutil
 import subprocess
 import sys
@@ -90,6 +91,9 @@ class SourceInventoryChecks(unittest.TestCase):
              f"payload/tools/__pycache__/screen_check.{tag}.pyc"])
         return tag
 
+    # A configured bytecode cache prefix (Apple's python3, PYTHONPYCACHEPREFIX)
+    # moves bytecode out of __pycache__; these checks need the default layout.
+    @unittest.skipIf(getattr(sys, "pycache_prefix", None), "bytecode cache prefix is set")
     def test_real_precompilation_accepted_and_reported(self):
         self.precompile()
         result = self.run_source_check()
@@ -97,6 +101,7 @@ class SourceInventoryChecks(unittest.TestCase):
         self.assertIn("VERIFIED complete source", result.stdout)
         self.assertIn("ignored 2 precompiled bytecode file(s)", result.stdout)
 
+    @unittest.skipIf(getattr(sys, "pycache_prefix", None), "bytecode cache prefix is set")
     def test_unlisted_code_still_refused_after_precompilation(self):
         tag = self.precompile()
         tools = self.source / "payload" / "tools"
@@ -121,8 +126,17 @@ class SourceInventoryChecks(unittest.TestCase):
                 self.assertEqual(result.returncode, 2, label)
                 self.assertIn("extra source file", result.stderr)
                 path.unlink()
+        with self.subTest("unchecked-hash bytecode for a listed module"):
+            # Python runs unchecked-hash bytecode without consulting the source.
+            py_compile.compile(str(tools / "screen_check.py"), cfile=str(cached),
+                               invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+            result = self.run_source_check()
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("extra source file", result.stderr)
+            cached.unlink()
         self.assertEqual(self.run_source_check().returncode, 0)
 
+    @unittest.skipIf(getattr(sys, "pycache_prefix", None), "bytecode cache prefix is set")
     def test_tolerated_bytecode_is_never_loaded_by_the_tools(self):
         marker = self.source.parent / "cached-checker-ran"
         source = self.source / "payload" / "tools" / "screen_check.py"

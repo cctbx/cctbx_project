@@ -130,7 +130,8 @@ def verify_source(root):
     actual = {name: path for name, path in files
               if name != "SOURCE_MANIFEST.sha256"}
     precompiled = [name for name in actual
-                   if name not in expected and precompiled_bytecode(name, expected)]
+                   if name not in expected
+                   and precompiled_bytecode(name, expected, actual[name])]
     for name in precompiled:
         del actual[name]
     if not expected or expected.keys() != actual.keys():
@@ -144,17 +145,27 @@ def verify_source(root):
     return digest(raw)
 
 
-def precompiled_bytecode(name, expected):
+def precompiled_bytecode(name, expected, path):
     """True only for the file compileall (libtbx.py_compile_all) writes for a
     listed module: <dir>/__pycache__/<stem>.<tag>[.opt-N].pyc beside a listed
-    <dir>/<stem>.py. Any other unlisted file, including bytecode for an
-    unlisted module or a sourceless .pyc, is still refused."""
+    <dir>/<stem>.py, in a form Python checks against that source (timestamp
+    or checked hash). Any other unlisted file, including bytecode for an
+    unlisted module, a sourceless .pyc, or unchecked-hash bytecode (which
+    Python would run without consulting the source), is still refused. The
+    contents of accepted bytecode are not verified; these tools never load
+    it."""
     parts = name.split("/")
     if len(parts) < 2 or parts[-2] != "__pycache__":
         return False
     match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\.[a-z]+-?[0-9]+(?:\.opt-[12])?\.pyc",
                          parts[-1])
-    return bool(match) and "/".join(parts[:-2] + [match[1] + ".py"]) in expected
+    if not match or "/".join(parts[:-2] + [match[1] + ".py"]) not in expected:
+        return False
+    with path.open("rb") as stream:
+        header = stream.read(8)
+    # PEP 552 flags word: bit 0 = hash-based, bit 1 = check against source.
+    flags = int.from_bytes(header[4:8], "little") if len(header) == 8 else -1
+    return flags in (0, 3)
 
 
 def check_claude_version():

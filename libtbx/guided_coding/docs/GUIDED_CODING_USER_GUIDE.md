@@ -55,7 +55,9 @@ files were precompiled (for example by an installer's
 `libtbx.py_compile_all`), it also prints a NOTE that it ignored the
 `__pycache__` bytecode beside listed modules; the tools never load that
 bytecode, and any other unlisted file, including other bytecode, is still
-refused. Neither can establish who supplied the
+refused. Accepted bytecode is checked by name and header type, not by
+content: running the package's tests yourself with Python imports through
+that cache, so run them only on a trusted copy. Neither can establish who supplied the
 manifest or authenticate a different checkout. Compare the archive's
 SHA-256 to the independently supplied review message before trusting it.
 No `libtbx.install_guided_coding` dispatcher, per-repository installer,

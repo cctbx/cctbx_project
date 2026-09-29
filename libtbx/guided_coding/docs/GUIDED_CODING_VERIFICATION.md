@@ -158,12 +158,18 @@ complete-source check refused those files, so `/gc` would stop on such an
 installation. Rev13's `verify-source` accepts exactly that pattern, and only
 beside a **listed** module, and prints a NOTE with the count. Every other
 unlisted file is still refused, including bytecode for an unlisted module, a
-sourceless `.pyc`, other files in `__pycache__`, and bytecode for a listed
-name in another directory. The tools never load that bytecode:
+sourceless `.pyc`, other files in `__pycache__`, bytecode for a listed
+name in another directory, and unchecked-hash bytecode (which Python runs
+without consulting the source; compileall never writes it by default).
+**Limit:** accepted bytecode is checked by name and header type, not by
+content. The tools never load it, but an ordinary import does: running the
+package tests directly on an installation imports through that cache. The
+shared `libtbx/tst_guided_coding.py` therefore runs the package tests on a
+temporary copy of the listed files only. The tools never load that bytecode:
 `screen_check.py` runs as a script and imports only the standard library,
 and `review_bundle.py` now executes `screen_check.py`'s source text instead
 of using the caching import loader. Tests: a precompiled synthetic source
-passes; six unlisted-code variants are refused; a crafted bytecode file with
+passes; seven unlisted-code variants are refused; a crafted bytecode file with
 a valid header is loaded by an ordinary cached import (positive control) but
 not by either tool. The same three tests fail against the rev12 tools. On
 the Mac the real `libtbx.py_compile_all -i` was run on copies: rev12 refused,
