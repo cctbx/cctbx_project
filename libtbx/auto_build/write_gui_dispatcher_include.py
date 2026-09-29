@@ -6,6 +6,20 @@ import os.path
 import sys
 from optparse import OptionParser
 
+def _load_dispatcher_env():
+  '''The functions of this checkout's libtbx/dispatcher_env.py, loaded by
+  path: bootstrap runs this script with whatever Python it has, before libtbx
+  is importable, and a different libtbx importable there (another cctbx
+  installation) must not be used in its place.'''
+  path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
+    __file__))), "dispatcher_env.py")
+  namespace = {"__name__": "dispatcher_env", "__file__": path}
+  with open(path) as f:
+    exec(compile(f.read(), path, "exec"), namespace)
+  return namespace
+
+external_path_lines = _load_dispatcher_env()["external_path_lines"]
+
 def run(args, prologue=None, epilogue=None, out=sys.stdout):
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
@@ -136,16 +150,9 @@ fi
 """ % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version), file=f)
   # restore some variables for conda
   if sys.platform != "win32" and options.use_conda:
+    # The environment guard itself comes from the dispatcher writers in
+    # libtbx.env_config, so every build gets it; only GUI settings stay here.
     print("""
-# include at start
-if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
-   [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
-  # work around broken library environments
-  LD_LIBRARY_PATH=""
-  DYLD_LIBRARY_PATH=""
-  DYLD_FALLBACK_LIBRARY_PATH=""
-  PYTHONPATH=""
-fi
 # include before command
 if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
   if [ -z "$DISABLE_PHENIX_GUI" ]; then
@@ -156,17 +163,9 @@ fi
 """, file=f)
   # QBio DivCon paths
   if sys.platform != "win32":
-    print("""
-if [ ! -z "$QB_PYTHONPATH" ]; then
-  export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
-fi
-if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
-fi
-if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
-  export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
-fi
-""", file=f)
+    print("", file=f)
+    for line in external_path_lines("sh"):
+      print(line, file=f)
   if (epilogue is not None):
     f.write(epilogue + "\n")
   if (options.epilogue is not None):

@@ -105,6 +105,22 @@ def tar_extract(workdir, archive, modulename=None):
   return 0
 
 # Mock commands to run standalone, without buildbot.
+def conda_configure_environment(environ=os.environ):
+  """Environment overrides for running configure.py with a conda python.
+
+  PYTHONHOME is always removed, as the dispatchers do. The module and
+  library search variables are removed too, unless the caller opted out
+  with either variable the dispatchers honor (see libtbx.dispatcher_env).
+  A None value means "remove" to ShellCommand.get_environment.
+  """
+  env = {'PYTHONHOME': None}
+  if not (environ.get('CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES')
+          or environ.get('PHENIX_TRUST_OTHER_ENV')):
+    env.update(dict.fromkeys(('PYTHONPATH', 'LD_LIBRARY_PATH',
+                              'DYLD_LIBRARY_PATH',
+                              'DYLD_FALLBACK_LIBRARY_PATH')))
+  return env
+
 class ShellCommand(object):
   def __init__(self, **kwargs):
     self.kwargs = kwargs
@@ -121,17 +137,18 @@ class ShellCommand(object):
     return self.kwargs.get('workdir', _BUILD_DIR)
 
   def get_environment(self):
-    # gets environment from kwargs
+    # the environment of this one subprocess: a copy of the bootstrap
+    # process's own with the 'env' entries applied, where a None value
+    # removes the variable and a path is made absolute
     env = self.kwargs.get('env', None)
     if env:
+      rc = os.environ.copy()
       for key, item in env.items():
         if item is None:
-          env[key] = ''
+          rc.pop(key, None)
         else:
-          env[key] = os.path.abspath(item)
-      rc = os.environ
-      rc.update(env)
-      env=rc
+          rc[key] = os.path.abspath(item)
+      env = rc
     return env
 
   def run(self):
@@ -1934,6 +1951,7 @@ environment exists in or is defined by {conda_env}.
     # distributed or not - will this be problematic?
     self.add_step(self.shell(
       name='gui dispatcher',
+      env=self.conda_step_environment(),
       command=[
         self.python_base, #'python',
         self.opjoin("..",
@@ -1948,6 +1966,13 @@ environment exists in or is defined by {conda_env}.
       workdir=[_BUILD_DIR]
     ))
 
+  def conda_step_environment(self):
+    """conda_configure_environment() for a step that runs the conda python
+    (the include generator, pip); None for a non-conda build."""
+    if self.use_conda is None:
+      return None
+    return conda_configure_environment()
+
   def add_configure(self):
 
     env = None
@@ -1956,15 +1981,10 @@ environment exists in or is defined by {conda_env}.
       if '--use_conda' not in self.config_flags:
         self.config_flags.append('--use_conda')
       self.python_base = self._get_conda_python()
-      # conda python prefers no environment customizations
-      # the get_environment function in ShellCommand updates the environment
-      if os.environ.get('CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES', None):
-        env = {
-          'PYTHONPATH': None,
-          'LD_LIBRARY_PATH': None,
-          'DYLD_LIBRARY_PATH': None,
-          'DYLD_FALLBACK_LIBRARY_PATH': None
-        }
+      # conda python prefers no environment customizations: remove them
+      # for configure as the dispatchers do (PYTHONHOME always, the paths
+      # unless the caller opted out)
+      env = conda_configure_environment()
 
     configcmd =[
         self.python_base, # default to using our python rather than system python
@@ -2516,22 +2536,19 @@ in your path. """)
       self.python_base = self._get_conda_python()
       if self.python_base.startswith('../conda_base'):
         self.python_base = self.python_base[1:]  # keep current directory
-      env = {
-        'PYTHONPATH': None,
-        'LD_LIBRARY_PATH': None,
-        'DYLD_LIBRARY_PATH': None
-      }
       command = [self.python_base,
                  os.path.join('modules', 'cctbx_project', 'libtbx',
                               'auto_build', 'install_conda.py'),
                  '--install_dev_env', '--verbose']
-      self.add_step(self.shell(command=command, workdir=['.']))
+      self.add_step(self.shell(command=command, workdir=['.'],
+                               env=conda_configure_environment()))
 
   def add_make(self):
     super(PhenixBuilder, self).add_make()
     # install onedep_lib
     python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
     self.add_step(self.shell(
+      env=self.conda_step_environment(),
       command=[python, '-m', 'pip', 'install', '.'],
         workdir=['modules', 'onedep_lib'],
         description='pip installing onedep_lib',
@@ -2595,6 +2612,7 @@ class PhenixDiscambBuilder(PhenixBuilder):
     # install pyDiSCaMB
     python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
     self.add_step(self.shell(
+      env=self.conda_step_environment(),
       command=[python, '-m', 'pip', 'install', '.'],
         workdir=['modules', 'pyDiSCaMB'],
         description='pip installing pyDiSCaMB',
@@ -2606,6 +2624,7 @@ class PhenixMolstarBuilder(PhenixBuilder):
     super(PhenixMolstarBuilder, self).add_make()
     python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
     self.add_step(self.shell(
+      env=self.conda_step_environment(),
       command=[python, "install_molstar.py"],
         workdir=['modules', 'molstar_adaptbx',"command_line"],
         description='molstar adaptbx install script',
@@ -2814,6 +2833,7 @@ class QRBuilder(PhenixBuilder):
         name       = name,
         command    = command,
         workdir    = workdir,
+        env        = self.conda_step_environment(),
         description= "",
         haltOnFailure = 1, #haltOnFailure,
         ))
