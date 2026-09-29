@@ -106,7 +106,11 @@ dictionary-charged atom outside the groups (against 0); builder residues atom by
 atom, the builder's formal charges against the dictionary's, resonance-equivalent
 atoms (same element sharing a heavy neighbour) summed. Where the dictionary's H on the heavy
 atoms within two bonds match the model's, a different charge is a conflict
-(reported, not resolved); where they differ, "protonation differs".
+(reported, not resolved); where they differ, "protonation differs". Each record
+carries the restraint file's type_energy of its atoms (reported, not used; None
+for the CCD). A CCD entry whose heavy-atom names, elements or bonds do not match
+the residue's (an unrelated compound with the same code) is reported as "CCD entry
+does not match" instead of compared.
 Salt bridges: oppositely charged groups, criterion atom_pair (default: at least one
 pair of charged atoms within 4.0 A; Barlow & Thornton, J. Mol. Biol. 168, 867
 (1983): <= 4 A between charged groups) or charge_centre (charge centres within
@@ -114,6 +118,22 @@ pair of charged atoms within 4.0 A; Barlow & Thornton, J. Mol. Biol. 168, 867
 Thornton's 4 A + 1.5 A). Subtype (Kumar & Nussinov, Biophys. J. 83, 1595 (2002)):
 "salt bridge (K&N)" if the charge centres and at least one N-O pair are within
 4 A, "N-O bridge (K&N)" if only an N-O pair is, "longer-range (K&N)" otherwise.
+Possible salt bridges (possible_salt_bridges; listed apart, never counted): groups
+that can take part besides the certain charged ones are template groups neutral as
+modelled with a nonzero usual charge (protonated Asp/Glu/C-terminus, Lys or
+N-terminus with an H fewer, Arg missing an H, a protonated nucleotide phosphate;
+not His), uncertain builder groups, and neutral builder groups usually charged at
+pH 7 (builder_possible: carboxylic, phosphoric/phosphonic, sulfonic/sulfuric acid,
+1H-tetrazole: -1 per acidic OH or NH; aliphatic amine (not bonded to C=O, C=N,
+C=S, S=O, N, O, P, a nitrile C or an aromatic atom), amidine, guanidine: +1; not
+phenol, thiol, imidazole, pyridine, aniline; capped ones skipped silently). A pair: opposite charges, each group taken as its
+modelled charge if certain and charged, else its usual charge, at least one not a
+certain charged group; the salt-bridge criterion, cutoffs, symmetry and altloc
+rules and K&N subtype; ligand-internal pairs in internal. Each entry: both groups
+(modelled charge, usual charge, state), charges (as paired), reasons (per group
+not certainly charged: "<residue> <kind> protonated (HD2)", "... neutral as
+modelled (restraint file)", "... uncertain (<notes>)"), the overlapping H-bonds.
+possible_groups: the ligand's groups that can pair only this way.
 Contact patches: probe2's ligand -> environment dots, at their location on the
 ligand's surface, grouped by spatial connectivity (dots closer than
 patch_link_distance are linked); per patch the dots and area per class, the mean
@@ -657,6 +677,109 @@ def builder_groups(r, atoms):
       hydrogens=r.hydrogens, notes=notes))
   return groups, dropped
 
+# Neutral groups usually charged at pH 7 on residue_molecule's molecule: (kind,
+# SMARTS, usual charge per matched H or None: +1); the first atom is the centre
+builder_possible_smarts = (
+  ("carboxylic acid", "[CX3](=[OX1;+0])[OX2;+0][#1]"),
+  ("phosphoric acid", "[PX4;+0](=[OX1;+0])[OX2;+0][#1]"),
+  ("sulfonic acid", "[SX4;+0](=[OX1;+0])(=[OX1;+0])[OX2;+0][#1]"),
+  ("tetrazole", "[#6;+0]1:[#7;+0]:[#7;+0]:[#7;+0]:[#7;+0]:1"),
+  ("guanidine", "[CX3;+0](=[NX2;+0])([NX3;+0])[NX3;+0]"),
+  ("amidine", "[CX3;+0;!$(C(~[#7])(~[#7])~[#7])](=[NX2;+0])[NX3;+0]"),
+  ("amine", "[NX3;+0;!$(N=*);!$(N#*);!$(N-a);!$(N-[#6,#16]=[#8,#7,#16]);"
+    "!$(N-[#6]=[#6]);!$(N-[#16]=[#8]);!$(N-[#7,#8,#15]);!$(N-[#6]#[#7])]"),
+)
+
+def builder_possible(r, atoms):
+  """
+  Neutral groups on a residue_molecule result r (ok) that are usually charged at
+  pH 7 (builder_possible_smarts): carboxylic, phosphoric/phosphonic,
+  sulfonic/sulfuric acid, 1H-tetrazole (usual -1 per acidic OH or NH; a phosphate
+  monoester -2), aliphatic amine (primary, secondary, tertiary; not amide,
+  sulfonamide, aniline, enamine, hydrazine, hydrazide, hydroxylamine,
+  phosphoramide, cyanamide: no N bonded to C=O, C=N, C=S, S=O, N, O, P, a nitrile
+  C or an aromatic atom), amidine, guanidine (+1). Not phenol, thiol, imidazole,
+  pyridine, aniline. A tetrazole only with an H on one ring N (not 1-alkyl).
+  Charged atoms: the acid's O (tetrazole: the N with H) with its resonance partners
+  (same element sharing a heavy neighbour; O terminal), the base's N (all N of an
+  amidine or guanidine); no charged atom may carry a formal charge. Groups with a
+  capped atom (linked, or next to a missing atom) are skipped silently. Returns
+  groups as builder_groups, with charge 0 and usual_charge set, notes ["neutral as
+  modelled (<source>)"].
+  """
+  from rdkit import Chem
+  mol = r.mol
+  iseq = r.rdkit_to_iseq
+  def heavy_nb(a):
+    return [n for n in a.GetNeighbors() if n.GetAtomicNum() > 1]
+  def h_count(a):
+    return len([n for n in a.GetNeighbors() if n.GetAtomicNum() == 1])
+  capped = {}
+  for c in r.caps:
+    capped.setdefault(c["on"], []).append(c)
+  uncertain = set(r.uncertain_iseqs)
+  no_h = r.hydrogens == "restraint file (no H in the model)"
+  source = {"search": "total by search"}.get(r.total_charge_source, r.total_charge_source)
+  found = {}
+  for kind, smarts in builder_possible_smarts:
+    for m in mol.GetSubstructMatches(Chem.MolFromSmarts(smarts)):
+      centre = mol.GetAtomWithIdx(m[0])
+      if kind in ("carboxylic acid", "phosphoric acid", "sulfonic acid"):
+        o = [n for n in heavy_nb(centre) if n.GetAtomicNum() == 8 and
+          len(heavy_nb(n)) == 1]
+        members = [n.GetIdx() for n in o]
+        usual = -len([n for n in o if h_count(n)])
+        if kind == "phosphoric acid" and [n for n in heavy_nb(centre) if n.GetAtomicNum() != 8]:
+          kind_ = "phosphonic acid"
+        elif kind == "sulfonic acid" and not [n for n in heavy_nb(centre)
+            if n.GetAtomicNum() != 8]:
+          kind_ = "sulfuric acid"
+        else:
+          kind_ = kind
+      elif kind == "tetrazole":
+        nh = [k for k in m[1:] if h_count(mol.GetAtomWithIdx(k))]
+        if len(nh) != 1:
+          continue
+        a = mol.GetAtomWithIdx(nh[0])
+        members = set(nh)
+        for c in heavy_nb(a):
+          members.update([p.GetIdx() for p in heavy_nb(c) if p.GetAtomicNum() == 7 and
+            p.GetIdx() in m])
+        members, usual, kind_ = sorted(members), -1, kind
+      elif kind in ("guanidine", "amidine"):
+        members, usual, kind_ = list(m[1:]), 1, kind
+      else:
+        members, usual, kind_ = [m[0]], 1, kind
+      if [k for k in members if k not in iseq or mol.GetAtomWithIdx(k).GetFormalCharge()]:
+        continue
+      key = frozenset(members)
+      if key in found or [f for f in found if f & key]:
+        continue
+      found[key] = (kind_, m[0] if kind != "amine" else members[0], usual)
+  groups = []
+  for key, (kind, centre, usual) in sorted(found.items(), key=lambda x: sorted(x[0])):
+    seqs = sorted([iseq[k] for k in key])
+    center = iseq.get(centre, seqs[0])
+    # capped (e.g. the backbone N of an in-chain modified residue): skipped
+    if [i for i in seqs if i in capped]:
+      continue
+    c_atom = mol.GetAtomWithIdx(centre)
+    near = set(seqs) | set([iseq[n.GetIdx()] for n in heavy_nb(c_atom) if n.GetIdx() in iseq])
+    detail = [source]
+    unsure = [] if no_h else sorted(near & uncertain)
+    if unsure:
+      detail.append("H completed from the restraint file on %s" % " ".join(
+        [atoms[i].name.strip() for i in unsure]))
+    if no_h:
+      detail.append("no H in the model")
+    metal = [i for i in seqs if i in r.metal_bound]
+    groups.append(dict(kind=kind, charge=0, usual_charge=usual,
+      state="assumed (no H)" if no_h else "modelled", center=center, charged=seqs,
+      source="builder", certain=bool(r.charge_certain) and not unsure,
+      metal_bound=bool(metal), charge_source=r.total_charge_source,
+      hydrogens=r.hydrogens, notes=["neutral as modelled (%s)" % "; ".join(detail)]))
+  return groups
+
 def find_charged_groups(model, selection, fsc0=None, use_templates=True):
   """
   Charged groups among the selected atoms (flex.bool or flex.size_t; full-model
@@ -681,7 +804,10 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
   notes)], missing=[dict(residue, altloc, kind, atoms)], dropped=[dict(residue,
   altloc, kind, charge, atoms, reason)], failures=[dict(residue, altloc,
   reason)], builder_charges={(chain, resseq, icode, altloc): {i_seq: formal
-  charge}} for the residue conformers built).
+  charge}} for the residue conformers built, possible=[groups as above from
+  builder_possible: neutral as modelled, usual_charge set]). Template groups neutral as modelled with a nonzero usual_charge carry
+  a note on what makes them neutral ("protonated (HD2)", "neutral (NZ with 2 H)",
+  "neutral (4 of 5 H: ...)").
   """
   import iotbx.pdb
   from mmtbx.ligands import rdkit_utils
@@ -698,7 +824,7 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
   def residue_key(i):
     rg = atoms[i].parent().parent()
     return (rg.parent().id, rg.resseq, rg.icode)
-  found = {}
+  found, found_possible = {}, {}
   missing, dropped, failures = [], [], []
   built = {}
   def freeze(g):
@@ -714,9 +840,20 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
     def add(g):
       found.setdefault(freeze(g), set()).add(conf)
     def template_group(kind, charge, usual, state, center, charged, resname):
+      notes = []
+      if charge == 0 and usual:
+        # neutral as modelled, usually charged: what makes it neutral
+        hs = sorted([atoms[h].name.strip() for k in charged for h in h_on(k)])
+        if kind in ("carboxylate", "phosphate"):
+          notes.append("protonated (%s)" % " ".join(hs))
+        elif kind == "ammonium":
+          notes.append("neutral (%s with %d H)" % (atoms[charged[0]].name.strip(),
+            len(hs)))
+        else:
+          notes.append("neutral (%d of 5 H: %s)" % (len(hs), " ".join(hs)))
       add(dict(kind=kind, charge=charge, usual_charge=usual, state=state, center=center,
         charged=charged, resname=resname, source="template", certain=True,
-        metal_bound=False, charge_source=None, hydrogens=None, notes=[]))
+        metal_bound=False, charge_source=None, hydrogens=None, notes=notes))
     # residue conformers in the selection
     residues = {}
     for i in sel:
@@ -797,8 +934,9 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
         except Exception as e:
           from libtbx import group_args as _ga
           r = _ga(ok=False, reason="%s: %s" % (type(e).__name__, e))
-        built[bkey] = (r, builder_groups(r, atoms) if r.ok else ([], []))
-      r, (bgroups, bdropped) = built[bkey]
+        built[bkey] = (r, builder_groups(r, atoms) if r.ok else ([], []),
+          builder_possible(r, atoms) if r.ok else [])
+      r, (bgroups, bdropped), pgroups = built[bkey]
       rg_label = residue_label(atoms[rg.atoms()[0].i_seq], resname)
       if not r.ok:
         failures.append((rg_label, r.reason, conf))
@@ -809,19 +947,25 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
       for d in bdropped:
         dropped.append((rg_label, d["kind"], d["charge"],
           tuple([atoms[i].name.strip() for i in d["charged"]]), d["reason"], conf))
-  groups = []
-  for key, confs in sorted(found.items(), key=lambda x: (dict(x[0])["center"],
-      dict(x[0])["kind"], sorted(x[1]))):
-    g = dict([(k, list(v) if isinstance(v, tuple) else v) for k, v in key])
-    own = sorted(set([alt[k] for k in [g["center"]] + g["charged"] if alt[k]]))
-    if own:
-      altlocs = own
-    elif set(confs) == set(alts):
-      altlocs = [""]
-    else:
-      altlocs = sorted(confs)
-    for a in altlocs:
-      groups.append(dict(g, altloc=a))
+      for g in pgroups:
+        if [i for i in g["charged"] if i in sel]:
+          found_possible.setdefault(freeze(dict(g, resname=resname)), set()).add(conf)
+  def assemble(found):
+    groups = []
+    for key, confs in sorted(found.items(), key=lambda x: (dict(x[0])["center"],
+        dict(x[0])["kind"], sorted(x[1]))):
+      g = dict([(k, list(v) if isinstance(v, tuple) else v) for k, v in key])
+      own = sorted(set([alt[k] for k in [g["center"]] + g["charged"] if alt[k]]))
+      if own:
+        altlocs = own
+      elif set(confs) == set(alts):
+        altlocs = [""]
+      else:
+        altlocs = sorted(confs)
+      for a in altlocs:
+        groups.append(dict(g, altloc=a))
+    return groups
+  groups = assemble(found)
   def per_conformer(items):
     confs = {}
     for x in items:
@@ -836,21 +980,26 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
       reason=k[4]) for k, a in per_conformer(dropped)],
     failures=[dict(residue=k[0], altloc=a, reason=k[1]) for k, a in per_conformer(failures)],
     builder_charges=dict([(k + (eff,), dict([(i, r.mol.GetAtomWithIdx(x).GetFormalCharge())
-      for x, i in r.rdkit_to_iseq.items()])) for (k, eff), (r, g) in built.items() if r.ok]))
+      for x, i in r.rdkit_to_iseq.items()])) for (k, eff), (r, g, p) in built.items() if r.ok]),
+    possible=assemble(found_possible))
 
 def moved_site(unit_cell, xyz, rt_mx):
   return unit_cell.orthogonalize(rt_mx * unit_cell.fractionalize(xyz))
 
-def charged_group_pairs(model, groups, cutoff):
+def charged_group_pairs(model, groups, cutoff, charge=None):
   """
   [(k1, k2, op)]: oppositely charged groups (indices into groups) with a pair of
   charged atoms within cutoff, op moving group k2 next to group k1 (both
   directions listed; crystal symmetry included). Groups with different non-blank
-  altlocs, and uncertain groups (certain False), are not paired.
+  altlocs, and uncertain groups (certain False), are not paired. charge: a
+  function giving each group's charge for the pairing (default: its charge,
+  uncertain groups left out); with it, every group with a nonzero value takes part.
   """
   atoms = model.get_hierarchy().atoms()
-  sites = [(k, i) for k, g in enumerate(groups) if g["charge"] and g.get("certain", True)
-    for i in g["charged"]]
+  if charge is None:
+    def charge(g):
+      return g["charge"] if g.get("certain", True) else 0
+  sites = [(k, i) for k, g in enumerate(groups) if charge(g) for i in g["charged"]]
   xyz = flex.vec3_double([atoms[i].xyz for k, i in sites])
   cs = model.crystal_symmetry()
   raw = []
@@ -879,7 +1028,7 @@ def charged_group_pairs(model, groups, cutoff):
   for a, b, op in raw:
     ka, kb = sites[a][0], sites[b][0]
     ga, gb = groups[ka], groups[kb]
-    if ga["charge"] * gb["charge"] >= 0:
+    if charge(ga) * charge(gb) >= 0:
       continue
     if ga["altloc"] and gb["altloc"] and ga["altloc"] != gb["altloc"]:
       continue
@@ -904,8 +1053,8 @@ def restraints_formal_charges(model, resname):
   (dictionary, file name) from the parsed restraint file as the model's monomer
   library server resolves it (files supplied with the model, else GeoStd, else
   the monomer library): {atoms: {name: (element, formal charge; 0 if absent)},
-  h: {name: set(H names)}}; (None, file name) without a charge column, (None,
-  None) without a file.
+  h: {name: set(H names)}, types: {name: type_energy}}; (None, file name) without
+  a charge column, (None, None) without a file.
   """
   comp = model.get_mon_lib_srv().get_comp_comp_id_direct(resname)
   if comp is None:
@@ -921,7 +1070,10 @@ def restraints_formal_charges(model, resname):
   atoms = dict([(a.atom_id.strip(), ((a.type_symbol or "").strip().upper(),
     a.formal_charge() or 0)) for a in comp.atom_list])
   bonds = [(b.atom_id_1.strip(), b.atom_id_2.strip()) for b in comp.bond_list]
-  return _with_h(atoms, bonds), file_name
+  result = _with_h(atoms, bonds)
+  result["types"] = dict([(a.atom_id.strip(), (a.type_energy or "").strip() or None)
+    for a in comp.atom_list])
+  return result, file_name
 
 def ccd_formal_charges(resname):
   """The CCD entry's formal charges and H (chem_data), None if absent."""
@@ -937,7 +1089,9 @@ def ccd_formal_charges(resname):
       q = 0
     atoms[a.atom_id.strip()] = (a.type_symbol.strip().upper(), q)
   bonds = [(b.atom_id_1.strip(), b.atom_id_2.strip()) for b in cif.get("_chem_comp_bond", [])]
-  return _with_h(atoms, bonds)
+  result = _with_h(atoms, bonds)
+  result["bonds"] = set([frozenset(b) for b in bonds])
+  return result
 
 # ------------------------------------------------------------------------------
 # patches
@@ -1016,6 +1170,8 @@ class manager(object):
     self.patches = []
     self.disagreements = []
     self.formal_charges = []
+    self.possible_salt_bridges = []
+    self.possible_groups = []
 
   def run(self):
     atoms = self.model.get_hierarchy().atoms()
@@ -1365,52 +1521,105 @@ class manager(object):
     self.charged_groups_dropped = found.dropped
     self.charged_group_failures = found.failures
     self._builder_charges = found.builder_charges
-    candidates = [c for c in charged_group_pairs(self.model, groups, search)
-      if groups[c[0]]["ligand"]]
     partner_residues = set()
-    for s, p, op in candidates:
-      stay, partner = groups[s], groups[p]
-      partner_residues.add(partner["center"])
-      xs = [atoms[i].xyz for i in stay["charged"]]
-      xp = [self._site(i, op) for i in partner["charged"]]
-      pairs = [math.sqrt(sum([(x[c] - y[c]) ** 2 for c in range(3)])) for x in xs for y in xp]
-      k = min(range(len(pairs)), key=lambda k: pairs[k])
-      d_min = pairs[k]
-      cs_ = [sum([x[c] for x in xs]) / len(xs) for c in range(3)]
-      cp_ = [sum([x[c] for x in xp]) / len(xp) for c in range(3)]
-      d_centre = math.sqrt(sum([(cs_[c] - cp_[c]) ** 2 for c in range(3)]))
-      if sp.criterion == "atom_pair":
-        ok = d_min <= sp.atom_pair_cutoff
-      else:
-        ok = d_centre <= sp.charge_centre_cutoff
-      if not ok:
+    for s, p, op in charged_group_pairs(self.model, groups, search):
+      if not groups[s]["ligand"]:
         continue
-      kn = sp.kumar_nussinov_cutoff
-      if d_min <= kn and d_centre <= kn:
-        subtype = "salt bridge (K&N)"
-      elif d_min <= kn:
-        subtype = "N-O bridge (K&N)"
-      else:
-        subtype = "longer-range (K&N)"
-      a_stay = stay["charged"][k // len(xp)]
-      a_part = partner["charged"][k % len(xp)]
-      geometry = dict(charged_groups=dict(min_atom_distance=d_min,
-        charge_centre_distance=d_centre,
-        closest_pair=[atom_label(atoms[a_stay]), atom_label(atoms[a_part]) +
-          ("" if _identity(op) else " (%s)" % op)],
-        ligand_group=self._group_info(stay), partner_group=self._group_info(partner, op)))
-      if partner["ligand"] and _identity(op):
-        self.internal.append(dict(type="salt_bridge", subtype=subtype,
-          labels=geometry["charged_groups"]["ligand_group"]["atoms"] +
-            geometry["charged_groups"]["partner_group"]["atoms"], geometry=geometry))
-        continue
-      seqs = stay["charged"] + partner["charged"]
-      ops = ["x,y,z"] * len(stay["charged"]) + [op] * len(partner["charged"])
-      entry = self._entry("salt_bridge", subtype, seqs, geometry, ["charged groups"],
-        None if _identity(op) else ops)
-      entry["hbonds"] = self._overlapping_hbonds(stay, partner, op)
-      self.entries.append(entry)
+      partner_residues.add(groups[p]["center"])
+      e = self._pair_entry("salt_bridge", groups[s], groups[p], op)
+      if e is not None:
+        self.entries.append(e)
+    self._build_possible_salt_bridges(groups, found.possible, search)
     self._compare_formal_charges(groups, region, partner_residues)
+
+  def _pair_entry(self, type_, stay, partner, op, extra=None):
+    """
+    The entry for a ligand group (stay) and a partner group moved by op, if the
+    salt-bridge criterion holds (None otherwise; ligand-internal pairs go to
+    internal, None returned).
+    """
+    sp = self.params.salt_bridge
+    atoms = self._atoms
+    xs = [atoms[i].xyz for i in stay["charged"]]
+    xp = [self._site(i, op) for i in partner["charged"]]
+    pairs = [math.sqrt(sum([(x[c] - y[c]) ** 2 for c in range(3)])) for x in xs for y in xp]
+    k = min(range(len(pairs)), key=lambda k: pairs[k])
+    d_min = pairs[k]
+    cs_ = [sum([x[c] for x in xs]) / len(xs) for c in range(3)]
+    cp_ = [sum([x[c] for x in xp]) / len(xp) for c in range(3)]
+    d_centre = math.sqrt(sum([(cs_[c] - cp_[c]) ** 2 for c in range(3)]))
+    if sp.criterion == "atom_pair":
+      ok = d_min <= sp.atom_pair_cutoff
+    else:
+      ok = d_centre <= sp.charge_centre_cutoff
+    if not ok:
+      return None
+    kn = sp.kumar_nussinov_cutoff
+    if d_min <= kn and d_centre <= kn:
+      subtype = "salt bridge (K&N)"
+    elif d_min <= kn:
+      subtype = "N-O bridge (K&N)"
+    else:
+      subtype = "longer-range (K&N)"
+    a_stay = stay["charged"][k // len(xp)]
+    a_part = partner["charged"][k % len(xp)]
+    geometry = dict(charged_groups=dict(min_atom_distance=d_min,
+      charge_centre_distance=d_centre,
+      closest_pair=[atom_label(atoms[a_stay]), atom_label(atoms[a_part]) +
+        ("" if _identity(op) else " (%s)" % op)],
+      ligand_group=self._group_info(stay), partner_group=self._group_info(partner, op)))
+    if partner["ligand"] and _identity(op):
+      internal = dict(type=type_, subtype=subtype,
+        labels=geometry["charged_groups"]["ligand_group"]["atoms"] +
+          geometry["charged_groups"]["partner_group"]["atoms"], geometry=geometry)
+      internal.update(extra or {})
+      self.internal.append(internal)
+      return None
+    seqs = stay["charged"] + partner["charged"]
+    ops = ["x,y,z"] * len(stay["charged"]) + [op] * len(partner["charged"])
+    entry = self._entry(type_, subtype, seqs, geometry, ["charged groups"],
+      None if _identity(op) else ops)
+    entry["hbonds"] = self._overlapping_hbonds(stay, partner, op)
+    entry.update(extra or {})
+    return entry
+
+  def _build_possible_salt_bridges(self, groups, possible, search):
+    """
+    Possible salt bridges (listed apart, not counted): pairs of groups with
+    opposite charges, each taken as its modelled charge if certain and charged,
+    else its usual charge (templates neutral as modelled, builder groups
+    uncertain or neutral as modelled), at least one not a certain charged group;
+    same criterion, cutoffs, symmetry and altloc rules and K&N subtype as salt
+    bridges; each with the reasons it is only possible.
+    """
+    lig = self._lig
+    atoms = self._atoms
+    for g in possible:
+      g["ligand"] = g["center"] in lig
+    candidates = groups + possible
+    def certain_charged(g):
+      return bool(g["charge"]) and g.get("certain", True)
+    def charge(g):
+      if certain_charged(g):
+        return g["charge"]
+      return g["usual_charge"] or g["charge"]
+    def reason(g):
+      label = residue_label(atoms[g["center"]], g["resname"])
+      if g["charge"]:
+        return "%s %s uncertain (%s)" % (label, g["kind"], "; ".join(g["notes"]))
+      return "%s %s %s" % (label, g["kind"], "; ".join(g["notes"]))
+    self.possible_salt_bridges = []
+    self.possible_groups = [self._group_info(g) for g in candidates if g["ligand"] and
+      not certain_charged(g) and charge(g)]
+    for s, p, op in charged_group_pairs(self.model, candidates, search, charge=charge):
+      stay, partner = candidates[s], candidates[p]
+      if not stay["ligand"] or (certain_charged(stay) and certain_charged(partner)):
+        continue
+      extra = dict(reasons=[reason(g) for g in (stay, partner) if not certain_charged(g)],
+        charges=[charge(stay), charge(partner)])
+      e = self._pair_entry("possible_salt_bridge", stay, partner, op, extra)
+      if e is not None:
+        self.possible_salt_bridges.append(e)
 
   def _overlapping_hbonds(self, stay, partner, op):
     """H-bond entries between the two groups' charged atoms (charge-assisted H-bonds)."""
@@ -1471,8 +1680,28 @@ class manager(object):
           if why is not None:
             self.formal_charges.append(dict(residue=label, source=source, file=where,
               group=None, atoms=[], perceived_charge=None, dictionary_charge=None,
-              status="not compared (residue_molecule failed: %s)" % why))
+              status="not compared (residue_molecule failed: %s)" % why,
+              type_energy=None))
             continue
+          if source == "CCD":
+            # an unrelated compound with the same code: a heavy atom's name or
+            # element, or a bond between heavy atoms, not in the entry
+            heavy = dict([(n, i) for n, i in names.items() if not self._is_h(i) and
+              _element(atoms[i]) not in metal_elements])
+            other = set([n for n, i in heavy.items() if n not in d["atoms"] or
+              d["atoms"][n][0] != _element(atoms[i])])
+            for n, i in heavy.items():
+              for k in fsc0[i]:
+                m = atoms[k].name.strip()
+                if k in conf_seqs and heavy.get(m) == k and \
+                    frozenset([n, m]) not in d.get("bonds", set()):
+                  other.update([n, m])
+            other = sorted(other)
+            if other:
+              self.formal_charges.append(dict(residue=label, source=source, file=None,
+                group=None, atoms=other, perceived_charge=None, dictionary_charge=None,
+                status="CCD entry does not match", type_energy=None))
+              continue
           bc = self._builder_charges.get((rg.parent().id, rg.resseq, rg.icode,
             alt.strip()), self._builder_charges.get((rg.parent().id, rg.resseq,
             rg.icode, "")))
@@ -1552,8 +1781,10 @@ class manager(object):
         status = "protonation differs"
       else:
         status = "agrees" if q == perceived else "conflict"
+    types = d.get("types")
     return dict(residue=residue, source=source, file=file_name, group=kind,
-      atoms=names, perceived_charge=perceived, dictionary_charge=q, status=status)
+      atoms=names, perceived_charge=perceived, dictionary_charge=q, status=status,
+      type_energy=[types.get(n) for n in names] if types is not None else None)
 
   def formal_charge_conflicts(self):
     return [c for c in self.formal_charges if c["status"] == "conflict"]
@@ -1620,6 +1851,8 @@ class manager(object):
       probe_unmapped=sorted(self.probe_unmapped),
       charged_groups=self.charged_groups,
       charged_groups_dropped=self.charged_groups_dropped,
+      possible_salt_bridges=self.possible_salt_bridges,
+      possible_groups=self.possible_groups,
       charged_group_failures=self.charged_group_failures,
       formal_charges=self.formal_charges,
       formal_charge_conflicts=self.formal_charge_conflicts())
@@ -1666,6 +1899,13 @@ class manager(object):
       print("  ligand-internal (not entries):", file=log)
       for d in self.internal:
         print("    %s %s" % (d["type"], " ... ".join(d["labels"])), file=log)
+    if self.possible_salt_bridges:
+      print("  possible salt bridges (not counted):", file=log)
+      for e in self.possible_salt_bridges:
+        g = e["geometry"]["charged_groups"]
+        print("    %s ... %s  %s, %.2f A; %s" % (" ".join(g["ligand_group"]["atoms"]),
+          " ".join(g["partner_group"]["atoms"]), e["subtype"], g["min_atom_distance"],
+          "; ".join(e["reasons"])), file=log)
     uncertain = [g for g in self.examined_groups if not g["certain"]]
     if uncertain:
       print("  charged groups not used for salt bridges (uncertain):", file=log)

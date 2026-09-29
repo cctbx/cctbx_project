@@ -1142,6 +1142,766 @@ _chem_comp_bond.value_dist_esd
  ZNX  C1   HC13 single   1.092  0.020
 ''')
 
+# GeoStd BEN (neutral benzamidine) superposed with C, N1, N2 on ACT 2's C, O, OXT
+# of salt_model_str (least squares)
+ben_at_act2_lines = '''
+HETATM  900  C1  BEN A   2      -8.557  15.920 -29.956  1.00 20.00           C
+HETATM  901  C2  BEN A   2      -7.932  14.966 -29.155  1.00 20.00           C
+HETATM  902  C3  BEN A   2      -6.546  14.904 -29.093  1.00 20.00           C
+HETATM  903  C4  BEN A   2      -5.775  15.783 -29.840  1.00 20.00           C
+HETATM  904  C5  BEN A   2      -6.393  16.732 -30.645  1.00 20.00           C
+HETATM  905  C6  BEN A   2      -7.777  16.804 -30.697  1.00 20.00           C
+HETATM  906  C   BEN A   2     -10.043  16.029 -30.000  1.00 20.00           C
+HETATM  907  N1  BEN A   2     -10.688  17.132 -30.000  1.00 20.00           N
+HETATM  908  N2  BEN A   2     -10.705  14.840 -30.000  1.00 20.00           N
+HETATM  909  H2  BEN A   2      -8.524  14.278 -28.565  1.00 20.00           H
+HETATM  910  H3  BEN A   2      -6.071  14.168 -28.458  1.00 20.00           H
+HETATM  911  H4  BEN A   2      -4.695  15.731 -29.797  1.00 20.00           H
+HETATM  912  H5  BEN A   2      -5.798  17.416 -31.236  1.00 20.00           H
+HETATM  913  H6  BEN A   2      -8.253  17.542 -31.331  1.00 20.00           H
+HETATM  914  HN1 BEN A   2     -10.061  17.919 -29.891  1.00 20.00           H
+HETATM  915 HN21 BEN A   2     -11.703  14.867 -30.130  1.00 20.00           H
+HETATM  916 HN22 BEN A   2     -10.246  14.018 -30.353  1.00 20.00           H
+'''
+
+# methyl phosphate, neutral (HOP2, HOP3; RDKit embedding, explicit orders, formal
+# charges 0), superposed with P, O1P, O2P on ACT 1's C, O, OXT of salt_model_str
+zmp_cif = ('zmp.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZMP  ZMP  'ZMP' ligand 11 6 .
+
+data_comp_ZMP
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZMP  C1   C  C      0  0.000   1.6955  -0.2505   0.2106
+ ZMP  O1   O  O      0  0.000   0.4623  -0.8150  -0.1845
+ ZMP  P    P  P      0  0.000  -0.7439   0.2030  -0.4358
+ ZMP  O1P  O  O      0  0.000  -0.4609   1.3912  -1.2861
+ ZMP  O2P  O  O      0  0.000  -1.9356  -0.7349  -0.9257
+ ZMP  O3P  O  O      0  0.000  -1.2561   0.6007   1.0230
+ ZMP  HC11 H  H      0  0.000   1.5670   0.3465   1.1176
+ ZMP  HC12 H  H      0  0.000   2.4022  -1.0585   0.4161
+ ZMP  HC13 H  H      0  0.000   2.0962   0.3740  -0.5924
+ ZMP  HOP2 H  H      0  0.000  -2.0560  -1.4850  -0.3172
+ ZMP  HOP3 H  H      0  0.000  -1.7707   1.4284   0.9742
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZMP  C1   O1   single    1.413  0.020
+ ZMP  O1   P    single    1.598  0.020
+ ZMP  P    O1P  double    1.488  0.020
+ ZMP  P    O2P  single    1.594  0.020
+ ZMP  P    O3P  single    1.596  0.020
+ ZMP  C1   HC11 single    1.093  0.020
+ ZMP  C1   HC12 single    1.093  0.020
+ ZMP  C1   HC13 single    1.093  0.020
+ ZMP  O2P  HOP2 single    0.973  0.020
+ ZMP  O3P  HOP3 single    0.976  0.020
+''')
+
+zmp_at_act1_lines = '''
+HETATM  900  C1  ZMP A   1     -38.040  16.940 -31.473  1.00 20.00           C
+HETATM  901  O1  ZMP A   1     -38.888  15.846 -31.194  1.00 20.00           O
+HETATM  902  P   ZMP A   1     -39.934  16.037 -30.000  1.00 20.00           P
+HETATM  903  O1P ZMP A   1     -40.740  17.288 -30.000  1.00 20.00           O
+HETATM  904  O2P ZMP A   1     -40.762  14.675 -30.000  1.00 20.00           O
+HETATM  905  O3P ZMP A   1     -39.072  15.863 -28.668  1.00 20.00           O
+HETATM  906 HC11 ZMP A   1     -37.478  17.224 -30.579  1.00 20.00           H
+HETATM  907 HC12 ZMP A   1     -37.335  16.648 -32.256  1.00 20.00           H
+HETATM  908 HC13 ZMP A   1     -38.629  17.790 -31.828  1.00 20.00           H
+HETATM  909 HOP2 ZMP A   1     -40.163  13.908 -29.999  1.00 20.00           H
+HETATM  910 HOP3 ZMP A   1     -39.551  16.257 -27.915  1.00 20.00           H
+'''
+
+# paracetamol (amide N, phenol) and 4-aminophenol (aniline, phenol)
+zpa_cif = ('zpa.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZPA  ZPA  'ZPA' ligand 20 11 .
+
+data_comp_ZPA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZPA  C1   C  C      0  0.000   3.7026   0.2029   0.1412
+ ZPA  C2   C  C      0  0.000   2.3493  -0.4473  -0.0075
+ ZPA  O1   O  O      0  0.000   2.2538  -1.6469  -0.2404
+ ZPA  N1   N  N      0  0.000   1.3157   0.4628   0.1208
+ ZPA  C3   C  C      0  0.000  -0.0688   0.2085   0.0358
+ ZPA  C4   C  C      0  0.000  -0.6190  -1.0561  -0.1885
+ ZPA  C5   C  C      0  0.000  -2.0066  -1.2270  -0.2591
+ ZPA  C6   C  C      0  0.000  -2.8430  -0.1285  -0.1040
+ ZPA  O2   O  O      0  0.000  -4.1986  -0.2512  -0.1656
+ ZPA  C7   C  C      0  0.000  -2.3155   1.1352   0.1202
+ ZPA  C8   C  C      0  0.000  -0.9303   1.3035   0.1902
+ ZPA  HC11 H  H      0  0.000   3.6804   0.9818   0.9089
+ ZPA  HC12 H  H      0  0.000   4.4358  -0.5501   0.4444
+ ZPA  HC13 H  H      0  0.000   4.0026   0.6376  -0.8158
+ ZPA  HN11 H  H      0  0.000   1.5765   1.4263   0.2876
+ ZPA  HC41 H  H      0  0.000   0.0055  -1.9352  -0.3131
+ ZPA  HC51 H  H      0  0.000  -2.4054  -2.2212  -0.4346
+ ZPA  HO21 H  H      0  0.000  -4.4164  -1.1842  -0.3271
+ ZPA  HC71 H  H      0  0.000  -2.9786   1.9871   0.2402
+ ZPA  HC81 H  H      0  0.000  -0.5400   2.3020   0.3665
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZPA  C1   C2   single    1.509  0.020
+ ZPA  C2   O1   double    1.226  0.020
+ ZPA  C2   N1   single    1.383  0.020
+ ZPA  N1   C3   single    1.410  0.020
+ ZPA  C3   C4   aromatic  1.397  0.020
+ ZPA  C4   C5   aromatic  1.400  0.020
+ ZPA  C5   C6   aromatic  1.389  0.020
+ ZPA  C6   O2   single    1.363  0.020
+ ZPA  C6   C7   aromatic  1.388  0.020
+ ZPA  C7   C8   aromatic  1.397  0.020
+ ZPA  C8   C3   aromatic  1.402  0.020
+ ZPA  C1   HC11 single    1.094  0.020
+ ZPA  C1   HC12 single    1.094  0.020
+ ZPA  C1   HC13 single    1.093  0.020
+ ZPA  N1   HN11 single    1.012  0.020
+ ZPA  C4   HC41 single    1.086  0.020
+ ZPA  C5   HC51 single    1.085  0.020
+ ZPA  O2   HO21 single    0.972  0.020
+ ZPA  C7   HC71 single    1.086  0.020
+ ZPA  C8   HC81 single    1.086  0.020
+''')
+
+zap_cif = ('zap.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZAP  ZAP  'ZAP' ligand 15 8 .
+
+data_comp_ZAP
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZAP  N1   N  N      0  0.000   2.5622   0.2304  -0.1204
+ ZAP  C1   C  C      0  0.000   1.1699   0.1532   0.0007
+ ZAP  C2   C  C      0  0.000   0.5933  -0.4850   1.1025
+ ZAP  C3   C  C      0  0.000  -0.7894  -0.6704   1.1750
+ ZAP  C4   C  C      0  0.000  -1.5940  -0.2563   0.1220
+ ZAP  O1   O  O      0  0.000  -2.9378  -0.4576   0.2296
+ ZAP  C5   C  C      0  0.000  -1.0357   0.3269  -1.0093
+ ZAP  C6   C  C      0  0.000   0.3490   0.5103  -1.0737
+ ZAP  HN11 H  H      0  0.000   3.0489   0.2524   0.7702
+ ZAP  HN12 H  H      0  0.000   2.8797   0.9593  -0.7512
+ ZAP  HC21 H  H      0  0.000   1.2160  -0.8436   1.9173
+ ZAP  HC31 H  H      0  0.000  -1.2322  -1.1493   2.0432
+ ZAP  HO11 H  H      0  0.000  -3.3637  -0.1369  -0.5820
+ ZAP  HC51 H  H      0  0.000  -1.6503   0.6304  -1.8502
+ ZAP  HC61 H  H      0  0.000   0.7841   0.9362  -1.9738
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZAP  N1   C1   single    1.400  0.020
+ ZAP  C1   C2   aromatic  1.398  0.020
+ ZAP  C2   C3   aromatic  1.397  0.020
+ ZAP  C3   C4   aromatic  1.388  0.020
+ ZAP  C4   O1   single    1.363  0.020
+ ZAP  C4   C5   aromatic  1.390  0.020
+ ZAP  C5   C6   aromatic  1.398  0.020
+ ZAP  C6   C1   aromatic  1.399  0.020
+ ZAP  N1   HN11 single    1.015  0.020
+ ZAP  N1   HN12 single    1.015  0.020
+ ZAP  C2   HC21 single    1.086  0.020
+ ZAP  C3   HC31 single    1.086  0.020
+ ZAP  O1   HO11 single    0.971  0.020
+ ZAP  C5   HC51 single    1.085  0.020
+ ZAP  C6   HC61 single    1.087  0.020
+''')
+
+# arginine zwitterion with eLBOW-style energy types (N NT3, NH1/NH2 NC2, NE NC1,
+# O/OXT OC)
+zar_cif = ('zar.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZAR  ZAR  'ZAR' ligand 27 12 .
+
+data_comp_ZAR
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZAR  N    N  NT3    1  0.000  -3.1231   0.1902   1.4525
+ ZAR  CA   C  C      0  0.000  -1.9573  -0.0227   0.4936
+ ZAR  CB   C  C      0  0.000  -0.8550   0.9922   0.8122
+ ZAR  CG   C  C      0  0.000  -0.1736   1.6637  -0.3997
+ ZAR  CD   C  C      0  0.000   0.3905   0.7596  -1.4947
+ ZAR  NE   N  NC1    0  0.000   1.1320  -0.3687  -0.9509
+ ZAR  CZ   C  C      0  0.000   2.4255  -0.6406  -0.9079
+ ZAR  NH1  N  NC2    0  0.000   2.8163  -1.7886  -0.3504
+ ZAR  NH2  N  NC2    1  0.000   3.3474   0.1926  -1.3916
+ ZAR  C    C  C      0  0.000  -1.5107  -1.5248   0.6290
+ ZAR  O    O  OC     0  0.000  -0.3802  -1.8453   0.1776
+ ZAR  OXT  O  OC    -1  0.000  -2.4029  -2.1844   1.2423
+ ZAR  HN1  H  H      0  0.000  -3.4611  -0.7997   1.5810
+ ZAR  HN2  H  H      0  0.000  -3.8992   0.7494   1.0961
+ ZAR  HN3  H  H      0  0.000  -2.8351   0.4615   2.3967
+ ZAR  HCA1 H  H      0  0.000  -2.3826   0.1273  -0.5039
+ ZAR  HCB1 H  H      0  0.000  -0.0789   0.5184   1.4267
+ ZAR  HCB2 H  H      0  0.000  -1.2601   1.8077   1.4261
+ ZAR  HCG1 H  H      0  0.000   0.6483   2.2775  -0.0090
+ ZAR  HCG2 H  H      0  0.000  -0.8825   2.3618  -0.8619
+ ZAR  HCD1 H  H      0  0.000   1.0175   1.3289  -2.1874
+ ZAR  HCD2 H  H      0  0.000  -0.4297   0.3438  -2.0903
+ ZAR  HNE1 H  H      0  0.000   0.5550  -1.1445  -0.5736
+ ZAR  HH11 H  H      0  0.000   3.7813  -2.0738  -0.2862
+ ZAR  HH12 H  H      0  0.000   2.1049  -2.4126   0.0327
+ ZAR  HH21 H  H      0  0.000   3.0828   1.0678  -1.8186
+ ZAR  HH22 H  H      0  0.000   4.3304  -0.0368  -1.3544
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZAR  N    CA   single    1.524  0.020
+ ZAR  CA   CB   single    1.532  0.020
+ ZAR  CB   CG   single    1.544  0.020
+ ZAR  CG   CD   single    1.528  0.020
+ ZAR  CD   NE   single    1.456  0.020
+ ZAR  NE   CZ   single    1.322  0.020
+ ZAR  CZ   NH1  single    1.335  0.020
+ ZAR  CZ   NH2  double    1.333  0.020
+ ZAR  CA   C    single    1.573  0.020
+ ZAR  C    O    double    1.259  0.020
+ ZAR  C    OXT  single    1.268  0.020
+ ZAR  N    HN1  single    1.054  0.020
+ ZAR  N    HN2  single    1.021  0.020
+ ZAR  N    HN3  single    1.024  0.020
+ ZAR  CA   HCA1 single    1.095  0.020
+ ZAR  CB   HCB1 single    1.097  0.020
+ ZAR  CB   HCB2 single    1.098  0.020
+ ZAR  CG   HCG1 single    1.098  0.020
+ ZAR  CG   HCG2 single    1.097  0.020
+ ZAR  CD   HCD1 single    1.094  0.020
+ ZAR  CD   HCD2 single    1.096  0.020
+ ZAR  NE   HNE1 single    1.038  0.020
+ ZAR  NH1  HH11 single    1.008  0.020
+ ZAR  NH1  HH12 single    1.021  0.020
+ ZAR  NH2  HH21 single    1.009  0.020
+ ZAR  NH2  HH22 single    1.010  0.020
+''')
+
+# neutral methylguanidine, 5-methyl-1H-tetrazole, methanesulfonic acid,
+# N,N-dimethylglycine N-methylamide (tertiary amine and amide N)
+zgn_cif = ('zgn.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZGN  ZGN  'ZGN' ligand 12 5 .
+
+data_comp_ZGN
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZGN  C1   C  C      0  0.000  -1.7473  -0.2767  -0.1645
+ ZGN  N1   N  N      0  0.000  -0.3641  -0.6448   0.0622
+ ZGN  C2   C  C      0  0.000   0.6058   0.2979   0.0462
+ ZGN  N2   N  N      0  0.000   1.8307  -0.2590   0.1177
+ ZGN  N3   N  N      0  0.000   0.4057   1.5613  -0.0157
+ ZGN  HC11 H  H      0  0.000  -2.3830  -1.1608  -0.0573
+ ZGN  HC12 H  H      0  0.000  -1.8831   0.1223  -1.1747
+ ZGN  HC13 H  H      0  0.000  -2.0813   0.4677   0.5652
+ ZGN  HN11 H  H      0  0.000  -0.0970  -1.4818  -0.4416
+ ZGN  HN21 H  H      0  0.000   2.5683   0.3875   0.3656
+ ZGN  HN22 H  H      0  0.000   1.8462  -1.0665   0.7302
+ ZGN  HN31 H  H      0  0.000   1.2990   2.0529  -0.0334
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZGN  C1   N1   single    1.449  0.020
+ ZGN  N1   C2   single    1.353  0.020
+ ZGN  C2   N2   single    1.347  0.020
+ ZGN  C2   N3   double    1.281  0.020
+ ZGN  C1   HC11 single    1.094  0.020
+ ZGN  C1   HC12 single    1.095  0.020
+ ZGN  C1   HC13 single    1.095  0.020
+ ZGN  N1   HN11 single    1.013  0.020
+ ZGN  N2   HN21 single    1.012  0.020
+ ZGN  N2   HN22 single    1.014  0.020
+ ZGN  N3   HN31 single    1.020  0.020
+''')
+
+ztz_cif = ('ztz.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZTZ  ZTZ  'ZTZ' ligand 10 6 .
+
+data_comp_ZTZ
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZTZ  C1   C  C      0  0.000  -1.4097  -0.0368   0.0429
+ ZTZ  C2   C  C      0  0.000   0.0443  -0.2591  -0.0411
+ ZTZ  N1   N  N      0  0.000   0.6896  -1.3889  -0.2361
+ ZTZ  N2   N  N      0  0.000   2.0265  -1.0692  -0.2332
+ ZTZ  N3   N  N      0  0.000   2.2041   0.2303  -0.0406
+ ZTZ  N4   N  N      0  0.000   0.9708   0.7362   0.0792
+ ZTZ  HC11 H  H      0  0.000  -1.9523  -0.9788  -0.0825
+ ZTZ  HC12 H  H      0  0.000  -1.7415   0.6529  -0.7393
+ ZTZ  HC13 H  H      0  0.000  -1.6812   0.3846   1.0157
+ ZTZ  HN41 H  H      0  0.000   0.8494   1.7287   0.2351
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZTZ  C1   C2   single    1.473  0.020
+ ZTZ  C2   N1   aromatic  1.316  0.020
+ ZTZ  N1   N2   aromatic  1.375  0.020
+ ZTZ  N2   N3   aromatic  1.326  0.020
+ ZTZ  N3   N4   aromatic  1.338  0.020
+ ZTZ  N4   C2   aromatic  1.365  0.020
+ ZTZ  C1   HC11 single    1.094  0.020
+ ZTZ  C1   HC12 single    1.094  0.020
+ ZTZ  C1   HC13 single    1.094  0.020
+ ZTZ  N4   HN41 single    1.012  0.020
+''')
+
+zsa_cif = ('zsa.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZSA  ZSA  'ZSA' ligand 9 5 .
+
+data_comp_ZSA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZSA  C1   C  C      0  0.000  -1.1285  -0.0423  -0.0372
+ ZSA  S1   S  S      0  0.000   0.5990  -0.3692   0.2262
+ ZSA  O1   O  O      0  0.000   1.1211  -1.1321  -0.8844
+ ZSA  O2   O  O      0  0.000   0.8185  -0.7449   1.6024
+ ZSA  O3   O  O      0  0.000   1.1458   1.1355   0.0207
+ ZSA  HC11 H  H      0  0.000  -1.6681  -0.9877   0.0494
+ ZSA  HC12 H  H      0  0.000  -1.4748   0.6575   0.7255
+ ZSA  HC13 H  H      0  0.000  -1.2606   0.3738  -1.0376
+ ZSA  HO31 H  H      0  0.000   1.8476   1.1094  -0.6652
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZSA  C1   S1   single    1.778  0.020
+ ZSA  S1   O1   double    1.445  0.020
+ ZSA  S1   O2   double    1.443  0.020
+ ZSA  S1   O3   single    1.614  0.020
+ ZSA  C1   HC11 single    1.092  0.020
+ ZSA  C1   HC12 single    1.092  0.020
+ ZSA  C1   HC13 single    1.092  0.020
+ ZSA  O3   HO31 single    0.982  0.020
+''')
+
+zam_cif = ('zam.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZAM  ZAM  'ZAM' ligand 20 8 .
+
+data_comp_ZAM
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZAM  C1   C  C      0  0.000  -2.6433  -0.8280   0.2400
+ ZAM  N1   N  N      0  0.000  -1.4282  -0.0146   0.2777
+ ZAM  C2   C  C      0  0.000  -1.3787   0.8755  -0.8812
+ ZAM  C3   C  C      0  0.000  -0.2393  -0.8881   0.3629
+ ZAM  C4   C  C      0  0.000   1.0389  -0.0872   0.6476
+ ZAM  O1   O  O      0  0.000   1.3281   0.3403   1.7625
+ ZAM  N2   N  N      0  0.000   1.8397   0.1122  -0.4629
+ ZAM  C5   C  C      0  0.000   3.1035   0.7939  -0.3533
+ ZAM  HC11 H  H      0  0.000  -2.7171  -1.4540   1.1363
+ ZAM  HC12 H  H      0  0.000  -3.5347  -0.1908   0.2316
+ ZAM  HC13 H  H      0  0.000  -2.6766  -1.4799  -0.6405
+ ZAM  HC21 H  H      0  0.000  -1.2894   0.3224  -1.8230
+ ZAM  HC22 H  H      0  0.000  -2.2838   1.4918  -0.9316
+ ZAM  HC23 H  H      0  0.000  -0.5412   1.5767  -0.8076
+ ZAM  HC31 H  H      0  0.000  -0.3429  -1.5931   1.1976
+ ZAM  HC32 H  H      0  0.000  -0.1174  -1.4883  -0.5474
+ ZAM  HN21 H  H      0  0.000   1.6160  -0.3640  -1.3258
+ ZAM  HC51 H  H      0  0.000   3.8417   0.0979   0.0538
+ ZAM  HC52 H  H      0  0.000   3.4113   1.1186  -1.3498
+ ZAM  HC53 H  H      0  0.000   3.0136   1.6588   0.3094
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZAM  C1   N1   single    1.463  0.020
+ ZAM  N1   C2   single    1.462  0.020
+ ZAM  N1   C3   single    1.478  0.020
+ ZAM  C3   C4   single    1.535  0.020
+ ZAM  C4   O1   double    1.229  0.020
+ ZAM  C4   N2   single    1.384  0.020
+ ZAM  N2   C5   single    1.440  0.020
+ ZAM  C1   HC11 single    1.096  0.020
+ ZAM  C1   HC12 single    1.096  0.020
+ ZAM  C1   HC13 single    1.096  0.020
+ ZAM  C2   HC21 single    1.096  0.020
+ ZAM  C2   HC22 single    1.096  0.020
+ ZAM  C2   HC23 single    1.095  0.020
+ ZAM  C3   HC31 single    1.098  0.020
+ ZAM  C3   HC32 single    1.097  0.020
+ ZAM  N2   HN21 single    1.011  0.020
+ ZAM  C5   HC51 single    1.093  0.020
+ ZAM  C5   HC52 single    1.092  0.020
+ ZAM  C5   HC53 single    1.093  0.020
+''')
+
+# acetohydrazide, N-methylhydroxylamine, dimethylcyanamide, 1-methyltetrazole
+zhz_cif = ('zhz.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZHZ  ZHZ  'ZHZ' ligand 11 5 .
+
+data_comp_ZHZ
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZHZ  C1   C  C      0  0.000  -1.6095   0.0569   0.3409
+ ZHZ  C2   C  C      0  0.000  -0.1439   0.3905   0.2836
+ ZHZ  O1   O  O      0  0.000   0.3275   1.3922   0.8171
+ ZHZ  N1   N  N      0  0.000   0.6164  -0.5225  -0.4325
+ ZHZ  N2   N  N      0  0.000   1.9895  -0.2661  -0.6381
+ ZHZ  HC11 H  H      0  0.000  -1.9524   0.1310   1.3766
+ ZHZ  HC12 H  H      0  0.000  -2.1618   0.7642  -0.2831
+ ZHZ  HC13 H  H      0  0.000  -1.8067  -0.9587  -0.0134
+ ZHZ  HN11 H  H      0  0.000   0.1686  -1.2465  -0.9907
+ ZHZ  HN21 H  H      0  0.000   2.4751  -0.4969   0.2350
+ ZHZ  HN22 H  H      0  0.000   2.0971   0.7559  -0.6954
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZHZ  C1   C2   single    1.504  0.020
+ ZHZ  C2   O1   double    1.229  0.020
+ ZHZ  C2   N1   single    1.387  0.020
+ ZHZ  N1   N2   single    1.412  0.020
+ ZHZ  C1   HC11 single    1.093  0.020
+ ZHZ  C1   HC12 single    1.093  0.020
+ ZHZ  C1   HC13 single    1.093  0.020
+ ZHZ  N1   HN11 single    1.018  0.020
+ ZHZ  N2   HN21 single    1.025  0.020
+ ZHZ  N2   HN22 single    1.029  0.020
+''')
+
+zha_cif = ('zha.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZHA  ZHA  'ZHA' ligand 8 3 .
+
+data_comp_ZHA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZHA  C1   C  C      0  0.000  -0.4928  -0.0423  -0.6962
+ ZHA  N1   N  N      0  0.000  -0.0967   0.2973   0.6659
+ ZHA  O1   O  O      0  0.000   1.2119  -0.3142   0.8381
+ ZHA  HC11 H  H      0  0.000  -1.4437   0.4439  -0.9333
+ ZHA  HC12 H  H      0  0.000  -0.6325  -1.1229  -0.8001
+ ZHA  HC13 H  H      0  0.000   0.2526   0.2929  -1.4248
+ ZHA  HN11 H  H      0  0.000   0.1253   1.2958   0.7067
+ ZHA  HO11 H  H      0  0.000   1.0759  -0.8505   1.6438
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZHA  C1   N1   single    1.459  0.020
+ ZHA  N1   O1   single    1.455  0.020
+ ZHA  C1   HC11 single    1.094  0.020
+ ZHA  C1   HC12 single    1.094  0.020
+ ZHA  C1   HC13 single    1.095  0.020
+ ZHA  N1   HN11 single    1.024  0.020
+ ZHA  O1   HO11 single    0.977  0.020
+''')
+
+zcy_cif = ('zcy.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZCY  ZCY  'ZCY' ligand 11 5 .
+
+data_comp_ZCY
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZCY  C1   C  C      0  0.000  -1.1558   0.6061  -0.1188
+ ZCY  N1   N  N      0  0.000   0.2818   0.2467  -0.1800
+ ZCY  C2   C  C      0  0.000   0.4950  -1.2130  -0.0272
+ ZCY  C3   C  C      0  0.000   1.2364   1.1299   0.1572
+ ZCY  N2   N  N      0  0.000   2.0562   1.8890   0.4589
+ ZCY  HC11 H  H      0  0.000  -1.7388  -0.0232  -0.7982
+ ZCY  HC12 H  H      0  0.000  -1.5330   0.4787   0.9007
+ ZCY  HC13 H  H      0  0.000  -1.3007   1.6486  -0.4203
+ ZCY  HC21 H  H      0  0.000   0.2804  -1.5197   1.0013
+ ZCY  HC22 H  H      0  0.000  -0.1536  -1.7700  -0.7103
+ ZCY  HC23 H  H      0  0.000   1.5321  -1.4731  -0.2632
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZCY  C1   N1   single    1.483  0.020
+ ZCY  N1   C2   single    1.483  0.020
+ ZCY  N1   C3   single    1.344  0.020
+ ZCY  C3   N2   triple    1.157  0.020
+ ZCY  C1   HC11 single    1.094  0.020
+ ZCY  C1   HC12 single    1.094  0.020
+ ZCY  C1   HC13 single    1.095  0.020
+ ZCY  C2   HC21 single    1.094  0.020
+ ZCY  C2   HC22 single    1.094  0.020
+ ZCY  C2   HC23 single    1.095  0.020
+''')
+
+zmt_cif = ('zmt.cif', '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZMT  ZMT  'ZMT' ligand 10 6 .
+
+data_comp_ZMT
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZMT  C1   C  C      0  0.000  -1.3779  -0.0728  -0.0198
+ ZMT  N1   N  N      0  0.000   0.0507  -0.1820   0.0317
+ ZMT  C2   C  C      0  0.000   0.9863   0.7893  -0.1094
+ ZMT  N2   N  N      0  0.000   2.1730   0.2395   0.0103
+ ZMT  N3   N  N      0  0.000   1.9452  -1.0999   0.2296
+ ZMT  N4   N  N      0  0.000   0.6450  -1.3645   0.2438
+ ZMT  HC11 H  H      0  0.000  -1.7468  -0.7027  -0.8331
+ ZMT  HC12 H  H      0  0.000  -1.6576   0.9680  -0.2008
+ ZMT  HC13 H  H      0  0.000  -1.7879  -0.4059   0.9369
+ ZMT  HC21 H  H      0  0.000   0.7700   1.8312  -0.2891
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZMT  C1   N1   single    1.434  0.020
+ ZMT  N1   C2   aromatic  1.356  0.020
+ ZMT  C2   N2   aromatic  1.313  0.020
+ ZMT  N2   N3   aromatic  1.376  0.020
+ ZMT  N3   N4   aromatic  1.327  0.020
+ ZMT  N4   N1   aromatic  1.340  0.020
+ ZMT  C1   HC11 single    1.093  0.020
+ ZMT  C1   HC12 single    1.093  0.020
+ ZMT  C1   HC13 single    1.093  0.020
+ ZMT  C2   HC21 single    1.079  0.020
+''')
+
 # ------------------------------------------------------------------------------
 
 def get_model(lines=None, cifs=()):
@@ -2078,6 +2838,273 @@ def exercise_atomic_charge_comparison():
   assert [x['status'] for x in m.formal_charges if x['residue'] == 'A ACT 1' and
     x['source'] == 'restraints'] == ['agrees']
 
+def possible(m):
+  return [(e['residue'], e['subtype'], e['charges'], e['reasons']) for e in
+    m.possible_salt_bridges]
+
+def add_h(lines, residue, heavy, parent, name, alt=None):
+  '''lines with an H on heavy (0.97 A from it, away from parent) after it.'''
+  o = [l for l in lines if l[17:26] == residue and l[12:16].strip() == heavy and
+    (alt is None or l[16] == alt)][0]
+  c = [l for l in lines if l[17:26] == residue and l[12:16].strip() == parent and
+    l[16] == o[16]][0]
+  xo = [float(o[30 + 8 * k:38 + 8 * k]) for k in range(3)]
+  xc = [float(c[30 + 8 * k:38 + 8 * k]) for k in range(3)]
+  d = [xo[k] - xc[k] for k in range(3)]
+  n = sum([v * v for v in d]) ** 0.5
+  h = o[:12] + ' %-3s' % name + o[16:30] + '%8.3f%8.3f%8.3f' % tuple(
+    [xo[k] + 0.97 * d[k] / n for k in range(3)]) + o[54:76] + ' H'
+  k = lines.index(o)
+  return lines[:k + 1] + [h] + lines[k + 1:]
+
+def exercise_possible_salt_bridges():
+  '''
+  Possible salt bridges: opposite charges, each group's modelled charge if certain
+  and charged, else its usual charge; at least one not certainly charged; the
+  salt-bridge criterion; listed apart, not counted. Neutral benzamidine (GeoStd
+  BEN, at ACT 2's place) next to Asp 40; NH4 next to Asp 60 with HD2; ACT 1 next
+  to Lys 10 with two H on NZ (Arg 20 stays a salt bridge); a neutral methyl
+  phosphate (HOP2, HOP3; usual -2) at ACT 1's place next to Lys 10 and Arg 20; the
+  partial-charges-only ZPC (uncertain) next to ZZW's ammonium; the Lys case moved
+  by -a (symmetry); Asp 60 with HD2 in both conformers next to NH4 A/B (altlocs).
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  salt = salt_model_str.split('\n')
+  # neutral amidine
+  lines = [l for l in salt if l[17:26] != 'ACT A   2' and l != 'END']
+  model = get_model(lines + ben_at_act2_lines.strip('\n').split('\n') + ['END'])
+  m = get_manager(model, sel='chain A and resseq 2')
+  assert salt_bridges(m) == []
+  assert possible(m) == [('E ASP 40', 'N-O bridge (K&N)', [1, -1],
+    ['A BEN 2 amidine neutral as modelled (restraint file)'])], possible(m)
+  e = m.possible_salt_bridges[0]
+  g = e['geometry']['charged_groups']
+  assert (g['ligand_group']['kind'], g['ligand_group']['charge'],
+    g['ligand_group']['usual_charge'], g['ligand_group']['atoms']) == ('amidine', 0, 1,
+    ['A BEN 2 N1', 'A BEN 2 N2']), g['ligand_group']
+  assert (g['partner_group']['charge'], g['partner_group']['usual_charge'],
+    g['partner_group']['state']) == (-1, -1, 'modelled')
+  assert e['type'] == 'possible_salt_bridge' and e not in m.entries
+  c = m.counts()
+  assert not [t for t in c.per_type if 'salt' in t], c.per_type
+  assert not [t for r in c.per_residue.values() for t in r if 'salt' in t], c.per_residue
+  assert not [t for a in c.per_ligand_atom.values() for t in a if 'salt' in t]
+  assert [(g['kind'], g['usual_charge']) for g in m.possible_groups] == [('amidine', 1)]
+  d = m.as_dict()
+  assert d['possible_salt_bridges'] == m.possible_salt_bridges
+  assert [x['kind'] for x in d['possible_groups']] == ['amidine']
+  json.dumps(d, default=str)
+  log = StringIO()
+  m.show(log=log)
+  assert 'possible salt bridges (not counted):' in log.getvalue()
+  assert 'A BEN 2 amidine neutral as modelled (restraint file)' in log.getvalue()
+  # Asp 60 protonated (HD2) next to NH4
+  model = get_model(add_h(salt, 'ASP G  60', 'OD2', 'CG', 'HD2'))
+  m = get_manager(model, sel='chain A and resseq 3')
+  assert salt_bridges(m) == []
+  assert possible(m) == [('G ASP 60', 'salt bridge (K&N)', [1, -1],
+    ['G ASP 60 carboxylate protonated (HD2)'])], possible(m)
+  # Lys 10 with two H on NZ next to ACT 1
+  lines = [l for l in salt if not (l[17:26] == 'LYS B  10' and l[12:16].strip() == 'HZ3')]
+  m = get_manager(get_model(lines), sel='chain A and resseq 1')
+  assert [e['residue'] for e in salt_bridges(m)] == ['C ARG 20']
+  assert possible(m) == [('B LYS 10', 'salt bridge (K&N)', [-1, 1],
+    ['B LYS 10 ammonium neutral (NZ with 2 H)'])], possible(m)
+  assert [h['labels'] for h in m.possible_salt_bridges[0]['hbonds']] == [
+    ['B LYS 10 NZ', 'B LYS 10 HZ1', 'A ACT 1 OXT']]
+  # neutral phosphoric acid monoester (usual -2)
+  lines = [l for l in salt if l[17:26] != 'ACT A   1' and l != 'END']
+  model = get_model(lines + zmp_at_act1_lines.strip('\n').split('\n') + ['END'],
+    cifs=(zmp_cif,))
+  m = get_manager(model, sel='chain A and resseq 1')
+  assert salt_bridges(m) == []
+  reason = ['A ZMP 1 phosphoric acid neutral as modelled (restraint file)']
+  assert sorted(possible(m)) == [('B LYS 10', 'salt bridge (K&N)', [-2, 1], reason),
+    ('C ARG 20', 'N-O bridge (K&N)', [-2, 1], reason)], possible(m)
+  assert [a.split()[-1] for a in m.possible_groups[0]['atoms']] == ['O1P', 'O2P', 'O3P']
+  # an uncertain group (partial charges only) next to a certain ammonium
+  lines = [l for l in M.pdb_from_cif('ZPC', M.zpc_cif).split('\n') if l.startswith('HETATM')]
+  o1 = [float(x) for x in [l for l in lines if l[12:16] == ' O1 '][0][30:54].split()]
+  zzw = [l for l in M.pdb_from_cif('ZZW', M.zzw_cif).split('\n') if l.startswith('HETATM')]
+  n1 = [float(x) for x in [l for l in zzw if l[12:16] == ' N1 '][0][30:54].split()]
+  shift = [o1[0] - n1[0] + 3.0, o1[1] - n1[1], o1[2] - n1[2]]
+  moved = [l[:21] + 'B' + l[22:30] + ''.join(['%8.3f' % (float(l[30 + 8 * k:38 + 8 * k]) +
+    shift[k]) for k in range(3)]) + l[54:] for l in zzw]
+  model = get_model(['CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1'] + lines +
+    moved + ['END'], cifs=(('zpc.cif', M.zpc_cif), ('zzw.cif', M.zzw_cif)))
+  m = get_manager(model, sel='resname ZPC')
+  assert salt_bridges(m) == []
+  assert [(r, q, why) for r, s, q, why in possible(m)] == [('B ZZW 1', [-1, 1],
+    ['A ZPC 1 carboxylate uncertain (total charge by search (no formal charges))'])], \
+    possible(m)
+  # symmetry: Lys 10 moved by -a, two H on NZ
+  lines = [l for l in salt_sym_model_str.split('\n') if not (l[17:20] == 'LYS' and
+    l[12:16].strip() == 'HZ3')]
+  m = get_manager(get_model(lines), sel='chain A and resseq 1')
+  (e,) = m.possible_salt_bridges
+  assert (e['residue'], e['symop']) == ('B LYS 10 (x+1,y,z)', 'x+1,y,z'), e['residue']
+  assert e['labels'] == ['A ACT 1 O', 'A ACT 1 OXT', 'B LYS 10 NZ (x+1,y,z)']
+  assert approx_equal(e['geometry']['charged_groups']['min_atom_distance'], 2.85, eps=0.01)
+  # altlocs: A with A, B with B
+  lines = altloc_both_model_str.split('\n')
+  for alt in 'AB':
+    lines = add_h(lines, 'ASP G  60', 'OD2', 'CG', 'HD2', alt=alt)
+  m = get_manager(get_model(lines), sel='chain A and resseq 3')
+  assert salt_bridges(m) == []
+  assert sorted([(e['geometry']['charged_groups']['ligand_group']['altloc'],
+    e['geometry']['charged_groups']['partner_group']['altloc'])
+    for e in m.possible_salt_bridges]) == [('A', 'A'), ('B', 'B')]
+
+def exercise_possible_kinds():
+  '''
+  Neutral groups usually charged at pH 7 by SMARTS on the builder's molecule:
+  guanidine (+1, the three N), 1H-tetrazole (-1, the NH N and its resonance
+  partners), sulfonic acid (-1, the three O), a tertiary amine (+1; the amide N of
+  the same molecule is not a group); SEP in a chain: phosphoric acid, the capped
+  backbone N skipped silently (not listed).
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  rows = []
+  for code, cif in (('ZGN', zgn_cif), ('ZTZ', ztz_cif), ('ZSA', zsa_cif), ('ZAM', zam_cif)):
+    model = M.get_model(M.pdb_from_cif(code, cif[1]), cifs=((code, cif[1]),))
+    atoms = model.get_hierarchy().atoms()
+    f = LI.find_charged_groups(model, all_atoms(model))
+    assert f.groups == [] and f.failures == []
+    rows += [(code, g['kind'], g['charge'], g['usual_charge'], atoms[g['center']].name.strip(),
+      sorted([atoms[i].name.strip() for i in g['charged']]), g['notes']) for g in f.possible]
+  why = ['neutral as modelled (restraint file)']
+  assert rows == [('ZGN', 'guanidine', 0, 1, 'C2', ['N1', 'N2', 'N3'], why),
+    ('ZTZ', 'tetrazole', 0, -1, 'C2', ['N1', 'N2', 'N4'], why),
+    ('ZSA', 'sulfonic acid', 0, -1, 'S1', ['O1', 'O2', 'O3'], why),
+    ('ZAM', 'amine', 0, 1, 'N1', ['N1'], why)], rows
+  # SEP between two Gly (GeoStd SEP, HOP2 and HOP3 modelled): the phosphoric acid
+  # (usual -2); the backbone N, linked to Gly 1 (capped), dropped
+  model = M.get_model(M.chain_pdb)
+  atoms = model.get_hierarchy().atoms()
+  f = LI.find_charged_groups(model, all_atoms(model))
+  assert [(g['resname'], g['kind'], g['usual_charge'], sorted([atoms[i].name.strip()
+    for i in g['charged']])) for g in f.possible] == [('SEP', 'phosphoric acid', -2,
+    ['O1P', 'O2P', 'O3P'])], f.possible
+  assert f.dropped == [] and not hasattr(f, 'possible_dropped')
+
+def placed(code, cif, atom, site, chain='A', resseq=9):
+  '''pdb lines of the cif's residue translated so that atom lies on site.'''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  lines = [l for l in M.pdb_from_cif(code, cif[1]).split('\n') if l.startswith('HETATM')]
+  a = [float(x) for x in [l for l in lines if l[12:16].strip() == atom][0][30:54].split()]
+  return [l[:21] + chain + '%4d' % resseq + l[26:30] + ''.join(['%8.3f' % (
+    float(l[30 + 8 * k:38 + 8 * k]) - a[k] + site[k]) for k in range(3)]) + l[54:]
+    for l in lines]
+
+def superposed(code, cif, pick, sites, chain='A', resseq=9):
+  '''pdb lines of the cif's residue superposed so that the atoms pick lie on sites.'''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  from scitbx.math import superpose
+  lines = [l for l in M.pdb_from_cif(code, cif[1]).split('\n') if l.startswith('HETATM')]
+  xyz = dict([(l[12:16].strip(), [float(l[30 + 8 * k:38 + 8 * k]) for k in range(3)])
+    for l in lines])
+  f = superpose.least_squares_fit(reference_sites=flex.vec3_double(sites),
+    other_sites=flex.vec3_double([xyz[n] for n in pick]))
+  r, t = f.r.elems, f.t.elems
+  out = []
+  for l in lines:
+    x = xyz[l[12:16].strip()]
+    y = [sum([r[3 * i + j] * x[j] for j in range(3)]) + t[i] for i in range(3)]
+    out.append(l[:21] + chain + '%4d' % resseq + l[26:30] + '%8.3f%8.3f%8.3f' % tuple(y) +
+      l[54:])
+  return out
+
+def exercise_amine_and_tetrazole_rules():
+  '''
+  No possible salt bridge for an N bonded to N or O, or to a nitrile C: acetohydrazide
+  (terminal N2) and N-methylhydroxylamine (N1) at NH4 3's N, next to Asp 60;
+  dimethylcyanamide: no group. A tetrazole only with an H on a ring N:
+  1-methyltetrazole at ACT 1's place, next to Lys 10: nothing; 5-methyl-1H-
+  tetrazole (N4-H) there: possible salt bridges with Lys 10 and Arg 20 (both rings
+  superposed with C5 and its two ring N on ACT 1's C, O, OXT).
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  salt = [l for l in salt_model_str.split('\n') if l != 'END']
+  nh4 = [float(x) for x in [l for l in salt if l[17:26] == 'NH4 A   3'][0][30:54].split()]
+  act = dict([(l[12:16].strip(), [float(x) for x in l[30:54].split()]) for l in salt
+    if l[17:26] == 'ACT A   1'])
+  sites = [act['C'], act['O'], act['OXT']]
+  for code, cif, atom in (('ZHZ', zhz_cif, 'N2'), ('ZHA', zha_cif, 'N1')):
+    lines = [l for l in salt if l[17:26] != 'NH4 A   3'] + placed(code, cif, atom, nh4) + ['END']
+    m = get_manager(get_model(lines, cifs=(cif,)), sel='resname %s' % code)
+    assert m.possible_salt_bridges == [] and m.possible_groups == [], (code, possible(m))
+    assert min([a.distance(b) for a in m.model.get_hierarchy().atoms() for b in
+      m.model.get_hierarchy().atoms() if a.name.strip() == atom and a.parent().resname == code
+      and b.name.strip() in ('OD1', 'OD2') and b.parent().parent().resseq_as_int() == 60]) < 4
+  model = M.get_model(M.pdb_from_cif('ZCY', zcy_cif[1]), cifs=(('ZCY', zcy_cif[1]),))
+  f = LI.find_charged_groups(model, all_atoms(model))
+  assert f.groups == [] and f.possible == []
+  for code, cif, pick, partners in (('ZMT', zmt_cif, ['C2', 'N2', 'N1'], []),
+      ('ZTZ', ztz_cif, ['C2', 'N1', 'N4'], ['B LYS 10', 'C ARG 20'])):
+    lines = [l for l in salt if l[17:26] != 'ACT A   1'] + superposed(code, cif, pick,
+      sites) + ['END']
+    m = get_manager(get_model(lines, cifs=(cif,)), sel='resname %s' % code)
+    assert m.charged_group_failures == [], m.charged_group_failures
+    assert sorted([e['residue'] for e in m.possible_salt_bridges]) == partners, (code,
+      possible(m))
+
+def exercise_not_possible():
+  '''
+  No possible salt bridge: His with HD1 only (usual 0) next to ACT 2; paracetamol
+  (amide N, phenol) and 4-aminophenol (aniline, phenol): no possible groups; Lys 50
+  with two H on NZ, 5 A from ACT 2 (beyond the 4 A atom-pair cutoff); ACT 1 with
+  Lys 10 and Arg 20, all charged: salt bridges only.
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  neutral = get_model(neutral_model_str.split('\n'), cifs=(acy_neutral_cif,))
+  m = get_manager(neutral, sel='chain A and resseq 2')
+  assert m.possible_salt_bridges == [] and salt_bridges(m) == []
+  for code, cif in (('ZPA', zpa_cif), ('ZAP', zap_cif)):
+    model = M.get_model(M.pdb_from_cif(code, cif[1]), cifs=((code, cif[1]),))
+    f = LI.find_charged_groups(model, all_atoms(model))
+    assert f.groups == [] and f.possible == [] and f.failures == [], (code, f.possible)
+  salt = salt_model_str.split('\n')
+  lines = [l for l in salt if not (l[17:26] == 'LYS F  50' and l[12:16].strip() == 'HZ3')]
+  m = get_manager(get_model(lines), sel='chain A and resseq 2')
+  assert m.possible_salt_bridges == [], possible(m)
+  m = get_manager(get_model(salt), sel='chain A and resseq 1')
+  assert sorted([e['residue'] for e in salt_bridges(m)]) == ['B LYS 10', 'C ARG 20']
+  assert m.possible_salt_bridges == [] and m.possible_groups == []
+
+def exercise_charge_types_and_ccd_match():
+  '''
+  Formal-charge records carry the restraint file's type_energy (ZAR: NT3, OC, NC1
+  NC2; None for the CCD). A CCD entry whose names, elements or heavy-atom bonds do
+  not match the residue (ZNX, ZAR: other compounds with these codes) gives "CCD
+  entry does not match" instead of a comparison.
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  zzw = [l[:21] + 'B' + l[22:30] + '%8.3f' % (float(l[30:38]) + 8.0) + l[38:]
+    for l in M.pdb_from_cif('ZZW', M.zzw_cif).split('\n') if l.startswith('HETATM')]
+  rows = {}
+  for code, cif in (('ZAR', zar_cif), ('ZNX', znx_cif)):
+    model = get_model(pdb_from_cif_text(code, cif[1])[:-1] + zzw + ['END'],
+      cifs=(cif, ('zzw.cif', M.zzw_cif)))
+    m = get_manager(model, sel='resname %s' % code)
+    rows[code] = [(x['source'], x['atoms'], x['status'], x['type_energy'])
+      for x in m.formal_charges if x['residue'] == 'A %s 1' % code]
+    assert m.formal_charge_conflicts() == []
+  assert rows['ZAR'] == [
+    ('restraints', ['N'], 'agrees', ['NT3']),
+    ('restraints', ['O', 'OXT'], 'agrees', ['OC', 'OC']),
+    ('restraints', ['NE', 'NH1', 'NH2'], 'agrees', ['NC1', 'NC2', 'NC2']),
+    ('CCD', ['C', 'CA', 'CB', 'CD', 'CG', 'CZ', 'N', 'NE', 'NH1', 'NH2', 'O', 'OXT'],
+      'CCD entry does not match', None)], rows['ZAR']
+  assert rows['ZNX'] == [
+    ('restraints', ['N1'], 'agrees', ['N']),
+    ('restraints', ['O1', 'O2'], 'agrees', ['O', 'O']),
+    ('CCD', ['C1', 'N1', 'O1', 'O2'], 'CCD entry does not match', None)], rows['ZNX']
+  # a matching CCD entry: compared (ACT, salt_sym_model_str)
+  m = get_manager(get_model(salt_sym_model_str.split('\n')), sel='chain A and resseq 1')
+  act = [(x['source'], x['status'], x['type_energy']) for x in m.formal_charges
+    if x['residue'] == 'A ACT 1']
+  assert act == [('restraints', 'agrees', ['O', 'OC']), ('CCD', 'agrees', None)], act
+
 def exercise_builder_chain():
   '''
   SEP between two Gly with a SEP restraint file without HOP2/HOP3 (GeoStd's SEP is
@@ -2339,6 +3366,11 @@ def run():
   exercise_builder_groups()
   exercise_charge_separated()
   exercise_atomic_charge_comparison()
+  exercise_possible_salt_bridges()
+  exercise_possible_kinds()
+  exercise_amine_and_tetrazole_rules()
+  exercise_not_possible()
+  exercise_charge_types_and_ccd_match()
   exercise_builder_chain()
   exercise_templates_vs_builder()
   exercise_nucleotides()
