@@ -1,4 +1,4 @@
-# GuidedCoding r10 rev12 architecture
+# GuidedCoding r10 rev13 architecture
 
 The **one central source** is `cctbx_project/libtbx/guided_coding/`. A
 personal skill symlink at `~/.claude/skills/guided_coding` points at this

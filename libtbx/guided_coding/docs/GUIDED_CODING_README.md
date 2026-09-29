@@ -1,6 +1,9 @@
-# GuidedCoding — central opt-in r10 rev12 candidate
+# GuidedCoding — central opt-in r10 rev13 candidate
 
-**Status (2026-09-29):** r10 rev12 changes only the `/skills` guidance, to
+**Status (2026-09-29):** r10 rev13 lets the complete-source check accept the
+bytecode an installer's precompile step writes beside listed modules (the
+tools never load it) and keeps refusing any other unlisted code. r10 rev12
+changed only the `/skills` guidance, to
 match the rev11 Mac trial; rev11 itself was reviewed (no blocking finding)
 and trialled on the intended Mac. Rev12 is committed locally in
 `cctbx_project`, not published, and needs its own review before

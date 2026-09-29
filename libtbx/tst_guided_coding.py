@@ -7,7 +7,10 @@ a private TMPDIR. Afterwards it fails if the run created any file in the
 package, or if any file listed in SOURCE_MANIFEST.sha256 is missing or
 changed. Unlisted files that were already present before the run (for
 example bytecode written by an installer's precompile step) are reported but
-do not fail this test. The package and its tools are for macOS and Linux
+do not fail this test. It also runs the installer's precompile step,
+libtbx.py_compile_all -i, on a temporary copy of the package and checks that
+the copy still verifies while an unlisted module is still refused. The
+package and its tools are for macOS and Linux
 only: on Windows, or under Python 2, this test prints a skip line and OK.
 """
 import hashlib
@@ -53,11 +56,49 @@ def listed_problems():
   return problems
 
 
-def exercise():
-  listed = set(
+def exercise_real_precompile(tmp, env):
+  """Run the installer's precompile step, libtbx.py_compile_all -i, on a copy
+  of the package: the copy must still verify (reporting the bytecode it
+  ignored), and an unlisted module must still be refused."""
+  try:
+    import libtbx.command_line.py_compile_all # noqa: F401 (libtbx environment)
+  except ImportError:
+    print("skip: libtbx.py_compile_all needs a libtbx environment")
+    return
+  copy = os.path.join(tmp, "precompiled", "guided_coding")
+  for rel in sorted(listed_names()):         # the listed files only
+    target = os.path.join(copy, rel)
+    if not os.path.isdir(os.path.dirname(target)):
+      os.makedirs(os.path.dirname(target))
+    shutil.copyfile(os.path.join(PACKAGE, rel), target)
+  rc, out = run([sys.executable, "-m", "libtbx.command_line.py_compile_all",
+                 "-i", copy], env)
+  assert rc == 0, out
+  compiled = [name for dirpath, dirnames, names in os.walk(copy)
+              for name in names if name.endswith(".pyc")]
+  assert compiled, "libtbx.py_compile_all wrote no bytecode"
+  checker = os.path.join(copy, "payload", "tools", "screen_check.py")
+  rc, out = run([sys.executable, "-I", "-B", checker, "verify-source", copy], env)
+  print(out.strip())
+  assert rc == 0 and "VERIFIED complete source" in out, out
+  assert "ignored %d precompiled" % len(compiled) in out, out
+  with open(os.path.join(copy, "payload", "tools", "extra.py"), "w") as f:
+    f.write("print('unlisted')\n")
+  rc, out = run([sys.executable, "-I", "-B", checker, "verify-source", copy], env)
+  assert rc == 2 and "extra source file" in out, out
+  print("precompiled copy verifies; an unlisted module is still refused")
+
+
+def listed_names():
+  names = set(
     line.split("  ", 1)[1].strip()[2:]
     for line in open(os.path.join(PACKAGE, "SOURCE_MANIFEST.sha256")))
-  listed.add("SOURCE_MANIFEST.sha256")
+  names.add("SOURCE_MANIFEST.sha256")
+  return names
+
+
+def exercise():
+  listed = listed_names()
   before = package_files()
   extra = sorted(before - listed)
   if extra:
@@ -74,6 +115,7 @@ def exercise():
     assert rc == 0, "package unit tests failed (exit %d)" % rc
     ran = re.search(r"^Ran (\d+) tests? in ", out, re.M)
     assert ran is not None and int(ran.group(1)) > 0, "no package tests ran"
+    exercise_real_precompile(tmp, env)
   finally:
     shutil.rmtree(tmp, ignore_errors=True)
   created = sorted(package_files() - before)

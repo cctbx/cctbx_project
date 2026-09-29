@@ -1,4 +1,4 @@
-# GuidedCoding user guide — opt in with `/gc` (r10 rev12 candidate)
+# GuidedCoding user guide — opt in with `/gc` (r10 rev13 candidate)
 
 ## The short version
 
@@ -39,7 +39,7 @@ an empty staging folder of your choice and extract there:
 
 ```bash
 mkdir -p /path/to/empty-gc-review
-tar -xzf /path/to/GuidedCoding_2_0_opt_in_r10_candidate_rev12.tgz -C /path/to/empty-gc-review
+tar -xzf /path/to/GuidedCoding_2_0_opt_in_r10_candidate_rev13.tgz -C /path/to/empty-gc-review
 cd /path/to/empty-gc-review/libtbx/guided_coding
 shasum -a 256 -c SOURCE_MANIFEST.sha256
 python3 -I -B payload/tools/screen_check.py verify-source .
@@ -48,9 +48,14 @@ cat payload/RELEASE
 
 Every listed file should say `OK`, and the complete-source check should
 print `VERIFIED complete source`. The release line must identify **r10
-rev12**, rather than r08, r09, rev11, or another copy. The manifest checks the
+rev13**, rather than r08, r09, rev11, rev12, or another copy. The manifest checks the
 bytes listed **by that manifest**; the second check refuses an extra
-file or link in the effective source. Neither can establish who supplied the
+file or link in the effective source. On an installation whose Python
+files were precompiled (for example by an installer's
+`libtbx.py_compile_all`), it also prints a NOTE that it ignored the
+`__pycache__` bytecode beside listed modules; the tools never load that
+bytecode, and any other unlisted file, including other bytecode, is still
+refused. Neither can establish who supplied the
 manifest or authenticate a different checkout. Compare the archive's
 SHA-256 to the independently supplied review message before trusting it.
 No `libtbx.install_guided_coding` dispatcher, per-repository installer,
@@ -72,14 +77,14 @@ cd /path/to/cctbx_project/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev12 candidate' payload/RELEASE &&
+grep -Fq 'r10 rev13 candidate' payload/RELEASE &&
 python3 -I -B payload/tools/screen_check.py check-claude-version &&
 python3 -I -B payload/tools/screen_check.py register-skill .
 ```
 
 The `&&` sequence does not create the link if any check fails. Confirm its
 four checks: listed files say `OK`, the complete inventory passes, the
-release reads `r10 rev12`, and the CLI
+release reads `r10 rev13`, and the CLI
 check says `VERIFIED Claude Code CLI` for version 2.1.281 or newer. Your
 2.1.284 meets that minimum. A missing, unreadable or older CLI stops
 registration; run `claude update` yourself and restart before retrying.

@@ -8,19 +8,21 @@ if __name__ == "__main__" and not sys.flags.isolated:
 import argparse
 from contextlib import ExitStack
 import hashlib
-import importlib.util
 import io
 import os
 from pathlib import Path
 import tarfile
 import tempfile
+import types
 
 # Load the reviewed sibling explicitly. With -I, the tools directory is not
 # on sys.path, so an unlisted local module cannot shadow the standard library.
+# Execute its reviewed source text, never cached bytecode: verify-source
+# tolerates precompiled __pycache__ files, so they must not be loadable here.
 _checker_path = Path(__file__).with_name("screen_check.py")
-_checker_spec = importlib.util.spec_from_file_location("screen_check", _checker_path)
-_checker = importlib.util.module_from_spec(_checker_spec)
-_checker_spec.loader.exec_module(_checker)
+_checker = types.ModuleType("screen_check")
+_checker.__file__ = str(_checker_path)
+exec(compile(_checker_path.read_bytes(), str(_checker_path), "exec"), _checker.__dict__)
 regular_files, verify = _checker.regular_files, _checker.verify
 
 

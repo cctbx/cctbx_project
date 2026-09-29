@@ -1,4 +1,4 @@
-# GuidedCoding r10 rev12 candidate verification
+# GuidedCoding r10 rev13 candidate verification
 
 **Current status (2026-09-29):** a proposed kit, committed locally in the
 Developer's `cctbx_project` and trialled on the intended Mac (Rev12
@@ -20,7 +20,7 @@ cat payload/RELEASE
 ```
 
 Require every listed hash to pass, `VERIFIED complete source`, and the
-`r10 rev12` release label. The first command establishes the listed bytes of
+`r10 rev13` release label. The first command establishes the listed bytes of
 the checker before running it. The second compares the entire directory
 with the manifest, including unlisted files, and refuses links, hardlinks,
 missing files and changed bytes. `-I` prevents a module in the tools
@@ -126,7 +126,7 @@ explicit adoption. No live Mac, server, or Claude Code run is claimed here
 there; no server run is claimed).
 
 The earlier r09 documentation review and r10 rev3–rev10 review findings
-informed this candidate. They do not approve rev11 or rev12. The kit still has 24
+informed this candidate. They do not approve rev11, rev12 or rev13. The kit still has 24
 regular source files including its manifest; it does not add a per-project
 installer or another permanent layer of prompts.
 
@@ -148,3 +148,23 @@ while every transcript (CLI and Desktop) recorded the command as
 Desktop `/gc <task>` in an unadopted project, Windows. In
 `cctbx_project`, `libtbx/tst_guided_coding.py` runs this package's tests
 from the shared test suite.
+
+## Rev13: installer-precompiled bytecode
+
+An installer-built PHENIX runs `libtbx.py_compile_all -i` over its modules,
+which calls `compileall.compile_dir` and writes
+`__pycache__/<name>.<tag>.pyc` beside every `.py` file. Rev12's
+complete-source check refused those files, so `/gc` would stop on such an
+installation. Rev13's `verify-source` accepts exactly that pattern, and only
+beside a **listed** module, and prints a NOTE with the count. Every other
+unlisted file is still refused, including bytecode for an unlisted module, a
+sourceless `.pyc`, other files in `__pycache__`, and bytecode for a listed
+name in another directory. The tools never load that bytecode:
+`screen_check.py` runs as a script and imports only the standard library,
+and `review_bundle.py` now executes `screen_check.py`'s source text instead
+of using the caching import loader. Tests: a precompiled synthetic source
+passes; six unlisted-code variants are refused; a crafted bytecode file with
+a valid header is loaded by an ordinary cached import (positive control) but
+not by either tool. The same three tests fail against the rev12 tools. On
+the Mac the real `libtbx.py_compile_all -i` was run on copies: rev12 refused,
+rev13 verified with the NOTE.

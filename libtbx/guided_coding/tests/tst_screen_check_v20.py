@@ -1,6 +1,8 @@
 """Controls for the claims that screen_check.py actually makes."""
 
+import compileall
 import contextlib
+import importlib.util
 import io
 import os
 import shutil
@@ -74,6 +76,79 @@ class SourceInventoryChecks(unittest.TestCase):
         extra.unlink()
         extra.symlink_to(self.source / "SKILL.md")
         self.assertIn("symbolic link", self.run_source_check().stderr)
+
+    def precompile(self):
+        # The real installer pattern: libtbx.py_compile_all -i calls
+        # compileall.compile_dir(dir, 100, ...), which writes
+        # __pycache__/<stem>.<cache tag>.pyc beside every module.
+        self.assertTrue(compileall.compile_dir(str(self.source), 100, quiet=2))
+        tag = sys.implementation.cache_tag
+        self.assertEqual(
+            sorted(p.relative_to(self.source).as_posix()
+                   for p in self.source.rglob("*.pyc")),
+            [f"payload/tools/__pycache__/review_bundle.{tag}.pyc",
+             f"payload/tools/__pycache__/screen_check.{tag}.pyc"])
+        return tag
+
+    def test_real_precompilation_accepted_and_reported(self):
+        self.precompile()
+        result = self.run_source_check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("VERIFIED complete source", result.stdout)
+        self.assertIn("ignored 2 precompiled bytecode file(s)", result.stdout)
+
+    def test_unlisted_code_still_refused_after_precompilation(self):
+        tag = self.precompile()
+        tools = self.source / "payload" / "tools"
+        cached = tools / "__pycache__" / f"screen_check.{tag}.pyc"
+        cases = {
+            "unlisted module": (tools / "extra.py", b"print('extra')\n"),
+            "bytecode for an unlisted module":
+                (tools / "__pycache__" / f"extra.{tag}.pyc", cached.read_bytes()),
+            "sourceless bytecode": (tools / "screen_helper.pyc", cached.read_bytes()),
+            "non-bytecode file in __pycache__":
+                (tools / "__pycache__" / "notes.txt", b"note\n"),
+            "bytecode beside an unlisted stem":
+                (self.source / "__pycache__" / f"SKILL.{tag}.pyc", cached.read_bytes()),
+            "listed stem in another directory":
+                (self.source / "__pycache__" / f"screen_check.{tag}.pyc", cached.read_bytes()),
+        }
+        for label, (path, data) in cases.items():
+            with self.subTest(label):
+                path.parent.mkdir(exist_ok=True)
+                path.write_bytes(data)
+                result = self.run_source_check()
+                self.assertEqual(result.returncode, 2, label)
+                self.assertIn("extra source file", result.stderr)
+                path.unlink()
+        self.assertEqual(self.run_source_check().returncode, 0)
+
+    def test_tolerated_bytecode_is_never_loaded_by_the_tools(self):
+        marker = self.source.parent / "cached-checker-ran"
+        source = self.source / "payload" / "tools" / "screen_check.py"
+        stat_result = source.stat()
+        code = compile(f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran')\n",
+                       str(source), "exec")
+        cache = Path(importlib.util.cache_from_source(str(source)))
+        cache.parent.mkdir(exist_ok=True)
+        # A header matching the source's mtime and size, as Python checks it.
+        cache.write_bytes(importlib._bootstrap_external._code_to_timestamp_pyc(
+            code, stat_result.st_mtime, stat_result.st_size))
+        self.assertEqual(self.run_source_check().returncode, 0)
+        for tool in ("screen_check.py", "review_bundle.py"):
+            result = subprocess.run(
+                [sys.executable, "-I", "-B", str(self.source / "payload/tools" / tool), "--help"],
+                cwd=self.source, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(marker.exists())
+        # Positive control: an ordinary cached import of the same file does
+        # load this bytecode, so the check above is meaningful.
+        subprocess.run(
+            [sys.executable, "-B", "-c",
+             "import importlib.util as u, sys; s = u.spec_from_file_location("
+             "'screen_check', sys.argv[1]); s.loader.exec_module(u.module_from_spec(s))",
+             str(source)], cwd=self.source, capture_output=True)
+        self.assertTrue(marker.exists())
 
 
 class SkillRegistrationChecks(unittest.TestCase):

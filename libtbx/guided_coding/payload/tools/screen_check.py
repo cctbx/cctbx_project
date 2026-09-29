@@ -129,12 +129,32 @@ def verify_source(root):
         expected[match[2]] = match[1]
     actual = {name: path for name, path in files
               if name != "SOURCE_MANIFEST.sha256"}
+    precompiled = [name for name in actual
+                   if name not in expected and precompiled_bytecode(name, expected)]
+    for name in precompiled:
+        del actual[name]
     if not expected or expected.keys() != actual.keys():
         fail("missing or extra source file")
     for name, path in actual.items():
         if digest(path.read_bytes()) != expected[name]:
             fail(f"changed source file: {name}")
+    if precompiled:
+        print(f"NOTE ignored {len(precompiled)} precompiled bytecode file(s) beside "
+              "listed modules; these tools never load them")
     return digest(raw)
+
+
+def precompiled_bytecode(name, expected):
+    """True only for the file compileall (libtbx.py_compile_all) writes for a
+    listed module: <dir>/__pycache__/<stem>.<tag>[.opt-N].pyc beside a listed
+    <dir>/<stem>.py. Any other unlisted file, including bytecode for an
+    unlisted module or a sourceless .pyc, is still refused."""
+    parts = name.split("/")
+    if len(parts) < 2 or parts[-2] != "__pycache__":
+        return False
+    match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\.[a-z]+-?[0-9]+(?:\.opt-[12])?\.pyc",
+                         parts[-1])
+    return bool(match) and "/".join(parts[:-2] + [match[1] + ".py"]) in expected
 
 
 def check_claude_version():
