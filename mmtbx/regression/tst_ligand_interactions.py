@@ -1900,7 +1900,9 @@ def exercise_builder_groups():
     ('A ZPY 1', 'other', 1, 'N1', ('N1',), True, False)]
   model = get_model(pdb_from_cif_text('ZNX', znx_cif[1]), cifs=(znx_cif,))
   f = found_for(model)
-  assert f.groups == [] and f.failures == [] and f.dropped == []
+  assert f.groups == [] and f.failures == [] and f.dropped == [dict(residue='A ZNX 1',
+    altloc='', kind='charge-separated', charge=0, atoms=['N1', 'O2'],
+    reason='charge-separated, net 0')], f.dropped
   # partial charges only: uncertain, not paired with the ZZW ammonium 3 A away
   model = M.get_model(M.pdb_from_cif('ZPC', M.zpc_cif), cifs=(('ZPC', M.zpc_cif),))
   f = found_for(model)
@@ -1983,6 +1985,98 @@ def exercise_builder_groups():
 def pdb_from_cif_text(code, text):
   from mmtbx.regression import tst_rdkit_utils_molecule as M
   return M.pdb_from_cif(code, text).split('\n')
+
+def geostd_text(code):
+  from mmtbx.monomer_library import server
+  import os
+  return open(os.path.join(server.server().geostd_path, code[0].lower(),
+    'data_%s.cif' % code)).read()
+
+def exercise_charge_separated():
+  '''
+  Charged atoms bonded to an opposite charge form clusters. GeoStd nitrate NO3
+  (N +1, O2 and O3 -1): a group of -1 on the three O (centre N); azide ion AZI
+  (N1 -1, N2 +1, N3 -1): -1 on N1 and N3; trimethylamine N-oxide TMO and the ZNX
+  nitro: net 0, no group, listed as dropped. Nitrate at ACT 1's place in
+  salt_model_str: salt bridges with Lys 10 and Arg 20, its formal charges agreeing.
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  rows = {}
+  for code in ('NO3', 'AZI', 'TMO'):
+    model = M.get_model(M.pdb_from_cif(code, geostd_text(code)))
+    atoms = model.get_hierarchy().atoms()
+    f = LI.find_charged_groups(model, all_atoms(model))
+    rows[code] = ([(g['kind'], g['charge'], atoms[g['center']].name.strip(),
+      sorted([atoms[i].name.strip() for i in g['charged']]), g['certain']) for g in f.groups],
+      [(d['atoms'], d['charge'], d['reason']) for d in f.dropped])
+  assert rows['NO3'] == ([('other', -1, 'N', ['O1', 'O2', 'O3'], True)], []), rows['NO3']
+  assert rows['AZI'] == ([('other', -1, 'N2', ['N1', 'N3'], True)], []), rows['AZI']
+  assert rows['TMO'] == ([], [(['NAC', 'OAE'], 0, 'charge-separated, net 0')]), rows['TMO']
+  # nitrate replacing ACT 1: N at C, O1 at O, O2 at OXT, O3 1.25 A from N away from CH3
+  lines = []
+  for l in salt_model_str.split('\n'):
+    if l[17:26] == 'ACT A   1':
+      n = l[12:16].strip()
+      if n in ('C', 'O', 'OXT'):
+        lines.append(l[:12] + {'C': ' N  ', 'O': ' O1 ', 'OXT': ' O2 '}[n] + ' NO3' + l[20:76] +
+          (' N' if n == 'C' else ' O'))
+      if n == 'C':
+        x = float(l[30:38]) + 1.25
+        lines.append(l[:12] + ' O3  NO3' + l[20:30] + '%8.3f' % x + l[38:76] + ' O')
+      continue
+    lines.append(l)
+  model = get_model(lines)
+  m = get_manager(model, sel='chain A and resseq 1')
+  assert [(g['kind'], g['charge'], g['atoms']) for g in m.charged_groups] == [('other', -1,
+    ['A NO3 1 O1', 'A NO3 1 O2', 'A NO3 1 O3'])], m.charged_groups
+  assert sorted([e['residue'] for e in salt_bridges(m)]) == ['B LYS 10', 'C ARG 20'], \
+    [e['residue'] for e in salt_bridges(m)]
+  no3 = [(x['source'], x['atoms'], x['perceived_charge'], x['dictionary_charge'],
+    x['status']) for x in m.formal_charges if x['residue'] == 'A NO3 1']
+  assert ('restraints', ['N'], 1, 1, 'agrees') in no3 and \
+    ('restraints', ['O1', 'O2', 'O3'], -2, -2, 'agrees') in no3, no3
+  assert m.formal_charge_conflicts() == []
+
+def exercise_atomic_charge_comparison():
+  '''
+  Builder residues are compared atom by atom (resonance-equivalent atoms summed):
+  the ZNX nitro (N1 +1, O2 -1 in the file and the builder) agrees, no conflict
+  (before, N1 and O2 were compared with 0 as atoms outside the groups; the CCD's
+  ZNX is another compound: protonation differs). A conflict
+  is still reported: ACT against a stand-in CCD with OXT's charge 0 and the same H
+  (O, OXT: builder -1, stand-in 0).
+  '''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  zzw = [l[:21] + 'B' + l[22:30] + '%8.3f' % (float(l[30:38]) + 6.0) + l[38:]
+    for l in M.pdb_from_cif('ZZW', M.zzw_cif).split('\n') if l.startswith('HETATM')]
+  znx = pdb_from_cif_text('ZNX', znx_cif[1])
+  model = get_model(znx[:-1] + zzw + ['END'], cifs=(znx_cif, ('zzw.cif', M.zzw_cif)))
+  m = get_manager(model, sel='resname ZNX')
+  rows = sorted([(x['source'], x['atoms'], x['perceived_charge'], x['dictionary_charge'],
+    x['status']) for x in m.formal_charges if x['residue'] == 'A ZNX 1' and
+    x['source'] == 'restraints'])
+  assert rows == [('restraints', ['N1'], 1, 1, 'agrees'),
+    ('restraints', ['O1', 'O2'], -1, -1, 'agrees')], rows
+  assert m.formal_charge_conflicts() == []
+  assert [d['reason'] for d in m.charged_groups_dropped if d['residue'] == 'A ZNX 1'] == [
+    'charge-separated, net 0']
+  original = LI.ccd_formal_charges
+  def stand_in(resname):
+    d = original(resname)
+    if resname == 'ACT':
+      d['atoms']['OXT'] = ('O', 0)
+    return d
+  LI.ccd_formal_charges = stand_in
+  try:
+    model = get_model(salt_sym_model_str.split('\n'))
+    m = get_manager(model, sel='chain A and resseq 1')
+  finally:
+    LI.ccd_formal_charges = original
+  (c,) = m.formal_charge_conflicts()
+  assert (c['residue'], c['source'], c['atoms'], c['perceived_charge'],
+    c['dictionary_charge']) == ('A ACT 1', 'CCD', ['O', 'OXT'], -1, 0), c
+  assert [x['status'] for x in m.formal_charges if x['residue'] == 'A ACT 1' and
+    x['source'] == 'restraints'] == ['agrees']
 
 def exercise_builder_chain():
   '''
@@ -2243,6 +2337,8 @@ def run():
   exercise_amino_acid_templates()
   exercise_conformers()
   exercise_builder_groups()
+  exercise_charge_separated()
+  exercise_atomic_charge_comparison()
   exercise_builder_chain()
   exercise_templates_vs_builder()
   exercise_nucleotides()

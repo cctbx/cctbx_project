@@ -79,13 +79,16 @@ usual_charge -1, -2 with OP3; without H in the residue conformer usual_charge,
 Other residues (the ligand, modified residues, cofactors, other het groups):
 rdkit_utils.residue_molecule per conformer (builder_groups). Groups: a charged
 heteroatom of the builder's molecule and its resonance partners (same element,
-sharing a heavy neighbour; O and S partners terminal), overlapping sets merged;
-a charge balanced by a directly bonded opposite charge (nitro, N-oxide, azide) is
-not a group. Kind by SMARTS at the group's centre: carboxylate, guanidinium,
+sharing a heavy neighbour; O and S partners terminal), overlapping sets merged.
+Charged atoms bonded to an opposite charge form clusters (connected through such
+bonds): net 0 (nitro, N-oxide, organic azide) is not a group and is listed with
+the dropped groups ("charge-separated, net 0"); a nonzero net (nitrate, azide ion)
+makes a group from the cluster's atoms of the net charge's sign, with the net
+charge. Kind by SMARTS at the group's centre: carboxylate, guanidinium,
 imidazolium, amidinium, ammonium (quaternary included), phosphate/phosphonate,
 sulfate/sulfonate; any other charged heteroatom (pyridinium, tetrazolate,
-phenolate, thiolate, ...) "other". Charge: the sum of the builder's formal
-charges over the group. A group with a capped atom (linked, or next to a missing
+phenolate, thiolate, nitrate, ...) "other". Charge: the sum of the builder's
+formal charges over the group (a cluster: its net charge). A group with a capped atom (linked, or next to a missing
 atom) is dropped and listed (charged_groups_dropped); a metal-bound atom flags the
 group (metal_bound). Uncertain (certain False): the builder's total by search (no
 formal charges), or, with H in the model, H completed from the restraint file on
@@ -98,8 +101,10 @@ A group's charge centre is the centroid of its charged atoms.
 Formal charges in the restraint file (parsed, as the model's monomer library
 server resolves it: files supplied with the model, else GeoStd, else the monomer
 library; chem_comp_atom.formal_charge(), 0 if absent) and in the CCD are compared
-with the groups for the ligand and the residues near it: per group, and per
-dictionary-charged atom outside the groups. Where the dictionary's H on the heavy
+for the ligand and the residues near it: template residues per group, and per
+dictionary-charged atom outside the groups (against 0); builder residues atom by
+atom, the builder's formal charges against the dictionary's, resonance-equivalent
+atoms (same element sharing a heavy neighbour) summed. Where the dictionary's H on the heavy
 atoms within two bonds match the model's, a different charge is a conflict
 (reported, not resolved); where they differ, "protonation differs".
 Salt bridges: oppositely charged groups, criterion atom_pair (default: at least one
@@ -512,13 +517,16 @@ def builder_groups(r, atoms):
   Charged groups on a residue_molecule result r (ok): charged heteroatoms of r.mol
   with their resonance partners (same element, sharing a heavy neighbour; O and S
   partners terminal), overlapping sets merged; a charge balanced by a directly
-  bonded opposite charge (nitro, N-oxide, azide) is not a group. Kind by
+  bonded opposite charge is resolved by clusters: charged atoms joined through bonds
+  to an opposite charge; net 0 (nitro, N-oxide, organic azide) is not a group
+  (dropped, "charge-separated, net 0"); otherwise (nitrate, azide ion) the cluster's
+  atoms carrying the net charge's sign seed the group, with the net charge. Kind by
   builder_group_smarts at the group's centre (phosphate/sulfate: "phosphonate",
   "sulfonate" with a non-O heavy neighbour), else "other"; charge: the sum of the
-  builder's formal charges. Returns (groups, dropped): groups as in
-  find_charged_groups (i_seqs; altloc and resname unset); dropped: groups with a
-  capped atom (linked, or next to a missing atom) [dict(kind, charge, center,
-  charged, reason)].
+  seeds' charges (a cluster counts its net charge). Returns (groups, dropped):
+  groups as in find_charged_groups (i_seqs; altloc and resname unset); dropped:
+  net-0 clusters and groups with a capped atom (linked, or next to a missing atom)
+  [dict(kind, charge, center, charged, reason)].
   """
   from rdkit import Chem
   mol = r.mol
@@ -527,26 +535,60 @@ def builder_groups(r, atoms):
     return [n for n in a.GetNeighbors() if n.GetAtomicNum() > 1]
   charged = [a for a in mol.GetAtoms() if a.GetFormalCharge() and
     a.GetAtomicNum() not in (1, 6) and a.GetIdx() in iseq]
-  balanced = set()
+  q_of = dict([(a.GetIdx(), a.GetFormalCharge()) for a in charged])
+  # charge-separated clusters: charged atoms joined through bonds to an opposite charge
+  parent = dict([(k, k) for k in q_of])
+  def find(k):
+    while parent[k] != k:
+      k = parent[k]
+    return k
   for a in charged:
     for n in a.GetNeighbors():
-      if n.GetFormalCharge() * a.GetFormalCharge() < 0:
-        balanced.update([a.GetIdx(), n.GetIdx()])
-  sets = []
-  for a in charged:
-    if a.GetIdx() in balanced:
+      if n.GetIdx() in q_of and q_of[n.GetIdx()] * q_of[a.GetIdx()] < 0:
+        parent[find(a.GetIdx())] = find(n.GetIdx())
+  clusters = {}
+  for k in q_of:
+    clusters.setdefault(find(k), []).append(k)
+  separated, net_zero = {}, []
+  for members in clusters.values():
+    if len(members) == 1:
       continue
-    members = set([a.GetIdx()])
-    for c in heavy_nb(a):
-      for p in heavy_nb(c):
-        if p.GetAtomicNum() == a.GetAtomicNum() and p.GetIdx() in iseq and \
-            p.GetIdx() not in balanced and \
-            (p.GetAtomicNum() not in (8, 16) or len(heavy_nb(p)) == 1):
-          members.add(p.GetIdx())
-    for s in [s for s in sets if s & members]:
-      members |= s
+    net = sum([q_of[k] for k in members])
+    if net == 0:
+      net_zero.append(sorted(members))
+    else:
+      for k in members:
+        separated[k] = (net, members)
+  # seeds: (atoms carrying the charge, charge); partners: same element sharing a heavy
+  # neighbour, O and S partners terminal; overlapping sets merged, charges summed
+  seeds, done = [], set()
+  for a in charged:
+    k = a.GetIdx()
+    if k in done or [m for m in net_zero if k in m]:
+      continue
+    if k in separated:
+      net, members = separated[k]
+      done.update(members)
+      seeds.append(([m for m in members if q_of[m] * net > 0], net))
+    else:
+      seeds.append(([k], q_of[k]))
+  opposite = set([m for m in separated]) | set([m for z in net_zero for m in z])
+  sets = []
+  for atoms_q, q in seeds:
+    members = set(atoms_q)
+    for k in atoms_q:
+      a = mol.GetAtomWithIdx(k)
+      for c in heavy_nb(a):
+        for p in heavy_nb(c):
+          if p.GetAtomicNum() == a.GetAtomicNum() and p.GetIdx() in iseq and \
+              (p.GetIdx() not in opposite or p.GetIdx() in atoms_q) and \
+              (p.GetAtomicNum() not in (8, 16) or len(heavy_nb(p)) == 1):
+            members.add(p.GetIdx())
+    for s in [s for s in sets if s[0] & members]:
+      members |= s[0]
+      q += s[1]
       sets.remove(s)
-    sets.append(members)
+    sets.append((members, q))
   patterns = [(k, Chem.MolFromSmarts(p)) for k, p in builder_group_smarts]
   capped = {}
   for c in r.caps:
@@ -554,8 +596,13 @@ def builder_groups(r, atoms):
   uncertain = set(r.uncertain_iseqs)
   no_h = r.hydrogens == "restraint file (no H in the model)"
   groups, dropped = [], []
-  for members in sets:
-    q = sum([mol.GetAtomWithIdx(k).GetFormalCharge() for k in members])
+  for members in net_zero:
+    seqs = sorted([iseq[k] for k in members])
+    positive = [k for k in members if q_of[k] > 0]
+    dropped.append(dict(kind="charge-separated", charge=0,
+      center=iseq[positive[0]] if positive else seqs[0], charged=seqs,
+      reason="charge-separated, net 0"))
+  for members, q in sets:
     if q == 0:
       continue
     if len(members) == 1:
@@ -633,7 +680,8 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
   altloc, resname, source, certain, metal_bound, charge_source, hydrogens,
   notes)], missing=[dict(residue, altloc, kind, atoms)], dropped=[dict(residue,
   altloc, kind, charge, atoms, reason)], failures=[dict(residue, altloc,
-  reason)]).
+  reason)], builder_charges={(chain, resseq, icode, altloc): {i_seq: formal
+  charge}} for the residue conformers built).
   """
   import iotbx.pdb
   from mmtbx.ligands import rdkit_utils
@@ -786,7 +834,9 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
       for k, a in per_conformer(missing)],
     dropped=[dict(residue=k[0], altloc=a, kind=k[1], charge=k[2], atoms=list(k[3]),
       reason=k[4]) for k, a in per_conformer(dropped)],
-    failures=[dict(residue=k[0], altloc=a, reason=k[1]) for k, a in per_conformer(failures)])
+    failures=[dict(residue=k[0], altloc=a, reason=k[1]) for k, a in per_conformer(failures)],
+    builder_charges=dict([(k + (eff,), dict([(i, r.mol.GetAtomWithIdx(x).GetFormalCharge())
+      for x, i in r.rdkit_to_iseq.items()])) for (k, eff), (r, g) in built.items() if r.ok]))
 
 def moved_site(unit_cell, xyz, rt_mx):
   return unit_cell.orthogonalize(rt_mx * unit_cell.fractionalize(xyz))
@@ -1314,6 +1364,7 @@ class manager(object):
     self.charged_group_missing_atoms = found.missing
     self.charged_groups_dropped = found.dropped
     self.charged_group_failures = found.failures
+    self._builder_charges = found.builder_charges
     candidates = [c for c in charged_group_pairs(self.model, groups, search)
       if groups[c[0]]["ligand"]]
     partner_residues = set()
@@ -1378,7 +1429,11 @@ class manager(object):
     return result
 
   def _compare_formal_charges(self, groups, region, partner_centers):
-    """Formal charges (restraint dictionary, CCD) against the perception, per residue and conformer."""
+    """
+    Formal charges (restraint dictionary, CCD) against the perception, per residue
+    and conformer: template residues per group (and dictionary-charged atoms outside
+    the groups against 0), builder residues atom by atom (_atomic_charge_checks).
+    """
     atoms = self._atoms
     near = set(region.iselection())
     near.update(partner_centers)
@@ -1418,6 +1473,13 @@ class manager(object):
               group=None, atoms=[], perceived_charge=None, dictionary_charge=None,
               status="not compared (residue_molecule failed: %s)" % why))
             continue
+          bc = self._builder_charges.get((rg.parent().id, rg.resseq, rg.icode,
+            alt.strip()), self._builder_charges.get((rg.parent().id, rg.resseq,
+            rg.icode, "")))
+          if bc is not None:
+            self._atomic_charge_checks(label, source, where, d, bc, names, conf_seqs,
+              model_h)
+            continue
           covered = set()
           for g in conf_groups:
             seqs = [g["center"]] + [k for k in g["charged"] if k != g["center"]]
@@ -1429,6 +1491,40 @@ class manager(object):
             if q != 0 and n not in covered and n in names:
               self.formal_charges.append(self._charge_check(label, source, where, None,
                 [n], self._local_names([names[n]], conf_seqs), 0, d, model_h))
+
+  def _atomic_charge_checks(self, label, source, file_name, d, charges, names, conf_seqs,
+                            model_h):
+    """
+    A builder residue: the builder's atomic formal charges (charges {i_seq: q})
+    against the dictionary's, per resonance group (same element sharing a heavy
+    neighbour, as residue_molecule's differences["charges"]); groups where either
+    side is charged are recorded, with the protonation rule of _charge_check.
+    """
+    atoms = self._atoms
+    heavy = sorted([i for i in names.values() if not self._is_h(i) and
+      _element(atoms[i]) not in metal_elements])
+    group = dict([(i, i) for i in heavy])
+    def find(i):
+      while group[i] != i:
+        i = group[i]
+      return i
+    for c in heavy:
+      nbs = [k for k in self._fsc0[c] if k in group]
+      for a in nbs:
+        for b in nbs:
+          if a < b and _element(atoms[a]) == _element(atoms[b]):
+            group[find(a)] = find(b)
+    sets = {}
+    for i in heavy:
+      sets.setdefault(find(i), []).append(i)
+    for members in sorted(sets.values()):
+      gn = [atoms[i].name.strip() for i in members]
+      perceived = sum([charges.get(i, 0) for i in members])
+      dq = sum([d["atoms"][n][1] for n in gn if n in d["atoms"]])
+      if perceived == 0 and dq == 0:
+        continue
+      self.formal_charges.append(self._charge_check(label, source, file_name, None, gn,
+        self._local_names(members, conf_seqs), perceived, d, model_h))
 
   def _local_names(self, seqs, conf_seqs):
     """Names of the heavy atoms within two bonds of seqs (same residue and conformer)."""
