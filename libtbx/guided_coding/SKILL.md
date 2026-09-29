@@ -26,7 +26,7 @@ links and changed bytes. The isolated Python invocation prevents an
 unlisted module in `payload/tools/` from loading during verification.
 If either fails, stop. Then read `payload/RELEASE` and
 `payload/DEVELOPER_GUIDE_CONTRACT.md`.
-This candidate requires the release label to say `r10 rev11`; if it does not,
+This candidate requires the release label to say `r10 rev12`; if it does not,
 stop and report the different version before starting a guided change.
 
 ## Setup and control requests

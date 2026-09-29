@@ -1,6 +1,9 @@
-# GuidedCoding — central opt-in r10 rev11 candidate
+# GuidedCoding — central opt-in r10 rev12 candidate
 
-**Status:** proposed successor to rejected r10 rev10. This revision refuses
+**Status:** r10 rev12 changes only the `/skills` guidance, to match the
+rev11 Mac trial; rev11 itself was reviewed (no blocking finding) and
+trialled on the intended Mac. Rev12 needs its own review before
+publication. Rev11 was the proposed successor to rejected r10 rev10. This revision refuses
 configuration paths containing `..` before any directory creation. It has not
 been reviewed as a release,
 integrated, or used on a real repository task. The two readings

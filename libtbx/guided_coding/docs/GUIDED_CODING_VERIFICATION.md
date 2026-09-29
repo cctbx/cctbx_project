@@ -1,4 +1,4 @@
-# GuidedCoding r10 rev11 candidate verification
+# GuidedCoding r10 rev12 candidate verification
 
 This describes a proposed kit. It has not been installed in the Developer's
 Claude Code Desktop app, integrated into `cctbx_project`, or approved for
@@ -16,7 +16,7 @@ cat payload/RELEASE
 ```
 
 Require every listed hash to pass, `VERIFIED complete source`, and the
-`r10 rev11` release label. The first command establishes the listed bytes of
+`r10 rev12` release label. The first command establishes the listed bytes of
 the checker before running it. The second compares the entire directory
 with the manifest, including unlisted files, and refuses links, hardlinks,
 missing files and changed bytes. `-I` prevents a module in the tools
@@ -111,7 +111,7 @@ bundle helper requires its output in the packet's own parent directory and
 companions outside the packet. It does not authenticate authors or test
 truth. Source verification and evidence verification are distinct.
 
-Before Worker use on the intended Mac, independently test `/skills`, `/gc`,
+Before Worker use on the intended Mac, independently test the `/` menu, `/gc`,
 `/guided_coding`, an ordinary fresh conversation, target selection, adopted
 and unadopted projects, a case-insensitive path probe, and the relevant
 project instruction loading (especially an `AGENTS.md` project). The
@@ -119,6 +119,25 @@ central source and its complete release packet need independent review and
 explicit adoption. No live Mac, server, or Claude Code run is claimed here.
 
 The earlier r09 documentation review and r10 rev3–rev10 review findings
-informed this candidate. They do not approve rev11. The kit still has 24
+informed this candidate. They do not approve rev11 or rev12. The kit still has 24
 regular source files including its manifest; it does not add a per-project
 installer or another permanent layer of prompts.
+
+## Rev12: `/skills` guidance from the rev11 Mac trial
+
+Rev12 changes documentation and the release label only; no tool, test or
+contract byte changed. On 2026-09-29 the rev11 source was trialled on the
+intended Mac (macOS, case-insensitive APFS, Claude Code 2.1.284) with an
+isolated test configuration and, briefly, the normal configuration for
+Desktop. The 42 tests passed with no skip. Typed `/gc` and `/guided_coding`
+both ran the skill from the same link in the CLI and in Desktop; ordinary
+prompts stayed ordinary; target selection and `AGENTS.md`/`CLAUDE.md`
+loading matched Claude Code's documented defaults. Two observations
+contradicted the rev11 guide: Desktop's `/skills` listed **no** personal
+skill, even after `/reload-skills`, and Desktop's `/` menu listed `gc`
+while every transcript (CLI and Desktop) recorded the command as
+`/guided_coding`. The guide now tells users to confirm with the `/` menu or
+`/gc help`, not `/skills`. Not observed: the interactive CLI `/` menu,
+Desktop `/gc <task>` in an unadopted project, Windows. In
+`cctbx_project`, `libtbx/tst_guided_coding.py` runs this package's tests
+from the shared test suite.

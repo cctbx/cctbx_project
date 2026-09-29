@@ -1,4 +1,4 @@
-# GuidedCoding user guide — opt in with `/gc` (r10 rev11 candidate)
+# GuidedCoding user guide — opt in with `/gc` (r10 rev12 candidate)
 
 ## The short version
 
@@ -19,7 +19,10 @@ absolute path is necessary the first time: Claude Code in another project
 cannot guess where your `cctbx_project` checkout lives. Review the path
 and any proposed change to an existing skill link. If the `skills/`
 directory was created after Claude Code started, use `/reload-skills` or
-open a new conversation; confirm the skill appears in `/skills`.
+open a new conversation. Then confirm the command itself: type `/` (in the
+Desktop app the menu lists `gc`) or run `/gc help`. Do not rely on
+`/skills`: in the Mac trial (Claude Code 2.1.284) Desktop's `/skills` did
+not list this personal skill even though `/gc` worked.
 
 In a project you want to use with GuidedCoding, start a new conversation
 in that project's folder and enter `/gc <task>`. If its contract adoption
@@ -36,7 +39,7 @@ an empty staging folder of your choice and extract there:
 
 ```bash
 mkdir -p /path/to/empty-gc-review
-tar -xzf /path/to/GuidedCoding_2_0_opt_in_r10_candidate_rev11.tgz -C /path/to/empty-gc-review
+tar -xzf /path/to/GuidedCoding_2_0_opt_in_r10_candidate_rev12.tgz -C /path/to/empty-gc-review
 cd /path/to/empty-gc-review/libtbx/guided_coding
 shasum -a 256 -c SOURCE_MANIFEST.sha256
 python3 -I -B payload/tools/screen_check.py verify-source .
@@ -45,7 +48,7 @@ cat payload/RELEASE
 
 Every listed file should say `OK`, and the complete-source check should
 print `VERIFIED complete source`. The release line must identify **r10
-rev11**, rather than r08, r09, or another copy. The manifest checks the
+rev12**, rather than r08, r09, rev11, or another copy. The manifest checks the
 bytes listed **by that manifest**; the second check refuses an extra
 file or link in the effective source. Neither can establish who supplied the
 manifest or authenticate a different checkout. Compare the archive's
@@ -69,14 +72,14 @@ cd /path/to/cctbx_project/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev11 candidate' payload/RELEASE &&
+grep -Fq 'r10 rev12 candidate' payload/RELEASE &&
 python3 -I -B payload/tools/screen_check.py check-claude-version &&
 python3 -I -B payload/tools/screen_check.py register-skill .
 ```
 
 The `&&` sequence does not create the link if any check fails. Confirm its
 four checks: listed files say `OK`, the complete inventory passes, the
-release reads `r10 rev11`, and the CLI
+release reads `r10 rev12`, and the CLI
 check says `VERIFIED Claude Code CLI` for version 2.1.281 or newer. Your
 2.1.284 meets that minimum. A missing, unreadable or older CLI stops
 registration; run `claude update` yourself and restart before retrying.
@@ -200,8 +203,10 @@ Open Claude Code in the repository you want to change. Type, for example:
 
 Or type `/guided_coding Fix the broken copy_extra regression test.` The
 directory name supplies the longer alias; the skill's `name: gc` supplies
-the short command. If either alias does not appear, check `/skills`, the
-symlink target, and your Claude Code version. The personal skill is local
+the short command. Both run the same skill; a session transcript records
+either as `/guided_coding`. If `/gc help` does not run the skill, check
+the symlink target and your Claude Code version (`/skills` may not list
+it). The personal skill is local
 to your machine and is unavailable to cloud sessions that cannot read it.
 
 The first task invocation checks the central source and the target's
@@ -231,8 +236,9 @@ already invoked skill remains in the current conversation.
 ### Where `/gc` appears
 
 `/gc` is a **custom skill in the Slash commands menu**. On Desktop, type
-`/` in the prompt or choose **+ → Slash commands**; `/skills` lists the
-available skills. It is not an additional mode in the selector containing
+`/` in the prompt or choose **+ → Slash commands**; in the Mac trial the
+menu listed `gc` (not `guided_coding`), while `/skills` listed no personal
+skill. Typing `/gc` or `/guided_coding` worked either way. It is not an additional mode in the selector containing
 **Auto**. Auto controls tool permissions, while `/gc` selects an optional
 working procedure; both can be used together. The personal link exposes
 the skill in each local project, but you invoke it at the start of **each
