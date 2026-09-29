@@ -561,6 +561,8 @@ class manager(list):
       print('\n', file=self.log)
       if key in seen:
         print('%s  (same fragments as %s)' % (lr.id_str, seen[key]), file=self.log)
+        if getattr(lr, 'fragments_approximate', None):
+          print('  fragments %s' % lr.fragments_approximate, file=self.log)
         for i in range(len(frag_names)):
           v = values(i)
           if v:
@@ -568,6 +570,8 @@ class manager(list):
         continue
       seen[key] = lr.id_str
       print(lr.id_str, file=self.log)
+      if getattr(lr, 'fragments_approximate', None):
+        print('  fragments %s' % lr.fragments_approximate, file=self.log)
       for i, names in enumerate(frag_names):
         print('  fragment %s:\t' % (i + 1),
               ", ".join(names) + ('\t' + values(i) if values(i) else ''),
@@ -1079,11 +1083,15 @@ class ligand_result(object):
       residue_name=ag_ligand.resname, atom_names=ag_ligand.atoms().extract_name())
     #print(dir(cif_object))
     #cif_object.show()
-    mol, rdkit_to_cctbx = rdkit_utils.get_rdkit_mol_from_atom_group_and_cif_obj(
-      atom_group = ag_ligand,
-      cif_object = cif_object)
-    self.ligand_rigid_components_isels, self._frag_mol, self._rdkit_frags = \
-      rdkit_utils.get_rigid_components(mol, rdkit_to_cctbx)
+    # the conformer of the first atom_group; bond orders and charges from
+    # rdkit_utils.residue_molecule, else approximate fragments (flagged)
+    rc = rdkit_utils.residue_rigid_components(
+      model         = self.model,
+      residue_group = ag_ligand.parent(),
+      altloc        = ag_ligand.altloc.strip())
+    self.ligand_rigid_components_isels = rc.components
+    self._frag_mol, self._rdkit_frags = rc.mol, rc.frags
+    self.fragments_approximate = rc.approximate
     missing_names = self.get_missing_atoms().missing_heavy
     self._draw_mol, self._draw_missing_idxs = \
       rdkit_utils.build_drawing_mol_with_missing(
@@ -1615,7 +1623,8 @@ class ligand_result(object):
     try:
       rdkit_utils.draw_colored_fragments(
         frag_mol, rdkit_frags, filename=tf.name, frag_ccs=frag_cc_list,
-        missing_atom_idxs=missing_idxs)
+        missing_atom_idxs=missing_idxs,
+        note=getattr(self, 'fragments_approximate', None))
       with open(tf.name, 'rb') as fh:
         data = fh.read()
     except Exception:
@@ -1725,6 +1734,7 @@ class ligand_result(object):
         percent_blobs_neg           = _f(mapv.percent_blobs_neg)           if mapv is not None else None,
       ) if mapv is not None else None,
       fragment_png_bytes = fragment_png_bytes,
+      fragments_approximate = getattr(self, 'fragments_approximate', None),
       missing_atoms = group_args(
         missing_heavy   = list(ma.missing_heavy),
         n_missing_heavy = _i(ma.n_missing_heavy),

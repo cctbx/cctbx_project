@@ -88,151 +88,78 @@ def is_amide_bond(mol, bond):
 
 # ------------------------------------------------------------------------------
 
-def get_rdkit_mol_from_atom_group_and_cif_obj(atom_group, cif_object):
-  atoms_ligand = atom_group.atoms()
-
-  # Mappings
-  cctbx_to_rdkit = {}
-  rdkit_to_cctbx = {}
-  name_to_rdkit = {}
-
-  # Map atom names to element strings (e.g., "CA" -> "C")
-  name_to_element = {}
-
+def approximate_residue_molecule(model, residue_group, altloc=""):
+  """
+  Fallback when residue_molecule fails: the residue conformer's atoms (blank plus
+  altloc; metals left out), bonds from the restraint file (by atom name), with its
+  explicit single/double/triple orders (others single), no charges, ring
+  perception only (not sanitized). Returns (mol, rdkit_to_iseq).
+  """
+  from scitbx.array_family import flex as _flex
+  ags = [ag for ag in residue_group.atom_groups() if ag.altloc.strip() in ("", altloc)]
+  resname = ([ag for ag in ags if ag.altloc.strip()] or ags)[0].resname.strip()
+  conf = [a for ag in ags for a in ag.atoms()
+    if a.element.strip().upper() not in _metal_elements]
+  comp, ani = model.get_mon_lib_srv().get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=resname, atom_names=_flex.std_string([a.name for a in conf]))
+  names = [a.name.strip() for a in conf]
+  if ani is not None:
+    names = [(m or n).strip() for m, n in zip(ani.mon_lib_names(), names)]
   mol = Chem.RWMol()
-
-  # --- Build RDKit Nodes (Atoms) ---
-  for cctbx_atom in atoms_ligand:
-    atom_idx = cctbx_atom.i_seq
-
-    # Get Element string (e.g., "C", "N", "P")
-    element_str = cctbx_atom.element.strip().capitalize()
-    if not element_str:
-        # Fallback if element is empty
-        element_str = cctbx_atom.name.strip()[0:1].capitalize()
-
-    rd_atom = Chem.Atom(element_str)
-    rd_atom.SetProp("_Name", cctbx_atom.name)
-
-    rd_idx = mol.AddAtom(rd_atom)
-
-    cctbx_to_rdkit[atom_idx] = rd_idx
-    rdkit_to_cctbx[rd_idx] = atom_idx
-
-    # Store mappings
-    clean_name = cctbx_atom.name.strip()
-    name_to_rdkit[clean_name] = rd_idx
-    name_to_element[clean_name] = element_str.upper() # Store as "C", "P", etc.
-
-  # --- Apply Charges from CIF Dictionary ---
-  if cif_object and hasattr(cif_object, "atom_list"):
-    for cif_atom in cif_object.atom_list:
-      atom_name = cif_atom.atom_id.strip()
-
-      # Check if this atom exists in the RDKit molecule
-      if atom_name in name_to_rdkit:
-        rd_idx = name_to_rdkit[atom_name]
-        rd_atom = mol.GetAtomWithIdx(rd_idx)
-
-        # Extract charge
-        # It might be an integer, a float (partial), or a string.
-        try:
-          c_val = getattr(cif_atom, 'charge', 0)
-          # Convert to int (handle cases like "1.0", 1, or "-1")
-          formal_charge = int(float(c_val))
-
-          if formal_charge != 0:
-            rd_atom.SetFormalCharge(formal_charge)
-
-        except (ValueError, TypeError):
-          # If charge is None or non-numeric, ignore it
-          pass
-
-  # --- Build Bonds from CIF ---
-  if cif_object and hasattr(cif_object, "bond_list"):
-    for bond in cif_object.bond_list:
-      # These are STRINGS (names)
-      atom_name_1 = bond.atom_id_1.strip()
-      atom_name_2 = bond.atom_id_2.strip()
-
-      # Use .type if available, otherwise assume single
-      order_str = getattr(bond, 'type', 'sing')
-
-      if atom_name_1 in name_to_rdkit and atom_name_2 in name_to_rdkit:
-        rd_i = name_to_rdkit[atom_name_1]
-        rd_j = name_to_rdkit[atom_name_2]
-
-        if mol.GetBondBetweenAtoms(rd_i, rd_j) is None:
-          # LOOKUP ELEMENTS from the map we built
-          el1 = name_to_element.get(atom_name_1, 'C')
-          el2 = name_to_element.get(atom_name_2, 'C')
-
-          # Pass element set to the helper
-          r_type = get_rdkit_bond_type(order_str, elements={el1, el2})
-
-          mol.AddBond(rd_i, rd_j, r_type)
-
-  # --- Validation / Fallback ---
-  # You can keep fix_charges as a backup for cases where the CIF
-  # is missing charge data, but generally, the CIF should win.
-  mol = fix_charges(mol)
-
-  try:
-    Chem.SanitizeMol(mol)
-  except ValueError:
-    print("Warning: Sanitization failed. Proceeding with unsanitized molecule.")
-    mol.UpdatePropertyCache(strict=False)
-
-  return mol, rdkit_to_cctbx
-
-# ------------------------------------------------------------------------------
-
-def fix_charges(mol):
+  idx, rdkit_to_iseq = {}, {}
+  for a, n in zip(conf, names):
+    e = a.element.strip().capitalize() or a.name.strip()[:1]
+    atom = Chem.Atom("H" if e == "D" else e)
+    atom.SetNoImplicit(True)
+    atom.SetProp("_Name", a.name.strip())
+    k = mol.AddAtom(atom)
+    idx[n] = k
+    rdkit_to_iseq[k] = a.i_seq
+  orders = {"sing": Chem.BondType.SINGLE, "doub": Chem.BondType.DOUBLE,
+    "trip": Chem.BondType.TRIPLE}
+  if comp is not None:
+    for b in comp.bond_list:
+      a1, a2 = b.atom_id_1.strip(), b.atom_id_2.strip()
+      if a1 in idx and a2 in idx and mol.GetBondBetweenAtoms(idx[a1], idx[a2]) is None:
+        mol.AddBond(idx[a1], idx[a2],
+          orders.get((b.type or "").strip().lower()[:4], Chem.BondType.SINGLE))
+  mol = mol.GetMol()
   mol.UpdatePropertyCache(strict=False)
-  for atom in mol.GetAtoms():
-    anum = atom.GetAtomicNum()
-    val = atom.GetValence(Chem.ValenceType.EXPLICIT)
-    charge = atom.GetFormalCharge()
+  Chem.FastFindRings(mol)
+  return mol, rdkit_to_iseq
 
-    # If the CIF already set a non-zero charge, trust it and skip heuristics
-    if charge != 0:
-        continue
+def residue_rigid_components(model, residue_group, altloc="", filter_lone_linkers=True,
+                             filename=None):
+  """
+  Rigid components of one residue conformer: from residue_molecule's fragment_mol
+  (caps as implicit H; added H have no i_seq and are left out of the components),
+  or, if it fails, from approximate_residue_molecule. Returns group_args:
+  components (flex.size_t of model i_seqs), mol, frags (rdkit indices, for
+  drawing), approximate ("approximate: <reason>" or None), molecule (the
+  residue_molecule result).
+  """
+  from libtbx import group_args
+  try:
+    r = residue_molecule(model, residue_group, altloc=altloc)
+  except Exception as e:
+    r = group_args(ok=False, reason="%s: %s" % (type(e).__name__, e))
+  if r.ok:
+    mol, rdkit_to_iseq, approximate = r.fragment_mol, r.rdkit_to_iseq, None
+  else:
+    mol, rdkit_to_iseq = approximate_residue_molecule(model, residue_group, altloc)
+    approximate = "approximate: %s" % r.reason
+  components, mol, frags = get_rigid_components(mol, rdkit_to_iseq,
+    filter_lone_linkers, filename)
+  return group_args(components=components, mol=mol, frags=frags,
+    approximate=approximate, molecule=r)
 
-    # --- Heuristics (Only run if charge is 0) ---
-
-    # Fix Nitrogen: 4 bonds, neutral -> +1
-    if anum == 7 and val == 4:
-      atom.SetFormalCharge(1)
-
-    # Fix Boron: 4 bonds, neutral -> -1
-    if anum == 5 and val == 4:
-      atom.SetFormalCharge(-1)
-
-    # Fix Phosphorus/Sulfur (Quaternary)
-    # Since 'deloc' is mapped -> SINGLE, we might have P with 4 single bonds.
-    # Neutral P cannot have 4 bonds. P+ can.
-    if anum == 15 and val == 4:
-      atom.SetFormalCharge(1)
-
-    # Fix Oxygen (Oxonium/protonated ketones - rare in std ligands but possible)
-    if anum == 8 and val == 3:
-      atom.SetFormalCharge(1)
-
-  return mol
-
-# ------------------------------------------------------------------------------
-
-def get_cctbx_isel_for_rigid_components(atom_group,
-                                        cif_object,
+def get_cctbx_isel_for_rigid_components(model,
+                                        residue_group,
+                                        altloc="",
                                         filter_lone_linkers=True,
                                         filename=None):
-  mol, rdkit_to_cctbx = get_rdkit_mol_from_atom_group_and_cif_obj(
-    atom_group = atom_group,
-    cif_object = cif_object)
-  cctbx_rigid_components, _mol, _frags = get_rigid_components(
-    mol, rdkit_to_cctbx, filter_lone_linkers, filename)
-
-  return cctbx_rigid_components
+  return residue_rigid_components(model, residue_group, altloc,
+    filter_lone_linkers, filename).components
 
 # ------------------------------------------------------------------------------
 
@@ -266,7 +193,7 @@ def get_rigid_components(mol,
   except Exception as e:
     print('Failed to fragment the molecule.')
     frags = Chem.GetMolFrags(mol, asMols=False)
-    return [flex.size_t(list(rdkit_to_cctbx.values()))], mol, list(frags)
+    return [flex.size_t(sorted(rdkit_to_cctbx.values()))], mol, list(frags)
 
   candidate_cut_bonds = []
   min_heavy_atoms = 2
@@ -326,7 +253,7 @@ def get_rigid_components(mol,
   if not final_bonds_to_cut:
     rdkit_frags = list(Chem.GetMolFrags(mol, asMols=False))
     draw_colored_fragments(mol, rdkit_frags, filename=filename)
-    return [flex.size_t(list(rdkit_to_cctbx.values()))], mol, rdkit_frags
+    return [flex.size_t(sorted(rdkit_to_cctbx.values()))], mol, rdkit_frags
 
   fragmented_mol = Chem.FragmentOnBonds(mol, final_bonds_to_cut, addDummies=False)
   raw_fragments = list(Chem.GetMolFrags(fragmented_mol, asMols=False))
@@ -337,9 +264,11 @@ def get_rigid_components(mol,
   for frag in raw_fragments:
     component_indices = flex.size_t()
     for rd_idx in frag:
-      global_idx = rdkit_to_cctbx[rd_idx]
-      component_indices.append(global_idx)
-    cctbx_rigid_components.append(component_indices)
+      # atoms without a model i_seq (H added from the restraint file) are left out
+      if rd_idx in rdkit_to_cctbx:
+        component_indices.append(rdkit_to_cctbx[rd_idx])
+    if component_indices.size():
+      cctbx_rigid_components.append(component_indices)
 
   draw_colored_fragments(mol, raw_fragments, filename=filename)
 
@@ -491,13 +420,14 @@ _FIG_BOND_PX = 60   # target bond length (logical px); sets the fixed figure sca
 _FIG_MAX_PX = 800   # cap on either canvas dimension (logical px) before supersample
 
 def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
-                           frag_ccs=None, missing_atom_idxs=None):
+                           frag_ccs=None, missing_atom_idxs=None, note=None):
   """
   1. Removes all H atoms.
   2. Strips all charges and implicit H properties (forces clean drawing).
   3. Maps colors from the original fragmented indices to the new clean molecule.
   frag_ccs: optional list of CC floats, one per fragment in rdkit_frags order.
             When provided, each CC value is drawn at the centroid of its fragment.
+  note: optional text written below the figure (e.g. "approximate: <reason>").
   """
   if filename is None: return
 
@@ -510,7 +440,7 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
 
   # 3. Remove Hydrogens
   # implicitOnly=False ensures we remove the explicit H atoms
-  mol_viz = Chem.RemoveHs(mol_viz, implicitOnly=False)
+  mol_viz = Chem.RemoveHs(mol_viz, implicitOnly=False, sanitize=False)
 
   # 4. Cleanup Loop
   # This prevents the "OH" or "S+" labels. Force RDKit to draw atoms as-is.
@@ -814,7 +744,36 @@ def draw_colored_fragments(mol, rdkit_frags, filename, use_atom_names=False,
     except ImportError:
       pass  # PIL not available; save without annotations
 
-  # 10. Save
+  # 10. A note below the figure
+  if note:
+    try:
+      from PIL import Image, ImageDraw as PILDraw, ImageFont
+      import io as _io
+      import textwrap
+      font_size = 16 * _FIG_SUPERSAMPLE
+      try:
+        font = ImageFont.load_default(size=font_size)
+      except TypeError:
+        font = ImageFont.load_default()
+      img = Image.open(_io.BytesIO(png_bytes)).convert('RGBA')
+      w, h = img.size
+      lines = textwrap.wrap(note, max(20, int(w / (0.55 * font_size))))
+      row = font_size + 6 * _FIG_SUPERSAMPLE
+      new_img = Image.new('RGBA', (w, h + row * len(lines) + 8 * _FIG_SUPERSAMPLE),
+        (255, 255, 255, 255))
+      new_img.paste(img, (0, 0))
+      draw = PILDraw.Draw(new_img)
+      y = h + 4 * _FIG_SUPERSAMPLE
+      for line in lines:
+        draw.text((10 * _FIG_SUPERSAMPLE, y), line, fill=(160, 40, 40), font=font)
+        y += row
+      out = _io.BytesIO()
+      new_img.save(out, format='PNG')
+      png_bytes = out.getvalue()
+    except ImportError:
+      pass
+
+  # 11. Save
   with open(filename, 'wb') as f:
     f.write(png_bytes)
 
@@ -1246,6 +1205,405 @@ def is_nucleic_acid(molecule):
   if acount==5 and bcount==4:
     return True
   return False
+
+# ------------------------------------------------------------------------------
+# RDKit molecule of one residue conformer of a processed model
+
+_metal_elements = frozenset("""LI BE NA MG AL K CA SC TI V CR MN FE CO NI CU ZN GA RB
+  SR Y ZR NB MO TC RU RH PD AG CD IN SN CS BA LA CE PR ND PM SM EU GD TB DY HO ER
+  TM YB LU HF TA W RE OS IR PT AU HG TL PB BI PO FR RA AC TH PA U NP PU""".split())
+
+# X-H lengths (A) for the H caps and added H; positions do not enter the bond orders
+_cap_length = {"C": 1.09, "N": 1.01, "O": 0.96, "S": 1.34, "SE": 1.47, "P": 1.42,
+  "B": 1.19, "SI": 1.48}
+
+def _unit(v):
+  import math
+  n = math.sqrt(sum([c * c for c in v]))
+  if n < 1.e-6:
+    return None
+  return tuple([c / n for c in v])
+
+def _h_site(xyz_x, directions, k, element):
+  """An H on the atom at xyz_x along the mean direction, turned a little for the k-th H."""
+  d = _unit([sum([v[c] for v in directions]) for c in range(3)]) if directions else None
+  if d is None:
+    d = (1.0, 0.0, 0.0)
+  # spread several H on one atom: tilt by k around a perpendicular axis
+  p = _unit((d[1], -d[0], 0.0)) or (0.0, 1.0, 0.0)
+  t = 0.6 * k
+  d = _unit([d[c] + t * p[c] for c in range(3)])
+  r = _cap_length.get(element, 1.0)
+  return tuple([xyz_x[c] + r * d[c] for c in range(3)])
+
+def residue_molecule(model, residue_group, altloc="", fsc0=None):
+  """
+  RDKit molecule of one residue conformer (blank-altloc atoms plus those of altloc)
+  of a processed model, with bond orders and formal charges from
+  rdkit.Chem.rdDetermineBonds.DetermineBondOrders.
+
+  Atoms: the conformer's atoms with the model's H (_Name = atom name); without any
+  H in the conformer, the restraint file's H, minus one per cap on a link that
+  replaces an H (not for a polymer bond of a polymer restraint file, e.g. the
+  peptide N-C, whose restraint-file H already are the in-chain ones, and not for a
+  cap replacing a missing heavy atom, which the restraint file counts as a
+  neighbour).
+  An H whose heavy atom is absent is left out (noted).
+  Bonds: the restraints' bonds within the conformer. Metal atoms and bonds to
+  metals are left out; a restraint-file H that the model lacks on a metal-bound
+  atom counts as a deprotonation (-1). H caps (along the bond, or away from the
+  present neighbours): one per bond to an atom outside the residue (polymer bond,
+  covalent link), one per restraint-file heavy atom missing from the model (on its
+  present neighbour, unless that neighbour is linked: the link replaces the
+  leaving atom); links counted once per partner atom (chain, residue, name),
+  whatever its altloc. Total charge: the restraint file's formal charges
+  (_chem_comp_atom.charge, via the model's monomer library server) summed over
+  the atoms present ('?' on single atoms counts as 0; a column of only '?' or '.'
+  counts as missing), minus the deprotonations. DetermineBondOrders on this graph
+  with this total (charged fragments allowed), then sanitization. If that fails or
+  there are no formal charges: the totals -4..+4, nearest first to the formal total
+  (else to the rounded partial-charge sum); one valid total: source "model H" (with
+  a formal total: noted, the model's protonation differs from the restraint file);
+  several: the rounded partial-charge total if among them, else failure
+  (ambiguous); none: failure. search: calls, seconds, valid totals.
+
+  Returns group_args: ok, reason (why not ok), mol (None unless ok; never
+  unsanitized), rdkit_to_iseq {rdkit index: model i_seq} (caps and added H have
+  none), caps [dict(index, on, kind: linked/missing, partner)], linked,
+  missing_neighbour, metal_bound (model i_seqs), added_h (rdkit indices),
+  total_charge, total_charge_source (formal charges / model H / partial charges),
+  search,
+  charge_notes, differences (information: bonds against the restraint file's
+  explicit single/double/triple bonds, Kekule alternatives apart; formal charges
+  against the restraint file's, resonance-equivalent atoms apart), seconds,
+  fragment_mol (the molecule with the caps as implicit H), resname.
+  """
+  import time
+  from libtbx import group_args
+  from rdkit.Chem import rdDetermineBonds
+  from mmtbx.monomer_library import cif_types
+  t0 = time.time()
+  result = group_args(ok=False, reason=None, mol=None, fragment_mol=None,
+    rdkit_to_iseq={}, caps=[], linked=[], missing_neighbour=[], metal_bound=[],
+    added_h=[], total_charge=None, total_charge_source=None, charge_notes=[],
+    differences=dict(bonds=[], charges=[]), seconds=None, resname=None, search=None)
+  def fail(reason):
+    result.reason = reason
+    result.mol = None
+    result.fragment_mol = None
+    result.seconds = time.time() - t0
+    return result
+  atoms = model.get_hierarchy().atoms()
+  if fsc0 is None:
+    fsc0 = model.get_restraints_manager().geometry.shell_sym_tables[0] \
+      .full_simple_connectivity()
+  def el(i):
+    return atoms[i].element.strip().upper()
+  def is_h(i):
+    return el(i) in ("H", "D")
+  def visible(i):
+    return atoms[i].parent().altloc.strip() in ("", altloc)
+  ags = [ag for ag in residue_group.atom_groups() if ag.altloc.strip() in ("", altloc)]
+  if not ags:
+    return fail("no atoms for altloc %r" % altloc)
+  resname = ([ag for ag in ags if ag.altloc.strip()] or ags)[0].resname.strip()
+  result.resname = resname
+  conf = [a for ag in ags for a in ag.atoms()]
+  conf_seqs = set([a.i_seq for a in conf])
+  srv = model.get_mon_lib_srv()
+  from scitbx.array_family import flex as _flex
+  comp, ani = srv.get_comp_comp_id_and_atom_name_interpretation(residue_name=resname,
+    atom_names=_flex.std_string([a.name for a in conf]))
+  if comp is None:
+    return fail("no restraint file for %s" % resname)
+  names = [a.name.strip() for a in conf]
+  if ani is not None:
+    mon = ani.mon_lib_names()
+    names = [(m or n).strip() for m, n in zip(mon, names)]
+  dict_name = dict([(a.i_seq, n) for a, n in zip(conf, names)])
+  d_atoms = dict([(a.atom_id.strip(), a) for a in comp.atom_list])
+  d_el = dict([(n, (a.type_symbol or "").strip().upper()) for n, a in d_atoms.items()])
+  d_nb = dict([(n, []) for n in d_atoms])
+  for b in comp.bond_list:
+    a1, a2 = b.atom_id_1.strip(), b.atom_id_2.strip()
+    if a1 in d_nb and a2 in d_nb:
+      d_nb[a1].append(a2)
+      d_nb[a2].append(a1)
+  def d_h(n):
+    return [x for x in d_nb.get(n, []) if d_el.get(x) in ("H", "D")]
+  # atoms present (metals left out), bonds, links, metal contacts
+  present = [a.i_seq for a in conf if el(a.i_seq) not in _metal_elements]
+  # H whose heavy atom is absent (e.g. HO3 of a GOL without O3): left out
+  orphans = [i for i in present if is_h(i) and not [k for k in fsc0[i]
+    if visible(k) and k in conf_seqs and not is_h(k)]]
+  if orphans:
+    result.charge_notes.append("H without its heavy atom, left out: %s" % " ".join(
+      [atoms[i].name.strip() for i in orphans]))
+  present = [i for i in present if i not in orphans]
+  present_set = set(present)
+  has_h = len([i for i in present if is_h(i)]) > 0
+  # links: one per partner atom (chain, residue, name), whatever its altloc (a
+  # neighbour split into conformers is still one partner)
+  rg_key = (residue_group.parent().id, residue_group.resseq, residue_group.icode)
+  def residue_key(k):
+    rg = atoms[k].parent().parent()
+    return (rg.parent().id, rg.resseq, rg.icode)
+  bonds, links, metal_bound = set(), [], set()
+  for i in present:
+    partners = set()
+    for k in fsc0[i]:
+      if residue_key(k) == rg_key:
+        if visible(k) and k in present_set:
+          bonds.add(tuple(sorted([i, k])))
+        elif visible(k) and el(k) in _metal_elements:
+          metal_bound.add(i)
+        continue
+      if el(k) in _metal_elements:
+        metal_bound.add(i)
+        continue
+      key = residue_key(k) + (atoms[k].name.strip(),)
+      if key not in partners:
+        partners.add(key)
+        links.append((i, k))
+  # restraint-file heavy atoms missing from the model: cap their present neighbour
+  present_names = dict([(dict_name[i], i) for i in present])
+  linked = set([i for i, k in links])
+  missing_caps = []
+  for n, a in sorted(d_atoms.items()):
+    if n in present_names or d_el.get(n) in ("H", "D") or d_el.get(n) in _metal_elements:
+      continue
+    for nb in d_nb[n]:
+      i = present_names.get(nb)
+      if i is not None and not is_h(i) and i not in linked:
+        missing_caps.append((i, n))
+  # deprotonation on metal-bound atoms
+  deprotonations = 0
+  if has_h:
+    for i in sorted(metal_bound):
+      n_model = len([k for k in fsc0[i] if k in present_set and is_h(k)])
+      n_dict = len(d_h(dict_name[i]))
+      if n_model < n_dict:
+        deprotonations += n_dict - n_model
+        result.charge_notes.append("%s: %d restraint-file H missing on a metal-bound "
+          "atom, counted as deprotonation" % (dict_name[i], n_dict - n_model))
+  # formal charges
+  values = [cif_types.formal_charge_and_problem(getattr(a, "charge", None))
+    for a in comp.atom_list]
+  have_formal = len([q for q, p in values if q is not None]) > 0
+  # molecule
+  mol = Chem.RWMol()
+  conformer = Chem.Conformer()
+  xyz = {}
+  idx = {}
+  def add_atom(element, name, site):
+    e = element.capitalize()
+    atom = Chem.Atom("H" if e == "D" else e)
+    if e == "D":
+      atom.SetIsotope(2)
+    atom.SetNoImplicit(True)
+    atom.SetProp("_Name", name)
+    k = mol.AddAtom(atom)
+    xyz[k] = site
+    return k
+  for i in present:
+    idx[i] = add_atom(el(i), atoms[i].name.strip(), atoms[i].xyz)
+    result.rdkit_to_iseq[idx[i]] = i
+  for i, k in bonds:
+    mol.AddBond(idx[i], idx[k], Chem.BondType.SINGLE)
+  def directions_away(i):
+    x = atoms[i].xyz
+    return [tuple([x[c] - atoms[k].xyz[c] for c in range(3)])
+      for k in fsc0[i] if k in present_set]
+  n_on = {}
+  def add_h(i, site_dirs, kind, name):
+    n_on[i] = n_on.get(i, 0) + 1
+    site = _h_site(atoms[i].xyz, site_dirs, n_on[i] - 1, el(i))
+    k = add_atom("H", name, site)
+    mol.AddBond(idx[i], k, Chem.BondType.SINGLE)
+    return k
+  # caps that replace a restraint-file H: links other than polymer bonds of a
+  # polymer restraint file
+  group = (comp.chem_comp.group or "").strip().upper()
+  polymer = group in ("L-PEPTIDE", "D-PEPTIDE", "PEPTIDE", "M-PEPTIDE", "P-PEPTIDE",
+    "DNA", "RNA")
+  polymer_pairs = (("N", "C"), ("C", "N"), ("P", "O3'"), ("O3'", "P"), ("P", "O3*"),
+    ("O3*", "P"))
+  caps_on = {}
+  for i, k in links:
+    if polymer and (atoms[i].name.strip(), atoms[k].name.strip()) in polymer_pairs:
+      continue
+    caps_on[i] = caps_on.get(i, 0) + 1
+  # without any H: the restraint file's H, one fewer per cap
+  added_charge_names = []
+  if not has_h:
+    for i in present:
+      n = dict_name[i]
+      hs = d_h(n)
+      for h in hs[:max(0, len(hs) - caps_on.get(i, 0))]:
+        k = add_h(i, directions_away(i), "added", h)
+        result.added_h.append(k)
+        added_charge_names.append(h)
+  for i, k in links:
+    d = tuple([atoms[k].xyz[c] - atoms[i].xyz[c] for c in range(3)])
+    c = add_h(i, [d], "cap", "CAP")
+    mol.GetAtomWithIdx(c).SetProp("cap", "linked")
+    result.caps.append(dict(index=c, on=i, kind="linked", partner=k))
+  for i, n in missing_caps:
+    c = add_h(i, directions_away(i), "cap", "CAP")
+    mol.GetAtomWithIdx(c).SetProp("cap", "missing")
+    result.caps.append(dict(index=c, on=i, kind="missing", partner=n))
+  result.linked = sorted(linked)
+  result.missing_neighbour = sorted(set([i for i, n in missing_caps]))
+  result.metal_bound = sorted(metal_bound)
+  for k, site in xyz.items():
+    conformer.SetAtomPosition(k, site)
+  mol.AddConformer(conformer, assignId=True)
+  # total charge over the atoms present
+  charge_names = [dict_name[i] for i in present] + added_charge_names
+  unknown = [n for n in charge_names if n not in d_atoms]
+  if unknown:
+    result.charge_notes.append("not in the restraint file: %s" % " ".join(unknown))
+  def first_line(e):
+    return str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
+  formal_total = None
+  if have_formal:
+    formal_total = 0
+    for n in charge_names:
+      if n in d_atoms:
+        q, problem = cif_types.formal_charge_and_problem(getattr(d_atoms[n], "charge", None))
+        if q is None:
+          result.charge_notes.append("%s: %s, counted as 0" % (n, problem))
+        else:
+          formal_total += q
+    formal_total -= deprotonations
+  partial_total = None
+  partial = [d_atoms[n].partial_charge for n in charge_names if n in d_atoms]
+  if [p for p in partial if p is not None]:
+    ps = sum([p for p in partial if p is not None])
+    partial_total = int(round(ps)) - deprotonations
+    if not have_formal:
+      result.charge_notes.append("sum of partial charges %.3f" % ps)
+  # bond orders and charges: the restraint file's formal total; if that fails or
+  # there is none, the totals -4..+4 (nearest first to the formal total, else to
+  # the rounded partial-charge sum)
+  def attempt(total):
+    m = Chem.RWMol(mol)
+    try:
+      rdDetermineBonds.DetermineBondOrders(m, charge=total, allowChargedFragments=True,
+        embedChiral=True)
+      Chem.SanitizeMol(m)
+      return m, None
+    except Exception as e:
+      return None, first_line(e)
+  result.search = dict(calls=0, seconds=0.0, valid=[])
+  chosen, formal_error = None, None
+  if formal_total is not None:
+    result.search["calls"] += 1
+    m, formal_error = attempt(formal_total)
+    if m is not None:
+      chosen = (m, formal_total, "formal charges")
+  if chosen is None:
+    t_search = time.time()
+    centre = formal_total if formal_total is not None else (
+      partial_total if partial_total is not None else 0)
+    valid = {}
+    for t in sorted(range(-4, 5), key=lambda t: (abs(t - centre), t)):
+      if t == formal_total:
+        continue
+      result.search["calls"] += 1
+      m, e = attempt(t)
+      if m is not None:
+        valid[t] = m
+    result.search["seconds"] = time.time() - t_search
+    result.search["valid"] = sorted(valid)
+    # set aside totals whose only structure charges a carbon (e.g. an acetate at
+    # -3 as C[C-]([O-])[O-]) when other totals are valid without one
+    def charged_carbon(m):
+      return [a for a in m.GetAtoms() if a.GetAtomicNum() == 6 and a.GetFormalCharge()]
+    plausible = dict([(t, m) for t, m in valid.items() if not charged_carbon(m)])
+    if plausible and len(plausible) < len(valid):
+      result.search["set_aside"] = sorted([t for t in valid if t not in plausible])
+      result.charge_notes.append("totals %s set aside (charged carbon)" % " ".join(
+        ["%+d" % t for t in result.search["set_aside"]]))
+      valid = plausible
+    if len(valid) == 1:
+      t = list(valid)[0]
+      chosen = (valid[t], t, "model H")
+      if formal_total is not None:
+        result.charge_notes.append("the model's protonation differs from the restraint "
+          "file: formal total %d fails (%s), total %d from the model's H" % (
+          formal_total, formal_error, t))
+    elif len(valid) > 1:
+      if partial_total in valid:
+        chosen = (valid[partial_total], partial_total, "partial charges")
+        result.charge_notes.append("totals %s valid; the rounded partial-charge total "
+          "%d taken" % (" ".join(["%+d" % t for t in sorted(valid)]), partial_total))
+      else:
+        return fail("ambiguous total charge for %s: DetermineBondOrders succeeds with %s"
+          % (resname, " ".join(["%+d" % t for t in sorted(valid)])))
+    else:
+      return fail("no valid structure for %s with total charges -4..+4%s" % (resname,
+        (" (formal total %d: %s)" % (formal_total, formal_error)) if formal_total
+        is not None else ""))
+  mol, total, source = chosen
+  result.total_charge = total
+  result.total_charge_source = source
+  result.mol = mol.GetMol()
+  # differences from the restraint file (information)
+  rd_of_name = dict([(dict_name[i], idx[i]) for i in present])
+  for b in comp.bond_list:
+    a1, a2 = b.atom_id_1.strip(), b.atom_id_2.strip()
+    t = (b.type or "").strip().lower()[:4]
+    if a1 not in rd_of_name or a2 not in rd_of_name or t not in ("sing", "doub", "trip"):
+      continue
+    bond = result.mol.GetBondBetweenAtoms(rd_of_name[a1], rd_of_name[a2])
+    if bond is None or bond.GetIsAromatic():
+      continue
+    got = str(bond.GetBondType()).lower()
+    want = {"sing": "single", "doub": "double", "trip": "triple"}[t]
+    if got != want:
+      result.differences["bonds"].append("%s-%s: restraint file %s, RDKit %s" % (
+        a1, a2, want, got))
+  if have_formal:
+    heavy = [i for i in present if not is_h(i)]
+    group = dict([(i, i) for i in heavy])
+    def find(i):
+      while group[i] != i:
+        i = group[i]
+      return i
+    # resonance: same element sharing a heavy neighbour
+    for c in heavy:
+      nbs = [k for k in fsc0[c] if k in group]
+      for a in nbs:
+        for b in nbs:
+          if a < b and el(a) == el(b):
+            group[find(a)] = find(b)
+    sums = {}
+    for i in heavy:
+      q, problem = cif_types.formal_charge_and_problem(getattr(d_atoms.get(dict_name[i]),
+        "charge", None)) if dict_name[i] in d_atoms else (None, None)
+      s = sums.setdefault(find(i), [0, 0, []])
+      s[0] += q or 0
+      s[1] += result.mol.GetAtomWithIdx(idx[i]).GetFormalCharge()
+      s[2].append(dict_name[i])
+    for g, (qd, qr, members) in sorted(sums.items()):
+      if qd != qr:
+        result.differences["charges"].append("%s: restraint file %+d, RDKit %+d" % (
+          " ".join(members), qd, qr))
+  # fragment molecule: caps as implicit H
+  frag = Chem.RWMol(result.mol)
+  for cap in sorted(result.caps, key=lambda c: -c["index"]):
+    x = frag.GetAtomWithIdx(idx[cap["on"]])
+    x.SetNumExplicitHs(x.GetNumExplicitHs() + 1)
+    frag.RemoveAtom(cap["index"])
+  try:
+    Chem.SanitizeMol(frag)
+    result.fragment_mol = frag.GetMol()
+  except Exception as e:
+    return fail("sanitization of the fragment molecule failed: %s" % e)
+  result.ok = True
+  result.seconds = time.time() - t0
+  return result
 
 if __name__ == '__main__':
   import sys
