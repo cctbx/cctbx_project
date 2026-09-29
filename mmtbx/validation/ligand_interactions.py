@@ -1,6 +1,6 @@
 """
-Ligand interaction profile from geometric tools (stage 1: H-bonds, clashes, vdW
-contacts).
+Ligand interaction profile from geometric tools (H-bonds, clashes, vdW contacts,
+salt bridges).
 
 Input: an mmtbx.model.manager with electron-cloud H, as the ligand validation tool
 prepares it (this module does not place H), processed with restraints, the
@@ -10,20 +10,36 @@ e.g. an ion, is connected; alternate conformers of an atom count as connected).
 Sources:
   pnp     cctbx process_nonbonded_proxies on the ligand and the residues within
           3 A (ligand_overlaps; what validate_ligands reports): clashes and H-bonds
-          with at least one ligand atom
+          with at least one ligand atom; H-bond criteria from the hbond scope
+          (defaults: pnp.h_bond())
   probe2  library call (mmtbx.programs.probe2, approach=both, ligand selection as
           source, the rest as target, raw output, no files written); per atom
-          pair the dots per class (wc, cc, so, hb, bo), the pair class (the first
-          class in pair_class_order with dots), the minimum atom-pair gap
+          pair the dots per class (both directions; the pair class is the first
+          class in pair_class_order with dots), the minimum atom-pair gap, and per
+          side the dots and contact area (dots / density) per class and in total:
+          on the ligand atom's surface (ligand -> environment dots) and on the
+          environment atom's surface (environment -> ligand dots). Classes: wc cc
+          so hb bo; wh with allow_weak_hydrogen_bonds; wo with
+          separate_worse_clashes; any other class is an error
+  charged groups  standard amino acids by template, other residues by rules from
+          elements, the restraints' bonds and explicit H (below)
 Entries (type, subtype, atoms, operators, labels, residue, symop, geometry,
 sources, cross_check, model_support), ligand-environment only:
-  hbond   one per D-H...A: pnp's H-bonds and probe2's hb pairs
-  clash   pnp's clashes and probe2's bo pairs
-  vdw     probe2's wc, cc or so pairs (subtype), dot counts per class, minimum gap
+  hbond        one per D-H...A: pnp's H-bonds and probe2's hb and wh pairs
+               (subtype "weak (probe2)" for wh)
+  clash        pnp's clashes and probe2's bo and wo pairs; an atom clashing with
+               two bonded atoms in line with it is one clash (pnp's rule in
+               _process_clashes: the partners bonded, |cos| > 0.707, pnp.cos_vec;
+               not applied to symmetry pairs, as in pnp): one entry listing every
+               pair (pairs), the pair pnp kept (else the shortest) as its atoms
+  vdw          probe2's wc, cc or so pairs (subtype), dots and area per class,
+               minimum gap
+  salt_bridge  oppositely charged groups (below); subtype from Kumar & Nussinov
+               (2002); lists the H-bond entries between the same groups
 cross_check (hbond, clash): "pnp and probe2", "pnp only", "probe2 only" (the last
 two listed as disagreements), or "symmetry, probe2 not applicable" (probe2 does not
-see symmetry-related copies). Ligand-internal pnp records are listed apart
-(internal), not as entries. model_support is left unset (the measure is open).
+see symmetry-related copies). Ligand-internal pnp records and salt bridges are
+listed apart (internal), not as entries. model_support is left unset.
 The donor of an H in a probe2 H-bond is its bonded heavy atom from the restraints'
 1-2 connectivity (same conformer); an H without exactly one bonded heavy atom is
 listed in unresolved_donors and the donor left unset. probe2's hb geometry adds
@@ -31,17 +47,61 @@ d_HA and a_DHA from the model (probe2's hb class is overlap-based, without angle
 Symmetry convention: the selected ligand stays in place; an entry's operators (one
 per atom, "x,y,z" for untransformed atoms) move its partner atoms (the
 non-ligand side; for the ligand with its own symmetry copy, the acceptor of an
-H-bond and the second atom of a clash). symop is the partner's operator. pnp's
-operator belongs to its own atom pair (rt_mx_ji); the operator or its inverse is
-taken, whichever applied to the partner reproduces pnp's distance. The partner
-residue is labelled with the operator ("A 856 301 (x+1,y,z)"), also when it is
-the ligand itself.
+H-bond, the second atom of a clash, the partner group of a salt bridge). symop is
+the partner's operator. pnp's operator belongs to its own atom pair (rt_mx_ji);
+the operator or its inverse is taken, whichever applied to the partner reproduces
+pnp's distance. The partner residue is labelled with the operator
+("A 856 301 (x+1,y,z)"), also when it is the ligand itself.
+Charged groups (find_charged_groups, charged_group_pairs; independent of the
+ligand): examined on "(ligand) or residues_within(search, ligand)" (symmetry
+included; search = max(atom_pair_cutoff, charge_centre_cutoff + 2.5 A)), full-model
+i_seqs and bonds, per conformer (blank-altloc atoms plus one altloc; resname from
+that conformer's atom_group). A group found identically in every conformer is
+reported once with blank altloc, else with its atoms' or conformer's altloc; groups
+with different non-blank altlocs are not paired (as pnp). Metal ions are not
+salt-bridge partners (bonds to metals ignored).
+Standard amino acids (iotbx.pdb class common_amino_acid), by template: Asp (CG;
+OD1, OD2), Glu (CD; OE1, OE2), Lys (NZ), Arg (CZ; NE, NH1, NH2), His (CE1; ND1,
+NE2), the N-terminal N (no bond to another residue), the C-terminal carboxylate
+(C; O, OXT). Charge as modelled, from H/D bonded to the group atoms in that
+conformer: Asp, Glu, C-terminus neutral if an O carries H; His charged only with H
+on ND1 and NE2; Lys and N-terminus charged with four bonded atoms on N; Arg charged
+unless a guanidinium H is missing. usual_charge: at pH 7 (Asp, Glu, C-terminus -1;
+Lys, Arg, N-terminus +1; His 0). A residue conformer without H gets usual_charge,
+state "assumed (no H)". A missing template atom is reported
+(charged_group_missing_atoms) and the group skipped.
+Other residues, by rules:
+  carboxylate    C with two terminal O (bonded to the C only, no H): -1
+  ammonium       N with four bonded atoms, H included (Lys NZ, N-terminus,
+                 ligand amines; quaternary N included): +1
+  guanidinium, amidinium, imidazolium  C with three bonded atoms, none O, two or
+                 three N, each N with three bonded atoms, H included (Arg; His with
+                 HD1 and HE2; ligand amidines): +1
+  phosphate, phosphonate  P with n >= 2 terminal O: -(n - 1)
+  sulfate, sulfonate      S with n >= 3 terminal O: -(n - 2)
+The group's charged atoms are the terminal O or the N; its charge centre is their
+centroid. Formal charges in the restraint dictionary (files supplied with the
+model, else GeoStd, else the monomer library) and in the CCD are compared with
+the perception for the ligand and the residues near it: per perceived group, and
+per dictionary-charged atom outside the groups. Where the dictionary's H on the
+heavy atoms within two bonds match the model's, a different charge is a conflict
+(reported, not resolved); where they differ, "protonation differs".
+Salt bridges: oppositely charged groups, criterion atom_pair (default: at least one
+pair of charged atoms within 4.0 A; Barlow & Thornton, J. Mol. Biol. 168, 867
+(1983): <= 4 A between charged groups) or charge_centre (charge centres within
+5.5 A; PLIP, Salentin et al., Nucleic Acids Res. 43, W443 (2015): Barlow &
+Thornton's 4 A + 1.5 A). Subtype (Kumar & Nussinov, Biophys. J. 83, 1595 (2002)):
+"salt bridge (K&N)" if the charge centres and at least one N-O pair are within
+4 A, "N-O bridge (K&N)" if only an N-O pair is, "longer-range (K&N)" otherwise.
 Contact patches: probe2's ligand -> environment dots, at their location on the
 ligand's surface, grouped by spatial connectivity (dots closer than
-patch_link_distance are linked); per patch the dot counts per class, the mean dot
-location (center), atom pairs, ligand atoms and residues. No patch-level type and no rule for counting patches.
+patch_link_distance are linked); per patch the dots and area per class, the mean
+dot location (center), atom pairs, ligand atoms and residues. No patch-level type
+and no rule for counting patches.
 """
 from __future__ import absolute_import, division, print_function
+import math
+import os
 import sys
 from six.moves import cStringIO as StringIO
 import iotbx.phil
@@ -49,9 +109,59 @@ import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from libtbx import group_args
 from libtbx.utils import Sorry, null_out
 from scitbx.array_family import flex
-from cctbx import sgtbx
+from cctbx import crystal, sgtbx
 
+# probe2's classes with the default options (in this order in reports)
 probe_classes = ("wc", "cc", "so", "hb", "bo")
+# every class probe2 writes: wh with allow_weak_hydrogen_bonds, wo with
+# separate_worse_clashes
+probe_all_classes = ("wc", "cc", "wh", "so", "hb", "bo", "wo")
+# pair_class_order to use when wh or wo can occur
+extended_pair_class_order = ("wo", "bo", "hb", "wh", "so", "cc", "wc")
+clash_classes = ("bo", "wo")
+hbond_classes = ("hb", "wh")
+vdw_classes = ("so", "cc", "wc")
+
+# pnp.manager._process_clashes: two clashes of one atom are one if the other two
+# atoms are bonded and |pnp.cos_vec| exceeds this (hard-coded there)
+inline_clash_cos_min = 0.707
+
+metal_elements = frozenset("""LI BE NA MG AL K CA SC TI V CR MN FE CO NI CU ZN GA RB
+  SR Y ZR NB MO TC RU RH PD AG CD IN SN CS BA LA CE PR ND PM SM EU GD TB DY HO ER
+  TM YB LU HF TA W RE OS IR PT AU HG TL PB BI PO FR RA AC TH PA U NP PU""".split())
+
+def _hbond_phil_str():
+  h = pnp.h_bond()
+  return """
+  hbond
+    .help = "process_nonbonded_proxies (pnp) H-bond criteria, passed to pnp.manager \\
+as h_bond_params. Defaults are pnp.h_bond()'s values, which validate_ligands uses."
+  {
+    d_HA_cutoff = %s %s
+      .type = floats(size=2)
+      .help = "H...A distance range (A)."
+    d_DA_cutoff = %s %s
+      .type = floats(size=2)
+      .help = "D...A distance range (A)."
+    a_DHA_cutoff = %s
+      .type = float
+      .help = "Minimum D-H...A angle (deg)."
+    a_YAH_cutoff = %s %s
+      .type = floats(size=2)
+      .help = "Y-A...H angle range (deg); stored by pnp but not applied."
+    min_bonds_H_A = %s
+      .type = int
+      .help = "H and A at least this many bonds apart (same copy)."
+    hydrogen_elements = %s
+      .type = strings
+    donor_elements = %s
+      .type = strings
+    acceptor_elements = %s
+      .type = strings
+  }
+""" % (h.d_HA_cutoff[0], h.d_HA_cutoff[1], h.d_DA_cutoff[0], h.d_DA_cutoff[1],
+    h.a_DHA_cutoff, h.a_YAH_cutoff[0], h.a_YAH_cutoff[1], h.min_bonds_H_A,
+    " ".join(h.Hs), " ".join(h.Ds), " ".join(h.As))
 
 master_phil_str = """
 ligand_interactions
@@ -59,7 +169,9 @@ ligand_interactions
   pair_class_order = bo hb so cc wc
     .type = strings
     .help = "Pair class for an atom pair with dots of several probe2 classes: the \\
-first class in this list that has dots."
+first class in this list that has dots. Must list every class that can occur: \\
+with allow_weak_hydrogen_bonds (wh) or separate_worse_clashes (wo) use e.g. \\
+wo bo hb wh so cc wc."
   patch_link_distance = 0.5
     .type = float
     .help = "Contact patches: ligand -> environment dots closer than this (A) \\
@@ -70,12 +182,51 @@ neighbouring atoms' dot sets. 5XH3 ligand 856: 11 patches at 0.4 A, 9 at \\
   use_neutron_distances = False
     .type = bool
     .help = "probe2's use_neutron_distances (electron-cloud H is the convention)."
+  separate_worse_clashes = False
+    .type = bool
+    .help = "probe2's output.separate_worse_clashes (class wo)."
   include scope mmtbx.probe.Helpers.probe_phil_parameters
+""" + _hbond_phil_str() + """
+  salt_bridge
+    .help = "Salt bridges between oppositely charged groups."
+  {
+    criterion = *atom_pair charge_centre
+      .type = choice
+      .help = "atom_pair: at least one pair of charged atoms of the two groups \\
+within atom_pair_cutoff (Barlow & Thornton, J. Mol. Biol. 168, 867 (1983)). \\
+charge_centre: charge centres within charge_centre_cutoff (PLIP, Salentin et al., \\
+Nucleic Acids Res. 43, W443 (2015)), a looser variant."
+    atom_pair_cutoff = 4.0
+      .type = float
+      .help = "A. Barlow & Thornton (1983): ion pair if <= 4 A between charged groups."
+    charge_centre_cutoff = 5.5
+      .type = float
+      .help = "A. PLIP's SALTBRIDGE_DIST_MAX: Barlow & Thornton's 4 A + 1.5 A."
+    kumar_nussinov_cutoff = 4.0
+      .type = float
+      .help = "A. Subtype after Kumar & Nussinov, Biophys. J. 83, 1595 (2002): salt \\
+bridge if the charge centres and at least one N-O pair are within this, N-O bridge \\
+if only an N-O pair is, longer-range otherwise."
+  }
 }
 """
 
 def master_params():
   return iotbx.phil.parse(master_phil_str, process_includes=True)
+
+def h_bond_params(p=None):
+  """pnp.h_bond() with the values of a ligand_interactions.hbond scope (None: pnp's defaults)."""
+  h = pnp.h_bond()
+  if p is not None:
+    h.d_HA_cutoff = list(p.d_HA_cutoff)
+    h.d_DA_cutoff = list(p.d_DA_cutoff)
+    h.a_DHA_cutoff = p.a_DHA_cutoff
+    h.a_YAH_cutoff = list(p.a_YAH_cutoff)
+    h.min_bonds_H_A = p.min_bonds_H_A
+    h.Hs = [e.upper() for e in p.hydrogen_elements]
+    h.Ds = [e.upper() for e in p.donor_elements]
+    h.As = [e.upper() for e in p.acceptor_elements]
+  return h
 
 # ------------------------------------------------------------------------------
 # atoms
@@ -94,11 +245,15 @@ def atom_label(atom):
   return "%s %s %s %s%s" % (rg.parent().id.strip(), ag.resname.strip(),
     (rg.resseq + rg.icode).strip(), atom.name.strip(), (" alt " + alt) if alt else "")
 
-def residue_label(atom):
+def residue_label(atom, resname=None):
+  """Chain, resname (of the atom's atom_group unless given), resseq+icode."""
   ag = atom.parent()
   rg = ag.parent()
-  return "%s %s %s" % (rg.parent().id.strip(), ag.resname.strip(),
+  return "%s %s %s" % (rg.parent().id.strip(), resname or ag.resname.strip(),
     (rg.resseq + rg.icode).strip())
+
+def _element(atom):
+  return atom.element.strip().upper()
 
 # ------------------------------------------------------------------------------
 # probe2
@@ -149,17 +304,23 @@ def parse_probe_raw(text, order=("bo", "hb", "so", "cc", "wc")):
   spikeLen:score:srcClass:targetClass:loc x:y:z:srcB:targetB'). Returns
   group_args(pairs, dots): pairs {frozenset((source field, target field)):
   dict(dots={class: n}, min_gap, pair_class)} over both directions (min_gap: the
-  atom-pair gap); dots [dict(direction, cls, source, target, loc, spike, gap)]
-  (loc: the dot on the source atom's surface; gap: the dot's gap).
+  atom-pair gap; dots keyed by the classes in order); dots [dict(direction, cls,
+  source, target, loc, spike, gap)] (loc: the dot on the source atom's surface;
+  gap: the dot's gap). Sorry for a class probe2 does not write or not in order.
   """
   pairs, dots = {}, []
   for line in text.splitlines():
     f = line.split(":")
-    if len(f) < 17 or f[2] not in probe_classes:
+    if len(f) < 17:
       continue
+    if f[2] not in probe_all_classes:
+      raise Sorry("Unknown probe2 class %r in: %s" % (f[2], line))
+    if f[2] not in order:
+      raise Sorry("probe2 class %r is not in pair_class_order (%s)." % (f[2],
+        " ".join(order)))
     source, target = f[3], f[4]
     p = pairs.setdefault(frozenset([source, target]),
-      dict(dots=dict([(c, 0) for c in probe_classes]), min_gap=None))
+      dict(dots=dict([(c, 0) for c in order]), min_gap=None))
     p["dots"][f[2]] += 1
     gap = float(f[5])
     p["min_gap"] = gap if p["min_gap"] is None else min(p["min_gap"], gap)
@@ -171,7 +332,7 @@ def parse_probe_raw(text, order=("bo", "hb", "so", "cc", "wc")):
   return group_args(pairs=pairs, dots=dots)
 
 def probe2_parameters(source_selection, target_selection, probe=None,
-                      use_neutron_distances=False):
+                      use_neutron_distances=False, separate_worse_clashes=False):
   """probe2's master PHIL and params: approach=both, raw, no files; probe scope copied."""
   import iotbx.cli_parser
   from mmtbx.programs import probe2
@@ -181,6 +342,7 @@ def probe2_parameters(source_selection, target_selection, probe=None,
     "target_selection=%s" % target_selection,
     "approach=both", "output.format=raw", "output.write_files=False",
     "output.filename=probe2_ligand_interactions.txt",
+    "output.separate_worse_clashes=%s" % separate_worse_clashes,
     "use_neutron_distances=%s" % use_neutron_distances])
   params = parser.working_phil.extract()
   if probe is not None:
@@ -190,7 +352,7 @@ def probe2_parameters(source_selection, target_selection, probe=None,
   return parser.master_phil, params
 
 def run_probe2(model, source_selection, target_selection, probe=None,
-               use_neutron_distances=False):
+               use_neutron_distances=False, separate_worse_clashes=False):
   """
   probe2 as a library call on a deep copy of model (run() can add phantom H to
   waters): returns the raw output string. The model must carry its H. Raw, not
@@ -199,7 +361,7 @@ def run_probe2(model, source_selection, target_selection, probe=None,
   from iotbx.data_manager import DataManager
   from mmtbx.programs import probe2
   master_phil, params = probe2_parameters(source_selection, target_selection, probe,
-    use_neutron_distances)
+    use_neutron_distances, separate_worse_clashes)
   dm = DataManager(["model"])
   dm.add_model("ligand_interactions_model", model)
   p2 = probe2.Program(dm, params, master_phil=master_phil, logger=null_out())
@@ -210,10 +372,11 @@ def run_probe2(model, source_selection, target_selection, probe=None,
 # ------------------------------------------------------------------------------
 # process_nonbonded_proxies
 
-def ligand_overlaps(model, sel_str, within_radius=3.0):
+def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None):
   """
   Clashes and H-bonds with at least one ligand atom (cctbx
-  process_nonbonded_proxies on the ligand and the residues within within_radius).
+  process_nonbonded_proxies on the ligand and the residues within within_radius;
+  h_bond_params: a pnp.h_bond(), None for pnp's defaults).
   Returns group_args: n_clashes, clashscore, n_clashes_sym, clashes_str,
   n_hbonds (validate_ligands' report), clash_records [dict(i_seq, j_seq,
   distance, sum_vdw_radii, overlap, symop)], hbond_records [dict(d_seq, h_seq,
@@ -226,7 +389,7 @@ def ligand_overlaps(model, sel_str, within_radius=3.0):
   model_within = model.select(sel_within)
   isel_ligand_within = model_within.iselection(sel_str)
 
-  processed_nbps = pnp.manager(model = model_within)
+  processed_nbps = pnp.manager(model = model_within, h_bond_params = h_bond_params)
   clashes = processed_nbps.get_clashes()
   hbonds = processed_nbps.get_hbonds()
 
@@ -299,6 +462,313 @@ def _identity(symop):
   return symop in (None, "", "x,y,z")
 
 # ------------------------------------------------------------------------------
+# charged groups and formal charges
+
+# Standard amino acids (iotbx.pdb class common_amino_acid): groups by atom name.
+# kind, centre, charged atoms, charge at pH 7
+amino_acid_templates = {
+  "ASP": ("carboxylate", "CG", ("OD1", "OD2"), -1),
+  "GLU": ("carboxylate", "CD", ("OE1", "OE2"), -1),
+  "LYS": ("ammonium", "NZ", ("NZ",), 1),
+  "ARG": ("guanidinium", "CZ", ("NE", "NH1", "NH2"), 1),
+  "HIS": ("imidazolium", "CE1", ("ND1", "NE2"), 0),
+}
+n_terminus_template = ("ammonium", "N", ("N",), 1)
+c_terminus_template = ("carboxylate", "C", ("O", "OXT"), -1)
+
+def _altloc(atom):
+  return atom.parent().altloc.strip()
+
+def find_charged_groups(model, selection, fsc0=None, use_templates=True):
+  """
+  Charged groups among the selected atoms (flex.bool or flex.size_t; full-model
+  i_seqs and fsc0), per conformer (blank-altloc atoms plus one altloc; resname
+  from that conformer's atom_group). Standard amino acids by template (Asp, Glu,
+  C-terminus: neutral if an O carries H; Lys, N-terminus: charged with four bonded
+  atoms on N; Arg: charged unless a guanidinium H is missing; His: charged with H
+  on ND1 and NE2; a residue conformer without H gets the charge at pH 7, state
+  "assumed (no H)"; a missing template atom is reported and the group skipped),
+  all other residues by the rules in the module docstring. A group found
+  identically in every conformer has blank altloc, else the altloc of its atoms
+  or its conformer. Returns group_args(groups=[dict(kind, charge, usual_charge,
+  state, center, charged, altloc, resname, source)], missing=[dict(residue,
+  altloc, kind, atoms)]).
+  """
+  import iotbx.pdb
+  atoms = model.get_hierarchy().atoms()
+  if fsc0 is None:
+    fsc0 = model.get_restraints_manager().geometry.shell_sym_tables[0] \
+      .full_simple_connectivity()
+  if isinstance(selection, flex.bool):
+    selection = selection.iselection()
+  sel = set(selection)
+  el = [_element(a) for a in atoms]
+  alt = [_altloc(a) for a in atoms]
+  alts = sorted(set([alt[i] for i in sel if alt[i]])) or [""]
+  def residue_key(i):
+    rg = atoms[i].parent().parent()
+    return (rg.parent().id, rg.resseq, rg.icode)
+  found = {}
+  missing = []
+  for conf in alts:
+    def visible(k):
+      return alt[k] in ("", conf)
+    def nb(i):
+      return [k for k in fsc0[i] if visible(k) and el[k] not in metal_elements]
+    def h_on(i):
+      return [k for k in nb(i) if el[k] in ("H", "D")]
+    def terminal_o(i, n):
+      return [k for k in n if el[k] == "O" and nb(k) == [i]]
+    def in_five_ring(c, n1, n2):
+      for a in nb(n1):
+        if a == c:
+          continue
+        for b in nb(n2):
+          if b != c and b in fsc0[a]:
+            return True
+      return False
+    def add(g):
+      key = (g["kind"], g["center"], tuple(g["charged"]), g["charge"],
+        g["usual_charge"], g["state"], g["resname"], g["source"])
+      found.setdefault(key, set()).add(conf)
+    # residue conformers in the selection
+    residues = {}
+    for i in sel:
+      if visible(i):
+        residues.setdefault(residue_key(i), []).append(i)
+    templated = set()
+    if use_templates:
+      for key, seqs in sorted(residues.items()):
+        ags = [atoms[i].parent() for i in seqs]
+        ag = ([a for a in ags if a.altloc.strip()] or ags)[0]
+        resname = ag.resname.strip().upper()
+        if iotbx.pdb.common_residue_names_get_class(resname) != "common_amino_acid":
+          continue
+        rg_atoms = [a for a in ags[0].parent().atoms() if visible(a.i_seq)]
+        names = dict([(a.name.strip(), a.i_seq) for a in rg_atoms])
+        templated.update(names.values())
+        has_h = len([a for a in rg_atoms if el[a.i_seq] in ("H", "D")]) > 0
+        label = residue_label(rg_atoms[0], resname)
+        todo = []
+        if resname in amino_acid_templates:
+          todo.append(amino_acid_templates[resname])
+        n = names.get("N")
+        if n is not None and not [k for k in fsc0[n] if residue_key(k) != key]:
+          todo.append(n_terminus_template)
+        c = names.get("C")
+        if c is not None and not [k for k in fsc0[c] if residue_key(k) != key]:
+          todo.append(c_terminus_template)
+        for kind, center, charged, usual in todo:
+          absent = [x for x in (center,) + charged if x not in names]
+          if absent:
+            missing.append((label, kind, tuple(absent), conf))
+            continue
+          ci, qi = names[center], [names[x] for x in charged]
+          if not has_h:
+            q, state = usual, "assumed (no H)"
+          else:
+            state = "modelled"
+            if kind == "carboxylate":
+              q = 0 if [k for k in qi if h_on(k)] else -1
+            elif kind == "ammonium":
+              q = 1 if len(nb(qi[0])) == 4 else 0
+            elif kind == "guanidinium":
+              q = 1 if sum([len(h_on(k)) for k in qi]) == 5 else 0
+            else:
+              q = 1 if not [k for k in qi if not h_on(k)] else 0
+          add(dict(kind=kind, charge=q, usual_charge=usual, state=state, center=ci,
+            charged=qi, resname=resname, source="template"))
+    # all other residues: rules
+    for i in sorted(sel):
+      if not visible(i) or i in templated:
+        continue
+      e = el[i]
+      if e not in ("C", "N", "P", "S"):
+        continue
+      resname = atoms[i].parent().resname.strip().upper()
+      n = nb(i)
+      g = None
+      if e == "C" and len(n) == 3:
+        o = terminal_o(i, n)
+        ns = [k for k in n if el[k] == "N"]
+        if len(o) == 2:
+          g = ("carboxylate", -1, o)
+        elif (len(ns) >= 2 and not [k for k in n if el[k] == "O"] and
+              not [k for k in ns if len(nb(k)) != 3]):
+          if len(ns) == 3:
+            g = ("guanidinium", 1, ns)
+          elif in_five_ring(i, ns[0], ns[1]):
+            g = ("imidazolium", 1, ns)
+          else:
+            g = ("amidinium", 1, ns)
+      elif e == "N" and len(n) == 4:
+        g = ("ammonium", 1, [i])
+      elif e == "P":
+        o = terminal_o(i, n)
+        if len(o) >= 2:
+          kind = "phosphate" if not [k for k in n if el[k] != "O"] else "phosphonate"
+          g = (kind, -(len(o) - 1), o)
+      elif e == "S":
+        o = terminal_o(i, n)
+        if len(o) >= 3:
+          kind = "sulfate" if not [k for k in n if el[k] != "O"] else "sulfonate"
+          g = (kind, -(len(o) - 2), o)
+      if g is not None:
+        add(dict(kind=g[0], charge=g[1], usual_charge=None, state="modelled", center=i,
+          charged=sorted(g[2]), resname=resname, source="rules"))
+  groups = []
+  for key, confs in sorted(found.items(), key=lambda x: (x[0][1], x[0][0], sorted(x[1]))):
+    kind, center, charged, q, usual, state, resname, source = key
+    own = sorted(set([alt[k] for k in (center,) + charged if alt[k]]))
+    if own:
+      altlocs = own
+    elif set(confs) == set(alts):
+      altlocs = [""]
+    else:
+      altlocs = sorted(confs)
+    for a in altlocs:
+      groups.append(dict(kind=kind, charge=q, usual_charge=usual, state=state,
+        center=center, charged=list(charged), altloc=a, resname=resname, source=source))
+  confs_missing = {}
+  for label, kind, absent, conf in missing:
+    confs_missing.setdefault((label, kind, absent), set()).add(conf)
+  missing = []
+  for (label, kind, absent), confs in sorted(confs_missing.items()):
+    for a in ([""] if set(confs) == set(alts) else sorted(confs)):
+      missing.append(dict(residue=label, altloc=a, kind=kind, atoms=list(absent)))
+  return group_args(groups=groups, missing=missing)
+
+def moved_site(unit_cell, xyz, rt_mx):
+  return unit_cell.orthogonalize(rt_mx * unit_cell.fractionalize(xyz))
+
+def charged_group_pairs(model, groups, cutoff):
+  """
+  [(k1, k2, op)]: oppositely charged groups (indices into groups) with a pair of
+  charged atoms within cutoff, op moving group k2 next to group k1 (both
+  directions listed; crystal symmetry included). Groups with different non-blank
+  altlocs are not paired.
+  """
+  atoms = model.get_hierarchy().atoms()
+  sites = [(k, i) for k, g in enumerate(groups) if g["charge"] for i in g["charged"]]
+  xyz = flex.vec3_double([atoms[i].xyz for k, i in sites])
+  cs = model.crystal_symmetry()
+  raw = []
+  if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+    for a in range(len(sites)):
+      for b in range(a + 1, len(sites)):
+        if atoms[sites[a][1]].distance(atoms[sites[b][1]]) <= cutoff:
+          raw.append((a, b, "x,y,z"))
+  else:
+    uc = cs.unit_cell()
+    sps = cs.special_position_settings()
+    asu = sps.asu_mappings(buffer_thickness=cutoff)
+    asu.process_sites_cart(original_sites=xyz,
+      site_symmetry_table=sps.site_symmetry_table(sites_cart=xyz))
+    for p in crystal.neighbors_fast_pair_generator(asu, distance_cutoff=cutoff):
+      rt = asu.get_rt_mx_i(p).inverse().multiply(asu.get_rt_mx_j(p))
+      d = math.sqrt(p.dist_sq)
+      best = None
+      for c in (rt, rt.inverse()):
+        x = moved_site(uc, atoms[sites[p.j_seq][1]].xyz, c)
+        err = abs(atoms[sites[p.i_seq][1]].distance(x) - d)
+        if best is None or err < best[0]:
+          best = (err, c.as_xyz())
+      raw.append((p.i_seq, p.j_seq, best[1]))
+  result = set()
+  for a, b, op in raw:
+    ka, kb = sites[a][0], sites[b][0]
+    ga, gb = groups[ka], groups[kb]
+    if ga["charge"] * gb["charge"] >= 0:
+      continue
+    if ga["altloc"] and gb["altloc"] and ga["altloc"] != gb["altloc"]:
+      continue
+    op = "x,y,z" if _identity(op) else op
+    inv = sgtbx.rt_mx(op).inverse().as_xyz()
+    result.add((ka, kb, op))
+    result.add((kb, ka, "x,y,z" if _identity(inv) else inv))
+  return sorted(result)
+
+_cif_cache = {}
+
+def _read_cif(file_name):
+  if file_name not in _cif_cache:
+    import iotbx.cif
+    _cif_cache[file_name] = iotbx.cif.reader(file_path=file_name).model()
+  return _cif_cache[file_name]
+
+def _dictionary_from_cif(cif_model, resname):
+  """{atoms: {name: (element, formal charge)}, h: {name: set(H names)}} from a restraint cif; None if absent or without formal charges."""
+  for block_name, block in cif_model.items():
+    ids = block.get("_chem_comp_atom.atom_id")
+    if ids is None:
+      continue
+    comps = block.get("_chem_comp_atom.comp_id")
+    if comps is not None:
+      if resname not in [c.strip().upper() for c in comps]:
+        continue
+    elif block_name.upper() not in ("COMP_%s" % resname, resname):
+      continue
+    charges = block.get("_chem_comp_atom.charge")
+    elements = block.get("_chem_comp_atom.type_symbol")
+    if charges is None or elements is None:
+      return None
+    rows = [k for k in range(len(ids)) if comps is None or comps[k].strip().upper() == resname]
+    atoms = {}
+    for k in rows:
+      try:
+        q = int(round(float(charges[k])))
+      except ValueError:
+        q = 0
+      atoms[ids[k].strip()] = (elements[k].strip().upper(), q)
+    b1 = block.get("_chem_comp_bond.atom_id_1")
+    b2 = block.get("_chem_comp_bond.atom_id_2")
+    bonds = list(zip([x.strip() for x in b1], [x.strip() for x in b2])) if b1 is not None else []
+    return _with_h(atoms, bonds)
+  return None
+
+def _with_h(atoms, bonds):
+  h = dict([(n, set()) for n in atoms])
+  for a, b in bonds:
+    if a in atoms and b in atoms:
+      if atoms[b][0] in ("H", "D"):
+        h[a].add(b)
+      if atoms[a][0] in ("H", "D"):
+        h[b].add(a)
+  return dict(atoms=atoms, h=h)
+
+def restraints_formal_charges(model, resname):
+  """(dictionary, file name) from the restraint files supplied with the model, else GeoStd, else the monomer library; (None, None) without formal charges."""
+  for item in (model.get_restraint_objects() or []):
+    file_name, cif_object = item
+    d = _dictionary_from_cif(cif_object, resname)
+    if d is not None:
+      return d, file_name
+  srv = model.get_mon_lib_srv()
+  c = resname[0].lower()
+  for path in (os.path.join(srv.geostd_path, c, "data_%s.cif" % resname),
+               os.path.join(srv.geostd_path, c, "data_%s.cif" % resname.lower()),
+               os.path.join(srv.root_path, c, "%s.cif" % resname)):
+    if os.path.isfile(path):
+      return _dictionary_from_cif(_read_cif(path), resname), path
+  return None, None
+
+def ccd_formal_charges(resname):
+  """The CCD entry's formal charges and H (chem_data), None if absent."""
+  import mmtbx.chemical_components
+  cif = mmtbx.chemical_components.get_cif_dictionary(resname)
+  if not cif or "_chem_comp_atom" not in cif:
+    return None
+  atoms = {}
+  for a in cif["_chem_comp_atom"]:
+    try:
+      q = int(a.charge)
+    except (TypeError, ValueError):
+      q = 0
+    atoms[a.atom_id.strip()] = (a.type_symbol.strip().upper(), q)
+  bonds = [(b.atom_id_1.strip(), b.atom_id_2.strip()) for b in cif.get("_chem_comp_bond", [])]
+  return _with_h(atoms, bonds)
+
+# ------------------------------------------------------------------------------
 # patches
 
 def dot_patches(xyz, link_distance):
@@ -339,10 +809,10 @@ def dot_patches(xyz, link_distance):
 
 class manager(object):
   """
-  The ligand interaction profile (stage 1). model: mmtbx.model.manager with H,
-  processed with restraints; ligand_isel: flex.size_t; sel_str: the ligand's
-  selection string (selects exactly ligand_isel); params: extract of
-  master_phil_str (the ligand_interactions scope), default master values.
+  The ligand interaction profile. model: mmtbx.model.manager with H, processed
+  with restraints; ligand_isel: flex.size_t; sel_str: the ligand's selection
+  string (selects exactly ligand_isel); params: extract of master_phil_str (the
+  ligand_interactions scope), default master values.
   """
   def __init__(self, model, ligand_isel, sel_str, params=None, log=None):
     if params is None:
@@ -354,15 +824,27 @@ class manager(object):
     self.log = log if log is not None else null_out()
     if not model.has_hd():
       raise Sorry("ligand_interactions needs a model with H (electron-cloud positions).")
-    bad = [c for c in params.pair_class_order if c not in probe_classes]
-    if bad or sorted(params.pair_class_order) != sorted(probe_classes):
-      raise Sorry("pair_class_order must list each of %s once, got %s." % (
-        " ".join(probe_classes), " ".join(params.pair_class_order)))
+    possible = list(probe_classes)
+    if params.probe.allow_weak_hydrogen_bonds:
+      possible.append("wh")
+    if params.separate_worse_clashes:
+      possible.append("wo")
+    order = list(params.pair_class_order)
+    unknown = [c for c in order if c not in probe_all_classes]
+    missing = [c for c in possible if c not in order]
+    if unknown or missing or len(set(order)) != len(order):
+      raise Sorry("pair_class_order must list each probe2 class that can occur (%s) "
+        "once, got %s. With allow_weak_hydrogen_bonds or separate_worse_clashes use "
+        "e.g. %s." % (" ".join(possible), " ".join(order),
+        " ".join(extended_pair_class_order)))
+    self.order = order
+    self.classes = [c for c in probe_all_classes if c in possible]
     self.entries = []
     self.internal = []
     self.unresolved_donors = []
     self.patches = []
     self.disagreements = []
+    self.formal_charges = []
 
   def run(self):
     atoms = self.model.get_hierarchy().atoms()
@@ -377,8 +859,9 @@ class manager(object):
     table = probe_atom_table(atoms)
     # probe2; by selection, not resname: other copies of the ligand are environment
     self.probe_output = run_probe2(self.model, "(%s)" % self.sel_str, "not (%s)" % self.sel_str,
-      probe=self.params.probe, use_neutron_distances=self.params.use_neutron_distances)
-    parsed = parse_probe_raw(self.probe_output, self.params.pair_class_order)
+      probe=self.params.probe, use_neutron_distances=self.params.use_neutron_distances,
+      separate_worse_clashes=self.params.separate_worse_clashes)
+    parsed = parse_probe_raw(self.probe_output, self.order)
     # fields that are not model atoms (e.g. probe2's phantom water H) are skipped
     self.probe_pairs = {}
     self.probe_unmapped = set()
@@ -393,8 +876,19 @@ class manager(object):
         self.probe_pairs[(i, j)] = v
     self.probe_dots = [dict(d, source=table[d["source"]], target=table[d["target"]])
       for d in parsed.dots if d["source"] in table and d["target"] in table]
-    self.overlaps = ligand_overlaps(self.model, self.sel_str)
+    # dots per (source atom, target atom) and class: the source atom's surface
+    self._side_dots = {}
+    for d in self.probe_dots:
+      c = self._side_dots.setdefault((d["source"], d["target"]), {})
+      c[d["cls"]] = c.get(d["cls"], 0) + 1
+    self.overlaps = ligand_overlaps(self.model, self.sel_str,
+      h_bond_params=h_bond_params(self.params.hbond))
+    self.clash_criteria = dict(self.overlaps.clash_criteria, inline_merge=dict(
+      rule="an atom clashing with two atoms that are bonded to each other and in "
+        "line with it is one clash (pnp.manager._process_clashes); not applied to "
+        "symmetry pairs", cos_min=inline_clash_cos_min, function="pnp.cos_vec"))
     self._build_entries()
+    self._build_salt_bridges()
     self._build_patches()
     return self
 
@@ -439,9 +933,14 @@ class manager(object):
       bonded_heavy=[atom_label(self._atoms[k]) for k in heavy]))
     return None
 
+  def _moved_xyz(self, xyz, rt_mx):
+    return moved_site(self.model.crystal_symmetry().unit_cell(), xyz, rt_mx)
+
   def _moved(self, i, rt_mx):
-    uc = self.model.crystal_symmetry().unit_cell()
-    return uc.orthogonalize(rt_mx * uc.fractionalize(self._atoms[i].xyz))
+    return self._moved_xyz(self._atoms[i].xyz, rt_mx)
+
+  def _site(self, i, op):
+    return self._atoms[i].xyz if _identity(op) else self._moved(i, sgtbx.rt_mx(op))
 
   def _partner_operator(self, fixed, partner, symop, distance):
     """pnp's operator or its inverse: the one that, applied to partner, gives distance from fixed."""
@@ -488,7 +987,24 @@ class manager(object):
   def _is_h(self, i):
     return self._atoms[i].element.strip().upper() in ("H", "D")
 
-  def _add_checked(self, type_, atom_seqs, e, operators, i, j):
+  def _probe_geometry(self, i, j, p):
+    """
+    Pair (ligand atom i, environment atom j): dots of both directions per class
+    (the pair class's basis), minimum gap, and per side the dots and the contact
+    area (dots / density) per class and in total: ligand (dots on i's surface,
+    ligand -> environment) and environment (on j's surface).
+    """
+    density = self.params.probe.density
+    result = dict(dots=dict(p["dots"]), min_gap=p["min_gap"])
+    for side, key in (("ligand", (i, j)), ("environment", (j, i))):
+      n = self._side_dots.get(key, {})
+      dots = dict([(c, n.get(c, 0)) for c in p["dots"]])
+      result["dots_%s" % side] = dots
+      result["area_%s" % side] = dict([(c, k / density) for c, k in dots.items()])
+      result["area_%s_total" % side] = sum(dots.values()) / density
+    return result
+
+  def _add_checked(self, type_, atom_seqs, e, operators, i, j, subtype=None, extra=None):
     """hbond/clash entry with its pnp-probe2 cross-check; disagreements listed."""
     if operators is not None:
       check = "symmetry, probe2 not applicable"
@@ -496,8 +1012,10 @@ class manager(object):
       check = "pnp and probe2"
     else:
       check = "%s only" % list(e["sources"])[0]
-    entry = self._entry(type_, None, atom_seqs, e["geometry"], e["sources"],
+    entry = self._entry(type_, subtype, atom_seqs, e["geometry"], e["sources"],
       operators, check)
+    if extra:
+      entry.update(extra)
     self.entries.append(entry)
     if check.endswith(" only"):
       self.disagreements.append(dict(type=type_, labels=entry["labels"],
@@ -505,7 +1023,6 @@ class manager(object):
         probe_class=self._probe_class_of(i, j)))
 
   def _build_entries(self):
-    order = self.params.pair_class_order
     lig = self._lig
     atoms = self._atoms
     # H-bonds: key (H, A, operators of D, H, A)
@@ -525,13 +1042,13 @@ class manager(object):
       else:
         op = self._partner_operator(a, h, r["symop"], r["d_HA"])
         ops = (op, op, "x,y,z")
-      e = hb.setdefault((h, a, ops), dict(d=d, geometry={}, sources=set()))
+      e = hb.setdefault((h, a, ops), dict(d=d, geometry={}, sources=set(), weak=False))
       e["sources"].add("pnp")
       e["geometry"]["pnp"] = g
     for (i, j), p in self.probe_pairs.items():
-      if p["pair_class"] != "hb":
+      if p["pair_class"] not in hbond_classes:
         continue
-      g = dict(dots=dict(p["dots"]), min_gap=p["min_gap"])
+      g = self._probe_geometry(i, j, p)
       if self._is_h(i) != self._is_h(j):
         h, a = (i, j) if self._is_h(i) else (j, i)
         d = self._donor_of(h)
@@ -540,13 +1057,27 @@ class manager(object):
         g["a_DHA"] = None if d is None else atoms[h].angle(atoms[a], atoms[d], deg=True)
       else:
         h, a, d = None, j, i
-      e = hb.setdefault((h, a, ""), dict(d=d, geometry={}, sources=set()))
+      e = hb.setdefault((h, a, ""), dict(d=d, geometry={}, sources=set(), weak=False))
       e["sources"].add("probe2")
       e["geometry"]["probe2"] = g
+      e["weak"] = p["pair_class"] == "wh"
     for (h, a, ops), e in sorted(hb.items(), key=lambda x: (str(x[0][0]), x[0][1], str(x[0][2]))):
-      self._add_checked("hbond", [e["d"], h, a], e, list(ops) if ops else None, h, a)
-    # clashes: key (ligand atom, partner atom, partner operator); for the ligand
-    # with its own copy the lower i_seq stays
+      self._add_checked("hbond", [e["d"], h, a], e, list(ops) if ops else None, h, a,
+        subtype="weak (probe2)" if e["weak"] else None)
+    self._build_clashes()
+    # vdW contacts: probe2's wc, cc, so pairs
+    for (i, j), p in sorted(self.probe_pairs.items()):
+      if p["pair_class"] in vdw_classes:
+        self.entries.append(self._entry("vdw", p["pair_class"], [i, j],
+          dict(probe2=self._probe_geometry(i, j, p)), ["probe2"]))
+    self.pair_class_order = list(self.order)
+
+  def _build_clashes(self):
+    """pnp's clashes and probe2's bo/wo pairs; inline pairs of one atom merged (pnp's rule)."""
+    lig = self._lig
+    atoms = self._atoms
+    # key (ligand atom, partner atom, partner operator); for the ligand with its
+    # own copy the lower i_seq stays
     cl = {}
     for r in self.overlaps.clash_records:
       i, j = sorted([r["i_seq"], r["j_seq"]])
@@ -566,19 +1097,60 @@ class manager(object):
       e["sources"].add("pnp")
       e["geometry"]["pnp"] = g
     for (i, j), p in self.probe_pairs.items():
-      if p["pair_class"] != "bo":
+      if p["pair_class"] not in clash_classes:
         continue
       e = cl.setdefault((i, j, ""), dict(geometry={}, sources=set()))
       e["sources"].add("probe2")
-      e["geometry"]["probe2"] = dict(dots=dict(p["dots"]), min_gap=p["min_gap"])
-    for (i, j, op), e in sorted(cl.items()):
-      self._add_checked("clash", [i, j], e, ["x,y,z", op] if op else None, i, j)
-    # vdW contacts: probe2's wc, cc, so pairs
-    for (i, j), p in sorted(self.probe_pairs.items()):
-      if p["pair_class"] in ("wc", "cc", "so"):
-        self.entries.append(self._entry("vdw", p["pair_class"], [i, j],
-          dict(probe2=dict(dots=dict(p["dots"]), min_gap=p["min_gap"])), ["probe2"]))
-    self.pair_class_order = list(order)
+      e["geometry"]["probe2"] = self._probe_geometry(i, j, p)
+    # merge: shared atom c, partners bonded and in line (pnp.cos_vec), no operator
+    keys = sorted(cl)
+    parent = dict([(k, k) for k in keys])
+    def find(k):
+      while parent[k] != k:
+        k = parent[k]
+      return k
+    by_atom = {}
+    for k in keys:
+      if k[2]:
+        continue
+      by_atom.setdefault(k[0], []).append(k)
+      by_atom.setdefault(k[1], []).append(k)
+    for c, ks in sorted(by_atom.items()):
+      for x in range(len(ks)):
+        for y in range(x + 1, len(ks)):
+          o1 = ks[x][1] if ks[x][0] == c else ks[x][0]
+          o2 = ks[y][1] if ks[y][0] == c else ks[y][0]
+          if o2 not in self._fsc0[o1] or atoms[o1].xyz == atoms[o2].xyz:
+            continue
+          cos = pnp.cos_vec(atoms[o1].xyz, atoms[o2].xyz, atoms[c].xyz)
+          if abs(cos) > inline_clash_cos_min:
+            parent[find(ks[y])] = find(ks[x])
+    groups = {}
+    for k in keys:
+      groups.setdefault(find(k), []).append(k)
+    for group in sorted(groups.values()):
+      pairs = []
+      for (i, j, op) in group:
+        e = cl[(i, j, op)]
+        pairs.append(dict(key=(i, j, op), atoms=[i, j],
+          labels=[atom_label(atoms[i]), atom_label(atoms[j]) + (" (%s)" % op if op else "")],
+          distance=atoms[i].distance(self._site(j, op)), sources=sorted(e["sources"]),
+          pnp_kept="pnp" in e["sources"], geometry=e["geometry"]))
+      kept = [q for q in pairs if q["pnp_kept"]]
+      rep = min(kept or pairs, key=lambda q: q["distance"])
+      for q in pairs:
+        q["representative"] = q is rep
+      i, j, op = rep["key"]
+      sources = set()
+      for q in pairs:
+        sources.update(q["sources"])
+      extra = None
+      if len(pairs) > 1:
+        extra = dict(pairs=[dict((k, v) for k, v in q.items() if k != "key")
+          for q in sorted(pairs, key=lambda q: q["distance"])])
+      self._add_checked("clash", [i, j], dict(sources=sources,
+        geometry=dict(cl[rep["key"]]["geometry"])), ["x,y,z", op] if op else None,
+        i, j, extra=extra)
 
   def _probe_class_of(self, i, j):
     if i is None or j is None:
@@ -587,15 +1159,185 @@ class manager(object):
     p = self.probe_pairs.get(k)
     return p["pair_class"] if p else None
 
+  # -- salt bridges ------------------------------------------------------------
+
+  def _group_info(self, g, op="x,y,z"):
+    atoms = self._atoms
+    suffix = "" if _identity(op) else " (%s)" % op
+    return dict(kind=g["kind"], charge=g["charge"], usual_charge=g["usual_charge"],
+      state=g["state"], source=g["source"], altloc=g["altloc"],
+      atoms=[atom_label(atoms[i]) + suffix for i in g["charged"]],
+      residue=residue_label(atoms[g["center"]], g["resname"]) + suffix)
+
+  def _build_salt_bridges(self):
+    """Salt bridges between the ligand's charged groups and the environment's (see the module docstring)."""
+    sp = self.params.salt_bridge
+    atoms = self._atoms
+    lig = self._lig
+    self.salt_bridge_criteria = dict(criterion=sp.criterion,
+      atom_pair_cutoff=sp.atom_pair_cutoff, charge_centre_cutoff=sp.charge_centre_cutoff,
+      kumar_nussinov_cutoff=sp.kumar_nussinov_cutoff)
+    search = max(sp.atom_pair_cutoff, sp.charge_centre_cutoff + 2.5)
+    # the ligand and the residues within search (symmetry included)
+    region = self.model.selection("(%s) or (residues_within (%s, %s))" % (
+      self.sel_str, search, self.sel_str))
+    found = find_charged_groups(self.model, region, self._fsc0)
+    groups = found.groups
+    for k, g in enumerate(groups):
+      g["id"] = k
+      g["ligand"] = g["center"] in lig
+    self.charged_groups = [self._group_info(g) for g in groups if g["ligand"]]
+    self.examined_groups = [self._group_info(g) for g in groups]
+    self.charged_group_missing_atoms = found.missing
+    candidates = [c for c in charged_group_pairs(self.model, groups, search)
+      if groups[c[0]]["ligand"]]
+    partner_residues = set()
+    for s, p, op in candidates:
+      stay, partner = groups[s], groups[p]
+      partner_residues.add(partner["center"])
+      xs = [atoms[i].xyz for i in stay["charged"]]
+      xp = [self._site(i, op) for i in partner["charged"]]
+      pairs = [math.sqrt(sum([(x[c] - y[c]) ** 2 for c in range(3)])) for x in xs for y in xp]
+      k = min(range(len(pairs)), key=lambda k: pairs[k])
+      d_min = pairs[k]
+      cs_ = [sum([x[c] for x in xs]) / len(xs) for c in range(3)]
+      cp_ = [sum([x[c] for x in xp]) / len(xp) for c in range(3)]
+      d_centre = math.sqrt(sum([(cs_[c] - cp_[c]) ** 2 for c in range(3)]))
+      if sp.criterion == "atom_pair":
+        ok = d_min <= sp.atom_pair_cutoff
+      else:
+        ok = d_centre <= sp.charge_centre_cutoff
+      if not ok:
+        continue
+      kn = sp.kumar_nussinov_cutoff
+      if d_min <= kn and d_centre <= kn:
+        subtype = "salt bridge (K&N)"
+      elif d_min <= kn:
+        subtype = "N-O bridge (K&N)"
+      else:
+        subtype = "longer-range (K&N)"
+      a_stay = stay["charged"][k // len(xp)]
+      a_part = partner["charged"][k % len(xp)]
+      geometry = dict(charged_groups=dict(min_atom_distance=d_min,
+        charge_centre_distance=d_centre,
+        closest_pair=[atom_label(atoms[a_stay]), atom_label(atoms[a_part]) +
+          ("" if _identity(op) else " (%s)" % op)],
+        ligand_group=self._group_info(stay), partner_group=self._group_info(partner, op)))
+      if partner["ligand"] and _identity(op):
+        self.internal.append(dict(type="salt_bridge", subtype=subtype,
+          labels=geometry["charged_groups"]["ligand_group"]["atoms"] +
+            geometry["charged_groups"]["partner_group"]["atoms"], geometry=geometry))
+        continue
+      seqs = stay["charged"] + partner["charged"]
+      ops = ["x,y,z"] * len(stay["charged"]) + [op] * len(partner["charged"])
+      entry = self._entry("salt_bridge", subtype, seqs, geometry, ["charged groups"],
+        None if _identity(op) else ops)
+      entry["hbonds"] = self._overlapping_hbonds(stay, partner, op)
+      self.entries.append(entry)
+    self._compare_formal_charges(groups, region, partner_residues)
+
+  def _overlapping_hbonds(self, stay, partner, op):
+    """H-bond entries between the two groups' charged atoms (charge-assisted H-bonds)."""
+    result = []
+    s, p = set(stay["charged"]), set(partner["charged"])
+    for k, e in enumerate(self.entries):
+      if e["type"] != "hbond":
+        continue
+      d, h, a = e["atoms"]
+      od, oh, oa = e["operators"]
+      for x, ox, y, oy in ((d, od, a, oa), (a, oa, d, od)):
+        if (x in s and _identity(ox) and y in p and
+            (_identity(oy) if _identity(op) else oy == op)):
+          result.append(dict(index=k, labels=e["labels"]))
+          break
+    return result
+
+  def _compare_formal_charges(self, groups, region, partner_centers):
+    """Formal charges (restraint dictionary, CCD) against the perception, per residue and conformer."""
+    atoms = self._atoms
+    near = set(region.iselection())
+    near.update(partner_centers)
+    fsc0 = self._fsc0
+    done = set()
+    for rg in self.model.get_hierarchy().residue_groups():
+      rg_atoms = rg.atoms()
+      if not [a for a in rg_atoms if a.i_seq in near]:
+        continue
+      alts = sorted(set([ag.altloc for ag in rg.atom_groups() if ag.altloc.strip()])) or [""]
+      for alt in alts:
+        ags = [ag for ag in rg.atom_groups() if ag.altloc in ("", alt)]
+        conf = [a for ag in ags for a in ag.atoms()]
+        resname = ([ag for ag in ags if ag.altloc.strip()] or ags)[0].resname.strip().upper()
+        key = (rg.memory_id() if hasattr(rg, "memory_id") else id(rg), alt)
+        if key in done:
+          continue
+        done.add(key)
+        names = dict([(a.name.strip(), a.i_seq) for a in conf])
+        conf_seqs = set(names.values())
+        model_h = dict([(n, set([atoms[k].name.strip() for k in fsc0[i] if self._is_h(k)]))
+          for n, i in names.items()])
+        label = residue_label(conf[0]) + ((" alt " + alt) if alt.strip() else "")
+        conf_groups = [g for g in groups if g["center"] in conf_seqs and
+          g["altloc"] in ("", alt.strip())]
+        restraints, file_name = restraints_formal_charges(self.model, resname)
+        for source, d, where in (("restraints", restraints, file_name),
+                                 ("CCD", ccd_formal_charges(resname), None)):
+          if d is None:
+            continue
+          covered = set()
+          for g in conf_groups:
+            seqs = [g["center"]] + [k for k in g["charged"] if k != g["center"]]
+            gn = [atoms[i].name.strip() for i in seqs]
+            covered.update(gn)
+            self.formal_charges.append(self._charge_check(label, source, where, g["kind"],
+              gn, self._local_names(seqs, conf_seqs), g["charge"], d, model_h))
+          for n, (el, q) in sorted(d["atoms"].items()):
+            if q != 0 and n not in covered and n in names:
+              self.formal_charges.append(self._charge_check(label, source, where, None,
+                [n], self._local_names([names[n]], conf_seqs), 0, d, model_h))
+
+  def _local_names(self, seqs, conf_seqs):
+    """Names of the heavy atoms within two bonds of seqs (same residue and conformer)."""
+    atoms = self._atoms
+    seen = set(seqs)
+    shell = set(seqs)
+    for step in range(2):
+      shell = set([k for i in shell for k in self._fsc0[i]
+        if k in conf_seqs and k not in seen and not self._is_h(k)])
+      seen.update(shell)
+    return sorted([atoms[i].name.strip() for i in seen])
+
+  def _charge_check(self, residue, source, file_name, kind, names, local, perceived, d,
+                    model_h):
+    """
+    Dictionary charge on names against the perceived charge; compared only where the
+    H on the heavy atoms within two bonds (local) are those of the dictionary.
+    """
+    missing = [n for n in names if n not in d["atoms"]]
+    if missing:
+      status, q = "atoms not in dictionary: %s" % " ".join(missing), None
+    else:
+      q = sum([d["atoms"][n][1] for n in names])
+      if [n for n in local if n in d["atoms"] and d["h"][n] != model_h[n]]:
+        status = "protonation differs"
+      else:
+        status = "agrees" if q == perceived else "conflict"
+    return dict(residue=residue, source=source, file=file_name, group=kind,
+      atoms=names, perceived_charge=perceived, dictionary_charge=q, status=status)
+
+  def formal_charge_conflicts(self):
+    return [c for c in self.formal_charges if c["status"] == "conflict"]
+
   # -- patches -----------------------------------------------------------------
 
   def _build_patches(self):
     atoms = self._atoms
     lig = self._lig
+    density = self.params.probe.density
     dots = [d for d in self.probe_dots if d["source"] in lig and d["target"] not in lig]
     xyz = flex.vec3_double([d["loc"] for d in dots])
     for group in dot_patches(xyz, self.params.patch_link_distance):
-      counts = dict([(c, 0) for c in probe_classes])
+      counts = dict([(c, 0) for c in self.classes])
       pairs, lig_atoms, residues = {}, set(), set()
       for k in group:
         d = dots[k]
@@ -605,7 +1347,9 @@ class manager(object):
         lig_atoms.add(atom_label(atoms[i]))
         residues.add(residue_label(atoms[j]))
       center = xyz.select(flex.size_t(group)).mean()
-      self.patches.append(dict(n_dots=len(group), dots=counts, center=center,
+      self.patches.append(dict(n_dots=len(group), dots=counts,
+        area=dict([(c, n / density) for c, n in counts.items()]),
+        area_total=len(group) / density, center=center,
         pairs=[dict(ligand=atom_label(atoms[i]), environment=atom_label(atoms[j]), dots=n)
           for (i, j), n in sorted(pairs.items(), key=lambda x: -x[1])],
         ligand_atoms=sorted(lig_atoms), residues=sorted(residues)))
@@ -613,7 +1357,7 @@ class manager(object):
   # -- summaries ---------------------------------------------------------------
 
   def counts(self):
-    """Counts per type (vdW per subtype), per residue and per ligand atom."""
+    """Counts per type (subtype where set), per residue and per ligand atom."""
     per_type, per_residue, per_atom = {}, {}, {}
     for e in self.entries:
       t = e["type"] if e["subtype"] is None else "%s:%s" % (e["type"], e["subtype"])
@@ -632,16 +1376,20 @@ class manager(object):
 
   def as_dict(self):
     c = self.counts()
-    return dict(ligand=self.sel_str, pair_class_order=list(self.params.pair_class_order),
+    return dict(ligand=self.sel_str, pair_class_order=list(self.order),
       patch_link_distance=self.params.patch_link_distance,
       use_neutron_distances=self.params.use_neutron_distances,
+      separate_worse_clashes=self.params.separate_worse_clashes,
       probe=self.probe_parameters(), hbond_criteria=self.overlaps.hbond_criteria,
-      clash_criteria=self.overlaps.clash_criteria, entries=self.entries,
+      clash_criteria=self.clash_criteria, salt_bridge_criteria=self.salt_bridge_criteria,
+      entries=self.entries,
       counts=dict(per_type=c.per_type, per_residue=c.per_residue,
         per_ligand_atom=c.per_ligand_atom),
       disagreements=self.disagreements, internal=self.internal, patches=self.patches,
       unresolved_donors=self.unresolved_donors,
-      probe_unmapped=sorted(self.probe_unmapped))
+      probe_unmapped=sorted(self.probe_unmapped),
+      charged_groups=self.charged_groups, formal_charges=self.formal_charges,
+      formal_charge_conflicts=self.formal_charge_conflicts())
 
   def show(self, log=None):
     if log is None:
@@ -649,9 +1397,11 @@ class manager(object):
     c = self.counts()
     print("Ligand interactions: %s" % self.sel_str, file=log)
     print("  pair class order: %s; patch link distance %.2f A" % (
-      " ".join(self.params.pair_class_order), self.params.patch_link_distance), file=log)
+      " ".join(self.order), self.params.patch_link_distance), file=log)
     print("  pnp H-bond criteria: %s" % ", ".join(["%s=%s" % (k, v) for k, v in
       sorted(self.overlaps.hbond_criteria.items())]), file=log)
+    print("  salt bridges: %s" % ", ".join(["%s=%s" % (k, v) for k, v in
+      sorted(self.salt_bridge_criteria.items())]), file=log)
     print("  counts: %s" % ", ".join(["%s %d" % (k, v) for k, v in sorted(c.per_type.items())]),
       file=log)
     for e in self.entries:
@@ -659,10 +1409,16 @@ class manager(object):
       detail = []
       for s in sorted(g):
         detail.append("%s(%s)" % (s, ", ".join(["%s=%s" % (k, ("%.2f" % v)
-          if isinstance(v, float) else v) for k, v in sorted(g[s].items()) if k != "dots"])))
+          if isinstance(v, float) else v) for k, v in sorted(g[s].items())
+          if not isinstance(v, (dict, list))])))
       print("  %-6s %-3s %s  [%s] %s" % (e["type"], e["subtype"] or "",
         " ... ".join([l for l in e["labels"] if l]),
         e["cross_check"] or ", ".join(e["sources"]), " ".join(detail)), file=log)
+      if e.get("pairs"):
+        for q in e["pairs"]:
+          print("         pair %s ... %s %.2f A [%s]%s" % (q["labels"][0], q["labels"][1],
+            q["distance"], ", ".join(q["sources"]), " (pnp kept)" if q["pnp_kept"] else ""),
+            file=log)
     if self.disagreements:
       print("  disagreements:", file=log)
       for d in self.disagreements:
@@ -677,9 +1433,16 @@ class manager(object):
       print("  ligand-internal (not entries):", file=log)
       for d in self.internal:
         print("    %s %s" % (d["type"], " ... ".join(d["labels"])), file=log)
+    conflicts = self.formal_charge_conflicts()
+    if conflicts:
+      print("  formal-charge conflicts (dictionary vs perceived, same protonation):", file=log)
+      for d in conflicts:
+        print("    %s %s %s: %s %s, perceived %s" % (d["residue"], " ".join(d["atoms"]),
+          d["group"] or "", d["source"], d["dictionary_charge"], d["perceived_charge"]),
+          file=log)
     print("  contact patches (ligand -> environment dots):", file=log)
     for k, p in enumerate(self.patches):
-      print("    %d: %d dots (%s); ligand %s; residues %s" % (k + 1, p["n_dots"],
-        " ".join(["%s %d" % (c, p["dots"][c]) for c in probe_classes if p["dots"][c]]),
-        " ".join([a.split()[3] for a in p["ligand_atoms"]]), ", ".join(p["residues"])),
-        file=log)
+      print("    %d: %d dots, %.1f A^2 (%s); ligand %s; residues %s" % (k + 1, p["n_dots"],
+        p["area_total"], " ".join(["%s %d" % (c, p["dots"][c]) for c in self.classes
+        if p["dots"][c]]), " ".join([a.split()[3] for a in p["ligand_atoms"]]),
+        ", ".join(p["residues"])), file=log)
