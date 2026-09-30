@@ -4170,13 +4170,19 @@ class build_all_chain_proxies(linking_mixins):
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_energies.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_h_bonds.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
-      # Expand cystein_sulphur_i_seqs
-      new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
-      for master_c_iseq in self.cystein_sulphur_i_seqs:
+      # Expand cystein_sulphur_i_seqs. They were collected on the reduced
+      # (masters and rest) hierarchy, so translate them to the full
+      # hierarchy before looking up NCS copies.
+      master_and_rest_iselection = master_and_rest_bool_selection.iselection()
+      new_cystein_sulphur_i_seqs = []
+      for reduced_c_iseq in self.cystein_sulphur_i_seqs:
+        master_c_iseq = master_and_rest_iselection[reduced_c_iseq]
+        new_cystein_sulphur_i_seqs.append(master_c_iseq)
         copy_iseqs = nrgl.get_copy_iseqs([master_c_iseq])
         flatten_copies = [item for sublist in copy_iseqs for item in sublist]
         new_cystein_sulphur_i_seqs.extend(flatten_copies)
-      self.cystein_sulphur_i_seqs = flex.size_t(new_cystein_sulphur_i_seqs)
+      self.cystein_sulphur_i_seqs = flex.size_t(
+        sorted(new_cystein_sulphur_i_seqs))
 
       # self.scattering_type_registry._show()
     # STOP()

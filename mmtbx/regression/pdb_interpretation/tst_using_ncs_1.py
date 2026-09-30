@@ -436,10 +436,62 @@ def exercise_02():
 """)
   # print(log_ncs)
 
+def get_two_ncs_groups_model():
+  """Two NCS groups, each with a disulfide, chain order A, B, C, D where
+  A/B is one group and C/D another (a different sequence). The master of
+  the second group (C) is not the first chain in the file, so its atom
+  indices in the reduced (masters only) hierarchy differ from those in the
+  full hierarchy. Mirrors an MR model (UR-16099)."""
+  from scitbx import matrix
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str2)
+  cs = pdb_inp.crystal_symmetry()
+  h = pdb_inp.construct_hierarchy()
+  model = h.only_model()
+  chain_a = None
+  for c in list(model.chains()):
+    if c.id == "K":
+      model.remove_chain(c)
+    elif c.id == "A":
+      chain_a = c
+  keep_ala = set(["N", "CA", "C", "O", "CB"])
+  for new_id, shift in [("C", 40.), ("D", 80.)]:
+    c = chain_a.detached_copy()
+    c.id = new_id
+    for rg in c.residue_groups():
+      if rg.resseq.strip() in ["298", "299", "302", "304"]:
+        for ag in rg.atom_groups():
+          ag.resname = "ALA"
+          for atom in ag.atoms():
+            if atom.name.strip() not in keep_ala:
+              ag.remove_atom(atom)
+    c.atoms().set_xyz(c.atoms().extract_xyz() + matrix.col((0, 0, shift)))
+    model.append_chain(c)
+  h.atoms().reset_serial()
+  return h.as_pdb_string(crystal_symmetry=cs)
+
+def exercise_03():
+  """Disulfides in NCS copies when the master chain of a group is not the
+  first chain in the file (UR-16099)."""
+  lines = get_two_ncs_groups_model()
+  geom_ncs, log_ncs = get_geometry_stats(lines, True)
+  geom_no_ncs, log_no_ncs = get_geometry_stats(lines, False)
+  assert_lines_in_text(log_ncs, """ Restraints were copied for chains:
+    B, D
+""")
+  assert_lines_in_text(log_ncs, """\
+  Number of disulfides: simple=4, symmetry=0
+    Simple disulfide: pdb=" SG  CYS A 297 " - pdb=" SG  CYS A 306 " distance=2.03
+    Simple disulfide: pdb=" SG  CYS B 297 " - pdb=" SG  CYS B 306 " distance=2.03
+    Simple disulfide: pdb=" SG  CYS C 297 " - pdb=" SG  CYS C 306 " distance=2.03
+    Simple disulfide: pdb=" SG  CYS D 297 " - pdb=" SG  CYS D 306 " distance=2.03
+""")
+  assert not show_diff(geom_ncs, geom_no_ncs)
+
 if(__name__ == "__main__"):
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
     print("Skipping exercise_01(): chem_data directory not available")
   else:
     exercise_01()
     exercise_02()
+    exercise_03()
     print('OK')
