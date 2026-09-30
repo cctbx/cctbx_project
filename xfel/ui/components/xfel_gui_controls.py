@@ -327,6 +327,7 @@ class TextButtonCtrl(CtrlBase):
 
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
+    setup_tooltip(self)
 
 class TwoButtonCtrl(CtrlBase):
   ''' Generic panel that will place a text control, with a label and an
@@ -365,6 +366,7 @@ class TwoButtonCtrl(CtrlBase):
 
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
+    setup_tooltip(self)
 
 class OptionCtrl(CtrlBase):
   ''' Generic panel will place a text control w/ label '''
@@ -482,6 +484,7 @@ class SpinCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
+    setup_tooltip(self)
 
 class ChoiceCtrl(CtrlBase):
   ''' Generic panel will place a choice control w/ label '''
@@ -512,6 +515,7 @@ class ChoiceCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
+    setup_tooltip(self)
 
 class CheckListCtrl(CtrlBase):
   def __init__(self, parent,
