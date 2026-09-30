@@ -2193,7 +2193,10 @@ def exercise_internal():
 def exercise_symmetry():
   '''
   H-bonds between the ligand and its symmetry-related copies: kept with the
-  operator, "symmetry, probe2 not applicable", not disagreements, not internal.
+  operator, not internal. probe2 sees the copies (probe2_symmetry_input, the
+  workaround): the H-bonds are cross-checked and probe2 classes their H...O pairs wc
+  (gap > 0 at 2.62 A), so both are pnp only (disagreements); vdW entries get the
+  operators x+1,y,z and x-1,y,z (among them the H...H contact of the ring, so).
   '''
   model = get_model(sym_model_str.split('\n'))
   m = get_manager(model, sel='chain A and resseq 1')
@@ -2208,7 +2211,7 @@ def exercise_symmetry():
     return uc.orthogonalize(sgtbx.rt_mx(op) * uc.fractionalize(atoms[i].xyz))
   ops = []
   for e in by['hbond']:
-    assert e['cross_check'] == 'symmetry, probe2 not applicable'
+    assert e['cross_check'] == 'pnp only', e['cross_check']
     assert e['sources'] == ['pnp']
     d, h, a = e['atoms']
     # the ligand donor stays, the acceptor (its own copy) moves
@@ -2224,10 +2227,61 @@ def exercise_symmetry():
     assert e['ligand_atoms'] == [e['labels'][0], e['labels'][1]]
     ops.append(e['symop'])
   assert sorted(ops) == ['x+1,y,z', 'x-1,y,z'], ops
-  assert m.disagreements == [] and m.internal == []
+  assert [(d['type'], d['missing'], d['probe_class']) for d in m.disagreements] == [
+    ('hbond', ['probe2'], 'wc')] * 2, m.disagreements
+  assert m.internal == []
+  assert m.probe_symmetry.operators == {'x+1,y,z': 10, 'x-1,y,z': 10}
+  assert m.as_dict()['probe_symmetry']['radius'] == 6.0
+  vdw = sorted([(e['subtype'], e['labels'][0], e['labels'][1]) for e in by['vdw']])
+  assert vdw == [('cc', 'A EDO 1 C2', 'A EDO 1 HO1 (x-1,y,z)'),
+    ('so', 'A EDO 1 HO1', 'A EDO 1 HO2 (x+1,y,z)'),
+    ('wc', 'A EDO 1 H21', 'A EDO 1 HO1 (x-1,y,z)'),
+    ('wc', 'A EDO 1 O1', 'A EDO 1 HO2 (x+1,y,z)'),
+    ('wc', 'A EDO 1 O2', 'A EDO 1 HO1 (x-1,y,z)')], vdw
+  for e in by['vdw']:
+    assert e['symop'] in ('x+1,y,z', 'x-1,y,z') and e['operators'] == ['x,y,z', e['symop']]
+    assert e['residue'] == 'A EDO 1 (%s)' % e['symop']
+  assert [p['residues'] for p in m.patches if 'A EDO 1 (x-1,y,z)' in p['residues']]
   per_residue = m.counts().per_residue
   assert sorted(per_residue) == ['A EDO 1 (x+1,y,z)', 'A EDO 1 (x-1,y,z)'], per_residue
   assert '-' not in per_residue and None not in per_residue
+
+def exercise_symmetry_probe2_hbonds():
+  '''
+  The symmetry fixture with a = 5.6 A: probe2 classes both symmetry H-bonds hb,
+  so they are pnp and probe2; probe2's geometry, from the pair in its own
+  orientation (the H-bond with the H on the copy inverted), equals pnp's. Copies
+  are whole residues with an atom within the radius (nearest copy atom 1.94 A in
+  the 6 A cell).
+  '''
+  model = get_model(sym_model_str.replace('6.000', '5.600', 1).split('\n'))
+  m = get_manager(model, sel='chain A and resseq 1')
+  by = entries_by_type(m)
+  assert len(by['hbond']) == 2 and m.disagreements == [], m.disagreements
+  for e in by['hbond']:
+    assert e['cross_check'] == 'pnp and probe2', e['cross_check']
+    g = e['geometry']
+    assert approx_equal(g['probe2']['d_HA'], g['pnp']['d_HA'], eps=1.e-6, multiplier=None)
+    assert approx_equal(g['probe2']['a_DHA'], g['pnp']['a_DHA'], eps=1.e-6, multiplier=None)
+  assert sorted([e['symop'] for e in by['hbond']]) == ['x+1,y,z', 'x-1,y,z']
+  model = get_model(sym_model_str.split('\n'))
+  isel = model.selection('chain A and resseq 1').iselection()
+  assert LI.probe2_symmetry_input(model, isel, radius=1.9) is None
+  assert LI.probe2_symmetry_input(model, isel, radius=2.0).operators == {
+    'x+1,y,z': 10, 'x-1,y,z': 10}
+
+def exercise_no_symmetry_copies(model):
+  '''
+  Without symmetry copies within 6 A of the ligand (the EDO model: P1, 40 A cell)
+  probe2 gets the model as before: no workaround, identical probe2 output.
+  '''
+  m = get_manager(model)
+  assert m.probe_symmetry is None and m.probe_symmetry_pairs == {}
+  assert m.as_dict()['probe_symmetry'] is None
+  out = LI.run_probe2(model, '(%s)' % LIG_SEL, 'not (%s)' % LIG_SEL,
+    probe=m.params.probe)
+  assert out == m.probe_output
+  assert LI.probe2_symmetry_input(model, model.selection(LIG_SEL).iselection()) is None
 
 def exercise_donor_conformers():
   '''
@@ -3594,6 +3648,8 @@ def run():
   exercise_pair_class_order(model)
   exercise_internal()
   exercise_symmetry()
+  exercise_symmetry_probe2_hbonds()
+  exercise_no_symmetry_copies(model)
   exercise_donor_conformers()
   exercise_probe_names_in_run()
   exercise_library_vs_command_line(model)
