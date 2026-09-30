@@ -1,3 +1,17 @@
+2026.9
+======
+
+* Added ligand interaction analysis (mmtbx.validation.ligand_interactions)
+  covering hydrogen bonds, clashes, vdW contacts, and salt bridges,
+  including symmetry partners and a cross-check against probe2
+* Faster reflection file reading (MTZ complex arrays, reflection CIFs,
+  compressed CIFs) and faster probe2 and clashscore2 on multi-model
+  files, with flat memory use
+* Fixed mmtbx.reduce2 hydrogen placement on linked residues and free
+  nucleotides, corrected CH2 and CH3 hydrogen naming, and gave
+  user-supplied restraint files priority, including multi-CIF input
+* Removed the deprecated top-level boost module; use boost_adaptbx instead
+
 2026.8
 ======
 
