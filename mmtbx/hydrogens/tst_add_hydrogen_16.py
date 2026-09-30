@@ -21,6 +21,7 @@ def run():
   test_011()
   test_012()
   test_013()
+  test_014()
 
 # ------------------------------------------------------------------------------
 
@@ -221,6 +222,22 @@ def test_013():
               matrix.col(ca.xyz) - matrix.col(n.xyz))).normalize()
     assert abs(plane.dot(d)) < 0.1, (why, 'H is out of the amide plane')
     assert 0.8 < n.distance(h) < 1.1, (why, n.distance(h))
+
+def test_014():
+  '''
+    The v2->v3 H rename (X1 -> X3 when the dictionary has X1 and X2) is right
+    only where pdb_interpretation maps the v3 name back onto the dictionary:
+    standard and D-amino acids. A modified amino acid's dictionary already
+    follows the CCD, so the renamed H had no restraint and was dropped
+    (2hi2 MEA CB kept HB2 only; 9eor HT7 CA kept HC2 only; its HB1 and HB2
+    are not even on the same atom). LEU is the control.
+  '''
+  atoms = place_atoms(pdb_str_014)
+  assert h_on(atoms, 'MEA', '1', 'CB') == ['HB1', 'HB2'], h_on(atoms, 'MEA', '1', 'CB')
+  assert h_on(atoms, 'LEU', '3', 'CB') == ['HB2', 'HB3'], h_on(atoms, 'LEU', '3', 'CB')
+  atoms = place_atoms(pdb_str_014_ht7)
+  assert h_on(atoms, 'HT7', '3', 'CA') == ['HB1', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
+  assert h_on(atoms, 'HT7', '3', 'CB') == ['HA'], h_on(atoms, 'HT7', '3', 'CB')
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -754,6 +771,50 @@ ATOM     41  C4    C A   2      29.496  -0.265  52.481  1.00  0.00           C
 ATOM     42  N4    C A   2      28.782  -0.652  51.425  1.00  0.00           N
 ATOM     43  C5    C A   2      29.284   0.988  53.032  1.00  0.00           C
 ATOM     44  C6    C A   2      29.844   1.264  54.273  1.00  0.00           C
+END
+"""
+
+pdb_str_014 = """
+CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1
+HETATM    1  N   MEA A   1      73.283  60.707   2.566  1.00 47.48           N
+HETATM    2  CA  MEA A   1      74.453  61.240   1.817  1.00 47.82           C
+HETATM    3  C   MEA A   1      74.572  60.601   0.426  1.00 47.58           C
+HETATM    4  O   MEA A   1      74.374  61.266  -0.601  1.00 48.32           O
+HETATM    5  CB  MEA A   1      75.759  60.973   2.578  1.00 50.44           C
+HETATM    6  CG  MEA A   1      75.799  61.532   3.983  1.00 53.06           C
+HETATM    7  CD1 MEA A   1      76.807  61.121   4.869  1.00 53.98           C
+HETATM    8  CD2 MEA A   1      74.845  62.444   4.432  1.00 52.76           C
+HETATM    9  CE1 MEA A   1      76.863  61.605   6.175  1.00 53.65           C
+HETATM   10  CE2 MEA A   1      74.898  62.932   5.742  1.00 53.06           C
+HETATM   11  CZ  MEA A   1      75.906  62.511   6.612  1.00 54.01           C
+ATOM     19  N   LEU A   3      73.863  57.566  -2.661  1.00 43.69           N
+ATOM     20  CA  LEU A   3      72.718  56.937  -3.309  1.00 43.82           C
+ATOM     21  C   LEU A   3      72.246  55.652  -2.643  1.00 43.49           C
+ATOM     22  O   LEU A   3      71.088  55.537  -2.256  1.00 44.24           O
+ATOM     23  CB  LEU A   3      73.043  56.613  -4.762  1.00 45.49           C
+ATOM     24  CG  LEU A   3      72.022  55.671  -5.400  1.00 45.57           C
+ATOM     25  CD1 LEU A   3      70.684  56.381  -5.444  1.00 45.67           C
+ATOM     26  CD2 LEU A   3      72.460  55.263  -6.795  1.00 46.15           C
+END
+"""
+
+pdb_str_014_ht7 = """
+CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1
+HETATM    1  N   HT7 H   3     -41.786   7.174  23.475  1.00 20.96           N
+HETATM    2  CA  HT7 H   3     -41.367   8.455  25.530  1.00 24.74           C
+HETATM    3  C   HT7 H   3     -39.954   8.864  25.125  1.00 28.36           C
+HETATM    4  O   HT7 H   3     -39.671   9.203  23.968  1.00 25.39           O
+HETATM    5  CB  HT7 H   3     -42.289   8.244  24.314  1.00 23.13           C
+HETATM    6  CG  HT7 H   3     -43.736   7.905  24.673  1.00 24.83           C
+HETATM    7  CD  HT7 H   3     -44.619   7.834  23.465  1.00 26.29           C
+HETATM    8  CE1 HT7 H   3     -45.324   8.860  22.907  1.00 26.79           C
+HETATM    9  CE2 HT7 H   3     -44.830   6.695  22.610  1.00 28.69           C
+HETATM   10  NZ1 HT7 H   3     -45.987   8.430  21.785  1.00 28.51           N
+HETATM   11  CZ2 HT7 H   3     -45.699   7.114  21.574  1.00 29.24           C
+HETATM   12  CZ3 HT7 H   3     -44.383   5.366  22.628  1.00 29.19           C
+HETATM   13  CH2 HT7 H   3     -46.149   6.246  20.583  1.00 32.02           C
+HETATM   14  CH3 HT7 H   3     -44.805   4.510  21.637  1.00 29.79           C
+HETATM   15  CT2 HT7 H   3     -45.670   4.949  20.628  1.00 32.39           C
 END
 """
 

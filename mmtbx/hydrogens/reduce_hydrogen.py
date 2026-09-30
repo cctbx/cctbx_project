@@ -1496,8 +1496,12 @@ class place_hydrogens():
             #
             # TODO start
             # temporary fix until v3 names are in mon lib
+            # Not for modified amino acids: their dictionaries follow the CCD
+            # names and pdb_interpretation has no v3 mapping for them, so the
+            # renamed H got no restraint and was dropped (216 geostd codes,
+            # 2hi2 MEA CB, 9eor HT7 CA).
             if (get_class(name=ag.resname) in
-                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+                ['common_amino_acid', 'd_amino_acid']):
               for altname in alternative_names:
                 if (altname[0] in expected_h and altname[1] in expected_h):
                   if (atom_dict[altname[0]].type_energy == 'HCH2' and
