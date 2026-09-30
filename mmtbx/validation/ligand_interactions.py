@@ -431,10 +431,12 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
   contacts with symmetry copies.
   The model plus the residues of symmetry copies (non-identity operators, lattice
   translations included) that have an atom within radius of a ligand atom, H
-  included, as extra chains with chain IDs not used in the model, in a P1 box
-  large enough that neither pdb_interpretation nor probe2 sees any symmetry. A
-  copy atom within duplicate_tolerance of a model atom (special positions) is
-  left out. The model's atoms keep their i_seqs; the copies follow.
+  included, as extra chains with chain IDs not used in the model (one per original
+  chain and operator), in a P1 box large enough that neither pdb_interpretation
+  nor probe2 sees any symmetry. A copy atom within duplicate_tolerance of a model
+  atom or of a copy already added (special positions) is left out: one operator
+  per site, the first in operator order. The model's atoms keep their i_seqs; the
+  copies follow, mapped from the completed hierarchy.
   Returns None without crystal symmetry or without copies in range, else
   group_args(model, copy_of {combined i_seq: (model i_seq, operator)}, chains (the
   new chain IDs), operators {operator: atoms}), the operator as an xyz string that
@@ -464,7 +466,11 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
     in_box &= (p >= lo[a] - radius) & (p <= hi[a] + radius)
   present = sites.select(in_box.iselection())
   rg_of = {}
-  residue_groups = list(h.residue_groups())
+  residue_groups, chain_of = [], []
+  for c, ch in enumerate(h.chains()):
+    for rg in ch.residue_groups():
+      residue_groups.append(rg)
+      chain_of.append(c)   # repeated chain IDs stay separate chains
   for k, rg in enumerate(residue_groups):
     for a in rg.atoms():
       rg_of[a.i_seq] = k
@@ -508,9 +514,10 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
     "%s%s" % (a, b) not in used)
   chains, copy_of, n_atoms, per_op = {}, {}, atoms.size(), {}
   added = []
+  added_sites = flex.vec3_double()
   for (k, xyz), op in sorted(near.items(), key=lambda x: (x[0][1], x[0][0])):
     rg = residue_groups[k]
-    key = (rg.parent().id, xyz)
+    key = (chain_of[k], xyz)
     if key not in chains:
       chains[key] = iotbx.pdb.hierarchy.chain(id=next(free))
       m0.append_chain(chains[key])
@@ -518,16 +525,18 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
     for ag_new, ag in zip(new.atom_groups(), rg.atom_groups()):
       for a_new, a in zip(list(ag_new.atoms()), list(ag.atoms())):
         x = uc.orthogonalize(op * uc.fractionalize(a.xyz))
-        if present.size() and flex.min((present - x).norms()) < duplicate_tolerance:
+        if (present.size() and flex.min((present - x).norms()) < duplicate_tolerance) or (
+            added_sites.size() and flex.min((added_sites - x).norms()) < duplicate_tolerance):
           ag_new.remove_atom(a_new)
           continue
         a_new.set_xyz(x)
         a_new.set_uij((-1., -1., -1., -1., -1., -1.))
+        a_new.tmp = len(added)   # read back from the completed hierarchy
         added.append((a.i_seq, xyz))
+        added_sites.append(x)
     if new.atoms_size():
       chains[key].append_residue_group(new)
-  for k, (i, xyz) in enumerate(added):
-    copy_of[n_atoms + k] = (i, xyz)
+  for i, xyz in added:
     per_op[xyz] = per_op.get(xyz, 0) + 1
   all_sites = hc.atoms().extract_xyz()
   span = max([flex.max(p) - flex.min(p) for p in all_sites.parts()])
@@ -536,6 +545,10 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
     crystal_symmetry=crystal.symmetry((box, box, box, 90, 90, 90), "P1"),
     restraint_objects=model.get_restraint_objects(), log=null_out())
   assert cm.get_number_of_atoms() == n_atoms + len(added)
+  copies = list(cm.get_hierarchy().atoms())[n_atoms:]
+  for k, a in enumerate(copies):
+    copy_of[n_atoms + k] = added[a.tmp]
+  assert sorted([a.tmp for a in copies]) == list(range(len(added)))
   return group_args(model=cm, copy_of=copy_of,
     chains=sorted(set([c.id for c in chains.values()])), operators=per_op)
 
@@ -1308,6 +1321,7 @@ class manager(object):
     self.possible_groups = []
     self.probe_symmetry = None
     self.probe_symmetry_pairs = {}
+    self._copy_sites = None
 
   def run(self):
     atoms = self.model.get_hierarchy().atoms()
@@ -1431,6 +1445,34 @@ class manager(object):
   def _site(self, i, op):
     return self._atoms[i].xyz if _identity(op) else self._moved(i, sgtbx.rt_mx(op))
 
+  def _canonical_partner(self, j, op, tolerance=0.1):
+    """
+    (atom, operator) of the copy probe2 got at the site where op puts j (one copy
+    per site, probe2_symmetry_input): equivalent operators, e.g. on a special
+    position, are then one contact. Unchanged without copies or none there.
+    """
+    if self.probe_symmetry is None:
+      return j, op
+    if self._copy_sites is None:
+      xyz = self.probe_symmetry.model.get_hierarchy().atoms().extract_xyz()
+      keys = sorted(self.probe_symmetry.copy_of)
+      self._copy_sites = (xyz.select(flex.size_t(keys)),
+        [self.probe_symmetry.copy_of[k] for k in keys])
+    sites, labels = self._copy_sites
+    d = (sites - self._site(j, op)).norms()
+    k = flex.min_index(d)
+    if d[k] < tolerance:
+      return labels[k]
+    return j, op
+
+  def _oriented_geometry(self, g):
+    """probe2 geometry of a pair seen from the other side: per-side dots and areas swapped."""
+    r = dict(g)
+    for key in ("dots_%s", "area_%s", "area_%s_total"):
+      if key % "ligand" in g:
+        r[key % "ligand"], r[key % "environment"] = g[key % "environment"], g[key % "ligand"]
+    return r
+
   def _partner_operator(self, fixed, partner, symop, distance):
     """pnp's operator or its inverse: the one that, applied to partner, gives distance from fixed."""
     rt = sgtbx.rt_mx(symop)
@@ -1528,9 +1570,13 @@ class manager(object):
           continue
       elif h in lig:
         op = self._partner_operator(h, a, r["symop"], r["d_HA"])
+        a, op = self._canonical_partner(a, op)
         ops = ("x,y,z", "x,y,z", op)
       else:
         op = self._partner_operator(a, h, r["symop"], r["d_HA"])
+        h2, op = self._canonical_partner(h, op)
+        if h2 != h:
+          h, d = h2, self._donor_of(h2)
         ops = (op, op, "x,y,z")
       e = hb.setdefault((h, a, ops), dict(d=d, geometry={}, sources=set(), weak=False))
       e["sources"].add("pnp")
@@ -1561,6 +1607,7 @@ class manager(object):
           h, a, ops = i, j, ("x,y,z", "x,y,z", op)
         elif j in lig:
           h, a, ops = j, i, ("x,y,z", "x,y,z", sgtbx.rt_mx(op).inverse().as_xyz())
+          g = self._oriented_geometry(g)
         else:
           h, a, ops = j, i, (op, op, "x,y,z")
         d = self._donor_of(h)
@@ -1597,8 +1644,9 @@ class manager(object):
         if k in seen:
           continue
         seen.add(k)
+        g = p["geometry"] if k[0] == i else self._oriented_geometry(p["geometry"])
         self.entries.append(self._entry("vdw", p["pair_class"], [k[0], k[1]],
-          dict(probe2=p["geometry"]), ["probe2"], ["x,y,z", k[2]]))
+          dict(probe2=g), ["probe2"], ["x,y,z", k[2]]))
     self.pair_class_order = list(self.order)
 
   def _build_clashes(self):
@@ -1622,6 +1670,9 @@ class manager(object):
           continue
       else:
         op = self._partner_operator(i, j, r["symop"], r["distance"])
+        j2, op2 = self._canonical_partner(j, op)
+        if (j2, op2) != (j, op):
+          i, j, op = self._symmetry_pair(i, j2, op2)
       e = cl.setdefault((i, j, op), dict(geometry={}, sources=set()))
       e["sources"].add("pnp")
       e["geometry"]["pnp"] = g
@@ -1634,9 +1685,11 @@ class manager(object):
     for (i, j, op), p in self.probe_symmetry_pairs.items():
       if p["pair_class"] not in clash_classes:
         continue
-      e = cl.setdefault(self._symmetry_pair(i, j, op), dict(geometry={}, sources=set()))
+      k = self._symmetry_pair(i, j, op)
+      e = cl.setdefault(k, dict(geometry={}, sources=set()))
       e["sources"].add("probe2")
-      e["geometry"].setdefault("probe2", p["geometry"])
+      e["geometry"].setdefault("probe2", p["geometry"] if k[0] == i else
+        self._oriented_geometry(p["geometry"]))
     # merge: shared atom c, partners bonded and in line (pnp.cos_vec), no operator
     keys = sorted(cl)
     parent = dict([(k, k) for k in keys])

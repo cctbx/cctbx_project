@@ -110,6 +110,47 @@ HETATM   20  HO2 EDO A   2      12.463  25.001  13.644  1.00 20.00           H
 END
 '''
 
+# EDO of the symmetry fixture in a 20 A cell; chains A, B, A (separate chains, the
+# ID repeated) with one water each whose x+1 copy contacts the ligand: HOH A 10
+# accepts O1-HO1, HOH B 11 accepts O2-HO2, HOH A 12 is 3.07 A from H11
+sym_chains_model_str = '''
+CRYST1   20.000   40.000   40.000  90.00  90.00  90.00 P 1
+HETATM    1  C1  EDO A   1      15.177  10.059  15.375  1.00 20.00           C
+HETATM    2  O1  EDO A   1      16.075  10.413  14.347  1.00 20.00           O
+HETATM    3  C2  EDO A   1      13.776  10.464  14.992  1.00 20.00           C
+HETATM    4  O2  EDO A   1      13.340   9.696  13.892  1.00 20.00           O
+HETATM    5  H11 EDO A   1      15.198   8.980  15.580  1.00 20.00           H
+HETATM    6  H12 EDO A   1      15.418  10.564  16.319  1.00 20.00           H
+HETATM    7  HO1 EDO A   1      16.953  10.118  14.602  1.00 20.00           H
+HETATM    8  H21 EDO A   1      13.139  10.312  15.873  1.00 20.00           H
+HETATM    9  H22 EDO A   1      13.758  11.539  14.771  1.00 20.00           H
+HETATM   10  HO2 EDO A   1      12.463  10.001  13.644  1.00 20.00           H
+HETATM   11  O   HOH A  10      -1.320   9.538  15.103  1.00 20.00           O
+TER
+HETATM   12  O   HOH B  11      -9.261  10.600  13.157  1.00 20.00           O
+TER
+HETATM   13  O   HOH A  12      -4.500   6.200  16.500  1.00 20.00           O
+END
+'''
+
+# P2 (2-fold along b at x = 20, z = 0): the water's copies by x+1,y,z and -x,y,-z
+# coincide at (20, 10, 0), where they accept the EDO's O1-HO1 H-bond
+sym_p2_model_str = '''
+CRYST1   40.000   20.000   40.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1  C1  EDO A   1      16.497  10.521   0.272  1.00 20.00           C
+HETATM    2  O1  EDO A   1      17.395  10.875  -0.756  1.00 20.00           O
+HETATM    3  C2  EDO A   1      15.096  10.926  -0.111  1.00 20.00           C
+HETATM    4  O2  EDO A   1      14.660  10.158  -1.211  1.00 20.00           O
+HETATM    5  H11 EDO A   1      16.518   9.442   0.477  1.00 20.00           H
+HETATM    6  H12 EDO A   1      16.738  11.026   1.216  1.00 20.00           H
+HETATM    7  HO1 EDO A   1      18.273  10.580  -0.501  1.00 20.00           H
+HETATM    8  H21 EDO A   1      14.459  10.774   0.770  1.00 20.00           H
+HETATM    9  H22 EDO A   1      15.078  12.001  -0.332  1.00 20.00           H
+HETATM   10  HO2 EDO A   1      13.783  10.463  -1.459  1.00 20.00           H
+HETATM   11  O   HOH W   1     -20.000  10.000   0.000  1.00 20.00           O
+END
+'''
+
 # EDO A 1 folded (O1-C1-C2-O2 52 deg, both hydroxyl H turned inwards): HO1...HO2
 # 1.61 A, an intramolecular clash (pnp overlap 0.49 A); EDO A 2, a copy 15 A away
 # along y, is probe2's target.
@@ -2264,11 +2305,114 @@ def exercise_symmetry_probe2_hbonds():
     assert approx_equal(g['probe2']['d_HA'], g['pnp']['d_HA'], eps=1.e-6, multiplier=None)
     assert approx_equal(g['probe2']['a_DHA'], g['pnp']['a_DHA'], eps=1.e-6, multiplier=None)
   assert sorted([e['symop'] for e in by['hbond']]) == ['x+1,y,z', 'x-1,y,z']
+  # per-side areas follow the entry's orientation (the H stays): ligand = dots on
+  # the H facing the moved acceptor, environment = dots on the acceptor copy
+  density = m.params.probe.density
+  areas = []
+  for e in by['hbond']:
+    d, h, a = e['atoms']
+    op = e['operators'][2]
+    g = e['geometry']['probe2']
+    ligand = sum(m._side_dots[(h, (a, op))].values()) / density
+    environment = sum(m._side_dots[((a, op), h)].values()) / density
+    assert approx_equal(g['area_ligand_total'], ligand, eps=1.e-9, multiplier=None)
+    assert approx_equal(g['area_environment_total'], environment, eps=1.e-9, multiplier=None)
+    assert sum(g['dots_ligand'].values()) / density == ligand
+    areas.append((e['symop'], ligand, environment))
+  assert sorted(areas) == [('x+1,y,z', 0.125, 0.1875), ('x-1,y,z', 0.3125, 0.25)], areas
+  # the vdW and clash entries likewise, whichever orientation probe2 reported;
+  # probe2 reports both here, so rebuilt from the reversed orientations alone too
+  assert [e['labels'] for e in by['clash']] == [['A EDO 1 HO1', 'A EDO 1 HO2 (x+1,y,z)']]
+  def check_sides(m, by):
+    for e in by.get('vdw', []) + by['clash']:
+      i, j = e['atoms']
+      op = e['operators'][1]
+      g = e['geometry']['probe2']
+      assert g['area_ligand_total'] == sum(m._side_dots.get((i, (j, op)), {}).values()) / density
+      assert g['area_environment_total'] == sum(
+        m._side_dots.get(((j, op), i), {}).values()) / density
+  check_sides(m, by)
+  n_vdw = len(by['vdw'])
+  m.probe_symmetry_pairs = dict([(k, v) for k, v in m.probe_symmetry_pairs.items()
+    if m._symmetry_pair(*k)[0] != k[0]])
+  m.entries, m.disagreements, m.internal = [], [], []
+  m._build_entries()
+  by = entries_by_type(m)
+  assert len(by['vdw']) == n_vdw and len(by['clash']) == 1
+  check_sides(m, by)
   model = get_model(sym_model_str.split('\n'))
   isel = model.selection('chain A and resseq 1').iselection()
   assert LI.probe2_symmetry_input(model, isel, radius=1.9) is None
   assert LI.probe2_symmetry_input(model, isel, radius=2.0).operators == {
     'x+1,y,z': 10, 'x-1,y,z': 10}
+
+def check_copy_map(model, m):
+  '''Every copy atom is its model atom moved by its operator; no two copies at one site.'''
+  ps = m.probe_symmetry
+  uc = model.crystal_symmetry().unit_cell()
+  atoms = model.get_hierarchy().atoms()
+  copies = ps.model.get_hierarchy().atoms()
+  sites = flex.vec3_double()
+  for k, (i, op) in sorted(ps.copy_of.items()):
+    c, a = copies[k], atoms[i]
+    assert (c.name, c.parent().resname, c.parent().parent().resseq) == (a.name,
+      a.parent().resname, a.parent().parent().resseq)
+    x = uc.orthogonalize(sgtbx.rt_mx(op) * uc.fractionalize(a.xyz))
+    assert approx_equal(c.xyz, x, eps=1.e-6)
+    assert sites.size() == 0 or flex.min((sites - x).norms()) > 0.1
+    sites.append(x)
+
+def exercise_symmetry_chain_ids():
+  '''
+  Chains A, B, A (the ID repeated): the copies keep each original chain, and the
+  copy map is read from the completed hierarchy, so every probe2 pair with a copy
+  names the right atom: both water H-bonds pnp and probe2, the third water a vdW
+  contact at 3.07 A.
+  '''
+  model = get_model(sym_chains_model_str.split('\n'))
+  assert [c.id for c in model.get_hierarchy().chains()] == ['A', 'B', 'A']
+  m = get_manager(model, sel='chain A and resseq 1')
+  assert m.probe_symmetry.operators == {'x+1,y,z': 3}
+  check_copy_map(model, m)
+  by = entries_by_type(m)
+  assert [(e['labels'][2], e['cross_check']) for e in by['hbond']] == [
+    ('A HOH 10 O (x+1,y,z)', 'pnp and probe2'), ('B HOH 11 O (x+1,y,z)', 'pnp and probe2')]
+  assert m.disagreements == []
+  vdw = [e['labels'] for e in by['vdw']]
+  assert ['A EDO 1 H11', 'A HOH 12 O (x+1,y,z)'] in vdw, vdw
+  # every symmetry partner is where the entry says: near its ligand atom
+  for e in m.entries:
+    for k, op in enumerate(e['operators']):
+      if op != 'x,y,z':
+        i = [x for n, x in enumerate(e['atoms']) if e['operators'][n] == 'x,y,z'][-1]
+        assert m._atoms[i].distance(m._site(e['atoms'][k], op)) < 4.5, e['labels']
+
+def exercise_special_position_copies():
+  '''
+  P2 with the water's copies by x+1,y,z and -x,y,-z at one site on the 2-fold
+  axis: probe2 gets one copy (the first operator in order, -x,y,-z), pnp's
+  operator is mapped to it, so one H-bond, pnp and probe2, no disagreement.
+  '''
+  model = get_model(sym_p2_model_str.split('\n'))
+  m = get_manager(model, sel='chain A and resseq 1')
+  check_copy_map(model, m)
+  assert m.probe_symmetry.operators == {'-x,y,-z': 1, '-x+1,y,-z': 10}, m.probe_symmetry.operators
+  by = entries_by_type(m)
+  assert [(e['labels'], e['cross_check']) for e in by['hbond']] == [
+    (['A EDO 1 O1', 'A EDO 1 HO1', 'W HOH 1 O (-x,y,-z)'], 'pnp and probe2')], by['hbond']
+  assert m.disagreements == []
+  w = [a.i_seq for a in m._atoms if a.parent().resname == 'HOH'][0]
+  assert m._canonical_partner(w, 'x+1,y,z') == (w, '-x,y,-z')
+  assert m._canonical_partner(w, '-x,y,-z') == (w, '-x,y,-z')
+  assert m._canonical_partner(w, 'x+2,y,z') == (w, 'x+2,y,z')   # no copy there
+  # the per-side swap of a pair seen from the other side
+  g = dict(dots=dict(wc=3), min_gap=0.1, dots_ligand=dict(wc=1), dots_environment=dict(wc=2),
+    area_ligand=dict(wc=0.0625), area_environment=dict(wc=0.125), area_ligand_total=0.0625,
+    area_environment_total=0.125)
+  r = m._oriented_geometry(g)
+  assert r['dots_ligand'] == dict(wc=2) and r['area_ligand_total'] == 0.125
+  assert r['area_environment'] == dict(wc=0.0625) and r['dots'] == g['dots']
+  assert m._oriented_geometry(r) == g
 
 def exercise_no_symmetry_copies(model):
   '''
@@ -3649,6 +3793,8 @@ def run():
   exercise_internal()
   exercise_symmetry()
   exercise_symmetry_probe2_hbonds()
+  exercise_symmetry_chain_ids()
+  exercise_special_position_copies()
   exercise_no_symmetry_copies(model)
   exercise_donor_conformers()
   exercise_probe_names_in_run()
