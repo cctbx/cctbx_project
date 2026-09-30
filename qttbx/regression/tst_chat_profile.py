@@ -848,10 +848,12 @@ def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
     "LD_PRELOAD": "/tmp/x.so", "API_TOKEN": "keep"})
   assert out == {"API_TOKEN": "keep"}, out
   # Broader runtime-loader / interpreter families are stripped too,
-  # including PHENIX_TRUST_OTHER_ENV (which would disable the dispatcher
-  # env scrub). A harmless var (PYTHONUNBUFFERED) and a server's own
-  # token survive -- we strip the dangerous keys, not all PYTHON*.
+  # including both names that switch off the dispatcher's environment guard
+  # (PHENIX_TRUST_OTHER_ENV and CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES). A
+  # harmless var (PYTHONUNBUFFERED) and a server's own token survive -- we
+  # strip the dangerous keys, not all PYTHON*.
   out2 = sanitize_server_env({
+    "CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES": "1",
     "PYTHONPATH": "/evil", "PYTHONHOME": "/evil",
     "NODE_OPTIONS": "--require /evil.js", "NODE_PATH": "/evil",
     "BASH_ENV": "/evil.sh", "ENV": "/evil.sh", "IFS": " ",
@@ -860,6 +862,16 @@ def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
     "BASH_FUNC_x%%": "() { :; }", "PHENIX_TRUST_OTHER_ENV": "1",
     "PYTHONUNBUFFERED": "1", "MY_SERVER_TOKEN": "keep"})
   assert out2 == {"PYTHONUNBUFFERED": "1", "MY_SERVER_TOKEN": "keep"}, out2
+  # The dispatchers append the DivCon QB_* paths after their guard and run
+  # the interpreter under $LIBTBX_VALGRIND, so both reach the server past
+  # the guard; and Windows environment names are case-insensitive, so the
+  # comparison is too.
+  out3 = sanitize_server_env({
+    "QB_PYTHONPATH": "/evil", "QB_LD_LIBRARY_PATH": "/evil",
+    "LIBTBX_VALGRIND": "/evil/wrapper", "path": "/tmp/evil",
+    "Phenix_Project_Dir": "/x", "ld_preload": "/evil.so",
+    "MY_SERVER_TOKEN": "keep"})
+  assert out3 == {"MY_SERVER_TOKEN": "keep"}, out3
   tmp = tempfile.mkdtemp()
   try:
     _write_profile(tmp, "p", {

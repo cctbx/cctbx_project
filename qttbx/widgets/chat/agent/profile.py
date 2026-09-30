@@ -96,15 +96,21 @@ _BLOCKED_SERVER_ENV = frozenset([
   "NODE_OPTIONS", "NODE_PATH",                   # node --require / module hijack
   "PERL5LIB", "PERL5OPT",                        # perl module path / -M code
   "RUBYLIB", "RUBYOPT",                          # ruby load path / -r code
+  # switches off the dispatcher's environment guard, like
+  # PHENIX_TRUST_OTHER_ENV (covered by the PHENIX_ prefix below)
+  "CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES",
+  # the dispatchers exec the interpreter under this wrapper command
+  "LIBTBX_VALGRIND",
 ])
 
 # Prefix families stripped wholesale -- no legitimate per-server env sets
 # these: every dynamic-loader control (LD_PRELOAD, LD_AUDIT, LD_LIBRARY_PATH,
 # DYLD_INSERT_LIBRARIES, DYLD_*_PATH, ...), exported shell functions
-# (BASH_FUNC_*), and Phenix's own namespace (PHENIX_*, which includes
+# (BASH_FUNC_*), Phenix's own namespace (PHENIX_*, which includes
 # PHENIX_PROJECT_DIR -- the project sandbox -- and PHENIX_TRUST_OTHER_ENV,
-# which would otherwise switch off the dispatcher's inherited-env scrub).
-_BLOCKED_SERVER_ENV_PREFIXES = ("LD_", "DYLD_", "BASH_FUNC_", "PHENIX_")
+# which would otherwise switch off the dispatcher's inherited-env scrub),
+# and the DivCon QB_* paths, which the dispatchers append after their guard.
+_BLOCKED_SERVER_ENV_PREFIXES = ("LD_", "DYLD_", "BASH_FUNC_", "PHENIX_", "QB_")
 
 
 def sanitize_server_env(env):
@@ -130,9 +136,11 @@ def sanitize_server_env(env):
     return {}
   out = {}
   for k, v in env.items():
-    if k in _BLOCKED_SERVER_ENV:
+    # Windows environment names are case-insensitive, so "path" is PATH
+    name = k.upper()
+    if name in _BLOCKED_SERVER_ENV:
       continue
-    if any(k.startswith(p) for p in _BLOCKED_SERVER_ENV_PREFIXES):
+    if name.startswith(_BLOCKED_SERVER_ENV_PREFIXES):
       continue
     out[k] = v
   return out
