@@ -401,12 +401,13 @@ TER
 END
 """
 
-def get_geometry_stats(lines, use_ncs=True):
+def get_geometry_stats(lines, use_ncs=True, ss_exclusion=None):
   log_str=StringIO()
   pdb_inp = iotbx.pdb.input(source_info=None, lines=lines)
   m = mmtbx.model.manager(model_input = pdb_inp, log = log_str)
   p = m.get_default_pdb_interpretation_params()
   p.pdb_interpretation.use_ncs_to_build_restraints = use_ncs
+  p.pdb_interpretation.disulfide_bond_exclusions_selection_string = ss_exclusion
   m.process(make_restraints=True, pdb_interpretation_params=p)
   geom=StringIO()
   g = m.geometry_statistics()
@@ -441,7 +442,7 @@ def get_two_ncs_groups_model():
   A/B is one group and C/D another (a different sequence). The master of
   the second group (C) is not the first chain in the file, so its atom
   indices in the reduced (masters only) hierarchy differ from those in the
-  full hierarchy. Mirrors an MR model (UR-16099)."""
+  full hierarchy."""
   from scitbx import matrix
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str2)
   cs = pdb_inp.crystal_symmetry()
@@ -471,7 +472,7 @@ def get_two_ncs_groups_model():
 
 def exercise_03():
   """Disulfides in NCS copies when the master chain of a group is not the
-  first chain in the file (UR-16099)."""
+  first chain in the file."""
   lines = get_two_ncs_groups_model()
   geom_ncs, log_ncs = get_geometry_stats(lines, True)
   geom_no_ncs, log_no_ncs = get_geometry_stats(lines, False)
@@ -487,6 +488,23 @@ def exercise_03():
 """)
   assert not show_diff(geom_ncs, geom_no_ncs)
 
+def exercise_04():
+  """disulfide_bond_exclusions_selection_string under the NCS shortcut must
+  behave as without it: excluding a copy-chain SG is honored, and excluding
+  a master-chain SG does not also exclude its NCS copies."""
+  lines = get_two_ncs_groups_model()
+  for chain_id in ["C", "D"]:
+    sel = "chain %s and resid 306 and name SG" % chain_id
+    geom_ncs, log_ncs = get_geometry_stats(lines, True, ss_exclusion=sel)
+    geom_no_ncs, log_no_ncs = get_geometry_stats(lines, False, ss_exclusion=sel)
+    assert_lines_in_text(log_ncs, """\
+List of CYS excluded from plausible disulfide bonds:
+  (reason: may participate in coordination)
+""")
+    assert log_ncs.find("SG  CYS %s 306" % chain_id) >= 0, log_ncs
+    assert_lines_in_text(log_ncs, "Number of disulfides: simple=3, symmetry=0")
+    assert not show_diff(geom_ncs, geom_no_ncs)
+
 if(__name__ == "__main__"):
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
     print("Skipping exercise_01(): chem_data directory not available")
@@ -494,4 +512,5 @@ if(__name__ == "__main__"):
     exercise_01()
     exercise_02()
     exercise_03()
+    exercise_04()
     print('OK')
