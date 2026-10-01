@@ -233,6 +233,11 @@ neighbouring atoms' dot sets. 5XH3 ligand 856: 11 patches at 0.4 A, 9 at \\
   separate_worse_clashes = False
     .type = bool
     .help = "probe2's output.separate_worse_clashes (class wo)."
+  symmetry = True
+    .type = bool
+    .help = "Contacts with symmetry copies: probe2's (probe2_symmetry_input) and \\
+pnp's. False where the crystal symmetry is not a lattice, e.g. the box of a \\
+cryo-EM map (validate_ligands sets it for map input)."
   include scope mmtbx.probe.Helpers.probe_phil_parameters
 """ + _hbond_phil_str() + """
   salt_bridge
@@ -555,11 +560,13 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
 # ------------------------------------------------------------------------------
 # process_nonbonded_proxies
 
-def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None):
+def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None,
+                    symmetry=True):
   """
   Clashes and H-bonds with at least one ligand atom (cctbx
   process_nonbonded_proxies on the ligand and the residues within within_radius;
-  h_bond_params: a pnp.h_bond(), None for pnp's defaults).
+  h_bond_params: a pnp.h_bond(), None for pnp's defaults; symmetry False: pnp's
+  records with a symmetry operator are left out, and the counts with them).
   Returns group_args: n_clashes, clashscore, n_clashes_sym, clashes_str,
   n_hbonds (validate_ligands' report), clash_records [dict(i_seq, j_seq,
   distance, sum_vdw_radii, overlap, symop)], hbond_records [dict(d_seq, h_seq,
@@ -581,6 +588,8 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None):
 
   ligand_clashes_dict = {}
   for iseq_tuple, record in clashes_dict.items():
+    if not symmetry and record[4] is not None:
+      continue
     if (iseq_tuple[0] in isel_ligand_within or
         iseq_tuple[1] in isel_ligand_within):
       ligand_clashes_dict[iseq_tuple] = record
@@ -592,6 +601,8 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None):
   ligand_hbonds_dict = {}
   # iseq_tuple is (donor, H, acceptor)
   for iseq_tuple, record in hbonds_dict.items():
+    if not symmetry and record[4] is not None:
+      continue
     if any(i_seq in isel_ligand_within for i_seq in iseq_tuple):
       ligand_hbonds_dict[iseq_tuple] = record
 
@@ -627,8 +638,9 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None):
     d_HA_cutoff=list(p.d_HA_cutoff), d_DA_cutoff=list(p.d_DA_cutoff),
     a_DHA_cutoff=p.a_DHA_cutoff, min_bonds_H_A=p.min_bonds_H_A)
   # hard-coded in pnp.manager: model_distance - vdw_sum < -0.40
-  clash_criteria = dict(min_overlap=0.4, within_radius=within_radius)
+  clash_criteria = dict(min_overlap=0.4, within_radius=within_radius, symmetry=symmetry)
   hbond_criteria["within_radius"] = within_radius
+  hbond_criteria["symmetry"] = symmetry
 
   return group_args(
     n_clashes      = results.n_clashes,
@@ -1322,6 +1334,7 @@ class manager(object):
     self.probe_symmetry = None
     self.probe_symmetry_pairs = {}
     self._copy_sites = None
+    self.warnings = []
 
   def run(self):
     atoms = self.model.get_hierarchy().atoms()
@@ -1336,7 +1349,9 @@ class manager(object):
     # probe2; by selection, not resname: other copies of the ligand are environment.
     # With crystal symmetry, the symmetry copies near the ligand are added to its
     # input (probe2_symmetry_input, a workaround); copy atoms map to (i_seq, op).
-    self.probe_symmetry = probe2_symmetry_input(self.model, self.ligand_isel)
+    self.probe_symmetry = None
+    if self.params.symmetry:
+      self.probe_symmetry = probe2_symmetry_input(self.model, self.ligand_isel)
     if self.probe_symmetry is None:
       probe_model, source, copy_of = self.model, "(%s)" % self.sel_str, {}
     else:
@@ -1385,7 +1400,7 @@ class manager(object):
       self.probe_symmetry_pairs[(i, j, op)] = dict(v, geometry=self._probe_geometry(i,
         (j, op), v))
     self.overlaps = ligand_overlaps(self.model, self.sel_str,
-      h_bond_params=h_bond_params(self.params.hbond))
+      h_bond_params=h_bond_params(self.params.hbond), symmetry=self.params.symmetry)
     self.clash_criteria = dict(self.overlaps.clash_criteria, inline_merge=dict(
       rule="an atom clashing with two atoms that are bonded to each other and in "
         "line with it is one clash (pnp.manager._process_clashes); not applied to "
@@ -1474,7 +1489,11 @@ class manager(object):
     return r
 
   def _partner_operator(self, fixed, partner, symop, distance):
-    """pnp's operator or its inverse: the one that, applied to partner, gives distance from fixed."""
+    """
+    pnp's operator or its inverse: the one that, applied to partner, gives distance
+    from fixed. If neither does (within 1e-3 A), a warning is recorded and pnp's
+    operator is kept as it is.
+    """
     rt = sgtbx.rt_mx(symop)
     best = None
     for c in (rt, rt.inverse()):
@@ -1483,8 +1502,12 @@ class manager(object):
       if best is None or err < best[0]:
         best = (err, c.as_xyz())
     if best[0] > 1.e-3:
-      raise Sorry("symmetry operator %s does not reproduce the distance %.3f A of %s ... %s."
-        % (symop, distance, atom_label(self._atoms[fixed]), atom_label(self._atoms[partner])))
+      self.warnings.append(dict(kind="symmetry operator", labels=[
+        atom_label(self._atoms[fixed]), atom_label(self._atoms[partner])], symop=symop,
+        message="symmetry operator %s does not reproduce the distance %.3f A of %s ... %s "
+        "(off by %.3f A); pnp's operator kept." % (symop, distance,
+        atom_label(self._atoms[fixed]), atom_label(self._atoms[partner]), best[0])))
+      return rt.as_xyz()
     return best[1]
 
   def _entry(self, type_, subtype, atom_seqs, geometry, sources, operators=None,
@@ -2141,7 +2164,8 @@ class manager(object):
       possible_groups=self.possible_groups,
       charged_group_failures=self.charged_group_failures,
       formal_charges=self.formal_charges,
-      formal_charge_conflicts=self.formal_charge_conflicts())
+      formal_charge_conflicts=self.formal_charge_conflicts(),
+      symmetry=self.params.symmetry, warnings=self.warnings)
 
   def show(self, log=None):
     if log is None:
@@ -2171,6 +2195,10 @@ class manager(object):
           print("         pair %s ... %s %.2f A [%s]%s" % (q["labels"][0], q["labels"][1],
             q["distance"], ", ".join(q["sources"]), " (pnp kept)" if q["pnp_kept"] else ""),
             file=log)
+    if self.warnings:
+      print("  warnings:", file=log)
+      for w in self.warnings:
+        print("    %s" % w["message"], file=log)
     if self.disagreements:
       print("  disagreements:", file=log)
       for d in self.disagreements:

@@ -2287,6 +2287,49 @@ def exercise_symmetry():
   assert sorted(per_residue) == ['A EDO 1 (x+1,y,z)', 'A EDO 1 (x-1,y,z)'], per_residue
   assert '-' not in per_residue and None not in per_residue
 
+def exercise_symmetry_off():
+  '''
+  symmetry = False (e.g. a cryo-EM map's box): no probe2 copies and no pnp records
+  with an operator, counts included; the same model with symmetry on has both.
+  '''
+  model = get_model(sym_model_str.split('\n'))
+  sel = 'chain A and resseq 1'
+  on = get_manager(model, sel=sel)
+  assert on.probe_symmetry is not None and [e for e in on.entries if e['symop']]
+  assert on.overlaps.n_hbonds == 2 and on.overlaps.hbond_criteria['symmetry'] is True
+  off = get_manager(model, sel=sel, symmetry=False)
+  assert off.probe_symmetry is None and off.probe_symmetry_pairs == {}
+  assert [e for e in off.entries if e['symop']] == [], off.entries
+  assert off.overlaps.n_hbonds == 0 and off.overlaps.n_clashes_sym == 0
+  assert [r for r in off.overlaps.clash_records + off.overlaps.hbond_records
+    if r['symop']] == []
+  assert off.overlaps.clash_criteria['symmetry'] is False
+  assert off.as_dict()['symmetry'] is False and off.as_dict()['probe_symmetry'] is None
+  # directly: ligand_overlaps
+  o = LI.ligand_overlaps(model, sel, symmetry=False)
+  assert (o.n_clashes, o.n_hbonds) == (off.overlaps.n_clashes, 0)
+
+def exercise_operator_warning():
+  '''
+  A pnp operator that reproduces neither orientation's distance: a warning in the
+  result (as_dict, show), the operator kept as pnp gave it, no exception.
+  '''
+  model = get_model(sym_model_str.split('\n'))
+  m = get_manager(model, sel='chain A and resseq 1')
+  assert m.warnings == [] and m.as_dict()['warnings'] == []
+  r = m.overlaps.hbond_records[0]
+  op = m._partner_operator(r['h_seq'], r['a_seq'], r['symop'], r['d_HA'] + 0.5)
+  assert op == r['symop'], op
+  assert len(m.warnings) == 1 and m.warnings[0]['kind'] == 'symmetry operator'
+  assert 'does not reproduce the distance' in m.warnings[0]['message']
+  assert m.warnings[0]['symop'] == r['symop']
+  sio = StringIO()
+  m.show(log=sio)
+  assert 'warnings:' in sio.getvalue() and 'pnp\'s operator kept' in sio.getvalue()
+  # a matching distance: no warning
+  m._partner_operator(r['h_seq'], r['a_seq'], r['symop'], r['d_HA'])
+  assert len(m.warnings) == 1
+
 def exercise_symmetry_probe2_hbonds():
   '''
   The symmetry fixture with a = 5.6 A: probe2 classes both symmetry H-bonds hb,
@@ -3792,6 +3835,8 @@ def run():
   exercise_pair_class_order(model)
   exercise_internal()
   exercise_symmetry()
+  exercise_symmetry_off()
+  exercise_operator_warning()
   exercise_symmetry_probe2_hbonds()
   exercise_symmetry_chain_ids()
   exercise_special_position_copies()

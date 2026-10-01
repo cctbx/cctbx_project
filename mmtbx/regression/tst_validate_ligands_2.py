@@ -23,6 +23,11 @@ def run():
   run_test_get_results_fallback()
   run_test_hbonds_ligand_acceptor()
   run_test_show_fragmentation_per_copy()
+  run_test_interactions_off()
+  run_test_interactions_fmn()
+  run_test_interactions_aqs()
+  run_test_interactions_failure()
+  run_test_interactions_no_h()
 
 # ------------------------------------------------------------------------------
 
@@ -101,6 +106,198 @@ def run_test01():
   assert approx_equal(occs_edo.occ_mean, 1.0, eps=0.01)
   assert occs_edo.zero_count == 0
   assert occs_edo.negative_count == 0
+
+# ------------------------------------------------------------------------------
+# ligand interaction profile (validate_ligands.interactions)
+
+def _run_vl(pdb_str, fn, extra_args=()):
+  with open(fn, 'w') as f:
+    f.write(pdb_str)
+  for x in (fn.replace('.pdb', '_ligand_interactions.json'),):
+    if os.path.isfile(x):
+      os.remove(x)
+  log = StringIO()
+  result = run_program(program_class=val_lig.Program,
+    args=[fn, 'run_reduce2=False'] + list(extra_args), logger=log)
+  return result, log.getvalue()
+
+def _strip_times(text):
+  return '\n'.join([l for l in text.splitlines() if 'time' not in l.lower()])
+
+def run_test_interactions_off():
+  '''
+  Switch off (the default): no profile is computed or reported, the result and
+  snapshot carry no interactions field, no JSON is written, and the log equals
+  that of interactions=False.
+  '''
+  print('test_interactions_off')
+  fn = 'tst_interactions_off.pdb'
+  json_fn = 'tst_interactions_off_ligand_interactions.json'
+  result, out = _run_vl(raw_records_hbond, fn)
+  assert result.ligand_manager.params.interactions is False
+  assert 'Ligand interactions' not in out
+  assert not os.path.isfile(json_fn)
+  assert not hasattr(result, 'interactions_fn')
+  for lr in result.ligand_manager:
+    assert '_interactions' not in lr._result_attrs
+    assert lr.get_interactions() is None
+  for snap in result.ligand_results:
+    assert not hasattr(snap, 'interactions')
+  # the same log as interactions=False (after the echo of the command line)
+  result2, out2 = _run_vl(raw_records_hbond, fn, ['interactions=False'])
+  after = lambda t: _strip_times(t[t.index('Final processed PHIL parameters'):])
+  assert after(out) == after(out2)
+  print('OK')
+
+def _direct_counts(lr):
+  '''The profile run directly with ligand_interactions on the ligand's working model.'''
+  from mmtbx.validation import ligand_interactions as LI
+  m = LI.manager(lr.model, lr.ligand_isel, lr.sel_str,
+    params=lr.params.ligand_interactions).run()
+  types = {}
+  for e in m.entries:
+    k = e['type'] if e['type'] != 'vdw' else 'vdw_' + e['subtype']
+    types[k] = types.get(k, 0) + 1
+  return m, types
+
+def _check_against_direct(lr):
+  r = lr.get_interactions()
+  assert r['status'] == 'ok', r
+  m, types = _direct_counts(lr)
+  for k in ('hbond', 'salt_bridge', 'clash', 'vdw_so', 'vdw_cc', 'vdw_wc'):
+    assert r['counts'][k] == types.get(k, 0), (k, r['counts'], types)
+  assert r['counts']['possible_salt_bridge'] == len(m.possible_salt_bridges)
+  assert r['counts']['disagreements'] == len(m.disagreements)
+  assert r['counts']['symmetry_contacts'] == len([e for e in m.entries if e['symop']])
+  assert len(r['entries']) == len(m.entries) + len(m.possible_salt_bridges)
+  # counted as validate_ligands counts them: equal to its overlap and H-bond numbers
+  ov = lr.get_overlaps()
+  vc = r['validate_ligands_counts']
+  assert (vc['n_clashes'], vc['n_hbonds'], vc['n_clashes_sym']) == (ov.n_clashes,
+    ov.n_hbonds, ov.n_clashes_sym), (vc, ov.n_clashes, ov.n_hbonds)
+  # plain types only: picklable and JSON-able
+  import pickle, json
+  assert pickle.loads(pickle.dumps(r)) == r
+  json.dumps(r)
+  return r
+
+def run_test_interactions_fmn():
+  '''
+  Switch on, FMN C 301 with Arg 207 (known profile): one H-bond, one salt bridge,
+  three vdW wc; counts equal those of ligand_interactions run directly; the log
+  section, the snapshot field, the JSON file and options passed through.
+  '''
+  import json
+  print('test_interactions_fmn')
+  fn = 'tst_interactions_fmn.pdb'
+  result, out = _run_vl(raw_records_hbond, fn, ['interactions=True',
+    'ligand_interactions.salt_bridge.criterion=charge_centre'])
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  assert lr.params.ligand_interactions.salt_bridge.criterion == 'charge_centre'
+  assert lr.params.ligand_interactions.symmetry is True
+  r = _check_against_direct(lr)
+  c = r['counts']
+  assert (c['hbond'], c['salt_bridge'], c['clash'], c['vdw_so'], c['vdw_cc'],
+    c['vdw_wc']) == (1, 1, 0, 0, 0, 3), c
+  assert r['validate_ligands_counts']['n_hbonds'] == 3   # 2 ligand-internal
+  hb = [e for e in r['entries'] if e['type'] == 'hbond'][0]
+  assert hb['labels'] == ['C ARG 207 NH2', 'C ARG 207 HH21', 'C FMN 301 O1P'], hb
+  assert approx_equal(hb['distance'], 1.94, eps=0.01)
+  # log
+  i = out.index('Ligand interactions (experimental)')
+  section = out[i:]
+  row = [l for l in section.splitlines() if l.startswith('FMN C 301') and '|' in l][0]
+  assert [x.strip() for x in row.split('|')][1:10] == ['1', '1', '0', '0', '0', '0', '3',
+    '0', '0'], row
+  assert 'gives the same numbers for every ligand' in section
+  assert 'C FMN 301 O1P O2P O3P ... C ARG 207 NE NH1 NH2' in section
+  # JSON, snapshot, get_results
+  assert result.interactions_fn == 'tst_interactions_fmn_ligand_interactions.json'
+  d = json.load(open(result.interactions_fn))
+  assert d['parameters']['salt_bridge.criterion'] == 'charge_centre'
+  assert d['parameters']['symmetry'] is True and d['versions']['cctbx']
+  assert [x['ligand'] for x in d['ligands']] == ['FMN C 301']
+  assert d['ligands'][0]['counts'] == c
+  snap = result.ligand_results[0]
+  assert snap.interactions['counts'] == c and snap.interactions['status'] == 'ok'
+  assert len(snap.interactions['entries']) == 5
+  print('OK')
+
+def run_test_interactions_aqs():
+  '''
+  AQS in 386D (9 clashes, 6 H-bonds, 5 via symmetry): counts equal a direct
+  ligand_interactions run and validate_ligands' overlap numbers, symmetry contacts
+  present; nproc=2 gives the same profiles.
+  '''
+  print('test_interactions_aqs')
+  fn = 'tst_interactions_aqs.pdb'
+  res = {}
+  for nproc in (1, 2):
+    result, out = _run_vl(pdb_str_tst_01, fn, ['interactions=True', 'nproc=%d' % nproc])
+    lr = find_lr(result.ligand_manager, 'chain A and resseq 7 and resname AQS')
+    r = _check_against_direct(lr)
+    assert (r['validate_ligands_counts']['n_clashes'],
+      r['validate_ligands_counts']['n_hbonds']) == (9, 6)
+    assert r['counts']['symmetry_contacts'] > 0
+    assert [e for e in r['entries'] if e['symop']]
+    res[nproc] = [(x.id_str, x.altloc, x.get_interactions()['counts'],
+      x.get_interactions()['entries']) for x in result.ligand_manager]
+  assert res[1] == res[2]
+  # without symmetry (map input) pnp's symmetry records go: 1 of the 9 clashes, 5 of
+  # the 6 H-bonds
+  from mmtbx.validation import ligand_interactions as LI
+  o = LI.ligand_overlaps(lr.model, lr.sel_str, symmetry=False)
+  assert (o.n_clashes, o.n_clashes_sym, o.n_hbonds) == (8, 0, 1), (o.n_clashes,
+    o.n_clashes_sym, o.n_hbonds)
+  assert [r for r in o.clash_records + o.hbond_records if r['symop']] == []
+  print('OK')
+
+def run_test_interactions_failure():
+  '''
+  A failing profile (forced) leaves validate_ligands intact: the reason is kept per
+  ligand and printed, the rest of the results and the table are as without it.
+  '''
+  print('test_interactions_failure')
+  from mmtbx.validation import validate_ligands as vl_mod
+  fn = 'tst_interactions_failure.pdb'
+  result0, out0 = _run_vl(raw_records_hbond, fn)
+  class failing(object):
+    def __init__(self, *args, **kwargs):
+      pass
+    def run(self):
+      raise RuntimeError('forced failure\nsecond line')
+  saved = vl_mod.ligand_interactions.manager
+  vl_mod.ligand_interactions.manager = failing
+  try:
+    result, out = _run_vl(raw_records_hbond, fn, ['interactions=True'])
+  finally:
+    vl_mod.ligand_interactions.manager = saved
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  r = lr.get_interactions()
+  assert r['status'] == 'failed' and r['reason'] == 'RuntimeError: forced failure', r
+  assert 'FMN C 301         | failed: RuntimeError: forced failure' in out, out
+  lr0 = find_lr(result0.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  assert lr.get_overlaps().n_hbonds == lr0.get_overlaps().n_hbonds == 3
+  assert approx_equal(lr.get_adps().b_mean, lr0.get_adps().b_mean)
+  table = lambda t: t[t.index('RSCC'):t.index('Job complete')].split(
+    'Ligand interactions (experimental)')[0]
+  assert _strip_times(table(out)).split('-' * 20)[0] == _strip_times(table(out0)).split(
+    '-' * 20)[0]
+  assert result.ligand_results[0].interactions['status'] == 'failed'
+  print('OK')
+
+def run_test_interactions_no_h():
+  '''Without H (run_reduce2=False, none in the model): no profile, one reason.'''
+  print('test_interactions_no_h')
+  fn = 'tst_interactions_no_h.pdb'
+  no_h = '\n'.join([l for l in raw_records_hbond.splitlines()
+    if not (l.startswith(('ATOM', 'HETATM')) and l[76:78].strip() == 'H')])
+  result, out = _run_vl(no_h, fn, ['interactions=True'])
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  r = lr.get_interactions()
+  assert r['status'] == 'skipped' and 'no H' in r['reason'], r
+  assert 'skipped: no H in the model' in out
+  print('OK')
 
 # ------------------------------------------------------------------------------
 

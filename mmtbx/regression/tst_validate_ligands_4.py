@@ -36,6 +36,8 @@ def run():
   run_test32()
   run_test33()
   run_test34()
+  run_test35()
+  run_test36()
 
 # ------------------------------------------------------------------------------
 
@@ -277,6 +279,73 @@ def run_test34():
     assert ccs.rscc > 0.9, ccs.rscc
   finally:
     for fn in (pdb_fn, map_fn):
+      if os.path.isfile(fn):
+        os.remove(fn)
+
+# ------------------------------------------------------------------------------
+
+def run_test35():
+  '''
+  Ligand interaction profile with a map: the map's box is not a lattice, so no
+  symmetry copies (no probe2 copies, no pnp symmetry contacts). EDO in a 6 A cell,
+  H-bonded to its own lattice copies: two symmetry H-bonds without a map, none
+  with one.
+  '''
+  print('test35')
+  from mmtbx.regression import tst_ligand_interactions as T
+  model = T.get_model(T.sym_model_str.split('\n'))
+  sel = 'chain A and resseq 1 and resname EDO'
+  res = {}
+  for with_map in (False, True):
+    params = vlmod.master_params().extract().validate_ligands
+    params.ligand_code = []
+    params.resolution = D_MIN
+    params.interactions = True
+    mm = _simulated_map_manager(model) if with_map else None
+    vl = vlmod.manager(model=model, fmodel=None, map_manager=mm, params=params,
+                       log=null_out())
+    vl.run()
+    lr = find_lr(vl, sel)
+    r = lr.get_interactions()
+    assert r['status'] == 'ok', r
+    assert r['symmetry'] is (not with_map)
+    res[with_map] = r
+  off, on = res[True], res[False]
+  assert on['counts']['symmetry_contacts'] > 0 and on['counts']['hbond'] == 2
+  assert [e for e in on['entries'] if e['symop']]
+  assert on['profile']['probe_symmetry'] is not None
+  assert off['counts']['symmetry_contacts'] == 0 and off['counts']['hbond'] == 0
+  assert [e for e in off['entries'] if e['symop']] == []
+  assert off['profile']['probe_symmetry'] is None
+  assert off['validate_ligands_counts']['n_hbonds'] == 0
+  assert off['validate_ligands_counts']['n_clashes_sym'] == 0
+
+def run_test36():
+  '''Through the Program: map input sets ligand_interactions.symmetry = False.'''
+  print('test36')
+  from iotbx.cli_parser import run_program
+  from mmtbx.programs import validate_ligands as val_lig
+  model = _model()
+  mm = _simulated_map_manager(model)
+  pdb_fn = 'tst_validate_ligands_4d.pdb'
+  map_fn = 'tst_validate_ligands_4d.map'
+  json_fn = 'tst_validate_ligands_4d_ligand_interactions.json'
+  with open(pdb_fn, 'w') as fh:
+    fh.write(_map_pdb_str)
+  mm.write_map(map_fn)
+  try:
+    result = run_program(
+      program_class = val_lig.Program,
+      args          = [pdb_fn, map_fn, 'interactions=True',
+                       'validate_ligands.resolution=%s' % D_MIN],
+      logger        = null_out())
+    assert result.ligand_manager.params.ligand_interactions.symmetry is False
+    r = find_lr(result.ligand_manager, LIG_SEL).get_interactions()
+    assert r['status'] == 'ok' and r['symmetry'] is False, r
+    assert r['profile']['probe_symmetry'] is None
+    assert os.path.isfile(json_fn)
+  finally:
+    for fn in (pdb_fn, map_fn, json_fn):
       if os.path.isfile(fn):
         os.remove(fn)
 

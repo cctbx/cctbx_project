@@ -1,5 +1,6 @@
 """Validate ligands in a model"""
 from __future__ import absolute_import, division, print_function
+import json
 import os
 import traceback
 try:
@@ -59,9 +60,18 @@ class Program(ProgramTemplate):
 phenix.validate_ligands model.pdb data.mtz
 phenix.validate_ligands model.pdb map.mrc [resolution=3.0]
 phenix.validate_ligands model.pdb
+phenix.validate_ligands model.pdb data.mtz interactions=True
 
 Print out basic statistics for residue(s) with the given code(s), including
 RSCC.
+
+interactions=True adds the ligand interaction profile (experimental): H-bonds,
+salt bridges, clashes and vdW contacts per ligand, in the log and in
+<basename>_ligand_interactions.json. Its settings are
+validate_ligands.ligand_interactions (e.g.
+ligand_interactions.salt_bridge.criterion=charge_centre); its probe2 settings are
+validate_ligands.ligand_interactions.probe, separate from the probe scope that
+reduce2 uses.
 
 To validate against X-ray data, pass the reflection file, so that omit maps can
 be computed. To validate against a cryo-EM map, supply a map file. The ligand
@@ -169,6 +179,7 @@ is then compared against an Fcalc map.
     map_manager = None
     self.ligand_manager = None
     self.model_fn_reduce2 = None
+    self.interactions_fn = None
     model_fn = self.data_manager.get_default_model_name()
     self._original_model_fn = model_fn
     data_fn = self.data_manager.get_default_miller_array_name()
@@ -251,6 +262,9 @@ is then compared against an Fcalc map.
       # keep the registered model in sync with the boxed map model
       self.data_manager.add_model(_model_fn, self.working_model)
       self.set_map_resolution(mmm = mmm)
+      # the map's box is not a lattice
+      if self.params.validate_ligands.interactions:
+        self.params.validate_ligands.ligand_interactions.symmetry = False
 
     ro = self.working_model.get_restraint_objects()
     if ro is None: ro=[]
@@ -329,6 +343,12 @@ is then compared against an Fcalc map.
     ligand_manager.show_sites_within()
     ligand_manager.show_nonbonded_overlaps()
     ligand_manager.show_table(out=self.logger)
+    if self.params.validate_ligands.interactions:
+      ligand_manager.show_interactions(out=self.logger)
+      self.interactions_fn = "%s_ligand_interactions.json" % basename
+      with open(self.interactions_fn, "w") as fh:
+        json.dump(ligand_manager.interactions_as_dict(), fh, indent=1, sort_keys=True)
+      print('\nWrote ligand interactions: %s' % self.interactions_fn, file=self.logger)
 
     self.ligand_manager = ligand_manager
 
@@ -345,7 +365,11 @@ is then compared against an Fcalc map.
     if self.ligand_manager is not None:
       ligand_results = [lr.as_picklable_snapshot()
                         for lr in self.ligand_manager]
+    extra = {}
+    if self.params.validate_ligands.interactions:
+      extra['interactions_fn'] = getattr(self, 'interactions_fn', None)
     return group_args(
       working_model_fn = model_to_open,
       ligand_manager   = self.ligand_manager,
-      ligand_results   = ligand_results)
+      ligand_results   = ligand_results,
+      **extra)

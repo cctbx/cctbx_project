@@ -68,6 +68,15 @@ save_fragment_png = False
   .type = bool
 run_qmr = False
   .type = bool
+interactions = False
+  .type = bool
+  .short_caption = Ligand interaction profile (experimental)
+  .help = "Per ligand: H-bonds, salt bridges and possible salt bridges, clashes and \
+vdW contacts (probe2's so, cc, wc), with symmetry copies and the pnp/probe2 \
+cross-check (mmtbx.validation.ligand_interactions). Needs H: from run_reduce2 or \
+in the model; without H the profile is skipped. Settings: \
+validate_ligands.ligand_interactions. Writes <basename>_ligand_interactions.json."
+include scope mmtbx.validation.ligand_interactions.master_phil_str
 frag_consistency {
   delta_weak = 0.20
     .type = float
@@ -94,7 +103,122 @@ alt_conf {
 """
 
 def master_params():
-  return phil.parse(master_params_str, process_includes = False)
+  return phil.parse(master_params_str, process_includes = True)
+
+# ------------------------------------------------------------------------------
+# ligand interaction profile (validate_ligands.interactions)
+
+profile_types = ("hbond", "salt_bridge", "clash", "vdw")
+profile_vdw_subtypes = ("so", "cc", "wc")
+
+def _plain(x):
+  """x with plain Python types only (dict, list, str, int, float, bool, None)."""
+  if x is None or isinstance(x, (bool, str)):
+    return x
+  if isinstance(x, int):
+    return int(x)
+  if isinstance(x, float):
+    return float(x)
+  if isinstance(x, dict):
+    return dict((str(k), _plain(v)) for k, v in x.items())
+  if isinstance(x, (list, tuple)):
+    return [_plain(v) for v in x]
+  if isinstance(x, (set, frozenset)):
+    return sorted([_plain(v) for v in x], key=str)
+  if hasattr(x, "__iter__") and hasattr(x, "size"):   # flex arrays
+    return [_plain(v) for v in x]
+  return str(x)
+
+def _entry_distance(e, atoms, unit_cell):
+  """The entry's contact distance (A): H...A (D...A without H), the clash or vdW pair, the closest charged pair."""
+  g = e.get("geometry") or {}
+  if e["type"] in ("salt_bridge", "possible_salt_bridge"):
+    return (g.get("charged_groups") or {}).get("min_atom_distance")
+  seqs, ops = e["atoms"], e["operators"]
+  if e["type"] == "hbond":
+    k = (1, 2) if seqs[1] is not None else (0, 2)
+  else:
+    k = (0, 1)
+  sites = []
+  for i in k:
+    xyz = atoms[seqs[i]].xyz
+    if ops[i] not in (None, "", "x,y,z"):
+      from cctbx import sgtbx
+      xyz = unit_cell.orthogonalize(sgtbx.rt_mx(ops[i]) * unit_cell.fractionalize(xyz))
+    sites.append(xyz)
+  return sum([(a - b) ** 2 for a, b in zip(*sites)]) ** 0.5
+
+def _compact_labels(labels):
+  """Labels joined by ' ... ', consecutive atoms of one residue (and operator) as one: "A ARG 207 NE NH1"."""
+  groups = []
+  for l in labels:
+    op = ""
+    if l.endswith(")") and " (" in l:
+      l, op = l.rsplit(" (", 1)
+      op = " (" + op
+    f = l.split()
+    key = (" ".join(f[:-1]), op)
+    if groups and groups[-1][0] == key:
+      groups[-1][1].append(f[-1])
+    else:
+      groups.append((key, [f[-1]]))
+  return " ... ".join(["%s %s%s" % (k[0], " ".join(names), k[1]) for k, names in groups])
+
+def interaction_profile(model, ligand_isel, sel_str, params):
+  """
+  The ligand_interactions profile of one ligand (conformer) as plain Python types
+  (picklable, JSON-able): status ok / skipped (no H) / failed (the reason; the
+  exception is not raised), counts, the counts as validate_ligands counts
+  overlaps and H-bonds (pnp, from the profile's own ligand_overlaps), a compact
+  entry list, the full as_dict and the time.
+  """
+  t0 = time.time()
+  out = dict(sel_str=sel_str, status=None, reason=None, seconds=None)
+  if not model.has_hd():
+    out.update(status="skipped", reason="no H in the model (run_reduce2=False and "
+      "none in the input)")
+    return out
+  try:
+    m = ligand_interactions.manager(model, ligand_isel, sel_str, params=params).run()
+    atoms = model.get_hierarchy().atoms()
+    cs = model.crystal_symmetry()
+    uc = cs.unit_cell() if cs is not None else None
+    counts = dict([(t, 0) for t in profile_types if t != "vdw"])
+    counts.update(dict([("vdw_%s" % c, 0) for c in profile_vdw_subtypes]))
+    entries = []
+    for e in list(m.entries) + list(m.possible_salt_bridges):
+      t = e["type"]
+      if t == "vdw":
+        k = "vdw_%s" % e["subtype"]
+        counts[k] = counts.get(k, 0) + 1
+      elif t in counts:
+        counts[t] += 1
+      d = _entry_distance(e, atoms, uc)
+      entries.append(dict(type=t, subtype=e["subtype"],
+        labels=[l for l in e["labels"] if l], symop=e["symop"],
+        distance=None if d is None else round(float(d), 3),
+        cross_check=e.get("cross_check"), sources=list(e.get("sources") or [])))
+    counts["possible_salt_bridge"] = len(m.possible_salt_bridges)
+    counts["symmetry_contacts"] = len([e for e in m.entries if e["symop"]])
+    counts["disagreements"] = len(m.disagreements)
+    ov = m.overlaps
+    out.update(status="ok", counts=counts,
+      validate_ligands_counts=dict(n_clashes=int(ov.n_clashes),
+        n_clashes_sym=int(ov.n_clashes_sym), n_hbonds=int(ov.n_hbonds)),
+      symmetry=bool(params.symmetry), entries=_plain(entries),
+      warnings=_plain(m.warnings), profile=_plain(m.as_dict()))
+  except Exception as e:
+    msg = str(e).strip()
+    out.update(status="failed", reason="%s: %s" % (type(e).__name__,
+      msg.splitlines()[0] if msg else ""))
+  out["seconds"] = round(time.time() - t0, 2)
+  return out
+
+def profile_parameters(params):
+  """The ligand_interactions parameters as {path: value}, plain types (for the JSON file)."""
+  scope = master_params().get("validate_ligands.ligand_interactions").objects[0]
+  return dict([(o.path, _plain(o.object.extract())) for o in
+    scope.format(python_object=params).all_definitions()])
 
 def fragment_consistency(cc_overall, frag_ccs, frag_obs, frag_mod,
                          delta_weak=0.20, obs_floor=0.30, balance_ratio=1.5,
@@ -206,6 +330,10 @@ class manager(list):
                              <= WITHIN_RADIUS_MAX):
       raise Sorry('within_radius must be between %s and %s A (got %s).' %
         (WITHIN_RADIUS_MIN, WITHIN_RADIUS_MAX, self.params.within_radius))
+
+    # a map's box is not a lattice: no symmetry copies in the profile
+    if self.map_manager is not None and self.params.interactions:
+      self.params.ligand_interactions.symmetry = False
 
   # ----------------------------------------------------------------------------
 
@@ -523,6 +651,88 @@ class manager(list):
         continue
       print(clashes_result.clashes_str, file=self.log)
 
+  def interactions_summary_rows(self):
+    """One row per ligand (conformer): (label, profile dict or None)."""
+    return [(("%s %s" % (lr.id_str, lr.altloc)).strip(), lr.get_interactions())
+      for lr in self._ordered_for_display()]
+
+  def show_interactions(self, out=None):
+    """
+    The ligand interaction profiles (validate_ligands.interactions): a summary
+    table, the check against the overlap and H-bond columns, then the entries.
+    """
+    log = out if out is not None else self.log
+    if not self.params.interactions:
+      return
+    make_sub_header(' Ligand interactions (experimental) ', out=log)
+    print("mmtbx.validation.ligand_interactions; vdW classes are probe2's (so small "
+      "overlap, cc close contact, wc wide contact).%s" % ("" if
+      self.params.ligand_interactions.symmetry else " Symmetry copies off (map input)."),
+      file=log)
+    print('', file=log)
+    head = ("ligand", "H-bonds", "salt", "possible", "clashes", "vdW so", "cc", "wc",
+      "symmetry", "pnp/probe2", "time (s)")
+    head2 = ("", "", "bridges", "salt br.", "", "", "", "", "contacts", "disagree", "")
+    fmt = "%-18s|%8s |%8s |%9s |%8s |%7s |%5s |%5s |%9s |%11s |%9s"
+    print(fmt % head, file=log)
+    print(fmt % head2, file=log)
+    print("-" * 108, file=log)
+    mismatches = []
+    for label, r in self.interactions_summary_rows():
+      if r is None:
+        continue
+      if r["status"] != "ok":
+        print("%-18s| %s: %s" % (label, r["status"], r["reason"]), file=log)
+        continue
+      c = r["counts"]
+      print(fmt % (label, c["hbond"], c["salt_bridge"], c["possible_salt_bridge"],
+        c["clash"], c["vdw_so"], c["vdw_cc"], c["vdw_wc"], c["symmetry_contacts"],
+        c["disagreements"], "%.1f" % r["seconds"]), file=log)
+      lr = [x for x in self if ("%s %s" % (x.id_str, x.altloc)).strip() == label][0]
+      ov = lr.get_overlaps()
+      vc = r["validate_ligands_counts"]
+      if ov is not None and (ov.n_clashes, ov.n_hbonds) != (vc["n_clashes"], vc["n_hbonds"]):
+        mismatches.append("%s: clashes %d vs %d, H-bonds %d vs %d" % (label, vc["n_clashes"],
+          ov.n_clashes, vc["n_hbonds"], ov.n_hbonds))
+    print('', file=log)
+    print("Clashes and H-bonds here are entries with the environment (a clash entry "
+      "merges pairs that share an atom and are in line; H-bonds include probe2-only "
+      "ones). The clashes and H-bonds columns of the table above count pnp's records, "
+      "ligand-internal ones included; counted that way, the profile %s." % (
+      "gives the same numbers for every ligand" if not mismatches else "differs: " +
+      "; ".join(mismatches)), file=log)
+    for label, r in self.interactions_summary_rows():
+      if r is None:
+        continue
+      print('\n%s' % label, file=log)
+      if r["status"] != "ok":
+        print("  %s: %s" % (r["status"], r["reason"]), file=log)
+        continue
+      for w in r["warnings"]:
+        print("  warning: %s" % w["message"], file=log)
+      order = dict([(t, k) for k, t in enumerate(("hbond", "salt_bridge",
+        "possible_salt_bridge", "clash", "vdw"))])
+      sub = dict([(t, k) for k, t in enumerate(profile_vdw_subtypes)])
+      for e in sorted(r["entries"], key=lambda e: (order.get(e["type"], 9),
+          sub.get(e["subtype"], 9), e["distance"] if e["distance"] is not None else 99)):
+        t = e["type"] if e["type"] != "vdw" else "vdw %s" % e["subtype"]
+        if e["type"] in ("salt_bridge", "possible_salt_bridge") and e["subtype"]:
+          t = "%s (%s)" % (e["type"].replace("_", " "), e["subtype"])
+        print("  %-32s %-62s %5s  %s" % (t.replace("_", " "), _compact_labels(e["labels"]),
+          "%.2f" % e["distance"] if e["distance"] is not None else "-",
+          e["cross_check"] or ", ".join(e["sources"])), file=log)
+
+  def interactions_as_dict(self):
+    """The JSON content: parameters, versions, every ligand's profile."""
+    import platform
+    from libtbx.version import get_version
+    return dict(
+      parameters=profile_parameters(self.params.ligand_interactions),
+      versions=dict(cctbx=get_version(fail_with_none=True),
+        python=platform.python_version()),
+      ligands=[dict(ligand=label, **r) if r is not None else dict(ligand=label)
+        for label, r in self.interactions_summary_rows()])
+
   def show_sites_within(self):
     make_sub_header(' Sites within %g A' % self.params.within_radius,
                     out=self.log)
@@ -612,6 +822,9 @@ class ligand_result(object):
       #'_qmr'           : 'get_qmr',
       #'_polder_ccs'  : 'get_polder_ccs',
     }
+
+    if params.interactions:
+      self._result_attrs['_interactions'] = 'get_interactions'
 
     self.within_radius = params.within_radius
 
@@ -1596,6 +1809,21 @@ class ligand_result(object):
 
   # ----------------------------------------------------------------------------
 
+  def get_interactions(self):
+    '''
+    The ligand interaction profile (validate_ligands.interactions), a plain dict
+    (interaction_profile); None with the switch off.
+    '''
+    if not self.params.interactions:
+      return None
+    if getattr(self, '_interactions', None) is not None:
+      return self._interactions
+    self._interactions = interaction_profile(self.model, self.ligand_isel,
+      self.sel_str, self.params.ligand_interactions)
+    return self._interactions
+
+  # ----------------------------------------------------------------------------
+
   def _make_annotated_fragment_png(self, frag_ccs_plain):
     '''
     Draw the fragment diagram with CC values annotated on each fragment.
@@ -1676,6 +1904,13 @@ class ligand_result(object):
     # Generate the annotated fragment PNG now that CC values are known.
     # draw_colored_fragments overlays each CC on its fragment centroid.
     fragment_png_bytes = self._make_annotated_fragment_png(frag_ccs_plain)
+
+    extra = {}
+    if self.params.interactions:
+      r = self.get_interactions()
+      extra['interactions'] = None if r is None else dict(status=r['status'],
+        reason=r['reason'], counts=r.get('counts'), entries=r.get('entries'),
+        validate_ligands_counts=r.get('validate_ligands_counts'))
 
     return group_args(
       id_str   = self.id_str,
@@ -1768,4 +2003,5 @@ class ligand_result(object):
                     if ac.symmetry is not None else None),
         reason   = ac.reason,
       ) if ac is not None else None,
+      **extra
     )
