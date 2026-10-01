@@ -219,6 +219,36 @@ def exercise_7():
   else:
     raise AssertionError("Third mask is not expected for EMD-11007")
 
+def exercise_8():
+  """
+  Everything is available from PDBj mirror
+  """
+  expected = {
+      "6yvd": ["6yvd.pdb",
+               "6yvd.cif",
+               "6yvd.fa",
+               "emd_10944.map.gz",
+               "emd_10944_half_map_1.map.gz",
+               "emd_10944_half_map_2.map.gz",
+               "emd_10944_msk_1.map"],
+      "1yjp": ["1yjp.pdb",
+               "1yjp.cif",
+               "1yjp.fa",
+               "1yjp-sf.cif"],
+      }
+  for pdb_id in sorted(expected.keys()):
+    for fn in expected[pdb_id]:
+      if os.path.exists(fn):
+        os.remove(fn)
+    result = run_program(program_class=Program,
+                         custom_process_arguments=custom_args_proc,
+                         args=[pdb_id, "action=all", "mirror=pdbj"])
+    fnames = [os.path.basename(fn) for fn in result[0]]
+    assert fnames == expected[pdb_id], fnames
+    for fn in fnames:
+      assert os.path.getsize(fn) > 0, fn
+    assert result[1] == [], result[1]
+
 def exercise_get_link():
   r = []
   for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']:
@@ -268,6 +298,7 @@ if (__name__ == "__main__"):
       exercise_5()
       exercise_6()
       exercise_7()
+      exercise_8()
       print("OK")
     else:
       print("OK but skipped.")

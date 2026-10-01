@@ -16,8 +16,8 @@
 # https://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 #
 # PDBj:
-# ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/vz/pdb2vz8.ent.gz
-# ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
+# https://files.pdbj.org/pub/pdb/data/structures/divided/pdb/vz/pdb2vz8.ent.gz
+# https://files.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
 #
 # PDB-REDO
 # https://pdb-redo.eu/db/1aba/1aba_final.pdb
@@ -60,13 +60,13 @@ all_links_dict = {
         'em_mask': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/masks/emd_{emdb_number}_msk_{mask_number}.map',
         },
     'pdbj': {
-        'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
-        'model_cif': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+        'model_pdb': 'https://files.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+        'model_cif': 'https://files.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
         'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
-        'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
-        'em_map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-        'em_half_map_1': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
-        'em_half_map_2': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        'sf': 'https://files.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
+        'em_map': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+        'em_half_map_1': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+        'em_half_map_2': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
         'em_mask': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/masks/emd_{emdb_number}_msk_{mask_number}.map',
         },
     # 'pdb-redo': {
