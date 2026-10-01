@@ -4060,6 +4060,119 @@ class manager(object):
     if(sizes.size()==0): return 0
     return sizes.count(1)*100./sizes.size()
 
+  def select_nearby_atoms(self, iselection, r_min, level, passes=1):
+    model = self
+    from collections import deque
+    """
+    Smart (restraints-based) selection of atoms near a starting subset.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+        Model with Cartesian coordinates and, for levels 1-3, a
+        ready-to-use geometry restraints manager.
+    iselection : iterable of int
+        Indices of the starting atoms. These atoms are always included
+        in the returned selection but do not seed restraint or plane
+        expansion.
+    r_min : float
+        Nonnegative Cartesian distance cutoff, inclusive. Ignored at
+        level 0. Symmetry and periodic images are not considered.
+    level : {0, 1, 2, 3}
+        0: return only the starting subset.
+        1: add outside atoms within r_min of the subset.
+        2: also expand through bond and angle restraints.
+        3: also expand through dihedral (torsion) restraints.
+
+        At levels 1-3, complete any plane containing a newly selected
+        atom, continuing through overlapping planes to a fixed point.
+    passes : int, default 1
+        Number of restraint-expansion passes at levels 2 and 3. Each
+        pass expands from the atoms selected at its start; atoms added
+        by restraints or plane completion can seed the next pass.
+        Has no effect at levels 0 and 1.
+
+    Returns
+    -------
+    scitbx.array_family.flex.bool
+        Boolean selection indexed by atom i_seq, including the
+        starting subset.
+    """
+    if level not in (0, 1, 2, 3):
+      raise ValueError("level must be 0, 1, 2, or 3")
+    if not isinstance(passes, int) or passes < 1:
+      raise ValueError("passes must be a positive integer")
+    if r_min < 0:
+      raise ValueError("r_min must be nonnegative")
+    sites = model.get_sites_cart()
+    n_atoms = sites.size()
+    subset = {int(i) for i in iselection}
+    if any(i < 0 or i >= n_atoms for i in subset):
+      raise IndexError("subset contains an invalid atom index")
+    def make_result(selected):
+      result = flex.bool(n_atoms, False)
+      for i in subset | selected:
+        result[i] = True
+      return result
+    if level == 0:
+      return make_result(set())
+    # Keep the subset separate: it is returned, but does not seed
+    # expansion or plane completion.
+    cutoff_sq = r_min * r_min
+    selected = set()
+    for j in range(n_atoms):
+      if j in subset: continue
+      xj = sites[j]
+      for i in subset:
+        xi = sites[i]
+        distance_sq = sum((xj[k] - xi[k]) ** 2 for k in range(3))
+        if distance_sq <= cutoff_sq:
+          selected.add(j)
+          break
+    geometry = model.get_restraints_manager().geometry
+    restraint_groups = []
+    if level >= 2:
+      simple_bonds, asu_bonds = geometry.get_all_bond_proxies(sites_cart=sites)
+      if asu_bonds.size():
+        raise ValueError(
+            "Symmetry-related bond proxies are not handled by this "
+            "Cartesian, no-symmetry selection")
+      restraint_groups.extend((simple_bonds, geometry.angle_proxies))
+    if level >= 3:
+      restraint_groups.append(geometry.dihedral_proxies)
+    planes = [tuple(p.i_seqs) for p in geometry.planarity_proxies]
+    planes_by_atom = {}
+    for plane_id, atoms in enumerate(planes):
+      for i in atoms:
+        planes_by_atom.setdefault(i, []).append(plane_id)
+    def complete_planes():
+      queue = deque(selected)
+      visited_planes = set()
+      while queue:
+        atom = queue.popleft()
+        for plane_id in planes_by_atom.get(atom, ()):
+          if plane_id in visited_planes: continue
+          visited_planes.add(plane_id)
+          for i in planes[plane_id]:
+            if i not in subset and i not in selected:
+              selected.add(i)
+              queue.append(i)
+    if level == 1:
+      complete_planes()
+    else:
+      for _ in range(passes):
+        # Only atoms present at the start of this pass seed
+        # restraint expansion.
+        seeds = selected.copy()
+        for proxies in restraint_groups:
+          if proxies is None: continue
+          for proxy in proxies:
+            atoms = set(proxy.i_seqs)
+            if atoms & seeds:
+              selected.update(atoms - subset)
+        complete_planes()
+    return make_result(selected)
+
   def select(self, selection, exclude_flags=False):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
