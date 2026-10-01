@@ -52,6 +52,7 @@ def exercise_3():
               "emd_10944.map.gz",
               "emd_10944_half_map_1.map.gz",
               "emd_10944_half_map_2.map.gz",
+              "emd_10944_msk_1.map",
               "6yvd.fa",
               ]:
     assert os.path.isfile(fn), "File %s not found" % fn
@@ -70,6 +71,7 @@ def exercise_4():
         "emd_10944.map.gz",
         "emd_10944_half_map_1.map.gz",
         "emd_10944_half_map_2.map.gz",
+        "emd_10944_msk_1.map",
         "6yvd.fa",
     ]
     for file in files_to_remove:
@@ -90,6 +92,7 @@ def exercise_4():
         "emd_10944.map.gz",
         "emd_10944_half_map_1.map.gz",
         "emd_10944_half_map_2.map.gz",
+        "emd_10944_msk_1.map",
         "6yvd.fa",
     ]
     for fn in expected_files:
@@ -103,7 +106,7 @@ def exercise_5():
     """
     Testing all possible actions in fetch_pdb
     """
-    actions = ['model', 'data', 'half_maps', 'sequence', 'all']
+    actions = ['model', 'data', 'half_maps', 'masks', 'sequence', 'all']
     pdb_id = '6yvd'
     files_to_remove = [
         "%s.pdb" % pdb_id,
@@ -111,6 +114,7 @@ def exercise_5():
         "emd_10944.map.gz",
         "emd_10944_half_map_1.map.gz",
         "emd_10944_half_map_2.map.gz",
+        "emd_10944_msk_1.map",
         "%s.fa" % pdb_id,
     ]
     for action in actions:
@@ -136,6 +140,8 @@ def exercise_5():
         assert "emd_10944_half_map_1.map.gz" not in result[0]
         assert not os.path.isfile("emd_10944_half_map_2.map.gz")
         assert "emd_10944_half_map_2.map.gz" not in result[0]
+        assert not os.path.isfile("emd_10944_msk_1.map")
+        assert "emd_10944_msk_1.map" not in result[0]
       elif action == 'data':
         assert os.path.isfile("emd_10944.map.gz")
         assert "emd_10944.map.gz" in result[0]
@@ -147,6 +153,12 @@ def exercise_5():
         assert "emd_10944_half_map_1.map.gz" not in result[0]
         assert not os.path.isfile("emd_10944_half_map_2.map.gz")
         assert "emd_10944_half_map_2.map.gz" not in result[0]
+        assert not os.path.isfile("emd_10944_msk_1.map")
+        assert "emd_10944_msk_1.map" not in result[0]
+      elif action == 'masks':
+        assert result[0] == ["emd_10944_msk_1.map"], result[0]
+        for fn in files_to_remove:
+          assert os.path.isfile(fn) == (fn == "emd_10944_msk_1.map"), fn
       elif action == 'sequence':
         assert os.path.isfile("%s.fa" % pdb_id)
         assert "%s.fa" % pdb_id in result[0]
@@ -160,6 +172,8 @@ def exercise_5():
         assert "emd_10944_half_map_1.map.gz" not in result[0]
         assert not os.path.isfile("emd_10944_half_map_2.map.gz")
         assert "emd_10944_half_map_2.map.gz" not in result[0]
+        assert not os.path.isfile("emd_10944_msk_1.map")
+        assert "emd_10944_msk_1.map" not in result[0]
       elif action == 'all':
         assert os.path.isfile("%s.pdb" % pdb_id)
         assert "%s.pdb" % pdb_id in result[0]
@@ -171,8 +185,39 @@ def exercise_5():
         assert "emd_10944_half_map_1.map.gz" in result [0]
         assert os.path.isfile("emd_10944_half_map_2.map.gz")
         assert "emd_10944_half_map_2.map.gz" in result[0]
+        assert os.path.isfile("emd_10944_msk_1.map")
+        assert "emd_10944_msk_1.map" in result[0]
         assert os.path.isfile("%s.fa" % pdb_id)
         assert "%s.fa" % pdb_id in result[0]
+
+def exercise_6():
+  """
+  No masks is not an error.
+  1yjp: X-ray
+  6vsb: EMD-21375, no masks deposited
+  """
+  for pdb_id in ["1yjp", "6vsb"]:
+    result = run_program(program_class=Program,
+                         custom_process_arguments=custom_args_proc,
+                         args=[pdb_id, "action=masks"])
+    assert result == ([], []), result
+
+def exercise_7():
+  """
+  pdb: 6yyt
+  EMD-11007
+  has two masks, 64 and 53 Mb. Too big to download, so only make sure
+  they are available.
+  """
+  for mask_number in [1, 2]:
+    data = fetch(id="6yyt", entity='em_mask', emdb_number="11007", mask_number=mask_number)
+    data.close()
+  try:
+    fetch(id="6yyt", entity='em_mask', emdb_number="11007", mask_number=3)
+  except RuntimeError as e:
+    assert str(e).find("emd_11007_msk_3.map") > 0, str(e)
+  else:
+    raise AssertionError("Third mask is not expected for EMD-11007")
 
 def exercise_get_link():
   r = []
@@ -191,8 +236,23 @@ def exercise_get_link():
   #              'https://files.rcsb.org/download/1ab2-sf.cif.gz',
   #              'https://files.rcsb.org/pub/emdb/structures/EMD-1111/map/emd_1111.map.gz'], r
 
+def exercise_get_link_mask():
+  """
+  Masks are not compressed and numbered from 1, there may be several of them.
+  """
+  r = get_link('rcsb', 'em_mask', '1ab2', emdb_number="1111")
+  assert r == 'https://files.rcsb.org/pub/emdb/structures/EMD-1111/masks/emd_1111_msk_1.map', r
+  r = get_link('rcsb', 'em_mask', '1ab2', emdb_number="1111", mask_number=2)
+  assert r == 'https://files.rcsb.org/pub/emdb/structures/EMD-1111/masks/emd_1111_msk_2.map', r
+  r = get_link('pdbe', 'em_mask', '1ab2', emdb_number="1111", mask_number=2)
+  assert r == 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-1111/masks/emd_1111_msk_2.map', r
+  for mirror in ['rcsb', 'pdbe', 'pdbj']:
+    r = get_link(mirror, 'em_mask', '1ab2', emdb_number="1111", mask_number=3)
+    assert r.endswith('/emdb/structures/EMD-1111/masks/emd_1111_msk_3.map'), r
+
 if (__name__ == "__main__"):
   exercise_get_link()
+  exercise_get_link_mask()
   if sys.version_info.major >= 3:
     exception_occured = False
     try:
@@ -206,6 +266,8 @@ if (__name__ == "__main__"):
       exercise_3()
       exercise_4()
       exercise_5()
+      exercise_6()
+      exercise_7()
       print("OK")
     else:
       print("OK but skipped.")
