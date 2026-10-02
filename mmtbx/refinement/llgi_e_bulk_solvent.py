@@ -10,8 +10,31 @@ from scitbx.math import chebyshev_lsq_fit
 import scitbx.lbfgs
 from libtbx import group_args
 import iotbx.phil
+import mmtbx.refinement.llgi_e_dmodel_fit as llgi_e_dmodel_fit
 
 llgi_e_bulk_solvent_params = iotbx.phil.parse("""\
+  sigmaa_model = *spline d_model
+    .type = choice
+    .short_caption = E-scale sigmaA(resolution) functional form
+    .help = "Chooses which parametrization the E-scale sigmaA(d) fit "\
+            "(Stage 1, both in the normal Stage-1/Stage-2 loop and in "\
+            "fix_bulk_solvent_from_ls=True's single-stage mode) uses:\\n"\
+            "  spline   -- DEFAULT. B-spline-over-sigmoid curve (see "\
+            "e_sigmaa_target_evaluator), the original, extensively "\
+            "tested parametrization this module was built around.\\n"\
+            "  d_model  -- Physically motivated D_model(s; theta) "\
+            "parametrization from sigmaA_model_handoff.md (see doc/"\
+            "llgi_target_design.md sec. 6.4 and mmtbx.refinement."\
+            "llgi_e_dmodel_fit): K positive Gaussian-decay coordinate-"\
+            "error terms minus one negative Gaussian bulk-solvent-"\
+            "defect covariance term, fit by direct joint L-BFGS "\
+            "against the full free-reflection likelihood (not a "\
+            "smoothing spline). EXPERIMENTAL -- not yet validated "\
+            "against real data the way the spline fit has been; see "\
+            "d_model_params for its own sub-parameters."
+  d_model_params {
+    include scope mmtbx.refinement.llgi_e_dmodel_fit.llgi_e_dmodel_params
+  }
   n_sigmap_nodes = 15
     .type = int
     .expert_level = 3
@@ -29,6 +52,15 @@ llgi_e_bulk_solvent_params = iotbx.phil.parse("""\
     .help = "Number of sorted reflections spanned by the auto-tuned " \
             "kernel width, matching kernel_normalisation's own " \
             "number_of_sorted_reflections_for_auto_kernel default."
+  renormalise_e_eff = False
+    .type = bool
+    .expert_level = 3
+    .help = "Divide Eeff = Feff/RESN by the square root of its own " \
+            "smoothed mean square as a function of resolution (same " \
+            "kernel smoothing as SigmaP for Emodel -- build_sigma_p), so " \
+            "<Eeff^2> = 1 at every resolution. A diagnostic workaround: " \
+            "RESN is meant to make this true already, but on 2G38 " \
+            "<Eeff^2> rises to ~1.4-1.9 beyond ~2.9 A."
   n_sigmaa_coeffs = 8
     .type = int
     .short_caption = Number of sigmaA spline coefficients (E-scale)
@@ -103,7 +135,37 @@ llgi_e_bulk_solvent_params = iotbx.phil.parse("""\
     .expert_level = 3
     .help = "Inner loop stops early once the working-set LLG (E-scale, " \
             "Stage 2's own objective) changes by less than this between " \
-            "consecutive iterations."
+            "consecutive iterations, AND (see k_mask_convergence_" \
+            "tolerance) the fitted per-bin k_mask curve itself has also " \
+            "stabilised -- a target-value plateau alone is not a " \
+            "reliable convergence signal for this non-convex, jointly-" \
+            "optimised problem (see k_mask_convergence_tolerance's own " \
+            "help for why)."
+  k_mask_convergence_tolerance = 0.01
+    .type = float
+    .expert_level = 3
+    .help = "Inner loop requires the largest per-bin change in the " \
+            "fitted k_mask curve between consecutive iterations to be " \
+            "below this, IN ADDITION TO convergence_tolerance's target-" \
+            "value check, before declaring convergence. Added after a " \
+            "real 2G38 fix_bulk_solvent_from_ls=False run showed the " \
+            "target-value check alone can declare convergence while the " \
+            "per-bin curve itself is still moving substantially -- a " \
+            "genuine near-flat direction in this non-convex, jointly-" \
+            "optimised (sigmaA and per-bin k_mask alternating) problem, " \
+            "not numerical noise: one macrocycle's inner loop stopped " \
+            "after only 2 iterations with the bulk-solvent target " \
+            "changing by just 0.000057 (comfortably under the default " \
+            "convergence_tolerance=1e-4) while B_sol (the per-bin " \
+            "curve's own log-linear point estimate) had simultaneously " \
+            "moved from 150 (a phil boundary -- see b_sol_max) to 118, " \
+            "versus neighbouring macrocycles' 4-5 iterations settling " \
+            "near a stable ~44-47 -- see doc/llgi_target_design.md sec. " \
+            "6.4 for the full trace. Every macrocycle's own iteration 1 " \
+            "was found to seed near this same b_sol~150 boundary before " \
+            "walking back toward the stable region, so this check " \
+            "matters on essentially every cycle, not just the one where " \
+            "it was first noticed."
   fix_bulk_solvent_from_ls = True
     .type = bool
     .short_caption = Fix bulk solvent at the LS (bss) value, fit only sigmaA
@@ -298,7 +360,8 @@ def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
   e_model = f_model_no_aniso_scale * inv_denom
   return group_args(e_model=e_model, sigma_p=sigma_p)
 
-def build_e_eff(feff, resn):
+def build_e_eff(feff, resn, d_star_sq=None, renormalise=False,
+      n_sigmap_nodes=15, auto_kernel_number=50):
   """ Eeff = Feff / RESN, per the design note sec. 4: RESN is nacelle's
   own "Root-EpsilonSigmaN" normaliser, already epsilon- and Wilson-trend-
   corrected via nacelle's own Bayesian modelling of the expected
@@ -315,10 +378,35 @@ def build_e_eff(feff, resn):
   design note sec. 4/7), directly from the nacelle FEFF/RESN columns
   already loaded via phenix.refinement.llgi_data.get_llgi_data.
 
+  renormalise/d_star_sq/n_sigmap_nodes/auto_kernel_number: if
+  renormalise, additionally divide by sqrt of Eeff's own smoothed mean
+  square vs d_star_sq (build_sigma_p, the same smoothing used for
+  Emodel; epsilon-free, since RESN already includes epsilon), so
+  <Eeff^2> = 1 at every resolution -- see llgi_e_bulk_solvent_params.
+  renormalise_e_eff.
+
   Returns a flex.double, one Eeff value per input reflection.
   """
   assert resn.size() == feff.size()
-  return feff / resn
+  e_eff = feff / resn
+  if(renormalise):
+    mean_sq = build_sigma_p(
+      flex.complex_double(e_eff, flex.double(e_eff.size(), 0.0)),
+      d_star_sq, n_nodes=n_sigmap_nodes,
+      auto_kernel_number=auto_kernel_number)
+    e_eff = e_eff / flex.sqrt(mean_sq)
+  return e_eff
+
+def build_e_eff_from_params(feff, resn, d_star_sq, params):
+  """ build_e_eff with renormalisation settings taken from an extracted
+  llgi_e_bulk_solvent_params scope (None: that scope's defaults).
+  """
+  if(params is None):
+    params = llgi_e_bulk_solvent_params.extract()
+  return build_e_eff(feff, resn, d_star_sq=d_star_sq,
+    renormalise=params.renormalise_e_eff,
+    n_sigmap_nodes=params.n_sigmap_nodes,
+    auto_kernel_number=params.auto_kernel_number)
 
 def _sigmoid(z, lower=0.01, upper=0.99):
   """ Bounded sigmoid reparameterisation, identical convention to
@@ -1121,8 +1209,52 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     sigmaa=sigmaa, target=final_result.target(), x_range=x_range,
     evaluate_at=evaluator.evaluate_at)
 
+def _estimate_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
+      d_star_sq, params, b_sol_anchor=None):
+  """ Dispatch to either the B-spline (params.sigmaa_model=="spline",
+  DEFAULT) or physically-motivated D_model(s; theta) (params.
+  sigmaa_model=="d_model", EXPERIMENTAL -- doc/llgi_target_design.md
+  sec. 6.4) sigmaA(resolution) fit, per params.sigmaa_model. Both call
+  sites that need a sigmaA fit (run_inner_loop's Stage 1, and
+  estimate_e_sigmaa_fixed_bulk_solvent's single-stage mode) go through
+  this one dispatcher rather than each choosing independently, so
+  sigmaa_model applies uniformly regardless of which bulk-solvent mode
+  is in effect.
+
+  b_sol_anchor: only used by the d_model path (params.d_model_params.
+  b_sol_restraint_sigma's one-directional restraint target -- see
+  mmtbx.refinement.llgi_e_dmodel_fit.b_defect_restraint_penalty_and_
+  gradient); ignored by the spline path, which has no such restraint.
+  Callers pass the bulk-solvent fit's own current B_sol point estimate
+  here (e.g. _log_linear_k_sol_b_sol's result), or None to leave the
+  restraint disabled regardless of params.d_model_params.
+  b_sol_restraint_sigma (matching that function's own "b_sol_anchor is
+  None" no-op behaviour).
+
+  Returns a group_args with the same shape either path returns
+  (.sigmaa, .target, .x_range, .evaluate_at) -- callers do not need to
+  special-case which model actually ran.
+  """
+  if(params.sigmaa_model == "d_model"):
+    dp = params.d_model_params
+    return llgi_e_dmodel_fit.estimate_d_model_sigmaa(
+      e_eff=e_eff, r_free_flags=r_free_flags, e_model=e_model, dobs=dobs,
+      centric_flags=centric_flags, d_star_sq=d_star_sq,
+      n_gaussian_terms=dp.n_gaussian_terms,
+      max_iterations=dp.max_iterations,
+      b_sol_anchor=b_sol_anchor,
+      b_sol_restraint_sigma=dp.b_sol_restraint_sigma,
+      a_k_smoothness_weight=dp.a_k_smoothness_weight,
+      include_constant_term=dp.include_constant_term)
+  return estimate_e_sigmaa(
+    e_eff=e_eff, r_free_flags=r_free_flags, e_model=e_model, dobs=dobs,
+    centric_flags=centric_flags, d_star_sq=d_star_sq,
+    n_coeffs=params.n_sigmaa_coeffs, spline_degree=params.spline_degree,
+    max_iterations=params.sigmaa_max_iterations,
+    curvature_weight=params.sigmaa_curvature_weight)
+
 def estimate_e_sigmaa_fixed_bulk_solvent(
-      fmodel, dobs, feff, resn, params=None):
+      fmodel, dobs, feff, resn, params=None, log=None):
   """ Hybrid mode (params.fix_bulk_solvent_from_ls): fit the E-scale
   sigmaA(resolution) curve (Stage 1 only) against fmodel's bulk-solvent
   model EXACTLY as it currently stands -- i.e. bss's own least-squares
@@ -1163,7 +1295,15 @@ def estimate_e_sigmaa_fixed_bulk_solvent(
   ESTIMATE of bss's actual k_mask (via initial_k_sol_b_sol, for logging/
   diagnostics only -- NOT what was actually used to build Emodel, which
   is bss's raw per-reflection k_mask), .n_iterations=1, .converged=True,
-  .history has a single entry.
+  .history has a single entry. Also .x_range/.evaluate_at, forwarded from
+  the sigmaA fit itself (spline or d_model), so a caller can evaluate the
+  fitted curve at resolutions with no observed reflection (e.g.
+  mmtbx.map_tools.model_missing_reflections_llgi's fill-missing step).
+
+  log: accepted for signature consistency with run_inner_loop's own
+  log= (both are called via the same dispatch in that function); not
+  currently used here -- there is no per-iteration Stage-1/Stage-2 loop
+  in this single-pass mode to log anything about.
   """
   if(params is None):
     params = llgi_e_bulk_solvent_params.extract()
@@ -1173,36 +1313,91 @@ def estimate_e_sigmaa_fixed_bulk_solvent(
   epsilons = f_obs.epsilons().data().as_double()
   d_star_sq = f_obs.d_star_sq().data()
 
-  e_eff = build_e_eff(feff, resn)
+  e_eff = build_e_eff_from_params(feff, resn, d_star_sq, params)
   fmnas = f_model_no_aniso_scale(fmodel).data()
   e_model = build_e_model(
     fmnas, epsilons, d_star_sq,
     n_sigmap_nodes=params.n_sigmap_nodes,
     auto_kernel_number=params.auto_kernel_number).e_model
 
-  sigmaa_result = estimate_e_sigmaa(
-    e_eff=e_eff, r_free_flags=r_free_flags,
-    e_model=flex.abs(e_model), dobs=dobs,
-    centric_flags=centric_flags, d_star_sq=d_star_sq,
-    n_coeffs=params.n_sigmaa_coeffs, spline_degree=params.spline_degree,
-    max_iterations=params.sigmaa_max_iterations,
-    curvature_weight=params.sigmaa_curvature_weight)
-
-  # Point estimate only, for logging -- see docstring above; not used to
-  # build e_model (bss's raw k_mask was used directly instead).
+  # Point estimate of bss's actual k_mask -- see docstring above; not
+  # used to build e_model (bss's raw k_mask was used directly instead
+  # for that). Computed BEFORE the sigmaA fit (unlike the historical
+  # ordering) so its b_sol can also serve as the d_model path's
+  # B_defect restraint anchor (params.sigmaa_model=="d_model" -- see
+  # _estimate_sigmaa's own docstring); harmless extra use of an
+  # already-cheap computation for the spline path, which simply
+  # ignores the b_sol_anchor argument.
   k_sol, b_sol = initial_k_sol_b_sol(
     fmodel,
     k_sol_min=params.k_sol_min, k_sol_max=params.k_sol_max,
     b_sol_min=params.b_sol_min, b_sol_max=params.b_sol_max)
 
+  sigmaa_result = _estimate_sigmaa(
+    e_eff=e_eff, r_free_flags=r_free_flags,
+    e_model=flex.abs(e_model), dobs=dobs,
+    centric_flags=centric_flags, d_star_sq=d_star_sq,
+    params=params, b_sol_anchor=b_sol)
+
+  import os as _os_tmp_diag
+  _dump_dir_tmp_diag = _os_tmp_diag.environ.get("SIGMAA_ZEROCYCLE_DUMP_DIR")
+  if(_dump_dir_tmp_diag):
+    _dump_zerocycle_sigmaa_tmp_diag(
+      _dump_dir_tmp_diag, e_eff=e_eff, e_model=flex.abs(e_model),
+      d_star_sq=d_star_sq, r_free_flags=r_free_flags,
+      sigmaa_result=sigmaa_result, sigmaa_model=params.sigmaa_model,
+      dobs=dobs, e_eff_raw=feff / resn, k_mask=fmodel.k_masks()[0],
+      centric_flags=centric_flags, b_sol_anchor=b_sol)
+
   return group_args(
     sigmaa=sigmaa_result.sigmaa,
+    x_range=sigmaa_result.x_range,
+    evaluate_at=sigmaa_result.evaluate_at,
     k_sol=k_sol, b_sol=b_sol,
     n_iterations=1,
     converged=True,
     history=[group_args(
       sigmaa_target=sigmaa_result.target, bs_target=None,
       k_sol=k_sol, b_sol=b_sol)])
+
+def _dump_zerocycle_sigmaa_tmp_diag(dump_dir, e_eff, e_model, d_star_sq,
+      r_free_flags, sigmaa_result, sigmaa_model, dobs, e_eff_raw, k_mask,
+      centric_flags, b_sol_anchor):
+  """ TEMPORARY diagnostic hook (2026-09-23, zero-macrocycle sigmaA
+  comparison, doc/llgi_target_design.md sec. 6.4) -- writes ALL-
+  reflection E_eff/E_model/d_star_sq/R-free-flags (for an independent
+  moment-based sigmaA estimate against ALL reflections) plus the
+  R-free-only LLGI fit's own theta/b_k_grid (for d_model) or sigmaa
+  curve (for spline), gated behind SIGMAA_ZEROCYCLE_DUMP_DIR so it is a
+  complete no-op unless explicitly opted into. To be removed once the
+  investigation is done.
+  """
+  import os
+  import numpy as np
+  os.makedirs(dump_dir, exist_ok=True)
+  n = _dump_zerocycle_sigmaa_tmp_diag._counter = getattr(
+    _dump_zerocycle_sigmaa_tmp_diag, "_counter", 0) + 1
+  extra = {}
+  theta = getattr(sigmaa_result, "theta", None)
+  if(theta is not None):
+    extra["theta"] = np.asarray(theta, dtype=float)
+  b_k_grid = getattr(sigmaa_result, "b_k_grid", None)
+  if(b_k_grid is not None):
+    extra["b_k_grid"] = np.asarray(b_k_grid, dtype=float)
+  np.savez(
+    os.path.join(dump_dir, "call_%04d_%s.npz" % (n, sigmaa_model)),
+    e_eff=np.asarray(e_eff, dtype=float),
+    e_model=np.asarray(e_model, dtype=float),
+    d_star_sq=np.asarray(d_star_sq, dtype=float),
+    r_free_flags=np.asarray(r_free_flags, dtype=bool),
+    sigmaa_r_free_fit=np.asarray(sigmaa_result.sigmaa, dtype=float),
+    target=np.asarray([sigmaa_result.target], dtype=float),
+    dobs=np.asarray(dobs, dtype=float),
+    e_eff_raw=np.asarray(e_eff_raw, dtype=float),
+    k_mask=np.asarray(k_mask, dtype=float),
+    centric_flags=np.asarray(centric_flags, dtype=bool),
+    b_sol_anchor=np.asarray([np.nan if b_sol_anchor is None else b_sol_anchor]),
+    **extra)
 
 def estimate_sigmaa_e_then_scatfrac_f(
       fmodel, dobs, feff, resn, e_params=None, scatfrac_params=None):
@@ -1301,6 +1496,39 @@ def estimate_sigmaa_e_then_scatfrac_f(
     scatfrac_inf=getattr(scatfrac_result, "scatfrac_inf", None),
     b_scatfrac=getattr(scatfrac_result, "b_scatfrac", None))
 
+def _inner_loop_has_converged(
+      bs_target, prev_bs_target, k_mask_bin, prev_k_mask_bin,
+      convergence_tolerance, k_mask_convergence_tolerance):
+  """ run_inner_loop's Stage-1/Stage-2 convergence test, extracted as a
+  standalone function for direct unit testing (see
+  tst_llgi_e_bulk_solvent.py's exercise_inner_loop_convergence_
+  requires_k_mask_stability). Requires BOTH:
+    (a) |bs_target - prev_bs_target| < convergence_tolerance, and
+    (b) the largest per-bin change in k_mask_bin < k_mask_convergence_
+        tolerance
+  A target-value plateau alone (a) is NOT sufficient -- see
+  llgi_e_bulk_solvent_params.k_mask_convergence_tolerance's own
+  docstring for the real 2G38 case that motivated requiring (b) as
+  well: a macrocycle's inner loop declared convergence after only 2
+  iterations with the target changing by just 0.000057 (comfortably
+  under a 1e-4 tolerance) while the per-bin curve was still moving
+  substantially (B_sol's own log-linear point estimate: 150 -> 118)
+  between those same two iterations -- a genuine near-flat direction
+  in this non-convex, jointly-optimised problem, not numerical noise.
+
+  prev_bs_target/prev_k_mask_bin may be None (first iteration, nothing
+  to compare against yet) -- returns False in that case, matching the
+  original inline check's own "prev_bs_target is not None" guard.
+  """
+  if(prev_bs_target is None or prev_k_mask_bin is None):
+    return False
+  target_converged = (
+    abs(bs_target - prev_bs_target) < convergence_tolerance)
+  if(not target_converged):
+    return False
+  k_mask_change = flex.max(flex.abs(k_mask_bin - prev_k_mask_bin))
+  return k_mask_change < k_mask_convergence_tolerance
+
 def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
   """ The full Stage-1/Stage-2 inner loop (design note sec. 7): alternate
   fitting sigmaA(d) (E-scale, R-free only, sec. 5) and the bulk-solvent
@@ -1356,7 +1584,7 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
     params = llgi_e_bulk_solvent_params.extract()
   if(params.fix_bulk_solvent_from_ls):
     return estimate_e_sigmaa_fixed_bulk_solvent(
-      fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
+      fmodel, dobs=dobs, feff=feff, resn=resn, params=params, log=log)
   f_obs = fmodel.f_obs()
   r_free_flags = fmodel.r_free_flags().data()
   centric_flags = f_obs.centric_flags().data()
@@ -1365,7 +1593,7 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
   ss = ss_from_f_obs(f_obs)
   working_selection = ~r_free_flags
 
-  e_eff = build_e_eff(feff, resn)
+  e_eff = build_e_eff_from_params(feff, resn, d_star_sq, params)
 
   # Bulk solvent is fit per-resolution-bin, matching bss's own default
   # "combo" fit -- the only bulk-solvent model phenix.refine's fast-mode
@@ -1390,6 +1618,7 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
 
   history = []
   prev_bs_target = None
+  prev_k_mask_bin = None
   converged = False
   n_iterations = 0
 
@@ -1415,13 +1644,22 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
       fmnas_current, epsilons, d_star_sq,
       n_sigmap_nodes=params.n_sigmap_nodes,
       auto_kernel_number=params.auto_kernel_number).e_model
-    sigmaa_result = estimate_e_sigmaa(
+    # Point estimate of the CURRENT (this iteration's starting) per-bin
+    # k_mask curve -- used as the d_model path's B_defect restraint
+    # anchor (params.sigmaa_model=="d_model" -- see _estimate_sigmaa's
+    # own docstring); the spline path ignores it. Same log-linear
+    # point estimate already computed later in this loop for logging
+    # (see below), just computed slightly earlier here since Stage 1
+    # now needs it before Stage 2 runs.
+    _, b_sol_anchor_current = _log_linear_k_sol_b_sol(
+      bin_centers, k_mask_bin,
+      k_sol_min=params.k_sol_min, k_sol_max=params.k_sol_max,
+      b_sol_min=params.b_sol_min, b_sol_max=params.b_sol_max)
+    sigmaa_result = _estimate_sigmaa(
       e_eff=e_eff, r_free_flags=r_free_flags,
       e_model=flex.abs(e_model_current), dobs=dobs,
       centric_flags=centric_flags, d_star_sq=d_star_sq,
-      n_coeffs=params.n_sigmaa_coeffs, spline_degree=params.spline_degree,
-      max_iterations=params.sigmaa_max_iterations,
-      curvature_weight=params.sigmaa_curvature_weight)
+      params=params, b_sol_anchor=b_sol_anchor_current)
     sigmaa = sigmaa_result.sigmaa
 
     # Stage 2: fit per-bin k_mask against LLG on the working set,
@@ -1455,11 +1693,14 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
       sigmaa_target=sigmaa_result.target, bs_target=bs_target,
       k_mask_bin=k_mask_bin))
 
-    if(prev_bs_target is not None and
-       abs(bs_target - prev_bs_target) < params.convergence_tolerance):
+    if(_inner_loop_has_converged(
+         bs_target, prev_bs_target, k_mask_bin, prev_k_mask_bin,
+         convergence_tolerance=params.convergence_tolerance,
+         k_mask_convergence_tolerance=params.k_mask_convergence_tolerance)):
       converged = True
       break
     prev_bs_target = bs_target
+    prev_k_mask_bin = k_mask_bin
 
   # Push the final per-bin k_mask curve back onto fmodel, per the design
   # note's chosen mechanism (fmodel.update(k_mask=...) -- mmtbx.f_model.

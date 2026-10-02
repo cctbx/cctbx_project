@@ -5,6 +5,7 @@ from cctbx import sgtbx
 import mmtbx.f_model
 import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
 from libtbx.test_utils import approx_equal
+import iotbx.phil
 import random
 
 def build_fmodel(n_atoms=40, d_min=1.8, seed=0, space_group="P 21 21 21"):
@@ -274,6 +275,64 @@ def exercise_initial_k_sol_b_sol_falls_back_on_degenerate_input():
   assert 0.0 <= k_sol <= 0.6
   assert 0.0 <= b_sol <= 150.0
 
+def exercise_inner_loop_convergence_requires_k_mask_stability():
+  # Real bug found on real 2G38 data (fix_bulk_solvent_from_ls=False,
+  # doc/llgi_target_design.md sec. 6.4): the ORIGINAL convergence check
+  # (target-value plateau alone) declared convergence after only 2
+  # iterations with bs_target changing by just 0.000057 (comfortably
+  # under the default 1e-4 convergence_tolerance) while B_sol's own
+  # log-linear point estimate had simultaneously moved from 150 (a phil
+  # boundary) to 118 between those same two iterations -- reproduced
+  # here directly via _inner_loop_has_converged with those actual
+  # numbers (a representative k_mask_bin pair scaled to produce a
+  # comparable max-change, since the real per-bin arrays themselves
+  # were not individually logged).
+  bs_target_1 = -0.193038
+  bs_target_2 = -0.192981  # diff = 0.000057, well under default 1e-4
+  k_mask_1 = flex.double([0.30, 0.32, 0.28, 0.15, 0.05])  # b_sol~150-like
+  k_mask_2 = flex.double([0.30, 0.18, 0.28, 0.09, 0.05])  # b_sol~118-like,
+                                                            # max change 0.14
+
+  # With the default k_mask_convergence_tolerance (0.01), this pair
+  # must NOT be judged converged -- the whole point of the fix.
+  converged = llgi_e_bs._inner_loop_has_converged(
+    bs_target_2, bs_target_1, k_mask_2, k_mask_1,
+    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
+  assert converged is False, (
+    "target-value plateau alone should NOT be enough to declare "
+    "convergence while k_mask is still moving by 0.14 -- this is "
+    "exactly the real 2G38 failure mode this check exists to catch")
+
+  # Sanity check the OTHER direction: once k_mask has also genuinely
+  # stabilised (small change), convergence must be declared -- the
+  # fix must not be so strict it never converges at all.
+  k_mask_3 = flex.double([0.30, 0.18, 0.28, 0.09, 0.05])
+  k_mask_4 = flex.double([0.301, 0.181, 0.279, 0.091, 0.050])  # tiny change
+  converged_stable = llgi_e_bs._inner_loop_has_converged(
+    bs_target_2, bs_target_1, k_mask_4, k_mask_3,
+    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
+  assert converged_stable is True, (
+    "should converge once both target AND k_mask have genuinely "
+    "stabilised")
+
+def exercise_inner_loop_convergence_first_iteration_never_converges():
+  # prev_bs_target/prev_k_mask_bin are None on the first iteration --
+  # must return False (nothing to compare against yet), not raise.
+  converged = llgi_e_bs._inner_loop_has_converged(
+    -0.19, None, flex.double([0.3, 0.2]), None,
+    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
+  assert converged is False
+
+def exercise_inner_loop_convergence_target_alone_not_enough():
+  # Target value close (would pass the OLD, target-only check) but
+  # k_mask far apart -- must not converge, isolating exactly the
+  # target-value-plateau condition from the k_mask-stability condition.
+  converged = llgi_e_bs._inner_loop_has_converged(
+    -0.19, -0.19 + 1.e-5,  # well under default 1e-4 tolerance
+    flex.double([0.9, 0.9]), flex.double([0.1, 0.1]),  # miles apart
+    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
+  assert converged is False
+
 def exercise_run_inner_loop_end_to_end():
   # Full Stage-1/Stage-2 inner loop, on real (synthetic) data: must run
   # to completion (converged or max_inner_iterations reached), return a
@@ -529,7 +588,175 @@ def exercise_e_sigmaa_curvature_penalty_gradient_finite_difference():
   evaluator.x = flex.double(x0)
   assert approx_equal(list(g0), list(g_fd), eps=1.e-3)
 
+def _extract_params_with_includes():
+  """ llgi_e_bulk_solvent_params.extract() alone does NOT populate
+  d_model_params (iotbx.phil.parse defaults to process_includes=False,
+  and the "include scope" line is left as a literal unresolved
+  definition until something downstream processes it -- normally
+  phenix's own master-phil assembly). scope.process_includes() is the
+  correct, type-preserving way to resolve it directly on the already-
+  parsed (already correctly typed) scope object -- re-parsing
+  as_str()'s rendered text from scratch (as a standalone string, with
+  no master to fetch against) was tried first and found to silently
+  drop type annotations for plain (non-included) definitions like
+  auto_kernel_number, turning e.g. an int into a single-element list;
+  process_includes() has no such problem, since it operates on the
+  scope's own already-typed objects. Used by every d_model test below.
+  """
+  from iotbx.phil import default_converter_registry
+  return llgi_e_bs.llgi_e_bulk_solvent_params.process_includes(
+    converter_registry=default_converter_registry, reference_directory=None)
+
+def exercise_d_model_sigmaa_is_experimental_not_the_default():
+  # sigmaa_model defaults to "spline" -- pinned here so an accidental
+  # flip is caught, matching exercise_fix_bulk_solvent_from_ls_is_the_
+  # default's own rationale: several tests below set sigmaa_model=
+  # "d_model" EXPLICITLY to exercise that path, and would silently
+  # change meaning if the default moved.
+  master = _extract_params_with_includes()
+  params = master.extract()
+  assert params.sigmaa_model == "spline"
+
+def exercise_d_model_sigmaa_fixed_bulk_solvent_end_to_end():
+  # sigmaa_model="d_model" through estimate_e_sigmaa_fixed_bulk_solvent
+  # (fix_bulk_solvent_from_ls=True, the actual production default) --
+  # must run to completion against a real fmodel and return a sane,
+  # bounded result, exactly mirroring exercise_fixed_bulk_solvent_
+  # leaves_k_mask_untouched's own shape of check for the spline path.
+  fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=40)
+  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=41)
+  k_mask_before = flex.double(fmodel.k_masks()[0])
+
+  master = _extract_params_with_includes()
+  params = master.fetch(iotbx.phil.parse("""\
+    sigmaa_model = d_model
+    fix_bulk_solvent_from_ls = True
+    d_model_params.max_iterations = 60
+    """)).extract()
+
+  result = llgi_e_bs.run_inner_loop(
+    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
+
+  # Single-stage mode: k_mask must be untouched, same contract as the
+  # spline path in this mode.
+  k_mask_after = flex.double(fmodel.k_masks()[0])
+  assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
+  assert result.n_iterations == 1
+  assert result.converged is True
+  assert result.sigmaa.size() == fmodel.f_obs().size()
+  # D_model(s; theta) is not bounded to (0, 1) the way the spline's
+  # sigmoid is by construction -- what's actually guaranteed is that
+  # dobs*D_model stays away from +-1 (the negative-variance barrier,
+  # see llgi_e_dmodel_fit.py) and D_model itself is finite.
+  for v in result.sigmaa:
+    assert -1.5 < v < 1.5, v
+    import math
+    assert math.isfinite(v)
+
+def exercise_d_model_sigmaa_run_inner_loop_two_stage_end_to_end():
+  # sigmaa_model="d_model" through the full Stage-1/Stage-2 alternation
+  # (fix_bulk_solvent_from_ls=False) -- confirms the b_sol_anchor
+  # threading (computed once per iteration from the CURRENT per-bin
+  # k_mask, before Stage 1 runs -- see run_inner_loop's own comment)
+  # does not crash or destabilize the loop, matching exercise_run_
+  # inner_loop_end_to_end's own shape of check for the spline path.
+  fmodel = build_fmodel(n_atoms=60, d_min=1.7, seed=42)
+  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=43)
+
+  master = _extract_params_with_includes()
+  params = master.fetch(iotbx.phil.parse("""\
+    sigmaa_model = d_model
+    fix_bulk_solvent_from_ls = False
+    max_inner_iterations = 3
+    bulk_solvent_max_iterations = 15
+    d_model_params.max_iterations = 60
+    """)).extract()
+
+  result = llgi_e_bs.run_inner_loop(
+    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
+
+  assert result.n_iterations >= 1
+  assert result.sigmaa.size() == fmodel.f_obs().size()
+  import math
+  for v in result.sigmaa:
+    assert math.isfinite(v)
+  assert 0.0 <= result.k_sol <= 0.6
+  assert 0.0 <= result.b_sol <= 150.0
+  assert len(result.history) == result.n_iterations
+
+  # Same fmodel-k_mask-matches-returned-curve check as exercise_run_
+  # inner_loop_end_to_end -- Stage 2 (bulk solvent) itself is
+  # unaffected by which sigmaA parametrization Stage 1 used, so this
+  # invariant should hold identically.
+  ss = llgi_e_bs.ss_from_f_obs(fmodel.f_obs())
+  expected_k_mask = llgi_e_bs.k_mask_binned_and_gradients(
+    ss, fmodel.bin_selections, result.bin_centers, result.k_mask_bin).k_mask
+  actual_k_mask = fmodel.k_masks()[0]
+  diff = flex.max(flex.abs(
+    flex.double(expected_k_mask) - flex.double(actual_k_mask)))
+  assert diff < 1.e-10, diff
+
+def exercise_d_model_sigmaa_does_not_change_spline_default_behaviour():
+  # Sanity check that ADDING sigmaa_model/d_model_params to the phil
+  # scope did not perturb the pre-existing spline path's own default
+  # numbers -- run the exact same fmodel/inputs through both
+  # llgi_e_bulk_solvent_params.extract() (the old, pre-this-change way
+  # of getting params) and the new process_includes()-based extraction,
+  # both left at sigmaa_model's default ("spline"), and require BIT-
+  # IDENTICAL results.
+  fmodel_a = build_fmodel(n_atoms=50, d_min=1.75, seed=44)
+  fmodel_b = build_fmodel(n_atoms=50, d_min=1.75, seed=44)
+  dobs, feff, resn = _synthetic_llgi_inputs(fmodel_a, seed=45)
+
+  params_old_style = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
+  params_old_style.sigmaa_max_iterations = 20
+
+  master = _extract_params_with_includes()
+  params_new_style = master.extract()
+  params_new_style.sigmaa_max_iterations = 20
+
+  result_a = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+    fmodel_a, dobs=dobs, feff=feff, resn=resn, params=params_old_style)
+  result_b = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+    fmodel_b, dobs=dobs, feff=feff, resn=resn, params=params_new_style)
+
+  assert approx_equal(list(result_a.sigmaa), list(result_b.sigmaa), eps=0.0)
+  assert result_a.k_sol == result_b.k_sol
+  assert result_a.b_sol == result_b.b_sol
+
+def exercise_e_eff_renormalisation_flattens_mean_square():
+  # Eeff with a resolution-dependent mean-square drift (1 at low
+  # resolution rising to ~1.9, as seen on 2G38): renormalise=True must
+  # bring <Eeff^2> back to ~1 in every resolution bin; the default leaves
+  # Eeff = Feff/RESN unchanged.
+  rnd = random.Random(7)
+  n = 6000
+  # Uniform in reciprocal-space volume (d* from 0.05 to 0.5), like real
+  # data -- the auto kernel width is set by the sparse low-resolution
+  # end, so data uniform in d*^2 would give an unrealistically noisy
+  # smoothed curve at high resolution.
+  lo, hi = 0.05, 0.5
+  d_star_sq = flex.double([
+    (lo**3 + rnd.random()*(hi**3 - lo**3))**(2./3.) for i in range(n)])
+  drift = 1.0 + 0.9 * (d_star_sq / hi**2)**2
+  e = flex.double([abs(rnd.gauss(0, 1) + 1j*rnd.gauss(0, 1)) / 2**0.5
+                   for i in range(n)])
+  feff = e * flex.sqrt(drift)
+  resn = flex.double(n, 1.0)
+  assert approx_equal(
+    list(llgi_e_bs.build_e_eff(feff, resn)), list(feff), eps=0)
+  e_eff = llgi_e_bs.build_e_eff(feff, resn, d_star_sq=d_star_sq,
+    renormalise=True)
+  order = flex.sort_permutation(d_star_sq)
+  for i_bin in range(6):
+    sel = order[i_bin*n//6:(i_bin+1)*n//6]
+    raw_ms = flex.mean(flex.pow2(feff.select(sel)))
+    ms = flex.mean(flex.pow2(e_eff.select(sel)))
+    assert abs(ms - 1.0) < 0.1, (i_bin, raw_ms, ms)
+  assert flex.mean(flex.pow2(feff.select(order[-n//6:]))) > 1.5
+
 def run():
+  exercise_e_eff_renormalisation_flattens_mean_square()
   exercise_f_model_no_aniso_scale_matches_direct_computation()
   exercise_f_model_no_aniso_scale_times_k_aniso_is_f_model()
   exercise_sigma_p_constant_intensity_recovers_constant()
@@ -540,12 +767,19 @@ def run():
   exercise_bulk_solvent_gradient_matches_fixed_sigma_p_finite_difference()
   exercise_initial_k_sol_b_sol_recovers_known_values()
   exercise_initial_k_sol_b_sol_falls_back_on_degenerate_input()
+  exercise_inner_loop_convergence_requires_k_mask_stability()
+  exercise_inner_loop_convergence_first_iteration_never_converges()
+  exercise_inner_loop_convergence_target_alone_not_enough()
   exercise_run_inner_loop_end_to_end()
   exercise_e_sigmaa_curvature_penalty_gradient_finite_difference()
   exercise_fix_bulk_solvent_from_ls_is_the_default()
   exercise_fixed_bulk_solvent_leaves_k_mask_untouched()
   exercise_fixed_bulk_solvent_matches_direct_call()
   exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly()
+  exercise_d_model_sigmaa_is_experimental_not_the_default()
+  exercise_d_model_sigmaa_fixed_bulk_solvent_end_to_end()
+  exercise_d_model_sigmaa_run_inner_loop_two_stage_end_to_end()
+  exercise_d_model_sigmaa_does_not_change_spline_default_behaviour()
   print("OK")
 
 if (__name__ == "__main__"):

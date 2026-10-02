@@ -823,26 +823,19 @@ class model_missing_reflections_llgi(object):
       1.0 / flex.sqrt(epsilons_missing * sigma_p_missing))
     e_model_abs_missing = flex.abs(e_model_missing)
 
-    sigmaa_result = self.llgi_data.sigmaa
-    # sigmaa_result here is the miller.array attached to llgi_data (an
-    # already-evaluated curve, not the fitted evaluator itself) -- the
-    # fitted evaluator/x_range needed for evaluate_at() come from a
-    # FRESH sigmaA fit against the CURRENT Emodel instead (see below),
-    # since llgi_data.sigmaa's own fit is not guaranteed still current
-    # against this exact fmodel state, and evaluate_at is only exposed
-    # on estimate_e_sigmaa's own OWN return value, not persisted
-    # anywhere on llgi_data itself.
-    f_obs = self.fmodel.f_obs()
-    epsilons_obs = f_obs.epsilons().data().as_double()
-    d_star_sq_obs = f_obs.d_star_sq().data()
-    fmnas_obs = llgi_e_bs.f_model_no_aniso_scale(self.fmodel).data()
-    e_model_obs = llgi_e_bs.build_e_model(fmnas_obs, epsilons_obs, d_star_sq_obs)
-    e_eff_obs = llgi_e_bs.build_e_eff(
-      self.llgi_data.feff.data(), self.llgi_data.resn.data())
-    sigmaa_refit = llgi_e_bs.estimate_e_sigmaa(
-      e_eff=e_eff_obs, r_free_flags=self.fmodel.r_free_flags().data(),
-      e_model=flex.abs(e_model_obs.e_model), dobs=self.llgi_data.dobs.data(),
-      centric_flags=f_obs.centric_flags().data(), d_star_sq=d_star_sq_obs)
+    # llgi_data.sigmaa is an already-evaluated curve on the observed
+    # reflections only; evaluating sigmaA at the MISSING reflections'
+    # resolutions needs the fitted model itself (evaluate_at), which is
+    # not persisted on llgi_data -- so refit against the current fmodel,
+    # using the same E-scale phil (hence the same sigmaa_model, spline or
+    # d_model) that update_llgi_sigmaa_scatfrac last used. None falls
+    # back to that scope's own defaults.
+    sigmaa_refit = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+      self.fmodel,
+      dobs=self.llgi_data.dobs.data(),
+      feff=self.llgi_data.feff.data(),
+      resn=self.llgi_data.resn.data(),
+      params=getattr(self.llgi_data, "e_params", None))
     sigmaa_missing = sigmaa_refit.evaluate_at(
       d_star_sq_missing, x_range=sigmaa_refit.x_range)
 

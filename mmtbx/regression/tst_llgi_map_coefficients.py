@@ -631,6 +631,125 @@ def exercise_llgi_fill_missing_matches_hand_computation():
   assert approx_equal(
     list(flex.abs(a.data())), list(flex.abs(b.data())), eps=1.e-6)
 
+def exercise_fill_missing_honours_sigmaa_model():
+  # The E-scale phil scope passed to update_llgi_sigmaa_scatfrac must be
+  # recorded on llgi_data, survive fmodel.select() (which rebuilds
+  # llgi_data field by field -- run by every bss outlier-removal pass,
+  # including the final one before maps are written), and reach the
+  # fill-missing sigmaA refit. Previously that refit always used the
+  # spline, whatever sigmaa_model was set to.
+  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+  from mmtbx import map_tools as mt
+  fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
+  # f_model() as the coefficients being completed: model_missing_
+  # reflections keeps only atoms whose map (from these coefficients)
+  # correlates with the model map, and this fixture's synthetic Feff is
+  # unrelated to the model, so real 2mFo-DFc coefficients keep no atoms
+  # and the fill is identically zero -- nothing to compare.
+  coeffs = fmodel.f_model()
+  spline_fill = mt.model_missing_reflections_llgi(
+    fmodel=fmodel, coeffs=coeffs).get_missing()
+  assert flex.min(flex.abs(spline_fill.data())) > 0
+
+  # process_includes() so d_model_params (an "include scope") is present.
+  from iotbx.phil import default_converter_registry
+  e_params = llgi_e_bs.llgi_e_bulk_solvent_params.process_includes(
+    converter_registry=default_converter_registry,
+    reference_directory=None).extract()
+  e_params.sigmaa_model = "d_model"
+  fmodel.update_llgi_sigmaa_scatfrac(e_params=e_params)
+  assert fmodel.llgi_data().e_params is e_params
+  selected = fmodel.select(flex.bool(fmodel.f_obs().size(), True))
+  assert selected.llgi_data().e_params is e_params
+
+  dmodel_fill = mt.model_missing_reflections_llgi(
+    fmodel=fmodel, coeffs=coeffs).get_missing()
+  a, b = spline_fill.common_sets(dmodel_fill)
+  assert a.size() == spline_fill.size() > 0
+  abs_a, abs_b = flex.abs(a.data()), flex.abs(b.data())
+  rel_diff = flex.mean(flex.abs(abs_a - abs_b)) / flex.mean(abs_a)
+  assert rel_diff > 0.01, rel_diff
+
+def exercise_phase_errors_llgi_match_numerical_integration():
+  # Expected |phase error| implied by the LLGI fom, checked against direct
+  # numerical integration of the phase distributions: von Mises
+  # exp(X*cos(phi)) (acentric) and the two-point 0/pi distribution with
+  # P(pi) = exp(-X)/(1+exp(-X)) (centric).
+  import numpy as np
+  fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=41)
+  mch = fmodel.map_calculation_helper_llgi()
+  pher = np.array(fmodel.phase_errors_llgi(mch))
+  x = np.array(mch.x)
+  centric = np.array(mch.f_obs.centric_flags().data())
+  phi = np.linspace(0.0, np.pi, 20001)
+  worst = 0.0
+  for i in np.linspace(0, x.size - 1, 60).astype(int):
+    if(centric[i]):
+      expected = 180.0 * np.exp(-x[i]) / (1.0 + np.exp(-x[i]))
+    else:
+      w = np.exp(x[i] * (np.cos(phi) - 1.0))
+      expected = np.degrees(
+        np.trapezoid(phi * w, phi) / np.trapezoid(w, phi))
+    worst = max(worst, abs(pher[i] - expected))
+  assert worst < 0.05, worst
+
+def exercise_info_llgi_mode_does_not_use_ml_alpha_beta():
+  # In LLGI mode the likelihood-based statistics in fmodel.info() (phase
+  # error, fom, coordinate error, distribution parameters) come from the
+  # LLGI fit; the ML alpha/beta machinery must not run at all.
+  from six.moves import cStringIO as StringIO
+  fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=42)
+  def forbidden(*args, **kwargs):
+    raise AssertionError("ML alpha/beta computed in LLGI mode")
+  for name in ["alpha_beta", "alpha_beta_w", "alpha_beta_t",
+               "figures_of_merit", "phase_errors", "model_error_ml"]:
+    setattr(fmodel, name, forbidden)
+  info = fmodel.info()
+  out = StringIO()
+  info.show_all(out=out)
+  text = out.getvalue()
+  assert "LLGI (E-scale) estimates" in text
+  assert "Acta Cryst. (1995)" not in text
+  assert 0 < info.ml_phase_error < 90
+  assert info.ml_coordinate_error > 0
+  assert approx_equal(info.alpha_work_mean,
+    flex.mean(fmodel.map_calculation_helper_llgi().d.select(
+      fmodel.arrays.work_sel)))
+
+def exercise_info_ml_mode_unchanged():
+  # Ordinary ML fmodel: info() still reports ML alpha/beta/phase error.
+  from six.moves import cStringIO as StringIO
+  fmodel = build_fmodel(n_atoms=50, d_min=2.1, seed=43)
+  info = fmodel.info()
+  out = StringIO()
+  info.show_all(out=out)
+  text = out.getvalue()
+  assert "Acta Cryst. (1995)" in text
+  assert "LLGI (E-scale)" not in text
+  alpha_w, beta_w = fmodel.alpha_beta_w()
+  assert approx_equal(info.alpha_work_mean, flex.mean(alpha_w.data()))
+  assert approx_equal(info.ml_phase_error, flex.mean(fmodel.phase_errors()))
+
+def exercise_outlier_selection_skips_model_based_test_for_llgi():
+  # Model-based outlier rejection (its own Dobs-free sigmaA fit) must not
+  # run under the llgi target; it still runs for ml.
+  from mmtbx.scaling import outlier_rejection
+  llgi_fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=44)
+  ml_fmodel = build_fmodel(n_atoms=50, d_min=2.1, seed=44)
+  calls = []
+  original = outlier_rejection.outlier_manager.model_based_outliers
+  def counting(self, *args, **kwargs):
+    calls.append(1)
+    return original(self, *args, **kwargs)
+  outlier_rejection.outlier_manager.model_based_outliers = counting
+  try:
+    llgi_fmodel.outlier_selection(use_model=True)
+    assert len(calls) == 0, len(calls)
+    ml_fmodel.outlier_selection(use_model=True)
+    assert len(calls) == 1, len(calls)
+  finally:
+    outlier_rejection.outlier_manager.model_based_outliers = original
+
 def exercise_map_coefficients_from_fmodel_ml_target_unaffected():
   # An ordinary ml-target fmodel (no llgi_data at all) must be routed
   # exactly as before -- this is the regression guard for the "avoid
@@ -702,6 +821,11 @@ def exercise():
   exercise_map_coefficients_from_fmodel_dispatches_to_llgi()
   exercise_map_coefficients_from_fmodel_fills_missing_llgi_natively()
   exercise_llgi_fill_missing_matches_hand_computation()
+  exercise_fill_missing_honours_sigmaa_model()
+  exercise_phase_errors_llgi_match_numerical_integration()
+  exercise_info_llgi_mode_does_not_use_ml_alpha_beta()
+  exercise_info_ml_mode_unchanged()
+  exercise_outlier_selection_skips_model_based_test_for_llgi()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()
   exercise_compute_map_coefficients_mixed_dispatch()
   print("OK")

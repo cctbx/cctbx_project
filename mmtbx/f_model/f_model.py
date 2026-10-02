@@ -604,7 +604,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     s2 = result.extreme_wilson_outliers().data()
     s3 = result.beamstop_shadow_outliers().data()
     s4 = None
-    if(n_free > 0 and use_model):
+    # The model-based test fits its own sigmaA with no Dobs, so under the
+    # llgi target it would reject poorly measured reflections that the
+    # LLGI likelihood already down-weights; only the model-independent
+    # tests above apply there.
+    if(n_free > 0 and use_model and self.target_name != "llgi"):
       s4 = result.model_based_outliers(f_model = self.f_model()).data()
       result = s1 & s2 & s3 & s4
     else: result = s1 & s2 & s3
@@ -722,7 +726,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         resn=_sel(llgi_data.resn),
         info=_sel(getattr(llgi_data, "info", None)),
         sigmaa=_sel(getattr(llgi_data, "sigmaa", None)),
-        scatfrac=_sel(getattr(llgi_data, "scatfrac", None)))
+        scatfrac=_sel(getattr(llgi_data, "scatfrac", None)),
+        e_params=getattr(llgi_data, "e_params", None))
     else:
       new_llgi_data = None
     if(self.mask_manager is not None):
@@ -1619,7 +1624,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
               resn=_cs(llgi_data.resn),
               info=_cs(getattr(llgi_data, "info", None)),
               sigmaa=_cs(getattr(llgi_data, "sigmaa", None)),
-              scatfrac=_cs(getattr(llgi_data, "scatfrac", None)))
+              scatfrac=_cs(getattr(llgi_data, "scatfrac", None)),
+              e_params=getattr(llgi_data, "e_params", None))
           self.__init__(
              f_obs                        = f_obs,
              r_free_flags                 = self.r_free_flags().common_set(f_obs),
@@ -1817,8 +1823,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     reading a reflection file). llgi_data is expected to be a group_args
     (or similar) exposing .dobs, .feff, .teps, .resn as miller.array
     objects on the same index set as f_obs(), plus optional .info,
-    .sigmaa, .scatfrac (the latter two attached later by
-    update_llgi_sigmaa_scatfrac(), not required here).
+    .sigmaa, .scatfrac, .e_params (the latter three attached later by
+    update_llgi_sigmaa_scatfrac(), not required here; .e_params is the
+    E-scale phil scope that fit used, kept so later refits -- e.g. the
+    map fill-missing path -- use the same sigmaa_model settings).
     """
     if(llgi_data is not None):
       f_obs = self._f_obs
@@ -1849,7 +1857,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def llgi_data(self):
     return getattr(self, "_llgi_data", None)
 
-  def update_llgi_sigmaa_scatfrac(self, params=None):
+  def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None):
     """ (Re-)fit sigmaA(resolution) and ScatFrac(resolution) against the
     current model (self.f_model(), i.e. bulk-solvent- and scale-corrected
     -- see the f_calc= call below for why raw f_calc() is wrong here) and
@@ -1874,6 +1882,24 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     (R-free/test set only, matching how sigmaA is meant to respond to
     model quality without being validated against the data it was fit
     to).
+
+    e_params: extracted mmtbx.refinement.llgi_e_bulk_solvent.
+    llgi_e_bulk_solvent_params (the SAME phil scope update_llgi_e_bulk_
+    solvent takes), forwarded to estimate_sigmaa_e_then_scatfrac_f's own
+    E-scale Step 1 ONLY when params.estimate_scatfrac_by_likelihood is
+    True (the "E-then-F scheme" branch below) -- None means that Step 1
+    uses llgi_e_bulk_solvent_params' own defaults (sigmaa_model=
+    "spline"), exactly as before this parameter existed. Previously
+    never threaded through AT ALL from the real phenix.refine call site
+    (phenix.refinement.macro_cycle.updatellgisigmaa), so
+    sigmaa_model="d_model" set via refinement.llgi_data.
+    e_scale_bulk_solvent silently had NO EFFECT on the sigmaA curve this
+    method actually attaches to llgi_data (hence on the curve the llgi
+    target itself is evaluated against) -- found directly while
+    comparing the D_model-fitted E-scale curve (genuinely responding to
+    sigmaa_model) against the spline curve this method was attaching
+    regardless (see doc/llgi_target_design.md sec. 6.4 for the full
+    investigation that surfaced this).
     """
     llgi_data = self.llgi_data()
     if(llgi_data is None):
@@ -1901,12 +1927,14 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         dobs = llgi_data.dobs.data(),
         feff = llgi_data.feff.data(),
         resn = llgi_data.resn.data(),
+        e_params = e_params,
         scatfrac_params = params)
       updated = group_args(
         dobs=llgi_data.dobs, feff=llgi_data.feff, teps=llgi_data.teps,
         resn=llgi_data.resn, info=getattr(llgi_data, "info", None),
         sigmaa=f_obs.array(data=result.sigmaa),
-        scatfrac=f_obs.array(data=result.scatfrac))
+        scatfrac=f_obs.array(data=result.scatfrac),
+        e_params=e_params)
       self.set_llgi_data(updated)
       self._llgi_sigmaa_scatfrac_dump(f_obs, llgi_data, result)
       return result
@@ -1946,7 +1974,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       dobs=llgi_data.dobs, feff=llgi_data.feff, teps=llgi_data.teps,
       resn=llgi_data.resn, info=getattr(llgi_data, "info", None),
       sigmaa=f_obs.array(data=result.sigmaa),
-      scatfrac=f_obs.array(data=result.scatfrac))
+      scatfrac=f_obs.array(data=result.scatfrac),
+      e_params=e_params)
     self.set_llgi_data(updated)
     self._llgi_sigmaa_scatfrac_dump(f_obs, llgi_data, result)
     return result
@@ -2009,7 +2038,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           llgi_data.resn.data()[i], fcalc_raw_abs[i], fmask_abs[i],
           kmask0[i]))
 
-  def update_llgi_e_bulk_solvent(self, params=None):
+  def update_llgi_e_bulk_solvent(self, params=None, log=None):
     """ (Re-)fit the bulk-solvent model (k_sol, B_sol) by alternating
     E-scale LLGI-likelihood fits of sigmaA(resolution) (R-free only) and
     the bulk-solvent parameters (working set only) -- see doc/
@@ -2048,6 +2077,20 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     mmtbx.refinement.llgi_e_bulk_solvent.llgi_e_bulk_solvent_params
     extract, or None for defaults.
 
+    log: passed straight through to run_inner_loop's own log= (per-
+    iteration Stage-1/Stage-2 sigmaA-target/bulk-solvent-target/k_sol/
+    b_sol trace); None (the default) means silent, matching this
+    method's behaviour before this parameter existed. Previously never
+    threaded through at all from the real phenix.refine call site
+    (phenix.refinement.macro_cycle.updatellgiebulksolvent), so a real
+    refinement run's log never showed anything beyond the one-line-
+    per-macrocycle summary already in .history -- found to matter
+    directly while investigating a real, if transient and self-
+    correcting, per-bin k_mask anomaly at one macrocycle of a real
+    2G38 fix_bulk_solvent_from_ls=False run (doc/llgi_target_design.md
+    sec. 6.4): the summary line alone gave no visibility into which
+    inner-loop iteration or which Stage actually produced it.
+
     Returns the group_args from run_inner_loop (.sigmaa, .k_sol, .b_sol,
     .n_iterations, .converged, .history), for diagnostics/logging.
     """
@@ -2062,7 +2105,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       dobs   = llgi_data.dobs.data(),
       feff   = llgi_data.feff.data(),
       resn   = llgi_data.resn.data(),
-      params = params)
+      params = params,
+      log    = log)
     return result
 
   def f_obs_scaled(self, include_fom=False):
@@ -3001,8 +3045,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           fmnas.data(), epsilons, d_star_sq)
         e_model_abs = flex.abs(e_model_result.e_model)
         sigma_p = e_model_result.sigma_p
-        eeff = llgi_e_bulk_solvent.build_e_eff(
-          feff.data(), llgi_data.resn.data())
+        # Same Eeff (including any renormalisation) that sigmaA was fit
+        # against -- see llgi_e_bulk_solvent_params.renormalise_e_eff.
+        eeff = llgi_e_bulk_solvent.build_e_eff_from_params(
+          feff.data(), llgi_data.resn.data(), d_star_sq,
+          getattr(llgi_data, "e_params", None))
         self.f_obs = feff
         self.f_model = fmnas
         dobs = llgi_data.dobs.data()
@@ -3039,7 +3086,50 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         fom.set_selected(valid & ~centric_flags, acentric_fom)
         fom.set_selected(valid & centric_flags, centric_fom)
         self.fom = fom
+        # Plain D=Dobs*sigmaA and the Bessel/tanh argument X (0 where the
+        # reflection contributes nothing), for phase_errors_llgi().
+        self.d = d
+        self.x = x.set_selected(~valid, 0.0)
     return result(fmodel=self)
+
+  def phase_errors_llgi(self, map_calculation_helper_llgi=None):
+    """ Expected absolute phase error <|phi - phi_model|> per reflection
+    (degrees), implied by the LLGI (E-scale) figure of merit that the
+    LLGI map coefficients use -- the counterpart of phase_errors(),
+    without the ML alpha/beta fit. Reuses the same Lunin & Skovoroda
+    (1995) formulas: those depend only on p = alpha*Fo*Fm/(eps*beta), and
+    the LLGI fom is I1(X)/I0(X) (acentric) or tanh(X/2) (centric), i.e.
+    the ML forms with p = X/2.
+    """
+    mch = map_calculation_helper_llgi
+    if(mch is None):
+      mch = self.map_calculation_helper_llgi()
+    p = mch.x * 0.5
+    one = flex.double(p.size(), 1.0)
+    return max_lik.fom_and_phase_error(
+      f_obs         = p,
+      f_model       = one,
+      alpha         = one,
+      beta          = one,
+      epsilons      = one,
+      centric_flags = mch.f_obs.centric_flags().data()).phase_error()
+
+  def model_error_llgi(self):
+    """ Coordinate error (A) from the LLGI sigmaA curve attached to
+    llgi_data -- the counterpart of model_error_ml(), using the same
+    through-the-origin fit of ln(sigmaA) = -pi^3*omega^2*ss, but with
+    the LLGI sigmaA (model error only; measurement error is carried
+    separately by Dobs) in place of the ML alpha.
+    """
+    sigmaa = self.llgi_data().sigmaa.data()
+    sel = sigmaa > 0
+    sa = sigmaa.select(sel)
+    sa = sa.set_selected(sa > 1., 1.)
+    aj = -math.pi**3 * self.ss.select(sel)
+    bj = flex.log(sa)
+    den = flex.sum(aj*aj)
+    if(den == 0): return None
+    return math.sqrt(flex.sum(aj*bj) / den)
 
   def f_model_phases_as_hl_coefficients(self, map_calculation_helper,
         k_blur=None, b_blur=None):

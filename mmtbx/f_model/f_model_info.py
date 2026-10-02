@@ -148,8 +148,30 @@ class info(object):
     self.mask_solvent_radius = mp.solvent_radius
     self.mask_shrink_radius = mp.shrink_truncation_radius
     self.mask_grid_step = mp.step
-    self.ml_phase_error = flex.mean(fmodel.phase_errors())
-    self.ml_coordinate_error = fmodel.model_error_ml()
+    # In LLGI mode the likelihood-based statistics (phase error, FOM,
+    # coordinate error, distribution parameters) come from the LLGI fit
+    # itself; ML alpha/beta are neither needed nor computed.
+    if(self._r_factors_are_llgi):
+      mch = fmodel.map_calculation_helper_llgi()
+      pher = fmodel.phase_errors_llgi(mch)
+      if(fmodel.r_free_flags().data().count(True) > 0):
+        work_sel, free_sel = fmodel.arrays.work_sel, fmodel.arrays.free_sel
+      else:
+        work_sel = free_sel = flex.bool(pher.size(), True)
+      self.ml_phase_error = flex.mean(pher)
+      self.ml_coordinate_error = fmodel.model_error_llgi()
+      self.alpha_w = mch.f_obs.array(data=mch.d).select(work_sel)
+      self.beta_w = mch.beta.select(work_sel)
+      self.fom = mch.fom.select(work_sel)
+      self.pher_w = pher.select(work_sel)
+      self.pher_t = pher.select(free_sel)
+    else:
+      self.ml_phase_error = flex.mean(fmodel.phase_errors())
+      self.ml_coordinate_error = fmodel.model_error_ml()
+      self.alpha_w, self.beta_w = fmodel.alpha_beta_w()
+      self.fom = fmodel.figures_of_merit_work()
+      self.pher_w = fmodel.phase_errors_work()
+      self.pher_t = fmodel.phase_errors_test()
     self.d_max, self.d_min = fmodel.f_obs().resolution_range()
     self.completeness_in_range = fmodel.f_obs().completeness(d_max = self.d_max)
     self.completeness_d_min_inf = fmodel.f_obs().completeness()
@@ -158,18 +180,14 @@ class info(object):
     self.min_f_obs_over_sigma = fmodel.f_obs().min_f_over_sigma(
       return_none_if_zero_sigmas=True)
     self.sf_algorithm = fmodel.sfg_params.algorithm
-    self.alpha_w, self.beta_w = fmodel.alpha_beta_w()
     self.alpha_work_min, self.alpha_work_max, self.alpha_work_mean = \
       self.alpha_w.data().min_max_mean().as_tuple()
     self.beta_work_min, self.beta_work_max, self.beta_work_mean = \
       self.beta_w.data().min_max_mean().as_tuple()
-    self.fom = fmodel.figures_of_merit_work()
     self.fom_work_min, self.fom_work_max, self.fom_work_mean = \
       self.fom.min_max_mean().as_tuple()
-    self.pher_w = fmodel.phase_errors_work()
     self.pher_work_min, self.pher_work_max, self.pher_work_mean = \
       self.pher_w.min_max_mean().as_tuple()
-    self.pher_t = fmodel.phase_errors_test()
     self.pher_free_min, self.pher_free_max, self.pher_free_mean = \
       self.pher_t.min_max_mean().as_tuple()
     self.bins = self.statistics_in_resolution_bins(
@@ -220,7 +238,6 @@ class info(object):
       fc_t = fmodel.f_model_scaled_with_k1_t()
       fo_w = fmodel.f_obs_work()
       fc_w = fmodel.f_model_scaled_with_k1_w()
-    alpha_t, beta_t = fmodel.alpha_beta_t()
     if (n_bins is None) or (n_bins < 1):
       n_bins = fmodel.determine_n_bins(
         free_reflections_per_bin=free_reflections_per_bin,
@@ -231,9 +248,7 @@ class info(object):
     fo_w.use_binning_of(fo_t)
     fc_w.use_binning_of(fo_t)
     self.alpha_w.use_binning_of(fo_t)
-    alpha_t.use_binning_of(fo_t)
     self.beta_w.use_binning_of(fo_t)
-    beta_t.use_binning_of(fo_t)
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
       sel_w = fo_w.binner().selection(i_bin)
@@ -530,10 +545,18 @@ class info(object):
   def show_fom_pher_alpha_beta_in_bins(self, out = None):
     if(out is None): out = sys.stdout
     print("|"+"-"*77+"|", file=out)
-    print("|R-free likelihood based estimates for figures of merit, absolute phase error,|", file=out)
-    print("|and distribution parameters alpha and beta (Acta Cryst. (1995). A51, 880-887)|", file=out)
-    print("|"+" "*77+"|", file=out)
-    print("| Bin     Resolution      No. Refl.   FOM  Phase Scale    Alpha        Beta   |", file=out)
+    if(self._r_factors_are_llgi):
+      a_name, b_name = "D", "V"
+      print("|LLGI (E-scale) estimates for figures of merit, absolute phase error, and     |", file=out)
+      print("|distribution parameters D = Dobs*sigmaA and V = TEPS - D^2                   |", file=out)
+      print("|"+" "*77+"|", file=out)
+      print("| Bin     Resolution      No. Refl.   FOM  Phase Scale        D           V   |", file=out)
+    else:
+      a_name, b_name = "alpha", "beta"
+      print("|R-free likelihood based estimates for figures of merit, absolute phase error,|", file=out)
+      print("|and distribution parameters alpha and beta (Acta Cryst. (1995). A51, 880-887)|", file=out)
+      print("|"+" "*77+"|", file=out)
+      print("| Bin     Resolution      No. Refl.   FOM  Phase Scale    Alpha        Beta   |", file=out)
     print("|  #        range        work  test        error factor                       |", file=out)
     for bin in self.bins:
       print("|%3d: %-17s%6d%6d%s%s%s%s%s|" % (
@@ -546,11 +569,11 @@ class info(object):
         format_value("%7.2f",  bin.scale_k1_work),
         format_value("%9.2f",  bin.alpha_work),
         format_value("%14.2f", bin.beta_work)), file=out)
-    print("|alpha:            min =%s max =%s mean =%s|"%(
+    print("|%-18smin =%s max =%s mean =%s|"%(a_name+":",
       format_value("%12.2f", self.alpha_work_min),
       format_value("%16.2f", self.alpha_work_max),
       format_value("%13.2f", self.alpha_work_mean)), file=out)
-    print("|beta:             min =%s max =%s mean =%s|"%(
+    print("|%-18smin =%s max =%s mean =%s|"%(b_name+":",
       format_value("%12.2f", self.beta_work_min),
       format_value("%16.2f", self.beta_work_max),
       format_value("%13.2f", self.beta_work_mean)), file=out)
