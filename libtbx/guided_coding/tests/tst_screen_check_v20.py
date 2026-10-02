@@ -186,6 +186,9 @@ class SkillRegistrationChecks(unittest.TestCase):
     def test_fresh_registration_and_second_run_refused_without_source_change(self):
         first = self.register()
         self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("/gc setup", first.stdout)
+        self.assertIn("Registration has not adopted a project", first.stdout)
+        self.assertFalse((self.source / ".claude").exists())
         link = self.config / "skills" / "guided_coding"
         self.assertTrue(link.is_symlink())
         self.assertEqual(link.resolve(), self.source.resolve())

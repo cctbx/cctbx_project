@@ -219,6 +219,8 @@ def register_skill(source):
     skills.mkdir(parents=True, exist_ok=True)
     os.symlink(source.absolute(), destination, target_is_directory=True)
     print(f"REGISTERED {destination} -> {source.absolute()}")
+    print("NEXT: In the project you choose, use /gc setup to recover saved settings "
+          "and configure relevant work. Registration has not adopted a project.")
 
 
 def blocks(kind, lines):

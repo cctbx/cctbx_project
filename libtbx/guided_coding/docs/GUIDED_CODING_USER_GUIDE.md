@@ -1,4 +1,4 @@
-# GuidedCoding user guide — opt in with `/gc` (r10 rev13 candidate)
+# GuidedCoding user guide — opt in with `/gc` (r10 rev16 candidate)
 
 ## The short version
 
@@ -11,7 +11,7 @@ After the candidate has been reviewed and integrated into your actual
 the path with that checkout's real absolute path:
 
 ```text
-Please set up GuidedCoding from /absolute/path/to/cctbx_project/libtbx/guided_coding for this Mac. Read docs/GUIDED_CODING_USER_GUIDE.md there. Verify the source and release, run the Claude Code minimum-version check, inspect any existing personal skill, and register the one central skill link only if those checks pass and it is safe. Show what you changed. Do not connect to servers, change permission settings, or start a coding task.
+Please set up GuidedCoding from /absolute/path/to/cctbx_project/libtbx/guided_coding for this machine. Read docs/GUIDED_CODING_USER_GUIDE.md there. Verify the source and release, run the Claude Code minimum-version check, inspect any existing personal skill, and register the one central skill link only if those checks pass and it is safe. Show what you changed, then offer /gc setup for the project I choose, recovering any saved settings first. Do not connect to servers, change permission settings, or start a coding task.
 ```
 
 This is a normal Claude Code request, **not** a built-in installer. The
@@ -26,8 +26,9 @@ not list this personal skill even though `/gc` worked.
 
 In a project you want to use with GuidedCoding, start a new conversation
 in that project's folder and enter `/gc <task>`. If its contract adoption
-or method is missing, the skill proposes the missing setup for your
-decision before guided work. You can use `/gc setup` first if you want to
+or method is missing, or the requested work needs incomplete setup, the
+skill walks through relevant gaps using saved values as proposed defaults
+before dependent work. You can use `/gc setup` first if you want to
 prepare the project without starting a task. An ordinary new
 conversation without `/gc` remains ordinary.
 
@@ -35,20 +36,27 @@ conversation without `/gc` remains ordinary.
 
 The archive contains paths beginning with `libtbx/guided_coding/`. It has
 **no enclosing candidate-named directory**. To inspect it safely, create
-an empty staging folder of your choice and extract there:
+a new staging folder of your choice and extract there. First compare the
+archive SHA-256 with the independently supplied review message using trusted
+tools; do not extract a rejected archive. Replace the paths and run the whole
+Bash block below. An existing staging folder is refused:
 
 ```bash
-mkdir -p /path/to/empty-gc-review
-tar -xzf /path/to/GuidedCoding_2_0_opt_in_r10_candidate_rev13.tgz -C /path/to/empty-gc-review
-cd /path/to/empty-gc-review/libtbx/guided_coding
-shasum -a 256 -c SOURCE_MANIFEST.sha256
-python3 -I -B payload/tools/screen_check.py verify-source .
-cat payload/RELEASE
+mkdir /path/to/empty-gc-review &&
+tar -xzf /path/to/GuidedCoding_2_0_opt_in_r10_candidate_rev16_f1-correction-20261001T172033Z.tgz -C /path/to/empty-gc-review &&
+cd /path/to/empty-gc-review/libtbx/guided_coding &&
+shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
+cat payload/RELEASE &&
+grep -Fq 'r10 rev16 candidate' payload/RELEASE
 ```
 
+A failed creation, extraction, directory change or check returns nonzero
+and skips all later commands in the block. Stop dependent work if it fails;
+do not append preparation or registration as unguarded lines.
 Every listed file should say `OK`, and the complete-source check should
 print `VERIFIED complete source`. The release line must identify **r10
-rev13**, rather than r08, r09, rev11, rev12, or another copy. The manifest checks the
+rev16**. The supplied rev14 base and failed rev15 are historical copies. The manifest checks the
 bytes listed **by that manifest**; the second check refuses an extra
 file or link in the effective source. On an installation whose Python
 files were precompiled (for example by an installer's
@@ -77,18 +85,18 @@ it never overwrites or creates a nested link.
 ```bash
 cd /path/to/cctbx_project/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
-python3 -I -B payload/tools/screen_check.py verify-source . &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev13 candidate' payload/RELEASE &&
-python3 -I -B payload/tools/screen_check.py check-claude-version &&
-python3 -I -B payload/tools/screen_check.py register-skill .
+grep -Fq 'r10 rev16 candidate' payload/RELEASE &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py check-claude-version &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py register-skill .
 ```
 
 The `&&` sequence does not create the link if any check fails. Confirm its
 four checks: listed files say `OK`, the complete inventory passes, the
-release reads `r10 rev13`, and the CLI
-check says `VERIFIED Claude Code CLI` for version 2.1.281 or newer. Your
-2.1.284 meets that minimum. A missing, unreadable or older CLI stops
+release reads `r10 rev16`, and the CLI
+check says `VERIFIED Claude Code CLI` for version 2.1.281 or newer. The historically reported
+2.1.284 meets that minimum; check the current executable rather than assuming it. A missing, unreadable or older CLI stops
 registration; run `claude update` yourself and restart before retrying.
 The registration helper independently rechecks the complete source and
 CLI version before creating the link at the exact destination. A second
@@ -114,7 +122,11 @@ those projects.
 If the link already exists, inspect its type and destination. Leave a
 real directory or a link to another package alone; do not overwrite or
 rename it as an automatic upgrade. Show the user exactly what would
-change before migrating an older installation.
+change before migrating an older installation. After successful registration,
+offer `/gc setup` for the project the user chooses; the registration helper
+prints this next step but performs no project adoption or project setup.
+If no target has been named, ask for the project directory rather than
+assuming the central procedure checkout is the target.
 
 ### Retire old automatic startup instructions
 
@@ -124,7 +136,10 @@ instruction for a line that says to read `.claude/WORKER.md` or to treat
 all coding tasks as GuidedCoding. Replace only that startup instruction
 with a neutral note such as “Use GuidedCoding only when I type `/gc`.”
 Preserve unrelated build paths, machine facts, existing approvals, and
-records. Verify the central source and record any reviewed profile edit
+records. Follow SETUP.md before retiring old profiles: map each setting,
+restriction and pending item into the retained or current method and verify
+its saved value and source. Stale verification never justifies erasing a
+known value; keep it marked as needing verification. Verify the central source and record any reviewed profile edit
 separately. Historical `.claude/` records can remain. Remove an older
 procedure copy only after checking its records and review references.
 
@@ -166,39 +181,85 @@ If the project relies on `AGENTS.md`, do not blindly create
 skip `AGENTS.md`. Inspect the active instruction setting and propose a
 location that preserves the existing instructions before saving anything.
 
-### What `/gc setup` asks about
+### What `/gc setup` does
 
-The command reads existing project instructions first. It separates
-facts about this checkout from the shared GuidedCoding contract, proposes
-the smallest missing method, and shows the exact project-authority text
-for your decision. It asks only for information it cannot verify. The
-following are **options**, not required fields in every project:
+Setup follows the central [setup workflow](../payload/SETUP.md). The Guide
+first finds the current method and its referenced settings, handoffs and
+migration backups. It uses recovered values as proposed defaults and tells
+you where they came from. It asks only for missing choices or facts it
+cannot inspect, in small steps appropriate to this project.
 
-| Project fact | When to record it | Example or question |
-| --- | --- | --- |
-| Target directory and authority | Always | Which checkout is the target, and which instruction file is actually loaded? Is adoption personal or shared? |
-| Local environment, build and tests | If applicable | Exact setup/build/test commands, working directory and expected runtime; do not guess command syntax. |
-| `t96` | Only if this project's method uses it | What exact command runs, where, and what does it validate? |
-| `anaconda.lbl.gov` | Only if this project uses that server | Login alias, installation and scratch paths, lock rule, and whether a task may use it. |
-| `cci-gpu-00.lbl.gov` | Only if this project uses that server | Same questions independently; do not assume anaconda's paths or approvals. |
-| Other machines or non-PHENIX tools | Only if relevant | The actual CI, container, build system or test command for this project. |
-| Coordination and publication | Always where applicable | Existing lock/branch/review and publication process; preserve any stronger project rule. |
+The package's [general defaults](../payload/SETUP_DEFAULTS.md) contain
+project-neutral proposals, not machine-specific settings or permission.
+You may attach a separate profile supplied by your project, for example a
+PHENIX setup profile, and ask the Guide to use it as candidate defaults.
+The Guide records its source, adapts account/path choices to your own setup,
+and establishes your own permissions and resource limits. Such a profile
+is not loaded for unrelated projects and does not supersede your current
+project method. Relevant values and provenance are saved in your method so
+later sessions do not depend on retaining the attachment.
 
-Host names and commands belong to the **project's method**, not the
-central skill. Recording a server does not grant permission to connect,
-change its installation or publish. Do not put passwords, tokens or SSH
-keys in the method. Setup does not run `t96`, build, tests or remote
-commands. If a command or path is unknown, mark it unknown and ask before
-the first task that needs it. Do not invent a default for non-PHENIX
-projects.
+The same workflow is reached when a guided task needs incomplete setup,
+even in an already adopted project. A routine startup reads the saved
+method and checks only what the requested operation needs; it does not
+repeat the interview. A different machine, account, checkout or execution
+shell may require checking the affected entries again. `/gc status` shows
+the method location and unresolved setup by activity without changing it.
 
-For a non-PHENIX tree, start Claude Code in that tree and use `/gc setup`
-the same way. Its method may name `pytest`, `make`, a web build, CI or no
-remote server at all. The procedure source still lives at the central
-`cctbx_project` path and the records for a guided change live in the
-**target** tree. The target need not import `libtbx` or have a `.claude`
-procedure copy. A repository without an agreed project method can use
-ordinary Claude Code until its method is settled.
+| Area | What the Guide establishes |
+| --- | --- |
+| Project and instructions | Target checkout, related repositories and scope, actual loaded authority, canonical method path, personal versus shared adoption |
+| Working directories | Source, permitted worktree/scratch locations, durable records/results, and remote working directories only when needed |
+| Local environment and commands | Shell, executable/PATH or activation setup, exact build/test commands, working directory, import target and known runtime |
+| Optional CI or remote work | Only relevant services/hosts, access method, installation/workspace, commands, log retrieval, approved limits and sharing/lock rules |
+| Actions and restrictions | Existing decisions about verification, tests, installation changes, integration and publication; what still needs a decision |
+
+For a non-PHENIX project there are no default PHENIX commands or servers.
+If it needs only local tests, remote work is not applicable or is deferred
+by choice. A method using a name such as `t96` keeps the name and its actual
+definition; the Guide inspects that definition before asking you to recall
+it. Every host has its own settings: a recorded hardware count is not an
+approved concurrency cap, and one server's paths do not configure another.
+
+Setup distinguishes recorded values, verified facts, unknowns, conflicts,
+deferred work, and things that are not applicable. A saved path stays in the
+method when it needs verification. It does not become "unknown". A tool
+absent from bash's PATH may already be installed and configured in csh;
+the Guide reads relevant definitions and verifies the intended execution
+environment. It does not bypass hooks or change global startup files to
+work around a lookup failure.
+
+Project-specific settings stay in the existing project method, or in
+`.claude/PROJECT_METHOD.md` when that is the chosen new location. Existing
+shared defaults may be referenced with explicit project overrides. Setup
+does not create a new global profile, copy procedure prompts into the
+project, or change which instruction files load accidentally. The optional
+[method template](../payload/templates/PROJECT_METHOD.md) is guidance, not
+a form every project must fill out.
+
+The Guide shows the complete proposed files and any adoption/pointer change
+before saving unless that exact bounded edit is already authorized. It then
+writes the approved texts and the prior bytes into a setup record and reads
+them back before editing anything, saves only the authorized changes, checks
+readback and the method pointer, and gives you their exact locations. It
+records sources, decisions and unresolved items so the next Guide can
+continue. During migration, every old setting/restriction is retained,
+mapped into the current method, or explicitly retired by your decision;
+old profiles and records are not deleted by setup.
+
+Default setup is local read-only discovery and an authorized configuration
+save. It runs no build or suite, opens no server connection, and starts no
+coding task. If you request further verification or setup actions, the
+Guide reuses applicable authorization or asks for the particular action
+still needing it. No credentials are stored in the method. Preparing tests,
+running them and pushing are distinct: a no-push request does not prevent
+configuration discovery, and a historical publication-only test rule still
+needs your decision before a test-only run outside that rule.
+
+Setup ends by saying what is configured, what remains deferred or needs
+verification, and the smallest next step. Missing optional remote setup
+does not prevent independent authorized local work. A project may continue
+ordinary Claude Code work without adopting GuidedCoding.
 
 ## A guided task
 
@@ -218,7 +279,8 @@ to your machine and is unavailable to cloud sessions that cannot read it.
 
 The first task invocation checks the central source and the target's
 contract adoption and project method before reading its Guide and Worker
-as controlling. It then records the release and source hash in the current
+as controlling. It then checks setup for the requested operation, recovering
+saved values and walking through any relevant gaps using SETUP.md. It then records the release and source hash in the current
 project. The first guided change in a repository receives a short welcome.
 `/gc` alone introduces the method and waits for your task; it does not
 start a code change. You can ask “How does GuidedCoding work?” at any time
@@ -229,8 +291,8 @@ Other control requests:
 | Command | Effect |
 | --- | --- |
 | `/gc help` | Explain the commands and opt-in behavior. |
-| `/gc status` | Read-only check of the central release, personal link and this project's adoption. |
-| `/gc setup` | Prepare and, after your adoption decision, save this project's method and declaration. |
+| `/gc status` | Read-only check of the central release, personal link, project adoption, method location and unresolved setup for relevant activities. |
+| `/gc setup` | Recover defaults, walk through relevant environment/directory setup, and save authorized method/adoption changes. |
 | `/gc uninstall` | Remove only the personal `guided_coding` symlink if it points at this exact central copy. The central source and project records stay. |
 
 If you are uninstalling without a working `/gc`, ask ordinary Claude Code

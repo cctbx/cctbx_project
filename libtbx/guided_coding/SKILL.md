@@ -1,6 +1,6 @@
 ---
 name: gc
-description: Run GuidedCoding for the user's explicitly chosen coding task.
+description: Run GuidedCoding for an explicitly chosen coding task, or guide project setup and recovery with /gc setup.
 disable-model-invocation: true
 ---
 
@@ -17,16 +17,25 @@ repository is the repository containing that session directory when this
 command was invoked**, unless the user explicitly names another target. Never treat the
 procedure repository as the target merely because it holds this skill.
 
-Before guided work, from the canonical procedure root run
-`shasum -a 256 -c SOURCE_MANIFEST.sha256`, then run
-`python3 -I -B payload/tools/screen_check.py verify-source .`.
-The first command checks the listed checker file before it runs; the
-second checks the **complete source inventory** and rejects unlisted files,
+Before guided work, replace the path below with the canonical procedure
+root and run the whole guarded Bash block. Do not split its dependent
+commands into separate shell calls or continue after a failed block.
+
+```bash
+cd /absolute/path/to/libtbx/guided_coding &&
+shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
+cat payload/RELEASE &&
+grep -Fq 'r10 rev16 candidate' payload/RELEASE
+```
+After changing directory, the listed-hash check must succeed before any
+checker code runs; the checker then checks the **complete source inventory** and rejects unlisted files,
 links and changed bytes. The isolated Python invocation prevents an
 unlisted module in `payload/tools/` from loading during verification.
-If either fails, stop. Then read `payload/RELEASE` and
+A directory, checksum, inventory or release failure returns nonzero and
+stops all dependent work. Only after this block succeeds, read
 `payload/DEVELOPER_GUIDE_CONTRACT.md`.
-This candidate requires the release label to say `r10 rev13`; if it does not,
+This candidate requires the release label to say `r10 rev16`; if it does not,
 stop and report the different version before starting a guided change.
 
 ## Setup and control requests
@@ -35,7 +44,10 @@ Treat exactly `help`, `status`, `setup`, `setup <target directory>`, and
 `uninstall` as control requests rather than coding tasks. Read
 `docs/GUIDED_CODING_USER_GUIDE.md` for their exact scope. `help` gives a
 short command list; `status` reads the central identity, personal link and
-target adoption without changing anything. Neither needs project adoption.
+target adoption and the location/readiness of its declared method without
+changing anything. Report missing, conflicting or deferred settings by
+the operation they affect; do not turn `status` into setup. Neither needs
+project adoption.
 Before `setup` or an ordinary guided task, run
 `python3 -I -B payload/tools/screen_check.py check-claude-version` from the
 verified central root. If it fails, stop before writing project adoption or
@@ -46,22 +58,30 @@ separate live check. `help` and `status` are read-only; `uninstall` may
 remove only the verified personal link. All three remain available when
 the CLI check fails.
 
-For `setup`, inspect the target's applicable project instructions and
-existing method first, including `AGENTS.md` and Claude Code's instruction
-loading setting. Do not silently create `CLAUDE.local.md` in a project
-that relies on `AGENTS.md`; under the default setting this can stop
-Claude Code loading `AGENTS.md`. Propose a short project-specific method
-covering the actual checkout, local build and test commands, coordination and
-publication rules. Include optional server names, remote installation and
-lock paths, and commands such as `t96` only when verified and relevant to
-that target. Do not infer their syntax or assume a PHENIX environment in an
-unrelated project. Ask for only the facts inspection cannot establish.
-Show the exact proposed project method and contract declaration for the
-Developer's project-adoption decision. On authorization, update only the
-chosen current project authority and method, preserving unrelated
-instructions; verify what was saved. `setup` does not run a build, contact
-a server, grant tool permissions or begin the coding task. If adoption is
-declined, leave the project unchanged and offer ordinary assistance.
+For `setup`, read and follow `payload/SETUP.md` and its general defaults
+in `payload/SETUP_DEFAULTS.md`; use any user-supplied domain profile only
+as relevant proposed defaults. Resolve an explicitly
+named target before discovery. Recover settings from the current method
+and referenced profiles/records/backups before asking the Developer to
+remember them. Walk through only relevant gaps, including working
+directories and the actual shell/tool environment. Keep recovered values
+with their source and verification state; preserve existing decisions and
+unresolved conflicts. Use `payload/templates/PROJECT_METHOD.md` only as a
+starting structure when there is no suitable existing method.
+
+Show the exact method and any contract declaration for the Developer's
+decision, reusing an already applicable authorization for a bounded edit.
+Setup saves follow the record, verify, then apply order in `payload/SETUP.md`
+section 5: recovery records are written and read back before any method or
+authority edit. Save to the existing designated method or the chosen
+target-local path, preserve unrelated instructions and verify the saved
+values and pointer.
+Inspect `AGENTS.md` and the instruction-loading setting before choosing an
+authority; do not blindly create `CLAUDE.local.md`. Default setup is local
+read-only discovery and an authorized configuration save. Any remote check
+or execution needs its own applicable authorization as described in
+SETUP.md. Setup alone does not start a coding task. If adoption is declined,
+leave the project unchanged and offer ordinary assistance.
 
 For `uninstall`, inspect the personal `skills/guided_coding` entry under
 `CLAUDE_CONFIG_DIR` if set, otherwise `~/.claude`. Remove **only** that
@@ -87,7 +107,9 @@ skill link, `/gc` invocation, old records, a bundled contract, or this
 task's approval alone does not establish project adoption. If the
 declaration, project method or current authority is absent or uncertain,
 pause **before** claiming that Guide and Worker govern the target or
-making a guided change. Show the Developer a small proposed adoption
+making a guided change. Use `payload/SETUP.md` to locate/recover a method
+or walk through the relevant missing setup, rather than only asking the
+Developer for facts or a filename. Show a small proposed adoption
 declaration naming the exact contract identity and that project's
 specific method; obtain the Developer's project adoption decision.
 Only on explicit authorization, record it in the current project
@@ -98,6 +120,13 @@ offer ordinary assistance without claiming GuidedCoding controls it.
 Once adoption is verified, read `payload/ROLES.md`, `payload/GUIDE.md`
 and `payload/WORKER.md`. The Guide establishes scope and roles; the Worker
 follows the bounded change procedure.
+Check the saved method against the requested operation even if adoption
+already exists. For missing or conflicting settings, changed machine/shell
+or checkout, or a failed environment lookup, follow `payload/SETUP.md` for
+only the affected capability. Reuse settled setup; remote work marked
+deferred or not applicable does not block independent local work. Do not
+equate a no-push instruction with a ban on configuration discovery, or
+with permission for a server run.
 The procedure is read-only for the task. Recheck both the listed hashes
 and the complete inventory before integration, publication, or running a
 central tool. Use `python3 -I -B` for later central tool invocations so
@@ -118,8 +147,9 @@ the target repository. Do not overwrite its existing records, settings,
 profile, permissions, or other project instructions. Check its existing
 approval and any revocation before consequential actions.
 
-If there is no task after `/gc`, give the first-use introduction and ask for
-the task without starting a change; do not demand project adoption for an
+If there is no task after `/gc`, give the first-use introduction, mention
+`/gc setup` for choosing a project and recovering/configuring its working
+environment, and ask for the task without starting a change; do not demand project adoption for an
 introduction or explanation. If asked how GuidedCoding works, answer
 without opening a change. A normal prompt in a fresh conversation does not
 invoke this manual-only skill. The instructions remain in *this* conversation

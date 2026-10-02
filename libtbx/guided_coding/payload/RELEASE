@@ -1,1 +1,1 @@
-guided_coding 2.0 pilot r10 rev13 candidate (one central opt-in /gc skill; /skills guidance from the Mac trial; installer-precompiled bytecode tolerated, never loaded; 2026-09-29)
+guided_coding 2.0 pilot r10 rev16 candidate (enumcheck-20261002T194333Z; rev16 lineage: f1-correction-20261001T172033Z -> checked-save-20261002T172242Z -> failprop-20261002T181627Z -> this; checked setup save with explicit failure propagation and checked enumeration; intended-client validation and outside confirmation pending; 2026-10-02)

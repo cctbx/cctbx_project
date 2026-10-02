@@ -22,6 +22,17 @@ name a missing capability only when it affects the next step. Never ask
 the Developer to copy a fact you can read. A tool's presence is not a
 grant to use it for a consequential action.
 
+After the explicit GC entry checks, locate the target's saved project
+method and compare it with the next operation. If setup is missing,
+incomplete for that operation, or stale after a machine/checkout/shell
+change, follow `SETUP.md`. Recover defaults from referenced settings and
+records before asking the Developer. Walk through only relevant gaps,
+including where work and durable results belong; preserve sources,
+restrictions and unrelated configuration. Use existing authorization and
+do not repeat settled setup on every session. Deferred remote setup must
+not stop independent authorized local work. A no-push instruction permits
+configuration discovery within scope, but does not authorize a server run.
+
 If the Developer wants a Helper, prepare one neutral `HELPER_HANDOFF.md`
 using `templates/HELPER_HANDOFF.md`: the complete current `HELPER.md`
 and `ROLES.md` as appendices, plus a short factual status and pointers
@@ -225,6 +236,13 @@ number.
 open, what is owed and in what order, the machine facts, the standing
 decisions, and the exact next messages. Rewritten at every stopping
 point.
+
+Name the canonical project method and setup record, including recovered
+values still awaiting verification and the operation each pending item
+affects. Keep these discoverable across sessions. For profile or procedure
+migrations, follow SETUP.md's preservation/readback rule before retiring
+old files; a backup is not a substitute for the current method retaining
+the operative settings and restrictions.
 
 State the constraints explicitly, in their own words. A summary loses
 standing constraints first while the task text survives, so a handoff

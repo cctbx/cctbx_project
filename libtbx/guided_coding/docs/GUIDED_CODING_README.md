@@ -1,6 +1,22 @@
-# GuidedCoding — central opt-in r10 rev13 candidate
+# GuidedCoding — central opt-in r10 rev16 candidate
 
-**Status (2026-09-29):** r10 rev13 lets the complete-source check accept the
+**Status (2026-10-01):** r10 rev16 is a development handoff for the
+selected setup-and-recovery release, built from the exact supplied rev14.
+It retains rev14's shared setup workflow, general proposed defaults, optional
+method template, registration/startup cues and migration preservation.
+Optional domain profiles remain separately supplied data. The contract,
+manual-only entry and existing candidate-testing route are retained.
+The accompanying builder-b packet distinguishes package/fixture checks and
+procedural simulations from actual Claude Code instruction loading.
+Actual-client setup, outside review and live reconciliation are pending.
+Acceptance, integration, activation and publication remain Developer decisions.
+
+**Historical status (2026-09-30):** rev14 introduced those setup features
+as an unreviewed development candidate. Rev16 skips the failed rev15; it
+adds no parallel-job, reservation, installation-restoration or second-build
+machinery. Neither the rev14 nor rev15 historical record approves rev16.
+
+**Historical status (2026-09-29):** r10 rev13 lets the complete-source check accept the
 bytecode an installer's precompile step writes beside listed modules (the
 tools never load it) and keeps refusing any other unlisted code. r10 rev12
 changed only the `/skills` guidance, to
@@ -39,19 +55,24 @@ Register it once on your machine with a symlink at
 `~/.claude/skills/guided_coding`. In any repository, start a guided task
 with `/gc <task>`; the same personal skill should also answer to
 `/guided_coding`. An ordinary Claude Code request can register that one
-link from a specified reviewed source path. `/gc setup` prepares each
-target's method and adoption for the Developer's decision; `/gc status`,
+link from a specified reviewed source path. `/gc setup` recovers existing settings and prepares each
+target's relevant environment, working locations, method and adoption for
+the Developer's decision; `/gc status`,
 `/gc help`, and `/gc uninstall` provide small control requests. There is
-no new libtbx dispatcher or per-project procedure install. Build commands,
-`t96`, `anaconda.lbl.gov`, and `cci-gpu-00.lbl.gov` are optional project
-facts, not universal global installer options.
+no new libtbx dispatcher or per-project procedure install. General proposed defaults live in `payload/SETUP_DEFAULTS.md`;
+`payload/SETUP.md` explains how to recover and adapt them. A separate optional
+domain profile can supply project-specific command and server hints without
+transferring its owner's permissions. The package contains no PHENIX setup
+profile or universal remote-server requirement.
 A normal prompt in a fresh conversation stays ordinary
 **once old profiles that turn GuidedCoding on for every task are retired**.
 Claude Code does not automatically invoke this manual-only skill.
 Before guided work in a project, its current authority must explicitly
 adopt the exact contract version and identity and name its own project
 method. The skill pauses and asks for that project decision if absent;
-the small declaration is not a copy of the procedure. An ordinary task
+the small declaration is not a copy of the procedure. Even an adopted
+project receives a brief readiness check for the requested operation and
+guided recovery of missing settings. An ordinary task
 does not require adoption.
 
 The procedure still shows a plan, tested result with complete diff and exact

@@ -21,6 +21,16 @@ give a short answer: plan, tested change and complete diff, integrate,
 then a separate publication choice. Do not start a change merely to
 answer that question.
 
+Read the designated project method for the current host, checkout, shell,
+working locations and operation. If a needed setting is missing or
+conflicting, or an environment lookup fails, use central `SETUP.md` through
+the Guide (or directly with the Developer for a separate Worker session).
+Inspect referenced defaults before asking for facts again. Do not adopt a
+historical permission or bypass hooks because a tool is missing from this
+shell's PATH. Hold only dependent work while authorized discovery proceeds;
+deferred remote setup does not prevent independent local work. A Worker
+does not rewrite the project method or profile on its own authority.
+
 On the first GuidedCoding change in a target repository (no local
 `.claude/records/INTRO_SHOWN` and no completed change record), say once:
 “Welcome to GuidedCoding. Tell me what you want fixed. I will show a

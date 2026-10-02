@@ -1,6 +1,13 @@
-# GuidedCoding r10 rev13 candidate verification
+# GuidedCoding r10 rev16 candidate verification
 
-**Current status (2026-09-29):** a proposed kit, committed locally in the
+**Current status (2026-10-01):** r10 rev16 development handoff from the
+verified supplied rev14, skipping failed rev15. The Rev16 section separates
+the retained setup behavior, bounded local checks and procedural simulations
+from the actual-client setup gate, which remains pending. Previous release
+observations establish no rev16 result. Live reconciliation, outside review
+and Developer acceptance/integration/activation/publication are not complete.
+
+**Historical status (2026-09-29):** a proposed kit, committed locally in the
 Developer's `cctbx_project` and trialled on the intended Mac (Rev12
 section below); not published and not approved for Worker use.
 
@@ -11,29 +18,34 @@ Worker use."
 ## Release and source checks
 
 From the canonical `libtbx/guided_coding` root, first compare the downloaded
-archive with the independently supplied SHA-256 in the review cover. Then run:
+archive with the independently supplied SHA-256 in the review cover.
+Replace the path below with that canonical root and run this whole Bash
+block. Each dependent command runs only if the preceding command succeeded:
 
 ```bash
-shasum -a 256 -c SOURCE_MANIFEST.sha256
-python3 -I -B payload/tools/screen_check.py verify-source .
-cat payload/RELEASE
+cd /absolute/path/to/libtbx/guided_coding &&
+shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
+cat payload/RELEASE &&
+grep -Fq 'r10 rev16 candidate' payload/RELEASE
 ```
 
 Require every listed hash to pass, `VERIFIED complete source`, and the
-`r10 rev13` release label. The first command establishes the listed bytes of
-the checker before running it. The second compares the entire directory
+`r10 rev16` release label. After a successful directory change, the listed-hash check establishes
+the checker bytes before running it. The complete-source check compares the entire directory
 with the manifest, including unlisted files, and refuses links, hardlinks,
 missing files and changed bytes. `-I` prevents a module in the tools
 folder or working directory from shadowing Python's standard library;
-`-B` avoids writing bytecode into the source tree. Repeat both checks before
-running central tools, integration, or publication. Run the tools with
+`-B` avoids writing bytecode into the source tree. Any failure returns nonzero and skips the rest of this block. Do not
+continue into another block or dependent preparation after failure. Repeat
+this guarded verification before running central tools, integration, or publication. Run the tools with
 `python3 -I -B`. These checks establish internal consistency with the
 supplied manifest; they do not authenticate the supplier. A separately
 stated archive hash and an independent review are still needed.
 
 ## CLI version gate and rev11 registration
 
-After verifying the source, and before creating the personal skill link or
+Only after the whole source-check block succeeds, and before creating the personal skill link or
 using `/gc setup` or `/gc <task>`, run:
 
 ```bash
@@ -126,9 +138,10 @@ explicit adoption. No live Mac, server, or Claude Code run is claimed here
 there; no server run is claimed).
 
 The earlier r09 documentation review and r10 rev3–rev10 review findings
-informed this candidate. They do not approve rev11, rev12 or rev13. The kit still has 24
-regular source files including its manifest; it does not add a per-project
-installer or another permanent layer of prompts.
+informed this candidate. They do not approve subsequent revisions. Rev13 had 24 regular source
+files including its manifest. Rev14 adds the setup workflow, general defaults
+and method template, while retaining a single manual skill and no per-project
+installer.
 
 ## Rev12: `/skills` guidance from the rev11 Mac trial
 
@@ -174,3 +187,76 @@ a valid header is loaded by an ordinary cached import (positive control) but
 not by either tool. The same three tests fail against the rev12 tools. On
 the Mac the real `libtbx.py_compile_all -i` was run on copies: rev12 refused,
 rev13 verified with the NOTE.
+
+## Rev14: recoverable, relevant setup
+
+The new instructions live in `payload/SETUP.md` with general proposed
+`SETUP_DEFAULTS.md` and an optional `templates/PROJECT_METHOD.md` structure.
+SKILL.md routes explicit setup and incomplete/stale task setup to them;
+GUIDE.md and WORKER.md route later gaps. Registration prints a `/gc setup`
+next step without creating project settings. The user guide covers first
+registration, existing projects, optional domain profiles and migration.
+
+Required behavior is evaluated with fictional projects: local-only first
+use; changed environment with deferred remote setup; csh/PATH recovery with
+hooks retained; conflicting legacy settings/custom authority; a narrowly
+authorized saved edit; and an optional domain profile from another owner.
+Check that relevant values and their sources survive, current authority and
+unrelated settings remain, only necessary questions are asked, and no
+unrequested jobs/connections occur. These are conversational checks, not a
+claim that prose instructions mechanically enforce each condition.
+
+The registration cue has an executable regression assertion alongside the
+existing no-overwrite/no-adoption registration checks. Run the suite from a
+clean copy of the manifest-listed source, only after the whole source-check
+block above succeeds. This is a separate optional test step, not a command
+to append after a failed verification block:
+
+```bash
+python3 -I -B -m unittest discover -s tests -p 'tst_*.py' -v
+```
+
+The accompanying development evidence records commands, outputs, source
+identity, scenario prompts and observations, authorship, and remaining
+limits. A fresh Claude Code CLI/Desktop trial is still required to establish
+actual skill invocation, instruction loading, and the interactive flow on
+the intended machines. No live remote host, real account setup, native
+Windows environment, source installation or publication is claimed here.
+An outside release reading and the Developer's integration/rollout decisions
+remain separate from author-side validation.
+
+## Rev16: isolated stabilization and validation from rev14
+
+Rev16 retains the Rev14 workflow described above. No claim tool, new
+installation-file replacement/restoration engine, parallel-job support,
+second PHENIX installation, broader assumption-dependent implementation
+permission or contract exception is added. WORKER.md's existing
+save/apply/test/restore guidance remains; this build does not exercise it
+on a live installation or certify arbitrary restoration behavior.
+
+Run the same standalone unittest command above on the final, manifest-listed
+source. The original repository wrapper is not supplied in this handoff.
+Keep temporary tests under a symlink-free resolved TMPDIR; record platform
+skips separately from failures. The source manifest establishes complete
+bytes, not correct setup behavior or instruction loading.
+
+The accompanying builder-b evidence supplies requirements-first criteria,
+fixture inputs, exact helpers/commands, source identities, file states,
+saved procedural responses, raw relevant logs and actual role attribution.
+A fake version executable tests registration only. A procedural simulation
+using candidate instructions is not an actual /gc invocation. Neither a
+PATH version, registration symlink, matching text nor a simulation establishes
+Claude Code's actual instruction loading. Observe that in a fresh disposable
+intended-client configuration/project with this exact candidate, using the
+packet's client-validation handoff, before proposing activation.
+
+The supplied Stage A method and optional PHENIX profile snapshots remain
+unchanged context, outside generic source. They are not fresh observations
+or permission to replace live settings. Stage B remains deferred and must
+not be saved or activated for rev16. The user-reported 2026-10-01 disk cleanup
+is context, not a measurement or an edit to those historical snapshots.
+
+Outside review must read the final source and bound evidence; any old
+reading belongs only to its old candidate. Prepare materials for the
+Developer to deliver, then keep acceptance, integration, activation and
+publication separate from successful internal checks.

@@ -1,4 +1,4 @@
-# GuidedCoding r10 rev13 architecture
+# GuidedCoding r10 rev16 architecture
 
 The **one central source** is `cctbx_project/libtbx/guided_coding/`. A
 personal skill symlink at `~/.claude/skills/guided_coding` points at this
@@ -19,7 +19,8 @@ effective path, even if an earlier component is absent.
 before the guided-task adoption gate. No libtbx dispatcher or project
 installer is required. Setup proposes project adoption and a method;
 uninstall removes only a symlink resolving to this verified central
-source. Neither command deletes project records.
+source. Neither command deletes project records. Registration prints the
+next `/gc setup` step for a user-chosen project; it performs no adoption.
 
 | Path | Purpose | Read or written when |
 | --- | --- | --- |
@@ -29,23 +30,45 @@ source. Neither command deletes project records.
 | `screen_check.py check-claude-version` | Require a readable Claude Code CLI at version 2.1.281 or newer | Run after source verification, before personal link registration, project setup, or guided work; help, status, and uninstall remain available |
 | `screen_check.py register-skill .` | Recheck source and CLI, then create only the unoccupied personal skill link | One-time registration; refuses existing destinations without changing them |
 | `payload/{GUIDE,WORKER,ROLES,DEVELOPER_GUIDE_CONTRACT}.md` | Scope, steps and authority | Read from central source |
-| `payload/screens/`, `payload/templates/` | Decision formats and complete approval report | Read from central source |
+| `payload/screens/`, `payload/templates/` | Decision formats, approval report and optional project-method template | Read from central source |
+| `payload/SETUP.md`, `payload/SETUP_DEFAULTS.md` | Guided recovery and relevant setup; domain-neutral proposed defaults | Read on explicit setup or a relevant startup/task gap; never a new source of action authority |
 | `payload/tools/` | Screen, evidence and review-bundle checks | Run from central source |
 | Target's `.claude/records/` | Per-repository plans, decisions and proof | Written for that repository only |
 | Target's current authority and project method | Explicit adoption of exact contract version and SHA-256; project-specific working rules | Checked before Guide and Worker govern a project; preserve actually loaded `AGENTS.md` instructions |
 | Target's `CLAUDE.local.md` and settings | Local machine facts and permissions | Read if present; no automatic GC instruction |
 
-The project method may contain build and test commands, a `t96` command,
-and specific servers such as `anaconda.lbl.gov` or `cci-gpu-00.lbl.gov`
-when they are relevant and verified. It is a small project-specific
-working document, not a global installer configuration or a grant to
-run those commands. A non-PHENIX target substitutes its own environment,
-build, CI and coordination method; it does not require libtbx. One
-personal link exposes `/gc` in local projects, while each project's
-contract adoption remains an explicit choice.
-In a project that relies on `AGENTS.md`, adding a `CLAUDE.local.md` may
-change which instructions Claude Code loads by default. Setup checks the
-active instruction sources before proposing an adoption location.
+The project method holds the project's working locations, environment,
+commands, coordination and action rules. SETUP.md defines conversational
+recovery, relevant questions, scoped verification, authorized saving and
+migration preservation. SETUP_DEFAULTS.md supplies general proposals, with
+no host, account or universal test command. A developer may supply a separate
+domain profile; its settings are candidate data, and another developer's
+account, paths and grants never transfer automatically. Those profiles are
+not globally loaded or stored as project facts in the central package.
+
+The authority points to one canonical method; existing shared defaults may
+be referenced with explicit overrides. Setup records retain sources,
+prior bytes and decisions. Each value retains its scope and verification
+state. A stale known value is kept for re-verification, not replaced by an
+unknown. Optional remote work can be deferred without blocking independent
+local work. Working directories and execution environments are checked for
+the selected target; the procedure source is not the working project.
+
+Startup checks the saved method only for the requested operation and
+routes missing/conflicting settings or changed contexts to SETUP.md. The
+Guide and Worker also route later environment/setup gaps there. This is an
+instruction-level workflow, not a new executable setup state machine or an
+automatic account hook. `/gc` remains manual-only. Registration offers the
+next setup step; unrelated ordinary conversations do not trigger it.
+
+Default setup makes no remote connection and runs no build or test.
+Additional verification uses existing bounded authority or the Developer's
+specific decision. Saving configuration does not adopt a project unless
+that adoption was authorized. A non-PHENIX target uses its own environment
+and does not require libtbx. In an AGENTS.md project, setup preserves the
+actual instruction-loading choice rather than blindly creating
+CLAUDE.local.md. Migrations preserve or explicitly account for every old
+setting/restriction in current or retained files before any retirement.
 The minimum-version check invokes the `claude` executable found on the
 current shell's PATH and refuses missing, malformed, failing or older
 versions before setup changes. It does not update Claude Code or verify
@@ -59,11 +82,13 @@ The invocation selects the repository of Claude Code's primary working
 directory unless the user names a different repository. Reading a skill
 from `cctbx_project` does not change the target to `cctbx_project`. Each
 central tool call uses the absolute `payload/tools` path; its output and
-the record stay with the target. From the central root run `shasum -a 256
--c SOURCE_MANIFEST.sha256`, then `python3 -I -B
-payload/tools/screen_check.py verify-source .`. The first checks the listed
-checker bytes; the second checks the full inventory without importing code
-from the tools directory. Read `payload/RELEASE` for the label. These
+the record stay with the target. Use the complete guarded Bash block in
+`docs/GUIDED_CODING_VERIFICATION.md` (Release and source checks), replacing
+its path with the canonical central root. A failed directory or listed-hash
+check must stop before executing the checker; a failed complete-source
+check must stop before reading the release or doing dependent work. Do
+not turn the chain into separately executed commands. The checker uses
+isolated Python and per-call `GC_PAYLOAD_ROOT` for the full inventory. These
 checks do not authenticate who supplied the package; compare the
 archive to a trusted review message before accepting it. The target's
 change record names the source manifest's SHA-256. If central files
