@@ -13,6 +13,7 @@ The other copies are environment: probe2 is run by the ligand's selection, not
 its resname.
 '''
 import json
+import math
 from six.moves import cStringIO as StringIO
 import iotbx.cif
 import iotbx.pdb
@@ -3336,6 +3337,134 @@ def exercise_trimmed_hydrogen_check():
   else:
     raise AssertionError('probe2 ran without polar H')
 
+# Imidazole (GeoStd IMD ideal coordinates, without HN3: N3 neutral, free lone pair)
+imd_atoms = [('N1', 'N', -13.5522, -13.4611, -0.3022), ('C2', 'C', -14.3651, -12.4983, -0.6994),
+  ('N3', 'N', -15.0541, -12.1022, 0.3560), ('C4', 'C', -14.6769, -12.8254, 1.4555),
+  ('C5', 'C', -13.7222, -13.6904, 1.0367), ('HN1', 'H', -12.9018, -13.9458, -0.9065),
+  ('H2', 'H', -14.4495, -12.1073, -1.6988), ('H4', 'H', -15.1107, -12.6694, 2.4270),
+  ('H5', 'H', -13.1602, -14.4339, 1.5729)]
+
+def metal_imd_model(d, metal='ZN', shift_cells=0, cell=40.0, ligand_metal=False):
+  '''
+  IMD A 1 (shifted into a cell of edge cell) and a metal ion B 1 at distance d (A)
+  from N3, on the line from the ring centre through N3; shift_cells: the metal moved
+  by that many cell edges along x (a lattice copy coordinates).
+  '''
+  xyz = dict([(n, (x + 20, y + 20, z + 20)) for n, e, x, y, z in imd_atoms])
+  ring = [xyz[n] for n in ('N1', 'C2', 'N3', 'C4', 'C5')]
+  c = [sum([p[k] for p in ring]) / 5 for k in range(3)]
+  u = [xyz['N3'][k] - c[k] for k in range(3)]
+  n = math.sqrt(sum([x * x for x in u]))
+  m = [xyz['N3'][k] + d * u[k] / n for k in range(3)]
+  m[0] += shift_cells * cell
+  lines = ['CRYST1%9.3f%9.3f%9.3f  90.00  90.00  90.00 P 1' % (cell, cell, cell)]
+  for k, (name, e, x, y, z) in enumerate(imd_atoms):
+    p = xyz[name]
+    lines.append('HETATM%5d %-4s IMD A   1    %8.3f%8.3f%8.3f  1.00 20.00          %2s' % (
+      k + 1, (' ' + name) if len(name) < 4 else name, p[0], p[1], p[2], e))
+  lines.append('HETATM%5d %-4s %3s B   1    %8.3f%8.3f%8.3f  1.00 20.00          %2s' % (
+    20, metal, metal, m[0], m[1], m[2], metal))
+  lines.append('END')
+  return get_model(lines)
+
+IMD_SEL = 'chain A and resseq 1 and resname IMD'
+
+def metal_entries(m):
+  return [e for e in m.entries if e['type'] == 'metal']
+
+def exercise_metal_coordination():
+  '''
+  Zn...N3 of imidazole: 2.0 A coordination (v = exp((1.77 - 2.0) / 0.37) = 0.537),
+  2.8 A not (v = 0.062 < 0.1); 1.70 A too short (v > 1), where pnp's clash record
+  for the pair moves into the metal entry (no clash entry for it is left).
+  '''
+  t = LI.metal_table()
+  assert t['ZN'] == dict(charge=2, donors={'O': 1.704, 'N': 1.77, 'S': 2.09}), t['ZN']
+  assert sorted(t) == ['CA', 'CD', 'CO', 'CU', 'FE', 'K', 'MG', 'MN', 'NA', 'NI', 'ZN']
+  m = get_manager(metal_imd_model(2.0), sel=IMD_SEL)
+  (e,) = metal_entries(m)
+  assert e['subtype'] == 'coordination' and e['labels'] == ['A IMD 1 N3', 'B ZN 1 ZN']
+  g = e['geometry']['metal']
+  assert approx_equal(g['d'], 2.0, eps=1.e-3) and g['R0'] == 1.77
+  assert approx_equal(g['v'], math.exp((1.77 - g['d']) / 0.37), eps=1.e-9)
+  assert approx_equal(g['v'], 0.537, eps=0.001)
+  site = e['geometry']['metal_site']
+  assert site['coordination_number'] == 1 and approx_equal(site['bond_valence_sum'], g['v'])
+  assert m.counts().per_type['metal:coordination'] == 1
+  assert e['residue'] == 'B ZN 1' and e['symop'] is None
+  d = m.as_dict()
+  assert d['metal_criteria']['min_valence'] == 0.1 and d['metal_untyped'] == []
+  assert d['metal_errors'] == []
+  log = StringIO()
+  m.show(log=log)
+  assert [l for l in log.getvalue().splitlines() if l.split()[:2] == ['metal', 'coordination']
+    and 'A IMD 1 N3 ... B ZN 1 ZN' in l], log.getvalue()
+  # a metal pair that is also an H-bond entry: an error, recorded and shown
+  i, j = e['atoms']
+  m.entries = [x for x in m.entries if x['type'] != 'metal']
+  m.entries.append(m._entry('hbond', None, [None, i, j], {}, ['pnp'], None, 'test'))
+  m._build_metals()
+  assert [x['labels'] for x in m.metal_errors] == [['A IMD 1 N3', 'B ZN 1 ZN']], m.metal_errors
+  log = StringIO()
+  m.show(log=log)
+  assert 'metal errors:' in log.getvalue() and 'also an H-bond entry' in log.getvalue()
+  # 2.8 A: v 0.062, not typed
+  m = get_manager(metal_imd_model(2.8), sel=IMD_SEL)
+  assert metal_entries(m) == []
+  # 1.70 A: too short; pnp's clash on the pair goes into the metal entry
+  m = get_manager(metal_imd_model(1.70), sel=IMD_SEL)
+  (e,) = metal_entries(m)
+  assert e['subtype'] == 'too short' and e['geometry']['metal']['v'] > 1.0
+  moved = e['geometry'].get('clash')
+  assert moved and set(moved[0]['labels']) == set(['A IMD 1 N3', 'B ZN 1 ZN']), moved
+  assert 'pnp' in moved[0]['sources']
+  assert [c for c in m.entries if c['type'] == 'clash' and 'B ZN 1 ZN' in c['labels']] == []
+  assert [x for x in m.disagreements if 'B ZN 1 ZN' in x['labels']] == []
+  # min_valence raised above v: no entry
+  params = LI.master_params().extract().ligand_interactions
+  params.metal.min_valence = 0.6
+  model = metal_imd_model(2.0)
+  m = LI.manager(model, model.selection(IMD_SEL).iselection(), IMD_SEL, params=params).run()
+  assert metal_entries(m) == []
+
+def exercise_metal_symmetry():
+  '''
+  The Zn one cell edge away (x + 40 A): its x-1,y,z copy coordinates N3 (2.0 A);
+  symmetry=False (Cartesian only): not typed, nothing with an operator.
+  '''
+  model = metal_imd_model(2.0, shift_cells=1)
+  m = get_manager(model, sel=IMD_SEL)
+  (e,) = metal_entries(m)
+  assert e['symop'] == 'x-1,y,z' and e['labels'][1] == 'B ZN 1 ZN (x-1,y,z)', e['labels']
+  assert approx_equal(e['geometry']['metal']['d'], 2.0, eps=1.e-3)
+  for trim in (True, False):
+    m = get_manager(model, sel=IMD_SEL, symmetry=False, probe_neighbourhood=trim)
+    assert metal_entries(m) == []
+    no_symmetry_anywhere(m)
+
+def exercise_metal_in_ligand():
+  '''A metal in the ligand (the Zn selected) with an environment donor: the Zn stays, N3 is the partner.'''
+  model = metal_imd_model(2.0)
+  m = get_manager(model, sel='chain B and resseq 1')
+  (e,) = metal_entries(m)
+  assert e['labels'] == ['B ZN 1 ZN', 'A IMD 1 N3'] and e['subtype'] == 'coordination'
+  assert e['geometry']['metal']['metal'] == 'B ZN 1 ZN'
+
+def exercise_metal_without_r0():
+  '''A metal-donor pair without an R0 in the table: not typed, listed in metal_untyped.'''
+  import copy
+  saved = LI._metal_table
+  t = copy.deepcopy(LI.metal_table())
+  t['ZN']['donors']['N'] = None
+  LI._metal_table = t
+  try:
+    m = get_manager(metal_imd_model(2.0), sel=IMD_SEL)
+  finally:
+    LI._metal_table = saved
+  assert metal_entries(m) == []
+  (x,) = m.metal_untyped
+  assert x['labels'] == ['A IMD 1 N3', 'B ZN 1 ZN'] and 'no R0' in x['reason']
+
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
@@ -4187,6 +4316,10 @@ def run():
   exercise_salt_bridges()
   exercise_salt_bridge_symmetry()
   exercise_salt_bridge_symmetry_off()
+  exercise_metal_coordination()
+  exercise_metal_symmetry()
+  exercise_metal_in_ligand()
+  exercise_metal_without_r0()
   exercise_trimmed_hydrogen_check()
   exercise_formal_charge_conflict()
   exercise_pair_class_order(model)

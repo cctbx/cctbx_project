@@ -116,7 +116,7 @@ def master_params():
 # ------------------------------------------------------------------------------
 # ligand interaction profile (validate_ligands.interactions)
 
-profile_types = ("hbond", "salt_bridge", "clash", "vdw")
+profile_types = ("hbond", "salt_bridge", "metal", "clash", "vdw")
 profile_vdw_subtypes = ("so", "cc", "wc")
 
 def _plain(x):
@@ -678,17 +678,19 @@ class manager(list):
       return
     make_sub_header(' Ligand interactions (experimental) ', out=log)
     print("mmtbx.validation.ligand_interactions; vdW classes are probe2's (so small "
-      "overlap, cc close contact, wc wide contact).%s" % ("" if
+      "overlap, cc close contact, wc wide contact); metal: coordination by bond valence "
+      "(mmtbx.ions R0, v >= %g v.u.).%s" % (self.params.ligand_interactions.metal.min_valence,
+      "" if
       self.params.ligand_interactions.symmetry else " Symmetry copies off (map input)."),
       file=log)
     print('', file=log)
-    head = ("ligand", "H-bonds", "salt", "possible", "clashes", "vdW so", "cc", "wc",
-      "symmetry", "pnp/probe2", "time (s)")
-    head2 = ("", "", "bridges", "salt br.", "", "", "", "", "contacts", "disagree", "")
-    fmt = "%-18s|%8s |%8s |%9s |%8s |%7s |%5s |%5s |%9s |%11s |%9s"
+    head = ("ligand", "H-bonds", "salt", "possible", "metal", "clashes", "vdW so", "cc",
+      "wc", "symmetry", "pnp/probe2", "time (s)")
+    head2 = ("", "", "bridges", "salt br.", "", "", "", "", "", "contacts", "disagree", "")
+    fmt = "%-18s|%8s |%8s |%9s |%6s |%8s |%7s |%5s |%5s |%9s |%11s |%9s"
     print(fmt % head, file=log)
     print(fmt % head2, file=log)
-    print("-" * 108, file=log)
+    print("-" * 116, file=log)
     mismatches = []
     for label, r in self.interactions_summary_rows():
       if r is None:
@@ -698,7 +700,8 @@ class manager(list):
         continue
       c = r["counts"]
       print(fmt % (label, c["hbond"], c["salt_bridge"], c["possible_salt_bridge"],
-        c["clash"], c["vdw_so"], c["vdw_cc"], c["vdw_wc"], c["symmetry_contacts"],
+        c.get("metal", 0), c["clash"], c["vdw_so"], c["vdw_cc"], c["vdw_wc"],
+        c["symmetry_contacts"],
         c["disagreements"], "%.1f" % r["seconds"]), file=log)
       lr = [x for x in self if ("%s %s" % (x.id_str, x.altloc)).strip() == label][0]
       ov = lr.get_overlaps()
@@ -723,12 +726,12 @@ class manager(list):
       for w in r["warnings"]:
         print("  warning: %s" % w["message"], file=log)
       order = dict([(t, k) for k, t in enumerate(("hbond", "salt_bridge",
-        "possible_salt_bridge", "clash", "vdw"))])
+        "possible_salt_bridge", "metal", "clash", "vdw"))])
       sub = dict([(t, k) for k, t in enumerate(profile_vdw_subtypes)])
       for e in sorted(r["entries"], key=lambda e: (order.get(e["type"], 9),
           sub.get(e["subtype"], 9), e["distance"] if e["distance"] is not None else 99)):
         t = e["type"] if e["type"] != "vdw" else "vdw %s" % e["subtype"]
-        if e["type"] in ("salt_bridge", "possible_salt_bridge") and e["subtype"]:
+        if e["type"] in ("salt_bridge", "possible_salt_bridge", "metal") and e["subtype"]:
           t = "%s (%s)" % (e["type"].replace("_", " "), e["subtype"])
         print("  %-32s %-62s %5s  %s" % (t.replace("_", " "), _compact_labels(e["labels"]),
           "%.2f" % e["distance"] if e["distance"] is not None else "-",

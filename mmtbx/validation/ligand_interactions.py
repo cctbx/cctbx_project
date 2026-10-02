@@ -40,6 +40,15 @@ sources, cross_check, model_support), ligand-environment only:
                minimum gap
   salt_bridge  oppositely charged groups (below); subtype from Kumar & Nussinov
                (2002); lists the H-bond entries between the same groups
+  metal        a metal of mmtbx.ions' table (ion_parameters.cif _lib_elems) and one
+               of its allowed coordinating atoms (_lib_ligands), one in the ligand,
+               one in the environment, with bond valence v = exp((R0 - d) / 0.37)
+               >= metal.min_valence (R0: mmtbx.ions get_valence_params, Brese &
+               O'Keeffe 1991); subtype "coordination", "too short" for v > 1; the
+               pair's clash records move into it (geometry "clash"); geometry d, v,
+               R0 and the metal's site (coordinating atoms, number, valence sum);
+               pairs without R0 listed in metal_untyped, a metal pair that is also
+               an H-bond in metal_errors
 cross_check (hbond, clash): "pnp and probe2", "pnp only", "probe2 only" (the last
 two listed as disagreements), or "symmetry, probe2 not applicable" (symmetry pairs
 of a model without crystal symmetry in probe2's input, which cannot occur with the
@@ -245,6 +254,21 @@ pnp's. False where the crystal symmetry is not a lattice, e.g. the box of a \\
 cryo-EM map (validate_ligands sets it for map input)."
   include scope mmtbx.probe.Helpers.probe_phil_parameters
 """ + _hbond_phil_str() + """
+  metal
+    .help = "Metal coordination: a metal of mmtbx.ions' table (ion_parameters.cif) \\
+and one of its allowed coordinating atoms, one in the ligand, the other in the \\
+environment, typed by the bond valence v = exp((R0 - d) / 0.37) with R0 from \\
+mmtbx.ions (Brese & O'Keeffe, Acta Cryst. B47, 192 (1991))."
+  {
+    min_valence = 0.1
+      .type = float
+      .help = "Bond valence (v.u.) a metal-donor pair needs to be a coordination \\
+entry; 0.1 v.u. is d <= R0 + 0.85 A (Zn-N, R0 1.77 A: d <= 2.62 A)."
+    untyped_cutoff = 3.0
+      .type = float
+      .help = "A metal-donor pair without an R0 in mmtbx.ions is not typed; it is \\
+listed (metal_untyped) when its atoms are within this distance (A)."
+  }
   salt_bridge
     .help = "Salt bridges between oppositely charged groups."
   {
@@ -1312,6 +1336,97 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
       for x, i in r.rdkit_to_iseq.items()])) for (k, eff), (r, g, p) in built.items() if r.ok]),
     possible=assemble(found_possible))
 
+# ------------------------------------------------------------------------------
+# metal coordination
+
+metal_b = 0.37   # bond-valence b (A), as mmtbx.ions.server.get_valence_params
+_metal_table = None
+
+def metal_table():
+  """
+  {metal element: dict(charge, donors {donor element: R0 or None})}: the metals
+  of mmtbx.ions' parameter table (_lib_elems, default charge), their allowed
+  coordinating atoms (_lib_ligands.allowed_coordinating_atoms) and R0 for each
+  (_lib_valence via server.get_valence_params, at the donor charge listed for that
+  metal and charge; None if there is none).
+  """
+  global _metal_table
+  if _metal_table is not None:
+    return _metal_table
+  from mmtbx import ions
+  srv = ions.server
+  p = srv.params
+  rows = list(zip(p["_lib_valence.atom_symbol"], p["_lib_valence.atom_charge"],
+    p["_lib_valence.donor_symbol"], p["_lib_valence.donor_charge"]))
+  table = {}
+  for element in p["_lib_elems.element"]:
+    mp = srv.get_metal_parameters(element)
+    donors = {}
+    for d in mp.allowed_coordinating_atoms:
+      d = d.upper()
+      charges = [int(dc) for a, ac, ds, dc in rows if a == element and
+        int(ac) == mp.charge_as_int() and ds == d]
+      r0 = None
+      if charges:
+        r0, b = srv.get_valence_params(mp, ions.metal_parameters(element=d,
+          charge=charges[0]))
+        assert r0 is None or b == metal_b, b
+      donors[d] = r0
+    table[element] = dict(charge=mp.charge_as_int(), donors=donors)
+  _metal_table = table
+  return table
+
+def bond_valence(r0, d):
+  """Brese & O'Keeffe: v = exp((R0 - d) / b), b = 0.37 A."""
+  return math.exp((r0 - d) / metal_b)
+
+def close_pairs(model, a_seqs, b_seqs, cutoff, symmetry=True):
+  """
+  [(i, j, op, d)]: i in a_seqs, j in b_seqs, j moved by op (an xyz string) within
+  cutoff (A) of i, d the distance; crystal symmetry included unless symmetry is
+  False (Cartesian distances, op x,y,z). Both orientations of a pair are found when
+  both atoms are in both sets.
+  """
+  atoms = model.get_hierarchy().atoms()
+  A, B = set(a_seqs), set(b_seqs)
+  seqs = sorted(A | B)
+  if not seqs:
+    return []
+  xyz = flex.vec3_double([atoms[i].xyz for i in seqs])
+  cs = model.crystal_symmetry()
+  raw = []
+  if (not symmetry or cs is None or cs.unit_cell() is None or
+      cs.space_group() is None):
+    for k in range(len(seqs)):
+      d = (xyz - xyz[k]).norms()
+      for l in (d <= cutoff).iselection():
+        if l != k:
+          raw.append((seqs[k], seqs[l], "x,y,z", d[l]))
+  else:
+    uc = cs.unit_cell()
+    sps = cs.special_position_settings()
+    asu = sps.asu_mappings(buffer_thickness=cutoff)
+    asu.process_sites_cart(original_sites=xyz,
+      site_symmetry_table=sps.site_symmetry_table(sites_cart=xyz))
+    for p_ in crystal.neighbors_fast_pair_generator(asu, distance_cutoff=cutoff):
+      rt = asu.get_rt_mx_i(p_).inverse().multiply(asu.get_rt_mx_j(p_))
+      d = math.sqrt(p_.dist_sq)
+      i, j = seqs[p_.i_seq], seqs[p_.j_seq]
+      best = None
+      for c in (rt, rt.inverse()):
+        err = abs(atoms[i].distance(moved_site(uc, atoms[j].xyz, c)) - d)
+        if best is None or err < best[0]:
+          best = (err, c)
+      op = best[1]
+      raw.append((i, j, "x,y,z" if op.is_unit_mx() else op.as_xyz(), d))
+      inv = op.inverse()
+      raw.append((j, i, "x,y,z" if inv.is_unit_mx() else inv.as_xyz(), d))
+  out = set()
+  for i, j, op, d in raw:
+    if i in A and j in B:
+      out.add((i, j, op, round(d, 6)))
+  return sorted(out)
+
 def moved_site(unit_cell, xyz, rt_mx):
   return unit_cell.orthogonalize(rt_mx * unit_cell.fractionalize(xyz))
 
@@ -1507,6 +1622,8 @@ class manager(object):
     self.probe_symmetry_pairs = {}
     self._copy_sites = None
     self.warnings = []
+    self.metal_untyped = []
+    self.metal_errors = []
 
   def run(self):
     atoms = self.model.get_hierarchy().atoms()
@@ -1594,6 +1711,7 @@ class manager(object):
         "line with it is one clash (pnp.manager._process_clashes); not applied to "
         "symmetry pairs", cos_min=inline_clash_cos_min, function="pnp.cos_vec"))
     self._build_entries()
+    self._build_metals()
     self._build_salt_bridges()
     self._build_patches()
     return self
@@ -1900,6 +2018,154 @@ class manager(object):
       e["sources"], [ops[0], ops[2]] if partner_op else None,
       "%s; D...A %.2f A < %.2f A" % (" and ".join(sorted(e["sources"])), d_DA, d_DA_min))
     self.entries.append(entry)
+
+  def _metal_site(self, m, table, cutoff):
+    """The metal atom m's coordination (context): donors with an R0 and v >= min_valence around it."""
+    atoms = self._atoms
+    t = table[_element(atoms[m])]
+    donors = [a.i_seq for a in atoms if _element(a) in t["donors"] and a.i_seq != m]
+    out = []
+    for i, j, op, d in close_pairs(self.model, [m], donors, cutoff, self.params.symmetry):
+      r0 = t["donors"][_element(atoms[j])]
+      if r0 is None:
+        continue
+      v = bond_valence(r0, d)
+      if v >= self.params.metal.min_valence:
+        out.append(dict(atom=atom_label(atoms[j]) + ("" if _identity(op) else " (%s)" % op),
+          d=d, v=v, R0=r0))
+    out.sort(key=lambda x: x["d"])
+    return dict(metal=atom_label(atoms[m]), coordination=out,
+      coordination_number=len(out), bond_valence_sum=sum([x["v"] for x in out]))
+
+  def _build_metals(self):
+    """
+    Metal coordination entries (module docstring, metal scope): a metal of
+    mmtbx.ions' table and one of its allowed donor atoms, one in the ligand and one
+    in the environment (a symmetry copy of the ligand is environment), with
+    v = exp((R0 - d) / 0.37) >= metal.min_valence; subtype "coordination", "too
+    short" when v > 1 (d < R0). Pairs without an R0 within metal.untyped_cutoff go
+    to metal_untyped. pnp's and probe2's clash entries for a typed pair move into
+    the metal entry's geometry ("clash"); an H-bond entry on the pair is an error
+    (metal_errors). Geometry: d, v, R0, and the metal's site (its coordinating
+    atoms by the same criterion, coordination number, bond-valence sum).
+    """
+    atoms = self._atoms
+    lig = self._lig
+    mp = self.params.metal
+    table = metal_table()
+    self.metal_criteria = dict(min_valence=mp.min_valence, b=metal_b,
+      untyped_cutoff=mp.untyped_cutoff, source="mmtbx.ions ion_parameters.cif (R0: "
+      "Brese & O'Keeffe 1991)", metals=sorted(table))
+    all_donors = set()
+    for t in table.values():
+      all_donors.update(t["donors"])
+    metals = [a.i_seq for a in atoms if _element(a) in table]
+    if not metals:
+      return
+    r0_max = max([r for t in table.values() for r in t["donors"].values() if r])
+    cutoff = max(mp.untyped_cutoff, r0_max - metal_b * math.log(mp.min_valence))
+    lig_metals = [i for i in lig if _element(atoms[i]) in table]
+    lig_donors = [i for i in lig if _element(atoms[i]) in all_donors]
+    env = set(metals)
+    if lig_metals:
+      env.update([a.i_seq for a in atoms if _element(a) in all_donors])
+    pairs = close_pairs(self.model, lig_metals + lig_donors, env, cutoff,
+      self.params.symmetry)
+    sites = {}
+    seen = set()
+    for i, j, op, d in pairs:
+      if j in lig and _identity(op):
+        continue   # ligand-internal
+      ei, ej = _element(atoms[i]), _element(atoms[j])
+      if ei in table and ej in table[ei]["donors"]:
+        m, r0 = i, table[ei]["donors"][ej]
+      elif ej in table and ei in table[ej]["donors"]:
+        m, r0 = j, table[ej]["donors"][ei]
+      else:
+        continue
+      if not _identity(op):
+        j, op = self._canonical_partner(j, op)
+      key = (i, j, "" if _identity(op) else op)
+      if key in seen:
+        continue
+      seen.add(key)
+      labels = [atom_label(atoms[i]), atom_label(atoms[j]) +
+        ("" if _identity(op) else " (%s)" % op)]
+      if r0 is None:
+        if d <= mp.untyped_cutoff:
+          self.metal_untyped.append(dict(labels=labels, d=d,
+            reason="no R0 in mmtbx.ions for %s-%s" % (_element(atoms[m]),
+            ei if m == j else ej)))
+        continue
+      v = bond_valence(r0, d)
+      if v < mp.min_valence:
+        continue
+      if m not in sites:
+        sites[m] = self._metal_site(m, table, cutoff)
+      g = dict(metal=dict(d=d, v=v, R0=r0, b=metal_b, metal=atom_label(atoms[m]),
+        min_valence=mp.min_valence), metal_site=sites[m])
+      ops = None if _identity(op) else ["x,y,z", op]
+      e = self._entry("metal", "too short" if v > 1.0 else "coordination", [i, j], g,
+        ["bond valence"], ops, "bond valence (mmtbx.ions R0)")
+      self._absorb_metal_clashes(e, i, j, op)
+      for h in [x for x in self.entries if x["type"] == "hbond"]:
+        if i in h["atoms"] and j in h["atoms"]:
+          self.metal_errors.append(dict(labels=labels, hbond=[l for l in h["labels"] if l],
+            message="metal pair %s ... %s is also an H-bond entry." % tuple(labels)))
+      self.entries.append(e)
+
+  def _absorb_metal_clashes(self, e, i, j, op):
+    """
+    Clash entries on the metal pair (i, j moved by op) move into e's
+    geometry["clash"], with their disagreements; in a merged clash entry only that
+    pair moves (the entry keeps the others, its representative the closest left).
+    """
+    def norm(o):
+      return "x,y,z" if _identity(o) else o
+    def label_op(label):
+      return label[label.rindex(" (") + 2:-1] if label.endswith(")") and " (" in label \
+        else "x,y,z"
+    ends = set([(i, "x,y,z"), (j, norm(op))])
+    alt = None if _identity(op) else set([(j, "x,y,z"),
+      (i, norm(sgtbx.rt_mx(op).inverse().as_xyz()))])
+    def same(x):
+      return x == ends or (alt is not None and x == alt)
+    moved, keep = [], []
+    for c in self.entries:
+      if c["type"] != "clash":
+        keep.append(c)
+        continue
+      if c.get("pairs"):
+        hit = [q for q in c["pairs"] if same(set([(q["atoms"][0], "x,y,z"),
+          (q["atoms"][1], norm(label_op(q["labels"][1])))]))]
+        if not hit:
+          keep.append(c)
+          continue
+        moved.extend([dict(labels=q["labels"], geometry=q["geometry"], sources=q["sources"],
+          distance=q["distance"]) for q in hit])
+        rest = [q for q in c["pairs"] if q not in hit]
+        if not rest:
+          continue
+        rep_ = min(rest, key=lambda q: q["distance"])
+        c["pairs"] = rest
+        c["atoms"] = list(rep_["atoms"])
+        c["labels"] = list(rep_["labels"])
+        o = norm(label_op(rep_["labels"][1]))
+        c["operators"] = ["x,y,z", o]
+        c["symop"] = None if _identity(o) else o
+        keep.append(c)
+        continue
+      ce = set([(c["atoms"][0], norm(c["operators"][0])), (c["atoms"][1], norm(c["operators"][1]))])
+      if same(ce):
+        moved.append(dict(labels=[l for l in c["labels"] if l], geometry=c["geometry"],
+          sources=c["sources"], cross_check=c["cross_check"]))
+        self.disagreements = [d for d in self.disagreements if not (d["type"] == "clash"
+          and d["labels"] == c["labels"])]
+      else:
+        keep.append(c)
+    if moved:
+      self.entries[:] = keep
+      e["geometry"]["clash"] = moved
 
   def _build_clashes(self):
     """pnp's clashes and probe2's bo/wo pairs; inline pairs of one atom merged (pnp's rule)."""
@@ -2399,7 +2665,9 @@ class manager(object):
       charged_group_failures=self.charged_group_failures,
       formal_charges=self.formal_charges,
       formal_charge_conflicts=self.formal_charge_conflicts(),
-      symmetry=self.params.symmetry, warnings=self.warnings, probe_input=self.probe_input)
+      symmetry=self.params.symmetry, warnings=self.warnings, probe_input=self.probe_input,
+      metal_criteria=getattr(self, "metal_criteria", None), metal_untyped=self.metal_untyped,
+      metal_errors=self.metal_errors)
 
   def show(self, log=None):
     if log is None:
@@ -2429,6 +2697,15 @@ class manager(object):
           print("         pair %s ... %s %.2f A [%s]%s" % (q["labels"][0], q["labels"][1],
             q["distance"], ", ".join(q["sources"]), " (pnp kept)" if q["pnp_kept"] else ""),
             file=log)
+    if self.metal_errors:
+      print("  metal errors:", file=log)
+      for x in self.metal_errors:
+        print("    %s" % x["message"], file=log)
+    if self.metal_untyped:
+      print("  metal pairs not typed (no R0 in mmtbx.ions):", file=log)
+      for x in self.metal_untyped:
+        print("    %s ... %s %.2f A: %s" % (x["labels"][0], x["labels"][1], x["d"],
+          x["reason"]), file=log)
     if self.warnings:
       print("  warnings:", file=log)
       for w in self.warnings:

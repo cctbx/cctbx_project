@@ -208,7 +208,8 @@ def run_test_interactions_fmn():
   i = out.index('Ligand interactions (experimental)')
   section = out[i:]
   row = [l for l in section.splitlines() if l.startswith('FMN C 301') and '|' in l][0]
-  assert [x.strip() for x in row.split('|')][1:10] == ['1', '1', '0', '0', '0', '0', '3',
+  # H-bonds, salt bridges, possible, metal, clashes, so, cc, wc, symmetry, disagreements
+  assert [x.strip() for x in row.split('|')][1:11] == ['1', '1', '0', '0', '0', '0', '0', '3',
     '0', '0'], row
   assert 'gives the same numbers for every ligand' in section
   assert 'C FMN 301 O1P O2P O3P ... C ARG 207 NE NH1 NH2' in section
