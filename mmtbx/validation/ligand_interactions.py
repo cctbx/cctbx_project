@@ -1380,12 +1380,36 @@ def bond_valence(r0, d):
   """Brese & O'Keeffe: v = exp((R0 - d) / b), b = 0.37 A."""
   return math.exp((r0 - d) / metal_b)
 
+site_tolerance = 0.1   # A: symmetry mates closer than this are one physical site
+
+def _sorted_ops(ops):
+  """Identity first, then the operator strings in sorted order (the representative rule)."""
+  return sorted(set(ops), key=lambda o: (not _identity(o), o))
+
+def unique_symmetry_mates(ops, site_of, tolerance=site_tolerance):
+  """
+  The operators in ops that put an atom (or group: site_of(op) its position) on
+  distinct sites: symmetry mates within tolerance of one already kept are one site; the
+  identity is kept if it is among them, else the first operator in sorted order.
+  """
+  kept, sites = [], []
+  for op in _sorted_ops(ops):
+    x = site_of(op)
+    if any([math.sqrt(sum([(a - b) ** 2 for a, b in zip(x, y)])) < tolerance
+        for y in sites]):
+      continue
+    kept.append(op)
+    sites.append(x)
+  return kept
+
 def close_pairs(model, a_seqs, b_seqs, cutoff, symmetry=True):
   """
   [(i, j, op, d)]: i in a_seqs, j in b_seqs, j moved by op (an xyz string) within
   cutoff (A) of i, d the distance; crystal symmetry included unless symmetry is
   False (Cartesian distances, op x,y,z). Both orientations of a pair are found when
-  both atoms are in both sets.
+  both atoms are in both sets. Symmetry mates of j on one physical site (special
+  positions; unique_symmetry_mates, within site_tolerance) are one pair: the identity if
+  it is among them, else the first operator in sorted order.
   """
   atoms = model.get_hierarchy().atoms()
   A, B = set(a_seqs), set(b_seqs)
@@ -1421,10 +1445,22 @@ def close_pairs(model, a_seqs, b_seqs, cutoff, symmetry=True):
       raw.append((i, j, "x,y,z" if op.is_unit_mx() else op.as_xyz(), d))
       inv = op.inverse()
       raw.append((j, i, "x,y,z" if inv.is_unit_mx() else inv.as_xyz(), d))
-  out = set()
+  by_pair = {}
   for i, j, op, d in raw:
     if i in A and j in B:
-      out.add((i, j, op, round(d, 6)))
+      by_pair.setdefault((i, j), {})[op] = round(d, 6)
+  out = []
+  for (i, j), ds in by_pair.items():
+    if len(ds) > 1:
+      uc = cs.unit_cell()
+      def site_of(op, j=j):
+        return atoms[j].xyz if _identity(op) else moved_site(uc, atoms[j].xyz,
+          sgtbx.rt_mx(op))
+      ops = unique_symmetry_mates(list(ds), site_of)
+    else:
+      ops = list(ds)
+    for op in ops:
+      out.append((i, j, op, ds[op]))
   return sorted(out)
 
 def moved_site(unit_cell, xyz, rt_mx):
@@ -1439,6 +1475,8 @@ def charged_group_pairs(model, groups, cutoff, charge=None, symmetry=True):
   altlocs, and uncertain groups (certain False), are not paired. charge: a
   function giving each group's charge for the pairing (default: its charge,
   uncertain groups left out); with it, every group with a nonzero value takes part.
+  Symmetry mates of a group on one physical site (its charged atoms' centre within
+  site_tolerance; special positions) are one pair (unique_symmetry_mates).
   """
   atoms = model.get_hierarchy().atoms()
   if charge is None:
@@ -1482,7 +1520,20 @@ def charged_group_pairs(model, groups, cutoff, charge=None, symmetry=True):
     inv = sgtbx.rt_mx(op).inverse().as_xyz()
     result.add((ka, kb, op))
     result.add((kb, ka, "x,y,z" if _identity(inv) else inv))
-  return sorted(result)
+  by_pair = {}
+  for ka, kb, op in result:
+    by_pair.setdefault((ka, kb), []).append(op)
+  out = []
+  for (ka, kb), ops in by_pair.items():
+    if len(ops) > 1 and cs is not None and cs.unit_cell() is not None:
+      uc = cs.unit_cell()
+      def site_of(op, kb=kb):
+        xs = [atoms[i].xyz if _identity(op) else moved_site(uc, atoms[i].xyz,
+          sgtbx.rt_mx(op)) for i in groups[kb]["charged"]]
+        return [sum([x[c] for x in xs]) / len(xs) for c in range(3)]
+      ops = unique_symmetry_mates(ops, site_of)
+    out.extend([(ka, kb, op) for op in ops])
+  return sorted(out)
 
 def _with_h(atoms, bonds):
   h = dict([(n, set()) for n in atoms])
@@ -2019,23 +2070,37 @@ class manager(object):
       "%s; D...A %.2f A < %.2f A" % (" and ".join(sorted(e["sources"])), d_DA, d_DA_min))
     self.entries.append(entry)
 
-  def _metal_site(self, m, table, cutoff):
-    """The metal atom m's coordination (context): donors with an R0 and v >= min_valence around it."""
+  def _metal_site(self, m, table, cutoff, conformation=""):
+    """
+    The metal atom m's coordination (context): donors with an R0 and v >=
+    min_valence around it (close_pairs: one per physical site), in one
+    conformation: atoms with that altloc or blank. conformation blank (metal and
+    pair without altlocs) while donors carry altlocs: one context per altloc
+    (per_conformation); the top level is the first altloc's.
+    """
     atoms = self._atoms
     t = table[_element(atoms[m])]
     donors = [a.i_seq for a in atoms if _element(a) in t["donors"] and a.i_seq != m]
-    out = []
+    found = []
     for i, j, op, d in close_pairs(self.model, [m], donors, cutoff, self.params.symmetry):
       r0 = t["donors"][_element(atoms[j])]
       if r0 is None:
         continue
       v = bond_valence(r0, d)
       if v >= self.params.metal.min_valence:
-        out.append(dict(atom=atom_label(atoms[j]) + ("" if _identity(op) else " (%s)" % op),
-          d=d, v=v, R0=r0))
-    out.sort(key=lambda x: x["d"])
-    return dict(metal=atom_label(atoms[m]), coordination=out,
-      coordination_number=len(out), bond_valence_sum=sum([x["v"] for x in out]))
+        found.append((_altloc(atoms[j]), dict(atom=atom_label(atoms[j]) +
+          ("" if _identity(op) else " (%s)" % op), altloc=_altloc(atoms[j]), d=d, v=v, R0=r0)))
+    def context(c):
+      out = sorted([x for a, x in found if a in ("", c)], key=lambda x: x["d"])
+      return dict(metal=atom_label(atoms[m]), conformation=c, coordination=out,
+        coordination_number=len(out), bond_valence_sum=sum([x["v"] for x in out]))
+    alts = sorted(set([a for a, x in found if a]))
+    if conformation or not alts:
+      return context(conformation)
+    per = dict([(c, context(c)) for c in alts])
+    result = dict(per[alts[0]])
+    result["per_conformation"] = per
+    return result
 
   def _build_metals(self):
     """
@@ -2076,6 +2141,9 @@ class manager(object):
     for i, j, op, d in pairs:
       if j in lig and _identity(op):
         continue   # ligand-internal
+      ai, aj = _altloc(atoms[i]), _altloc(atoms[j])
+      if ai and aj and ai != aj:
+        continue   # different conformations: never paired (as groups and pnp)
       ei, ej = _element(atoms[i]), _element(atoms[j])
       if ei in table and ej in table[ei]["donors"]:
         m, r0 = i, table[ei]["donors"][ej]
@@ -2100,10 +2168,12 @@ class manager(object):
       v = bond_valence(r0, d)
       if v < mp.min_valence:
         continue
-      if m not in sites:
-        sites[m] = self._metal_site(m, table, cutoff)
+      conformation = ai or aj
+      if (m, conformation) not in sites:
+        sites[(m, conformation)] = self._metal_site(m, table, cutoff, conformation)
       g = dict(metal=dict(d=d, v=v, R0=r0, b=metal_b, metal=atom_label(atoms[m]),
-        min_valence=mp.min_valence), metal_site=sites[m])
+        min_valence=mp.min_valence, conformation=conformation),
+        metal_site=sites[(m, conformation)])
       ops = None if _identity(op) else ["x,y,z", op]
       e = self._entry("metal", "too short" if v > 1.0 else "coordination", [i, j], g,
         ["bond valence"], ops, "bond valence (mmtbx.ions R0)")

@@ -3469,6 +3469,161 @@ def exercise_metal_without_r0():
   (x,) = m.metal_untyped
   assert x['labels'] == ['A IMD 1 N3', 'B ZN 1 ZN'] and 'no R0' in x['reason']
 
+def imd_frame():
+  '''IMD (without HN3) with N3 at the origin and its lone pair (ring centre -> N3) along +x.'''
+  from scitbx import matrix
+  xyz = dict([(n, matrix.col((x, y, z))) for n, e, x, y, z in imd_atoms])
+  ring = [xyz[n] for n in ('N1', 'C2', 'N3', 'C4', 'C5')]
+  c = sum(ring, matrix.col((0, 0, 0))) / 5.
+  u = (xyz['N3'] - c).normalize()
+  x = matrix.col((1, 0, 0))
+  r = u.cross(x).axis_and_angle_as_r3_rotation_matrix(math.acos(max(-1, min(1, u.dot(x)))))
+  return dict([(n, r * (xyz[n] - xyz['N3'])) for n in xyz])
+
+def hetatm(k, name, resname, chain, resseq, xyz, element, alt=' ', occ=1.0):
+  name = (' ' + name) if len(name) < 4 else name
+  return 'HETATM%5d %-4s%1s%3s %1s%4d    %8.3f%8.3f%8.3f%6.2f 20.00          %2s' % (
+    k, name, alt, resname, chain, resseq, xyz[0], xyz[1], xyz[2], occ, element)
+
+def imd_at(zn, rotation=None, shift=(0, 0, 0)):
+  '''IMD atoms with N3 2.0 A from zn along +x (lone pair towards zn), optionally rotated about z through zn.'''
+  from scitbx import matrix
+  f = imd_frame()
+  out = []
+  for n, e, x, y, z in imd_atoms:
+    p = f[n]
+    p = matrix.col((-p[0], p[1], -p[2])) + matrix.col((2.0, 0, 0))
+    if rotation is not None:
+      p = matrix.col((0, 0, 1)).axis_and_angle_as_r3_rotation_matrix(rotation, deg=True) * p
+    out.append((n, e, p + zn + matrix.col(shift)))
+  return out
+
+def metal_altloc_model(zn_altlocs):
+  '''
+  P1, 40 A. IMD A 1 in conformers A and B; zn_altlocs False: one Zn, conformer B
+  rotated 40 deg about z through it (both N3 2.0 A from the Zn); True: the Zn in
+  conformers A and B too, B (Zn and IMD) moved 0.5 A along y, so the A-B cross
+  distances (2.06 A) would be typed without the altloc rule.
+  '''
+  from scitbx import matrix
+  zn = matrix.col((20, 20, 20))
+  lines = ['CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1']
+  k = 1
+  for alt, kw in (('A', {}), ('B', dict(shift=(0, 0.5, 0)) if zn_altlocs else
+      dict(rotation=40.))):
+    for n, e, p in imd_at(zn, **kw):
+      lines.append(hetatm(k, n, 'IMD', 'A', 1, p, e, alt, 0.5)); k += 1
+  if zn_altlocs:
+    lines.append(hetatm(k, 'ZN', ' ZN', 'B', 1, zn, 'ZN', 'A', 0.5)); k += 1
+    lines.append(hetatm(k, 'ZN', ' ZN', 'B', 1, zn + matrix.col((0, 0.5, 0)), 'ZN', 'B', 0.5))
+  else:
+    lines.append(hetatm(k, 'ZN', ' ZN', 'B', 1, zn, 'ZN'))
+  lines.append('END')
+  return get_model(lines)
+
+def exercise_metal_altlocs():
+  '''
+  A donor and a metal with different non-blank altlocs are never paired; the site
+  context is per conformation (that altloc or blank). Shared Zn, IMD conformers A
+  and B: an entry per conformer, each CN 1 and BVS 0.537 (not CN 2, 1.075). Zn in
+  conformers A and B too: A-A and B-B only.
+  '''
+  v = math.exp((1.77 - 2.0) / 0.37)
+  m = get_manager(metal_altloc_model(False), sel=IMD_SEL)
+  es = metal_entries(m)
+  assert sorted([(e['geometry']['metal']['conformation'], e['labels'][1]) for e in es]) == [
+    ('A', 'B ZN 1 ZN'), ('B', 'B ZN 1 ZN')], [e['labels'] for e in es]
+  for e in es:
+    site = e['geometry']['metal_site']
+    assert site['coordination_number'] == 1, site
+    assert approx_equal(site['bond_valence_sum'], v, eps=1.e-3), site
+    assert site['conformation'] == e['geometry']['metal']['conformation']
+  m = get_manager(metal_altloc_model(True), sel=IMD_SEL)
+  es = metal_entries(m)
+  atoms = m.model.get_hierarchy().atoms()
+  pairs = sorted([tuple([atoms[i].parent().altloc for i in e['atoms']]) for e in es])
+  assert pairs == [('A', 'A'), ('B', 'B')], pairs
+  for e in es:
+    assert e['geometry']['metal_site']['coordination_number'] == 1
+
+def special_position_model():
+  '''
+  P 1 2 1 (twofold along b through x=1/2, z=0: -x+1,y,-z), 20 A: Zn on the axis at
+  (10,10,0), IMD N3 2.0 A away along x (its symmetry mate by the twofold is a second, real
+  site), a water O on the axis 2.0 A from the Zn.
+  '''
+  from scitbx import matrix
+  zn = matrix.col((10, 10, 0))
+  lines = ['CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1']
+  k = 1
+  for n, e, p in imd_at(zn):
+    lines.append(hetatm(k, n, 'IMD', 'A', 1, p, e)); k += 1
+  lines.append(hetatm(k, 'ZN', ' ZN', 'B', 1, zn, 'ZN')); k += 1
+  lines.append(hetatm(k, 'O', 'HOH', 'W', 1, zn + matrix.col((0, 2.0, 0)), ' O'))
+  lines.append('END')
+  return get_model(lines)
+
+def salt_special_model():
+  '''P 1 2 1 as above: ACT A 1 (salt_model_str) with OXT 2.85 A from an NH4+ on the twofold axis.'''
+  from scitbx import matrix
+  act = [l for l in salt_model_str.split('\n') if l[17:26] == 'ACT A   1']
+  site = lambda l: matrix.col((float(l[30:38]), float(l[38:46]), float(l[46:54])))
+  oxt = [site(l) for l in act if l[12:16].strip() == 'OXT'][0]
+  n = matrix.col((10, 10, 0))
+  shift = n + matrix.col((2.85, 0, 0)) - oxt
+  lines = ['CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1']
+  k = 1
+  for l in act:
+    lines.append(hetatm(k, l[12:16].strip(), 'ACT', 'A', 1, site(l) + shift,
+      l[76:78].strip())); k += 1
+  h = 0.589
+  lines.append(hetatm(k, 'N', 'NH4', 'B', 1, n, ' N')); k += 1
+  for name, d in (('HN1', (h, h, h)), ('HN2', (-h, h, -h)), ('HN3', (h, -h, -h)),
+                  ('HN4', (-h, -h, h))):
+    lines.append(hetatm(k, name, 'NH4', 'B', 1, n + matrix.col(d), ' H')); k += 1
+  lines.append('END')
+  return get_model(lines)
+
+def exercise_special_positions():
+  '''
+  Symmetry mates on the same site as an atom (or a group) are one contact: the
+  identity if it is among them, else the first operator in sorted order. Zn on a
+  twofold: one metal entry for N3-Zn (not also -x+1,y,-z); its site counts the
+  water on the axis once (CN 3 with N3 and its symmetry mate: BVS 2 v(N) + v(O)). An
+  NH4+ on the axis: one salt bridge, not two.
+  '''
+  assert LI.unique_symmetry_mates(['-x+1,y,-z', 'x,y,z'], lambda op: (0, 0, 0)) == ['x,y,z']
+  assert LI.unique_symmetry_mates(['y,x,z', '-x+1,y,-z'], lambda op: (0, 0, 0)) == ['-x+1,y,-z']
+  assert LI.unique_symmetry_mates(['y,x,z', 'x,y,z'], lambda op: (0, 0, 0) if op == 'x,y,z' else
+    (1, 0, 0)) == ['x,y,z', 'y,x,z']
+  model = special_position_model()
+  m = get_manager(model, sel=IMD_SEL)
+  (e,) = metal_entries(m)
+  assert e['symop'] is None and e['labels'] == ['A IMD 1 N3', 'B ZN 1 ZN'], e['labels']
+  site = e['geometry']['metal_site']
+  atoms_ = [x['atom'] for x in site['coordination']]
+  assert sorted(atoms_) == ['A IMD 1 N3', 'A IMD 1 N3 (-x+1,y,-z)', 'W HOH 1 O'], atoms_
+  vn, vo = math.exp((1.77 - 2.0) / 0.37), math.exp((1.704 - 2.0) / 0.37)
+  assert site['coordination_number'] == 3
+  assert approx_equal(site['bond_valence_sum'], 2 * vn + vo, eps=1.e-3), site
+  # close_pairs itself: the Zn's symmetry mates on its own site are one pair
+  atoms = model.get_hierarchy().atoms()
+  n3 = [a.i_seq for a in atoms if a.name.strip() == 'N3'][0]
+  zn = [a.i_seq for a in atoms if a.name.strip() == 'ZN'][0]
+  assert [op for i, j, op, d in LI.close_pairs(model, [n3], [zn], 3.0)] == ['x,y,z']
+  # salt bridges
+  model = salt_special_model()
+  m = get_manager(model, sel='chain A and resseq 1')
+  assert [(e['residue'], e['symop']) for e in salt_bridges(m)] == [('B NH4 1', None)]
+  groups = [g for g in LI.find_charged_groups(model, flex.bool(model.size(), True)).groups]
+  k_act = [k for k, g in enumerate(groups) if g['resname'] == 'ACT'][0]
+  pairs = [(a, b, op) for a, b, op in LI.charged_group_pairs(model, groups, 4.0) if a == k_act]
+  assert [op for a, b, op in pairs] == ['x,y,z'], pairs
+  # the possible-salt-bridge search (a charge function): the same
+  pairs = [(a, b, op) for a, b, op in LI.charged_group_pairs(model, groups, 4.0,
+    charge=lambda g: g['charge']) if a == k_act]
+  assert [op for a, b, op in pairs] == ['x,y,z'], pairs
+
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
@@ -4324,6 +4479,8 @@ def run():
   exercise_metal_symmetry()
   exercise_metal_in_ligand()
   exercise_metal_without_r0()
+  exercise_metal_altlocs()
+  exercise_special_positions()
   exercise_trimmed_hydrogen_check()
   exercise_formal_charge_conflict()
   exercise_pair_class_order(model)
