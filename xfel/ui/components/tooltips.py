@@ -196,7 +196,11 @@ tooltips = {
                           'matching ALL selected tags; "union" keeps runs matching ANY '
                           'selected tag.',
   'model_mode_radio': 'Whether a known reference model is supplied for scaling and merging. '
-                      'Choose "No reference model" to scale and merge without one.',
+                      'Choose "No reference model" to merge without one (mark1): the data '
+                      'are averaged without per-image scaling or post-refinement, using '
+                      'the unit cell and space group below, and the error model is switched '
+                      'to errors_from_sample_residuals. The resulting MTZ can then be used '
+                      'as the reference model for a subsequent dataset.',
 }
 
 def setup_tooltip(obj):

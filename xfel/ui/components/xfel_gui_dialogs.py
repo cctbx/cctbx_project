@@ -4203,15 +4203,35 @@ class DatasetStagePanel(wx.Panel):
     # cctbx.xfel.merge wants exactly one of: a reference model, or a unit cell
     # plus space group. Emit both keys either way so switching modes clears the
     # other in the working scope.
+    #
+    # The mode also decides the scaling algorithm. Without a reference there is
+    # nothing to scale against, so "no reference model" is a mark1 merge: a
+    # plain average of the data, with scale and postrefine skipped (see the
+    # "Merging without a reference" recipe in xfel/merging/README.md). Left at
+    # the mark0 default, the scale step fails looking for the model intensities.
     if s['model_mode'] == 'unknown':
       model_lines = ("scaling.model = None\n"
                      "scaling.unit_cell = %s\n"
-                     "scaling.space_group = %s"
+                     "scaling.space_group = %s\n"
+                     "scaling.algorithm = mark1"
                      % (s['unit_cell'] or 'None', s['space_group'] or 'None'))
+      # The mm24 error model parameterizes sadd by the per-image correlation to
+      # the reference, a column that only mark0 scaling (and postrefinement)
+      # writes. In a mark1 merge it would fail at the errors_merge step with an
+      # unknown-column error, so swap in the error model the README recommends
+      # for this case. Any other error model the user has chosen is left alone.
+      try:
+        err = self.working_phil_scope.extract().merging.error
+        mm24_needs_correlation = (err.model == 'mm24' and not err.mm24.constant_sadd)
+      except Exception:
+        mm24_needs_correlation = False
+      if mm24_needs_correlation:
+        model_lines += "\nmerging.error.model = errors_from_sample_residuals"
     else:
       model_lines = ("scaling.model = %s\n"
                      "scaling.unit_cell = None\n"
-                     "scaling.space_group = None"
+                     "scaling.space_group = None\n"
+                     "scaling.algorithm = mark0"
                      % (s['model'] or 'None'))
     if t == 'scaling':
       # Two mutually exclusive unit-cell filter modes. Emit both algorithm keys
