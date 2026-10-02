@@ -805,8 +805,10 @@ class ScalingJob(Job):
       nersc_reservation         = self.app.params.mp.shifter.reservation,
       nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
-      # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      # cctbx.xfel.merge is mpi only, and has no mp.nproc to be parallelized with
+      # instead, so it runs under mpirun whatever the multiprocessing method is.
+      # Local mode is included: it still runs mpirun, just on this machine.
+      use_mpi                   = True,
       mpi_command               = self.app.params.mp.mpi_command,
       nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
@@ -899,10 +901,13 @@ class MergingJob(Job):
     command = "cctbx.xfel.merge %s"%target_phil_path
     submit_path = os.path.join(output_path, identifier_string + "_submit.sh")
 
-    params = self.app.params.mp
+    # Copied rather than used directly because use_mpi is overridden below and
+    # these params are shared with the rest of the GUI.
+    params = copy.deepcopy(self.app.params.mp)
     if params.nnodes_merge:
-      params = copy.deepcopy(params)
       params.nnodes = params.nnodes_merge
+    # cctbx.xfel.merge is mpi only, as for the scaling job above
+    params.use_mpi = True
 
     return do_submit(command, submit_path, output_path, params, log_name="out.log", err_name="err.log", job_name=identifier_string)
 

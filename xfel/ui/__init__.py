@@ -165,11 +165,56 @@ def load_phil_scope_from_dispatcher(dispatcher):
   phil_scope = module.phil_scope
   return phil_scope
 
-def load_cached_settings(scope=None, extract=True):
-  # Determine which settings file to use
-  settings_file = os.environ.get('CCTBX_XFEL_SETTINGS')
-  if settings_file is None:
-    settings_file = os.path.join(settings_dir, 'settings.phil')
+# --- Project (settings bundle) management -----------------------------------
+# A "project" is a complete settings bundle stored as settings_<name>.phil in
+# settings_dir. Each bundle is a full configuration (db, output folder, mp
+# options, facility and experiment_tag), so switching projects swaps everything
+# at once. There is no separate settings.phil: the "current" project is simply
+# the most recently modified bundle, and saving a project bumps its timestamp so
+# it becomes current for the next launch.
+
+# The project this process is working in. None until determined from disk (most
+# recently modified bundle) or set explicitly via set_current_project.
+_current_project = None
+
+def settings_file_for_project(name):
+  ''' Return the path to the settings bundle for the named project. '''
+  return os.path.join(settings_dir, 'settings_%s.phil' % name)
+
+def list_settings_projects():
+  ''' Return the sorted names of the settings bundles (settings_<name>.phil)
+      found in settings_dir, or an empty list if there are none. '''
+  if not os.path.isdir(settings_dir):
+    return []
+  projects = []
+  for fname in os.listdir(settings_dir):
+    if fname.startswith('settings_') and fname.endswith('.phil'):
+      projects.append(fname[len('settings_'):-len('.phil')])
+  return sorted(projects)
+
+def set_current_project(name):
+  ''' Record the project this process is working in, so subsequent saves target
+      its bundle. '''
+  global _current_project
+  _current_project = name
+
+def get_current_project():
+  ''' Return the current project name: whichever project has been explicitly
+      selected this session (set_current_project), or, failing that, the most
+      recently modified settings bundle on disk. Returns None if no bundles
+      exist. '''
+  if _current_project is not None:
+    return _current_project
+  projects = list_settings_projects()
+  if not projects:
+    return None
+  return max(projects,
+             key=lambda n: os.path.getmtime(settings_file_for_project(n)))
+
+def load_project_settings(name, scope=None, extract=True):
+  ''' Load the settings bundle for the named project, returning params (or the
+      fetched scope if extract=False). '''
+  settings_file = settings_file_for_project(name)
 
   print('Load settings from', settings_file)
 
@@ -186,19 +231,74 @@ def load_cached_settings(scope=None, extract=True):
       sync_phil(params, unused)
     return params
   else:
+    raise Sorry('No settings bundle found for project "%s" (%s).' % (name, settings_file))
+
+def save_project_settings(params, name):
+  ''' Write params to the named project's settings bundle (settings_<name>.phil)
+      as a diff against the master scope. '''
+  settings_file = settings_file_for_project(name)
+
+  if not os.path.exists(settings_dir):
+    os.makedirs(settings_dir)
+
+  working_phil = master_phil_scope.format(python_object = params)
+  diff_phil = master_phil_scope.fetch_diff(source = working_phil)
+
+  try:
+    f = open(settings_file.encode('utf8'), 'wb')
+    f.write(diff_phil.as_str().encode('utf8'))
+    f.close()
+  except IOError:
+    raise Sorry('Unable to write %s.' % settings_file)
+
+def load_cached_settings(scope=None, extract=True):
+  ''' Load the current project's settings bundle (the most recently modified
+      settings_<name>.phil), pinning it as the current project. CCTBX_XFEL_SETTINGS,
+      if set, overrides this with an explicit file to load. Returns default
+      params if no bundle is found. '''
+  settings_file = os.environ.get('CCTBX_XFEL_SETTINGS')
+  if settings_file is None:
+    project = get_current_project()
+    if project is not None:
+      set_current_project(project)
+      settings_file = settings_file_for_project(project)
+
+  if scope is None:
+    scope = master_phil_scope
+
+  if settings_file is not None and os.path.exists(settings_file):
+    print('Load settings from', settings_file)
+    user_phil = parse(file_name = settings_file)
+    scope, unused = scope.fetch(source = user_phil, track_unused_definitions=True)
+    if not extract:
+      return scope
+    params = scope.extract()
+    if len(unused) > 0:
+      from .phil_patch import sync_phil
+      sync_phil(params, unused)
+    return params
+  else:
     if extract:
       return scope.extract()
     else:
       return scope
 
 def save_cached_settings(params):
-  # Save to the file specified by environment or default
+  ''' Persist params to the current project's bundle, so the next launch restores
+      it (and so this project becomes the most recently modified, i.e. current).
+      CCTBX_XFEL_SETTINGS, if set, overrides the destination with an explicit
+      file. '''
   settings_file = os.environ.get('CCTBX_XFEL_SETTINGS')
   if settings_file is None:
-    settings_file = os.path.join(settings_dir, 'settings.phil')
+    project = get_current_project()
+    if project is None:
+      raise Sorry('No project selected. Use "Save Project As..." to name a '
+                  'project before saving settings.')
+    save_project_settings(params, project)
+    return
 
   target_dir = os.path.dirname(settings_file)
-  if not os.path.exists(target_dir):
+  if target_dir and not os.path.exists(target_dir):
     os.makedirs(target_dir)
 
   working_phil = master_phil_scope.format(python_object = params)
