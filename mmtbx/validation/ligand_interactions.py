@@ -515,7 +515,7 @@ def probe2_hydrogen_check(model):
   model when probe2 gets a trimmed input (probe_neighbourhood), whose own check
   could fail for want of the polar H elsewhere. Sorry with probe2's messages.
   """
-  from mmtbx.probe import Helpers
+  #from mmtbx.probe import Helpers
   atoms = model.get_hierarchy().atoms()
   proxies, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
     sites_cart=model.get_sites_cart())

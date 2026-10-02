@@ -2688,7 +2688,9 @@ def exercise_no_symmetry_copies(model):
   assert m.as_dict()['probe_symmetry'] is None
   out = LI.run_probe2(model, '(%s)' % LIG_SEL, 'not (%s)' % LIG_SEL,
     probe=m.params.probe)
-  assert out == m.probe_output
+  # the same lines; probe2's line order can differ between calls in one process
+  # (dot groups of a source atom swap places), so not the raw text
+  assert sorted(out.splitlines()) == sorted(m.probe_output.splitlines())
   assert LI.probe2_symmetry_input(model, model.selection(LIG_SEL).iselection()) is None
 
 def exercise_donor_conformers():
@@ -2859,7 +2861,9 @@ def exercise_library_vs_command_line(model):
   lib_lines = [l for l in text.splitlines() if l.strip()]
   cli_lines = [l for l in cli.splitlines() if l.strip()]
   assert len(lib_lines) > 100
-  assert lib_lines == cli_lines
+  # the same lines; probe2's line order can differ between calls (see
+  # exercise_no_symmetry_copies)
+  assert sorted(lib_lines) == sorted(cli_lines)
 
 def exercise_ligand_overlaps(model):
   '''
