@@ -28,6 +28,7 @@ def run():
   run_test_interactions_aqs()
   run_test_interactions_failure()
   run_test_interactions_no_h()
+  run_test_interactions_expert_level()
 
 # ------------------------------------------------------------------------------
 
@@ -297,6 +298,27 @@ def run_test_interactions_no_h():
   r = lr.get_interactions()
   assert r['status'] == 'skipped' and 'no H' in r['reason'], r
   assert 'skipped: no H in the model' in out
+  print('OK')
+
+def run_test_interactions_expert_level():
+  '''
+  The switch and the ligand_interactions scope are hidden below the Developer
+  level (expert_level 3) in the program's PHIL, as a GUI built from it filters;
+  the rest of validate_ligands is not.
+  '''
+  print('test_interactions_expert_level')
+  import iotbx.phil
+  from mmtbx.validation import validate_ligands as vl_mod
+  mp = iotbx.phil.parse(val_lig.master_phil_str, process_includes=True)
+  level = lambda path: mp.get(path).objects[0].expert_level
+  assert level('validate_ligands.interactions') == 3
+  assert level('validate_ligands.ligand_interactions') == 3
+  assert vl_mod.interactions_expert_level == 3
+  assert level('validate_ligands.ligand_code') is None
+  shown = mp.as_str(expert_level=2)
+  assert 'ligand_interactions' not in shown and '\n  interactions =' not in shown
+  assert 'ligand_interactions' in mp.as_str(expert_level=3)
+  assert mp.extract().validate_ligands.ligand_interactions.symmetry is True
   print('OK')
 
 # ------------------------------------------------------------------------------

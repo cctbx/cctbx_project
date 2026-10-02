@@ -2309,6 +2309,226 @@ def exercise_symmetry_off():
   o = LI.ligand_overlaps(model, sel, symmetry=False)
   assert (o.n_clashes, o.n_hbonds) == (off.overlaps.n_clashes, 0)
 
+def same_probe_result(a, b):
+  '''Two managers' probe2 results and entries: pairs, symmetry pairs, every dot, entries.'''
+  import json
+  assert a.probe_pairs == b.probe_pairs
+  strip = lambda d: dict((k, dict((x, y) for x, y in v.items() if x != 'geometry'))
+    for k, v in d.items())
+  assert strip(a.probe_symmetry_pairs) == strip(b.probe_symmetry_pairs)
+  key = lambda m: sorted([(str(d['source']), str(d['target']), d['cls'], d['gap'],
+    tuple(d['loc'])) for d in m.probe_dots])
+  assert key(a) == key(b)
+  assert a.probe_unmapped == b.probe_unmapped
+  dump = lambda x: json.dumps(x, sort_keys=True, default=str)
+  assert dump(a.entries) == dump(b.entries)
+  assert dump(a.disagreements) == dump(b.disagreements)
+
+def exercise_probe_neighbourhood():
+  '''
+  probe2 on the ligand's neighbourhood (whole residues within the radius, and the
+  residues bonded to them; copies as before) gives the whole-model result: pairs,
+  dots, gaps, entries. The EDO fixture (EDO A 0 15 A away, left out), its symmetry
+  model (copies), a salt bridge and the two-residue ligand.
+  '''
+  model = get_model()
+  whole = get_manager(model, probe_neighbourhood=False)
+  nb = get_manager(model)
+  assert whole.probe_input == dict(whole_model=True, atoms=50)
+  assert nb.probe_input['whole_model'] is False and nb.probe_input['atoms'] == 40
+  r = nb.probe_input['radius']
+  # r_ligand + r_environment + 3 probe radii + 1 A: C, O (energy types) here
+  assert 4.5 < r < 6.0, r
+  assert nb.as_dict()['probe_input'] == nb.probe_input
+  same_probe_result(whole, nb)
+  model = get_model(sym_model_str.split('\n'))
+  sel = 'chain A and resseq 1'
+  whole = get_manager(model, sel=sel, probe_neighbourhood=False)
+  nb = get_manager(model, sel=sel)
+  assert nb.probe_symmetry is not None
+  assert nb.probe_input['atoms'] < whole.probe_input['atoms']
+  same_probe_result(whole, nb)
+  # radius: the largest vdW radii of ligand and environment, three probe radii, margin
+  model = get_model()
+  isel = model.selection(LIG_SEL).iselection()
+  rv = [model.get_specific_vdw_radius(int(i), False) for i in range(model.size())]
+  r = LI.probe_neighbourhood_radius(model, isel, 0.25)
+  assert approx_equal(r, max([rv[i] for i in isel]) + max(rv[10:40]) + 0.75 +
+    LI.neighbourhood_margin, eps=1.e-9), r
+
+peptide_gol_str = '''
+CRYST1   30.000   40.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  C1  GOL A   1       5.578   9.079   8.959  1.00 20.00           C
+HETATM    2  C2  GOL A   1       5.404  10.193   9.989  1.00 20.00           C
+HETATM    3  C3  GOL A   1       4.003  10.183  10.608  1.00 20.00           C
+HETATM    4  O1  GOL A   1       5.482   7.794   9.563  1.00 20.00           O
+HETATM    5  O2  GOL A   1       5.628  11.463   9.370  1.00 20.00           O
+HETATM    6  O3  GOL A   1       3.905  11.289  11.512  1.00 20.00           O
+ATOM      7  N   ALA A 100       7.700  15.050   8.400  1.00 20.00           N
+ATOM      8  CA  ALA A 100       6.400  15.450   8.900  1.00 20.00           C
+ATOM      9  C   ALA A 100       5.700  16.250   7.900  1.00 20.00           C
+ATOM     10  O   ALA A 100       4.900  17.150   8.200  1.00 20.00           O
+ATOM     11  CB  ALA A 100       5.628  14.350   9.370  1.00 20.00           C
+ATOM     12  N   ALA A 101       6.100  15.950   6.650  1.00 20.00           N
+ATOM     13  CA  ALA A 101       5.500  16.750   5.600  1.00 20.00           C
+ATOM     14  C   ALA A 101       6.400  17.950   5.300  1.00 20.00           C
+ATOM     15  O   ALA A 101       7.500  17.950   5.850  1.00 20.00           O
+ATOM     16  CB  ALA A 101       5.300  15.900   4.350  1.00 20.00           C
+ATOM     17  N   ALA A 102       6.000  18.950   4.500  1.00 20.00           N
+ATOM     18  CA  ALA A 102       6.800  20.150   4.200  1.00 20.00           C
+ATOM     19  C   ALA A 102       6.000  21.150   3.400  1.00 20.00           C
+ATOM     20  O   ALA A 102       4.800  21.050   3.300  1.00 20.00           O
+ATOM     21  CB  ALA A 102       7.300  20.800   5.480  1.00 20.00           C
+END
+'''
+
+def exercise_neighbourhood_selection():
+  '''
+  probe_neighbourhood_selection: the ligand, whole residues with an atom within the
+  radius, and the residues bonded to those (here ALA 101 through its peptide bond
+  to ALA 100, whose CB is 3.1 A from GOL O2); ALA 102 neither.
+  '''
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    lines=peptide_gol_str.split('\n'), source_info=None), log=null_out())
+  model.process(make_restraints=True)
+  fsc0 = model.get_restraints_manager().geometry.shell_sym_tables[0] \
+    .full_simple_connectivity()
+  isel = model.selection('resname GOL').iselection()
+  atoms = model.get_hierarchy().atoms()
+  def residues(sel):
+    return sorted(set([atoms[i].parent().parent().resseq.strip() for i in
+      sel.iselection()]))
+  assert residues(LI.probe_neighbourhood_selection(model, isel, 3.5, fsc0)) == [
+    '1', '100', '101']
+  assert residues(LI.probe_neighbourhood_selection(model, isel, 2.0, fsc0)) == ['1']
+  sel = LI.probe_neighbourhood_selection(model, isel, 3.5, fsc0)
+  # whole residues: all 5 atoms of ALA 100 and 101
+  assert sel.count(True) == 6 + 5 + 5
+  # copies (atoms from n_model on) are always kept
+  sel = LI.probe_neighbourhood_selection(model, isel, 2.0, fsc0, n_model=16)
+  assert residues(sel) == ['1', '102'] and sel.count(True) == 6 + 5
+
+def exercise_altloc_copies():
+  '''
+  A residue with altlocs A and B 0.05 A apart near the ligand's symmetry copies:
+  both conformers' copies stay (altloc partners are never duplicates), probe2
+  runs. Before, B's carbons went as duplicates of A's and probe2 stopped at an H
+  without its neighbour (9BN8 GLN 4 CA/HA altloc B).
+  '''
+  lines = [l for l in sym_model_str.split('\n')]
+  alt = []
+  for l in lines:
+    if l.startswith('HETATM') and l[17:20] == 'EDO' and l[22:26] == '   1':
+      for c, dx, dh in (('A', 0.0, 0.0), ('B', 0.05, 0.4)):
+        x, y, z = float(l[30:38]), float(l[38:46]), float(l[46:54])
+        shift = dh if l[76:78].strip() == 'H' else dx
+        alt.append(l[:16] + c + l[17:21] + 'B   2    ' + '%8.3f%8.3f%8.3f' % (x + shift,
+          y + 3.6, z) + '  0.50' + l[60:])
+  i = [k for k, l in enumerate(lines) if l.startswith('END')]
+  i = i[0] if i else len(lines)
+  model = get_model(lines[:i] + alt + lines[i:])
+  sel = 'chain A and resseq 1'
+  m = get_manager(model, sel=sel)
+  ps = m.probe_symmetry
+  atoms = ps.model.get_hierarchy().atoms()
+  copy_alt = {}
+  for k, (i_seq, op) in ps.copy_of.items():
+    a = atoms[k]
+    if a.parent().parent().parent().id in ps.chains and a.parent().resname == 'EDO' and \
+        model.get_hierarchy().atoms()[i_seq].parent().parent().parent().id == 'B':
+      copy_alt.setdefault(op, set()).add(a.parent().altloc)
+  assert copy_alt and all([v == set(['A', 'B']) for v in copy_alt.values()]), copy_alt
+  # the copies of each conformer are complete: every copied H keeps its heavy atom
+  n_alt = dict(A=0, B=0)
+  for k, (i_seq, op) in ps.copy_of.items():
+    a = atoms[k]
+    if a.parent().altloc in n_alt:
+      n_alt[a.parent().altloc] += 1
+  assert n_alt['A'] == n_alt['B'] > 0, n_alt
+  # the duplicate test itself: a blank-altloc model atom is a duplicate of any copy
+  assert m.probe_output
+
+def exercise_symmetry_record():
+  '''ligand_overlaps(symmetry=False) drops only records with a non-identity operator.'''
+  rec = lambda rt: (2.0, 2.4, 0.4, None, rt)
+  assert LI.symmetry_record(rec(None)) is False
+  assert LI.symmetry_record(rec(sgtbx.rt_mx('x,y,z'))) is False
+  assert LI.symmetry_record(rec(sgtbx.rt_mx('x+1,y,z'))) is True
+  assert LI.symmetry_record(rec(sgtbx.rt_mx('-x,y,-z'))) is True
+
+def _edo2_moved(shift):
+  '''The EDO model with EDO A 2 moved by shift (A).'''
+  out = []
+  for l in model_str.split('\n'):
+    if l.startswith('HETATM') and l[22:26] == '   2':
+      x = [float(l[30 + 8 * k:38 + 8 * k]) + shift[k] for k in range(3)]
+      l = l[:30] + '%8.3f%8.3f%8.3f' % tuple(x) + l[54:]
+    out.append(l)
+  return get_model(out)
+
+def _floor_manager(model, d_DA_min=None):
+  params = LI.master_params().extract().ligand_interactions
+  if d_DA_min is not None:
+    params.hbond.d_DA_cutoff = [d_DA_min, 4.1]
+  return LI.manager(model, model.selection(LIG_SEL).iselection(), LIG_SEL,
+    params=params).run()
+
+def _floor_entries(m):
+  return [e for e in m.entries if e['subtype'] == LI.too_short_hbond]
+
+def exercise_hbond_floor():
+  '''
+  An H-bond entry whose D...A is below pnp's minimum (d_DA_cutoff[0]) is a clash,
+  subtype "too short for an H-bond", its H-bond geometry (probe2's hb dots) kept.
+  EDO 1 O1-HO1...EDO 2 O1, D...A 2.86 A:
+  (a) the minimum raised to 2.9: pnp drops the H-bond and calls HO1...O1 a clash;
+      that clash takes the subtype (no second entry);
+  (b) EDO 2 moved to D...A 2.30 (default minimum 2.4): the same, as in 8VZ0 B;
+  (c) EDO 2 moved out by 0.1 A (D...A 2.96), minimum 3.2: pnp has no clash there,
+      so a new clash entry O1...O1 from probe2's hb alone.
+  '''
+  import math
+  o1, a0 = (16.075, 10.413, 14.347), (18.690, 9.535, 15.106)
+  u = [b - a for a, b in zip(o1, a0)]
+  n = math.sqrt(sum([x * x for x in u]))
+  u = [x / n for x in u]
+  pair = set(['A EDO 1 HO1', 'A EDO 1 O1'])
+  def check_merged(m, d_DA, d_DA_min):
+    assert [e for e in m.entries if e['type'] == 'hbond' and 'A EDO 2 O1' in e['labels']] == []
+    c = _floor_entries(m)
+    assert len(c) == 1, [(e['type'], e['labels']) for e in m.entries if e['type'] == 'clash']
+    c = c[0]
+    assert c['type'] == 'clash' and 'pnp' in c['sources'], c
+    assert 'A EDO 2 O1' in c['labels'] and set(c['labels']) & pair, c['labels']
+    g = c['geometry']['hbond']
+    assert approx_equal(g['d_DA'], d_DA, eps=0.01) and g['d_DA_min'] == d_DA_min
+    assert g['labels'] == ['A EDO 1 O1', 'A EDO 1 HO1', 'A EDO 2 O1']
+    assert g['geometry']['probe2']['dots'].get('hb'), g
+    # one clash entry on these atoms
+    assert len([e for e in m.entries if e['type'] == 'clash' and 'A EDO 2 O1' in
+      e['labels'] and set(e['labels']) & pair]) == 1
+  # (a)
+  m = _floor_manager(get_model(), 2.9)
+  check_merged(m, 2.861, 2.9)
+  assert m.counts().per_type['clash:%s' % LI.too_short_hbond] == 1
+  # (b)
+  shift = [o + 2.30 * x - a for o, x, a in zip(o1, u, a0)]
+  check_merged(_floor_manager(_edo2_moved(shift)), 2.30, 2.4)
+  # (c)
+  m = _floor_manager(_edo2_moved([0.1 * x for x in u]), 3.2)
+  assert [e for e in m.entries if e['type'] == 'hbond' and 'A EDO 2 O1' in e['labels']] == []
+  c = _floor_entries(m)
+  assert len(c) == 1, c
+  c = c[0]
+  assert c['type'] == 'clash' and c['labels'] == ['A EDO 1 O1', 'A EDO 2 O1'], c['labels']
+  assert c['sources'] == ['probe2'] and 'D...A 2.96 A < 3.20 A' in c['cross_check'], c
+  assert c['geometry']['probe2']['dots'].get('hb')
+  assert approx_equal(c['geometry']['hbond']['d_DA'], 2.961, eps=1.e-3)
+  assert [d for d in m.disagreements if d['type'] == 'hbond'] == []
+  sio = StringIO()
+  m.show(log=sio)
+  assert 'D...A 2.96 A < 3.20 A' in sio.getvalue()
+
 def exercise_operator_warning():
   '''
   A pnp operator that reproduces neither orientation's distance: a warning in the
@@ -3837,6 +4057,11 @@ def run():
   exercise_symmetry()
   exercise_symmetry_off()
   exercise_operator_warning()
+  exercise_probe_neighbourhood()
+  exercise_neighbourhood_selection()
+  exercise_altloc_copies()
+  exercise_symmetry_record()
+  exercise_hbond_floor()
   exercise_symmetry_probe2_hbonds()
   exercise_symmetry_chain_ids()
   exercise_special_position_copies()

@@ -233,6 +233,11 @@ neighbouring atoms' dot sets. 5XH3 ligand 856: 11 patches at 0.4 A, 9 at \\
   separate_worse_clashes = False
     .type = bool
     .help = "probe2's output.separate_worse_clashes (class wo)."
+  probe_neighbourhood = True
+    .type = bool
+    .help = "probe2 gets only the ligand's neighbourhood (probe_neighbourhood_input), \\
+not the whole model: same pairs, dots and gaps, much faster for large models. \\
+False runs probe2 on the whole model (for checks)."
   symmetry = True
     .type = bool
     .help = "Contacts with symmetry copies: probe2's (probe2_symmetry_input) and \\
@@ -319,14 +324,18 @@ def probe_atom_field(atom):
   return "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}".format(rg.parent().id,
     str(rg.resseq_as_int()), icode, ag.resname.strip().upper(), atom.name, ag.altloc)
 
-def probe_atom_table(atoms):
-  """{probe2 atom field: i_seq}; Sorry if two atoms share a field."""
+def probe_atom_table(atoms, index=None):
+  """
+  {probe2 atom field: i_seq}; Sorry if two atoms share a field. index: per atom
+  (in order) the i_seq to report instead (e.g. of the model a neighbourhood was
+  selected from).
+  """
   result = {}
-  for a in atoms:
+  for k, a in enumerate(atoms):
     f = probe_atom_field(a)
     if f in result:
       raise Sorry("probe2 atom field %r is not unique." % f)
-    result[f] = a.i_seq
+    result[f] = a.i_seq if index is None else int(index[k])
   return result
 
 def probe_key(field):
@@ -423,6 +432,83 @@ def run_probe2(model, source_selection, target_selection, probe=None,
   return output
 
 # ------------------------------------------------------------------------------
+# probe2's input: the ligand's neighbourhood
+
+neighbourhood_env_search = 8.0   # A: atoms whose radii bound the environment's
+neighbourhood_margin = 1.0       # A: a water's phantom H, ~1 A from its O
+
+def probe_neighbourhood_radius(model, ligand_isel, probe_radius):
+  """
+  Radius (A) around the ligand atoms within which probe2's result can depend on an
+  atom: r_ligand + r_environment + 2 probe radii (probe2's contact search) + one
+  probe radius (atoms that can occlude those dots) + neighbourhood_margin (phantom
+  H of waters). r: the largest vdW radius (the model's energy types; probe2 uses
+  these or the smaller ionic radius) of the ligand, and of the atoms within
+  neighbourhood_env_search of it.
+  """
+  sites = model.get_sites_cart()
+  lig = flex.size_t(list(ligand_isel))
+  lig_sites = sites.select(lig)
+  near = flex.bool(sites.size(), False)
+  lo = [flex.min(p) - neighbourhood_env_search for p in lig_sites.parts()]
+  hi = [flex.max(p) + neighbourhood_env_search for p in lig_sites.parts()]
+  box = flex.bool(sites.size(), True)
+  for a, p in enumerate(sites.parts()):
+    box &= (p >= lo[a]) & (p <= hi[a])
+  cand = box.iselection()
+  for x in lig_sites:
+    d = (sites.select(cand) - x).norms()
+    near.set_selected(cand.select(d <= neighbourhood_env_search), True)
+  r = lambda isel: max([model.get_specific_vdw_radius(int(i), False) for i in isel])
+  return r(lig) + r(near.iselection()) + 3 * probe_radius + neighbourhood_margin
+
+def probe_neighbourhood_selection(model, ligand_isel, radius, fsc0, n_model=None):
+  """
+  flex.bool over model's atoms: the ligand, whole residues with an atom within
+  radius of a ligand atom (Cartesian, no symmetry), and whole residues bonded
+  (fsc0) to those; atoms from n_model on (symmetry copies) all kept.
+  """
+  h = model.get_hierarchy()
+  atoms = h.atoms()
+  sites = atoms.extract_xyz()
+  n = sites.size() if n_model is None else n_model
+  lig_sites = sites.select(flex.size_t(list(ligand_isel)))
+  lo = [flex.min(p) - radius for p in lig_sites.parts()]
+  hi = [flex.max(p) + radius for p in lig_sites.parts()]
+  box = flex.bool(sites.size(), True)
+  for a, p in enumerate(sites.parts()):
+    box &= (p >= lo[a]) & (p <= hi[a])
+  cand = box.iselection()
+  cand = cand.select(cand < n)
+  hit = flex.bool(sites.size(), False)
+  for x in lig_sites:
+    d = (sites.select(cand) - x).norms()
+    hit.set_selected(cand.select(d <= radius), True)
+  for i in ligand_isel:
+    hit[i] = True
+  rg_atoms = {}
+  rg_of = {}
+  for k, rg in enumerate(h.residue_groups()):
+    seqs = [a.i_seq for a in rg.atoms()]
+    rg_atoms[k] = seqs
+    for i in seqs:
+      rg_of[i] = k
+  chosen = set([rg_of[i] for i in hit.iselection()])
+  for k in list(chosen):
+    for i in rg_atoms[k]:
+      if i < n:
+        for j in fsc0[i]:
+          if j < n:
+            chosen.add(rg_of[j])
+  sel = flex.bool(sites.size(), False)
+  for k in chosen:
+    for i in rg_atoms[k]:
+      sel[i] = True
+  if n < sites.size():
+    sel.set_selected(flex.size_t_range(n, sites.size()), True)
+  return sel
+
+# ------------------------------------------------------------------------------
 # probe2 and crystal symmetry: a workaround
 
 probe2_copy_radius = 6.0
@@ -440,7 +526,9 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
   chain and operator), in a P1 box large enough that neither pdb_interpretation
   nor probe2 sees any symmetry. A copy atom within duplicate_tolerance of a model
   atom or of a copy already added (special positions) is left out: one operator
-  per site, the first in operator order. The model's atoms keep their i_seqs; the
+  per site, the first in operator order. Only an atom with the same altloc or a
+  blank one (or any atom, for a blank-altloc copy atom) counts: altloc partners
+  are never duplicates of each other, however close. The model's atoms keep their i_seqs; the
   copies follow, mapped from the completed hierarchy.
   Returns None without crystal symmetry or without copies in range, else
   group_args(model, copy_of {combined i_seq: (model i_seq, operator)}, chains (the
@@ -469,7 +557,9 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
   in_box = flex.bool(sites.size(), True)
   for a, p in enumerate(sites.parts()):
     in_box &= (p >= lo[a] - radius) & (p <= hi[a] + radius)
-  present = sites.select(in_box.iselection())
+  present_isel = in_box.iselection()
+  present = sites.select(present_isel)
+  present_alt = [atoms[int(i)].parent().altloc.strip() for i in present_isel]
   rg_of = {}
   residue_groups, chain_of = [], []
   for c, ch in enumerate(h.chains()):
@@ -520,6 +610,13 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
   chains, copy_of, n_atoms, per_op = {}, {}, atoms.size(), {}
   added = []
   added_sites = flex.vec3_double()
+  added_alt = []
+  def duplicate(x, alt, sites_, alts):
+    if not sites_.size():
+      return False
+    d = (sites_ - x).norms()
+    close = (d < duplicate_tolerance).iselection()
+    return any([alt == "" or alts[int(k)] in ("", alt) for k in close])
   for (k, xyz), op in sorted(near.items(), key=lambda x: (x[0][1], x[0][0])):
     rg = residue_groups[k]
     key = (chain_of[k], xyz)
@@ -530,8 +627,9 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
     for ag_new, ag in zip(new.atom_groups(), rg.atom_groups()):
       for a_new, a in zip(list(ag_new.atoms()), list(ag.atoms())):
         x = uc.orthogonalize(op * uc.fractionalize(a.xyz))
-        if (present.size() and flex.min((present - x).norms()) < duplicate_tolerance) or (
-            added_sites.size() and flex.min((added_sites - x).norms()) < duplicate_tolerance):
+        alt = ag.altloc.strip()
+        if duplicate(x, alt, present, present_alt) or duplicate(x, alt, added_sites,
+            added_alt):
           ag_new.remove_atom(a_new)
           continue
         a_new.set_xyz(x)
@@ -539,6 +637,7 @@ def probe2_symmetry_input(model, ligand_isel, radius=probe2_copy_radius,
         a_new.tmp = len(added)   # read back from the completed hierarchy
         added.append((a.i_seq, xyz))
         added_sites.append(x)
+        added_alt.append(alt)
     if new.atoms_size():
       chains[key].append_residue_group(new)
   for i, xyz in added:
@@ -566,7 +665,8 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None,
   Clashes and H-bonds with at least one ligand atom (cctbx
   process_nonbonded_proxies on the ligand and the residues within within_radius;
   h_bond_params: a pnp.h_bond(), None for pnp's defaults; symmetry False: pnp's
-  records with a symmetry operator are left out, and the counts with them).
+  records with a symmetry operator other than the identity are left out, and the
+  counts with them).
   Returns group_args: n_clashes, clashscore, n_clashes_sym, clashes_str,
   n_hbonds (validate_ligands' report), clash_records [dict(i_seq, j_seq,
   distance, sum_vdw_radii, overlap, symop)], hbond_records [dict(d_seq, h_seq,
@@ -588,7 +688,7 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None,
 
   ligand_clashes_dict = {}
   for iseq_tuple, record in clashes_dict.items():
-    if not symmetry and record[4] is not None:
+    if not symmetry and symmetry_record(record):
       continue
     if (iseq_tuple[0] in isel_ligand_within or
         iseq_tuple[1] in isel_ligand_within):
@@ -601,7 +701,7 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None,
   ligand_hbonds_dict = {}
   # iseq_tuple is (donor, H, acceptor)
   for iseq_tuple, record in hbonds_dict.items():
-    if not symmetry and record[4] is not None:
+    if not symmetry and symmetry_record(record):
       continue
     if any(i_seq in isel_ligand_within for i_seq in iseq_tuple):
       ligand_hbonds_dict[iseq_tuple] = record
@@ -653,8 +753,15 @@ def ligand_overlaps(model, sel_str, within_radius=3.0, h_bond_params=None,
     hbond_criteria = hbond_criteria,
     clash_criteria = clash_criteria)
 
+too_short_hbond = "too short for an H-bond"
+
 def _identity(symop):
   return symop in (None, "", "x,y,z")
+
+def symmetry_record(record):
+  """A pnp clash or H-bond record with a symmetry operator (record[4] an rt_mx that is not the identity)."""
+  rt_mx = record[4]
+  return rt_mx is not None and not rt_mx.is_unit_mx()
 
 # ------------------------------------------------------------------------------
 # charged groups and formal charges
@@ -1359,7 +1466,18 @@ class manager(object):
       copy_of = self.probe_symmetry.copy_of
       source = "(%s) and not (%s)" % (self.sel_str, " or ".join(["chain %s" % c
         for c in self.probe_symmetry.chains]))
-    table = probe_atom_table(probe_model.get_hierarchy().atoms())
+    self.probe_input = dict(whole_model=True, atoms=probe_model.get_number_of_atoms())
+    index = None
+    if self.params.probe_neighbourhood:
+      radius = probe_neighbourhood_radius(self.model, self.ligand_isel,
+        self.params.probe.probe_radius)
+      sel = probe_neighbourhood_selection(probe_model, self.ligand_isel, radius, self._fsc0,
+        n_model=atoms.size())
+      index = sel.iselection()
+      probe_model = probe_model.select(sel)
+      self.probe_input = dict(whole_model=False, radius=radius,
+        atoms=probe_model.get_number_of_atoms(), model_atoms=int((index < atoms.size()).count(True)))
+    table = probe_atom_table(probe_model.get_hierarchy().atoms(), index)
     self.probe_output = run_probe2(probe_model, source, "not (%s)" % source,
       probe=self.params.probe, use_neutron_distances=self.params.use_neutron_distances,
       separate_worse_clashes=self.params.separate_worse_clashes)
@@ -1651,10 +1769,23 @@ class manager(object):
       e["sources"].add("probe2")
       e["geometry"].setdefault("probe2", g)
       e["weak"] = p["pair_class"] == "wh"
+    # D...A below pnp's minimum: not an H-bond but a clash (too_short_hbond)
+    d_DA_min = self.overlaps.hbond_criteria["d_DA_cutoff"][0]
+    too_short = []
     for (h, a, ops), e in sorted(hb.items(), key=lambda x: (str(x[0][0]), x[0][1], str(x[0][2]))):
+      d = e["d"]
+      if d is not None:
+        o = list(ops) if ops else ["x,y,z"] * 3
+        xd, xa = self._site(d, o[0]), self._site(a, o[2])
+        d_DA = math.sqrt(sum([(xd[c] - xa[c]) ** 2 for c in range(3)]))
+        if d_DA < d_DA_min:
+          too_short.append((d, h, a, o, e, d_DA))
+          continue
       self._add_checked("hbond", [e["d"], h, a], e, list(ops) if ops else None, h, a,
         subtype="weak (probe2)" if e["weak"] else None)
     self._build_clashes()
+    for d, h, a, o, e, d_DA in too_short:
+      self._add_too_short_hbond(d, h, a, o, e, d_DA, d_DA_min)
     # vdW contacts: probe2's wc, cc, so pairs
     for (i, j), p in sorted(self.probe_pairs.items()):
       if p["pair_class"] in vdw_classes:
@@ -1671,6 +1802,34 @@ class manager(object):
         self.entries.append(self._entry("vdw", p["pair_class"], [k[0], k[1]],
           dict(probe2=g), ["probe2"], ["x,y,z", k[2]]))
     self.pair_class_order = list(self.order)
+
+  def _add_too_short_hbond(self, d, h, a, ops, e, d_DA, d_DA_min):
+    """
+    An H-bond entry (probe2's hb, or pnp's with a lowered minimum) whose D...A is
+    below pnp's minimum d_DA_cutoff[0]: a clash, subtype too_short_hbond, its
+    H-bond geometry kept (geometry "hbond"). A clash entry of pnp or probe2 on the
+    same atoms (D...A or H...A, same operator on the partner) takes the subtype and
+    the geometry instead of a second entry.
+    """
+    atoms = self._atoms
+    labels = [None if i is None else atom_label(atoms[i]) for i in (d, h, a)]
+    g = dict(d_DA=d_DA, d_DA_min=d_DA_min, labels=labels, sources=sorted(e["sources"]),
+      geometry=dict(e["geometry"]))
+    partner_op = [x for x in ops if not _identity(x)]
+    partner_op = partner_op[0] if partner_op else None
+    for c in self.entries:
+      if c["type"] != "clash":
+        continue
+      pairs = c.get("pairs") or [dict(atoms=c["atoms"])]
+      for q in pairs:
+        if set(q["atoms"]) in (set([d, a]), set([h, a])) and (c["symop"] or None) == partner_op:
+          c["subtype"] = too_short_hbond
+          c["geometry"]["hbond"] = g
+          return
+    entry = self._entry("clash", too_short_hbond, [d, a], dict(hbond=g, **e["geometry"]),
+      e["sources"], [ops[0], ops[2]] if partner_op else None,
+      "%s; D...A %.2f A < %.2f A" % (" and ".join(sorted(e["sources"])), d_DA, d_DA_min))
+    self.entries.append(entry)
 
   def _build_clashes(self):
     """pnp's clashes and probe2's bo/wo pairs; inline pairs of one atom merged (pnp's rule)."""
@@ -2165,7 +2324,7 @@ class manager(object):
       charged_group_failures=self.charged_group_failures,
       formal_charges=self.formal_charges,
       formal_charge_conflicts=self.formal_charge_conflicts(),
-      symmetry=self.params.symmetry, warnings=self.warnings)
+      symmetry=self.params.symmetry, warnings=self.warnings, probe_input=self.probe_input)
 
   def show(self, log=None):
     if log is None:

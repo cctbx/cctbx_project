@@ -38,6 +38,7 @@ def run():
   run_test34()
   run_test35()
   run_test36()
+  run_test37()
 
 # ------------------------------------------------------------------------------
 
@@ -319,6 +320,8 @@ def run_test35():
   assert off['profile']['probe_symmetry'] is None
   assert off['validate_ligands_counts']['n_hbonds'] == 0
   assert off['validate_ligands_counts']['n_clashes_sym'] == 0
+  # validate_ligands' own columns agree with the profile's pnp counts
+  assert on['validate_ligands_counts']['n_hbonds'] == 2
 
 def run_test36():
   '''Through the Program: map input sets ligand_interactions.symmetry = False.'''
@@ -348,6 +351,41 @@ def run_test36():
     for fn in (pdb_fn, map_fn, json_fn):
       if os.path.isfile(fn):
         os.remove(fn)
+
+def run_test37():
+  '''
+  validate_ligands' own overlap and H-bond columns with a map: contacts across the
+  map's box (its crystal symmetry, not a lattice) are not counted, with the
+  interaction profile off too, and the log says so. The EDO in a 6 A cell reaches
+  the box edge: its two H-bonds to its lattice copies count without a map (as
+  before; X-ray runs unchanged), not with one (before this change: 2).
+  '''
+  print('test37')
+  from six.moves import cStringIO as StringIO
+  from mmtbx.regression import tst_ligand_interactions as T
+  model = T.get_model(T.sym_model_str.split('\n'))
+  sel = 'chain A and resseq 1 and resname EDO'
+  res = {}
+  for with_map in (False, True):
+    params = vlmod.master_params().extract().validate_ligands
+    params.ligand_code = []
+    params.resolution = D_MIN
+    assert params.interactions is False
+    mm = _simulated_map_manager(model) if with_map else None
+    log = StringIO()
+    vl = vlmod.manager(model=model, fmodel=None, map_manager=mm, params=params, log=log)
+    vl.run()
+    vl.show_nonbonded_overlaps()
+    ov = find_lr(vl, sel).get_overlaps()
+    res[with_map] = (ov.n_hbonds, ov.n_clashes_sym, log.getvalue())
+  assert res[False][:2] == (2, 0), res[False][:2]
+  assert res[True][:2] == (0, 0), res[True][:2]
+  note = 'contacts across the map box'
+  assert note in res[True][2] and note not in res[False][2]
+  # the records themselves: none with an operator other than the identity
+  from mmtbx.validation import ligand_interactions as LI
+  o = LI.ligand_overlaps(model, sel, symmetry=False)
+  assert [r for r in o.hbond_records + o.clash_records if r['symop'] not in ('', 'x,y,z')] == []
 
 # ------------------------------------------------------------------------------
 

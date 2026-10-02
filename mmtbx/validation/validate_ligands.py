@@ -71,6 +71,7 @@ run_qmr = False
 interactions = False
   .type = bool
   .short_caption = Ligand interaction profile (experimental)
+  .expert_level = 3
   .help = "Per ligand: H-bonds, salt bridges and possible salt bridges, clashes and \
 vdW contacts (probe2's so, cc, wc), with symmetry copies and the pnp/probe2 \
 cross-check (mmtbx.validation.ligand_interactions). Needs H: from run_reduce2 or \
@@ -102,8 +103,15 @@ alt_conf {
 }
 """
 
+# Phenix GUI user levels: 0 Basic, 1 Intermediate, 2 Advanced, 3 Developer
+interactions_expert_level = 3
+
 def master_params():
-  return phil.parse(master_params_str, process_includes = True)
+  params = phil.parse(master_params_str, process_includes = True)
+  # the profile's settings: hidden below the Developer level (experimental)
+  params.get("validate_ligands.ligand_interactions", with_substitution=False
+    ).objects[0].expert_level = interactions_expert_level
+  return params
 
 # ------------------------------------------------------------------------------
 # ligand interaction profile (validate_ligands.interactions)
@@ -643,6 +651,10 @@ class manager(list):
     Print results for overlaps
     '''
     make_sub_header(' Nonbonded overlaps', out=self.log)
+    if self.map_manager is not None:
+      print('Map input: contacts across the map box (its crystal symmetry, not a '
+        'lattice) are not counted, here and in the clashes and H-bonds columns.',
+        file=self.log)
     for lr in self:
       clashes_result = lr.get_overlaps()
       print('\n' + lr.id_str, file=self.log)
@@ -1803,8 +1815,11 @@ class ligand_result(object):
     if self._overlaps is not None:
       return self._overlaps
 
+    # with a map the crystal symmetry is the map's box, not a lattice: contacts
+    # across it are not counted
     self._overlaps = ligand_interactions.ligand_overlaps(
-      model = self.model, sel_str = self.sel_str, within_radius = 3.0)
+      model = self.model, sel_str = self.sel_str, within_radius = 3.0,
+      symmetry = self.map_manager is None)
     return self._overlaps
 
   # ----------------------------------------------------------------------------
