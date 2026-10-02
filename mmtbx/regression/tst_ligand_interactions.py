@@ -3624,6 +3624,259 @@ def exercise_special_positions():
     charge=lambda g: g['charge']) if a == k_act]
   assert [op for a, b, op in pairs] == ['x,y,z'], pairs
 
+# ------------------------------------------------------------------------------
+# pi stacking
+
+BNZ_RING = ('C1', 'C2', 'C3', 'C4', 'C5', 'C6')
+
+def residue_lines(code):
+  '''Atom lines of one residue: GeoStd coordinates; amino acids the CCD's ideal ones (no OXT, HXT, H2).'''
+  from mmtbx.regression import tst_rdkit_utils_molecule as M
+  if code not in ('HIS', 'TRP', 'PHE', 'TYR'):
+    return [l for l in M.pdb_from_cif(code, geostd_text(code)).split('\n')
+      if l.startswith('HETATM')]
+  from mmtbx.chemical_components import get_cif_dictionary
+  return ['ATOM      1 %-4s %3s A   1    %8.3f%8.3f%8.3f  1.00 20.00          %2s' % (
+    (' ' + a.atom_id) if len(a.atom_id) < 4 else a.atom_id, code, a.pdbx_model_Cartn_x_ideal,
+    a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal, a.type_symbol)
+    for a in get_cif_dictionary(code)['_chem_comp_atom'] if a.atom_id not in ('OXT', 'HXT', 'H2')]
+
+def ring_lines(code, ring, centroid, normal, chain, resseq, alt=' ', occ=1.0, spin=0.):
+  '''
+  Residue code superposed so that its ring atoms (in ring order) lie on a regular
+  polygon (their mean radius) about centroid, perpendicular to normal; spin
+  rotates the polygon about the normal (deg).
+  '''
+  from scitbx import matrix
+  from scitbx.math import superpose
+  lines = residue_lines(code)
+  xyz = dict([(l[12:16].strip(), matrix.col([float(l[30 + 8 * k:38 + 8 * k])
+    for k in range(3)])) for l in lines])
+  c0 = sum([xyz[n] for n in ring], matrix.col((0, 0, 0))) / len(ring)
+  r = sum([abs(xyz[n] - c0) for n in ring]) / len(ring)
+  n = matrix.col(normal).normalize()
+  u = n.axis_and_angle_as_r3_rotation_matrix(spin, deg=True) * n.ortho().normalize()
+  v = n.cross(u)
+  sites = [matrix.col(centroid) + r * (math.cos(2 * math.pi * k / len(ring)) * u +
+    math.sin(2 * math.pi * k / len(ring)) * v) for k in range(len(ring))]
+  f = superpose.least_squares_fit(reference_sites=flex.vec3_double([tuple(s) for s in sites]),
+    other_sites=flex.vec3_double([xyz[x] for x in ring]))
+  return [l[:16] + alt + l[17:21] + chain + '%4d' % resseq + l[26:30] + '%8.3f%8.3f%8.3f' %
+    tuple(f.r * xyz[l[12:16].strip()] + f.t) + '%6.2f' % occ + l[60:] for l in lines]
+
+def rings_model(blocks, cell=40.0, sg='P 1'):
+  '''
+  The residues' lines, renumbered, and a water with H far away (probe2 needs polar
+  H); cell: edge or (a, b, c).
+  '''
+  abc = cell if isinstance(cell, tuple) else (cell, cell, cell)
+  lines = ['CRYST1%9.3f%9.3f%9.3f  90.00  90.00  90.00 %-11s' % (abc + (sg,))]
+  k = 1
+  for b in blocks:
+    for l in b:
+      lines.append(l[:6] + '%5d' % k + l[11:]); k += 1
+  lines += [hetatm(k, 'O', 'HOH', 'W', 1, (2, 2, 2), ' O'),
+    hetatm(k + 1, 'H1', 'HOH', 'W', 1, (2.96, 2, 2), ' H'),
+    hetatm(k + 2, 'H2', 'HOH', 'W', 1, (1.75, 2.93, 2), ' H'), 'END']
+  return get_model(lines)
+
+def bnz_pair(cb, nb, spin=15, **kwargs):
+  '''Ligand benzene A 1 at (20, 20, 20), normal z; environment benzene B 1 at cb, normal nb.'''
+  return rings_model([ring_lines('BNZ', BNZ_RING, (20, 20, 20), (0, 0, 1), 'A', 1),
+    ring_lines('BNZ', BNZ_RING, cb, nb, 'B', 1, spin=spin)], **kwargs)
+
+PI_SEL = 'chain A and resseq 1'
+
+def pi_entries(m):
+  return [e for e in m.entries if e['type'] == 'pi_stacking']
+
+def pi_rows(m):
+  '''
+  (subtype, partner residue, partner ring atoms (sorted; RDKit's ring order
+  varies), ligand altloc, partner altloc, d, angle, offset, symop)
+  '''
+  out = []
+  for e in pi_entries(m):
+    g = e['geometry']['pi_stacking']
+    out.append((e['subtype'], g['partner_ring']['residue'],
+      ' '.join(sorted(g['partner_ring']['atoms'])),
+      g['ligand_ring']['altloc'], g['partner_ring']['altloc'], round(g['centroid_distance'], 2),
+      round(g['angle'], 1), round(g['offset'], 2), e['symop']))
+  return sorted(out)
+
+def exercise_pi_geometry():
+  '''
+  Angle between the planes folded to 0-90 deg (antiparallel normals: 0; 150 deg:
+  30); offset: the smaller of the two centroid-to-normal distances.
+  '''
+  ring = lambda c, n: dict(centroid=c, normal=n)
+  g = LI.pi_stacking_geometry(ring((0, 0, 0), (0, 0, 1)), ring((1.5, 0, 3.5), (0, 0, -1)))
+  assert approx_equal(g['angle'], 0, eps=1.e-6) and approx_equal(g['offset'], 1.5)
+  s = math.sin(math.radians(150))
+  g = LI.pi_stacking_geometry(ring((0, 0, 0), (0, 0, 1)), ring((0, 0, 4), (s, 0,
+    math.cos(math.radians(150)))))
+  assert approx_equal(g['angle'], 30, eps=1.e-6), g
+  # T: ring b's centroid on a's normal (offset 0 from a), a's centroid 5 A from b's normal
+  g = LI.pi_stacking_geometry(ring((0, 0, 0), (0, 0, 1)), ring((0, 0, 5), (1, 0, 0)))
+  assert approx_equal(g['offsets'], [0, 5]) and g['offset'] == 0 and approx_equal(g['angle'], 90)
+  g = LI.pi_stacking_geometry(ring((0, 0, 5), (1, 0, 0)), ring((0, 0, 0), (0, 0, 1)))
+  assert approx_equal(g['offsets'], [5, 0]) and g['offset'] == 0
+  c, n, rms = LI.ring_plane([(1, 0, 0.1), (0, 1, -0.1), (-1, 0, 0.1), (0, -1, -0.1)])
+  assert approx_equal(c, (0, 0, 0)) and approx_equal(abs(n[2]), 1) and approx_equal(rms, 0.1)
+
+def exercise_pi_stacking_benzene():
+  '''
+  Benzene dimer (RDKit rings): parallel at 3.8 A with offset 1.5 A; T-shaped (B's
+  centroid 5 A above A's, on its normal, B's plane perpendicular); not entries: 6 A
+  apart, offset 3 A, angle 45 deg; offset 3 A with the offset criterion raised.
+  Ligand-internal pairs go to internal. A puckered partner ring (C1 0.5 A out of
+  the plane: rms 0.14 A) is reported and kept.
+  '''
+  m = get_manager(bnz_pair((21.5, 20, 20 + math.sqrt(3.8 ** 2 - 1.5 ** 2)), (0, 0, 1)),
+    sel=PI_SEL)
+  assert pi_rows(m) == [('parallel', 'B BNZ 1', 'C1 C2 C3 C4 C5 C6', '', '', 3.8, 0.0, 1.5,
+    None)], pi_rows(m)
+  (e,) = pi_entries(m)
+  assert sorted(e['labels'][:6]) == ['A BNZ 1 C%d' % k for k in range(1, 7)]
+  assert sorted(e['labels'][6:]) == ['B BNZ 1 C%d' % k for k in range(1, 7)]
+  assert e['residue'] == 'B BNZ 1' and e['cross_check'] == 'ring geometry (PLIP criteria)'
+  assert e['ligand_atoms'] == e['labels'][:6]
+  g = e['geometry']['pi_stacking']
+  assert g['ligand_ring']['source'] == 'rdkit' and g['ligand_ring']['rms'] < 0.01
+  assert approx_equal(sorted(g['offsets']), [1.5, 1.5], eps=0.01)
+  assert m.counts().per_type['pi_stacking:parallel'] == 1
+  assert [r['residue'] for r in m.aromatic_rings] == ['A BNZ 1'] and m.nonplanar_rings == []
+  d = m.as_dict()
+  assert d['pi_stacking_criteria'] == dict(centroid_distance=5.5, parallel_angle=30.0,
+    t_shaped_angle=60.0, offset=2.0, planarity_rms=0.1, source='PLIP (Salentin et al. 2015)')
+  json.dumps(d)
+  log = StringIO()
+  m.show(log=log)
+  assert [l for l in log.getvalue().splitlines() if l.split()[:2] == ['pi_stacking', 'parallel']
+    and 'centroid_distance=3.80' in l and 'offset=1.50' in l], log.getvalue()
+  # both rings in the ligand (routing only; a selection must be one molecule): internal, once
+  m.entries, m.internal = [], []
+  m._lig = set(m._lig) | set(m.model.selection('chain B').iselection())
+  m._build_pi_stacking()
+  assert pi_entries(m) == [] and [(x['type'], x['subtype']) for x in m.internal] == [
+    ('pi_stacking', 'parallel')], m.internal
+  m = get_manager(bnz_pair((20, 20, 25.0), (1, 0, 0)), sel=PI_SEL)
+  assert pi_rows(m) == [('T-shaped', 'B BNZ 1', 'C1 C2 C3 C4 C5 C6', '', '', 5.0, 90.0, 0.0,
+    None)], pi_rows(m)
+  for cb, nb in (((20, 20, 26.0), (0, 0, 1)), ((23.0, 20, 23.5), (0, 0, 1)),
+      ((20, 20, 24.5), (1, 0, 1))):
+    m = get_manager(bnz_pair(cb, nb), sel=PI_SEL)
+    assert pi_entries(m) == [], (cb, pi_rows(m))
+  # criteria are parameters: offset 3 A allowed
+  params = LI.master_params().extract().ligand_interactions
+  params.pi_stacking.offset = 3.1
+  model = bnz_pair((23.0, 20, 23.5), (0, 0, 1))
+  m = LI.manager(model, model.selection(PI_SEL).iselection(), PI_SEL, params=params).run()
+  assert [r[0] for r in pi_rows(m)] == ['parallel'], pi_rows(m)
+  # a puckered partner: C1 0.5 A out of the plane
+  lines = [l for l in bnz_pair((21.5, 20, 23.5), (0, 0, 1)).model_as_pdb().splitlines()
+    if l.startswith(('ATOM', 'HETATM', 'CRYST1'))]
+  lines = [l[:46] + '%8.3f' % (float(l[46:54]) + 0.5) + l[54:] if l[12:16] == ' C1 ' and
+    l[21] == 'B' else l for l in lines]
+  m = get_manager(get_model(lines + ['END']), sel=PI_SEL)
+  (r,) = m.nonplanar_rings
+  assert r['residue'] == 'B BNZ 1' and approx_equal(r['rms'], 0.143, eps=0.005), r
+  assert len(pi_entries(m)) == 1
+  log = StringIO()
+  m.show(log=log)
+  assert 'aromatic rings not planar (kept):' in log.getvalue()
+
+def exercise_pi_stacking_templates():
+  '''
+  His and Trp rings by template: His parallel above the ligand benzene, Trp's
+  benzene ring parallel below (its pyrrole ring, 2.2 A further off, is not an
+  entry). A benzamidine (BEN) ligand: its phenyl from RDKit, the amidine left out.
+  '''
+  model = rings_model([ring_lines('BNZ', BNZ_RING, (20, 20, 20), (0, 0, 1), 'A', 1),
+    ring_lines('HIS', ('CG', 'ND1', 'CE1', 'NE2', 'CD2'), (20.8, 20, 23.7), (0, 0, 1), 'B',
+      10, spin=20),
+    ring_lines('TRP', ('CD2', 'CE2', 'CZ2', 'CH2', 'CZ3', 'CE3'), (20.8, 20, 16.3), (0, 0, 1),
+      'B', 20, spin=200)])
+  m = get_manager(model, sel=PI_SEL)
+  assert pi_rows(m) == [
+    ('parallel', 'B HIS 10', 'CD2 CE1 CG ND1 NE2', '', '', 3.79, 0.0, 0.8, None),
+    ('parallel', 'B TRP 20', 'CD2 CE2 CE3 CH2 CZ2 CZ3', '', '', 3.79, 0.0, 0.8, None)], pi_rows(m)
+  assert set([e['geometry']['pi_stacking']['partner_ring']['source'] for e in pi_entries(m)]) == \
+    set(['template'])
+  found = LI.find_aromatic_rings(model, flex.bool(model.size(), True))
+  atoms = model.get_hierarchy().atoms()
+  assert sorted([(atoms[r['atoms'][0]].parent().resname, r['source'], len(r['atoms']))
+    for r in found.rings]) == [('BNZ', 'rdkit', 6), ('HIS', 'template', 5),
+    ('TRP', 'template', 5), ('TRP', 'template', 6)], found.rings
+  model = rings_model([ring_lines('BEN', BNZ_RING, (20, 20, 20), (0, 0, 1), 'A', 1),
+    ring_lines('BNZ', BNZ_RING, (21.0, 20, 23.6), (0, 0, 1), 'B', 1, spin=15)])
+  m = get_manager(model, sel=PI_SEL)
+  assert [(r['residue'], r['source'], sorted(r['atoms'])) for r in m.aromatic_rings] == [
+    ('A BEN 1', 'rdkit', ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'])], m.aromatic_rings
+  assert pi_rows(m) == [('parallel', 'B BNZ 1', 'C1 C2 C3 C4 C5 C6', '', '', 3.74, 0.0, 1.0,
+    None)], pi_rows(m)
+
+def exercise_pi_stacking_symmetry():
+  '''
+  The partner benzene one cell edge up z: its x,y,z-1 symmetry mate stacks (with
+  probe2's copy operator); symmetry=False: no entry, also where the partner itself
+  is within the search distance (c = 11 A). A benzene centred on a
+  twofold (P 1 2 1, its plane perpendicular to the axis), the ligand T-shaped next
+  to it: one entry, not one per operator; the ligand also stacks on its own
+  symmetry mate (parallel, 3.8 A).
+  '''
+  model = bnz_pair((21.0, 20, 23.6 + 40), (0, 0, 1))
+  m = get_manager(model, sel=PI_SEL)
+  assert pi_rows(m) == [('parallel', 'B BNZ 1 (x,y,z-1)', 'C1 C2 C3 C4 C5 C6', '', '', 3.74,
+    0.0, 1.0, 'x,y,z-1')], pi_rows(m)
+  (e,) = pi_entries(m)
+  assert 'B BNZ 1 C1 (x,y,z-1)' in e['labels'][6:] and e['operators'][:6] == ['x,y,z'] * 6
+  assert e['operators'][6:] == ['x,y,z-1'] * 6
+  for trim in (True, False):
+    m = get_manager(model, sel=PI_SEL, symmetry=False, probe_neighbourhood=trim)
+    assert pi_entries(m) == []
+    no_symmetry_anywhere(m)
+  # c = 11 A: the partner 7.4 A above the ligand (searched, not stacking), its
+  # x,y,z-1 mate 3.6 A below (stacking): symmetry=False must not use the mate
+  model = rings_model([ring_lines('BNZ', BNZ_RING, (20, 20, 20), (0, 0, 1), 'A', 1),
+    ring_lines('BNZ', BNZ_RING, (21.0, 20, 27.4), (0, 0, 1), 'B', 1, spin=15)],
+    cell=(40.0, 40.0, 11.0))
+  m = get_manager(model, sel=PI_SEL)
+  assert [(r[0], r[-1]) for r in pi_rows(m)] == [('parallel', 'x,y,z-1')], pi_rows(m)
+  m = get_manager(model, sel=PI_SEL, symmetry=False)
+  assert pi_entries(m) == [], pi_rows(m)
+  no_symmetry_anywhere(m)
+  model = rings_model([ring_lines('BNZ', BNZ_RING, (11.9, 15.0, 0), (1, 0, 0), 'A', 1),
+    ring_lines('BNZ', BNZ_RING, (10, 10, 0), (0, 1, 0), 'B', 1, occ=0.5)], cell=20.0,
+    sg='P 1 2 1')
+  m = get_manager(model, sel=PI_SEL)
+  assert pi_rows(m) == [
+    ('T-shaped', 'B BNZ 1', 'C1 C2 C3 C4 C5 C6', '', '', 5.35, 90.0, 1.9, None),
+    ('parallel', 'A BNZ 1 (-x+1,y,-z)', 'C1 C2 C3 C4 C5 C6', '', '', 3.8, 0.0, 0.0,
+      '-x+1,y,-z')], pi_rows(m)
+  # ring_pairs itself: the environment ring and its mate on its own site are one pair
+  found = LI.find_aromatic_rings(model, flex.bool(model.size(), True))
+  atoms = model.get_hierarchy().atoms()
+  k = [n for n, r in enumerate(found.rings)
+    if atoms[r['atoms'][0]].parent().parent().parent().id == 'A'][0]
+  assert sorted([(b == k, op) for a, b, op, d in LI.ring_pairs(model, found.rings, 5.5)
+    if a == k]) == [(False, 'x,y,z'), (True, '-x+1,y,-z')]
+
+def exercise_pi_stacking_altlocs():
+  '''
+  Ligand and partner benzene in conformers A and B, all four pairs within the
+  criteria: A-A and B-B only. The partner in conformer A only: the ligand's A.
+  '''
+  blocks = [ring_lines('BNZ', BNZ_RING, (20, 20, 20), (0, 0, 1), 'A', 1, alt='A', occ=0.5),
+    ring_lines('BNZ', BNZ_RING, (20.3, 20, 20), (0, 0, 1), 'A', 1, alt='B', occ=0.5),
+    ring_lines('BNZ', BNZ_RING, (21.0, 20, 23.6), (0, 0, 1), 'B', 1, alt='A', occ=0.5, spin=15),
+    ring_lines('BNZ', BNZ_RING, (21.3, 20, 23.6), (0, 0, 1), 'B', 1, alt='B', occ=0.5, spin=15)]
+  m = get_manager(rings_model(blocks), sel=PI_SEL)
+  assert [(r[3], r[4]) for r in pi_rows(m)] == [('A', 'A'), ('B', 'B')], pi_rows(m)
+  assert len(m.aromatic_rings) == 2
+  m = get_manager(rings_model(blocks[:3]), sel=PI_SEL)
+  assert [(r[3], r[4]) for r in pi_rows(m)] == [('A', 'A')], pi_rows(m)
+
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
@@ -4481,6 +4734,11 @@ def run():
   exercise_metal_without_r0()
   exercise_metal_altlocs()
   exercise_special_positions()
+  exercise_pi_geometry()
+  exercise_pi_stacking_benzene()
+  exercise_pi_stacking_templates()
+  exercise_pi_stacking_symmetry()
+  exercise_pi_stacking_altlocs()
   exercise_trimmed_hydrogen_check()
   exercise_formal_charge_conflict()
   exercise_pair_class_order(model)

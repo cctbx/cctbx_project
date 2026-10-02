@@ -1,6 +1,6 @@
 """
 Ligand interaction profile from geometric tools (H-bonds, clashes, vdW contacts,
-salt bridges).
+salt bridges, metal coordination, pi stacking).
 
 Input: an mmtbx.model.manager with electron-cloud H, as the ligand validation tool
 prepares it (this module does not place H), processed with restraints, the
@@ -49,6 +49,14 @@ sources, cross_check, model_support), ligand-environment only:
                R0 and the metal's site (coordinating atoms, number, valence sum);
                pairs without R0 listed in metal_untyped, a metal pair that is also
                an H-bond in metal_errors
+  pi_stacking  a ligand aromatic ring and an environment one (below), PLIP's
+               criteria (Salentin et al., Nucleic Acids Res. 43, W443 (2015)):
+               centroids within 5.5 A, offset <= 2.0 A (the distance of one
+               centroid from the other ring's normal through its centroid, the
+               smaller of the two); subtype "parallel" (angle between the planes,
+               0-90 deg, <= 30) or "T-shaped" (>= 60); other ring pairs are not
+               entries. Atoms: both rings'. Geometry: centroid distance, angle,
+               offset, both rings (residue, atom names, centroid, rms from plane)
 cross_check (hbond, clash): "pnp and probe2", "pnp only", "probe2 only" (the last
 two listed as disagreements), or "symmetry, probe2 not applicable" (symmetry pairs
 of a model without crystal symmetry in probe2's input, which cannot occur with the
@@ -150,6 +158,18 @@ rules and K&N subtype; ligand-internal pairs in internal. Each entry: both group
 not certainly charged: "<residue> <kind> protonated (HD2)", "... neutral as
 modelled (restraint file)", "... uncertain (<notes>)"), the overlapping H-bonds.
 possible_groups: the ligand's groups that can pair only this way.
+Aromatic rings (find_aromatic_rings; on the ligand and the residues within
+centroid_distance + 3 A, symmetry included unless off), per conformer as charged
+groups: Phe, Tyr (CG CD1 CD2 CE1 CE2 CZ), Trp (CG CD1 NE1 CE2 CD2; CD2 CE2 CZ2 CH2
+CZ3 CE3), His (CG ND1 CD2 CE1 NE2) by template; nucleotide bases by name (N1 C2 N3
+C4 C5 C6; purines also N9 C8 N7 C5 C4); every other residue (water and ions
+apart): the rings of residue_molecule's molecule with all atoms and bonds aromatic
+(RDKit), mapped to the model's atoms. Per ring: centroid, least-squares plane
+normal, rms distance from the plane; rings with rms > planarity_rms are listed
+(nonplanar_rings) and kept. Ring pairs (ring_pairs): rings with different non-blank
+altlocs are never paired; symmetry mates of a ring on one site (centroid) count
+once (identity first, else the first operator in sorted order); with symmetry off,
+Cartesian only. The partner ring's plane is fitted to its moved atoms.
 Contact patches: probe2's ligand -> environment dots, at their location on the
 ligand's surface, grouped by spatial connectivity (dots closer than
 patch_link_distance are linked); per patch the dots and area per class, the mean
@@ -268,6 +288,29 @@ entry; 0.1 v.u. is d <= R0 + 0.85 A (Zn-N, R0 1.77 A: d <= 2.62 A)."
       .type = float
       .help = "A metal-donor pair without an R0 in mmtbx.ions is not typed; it is \\
 listed (metal_untyped) when its atoms are within this distance (A)."
+  }
+  pi_stacking
+    .help = "Pi stacking between a ligand ring and an environment ring (aromatic \\
+rings: find_aromatic_rings), criteria of PLIP (Salentin et al., Nucleic Acids Res. \\
+43, W443 (2015)). Offset: the distance of one centroid from the other ring's \\
+normal through its centroid, the smaller of the two."
+  {
+    centroid_distance = 5.5
+      .type = float
+      .help = "A. Maximum distance between the ring centroids (PLIP PISTACK_DIST_MAX)."
+    parallel_angle = 30
+      .type = float
+      .help = "Deg. Parallel: angle between the ring planes at most this (PLIP PISTACK_ANG_DEV)."
+    t_shaped_angle = 60
+      .type = float
+      .help = "Deg. T-shaped: angle between the ring planes at least this (90 - PISTACK_ANG_DEV)."
+    offset = 2.0
+      .type = float
+      .help = "A. Maximum offset, both subtypes (PLIP PISTACK_OFFSET_MAX)."
+    planarity_rms = 0.1
+      .type = float
+      .help = "A. Rings with a larger rms distance from their least-squares plane are \\
+reported (nonplanar_rings) and kept."
   }
   salt_bridge
     .help = "Salt bridges between oppositely charged groups."
@@ -1158,8 +1201,10 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
   altloc, kind, charge, atoms, reason)], failures=[dict(residue, altloc,
   reason)], builder_charges={(chain, resseq, icode, altloc): {i_seq: formal
   charge}} for the residue conformers built, possible=[groups as above from
-  builder_possible: neutral as modelled, usual_charge set]). Template groups neutral as modelled with a nonzero usual_charge carry
-  a note on what makes them neutral ("protonated (HD2)", "neutral (NZ with 2 H)",
+  builder_possible: neutral as modelled, usual_charge set], molecules={((chain,
+  resseq, icode), altloc): residue_molecule result}). Template groups neutral as
+  modelled with a nonzero usual_charge carry a note on what makes them neutral
+  ("protonated (HD2)", "neutral (NZ with 2 H)",
   "neutral (4 of 5 H: ...)").
   """
   import iotbx.pdb
@@ -1334,7 +1379,8 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
     failures=[dict(residue=k[0], altloc=a, reason=k[1]) for k, a in per_conformer(failures)],
     builder_charges=dict([(k + (eff,), dict([(i, r.mol.GetAtomWithIdx(x).GetFormalCharge())
       for x, i in r.rdkit_to_iseq.items()])) for (k, eff), (r, g, p) in built.items() if r.ok]),
-    possible=assemble(found_possible))
+    possible=assemble(found_possible),
+    molecules=dict([(k, r) for k, (r, g, p) in built.items()]))
 
 # ------------------------------------------------------------------------------
 # metal coordination
@@ -1535,6 +1581,226 @@ def charged_group_pairs(model, groups, cutoff, charge=None, symmetry=True):
     out.extend([(ka, kb, op) for op in ops])
   return sorted(out)
 
+# ------------------------------------------------------------------------------
+# aromatic rings and pi stacking
+
+# Standard amino acids (common_amino_acid): aromatic rings by atom name
+aromatic_ring_templates = {
+  "PHE": (("CG", "CD1", "CD2", "CE1", "CE2", "CZ"),),
+  "TYR": (("CG", "CD1", "CD2", "CE1", "CE2", "CZ"),),
+  "TRP": (("CG", "CD1", "NE1", "CE2", "CD2"), ("CD2", "CE2", "CZ2", "CH2", "CZ3", "CE3")),
+  "HIS": (("CG", "ND1", "CD2", "CE1", "NE2"),),
+}
+# Nucleotide bases (common_rna_dna) by atom name: purines (N9 present) both rings
+pyrimidine_ring = ("N1", "C2", "N3", "C4", "C5", "C6")
+purine_rings = (("N9", "C8", "N7", "C5", "C4"), pyrimidine_ring)
+
+def ring_plane(xyz):
+  """(centroid, unit normal, rms distance from the least-squares plane) of a list of sites."""
+  from scitbx.linalg import eigensystem
+  n = len(xyz)
+  c = [sum([x[k] for x in xyz]) / n for k in range(3)]
+  d = [[x[k] - c[k] for k in range(3)] for x in xyz]
+  s = lambda a, b: sum([v[a] * v[b] for v in d])
+  es = eigensystem.real_symmetric((s(0, 0), s(1, 1), s(2, 2), s(0, 1), s(0, 2), s(1, 2)))
+  normal = list(es.vectors()[6:9])
+  return c, normal, math.sqrt(max(0., es.values()[2]) / n)
+
+def find_aromatic_rings(model, selection, fsc0=None, molecules=None):
+  """
+  Aromatic rings among the residues of the selected atoms (flex.bool or
+  flex.size_t), per conformer (blank-altloc atoms plus one altloc). Phe, Tyr, Trp
+  (both rings), His by template; nucleotide bases by name (pyrimidine ring; with
+  N9 also the imidazole ring); every other residue but water and single-atom
+  ions: the aromatic rings (all atoms and bonds aromatic in RDKit) of
+  rdkit_utils.residue_molecule per conformer, mapped to the model's atoms (rings
+  with an atom outside the model left out). molecules: {((chain, resseq, icode),
+  altloc): residue_molecule result} reused and filled. A ring found identically
+  in every conformer has blank altloc, else its atoms' or its conformer's.
+  Returns group_args(rings=[dict(atoms, altloc, resname, source, centroid,
+  normal, rms)], missing=[dict(residue, altloc, atoms)], failures=[dict(residue,
+  altloc, reason)]).
+  """
+  import iotbx.pdb
+  from mmtbx.ligands import rdkit_utils
+  atoms = model.get_hierarchy().atoms()
+  if fsc0 is None:
+    fsc0 = model.get_restraints_manager().geometry.shell_sym_tables[0] \
+      .full_simple_connectivity()
+  if molecules is None:
+    molecules = {}
+  if isinstance(selection, flex.bool):
+    selection = selection.iselection()
+  sel = set(selection)
+  alt = [_altloc(a) for a in atoms]
+  alts = sorted(set([alt[i] for i in sel if alt[i]])) or [""]
+  found, missing, failures = {}, set(), set()
+  for conf in alts:
+    def visible(k):
+      return alt[k] in ("", conf)
+    residues = {}
+    for i in sel:
+      if visible(i):
+        rg = atoms[i].parent().parent()
+        residues.setdefault((rg.parent().id, rg.resseq, rg.icode), []).append(i)
+    for key, seqs in sorted(residues.items()):
+      ags = [atoms[i].parent() for i in seqs]
+      ag = ([a for a in ags if a.altloc.strip()] or ags)[0]
+      rg = ag.parent()
+      resname = ag.resname.strip().upper()
+      rclass = iotbx.pdb.common_residue_names_get_class(resname)
+      if rclass in ("common_water", "common_element"):
+        continue
+      rgs = [x for x in rg.parent().residue_groups() if (x.resseq, x.icode) ==
+        (rg.resseq, rg.icode)]
+      names = dict([(a.name.strip(), a.i_seq) for x in rgs for a in x.atoms()
+        if visible(a.i_seq)])
+      label = residue_label(atoms[seqs[0]], resname)
+      templates = None
+      if rclass == "common_amino_acid":
+        templates = aromatic_ring_templates.get(resname, ())
+      elif rclass == "common_rna_dna":
+        templates = purine_rings if "N9" in names else (pyrimidine_ring,)
+      if templates is not None:
+        for t in templates:
+          absent = tuple([x for x in t if x not in names])
+          if absent:
+            missing.add((label, absent, conf))
+            continue
+          found.setdefault((tuple([names[x] for x in t]), resname, "template"),
+            set()).add(conf)
+        continue
+      own = sorted(set([a.altloc.strip() for a in rg.atom_groups() if a.altloc.strip()]))
+      eff = conf if conf in own else (own[0] if own else "")
+      if (key, eff) not in molecules:
+        try:
+          molecules[(key, eff)] = rdkit_utils.residue_molecule(model, rg, altloc=eff,
+            fsc0=fsc0)
+        except Exception as e:
+          molecules[(key, eff)] = group_args(ok=False, reason="%s: %s" % (
+            type(e).__name__, e))
+      r = molecules[(key, eff)]
+      if not r.ok:
+        failures.add((label, r.reason, conf))
+        continue
+      mol = r.mol
+      for ring in mol.GetRingInfo().AtomRings():
+        bonds = [mol.GetBondBetweenAtoms(ring[k], ring[(k + 1) % len(ring)])
+          for k in range(len(ring))]
+        if not all([mol.GetAtomWithIdx(x).GetIsAromatic() for x in ring]) or \
+            not all([b is not None and b.GetIsAromatic() for b in bonds]):
+          continue
+        seqs_ = [r.rdkit_to_iseq.get(x) for x in ring]
+        if None in seqs_:
+          continue
+        found.setdefault((tuple(seqs_), resname, "rdkit"), set()).add(conf)
+  rings = []
+  for (seqs, resname, source), confs in sorted(found.items()):
+    own = sorted(set([alt[i] for i in seqs if alt[i]]))
+    if own:
+      altlocs = own
+    elif set(confs) == set(alts):
+      altlocs = [""]
+    else:
+      altlocs = sorted(confs)
+    c, n, rms = ring_plane([atoms[i].xyz for i in seqs])
+    for a in altlocs:
+      rings.append(dict(atoms=list(seqs), altloc=a, resname=resname, source=source,
+        centroid=c, normal=n, rms=rms))
+  def per_conformer(items):
+    confs = {}
+    for x in items:
+      confs.setdefault(x[:-1], set()).add(x[-1])
+    for k, cs in sorted(confs.items()):
+      for a in ([""] if set(cs) == set(alts) else sorted(cs)):
+        yield k, a
+  return group_args(rings=rings,
+    missing=[dict(residue=k[0], altloc=a, atoms=list(k[1])) for k, a in per_conformer(missing)],
+    failures=[dict(residue=k[0], altloc=a, reason=k[1]) for k, a in per_conformer(failures)])
+
+def ring_pairs(model, rings, cutoff, symmetry=True):
+  """
+  [(k1, k2, op, d)]: rings (indices into rings) whose centroids are within cutoff,
+  op moving ring k2 next to ring k1, d the centroid distance (both directions;
+  crystal symmetry included unless symmetry is False: Cartesian, op x,y,z).
+  Rings with different non-blank altlocs, rings sharing an atom (same copy) and a
+  ring with a copy of itself on its own site are not paired. Symmetry mates of a
+  ring on one site (centroid within site_tolerance; special positions) are one
+  pair (unique_symmetry_mates).
+  """
+  cs = model.crystal_symmetry()
+  xyz = flex.vec3_double([r["centroid"] for r in rings])
+  raw = []
+  use_symmetry = (symmetry and cs is not None and cs.unit_cell() is not None and
+    cs.space_group() is not None)
+  if not use_symmetry:
+    for a in range(len(rings)):
+      for b in range(a + 1, len(rings)):
+        if math.sqrt(sum([(xyz[a][c] - xyz[b][c]) ** 2 for c in range(3)])) <= cutoff:
+          raw.append((a, b, "x,y,z"))
+  elif len(rings):
+    uc = cs.unit_cell()
+    sps = cs.special_position_settings()
+    asu = sps.asu_mappings(buffer_thickness=cutoff)
+    asu.process_sites_cart(original_sites=xyz,
+      site_symmetry_table=sps.site_symmetry_table(sites_cart=xyz))
+    for p in crystal.neighbors_fast_pair_generator(asu, distance_cutoff=cutoff):
+      rt = asu.get_rt_mx_i(p).inverse().multiply(asu.get_rt_mx_j(p))
+      d = math.sqrt(p.dist_sq)
+      best = None
+      for c in (rt, rt.inverse()):
+        x = moved_site(uc, xyz[p.j_seq], c)
+        err = abs(math.sqrt(sum([(xyz[p.i_seq][k] - x[k]) ** 2 for k in range(3)])) - d)
+        if best is None or err < best[0]:
+          best = (err, c.as_xyz())
+      raw.append((p.i_seq, p.j_seq, best[1]))
+  def centroid_of(k, op):
+    x = rings[k]["centroid"]
+    return x if _identity(op) else moved_site(cs.unit_cell(), x, sgtbx.rt_mx(op))
+  result = set()
+  for a, b, op in raw:
+    ra, rb = rings[a], rings[b]
+    if ra["altloc"] and rb["altloc"] and ra["altloc"] != rb["altloc"]:
+      continue
+    op = "x,y,z" if _identity(op) else op
+    if _identity(op) and set(ra["atoms"]) & set(rb["atoms"]):
+      continue
+    inv = "x,y,z" if _identity(op) else sgtbx.rt_mx(op).inverse().as_xyz()
+    result.add((a, b, op))
+    result.add((b, a, inv))
+  by_pair = {}
+  for a, b, op in result:
+    by_pair.setdefault((a, b), []).append(op)
+  out = []
+  for (a, b), ops in by_pair.items():
+    if use_symmetry:
+      ops = unique_symmetry_mates(ops, lambda op, b=b: centroid_of(b, op))
+    for op in ops:
+      x, y = rings[a]["centroid"], centroid_of(b, op)
+      d = math.sqrt(sum([(x[c] - y[c]) ** 2 for c in range(3)]))
+      if d < site_tolerance:
+        continue   # the ring itself
+      out.append((a, b, op, d))
+  return sorted(out)
+
+def pi_stacking_geometry(ra, rb):
+  """
+  Two rings (dict centroid, normal): centroid distance, angle between the planes
+  folded to 0-90 deg, and offset: the distance of one centroid from the other
+  ring's normal through its centroid, the smaller of the two (offsets: from ra's
+  normal, from rb's).
+  """
+  ca, na, cb, nb = ra["centroid"], ra["normal"], rb["centroid"], rb["normal"]
+  v = [cb[k] - ca[k] for k in range(3)]
+  d = math.sqrt(sum([x * x for x in v]))
+  dot = abs(sum([na[k] * nb[k] for k in range(3)]))
+  angle = math.degrees(math.acos(min(1., dot)))
+  def off(n):
+    t = sum([v[k] * n[k] for k in range(3)])
+    return math.sqrt(max(0., d * d - t * t))
+  offsets = [off(na), off(nb)]
+  return dict(centroid_distance=d, angle=angle, offset=min(offsets), offsets=offsets)
+
 def _with_h(atoms, bonds):
   h = dict([(n, set()) for n in atoms])
   for a, b in bonds:
@@ -1675,6 +1941,11 @@ class manager(object):
     self.warnings = []
     self.metal_untyped = []
     self.metal_errors = []
+    self.aromatic_rings = []
+    self.nonplanar_rings = []
+    self.ring_missing_atoms = []
+    self.ring_failures = []
+    self._molecules = {}
 
   def run(self):
     atoms = self.model.get_hierarchy().atoms()
@@ -1764,6 +2035,7 @@ class manager(object):
     self._build_entries()
     self._build_metals()
     self._build_salt_bridges()
+    self._build_pi_stacking()
     self._build_patches()
     return self
 
@@ -2390,6 +2662,7 @@ class manager(object):
     self.charged_groups_dropped = found.dropped
     self.charged_group_failures = found.failures
     self._builder_charges = found.builder_charges
+    self._molecules = found.molecules
     partner_residues = set()
     for s, p, op in charged_group_pairs(self.model, groups, search,
         symmetry=self.params.symmetry):
@@ -2401,6 +2674,78 @@ class manager(object):
         self.entries.append(e)
     self._build_possible_salt_bridges(groups, found.possible, search)
     self._compare_formal_charges(groups, region, partner_residues)
+
+  # -- pi stacking -------------------------------------------------------------
+
+  def _ring_info(self, r, op="x,y,z"):
+    atoms = self._atoms
+    suffix = "" if _identity(op) else " (%s)" % op
+    return dict(residue=residue_label(atoms[r["atoms"][0]], r["resname"]) + suffix,
+      atoms=[atoms[i].name.strip() for i in r["atoms"]], altloc=r["altloc"],
+      source=r["source"], centroid=list(r["centroid"]), rms=r["rms"])
+
+  def _build_pi_stacking(self):
+    """
+    Pi stacking between the ligand's aromatic rings and the environment's
+    (find_aromatic_rings on the ligand and the residues within centroid_distance +
+    3 A; ring_pairs: symmetry, altloc and site rules as for salt bridges). Subtype
+    "parallel" (angle <= parallel_angle) or "T-shaped" (angle >= t_shaped_angle),
+    offset <= pi_stacking.offset for both; other pairs are not entries. The partner
+    ring's plane is fitted to its moved atoms. Ligand-internal pairs go to internal.
+    """
+    pp = self.params.pi_stacking
+    atoms = self._atoms
+    lig = self._lig
+    self.pi_stacking_criteria = dict(centroid_distance=pp.centroid_distance,
+      parallel_angle=pp.parallel_angle, t_shaped_angle=pp.t_shaped_angle,
+      offset=pp.offset, planarity_rms=pp.planarity_rms, source="PLIP (Salentin et al. 2015)")
+    search = pp.centroid_distance + 3.0
+    if self.params.symmetry:
+      region = self.model.selection("(%s) or (residues_within (%s, %s))" % (
+        self.sel_str, search, self.sel_str))
+    else:
+      region = residues_near(self.model, self.ligand_isel, search)
+    found = find_aromatic_rings(self.model, region, self._fsc0, self._molecules)
+    rings = found.rings
+    on_ligand = [all([i in lig for i in r["atoms"]]) for r in rings]
+    self.aromatic_rings = [self._ring_info(r) for k, r in enumerate(rings) if on_ligand[k]]
+    self.nonplanar_rings = [self._ring_info(r) for r in rings if r["rms"] > pp.planarity_rms]
+    self.ring_missing_atoms = found.missing
+    self.ring_failures = found.failures
+    for a, b, op, d in ring_pairs(self.model, rings, pp.centroid_distance,
+        self.params.symmetry):
+      if not on_ligand[a]:
+        continue
+      internal = on_ligand[b] and _identity(op)
+      if internal and b < a:
+        continue
+      rb = rings[b]
+      if not _identity(op):
+        j, op2 = self._canonical_partner(rb["atoms"][0], op)
+        if j == rb["atoms"][0]:
+          op = op2
+        c, n, rms = ring_plane([self._site(i, op) for i in rb["atoms"]])
+        rb = dict(rb, centroid=c, normal=n, rms=rms)
+      g = pi_stacking_geometry(rings[a], rb)
+      if g["offset"] > pp.offset:
+        continue
+      if g["angle"] <= pp.parallel_angle:
+        subtype = "parallel"
+      elif g["angle"] >= pp.t_shaped_angle:
+        subtype = "T-shaped"
+      else:
+        continue
+      geometry = dict(pi_stacking=dict(g, ligand_ring=self._ring_info(rings[a]),
+        partner_ring=self._ring_info(rb, op)))
+      if internal:
+        self.internal.append(dict(type="pi_stacking", subtype=subtype,
+          labels=[atom_label(atoms[i]) for i in rings[a]["atoms"] + rb["atoms"]],
+          geometry=geometry))
+        continue
+      seqs = rings[a]["atoms"] + rb["atoms"]
+      ops = ["x,y,z"] * len(rings[a]["atoms"]) + [op] * len(rb["atoms"])
+      self.entries.append(self._entry("pi_stacking", subtype, seqs, geometry,
+        ["ring geometry"], None if _identity(op) else ops, "ring geometry (PLIP criteria)"))
 
   def _pair_entry(self, type_, stay, partner, op, extra=None):
     """
@@ -2737,7 +3082,10 @@ class manager(object):
       formal_charge_conflicts=self.formal_charge_conflicts(),
       symmetry=self.params.symmetry, warnings=self.warnings, probe_input=self.probe_input,
       metal_criteria=getattr(self, "metal_criteria", None), metal_untyped=self.metal_untyped,
-      metal_errors=self.metal_errors)
+      metal_errors=self.metal_errors,
+      pi_stacking_criteria=getattr(self, "pi_stacking_criteria", None),
+      aromatic_rings=self.aromatic_rings, nonplanar_rings=self.nonplanar_rings,
+      ring_missing_atoms=self.ring_missing_atoms, ring_failures=self.ring_failures)
 
   def show(self, log=None):
     if log is None:
@@ -2750,6 +3098,8 @@ class manager(object):
       sorted(self.overlaps.hbond_criteria.items())]), file=log)
     print("  salt bridges: %s" % ", ".join(["%s=%s" % (k, v) for k, v in
       sorted(self.salt_bridge_criteria.items())]), file=log)
+    print("  pi stacking: %s" % ", ".join(["%s=%s" % (k, v) for k, v in
+      sorted(getattr(self, "pi_stacking_criteria", {}).items())]), file=log)
     print("  counts: %s" % ", ".join(["%s %d" % (k, v) for k, v in sorted(c.per_type.items())]),
       file=log)
     for e in self.entries:
@@ -2776,6 +3126,16 @@ class manager(object):
       for x in self.metal_untyped:
         print("    %s ... %s %.2f A: %s" % (x["labels"][0], x["labels"][1], x["d"],
           x["reason"]), file=log)
+    if self.nonplanar_rings:
+      print("  aromatic rings not planar (kept):", file=log)
+      for r in self.nonplanar_rings:
+        print("    %s %s: rms %.3f A" % (r["residue"], " ".join(r["atoms"]), r["rms"]),
+          file=log)
+    if self.ring_missing_atoms:
+      print("  aromatic rings skipped (missing atoms):", file=log)
+      for r in self.ring_missing_atoms:
+        print("    %s%s: %s" % (r["residue"], (" alt " + r["altloc"]) if r["altloc"]
+          else "", " ".join(r["atoms"])), file=log)
     if self.warnings:
       print("  warnings:", file=log)
       for w in self.warnings:

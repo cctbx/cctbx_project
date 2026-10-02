@@ -208,9 +208,9 @@ def run_test_interactions_fmn():
   i = out.index('Ligand interactions (experimental)')
   section = out[i:]
   row = [l for l in section.splitlines() if l.startswith('FMN C 301') and '|' in l][0]
-  # H-bonds, salt bridges, possible, metal, clashes, so, cc, wc, symmetry, disagreements
-  assert [x.strip() for x in row.split('|')][1:11] == ['1', '1', '0', '0', '0', '0', '0', '3',
-    '0', '0'], row
+  # H-bonds, salt bridges, possible, metal, pi, clashes, so, cc, wc, symmetry, disagreements
+  assert [x.strip() for x in row.split('|')][1:12] == ['1', '1', '0', '0', '0', '0', '0', '0',
+    '3', '0', '0'], row
   assert 'gives the same numbers for every ligand' in section
   assert 'C FMN 301 O1P O2P O3P ... C ARG 207 NE NH1 NH2' in section
   # JSON, snapshot, get_results
@@ -229,7 +229,8 @@ def run_test_interactions_aqs():
   '''
   AQS in 386D (9 clashes, 6 H-bonds, 5 via symmetry): counts equal a direct
   ligand_interactions run and validate_ligands' overlap numbers, symmetry contacts
-  present; nproc=2 gives the same profiles.
+  present, 5 parallel pi stacks with DC 1, DG 2 and a DG 6 symmetry mate; nproc=2
+  gives the same profiles.
   '''
   print('test_interactions_aqs')
   fn = 'tst_interactions_aqs.pdb'
@@ -242,6 +243,12 @@ def run_test_interactions_aqs():
       r['validate_ligands_counts']['n_hbonds']) == (9, 6)
     assert r['counts']['symmetry_contacts'] > 0
     assert [e for e in r['entries'] if e['symop']]
+    # intercalated between base pairs: the outer rings stack on bases (templates by name)
+    pi = sorted([(e['labels'][-1].split()[1:3], e['subtype'], e['symop']) for e in r['entries']
+      if e['type'] == 'pi_stacking'])
+    assert r['counts']['pi_stacking'] == 5 and pi == [(['DC', '1'], 'parallel', None),
+      (['DG', '2'], 'parallel', None), (['DG', '2'], 'parallel', None),
+      (['DG', '6'], 'parallel', '-x+y+1,y,-z+1/2'), (['DG', '6'], 'parallel', '-x+y+1,y,-z+1/2')], pi
     res[nproc] = [(x.id_str, x.altloc, x.get_interactions()['counts'],
       x.get_interactions()['entries']) for x in result.ligand_manager]
   assert res[1] == res[2]
