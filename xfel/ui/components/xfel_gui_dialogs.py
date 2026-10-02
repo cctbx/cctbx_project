@@ -3833,14 +3833,18 @@ def get_trial_indexing_ambiguity(db, trial, max_delta=LATTICE_SYMMETRY_MAX_DELTA
     return no_ambiguity
 
 
-def apply_cosym_to_step_list(task_type, step_list):
+def apply_cosym_to_step_list(task_type, step_list, mark0=True):
   ''' Return step_list rewritten for an unresolved indexing ambiguity.
 
       Scaling only prepares the data: until the ambiguity is broken, scaling and
       postrefining against the model are not meaningful, so those steps come out.
-      Merging then runs modify_cosym to break it, and can scale and postrefine
-      once it has. Derived from the list passed in rather than hardcoded, so the
-      stage defaults stay the single source of truth. '''
+      Merging then runs modify_cosym to break it and, in a mark0 merge, scales
+      and postrefines against the reference once it has. A mark1 merge has no
+      reference: the scale and postrefine workers are no-ops under mark1, and
+      cosym's result cannot be anchored to anything, so merging gains only
+      modify_cosym and averages the mutually aligned patterns as they are.
+      Derived from the list passed in rather than hardcoded, so the stage
+      defaults stay the single source of truth. '''
   steps = list(step_list or [])
   if 'modify_cosym' in steps:
     return steps                      # already a cosym step list, leave it alone
@@ -3851,7 +3855,9 @@ def apply_cosym_to_step_list(task_type, step_list):
     for step in steps:
       rewritten.append(step)
       if step == 'model_scaling':
-        rewritten.extend(['modify_cosym', 'scale', 'postrefine'])
+        rewritten.append('modify_cosym')
+        if mark0:
+          rewritten.extend(['scale', 'postrefine'])
     return rewritten
   return steps
 
@@ -4707,8 +4713,12 @@ class DatasetDialog(BaseDialog):
     # Anchoring flips the mutually aligned patterns to match a reference; without
     # a model there is nothing to anchor to. The cosym README notes this is
     # mandatory for mark0 merging with postrefinement but is not enforced.
-    anchor = (self.model_mode_radio.known.GetValue() and
-              bool(self.shared_model.ctr.GetValue().strip()))
+    # "No reference model" is a mark1 merge (see DatasetStagePanel.get_phil):
+    # cosym then settles the ambiguity up to an arbitrary overall choice, the
+    # plain average is taken in that frame, and the resulting mtz carries the
+    # frame forward as the reference for the mark0 merges that follow it.
+    mark0 = self.model_mode_radio.known.GetValue()
+    anchor = mark0 and bool(self.shared_model.ctr.GetValue().strip())
     for stage in self.stages:
       if stage.task_type not in ('scaling', 'merging') or stage.working_phil_scope is None:
         continue
@@ -4719,7 +4729,7 @@ class DatasetDialog(BaseDialog):
       if not step_list:
         continue
       phil_str = "dispatch.step_list = %s\n" % " ".join(
-        apply_cosym_to_step_list(stage.task_type, step_list))
+        apply_cosym_to_step_list(stage.task_type, step_list, mark0=mark0))
       if stage.task_type == 'merging':
         phil_str += ('modify.cosym.space_group = "%s"\n'
                      'modify.cosym.dimensions = %d\n'
@@ -5022,17 +5032,21 @@ class DatasetDialog(BaseDialog):
     # what makes the result meaningful to postrefine against. The cosym README
     # calls this mandatory and notes that nothing enforces it, so enforce it
     # here. Checked against the stage scope rather than the wizard checkbox, so
-    # a hand-edited step list is covered too.
+    # a hand-edited step list is covered too. A mark1 merge is exempt: it has
+    # no reference by design, and its postrefine step is a no-op (the worker
+    # returns at once unless scaling.algorithm is mark0), so there is nothing
+    # the anchor would make meaningful.
     for s in self.stages:
       if not s.is_enabled() or s.task_type != 'merging' or s.working_phil_scope is None:
         continue
       try:
         p = s.working_phil_scope.extract()
         steps = p.dispatch.step_list or []
+        mark0 = p.scaling.algorithm == 'mark0'
         anchored = bool(p.modify.cosym.anchor) and bool(p.scaling.model)
       except Exception:
         continue        # cannot read the scope, so cannot judge it
-      if 'modify_cosym' in steps and 'postrefine' in steps and not anchored:
+      if mark0 and 'modify_cosym' in steps and 'postrefine' in steps and not anchored:
         return ('The merging stage resolves an indexing ambiguity with cosym and '
                 'then postrefines, which needs a reference model to anchor the '
                 'aligned patterns to.\nEither choose a reference model, or remove '
@@ -5315,9 +5329,13 @@ class DatasetWizard(BaseDialog):
                                                 ambiguity.lattice_symmetry)
       else:
         detail = 'lattice is exactly %s' % ambiguity.lattice_symmetry
-      self.chk_cosym.SetLabel(
-        'Resolve indexing ambiguity (cosym) \u2014 %d indexing modes, %s'
-        % (ambiguity.n_cosets, detail))
+      label = ('Resolve indexing ambiguity (cosym) \u2014 %d indexing modes, %s'
+               % (ambiguity.n_cosets, detail))
+      if not self.model_mode_radio.known.GetValue():
+        # No reference to anchor to: the aligned frame is arbitrary but
+        # self-consistent, and the merged mtz carries it to later merges.
+        label += '\n(no reference model: indexing frame will be arbitrary but consistent)'
+      self.chk_cosym.SetLabel(label)
     else:
       self.chk_cosym.SetLabel(
         'Resolve indexing ambiguity (cosym) \u2014 none found for this symmetry')
