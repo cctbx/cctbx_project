@@ -394,7 +394,8 @@ def parse_probe_raw(text, order=("bo", "hb", "so", "cc", "wc")):
   return group_args(pairs=pairs, dots=dots)
 
 def probe2_parameters(source_selection, target_selection, probe=None,
-                      use_neutron_distances=False, separate_worse_clashes=False):
+                      use_neutron_distances=False, separate_worse_clashes=False,
+                      ignore_lack_of_explicit_hydrogens=False):
   """probe2's master PHIL and params: approach=both, raw, no files; probe scope copied."""
   import iotbx.cli_parser
   from mmtbx.programs import probe2
@@ -405,7 +406,8 @@ def probe2_parameters(source_selection, target_selection, probe=None,
     "approach=both", "output.format=raw", "output.write_files=False",
     "output.filename=probe2_ligand_interactions.txt",
     "output.separate_worse_clashes=%s" % separate_worse_clashes,
-    "use_neutron_distances=%s" % use_neutron_distances])
+    "use_neutron_distances=%s" % use_neutron_distances,
+    "ignore_lack_of_explicit_hydrogens=%s" % ignore_lack_of_explicit_hydrogens])
   params = parser.working_phil.extract()
   if probe is not None:
     for name in [n for n in dir(probe) if not n.startswith("_")]:
@@ -414,7 +416,8 @@ def probe2_parameters(source_selection, target_selection, probe=None,
   return parser.master_phil, params
 
 def run_probe2(model, source_selection, target_selection, probe=None,
-               use_neutron_distances=False, separate_worse_clashes=False):
+               use_neutron_distances=False, separate_worse_clashes=False,
+               ignore_lack_of_explicit_hydrogens=False):
   """
   probe2 as a library call on a deep copy of model (run() can add phantom H to
   waters): returns the raw output string. The model must carry its H. Raw, not
@@ -423,7 +426,7 @@ def run_probe2(model, source_selection, target_selection, probe=None,
   from iotbx.data_manager import DataManager
   from mmtbx.programs import probe2
   master_phil, params = probe2_parameters(source_selection, target_selection, probe,
-    use_neutron_distances, separate_worse_clashes)
+    use_neutron_distances, separate_worse_clashes, ignore_lack_of_explicit_hydrogens)
   dm = DataManager(["model"])
   dm.add_model("ligand_interactions_model", model)
   p2 = probe2.Program(dm, params, master_phil=master_phil, logger=null_out())
@@ -461,6 +464,66 @@ def probe_neighbourhood_radius(model, ligand_isel, probe_radius):
     near.set_selected(cand.select(d <= neighbourhood_env_search), True)
   r = lambda isel: max([model.get_specific_vdw_radius(int(i), False) for i in isel])
   return r(lig) + r(near.iselection()) + 3 * probe_radius + neighbourhood_margin
+
+def residues_near(model, ligand_isel, radius):
+  """flex.bool: the ligand and whole residues with an atom within radius (A) of it, Cartesian (no symmetry)."""
+  h = model.get_hierarchy()
+  sites = h.atoms().extract_xyz()
+  lig_sites = sites.select(flex.size_t(list(ligand_isel)))
+  hit = flex.bool(sites.size(), False)
+  for x in lig_sites:
+    hit |= (sites - x).norms() <= radius
+  sel = flex.bool(sites.size(), False)
+  for rg in h.residue_groups():
+    seqs = rg.atoms().extract_i_seq()
+    if hit.select(seqs).count(True):
+      sel.set_selected(seqs, True)
+  sel.set_selected(flex.size_t(list(ligand_isel)), True)
+  return sel
+
+def probe2_hydrogen_check(model):
+  """
+  probe2's check that a model carries explicit H (mmtbx.programs.probe2: at least
+  one H bonded to C and one polar H, Helpers.isPolarHydrogen; an H without a bonded
+  neighbour is an error), on model with its restraints' bonds (simple and same-asu
+  proxies, as Helpers.getBondedNeighborLists takes them; lists built for the H
+  only, 0.06 s for 28,000 atoms). Run on the full
+  model when probe2 gets a trimmed input (probe_neighbourhood), whose own check
+  could fail for want of the polar H elsewhere. Sorry with probe2's messages.
+  """
+  from mmtbx.probe import Helpers
+  atoms = model.get_hierarchy().atoms()
+  proxies, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
+    sites_cart=model.get_sites_cart())
+  hd = model.get_hd_selection()
+  h_atoms = [atoms[i] for i in hd.iselection()]
+  if not h_atoms:
+    raise Sorry("Did not find both polar and non-polar Hydrogens in model.")
+  # neighbour lists for the H only (the rest is not needed for the check)
+  bonded = {}
+  for p in proxies:
+    i, j = p.i_seqs
+    for a, b in ((i, j), (j, i)):
+      if hd[a]:
+        bonded.setdefault(a, []).append(atoms[b])
+  for p in asu:
+    if p.j_sym == 0:
+      for a, b in ((p.i_seq, p.j_seq), (p.j_seq, p.i_seq)):
+        if hd[a]:
+          bonded.setdefault(a, []).append(atoms[b])
+  found_c = found_polar = False
+  for a in h_atoms:
+    nb = bonded.get(a.i_seq, [])
+    if len(nb) == 1 and nb[0].element in ['N', 'O', 'S']:
+      found_polar = True
+    elif not nb:
+      raise Sorry("Found Hydrogen with no neigbors: %s" % atom_label(a))
+    elif nb[0].element == 'C':
+      found_c = True
+  if not (found_c and found_polar):
+    raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper "
+      "operation, Probe requires explicit Hydrogens.")
+  return True
 
 def probe_neighbourhood_selection(model, ligand_isel, radius, fsc0, n_model=None):
   """
@@ -1252,11 +1315,12 @@ def find_charged_groups(model, selection, fsc0=None, use_templates=True):
 def moved_site(unit_cell, xyz, rt_mx):
   return unit_cell.orthogonalize(rt_mx * unit_cell.fractionalize(xyz))
 
-def charged_group_pairs(model, groups, cutoff, charge=None):
+def charged_group_pairs(model, groups, cutoff, charge=None, symmetry=True):
   """
   [(k1, k2, op)]: oppositely charged groups (indices into groups) with a pair of
   charged atoms within cutoff, op moving group k2 next to group k1 (both
-  directions listed; crystal symmetry included). Groups with different non-blank
+  directions listed; crystal symmetry included unless symmetry is False: then
+  Cartesian distances only, every op x,y,z). Groups with different non-blank
   altlocs, and uncertain groups (certain False), are not paired. charge: a
   function giving each group's charge for the pairing (default: its charge,
   uncertain groups left out); with it, every group with a nonzero value takes part.
@@ -1269,7 +1333,8 @@ def charged_group_pairs(model, groups, cutoff, charge=None):
   xyz = flex.vec3_double([atoms[i].xyz for k, i in sites])
   cs = model.crystal_symmetry()
   raw = []
-  if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+  if (not symmetry or cs is None or cs.unit_cell() is None or
+      cs.space_group() is None):
     for a in range(len(sites)):
       for b in range(a + 1, len(sites)):
         if atoms[sites[a][1]].distance(atoms[sites[b][1]]) <= cutoff:
@@ -1476,11 +1541,16 @@ class manager(object):
       index = sel.iselection()
       probe_model = probe_model.select(sel)
       self.probe_input = dict(whole_model=False, radius=radius,
-        atoms=probe_model.get_number_of_atoms(), model_atoms=int((index < atoms.size()).count(True)))
+        atoms=probe_model.get_number_of_atoms(), model_atoms=int((index < atoms.size()).count(True)),
+        hydrogen_check="full model (probe2's own check off on the trimmed input)")
+      # probe2's explicit-H check belongs to the full model: a trimmed input can
+      # lack polar H that the model has elsewhere
+      probe2_hydrogen_check(self.model)
     table = probe_atom_table(probe_model.get_hierarchy().atoms(), index)
     self.probe_output = run_probe2(probe_model, source, "not (%s)" % source,
       probe=self.params.probe, use_neutron_distances=self.params.use_neutron_distances,
-      separate_worse_clashes=self.params.separate_worse_clashes)
+      separate_worse_clashes=self.params.separate_worse_clashes,
+      ignore_lack_of_explicit_hydrogens=index is not None)
     parsed = parse_probe_raw(self.probe_output, self.order)
     def key(i):
       """A model i_seq, or (model i_seq, operator) for a symmetry copy."""
@@ -1967,9 +2037,12 @@ class manager(object):
       atom_pair_cutoff=sp.atom_pair_cutoff, charge_centre_cutoff=sp.charge_centre_cutoff,
       kumar_nussinov_cutoff=sp.kumar_nussinov_cutoff)
     search = max(sp.atom_pair_cutoff, sp.charge_centre_cutoff + 2.5)
-    # the ligand and the residues within search (symmetry included)
-    region = self.model.selection("(%s) or (residues_within (%s, %s))" % (
-      self.sel_str, search, self.sel_str))
+    # the ligand and the residues within search (symmetry included unless off)
+    if self.params.symmetry:
+      region = self.model.selection("(%s) or (residues_within (%s, %s))" % (
+        self.sel_str, search, self.sel_str))
+    else:
+      region = residues_near(self.model, self.ligand_isel, search)
     found = find_charged_groups(self.model, region, self._fsc0)
     groups = found.groups
     for k, g in enumerate(groups):
@@ -1982,7 +2055,8 @@ class manager(object):
     self.charged_group_failures = found.failures
     self._builder_charges = found.builder_charges
     partner_residues = set()
-    for s, p, op in charged_group_pairs(self.model, groups, search):
+    for s, p, op in charged_group_pairs(self.model, groups, search,
+        symmetry=self.params.symmetry):
       if not groups[s]["ligand"]:
         continue
       partner_residues.add(groups[p]["center"])
@@ -2071,7 +2145,8 @@ class manager(object):
     self.possible_salt_bridges = []
     self.possible_groups = [self._group_info(g) for g in candidates if g["ligand"] and
       not certain_charged(g) and charge(g)]
-    for s, p, op in charged_group_pairs(self.model, candidates, search, charge=charge):
+    for s, p, op in charged_group_pairs(self.model, candidates, search, charge=charge,
+        symmetry=self.params.symmetry):
       stay, partner = candidates[s], candidates[p]
       if not stay["ligand"] or (certain_charged(stay) and certain_charged(partner)):
         continue

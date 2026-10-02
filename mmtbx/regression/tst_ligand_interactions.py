@@ -3201,6 +3201,141 @@ def exercise_salt_bridge_symmetry():
   assert atoms[e['atoms'][1]].distance(atoms[e['atoms'][2]]) > 90
   assert [h['labels'][1] for h in e['hbonds']] == ['B LYS 10 HZ1 (x+1,y,z)']
 
+def no_symmetry_anywhere(m):
+  '''No entry, possible salt bridge, internal record or pnp record with a non-identity operator.'''
+  for e in list(m.entries) + list(m.possible_salt_bridges):
+    assert not e['symop'] and all([LI._identity(o) for o in e['operators']]), e
+    assert not [l for l in e['labels'] if l and l.endswith(')')], e['labels']
+  for x in m.internal:
+    assert not [l for l in x['labels'] if l and l.endswith(')')], x
+  for r in m.overlaps.clash_records + m.overlaps.hbond_records:
+    assert LI._identity(r['symop']), r
+  assert m.probe_symmetry is None and m.probe_symmetry_pairs == {}
+  assert not [k for k in m.probe_pairs if isinstance(k[1], tuple)]
+
+def exercise_salt_bridge_symmetry_off():
+  '''
+  symmetry=False: the salt bridge to Lys 10's x+1,y,z copy (its atoms over 90 A
+  away) goes, with neighbourhood trimming on and off; nothing in the profile
+  carries an operator. The charged-group search and both pair searches follow the
+  switch (charged_group_pairs symmetry=False: Cartesian only).
+  '''
+  model = get_model(salt_sym_model_str.split('\n'))
+  sel = 'chain A and resseq 1'
+  for trim in (True, False):
+    m = get_manager(model, sel=sel, symmetry=False, probe_neighbourhood=trim)
+    assert salt_bridges(m) == [], salt_bridges(m)
+    no_symmetry_anywhere(m)
+    # the Lys is not even examined: it is near the ligand only through symmetry
+    assert not [g for g in m.examined_groups if 'LYS' in g['residue']], m.examined_groups
+  # with symmetry: as exercise_salt_bridge_symmetry
+  m = get_manager(model, sel=sel)
+  assert [e['symop'] for e in salt_bridges(m)] == ['x+1,y,z']
+  # a possible salt bridge across symmetry (Lys NZ with two H, as in
+  # exercise_possible_salt_bridges): gone without symmetry, trimming on and off
+  lines = [l for l in salt_sym_model_str.split('\n') if not (l[17:20] == 'LYS' and
+    l[12:16].strip() == 'HZ3')]
+  pmodel = get_model(lines)
+  assert [e['symop'] for e in get_manager(pmodel, sel=sel).possible_salt_bridges] == [
+    'x+1,y,z']
+  for trim in (True, False):
+    m = get_manager(pmodel, sel=sel, symmetry=False, probe_neighbourhood=trim)
+    assert m.possible_salt_bridges == [], m.possible_salt_bridges
+    no_symmetry_anywhere(m)
+  # the same in a 7 A cell, the Lys one cell length away: inside the Cartesian
+  # region (examined), its x+1,y,z copy the partner; the possible-salt-bridge pair
+  # search itself must follow the switch
+  lines = []
+  for l in salt_model_str.split('\n'):
+    if l.startswith('CRYST1'):
+      l = 'CRYST1    7.000  100.000  100.000  90.00  90.00  90.00 P 1'
+    elif l.startswith(('ATOM', 'HETATM')):
+      if l[17:26] == 'ACT A   1':
+        pass
+      elif l[21] == 'B' and l[22:26].strip() == '10' and l[12:16].strip() != 'HZ3':
+        l = l[:30] + '%8.3f' % (float(l[30:38]) - 7.0) + l[38:]
+      else:
+        continue
+    lines.append(l)
+  cmodel = get_model(lines)
+  m = get_manager(cmodel, sel=sel)
+  assert [(e['residue'], e['symop']) for e in m.possible_salt_bridges] == [
+    ('B LYS 10 (x+1,y,z)', 'x+1,y,z')]
+  for trim in (True, False):
+    m = get_manager(cmodel, sel=sel, symmetry=False, probe_neighbourhood=trim)
+    assert [g for g in m.examined_groups if 'LYS' in g['residue']]
+    assert m.possible_salt_bridges == [], m.possible_salt_bridges
+    no_symmetry_anywhere(m)
+  # charged_group_pairs directly: atoms 0 and 1 of the fixture are far apart in the
+  # cell; nothing pairs them without symmetry
+  atoms = model.get_hierarchy().atoms()
+  oxt = [a.i_seq for a in atoms if a.name.strip() == 'OXT'][0]
+  nz = [a.i_seq for a in atoms if a.name.strip() == 'NZ'][0]
+  groups = [dict(charged=[oxt], charge=-1, altloc=''), dict(charged=[nz], charge=1, altloc='')]
+  assert LI.charged_group_pairs(model, groups, 6.0, symmetry=False) == []
+  assert sorted([op for k1, k2, op in LI.charged_group_pairs(model, groups, 6.0)]) == [
+    'x+1,y,z', 'x-1,y,z']
+  # possible salt bridges follow the switch too (uncertain partner via charge function)
+  assert LI.charged_group_pairs(model, groups, 6.0, charge=lambda g: g['charge'],
+    symmetry=False) == []
+
+def acetates_lysine_model(dy=3.6):
+  '''
+  Two acetates 3.6 A apart (ACT A 2 moved next to ACT A 1) and Lys B 10 moved 30 A
+  away: the acetates carry only C-bonded H, the Lys the only polar H.
+  '''
+  out = []
+  for l in salt_model_str.split('\n'):
+    if l.startswith(('ATOM', 'HETATM')):
+      ch, rs = l[21], l[22:26].strip()
+      x, y, z = float(l[30:38]), float(l[38:46]), float(l[46:54])
+      if l[17:20] == 'ACT' and rs == '2':
+        x, y = x - 30.0, y + dy
+      elif ch == 'B' and rs == '10':
+        x = x + 30.0
+      elif not (l[17:20] == 'ACT' and rs == '1'):
+        continue
+      l = l[:30] + '%8.3f%8.3f%8.3f' % (x, y, z) + l[54:]
+    out.append(l)
+  return get_model(out)
+
+def exercise_trimmed_hydrogen_check():
+  '''
+  probe2 requires polar and C-bonded H in its input. The trimmed input (ligand and
+  the other acetate) has no polar H, the full model has (Lys): the check runs on
+  the full model (probe2_hydrogen_check) and probe2 skips its own on the trimmed
+  input, so trimming changes neither success nor result.
+  '''
+  import json
+  model = acetates_lysine_model()
+  sel = 'chain A and resseq 1 and resname ACT'
+  whole = get_manager(model, sel=sel, probe_neighbourhood=False)
+  nb = get_manager(model, sel=sel)
+  assert nb.probe_input['whole_model'] is False
+  n_act = model.selection('resname ACT').count(True)
+  assert nb.probe_input['atoms'] == n_act < model.size(), nb.probe_input   # Lys left out
+  assert nb.probe_input['hydrogen_check'].startswith('full model')
+  c = whole.counts().per_type
+  assert c.get('clash', 0) >= 1 and sum([v for k, v in c.items() if k.startswith('vdw')]) >= 5, c
+  assert nb.counts().per_type == c
+  same_probe_result(whole, nb)
+  # the check itself: the full model passes, the acetates alone fail as probe2 would
+  assert LI.probe2_hydrogen_check(model) is True
+  acetates = model.select(model.selection('resname ACT'))
+  try:
+    LI.probe2_hydrogen_check(acetates)
+  except Sorry as e:
+    assert 'Did not find both polar and non-polar Hydrogens' in str(e), str(e)
+  else:
+    raise AssertionError('no polar H accepted')
+  # and probe2 on the acetates alone, its own check on, fails that way
+  try:
+    LI.run_probe2(acetates, '(%s)' % sel, 'not (%s)' % sel)
+  except Sorry as e:
+    assert 'Did not find both polar and non-polar Hydrogens' in str(e), str(e)
+  else:
+    raise AssertionError('probe2 ran without polar H')
+
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
@@ -4051,6 +4186,8 @@ def run():
   exercise_group_scope()
   exercise_salt_bridges()
   exercise_salt_bridge_symmetry()
+  exercise_salt_bridge_symmetry_off()
+  exercise_trimmed_hydrogen_check()
   exercise_formal_charge_conflict()
   exercise_pair_class_order(model)
   exercise_internal()
