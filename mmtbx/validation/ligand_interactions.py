@@ -59,7 +59,9 @@ sources, cross_check, model_support), ligand-environment only:
                qualifying ring pair in geometry ring_pairs, the closest (centroid
                distance) as the headline geometry and subtype. Atoms: the ligand
                rings' then the partner rings' of those pairs. Geometry also: both
-               systems (residue, rings, kinds), each ring's kind, centroid, rms
+               systems (residue, rings, kinds), each ring's kind, centroid, rms;
+               conformation (systems per conformation: blank when the entry is
+               the same in all, else one entry per conformation)
 cross_check (hbond, clash): "pnp and probe2", "pnp only", "probe2 only" (the last
 two listed as disagreements), or "symmetry, probe2 not applicable" (symmetry pairs
 of a model without crystal symmetry in probe2's input, which cannot occur with the
@@ -1760,12 +1762,12 @@ def find_aromatic_rings(model, selection, fsc0=None, molecules=None, planarity_r
 
 def ring_systems(rings):
   """
-  Fused ring systems: rings sharing a bond (two atoms), per conformer (rings with
-  that altloc or blank). Returns [sorted ring indices], each system once (a system
-  of blank-altloc rings is the same in every conformer).
+  Fused ring systems (rings sharing a bond: two atoms) per conformation: {altloc:
+  [sorted ring indices]} over the rings with that altloc or blank, one key per
+  non-blank ring altloc ("" only when no ring has one).
   """
   confs = sorted(set([r["altloc"] for r in rings if r["altloc"]])) or [""]
-  systems = []
+  systems = {}
   for conf in confs:
     idx = [k for k, r in enumerate(rings) if r["altloc"] in ("", conf)]
     parent = dict([(k, k) for k in idx])
@@ -1781,9 +1783,7 @@ def ring_systems(rings):
     groups = {}
     for k in idx:
       groups.setdefault(find(k), []).append(k)
-    for g in sorted(groups.values()):
-      if g not in systems:
-        systems.append(g)
+    systems[conf] = sorted(groups.values())
   return systems
 
 def ring_pairs(model, rings, cutoff, symmetry=True):
@@ -2774,8 +2774,14 @@ class manager(object):
     partner ring's plane is fitted to its moved atoms. One entry per pair of fused
     ring systems (ring_systems) and operator: every qualifying ring pair listed
     (ring_pairs), the closest (centroid distance) as headline geometry and subtype;
-    atoms: the ligand rings' then the partner rings' of those pairs. Ligand-internal
-    system pairs go to internal, grouped the same way.
+    atoms: the ligand rings' then the partner rings' of those pairs. Systems are
+    per conformation (ring_systems); a ring pair belongs to every conformation
+    compatible with both rings' altlocs. An entry the same in every conformation
+    (system pair and ring pairs) is reported once, geometry conformation ""; else
+    one per conformation, with that altloc (each counted, as metal and salt-bridge
+    entries of conformers). A ligand selection holding one non-blank altloc (as
+    validate_ligands selects conformers) keeps only that conformation's.
+    Ligand-internal system pairs go to internal, grouped the same way.
     """
     pp = self.params.pi_stacking
     atoms = self._atoms
@@ -2801,16 +2807,8 @@ class manager(object):
     self.ring_missing_atoms = found.missing
     self.ring_failures = found.failures
     systems = ring_systems(rings)
-    def system_of(k, other):
-      """The first system holding ring k whose altloc is compatible with ring other's."""
-      alt_o = rings[other]["altloc"]
-      for n, members in enumerate(systems):
-        if k in members:
-          alts = set([rings[m]["altloc"] for m in members if rings[m]["altloc"]])
-          if not alt_o or not alts or alts == set([alt_o]):
-            return n
-      return None
-    grouped = {}
+    lig_alts = sorted(set([_altloc(atoms[i]) for i in lig if _altloc(atoms[i])]))
+    qualifying = []
     for a, b, op, d in ring_pairs(self.model, rings, pp.centroid_distance,
         self.params.symmetry):
       if not on_ligand[a]:
@@ -2831,18 +2829,37 @@ class manager(object):
         subtype = "T-shaped"
       else:
         continue
-      sa, sb = system_of(a, b), system_of(b, a)
-      if sa is None or sb is None:
-        continue
-      internal = on_ligand[b] and _identity(op)
-      if internal and sb <= sa:
-        continue   # each internal system pair once; rings of one system never
-      key = (sa, sb, "x,y,z" if _identity(op) else op)
-      grouped.setdefault(key, []).append(dict(g, subtype=subtype, a=a, b=b,
-        ligand_ring=self._ring_info(rings[a]), partner_ring=self._ring_info(rb, op)))
-    for (sa, sb, op), pairs in sorted(grouped.items(), key=lambda x: (x[0][0], x[0][1],
-        x[0][2])):
-      pairs.sort(key=lambda q: (q["centroid_distance"], q["a"], q["b"]))
+      qualifying.append(dict(g, subtype=subtype, a=a, b=b,
+        op="x,y,z" if _identity(op) else op, ligand_ring=self._ring_info(rings[a]),
+        partner_ring=self._ring_info(rb, op)))
+    # per conformation (ring_systems): the pair in every conformation compatible
+    # with both rings' altlocs, grouped by (system of a, system of b, operator)
+    grouped = {}
+    for q in qualifying:
+      a, b, op = q["a"], q["b"], q["op"]
+      for conf, syss in sorted(systems.items()):
+        if rings[a]["altloc"] not in ("", conf) or rings[b]["altloc"] not in ("", conf):
+          continue
+        sa = [k for k, m in enumerate(syss) if a in m][0]
+        sb = [k for k, m in enumerate(syss) if b in m][0]
+        if on_ligand[b] and _identity(op) and sb <= sa:
+          continue   # internal: each system pair once; rings of one system never
+        key = (tuple(syss[sa]), tuple(syss[sb]), op)
+        grouped.setdefault(key, {}).setdefault(conf, []).append(q)
+    # the same system pair and ring pairs in every conformation: once, blank altloc;
+    # else one per conformation with its altloc; a ligand selection holding one
+    # non-blank altloc keeps only that conformation's
+    out = []
+    for key, per_conf in grouped.items():
+      pair_sets = [tuple(sorted([(q["a"], q["b"]) for q in v])) for v in per_conf.values()]
+      if set(per_conf) == set(systems) and len(set(pair_sets)) == 1:
+        out.append((key, "", list(per_conf.values())[0]))
+      else:
+        out.extend([(key, conf, v) for conf, v in sorted(per_conf.items())])
+    if len(lig_alts) == 1:
+      out = [x for x in out if x[1] in ("", lig_alts[0])]
+    for (ma, mb, op), conf, pairs in sorted(out, key=lambda x: (x[0], x[1])):
+      pairs = sorted(pairs, key=lambda q: (q["centroid_distance"], q["a"], q["b"]))
       head = pairs[0]
       lig_seqs, part_seqs = [], []
       for q in pairs:
@@ -2851,10 +2868,11 @@ class manager(object):
       geometry = dict(pi_stacking=dict(
         [(k, head[k]) for k in ("centroid_distance", "angle", "offset", "offsets",
           "ligand_ring", "partner_ring")],
+        conformation=conf,
         ring_pairs=[dict([(k, q[k]) for k in ("subtype", "centroid_distance", "angle",
           "offset", "offsets", "ligand_ring", "partner_ring")]) for q in pairs],
-        ligand_system=self._system_info(rings, systems[sa]),
-        partner_system=self._system_info(rings, systems[sb], op)))
+        ligand_system=self._system_info(rings, list(ma)),
+        partner_system=self._system_info(rings, list(mb), op)))
       if on_ligand[head["b"]] and _identity(op):
         self.internal.append(dict(type="pi_stacking", subtype=head["subtype"],
           labels=[atom_label(atoms[i]) for i in lig_seqs + part_seqs], geometry=geometry))

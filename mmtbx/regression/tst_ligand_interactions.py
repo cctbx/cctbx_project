@@ -3918,7 +3918,7 @@ def exercise_pi_conjugated_rings():
   f, rows = rings_of(rings_model([lfn_lines()]))
   assert rows == [('aromatic', 'C5A C6 C7 C8 C9 C9A'), ('conjugated', 'C10 C2 C4 C4A N1 N3'),
     ('conjugated', 'C10 C4A C5A C9A N10 N5')], rows
-  assert LI.ring_systems(f.rings) == [[0, 1, 2]]
+  assert LI.ring_systems(f.rings) == {'': [[0, 1, 2]]}
   plq = ('C1', 'C2', 'C3', 'C4', 'C5', 'C6')
   f, rows = rings_of(rings_model([ring_lines('PLQ', plq, (20, 20, 20), (0, 0, 1), 'A', 1)]))
   assert rows == [('conjugated', 'C1 C2 C3 C4 C5 C6')], rows
@@ -3989,6 +3989,71 @@ def exercise_pi_ring_systems():
   m._build_pi_stacking()
   assert pi_entries(m) == [] and [(x['type'], len(x['geometry']['pi_stacking']['ring_pairs']))
     for x in m.internal] == [('pi_stacking', 3)], m.internal
+
+LFN_OUTER = ('N1', 'C2', 'O2', 'N3', 'H3', 'C4', 'O4', 'C4A', 'C10', 'N5', 'N10', "C1'",
+  "H1'1", "H1'2", "H1'3")   # the pyrazine and pyrimidinedione rings' atoms off the benzo ring
+LFN_METHYLS = ('C7M', 'H7M1', 'H7M2', 'H7M3', 'C8M', 'H8M1', 'H8M2', 'H8M3')
+
+def split_conformers(lines, names, shift):
+  '''The named atoms in conformers A (in place) and B (moved by shift), occupancy 0.5 each.'''
+  out = []
+  for l in lines:
+    if l[12:16].strip() not in names:
+      out.append(l)
+      continue
+    xyz = [float(l[30 + 8 * k:38 + 8 * k]) for k in range(3)]
+    for alt, d in (('A', (0, 0, 0)), ('B', shift)):
+      out.append(l[:16] + alt + l[17:30] + '%8.3f%8.3f%8.3f' % tuple([x + e for x, e in
+        zip(xyz, d)]) + '  0.50' + l[60:])
+  return out
+
+def exercise_pi_conformations():
+  '''
+  Ring systems per conformation. Lumiflavin with the benzo ring shared (blank)
+  and the pyrazine and pyrimidinedione rings in conformers A and B (B moved 0.2 A
+  in the plane), a benzene over the benzo and pyrazine rings: selecting conformer
+  A (as validate_ligands does: altloc A or blank) gives one entry with two ring
+  pairs, benzo and A's pyrazine, conformation A; B likewise with B's; the whole
+  residue gives one entry per conformation, each counted. Altlocs only on the
+  methyls (C7M, C8M): the rings are blank, one entry, conformation blank.
+  '''
+  lig = lfn_lines()
+  bz, pz = centroid_of(lig, LFN_RINGS['benzo']), centroid_of(lig, LFN_RINGS['pyrazine'])
+  pm = centroid_of(lig, LFN_RINGS['pyrimidine'])
+  u = [b - a for a, b in zip(bz, pm)]
+  n = math.sqrt(sum([x * x for x in u]))
+  shift = tuple([0.2 * x / n for x in u])
+  c = [0.5 * (a + b) for a, b in zip(bz, pz)]
+  c[2] += 3.5
+  bnz = ring_lines('BNZ', BNZ_RING, c, (0, 0, 1), 'B', 1)
+  model = rings_model([split_conformers(lig, LFN_OUTER, shift), bnz])
+  pyrazine = sorted(LFN_RINGS['pyrazine'])
+  for alt in ('A', 'B'):
+    sel = 'chain A and resseq 1 and (altloc %s or altloc " ")' % alt
+    m = get_manager(model, sel=sel)
+    (e,) = pi_entries(m)
+    g = e['geometry']['pi_stacking']
+    assert g['conformation'] == alt, g['conformation']
+    rows = sorted([(sorted(q['ligand_ring']['atoms']), q['ligand_ring']['altloc'])
+      for q in g['ring_pairs']])
+    assert rows == sorted([(sorted(LFN_RINGS['benzo']), ''), (pyrazine, alt)]), rows
+    assert [l for l in e['labels'] if l.endswith(' alt %s' % alt)] and \
+      not [l for l in e['labels'] if ' alt ' in l and not l.endswith(' alt %s' % alt)], e['labels']
+    assert m.counts().per_type == dict([(k, v) for k, v in m.counts().per_type.items()
+      if not k.startswith('pi_stacking')], **{'pi_stacking:parallel': 1})
+  m = get_manager(model, sel='chain A and resseq 1')
+  es = pi_entries(m)
+  assert sorted([e['geometry']['pi_stacking']['conformation'] for e in es]) == ['A', 'B']
+  assert [len(e['geometry']['pi_stacking']['ring_pairs']) for e in es] == [2, 2]
+  assert m.counts().per_type['pi_stacking:parallel'] == 2
+  # altlocs off the rings: one entry, blank
+  model = rings_model([split_conformers(lig, LFN_METHYLS, shift), bnz])
+  for sel in ('chain A and resseq 1', 'chain A and resseq 1 and (altloc A or altloc " ")'):
+    m = get_manager(model, sel=sel)
+    (e,) = pi_entries(m)
+    g = e['geometry']['pi_stacking']
+    assert g['conformation'] == '' and len(g['ring_pairs']) == 2, (sel, g['conformation'])
+    assert not [l for l in e['labels'] if ' alt ' in l], e['labels']
 
 def exercise_repeated_chain_ids():
   '''
@@ -4931,6 +4996,7 @@ def run():
   exercise_pi_stacking_altlocs()
   exercise_pi_conjugated_rings()
   exercise_pi_ring_systems()
+  exercise_pi_conformations()
   exercise_repeated_chain_ids()
   exercise_canonical_partner_no_copies()
   exercise_trimmed_hydrogen_check()
