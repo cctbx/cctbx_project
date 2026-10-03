@@ -740,10 +740,20 @@ class generic_flex_image: public FlexImage<double>{
 
   scitbx::af::shared<scitbx::mat2<double> > transformations;
   scitbx::af::shared<scitbx::vec2<double> > translations;
+  // Per-tile (unpadded) readout sizes, slow then fast. Tiles need not all
+  // have the same size; a tile without an entry uses size1_readout/size2_readout.
+  std::vector<scitbx::vec2<int> > readout_sizes;
   std::vector<int> windowed_readouts;
 
   int size1_readout;
   int size2_readout;
+
+  inline int tile_size1(std::size_t tile) const {
+    return tile < readout_sizes.size() ? readout_sizes[tile][0] : size1_readout;
+  }
+  inline int tile_size2(std::size_t tile) const {
+    return tile < readout_sizes.size() ? readout_sizes[tile][1] : size2_readout;
+  }
 
   typedef af::c_grid<3> t_C;
   t_C acc;
@@ -791,8 +801,9 @@ class generic_flex_image: public FlexImage<double>{
 
     // Calculate the limits of the output window by iterating over all tiles
     for (size_t k = 0; k < transformations.size(); k++) {
-      for (size_t islow=0; islow <= size1_readout; islow+=size1_readout) {
-      for (size_t ifast=0; ifast <= size2_readout; ifast+=size2_readout) {
+      const int s1 = tile_size1(k), s2 = tile_size2(k);
+      for (int islow=0; islow <= s1; islow+=s1) {
+      for (int ifast=0; ifast <= s2; ifast+=s2) {
         scitbx::vec2<double> point_p = tile_readout_to_picture(k,islow,ifast);
         export_size_cut1 = std::max(
           export_size_cut1, int(std::ceil(point_p[0])));
@@ -817,8 +828,9 @@ class generic_flex_image: public FlexImage<double>{
 
     for (size_t k = 0; k < transformations.size(); k++) { //loop through all readout tiles
       af::shared<scitbx::vec2<double> > readout_polygon;
-      for (size_t islow=0; islow <= size1_readout; islow+=size1_readout) {
-        for (size_t ifast=0; ifast <= size2_readout; ifast+=size2_readout) {
+      const int s1 = tile_size1(k), s2 = tile_size2(k);
+      for (int islow=0; islow <= s1; islow+=s1) {
+        for (int ifast=0; ifast <= s2; ifast+=s2) {
           scitbx::vec2<double> point_p = tile_readout_to_picture(k,islow,ifast);
           readout_polygon.push_back(point_p);
         }
@@ -865,9 +877,9 @@ class generic_flex_image: public FlexImage<double>{
 
     for (size_t k = 0; k < transformations.size(); k++) { //loop through all readout tiles
       af::shared<scitbx::vec2<double> > readout_polygon;
-
-      for (size_t islow=0; islow <= size1_readout; islow+=size1_readout) {
-      for (size_t ifast=0; ifast <= size2_readout; ifast+=size2_readout) {
+      const int s1 = tile_size1(k), s2 = tile_size2(k);
+      for (int islow=0; islow <= s1; islow+=s1) {
+      for (int ifast=0; ifast <= s2; ifast+=s2) {
         scitbx::vec2<double> point_p = tile_readout_to_picture(k,islow,ifast);
         readout_polygon.push_back(point_p);
       }
@@ -917,8 +929,8 @@ class generic_flex_image: public FlexImage<double>{
         transformations[k] * scitbx::vec2<double>(i, j) + translations[k];
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
-      if (irdout[0] >= 0 && irdout[0] < size1_readout &&
-          irdout[1] >= 0 && irdout[1] < size2_readout) {
+      if (irdout[0] >= 0 && irdout[0] < tile_size1(k) &&
+          irdout[1] >= 0 && irdout[1] < tile_size2(k)) {
 
         // Since acc may be binned, irdout must take it into account.
         if (acc.is_valid_index(
@@ -949,8 +961,8 @@ class generic_flex_image: public FlexImage<double>{
         translations[windowed_readouts[k]] / binning;
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
-      if (irdout[0] >= 0 && irdout[0] < size1_readout / binning &&
-          irdout[1] >= 0 && irdout[1] < size2_readout / binning) {
+      if (irdout[0] >= 0 && irdout[0] < tile_size1(windowed_readouts[k]) / binning &&
+          irdout[1] >= 0 && irdout[1] < tile_size2(windowed_readouts[k]) / binning) {
 
         irdout[0] += windowed_readouts[k] * dim_slow;
         if (acc.is_valid_index(0, irdout[0], irdout[1])){
@@ -1018,6 +1030,21 @@ class generic_flex_image: public FlexImage<double>{
   {
     transformations.push_back(T);
     translations.push_back(t);
+  }
+
+  // As above, also recording this tile's unpadded readout size (slow, fast)
+  // for detectors whose panels have different sizes.
+  inline void add_transformation_translation_and_size(
+    const scitbx::mat2<double>& T, const scitbx::vec2<double>& t,
+    const int& tile_size1_readout, const int& tile_size2_readout)
+  {
+    // keep readout_sizes aligned with transformations
+    while (readout_sizes.size() < transformations.size()) {
+      readout_sizes.push_back(scitbx::vec2<int>(size1_readout, size2_readout));
+    }
+    transformations.push_back(T);
+    translations.push_back(t);
+    readout_sizes.push_back(scitbx::vec2<int>(tile_size1_readout, tile_size2_readout));
   }
 
   inline
