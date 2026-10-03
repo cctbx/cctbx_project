@@ -2124,7 +2124,9 @@ def get_manager(model, sel=LIG_SEL, **kwargs):
   for k, v in kwargs.items():
     setattr(params, k, v)
   isel = model.selection(sel).iselection()
-  return LI.manager(model, isel, sel, params=params).run()
+  m = LI.manager(model, isel, sel, params=params).run()
+  m.show(log=StringIO())   # a formatter crash on any fixture fails the test
+  return m
 
 def short(label):
   '''"A EDO 3 H12" -> "EDO 3 H12"'''
@@ -4132,6 +4134,127 @@ def exercise_canonical_partner_no_copies():
   m._copy_sites = None
   assert m._canonical_partner(3, 'x,y,z-1') == (3, 'x,y,z-1')
 
+def conformer_sel(sel, alt):
+  return '%s and (altloc %s or altloc " ")' % (sel, alt)
+
+def lys_conformers_model():
+  '''
+  ACT A 1 and Lys B 10 from salt_model_str (NZ...OXT 2.85 A); Lys heavy atoms
+  shared, NZ with HZ1-3 in conformer A (charged) and HZ1-2 in B (neutral amine).
+  '''
+  lines = []
+  for l in salt_model_str.split('\n'):
+    if l[17:26] in ('ACT A   1', 'LYS B  10'):
+      if l[12:16].strip() in ('HZ1', 'HZ2', 'HZ3'):
+        lines.append(l[:16] + 'A' + l[17:54] + '  0.50' + l[60:])
+        if l[12:16].strip() != 'HZ3':
+          lines.append(l[:16] + 'B' + l[17:54] + '  0.50' + l[60:])
+      else:
+        lines.append(l)
+  return get_model([salt_model_str.split('\n')[1]] + lines + ['END'])
+
+def exercise_salt_bridge_conformations():
+  '''
+  With a one-conformer selection (altloc X or blank), salt bridges and possible
+  salt bridges describe conformer X. Lys B 10 selected (heavy atoms shared; NZ +1
+  in A, a neutral amine in B) next to acetate A 1: A gives A's salt bridge; B no
+  salt bridge, B's amine only as a possible salt bridge; the whole residue both,
+  per conformer. Partner side: NH4 A 3 (group blank; its H in A and B) with Asp
+  G 60 in A and B: selecting NH4 conformer B keeps only the bridge with Asp B.
+  '''
+  model = lys_conformers_model()
+  sel = 'chain B and resseq 10'
+  def rows(m):
+    return dict(
+      sb=[(e['geometry']['charged_groups']['partner_group']['residue'],
+        e['geometry']['charged_groups']['ligand_group']['altloc']) for e in salt_bridges(m)],
+      possible=[(e['geometry']['charged_groups']['partner_group']['residue'],
+        e['geometry']['charged_groups']['ligand_group']['altloc'],
+        e['geometry']['charged_groups']['ligand_group']['charge']) for e in m.possible_salt_bridges
+        if e['geometry']['charged_groups']['ligand_group']['kind'] == 'ammonium' and
+        e['geometry']['charged_groups']['ligand_group']['atoms'] == ['B LYS 10 NZ']],
+      groups=sorted([(g['kind'], g['altloc'], g['charge']) for g in m.charged_groups
+        if g['atoms'] == ['B LYS 10 NZ']]),
+      possible_groups=sorted([(g['altloc'], g['charge']) for g in m.possible_groups
+        if g['atoms'] == ['B LYS 10 NZ']]))
+  r = rows(get_manager(model, sel=conformer_sel(sel, 'A')))
+  assert r == dict(sb=[('A ACT 1', 'A')], possible=[], groups=[('ammonium', 'A', 1)],
+    possible_groups=[]), r
+  m = get_manager(model, sel=conformer_sel(sel, 'B'))
+  r = rows(m)
+  assert r == dict(sb=[], possible=[('A ACT 1', 'B', 0)], groups=[('ammonium', 'B', 0)],
+    possible_groups=[('B', 0)]), r
+  assert not [k for k in m.counts().per_type if k.startswith('salt_bridge')]
+  r = rows(get_manager(model, sel=sel))
+  assert r == dict(sb=[('A ACT 1', 'A')], possible=[('A ACT 1', 'B', 0)],
+    groups=[('ammonium', 'A', 1), ('ammonium', 'B', 0)], possible_groups=[('B', 0)]), r
+  # partner side
+  lines = []
+  for l in altloc_asp_model_str.split('\n'):
+    if l[17:20] == 'NH4' and l[12:16].strip().startswith('HN'):
+      lines += [l[:16] + a + l[17:54] + '  0.50' + l[60:] for a in 'AB']
+    else:
+      lines.append(l)
+  model = get_model(lines)
+  sel = 'chain A and resseq 3'
+  def partners(m):
+    return sorted([(e['geometry']['charged_groups']['ligand_group']['altloc'],
+      e['geometry']['charged_groups']['partner_group']['altloc']) for e in salt_bridges(m)])
+  assert partners(get_manager(model, sel=conformer_sel(sel, 'B'))) == [('', 'B')]
+  assert partners(get_manager(model, sel=conformer_sel(sel, 'A'))) == [('', 'A')]
+  assert partners(get_manager(model, sel=sel)) == [('', 'A'), ('', 'B')]
+
+def exercise_symmetry_mate_conformers():
+  '''
+  Zn A and Zn B on one site (occupancy 0.5 each), IMD N3 2.0 A away: two metal
+  entries, one per Zn conformer, both in the cell and with the Zn one cell edge
+  away (x-1,y,z), each mapped to its own conformer's symmetry mate.
+  '''
+  from scitbx import matrix
+  zn = matrix.col((20, 20, 20))
+  for shift, op in ((0, None), (40, 'x-1,y,z')):
+    lines = ['CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1']
+    k = 1
+    for n, e, p in imd_at(zn):
+      lines.append(hetatm(k, n, 'IMD', 'A', 1, p, e)); k += 1
+    for alt in 'AB':
+      lines.append(hetatm(k, 'ZN', ' ZN', 'B', 1, zn + matrix.col((shift, 0, 0)), 'ZN', alt,
+        0.5)); k += 1
+    m = get_manager(get_model(lines + ['END']), sel=IMD_SEL)
+    got = sorted([(e['labels'][1], e['symop']) for e in metal_entries(m)])
+    suffix = '' if op is None else ' (%s)' % op
+    assert got == [('B ZN 1 ZN alt A' + suffix, op), ('B ZN 1 ZN alt B' + suffix, op)], got
+    atoms = m.model.get_hierarchy().atoms()
+    zns = dict([(a.parent().altloc, a.i_seq) for a in atoms if a.name.strip() == 'ZN'])
+    if op is not None:
+      for alt, j in zns.items():
+        jj, oo = m._canonical_partner(j, op)
+        assert atoms[jj].parent().altloc == alt and oo == op, (alt, jj, oo)
+
+def exercise_show_list_geometry():
+  '''Zn...N3 at 1.70 A: the metal entry holds the absorbed pnp clash (a list); show() prints it.'''
+  m = get_manager(metal_imd_model(1.70), sel=IMD_SEL)
+  (e,) = metal_entries(m)
+  assert isinstance(e['geometry']['clash'], list) and e['geometry']['clash']
+  log = StringIO()
+  m.show(log=log)
+  lines = [l for l in log.getvalue().splitlines() if l.strip().startswith('clash ') and
+    'A IMD 1 N3' in l and 'B ZN 1 ZN' in l]
+  assert lines and 'pnp' in lines[0] and 'overlap' in lines[0], log.getvalue()
+
+def exercise_show_blank_chain():
+  '''A ligand with a blank chain ID (labels start with a space): show() names the patch's ligand atoms.'''
+  model = rings_model([ring_lines('BNZ', BNZ_RING, (20, 20, 20), (0, 0, 1), ' ', 1),
+    ring_lines('BNZ', BNZ_RING, (21.0, 20, 23.6), (0, 0, 1), 'B', 1, spin=15)])
+  m = get_manager(model, sel='resname BNZ and resseq 1 and not chain B')
+  assert [l for l in m.entries[0]['labels'] if l and l.startswith(' BNZ 1 ')], m.entries[0]['labels']
+  log = StringIO()
+  m.show(log=log)
+  rows = [l for l in log.getvalue().splitlines() if 'dots' in l and '; ligand ' in l]
+  assert rows and [n for n in rows[0].split('; ligand ')[1].split(';')[0].split()
+    if n.startswith('C')], rows
+  assert LI.label_atom_name(' BNZ 1 C1 alt A') == 'C1' and LI.label_atom_name('A BNZ 1 C1') == 'C1'
+
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
@@ -4997,6 +5120,10 @@ def run():
   exercise_pi_conjugated_rings()
   exercise_pi_ring_systems()
   exercise_pi_conformations()
+  exercise_salt_bridge_conformations()
+  exercise_symmetry_mate_conformers()
+  exercise_show_list_geometry()
+  exercise_show_blank_chain()
   exercise_repeated_chain_ids()
   exercise_canonical_partner_no_copies()
   exercise_trimmed_hydrogen_check()

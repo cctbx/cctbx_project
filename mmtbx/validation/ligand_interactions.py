@@ -87,6 +87,16 @@ that conformer's atom_group). A group found identically in every conformer is
 reported once with blank altloc, else with its atoms' or conformer's altloc; groups
 with different non-blank altlocs are not paired (as pnp). Metal ions are not
 salt-bridge partners (bonds to metals ignored).
+Conformer selections: with a ligand selection holding one non-blank altloc X (as
+validate_ligands selects conformers: "altloc X or altloc ' '"), salt bridges,
+possible salt bridges and pi stacking describe conformation X: a ligand group (or
+ring) counts only if its altloc is blank or X, and an entry is kept only if its
+groups' (rings') altlocs are blank or X; charged_groups and possible_groups are
+filtered the same way. H-bonds, clashes and vdW (pnp, probe2) and metal coordination
+keep pnp's rule (ligand atoms in the selection, no two atoms with different
+non-blank altlocs), so the profile equals validate_ligands' columns. Without a
+one-conformer selection: groups per conformer, different non-blank altlocs never
+paired.
 Residues (charged groups, rings, the residue_molecule cache, the one-molecule check)
 are told apart by chain position (residue_identity), not chain ID: separate chains
 can share an ID.
@@ -383,6 +393,13 @@ def atom_label(atom):
   return "%s %s %s %s%s" % (rg.parent().id.strip(), ag.resname.strip(),
     (rg.resseq + rg.icode).strip(), atom.name.strip(), (" alt " + alt) if alt else "")
 
+def label_atom_name(label):
+  """The atom name of an atom_label ("A EDO 1 O1 alt A"); a blank chain ID drops the first word."""
+  words = label.split()
+  if len(words) >= 2 and words[-2] == "alt":
+    words = words[:-2]
+  return words[-1]
+
 def residue_label(atom, resname=None):
   """Chain, resname (of the atom's atom_group unless given), resseq+icode."""
   ag = atom.parent()
@@ -392,6 +409,11 @@ def residue_label(atom, resname=None):
 
 def _element(atom):
   return atom.element.strip().upper()
+
+def selected_conformation(atoms, seqs):
+  """The one non-blank altloc among the atoms seqs (a conformer selection, as validate_ligands makes them), else None."""
+  alts = set([_altloc(atoms[i]) for i in seqs if _altloc(atoms[i])])
+  return alts.pop() if len(alts) == 1 else None
 
 def chain_positions(hierarchy):
   """{chain memory_id: position in the hierarchy}: chain identity (chain IDs can repeat)."""
@@ -2014,6 +2036,7 @@ class manager(object):
     self.ring_missing_atoms = []
     self.ring_failures = []
     self.conjugated_rings_not_planar = []
+    self._conformation = None
     self._molecules = {}
 
   def run(self):
@@ -2026,6 +2049,7 @@ class manager(object):
     if set(self.model.selection(self.sel_str).iselection()) != lig:
       raise Sorry("sel_str %r does not select the ligand_isel atoms." % self.sel_str)
     self._check_one_molecule()
+    self._conformation = selected_conformation(atoms, lig)
     # probe2; by selection, not resname: other copies of the ligand are environment.
     # With crystal symmetry, the symmetry copies near the ligand are added to its
     # input (probe2_symmetry_input, a workaround); copy atoms map to (i_seq, op).
@@ -2159,12 +2183,18 @@ class manager(object):
   def _site(self, i, op):
     return self._atoms[i].xyz if _identity(op) else self._moved(i, sgtbx.rt_mx(op))
 
+  def _in_conformation(self, altloc):
+    """altloc blank, or no one-conformer selection, or the selection's conformation."""
+    return self._conformation is None or altloc in ("", self._conformation)
+
   def _canonical_partner(self, j, op, tolerance=0.1):
     """
     (atom, operator) of the copy probe2 got at the site where op puts j (one copy
     per site, probe2_symmetry_input): equivalent operators, e.g. on a special
-    position, are then one contact. Unchanged without copies (also when every copy
-    atom coincided with a model atom and none was added) or none there.
+    position, are then one contact. Among the copies there: j's own, else one with
+    j's altloc; never a copy of another conformer. Unchanged without copies (also
+    when every copy atom coincided with a model atom and none was added) or none
+    of j's conformer there.
     """
     if self.probe_symmetry is None:
       return j, op
@@ -2177,10 +2207,15 @@ class manager(object):
     if not labels:
       return j, op
     d = (sites - self._site(j, op)).norms()
-    k = flex.min_index(d)
-    if d[k] < tolerance:
-      return labels[k]
-    return j, op
+    near = list((d < tolerance).iselection())
+    # j's own copy first, else one of j's altloc (as the copy builder's duplicate
+    # test); never another conformer's (Zn A and Zn B on one site)
+    own = [k for k in near if labels[k][0] == j]
+    same = [k for k in near if _altloc(self._atoms[labels[k][0]]) == _altloc(self._atoms[j])]
+    pick = own or same
+    if not pick:
+      return j, op
+    return labels[min(pick, key=lambda k: d[k])]
 
   def _oriented_geometry(self, g):
     """probe2 geometry of a pair seen from the other side: per-side dots and areas swapped."""
@@ -2728,7 +2763,7 @@ class manager(object):
     groups = found.groups
     for k, g in enumerate(groups):
       g["id"] = k
-      g["ligand"] = g["center"] in lig
+      g["ligand"] = g["center"] in lig and self._in_conformation(g["altloc"])
     self.charged_groups = [self._group_info(g) for g in groups if g["ligand"]]
     self.examined_groups = [self._group_info(g) for g in groups]
     self.charged_group_missing_atoms = found.missing
@@ -2739,7 +2774,7 @@ class manager(object):
     partner_residues = set()
     for s, p, op in charged_group_pairs(self.model, groups, search,
         symmetry=self.params.symmetry):
-      if not groups[s]["ligand"]:
+      if not groups[s]["ligand"] or not self._in_conformation(groups[p]["altloc"]):
         continue
       partner_residues.add(groups[p]["center"])
       e = self._pair_entry("salt_bridge", groups[s], groups[p], op)
@@ -2807,7 +2842,6 @@ class manager(object):
     self.ring_missing_atoms = found.missing
     self.ring_failures = found.failures
     systems = ring_systems(rings)
-    lig_alts = sorted(set([_altloc(atoms[i]) for i in lig if _altloc(atoms[i])]))
     qualifying = []
     for a, b, op, d in ring_pairs(self.model, rings, pp.centroid_distance,
         self.params.symmetry):
@@ -2856,8 +2890,7 @@ class manager(object):
         out.append((key, "", list(per_conf.values())[0]))
       else:
         out.extend([(key, conf, v) for conf, v in sorted(per_conf.items())])
-    if len(lig_alts) == 1:
-      out = [x for x in out if x[1] in ("", lig_alts[0])]
+    out = [x for x in out if self._in_conformation(x[1])]
     for (ma, mb, op), conf, pairs in sorted(out, key=lambda x: (x[0], x[1])):
       pairs = sorted(pairs, key=lambda q: (q["centroid_distance"], q["a"], q["b"]))
       head = pairs[0]
@@ -2945,7 +2978,7 @@ class manager(object):
     lig = self._lig
     atoms = self._atoms
     for g in possible:
-      g["ligand"] = g["center"] in lig
+      g["ligand"] = g["center"] in lig and self._in_conformation(g["altloc"])
     candidates = groups + possible
     def certain_charged(g):
       return bool(g["charge"]) and g.get("certain", True)
@@ -2964,7 +2997,8 @@ class manager(object):
     for s, p, op in charged_group_pairs(self.model, candidates, search, charge=charge,
         symmetry=self.params.symmetry):
       stay, partner = candidates[s], candidates[p]
-      if not stay["ligand"] or (certain_charged(stay) and certain_charged(partner)):
+      if not stay["ligand"] or not self._in_conformation(partner["altloc"]) or (
+          certain_charged(stay) and certain_charged(partner)):
         continue
       extra = dict(reasons=[reason(g) for g in (stay, partner) if not certain_charged(g)],
         charges=[charge(stay), charge(partner)])
@@ -3237,16 +3271,34 @@ class manager(object):
       sorted(getattr(self, "pi_stacking_criteria", {}).items())]), file=log)
     print("  counts: %s" % ", ".join(["%s %d" % (k, v) for k, v in sorted(c.per_type.items())]),
       file=log)
+    fmt = lambda v: ("%.2f" % v) if isinstance(v, float) else v
     for e in self.entries:
       g = e["geometry"]
-      detail = []
+      detail, listed = [], []
       for s in sorted(g):
-        detail.append("%s(%s)" % (s, ", ".join(["%s=%s" % (k, ("%.2f" % v)
-          if isinstance(v, float) else v) for k, v in sorted(g[s].items())
-          if not isinstance(v, (dict, list))])))
+        if isinstance(g[s], dict):
+          detail.append("%s(%s)" % (s, ", ".join(["%s=%s" % (k, fmt(v)) for k, v in
+            sorted(g[s].items()) if not isinstance(v, (dict, list))])))
+        elif isinstance(g[s], list):
+          listed.append(s)
+        else:
+          detail.append("%s=%s" % (s, fmt(g[s])))
       print("  %-6s %-3s %s  [%s] %s" % (e["type"], e["subtype"] or "",
         " ... ".join([l for l in e["labels"] if l]),
         e["cross_check"] or ", ".join(e["sources"]), " ".join(detail)), file=log)
+      # list-valued geometry (e.g. a metal entry's absorbed clash records): one line each
+      for s in listed:
+        for q in g[s]:
+          if not isinstance(q, dict):
+            print("         %s %s" % (s, q), file=log)
+            continue
+          sub = q.get("geometry") or {}
+          values = ["%s.%s=%s" % (k, x, fmt(v)) for k in sorted(sub) if isinstance(sub[k], dict)
+            for x, v in sorted(sub[k].items()) if x in ("distance", "overlap", "min_gap")]
+          if q.get("distance") is not None:
+            values.insert(0, "distance=%s" % fmt(q["distance"]))
+          print("         %s %s [%s] %s" % (s, " ... ".join([l for l in q.get("labels", [])
+            if l]), ", ".join(q.get("sources") or []), " ".join(values)), file=log)
       if e["type"] == "pi_stacking" and len(g["pi_stacking"]["ring_pairs"]) > 1:
         for q in g["pi_stacking"]["ring_pairs"]:
           print("         ring pair %s %s (%s) ... %s %s (%s): %s %.2f A, %.1f deg, offset "
@@ -3336,5 +3388,5 @@ class manager(object):
     for k, p in enumerate(self.patches):
       print("    %d: %d dots, %.1f A^2 (%s); ligand %s; residues %s" % (k + 1, p["n_dots"],
         p["area_total"], " ".join(["%s %d" % (c, p["dots"][c]) for c in self.classes
-        if p["dots"][c]]), " ".join([a.split()[3] for a in p["ligand_atoms"]]),
+        if p["dots"][c]]), " ".join([label_atom_name(a) for a in p["ligand_atoms"]]),
         ", ".join(p["residues"])), file=log)
