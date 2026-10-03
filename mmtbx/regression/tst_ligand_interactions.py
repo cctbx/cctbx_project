@@ -3629,11 +3629,14 @@ def exercise_special_positions():
 
 BNZ_RING = ('C1', 'C2', 'C3', 'C4', 'C5', 'C6')
 
-def residue_lines(code):
-  '''Atom lines of one residue: GeoStd coordinates; amino acids the CCD's ideal ones (no OXT, HXT, H2).'''
+def residue_lines(code, cif=None):
+  '''
+  Atom lines of one residue: GeoStd coordinates (or those of the restraint cif
+  text given); amino acids the CCD's ideal ones (no OXT, HXT, H2).
+  '''
   from mmtbx.regression import tst_rdkit_utils_molecule as M
-  if code not in ('HIS', 'TRP', 'PHE', 'TYR'):
-    return [l for l in M.pdb_from_cif(code, geostd_text(code)).split('\n')
+  if cif is not None or code not in ('HIS', 'TRP', 'PHE', 'TYR'):
+    return [l for l in M.pdb_from_cif(code, cif or geostd_text(code)).split('\n')
       if l.startswith('HETATM')]
   from mmtbx.chemical_components import get_cif_dictionary
   return ['ATOM      1 %-4s %3s A   1    %8.3f%8.3f%8.3f  1.00 20.00          %2s' % (
@@ -3641,7 +3644,8 @@ def residue_lines(code):
     a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal, a.type_symbol)
     for a in get_cif_dictionary(code)['_chem_comp_atom'] if a.atom_id not in ('OXT', 'HXT', 'H2')]
 
-def ring_lines(code, ring, centroid, normal, chain, resseq, alt=' ', occ=1.0, spin=0.):
+def ring_lines(code, ring, centroid, normal, chain, resseq, alt=' ', occ=1.0, spin=0.,
+               cif=None):
   '''
   Residue code superposed so that its ring atoms (in ring order) lie on a regular
   polygon (their mean radius) about centroid, perpendicular to normal; spin
@@ -3649,7 +3653,7 @@ def ring_lines(code, ring, centroid, normal, chain, resseq, alt=' ', occ=1.0, sp
   '''
   from scitbx import matrix
   from scitbx.math import superpose
-  lines = residue_lines(code)
+  lines = residue_lines(code, cif)
   xyz = dict([(l[12:16].strip(), matrix.col([float(l[30 + 8 * k:38 + 8 * k])
     for k in range(3)])) for l in lines])
   c0 = sum([xyz[n] for n in ring], matrix.col((0, 0, 0))) / len(ring)
@@ -3664,7 +3668,7 @@ def ring_lines(code, ring, centroid, normal, chain, resseq, alt=' ', occ=1.0, sp
   return [l[:16] + alt + l[17:21] + chain + '%4d' % resseq + l[26:30] + '%8.3f%8.3f%8.3f' %
     tuple(f.r * xyz[l[12:16].strip()] + f.t) + '%6.2f' % occ + l[60:] for l in lines]
 
-def rings_model(blocks, cell=40.0, sg='P 1'):
+def rings_model(blocks, cell=40.0, sg='P 1', cifs=()):
   '''
   The residues' lines, renumbered, and a water with H far away (probe2 needs polar
   H); cell: edge or (a, b, c).
@@ -3678,7 +3682,7 @@ def rings_model(blocks, cell=40.0, sg='P 1'):
   lines += [hetatm(k, 'O', 'HOH', 'W', 1, (2, 2, 2), ' O'),
     hetatm(k + 1, 'H1', 'HOH', 'W', 1, (2.96, 2, 2), ' H'),
     hetatm(k + 2, 'H2', 'HOH', 'W', 1, (1.75, 2.93, 2), ' H'), 'END']
-  return get_model(lines)
+  return get_model(lines, cifs=cifs)
 
 def bnz_pair(cb, nb, spin=15, **kwargs):
   '''Ligand benzene A 1 at (20, 20, 20), normal z; environment benzene B 1 at cb, normal nb.'''
@@ -3747,7 +3751,9 @@ def exercise_pi_stacking_benzene():
   assert m.counts().per_type['pi_stacking:parallel'] == 1
   assert [r['residue'] for r in m.aromatic_rings] == ['A BNZ 1'] and m.nonplanar_rings == []
   d = m.as_dict()
-  assert d['pi_stacking_criteria'] == dict(centroid_distance=5.5, parallel_angle=30.0,
+  c = dict(d['pi_stacking_criteria'])
+  assert c.pop('grouping') == 'one entry per pair of fused ring systems' and c.pop('rings')
+  assert c == dict(centroid_distance=5.5, parallel_angle=30.0,
     t_shaped_angle=60.0, offset=2.0, planarity_rms=0.1, source='PLIP (Salentin et al. 2015)')
   json.dumps(d)
   log = StringIO()
@@ -3876,6 +3882,190 @@ def exercise_pi_stacking_altlocs():
   assert len(m.aromatic_rings) == 2
   m = get_manager(rings_model(blocks[:3]), sel=PI_SEL)
   assert [(r[3], r[4]) for r in pi_rows(m)] == [('A', 'A')], pi_rows(m)
+
+LFN_RINGS = dict(benzo=('C5A', 'C6', 'C7', 'C8', 'C9', 'C9A'),
+  pyrazine=('N10', 'C9A', 'C5A', 'N5', 'C4A', 'C10'),
+  pyrimidine=('C2', 'N3', 'C4', 'C4A', 'C10', 'N1'))
+
+def lfn_lines(chain='A', resseq=1, z=20.0):
+  '''Lumiflavin (GeoStd LFN), benzo ring centred at (20, 20, z), plane normal z.'''
+  return ring_lines('LFN', LFN_RINGS['benzo'], (20, 20, z), (0, 0, 1), chain, resseq)
+
+def centroid_of(lines, names):
+  xyz = dict([(l[12:16].strip(), [float(l[30 + 8 * k:38 + 8 * k]) for k in range(3)])
+    for l in lines])
+  return [sum([xyz[n][k] for n in names]) / len(names) for k in range(3)]
+
+def pi_ring_pairs(e):
+  '''(ligand ring atoms sorted, kind, partner ring atoms sorted, kind, subtype) per ring pair'''
+  return [(' '.join(sorted(q['ligand_ring']['atoms'])), q['ligand_ring']['kind'],
+    ' '.join(sorted(q['partner_ring']['atoms'])), q['partner_ring']['kind'], q['subtype'])
+    for q in e['geometry']['pi_stacking']['ring_pairs']]
+
+def exercise_pi_conjugated_rings():
+  '''
+  Conjugated rings: lumiflavin's three isoalloxazine rings (benzo aromatic,
+  pyrazine and pyrimidinedione conjugated) are one fused system; benzoquinone's
+  ring is conjugated; limonene's cyclohexene ring (puckered, sp3 atoms) and
+  1,4-cyclohexadiene's (planar, two sp3 CH2; A1ADJ as ZZD) are not rings; a
+  benzoquinone with C1 0.5 A out of the plane is listed as not planar, not a ring.
+  '''
+  def rings_of(model):
+    f = LI.find_aromatic_rings(model, flex.bool(model.size(), True))
+    atoms = model.get_hierarchy().atoms()
+    return f, sorted([(r['kind'], ' '.join(sorted([atoms[i].name.strip() for i in r['atoms']])))
+      for r in f.rings])
+  f, rows = rings_of(rings_model([lfn_lines()]))
+  assert rows == [('aromatic', 'C5A C6 C7 C8 C9 C9A'), ('conjugated', 'C10 C2 C4 C4A N1 N3'),
+    ('conjugated', 'C10 C4A C5A C9A N10 N5')], rows
+  assert LI.ring_systems(f.rings) == [[0, 1, 2]]
+  plq = ('C1', 'C2', 'C3', 'C4', 'C5', 'C6')
+  f, rows = rings_of(rings_model([ring_lines('PLQ', plq, (20, 20, 20), (0, 0, 1), 'A', 1)]))
+  assert rows == [('conjugated', 'C1 C2 C3 C4 C5 C6')], rows
+  f, rows = rings_of(rings_model([residue_lines('9IR')]))
+  assert rows == [] and f.nonplanar == [], (rows, f.nonplanar)
+  cif = geostd_text('A1ADJ').replace('A1ADJ', 'ZZD')
+  model = rings_model([ring_lines('ZZD', plq, (20, 20, 20), (0, 0, 1), 'A', 1, cif=cif)],
+    cifs=(('zzd.cif', cif),))
+  f, rows = rings_of(model)
+  atoms = model.get_hierarchy().atoms()
+  assert LI.ring_plane([a.xyz for a in atoms if a.name.strip() in plq])[2] < 0.01
+  assert rows == [] and f.nonplanar == [], (rows, f.nonplanar)
+  lines = [l[:46] + '%8.3f' % (float(l[46:54]) + 0.5) + l[54:] if l[12:16] == ' C1 ' else l
+    for l in ring_lines('PLQ', plq, (20, 20, 20), (0, 0, 1), 'A', 1)]
+  f, rows = rings_of(rings_model([lines]))
+  assert rows == [] and [(r['residue'], r['rms'] > 0.1) for r in f.nonplanar] == [
+    ('A PLQ 1', True)], f.nonplanar
+
+def exercise_pi_ring_systems():
+  '''
+  One entry per pair of fused ring systems. A benzene over the pyrazine and
+  pyrimidinedione rings of lumiflavin: one entry, both ring pairs listed, the
+  pyrazine pair (closer) the headline. Benzoquinone over a benzene: its ring
+  "conjugated". Two lumiflavins stacked 3.5 A apart: one entry, the three
+  matching ring pairs. Ligand-internal system pairs: once, in internal.
+  '''
+  lig = lfn_lines()
+  pz, pm = centroid_of(lig, LFN_RINGS['pyrazine']), centroid_of(lig, LFN_RINGS['pyrimidine'])
+  c = [0.6 * a + 0.4 * b for a, b in zip(pz, pm)]
+  c[2] += 3.5
+  m = get_manager(rings_model([lig, ring_lines('BNZ', BNZ_RING, c, (0, 0, 1), 'B', 1)]),
+    sel=PI_SEL)
+  (e,) = pi_entries(m)
+  assert e['subtype'] == 'parallel' and m.counts().per_type['pi_stacking:parallel'] == 1
+  assert pi_ring_pairs(e) == [
+    ('C10 C4A C5A C9A N10 N5', 'conjugated', 'C1 C2 C3 C4 C5 C6', 'aromatic', 'parallel'),
+    ('C10 C2 C4 C4A N1 N3', 'conjugated', 'C1 C2 C3 C4 C5 C6', 'aromatic', 'parallel')], \
+    pi_ring_pairs(e)
+  g = e['geometry']['pi_stacking']
+  assert g['centroid_distance'] == g['ring_pairs'][0]['centroid_distance'] < \
+    g['ring_pairs'][1]['centroid_distance']
+  assert sorted(g['ligand_ring']['atoms']) == sorted(LFN_RINGS['pyrazine'])
+  assert g['ligand_system']['kinds'] == ['conjugated', 'aromatic', 'conjugated'] or \
+    sorted(g['ligand_system']['kinds']) == ['aromatic', 'conjugated', 'conjugated']
+  assert len(g['ligand_system']['rings']) == 3 and g['partner_system']['residue'] == 'B BNZ 1'
+  # atoms: the two ligand rings (10 atoms), then the benzene's
+  assert len(e['atoms']) == 10 + 6 and len(e['ligand_atoms']) == 10
+  log = StringIO()
+  m.show(log=log)
+  assert len([l for l in log.getvalue().splitlines() if 'ring pair A LFN 1' in l]) == 2
+  # benzoquinone over a benzene
+  plq = ('C1', 'C2', 'C3', 'C4', 'C5', 'C6')
+  m = get_manager(rings_model([ring_lines('PLQ', plq, (20, 20, 20), (0, 0, 1), 'A', 1),
+    ring_lines('BNZ', BNZ_RING, (21.0, 20, 23.6), (0, 0, 1), 'B', 1, spin=15)]), sel=PI_SEL)
+  (e,) = pi_entries(m)
+  assert pi_ring_pairs(e) == [('C1 C2 C3 C4 C5 C6', 'conjugated', 'C1 C2 C3 C4 C5 C6',
+    'aromatic', 'parallel')], pi_ring_pairs(e)
+  assert [r['kind'] for r in m.aromatic_rings] == ['conjugated']
+  # two lumiflavins
+  m = get_manager(rings_model([lig, lfn_lines('B', 1, z=23.5)]), sel=PI_SEL)
+  (e,) = pi_entries(m)
+  assert sorted([(p[0], p[2]) for p in pi_ring_pairs(e)]) == sorted([
+    (' '.join(sorted(r)), ' '.join(sorted(r))) for r in LFN_RINGS.values()]), pi_ring_pairs(e)
+  assert e['geometry']['pi_stacking']['offset'] < 0.01
+  # both flavins in the ligand (routing only): one internal record
+  m.entries, m.internal = [], []
+  m._lig = set(m._lig) | set(m.model.selection('chain B').iselection())
+  m._build_pi_stacking()
+  assert pi_entries(m) == [] and [(x['type'], len(x['geometry']['pi_stacking']['ring_pairs']))
+    for x in m.internal] == [('pi_stacking', 3)], m.internal
+
+def exercise_repeated_chain_ids():
+  '''
+  Residues in separate chains with the same chain ID, resseq and icode are
+  different residues. A benzene between Phe B 10 and Tyr B 10 (two chains B):
+  two entries. An ammonium between acetate B 1 and Asp B 1 (two chains B): two
+  salt bridges. A Zn between imidazole B 1 N3 and water B 1 O (two chains B): two
+  metal entries, site CN 2.
+  '''
+  phe = ring_lines('PHE', ('CG', 'CD1', 'CE1', 'CZ', 'CE2', 'CD2'), (20.8, 20, 23.7),
+    (0, 0, 1), 'B', 10, spin=20)
+  tyr = ring_lines('TYR', ('CG', 'CD1', 'CE1', 'CZ', 'CE2', 'CD2'), (20.8, 20, 16.3),
+    (0, 0, 1), 'B', 10, spin=200)
+  bnz = ring_lines('BNZ', BNZ_RING, (20, 20, 20), (0, 0, 1), 'A', 1)
+  model = rings_model([phe, bnz, tyr])
+  assert [c.id for c in model.get_hierarchy().chains()] == ['B', 'A', 'B', 'W']
+  m = get_manager(model, sel=PI_SEL)
+  assert [r[1] for r in pi_rows(m)] == ['B PHE 10', 'B TYR 10'], pi_rows(m)
+  # salt bridges: acetate (builder) and Asp (template), both B 1
+  from scitbx import matrix
+  def aimed(lines, centre, tip, target, chain, resseq, drop=()):
+    '''
+    lines moved rigidly: the mean of the tip atoms at target, centre -> tip along
+    -x on the +x side of the origin of target's x, +x on the other.
+    '''
+    xyz = dict([(l[12:16].strip(), matrix.col([float(l[30 + 8 * k:38 + 8 * k])
+      for k in range(3)])) for l in lines])
+    xyz['tip'] = sum([xyz[x] for x in tip], matrix.col((0, 0, 0))) / len(tip)
+    tip = 'tip'
+    d = (xyz[tip] - xyz[centre]).normalize()
+    want = matrix.col((-1, 0, 0)) if target[0] >= n[0] else matrix.col((1, 0, 0))
+    axis = d.cross(want)
+    r = axis.normalize().axis_and_angle_as_r3_rotation_matrix(math.acos(max(-1, min(1,
+      d.dot(want))))) if abs(axis) > 1.e-6 else matrix.sqr((1, 0, 0, 0, 1, 0, 0, 0, 1))
+    t = matrix.col(target) - r * xyz[tip]
+    return [l[:21] + chain + '%4d' % resseq + l[26:30] + '%8.3f%8.3f%8.3f' % tuple(
+      r * xyz[l[12:16].strip()] + t) + l[54:] for l in lines if l[12:16].strip() not in drop]
+  n = matrix.col((20, 20, 20))
+  act = [l for l in salt_model_str.split('\n') if l[17:26] == 'ACT A   1']
+  from mmtbx.chemical_components import get_cif_dictionary
+  asp = ['ATOM      1 %-4s ASP A   1    %8.3f%8.3f%8.3f  1.00 20.00          %2s' % (
+    (' ' + a.atom_id) if len(a.atom_id) < 4 else a.atom_id, a.pdbx_model_Cartn_x_ideal,
+    a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal, a.type_symbol)
+    for a in get_cif_dictionary('ASP')['_chem_comp_atom']
+    if a.atom_id not in ('OXT', 'HXT', 'H2', 'HD2')]
+  h = 0.589
+  nh4 = [hetatm(1, 'N', 'NH4', 'A', 1, n, ' N')] + [hetatm(1, name, 'NH4', 'A', 1,
+    n + matrix.col(d), ' H') for name, d in (('HN1', (h, h, h)), ('HN2', (-h, h, -h)),
+    ('HN3', (h, -h, -h)), ('HN4', (-h, -h, h)))]
+  model = rings_model([aimed(act, 'C', ('O', 'OXT'), n + matrix.col((3.3, 0, 0)), 'B', 1), nh4,
+    aimed(asp, 'CG', ('OD1', 'OD2'), n - matrix.col((3.3, 0, 0)), 'B', 1)])
+  assert [c.id for c in model.get_hierarchy().chains()] == ['B', 'A', 'B', 'W']
+  m = get_manager(model, sel='chain A and resseq 1')
+  assert sorted([e['residue'] for e in salt_bridges(m)]) == ['B ACT 1', 'B ASP 1'], [
+    e['residue'] for e in salt_bridges(m)]
+  # metal: Zn with IMD B 1 N3 and HOH B 1 O, separate chains
+  zn = matrix.col((20, 20, 20))
+  imd = [hetatm(1, nm, 'IMD', 'B', 1, p, e) for nm, e, p in imd_at(zn)]
+  model = rings_model([imd, [hetatm(1, 'ZN', ' ZN', 'A', 1, zn, 'ZN')],
+    [hetatm(1, 'O', 'HOH', 'B', 1, zn + matrix.col((0, 0, 2.05)), ' O')]])
+  assert [c.id for c in model.get_hierarchy().chains()] == ['B', 'A', 'B', 'W']
+  m = get_manager(model, sel='chain A and resname ZN')
+  es = metal_entries(m)
+  assert sorted([e['labels'][1] for e in es]) == ['B HOH 1 O', 'B IMD 1 N3'], [
+    e['labels'] for e in es]
+  assert set([e['geometry']['metal_site']['coordination_number'] for e in es]) == set([2])
+
+def exercise_canonical_partner_no_copies():
+  '''
+  _canonical_partner with symmetry copies in range but none added (every copy atom
+  on a model atom, copy_of empty): the partner unchanged, no crash.
+  '''
+  from libtbx import group_args
+  m = get_manager(bnz_pair((21.0, 20, 23.6), (0, 0, 1)), sel=PI_SEL)
+  m.probe_symmetry = group_args(model=m.model, copy_of={}, chains=[], operators={})
+  m._copy_sites = None
+  assert m._canonical_partner(3, 'x,y,z-1') == (3, 'x,y,z-1')
 
 def exercise_formal_charge_conflict():
   '''
@@ -4739,6 +4929,10 @@ def run():
   exercise_pi_stacking_templates()
   exercise_pi_stacking_symmetry()
   exercise_pi_stacking_altlocs()
+  exercise_pi_conjugated_rings()
+  exercise_pi_ring_systems()
+  exercise_repeated_chain_ids()
+  exercise_canonical_partner_no_copies()
   exercise_trimmed_hydrogen_check()
   exercise_formal_charge_conflict()
   exercise_pair_class_order(model)

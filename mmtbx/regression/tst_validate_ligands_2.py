@@ -229,8 +229,8 @@ def run_test_interactions_aqs():
   '''
   AQS in 386D (9 clashes, 6 H-bonds, 5 via symmetry): counts equal a direct
   ligand_interactions run and validate_ligands' overlap numbers, symmetry contacts
-  present, 5 parallel pi stacks with DC 1, DG 2 and a DG 6 symmetry mate; nproc=2
-  gives the same profiles.
+  present, 3 parallel pi stacks (ring systems) with DC 1, DG 2 and a DG 6 symmetry
+  mate; nproc=2 gives the same profiles.
   '''
   print('test_interactions_aqs')
   fn = 'tst_interactions_aqs.pdb'
@@ -243,12 +243,14 @@ def run_test_interactions_aqs():
       r['validate_ligands_counts']['n_hbonds']) == (9, 6)
     assert r['counts']['symmetry_contacts'] > 0
     assert [e for e in r['entries'] if e['symop']]
-    # intercalated between base pairs: the outer rings stack on bases (templates by name)
-    pi = sorted([(e['labels'][-1].split()[1:3], e['subtype'], e['symop']) for e in r['entries']
-      if e['type'] == 'pi_stacking'])
-    assert r['counts']['pi_stacking'] == 5 and pi == [(['DC', '1'], 'parallel', None),
-      (['DG', '2'], 'parallel', None), (['DG', '2'], 'parallel', None),
-      (['DG', '6'], 'parallel', '-x+y+1,y,-z+1/2'), (['DG', '6'], 'parallel', '-x+y+1,y,-z+1/2')], pi
+    # intercalated between base pairs: one entry per stacked pair of ring systems
+    # (bases by name; the anthraquinone's outer rings aromatic, its quinone ring
+    # conjugated); ring pairs: DC 1 1, DG 2 3 (one from the quinone ring), DG 6 2
+    pi = sorted([(e['geometry']['pi_stacking']['partner_system']['residue'], e['subtype'],
+      len(e['geometry']['pi_stacking']['ring_pairs'])) for e in
+      r['profile']['entries'] if e['type'] == 'pi_stacking'])
+    assert r['counts']['pi_stacking'] == 3 and pi == [('A DC 1', 'parallel', 1),
+      ('A DG 2', 'parallel', 3), ('A DG 6 (-x+y+1,y,-z+1/2)', 'parallel', 2)], pi
     res[nproc] = [(x.id_str, x.altloc, x.get_interactions()['counts'],
       x.get_interactions()['entries']) for x in result.ligand_manager]
   assert res[1] == res[2]
