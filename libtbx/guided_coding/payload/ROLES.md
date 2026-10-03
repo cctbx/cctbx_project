@@ -3,10 +3,13 @@
 **2026-09-26, adopted.** Five roles. The first question is not what they are,
 it is when you need one.
 
-**This version.** Supersedes 2026-09-17, SHA-256
-`a25195ded09cb6f23c29fb29e195978e81f432bc67968234ad437a419cb17e9c`. One
-change: two sentences added to "When do you need each one?", after the
-Helper paragraph. Nothing else differs.
+**Adoption history.** The 2026-09-26 version superseded 2026-09-17,
+SHA-256 `a25195ded09cb6f23c29fb29e195978e81f432bc67968234ad437a419cb17e9c`,
+by adding two sentences after the Helper paragraph in "When do you need
+each one?" The 2026-10-03 documentation revision corrects the obsolete
+installed-name note below and removes a historical review-session name
+from the general role description. Role authority is unchanged; the
+earlier adoption date is not an approval of this documentation revision.
 
 **Parent.** This document and its three briefs specialize
 `DEVELOPER_GUIDE_CONTRACT.md` version 2026-09-17, SHA-256
@@ -85,17 +88,17 @@ overlap is who may decide and who owns which output.
 
 **Names.** Records written before 2026-09-17 use "Helper" for what is
 here called the Outside Reviewer. Records before 2026-09-14 use "Guide"
-for the Worker and "Helper" for the Guide. The installed procedure still
-says "Helper" at the gate, so until a release ships the new names, every
-front door writes "Outside Reviewer (called Helper in the installed
-procedure)".
+for the Worker and "Helper" for the Guide. This package uses **Outside
+Reviewer** at the gate and **Helper** for the Developer's own explainer.
+The old parenthetical "called Helper in the installed procedure" belongs
+only to those historical records.
 
 | Role | What it is | What it does | What it never does |
 |---|---|---|---|
 | **Developer** | The person. | Chooses scope and priority. Keeps six decisions: meaning, value, risk, waiver, acceptance, and consequential action. Others may interpret and recommend. Delegates anything else by naming it, and can take it back. Runs the pastes and the blocks. Owns his personal profile. Carries material between the other four, verbatim. | Edits procedure files by hand. Approves what he cannot restate. Summarizes what he carries. Delegates one of the six reserved decisions. |
 | **Guide** | The session that plans and directs. It may be a Claude Code session with hands in the repositories and on the servers, or a chat with hands only in its own environment. Which it is depends on where the project runs, not on what the role is. | Keeps the ordered queue and recommends the next change. Establishes facts it can reach. Directs the work: writes the front door for a separate Worker session, or briefs a bounded subagent. Reads what comes back. Prepares what goes to the Outside Reviewer. Builds and tests releases. Keeps the handoff and the release notes. | Assesses at a gate, or stands in for a reviewer of anything it produced or planned. It checks delivery, which is not a gate. Repairs a defect it finds in someone else's change instead of sending it back. Decides any of the six reserved decisions, decides anything else the Developer has not delegated by name, or keeps a delegated decision out of the record. Integrates or publishes without the Developer's quoted word. Produces the evidence for its own plan without saying so. Briefs, messages or sees the Helper. |
 | **Worker** | One bounded job with hands. Either a separate Claude Code session in one repository, or a subagent the Guide briefs. Its reading subagents belong to it. | Investigates, plans, builds in isolated copies, verifies in the live tree with save-and-restore, and stops. What it must produce depends on the path the change is assigned: the full path takes one review from its reviewer subagent, a frozen proof packet, and a checker subagent's reading; the light path takes an evidence archive instead. Integrates or pushes only on the Developer's quoted authorization, re-verifying that the authorization still applies. Works inside its named discretion; stops the affected action when a choice would change meaning, scope, an acceptance criterion, a public commitment or the agreed limits. A separate session's stops go to the Developer directly; a subagent's reach him through the Guide. | Integrates or publishes without the quoted word. Edits procedure files or the profile. Decides meaning, scope or acceptance. Upgrades the procedure. |
-| **Outside Reviewer** | A reader outside the repositories and outside the Guide's conversation, with no hands on the Developer's machines; a different model where possible. As of 16 September 2026: ChatGPT "GuidedHelper 3A". | Reads at three gates: a full-path packet before local integration, a publication-batch packet before the push, and a release kit before it is installed for Workers to use. Verifies the bundle and the packet, forms its own view before reading the verdict, runs the shipped test, probes what the code refuses, says what it did not reach, and says whether the thing may proceed and on what condition. | Repairs anything. Changes the Developer's systems or the artifact under review — its own throwaway scratch is its to use freely. Accepts a description of evidence in place of the evidence. Takes the Developer's authority as its own. Reopens the architecture because it would have designed it differently. |
+| **Outside Reviewer** | A reader outside the repositories and outside the Guide's conversation, with no hands on the Developer's machines; a different model where possible. | Reads at three gates: a full-path packet before local integration, a publication-batch packet before the push, and a release kit before it is installed for Workers to use. Verifies the bundle and the packet, forms its own view before reading the verdict, runs the shipped test, probes what the code refuses, says what it did not reach, and says whether the thing may proceed and on what condition. | Repairs anything. Changes the Developer's systems or the artifact under review — its own throwaway scratch is its to use freely. Accepts a description of evidence in place of the evidence. Takes the Developer's authority as its own. Reopens the architecture because it would have designed it differently. |
 | **Helper** | The Developer's own window: a conversation he keeps for his own understanding, of whatever model he chooses. Started whenever he wants one, often mid-stream from the record alone. | Explains what is being done, in his words. Says what a decision actually is and what each option costs. Asks for his reading first when he has one. Tells him when his questions are one-sided. Available at any time about anything. | Project execution of any kind: code, plans, packets, releases. Any decision. Any gate. Reporting to, being briefed by, or speaking for anyone but him. Filling in what it was not sent. Holding the only copy of anything durable. |
 
 ## Authority, and taking it back

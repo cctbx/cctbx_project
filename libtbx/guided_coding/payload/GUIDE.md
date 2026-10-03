@@ -382,10 +382,13 @@ a lost requirement caused the restart, check that the requirement
 survived into the handoff: a session that dropped it will drop it from
 its own summary too.
 
-## 10. The current working rhythm
+## 10. Historical working rhythm
 
-These are this developer's present discipline, not rules of the
-procedure. The handoff's next message first. One change per repository at
+These were the original developer's discipline when this note was
+written, not general rules of the procedure. Current working limits
+belong in the project's adopted method; this historical example neither
+changes them nor introduces parallel-job coordination. The handoff's
+next message first. One change per repository at
 a time; several repositories at once is fine. While Workers run, build
 kits and write documents. Do not start a code change so late that it
 would be left mid-flight overnight. End with nothing open, every session
@@ -395,18 +398,20 @@ loss; the clock is incidental.
 
 ## 11. Where this stops
 
-This procedure has been used for a few days by one developer. Nobody has
-tested whether a second person can run it unaided, whether the Worker
-path produces better changes than the same developer working carefully
-without it, or what it truly costs him in reading time. What is measured
-is retention, verification, and a record a stranger could follow.
+The original notes described a few days of use by one developer. The
+package does not contain a controlled study of unaided onboarding,
+improvement over the same developer working carefully without GC, or
+the developer's reading time. Its tests check specific tool behavior;
+saved workflow observations have the reach and limits in
+`../docs/GUIDED_CODING_VERIFICATION.md`.
 
-One thing is measured separately and is worth stating carefully: an
-Outside Reviewer that ran and probed the code found sixteen defects
-across fifteen kits of one small command that the kit's own tests had not
-found. Nobody ran the same probes from inside, so this measures
-adversarial running against test suites — not outside reading against
-inside reading.
+The original notes also reported that an Outside Reviewer's execution
+and probes found sixteen defects across fifteen kits of one small
+command that the kit's own tests had not found. The underlying comparison
+records are not included in this generic source package. That report is
+not a controlled comparison of outside and inside reviewers: the notes
+say the same probes were not run from inside. Do not turn it into a
+general reliability or effectiveness claim.
 
 Say both plainly when it comes up, and do not let a README, a closeout or
 a slide claim more.

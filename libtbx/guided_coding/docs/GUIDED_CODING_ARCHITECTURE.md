@@ -1,167 +1,198 @@
-# GuidedCoding r10 rev16 architecture
+# GuidedCoding architecture
 
-The **one central source** is `cctbx_project/libtbx/guided_coding/`. A
-personal skill symlink at `~/.claude/skills/guided_coding` points at this
-directory. A review archive contains these files directly under
-`libtbx/guided_coding/`, without an enclosing candidate directory. Its
-`SKILL.md` declares `name: gc` and
-`disable-model-invocation: true`, so a person invokes `/gc` or the
-directory alias `/guided_coding`; Claude does not choose to start it.
-Registration is one personal symlink, optionally created by an ordinary
-Claude Code setup request given the central source's absolute path. The
-`register-skill` helper verifies the source and CLI, then creates that exact
-link exclusively. An existing link (even to this source), directory, dangling
-link or symlinked skills directory is refused without a nested link.
-An absolute `CLAUDE_CONFIG_DIR` containing `..` is rejected before any
-directory creation. This keeps preflight checks and creation on the same
-effective path, even if an earlier component is absent.
-`/gc help`, `/gc status`, `/gc setup`, and `/gc uninstall` are handled
-before the guided-task adoption gate. No libtbx dispatcher or project
-installer is required. Setup proposes project adoption and a method;
-uninstall removes only a symlink resolving to this verified central
-source. Neither command deletes project records. Registration prints the
-next `/gc setup` step for a user-chosen project; it performs no adoption.
+GuidedCoding has three distinct parts: centrally stored instructions and
+tools, project-owned settings and evidence, and the Claude Code client
+that loads the skill and performs operations. A check in one part does
+not establish the behavior of the others.
 
-| Path | Purpose | Read or written when |
+## Source, client and target
+
+The central source is normally `cctbx_project/libtbx/guided_coding/`.
+A personal symlink at `~/.claude/skills/guided_coding` points to that
+root. With `CLAUDE_CONFIG_DIR`, the same relative registration lives under
+that configuration directory. `SKILL.md` declares `name: gc` and
+`disable-model-invocation: true`. The recommended user spelling is
+`/guided_coding`; `/gc` remains its short name.
+
+The skill selects Claude Code's primary working project unless the user
+explicitly names a different target. Reading a central file does not
+change the target to the procedure repository. Each task records which
+central source identity governs it.
+
+| Location | Responsibility |
+| --- | --- |
+| `SKILL.md` | Entry, source/target resolution, control requests, adoption and readiness instructions |
+| `SOURCE_MANIFEST.sha256` and `payload/RELEASE` | Listed source identities and human-readable revision label |
+| `docs/` | User-facing description, implementation map and validation limits |
+| `payload/DEVELOPER_GUIDE_CONTRACT.md`, `ROLES.md` | Reserved Developer decisions and role boundaries |
+| `payload/GUIDE.md`, `WORKER.md` | Governing task workflow and required evidence |
+| `payload/SETUP.md`, `SETUP_DEFAULTS.md` | Relevant setup, recovery and proposed general defaults |
+| `payload/screens/`, `templates/` | Decision screens, report/handoff formats and optional method structure |
+| `payload/tools/` | Executable source, evidence, screen and bundle checks |
+| Target authority and project method | Explicit adoption plus environment, work locations, commands and restrictions |
+| Target `.claude/records/` | Durable task/setup proposals, prior files, decisions and evidence |
+| Client configuration, transcripts and memory | Client-managed state; not confined by GC to the target records |
+
+The project may already have a method in another location. Its authority
+names the canonical path; the template does not impose a second copy.
+Optional domain cards supply candidate data with provenance. They are not
+global instructions, project adoption or transferable permission.
+
+## What is executable and what is instructed
+
+| Capability | Implementation | Boundary |
 | --- | --- | --- |
-| `docs/` | README, user guide, architecture and verification | Read from the central source when needed |
-| `SKILL.md` | Resolve the target repository and load the central procedure | Only when invoked |
-| `SOURCE_MANIFEST.sha256`, complete-source check and `payload/RELEASE` | Identify listed source bytes, reject unlisted source files, and display release label | Check all at start; recheck before central tools and consequential work |
-| `screen_check.py check-claude-version` | Require a readable Claude Code CLI at version 2.1.281 or newer | Run after source verification, before personal link registration, project setup, or guided work; help, status, and uninstall remain available |
-| `screen_check.py register-skill .` | Recheck source and CLI, then create only the unoccupied personal skill link | One-time registration; refuses existing destinations without changing them |
-| `payload/{GUIDE,WORKER,ROLES,DEVELOPER_GUIDE_CONTRACT}.md` | Scope, steps and authority | Read from central source |
-| `payload/screens/`, `payload/templates/` | Decision formats, approval report and optional project-method template | Read from central source |
-| `payload/SETUP.md`, `payload/SETUP_DEFAULTS.md` | Guided recovery and relevant setup; domain-neutral proposed defaults | Read on explicit setup or a relevant startup/task gap; never a new source of action authority |
-| `payload/tools/` | Screen, evidence and review-bundle checks | Run from central source |
-| Target's `.claude/records/` | Per-repository plans, decisions and proof | Written for that repository only |
-| Target's current authority and project method | Explicit adoption of exact contract version and SHA-256; project-specific working rules | Checked before Guide and Worker govern a project; preserve actually loaded `AGENTS.md` instructions |
-| Target's `CLAUDE.local.md` and settings | Local machine facts and permissions | Read if present; no automatic GC instruction |
+| Check complete source | `screen_check.py verify-source SOURCE` | Checks inventory and bytes against the supplied manifest, with a narrow bytecode exception; not supplier authentication |
+| Check CLI minimum | `check-claude-version` | Parses the PATH executable's `--version`; not Desktop runtime or instruction loading |
+| Register personal skill | `register-skill SOURCE` | Exclusive link creation after source/CLI checks; does not adopt or set up a project |
+| Help, status, setup, uninstall and task entry | Branches in `SKILL.md` | Instructions followed by the model; no executable dispatcher for these requests |
+| Preserve/verify/apply setup | Instructions and Bash example in `SETUP.md` §5 | Guide must construct correct records and obey ordering; no client-enforced transaction |
+| Freeze and verify evidence | `freeze DIR`, `verify DIR` | Binds file contents and inventory; does not establish truthful logs or complete evidence |
+| Check/present a decision | `check KIND SCREEN`, `present KIND SCREEN` | Checks required form and specified evidence bindings; not a review or a Developer decision |
+| Package outside review | `review_bundle.py PACKET COMPANIONS OUTPUT` | Builds two integrity domains with restricted layout; not privacy review or approval authentication |
 
-The project method holds the project's working locations, environment,
-commands, coordination and action rules. SETUP.md defines conversational
-recovery, relevant questions, scoped verification, authorized saving and
-migration preservation. SETUP_DEFAULTS.md supplies general proposals, with
-no host, account or universal test command. A developer may supply a separate
-domain profile; its settings are candidate data, and another developer's
-account, paths and grants never transfer automatically. Those profiles are
-not globally loaded or stored as project facts in the central package.
+`GC_PAYLOAD_ROOT` is a shell convention used to address central tools and
+payload files. Neither Python tool reads it as a configuration variable.
+The explicit command argument determines which source or evidence root
+is checked.
 
-The authority points to one canonical method; existing shared defaults may
-be referenced with explicit overrides. Setup records retain sources,
-prior bytes and decisions. Each value retains its scope and verification
-state. A stale known value is kept for re-verification, not replaced by an
-unknown. Optional remote work can be deferred without blocking independent
-local work. Working directories and execution environments are checked for
-the selected target; the procedure source is not the working project.
+## Authority and setup
 
-Startup checks the saved method only for the requested operation and
-routes missing/conflicting settings or changed contexts to SETUP.md. The
-Guide and Worker also route later environment/setup gaps there. This is an
-instruction-level workflow, not a new executable setup state machine or an
-automatic account hook. `/gc` remains manual-only. Registration offers the
-next setup step; unrelated ordinary conversations do not trigger it.
-
-Default setup makes no remote connection and runs no build or test.
-Additional verification uses existing bounded authority or the Developer's
-specific decision. Saving configuration does not adopt a project unless
-that adoption was authorized. A non-PHENIX target uses its own environment
-and does not require libtbx. In an AGENTS.md project, setup preserves the
-actual instruction-loading choice rather than blindly creating
-CLAUDE.local.md. Migrations preserve or explicitly account for every old
-setting/restriction in current or retained files before any retirement.
-The minimum-version check invokes the `claude` executable found on the
-current shell's PATH and refuses missing, malformed, failing or older
-versions before setup changes. It does not update Claude Code or verify
-the Desktop app's instruction loading. A fresh Desktop and `AGENTS.md`
-check is still required for use there.
-The version check parses the executable's reported stdout; it cannot prove
-the executable's identity. A misleading program on PATH could report an
-acceptable version. Review the path shown by the check as part of live setup.
-
-The invocation selects the repository of Claude Code's primary working
-directory unless the user names a different repository. Reading a skill
-from `cctbx_project` does not change the target to `cctbx_project`. Each
-central tool call uses the absolute `payload/tools` path; its output and
-the record stay with the target. Use the complete guarded Bash block in
-`docs/GUIDED_CODING_VERIFICATION.md` (Release and source checks), replacing
-its path with the canonical central root. A failed directory or listed-hash
-check must stop before executing the checker; a failed complete-source
-check must stop before reading the release or doing dependent work. Do
-not turn the chain into separately executed commands. The checker uses
-isolated Python and per-call `GC_PAYLOAD_ROOT` for the full inventory. These
-checks do not authenticate who supplied the package; compare the
-archive to a trusted review message before accepting it. The target's
-change record names the source manifest's SHA-256. If central files
-change during a task, the worker stops dependent work rather than
-silently switching procedures.
-
-**Activation is a separate check.** The central contract version
-`2026-09-17` has SHA-256
+The contract version is `2026-09-17`, SHA-256
 `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b`.
-Before guided work the skill reads the target's applicable current
-authority and verifies that it explicitly adopts that exact identity
-and defines or identifies its own project method. An `/gc` invocation,
-personal symlink, bundled contract, or old record does not establish
-adoption. If missing or ambiguous, the skill pauses and proposes a
-small project-authority declaration for the Developer to approve; it
-does not write one or treat the Worker as controlling automatically.
-This keeps procedure code central while requiring a project decision.
+Before Guide/Worker instructions govern a target, its current authority
+must explicitly adopt that identity and identify its own method. A skill
+invocation, link or old release label is insufficient. Control requests
+are handled before the task adoption gate; setup can propose adoption.
 
-The existing r09 contract and five roles remain: the Developer owns
-meaning, value, risk, waiver, acceptance, and consequential action; a
-Guide scopes and directs; a Worker handles bounded work; an Outside
-Reviewer evaluates a frozen packet; a Helper is the Developer's own
-optional explainer. No registration step transfers authority. The
-Worker checks that tests import the intended checkout, shows a concise
-plan, proves the candidate with controls, obtains the required review,
-then presents the exact changes for local integration. Publication has
-its own suite, review, and decision.
+The Developer retains meaning, value, risk, waiver, acceptance and
+consequential-action decisions. A Guide scopes work; Workers perform
+bounded tasks; an Outside Reviewer evaluates the supplied evidence at a
+gate; the optional Helper explains it for the Developer. A subagent with
+its own context is not thereby independent of the Guide who briefs it.
+Records distinguish who chose a criterion, wrote a test and ran it.
 
-`payload/tools/screen_check.py` requires a full approval report with
-**`## Exact tested changes`** and **`## New tests`** headings and the
-complete `CHANGE.diff`. Its evidence `verify` command says whether the
-frozen packet matches `MANIFEST.sha256`; it does **not** print that
-manifest's hash. To record the evidence packet's identity, run
-`shasum -a 256 MANIFEST.sha256` inside the packet (or the equivalent
-SHA-256 command). The source and evidence manifests are distinct.
-The review-bundle tool requires companions outside the packet and permits
-output only in the **frozen packet's own parent directory**. It refuses
-a nested companions directory before archive creation. It compares the
-opened output directory with that
-parent by filesystem identity, keeps the handle open through creation,
-and confirms the packet still occupies its original directory before
-writing. A separately movable directory is refused before any write,
-even if it was outside the packet at first. A symlink alias to the
-packet's parent can be used; swapping that alias does not redirect the
-opened handle. Moving the packet parent under its child is prohibited by
-the filesystem while the packet stays there. Concurrent hostile moves
-of the packet itself are outside this tool's guarantee; use an attended
-workspace without concurrent changes. Live Mac case-variant and
-Desktop tests remain necessary before adoption.
+Setup recovers known settings before asking for missing values. It checks
+readiness only for the requested operation. Stale verification does not
+erase a known setting. Default setup does not connect to a server or run
+a build/test suite. Optional remote gaps need not block independent
+local work authorized by the project.
 
-Claude Code automatically reads project and personal `CLAUDE.md` files.
-An older profile that instructs it to read `.claude/WORKER.md` for every
-task overrides the opt-in intent until that line is migrated. Likewise,
-skill content persists after invocation inside the conversation; use a
-fresh conversation for ordinary work. The skill has no preapproved tools,
-and ordinary Claude Code permission rules continue to apply.
+The save sequence requires complete proposals and lossless project recovery
+records before protected method/authority changes. Verification compares
+approved records with separately regenerated expected text and checks
+prior state. The Bash example checks each `find` producer's exit status
+before consuming either NUL-separated list. An incomplete listing with
+an error cannot count as successful enumeration in that example.
 
-This candidate has no r09 `install`/`verify` command, automatic profile
-creation step, `/wrap` command, or automatic shared-tree lock guard.
-Finish or discard an old open change in its Worker session before a
-reviewed profile migration. Use the normal `cctbx_project` controls for
-central source changes and coordinate with any working installation.
+The Guide issues apply only after verify succeeds. Apply guards the
+requested files against the saved prior state before its first target
+write, then writes and reads back individual files. It does not create
+an atomic multi-file update. Failures after writes can leave PARTIAL state;
+recovery records must remain available. The recipe has separate `verify`
+and `apply` invocations, not a client-enforced verified-state token.
 
-This candidate retires the per-repository installer and its test, plus
-three obsolete profile/migration examples and its acceptance-hash list.
-Two checker tests move alongside the central tools. Historical procedure
-copies and evidence in previously configured repositories are **not**
-deleted by this package; they are migrated separately after inspection.
+Instruction selection belongs to the client. Setup must preserve the
+project's actually loaded authority, including relevant `AGENTS.md`
+settings, rather than blindly adding a competing instruction file.
+Client auto-memory and transcripts may persist outside the target, so
+fresh-session recovery claims require observation of that context.
 
-`/gc` is a Claude Code skill in the slash-command picker, not a new
-permission mode next to Auto. Its manual-only content is loaded for each
-guided conversation and remains in that conversation; it does not have
-to be retyped for each message. Auto and GuidedCoding can be selected
-independently. Always-loaded project instructions could turn a procedure
-on for every task, but that would change this version's explicit opt-in
-contract.
+## Source verification and bytecode
+
+Use the complete guarded block in
+[Verification](GUIDED_CODING_VERIFICATION.md#release-and-source-checks).
+The trusted checksum command must succeed before the package's checker
+executes. The checker then verifies exact listed bytes and complete
+inventory, rejecting symlinks, multiply linked files and unlisted files
+except the recognized precompile pattern.
+
+Permitted bytecode has a listed `.py` counterpart in the same directory,
+a recognized `__pycache__` name and an accepted header flag. Its contents
+are not authenticated. `screen_check.py` runs as source; `review_bundle.py`
+explicitly loads the sibling checker source text. Documented calls use
+`python3 -I -B`. Ordinary test imports can behave differently, which is
+why the repository wrapper copies only manifest-listed files before testing.
+
+A source manifest detects changes relative to itself. Its separately
+recorded hash binds that manifest to a review or task. Neither mechanism
+proves who supplied it. Recheck the source before consequential work;
+if it changes, resolve the changed procedure before dependent work continues.
+
+## Evidence and decision screens
+
+Source and task evidence use different manifests:
+
+| Manifest | Contents and identity |
+| --- | --- |
+| `SOURCE_MANIFEST.sha256` | All listed package files except itself, using `./relative/path`; source identity is this manifest's SHA-256 |
+| `MANIFEST.sha256` | All frozen evidence files except itself, using relative names without the source manifest's `./` convention; packet identity is this manifest's SHA-256 |
+| Bundle `SHA256SUMS` | Inner packet archive and external companions; the outer archive's hash is supplied separately |
+
+`verify` prints `VERIFIED evidence`, not the packet hash. Compute the
+manifest hash separately when recording identity. `freeze` refuses to
+replace an existing manifest; a changed packet needs a fresh freeze.
+
+The screen checker requires at most 28 lines and 220 words, specified
+headings, no unresolved template placeholders, and the matching final
+ACTION. Plan/result screens also need why it matters, a recommendation
+with a reason, and the next action.
+
+For a result, the checker checks code-identity fields, a passing recorded
+outcome, a matching tested-tree reference, and a report containing the
+complete `CHANGE.diff` plus exact-changes/new-tests headings. It does not
+execute that check or prove that the reported test authorship is true.
+
+For a full result or publication it binds the reading to the exact packet
+and reading-file hash and requires a proceeding verdict. A conditional
+verdict needs a matching disposition. WAIVED and PENDING conditions remain
+visible; quoted authorization is a record to evaluate, not authentication
+of its author. A light result explicitly defers the outside reading to
+publication.
+
+For publication, the tool additionally requires nonempty
+`SERVER_SUITE.txt` and `ROSTER_COMPARISON.txt`. It does not parse their
+results or apply the result-specific code-identity checks. If a required
+suite is explicitly waived, those files must truthfully record NOT RUN /
+NOT PRODUCED and the waiver, with its justification reviewed separately.
+File presence alone cannot turn that into a passing suite.
+
+`present` first checks the screen, then formats the Developer view and
+hides internal identity strings. The frozen evidence retains the identities.
+No screen command integrates code or pushes a repository.
+
+## Review transport
+
+The [transport instructions](../payload/REVIEW_TRANSPORT.md) and
+[reviewer brief](../payload/OUTSIDE_REVIEWER_BRIEF.md) govern the handoff.
+The frozen packet includes the evidence and proposed report. Separate
+companions contain `APPROVALS.md`, `CHECKER.md`, and optional `ERRATA.md`.
+The bundle helper rejects nested or duplicated reserved companions and
+requires `README_FIRST.md` and `PROOF_SUMMARY.md` in the packet.
+
+Output must be in the packet's own parent directory, not merely somewhere
+outside it. The helper uses directory identity and open handles to avoid
+specified destination redirections. It accepts an alias to that parent;
+it does not promise safety under arbitrary hostile concurrent movement.
+The packet and output should not be modified during packaging. Deliver
+only a successfully completed and verified bundle.
+
+The cover identifies the bundle and packet separately. A reviewer reply
+and later dispositions stay outside the frozen packet. A new packet needs
+a reading for its new identity; an earlier HOLD or a synthetic control
+cannot supply a genuine PROCEED gate.
+
+## What this version does not add
+
+There is no per-project procedure installer, automatic profile creation,
+account hook, `/wrap` command, `gc_claim.py`, parallel-job coordinator or
+new installation-restoration engine. The Worker's existing candidate
+save/apply/test/restore instructions remain. Worktree separation alone
+does not establish separate imported installations or shared-resource safety.
+
+The personal link exposes the current central checkout, not a pinned
+release. Updating that checkout therefore needs coordination with active
+work and the repository's integration rules. Keep project methods,
+existing records and permissions separate from procedure updates. The
+published pilot and later documentation changes have distinct source
+identities and publication decisions.

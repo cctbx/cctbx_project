@@ -1,92 +1,102 @@
-# GuidedCoding — central opt-in r10 rev16 candidate
+# GuidedCoding — an opt-in coding procedure
 
-**Status (2026-10-01):** r10 rev16 is a development handoff for the
-selected setup-and-recovery release, built from the exact supplied rev14.
-It retains rev14's shared setup workflow, general proposed defaults, optional
-method template, registration/startup cues and migration preservation.
-Optional domain profiles remain separately supplied data. The contract,
-manual-only entry and existing candidate-testing route are retained.
-The accompanying builder-b packet distinguishes package/fixture checks and
-procedural simulations from actual Claude Code instruction loading.
-Actual-client setup, outside review and live reconciliation are pending.
-Acceptance, integration, activation and publication remain Developer decisions.
+GuidedCoding helps a developer direct an LLM through a bounded change:
+agree on the problem and a check, build and test, inspect the evidence,
+then decide whether to integrate and publish. It combines instructions
+for the people and agents involved with small Python tools that check
+source inventories, evidence packets and decision-screen formats.
 
-**Historical status (2026-09-30):** rev14 introduced those setup features
-as an unreviewed development candidate. Rev16 skips the failed rev15; it
-adds no parallel-job, reservation, installation-restoration or second-build
-machinery. Neither the rev14 nor rev15 historical record approves rev16.
+Start a guided conversation with **`/guided_coding`**. The shorter `/gc`
+remains available; the longer name makes the purpose clearer. Neither
+command is a separate Claude Code permission mode.
 
-**Historical status (2026-09-29):** r10 rev13 lets the complete-source check accept the
-bytecode an installer's precompile step writes beside listed modules (the
-tools never load it) and keeps refusing any other unlisted code. r10 rev12
-changed only the `/skills` guidance, to
-match the rev11 Mac trial; rev11 itself was reviewed (no blocking finding)
-and trialled on the intended Mac. Rev13 is committed locally in
-`cctbx_project`, not published, and needs an outside review before
-publication.
+## Status
 
-SUPERSEDED 2026-09-29 (rev12; see the Rev12 section of GUIDED_CODING_VERIFICATION.md): "Status: proposed successor to rejected r10 rev10. This revision refuses
-configuration paths containing `..` before any directory creation. It has not
-been reviewed as a release,
-integrated, or used on a real repository task." ("This revision" is rev11.) The two readings
-of the **earlier r09 documentation** are addressed in the revised guide;
-they are not reviews of r10 rev9. The r10 rev5 review found that a
-movable destination can still enter the packet after a preflight check;
-the rev6 destination rule addresses that case. Neither earlier verdict
-approves rev11. Rev7 added conversational setup and `/gc` control requests.
-The rev7 review found that listed-hash checking accepted unlisted runtime
-code and that the bundle helper accepted companions inside the packet.
-Rev8 checks the entire source inventory and refuses nested companions.
-The rev8 Mac trial passed its automatic and CLI skill checks but found that
-Claude Code 2.1.268 did not load `AGENTS.md`; after updating, the Developer
-reported CLI 2.1.284. Rev9 refuses CLI versions below 2.1.281 before
-registration, setup, or guided work. An independent review of rev9 then found
-that the documented `ln -s` command could create a nested link inside an
-existing destination. Rev10 uses an exclusive registration helper and tests
-occupied destinations. The rev10 review then found that a missing prefix
-followed by `..` could bypass registration's preflight and write inside the
-source or through a linked parent. Rev11 rejects such paths and tests all
-four reported cases. Its release packet and Desktop behavior still require
-independent review and live checks. (SUPERSEDED 2026-09-29 (rev12; see the Rev12 section of GUIDED_CODING_VERIFICATION.md): rev11 was
-reviewed and its Desktop behavior trialled; rev12 still needs review.)
+GuidedCoding 2.0 r10 rev16 is a **limited opt-in pilot**. The implementation
+`enumcheck-20261002T194333Z` was published to `cctbx_project` on
+2026-10-02. Its publication record identifies commit
+`c36887c7f489018af4f91773246ecde32d1b4e24`. This documentation revision,
+`docs-20261003`, describes that implementation; it does not expand its
+validation or change its executable tools, skill entry, setup recipe or
+Developer–Guide Contract.
 
-Keep **one procedure copy** at `cctbx_project/libtbx/guided_coding/`.
-Register it once on your machine with a symlink at
-`~/.claude/skills/guided_coding`. In any repository, start a guided task
-with `/gc <task>`; the same personal skill should also answer to
-`/guided_coding`. An ordinary Claude Code request can register that one
-link from a specified reviewed source path. `/gc setup` recovers existing settings and prepares each
-target's relevant environment, working locations, method and adoption for
-the Developer's decision; `/gc status`,
-`/gc help`, and `/gc uninstall` provide small control requests. There is
-no new libtbx dispatcher or per-project procedure install. General proposed defaults live in `payload/SETUP_DEFAULTS.md`;
-`payload/SETUP.md` explains how to recover and adapt them. A separate optional
-domain profile can supply project-specific command and server hints without
-transferring its owner's permissions. The package contains no PHENIX setup
-profile or universal remote-server requirement.
-A normal prompt in a fresh conversation stays ordinary
-**once old profiles that turn GuidedCoding on for every task are retired**.
-Claude Code does not automatically invoke this manual-only skill.
-Before guided work in a project, its current authority must explicitly
-adopt the exact contract version and identity and name its own project
-method. The skill pauses and asks for that project decision if absent;
-the small declaration is not a copy of the procedure. Even an adopted
-project receives a brief readiness check for the requested operation and
-guided recovery of missing settings. An ordinary task
-does not require adoption.
+The published pilot includes:
 
-The procedure still shows a plan, tested result with complete diff and exact
-new test code, an integration decision, and a separate publication decision.
-Its evidence and records belong to the **repository being changed**. The
-skill and all procedure screens and tools live centrally. Any older
-per-repository copies can be retired after their always-on startup
-instructions are updated without losing local machine facts or grants.
-No automatic `CLAUDE.local.md`, per-repository install, automatic lock guard,
-or `/wrap` command is part of this version.
+- One centrally stored, manually invoked skill, with help, status, setup
+  and uninstall instructions.
+- Project-specific setup that recovers saved settings, asks for relevant
+  missing information and prepares complete changes for authorization.
+- A checked setup-save sequence: preserve approved text and prior files,
+  verify the recovery records, then apply and read back authorized edits.
+- Source and evidence inventory checks, concise decision screens, and a
+  bundle format for an Outside Reviewer.
 
-The four user documents live together in `docs/`. Read [GUIDED_CODING_USER_GUIDE.md](GUIDED_CODING_USER_GUIDE.md) for setup and normal use,
-[GUIDED_CODING_ARCHITECTURE.md](GUIDED_CODING_ARCHITECTURE.md) for paths and authority, and
-[GUIDED_CODING_VERIFICATION.md](GUIDED_CODING_VERIFICATION.md) for what this candidate has and has not
-been tested against. The skill itself is [SKILL.md](../SKILL.md). A review
-archive extracts `libtbx/guided_coding/` directly, so create an empty
-staging directory first; the exact commands are in the user guide.
+The pilot has material limits:
+
+- The save sequence depends on the Guide following it. Failed verification
+  must hold the protected edits. A failure during apply or readback can
+  leave **PARTIAL** state; the Guide must stop and preserve recovery records.
+- Command controls demonstrate specified failures stopping in those
+  commands. They do not establish reliable compliance by every future Guide.
+  Native handling of genuinely damaged or missing recovery records before
+  verification remains untested.
+- Recorded final-candidate client observations are on a Mac: CLI
+  help/status, live CLI help, and Desktop Code-tab **help only**. They do
+  not establish all setup/recovery behavior or client support on other
+  platforms. See the [verification record](GUIDED_CODING_VERIFICATION.md).
+- The full PHENIX server suite was **not run for this GC-only publication**;
+  the Developer explicitly waived it for that pilot. Local package tests
+  are not an equivalent, and the waiver is not a standing exemption.
+- There is no parallel-job coordinator, automatic shared-installation
+  reservation or new installation-restoration engine. Client transcripts,
+  settings bookkeeping and auto-memory can exist outside project records.
+
+The source retains the literal `r10 rev16 candidate` compatibility label
+used by its startup check. That label is not evidence of publication or
+approval; use the recorded commit, source manifest and decision instead.
+The development tag `guided_coding-r10-rev16-pilot` was removed under the
+repository's release-only tag convention. It is not an installation target
+and should not be recreated. Pilot status belongs in these docs and the
+publication record, not in a development tag.
+
+## Start using it
+
+Keep one reviewed source copy at
+`cctbx_project/libtbx/guided_coding/`. Register it once per local Claude
+Code configuration at `~/.claude/skills/guided_coding`, then invoke it in
+the project you want to work on:
+
+```text
+/guided_coding setup
+/guided_coding Fix the regression described in this issue.
+```
+
+Registration and project adoption are separate. Before guided work, the
+project's current authority must adopt the exact contract identity and
+name its own project method. Setup helps prepare that decision; it does
+not assume it. Existing settings are proposed defaults, not new permission.
+
+The package supplies general setup defaults and a method template. It
+contains no personal PHENIX profile, account, server requirement or `t96`
+definition. An optional project defaults card can be supplied separately;
+another developer adapts its paths and permissions to their own environment.
+
+Ordinary work remains ordinary in a fresh conversation when no always-on
+project instruction activates GuidedCoding. Starting a new conversation
+does not erase persistent instructions or auto-memory.
+
+## Documentation map
+
+| Read this | For |
+| --- | --- |
+| [User guide](GUIDED_CODING_USER_GUIDE.md) | Register, set up a project, choose commands, update and uninstall |
+| [Architecture](GUIDED_CODING_ARCHITECTURE.md) | What lives where, who decides, what the tools actually enforce |
+| [Verification](GUIDED_CODING_VERIFICATION.md) | Source-to-claim map, recorded observations, limits and check commands |
+| [Skill entry](../SKILL.md) | The instructions loaded by an explicit invocation |
+| [Contract](../payload/DEVELOPER_GUIDE_CONTRACT.md) and [roles](../payload/ROLES.md) | Authority, responsibilities and review boundaries |
+| [Setup workflow](../payload/SETUP.md) and [general defaults](../payload/SETUP_DEFAULTS.md) | Recover settings and prepare a checked save |
+| [Guide](../payload/GUIDE.md) and [Worker](../payload/WORKER.md) | The governing work procedure |
+| [Reviewer brief](../payload/OUTSIDE_REVIEWER_BRIEF.md) and [transport](../payload/REVIEW_TRANSPORT.md) | Prepare and read a review bundle |
+
+This pilot supplies a structured process and inspectable evidence. It
+makes no general claim that an LLM following it cannot make mistakes.
