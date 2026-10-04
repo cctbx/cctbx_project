@@ -15,7 +15,6 @@ if __name__ == "__main__" and not sys.flags.isolated:
 
 import argparse
 import datetime
-import re
 from pathlib import Path
 
 REQUIRED = ("job", "project", "title", "state", "updated", "outcome", "record")
