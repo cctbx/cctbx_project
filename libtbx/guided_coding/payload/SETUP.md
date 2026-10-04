@@ -46,6 +46,17 @@ the actual project, command, or host names. Do not search unrelated personal
 files or all conversation history by default. If no location is available,
 ask for the smallest useful lead or artifact, not for every setting again.
 
+Discovery commands name their files or search only the roots the method
+records: the target and its related repositories, the folder the Developer
+put supplied files in (by file name), the handoff directory, the personal
+skills directory and the client's transcript directory for this project.
+Never search the home directory, `~/Library`, application containers or
+other applications' data; a wider search prunes those paths and is
+proposed first. On macOS a Guide command that reaches another
+application's data raises a privacy prompt; a denial is final for the
+task: record the command that caused it, do not retry, do not route
+around it, and do not change privacy settings.
+
 Read legacy settings and shell definitions as text first; do not execute a
 startup script or saved command to discover its meaning. Inspect a backup
 in disposable scratch without overwriting the original or restoring an old
@@ -106,6 +117,8 @@ Volatile facts such as a free lock or server load need checking at use time.
 | Remote or CI work | Relevant host/account or CI service; installation and workspace; authentication method; log retrieval; automated or user-run steps | Required host access and genuinely missing operational rules |
 | Coordination | Locks and owner records, sharing/load policy, branch/worktree rules, cleanup responsibility | Unrecorded shared-resource policy or authorized concurrency cap |
 | Actions | Existing permissions and restrictions for verification, builds, tests, installation changes, integration and publication | A specific action or policy change not covered by current authority |
+| Publication conventions | The destination repository's branch, tag and release conventions and who states them (for example, tags reserved for releases); every effective push URL (`git remote get-url --all --push`), `insteadOf`/`pushInsteadOf` rewrites, `pushurl`, `mirror`, push refspecs, `tagOpt` and `push.followTags`; the recovery convention (commit ids and branches, no tags) | A repository whose release workflow genuinely requires a tag: its own explicit tag authorization |
+| Installations | Each installation kept in step after a publication: canonical root, access host (two hostnames for one filesystem are one installation), repositories, how it is updated (fetch and fast-forward; refresh or rebuild only when stated), verification, reservation and load rules, recovery boundary | Which installations a publication plan names; nothing else is updated |
 
 Treat every related repository as separately scoped. Do not write to one
 merely because its path was discovered. Keep durable evidence out of a

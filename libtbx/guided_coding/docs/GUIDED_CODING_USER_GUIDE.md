@@ -1,7 +1,8 @@
 # GuidedCoding user guide
 
 Use **`/guided_coding`** to start a guided conversation. `/gc` remains a
-short alias. This guide describes the r10 rev16 opt-in pilot; its
+short alias. This guide describes the r10 rev17 candidate revision of the
+opt-in pilot; its
 [verification record](GUIDED_CODING_VERIFICATION.md) separates implemented
 checks from recorded client observations and remaining limitations.
 
@@ -51,7 +52,7 @@ cd /path/to/empty-gc-review/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev16 candidate' payload/RELEASE
+grep -Fq 'r10 rev17 candidate' payload/RELEASE
 ```
 
 Any failed command skips the rest of the block. In particular, a failed
@@ -85,7 +86,7 @@ cd /path/to/cctbx_project/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev16 candidate' payload/RELEASE &&
+grep -Fq 'r10 rev17 candidate' payload/RELEASE &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py check-claude-version &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py register-skill .
 ```
@@ -245,6 +246,7 @@ that would alter its governing procedure.
 | `/guided_coding` | Introduce the procedure and wait for a task |
 | `/guided_coding help` | Explain commands and opt-in behavior |
 | `/guided_coding status` | Read source/link/adoption/method status and relevant setup gaps |
+| `/guided_coding history` | List this project's task records read-only: date, job, state, outcome, record and ticket |
 | `/guided_coding setup` | Recover settings and prepare authorized method/adoption changes |
 | `/guided_coding <task>` | Start bounded guided work after source, adoption and readiness checks |
 | `/guided_coding uninstall` | Remove only the personal symlink resolving to this verified source |
@@ -260,10 +262,22 @@ tested diff and exact new test code, or an explicit “none added” with the
 check used. An Outside Reviewer recommends; the Developer decides.
 A tool-permission dialog does not replace those decisions.
 
+For a batch that will be published, the frozen packet also records the
+exact outgoing commits (`OUTGOING.txt`) and the suite result or the
+Developer's quoted waiver for that batch, so that one outside reading can
+answer the integration and the publication question for that packet. If
+the proposal changes afterwards, it gets a new identity and a
+reassessment; the earlier verdict is not inherited. A publication plan
+names each installation to update separately; publication alone updates
+none. The accepted push is one explicit `<commit>:refs/heads/<branch>`
+with tag following disabled, after `publication_precheck.py` has compared
+the live repository with the record; no development or recovery tag is
+created.
+
 Use the project's adopted testing and publication rules. Preparing a test,
 running it, integration and a push are different actions. The pilot's
 one-time server-suite waiver is not permission to skip a later required
-suite. There is no new parallel-job coordination in rev16; follow the
+suite. There is no parallel-job coordination in rev17; follow the
 current project restrictions and sharing rules.
 
 ## Ordinary conversations and session titles
@@ -273,14 +287,18 @@ Persistent project instructions and auto-memory can still load there;
 `/clear` is not a cleanup of those files. Client bookkeeping may also be
 written outside the target. See [Claude Code memory](https://code.claude.com/docs/en/memory).
 
-If a session started with `/gc` is titled “Garbage Collection,” that title
-is not evidence of which skill loaded. Prefer the more descriptive
-`/guided_coding <task>`. A better automatic title from that spelling has
-not been established by the GC tests. You can explicitly rename the session:
-use `/rename GuidedCoding — short task name` in the terminal, or click the
-session title in Desktop. These are client features, not GC commands;
-see [sessions](https://code.claude.com/docs/en/sessions#name-your-sessions) and
-[Desktop](https://code.claude.com/docs/en/desktop).
+A session's automatic title is not evidence of which skill loaded. Once
+the source check passes, the skill names the session
+`GuidedCoding: <task>` through the client's rename tool where one exists
+(Claude Code Desktop); a title you set yourself is left alone, and
+declining the rename is final for that session. On the CLI, which has no
+such tool, the skill prints the `/rename GuidedCoding: <task>` instruction
+once; in Desktop you can also click the session title. A failed rename
+never stops the work. These are client features, not GC commands; see
+[sessions](https://code.claude.com/docs/en/sessions#name-your-sessions) and
+[Desktop](https://code.claude.com/docs/en/desktop). The
+[verification record](GUIDED_CODING_VERIFICATION.md) lists the recorded
+title observations and their reach.
 
 ## Update, publish or uninstall
 

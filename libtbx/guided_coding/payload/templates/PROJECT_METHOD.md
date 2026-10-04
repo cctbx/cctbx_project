@@ -28,6 +28,7 @@ recovery, verification, authorization, saving and migration.
 | Source checkout | <path> | <source/check> |
 | Isolated worktrees / temporary work | <authorized or proposed path> | <source/check; cleanup responsibility> |
 | Durable records / results | <path retained after cleanup> | <source/check> |
+| Search roots for discovery | <named roots; never the home directory or other applications' data> | <source/check> |
 
 ## Environment and commands
 
@@ -55,6 +56,18 @@ Record relevant branch/worktree and sharing rules; who may update a working
 installation; current restrictions on tests, integration and publication;
 and pointers to applicable decisions/grants. Recording a command does not
 authorize running it. Preserve no-push and stage-specific restrictions.
+
+Record the destination's tag and release convention with its source, and
+the accepted push shape: explicit `<commit>:refs/heads/<branch>`, tag
+following disabled, no development or recovery tags. Name each
+installation kept in step after a publication: canonical root, access
+host (hostnames sharing one filesystem are one installation),
+repositories, permitted operations, verification, reservation and load
+rule, recovery boundary (expected HEAD, recorded operation state, no
+intervening work lost) and stop conditions. Publication alone authorizes
+no installation update. Record how suite and outside-reading waivers are
+given: in the Developer's words, per batch and scope; "commit and
+publish" waives neither.
 
 ## Sources and unresolved items
 

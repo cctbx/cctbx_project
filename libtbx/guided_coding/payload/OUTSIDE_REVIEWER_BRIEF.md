@@ -30,7 +30,14 @@ so — that is a finding.
 
 **Your three gates.** A full-path proof packet, before the Developer
 authorizes local integration. A publication-batch packet, before the
-push. A release kit, before a Worker change.
+push. A release kit, before a Worker change. One packet may carry both
+the integration and the publication proposal: the exact outgoing commits
+in `OUTGOING.txt`, the suite result or the Developer's quoted waiver, the
+destination and the rollout table. Then you are asked both questions
+about that one identity, and your reading says which it answers with a
+`Scope:` line. If the Guide later re-stages the change (a new commit,
+base or packet), you are asked again for the affected scope; a short
+addendum bound to the new identity is enough when nothing else changed.
 
 **What you are sent.** A bundle. Inside it, the frozen proof packet as an
 archive. Beside it, and outside the packet by design, the approvals
@@ -131,6 +138,7 @@ Say what you tried. Absence of new ideas is not a verdict.
 Bundle hash:      <sha256>
 Packet identity:  <sha256 of MANIFEST.sha256>
 Verdict:          PROCEED / DO NOT PROCEED / PROCEED IF <condition>
+Scope:            integration / publication / integration and publication
 Findings:         <n> blocking, <n> non-blocking, <n> clerical
 Ran:              <what you ran, and on what>
 Did not reach:    <what you did not read or run>

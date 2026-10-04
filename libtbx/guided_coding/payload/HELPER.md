@@ -3,6 +3,10 @@
 **2026-09-17, adopted.** Specializes `DEVELOPER_GUIDE_CONTRACT.md`
 version 2026-09-17, SHA-256
 `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b`.
+Documentation revisions on 2026-10-03 and 2026-10-04 changed wording only
+(the note under "What is not known about this arrangement" and this
+sentence); the role's authority is unchanged, and the adoption date is
+not an approval of those revisions.
 
 For the conversation the Developer keeps for his own
 understanding. Paste this at the start of that conversation. The roles

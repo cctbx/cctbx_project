@@ -20,13 +20,24 @@ pilot. Its recorded identities are:
 | Publication review bundle SHA-256 | `0e4c112d3726026bd397a4e50ac2a3cff79b146883f8ceab269e3a069bc2c6ca` |
 | Publication packet identity | `9834e7a5bfdf6b8dd8401972265715f527432ba277b63c4ee5c50f130508f44b` |
 
-The `docs-20261003` revision changes documentation and its source identity.
-It retains the contract, skill entry, Python tools, tests and SETUP §5
-shell recipe. Earlier reviews and test runs apply to their recorded source;
-they do not approve this new documentation diff. Its new manifest must be
-bound to its own check and publication records. The literal release-family
-check still expects `r10 rev16 candidate`; it does not establish an exact
-revision or approval.
+The `docs-20261003` revision (published 2026-10-03 as commit
+`b0747a4a55f29db3abe04358480d5867e94cb792`, source manifest SHA-256
+`5edbec14fe45d3538da533fd995a5d59ddaa47df7629daf27321ab2a1134f1be`)
+changed documentation only and kept the literal label `r10 rev16 candidate`.
+
+This revision, r10 rev17 candidate `followups-20261004`, changes
+`screen_check.py` (the reading's `Scope:` line, `OUTGOING.txt` bindings and
+the `NOT RUN` waiver form), adds `publication_precheck.py` and
+`records_history.py` with their tests, and revises the skill entry,
+Worker, Guide, Setup, defaults, method template, screens, reviewer brief,
+transport, Helper and Roles texts. The contract, the adoption rule and the
+SETUP §5 recipe are unchanged. Its commit, archive, manifest, bundle and
+packet identities are recorded in its task and publication records
+(`phenix/.claude/records/2026-10-04-gc-followups-A/`), not in this file,
+which cannot carry its own hash. Earlier reviews and test runs apply to
+their recorded source; they do not approve this diff. The literal
+release-family check now expects `r10 rev17 candidate`; it does not
+establish an exact revision or approval.
 
 The October 2–3 publication, client and installation facts below come from
 the supplied controller and outside-review records. The documentation pass
@@ -46,7 +57,7 @@ cd /absolute/path/to/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev16 candidate' payload/RELEASE
+grep -Fq 'r10 rev17 candidate' payload/RELEASE
 ```
 
 Every dependency uses `&&`. A failed directory change or listed checksum
@@ -92,14 +103,24 @@ Other important mappings:
 | Screen form and result identity | `blocks`, `developer_view`, `code_identity`, `check`; `ScreenChecks` | Correct criterion, true logs, complete tests or Developer authorization |
 | Matching outside reading | `reading_matches`; conditional/waiver/pending controls | Independence or authenticity of the reviewer, satisfaction of a semantic condition |
 | Two-domain review transport | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks` | Privacy, evidence completeness or permission to publish |
+| Reading scope (exactly one `Scope:` line, counted before its value is checked), outgoing bindings (no repeated key within a block), waiver form | `reading_matches`, `parse_outgoing`, `suite_waiver` in `screen_check.py`; the scope, outgoing and waiver cases in `ScreenChecks` | Git state, the reviewer's independence, or that the quoted words authorize anything |
+| Pre-push destinations, settings, bindings, dry run (every Git query's exit checked before its output; a failed configuration or identity query refuses, while Git's no-match answer to the configuration query is accepted), command shape (whitelist of the documented form) | `publication_precheck.py`; `tst_publication_precheck_v20.py` on temporary repositories and with a fake Git on PATH | A decision to push, the remote's later state, settings outside the repository's Git config scopes, any Git command not submitted to the validator, or false acceptances other than the demonstrated ones |
+| Read-only task history | `records_history.py`; `tst_records_history_v20.py` | Truth of a record's contents, or any grant, reservation or scheduling |
 | Checked setup ordering | `SKILL.md`, `SETUP.md` §5 and its embedded recipe | Mechanical enforcement by Claude Code or reliable obedience by every Guide |
 | Test isolation in the repository | [`libtbx/tst_guided_coding.py`](../../tst_guided_coding.py) | Complete source verification of arbitrary unlisted files in the original installation |
 
-There are **45 test methods** in the two shipped package test files.
-Subtests exercise additional cases; a count of 45 is not 45 independent
-behavioral claims. The setup shell recipe and native LLM scenarios are
-not covered by those 45 unit methods. Their controls were supplied in
-separate review evidence.
+There are **108 test methods** in the four shipped package test files
+(53 for the checker, 13 for the review bundle, 27 for the pre-push
+checks, 15 for the history listing). Subtests exercise additional cases;
+a count of 108 is not 108 independent behavioral claims. The checker,
+pre-push and history tests of this revision were written by two separate
+test-writer sessions from the interface specification, without reading
+the implementation; the baseline control (`observations/baseline_control.txt`
+in the release's evidence packet: the final checker test file run against
+the previous published checker) shows which of them fail there; the
+pre-push and history tools have no earlier version to compare with. The setup
+shell recipe and native LLM scenarios are not covered by unit methods;
+their controls are in the task and review records.
 
 ## Recorded checks of the published implementation
 
@@ -113,6 +134,11 @@ separate review evidence.
 | Publication r2 | Outside reading: PROCEED for the limited pilot; P-F1/P-F2/P-F3/P-N1 closed, R-F1 retained closed. A clerical description of three test assertions was corrected externally. Genuine publication screen passed; Developer PUBLISH and verified remote pushes were recorded. |
 | Mac and shared Linux installation synchronization | Controller reported clean checkouts at the publication commit on the Mac and on one shared Linux installation, source equality between them and repository harness success on both. Synchronized GC files on that installation are not native Claude Code client validation: no Claude client was installed or run there. This was not a PHENIX full-suite run. |
 | Tag removal, October 3 | Controller reported the pilot tag absent remotely, its local copy removed after preservation, and the published commit still in upstream history. Repository tags are reserved for releases; use the commit/manifest, not the removed tag. |
+| CI for the two published commits (read 2026-10-04) | GitHub Actions `quick` and `clutter_and_syntax` completed with conclusion success for c36887c7 (2026-10-02) and b0747a4a (2026-10-03); the mirror workflow succeeded after each. Read through the public API without authentication; a read, not a rerun, and not a PHENIX suite. |
+| Native checks of this candidate, Mac CLI 2.1.284, `claude -p … --permission-mode auto`, candidate loaded through a project-level skill link in a scratch project (2026-10-04) | Four sessions, each printing the guard result (VERIFIED complete source, `r10 rev17 candidate`) for the worktree path: `status` recovered adoption, method and records from files alone; `history` listed the one record read-only and created no file; a setup save with a truncated approved record stopped at verify (FAIL: approved record does not match) and held apply; a setup save with no prior record or ABSENT marker stopped at verify and held apply; the protected files' hashes were unchanged in every session. The CLI title instruction (`/rename GuidedCoding: <task>`) was printed in three of the four sessions and omitted in one. Reach: one client, one mode, scratch targets; the sessions used the Developer's live login and wrote their own client bookkeeping outside the targets. |
+| Desktop session rename, Guide's own session (2026-10-04) | In the Guide's own Desktop session (which had loaded the published rev16 skill, not this candidate), the client's rename tool replaced an app-generated title without a prompt: the tool's availability, not this candidate's behaviour. |
+| Desktop session titles, pinned snapshot (2026-10-04) | Two Desktop sessions in a scratch project whose project-level skill directory was a byte-identical, read-only copy of an earlier revision of this package (candidate 3 of this release). The skill entry `SKILL.md`, whose session-title instructions these observations exercised, is byte-identical between that revision and the published one; the tools, tests and some texts changed in later revisions, so the observations are of the title behaviour only, not of the package as a whole. Each transcript shows the skill expansion and a passing guard on that snapshot. (a) An app-generated title was replaced by `GuidedCoding: help` through the client's rename tool without a prompt. (b) A title the Developer had set by hand (`KEEP MY TITLE`) was left unchanged: the skill read the session's title, judged it user-set and did not call the rename tool, so the app's approval dialog was not exercised. (d) The Developer reported both titles unchanged after closing the windows. Four earlier Desktop sessions are preserved in the task record and not counted: two met a failed guard because the Guide was editing the worktree, one renamed itself on the previous candidate, one met a failed guard and left a hand-set title untouched. The app's "isn't a command here" notice for a project-level skill appeared each time; it is not evidence either way. Reach: one Desktop client, one snapshot, two sessions. |
+| PHENIX test discovery (A7, 2026-10-04) | `phenix.find_program search_type=tests search_text=<function> tests.search_tests_by=function_called` traced `run_autobuild` to its calling tests; the default mode matched test names; a function newer than the static index (dated 2026-05-06) produced no entry and no message; `git_affected_tests=True` saw only uncommitted modifications in the three module directories. Project guidance, not a package feature. |
 
 The full PHENIX server suite and a baseline/candidate roster were **NOT RUN /
 NOT PRODUCED for the GC-only pilot publication**, under the Developer's
@@ -122,11 +148,10 @@ a later change.
 
 ## Remaining qualifications
 
-- **Native damaged-record branch:** no recorded native session of the final
-  enumcheck candidate demonstrates the Guide responding to genuinely
-  damaged or missing recovery records before verification. Command controls
-  cover stopping in the commands; the driver/Guide still determines what
-  gets invoked next.
+- **Native damaged-record branch:** two non-interactive CLI sessions of this
+  candidate held apply on a damaged and on a missing recovery record (table
+  above). That is one client and one mode on scratch targets; the
+  driver/Guide still determines what gets invoked next in any other session.
 - **Exact proposal and recovery history:** earlier cases omitted complete
   proposals or approved recovery text. Assisted and later native cases
   showed improvement; they do not erase those failures. A relocated setup
@@ -214,6 +239,14 @@ not a sufficient stopping rule; unchecked producer exits were also not
 sufficient. The final published implementation is enumcheck, not an earlier
 F1/checked-save/failprop candidate. Earlier reviews belong to those earlier
 identities; frozen packets and errata retain that history.
+
+Rev17 (`followups-20261004`) followed three corrections recorded in the
+PHENIX project during October 2026: a development tag pushed to a
+repository that reserves tags for releases (removed by its maintainer on
+2026-10-03), a publication that proceeded on an inferred suite waiver
+(corrected by the Developer on 2026-10-04), and installation updates that
+were planned after the push rather than with it. It adds no parallel-job
+coordination; that remains a separate planned release.
 
 Current client reference material: [skills](https://code.claude.com/docs/en/skills)
 and [instruction loading](https://code.claude.com/docs/en/memory).

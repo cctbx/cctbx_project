@@ -3,9 +3,10 @@
 **2026-09-26, adopted.** Five roles. The first question is not what they are,
 it is when you need one.
 
-**Adoption history.** The 2026-09-26 version superseded 2026-09-17,
-SHA-256 `a25195ded09cb6f23c29fb29e195978e81f432bc67968234ad437a419cb17e9c`,
-by adding two sentences after the Helper paragraph in "When do you need
+**Adoption history.** The 2026-09-26 version superseded the 2026-09-17
+ROLES.md (that earlier file's own SHA-256
+`a25195ded09cb6f23c29fb29e195978e81f432bc67968234ad437a419cb17e9c`, not
+the contract's), by adding two sentences after the Helper paragraph in "When do you need
 each one?" The 2026-10-03 documentation revision corrects the obsolete
 installed-name note below and removes a historical review-session name
 from the general role description. Role authority is unchanged; the

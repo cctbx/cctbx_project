@@ -261,7 +261,15 @@ def developer_view(kind, body):
         fail("missing next action in Developer View")
 
 
-def reading_matches(path, evidence_id, gate, disposition=None):
+def reading_matches(kind, path, evidence_id, gate, disposition=None):
+    """Bind the screen's GATE to one verbatim reading of this exact packet.
+
+    The reading states its scope once: integration, publication, or both.
+    A reading scoped to both may serve the RESULT and the PUBLICATION screen
+    of the same frozen packet. A changed packet, commit, base or reading
+    byte needs a new reading bound to the new identity (a correction is a
+    new directory); the earlier verdict is never inherited.
+    """
     if not path or not path.is_file() or path.is_symlink():
         fail("verbatim outside reading file is required")
     data = path.read_bytes()
@@ -273,6 +281,17 @@ def reading_matches(path, evidence_id, gate, disposition=None):
     verdicts = re.findall(r"^Verdict:\s*(.+?)\s*$", reading, re.M)
     if identities != [evidence_id] or len(verdicts) != 1 or not re.fullmatch(r"PROCEED(?: IF .+)?", verdicts[0]):
         fail("outside reading does not name this packet with a proceeding verdict")
+    declared = re.findall(r"^Scope:(.*)$", reading, re.M)
+    if len(declared) != 1:
+        fail("outside reading needs exactly one Scope line: integration, publication, "
+             "or integration and publication")
+    scopes = [declared[0].strip()]
+    if scopes[0] not in ("integration", "publication", "integration and publication"):
+        fail(f"reading Scope value not recognized: {scopes[0]!r}")
+    if kind == "result" and scopes[0] == "publication":
+        fail("reading scope does not cover integration")
+    if kind == "publication" and scopes[0] == "integration":
+        fail("reading scope does not cover publication")
     expected = [f"Reading SHA256: {digest(data)}", f"Verdict: {verdicts[0]}"]
     status = None
     if verdicts[0] != "PROCEED":
@@ -297,6 +316,86 @@ def reading_matches(path, evidence_id, gate, disposition=None):
     if gate != expected:
         fail("screen gate does not identify the outside reading")
     return status
+
+
+OUTGOING_KEYS = ("repository", "remote", "remote_url", "base", "commit", "tree", "refspec")
+COMMIT = r"[0-9a-f]{40}"
+BRANCH = r"[A-Za-z0-9._/-]+"
+
+
+def parse_outgoing(path):
+    """Read OUTGOING.txt: one block per repository, naming the exact proposed
+    outgoing commit, its tree and base, the remote and the branch refspec.
+
+    The checker binds these values to the PUBLICATION screen;
+    publication_precheck.py compares them with the live repository before
+    a push. Neither establishes that the push is authorized.
+    """
+    if not path.is_file() or path.is_symlink() or not path.stat().st_size:
+        fail("missing or empty publication evidence: OUTGOING.txt")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        fail("outgoing record is not UTF-8")
+    needs = "outgoing record needs repository, remote, remote_url, base, commit, tree and refspec"
+    blocks = []
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if ": " not in line:
+            fail("malformed outgoing record line")
+        key, value = (part.strip() for part in line.split(": ", 1))
+        if key == "repository":
+            blocks.append({})
+        if not blocks:
+            fail(needs)
+        if key in blocks[-1]:
+            fail(f"duplicate key in outgoing record: {key}")
+        blocks[-1][key] = value
+    if not blocks:
+        fail(needs)
+    names = set()
+    for block in blocks:
+        if any(not block.get(key) for key in OUTGOING_KEYS):
+            fail(needs)
+        if block["repository"] in names:
+            fail("duplicate repository in outgoing record")
+        names.add(block["repository"])
+        if any(not re.fullmatch(COMMIT, block[key]) for key in ("base", "commit", "tree")):
+            fail("invalid Git identity in outgoing record")
+        match = re.fullmatch(rf"({COMMIT}):refs/heads/({BRANCH})", block["refspec"])
+        if not match or match[1] != block["commit"]:
+            fail("outgoing refspec must be <commit>:refs/heads/<branch>")
+        block["branch"] = match[2]
+    return blocks
+
+
+def suite_waiver(path):
+    """Form check only. When the suite was not run, SERVER_SUITE.txt must
+    carry the Developer's own words as a quoted block under a line
+    'Waiver (Developer ...):', so that a publication-only permission cannot
+    stand in for the suite waiver; a suffix after NOT RUN or a byte-order
+    mark before it does not evade the check. The form establishes no authorization:
+    whether those words waive the suite for this batch and scope is judged
+    by the Developer and the Outside Reviewer, not by this check.
+    """
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except UnicodeDecodeError:
+        fail("publication evidence is not UTF-8: SERVER_SUITE.txt")
+    if not lines or not lines[0].strip().startswith("SERVER_SUITE: NOT RUN"):
+        return
+    for index, line in enumerate(lines):
+        if re.fullmatch(r"Waiver \(Developer[^)]*\):\s*", line):
+            quoted = 0
+            for following in lines[index + 1:]:
+                if following.startswith("> ") and following[2:].strip():
+                    quoted += 1
+                else:
+                    break
+            if quoted:
+                return
+    fail("suite not run without the Developer's quoted waiver")
 
 
 def code_identity(root, checked, changed):
@@ -387,7 +486,7 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True):
                 if reading or disposition or body["GATE"] != ["Reading: deferred to publication", "Verdict: deferred to publication"]:
                     fail("light-path outside reading belongs to publication batch")
             else:
-                status = reading_matches(reading, identity, body["GATE"], disposition)
+                status = reading_matches("result", reading, identity, body["GATE"], disposition)
                 if status in ("WAIVED", "PENDING") and not any(
                         status in line for heading in ("LIMITS", "DECISION")
                         for line in body[heading]):
@@ -397,7 +496,12 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True):
                 item = root / filename
                 if not item.is_file() or not item.stat().st_size:
                     fail(f"missing or empty publication evidence: {filename}")
-            status = reading_matches(reading, identity, body["GATE"], disposition)
+            batch = "\n".join(body["BATCH"])
+            for block in parse_outgoing(root / "OUTGOING.txt"):
+                if not re.search(rf"(?<![0-9A-Za-z]){block['commit']}(?![0-9A-Za-z])", batch):
+                    fail("outgoing commit is not named in BATCH")
+            suite_waiver(root / "SERVER_SUITE.txt")
+            status = reading_matches("publication", reading, identity, body["GATE"], disposition)
             if status in ("WAIVED", "PENDING") and not any(
                     status in line for heading in ("LIMITS", "DECISION")
                     for line in body[heading]):

@@ -50,6 +50,9 @@ global instructions, project adoption or transferable permission.
 | Freeze and verify evidence | `freeze DIR`, `verify DIR` | Binds file contents and inventory; does not establish truthful logs or complete evidence |
 | Check/present a decision | `check KIND SCREEN`, `present KIND SCREEN` | Checks required form and specified evidence bindings; not a review or a Developer decision |
 | Package outside review | `review_bundle.py PACKET COMPANIONS OUTPUT` | Builds two integrity domains with restricted layout; not privacy review or approval authentication |
+| Bind a publication proposal | `check publication` reads `OUTGOING.txt`, the reading's `Scope:` line and the `NOT RUN` waiver form | Form and identity binding only; not Git state and not authorization |
+| Pre-push Git checks | `publication_precheck.py check REPO OUTGOING [--repository NAME] [--fetch] [--dry-run]`; `vet -- <command>` | Comparison of the live repository with the record; a dry run counts only when Git exits successfully and reports exactly one fast-forward of the approved branch; `vet` accepts only the documented command shape and refuses every other word (Git abbreviates options and reads settings from the environment, so a list of forbidden words cannot be complete). The validator checks the command text submitted to it; it does not intercept Git operations run any other way. `--fetch` and `--dry-run` contact the remote, nothing else does; not a push, not a decision |
+| Task history | `records_history.py RECORDS_DIR [--limit N]` | Read-only listing from `JOB_SUMMARY.txt` or `RECORD.md`; grants nothing and runs nothing found in a record |
 
 `GC_PAYLOAD_ROOT` is a shell convention used to address central tools and
 payload files. Neither Python tool reads it as a configuration variable.
@@ -150,6 +153,20 @@ visible; quoted authorization is a record to evaluate, not authentication
 of its author. A light result explicitly defers the outside reading to
 publication.
 
+The reading carries exactly one `Scope:` line. RESULT accepts
+`integration` or `integration and publication`; PUBLICATION accepts
+`publication` or `integration and publication`, so one reading can serve
+both screens of one frozen packet. A publication packet must contain
+`OUTGOING.txt`, naming for each repository the remote, its URL, the base,
+the commit, its tree and the `<commit>:refs/heads/<branch>` refspec, and
+every outgoing commit must appear in the screen's BATCH section. A suite
+file whose first line starts with `SERVER_SUITE: NOT RUN` must carry a
+`Waiver (Developer ...):` line followed by `> ` quoted lines. These are
+form checks: they bind what is claimed to the packet. Git state is
+compared separately by `publication_precheck.py` (which contacts the
+remote only with `--fetch` or `--dry-run`), and
+authorization remains the Developer's quoted decision.
+
 For publication, the tool additionally requires nonempty
 `SERVER_SUITE.txt` and `ROSTER_COMPARISON.txt`. It does not parse their
 results or apply the result-specific code-identity checks. If a required
@@ -180,7 +197,10 @@ only a successfully completed and verified bundle.
 The cover identifies the bundle and packet separately. A reviewer reply
 and later dispositions stay outside the frozen packet. A new packet needs
 a reading for its new identity; an earlier HOLD or a synthetic control
-cannot supply a genuine PROCEED gate.
+cannot supply a genuine PROCEED gate. One reading scoped to both gates
+may serve both screens of one packet; a re-staged proposal (new commit,
+base or packet) is a new identity and needs a reassessment of the
+affected scope bound to it, which may be a short addendum.
 
 ## What this version does not add
 
@@ -189,6 +209,10 @@ account hook, `/wrap` command, `gc_claim.py`, parallel-job coordinator or
 new installation-restoration engine. The Worker's existing candidate
 save/apply/test/restore instructions remain. Worktree separation alone
 does not establish separate imported installations or shared-resource safety.
+The history listing writes nothing and the pre-push checks change
+nothing in the repository (they contact the remote only with `--fetch`
+or `--dry-run`): neither
+reserves a resource, schedules work, pushes, or updates an installation.
 
 The personal link exposes the current central checkout, not a pinned
 release. Updating that checkout therefore needs coordination with active

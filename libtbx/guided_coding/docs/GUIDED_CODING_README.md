@@ -12,15 +12,18 @@ command is a separate Claude Code permission mode.
 
 ## Status
 
-GuidedCoding 2.0 r10 rev16 is a **limited opt-in pilot**. The implementation
+GuidedCoding 2.0 r10 rev17 (`followups-20261004`) is a **candidate
+revision of the limited opt-in pilot**. The pilot implementation
 `enumcheck-20261002T194333Z` was published to `cctbx_project` on
-2026-10-02. Its publication record identifies commit
-`c36887c7f489018af4f91773246ecde32d1b4e24`. This documentation revision,
-`docs-20261003`, describes that implementation; it does not expand its
-validation or change its executable tools, skill entry, setup recipe or
-Developer–Guide Contract.
+2026-10-02 (commit `c36887c7f489018af4f91773246ecde32d1b4e24`), and its
+documentation revision `docs-20261003` on 2026-10-03 (commit
+`b0747a4a55f29db3abe04358480d5867e94cb792`). This revision changes the
+checker, adds two read-only tools and revises the procedure texts; the
+Developer–Guide Contract, the adoption rule and the setup recipe are
+unchanged. Its own commit, source manifest and review identities belong
+in its task and publication records, not in this file.
 
-The published pilot includes:
+The pilot includes:
 
 - One centrally stored, manually invoked skill, with help, status, setup
   and uninstall instructions.
@@ -30,6 +33,29 @@ The published pilot includes:
   verify the recovery records, then apply and read back authorized edits.
 - Source and evidence inventory checks, concise decision screens, and a
   bundle format for an Outside Reviewer.
+
+This revision adds:
+
+- Publication conventions without tags: the destination's convention is
+  recorded with its source, a push uses one explicit `<commit>:refs/heads/<branch>`
+  refspec with tag following disabled, and `publication_precheck.py`
+  compares the effective push destinations, settings, outgoing bindings
+  and a dry run with the frozen record before the authorized push, and
+  accepts only the documented command shape when a command text is
+  submitted to it (it does not intercept Git run any other way).
+- Explicit waivers: a suite marked `NOT RUN` must carry the Developer's
+  quoted words for that batch and scope. The checker checks the form;
+  people judge the authorization. "Commit and publish" waives nothing.
+- One outside reading for integration and publication of the same frozen
+  packet, bound by `OUTGOING.txt` and a `Scope:` line. A changed proposal
+  gets a new identity and a reassessment; the earlier verdict is not inherited.
+- Publication plans that name each installation to update, with permitted
+  operations, recovery boundary and stop conditions. Publication authorizes
+  no installation update by itself.
+- A per-job `JOB_SUMMARY.txt` and the read-only `/guided_coding history`
+  listing of a project's records.
+- Session naming through the client's rename tool with a manual fallback,
+  recorded search roots for discovery, and a rule for denied privacy access.
 
 The pilot has material limits:
 
@@ -50,10 +76,17 @@ The pilot has material limits:
 - There is no parallel-job coordinator, automatic shared-installation
   reservation or new installation-restoration engine. Client transcripts,
   settings bookkeeping and auto-memory can exist outside project records.
+- The new checker rules and tools check form and Git state. They do not
+  authorize a push, update an installation, reserve a resource or
+  establish a reviewer's independence. The native observations of this
+  revision (a history listing, the CLI title instruction, damaged and
+  missing recovery records, fresh-session recovery) were made with one Mac
+  CLI client in non-interactive auto mode; Desktop title behaviour was
+  observed only as far as the verification record states.
 
-The source retains the literal `r10 rev16 candidate` compatibility label
-used by its startup check. That label is not evidence of publication or
-approval; use the recorded commit, source manifest and decision instead.
+The source carries the literal `r10 rev17 candidate` label used by its
+startup check. That label is not evidence of publication or approval; use
+the recorded commit, source manifest and decision instead.
 The development tag `guided_coding-r10-rev16-pilot` was removed under the
 repository's release-only tag convention. It is not an installation target
 and should not be recreated. Pilot status belongs in these docs and the

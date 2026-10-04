@@ -19,6 +19,18 @@ import screen_check as checker
 
 TREE = "b" * 40
 BASE = "a" * 40
+COMMIT = "c" * 40
+REMOTE_URL = "ssh://git@example.invalid/phenix.git"
+OUTGOING_KEYS = ("repository", "remote", "remote_url", "base", "commit", "tree", "refspec")
+
+
+def outgoing(omit=None, **fields):
+    """One OUTGOING.txt block (SPEC_A 1.2); `omit` drops a key, fields override."""
+    values = dict(repository="phenix", remote="origin", remote_url=REMOTE_URL,
+                  base=BASE, commit=COMMIT, tree=TREE)
+    values.update(fields)
+    values.setdefault("refspec", f"{values['commit']}:refs/heads/master")
+    return "".join(f"{key}: {values[key]}\n" for key in OUTGOING_KEYS if key != omit)
 
 
 class SourceInventoryChecks(unittest.TestCase):
@@ -340,13 +352,30 @@ class ScreenChecks(unittest.TestCase):
         )
         (self.evidence / "SERVER_SUITE.txt").write_text("synthetic suite log\n")
         (self.evidence / "ROSTER_COMPARISON.txt").write_text("synthetic roster comparison\n")
+        # SPEC_A 1.2: one valid block; its commit is named in the publication BATCH.
+        (self.evidence / "OUTGOING.txt").write_text(outgoing())
         with contextlib.redirect_stdout(io.StringIO()):
             checker.freeze(self.evidence)
         self.identity = checker.verify(self.evidence)
         self.reading = self.root / "reading.txt"
+        self.write_reading()
+
+    def write_reading(self, verdict="PROCEED", scope="integration and publication",
+                      identity=None, extra=""):
+        """SPEC_A 1.1: a reading carries exactly one Scope line (None omits it)."""
         self.reading.write_text(
-            f"Packet identity:  {self.identity}\nVerdict:          PROCEED\n"
-        )
+            f"Packet identity:  {identity or self.identity}\nVerdict:          {verdict}\n"
+            + (f"Scope: {scope}\n" if scope is not None else "") + extra)
+
+    def refreeze(self):
+        """Freeze the evidence again after a fixture change and re-point the reading."""
+        manifest = self.evidence / "MANIFEST.sha256"
+        if manifest.exists():
+            manifest.unlink()
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.freeze(self.evidence)
+        self.identity = checker.verify(self.evidence)
+        self.write_reading()
 
     def put(self, body):
         path = self.root / "screen.md"
@@ -389,10 +418,12 @@ class ScreenChecks(unittest.TestCase):
                         "NEEDED\nDecide intended meaning, or cancel this change.\n"
                         "ACTION: DECIDE / CANCEL\n")
 
-    def publication(self):
+    def publication(self, batch=None, commit=COMMIT):
         reading_id = checker.digest(self.reading.read_bytes())
+        if batch is None:
+            batch = f"One local change to shared master.\nphenix commit {commit} to master."
         return self.put(f"PUBLICATION | batch-1 | {self.identity}\n"
-                        "BATCH\nOne local change to shared master.\n"
+                        f"BATCH\n{batch}\n"
                         "SERVER CHECK\nSuite and roster are in evidence.\n"
                         "LIMITS\nNo material gap claimed.\n"
                         f"GATE\nReading SHA256: {reading_id}\nVerdict: PROCEED\n"
@@ -430,6 +461,7 @@ class ScreenChecks(unittest.TestCase):
                 self.assertIn("\n" + kind.upper() + " | ", display)
                 self.assertNotIn(self.identity, display)
                 self.assertNotIn(TREE, display)
+                self.assertNotIn(COMMIT, display)  # SPEC_A 1.2: shown as [recorded]
                 self.assertNotIn(checker.digest(self.reading.read_bytes()), display)
                 self.assertNotIn("SHA256:", display)
                 self.assertIn("ACTION:", display)
@@ -547,15 +579,15 @@ class ScreenChecks(unittest.TestCase):
             self.ok("result", self.put(screen), evidence=self.evidence)
 
     def test_reading_identity_and_verdict_are_required(self):
-        self.reading.write_text(f"Packet identity: {'0' * 64}\nVerdict: PROCEED\n")
+        self.write_reading(identity="0" * 64)
         with self.assertRaisesRegex(ValueError, "does not name"):
             self.ok("result", self.result("full"), self.reading, self.evidence)
-        self.reading.write_text(f"Packet identity: {self.identity}\nVerdict: PROCEED IF repaired\n")
+        self.write_reading("PROCEED IF repaired")
         with self.assertRaisesRegex(ValueError, "conditional verdict"):
             self.ok("publication", self.publication(), self.reading, self.evidence)
 
     def test_conditional_reading_links_exact_disposition(self):
-        self.reading.write_text(f"Packet identity: {self.identity}\nVerdict: PROCEED IF suite matches\n")
+        self.write_reading("PROCEED IF suite matches")
         disposition = self.root / "disposition.txt"
         disposition.write_text("Condition: suite matches\nStatus: SATISFIED\nEvidence: roster review\n")
         gate = (f"Verdict: PROCEED IF suite matches\nDisposition SHA256: "
@@ -567,9 +599,7 @@ class ScreenChecks(unittest.TestCase):
             self.ok("result", screen, self.reading, self.evidence, disposition)
 
     def test_waiver_and_pending_final_decision_are_truthful_and_visible(self):
-        self.reading.write_text(
-            f"Packet identity: {self.identity}\nVerdict: PROCEED IF a fresh reading is done\n"
-        )
+        self.write_reading("PROCEED IF a fresh reading is done")
         note = self.root / "disposition.txt"
         note.write_text(
             'Condition: a fresh reading is done\nStatus: WAIVED\n'
@@ -588,9 +618,7 @@ class ScreenChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "quoted authorization"):
             self.ok("result", result, self.reading, self.evidence, note)
 
-        self.reading.write_text(
-            f"Packet identity: {self.identity}\nVerdict: PROCEED IF Developer chooses PUBLISH\n"
-        )
+        self.write_reading("PROCEED IF Developer chooses PUBLISH")
         note.write_text("Condition: Developer chooses PUBLISH\nStatus: PENDING\n"
                         "Pending: Developer PUBLISH or HOLD\nEvidence: other findings resolved\n")
         gate = ("Verdict: PROCEED IF Developer chooses PUBLISH\nDisposition SHA256: "
@@ -630,11 +658,7 @@ class ScreenChecks(unittest.TestCase):
 
     def test_publication_requires_named_logs(self):
         (self.evidence / "SERVER_SUITE.txt").unlink()
-        (self.evidence / "MANIFEST.sha256").unlink()
-        with contextlib.redirect_stdout(io.StringIO()):
-            checker.freeze(self.evidence)
-        self.identity = checker.verify(self.evidence)
-        self.reading.write_text(f"Packet identity: {self.identity}\nVerdict: PROCEED\n")
+        self.refreeze()
         with self.assertRaisesRegex(ValueError, "missing or empty publication evidence"):
             self.ok("publication", self.publication(), self.reading, self.evidence)
 
@@ -684,6 +708,366 @@ class ScreenChecks(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(ValueError, "requires a passing"):
                         self.ok("result", screen, evidence=self.evidence)
+
+    # ---- SPEC_A 1.1: reading scope ------------------------------------------
+
+    def test_reading_needs_exactly_one_scope_line(self):
+        """SPEC_A 1.1, counted as in SPEC_A 10: zero or several Scope lines are
+        refused on the full RESULT and on the PUBLICATION screen with "exactly
+        one Scope line"; a single line with an unrecognized value is refused
+        with "Scope value not recognized"."""
+        for label, scope_lines in (
+                ("none", ""),
+                ("two different", "Scope: integration\nScope: publication\n"),
+                ("two identical", "Scope: integration and publication\n" * 2)):
+            with self.subTest(scope=label):
+                self.write_reading(scope=None, extra=scope_lines)
+                with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
+                    self.ok("result", self.result("full"), self.reading, self.evidence)
+                with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
+                    self.ok("publication", self.publication(), self.reading, self.evidence)
+        for label, scope_lines in (
+                ("unrecognized value", "Scope: everything\n"),
+                ("trailing words", "Scope: integration and publication and more\n")):
+            with self.subTest(scope=label):
+                self.write_reading(scope=None, extra=scope_lines)
+                with self.assertRaisesRegex(ValueError, "Scope value not recognized"):
+                    self.ok("result", self.result("full"), self.reading, self.evidence)
+                with self.assertRaisesRegex(ValueError, "Scope value not recognized"):
+                    self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_publication_only_reading_does_not_cover_a_result(self):
+        """SPEC_A 1.1: kind result needs scope integration or integration and
+        publication; a publication-only reading still serves PUBLICATION."""
+        self.write_reading(scope="publication")
+        with self.assertRaisesRegex(ValueError, "does not cover integration"):
+            self.ok("result", self.result("full"), self.reading, self.evidence)
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_integration_only_reading_does_not_cover_a_publication(self):
+        """SPEC_A 1.1: kind publication needs scope publication or integration
+        and publication; an integration-only reading still serves RESULT."""
+        self.write_reading(scope="integration")
+        with self.assertRaisesRegex(ValueError, "does not cover publication"):
+            self.ok("publication", self.publication(), self.reading, self.evidence)
+        self.ok("result", self.result("full"), self.reading, self.evidence)
+
+    def test_dual_scope_reading_serves_both_screens_for_the_same_packet(self):
+        """SPEC_A 1.1: `integration and publication` is accepted by RESULT and
+        PUBLICATION for the same packet; surrounding whitespace and a
+        Supersedes reading SHA256 line are allowed."""
+        for label, scope, extra in (
+                ("plain", "integration and publication", ""),
+                ("padded", "   integration and publication   ", ""),
+                ("supersedes", "integration and publication",
+                 f"Supersedes reading SHA256: {'1' * 64}\n")):
+            with self.subTest(form=label):
+                self.write_reading(scope=scope, extra=extra)
+                self.ok("result", self.result("full"), self.reading, self.evidence)
+                self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_light_result_is_unchanged_by_the_scope_rule(self):
+        """SPEC_A 1.1: a light RESULT defers the reading; it takes no reading
+        file and does not care what reading is on disk."""
+        self.ok("result", self.result(), evidence=self.evidence)
+        self.write_reading(scope=None)
+        self.ok("result", self.result(), evidence=self.evidence)
+        self.write_reading(scope="publication")
+        self.ok("result", self.result(), evidence=self.evidence)
+        self.write_reading()
+        with self.assertRaisesRegex(ValueError, "belongs to publication"):
+            self.ok("result", self.result(), self.reading, self.evidence)
+
+    def test_altered_reading_after_screens_written_fails_both_gates(self):
+        """SPEC_A 1.1 (GATE hashes unchanged): one added byte in an accepted
+        dual-scope reading makes RESULT and PUBLICATION fail at the GATE."""
+        result = self.result("full").rename(self.root / "result.md")
+        publication = self.publication().rename(self.root / "publication.md")
+        self.ok("result", result, self.reading, self.evidence)
+        self.ok("publication", publication, self.reading, self.evidence)
+        self.reading.write_bytes(self.reading.read_bytes() + b"\n")
+        with self.assertRaisesRegex(ValueError, "does not identify"):
+            self.ok("result", result, self.reading, self.evidence)
+        with self.assertRaisesRegex(ValueError, "does not identify"):
+            self.ok("publication", publication, self.reading, self.evidence)
+
+    # ---- SPEC_A 1.2: OUTGOING.txt (PUBLICATION only) ------------------------
+
+    def publication_refused(self, reason, **screen):
+        with self.assertRaisesRegex(ValueError, reason):
+            self.ok("publication", self.publication(**screen), self.reading, self.evidence)
+
+    def test_publication_requires_a_non_empty_outgoing_record(self):
+        """SPEC_A 1.2: a missing or empty OUTGOING.txt refuses PUBLICATION;
+        RESULT does not need it."""
+        record = self.evidence / "OUTGOING.txt"
+        record.unlink()
+        self.refreeze()
+        self.publication_refused("missing or empty publication evidence: OUTGOING.txt")
+        self.ok("result", self.result("full"), self.reading, self.evidence)
+        record.write_text("")
+        self.refreeze()
+        self.publication_refused("missing or empty publication evidence: OUTGOING.txt")
+
+    def test_outgoing_record_must_be_utf8(self):
+        """SPEC_A 1.2: a non-UTF-8 OUTGOING.txt is refused."""
+        (self.evidence / "OUTGOING.txt").write_bytes(b"repository: phenix\n\xff\xfe\n")
+        self.refreeze()
+        self.publication_refused("outgoing record is not UTF-8")
+
+    def test_outgoing_record_needs_every_key_in_every_block(self):
+        """SPEC_A 1.2: a block missing any of the seven keys, or a record with
+        no repository block at all, is refused."""
+        needs = ("outgoing record needs repository, remote, remote_url, base, "
+                 "commit, tree and refspec")
+        for key in OUTGOING_KEYS:
+            with self.subTest(missing=key):
+                (self.evidence / "OUTGOING.txt").write_text(outgoing(omit=key))
+                self.refreeze()
+                self.publication_refused(needs)
+        with self.subTest(missing="second block's tree"):
+            (self.evidence / "OUTGOING.txt").write_text(
+                outgoing() + outgoing(omit="tree", repository="cctbx"))
+            self.refreeze()
+            self.publication_refused(needs)
+        with self.subTest(missing="any block"):
+            (self.evidence / "OUTGOING.txt").write_text("# comments only\n\n")
+            self.refreeze()
+            self.publication_refused(needs)
+
+    def test_outgoing_record_ignores_comments_and_blank_lines(self):
+        """SPEC_A 1.2: blank lines and lines starting with # are not entries."""
+        (self.evidence / "OUTGOING.txt").write_text(
+            "# header comment\n\n" + outgoing().replace("base:", "# note\n\nbase:")
+            + "\n# trailing comment\n")
+        self.refreeze()
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_outgoing_identities_must_be_forty_lowercase_hex(self):
+        """SPEC_A 1.2: base, commit and tree are exactly 40 lowercase hex
+        characters (the refspec and BATCH are kept consistent so only this
+        rule is violated)."""
+        for field, value in (("base", "A" * 40), ("tree", "b" * 39),
+                             ("commit", "c" * 41), ("base", "g" * 40),
+                             ("tree", "B" * 40)):
+            with self.subTest(field=field, value=value):
+                (self.evidence / "OUTGOING.txt").write_text(outgoing(**{field: value}))
+                self.refreeze()
+                self.publication_refused("invalid Git identity in outgoing record",
+                                         commit=value if field == "commit" else COMMIT)
+
+    def test_outgoing_refspec_must_name_the_commit_and_a_branch(self):
+        """SPEC_A 1.2: refspec is <commit>:refs/heads/<branch> with the block's
+        own commit, a [A-Za-z0-9._/-]+ branch and no *."""
+        for refspec in (f"{'d' * 40}:refs/heads/master", f"{COMMIT}:refs/heads/*",
+                        f"{COMMIT}:refs/heads/feature*", f"{COMMIT}:refs/tags/v1",
+                        f"{COMMIT}:master", f"{COMMIT}:refs/heads/",
+                        "HEAD:refs/heads/master", f"{COMMIT}:refs/heads/a b",
+                        f"{COMMIT}", "refs/heads/master"):
+            with self.subTest(refspec=refspec):
+                (self.evidence / "OUTGOING.txt").write_text(outgoing(refspec=refspec))
+                self.refreeze()
+                self.publication_refused("outgoing refspec must be")
+        (self.evidence / "OUTGOING.txt").write_text(
+            outgoing(refspec=f"{COMMIT}:refs/heads/release/1.0-rc_2"))
+        self.refreeze()
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_outgoing_commit_must_be_a_whole_word_in_batch(self):
+        """SPEC_A 1.2: the block's commit appears as a whole word on some BATCH
+        line; a longer token or another section does not count."""
+        for label, batch in (
+                ("absent", "One local change to shared master.\nNo identifiers here."),
+                ("inside a longer token",
+                 f"One local change.\nphenix commit {COMMIT}0 to master."),
+                ("prefixed", f"One local change.\nphenix commit x{COMMIT} to master.")):
+            with self.subTest(batch=label):
+                self.publication_refused("outgoing commit is not named in BATCH", batch=batch)
+        with self.subTest(batch="named only in SERVER CHECK"):
+            screen = self.publication(batch="One local change to shared master.")
+            screen.write_text(screen.read_text().replace(
+                "Suite and roster are in evidence.",
+                f"Suite and roster are in evidence for {COMMIT}."))
+            with self.assertRaisesRegex(ValueError, "outgoing commit is not named in BATCH"):
+                self.ok("publication", screen, self.reading, self.evidence)
+        with self.subTest(batch="followed by punctuation"):
+            self.ok("publication", self.publication(
+                batch=f"One local change to shared master.\nCommit {COMMIT}."),
+                self.reading, self.evidence)
+
+    def test_outgoing_record_accepts_several_blocks_and_refuses_duplicates(self):
+        """SPEC_A 1.2: with two repositories both commits must be in BATCH; a
+        repeated repository name is refused."""
+        second = "d" * 40
+        (self.evidence / "OUTGOING.txt").write_text(
+            outgoing() + "\n" + outgoing(repository="cctbx", commit=second,
+                                         remote_url="ssh://git@example.invalid/cctbx.git"))
+        self.refreeze()
+        self.ok("publication", self.publication(
+            batch=f"Two changes.\nphenix commit {COMMIT} and cctbx commit {second}."),
+            self.reading, self.evidence)
+        self.publication_refused("outgoing commit is not named in BATCH")
+        (self.evidence / "OUTGOING.txt").write_text(outgoing() + "\n" + outgoing())
+        self.refreeze()
+        self.publication_refused("duplicate repository in outgoing record")
+
+    # ---- SPEC_A 1.3: suite waiver form (PUBLICATION only) -------------------
+
+    def suite(self, text):
+        (self.evidence / "SERVER_SUITE.txt").write_text(text)
+        self.refreeze()
+
+    def test_suite_not_run_requires_quoted_developer_waiver(self):
+        """SPEC_A 1.3: a first line of exactly SERVER_SUITE: NOT RUN needs a
+        `Waiver (Developer...):` line immediately followed by `> ` lines."""
+        reason = "suite not run without the Developer's quoted waiver"
+        for label, text in (
+                ("no waiver", "SERVER_SUITE: NOT RUN\nReason: no server reachable.\n"),
+                ("header then unquoted line",
+                 "SERVER_SUITE: NOT RUN\nWaiver (Developer, 2026-10-04, batch x):\n"
+                 "I waive the suite for this batch.\n"),
+                ("header then blank then quoted",
+                 "SERVER_SUITE: NOT RUN\nWaiver (Developer, 2026-10-04, batch x):\n\n"
+                 "> quoted words\n"),
+                ("header at end of file",
+                 "SERVER_SUITE: NOT RUN\nWaiver (Developer, 2026-10-04, batch x):\n"),
+                ("quote without header", "SERVER_SUITE: NOT RUN\n> quoted words\n"),
+                ("header not by the Developer",
+                 "SERVER_SUITE: NOT RUN\nWaiver (Worker, 2026-10-04):\n> quoted words\n"),
+                ("header with trailing text",
+                 "SERVER_SUITE: NOT RUN\nWaiver (Developer): see below\n> quoted words\n"),
+                ("surrounding whitespace is stripped",
+                 "  SERVER_SUITE: NOT RUN  \nReason: offline.\n")):
+            with self.subTest(form=label):
+                self.suite(text)
+                self.publication_refused(reason)
+
+    def test_suite_not_run_with_quoted_waiver_is_accepted(self):
+        """SPEC_A 1.3: the Waiver (Developer...) header immediately followed by
+        one or more `> ` lines with words passes the form check."""
+        for label, text in (
+                ("minimal", "SERVER_SUITE: NOT RUN\nWaiver (Developer):\n"
+                            "> I waive the suite for this batch.\n"),
+                ("dated with two quoted lines",
+                 "SERVER_SUITE: NOT RUN\nWaiver (Developer, 2026-10-04, batch x):\n"
+                 "> quoted words\n> more quoted words\n"),
+                ("waiver later in the file",
+                 "SERVER_SUITE: NOT RUN\nReason: machine offline.\n\n"
+                 "Waiver (Developer, 2026-10-04, batch x):\n> quoted words\n"
+                 "Note: recorded by the Guide.\n")):
+            with self.subTest(form=label):
+                self.suite(text)
+                self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_suite_form_check_applies_only_to_not_run_and_only_to_publication(self):
+        """SPEC_A 1.3 (prefix rule, section 5): a first line that does not start
+        with SERVER_SUITE: NOT RUN needs no waiver; one that starts with it,
+        whatever the suffix, needs the quoted waiver; RESULT never applies the
+        check."""
+        for text in ("synthetic suite log\n", "SERVER_SUITE: PASS 12/12\n",
+                     "Summary\nSERVER_SUITE: NOT RUN\n"):
+            with self.subTest(first_line=text.splitlines()[0]):
+                self.suite(text)
+                self.ok("publication", self.publication(), self.reading, self.evidence)
+        with self.subTest(first_line="SERVER_SUITE: NOT RUN (see below)", waiver=False):
+            self.suite("SERVER_SUITE: NOT RUN (see below)\nReason: offline.\n")
+            self.publication_refused("suite not run without the Developer's quoted waiver")
+        with self.subTest(first_line="SERVER_SUITE: NOT RUN (see below)", waiver=True):
+            self.suite("SERVER_SUITE: NOT RUN (see below)\n"
+                       "Waiver (Developer, 2026-10-04, batch x):\n> quoted words\n")
+            self.ok("publication", self.publication(), self.reading, self.evidence)
+        self.suite("SERVER_SUITE: NOT RUN\nNo waiver here.\n")
+        self.ok("result", self.result("full"), self.reading, self.evidence)
+
+    # ---- SPEC_A 6: byte-order mark before SERVER_SUITE: NOT RUN -------------
+
+    def suite_bytes(self, data):
+        (self.evidence / "SERVER_SUITE.txt").write_bytes(data)
+        self.assertEqual((self.evidence / "SERVER_SUITE.txt").read_bytes()[:3], b"\xef\xbb\xbf")
+        self.refreeze()
+
+    def test_bom_before_not_run_without_waiver_is_refused(self):
+        """SPEC_A 6 (1.3): a UTF-8 byte-order mark immediately before
+        `SERVER_SUITE: NOT RUN` does not evade the waiver rule: with no waiver
+        block the PUBLICATION is refused."""
+        reason = "suite not run without the Developer's quoted waiver"
+        for label, data in (
+                ("BOM then NOT RUN only", b"\xef\xbb\xbfSERVER_SUITE: NOT RUN\n"),
+                ("BOM then NOT RUN and a reason",
+                 b"\xef\xbb\xbfSERVER_SUITE: NOT RUN\nReason: no server reachable.\n"),
+                ("BOM then NOT RUN with a suffix",
+                 b"\xef\xbb\xbfSERVER_SUITE: NOT RUN (see below)\nReason: offline.\n"),
+                ("BOM then NOT RUN with an unquoted waiver",
+                 b"\xef\xbb\xbfSERVER_SUITE: NOT RUN\nWaiver (Developer, 2026-10-04, batch x):\n"
+                 b"I waive the suite for this batch.\n")):
+            with self.subTest(form=label):
+                self.suite_bytes(data)
+                self.publication_refused(reason)
+
+    def test_bom_before_not_run_with_quoted_waiver_is_accepted(self):
+        """SPEC_A 6 (1.3): the same BOM-prefixed file with a `Waiver
+        (Developer, ...):` line immediately followed by a `> ` quoted line
+        passes the form check."""
+        self.suite_bytes(b"\xef\xbb\xbfSERVER_SUITE: NOT RUN\n"
+                         b"Waiver (Developer, 2026-10-04, batch x):\n> quoted words\n")
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+        self.suite_bytes(b"\xef\xbb\xbfSERVER_SUITE: NOT RUN\nReason: offline.\n\n"
+                         b"Waiver (Developer, 2026-10-04, batch x):\n> quoted words\n"
+                         b"> more quoted words\n")
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    # ---- SPEC_A 10: Scope lines are counted first; no repeated OUTGOING key --
+
+    def test_extra_scope_line_with_any_wording_is_refused(self):
+        """SPEC_A 10 (1.1): all lines beginning `Scope:` are counted first, so
+        a valid line followed by `Scope: integration only` is refused at RESULT
+        and at PUBLICATION with "exactly one Scope line"; a single `Scope:
+        integration only` is refused with "Scope value not recognized"; each
+        single recognized value still serves its screen(s)."""
+        self.write_reading(scope="integration and publication",
+                           extra="Scope: integration only\n")
+        with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
+            self.ok("result", self.result("full"), self.reading, self.evidence)
+        with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
+            self.ok("publication", self.publication(), self.reading, self.evidence)
+        self.write_reading(scope="integration only")
+        with self.assertRaisesRegex(ValueError, "Scope value not recognized"):
+            self.ok("result", self.result("full"), self.reading, self.evidence)
+        with self.assertRaisesRegex(ValueError, "Scope value not recognized"):
+            self.ok("publication", self.publication(), self.reading, self.evidence)
+        for scope, kinds in (("integration", ("result",)),
+                             ("publication", ("publication",)),
+                             ("integration and publication", ("result", "publication"))):
+            with self.subTest(scope=scope):
+                self.write_reading(scope=scope)
+                for kind in kinds:
+                    screen = self.result("full") if kind == "result" else self.publication()
+                    self.ok(kind, screen, self.reading, self.evidence)
+
+    def test_duplicate_key_within_an_outgoing_block_is_refused(self):
+        """SPEC_A 10 (1.2): a key repeated within one repository block, required
+        (remote_url: first a different destination, then the correct one) or
+        optional (companions twice), is refused at PUBLICATION with "duplicate
+        key in outgoing record: <key>"; a single optional key and the plain
+        single block still pass."""
+        record = self.evidence / "OUTGOING.txt"
+        with self.subTest(key="remote_url"):
+            record.write_text(outgoing().replace(
+                "remote_url:", "remote_url: ssh://git@elsewhere.invalid/other.git\nremote_url:", 1))
+            self.refreeze()
+            self.publication_refused("duplicate key in outgoing record: remote_url")
+        with self.subTest(key="companions"):
+            record.write_text(outgoing() + "companions: cctbx\ncompanions: dxtbx\n")
+            self.refreeze()
+            self.publication_refused("duplicate key in outgoing record: companions")
+        with self.subTest(key="single optional key"):
+            record.write_text(outgoing() + "companions: cctbx\n")
+            self.refreeze()
+            self.ok("publication", self.publication(), self.reading, self.evidence)
+        with self.subTest(key="plain single block"):
+            record.write_text(outgoing())
+            self.refreeze()
+            self.ok("publication", self.publication(), self.reading, self.evidence)
 
 
 if __name__ == "__main__":

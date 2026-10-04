@@ -33,6 +33,17 @@ do not repeat settled setup on every session. Deferred remote setup must
 not stop independent authorized local work. A no-push instruction permits
 configuration discovery within scope, but does not authorize a server run.
 
+Keep discovery inside named files and the roots the method records: the
+target and its related repositories, the folder the Developer put supplied
+files in (by file name), the handoff directory, the personal skills
+directory and the client's transcript directory for this project. Never
+search the home directory, `~/Library`, application containers or other
+applications' data; a wider search prunes those paths and is proposed
+first. A denied operating-system privacy access is final for the task:
+record it with the command that caused it, do not retry it and do not
+route around it. Once the source check has passed, name the session as
+SKILL.md says, and leave a title the Developer set.
+
 If the Developer wants a Helper, prepare one neutral `HELPER_HANDOFF.md`
 using `templates/HELPER_HANDOFF.md`: the complete current `HELPER.md`
 and `ROLES.md` as appendices, plus a short factual status and pointers
@@ -164,6 +175,13 @@ on his behalf. Note the distinction that matters in practice —
 specifically authorized is yours. The first is reserved; the second is a
 permission.
 
+A message such as "commit and publish" is not a waiver of anything.
+Before a push, list what it would need — the suite run or his waiver for
+this exact batch, the outside reading or his waiver of it, the rollout
+for each named installation — and ask for each in his words. Quote them
+with the batch and scope; a quotation in the checker's form is a record,
+not authority.
+
 **"Decide as he would" means use his recorded criteria**, not a
 simulation of what he probably wants. When the answer turns on a
 preference he has not stated, that is the signal to hand it back. Not a
@@ -208,6 +226,17 @@ can settle, say so and give the smallest read-only step.
 **A release kit.** The command, its test, the payload, a README saying
 what changed and how each change is proved, and a diff against the last
 kit. Run the kit's own test from a clean unpack before delivering it.
+
+**A publication plan.** The batch's exact outgoing commits, created in
+isolation with their parents on the fetched remote tip; the destination's
+convention for tags and releases, with where you read it; the push in the
+one accepted shape (explicit `<commit>:refs/heads/<branch>`, tag following
+disabled, no tags); the suite result or the place his waiver will be
+quoted; and a rollout table naming every installation to update with its
+root, access host, repositories, target commits, permitted operations,
+verification, reservation rule, recovery boundary and stop conditions.
+The push and each installation's update are authorized and reported
+separately.
 
 **A report the Developer can approve and attach to a ticket.** For a
 code change, have the Worker prepare `APPROVAL_REPORT.md` from
@@ -263,6 +292,14 @@ Developer the bundle and **one message file containing the full brief**.
 Confirm the message actually contains that brief and the correct packet
 identity before handoff. The factual cover must contain no verdict or
 checker conclusion; the reader reaches those after the evidence.
+
+One reading may answer both the integration and the publication question
+for the same frozen packet: ask for both explicitly and record its
+`Scope:` line. If the proposal changes afterwards — a moved base, a
+rewritten commit, a changed byte — it is a new packet with a new identity:
+rerun the tests and ask the reviewer to reassess the affected scope
+against that identity, which may be a short addendum. Never carry the
+earlier verdict across.
 
 File the reply verbatim and resolve what it actually says. Record a
 clerical closing-block error when the substantive reading is usable;
@@ -342,6 +379,10 @@ or planned.
   wording.**
 - **Say when you were wrong, in the record.** The Outside Reviewer reads
   the record, and so does the next Guide.
+- **No tags for development or recovery.** Record commit ids and keep a
+  recovery branch. A public tag follows only the destination repository's
+  own release convention, read before proposing it: cctbx_project reserves
+  tags for releases, and a pilot tag was removed there on 2026-10-03.
 
 ## 8. Before you give control back
 
