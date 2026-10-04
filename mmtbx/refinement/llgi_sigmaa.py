@@ -517,7 +517,9 @@ class llgi_sigmaa_target_evaluator(object):
         sigmaa_design,
         n_sigmaa_coeffs,
         max_iterations=100,
-        curvature_weight=0.0):
+        curvature_weight=0.0,
+      hybrid=None):
+    self.hybrid = hybrid
     self.f_eff = f_eff
     self.selection = selection
     self.f_calc = f_calc
@@ -565,7 +567,7 @@ class llgi_sigmaa_target_evaluator(object):
       scale_factor=self.scale_factor,
       teps=self.teps,
       resn=self.resn,
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags, hybrid=self.hybrid)
     f = result.target()
     d_target_by_dsigmaa = np.array(result.d_target_by_dsigmaa())
     # Chain rule: d(target)/d(coeffs) = design.T @ (d_target * dsigmoid_dz),
@@ -594,7 +596,8 @@ def estimate_llgi_sigmaa(
       centric_flags,
       d_star_sq,
       scale_factor=1.0,
-      params=None):
+      params=None,
+      hybrid=None):
   """ Fit sigmaA(resolution) as a B-spline curve against the LLGI target,
   restricted to the R-free/test set, with ScatFrac already fixed (see
   estimate_llgi_scatfrac -- must be called first; sigmaA and ScatFrac are
@@ -611,6 +614,10 @@ def estimate_llgi_sigmaa(
   reflection) and .target (final fitted LLGI target value on the test
   set, for diagnostics/logging).
   """
+  if(hybrid is not None):
+    # exact wherever possible: a sigmaA-dependent switch would make the
+    # fitted objective discontinuous (see llgi_exact.h class hybrid)
+    hybrid = hybrid.with_rice_kappa(0.0)
   if(params is None):
     params = llgi_sigmaa_scatfrac_params.extract()
   n_refl = f_eff.size()
@@ -641,12 +648,12 @@ def estimate_llgi_sigmaa(
     sigmaa_design=sigmaa_design,
     n_sigmaa_coeffs=params.n_sigmaa_coeffs,
     max_iterations=params.max_iterations,
-    curvature_weight=params.sigmaa_curvature_weight)
+    curvature_weight=params.sigmaa_curvature_weight, hybrid=hybrid)
   sigmaa = evaluator.sigmaa()
   final_result = ext.llgi_sigmaa_scatfrac_target_and_gradients(
     f_eff=f_eff, selection=r_free_flags, f_calc=f_calc, dobs=dobs,
     sigmaa=sigmaa, scatfrac=scatfrac, scale_factor=scale_factor,
-    teps=teps, resn=resn, centric_flags=centric_flags)
+    teps=teps, resn=resn, centric_flags=centric_flags, hybrid=hybrid)
   return group_args(sigmaa=sigmaa, target=final_result.target())
 
 class llgi_scatfrac_target_evaluator(object):
@@ -717,7 +724,9 @@ class llgi_scatfrac_target_evaluator(object):
         n_scatfrac_coeffs,
         scatfrac_start,
         max_iterations=100,
-        curvature_weight=0.0):
+        curvature_weight=0.0,
+      hybrid=None):
+    self.hybrid = hybrid
     self.f_eff = f_eff
     self.selection = selection
     self.f_calc = f_calc
@@ -768,7 +777,7 @@ class llgi_scatfrac_target_evaluator(object):
       scale_factor=self.scale_factor,
       teps=self.teps,
       resn=self.resn,
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags, hybrid=self.hybrid)
     f = result.target()
     d_target_by_dscatfrac = np.array(result.d_target_by_dscatfrac())
     # Chain rule: d(target)/d(coeffs) = design.T @ (d_target * dscatfrac_dz),
@@ -828,7 +837,9 @@ class llgi_scatfrac_scalar_target_evaluator(object):
         centric_flags,
         scale_factor,
         scatfrac_start,
-        max_iterations=100):
+        max_iterations=100,
+      hybrid=None):
+    self.hybrid = hybrid
     self.f_eff = f_eff
     self.selection = selection
     self.f_calc = f_calc
@@ -868,7 +879,7 @@ class llgi_scatfrac_scalar_target_evaluator(object):
       scale_factor=self.scale_factor,
       teps=self.teps,
       resn=self.resn,
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags, hybrid=self.hybrid)
     f = result.target()
     d_target_by_dscatfrac = np.array(result.d_target_by_dscatfrac())
     # Chain rule: every reflection's ScatFrac is the SAME scalar, so
@@ -977,7 +988,9 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
         scatfrac_inf_start,
         b_scatfrac_start,
         restraint_sigma=0.0,
-        max_iterations=100):
+        max_iterations=100,
+      hybrid=None):
+    self.hybrid = hybrid
     self.f_eff = f_eff
     self.selection = selection
     self.f_calc = f_calc
@@ -1021,7 +1034,7 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
       scale_factor=self.scale_factor,
       teps=self.teps,
       resn=self.resn,
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags, hybrid=self.hybrid)
     f = result.target()
     d_target_by_dscatfrac = np.array(result.d_target_by_dscatfrac())
     # Chain rule: d(target)/dz_inf = sum_i d_target_by_dscatfrac[i] *
@@ -1063,7 +1076,8 @@ def estimate_llgi_scatfrac_likelihood(
       centric_flags,
       d_star_sq,
       scale_factor=1.0,
-      params=None):
+      params=None,
+      hybrid=None):
   """ Fit ScatFrac(resolution) as a B-spline curve AGAINST THE F-SCALE
   LLGI TARGET (not the moment/ratio estimator in estimate_llgi_scatfrac),
   on the full working set (all reflections minus R-free -- see the design
@@ -1104,6 +1118,10 @@ def estimate_llgi_scatfrac_likelihood(
   working set, for diagnostics/logging). In "b_factor" mode, also
   .scatfrac_inf and .b_scatfrac (floats, for logging/diagnostics).
   """
+  if(hybrid is not None):
+    # exact wherever possible: a sigmaA-dependent switch would make the
+    # fitted objective discontinuous (see llgi_exact.h class hybrid)
+    hybrid = hybrid.with_rice_kappa(0.0)
   if(params is None):
     params = llgi_sigmaa_scatfrac_params.extract()
   n_refl = f_eff.size()
@@ -1144,7 +1162,7 @@ def estimate_llgi_scatfrac_likelihood(
       centric_flags=centric_flags,
       scale_factor=scale_factor,
       scatfrac_start=initial_scatfrac_scalar,
-      max_iterations=params.max_iterations)
+      max_iterations=params.max_iterations, hybrid=hybrid)
   elif(params.scatfrac_model == "b_factor"):
     # Same single-bin empirical estimate as the scalar mode's own
     # starting point; B_scatfrac starts at 0 (flat), a neutral guess
@@ -1174,7 +1192,7 @@ def estimate_llgi_scatfrac_likelihood(
       scatfrac_inf_start=initial_scatfrac_inf,
       b_scatfrac_start=0.0,
       restraint_sigma=params.scatfrac_b_factor_restraint_sigma,
-      max_iterations=params.max_iterations)
+      max_iterations=params.max_iterations, hybrid=hybrid)
     scatfrac_inf, b_scatfrac = evaluator.scatfrac_inf_and_b()
   else:
     assert params.scatfrac_model == "spline", params.scatfrac_model
@@ -1200,12 +1218,12 @@ def estimate_llgi_scatfrac_likelihood(
       n_scatfrac_coeffs=params.n_scatfrac_coeffs,
       scatfrac_start=initial_scatfrac,
       max_iterations=params.max_iterations,
-      curvature_weight=params.scatfrac_curvature_weight)
+      curvature_weight=params.scatfrac_curvature_weight, hybrid=hybrid)
   scatfrac = evaluator.scatfrac()
   final_result = ext.llgi_sigmaa_scatfrac_target_and_gradients(
     f_eff=f_eff, selection=working_selection, f_calc=f_calc, dobs=dobs,
     sigmaa=sigmaa, scatfrac=scatfrac, scale_factor=scale_factor,
-    teps=teps, resn=resn, centric_flags=centric_flags)
+    teps=teps, resn=resn, centric_flags=centric_flags, hybrid=hybrid)
   return group_args(
     scatfrac=scatfrac, target=final_result.target(),
     scatfrac_inf=scatfrac_inf, b_scatfrac=b_scatfrac)
@@ -1220,7 +1238,8 @@ def estimate_llgi_sigmaa_scatfrac(
       centric_flags,
       d_star_sq,
       scale_factor=1.0,
-      params=None):
+      params=None,
+      hybrid=None):
   """ Convenience wrapper: computes ScatFrac(resolution) empirically
   (estimate_llgi_scatfrac, full reflection set) then fits sigmaA(
   resolution) against LLGI with ScatFrac held fixed (estimate_llgi_sigmaa,
@@ -1231,6 +1250,10 @@ def estimate_llgi_sigmaa_scatfrac(
   per input reflection) and .target (final fitted LLGI target value on
   the test set, for diagnostics/logging).
   """
+  if(hybrid is not None):
+    # exact wherever possible: a sigmaA-dependent switch would make the
+    # fitted objective discontinuous (see llgi_exact.h class hybrid)
+    hybrid = hybrid.with_rice_kappa(0.0)
   if(params is None):
     params = llgi_sigmaa_scatfrac_params.extract()
   scatfrac = estimate_llgi_scatfrac(
@@ -1242,7 +1265,7 @@ def estimate_llgi_sigmaa_scatfrac(
   sigmaa_result = estimate_llgi_sigmaa(
     f_eff=f_eff, r_free_flags=r_free_flags, f_calc=f_calc, dobs=dobs,
     scatfrac=scatfrac, teps=teps, resn=resn, centric_flags=centric_flags,
-    d_star_sq=d_star_sq, scale_factor=scale_factor, params=params)
+    d_star_sq=d_star_sq, scale_factor=scale_factor, params=params, hybrid=hybrid)
   return group_args(
     sigmaa=sigmaa_result.sigmaa, scatfrac=scatfrac,
     target=sigmaa_result.target)

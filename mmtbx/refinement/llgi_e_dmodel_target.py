@@ -30,7 +30,7 @@ separate, later piece (the eventual L-BFGS target evaluator class).
 """
 
 def total_ll_gradient_hessian(theta, s2, e_eff, e_c, dobs, centric_flags,
-      b_k_grid):
+      b_k_grid, hybrid=None):
   """ Sum LL(theta), its gradient, and its Hessian over every reflection
   in the input arrays (all 1D, same length n_refl; s2 = s^2 per
   reflection, e_eff/e_c/dobs the fixed per-reflection LLGI inputs,
@@ -38,6 +38,11 @@ def total_ll_gradient_hessian(theta, s2, e_eff, e_c, dobs, centric_flags,
   reflection). b_k_grid: the fixed ladder of B_1..B_K coordinate-error
   decay constants (llgi_e_dmodel.py's own module docstring) -- NOT part
   of theta, passed through unchanged to every dmodel.d_model* call.
+
+  hybrid (optional, cctbx.xray.llgi_hybrid indexed like the input
+  arrays): reflections it selects at sigmaA = D_model(s) use the exact
+  LLGI instead of the Rice form with D = dobs*sigmaA (mmtbx.refinement.
+  llgi_hybrid).
 
   Returns (LL, grad, hess): LL a scalar, grad shape (theta.size,), hess
   shape (theta.size, theta.size).
@@ -77,15 +82,36 @@ def total_ll_gradient_hessian(theta, s2, e_eff, e_c, dobs, centric_flags,
     lpp_per_refl[centric_flags] = lik.centric_l_double_prime(
       Dc, ec_eff, ec_c)
 
+  # Derivatives with respect to sigmaA = D_model(s): for the Rice form,
+  # D = dobs*sigmaA, so d/dsigmaA = dobs*l'(D), d2/dsigmaA2 = dobs^2*l''(D).
+  lp_per_refl = lp_per_refl * dobs
+  lpp_per_refl = lpp_per_refl * dobs * dobs
+  if(hybrid is not None):
+    from cctbx.array_family import flex
+    from cctbx.xray import ext as xray_ext
+    exact = np.array(hybrid.exact_selection(flex.double(d_model_vals)),
+      dtype=bool)
+    if(np.any(exact)):
+      idx = flex.size_t(np.nonzero(exact)[0].tolist())
+      r = xray_ext.llgi_exact_evaluate(
+        e_obs_sq=hybrid.e_obs_sq.select(idx),
+        sig_e_obs_sq=hybrid.sig_e_obs_sq.select(idx),
+        e_calc=flex.double(e_c[exact]),
+        sigmaa=flex.double(d_model_vals[exact]),
+        centric_flags=flex.bool(centric_flags[exact]),
+        null_log_z=hybrid.null_log_z.select(idx))
+      ll_per_refl[exact] = r.ll.as_numpy_array()
+      lp_per_refl[exact] = r.d_ll_d_a.as_numpy_array()
+      lpp_per_refl[exact] = r.d2_ll_d_a2.as_numpy_array()
+
   LL = float(np.sum(ll_per_refl))
 
-  # dLL_h/dtheta_i = l'(D)*dobs*g_i(s_h); sum over h.
-  grad = np.einsum('n,n,pn->p', lp_per_refl, dobs, g)
+  # dLL_h/dtheta_i = l_A'*g_i(s_h); sum over h.
+  grad = np.einsum('n,pn->p', lp_per_refl, g)
 
-  # d2LL_h/dtheta_i dtheta_j = l''(D)*dobs^2*g_i*g_j + l'(D)*dobs*h_ij;
-  # sum over h.
+  # d2LL_h/dtheta_i dtheta_j = l_A''*g_i*g_j + l_A'*h_ij; sum over h.
   hess = (
-    np.einsum('n,n,pn,qn->pq', lpp_per_refl, dobs*dobs, g, g)
-    + np.einsum('n,n,pqn->pq', lp_per_refl, dobs, h))
+    np.einsum('n,pn,qn->pq', lpp_per_refl, g, g)
+    + np.einsum('n,pqn->pq', lp_per_refl, h))
 
   return LL, grad, hess

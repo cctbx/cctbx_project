@@ -5,48 +5,6 @@ import mmtbx.refinement.llgi_e_dmodel as dmodel
 import mmtbx.refinement.llgi_e_dmodel_fit as fit
 from libtbx.test_utils import approx_equal
 
-def exercise_b_defect_restraint_matches_finite_difference():
-  theta = np.array([0.3, 0.2, 0.1, 45.0])  # a_1, a_2, b, B_defect=45
-  b_sol_anchor = 60.0
-  sigma = 0.693
-  penalty, grad = fit.b_defect_restraint_penalty_and_gradient(
-    theta, b_sol_anchor, sigma)
-  assert penalty > 0.0
-  h = 1.e-6
-  worst = 0.0
-  for i in range(theta.size):
-    tp = theta.copy(); tp[i] += h
-    tm = theta.copy(); tm[i] -= h
-    pp, _ = fit.b_defect_restraint_penalty_and_gradient(tp, b_sol_anchor, sigma)
-    pm, _ = fit.b_defect_restraint_penalty_and_gradient(tm, b_sol_anchor, sigma)
-    fd = (pp - pm) / (2*h)
-    worst = max(worst, abs(grad[i] - fd) / max(1.0, abs(fd)))
-  assert worst < 1.e-5, worst
-  # Only B_defect's gradient component (index -1) should be nonzero --
-  # the restraint is ONE-DIRECTIONAL (design doc sec. 6.4): B_sol is a
-  # fixed anchor, not a co-refined parameter, so nothing else in theta
-  # (including b, the unrelated solvent-defect AMPLITUDE) should move.
-  for i in range(theta.size - 1):
-    assert grad[i] == 0.0, (i, grad[i])
-
-def exercise_b_defect_restraint_zero_when_equal_to_anchor():
-  theta = np.array([0.3, 0.2, 0.1, 60.0])  # B_defect==b_sol_anchor
-  penalty, grad = fit.b_defect_restraint_penalty_and_gradient(
-    theta, b_sol_anchor=60.0, sigma=0.693)
-  assert abs(penalty) < 1.e-12
-  assert abs(grad[-1]) < 1.e-12
-
-def exercise_b_defect_restraint_disabled_without_anchor():
-  theta = np.array([0.3, 0.2, 0.1, 45.0])
-  penalty, grad = fit.b_defect_restraint_penalty_and_gradient(
-    theta, b_sol_anchor=None, sigma=0.693)
-  assert penalty == 0.0
-  assert flex.max(flex.abs(flex.double(grad))) == 0.0
-  penalty, grad = fit.b_defect_restraint_penalty_and_gradient(
-    theta, b_sol_anchor=60.0, sigma=0.0)
-  assert penalty == 0.0
-  assert flex.max(flex.abs(flex.double(grad))) == 0.0
-
 def exercise_default_b_k_grid_spans_data_resolution_range():
   # default_b_k_grid picks a log-spaced ladder from roughly 1/s2_max to
   # 1/s2_min (llgi_e_dmodel_fit.default_b_k_grid's own docstring: the
@@ -296,8 +254,9 @@ def exercise_estimate_d_model_sigmaa_converges_without_degenerating():
     b_sol_anchor=40.0)
   theta = np.array(result.theta)
   assert np.all(np.isfinite(theta)), theta
-  assert np.all(theta > 0.0), theta
-  assert np.all(theta < 1.e6), theta  # sane range, not a divergent blow-up
+  # amplitudes within the fitter's bounds (0 is allowed: a term can drop out)
+  assert np.all(theta[:-1] >= 0.0), theta
+  assert np.all(theta[:-1] <= fit.d_model_target_evaluator.amplitude_max), theta
   assert result.target != 0.0, (
     "target collapsed to exactly 0 -- the degenerate every-reflection-"
     "masked-out failure mode the tanh wrapping/b_k_grid fix exists to "
@@ -382,50 +341,6 @@ def exercise_estimate_d_model_sigmaa_no_test_set_raises():
   else:
     raise RuntimeError("expected RuntimeError for an empty test set")
 
-def exercise_b_sol_restraint_pulls_b_defect_toward_anchor():
-  # With a tight restraint and an anchor far from where the
-  # unrestrained fit would otherwise land, the converged B_defect
-  # should sit measurably closer to the anchor than an unrestrained fit
-  # does -- a coarse but real end-to-end check that the restraint
-  # actually influences the optimizer, not just that its penalty
-  # function is independently correct.
-  # A loose (weakly informative) anchor gives BOTH fits below the same
-  # realistic starting reference for B_defect -- unlike an earlier
-  # version of this test, which used a b_sol_anchor=None fit's own
-  # converged B_defect as that reference: once D_model=0 became
-  # genuinely reachable (this module's tanh(smooth_relu(.)) asymptote
-  # fix), a fully unrestrained fit can itself collapse to a numerically
-  # meaningless B_defect (confirmed: ~1e-13, not a real converged
-  # estimate) whenever no anchor at all is available, exactly like the
-  # coordinate-error terms did before the fixed-B_k-ladder fix -- see
-  # exercise_estimate_d_model_sigmaa_converges_without_degenerating's
-  # own comment. Real phenix.refine usage always has a real B_sol
-  # estimate by this point, so a loose-but-present anchor (sigma=2.0,
-  # several-fold looser than the default ln(2)) is the realistic
-  # "weakly restrained" baseline to compare a TIGHT restraint against.
-  inputs = _build_synthetic_reflections(seed=3)
-  loose_anchor = 40.0
-  loosely_restrained = fit.estimate_d_model_sigmaa(
-    e_eff=inputs["e_eff"], r_free_flags=inputs["r_free_flags"],
-    e_model=inputs["e_model"], dobs=inputs["dobs"],
-    centric_flags=inputs["centric_flags"],
-    d_star_sq=inputs["d_star_sq"], n_gaussian_terms=2, max_iterations=200,
-    b_sol_anchor=loose_anchor, b_sol_restraint_sigma=2.0)
-  b_defect_loose = float(loosely_restrained.theta[-1])
-
-  far_anchor = loose_anchor * 5.0
-  tightly_restrained = fit.estimate_d_model_sigmaa(
-    e_eff=inputs["e_eff"], r_free_flags=inputs["r_free_flags"],
-    e_model=inputs["e_model"], dobs=inputs["dobs"],
-    centric_flags=inputs["centric_flags"],
-    d_star_sq=inputs["d_star_sq"], n_gaussian_terms=2, max_iterations=200,
-    b_sol_anchor=far_anchor, b_sol_restraint_sigma=0.05)  # tight restraint
-  b_defect_tight = float(tightly_restrained.theta[-1])
-
-  assert abs(np.log(b_defect_tight) - np.log(far_anchor)) < abs(
-    np.log(b_defect_loose) - np.log(far_anchor)), (
-    b_defect_loose, b_defect_tight, far_anchor)
-
 def exercise_estimate_d_model_sigmaa_accepts_explicit_b_k_grid():
   # b_k_grid can be pinned explicitly (e.g. for reproducible tests/
   # diagnostics) instead of derived from the data -- check the fit
@@ -464,10 +379,60 @@ def exercise_constant_term_ladder_and_fit():
   assert with_const.target < plain.target - 1.e-3, (
     with_const.target, plain.target)
 
+def exercise_a_k_smoothness_penalty_skips_constant_rungs():
+  # With first=1 the leading (constant) rung is neither penalised nor
+  # given a gradient; the rest is the ordinary penalty on a[1:].
+  theta = np.array([0.9, 0.1, 0.5, 0.2, 0.05, 20.0])
+  penalty, grad = fit.a_k_smoothness_penalty_and_gradient(theta, 1.0,
+    first=1)
+  ref_p, ref_g = fit.a_k_smoothness_penalty_and_gradient(theta[1:], 1.0)
+  assert approx_equal(penalty, ref_p)
+  assert grad[0] == 0
+  assert approx_equal(list(grad[1:]), list(ref_g))
+  # one constant + two decaying rungs: nothing left to smooth
+  penalty, grad = fit.a_k_smoothness_penalty_and_gradient(
+    np.array([0.9, 0.1, 0.5, 0.05, 20.0]), 1.0, first=1)
+  assert penalty == 0 and np.all(grad == 0)
+
+def exercise_constant_term_nested_with_default_smoothness():
+  # The constant-term model contains plain D_model (a_0 = 0), so with the
+  # default smoothness weight it must fit at least as well. The true curve
+  # has no constant component; with the constant rung inside the
+  # smoothness penalty, a_0 = 0 was penalised and the fit came out worse
+  # (-0.00449 against -0.00531).
+  inputs = _build_synthetic_reflections(seed=6, n=4000,
+    true_theta=np.array([1.2, 0.0, 0.02, 20.0]),
+    true_b_k_grid=np.array([10.0, 60.0]))
+  common = dict(
+    e_eff=inputs["e_eff"], r_free_flags=inputs["r_free_flags"],
+    e_model=inputs["e_model"], dobs=inputs["dobs"],
+    centric_flags=inputs["centric_flags"], d_star_sq=inputs["d_star_sq"],
+    n_gaussian_terms=2, max_iterations=200, b_sol_anchor=20.0)
+  plain = fit.estimate_d_model_sigmaa(**common)
+  with_const = fit.estimate_d_model_sigmaa(include_constant_term=True,
+    **common)
+  assert with_const.target <= plain.target + 1.e-5, (
+    with_const.target, plain.target)
+
+def exercise_b_defect_fixed_to_anchor():
+  # With an anchor, B_defect is fixed at it exactly (not fitted); without
+  # one it is fitted.
+  inputs = _build_synthetic_reflections(seed=3)
+  common = dict(
+    e_eff=inputs["e_eff"], r_free_flags=inputs["r_free_flags"],
+    e_model=inputs["e_model"], dobs=inputs["dobs"],
+    centric_flags=inputs["centric_flags"], d_star_sq=inputs["d_star_sq"],
+    n_gaussian_terms=2, max_iterations=200)
+  for anchor in (25.0, 200.0):
+    result = fit.estimate_d_model_sigmaa(b_sol_anchor=anchor, **common)
+    assert result.theta.size() == 2 + 2
+    assert result.theta[-1] == anchor, (result.theta[-1], anchor)
+  start = fit.d_model_target_evaluator._default_theta_start(2)
+  free = fit.estimate_d_model_sigmaa(b_sol_anchor=None, **common)
+  assert free.theta.size() == 2 + 2
+  assert abs(free.theta[-1] - start[-1]) > 1.e-3, (free.theta[-1], start[-1])
+
 def run():
-  exercise_b_defect_restraint_matches_finite_difference()
-  exercise_b_defect_restraint_zero_when_equal_to_anchor()
-  exercise_b_defect_restraint_disabled_without_anchor()
   exercise_default_b_k_grid_spans_data_resolution_range()
   exercise_default_b_k_grid_falls_back_for_degenerate_s2()
   exercise_default_b_k_grid_k_zero_and_one()
@@ -480,9 +445,11 @@ def run():
   exercise_estimate_d_model_sigmaa_recovers_true_curve()
   exercise_d_model_stays_bounded_for_extreme_theta()
   exercise_estimate_d_model_sigmaa_no_test_set_raises()
-  exercise_b_sol_restraint_pulls_b_defect_toward_anchor()
   exercise_estimate_d_model_sigmaa_accepts_explicit_b_k_grid()
   exercise_constant_term_ladder_and_fit()
+  exercise_a_k_smoothness_penalty_skips_constant_rungs()
+  exercise_constant_term_nested_with_default_smoothness()
+  exercise_b_defect_fixed_to_anchor()
   print("OK")
 
 if (__name__ == "__main__"):

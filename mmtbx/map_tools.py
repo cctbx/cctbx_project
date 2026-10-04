@@ -5,6 +5,7 @@ with the separate mmtbx.maps module.
 """
 
 from __future__ import absolute_import, division, print_function
+from libtbx import group_args
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
@@ -840,6 +841,10 @@ class model_missing_reflections_llgi(object):
       d_star_sq_missing, x_range=sigmaa_refit.x_range)
 
     resn_missing = self._nearest_resn(d_star_sq_missing)
+    self.e_scale_missing = group_args(
+      miller_set=f_calc_missing, sigmaa=sigmaa_missing,
+      e_model_abs=e_model_abs_missing, f_model_no_aniso=fmnas_missing,
+      resn=resn_missing)
     teps_missing = flex.double(d_star_sq_missing.size(), 1.0)  # TEPS==1 only
     sqrt_teps_resn = flex.sqrt(teps_missing) * resn_missing
 
@@ -852,6 +857,21 @@ class model_missing_reflections_llgi(object):
       miller_set=f_calc_missing, data=fill_data).phase_transfer(
         phase_source=fmnas_missing).data()
     return f_calc_missing.customized_copy(data=fill_complex)
+
+  def nearest_observed(self, d_star_sq_missing, values):
+    """ values (one per OBSERVED reflection) borrowed from the nearest
+    observed reflection in resolution, as for RESN. """
+    import numpy as np
+    d_obs = np.asarray(self.fmodel.f_obs().d_star_sq().data(), dtype=float)
+    vals = np.asarray(values, dtype=float)
+    order = np.argsort(d_obs)
+    d_sorted = d_obs[order]
+    v_sorted = vals[order]
+    d_m = np.asarray(d_star_sq_missing, dtype=float)
+    idx = np.clip(np.searchsorted(d_sorted, d_m), 0, len(d_sorted) - 1)
+    idx_prev = np.clip(idx - 1, 0, len(d_sorted) - 1)
+    use_prev = (np.abs(d_sorted[idx_prev] - d_m) < np.abs(d_sorted[idx] - d_m))
+    return flex.double(v_sorted[np.where(use_prev, idx_prev, idx)].tolist())
 
 def fill_missing_f_obs_llgi(coeffs, fmodel):
   """ LLGI-native counterpart to fill_missing_f_obs_1 -- fills missing

@@ -632,7 +632,8 @@ def bulk_solvent_target_and_gradients(
       e_eff, selection, dobs, sigmaa, centric_flags,
       f_calc, f_mask, f_part1, f_part2, k_isotropic,
       epsilons, d_star_sq, ss, k_sol, b_sol,
-      n_sigmap_nodes=15, auto_kernel_number=50):
+      n_sigmap_nodes=15, auto_kernel_number=50,
+      hybrid=None):
   """ E-scale LLGI target and its gradient w.r.t. (k_sol, b_sol), for the
   Stage-2 (bulk-solvent) fit (design note sec. 6), with sigmaA(d) fixed
   (already evaluated per reflection -- the whole point of this stage is
@@ -696,7 +697,7 @@ def bulk_solvent_target_and_gradients(
     e_model=e_model_abs,
     dobs=dobs,
     sigmaa=sigmaa,
-    centric_flags=centric_flags)
+    centric_flags=centric_flags, hybrid=hybrid)
   d_target_by_demodel = np.array(result.d_target_by_demodel())
 
   # d(fmnas)/d(param) = k_isotropic * f_mask * d(k_mask)/d(param)
@@ -731,7 +732,8 @@ def bulk_solvent_target_and_gradients_binned(
       e_eff, selection, dobs, sigmaa, centric_flags,
       f_calc, f_mask, f_part1, f_part2, k_isotropic,
       epsilons, d_star_sq, ss, bin_selections, bin_centers, k_mask_bin,
-      n_sigmap_nodes=15, auto_kernel_number=50):
+      n_sigmap_nodes=15, auto_kernel_number=50,
+      hybrid=None):
   """ Per-resolution-bin generalisation of bulk_solvent_target_and_
   gradients: k_mask(ss) is the piecewise-linear per-bin curve built by
   k_mask_binned_and_gradients (matching bss's own binning/interpolation
@@ -779,7 +781,7 @@ def bulk_solvent_target_and_gradients_binned(
     e_model=e_model_abs,
     dobs=dobs,
     sigmaa=sigmaa,
-    centric_flags=centric_flags)
+    centric_flags=centric_flags, hybrid=hybrid)
   d_target_by_demodel = np.array(result.d_target_by_demodel())
 
   inv_denom = 1.0 / flex.sqrt(epsilons * sigma_p)
@@ -863,7 +865,9 @@ class bulk_solvent_target_evaluator_binned(object):
         k_mask_bin_start,
         k_mask_min=0.0, k_mask_max=1.0,
         n_sigmap_nodes=15, auto_kernel_number=50,
-        max_iterations=50, curvature_weight=0.0):
+        max_iterations=50, curvature_weight=0.0,
+      hybrid=None):
+    self.hybrid = hybrid
     self.e_eff = e_eff
     self.working_selection = working_selection
     self.dobs = dobs
@@ -934,7 +938,7 @@ class bulk_solvent_target_evaluator_binned(object):
       bin_centers=self.bin_centers,
       k_mask_bin=flex.double(k_mask_bin),
       n_sigmap_nodes=self.n_sigmap_nodes,
-      auto_kernel_number=self.auto_kernel_number)
+      auto_kernel_number=self.auto_kernel_number, hybrid=self.hybrid)
     penalty, penalty_gradient = _bin_curvature_penalty_and_gradient(
       np.array(self.x), self.curvature_weight)
     self.final_target = result.target + penalty
@@ -968,7 +972,9 @@ class bulk_solvent_target_evaluator(object):
         k_sol_start, b_sol_start,
         k_sol_min=0.0, k_sol_max=0.6, b_sol_min=0.0, b_sol_max=150.0,
         n_sigmap_nodes=15, auto_kernel_number=50,
-        max_iterations=50):
+        max_iterations=50,
+      hybrid=None):
+    self.hybrid = hybrid
     self.e_eff = e_eff
     self.working_selection = working_selection
     self.dobs = dobs
@@ -1034,7 +1040,7 @@ class bulk_solvent_target_evaluator(object):
       k_sol=k_sol,
       b_sol=b_sol,
       n_sigmap_nodes=self.n_sigmap_nodes,
-      auto_kernel_number=self.auto_kernel_number)
+      auto_kernel_number=self.auto_kernel_number, hybrid=self.hybrid)
     self.final_target = result.target
     g_k_sol = result.gradients[0] * dk_sol_dz
     g_b_sol = result.gradients[1] * db_sol_dz
@@ -1059,7 +1065,9 @@ class e_sigmaa_target_evaluator(object):
   def __init__(self,
         e_eff, test_selection, e_model, dobs, centric_flags,
         sigmaa_design, n_sigmaa_coeffs, max_iterations=100,
-        curvature_weight=0.0, spline_degree=3):
+        curvature_weight=0.0, spline_degree=3,
+      hybrid=None):
+    self.hybrid = hybrid
     self.e_eff = e_eff
     self.test_selection = test_selection
     self.e_model = e_model
@@ -1105,7 +1113,7 @@ class e_sigmaa_target_evaluator(object):
       e_model=self.e_model,
       dobs=self.dobs,
       sigmaa=flex.double(sigmaa),
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags, hybrid=self.hybrid)
     f = result.target()
     d_target_by_dsigmaa = np.array(result.d_target_by_dsigmaa())
     g = self.sigmaa_design.T.dot(d_target_by_dsigmaa * dsigmaa_dz)
@@ -1159,7 +1167,8 @@ class e_sigmaa_target_evaluator(object):
 
 def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
       d_star_sq, n_coeffs=8, spline_degree=3, max_iterations=100,
-      curvature_weight=0.0):
+      curvature_weight=0.0,
+      hybrid=None):
   """ Fit the E-scale sigmaA(resolution) curve against the E-scale LLGI
   target, restricted to the R-free/test set (design note sec. 5), with
   Emodel (i.e. the current bulk-solvent model) held fixed. Evaluates the
@@ -1175,6 +1184,10 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
   x_range=result.x_range to it, exactly as documented on evaluate_at's
   own docstring).
   """
+  if(hybrid is not None):
+    # exact wherever possible: a sigmaA-dependent switch would make the
+    # fitted objective discontinuous (see llgi_exact.h class hybrid)
+    hybrid = hybrid.with_rice_kappa(0.0)
   n_refl = e_eff.size()
   assert r_free_flags.size() == n_refl
   assert e_model.size() == n_refl
@@ -1200,17 +1213,18 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     n_sigmaa_coeffs=n_coeffs,
     max_iterations=max_iterations,
     curvature_weight=curvature_weight,
-    spline_degree=spline_degree)
+    spline_degree=spline_degree, hybrid=hybrid)
   sigmaa = evaluator.sigmaa()
   final_result = xray_ext.llgi_e_sigmaa_target_and_gradients(
     e_eff=e_eff, selection=r_free_flags, e_model=e_model, dobs=dobs,
-    sigmaa=sigmaa, centric_flags=centric_flags)
+    sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid)
   return group_args(
     sigmaa=sigmaa, target=final_result.target(), x_range=x_range,
     evaluate_at=evaluator.evaluate_at)
 
 def _estimate_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
-      d_star_sq, params, b_sol_anchor=None):
+      d_star_sq, params, b_sol_anchor=None,
+      hybrid=None):
   """ Dispatch to either the B-spline (params.sigmaa_model=="spline",
   DEFAULT) or physically-motivated D_model(s; theta) (params.
   sigmaa_model=="d_model", EXPERIMENTAL -- doc/llgi_target_design.md
@@ -1221,20 +1235,20 @@ def _estimate_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
   sigmaa_model applies uniformly regardless of which bulk-solvent mode
   is in effect.
 
-  b_sol_anchor: only used by the d_model path (params.d_model_params.
-  b_sol_restraint_sigma's one-directional restraint target -- see
-  mmtbx.refinement.llgi_e_dmodel_fit.b_defect_restraint_penalty_and_
-  gradient); ignored by the spline path, which has no such restraint.
-  Callers pass the bulk-solvent fit's own current B_sol point estimate
-  here (e.g. _log_linear_k_sol_b_sol's result), or None to leave the
-  restraint disabled regardless of params.d_model_params.
-  b_sol_restraint_sigma (matching that function's own "b_sol_anchor is
-  None" no-op behaviour).
+  b_sol_anchor: only used by the d_model path, where it fixes B_defect
+  (see mmtbx.refinement.llgi_e_dmodel_fit.d_model_target_evaluator);
+  ignored by the spline path. Callers pass the bulk-solvent fit's own
+  current B_sol point estimate here (e.g. _log_linear_k_sol_b_sol's
+  result), or None to fit B_defect instead.
 
   Returns a group_args with the same shape either path returns
   (.sigmaa, .target, .x_range, .evaluate_at) -- callers do not need to
   special-case which model actually ran.
   """
+  if(hybrid is not None):
+    # exact wherever possible: a sigmaA-dependent switch would make the
+    # fitted objective discontinuous (see llgi_exact.h class hybrid)
+    hybrid = hybrid.with_rice_kappa(0.0)
   if(params.sigmaa_model == "d_model"):
     dp = params.d_model_params
     return llgi_e_dmodel_fit.estimate_d_model_sigmaa(
@@ -1243,15 +1257,14 @@ def _estimate_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
       n_gaussian_terms=dp.n_gaussian_terms,
       max_iterations=dp.max_iterations,
       b_sol_anchor=b_sol_anchor,
-      b_sol_restraint_sigma=dp.b_sol_restraint_sigma,
       a_k_smoothness_weight=dp.a_k_smoothness_weight,
-      include_constant_term=dp.include_constant_term)
+      include_constant_term=dp.include_constant_term, hybrid=hybrid)
   return estimate_e_sigmaa(
     e_eff=e_eff, r_free_flags=r_free_flags, e_model=e_model, dobs=dobs,
     centric_flags=centric_flags, d_star_sq=d_star_sq,
     n_coeffs=params.n_sigmaa_coeffs, spline_degree=params.spline_degree,
     max_iterations=params.sigmaa_max_iterations,
-    curvature_weight=params.sigmaa_curvature_weight)
+    curvature_weight=params.sigmaa_curvature_weight, hybrid=hybrid)
 
 def estimate_e_sigmaa_fixed_bulk_solvent(
       fmodel, dobs, feff, resn, params=None, log=None):
@@ -1314,6 +1327,8 @@ def estimate_e_sigmaa_fixed_bulk_solvent(
   d_star_sq = f_obs.d_star_sq().data()
 
   e_eff = build_e_eff_from_params(feff, resn, d_star_sq, params)
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  hybrid = llgi_hybrid.get_e_scale_hybrid(fmodel.llgi_data(), params)
   fmnas = f_model_no_aniso_scale(fmodel).data()
   e_model = build_e_model(
     fmnas, epsilons, d_star_sq,
@@ -1337,7 +1352,7 @@ def estimate_e_sigmaa_fixed_bulk_solvent(
     e_eff=e_eff, r_free_flags=r_free_flags,
     e_model=flex.abs(e_model), dobs=dobs,
     centric_flags=centric_flags, d_star_sq=d_star_sq,
-    params=params, b_sol_anchor=b_sol)
+    params=params, b_sol_anchor=b_sol, hybrid=hybrid)
 
   import os as _os_tmp_diag
   _dump_dir_tmp_diag = _os_tmp_diag.environ.get("SIGMAA_ZEROCYCLE_DUMP_DIR")
@@ -1477,6 +1492,10 @@ def estimate_sigmaa_e_then_scatfrac_f(
   working_selection = ~r_free_flags
   llgi_data = fmodel.llgi_data()
   teps = llgi_data.teps.data()
+  # F-scale: Eeff = Feff/RESN as nacelle wrote it, so renormalise_e_eff
+  # does not apply here
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  hybrid = llgi_hybrid.get_hybrid(llgi_data)
   scatfrac_result = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
     f_eff=feff,
     working_selection=working_selection,
@@ -1488,7 +1507,7 @@ def estimate_sigmaa_e_then_scatfrac_f(
     centric_flags=f_obs.centric_flags().data(),
     d_star_sq=f_obs.d_star_sq().data(),
     scale_factor=fmodel.scale_ml_wrapper(),
-    params=scatfrac_params)
+    params=scatfrac_params, hybrid=hybrid)
 
   return group_args(
     sigmaa=sigmaa, scatfrac=scatfrac_result.scatfrac,
@@ -1594,6 +1613,8 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
   working_selection = ~r_free_flags
 
   e_eff = build_e_eff_from_params(feff, resn, d_star_sq, params)
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  hybrid = llgi_hybrid.get_e_scale_hybrid(fmodel.llgi_data(), params)
 
   # Bulk solvent is fit per-resolution-bin, matching bss's own default
   # "combo" fit -- the only bulk-solvent model phenix.refine's fast-mode
@@ -1659,7 +1680,7 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
       e_eff=e_eff, r_free_flags=r_free_flags,
       e_model=flex.abs(e_model_current), dobs=dobs,
       centric_flags=centric_flags, d_star_sq=d_star_sq,
-      params=params, b_sol_anchor=b_sol_anchor_current)
+      params=params, b_sol_anchor=b_sol_anchor_current, hybrid=hybrid)
     sigmaa = sigmaa_result.sigmaa
 
     # Stage 2: fit per-bin k_mask against LLG on the working set,
@@ -1675,7 +1696,7 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
       n_sigmap_nodes=params.n_sigmap_nodes,
       auto_kernel_number=params.auto_kernel_number,
       max_iterations=params.bulk_solvent_max_iterations,
-      curvature_weight=params.bulk_solvent_curvature_weight)
+      curvature_weight=params.bulk_solvent_curvature_weight, hybrid=hybrid)
     k_mask_bin = bs_evaluator.k_mask_bin()
     bs_target = bs_evaluator.final_target
 
@@ -1730,7 +1751,7 @@ def run_inner_loop(fmodel, dobs, feff, resn, params=None, log=None):
     centric_flags=centric_flags, d_star_sq=d_star_sq,
     n_coeffs=params.n_sigmaa_coeffs, spline_degree=params.spline_degree,
     max_iterations=params.sigmaa_max_iterations,
-    curvature_weight=params.sigmaa_curvature_weight)
+    curvature_weight=params.sigmaa_curvature_weight, hybrid=hybrid)
 
   # .k_sol/.b_sol are only a log-linear POINT ESTIMATE of the actually-
   # fitted per-bin k_mask curve (see _log_linear_k_sol_b_sol), kept for

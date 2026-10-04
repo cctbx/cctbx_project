@@ -1,31 +1,24 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
-import scitbx.lbfgs
+import scitbx.minimizers
 from cctbx.array_family import flex
 from libtbx import group_args
 import iotbx.phil
 import mmtbx.refinement.llgi_e_dmodel as dmodel
 import mmtbx.refinement.llgi_e_dmodel_target as target
-import mmtbx.refinement.llgi_e_dmodel_reparam as reparam
 
-""" L-BFGS fit of the physically-motivated D_model(s; theta)
-parametrization against the E-scale LLGI likelihood (Section 7,
-implementation step 4 -- see doc/llgi_target_design.md sec. 6.4), a
-drop-in replacement for mmtbx.refinement.llgi_e_bulk_solvent.
-estimate_e_sigmaa's B-spline-over-sigmoid fit in the Stage-1/Stage-2
-inner loop (run_inner_loop), same restriction to the R-free/test set,
-same Emodel-held-fixed convention.
+""" L-BFGS-B fit of the physically-motivated D_model(s; theta)
+parametrization against the E-scale LLGI likelihood (see
+doc/llgi_target_design.md sec. 6.4), a drop-in replacement for
+mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa's
+B-spline-over-sigmoid fit in the Stage-1/Stage-2 inner loop
+(run_inner_loop), with the same restriction to the R-free/test set and
+the same Emodel-held-fixed convention.
 
 Builds on llgi_e_dmodel.py (D_model value/gradient/Hessian),
-llgi_e_likelihood.py (corrected symmetric-form per-reflection
-likelihood), llgi_e_dmodel_target.py (chain-rule combination into
-theta-space LL/gradient/Hessian), and llgi_e_dmodel_reparam.py (log/exp
-unconstrained reparametrization, INCLUDING the corrected Hessian chain
-rule) -- all pure numpy, independently finite-difference-verified. This
-module is the first place scitbx.lbfgs/flex machinery and the actual
-sign-flip convention (minimize-me, matching every other evaluator class
-in this file's sibling module llgi_e_bulk_solvent.py) enter the
-picture.
+llgi_e_likelihood.py (per-reflection likelihood) and
+llgi_e_dmodel_target.py (chain-rule combination into theta-space
+LL/gradient/Hessian).
 """
 
 llgi_e_dmodel_params = iotbx.phil.parse("""\
@@ -40,29 +33,6 @@ llgi_e_dmodel_params = iotbx.phil.parse("""\
   max_iterations = 200
     .type = int
     .expert_level = 3
-  b_sol_restraint_sigma = 0.6931471805599453
-    .type = float
-    .short_caption = B_defect restraint width in ln(B), default ln(2)
-    .help = "Width (in ln(B), i.e. natural-log space) of a one-"\
-            "directional soft restraint pulling B_defect toward the "\
-            "bulk-solvent fit's own B_sol (log-linear point estimate "\
-            "of the per-bin k_mask curve -- mmtbx.refinement."\
-            "llgi_e_bulk_solvent._log_linear_k_sol_b_sol), NOT the "\
-            "reverse: B_sol is treated as a fixed anchor from the "\
-            "(better-conditioned, already-converged) bulk-solvent "\
-            "step, B_defect is pulled toward it, not vice versa (see "\
-            "doc/llgi_target_design.md sec. 6.4). Default ln(2) "\
-            "restrains B_defect and B_sol to within roughly a factor "\
-            "of 2 of each other at 1 sigma -- a deliberately weak "\
-            "starting value, meant to be tested against 0/None "\
-            "(unrestrained) to check whether the two should really be "\
-            "expected to agree this closely. B_sol and B_defect are "\
-            "physically related but NOT identical quantities (B_sol: "\
-            "resolution-decay of the bulk-solvent MEAN amplitude; "\
-            "B_defect: resolution-decay of a variance/covariance "\
-            "error-correlation effect) -- this restraint is a "\
-            "physically motivated prior, not an identity. <= 0 (or "\
-            "None) disables it."
   include_constant_term = False
     .type = bool
     .short_caption = Add a constant (B=0) term to the D_model ladder
@@ -138,7 +108,7 @@ def default_b_k_grid(k, s2):
     return np.array([np.sqrt(b_lo * b_hi)], dtype=float)
   return np.exp(np.linspace(np.log(b_lo), np.log(b_hi), k))
 
-def a_k_smoothness_penalty_and_gradient(theta, weight):
+def a_k_smoothness_penalty_and_gradient(theta, weight, first=0):
   """ Roughness penalty discouraging a jagged a_k profile across the
   fixed b_k_grid ladder (llgi_e_dmodel_params.a_k_smoothness_weight's
   own docstring has the full motivation: this replaces the earlier
@@ -156,7 +126,12 @@ def a_k_smoothness_penalty_and_gradient(theta, weight):
   points on that continuum).
 
   theta: natural-space parameter vector. weight: penalty weight
-  (a_k_smoothness_weight); <= 0 or None returns a no-op.
+  (a_k_smoothness_weight); <= 0 or None returns a no-op. first: number of
+  leading rungs left out of the penalty -- the B=0 constant rung added
+  by include_constant_term is not a point on the coordinate-error
+  continuum (log B = -infinity), so smoothness across it would tie the
+  constant amplitude to the decaying ones (a_0 ~ 2*a_1 - a_2), letting
+  the nested model fit worse than plain D_model.
 
   Returns (penalty, d(penalty)/d(theta)), penalty a plain float, the
   gradient a numpy array the same shape as theta (nonzero only in the
@@ -167,6 +142,7 @@ def a_k_smoothness_penalty_and_gradient(theta, weight):
   if(weight is None or weight <= 0):
     return 0.0, grad
   a, _, _ = dmodel.unpack_theta(theta)
+  a = a[first:]
   k = a.size
   if(k < 3):
     return 0.0, grad
@@ -178,71 +154,47 @@ def a_k_smoothness_penalty_and_gradient(theta, weight):
   g[:-2] += 2.0 * weight * d2         # d2[i]'s +1 coefficient on rung i
   g[1:-1] += -4.0 * weight * d2       # d2[i]'s -2 coefficient on rung i+1
   g[2:] += 2.0 * weight * d2          # d2[i]'s +1 coefficient on rung i+2
-  grad[:k] = g
+  grad[first:first + k] = g
   return penalty, grad
 
-def b_defect_restraint_penalty_and_gradient(theta, b_sol_anchor, sigma):
-  """ One-directional log-space restraint pulling B_defect toward
-  b_sol_anchor (design doc sec. 6.4): penalty =
-  0.5*(ln(B_defect) - ln(b_sol_anchor))^2 / sigma^2. Only B_defect's
-  gradient component is nonzero -- b_sol_anchor is a fixed external
-  value (the bulk-solvent step's own already-converged estimate, NOT a
-  parameter being co-refined here), so there is no reverse pull on it.
-
-  theta: natural-space parameter vector. b_sol_anchor: fixed positive
-  float (the bulk-solvent fit's current B_sol point estimate). sigma:
-  restraint width in ln(B) units (llgi_e_dmodel_params.
-  b_sol_restraint_sigma); <= 0 or b_sol_anchor <= 0 returns a no-op.
-
-  Returns (penalty, d(penalty)/d(theta)), penalty a plain float, the
-  gradient a numpy array the same shape as theta (nonzero only in the
-  B_defect slot, i.e. index -1).
-  """
-  theta = np.asarray(theta, dtype=float)
-  grad = np.zeros_like(theta)
-  if(sigma is None or sigma <= 0 or b_sol_anchor is None
-     or b_sol_anchor <= 0):
-    return 0.0, grad
-  _, _, b_defect = dmodel.unpack_theta(theta)
-  if(b_defect <= 0.0):
-    return 0.0, grad
-  log_diff = np.log(b_defect) - np.log(b_sol_anchor)
-  penalty = 0.5 * (log_diff / sigma) ** 2
-  grad[-1] = log_diff / (sigma * sigma * b_defect)
-  return float(penalty), grad
-
 class d_model_target_evaluator(object):
-  """ scitbx.lbfgs target evaluator fitting D_model(s; theta) against
-  the E-scale LLGI target, summed over the R-free/test set only (same
-  restriction as mmtbx.refinement.llgi_e_bulk_solvent.
-  e_sigmaa_target_evaluator), with Emodel (hence the bulk-solvent
-  model) held fixed. Optimizes in unconstrained q-space (theta =
-  exp(q), llgi_e_dmodel_reparam.py); .x is q, NOT theta directly.
+  """ L-BFGS-B fit of D_model(s; theta) against the E-scale LLGI target,
+  summed over the R-free/test set only (same restriction as
+  mmtbx.refinement.llgi_e_bulk_solvent.e_sigmaa_target_evaluator), with
+  Emodel (hence the bulk-solvent model) held fixed.
 
-  Uses scitbx.lbfgs's diag_mode="once" hook (design doc sec. 6.4): the
-  diagonal of the q-space Hessian at the STARTING point seeds L-BFGS's
-  initial inverse-Hessian, instead of the default isotropic guess --
-  helps with theta's unevenly scaled natural parameters (a_k ~O(1) vs.
-  B_defect ~O(10-300) in s^2 units; B_1..B_K are no longer part of
-  theta at all -- a fixed ladder, b_k_grid, set at construction time --
-  see llgi_e_dmodel.py's own module docstring for why). Entries that are
-  not usefully positive at the start are replaced by a neutral 1 (see
-  _diagonal_at).
+  B_defect is fixed at b_sol_anchor (the bulk-solvent fit's B_sol) when
+  one is given, and only a_1..a_K and b are fitted. Leaving it free
+  (even under a restraint) lets the fit trade the defect term against a
+  coordinate-error term with a similar decay -- solutions such as
+  a_1 = 233, b = 232 -- and makes the result depend on the starting
+  point, for very little gain in likelihood. Without an anchor B_defect
+  is fitted too.
+
+  The fit works in natural coordinates with bounds (0 <= a_k, b <=
+  amplitude_max; b_defect_min <= B_defect <= b_defect_max). An earlier version optimised q = ln(theta)
+  with unbounded L-BFGS, which makes 0 an absorbing boundary (d/dq ->
+  0 as theta -> 0): once b or an a_k headed towards 0 it could not come
+  back, and the fit converged to whichever such corner it fell into
+  first (on 2G38 after 5 cycles, LLGI 156.7 instead of 180.8 with b
+  stuck at 0).
   """
 
-  # Diagonal curvatures at or below this are not usable for scaling the
-  # first L-BFGS step (see _diagonal_at); scitbx.lbfgs's diag_mode hook
-  # needs them strictly positive (tst_curvatures.py's
-  # lbfgs_with_curvatures_mix_in.__call__).
-  _curvature_floor = 1.e-6
+  b_defect_min = 0.1
+  b_defect_max = 1.e4
+  # Upper bound for a_k and b: tanh(D_raw) is saturated (> 0.9999) well
+  # before D_raw reaches this, so larger values only drift along flat
+  # directions (e.g. the largest-B rung, which matters only at low
+  # resolution, where the curve is already saturated).
+  amplitude_max = 100.
 
   def __init__(self,
         e_eff, r_free_flags, e_model, dobs, centric_flags, d_star_sq,
         n_gaussian_terms=2, theta_start=None, max_iterations=200,
         b_sol_anchor=None,
-        b_sol_restraint_sigma=0.6931471805599453,
         a_k_smoothness_weight=0.1, b_k_grid=None,
-        include_constant_term=False):
+        include_constant_term=False,
+      hybrid=None):
     n_refl = e_eff.size()
     assert r_free_flags.size() == n_refl
     assert e_model.size() == n_refl
@@ -259,21 +211,14 @@ class d_model_target_evaluator(object):
     self.e_c = np.array(e_model, dtype=float)[test_sel]
     self.dobs = np.array(dobs, dtype=float)[test_sel]
     self.centric_flags = np.array(centric_flags, dtype=bool)[test_sel]
-    # LL/gradient/Hessian are normalized to a PER-REFLECTION MEAN below
-    # (_natural_ll_grad_hess), matching llgi_e.h/ext.llgi_e_sigmaa_
-    # target_and_gradients' own convention (target() is already divided
-    # by n_selected) -- otherwise self.final_target/.target would be an
-    # un-normalized sum over the test set, on a wildly different scale
-    # from the spline path's reported target and not comparable to it
-    # in logs/diagnostics (observed directly while testing this
-    # integration: an un-normalized sum read as ~86000 next to the
-    # spline path's ~-0.13 on the same data, even though the underlying
-    # fits were equally well-behaved -- a presentation/consistency gap,
-    # not a sign either fit was actually wrong).
+    self.hybrid = None
+    if(hybrid is not None):
+      self.hybrid = hybrid.select(flex.bool(test_sel.tolist()))
+    # LL and gradient are per-reflection means, matching ext.
+    # llgi_e_sigmaa_target_and_gradients (target() is divided by
+    # n_selected), so .final_target is comparable with the spline path's.
     self.n_test = int(np.sum(test_sel))
     self.n_gaussian_terms = n_gaussian_terms
-    self.b_sol_anchor = b_sol_anchor
-    self.b_sol_restraint_sigma = b_sol_restraint_sigma
     self.a_k_smoothness_weight = a_k_smoothness_weight
     if(b_k_grid is None):
       b_k_grid = default_b_k_grid(n_gaussian_terms, self.s2)
@@ -282,38 +227,37 @@ class d_model_target_evaluator(object):
     self.b_k_grid = np.asarray(b_k_grid, dtype=float)
     n_terms = n_gaussian_terms + int(include_constant_term)
     assert self.b_k_grid.shape == (n_terms,)
+    # Leading B=0 (constant) rungs are excluded from the smoothness penalty
+    self.n_constant_rungs = int(np.sum(self.b_k_grid <= 0))
+    assert np.all(self.b_k_grid[:self.n_constant_rungs] <= 0)
+    self.b_defect_fixed = None
+    if(b_sol_anchor is not None and b_sol_anchor > 0):
+      self.b_defect_fixed = float(b_sol_anchor)
     self.final_target = None
 
     if(theta_start is None):
       theta_start = self._default_theta_start(n_terms)
     theta_start = np.asarray(theta_start, dtype=float)
     assert theta_start.size == n_terms + 2
-    self.x = flex.double(reparam.q_from_theta(theta_start))
-
-    diag = self._diagonal_at(np.array(self.x))
-    self.diag_mode = "once"
-    self._diag_for_lbfgs = flex.double(1.0 / diag)
-
-    term_parameters = scitbx.lbfgs.termination_parameters(
-      max_iterations=max_iterations)
-    exception_handling_parameters = scitbx.lbfgs.exception_handling_parameters(
-      ignore_line_search_failed_step_at_lower_bound=True,
-      ignore_line_search_failed_step_at_upper_bound=True)
-    self.minimizer = scitbx.lbfgs.run(
-      target_evaluator=self,
-      termination_params=term_parameters,
-      exception_handling_params=exception_handling_parameters)
+    # Fitted parameters: all of theta, or all but B_defect when it is fixed
+    self.n_fit = n_terms + 2 - int(self.b_defect_fixed is not None)
+    lower = np.zeros(self.n_fit)
+    upper = np.full(self.n_fit, self.amplitude_max)
+    if(self.b_defect_fixed is None):
+      lower[-1] = self.b_defect_min
+      upper[-1] = self.b_defect_max
+    self.x = flex.double(np.clip(theta_start[:self.n_fit], lower, upper))
+    self.bound_flags = flex.int(self.n_fit, 2)  # lower and upper bounds
+    self.lower_bound = flex.double(lower)
+    self.upper_bound = flex.double(upper)
+    self.minimizer = scitbx.minimizers.lbfgs(
+      mode="lbfgsb", calculator=self, max_iterations=max_iterations)
+    self.update(self.minimizer.x)
 
   @staticmethod
   def _default_theta_start(k):
-    """ Neutral starting theta: each a_k = 0.5/K (D_model itself is
-    UNCONDITIONALLY bounded to (0,1) regardless of a_k -- see
-    llgi_e_dmodel.py's own docstring -- so this is simply a modest,
-    not-yet-committal starting scale, not a constraint-satisfying
-    choice; B_k itself is no longer part of theta -- it is the fixed
-    b_k_grid ladder, set separately, design doc sec. 6.4's well-
-    posedness addendum), small initial b/B_defect (a modest, not-yet-
-    committal defect term).
+    """ Neutral starting theta: each a_k = 0.5/K, a small defect term
+    (b = 0.05) and B_defect = 40 (used only when B_defect is fitted).
     """
     theta = np.empty(k + 2, dtype=float)
     if(k > 0):
@@ -322,103 +266,41 @@ class d_model_target_evaluator(object):
     theta[-1] = 40.0
     return theta
 
-  def _natural_ll_grad_hess(self, q):
-    theta = reparam.theta_from_q(q)
-    ll, grad_p, hess_p = target.total_ll_gradient_hessian(
+  def _full_theta(self, theta_fit):
+    theta_fit = np.asarray(theta_fit, dtype=float)
+    if(self.b_defect_fixed is None): return theta_fit
+    return np.concatenate([theta_fit, [self.b_defect_fixed]])
+
+  # calculator interface for scitbx.minimizers.lbfgs
+  def update(self, x):
+    self.x = x
+    theta = self._full_theta(np.array(x))
+    ll, grad_p, _ = target.total_ll_gradient_hessian(
       theta, self.s2, self.e_eff, self.e_c, self.dobs,
-      self.centric_flags, self.b_k_grid)
-    # Normalize to a per-reflection mean (see __init__'s .n_test
-    # comment) -- total_ll_gradient_hessian itself returns the raw,
-    # un-normalized SUM (the natural quantity for Section 6's Fisher-
-    # information work, where per-reflection curvature terms need to
-    # add rather than be diluted), so the normalization is applied
-    # here, at the evaluator/reporting boundary, not in that module.
-    return theta, ll / self.n_test, grad_p / self.n_test, hess_p / self.n_test
-
-  def _diagonal_at(self, q):
-    theta, ll, grad_p, hess_p = self._natural_ll_grad_hess(q)
-    diag_q = reparam.reparametrize_hessian_diagonal(
-      theta, grad_p, np.diag(hess_p))
-    # LL is being MAXIMIZED in natural/q space but scitbx.lbfgs
-    # minimizes -- the diagonal fed to it must be the curvature of the
-    # quantity actually being minimized, i.e. -LL, hence the sign flip
-    # (see compute_functional_and_gradients_diag below for the same
-    # flip applied to f/g).
-    diag_q = -diag_q
-    # Where the starting point is not locally convex in a parameter, use
-    # a neutral unit curvature rather than the floor: 1/floor (1e6) as the
-    # initial inverse-Hessian entry makes the first step so large that
-    # the line search fails outright and the fit returns its starting
-    # point (seen on 2G38 with k_mask=0 and no B_sol anchor).
-    return np.where(diag_q > self._curvature_floor, diag_q, 1.0)
-
-  def compute_functional_and_gradients(self):
-    f, g, _ = self.compute_functional_gradients_diag()
-    return f, g
-
-  def compute_functional_gradients_diag(self):
-    q = np.array(self.x)
-    theta, ll, grad_p, hess_p = self._natural_ll_grad_hess(q)
-    grad_q = reparam.reparametrize_gradient(theta, grad_p)
-
-    b_penalty, b_grad_p = b_defect_restraint_penalty_and_gradient(
-      theta, self.b_sol_anchor, self.b_sol_restraint_sigma)
-    # Penalty gradient is in NATURAL (theta) space -- reparametrize via
-    # the same dF/dq_i = dF/dp_i * p_i rule (llgi_e_dmodel_reparam.
-    # reparametrize_gradient) before adding to grad_q, exactly as
-    # grad_p itself was above.
-    b_grad_q = reparam.reparametrize_gradient(theta, b_grad_p)
-
+      self.centric_flags, self.b_k_grid, hybrid=self.hybrid)
     smooth_penalty, smooth_grad_p = a_k_smoothness_penalty_and_gradient(
-      theta, self.a_k_smoothness_weight)
-    smooth_grad_q = reparam.reparametrize_gradient(theta, smooth_grad_p)
+      theta, self.a_k_smoothness_weight, first=self.n_constant_rungs)
+    # Minimize-me convention (as llgi_e.h's target_one_h): f = -LL/n plus
+    # the smoothness penalty, which is already in minimize-me form.
+    n = self.n_fit
+    self._f = -ll / self.n_test + smooth_penalty
+    self._g = -grad_p[:n] / self.n_test + smooth_grad_p[:n]
+    self.final_target = self._f
 
-    # Minimize-me convention (matching every other evaluator in
-    # llgi_e_bulk_solvent.py, and llgi_e.h's own target_one_h sign
-    # flip): f = -(LL - penalties), penalties themselves already
-    # minimize-me (added, not subtracted) by construction (see their
-    # own docstrings). No negative-variance barrier or sum_k(a_k)<=1
-    # constraint needed here (unlike an earlier version of this
-    # evaluator): D_model(s; theta) is now UNCONDITIONALLY bounded to
-    # (0, 1) by construction (tanh(smooth_relu(.))-wrapped, see
-    # llgi_e_dmodel.py's own docstring for why a soft per-reflection
-    # barrier could never actually fix the negative-variance issue --
-    # the true log-likelihood diverges to -infinity approaching D=+-1,
-    # so no finite barrier weight can outweigh the reward of crossing
-    # into the negative-variance guard's region, which returns exactly
-    # 0 -- and why sum_k(a_k)<=1 is now automatically guaranteed
-    # regardless of a_k's own value, making that separate constraint
-    # redundant too). The a_k smoothness penalty IS needed, unlike
-    # those two: D_model=0 is a genuine, data-independent stationary
-    # point of the raw likelihood (l(D=0)=0, l'(D=0)=0 always --
-    # llgi_e_likelihood.py). With the OLDER free-B_k parametrization
-    # that meant a_k->0/B_k->infinity was a real, reachable degenerate
-    # direction (confirmed via tst_llgi_e_dmodel_fit.py); B_k is now a
-    # fixed ladder (llgi_e_dmodel.py's own module docstring, design doc
-    # sec. 6.4's well-posedness addendum), which already closes off
-    # that specific runaway, but the fit is still free to send SOME
-    # a_k individually toward 0 in a jagged, physically-implausible
-    # pattern rather than genuinely fitting the data -- this penalty
-    # discourages that in favour of a smooth coefficient profile across
-    # the ladder, matching the coordinate-error-varies-smoothly-with-
-    # B-factor physical picture directly.
-    f = -ll + b_penalty + smooth_penalty
-    g = -grad_q + b_grad_q + smooth_grad_q
-    self.final_target = f
+  def target(self):
+    return self._f
 
-    if(getattr(self, "diag_mode", None) is not None):
-      return f, flex.double(g), self._diag_for_lbfgs
-    return f, flex.double(g)
+  def gradients(self):
+    return flex.double(self._g)
 
   def theta(self):
-    return reparam.theta_from_q(np.array(self.x))
+    return self._full_theta(np.array(self.x))
 
 def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
       centric_flags, d_star_sq, n_gaussian_terms=2, max_iterations=200,
       b_sol_anchor=None,
-      b_sol_restraint_sigma=0.6931471805599453,
       a_k_smoothness_weight=0.1, theta_start=None, b_k_grid=None,
-      include_constant_term=False):
+      include_constant_term=False, hybrid=None):
   """ Fit D_model(s; theta) against the E-scale LLGI target, restricted
   to the R-free/test set, Emodel held fixed -- drop-in replacement for
   mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa in the Stage-1/
@@ -454,10 +336,10 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     n_gaussian_terms=n_gaussian_terms, theta_start=theta_start,
     max_iterations=max_iterations,
     b_sol_anchor=b_sol_anchor,
-    b_sol_restraint_sigma=b_sol_restraint_sigma,
     a_k_smoothness_weight=a_k_smoothness_weight,
     b_k_grid=b_k_grid,
-    include_constant_term=include_constant_term)
+    include_constant_term=include_constant_term,
+    hybrid=hybrid)
   theta = evaluator.theta()
   b_k_grid_used = evaluator.b_k_grid
   s2_all = np.array(d_star_sq, dtype=float) / 4.0

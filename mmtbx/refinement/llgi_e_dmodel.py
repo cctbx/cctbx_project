@@ -270,9 +270,15 @@ def _smooth_relu_prime(x):
 def _smooth_relu_double_prime(x):
   return 0.5 * _SMOOTH_RELU_EPS / np.power(x * x + _SMOOTH_RELU_EPS, 1.5)
 
+# sigmaA is capped below 1: the Rice and exact likelihoods both degenerate
+# as sigmaA -> 1 (variance 1 - sigmaA^2 -> 0), and the bias-reduced map
+# coefficients divide by 1 - (1 - phi)*sigmaA^2. Applied as a smooth scale
+# on the tanh, so D_model and its derivatives stay smooth.
+SIGMAA_MAX = 0.995
+
 def d_model(s2, theta, b_k_grid):
-  """ D_model(s; theta) = tanh(smooth_relu(D_raw(s; theta))) -- the
-  actual, BOUNDED-to-(0,1) sigmaA curve consumed everywhere downstream,
+  """ D_model(s; theta) = SIGMAA_MAX*tanh(smooth_relu(D_raw(s; theta))) --
+  the actual, BOUNDED-to-(0,SIGMAA_MAX) sigmaA curve consumed everywhere downstream,
   with D_model -> 0 as D_raw -> 0 (the correct high-resolution
   asymptote: every term in D_raw decays to 0 as s -> infinity, for ANY
   theta) and D_model never negative even where D_raw dips below 0 (see
@@ -288,7 +294,7 @@ def d_model(s2, theta, b_k_grid):
   # tanh(smooth_relu(x)) is already saturated for |x| > _D_RAW_CLIP
   # regardless of exactly how large x is beyond that).
   draw = np.clip(d_model_raw(s2, theta, b_k_grid), -_D_RAW_CLIP, _D_RAW_CLIP)
-  return np.tanh(_smooth_relu(draw))
+  return SIGMAA_MAX * np.tanh(_smooth_relu(draw))
 
 def d_model_gradient(s2, theta, b_k_grid):
   """ dD_model/dtheta_i = (1-tanh(u)^2) * smooth_relu'(D_raw) *
@@ -337,7 +343,7 @@ def d_model_gradient(s2, theta, b_k_grid):
   with np.errstate(over="ignore", invalid="ignore"):
     grad = ((sech2 * srp)[np.newaxis, ...]
             * d_model_raw_gradient(s2, theta, b_k_grid))
-  return np.where(clipped[np.newaxis, ...], 0.0, grad)
+  return SIGMAA_MAX * np.where(clipped[np.newaxis, ...], 0.0, grad)
 
 def d_model_hessian(s2, theta, b_k_grid):
   """ d2D_model/dtheta_i dtheta_j, tanh chain rule applied through the
@@ -387,4 +393,4 @@ def d_model_hessian(s2, theta, b_k_grid):
     term1 = (-2.0 * t * sech2)[np.newaxis, np.newaxis, ...] * outer_du
     term2 = sech2[np.newaxis, np.newaxis, ...] * d2u
     hess = term1 + term2
-  return np.where(clipped[np.newaxis, np.newaxis, ...], 0.0, hess)
+  return SIGMAA_MAX * np.where(clipped[np.newaxis, np.newaxis, ...], 0.0, hess)

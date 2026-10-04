@@ -74,7 +74,7 @@ def exercise_d_model_raw_single_term_matches_hand_formula():
   d = dmodel.d_model(s2, theta, b_k_grid)
   eps = 1.e-6  # must match llgi_e_dmodel._SMOOTH_RELU_EPS
   smooth_relu_expected = 0.5*(expected + np.sqrt(expected*expected + eps))
-  assert flex_max_abs(d - np.tanh(smooth_relu_expected)) < 1.e-8
+  assert flex_max_abs(d - dmodel.SIGMAA_MAX * np.tanh(smooth_relu_expected)) < 1.e-8
 
 def exercise_d_model_decays_to_zero_at_high_resolution():
   # The defining physical property this module's tanh(smooth_relu(.))
@@ -121,7 +121,7 @@ def exercise_d_model_is_bounded_to_open_unit_interval():
     d = dmodel.d_model(s2, theta, b_k_grid)
     assert np.all(np.isfinite(d)), (scale, d)
     assert np.all(d > 0.0), (scale, d)
-    assert np.all(d < 1.0), (scale, d)
+    assert np.all(d <= dmodel.SIGMAA_MAX), (scale, d)
 
 def exercise_d_model_stays_nonnegative_when_defect_term_dominates():
   # The other defining property of tanh(smooth_relu(.)) (design doc

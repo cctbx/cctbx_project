@@ -717,17 +717,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       # first real (non-synthetic) refinement run tried, at the first
       # ordinary bss (bulk-solvent-and-scaling) macrocycle step -- not
       # only in the rarer low-resolution-outlier-removal branch.
-      def _sel(array):
-        return None if array is None else array.select(selection=selection)
-      new_llgi_data = group_args(
-        dobs=_sel(llgi_data.dobs),
-        feff=_sel(llgi_data.feff),
-        teps=_sel(llgi_data.teps),
-        resn=_sel(llgi_data.resn),
-        info=_sel(getattr(llgi_data, "info", None)),
-        sigmaa=_sel(getattr(llgi_data, "sigmaa", None)),
-        scatfrac=_sel(getattr(llgi_data, "scatfrac", None)),
-        e_params=getattr(llgi_data, "e_params", None))
+      import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+      new_llgi_data = llgi_hybrid.map_llgi_data(llgi_data,
+        lambda array: array.select(selection=selection))
     else:
       new_llgi_data = None
     if(self.mask_manager is not None):
@@ -1615,17 +1607,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             # task will refresh sigmaa/scatfrac against the (possibly
             # resolution-filtered) data before the llgi target is used
             # again.
-            def _cs(array):
-              return None if array is None else array.common_set(f_obs)
-            llgi_data = group_args(
-              dobs=_cs(llgi_data.dobs),
-              feff=_cs(llgi_data.feff),
-              teps=_cs(llgi_data.teps),
-              resn=_cs(llgi_data.resn),
-              info=_cs(getattr(llgi_data, "info", None)),
-              sigmaa=_cs(getattr(llgi_data, "sigmaa", None)),
-              scatfrac=_cs(getattr(llgi_data, "scatfrac", None)),
-              e_params=getattr(llgi_data, "e_params", None))
+            import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+            llgi_data = llgi_hybrid.map_llgi_data(llgi_data,
+              lambda array: array.common_set(f_obs))
           self.__init__(
              f_obs                        = f_obs,
              r_free_flags                 = self.r_free_flags().common_set(f_obs),
@@ -1670,6 +1654,17 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       data   = self.f_obs().data()/sc,
       sigmas = sigmas)
     self.update(f_obs = f_obs_new)
+    # The F-scale llgi target pairs f_model() with llgi_data's FEFF and
+    # RESN, so these must follow f_obs onto the model's scale (otherwise
+    # ScatFrac absorbs sc^2 and the Rice variance 1 - (Dobs sigmaA)^2/
+    # ScatFrac is wrong). Everything on the E scale (Eeff = FEFF/RESN,
+    # E_obs^2, Dobs) is unchanged.
+    llgi_data = self.llgi_data()
+    if(llgi_data is not None):
+      import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+      self.set_llgi_data(llgi_hybrid.replace_llgi_data(llgi_data,
+        feff=llgi_data.feff.customized_copy(data=llgi_data.feff.data()/sc),
+        resn=llgi_data.resn.customized_copy(data=llgi_data.resn.data()/sc)))
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
 
@@ -1857,6 +1852,30 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def llgi_data(self):
     return getattr(self, "_llgi_data", None)
 
+  def llgi_hybrid_counts(self):
+    """ How many reflections the F-scale llgi target evaluates with the
+    exact likelihood at the current sigmaA/ScatFrac (mmtbx.refinement.
+    llgi_hybrid): group_args(n, n_exact, n_forced), or None if the hybrid
+    is not in use or sigmaA/ScatFrac are not yet attached. """
+    import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+    llgi_data = self.llgi_data()
+    hybrid = llgi_hybrid.get_hybrid(llgi_data)
+    if(hybrid is None): return None
+    sigmaa = getattr(llgi_data, "sigmaa", None)
+    scatfrac = getattr(llgi_data, "scatfrac", None)
+    if(sigmaa is None or scatfrac is None): return None
+    k = self.scale_ml_wrapper()
+    if(k <= 0): k = 1.0
+    # as llgi.h's effective_sigmaa: sigmaA*k/sqrt(ScatFrac), 0 if ScatFrac <= 0
+    sf = scatfrac.data()
+    positive = sf > 0
+    a_eff = flex.double(sf.size(), 0)
+    a_eff.set_selected(positive, (sigmaa.data() * k).select(positive)
+      / flex.sqrt(sf.select(positive)))
+    exact = hybrid.exact_selection(a_eff)
+    return group_args(n=exact.size(), n_exact=exact.count(True),
+      n_forced=(exact & hybrid.force_exact).count(True))
+
   def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None):
     """ (Re-)fit sigmaA(resolution) and ScatFrac(resolution) against the
     current model (self.f_model(), i.e. bulk-solvent- and scale-corrected
@@ -1907,6 +1926,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         "update_llgi_sigmaa_scatfrac() requires LLGI data (DOBS/FEFF/"
         "TEPS/RESN) to already be attached via set_llgi_data().")
     import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
+    import mmtbx.refinement.llgi_hybrid as llgi_hybrid
     if(params is None):
       params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
     if(params.estimate_scatfrac_by_likelihood):
@@ -1929,9 +1949,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         resn = llgi_data.resn.data(),
         e_params = e_params,
         scatfrac_params = params)
-      updated = group_args(
-        dobs=llgi_data.dobs, feff=llgi_data.feff, teps=llgi_data.teps,
-        resn=llgi_data.resn, info=getattr(llgi_data, "info", None),
+      updated = llgi_hybrid.replace_llgi_data(llgi_data,
         sigmaa=f_obs.array(data=result.sigmaa),
         scatfrac=f_obs.array(data=result.scatfrac),
         e_params=e_params)
@@ -1970,9 +1988,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       d_star_sq     = f_obs.d_star_sq().data(),
       scale_factor  = self.scale_ml_wrapper(),
       params        = params)
-    updated = group_args(
-      dobs=llgi_data.dobs, feff=llgi_data.feff, teps=llgi_data.teps,
-      resn=llgi_data.resn, info=getattr(llgi_data, "info", None),
+    updated = llgi_hybrid.replace_llgi_data(llgi_data,
       sigmaa=f_obs.array(data=result.sigmaa),
       scatfrac=f_obs.array(data=result.scatfrac),
       e_params=e_params)
@@ -3085,11 +3101,62 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         centric_fom = flex.tanh(x / 2.0)
         fom.set_selected(valid & ~centric_flags, acentric_fom)
         fom.set_selected(valid & centric_flags, centric_fom)
+        x = x.set_selected(~valid, 0.0)
+        # Hybrid LLGI (mmtbx.refinement.llgi_hybrid): where the exact
+        # likelihood is used, the Rice (Dobs, Eeff) are not meaningful, and
+        # the counterparts of m*Eeff and D come from the exact posterior:
+        # m*Eeff -> <E along the model phase> = <|E|>*m, m = <E>/<|E|>,
+        # D = Dobs*sigmaA -> sigmaA. The difference coefficient <E> -
+        # sigmaA*Emodel is then proportional to the exact LLGI gradient,
+        # as m*Eeff - D*Emodel is to the Rice one.
+        import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+        from cctbx.xray import ext as xray_ext
+        self.n_exact = 0
+        hybrid = llgi_hybrid.get_e_scale_hybrid(
+          llgi_data, getattr(llgi_data, "e_params", None))
+        f_obs_data = feff.data()
+        if(hybrid is not None):
+          exact = hybrid.exact_selection(sa) & (e_model_abs >= 0)
+          isel = exact.iselection()
+          if(isel.size() > 0):
+            r = xray_ext.llgi_exact_evaluate(
+              e_obs_sq=hybrid.e_obs_sq.select(isel),
+              sig_e_obs_sq=hybrid.sig_e_obs_sq.select(isel),
+              e_calc=e_model_abs.select(isel),
+              sigmaa=sa.select(isel),
+              centric_flags=centric_flags.select(isel),
+              null_log_z=hybrid.null_log_z.select(isel))
+            e_abs = r.e_abs_expected
+            m_exact = r.e_expected / e_abs.deep_copy().set_selected(
+              e_abs <= 0, 1.0)
+            m_exact.set_selected(m_exact > 0.999999, 0.999999)
+            f_obs_data = f_obs_data.deep_copy()
+            f_obs_data.set_selected(isel,
+              e_abs * (sqrt_teps * resn).select(isel))
+            fom.set_selected(isel, m_exact)
+            sa_exact = sa.select(isel)
+            alpha_data.set_selected(isel,
+              sa_exact * (sqrt_teps * resn * inv_sqrt_eps_sigmap).select(isel))
+            # X equivalent to m (for phase_errors_llgi)
+            c_ex = centric_flags.select(isel)
+            x_ex = flex.double(isel.size(), 0.0)
+            x_ex.set_selected(~c_ex,
+              scitbx.math.inverse_bessel_i1_over_i0(m_exact.select(~c_ex)))
+            mc = m_exact.select(c_ex)
+            x_ex.set_selected(c_ex, flex.log((1 + mc) / (1 - mc)))
+            x.set_selected(isel, x_ex)
+            self.n_exact = isel.size()
+        self.f_obs = feff.customized_copy(data=f_obs_data)
+        self.alpha = feff.array(data=alpha_data)
+        self.beta = feff.array(data=v)
         self.fom = fom
-        # Plain D=Dobs*sigmaA and the Bessel/tanh argument X (0 where the
-        # reflection contributes nothing), for phase_errors_llgi().
+        # Plain D=Dobs*sigmaA and V = TEPS - D^2 for every reflection (the
+        # Rice parameters, reported in the statistics table; the map's
+        # model coefficient for exact reflections, sigmaA, is in .alpha),
+        # and the Bessel/tanh argument X (0 where the reflection
+        # contributes nothing), for phase_errors_llgi().
         self.d = d
-        self.x = x.set_selected(~valid, 0.0)
+        self.x = x
     return result(fmodel=self)
 
   def phase_errors_llgi(self, map_calculation_helper_llgi=None):

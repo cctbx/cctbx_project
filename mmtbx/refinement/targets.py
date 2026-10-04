@@ -182,6 +182,7 @@ class target_functor(object):
         spacialization        = attr.specialization,
         integration_step_size = 5.0)
     elif (attr.family == "llgi"):
+      import mmtbx.refinement.llgi_hybrid as llgi_hybrid
       llgi_data = manager.llgi_data()
       if (llgi_data is None):
         raise Sorry(
@@ -207,7 +208,8 @@ class target_functor(object):
         scatfrac     = scatfrac,
         scale_factor = manager.scale_ml_wrapper(),
         teps         = llgi_data.teps.data(),
-        resn         = llgi_data.resn.data())
+        resn         = llgi_data.resn.data(),
+        hybrid       = llgi_hybrid.get_hybrid(llgi_data))
     else:
       if (attr.pseudo_ml):
         f_obs, weights = manager.f_star_w_star()
