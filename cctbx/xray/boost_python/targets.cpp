@@ -8,11 +8,13 @@
 #include <cctbx/xray/targets/mlhl.h>
 #include <cctbx/xray/targets/llgi.h>
 #include <cctbx/xray/targets/llgi_e.h>
+#include <cctbx/xray/targets/llgi_exact.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace cctbx { namespace xray { namespace targets { namespace boost_python {
 
@@ -273,7 +275,8 @@ namespace {
           af::const_ref<double> const&,
           af::const_ref<double> const&,
           af::const_ref<bool> const&,
-          bool>((
+          bool,
+          optional<llgi_exact::hybrid const*> >((
             arg("f_eff"),
             arg("r_free_flags"),
             arg("f_calc"),
@@ -284,7 +287,9 @@ namespace {
             arg("teps"),
             arg("resn"),
             arg("centric_flags"),
-            arg("compute_gradients"))))
+            arg("compute_gradients"),
+            arg("hybrid")=object())))
+        .def("n_exact", &w_t::n_exact)
       ;
     }
   };
@@ -310,7 +315,8 @@ namespace {
           double,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
-          af::const_ref<bool> const&>((
+          af::const_ref<bool> const&,
+          optional<llgi_exact::hybrid const*> >((
             arg("f_eff"),
             arg("selection"),
             arg("f_calc"),
@@ -320,8 +326,10 @@ namespace {
             arg("scale_factor"),
             arg("teps"),
             arg("resn"),
-            arg("centric_flags"))))
+            arg("centric_flags"),
+            arg("hybrid")=object())))
         .def("target", &w_t::target)
+        .def("n_exact", &w_t::n_exact)
         .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())
         .def("d_target_by_dscatfrac", &w_t::d_target_by_dscatfrac, ccr())
       ;
@@ -345,14 +353,17 @@ namespace {
           af::const_ref<double> const&,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
-          af::const_ref<bool> const&>((
+          af::const_ref<bool> const&,
+          optional<llgi_exact::hybrid const*> >((
             arg("e_eff"),
             arg("selection"),
             arg("e_model"),
             arg("dobs"),
             arg("sigmaa"),
-            arg("centric_flags"))))
+            arg("centric_flags"),
+            arg("hybrid")=object())))
         .def("target", &w_t::target)
+        .def("n_exact", &w_t::n_exact)
         .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())
       ;
     }
@@ -375,16 +386,128 @@ namespace {
           af::const_ref<double> const&,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
-          af::const_ref<bool> const&>((
+          af::const_ref<bool> const&,
+          optional<llgi_exact::hybrid const*> >((
             arg("e_eff"),
             arg("selection"),
             arg("e_model"),
             arg("dobs"),
             arg("sigmaa"),
-            arg("centric_flags"))))
+            arg("centric_flags"),
+            arg("hybrid")=object())))
         .def("target", &w_t::target)
+        .def("n_exact", &w_t::n_exact)
         .def("d_target_by_demodel", &w_t::d_target_by_demodel, ccr())
       ;
+    }
+  };
+
+  struct llgi_exact_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      {
+        typedef llgi_exact::evaluate_many w_t;
+        class_<w_t>("llgi_exact_evaluate", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("e_calc"),
+              arg("sigmaa"),
+              arg("centric_flags"))))
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            af::const_ref<double> const&>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("e_calc"),
+              arg("sigmaa"),
+              arg("centric_flags"),
+              arg("null_log_z"))))
+          .add_property("ll", make_getter(&w_t::ll, return_value_policy<return_by_value>()))
+          .add_property("d_ll_d_ec", make_getter(&w_t::d_ll_d_ec, return_value_policy<return_by_value>()))
+          .add_property("d_ll_d_a", make_getter(&w_t::d_ll_d_a, return_value_policy<return_by_value>()))
+          .add_property("d2_ll_d_a2", make_getter(&w_t::d2_ll_d_a2, return_value_policy<return_by_value>()))
+          .add_property("e_expected", make_getter(&w_t::e_expected, return_value_policy<return_by_value>()))
+          .add_property("e_abs_expected", make_getter(&w_t::e_abs_expected, return_value_policy<return_by_value>()))
+        ;
+      }
+      {
+        typedef llgi_exact::hybrid w_t;
+        class_<w_t>("llgi_hybrid", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            af::const_ref<bool> const&,
+            double>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("force_exact"),
+              arg("centric_flags"),
+              arg("rice_kappa"))))
+          .def("size", &w_t::size)
+          .def("select", &w_t::select, (arg("selection")))
+          .def("with_rice_kappa", &w_t::with_rice_kappa, (arg("t")))
+          .def("exact_selection", &w_t::exact_selection, (arg("sigmaa")))
+          .def("measurement_fractions", &w_t::measurement_fractions, (arg("sigmaa")))
+          .add_property("e_obs_sq", make_getter(&w_t::e_obs_sq, return_value_policy<return_by_value>()))
+          .add_property("sig_e_obs_sq", make_getter(&w_t::sig_e_obs_sq, return_value_policy<return_by_value>()))
+          .add_property("null_log_z", make_getter(&w_t::null_log_z, return_value_policy<return_by_value>()))
+          .add_property("force_exact", make_getter(&w_t::force_exact, return_value_policy<return_by_value>()))
+          .add_property("dsqr", make_getter(&w_t::dsqr, return_value_policy<return_by_value>()))
+          .def_readonly("rice_kappa", &w_t::rice_kappa)
+        ;
+      }
+      {
+        typedef llgi_exact::french_wilson_inverse w_t;
+        class_<w_t>("llgi_french_wilson_inverse", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            optional<double> >((
+              arg("f"),
+              arg("sigf"),
+              arg("mean_intensity"),
+              arg("centric_flags"),
+              arg("h_min")=-6.0)))
+          .add_property("i_obs", make_getter(&w_t::i_obs, return_value_policy<return_by_value>()))
+          .add_property("sig_i_obs", make_getter(&w_t::sig_i_obs, return_value_policy<return_by_value>()))
+          .add_property("h", make_getter(&w_t::h, return_value_policy<return_by_value>()))
+          .add_property("valid", make_getter(&w_t::valid, return_value_policy<return_by_value>()))
+          .add_property("prior_dominated", make_getter(&w_t::prior_dominated, return_value_policy<return_by_value>()))
+        ;
+      }
+      {
+        typedef llgi_exact::rice_moments_many w_t;
+        class_<w_t>("llgi_rice_moments", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("centric_flags"))))
+          .add_property("valid", make_getter(&w_t::valid, return_value_policy<return_by_value>()))
+          .add_property("mu2", make_getter(&w_t::mu2, return_value_policy<return_by_value>()))
+          .add_property("mu4", make_getter(&w_t::mu4, return_value_policy<return_by_value>()))
+          .add_property("dsqr", make_getter(&w_t::dsqr, return_value_policy<return_by_value>()))
+          .add_property("eeff", make_getter(&w_t::eeff, return_value_policy<return_by_value>()))
+        ;
+      }
     }
   };
 
@@ -432,6 +555,7 @@ namespace boost_python {
     targets::boost_python::llgi_sigmaa_scatfrac_wrappers::wrap();
     targets::boost_python::llgi_e_sigmaa_wrappers::wrap();
     targets::boost_python::llgi_e_emodel_wrappers::wrap();
+    targets::boost_python::llgi_exact_wrappers::wrap();
     targets::boost_python::r_factor_wrappers::wrap();
   }
 

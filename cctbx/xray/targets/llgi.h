@@ -4,6 +4,7 @@
 #include <scitbx/constants.h>
 #include <scitbx/math/bessel.h>
 #include <utility>
+#include <cctbx/xray/targets/llgi_exact.h>
 
 namespace cctbx { namespace xray { namespace targets { namespace llgi {
 
@@ -281,6 +282,29 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     return std::make_pair(d_target_by_dsigmaa, d_target_by_dscatfrac);
   }
 
+  //! Effective (E-scale) sigmaA of the F-scale target, d/(dobs) in
+  //! target_one_h: the exact LLGI is a function of this and Ecalc =
+  //! fc/resn (TEPS == 1).
+  inline
+  double
+  effective_sigmaa(double sigmaa, double scatfrac, double k)
+  {
+    if (sigmaa <= 0.0 || scatfrac <= 0.0) return 0.0;
+    if (k <= 0.0) k = 1.0;
+    return sigmaa * k / std::sqrt(scatfrac);
+  }
+
+  //! Whether the hybrid LLGI uses the exact likelihood for reflection i.
+  inline
+  bool
+  use_exact(
+    llgi_exact::hybrid const* hybrid, std::size_t i, double a_eff,
+    double teps, double resn)
+  {
+    return hybrid != 0 && std::abs(teps - 1.0) < 1e-6 && resn > 0
+        && hybrid->use_exact(i, a_eff);
+  }
+
   //! LLGI (log-likelihood-gain-of-intensities) target function and
   //! gradients.
   /*! sigmaA-parameterised alternative to the alpha/beta-based mlf target
@@ -305,10 +329,13 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         af::const_ref<double> const& teps,
         af::const_ref<double> const& resn,
         af::const_ref<bool> const& centric_flags,
-        bool compute_gradients)
+        bool compute_gradients,
+        llgi_exact::hybrid const* hybrid = 0)
       :
-        common_results(f_eff.size())
+        common_results(f_eff.size()),
+        n_exact_(0)
       {
+        CCTBX_ASSERT(hybrid == 0 || hybrid->size() == f_eff.size());
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_eff.size());
         CCTBX_ASSERT(f_calc.size() == f_eff.size());
@@ -336,16 +363,32 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           double tp = teps[i];
           double rn = resn[i];
           bool c = centric_flags[i];
-          double t = target_one_h(
-            feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
+          double a_eff = effective_sigmaa(sa, sf, scale_factor);
+          bool exact = use_exact(hybrid, i, a_eff, tp, rn);
+          llgi_exact::result r;
+          double t;
+          if (exact) {
+            r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
+            t = -r.ll;
+            if (rffs.is_work_refl(i)) n_exact_++;
+          }
+          else {
+            t = target_one_h(feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
+          }
           target_per_reflection_[i] = t;
           if (rffs.is_work_refl(i)) {
             target_work += t;
             if (compute_gradients) {
-              gradients_work_.push_back(std::conj(
-                d_target_one_h_over_fc(
-                  feff, f_calc[i], do_, sa, sf, scale_factor, tp, rn, c))
-                  * one_over_n_work);
+              std::complex<double> g(0, 0);
+              if (!exact) {
+                g = d_target_one_h_over_fc(
+                  feff, f_calc[i], do_, sa, sf, scale_factor, tp, rn, c);
+              }
+              else if (fc > 0) {
+                // d(-LLGI)/dfc = -(dLLGI/dEcalc)/resn along the phase
+                g = (-r.d_ll_d_ec / rn) * (std::conj(f_calc[i]) / fc);
+              }
+              gradients_work_.push_back(std::conj(g) * one_over_n_work);
             }
           }
           else {
@@ -357,6 +400,12 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }
       }
+
+      //! Number of working-set reflections evaluated with the exact LLGI.
+      std::size_t n_exact() const { return n_exact_; }
+
+    protected:
+      std::size_t n_exact_;
   };
 
   //! Summed LLGI target and per-reflection d(target)/d(sigmaa),
@@ -384,9 +433,12 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       double target_;
       af::shared<double> d_target_by_dsigmaa_;
       af::shared<double> d_target_by_dscatfrac_;
+      std::size_t n_exact_;
 
     public:
       double target() const { return target_; }
+      //! Number of selected reflections evaluated with the exact LLGI.
+      std::size_t n_exact() const { return n_exact_; }
       af::shared<double> const& d_target_by_dsigmaa() const {
         return d_target_by_dsigmaa_;
       }
@@ -404,12 +456,15 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         double scale_factor,
         af::const_ref<double> const& teps,
         af::const_ref<double> const& resn,
-        af::const_ref<bool> const& centric_flags)
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid = 0)
       :
         target_(0),
         d_target_by_dsigmaa_(f_eff.size(), 0.0),
-        d_target_by_dscatfrac_(f_eff.size(), 0.0)
+        d_target_by_dscatfrac_(f_eff.size(), 0.0),
+        n_exact_(0)
       {
+        CCTBX_ASSERT(hybrid == 0 || hybrid->size() == f_eff.size());
         CCTBX_ASSERT(selection.size() == f_eff.size());
         CCTBX_ASSERT(f_calc.size() == f_eff.size());
         CCTBX_ASSERT(dobs.size() == f_eff.size());
@@ -430,6 +485,16 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           double tp = teps[i];
           double rn = resn[i];
           bool c = centric_flags[i];
+          double a_eff = effective_sigmaa(sa, sf, scale_factor);
+          if (use_exact(hybrid, i, a_eff, tp, rn)) {
+            llgi_exact::result r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
+            target_ -= r.ll;
+            // a_eff = sigmaa*k/sqrt(scatfrac)
+            d_target_by_dsigmaa_[i] = -r.d_ll_d_a * a_eff / sa;
+            d_target_by_dscatfrac_[i] = r.d_ll_d_a * a_eff / (2. * sf);
+            n_exact_++;
+            continue;
+          }
           target_ += target_one_h(
             feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
           std::pair<double, double> grad = d_target_one_h_over_sigmaa_scatfrac(

@@ -6,6 +6,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/constants.h>
 #include <scitbx/math/bessel.h>
+#include <cctbx/xray/targets/llgi_exact.h>
 #include <complex>
 
 namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
@@ -232,24 +233,32 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
     protected:
       double target_;
       af::shared<double> d_target_by_dsigmaa_;
+      std::size_t n_exact_;
 
     public:
       double target() const { return target_; }
       af::shared<double> const& d_target_by_dsigmaa() const {
         return d_target_by_dsigmaa_;
       }
+      //! Number of selected reflections evaluated with the exact LLGI.
+      std::size_t n_exact() const { return n_exact_; }
 
+      //! hybrid (optional): use the exact LLGI where it says so (see
+      //! llgi_exact::hybrid); its arrays are indexed like e_eff.
       sigmaa_target_and_gradients(
         af::const_ref<double> const& e_eff,
         af::const_ref<bool> const& selection,
         af::const_ref<double> const& e_model,
         af::const_ref<double> const& dobs,
         af::const_ref<double> const& sigmaa,
-        af::const_ref<bool> const& centric_flags)
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid = 0)
       :
         target_(0),
-        d_target_by_dsigmaa_(e_eff.size(), 0.0)
+        d_target_by_dsigmaa_(e_eff.size(), 0.0),
+        n_exact_(0)
       {
+        CCTBX_ASSERT(hybrid == 0 || hybrid->size() == e_eff.size());
         CCTBX_ASSERT(selection.size() == e_eff.size());
         CCTBX_ASSERT(e_model.size() == e_eff.size());
         CCTBX_ASSERT(dobs.size() == e_eff.size());
@@ -264,6 +273,13 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
           double do_ = dobs[i];
           double sa = sigmaa[i];
           bool c = centric_flags[i];
+          if (hybrid != 0 && hybrid->use_exact(i, sa)) {
+            llgi_exact::result r = hybrid->evaluate_at(i, em, sa, c);
+            target_ -= r.ll;
+            d_target_by_dsigmaa_[i] = -r.d_ll_d_a;
+            n_exact_++;
+            continue;
+          }
           target_ += target_one_h(eeff, em, do_, sa, c);
           d_target_by_dsigmaa_[i] = d_target_one_h_over_sigmaa(
             eeff, em, do_, sa, c);
@@ -293,24 +309,31 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
     protected:
       double target_;
       af::shared<double> d_target_by_demodel_;
+      std::size_t n_exact_;
 
     public:
       double target() const { return target_; }
       af::shared<double> const& d_target_by_demodel() const {
         return d_target_by_demodel_;
       }
+      //! Number of selected reflections evaluated with the exact LLGI.
+      std::size_t n_exact() const { return n_exact_; }
 
+      //! hybrid (optional): as for sigmaa_target_and_gradients.
       emodel_target_and_gradients(
         af::const_ref<double> const& e_eff,
         af::const_ref<bool> const& selection,
         af::const_ref<double> const& e_model,
         af::const_ref<double> const& dobs,
         af::const_ref<double> const& sigmaa,
-        af::const_ref<bool> const& centric_flags)
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid = 0)
       :
         target_(0),
-        d_target_by_demodel_(e_eff.size(), 0.0)
+        d_target_by_demodel_(e_eff.size(), 0.0),
+        n_exact_(0)
       {
+        CCTBX_ASSERT(hybrid == 0 || hybrid->size() == e_eff.size());
         CCTBX_ASSERT(selection.size() == e_eff.size());
         CCTBX_ASSERT(e_model.size() == e_eff.size());
         CCTBX_ASSERT(dobs.size() == e_eff.size());
@@ -325,6 +348,13 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
           double do_ = dobs[i];
           double sa = sigmaa[i];
           bool c = centric_flags[i];
+          if (hybrid != 0 && hybrid->use_exact(i, sa)) {
+            llgi_exact::result r = hybrid->evaluate_at(i, em, sa, c);
+            target_ -= r.ll;
+            d_target_by_demodel_[i] = -r.d_ll_d_ec;
+            n_exact_++;
+            continue;
+          }
           target_ += target_one_h(eeff, em, do_, sa, c);
           d_target_by_demodel_[i] = d_target_one_h_over_emodel(
             eeff, em, do_, sa, c);

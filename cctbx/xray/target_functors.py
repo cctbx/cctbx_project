@@ -98,6 +98,10 @@ class llgi(object):
   objects (this class calls .data() on them internally); teps and resn
   are plain flex.double arrays already matching f_eff's index order (no
   .data() call needed/made on these two).
+
+  hybrid (optional): an ext.llgi_hybrid indexed like f_eff, selecting the
+  reflections evaluated with the exact LLGI (mmtbx.refinement.
+  llgi_hybrid).
   """
 
   def __init__(self,
@@ -108,7 +112,8 @@ class llgi(object):
         scatfrac,
         scale_factor,
         teps,
-        resn):
+        resn,
+        hybrid=None):
     adopt_init_args(self, locals())
     self.centric_flags = f_eff.centric_flags().data()
 
@@ -126,7 +131,8 @@ class llgi(object):
       teps=self.teps,
       resn=self.resn,
       centric_flags=self.centric_flags,
-      compute_gradients=compute_gradients)
+      compute_gradients=compute_gradients,
+      hybrid=self.hybrid)
 
 class llgi_e_sigmaa(object):
   """ Thin wrapper around ext.llgi_e_sigmaa_target_and_gradients (cctbx/
@@ -149,7 +155,7 @@ class llgi_e_sigmaa(object):
   miller.array of its own within one inner-loop iteration).
   """
 
-  def __init__(self, e_eff, dobs, centric_flags):
+  def __init__(self, e_eff, dobs, centric_flags, hybrid=None):
     adopt_init_args(self, locals())
 
   def __call__(self, e_model, sigmaa, selection):
@@ -159,7 +165,8 @@ class llgi_e_sigmaa(object):
       e_model=e_model,
       dobs=self.dobs,
       sigmaa=sigmaa,
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags,
+      hybrid=self.hybrid)
 
 class llgi_e_emodel(object):
   """ Thin wrapper around ext.llgi_e_emodel_target_and_gradients (cctbx/
@@ -174,7 +181,7 @@ class llgi_e_emodel(object):
   arrays throughout, no .data() calls made here.
   """
 
-  def __init__(self, e_eff, dobs, centric_flags):
+  def __init__(self, e_eff, dobs, centric_flags, hybrid=None):
     adopt_init_args(self, locals())
 
   def __call__(self, e_model, sigmaa, selection):
@@ -184,7 +191,8 @@ class llgi_e_emodel(object):
       e_model=e_model,
       dobs=self.dobs,
       sigmaa=sigmaa,
-      centric_flags=self.centric_flags)
+      centric_flags=self.centric_flags,
+      hybrid=self.hybrid)
 
 class unified_least_squares_residual(object):
   """ A least-square residual functor for refinement against F or F^2. """
