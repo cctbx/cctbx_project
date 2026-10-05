@@ -470,6 +470,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
       .def("prep_string",&iotbx::detectors::display::generic_flex_image::prep_string)
 
       .def("add_transformation_and_translation",&iotbx::detectors::display::generic_flex_image::add_transformation_and_translation)
+      .def("add_transformation_translation_and_size",&iotbx::detectors::display::generic_flex_image::add_transformation_translation_and_size)
       .def("picture_to_readout",&iotbx::detectors::display::generic_flex_image::picture_to_readout_f)
       .def("setWindow", &iotbx::detectors::display::generic_flex_image::setWindow)
       .def("setWindowCart", &iotbx::detectors::display::generic_flex_image::setWindowCart)
