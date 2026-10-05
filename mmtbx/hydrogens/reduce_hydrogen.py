@@ -1054,6 +1054,9 @@ class place_hydrogens():
         model     = self.model,
         selection = water_selection.iselection())
       water_selection = self.model.solvent_selection()
+    # water H are placed by workaround_002, not by riding: keep them and
+    # leave them out of the report of unplaced H
+    sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     # Classify the unplaceable H so the report reflects the real cause:
@@ -1108,7 +1111,6 @@ class place_hydrogens():
         else:
           self.site_labels_no_para.append(label)
     if not sel_h_not_in_para.all_eq(False):
-      sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
     # Reset occupancies, ADPs and idealize H atom positions

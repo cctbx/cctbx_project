@@ -47,8 +47,30 @@ END
   o.run()
   assert o.get_model().get_xray_structure().hd_selection().count(True)==8
 
+def run_02():
+  """
+  Water H are placed by workaround_002, not by riding, so they must not be
+  reported as unplaced: 1yjp listed all its waters as "not placed because a
+  neighbouring heavy atom is missing" while writing their H.
+  """
+  pdb_str = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
+HETATM   60  O   HOH A   8      -6.471   5.227   7.124  1.00 22.62           O
+HETATM   61  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
+END
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  o = reduce_hydrogen.place_hydrogens(model = model, exclude_water = False)
+  o.run()
+  assert o.get_model().get_xray_structure().hd_selection().count(True)==4
+  assert o.site_labels_missing_neighbor == [], o.site_labels_missing_neighbor
+  assert o.residues_missing_neighbor == [], o.residues_missing_neighbor
+  assert o.site_labels_no_para == [], o.site_labels_no_para
+
 if (__name__ == "__main__"):
   t0 = time.time()
   run_00()
   run_01()
+  run_02()
   print("OK. Time: %8.3f"%(time.time()-t0))
