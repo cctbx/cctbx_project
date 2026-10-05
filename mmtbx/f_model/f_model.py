@@ -3102,21 +3102,24 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         fom.set_selected(valid & ~centric_flags, acentric_fom)
         fom.set_selected(valid & centric_flags, centric_fom)
         x = x.set_selected(~valid, 0.0)
-        # Hybrid LLGI (mmtbx.refinement.llgi_hybrid): where the exact
-        # likelihood is used, the Rice (Dobs, Eeff) are not meaningful, and
-        # the counterparts of m*Eeff and D come from the exact posterior:
+        # Where the intensities are available, every measured reflection
+        # uses the exact posterior, whether or not the hybrid target is
+        # enabled (it costs one evaluation per reflection, and the Rice
+        # figure of merit gave worse maps where the Rice approximation is
+        # poor). The counterparts of m*Eeff and D are then
         # m*Eeff -> <E along the model phase> = <|E|>*m, m = <E>/<|E|>,
         # D = Dobs*sigmaA -> sigmaA. The difference coefficient <E> -
-        # sigmaA*Emodel is then proportional to the exact LLGI gradient,
-        # as m*Eeff - D*Emodel is to the Rice one.
+        # sigmaA*Emodel is proportional to the exact LLGI gradient, as
+        # m*Eeff - D*Emodel is to the Rice one.
         import mmtbx.refinement.llgi_hybrid as llgi_hybrid
         from cctbx.xray import ext as xray_ext
         self.n_exact = 0
-        hybrid = llgi_hybrid.get_e_scale_hybrid(
+        hybrid = llgi_hybrid.get_e_scale_exact_data(
           llgi_data, getattr(llgi_data, "e_params", None))
         f_obs_data = feff.data()
         if(hybrid is not None):
-          exact = hybrid.exact_selection(sa) & (e_model_abs >= 0)
+          exact = ((hybrid.sig_e_obs_sq > 0) & (sa > 0) & (sa < 0.999)
+                   & (e_model_abs >= 0))
           isel = exact.iselection()
           if(isel.size() > 0):
             r = xray_ext.llgi_exact_evaluate(

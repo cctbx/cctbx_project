@@ -20,9 +20,8 @@ def add_hybrid_data(fmodel, llgi_data, rice_kappa, seed=7):
   e2 = eeff * eeff + sig * flex.double([rnd.gauss(0, 1) for i in range(n)])
   params = llgi_hybrid.llgi_hybrid_params.extract()
   params.rice_kappa = rice_kappa
-  flags = llgi_hybrid.force_exact_flags(e2, sig, llgi_data.feff.data(),
-    llgi_data.resn.data(), f_obs.centric_flags().data(),
-    params.eeff_threshold)
+  flags = llgi_hybrid.force_exact_flags(e2, sig,
+    f_obs.centric_flags().data())
   return llgi_hybrid.replace_llgi_data(llgi_data,
     e_obs_sq=f_obs.array(data=e2), sig_e_obs_sq=f_obs.array(data=sig),
     force_exact=f_obs.array(data=flags.force_exact), hybrid_params=params)
@@ -101,6 +100,25 @@ def exercise_map_coefficients_exact_branch():
   # Phase errors remain well defined
   pe = fmodel.phase_errors_llgi(mch)
   assert flex.min(pe) >= 0 and flex.max(pe) <= 90.0001
+
+def exercise_map_coefficients_exact_without_hybrid():
+  """ The map coefficients use the exact posterior for every measured
+  reflection whether or not the hybrid target is enabled: with it
+  disabled, they match those of an all-exact hybrid. """
+  fmodel = build_hybrid_fmodel(rice_kappa=0.0)
+  m_on = fmodel.map_calculation_helper_llgi()
+  llgi_data = fmodel.llgi_data()
+  p = llgi_data.hybrid_params
+  p.enabled = False
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(llgi_data,
+    hybrid_params=p))
+  assert llgi_hybrid.get_hybrid(fmodel.llgi_data()) is None
+  m_off = fmodel.map_calculation_helper_llgi()
+  p.enabled = True
+  assert m_off.n_exact > 0 and m_off.n_exact == m_on.n_exact
+  assert approx_equal(m_off.fom, m_on.fom)
+  assert approx_equal(m_off.f_obs.data(), m_on.f_obs.data())
+  assert approx_equal(m_off.alpha.data(), m_on.alpha.data())
 
 def exercise_d_model_target_with_hybrid():
   import mmtbx.refinement.llgi_e_dmodel_target as target
@@ -201,6 +219,7 @@ def exercise_intensities_from_amplitudes():
 def run():
   exercise_helpers_and_select()
   exercise_map_coefficients_exact_branch()
+  exercise_map_coefficients_exact_without_hybrid()
   exercise_d_model_target_with_hybrid()
   exercise_k1_scale_carries_feff_and_resn()
   exercise_intensities_from_amplitudes()

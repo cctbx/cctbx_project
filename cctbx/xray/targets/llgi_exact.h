@@ -15,8 +15,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
 
   /*! Exact log-likelihood-gain on intensities (TEPS == 1), for the
       reflections where the Rice approximation with moment-matched
-      (Dobs, Eeff) is not accurate enough (no Rice solution, large Eeff, or
-      a large measurement fraction of the Rice variance; see class hybrid).
+      (Dobs, Eeff) is not accurate enough (no Rice solution, or measurement
+      error not small compared with the model error; see class hybrid).
 
       With J = |E|^2, the observed intensity on the E^2 scale is
       eo_sq +/- sig (Gaussian), the model prior for E is the Rice (or,
@@ -81,6 +81,11 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         static const gauss_legendre gl(32);
         return gl;
       }
+      static gauss_legendre const& get96()
+      {
+        static const gauss_legendre gl(96);
+        return gl;
+      }
   };
 
   //! ln B(x), x >= 0: ln I0(x) (acentric) or ln cosh(x) (centric).
@@ -139,7 +144,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
 
     integral(
       double eo_sq, double sig, double lambda, double kappa, bool centric,
-      double drop = 36.)
+      double drop = 36., bool high_precision = false)
     {
       CCTBX_ASSERT(sig > 0);
       const double p = centric ? -0.5 : 0.;
@@ -147,11 +152,16 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       const double mu = (eo_sq - lambda * sig * sig) / sig;
       const double k = kappa * std::sqrt(sig);
       const double a0 = centric ? 0.5 : 0.25;
-      // psi(s) = -(s^2-mu)^2/2 + ln B(k s) + q ln s, s = sqrt(J/sig)
+      // psi(s) = -(s^2-mu)^2/2 + ln B(k s) + q ln s, s = sqrt(J/sig),
+      // evaluated without its constant -mu^2/2 (which is added back
+      // analytically to log_z below): for large sig, |mu| is large and
+      // forming (s^2-mu)^2 would leave roundoff of order mu^2 * 1e-16 in
+      // every node's weight.
       struct psi_t {
         double mu, k, q; bool centric;
         double operator()(double s) const {
-          double v = -0.5 * (s*s - mu) * (s*s - mu) + ln_b(k * s, centric);
+          double s2 = s * s;
+          double v = s2 * (mu - 0.5 * s2) + ln_b(k * s, centric);
           if (q != 0) v += q * std::log(s);
           return v;
         }
@@ -235,7 +245,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
       // Gauss-Legendre on [s_lo, s_hi]; J = sig s^2,
       // dJ J^p = sig^(1+p) 2 s^q ds.
-      gauss_legendre const& gl = gauss_legendre::get32();
+      gauss_legendre const& gl = high_precision ? gauss_legendre::get96()
+                                                : gauss_legendre::get32();
       std::size_t n = gl.x.size();
       double half = 0.5 * (s_hi - s_lo);
       std::vector<double> lw(n), s(n);
@@ -261,8 +272,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         sjb2 += wi * jj * b2;
         ss += wi * rj;
       }
+      // -mu^2/2 - lambda eo_sq + lambda^2 sig^2/2 = -eo_sq^2/(2 sig^2)
       log_z = lw_max + std::log(z)
-            + (-lambda * eo_sq + 0.5 * lambda * lambda * sig * sig)
+            - 0.5 * (eo_sq / sig) * (eo_sq / sig)
             + (1. + p) * std::log(sig);
       e_j = sj / z;
       e_jj = sjj / z;
@@ -343,6 +355,11 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   //! phasertng's math::rice_from_intensity: <E^2> by the same quadrature
   //! (exact for both acentric and centric), <E^4> = m <E^2> + k sig^2 with
   //! k = 1 (acentric) or 1/2 (centric) and m = eo_sq - k sig^2.
+  //! For large sig that identity is a difference of two terms of order
+  //! sig^2, and near the edge of the Rice family (D -> 0) the solution
+  //! depends on a further near-cancellation, so <E^2> is computed with
+  //! 96 nodes (to about machine precision) rather than the 32 used for
+  //! the likelihood; phasertng gets the same precision from closed forms.
   struct rice_moments
   {
     bool valid;
@@ -361,7 +378,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
       const double k = centric ? 0.5 : 1.;
       const double m = eo_sq - k * sig * sig;
-      mu2 = integral(eo_sq, sig, k, 0., centric).e_j;
+      mu2 = integral(eo_sq, sig, k, 0., centric, 36., true).e_j;
       mu4 = m * mu2 + k * sig * sig;
       const double eta = mu2 - 1.;
       double gap, disc;
@@ -432,8 +449,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   //!   1 - D^2 > rice_kappa (1 - a^2)^2
   //! i.e. where the measurement variance is not small compared with the
   //! square of the model variance (hybrid LLGI handoff, revision 2, sec. 5.5,
-  //! applied at every sigmaA a), or where force_exact (no Rice solution, or
-  //! Eeff above its cap); Rice everywhere else. Reflections with
+  //! applied at every sigmaA a), or where force_exact (no Rice solution);
+  //! Rice everywhere else. Reflections with
   //! sig_e_obs_sq <= 0 (no intensity error estimate) always use Rice.
   //! rice_kappa <= 0 means exact wherever possible, for fits of sigmaA
   //! itself (a sigmaA-dependent switch would make the fitted objective

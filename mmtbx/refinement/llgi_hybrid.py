@@ -8,10 +8,11 @@ import iotbx.phil
 for most reflections, and the exact likelihood (cctbx/xray/targets/
 llgi_exact.h) where the approximation is known to be poor:
 
-  - no 2nd/4th-moment Rice solution exists for the reflection (nacelle
-    gives these Dobs = 0.01, Eeff = 1; validity is recomputed here from
-    the intensities, not inferred from those values),
-  - Eeff above eeff_threshold,
+  - no 2nd/4th-moment Rice solution exists for the reflection: its
+    French-Wilson posterior is more dispersed than any Rice distribution
+    with the same <E^2> (nacelle gives these Dobs = 0.01 and Eeff equal to
+    the posterior rms; validity is recomputed here from the intensities,
+    not inferred from those values),
   - measurement variance not small compared with the square of the model
     variance: 1 - D^2 > rice_kappa (1 - sigmaA^2)^2 (evaluated per call,
     since the effective sigmaA changes during refinement).
@@ -32,9 +33,8 @@ llgi_hybrid_params = iotbx.phil.parse("""\
     .help = "Evaluate the exact LLGI (numerical integration over the " \
             "observed intensity's error) instead of the Rice " \
             "approximation for reflections where the approximation is " \
-            "not accurate enough (see rice_kappa, " \
-            "eeff_threshold, and reflections with no 2nd/4th-moment Rice " \
-            "solution). Needs the intensities and sigmas in the LLGI data " \
+            "not accurate enough (see rice_kappa, and reflections with no " \
+            "2nd/4th-moment Rice solution). Needs the intensities and sigmas in the LLGI data " \
             "file."
   rice_kappa = 0.1
     .type = float
@@ -48,13 +48,6 @@ llgi_hybrid_params = iotbx.phil.parse("""\
             "sigmaA^2)^2. With 0.1 the worst-case Rice error is about 0.15 " \
             "in the LLGI of a reflection, at any sigmaA; 0 evaluates every " \
             "reflection exactly."
-  eeff_threshold = 6
-    .type = float
-    .short_caption = Eeff above which the exact LLGI is used
-    .help = "Large Eeff with small Dobs signals an E_obs^2/sigma " \
-            "combination where the moment-matched Rice function can " \
-            "badly misplace the likelihood for model E values far from " \
-            "Eeff."
   sigma_e_obs_sq_cutoff = 8.5
     .type = float
     .short_caption = Exclude reflections with sigma(E_obs^2) above
@@ -70,34 +63,51 @@ def e_obs_sq_and_sigma(i_obs, sig_i_obs, resn, teps):
   esn = resn * resn * teps
   return i_obs / esn, sig_i_obs / esn
 
-def force_exact_flags(e_obs_sq, sig_e_obs_sq, feff, resn, centric_flags,
-      eeff_threshold):
-  """ Reflections that use the exact LLGI whatever sigmaA is: no valid
-  2nd/4th-moment Rice parameters, or Eeff = Feff/RESN above
-  eeff_threshold. Returns group_args(force_exact, invalid, large_eeff,
-  rice): flex.bool arrays plus the llgi_rice_moments object (whose
-  dsqr/eeff can be compared with nacelle's DOBS/FEFF). """
+def force_exact_flags(e_obs_sq, sig_e_obs_sq, centric_flags):
+  """ Reflections that use the exact LLGI whatever sigmaA is: those with
+  no 2nd/4th-moment Rice solution. (Reflections approaching that limit
+  have D -> 0 and large Eeff; the rice_kappa rule makes them exact at any
+  sigmaA, since 1 - D^2 > rice_kappa*(1 - sigmaA^2)^2 whenever D^2 < 1 -
+  rice_kappa.) Returns group_args(force_exact, rice): a flex.bool array
+  and the llgi_rice_moments object (whose dsqr/eeff can be compared with
+  nacelle's DOBS/FEFF). """
   rice = xray_ext.llgi_rice_moments(
     e_obs_sq=e_obs_sq, sig_e_obs_sq=sig_e_obs_sq, centric_flags=centric_flags)
   invalid = ~rice.valid
   # Reflections without an intensity error estimate always use Rice
   invalid.set_selected(~(sig_e_obs_sq > 0), False)
-  eeff = feff / resn
-  large_eeff = (eeff > eeff_threshold) & (sig_e_obs_sq > 0)
-  return group_args(
-    force_exact=invalid | large_eeff, invalid=invalid,
-    large_eeff=large_eeff, rice=rice)
+  return group_args(force_exact=invalid, rice=rice)
 
-def get_hybrid(llgi_data):
-  """ The cctbx.xray.llgi_hybrid object for this llgi_data, or None if the
-  hybrid is disabled or the intensities are not available. """
+RICE_DOBS_NONE = 0.01
+
+def rice_dobs_eeff(rice):
+  """ (Dobs, Eeff) from an llgi_rice_moments object, as phasertng.nacelle
+  writes them: the moment-matched values, or, with no Rice solution,
+  Dobs = RICE_DOBS_NONE (negligible weight in the Rice approximation; the
+  exact likelihood is needed) and Eeff = sqrt(<E^2>), the posterior rms,
+  so that Feff stays a sensible amplitude. """
+  dobs = flex.sqrt(rice.dsqr)
+  eeff = rice.eeff.deep_copy()
+  invalid = ~rice.valid
+  dobs.set_selected(invalid, RICE_DOBS_NONE)
+  eeff.set_selected(invalid,
+    flex.sqrt(flex.max(rice.mu2.select(invalid), 0)) if invalid.count(True)
+    else flex.double())
+  return dobs, eeff
+
+def get_exact_data(llgi_data):
+  """ The cctbx.xray.llgi_hybrid object for this llgi_data (E_obs^2,
+  sigma(E_obs^2) and the cached null-hypothesis terms), whether or not
+  the hybrid target is enabled, or None if the intensities are not
+  available. The LLGI map coefficients use it for the exact posterior <E>
+  of every measured reflection. """
   if(llgi_data is None): return None
-  params = getattr(llgi_data, "hybrid_params", None)
-  if(params is None or not params.enabled): return None
   e_obs_sq = getattr(llgi_data, "e_obs_sq", None)
   if(e_obs_sq is None): return None
   result = getattr(llgi_data, "_hybrid_object", None)
   if(result is None):
+    params = getattr(llgi_data, "hybrid_params", None)
+    if(params is None): params = llgi_hybrid_params.extract()
     result = xray_ext.llgi_hybrid(
       e_obs_sq=e_obs_sq.data(),
       sig_e_obs_sq=llgi_data.sig_e_obs_sq.data(),
@@ -107,13 +117,28 @@ def get_hybrid(llgi_data):
     llgi_data._hybrid_object = result
   return result
 
+def get_hybrid(llgi_data):
+  """ The cctbx.xray.llgi_hybrid object for this llgi_data, or None if the
+  hybrid is disabled or the intensities are not available. """
+  if(llgi_data is None): return None
+  params = getattr(llgi_data, "hybrid_params", None)
+  if(params is None or not params.enabled): return None
+  return get_exact_data(llgi_data)
+
+def _e_scale_ok(e_params):
+  # The E-scale quantities normalise Feff by RESN only; with
+  # renormalise_e_eff the Rice Eeff is rescaled and E_obs^2 would have to
+  # be too, so the exact likelihood is not used there.
+  return not (e_params is not None
+              and getattr(e_params, "renormalise_e_eff", False))
+
 def get_e_scale_hybrid(llgi_data, e_params):
-  """ get_hybrid() for the E-scale fits, which normalise Feff by RESN only;
-  with renormalise_e_eff the Rice Eeff is rescaled and E_obs^2 would have
-  to be too, so the hybrid is not used there. """
-  if(e_params is not None and getattr(e_params, "renormalise_e_eff", False)):
-    return None
-  return get_hybrid(llgi_data)
+  """ get_hybrid() for the E-scale fits (see _e_scale_ok). """
+  return get_hybrid(llgi_data) if _e_scale_ok(e_params) else None
+
+def get_e_scale_exact_data(llgi_data, e_params):
+  """ get_exact_data() for E-scale map coefficients (see _e_scale_ok). """
+  return get_exact_data(llgi_data) if _e_scale_ok(e_params) else None
 
 def map_llgi_data(llgi_data, op):
   """ Copy of llgi_data with op applied to every miller-array component

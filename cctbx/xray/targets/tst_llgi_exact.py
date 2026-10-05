@@ -262,6 +262,28 @@ def exercise_french_wilson_inverse():
     centric_flags=flex.bool([False, True]))
   assert inv.prior_dominated[0] and inv.prior_dominated[1]
 
+def exercise_rice_moments_large_sigma():
+  """ Near the edge of the Rice family (D -> 0, large Eeff: weak
+  information, typically large sigma) the solution is very sensitive to
+  <E^2>, and <E^4> = m <E^2> + k sig^2 is a difference of terms of order
+  sig^2. References from 60-digit integration. """
+  cases = [
+    # e_obs_sq, sig, centric, mu2, D, Eeff
+    (18.33,  9.73,   False, 1.2027432978797986, 0.01484041782, 30.35728178),
+    (41.31,  26.34,  False, 1.0598740303535263, 0.01403904474, 17.4580336),
+    (796.17, 563.10, False, 1.0025108963288873, 0.003631826334, 13.83333973),
+    (173.26, 138.73, True,  1.0180059498475505, 0.01683120269, 8.034940596),
+    (75.67,  57.19,  True,  1.0464130606123748, 0.01859118521, 11.63118874)]
+  r = ext.llgi_rice_moments(
+    e_obs_sq=flex.double([c[0] for c in cases]),
+    sig_e_obs_sq=flex.double([c[1] for c in cases]),
+    centric_flags=flex.bool([c[2] for c in cases]))
+  for i, c in enumerate(cases):
+    assert abs(r.mu2[i] / c[3] - 1) < 1e-12, (i, r.mu2[i], c[3])
+    assert r.valid[i], i
+    assert abs(math.sqrt(r.dsqr[i]) / c[4] - 1) < 0.01, (i, r.dsqr[i])
+    assert abs(r.eeff[i] / c[5] - 1) < 0.01, (i, r.eeff[i])
+
 def exercise_small_sigma_fixtures():
   """ Hybrid LLGI handoff, revision 2, sec. 13: small-sigma fixtures. The
   exact LLGI and gradient, D^2, and the hybrid rule: exact where
@@ -311,6 +333,7 @@ def run():
   exercise_hybrid_e_scale()
   exercise_hybrid_f_scale()
   exercise_french_wilson_inverse()
+  exercise_rice_moments_large_sigma()
   exercise_small_sigma_fixtures()
   print("OK")
 
