@@ -979,6 +979,8 @@ Inputs:
 
   def run(self):
     model = self.data_manager.get_model()
+    if not model.has_hd():
+      raise Sorry('Model must have Hydrogen atoms')
     model.set_log(null_out())
     model.process(make_restraints=True)
     if self.params.input.selection:
