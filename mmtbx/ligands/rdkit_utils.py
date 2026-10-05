@@ -960,30 +960,95 @@ def convert_model_to_rdkit(cctbx_model):
   rwmol = Chem.RWMol(mol)
   conformer = Chem.Conformer(cctbx_model.get_number_of_atoms())
 
-  for i,atom in enumerate(cctbx_model.get_atoms()):
+  for i, atom in enumerate(cctbx_model.get_atoms()):
     element = atom.element.strip().upper()
     if element =="D":
       element = "H"
     else:
       element = element
-    atomic_number = Chem.GetPeriodicTable().GetAtomicNumber(element)
+    atomic_number = Chem.GetPeriodicTable().GetAtomicNumber(element.capitalize())
     rdatom = Chem.Atom(atomic_number)
     rdatom.SetFormalCharge(atom.charge_as_int())
     rdatom_idx = rwmol.AddAtom(rdatom)
     conformer.SetAtomPosition(rdatom_idx,atom.xyz)
 
+  atoms=cctbx_model.get_atoms()
   rm = cctbx_model.restraints_manager
   grm = rm.geometry
   bonds_simple, bonds_asu = grm.get_all_bond_proxies()
   bond_proxies = bonds_simple.get_proxies_with_origin_id()
   for bond_proxy in bond_proxies:
     begin, end = bond_proxy.i_seqs
-    order = Chem.rdchem.BondType.UNSPECIFIED
+    if (atoms[begin].element.strip().upper() in ['H', 'D'] or
+        atoms[end].element.strip().upper() in ['H', 'D']):
+      order = Chem.rdchem.BondType.SINGLE
+    else:
+      order = Chem.rdchem.BondType.UNSPECIFIED
     rwmol.AddBond(int(begin),int(end),order)
 
   rwmol.AddConformer(conformer)
   mol = rwmol.GetMol()
   return mol
+
+def _generate_models_from_residues(cctbx_model):
+  for rg in cctbx_model.get_hierarchy().residue_groups():
+    assert len(rg.atom_groups())==1
+    chain=rg.parent().id
+    resseq=rg.resseq.strip()
+    s=f'chain {chain} and resseq {resseq}'
+    sel = cctbx_model.selection(s)
+    tm = cctbx_model.select(sel)
+    yield tm
+
+def _generate_models_from_fragments(cctbx_model):
+  assert 0
+  from mmtbx.conformation_dependent_library import generate_protein_fragments
+  pdb_hierarchy=cctbx_model.get_hierarchy()
+  geometry_restraints_manager=cctbx_model.get_restraints_manager().geometry
+  selections=[[]]
+  for j, threes in enumerate(generate_protein_fragments(pdb_hierarchy,
+                                                        geometry_restraints_manager,
+                                                        length=2,
+                                                        include_non_linked=True,
+                                                        include_non_standard_peptides=True,
+                                                        include_d_amino_acids=True,
+                                                        # verbose=1,
+                                                        )):
+    if threes.are_linked():
+      # selections[-1].append(threes[0].resseq.strip())
+      chain_resseq=(threes[1].parent().parent().id, threes[1].resseq.strip())
+      if chain_resseq not in selections[-1]: selections[-1].append(chain_resseq)
+    else:
+      chain_resseq=(threes[0].parent().parent().id, threes[0].resseq.strip())
+      if chain_resseq not in selections[-1]: selections[-1].append(chain_resseq)
+      selections.append([])
+      chain_resseq=(threes[1].parent().parent().id, threes[1].resseq.strip())
+      if chain_resseq not in selections[-1]: selections[-1].append(chain_resseq)
+    # yield threes.are_linked()
+  for st in selections:
+    if len(st)==1:
+      chain, resseq = st[0]
+      s=f'chain {chain} and resseq {resseq}'
+    else:
+      chain, resseq1 = st[0]
+      tmp, resseq2 = st[-1]
+      s=f'chain {chain} and resseq {resseq1}:{resseq2}'
+    sel = cctbx_model.selection(s)
+    tm = cctbx_model.select(sel)
+    yield tm
+
+def convert_model_to_rdkit_molecules(cctbx_model):
+  #
+  # would be better if it broke into fragments
+  #
+  mols=[]
+  mods=[]
+  # for tm in _generate_models_from_fragments(cctbx_model):
+  for tm in _generate_models_from_residues(cctbx_model):
+    mods.append(tm)
+    mol = convert_model_to_rdkit(tm)
+    mols.append(mol)
+  return mols, mods
 
 def convert_elbow_to_rdkit(elbow_mol):
   """
@@ -1118,17 +1183,7 @@ def print_coordinates(mol):
     new_xyz=positions[i]
     print(f"{atom.GetSymbol()} {position.x:.4f} {position.y:.4f} {position.z:.4f}")
 
-def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=False):
-  """
-  Convert a smiles string to rdkit mol
-  """
-  ps = Chem.SmilesParserParams()
-  ps.removeHs=removeHs
-  rdmol = Chem.MolFromSmiles(smiles, ps)
-  if verbose: print('rdmol',rdmol)
-  if rdmol is None:
-    raise Sorry(f'invalid SMILES {smiles}')
-    # return rdmol
+def populate_molecule(rdmol, embed3d=True, addHs=True, removeHs=False, verbose=False):
   if verbose: print('rdmol',rdmol.Debug())
   if addHs: rdmol = Chem.AddHs(rdmol)
   if verbose: print('rdmol',rdmol.Debug())
@@ -1149,6 +1204,23 @@ def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=Fa
     if verbose:
       print_coordinates(rdmol)
   return rdmol
+
+def mol_from_smiles(smiles, embed3d=True, addHs=True, removeHs=False, verbose=False):
+  """
+  Convert a smiles string to rdkit mol
+  """
+  ps = Chem.SmilesParserParams()
+  ps.removeHs=removeHs
+  rdmol = Chem.MolFromSmiles(smiles, ps)
+  if verbose: print('rdmol',rdmol)
+  if rdmol is None:
+    raise Sorry(f'invalid SMILES {smiles}')
+    # return rdmol
+  return populate_molecule(rdmol,
+                           embed3d=embed3d,
+                           addHs=addHs,
+                           removeHs=removeHs,
+                           verbose=verbose)
 
 def match_mol_indices(mol_list):
   """

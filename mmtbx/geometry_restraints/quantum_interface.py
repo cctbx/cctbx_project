@@ -112,16 +112,20 @@ qm_selection_specs = '''
     .type = choice
 '''
 
-def get_qm_package_scope(default_package=None, validate=True, verbose=False):
+def get_qm_package_scope(default_package=None, package_auto=False, validate=True, verbose=False):
   if default_package is None: default_package='mopac'
   programs = ''
-  for package, (func, var) in program_options.items():
-    if func(os.environ, var):
-      if package==default_package:
-        programs += ' *%s' % package
-      else:
-        programs += ' %s' % package
-  if verbose: print(programs)
+  if package_auto:
+    programs=' auto_set_from_action.optimise'
+  else:
+    for package, (func, var) in program_options.items():
+      if func(os.environ, var):
+        if package==default_package:
+          programs += ' *%s' % package
+        else:
+          programs += ' %s' % package
+  if verbose or 1:
+    print(programs)
   if validate:
     assert programs, 'Need to set some parameters for QM programs %s' % program_options
   return qm_package_scope % programs
