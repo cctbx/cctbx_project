@@ -69,11 +69,14 @@ Before `setup` or an ordinary guided task, run
 `python3 -I -B payload/tools/screen_check.py check-claude-version` from the
 verified central root. If it fails, stop before writing project adoption or
 starting guided work; do not update Claude Code on the user's behalf. The
-check requires CLI 2.1.281 or newer on this session's PATH. It does not
-establish the Desktop app's own instruction-loading behavior, which needs a
-separate live check. `help`, `status` and `history` are read-only;
-`uninstall` may remove only the verified personal link. All four remain
-available when the CLI check fails.
+check requires Claude Code 2.1.281 or newer: in a Terminal session the
+`claude` command on this session's PATH; in a Claude app session (marked by
+`CLAUDE_CODE_ENTRYPOINT=claude-desktop`, as observed on 2026-10-06) the
+app's own engine named by `CLAUDE_CODE_EXECPATH`, and when that version
+cannot be read it prints one `NOT CHECKED` line and continues. It does not
+establish the app's instruction-loading behavior. `help`, `status` and
+`history` are read-only; `uninstall` may remove only the verified personal
+link. All four remain available when the version check fails.
 
 For `setup`, read and follow `payload/SETUP.md` and its general defaults
 in `payload/SETUP_DEFAULTS.md`; use any user-supplied domain profile only

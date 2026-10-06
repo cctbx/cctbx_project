@@ -39,6 +39,14 @@ their recorded source; they do not approve this diff. The literal
 release-family check now expects `r10 rev17 candidate`; it does not
 establish an exact revision or approval.
 
+A later bounded change (2026-10-06, record
+`phenix/.claude/records/2026-10-06-gc-app-version-check/`) made the version
+check app-aware (`claude_version`, `check_claude_version`,
+`check_app_engine_version` and `APP_ENTRYPOINT` in `screen_check.py`),
+rewrote `ClaudeVersionChecks`, and revised the matching sentences in the
+skill entry, user guide, architecture table and this file. The label,
+contract, adoption rule and setup recipe are unchanged.
+
 The October 2–3 publication, client and installation facts below come from
 the supplied controller and outside-review records. The documentation pass
 checked the uploaded baseline against its complete manifest and read the
@@ -99,7 +107,7 @@ Other important mappings:
 | Claim | Implementation / test source | What it does not establish |
 | --- | --- | --- |
 | Complete-source consistency | `verify_source`, `regular_files`; `SourceInventoryChecks` | Origin, semantic correctness or authenticated cache contents |
-| CLI minimum 2.1.281 | `MIN_CLAUDE_VERSION`, `check_claude_version`; `ClaudeVersionChecks` | Desktop runtime, actual instruction loading or trustworthy PATH executable |
+| Claude Code minimum 2.1.281: the PATH `claude` in a Terminal session; the app engine named by `CLAUDE_CODE_EXECPATH` when `CLAUDE_CODE_ENTRYPOINT=claude-desktop`, NOT CHECKED when that version cannot be read | `MIN_CLAUDE_VERSION`, `APP_ENTRYPOINT`, `claude_version`, `check_claude_version`, `check_app_engine_version`; `ClaudeVersionChecks` | That the app marker stays stable, actual instruction loading, or trustworthy executables |
 | Screen form and result identity | `blocks`, `developer_view`, `code_identity`, `check`; `ScreenChecks` | Correct criterion, true logs, complete tests or Developer authorization |
 | Matching outside reading | `reading_matches`; conditional/waiver/pending controls | Independence or authenticity of the reviewer, satisfaction of a semantic condition |
 | Two-domain review transport | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks` | Privacy, evidence completeness or permission to publish |
@@ -109,16 +117,22 @@ Other important mappings:
 | Checked setup ordering | `SKILL.md`, `SETUP.md` §5 and its embedded recipe | Mechanical enforcement by Claude Code or reliable obedience by every Guide |
 | Test isolation in the repository | [`libtbx/tst_guided_coding.py`](../../tst_guided_coding.py) | Complete source verification of arbitrary unlisted files in the original installation |
 
-There are **108 test methods** in the four shipped package test files
-(53 for the checker, 13 for the review bundle, 27 for the pre-push
+There are **118 test methods** in the four shipped package test files
+(63 for the checker, 13 for the review bundle, 27 for the pre-push
 checks, 15 for the history listing). Subtests exercise additional cases;
-a count of 108 is not 108 independent behavioral claims. The checker,
-pre-push and history tests of this revision were written by two separate
+a count of 118 is not 118 independent behavioral claims. The checker,
+pre-push and history tests of the rev17 release were written by two separate
 test-writer sessions from the interface specification, without reading
 the implementation; the baseline control (`observations/baseline_control.txt`
 in the release's evidence packet: the final checker test file run against
 the previous published checker) shows which of them fail there; the
-pre-push and history tools have no earlier version to compare with. The setup
+pre-push and history tools have no earlier version to compare with. The
+version-check tests of the 2026-10-06 change (`ClaudeVersionChecks`, the
+app registration case and `VersionGateScopeChecks`) were written by a Worker
+subagent from the Developer's case list in the same session as the
+implementation, which it was allowed to read for exact strings; the control
+run of that test file against the previous checker is in that change's record
+(`evidence-work/base_control.txt`). The setup
 shell recipe and native LLM scenarios are not covered by unit methods;
 their controls are in the task and review records.
 
@@ -139,6 +153,7 @@ their controls are in the task and review records.
 | Desktop session rename, Guide's own session (2026-10-04) | In the Guide's own Desktop session (which had loaded the published rev16 skill, not this candidate), the client's rename tool replaced an app-generated title without a prompt: the tool's availability, not this candidate's behaviour. |
 | Desktop session titles, pinned snapshot (2026-10-04) | Two Desktop sessions in a scratch project whose project-level skill directory was a byte-identical, read-only copy of an earlier revision of this package (candidate 3 of this release). The skill entry `SKILL.md`, whose session-title instructions these observations exercised, is byte-identical between that revision and the published one; the tools, tests and some texts changed in later revisions, so the observations are of the title behaviour only, not of the package as a whole. Each transcript shows the skill expansion and a passing guard on that snapshot. (a) An app-generated title was replaced by `GuidedCoding: help` through the client's rename tool without a prompt. (b) A title the Developer had set by hand (`KEEP MY TITLE`) was left unchanged: the skill read the session's title, judged it user-set and did not call the rename tool, so the app's approval dialog was not exercised. (d) The Developer reported both titles unchanged after closing the windows. Four earlier Desktop sessions are preserved in the task record and not counted: two met a failed guard because the Guide was editing the worktree, one renamed itself on the previous candidate, one met a failed guard and left a hand-set title untouched. The app's "isn't a command here" notice for a project-level skill appeared each time; it is not evidence either way. Reach: one Desktop client, one snapshot, two sessions. |
 | PHENIX test discovery (A7, 2026-10-04) | `phenix.find_program search_type=tests search_text=<function> tests.search_tests_by=function_called` traced `run_autobuild` to its calling tests; the default mode matched test names; a function newer than the static index (dated 2026-05-06) produced no entry and no message; `git_affected_tests=True` saw only uncommitted modifications in the three module directories. Project guidance, not a package feature. |
+| App-session version check (2026-10-06, record `phenix/.claude/records/2026-10-06-gc-app-version-check/`) | In the Guide's own Claude app (Code tab) session, with the separately installed CLI removed from PATH for each command only: the candidate checker printed `VERIFIED Claude app's Claude Code engine 2.1.288 …` for the engine named by `CLAUDE_CODE_EXECPATH`; with that variable unset it printed one `NOT CHECKED` line and exited 0; with `CLAUDE_CODE_ENTRYPOINT` unset and no `claude` on PATH it failed as a Terminal session; with the marker unset and the CLI on PATH it verified the PATH `claude` (2.1.284). One real Terminal observation: the PATH CLI 2.1.284, run once non-interactively (`claude -p`, scrubbed environment, a one-off session-start hook passed with `--settings`), reported `CLAUDE_CODE_ENTRYPOINT=sdk-cli`, not `claude-desktop`, so it takes the Terminal path; an interactive terminal session was not observed. Reach: one Mac, one app session, one non-interactive CLI run; nothing uninstalled, no settings changed. |
 
 The full PHENIX server suite and a baseline/candidate roster were **NOT RUN /
 NOT PRODUCED for the GC-only pilot publication**, under the Developer's
@@ -166,8 +181,11 @@ a later change.
   by that loss. The complete original and “only alteration” claim remain
   unverified. This is a provenance limit, not proof of another behavioral
   failure.
-- **Client/platform scope:** a passing CLI version check is not a Desktop
-  version check. Earlier TUI observations had continuation/permission-mode
+- **Client/platform scope:** a passing Terminal version check says nothing
+  about the app engine, and the app branch rests on the
+  `CLAUDE_CODE_ENTRYPOINT=claude-desktop` marker and `CLAUDE_CODE_EXECPATH`
+  as observed on 2026-10-06, whose future stability is not established.
+  Earlier TUI observations had continuation/permission-mode
   qualifications. Native Windows, real csh and all-client setup/recovery
   behavior are not established by the final-candidate observations above.
   The repository wrapper explicitly limits the tools to macOS and Linux;

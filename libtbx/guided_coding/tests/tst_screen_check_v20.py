@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "payload" / "tools"))
@@ -31,6 +32,25 @@ def outgoing(omit=None, **fields):
     values.update(fields)
     values.setdefault("refspec", f"{values['commit']}:refs/heads/master")
     return "".join(f"{key}: {values[key]}\n" for key in OUTGOING_KEYS if key != omit)
+
+
+APP_ENTRYPOINT = "claude-desktop"
+
+
+def session_environment(path, **variables):
+    """A subprocess environment built from scratch, not inherited: `path` is
+    the whole PATH, the interpreter keeps the few variables it needs, and the
+    Claude session kind (CLAUDE_CODE_ENTRYPOINT, CLAUDE_CODE_EXECPATH) comes
+    only from `variables` (None omits one), never from the session this test
+    process itself runs in, which may be a Claude app session."""
+    environment = {"PATH": str(path), "HOME": os.environ["HOME"],
+                   "LANG": os.environ.get("LANG", "C.UTF-8")}
+    for name in ("LC_ALL", "LC_CTYPE", "TMPDIR", "TEMP", "TMP", "SYSTEMROOT"):
+        if name in os.environ:
+            environment[name] = os.environ[name]
+    environment.update((name, value) for name, value in variables.items()
+                       if value is not None)
+    return environment
 
 
 class SourceInventoryChecks(unittest.TestCase):
@@ -187,13 +207,26 @@ class SkillRegistrationChecks(unittest.TestCase):
         self.claude.write_text("#!/bin/sh\necho '2.1.284 (Claude Code)'\n")
         self.claude.chmod(0o755)
 
-    def register(self, config=None):
+    def register(self, config=None, entrypoint=None):
+        """Register from a Terminal session (the default), or from a Claude
+        app session when `entrypoint` is APP_ENTRYPOINT; CLAUDE_CODE_EXECPATH
+        is never set, and this test process's own session never leaks in."""
         return subprocess.run(
             [sys.executable, "-I", "-B", str(self.source / "payload/tools/screen_check.py"),
              "register-skill", str(self.source)],
-            env=dict(os.environ, PATH=str(self.bin),
-                     CLAUDE_CONFIG_DIR=str(config or self.config)),
+            env=session_environment(self.bin, CLAUDE_CONFIG_DIR=str(config or self.config),
+                                    CLAUDE_CODE_ENTRYPOINT=entrypoint),
             text=True, capture_output=True)
+
+    def test_app_session_without_engine_path_registers_as_not_checked(self):
+        self.claude.unlink()
+        result = self.register(entrypoint=APP_ENTRYPOINT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NOT CHECKED", result.stdout)
+        self.assertIn("REGISTERED", result.stdout)
+        link = self.config / "skills" / "guided_coding"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.resolve(), self.source.resolve())
 
     def test_fresh_registration_and_second_run_refused_without_source_change(self):
         first = self.register()
@@ -290,47 +323,161 @@ class SkillRegistrationChecks(unittest.TestCase):
 
 
 class ClaudeVersionChecks(unittest.TestCase):
+    """check-claude-version (minimum 2.1.281). The session kind is decided
+    only by CLAUDE_CODE_ENTRYPOINT: exactly "claude-desktop" is a Claude app
+    session, whose engine is the program named by CLAUDE_CODE_EXECPATH; any
+    other or missing value is a Terminal session, which reads the `claude`
+    command on PATH and ignores CLAUDE_CODE_EXECPATH."""
+
+    NEW = "2.1.284 (Claude Code)"
+    OLD = "2.1.268 (Claude Code)"
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.bin = Path(self.temporary.name)
-        self.executable = self.bin / "claude"
+        root = Path(self.temporary.name)
+        self.bin = root / "bin"                # the only directory on PATH
+        self.engine_dir = root / "app-engine"  # never on PATH
+        self.bin.mkdir()
+        self.engine_dir.mkdir()
+        self.command = self.bin / "claude"
+        self.engine = self.engine_dir / "claude"
 
-    def run_gate(self, version=None, exit_code=0):
-        if version is not None:
-            self.executable.write_text(
-                "#!/bin/sh\n" +
-                f"printf '%s\\n' '{version}'\n" +
-                f"exit {exit_code}\n")
-            self.executable.chmod(0o755)
-        environment = dict(os.environ, PATH=str(self.bin))
+    @staticmethod
+    def write_fake(path, version, exit_code):
+        path.write_text("#!/bin/sh\n" + f"printf '%s\\n' '{version}'\n" + f"exit {exit_code}\n")
+        path.chmod(0o755)
+
+    def run_gate(self, path_version=None, path_exit=0, entrypoint=None, engine=None):
+        """Run check-claude-version in a built-from-scratch environment.
+
+        path_version: what the fake `claude` on PATH prints (None: no such
+        command); path_exit: its exit code. entrypoint: CLAUDE_CODE_ENTRYPOINT
+        (None: unset). engine: CLAUDE_CODE_EXECPATH, None for unset, "missing"
+        for a path with no file, or (version, exit code) for a fake engine in
+        a directory that is not on PATH."""
+        if path_version is None:
+            self.command.unlink(missing_ok=True)
+        else:
+            self.write_fake(self.command, path_version, path_exit)
+        self.engine.unlink(missing_ok=True)
+        if isinstance(engine, tuple):
+            self.write_fake(self.engine, *engine)
         return subprocess.run(
-            [sys.executable, "-I", "-B", str(Path(checker.__file__)),
-             "check-claude-version"],
-            env=environment, text=True, capture_output=True)
+            [sys.executable, "-I", "-B", str(Path(checker.__file__)), "check-claude-version"],
+            env=session_environment(
+                self.bin, CLAUDE_CODE_ENTRYPOINT=entrypoint,
+                CLAUDE_CODE_EXECPATH=None if engine is None else str(self.engine)),
+            text=True, capture_output=True)
 
-    def test_minimum_and_current_mac_version(self):
-        for version, allowed in (("2.1.268 (Claude Code)", False),
-                                 ("2.1.280 (Claude Code)", False),
-                                 ("2.1.281 (Claude Code)", True),
-                                 ("2.1.284 (Claude Code)", True),
-                                 ("2.2.0 (Claude Code)", True)):
+    def assert_refused(self, result, *mentions):
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertTrue(result.stderr.startswith("ERROR: "), result.stderr)
+        self.assertNotIn("VERIFIED", result.stdout)
+        for text in mentions:
+            self.assertIn(text, result.stderr)
+
+    def assert_not_checked(self, result, *mentions):
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NOT CHECKED", result.stdout)
+        self.assertNotIn("VERIFIED", result.stdout)
+        for text in mentions:
+            self.assertIn(text, result.stdout)
+
+    # ---- Terminal session ---------------------------------------------------
+
+    def test_terminal_minimum_and_newer_versions_verified(self):
+        for version in ("2.1.281 (Claude Code)", "2.1.284 (Claude Code)", "2.2.0 (Claude Code)"):
             with self.subTest(version=version):
-                result = self.run_gate(version)
-                self.assertEqual(result.returncode, 0 if allowed else 2)
-                self.assertIn("VERIFIED Claude Code CLI" if allowed else
-                              "below 2.1.281", result.stdout if allowed else result.stderr)
+                result = self.run_gate(path_version=version)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("VERIFIED Claude Code CLI", result.stdout)
+                self.assertIn(version, result.stdout)
+                self.assertIn(str(self.command), result.stdout)
+                self.assertIn("the claude command on this shell's PATH", result.stdout)
 
-    def test_missing_unreadable_or_failing_executable_refused(self):
-        missing = self.run_gate()
-        self.assertEqual(missing.returncode, 2)
-        self.assertIn("not found on PATH", missing.stderr)
-        malformed = self.run_gate("Claude Code unknown")
-        self.assertEqual(malformed.returncode, 2)
-        self.assertIn("unrecognized", malformed.stderr)
-        failed = self.run_gate("2.1.284 (Claude Code)", exit_code=1)
-        self.assertEqual(failed.returncode, 2)
-        self.assertIn("exit 1", failed.stderr)
+    def test_terminal_versions_below_minimum_refused(self):
+        for version in ("2.1.268 (Claude Code)", "2.1.280 (Claude Code)"):
+            with self.subTest(version=version):
+                self.assert_refused(self.run_gate(path_version=version),
+                                    "below 2.1.281", "claude update")
+
+    def test_terminal_missing_malformed_or_failing_command_refused(self):
+        with self.subTest(command="not on PATH"):
+            self.assert_refused(self.run_gate(), "not found on PATH")
+        with self.subTest(command="unrecognized answer"):
+            self.assert_refused(self.run_gate(path_version="Claude Code unknown"), "unrecognized")
+        with self.subTest(command="exit 1 with a plausible version"):
+            self.assert_refused(self.run_gate(path_version=self.NEW, path_exit=1), "exit 1")
+
+    def test_terminal_session_ignores_the_app_engine_variable(self):
+        for entrypoint in (None, "cli", "vscode", "claude-desktop-3p"):
+            with self.subTest(entrypoint=entrypoint):
+                result = self.run_gate(entrypoint=entrypoint, engine=(self.NEW, 0))
+                self.assert_refused(result, "not found on PATH")
+
+    def test_this_sessions_claude_variables_do_not_reach_the_gate(self):
+        """Control for the environment every case here builds: even when this
+        test process runs inside a Claude app session, a Terminal case with
+        no `claude` on PATH is still refused rather than NOT CHECKED."""
+        with unittest.mock.patch.dict(os.environ, {
+                "CLAUDE_CODE_ENTRYPOINT": APP_ENTRYPOINT,
+                "CLAUDE_CODE_EXECPATH": str(self.engine)}):
+            environment = session_environment(self.bin)
+            self.assertNotIn("CLAUDE_CODE_ENTRYPOINT", environment)
+            self.assertNotIn("CLAUDE_CODE_EXECPATH", environment)
+            self.assert_refused(self.run_gate(), "not found on PATH")
+
+    # ---- Claude app session -------------------------------------------------
+
+    def test_app_engine_at_or_above_minimum_verified(self):
+        for version in ("2.1.281 (Claude Code)", "2.1.284 (Claude Code)", "2.2.0 (Claude Code)"):
+            with self.subTest(version=version):
+                result = self.run_gate(entrypoint=APP_ENTRYPOINT, engine=(version, 0))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("VERIFIED Claude app's Claude Code engine", result.stdout)
+                self.assertIn(version, result.stdout)
+                self.assertIn(str(self.engine), result.stdout)
+                self.assertNotIn("CLI", result.stdout.replace(str(self.engine), ""))
+
+    def test_app_engine_below_minimum_refused(self):
+        for version in ("2.1.268 (Claude Code)", "2.1.280 (Claude Code)"):
+            with self.subTest(version=version):
+                result = self.run_gate(entrypoint=APP_ENTRYPOINT, engine=(version, 0))
+                self.assert_refused(result, "below 2.1.281", "update the Claude app")
+                self.assertNotIn("claude update", result.stderr)
+
+    def test_app_without_engine_path_is_not_checked_whatever_is_on_path(self):
+        with self.subTest(path_command="absent"):
+            result = self.run_gate(entrypoint=APP_ENTRYPOINT)
+            self.assert_not_checked(result, "CLAUDE_CODE_EXECPATH")
+            self.assertTrue(result.stdout.startswith("NOT CHECKED"), result.stdout)
+            self.assertEqual(len(result.stdout.splitlines()), 1, result.stdout)
+            self.assertEqual(result.stderr, "")
+        with self.subTest(path_command="new"):
+            result = self.run_gate(path_version="2.2.0 (Claude Code)", entrypoint=APP_ENTRYPOINT)
+            self.assert_not_checked(result, "CLAUDE_CODE_EXECPATH")
+
+    def test_app_engine_that_gives_no_version_is_not_checked(self):
+        for label, engine, mention in (
+                ("missing file", "missing", "could not be run"),
+                ("exit 1 with a plausible version", ("2.1.290 (Claude Code)", 1), "exit 1"),
+                ("unrecognized answer", ("Claude Code unknown", 0), "unrecognized")):
+            with self.subTest(engine=label):
+                result = self.run_gate(path_version="2.2.0 (Claude Code)",
+                                       entrypoint=APP_ENTRYPOINT, engine=engine)
+                self.assert_not_checked(result, mention)
+
+    def test_app_engine_decides_over_the_path_command(self):
+        with self.subTest(engine="old", path_command="new"):
+            result = self.run_gate(path_version="2.2.0 (Claude Code)", entrypoint=APP_ENTRYPOINT,
+                                   engine=("2.1.270 (Claude Code)", 0))
+            self.assert_refused(result, "below 2.1.281", "update the Claude app")
+        with self.subTest(engine="new", path_command="old"):
+            result = self.run_gate(path_version=self.OLD, entrypoint=APP_ENTRYPOINT,
+                                   engine=("2.1.288 (Claude Code)", 0))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("VERIFIED Claude app's Claude Code engine", result.stdout)
 
 
 class ScreenChecks(unittest.TestCase):
@@ -1068,6 +1215,38 @@ class ScreenChecks(unittest.TestCase):
             record.write_text(outgoing())
             self.refreeze()
             self.ok("publication", self.publication(), self.reading, self.evidence)
+
+
+class VersionGateScopeChecks(unittest.TestCase):
+    """Only check-claude-version (and register-skill, covered above) run the
+    version gate: the source and screen commands succeed in a Terminal
+    environment that has no `claude` at all."""
+    put = ScreenChecks.put
+    plan = ScreenChecks.plan
+
+    def setUp(self):
+        SourceInventoryChecks.setUp(self)
+        self.root = Path(self.temporary.name)
+        self.empty_bin = self.root / "empty-bin"
+        self.empty_bin.mkdir()
+
+    def run_tool(self, *arguments):
+        return subprocess.run(
+            [sys.executable, "-I", "-B", str(self.source / "payload/tools/screen_check.py"),
+             *arguments],
+            cwd=self.source, env=session_environment(self.empty_bin),
+            text=True, capture_output=True)
+
+    def test_only_the_version_command_needs_claude_on_path(self):
+        gate = self.run_tool("check-claude-version")
+        self.assertEqual(gate.returncode, 2, gate.stdout)
+        self.assertIn("not found on PATH", gate.stderr)
+        source = self.run_tool("verify-source", str(self.source))
+        self.assertEqual(source.returncode, 0, source.stderr)
+        self.assertIn("VERIFIED complete source", source.stdout)
+        shown = self.run_tool("present", "plan", str(self.plan()))
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertIn("PLAN | comment-1 | light", shown.stdout)
 
 
 if __name__ == "__main__":

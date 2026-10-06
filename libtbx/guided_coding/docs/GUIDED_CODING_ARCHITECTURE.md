@@ -43,7 +43,7 @@ global instructions, project adoption or transferable permission.
 | Capability | Implementation | Boundary |
 | --- | --- | --- |
 | Check complete source | `screen_check.py verify-source SOURCE` | Checks inventory and bytes against the supplied manifest, with a narrow bytecode exception; not supplier authentication |
-| Check CLI minimum | `check-claude-version` | Parses the PATH executable's `--version`; not Desktop runtime or instruction loading |
+| Check Claude Code minimum | `check-claude-version` | Parses `--version` of the PATH `claude` in a Terminal session, or of the app engine named by `CLAUDE_CODE_EXECPATH` when `CLAUDE_CODE_ENTRYPOINT=claude-desktop` (the marker observed on 2026-10-06; NOT CHECKED, not a failure, when that version cannot be read); not instruction loading, and not the marker's future stability |
 | Register personal skill | `register-skill SOURCE` | Exclusive link creation after source/CLI checks; does not adopt or set up a project |
 | Help, status, setup, uninstall and task entry | Branches in `SKILL.md` | Instructions followed by the model; no executable dispatcher for these requests |
 | Preserve/verify/apply setup | Instructions and Bash example in `SETUP.md` §5 | Guide must construct correct records and obey ordering; no client-enforced transaction |

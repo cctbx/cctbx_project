@@ -34,6 +34,9 @@ SHA = r"[0-9a-f]{64}"
 NAME = r"[a-z0-9][a-z0-9-]{0,39}"
 DISPLAY_ID = re.compile(r"(?<![A-Za-z0-9])[0-9a-f]{8,64}(?:…[0-9a-f]{4,64})?(?![A-Za-z0-9])")
 MIN_CLAUDE_VERSION = (2, 1, 281)
+# The CLAUDE_CODE_ENTRYPOINT value observed in Claude app (Code tab) sessions on
+# 2026-10-06. Any other or missing value takes the Terminal path below.
+APP_ENTRYPOINT = "claude-desktop"
 
 
 def fail(reason):
@@ -168,27 +171,84 @@ def precompiled_bytecode(name, expected, path):
     return flags in (0, 3)
 
 
-def check_claude_version():
-    """Gate the CLI found on PATH; Desktop needs its own live check."""
-    executable = shutil.which("claude")
-    if executable is None:
-        fail("Claude Code CLI not found on PATH; cannot verify minimum version 2.1.281")
+def claude_version(executable):
+    """Return (version tuple, reported text) from `executable --version`, or
+    (None, problem) when no version can be established: ("run", error text),
+    ("timeout", seconds), ("exit", code) or ("format", output). A failed
+    command yields no version even when its output contains a plausible
+    number."""
     try:
         result = subprocess.run([executable, "--version"], capture_output=True,
                                 text=True, timeout=10)
+    except OSError as error:
+        return None, ("run", error.strerror or str(error))
     except subprocess.TimeoutExpired:
-        fail("Claude Code CLI version check timed out")
+        return None, ("timeout", 10)
     if result.returncode != 0:
-        fail(f"Claude Code CLI version check failed (exit {result.returncode})")
+        return None, ("exit", result.returncode)
     reported = result.stdout.strip()
     match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?: \(Claude Code\))?", reported)
     if match is None:
-        fail(f"unrecognized Claude Code CLI version: {reported[:100]!r}")
-    version = tuple(int(part) for part in match.groups())
+        return None, ("format", reported[:100])
+    return tuple(int(part) for part in match.groups()), reported
+
+
+def check_claude_version():
+    """Gate the Claude Code that runs this session (minimum 2.1.281).
+
+    Terminal session: the `claude` command on PATH, as before; any problem
+    reading its version is a failure. Claude app session, recognized by
+    CLAUDE_CODE_ENTRYPOINT=claude-desktop (the marker observed in app
+    sessions on 2026-10-06; any other or missing value takes the Terminal
+    path): the app's own Claude Code engine named by CLAUDE_CODE_EXECPATH.
+    A separately installed `claude` never decides for the app. When the app
+    engine's version cannot be established, print one NOT CHECKED line with
+    the reason and continue; a version that is read and is below the
+    minimum still fails.
+    """
+    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") == APP_ENTRYPOINT:
+        check_app_engine_version(os.environ.get("CLAUDE_CODE_EXECPATH"))
+        return
+    executable = shutil.which("claude")
+    if executable is None:
+        fail("Claude Code CLI not found on PATH; cannot verify minimum version 2.1.281")
+    version, detail = claude_version(executable)
+    if version is None:
+        kind, value = detail
+        fail({"run": f"could not run Claude Code CLI at {executable}: {value}",
+              "timeout": "Claude Code CLI version check timed out",
+              "exit": f"Claude Code CLI version check failed (exit {value})",
+              "format": f"unrecognized Claude Code CLI version: {value!r}"}[kind])
     if version < MIN_CLAUDE_VERSION:
-        fail(f"Claude Code CLI {reported} is below 2.1.281; run `claude update`, "
+        fail(f"Claude Code CLI {detail} is below 2.1.281; run `claude update`, "
              "restart Claude Code, and check again")
-    print(f"VERIFIED Claude Code CLI {reported} at {executable}; Desktop session not checked")
+    print(f"VERIFIED Claude Code CLI {detail} at {executable}, the claude command on "
+          "this shell's PATH; 2.1.281 or newer is required")
+
+
+def check_app_engine_version(executable):
+    """The Claude app branch of check_claude_version (see its docstring)."""
+    if not executable:
+        reason = ("the app did not say where its Claude Code engine is "
+                  "(CLAUDE_CODE_EXECPATH is not set)")
+    else:
+        version, detail = claude_version(executable)
+        if version is not None:
+            if version < MIN_CLAUDE_VERSION:
+                fail(f"Claude app's Claude Code engine {detail} is below 2.1.281; "
+                     "update the Claude app, restart it, and check again")
+            print(f"VERIFIED Claude app's Claude Code engine {detail} at {executable}; "
+                  "2.1.281 or newer is required")
+            return
+        kind, value = detail
+        engine = f"the app's Claude Code engine at {executable}"
+        reason = {"run": f"{engine} could not be run ({value})",
+                  "timeout": f"{engine} did not answer a version request within {value} seconds",
+                  "exit": f"the version command of {engine} failed (exit {value})",
+                  "format": f"{engine} gave an unrecognized version answer: {value!r}"}[kind]
+    print(f"NOT CHECKED Claude Code version: this is a Claude app session and {reason}. "
+          "Continuing without confirming 2.1.281 or newer; a separately installed "
+          "claude command does not decide for the app.")
 
 
 def register_skill(source):

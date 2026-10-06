@@ -91,7 +91,7 @@ GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py 
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py register-skill .
 ```
 
-`register-skill` rechecks the source and CLI itself, then creates exactly
+`register-skill` rechecks the source and the Claude Code version itself, then creates exactly
 one symlink. It refuses an occupied destination, including an existing
 correct link, a real directory or a dangling link. A second invocation is
 a refusal, not an upgrade. It also refuses a symlinked configuration or
@@ -104,11 +104,20 @@ before creating directories. Use a resolved, ordinary source path: the
 complete-source checker refuses symlinks in that path, including a `/var`
 alias when `/private/var` is the actual path on a Mac.
 
-The version check uses `claude --version` from this shell's PATH and requires
-**2.1.281 or newer**. It does not update the client, authenticate that
-executable, or check Desktop's bundled runtime. Inspect the reported path;
-if an update is needed, use your approved client-update method and retry.
-Help, status and uninstall remain available when the version gate fails.
+The version check requires Claude Code **2.1.281 or newer**. What it checks
+depends on the session. In a Terminal session it runs `claude --version`
+from this shell's PATH and fails when no `claude` is found. In a Claude app
+session, recognized by the environment variable
+`CLAUDE_CODE_ENTRYPOINT=claude-desktop` (the marker observed in app sessions
+on 2026-10-06; any other or missing value is treated as Terminal), it runs
+the app's own Claude Code engine, named by `CLAUDE_CODE_EXECPATH`; a
+separately installed `claude` command is not consulted. If the app engine's
+version cannot be read, the check prints one `NOT CHECKED` line giving the
+reason and continues; a version that is read and is below the minimum still
+fails. The check does not update the client or authenticate either
+executable. Inspect the reported path; if an update is needed, use your
+approved client-update method (in the Claude app, update the app) and retry.
+Help, status and uninstall remain available when the version check fails.
 
 Registration performs no project adoption, setup save, remote connection,
 shared-installation reservation or test run. A server containing GC source
