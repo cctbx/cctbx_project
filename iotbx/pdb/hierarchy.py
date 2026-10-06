@@ -17,7 +17,7 @@ from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
+from iotbx.pdb.utils import all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
@@ -1687,7 +1687,6 @@ class _():
     chem_comp_atom_ids = []
     struct_asym_ids = []
     #
-    chain_ids = all_chain_ids()
     for model in self.models():
       model_id = model.id
       is_first_in_chain = True
