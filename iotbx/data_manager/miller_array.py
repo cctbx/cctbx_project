@@ -602,14 +602,18 @@ fmodel {
     ma_user_selected_labels = self.get_miller_array_user_selected_labels(filename)
     matched_ma_user_selected_labels = [
       self._match_label(label, miller_arrays) for label in ma_user_selected_labels]
-    datatype_user_selected_labels = []
-    matched_datatype_user_selected_labels = []
+    # every datatype is checked for duplicates; the order of
+    # miller_array_child_datatypes is not fixed, so checking only the last
+    # one would miss duplicates in the others
+    label_pairs = [(matched_ma_user_selected_labels, ma_user_selected_labels)]
     if self.supports('map_coefficients') and self.has_map_coefficients():
       for datatype in self.miller_array_child_datatypes:
         datatype_user_selected_labels = self._get_user_selected_array_labels(datatype, filename)
         matched_datatype_user_selected_labels = [
           self._match_label(label, miller_arrays) for label in datatype_user_selected_labels]
         datatype_labels = self._get_array_labels(datatype, filename)
+        label_pairs.append(
+          (matched_datatype_user_selected_labels, datatype_user_selected_labels))
         # append to parent labels if missing
         for label in datatype_user_selected_labels:
           matched_label = self._match_label(label, miller_arrays)
@@ -625,8 +629,7 @@ fmodel {
             datatype_user_selected_labels.append(label)
 
     # check for duplicates
-    for label_pair in [(matched_ma_user_selected_labels, ma_user_selected_labels),
-                       (matched_datatype_user_selected_labels, datatype_user_selected_labels)]:
+    for label_pair in label_pairs:
       if len(set(label_pair[0])) < len(label_pair[0]):
         raise Sorry('''
 There are duplicate user_selected_labels. Please only specify unique labels.

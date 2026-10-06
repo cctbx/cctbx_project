@@ -1316,6 +1316,52 @@ data_manager {
   assert answer == test
 
 # -----------------------------------------------------------------------------
+def test_duplicate_user_selected_labels():
+  '''
+  Two user_selected_labels matching the same array are rejected whichever
+  datatype they are given under. Both the order in which the datatypes are
+  loaded and the order of the class-level child list follow set iteration
+  order (PYTHONHASHSEED), so every combination is checked explicitly.
+  '''
+  from iotbx.data_manager.miller_array import MillerArrayDataManager
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = PHIF
+  }
+  map_coefficients {
+    file = %s
+    user_selected_labels = WT
+  }
+}
+''' % (data_mtz, data_mtz))
+
+  datatypes = ['miller_array', 'map_coefficients']
+  children = MillerArrayDataManager.miller_array_child_datatypes
+  original_children = list(children)
+  try:
+    for child_order in (datatypes, datatypes[::-1]):
+      for load_order in (datatypes, datatypes[::-1]):
+        dm = DataManager(datatypes + ['phil'])
+        children[:] = child_order
+        phil_extract = dm.master_phil.fetch(phil).extract()
+        try:
+          for datatype in load_order:
+            getattr(dm, 'load_%s_phil_extract' % datatype)(phil_extract)
+        except Sorry as s:
+          assert 'duplicate user_selected_labels' in str(s), \
+            (child_order, load_order, str(s))
+        else:
+          raise AssertionError('Sorry expected: child_order=%s load_order=%s'
+                               % (child_order, load_order))
+  finally:
+    children[:] = original_children
+
+# -----------------------------------------------------------------------------
 def test_scattering_table_mixins():
   for datatype in ['model', 'miller_array']:
     dm = DataManager([datatype])
@@ -1415,6 +1461,7 @@ if __name__ == '__main__':
   test_model_skip_ss_annotations()
   test_fmodel_params()
   test_user_selected_labels()
+  test_duplicate_user_selected_labels()
   test_scattering_table_mixins()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
