@@ -215,24 +215,20 @@ class manager(object):
       crystal_symmetry     = crystal_symmetry,
       select_within_radius = select_within_radius)
     # Get unique chain IDs for new symmetry copies
-    all_chains = iotbx.pdb.utils.all_chain_ids()
     focus_chain_ids = pdb_hierarchy.chain_ids()
-    for cid in focus_chain_ids:
-      while cid in all_chains:
-        all_chains.remove(cid)
+    new_chain_ids = iotbx.pdb.utils.chain_id_generator(
+      used_ids=focus_chain_ids)
     focus_ss = " or ".join(["chain %s"%it for it in focus_chain_ids])
     # Create super_cell: apply symmetry to chains and add new copies to master
     # hierarchy
     self.super_cell_hierarchy = pdb_hierarchy.deep_copy()
-    cntr=0
     new_chains = []
     for op in all_ops:
       model_dc = self.super_cell_hierarchy.models()[0].detached_copy()
       new_ids = []
       for chain in model_dc.chains():
         chain_dc = chain.detached_copy()
-        new_id = all_chains[cntr]
-        cntr+=1
+        new_id = next(new_chain_ids)
         chain_dc.id = new_id
         new_ids.append(new_id)
         apply_symop_inplace_chain(

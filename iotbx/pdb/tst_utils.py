@@ -54,6 +54,15 @@ def exercise_all_chain_ids():
   ids = iotbx.pdb.utils.all_chain_ids()
   assert len(ids)==3906
   assert len(set(ids))==3906
+  # generator: same ids minus used ones, then 3-character ids without end
+  from itertools import islice
+  gen = iotbx.pdb.utils.chain_id_generator(used_ids=["A", "zz", "AAA"])
+  first = list(islice(gen, 3904))
+  assert first[:2] == ["B", "C"], first[:2]
+  assert first[-2:] == ["zx", "zy"], first[-2:]
+  assert "A" not in first and "zz" not in first
+  assert next(gen) == "AAB"
+  assert next(gen) == "AAC"
 
 def exercise_add_models_and_hierarchies():
   from iotbx.pdb.utils import get_pdb_info, add_models, add_hierarchies

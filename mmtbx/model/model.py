@@ -4841,9 +4841,8 @@ class manager(object):
     should be expanded have to be added here. e.g. TLS.
     LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
     """
-    from iotbx.pdb.utils import all_chain_ids
+    from iotbx.pdb.utils import chain_id_generator
     roots=[]
-    all_cids = all_chain_ids()
     duplicate_prevention = {}
     chain_ids_match_dict = {} # {'old chain id': [new ids]}
     for m in self.get_hierarchy().models():
@@ -4853,14 +4852,8 @@ class manager(object):
           continue
         duplicate_prevention[chain_id_key] = False
         chain_ids_match_dict[c.id] = []
-        cid = c.id
-        try:
-          ind = all_cids.index(cid)
-        except ValueError:
-          ind = -1
-        if ind >= 0:
-          del all_cids[ind]
-    cid_counter = 0
+    # 1- and 2-character ids first; longer ids (mmCIF only) when those run out
+    new_cids = chain_id_generator(used_ids=chain_ids_match_dict.keys())
     for r,t in zip(records_container.r, records_container.t):
       leave_chain_ids = False
       if r.is_r3_identity_matrix() and t.is_col_zero():
@@ -4879,8 +4872,7 @@ class manager(object):
               else:
                 new_cid = c.id
             else:
-              new_cid = all_cids[cid_counter]
-              cid_counter += 1
+              new_cid = next(new_cids)
               chain_ids_match_dict[c.id].append(new_cid)
               duplicate_prevention["%s%s" % (mm.id, c.id)] = True
             c.id = new_cid
