@@ -401,12 +401,13 @@ TER
 END
 """
 
-def get_geometry_stats(lines, use_ncs=True):
+def get_geometry_stats(lines, use_ncs=True, ss_exclusion=None):
   log_str=StringIO()
   pdb_inp = iotbx.pdb.input(source_info=None, lines=lines)
   m = mmtbx.model.manager(model_input = pdb_inp, log = log_str)
   p = m.get_default_pdb_interpretation_params()
   p.pdb_interpretation.use_ncs_to_build_restraints = use_ncs
+  p.pdb_interpretation.disulfide_bond_exclusions_selection_string = ss_exclusion
   m.process(make_restraints=True, pdb_interpretation_params=p)
   geom=StringIO()
   g = m.geometry_statistics()
@@ -436,10 +437,80 @@ def exercise_02():
 """)
   # print(log_ncs)
 
+def get_two_ncs_groups_model():
+  """Two NCS groups, each with a disulfide, chain order A, B, C, D where
+  A/B is one group and C/D another (a different sequence). The master of
+  the second group (C) is not the first chain in the file, so its atom
+  indices in the reduced (masters only) hierarchy differ from those in the
+  full hierarchy."""
+  from scitbx import matrix
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str2)
+  cs = pdb_inp.crystal_symmetry()
+  h = pdb_inp.construct_hierarchy()
+  model = h.only_model()
+  chain_a = None
+  for c in list(model.chains()):
+    if c.id == "K":
+      model.remove_chain(c)
+    elif c.id == "A":
+      chain_a = c
+  keep_ala = set(["N", "CA", "C", "O", "CB"])
+  for new_id, shift in [("C", 40.), ("D", 80.)]:
+    c = chain_a.detached_copy()
+    c.id = new_id
+    for rg in c.residue_groups():
+      if rg.resseq.strip() in ["298", "299", "302", "304"]:
+        for ag in rg.atom_groups():
+          ag.resname = "ALA"
+          for atom in ag.atoms():
+            if atom.name.strip() not in keep_ala:
+              ag.remove_atom(atom)
+    c.atoms().set_xyz(c.atoms().extract_xyz() + matrix.col((0, 0, shift)))
+    model.append_chain(c)
+  h.atoms().reset_serial()
+  return h.as_pdb_string(crystal_symmetry=cs)
+
+def exercise_03():
+  """Disulfides in NCS copies when the master chain of a group is not the
+  first chain in the file."""
+  lines = get_two_ncs_groups_model()
+  geom_ncs, log_ncs = get_geometry_stats(lines, True)
+  geom_no_ncs, log_no_ncs = get_geometry_stats(lines, False)
+  assert_lines_in_text(log_ncs, """ Restraints were copied for chains:
+    B, D
+""")
+  assert_lines_in_text(log_ncs, """\
+  Number of disulfides: simple=4, symmetry=0
+    Simple disulfide: pdb=" SG  CYS A 297 " - pdb=" SG  CYS A 306 " distance=2.03
+    Simple disulfide: pdb=" SG  CYS B 297 " - pdb=" SG  CYS B 306 " distance=2.03
+    Simple disulfide: pdb=" SG  CYS C 297 " - pdb=" SG  CYS C 306 " distance=2.03
+    Simple disulfide: pdb=" SG  CYS D 297 " - pdb=" SG  CYS D 306 " distance=2.03
+""")
+  assert not show_diff(geom_ncs, geom_no_ncs)
+
+def exercise_04():
+  """disulfide_bond_exclusions_selection_string under the NCS shortcut must
+  behave as without it: excluding a copy-chain SG is honored, and excluding
+  a master-chain SG does not also exclude its NCS copies."""
+  lines = get_two_ncs_groups_model()
+  for chain_id in ["C", "D"]:
+    sel = "chain %s and resid 306 and name SG" % chain_id
+    geom_ncs, log_ncs = get_geometry_stats(lines, True, ss_exclusion=sel)
+    geom_no_ncs, log_no_ncs = get_geometry_stats(lines, False, ss_exclusion=sel)
+    assert_lines_in_text(log_ncs, """\
+List of CYS excluded from plausible disulfide bonds:
+  (reason: may participate in coordination)
+""")
+    assert log_ncs.find("SG  CYS %s 306" % chain_id) >= 0, log_ncs
+    assert_lines_in_text(log_ncs, "Number of disulfides: simple=3, symmetry=0")
+    assert not show_diff(geom_ncs, geom_no_ncs)
+
 if(__name__ == "__main__"):
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
     print("Skipping exercise_01(): chem_data directory not available")
   else:
     exercise_01()
     exercise_02()
+    exercise_03()
+    exercise_04()
     print('OK')

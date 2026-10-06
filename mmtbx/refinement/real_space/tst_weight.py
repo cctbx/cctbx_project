@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import group_args
+from libtbx.test_utils import approx_equal
 from libtbx.utils import user_plus_sys_time
 from mmtbx.refinement.real_space import individual_sites
 from mmtbx.refinement.real_space import weight
@@ -1748,7 +1749,40 @@ def exercise():
     ro.refine(weight=w, xray_structure = pi.xrs)
     print(ro.rmsds())
 
+def exercise_single_chunk():
+  """
+  A model with only a few residues yields a single chunk and therefore a
+  single per-chunk weight estimate. That estimate must become the overall
+  weight rather than being discarded in favour of the default.
+  """
+  lines = []
+  residues = []
+  for l in pdb_str_1.splitlines():
+    if(l.startswith("ATOM")):
+      resid = l[21:27]
+      if(resid not in residues): residues.append(resid)
+      if(len(residues) > 5): break
+    lines.append(l)
+  pi = get_pdb_inputs(pdb_str="\n".join(lines)+"\nEND\n")
+  f_calc = pi.xrs.structure_factors(d_min = 2).f_calc()
+  fft_map = f_calc.fft_map(resolution_factor=0.25)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  default_weight = 50
+  w = weight.run(
+    map_data                    = map_data,
+    xray_structure              = pi.xrs,
+    pdb_hierarchy               = pi.ph,
+    geometry_restraints_manager = pi.grm,
+    default_weight              = default_weight)
+  chunk_weights = [float(m.split()[-1]) for m in w.msg_strings
+    if m.startswith("chunk ") and "optimal weight" in m]
+  assert len(chunk_weights) == 1, w.msg_strings
+  assert chunk_weights[0] != default_weight, chunk_weights
+  assert approx_equal(w.weight, chunk_weights[0]), (w.weight, chunk_weights)
+
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   exercise()
+  exercise_single_chunk()
   print("Time: %6.2f" % timer.elapsed())

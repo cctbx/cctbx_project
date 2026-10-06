@@ -192,9 +192,30 @@ class multi_criterion_plot_mixin(object):
     self.binner = binner
     self.y_limits = y_limits
     self.disabled = False
+    self._current_bin = None
+
+  def plot_empty(self):
+    """
+    Draw an empty plot (no residues of the selected type).
+    """
+    self.figure.clear()
+    self._current_bin = None
+    p = self.figure.add_subplot(1, 1, 1)
+    p.set_title("Multi-criterion validation")
+    p.set_xlabel("Residue", fontproperties=self.get_font("label"))
+    p.set_ylabel("Local real-space CC", fontproperties=self.get_font("label"))
+    p.set_xticks([])
+    p.set_yticks([])
+    p.text(0.5, 0.5, "No residues to plot", horizontalalignment="center",
+      verticalalignment="center", transform=p.transAxes,
+      fontproperties=self.get_font("label"))
+    self.canvas.draw()
 
   def plot_range(self, i_bin):
     if (self.disabled) : return
+    if len(self.binner.bins) == 0:
+      self.plot_empty()
+      return
     # TODO: fix y-ticks, x-ticks width residue ID, add legend
     self.figure.clear()
     bin = self.binner.get_bin(i_bin)

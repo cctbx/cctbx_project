@@ -1,0 +1,29 @@
+# Dockerfile for adding dependencies to base rockylinux:8 image
+
+FROM rockylinux/rockylinux:10
+
+RUN yum groupinstall -y 'Development Tools' \
+    && yum install -y \
+         alsa-lib \
+         firefox \
+         glibc-langpack-en \
+         libX11 \
+         libXau \
+         libXcomposite \
+         libXcursor \
+         libXdamage \
+         libXfixes \
+         libXext \
+         libXi \
+         libXrandr \
+         libXrender \
+         libXtst \
+         libXxf86vm \
+         mesa-libGL-devel \
+         mesa-libGLU-devel \
+         pciutils \
+         rsync \
+         sudo \
+         tcsh \
+         wget \
+    && yum clean all

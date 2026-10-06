@@ -304,7 +304,7 @@ class multi_criterion_plot(wxtbx.plots.plot_container,
 
   def OnHover(self, mpl_event):
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
-    if xdata is None or ydata is None :
+    if xdata is None or ydata is None or self._current_bin is None:
       if self._reset :
         self.parent.residue_status.SetValue("")
       self._reset = False
@@ -321,7 +321,7 @@ class multi_criterion_plot(wxtbx.plots.plot_container,
 
   def process_mouse_click(self, mpl_event):
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
-    if xdata is None or ydata is None :
+    if xdata is None or ydata is None or self._current_bin is None:
       return False
     idx = int(floor(xdata))
     selection_string = None

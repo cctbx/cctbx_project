@@ -85,9 +85,12 @@ def set_auto_height(widget, min_lines=1):
   # contentsChanged fires.
   _refresh()
 
-  # Expose the refresh callable so callers that toggle the widget's
-  # visibility (e.g. ToolCallDisclosure expanding a collapsed body)
-  # can force a recalc once Qt has assigned real geometry. Content set
-  # while the widget was hidden gets sized for viewport().width() == 0
-  # otherwise, and the inner view stays collapsed even after show.
+  # Expose the refresh callable so a caller that opens a folded body can
+  # re-measure it at once (DisclosureRow.set_expanded does it before
+  # returning). The resize hook above re-measures whenever the layout
+  # gives the widget a new width -- before the first one a QTextEdit wraps
+  # at Qt's 100 px default width (far too tall) and a QPlainTextEdit does
+  # not wrap at all (too short once its lines wrap) -- but a body that
+  # reopens at the width it had gets no resize event, so a font change
+  # made while it was folded is picked up only by this refresh.
   widget._auto_height_refresh = _refresh

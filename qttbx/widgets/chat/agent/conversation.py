@@ -57,6 +57,24 @@ def is_ephemeral_block(b):
   return bool(getattr(b, "data", None)) and bool(b.data.get(EPHEMERAL_BLOCK_KEY))
 
 
+def is_tool_result_answer(message):
+  """True for a user message whose persisted blocks are ALL tool_result -- the
+  answering message the session appends after an assistant tool_use turn (a
+  dispatched batch, or claude_code's observed results). It carries the user
+  role only because that is the Messages API shape for tool results; the user
+  did not write it. Ephemeral blocks (a transient context-pressure note riding
+  the round's tool-result message) are ignored, since they are never persisted
+  or exported. A text or mixed user message (the user's own input, the
+  turn-cap marker) and an empty message are not answers.
+  """
+  if getattr(message, "role", None) != "user":
+    return False
+  blocks = [b for b in (getattr(message, "content", None) or [])
+            if not is_ephemeral_block(b)]
+  return bool(blocks) and all(
+    getattr(b, "type", None) == "tool_result" for b in blocks)
+
+
 @dataclass
 class ContentBlock:
   """One element of a ``Message.content`` list.

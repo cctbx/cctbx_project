@@ -99,10 +99,12 @@ def exercise_streaming_append():
 
 
 def exercise_thinking_delta_after_text_starts_new_block():
-  """Streaming thinking AFTER text should append a new thinking block, not
-  retroactively extend an earlier thinking block. Mirrors the strict
-  last-block semantics of append_text_delta."""
-  from qttbx.widgets.chat.message_bubble import MessageBubble
+  """Streaming thinking AFTER text appends a new thinking block and a new
+  thinking cell below the text, never extending the earlier block or its
+  cell. The block side mirrors the strict last-block semantics of
+  append_text_delta."""
+  from qttbx.widgets.chat.message_bubble import MessageBubble, _ThinkingCell
+  from qttbx.widgets.chat.markdown_view import MarkdownView
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   init_default_app_font(app)
   m = Message(role="assistant", timestamp=now(), content=[
@@ -116,6 +118,13 @@ def exercise_thinking_delta_after_text_starts_new_block():
   # A new thinking block must have been appended.
   assert m.content[-1].type == "thinking"
   assert m.content[-1].data["text"] == "T2"
+  # And a new CELL below the text, not text appended into the first cell:
+  # the streamed path extends a cell only while it is the last cell and
+  # the last block is thinking.
+  cells = b.thinking_cells()
+  assert [c.view.toPlainText() for c in cells] == ["T1", "T2"], cells
+  assert [type(w) for w in b.cells()] == \
+    [_ThinkingCell, MarkdownView, _ThinkingCell], list(b.cells())
 
 
 def exercise_image_cell_renders_real_image():
@@ -381,11 +390,6 @@ def exercise_orphan_tool_result_renders_collapsed_disclosure():
 # bubble tests keeps the assertions on the same surface together.
 
 
-def _qapp():
-  from qttbx.qt import QtWidgets
-  return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 def exercise_disclosure_starts_collapsed_with_running_status():
   _qapp()
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
@@ -483,6 +487,32 @@ def exercise_disclosure_no_hardcoded_color_on_args_view():
   assert "color:" not in ss.replace(" ", "").lower(), ss
 
 
+def exercise_disclosure_body_text_follows_the_theme():
+  """A result set while the row is collapsed is shown into the hidden
+  body. Under a 'background: transparent' stylesheet the polished view
+  kept its resolved palette, so a light/dark switch left the text at the
+  old theme's colour; palette-based transparency keeps it following the
+  app palette."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
+  app = _qapp()
+  init_default_app_font(app)
+  saved = QtWidgets.QApplication.palette()
+  try:
+    w = ToolCallDisclosure(name="Bash", status="finished")
+    w.set_result("ok")                   # shown into the collapsed body
+    role = QtGui.QPalette.Text
+    new_text = QtGui.QColor(123, 45, 67)
+    assert w.result_view.palette().color(role) != new_text
+    _switch_app_text_colour(app, new_text)
+    assert w.result_view.palette().color(role) == new_text, \
+      w.result_view.palette().color(role).name()
+    assert w.result_view.palette().color(QtGui.QPalette.Base).alpha() == 0
+  finally:
+    QtWidgets.QApplication.setPalette(saved)
+    app.processEvents()
+
+
 def exercise_disclosure_is_running_reflects_status():
   """``is_running`` is the predicate the cancel sweep uses to find tool cells
   that never reached a terminal state -- True for the initial 'running' status,
@@ -554,8 +584,9 @@ def exercise_untrusted_text_labels_use_plain_text_format():
   model/tool-controlled, so an embedded ``<img src="file://...">`` must
   be shown literally rather than rendered as rich text (which would load
   the local file at paint time). The caption renders in a PlainText
-  QLabel; thinking and tool-result text render in QPlainTextEdits, which
-  have no rich-text path at all."""
+  QLabel; tool-result text renders in a QPlainTextEdit, which has no
+  rich-text path at all; thinking text renders in the reply cell's
+  MarkdownView, whose MarkdownNoHTML dialect keeps raw HTML literal."""
   from qttbx.qt import QtCore
   from qttbx.widgets.chat.message_bubble import MessageBubble
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
@@ -578,36 +609,36 @@ def exercise_untrusted_text_labels_use_plain_text_format():
   for lbl in hits:
     assert lbl.textFormat() == QtCore.Qt.PlainText, lbl.text()
   # Thinking text is carried by the thinking cell's read-only
-  # QPlainTextEdit -- plain text only, no rich-text path.
-  assert b._thinking_cell is not None
-  assert evil in b._thinking_cell.view.toPlainText()
-  assert b._thinking_cell.view.isReadOnly()
-  # Tool-result text is likewise a QPlainTextEdit.
+  # MarkdownView -- MarkdownNoHTML keeps the raw HTML literal.
+  cell = b.thinking_cells()[0]
+  assert evil in cell.view.toPlainText()
+  # Tool-result text is a QPlainTextEdit: no rich-text path at all.
   discs = b.findChildren(ToolCallDisclosure)
   assert len(discs) == 1, discs
   assert evil in discs[0].result_view.toPlainText()
 
 
 def exercise_thinking_cell_append_streams_and_survives_highlights():
-  """append() extends the plain text in place, and appending while extra
-  selections (search highlights) are applied neither corrupts the text
-  nor raises -- selections are a paint overlay, not document content."""
-  from qttbx.qt import QtGui
+  """The body is the same MarkdownView a reply cell uses -- same font, no
+  italics, markdown rendered, no role prefix -- so a summary reads like
+  a reply under its own header. append() extends the markdown in place,
+  and appending while extra selections (search highlights) are applied
+  neither corrupts the text nor raises."""
+  from qttbx.qt import QtCore, QtGui
   from qttbx.widgets.chat.message_bubble import _ThinkingCell
+  from qttbx.widgets.chat.markdown_view import MarkdownView
   app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
   init_default_app_font(app)
-  cell = _ThinkingCell("alpha")
-  assert cell.view.toPlainText() == "[thinking] alpha"
+  cell = _ThinkingCell("alpha **bold**")
+  assert isinstance(cell.view, MarkdownView), type(cell.view)
+  assert cell.view.toPlainText() == "alpha bold"
+  assert not cell.view.font().italic()
   cell.append(" beta")
-  assert cell.view.toPlainText() == "[thinking] alpha beta"
-  # Visual-parity pins: frameless, no doc margin, italic font,
-  # transparent background, auto-height applied (no inner scrollbars,
-  # refresh hook installed), and mouse-selectable text.
-  from qttbx.qt import QtCore
+  assert cell.view.toPlainText() == "alpha bold beta"
+  # Parity pins shared with the reply cell: read-only, frameless,
+  # auto-height (no inner scrollbars), mouse-selectable text.
+  assert cell.view.isReadOnly()
   assert cell.view.frameShape() == QtWidgets.QFrame.NoFrame
-  assert cell.view.document().documentMargin() == 0
-  assert cell.view.font().italic()
-  assert "background: transparent" in cell.view.styleSheet()
   assert cell.view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
   assert hasattr(cell.view, "_auto_height_refresh")
   assert cell.view.textInteractionFlags() & QtCore.Qt.TextSelectableByMouse
@@ -620,7 +651,7 @@ def exercise_thinking_cell_append_streams_and_survives_highlights():
   sel.format.setBackground(QtGui.QColor("#FFF176"))
   cell.view.setExtraSelections([sel])
   cell.append(" gamma")
-  assert cell.view.toPlainText() == "[thinking] alpha beta gamma"
+  assert cell.view.toPlainText() == "alpha bold beta gamma"
 
 
 def exercise_short_json_shared_from_tool_approval_not_redefined():
@@ -641,6 +672,301 @@ def exercise_short_json_shared_from_tool_approval_not_redefined():
   assert "..." in text                  # long input truncated by _short_json
 
 
+def exercise_thinking_cell_starts_expanded_and_header_toggles():
+  """A thinking cell is a disclosure row like a tool call: a clickable
+  '▾ Thinking' header over the body. Unlike a tool row it starts OPEN --
+  the narration is the only account of an autonomous run -- and a click
+  folds it, a second click opens it again."""
+  from qttbx.widgets.chat.message_bubble import _ThinkingCell
+  _qapp()
+  cell = _ThinkingCell("alpha")
+  assert cell.is_expanded()
+  assert cell.view.isVisibleTo(cell)
+  assert cell.header_button.text().startswith("▾"), cell.header_button.text()
+  assert "Thinking" in cell.header_button.text()
+  cell.header_button.click()
+  assert not cell.is_expanded()
+  assert not cell.view.isVisibleTo(cell)
+  assert cell.header_button.text().startswith("▸"), cell.header_button.text()
+  cell.header_button.click()
+  assert cell.is_expanded()
+  assert cell.view.isVisibleTo(cell)
+
+
+def exercise_thinking_cell_set_expanded_and_ensure_revealed():
+  """set_expanded drives the fold programmatically (the expand-all /
+  collapse-all toggle) and moves the header arrow with it; ensure_revealed
+  is the search-navigation hook and only ever opens."""
+  from qttbx.widgets.chat.message_bubble import _ThinkingCell
+  _qapp()
+  cell = _ThinkingCell("alpha", expanded=False)
+  assert not cell.is_expanded() and not cell.view.isVisibleTo(cell)
+  assert cell.header_button.text().startswith("▸"), cell.header_button.text()
+  cell.set_expanded(True)
+  assert cell.is_expanded() and cell.view.isVisibleTo(cell)
+  assert cell.header_button.text().startswith("▾"), cell.header_button.text()
+  cell.set_expanded(False)
+  assert not cell.is_expanded() and not cell.view.isVisibleTo(cell)
+  assert cell.header_button.text().startswith("▸"), cell.header_button.text()
+  cell.ensure_revealed()
+  assert cell.is_expanded()
+  cell.ensure_revealed()                     # idempotent: never folds
+  assert cell.is_expanded()
+  # The searchable text is unaffected by the fold.
+  assert cell.searchable_cells() == [("thinking", cell.view)]
+
+
+def exercise_bubble_set_thinking_expanded_applies_to_every_cell():
+  """A bubble can hold several thinking cells; the bubble-level setter
+  folds or unfolds all of them, whatever their individual state."""
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  _qapp()
+  m = Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "first"}),
+    ContentBlock(type="text", data={"text": "middle"}),
+    ContentBlock(type="thinking", data={"text": "second"})])
+  b = MessageBubble(m, thinking_expanded=False)
+  cells = b.thinking_cells()
+  assert len(cells) == 2, cells
+  assert not any(c.is_expanded() for c in cells)
+  cells[0].header_button.click()             # one opened by hand
+  b.set_thinking_expanded(True)
+  assert all(c.is_expanded() for c in cells)
+  cells[1].header_button.click()             # one closed by hand
+  b.set_thinking_expanded(False)
+  assert not any(c.is_expanded() for c in cells)
+
+
+def exercise_bubble_thinking_expanded_default_governs_new_cells():
+  """The bubble's thinking_expanded flag is the default for cells it
+  creates later (a streamed delta or an appended block), so a view whose
+  toggle is OFF shows new thinking folded; the default is expanded."""
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  _qapp()
+  b = MessageBubble(role="assistant")
+  b.append_thinking_delta("open by default")
+  assert b.thinking_cells()[0].is_expanded()
+  b2 = MessageBubble(role="assistant", thinking_expanded=False)
+  b2.append_thinking_delta("folded")
+  assert not b2.thinking_cells()[0].is_expanded()
+  b2.set_thinking_expanded(True)
+  b2.append_block(ContentBlock(type="thinking", data={"text": "later"}))
+  assert [c.is_expanded() for c in b2.thinking_cells()] == [True, True]
+  # Construction-time content honours the flag too.
+  m = Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "stored"})])
+  b3 = MessageBubble(m, thinking_expanded=False)    # keep alive
+  assert not b3.thinking_cells()[0].is_expanded()
+
+
+def _switch_app_text_colour(app, new_text):
+  """Simulate the OS light/dark switch: the app's Text colour changes."""
+  from qttbx.qt import QtGui
+  pal = QtWidgets.QApplication.palette()
+  pal.setColor(QtGui.QPalette.Text, new_text)
+  QtWidgets.QApplication.setPalette(pal)
+  app.processEvents()
+
+
+def exercise_thinking_cell_text_follows_the_theme():
+  """The thinking body reads at the same contrast as a reply: no
+  stylesheet, so it re-takes the theme's Text colour on a light/dark
+  switch. The view is shown (polished) while its cell is folded; a view
+  that was never polished would pass even with a stylesheet on it."""
+  from qttbx.qt import QtGui
+  from qttbx.widgets.chat.message_bubble import _ThinkingCell
+  app = _qapp()
+  init_default_app_font(app)
+  saved = QtWidgets.QApplication.palette()
+  try:
+    cell = _ThinkingCell("narration", expanded=False)
+    cell.view.show()                     # polished while folded
+    role = QtGui.QPalette.Text
+    new_text = QtGui.QColor(123, 45, 67)
+    assert cell.view.palette().color(role) != new_text
+    _switch_app_text_colour(app, new_text)
+    assert cell.view.palette().color(role) == new_text, \
+      cell.view.palette().color(role).name()
+  finally:
+    QtWidgets.QApplication.setPalette(saved)
+    app.processEvents()
+
+
+def exercise_streamed_thinking_after_a_tool_call_starts_a_new_cell():
+  """A second summary streamed after a tool call is a new thinking cell
+  below the tool row, not text appended into the first cell above it --
+  the on-screen order must match the turn's order, and message.content
+  gets a second thinking block the same way."""
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  _qapp()
+  b = MessageBubble(role="assistant")
+  b.append_thinking_delta("first")
+  b.append_block(ContentBlock(type="tool_use", data={
+    "id": "t1", "name": "Bash", "input": {"command": "ls"}}))
+  b.append_thinking_delta("second")
+  cells = b.thinking_cells()
+  assert [c.view.toPlainText() for c in cells] == ["first", "second"], \
+    [c.view.toPlainText() for c in cells]
+  assert [blk.type for blk in b.message.content] == \
+    ["thinking", "tool_use", "thinking"], b.message.content
+  # A delta straight after the second cell still extends it.
+  b.append_thinking_delta(" more")
+  assert cells[1].view.toPlainText() == "second more"
+  assert len(b.thinking_cells()) == 2
+
+
+def exercise_streamed_thinking_after_a_folded_block_starts_a_new_cell():
+  """A server_tool_result folds into its server_tool_use row: a block with
+  no widget of its own. A summary streamed after it starts a new cell,
+  because the mirror starts a new thinking block -- the live bubble must
+  draw the cells a reload of the same content draws."""
+  import copy
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  _qapp()
+  b = MessageBubble(role="assistant")
+  b.append_thinking_delta("a")
+  b.append_block(ContentBlock(type="server_tool_use", data={
+    "id": "s1", "name": "web_search", "input": {}}))
+  b.append_thinking_delta("b")
+  b.append_block(ContentBlock(type="server_tool_result", data={
+    "tool_use_id": "s1", "content": {}}))    # folds into the row above
+  b.append_thinking_delta("c")
+  live = [c.view.toPlainText() for c in b.thinking_cells()]
+  assert live == ["a", "b", "c"], live
+  reloaded = MessageBubble(Message(role="assistant", timestamp=now(),
+                                   content=copy.deepcopy(b.message.content)))
+  assert [c.view.toPlainText() for c in reloaded.thinking_cells()] == live
+
+
+def exercise_signature_only_thinking_shows_no_row_live_or_reloaded():
+  """A signature-only thinking delta (an API backend whose thinking display
+  is omitted) shows no empty '▾ Thinking' row, live or on reload: both
+  paths skip the empty block and still split the text around it, so the
+  live bubble and a reload of the same content draw the same cells."""
+  import copy
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  from qttbx.widgets.chat.markdown_view import MarkdownView
+  _qapp()
+  b = MessageBubble(role="assistant")
+  b.append_text_delta("before")
+  b.append_thinking_delta("")
+  b.append_text_delta("after")
+  assert b.thinking_cells() == []
+  assert [type(w) for w in b.cells()] == [MarkdownView, MarkdownView]
+  assert [blk.type for blk in b.message.content] == \
+    ["text", "thinking", "text"], b.message.content
+  reloaded = MessageBubble(Message(role="assistant", timestamp=now(),
+                                   content=copy.deepcopy(b.message.content)))
+  assert reloaded.thinking_cells() == []
+  assert [type(w) for w in reloaded.cells()] == [MarkdownView, MarkdownView]
+  assert [w.toPlainText() for w in reloaded.cells()] == \
+    [w.toPlainText() for w in b.cells()]
+
+
+def exercise_whitespace_only_thinking_shows_no_row_live_or_reloaded():
+  """A whitespace-only thinking delta or stored block ('\\n\\n' between
+  paragraphs, a stray space, a leading tab or indent) counts as empty on
+  both paths: no blank '▾ Thinking' row live or on reload, and the text
+  around it still splits into two views. Text that then extends the
+  block renders live as the stored block renders on reload -- a tab or
+  four spaces ahead of it would otherwise make an indented code block
+  on reload only."""
+  import copy
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  from qttbx.widgets.chat.markdown_view import MarkdownView
+  _qapp()
+  for blank in ("\n\n", "  ", "\t", "    "):
+    b = MessageBubble(role="assistant")
+    b.append_text_delta("before")
+    b.append_thinking_delta(blank)
+    b.append_text_delta("after")
+    assert b.thinking_cells() == [], repr(blank)
+    assert [type(w) for w in b.cells()] == [MarkdownView, MarkdownView]
+    # Reload side, independent of the live path's mirroring.
+    reloaded = MessageBubble(Message(role="assistant", timestamp=now(),
+      content=[ContentBlock(type="text", data={"text": "before"}),
+               ContentBlock(type="thinking", data={"text": blank}),
+               ContentBlock(type="text", data={"text": "after"})]))
+    assert reloaded.thinking_cells() == [], repr(blank)
+    assert [w.toPlainText() for w in reloaded.cells()] == \
+      [w.toPlainText() for w in b.cells()]
+    # A whitespace-only first delta opens no row; the text after it does.
+    b2 = MessageBubble(role="assistant")
+    b2.append_thinking_delta(blank)
+    assert b2.thinking_cells() == []
+    b2.append_thinking_delta("c")
+    # A tab or four-space lead renders "c" as a code block (plain text
+    # "c\n"); the strip keeps this about the row count and the text.
+    assert [c.view.toPlainText().strip() for c in b2.thinking_cells()] \
+      == ["c"], repr(blank)
+    again = MessageBubble(Message(role="assistant", timestamp=now(),
+                                  content=copy.deepcopy(b2.message.content)))
+    assert [c.view.toHtml() for c in again.thinking_cells()] == \
+      [c.view.toHtml() for c in b2.thinking_cells()], repr(blank)
+
+
+def exercise_signature_only_thinking_after_a_folded_block_keeps_cells_apart():
+  """A signature-only delta leaves a thinking block with no cell. After a
+  thinking cell and a server_tool_result folded into its row above, that
+  block is the last one while the bottom cell is still the earlier
+  thinking cell: the next summary must start its own cell, as a reload of
+  the same content draws it, not extend the cell above."""
+  import copy
+  from qttbx.widgets.chat.message_bubble import MessageBubble
+  _qapp()
+  b = MessageBubble(role="assistant")
+  b.append_thinking_delta("a")
+  b.append_block(ContentBlock(type="server_tool_use", data={
+    "id": "s1", "name": "web_search", "input": {}}))
+  b.append_thinking_delta("b")
+  b.append_block(ContentBlock(type="server_tool_result", data={
+    "tool_use_id": "s1", "content": {}}))    # folds into the row above
+  b.append_thinking_delta("")                # signature-only: no cell
+  b.append_thinking_delta("c")
+  live = [c.view.toPlainText() for c in b.thinking_cells()]
+  assert live == ["a", "b", "c"], live
+  reloaded = MessageBubble(Message(role="assistant", timestamp=now(),
+                                   content=copy.deepcopy(b.message.content)))
+  assert [c.view.toPlainText() for c in reloaded.thinking_cells()] == live
+  # The whitespace variant of the same shape: a tab-only delta is as
+  # cell-less as an empty one, and the cell it seeds renders as the
+  # reload does.
+  b = MessageBubble(role="assistant")
+  b.append_thinking_delta("a")
+  b.append_block(ContentBlock(type="server_tool_use", data={
+    "id": "s1", "name": "web_search", "input": {}}))
+  b.append_thinking_delta("b")
+  b.append_block(ContentBlock(type="server_tool_result", data={
+    "tool_use_id": "s1", "content": {}}))
+  b.append_thinking_delta("\t")
+  b.append_thinking_delta("c")
+  assert len(b.thinking_cells()) == 3, b.thinking_cells()
+  again = MessageBubble(Message(role="assistant", timestamp=now(),
+                                content=copy.deepcopy(b.message.content)))
+  assert [c.view.toHtml() for c in b.thinking_cells()] == \
+    [c.view.toHtml() for c in again.thinking_cells()]
+
+
+def exercise_streamed_text_after_thinking_starts_a_new_text_view():
+  """Reply text streamed after a thinking cell renders BELOW the cell in a
+  fresh view, not merged into the text view above it (the stored-block
+  path already does this; the streamed path must match)."""
+  from qttbx.widgets.chat.message_bubble import MessageBubble, _ThinkingCell
+  from qttbx.widgets.chat.markdown_view import MarkdownView
+  _qapp()
+  b = MessageBubble(role="assistant")
+  b.append_text_delta("before")
+  b.append_thinking_delta("thought")
+  b.append_text_delta("after")
+  widgets = list(b.cells())
+  assert [type(w) for w in widgets] == \
+    [MarkdownView, _ThinkingCell, MarkdownView], widgets
+  assert "after" not in widgets[0].toPlainText()
+  assert widgets[2].toPlainText() == "after"
+  assert [blk.type for blk in b.message.content] == \
+    ["text", "thinking", "text"], b.message.content
+
+
 def exercise():
   exercise_renders_user_text()
   exercise_renders_tool_use_cell()
@@ -648,6 +974,17 @@ def exercise():
   exercise_image_block_renders_as_placeholder()
   exercise_untrusted_text_labels_use_plain_text_format()
   exercise_thinking_cell_append_streams_and_survives_highlights()
+  exercise_thinking_cell_starts_expanded_and_header_toggles()
+  exercise_thinking_cell_set_expanded_and_ensure_revealed()
+  exercise_bubble_set_thinking_expanded_applies_to_every_cell()
+  exercise_bubble_thinking_expanded_default_governs_new_cells()
+  exercise_thinking_cell_text_follows_the_theme()
+  exercise_streamed_thinking_after_a_tool_call_starts_a_new_cell()
+  exercise_streamed_thinking_after_a_folded_block_starts_a_new_cell()
+  exercise_signature_only_thinking_shows_no_row_live_or_reloaded()
+  exercise_whitespace_only_thinking_shows_no_row_live_or_reloaded()
+  exercise_signature_only_thinking_after_a_folded_block_keeps_cells_apart()
+  exercise_streamed_text_after_thinking_starts_a_new_text_view()
   exercise_streaming_append()
   exercise_thinking_delta_after_text_starts_new_block()
   exercise_image_cell_renders_real_image()
@@ -668,6 +1005,7 @@ def exercise():
   exercise_disclosure_set_args_and_result_populates_body()
   exercise_disclosure_expanded_result_view_fits_all_content()
   exercise_disclosure_no_hardcoded_color_on_args_view()
+  exercise_disclosure_body_text_follows_the_theme()
   exercise_disclosure_is_running_reflects_status()
   exercise_disclosure_cancelled_state_distinct_from_finished_and_failed()
   exercise_tool_cell_cancelled_marks_terminal_state()

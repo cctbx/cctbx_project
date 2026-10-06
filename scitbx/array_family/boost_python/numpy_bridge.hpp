@@ -34,4 +34,6 @@ namespace scitbx { namespace af { namespace boost_python {
   // SCITBX_LOC(uint64, uint64_t)
 #undef SCITBX_LOC
 
+  void register_numpy_scalar_converters();
+
 }}} // namespace scitbx::af::boost_python

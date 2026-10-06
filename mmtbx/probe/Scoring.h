@@ -276,11 +276,16 @@ namespace molprobity {
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
       public:
-        CheckDotResult() : overlapType(DotScorer::Ignore), overlap(0), gap(1e100), annular(false) {};
+        CheckDotResult() : overlapType(DotScorer::Ignore), overlap(0), gap(1e100), annular(false),
+          dotOffset(0,0,0) {};
         OverlapType overlapType;            ///< What kind of overlap, if any, was found
         iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != Ignore
         double  overlap;                    ///< Amount of overlap assigned to source atom if there is a clash
         double  gap;                        ///< Gap distance (overlap may only be a fraction of this).
+        /// Offset from the center of the source atom to the dot that was checked.  Filled in by
+        /// check_dots() (which returns a subset of the dots it was given) so that the caller can
+        /// tell which dot each result belongs to; left at the origin by check_dot().
+        Point   dotOffset;
         /// Was this an annular dot, which is further from the point on the source atom that is closest
         /// to the target atom than a point on the tangent edge of the target atom where the ray just
         /// grazes the surface of the atom.  @todo The math being done here is a bit opaque, so the
@@ -307,6 +312,30 @@ namespace molprobity {
       ///             and the other half for the other.
       CheckDotResult check_dot(iotbx::pdb::hierarchy::atom const &sourceAtom,
         Point const& dotOffset, double probeRadius,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
+        double overlapScale = 0.5);
+
+      /// @brief Check all of an atom's dots against a specific set of interacting atoms.
+      ///
+      /// This calls check_dot() on each dot in turn and collects the results, avoiding a
+      /// Python-to-C++ boundary crossing (and marshalling of the atom lists) per dot.
+      /// Results whose overlapType is Ignore are dropped, as are annular dots whose
+      /// overlapType is NoOverlap; these are the dots that per-dot callers of check_dot()
+      /// discard.  Each returned result has its dotOffset field filled in with the dot
+      /// it belongs to, so the returned subset can be matched back to the input dots.
+      /// @param [in] sourceAtom Atom that the dots are offset with respect to.
+      /// @param [in] dots Vector of dot offsets from the center of the source atom.
+      /// @param [in] probeRadius Radius of the probe rolled between the two potentially-contacting atoms
+      ///             If this is < 0, invalid results will be returned, as for check_dot().
+      /// @param [in] interacting The atoms that are to be checked because they are close enough to
+      ///             sourceAtom to interact with it.  This list should not include any excluded atoms.
+      /// @param [in] excluded Atoms that are to be excluded from contact; a dot inside an excluded
+      ///             atom is not considered.
+      /// @param [in] overlapScale The fraction of overlap to assign to each of the two atoms.
+      /// @return One CheckDotResult per kept dot, in the order of the input dots.
+      scitbx::af::shared<CheckDotResult> check_dots(iotbx::pdb::hierarchy::atom const &sourceAtom,
+        scitbx::af::shared<Point> const &dots, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
         double overlapScale = 0.5);

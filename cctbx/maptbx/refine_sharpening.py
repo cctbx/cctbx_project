@@ -2803,7 +2803,7 @@ class analyze_aniso_object:
     if not d_min:
       (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
 
-    if b_cart_to_remove and b_iso:
+    if b_cart_to_remove and (b_iso is not None): # b_iso = 0 is a real value
       self.b_cart=b_cart_to_remove
       self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
       self.b_iso=b_iso

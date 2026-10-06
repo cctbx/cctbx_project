@@ -425,6 +425,26 @@ def _condense(dotInfoList, condense):
 
 # ------------------------------------------------------------------------------
 
+def getPdbInterpretationParams(useNeutronDistances = False):
+  '''
+    PDB interpretation parameters probe2 uses to make restraints.  A caller that
+    pre-processes a model for overrideModel(processed=True) must use these same
+    parameters, and a matching use_neutron_distances.
+  '''
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.use_neutron_distances = useNeutronDistances
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+  # We need to turn this on because without it the interpretation is
+  # renaming atoms to be more correct.  Unfortunately, this causes the
+  # dot names to no longer match the input file.
+  p.pdb_interpretation.flip_symmetric_amino_acids=False
+  return p
+
+# ------------------------------------------------------------------------------
+
 def _totalInteractionCount(chainCounts):
   '''
     Find the total count of interactions of any type for the specified chain-pair type.
@@ -896,103 +916,94 @@ Note:
         for e in excluded:
           atomSet.discard(e)
 
-        # Check each dot to see if it interacts with non-bonded nearby target atoms.
+        # Batched: one C++ call for all of this atom's dots, rather than one
+        # crossing per dot.  Only dots needing handling come back (Ignore and
+        # non-overlapping annular dots are dropped); dotOffset identifies each.
         srcDots = self._dots[src]
         scale = self.params.overlap_scale_factor
-        for dotvect in srcDots:
+        interacting = list(atomSet)
+        for res in self._dotScorer.check_dots(src, srcDots, probeRadius, interacting, excluded, scale):
 
-          # Find out if there is an interaction
-          res = self._dotScorer.check_dot(src, dotvect, probeRadius, list(atomSet), excluded, scale)
-
-          # Classify the interaction and store appropriate results unless we should
-          # ignore the result because there was not valid overlap.
+          # Classify the interaction and store appropriate results.
           overlapType = res.overlapType
+          dotvect = res.dotOffset
 
-          # If the overlap type is NoOverlap, check dot to make sure it is not annular.
-          # This excludes dots that are further from the contact than dots could be at
-          # the ideal just-touched contact.
-          if overlapType == probeExt.OverlapType.NoOverlap and res.annular:
+          # If the cause of the dot is not in the target set, we ignore the dot.
+          if not res.cause in targetSet:
             continue
 
-          # Handle any dots that should not be ignored.
-          if overlapType != probeExt.OverlapType.Ignore:
+          # If the overlap type is not a Hydrogen bond, then check the occupancy of atoms where
+          # at least one of the pair is on the "" or " " alternate conformation to make sure the
+          # sum of their occupancies is greater than 1.
+          if overlapType != probeExt.OverlapType.HydrogenBond:
+            if (src.parent().altloc in ['',' ']) or (res.cause.parent().altloc in ['',' ']):
+              if src.occ + res.cause.occ <= 1:
+                continue
 
-            # If the cause of the dot is not in the target set, we ignore the dot.
-            if not res.cause in targetSet:
-              continue
+          # See whether this dot is allowed based on our parameters.
+          spo = self.params.output
+          show = False
+          interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
+          if interactionType == probeExt.InteractionType.Invalid:
+            print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
+            continue
 
-            # If the overlap type is not a Hydrogen bond, then check the occupancy of atoms where
-            # at least one of the pair is on the "" or " " alternate conformation to make sure the
-            # sum of their occupancies is greater than 1.
-            if overlapType != probeExt.OverlapType.HydrogenBond:
-              if (src.parent().altloc in ['',' ']) or (res.cause.parent().altloc in ['',' ']):
-                if src.occ + res.cause.occ <= 1:
-                  continue
+          # Main branch if we're reporting other than bad clashes
+          if (not spo.only_report_bad_clashes):
+            # We are reporting other than bad clashes, see if our type is being reported
+            if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
+              show = True
+            elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
+              show = True
+            elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
+              show = True
+          else:
+            # We are only reporting bad clashes.  See if we're reporting clashes and this is
+            # a bad one.
+            if (spo.report_clashes and interactionType in [
+                  probeExt.InteractionType.Bump, probeExt.InteractionType.BadBump]):
+              show = True
 
-            # See whether this dot is allowed based on our parameters.
-            spo = self.params.output
-            show = False
-            interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
-            if interactionType == probeExt.InteractionType.Invalid:
-              print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
-              continue
+          # If we're not showing this one, skip to the next
+          if not show:
+            continue
 
-            # Main branch if we're reporting other than bad clashes
-            if (not spo.only_report_bad_clashes):
-              # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
-                show = True
-              elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
-                show = True
-              elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
-                show = True
-            else:
-              # We are only reporting bad clashes.  See if we're reporting clashes and this is
-              # a bad one.
-              if (spo.report_clashes and interactionType in [
-                    probeExt.InteractionType.Bump, probeExt.InteractionType.BadBump]):
-                show = True
+          # Determine the ptmaster (main/side chain interaction type) and keep track of
+          # counts for each type.
+          causeMainChain = self._inMainChain[res.cause]
+          causeSideChain = self._inSideChain[res.cause]
+          causeHet = self._inHet[res.cause]
+          ptmaster = ' '
+          if srcMainChain and causeMainChain:
+            if (not srcHet) and (not causeHet): # This may be a redundant check
+              ptmaster = 'M'
+              self._MCMCCount[interactionType] += 1
+          elif srcSideChain and causeSideChain:
+            if (not srcHet) and (not causeHet): # This may be a redundant check
+              ptmaster = 'S'
+              self._SCSCCount[interactionType] += 1
+          elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
+            if (not srcHet) and (not causeHet): # This may be a redundant check
+              ptmaster = 'P'
+              self._MCSCCount[interactionType] += 1
+          else:
+            ptmaster = 'O'
+            self._otherCount[interactionType] += 1
 
-            # If we're not showing this one, skip to the next
-            if not show:
-              continue
+          # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
+          # the (negative because it is magnitude) overlap.
+          loc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
+          dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
+          if dvLen > 0:
+            spikeScale = (srcVdw - res.overlap) / dvLen
+            spikeloc = (srcXYZ[0]+dotvect[0]*spikeScale,
+                        srcXYZ[1]+dotvect[1]*spikeScale,
+                        srcXYZ[2]+dotvect[2]*spikeScale)
+          else:
+            spikeloc = loc
 
-            # Determine the ptmaster (main/side chain interaction type) and keep track of
-            # counts for each type.
-            causeMainChain = self._inMainChain[res.cause]
-            causeSideChain = self._inSideChain[res.cause]
-            causeHet = self._inHet[res.cause]
-            ptmaster = ' '
-            if srcMainChain and causeMainChain:
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'M'
-                self._MCMCCount[interactionType] += 1
-            elif srcSideChain and causeSideChain:
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'S'
-                self._SCSCCount[interactionType] += 1
-            elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'P'
-                self._MCSCCount[interactionType] += 1
-            else:
-              ptmaster = 'O'
-              self._otherCount[interactionType] += 1
-
-            # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
-            # the (negative because it is magnitude) overlap.
-            loc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
-            dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
-            if dvLen > 0:
-              spikeScale = (srcVdw - res.overlap) / dvLen
-              spikeloc = (srcXYZ[0]+dotvect[0]*spikeScale,
-                          srcXYZ[1]+dotvect[1]*spikeScale,
-                          srcXYZ[2]+dotvect[2]*spikeScale)
-            else:
-              spikeloc = loc
-
-            # Save the dot
-            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
+          # Save the dot
+          self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
 
 # ------------------------------------------------------------------------------
 
@@ -1903,12 +1914,18 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def overrideModel(self, model):
+  def overrideModel(self, model, processed = False):
     '''This is a hack to let another program harness probe2 without having to write a
     new model file for it to read. After initializing probe2, but before calling
     run(), call this function to override the model that it should use.
+    :param processed: When True, restraints were already made with
+    getPdbInterpretationParams() and run() will not process the model again, which
+    lets a caller reuse one interpretation across the models of an ensemble.
+    run() can add Phantom Hydrogens to the hierarchy (waters with no explicit H),
+    so each run needs its own deep copy.
     '''
     self.model = model
+    self._modelAlreadyProcessed = processed
 
 # ------------------------------------------------------------------------------
 
@@ -1933,18 +1950,15 @@ Note:
     make_sub_header('Compute neighbor lists', out=self.logger)
 
     self.model.set_stop_for_unknowns(False)
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
-    # We need to turn this on because without it the interpretation is
-    # renaming atoms to be more correct.  Unfortunately, this causes the
-    # dot names to no longer match the input file.
-    p.pdb_interpretation.flip_symmetric_amino_acids=False
+    p = getPdbInterpretationParams(self.params.use_neutron_distances)
+    # If the model handed to overrideModel() was already processed with these
+    # interpretation parameters, we can use its restraints directly rather than
+    # re-processing, which re-reads the monomer library and re-interprets the model.
+    alreadyProcessed = ( getattr(self, '_modelAlreadyProcessed', False)
+      and (self.model.get_restraints_manager() is not None) )
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      if not alreadyProcessed:
+        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \

@@ -41,10 +41,13 @@ except ImportError:
 # probe is avoided.
 if QT_API == "PySide6":
   QShortcut = QtGui.QShortcut
+  QAction = QtGui.QAction
 else:
   QShortcut = QtWidgets.QShortcut
+  QAction = QtWidgets.QAction
 
-__all__ = ["QtCore", "QtGui", "QtWidgets", "shiboken", "QT_API", "QShortcut"]
+__all__ = ["QtCore", "QtGui", "QtWidgets", "shiboken", "QT_API", "QShortcut",
+           "QAction"]
 
 # Register the namespace modules under qttbx.qt.* so callers can use the
 # submodule import form (e.g. `from qttbx.qt.QtCore import Qt`). PySide

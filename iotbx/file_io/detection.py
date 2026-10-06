@@ -191,7 +191,8 @@ def _cif_block_datatypes(block_name, block):
   ----------
   block_name : str
       The block name without the data_ prefix
-  block : iotbx.cif.model.block
+  block : iotbx.cif.model.block, or any mapping whose keys() are the names
+      the block carries (pair names, loop column names, save-frame names)
 
   Returns
   -------
@@ -247,10 +248,53 @@ def _cif_model_datatypes(cif_model):
 
 
 
+def _xcif_block_keys(filename):
+  '''
+  Block names and the names each block carries, read from the xcif Document
+  without materializing any loop column: pair names, loop column names and
+  save-frame names, i.e. what iotbx.cif.model.block.keys() lists for the same
+  file. global_ blocks are skipped as the iotbx.cif reader skips them. The
+  file handling mirrors iotbx.cif.reader: a plain path is memory-mapped, a
+  compressed one is read through smart_open. Raises RuntimeError on input
+  that does not parse as CIF.
+
+  Parameters
+  ----------
+  filename : str
+      The CIF filepath
+
+  Returns
+  -------
+  list of (str, list of str)
+      (block name without the data_ prefix, names) per data block
+  '''
+  import xcif_ext
+  from libtbx import smart_open
+  from iotbx.cif import _xcif_can_use_parse_file
+  if _xcif_can_use_parse_file(filename):
+    doc = xcif_ext.parse_file(os.path.expanduser(filename))
+  else:
+    with smart_open.for_reading(filename) as f:
+      doc = xcif_ext.parse(f.read())
+  blocks = []
+  for i in range(len(doc)):
+    block = doc[i]
+    if block.name.lower() == 'global_':
+      continue
+    keys = list(block.pair_tags)
+    for loop in block.loops:
+      keys.extend(list(loop.tags))
+    for save_frame in block.save_frames:
+      keys.append(save_frame.name)
+    blocks.append((block.name, keys))
+  return blocks
+
+
 def _cif_datatypes(filename, cif_engine='xcif'):
   '''
-  Parse a CIF (fast via xcif at any size) and return the set of DataManager
-  datatypes it contains.
+  Parse a CIF and return the set of DataManager datatypes it contains. With
+  the xcif engine only block and tag names are read from the parsed Document
+  (no loop column is materialized); with ucif the iotbx.cif model is built.
 
   Parameters
   ----------
@@ -277,10 +321,18 @@ def _cif_datatypes(filename, cif_engine='xcif'):
   if not os.path.isfile(filename):
     return None
   try:
-    cif_model = iotbx.cif.reader(file_path=filename, engine=cif_engine).model()
+    if cif_engine == 'xcif':
+      blocks = _xcif_block_keys(filename)
+    else:
+      cif_model = iotbx.cif.reader(file_path=filename, engine=cif_engine).model()
+      return _cif_model_datatypes(cif_model)
   except _UNREADABLE:
     return None
-  return _cif_model_datatypes(cif_model)
+  types = set()
+  for block_name, keys in blocks:
+    # a mapping of the names stands in for the model block
+    types |= _cif_block_datatypes(block_name, dict.fromkeys(keys))
+  return types
 
 
 

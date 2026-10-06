@@ -69,6 +69,51 @@ def check_if_1_5_interaction(
 
 #-------------------------------------------------------------------------------
 
+def is_within_n_bonds(i_seq, j_seq, n_bonds, full_connectivity_table):
+  """
+  True if atom j_seq can be reached from atom i_seq in n_bonds covalent bonds
+  or fewer.
+  """
+  seen = {i_seq}
+  shell = {i_seq}
+  for _ in range(n_bonds):
+    shell = set(k for i in shell for k in full_connectivity_table[i]) - seen
+    if j_seq in shell:
+      return True
+    seen |= shell
+  return False
+
+#-------------------------------------------------------------------------------
+
+def hbond_precheck(atoms, i, j, Hs, As, Ds, fsc0, min_bonds_H_A,
+                   same_copy=True):
+  """
+  Check if two atoms are potential H bond partners.
+
+  Modified from mmtbx.nci.hbond.precheck, which excludes every pair within
+  the same resseq. Here only pairs fewer than min_bonds_H_A bonds apart are
+  excluded, so intramolecular H bonds are found, and residues in different
+  chains with the same resseq are not excluded. Altlocs are not checked.
+
+  same_copy: False if the pair is related by a symmetry operator, then the
+             bond path does not apply.
+  """
+  ei, ej = atoms[i].element, atoms[j].element
+  if not ((ei in Hs or ej in Hs) and (ei in As or ej in As)):
+    return False
+  for k in [i, j]:
+    if atoms[k].element in Hs:
+      bound_to_h = fsc0[k]
+      if not bound_to_h: # exclude 'lone' H
+        return False
+      if atoms[bound_to_h[0]].element not in Ds: # use only first atom bound to H
+        return False
+  if same_copy and is_within_n_bonds(i, j, min_bonds_H_A - 1, fsc0):
+    return False
+  return True
+
+#-------------------------------------------------------------------------------
+
 def cos_vec(u, v, w):
   """
   Calculate the cosine to evaluate whether clashing atoms are inline
@@ -142,11 +187,12 @@ class clashes(object):
     self.sort_clashes()
 
 
-  def show(self, log=null_out(), show_clashscore=True):
+  def show(self, log=null_out(), show_clashscore=True, show_header=True):
     """
     Print all clashes in a table.
     """
-    make_sub_header(' Nonbonded overlaps', out=log)
+    if show_header:
+      make_sub_header(' Nonbonded overlaps', out=log)
     if self._clashes_dict:
       # General information
       results = self.get_results()
@@ -160,10 +206,10 @@ class clashes(object):
       # print table with all overlaps
       labels =  ["Overlapping residues info","model distance","overlap",
                  "symmetry"]
-      lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}'
-      table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2}|{:^15}|'
+      lbl_str = '{:^33}|{:^16}|{:^11}|{:^15}|'
+      table_str = '{:>16}|{:>16}|{:^16.2f}|{:^11.2f}|{:^15}|'
       print('\n' + lbl_str.format(*labels), file=log)
-      print('-'*78, file=log)
+      print('-'*79, file=log)
       atoms = self.model.get_atoms()
       for iseq_tuple, record in six.iteritems(self._clashes_dict):
         i_seq, j_seq = iseq_tuple
@@ -171,12 +217,15 @@ class clashes(object):
         if record[4] is not None:
           symop = record[4].as_xyz()
         else: symop = ''
-        i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
-        j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
+        # suppress_segid: a segid is appended to id_str and breaks the columns
+        i_id_str = atoms[i_seq].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
+        j_id_str = atoms[j_seq].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
         line = [i_id_str, j_id_str,round(record[0], 2),round(overlap, 2), symop]
         #print(table_str % line, file=log)
         print(table_str.format(*line), file=log)
-      print('-'*78, file=log)
+      print('-'*79, file=log)
     else:
       print('No clashes found', file=log)
 
@@ -384,28 +433,33 @@ class hbonds(object):
       result_str = '{:<18} : {:5d}'
       print(result_str.format(' Number of H bonds', results.n_hbonds), file=log)
       # print table with all H-bonds
-      title1 = ['donor', 'acceptor', 'distance', 'angle']
-      title1_str = '{:^33}|{:^16}|{:^21}|{:^14}|'
+      title1 = ['donor', 'acceptor', 'distance', 'angle', 'symmetry']
+      title1_str = '{:^33}|{:^16}|{:^21}|{:^14}|{:^15}|'
       print('\n' + title1_str.format(*title1), file=log)
       title2 =  ['X', 'H', 'A','H...A','X...A',
                  'X-H...A', 'symop']
+      # 16|16|16|10|10|14|15 plus the separators = 104
       title2_str = '{:^16}|{:^16}|{:^16}|{:^10}|{:^10}|{:^14}|{:^15}|'
       print(title2_str.format(*title2), file=log)
       table_str = '{:>16}|{:>16}|{:^16}|{:^10.2f}|{:^10.2f}|{:^14.2f}|{:^15}|'
-      print('-'*99, file=log)
+      print('-'*104, file=log)
       atoms = self.model.get_atoms()
       for iseq_tuple, record in self._hbonds_dict.items():
         iseq_x, iseq_h, iseq_a = iseq_tuple
         if record[4] is not None:
           symop = record[4].as_xyz()
         else: symop = ''
-        x_id_str = atoms[iseq_x].id_str().replace('pdb=','').replace('"','')
-        h_id_str = atoms[iseq_h].id_str().replace('pdb=','').replace('"','')
-        a_id_str = atoms[iseq_a].id_str().replace('pdb=','').replace('"','')
+        # suppress_segid: a segid is appended to id_str and breaks the columns
+        x_id_str = atoms[iseq_x].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
+        h_id_str = atoms[iseq_h].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
+        a_id_str = atoms[iseq_a].id_str(suppress_segid=True).replace(
+          'pdb=','').replace('"','')
         line = [x_id_str, h_id_str, a_id_str, round(record[0], 2),
           round(record[1], 2), round(record[2], 2), symop]
         print(table_str.format(*line), file=log)
-      print('-'*99, file=log)
+      print('-'*104, file=log)
     else:
       print('No hbonds found', file=log)
 
@@ -460,12 +514,13 @@ class h_bond(object):
          D
         / \
 
-    A = O, N, S
+    A = O, N, S, F, Cl
     D = O, N, S
     90 <= a_YAH <= 180
     a_DHA >= 120
-    1.4 <= d_HA <= 3.0
-    2.5 <= d_DA <= 3.5
+    1.4 <= d_HA <= 2.8
+    2.4 <= d_DA <= 4.1
+    H and A at least 5 bonds apart (same copy)
   """
   def __init__(self):
     self.Hs = ["H", "D"]
@@ -475,6 +530,8 @@ class h_bond(object):
     self.d_DA_cutoff  = [2.4, 4.1]
     self.a_DHA_cutoff = 120
     self.a_YAH_cutoff = [90, 180]
+    # H-D-X-Y-A (4 bonds) is a 5-membered ring, too strained for an H bond
+    self.min_bonds_H_A = 5
 
 class manager():
 
@@ -488,6 +545,7 @@ class manager():
     self.d_DA_cutoff  = h_bond_params.d_DA_cutoff
     self.a_DHA_cutoff = h_bond_params.a_DHA_cutoff
     self.a_YAH_cutoff = h_bond_params.a_YAH_cutoff
+    self.min_bonds_H_A = h_bond_params.min_bonds_H_A
     #
     self._clashes = None
     self._hbonds  = None
@@ -657,7 +715,7 @@ class manager():
     symop_str      = item[5]
     symop          = item[6]
 
-    is_candidate = hbond.precheck(
+    is_candidate = hbond_precheck(
       atoms = self.atoms,
       i = i_seq,
       j = j_seq,
@@ -665,7 +723,8 @@ class manager():
       As = self.As,
       Ds = self.Ds,
       fsc0 = fsc0,
-      tolerate_altloc=True)
+      min_bonds_H_A = self.min_bonds_H_A,
+      same_copy = (symop is None or str(symop) == 'x,y,z'))
 
     if (not is_candidate):
       return is_hbond
@@ -708,8 +767,9 @@ class manager():
         (a_DHA >= self.a_DHA_cutoff)):
       is_hbond = True
 
+      # not D.i_seq etc: symmetry-moved atoms are detached copies, i_seq 0
       self._hbonds.add_hbond(
-        hbond_tuple = (D.i_seq, H.i_seq, A.i_seq),
+        hbond_tuple = (atom_D.index, atom_H.index, atom_A.index),
         hbond_info  = [d_HA, d_DA, a_DHA, symop_str, symop, vdw_sum])
       # TODO: if several atom_x, use the first one found
       #  (show shortest or both)

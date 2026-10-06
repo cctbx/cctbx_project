@@ -639,13 +639,39 @@ _chem_comp.number_atoms_nh:int
 _chem_comp.desc_level
   """
 
+def formal_charge_and_problem(value):
+  """
+  (formal charge as int, None) from a _chem_comp_atom.charge value (e.g. -1, 0,
+  1, +1, 1+, 1.0); (None, reason) for None (no column), '?', '.', '' or a
+  non-integral value.
+  """
+  if value is None:
+    return None, "no charge column"
+  s = str(value).strip()
+  if s in ("", ".", "?"):
+    return None, "charge %r" % (s or ".")
+  if len(s) > 1 and s[-1] in "+-" and s[0] not in "+-":
+    s = s[-1] + s[:-1]
+  try:
+    f = float(s)
+  except ValueError:
+    return None, "charge %r not a number" % str(value)
+  if f != int(f):
+    return None, "charge %r not integral" % str(value)
+  return int(f), None
+
 class chem_comp_atom(looped_data):
   """
 _chem_comp_atom.atom_id
 _chem_comp_atom.type_symbol
 _chem_comp_atom.type_energy
 _chem_comp_atom.partial_charge:float
+_chem_comp_atom.charge
   """
+
+  def formal_charge(self):
+    """The formal charge as int, None if absent, '?', '.' or not integral."""
+    return formal_charge_and_problem(getattr(self, "charge", None))[0]
 
 class chem_comp_tree(looped_data):
   """

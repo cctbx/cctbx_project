@@ -459,6 +459,87 @@ def test_reduce2_flips_applies_wholesale():
     reduce_switch.USE_REDUCE2_FLIPS = saved_flips
   print("test_reduce2_flips_applies_wholesale OK")
 
+# His36 of 1a6m (heavy atoms only).
+_his_atoms = [
+  ("N",   (18.824, 16.000, -3.674)), ("CA",  (17.931, 16.835, -4.470)),
+  ("C",   (18.616, 18.103, -4.877)), ("O",   (18.445, 19.170, -4.297)),
+  ("CB",  (16.629, 17.148, -3.681)), ("CG",  (15.962, 15.936, -3.173)),
+  ("ND1", (15.130, 15.122, -3.916)), ("CD2", (16.038, 15.336, -1.936)),
+  ("CE1", (14.734, 14.111, -3.162)), ("NE2", (15.270, 14.220, -1.964))]
+
+def _his_fragment_str():
+  """Four isolated His (chains A-D, 25 A apart), each with SO4 acceptor O 2.9 A
+  out from the listed ring atoms. A: ND1, B: NE2, C: ND1+NE2, D: CD2+CE1 (only a
+  ring flip gives those two N-H partners)."""
+  import math
+  from scitbx import matrix
+  targets = [("ND1",), ("NE2",), ("ND1", "NE2"), ("CD2", "CE1")]
+  xyz = dict((n, matrix.col(x)) for n, x in _his_atoms)
+  cen = sum([xyz[n] for n in ("CG", "ND1", "CD2", "CE1", "NE2")],
+            matrix.col((0, 0, 0))) / 5
+  c, s = math.cos(math.radians(109.47)), math.sin(math.radians(109.47))
+  fmt = "%-6s%5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 10.00          %2s"
+  lines = ["CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1"]
+  i_seq = 1
+  for i, chain in enumerate("ABCD"):
+    shift = matrix.col((25.0 * i, 0, 0))
+    for n, x in _his_atoms:
+      p = matrix.col(x) + shift
+      lines.append(fmt % ("ATOM", i_seq, n, "HIS", chain, 1, p[0], p[1], p[2], n[0]))
+      i_seq += 1
+    for j, t in enumerate(targets[i]):
+      u = (xyz[t] - cen).normalize()
+      o1 = xyz[t] + 2.9 * u + shift
+      sp = o1 + 1.47 * u
+      p1 = u.ortho().normalize(); p2 = u.cross(p1)
+      atoms = [("S", sp), ("O1", o1)] + [
+        ("O%d" % (k + 2), sp + 1.47 * (-u * c + (p1 * math.cos(a) + p2 * math.sin(a)) * s))
+        for k, a in enumerate((0, 2 * math.pi / 3, 4 * math.pi / 3))]
+      for n, p in atoms:
+        lines.append(fmt % ("HETATM", i_seq, n, "SO4", chain, 101 + j,
+                            p[0], p[1], p[2], n[0]))
+        i_seq += 1
+  return "\n".join(lines + ["END"]) + "\n"
+
+def _ring_h_and_heavy_shift(model, ref_model):
+  """({chain: 'HD1'|'HE2'|'HD1+HE2'|''}, max heavy-atom shift vs ref_model)."""
+  def key(a):
+    return (a.chain().id, a.parent().resname, a.parent().parent().resseq, a.name)
+  ref = dict((key(a), a.xyz) for a in ref_model.get_hierarchy().atoms())
+  ring_h = {}
+  shift = 0.0
+  for a in model.get_hierarchy().atoms():
+    if a.element_is_hydrogen():
+      if a.name.strip() in ("HD1", "HE2"):
+        ring_h.setdefault(a.chain().id, []).append(a.name.strip())
+      continue
+    d = sum((x - y) ** 2 for x, y in zip(a.xyz, ref[key(a)])) ** 0.5
+    shift = max(shift, d)
+  return dict((k, "+".join(sorted(v))) for k, v in ring_h.items()), shift
+
+def test_his_protonation_without_flips():
+  """optimize_his_protonation=True with do_flips=False: reduce2 picks each His
+  ring protonation (both tautomers and HD1+HE2 reachable) and moves no heavy atom,
+  even where a ring flip scores better. Default keeps H on both ring N."""
+  s = _his_fragment_str()
+  default = reduce_switch.place_and_optimize_hydrogens(
+    model=model_from_str(s), do_flips=False, log=null_out())
+  ring_h, shift = _ring_h_and_heavy_shift(default, model_from_str(s))
+  assert ring_h == {"A": "HD1+HE2", "B": "HD1+HE2", "C": "HD1+HE2",
+                    "D": "HD1+HE2"}, ring_h
+  assert shift < 1.e-3, shift
+  flipped = reduce_switch.place_and_optimize_hydrogens(
+    model=model_from_str(s), do_flips=True, log=null_out())
+  ring_h, shift = _ring_h_and_heavy_shift(flipped, model_from_str(s))
+  assert shift > 1.0, shift                        # the fragment favours a flip of D
+  his = reduce_switch.place_and_optimize_hydrogens(
+    model=model_from_str(s), do_flips=False, optimize_his_protonation=True,
+    log=null_out())
+  ring_h, shift = _ring_h_and_heavy_shift(his, model_from_str(s))
+  assert ring_h == {"A": "HD1", "B": "HE2", "C": "HD1+HE2", "D": "HD1"}, ring_h
+  assert shift < 1.e-3, shift                      # no ring or amide flipped
+  print("test_his_protonation_without_flips OK")
+
 if __name__ == "__main__":
   test_adds_hydrogens()
   test_dispatcher_explicit_reduce2()
@@ -477,4 +558,5 @@ if __name__ == "__main__":
   test_model_idealization_stat_display_tolerates_none_reduce2()
   test_molprobity_validation_adds_h_reduce2()
   test_reduce2_flips_applies_wholesale()
+  test_his_protonation_without_flips()
   print("OK")
