@@ -1866,8 +1866,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     Requires llgi_data (dobs/feff/teps/resn) to already be attached;
     raises Sorry if not.
 
-    params: extracted mmtbx.refinement.llgi_sigmaa.
-    llgi_sigmaa_scatfrac_params, or None for defaults.
+    params: extracted mmtbx.refinement.llgi_scatfrac.
+    llgi_scatfrac_params, or None for defaults.
     e_params: extracted mmtbx.refinement.llgi_e_sigmaa.
     llgi_e_sigmaa_params (phenix.refine's llgi_data.e_scale_sigmaa),
     or None for defaults.
@@ -1877,11 +1877,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       raise Sorry(
         "update_llgi_sigmaa_scatfrac() requires LLGI data (DOBS/FEFF/"
         "TEPS/RESN) to already be attached via set_llgi_data().")
-    import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
+    import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
     import mmtbx.refinement.llgi_hybrid as llgi_hybrid
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     if(params is None):
-      params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
+      params = llgi_scatfrac.llgi_scatfrac_params.extract()
     f_obs = self.f_obs()
     result = llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f(
       self,

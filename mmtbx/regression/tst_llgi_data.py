@@ -109,7 +109,7 @@ def exercise_update_llgi_sigmaa_scatfrac_enables_target_functor():
   result = fmodel.target_functor()
   core_result = result(compute_gradients=True)
   # A finite target_work is enough here (correctness of the underlying
-  # estimator and target math is covered by tst_llgi_sigmaa.py and
+  # estimator and target math is covered by tst_llgi_scatfrac.py and
   # cctbx/xray/targets/tst_llgi.py respectively) -- this test is only
   # about the plumbing between update_llgi_sigmaa_scatfrac() and
   # target_functor() actually working end to end.

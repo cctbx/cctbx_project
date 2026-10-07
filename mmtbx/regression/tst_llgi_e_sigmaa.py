@@ -125,7 +125,7 @@ def exercise_sigmaa_fit_leaves_k_mask_untouched():
   # in (0, 1) per reflection and leaves fmodel's k_mask unchanged.
   fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=30)
   dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=31)
-  k_mask_before = flex.double(fmodel.k_masks()[0])
+  k_mask_before = fmodel.k_masks()[0].deep_copy()
   for sigmaa_model in ["spline", "d_model"]:
     params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
     params.sigmaa_model = sigmaa_model
@@ -147,6 +147,37 @@ def exercise_sigmaa_fit_leaves_k_mask_untouched():
     for v in result.evaluate_at(d_out):
       assert 0.0 < v < 1.0, (sigmaa_model, v)
 
+def exercise_spline_curvature_penalty_finite_difference():
+  import numpy as np
+  random_state = np.random.RandomState(23)
+  for trial in range(5):
+    n = random_state.randint(3, 10)
+    coeffs = random_state.normal(size=n)
+    weight = random_state.uniform(0.01, 2.0)
+    f0, g0 = llgi_e_sigmaa.spline_curvature_penalty_and_gradient(
+      coeffs, weight)
+    eps = 1.e-6
+    g_fd = np.zeros_like(coeffs)
+    for i in range(n):
+      cp = coeffs.copy(); cp[i] += eps
+      cm = coeffs.copy(); cm[i] -= eps
+      fp, _ = llgi_e_sigmaa.spline_curvature_penalty_and_gradient(cp, weight)
+      fm, _ = llgi_e_sigmaa.spline_curvature_penalty_and_gradient(cm, weight)
+      g_fd[i] = (fp - fm) / (2 * eps)
+    assert approx_equal(list(g0), list(g_fd), eps=1.e-6)
+  # weight = 0 and fewer than 3 coefficients: no restraint
+  f, g = llgi_e_sigmaa.spline_curvature_penalty_and_gradient(
+    np.array([1.0, -2.0, 3.0, 0.5]), 0.0)
+  assert f == 0.0 and list(g) == [0.0] * 4
+  f, g = llgi_e_sigmaa.spline_curvature_penalty_and_gradient(
+    np.array([1.0, -2.0]), 5.0)
+  assert f == 0.0 and list(g) == [0.0] * 2
+  # coefficients linear in the index: zero penalty and gradient
+  f, g = llgi_e_sigmaa.spline_curvature_penalty_and_gradient(
+    np.linspace(-3.0, 4.0, 8), 10.0)
+  assert approx_equal(f, 0.0, eps=1.e-10)
+  assert approx_equal(list(g), [0.0] * 8, eps=1.e-10)
+
 def exercise_e_sigmaa_curvature_penalty_gradient_finite_difference():
   # Finite-difference check of e_sigmaa_target_evaluator's gradient with
   # the curvature restraint switched on.
@@ -166,7 +197,7 @@ def exercise_e_sigmaa_curvature_penalty_gradient_finite_difference():
     e_eff=e_eff, test_selection=fmodel.r_free_flags().data(),
     e_model=e_model, dobs=dobs, centric_flags=centric_flags,
     d_star_sq=d_star_sq, n_sigmaa_coeffs=6,
-    max_iterations=0,  # probe the gradient at the L-BFGS starting point
+    max_iterations=0,  # one L-BFGS step; the gradient is checked there
     curvature_weight=0.4)
 
   x0 = np.array(evaluator.x)
@@ -200,6 +231,7 @@ def run():
   exercise_degenerate_resolution_range_does_not_crash()
   exercise_bss_k_sol_b_sol_recovers_known_values()
   exercise_bss_k_sol_b_sol_stays_in_bounds()
+  exercise_spline_curvature_penalty_finite_difference()
   exercise_e_sigmaa_curvature_penalty_gradient_finite_difference()
   exercise_sigmaa_fit_leaves_k_mask_untouched()
   exercise_d_model_sigmaa_is_the_default()

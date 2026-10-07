@@ -5,8 +5,6 @@ from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx.xray import ext as xray_ext
 from mmtbx import scaling
-from mmtbx.refinement.llgi_sigmaa import _b_spline_design_matrix
-from mmtbx.refinement.llgi_sigmaa import _spline_curvature_penalty_and_gradient
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 import scitbx.lbfgs
@@ -58,6 +56,69 @@ llgi_e_sigmaa_params = iotbx.phil.parse("""\
             "spline's pre-sigmoid coefficients (spline only). 0 disables "\
             "it."
 """, process_includes=True)
+
+def b_spline_design_matrix(x, n_coeffs, degree, x_range=None):
+  """ Clamped B-spline design matrix B[i,k] = B_k(x[i]), with interior
+  knots evenly spaced over x_range (x mapped to [0,1]). Returns a numpy
+  array of shape (len(x), n_coeffs). x outside x_range raises ValueError.
+
+  x_range: (x_min, x_max), or None to use the range of x. When a curve is
+  fitted on one set of x and evaluated on another, both calls must pass
+  the same x_range.
+  """
+  import numpy as np
+  from scipy.interpolate import BSpline
+  x = np.asarray(x, dtype=float)
+  if(x_range is None):
+    x_min = float(x.min())
+    x_max = float(x.max())
+  else:
+    x_min, x_max = x_range
+  if(x_max <= x_min):
+    # Degenerate resolution range (e.g. a single reflection, or all
+    # reflections at identical resolution): fall back to a constant
+    # basis (every reflection maps to the same single coefficient) so
+    # this does not crash; the caller ends up fitting one overall value.
+    x_max = x_min + 1.0
+  x_norm = (x - x_min) / (x_max - x_min)
+  n_knots = n_coeffs + degree + 1
+  n_interior = n_knots - 2 * degree
+  if(n_interior < 2):
+    raise RuntimeError(
+      "n_coeffs=%d is too small for spline_degree=%d (need at least "
+      "%d coefficients)." % (n_coeffs, degree, 2 * degree - degree + 1))
+  interior = np.linspace(0.0, 1.0, n_interior)
+  knots = np.concatenate([[0.0] * degree, interior, [1.0] * degree])
+  design = BSpline.design_matrix(
+    x_norm, knots, degree, extrapolate=False).toarray()
+  return design
+
+def spline_curvature_penalty_and_gradient(coeffs, weight):
+  """ Roughness restraint on a B-spline's pre-sigmoid coefficients c:
+  R(c) = weight * sum_i (c[i-1] - 2*c[i] + c[i+1])^2, i.e. the squared
+  second difference, a proxy for the curvature of z(x) = design(x).c
+  with evenly spaced knots. It keeps the sigmaA curve from collapsing
+  where the R-free set is too sparse to constrain it (the highest
+  resolution shells). It acts on z rather than sigmaA: near the lower
+  bound of the sigmoid, log(sigmaA - lower) ~ const + z, and the penalty
+  stays quadratic in c. It is zero for c linear in the index.
+
+  coeffs: numpy array of the coefficients (not sigmaA).
+  weight: 0 (or fewer than 3 coefficients) gives (0.0, zeros).
+
+  Returns (penalty, d(penalty)/d(coeffs)), as a float and a numpy array.
+  """
+  import numpy as np
+  n = coeffs.shape[0]
+  if(weight == 0 or n < 3):
+    return 0.0, np.zeros_like(coeffs)
+  d2 = coeffs[:-2] - 2.0 * coeffs[1:-1] + coeffs[2:]
+  penalty = weight * float(np.sum(d2 * d2))
+  grad = np.zeros_like(coeffs)
+  grad[:-2]  += 2.0 * weight * d2
+  grad[1:-1] += -4.0 * weight * d2
+  grad[2:]   += 2.0 * weight * d2
+  return penalty, grad
 
 def _auto_kernel_width(d_star_sq, number=50):
   """ Kernel width as chosen by kernel_normalisation(auto_kernel=True):
@@ -183,7 +244,7 @@ class e_sigmaa_target_evaluator(object):
   """ scitbx.lbfgs target evaluator for the spline sigmaA(d*^2): the
   B-spline coefficients of z(d*^2), sigmaA = _sigmoid(z), fitted against
   the mean E-scale LLGI over test_selection with Emodel fixed, plus the
-  curvature restraint _spline_curvature_penalty_and_gradient.
+  curvature restraint spline_curvature_penalty_and_gradient.
   """
 
   def __init__(self,
@@ -200,7 +261,7 @@ class e_sigmaa_target_evaluator(object):
     self.spline_degree = spline_degree
     self.curvature_weight = curvature_weight
     self.x_range = (flex.min(d_star_sq), flex.max(d_star_sq))
-    self.sigmaa_design = _b_spline_design_matrix(
+    self.sigmaa_design = b_spline_design_matrix(
       d_star_sq.as_numpy_array(), n_sigmaa_coeffs, spline_degree,
       x_range=self.x_range)
     # z = 0 everywhere: sigmaA = 0.5
@@ -231,7 +292,7 @@ class e_sigmaa_target_evaluator(object):
     f = result.target()
     d_target_by_dsigmaa = result.d_target_by_dsigmaa().as_numpy_array()
     g = self.sigmaa_design.T.dot(d_target_by_dsigmaa * dsigmaa_dz)
-    penalty, penalty_grad = _spline_curvature_penalty_and_gradient(
+    penalty, penalty_grad = spline_curvature_penalty_and_gradient(
       self.x.as_numpy_array(), self.curvature_weight)
     return f + penalty, flex.double(g + penalty_grad)
 
@@ -247,7 +308,7 @@ class e_sigmaa_target_evaluator(object):
     import numpy as np
     d_star_sq_clamped = np.clip(
       np.asarray(d_star_sq, dtype=float), self.x_range[0], self.x_range[1])
-    design = _b_spline_design_matrix(
+    design = b_spline_design_matrix(
       d_star_sq_clamped, self.n_sigmaa_coeffs, self.spline_degree,
       x_range=self.x_range)
     sigmaa, _ = _sigmoid(design.dot(self.x.as_numpy_array()))
@@ -260,8 +321,9 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
   set, with Emodel fixed.
 
   Returns a group_args with .sigmaa (flex.double, every reflection),
-  .target (final mean target on the R-free set) and .evaluate_at (the
-  fitted curve at other d*^2 values).
+  .target (final mean target on the R-free set), .evaluate_at (the
+  fitted curve at other d*^2 values) and .lbfgs_error (None, or the
+  message L-BFGS stopped with).
   """
   n_refl = e_eff.size()
   assert r_free_flags.size() == n_refl
@@ -291,7 +353,8 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid)
   return group_args(
     sigmaa=sigmaa, target=final_result.target(),
-    evaluate_at=evaluator.evaluate_at)
+    evaluate_at=evaluator.evaluate_at,
+    lbfgs_error=evaluator.minimizer.error)
 
 def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
   """ Fit sigmaA(resolution) on the E scale against fmodel's current model,
@@ -306,8 +369,9 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
 
   Returns a group_args with .sigmaa (flex.double, every reflection),
   .target (final mean target on the R-free set), .evaluate_at (the fitted
-  curve at other d*^2 values) and .k_sol/.b_sol (bss_k_sol_b_sol; b_sol
-  anchors D_model's B_defect).
+  curve at other d*^2 values), .k_sol/.b_sol (bss_k_sol_b_sol; b_sol
+  anchors D_model's B_defect) and .lbfgs_error (spline fit: None, or the
+  message L-BFGS stopped with; always None for d_model).
   """
   if(params is None):
     params = llgi_e_sigmaa_params.extract()
@@ -348,7 +412,8 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
     sigmaa=result.sigmaa,
     target=result.target,
     evaluate_at=result.evaluate_at,
-    k_sol=k_sol, b_sol=b_sol)
+    k_sol=k_sol, b_sol=b_sol,
+    lbfgs_error=getattr(result, "lbfgs_error", None))
 
 def estimate_sigmaa_e_then_scatfrac_f(
       fmodel, dobs, feff, resn, e_params=None, scatfrac_params=None):
@@ -358,7 +423,7 @@ def estimate_sigmaa_e_then_scatfrac_f(
   the E-scale target has no ScatFrac.
 
   Step 1: estimate_e_sigmaa_for_fmodel (R-free set).
-  Step 2: llgi_sigmaa.estimate_llgi_scatfrac_likelihood (working set),
+  Step 2: llgi_scatfrac.estimate_llgi_scatfrac_likelihood (working set),
   against fmodel.f_model(), which includes k_isotropic as Feff does.
 
   fmodel: an mmtbx.f_model.manager, already scaled.
@@ -366,23 +431,26 @@ def estimate_sigmaa_e_then_scatfrac_f(
   dobs, feff, resn: nacelle DOBS/FEFF/RESN on fmodel.f_obs()'s index set.
 
   e_params, scatfrac_params: extracted llgi_e_sigmaa_params and
-  llgi_sigmaa_scatfrac_params, or None for defaults.
+  llgi_scatfrac.llgi_scatfrac_params, or None for defaults.
 
   Returns a group_args with .sigmaa and .scatfrac (flex.double, every
-  reflection), .target (final ScatFrac target on the working set) and
-  .scatfrac_inf/.b_scatfrac (ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss)).
+  reflection), .target (final ScatFrac target on the working set),
+  .scatfrac_inf/.b_scatfrac (ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss)),
+  .n_scatfrac_at_floor (see llgi_scatfrac) and .warnings (list of
+  messages about fits that stopped early).
   """
-  import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
+  import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   if(e_params is None):
     e_params = llgi_e_sigmaa_params.extract()
   if(scatfrac_params is None):
-    scatfrac_params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  sigmaa = estimate_e_sigmaa_for_fmodel(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=e_params).sigmaa
+    scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
+  sigmaa_result = estimate_e_sigmaa_for_fmodel(
+    fmodel, dobs=dobs, feff=feff, resn=resn, params=e_params)
+  sigmaa = sigmaa_result.sigmaa
   f_obs = fmodel.f_obs()
   llgi_data = fmodel.llgi_data()
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
-  scatfrac_result = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
+  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac_likelihood(
     f_eff=feff,
     working_selection=~fmodel.r_free_flags().data(),
     f_calc=fmodel.f_model().data(),
@@ -398,4 +466,10 @@ def estimate_sigmaa_e_then_scatfrac_f(
     sigmaa=sigmaa, scatfrac=scatfrac_result.scatfrac,
     target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
-    b_scatfrac=scatfrac_result.b_scatfrac)
+    b_scatfrac=scatfrac_result.b_scatfrac,
+    n_scatfrac_at_floor=scatfrac_result.n_at_floor,
+    warnings=[
+      "%s fit: L-BFGS stopped early: %s" % (name, error)
+      for name, error in (("sigmaA", sigmaa_result.lbfgs_error),
+                          ("ScatFrac", scatfrac_result.lbfgs_error))
+      if error is not None])

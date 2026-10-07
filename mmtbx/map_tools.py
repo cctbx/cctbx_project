@@ -695,8 +695,8 @@ class model_missing_reflections_llgi(object):
               well-behaved function of resolution alone (it is exactly
               this module's own SigmaP/Emodel machinery's premise) --
               fit a plain B-spline curve to the OBSERVED k_isotropic(ss)
-              array (reusing mmtbx.refinement.llgi_sigmaa's
-              _b_spline_design_matrix, log-space to keep it positive,
+              array (reusing mmtbx.refinement.llgi_e_sigmaa's
+              b_spline_design_matrix, log-space to keep it positive,
               same convention as sigmaA's own z=log-space-ish
               parameterisation) and evaluate that fitted curve at each
               missing reflection's own ss, clamped to the observed
@@ -741,24 +741,24 @@ class model_missing_reflections_llgi(object):
     ready for _eval_k_isotropic_curve.
     """
     import numpy as np
-    from mmtbx.refinement.llgi_sigmaa import _b_spline_design_matrix
+    from mmtbx.refinement.llgi_e_sigmaa import b_spline_design_matrix
     ss = self.fmodel.f_obs().sin_theta_over_lambda_sq().data(
       ).as_numpy_array()
     k_iso = np.asarray(self.fmodel.k_isotropic(), dtype=float)
     ss_range = (float(ss.min()), float(ss.max()))
     n_coeffs, degree = 8, 3
-    design = _b_spline_design_matrix(ss, n_coeffs, degree, x_range=ss_range)
+    design = b_spline_design_matrix(ss, n_coeffs, degree, x_range=ss_range)
     log_k_iso = np.log(np.clip(k_iso, 1.e-12, None))
     coeffs, _res, _rank, _sv = np.linalg.lstsq(design, log_k_iso, rcond=None)
     return coeffs, ss_range, n_coeffs, degree
 
   def _eval_k_isotropic_curve(self, ss_missing, fit):
     import numpy as np
-    from mmtbx.refinement.llgi_sigmaa import _b_spline_design_matrix
+    from mmtbx.refinement.llgi_e_sigmaa import b_spline_design_matrix
     coeffs, ss_range, n_coeffs, degree = fit
     ss_low, ss_high = ss_range
     ss_np = np.clip(np.asarray(ss_missing, dtype=float), ss_low, ss_high)
-    design = _b_spline_design_matrix(
+    design = b_spline_design_matrix(
       ss_np, n_coeffs, degree, x_range=ss_range)
     log_k_iso = design.dot(coeffs)
     return flex.double(np.exp(log_k_iso).tolist())
