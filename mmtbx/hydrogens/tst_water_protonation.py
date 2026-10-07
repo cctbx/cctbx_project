@@ -107,7 +107,7 @@ from io import StringIO
 import iotbx.pdb
 from iotbx.cli_parser import run_program
 from scitbx import matrix
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry, format_cpu_times, null_out
 
 from mmtbx.hydrogens import water_protonation as wp
@@ -357,6 +357,25 @@ _CONTACT_PAIR_PDB = """\
 CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
 HETATM    1  O   HOH W   1       1.000  15.000  15.000  1.00 10.00           O
 HETATM    2  O   HOH W   2       8.200  15.000  15.000  1.00 10.00           O
+END
+"""
+
+
+# Three waters that already carry H, in P-1. No H-H contact inside the
+# model; across symmetry, H1 of W 2 lies 1.486 A from H1 of the -a translate
+# of W 3, and H1 of W 1 lies 1.600 A from its own equivalent through the
+# inversion centre at (0, 15, 15).
+_SYM_CONTACT_PDB = """\
+CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P -1
+HETATM    1  O   HOH W   1       1.757  15.000  15.000  1.00 10.00           O
+HETATM    2  H1  HOH W   1       0.800  15.000  15.000  1.00 10.00           H
+HETATM    3  H2  HOH W   1       1.997  15.927  15.000  1.00 10.00           H
+HETATM    4  O   HOH W   2       1.000   7.500   7.500  1.00 10.00           O
+HETATM    5  H1  HOH W   2       0.043   7.500   7.500  1.00 10.00           H
+HETATM    6  H2  HOH W   2       1.240   8.427   7.500  1.00 10.00           H
+HETATM    7  O   HOH W   3       7.600   7.500   7.500  1.00 10.00           O
+HETATM    8  H1  HOH W   3       8.557   7.500   7.500  1.00 10.00           H
+HETATM    9  H2  HOH W   3       7.360   8.427   7.500  1.00 10.00           H
 END
 """
 
@@ -813,6 +832,29 @@ def exercise_sym_equiv_protons():
     f"under the {wp._WATER_MIN_H_CLEARANCE} A clearance")
 
 
+def exercise_sym_equiv_contacts_counted():
+  """The clash counts include contacts with symmetry-equivalent water H.
+
+  Places on ``_SYM_CONTACT_PDB``, whose waters already carry H, and reads
+  the counts the placer reports for its state, the counts from the
+  hierarchy and the program's contact listing. Each must hold the two
+  contacts across symmetry once, at 1.486 and 1.600 A, the second against
+  the water's own equivalent; without a crystal symmetry there are none.
+  """
+  hier, cs = _hierarchy_and_symmetry(_SYM_CONTACT_PDB)
+  states = []
+  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
+                           on_state=lambda label, stats: states.append(stats))
+  assert [s[1] for s in states] == [2], states
+  assert wp._water_clash_stats(hier, crystal_symmetry=cs) == states[0]
+  assert wp._water_clash_stats(hier)[1] == 0
+  listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
+  assert approx_equal([c[0] for c in listed], [1.486, 1.600], eps=1e-6)
+  assert [c[1:] for c in listed] == [
+    ("HOH W 2 H1", "HOH W 3 H1 (x-1,y,z)"),
+    ("HOH W 1 H1", "HOH W 1 H1 (-x,-y+1,-z+1)")], listed
+
+
 def exercise_electron_microscopy_isolated():
   """The program ignores the cell of an electron microscopy model.
 
@@ -971,6 +1013,7 @@ def run():
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_sym_equiv_protons()
+  exercise_sym_equiv_contacts_counted()
   exercise_electron_microscopy_isolated()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()

@@ -220,7 +220,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     elif header["printed"]:
       if result.kept_label is not None:
         print(f"  kept: {result.kept_label}", file=self.logger)
-      self._print_residual_contacts(hier)
+      self._print_residual_contacts(hier, cs)
     self._print_partial_waters(result.partial_waters)
 
     self.model = model
@@ -314,10 +314,12 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
         print(f"    ... and {len(group) - _MAX_LISTED_WATERS} more",
               file=self.logger)
 
-  def _print_residual_contacts(self, hier):
+  def _print_residual_contacts(self, hier, crystal_symmetry):
     """List the residual inter-water H-H contacts (< 2.0 A) with residue IDs,
-    grouped into the 1.5/1.8/2.0 A bands and closest-first within each band."""
-    contacts = water_protonation._worst_water_clashes(hier)
+    grouped into the 1.5/1.8/2.0 A bands and closest-first within each band.
+    Contacts with symmetry equivalents carry the operator."""
+    contacts = water_protonation._worst_water_clashes(
+      hier, crystal_symmetry=crystal_symmetry)
     if not contacts:
       print("  no contacts < 2.0 A", file=self.logger)
       return

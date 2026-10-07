@@ -351,6 +351,34 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   return hiers, atoms, xyz
 
 
+def _sym_equiv_pairs(sites, crystal_symmetry, radius,
+                     min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+  """Every ``(i, j, op)`` whose equivalent of site ``j`` lies within
+  ``radius`` of site ``i``.
+
+  ``op`` acts on fractional coordinates. A contact is listed from both ends,
+  ``(j, i)`` under the inverse operator, except that a site on a special
+  position can see more equivalents of its partner than the partner sees of
+  it. An equivalent closer than ``min_distance_sym_equiv`` to its own site is
+  that same site, and is dropped.
+  """
+  if not sites.size():
+    return []
+  # One table build serves the query for every site.
+  tables = super_cell.get_sym_equiv_tables(
+    sites_cart=sites, crystal_symmetry=crystal_symmetry, radius=radius,
+    min_distance_sym_equiv=min_distance_sym_equiv)
+  found = []
+  for i in range(sites.size()):
+    siiu, _ = super_cell.get_siiu(
+      crystal_symmetry=crystal_symmetry, selection=[i],
+      symmetry_tables=tables)
+    for j, ops in siiu.items():
+      for op in ops:
+        found.append((i, j, op))
+  return found
+
+
 def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius,
                             min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Symmetry equivalents of ``sites`` that fall within ``radius`` of a site.
@@ -367,20 +395,8 @@ def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius,
   by_site = [[] for _ in range(n)]
   own = [[] for _ in range(n)]
   transforms = [None]
-  if not n:
-    return by_site, transforms, own
-  # One table build serves the query for every site.
-  tables = super_cell.get_sym_equiv_tables(
-    sites_cart=sites, crystal_symmetry=crystal_symmetry, radius=radius,
-    min_distance_sym_equiv=min_distance_sym_equiv)
-  found = []
-  for wi in range(n):
-    siiu, _ = super_cell.get_siiu(
-      crystal_symmetry=crystal_symmetry, selection=[wi],
-      symmetry_tables=tables)
-    for wj, ops in siiu.items():
-      for op in ops:
-        found.append((wi, wj, op))
+  found = _sym_equiv_pairs(sites, crystal_symmetry, radius,
+                           min_distance_sym_equiv)
   if not found:
     return by_site, transforms, own
   # Number the blocks by operator rather than by discovery order, so the slot
@@ -595,8 +611,19 @@ class _WaterHydrogenPlacer(object):
       W = np.concatenate((self.slot_wid[:ns], self.wh_wid))
     else:
       X, W = self.wh_xyz, self.wh_wid
-    return _contact_stats(
-      len(X), _water_h_contacts(flex.vec3_double(X), flex.size_t(W))[2])
+    d = _water_h_contacts(X, W)[2]
+    if self.crystal_symmetry is not None:
+      # The slots are final once the greedy pass is done, so one pairing
+      # serves every state.
+      if self.h_sym_pairs is None:
+        self.h_sym_pairs = _water_h_sym_pairs(
+          X, W, self.w_o_site, self.crystal_symmetry,
+          self.min_distance_sym_equiv)
+      d = np.concatenate([d] + [d_sym for _op, _i, _j, d_sym in
+                                _water_h_sym_contacts(
+                                  X, self.h_sym_pairs,
+                                  self.crystal_symmetry.unit_cell())])
+    return _contact_stats(len(X), d)
 
   def _nearest_cation(self, o_xyz, own_idx):
     """Closest metal cation coordinating a water O, if any.
@@ -980,6 +1007,8 @@ class _WaterHydrogenPlacer(object):
     waters = []
     wh_xyz = []
     wh_wid = []
+    # Per water residue, its O site, None without one.
+    self.w_o_site = []
     for wgid, ag in enumerate(g for g in hier.atom_groups()
                               if _is_water(g.resname)):
       o = None
@@ -998,6 +1027,7 @@ class _WaterHydrogenPlacer(object):
           wh_wid.append(wgid)
         elif o is None and els[k].upper() == "O":
           o = a
+      self.w_o_site.append(o.xyz if o is not None else None)
       if o is None:
         continue
       fixed_d1 = None
@@ -1025,6 +1055,8 @@ class _WaterHydrogenPlacer(object):
       waters.append((ag, o, own_idx, fixed_d1, existing, names, wgid))
     self.wh_xyz = np.array(wh_xyz, dtype=float) if wh_xyz else np.zeros((0, 3))
     self.wh_wid = np.array(wh_wid, dtype=np.int64)
+    # Water H pairs across symmetry for the clash counts, built by _stats.
+    self.h_sym_pairs = None
 
     # Per-water constants: every neighbour list the placement needs, built
     # once here and reused by the greedy pass, every relaxation sweep and
@@ -1265,13 +1297,14 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       Called as ``on_state(label, stats)`` at each state reached:
       ``"initial"`` after the greedy pass, ``"sweep N"`` after each refinement
       sweep, ``"basin N.M"`` during basin-hopping; ``stats`` is the
-      ``_water_clash_stats`` tuple.
+      ``_water_clash_stats`` tuple, under ``crystal_symmetry``.
   crystal_symmetry : cctbx.crystal.symmetry or None, optional
       Honour crystal packing: atoms that symmetry places within reach of a
       water join its environment, so H at a lattice contact avoid the
       neighbouring asymmetric units instead of pointing into them. None
       (default) treats the model as isolated. A symmetry mate contributes its
-      O and its placed protons both.
+      O and its placed protons both, and contacts with its protons count
+      towards the kept state.
   min_distance_sym_equiv : float, optional
       Distance in A under which a symmetry equivalent counts as coincident
       with its own site, and so as that same atom rather than a second copy
@@ -1303,62 +1336,160 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
 def _water_h_contacts(xyz, wid):
   """Inter-water H-H contacts within 2.0 A.
 
-  ``xyz`` are water H sites and ``wid`` the water each belongs to. Returns
-  ``(i, j, d)``: the two H of each contact, H on the same water excluded, and
-  their distance.
+  ``xyz`` are water H sites, an (n, 3) array, and ``wid`` the water each
+  belongs to. Returns ``(i, j, d)``: the two H of each contact, H on the same
+  water excluded, and their distance.
   """
-  empty = (flex.size_t(), flex.size_t(), flex.double())
-  if xyz.size() < 2:
-    return empty
-  pairs = KDTree(xyz.as_numpy_array()).query_pairs(2.0, output_type="ndarray")
-  if not len(pairs):
-    return empty
-  # KDTree hands back an (n, 2) ndarray; flex flattens it row-major, so the
-  # pair members are the even and odd entries.
-  p = flex.size_t(pairs)
-  i = p.select(flex.size_t_range(0, p.size(), 2))
-  j = p.select(flex.size_t_range(1, p.size(), 2))
-  keep = (wid.select(i) != wid.select(j)).iselection()
-  i = i.select(keep)
-  j = j.select(keep)
-  dx, dy, dz = (xyz.select(i) - xyz.select(j)).parts()
-  return i, j, flex.sqrt(flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz))
+  if len(xyz) < 2:
+    return (np.zeros(0, dtype=np.intp), np.zeros(0, dtype=np.intp),
+            np.zeros(0))
+  pairs = KDTree(xyz).query_pairs(2.0, output_type="ndarray")
+  pairs = pairs[wid[pairs[:, 0]] != wid[pairs[:, 1]]]
+  i, j = pairs[:, 0], pairs[:, 1]
+  D = xyz[i] - xyz[j]
+  return i, j, np.sqrt(D[:, 0] * D[:, 0] + D[:, 1] * D[:, 1]
+                       + D[:, 2] * D[:, 2])
+
+
+def _water_h_sym_pairs(xyz, wid, o_sites, crystal_symmetry,
+                       min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+  """Water H pairs that crystal symmetry can bring within 2.0 A.
+
+  ``xyz`` are water H sites, ``wid`` the water each belongs to and
+  ``o_sites`` each water's O site; the H of a water without one are left
+  out. Two waters pair up when an operator brings the equivalent of one O
+  within ``2.0 + 2 * reach`` A of the other, ``reach`` being the longest
+  O-H. Each contact is listed once: a pair of waters and its mirror, the
+  second against the first under the inverse operator, are one contact seen
+  from either end, of which the first in ``(i, j, op)`` order is kept, and a
+  water paired with itself by an operator that is its own inverse lists each
+  pair of its H once.
+
+  Returns ``[(op, i, j)]``, one entry per operator: H ``i[k]`` against the
+  equivalent of H ``j[k]`` under ``op``.
+  """
+  sel = np.flatnonzero([o_sites[w] is not None for w in wid])
+  if not len(sel):
+    return []
+  sel_wid = wid[sel]
+  D = xyz[sel] - np.array([o_sites[w] for w in sel_wid], dtype=float)
+  reach = math.sqrt((D[:, 0] * D[:, 0] + D[:, 1] * D[:, 1]
+                     + D[:, 2] * D[:, 2]).max())
+  h_of = {}
+  for k, w in zip(sel.tolist(), sel_wid.tolist()):
+    h_of.setdefault(w, []).append(k)
+  ws = sorted(h_of)
+  found = _sym_equiv_pairs(
+    flex.vec3_double([o_sites[w] for w in ws]), crystal_symmetry,
+    2.0 + 2.0 * reach + 0.01, min_distance_sym_equiv)
+  listed = set(found)
+  by_op = {}
+  for wi, wj, op in found:
+    mirror = (wj, wi, op.inverse().new_denominators(op))
+    if mirror in listed and mirror < (wi, wj, op):
+      continue
+    _, i, j = by_op.setdefault(str(op), (op, [], []))
+    own_inverse = mirror == (wi, wj, op)
+    for a in h_of[ws[wi]]:
+      for b in h_of[ws[wj]]:
+        if own_inverse and b < a:
+          continue   # the same contact as (b, a)
+        i.append(a)
+        j.append(b)
+  return [(op, np.array(i, dtype=np.intp), np.array(j, dtype=np.intp))
+          for _, (op, i, j) in sorted(by_op.items())]
+
+
+def _water_h_sym_contacts(xyz, sym_pairs, unit_cell):
+  """The pairs of :func:`_water_h_sym_pairs` within 2.0 A.
+
+  The transform runs through flex, as in
+  :meth:`_WaterHydrogenPlacer._own_sym_equiv_clear`, so the distances match
+  the flex engine's to the last ulp.
+
+  Returns ``[(op, i, j, d)]`` for the operators with any: H ``i[k]`` lies
+  ``d[k]`` from the equivalent of H ``j[k]`` under ``op``.
+  """
+  contacts = []
+  for op, i, j in sym_pairs:
+    D = xyz[i] - super_cell.sym_equiv_sites_cart(
+      sites_cart=flex.vec3_double(xyz[j]), unit_cell=unit_cell,
+      rt_mx=op).as_numpy_array()
+    d2 = D[:, 0] * D[:, 0] + D[:, 1] * D[:, 1] + D[:, 2] * D[:, 2]
+    near = d2 <= 4.0
+    if near.any():
+      contacts.append((op, i[near], j[near], np.sqrt(d2[near])))
+  return contacts
 
 
 def _contact_stats(n, d):
   """``(n, n_lt_20, n_lt_18, n_lt_15, closest)`` for ``n`` water H with
   contact distances ``d``; ``closest`` is None without a contact."""
-  if not d.size():
+  if not len(d):
     return n, 0, 0, 0, None
-  return (n, d.size(), (d < 1.8).count(True), (d < 1.5).count(True),
-          flex.min(d))
+  return (n, len(d), int((d < 1.8).sum()), int((d < 1.5).sum()),
+          float(d.min()))
 
 
 def _water_h_sites(hier):
-  """``(xyz, wid, atoms)`` for every water H/D in ``hier``, ``wid`` numbering
-  the water each belongs to."""
-  xyz = flex.vec3_double()
-  wid = flex.size_t()
+  """``(xyz, wid, atoms, o_sites)`` for every water H/D in ``hier``: ``wid``
+  numbers the water each belongs to, and ``o_sites`` holds each water's O
+  site, None for a water without one."""
+  xyz = []
+  wid = []
   atoms = []
+  o_sites = []
   for w, ag in enumerate(g for g in hier.atom_groups()
                          if _is_water(g.resname)):
     ats, hd = _hd_flags(ag)
-    sel = hd.iselection()
-    xyz.extend(ats.extract_xyz().select(sel))
-    wid.extend(flex.size_t(sel.size(), w))
-    atoms.extend(ats[int(k)] for k in sel)
-  return xyz, wid, atoms
+    els = ats.extract_element(strip=True)
+    o = None
+    for k in range(ats.size()):
+      if hd[k]:
+        xyz.append(ats[k].xyz)
+        wid.append(w)
+        atoms.append(ats[k])
+      elif o is None and els[k].upper() == "O":
+        o = ats[k].xyz
+    o_sites.append(o)
+  return (np.array(xyz, dtype=float).reshape(-1, 3),
+          np.array(wid, dtype=np.intp), atoms, o_sites)
 
 
-def _water_clash_stats(hier):
+def _all_water_h_contacts(hier, crystal_symmetry, min_distance_sym_equiv):
+  """Inter-water H-H contacts within 2.0 A, symmetry equivalents included.
+
+  Returns ``(atoms, contacts)``: the water H atoms, and one ``(d, i, j, op)``
+  per contact, between ``atoms[i]`` and the equivalent of ``atoms[j]`` under
+  ``op``, None for a contact within the model. Without a crystal symmetry
+  the model is isolated.
+  """
+  xyz, wid, atoms, o_sites = _water_h_sites(hier)
+  groups = [(None,) + _water_h_contacts(xyz, wid)]
+  if crystal_symmetry is not None:
+    groups.extend(_water_h_sym_contacts(
+      xyz, _water_h_sym_pairs(xyz, wid, o_sites, crystal_symmetry,
+                              min_distance_sym_equiv),
+      crystal_symmetry.unit_cell()))
+  contacts = [(dk, ik, jk, op) for op, i, j, d in groups
+              for ik, jk, dk in zip(i.tolist(), j.tolist(), d.tolist())]
+  return atoms, contacts
+
+
+def _water_clash_stats(hier, crystal_symmetry=None,
+                       min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Count H-H contacts between the H of different waters.
+
+  Given a crystal symmetry, contacts with symmetry-equivalent water H count
+  too, each once.
 
   Returns ``(n_placed, n_lt_20, n_lt_18, n_lt_15, closest)``: the number of
   water H, the counts of inter-water H-H contacts below 2.0/1.8/1.5 A, and
   the closest such distance (None if no pair is within 2.0 A).
   """
-  xyz, wid, _ = _water_h_sites(hier)
-  return _contact_stats(xyz.size(), _water_h_contacts(xyz, wid)[2])
+  atoms, contacts = _all_water_h_contacts(hier, crystal_symmetry,
+                                          min_distance_sym_equiv)
+  return _contact_stats(len(atoms), np.array([c[0] for c in contacts]))
 
 
 def _clash_row(label, stats, log):
@@ -1384,15 +1515,19 @@ def _water_id(ag):
           + (f" ({alt})" if alt else ""))
 
 
-def _worst_water_clashes(hier):
+def _worst_water_clashes(hier, crystal_symmetry=None,
+                         min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Inter-water H-H contacts within 2.0 A, closest first.
 
-  One ``(distance, id_a, id_b)`` per contact.
+  One ``(distance, id_a, id_b)`` per contact, as counted by
+  :func:`_water_clash_stats`; ``id_b`` of a symmetry equivalent ends in its
+  operator.
   """
-  xyz, wid, atoms = _water_h_sites(hier)
-  i, j, d = _water_h_contacts(xyz, wid)
-  return [(d[k], _atom_id(atoms[i[k]]), _atom_id(atoms[j[k]]))
-          for k in flex.sort_permutation(d)]
+  atoms, contacts = _all_water_h_contacts(hier, crystal_symmetry,
+                                          min_distance_sym_equiv)
+  return [(d, _atom_id(atoms[i]),
+           _atom_id(atoms[j]) + (f" ({op})" if op is not None else ""))
+          for d, i, j, op in sorted(contacts, key=lambda c: c[0])]
 
 
 def _detect_neutron(pdb_in, hier):
