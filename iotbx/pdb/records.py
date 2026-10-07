@@ -44,6 +44,7 @@ class expdta(_base):
     TECH = self.technique.upper()
     self.keywords = []
     for keyword in ("ELECTRON DIFFRACTION",
+                    "ELECTRON MICROSCOPY",
                     "FIBER DIFFRACTION",
                     "FLUORESCENCE TRANSFER",
                     "NEUTRON DIFFRACTION",
