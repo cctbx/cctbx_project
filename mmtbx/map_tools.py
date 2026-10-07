@@ -136,140 +136,6 @@ class combine(object):
       result = result.customized_copy(data = result.data()*sw)
     return result
 
-class electron_density_map_llgi(object):
-  """ LLGI-native counterpart to electron_density_map -- builds
-  2mFo-DFc/mFo-DFc-style map coefficients using Feff and the LLGI
-  target's own D/fom (see mmtbx.f_model.manager.
-  map_calculation_helper_llgi's docstring for the full derivation and
-  correspondence to the ordinary ML alpha/beta/fom), instead of Fobs and
-  a fresh generic ML alpha/beta/fom fit.
-
-  Deliberately a SEPARATE class from electron_density_map, not a
-  target-aware branch inside it: electron_density_map is
-  relied on by many non-LLGI callers (ml, mlhl, twin targets) that
-  assume it is always Fobs-based, so it is left completely untouched;
-  this class is reached only by callers that explicitly ask for the
-  LLGI-native map (see mmtbx.f_model.manager.map_coefficients_llgi()).
-
-  Reuses fo_fc_scales/combine UNCHANGED (both already only depend on
-  centric_flags/.size(), which are identical whether sourced from f_obs
-  or Feff, since Feff is always index-matched to f_obs) -- only the
-  map_calculation_helper passed in differs (map_calculation_helper_llgi()
-  instead of map_calculation_helper()).
-
-  Special-case maps (anomalous, anomalous_residual, phaser_sad_llg,
-  Fcalc-only) and use_shelx_weight are NOT supported here -- none of
-  those are meaningful extensions of the LLGI target's own likelihood
-  (anomalous/SAD analysis and SHELX weighting are independent features
-  layered on the classic ML machinery, not yet ported to LLGI); raises
-  NotImplementedError if requested, rather than silently falling back to
-  an F-obs-based answer.
-
-  fill_missing/fill_missing_method: like electron_density_map's own
-  fill_missing/fill_missing_method, but only "f_model" (the default for
-  BOTH classes) is implemented here, via fill_missing_f_obs_llgi/
-  model_missing_reflections_llgi (Dobs*sigmaA*Emodel*sqrt(TEPS)*RESN,
-  the LLGI-native DFc-analog, in place of D*Fc -- see that class's own
-  docstring). "dsf"/"resolve_dm" raise NotImplementedError here (they
-  are density-based, not model/target-based, so they would work
-  unchanged, but are not yet wired through this class -- reachable via
-  the ordinary electron_density_map path instead for now).
-  """
-
-  def __init__(self, fmodel):
-    self.fmodel = fmodel
-    self.mch = None
-
-  def map_coefficients(self,
-                       map_type,
-                       acentrics_scale = 2.0,
-                       centrics_pre_scale = 1.0,
-                       exclude_free_r_reflections=False,
-                       fill_missing=False,
-                       fill_missing_method="f_model",
-                       isotropize=True,
-                       sharp=False):
-    map_name_manager = mmtbx.map_names(map_name_string = map_type)
-    if(map_name_manager.anomalous or map_name_manager.anomalous_residual
-       or map_name_manager.phaser_sad_llg):
-      raise NotImplementedError(
-        "electron_density_map_llgi does not support anomalous/"
-        "anomalous_residual/phaser_sad_llg map types; these features "
-        "have not been ported to the LLGI target.")
-    if(fill_missing and fill_missing_method not in ("f_model", None, False)):
-      raise NotImplementedError(
-        "electron_density_map_llgi only supports fill_missing_method="
-        "'f_model' (Dobs*sigmaA*Emodel*sqrt(TEPS)*RESN); '%s' is not "
-        "yet wired through the LLGI path." % fill_missing_method)
-    mnm = mmtbx.map_names(map_name_string = map_type)
-    if(mnm.k==0 and abs(mnm.n)==1):
-      # Fcalc-only map: no observed-amplitude dependence at all, so the
-      # F-obs vs Feff distinction is moot -- reuse electron_density_map
-      # unchanged rather than duplicating this special case.
-      return electron_density_map(fmodel=self.fmodel).map_coefficients(
-        map_type=map_type, fill_missing=fill_missing)
-    if(self.mch is None):
-      self.mch = self.fmodel.map_calculation_helper_llgi()
-    ffs = fo_fc_scales(
-      fmodel          = self.fmodel,
-      map_type_str    = map_type,
-      acentrics_scale = acentrics_scale,
-      centrics_scale  = centrics_pre_scale)
-    fo_scale, fc_scale = ffs.fo_scale, ffs.fc_scale
-    coeffs = combine(
-      fmodel                 = self.fmodel,
-      map_type_str           = map_type,
-      fo_scale               = fo_scale,
-      fc_scale               = fc_scale,
-      map_calculation_helper = self.mch,
-      use_shelx_weight       = False,
-      shelx_weight_parameter = None).map_coefficients()
-    r_free_flags = None
-    scale_default = 1. / (self.fmodel.k_isotropic()*self.fmodel.k_anisotropic())
-    scale_array = coeffs.customized_copy(data=scale_default)
-    if (exclude_free_r_reflections):
-      if (coeffs.anomalous_flag()):
-        coeffs = coeffs.average_bijvoet_mates()
-      r_free_flags = self.fmodel.r_free_flags()
-      if (r_free_flags.anomalous_flag()):
-        r_free_flags = r_free_flags.average_bijvoet_mates()
-        scale_array = scale_array.average_bijvoet_mates()
-      coeffs = coeffs.select(~r_free_flags.data())
-      scale_array = scale_array.select(~r_free_flags.data())
-    if(isotropize):
-      if (scale_array.anomalous_flag()) and (not coeffs.anomalous_flag()):
-        scale_array = scale_array.average_bijvoet_mates()
-      scale = scale_array.data()
-      coeffs = coeffs.customized_copy(data = coeffs.data()*scale)
-    if(fill_missing):
-      if(coeffs.anomalous_flag()):
-        coeffs = coeffs.average_bijvoet_mates()
-      coeffs = fill_missing_f_obs_llgi(coeffs=coeffs, fmodel=self.fmodel)
-    if(sharp):
-      ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
-      from cctbx import adptbx
-      b = flex.mean(self.fmodel.xray_structure.extract_u_iso_or_u_equiv() *
-        adptbx.u_as_b(1))/2
-      k_sharp = 1./flex.exp(-ss * b)
-      coeffs = coeffs.customized_copy(data = coeffs.data()*k_sharp)
-    return coeffs
-
-  def fft_map(self,
-              resolution_factor = 1/3.,
-              symmetry_flags = None,
-              map_coefficients = None,
-              map_type = None,
-              acentrics_scale = 2.0,
-              centrics_pre_scale = 1.0):
-    if(map_coefficients is None):
-      map_coefficients = self.map_coefficients(
-        map_type           = map_type,
-        acentrics_scale    = acentrics_scale,
-        centrics_pre_scale = centrics_pre_scale)
-    return map_coefficients.fft_map(
-      resolution_factor = resolution_factor,
-      symmetry_flags    = symmetry_flags)
-
 class electron_density_map(object):
 
   def __init__(self,
@@ -378,10 +244,13 @@ class electron_density_map(object):
     if(fill_missing):
       if(coeffs.anomalous_flag()):
         coeffs = coeffs.average_bijvoet_mates()
-      coeffs = fill_missing_f_obs(
-        coeffs = coeffs,
-        fmodel = self.fmodel,
-        method = fill_missing_method)
+      if(fill_missing_method == "f_model" and getattr(self.mch, "llgi", False)):
+        coeffs = fill_missing_f_obs_llgi(coeffs = coeffs, fmodel = self.fmodel)
+      else:
+        coeffs = fill_missing_f_obs(
+          coeffs = coeffs,
+          fmodel = self.fmodel,
+          method = fill_missing_method)
     if(sharp):
       ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
       from cctbx import adptbx
@@ -649,70 +518,19 @@ def fill_missing_f_obs(coeffs, fmodel, method):
     raise RuntimeError("Invalid arg of fill_missing_f_obs: method:"%(method))
 
 class model_missing_reflections_llgi(object):
-  """ LLGI-native counterpart to model_missing_reflections -- fills
-  missing/unmeasured reflections with a DFc-analog term built from
-  Dobs*sigmaA*Emodel*sqrt(TEPS)*RESN (E-scale, anisotropy-free), rather
-  than model_missing_reflections' own D*Fc (ML alpha-weighted, F-scale).
-  See mmtbx.f_model.manager.map_calculation_helper_llgi's docstring for
-  the same D/Emodel/RESN quantities used elsewhere in the LLGI map-
-  coefficient/sigmaA machinery, reused UNCHANGED here.
-
-  Reuses model_missing_reflections' own __init__ entirely (the atom-
-  correlation filtering, complete_set/xray_structure_cut/f_calc_missing/
-  f_mask_missing construction, is genuinely target-agnostic -- it only
-  needs an fmodel and the CURRENT map coefficients being completed, not
-  anything ML-specific) via composition rather than duplicating it,
-  since model_missing_reflections doesn't currently expose a hook for a
-  subclass to override just the "how do we weight/value a missing
-  reflection" step.
-
-  A missing reflection has, by definition, no actual measurement, so
-  three of the quantities the LLGI target normally needs at each
-  reflection (Dobs, RESN, and -- less obviously -- k_isotropic itself,
-  since fmodel.k_isotropic() is a plain per-reflection array from bss's
-  own fit, not a closed-form function of resolution) have no natural
-  value there either. Each is handled differently, per what's actually
-  knowable:
-    Dobs   -- treated as 1 (full reliability): there is no actual
-              measurement to distrust, so sigmaA(d) alone (evaluated at
-              the missing reflection's own resolution, via
-              e_sigmaa_target_evaluator.evaluate_at) stands in for the
-              usual Dobs*sigmaA product -- mirrors how the ML fill
-              itself applies NO alpha/fom weighting at all to its D*Fc
-              term (see model_missing_reflections.get_missing), just a
-              milder version of the same idea (weighted by model
-              confidence at that resolution, not left completely
-              unweighted).
-    RESN   -- nacelle never computed this for missing reflections (it's
-              inherently tied to the experimental data collection), and
-              this module has no independent model of its resolution
-              shape to extrapolate with -- each missing reflection
-              borrows the RESN value of its NEAREST observed reflection
-              in resolution (1D nearest-neighbour in d*^2), rather than
-              fitting/assuming a smooth curve we have no basis for.
-    k_iso  -- fmodel.k_isotropic() has no value at an unobserved
-              resolution, but (unlike RESN) IS expected to be a smooth,
-              well-behaved function of resolution alone (it is exactly
-              this module's own SigmaP/Emodel machinery's premise) --
-              fit a plain B-spline curve to the OBSERVED k_isotropic(ss)
-              array (reusing mmtbx.refinement.llgi_e_sigmaa's
-              b_spline_design_matrix, log-space to keep it positive,
-              same convention as sigmaA's own z=log-space-ish
-              parameterisation) and evaluate that fitted curve at each
-              missing reflection's own ss, clamped to the observed
-              range exactly as e_sigmaa_target_evaluator.evaluate_at
-              clamps sigmaA.
-  k_mask/k_sol/b_sol themselves ARE well-defined at any resolution
-  (k_mask(ss) = k_sol*exp(-b_sol*ss) is a closed-form function by
-  construction) using fmodel.k_sol_b_sol_from_k_mask()'s current fit (the
-  LIVE fmodel's own already-current bulk-solvent state -- NOT re-fit
-  here, unlike the ML "careful" deterministic=True path's fresh, slow
-  update_all_scales() re-fit: the LLGI macrocycle pipeline already keeps
-  k_sol/b_sol current every cycle via bss, so re-fitting here would be
-  redundant work solving an already-solved problem).
-
-  Requires fmodel.llgi_data() (FEFF/DOBS/TEPS/RESN) AND llgi_data.sigmaa
-  already attached (same precondition as map_calculation_helper_llgi) --
+  """ LLGI counterpart of model_missing_reflections: missing reflections
+  get sigmaA*|Emodel|*sqrt(TEPS)*RESN along the model phase, the LLGI
+  analogue of D*Fc (Dobs = 1: there is no measurement). The missing
+  reflections and their Fcalc/Fmask come from model_missing_reflections.
+  For quantities only known at observed reflections:
+    sigmaA      the fitted sigmaA curve (llgi_data.sigmaa_curve);
+    k_isotropic a B-spline in ln(k_isotropic) fitted against ss, clamped
+                to the observed range;
+    k_mask      k_sol*exp(-b_sol*ss) from fmodel.k_sol_b_sol_from_k_mask();
+    SigmaP      the observed reflections' fit, clamped
+                (llgi_e_sigmaa.build_sigma_p);
+    RESN        the value at the nearest observed resolution.
+  Requires llgi_data with sigmaa_curve (update_llgi_sigmaa_scatfrac());
   raises AttributeError otherwise.
   """
 
@@ -725,21 +543,15 @@ class model_missing_reflections_llgi(object):
       raise AttributeError(
         "model_missing_reflections_llgi requires llgi_data (FEFF/DOBS/"
         "TEPS/RESN) -- none attached.")
-    sigmaa = getattr(llgi_data, "sigmaa", None)
-    if(sigmaa is None):
+    if(getattr(llgi_data, "sigmaa_curve", None) is None):
       raise AttributeError(
-        "model_missing_reflections_llgi requires sigmaa already "
-        "attached to llgi_data (see update_llgi_sigmaa_scatfrac()) -- "
-        "not yet available.")
+        "model_missing_reflections_llgi requires the sigmaA fit "
+        "(update_llgi_sigmaa_scatfrac()) -- not yet available.")
     self.llgi_data = llgi_data
 
   def _fit_k_isotropic_curve(self):
-    """ Fit a smooth B-spline curve to the OBSERVED fmodel.k_isotropic()
-    array vs ss (log-space, so the fitted curve stays positive), for
-    later evaluation at the missing reflections' own ss -- see this
-    class's own docstring. Returns (coeffs, ss_range, n_coeffs, degree)
-    ready for _eval_k_isotropic_curve.
-    """
+    """ B-spline fit of ln(k_isotropic) against ss over the observed
+    reflections; returns (coeffs, ss_range, n_coeffs, degree). """
     import numpy as np
     from mmtbx.refinement.llgi_e_sigmaa import b_spline_design_matrix
     ss = self.fmodel.f_obs().sin_theta_over_lambda_sq().data(
@@ -763,42 +575,16 @@ class model_missing_reflections_llgi(object):
     log_k_iso = design.dot(coeffs)
     return flex.double(np.exp(log_k_iso).tolist())
 
-  def _nearest_resn(self, d_star_sq_missing):
-    """ RESN for each missing reflection, borrowed from its nearest
-    OBSERVED reflection in resolution (1D nearest-neighbour in d*^2) --
-    see this class's own docstring on why RESN is not fit/extrapolated
-    the way sigmaA/k_isotropic are.
-    """
-    import numpy as np
-    f_obs = self.fmodel.f_obs()
-    d_star_sq_obs = np.asarray(f_obs.d_star_sq().data(), dtype=float)
-    resn_obs = np.asarray(self.llgi_data.resn.data(), dtype=float)
-    order = np.argsort(d_star_sq_obs)
-    d_sorted = d_star_sq_obs[order]
-    resn_sorted = resn_obs[order]
-    d_missing_np = np.asarray(d_star_sq_missing, dtype=float)
-    idx = np.searchsorted(d_sorted, d_missing_np)
-    idx = np.clip(idx, 0, len(d_sorted) - 1)
-    idx_prev = np.clip(idx - 1, 0, len(d_sorted) - 1)
-    use_prev = (
-      (idx == len(d_sorted)) |
-      (np.abs(d_sorted[idx_prev] - d_missing_np) <
-       np.abs(d_sorted[idx] - d_missing_np)))
-    nearest_idx = np.where(use_prev, idx_prev, idx)
-    return flex.double(resn_sorted[nearest_idx].tolist())
-
   def get_missing(self):
-    """ Dobs*sigmaA*Emodel*sqrt(TEPS)*RESN (Dobs=1, see this class's own
-    docstring) for the missing-reflection set, on the SAME index set/
-    order as self._base.f_calc_missing (mirrors model_missing_
-    reflections.get_missing's own return shape, so fill_missing_f_obs_
-    llgi can use it identically to fill_missing_f_obs_1).
+    """ The fill values for the missing reflections, on the index set of
+    model_missing_reflections.f_calc_missing (as
+    model_missing_reflections.get_missing). Also sets .e_scale_missing.
     """
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     base = self._base
     f_calc_missing = base.f_calc_missing
     f_mask_missing = base.f_mask_missing[0]
-    ss_missing = flex.double(base.ss_missing)
+    ss_missing = base.ss_missing
     d_star_sq_missing = f_calc_missing.d_star_sq().data()
     epsilons_missing = f_calc_missing.epsilons().data().as_double()
 
@@ -819,22 +605,10 @@ class model_missing_reflections_llgi(object):
       1.0 / flex.sqrt(epsilons_missing * sigma_p_missing))
     e_model_abs_missing = flex.abs(e_model_missing)
 
-    # llgi_data.sigmaa is an already-evaluated curve on the observed
-    # reflections only; evaluating sigmaA at the MISSING reflections'
-    # resolutions needs the fitted model itself (evaluate_at), which is
-    # not persisted on llgi_data -- so refit against the current fmodel,
-    # using the same E-scale phil (hence the same sigmaa_model, spline or
-    # d_model) that update_llgi_sigmaa_scatfrac last used. None falls
-    # back to that scope's own defaults.
-    sigmaa_refit = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(
-      self.fmodel,
-      dobs=self.llgi_data.dobs.data(),
-      feff=self.llgi_data.feff.data(),
-      resn=self.llgi_data.resn.data(),
-      params=getattr(self.llgi_data, "e_params", None))
-    sigmaa_missing = sigmaa_refit.evaluate_at(d_star_sq_missing)
+    sigmaa_missing = self.llgi_data.sigmaa_curve(d_star_sq_missing)
 
-    resn_missing = self._nearest_resn(d_star_sq_missing)
+    resn_missing = self.nearest_observed(
+      d_star_sq_missing, self.llgi_data.resn.data())
     self.e_scale_missing = group_args(
       miller_set=f_calc_missing, sigmaa=sigmaa_missing,
       e_model_abs=e_model_abs_missing, f_model_no_aniso=fmnas_missing,
@@ -843,18 +617,15 @@ class model_missing_reflections_llgi(object):
     sqrt_teps_resn = flex.sqrt(teps_missing) * resn_missing
 
     fill_data = sigmaa_missing * e_model_abs_missing * sqrt_teps_resn
-    # Phase from fmnas_missing (real-valued magnitude above needs a
-    # phase source -- matches map_calculation_helper_llgi's own
-    # .f_model = f_model_no_aniso_scale convention, whose phase equals
-    # fmodel.f_model()'s own phase since k_anisotropic is real/positive).
+    # phase of f_model_no_aniso_scale, i.e. of f_model
     fill_complex = miller.array(
       miller_set=f_calc_missing, data=fill_data).phase_transfer(
         phase_source=fmnas_missing).data()
     return f_calc_missing.customized_copy(data=fill_complex)
 
   def nearest_observed(self, d_star_sq_missing, values):
-    """ values (one per OBSERVED reflection) borrowed from the nearest
-    observed reflection in resolution, as for RESN. """
+    """ values (one per observed reflection) at the observed reflection
+    nearest in d*^2 to each of d_star_sq_missing. """
     import numpy as np
     d_obs = np.asarray(self.fmodel.f_obs().d_star_sq().data(), dtype=float)
     vals = np.asarray(values, dtype=float)
@@ -868,16 +639,8 @@ class model_missing_reflections_llgi(object):
     return flex.double(v_sorted[np.where(use_prev, idx_prev, idx)].tolist())
 
 def fill_missing_f_obs_llgi(coeffs, fmodel):
-  """ LLGI-native counterpart to fill_missing_f_obs_1 -- fills missing
-  reflections with Dobs*sigmaA*Emodel*sqrt(TEPS)*RESN (see
-  model_missing_reflections_llgi) instead of D*Fc. The ONLY LLGI fill-
-  missing method implemented (mirrors fill_missing_f_obs_1 being the
-  default/"f_model" ML method) -- the "dsf"/"resolve_dm" alternatives
-  are density-based, not model/target-based, and already work unchanged
-  on any map coefficients regardless of ML/LLGI provenance, so they stay
-  reachable only through the ordinary (non-LLGI) fill_missing_f_obs
-  dispatch for now.
-  """
+  """ LLGI counterpart of fill_missing_f_obs_1 (method "f_model"): missing
+  reflections filled by model_missing_reflections_llgi. """
   mro = model_missing_reflections_llgi(coeffs=coeffs, fmodel=fmodel)
   missing = mro.get_missing()
   return coeffs.complete_with(other=missing, scale=True)

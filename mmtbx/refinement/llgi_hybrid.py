@@ -166,16 +166,14 @@ For best results, run phasertng.nacelle on the original intensities
 ******************************************************************************"""
 
 def is_french_wilson(f, sigf, centric_flags, max_violation_fraction=0.005):
-  """ Same test as phasertng's french_wilson::is_FrenchWilsonF: French-Wilson
+  """ cctbx's is_FrenchWilson (as used by phasertng): French-Wilson
   amplitudes are all positive with SIGF/F below its large-sigma limits,
-  sqrt(4/pi - 1) = 0.523 (acentric) and sqrt(pi/2 - 1) = 0.756 (centric). """
+  sqrt(4/pi - 1) = 0.523 (acentric) and sqrt(pi/2 - 1) = 0.756 (centric),
+  apart from max_violation_fraction of them. """
+  import boost_adaptbx.boost.python as bp
   if(f.size() == 0): return False
-  if((f <= 0).count(True) > 0 or (sigf <= 0).count(True) > 0): return False
-  ratio = sigf / f
-  if((ratio > 1).count(True) > 0): return False
-  limit = flex.double(f.size(), 0.523)
-  limit.set_selected(centric_flags, 0.756)
-  return (ratio > limit).count(True) <= max_violation_fraction * f.size()
+  return bp.import_ext("cctbx_french_wilson_ext").is_FrenchWilson(
+    F=f, SIGF=sigf, is_centric=centric_flags, eps=max_violation_fraction)
 
 def prior_mean_intensity(f_obs, n_per_bin=200, max_bins=60):
   """ Estimate of the prior <I> a French-Wilson calculation used, as the

@@ -240,6 +240,29 @@ def bss_k_sol_b_sol(fmodel, k_sol_default=0.35, b_sol_default=46.0):
     return k_sol_default, b_sol_default
   return float(k_sol), float(b_sol)
 
+class spline_sigmaa_curve(object):
+  """ A fitted spline sigmaA as a function of d*^2: curve(d_star_sq)
+  returns a flex.double, with d*^2 clamped to the fitted range, outside
+  which the B-spline basis is not defined. Holds only the coefficients
+  and basis, so it can be copied and pickled with llgi_data.
+  """
+
+  def __init__(self, coeffs, x_range, spline_degree):
+    import numpy as np
+    self.coeffs = np.array(coeffs, dtype=float)
+    self.x_range = tuple(x_range)
+    self.spline_degree = spline_degree
+
+  def __call__(self, d_star_sq):
+    import numpy as np
+    d_star_sq_clamped = np.clip(
+      np.asarray(d_star_sq, dtype=float), self.x_range[0], self.x_range[1])
+    design = b_spline_design_matrix(
+      d_star_sq_clamped, self.coeffs.size, self.spline_degree,
+      x_range=self.x_range)
+    sigmaa, _ = _sigmoid(design.dot(self.coeffs))
+    return flex.double(sigmaa)
+
 class e_sigmaa_target_evaluator(object):
   """ scitbx.lbfgs target evaluator for the spline sigmaA(d*^2): the
   B-spline coefficients of z(d*^2), sigmaA = _sigmoid(z), fitted against
@@ -300,19 +323,10 @@ class e_sigmaa_target_evaluator(object):
     sigmaa, _ = self._current_sigmaa()
     return flex.double(sigmaa)
 
-  def evaluate_at(self, d_star_sq):
-    """ The fitted sigmaA at other d*^2 values (e.g. missing reflections),
-    clamped to the fitted range, outside which the B-spline basis is not
-    defined. Returns a flex.double.
-    """
-    import numpy as np
-    d_star_sq_clamped = np.clip(
-      np.asarray(d_star_sq, dtype=float), self.x_range[0], self.x_range[1])
-    design = b_spline_design_matrix(
-      d_star_sq_clamped, self.n_sigmaa_coeffs, self.spline_degree,
-      x_range=self.x_range)
-    sigmaa, _ = _sigmoid(design.dot(self.x.as_numpy_array()))
-    return flex.double(sigmaa)
+  def curve(self):
+    """ The current sigmaA curve, as a spline_sigmaa_curve. """
+    return spline_sigmaa_curve(
+      self.x.as_numpy_array(), self.x_range, self.spline_degree)
 
 def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
       d_star_sq, n_coeffs=8, spline_degree=3, max_iterations=100,
@@ -322,7 +336,7 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
 
   Returns a group_args with .sigmaa (flex.double, every reflection),
   .target (final mean target on the R-free set), .evaluate_at (the
-  fitted curve at other d*^2 values) and .lbfgs_error (None, or the
+  fitted curve, a spline_sigmaa_curve) and .lbfgs_error (None, or the
   message L-BFGS stopped with).
   """
   n_refl = e_eff.size()
@@ -353,7 +367,7 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid)
   return group_args(
     sigmaa=sigmaa, target=final_result.target(),
-    evaluate_at=evaluator.evaluate_at,
+    evaluate_at=evaluator.curve(),
     lbfgs_error=evaluator.minimizer.error)
 
 def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
@@ -434,7 +448,9 @@ def estimate_sigmaa_e_then_scatfrac_f(
   llgi_scatfrac.llgi_scatfrac_params, or None for defaults.
 
   Returns a group_args with .sigmaa and .scatfrac (flex.double, every
-  reflection), .target (final ScatFrac target on the working set),
+  reflection), .sigmaa_curve (the fitted sigmaA as a function of d*^2,
+  see estimate_e_sigmaa_for_fmodel's .evaluate_at), .target (final
+  ScatFrac target on the working set),
   .scatfrac_inf/.b_scatfrac (ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss)),
   .n_scatfrac_at_floor (see llgi_scatfrac) and .warnings (list of
   messages about fits that stopped early).
@@ -463,7 +479,8 @@ def estimate_sigmaa_e_then_scatfrac_f(
     scale_factor=fmodel.scale_ml_wrapper(),
     params=scatfrac_params, hybrid=llgi_hybrid.get_hybrid(llgi_data))
   return group_args(
-    sigmaa=sigmaa, scatfrac=scatfrac_result.scatfrac,
+    sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
+    scatfrac=scatfrac_result.scatfrac,
     target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac,

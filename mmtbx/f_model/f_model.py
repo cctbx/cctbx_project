@@ -146,6 +146,17 @@ class manager_mixin(object):
     return self.target_functor()(compute_gradients=True) \
       .gradients_wrt_atomic_parameters(**keyword_args)
 
+  def llgi_target_active(self):
+    return False
+
+  def electron_density_map_for_target(self):
+    """ The electron_density_map for the current target: with the LLGI
+    map helper when the llgi target is active, otherwise the ordinary
+    one. """
+    if(self.llgi_target_active()):
+      return self.electron_density_map_llgi()
+    return self.electron_density_map()
+
 sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
   algorithm = *fft direct taam
     .type = choice
@@ -1787,10 +1798,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     reading a reflection file). llgi_data is expected to be a group_args
     (or similar) exposing .dobs, .feff, .teps, .resn as miller.array
     objects on the same index set as f_obs(), plus optional .info,
-    .sigmaa, .scatfrac, .e_params (the latter three attached later by
-    update_llgi_sigmaa_scatfrac(), not required here; .e_params is the
-    E-scale phil scope that fit used, kept so later refits -- e.g. the
-    map fill-missing path -- use the same sigmaa_model settings).
+    .sigmaa, .sigmaa_curve and .scatfrac (attached later by
+    update_llgi_sigmaa_scatfrac(); .sigmaa_curve evaluates the fitted
+    sigmaA at any d*^2, e.g. for missing reflections).
     """
     if(llgi_data is not None):
       f_obs = self._f_obs
@@ -1892,8 +1902,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       scatfrac_params = params)
     updated = llgi_hybrid.replace_llgi_data(llgi_data,
       sigmaa=f_obs.array(data=result.sigmaa),
-      scatfrac=f_obs.array(data=result.scatfrac),
-      e_params=e_params)
+      sigmaa_curve=result.sigmaa_curve,
+      scatfrac=f_obs.array(data=result.scatfrac))
     self.set_llgi_data(updated)
     return result
 
@@ -2714,6 +2724,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     import scitbx.math
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     class result(object):
+      llgi = True  # tells electron_density_map to fill missing the LLGI way
       def __init__(self, fmodel):
         feff = llgi_data.feff
         f_obs = fmodel.f_obs()
@@ -2926,19 +2937,15 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     return emap.map_coefficients(**kwds)
 
   def electron_density_map_llgi(self):
-    """ LLGI-native counterpart to electron_density_map() -- see
-    mmtbx.map_tools.electron_density_map_llgi's docstring and
-    map_calculation_helper_llgi()'s docstring for the full derivation.
-    Requires llgi_target_active() (raises AttributeError via
-    map_calculation_helper_llgi() otherwise, the first time map
-    coefficients are actually computed -- not eagerly here, matching
-    electron_density_map()'s own lazy construction).
-    """
-    return map_tools.electron_density_map_llgi(fmodel = self)
+    """ electron_density_map with map_calculation_helper_llgi(): Feff and
+    the LLGI D and figure of merit in place of F_obs and the ML ones, and
+    missing reflections filled by map_tools.fill_missing_f_obs_llgi.
+    Raises AttributeError unless llgi_data and sigmaA are attached. """
+    return map_tools.electron_density_map(fmodel = self,
+      map_calculation_helper = self.map_calculation_helper_llgi())
 
   def map_coefficients_llgi(self, **kwds):
-    """ LLGI-native counterpart to map_coefficients() -- see
-    electron_density_map_llgi()'s docstring. """
+    """ map_coefficients() from electron_density_map_llgi(). """
     emap = self.electron_density_map_llgi()
     return emap.map_coefficients(**kwds)
 

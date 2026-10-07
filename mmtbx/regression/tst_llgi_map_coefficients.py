@@ -19,24 +19,17 @@ def exercise_requires_llgi_data_and_sigmaa_scatfrac():
   try:
     fmodel.map_calculation_helper_llgi()
   except AttributeError as e:
-    # E-scale formula only requires .sigmaa now (no ScatFrac term at
-    # all -- see map_calculation_helper_llgi's own docstring), so the
-    # error, if raised, must mention sigmaa specifically.
     assert "sigmaa" in str(e)
   else:
     raise RuntimeError(
       "Expected AttributeError with llgi_data but no sigmaa.")
 
 def _independent_e_scale_quantities(fmodel):
-  """ Independent, from-scratch reimplementation of the E-scale Eeff/
-  Emodel/D/V quantities map_calculation_helper_llgi() now uses (NOT
-  reusing mmtbx.refinement.llgi_e_sigmaa's build_e_eff/
-  build_e_model or fmodel.f_model_no_aniso_scale() -- re-derives
-  f_model_no_aniso_scale and SigmaP by hand instead), for cross-checking .alpha/.beta/
-  .fom without depending on the same helper code the method under test
-  itself calls. Returns (eeff, emodel_abs, d, v, sqrt_teps_resn,
-  inv_sqrt_eps_sigmap) as plain flex.double arrays, index-matched to
-  fmodel.f_obs().
+  """ The E-scale Eeff, |Emodel|, D, V and scale factors computed without
+  the code under test (no build_e_eff/build_e_model or
+  fmodel.f_model_no_aniso_scale()), as flex.double arrays on
+  fmodel.f_obs()'s index set: (eeff, emodel_abs, d, v, sqrt_teps_resn,
+  inv_sqrt_eps_sigmap).
   """
   llgi_data = fmodel.llgi_data()
   f_obs = fmodel.f_obs()
@@ -54,15 +47,9 @@ def _independent_e_scale_quantities(fmodel):
   k_aniso = fmodel.k_anisotropic()
   fmnas = f_model_data * (1.0 / k_aniso)
 
-  # SigmaP, independently: a plain Gaussian-kernel local average of
-  # |fmnas|^2 in d*^2 (epsilon-free), evaluated directly at each
-  # reflection's own d*^2 -- NOT build_sigma_p's exact machinery
-  # (auto-tuned kernel width, Chebyshev-node sampling, log-space
-  # polynomial fit): a much simpler, independent reimplementation of
-  # the same underlying idea (a smoothed epsilon-free resolution trend
-  # of |fmnas|^2), so exact numerical agreement is not expected -- only
-  # that it recovers the same quantity to a loose tolerance (see the
-  # eps=1.e-3/1.e-2 tolerances on the tests that consume this).
+  # SigmaP as a fixed-bandwidth Gaussian-kernel average of |fmnas|^2 in
+  # d*^2 (no epsilon): simpler than build_sigma_p, so it agrees only to
+  # about 15%.
   intensity = flex.norm(fmnas)
   d_star_sq_np = d_star_sq.as_numpy_array()
   import numpy as np
@@ -85,32 +72,15 @@ def _independent_e_scale_quantities(fmodel):
   return eeff, emodel_abs, d, v, sqrt_teps_resn, inv_sqrt_eps_sigmap
 
 def exercise_alpha_matches_d_formula():
-  # .alpha must equal D*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP), D=Dobs*sigmaA
-  # (no ScatFrac, no k -- see map_calculation_helper_llgi's own
-  # docstring), computed independently here (via _independent_e_scale_
-  # quantities' own SigmaP reimplementation, not by reusing mmtbx.
-  # refinement.llgi_e_sigmaa's build_e_model/build_sigma_p, the
-  # same functions the method under test itself calls).
+  # .alpha = D*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP), D = Dobs*sigmaA, against
+  # the independent quantities above.
   fmodel = build_llgi_fmodel(60, 1.9, seed=13)
   mch = fmodel.map_calculation_helper_llgi()
   eeff, emodel_abs, d, v, sqrt_teps_resn, inv_sqrt_eps_sigmap = \
     _independent_e_scale_quantities(fmodel)
   alpha_expected = d * sqrt_teps_resn * inv_sqrt_eps_sigmap
-  # SigmaP is a smoothed/kernel-fit quantity: the independent
-  # reimplementation here (a plain fixed-bandwidth Gaussian kernel, see
-  # _independent_e_scale_quantities' own docstring) uses a genuinely
-  # different smoothing scheme than build_sigma_p's own auto-tuned-
-  # bandwidth/Chebyshev-node/polynomial-fit machinery, so exact
-  # numerical equality is neither expected nor a meaningful check here
-  # -- a RELATIVE tolerance (not approx_equal's absolute eps, which
-  # would be arbitrary against these O(1) values) confirms the two
-  # recover the same underlying quantity to ~15%, which is what matters
-  # for a "genuinely different code path, same physical quantity"
-  # cross-check; a real formula bug (e.g. a missing/extra factor of D,
-  # RESN, or SigmaP itself) would show up as a gross, not a ~15%,
-  # discrepancy -- confirmed by deliberately introducing a wrong SigmaP
-  # exponent while developing this test, which produced order-of-
-  # magnitude, not few-percent, mismatches.
+  # 15%: the independent SigmaP differs by that much; a wrong factor
+  # (D, RESN, SigmaP exponent) gives an order-of-magnitude error.
   actual = list(mch.alpha.data())
   expected = list(alpha_expected)
   for a, e in zip(actual, expected):
@@ -118,10 +88,7 @@ def exercise_alpha_matches_d_formula():
     assert rel_diff < 0.15, (a, e, rel_diff)
 
 def exercise_beta_matches_v_formula():
-  # .beta must equal V = TEPS - D^2 (llgi_e.h's own "v" exactly -- no
-  # ScatFrac/RESN^2 rescale on the E-scale, unlike the old F-scale
-  # formula's v_e/V distinction -- see map_calculation_helper_llgi's own
-  # docstring).
+  # .beta = V = TEPS - D^2.
   fmodel = build_llgi_fmodel(60, 1.9, seed=14)
   mch = fmodel.map_calculation_helper_llgi()
   llgi_data = fmodel.llgi_data()
@@ -139,12 +106,9 @@ def exercise_beta_matches_v_formula():
         i, beta[i], v_expected[i])
 
 def exercise_fom_matches_bessel_ratio_reference():
-  # .fom must equal I1(X)/I0(X) (acentric) or tanh(X/2) (centric), X =
-  # 2*Eeff*D*Emodel/V -- computed independently here (via _independent_
-  # e_scale_quantities' own Eeff/Emodel/D/V reimplementation) using
-  # scipy's Bessel functions directly (not scitbx.math.bessel_i1_over_
-  # i0, the same function map_calculation_helper_llgi itself uses -- so
-  # this is a genuine cross-check, not a restatement).
+  # .fom = I1(X)/I0(X) (acentric) or tanh(X/2) (centric), X =
+  # 2*Eeff*D*Emodel/V, with scipy's Bessel functions and the independent
+  # quantities above.
   import scipy.special as sp
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.0, seed=15)
   mch = fmodel.map_calculation_helper_llgi()
@@ -163,41 +127,19 @@ def exercise_fom_matches_bessel_ratio_reference():
       expected = sp.i1(x) / sp.i0(x)
     else:
       expected = math.tanh(x / 2.0)
-    # approx_equal treats a nan/inf comparison as trivially passing --
-    # require a genuine finite reference value at every checked
-    # reflection, so a numerical-overflow test-data mistake (e.g. X too
-    # large for scipy's naive i1(x)/i0(x)) fails loudly instead of
-    # silently skipping the check.
     if(not math.isfinite(expected)): continue
-    # scitbx.math.bessel_i1_over_i0 is a tabulated approximation, not
-    # exact I1(x)/I0(x); Eeff/Emodel here come from an independently
-    # reimplemented SigmaP (a different, ~15%-off smoothing code path
-    # than the method under test -- see exercise_alpha_matches_d_
-    # formula's own note), which propagates into X and hence fom, so a
-    # fixed absolute tolerance on fom (a Bessel-function RATIO, which
-    # can amplify a modest X mismatch near saturation) would either be
-    # too loose to mean anything or too tight to pass -- a relative
-    # check on fom itself, at the same ~15% scale as the alpha check
-    # above, is the honest tolerance for this cross-check.
+    # 15% relative, as for alpha (from the independent SigmaP)
     rel_diff = abs(fom[i] - expected) / max(abs(expected), 1.e-6)
     assert rel_diff < 0.15, (i, fom[i], expected, rel_diff)
     n_checked += 1
   assert n_checked > 0
 
 def exercise_map_coefficients_llgi_matches_hand_computation():
-  # For 2mFo-DFc and mFo-DFc, the coefficients must equal
-  #   Feff*fo_scale*fom (phase-transferred onto mch.f_model's phase)
-  #   + mch.f_model*fc_scale*alpha
-  # exactly, computed here from mch's own .f_model/.alpha/.fom rather than
-  # by calling combine() again. fo_scale/fc_scale come from the real
-  # mmtbx.map_tools.fo_fc_scales, so the centric/acentric branching
-  # (centrics get plain mFo in 2mFo-DFc) is exercised, not assumed.
-  # feff_scale != 1 makes Feff differ from f_obs, so using f_obs instead
-  # of Feff would fail here.
-  #
-  # mch.f_model is f_model_no_aniso_scale (k_anisotropic excluded), which
-  # has the same phase as fmodel.f_model() since k_anisotropic is real and
-  # positive; it is the array combine() itself uses.
+  # 2mFo-DFc and mFo-DFc equal Feff*fo_scale*fom along the model phase
+  # plus mch.f_model*fc_scale*alpha (fo_fc_scales gives centrics plain
+  # mFo in 2mFo-DFc). feff_scale != 1, so using f_obs instead of Feff
+  # would fail. mch.f_model is f_model_no_aniso_scale, with the phase of
+  # f_model.
   import mmtbx.map_tools as mt
   import cmath
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=22, feff_scale=1.35)
@@ -224,9 +166,7 @@ def exercise_map_coefficients_llgi_matches_hand_computation():
     assert diff < 1.e-6, (map_type, diff)
 
 def exercise_map_coefficients_llgi_fcalc_only_matches_ordinary():
-  # The Fcalc-only special case (map_type="Fc") has no observed-
-  # amplitude dependence at all, so map_coefficients_llgi should reuse
-  # electron_density_map (the ordinary path) exactly, not duplicate it.
+  # The Fcalc-only map does not depend on the data: same as the ordinary one.
   fmodel = build_llgi_fmodel(60, 1.9, seed=24)
   llgi_fc = fmodel.map_coefficients_llgi(map_type="Fc")
   ml_fc = fmodel.map_coefficients(map_type="Fc")
@@ -235,14 +175,12 @@ def exercise_map_coefficients_llgi_fcalc_only_matches_ordinary():
     list(flex.abs(llgi_fc.data())), list(flex.abs(ml_fc.data())),
     eps=1.e-10)
 
-def exercise_map_coefficients_llgi_rejects_anomalous():
+def exercise_map_coefficients_llgi_anomalous_as_ordinary():
+  # Anomalous maps come from F_obs anomalous differences, as without LLGI
+  # (here None: the data are not anomalous).
   fmodel = build_llgi_fmodel(60, 1.9, seed=25)
-  try:
-    fmodel.map_coefficients_llgi(map_type="anom")
-  except NotImplementedError:
-    pass
-  else:
-    raise RuntimeError("Expected NotImplementedError for map_type=anom.")
+  assert fmodel.map_coefficients_llgi(map_type="anom") is None
+  assert fmodel.map_coefficients(map_type="anom") is None
 
 def _mcp(map_type, fill_missing_f_obs=False):
   import mmtbx.maps
@@ -255,14 +193,8 @@ def _mcp(map_type, fill_missing_f_obs=False):
 
 def build_llgi_fmodel_with_gaps(n_atoms=60, d_min=1.9, seed=0, feff_scale=1.0,
       keep_fraction=0.85):
-  """ Like build_llgi_fmodel, but with a random subset of reflections
-  DROPPED after building the (otherwise complete, by construction --
-  x.structure_factors() generates every symmetry-allowed index at that
-  resolution, so build_fmodel's own fmodel never has genuinely missing
-  reflections) starting set -- giving model_missing_reflections_llgi/
-  model_missing_reflections something real to fill back in, for
-  exercise_llgi_fill_missing_matches_hand_computation.
-  """
+  """ build_llgi_fmodel with a random keep_fraction of the reflections, so
+  that there are missing reflections to fill. """
   random.seed(seed + 500)
   fmodel = build_fmodel(n_atoms=n_atoms, d_min=d_min, seed=seed)
   f_obs = fmodel.f_obs()
@@ -277,16 +209,8 @@ def build_llgi_fmodel_with_gaps(n_atoms=60, d_min=1.9, seed=0, feff_scale=1.0,
   return fmodel
 
 def exercise_llgi_fill_missing_matches_hand_computation():
-  # Verify model_missing_reflections_llgi.get_missing()'s actual formula
-  # end to end: for each MISSING reflection (lone to the unfilled LLGI
-  # coefficients), the fill value's MAGNITUDE must equal sigmaA(d)*
-  # |Emodel|*sqrt(TEPS)*RESN (TEPS==1, Dobs treated as 1 -- see that
-  # class's own docstring), computed independently here from mmtbx.
-  # refinement.llgi_e_sigmaa's own building blocks (reused, since
-  # re-deriving SigmaP/B-spline-sigmaA fitting from scratch a second,
-  # independent way is out of scope for this check -- this test's
-  # purpose is confirming the ASSEMBLY, not re-verifying machinery
-  # already covered by mmtbx.regression.tst_llgi_e_sigmaa).
+  # The filled 2mFo-DFc adds exactly model_missing_reflections_llgi's
+  # values for the missing reflections.
   from mmtbx import map_tools as mt
   fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
   llgi_unfilled = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
@@ -301,9 +225,6 @@ def exercise_llgi_fill_missing_matches_hand_computation():
 
   mro = mt.model_missing_reflections_llgi(fmodel=fmodel, coeffs=llgi_unfilled)
   missing_computed = mro.get_missing()
-  # Match indices between the two independently-obtained missing sets
-  # (llgi_filled's lone_set vs get_missing()'s own return) before
-  # comparing magnitudes.
   a, b = missing_only.common_sets(missing_computed)
   assert a.indices().size() == missing_only.indices().size(), (
     "index mismatch between complete_with's lone_set and get_missing()'s "
@@ -311,38 +232,40 @@ def exercise_llgi_fill_missing_matches_hand_computation():
   assert approx_equal(
     list(flex.abs(a.data())), list(flex.abs(b.data())), eps=1.e-6)
 
-def exercise_fill_missing_honours_sigmaa_model():
-  # The E-scale phil scope passed to update_llgi_sigmaa_scatfrac must be
-  # recorded on llgi_data, survive fmodel.select() (which rebuilds
-  # llgi_data field by field -- run by every bss outlier-removal pass,
-  # including the final one before maps are written), and reach the
-  # fill-missing sigmaA refit. Previously that refit always used the
-  # default form, whatever sigmaa_model was set to.
+def exercise_fill_missing_uses_fitted_sigmaa_curve():
+  # The fitted sigmaA curve is stored on llgi_data, reproduces llgi_data.
+  # sigmaa, survives fmodel.select() (every bss outlier-removal pass) and
+  # deep copy/pickling, and gives the fill's sigmaA. The fill follows the
+  # sigmaa_model used in the fit.
+  import copy, pickle
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   from mmtbx import map_tools as mt
   fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
   # f_model() as the coefficients being completed: model_missing_
-  # reflections keeps only atoms whose map (from these coefficients)
-  # correlates with the model map, and this fixture's synthetic Feff is
-  # unrelated to the model, so real 2mFo-DFc coefficients keep no atoms
-  # and the fill is identically zero -- nothing to compare.
+  # reflections keeps only atoms whose map correlates with the model map,
+  # and this fixture's Feff is unrelated to the model.
   coeffs = fmodel.f_model()
-  default_fill = mt.model_missing_reflections_llgi(
-    fmodel=fmodel, coeffs=coeffs).get_missing()
-  assert flex.min(flex.abs(default_fill.data())) > 0
-
-  e_params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
-  assert e_params.sigmaa_model == "d_model"  # the default
-  e_params.sigmaa_model = "spline"
-  fmodel.update_llgi_sigmaa_scatfrac(e_params=e_params)
-  assert fmodel.llgi_data().e_params is e_params
-  selected = fmodel.select(flex.bool(fmodel.f_obs().size(), True))
-  assert selected.llgi_data().e_params is e_params
-
-  spline_fill = mt.model_missing_reflections_llgi(
-    fmodel=fmodel, coeffs=coeffs).get_missing()
-  a, b = default_fill.common_sets(spline_fill)
-  assert a.size() == default_fill.size() > 0
+  fills = []
+  for sigmaa_model in ["d_model", "spline"]:
+    e_params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
+    e_params.sigmaa_model = sigmaa_model
+    fmodel.update_llgi_sigmaa_scatfrac(e_params=e_params)
+    llgi_data = fmodel.llgi_data()
+    curve = llgi_data.sigmaa_curve
+    d_star_sq = fmodel.f_obs().d_star_sq().data()
+    assert approx_equal(curve(d_star_sq), llgi_data.sigmaa.data(), eps=1.e-12)
+    selected = fmodel.select(flex.bool(fmodel.f_obs().size(), True))
+    assert selected.llgi_data().sigmaa_curve is curve
+    for c in (copy.deepcopy(curve), pickle.loads(pickle.dumps(curve))):
+      assert approx_equal(c(d_star_sq), curve(d_star_sq), eps=0)
+    mro = mt.model_missing_reflections_llgi(fmodel=fmodel, coeffs=coeffs)
+    fill = mro.get_missing()
+    assert flex.min(flex.abs(fill.data())) > 0
+    assert approx_equal(mro.e_scale_missing.sigmaa,
+      curve(mro.e_scale_missing.miller_set.d_star_sq().data()), eps=0)
+    fills.append(fill)
+  a, b = fills[0].common_sets(fills[1])
+  assert a.size() == fills[0].size() > 0
   abs_a, abs_b = flex.abs(a.data()), flex.abs(b.data())
   rel_diff = flex.mean(flex.abs(abs_a - abs_b)) / flex.mean(abs_a)
   assert rel_diff > 0.01, rel_diff
@@ -391,11 +314,7 @@ def exercise_outlier_selection_skips_model_based_test_for_llgi():
     outlier_rejection.outlier_manager.model_based_outliers = original
 
 def exercise_map_coefficients_from_fmodel_ml_target_unaffected():
-  # An ordinary ml-target fmodel (no llgi_data at all) must be routed
-  # exactly as before -- this is the regression guard for the "avoid
-  # slow calculation several times" shared map_calculation_server fast
-  # path in compute_map_coefficients, which is only skipped when
-  # llgi_target_active() is True.
+  # An ml-target fmodel gets the ordinary maps.
   import mmtbx.maps
   fmodel = build_fmodel(n_atoms=50, d_min=2.1, seed=32)
   assert not fmodel.llgi_target_active()
@@ -407,12 +326,10 @@ def exercise_map_coefficients_from_fmodel_ml_target_unaffected():
     list(coeffs.data()), list(ml_coeffs.data()), eps=1.e-10)
 
 def exercise_compute_map_coefficients_mixed_dispatch():
-  # compute_map_coefficients (the class driver.py's .mtz writer uses)
-  # must handle a params list with a MIX of LLGI-supported (mFo-DFc,
-  # 2mFo-DFc with fill_missing_f_obs=True, filled natively by the LLGI
-  # path) and LLGI-unsupported (anomalous difference map -- SAD analysis,
-  # not ported to LLGI) requests in the SAME call, each routed to the
-  # LLGI path (it calls map_coefficients_from_fmodel per map type).
+  # compute_map_coefficients (phenix.refine's MTZ output) with the llgi
+  # target: filled 2mFo-DFc and mFo-DFc are the LLGI maps, and an
+  # anomalous map request (None here, as the data are not anomalous) is
+  # handled alongside them.
   import mmtbx.maps
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=33)
   params = [
@@ -423,16 +340,7 @@ def exercise_compute_map_coefficients_mixed_dispatch():
   for p in params:
     p.format = ["mtz"]
   cmo = mmtbx.maps.compute_map_coefficients(fmodel=fmodel, params=params)
-  # Only 2 entries: compute_map_coefficients only appends a map_coeffs
-  # entry when coeffs is not None (see its own source) -- the anomalous
-  # request (this fmodel's f_obs is non-anomalous, so BOTH the LLGI and
-  # ML paths return None for it) contributes nothing to the list. The
-  # point of including it here is that dispatch doesn't raise/crash on
-  # an unsupported map type mixed in with supported ones, not that it
-  # produces a placeholder entry.
   assert len(cmo.map_coeffs) == 2
-  # First (2mFo-DFc, fill_missing=True) must match the LLGI-native fill
-  # path, not the ML fill, and must add the missing reflections.
   llgi_2fofc_filled = fmodel.map_coefficients_llgi(
     map_type="2mFo-DFc", fill_missing=True)
   assert cmo.map_coeffs[0].indices().all_eq(llgi_2fofc_filled.indices())
@@ -444,7 +352,6 @@ def exercise_compute_map_coefficients_mixed_dispatch():
     > 1.e-3
   llgi_unfilled = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
   assert cmo.map_coeffs[0].size() > llgi_unfilled.size()
-  # Second (mFo-DFc, no fill) should match the (unfilled) LLGI path.
   llgi_fofc = fmodel.map_coefficients_llgi(map_type="mFo-DFc")
   assert approx_equal(
     list(cmo.map_coeffs[1].data()), list(llgi_fofc.data()), eps=1.e-10)
@@ -456,9 +363,9 @@ def exercise():
   exercise_fom_matches_bessel_ratio_reference()
   exercise_map_coefficients_llgi_matches_hand_computation()
   exercise_map_coefficients_llgi_fcalc_only_matches_ordinary()
-  exercise_map_coefficients_llgi_rejects_anomalous()
+  exercise_map_coefficients_llgi_anomalous_as_ordinary()
   exercise_llgi_fill_missing_matches_hand_computation()
-  exercise_fill_missing_honours_sigmaa_model()
+  exercise_fill_missing_uses_fitted_sigmaa_curve()
   exercise_phase_errors_llgi_match_numerical_integration()
   exercise_outlier_selection_skips_model_based_test_for_llgi()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()

@@ -74,6 +74,20 @@ def target_and_gradient(theta, s2, e_eff, e_model, dobs, centric_flags,
     result.d_target_by_dsigmaa().as_numpy_array())
   return result.target(), gradient
 
+class d_model_curve(object):
+  """ A fitted D_model as a function of d*^2: curve(d_star_sq) returns a
+  flex.double. Holds only theta and the B_k ladder, so it can be copied
+  and pickled with llgi_data. Defined at any resolution, so no clamping.
+  """
+
+  def __init__(self, theta, b_k_grid):
+    self.theta = np.array(theta, dtype=float)
+    self.b_k_grid = np.array(b_k_grid, dtype=float)
+
+  def __call__(self, d_star_sq):
+    s2 = np.asarray(d_star_sq, dtype=float) / 4.0
+    return flex.double(dmodel.d_model(s2, self.theta, self.b_k_grid))
+
 class d_model_target_evaluator(object):
   """ L-BFGS-B fit of theta for D_model against the mean E-scale LLGI on
   the R-free set, with Emodel fixed. Bounds: 0 <= a_k, b <= amplitude_max,
@@ -198,8 +212,8 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
 
   Returns a group_args with .sigmaa (flex.double, every reflection),
   .theta ([a_1..a_K, b, B_defect]) and .b_k_grid (flex.double), .target
-  (final mean target on the R-free set), .evaluate_at (the fitted curve
-  at other d*^2 values) and .lbfgs_error (see
+  (final mean target on the R-free set), .evaluate_at (the fitted curve,
+  a d_model_curve) and .lbfgs_error (see
   d_model_target_evaluator.lbfgs_error).
   """
   evaluator = d_model_target_evaluator(
@@ -211,18 +225,11 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     b_k_grid=b_k_grid,
     include_constant_term=include_constant_term,
     hybrid=hybrid)
-  theta = evaluator.theta()
-  b_k_grid_used = evaluator.b_k_grid
-  def evaluate_at(d_star_sq_new):
-    """ The fitted D_model at other d*^2 values (e.g. missing
-    reflections). D_model is defined at any resolution, so no clamping.
-    """
-    s2_new = np.asarray(d_star_sq_new, dtype=float) / 4.0
-    return flex.double(dmodel.d_model(s2_new, theta, b_k_grid_used))
+  curve = d_model_curve(evaluator.theta(), evaluator.b_k_grid)
   return group_args(
-    sigmaa=evaluate_at(d_star_sq),
-    theta=flex.double(theta),
-    b_k_grid=flex.double(b_k_grid_used),
+    sigmaa=curve(d_star_sq),
+    theta=flex.double(curve.theta),
+    b_k_grid=flex.double(curve.b_k_grid),
     target=evaluator.target(),
-    evaluate_at=evaluate_at,
+    evaluate_at=curve,
     lbfgs_error=evaluator.lbfgs_error())

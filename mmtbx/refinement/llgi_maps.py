@@ -3,10 +3,10 @@ from cctbx.array_family import flex
 from libtbx import group_args
 import iotbx.phil
 
-""" LLGI map coefficients from the exact posterior of E (map-coefficient
-handoff, Oct 2026). On the E scale, with Ec = |Emodel| along the model
-phase, sigmaA (clamped to SIGMAA_MAX) and the information fraction
-phi(sigmaA, sigma(E_obs^2)) (mmtbx.refinement.llgi_phi_table):
+""" LLGI map coefficients from the exact posterior of E. On the E scale,
+with Ec = |Emodel| along the model phase, sigmaA (clamped to SIGMAA_MAX)
+and the information fraction phi(sigmaA, sigma(E_obs^2))
+(mmtbx.refinement.llgi_phi_table):
 
   filled         <E>                                    (missing: sigmaA*Ec)
   bias-reduced   M = (<E> - c*Ec)/(1 - c*sigmaA),  c = (1 - phi)*sigmaA
@@ -15,8 +15,11 @@ phi(sigmaA, sigma(E_obs^2)) (mmtbx.refinement.llgi_phi_table):
 
 <E> is the exact posterior mean along the model phase (cctbx.xray.
 llgi_exact_evaluate) for every reflection, whatever form the target uses.
-Its model bias is sigmaA*(1 - phi); M subtracts exactly that much of Ec,
-and the 1/(1 - c*sigmaA) scale is the handoff's "proposed" normalisation.
+Its model bias is sigmaA*(1 - phi); M0 = <E> - c*Ec removes exactly that
+much of Ec. Then E[M0*conj(E)] = phi and E[|M0|^2] = phi*(1 - c*sigmaA)
+(from the definition of phi, with E[<E>*conj(Ec)] = sigmaA), so the scale
+1/(1 - c*sigmaA) minimises the mean-square error E[|M - E|^2] among
+multiples of M0 (checked by Monte Carlo).
 
 F scale: multiply by sqrt(TEPS)*RESN, the data's own normalisation, with
 nacelle's anisotropic factor divided out (RESN/sqrt(ANISOBETA): the
@@ -24,7 +27,7 @@ isotropic overall falloff is kept, the anisotropy removed) unless
 remove_anisotropy=False.
 """
 
-SIGMAA_MAX = 0.995
+from mmtbx.refinement.llgi_e_dmodel import SIGMAA_MAX
 
 llgi_map_params = iotbx.phil.parse("""\
   enabled = True
