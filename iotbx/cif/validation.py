@@ -304,9 +304,9 @@ class dictionary(model.cif):
         else:
           if enum_min is None and enum_max is None: return
           elif enum_min is None:
-            enum_min = '.'*len(enum_max)
+            enum_min = ['.'] * len(enum_max)
           elif enum_max is None:
-            enum_max = '.'*len(enum_min)
+            enum_max = ['.'] * len(enum_min)
           for min, max in zip(enum_min, enum_max):
             if ((min == '.' or v > float(min)) and
                 (max == '.' or v < float(max))):
@@ -314,7 +314,8 @@ class dictionary(model.cif):
             elif (min == max and v == float(min)):
               return # matched boundary value
           # else value out of range
-          self.report_error(2101, key=key, value=value, enum="%s:%s" %(min, max))
+          self.report_error(2101, key=key, value=value,
+            enum=", ".join("%s:%s" % mm for mm in zip(enum_min, enum_max)))
 
   def validate_related(self, key, block, definition):
     related_items = definition.related
@@ -588,4 +589,11 @@ class DDL2_definition(model.save, definition_base):
       self.keys_lower = other.keys_lower
 
   def get_min_max(self):
-    return (self.get('_item_range.minimum'), self.get('_item_range.maximum'))
+    # A single range gives _item_range.minimum/maximum as plain strings,
+    # a looped one as arrays; validate_enumeration zips the two, so a
+    # string must not be iterated character by character.
+    enum_min = self.get('_item_range.minimum')
+    enum_max = self.get('_item_range.maximum')
+    if isinstance(enum_min, string_types): enum_min = [enum_min]
+    if isinstance(enum_max, string_types): enum_max = [enum_max]
+    return (enum_min, enum_max)

@@ -85,6 +85,15 @@ def exercise_validation():
   cm_typed.validate(cd3, out=StringIO())
   assert cd3.err.error_count == 0, cd3.err.errors
   assert cd3.err.warning_count == 0, cd3.err.warnings
+  # DDL2 ranges: a single-row range comes as two plain strings, a looped
+  # one as two columns; both must be handled as rows, not characters.
+  cm_range = cif.reader(input_string=cif_out_of_range).model()
+  cd3.err.reset()
+  cm_range.validate(cd3, out=StringIO())
+  assert sorted(cd3.err.errors.keys()) == [2101], cd3.err.errors
+  assert cd3.err.error_count == 2
+  ranges = sorted(e.kwds['enum'] for e in cd3.err.errors[2101])
+  assert ranges == ['0:., 0:0', '1000:500000'], ranges
 
 def exercise_smart_load(show_timings=False, exercise_url=False):
   from libtbx.test_utils import open_tmp_directory
@@ -417,12 +426,31 @@ save__test.number
   _item.category_id    test
   _item.mandatory_code no
   _item_type.code      int
+  _item_range.minimum  1000
+  _item_range.maximum  500000
+save_
+save__test.positive
+  _item.name           '_test.positive'
+  _item.category_id    test
+  _item.mandatory_code no
+  _item_type.code      int
+  loop_
+  _item_range.minimum
+  _item_range.maximum
+  0 .
+  0 0
 save_
 """
 
 cif_typed = """data_t
-_test.id     ABC
-_test.number 12
+_test.id       ABC
+_test.number   64000
+_test.positive 0
+"""
+
+cif_out_of_range = """data_u
+_test.number   5
+_test.positive -1
 """
 
 if __name__ == "__main__":
