@@ -17,6 +17,7 @@ import os
 import sys
 import six
 import json
+import collections
 import copy
 import tempfile
 
@@ -428,6 +429,36 @@ class clashscore2(validation):
           result.atoms_info[1].id_str(), result.overlap, result.xyz))
     return data
 
+def contact_record_runs(p2):
+  """
+  The runs of dots probe2's raw and JSON writers emit, rebuilt from its per-atom-pair
+  records (output.contact_records=True): one entry per (source, target, interaction
+  type), in writer order (atom class, then interaction type, then source atom, then
+  target name), which is the order _condense() leaves a source's dots in.
+  Yields (atomClass, interaction type, source atom, target atom, dot count, smallest
+  dot gap, location of the smallest-gap Bump dot or None).
+  """
+  import mmtbx_probe_ext as probeExt
+  n_types = probeExt.ContactDB_N_TYPES
+  bump = int(probeExt.InteractionType.Bump)
+  name = probe2.DotInfo._cachedName
+  atoms = {a.i_seq: a for a in p2._atomClasses}
+  runs = collections.defaultdict(list)
+  for call, (db, sources) in enumerate(p2._contactRecords):
+    src, cause, gap, counts, hasBump, bumpGap, bumpLoc, typeGap = db.pairs()
+    for k in range(len(src)):
+      s, t = sources[src[k]], atoms[cause[k]]
+      for itype in range(n_types):
+        count = counts[k * n_types + itype]
+        if count:
+          g = typeGap[k * n_types + itype]
+          runs[(p2._atomClasses[s], itype)].append(
+            ((call, src[k], name(s) + name(t), g), s, t, count, g, bumpLoc[k] if itype == bump else None))
+  for atomClass in probe2._allAtomClasses:   # probe2 lists 'Se' twice and writes it twice
+    for itype in probe2._interactionTypes:
+      for _, s, t, count, g, loc in sorted(runs.get((atomClass, int(itype)), []), key=lambda r: r[0]):
+        yield atomClass, itype, s, t, count, g, loc
+
 class probe_line_info(object): # this is parent
   def __init__(self, line, model_id=""):
     self.overlap_value = None
@@ -536,6 +567,8 @@ class probe_clashscore_manager(object):
     self.fast = fast
     self.condensed_probe = condensed_probe
     self.save_probe_output = save_probe_output
+    # False restores the per-dot JSON path for the default mode (for comparisons).
+    self.use_contact_records = True
     self.use_segids=use_segids
     self.model_id = model_id
     self.occupancy_frac = 0.1
@@ -611,6 +644,52 @@ class probe_clashscore_manager(object):
         self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
+  def process_contact_records(self, p2):
+    """
+    The clash list process_json_probe_output() builds from probe2's per-dot JSON, built
+    instead from probe2's per-atom-pair records (output.contact_records=True).
+
+    That parse merges consecutive lines with the same atom pair, so the line stream is
+    rebuilt at the level of those runs, in the order probe2 writes them: atom class, then
+    interaction type, then source atom, then target name.  Each run's line carries the
+    values of its smallest-gap dot, formatted as the JSON writer formats them, and goes
+    through the same merging, put_group_into_dict() and filter_dicts().
+    """
+    import mmtbx_probe_ext as probeExt
+
+    def atom_json(a):
+      ag = a.parent()
+      rg = ag.parent()
+      return {"chainID": rg.parent().id, "resID": rg.resseq_as_int(), "iCode": rg.icode.strip(),
+              "resName": ag.resname.strip().upper(), "atomName": a.name, "alt": ag.altloc.strip()}
+
+    def r3(v):
+      return float("{:.3f}".format(v))
+
+    new_clash_hash = {}
+    new_hbond_hash = {}
+    previous_line = None
+    for atomClass, itype, s, t, count, g, loc in contact_record_runs(p2):
+      loc = loc if loc is not None else (0.0, 0.0, 0.0)
+      line = json_probe_line_info({
+        "master": "", "group": "", "type": probeExt.DotScorer.interaction_type_short_name(itype),
+        "srcClass": atomClass, "targetClass": p2._atomClasses.get(t, ""),
+        "srcBFactor": float("{:.2f}".format(s.b)), "targetBFactor": float("{:.2f}".format(t.b)),
+        "src": atom_json(s), "target": atom_json(t), "gap": 0.0, "dotGap": r3(g),
+        "spike": [0.0, 0.0, 0.0], "spikeLen": 0.0, "scoreOverDensity": 0.0,
+        "loc": [r3(loc[0]), r3(loc[1]), r3(loc[2])]}, self.model_id)
+      if previous_line is not None:
+        if line.is_similar(previous_line):
+          previous_line.overlap_value = min(previous_line.overlap_value, line.overlap_value)
+        else:
+          self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+          previous_line = line
+      else:
+        previous_line = line
+    if previous_line is not None:
+      self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+    return self.filter_dicts(new_clash_hash, new_hbond_hash)
+
   def get_condensed_clashes(self, probe_json):
     clashes = set() # [(src, targ), (src, targ)]
     hbonds = [] # (src, targ), (targ, src)
@@ -678,13 +757,20 @@ class probe_clashscore_manager(object):
       "output.report_vdws=False",
       "ignore_lack_of_explicit_hydrogens=True",
     ]
+    # The default (non-condensed, non-fast) path takes probe2's per-pair contact records
+    # rather than per-dot JSON: same clash list, without storing and re-parsing every dot.
+    use_records = (not self.fast) and (not self.condensed_probe) and self.use_contact_records
+    if use_records:
+      args += ["output.contact_records=True", "output.write_files=False"]
     master_phil, probe2_params = _probe2_params_from_args(args, tempName)
     p2 = probe2.Program(data_manager, probe2_params,
                        master_phil=master_phil, logger=null_out())
     p2.overrideModel(hydrogenated_model, processed=processed)
     dots, output = p2.run()
     probe_json = output
-    os.unlink(tempName)
+    del dots
+    if not use_records:
+      os.unlink(tempName)
 
     # Debugging facility, do not remove!
     # import random
@@ -700,7 +786,11 @@ class probe_clashscore_manager(object):
     #   f.write('\n'.join(probe_json))
 
     if not self.fast:
-      temp = self.process_json_probe_output(probe_json)
+      if use_records:
+        temp = self.process_contact_records(p2)
+      else:
+        temp = self.process_json_probe_output(probe_json)
+      del p2, probe_json
       self.n_clashes = len(temp)
 
       # Optionally call probe2 again to get non-condensed output including VDW

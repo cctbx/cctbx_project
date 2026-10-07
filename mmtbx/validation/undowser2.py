@@ -156,6 +156,18 @@ These categories are general suggestions. Check your electron density; trust you
     if (cs is None) or (cs.unit_cell() is None):
       data_manager_model = shift_and_box_model(model = data_manager_model)
 
+    # With no waters there is nothing to validate: leave the state a full run would
+    # (empty results per model) without adding hydrogens and running probe2.
+    input_hierarchy = data_manager_model.get_hierarchy()
+    if input_hierarchy.atom_selection_cache().selection("water").count(True) == 0:
+      self.water_count = 0
+      self.probe_undowser_manager = None
+      self.results_by_model = {}
+      for model in input_hierarchy.models():
+        self.results_by_model[model.id] = []
+        self.n_outliers_by_model[model.id] = 0
+      return
+
     # If we've been asked to, add hydrogens to all of the models in the PDB hierarchy
     # associated with our data_manager_model.
     data_manager_model,_ = check_and_add_hydrogen(

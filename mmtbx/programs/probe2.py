@@ -27,6 +27,7 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
+from scitbx.array_family import flex
 
 version = "4.13.0"
 
@@ -118,6 +119,13 @@ output
     .type = bool
     .short_caption = Write the output files
     .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
+
+  contact_records = False
+    .type = bool
+    .short_caption = Keep per-atom-pair contact records instead of dots
+    .help = For programs harnessing probe2: summarize contacts per atom pair in C++ (see \
+            mmtbx/probe/ContactDB.h) and store no dots, so dot output is empty. The records \
+            are left in the program's _contactRecords list as (ContactDB, source atoms) pairs.
 
   file_name = None
     .type = str
@@ -803,6 +811,12 @@ Note:
       atomclass and dot type.
     '''
 
+    if self.params.output.contact_records:
+      self._contactRecords.append(
+        (self._build_contact_records(sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists),
+         list(sourceAtoms)))
+      return
+
     # Store constants used frequently
     probeRadius = self.params.probe.probe_radius
     include_mainchain_mainchain = self.params.include_mainchain_mainchain
@@ -1004,6 +1018,56 @@ Note:
 
           # Save the dot
           self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
+
+# ------------------------------------------------------------------------------
+
+  def _build_contact_records(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists):
+    '''
+      Same contacts as _generate_interaction_dots(), summarized per atom pair in C++.
+      Flattens the per-atom state into i_seq-indexed arrays for probeExt.ContactDB.
+      :return: The built probeExt.ContactDB.
+    '''
+    atoms = {a.i_seq: a for a in self._atomClasses}
+    for a, nbrs in bondedNeighborLists.items():
+      atoms.setdefault(a.i_seq, a)
+      for n in nbrs:
+        atoms.setdefault(n.i_seq, n)
+    size = max(atoms) + 1
+    flags, model, chain, group, alt = (flex.int(size, 0) for _ in range(5))
+    codes = ({}, {}, {}, {})   # model, chain, atom group and altloc ids -> small ints
+    def code(table, key):
+      return table.setdefault(key, len(table) + 1)
+    for i, a in atoms.items():
+      ag = a.parent()
+      if a in self._atomClasses:
+        flags[i] = ((probeExt.ContactDB_IGNORE if self._atomClasses[a] == 'ignore' else 0) |
+                    (probeExt.ContactDB_MAINCHAIN if self._inMainChain[a] else 0) |
+                    (probeExt.ContactDB_HET if self._inHet[a] else 0) |
+                    (probeExt.ContactDB_WATER if self._inWater[a] else 0) |
+                    (probeExt.ContactDB_TARGET if a in targetSet else 0))
+      ch = ag.parent().parent()
+      model[i] = code(codes[0], ch.parent().id)
+      chain[i] = code(codes[1], ch.id)
+      group[i] = code(codes[2], ag.memory_id())
+      alt[i] = 0 if ag.altloc in ('', ' ') else code(codes[3], ag.altloc)
+    by_iseq = {a.i_seq: nbrs for a, nbrs in bondedNeighborLists.items()}
+    offsets, targets = flex.int([0]), []
+    for i in range(size):
+      targets.extend(by_iseq.get(i, []))
+      offsets.append(len(targets))
+
+    params, spo = self.params, self.params.output
+    probeRadius = params.probe.probe_radius
+    db = probeExt.ContactDB(self._extraAtomInfo, self._dotScorer, spatialQuery, phantomsQuery,
+                            Helpers.createDotSphereCache(params.probe))
+    db.set_atom_data(flags, model, chain, group, alt)
+    db.set_bonds(offsets, targets)
+    db.set_params(probeRadius, 2*self._maximumVDWRadius + 2*probeRadius, params.minimum_occupancy,
+                  params.excluded_bond_chain_length, params.include_mainchain_mainchain,
+                  params.include_water_water, params.overlap_scale_factor, spo.separate_worse_clashes,
+                  spo.report_hydrogen_bonds, spo.report_clashes, spo.report_vdws, spo.only_report_bad_clashes)
+    db.build(list(sourceAtoms))
+    return db
 
 # ------------------------------------------------------------------------------
 
@@ -1932,6 +1996,8 @@ Note:
   def run(self):
     # String that will be output to the specified file.
     outString = ''
+    # Unlike the per-model dot results, contact records accumulate across models.
+    self._contactRecords = []
 
     if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots
         and self.params.output.format == 'kinemage'):
