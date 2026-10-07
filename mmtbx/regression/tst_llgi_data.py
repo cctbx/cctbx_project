@@ -100,11 +100,9 @@ def exercise_set_target_name_llgi_requires_data():
   assert attr.specialization is None
 
 def exercise_target_functor_reports_missing_sigmaa_scatfrac():
-  # The sigmaA/ScatFrac estimator is not yet implemented (see
-  # doc/llgi_target_design.md sec. 5); target_functor() must fail with a
-  # clear Sorry, not an opaque AttributeError/TypeError, when llgi_data
-  # lacks sigmaa/scatfrac (which it always will until that estimator
-  # exists and attaches them).
+  # target_functor() must fail with a clear Sorry, not an opaque
+  # AttributeError/TypeError, when llgi_data lacks sigmaa/scatfrac (i.e.
+  # before update_llgi_sigmaa_scatfrac() has run).
   fmodel = build_fmodel()
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)
@@ -117,11 +115,9 @@ def exercise_target_functor_reports_missing_sigmaa_scatfrac():
     assert False, "expected Sorry to be raised"
 
 def exercise_update_llgi_sigmaa_scatfrac_enables_target_functor():
-  # Once mmtbx.refinement.llgi_sigmaa's estimator exists (it does now --
-  # see tst_llgi_sigmaa.py for its own correctness tests), calling
-  # fmodel.update_llgi_sigmaa_scatfrac() should attach sigmaa/scatfrac to
-  # llgi_data and let target_functor() succeed, completing the gap
-  # exercise_target_functor_reports_missing_sigmaa_scatfrac documents.
+  # fmodel.update_llgi_sigmaa_scatfrac() attaches sigmaa/scatfrac to
+  # llgi_data, after which target_functor() succeeds (the counterpart of
+  # exercise_target_functor_reports_missing_sigmaa_scatfrac).
   fmodel = build_fmodel()
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)

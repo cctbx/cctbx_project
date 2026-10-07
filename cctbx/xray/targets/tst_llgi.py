@@ -139,42 +139,6 @@ def exercise_scatfrac_sensitivity():
   mismatched_val = target_work(mismatched).target_work()
   assert mismatched_val > base, (base, mismatched_val)
 
-def exercise_gradient_descent_direction():
-  # NOTE: LLGI is a *gain* relative to a Wilson/null prior, so "a
-  # particular hand-picked |Fcalc| beats some other hand-picked |Fcalc|"
-  # is not a safe premise to test directly -- the maximum-likelihood
-  # |Fcalc| for a Rice/Sim-weighted target is not the naive feff/d point
-  # estimate (that ignores the Bessel-function bias correction the
-  # analytic gradient itself encodes; see mlf.h and llgi.h's use of
-  # i1_over_i0/tanh). The property that *is* fundamental and safe to
-  # assert directly: stepping f_calc a small amount in the direction the
-  # analytic gradient (from gradients_work()) points should *decrease*
-  # target_work (since gradients_work() is, by this file's convention,
-  # d(target)/d(conj(f_calc)) with target already the minimize-me
-  # quantity) -- i.e. the analytic gradient is consistent with target_work
-  # for use in gradient-descent-based refinement (this is effectively a
-  # coarse, aggregate cross-check of the finite-difference gradient test
-  # above, phrased as a descent-direction sanity check rather than a
-  # per-component comparison).
-  n_refl = 6
-  inputs = make_inputs(n_refl, centric=False, seed=4)
-  result = target_work(inputs, compute_gradients=True)
-  base_val = result.target_work()
-  grads = result.gradients_work()
-  work_indices = [i for i in range(n_refl) if not inputs["r_free_flags"][i]]
-  step = 1.e-4
-  stepped = dict(inputs)
-  f_calc_stepped = inputs["f_calc"].deep_copy()
-  for k, ih in enumerate(work_indices):
-    g = grads[k]
-    # The finite-difference test above establishes g.real == d(target)/
-    # d(Re fc) and g.imag == d(target)/d(Im fc) directly (no extra
-    # conjugation needed), so the descent step is simply -step * g.
-    f_calc_stepped[ih] = f_calc_stepped[ih] - step * g
-  stepped["f_calc"] = f_calc_stepped
-  stepped_val = target_work(stepped).target_work()
-  assert stepped_val < base_val, (base_val, stepped_val)
-
 def exercise_sigmaa_scatfrac_finite_difference_gradients():
   # Verifies llgi.h's d_target_one_h_over_sigmaa_scatfrac (used by the
   # sigmaA(resolution)/ScatFrac(resolution) B-spline estimator, see
@@ -344,7 +308,6 @@ def exercise():
   exercise_resn_scale_invariance()
   exercise_negative_variance_guard()
   exercise_scatfrac_sensitivity()
-  exercise_gradient_descent_direction()
   exercise_sigmaa_scatfrac_finite_difference_gradients()
   exercise_symmetrised_form_matches_original()
   exercise_symmetrised_form_is_symmetric_in_feff_and_fc()

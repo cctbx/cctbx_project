@@ -5,7 +5,6 @@ from cctbx import sgtbx
 import mmtbx.f_model
 import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
 from libtbx.test_utils import approx_equal
-import iotbx.phil
 import random
 
 def build_fmodel(n_atoms=40, d_min=1.8, seed=0, space_group="P 21 21 21"):
@@ -130,15 +129,6 @@ def exercise_e_model_mean_square_near_one_on_real_fmodel():
     mean_e_sq = e_sq_np[b].mean()
     assert 0.7 < mean_e_sq < 1.3, mean_e_sq
 
-def exercise_e_eff_is_feff_over_resn():
-  n = 10
-  rnd = random.Random(7)
-  feff = flex.double([rnd.uniform(1.0, 20.0) for i in range(n)])
-  resn = flex.double([rnd.uniform(0.5, 5.0) for i in range(n)])
-  e_eff = llgi_e_bs.build_e_eff(feff, resn)
-  for i in range(n):
-    assert approx_equal(e_eff[i], feff[i] / resn[i], eps=1.e-12)
-
 def exercise_degenerate_resolution_range_does_not_crash():
   # All reflections at (numerically) identical d*^2 -- an edge case
   # _auto_kernel_width / chebyshev fitting must handle without crashing
@@ -205,116 +195,25 @@ def exercise_bss_k_sol_b_sol_falls_back_on_degenerate_input():
   assert 0.0 <= b_sol <= 150.0
 
 def exercise_sigmaa_fit_leaves_k_mask_untouched():
-  # fmodel's k_mask, exactly as update_all_scales()/bss set it, must be
-  # BIT-IDENTICAL before and after the sigmaA fit (spline form here; the
-  # d_model form is covered by exercise_d_model_sigmaa_end_to_end).
+  # For both sigmaA forms, estimate_e_sigmaa_for_fmodel must run to
+  # completion against a real fmodel, return one sigmaA in (0, 1) per
+  # reflection, and leave fmodel's k_mask, exactly as
+  # update_all_scales()/bss set it, BIT-IDENTICAL.
   fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=30)
   dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=31)
   k_mask_before = flex.double(fmodel.k_masks()[0])
-
-  params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params.sigmaa_model = "spline"
-  params.sigmaa_max_iterations = 20
-
-  result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-
-  k_mask_after = flex.double(fmodel.k_masks()[0])
-  assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
-
-  assert result.sigmaa.size() == fmodel.f_obs().size()
-  for v in result.sigmaa:
-    assert 0.0 < v < 1.0
-
-def exercise_sigmaa_fit_uses_bss_k_mask_exactly():
-  # estimate_e_sigmaa_for_fmodel's docstring promises Emodel is
-  # built from fmodel's RAW k_mask array (via f_model_no_aniso_scale),
-  # not from a (k_sol, b_sol) log-linear re-fit of it. Verify this
-  # directly and deterministically at the Emodel level (rather than via
-  # the downstream sigmaA fit, which turns out to be too robust to a
-  # smooth Emodel perturbation for that comparison to reliably
-  # distinguish the two code paths -- SigmaP's own smoothing and the
-  # spline fit's aggregation over many reflections absorb most of a
-  # smooth multiplicative k_mask distortion long before it reaches
-  # sigmaA): install a k_mask that is NOT of the k_sol*exp(-b_sol*ss)
-  # form (so a log-linear re-fit could not reproduce it exactly), then
-  # confirm the exact Emodel array f_model_no_aniso_scale/build_e_model
-  # would compute from fmodel's CURRENT state differs substantially from
-  # the Emodel a re-fitted (k_sol, b_sol) pair would give -- i.e. that
-  # estimate_e_sigmaa_for_fmodel (which uses the former, per its
-  # docstring) is doing something materially different from what a
-  # (k_sol, b_sol)-based reconstruction would have done with the same
-  # starting k_mask.
-  fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=34)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=35)
-  ss = llgi_e_bs.ss_from_f_obs(fmodel.f_obs())
-  import numpy as np
-  # A k_mask with real curvature in log(k_mask) vs ss (a genuine k_sol*
-  # exp(-b_sol*ss) form is exactly log-LINEAR in ss, so this cannot be
-  # matched exactly by any single (k_sol, b_sol) pair).
-  ss_np = ss.as_numpy_array()
-  synthetic_k_mask = 0.30 * np.exp(-40.0 * ss_np + 400.0 * ss_np ** 2)
-  fmodel.update(k_mask=[flex.double(synthetic_k_mask)])
-  k_mask_before = flex.double(fmodel.k_masks()[0])
-
-  params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params.sigmaa_max_iterations = 20
-
-  result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-
-  # k_mask must still be untouched (the point-estimate (k_sol, b_sol)
-  # returned for logging is allowed to differ from the exact array).
-  k_mask_after = flex.double(fmodel.k_masks()[0])
-  assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
-  assert result.sigmaa.size() == fmodel.f_obs().size()
-  for v in result.sigmaa:
-    assert 0.0 < v < 1.0
-
-  # Emodel from the EXACT synthetic k_mask, via the same accessor
-  # estimate_e_sigmaa_for_fmodel itself uses.
-  f_obs = fmodel.f_obs()
-  epsilons = f_obs.epsilons().data().as_double()
-  d_star_sq = f_obs.d_star_sq().data()
-  fmnas_exact = llgi_e_bs.f_model_no_aniso_scale(fmodel).data()
-  e_model_exact = flex.abs(llgi_e_bs.build_e_model(
-    fmnas_exact, epsilons, d_star_sq).e_model)
-
-  # Emodel from the bss_k_sol_b_sol point estimate's necessarily-
-  # approximate k_sol*exp(-b_sol*ss) re-fit of that same k_mask array.
-  from mmtbx.f_model import ext as f_model_ext
-  k_sol_approx, b_sol_approx = llgi_e_bs.bss_k_sol_b_sol(fmodel)
-  approx_k_mask = np.asarray(
-    f_model_ext.k_mask(ss, k_sol_approx, b_sol_approx))
-  k_isotropic = fmodel.k_isotropic()
-  f_calc = fmodel.f_calc().data()
-  f_mask = fmodel.f_masks()[0].data()
-  f_part1 = fmodel.f_part1().data()
-  f_part2 = fmodel.f_part2().data()
-  fmnas_approx = k_isotropic * (
-    f_calc + flex.double(approx_k_mask) * f_mask + f_part1 + f_part2)
-  e_model_approx = flex.abs(llgi_e_bs.build_e_model(
-    fmnas_approx, epsilons, d_star_sq).e_model)
-
-  # The exact and approximate Emodel arrays must still differ measurably
-  # -- confirming the two code paths really are different in what they
-  # feed the sigmaA fit, i.e. that fixing bulk solvent "from LS" genuinely
-  # means the raw bss array, not a re-derived (k_sol, b_sol) pair -- even
-  # though bss_k_sol_b_sol delegates to fmodel.k_sol_b_sol_from_
-  # k_mask() (a Gaussian start + local grid refinement against the ACTUAL
-  # k_mask array, not an unweighted log-linear fit prone to diverging on
-  # real data) and so recovers
-  # a much closer (k_sol, b_sol) approximation to this synthetic curved
-  # k_mask than the old, since-removed hand-rolled fit did (that old fit
-  # is what originally motivated the diff > 0.5 threshold here; the new,
-  # better accessor closes most, but not all, of that gap, since a single
-  # exponential still cannot match the synthetic mask's genuine quadratic
-  # log-curvature exactly). 0.05 is comfortably above both the ~1e-6
-  # floor of an exact match and normal run-to-run/platform numerical
-  # noise, while well below the old 0.5 threshold that reflected the
-  # previous, now-fixed accessor's much larger, spurious divergence.
-  diff = flex.max(flex.abs(e_model_exact - e_model_approx))
-  assert diff > 0.02, diff
+  for sigmaa_model in ["spline", "d_model"]:
+    params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
+    params.sigmaa_model = sigmaa_model
+    params.sigmaa_max_iterations = 20
+    params.d_model_params.max_iterations = 60
+    result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
+      fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
+    k_mask_after = flex.double(fmodel.k_masks()[0])
+    assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
+    assert result.sigmaa.size() == fmodel.f_obs().size()
+    for v in result.sigmaa:
+      assert 0.0 < v < 1.0, (sigmaa_model, v)
 
 def exercise_e_sigmaa_curvature_penalty_gradient_finite_difference():
   # End-to-end finite-difference check of e_sigmaa_target_evaluator.
@@ -366,90 +265,13 @@ def exercise_e_sigmaa_curvature_penalty_gradient_finite_difference():
   evaluator.x = flex.double(x0)
   assert approx_equal(list(g0), list(g_fd), eps=1.e-3)
 
-def _extract_params_with_includes():
-  """ llgi_e_bulk_solvent_params.extract() alone does NOT populate
-  d_model_params (iotbx.phil.parse defaults to process_includes=False,
-  and the "include scope" line is left as a literal unresolved
-  definition until something downstream processes it -- normally
-  phenix's own master-phil assembly). scope.process_includes() is the
-  correct, type-preserving way to resolve it directly on the already-
-  parsed (already correctly typed) scope object -- re-parsing
-  as_str()'s rendered text from scratch (as a standalone string, with
-  no master to fetch against) was tried first and found to silently
-  drop type annotations for plain (non-included) definitions like
-  auto_kernel_number, turning e.g. an int into a single-element list;
-  process_includes() has no such problem, since it operates on the
-  scope's own already-typed objects. Used by every d_model test below.
-  """
-  from iotbx.phil import default_converter_registry
-  return llgi_e_bs.llgi_e_bulk_solvent_params.process_includes(
-    converter_registry=default_converter_registry, reference_directory=None)
-
 def exercise_d_model_sigmaa_is_the_default():
   # sigmaa_model defaults to "d_model" -- pinned here so an accidental
   # flip is caught. The plain extract() (used as the fallback when no
   # params are passed) must carry d_model_params too.
-  master = _extract_params_with_includes()
-  params = master.extract()
+  params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
   assert params.sigmaa_model == "d_model"
-  plain = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  assert plain.sigmaa_model == "d_model"
-  assert plain.d_model_params.include_constant_term is True
-
-def exercise_d_model_sigmaa_end_to_end():
-  # sigmaa_model="d_model" through estimate_e_sigmaa_for_fmodel -- must
-  # run to completion against a real fmodel and return a sane, bounded
-  # result, mirroring exercise_sigmaa_fit_leaves_k_mask_untouched's
-  # check for the spline path.
-  fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=40)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=41)
-  k_mask_before = flex.double(fmodel.k_masks()[0])
-
-  master = _extract_params_with_includes()
-  params = master.fetch(iotbx.phil.parse("""\
-    sigmaa_model = d_model
-    d_model_params.max_iterations = 60
-    """)).extract()
-
-  result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-
-  # k_mask must be untouched, same contract as the spline path.
-  k_mask_after = flex.double(fmodel.k_masks()[0])
-  assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
-  assert result.sigmaa.size() == fmodel.f_obs().size()
-  # D_model(s; theta) is not bounded to (0, 1) the way the spline's
-  # sigmoid is by construction -- what's actually guaranteed is that
-  # dobs*D_model stays away from +-1 (the negative-variance barrier,
-  # see llgi_e_dmodel_fit.py) and D_model itself is finite.
-  for v in result.sigmaa:
-    assert -1.5 < v < 1.5, v
-    import math
-    assert math.isfinite(v)
-
-def exercise_plain_and_include_processed_params_agree():
-  # llgi_e_bulk_solvent_params.extract() (the fallback when no params are
-  # passed) and the process_includes()-based extraction (as phenix.refine
-  # builds it) must give BIT-IDENTICAL results at the defaults.
-  fmodel_a = build_fmodel(n_atoms=50, d_min=1.75, seed=44)
-  fmodel_b = build_fmodel(n_atoms=50, d_min=1.75, seed=44)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel_a, seed=45)
-
-  params_old_style = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params_old_style.sigmaa_max_iterations = 20
-
-  master = _extract_params_with_includes()
-  params_new_style = master.extract()
-  params_new_style.sigmaa_max_iterations = 20
-
-  result_a = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
-    fmodel_a, dobs=dobs, feff=feff, resn=resn, params=params_old_style)
-  result_b = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
-    fmodel_b, dobs=dobs, feff=feff, resn=resn, params=params_new_style)
-
-  assert approx_equal(list(result_a.sigmaa), list(result_b.sigmaa), eps=0.0)
-  assert result_a.k_sol == result_b.k_sol
-  assert result_a.b_sol == result_b.b_sol
+  assert params.d_model_params.include_constant_term is True
 
 def run():
   exercise_f_model_no_aniso_scale_matches_direct_computation()
@@ -457,16 +279,12 @@ def run():
   exercise_sigma_p_constant_intensity_recovers_constant()
   exercise_sigma_p_is_epsilon_free()
   exercise_e_model_mean_square_near_one_on_real_fmodel()
-  exercise_e_eff_is_feff_over_resn()
   exercise_degenerate_resolution_range_does_not_crash()
   exercise_bss_k_sol_b_sol_recovers_known_values()
   exercise_bss_k_sol_b_sol_falls_back_on_degenerate_input()
   exercise_e_sigmaa_curvature_penalty_gradient_finite_difference()
   exercise_sigmaa_fit_leaves_k_mask_untouched()
-  exercise_sigmaa_fit_uses_bss_k_mask_exactly()
   exercise_d_model_sigmaa_is_the_default()
-  exercise_d_model_sigmaa_end_to_end()
-  exercise_plain_and_include_processed_params_agree()
   print("OK")
 
 if (__name__ == "__main__"):

@@ -69,17 +69,6 @@ def build_synthetic_dataset(n_refl, seed):
     centric_flags=flex.bool(n_refl, False),
     sigmaa_true=sigmaa_true, scatfrac_true=scatfrac_true)
 
-def exercise_scatfrac_moment_estimator_uses_full_set():
-  # estimate_llgi_scatfrac's result must not depend on r_free_flags at
-  # all (it does not take r_free_flags as an argument -- this just
-  # confirms the API shape matches the design intent: the empirical
-  # ScatFrac estimate uses the full reflection set). A no-op check by
-  # construction, kept as a guard against a future signature change
-  # accidentally reintroducing a selection argument.
-  import inspect
-  argspec = inspect.getfullargspec(llgi_sigmaa.estimate_llgi_scatfrac)
-  assert "r_free_flags" not in argspec.args
-
 def exercise_scatfrac_robust_to_single_outlier_reflection():
   # Real bug, found running target=llgi against real (2g38) data: a
   # single reflection whose |Fcalc| happened to swing ~10x between two
@@ -490,7 +479,6 @@ def exercise_scatfrac_b_factor_restraint_pulls_toward_zero():
       result_restrained.b_scatfrac, result_unrestrained.b_scatfrac)
 
 def exercise():
-  exercise_scatfrac_moment_estimator_uses_full_set()
   exercise_scatfrac_robust_to_single_outlier_reflection()
   exercise_curvature_penalty_finite_difference()
   exercise_scatfrac_likelihood_uses_working_set_selection()

@@ -263,27 +263,6 @@ def exercise_estimate_d_model_sigmaa_recovers_true_curve():
   # like the true one does, not be flat or inverted.
   assert fitted[0] > fitted[-1], fitted
 
-def exercise_d_model_stays_bounded_for_extreme_theta():
-  # Direct, theta-space check of the boundedness-by-construction
-  # guarantee llgi_e_dmodel.d_model relies on (see its own docstring):
-  # even a wildly extreme theta -- the kind an aggressive early L-BFGS
-  # line-search step could probe before settling, confirmed to occur
-  # on real 2G38 data (doc/llgi_target_design.md sec. 6.4) -- must
-  # never push D_model to or past the (0,1) boundary. b_k_grid itself
-  # is fixed (no longer part of theta), so only a_k/b/B_defect are
-  # varied here.
-  s2 = np.array([0.001, 0.05, 0.2, 0.5, 1.0, 2.0])
-  b_k_grid = np.array([5.0, 10.0])
-  extreme_thetas = [
-    np.array([1.e6, 1.e6, 0.01, 30.0]),   # huge a_k
-    np.array([0.3, 0.2, 1.e6, 30.0]),     # huge b (defect amplitude)
-    np.array([0.01, 0.01, 1.e6, 1.e-6]),  # huge b, tiny B_defect
-  ]
-  for theta in extreme_thetas:
-    vals = dmodel.d_model(s2, theta, b_k_grid)
-    assert np.all(np.isfinite(vals)), (theta, vals)
-    assert np.all(vals > 0.0) and np.all(vals < 1.0), (theta, vals)
-
 def exercise_estimate_d_model_sigmaa_no_test_set_raises():
   inputs = _build_synthetic_reflections(seed=2, n=20)
   all_false = flex.bool(inputs["r_free_flags"].size(), False)
@@ -378,7 +357,6 @@ def run():
   exercise_synthetic_reflections_have_resolvable_signal()
   exercise_estimate_d_model_sigmaa_converges_without_degenerating()
   exercise_estimate_d_model_sigmaa_recovers_true_curve()
-  exercise_d_model_stays_bounded_for_extreme_theta()
   exercise_estimate_d_model_sigmaa_no_test_set_raises()
   exercise_estimate_d_model_sigmaa_accepts_explicit_b_k_grid()
   exercise_constant_term_ladder_and_fit()

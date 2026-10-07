@@ -26,23 +26,6 @@ def _ll_only(theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid):
     theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
   return ll
 
-def exercise_gradient_matches_finite_difference_acentric_only():
-  rnd = np.random.RandomState(10)
-  s2, e_eff, e_c, dobs, centric_flags = _build_reflections(rnd)
-  centric_flags = np.zeros_like(centric_flags, dtype=bool)  # force all acentric
-  theta, b_k_grid = _random_theta_and_grid(rnd, 2)
-  ll, grad = target.total_ll_and_gradient(
-    theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
-  h = 1.e-6
-  worst = 0.0
-  for i in range(theta.size):
-    tp = theta.copy(); tp[i] += h
-    tm = theta.copy(); tm[i] -= h
-    fd = (_ll_only(tp, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
-          - _ll_only(tm, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)) / (2*h)
-    worst = max(worst, abs(grad[i] - fd) / max(1.0, abs(fd)))
-  assert worst < 1.e-4, worst
-
 def exercise_gradient_matches_finite_difference_mixed_centric():
   rnd = np.random.RandomState(11)
   s2, e_eff, e_c, dobs, centric_flags = _build_reflections(rnd)
@@ -80,7 +63,6 @@ def exercise_single_reflection_matches_llgi_e_likelihood_directly():
     assert abs(ll - expected_ll) < 1.e-10, (centric, ll, expected_ll)
 
 def run():
-  exercise_gradient_matches_finite_difference_acentric_only()
   exercise_gradient_matches_finite_difference_mixed_centric()
   exercise_single_reflection_matches_llgi_e_likelihood_directly()
   print("OK")

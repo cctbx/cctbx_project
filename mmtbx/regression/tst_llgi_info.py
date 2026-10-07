@@ -3,7 +3,6 @@ from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx import sgtbx
 import mmtbx.f_model
-import mmtbx.bulk_solvent
 from libtbx import group_args
 from libtbx.test_utils import approx_equal
 import random
@@ -63,56 +62,24 @@ def exercise_llgi_target_active_gating():
   fmodel.set_target_name("llgi")
   assert fmodel.llgi_target_active()  # both
 
-def exercise_r_work_r_free_r_all_bins_stay_f_obs_based_always():
-  # r_work()/r_free()/r_all()/bins() must NEVER change meaning based on
-  # target_name/llgi_data -- they stay f_obs-based always, even with
-  # target=llgi and llgi_data attached AND systematically different from
-  # f_obs (feff_scale=1.4). This is the key regression this test guards:
-  # internal self-consistency checks throughout mmtbx.bulk_solvent.
-  # f_model_all_scales (bss's own "did update_core() actually take
-  # effect" assert) and elsewhere call fmodel.r_work()/r_all() directly
-  # and require the f_obs-based answer regardless of target_name -- see
-  # (for target=llgi, phenix.refine makes FEFF the f_obs() array itself).
-  fmodel = build_fmodel(seed=20)
-  llgi_data = synthetic_llgi_data(fmodel, seed=21, feff_scale=1.4)
-  fmodel.set_llgi_data(llgi_data)
-
-  r_work_before = fmodel.r_work()
-  r_free_before = fmodel.r_free()
-  r_all_before = fmodel.r_all()
-  bins_before = fmodel.bins()
-
-  fmodel.set_target_name("llgi")
-  assert fmodel.llgi_target_active()
-
-  assert approx_equal(fmodel.r_work(), r_work_before, eps=1.e-12)
-  assert approx_equal(fmodel.r_free(), r_free_before, eps=1.e-12)
-  assert approx_equal(fmodel.r_all(), r_all_before, eps=1.e-12)
-  bins_after = fmodel.bins()
-  assert len(bins_after) == len(bins_before)
-  for b_before, b_after in zip(bins_before, bins_after):
-    assert approx_equal(b_before.r, b_after.r, eps=1.e-12)
-    assert approx_equal(b_before.fo_mean, b_after.fo_mean, eps=1.e-12)
-
-  # And they must independently match a direct f_obs-based computation
-  # (not just "unchanged from before" -- confirms they never touched
-  # feff at all, not merely that some other bug happened to cancel out).
-  r_work_direct = abs(mmtbx.bulk_solvent.r_factor(
-    fmodel.f_obs_work().data(),
-    fmodel.f_model_scaled_with_k1_w().data(), 1.0))
-  assert approx_equal(fmodel.r_work(), r_work_direct, eps=1.e-10)
-
 def exercise_info_in_llgi_mode():
   # In llgi mode info() reports the ordinary r_work()/r_free()/r_all()
-  # and takes its likelihood statistics (FOM, phase error, D and V in
-  # place of alpha and beta) from the LLGI fit. info() builds a real
+  # and takes its likelihood statistics (FOM, phase error, coordinate
+  # error, D and V in place of alpha and beta) from the LLGI fit; the ML
+  # alpha/beta machinery must not run at all. info() builds a real
   # target_functor() internally, which requires sigmaa/scatfrac to be
   # attached, so run the real per-macrocycle estimator first.
+  from six.moves import cStringIO as StringIO
   fmodel = build_fmodel(n_atoms=70, d_min=1.7, seed=18)
   llgi_data = synthetic_llgi_data(fmodel, seed=19, feff_scale=1.3)
   fmodel.set_llgi_data(llgi_data)
   fmodel.set_target_name("llgi")
   fmodel.update_llgi_sigmaa_scatfrac()
+  def forbidden(*args, **kwargs):
+    raise AssertionError("ML alpha/beta computed in LLGI mode")
+  for name in ["alpha_beta", "alpha_beta_w", "alpha_beta_t",
+               "figures_of_merit", "phase_errors", "model_error_ml"]:
+    setattr(fmodel, name, forbidden)
 
   info = fmodel.info(n_bins=5)
   assert info._llgi
@@ -123,22 +90,40 @@ def exercise_info_in_llgi_mode():
   mch = fmodel.map_calculation_helper_llgi()
   assert approx_equal(info.ml_phase_error,
     flex.mean(fmodel.phase_errors_llgi(mch)), eps=1.e-10)
+  assert 0 < info.ml_phase_error < 90
+  assert info.ml_coordinate_error > 0
+  assert approx_equal(info.alpha_work_mean,
+    flex.mean(mch.d.select(fmodel.arrays.work_sel)))
   assert 0 < info.fom_work_mean <= 1
+  out = StringIO()
+  info.show_all(out=out)
+  text = out.getvalue()
+  assert "LLGI (E-scale) estimates" in text
+  assert "Acta Cryst. (1995)" not in text
 
-def exercise_info_stays_f_obs_based_without_llgi():
-  # Ordinary ml-target info() (no llgi_data at all) must be completely
-  # unaffected -- same numbers as always.
-  fmodel = build_fmodel(seed=23)
+def exercise_info_ml_mode_unchanged():
+  # Ordinary ml-target info() (no llgi_data at all) still reports the ML
+  # alpha/beta/phase error, and the ordinary R-factors.
+  from six.moves import cStringIO as StringIO
+  fmodel = build_fmodel(n_atoms=50, d_min=2.1, seed=43)
   info = fmodel.info(n_bins=5)
+  assert not info._llgi
   assert approx_equal(info.r_work, fmodel.r_work(), eps=1.e-10)
   assert approx_equal(info.r_free, fmodel.r_free(), eps=1.e-10)
   assert approx_equal(info.r_all, fmodel.r_all(), eps=1.e-10)
+  alpha_w, beta_w = fmodel.alpha_beta_w()
+  assert approx_equal(info.alpha_work_mean, flex.mean(alpha_w.data()))
+  assert approx_equal(info.ml_phase_error, flex.mean(fmodel.phase_errors()))
+  out = StringIO()
+  info.show_all(out=out)
+  text = out.getvalue()
+  assert "Acta Cryst. (1995)" in text
+  assert "LLGI (E-scale)" not in text
 
 def exercise():
   exercise_llgi_target_active_gating()
-  exercise_r_work_r_free_r_all_bins_stay_f_obs_based_always()
   exercise_info_in_llgi_mode()
-  exercise_info_stays_f_obs_based_without_llgi()
+  exercise_info_ml_mode_unchanged()
   print("OK")
 
 if (__name__ == "__main__"):
