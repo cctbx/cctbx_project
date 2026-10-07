@@ -30,9 +30,9 @@ def exercise_requires_llgi_data_and_sigmaa_scatfrac():
 def _independent_e_scale_quantities(fmodel):
   """ Independent, from-scratch reimplementation of the E-scale Eeff/
   Emodel/D/V quantities map_calculation_helper_llgi() now uses (NOT
-  reusing mmtbx.refinement.llgi_e_bulk_solvent's build_e_eff/
-  build_e_model/f_model_no_aniso_scale -- re-derives f_model_no_aniso_
-  scale and SigmaP by hand instead), for cross-checking .alpha/.beta/
+  reusing mmtbx.refinement.llgi_e_sigmaa's build_e_eff/
+  build_e_model or fmodel.f_model_no_aniso_scale() -- re-derives
+  f_model_no_aniso_scale and SigmaP by hand instead), for cross-checking .alpha/.beta/
   .fom without depending on the same helper code the method under test
   itself calls. Returns (eeff, emodel_abs, d, v, sqrt_teps_resn,
   inv_sqrt_eps_sigmap) as plain flex.double arrays, index-matched to
@@ -49,9 +49,7 @@ def _independent_e_scale_quantities(fmodel):
   d_star_sq = f_obs.d_star_sq().data()
 
   # f_model_no_aniso_scale, independently: f_model()/k_anisotropic().
-  # flex does not support complex_double / double directly (same
-  # reciprocal-and-multiply pattern used elsewhere in this codebase for
-  # this, e.g. mmtbx.refinement.llgi_e_bulk_solvent's own docstrings).
+  # flex does not support complex_double / double directly.
   f_model_data = fmodel.f_model().data()
   k_aniso = fmodel.k_anisotropic()
   fmnas = f_model_data * (1.0 / k_aniso)
@@ -91,7 +89,7 @@ def exercise_alpha_matches_d_formula():
   # (no ScatFrac, no k -- see map_calculation_helper_llgi's own
   # docstring), computed independently here (via _independent_e_scale_
   # quantities' own SigmaP reimplementation, not by reusing mmtbx.
-  # refinement.llgi_e_bulk_solvent's build_e_model/build_sigma_p, the
+  # refinement.llgi_e_sigmaa's build_e_model/build_sigma_p, the
   # same functions the method under test itself calls).
   fmodel = build_llgi_fmodel(60, 1.9, seed=13)
   mch = fmodel.map_calculation_helper_llgi()
@@ -284,12 +282,11 @@ def exercise_llgi_fill_missing_matches_hand_computation():
   # coefficients), the fill value's MAGNITUDE must equal sigmaA(d)*
   # |Emodel|*sqrt(TEPS)*RESN (TEPS==1, Dobs treated as 1 -- see that
   # class's own docstring), computed independently here from mmtbx.
-  # refinement.llgi_e_bulk_solvent's own building blocks (reused, since
+  # refinement.llgi_e_sigmaa's own building blocks (reused, since
   # re-deriving SigmaP/B-spline-sigmaA fitting from scratch a second,
   # independent way is out of scope for this check -- this test's
   # purpose is confirming the ASSEMBLY, not re-verifying machinery
-  # already covered by mmtbx.regression.tst_llgi_e_bulk_solvent).
-  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+  # already covered by mmtbx.regression.tst_llgi_e_sigmaa).
   from mmtbx import map_tools as mt
   fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
   llgi_unfilled = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
@@ -321,7 +318,7 @@ def exercise_fill_missing_honours_sigmaa_model():
   # including the final one before maps are written), and reach the
   # fill-missing sigmaA refit. Previously that refit always used the
   # default form, whatever sigmaa_model was set to.
-  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   from mmtbx import map_tools as mt
   fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
   # f_model() as the coefficients being completed: model_missing_
@@ -334,7 +331,7 @@ def exercise_fill_missing_honours_sigmaa_model():
     fmodel=fmodel, coeffs=coeffs).get_missing()
   assert flex.min(flex.abs(default_fill.data())) > 0
 
-  e_params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
+  e_params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
   assert e_params.sigmaa_model == "d_model"  # the default
   e_params.sigmaa_model = "spline"
   fmodel.update_llgi_sigmaa_scatfrac(e_params=e_params)

@@ -192,7 +192,7 @@ def exercise_estimate_d_model_sigmaa_converges_without_degenerating():
   # fit is actually called in real phenix.refine usage -- by the time
   # the D_model sigmaA fit runs, a bulk-solvent B_sol point estimate is
   # always available and passed through (mmtbx.refinement.
-  # llgi_e_bulk_solvent's own callers). Testing the fully-unrestrained
+  # llgi_e_sigmaa's own callers). Testing the fully-unrestrained
   # (b_sol_anchor=None) case here left B_defect just as free/nonlinear
   # as the old B_k's were, and it ran away the same way (b->1e13,
   # B_defect->~0, a flat/uninformative defect term) once D_model=0

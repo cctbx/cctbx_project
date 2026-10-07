@@ -1861,15 +1861,15 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     quantity it sees), so sigmaA is fitted first against the E-scale LLGI
     target, where ScatFrac does not appear, and ScatFrac is then fitted
     against the F-scale target with sigmaA fixed (mmtbx.refinement.
-    llgi_e_bulk_solvent.estimate_sigmaa_e_then_scatfrac_f).
+    llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f).
 
     Requires llgi_data (dobs/feff/teps/resn) to already be attached;
     raises Sorry if not.
 
     params: extracted mmtbx.refinement.llgi_sigmaa.
     llgi_sigmaa_scatfrac_params, or None for defaults.
-    e_params: extracted mmtbx.refinement.llgi_e_bulk_solvent.
-    llgi_e_bulk_solvent_params (phenix.refine's llgi_data.e_scale_sigmaa),
+    e_params: extracted mmtbx.refinement.llgi_e_sigmaa.
+    llgi_e_sigmaa_params (phenix.refine's llgi_data.e_scale_sigmaa),
     or None for defaults.
     """
     llgi_data = self.llgi_data()
@@ -1879,11 +1879,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         "TEPS/RESN) to already be attached via set_llgi_data().")
     import mmtbx.refinement.llgi_sigmaa as llgi_sigmaa
     import mmtbx.refinement.llgi_hybrid as llgi_hybrid
-    import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+    import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     if(params is None):
       params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
     f_obs = self.f_obs()
-    result = llgi_e_bulk_solvent.estimate_sigmaa_e_then_scatfrac_f(
+    result = llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f(
       self,
       dobs = llgi_data.dobs.data(),
       feff = llgi_data.feff.data(),
@@ -1950,6 +1950,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def k_isotropic(self):
     return self.arrays.core.k_isotropic
+
+  def f_model_no_aniso_scale(self):
+    # k_isotropic*(f_calc + k_mask*f_mask + f_part1 + f_part2): f_model
+    # without k_anisotropic
+    return miller.array(miller_set = self.f_obs(),
+      data = self.arrays.core.data.f_model_no_aniso_scale)
 
   def k_isotropic_work(self):
     return self.arrays.k_isotropic_work
@@ -2632,7 +2638,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     phenix's own LS-fitted anisotropic scale and whatever anisotropy
     phasertng.nacelle assumed when it computed FEFF/DOBS/RESN. Since
     established elsewhere in this design (mmtbx.refinement.
-    llgi_e_bulk_solvent's own E-scale sigmaA/bulk-solvent target, and
+    llgi_e_sigmaa's E-scale sigmaA target, and
     update_llgi_sigmaa_scatfrac) that sigmaA itself is always determined from anisotropy-free
     Eeff/Emodel with no ScatFrac term, this method now builds map
     coefficients from EXACTLY those same quantities, rather than mixing
@@ -2646,8 +2652,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     ScatFrac term on the E-scale at all -- see llgi_e.h's target_one_h
     docstring).
 
-    Derivation (mmtbx.refinement.llgi_e_bulk_solvent's build_e_eff/
-    build_e_model/f_model_no_aniso_scale, reused UNCHANGED so this is
+    Derivation (mmtbx.refinement.llgi_e_sigmaa's build_e_eff/
+    build_e_model and f_model_no_aniso_scale(), reused UNCHANGED so this is
     identical to what sigmaA was actually fit against under the default
     scheme, not a re-derivation):
       Eeff   = Feff / (sqrt(TEPS) * RESN)
@@ -2706,19 +2712,19 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         "to llgi_data (see update_llgi_sigmaa_scatfrac()) -- not yet "
         "available.")
     import scitbx.math
-    import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
+    import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     class result(object):
       def __init__(self, fmodel):
         feff = llgi_data.feff
         f_obs = fmodel.f_obs()
         epsilons = f_obs.epsilons().data().as_double()
         d_star_sq = f_obs.d_star_sq().data()
-        fmnas = llgi_e_bulk_solvent.f_model_no_aniso_scale(fmodel)
-        e_model_result = llgi_e_bulk_solvent.build_e_model(
+        fmnas = fmodel.f_model_no_aniso_scale()
+        e_model_result = llgi_e_sigmaa.build_e_model(
           fmnas.data(), epsilons, d_star_sq)
         e_model_abs = flex.abs(e_model_result.e_model)
         sigma_p = e_model_result.sigma_p
-        eeff = llgi_e_bulk_solvent.build_e_eff(
+        eeff = llgi_e_sigmaa.build_e_eff(
           feff.data(), llgi_data.resn.data())
         self.f_obs = feff
         self.f_model = fmnas

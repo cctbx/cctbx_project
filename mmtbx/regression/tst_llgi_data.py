@@ -166,11 +166,11 @@ def exercise_llgi_data_survives_select_and_update_all_scales():
 def exercise_e_scale_sigmaa_phil_scope_parses():
   # The refinement.llgi_data.e_scale_sigmaa phil scope (phenix/phenix/
   # refinement/__init__.params) includes mmtbx.refinement.
-  # llgi_e_bulk_solvent.llgi_e_bulk_solvent_params; check the fields the
+  # llgi_e_sigmaa.llgi_e_sigmaa_params; check the fields the
   # E-scale sigmaA fit reads are all present, including the d_model
   # sub-scope, to catch field-name drift without a phenix-side test.
-  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bulk_solvent
-  extract = llgi_e_bulk_solvent.llgi_e_bulk_solvent_params.extract()
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  extract = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
   for name in ("sigmaa_model", "n_sigmap_nodes", "auto_kernel_number",
                "n_sigmaa_coeffs", "spline_degree", "sigmaa_max_iterations",
                "sigmaa_curvature_weight"):

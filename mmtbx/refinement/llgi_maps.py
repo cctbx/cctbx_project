@@ -97,7 +97,7 @@ def compute(fmodel, params=None, log=None):
   and the intensities attached). Returns group_args(arrays=[(label,
   complex miller.array)], ...) or None (with a message on log) if the
   data needed are not available. """
-  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   import mmtbx.refinement.llgi_phi_table as llgi_phi_table
   if(params is None):
     params = llgi_map_params.extract()
@@ -114,8 +114,8 @@ def compute(fmodel, params=None, log=None):
   centric = f_obs.centric_flags().data()
   epsilons = f_obs.epsilons().data().as_double()
   d_star_sq = f_obs.d_star_sq().data()
-  fmnas = llgi_e_bs.f_model_no_aniso_scale(fmodel)
-  em = llgi_e_bs.build_e_model(fmnas.data(), epsilons, d_star_sq)
+  fmnas = fmodel.f_model_no_aniso_scale()
+  em = llgi_e_sigmaa.build_e_model(fmnas.data(), epsilons, d_star_sq)
   e_calc = flex.abs(em.e_model)
   phase = _unit_phase(fmnas.data())
   sigmaa = llgi_data.sigmaa.data().deep_copy()

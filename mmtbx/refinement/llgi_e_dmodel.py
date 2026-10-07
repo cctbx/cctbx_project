@@ -3,7 +3,7 @@ import numpy as np
 
 """ Physically-motivated D_model(s; theta) parametrization for the
 E-scale LLGI sigmaA curve, replacing the B-spline-over-sigmoid fit
-(mmtbx.refinement.llgi_e_bulk_solvent.e_sigmaa_target_evaluator) with a
+(mmtbx.refinement.llgi_e_sigmaa.e_sigmaa_target_evaluator) with a
 closed form built from K positive Gaussian-decay terms (a discretized
 coordinate-error B-factor distribution) minus one negative Gaussian term
 (a bulk-solvent-mask-boundary-placement-error-induced negative

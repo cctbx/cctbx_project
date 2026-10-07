@@ -10,7 +10,7 @@ import mmtbx.refinement.llgi_e_dmodel_target as target
 """ L-BFGS-B fit of the physically-motivated D_model(s; theta)
 parametrization against the E-scale LLGI likelihood (see
 doc/llgi_target_design.md sec. 6.4), the alternative to
-mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa's
+mmtbx.refinement.llgi_e_sigmaa.estimate_e_sigmaa's
 B-spline-over-sigmoid fit, with the same restriction to the R-free/test
 set and the same Emodel-held-fixed convention.
 
@@ -83,7 +83,7 @@ def default_b_k_grid(k, s2):
 class d_model_target_evaluator(object):
   """ L-BFGS-B fit of D_model(s; theta) against the E-scale LLGI target,
   summed over the R-free/test set only (same restriction as
-  mmtbx.refinement.llgi_e_bulk_solvent.e_sigmaa_target_evaluator), with
+  mmtbx.refinement.llgi_e_sigmaa.e_sigmaa_target_evaluator), with
   Emodel (hence the bulk-solvent model) held fixed.
 
   B_defect is fixed at b_sol_anchor (bss's B_sol point estimate) when
@@ -216,7 +216,7 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
       include_constant_term=True, hybrid=None):
   """ Fit D_model(s; theta) against the E-scale LLGI target, restricted
   to the R-free/test set, Emodel held fixed -- drop-in replacement for
-  mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa. Evaluates
+  mmtbx.refinement.llgi_e_sigmaa.estimate_e_sigmaa. Evaluates
   the fitted curve at every reflection (working set included, unlike
   the fit itself, exactly mirroring estimate_e_sigmaa's own contract).
 
@@ -255,21 +255,9 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
   b_k_grid_used = evaluator.b_k_grid
   s2_all = np.array(d_star_sq, dtype=float) / 4.0
   sigmaa_all = dmodel.d_model(s2_all, theta, b_k_grid_used)
-  d_star_sq_np = np.asarray(d_star_sq, dtype=float)
-  x_range = (float(d_star_sq_np.min()), float(d_star_sq_np.max()))
-
-  def evaluate_at(d_star_sq_new, x_range=x_range):
-    """ Evaluate this SAME fitted D_model(s; theta) curve at arbitrary
-    new d_star_sq values -- e.g. mmtbx.map_tools.
-    model_missing_reflections_llgi's missing-reflection fill (same
-    role as e_sigmaa_target_evaluator.evaluate_at, kept for drop-in
-    compatibility with that caller's contract). Unlike the B-spline
-    fit, D_model(s; theta) is a closed-form sum of Gaussians, well-
-    defined at ANY s -- no range-clamping is needed (x_range is
-    accepted, for interface compatibility only, and otherwise
-    ignored), so this simply evaluates the fitted curve directly, even
-    for a missing reflection at a resolution outside the range the fit
-    itself was built against.
+  def evaluate_at(d_star_sq_new):
+    """ The fitted D_model at other d*^2 values (e.g. missing
+    reflections). D_model is defined at any resolution, so no clamping.
     """
     s2_new = np.asarray(d_star_sq_new, dtype=float) / 4.0
     return flex.double(dmodel.d_model(s2_new, theta, b_k_grid_used))
@@ -279,5 +267,4 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     theta=flex.double(theta),
     b_k_grid=flex.double(b_k_grid_used),
     target=evaluator.final_target,
-    x_range=x_range,
     evaluate_at=evaluate_at)

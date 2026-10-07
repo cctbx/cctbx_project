@@ -35,14 +35,14 @@ def exercise_map_coefficients_exact_branch():
   """ With every reflection exact, the map's <E> along the model phase
   (m*F on the E scale) must be the exact posterior mean from
   llgi_exact_evaluate, and D must be sigmaA (no Dobs). """
-  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.0)
   mch = fmodel.map_calculation_helper_llgi()
   assert mch.n_exact > 0
   llgi_data = fmodel.llgi_data()
   f_obs = fmodel.f_obs()
-  fmnas = llgi_e_bs.f_model_no_aniso_scale(fmodel)
-  em = llgi_e_bs.build_e_model(fmnas.data(),
+  fmnas = fmodel.f_model_no_aniso_scale()
+  em = llgi_e_sigmaa.build_e_model(fmnas.data(),
     f_obs.epsilons().data().as_double(), f_obs.d_star_sq().data())
   emodel_abs = flex.abs(em.e_model)
   sa = llgi_data.sigmaa.data()

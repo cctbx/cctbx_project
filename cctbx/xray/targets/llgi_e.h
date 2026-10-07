@@ -18,7 +18,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
         V = 1 - D^2,  D = Dobs*sigmaA,  X = 2*D*Eeff*Emodel/V
       There is no ScatFrac: on the E scale, the fraction of the expected
       scattering the model accounts for is absorbed by normalising Emodel
-      (mmtbx.refinement.llgi_e_bulk_solvent.build_e_model).
+      (mmtbx.refinement.llgi_e_sigmaa.build_e_model).
 
       eeff     = Feff/RESN.
       emodel   = |f_model_no_aniso_scale|/sqrt(EPS*SigmaP).

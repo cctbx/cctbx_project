@@ -42,28 +42,13 @@ llgi_sigmaa_scatfrac_params = iotbx.phil.parse("""\
 """)
 
 def _b_spline_design_matrix(x, n_coeffs, degree, x_range=None):
-  """ Clamped B-spline design matrix B[i,k] = B_k(x[i]), for a basis with
-  interior knots evenly spaced over x_range (mapped internally to [0,1]
-  and back, so this works for any x range including d*^2). Returns a
-  numpy array of shape (len(x), n_coeffs). Since a curve z(x) = design @
-  coeffs is linear in coeffs, this matrix needs to be built only once per
-  macrocycle (x -- the resolution metric per reflection -- does not
-  change during a sigmaA/ScatFrac fit) and is reused every LBFGS
-  iteration (for sigmaA) or in a single least-squares solve (for
-  ScatFrac); see doc/llgi_target_design.md sec. 5.2.
+  """ Clamped B-spline design matrix B[i,k] = B_k(x[i]), with interior
+  knots evenly spaced over x_range (x mapped to [0,1]). Returns a numpy
+  array of shape (len(x), n_coeffs). x outside x_range raises ValueError.
 
-  x_range: (x_min, x_max) to normalise against. If None, derived from
-  x itself (the historical default, fine when this function is called
-  once against the full reflection set). MUST be passed explicitly and
-  consistently when this function is called more than once for the same
-  fit against different x arrays (e.g. once against per-bin centres to
-  solve for spline coefficients, once against the full per-reflection
-  array to evaluate the fitted curve) -- otherwise the two calls
-  normalise x differently (bin centres never span the full data's
-  min/max) and the resulting coefficients get silently misapplied when
-  evaluated on the second array. Caught while adding per-bin fitting to
-  estimate_llgi_scatfrac, which calls this function twice for exactly
-  that reason.
+  x_range: (x_min, x_max), or None to use the range of x. When a curve is
+  fitted on one set of x and evaluated on another, both calls must pass
+  the same x_range.
   """
   import numpy as np
   from scipy.interpolate import BSpline
@@ -93,61 +78,19 @@ def _b_spline_design_matrix(x, n_coeffs, degree, x_range=None):
   return design
 
 def _spline_curvature_penalty_and_gradient(coeffs, weight):
-  """ Light restraint discouraging curvature in a B-spline curve's raw
-  (pre-sigmoid, "z-space") coefficients -- added to a sigmaA(resolution)
-  LLGI fit's target/gradient to stop the curve collapsing sharply toward
-  its lower bound in resolution shells where the R-free test set is too
-  sparse for the LLGI likelihood alone to constrain the fit (observed on
-  real data: sigmaA(d) plunging to the sigmoid floor over the last couple
-  of resolution shells, well before the reflections actually run out,
-  then recovering somewhat on the next macrocycle -- not physically
-  expected, since fit quality should vary smoothly with resolution).
+  """ Roughness restraint on a B-spline's pre-sigmoid coefficients c:
+  R(c) = weight * sum_i (c[i-1] - 2*c[i] + c[i+1])^2, i.e. the squared
+  second difference, a proxy for the curvature of z(x) = design(x).c
+  with evenly spaced knots. It keeps the sigmaA curve from collapsing
+  where the R-free set is too sparse to constrain it (the highest
+  resolution shells). It acts on z rather than sigmaA: near the lower
+  bound of the sigmoid, log(sigmaA - lower) ~ const + z, and the penalty
+  stays quadratic in c. It is zero for c linear in the index.
 
-  Penalises the discrete second difference of the coefficient vector,
-  R(c) = weight * sum_i (c[i-1] - 2*c[i] + c[i+1])^2, a standard roughness
-  penalty approximating the curvature (second derivative) of z(x) =
-  design(x) . c in the spline's normalised-[0,1] domain (see
-  _b_spline_design_matrix). Interior knots are placed evenly in that
-  domain, so a constant knot spacing is implicit in treating the second
-  difference of c as a curvature proxy for z itself.
+  coeffs: numpy array of the coefficients (not sigmaA).
+  weight: 0 (or fewer than 3 coefficients) gives (0.0, zeros).
 
-  Deliberately restrains z (the pre-sigmoid quantity), not log(sigmaA)
-  directly: near the sigmoid's lower bound `lower` (where the collapse
-  this is meant to fix actually happens), sigmaA - lower ~= (upper-lower)
-  *exp(z) for very negative z, so log(sigmaA - lower) ~= const + z there
-  -- i.e. z itself is already approximately log-linear in exactly the
-  regime this restraint targets, without needing to differentiate
-  through the sigmoid (which would make the penalty non-quadratic in c
-  and require the sigmoid's second derivative too). In the well-
-  determined middle of the resolution range z is simply the natural
-  unconstrained LBFGS parameter, so penalising its curvature there is
-  the ordinary smoothing-spline move.
-
-  Quadratic in c => the penalty vanishes exactly for any c that is a
-  straight line (or constant) in index space (zero second difference),
-  so a genuinely log-linear-like fit is entirely unaffected; it grows
-  only where the fit curves, and the growth is independent of how well-
-  determined that curvature is by the data -- so a small fixed weight
-  has negligible relative effect where the LLGI target's own curvature
-  (from many reflections) dominates, and a comparatively larger relative
-  effect exactly where that likelihood curvature is weak (few/noisy
-  high-resolution reflections). This gets most of the benefit of an
-  adaptive (curvature- or reflection-count-weighted) penalty without
-  needing one; see doc/llgi_target_design.md sec. 6 for the fuller
-  discussion of alternatives considered (a hard monotonicity restraint
-  was rejected: a real bulk-solvent-incomplete low-resolution rise-then-
-  fall in sigmaA is physically expected and would be fought by a
-  monotonicity restraint).
-
-  coeffs: numpy array, the current (unconstrained) B-spline coefficient
-  vector (i.e. target_evaluator.x as a numpy array -- NOT sigmaA itself).
-  weight: penalty weight (llgi_sigmaa_scatfrac_params.sigmaa_curvature_
-  weight or the E-scale equivalent); 0 (or coeffs.size() < 3) returns a
-  no-op (0.0, zeros).
-
-  Returns (penalty, d(penalty)/d(coeffs)), penalty a plain float and the
-  gradient a numpy array the same shape as coeffs, both ready to be added
-  directly onto compute_functional_and_gradients()'s (f, g).
+  Returns (penalty, d(penalty)/d(coeffs)), as a float and a numpy array.
   """
   import numpy as np
   n = coeffs.shape[0]
@@ -393,7 +336,7 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
   A second, related trade-off is against sigmaA rather than against
   ScatFrac_inf: sigmaA and ScatFrac are only jointly identifiable
   through the F-scale LLGI target (see mmtbx.refinement.
-  llgi_e_bulk_solvent.estimate_sigmaa_e_then_scatfrac_f), so a B_scatfrac far
+  llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f), so a B_scatfrac far
   from 0 can sometimes be compensated by pushing sigmaA toward its own
   upper bound of 1 with little likelihood cost -- except where that
   compensation would require sigmaA > 1, which is not available, so

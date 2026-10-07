@@ -33,7 +33,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       model as a function of resolution (equivalently, the ratio of mean
       calculated to mean expected intensity in a resolution shell); it is
       passed separately from sigmaa because the two are fitted separately
-      (mmtbx.refinement.llgi_e_bulk_solvent.estimate_sigmaa_e_then_
+      (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_
       scatfrac_f: sigmaA against the E-scale target, then ScatFrac against
       this target with sigmaA fixed).
 

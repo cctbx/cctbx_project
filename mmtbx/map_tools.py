@@ -695,7 +695,7 @@ class model_missing_reflections_llgi(object):
               well-behaved function of resolution alone (it is exactly
               this module's own SigmaP/Emodel machinery's premise) --
               fit a plain B-spline curve to the OBSERVED k_isotropic(ss)
-              array (reusing mmtbx.refinement.llgi_e_bulk_solvent's own
+              array (reusing mmtbx.refinement.llgi_sigmaa's
               _b_spline_design_matrix, log-space to keep it positive,
               same convention as sigmaA's own z=log-space-ish
               parameterisation) and evaluate that fitted curve at each
@@ -741,10 +741,9 @@ class model_missing_reflections_llgi(object):
     ready for _eval_k_isotropic_curve.
     """
     import numpy as np
-    from mmtbx.refinement.llgi_e_bulk_solvent import (
-      ss_from_f_obs, _b_spline_design_matrix)
-    f_obs = self.fmodel.f_obs()
-    ss = ss_from_f_obs(f_obs).as_numpy_array()
+    from mmtbx.refinement.llgi_sigmaa import _b_spline_design_matrix
+    ss = self.fmodel.f_obs().sin_theta_over_lambda_sq().data(
+      ).as_numpy_array()
     k_iso = np.asarray(self.fmodel.k_isotropic(), dtype=float)
     ss_range = (float(ss.min()), float(ss.max()))
     n_coeffs, degree = 8, 3
@@ -755,7 +754,7 @@ class model_missing_reflections_llgi(object):
 
   def _eval_k_isotropic_curve(self, ss_missing, fit):
     import numpy as np
-    from mmtbx.refinement.llgi_e_bulk_solvent import _b_spline_design_matrix
+    from mmtbx.refinement.llgi_sigmaa import _b_spline_design_matrix
     coeffs, ss_range, n_coeffs, degree = fit
     ss_low, ss_high = ss_range
     ss_np = np.clip(np.asarray(ss_missing, dtype=float), ss_low, ss_high)
@@ -795,7 +794,7 @@ class model_missing_reflections_llgi(object):
     reflections.get_missing's own return shape, so fill_missing_f_obs_
     llgi can use it identically to fill_missing_f_obs_1).
     """
-    import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
+    import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     base = self._base
     f_calc_missing = base.f_calc_missing
     f_mask_missing = base.f_mask_missing[0]
@@ -812,8 +811,8 @@ class model_missing_reflections_llgi(object):
     fmnas_missing = k_iso_missing * (
       f_calc_missing.data() + k_mask_missing * f_mask_missing.data())
 
-    sigma_p_missing = llgi_e_bs.build_sigma_p(
-      llgi_e_bs.f_model_no_aniso_scale(self.fmodel).data(),
+    sigma_p_missing = llgi_e_sigmaa.build_sigma_p(
+      self.fmodel.f_model_no_aniso_scale().data(),
       self.fmodel.f_obs().d_star_sq().data(),
       d_star_sq_eval=d_star_sq_missing)
     e_model_missing = fmnas_missing * (
@@ -827,14 +826,13 @@ class model_missing_reflections_llgi(object):
     # using the same E-scale phil (hence the same sigmaa_model, spline or
     # d_model) that update_llgi_sigmaa_scatfrac last used. None falls
     # back to that scope's own defaults.
-    sigmaa_refit = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
+    sigmaa_refit = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(
       self.fmodel,
       dobs=self.llgi_data.dobs.data(),
       feff=self.llgi_data.feff.data(),
       resn=self.llgi_data.resn.data(),
       params=getattr(self.llgi_data, "e_params", None))
-    sigmaa_missing = sigmaa_refit.evaluate_at(
-      d_star_sq_missing, x_range=sigmaa_refit.x_range)
+    sigmaa_missing = sigmaa_refit.evaluate_at(d_star_sq_missing)
 
     resn_missing = self._nearest_resn(d_star_sq_missing)
     self.e_scale_missing = group_args(
