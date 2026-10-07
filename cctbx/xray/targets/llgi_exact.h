@@ -301,54 +301,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     return integral(eo_sq, sig, centric ? 0.5 : 1., 0., centric).log_z;
   }
 
-  //! 2nd/4th-moment Rice parameters from the French-Wilson posterior, as in
-  //! phasertng's math::rice_from_intensity: <E^2> from the closed form
-  //! cctbx::expectEsqFW (as used by nacelle), <E^4> = m <E^2> + k sig^2
-  //! with k = 1 (acentric) or 1/2 (centric) and m = eo_sq - k sig^2.
-  struct rice_moments
-  {
-    bool valid;
-    double mu2, mu4, dsqr, eeff;
-
-    rice_moments(double eo_sq, double sig, bool centric)
-    : valid(false), mu2(0), mu4(0), dsqr(0), eeff(0)
-    {
-      if (!(sig > 0)) {
-        valid = true;
-        mu2 = std::max(eo_sq, 0.);
-        mu4 = mu2 * mu2;
-        dsqr = 1.;
-        eeff = std::sqrt(mu2);
-        return;
-      }
-      const double k = centric ? 0.5 : 1.;
-      const double m = eo_sq - k * sig * sig;
-      mu2 = cctbx::expectEsqFW(eo_sq, sig, centric);
-      mu4 = m * mu2 + k * sig * sig;
-      const double eta = mu2 - 1.;
-      double gap, disc;
-      if (centric) {
-        const double zeta = mu4 - 3.;
-        gap = eta * eta + 6. * eta - zeta;   // 2(S^2 - eta^2)
-        disc = (3. * eta * eta + 6. * eta - zeta) / 2.;
-      }
-      else {
-        const double zeta = mu4 - 2.;
-        gap = eta * eta + 4. * eta - zeta;   // S^2 - eta^2
-        disc = 2. * eta * eta + 4. * eta - zeta;
-      }
-      if (!(disc >= 0.)) return;
-      const double sq = std::sqrt(disc);
-      double d2 = (eta >= 0.) ? (centric ? gap / 2. : gap) / (eta + sq)
-                              : sq - eta;
-      if (!(d2 > 0.)) return;
-      d2 = std::min(d2, 1.);
-      valid = true;
-      dsqr = d2;
-      eeff = std::sqrt(std::max(1. + eta / d2, 0.));
-    }
-  };
-
   //! evaluate() over arrays (for Python-side fits and tests). null_log_z
   //! may be empty (computed here) or one value per reflection.
   class evaluate_many
@@ -428,7 +380,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
           if (sig_e_obs_sq[i] > 0) {
             null_log_z[i] = llgi_exact::null_log_z(
               e_obs_sq[i], sig_e_obs_sq[i], centric[i]);
-            rice_moments rm(e_obs_sq[i], sig_e_obs_sq[i], centric[i]);
+            cctbx::rice_moments rm = cctbx::rice_from_intensity(
+              e_obs_sq[i], sig_e_obs_sq[i], centric[i]);
             if (rm.valid) dsqr[i] = rm.dsqr;
           }
         }
@@ -493,36 +446,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
   };
 
-  //! French-Wilson posterior of |E| in units of sqrt(sigma_I): for
-  //! J/sigma_I = u >= 0 with posterior u^p exp(-(u - h)^2/2) (p = 0
-  //! acentric, -1/2 centric), where h = I/sigma_I - sigma_I/<I>
-  //! (acentric) or I/sigma_I - sigma_I/(2<I>) (centric), the French-Wilson
-  //! F = <sqrt(u)> sqrt(sigma_I) and SIGF = sd(sqrt(u)) sqrt(sigma_I).
-  //! The moments are cctbx's closed forms with sigma = 1: the posterior
-  //! above is that of E^2 = u for an observed E^2 = h + 1 (acentric) or
-  //! h + 1/2 (centric).
-  struct french_wilson_moments
-  {
-    double mean, sd;
-    french_wilson_moments(double h, bool centric)
-    {
-      const double eo_sq = h + (centric ? 0.5 : 1.0);
-      mean = cctbx::expectEFW(eo_sq, 1.0, centric);
-      double mean_u = cctbx::expectEsqFW(eo_sq, 1.0, centric);
-      sd = std::sqrt(std::max(mean_u - mean * mean, 0.0));
-    }
-  };
-
-  //! Recover (I, sigma_I) from French-Wilson amplitudes. SIGF/F depends on
-  //! h alone and decreases monotonically from sqrt(4/pi - 1) (acentric) or
-  //! sqrt(pi/2 - 1) (centric) as h -> -infinity, to 1/(2h) for large h, so
-  //! h follows from SIGF/F by bisection; then sigma_I = (F/<sqrt(u)>)^2
-  //! and I = sigma_I*(h + c*sigma_I/mean_intensity), c = 1 (acentric) or
-  //! 1/2 (centric). mean_intensity is the prior <I> the French-Wilson
-  //! calculation used (it only enters the last, weak-data term). Where
-  //! SIGF/F is at or above the h = h_min limit, h is set to h_min and
-  //! prior_dominated is true: such amplitudes carry essentially no
-  //! information about I.
+  //! cctbx::invert_french_wilson over arrays: (I, sigma_I) from
+  //! French-Wilson amplitudes, given the prior <I> per reflection.
   class french_wilson_inverse
   {
     public:
@@ -540,37 +465,10 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         CCTBX_ASSERT(sigf.size() == n && mean_intensity.size() == n);
         CCTBX_ASSERT(centric.size() == n);
         for (std::size_t i = 0; i < n; i++) {
-          bool ok = f[i] > 0 && sigf[i] > 0 && mean_intensity[i] > 0;
-          double hh = 0, si = 0, io = 0;
+          double io = 0, si = 0, hh = 0;
           bool prior = false;
-          if (ok) {
-            double r = sigf[i] / f[i];
-            french_wilson_moments m_lo(h_min, centric[i]);
-            if (r >= m_lo.sd / m_lo.mean) {
-              hh = h_min;
-              prior = true;
-            }
-            else {
-              double lo = h_min, hi = std::max(10.0, 2.0 / r);
-              while (true) {
-                french_wilson_moments m(hi, centric[i]);
-                if (m.sd / m.mean < r) break;
-                hi *= 2;
-              }
-              for (int it = 0; it < 80; it++) {
-                double mid = 0.5 * (lo + hi);
-                french_wilson_moments m(mid, centric[i]);
-                if (m.sd / m.mean > r) lo = mid; else hi = mid;
-                if (hi - lo < 1e-10 * std::max(1.0, std::abs(hi))) break;
-              }
-              hh = 0.5 * (lo + hi);
-            }
-            french_wilson_moments m(hh, centric[i]);
-            double sqrt_si = f[i] / m.mean;
-            si = sqrt_si * sqrt_si;
-            double c = centric[i] ? 0.5 : 1.0;
-            io = si * (hh + c * si / mean_intensity[i]);
-          }
+          bool ok = cctbx::invert_french_wilson(f[i], sigf[i],
+            mean_intensity[i], centric[i], io, si, hh, prior, h_min);
           i_obs.push_back(io);
           sig_i_obs.push_back(si);
           h.push_back(hh);
@@ -580,7 +478,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
   };
 
-  //! rice_moments over arrays.
+  //! cctbx::rice_from_intensity over arrays.
   class rice_moments_many
   {
     public:
@@ -595,7 +493,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         std::size_t n = eo_sq.size();
         CCTBX_ASSERT(sig.size() == n && centric.size() == n);
         for (std::size_t i = 0; i < n; i++) {
-          rice_moments r(eo_sq[i], sig[i], centric[i]);
+          cctbx::rice_moments r = cctbx::rice_from_intensity(
+            eo_sq[i], sig[i], centric[i]);
           valid.push_back(r.valid);
           mu2.push_back(r.mu2);
           mu4.push_back(r.mu4);
