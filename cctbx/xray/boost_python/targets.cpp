@@ -369,39 +369,6 @@ namespace {
     }
   };
 
-  struct llgi_e_emodel_wrappers
-  {
-    typedef llgi_e::emodel_target_and_gradients w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>(
-          "llgi_e_emodel_target_and_gradients", no_init)
-        .def(init<
-          af::const_ref<double> const&,
-          af::const_ref<bool> const&,
-          af::const_ref<double> const&,
-          af::const_ref<double> const&,
-          af::const_ref<double> const&,
-          af::const_ref<bool> const&,
-          optional<llgi_exact::hybrid const*> >((
-            arg("e_eff"),
-            arg("selection"),
-            arg("e_model"),
-            arg("dobs"),
-            arg("sigmaa"),
-            arg("centric_flags"),
-            arg("hybrid")=object())))
-        .def("target", &w_t::target)
-        .def("n_exact", &w_t::n_exact)
-        .def("d_target_by_demodel", &w_t::d_target_by_demodel, ccr())
-      ;
-    }
-  };
-
   struct llgi_exact_wrappers
   {
     static void
@@ -552,7 +519,6 @@ namespace boost_python {
     targets::boost_python::llgi_wrappers::wrap();
     targets::boost_python::llgi_sigmaa_scatfrac_wrappers::wrap();
     targets::boost_python::llgi_e_sigmaa_wrappers::wrap();
-    targets::boost_python::llgi_e_emodel_wrappers::wrap();
     targets::boost_python::llgi_exact_wrappers::wrap();
     targets::boost_python::r_factor_wrappers::wrap();
   }

@@ -94,7 +94,7 @@ def _reference_target_one_h_e_scale(eeff, emodel, dobs, sigmaa, teps,
 def exercise_reference_target_matches_cpp():
   # Sanity check on the reference reimplementation itself: must match
   # the real C++ E-scale target_one_h (via
-  # ext.llgi_e_emodel_target_and_gradients, evaluated with selection=
+  # ext.llgi_e_sigmaa_target_and_gradients, evaluated with selection=
   # all-True so every reflection contributes) for both centric and
   # acentric cases, before relying on it to cross-check anything else.
   # (llgi_e.h's target_one_h is specialised to TEPS==1 in the C++, so
@@ -111,11 +111,11 @@ def exercise_reference_target_matches_cpp():
     centric_flags = flex.bool(n, centric)
     selection = flex.bool(n, True)
     e_model = flex.double([0.6 + 0.11 * (i % 5) for i in range(n)])
-    result = ext.llgi_e_emodel_target_and_gradients(
+    result = ext.llgi_e_sigmaa_target_and_gradients(
       e_eff=e_eff, selection=selection, e_model=e_model, dobs=dobs,
       sigmaa=sigmaa, centric_flags=centric_flags)
     tpr_mean = result.target()
-    # llgi_e_emodel_target_and_gradients returns the MEAN over the
+    # llgi_e_sigmaa_target_and_gradients returns the MEAN over the
     # selection, not per-reflection -- reconstruct the mean from the
     # reference formula the same way (selection is all-True here) so
     # the two are directly comparable.
@@ -319,85 +319,6 @@ def exercise_fom_matches_bessel_ratio_reference():
     assert rel_diff < 0.15, (i, fom[i], expected, rel_diff)
     n_checked += 1
   assert n_checked > 0
-
-def exercise_fom_consistent_with_cpp_gradient():
-  # Cross-check against the ACTUAL C++ gradient
-  # (d_target_one_h_over_emodel, via ext.llgi_e_emodel_target_and_
-  # gradients), independent of this module's own formulas: d(target)/
-  # d(Emodel) must equal
-  #   -(2/V)*(Eeff*fom - D*Emodel)          [acentric]
-  #   -(1/V)*(Eeff*fom - D*Emodel)          [centric]
-  # matching d_target_one_h_over_emodel's dll_by_dec * d, reconstructed
-  # here from mch.fom/.alpha/.beta (rescaled back to D/V). Uses the REAL
-  # Eeff/Emodel (mmtbx.refinement.llgi_e_bulk_solvent's own build_e_eff/
-  # build_e_model/f_model_no_aniso_scale, the same functions map_
-  # calculation_helper_llgi itself calls) here -- NOT _independent_
-  # e_scale_quantities' approximate SigmaP reimplementation, which is
-  # deliberately ~15% off (see its own docstring) and would otherwise
-  # be compared against mch.fom (built from the REAL SigmaP), an
-  # apples-to-oranges mismatch unrelated to whether the C++ gradient
-  # itself is correct. This test's purpose is cross-checking against
-  # the C++ gradient formula specifically; SigmaP correctness is
-  # exercise_alpha_matches_d_formula's job.
-  import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
-  for centric in (False, True):
-    fmodel = build_llgi_fmodel(n_atoms=40, d_min=2.2, seed=16 + int(centric))
-    if(fmodel.f_obs().centric_flags().data().count(centric) == 0):
-      continue  # skip if this structure has none of this centric class
-    mch = fmodel.map_calculation_helper_llgi()
-    llgi_data = fmodel.llgi_data()
-    f_obs = fmodel.f_obs()
-    epsilons = f_obs.epsilons().data().as_double()
-    d_star_sq = f_obs.d_star_sq().data()
-    fmnas = llgi_e_bs.f_model_no_aniso_scale(fmodel)
-    e_model_result = llgi_e_bs.build_e_model(fmnas.data(), epsilons, d_star_sq)
-    emodel_abs = flex.abs(e_model_result.e_model)
-    eeff = llgi_e_bs.build_e_eff(
-      llgi_data.feff.data(), llgi_data.resn.data())
-    dobs = llgi_data.dobs.data()
-    sa = llgi_data.sigmaa.data()
-    teps = llgi_data.teps.data()
-    valid_d = (sa > 0) & (dobs > 0)
-    d = flex.double(eeff.size(), 0.0)
-    d.set_selected(valid_d, dobs * sa)
-    v = teps - d * d
-    work_sel = ~fmodel.r_free_flags().data()
-    result = ext.llgi_e_emodel_target_and_gradients(
-      e_eff=eeff, selection=work_sel, e_model=emodel_abs,
-      dobs=llgi_data.dobs.data(), sigmaa=llgi_data.sigmaa.data(),
-      centric_flags=fmodel.f_obs().centric_flags().data())
-    grads = result.d_target_by_demodel()
-    centric_flags = fmodel.f_obs().centric_flags().data()
-    fom = mch.fom
-    work_indices = [i for i in range(eeff.size()) if work_sel[i]]
-    n_work = len(work_indices)
-    n_checked = 0
-    for i in work_indices:
-      if(centric_flags[i] != centric): continue
-      if(d[i] <= 0 or v[i] <= 0): continue
-      if(emodel_abs[i] <= 0 or eeff[i] <= 0): continue
-      ec = d[i] * emodel_abs[i]
-      factor = 2.0 if not centric else 1.0
-      dll_by_dec_expected = (factor / v[i]) * (eeff[i] * fom[i] - ec)
-      dll_by_demodel_expected = dll_by_dec_expected * d[i]
-      # d_target_by_demodel() is ALREADY the sign-flipped, real-valued
-      # d(target)/d(Emodel) (llgi_e.h's target_one_h_over_emodel's own
-      # docstring: "Sign-flipped to match target_one_h's minimization
-      # convention"), so compare directly (no phase-projection needed,
-      # unlike the F-scale gradient which is complex/dF_calc-based) --
-      # EXCEPT llgi_e.h's emodel_target_and_gradients (unlike llgi.h's
-      # gradients_work()) divides by n_work itself before returning (see
-      # its own source: "target_ *= one_over_n; ... d_target_by_demodel_
-      # [i] *= one_over_n"), so grads[i] must be multiplied back up by
-      # n_work before comparing against the per-reflection formula
-      # (caught directly: grads[i]*n_work matched -dll_by_demodel_
-      # expected to full precision once this was added, having been off
-      # by exactly a factor of n_work before).
-      assert approx_equal(
-        grads[i] * n_work, -dll_by_demodel_expected, eps=1.e-6), (
-          i, grads[i] * n_work, -dll_by_demodel_expected)
-      n_checked += 1
-    assert n_checked > 0, "no matching work reflections found to check"
 
 def exercise_map_coefficients_llgi_requires_llgi_data():
   fmodel = build_fmodel(seed=21)
@@ -811,7 +732,6 @@ def exercise():
   exercise_alpha_matches_d_formula()
   exercise_beta_matches_v_formula()
   exercise_fom_matches_bessel_ratio_reference()
-  exercise_fom_consistent_with_cpp_gradient()
   exercise_map_coefficients_llgi_requires_llgi_data()
   exercise_map_coefficients_llgi_matches_hand_computation()
   exercise_map_coefficients_llgi_differs_from_ml_map_coefficients()

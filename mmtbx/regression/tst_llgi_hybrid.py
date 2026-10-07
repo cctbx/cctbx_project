@@ -58,9 +58,9 @@ def exercise_helpers_and_select():
   p.enabled = True
 
 def exercise_map_coefficients_exact_branch():
-  """ With every reflection exact, the difference coefficient
-  (m*F - D*Fc on the E scale) must be <E> - sigmaA*Emodel, proportional
-  to the exact LLGI gradient with respect to Emodel. """
+  """ With every reflection exact, the map's <E> along the model phase
+  (m*F on the E scale) must be the exact posterior mean from
+  llgi_exact_evaluate, and D must be sigmaA (no Dobs). """
   import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
   fmodel = build_hybrid_fmodel(rice_kappa=0.0)
   mch = fmodel.map_calculation_helper_llgi()
@@ -75,25 +75,17 @@ def exercise_map_coefficients_exact_branch():
   resn = llgi_data.resn.data()
   centric = f_obs.centric_flags().data()
   h = llgi_hybrid.get_hybrid(llgi_data)
-  work = ~fmodel.r_free_flags().data()
-  r = ext.llgi_e_emodel_target_and_gradients(
-    e_eff=llgi_data.feff.data() / resn, selection=work, e_model=emodel_abs,
-    dobs=llgi_data.dobs.data(), sigmaa=sa, centric_flags=centric, hybrid=h)
-  assert r.n_exact() == work.count(True)
-  g = r.d_target_by_demodel()
-  n_work = work.count(True)
+  ex = ext.llgi_exact_evaluate(e_obs_sq=h.e_obs_sq,
+    sig_e_obs_sq=h.sig_e_obs_sq, e_calc=emodel_abs, sigmaa=sa,
+    centric_flags=centric, null_log_z=h.null_log_z)
   inv = 1 / flex.sqrt(em.sigma_p * f_obs.epsilons().data().as_double())
   n_checked = 0
   for i in range(f_obs.size()):
-    if(not work[i] or sa[i] <= 0): continue
+    if(sa[i] <= 0 or not h.sig_e_obs_sq[i] > 0): continue
     e_expected = mch.fom[i] * mch.f_obs.data()[i] / resn[i]
+    assert approx_equal(e_expected, ex.e_expected[i], eps=1e-8), (i,)
     d_emodel = mch.alpha.data()[i] / (resn[i] * inv[i])
     assert approx_equal(d_emodel, sa[i], eps=1e-10)
-    b = 0.5 if centric[i] else 1.0
-    s = 1 - sa[i]**2
-    expected = -(2 * b * sa[i] / s) * (e_expected - sa[i] * emodel_abs[i])
-    # d/dEmodel of the exact LLGI: d/dEc with Ec = Emodel
-    assert approx_equal(g[i] * n_work, expected, eps=1e-6), (i,)
     assert 0 <= mch.fom[i] < 1
     n_checked += 1
   assert n_checked > 0

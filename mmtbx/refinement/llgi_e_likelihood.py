@@ -7,7 +7,7 @@ likelihood and its first derivative w.r.t. D, for the D_model(s; theta)
 sigmaA fit (see doc/llgi_target_design.md sec. 6.4).
 
 These are the SYMMETRIC forms already used by cctbx_project/cctbx/xray/
-targets/llgi_e.h's target_one_h/d_target_one_h_over_emodel (that C++ is
+targets/llgi_e.h's target_one_h/d_target_one_h_over_sigmaa (that C++ is
 the reference implementation this module's l()/l_prime() must agree
 with) -- NOT the forms literally written in sigmaA_model_handoff.md
 sections 3.3/3.4/4.1/4.2, which were derived from the large-argument

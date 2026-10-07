@@ -123,12 +123,11 @@ def exercise_hybrid_e_scale():
       force_exact=force if force is not None else flex.bool(n, False),
       centric_flags=d["centric_flags"], rice_kappa=threshold)
   # A hybrid that never triggers reproduces the Rice target exactly
-  for cls in [ext.llgi_e_sigmaa_target_and_gradients,
-              ext.llgi_e_emodel_target_and_gradients]:
-    r0 = cls(**args)
-    r1 = cls(hybrid=hybrid(1e9), **args)
-    assert r1.n_exact() == 0
-    assert r0.target() == r1.target()
+  cls = ext.llgi_e_sigmaa_target_and_gradients
+  r0 = cls(**args)
+  r1 = cls(hybrid=hybrid(1e9), **args)
+  assert r1.n_exact() == 0
+  assert r0.target() == r1.target()
   # All-exact: target is the mean exact LLGI, gradients match FD
   h = hybrid(0.0)
   rs = ext.llgi_e_sigmaa_target_and_gradients(hybrid=h, **args)
@@ -138,20 +137,15 @@ def exercise_hybrid_e_scale():
   assert approx_equal(rs.target(), -flex.mean(ex.ll), eps=1e-12)
   delta = 1e-6
   for i in [0, 7, 19]:
-    for name, cls, getter in [
-        ("sigmaa", ext.llgi_e_sigmaa_target_and_gradients,
-         "d_target_by_dsigmaa"),
-        ("e_model", ext.llgi_e_emodel_target_and_gradients,
-         "d_target_by_demodel")]:
-      r = cls(hybrid=h, **args)
-      t = []
-      for s in [delta, -delta]:
-        a2 = dict(args)
-        a2[name] = args[name].deep_copy()
-        a2[name][i] += s
-        t.append(cls(hybrid=h, **a2).target())
-      fd = (t[0] - t[1]) / (2 * delta)
-      assert approx_equal(getattr(r, getter)()[i], fd, eps=1e-6), (name, i)
+    r = cls(hybrid=h, **args)
+    t = []
+    for s in [delta, -delta]:
+      a2 = dict(args)
+      a2["sigmaa"] = args["sigmaa"].deep_copy()
+      a2["sigmaa"][i] += s
+      t.append(cls(hybrid=h, **a2).target())
+    fd = (t[0] - t[1]) / (2 * delta)
+    assert approx_equal(r.d_target_by_dsigmaa()[i], fd, eps=1e-6), i
   # Mixed: force_exact on some reflections only
   force = flex.bool([i % 5 == 0 for i in range(n)])
   rm = ext.llgi_e_sigmaa_target_and_gradients(

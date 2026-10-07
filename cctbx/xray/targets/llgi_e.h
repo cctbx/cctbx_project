@@ -16,11 +16,10 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
   /*! Companion to cctbx::xray::targets::llgi::target_one_h (llgi.h), which
       is deliberately F-scale (so overall/anisotropic B-factor refinement
       sees Fcalc's resolution falloff directly). This functor exists for a
-      different purpose -- see doc/llgi_target_design.md, "An E-Scale LLGI
-      Target for Bulk Solvent & SigmaA" -- where normalising out overall
-      scale/anisotropy is exactly what is wanted, so the iterated sigmaA/
-      bulk-solvent fit doesn't need to wait on or interact with that part
-      of the scaling machinery.
+      different purpose -- the sigmaA(resolution) fit (doc/
+      llgi_target_design.md sec. 5) -- where normalising out overall
+      scale/anisotropy is exactly what is wanted, so the sigmaA fit doesn't
+      need to wait on or interact with that part of the scaling machinery.
 
       No change of variables is needed here: this is a direct port of
       phasertng's own E-scale functor (phasertng::likelihood::llgi::
@@ -117,49 +116,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
     // ll is the log-likelihood-gain; negate to match this file's (and
     // llgi.h's) minimize-me convention.
     return -ll;
-  }
-
-  /* \brief Gradient of the E-scale LLGI target for one Miller index
-     w.r.t. Emodel (real-valued, since Emodel enters target_one_h only
-     through its magnitude here -- the caller, mmtbx.refinement.
-     llgi_sigmaa's bulk-solvent chain rule, is responsible for the
-     complex-to-real projection through Emodel's phase, exactly as
-     llgi.h's d_target_one_h_over_fc does for Fcalc; see that file's
-     docstring for the pattern this mirrors). Ported from function.cc's
-     dLL_by_dEC, specialised to dEC_by_dEmodel = D (real, positive),
-     TEPS == 1.
-  */
-  inline
-  double
-  d_target_one_h_over_emodel(
-    double eeff,
-    double emodel,
-    double dobs,
-    double sigmaa,
-    bool centric)
-  {
-    if (dobs <= 0.0 || sigmaa <= 0.0 || eeff <= 0.0 || emodel <= 0.0) {
-      return 0.0;
-    }
-    double d = dobs * sigmaa;
-    double v = 1.0 - d * d;
-    if (v <= 0.0) {
-      return 0.0;
-    }
-    double ec = d * emodel; // function.cc: EC
-    double x = 2. * eeff * ec / v; // function.cc: X
-    double dll_by_dec; // function.cc: dLL_by_dEC
-    if(!centric) {
-      double bess_term = scitbx::math::bessel::i1_over_i0(x);
-      dll_by_dec = (2. / v) * (eeff * bess_term - ec);
-    }
-    else {
-      double bess_term = std::tanh(x / 2.0);
-      dll_by_dec = (1. / v) * (eeff * bess_term - ec);
-    }
-    double dll_by_demodel = dll_by_dec * d; // dEC_by_dEmodel = d
-    // Sign-flipped to match target_one_h's minimization convention.
-    return -dll_by_demodel;
   }
 
   //! Gradient of the E-scale LLGI target for one Miller index w.r.t.
@@ -289,81 +245,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
           target_ *= one_over_n;
           for(std::size_t i=0;i<e_eff.size();i++) {
             d_target_by_dsigmaa_[i] *= one_over_n;
-          }
-        }
-      }
-  };
-
-  //! Summed E-scale LLGI target and per-reflection d(target)/d(Emodel),
-  //! for a selected set of reflections (in practice the working set --
-  //! all reflections excluding R-free -- see the design note sec. 6), for
-  //! use by the bulk-solvent (k_sol, B_sol) chain-rule gradient: the
-  //! caller multiplies d_target_by_demodel by d(Emodel)/d(f_model_no_
-  //! aniso_scale) (~ 1/sqrt(EPS*SigmaP), Python-side) and then by
-  //! d(k_mask*F_mask)/d(k_sol, B_sol) (existing mmtbx.bulk_solvent
-  //! derivative code) to get d(target)/d(k_sol, B_sol). sigmaA here is
-  //! fixed (this stage's whole point is to hold sigmaA(d) constant while
-  //! refitting bulk solvent -- see design note sec. 7).
-  class emodel_target_and_gradients
-  {
-    protected:
-      double target_;
-      af::shared<double> d_target_by_demodel_;
-      std::size_t n_exact_;
-
-    public:
-      double target() const { return target_; }
-      af::shared<double> const& d_target_by_demodel() const {
-        return d_target_by_demodel_;
-      }
-      //! Number of selected reflections evaluated with the exact LLGI.
-      std::size_t n_exact() const { return n_exact_; }
-
-      //! hybrid (optional): as for sigmaa_target_and_gradients.
-      emodel_target_and_gradients(
-        af::const_ref<double> const& e_eff,
-        af::const_ref<bool> const& selection,
-        af::const_ref<double> const& e_model,
-        af::const_ref<double> const& dobs,
-        af::const_ref<double> const& sigmaa,
-        af::const_ref<bool> const& centric_flags,
-        llgi_exact::hybrid const* hybrid = 0)
-      :
-        target_(0),
-        d_target_by_demodel_(e_eff.size(), 0.0),
-        n_exact_(0)
-      {
-        CCTBX_ASSERT(hybrid == 0 || hybrid->size() == e_eff.size());
-        CCTBX_ASSERT(selection.size() == e_eff.size());
-        CCTBX_ASSERT(e_model.size() == e_eff.size());
-        CCTBX_ASSERT(dobs.size() == e_eff.size());
-        CCTBX_ASSERT(sigmaa.size() == e_eff.size());
-        CCTBX_ASSERT(centric_flags.size() == e_eff.size());
-        std::size_t n_selected = 0;
-        for(std::size_t i=0;i<e_eff.size();i++) {
-          if (!selection[i]) continue;
-          n_selected++;
-          double eeff = e_eff[i];
-          double em = e_model[i];
-          double do_ = dobs[i];
-          double sa = sigmaa[i];
-          bool c = centric_flags[i];
-          if (hybrid != 0 && hybrid->use_exact(i, sa)) {
-            llgi_exact::result r = hybrid->evaluate_at(i, em, sa, c);
-            target_ -= r.ll;
-            d_target_by_demodel_[i] = -r.d_ll_d_ec;
-            n_exact_++;
-            continue;
-          }
-          target_ += target_one_h(eeff, em, do_, sa, c);
-          d_target_by_demodel_[i] = d_target_one_h_over_emodel(
-            eeff, em, do_, sa, c);
-        }
-        if (n_selected > 0) {
-          double one_over_n = 1. / n_selected;
-          target_ *= one_over_n;
-          for(std::size_t i=0;i<e_eff.size();i++) {
-            d_target_by_demodel_[i] *= one_over_n;
           }
         }
       }

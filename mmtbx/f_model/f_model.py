@@ -2684,8 +2684,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
                   consumed by mmtbx.map_tools.combine.
       .fom     -- I1(X)/I0(X) (acentric) or tanh(X/2) (centric), X =
                   2*Eeff*D*Emodel/V -- the E-scale Bessel-ratio figure of
-                  merit (llgi_e.h's own d_target_one_h_over_emodel uses
-                  exactly this "bess_term"), evaluated directly here
+                  merit (the same "bess_term" llgi_e.h's
+                  d_target_one_h_over_sigmaa uses), evaluated directly here
                   against Eeff/Emodel/D/V.
 
     Reflections where D<=0, sigmaA<=0, Dobs<=0, Eeff<=0, Emodel<=0, or

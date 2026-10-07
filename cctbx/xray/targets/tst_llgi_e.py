@@ -29,15 +29,6 @@ def sigmaa_target(inputs):
     sigmaa=inputs["sigmaa"],
     centric_flags=inputs["centric_flags"])
 
-def emodel_target(inputs):
-  return ext.llgi_e_emodel_target_and_gradients(
-    e_eff=inputs["e_eff"],
-    selection=inputs["selection"],
-    e_model=inputs["e_model"],
-    dobs=inputs["dobs"],
-    sigmaa=inputs["sigmaa"],
-    centric_flags=inputs["centric_flags"])
-
 def exercise_d_target_over_dsigmaa_finite_difference(centric):
   n_refl = 12
   inputs = make_inputs(n_refl, centric=centric, seed=3)
@@ -61,33 +52,6 @@ def exercise_d_target_over_dsigmaa_finite_difference(centric):
     # difference of the mean target above.
     assert approx_equal(ana_grads[i], fin_grad, eps=5.e-5), (
       centric, i, ana_grads[i], fin_grad)
-
-def exercise_d_target_over_demodel_finite_difference(centric):
-  n_refl = 12
-  inputs = make_inputs(n_refl, centric=centric, seed=5)
-  result = emodel_target(inputs)
-  ana_grads = result.d_target_by_demodel()
-  eps = 1.e-6
-  for i in range(n_refl):
-    vals = []
-    for signed_eps in (eps, -eps):
-      e_model_pert = inputs["e_model"].deep_copy()
-      e_model_pert[i] = e_model_pert[i] + signed_eps
-      inputs_pert = dict(inputs)
-      inputs_pert["e_model"] = e_model_pert
-      vals.append(emodel_target(inputs_pert).target())
-    fin_grad = (vals[0] - vals[1]) / (2 * eps)
-    assert approx_equal(ana_grads[i], fin_grad, eps=5.e-5), (
-      centric, i, ana_grads[i], fin_grad)
-
-def exercise_sigmaa_and_emodel_targets_agree():
-  # Both classes compute the identical target_one_h sum over the same
-  # selection; only the gradient differs. Cross-check the target values
-  # match exactly for the same inputs.
-  inputs = make_inputs(10, centric=False, seed=7)
-  t1 = sigmaa_target(inputs).target()
-  t2 = emodel_target(inputs).target()
-  assert approx_equal(t1, t2, eps=1.e-12)
 
 def exercise_negative_variance_guard():
   # dobs*sigmaa >= 1 => v = 1 - d^2 <= 0 => no contribution (target 0 for
@@ -167,9 +131,6 @@ def exercise_zero_selection_is_safe():
 def exercise():
   exercise_d_target_over_dsigmaa_finite_difference(centric=False)
   exercise_d_target_over_dsigmaa_finite_difference(centric=True)
-  exercise_d_target_over_demodel_finite_difference(centric=False)
-  exercise_d_target_over_demodel_finite_difference(centric=True)
-  exercise_sigmaa_and_emodel_targets_agree()
   exercise_agrees_with_f_scale_functor_in_degenerate_case()
   exercise_negative_variance_guard()
   exercise_selection_restricts_reflections()
