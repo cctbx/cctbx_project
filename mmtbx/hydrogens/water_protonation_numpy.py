@@ -245,8 +245,9 @@ def _sp2_plane_normal(atoms, static_tree, c, exclude):
   return None
 
 
-def _acceptor_lobes(atoms, static_tree, donor_n):
-  """Lone-pair lobe unit vectors per acceptor atom, from bonded geometry.
+def _acceptor_lobes(atoms, static_tree, donor_n, indices):
+  """Lone-pair lobe unit vectors per acceptor atom among ``indices``, from
+  bonded geometry.
 
   - terminal O (1 bond, carbonyl/carboxylate): two in-plane sp2 lobes
     ``2 * _WATER_SP2_LOBE_DEG`` apart, straddling the direction away from the
@@ -258,7 +259,8 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
   underdetermined.
   """
   lobes = {}
-  for i, a in enumerate(atoms):
+  for i in indices:
+    a = atoms[i]
     el = a.element.strip().upper()
     if el not in _WATER_ACCEPTOR_ELEMENTS:
       continue
@@ -322,16 +324,16 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
     min_distance_sym_equiv=min_distance_sym_equiv)
   if not siiu:
     return [], [], flex.vec3_double()
-  rg_of = {}
-  for rg in hier.residue_groups():
-    idx = [a.i_seq for a in rg.atoms()]
-    for i in idx:
-      rg_of[i] = idx
   # Group the residue groups by operator, keyed on str(op): get_siiu gives
   # every operator the same denominators, so equal operators print alike.
+  hier_atoms = hier.atoms()
+  rg_of = {}
   by_op = {}
   for j_seq, ops in siiu.items():
-    grp = rg_of[j_seq]
+    rg = hier_atoms[j_seq].parent().parent()
+    grp = rg_of.get(rg.memory_id())
+    if grp is None:
+      grp = rg_of[rg.memory_id()] = rg.atoms().extract_i_seq()
     for op in ops:
       by_op.setdefault(str(op), (op, set()))[1].update(grp)
   unit_cell = crystal_symmetry.unit_cell()
@@ -1002,9 +1004,9 @@ class _WaterHydrogenPlacer(object):
           if j != i and atoms[j].element.strip().upper() == "N":
             self.donor_n.add(j)
 
-    # Lone-pair lobe directions per acceptor (opt-in; empty when off).
-    self.acc_lobes = _acceptor_lobes(atoms, self.static_tree, self.donor_n) \
-        if self.lone_pair_directed else {}
+    # Lone-pair lobe directions per acceptor (opt-in; empty when off), filled
+    # once the waters' acceptors are known.
+    self.acc_lobes = {}
 
     self.cos_hoh = math.cos(math.radians(_WATER_HOH_DEG))
     self.sin_hoh = math.sin(math.radians(_WATER_HOH_DEG))
@@ -1110,6 +1112,12 @@ class _WaterHydrogenPlacer(object):
         o_pts, _WATER_ACCEPTOR_RADIUS, return_sorted=False)
       self.w_cat_raw = self.static_tree.query_ball_point(
         o_pts, _WATER_CATION_RADIUS, return_sorted=False)
+      if self.lone_pair_directed:
+        near = set()
+        for nb in self.w_acc_raw:
+          near.update(nb)
+        self.acc_lobes = _acceptor_lobes(atoms, self.static_tree,
+                                         self.donor_n, near)
       # One static-neighbour block per water: every candidate H lies on the
       # O-H sphere about the O, so a single ball of oh_length + clearance
       # covers every candidate's own clearance ball.
