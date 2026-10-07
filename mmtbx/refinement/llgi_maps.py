@@ -14,7 +14,6 @@ phi(sigmaA, sigma(E_obs^2)) (mmtbx.refinement.llgi_phi_table):
   bias-reduced   M = (<E> - c*Ec)/(1 - c*sigmaA),  c = (1 - phi)*sigmaA
                                                         (missing: 0)
   difference     <E> - sigmaA*Ec  (proportional to dLLGI/dEc; missing: 0)
-  conventional   2<E> - sigmaA*Ec                       (missing: 0)
 
 <E> is the exact posterior mean along the model phase (cctbx.xray.
 llgi_exact_evaluate) for every reflection, whatever form the target uses.
@@ -45,15 +44,11 @@ llgi_map_params = iotbx.phil.parse("""\
   e_scale = True
     .type = bool
     .short_caption = Also write E-scale bias-reduced and difference maps
-  conventional = True
-    .type = bool
-    .short_caption = Also write a conventional 2<E>-sigmaA*Ec map
 """)
 
 LABELS = group_args(
   filled="LLGI_FILLED", bias_reduced="LLGI_BIASRED", difference="LLGI_DIFF",
-  bias_reduced_e="LLGI_BIASRED_E", difference_e="LLGI_DIFF_E",
-  conventional="LLGI_2MFODFC")
+  bias_reduced_e="LLGI_BIASRED_E", difference_e="LLGI_DIFF_E")
 
 def posterior_mean_e(e_obs_sq, sig_e_obs_sq, e_calc, sigmaa, centric_flags):
   """ Exact <E> along the model phase. sig_e_obs_sq <= 0 (no measurement
@@ -87,14 +82,13 @@ def posterior_mean_e(e_obs_sq, sig_e_obs_sq, e_calc, sigmaa, centric_flags):
   return result
 
 def e_scale_coefficients(e_expected, e_calc, sigmaa, phi):
-  """ The four E-scale coefficient magnitudes (signed, along the model
+  """ The three E-scale coefficient magnitudes (signed, along the model
   phase), as flex.double arrays. """
   c = (1 - phi) * sigmaa
   return group_args(
     filled=e_expected,
     bias_reduced=(e_expected - c * e_calc) / (1 - c * sigmaa),
-    difference=e_expected - sigmaa * e_calc,
-    conventional=2 * e_expected - sigmaa * e_calc)
+    difference=e_expected - sigmaa * e_calc)
 
 def _unit_phase(f):
   # exp(i*phase); 1 where f = 0
@@ -174,8 +168,6 @@ def compute(fmodel, params=None, log=None):
   if(params.e_scale):
     arrays.append((LABELS.bias_reduced_e, as_complex(ce.bias_reduced)))
     arrays.append((LABELS.difference_e, as_complex(ce.difference)))
-  if(params.conventional):
-    arrays.append((LABELS.conventional, as_complex(ce.conventional, f_scale)))
   if(getattr(llgi_data, "from_amplitudes", False)):
     say("WARNING: computed from intensities reconstructed from amplitudes "
       "(approximate). Use a nacelle file made from intensities if at all "

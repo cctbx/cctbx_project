@@ -60,15 +60,10 @@ def exercise_derivatives():
     return evaluate([(e, s, ec + dec, a + da, c) for e, s, ec, a, c in cases])
   fd_ec = (shifted(dec=h).ll - shifted(dec=-h).ll) / (2 * h)
   fd_a = (shifted(da=h).ll - shifted(da=-h).ll) / (2 * h)
-  # second derivative from the analytic first derivative (differencing the
-  # value twice amplifies the ~1e-10 quadrature noise by 1/h^2)
-  fd_aa = (shifted(da=h).d_ll_d_a - shifted(da=-h).d_ll_d_a) / (2 * h)
   for i in range(len(cases)):
     scale = max(1, abs(fd_a[i]))
     assert abs(r.d_ll_d_ec[i] - fd_ec[i]) < 1e-6 * max(1, abs(fd_ec[i]))
     assert abs(r.d_ll_d_a[i] - fd_a[i]) < 1e-6 * scale, (cases[i],)
-    assert abs(r.d2_ll_d_a2[i] - fd_aa[i]) < 1e-4 * max(1, abs(fd_aa[i])), (
-      cases[i], r.d2_ll_d_a2[i], fd_aa[i])
     # posterior mean E identity: dLLGI/dEc = (2 b a / S)(<E> - a Ec)
     e, s, ec, a, c = cases[i]
     b = 0.5 if c else 1.0
@@ -313,9 +308,6 @@ def exercise_small_sigma_fixtures():
   h = hybrid(0.1)
   assert approx_equal(h.dsqr, [f[3] for f in fixtures], eps=1e-8)
   assert list(h.exact_selection(sa)) == [f[8] for f in fixtures]
-  f = h.measurement_fractions(sa)
-  for i, fx in enumerate(fixtures):
-    assert approx_equal(f[i], (1 - fx[3]) / (1 - fx[3] * fx[4]**2), eps=1e-8)
   # lower sigmaA: more model error, so the weak reflections go back to Rice
   assert h.exact_selection(flex.double(4, 0.5)).count(True) == 0
   # rice_kappa = 0 (sigmaA fits): exact wherever possible

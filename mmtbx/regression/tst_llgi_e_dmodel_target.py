@@ -22,7 +22,7 @@ def _random_theta_and_grid(rnd, k):
   return theta, b_k_grid
 
 def _ll_only(theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid):
-  ll, _, _ = target.total_ll_gradient_hessian(
+  ll, _ = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
   return ll
 
@@ -31,7 +31,7 @@ def exercise_gradient_matches_finite_difference_acentric_only():
   s2, e_eff, e_c, dobs, centric_flags = _build_reflections(rnd)
   centric_flags = np.zeros_like(centric_flags, dtype=bool)  # force all acentric
   theta, b_k_grid = _random_theta_and_grid(rnd, 2)
-  ll, grad, hess = target.total_ll_gradient_hessian(
+  ll, grad = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
   h = 1.e-6
   worst = 0.0
@@ -47,7 +47,7 @@ def exercise_gradient_matches_finite_difference_mixed_centric():
   rnd = np.random.RandomState(11)
   s2, e_eff, e_c, dobs, centric_flags = _build_reflections(rnd)
   theta, b_k_grid = _random_theta_and_grid(rnd, 2)
-  ll, grad, hess = target.total_ll_gradient_hessian(
+  ll, grad = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
   h = 1.e-6
   worst = 0.0
@@ -59,31 +59,9 @@ def exercise_gradient_matches_finite_difference_mixed_centric():
     worst = max(worst, abs(grad[i] - fd) / max(1.0, abs(fd)))
   assert worst < 1.e-4, worst
 
-def exercise_hessian_matches_finite_difference_mixed_centric():
-  rnd = np.random.RandomState(12)
-  s2, e_eff, e_c, dobs, centric_flags = _build_reflections(rnd, n=20)
-  theta, b_k_grid = _random_theta_and_grid(rnd, 2)
-  ll, grad, hess = target.total_ll_gradient_hessian(
-    theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
-  h = 1.e-4
-  n = theta.size
-  worst = 0.0
-  for i in range(n):
-    for j in range(n):
-      tpp = theta.copy(); tpp[i] += h; tpp[j] += h
-      tpm = theta.copy(); tpm[i] += h; tpm[j] -= h
-      tmp = theta.copy(); tmp[i] -= h; tmp[j] += h
-      tmm = theta.copy(); tmm[i] -= h; tmm[j] -= h
-      fd = (_ll_only(tpp, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
-            - _ll_only(tpm, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
-            - _ll_only(tmp, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
-            + _ll_only(tmm, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)) / (4*h*h)
-      worst = max(worst, abs(hess[i, j] - fd) / max(1.0, abs(fd)))
-  assert worst < 5.e-2, worst
-
 def exercise_single_reflection_matches_llgi_e_likelihood_directly():
   # A one-reflection "sum" must reduce exactly to
-  # llgi_e_likelihood's own l/l'/l'' evaluated at D=dobs*D_model(s2).
+  # llgi_e_likelihood's own l evaluated at D=dobs*D_model(s2).
   import mmtbx.refinement.llgi_e_likelihood as lik
   rnd = np.random.RandomState(13)
   theta, b_k_grid = _random_theta_and_grid(rnd, 1)
@@ -93,7 +71,7 @@ def exercise_single_reflection_matches_llgi_e_likelihood_directly():
   dobs = np.array([0.6])
   for centric in [False, True]:
     centric_flags = np.array([centric])
-    ll, grad, hess = target.total_ll_gradient_hessian(
+    ll, grad = target.total_ll_and_gradient(
       theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
     import mmtbx.refinement.llgi_e_dmodel as dmodel
     D = float(dobs[0] * dmodel.d_model(s2, theta, b_k_grid)[0])
@@ -104,7 +82,6 @@ def exercise_single_reflection_matches_llgi_e_likelihood_directly():
 def run():
   exercise_gradient_matches_finite_difference_acentric_only()
   exercise_gradient_matches_finite_difference_mixed_centric()
-  exercise_hessian_matches_finite_difference_mixed_centric()
   exercise_single_reflection_matches_llgi_e_likelihood_directly()
   print("OK")
 

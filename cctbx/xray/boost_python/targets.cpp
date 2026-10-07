@@ -438,7 +438,6 @@ namespace {
           .add_property("ll", make_getter(&w_t::ll, return_value_policy<return_by_value>()))
           .add_property("d_ll_d_ec", make_getter(&w_t::d_ll_d_ec, return_value_policy<return_by_value>()))
           .add_property("d_ll_d_a", make_getter(&w_t::d_ll_d_a, return_value_policy<return_by_value>()))
-          .add_property("d2_ll_d_a2", make_getter(&w_t::d2_ll_d_a2, return_value_policy<return_by_value>()))
           .add_property("e_expected", make_getter(&w_t::e_expected, return_value_policy<return_by_value>()))
           .add_property("e_abs_expected", make_getter(&w_t::e_abs_expected, return_value_policy<return_by_value>()))
         ;
@@ -461,7 +460,6 @@ namespace {
           .def("select", &w_t::select, (arg("selection")))
           .def("with_rice_kappa", &w_t::with_rice_kappa, (arg("t")))
           .def("exact_selection", &w_t::exact_selection, (arg("sigmaa")))
-          .def("measurement_fractions", &w_t::measurement_fractions, (arg("sigmaa")))
           .add_property("e_obs_sq", make_getter(&w_t::e_obs_sq, return_value_policy<return_by_value>()))
           .add_property("sig_e_obs_sq", make_getter(&w_t::sig_e_obs_sq, return_value_policy<return_by_value>()))
           .add_property("null_log_z", make_getter(&w_t::null_log_z, return_value_policy<return_by_value>()))

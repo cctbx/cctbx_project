@@ -34,51 +34,6 @@ def exercise_default_b_k_grid_k_zero_and_one():
   assert grid_one.shape == (1,)
   assert grid_one[0] > 0.0
 
-def exercise_a_k_smoothness_penalty_matches_finite_difference():
-  theta = np.array([0.5, 0.3, 0.6, 0.1, 0.05, 40.0])  # 4 a_k, b, B_defect
-  weight = 0.3
-  penalty, grad = fit.a_k_smoothness_penalty_and_gradient(theta, weight)
-  assert penalty > 0.0
-  h = 1.e-6
-  worst = 0.0
-  for i in range(theta.size):
-    tp = theta.copy(); tp[i] += h
-    tm = theta.copy(); tm[i] -= h
-    pp, _ = fit.a_k_smoothness_penalty_and_gradient(tp, weight)
-    pm, _ = fit.a_k_smoothness_penalty_and_gradient(tm, weight)
-    fd = (pp - pm) / (2*h)
-    worst = max(worst, abs(grad[i] - fd) / max(1.0, abs(fd)))
-  assert worst < 1.e-5, worst
-  # b/B_defect (last two slots) must never move -- the penalty is
-  # purely a function of the a_k sub-vector.
-  assert grad[-2] == 0.0 and grad[-1] == 0.0, grad
-
-def exercise_a_k_smoothness_penalty_zero_for_linear_profile():
-  # A perfectly LINEAR a_k profile (in ladder order) has a zero second
-  # difference at every interior rung by construction -- the penalty
-  # should vanish exactly, not merely be small.
-  theta = np.array([0.1, 0.2, 0.3, 0.4, 0.05, 40.0])  # a_k = 0.1*(k+1)
-  penalty, grad = fit.a_k_smoothness_penalty_and_gradient(theta, weight=1.0)
-  assert abs(penalty) < 1.e-12, penalty
-  assert flex.max(flex.abs(flex.double(grad))) < 1.e-12, grad
-
-def exercise_a_k_smoothness_penalty_noop_below_three_terms():
-  for k in [0, 1, 2]:
-    theta = np.empty(k + 2, dtype=float)
-    theta[:k] = 0.5
-    theta[-2] = 0.1
-    theta[-1] = 40.0
-    penalty, grad = fit.a_k_smoothness_penalty_and_gradient(theta, weight=1.0)
-    assert penalty == 0.0, (k, penalty)
-    assert flex.max(flex.abs(flex.double(grad))) == 0.0, (k, grad)
-
-def exercise_a_k_smoothness_penalty_disabled_without_weight():
-  theta = np.array([0.5, 0.3, 0.6, 0.1, 0.05, 40.0])
-  for weight in [None, 0.0]:
-    penalty, grad = fit.a_k_smoothness_penalty_and_gradient(theta, weight)
-    assert penalty == 0.0
-    assert flex.max(flex.abs(flex.double(grad))) == 0.0
-
 def _build_synthetic_reflections(seed, n=400, true_theta=None,
       true_b_k_grid=None):
   # E-VALUE NORMALIZATION IS LOAD-BEARING HERE, not cosmetic: an
@@ -269,7 +224,9 @@ def exercise_estimate_d_model_sigmaa_converges_without_degenerating():
   D_all = np.array(inputs["dobs"]) * sigmaa_np
   assert np.max(np.abs(D_all)) < 1.0, np.max(np.abs(D_all))
   assert result.sigmaa.size() == inputs["e_eff"].size()
-  assert result.b_k_grid.size() == 2
+  # include_constant_term (the default) adds a B=0 rung to the 2 decaying
+  assert result.b_k_grid.size() == 3
+  assert result.b_k_grid[0] == 0.0
 
 def exercise_estimate_d_model_sigmaa_recovers_true_curve():
   # The actual recovery-quality check this module was missing for a
@@ -352,7 +309,7 @@ def exercise_estimate_d_model_sigmaa_accepts_explicit_b_k_grid():
     e_model=inputs["e_model"], dobs=inputs["dobs"],
     centric_flags=inputs["centric_flags"],
     d_star_sq=inputs["d_star_sq"], n_gaussian_terms=2, max_iterations=50,
-    b_k_grid=explicit_grid)
+    b_k_grid=explicit_grid, include_constant_term=False)
   assert approx_equal(list(result.b_k_grid), list(explicit_grid))
 
 def exercise_constant_term_ladder_and_fit():
@@ -367,9 +324,8 @@ def exercise_constant_term_ladder_and_fit():
     e_eff=inputs["e_eff"], r_free_flags=inputs["r_free_flags"],
     e_model=inputs["e_model"], dobs=inputs["dobs"],
     centric_flags=inputs["centric_flags"], d_star_sq=inputs["d_star_sq"],
-    n_gaussian_terms=2, max_iterations=200, b_sol_anchor=20.0,
-    a_k_smoothness_weight=0.0)
-  plain = fit.estimate_d_model_sigmaa(**common)
+    n_gaussian_terms=2, max_iterations=200, b_sol_anchor=20.0)
+  plain = fit.estimate_d_model_sigmaa(include_constant_term=False, **common)
   with_const = fit.estimate_d_model_sigmaa(include_constant_term=True,
     **common)
   grid = np.array(with_const.b_k_grid)
@@ -379,27 +335,10 @@ def exercise_constant_term_ladder_and_fit():
   assert with_const.target < plain.target - 1.e-3, (
     with_const.target, plain.target)
 
-def exercise_a_k_smoothness_penalty_skips_constant_rungs():
-  # With first=1 the leading (constant) rung is neither penalised nor
-  # given a gradient; the rest is the ordinary penalty on a[1:].
-  theta = np.array([0.9, 0.1, 0.5, 0.2, 0.05, 20.0])
-  penalty, grad = fit.a_k_smoothness_penalty_and_gradient(theta, 1.0,
-    first=1)
-  ref_p, ref_g = fit.a_k_smoothness_penalty_and_gradient(theta[1:], 1.0)
-  assert approx_equal(penalty, ref_p)
-  assert grad[0] == 0
-  assert approx_equal(list(grad[1:]), list(ref_g))
-  # one constant + two decaying rungs: nothing left to smooth
-  penalty, grad = fit.a_k_smoothness_penalty_and_gradient(
-    np.array([0.9, 0.1, 0.5, 0.05, 20.0]), 1.0, first=1)
-  assert penalty == 0 and np.all(grad == 0)
-
-def exercise_constant_term_nested_with_default_smoothness():
-  # The constant-term model contains plain D_model (a_0 = 0), so with the
-  # default smoothness weight it must fit at least as well. The true curve
-  # has no constant component; with the constant rung inside the
-  # smoothness penalty, a_0 = 0 was penalised and the fit came out worse
-  # (-0.00449 against -0.00531).
+def exercise_constant_term_nests_plain_model():
+  # The constant-term model contains plain D_model (a_0 = 0), so it must
+  # fit at least as well even when the true curve has no constant
+  # component.
   inputs = _build_synthetic_reflections(seed=6, n=4000,
     true_theta=np.array([1.2, 0.0, 0.02, 20.0]),
     true_b_k_grid=np.array([10.0, 60.0]))
@@ -408,7 +347,7 @@ def exercise_constant_term_nested_with_default_smoothness():
     e_model=inputs["e_model"], dobs=inputs["dobs"],
     centric_flags=inputs["centric_flags"], d_star_sq=inputs["d_star_sq"],
     n_gaussian_terms=2, max_iterations=200, b_sol_anchor=20.0)
-  plain = fit.estimate_d_model_sigmaa(**common)
+  plain = fit.estimate_d_model_sigmaa(include_constant_term=False, **common)
   with_const = fit.estimate_d_model_sigmaa(include_constant_term=True,
     **common)
   assert with_const.target <= plain.target + 1.e-5, (
@@ -422,7 +361,7 @@ def exercise_b_defect_fixed_to_anchor():
     e_eff=inputs["e_eff"], r_free_flags=inputs["r_free_flags"],
     e_model=inputs["e_model"], dobs=inputs["dobs"],
     centric_flags=inputs["centric_flags"], d_star_sq=inputs["d_star_sq"],
-    n_gaussian_terms=2, max_iterations=200)
+    n_gaussian_terms=2, max_iterations=200, include_constant_term=False)
   for anchor in (25.0, 200.0):
     result = fit.estimate_d_model_sigmaa(b_sol_anchor=anchor, **common)
     assert result.theta.size() == 2 + 2
@@ -436,10 +375,6 @@ def run():
   exercise_default_b_k_grid_spans_data_resolution_range()
   exercise_default_b_k_grid_falls_back_for_degenerate_s2()
   exercise_default_b_k_grid_k_zero_and_one()
-  exercise_a_k_smoothness_penalty_matches_finite_difference()
-  exercise_a_k_smoothness_penalty_zero_for_linear_profile()
-  exercise_a_k_smoothness_penalty_noop_below_three_terms()
-  exercise_a_k_smoothness_penalty_disabled_without_weight()
   exercise_synthetic_reflections_have_resolvable_signal()
   exercise_estimate_d_model_sigmaa_converges_without_degenerating()
   exercise_estimate_d_model_sigmaa_recovers_true_curve()
@@ -447,8 +382,7 @@ def run():
   exercise_estimate_d_model_sigmaa_no_test_set_raises()
   exercise_estimate_d_model_sigmaa_accepts_explicit_b_k_grid()
   exercise_constant_term_ladder_and_fit()
-  exercise_a_k_smoothness_penalty_skips_constant_rungs()
-  exercise_constant_term_nested_with_default_smoothness()
+  exercise_constant_term_nests_plain_model()
   exercise_b_defect_fixed_to_anchor()
   print("OK")
 

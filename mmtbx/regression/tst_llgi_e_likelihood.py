@@ -30,21 +30,6 @@ def exercise_acentric_l_prime_matches_finite_difference():
     worst = max(worst, abs(ana - fd) / max(1.0, abs(fd)))
   assert worst < 2.e-4, worst
 
-def exercise_acentric_l_double_prime_matches_finite_difference():
-  # Tolerance loosened from 1e-2 to 5e-2 -- same _r(x)/R'(x) rational-
-  # polynomial approximation as exercise_acentric_l_prime_matches_
-  # finite_difference above, compounded further here since l''(D)
-  # depends on R'(x) as well as R(x).
-  h = 1.e-4
-  worst = 0.0
-  for D, e_eff, e_c in _grid():
-    fd = (lik.acentric_l(D+h, e_eff, e_c)
-          - 2*lik.acentric_l(D, e_eff, e_c)
-          + lik.acentric_l(D-h, e_eff, e_c)) / h**2
-    ana = float(lik.acentric_l_double_prime(D, e_eff, e_c))
-    worst = max(worst, abs(ana - fd) / max(1.0, abs(fd)))
-  assert worst < 5.e-2, worst
-
 def exercise_centric_l_prime_matches_finite_difference():
   h = 1.e-6
   worst = 0.0
@@ -54,17 +39,6 @@ def exercise_centric_l_prime_matches_finite_difference():
     ana = float(lik.centric_l_prime(D, e_eff, e_c))
     worst = max(worst, abs(ana - fd) / max(1.0, abs(fd)))
   assert worst < 1.e-6, worst
-
-def exercise_centric_l_double_prime_matches_finite_difference():
-  h = 1.e-4
-  worst = 0.0
-  for D, e_eff, e_c in _grid():
-    fd = (lik.centric_l(D+h, e_eff, e_c)
-          - 2*lik.centric_l(D, e_eff, e_c)
-          + lik.centric_l(D-h, e_eff, e_c)) / h**2
-    ana = float(lik.centric_l_double_prime(D, e_eff, e_c))
-    worst = max(worst, abs(ana - fd) / max(1.0, abs(fd)))
-  assert worst < 1.e-2, worst
 
 def _cpp_target_and_grad(e_eff, dobs, sigmaa, e_model, centric):
   result = ext.llgi_e_sigmaa_target_and_gradients(
@@ -123,24 +97,11 @@ def exercise_centric_matches_cpp_reference():
   _exercise_matches_cpp_reference(centric=True, target_tol=1.e-12,
     grad_tol=1.e-12)
 
-def exercise_r_prime_at_zero_is_half():
-  # R'(0) = 0.5 (design doc sec. 6.4 / sigmaA_model_handoff.md sec. 5),
-  # a removable singularity in the naive 1 - R(x)/x - R(x)^2 formula --
-  # must not be NaN.
-  assert np.isfinite(lik._r_prime(0.0))
-  assert abs(float(lik._r_prime(0.0)) - 0.5) < 1.e-12
-  # And should agree with the same expression evaluated at small
-  # nonzero x, away from the branch cut.
-  assert abs(float(lik._r_prime(1.e-6)) - 0.5) < 1.e-6
-
 def run():
   exercise_acentric_l_prime_matches_finite_difference()
-  exercise_acentric_l_double_prime_matches_finite_difference()
   exercise_centric_l_prime_matches_finite_difference()
-  exercise_centric_l_double_prime_matches_finite_difference()
   exercise_acentric_matches_cpp_reference()
   exercise_centric_matches_cpp_reference()
-  exercise_r_prime_at_zero_is_half()
   print("OK")
 
 if (__name__ == "__main__"):

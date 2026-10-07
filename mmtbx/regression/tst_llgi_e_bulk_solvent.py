@@ -158,8 +158,7 @@ def exercise_degenerate_resolution_range_does_not_crash():
 def _synthetic_llgi_inputs(fmodel, seed=10):
   # Synthetic-but-plausible nacelle-like dobs/feff/resn, sized against
   # fmodel.f_obs()'s CURRENT index set (i.e. AFTER any outlier removal
-  # fmodel.update_all_scales() may already have performed -- see
-  # run_inner_loop's docstring for why this ordering matters; getting it
+  # fmodel.update_all_scales() may already have performed; getting it
   # wrong raises AssertionError rather than silently misaligning HKLs).
   f_obs = fmodel.f_obs()
   n = f_obs.size()
@@ -172,80 +171,10 @@ def _synthetic_llgi_inputs(fmodel, seed=10):
     [rnd.uniform(2.0, 6.0) for i in range(n)])
   return dobs, feff, resn
 
-def exercise_bulk_solvent_gradient_matches_fixed_sigma_p_finite_difference():
-  # bulk_solvent_target_and_gradients's analytic gradient is derived
-  # holding SigmaP fixed (see its docstring for why the TRUE total
-  # derivative, letting SigmaP respond to k_sol/b_sol too, is a
-  # materially different, larger quantity -- roughly 10x on real data).
-  # This test verifies internal consistency: the analytic gradient must
-  # match a finite difference of the SAME (fixed-SigmaP) target the
-  # function itself would compute at that one point -- not a finite
-  # difference that lets SigmaP float, which would NOT match by design.
-  fmodel = build_fmodel(n_atoms=40, d_min=1.8, seed=11)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=12)
-  f_obs = fmodel.f_obs()
-  n = f_obs.size()
-  epsilons = f_obs.epsilons().data().as_double()
-  d_star_sq = f_obs.d_star_sq().data()
-  ss = llgi_e_bs.ss_from_f_obs(f_obs)
-  centric_flags = f_obs.centric_flags().data()
-  working_sel = ~fmodel.r_free_flags().data()
-  e_eff = llgi_e_bs.build_e_eff(feff, resn)
-  sigmaa = flex.double(n, 0.5)
-
-  f_calc = fmodel.f_calc().data()
-  f_mask = fmodel.f_masks()[0].data()
-  f_part1 = fmodel.f_part1().data()
-  f_part2 = fmodel.f_part2().data()
-  k_iso = fmodel.k_isotropic()
-
-  k_sol0, b_sol0 = 0.30, 40.0
-
-  # Freeze SigmaP at k_sol0/b_sol0, matching what the analytic gradient
-  # actually differentiates (see bulk_solvent_target_and_gradients's
-  # docstring): a small local helper reimplementing the target with a
-  # caller-supplied fixed SigmaP, used only for this finite-difference
-  # cross-check.
-  from cctbx.xray import ext as xray_ext
-  k_mask0 = llgi_e_bs.k_mask_and_gradients(ss, k_sol0, b_sol0).k_mask
-  fmnas0 = k_iso * (f_calc + k_mask0 * f_mask + f_part1 + f_part2)
-  sigma_p_fixed = llgi_e_bs.build_sigma_p(fmnas0, d_star_sq)
-
-  def target_fixed_sigma_p(k_sol, b_sol):
-    k_mask_r = llgi_e_bs.k_mask_and_gradients(ss, k_sol, b_sol)
-    fmnas = k_iso * (f_calc + k_mask_r.k_mask * f_mask + f_part1 + f_part2)
-    denom = flex.sqrt(epsilons * sigma_p_fixed)
-    e_model = fmnas * (1.0 / denom)
-    result = xray_ext.llgi_e_emodel_target_and_gradients(
-      e_eff=e_eff, selection=working_sel, e_model=flex.abs(e_model),
-      dobs=dobs, sigmaa=sigmaa, centric_flags=centric_flags)
-    return result.target()
-
-  r0 = llgi_e_bs.bulk_solvent_target_and_gradients(
-    e_eff=e_eff, selection=working_sel, dobs=dobs, sigmaa=sigmaa,
-    centric_flags=centric_flags, f_calc=f_calc, f_mask=f_mask,
-    f_part1=f_part1, f_part2=f_part2, k_isotropic=k_iso,
-    epsilons=epsilons, d_star_sq=d_star_sq, ss=ss,
-    k_sol=k_sol0, b_sol=b_sol0)
-
-  eps_k = 1.e-6
-  fd_k = (target_fixed_sigma_p(k_sol0 + eps_k, b_sol0)
-          - target_fixed_sigma_p(k_sol0 - eps_k, b_sol0)) / (2 * eps_k)
-  eps_b = 1.e-4
-  fd_b = (target_fixed_sigma_p(k_sol0, b_sol0 + eps_b)
-          - target_fixed_sigma_p(k_sol0, b_sol0 - eps_b)) / (2 * eps_b)
-
-  assert approx_equal(r0.gradients[0], fd_k, eps=1.e-4 * max(1, abs(fd_k))), (
-    r0.gradients[0], fd_k)
-  assert approx_equal(r0.gradients[1], fd_b, eps=1.e-4 * max(1, abs(fd_b))), (
-    r0.gradients[1], fd_b)
-
-def exercise_initial_k_sol_b_sol_recovers_known_values():
+def exercise_bss_k_sol_b_sol_recovers_known_values():
   # Inject a synthetic k_mask array with a KNOWN (k_sol, b_sol) plus
   # small multiplicative noise into a real fmodel (via
-  # fmodel.update(k_mask=...), the same mechanism run_inner_loop itself
-  # uses to push a fitted bulk-solvent model back onto fmodel): the log-
-  # linear recovery fit (initial_k_sol_b_sol) should recover both to
+  # fmodel.update(k_mask=...)): bss_k_sol_b_sol should recover both to
   # within a few percent, exercised through the real function against a
   # real fmodel/f_obs, not a hand-rolled duplicate of its fit logic.
   from mmtbx.f_model import ext as f_model_ext
@@ -259,195 +188,46 @@ def exercise_initial_k_sol_b_sol_recovers_known_values():
   k_mask_noisy = k_mask_true * (flex.double(n, 1.0) + noise)
   fmodel.update(k_mask=[k_mask_noisy])
 
-  k_sol, b_sol = llgi_e_bs.initial_k_sol_b_sol(fmodel)
+  k_sol, b_sol = llgi_e_bs.bss_k_sol_b_sol(fmodel)
   assert approx_equal(k_sol, true_k_sol, eps=0.02), (k_sol, true_k_sol)
   assert approx_equal(b_sol, true_b_sol, eps=1.0), (b_sol, true_b_sol)
 
-def exercise_initial_k_sol_b_sol_falls_back_on_degenerate_input():
+def exercise_bss_k_sol_b_sol_falls_back_on_degenerate_input():
   # k_mask ~ 0 everywhere (e.g. a tiny test structure with no real
   # solvent channels) must NOT produce a nonsensical fit (observed
   # directly: an early version gave b_sol ~ -164 on exactly this kind of
-  # input) -- initial_k_sol_b_sol should fall back to its defaults.
+  # input) -- bss_k_sol_b_sol should fall back to its defaults.
   fmodel = build_fmodel(n_atoms=15, d_min=2.0, seed=15)
-  k_sol, b_sol = llgi_e_bs.initial_k_sol_b_sol(
+  k_sol, b_sol = llgi_e_bs.bss_k_sol_b_sol(
     fmodel, k_sol_default=0.35, b_sol_default=46.0)
   assert k_sol is not None and b_sol is not None
   assert 0.0 <= k_sol <= 0.6
   assert 0.0 <= b_sol <= 150.0
 
-def exercise_inner_loop_convergence_requires_k_mask_stability():
-  # Real bug found on real 2G38 data (fix_bulk_solvent_from_ls=False,
-  # doc/llgi_target_design.md sec. 6.4): the ORIGINAL convergence check
-  # (target-value plateau alone) declared convergence after only 2
-  # iterations with bs_target changing by just 0.000057 (comfortably
-  # under the default 1e-4 convergence_tolerance) while B_sol's own
-  # log-linear point estimate had simultaneously moved from 150 (a phil
-  # boundary) to 118 between those same two iterations -- reproduced
-  # here directly via _inner_loop_has_converged with those actual
-  # numbers (a representative k_mask_bin pair scaled to produce a
-  # comparable max-change, since the real per-bin arrays themselves
-  # were not individually logged).
-  bs_target_1 = -0.193038
-  bs_target_2 = -0.192981  # diff = 0.000057, well under default 1e-4
-  k_mask_1 = flex.double([0.30, 0.32, 0.28, 0.15, 0.05])  # b_sol~150-like
-  k_mask_2 = flex.double([0.30, 0.18, 0.28, 0.09, 0.05])  # b_sol~118-like,
-                                                            # max change 0.14
-
-  # With the default k_mask_convergence_tolerance (0.01), this pair
-  # must NOT be judged converged -- the whole point of the fix.
-  converged = llgi_e_bs._inner_loop_has_converged(
-    bs_target_2, bs_target_1, k_mask_2, k_mask_1,
-    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
-  assert converged is False, (
-    "target-value plateau alone should NOT be enough to declare "
-    "convergence while k_mask is still moving by 0.14 -- this is "
-    "exactly the real 2G38 failure mode this check exists to catch")
-
-  # Sanity check the OTHER direction: once k_mask has also genuinely
-  # stabilised (small change), convergence must be declared -- the
-  # fix must not be so strict it never converges at all.
-  k_mask_3 = flex.double([0.30, 0.18, 0.28, 0.09, 0.05])
-  k_mask_4 = flex.double([0.301, 0.181, 0.279, 0.091, 0.050])  # tiny change
-  converged_stable = llgi_e_bs._inner_loop_has_converged(
-    bs_target_2, bs_target_1, k_mask_4, k_mask_3,
-    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
-  assert converged_stable is True, (
-    "should converge once both target AND k_mask have genuinely "
-    "stabilised")
-
-def exercise_inner_loop_convergence_first_iteration_never_converges():
-  # prev_bs_target/prev_k_mask_bin are None on the first iteration --
-  # must return False (nothing to compare against yet), not raise.
-  converged = llgi_e_bs._inner_loop_has_converged(
-    -0.19, None, flex.double([0.3, 0.2]), None,
-    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
-  assert converged is False
-
-def exercise_inner_loop_convergence_target_alone_not_enough():
-  # Target value close (would pass the OLD, target-only check) but
-  # k_mask far apart -- must not converge, isolating exactly the
-  # target-value-plateau condition from the k_mask-stability condition.
-  converged = llgi_e_bs._inner_loop_has_converged(
-    -0.19, -0.19 + 1.e-5,  # well under default 1e-4 tolerance
-    flex.double([0.9, 0.9]), flex.double([0.1, 0.1]),  # miles apart
-    convergence_tolerance=1.e-4, k_mask_convergence_tolerance=0.01)
-  assert converged is False
-
-def exercise_run_inner_loop_end_to_end():
-  # Full Stage-1/Stage-2 inner loop, on real (synthetic) data: must run
-  # to completion (converged or max_inner_iterations reached), return a
-  # sensible-shaped result, and leave fmodel's k_mask updated to match
-  # the returned (k_sol, b_sol) exactly.
-  #
-  # fix_bulk_solvent_from_ls is set False EXPLICITLY here: it defaults to
-  # True, which skips Stage 2 entirely and never touches k_mask (see
-  # exercise_fixed_bulk_solvent_leaves_k_mask_untouched), so relying on
-  # the default would silently turn this into a test of a different code
-  # path than the one its assertions below describe.
-  fmodel = build_fmodel(n_atoms=60, d_min=1.7, seed=16)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=17)
-  params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params.fix_bulk_solvent_from_ls = False
-  params.max_inner_iterations = 3
-  params.sigmaa_max_iterations = 20
-  params.bulk_solvent_max_iterations = 15
-
-  result = llgi_e_bs.run_inner_loop(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-
-  assert result.n_iterations >= 1
-  assert result.sigmaa.size() == fmodel.f_obs().size()
-  for v in result.sigmaa:
-    assert 0.0 < v < 1.0
-  # result.k_sol/b_sol are only a log-linear POINT ESTIMATE of the real
-  # per-bin fit (see run_inner_loop's own docstring) -- still expected
-  # to land within the phil bounds, since _log_linear_k_sol_b_sol clips
-  # to them, but no longer expected to reconstruct fmodel's actual
-  # k_mask() exactly (see below).
-  assert 0.0 <= result.k_sol <= 0.6
-  assert 0.0 <= result.b_sol <= 150.0
-  assert len(result.history) == result.n_iterations
-  assert result.k_mask_bin.size() == len(result.bin_centers)
-
-  # fmodel's k_mask should now match the returned per-bin curve
-  # (k_mask_bin/bin_centers), reconstructed via the same piecewise-
-  # linear interpolation run_inner_loop itself used to push the final
-  # result onto fmodel -- NOT the (k_sol, b_sol) point estimate, which
-  # is only a diagnostic summary of this curve, not the fitted model
-  # itself (see run_inner_loop's docstring for why a per-bin fit,
-  # matching bss's own default bulk-solvent model, replaced the
-  # 2-parameter exponential form here).
-  ss = llgi_e_bs.ss_from_f_obs(fmodel.f_obs())
-  expected_k_mask = llgi_e_bs.k_mask_binned_and_gradients(
-    ss, fmodel.bin_selections, result.bin_centers, result.k_mask_bin).k_mask
-  actual_k_mask = fmodel.k_masks()[0]
-  diff = flex.max(flex.abs(
-    flex.double(expected_k_mask) - flex.double(actual_k_mask)))
-  assert diff < 1.e-10, diff
-
-def exercise_fix_bulk_solvent_from_ls_is_the_default():
-  # fix_bulk_solvent_from_ls defaults to True: on 2G38 over 5
-  # macrocycles it gave the best R-work/R-free of the three approaches
-  # tested (0.3832/0.4144, vs 0.3881/0.4155 and 0.3912/0.4159 for
-  # LLGI-driven bulk solvent at sigmaA curvature weights 0.001 and
-  # 0.02), and it sidesteps Stage 2's two-competing-solutions/boundary-
-  # pinning behaviour entirely. Pinned here so an accidental flip is
-  # caught: several other tests in this file and in tst_llgi_data.py set
-  # it False EXPLICITLY to exercise the two-stage path, and would
-  # silently change meaning if the default moved.
-  params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  assert params.fix_bulk_solvent_from_ls is True
-
-def exercise_fixed_bulk_solvent_leaves_k_mask_untouched():
-  # params.fix_bulk_solvent_from_ls (the hybrid mode): fmodel's k_mask,
-  # exactly as update_all_scales()/bss set it, must be BIT-IDENTICAL
-  # before and after -- this mode must never call fmodel.update(k_mask=
-  # ...) at all, unlike the default Stage-1/Stage-2 loop.
+def exercise_sigmaa_fit_leaves_k_mask_untouched():
+  # fmodel's k_mask, exactly as update_all_scales()/bss set it, must be
+  # BIT-IDENTICAL before and after the sigmaA fit (spline form here; the
+  # d_model form is covered by exercise_d_model_sigmaa_end_to_end).
   fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=30)
   dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=31)
   k_mask_before = flex.double(fmodel.k_masks()[0])
 
   params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params.fix_bulk_solvent_from_ls = True
+  params.sigmaa_model = "spline"
   params.sigmaa_max_iterations = 20
 
-  result = llgi_e_bs.run_inner_loop(
+  result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
     fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
 
   k_mask_after = flex.double(fmodel.k_masks()[0])
   assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
 
-  assert result.n_iterations == 1
-  assert result.converged is True
   assert result.sigmaa.size() == fmodel.f_obs().size()
   for v in result.sigmaa:
     assert 0.0 < v < 1.0
-  assert len(result.history) == 1
 
-def exercise_fixed_bulk_solvent_matches_direct_call():
-  # run_inner_loop(params.fix_bulk_solvent_from_ls=True) must dispatch to
-  # estimate_e_sigmaa_fixed_bulk_solvent exactly -- same sigmaA, same
-  # (k_sol, b_sol) point estimate -- not merely something similarly
-  # shaped, since callers (mmtbx.f_model.manager.
-  # update_llgi_e_bulk_solvent) only ever go through run_inner_loop.
-  fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=32)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=33)
-  params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params.fix_bulk_solvent_from_ls = True
-  params.sigmaa_max_iterations = 20
-
-  via_run_inner_loop = llgi_e_bs.run_inner_loop(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-  direct = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-
-  assert approx_equal(
-    list(via_run_inner_loop.sigmaa), list(direct.sigmaa))
-  assert via_run_inner_loop.k_sol == direct.k_sol
-  assert via_run_inner_loop.b_sol == direct.b_sol
-
-def exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly():
-  # estimate_e_sigmaa_fixed_bulk_solvent's docstring promises Emodel is
+def exercise_sigmaa_fit_uses_bss_k_mask_exactly():
+  # estimate_e_sigmaa_for_fmodel's docstring promises Emodel is
   # built from fmodel's RAW k_mask array (via f_model_no_aniso_scale),
   # not from a (k_sol, b_sol) log-linear re-fit of it. Verify this
   # directly and deterministically at the Emodel level (rather than via
@@ -461,10 +241,10 @@ def exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly():
   # confirm the exact Emodel array f_model_no_aniso_scale/build_e_model
   # would compute from fmodel's CURRENT state differs substantially from
   # the Emodel a re-fitted (k_sol, b_sol) pair would give -- i.e. that
-  # estimate_e_sigmaa_fixed_bulk_solvent (which uses the former, per its
+  # estimate_e_sigmaa_for_fmodel (which uses the former, per its
   # docstring) is doing something materially different from what a
-  # (k_sol, b_sol)-based reconstruction (like run_inner_loop's own
-  # Stage-1 bootstrap) would have done with the same starting k_mask.
+  # (k_sol, b_sol)-based reconstruction would have done with the same
+  # starting k_mask.
   fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=34)
   dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=35)
   ss = llgi_e_bs.ss_from_f_obs(fmodel.f_obs())
@@ -478,10 +258,9 @@ def exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly():
   k_mask_before = flex.double(fmodel.k_masks()[0])
 
   params = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
-  params.fix_bulk_solvent_from_ls = True
   params.sigmaa_max_iterations = 20
 
-  result = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+  result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
     fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
 
   # k_mask must still be untouched (the point-estimate (k_sol, b_sol)
@@ -493,7 +272,7 @@ def exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly():
     assert 0.0 < v < 1.0
 
   # Emodel from the EXACT synthetic k_mask, via the same accessor
-  # estimate_e_sigmaa_fixed_bulk_solvent itself uses.
+  # estimate_e_sigmaa_for_fmodel itself uses.
   f_obs = fmodel.f_obs()
   epsilons = f_obs.epsilons().data().as_double()
   d_star_sq = f_obs.d_star_sq().data()
@@ -501,13 +280,12 @@ def exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly():
   e_model_exact = flex.abs(llgi_e_bs.build_e_model(
     fmnas_exact, epsilons, d_star_sq).e_model)
 
-  # Emodel from the initial_k_sol_b_sol point estimate's necessarily-
-  # approximate k_sol*exp(-b_sol*ss) re-fit of that same k_mask array
-  # (what a (k_sol, b_sol)-based reconstruction, e.g. run_inner_loop's
-  # own Stage-1 bootstrap, would use instead).
-  k_sol_approx, b_sol_approx = llgi_e_bs.initial_k_sol_b_sol(fmodel)
+  # Emodel from the bss_k_sol_b_sol point estimate's necessarily-
+  # approximate k_sol*exp(-b_sol*ss) re-fit of that same k_mask array.
+  from mmtbx.f_model import ext as f_model_ext
+  k_sol_approx, b_sol_approx = llgi_e_bs.bss_k_sol_b_sol(fmodel)
   approx_k_mask = np.asarray(
-    llgi_e_bs.k_mask_and_gradients(ss, k_sol_approx, b_sol_approx).k_mask)
+    f_model_ext.k_mask(ss, k_sol_approx, b_sol_approx))
   k_isotropic = fmodel.k_isotropic()
   f_calc = fmodel.f_calc().data()
   f_mask = fmodel.f_masks()[0].data()
@@ -522,10 +300,10 @@ def exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly():
   # -- confirming the two code paths really are different in what they
   # feed the sigmaA fit, i.e. that fixing bulk solvent "from LS" genuinely
   # means the raw bss array, not a re-derived (k_sol, b_sol) pair -- even
-  # though initial_k_sol_b_sol now delegates to fmodel.k_sol_b_sol_from_
+  # though bss_k_sol_b_sol delegates to fmodel.k_sol_b_sol_from_
   # k_mask() (a Gaussian start + local grid refinement against the ACTUAL
   # k_mask array, not an unweighted log-linear fit prone to diverging on
-  # real data -- see initial_k_sol_b_sol's own docstring) and so recovers
+  # real data) and so recovers
   # a much closer (k_sol, b_sol) approximation to this synthetic curved
   # k_mask than the old, since-removed hand-rolled fit did (that old fit
   # is what originally motivated the diff > 0.5 threshold here; the new,
@@ -607,22 +385,22 @@ def _extract_params_with_includes():
   return llgi_e_bs.llgi_e_bulk_solvent_params.process_includes(
     converter_registry=default_converter_registry, reference_directory=None)
 
-def exercise_d_model_sigmaa_is_experimental_not_the_default():
-  # sigmaa_model defaults to "spline" -- pinned here so an accidental
-  # flip is caught, matching exercise_fix_bulk_solvent_from_ls_is_the_
-  # default's own rationale: several tests below set sigmaa_model=
-  # "d_model" EXPLICITLY to exercise that path, and would silently
-  # change meaning if the default moved.
+def exercise_d_model_sigmaa_is_the_default():
+  # sigmaa_model defaults to "d_model" -- pinned here so an accidental
+  # flip is caught. The plain extract() (used as the fallback when no
+  # params are passed) must carry d_model_params too.
   master = _extract_params_with_includes()
   params = master.extract()
-  assert params.sigmaa_model == "spline"
+  assert params.sigmaa_model == "d_model"
+  plain = llgi_e_bs.llgi_e_bulk_solvent_params.extract()
+  assert plain.sigmaa_model == "d_model"
+  assert plain.d_model_params.include_constant_term is True
 
-def exercise_d_model_sigmaa_fixed_bulk_solvent_end_to_end():
-  # sigmaa_model="d_model" through estimate_e_sigmaa_fixed_bulk_solvent
-  # (fix_bulk_solvent_from_ls=True, the actual production default) --
-  # must run to completion against a real fmodel and return a sane,
-  # bounded result, exactly mirroring exercise_fixed_bulk_solvent_
-  # leaves_k_mask_untouched's own shape of check for the spline path.
+def exercise_d_model_sigmaa_end_to_end():
+  # sigmaa_model="d_model" through estimate_e_sigmaa_for_fmodel -- must
+  # run to completion against a real fmodel and return a sane, bounded
+  # result, mirroring exercise_sigmaa_fit_leaves_k_mask_untouched's
+  # check for the spline path.
   fmodel = build_fmodel(n_atoms=50, d_min=1.75, seed=40)
   dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=41)
   k_mask_before = flex.double(fmodel.k_masks()[0])
@@ -630,19 +408,15 @@ def exercise_d_model_sigmaa_fixed_bulk_solvent_end_to_end():
   master = _extract_params_with_includes()
   params = master.fetch(iotbx.phil.parse("""\
     sigmaa_model = d_model
-    fix_bulk_solvent_from_ls = True
     d_model_params.max_iterations = 60
     """)).extract()
 
-  result = llgi_e_bs.run_inner_loop(
+  result = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
     fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
 
-  # Single-stage mode: k_mask must be untouched, same contract as the
-  # spline path in this mode.
+  # k_mask must be untouched, same contract as the spline path.
   k_mask_after = flex.double(fmodel.k_masks()[0])
   assert approx_equal(list(k_mask_before), list(k_mask_after), eps=0.0)
-  assert result.n_iterations == 1
-  assert result.converged is True
   assert result.sigmaa.size() == fmodel.f_obs().size()
   # D_model(s; theta) is not bounded to (0, 1) the way the spline's
   # sigmoid is by construction -- what's actually guaranteed is that
@@ -653,57 +427,10 @@ def exercise_d_model_sigmaa_fixed_bulk_solvent_end_to_end():
     import math
     assert math.isfinite(v)
 
-def exercise_d_model_sigmaa_run_inner_loop_two_stage_end_to_end():
-  # sigmaa_model="d_model" through the full Stage-1/Stage-2 alternation
-  # (fix_bulk_solvent_from_ls=False) -- confirms the b_sol_anchor
-  # threading (computed once per iteration from the CURRENT per-bin
-  # k_mask, before Stage 1 runs -- see run_inner_loop's own comment)
-  # does not crash or destabilize the loop, matching exercise_run_
-  # inner_loop_end_to_end's own shape of check for the spline path.
-  fmodel = build_fmodel(n_atoms=60, d_min=1.7, seed=42)
-  dobs, feff, resn = _synthetic_llgi_inputs(fmodel, seed=43)
-
-  master = _extract_params_with_includes()
-  params = master.fetch(iotbx.phil.parse("""\
-    sigmaa_model = d_model
-    fix_bulk_solvent_from_ls = False
-    max_inner_iterations = 3
-    bulk_solvent_max_iterations = 15
-    d_model_params.max_iterations = 60
-    """)).extract()
-
-  result = llgi_e_bs.run_inner_loop(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=params)
-
-  assert result.n_iterations >= 1
-  assert result.sigmaa.size() == fmodel.f_obs().size()
-  import math
-  for v in result.sigmaa:
-    assert math.isfinite(v)
-  assert 0.0 <= result.k_sol <= 0.6
-  assert 0.0 <= result.b_sol <= 150.0
-  assert len(result.history) == result.n_iterations
-
-  # Same fmodel-k_mask-matches-returned-curve check as exercise_run_
-  # inner_loop_end_to_end -- Stage 2 (bulk solvent) itself is
-  # unaffected by which sigmaA parametrization Stage 1 used, so this
-  # invariant should hold identically.
-  ss = llgi_e_bs.ss_from_f_obs(fmodel.f_obs())
-  expected_k_mask = llgi_e_bs.k_mask_binned_and_gradients(
-    ss, fmodel.bin_selections, result.bin_centers, result.k_mask_bin).k_mask
-  actual_k_mask = fmodel.k_masks()[0]
-  diff = flex.max(flex.abs(
-    flex.double(expected_k_mask) - flex.double(actual_k_mask)))
-  assert diff < 1.e-10, diff
-
-def exercise_d_model_sigmaa_does_not_change_spline_default_behaviour():
-  # Sanity check that ADDING sigmaa_model/d_model_params to the phil
-  # scope did not perturb the pre-existing spline path's own default
-  # numbers -- run the exact same fmodel/inputs through both
-  # llgi_e_bulk_solvent_params.extract() (the old, pre-this-change way
-  # of getting params) and the new process_includes()-based extraction,
-  # both left at sigmaa_model's default ("spline"), and require BIT-
-  # IDENTICAL results.
+def exercise_plain_and_include_processed_params_agree():
+  # llgi_e_bulk_solvent_params.extract() (the fallback when no params are
+  # passed) and the process_includes()-based extraction (as phenix.refine
+  # builds it) must give BIT-IDENTICAL results at the defaults.
   fmodel_a = build_fmodel(n_atoms=50, d_min=1.75, seed=44)
   fmodel_b = build_fmodel(n_atoms=50, d_min=1.75, seed=44)
   dobs, feff, resn = _synthetic_llgi_inputs(fmodel_a, seed=45)
@@ -715,48 +442,16 @@ def exercise_d_model_sigmaa_does_not_change_spline_default_behaviour():
   params_new_style = master.extract()
   params_new_style.sigmaa_max_iterations = 20
 
-  result_a = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+  result_a = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
     fmodel_a, dobs=dobs, feff=feff, resn=resn, params=params_old_style)
-  result_b = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+  result_b = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
     fmodel_b, dobs=dobs, feff=feff, resn=resn, params=params_new_style)
 
   assert approx_equal(list(result_a.sigmaa), list(result_b.sigmaa), eps=0.0)
   assert result_a.k_sol == result_b.k_sol
   assert result_a.b_sol == result_b.b_sol
 
-def exercise_e_eff_renormalisation_flattens_mean_square():
-  # Eeff with a resolution-dependent mean-square drift (1 at low
-  # resolution rising to ~1.9, as seen on 2G38): renormalise=True must
-  # bring <Eeff^2> back to ~1 in every resolution bin; the default leaves
-  # Eeff = Feff/RESN unchanged.
-  rnd = random.Random(7)
-  n = 6000
-  # Uniform in reciprocal-space volume (d* from 0.05 to 0.5), like real
-  # data -- the auto kernel width is set by the sparse low-resolution
-  # end, so data uniform in d*^2 would give an unrealistically noisy
-  # smoothed curve at high resolution.
-  lo, hi = 0.05, 0.5
-  d_star_sq = flex.double([
-    (lo**3 + rnd.random()*(hi**3 - lo**3))**(2./3.) for i in range(n)])
-  drift = 1.0 + 0.9 * (d_star_sq / hi**2)**2
-  e = flex.double([abs(rnd.gauss(0, 1) + 1j*rnd.gauss(0, 1)) / 2**0.5
-                   for i in range(n)])
-  feff = e * flex.sqrt(drift)
-  resn = flex.double(n, 1.0)
-  assert approx_equal(
-    list(llgi_e_bs.build_e_eff(feff, resn)), list(feff), eps=0)
-  e_eff = llgi_e_bs.build_e_eff(feff, resn, d_star_sq=d_star_sq,
-    renormalise=True)
-  order = flex.sort_permutation(d_star_sq)
-  for i_bin in range(6):
-    sel = order[i_bin*n//6:(i_bin+1)*n//6]
-    raw_ms = flex.mean(flex.pow2(feff.select(sel)))
-    ms = flex.mean(flex.pow2(e_eff.select(sel)))
-    assert abs(ms - 1.0) < 0.1, (i_bin, raw_ms, ms)
-  assert flex.mean(flex.pow2(feff.select(order[-n//6:]))) > 1.5
-
 def run():
-  exercise_e_eff_renormalisation_flattens_mean_square()
   exercise_f_model_no_aniso_scale_matches_direct_computation()
   exercise_f_model_no_aniso_scale_times_k_aniso_is_f_model()
   exercise_sigma_p_constant_intensity_recovers_constant()
@@ -764,22 +459,14 @@ def run():
   exercise_e_model_mean_square_near_one_on_real_fmodel()
   exercise_e_eff_is_feff_over_resn()
   exercise_degenerate_resolution_range_does_not_crash()
-  exercise_bulk_solvent_gradient_matches_fixed_sigma_p_finite_difference()
-  exercise_initial_k_sol_b_sol_recovers_known_values()
-  exercise_initial_k_sol_b_sol_falls_back_on_degenerate_input()
-  exercise_inner_loop_convergence_requires_k_mask_stability()
-  exercise_inner_loop_convergence_first_iteration_never_converges()
-  exercise_inner_loop_convergence_target_alone_not_enough()
-  exercise_run_inner_loop_end_to_end()
+  exercise_bss_k_sol_b_sol_recovers_known_values()
+  exercise_bss_k_sol_b_sol_falls_back_on_degenerate_input()
   exercise_e_sigmaa_curvature_penalty_gradient_finite_difference()
-  exercise_fix_bulk_solvent_from_ls_is_the_default()
-  exercise_fixed_bulk_solvent_leaves_k_mask_untouched()
-  exercise_fixed_bulk_solvent_matches_direct_call()
-  exercise_fixed_bulk_solvent_uses_bss_k_mask_exactly()
-  exercise_d_model_sigmaa_is_experimental_not_the_default()
-  exercise_d_model_sigmaa_fixed_bulk_solvent_end_to_end()
-  exercise_d_model_sigmaa_run_inner_loop_two_stage_end_to_end()
-  exercise_d_model_sigmaa_does_not_change_spline_default_behaviour()
+  exercise_sigmaa_fit_leaves_k_mask_untouched()
+  exercise_sigmaa_fit_uses_bss_k_mask_exactly()
+  exercise_d_model_sigmaa_is_the_default()
+  exercise_d_model_sigmaa_end_to_end()
+  exercise_plain_and_include_processed_params_agree()
   print("OK")
 
 if (__name__ == "__main__"):

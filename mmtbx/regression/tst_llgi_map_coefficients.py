@@ -29,9 +29,8 @@ def build_fmodel(n_atoms=60, d_min=1.9, seed=0, space_group="P 21 21 21"):
   return fmodel
 
 def synthetic_llgi_data(fmodel, seed=1, feff_scale=1.0):
-  """ RESN is scaled from sqrt(epsilon)*O(F-obs magnitude) (matching
-  mmtbx.regression.tst_llgi_data.make_e_scale_llgi_arrays' own
-  convention), NOT left at O(1) -- Feff here is built directly from raw
+  """ RESN is scaled from sqrt(epsilon)*O(F-obs magnitude), NOT left at
+  O(1) -- Feff here is built directly from raw
   F-obs magnitudes (hundreds to thousands on this synthetic structure),
   and llgi.h's X = 2*Feff*D*Fcalc/V is only numerically sane (X = O(1),
   not O(1e4-1e5) overflowing scipy's naive i0/i1) when Eeff = Feff/RESN
@@ -531,7 +530,7 @@ def exercise_map_coefficients_from_fmodel_dispatches_to_llgi():
   # (mmtbx.maps.map_coefficients_from_fmodel, called with fmodel=...,
   # e.g. from phenix.refinement.driver.py's PHS/XPLOR writers) must
   # dispatch to the LLGI path for a plain 2mFo-DFc/mFo-DFc request when
-  # llgi_r_factors_available(), matching fmodel.map_coefficients_llgi()
+  # llgi_target_active(), matching fmodel.map_coefficients_llgi()
   # exactly -- not silently stay on the ordinary ML path.
   import mmtbx.maps
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=30)
@@ -637,7 +636,7 @@ def exercise_fill_missing_honours_sigmaa_model():
   # llgi_data field by field -- run by every bss outlier-removal pass,
   # including the final one before maps are written), and reach the
   # fill-missing sigmaA refit. Previously that refit always used the
-  # spline, whatever sigmaa_model was set to.
+  # default form, whatever sigmaa_model was set to.
   import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
   from mmtbx import map_tools as mt
   fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
@@ -647,25 +646,26 @@ def exercise_fill_missing_honours_sigmaa_model():
   # unrelated to the model, so real 2mFo-DFc coefficients keep no atoms
   # and the fill is identically zero -- nothing to compare.
   coeffs = fmodel.f_model()
-  spline_fill = mt.model_missing_reflections_llgi(
+  default_fill = mt.model_missing_reflections_llgi(
     fmodel=fmodel, coeffs=coeffs).get_missing()
-  assert flex.min(flex.abs(spline_fill.data())) > 0
+  assert flex.min(flex.abs(default_fill.data())) > 0
 
   # process_includes() so d_model_params (an "include scope") is present.
   from iotbx.phil import default_converter_registry
   e_params = llgi_e_bs.llgi_e_bulk_solvent_params.process_includes(
     converter_registry=default_converter_registry,
     reference_directory=None).extract()
-  e_params.sigmaa_model = "d_model"
+  assert e_params.sigmaa_model == "d_model"  # the default
+  e_params.sigmaa_model = "spline"
   fmodel.update_llgi_sigmaa_scatfrac(e_params=e_params)
   assert fmodel.llgi_data().e_params is e_params
   selected = fmodel.select(flex.bool(fmodel.f_obs().size(), True))
   assert selected.llgi_data().e_params is e_params
 
-  dmodel_fill = mt.model_missing_reflections_llgi(
+  spline_fill = mt.model_missing_reflections_llgi(
     fmodel=fmodel, coeffs=coeffs).get_missing()
-  a, b = spline_fill.common_sets(dmodel_fill)
-  assert a.size() == spline_fill.size() > 0
+  a, b = default_fill.common_sets(spline_fill)
+  assert a.size() == default_fill.size() > 0
   abs_a, abs_b = flex.abs(a.data()), flex.abs(b.data())
   rel_diff = flex.mean(flex.abs(abs_a - abs_b)) / flex.mean(abs_a)
   assert rel_diff > 0.01, rel_diff
@@ -755,10 +755,10 @@ def exercise_map_coefficients_from_fmodel_ml_target_unaffected():
   # exactly as before -- this is the regression guard for the "avoid
   # slow calculation several times" shared map_calculation_server fast
   # path in compute_map_coefficients, which is only skipped when
-  # llgi_r_factors_available() is True.
+  # llgi_target_active() is True.
   import mmtbx.maps
   fmodel = build_fmodel(n_atoms=50, d_min=2.1, seed=32)
-  assert not fmodel.llgi_r_factors_available()
+  assert not fmodel.llgi_target_active()
   coeffs = mmtbx.maps.map_coefficients_from_fmodel(
     params=_mcp("2mFo-DFc"), fmodel=fmodel)
   ml_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")

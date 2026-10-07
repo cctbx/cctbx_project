@@ -369,10 +369,10 @@ def _llgi_map_coefficients_supported(fmodel, mnm, params):
   anomalous/anomalous_residual/phaser_sad_llg (SAD analysis, a separate
   future task). Callers should fall back to the ordinary (F-obs/ML)
   path, NOT silently produce wrong output, whenever this is False but
-  fmodel.llgi_r_factors_available() is True -- see
+  fmodel.llgi_target_active() is True -- see
   map_coefficients_from_fmodel's own fallback-logging.
   """
-  if(not fmodel.llgi_r_factors_available()):
+  if(not fmodel.llgi_target_active()):
     return False
   if(params is not None and getattr(params, "fill_missing_f_obs", False)):
     fill_missing_method = getattr(params, "fill_missing_method", "f_model")
@@ -407,7 +407,7 @@ def map_coefficients_from_fmodel(
     if(_llgi_map_coefficients_supported(fmodel, mnm, params)):
       e_map_obj = fmodel.electron_density_map_llgi()
     else:
-      if(log is not None and fmodel.llgi_r_factors_available()):
+      if(log is not None and fmodel.llgi_target_active()):
         print(
           "  LLGI map coefficients not yet supported for map_type=%s "
           "(fill_missing_f_obs=%s); using the ordinary F-obs-based map "
@@ -507,7 +507,7 @@ class compute_map_coefficients(object):
     coeffs = None
     # Avoid doing slow calculation several times! (Only valid as a
     # single shared server when every map in params ends up on the SAME
-    # path -- see the llgi_r_factors_available() branch below, where
+    # path -- see the llgi_target_active() branch below, where
     # different map types in the same params list can need DIFFERENT
     # servers, e.g. 2FOFCWT's fill_missing_f_obs=True falls back to the
     # ordinary ML server while FOFCWT uses the LLGI one -- so per-call
@@ -515,7 +515,7 @@ class compute_map_coefficients(object):
     # is used there instead, at the cost of map_calculation_helper_llgi()
     # potentially being rebuilt once per map type.)
     map_calculation_server = None
-    if(not fmodel.llgi_r_factors_available()):
+    if(not fmodel.llgi_target_active()):
       map_calculation_server = fmodel.electron_density_map()
     self.map_coeffs = []
     for mcp in params:

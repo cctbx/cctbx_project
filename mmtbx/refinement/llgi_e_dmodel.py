@@ -11,11 +11,10 @@ covariance between the ordered-atom and solvent-mask structure-factor
 errors). See doc/llgi_target_design.md sec. 6.4 for the full design
 discussion and its relationship to sigmaA_model_handoff.md sec. 2/4.3.
 
-This module implements ONLY D_model(s; theta) and its first/second
-partial derivatives w.r.t. theta (Section 7, implementation step 1) --
-pure functions, no LLGI likelihood, no optimizer, no reparametrization.
-Downstream steps (per-reflection likelihood/gradient/Hessian, chain-rule
-combination, L-BFGS fit) build on top of this in later modules.
+This module implements ONLY D_model(s; theta) and its first partial
+derivatives w.r.t. theta -- pure functions, no LLGI likelihood, no
+optimizer. The likelihood and gradient (llgi_e_dmodel_target) and the
+L-BFGS-B fit (llgi_e_dmodel_fit) build on top of this.
 
 Parameter layout: theta is a flat sequence
     [a_1, a_2, ..., a_K, b, B_defect]
@@ -45,8 +44,8 @@ unrestrained free-B_k fit can and does run away along the (a_k->0,
 B_k->infinity) direction -- an amplitude-vanishing, width-vanishing
 Gaussian spike the fit becomes blind to, confirmed reproducibly on
 tst_llgi_e_dmodel_fit.py's own synthetic data (B_k converging to
-~1e13, hitting llgi_e_dmodel_reparam.theta_from_q's own numerical
-_Q_CLIP ceiling, not a meaningful physical value) once D_model's high-
+~1e13, hitting a numerical ceiling of the then log-space
+parametrization, not a meaningful physical value) once D_model's high-
 resolution asymptote was corrected to genuinely reach 0 (the fix
 above); with the OLDER, buggy 0.5-asymptote wrapping, this direction
 happened to be unreachable, accidentally masking the underlying
@@ -58,18 +57,9 @@ Put them on a fixed ladder spanning the physically plausible coordinate
 -error range (chosen once, by the caller -- see
 llgi_e_dmodel_fit.default_b_k_grid), and fit only the a_k amplitudes,
 which enter D_raw LINEARLY -- this turns an ill-conditioned nonlinear
-problem into a well-posed one (still needing a_k>=0 and, per the
-physical picture of coordinate error varying smoothly across a
-continuum of atomic B-factors, a mild smoothness prior across
-neighbouring rungs of the ladder -- llgi_e_dmodel_fit.
-a_k_smoothness_penalty_and_gradient), without reintroducing the
-nonlinear-and-nearly-collinear B_k degrees of freedom that caused the
-runaway in the first place. log/exp reparametrization for a_k/b/B_defect
-is a separate concern, applied by the caller, not here (see doc sec.
-6.4's note on why the Hessian reparametrization is NOT simply
-multiplying by p^2 -- computing everything here in the natural
-coordinates keeps that correction as a clean, separate, one-time step
-rather than baked into these formulas).
+problem into a well-posed one (still needing a_k>=0, applied as bounds
+by the fit), without reintroducing the nonlinear-and-nearly-collinear
+B_k degrees of freedom that caused the runaway in the first place.
 
 D_model(s; theta) = tanh(smooth_relu(D_raw(s; theta))), where D_raw is
 the plain sum of Gaussian terms (K+2 fitted params, as above, plus the
@@ -125,18 +115,17 @@ b*exp(-B_defect*s^2) exceeds the positive coordinate-error terms at
 some s -- nothing in the current a_k>=0/b>=0/B_defect>=0 constraints
 prevents that. The fix used here keeps both properties:
 smooth_relu(x) is 0 at x=0 and effectively max(x,0) elsewhere (a
-smoothed hinge, not a hard clip, so d_model_gradient/d_model_hessian
-stay well-defined everywhere), so tanh(smooth_relu(D_raw)) is 0 at
+smoothed hinge, not a hard clip, so d_model_gradient stays
+well-defined everywhere), so tanh(smooth_relu(D_raw)) is 0 at
 D_raw=0 (correct high-resolution asymptote), never negative even if
 D_raw dips below 0 (a negative D_raw is treated as "no positive
 signal", not as a scientifically meaningful negative correlation), and
 saturates toward 1 as D_raw grows positively.
 
-d_model_raw/d_model_raw_gradient/d_model_raw_hessian (below) are the
-original, UNBOUNDED sum-of-Gaussians functions, kept as the inner
-building block; d_model/d_model_gradient/d_model_hessian apply
-tanh(smooth_relu(.)) and are the versions actually consumed everywhere
-downstream.
+d_model_raw/d_model_raw_gradient (below) are the original, UNBOUNDED
+sum-of-Gaussians functions, kept as the inner building block;
+d_model/d_model_gradient apply tanh(smooth_relu(.)) and are the
+versions actually consumed everywhere downstream.
 """
 
 def unpack_theta(theta):
@@ -209,32 +198,6 @@ def d_model_raw_gradient(s2, theta, b_k_grid):
   grad[-1] = b * s2 * e_defect
   return grad
 
-def d_model_raw_hessian(s2, theta, b_k_grid):
-  """ d2D_raw/dtheta_i dtheta_j, evaluated at s2 (array), for every
-  (i, j) pair (b_k_grid as in d_model_raw). Returns an array of shape
-  (theta.size, theta.size) + s2.shape. D_raw is now LINEAR in every
-  remaining fitted parameter (each a_k enters as a_k*exp(-B_k*s2) with
-  B_k FIXED -- unlike the earlier free-B_k form, there is no a_k*B_k
-  product term left at all), so every a_k/a_j second derivative
-  (including a_k with itself) is exactly zero; only the defect term's
-  own (b, B_defect) 2x2 block is nonzero, same as before:
-    d2D_raw/da_k da_j (any i, j, including i==j) = 0
-    d2D_raw/db^2               = 0
-    d2D_raw/db dB_defect       = s2*exp(-B_defect*s2)
-    d2D_raw/dB_defect^2        = -b*s2^2*exp(-B_defect*s2)
-  """
-  s2 = np.asarray(s2, dtype=float)
-  theta = np.asarray(theta, dtype=float)
-  a, b, b_defect = unpack_theta(theta)
-  hess = np.zeros((theta.size, theta.size) + s2.shape, dtype=float)
-  e_defect = np.exp(-b_defect * s2)
-  d_b_bdef = s2 * e_defect
-  d_bdef_bdef = -b * s2 * s2 * e_defect
-  hess[-2, -1] = d_b_bdef
-  hess[-1, -2] = d_b_bdef
-  hess[-1, -1] = d_bdef_bdef
-  return hess
-
 
 # tanh(x) saturates to EXACTLY 1.0 in float64 once |x| exceeds roughly
 # 19.06 (well beyond any physically plausible D_raw, but genuinely
@@ -266,9 +229,6 @@ def _smooth_relu(x):
 
 def _smooth_relu_prime(x):
   return 0.5 * (1.0 + x / np.sqrt(x * x + _SMOOTH_RELU_EPS))
-
-def _smooth_relu_double_prime(x):
-  return 0.5 * _SMOOTH_RELU_EPS / np.power(x * x + _SMOOTH_RELU_EPS, 1.5)
 
 # sigmaA is capped below 1: the Rice and exact likelihoods both degenerate
 # as sigmaA -> 1 (variance 1 - sigmaA^2 -> 0), and the bias-reduced map
@@ -344,53 +304,3 @@ def d_model_gradient(s2, theta, b_k_grid):
     grad = ((sech2 * srp)[np.newaxis, ...]
             * d_model_raw_gradient(s2, theta, b_k_grid))
   return SIGMAA_MAX * np.where(clipped[np.newaxis, ...], 0.0, grad)
-
-def d_model_hessian(s2, theta, b_k_grid):
-  """ d2D_model/dtheta_i dtheta_j, tanh chain rule applied through the
-  extra smooth_relu layer (NOT simply (1-tanh(u)^2)*smooth_relu'(D_raw)
-  times d_model_raw_hessian -- see this module's own docstring on why
-  an analogous omission in the q=exp(theta) reparametrization elsewhere
-  in this design was wrong by up to 3x-40%+ away from a stationary
-  point; the same hazard applies here, TWICE over -- once for the tanh
-  layer, once for the smooth_relu layer). Writing u = smooth_relu
-  (D_raw):
-
-    du/dtheta_i = smooth_relu'(D_raw) * dD_raw/dtheta_i
-    d2u/dtheta_i dtheta_j = smooth_relu''(D_raw) * dD_raw/dtheta_i *
-        dD_raw/dtheta_j + smooth_relu'(D_raw) * d2D_raw/dtheta_i dtheta_j
-    d2D_model/dtheta_i dtheta_j = -2*tanh(u)*(1-tanh(u)^2)
-        * du/dtheta_i * du/dtheta_j + (1-tanh(u)^2) * d2u/dtheta_i dtheta_j
-
-  Returns an array of shape (theta.size, theta.size) + s2.shape,
-  verified against finite differences (see tst_llgi_e_dmodel.py). Where
-  |u| exceeds _D_RAW_CLIP, forced to exactly 0 -- see d_model_gradient's
-  own docstring for why (the same true-limit-is-zero-but-clipping-
-  breaks-the-cancellation reasoning applies here, for every term).
-  """
-  s2 = np.asarray(s2, dtype=float)
-  draw_raw = d_model_raw(s2, theta, b_k_grid)
-  # Same clip-before-_smooth_relu reasoning as d_model_gradient (see
-  # its own docstring) -- test draw_raw directly (cheap, no overflow
-  # risk) before ever calling _smooth_relu on it.
-  clipped = np.abs(draw_raw) > _D_RAW_CLIP
-  draw = np.clip(draw_raw, -_D_RAW_CLIP, _D_RAW_CLIP)
-  u = _smooth_relu(draw)
-  t = np.tanh(u)
-  sech2 = 1.0 - t * t
-  srp = _smooth_relu_prime(draw)
-  srpp = _smooth_relu_double_prime(draw)
-  # Same provably-benign-overflow situation as d_model_gradient (see
-  # its own docstring) -- g/h can overflow where clipped is True, but
-  # the result is masked to exactly 0 there regardless.
-  with np.errstate(over="ignore", invalid="ignore"):
-    g = d_model_raw_gradient(s2, theta, b_k_grid)  # shape (p,) + s2.shape
-    h = d_model_raw_hessian(s2, theta, b_k_grid)   # shape (p, p) + s2.shape
-    du = srp[np.newaxis, ...] * g           # shape (p,) + s2.shape
-    d2u = (srpp[np.newaxis, np.newaxis, ...]
-           * (g[:, np.newaxis, ...] * g[np.newaxis, :, ...])
-           + srp[np.newaxis, np.newaxis, ...] * h)
-    outer_du = du[:, np.newaxis, ...] * du[np.newaxis, :, ...]
-    term1 = (-2.0 * t * sech2)[np.newaxis, np.newaxis, ...] * outer_du
-    term2 = sech2[np.newaxis, np.newaxis, ...] * d2u
-    hess = term1 + term2
-  return SIGMAA_MAX * np.where(clipped[np.newaxis, np.newaxis, ...], 0.0, hess)

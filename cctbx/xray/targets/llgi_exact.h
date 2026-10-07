@@ -33,8 +33,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       Derivatives of M are moments under the "tilted" posterior weights of
       the same integrand:
         dM/dkappa = <sqrt(J) B'/B>,  dM/dlambda = -<J>,
-      and similarly for the second derivatives, so the gradient costs
-      nothing beyond the integral itself. <sqrt(J) B'/B> is also the
+      so the gradient costs nothing beyond the integral itself. <sqrt(J) B'/B> is also the
       posterior expected E along the model phase (the exact map
       coefficient), and dLLGI/dec = (2 b a/S)(<E> - a ec).
 
@@ -122,23 +121,13 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     return s1 / s0;
   }
 
-  //! (B'(x)/B(x))/x, smooth at x = 0.
-  inline double ratio_b_over_x(double x, bool centric)
-  {
-    if (x < 1e-4) return centric ? 1. - x * x / 3. : 0.5 - x * x / 16.;
-    return ratio_b(x, centric) / x;
-  }
-
   //! Log-integral and tilted-posterior moments of
   //! int_0^inf J^p exp(-(J-eo_sq)^2/(2 sig^2) - lambda J) B(kappa sqrt J) dJ
   struct integral
   {
     double log_z;   // ln of the integral
     double e_j;     // <J>
-    double e_jj;    // <J^2>
     double e_sr;    // <sqrt(J) R(kappa sqrt J)>, R = B'/B
-    double e_j_sr;  // <J sqrt(J) R>
-    double e_j_b2;  // <J B''/B>
     double e_s;     // <sqrt(J)>, the posterior mean amplitude
     double s_mode, s_lo, s_hi; // quadrature interval in s = sqrt(J/sig)
 
@@ -256,20 +245,16 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         lw[i] = std::log(gl.w[i] * half * 2.) + psi(s[i]);
         lw_max = std::max(lw_max, lw[i]);
       }
-      double z = 0, sj = 0, sjj = 0, ssr = 0, sjsr = 0, sjb2 = 0, ss = 0;
+      double z = 0, sj = 0, ssr = 0, ss = 0;
       for (std::size_t i = 0; i < n; i++) {
         double wi = std::exp(lw[i] - lw_max);
         double jj = sig * s[i] * s[i];
         double rj = std::sqrt(jj);
         double x = kappa * rj;
         double r = ratio_b(x, centric);
-        double b2 = centric ? 1. : 1. - ratio_b_over_x(x, centric);
         z += wi;
         sj += wi * jj;
-        sjj += wi * jj * jj;
         ssr += wi * rj * r;
-        sjsr += wi * jj * rj * r;
-        sjb2 += wi * jj * b2;
         ss += wi * rj;
       }
       // -mu^2/2 - lambda eo_sq + lambda^2 sig^2/2 = -eo_sq^2/(2 sig^2)
@@ -277,10 +262,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
             - 0.5 * (eo_sq / sig) * (eo_sq / sig)
             + (1. + p) * std::log(sig);
       e_j = sj / z;
-      e_jj = sjj / z;
       e_sr = ssr / z;
-      e_j_sr = sjsr / z;
-      e_j_b2 = sjb2 / z;
       e_s = ss / z;
     }
   };
@@ -290,7 +272,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     double ll;          // log-likelihood gain
     double d_ll_d_ec;   // d LLGI / d ec
     double d_ll_d_a;    // d LLGI / d a
-    double d2_ll_d_a2;  // d^2 LLGI / d a^2
     double e_expected;  // posterior <E> along the model phase
     double e_abs_expected; // posterior <|E|>
   };
@@ -318,26 +299,17 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     }
     const double m_k = m.e_sr;
     const double m_l = -m.e_j;
-    const double m_kk = m.e_j_b2 - m.e_sr * m.e_sr;
-    const double m_ll = m.e_jj - m.e_j * m.e_j;
-    const double m_kl = -(m.e_j_sr - m.e_j * m.e_sr);
-    const double s2 = s * s, s3 = s2 * s, a2 = a * a;
+    const double s2 = s * s, a2 = a * a;
     const double p_val = b * (-std::log(s) - a2 * ec * ec / s);
     const double p_e = -2. * b * a2 * ec / s;
     const double p_a = 2. * b * a / s - 2. * b * a * ec * ec / s2;
-    const double p_aa = b * (2. * (1. + a2) / s2
-                             - 2. * ec * ec * (1. + 3. * a2) / s3);
     const double k_e = 2. * b * a / s;
     const double k_a = 2. * b * ec * (1. + a2) / s2;
-    const double k_aa = 4. * b * ec * a * (3. + a2) / s3;
     const double l_a = 2. * b * a / s2;
-    const double l_aa = 2. * b * (1. + 3. * a2) / s3;
     result r;
     r.ll = p_val + m.log_z - null_log_z;
     r.d_ll_d_ec = p_e + m_k * k_e;
     r.d_ll_d_a = p_a + m_k * k_a + m_l * l_a;
-    r.d2_ll_d_a2 = p_aa + m_kk * k_a * k_a + 2. * m_kl * k_a * l_a
-                 + m_ll * l_a * l_a + m_k * k_aa + m_l * l_aa;
     r.e_expected = m_k;
     r.e_abs_expected = m.e_s;
     return r;
@@ -409,7 +381,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   class evaluate_many
   {
     public:
-      af::shared<double> ll, d_ll_d_ec, d_ll_d_a, d2_ll_d_a2, e_expected;
+      af::shared<double> ll, d_ll_d_ec, d_ll_d_a, e_expected;
       af::shared<double> e_abs_expected;
 
       evaluate_many(
@@ -425,7 +397,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         CCTBX_ASSERT(a.size() == n && centric.size() == n);
         CCTBX_ASSERT(null_log_z_.size() == 0 || null_log_z_.size() == n);
         ll.reserve(n); d_ll_d_ec.reserve(n); d_ll_d_a.reserve(n);
-        d2_ll_d_a2.reserve(n); e_expected.reserve(n);
+        e_expected.reserve(n);
         for (std::size_t i = 0; i < n; i++) {
           result r = evaluate(eo_sq[i], sig[i], ec[i], a[i], centric[i],
             null_log_z_.size() ? null_log_z_[i]
@@ -433,7 +405,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
           ll.push_back(r.ll);
           d_ll_d_ec.push_back(r.d_ll_d_ec);
           d_ll_d_a.push_back(r.d_ll_d_a);
-          d2_ll_d_a2.push_back(r.d2_ll_d_a2);
           e_expected.push_back(r.e_expected);
           e_abs_expected.push_back(r.e_abs_expected);
         }
@@ -521,13 +492,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         return result;
       }
 
-      //! Fraction of the Rice variance due to measurement error at sigmaA a.
-      double
-      measurement_fraction(std::size_t i, double a) const
-      {
-        return (1. - dsqr[i]) / (1. - dsqr[i] * a * a);
-      }
-
       bool
       use_exact(std::size_t i, double a) const
       {
@@ -542,21 +506,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       {
         return evaluate(e_obs_sq[i], sig_e_obs_sq[i], std::max(ec, 0.), a,
           centric, null_log_z[i]);
-      }
-
-      //! measurement_fraction() for every reflection (0 where there is no
-      //! intensity error estimate), for diagnostics.
-      af::shared<double>
-      measurement_fractions(af::const_ref<double> const& sigmaa) const
-      {
-        CCTBX_ASSERT(sigmaa.size() == size());
-        af::shared<double> result(size(), 0.);
-        for (std::size_t i = 0; i < size(); i++) {
-          if (sig_e_obs_sq[i] > 0) {
-            result[i] = measurement_fraction(i, std::min(sigmaa[i], 0.999));
-          }
-        }
-        return result;
       }
 
       //! Which reflections would use the exact likelihood at these sigmaA.

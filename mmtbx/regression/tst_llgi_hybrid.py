@@ -138,24 +138,21 @@ def exercise_d_model_target_with_hybrid():
     centric_flags=flex.bool(centric.tolist()), rice_kappa=0.1)
   b_k_grid = fit.default_b_k_grid(2, s2)
   theta = np.array([0.6, 0.4, 0.1, 40.0])
-  ll, grad, hess = target.total_ll_gradient_hessian(
+  ll, grad = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric, b_k_grid, hybrid=h)
-  ll0, _, _ = target.total_ll_gradient_hessian(
+  ll0, _ = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric, b_k_grid)
   assert abs(ll - ll0) > 1e-6  # the exact reflections changed the target
   step = 1e-6
   for i in range(theta.size):
     tp = theta.copy(); tp[i] += step
     tm = theta.copy(); tm[i] -= step
-    lp, gp, _ = target.total_ll_gradient_hessian(
+    lp, _ = target.total_ll_and_gradient(
       tp, s2, e_eff, e_c, dobs, centric, b_k_grid, hybrid=h)
-    lm, gm, _ = target.total_ll_gradient_hessian(
+    lm, _ = target.total_ll_and_gradient(
       tm, s2, e_eff, e_c, dobs, centric, b_k_grid, hybrid=h)
     scale = max(1, abs(grad[i]))
     assert abs((lp - lm) / (2 * step) - grad[i]) < 1e-5 * scale, i
-    fd_h = (gp - gm) / (2 * step)
-    assert np.all(np.abs(fd_h - hess[i]) < 1e-4 * np.maximum(1,
-      np.abs(hess[i]))), (i, fd_h, hess[i])
 
 def exercise_k1_scale_carries_feff_and_resn():
   """ apply_scale_k1_to_f_obs must rescale llgi_data's FEFF and RESN with

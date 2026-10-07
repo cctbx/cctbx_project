@@ -145,9 +145,7 @@ class electron_density_map_llgi(object):
   a fresh generic ML alpha/beta/fom fit.
 
   Deliberately a SEPARATE class from electron_density_map, not a
-  target-aware branch inside it -- mirrors mmtbx.f_model.manager.
-  r_work_llgi()'s own separation from r_work() (see
-  llgi_r_factors_available()'s docstring): electron_density_map is
+  target-aware branch inside it: electron_density_map is
   relied on by many non-LLGI callers (ml, mlhl, twin targets) that
   assume it is always Fobs-based, so it is left completely untouched;
   this class is reached only by callers that explicitly ask for the
@@ -155,8 +153,7 @@ class electron_density_map_llgi(object):
 
   Reuses fo_fc_scales/combine UNCHANGED (both already only depend on
   centric_flags/.size(), which are identical whether sourced from f_obs
-  or Feff, since Feff is always index-matched to f_obs -- see
-  llgi_r_factors_available()'s own docstring) -- only the
+  or Feff, since Feff is always index-matched to f_obs) -- only the
   map_calculation_helper passed in differs (map_calculation_helper_llgi()
   instead of map_calculation_helper()).
 
@@ -707,14 +704,12 @@ class model_missing_reflections_llgi(object):
               clamps sigmaA.
   k_mask/k_sol/b_sol themselves ARE well-defined at any resolution
   (k_mask(ss) = k_sol*exp(-b_sol*ss) is a closed-form function by
-  construction -- see mmtbx.refinement.llgi_e_bulk_solvent.k_mask_and_
-  gradients) using fmodel.k_sol_b_sol_from_k_mask()'s current fit (the
+  construction) using fmodel.k_sol_b_sol_from_k_mask()'s current fit (the
   LIVE fmodel's own already-current bulk-solvent state -- NOT re-fit
   here, unlike the ML "careful" deterministic=True path's fresh, slow
   update_all_scales() re-fit: the LLGI macrocycle pipeline already keeps
-  k_sol/b_sol current every cycle via run_inner_loop/estimate_e_sigmaa_
-  fixed_bulk_solvent, so re-fitting here would be redundant work solving
-  an already-solved problem).
+  k_sol/b_sol current every cycle via bss, so re-fitting here would be
+  redundant work solving an already-solved problem).
 
   Requires fmodel.llgi_data() (FEFF/DOBS/TEPS/RESN) AND llgi_data.sigmaa
   already attached (same precondition as map_calculation_helper_llgi) --
@@ -808,13 +803,14 @@ class model_missing_reflections_llgi(object):
     d_star_sq_missing = f_calc_missing.d_star_sq().data()
     epsilons_missing = f_calc_missing.epsilons().data().as_double()
 
+    from mmtbx.f_model import ext as f_model_ext
     k_sol, b_sol = self.fmodel.k_sol_b_sol_from_k_mask()
-    k_mask_result = llgi_e_bs.k_mask_and_gradients(ss_missing, k_sol, b_sol)
+    k_mask_missing = f_model_ext.k_mask(ss_missing, k_sol, b_sol)
     k_iso_fit = self._fit_k_isotropic_curve()
     k_iso_missing = self._eval_k_isotropic_curve(ss_missing, k_iso_fit)
 
     fmnas_missing = k_iso_missing * (
-      f_calc_missing.data() + k_mask_result.k_mask * f_mask_missing.data())
+      f_calc_missing.data() + k_mask_missing * f_mask_missing.data())
 
     sigma_p_missing = llgi_e_bs.build_sigma_p(
       llgi_e_bs.f_model_no_aniso_scale(self.fmodel).data(),
@@ -831,7 +827,7 @@ class model_missing_reflections_llgi(object):
     # using the same E-scale phil (hence the same sigmaa_model, spline or
     # d_model) that update_llgi_sigmaa_scatfrac last used. None falls
     # back to that scope's own defaults.
-    sigmaa_refit = llgi_e_bs.estimate_e_sigmaa_fixed_bulk_solvent(
+    sigmaa_refit = llgi_e_bs.estimate_e_sigmaa_for_fmodel(
       self.fmodel,
       dobs=self.llgi_data.dobs.data(),
       feff=self.llgi_data.feff.data(),

@@ -78,7 +78,7 @@ def exercise_compute_on_fmodel():
   r = llgi_maps.compute(fmodel)
   labels = [a[0] for a in r.arrays]
   assert labels == ["LLGI_FILLED", "LLGI_BIASRED", "LLGI_DIFF",
-    "LLGI_BIASRED_E", "LLGI_DIFF_E", "LLGI_2MFODFC"], labels
+    "LLGI_BIASRED_E", "LLGI_DIFF_E"], labels
   arrays = dict(r.arrays)
   n = f_obs.size()
   assert arrays["LLGI_FILLED"].size() == n + r.n_filled
@@ -99,7 +99,6 @@ def exercise_compute_on_fmodel():
   p = llgi_maps.llgi_map_params.extract()
   p.remove_anisotropy = False
   p.e_scale = False
-  p.conventional = False
   r2 = llgi_maps.compute(fmodel, params=p)
   assert [a[0] for a in r2.arrays] == labels[:3]
   d2 = dict(r2.arrays)["LLGI_DIFF"]

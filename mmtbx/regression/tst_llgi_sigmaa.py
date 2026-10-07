@@ -69,84 +69,16 @@ def build_synthetic_dataset(n_refl, seed):
     centric_flags=flex.bool(n_refl, False),
     sigmaa_true=sigmaa_true, scatfrac_true=scatfrac_true)
 
-def exercise_recovers_known_curves():
-  # With enough reflections and a physically self-consistent (true Rice-
-  # distributed) synthetic dataset, the two-step estimator
-  # (estimate_llgi_scatfrac then estimate_llgi_sigmaa) should recover
-  # both curves reasonably closely -- this is the estimator's core
-  # correctness property, and is a much stronger check than "does not
-  # crash": an earlier, structurally different (jointly-optimised)
-  # design was caught by exactly this kind of test failing to recover
-  # the truth at all (oscillating, bound-hugging fits), traced to a real
-  # non-identifiability between sigmaA and ScatFrac when both are fit
-  # from the LLGI target alone -- see doc/llgi_target_design.md sec. 5.2.
-  n_refl = 6000
-  data = build_synthetic_dataset(n_refl, seed=7)
-  r_free_flags = flex.bool([(i % 5 == 0) for i in range(n_refl)])
-
-  scatfrac_fit = llgi_sigmaa.estimate_llgi_scatfrac(
-    f_calc=data["f_calc"], teps=data["teps"], resn=data["resn"],
-    d_star_sq=data["d_star_sq"], centric_flags=data["centric_flags"],
-    n_coeffs=6)
-  scatfrac_err = flex.mean(flex.abs(scatfrac_fit - data["scatfrac_true"]))
-  assert scatfrac_err < 0.05, scatfrac_err
-
-  result = llgi_sigmaa.estimate_llgi_sigmaa(
-    f_eff=data["f_eff"], r_free_flags=r_free_flags, f_calc=data["f_calc"],
-    dobs=data["dobs"], scatfrac=scatfrac_fit, teps=data["teps"],
-    resn=data["resn"], centric_flags=data["centric_flags"],
-    d_star_sq=data["d_star_sq"])
-  sigmaa_err = flex.mean(flex.abs(result.sigmaa - data["sigmaa_true"]))
-  # A loose bound: this is a statistical recovery test (finite-sample
-  # LBFGS fit against noisy synthetic data), not an exact-answer check,
-  # so the threshold is set well above typical run-to-run sampling
-  # variance rather than tuned tightly to one seed. The point of this
-  # test is to catch a fit that is badly wrong (e.g. the ~0.3-0.5 mean
-  # abs errors, bound-hugging/oscillating fits seen during development
-  # with a non-identifiable joint sigmaA/ScatFrac design, or with an
-  # incorrectly-generated synthetic dataset -- see build_synthetic_
-  # dataset's docstring), not to certify a specific numerical precision.
-  assert sigmaa_err < 0.1, sigmaa_err
-
-def exercise_convenience_wrapper_matches_two_step():
-  # estimate_llgi_sigmaa_scatfrac should give identical results to
-  # calling estimate_llgi_scatfrac then estimate_llgi_sigmaa by hand.
-  n_refl = 500
-  data = build_synthetic_dataset(n_refl, seed=11)
-  r_free_flags = flex.bool([(i % 5 == 0) for i in range(n_refl)])
-
-  scatfrac_fit = llgi_sigmaa.estimate_llgi_scatfrac(
-    f_calc=data["f_calc"], teps=data["teps"], resn=data["resn"],
-    d_star_sq=data["d_star_sq"], centric_flags=data["centric_flags"],
-    n_coeffs=8)
-  step2 = llgi_sigmaa.estimate_llgi_sigmaa(
-    f_eff=data["f_eff"], r_free_flags=r_free_flags, f_calc=data["f_calc"],
-    dobs=data["dobs"], scatfrac=scatfrac_fit, teps=data["teps"],
-    resn=data["resn"], centric_flags=data["centric_flags"],
-    d_star_sq=data["d_star_sq"])
-
-  combined = llgi_sigmaa.estimate_llgi_sigmaa_scatfrac(
-    f_eff=data["f_eff"], r_free_flags=r_free_flags, f_calc=data["f_calc"],
-    dobs=data["dobs"], teps=data["teps"], resn=data["resn"],
-    centric_flags=data["centric_flags"], d_star_sq=data["d_star_sq"])
-
-  assert approx_equal(list(combined.scatfrac), list(scatfrac_fit))
-  assert approx_equal(list(combined.sigmaa), list(step2.sigmaa))
-  assert approx_equal(combined.target, step2.target)
-
-def exercise_scatfrac_uses_full_set_sigmaa_uses_test_set_only():
+def exercise_scatfrac_moment_estimator_uses_full_set():
   # estimate_llgi_scatfrac's result must not depend on r_free_flags at
   # all (it does not take r_free_flags as an argument -- this just
-  # confirms the API shape matches the design intent: ScatFrac is fit on
-  # the full reflection set, unlike sigmaA which is restricted to the
-  # R-free/test set). A no-op check by construction, kept as a guard
-  # against a future signature change accidentally reintroducing a
-  # selection argument to estimate_llgi_scatfrac.
+  # confirms the API shape matches the design intent: the empirical
+  # ScatFrac estimate uses the full reflection set). A no-op check by
+  # construction, kept as a guard against a future signature change
+  # accidentally reintroducing a selection argument.
   import inspect
   argspec = inspect.getfullargspec(llgi_sigmaa.estimate_llgi_scatfrac)
   assert "r_free_flags" not in argspec.args
-  argspec2 = inspect.getfullargspec(llgi_sigmaa.estimate_llgi_sigmaa)
-  assert "r_free_flags" in argspec2.args
 
 def exercise_scatfrac_robust_to_single_outlier_reflection():
   # Real bug, found running target=llgi against real (2g38) data: a
@@ -254,278 +186,6 @@ def exercise_curvature_penalty_finite_difference():
   assert approx_equal(f_line, 0.0, eps=1.e-10)
   assert approx_equal(list(g_line), [0.0] * 8, eps=1.e-10)
 
-def exercise_curvature_penalty_evaluator_gradient_finite_difference():
-  # End-to-end finite-difference check of
-  # llgi_sigmaa_target_evaluator.compute_functional_and_gradients with
-  # the curvature restraint switched ON (curvature_weight > 0), against
-  # a small synthetic dataset -- catches a sign error or an off-by-one
-  # in how the penalty's gradient is added onto the LLGI target's own
-  # spline-coefficient gradient (as opposed to
-  # exercise_curvature_penalty_finite_difference above, which only
-  # checks the penalty term in isolation).
-  import numpy as np
-  n_refl = 400
-  data = build_synthetic_dataset(n_refl, seed=29)
-  r_free_flags = flex.bool([(i % 5 == 0) for i in range(n_refl)])
-  scatfrac_fit = llgi_sigmaa.estimate_llgi_scatfrac(
-    f_calc=data["f_calc"], teps=data["teps"], resn=data["resn"],
-    d_star_sq=data["d_star_sq"], centric_flags=data["centric_flags"],
-    n_coeffs=6)
-  sigmaa_design = llgi_sigmaa._b_spline_design_matrix(
-    data["d_star_sq"].as_numpy_array(), 6, 3)
-  evaluator = llgi_sigmaa.llgi_sigmaa_target_evaluator(
-    f_eff=data["f_eff"], selection=r_free_flags, f_calc=data["f_calc"],
-    dobs=data["dobs"], scatfrac=scatfrac_fit, teps=data["teps"],
-    resn=data["resn"], centric_flags=data["centric_flags"],
-    scale_factor=1.0, sigmaa_design=sigmaa_design, n_sigmaa_coeffs=6,
-    max_iterations=0,  # Don't actually optimise -- just probe the
-                        # gradient at the LBFGS starting point (x=0).
-    curvature_weight=0.35)
-
-  x0 = np.array(evaluator.x)
-  f0, g0 = evaluator.compute_functional_and_gradients()
-  g0 = np.array(g0)
-  eps = 1.e-6
-  g_fd = np.zeros_like(x0)
-  for i in range(len(x0)):
-    xp = x0.copy(); xp[i] += eps
-    evaluator.x = flex.double(xp)
-    fp, _ = evaluator.compute_functional_and_gradients()
-    xm = x0.copy(); xm[i] -= eps
-    evaluator.x = flex.double(xm)
-    fm, _ = evaluator.compute_functional_and_gradients()
-    g_fd[i] = (fp - fm) / (2 * eps)
-  evaluator.x = flex.double(x0)
-  assert approx_equal(list(g0), list(g_fd), eps=1.e-3)
-
-def exercise_curvature_penalty_tames_synthetic_collapse():
-  # The restraint's actual purpose: on a dataset where a sparse, noisy
-  # high-resolution tail lets the LLGI likelihood alone drive sigmaA
-  # sharply toward its lower bound in the last shell or two (mirroring
-  # what was observed on real 2G38 data -- see the E-scale first-fit
-  # diagnostic artifacts), a small curvature_weight should measurably
-  # damp that collapse relative to curvature_weight=0, without
-  # materially moving the well-determined (low/mid-resolution, many
-  # reflections) part of the curve.
-  #
-  # Construct this directly: most of the resolution range has plenty of
-  # reflections at a true sigmaA consistent with a smooth trend, but the
-  # last shell has very few R-free reflections and its Feff values are
-  # generated independently of any smooth trend (pure noise), so the
-  # unrestrained LLGI fit is free to swing far from its neighbours
-  # there.
-  n_main = 1200
-  n_tail = 15
-  random_state = random.Random(41)
-
-  d_star_sq_main = flex.double(sorted(
-    random_state.uniform(0.001, 0.20) for i in range(n_main)))
-  d_star_sq_tail = flex.double(sorted(
-    random_state.uniform(0.205, 0.21) for i in range(n_tail)))
-  d_star_sq = d_star_sq_main
-  d_star_sq.extend(d_star_sq_tail)
-
-  def true_sigmaa(dss):
-    return 0.9 - 0.5 * dss / 0.21  # mild, smooth, log-plausible trend
-
-  n_refl = n_main + n_tail
-  teps = flex.double(n_refl, 1.0)
-  resn = flex.double(n_refl, 1.0)
-  dobs = flex.double(n_refl, 0.85)
-  scatfrac_true = flex.double(n_refl, 0.75)
-
-  f_calc_list = []
-  f_eff_list = []
-  for i in range(n_refl):
-    mean_fc_sq = scatfrac_true[i] * teps[i] * resn[i] ** 2
-    fc_mag = math.sqrt(random_state.expovariate(1.0 / mean_fc_sq))
-    phase = random_state.uniform(0.0, 2.0 * math.pi)
-    f_calc_list.append(
-      complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
-    if(i < n_main):
-      sa = true_sigmaa(d_star_sq[i])
-      d = dobs[i] * sa / math.sqrt(scatfrac_true[i])
-      ec = d * fc_mag
-      v_e = teps[i] - d * d
-      v = teps[i] * resn[i] ** 2 * v_e
-      f_eff_list.append(rice_sample(ec, v, random_state))
-    else:
-      # Tail reflections: Feff drawn independent of any smooth sigmaA
-      # trend (just Wilson-like noise), so nothing in the data itself
-      # anchors this shell to the main trend -- an unrestrained fit is
-      # free to plunge toward the sigmoid floor here if doing so is even
-      # marginally favoured by the (very sparse, noisy) test-set
-      # likelihood in that shell.
-      f_eff_list.append(math.sqrt(
-        random_state.expovariate(1.0 / (teps[i] * resn[i] ** 2))))
-
-  f_calc = flex.complex_double(f_calc_list)
-  f_eff = flex.double(f_eff_list)
-  centric_flags = flex.bool(n_refl, False)
-  # Every tail reflection is R-free (test set), matching the "very few
-  # informative reflections in the last shell" scenario this restraint
-  # targets; keep the usual 1-in-5 split over the main range.
-  r_free_flags = flex.bool(
-    [(i % 5 == 0) for i in range(n_main)] + [True] * n_tail)
-
-  common_kwargs = dict(
-    f_eff=f_eff, r_free_flags=r_free_flags, f_calc=f_calc, dobs=dobs,
-    scatfrac=scatfrac_true, teps=teps, resn=resn,
-    centric_flags=centric_flags, d_star_sq=d_star_sq)
-
-  params_unrestrained = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params_unrestrained.n_sigmaa_coeffs = 8
-  params_unrestrained.sigmaa_curvature_weight = 0.0
-  unrestrained = llgi_sigmaa.estimate_llgi_sigmaa(
-    params=params_unrestrained, **common_kwargs)
-
-  params_restrained = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params_restrained.n_sigmaa_coeffs = 8
-  params_restrained.sigmaa_curvature_weight = 0.05
-  restrained = llgi_sigmaa.estimate_llgi_sigmaa(
-    params=params_restrained, **common_kwargs)
-
-  # The last-shell sigmaA (evaluated at the tail reflections) should sit
-  # closer to the smooth trend's extrapolated value with the restraint
-  # on than with it off.
-  true_tail = flex.double(
-    [true_sigmaa(d_star_sq[i]) for i in range(n_main, n_refl)])
-  err_unrestrained = flex.mean(
-    flex.abs(unrestrained.sigmaa[n_main:] - true_tail))
-  err_restrained = flex.mean(
-    flex.abs(restrained.sigmaa[n_main:] - true_tail))
-  assert err_restrained < err_unrestrained, (
-    err_restrained, err_unrestrained)
-
-  # And it should not have materially disturbed the LOW-resolution part
-  # of the main range: this is a global 8-coefficient B-spline, so a
-  # restraint strong enough to pull a genuinely severe collapse (the
-  # unrestrained fit above hits the sigmoid floor, sigmaA=0.01, outright)
-  # back toward the trend necessarily also reshapes some of the main
-  # range near the tail, where the same basis functions that cover the
-  # tail have non-negligible support -- that is expected, not a bug.
-  # Far from the tail (the first fifth of the main range, d*^2 well
-  # below the collapsing region), basis-function support for the tail is
-  # negligible, so this restraint should leave that part of the curve
-  # close to the unrestrained fit.
-  main_diff_far = flex.mean(flex.abs(
-    restrained.sigmaa[:n_main // 5] - unrestrained.sigmaa[:n_main // 5]))
-  assert main_diff_far < 0.06, main_diff_far
-
-def exercise_scatfrac_likelihood_evaluator_gradient_finite_difference():
-  # End-to-end finite-difference check of llgi_scatfrac_target_evaluator.
-  # compute_functional_and_gradients (the F-scale LLGI ScatFrac fit,
-  # sigmaA held fixed) -- mirrors the equivalent sigmaA-evaluator check.
-  # curvature_weight > 0 here specifically: this must exercise the
-  # restraint's gradient mixed into the LLGI gradient, not just the
-  # unrestrained path (which a curvature_weight=0.0 call would leave
-  # entirely untested -- see exercise_curvature_penalty_finite_difference
-  # for the restraint term checked in isolation).
-  import numpy as np
-  n_refl = 400
-  data = build_synthetic_dataset(n_refl, seed=51)
-  working_selection = flex.bool([(i % 5 != 0) for i in range(n_refl)])
-  scatfrac_design = llgi_sigmaa._b_spline_design_matrix(
-    data["d_star_sq"].as_numpy_array(), 6, 3)
-  # A plausible starting curve (does not need to be the truth -- this is
-  # only checking the gradient at whatever point LBFGS starts from).
-  scatfrac_start = flex.double(n_refl, 0.6)
-  evaluator = llgi_sigmaa.llgi_scatfrac_target_evaluator(
-    f_eff=data["f_eff"], selection=working_selection, f_calc=data["f_calc"],
-    dobs=data["dobs"], sigmaa=data["sigmaa_true"], teps=data["teps"],
-    resn=data["resn"], centric_flags=data["centric_flags"],
-    scale_factor=1.0, scatfrac_design=scatfrac_design,
-    n_scatfrac_coeffs=6, scatfrac_start=scatfrac_start,
-    max_iterations=0,  # probe the gradient at the LBFGS starting point
-    curvature_weight=0.4)
-
-  x0 = np.array(evaluator.x)
-  f0, g0 = evaluator.compute_functional_and_gradients()
-  g0 = np.array(g0)
-  eps = 1.e-6
-  g_fd = np.zeros_like(x0)
-  for i in range(len(x0)):
-    xp = x0.copy(); xp[i] += eps
-    evaluator.x = flex.double(xp)
-    fp, _ = evaluator.compute_functional_and_gradients()
-    xm = x0.copy(); xm[i] -= eps
-    evaluator.x = flex.double(xm)
-    fm, _ = evaluator.compute_functional_and_gradients()
-    g_fd[i] = (fp - fm) / (2 * eps)
-  evaluator.x = flex.double(x0)
-  assert approx_equal(list(g0), list(g_fd), eps=1.e-3)
-
-def exercise_scatfrac_likelihood_recovers_known_curve_and_can_exceed_one():
-  # estimate_llgi_scatfrac_likelihood, with sigmaA fixed at its TRUE
-  # value, should recover the true ScatFrac(resolution) curve reasonably
-  # well -- the E-then-F scheme's core correctness property, mirroring
-  # exercise_recovers_known_curves for the historical F-then-... scheme.
-  # Also checks the no-upper-bound-of-1 property directly: the synthetic
-  # dataset here uses a ScatFrac curve that exceeds 1 (simulating Feff
-  # not being on absolute scale -- see llgi_scatfrac_target_evaluator's
-  # docstring), which estimate_llgi_scatfrac (the moment estimator) can
-  # also represent, but which a sigmoid-bounded LBFGS reparameterisation
-  # (like sigmaA's) could NOT.
-  n_refl = 6000
-  random_state = random.Random(53)
-  d_star_sq = flex.double(sorted(
-    random_state.uniform(0.001, 0.25) for i in range(n_refl)))
-
-  def true_sigmaa(dss):
-    return 0.7 - 0.3 * dss / 0.25
-  def true_scatfrac(dss):
-    # Deliberately exceeds 1 (up to ~1.3) at low resolution, simulating
-    # an Feff absolute-scale offset (e.g. a wrong assumed solvent
-    # fraction) rather than a "ScatFrac must stay below 1" ideal.
-    return 1.3 - 0.7 * dss / 0.25
-
-  teps = flex.double(n_refl, 1.0)
-  resn = flex.double(n_refl, 1.0)
-  dobs = flex.double(n_refl, 0.85)
-  sigmaa_true = flex.double([true_sigmaa(d) for d in d_star_sq])
-  scatfrac_true = flex.double([true_scatfrac(d) for d in d_star_sq])
-
-  f_calc_list = []
-  f_eff_list = []
-  for i in range(n_refl):
-    mean_fc_sq = scatfrac_true[i] * teps[i] * resn[i] ** 2
-    fc_mag = math.sqrt(random_state.expovariate(1.0 / mean_fc_sq))
-    phase = random_state.uniform(0.0, 2.0 * math.pi)
-    f_calc_list.append(
-      complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
-    d = dobs[i] * sigmaa_true[i] / math.sqrt(scatfrac_true[i])
-    ec = d * fc_mag
-    v_e = teps[i] - d * d
-    v = teps[i] * resn[i] ** 2 * v_e
-    f_eff_list.append(rice_sample(ec, v, random_state))
-
-  f_calc = flex.complex_double(f_calc_list)
-  f_eff = flex.double(f_eff_list)
-  centric_flags = flex.bool(n_refl, False)
-  working_selection = flex.bool([(i % 5 != 0) for i in range(n_refl)])
-
-  params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params.n_scatfrac_coeffs = 6
-  # The synthetic truth here is linear in d*^2 -- exactly representable by
-  # the spline basis this test is actually exercising (see docstring:
-  # "mirroring exercise_recovers_known_curves for the historical F-then-
-  # ... scheme"), but NOT by the (now-default) b_factor mode, which is
-  # log-linear in ss and would show a real, expected model-mismatch error
-  # against this particular truth. Pin spline explicitly so this keeps
-  # testing what it was written to test regardless of the phil default.
-  params.scatfrac_model = "spline"
-  result = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
-    f_eff=f_eff, working_selection=working_selection, f_calc=f_calc,
-    dobs=dobs, sigmaa=sigmaa_true, teps=teps, resn=resn,
-    centric_flags=centric_flags, d_star_sq=d_star_sq, params=params)
-
-  err = flex.mean(flex.abs(result.scatfrac - scatfrac_true))
-  # Loose bound, matching exercise_recovers_known_curves's own rationale:
-  # a statistical recovery test against noisy synthetic data, meant to
-  # catch a badly wrong fit, not certify a specific precision.
-  assert err < 0.15, err
-  assert flex.max(result.scatfrac) > 1.0, flex.max(result.scatfrac)
-
 def exercise_scatfrac_likelihood_uses_working_set_selection():
   # estimate_llgi_scatfrac_likelihood's result must actually depend on
   # working_selection (unlike estimate_llgi_scatfrac, the moment
@@ -583,7 +243,6 @@ def exercise_scatfrac_likelihood_uses_working_set_selection():
     [False] * n_refl_each + [True] * n_refl_each)
 
   params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params.n_scatfrac_coeffs = 4
   fit_low = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
     f_eff=f_eff, working_selection=select_low, f_calc=f_calc, dobs=dobs,
     sigmaa=sigmaa_true, teps=teps, resn=resn,
@@ -612,253 +271,6 @@ def exercise_scatfrac_likelihood_uses_working_set_selection():
     assert "working-set" in str(e)
   else:
     raise RuntimeError("Expected RuntimeError for an empty working set.")
-
-def exercise_scatfrac_curvature_penalty_tames_synthetic_wobble():
-  # The restraint's actual purpose (added after real 2G38 evidence -- see
-  # llgi_scatfrac_target_evaluator's docstring): a narrow resolution band
-  # with sparse, noisy working-set data can pull an UNrestrained ScatFrac
-  # fit into a localised dip that the surrounding, well-determined curve
-  # does not support. Unlike sigmaA (which collapses toward a sigmoid
-  # floor), ScatFrac has no boundary to collapse toward, so the failure
-  # mode here is a spurious LOCAL bump/dip in the interior of the curve,
-  # not a one-sided runaway -- construct that directly: most of the
-  # resolution range has plenty of working-set reflections consistent
-  # with a smooth ScatFrac trend, but one narrow interior band has very
-  # few, independent-of-the-trend (noise-only) reflections, giving the
-  # unrestrained fit room to dip there.
-  n_main = 1400
-  n_wobble = 20
-  random_state = random.Random(61)
-
-  d_star_sq_main = flex.double(sorted(
-    random_state.uniform(0.001, 0.10) for i in range(n_main // 2)))
-  d_star_sq_wobble = flex.double(sorted(
-    random_state.uniform(0.115, 0.125) for i in range(n_wobble)))
-  d_star_sq_main2 = flex.double(sorted(
-    random_state.uniform(0.14, 0.24) for i in range(n_main - n_main // 2)))
-  d_star_sq = d_star_sq_main
-  d_star_sq.extend(d_star_sq_wobble)
-  d_star_sq.extend(d_star_sq_main2)
-
-  def true_scatfrac(dss):
-    return 0.9 - 0.5 * dss / 0.24  # mild, smooth trend, no wobble in truth
-
-  n_refl = n_main + n_wobble
-  teps = flex.double(n_refl, 1.0)
-  resn = flex.double(n_refl, 1.0)
-  dobs = flex.double(n_refl, 0.85)
-  sigmaa_true = flex.double(n_refl, 0.6)  # fixed, as this evaluator assumes
-
-  f_calc_list = []
-  f_eff_list = []
-  wobble_lo = 0.115
-  wobble_hi = 0.125
-  for i in range(n_refl):
-    dss = d_star_sq[i]
-    if(wobble_lo <= dss <= wobble_hi):
-      # Wobble-band reflections: Fcalc/Feff drawn independent of the
-      # smooth trend (pure Wilson-like noise), so nothing anchors this
-      # narrow band to the surrounding curve.
-      true_sf_i = random_state.uniform(0.3, 1.5)
-    else:
-      true_sf_i = true_scatfrac(dss)
-    mean_fc_sq = true_sf_i * teps[i] * resn[i] ** 2
-    fc_mag = math.sqrt(random_state.expovariate(1.0 / mean_fc_sq))
-    phase = random_state.uniform(0.0, 2.0 * math.pi)
-    f_calc_list.append(
-      complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
-    d = dobs[i] * sigmaa_true[i] / math.sqrt(true_sf_i)
-    ec = d * fc_mag
-    v_e = teps[i] - d * d
-    v = teps[i] * resn[i] ** 2 * v_e
-    f_eff_list.append(rice_sample(ec, v, random_state))
-
-  f_calc = flex.complex_double(f_calc_list)
-  f_eff = flex.double(f_eff_list)
-  centric_flags = flex.bool(n_refl, False)
-  working_selection = flex.bool(n_refl, True)  # all working set, none R-free
-
-  common_kwargs = dict(
-    f_eff=f_eff, working_selection=working_selection, f_calc=f_calc,
-    dobs=dobs, sigmaa=sigmaa_true, teps=teps, resn=resn,
-    centric_flags=centric_flags, d_star_sq=d_star_sq)
-
-  # This test is specifically about the SPLINE mode's curvature restraint
-  # (scatfrac_curvature_weight is ignored in scalar/b_factor -- see
-  # llgi_sigmaa_scatfrac_params' help) -- pin it explicitly so it keeps
-  # testing that regardless of the phil default.
-  params_unrestrained = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params_unrestrained.scatfrac_model = "spline"
-  params_unrestrained.n_scatfrac_coeffs = 8
-  params_unrestrained.scatfrac_curvature_weight = 0.0
-  unrestrained = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
-    params=params_unrestrained, **common_kwargs)
-
-  params_restrained = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params_restrained.scatfrac_model = "spline"
-  params_restrained.n_scatfrac_coeffs = 8
-  params_restrained.scatfrac_curvature_weight = 0.1
-  restrained = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
-    params=params_restrained, **common_kwargs)
-
-  # The wobble band's fitted ScatFrac should sit closer to the smooth
-  # trend's interpolated value with the restraint on than off.
-  wobble_indices = [i for i in range(n_refl)
-                     if wobble_lo <= d_star_sq[i] <= wobble_hi]
-  true_wobble = flex.double(
-    [true_scatfrac(d_star_sq[i]) for i in wobble_indices])
-  unrestrained_wobble = flex.double(
-    [unrestrained.scatfrac[i] for i in wobble_indices])
-  restrained_wobble = flex.double(
-    [restrained.scatfrac[i] for i in wobble_indices])
-  err_unrestrained = flex.mean(flex.abs(unrestrained_wobble - true_wobble))
-  err_restrained = flex.mean(flex.abs(restrained_wobble - true_wobble))
-  assert err_restrained < err_unrestrained, (
-    err_restrained, err_unrestrained)
-
-  # And it should not have materially disturbed the well-determined main
-  # range on the FAR side of the wobble band (the last fifth of the
-  # d*^2 range, i.e. n_refl's tail, well past d_star_sq_wobble): a
-  # global 8-coefficient spline necessarily reshapes some of the curve
-  # near the perturbed region (confirmed directly: the region BETWEEN
-  # the wobble band and this far tail does shift, same as the sigmaA
-  # collapse test's own finding for its adjacent region), but should
-  # leave the distant, opposite-side part close to the unrestrained fit.
-  far_indices = list(range(n_refl))[-(n_refl // 5):]
-  main_diff_far = flex.mean(flex.abs(
-    flex.double([restrained.scatfrac[i] for i in far_indices]) -
-    flex.double([unrestrained.scatfrac[i] for i in far_indices])))
-  assert main_diff_far < 0.1, main_diff_far
-
-def exercise_scatfrac_scalar_evaluator_gradient_finite_difference():
-  # End-to-end finite-difference check of
-  # llgi_scatfrac_scalar_target_evaluator.compute_functional_and_gradients
-  # (a single shared ScatFrac value, not a spline).
-  import numpy as np
-  n_refl = 400
-  data = build_synthetic_dataset(n_refl, seed=71)
-  working_selection = flex.bool([(i % 5 != 0) for i in range(n_refl)])
-  evaluator = llgi_sigmaa.llgi_scatfrac_scalar_target_evaluator(
-    f_eff=data["f_eff"], selection=working_selection, f_calc=data["f_calc"],
-    dobs=data["dobs"], sigmaa=data["sigmaa_true"], teps=data["teps"],
-    resn=data["resn"], centric_flags=data["centric_flags"],
-    scale_factor=1.0, scatfrac_start=0.6,
-    max_iterations=0)  # probe the gradient at the LBFGS starting point
-
-  x0 = np.array(evaluator.x)
-  f0, g0 = evaluator.compute_functional_and_gradients()
-  g0 = np.array(g0)
-  eps = 1.e-6
-  xp = x0.copy(); xp[0] += eps
-  evaluator.x = flex.double(xp)
-  fp, _ = evaluator.compute_functional_and_gradients()
-  xm = x0.copy(); xm[0] -= eps
-  evaluator.x = flex.double(xm)
-  fm, _ = evaluator.compute_functional_and_gradients()
-  g_fd = (fp - fm) / (2 * eps)
-  evaluator.x = flex.double(x0)
-  assert approx_equal(g0[0], g_fd, eps=1.e-3)
-
-def exercise_scatfrac_scalar_recovers_known_constant_and_can_exceed_one():
-  # estimate_llgi_scatfrac_likelihood(params.scatfrac_model="scalar"), with
-  # sigmaA fixed at its true value, should recover a known CONSTANT
-  # ScatFrac (no resolution dependence in the synthetic truth) closely,
-  # and the returned array should be genuinely constant across
-  # reflections (not merely close to it) since there is only one
-  # parameter. Also checks the no-upper-bound-of-1 property, same as the
-  # spline version's equivalent test.
-  n_refl = 4000
-  random_state = random.Random(73)
-  d_star_sq = flex.double(sorted(
-    random_state.uniform(0.001, 0.25) for i in range(n_refl)))
-  sigmaa_true = flex.double(n_refl, 0.6)
-  true_scatfrac = 1.15  # deliberately > 1
-  teps = flex.double(n_refl, 1.0)
-  resn = flex.double(n_refl, 1.0)
-  dobs = flex.double(n_refl, 0.85)
-
-  f_calc_list = []
-  f_eff_list = []
-  for i in range(n_refl):
-    mean_fc_sq = true_scatfrac * teps[i] * resn[i] ** 2
-    fc_mag = math.sqrt(random_state.expovariate(1.0 / mean_fc_sq))
-    phase = random_state.uniform(0.0, 2.0 * math.pi)
-    f_calc_list.append(
-      complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
-    d = dobs[i] * sigmaa_true[i] / math.sqrt(true_scatfrac)
-    ec = d * fc_mag
-    v = teps[i] * resn[i] ** 2 * (teps[i] - d * d)
-    f_eff_list.append(rice_sample(ec, v, random_state))
-
-  f_calc = flex.complex_double(f_calc_list)
-  f_eff = flex.double(f_eff_list)
-  centric_flags = flex.bool(n_refl, False)
-  working_selection = flex.bool(n_refl, True)
-
-  params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params.scatfrac_model = "scalar"
-  result = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
-    f_eff=f_eff, working_selection=working_selection, f_calc=f_calc,
-    dobs=dobs, sigmaa=sigmaa_true, teps=teps, resn=resn,
-    centric_flags=centric_flags, d_star_sq=d_star_sq, params=params)
-
-  # Genuinely constant (single parameter -> identical value everywhere).
-  assert flex.max(result.scatfrac) == flex.min(result.scatfrac)
-  fitted = result.scatfrac[0]
-  assert abs(fitted - true_scatfrac) < 0.1, (fitted, true_scatfrac)
-  assert fitted > 1.0, fitted
-
-def exercise_scatfrac_scalar_ignores_resolution_dependence():
-  # With a synthetic truth that DOES vary strongly with resolution, the
-  # scalar fit should land somewhere between the low- and high-resolution
-  # extremes (a single compromise value), NOT track the trend -- this is
-  # the scalar mode's known, accepted limitation (see llgi_scatfrac_
-  # scalar_target_evaluator's docstring), verified directly so a future
-  # change that accidentally made this mode resolution-sensitive again
-  # would be caught.
-  n_refl = 4000
-  random_state = random.Random(77)
-  d_star_sq = flex.double(sorted(
-    random_state.uniform(0.001, 0.25) for i in range(n_refl)))
-  sigmaa_true = flex.double(n_refl, 0.6)
-
-  def true_scatfrac(dss):
-    return 1.4 - 1.0 * dss / 0.25  # strong trend: 1.4 -> 0.4
-
-  teps = flex.double(n_refl, 1.0)
-  resn = flex.double(n_refl, 1.0)
-  dobs = flex.double(n_refl, 0.85)
-
-  f_calc_list = []
-  f_eff_list = []
-  for i in range(n_refl):
-    sf_i = true_scatfrac(d_star_sq[i])
-    mean_fc_sq = sf_i * teps[i] * resn[i] ** 2
-    fc_mag = math.sqrt(random_state.expovariate(1.0 / mean_fc_sq))
-    phase = random_state.uniform(0.0, 2.0 * math.pi)
-    f_calc_list.append(
-      complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
-    d = dobs[i] * sigmaa_true[i] / math.sqrt(sf_i)
-    ec = d * fc_mag
-    v = teps[i] * resn[i] ** 2 * (teps[i] - d * d)
-    f_eff_list.append(rice_sample(ec, v, random_state))
-
-  f_calc = flex.complex_double(f_calc_list)
-  f_eff = flex.double(f_eff_list)
-  centric_flags = flex.bool(n_refl, False)
-  working_selection = flex.bool(n_refl, True)
-
-  params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params.scatfrac_model = "scalar"
-  result = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
-    f_eff=f_eff, working_selection=working_selection, f_calc=f_calc,
-    dobs=dobs, sigmaa=sigmaa_true, teps=teps, resn=resn,
-    centric_flags=centric_flags, d_star_sq=d_star_sq, params=params)
-
-  fitted = result.scatfrac[0]
-  # Strictly between the two extremes, not equal to either -- a single
-  # compromise value, as expected for this mode's known limitation.
-  assert 0.4 < fitted < 1.4, fitted
 
 def _make_ss(d_star_sq):
   # d_star_sq is always a flex.double at every call site in this file.
@@ -976,7 +388,6 @@ def exercise_scatfrac_b_factor_recovers_falling_trend():
   data = _synthetic_b_factor_scatfrac_dataset(
     n_refl=6000, seed=83, scatfrac_inf=0.95, b_scatfrac=25.0)
   params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params.scatfrac_model = "b_factor"
   # Truth's |B_scatfrac|=25 is itself far from 0 -- pin the restraint off
   # so this checks the unrestrained evaluator's recovery of a genuine
   # trend, not the (default-on) restraint's deliberate pull toward 0.
@@ -1002,7 +413,6 @@ def exercise_scatfrac_b_factor_recovers_rising_trend():
   data = _synthetic_b_factor_scatfrac_dataset(
     n_refl=6000, seed=89, scatfrac_inf=0.5, b_scatfrac=-25.0)
   params = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params.scatfrac_model = "b_factor"
   # See exercise_scatfrac_b_factor_recovers_falling_trend's comment: pin
   # the restraint off so this isolates the unrestrained evaluator's
   # ability to recover a genuine (here rising) trend.
@@ -1054,7 +464,6 @@ def exercise_scatfrac_b_factor_restraint_pulls_toward_zero():
   data = _synthetic_b_factor_scatfrac_dataset(
     n_refl=6000, seed=97, scatfrac_inf=0.8, b_scatfrac=3.0)
   params_unrestrained = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params_unrestrained.scatfrac_model = "b_factor"
   params_unrestrained.scatfrac_b_factor_restraint_sigma = 0.0
   result_unrestrained = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
     f_eff=data["f_eff"], working_selection=data["working_selection"],
@@ -1064,7 +473,6 @@ def exercise_scatfrac_b_factor_restraint_pulls_toward_zero():
     params=params_unrestrained)
 
   params_restrained = llgi_sigmaa.llgi_sigmaa_scatfrac_params.extract()
-  params_restrained.scatfrac_model = "b_factor"
   assert params_restrained.scatfrac_b_factor_restraint_sigma == 10.0
   result_restrained = llgi_sigmaa.estimate_llgi_scatfrac_likelihood(
     f_eff=data["f_eff"], working_selection=data["working_selection"],
@@ -1082,20 +490,10 @@ def exercise_scatfrac_b_factor_restraint_pulls_toward_zero():
       result_restrained.b_scatfrac, result_unrestrained.b_scatfrac)
 
 def exercise():
-  exercise_recovers_known_curves()
-  exercise_convenience_wrapper_matches_two_step()
-  exercise_scatfrac_uses_full_set_sigmaa_uses_test_set_only()
+  exercise_scatfrac_moment_estimator_uses_full_set()
   exercise_scatfrac_robust_to_single_outlier_reflection()
   exercise_curvature_penalty_finite_difference()
-  exercise_curvature_penalty_evaluator_gradient_finite_difference()
-  exercise_curvature_penalty_tames_synthetic_collapse()
-  exercise_scatfrac_likelihood_evaluator_gradient_finite_difference()
-  exercise_scatfrac_likelihood_recovers_known_curve_and_can_exceed_one()
   exercise_scatfrac_likelihood_uses_working_set_selection()
-  exercise_scatfrac_curvature_penalty_tames_synthetic_wobble()
-  exercise_scatfrac_scalar_evaluator_gradient_finite_difference()
-  exercise_scatfrac_scalar_recovers_known_constant_and_can_exceed_one()
-  exercise_scatfrac_scalar_ignores_resolution_dependence()
   exercise_scatfrac_b_factor_evaluator_gradient_finite_difference()
   exercise_scatfrac_b_factor_recovers_falling_trend()
   exercise_scatfrac_b_factor_recovers_rising_trend()

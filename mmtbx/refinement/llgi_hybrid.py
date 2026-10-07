@@ -53,8 +53,7 @@ llgi_hybrid_params = iotbx.phil.parse("""\
     .short_caption = Exclude reflections with sigma(E_obs^2) above
     .help = "Reflections with sigma(E_obs^2) above this carry less " \
             "than ~0.01 bits of information and are excluded from " \
-            "refinement altogether (replaces info_cutoff when the " \
-            "intensities and sigmas are available)."
+            "refinement altogether."
 """)
 
 def e_obs_sq_and_sigma(i_obs, sig_i_obs, resn, teps):
@@ -124,21 +123,6 @@ def get_hybrid(llgi_data):
   params = getattr(llgi_data, "hybrid_params", None)
   if(params is None or not params.enabled): return None
   return get_exact_data(llgi_data)
-
-def _e_scale_ok(e_params):
-  # The E-scale quantities normalise Feff by RESN only; with
-  # renormalise_e_eff the Rice Eeff is rescaled and E_obs^2 would have to
-  # be too, so the exact likelihood is not used there.
-  return not (e_params is not None
-              and getattr(e_params, "renormalise_e_eff", False))
-
-def get_e_scale_hybrid(llgi_data, e_params):
-  """ get_hybrid() for the E-scale fits (see _e_scale_ok). """
-  return get_hybrid(llgi_data) if _e_scale_ok(e_params) else None
-
-def get_e_scale_exact_data(llgi_data, e_params):
-  """ get_exact_data() for E-scale map coefficients (see _e_scale_ok). """
-  return get_exact_data(llgi_data) if _e_scale_ok(e_params) else None
 
 def map_llgi_data(llgi_data, op):
   """ Copy of llgi_data with op applied to every miller-array component

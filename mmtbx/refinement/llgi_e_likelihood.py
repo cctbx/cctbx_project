@@ -1,11 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
-from scipy.special import i0, i1
+from scipy.special import i0
 
 """ Corrected per-reflection E-scale LLGI acentric/centric log-
-likelihood and its first/second derivatives w.r.t. D (Section 7,
-implementation step 2 of the D_model(s; theta) design -- see
-doc/llgi_target_design.md sec. 6.4).
+likelihood and its first derivative w.r.t. D, for the D_model(s; theta)
+sigmaA fit (see doc/llgi_target_design.md sec. 6.4).
 
 These are the SYMMETRIC forms already used by cctbx_project/cctbx/xray/
 targets/llgi_e.h's target_one_h/d_target_one_h_over_emodel (that C++ is
@@ -30,8 +29,7 @@ np.log(i0(X))), which is essentially exact, for that piece; the
 residual gap is a difference in NUMERICAL APPROXIMATION QUALITY of
 ln(I_0(x)), not a disagreement about which formula is correct.
 Acentric GRADIENT matches to MACHINE precision: _r(x) below (the Rice
-ratio R(x)=I_1(x)/I_0(x) that acentric_l_prime/acentric_l_double_prime
-depend on) is a direct port of scitbx::math::bessel::i1_over_i0's own
+ratio R(x)=I_1(x)/I_0(x) that acentric_l_prime depends on) is a direct port of scitbx::math::bessel::i1_over_i0's own
 rational-polynomial approximation -- the exact same one llgi_e.h's own
 gradient function uses -- not scipy.special.i1(x)/i0(x) (an earlier
 version of this module used the latter; found to overflow to inf/nan
@@ -42,18 +40,15 @@ forms an intermediate value that can overflow at any argument -- see
 doc/llgi_target_design.md sec. 6.4).
 
 Pure numpy/scipy functions only, no LLGI-target machinery, no theta/
-D_model chain rule -- that combination step is Section 7's step 3, a
-separate module. This module operates entirely in terms of D (the
+D_model chain rule -- that combination is llgi_e_dmodel_target. This module operates entirely in terms of D (the
 combined correlation coefficient D_c(h) = D_obs(h)*D_model(s_h; theta)
 from sec. 3.2 of the handoff document), E_eff, E_c.
 
 Negative-variance guard: llgi_e.h's target_one_h returns 0 (no
 contribution) whenever v = 1-D^2 <= 0, rather than letting log(v) or
-1/v blow up -- D_model(s; theta) is UNCONSTRAINED during an L-BFGS fit
-(design doc sec. 6.4's q-space reparametrization only guarantees
-theta's natural parameters stay positive, not that D=dobs*D_model stays
-inside (-1,1)), so the line search can genuinely visit D^2>=1 before
-settling. Every function below applies the SAME s<=0 -> 0 guard as
+1/v blow up. D_model is bounded below SIGMAA_MAX, so this guard is a
+safety net rather than a path the fit is expected to take. Every
+function below applies the SAME s<=0 -> 0 guard as
 llgi_e.h, so a caller summing over many reflections (llgi_e_dmodel_
 target.py) gets a well-defined, finite (if temporarily useless)
 contribution from an out-of-range reflection instead of a NaN that
@@ -65,7 +60,7 @@ def _mask_invalid(s, result):
   """ Zero out `result` wherever s<=0 (matching llgi_e.h's v<=0 guard)
   OR result is itself non-finite for any other reason (defensive: e.g.
   extreme X overflowing i0(X) before s itself goes negative). Shared by
-  every l/l_prime/l_double_prime function below.
+  every l/l_prime function below.
   """
   s = np.asarray(s, dtype=float)
   bad = (s <= 0.0) | ~np.isfinite(result)
@@ -124,21 +119,6 @@ def _r(x):
   result = be1 / be0
   return np.where((x < 0.0) & (result > 0.0), -result, result)
 
-def _r_prime(x):
-  """ R'(x) = 1 - R(x)/x - R(x)^2. Has a removable singularity at x=0
-  (R(x)/x -> 0.5 as x -> 0), handled explicitly rather than relying on
-  0/0 floating-point behaviour, which is not reliably a clean NaN across
-  numpy versions/error-handling settings and would otherwise poison any
-  caller (e.g. a per-shell D=0-adjacent Newton step, design doc sec.
-  6.4's GP-residual discussion) that happens to evaluate exactly at or
-  very near x=0.
-  """
-  x = np.asarray(x, dtype=float)
-  small = np.abs(x) < 1.e-8
-  rx = _r(np.where(small, 1.0, x))  # dummy value where small, discarded below
-  result = 1.0 - rx/np.where(small, 1.0, x) - rx*rx
-  return np.where(small, 0.5, result)
-
 def acentric_l(D, e_eff, e_c):
   """ l(D) = -ln(s) - D^2*(e_eff^2+e_c^2)/s + ln(I_0(X)),
   s = 1-D^2, X = 2*D*e_eff*e_c/s. The symmetric form matching llgi_e.h
@@ -168,27 +148,6 @@ def acentric_l_prime(D, e_eff, e_c):
   X = k*D/s_safe
   result = (2.0*D/s_safe - 2.0*D*quad/(s_safe*s_safe)
             + _r(X)*k*(1.0+D*D)/(s_safe*s_safe))
-  return _mask_invalid(s, result)
-
-def acentric_l_double_prime(D, e_eff, e_c):
-  """ d2(l)/dD2, corrected symmetric-form closed formula (design doc
-  sec. 6.4):
-    l''(D) = 2*(1+D^2)/s^2 - 2*quad*(1+3*D^2)/s^3
-             + R'(X)*k^2*(1+D^2)^2/s^4 + R(X)*k*(2*D*s+4*D*(1+D^2))/s^3
-  """
-  D = np.asarray(D, dtype=float)
-  s = 1.0 - D*D
-  s_safe = np.where(s > 0.0, s, 1.0)
-  quad = e_eff*e_eff + e_c*e_c
-  k = 2.0*e_eff*e_c
-  X = k*D/s_safe
-  rx = _r(X)
-  rpx = _r_prime(X)
-  term1 = 2.0*(1.0+D*D)/(s_safe*s_safe)
-  term2 = -2.0*quad*(1.0+3.0*D*D)/(s_safe*s_safe*s_safe)
-  term3 = rpx*k*k*(1.0+D*D)**2/(s_safe**4)
-  term4 = rx*k*(2.0*D*s_safe + 4.0*D*(1.0+D*D))/(s_safe*s_safe*s_safe)
-  result = term1 + term2 + term3 + term4
   return _mask_invalid(s, result)
 
 def _log_cosh(y):
@@ -228,26 +187,4 @@ def centric_l_prime(D, e_eff, e_c):
   X = k*D/s_safe
   dXdD = k*(1.0+D*D)/(s_safe*s_safe)
   result = D/s_safe - D*quad/(s_safe*s_safe) + 0.5*np.tanh(X/2.0)*dXdD
-  return _mask_invalid(s, result)
-
-def centric_l_double_prime(D, e_eff, e_c):
-  """ d2(l_c)/dD2, corrected symmetric-form closed formula (design doc
-  sec. 6.4):
-    l_c''(D) = (1+D^2)/s^2 - quad*(1+3*D^2)/s^3
-               + 0.5*[0.5*(1-tanh(X/2)^2)*(dX/dD)^2 + tanh(X/2)*d2X/dD2]
-    d2X/dD2 = k*(2*D*s + 4*D*(1+D^2))/s^3
-  """
-  D = np.asarray(D, dtype=float)
-  s = 1.0 - D*D
-  s_safe = np.where(s > 0.0, s, 1.0)
-  quad = e_eff*e_eff + e_c*e_c
-  k = 2.0*e_eff*e_c
-  X = k*D/s_safe
-  t = np.tanh(X/2.0)
-  dXdD = k*(1.0+D*D)/(s_safe*s_safe)
-  d2XdD2 = k*(2.0*D*s_safe + 4.0*D*(1.0+D*D))/(s_safe*s_safe*s_safe)
-  term1 = (1.0+D*D)/(s_safe*s_safe)
-  term2 = -quad*(1.0+3.0*D*D)/(s_safe*s_safe*s_safe)
-  term3 = 0.5*(0.5*(1.0-t*t)*dXdD*dXdD + t*d2XdD2)
-  result = term1 + term2 + term3
   return _mask_invalid(s, result)

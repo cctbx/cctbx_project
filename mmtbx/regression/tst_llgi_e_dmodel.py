@@ -155,16 +155,16 @@ def exercise_d_model_gradient_matches_finite_difference():
     rel = np.abs(grad[i] - fd) / np.maximum(1.0, np.abs(fd))
     assert rel.max() < 1.e-5, (i, rel.max())
 
-def exercise_d_model_gradient_and_hessian_are_finite_and_warning_free_for_extreme_theta():
+def exercise_d_model_gradient_is_finite_and_warning_free_for_extreme_theta():
   # Real bug found on real 2G38 data (doc/llgi_target_design.md sec.
   # 6.4): clipping D_raw before tanh() correctly keeps D_model itself
   # bounded (exercise_d_model_is_bounded_to_open_unit_interval), but
-  # d_model_raw_gradient/d_model_raw_hessian are computed from the
+  # d_model_raw_gradient is computed from the
   # UNCLIPPED theta and can themselves overflow to inf for extreme
   # theta -- multiplying that against the (correctly tiny, but no
   # longer coupled to the unclipped D_raw) sech2 factor does NOT
   # reproduce the true mathematical limit (which is exactly 0), it
-  # produces inf/nan. The fix masks the gradient/Hessian to exactly 0
+  # produces inf/nan. The fix masks the gradient to exactly 0
   # wherever D_raw was clipped, and suppresses (not hides -- the
   # overflow is provably benign once masked) the resulting numpy
   # RuntimeWarning. This test enforces BOTH: no warning escapes, and
@@ -176,81 +176,12 @@ def exercise_d_model_gradient_and_hessian_are_finite_and_warning_free_for_extrem
   with warnings.catch_warnings():
     warnings.simplefilter("error", RuntimeWarning)
     grad = dmodel.d_model_gradient(s2, theta, b_k_grid)
-    hess = dmodel.d_model_hessian(s2, theta, b_k_grid)
   assert np.all(np.isfinite(grad)), grad
-  assert np.all(np.isfinite(hess)), hess
   # D_raw is saturated at every one of these s2 values for a_1=1e300
   # (B_1=5.0 decays far too slowly to bring it back under _D_RAW_CLIP
-  # at any of these resolutions), so the a_1 gradient/Hessian rows must
-  # be exactly (not approximately) zero.
+  # at any of these resolutions), so the a_1 gradient row must be
+  # exactly (not approximately) zero.
   assert flex_max_abs(grad[0]) == 0.0, grad[0]
-  assert flex_max_abs(hess[0]) == 0.0, hess[0]
-
-def exercise_d_model_hessian_matches_finite_difference():
-  rnd = np.random.RandomState(2)
-  theta, b_k_grid = _random_theta_and_grid(rnd, 2)
-  s2 = np.array([0.001, 0.02, 0.1, 0.3, 0.7, 1.5])
-  hess = dmodel.d_model_hessian(s2, theta, b_k_grid)
-  h = 1.e-4
-  n = theta.size
-  for i in range(n):
-    for j in range(n):
-      tpp = theta.copy(); tpp[i] += h; tpp[j] += h
-      tpm = theta.copy(); tpm[i] += h; tpm[j] -= h
-      tmp = theta.copy(); tmp[i] -= h; tmp[j] += h
-      tmm = theta.copy(); tmm[i] -= h; tmm[j] -= h
-      fd = (dmodel.d_model(s2, tpp, b_k_grid)
-            - dmodel.d_model(s2, tpm, b_k_grid)
-            - dmodel.d_model(s2, tmp, b_k_grid)
-            + dmodel.d_model(s2, tmm, b_k_grid)) / (4*h*h)
-      rel = np.abs(hess[i, j] - fd) / np.maximum(1.0, np.abs(fd))
-      assert rel.max() < 1.e-2, (i, j, rel.max())
-
-def exercise_d_model_raw_hessian_is_zero_except_defect_block():
-  # D_raw is now LINEAR in every a_k (B_k is a FIXED ladder, no longer
-  # part of theta -- design doc sec. 6.4's well-posedness addendum, see
-  # llgi_e_dmodel.py's own module docstring for the full ill-posedness
-  # motivation): every a_k/a_j second derivative, including a_k with
-  # itself, is exactly zero, and only the defect term's own (b,
-  # B_defect) 2x2 block is nonzero. This property does NOT carry over
-  # to the tanh-wrapped D_model (see the next test) -- tanh's product-
-  # rule term mixes every parameter pair together via the full gradient
-  # outer product.
-  rnd = np.random.RandomState(3)
-  theta, b_k_grid = _random_theta_and_grid(rnd, 3)
-  s2 = np.array([0.01, 0.3, 1.1])
-  hess = dmodel.d_model_raw_hessian(s2, theta, b_k_grid)
-  n = theta.size
-  for i in range(n):
-    for j in range(n):
-      is_defect_block = (i >= n - 2 and j >= n - 2)
-      if(not is_defect_block):
-        assert flex_max_abs(hess[i, j]) < 1.e-12, (i, j)
-
-def exercise_d_model_wrapped_hessian_cross_terms_are_generally_nonzero():
-  # Confirms the tanh chain rule's extra product-rule term is actually
-  # present (i.e. nobody "simplified" d_model_hessian back down to
-  # sech2*d_model_raw_hessian alone, which would be wrong -- see this
-  # module's own docstring, mirroring the analogous q=exp(theta)
-  # reparametrization hazard elsewhere in this design): cross terms
-  # between different Gaussian terms, exactly zero in d_model_raw_
-  # hessian, must generally be NONZERO here -- PROVIDED D_raw itself is
-  # not near zero (the coupling term is proportional to tanh(D_raw),
-  # which vanishes at D_raw=0 regardless of whether the coupling
-  # machinery is even present -- a small-a_k theta can accidentally put
-  # D_raw right at that zero, as happened with an earlier version of
-  # this test's random seed/theta choice, so this one explicitly uses
-  # large a_k/small B_k to keep D_raw clearly away from zero).
-  theta = np.array([0.8, 0.7, 0.3, 40.0])  # large a_k, small B_k
-  b_k_grid = np.array([5.0, 8.0])
-  s2 = np.array([0.3])
-  draw = dmodel.d_model_raw(s2, theta, b_k_grid)
-  assert abs(draw[0]) > 0.1, (
-    "test setup should keep D_raw clearly away from tanh's zero", draw)
-  hess = dmodel.d_model_hessian(s2, theta, b_k_grid)
-  # (0, 1): a_1 vs a_2 -- different Gaussian terms, zero in the raw
-  # Hessian, expected nonzero here once tanh's coupling is present.
-  assert flex_max_abs(hess[0, 1]) > 1.e-8, hess[0, 1]
 
 def flex_max_abs(arr):
   return float(np.max(np.abs(arr)))
@@ -265,10 +196,7 @@ def run():
   exercise_d_model_stays_nonnegative_when_defect_term_dominates()
   exercise_d_model_is_bounded_to_open_unit_interval()
   exercise_d_model_gradient_matches_finite_difference()
-  exercise_d_model_gradient_and_hessian_are_finite_and_warning_free_for_extreme_theta()
-  exercise_d_model_hessian_matches_finite_difference()
-  exercise_d_model_raw_hessian_is_zero_except_defect_block()
-  exercise_d_model_wrapped_hessian_cross_terms_are_generally_nonzero()
+  exercise_d_model_gradient_is_finite_and_warning_free_for_extreme_theta()
   print("OK")
 
 if (__name__ == "__main__"):

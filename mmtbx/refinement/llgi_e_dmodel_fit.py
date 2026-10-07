@@ -9,16 +9,15 @@ import mmtbx.refinement.llgi_e_dmodel_target as target
 
 """ L-BFGS-B fit of the physically-motivated D_model(s; theta)
 parametrization against the E-scale LLGI likelihood (see
-doc/llgi_target_design.md sec. 6.4), a drop-in replacement for
+doc/llgi_target_design.md sec. 6.4), the alternative to
 mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa's
-B-spline-over-sigmoid fit in the Stage-1/Stage-2 inner loop
-(run_inner_loop), with the same restriction to the R-free/test set and
-the same Emodel-held-fixed convention.
+B-spline-over-sigmoid fit, with the same restriction to the R-free/test
+set and the same Emodel-held-fixed convention.
 
-Builds on llgi_e_dmodel.py (D_model value/gradient/Hessian),
+Builds on llgi_e_dmodel.py (D_model value/gradient),
 llgi_e_likelihood.py (per-reflection likelihood) and
 llgi_e_dmodel_target.py (chain-rule combination into theta-space
-LL/gradient/Hessian).
+LL/gradient).
 """
 
 llgi_e_dmodel_params = iotbx.phil.parse("""\
@@ -33,7 +32,7 @@ llgi_e_dmodel_params = iotbx.phil.parse("""\
   max_iterations = 200
     .type = int
     .expert_level = 3
-  include_constant_term = False
+  include_constant_term = True
     .type = bool
     .short_caption = Add a constant (B=0) term to the D_model ladder
     .help = "Prepend a B=0 rung (a resolution-independent amplitude) to "\
@@ -43,33 +42,6 @@ llgi_e_dmodel_params = iotbx.phil.parse("""\
             "at high resolution, as sigmaA does for a well-refined "\
             "model (seen on 9RRL). With it, D_model need not fall to 0 "\
             "at infinite resolution."
-  a_k_smoothness_weight = 0.1
-    .type = float
-    .short_caption = Smoothness penalty weight across the fixed B_k ladder
-    .help = "Weight of a roughness (second-difference) penalty across "\
-            "the K coordinate-error amplitudes a_k, in the ORDER of "\
-            "the fixed b_k_grid ladder they multiply (llgi_e_dmodel_"\
-            "fit.default_b_k_grid) -- penalty = weight * sum_k "\
-            "(a_{k+1} - 2*a_k + a_{k-1})^2 over interior rungs (a no-op "\
-            "for K<3, where no interior rung exists). Exists for the "\
-            "same reason a_k_smoothness_penalty_and_gradient's own "\
-            "docstring gives in full: theta no longer includes B_k at "\
-            "all (design doc sec. 6.4's well-posedness addendum -- B_k "\
-            "is now a FIXED ladder, not fitted, precisely because the "\
-            "earlier free-B_k parametrization was an ill-posed, nearly-"\
-            "collinear nonlinear fit that a real synthetic-data test "\
-            "(tst_llgi_e_dmodel_fit.py) drove to a degenerate a_k->0/"\
-            "B_k->infinity solution once D_model's high-resolution "\
-            "asymptote was corrected to genuinely reach 0), so the "\
-            "coordinate-error-varies-smoothly-with-B-factor physical "\
-            "picture this restraint encodes is now expressed directly "\
-            "as smoothness across NEIGHBOURING a_k on that fixed "\
-            "ladder, rather than as a restraint on B_k itself (no "\
-            "longer a free parameter to restrain). 0 (or None) "\
-            "disables it -- becomes an unrestrained non-negative-least-"\
-            "squares-like fit of a_k against the ladder, still well-"\
-            "posed (unlike the old free-B_k form) but no longer "\
-            "favouring a smooth coefficient profile over a jagged one."
 """)
 
 def default_b_k_grid(k, s2):
@@ -108,62 +80,13 @@ def default_b_k_grid(k, s2):
     return np.array([np.sqrt(b_lo * b_hi)], dtype=float)
   return np.exp(np.linspace(np.log(b_lo), np.log(b_hi), k))
 
-def a_k_smoothness_penalty_and_gradient(theta, weight, first=0):
-  """ Roughness penalty discouraging a jagged a_k profile across the
-  fixed b_k_grid ladder (llgi_e_dmodel_params.a_k_smoothness_weight's
-  own docstring has the full motivation: this replaces the earlier
-  free-B_k restraint now that B_k is fixed, not fitted). Standard
-  second-difference (discrete-Laplacian) Tikhonov form:
-
-    penalty = weight * sum_{k=1}^{K-2} (a_{k+1} - 2*a_k + a_{k-1})^2
-
-  (0-indexed interior rungs only -- a no-op for K<3, where there is no
-  interior rung to take a second difference at). This is a genuine
-  smoothness prior on the FITTED coefficients themselves (not a proxy
-  restraint on an already-fixed quantity), directly matching the
-  physical picture of coordinate error varying smoothly across a
-  continuum of atomic B-factors (adjacent ladder rungs are adjacent
-  points on that continuum).
-
-  theta: natural-space parameter vector. weight: penalty weight
-  (a_k_smoothness_weight); <= 0 or None returns a no-op. first: number of
-  leading rungs left out of the penalty -- the B=0 constant rung added
-  by include_constant_term is not a point on the coordinate-error
-  continuum (log B = -infinity), so smoothness across it would tie the
-  constant amplitude to the decaying ones (a_0 ~ 2*a_1 - a_2), letting
-  the nested model fit worse than plain D_model.
-
-  Returns (penalty, d(penalty)/d(theta)), penalty a plain float, the
-  gradient a numpy array the same shape as theta (nonzero only in the
-  a_k slots).
-  """
-  theta = np.asarray(theta, dtype=float)
-  grad = np.zeros_like(theta)
-  if(weight is None or weight <= 0):
-    return 0.0, grad
-  a, _, _ = dmodel.unpack_theta(theta)
-  a = a[first:]
-  k = a.size
-  if(k < 3):
-    return 0.0, grad
-  d2 = a[2:] - 2.0 * a[1:-1] + a[:-2]  # shape (k-2,), d2[i] = 2nd diff at rung i+1
-  penalty = weight * float(np.sum(d2 * d2))
-  # d(penalty)/da_j = weight * sum_i 2*d2[i] * d(d2[i])/da_j; each d2[i]
-  # touches rungs i, i+1, i+2 with coefficients +1, -2, +1 respectively.
-  g = np.zeros(k, dtype=float)
-  g[:-2] += 2.0 * weight * d2         # d2[i]'s +1 coefficient on rung i
-  g[1:-1] += -4.0 * weight * d2       # d2[i]'s -2 coefficient on rung i+1
-  g[2:] += 2.0 * weight * d2          # d2[i]'s +1 coefficient on rung i+2
-  grad[first:first + k] = g
-  return penalty, grad
-
 class d_model_target_evaluator(object):
   """ L-BFGS-B fit of D_model(s; theta) against the E-scale LLGI target,
   summed over the R-free/test set only (same restriction as
   mmtbx.refinement.llgi_e_bulk_solvent.e_sigmaa_target_evaluator), with
   Emodel (hence the bulk-solvent model) held fixed.
 
-  B_defect is fixed at b_sol_anchor (the bulk-solvent fit's B_sol) when
+  B_defect is fixed at b_sol_anchor (bss's B_sol point estimate) when
   one is given, and only a_1..a_K and b are fitted. Leaving it free
   (even under a restraint) lets the fit trade the defect term against a
   coordinate-error term with a similar decay -- solutions such as
@@ -191,9 +114,8 @@ class d_model_target_evaluator(object):
   def __init__(self,
         e_eff, r_free_flags, e_model, dobs, centric_flags, d_star_sq,
         n_gaussian_terms=2, theta_start=None, max_iterations=200,
-        b_sol_anchor=None,
-        a_k_smoothness_weight=0.1, b_k_grid=None,
-        include_constant_term=False,
+        b_sol_anchor=None, b_k_grid=None,
+        include_constant_term=True,
       hybrid=None):
     n_refl = e_eff.size()
     assert r_free_flags.size() == n_refl
@@ -219,7 +141,6 @@ class d_model_target_evaluator(object):
     # n_selected), so .final_target is comparable with the spline path's.
     self.n_test = int(np.sum(test_sel))
     self.n_gaussian_terms = n_gaussian_terms
-    self.a_k_smoothness_weight = a_k_smoothness_weight
     if(b_k_grid is None):
       b_k_grid = default_b_k_grid(n_gaussian_terms, self.s2)
       if(include_constant_term):
@@ -227,9 +148,6 @@ class d_model_target_evaluator(object):
     self.b_k_grid = np.asarray(b_k_grid, dtype=float)
     n_terms = n_gaussian_terms + int(include_constant_term)
     assert self.b_k_grid.shape == (n_terms,)
-    # Leading B=0 (constant) rungs are excluded from the smoothness penalty
-    self.n_constant_rungs = int(np.sum(self.b_k_grid <= 0))
-    assert np.all(self.b_k_grid[:self.n_constant_rungs] <= 0)
     self.b_defect_fixed = None
     if(b_sol_anchor is not None and b_sol_anchor > 0):
       self.b_defect_fixed = float(b_sol_anchor)
@@ -275,16 +193,12 @@ class d_model_target_evaluator(object):
   def update(self, x):
     self.x = x
     theta = self._full_theta(np.array(x))
-    ll, grad_p, _ = target.total_ll_gradient_hessian(
+    ll, grad_p = target.total_ll_and_gradient(
       theta, self.s2, self.e_eff, self.e_c, self.dobs,
       self.centric_flags, self.b_k_grid, hybrid=self.hybrid)
-    smooth_penalty, smooth_grad_p = a_k_smoothness_penalty_and_gradient(
-      theta, self.a_k_smoothness_weight, first=self.n_constant_rungs)
-    # Minimize-me convention (as llgi_e.h's target_one_h): f = -LL/n plus
-    # the smoothness penalty, which is already in minimize-me form.
-    n = self.n_fit
-    self._f = -ll / self.n_test + smooth_penalty
-    self._g = -grad_p[:n] / self.n_test + smooth_grad_p[:n]
+    # Minimize-me convention (as llgi_e.h's target_one_h): f = -LL/n
+    self._f = -ll / self.n_test
+    self._g = -grad_p[:self.n_fit] / self.n_test
     self.final_target = self._f
 
   def target(self):
@@ -298,13 +212,11 @@ class d_model_target_evaluator(object):
 
 def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
       centric_flags, d_star_sq, n_gaussian_terms=2, max_iterations=200,
-      b_sol_anchor=None,
-      a_k_smoothness_weight=0.1, theta_start=None, b_k_grid=None,
-      include_constant_term=False, hybrid=None):
+      b_sol_anchor=None, theta_start=None, b_k_grid=None,
+      include_constant_term=True, hybrid=None):
   """ Fit D_model(s; theta) against the E-scale LLGI target, restricted
   to the R-free/test set, Emodel held fixed -- drop-in replacement for
-  mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa in the Stage-1/
-  Stage-2 inner loop (run_inner_loop), same call-site role. Evaluates
+  mmtbx.refinement.llgi_e_bulk_solvent.estimate_e_sigmaa. Evaluates
   the fitted curve at every reflection (working set included, unlike
   the fit itself, exactly mirroring estimate_e_sigmaa's own contract).
 
@@ -336,7 +248,6 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     n_gaussian_terms=n_gaussian_terms, theta_start=theta_start,
     max_iterations=max_iterations,
     b_sol_anchor=b_sol_anchor,
-    a_k_smoothness_weight=a_k_smoothness_weight,
     b_k_grid=b_k_grid,
     include_constant_term=include_constant_term,
     hybrid=hybrid)
