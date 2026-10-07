@@ -3868,9 +3868,7 @@ class manager(object):
       b_isos                      = bs)
 
   def deep_copy(self):
-    new_model = self.select(selection = flex.bool(self.size(), True))
-    new_model.set_ss_annotation(self.get_ss_annotation())
-    return new_model
+    return self.select(selection = flex.bool(self.size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -4247,6 +4245,12 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
+    if self._ss_annotation is not None:
+      new_ss_annotation = self._ss_annotation.deep_copy()
+      if not selection.all_eq(True):
+        new_ss_annotation.remove_elements_losing_residues(
+          hierarchy=self._pdb_hierarchy, selection=selection)
+      new.set_ss_annotation(new_ss_annotation)
     if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
