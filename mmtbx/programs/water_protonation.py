@@ -35,7 +35,7 @@ existing_h = *keep complete reorient
 symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
-  .help = "Add the atoms that crystal symmetry places near a water to its environment, so H at a lattice contact avoid the neighbouring asymmetric units instead of pointing into them. Ignored for a model without a unit cell and space group."
+  .help = "Add the atoms that crystal symmetry places near a water to its environment, so H at a lattice contact avoid the neighbouring asymmetric units instead of pointing into them. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
 lone_pair = False
   .type = bool
   .short_caption = Lone-pair-directed placement
@@ -188,6 +188,12 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       if cs is None or cs.unit_cell() is None or cs.space_group_info() is None:
         print("Crystal symmetry: none in the model, treating it as isolated",
               file=self.logger)
+        cs = None
+      elif pdb_in.get_experiment_type().is_electron_microscopy():
+        # The cell of an electron microscopy model is the map box, not a
+        # lattice.
+        print("Crystal symmetry: ignored for electron microscopy, treating "
+              "the model as isolated", file=self.logger)
         cs = None
       else:
         print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)

@@ -79,6 +79,9 @@ to get wrong:
   contact keep their protons clear of each other's symmetry-related protons,
   not just of the oxygens they aim at.
 
+* **Electron microscopy.** The program treats an electron microscopy model as
+  isolated: its cell is the map box, not a lattice.
+
 * **Reorient keeps the isotope.** ``existing_h="reorient"`` with the automatic
   element re-places a water's protons as the element it carried (D on an
   HOH, H on a DOD), and the program warns when that puts D at the X-ray
@@ -810,6 +813,34 @@ def exercise_sym_equiv_protons():
     f"under the {wp._WATER_MIN_H_CLEARANCE} A clearance")
 
 
+def exercise_electron_microscopy_isolated():
+  """The program ignores the cell of an electron microscopy model.
+
+  Runs the program on the lattice-contact fixture written as mmCIF, once
+  recorded as X-ray diffraction and once as electron microscopy. The X-ray
+  run must aim an H across the cell face at the translated acceptor; the
+  electron microscopy run, whose cell is a map box rather than a lattice,
+  must treat the model as isolated and aim none there.
+  """
+  hier, cs = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
+  cif = hier.as_mmcif_string(crystal_symmetry=cs)
+  for tag, method, across in (("xray", "X-RAY DIFFRACTION", True),
+                              ("em", "ELECTRON MICROSCOPY", False)):
+    text = cif.replace("\n_cell.", f"\n_exptl.method '{method}'\n_cell.", 1)
+    assert "_exptl.method" in text, "fixture lacks the experiment method"
+    file_name = f"tst_water_protonation_{tag}.cif"
+    with open(file_name, "w") as f:
+      f.write(text)
+    result = run_program(program_class=wp_program.Program, logger=null_out(),
+                         args=[file_name, "output.overwrite=True"])
+    o, hs = _water_atoms(result.model.get_hierarchy())
+    aimed = max(_unit(h, o)[0] for h in hs.values())
+    if across:
+      assert aimed > 0.99, f"{method}: no H aims across the face ({aimed:.3f})"
+    else:
+      assert aimed < 0.9, f"{method}: an H aims across the face ({aimed:.3f})"
+
+
 def exercise_reorient_keeps_isotope():
   """``existing_h="reorient"`` with the automatic element re-places a water's
   protons as the element it carried, not the one its residue name implies.
@@ -940,6 +971,7 @@ def run():
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_sym_equiv_protons()
+  exercise_electron_microscopy_isolated()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
