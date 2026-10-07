@@ -1,9 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx import miller
 from libtbx import group_args
 import iotbx.phil
-import math
 
 """ LLGI map coefficients from the exact posterior of E (map-coefficient
 handoff, Oct 2026). On the E scale, with Ec = |Emodel| along the model
