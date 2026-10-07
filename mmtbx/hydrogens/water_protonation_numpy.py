@@ -307,11 +307,6 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   ``min_distance_sym_equiv`` to its own site counts as that same atom, which
   the asymmetric unit already holds.
 
-  An atom's image lands within ``radius`` of a water exactly when the atom
-  lies within ``radius`` of that water's inverse image, so the operators go on
-  the few water oxygens instead of on every atom. A pair table cannot be
-  seeded on the waters and costs several times as much.
-
   Returns ``(hierarchies, atoms, xyz)``: the sub-hierarchies, which own the
   atom objects and must be kept alive, their atoms in coordinate order, and
   their sites. All three are empty when symmetry places nothing in range.
@@ -321,64 +316,35 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
                        and a.element.strip().upper() == "O"])
   if not o_sel.size():
     return [], [], flex.vec3_double()
-  o_sites = sites_cart.select(o_sel)
-  unit_cell = crystal_symmetry.unit_cell()
-  tree = KDTree(sites_cart.as_numpy_array())
-  # Deposited coordinates need not lie inside one cell, so the translations to
-  # try span the fractional spread of the sites, not just the radius.
-  margin = [radius * x for x in unit_cell.reciprocal_parameters()[:3]]
-  fr_water = unit_cell.fractionalize(o_sites).parts()
-  lo_water = [flex.min(c) for c in fr_water]
-  hi_water = [flex.max(c) for c in fr_water]
-  tol_sq = min_distance_sym_equiv ** 2
+  siiu, _ = super_cell.get_siiu(
+    sites_cart=sites_cart, crystal_symmetry=crystal_symmetry,
+    select_within_radius=radius, selection=o_sel, buffer=0,
+    min_distance_sym_equiv=min_distance_sym_equiv)
+  if not siiu:
+    return [], [], flex.vec3_double()
   rg_of = {}
   for rg in hier.residue_groups():
     idx = [a.i_seq for a in rg.atoms()]
     for i in idx:
       rg_of[i] = idx
-  by_key = {}
-  for op in crystal_symmetry.space_group():
-    rot = unit_cell.matrix_cart(op.r())
-    trn = unit_cell.orthogonalize(op.t().as_double())
-    rot_inv = matrix.sqr(rot).transpose().elems
-    fwd = unit_cell.fractionalize(rot * sites_cart + trn).parts()
-    spans = []
-    for axis in range(3):
-      lo = lo_water[axis] - flex.max(fwd[axis]) - margin[axis]
-      hi = hi_water[axis] - flex.min(fwd[axis]) + margin[axis]
-      spans.append(range(int(math.floor(lo)), int(math.ceil(hi)) + 1))
-    for i in spans[0]:
-      for j in spans[1]:
-        for k in spans[2]:
-          shift = unit_cell.orthogonalize((i, j, k))
-          off = (trn[0] + shift[0], trn[1] + shift[1], trn[2] + shift[2])
-          near = tree.query_ball_point(
-            (rot_inv * (o_sites - off)).as_numpy_array(), radius,
-            return_sorted=False)
-          hit = set()
-          for row in near:
-            hit.update(row)
-          if not hit:
-            continue
-          idx = flex.size_t(sorted(hit))
-          own = sites_cart.select(idx)
-          dx, dy, dz = ((rot * own + off) - own).parts()
-          keep = (flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)) >= tol_sq
-          grown = set()
-          for j_seq in idx.select(keep):
-            grown.update(rg_of[int(j_seq)])
-          if grown:
-            by_key.setdefault((str(op), i, j, k), (rot, off, set()))[2].update(
-              grown)
+  # Group the residue groups by operator, keyed on str(op): get_siiu gives
+  # every operator the same denominators, so equal operators print alike.
+  by_op = {}
+  for j_seq, ops in siiu.items():
+    grp = rg_of[j_seq]
+    for op in ops:
+      by_op.setdefault(str(op), (op, set()))[1].update(grp)
+  unit_cell = crystal_symmetry.unit_cell()
   hiers = []
   atoms = []
   xyz = flex.vec3_double()
-  for key in sorted(by_key):
-    rot, off, grp = by_key[key]
+  for key in sorted(by_op):
+    op, grp = by_op[key]
     # copy_atoms: without it set_xyz moves the model's own atoms.
     sub = hier.select(flex.size_t(sorted(grp)), copy_atoms=True)
     sub_atoms = sub.atoms()
-    sub_atoms.set_xyz(rot * sub_atoms.extract_xyz() + off)
+    sub_atoms.set_xyz(super_cell.sym_equiv_sites_cart(
+      sites_cart=sub_atoms.extract_xyz(), unit_cell=unit_cell, rt_mx=op))
     hiers.append(sub)
     atoms.extend(list(sub_atoms))
     xyz.extend(sub_atoms.extract_xyz())
@@ -389,17 +355,13 @@ def _water_image_neighbours(sites, crystal_symmetry, radius,
                             min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Images of ``sites`` that crystal symmetry brings within ``radius`` of one.
 
-  Enumerating the operators beats a pair table here: the sites are few, a
-  table cannot be seeded on them, and the table would have to be built at this
-  radius rather than the smaller one the atom environment needs.
-
   Returns ``(by_site, transforms, own)``: per site, the sorted ``(block, other
   site)`` pairs whose image is in range; per block the cartesian ``(rotation,
   translation)`` that produces it, block 0 being an unused placeholder so a
   block index is never zero; and per site the blocks whose operator brings the
-  site's own image into range. An operator that fixes a site is dropped
-  throughout, the equivalent a pair table drops for being coincident with its
-  site.
+  site's own image into range. An equivalent closer than
+  ``min_distance_sym_equiv`` to its own site is that same site, and is
+  dropped.
   """
   n = sites.size()
   by_site = [[] for _ in range(n)]
@@ -407,60 +369,34 @@ def _water_image_neighbours(sites, crystal_symmetry, radius,
   transforms = [None]
   if not n:
     return by_site, transforms, own
-  unit_cell = crystal_symmetry.unit_cell()
-  # Deposited coordinates need not lie inside one cell, so the translations
-  # to try span the fractional spread of the sites, not just the radius.
-  margin = [radius * x for x in unit_cell.reciprocal_parameters()[:3]]
-  real = unit_cell.fractionalize(sites).parts()
-  lo_real = [flex.min(c) for c in real]
-  hi_real = [flex.max(c) for c in real]
-  tree = KDTree(sites.as_numpy_array())
-  tol_sq = min_distance_sym_equiv ** 2
+  # One table build serves the query for every site.
+  tables = super_cell.get_sym_equiv_tables(
+    sites_cart=sites, crystal_symmetry=crystal_symmetry, radius=radius,
+    min_distance_sym_equiv=min_distance_sym_equiv)
   found = []
-  found_own = []
-  for op in crystal_symmetry.space_group():
-    base = super_cell.sym_equiv_sites_cart(sites, unit_cell, op)
-    frac = unit_cell.fractionalize(base).parts()
-    spans = []
-    for axis in range(3):
-      lo = lo_real[axis] - flex.max(frac[axis]) - margin[axis]
-      hi = hi_real[axis] - flex.min(frac[axis]) + margin[axis]
-      spans.append(range(int(math.floor(lo)), int(math.ceil(hi)) + 1))
-    for i in spans[0]:
-      for j in spans[1]:
-        for k in spans[2]:
-          shift = unit_cell.orthogonalize((i, j, k))
-          pts = base + shift
-          dx, dy, dz = (pts - sites).parts()
-          fixed = (flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)) < tol_sq
-          for wj, near in enumerate(tree.query_ball_point(
-              pts.as_numpy_array(), radius, return_sorted=False)):
-            if fixed[wj]:
-              continue
-            for wi in near:
-              if wi == wj:
-                found_own.append((wj, (str(op), i, j, k)))
-              else:
-                found.append((int(wi), wj, (str(op), i, j, k)))
-  if not (found or found_own):
+  for wi in range(n):
+    siiu, _ = super_cell.get_siiu(
+      crystal_symmetry=crystal_symmetry, selection=[wi],
+      symmetry_tables=tables)
+    for wj, ops in siiu.items():
+      for op in ops:
+        found.append((wi, wj, op))
+  if not found:
     return by_site, transforms, own
   # Number the blocks by operator rather than by discovery order, so the slot
-  # order a site sees does not depend on how the spatial query enumerated it.
+  # order a site sees does not depend on the order the tables list pairs in.
+  unit_cell = crystal_symmetry.unit_cell()
   blocks = {}
-  by_str = {str(op): op for op in crystal_symmetry.space_group()}
-  keys = {f[2] for f in found} | {f[1] for f in found_own}
-  for key in sorted(keys):
+  for key, op in sorted({str(op): op for _, _, op in found}.items()):
     blocks[key] = len(blocks) + 1
-    op_str, i, j, k = key
-    op = by_str[op_str]
     transforms.append((
       matrix.sqr(unit_cell.matrix_cart(op.r())),
-      matrix.col(unit_cell.orthogonalize(op.t().as_double()))
-      + matrix.col(unit_cell.orthogonalize((i, j, k)))))
-  for wi, wj, key in found:
-    by_site[wi].append((blocks[key], wj))
-  for wj, key in found_own:
-    own[wj].append(blocks[key])
+      matrix.col(unit_cell.orthogonalize(op.t().as_double()))))
+  for wi, wj, op in found:
+    if wi == wj:
+      own[wj].append(blocks[str(op)])
+    else:
+      by_site[wi].append((blocks[str(op)], wj))
   for pairs in by_site:
     pairs.sort()
   for pairs in own:
