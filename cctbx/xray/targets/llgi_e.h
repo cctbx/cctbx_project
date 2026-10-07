@@ -4,62 +4,29 @@
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/array_family/shared.h>
-#include <scitbx/constants.h>
-#include <scitbx/math/bessel.h>
+#include <cctbx/xray/targets/llgi.h>
 #include <cctbx/xray/targets/llgi_exact.h>
-#include <complex>
 
 namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
 
   //! Log-likelihood-gain-of-intensities target for one miller index,
-  //! operating directly on normalised (E-value-scale) amplitudes.
-  /*! Companion to cctbx::xray::targets::llgi::target_one_h (llgi.h), which
-      is deliberately F-scale (so overall/anisotropic B-factor refinement
-      sees Fcalc's resolution falloff directly). This functor exists for a
-      different purpose -- the sigmaA(resolution) fit (doc/
-      llgi_target_design.md sec. 5) -- where normalising out overall
-      scale/anisotropy is exactly what is wanted, so the sigmaA fit doesn't
-      need to wait on or interact with that part of the scaling machinery.
-
-      No change of variables is needed here: this is a direct port of
-      phasertng's own E-scale functor (phasertng::likelihood::llgi::
-      function::target_gradient_hessian, phasertng/codebase/phasertng/
-      math/likelihood/llgi/function.cc), specialised to TEPS == 1 (tNCS is
-      not yet supported -- see phenix.refinement.llgi_data.
-      check_teps_no_tncs, which refuses to load data with TEPS != 1 before
-      any of this code ever runs, rather than risk a wrong formula: an
-      earlier draft of this derivation proposed V = TEPS*(1-D^2), which
-      turned out not to match phasertng's actual V = TEPS - DobsSigaSqr --
-      traced to Gfunction::calcRefineTerms, where TEPS (EPSFAC) and the
-      amplitude-side tNCS decay factor entangle through a non-trivial,
-      HKL-dependent interference sum, not a clean algebraic substitution).
-
-      With TEPS == 1:
+  //! on normalised (E-value-scale) amplitudes.
+  /*! The E-scale counterpart of llgi::target_one_h (llgi.h), used for the
+      sigmaA(resolution) fit, where normalising out the overall scale and
+      anisotropy is what is wanted. With TEPS == 1 it is llgi.h's target
+      with ScatFrac = RESN = TEPS = k = 1:
         V = 1 - D^2,  D = Dobs*sigmaA,  X = 2*D*Eeff*Emodel/V
+      There is no ScatFrac: on the E scale, the fraction of the expected
+      scattering the model accounts for is absorbed by normalising Emodel
+      (mmtbx.refinement.llgi_e_bulk_solvent.build_e_model).
 
-      There is no ScatFrac argument here (contrast llgi.h's target_one_h):
-      on the E-scale, accounting for how much of the expected scattering
-      the model reproduces is the job of how Emodel itself is normalised
-      (Emodel = f_model_no_aniso_scale / sqrt(EPS*SigmaP), see the design
-      note sec. 4), not of an extra multiplicative term on D.
-
-      eeff     = normalised experimental amplitude, Feff/RESN (RESN is
-                 nacelle's own "Root-EpsilonSigmaN" normaliser -- already
-                 epsilon- and Wilson-trend-corrected, so no further
-                 normalisation of Feff is needed here).
-      emodel   = normalised model amplitude, |f_model_no_aniso_scale| /
-                 sqrt(EPS * SigmaP) -- see mmtbx.refinement.llgi_sigmaa's
-                 Emodel builder.
-      dobs     = per-reflection reliability weight (Dobs), from
-                 phasertng.nacelle's DOBS column.
-      sigmaa   = sigmaA(resolution), a smooth function of resolution only,
-                 fitted against this same target on the R-free set (see
-                 sigmaa_target_and_gradients below).
+      eeff     = Feff/RESN.
+      emodel   = |f_model_no_aniso_scale|/sqrt(EPS*SigmaP).
+      dobs     = Dobs (nacelle DOBS column).
+      sigmaa   = sigmaA(resolution).
       centric  = flag (false for acentric, true for centric).
 
-      Returns a log-likelihood-*gain*, negated so that, like llgi.h's
-      target_one_h, it is a quantity for the refinement machinery to
-      *minimize*.
+      Returns the negated log-likelihood gain (minimize-me convention).
   */
   inline
   double
@@ -70,63 +37,11 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
     double sigmaa,
     bool centric)
   {
-    if (dobs <= 0.0 || sigmaa <= 0.0 || eeff <= 0.0 || emodel <= 0.0) {
-      return 0.0;
-    }
-    double d = dobs * sigmaa;
-    double v = 1.0 - d * d;
-    if (v <= 0.0) {
-      // function.cc: negative_variance() guard; no contribution.
-      return 0.0;
-    }
-    // Symmetrised form. phasertng's function.cc carries the Wilson/null-
-    // hypothesis baseline as a separate additive term wll = EOBS^2/teps
-    // (teps == 1 here, so wll = eeff^2), added AFTER subtracting
-    // eeff^2/V. Those two eeff terms collapse exactly:
-    //
-    //   -eeff^2/V + eeff^2 = eeff^2*(V - 1)/V = -d^2*eeff^2/V   (V = 1-d^2)
-    //
-    // so the gain is obtained directly by scaling eeff^2 by d^2 -- exactly
-    // the same d^2 factor that turns emodel^2 into ec_sq = (d*emodel)^2.
-    // The target is then manifestly SYMMETRIC in eeff and emodel, with no
-    // separate baseline term to add and subtract. Verified algebraically
-    // and numerically against the original three-term form (agreement to
-    // machine precision, both centric and acentric).
-    //
-    // Note the centric branch works out the same way: halving the core
-    // halves -eeff^2/V, which is exactly matched by function.cc halving
-    // wll, so the same -d^2*eeff^2/V term serves after halving.
-    double d_sq = d * d;
-    double ee_sq = d_sq * eeff * eeff;   // symmetric partner of ec_sq
-    double ec = d * emodel;              // function.cc: EC = |DobsSigaEcalc|
-    double ec_sq = ec * ec;
-    double x = 2. * eeff * ec / v;       // function.cc: X
-    double ll;
-    if(!centric) {
-      ll = -(std::log(v) + (ee_sq + ec_sq) / v);
-      ll += scitbx::math::bessel::ln_of_i0(x); // function.cc: tbl_alogchI0
-    }
-    else {
-      double ll_core = -(std::log(v) + (ee_sq + ec_sq) / v);
-      double x_half = x / 2.0;
-      // function.cc: tbl_alogch(X) approximates log(cosh(X)).
-      double ln_cosh = x_half + std::log((1. + std::exp(-2. * x_half)) / 2.);
-      ll = ll_core / 2.0 + ln_cosh;
-    }
-    // ll is the log-likelihood-gain; negate to match this file's (and
-    // llgi.h's) minimize-me convention.
-    return -ll;
+    return llgi::target_one_h(
+      eeff, emodel, dobs, sigmaa, 1., 1., 1., 1., centric);
   }
 
-  //! Gradient of the E-scale LLGI target for one Miller index w.r.t.
-  //! sigmaA, for use by a sigmaA(resolution) estimator (analogous to
-  //! llgi.h's d_target_one_h_over_sigmaa_scatfrac, but simpler: there is
-  //! no ScatFrac here, and D = dobs*sigmaa enters both EC = D*Emodel and
-  //! V = 1-D^2 exactly as in llgi.h, so this shares that derivation's
-  //! shape). Derived by hand and verified against central finite
-  //! differences (both centric and acentric) before being committed here;
-  //! see tst_llgi_e.py's exercise_d_target_over_dsigmaa. Already includes
-  //! the sign flip matching target_one_h's minimize-me convention.
+  //! Gradient of target_one_h w.r.t. sigmaA (minimize-me convention).
   inline
   double
   d_target_one_h_over_sigmaa(
@@ -136,54 +51,15 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
     double sigmaa,
     bool centric)
   {
-    if (dobs <= 0.0 || sigmaa <= 0.0 || eeff <= 0.0 || emodel <= 0.0) {
-      return 0.0;
-    }
-    double d = dobs * sigmaa;
-    double v = 1.0 - d * d;
-    if (v <= 0.0) {
-      return 0.0;
-    }
-    double ec = d * emodel;
-    double ec_sq = ec * ec;
-    double eeff_sq = eeff * eeff;
-    // dV_by_dD = d(1 - D^2)/dD = -2*D
-    double dv_by_dd = -2. * d;
-    // ll_core = -(log(V) + (Eeff^2+EC^2)/V); dEC_by_dD = Emodel.
-    double term1 = -(1. / v) * dv_by_dd;
-    double term2 = -(2. * ec * emodel * v - (eeff_sq + ec_sq) * dv_by_dd)
-                   / (v * v);
-    double d_ll_core_by_dd = term1 + term2;
-    double dll_by_dd; // d(ll)/dD, ll in gain form (pre sign-flip)
-    if(!centric) {
-      double x = 2. * eeff * ec / v;
-      double bess_term = scitbx::math::bessel::i1_over_i0(x);
-      // dX_by_dD = 2*eeff*(emodel*V - EC*dV_by_dD)/V^2
-      double dx_by_dd = 2. * eeff * (emodel * v - ec * dv_by_dd) / (v * v);
-      dll_by_dd = d_ll_core_by_dd + bess_term * dx_by_dd;
-    }
-    else {
-      double x_half = eeff * ec / v; // = X/2
-      double bess_term = std::tanh(x_half);
-      double dxhalf_by_dd = eeff * (emodel * v - ec * dv_by_dd) / (v * v);
-      dll_by_dd = d_ll_core_by_dd / 2.0 + bess_term * dxhalf_by_dd;
-    }
-    double d_target_by_dd = -dll_by_dd; // sign flip, target_one_h convention
-    // Chain rule through D = dobs*sigmaa: dd_by_dsigmaa = dobs.
-    return d_target_by_dd * dobs;
+    return llgi::d_target_one_h_over_sigmaa_scatfrac(
+      eeff, emodel, dobs, sigmaa, 1., 1., 1., 1., centric).first;
   }
 
-  //! Summed E-scale LLGI target and per-reflection d(target)/d(sigmaa),
-  //! for a selected set of reflections (in practice the R-free/test set --
-  //! see doc/llgi_target_design.md's E-scale design note sec. 5), for use
-  //! by a sigmaA(resolution) B-spline coefficient optimiser. Mirrors
-  //! llgi.h's sigmaa_scatfrac_target_and_gradients: every selected
-  //! reflection contributes to the mean (no separate work/test split --
-  //! the caller restricts `selection` itself), sigmaa is taken as an
-  //! already-evaluated per-reflection value (the spline curve evaluated
-  //! at this reflection's resolution, computed Python-side), and the
-  //! chain rule through B-spline coefficients is left to that Python-side
-  //! estimator.
+  //! Mean E-scale LLGI target and per-reflection d(target)/d(sigmaa) over
+  //! a selected set of reflections (the sigmaA fit uses the R-free set),
+  //! as llgi::sigmaa_scatfrac_target_and_gradients does on the F scale:
+  //! sigmaa is an already-evaluated per-reflection value, and the chain
+  //! rule through the curve's parameters is left to the Python-side fit.
   class sigmaa_target_and_gradients
   {
     protected:

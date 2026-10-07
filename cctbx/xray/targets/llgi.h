@@ -1,6 +1,7 @@
 #ifndef CCTBX_XRAY_TARGETS_LLGI_H
 #define CCTBX_XRAY_TARGETS_LLGI_H
 
+#include <cctbx/xray/targets.h>
 #include <scitbx/constants.h>
 #include <scitbx/math/bessel.h>
 #include <utility>
@@ -31,12 +32,10 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       ScatFrac is the fraction of the total scattering accounted for by the
       model as a function of resolution (equivalently, the ratio of mean
       calculated to mean expected intensity in a resolution shell); it is
-      passed as an explicit argument rather than folded into sigmaa, so
-      that sigmaA (the model-quality parameter refined against the LLGI
-      target on the test set) and ScatFrac (the resolution-dependent
-      scale/anisotropy corrector, whose fitting is meant to be driven by
-      this same target during overall-B refinement) stay independently
-      visible and debuggable.
+      passed separately from sigmaa because the two are fitted separately
+      (mmtbx.refinement.llgi_e_bulk_solvent.estimate_sigmaa_e_then_
+      scatfrac_f: sigmaA against the E-scale target, then ScatFrac against
+      this target with sigmaA fixed).
 
       feff     = effective amplitude (Feff), NOT normalized to the E-value
                  scale. Supplied by phasertng.nacelle as the FEFF column.
@@ -45,14 +44,10 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       dobs     = per-reflection reliability weight (Dobs), varies from
                  reflection to reflection. Supplied by phasertng.nacelle as
                  the DOBS column.
-      sigmaa   = sigmaA(resolution), a smooth function of resolution only,
-                 estimated within phenix.refine (see llgi_sigmaa
-                 estimator), optimized against this same target on the
-                 R-free set.
+      sigmaa   = sigmaA(resolution), a smooth function of resolution only.
       scatfrac = ScatFrac(resolution), a smooth function of resolution
-                 only. Passed explicitly (see above) rather than combined
-                 into sigmaa.
-      k        = overall scale coefficient.
+                 only (see above).
+      k        = overall scale coefficient (values <= 0 are taken as 1).
       teps     = per-reflection tNCS-adjusted normalization factor (nacelle
                  TEPS column); equals 1 in the ordinary case (no tNCS).
       resn     = per-reflection Root-EpsilonSigmaN normalization (nacelle
@@ -114,18 +109,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     // by scaling feff^2, mirroring how ec_sq = (d*fc)^2 scales fc^2 -- no
     // separate baseline term to add and subtract.
     //
-    // IMPORTANT: on the F-scale the multiplier is d^2/TEPS, NOT the plain
-    // d^2 that appears in llgi_e.h. The two coincide only at TEPS == 1
-    // (which is why the E-scale form, where TEPS is identically 1, takes
-    // the simpler shape). Since tNCS support (TEPS != 1) is deferred but
-    // intended, using a plain d^2 here would silently bake in a wrong
-    // formula in exactly the case that support is meant to enable:
-    // checked numerically, at TEPS = 2 the plain-d^2 form gives -0.618
-    // where the correct value is -1.395. Verified algebraically (sympy)
-    // and numerically against the original three-term form over ~39k
-    // randomised cases spanning TEPS in [1,3], centric and acentric,
-    // agreeing to ~1e-9 relative (that residual is ln_of_i0's own
-    // tabulated-approximation noise, not a difference between the forms).
+    // The multiplier is d^2/TEPS, not d^2: the two coincide only at
+    // TEPS == 1 (tst_llgi.py checks the TEPS != 1 case against the
+    // three-term form).
     double ee_sq = (d * d / teps) * feff_sq; // symmetric partner of ec_sq
     double ll;
     if(!centric) {
@@ -172,12 +158,12 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
   {
     CCTBX_ASSERT(teps > 0);
     CCTBX_ASSERT(resn > 0);
-    CCTBX_ASSERT(feff >= 0);
     double fc = std::abs(fc_complex);
-    if(fc == 0) return std::complex<double>(0, 0);
     if(k <= 0.0) k = 1.0;
     std::complex<double> d_target_over_fc(0, 0);
-    if (dobs <= 0.0 || sigmaa <= 0.0 || scatfrac <= 0.0) {
+    // Same "no contribution" conditions as target_one_h.
+    if (dobs <= 0.0 || sigmaa <= 0.0 || scatfrac <= 0.0
+        || feff <= 0.0 || fc <= 0.0) {
       return d_target_over_fc;
     }
     double d = dobs * (sigmaa / std::sqrt(scatfrac)) * k;
@@ -204,20 +190,14 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
   }
 
   //! Gradient of the LLGI target for one Miller index w.r.t. sigmaA and
-  //! ScatFrac, for use by a sigmaA(resolution)/ScatFrac(resolution)
-  //! estimator (see doc/llgi_target_design.md sec. 5) that parameterises
-  //! both as B-spline curves and optimises their coefficients directly
-  //! against the LLGI target.
+  //! ScatFrac, for the sigmaA/ScatFrac fits.
   /*! Unlike d_target_one_h_over_fc (whose chain rule through EC = D*fc is
       simple because V does not depend on fc), D = dobs*sigmaa/sqrt(
-      scatfrac) enters *both* EC = D*fc *and* V = teps*resn^2*(teps-D^2),
-      so this derivative genuinely differs from, and is not obtainable by
-      symmetry from, d_target_one_h_over_fc. Derived by hand and verified
-      against central finite differences (both centric and acentric,
-      max abs error ~1e-9) before being committed here; see also
-      tst_llgi.py's exercise_d_target_over_d_sigmaa_scatfrac. Returns
-      (d target/d sigmaa, d target/d scatfrac); both already include the
-      sign flip matching target_one_h's minimize-me convention.
+      scatfrac) enters both EC = D*fc and V = teps*resn^2*(teps-D^2).
+      Returns (d target/d sigmaa, d target/d scatfrac), both with the sign
+      flip of target_one_h's minimize-me convention (checked by finite
+      differences in tst_llgi.py's
+      exercise_sigmaa_scatfrac_finite_difference_gradients).
   */
   inline
   std::pair<double, double>
@@ -408,25 +388,17 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       std::size_t n_exact_;
   };
 
-  //! Summed LLGI target and per-reflection d(target)/d(sigmaa),
-  //! d(target)/d(scatfrac), for a selected set of reflections (in
-  //! practice, the R-free/test set -- see doc/llgi_target_design.md sec.
-  //! 5.2), for use by a sigmaA(resolution)/ScatFrac(resolution) B-spline
-  //! coefficient optimiser. Unlike target_and_gradients (used for the
-  //! atomic-parameter refinement target, gradient w.r.t. Fcalc, work-set
-  //! normalised), this class:
-  //!  - includes every selected reflection in the summed target/gradients
-  //!    (no separate work/test split -- the caller already restricts
-  //!    `selection` to the desired set, typically r_free_flags itself),
-  //!  - returns *per-reflection*, not per-work-set-index, gradient
-  //!    arrays (same size and order as the inputs), leaving the chain
-  //!    rule through B-spline coefficients (a fixed design matrix, linear
-  //!    in the coefficients) to the Python-side estimator,
-  //!  - takes sigmaa/scatfrac as already-evaluated per-reflection values
-  //!    (i.e. the spline curve evaluated at each reflection's resolution,
-  //!    computed Python-side) rather than a resolution parameterisation
-  //!    itself, keeping this class's C++ math independent of the spline
-  //!    representation.
+  //! Mean LLGI target and per-reflection d(target)/d(sigmaa),
+  //! d(target)/d(scatfrac) over a selected set of reflections (the
+  //! ScatFrac fit uses the working set), for the sigmaA/ScatFrac fits.
+  //! Unlike target_and_gradients (the atomic-parameter target, gradient
+  //! w.r.t. Fcalc, work-set normalised), this class:
+  //!  - averages over the selected reflections only (the caller chooses
+  //!    the set),
+  //!  - returns per-reflection gradient arrays (same size and order as
+  //!    the inputs), leaving the chain rule through the curve's parameters
+  //!    to the Python-side fit,
+  //!  - takes sigmaa/scatfrac as already-evaluated per-reflection values.
   class sigmaa_scatfrac_target_and_gradients
   {
     protected:

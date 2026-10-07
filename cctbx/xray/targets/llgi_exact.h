@@ -6,6 +6,8 @@
 #include <scitbx/array_family/shared.h>
 #include <limits>
 #include <scitbx/constants.h>
+#include <scitbx/math/quadrature.h>
+#include <cctbx/french_wilson.h>
 #include <boost/math/special_functions/bessel.hpp>
 #include <algorithm>
 #include <cmath>
@@ -42,49 +44,26 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       high sigmaA and large ec), and smooth (the centric J^(-1/2)
       singularity is absorbed by the substitution), so a single
       Gauss-Legendre rule over the interval where the log-integrand is
-      within `drop` of its maximum is used throughout. Node placement
-      depends on all the arguments, so the rule adapts to the tilt; fixed
-      nodes per (reflection, sigmaA), as in the handoff prototype, fail
-      badly there.
+      within `drop` of its maximum is used throughout. The interval is
+      placed around the mode of the actual integrand, so the rule follows
+      the tilt.
   */
 
-  //! Gauss-Legendre nodes/weights on [-1,1], computed once.
-  class gauss_legendre
+  //! 32-point Gauss-Legendre nodes and weights on [-1,1], computed once.
+  struct gauss_legendre_32
   {
-    public:
-      std::vector<double> x, w;
-      explicit gauss_legendre(std::size_t n)
-      : x(n), w(n)
-      {
-        const double pi = scitbx::constants::pi;
-        for (std::size_t i = 0; i < (n+1)/2; i++) {
-          double z = std::cos(pi * (i + 0.75) / (n + 0.5));
-          double pp = 0;
-          for (int it = 0; it < 100; it++) {
-            double p1 = 1, p2 = 0;
-            for (std::size_t j = 1; j <= n; j++) {
-              double p3 = p2; p2 = p1;
-              p1 = ((2.*j - 1.) * z * p2 - (j - 1.) * p3) / j;
-            }
-            pp = n * (z * p1 - p2) / (z * z - 1.);
-            double z1 = z;
-            z = z1 - p1 / pp;
-            if (std::abs(z - z1) < 1e-16) break;
-          }
-          x[i] = -z; x[n-1-i] = z;
-          w[i] = w[n-1-i] = 2. / ((1. - z * z) * pp * pp);
-        }
-      }
-      static gauss_legendre const& get32()
-      {
-        static const gauss_legendre gl(32);
-        return gl;
-      }
-      static gauss_legendre const& get96()
-      {
-        static const gauss_legendre gl(96);
-        return gl;
-      }
+    af::shared<double> x, w;
+    gauss_legendre_32()
+    {
+      scitbx::math::quadrature::gauss_legendre_engine<double> engine(32);
+      x = engine.x();
+      w = engine.w();
+    }
+    static gauss_legendre_32 const& get()
+    {
+      static const gauss_legendre_32 gl;
+      return gl;
+    }
   };
 
   //! ln B(x), x >= 0: ln I0(x) (acentric) or ln cosh(x) (centric).
@@ -133,7 +112,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
 
     integral(
       double eo_sq, double sig, double lambda, double kappa, bool centric,
-      double drop = 36., bool high_precision = false)
+      double drop = 36.)
     {
       CCTBX_ASSERT(sig > 0);
       const double p = centric ? -0.5 : 0.;
@@ -234,8 +213,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
       // Gauss-Legendre on [s_lo, s_hi]; J = sig s^2,
       // dJ J^p = sig^(1+p) 2 s^q ds.
-      gauss_legendre const& gl = high_precision ? gauss_legendre::get96()
-                                                : gauss_legendre::get32();
+      gauss_legendre_32 const& gl = gauss_legendre_32::get();
       std::size_t n = gl.x.size();
       double half = 0.5 * (s_hi - s_lo);
       std::vector<double> lw(n), s(n);
@@ -324,14 +302,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   }
 
   //! 2nd/4th-moment Rice parameters from the French-Wilson posterior, as in
-  //! phasertng's math::rice_from_intensity: <E^2> by the same quadrature
-  //! (exact for both acentric and centric), <E^4> = m <E^2> + k sig^2 with
-  //! k = 1 (acentric) or 1/2 (centric) and m = eo_sq - k sig^2.
-  //! For large sig that identity is a difference of two terms of order
-  //! sig^2, and near the edge of the Rice family (D -> 0) the solution
-  //! depends on a further near-cancellation, so <E^2> is computed with
-  //! 96 nodes (to about machine precision) rather than the 32 used for
-  //! the likelihood; phasertng gets the same precision from closed forms.
+  //! phasertng's math::rice_from_intensity: <E^2> from the closed form
+  //! cctbx::expectEsqFW (as used by nacelle), <E^4> = m <E^2> + k sig^2
+  //! with k = 1 (acentric) or 1/2 (centric) and m = eo_sq - k sig^2.
   struct rice_moments
   {
     bool valid;
@@ -350,7 +323,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
       const double k = centric ? 0.5 : 1.;
       const double m = eo_sq - k * sig * sig;
-      mu2 = integral(eo_sq, sig, k, 0., centric, 36., true).e_j;
+      mu2 = cctbx::expectEsqFW(eo_sq, sig, centric);
       mu4 = m * mu2 + k * sig * sig;
       const double eta = mu2 - 1.;
       double gap, disc;
@@ -419,8 +392,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   //! error shrinks, so the exact likelihood is used where
   //!   1 - D^2 > rice_kappa (1 - a^2)^2
   //! i.e. where the measurement variance is not small compared with the
-  //! square of the model variance (hybrid LLGI handoff, revision 2, sec. 5.5,
-  //! applied at every sigmaA a), or where force_exact (no Rice solution);
+  //! square of the model variance, or where force_exact (no Rice solution);
   //! Rice everywhere else. Reflections with
   //! sig_e_obs_sq <= 0 (no intensity error estimate) always use Rice.
   //! rice_kappa <= 0 means exact wherever possible, for fits of sigmaA
@@ -526,14 +498,18 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   //! acentric, -1/2 centric), where h = I/sigma_I - sigma_I/<I>
   //! (acentric) or I/sigma_I - sigma_I/(2<I>) (centric), the French-Wilson
   //! F = <sqrt(u)> sqrt(sigma_I) and SIGF = sd(sqrt(u)) sqrt(sigma_I).
+  //! The moments are cctbx's closed forms with sigma = 1: the posterior
+  //! above is that of E^2 = u for an observed E^2 = h + 1 (acentric) or
+  //! h + 1/2 (centric).
   struct french_wilson_moments
   {
     double mean, sd;
     french_wilson_moments(double h, bool centric)
     {
-      integral m(h, 1.0, 0.0, 0.0, centric);
-      mean = m.e_s;
-      sd = std::sqrt(std::max(m.e_j - m.e_s * m.e_s, 0.0));
+      const double eo_sq = h + (centric ? 0.5 : 1.0);
+      mean = cctbx::expectEFW(eo_sq, 1.0, centric);
+      double mean_u = cctbx::expectEsqFW(eo_sq, 1.0, centric);
+      sd = std::sqrt(std::max(mean_u - mean * mean, 0.0));
     }
   };
 

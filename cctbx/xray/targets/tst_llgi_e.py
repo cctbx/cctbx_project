@@ -7,8 +7,7 @@ def make_inputs(n_refl, centric, seed=0):
   # Deterministic pseudo-random-ish inputs (no RNG dependency) covering a
   # spread of magnitudes, chosen so that dobs*sigmaa stays comfortably
   # below 1 (i.e. v = 1 - d^2 > 0) for every reflection, avoiding the
-  # negative-variance guard in the basic checks. Mirrors tst_llgi.py's
-  # make_inputs, but on the E-scale (no fc phase, no resn/scatfrac/teps/k).
+  # negative-variance guard in the basic checks.
   e_eff = flex.double([0.3 + 0.17 * ((seed + i) % 7) for i in range(n_refl)])
   dobs = flex.double([0.4 + 0.05 * ((seed + i) % 6) for i in range(n_refl)])
   sigmaa = flex.double([0.5 + 0.03 * ((seed + i) % 5) for i in range(n_refl)])
@@ -65,8 +64,7 @@ def exercise_negative_variance_guard():
 
 def exercise_selection_restricts_reflections():
   # Reflections outside `selection` should not affect target() or
-  # gradients at all (relied on by the design's Stage-1/Stage-2 split --
-  # R-free-only vs working-set-only -- see design note sec. 5-6).
+  # gradients at all (the sigmaA fit uses the R-free set only).
   inputs = make_inputs(6, centric=False, seed=2)
   selection = flex.bool([True, False, True, False, True, False])
   inputs["selection"] = selection

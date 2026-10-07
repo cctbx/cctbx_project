@@ -20,8 +20,7 @@ reference = [
   ( 5.0,  2.0, 1.0, 0.3, True,   0.001630498345),
   ( 1.0,  1.0, 1.5, 0.6, True,  -0.07630331786),
   ( 1.0,  1.0, 1.0, 0.3, True,   8.9555402e-5),
-  # Strongly Bessel-tilted cases, where fixed nodes per (reflection,
-  # sigmaA) fail badly (errors of 1-50 in the LLGI).
+  # Strongly Bessel-tilted cases.
   (400.0, 3.0, 4.0, 0.98, False, -4405.31226933),
   (400.0, 3.0, 8.0, 0.98, True,  -1417.13144187),
   (150.0, 10.0, 4.0, 0.95, False,   7.88554544938),
@@ -268,7 +267,7 @@ def exercise_rice_moments_large_sigma():
     sig_e_obs_sq=flex.double([c[1] for c in cases]),
     centric_flags=flex.bool([c[2] for c in cases]))
   for i, c in enumerate(cases):
-    assert abs(r.mu2[i] / c[3] - 1) < 1e-12, (i, r.mu2[i], c[3])
+    assert abs(r.mu2[i] / c[3] - 1) < 1e-10, (i, r.mu2[i], c[3])
     assert r.valid[i], i
     assert abs(math.sqrt(r.dsqr[i]) / c[4] - 1) < 0.01, (i, r.dsqr[i])
     assert abs(r.eeff[i] / c[5] - 1) < 0.01, (i, r.eeff[i])

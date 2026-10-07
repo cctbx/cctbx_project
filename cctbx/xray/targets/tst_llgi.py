@@ -5,7 +5,7 @@ from libtbx.test_utils import approx_equal
 from six.moves import range
 import math
 
-def make_inputs(n_refl, centric, seed=0):
+def make_inputs(n_refl, centric, seed=0, teps=1.0):
   # Deterministic pseudo-random-ish inputs (no RNG dependency) covering a
   # spread of magnitudes, chosen so that dobs*sigmaa/sqrt(scatfrac) stays
   # comfortably below sqrt(teps) (i.e. v_e = teps - d^2 > 0) for every
@@ -14,7 +14,7 @@ def make_inputs(n_refl, centric, seed=0):
   dobs = flex.double([0.4 + 0.05 * ((seed + i) % 6) for i in range(n_refl)])
   sigmaa = flex.double([0.5 + 0.03 * ((seed + i) % 5) for i in range(n_refl)])
   scatfrac = flex.double([0.8 + 0.02 * ((seed + i) % 4) for i in range(n_refl)])
-  teps = flex.double([1.0 for i in range(n_refl)])
+  teps = flex.double([teps for i in range(n_refl)])
   resn = flex.double([1.0 + 0.1 * ((seed + i) % 3) for i in range(n_refl)])
   centric_flags = flex.bool([centric for i in range(n_refl)])
   r_free_flags = flex.bool([(i % 4 == 0) for i in range(n_refl)])
@@ -42,9 +42,9 @@ def target_work(inputs, scale_factor=1.0, compute_gradients=False):
     centric_flags=inputs["centric_flags"],
     compute_gradients=compute_gradients)
 
-def exercise_finite_difference_gradients(centric):
+def exercise_finite_difference_gradients(centric, teps):
   n_refl = 12
-  inputs = make_inputs(n_refl, centric=centric, seed=3)
+  inputs = make_inputs(n_refl, centric=centric, seed=3, teps=teps)
   result = target_work(inputs, compute_gradients=True)
   ana_grads = result.gradients_work()
   # gradients_work() only covers work reflections (r_free_flags == False);
@@ -80,9 +80,9 @@ def exercise_finite_difference_gradients(centric):
     d_by_dre_ana = g.real
     d_by_dim_ana = g.imag
     assert approx_equal(d_by_dre_ana, fin_grads[0], eps=5.e-5), (
-      centric, ih, d_by_dre_ana, fin_grads[0])
+      centric, teps, ih, d_by_dre_ana, fin_grads[0])
     assert approx_equal(d_by_dim_ana, fin_grads[1], eps=5.e-5), (
-      centric, ih, d_by_dim_ana, fin_grads[1])
+      centric, teps, ih, d_by_dim_ana, fin_grads[1])
 
 def exercise_resn_scale_invariance():
   # Scaling f_eff, f_calc and resn all by the same positive factor should
@@ -139,20 +139,13 @@ def exercise_scatfrac_sensitivity():
   mismatched_val = target_work(mismatched).target_work()
   assert mismatched_val > base, (base, mismatched_val)
 
-def exercise_sigmaa_scatfrac_finite_difference_gradients():
-  # Verifies llgi.h's d_target_one_h_over_sigmaa_scatfrac (used by the
-  # sigmaA(resolution)/ScatFrac(resolution) B-spline estimator, see
-  # doc/llgi_target_design.md sec. 5.2) against central finite differences
-  # of llgi_sigmaa_scatfrac_target_and_gradients' summed target -- through
-  # the actual compiled/bound code path, not just the standalone hand
-  # derivation this function's math was originally checked against.
-  # Mixes centric and acentric reflections in one call (unlike
-  # exercise_finite_difference_gradients, which uses a uniform flag per
-  # call) since d_target_one_h_over_sigmaa_scatfrac's centric/acentric
-  # branches share no code with each other or with
-  # d_target_one_h_over_fc's branches.
+def exercise_sigmaa_scatfrac_finite_difference_gradients(teps):
+  # llgi.h's d_target_one_h_over_sigmaa_scatfrac (used by the sigmaA and
+  # ScatFrac fits) against central finite differences of
+  # llgi_sigmaa_scatfrac_target_and_gradients' target, mixing centric and
+  # acentric reflections in one call.
   n_refl = 8
-  inputs = make_inputs(n_refl, centric=False, seed=7)
+  inputs = make_inputs(n_refl, centric=False, seed=7, teps=teps)
   inputs["centric_flags"] = flex.bool(
     [(i % 3 == 0) for i in range(n_refl)])
   selection = flex.bool([True] * n_refl)
@@ -188,16 +181,13 @@ def exercise_sigmaa_scatfrac_finite_difference_gradients():
     assert approx_equal(ana_dscatfrac[i], fd_dscatfrac, eps=5.e-5), (
       i, ana_dscatfrac[i], fd_dscatfrac)
 
-def _reference_target_original_three_term_form(
+def _reference_target_three_term_form(
       f_eff, f_calc, dobs, sigmaa, scatfrac, k, teps, resn, centric):
-  """ The ORIGINAL, phasertng-shaped LLGI target for one reflection: the
-  Wilson/null-hypothesis baseline carried as a separate additive term
-  wll = EOBS^2/teps = feff^2/(teps^2*resn^2), added after subtracting
-  feff^2/V. llgi.h now instead folds those two feff terms together into a
-  single -(d^2/teps)*feff^2/V (see its target_one_h comments); this is an
-  independent reimplementation of the pre-simplification form, kept here
-  so the equivalence is pinned by a test rather than only by the algebra.
-  """
+  """ The LLGI target for one reflection in phasertng's three-term form:
+  the Wilson/null-hypothesis term wll = EOBS^2/teps = feff^2/(teps^2*
+  resn^2) added separately after subtracting feff^2/V. llgi.h combines
+  the two feff terms into -(d^2/teps)*feff^2/V; this independent
+  implementation checks that. """
   from scitbx.math import bessel_ln_of_i0
   d = dobs * (sigmaa / math.sqrt(scatfrac)) * k
   resn_sq = resn * resn
@@ -222,20 +212,10 @@ def _reference_target_original_three_term_form(
     ll = ll_core / 2.0 + ln_cosh + wll
   return -ll
 
-def exercise_symmetrised_form_matches_original():
-  # llgi.h's target_one_h was simplified to be symmetric in feff and fc:
-  # the separate additive wll baseline was folded into the feff^2 term,
-  # giving -(d^2/teps)*feff^2/V as the partner of -(d*fc)^2/V. Verify that
-  # simplification changes nothing, against an independent Python
-  # reimplementation of the original three-term form.
-  #
-  # The teps != 1 cases matter specifically: on the F-scale the folded
-  # multiplier is d^2/TEPS, not the plain d^2 that the E-scale form
-  # (llgi_e.h, where TEPS is identically 1) uses. The two agree only at
-  # TEPS == 1, so a plain-d^2 F-scale implementation would pass every
-  # existing test (all of which use teps == 1) and be wrong precisely
-  # where deferred tNCS support is meant to land. At teps = 2 the two
-  # differ by more than a factor of two.
+def exercise_target_matches_three_term_form():
+  # llgi.h's target_one_h (symmetric in feff and fc, with the multiplier
+  # d^2/TEPS on feff^2) against phasertng's three-term form, including
+  # TEPS != 1, where d^2/TEPS and d^2 differ.
   import random
   rnd = random.Random(7)
   n_checked = 0
@@ -246,11 +226,10 @@ def exercise_symmetrised_form_matches_original():
     sigmaa = rnd.uniform(0.05, 0.95)
     scatfrac = rnd.uniform(0.3, 1.4)
     k = rnd.uniform(0.5, 1.5)
-    # Deliberately include teps != 1 (the case no other test covers).
     teps = 1.0 if (trial % 2 == 0) else rnd.uniform(1.0, 3.0)
     resn = rnd.uniform(0.5, 20.0)
     for centric in (False, True):
-      expected = _reference_target_original_three_term_form(
+      expected = _reference_target_three_term_form(
         f_eff, fc_mag, dobs, sigmaa, scatfrac, k, teps, resn, centric)
       phase = 0.37 * trial
       result = ext.llgi_target_and_gradients(
@@ -272,12 +251,10 @@ def exercise_symmetrised_form_matches_original():
       n_checked += 1
   assert n_checked == 800, n_checked  # 400 trials x {acentric, centric}
 
-def exercise_symmetrised_form_is_symmetric_in_feff_and_fc():
-  # The point of the simplification: with the baseline folded in, the
-  # target depends on feff and fc through the symmetric pair
-  # (d^2/teps)*feff^2 and (d*fc)^2 (plus the Bessel argument, itself
-  # symmetric in the two). At teps == 1 and k == 1 the substitution
-  # feff <-> fc must therefore leave the target unchanged.
+def exercise_target_is_symmetric_in_feff_and_fc():
+  # The target depends on feff and fc through (d^2/teps)*feff^2,
+  # (d*fc)^2 and the Bessel argument, so at teps == 1 and k == 1 swapping
+  # feff and fc must leave it unchanged.
   import random
   rnd = random.Random(13)
   for trial in range(200):
@@ -303,14 +280,15 @@ def exercise_symmetrised_form_is_symmetric_in_feff_and_fc():
         t(a, b), t(b, a), a, b, centric)
 
 def exercise():
-  exercise_finite_difference_gradients(centric=False)
-  exercise_finite_difference_gradients(centric=True)
+  for teps in (1.0, 1.7):
+    exercise_finite_difference_gradients(centric=False, teps=teps)
+    exercise_finite_difference_gradients(centric=True, teps=teps)
+    exercise_sigmaa_scatfrac_finite_difference_gradients(teps=teps)
   exercise_resn_scale_invariance()
   exercise_negative_variance_guard()
   exercise_scatfrac_sensitivity()
-  exercise_sigmaa_scatfrac_finite_difference_gradients()
-  exercise_symmetrised_form_matches_original()
-  exercise_symmetrised_form_is_symmetric_in_feff_and_fc()
+  exercise_target_matches_three_term_form()
+  exercise_target_is_symmetric_in_feff_and_fc()
   print("OK")
 
 if (__name__ == "__main__"):
