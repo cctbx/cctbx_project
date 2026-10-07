@@ -339,6 +339,31 @@ def _unit(a, b):
   return (va - vb).normalize()
 
 
+def _fallback_cage_pdb():
+  """A bare water whose every H1 candidate clashes.
+
+  A C atom sits 2.42 A from the water O along each of the placer's fallback
+  directions, so every fallback candidate for H1 lies 1.463 A from one. The
+  one acceptor, an O 2.8 A out, lies 6 deg off fallback direction 4; its
+  candidate clashes too, but at 1.472 A, so the fallback settles on it. The
+  gaps between the C atoms leave parts of the H2 cone clear.
+
+  Returns
+  -------
+  str
+      PDB-format record text.
+  """
+  o = matrix.col((10.0, 10.0, 10.0))
+  dirs = [matrix.col(d).normalize() for d in wp._WATER_FALLBACK_DIRECTIONS]
+  acc = dirs[4].rotate_around_origin(axis=dirs[4].ortho(), angle=6.0, deg=True)
+  sites = [("O   HOH W", 1, o), ("O   ACA D", 1, o + acc * 2.8)]
+  sites += [("C   BLK X", i + 1, o + d * 2.42) for i, d in enumerate(dirs)]
+  return "".join(
+    f"HETATM{k + 1:5d}  {label}{resseq:4d}    {x:8.3f}{y:8.3f}{z:8.3f}"
+    f"  1.00 10.00           {label[0]}\n"
+    for k, (label, resseq, (x, y, z)) in enumerate(sites)) + "END\n"
+
+
 # Water 1.3 A from the +a face of a 10 A cell, its only acceptor 7.2 A away
 # across the cell. The acceptor's +a translate sits 2.8 A from the water, so
 # the H-bond exists only once crystal symmetry is honoured.
@@ -617,6 +642,40 @@ def exercise_h2_reachable_acceptor():
   assert d2.dot(acc) > 0.9, (
     f"H2 should aim at the reachable acceptor on the cone; "
     f"alignment {d2.dot(acc):.3f}")
+
+
+def exercise_h2_after_acceptor_fallback():
+  """H2 ignores H1's acceptor when the H1 fallback chose it.
+
+  Places on ``_fallback_cage_pdb``, where every H1 candidate clashes and the
+  fallback settles on the lone acceptor. With no other acceptor, H2 must
+  take the clash-free point of the sampled H-O-H cone with the most
+  clearance; scoring H1's acceptor, which every cone point sees at the same
+  104.5 deg, would leave the choice to rounding noise.
+  """
+  hier = _hierarchy(_fallback_cage_pdb())
+  wp.place_water_hydrogens(hier, n_refine=0)
+  o, hs = _water_atoms(hier)
+  acc = next(a for a in hier.atoms() if a.parent().resname == "ACA")
+  d1 = _unit(hs["H1"], o)
+  assert d1.dot(_unit(acc, o)) > 0.9999, "H1 is not on the acceptor"
+  heavy = [matrix.col(a.xyz) for a in hier.atoms()
+           if a.parent().resname != "HOH"]
+  def clearance(pt):
+    return min((pt - x).length() for x in heavy)
+  p, q = (matrix.col(v) for v in wp._ortho_frame(d1.elems))
+  hoh = math.radians(wp._WATER_HOH_DEG)
+  n = wp._WATER_CONE_SAMPLES
+  cone = [matrix.col(o.xyz) + wp._WATER_OH_XRAY * (
+            d1 * math.cos(hoh) + (p * math.cos(2 * math.pi * k / n)
+                                  + q * math.sin(2 * math.pi * k / n))
+            * math.sin(hoh)) for k in range(n)]
+  best = max((c for c in cone if clearance(c) >= wp._WATER_MIN_CLEARANCE),
+             key=clearance)
+  h2 = matrix.col(hs["H2"].xyz)
+  assert (h2 - best).length() < 1e-6, (
+    f"H2 clearance {clearance(h2):.3f} A, clearest on the cone "
+    f"{clearance(best):.3f} A")
 
 
 def exercise_refinement_reduces_clashes():
@@ -1031,6 +1090,7 @@ def run():
   exercise_hetatm_flag()
   exercise_heavy_cation_repulsion()
   exercise_h2_reachable_acceptor()
+  exercise_h2_after_acceptor_fallback()
   exercise_refinement_reduces_clashes()
   exercise_completed_water_survives_refinement()
   exercise_element_override()

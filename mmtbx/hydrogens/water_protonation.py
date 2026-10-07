@@ -896,7 +896,11 @@ class _WaterHydrogenPlacer(object):
           pick = int(lo[b]) if b < lo.size() else na + int(hi[b - lo.size()])
         else:
           pick = int(rows[flex.max_index(s_cl.best_at(rows))])
-        d1 = acc_dirs[pick] if pick < na else _FALLBACK_DIRS[pick - na]
+        if pick < na:
+          d1 = acc_dirs[pick]
+          h1_k = pick
+        else:
+          d1 = _FALLBACK_DIRS[pick - na]
     h1_xyz = (o[0] + self.oh_length * d1[0],
               o[1] + self.oh_length * d1[1],
               o[2] + self.oh_length * d1[2])

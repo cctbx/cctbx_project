@@ -791,7 +791,10 @@ class _WaterHydrogenPlacer(object):
         # (cation-ok, clash-free) as one rank, then clearance, first wins.
         rank = cand_cat.astype(np.int8) * 2 + cand_ok
         top = rank == rank.max()
-        d1 = cand_dirs[int(np.argmax(np.where(top, cand_best, -np.inf)))]
+        pick = int(np.argmax(np.where(top, cand_best, -np.inf)))
+        d1 = cand_dirs[pick]
+        if pick < na:
+          h1_k = pick
     h1_xyz = o + self.oh_length * d1
 
     p, q = _ortho_frame(d1)
