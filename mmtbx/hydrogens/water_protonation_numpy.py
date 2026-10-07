@@ -51,6 +51,9 @@ _WATER_CONE_SAMPLES = 36      # angular samples around the O-H1 cone
 _WATER_MIN_CLEARANCE = 1.5
 _WATER_MIN_H_CLEARANCE = 2.0
 _WATER_CLEARANCE_RADIUS = 3.0  # neighbour search radius for clearance (A)
+# Distance under which a symmetry equivalent is the same atom, not a copy.
+_WATER_SYM_EQUIV_TOL = 0.5
+
 # Relaxation sweeps after the greedy pass, each re-placing every water
 # against the final positions of all the others.
 _WATER_REFINE_SWEEPS = 5
@@ -284,55 +287,177 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
   return lobes
 
 
-def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius):
+def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
+                          min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Copies of the atoms crystal symmetry places within ``radius`` of a water.
 
   Each copy carries its whole residue group, so an acceptor keeps the bonded
   neighbours its lobe geometry needs and an N keeps the H that marks it a
   donor. Copies are environment only: the waters to protonate come from the
-  asymmetric unit, so a symmetry mate contributes its O but never a placed H.
+  asymmetric unit, and a mate's placed protons are tracked separately (see
+  :func:`_water_image_neighbours`). An equivalent closer than
+  ``min_distance_sym_equiv`` to its own site counts as that same atom, which
+  the asymmetric unit already holds.
+
+  An atom's image lands within ``radius`` of a water exactly when the atom
+  lies within ``radius`` of that water's inverse image, so the operators go on
+  the few water oxygens instead of on every atom. A pair table cannot be
+  seeded on the waters and costs several times as much.
 
   Returns ``(hierarchies, atoms, xyz)``: the sub-hierarchies, which own the
   atom objects and must be kept alive, their atoms in coordinate order, and
   their sites. All three are empty when symmetry places nothing in range.
   """
-  seeds = flex.size_t([a.i_seq for a in hier.atoms()
+  o_sel = flex.size_t([a.i_seq for a in hier.atoms()
                        if _is_water(a.parent().resname)
                        and a.element.strip().upper() == "O"])
-  if not seeds.size():
+  if not o_sel.size():
     return [], [], flex.vec3_double()
-  siiu, _ = super_cell.get_siiu(
-    sites_cart=sites_cart, crystal_symmetry=crystal_symmetry,
-    select_within_radius=radius, selection=seeds, buffer=0)
-  if not siiu:
-    return [], [], flex.vec3_double()
+  o_sites = sites_cart.select(o_sel)
+  unit_cell = crystal_symmetry.unit_cell()
+  tree = KDTree(sites_cart.as_numpy_array())
+  # Deposited coordinates need not lie inside one cell, so the translations to
+  # try span the fractional spread of the sites, not just the radius.
+  margin = [radius * x for x in unit_cell.reciprocal_parameters()[:3]]
+  fr_water = unit_cell.fractionalize(o_sites).parts()
+  lo_water = [flex.min(c) for c in fr_water]
+  hi_water = [flex.max(c) for c in fr_water]
+  tol_sq = min_distance_sym_equiv ** 2
   rg_of = {}
   for rg in hier.residue_groups():
     idx = [a.i_seq for a in rg.atoms()]
     for i in idx:
       rg_of[i] = idx
-  # Group the residue groups by operator, keyed on str(op): equal operators
-  # carry equal denominators and so print alike.
-  by_op = {}
-  for j_seq, ops in siiu.items():
-    grp = rg_of[j_seq]
-    for op in ops:
-      by_op.setdefault(str(op), (op, set()))[1].update(grp)
-  unit_cell = crystal_symmetry.unit_cell()
+  by_key = {}
+  for op in crystal_symmetry.space_group():
+    rot = unit_cell.matrix_cart(op.r())
+    trn = unit_cell.orthogonalize(op.t().as_double())
+    rot_inv = matrix.sqr(rot).transpose().elems
+    fwd = unit_cell.fractionalize(rot * sites_cart + trn).parts()
+    spans = []
+    for axis in range(3):
+      lo = lo_water[axis] - flex.max(fwd[axis]) - margin[axis]
+      hi = hi_water[axis] - flex.min(fwd[axis]) + margin[axis]
+      spans.append(range(int(math.floor(lo)), int(math.ceil(hi)) + 1))
+    for i in spans[0]:
+      for j in spans[1]:
+        for k in spans[2]:
+          shift = unit_cell.orthogonalize((i, j, k))
+          off = (trn[0] + shift[0], trn[1] + shift[1], trn[2] + shift[2])
+          near = tree.query_ball_point(
+            (rot_inv * (o_sites - off)).as_numpy_array(), radius,
+            return_sorted=False)
+          hit = set()
+          for row in near:
+            hit.update(row)
+          if not hit:
+            continue
+          idx = flex.size_t(sorted(hit))
+          own = sites_cart.select(idx)
+          dx, dy, dz = ((rot * own + off) - own).parts()
+          keep = (flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)) >= tol_sq
+          grown = set()
+          for j_seq in idx.select(keep):
+            grown.update(rg_of[int(j_seq)])
+          if grown:
+            by_key.setdefault((str(op), i, j, k), (rot, off, set()))[2].update(
+              grown)
   hiers = []
   atoms = []
   xyz = flex.vec3_double()
-  for key in sorted(by_op):
-    op, idx = by_op[key]
+  for key in sorted(by_key):
+    rot, off, grp = by_key[key]
     # copy_atoms: without it set_xyz moves the model's own atoms.
-    sub = hier.select(flex.size_t(sorted(idx)), copy_atoms=True)
+    sub = hier.select(flex.size_t(sorted(grp)), copy_atoms=True)
     sub_atoms = sub.atoms()
-    sub_atoms.set_xyz(super_cell.sym_equiv_sites_cart(
-      sites_cart=sub_atoms.extract_xyz(), unit_cell=unit_cell, rt_mx=op))
+    sub_atoms.set_xyz(rot * sub_atoms.extract_xyz() + off)
     hiers.append(sub)
     atoms.extend(list(sub_atoms))
     xyz.extend(sub_atoms.extract_xyz())
   return hiers, atoms, xyz
+
+
+def _water_image_neighbours(sites, crystal_symmetry, radius,
+                            min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+  """Images of ``sites`` that crystal symmetry brings within ``radius`` of one.
+
+  Enumerating the operators beats a pair table here: the sites are few, a
+  table cannot be seeded on them, and the table would have to be built at this
+  radius rather than the smaller one the atom environment needs.
+
+  Returns ``(by_site, transforms, own)``: per site, the sorted ``(block, other
+  site)`` pairs whose image is in range; per block the cartesian ``(rotation,
+  translation)`` that produces it, block 0 being an unused placeholder so a
+  block index is never zero; and per site the blocks whose operator brings the
+  site's own image into range. An operator that fixes a site is dropped
+  throughout, the equivalent a pair table drops for being coincident with its
+  site.
+  """
+  n = sites.size()
+  by_site = [[] for _ in range(n)]
+  own = [[] for _ in range(n)]
+  transforms = [None]
+  if not n:
+    return by_site, transforms, own
+  unit_cell = crystal_symmetry.unit_cell()
+  # Deposited coordinates need not lie inside one cell, so the translations
+  # to try span the fractional spread of the sites, not just the radius.
+  margin = [radius * x for x in unit_cell.reciprocal_parameters()[:3]]
+  real = unit_cell.fractionalize(sites).parts()
+  lo_real = [flex.min(c) for c in real]
+  hi_real = [flex.max(c) for c in real]
+  tree = KDTree(sites.as_numpy_array())
+  tol_sq = min_distance_sym_equiv ** 2
+  found = []
+  found_own = []
+  for op in crystal_symmetry.space_group():
+    base = super_cell.sym_equiv_sites_cart(sites, unit_cell, op)
+    frac = unit_cell.fractionalize(base).parts()
+    spans = []
+    for axis in range(3):
+      lo = lo_real[axis] - flex.max(frac[axis]) - margin[axis]
+      hi = hi_real[axis] - flex.min(frac[axis]) + margin[axis]
+      spans.append(range(int(math.floor(lo)), int(math.ceil(hi)) + 1))
+    for i in spans[0]:
+      for j in spans[1]:
+        for k in spans[2]:
+          shift = unit_cell.orthogonalize((i, j, k))
+          pts = base + shift
+          dx, dy, dz = (pts - sites).parts()
+          fixed = (flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)) < tol_sq
+          for wj, near in enumerate(tree.query_ball_point(
+              pts.as_numpy_array(), radius, return_sorted=False)):
+            if fixed[wj]:
+              continue
+            for wi in near:
+              if wi == wj:
+                found_own.append((wj, (str(op), i, j, k)))
+              else:
+                found.append((int(wi), wj, (str(op), i, j, k)))
+  if not (found or found_own):
+    return by_site, transforms, own
+  # Number the blocks by operator rather than by discovery order, so the slot
+  # order a site sees does not depend on how the spatial query enumerated it.
+  blocks = {}
+  by_str = {str(op): op for op in crystal_symmetry.space_group()}
+  keys = {f[2] for f in found} | {f[1] for f in found_own}
+  for key in sorted(keys):
+    blocks[key] = len(blocks) + 1
+    op_str, i, j, k = key
+    op = by_str[op_str]
+    transforms.append((
+      matrix.sqr(unit_cell.matrix_cart(op.r())),
+      matrix.col(unit_cell.orthogonalize(op.t().as_double()))
+      + matrix.col(unit_cell.orthogonalize((i, j, k)))))
+  for wi, wj, key in found:
+    by_site[wi].append((blocks[key], wj))
+  for wj, key in found_own:
+    own[wj].append(blocks[key])
+  for pairs in by_site:
+    pairs.sort()
+  for pairs in own:
+    pairs.sort()
+  return by_site, transforms, own
 
 
 class _WaterHydrogenPlacer(object):
@@ -355,7 +480,8 @@ class _WaterHydrogenPlacer(object):
   def __init__(self, hier, oh_length=None, element=None,
                n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
                n_basin=0, existing_h="keep", lone_pair_directed=False,
-               on_state=None, crystal_symmetry=None):
+               on_state=None, crystal_symmetry=None,
+               min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
     self.hier = hier
     self.oh_length = oh_length
     self.element = element
@@ -366,6 +492,7 @@ class _WaterHydrogenPlacer(object):
     self.lone_pair_directed = lone_pair_directed
     self.on_state = on_state
     self.crystal_symmetry = crystal_symmetry
+    self.min_distance_sym_equiv = min_distance_sym_equiv
 
     # Placed-H coordinates, one slot per proton, filled in run(); placed_np
     # is the same data as an (n, 3) array.
@@ -414,7 +541,45 @@ class _WaterHydrogenPlacer(object):
       st = g[key] = (ok, None if d is None else d.min(axis=1))
     return st
 
-  def _clear(self, wi, cands, nbr_slots, static_key=None):
+  def _self_image_clear(self, wi, cands, own_fixed=()):
+    """Candidates against the images of water ``wi``'s own protons.
+
+    A water whose own image is in reach cannot be scored against a standing
+    point set: moving a candidate moves its image with it. Each operator is
+    applied to the whole candidate array instead, which gives every
+    candidate's distance to its own image, and to the image of each proton in
+    ``own_fixed``, this water's protons already settled this pass.
+
+    The transform runs through flex: numpy sums the three terms of the matrix
+    product in another order, and on a dense rotation the two part company in
+    the last ulp, which is enough to flip a threshold test.
+
+    Returns ``(ok, mins)``, both None when no operator brings this water's own
+    image into range.
+    """
+    ops = self.w_self_ops[wi]
+    if not ops:
+      return None, None
+    ok = np.ones(len(cands), dtype=bool)
+    best = None
+    thr = _WATER_MIN_H_CLEARANCE ** 2
+    for rot, trn in ops:
+      img = (rot * flex.vec3_double(cands) + trn).as_numpy_array()
+      pairs = [(cands, img)]
+      for pt in own_fixed:
+        one = flex.vec3_double(np.asarray(pt, dtype=float).reshape(1, 3))
+        pairs.append((cands, (rot * one + trn).as_numpy_array()[0]))
+        pairs.append((img, np.asarray(pt, dtype=float)))
+      for left, right in pairs:
+        dx = left[..., 0] - right[..., 0]
+        dy = left[..., 1] - right[..., 1]
+        dz = left[..., 2] - right[..., 2]
+        d = dx * dx + dy * dy + dz * dz
+        ok &= ~(d < thr)
+        best = d if best is None else np.minimum(best, d)
+    return ok, best
+
+  def _clear(self, wi, cands, nbr_slots, static_key=None, own_fixed=()):
     """Clearance test over the candidate H positions of one water.
 
     Every candidate lies exactly ``oh_length`` from the water O, so water
@@ -426,7 +591,9 @@ class _WaterHydrogenPlacer(object):
     ``nbr_slots`` are the placed-H slots that may lie near this water, its own
     excluded. ``static_key`` names the geometry-dict slot holding the cached
     static half, for a candidate set that does not move; None for the cone,
-    which is rebuilt around each pass's O-H1 axis.
+    which is rebuilt around each pass's O-H1 axis. ``own_fixed`` are this
+    water's protons already settled this pass, which only matter to a water
+    whose own image is in reach (see :meth:`_self_image_clear`).
 
     Returns ``(min_dist, ok)`` per candidate: the distance to the nearest
     non-own atom within ``_WATER_CLEARANCE_RADIUS`` (the search radius if
@@ -447,13 +614,17 @@ class _WaterHydrogenPlacer(object):
       if d is not None:
         np.minimum(best, d.min(axis=1), out=best)
     if len(nbr_slots):
-      Q = self.placed_np[nbr_slots]
+      Q = self.pool_np[nbr_slots]
       dx = cands[:, 0, None] - Q[None, :, 0]
       dy = cands[:, 1, None] - Q[None, :, 1]
       dz = cands[:, 2, None] - Q[None, :, 2]
       d = dx * dx + dy * dy + dz * dz
       np.minimum(best, d.min(axis=1), out=best)
       ok &= ~(d < _WATER_MIN_H_CLEARANCE ** 2).any(axis=1)
+    s_ok, s_mins = self._self_image_clear(wi, cands, own_fixed)
+    if s_ok is not None:
+      ok &= s_ok
+      np.minimum(best, s_mins, out=best)
     return np.sqrt(best), ok
 
   @staticmethod
@@ -661,7 +832,8 @@ class _WaterHydrogenPlacer(object):
                  + self.sin_hoh * (_CONE_COS[:, None] * p
                                    + _CONE_SIN[:, None] * q))
     cone_pts = o + self.oh_length * cone_dirs
-    c_best, c_ok = self._clear(wi, cone_pts, nbr_slots)
+    c_best, c_ok = self._clear(wi, cone_pts, nbr_slots,
+                               own_fixed=(h1_xyz,))
     c_cat = self._cat_ok(cat, cone_pts, o)
 
     if na - (h1_k >= 0):
@@ -679,7 +851,17 @@ class _WaterHydrogenPlacer(object):
     top &= a3 == np.where(top, a3, -np.inf).max()
     return h1_xyz, cone_pts[int(np.argmax(np.where(top, c_best, -np.inf)))]
 
-  def _store(self, slots, h1, h2):
+  def _pool_write(self, wi, slot, xyz):
+    """Put one proton of water ``wi`` at ``xyz``, its images with it."""
+    self.placed_np[slot] = xyz
+    if self.pool_np is self.placed_np:
+      return
+    self.pool_np[slot] = xyz
+    v = matrix.col(xyz)
+    for b, rot, trn in self.w_blocks[wi]:
+      self.pool_np[b * self.n_slots + slot] = (rot * v + trn).elems
+
+  def _store(self, wi, slots, h1, h2):
     """Write one water's new H positions to the model and the arrays.
 
     True if any of them moved, which is what :meth:`_dirty` reads.
@@ -690,7 +872,7 @@ class _WaterHydrogenPlacer(object):
       if xyz != self.placed_coords[slot]:
         moved = True
       self.placed_coords[slot] = xyz
-      self.placed_np[slot] = xyz
+      self._pool_write(wi, slot, xyz)
       atom.set_xyz(xyz)
     return moved
 
@@ -698,9 +880,10 @@ class _WaterHydrogenPlacer(object):
     """Whether re-placing water ``wi`` could move its H.
 
     A water is placed against its static surroundings, which never move, and
-    the placed H of the waters in ``w_wnbr[wi]``. If none of those H has moved
-    since this water was last placed, the placement re-derives the two
-    positions it already holds. The monotonic tick is bumped once per water per
+    the placed H of the waters in ``w_wnbr[wi]`` and the images in
+    ``w_inbr[wi]``, an image moving exactly when its own water does. If none
+    of those H has moved since this water was last placed, the placement
+    re-derives the two positions it already holds. The monotonic tick is bumped once per water per
     sweep, so a neighbour that moves earlier in the same sweep still counts.
     """
     t = self.w_placed_at[wi]
@@ -710,6 +893,9 @@ class _WaterHydrogenPlacer(object):
     if moved_at[wi] > t:
       return True   # moved since it was last placed, i.e. kicked
     for wj in self.w_wnbr[wi]:
+      if moved_at[wj] > t:
+        return True
+    for _b, wj in self.w_inbr[wi]:
       if moved_at[wj] > t:
         return True
     return False
@@ -725,7 +911,7 @@ class _WaterHydrogenPlacer(object):
     for wi, slots, fixed_d1 in self.records:
       self.tick += 1
       if self._dirty(wi):
-        if self._store(slots,
+        if self._store(wi, slots,
                        *self._place_one(wi, self.w_nbr_slots[wi], fixed_d1)):
           self.w_moved_at[wi] = self.tick
       self.w_placed_at[wi] = self.tick
@@ -742,10 +928,10 @@ class _WaterHydrogenPlacer(object):
   def _restore(self, snap):
     """Reset all placed H to a snapshot from :meth:`_snapshot`."""
     coords, placed_at, moved_at = snap
-    for _wi, slots, _fixed in self.records:
+    for wi, slots, _fixed in self.records:
       for atom, slot, di in slots:
         self.placed_coords[slot] = coords[slot]
-        self.placed_np[slot] = coords[slot]
+        self._pool_write(wi, slot, coords[slot])
         atom.set_xyz(coords[slot])
     self.w_placed_at = list(placed_at)
     self.w_moved_at = list(moved_at)
@@ -755,7 +941,8 @@ class _WaterHydrogenPlacer(object):
     bad = []
     for ri, (wi, slots, _fixed) in enumerate(self.records):
       pts = self.placed_np[[slot for _, slot, _ in slots]]
-      if not self._clear(wi, pts, self.w_nbr_slots[wi])[1].all():
+      if not self._clear(wi, pts, self.w_nbr_slots[wi],
+                         own_fixed=tuple(pts))[1].all():
         bad.append(ri)
     return bad
 
@@ -773,7 +960,8 @@ class _WaterHydrogenPlacer(object):
     d2 = self.cos_hoh * d1 + self.sin_hoh * (math.cos(theta) * p
                                              + math.sin(theta) * q)
     self.tick += 1
-    if self._store(slots, o + self.oh_length * d1, o + self.oh_length * d2):
+    if self._store(wi, slots, o + self.oh_length * d1,
+                   o + self.oh_length * d2):
       self.w_moved_at[wi] = self.tick
 
   def run(self):
@@ -812,7 +1000,7 @@ class _WaterHydrogenPlacer(object):
       self.sym_hier, sym_atoms, sym_xyz = _symmetry_environment(
         hier, sel.extract_xyz(), self.crystal_symmetry,
         max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
-            _WATER_ACCEPTOR_RADIUS))
+            _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
     atoms = atoms + sym_atoms
     self.atoms = atoms
 
@@ -905,6 +1093,19 @@ class _WaterHydrogenPlacer(object):
     self.w_geom = [None] * n
     self.placed_coords = []
     self.placed_np = np.zeros((2 * n, 3))
+    # Protons the clearance test may draw on: the placed ones, plus one
+    # transformed block per symmetry operator that brings another water's
+    # protons into reach. Block b slot s lives at b * n_slots + s, so an image
+    # proton is just another slot. Without images the pool is the placed array
+    # itself and nothing extra is paid.
+    self.n_slots = 2 * n
+    self.pool_np = self.placed_np
+    self.img_tf = [None]
+    self.w_inbr = [[] for _ in range(n)]
+    self.w_blocks = [()] * n
+    # Cartesian (rotation, translation) per operator that brings the water's
+    # own image into range.
+    self.w_self_ops = [()] * n
     self.slot_wid = np.zeros(2 * n, dtype=np.int64)
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
     self.w_wnbr = []
@@ -946,11 +1147,28 @@ class _WaterHydrogenPlacer(object):
       # A placed H sits within oh_length of its own O, so only waters whose
       # O lie within clearance + 2 oh_length can hold one near this water's
       # candidates.
+      r_wh = _WATER_CLEARANCE_RADIUS + 2.0 * self.oh_length + 0.01
       self.w_wnbr = [[j for j in nb if j != wi] for wi, nb in
                      enumerate(KDTree(o_pts).query_ball_point(
-                       o_pts,
-                       _WATER_CLEARANCE_RADIUS + 2.0 * self.oh_length + 0.01,
-                       return_sorted=False))]
+                       o_pts, r_wh, return_sorted=False))]
+      # The same test against the images of these waters.
+      if self.crystal_symmetry is not None:
+        self.w_inbr, self.img_tf, own_blocks = _water_image_neighbours(
+          flex.vec3_double(o_pts), self.crystal_symmetry, r_wh,
+          self.min_distance_sym_equiv)
+        # matrix_cart's raw tuple is what multiplies a vec3_double array;
+        # the matrix.sqr wrapper _pool_write uses does not.
+        self.w_self_ops = [
+          tuple((self.img_tf[b][0].elems, self.img_tf[b][1].elems)
+                for b in own_blocks[wi]) for wi in range(n)]
+        if len(self.img_tf) > 1:
+          in_block = [set() for _ in range(n)]
+          for wi in range(n):
+            for b, wj in self.w_inbr[wi]:
+              in_block[wj].add(b)
+          self.w_blocks = [tuple((b,) + self.img_tf[b] for b in sorted(bs))
+                           for bs in in_block]
+          self.pool_np = np.zeros((len(self.img_tf) * self.n_slots, 3))
 
     # Initial greedy pass over the ordered waters, each avoiding the H
     # already placed on earlier ones. ``records`` keeps per-water (index,
@@ -958,8 +1176,11 @@ class _WaterHydrogenPlacer(object):
     slots_of = [()] * n
 
     def nbr_slots(wi):
-      """Placed-H slots of every water neighbouring water ``wi``."""
+      """Pool slots of every water and image neighbouring water ``wi``."""
       nbr = [s for wj in self.w_wnbr[wi] for s in slots_of[wj]]
+      for b, wj in self.w_inbr[wi]:
+        off = b * self.n_slots
+        nbr.extend(off + s for s in slots_of[wj])
       return np.array(nbr, dtype=np.intp) if nbr else _EMPTY_SLOTS
 
     for wi in range(n):
@@ -986,7 +1207,7 @@ class _WaterHydrogenPlacer(object):
         slot = len(self.placed_coords)
         slots.append((atom, slot, di))
         self.placed_coords.append(xyz)
-        self.placed_np[slot] = xyz
+        self._pool_write(wi, slot, xyz)
         self.slot_wid[slot] = wgid
       if slots:
         self.records.append((wi, slots, fixed_d1))
@@ -1053,7 +1274,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
                           n_refine=_WATER_REFINE_SWEEPS,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
                           existing_h="keep", lone_pair_directed=False,
-                          on_state=None, crystal_symmetry=None):
+                          on_state=None, crystal_symmetry=None,
+                          min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
@@ -1106,7 +1328,12 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       water join its environment, so H at a lattice contact avoid the
       neighbouring asymmetric units instead of pointing into them. None
       (default) treats the model as isolated. A symmetry mate contributes its
-      O but not its placed H, which stay invisible across the contact.
+      O and its placed protons both.
+  min_distance_sym_equiv : float, optional
+      Distance in A under which a symmetry equivalent counts as coincident
+      with its own site, and so as that same atom rather than a second copy
+      (default 0.5). A water refined a little off a symmetry element needs a
+      larger value to be recognised as sitting on it.
 
   Returns
   -------
@@ -1123,7 +1350,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
     refine_tol=refine_tol, n_basin=n_basin,
     existing_h=existing_h,
     lone_pair_directed=lone_pair_directed,
-    on_state=on_state, crystal_symmetry=crystal_symmetry)
+    on_state=on_state, crystal_symmetry=crystal_symmetry,
+    min_distance_sym_equiv=min_distance_sym_equiv)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters)

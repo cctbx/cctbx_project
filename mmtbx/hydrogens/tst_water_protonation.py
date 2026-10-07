@@ -310,6 +310,17 @@ END
 """
 
 
+# Two waters 7.2 A apart in a 10 A cell, so each one's only acceptor in range
+# is the other's lattice image, 2.8 A away on the far side. Protons aimed
+# straight at those images collide with each other at 0.89 A.
+_CONTACT_PAIR_PDB = """\
+CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH W   1       1.000  15.000  15.000  1.00 10.00           O
+HETATM    2  O   HOH W   2       8.200  15.000  15.000  1.00 10.00           O
+END
+"""
+
+
 def exercise_acceptor_directed():
   """Both protons point at the flanking acceptors, clash-free, with the
   right O-H length and H-O-H angle."""
@@ -705,6 +716,44 @@ def exercise_crystal_symmetry_leaves_model_fixed():
       f"{atom_id} moved from {xyz} to {after[atom_id]}")
 
 
+def _min_image_proton_gap(hier, cell_a):
+  """Closest approach between a placed water proton and the lattice copy of
+  any proton one cell away along a.
+
+  The translations are applied here rather than taken from the symmetry
+  machinery, so the test measures the placement instead of agreeing with it.
+
+  Parameters
+  ----------
+  hier : iotbx.pdb.hierarchy.root
+      Hierarchy carrying placed water H.
+  cell_a : float
+      Cell edge along x, in A.
+
+  Returns
+  -------
+  float
+      The smallest proton-to-image-proton distance.
+  """
+  pts = [matrix.col(a.xyz) for ag in hier.atom_groups()
+         if wp._is_water(ag.resname) for a in ag.atoms()
+         if a.element.strip().upper() in ("H", "D")]
+  gaps = [(p - (q + matrix.col((shift, 0.0, 0.0)))).length()
+          for shift in (-cell_a, cell_a) for p in pts for q in pts]
+  return min(gaps)
+
+
+def exercise_image_protons():
+  """Waters donating across a lattice contact clear each other's image
+  protons, not just the image oxygens they aim at."""
+  hier, cs = _hierarchy_and_symmetry(_CONTACT_PAIR_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs)
+  gap = _min_image_proton_gap(hier, 10.0)
+  assert gap >= wp._WATER_MIN_H_CLEARANCE - 1e-9, (
+    f"proton sits {gap:.3f} A from an image proton, "
+    f"under the {wp._WATER_MIN_H_CLEARANCE} A clearance")
+
+
 def run():
   """Run every exercise and print the CPU times and ``OK`` on success."""
   exercise_acceptor_directed()
@@ -726,6 +775,7 @@ def run():
   exercise_detect_neutron()
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
+  exercise_image_protons()
   print(format_cpu_times())
   print("OK")
 
