@@ -52,6 +52,24 @@ def exercise_validation():
     2001, 2101, 2102, 2201, 2202, 2203, 2301, 2503, 2504]
   assert cd2.err.error_count == 12
   assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
+  # A child value must equal one of the parent values. When the parent is a
+  # single (non-looped) item this used to be a Python substring test, so
+  # 'O' was accepted against parent 'O1'.
+  cm_single_parent = cif.reader(input_string=cif_single_parent).model()
+  cd2.err.reset()
+  cm_single_parent.validate(cd2, out=StringIO())
+  assert sorted(cd2.err.errors.keys()) == [2503], cd2.err.errors.keys()
+  assert cd2.err.error_count == 1
+  assert cd2.err.errors[2503][0].kwds['value'] == 'O'
+  # Parent value lookups are cached while a block is validated; make sure
+  # the cache never leaks between blocks of the same file.
+  cm_two_blocks = cif.reader(input_string=cif_two_blocks).model()
+  cd2.err.reset()
+  cm_two_blocks.validate(cd2, out=StringIO())
+  errors = cm_two_blocks.get_errors()
+  assert errors['a'].error_count == 0, errors['a'].errors
+  assert errors['b'].error_count == 1, errors['b'].errors
+  assert errors['b'].errors[2503][0].kwds['value'] == 'N1'
 
 def exercise_smart_load(show_timings=False, exercise_url=False):
   from libtbx.test_utils import open_tmp_directory
@@ -321,6 +339,34 @@ loop_                                      # error 2203
 _space_group_symop.operation_xyz
 x,y,z
 -x,-y,-z
+"""
+
+cif_single_parent = """data_3
+_atom_site.id O1
+loop_
+_atom_site_anisotrop.id
+O1
+O
+"""
+
+cif_two_blocks = """data_a
+loop_
+_atom_site.id
+N1
+N2
+loop_
+_atom_site_anisotrop.id
+N1
+N2
+data_b
+loop_
+_atom_site.id
+O1
+O2
+loop_
+_atom_site_anisotrop.id
+O1
+N1
 """
 
 if __name__ == "__main__":

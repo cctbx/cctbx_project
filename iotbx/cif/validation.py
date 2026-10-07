@@ -338,7 +338,7 @@ class dictionary(model.cif):
               related_item not in block): # missing associated value
           self.report_error(2202, key=key, related_item=related_item)
 
-  def validate_loop(self, loop, block):
+  def validate_loop(self, loop, block, parent_value_sets=None):
     list_category = None
     for key, value in six.iteritems(loop):
       try:
@@ -397,7 +397,8 @@ class dictionary(model.cif):
       link_parent = definition.get(
         '_list_link_parent', self.child_parent_relations.get(key))
       if link_parent is not None:
-        parent_values = loop.get(link_parent, block.get(link_parent))
+        parent_values = self._parent_value_set(
+          link_parent, loop, block, cache=parent_value_sets)
         if parent_values is not None:
           for v in loop[key]:
             if v != '.' and v not in parent_values:
@@ -405,6 +406,29 @@ class dictionary(model.cif):
               self.report_error(2503, value=v, child=key, parent=link_parent)
         else:
           self.report_error(2504, child=key, parent=link_parent) # missing parent
+
+  def _parent_value_set(self, link_parent, loop, block, cache=None):
+    """Values of the parent item as a set, or None if the parent is absent.
+
+    Membership tests against a flex.std_string are linear scans, so testing
+    every child value directly made the child-parent check
+    O(n_child * n_parent) and dominated validation time for large atom_site
+    loops. The set is built once per parent item and, when a cache dict is
+    supplied (block_base.validate passes one per block), shared by every
+    loop in the block that links to the same parent.
+    """
+    if cache is not None and link_parent in cache:
+      return cache[link_parent]
+    parent_values = loop.get(link_parent, block.get(link_parent))
+    if parent_values is None:
+      result = None
+    elif isinstance(parent_values, string_types):
+      result = set([parent_values])
+    else:
+      result = set(parent_values)
+    if cache is not None:
+      cache[link_parent] = result
+    return result
 
   def update(self, other, mode="strict"):
     assert mode in ("strict", "replace", "overlay")
