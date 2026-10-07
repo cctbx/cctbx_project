@@ -5,7 +5,8 @@ OH2, ...) the two H are placed pointing at H-bond acceptors, clear of the
 whole structure (including H placed on other waters) and out of the
 hemisphere of nearby metal cations. Geometry only: no map, no monomer
 library. O-H is 0.984 A (neutron) or 0.957 A (X-ray) and H-O-H is
-104.5 deg.
+104.5 deg. Given a crystal symmetry, waters at a lattice contact also see
+the neighbouring asymmetric units.
 
 The public entry point :func:`place_water_hydrogens` modifies a hierarchy
 in place; :class:`mmtbx.programs.water_protonation.Program` wraps it as the
@@ -21,6 +22,7 @@ import math
 import random
 
 import iotbx.pdb
+from cctbx.crystal import super_cell
 from libtbx import group_args
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -343,6 +345,57 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
   return lobes
 
 
+def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius):
+  """Copies of the atoms crystal symmetry places within ``radius`` of a water.
+
+  Each copy carries its whole residue group, so an acceptor keeps the bonded
+  neighbours its lobe geometry needs and an N keeps the H that marks it a
+  donor. Copies are environment only: the waters to protonate come from the
+  asymmetric unit, so a symmetry mate contributes its O but never a placed H.
+
+  Returns ``(hierarchies, atoms, xyz)``: the sub-hierarchies, which own the
+  atom objects and must be kept alive, their atoms in coordinate order, and
+  their sites. All three are empty when symmetry places nothing in range.
+  """
+  seeds = flex.size_t([a.i_seq for a in hier.atoms()
+                       if _is_water(a.parent().resname)
+                       and a.element.strip().upper() == "O"])
+  if not seeds.size():
+    return [], [], flex.vec3_double()
+  siiu, _ = super_cell.get_siiu(
+    sites_cart=sites_cart, crystal_symmetry=crystal_symmetry,
+    select_within_radius=radius, selection=seeds, buffer=0)
+  if not siiu:
+    return [], [], flex.vec3_double()
+  rg_of = {}
+  for rg in hier.residue_groups():
+    idx = [a.i_seq for a in rg.atoms()]
+    for i in idx:
+      rg_of[i] = idx
+  # Group the residue groups by operator, keyed on str(op): equal operators
+  # carry equal denominators and so print alike.
+  by_op = {}
+  for j_seq, ops in siiu.items():
+    grp = rg_of[j_seq]
+    for op in ops:
+      by_op.setdefault(str(op), (op, set()))[1].update(grp)
+  unit_cell = crystal_symmetry.unit_cell()
+  hiers = []
+  atoms = []
+  xyz = flex.vec3_double()
+  for key in sorted(by_op):
+    op, idx = by_op[key]
+    # copy_atoms: without it set_xyz moves the model's own atoms.
+    sub = hier.select(flex.size_t(sorted(idx)), copy_atoms=True)
+    sub_atoms = sub.atoms()
+    sub_atoms.set_xyz(super_cell.sym_equiv_sites_cart(
+      sites_cart=sub_atoms.extract_xyz(), unit_cell=unit_cell, rt_mx=op))
+    hiers.append(sub)
+    atoms.extend(list(sub_atoms))
+    xyz.extend(sub_atoms.extract_xyz())
+  return hiers, atoms, xyz
+
+
 class _Clearance(object):
   """Result of one clearance test (see :meth:`_WaterHydrogenPlacer._clear`).
 
@@ -400,7 +453,7 @@ class _WaterHydrogenPlacer(object):
   def __init__(self, hier, oh_length=None, element=None,
                n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
                n_basin=0, existing_h="keep", lone_pair_directed=False,
-               on_state=None):
+               on_state=None, crystal_symmetry=None):
     self.hier = hier
     self.oh_length = oh_length
     self.element = element
@@ -410,6 +463,7 @@ class _WaterHydrogenPlacer(object):
     self.existing_h = existing_h
     self.lone_pair_directed = lone_pair_directed
     self.on_state = on_state
+    self.crystal_symmetry = crystal_symmetry
 
     # Placed-H coordinates, one slot per proton, filled in run(); placed_xyz
     # is the same data as a flex.vec3_double.
@@ -868,18 +922,34 @@ class _WaterHydrogenPlacer(object):
     atoms = list(sel)
     if not atoms:
       return None
+    sel.reset_i_seq()
+
+    # Neighbouring asymmetric units, as environment atoms appended after the
+    # model's own. They keep the asymmetric unit's indices 0..n-1 valid as
+    # both tree and i_seq, and the water walk below reads the hierarchy, so
+    # only the model's waters are protonated.
+    self.sym_hier = []
+    sym_atoms = []
+    sym_xyz = flex.vec3_double()
+    if self.crystal_symmetry is not None:
+      self.sym_hier, sym_atoms, sym_xyz = _symmetry_environment(
+        hier, sel.extract_xyz(), self.crystal_symmetry,
+        max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
+            _WATER_ACCEPTOR_RADIUS))
+    atoms = atoms + sym_atoms
     self.atoms = atoms
 
     # Static neighbours (protein, ligands, water O, pre-existing H) never
     # move; the placed water H are tracked by slot in placed_coords/placed_xyz.
     self.static_xyz = sel.extract_xyz()
+    self.static_xyz.extend(sym_xyz)
     self.static_tree = KDTree(self.static_xyz.as_numpy_array())
     _el = sel.extract_element(strip=True)
+    _el.extend(flex.std_string([a.element.strip() for a in sym_atoms]))
     self.static_is_h = (_el == "H") | (_el == "D")
     self.static_thr = flex.double(len(atoms), _WATER_MIN_CLEARANCE ** 2)
     self.static_thr.set_selected(self.static_is_h,
                                  _WATER_MIN_H_CLEARANCE ** 2)
-    sel.reset_i_seq()
 
     # N atoms that already carry an H are donors, not acceptors (amide,
     # ammonium, guanidinium, protonated His ring N, ...). O always accepts,
@@ -1107,7 +1177,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
                           n_refine=_WATER_REFINE_SWEEPS,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
                           existing_h="keep", lone_pair_directed=False,
-                          on_state=None):
+                          on_state=None, crystal_symmetry=None):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
@@ -1155,6 +1225,13 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       sweep, ``"basin N.M"`` during basin-hopping; ``stats`` is the
       ``_water_clash_stats`` tuple.
 
+  crystal_symmetry : cctbx.crystal.symmetry or None, optional
+      Honour crystal packing: atoms that symmetry places within reach of a
+      water join its environment, so H at a lattice contact avoid the
+      neighbouring asymmetric units instead of pointing into them. None
+      (default) treats the model as isolated. A symmetry mate contributes its
+      O but not its placed H, which stay invisible across the contact.
+
   Returns
   -------
   libtbx.group_args
@@ -1170,7 +1247,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
     refine_tol=refine_tol, n_basin=n_basin,
     existing_h=existing_h,
     lone_pair_directed=lone_pair_directed,
-    on_state=on_state)
+    on_state=on_state, crystal_symmetry=crystal_symmetry)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters)

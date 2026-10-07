@@ -244,6 +244,23 @@ def _hierarchy(pdb_str):
     source_info=None, lines=pdb_str.split("\n")).construct_hierarchy()
 
 
+def _hierarchy_and_symmetry(pdb_str):
+  """Build a hierarchy and its crystal symmetry from an inline PDB string.
+
+  Parameters
+  ----------
+  pdb_str : str
+      PDB-format record text, CRYST1 included.
+
+  Returns
+  -------
+  tuple
+      ``(hierarchy, crystal_symmetry)``.
+  """
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
+  return inp.construct_hierarchy(), inp.crystal_symmetry()
+
+
 def _water_atoms(hier):
   """Pull the O and placed H of the single HOH in a hierarchy.
 
@@ -280,6 +297,17 @@ def _unit(a, b):
   va = matrix.col(a.xyz) if hasattr(a, "xyz") else matrix.col(a)
   vb = matrix.col(b.xyz) if hasattr(b, "xyz") else matrix.col(b)
   return (va - vb).normalize()
+
+
+# Water 1.3 A from the +a face of a 10 A cell, its only acceptor 7.2 A away
+# across the cell. The acceptor's +a translate sits 2.8 A from the water, so
+# the H-bond exists only once crystal symmetry is honoured.
+_LATTICE_CONTACT_PDB = """\
+CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH W   1       8.700  15.000  15.000  1.00 10.00           O
+HETATM    2  O   ACA D   1       1.500  15.000  15.000  1.00 10.00           O
+END
+"""
 
 
 def exercise_acceptor_directed():
@@ -647,6 +675,36 @@ END
     assert got is want, f"_detect_neutron returned {got}, expected {want}"
 
 
+def exercise_crystal_symmetry():
+  """An acceptor reachable only as a lattice translate draws an H once a
+  crystal symmetry is given, and is invisible without one."""
+  hier, cs = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs)
+  o, hs = _water_atoms(hier)
+  aimed = max(_unit(h, o)[0] for h in hs.values())
+  assert aimed > 0.99, (
+    f"no H aims across the cell face at the image acceptor (best {aimed:.3f})")
+
+  hier, _ = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0)
+  o, hs = _water_atoms(hier)
+  isolated = max(_unit(h, o)[0] for h in hs.values())
+  assert isolated < 0.9, (
+    f"an isolated water should not find the acceptor (best {isolated:.3f})")
+
+
+def exercise_crystal_symmetry_leaves_model_fixed():
+  """Symmetry equivalents join the environment as copies, so placing with a
+  crystal symmetry moves no atom of the model itself."""
+  hier, cs = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
+  before = [(a.id_str(), a.xyz) for a in hier.atoms()]
+  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs)
+  after = {a.id_str(): a.xyz for a in hier.atoms()}
+  for atom_id, xyz in before:
+    assert after[atom_id] == xyz, (
+      f"{atom_id} moved from {xyz} to {after[atom_id]}")
+
+
 def run():
   """Run every exercise and print the CPU times and ``OK`` on success."""
   exercise_acceptor_directed()
@@ -666,6 +724,8 @@ def run():
   exercise_oh_length_auto()
   exercise_environment_hydrogen_count()
   exercise_detect_neutron()
+  exercise_crystal_symmetry()
+  exercise_crystal_symmetry_leaves_model_fixed()
   print(format_cpu_times())
   print("OK")
 

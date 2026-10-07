@@ -30,6 +30,10 @@ existing_h = *keep complete reorient
   .type = choice(multi=False)
   .short_caption = Waters that already carry H
   .help = "What to do with a water that already carries H: keep leaves it untouched, complete builds the missing partner on the cone of the existing proton for a water carrying a single H, reorient strips all water H and re-places both."
+symmetry = True
+  .type = bool
+  .short_caption = Honour crystal symmetry
+  .help = "Add the atoms that crystal symmetry places near a water to its environment, so H at a lattice contact avoid the neighbouring asymmetric units instead of pointing into them. Ignored for a model without a unit cell and space group."
 lone_pair = False
   .type = bool
   .short_caption = Lone-pair-directed placement
@@ -154,6 +158,16 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
         header["printed"] = True
       water_protonation._clash_row(label, stats, self.logger)
 
+    cs = None
+    if self.params.symmetry:
+      cs = model.crystal_symmetry()
+      if cs is None or cs.unit_cell() is None or cs.space_group_info() is None:
+        print("Crystal symmetry: none in the model, treating it as isolated",
+              file=self.logger)
+        cs = None
+      else:
+        print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
+
     make_sub_header('Placing water hydrogens', out=self.logger)
     result = water_protonation.place_water_hydrogens(
       hier,
@@ -164,6 +178,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       n_basin            = self.params.basin.rounds,
       existing_h         = self.params.existing_h,
       lone_pair_directed = self.params.lone_pair,
+      crystal_symmetry   = cs,
       on_state           = on_state if report_stats else None)
 
     n_after = self._count_water_h(hier)
