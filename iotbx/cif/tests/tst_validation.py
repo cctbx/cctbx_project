@@ -70,6 +70,21 @@ def exercise_validation():
   assert errors['a'].error_count == 0, errors['a'].errors
   assert errors['b'].error_count == 1, errors['b'].errors
   assert errors['b'].errors[2503][0].kwds['value'] == 'N1'
+  # Null child values ('?' unknown, '.' inapplicable) need no parent.
+  cm_null_child = cif.reader(input_string=cif_null_child).model()
+  cd2.err.reset()
+  cm_null_child.validate(cd2, out=StringIO())
+  assert cd2.err.error_count == 0, cd2.err.errors
+  # mmcif_pdbx_v50 >= 5.3xx gives _item_type_list.construct as semicolon
+  # text fields, which carry a trailing newline into the compiled regex.
+  cd3 = validation.dictionary(cif.reader(input_string=ddl2_text_constructs).model())
+  assert cd3.item_type_list['code'].pattern == '[A-Za-z0-9_]*', \
+    repr(cd3.item_type_list['code'].pattern)
+  assert cd3.item_type_list['int'].pattern == '[+-]?[0-9]+'
+  cm_typed = cif.reader(input_string=cif_typed).model()
+  cm_typed.validate(cd3, out=StringIO())
+  assert cd3.err.error_count == 0, cd3.err.errors
+  assert cd3.err.warning_count == 0, cd3.err.warnings
 
 def exercise_smart_load(show_timings=False, exercise_url=False):
   from libtbx.test_utils import open_tmp_directory
@@ -367,6 +382,47 @@ loop_
 _atom_site_anisotrop.id
 O1
 N1
+"""
+
+cif_null_child = """data_4
+loop_
+_atom_site.id
+O1
+loop_
+_atom_site_anisotrop.id
+O1
+?
+.
+"""
+
+ddl2_text_constructs = """data_test_dic
+_dictionary.title      test_dic
+_dictionary.version    1.0
+loop_
+_item_type_list.code
+_item_type_list.primitive_code
+_item_type_list.construct
+code  char
+;[A-Za-z0-9_]*
+;
+int   numb  '[+-]?[0-9]+'
+save__test.id
+  _item.name           '_test.id'
+  _item.category_id    test
+  _item.mandatory_code yes
+  _item_type.code      code
+save_
+save__test.number
+  _item.name           '_test.number'
+  _item.category_id    test
+  _item.mandatory_code no
+  _item_type.code      int
+save_
+"""
+
+cif_typed = """data_t
+_test.id     ABC
+_test.number 12
 """
 
 if __name__ == "__main__":

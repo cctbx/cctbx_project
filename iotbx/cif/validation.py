@@ -158,7 +158,8 @@ class dictionary(model.cif):
       type_codes = master_block.get('_item_type_list.code')
       type_constructs = master_block.get('_item_type_list.construct')
       for code, construct in zip(type_codes, type_constructs):
-        self.item_type_list.setdefault(code, re.compile(construct))
+        # constructs given as semicolon text fields carry a trailing newline
+        self.item_type_list.setdefault(code, re.compile(construct.strip()))
       for key, save in six.iteritems(master_block.saves):
         master_block[key] = DDL2_definition(save)
         children = save.get('_item_linked.child_name')
@@ -361,7 +362,6 @@ class dictionary(model.cif):
       elif (isinstance(list_category, string_types)
             and definition_category is not None
             and list_category != definition_category):
-        print(list_category, list(definition_category))
         self.report_error(2502, key=key) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
       references = definition.get('_list_reference')
@@ -401,8 +401,8 @@ class dictionary(model.cif):
           link_parent, loop, block, cache=parent_value_sets)
         if parent_values is not None:
           for v in loop[key]:
-            if v != '.' and v not in parent_values:
-              # missing parent value
+            if v not in ('.', '?') and v not in parent_values:
+              # missing parent value (null markers need no parent)
               self.report_error(2503, value=v, child=key, parent=link_parent)
         else:
           self.report_error(2504, child=key, parent=link_parent) # missing parent
