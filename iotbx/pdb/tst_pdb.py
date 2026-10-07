@@ -77,6 +77,9 @@ EXPDTA    X-RAY DIFFRACTION""")
   assert r.continuation == "  "
   assert r.technique == "X-RAY DIFFRACTION" + " " * 43
   assert r.keywords == ["X-RAY DIFFRACTION"]
+  r = pdb.records.expdta(pdb_str="""\
+EXPDTA    ELECTRON MICROSCOPY""")
+  assert r.keywords == ["ELECTRON MICROSCOPY"]
   #
   r = pdb.records.remark_002(pdb_str="""\
 REMARK   2 RESOLUTION. 0.89 ANGSTROMS.""")
