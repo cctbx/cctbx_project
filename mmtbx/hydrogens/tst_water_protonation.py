@@ -71,6 +71,14 @@ to get wrong:
   neutron distance for a model carrying D and the X-ray distance otherwise;
   an explicit value overrides both.
 
+* **Crystal symmetry.** An acceptor reachable only across a cell face draws
+  an H once a crystal symmetry is given, and is invisible without one; the
+  symmetry-related copies leave the model's own atoms where they are.
+
+* **Protons across a lattice contact.** Two waters donating across a lattice
+  contact keep their protons clear of each other's symmetry-related protons,
+  not just of the oxygens they aim at.
+
 * **Reorient keeps the isotope.** ``existing_h="reorient"`` with the automatic
   element re-places a water's protons as the element it carried (D on an
   HOH, H on a DOD), and the program warns when that puts D at the X-ray
@@ -80,13 +88,17 @@ to get wrong:
   is refused, by the placer and the program, rather than having every water
   skipped.
 
-* **Multi-model input.** The program rejects a file with more than one MODEL,
-  whose copies would otherwise share one environment.
+* **Multi-model input.** The program and the placer reject more than one
+  MODEL, whose copies would otherwise share one environment.
+
+* **Output file name.** The default is ``<model-stem>_waters_protonated``;
+  ``output.prefix``, ``output.suffix`` and ``output.serial`` change it.
 """
 
 from __future__ import absolute_import, division, print_function
 
 import math
+import os
 from io import StringIO
 
 import iotbx.pdb
@@ -115,7 +127,7 @@ _NO_ELEMENT_PDB = "\n".join(l[:76].rstrip()
 
 # Water O coordinating an Mg (2.5 A along +x). The ONLY acceptor sits on
 # the Mg side (30 deg off the O->Mg axis), so acceptor-direction alone
-# would pull an H toward the metal -- only the cation repulsion keeps both
+# would pull an H toward the metal; only the cation repulsion keeps both
 # protons in the hemisphere away from it.
 _MG_WATER_PDB = """\
 HETATM    1 MG    MG A   1       2.500   0.000   0.000  1.00 10.00          MG
@@ -148,7 +160,7 @@ HETATM    5  C   ACO A   1      -1.950  -1.260   0.000  1.00 10.00           C
 END
 """
 
-# A water that is already protonated (O + 2 H) -- must be left untouched.
+# A water that is already protonated (O + 2 H) must be left untouched.
 _PROTONATED_WATER_PDB = """\
 HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
 HETATM    2  H1  HOH W   1       0.000   0.957   0.000  1.00 10.00           H
@@ -157,7 +169,7 @@ END
 """
 
 # A protonated water whose H point AWAY from the lone acceptor (+x): with
-# --reorient-existing the H are stripped and re-placed toward the acceptor.
+# existing_h="reorient" the H are stripped and re-placed toward the acceptor.
 _BAD_PROTONATED_PDB = """\
 HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
 HETATM    2  H1  HOH W   1      -0.984   0.000   0.000  1.00 10.00           H
@@ -589,6 +601,10 @@ def exercise_refinement_reduces_clashes():
     f"cluster should clash without refinement (got {n_greedy})")
   assert n_refined < n_greedy, (
     f"refinement should reduce close contacts ({n_greedy} -> {n_refined})")
+  # The program's contact listing reports the same contacts, closest first.
+  listed = [c[0] for c in wp._worst_water_clashes(greedy)]
+  assert len(listed) == n_greedy, (len(listed), n_greedy)
+  assert listed == sorted(listed), listed
 
 
 def exercise_completed_water_survives_refinement():
@@ -854,10 +870,11 @@ def exercise_missing_elements_rejected():
 
 
 def exercise_multi_model_rejected():
-  """The program refuses a multi-model file.
+  """The program and the placer refuse a multi-model input.
 
   Runs the program on a two-model file and expects a Sorry naming the
-  problem, raised before any placement.
+  problem, raised before any placement; the placer, called directly on the
+  same hierarchy, must raise an AssertionError instead of placing.
   """
   file_name = "tst_water_protonation_multi_model.pdb"
   with open(file_name, "w") as f:
@@ -869,6 +886,35 @@ def exercise_multi_model_rejected():
     assert "Multi-model" in str(e), str(e)
   else:
     raise Exception_expected
+
+  try:
+    wp.place_water_hydrogens(_hierarchy(_MULTI_MODEL_PDB), n_refine=0)
+  except AssertionError as e:
+    assert "one model" in str(e), str(e)
+  else:
+    raise Exception_expected
+
+
+def exercise_output_file_name():
+  """The output file name follows the output.* parameters.
+
+  Runs the program with no output parameter, then with each of
+  ``output.prefix``, ``output.suffix`` and ``output.serial``, and checks the
+  name written (extension included).
+  """
+  file_name = "tst_water_protonation_naming.pdb"
+  with open(file_name, "w") as f:
+    f.write(_TWO_ACCEPTOR_PDB)
+  for extra, want in (
+      ([], "tst_water_protonation_naming_waters_protonated.pdb"),
+      (["output.prefix=named"], "named_waters_protonated.pdb"),
+      (["output.suffix=_h"], "tst_water_protonation_naming_h.pdb"),
+      (["output.serial=2"],
+       "tst_water_protonation_naming_waters_protonated_002.pdb")):
+    result = run_program(program_class=wp_program.Program, logger=null_out(),
+                         args=[file_name, "output.overwrite=True"] + extra)
+    got = os.path.basename(result.output_file_name)
+    assert got == want, (extra, got)
 
 
 def run():
@@ -896,6 +942,7 @@ def run():
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
+  exercise_output_file_name()
   print(format_cpu_times())
   print("OK")
 

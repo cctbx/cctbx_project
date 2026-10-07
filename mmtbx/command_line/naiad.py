@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.development.naiad
-"""mmtbx.naiad: H-bond-aware placement of hydrogens on water residues."""
+"""mmtbx.development.naiad: H-bond-aware placement of hydrogens on water
+residues."""
 
 from __future__ import absolute_import, division, print_function
 

@@ -2,7 +2,7 @@
 
 Thin DataManager/PHIL wrapper around
 :func:`mmtbx.hydrogens.water_protonation.place_water_hydrogens`. The
-command-line dispatcher is ``mmtbx.naiad``.
+command-line dispatcher is ``mmtbx.development.naiad``.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -64,17 +64,25 @@ stats = False
   .type = bool
   .short_caption = Report water-H clashes
   .help = "After placement, print the per-sweep water-H clash summary and list the residual inter-water H-H contacts, grouped by the 1.5/1.8/2.0 A thresholds."
+output {
+  suffix = _waters_protonated
+    .type = str
+    .help = "Suffix string added to automatically generated output filenames"
+  serial = None
+    .type = int
+    .help = "Serial number added to automatically generated output filenames"
+}
 '''
 
 
 class Program(ProgramTemplate):
   description = '''
-mmtbx.naiad: H-bond-aware placement of hydrogens on water residues.
+mmtbx.development.naiad: H-bond-aware placement of hydrogens on water residues.
 
 Adds the two H atoms to every bare water oxygen in a model, orienting each
 proton toward a nearby H-bond acceptor while staying clash-free against the
 whole structure (including H placed on other waters) and keeping off metal
-cations. Map-free and library-free -- placement is purely from geometry.
+cations. Map-free and library-free: placement is purely from geometry.
 
 Inputs:
   PDB or mmCIF file containing an atomic model.
@@ -229,15 +237,14 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     print(f"Wrote file: {self.output_file_name}", file=self.logger)
 
   def _output_file_name(self):
-    """``output.file_name`` if given, else the default
-    ``<model-stem>_waters_protonated``. The writer appends the extension."""
-    # output.file_name and output.filename are PHIL aliases; honour either.
-    given = self.params.output.file_name or self.params.output.filename
-    if given is not None:
-      return given
-    stem = os.path.splitext(os.path.basename(
-      self.data_manager.get_default_model_name()))[0]
-    return f"{stem}_waters_protonated"
+    """``output.file_name`` if given, else built from ``output.prefix``
+    (default: the model file's stem), ``output.suffix`` and
+    ``output.serial``. The writer appends the extension."""
+    prefix = self.params.output.prefix
+    if prefix is None:
+      prefix = os.path.splitext(os.path.basename(
+        self.data_manager.get_default_model_name()))[0]
+    return self.get_default_output_filename(prefix=prefix)
 
   @staticmethod
   def _count_water_h(hier):

@@ -10,7 +10,7 @@ the neighbouring asymmetric units.
 
 The public entry point :func:`place_water_hydrogens` modifies a hierarchy
 in place; :class:`mmtbx.programs.water_protonation.Program` wraps it as the
-``mmtbx.naiad`` command line.
+``mmtbx.development.naiad`` command line.
 
 Needs ``scipy`` (KDTree); the vectorised work is
 ``scitbx.array_family.flex``.
@@ -756,26 +756,7 @@ class _WaterHydrogenPlacer(object):
       W = self.slot_wid[:ns].concatenate(self.wh_wid)
     else:
       X, W = self.wh_xyz, self.wh_wid
-    n = X.size()
-    if n < 2:
-      return n, 0, 0, 0, None
-    pairs = KDTree(X.as_numpy_array()).query_pairs(2.0, output_type="ndarray")
-    if not len(pairs):
-      return n, 0, 0, 0, None
-    # KDTree hands back an (n, 2) ndarray; flex flattens it row-major, so the
-    # pair members are the even and odd entries.
-    p = flex.size_t(pairs)
-    i = p.select(flex.size_t_range(0, p.size(), 2))
-    j = p.select(flex.size_t_range(1, p.size(), 2))
-    keep = (W.select(i) != W.select(j)).iselection()  # drop same-water H
-    if not keep.size():
-      return n, 0, 0, 0, None
-    i = i.select(keep)
-    j = j.select(keep)
-    dx, dy, dz = (X.select(i) - X.select(j)).parts()
-    d = flex.sqrt(flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz))
-    return (n, d.size(), (d < 1.8).count(True), (d < 1.5).count(True),
-            flex.min(d))
+    return _contact_stats(X.size(), _water_h_contacts(X, W)[2])
 
   def _nearest_cation(self, o_xyz, own_idx):
     """Closest metal cation coordinating a water O, if any.
@@ -1103,6 +1084,8 @@ class _WaterHydrogenPlacer(object):
     :func:`place_water_hydrogens`).
     """
     hier = self.hier
+    assert hier.models_size() <= 1, (
+      f"place_water_hydrogens takes one model, not {hier.models_size()}")
     # Every test below reads the element column.
     check_for_missing_elements(hier)
     # Resolve before stripping, which would remove the D this keys on.
@@ -1429,8 +1412,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   Parameters
   ----------
   hier : iotbx.pdb.hierarchy.root
-      Model hierarchy; modified in place. Every atom must carry an element
-      symbol.
+      Single-model hierarchy; modified in place. Every atom must carry an
+      element symbol.
   oh_length : float or None, optional
       O-H bond length in A, positive. None (default) picks
       ``_WATER_OH_NEUTRON`` (0.984) if the model contains D, else 0.957.
@@ -1462,7 +1445,6 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       ``"initial"`` after the greedy pass, ``"sweep N"`` after each refinement
       sweep, ``"basin N.M"`` during basin-hopping; ``stats`` is the
       ``_water_clash_stats`` tuple.
-
   crystal_symmetry : cctbx.crystal.symmetry or None, optional
       Honour crystal packing: atoms that symmetry places within reach of a
       water join its environment, so H at a lattice contact avoid the
@@ -1497,6 +1479,56 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
                     partial_waters=placer.partial_waters)
 
 
+def _water_h_contacts(xyz, wid):
+  """Inter-water H-H contacts within 2.0 A.
+
+  ``xyz`` are water H sites and ``wid`` the water each belongs to. Returns
+  ``(i, j, d)``: the two H of each contact, H on the same water excluded, and
+  their distance.
+  """
+  empty = (flex.size_t(), flex.size_t(), flex.double())
+  if xyz.size() < 2:
+    return empty
+  pairs = KDTree(xyz.as_numpy_array()).query_pairs(2.0, output_type="ndarray")
+  if not len(pairs):
+    return empty
+  # KDTree hands back an (n, 2) ndarray; flex flattens it row-major, so the
+  # pair members are the even and odd entries.
+  p = flex.size_t(pairs)
+  i = p.select(flex.size_t_range(0, p.size(), 2))
+  j = p.select(flex.size_t_range(1, p.size(), 2))
+  keep = (wid.select(i) != wid.select(j)).iselection()
+  i = i.select(keep)
+  j = j.select(keep)
+  dx, dy, dz = (xyz.select(i) - xyz.select(j)).parts()
+  return i, j, flex.sqrt(flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz))
+
+
+def _contact_stats(n, d):
+  """``(n, n_lt_20, n_lt_18, n_lt_15, closest)`` for ``n`` water H with
+  contact distances ``d``; ``closest`` is None without a contact."""
+  if not d.size():
+    return n, 0, 0, 0, None
+  return (n, d.size(), (d < 1.8).count(True), (d < 1.5).count(True),
+          flex.min(d))
+
+
+def _water_h_sites(hier):
+  """``(xyz, wid, atoms)`` for every water H/D in ``hier``, ``wid`` numbering
+  the water each belongs to."""
+  xyz = flex.vec3_double()
+  wid = flex.size_t()
+  atoms = []
+  for w, ag in enumerate(g for g in hier.atom_groups()
+                         if _is_water(g.resname)):
+    ats, hd = _hd_flags(ag)
+    sel = hd.iselection()
+    xyz.extend(ats.extract_xyz().select(sel))
+    wid.extend(flex.size_t(sel.size(), w))
+    atoms.extend(ats[int(k)] for k in sel)
+  return xyz, wid, atoms
+
+
 def _water_clash_stats(hier):
   """Count H-H contacts between the H of different waters.
 
@@ -1504,32 +1536,8 @@ def _water_clash_stats(hier):
   water H, the counts of inter-water H-H contacts below 2.0/1.8/1.5 A, and
   the closest such distance (None if no pair is within 2.0 A).
   """
-  wh = []
-  for ag in hier.atom_groups():
-    if not _is_water(ag.resname):
-      continue
-    wid = ag.memory_id()
-    ats, hd = _hd_flags(ag)
-    xyz = ats.extract_xyz()
-    for k in hd.iselection():
-      wh.append((xyz[int(k)], wid))
-  if len(wh) < 2:
-    return len(wh), 0, 0, 0, None
-  tree = KDTree([x for x, _ in wh])
-  n20 = n18 = n15 = 0
-  worst = None
-  for i, (x, wid) in enumerate(wh):
-    xc = matrix.col(x)
-    for j in tree.query_ball_point(x, 2.0):
-      if j <= i or wh[j][1] == wid:  # skip self-pair and same-water H
-        continue
-      d = (matrix.col(wh[j][0]) - xc).length()
-      if worst is None or d < worst:
-        worst = d
-      n20 += 1
-      n18 += d < 1.8
-      n15 += d < 1.5
-  return len(wh), n20, n18, n15, worst
+  xyz, wid, _ = _water_h_sites(hier)
+  return _contact_stats(xyz.size(), _water_h_contacts(xyz, wid)[2])
 
 
 def _clash_row(label, stats, log):
@@ -1560,27 +1568,10 @@ def _worst_water_clashes(hier):
 
   One ``(distance, id_a, id_b)`` per contact.
   """
-  wh = []
-  for ag in hier.atom_groups():
-    if not _is_water(ag.resname):
-      continue
-    wid = ag.memory_id()
-    ats, hd = _hd_flags(ag)
-    xyz = ats.extract_xyz()
-    for k in hd.iselection():
-      wh.append((xyz[int(k)], wid, ats[int(k)]))
-  if len(wh) < 2:
-    return []
-  tree = KDTree([x for x, _, _ in wh])
-  pairs = []
-  for i, (x, wid, a) in enumerate(wh):
-    xc = matrix.col(x)
-    for j in tree.query_ball_point(x, 2.0):
-      if j <= i or wh[j][1] == wid:
-        continue
-      pairs.append(((matrix.col(wh[j][0]) - xc).length(), a, wh[j][2]))
-  pairs.sort(key=lambda t: t[0])
-  return [(d, _atom_id(a), _atom_id(b)) for d, a, b in pairs]
+  xyz, wid, atoms = _water_h_sites(hier)
+  i, j, d = _water_h_contacts(xyz, wid)
+  return [(d[k], _atom_id(atoms[i[k]]), _atom_id(atoms[j[k]]))
+          for k in flex.sort_permutation(d)]
 
 
 def _detect_neutron(pdb_in, hier):
