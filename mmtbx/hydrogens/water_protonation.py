@@ -401,11 +401,17 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   xyz = flex.vec3_double()
   for key in sorted(by_op):
     op, grp = by_op[key]
+    sel = flex.size_t(sorted(grp))
+    equiv = super_cell.sym_equiv_sites_cart(
+      sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op, selection=sel)
+    # A grown atom on a symmetry element of op lands on itself.
+    dx, dy, dz = (equiv - sites_cart.select(sel)).parts()
+    keep = (flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
+            >= min_distance_sym_equiv ** 2).iselection()
     # copy_atoms: without it set_xyz moves the model's own atoms.
-    sub = hier.select(flex.size_t(sorted(grp)), copy_atoms=True)
+    sub = hier.select(sel.select(keep), copy_atoms=True)
     sub_atoms = sub.atoms()
-    sub_atoms.set_xyz(super_cell.sym_equiv_sites_cart(
-      sites_cart=sub_atoms.extract_xyz(), unit_cell=unit_cell, rt_mx=op))
+    sub_atoms.set_xyz(equiv.select(keep))
     hiers.append(sub)
     atoms.extend(list(sub_atoms))
     xyz.extend(sub_atoms.extract_xyz())

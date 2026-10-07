@@ -380,6 +380,16 @@ END
 """
 
 
+# A water on the two-fold axis of P2, carrying one H. The two-fold maps the
+# O onto itself and the H onto the water's second H site.
+_ON_TWO_FOLD_PDB = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
+HETATM    2  H1  HOH W   1       0.757   5.586   0.000  1.00 10.00           H
+END
+"""
+
+
 # The same water and acceptor in two models.
 _MULTI_MODEL_PDB = """\
 MODEL        1
@@ -855,6 +865,23 @@ def exercise_sym_equiv_contacts_counted():
     ("HOH W 1 H1", "HOH W 1 H1 (-x,-y+1,-z+1)")], listed
 
 
+def exercise_sym_equiv_on_symmetry_element():
+  """An atom on a symmetry element is not copied onto itself.
+
+  Builds the symmetry environment of ``_ON_TWO_FOLD_PDB``. The two-fold
+  brings the H's equivalent next to the O, so the water's residue joins the
+  environment; the O, which the two-fold maps onto itself, must stay out.
+  The environment holds the H's equivalent alone.
+  """
+  hier, cs = _hierarchy_and_symmetry(_ON_TWO_FOLD_PDB)
+  hier.atoms().reset_i_seq()
+  hiers, atoms, xyz = wp._symmetry_environment(
+    hier, hier.atoms().extract_xyz(), cs, wp._WATER_ACCEPTOR_RADIUS)
+  assert [a.name.strip() for a in atoms] == ["H1"], (
+    [a.name for a in atoms], list(xyz))
+  assert approx_equal(xyz[0], (-0.757, 5.586, 0.0))
+
+
 def exercise_electron_microscopy_isolated():
   """The program ignores the cell of an electron microscopy model.
 
@@ -1014,6 +1041,7 @@ def run():
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_sym_equiv_protons()
   exercise_sym_equiv_contacts_counted()
+  exercise_sym_equiv_on_symmetry_element()
   exercise_electron_microscopy_isolated()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
