@@ -12,6 +12,7 @@ import os
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import make_sub_header
+from libtbx.utils import Sorry
 
 from mmtbx.hydrogens import water_protonation
 
@@ -99,7 +100,11 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    self._warn_if_environment_unprotonated(self.data_manager.get_model())
+    model = self.data_manager.get_model()
+    n_models = model.get_number_of_models()
+    if n_models > 1:
+      raise Sorry(f"Multi-model files are not supported ({n_models} models).")
+    self._warn_if_environment_unprotonated(model)
 
   # ----------------------------------------------------------------------------
 

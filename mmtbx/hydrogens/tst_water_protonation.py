@@ -70,6 +70,9 @@ to get wrong:
 * **O-H length auto-selection.** With no ``oh_length`` the placer takes the
   neutron distance for a model carrying D and the X-ray distance otherwise;
   an explicit value overrides both.
+
+* **Multi-model input.** The program rejects a file with more than one MODEL,
+  whose copies would otherwise share one environment.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -77,10 +80,13 @@ from __future__ import absolute_import, division, print_function
 import math
 
 import iotbx.pdb
+from iotbx.cli_parser import run_program
 from scitbx import matrix
-from libtbx.utils import format_cpu_times
+from libtbx.test_utils import Exception_expected
+from libtbx.utils import Sorry, format_cpu_times, null_out
 
 from mmtbx.hydrogens import water_protonation as wp
+from mmtbx.programs import water_protonation as wp_program
 
 
 # One HOH (bare O) with two acceptor O placed on the 104.5 deg H-O-H cone:
@@ -317,6 +323,20 @@ _CONTACT_PAIR_PDB = """\
 CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
 HETATM    1  O   HOH W   1       1.000  15.000  15.000  1.00 10.00           O
 HETATM    2  O   HOH W   2       8.200  15.000  15.000  1.00 10.00           O
+END
+"""
+
+
+# The same water and acceptor in two models.
+_MULTI_MODEL_PDB = """\
+MODEL        1
+HETATM    1  O   HOH W   1       5.000   5.000   5.000  1.00 10.00           O
+HETATM    2  O   ACA D   1       7.600   5.000   5.000  1.00 10.00           O
+ENDMDL
+MODEL        2
+HETATM    1  O   HOH W   1       5.010   5.000   5.000  1.00 10.00           O
+HETATM    2  O   ACA D   1       7.600   5.000   5.000  1.00 10.00           O
+ENDMDL
 END
 """
 
@@ -754,6 +774,24 @@ def exercise_image_protons():
     f"under the {wp._WATER_MIN_H_CLEARANCE} A clearance")
 
 
+def exercise_multi_model_rejected():
+  """The program refuses a multi-model file.
+
+  Runs the program on a two-model file and expects a Sorry naming the
+  problem, raised before any placement.
+  """
+  file_name = "tst_water_protonation_multi_model.pdb"
+  with open(file_name, "w") as f:
+    f.write(_MULTI_MODEL_PDB)
+  try:
+    run_program(program_class=wp_program.Program, logger=null_out(),
+                args=[file_name, "output.overwrite=True"])
+  except Sorry as e:
+    assert "Multi-model" in str(e), str(e)
+  else:
+    raise Exception_expected
+
+
 def run():
   """Run every exercise and print the CPU times and ``OK`` on success."""
   exercise_acceptor_directed()
@@ -776,6 +814,7 @@ def run():
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_image_protons()
+  exercise_multi_model_rejected()
   print(format_cpu_times())
   print("OK")
 
