@@ -1562,9 +1562,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             abcd = self.hl_coeffs().common_set(f_obs)
           llgi_data = self.llgi_data()
           if(llgi_data is not None):
-            # every miller-array component, as for abcd; target_name is
-            # reset to "ml" below, and sigmaA/ScatFrac are refitted before
-            # the llgi target is set again
+            # every miller-array component, as for abcd
             import mmtbx.refinement.llgi_hybrid as llgi_hybrid
             llgi_data = llgi_hybrid.map_llgi_data(llgi_data,
               lambda array: array.common_set(f_obs))
@@ -1579,7 +1577,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
              llgi_data                    = llgi_data,
              epsilons                     = None,
              sf_and_grads_accuracy_params = self.sfg_params,
-             target_name                  = "ml",
+             target_name                  = self.target_name,
              alpha_beta_params            = self.alpha_beta_params ,
              xray_structure               = self.xray_structure    ,
              mask_params                  = self.mask_params       ,
@@ -1827,9 +1825,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     """ Fit sigmaA and ScatFrac against the current model
     (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f) and
     attach .sigmaa, .sigmaa_curve and .scatfrac to llgi_data. Called by
-    the refinement driver once per macrocycle, like update_all_scales();
-    the llgi target_functor reads whatever llgi_data holds. Raises Sorry if
-    no llgi_data is attached.
+    the refinement driver once per macrocycle, like update_all_scales(),
+    and before the final statistics and maps if llgi_sigmaa_is_current()
+    is False; the llgi target_functor reads whatever llgi_data holds.
+    Raises Sorry if no llgi_data is attached.
 
     params: extracted mmtbx.refinement.llgi_scatfrac.
     llgi_scatfrac_params, or None for defaults.
@@ -1858,9 +1857,22 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     updated = llgi_hybrid.replace_llgi_data(llgi_data,
       sigmaa=f_obs.array(data=result.sigmaa),
       sigmaa_curve=result.sigmaa_curve,
-      scatfrac=f_obs.array(data=result.scatfrac))
+      scatfrac=f_obs.array(data=result.scatfrac),
+      _sigmaa_f_model=self.f_model().data().deep_copy())
     self.set_llgi_data(updated)
     return result
+
+  def llgi_sigmaa_is_current(self):
+    """ True if sigmaA/ScatFrac were fitted (update_llgi_sigmaa_scatfrac)
+    with the current f_model, i.e. neither the model nor the scales have
+    changed since. False after a selection of reflections (the record is
+    not carried over). """
+    llgi_data = self.llgi_data()
+    if(llgi_data is None): return False
+    fitted = getattr(llgi_data, "_sigmaa_f_model", None)
+    current = self.f_model().data()
+    if(fitted is None or fitted.size() != current.size()): return False
+    return current.size() == 0 or flex.max(flex.abs(fitted - current)) == 0
 
   def f_obs_scaled(self, include_fom=False):
     scale = 1.0 / self.k_total()

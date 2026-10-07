@@ -106,26 +106,11 @@ class run(mmtbx.f_model.manager):
       print(m+" twin_fraction=%4.2f"%self.twin_fraction, file=log)
 
   def _capture_scaling_b_values(self, fast, result):
-    # Capture the overall anisotropic scale (b_cart) and the overall
-    # isotropic scale (k_isotropic_overall, b_isotropic) of the
-    # bulk-solvent scaling. Returned via russ and printed later, after the
-    # block of r-factor lines.
-    #
-    # b_cart is taken directly from the fit that scaler.py (fast mode) or
-    # bulk_solvent_and_scaling.py (slow mode) already performed -- NOT
-    # recomputed here -- so whenever it is reported, it is guaranteed to
-    # be exactly the tensor actually applied to k_anisotropic(), already
-    # correctly constrained to the crystal's point-group symmetry (built
-    # from a u_star fit through self.adp_constraints; see
-    # anisotropic_scaling() in scaler.py). In fast mode, scaler.py also
-    # tries a 12-coefficient polynomial anisotropic scale (its "poly"
-    # branch) and may pick that over the b_cart-representable fit if it
-    # gives a better R-factor; a polynomial scale is not expressible as a
-    # rank-2 tensor at all (fitting one back against k_anisotropic() would
-    # only be a lossy approximation -- for real datasets this can differ
-    # from the actual applied scale by tens of percent), so b_cart is left
-    # unset (None) in that case rather than reporting a misleading
-    # approximation.
+    # The overall anisotropic scale (b_cart, as fitted, i.e. the tensor
+    # applied to k_anisotropic; None if the fast mode chose its polynomial
+    # scale, which has no tensor form) and the overall isotropic scale
+    # (k_isotropic_overall, b_isotropic). Returned via russ and printed
+    # later, after the block of r-factor lines.
     b_cart = None
     if(fast):
       captured = getattr(result, "scale_matrices", None)
