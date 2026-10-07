@@ -370,8 +370,8 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
   Returns a group_args with .sigmaa (flex.double, every reflection),
   .target (final mean target on the R-free set), .evaluate_at (the fitted
   curve at other d*^2 values), .k_sol/.b_sol (bss_k_sol_b_sol; b_sol
-  anchors D_model's B_defect) and .lbfgs_error (spline fit: None, or the
-  message L-BFGS stopped with; always None for d_model).
+  anchors D_model's B_defect) and .lbfgs_error (None, or why the fit's
+  L-BFGS stopped early).
   """
   if(params is None):
     params = llgi_e_sigmaa_params.extract()
@@ -413,7 +413,7 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
     target=result.target,
     evaluate_at=result.evaluate_at,
     k_sol=k_sol, b_sol=b_sol,
-    lbfgs_error=getattr(result, "lbfgs_error", None))
+    lbfgs_error=result.lbfgs_error)
 
 def estimate_sigmaa_e_then_scatfrac_f(
       fmodel, dobs, feff, resn, e_params=None, scatfrac_params=None):

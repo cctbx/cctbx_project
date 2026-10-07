@@ -27,17 +27,8 @@ def exercise_unpack_theta_rejects_too_short():
     raise RuntimeError("expected ValueError for length-1 theta")
 
 def exercise_d_model_raw_zero_a_and_b_gives_zero():
-  # With every a_k=0 and b=0, D_raw (the unwrapped, unbounded sum) must
-  # be identically zero regardless of the (otherwise-meaningless) fixed
-  # b_k_grid/B_defect values -- and D_model = tanh(smooth_relu(D_raw))
-  # then follows: smooth_relu(0) is NOT exactly 0 (it is 0.5*sqrt(eps),
-  # a deliberately tiny residual -- see the module's own docstring), so
-  # this checks D_model is close to (not exactly) 0, well within the
-  # documented _SMOOTH_RELU_EPS-driven tolerance, and nowhere near the
-  # WRONG 0.5 an earlier, buggy 0.5*(1+tanh(.)) wrapping produced here
-  # (caught only after publishing a curve-shape comparison whose every
-  # curve plateaued at exactly 0.5 at high resolution -- see design doc
-  # sec. 6.4).
+  # a_k = b = 0: D_raw is 0 and D_model is close to 0 (smooth_relu(0) is
+  # 5e-4), not 0.5.
   theta = np.array([0.0, 0.0, 0.0, 50.0])  # a_1=a_2=0, b=0, B_defect=50
   b_k_grid = np.array([30.0, 80.0])
   s2 = np.linspace(0.0, 1.0, 25)
@@ -45,40 +36,23 @@ def exercise_d_model_raw_zero_a_and_b_gives_zero():
   assert flex_max_abs(draw) < 1.e-12
   d = dmodel.d_model(s2, theta, b_k_grid)
   assert flex_max_abs(d) < 1.e-2, d
-  assert flex_max_abs(d - 0.5) > 0.4, (
-    "D_model at D_raw=0 must be close to 0, not 0.5 -- regression "
-    "check for the exact bug found via the published curve comparison")
+  assert flex_max_abs(d - 0.5) > 0.4
 
 def exercise_d_model_raw_single_term_matches_hand_formula():
-  # b=0 isolates the single coordinate-error term: theta = [a_1, b=0,
-  # B_defect] (b/B_defect are mandatory -- see unpack_theta), b_k_grid
-  # = [B_1], so D_raw(s) = a_1*exp(-B_1*s2).
+  # b = 0 leaves D_raw(s) = a_1*exp(-B_1*s2).
   theta = np.array([0.6, 0.0, 1.0])
   b_k_grid = np.array([40.0])
   s2 = np.array([0.0, 0.05, 0.2, 0.5, 1.3])
   draw = dmodel.d_model_raw(s2, theta, b_k_grid)
   expected = 0.6 * np.exp(-40.0 * s2)
   assert flex_max_abs(draw - expected) < 1.e-12
-  # D_model = tanh(smooth_relu(D_raw)) -- check the wrapping is
-  # applied, not bypassed, on this same case.
   d = dmodel.d_model(s2, theta, b_k_grid)
   eps = 1.e-6  # must match llgi_e_dmodel._SMOOTH_RELU_EPS
   smooth_relu_expected = 0.5*(expected + np.sqrt(expected*expected + eps))
   assert flex_max_abs(d - dmodel.SIGMAA_MAX * np.tanh(smooth_relu_expected)) < 1.e-8
 
 def exercise_d_model_decays_to_zero_at_high_resolution():
-  # The defining physical property this module's tanh(smooth_relu(.))
-  # wrapping exists to guarantee (design doc sec. 6.4): D_model -> 0,
-  # NOT some other constant, as s -> infinity, for ANY theta -- every
-  # term in D_raw is a decaying exponential, so D_raw(s->infinity)=0
-  # identically, and the wrapping function must send that to 0. A
-  # first-attempt fix (0.5*(1+tanh(.))) satisfied non-negativity but
-  # sent D_raw=0 to D_model=0.5, so EVERY fitted curve incorrectly
-  # plateaued at 0.5 at high resolution -- caught only after the user
-  # noticed a published comparison of real fitted curves all showing
-  # this exact wrong shape. This test locks the correct asymptote in
-  # directly, across a spread of theta (not just the all-zero case
-  # above), so this specific regression cannot reappear silently.
+  # Without a B = 0 term, D_model -> 0 at high resolution.
   rnd = np.random.RandomState(11)
   s2_huge = np.array([50.0, 200.0, 1.e4])
   for _ in range(5):
@@ -96,13 +70,8 @@ def exercise_d_model_raw_defect_term_matches_hand_formula():
   assert flex_max_abs(draw - expected) < 1.e-12
 
 def exercise_d_model_is_bounded_to_open_unit_interval():
-  # The defining property of the tanh(smooth_relu(.)) wrapping (design
-  # doc sec. 6.4 / this module's own docstring): D_model must be
-  # strictly within (0, 1) -- NOT (-1, 1): D_obs and D_model are never
-  # negative for any case of practical interest -- for ANY theta,
-  # including values that push D_raw far outside any physically sane
-  # range (observed in practice during an unconstrained L-BFGS fit's
-  # line-search probing on real 2G38 data).
+  # D_model is in (0, SIGMAA_MAX] for any theta, including the extreme
+  # values L-BFGS line searches can reach.
   rnd = np.random.RandomState(9)
   s2 = np.linspace(0.0, 2.0, 15)
   for scale in [1.0, 10.0, 1.e3, 1.e6, 1.e12]:
@@ -114,14 +83,7 @@ def exercise_d_model_is_bounded_to_open_unit_interval():
     assert np.all(d <= dmodel.SIGMAA_MAX), (scale, d)
 
 def exercise_d_model_stays_nonnegative_when_defect_term_dominates():
-  # The other defining property of tanh(smooth_relu(.)) (design doc
-  # sec. 6.4): D_model must stay non-negative even where the defect
-  # term b*exp(-B_defect*s2) exceeds the positive coordinate-error
-  # terms at some s (D_raw itself dips below 0 there) -- nothing in
-  # the a_k>=0/b>=0/B_defect>=0 constraints alone prevents this, so the
-  # wrapping function has to handle it. Plain (unrescaled) tanh(D_raw)
-  # would go genuinely negative here; smooth_relu clamps it toward
-  # (not exactly to) 0 instead.
+  # D_model stays non-negative where the defect term makes D_raw < 0.
   theta = np.array([0.01, 0.01, 5.0, 30.0])  # tiny a_k, huge b
   b_k_grid = np.array([20.0, 50.0])
   s2 = np.array([0.001, 0.01, 0.05])
@@ -146,19 +108,8 @@ def exercise_d_model_gradient_matches_finite_difference():
     assert rel.max() < 1.e-5, (i, rel.max())
 
 def exercise_d_model_gradient_is_finite_and_warning_free_for_extreme_theta():
-  # Real bug found on real 2G38 data (doc/llgi_target_design.md sec.
-  # 6.4): clipping D_raw before tanh() correctly keeps D_model itself
-  # bounded (exercise_d_model_is_bounded_to_open_unit_interval), but
-  # d_model_raw_gradient is computed from the
-  # UNCLIPPED theta and can themselves overflow to inf for extreme
-  # theta -- multiplying that against the (correctly tiny, but no
-  # longer coupled to the unclipped D_raw) sech2 factor does NOT
-  # reproduce the true mathematical limit (which is exactly 0), it
-  # produces inf/nan. The fix masks the gradient to exactly 0
-  # wherever D_raw was clipped, and suppresses (not hides -- the
-  # overflow is provably benign once masked) the resulting numpy
-  # RuntimeWarning. This test enforces BOTH: no warning escapes, and
-  # the result is finite.
+  # For extreme theta the gradient is finite, raises no numpy warning,
+  # and is exactly 0 where D_raw is clipped.
   import warnings
   theta = np.array([1.e300, 0.5, 30.0])  # a_1=1e300, b=0.5, B_defect=30
   b_k_grid = np.array([5.0])
@@ -167,10 +118,6 @@ def exercise_d_model_gradient_is_finite_and_warning_free_for_extreme_theta():
     warnings.simplefilter("error", RuntimeWarning)
     grad = dmodel.d_model_gradient(s2, theta, b_k_grid)
   assert np.all(np.isfinite(grad)), grad
-  # D_raw is saturated at every one of these s2 values for a_1=1e300
-  # (B_1=5.0 decays far too slowly to bring it back under _D_RAW_CLIP
-  # at any of these resolutions), so the a_1 gradient row must be
-  # exactly (not approximately) zero.
   assert flex_max_abs(grad[0]) == 0.0, grad[0]
 
 def flex_max_abs(arr):

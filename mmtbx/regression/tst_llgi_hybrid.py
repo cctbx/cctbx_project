@@ -87,7 +87,6 @@ def exercise_map_coefficients_exact_without_hybrid():
   assert approx_equal(m_off.alpha.data(), m_on.alpha.data())
 
 def exercise_d_model_target_with_hybrid():
-  import mmtbx.refinement.llgi_e_dmodel_target as target
   import mmtbx.refinement.llgi_e_dmodel_fit as fit
   rnd = np.random.default_rng(4)
   n = 120
@@ -104,21 +103,21 @@ def exercise_d_model_target_with_hybrid():
     centric_flags=flex.bool(centric.tolist()), rice_kappa=0.1)
   b_k_grid = fit.default_b_k_grid(2, s2)
   theta = np.array([0.6, 0.4, 0.1, 40.0])
-  ll, grad = target.total_ll_and_gradient(
-    theta, s2, e_eff, e_c, dobs, centric, b_k_grid, hybrid=h)
-  ll0, _ = target.total_ll_and_gradient(
-    theta, s2, e_eff, e_c, dobs, centric, b_k_grid)
-  assert abs(ll - ll0) > 1e-6  # the exact reflections changed the target
+  args = (s2, flex.double(e_eff), flex.double(e_c), flex.double(dobs),
+    flex.bool(centric.tolist()), b_k_grid)
+  t, grad = fit.target_and_gradient(theta, *args, hybrid=h)
+  t0, _ = fit.target_and_gradient(theta, *args)
+  assert abs(t - t0) > 1e-8  # the exact reflections changed the target
   step = 1e-6
   for i in range(theta.size):
     tp = theta.copy(); tp[i] += step
     tm = theta.copy(); tm[i] -= step
-    lp, _ = target.total_ll_and_gradient(
-      tp, s2, e_eff, e_c, dobs, centric, b_k_grid, hybrid=h)
-    lm, _ = target.total_ll_and_gradient(
-      tm, s2, e_eff, e_c, dobs, centric, b_k_grid, hybrid=h)
+    fp, _ = fit.target_and_gradient(tp, *args, hybrid=h)
+    fm, _ = fit.target_and_gradient(tm, *args, hybrid=h)
     scale = max(1, abs(grad[i]))
-    assert abs((lp - lm) / (2 * step) - grad[i]) < 1e-5 * scale, i
+    # 1e-6: scitbx's ln_of_i0 and i1_over_i0 approximations (target and
+    # derivative) differ at about that level
+    assert abs((fp - fm) / (2 * step) - grad[i]) < 1e-6 * scale, i
 
 def exercise_k1_scale_carries_feff_and_resn():
   """ apply_scale_k1_to_f_obs must rescale llgi_data's FEFF and RESN with

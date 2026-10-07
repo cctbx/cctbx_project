@@ -1,37 +1,27 @@
+""" Fit of D_model(s; theta) (mmtbx.refinement.llgi_e_dmodel) as sigmaA
+against the E-scale LLGI target on the R-free set, with Emodel fixed: the
+default sigmaA model of mmtbx.refinement.llgi_e_sigmaa. """
 from __future__ import absolute_import, division, print_function
 import numpy as np
 import scitbx.minimizers
 from cctbx.array_family import flex
+from cctbx.xray import ext as xray_ext
 from libtbx import group_args
 import iotbx.phil
 import mmtbx.refinement.llgi_e_dmodel as dmodel
-import mmtbx.refinement.llgi_e_dmodel_target as target
-
-""" L-BFGS-B fit of the physically-motivated D_model(s; theta)
-parametrization against the E-scale LLGI likelihood (see
-doc/llgi_target_design.md sec. 6.4), the alternative to
-mmtbx.refinement.llgi_e_sigmaa.estimate_e_sigmaa's
-B-spline-over-sigmoid fit, with the same restriction to the R-free/test
-set and the same Emodel-held-fixed convention.
-
-Builds on llgi_e_dmodel.py (D_model value/gradient),
-llgi_e_likelihood.py (per-reflection likelihood) and
-llgi_e_dmodel_target.py (chain-rule combination into theta-space
-LL/gradient).
-"""
 
 llgi_e_dmodel_params = iotbx.phil.parse("""\
   n_gaussian_terms = 2
     .type = int
     .short_caption = Number of coordinate-error Gaussian terms (K)
-    .help = "Number of positive Gaussian-decay terms in D_model(s; "\
-            "theta) (sigmaA_model_handoff.md sec. 2), each standing in "\
-            "for a discretized component of the distribution of "\
-            "coordinate-error B-factors across the model. K=2 or 3 is "\
-            "expected to be sufficient (design doc sec. 6.4)."
+    .help = "Number of decaying Gaussian terms exp(-B_k*s^2) in D_model, "\
+            "with B_k on a fixed log-spaced ladder over the resolution "\
+            "range of the data; they stand for the spread of coordinate "\
+            "errors in the model."
   max_iterations = 200
     .type = int
     .expert_level = 3
+    .help = "Maximum L-BFGS-B iterations for the D_model fit."
   include_constant_term = True
     .type = bool
     .short_caption = Add a constant (B=0) term to the D_model ladder
@@ -40,32 +30,15 @@ llgi_e_dmodel_params = iotbx.phil.parse("""\
             "lowest decaying rung (4*d_min^2) has already fallen to 1/e "\
             "at d_min, so without this term D_model cannot stay flat "\
             "at high resolution, as sigmaA does for a well-refined "\
-            "model (seen on 9RRL). With it, D_model need not fall to 0 "\
+            "model. With it, D_model need not fall to 0 "\
             "at infinite resolution."
 """)
 
 def default_b_k_grid(k, s2):
-  """ Fixed, log-spaced ladder of K coordinate-error decay constants
-  B_1..B_K (design doc sec. 6.4's well-posedness addendum -- see
-  llgi_e_dmodel.py's own module docstring for why B_k is a fixed grid
-  rather than a fitted parameter). Spans the resolution range actually
-  present in the fitted (test-set) reflections, s2 = d_star_sq/4: from
-  roughly 1/s2_max (a term that has already decayed to ~1/e by the
-  data's own highest-resolution reflection -- any B_k smaller than this
-  is indistinguishable from a constant over the whole fitted range) to
-  roughly 1/s2_min (a term that has already decayed to ~1/e by the
-  data's own LOWEST-resolution reflection -- any B_k larger than this
-  contributes essentially nothing anywhere in the fitted range), evenly
-  spaced in log(B_k) (matching how coordinate-error B-factors are
-  naturally compared, and how sigmaA_model_handoff.md sec. 2 frames the
-  K terms as "a discretized component of the distribution").
-
-  k: number of ladder rungs (K>=1). s2: the fitted reflections' own s^2
-  = d_star_sq/4 values (array). Falls back to a fixed, physically
-  plausible range (10 to 300, design doc sec. 2's own realistic B_k
-  span) if s2 is degenerate (empty or a single repeated value).
-
-  Returns a 1D numpy array of length k, ascending.
+  """ K decay constants B_k, log-spaced from 1/max(s2) to 1/min(s2): B_k
+  smaller than this behave as constants over the data, larger ones are
+  zero everywhere in it. s2 = d*^2/4 of the fitted reflections. Falls
+  back to 10..300 if s2 has no spread. Returns an ascending numpy array.
   """
   if(k <= 0):
     return np.zeros(0, dtype=float)
@@ -80,67 +53,69 @@ def default_b_k_grid(k, s2):
     return np.array([np.sqrt(b_lo * b_hi)], dtype=float)
   return np.exp(np.linspace(np.log(b_lo), np.log(b_hi), k))
 
+def target_and_gradient(theta, s2, e_eff, e_model, dobs, centric_flags,
+      b_k_grid, hybrid=None):
+  """ Mean E-scale LLGI target (minimize-me) over the given reflections at
+  sigmaA = D_model(s2; theta), and its gradient with respect to theta.
+  s2 is a numpy array; e_eff, e_model, dobs (flex.double), centric_flags
+  (flex.bool) and hybrid (cctbx.xray.llgi_hybrid or None) are as for
+  cctbx.xray.ext.llgi_e_sigmaa_target_and_gradients, which computes the
+  target and its derivative with respect to each reflection's sigmaA.
+  """
+  result = xray_ext.llgi_e_sigmaa_target_and_gradients(
+    e_eff=e_eff,
+    selection=flex.bool(e_eff.size(), True),
+    e_model=e_model,
+    dobs=dobs,
+    sigmaa=flex.double(dmodel.d_model(s2, theta, b_k_grid)),
+    centric_flags=centric_flags,
+    hybrid=hybrid)
+  gradient = dmodel.d_model_gradient(s2, theta, b_k_grid).dot(
+    result.d_target_by_dsigmaa().as_numpy_array())
+  return result.target(), gradient
+
 class d_model_target_evaluator(object):
-  """ L-BFGS-B fit of D_model(s; theta) against the E-scale LLGI target,
-  summed over the R-free/test set only (same restriction as
-  mmtbx.refinement.llgi_e_sigmaa.e_sigmaa_target_evaluator), with
-  Emodel (hence the bulk-solvent model) held fixed.
+  """ L-BFGS-B fit of theta for D_model against the mean E-scale LLGI on
+  the R-free set, with Emodel fixed. Bounds: 0 <= a_k, b <= amplitude_max,
+  b_defect_min <= B_defect <= b_defect_max. Fitting theta directly with
+  bounds (rather than e.g. ln(theta) without) lets amplitudes leave 0.
 
-  B_defect is fixed at b_sol_anchor (bss's B_sol point estimate) when
-  one is given, and only a_1..a_K and b are fitted. Leaving it free
-  (even under a restraint) lets the fit trade the defect term against a
-  coordinate-error term with a similar decay -- solutions such as
-  a_1 = 233, b = 232 -- and makes the result depend on the starting
-  point, for very little gain in likelihood. Without an anchor B_defect
-  is fitted too.
-
-  The fit works in natural coordinates with bounds (0 <= a_k, b <=
-  amplitude_max; b_defect_min <= B_defect <= b_defect_max). An earlier version optimised q = ln(theta)
-  with unbounded L-BFGS, which makes 0 an absorbing boundary (d/dq ->
-  0 as theta -> 0): once b or an a_k headed towards 0 it could not come
-  back, and the fit converged to whichever such corner it fell into
-  first (on 2G38 after 5 cycles, LLGI 156.7 instead of 180.8 with b
-  stuck at 0).
+  B_defect is fixed at b_sol_anchor (bss's B_sol estimate) when given;
+  otherwise it is fitted. Free, it trades off against coordinate-error
+  terms with a similar decay (e.g. a_1 = 233, b = 232), and the result
+  depends on the start.
   """
 
   b_defect_min = 0.1
   b_defect_max = 1.e4
-  # Upper bound for a_k and b: tanh(D_raw) is saturated (> 0.9999) well
-  # before D_raw reaches this, so larger values only drift along flat
-  # directions (e.g. the largest-B rung, which matters only at low
-  # resolution, where the curve is already saturated).
+  # tanh(D_raw) is saturated well before D_raw reaches this, so larger
+  # amplitudes would only drift along flat directions.
   amplitude_max = 100.
 
   def __init__(self,
         e_eff, r_free_flags, e_model, dobs, centric_flags, d_star_sq,
-        n_gaussian_terms=2, theta_start=None, max_iterations=200,
+        n_gaussian_terms=2, max_iterations=200,
         b_sol_anchor=None, b_k_grid=None,
         include_constant_term=True,
-      hybrid=None):
+        hybrid=None):
     n_refl = e_eff.size()
     assert r_free_flags.size() == n_refl
     assert e_model.size() == n_refl
     assert dobs.size() == n_refl
     assert centric_flags.size() == n_refl
     assert d_star_sq.size() == n_refl
-    test_sel = np.array(r_free_flags, dtype=bool)
-    if(not np.any(test_sel)):
+    if(r_free_flags.count(True) == 0):
       raise RuntimeError(
         "d_model_target_evaluator: no R-free/test-set reflections "
         "available for the D_model(s) LLGI sigmaA fit.")
-    self.s2 = np.array(d_star_sq, dtype=float)[test_sel] / 4.0
-    self.e_eff = np.array(e_eff, dtype=float)[test_sel]
-    self.e_c = np.array(e_model, dtype=float)[test_sel]
-    self.dobs = np.array(dobs, dtype=float)[test_sel]
-    self.centric_flags = np.array(centric_flags, dtype=bool)[test_sel]
+    self.s2 = (d_star_sq.select(r_free_flags) / 4).as_numpy_array()
+    self.e_eff = e_eff.select(r_free_flags)
+    self.e_model = e_model.select(r_free_flags)
+    self.dobs = dobs.select(r_free_flags)
+    self.centric_flags = centric_flags.select(r_free_flags)
     self.hybrid = None
     if(hybrid is not None):
-      self.hybrid = hybrid.select(flex.bool(test_sel.tolist()))
-    # LL and gradient are per-reflection means, matching ext.
-    # llgi_e_sigmaa_target_and_gradients (target() is divided by
-    # n_selected), so .final_target is comparable with the spline path's.
-    self.n_test = int(np.sum(test_sel))
-    self.n_gaussian_terms = n_gaussian_terms
+      self.hybrid = hybrid.select(r_free_flags)
     if(b_k_grid is None):
       b_k_grid = default_b_k_grid(n_gaussian_terms, self.s2)
       if(include_constant_term):
@@ -151,12 +126,7 @@ class d_model_target_evaluator(object):
     self.b_defect_fixed = None
     if(b_sol_anchor is not None and b_sol_anchor > 0):
       self.b_defect_fixed = float(b_sol_anchor)
-    self.final_target = None
-
-    if(theta_start is None):
-      theta_start = self._default_theta_start(n_terms)
-    theta_start = np.asarray(theta_start, dtype=float)
-    assert theta_start.size == n_terms + 2
+    theta_start = self._default_theta_start(n_terms)
     # Fitted parameters: all of theta, or all but B_defect when it is fixed
     self.n_fit = n_terms + 2 - int(self.b_defect_fixed is not None)
     lower = np.zeros(self.n_fit)
@@ -174,8 +144,8 @@ class d_model_target_evaluator(object):
 
   @staticmethod
   def _default_theta_start(k):
-    """ Neutral starting theta: each a_k = 0.5/K, a small defect term
-    (b = 0.05) and B_defect = 40 (used only when B_defect is fitted).
+    """ Each a_k = 0.5/K, b = 0.05, B_defect = 40 (used only when B_defect
+    is fitted).
     """
     theta = np.empty(k + 2, dtype=float)
     if(k > 0):
@@ -192,14 +162,10 @@ class d_model_target_evaluator(object):
   # calculator interface for scitbx.minimizers.lbfgs
   def update(self, x):
     self.x = x
-    theta = self._full_theta(np.array(x))
-    ll, grad_p = target.total_ll_and_gradient(
-      theta, self.s2, self.e_eff, self.e_c, self.dobs,
+    self._f, g = target_and_gradient(
+      self.theta(), self.s2, self.e_eff, self.e_model, self.dobs,
       self.centric_flags, self.b_k_grid, hybrid=self.hybrid)
-    # Minimize-me convention (as llgi_e.h's target_one_h): f = -LL/n
-    self._f = -ll / self.n_test
-    self._g = -grad_p[:self.n_fit] / self.n_test
-    self.final_target = self._f
+    self._g = g[:self.n_fit]
 
   def target(self):
     return self._f
@@ -210,42 +176,36 @@ class d_model_target_evaluator(object):
   def theta(self):
     return self._full_theta(np.array(self.x))
 
+  def lbfgs_error(self):
+    """ None, or why L-BFGS-B stopped if it was not convergence or the
+    iteration limit. """
+    m = self.minimizer.minimizer
+    if(m.error is not None): return m.error
+    task = m.task()
+    if(task.startswith("ABNORMAL") or task.startswith("ERROR")): return task
+    return None
+
 def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
       centric_flags, d_star_sq, n_gaussian_terms=2, max_iterations=200,
-      b_sol_anchor=None, theta_start=None, b_k_grid=None,
-      include_constant_term=True, hybrid=None):
-  """ Fit D_model(s; theta) against the E-scale LLGI target, restricted
-  to the R-free/test set, Emodel held fixed -- drop-in replacement for
-  mmtbx.refinement.llgi_e_sigmaa.estimate_e_sigmaa. Evaluates
-  the fitted curve at every reflection (working set included, unlike
-  the fit itself, exactly mirroring estimate_e_sigmaa's own contract).
+      b_sol_anchor=None, b_k_grid=None, include_constant_term=True,
+      hybrid=None):
+  """ Fit D_model against the E-scale LLGI on the R-free set (see
+  d_model_target_evaluator) and evaluate it at every reflection.
 
-  b_k_grid: fixed ladder of B_1..B_K decay constants (length
-  n_gaussian_terms, plus one if include_constant_term); None (the
-  default) derives it from the fitted (test-set) reflections' own
-  resolution range via default_b_k_grid, with a leading B=0 rung if
-  include_constant_term. Exposed as its own argument mainly for tests/
-  diagnostics that need a reproducible, data-independent ladder --
-  ordinary callers should leave it None.
+  b_k_grid: the fixed B_k ladder, or None to derive it from the R-free
+  reflections (default_b_k_grid, with a leading B=0 if
+  include_constant_term).
 
-  Returns a group_args with .sigmaa (flex.double, D_model(s_h; theta)
-  evaluated at every input reflection, one value per input reflection
-  -- the "sigmaa" name kept for drop-in compatibility with
-  estimate_e_sigmaa's own return contract, even though the underlying
-  parametrization is now the physically-motivated D_model, not a
-  spline), .theta (flex.double, the converged natural-space parameter
-  vector -- [a_1..a_K, b, B_defect], NOT including B_1..B_K, which are
-  fixed and available as .b_k_grid instead -- for logging/diagnostics/
-  passing to a subsequent macrocycle as theta_start), .b_k_grid (the
-  fixed B_k ladder actually used), .target (final fitted LLGI target
-  value on the test set, minimize-me convention, for diagnostics/
-  logging matching estimate_e_sigmaa's own .target).
+  Returns a group_args with .sigmaa (flex.double, every reflection),
+  .theta ([a_1..a_K, b, B_defect]) and .b_k_grid (flex.double), .target
+  (final mean target on the R-free set), .evaluate_at (the fitted curve
+  at other d*^2 values) and .lbfgs_error (see
+  d_model_target_evaluator.lbfgs_error).
   """
-  n_refl = e_eff.size()
   evaluator = d_model_target_evaluator(
     e_eff=e_eff, r_free_flags=r_free_flags, e_model=e_model, dobs=dobs,
     centric_flags=centric_flags, d_star_sq=d_star_sq,
-    n_gaussian_terms=n_gaussian_terms, theta_start=theta_start,
+    n_gaussian_terms=n_gaussian_terms,
     max_iterations=max_iterations,
     b_sol_anchor=b_sol_anchor,
     b_k_grid=b_k_grid,
@@ -253,18 +213,16 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     hybrid=hybrid)
   theta = evaluator.theta()
   b_k_grid_used = evaluator.b_k_grid
-  s2_all = np.array(d_star_sq, dtype=float) / 4.0
-  sigmaa_all = dmodel.d_model(s2_all, theta, b_k_grid_used)
   def evaluate_at(d_star_sq_new):
     """ The fitted D_model at other d*^2 values (e.g. missing
     reflections). D_model is defined at any resolution, so no clamping.
     """
     s2_new = np.asarray(d_star_sq_new, dtype=float) / 4.0
     return flex.double(dmodel.d_model(s2_new, theta, b_k_grid_used))
-
   return group_args(
-    sigmaa=flex.double(sigmaa_all),
+    sigmaa=evaluate_at(d_star_sq),
     theta=flex.double(theta),
     b_k_grid=flex.double(b_k_grid_used),
-    target=evaluator.final_target,
-    evaluate_at=evaluate_at)
+    target=evaluator.target(),
+    evaluate_at=evaluate_at,
+    lbfgs_error=evaluator.lbfgs_error())
