@@ -67,7 +67,8 @@ def _independent_e_scale_quantities(fmodel):
   d = flex.double(n, 0.0)
   d.set_selected(valid, dobs * sa)
   v = teps - d * d
-  sqrt_teps_resn = flex.sqrt(teps.set_selected(teps <= 0, 1.0)) * resn
+  sqrt_teps_resn = flex.sqrt(
+    teps.deep_copy().set_selected(teps <= 0, 1.0)) * resn
   inv_sqrt_eps_sigmap = 1.0 / flex.sqrt(epsilons * sigma_p)
   return eeff, emodel_abs, d, v, sqrt_teps_resn, inv_sqrt_eps_sigmap
 

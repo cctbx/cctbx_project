@@ -424,13 +424,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self._r_free_flags = r_free_flags
     assert type(f_obs) == type(r_free_flags)
     self._hl_coeffs = abcd
-    # Validated the same way set_llgi_data() validates a post-construction
-    # attach; done here too so llgi_data survives every self.__init__(...)
-    # re-init call site in this file (e.g. update_all_scales()'s outlier-
-    # removal branch), which previously silently dropped it since it was
-    # not a constructor parameter -- caught testing target=llgi against a
-    # real (not synthetic) dataset, where that branch's r_work_low()>0.7
-    # condition triggered on the very first run.
+    # a constructor argument, so that re-initialisation keeps it
     self._validate_and_set_llgi_data(llgi_data)
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
@@ -619,7 +613,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     # llgi target it would reject poorly measured reflections that the
     # LLGI likelihood already down-weights; only the model-independent
     # tests above apply there.
-    if(n_free > 0 and use_model and self.target_name != "llgi"):
+    if(n_free > 0 and use_model and not self.llgi_target_active()):
       s4 = result.model_based_outliers(f_model = self.f_model()).data()
       result = s1 & s2 & s3 & s4
     else: result = s1 & s2 & s3
@@ -717,17 +711,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       new_hl_coeffs = None
     llgi_data = self.llgi_data()
     if(llgi_data is not None):
-      # Select every component the same way new_hl_coeffs is selected
-      # just above -- this is the general-purpose select()/deep_copy()
-      # path (used well beyond just outlier removal: e.g. remove_
-      # outliers() inside f_model_all_scales.compute(), called from every
-      # ordinary bulk-solvent-and-scaling pass, not only the resolution-
-      # filtering branch in update_all_scales() that a narrower fix
-      # elsewhere in this file already handles), so missing it here was
-      # caught as the actual cause of target=llgi failing on the very
-      # first real (non-synthetic) refinement run tried, at the first
-      # ordinary bss (bulk-solvent-and-scaling) macrocycle step -- not
-      # only in the rarer low-resolution-outlier-removal branch.
+      # every miller-array component, as for hl_coeffs
       import mmtbx.refinement.llgi_hybrid as llgi_hybrid
       new_llgi_data = llgi_hybrid.map_llgi_data(llgi_data,
         lambda array: array.select(selection=selection))
@@ -1578,15 +1562,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             abcd = self.hl_coeffs().common_set(f_obs)
           llgi_data = self.llgi_data()
           if(llgi_data is not None):
-            # Re-common_set every component (including sigmaa/scatfrac,
-            # if already attached by update_llgi_sigmaa_scatfrac() --
-            # all components share f_obs's index set) against the
-            # resolution-filtered f_obs, mirroring how abcd is handled
-            # just above. target_name is being reset to "ml" below
-            # regardless; the next updatellgisigmaa/settarget macrocycle
-            # task will refresh sigmaa/scatfrac against the (possibly
-            # resolution-filtered) data before the llgi target is used
-            # again.
+            # every miller-array component, as for abcd; target_name is
+            # reset to "ml" below, and sigmaA/ScatFrac are refitted before
+            # the llgi target is set again
             import mmtbx.refinement.llgi_hybrid as llgi_hybrid
             llgi_data = llgi_hybrid.map_llgi_data(llgi_data,
               lambda array: array.common_set(f_obs))
@@ -1789,18 +1767,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       return self.arrays.hl_coeffs
 
   def _validate_and_set_llgi_data(self, llgi_data):
-    """ Shared validation for llgi_data, called both from __init__
-    (llgi_data is a constructor parameter, like abcd/HL coefficients, so
-    it survives every self.__init__(...) re-init call site in this
-    file -- see update_all_scales()'s outlier-removal branch) and from
-    set_llgi_data() (for attaching/replacing it on an already-constructed
-    manager, e.g. from phenix.refinement.llgi_data.get_llgi_data() after
-    reading a reflection file). llgi_data is expected to be a group_args
-    (or similar) exposing .dobs, .feff, .teps, .resn as miller.array
-    objects on the same index set as f_obs(), plus optional .info,
-    .sigmaa, .sigmaa_curve and .scatfrac (attached later by
-    update_llgi_sigmaa_scatfrac(); .sigmaa_curve evaluates the fitted
-    sigmaA at any d*^2, e.g. for missing reflections).
+    """ llgi_data (or None) is a group_args with the nacelle columns
+    .dobs, .feff, .teps, .resn as miller arrays on f_obs()'s index set
+    (checked here), optional intensities and hybrid settings (see
+    mmtbx.refinement.llgi_hybrid), and, once update_llgi_sigmaa_scatfrac()
+    has run, .sigmaa, .sigmaa_curve (sigmaA as a function of d*^2) and
+    .scatfrac.
     """
     if(llgi_data is not None):
       f_obs = self._f_obs
@@ -1817,14 +1789,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self._llgi_data = llgi_data
 
   def set_llgi_data(self, llgi_data):
-    """ Attach precomputed per-reflection LLGI data (dobs, feff, teps, resn,
-    and optionally info), typically produced once per dataset by
-    phasertng.nacelle and read in by phenix.refine's LLGI ingestion code
-    (see phenix.refinement.llgi_data). Unlike alpha/beta (computed on
-    demand by this manager, see alpha_beta()), this data is supplied
-    externally and is not itself invalidated by structural updates, so no
-    cache-reset wiring analogous to alpha_beta_cache is required here.
-    See _validate_and_set_llgi_data() for the validation performed.
+    """ Attach or replace llgi_data (see _validate_and_set_llgi_data):
+    the nacelle columns are fixed for a dataset (phenix.refinement.
+    llgi_data reads them); sigmaA and ScatFrac depend on the model and
+    are refitted by update_llgi_sigmaa_scatfrac(), not automatically.
     """
     self._validate_and_set_llgi_data(llgi_data)
 
@@ -1856,25 +1824,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       n_forced=(exact & hybrid.force_exact).count(True))
 
   def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None):
-    """ (Re-)fit sigmaA(resolution) and ScatFrac(resolution) against the
-    current model and attach the result to this manager's llgi_data (see
-    set_llgi_data()), for use by the llgi refinement target.
-
-    Mirrors update_all_scales(): called explicitly, once per macrocycle,
-    from the refinement driver, not from inside mmtbx.refinement.
-    targets.py's target_functor.__init__ (which, like the "ml" target's
-    use of manager.alpha_beta(), just reads whatever manager.llgi_data()
-    currently holds).
-
-    sigmaA and ScatFrac are not jointly identifiable from the F-scale
-    LLGI target (D = Dobs*sigmaA/sqrt(ScatFrac) is the only combined
-    quantity it sees), so sigmaA is fitted first against the E-scale LLGI
-    target, where ScatFrac does not appear, and ScatFrac is then fitted
-    against the F-scale target with sigmaA fixed (mmtbx.refinement.
-    llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f).
-
-    Requires llgi_data (dobs/feff/teps/resn) to already be attached;
-    raises Sorry if not.
+    """ Fit sigmaA and ScatFrac against the current model
+    (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f) and
+    attach .sigmaa, .sigmaa_curve and .scatfrac to llgi_data. Called by
+    the refinement driver once per macrocycle, like update_all_scales();
+    the llgi target_functor reads whatever llgi_data holds. Raises Sorry if
+    no llgi_data is attached.
 
     params: extracted mmtbx.refinement.llgi_scatfrac.
     llgi_scatfrac_params, or None for defaults.
@@ -2630,84 +2585,32 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       interpolation            = interpolation)
 
   def map_calculation_helper_llgi(self):
-    """ LLGI-native counterpart to map_calculation_helper() -- provides
-    the same (.f_obs, .f_model, .alpha, .beta, .fom) interface that
-    mmtbx.map_tools.combine/electron_density_map consume to build
-    2mFo-DFc/mFo-DFc-style map coefficients, but derived from the LLGI
-    target's OWN already-fitted quantities against Feff, instead of a
-    fresh generic ML alpha/beta/fom fit (maxlik.alpha_beta_est_manager)
-    against f_obs.
+    """ The LLGI counterpart of map_calculation_helper(): .f_obs, .f_model,
+    .alpha, .beta and .fom for mmtbx.map_tools.combine, from the LLGI
+    quantities instead of an ML alpha/beta fit. On the E scale, without
+    anisotropy or ScatFrac, as for the sigmaA fit:
+      Eeff   = Feff/(sqrt(TEPS)*RESN)
+      Emodel = f_model_no_aniso_scale/sqrt(EPS*SigmaP)
+      D      = Dobs*sigmaA,  V = TEPS - D^2
+    combine() forms fo_scale*fom*f_obs + fc_scale*alpha*f_model, with
+      .f_model  f_model_no_aniso_scale (the phase of f_model, without
+                k_anisotropic)
+      .alpha    the model coefficient times sqrt(TEPS)*RESN/sqrt(EPS*SigmaP),
+                so that alpha*f_model is on the F scale.
+    For reflections with measured intensities (llgi_data.e_obs_sq), the
+    exact posterior is used whether or not the hybrid target is enabled:
+      .f_obs    <|E|>*sqrt(TEPS)*RESN,  .fom = <E>/<|E|>,  coefficient sigmaA
+    (so that 2mFo-DFc is 2<E> - sigmaA*Emodel on the E scale, and mFo-DFc
+    is proportional to the exact LLGI gradient). Otherwise the Rice form:
+      .f_obs    Feff,  .fom = I1(X)/I0(X) (acentric) or tanh(X/2)
+                (centric), X = 2*D*Eeff*Emodel/V,  coefficient D
+    (fom and alpha 0 where D, V, Eeff or Emodel is not positive).
+    Also: .beta = V and .d = D for every reflection (the statistics table),
+    .x, X or its equivalent for the exact fom (phase_errors_llgi()), and
+    .n_exact; .llgi marks the helper for electron_density_map's fill of
+    missing reflections.
 
-    E-SCALE, anisotropy-free (Eeff/Emodel, no ScatFrac) -- see doc/
-    llgi_target_design.md's E-scale map-coefficient note. An earlier
-    version of this method used the F-scale llgi.h formula directly
-    (D = Dobs*(sigmaA/sqrt(ScatFrac))*k against Feff/fmodel.f_model()
-    WITH k_anisotropic); a real-data comparison found that formula's
-    maps degrading at high resolution relative to structure factors
-    computed from the full deposition, traced to a mismatch between
-    phenix's own LS-fitted anisotropic scale and whatever anisotropy
-    phasertng.nacelle assumed when it computed FEFF/DOBS/RESN. Since
-    established elsewhere in this design (mmtbx.refinement.
-    llgi_e_sigmaa's E-scale sigmaA target, and
-    update_llgi_sigmaa_scatfrac) that sigmaA itself is always determined from anisotropy-free
-    Eeff/Emodel with no ScatFrac term, this method now builds map
-    coefficients from EXACTLY those same quantities, rather than mixing
-    an anisotropy- and ScatFrac-bearing F-scale formula downstream of an
-    anisotropy-free sigmaA fit.
-
-    Requires llgi_target_active() (target=llgi and llgi_data attached,
-    including its .sigmaa, and llgi_data.teps/resn); raises
-    AttributeError otherwise (self.llgi_data() is None, or .sigmaa not
-    yet attached) rather than silently falling back to the ML fit. llgi_data.scatfrac is NOT required/consulted (there is no
-    ScatFrac term on the E-scale at all -- see llgi_e.h's target_one_h
-    docstring).
-
-    Derivation (mmtbx.refinement.llgi_e_sigmaa's build_e_eff/
-    build_e_model and f_model_no_aniso_scale(), reused UNCHANGED so this is
-    identical to what sigmaA was actually fit against under the default
-    scheme, not a re-derivation):
-      Eeff   = Feff / (sqrt(TEPS) * RESN)
-      Emodel = f_model_no_aniso_scale / sqrt(EPS * SigmaP)
-      D      = Dobs * sigmaA                       (no ScatFrac, no k)
-      V      = TEPS - D^2
-      X      = 2 * D * Eeff * Emodel / V
-      fom    = I1(X)/I0(X) (acentric) or tanh(X/2) (centric)
-    and the (2*m*Eeff - D*Emodel) bracket rescaled back to the F-scale
-    by sqrt(TEPS)*RESN (Eeff's own normalisation, inverted), giving:
-      2*m*Feff - Dobs*sigmaA*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP)
-        *f_model_no_aniso_scale
-    Packaged for mmtbx.map_tools.combine's existing, UNCHANGED ml_map
-    branch (fc_part = f_model.data()*fc_scale*alpha.data()) by folding
-    ALL of D's scalar rescale factors (sqrt(TEPS)*RESN/sqrt(EPS*SigmaP),
-    not just D=Dobs*sigmaA itself) into .alpha, and setting .f_model to
-    f_model_no_aniso_scale directly (NOT fmodel.f_model() -- deliberately
-    excludes k_anisotropic, unlike every other .f_model in this
-    codebase; combine() only ever multiplies .f_model by .alpha and a
-    scalar fc_scale, so this folding is exact, not an approximation):
-      .f_obs   -- Feff (llgi_data.feff), in place of F-obs.
-      .f_model -- f_model_no_aniso_scale (k_isotropic*(Fcalc+bulk),
-                  k_anisotropic excluded).
-      .alpha   -- Dobs*sigmaA*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP) (D's
-                  usual meaning, D=Dobs*sigmaA, times the F-scale
-                  rescale combine() needs since .f_model here is NOT on
-                  Emodel's own normalised scale).
-      .beta    -- TEPS - D^2 (V, D=Dobs*sigmaA plain, no rescale --
-                  matches llgi_e.h's own "v" exactly, unlike the old
-                  F-scale beta which needed a separate TEPS*RESN^2
-                  factor folded in for ScatFrac reasons that do not
-                  apply here). Exposed for API completeness/diagnostics
-                  (matching map_calculation_helper()'s own .beta), not
-                  consumed by mmtbx.map_tools.combine.
-      .fom     -- I1(X)/I0(X) (acentric) or tanh(X/2) (centric), X =
-                  2*Eeff*D*Emodel/V -- the E-scale Bessel-ratio figure of
-                  merit (the same "bess_term" llgi_e.h's
-                  d_target_one_h_over_sigmaa uses), evaluated directly here
-                  against Eeff/Emodel/D/V.
-
-    Reflections where D<=0, sigmaA<=0, Dobs<=0, Eeff<=0, Emodel<=0, or
-    V<=0 (llgi_e.h's own "no contribution" guards -- see target_one_h)
-    get fom=0, alpha=0, matching how those reflections contribute
-    nothing to the E-scale LLGI target itself.
+    Raises AttributeError unless llgi_data with .sigmaa is attached.
     """
     if(self.llgi_data() is None):
       raise AttributeError(
@@ -2744,26 +2647,17 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         teps = llgi_data.teps.data()
         resn = llgi_data.resn.data()
         n = feff.data().size()
-        # D = Dobs*sigmaA -- no ScatFrac, no k (llgi_e.h's target_one_h
-        # has neither).
         valid = (sa > 0) & (dobs > 0)
         d = flex.double(n, 0.0)
         d.set_selected(valid, dobs * sa)
-        # Rescale D by sqrt(TEPS)*RESN/sqrt(EPS*SigmaP) so that .f_model
-        # (f_model_no_aniso_scale, plain F-scale) times .alpha reproduces
-        # D*sqrt(TEPS)*RESN/sqrt(EPS*SigmaP)*f_model_no_aniso_scale
-        # exactly -- see this method's own docstring.
-        sqrt_teps = flex.sqrt(teps.set_selected(teps <= 0, 1.0))
+        # F-scale factor for the model coefficient (see the docstring)
+        sqrt_teps = flex.sqrt(teps.deep_copy().set_selected(teps <= 0, 1.0))
         inv_sqrt_eps_sigmap = 1.0 / flex.sqrt(epsilons * sigma_p)
         alpha_data = d * sqrt_teps * resn * inv_sqrt_eps_sigmap
-        self.alpha = feff.array(data=alpha_data)
-        # V = TEPS - D^2 (llgi_e.h's own "v" exactly -- no extra RESN^2/
-        # ScatFrac factor needed on the E-scale).
         v = teps - d * d
         valid = valid & (v > 0)
-        self.beta = feff.array(data=v)
         valid = valid & (e_model_abs > 0) & (eeff > 0)
-        v_safe = v.set_selected(~valid, 1.0)
+        v_safe = v.deep_copy().set_selected(~valid, 1.0)
         ec = d * e_model_abs
         x = 2.0 * eeff * ec / v_safe
         centric_flags = feff.centric_flags().data()
@@ -2773,23 +2667,16 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         fom.set_selected(valid & ~centric_flags, acentric_fom)
         fom.set_selected(valid & centric_flags, centric_fom)
         x = x.set_selected(~valid, 0.0)
-        # Where the intensities are available, every measured reflection
-        # uses the exact posterior, whether or not the hybrid target is
-        # enabled (it costs one evaluation per reflection, and the Rice
-        # figure of merit gave worse maps where the Rice approximation is
-        # poor). The counterparts of m*Eeff and D are then
-        # m*Eeff -> <E along the model phase> = <|E|>*m, m = <E>/<|E|>,
-        # D = Dobs*sigmaA -> sigmaA. The difference coefficient <E> -
-        # sigmaA*Emodel is proportional to the exact LLGI gradient, as
-        # m*Eeff - D*Emodel is to the Rice one.
+        # Exact posterior for every measured reflection (see the
+        # docstring): one evaluation per reflection, and the Rice figure of
+        # merit gives worse maps where the Rice approximation is poor.
         import mmtbx.refinement.llgi_hybrid as llgi_hybrid
         from cctbx.xray import ext as xray_ext
         self.n_exact = 0
         hybrid = llgi_hybrid.get_exact_data(llgi_data)
         f_obs_data = feff.data()
         if(hybrid is not None):
-          exact = ((hybrid.sig_e_obs_sq > 0) & (sa > 0) & (sa < 0.999)
-                   & (e_model_abs >= 0))
+          exact = (hybrid.sig_e_obs_sq > 0) & (sa > 0) & (sa < 0.999)
           isel = exact.iselection()
           if(isel.size() > 0):
             r = xray_ext.llgi_exact_evaluate(
@@ -2823,11 +2710,6 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         self.alpha = feff.array(data=alpha_data)
         self.beta = feff.array(data=v)
         self.fom = fom
-        # Plain D=Dobs*sigmaA and V = TEPS - D^2 for every reflection (the
-        # Rice parameters, reported in the statistics table; the map's
-        # model coefficient for exact reflections, sigmaA, is in .alpha),
-        # and the Bessel/tanh argument X (0 where the reflection
-        # contributes nothing), for phase_errors_llgi().
         self.d = d
         self.x = x
     return result(fmodel=self)

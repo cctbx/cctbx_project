@@ -191,15 +191,9 @@ class target_functor(object):
       sigmaa = getattr(llgi_data, "sigmaa", None)
       scatfrac = getattr(llgi_data, "scatfrac", None)
       if (sigmaa is None or scatfrac is None):
-        # sigmaA(resolution) and ScatFrac(resolution) are estimated within
-        # phenix.refine itself (see doc/llgi_target_design.md sec. 5) and
-        # are not yet implemented; ingestion of DOBS/FEFF/TEPS/RESN alone
-        # (this step) is not sufficient to actually run the llgi target.
         raise Sorry(
           "llgi target requires sigmaA(resolution) and ScatFrac"
-          "(resolution) estimates, which are not yet available (the "
-          "estimator is not yet implemented). The llgi target cannot be "
-          "used until this is in place.")
+          "(resolution): call update_llgi_sigmaa_scatfrac() first.")
       self.core = xray.target_functors.llgi(
         f_eff        = llgi_data.feff,
         r_free_flags = manager.r_free_flags(),
