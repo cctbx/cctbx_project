@@ -178,16 +178,23 @@ def _rand_unit(rng):
 
 
 def _strip_water_hydrogens(hier):
-  """Remove every H/D from water residues; returns the number removed."""
-  n = 0
+  """Remove every H/D from water residues.
+
+  Returns the elements removed, as ``{atom_group memory_id: [element, ...]}``
+  over the waters that carried any.
+  """
+  stripped = {}
   for ag in hier.atom_groups():
     if not _is_water(ag.resname):
       continue
     ats, hd = _hd_flags(ag)
-    for a in [ats[int(k)] for k in hd.iselection()]:
+    removed = [ats[int(k)] for k in hd.iselection()]
+    if not removed:
+      continue
+    stripped[ag.memory_id()] = [a.element.strip().upper() for a in removed]
+    for a in removed:
       ag.remove_atom(a)
-      n += 1
-  return n
+  return stripped
 
 
 def _new_h_atom(name, element, xyz, occ, b, hetero=False):
@@ -975,13 +982,13 @@ class _WaterHydrogenPlacer(object):
     if self.oh_length is None:
       self.oh_length = (_WATER_OH_NEUTRON if _has_deuterium(hier)
                         else _WATER_OH_XRAY)
-    # The single-H set has to be taken before the strip; the walk below sees
-    # the same protons in every other mode.
+    # What each water carried is read off the strip; the walk below sees the
+    # same protons in every other mode.
     single_h = None
+    stripped = {}
     if self.existing_h == "reorient":
-      single_h = {ag.memory_id() for ag in hier.atom_groups()
-                  if _is_water(ag.resname) and _n_hd(ag) == 1}
-      _strip_water_hydrogens(hier)
+      stripped = _strip_water_hydrogens(hier)
+      single_h = {k for k, els in stripped.items() if len(els) == 1}
 
     sel = hier.atoms()
     atoms = list(sel)
@@ -1189,6 +1196,8 @@ class _WaterHydrogenPlacer(object):
         proton_element = self.element
       elif existing:
         proton_element = existing[0].element.strip().upper()
+      elif ag.memory_id() in stripped:
+        proton_element = stripped[ag.memory_id()][0]
       else:
         proton_element = "D" if ag.resname.strip().upper() == "DOD" else "H"
       h1, h2 = self._place_one(wi, nbr_slots(wi), fixed_d1)
@@ -1297,8 +1306,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       ``_WATER_OH_NEUTRON`` (0.984) if the model contains D, else 0.957.
   element : str or None, optional
       Element of the placed atoms, ``"H"`` or ``"D"``, forced on every water;
-      None (default) picks ``"D"`` for DOD and ``"H"`` for HOH. Names follow
-      it: ``H1``/``H2`` or ``D1``/``D2``.
+      None (default) takes the element of the water's own H/D, those
+      ``existing_h="reorient"`` strips included, else ``"D"`` for DOD and
+      ``"H"`` for HOH. Names follow it: ``H1``/``H2`` or ``D1``/``D2``.
   n_refine : int, optional
       Maximum relaxation sweeps after the greedy pass, each re-placing every
       water against the final environment, best state kept; 0 disables it.

@@ -26,7 +26,7 @@ oh_distance = *auto neutron xray
 element = *auto H D
   .type = choice(multi=False)
   .short_caption = Hydrogen element
-  .help = "Element for the placed water hydrogens: H, D, or auto (D for DOD residues, H for HOH)."
+  .help = "Element for the placed water hydrogens: H, D, or auto (the element the water already carries, else D for DOD residues and H for HOH)."
 existing_h = *keep complete reorient
   .type = choice(multi=False)
   .short_caption = Waters that already carry H
@@ -125,11 +125,11 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     oh = water_protonation._WATER_OH_NEUTRON if neutron \
         else water_protonation._WATER_OH_XRAY
 
-    # Element: "auto" leaves the per-residue choice (DOD->D, HOH->H) to the
-    # placer (element=None); "H"/"D" force it.
+    # Element: "auto" leaves the per-water choice (the element it carries,
+    # else DOD->D, HOH->H) to the placer (element=None); "H"/"D" force it.
     placer_element = None if self.params.element == "auto" else self.params.element
-    element_desc = ("auto (H for HOH, D for DOD)" if placer_element is None
-                    else placer_element)
+    element_desc = ("auto (as carried, else H for HOH, D for DOD)"
+                    if placer_element is None else placer_element)
     print(f"water hydrogen element: {element_desc}", file=self.logger)
 
     # Consistency warning: deuterium is modelled only from neutron (or joint)
@@ -138,7 +138,10 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     places_d = (placer_element == "D"
                 or (placer_element is None
                     and any(ag.resname.strip().upper() == "DOD"
-                            for ag in hier.atom_groups())))
+                            or (ag.atoms().extract_element(strip=True)
+                                == "D").count(True)
+                            for ag in hier.atom_groups()
+                            if water_protonation._is_water(ag.resname))))
     if places_d and not neutron:
       xray = water_protonation._WATER_OH_XRAY
       neut = water_protonation._WATER_OH_NEUTRON

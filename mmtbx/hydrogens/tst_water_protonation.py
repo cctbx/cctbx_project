@@ -71,6 +71,11 @@ to get wrong:
   neutron distance for a model carrying D and the X-ray distance otherwise;
   an explicit value overrides both.
 
+* **Reorient keeps the isotope.** ``existing_h="reorient"`` with the automatic
+  element re-places a water's protons as the element it carried (D on an
+  HOH, H on a DOD), and the program warns when that puts D at the X-ray
+  O-H length.
+
 * **Multi-model input.** The program rejects a file with more than one MODEL,
   whose copies would otherwise share one environment.
 """
@@ -78,6 +83,7 @@ to get wrong:
 from __future__ import absolute_import, division, print_function
 
 import math
+from io import StringIO
 
 import iotbx.pdb
 from iotbx.cli_parser import run_program
@@ -151,6 +157,11 @@ HETATM    3  H2  HOH W   1       0.000  -0.984   0.000  1.00 10.00           H
 HETATM    4  O   ACA D   1       2.700   0.000   0.000  1.00 10.00           O
 END
 """
+
+# The same mis-oriented water carrying D instead of H.
+_BAD_DEUTERATED_PDB = (_BAD_PROTONATED_PDB
+                       .replace(" H1 ", " D1 ").replace(" H2 ", " D2 ")
+                       .replace("           H\n", "           D\n"))
 
 # A water carrying a single H (a common way of writing hydroxide), with one
 # acceptor along +x. The deposited proton points along +y, well off the
@@ -774,6 +785,40 @@ def exercise_image_protons():
     f"under the {wp._WATER_MIN_H_CLEARANCE} A clearance")
 
 
+def exercise_reorient_keeps_isotope():
+  """``existing_h="reorient"`` with the automatic element re-places a water's
+  protons as the element it carried, not the one its residue name implies.
+
+  Reorients D on an HOH and H on a DOD, checking the element, the names and
+  that the protons turned toward the acceptor. Then runs the program on the
+  HOH carrying D at the X-ray O-H length, which must warn about placing D.
+  """
+  acc = matrix.col((2.700, 0.000, 0.000))
+  for pdb_str, want in ((_BAD_DEUTERATED_PDB, "D"),
+                        (_BAD_PROTONATED_PDB.replace("HOH", "DOD"), "H")):
+    hier = _hierarchy(pdb_str)
+    wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")
+    water = [a for a in hier.atoms() if wp._is_water(a.parent().resname)]
+    o = next(a for a in water if a.element.strip() == "O")
+    hs = [a for a in water if a.element.strip() in ("H", "D")]
+    names = sorted(a.name.strip() for a in hs)
+    assert names == [want + "1", want + "2"], names
+    for a in hs:
+      assert a.element.strip() == want, (a.name, a.element)
+    best = max(_unit(h, o).dot((acc - matrix.col(o.xyz)).normalize())
+               for h in hs)
+    assert best > 0.9, f"{want} not re-placed toward the acceptor ({best:.3f})"
+
+  file_name = "tst_water_protonation_reorient_d.pdb"
+  with open(file_name, "w") as f:
+    f.write(_BAD_DEUTERATED_PDB)
+  log = StringIO()
+  run_program(program_class=wp_program.Program, logger=log,
+              args=[file_name, "existing_h=reorient", "oh_distance=xray",
+                    "output.overwrite=True"])
+  assert "warning: placing D" in log.getvalue(), log.getvalue()
+
+
 def exercise_multi_model_rejected():
   """The program refuses a multi-model file.
 
@@ -814,6 +859,7 @@ def run():
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_image_protons()
+  exercise_reorient_keeps_isotope()
   exercise_multi_model_rejected()
   print(format_cpu_times())
   print("OK")
