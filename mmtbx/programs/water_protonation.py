@@ -9,6 +9,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import make_sub_header
@@ -104,6 +105,13 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     n_models = model.get_number_of_models()
     if n_models > 1:
       raise Sorry(f"Multi-model files are not supported ({n_models} models).")
+    # Water, H and acceptor detection read the element column.
+    try:
+      check_for_missing_elements(
+        model.get_hierarchy(),
+        file_name=self.data_manager.get_default_model_name())
+    except AssertionError as e:
+      raise Sorry(str(e))
     self._warn_if_environment_unprotonated(model)
 
   # ----------------------------------------------------------------------------

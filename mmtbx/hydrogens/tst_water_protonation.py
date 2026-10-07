@@ -76,6 +76,10 @@ to get wrong:
   HOH, H on a DOD), and the program warns when that puts D at the X-ray
   O-H length.
 
+* **Missing element columns.** A model with atoms lacking an element symbol
+  is refused, by the placer and the program, rather than having every water
+  skipped.
+
 * **Multi-model input.** The program rejects a file with more than one MODEL,
   whose copies would otherwise share one environment.
 """
@@ -104,6 +108,10 @@ HETATM    2  O   ACA D   1       7.600   5.000   5.000  1.00 10.00           O
 HETATM    3  O   ACB D   2       4.299   5.000   7.711  1.00 10.00           O
 END
 """
+
+# The same, without element columns, as older PDB files are written.
+_NO_ELEMENT_PDB = "\n".join(l[:76].rstrip()
+                            for l in _TWO_ACCEPTOR_PDB.split("\n"))
 
 # Water O coordinating an Mg (2.5 A along +x). The ONLY acceptor sits on
 # the Mg side (30 deg off the O->Mg axis), so acceptor-direction alone
@@ -819,6 +827,32 @@ def exercise_reorient_keeps_isotope():
   assert "warning: placing D" in log.getvalue(), log.getvalue()
 
 
+def exercise_missing_elements_rejected():
+  """A model without element columns is refused, not placed on blindly.
+
+  Runs the placer and the program on a fixture with its element columns
+  stripped. The placer must raise an AssertionError and the program a Sorry,
+  both from the missing-element check, instead of skipping every water.
+  """
+  try:
+    wp.place_water_hydrogens(_hierarchy(_NO_ELEMENT_PDB), n_refine=0)
+  except AssertionError as e:
+    assert "Uninterpretable elements" in str(e), str(e)
+  else:
+    raise Exception_expected
+
+  file_name = "tst_water_protonation_no_element.pdb"
+  with open(file_name, "w") as f:
+    f.write(_NO_ELEMENT_PDB)
+  try:
+    run_program(program_class=wp_program.Program, logger=null_out(),
+                args=[file_name, "output.overwrite=True"])
+  except Sorry as e:
+    assert "Uninterpretable elements" in str(e), str(e)
+  else:
+    raise Exception_expected
+
+
 def exercise_multi_model_rejected():
   """The program refuses a multi-model file.
 
@@ -860,6 +894,7 @@ def run():
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_image_protons()
   exercise_reorient_keeps_isotope()
+  exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
   print(format_cpu_times())
   print("OK")

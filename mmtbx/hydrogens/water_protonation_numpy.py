@@ -22,6 +22,7 @@ import random
 
 import iotbx.pdb
 from cctbx.crystal import super_cell
+from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 import numpy as np
 from scitbx import matrix
@@ -978,6 +979,8 @@ class _WaterHydrogenPlacer(object):
     :func:`place_water_hydrogens`).
     """
     hier = self.hier
+    # Every test below reads the element column.
+    check_for_missing_elements(hier)
     # Resolve before stripping, which would remove the D this keys on.
     if self.oh_length is None:
       self.oh_length = (_WATER_OH_NEUTRON if _has_deuterium(hier)
@@ -1300,7 +1303,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   Parameters
   ----------
   hier : iotbx.pdb.hierarchy.root
-      Model hierarchy; modified in place.
+      Model hierarchy; modified in place. Every atom must carry an element
+      symbol.
   oh_length : float or None, optional
       O-H bond length in A, positive. None (default) picks
       ``_WATER_OH_NEUTRON`` (0.984) if the model contains D, else 0.957.
