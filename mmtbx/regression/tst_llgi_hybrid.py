@@ -6,37 +6,11 @@ import mmtbx.refinement.llgi_hybrid as llgi_hybrid
 import numpy as np
 import random
 
-from mmtbx.regression.tst_llgi_map_coefficients import (
-  build_fmodel, synthetic_llgi_data)
-
-def add_hybrid_data(fmodel, llgi_data, rice_kappa, seed=7):
-  """ Synthetic intensities consistent with the synthetic Feff/RESN:
-  E_obs^2 = Eeff^2 + noise, sigma(E_obs^2) in [0.2, 2]. """
-  rnd = random.Random(seed)
-  f_obs = fmodel.f_obs()
-  eeff = llgi_data.feff.data() / llgi_data.resn.data()
-  n = eeff.size()
-  sig = flex.double([0.2 + 1.8 * rnd.random() for i in range(n)])
-  e2 = eeff * eeff + sig * flex.double([rnd.gauss(0, 1) for i in range(n)])
-  params = llgi_hybrid.llgi_hybrid_params.extract()
-  params.rice_kappa = rice_kappa
-  flags = llgi_hybrid.force_exact_flags(e2, sig,
-    f_obs.centric_flags().data())
-  return llgi_hybrid.replace_llgi_data(llgi_data,
-    e_obs_sq=f_obs.array(data=e2), sig_e_obs_sq=f_obs.array(data=sig),
-    force_exact=f_obs.array(data=flags.force_exact), hybrid_params=params)
-
-def build_hybrid_fmodel(rice_kappa, n_atoms=40, d_min=2.2, seed=3):
-  fmodel = build_fmodel(n_atoms=n_atoms, d_min=d_min, seed=seed)
-  llgi_data = synthetic_llgi_data(fmodel, seed=seed + 100)
-  llgi_data = add_hybrid_data(fmodel, llgi_data, rice_kappa)
-  fmodel.set_llgi_data(llgi_data)
-  fmodel.set_target_name("llgi")
-  fmodel.update_llgi_sigmaa_scatfrac()
-  return fmodel
+from mmtbx.regression.llgi_test_utils import (
+  build_fmodel, build_llgi_fmodel, synthetic_llgi_data)
 
 def exercise_helpers_and_select():
-  fmodel = build_hybrid_fmodel(rice_kappa=0.0)
+  fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.0)
   llgi_data = fmodel.llgi_data()
   h = llgi_hybrid.get_hybrid(llgi_data)
   assert h is not None and h.size() == fmodel.f_obs().size()
@@ -62,7 +36,7 @@ def exercise_map_coefficients_exact_branch():
   (m*F on the E scale) must be the exact posterior mean from
   llgi_exact_evaluate, and D must be sigmaA (no Dobs). """
   import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
-  fmodel = build_hybrid_fmodel(rice_kappa=0.0)
+  fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.0)
   mch = fmodel.map_calculation_helper_llgi()
   assert mch.n_exact > 0
   llgi_data = fmodel.llgi_data()
@@ -97,7 +71,7 @@ def exercise_map_coefficients_exact_without_hybrid():
   """ The map coefficients use the exact posterior for every measured
   reflection whether or not the hybrid target is enabled: with it
   disabled, they match those of an all-exact hybrid. """
-  fmodel = build_hybrid_fmodel(rice_kappa=0.0)
+  fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.0)
   m_on = fmodel.map_calculation_helper_llgi()
   llgi_data = fmodel.llgi_data()
   p = llgi_data.hybrid_params

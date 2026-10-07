@@ -1,29 +1,7 @@
 from __future__ import absolute_import, division, print_function
-from cctbx.development import random_structure
-from cctbx import sgtbx
 from cctbx.array_family import flex
-import mmtbx.f_model
 from libtbx.utils import Sorry
-import random
-
-def build_fmodel():
-  random.seed(0)
-  flex.set_random_seed(0)
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info("P 4"),
-    elements                = (("O","N","C")*5),
-    volume_per_atom         = 200,
-    min_distance            = 1.5,
-    general_positions_only  = True,
-    random_u_iso            = True)
-  fc = x.structure_factors(d_min=2.5, algorithm="direct").f_calc()
-  f_obs = abs(fc)
-  r_free_flags = f_obs.generate_r_free_flags(fraction=0.1)
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags)
-  return fmodel
+from mmtbx.regression.llgi_test_utils import build_fmodel
 
 def make_llgi_arrays(f_obs, resize=None):
   """ Build synthetic dobs/feff/teps/resn arrays on (a possibly resized
@@ -43,7 +21,7 @@ def make_llgi_arrays(f_obs, resize=None):
   return group_args(dobs=dobs, feff=feff, teps=teps, resn=resn, info=None)
 
 def exercise_set_llgi_data_ok():
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   assert fmodel.llgi_data() is None
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)
@@ -55,7 +33,7 @@ def exercise_set_llgi_data_mismatched_indices():
   # than silently accepted -- set_llgi_data() requires callers to have
   # already completed/common_set every array against f_obs (see
   # phenix.refinement.llgi_data.get_llgi_data, which does this).
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   n_full = fmodel.f_obs().indices().size()
   assert n_full > 5
   llgi_data = make_llgi_arrays(fmodel.f_obs(), resize=n_full - 2)
@@ -68,7 +46,7 @@ def exercise_set_llgi_data_mismatched_indices():
 
 def exercise_set_llgi_data_missing_component():
   from libtbx import group_args
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   incomplete = group_args(
     dobs=llgi_data.dobs, feff=llgi_data.feff, teps=None,
@@ -81,7 +59,7 @@ def exercise_set_llgi_data_missing_component():
     assert False, "expected Sorry to be raised"
 
 def exercise_set_target_name_llgi_requires_data():
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   assert fmodel.llgi_data() is None
   try:
     fmodel.set_target_name("llgi")
@@ -103,7 +81,7 @@ def exercise_target_functor_reports_missing_sigmaa_scatfrac():
   # target_functor() must fail with a clear Sorry, not an opaque
   # AttributeError/TypeError, when llgi_data lacks sigmaa/scatfrac (i.e.
   # before update_llgi_sigmaa_scatfrac() has run).
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)
   fmodel.set_target_name("llgi")
@@ -118,7 +96,7 @@ def exercise_update_llgi_sigmaa_scatfrac_enables_target_functor():
   # fmodel.update_llgi_sigmaa_scatfrac() attaches sigmaa/scatfrac to
   # llgi_data, after which target_functor() succeeds (the counterpart of
   # exercise_target_functor_reports_missing_sigmaa_scatfrac).
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)
   fmodel.set_target_name("llgi")
@@ -139,7 +117,7 @@ def exercise_update_llgi_sigmaa_scatfrac_enables_target_functor():
   assert math.isfinite(core_result.core_result.target_work())
 
 def exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data():
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   assert fmodel.llgi_data() is None
   try:
     fmodel.update_llgi_sigmaa_scatfrac()
@@ -165,7 +143,7 @@ def exercise_llgi_data_survives_select_and_update_all_scales():
   # branch this test's sibling coverage (implicitly, via
   # exercise_update_llgi_sigmaa_scatfrac_enables_target_functor) does not
   # exercise at all.
-  fmodel = build_fmodel()
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)
   fmodel.set_target_name("llgi")

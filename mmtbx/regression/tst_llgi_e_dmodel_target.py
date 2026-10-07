@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
 import mmtbx.refinement.llgi_e_dmodel_target as target
+from mmtbx.regression.llgi_test_utils import random_theta_and_grid
 
 def _build_reflections(rnd, n=30):
   s2 = rnd.uniform(0.0, 1.2, size=n)
@@ -10,17 +11,6 @@ def _build_reflections(rnd, n=30):
   centric_flags = rnd.uniform(size=n) < 0.25
   return s2, e_eff, e_c, dobs, centric_flags
 
-def _random_theta_and_grid(rnd, k):
-  a = rnd.uniform(0.05, 0.6, size=k)
-  b_k_grid = np.sort(rnd.uniform(1.0, 100.0, size=k))
-  b = rnd.uniform(0.02, 0.3)
-  b_defect = rnd.uniform(5.0, 150.0)
-  theta = np.empty(k + 2, dtype=float)
-  theta[:k] = a
-  theta[-2] = b
-  theta[-1] = b_defect
-  return theta, b_k_grid
-
 def _ll_only(theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid):
   ll, _ = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
@@ -29,7 +19,7 @@ def _ll_only(theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid):
 def exercise_gradient_matches_finite_difference_mixed_centric():
   rnd = np.random.RandomState(11)
   s2, e_eff, e_c, dobs, centric_flags = _build_reflections(rnd)
-  theta, b_k_grid = _random_theta_and_grid(rnd, 2)
+  theta, b_k_grid = random_theta_and_grid(rnd, 2)
   ll, grad = target.total_ll_and_gradient(
     theta, s2, e_eff, e_c, dobs, centric_flags, b_k_grid)
   h = 1.e-6
@@ -47,7 +37,7 @@ def exercise_single_reflection_matches_llgi_e_likelihood_directly():
   # llgi_e_likelihood's own l evaluated at D=dobs*D_model(s2).
   import mmtbx.refinement.llgi_e_likelihood as lik
   rnd = np.random.RandomState(13)
-  theta, b_k_grid = _random_theta_and_grid(rnd, 1)
+  theta, b_k_grid = random_theta_and_grid(rnd, 1)
   s2 = np.array([0.3])
   e_eff = np.array([1.1])
   e_c = np.array([0.9])

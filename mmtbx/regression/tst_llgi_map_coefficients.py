@@ -1,71 +1,12 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx.development import random_structure
-from cctbx import sgtbx
-import mmtbx.f_model
-from libtbx import group_args
 from libtbx.test_utils import approx_equal
 import random, math
-
-def build_fmodel(n_atoms=60, d_min=1.9, seed=0, space_group="P 21 21 21"):
-  random.seed(seed)
-  flex.set_random_seed(seed)
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info(space_group),
-    elements                = (("O", "N", "C") * n_atoms),
-    volume_per_atom         = 200,
-    min_distance            = 1.5,
-    general_positions_only  = True,
-    random_u_iso            = True)
-  fc = x.structure_factors(d_min=d_min, algorithm="direct").f_calc()
-  f_obs = abs(fc)
-  r_free_flags = f_obs.generate_r_free_flags(fraction=0.1)
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags)
-  fmodel.update_all_scales()
-  return fmodel
-
-def synthetic_llgi_data(fmodel, seed=1, feff_scale=1.0):
-  """ RESN is scaled from sqrt(epsilon)*O(F-obs magnitude), NOT left at
-  O(1) -- Feff here is built directly from raw
-  F-obs magnitudes (hundreds to thousands on this synthetic structure),
-  and llgi.h's X = 2*Feff*D*Fcalc/V is only numerically sane (X = O(1),
-  not O(1e4-1e5) overflowing scipy's naive i0/i1) when Eeff = Feff/RESN
-  is genuinely order-unity, as real phasertng.nacelle output is
-  normalized to be. """
-  f_obs = fmodel.f_obs()
-  n = f_obs.size()
-  epsilons = f_obs.epsilons().data().as_double()
-  rnd = random.Random(seed)
-  dobs = f_obs.array(data=flex.double([0.5 + 0.4 * rnd.random()
-    for i in range(n)]))
-  feff_data = f_obs.data() * feff_scale * flex.double(
-    [0.85 + 0.3 * rnd.random() for i in range(n)])
-  feff = f_obs.array(data=feff_data)
-  teps = f_obs.array(data=flex.double(n, 1.0))
-  resn = f_obs.array(data=flex.sqrt(epsilons) * flex.double(
-    [rnd.uniform(2.0, 6.0) for i in range(n)]) * flex.mean(f_obs.data()))
-  return group_args(dobs=dobs, feff=feff, teps=teps, resn=resn, info=None)
-
-def build_llgi_fmodel(n_atoms=60, d_min=1.9, seed=0, feff_scale=1.0):
-  """ A real fmodel with target=llgi, llgi_data attached, and
-  sigmaa/scatfrac fitted via the actual update_llgi_sigmaa_scatfrac()
-  estimator (not synthetic sigmaa/scatfrac) -- so this exercises
-  map_calculation_helper_llgi() against a genuinely self-consistent
-  LLGI state, the same state phenix.refine itself would have at the
-  point map coefficients are computed. """
-  fmodel = build_fmodel(n_atoms=n_atoms, d_min=d_min, seed=seed)
-  llgi_data = synthetic_llgi_data(fmodel, seed=seed + 100,
-    feff_scale=feff_scale)
-  fmodel.set_llgi_data(llgi_data)
-  fmodel.set_target_name("llgi")
-  fmodel.update_llgi_sigmaa_scatfrac()
-  return fmodel
+from mmtbx.regression.llgi_test_utils import (
+  build_fmodel, build_llgi_fmodel, synthetic_llgi_data)
 
 def exercise_requires_llgi_data_and_sigmaa_scatfrac():
-  fmodel = build_fmodel(seed=10)
+  fmodel = build_fmodel(60, 1.9, seed=10)
   try:
     fmodel.map_calculation_helper_llgi()
   except AttributeError as e:
@@ -152,7 +93,7 @@ def exercise_alpha_matches_d_formula():
   # quantities' own SigmaP reimplementation, not by reusing mmtbx.
   # refinement.llgi_e_bulk_solvent's build_e_model/build_sigma_p, the
   # same functions the method under test itself calls).
-  fmodel = build_llgi_fmodel(seed=13)
+  fmodel = build_llgi_fmodel(60, 1.9, seed=13)
   mch = fmodel.map_calculation_helper_llgi()
   eeff, emodel_abs, d, v, sqrt_teps_resn, inv_sqrt_eps_sigmap = \
     _independent_e_scale_quantities(fmodel)
@@ -183,7 +124,7 @@ def exercise_beta_matches_v_formula():
   # ScatFrac/RESN^2 rescale on the E-scale, unlike the old F-scale
   # formula's v_e/V distinction -- see map_calculation_helper_llgi's own
   # docstring).
-  fmodel = build_llgi_fmodel(seed=14)
+  fmodel = build_llgi_fmodel(60, 1.9, seed=14)
   mch = fmodel.map_calculation_helper_llgi()
   llgi_data = fmodel.llgi_data()
   teps = llgi_data.teps.data()
@@ -288,7 +229,7 @@ def exercise_map_coefficients_llgi_fcalc_only_matches_ordinary():
   # The Fcalc-only special case (map_type="Fc") has no observed-
   # amplitude dependence at all, so map_coefficients_llgi should reuse
   # electron_density_map (the ordinary path) exactly, not duplicate it.
-  fmodel = build_llgi_fmodel(seed=24)
+  fmodel = build_llgi_fmodel(60, 1.9, seed=24)
   llgi_fc = fmodel.map_coefficients_llgi(map_type="Fc")
   ml_fc = fmodel.map_coefficients(map_type="Fc")
   assert llgi_fc.indices().all_eq(ml_fc.indices())
@@ -297,7 +238,7 @@ def exercise_map_coefficients_llgi_fcalc_only_matches_ordinary():
     eps=1.e-10)
 
 def exercise_map_coefficients_llgi_rejects_anomalous():
-  fmodel = build_llgi_fmodel(seed=25)
+  fmodel = build_llgi_fmodel(60, 1.9, seed=25)
   try:
     fmodel.map_coefficients_llgi(map_type="anom")
   except NotImplementedError:

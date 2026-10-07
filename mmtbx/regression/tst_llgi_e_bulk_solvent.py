@@ -1,38 +1,16 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx.development import random_structure
-from cctbx import sgtbx
-import mmtbx.f_model
 import mmtbx.refinement.llgi_e_bulk_solvent as llgi_e_bs
 from libtbx.test_utils import approx_equal
 import random
-
-def build_fmodel(n_atoms=40, d_min=1.8, seed=0, space_group="P 21 21 21"):
-  random.seed(seed)
-  flex.set_random_seed(seed)
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info(space_group),
-    elements                = (("O", "N", "C") * n_atoms),
-    volume_per_atom         = 200,
-    min_distance            = 1.5,
-    general_positions_only  = True,
-    random_u_iso            = True)
-  fc = x.structure_factors(d_min=d_min, algorithm="direct").f_calc()
-  f_obs = abs(fc)
-  r_free_flags = f_obs.generate_r_free_flags(fraction=0.1)
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags)
-  fmodel.update_all_scales()
-  return fmodel
+from mmtbx.regression.llgi_test_utils import build_fmodel, synthetic_llgi_data
 
 def exercise_f_model_no_aniso_scale_matches_direct_computation():
   # Reconstruction (f_model()/k_anisotropic()) must exactly match the
   # direct formula k_isotropic*(f_calc + k_mask*f_mask + f_part1 +
   # f_part2), since that is what the C++ core itself computes internally
   # (mmtbx/f_model/f_model.h) before multiplying by k_anisotropic.
-  fmodel = build_fmodel(seed=1)
+  fmodel = build_fmodel(40, 1.8, seed=1)
   fmnas = llgi_e_bs.f_model_no_aniso_scale(fmodel)
 
   k_iso = fmodel.k_isotropic()
@@ -54,7 +32,7 @@ def exercise_f_model_no_aniso_scale_times_k_aniso_is_f_model():
   # Round-trip sanity check independent of the direct-formula comparison
   # above: multiplying back by k_anisotropic must exactly recover
   # f_model().
-  fmodel = build_fmodel(seed=2)
+  fmodel = build_fmodel(40, 1.8, seed=2)
   fmnas = llgi_e_bs.f_model_no_aniso_scale(fmodel)
   k_aniso = fmodel.k_anisotropic()
   recovered = fmnas.data() * k_aniso
@@ -146,20 +124,10 @@ def exercise_degenerate_resolution_range_does_not_crash():
     assert v > 0
 
 def _synthetic_llgi_inputs(fmodel, seed=10):
-  # Synthetic-but-plausible nacelle-like dobs/feff/resn, sized against
-  # fmodel.f_obs()'s CURRENT index set (i.e. AFTER any outlier removal
-  # fmodel.update_all_scales() may already have performed; getting it
-  # wrong raises AssertionError rather than silently misaligning HKLs).
-  f_obs = fmodel.f_obs()
-  n = f_obs.size()
-  epsilons = f_obs.epsilons().data().as_double()
-  rnd = random.Random(seed)
-  dobs = flex.double([0.5 + 0.4 * rnd.random() for i in range(n)])
-  feff = f_obs.data() * flex.double(
-    [0.9 + 0.2 * rnd.random() for i in range(n)])
-  resn = flex.sqrt(epsilons) * flex.double(
-    [rnd.uniform(2.0, 6.0) for i in range(n)])
-  return dobs, feff, resn
+  # (dobs, feff, resn) as plain flex.double, on fmodel.f_obs()'s CURRENT
+  # index set (i.e. after any outlier removal update_all_scales() did).
+  d = synthetic_llgi_data(fmodel, seed=seed)
+  return d.dobs.data(), d.feff.data(), d.resn.data()
 
 def exercise_bss_k_sol_b_sol_recovers_known_values():
   # Inject a synthetic k_mask array with a KNOWN (k_sol, b_sol) plus

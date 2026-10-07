@@ -2,23 +2,13 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import mmtbx.refinement.llgi_e_dmodel as dmodel
 from libtbx.test_utils import approx_equal
-
-def _random_theta_and_grid(rnd, k):
-  a = rnd.uniform(0.05, 0.9, size=k)
-  b_k_grid = np.sort(rnd.uniform(1.0, 120.0, size=k))
-  b = rnd.uniform(0.02, 0.5)
-  b_defect = rnd.uniform(5.0, 200.0)
-  theta = np.empty(k + 2, dtype=float)
-  theta[:k] = a
-  theta[-2] = b
-  theta[-1] = b_defect
-  return theta, b_k_grid
+from mmtbx.regression.llgi_test_utils import random_theta_and_grid
 
 def exercise_unpack_theta_roundtrip():
   rnd = np.random.RandomState(0)
   for k in [0, 1, 2, 3]:
     if(k > 0):
-      theta, _ = _random_theta_and_grid(rnd, k)
+      theta, _ = random_theta_and_grid(rnd, k)
     else:
       theta = np.array([0.1, 20.0])
     a, b, b_defect = dmodel.unpack_theta(theta)
@@ -92,7 +82,7 @@ def exercise_d_model_decays_to_zero_at_high_resolution():
   rnd = np.random.RandomState(11)
   s2_huge = np.array([50.0, 200.0, 1.e4])
   for _ in range(5):
-    theta, b_k_grid = _random_theta_and_grid(rnd, 2)
+    theta, b_k_grid = random_theta_and_grid(rnd, 2)
     d = dmodel.d_model(s2_huge, theta, b_k_grid)
     assert flex_max_abs(d) < 1.e-2, (theta, b_k_grid, d)
 
@@ -116,7 +106,7 @@ def exercise_d_model_is_bounded_to_open_unit_interval():
   rnd = np.random.RandomState(9)
   s2 = np.linspace(0.0, 2.0, 15)
   for scale in [1.0, 10.0, 1.e3, 1.e6, 1.e12]:
-    theta, b_k_grid = _random_theta_and_grid(rnd, 2)
+    theta, b_k_grid = random_theta_and_grid(rnd, 2)
     theta = theta * scale
     d = dmodel.d_model(s2, theta, b_k_grid)
     assert np.all(np.isfinite(d)), (scale, d)
@@ -143,7 +133,7 @@ def exercise_d_model_stays_nonnegative_when_defect_term_dominates():
 
 def exercise_d_model_gradient_matches_finite_difference():
   rnd = np.random.RandomState(1)
-  theta, b_k_grid = _random_theta_and_grid(rnd, 2)
+  theta, b_k_grid = random_theta_and_grid(rnd, 2)
   s2 = np.array([0.001, 0.02, 0.1, 0.3, 0.7, 1.5])
   grad = dmodel.d_model_gradient(s2, theta, b_k_grid)
   h = 1.e-6

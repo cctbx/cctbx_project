@@ -1,60 +1,20 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx.development import random_structure
-from cctbx import sgtbx
-import mmtbx.f_model
-from libtbx import group_args
 from libtbx.test_utils import approx_equal
-import random
-
-def build_fmodel(n_atoms=50, d_min=1.8, seed=0, space_group="P 21 21 21"):
-  random.seed(seed)
-  flex.set_random_seed(seed)
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info(space_group),
-    elements                = (("O", "N", "C") * n_atoms),
-    volume_per_atom         = 200,
-    min_distance            = 1.5,
-    general_positions_only  = True,
-    random_u_iso            = True)
-  fc = x.structure_factors(d_min=d_min, algorithm="direct").f_calc()
-  f_obs = abs(fc)
-  r_free_flags = f_obs.generate_r_free_flags(fraction=0.1)
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags)
-  fmodel.update_all_scales()
-  return fmodel
-
-def synthetic_llgi_data(fmodel, seed=1, feff_scale=1.0):
-  """ feff deliberately rescaled/perturbed relative to f_obs (not merely
-  a copy of it) so a test can tell whether a result actually depends on
-  feff, rather than being coincidentally identical to the f_obs-based
-  answer. """
-  f_obs = fmodel.f_obs()
-  n = f_obs.size()
-  rnd = random.Random(seed)
-  dobs = f_obs.array(data=flex.double([0.5 + 0.4 * rnd.random()
-    for i in range(n)]))
-  feff_data = f_obs.data() * feff_scale * flex.double(
-    [0.85 + 0.3 * rnd.random() for i in range(n)])
-  feff = f_obs.array(data=feff_data)
-  teps = f_obs.array(data=flex.double(n, 1.0))
-  resn = f_obs.array(data=flex.double(n, 1.0))
-  return group_args(dobs=dobs, feff=feff, teps=teps, resn=resn, info=None)
+from mmtbx.regression.llgi_test_utils import (
+  build_fmodel, build_llgi_fmodel, synthetic_llgi_data)
 
 def exercise_llgi_target_active_gating():
   # llgi_target_active() requires BOTH target_name=="llgi" AND
   # llgi_data attached -- neither alone is sufficient.
-  fmodel = build_fmodel(seed=9)
+  fmodel = build_fmodel(50, 1.8, seed=9)
   assert not fmodel.llgi_target_active()  # neither
 
   llgi_data = synthetic_llgi_data(fmodel, seed=9)
   fmodel.set_llgi_data(llgi_data)
   assert not fmodel.llgi_target_active()  # llgi_data but target=ml
 
-  fmodel2 = build_fmodel(seed=9)
+  fmodel2 = build_fmodel(50, 1.8, seed=9)
   fmodel2._target_name = "llgi"  # bypass set_target_name's own Sorry
   assert fmodel2.llgi_data() is None
   assert not fmodel2.llgi_target_active()  # target=llgi but no data
@@ -70,11 +30,7 @@ def exercise_info_in_llgi_mode():
   # target_functor() internally, which requires sigmaa/scatfrac to be
   # attached, so run the real per-macrocycle estimator first.
   from six.moves import cStringIO as StringIO
-  fmodel = build_fmodel(n_atoms=70, d_min=1.7, seed=18)
-  llgi_data = synthetic_llgi_data(fmodel, seed=19, feff_scale=1.3)
-  fmodel.set_llgi_data(llgi_data)
-  fmodel.set_target_name("llgi")
-  fmodel.update_llgi_sigmaa_scatfrac()
+  fmodel = build_llgi_fmodel(70, 1.7, seed=18, feff_scale=1.3)
   def forbidden(*args, **kwargs):
     raise AssertionError("ML alpha/beta computed in LLGI mode")
   for name in ["alpha_beta", "alpha_beta_w", "alpha_beta_t",

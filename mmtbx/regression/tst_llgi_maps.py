@@ -66,9 +66,9 @@ def exercise_no_measurement_error():
   assert e[2] == 0
 
 def exercise_compute_on_fmodel():
-  from mmtbx.regression.tst_llgi_hybrid import build_hybrid_fmodel
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
-  fmodel = build_hybrid_fmodel(rice_kappa=0.1)
+  fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.1)
   llgi_data = fmodel.llgi_data()
   f_obs = fmodel.f_obs()
   aniso = f_obs.array(data=flex.double(
