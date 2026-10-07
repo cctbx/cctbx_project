@@ -364,7 +364,7 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   neighbours its lobe geometry needs and an N keeps the H that marks it a
   donor. Copies are environment only: the waters to protonate come from the
   asymmetric unit, and a mate's placed protons are tracked separately (see
-  :func:`_water_image_neighbours`). An equivalent closer than
+  :func:`_water_sym_equiv_neighbours`). An equivalent closer than
   ``min_distance_sym_equiv`` to its own site counts as that same atom, which
   the asymmetric unit already holds.
 
@@ -412,16 +412,16 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   return hiers, atoms, xyz
 
 
-def _water_image_neighbours(sites, crystal_symmetry, radius,
+def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius,
                             min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
-  """Images of ``sites`` that crystal symmetry brings within ``radius`` of one.
+  """Symmetry equivalents of ``sites`` that fall within ``radius`` of a site.
 
   Returns ``(by_site, transforms, own)``: per site, the sorted ``(block, other
-  site)`` pairs whose image is in range; per block the cartesian ``(rotation,
-  translation)`` that produces it, block 0 being an unused placeholder so a
-  block index is never zero; and per site the blocks whose operator brings the
-  site's own image into range. An equivalent closer than
-  ``min_distance_sym_equiv`` to its own site is that same site, and is
+  site)`` pairs whose equivalent is in range; per block the cartesian
+  ``(rotation, translation)`` that produces it, block 0 being an unused
+  placeholder so a block index is never zero; and per site the blocks whose
+  operator brings the site's own equivalent into range. An equivalent closer
+  than ``min_distance_sym_equiv`` to its own site is that same site, and is
   dropped.
   """
   n = sites.size()
@@ -593,17 +593,18 @@ class _WaterHydrogenPlacer(object):
                      else None)
     return st
 
-  def _self_image_clear(self, wi, cands, own_fixed=()):
-    """Candidates against the images of water ``wi``'s own protons.
+  def _own_sym_equiv_clear(self, wi, cands, own_fixed=()):
+    """Candidates against the equivalents of water ``wi``'s own protons.
 
-    A water whose own image is in reach cannot be scored against a standing
-    point set: moving a candidate moves its image with it. Each operator is
-    applied to the whole candidate array instead, which gives every
-    candidate's distance to its own image, and to the image of each proton in
-    ``own_fixed``, this water's protons already settled this pass.
+    A water whose own equivalent is in reach cannot be scored against a
+    standing point set: moving a candidate moves its equivalent with it. Each
+    operator is applied to the whole candidate array instead, which gives
+    every candidate's distance to its own equivalent, and to the equivalent of
+    each proton in ``own_fixed``, this water's protons already settled this
+    pass.
 
     Returns ``(ok, mins)``, both None when no operator brings this water's own
-    image into range.
+    equivalent into range.
     """
     ops = self.w_self_ops[wi]
     if not ops:
@@ -613,13 +614,13 @@ class _WaterHydrogenPlacer(object):
     best = None
     thr = _WATER_MIN_H_CLEARANCE ** 2
     for rot, trn in ops:
-      img = rot * cands + trn
-      pairs = [(cands, img)]
+      equiv = rot * cands + trn
+      pairs = [(cands, equiv)]
       for p in own_fixed:
-        # The candidate against a fixed proton's image, which stands still,
-        # and the fixed proton against the candidate's image, which does not.
+        # The candidate against a fixed proton's equivalent, which stands
+        # still, and the fixed proton against the candidate's, which does not.
         pairs.append((cands, (rot * flex.vec3_double([p]) + trn)[0]))
-        pairs.append((img, p))
+        pairs.append((equiv, p))
       for left, right in pairs:
         dx, dy, dz = (left - right).parts()
         d = flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
@@ -643,12 +644,12 @@ class _WaterHydrogenPlacer(object):
     (candidate x neighbour) block.
 
     ``nbr_slots`` are the pool slots that may lie near this water, its own
-    excluded; they index symmetry images as readily as placed protons.
+    excluded; they index symmetry equivalents as readily as placed protons.
     ``static_key`` names the geometry-dict slot holding the cached
     static half, for a candidate set that does not move; None for the cone,
     which is rebuilt around each pass's O-H1 axis. ``own_fixed`` are this
     water's protons already settled this pass, which only matter to a water
-    whose own image is in reach (see :meth:`_self_image_clear`).
+    whose own equivalent is in reach (see :meth:`_own_sym_equiv_clear`).
 
     Returns a :class:`_Clearance` whose ``ok`` is True where the candidate
     clears every heavy atom by ``_WATER_MIN_CLEARANCE`` and every hydrogen
@@ -678,7 +679,7 @@ class _WaterHydrogenPlacer(object):
       if bad.size():
         cl.ok.set_selected(bad / m, False)
       cl.blocks.append((d, m))
-    s_ok, s_mins = self._self_image_clear(wi, cands, own_fixed)
+    s_ok, s_mins = self._own_sym_equiv_clear(wi, cands, own_fixed)
     if s_ok is not None:
       cl.ok &= s_ok
       cl.mins.append(s_mins)
@@ -898,7 +899,7 @@ class _WaterHydrogenPlacer(object):
     return h1_xyz, cone_pts[int(rows[flex.max_index(c_cl.best_at(rows))])]
 
   def _pool_write(self, wi, slot, xyz):
-    """Put one proton of water ``wi`` at ``xyz``, its images with it."""
+    """Put one proton of water ``wi`` at ``xyz``, its equivalents with it."""
     self.placed_xyz[slot] = xyz
     if self.pool_xyz is self.placed_xyz:
       return
@@ -926,11 +927,12 @@ class _WaterHydrogenPlacer(object):
     """Whether re-placing water ``wi`` could move its H.
 
     A water is placed against its static surroundings, which never move, and
-    the placed H of the waters in ``w_wnbr[wi]`` and the images in
-    ``w_inbr[wi]``, an image moving exactly when its own water does. If none
-    of those H has moved since this water was last placed, the placement
-    re-derives the two positions it already holds. The monotonic tick is bumped once per water per
-    sweep, so a neighbour that moves earlier in the same sweep still counts.
+    the placed H of the waters in ``w_wnbr[wi]`` and the symmetry
+    equivalents in ``w_sym_nbr[wi]``, an equivalent moving exactly when its
+    own water does. If none of those H has moved since this water was last
+    placed, the placement re-derives the two positions it already holds. The
+    monotonic tick is bumped once per water per sweep, so a neighbour that
+    moves earlier in the same sweep still counts.
     """
     t = self.w_placed_at[wi]
     if t < 0:
@@ -941,7 +943,7 @@ class _WaterHydrogenPlacer(object):
     for wj in self.w_wnbr[wi]:
       if moved_at[wj] > t:
         return True
-    for _b, wj in self.w_inbr[wi]:
+    for _b, wj in self.w_sym_nbr[wi]:
       if moved_at[wj] > t:
         return True
     return False
@@ -1148,16 +1150,16 @@ class _WaterHydrogenPlacer(object):
     self.placed_xyz = flex.vec3_double(2 * n, (0.0, 0.0, 0.0))
     # Protons the clearance test may draw on: the placed ones, plus one
     # transformed block per symmetry operator that brings another water's
-    # protons into reach. Block b slot s lives at b * n_slots + s, so an image
-    # proton is just another slot. Without images the pool is the placed array
-    # itself and nothing extra is paid.
+    # protons into reach. Block b slot s lives at b * n_slots + s, so a
+    # symmetry-equivalent proton is just another slot. Without them the pool
+    # is the placed array itself and nothing extra is paid.
     self.n_slots = 2 * n
     self.pool_xyz = self.placed_xyz
-    self.img_tf = [None]
-    self.w_inbr = [[] for _ in range(n)]
+    self.sym_tf = [None]
+    self.w_sym_nbr = [[] for _ in range(n)]
     self.w_blocks = [()] * n
     # Cartesian (rotation, translation) per operator that brings the water's
-    # own image into range.
+    # own equivalent into range.
     self.w_self_ops = [()] * n
     self.slot_wid = flex.size_t(2 * n, 0)
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
@@ -1205,25 +1207,25 @@ class _WaterHydrogenPlacer(object):
       self.w_wnbr = [[j for j in nb if j != wi] for wi, nb in
                      enumerate(KDTree(o_np).query_ball_point(
                        o_np, r_wh, return_sorted=False))]
-      # The same test against the images of these waters.
+      # The same test against the symmetry equivalents of these waters.
       if self.crystal_symmetry is not None:
-        self.w_inbr, self.img_tf, own_blocks = _water_image_neighbours(
+        self.w_sym_nbr, self.sym_tf, own_blocks = _water_sym_equiv_neighbours(
           o_pts, self.crystal_symmetry, r_wh,
           self.min_distance_sym_equiv)
         # matrix_cart's raw tuple is what multiplies a vec3_double array;
         # the matrix.sqr wrapper _pool_write uses does not.
         self.w_self_ops = [
-          tuple((self.img_tf[b][0].elems, self.img_tf[b][1].elems)
+          tuple((self.sym_tf[b][0].elems, self.sym_tf[b][1].elems)
                 for b in own_blocks[wi]) for wi in range(n)]
-        if len(self.img_tf) > 1:
+        if len(self.sym_tf) > 1:
           in_block = [set() for _ in range(n)]
           for wi in range(n):
-            for b, wj in self.w_inbr[wi]:
+            for b, wj in self.w_sym_nbr[wi]:
               in_block[wj].add(b)
-          self.w_blocks = [tuple((b,) + self.img_tf[b] for b in sorted(bs))
+          self.w_blocks = [tuple((b,) + self.sym_tf[b] for b in sorted(bs))
                            for bs in in_block]
           self.pool_xyz = flex.vec3_double(
-            len(self.img_tf) * self.n_slots, (0.0, 0.0, 0.0))
+            len(self.sym_tf) * self.n_slots, (0.0, 0.0, 0.0))
 
     # Initial greedy pass over the ordered waters, each avoiding the H
     # already placed on earlier ones. ``records`` keeps per-water (index,
@@ -1231,9 +1233,9 @@ class _WaterHydrogenPlacer(object):
     slots_of = [()] * n
 
     def nbr_slots(wi):
-      """Pool slots of every water and image neighbouring water ``wi``."""
+      """Pool slots of the waters and equivalents neighbouring water ``wi``."""
       nbr = [s for wj in self.w_wnbr[wi] for s in slots_of[wj]]
-      for b, wj in self.w_inbr[wi]:
+      for b, wj in self.w_sym_nbr[wi]:
         off = b * self.n_slots
         nbr.extend(off + s for s in slots_of[wj])
       return flex.size_t(nbr) if nbr else _EMPTY_SLOTS

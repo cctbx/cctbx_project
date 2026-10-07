@@ -348,8 +348,8 @@ END
 
 
 # Two waters 7.2 A apart in a 10 A cell, so each one's only acceptor in range
-# is the other's lattice image, 2.8 A away on the far side. Protons aimed
-# straight at those images collide with each other at 0.89 A.
+# is the other's lattice translate, 2.8 A away on the far side. Protons aimed
+# straight at those translates collide with each other at 0.89 A.
 _CONTACT_PAIR_PDB = """\
 CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
 HETATM    1  O   HOH W   1       1.000  15.000  15.000  1.00 10.00           O
@@ -749,7 +749,8 @@ def exercise_crystal_symmetry():
   o, hs = _water_atoms(hier)
   aimed = max(_unit(h, o)[0] for h in hs.values())
   assert aimed > 0.99, (
-    f"no H aims across the cell face at the image acceptor (best {aimed:.3f})")
+    f"no H aims across the cell face at the translated acceptor "
+    f"(best {aimed:.3f})")
 
   hier, _ = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
   wp.place_water_hydrogens(hier, n_refine=0)
@@ -771,7 +772,7 @@ def exercise_crystal_symmetry_leaves_model_fixed():
       f"{atom_id} moved from {xyz} to {after[atom_id]}")
 
 
-def _min_image_proton_gap(hier, cell_a):
+def _min_sym_equiv_proton_gap(hier, cell_a):
   """Closest approach between a placed water proton and the lattice copy of
   any proton one cell away along a.
 
@@ -788,7 +789,7 @@ def _min_image_proton_gap(hier, cell_a):
   Returns
   -------
   float
-      The smallest proton-to-image-proton distance.
+      The smallest distance from a proton to a translated proton.
   """
   pts = [matrix.col(a.xyz) for ag in hier.atom_groups()
          if wp._is_water(ag.resname) for a in ag.atoms()
@@ -798,14 +799,14 @@ def _min_image_proton_gap(hier, cell_a):
   return min(gaps)
 
 
-def exercise_image_protons():
-  """Waters donating across a lattice contact clear each other's image
-  protons, not just the image oxygens they aim at."""
+def exercise_sym_equiv_protons():
+  """Waters donating across a lattice contact clear each other's
+  symmetry-equivalent protons, not just the equivalent oxygens they aim at."""
   hier, cs = _hierarchy_and_symmetry(_CONTACT_PAIR_PDB)
   wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs)
-  gap = _min_image_proton_gap(hier, 10.0)
+  gap = _min_sym_equiv_proton_gap(hier, 10.0)
   assert gap >= wp._WATER_MIN_H_CLEARANCE - 1e-9, (
-    f"proton sits {gap:.3f} A from an image proton, "
+    f"proton sits {gap:.3f} A from a translated proton, "
     f"under the {wp._WATER_MIN_H_CLEARANCE} A clearance")
 
 
@@ -938,7 +939,7 @@ def run():
   exercise_detect_neutron()
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
-  exercise_image_protons()
+  exercise_sym_equiv_protons()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
