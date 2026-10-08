@@ -605,8 +605,120 @@ _symmetry_equiv.pos_as_xyz
   assert list(model['r3p4rsf']['_symmetry_equiv.pos_as_xyz']) ==\
       ['X,  Y,  Z', '-X+1/2,  -Y,  Z+1/2', 'X+1/2,  -Y+1/2,  -Z', '-X,  Y+1/2,  -Z+1/2']
 
+def read_back(text):
+  return iotbx.cif.reader(input_string="data_x\n" + text).model()["x"]
+
+def exercise_loop_show_quoting():
+  # one column per quoting rule of format_value, aligned and unaligned; the
+  # printed text is pinned and must read back
+  loop = model.loop(data=OrderedDict((
+    ("_t.number", ("1.5", "-2", "0x10", "nan", ".5", "1e5")),
+    ("_t.sparse", ("1", "?", ".", "-0", "?", "22")),
+    ("_t.unknown", ("?",) * 6),
+    ("_t.text", ("abc", "o", "f", "'quoted'", "a,b", "x")),
+    ("_t.leader", ("", "_under", "#hash", "$dollar", "[br", "]br")),
+    ("_t.blank", ("a b", "tab\tx", "it's x", "'q r'", "x y z", "q")),
+  )))
+  def check_read_back(text):
+    block = read_back(text)
+    assert list(block["_t.number"]) == ["1.5", "-2", "0x10", "nan", ".5", "1e5"]
+    assert list(block["_t.sparse"]) == ["1", "?", ".", "-0", "?", "22"]
+    assert list(block["_t.text"]) == ["abc", "o", "f", "quoted", "a,b", "x"]
+    assert list(block["_t.leader"]) == [
+      "", "_under", "#hash", "$dollar", "[br", "]br"]
+    assert list(block["_t.blank"]) == [
+      "a b", "tab\tx", "it's x", "q r", "x y z", "q"]
+  s = StringIO()
+  loop.show(out=s)
+  assert not show_diff(s.getvalue(),
+    "loop_\n  _t.number\n  _t.sparse\n  _t.unknown\n  _t.text\n  _t.leader\n"
+    "  _t.blank\n"
+    "   1.5   1  ?  abc       ''         'a b'\n"
+    "    -2   ?  ?  o         '_under'   'tab\tx'\n"
+    "  0x10   .  ?  f         '#hash'    'it's x'\n"
+    "   nan  -0  ?  'quoted'  '$dollar'  'q r'\n"
+    "    .5   ?  ?  a,b       '[br'      'x y z'\n"
+    "   1e5  22  ?  x         ']br'      q\n")
+  check_read_back(s.getvalue())
+  s = StringIO()
+  loop.show(out=s, align_columns=False)
+  assert not show_diff(s.getvalue(),
+    "loop_\n  _t.number\n  _t.sparse\n  _t.unknown\n  _t.text\n  _t.leader\n"
+    "  _t.blank\n"
+    "   1.5 1 ? abc '' 'a b'\n"
+    "   -2 ? ? o '_under' 'tab\tx'\n"
+    "   0x10 . ? f '#hash' 'it's x'\n"
+    "   nan -0 ? 'quoted' '$dollar' 'q r'\n"
+    "   .5 ? ? a,b '[br' 'x y z'\n"
+    "   1e5 22 ? x ']br' q\n")
+  check_read_back(s.getvalue())
+  # text fields: a value with both kinds of quote and a blank, a value that
+  # is already a text field, a value with a newline; they are left out of the
+  # column width
+  loop = model.loop(data=OrderedDict((
+    ("_m.id", ("1", "2", "3", "4")),
+    ("_m.field", ("say \"hi\" 'x'", ";\nsemi\n;", "line1\nline2", "ok")),
+    ("_m.tail", ("a", "b", "c", "d")),
+  )))
+  s = StringIO()
+  loop.show(out=s)
+  assert not show_diff(s.getvalue(),
+    "loop_\n  _m.id\n  _m.field\n  _m.tail\n"
+    "  1  'say \"hi\" 'x''  a\n"
+    "  2  \n;\nsemi\n;\n      b\n"
+    "  3  \n;\nline1\nline2\n;\n  c\n"
+    "  4  ok              d\n")
+  block = read_back(s.getvalue())
+  assert list(block["_m.id"]) == ["1", "2", "3", "4"]
+  assert list(block["_m.field"]) == [
+    "say \"hi\" 'x'", "\nsemi\n", "\nline1\nline2\n", "ok"]
+  assert list(block["_m.tail"]) == ["a", "b", "c", "d"]
+
+def exercise_quoting_scan_matches_format_value():
+  # the per-column scan of loop.show() must flag every value format_value
+  # changes, and a value flex.double accepts must never be changed
+  probes = ["", " ", "a", "a b", " a", "a ", "a\tb", "a\nb", "\n", "a\rb",
+            "a\x0bb", "a\x0cb", "'", "'a", "'a b'", "'a'", '"a"', '"a b"',
+            "#a", "$a", "[a", "]a", "_a", ";a", ";a;", ";\na\n;", "a'b",
+            'a"b', "a#b", "a$b", "a_b", "a;b", "a[b]", "?", ".", "..",
+            "1", "-1", "+1", "1.5", ".5", "1.", "1e5", "1E-5", "0x10",
+            "nan", "inf", "-inf", "NaN", "Infinity", "-0", "1,2", "1_000",
+            "abc", "abc's", "o", "f", "x"]
+  for value in probes:
+    column = flex.std_string([value])
+    flagged = model._column_may_need_quoting(column)
+    assert flagged or model.format_value(value) == value, repr(value)
+    try:
+      flex.double(column)
+    except ValueError:
+      continue
+    assert model.format_value(value) == value, repr(value)
+    assert model._is_numeric_column(column), repr(value)
+  # a value that needs quoting is found past the first chunk of the scan
+  column = flex.std_string(model._show_chunk_rows + 10, "x")
+  assert not model._column_may_need_quoting(column)
+  column[model._show_chunk_rows + 5] = "a b"
+  assert model._column_may_need_quoting(column)
+
+def exercise_loop_show_many_rows():
+  # more rows than show() prints at a time
+  n = 70000
+  loop = model.loop(data=OrderedDict((
+    ("_c.i", flex.int_range(n)),
+    ("_c.s", flex.std_string(["s%d" % (i % 7) for i in range(n)])),
+  )))
+  expected = ["loop_", "  _c.i", "  _c.s"]
+  for i in range(n):
+    expected.append("  %5d  s%d" % (i, i % 7))
+  s = StringIO()
+  loop.show(out=s)
+  assert s.getvalue() == "\n".join(expected) + "\n"
+
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
   test_show_not_modify()
+  exercise_loop_show_quoting()
+  exercise_quoting_scan_matches_format_value()
+  exercise_loop_show_many_rows()
   print("OK")
