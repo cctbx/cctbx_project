@@ -89,9 +89,9 @@ def rice_dobs_eeff(rice):
   eeff = rice.eeff.deep_copy()
   invalid = ~rice.valid
   dobs.set_selected(invalid, RICE_DOBS_NONE)
-  eeff.set_selected(invalid,
-    flex.sqrt(flex.max(rice.mu2.select(invalid), 0)) if invalid.count(True)
-    else flex.double())
+  mu2 = rice.mu2.select(invalid)
+  mu2.set_selected(mu2 < 0, 0)
+  eeff.set_selected(invalid, flex.sqrt(mu2))
   return dobs, eeff
 
 def get_exact_data(llgi_data):
