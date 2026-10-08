@@ -343,7 +343,7 @@ answers = [  0,
 
 def main(only_i=None):
   try: only_i=int(only_i)
-  except: only_i=None
+  except ValueError: only_i=None
   for i, (pdb_str, cif_str) in enumerate(zip(pdbs, cifs)):
     if only_i and only_i!=i+1: continue
     model_filename = 'tst_electron_01_%02d.pdb' % (i+1)
