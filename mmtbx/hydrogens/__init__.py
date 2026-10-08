@@ -605,7 +605,10 @@ def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
     stop_for_unknowns     = False,  # match clashscore2: place what we can, then
                                     # raise below on missed residues; the param
                                     # applies to the post-optimization reprocess.
-    keep_existing_H       = keep_existing_H)
+    keep_existing_H       = keep_existing_H,
+    # place_and_optimize_hydrogens re-processes without restraints afterwards, so
+    # these are never used for ADPs: skip the plain-pair table.
+    plain_pairs_radius    = 0.01)
   o.run()
   o.show(log)
   missed = set(o.no_H_placed_mlq)

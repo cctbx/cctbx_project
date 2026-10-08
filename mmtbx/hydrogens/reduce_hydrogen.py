@@ -873,7 +873,8 @@ class place_hydrogens():
                stop_for_unknowns     = False,
                keep_existing_H       = False,
                validate_e            = False,
-               print_time            = False):
+               print_time            = False,
+               plain_pairs_radius    = 5):
     self.model                 = model
     self.use_neutron_distances = use_neutron_distances
     self.n_terminal_charge     = n_terminal_charge
@@ -883,6 +884,9 @@ class place_hydrogens():
     self.keep_existing_H       = keep_existing_H
     self.validate_e            = validate_e
     self.print_time            = print_time
+    # Callers that discard this model's restraints pass a tiny value: the plain-pair
+    # table is read only by ADP restraints and is ~0.6 GB on 1aon at 5 A.
+    self.plain_pairs_radius    = plain_pairs_radius
     #
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
@@ -1000,6 +1004,7 @@ class place_hydrogens():
       log               = null_out())
     self.model.process(pdb_interpretation_params=p,
                        make_restraints=True,
+                       plain_pairs_radius=self.plain_pairs_radius,
                        # retain_zero_dihedrals=True,
                        )
 

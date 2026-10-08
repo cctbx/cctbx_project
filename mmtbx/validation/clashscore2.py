@@ -270,13 +270,15 @@ class clashscore2(validation):
         try:
           try:
             master.process(make_restraints=True,
-              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear))
+              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear),
+              plain_pairs_radius=probe2.PLAIN_PAIRS_RADIUS)
           except Exception:
             # Fix up bogus unit cell when it occurs by checking crystal
             # symmetry, the same way probe2's run() does, then retry.
             master.add_crystal_symmetry_if_necessary()
             master.process(make_restraints=True,
-              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear))
+              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear),
+              plain_pairs_radius=probe2.PLAIN_PAIRS_RADIUS)
           if master.get_restraints_manager() is not None:
             processed_master = master
             master_key_to_index = _atom_index_by_key(master.get_hierarchy())
