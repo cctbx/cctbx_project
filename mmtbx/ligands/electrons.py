@@ -1269,12 +1269,15 @@ Inputs:
         print(f"Total formal charge simple: {total_charge_each}\n", file=self.logger)
         molecule_each=molecules[i_mol]
 
-      if total_charge_each is None:
-        ed = electron_distribution(models[i_mol].get_hierarchy(),
-                                   models[i_mol].get_restraints_manager().geometry,
-        )
-        total_charge_each=ed.get_total_charge()
-        molecule_each=molecules[i_mol]
+      #
+      # could be the next level of checking
+      #
+      # if total_charge_each is None:
+      #   ed = electron_distribution(models[i_mol].get_hierarchy(),
+      #                              models[i_mol].get_restraints_manager().geometry,
+      #   )
+      #   total_charge_each=ed.get_total_charge()
+      #   molecule_each=molecules[i_mol]
 
       charges.append(total_charge_each)
       total_charge+=total_charge_each
