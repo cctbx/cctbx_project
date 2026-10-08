@@ -386,7 +386,10 @@ class determine_connectivity(object):
 
   def _set_b1_from_const_proxy(self, dp):
     for i_test in dp.i_seqs:
-      if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
+      # No entry: not an H, or an H whose parent bond is symmetry-related, so
+      # find_first_neighbors never saw it (6b8f ARG 63 altloc B HH22, frac
+      # x = -0.001). add_slipped gives it an entry later; it stays unparameterized.
+      if self.h_connectivity[i_test] is None:
         continue
       ih = i_test
       i1, i2, i3, i4 = dp.i_seqs
@@ -409,7 +412,10 @@ class determine_connectivity(object):
 
   def _set_b1_from_var_proxy(self, dp):
     for i_test in dp.i_seqs:
-      if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
+      # No entry: not an H, or an H whose parent bond is symmetry-related, so
+      # find_first_neighbors never saw it (6b8f ARG 63 altloc B HH22, frac
+      # x = -0.001). add_slipped gives it an entry later; it stays unparameterized.
+      if self.h_connectivity[i_test] is None:
         continue
       ih = i_test
       i1, i2, i3, i4 = dp.i_seqs

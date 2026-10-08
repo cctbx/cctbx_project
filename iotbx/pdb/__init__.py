@@ -73,16 +73,6 @@ def is_pdb_file(file_name):
           return True
   return False
 
-def is_pdb_mmcif_file(file_name):
-  """Return True if this is an mmCIF file"""
-  try:
-    cif_model = iotbx.cif.reader(file_path=file_name).model()
-    cif_block = cif_model.values()[0]
-    if "_atom_site" in cif_block:
-      return True
-  except Exception as e:
-    return False
-
 def systematic_chain_ids():
   """Return a list of possible 2-character chain IDS"""
   import string

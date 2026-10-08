@@ -3942,52 +3942,6 @@ class build_all_chain_proxies(linking_mixins):
           print("%sRestraints for '%s'" % (' '*6, item[0]), file=log)
           print('%swere not modified by "%s"' % (' '*8,item[1]), file=log)
       #
-      # Identify disulfide bond exclusions BEGIN
-      self.disulfide_bond_exclusions_selection = flex.size_t()
-      if(self.cystein_sulphur_i_seqs.size()>0):
-        if(params.disulfide_bond_exclusions_selection_string is not None):
-          self.disulfide_bond_exclusions_selection = \
-            self.pdb_hierarchy.atom_selection_cache().selection(
-              params.disulfide_bond_exclusions_selection_string).iselection()
-        else:
-          exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
-          cystein_sulphur_atoms_exclude = []
-          for atom in self.pdb_atoms:
-            e_ = atom.element.strip().upper()
-            e = atom.determine_chemical_element_simple()
-            if(e is not None):
-              e = e.strip().upper()
-              if(e_.strip() != ""):
-                if(e_!=e):
-                  raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
-              if(not e in exclusion_list):
-                for cs_i_seq in self.cystein_sulphur_i_seqs:
-                  csa = self.pdb_atoms[cs_i_seq]
-                  if(csa.distance(atom) < params.exclusion_distance_cutoff):
-                    cystein_sulphur_atoms_exclude.append(csa)
-                    self.disulfide_bond_exclusions_selection.append(csa.i_seq)
-      if(self.disulfide_bond_exclusions_selection.size()>0):
-        if log is not None:
-          print(file=log)
-          print("List of CYS excluded from plausible disulfide bonds:", file=log)
-          print("  (reason: may participate in coordination)", file=log)
-        for i_seq in self.disulfide_bond_exclusions_selection:
-          a = self.pdb_atoms[i_seq]
-          if log is not None: print("  %s"%a.format_atom_record(), file=log)
-          dces = a.determine_chemical_element_simple()
-          if dces is None:
-            raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
-          e = dces.strip().upper()
-          if(e!="S"):
-            raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
-        if log is not None: print(file=log)
-      tmp = flex.size_t()
-      for i_seq in self.cystein_sulphur_i_seqs:
-        if(not i_seq in self.disulfide_bond_exclusions_selection):
-          tmp.append(i_seq)
-      self.cystein_sulphur_i_seqs = tmp
-      # Identify disulfide bond exclusions END
-      #
       n_unresolved_apply_cif_link_bonds = 0
       n_unresolved_apply_cif_link_angles = 0
       n_unresolved_apply_cif_link_dihedrals = 0
@@ -4170,17 +4124,70 @@ class build_all_chain_proxies(linking_mixins):
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_energies.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_h_bonds.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
-      # Expand cystein_sulphur_i_seqs
-      new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
-      for master_c_iseq in self.cystein_sulphur_i_seqs:
+      # Expand cystein_sulphur_i_seqs. They were collected on the reduced
+      # (masters and rest) hierarchy, so translate them to the full
+      # hierarchy before looking up NCS copies.
+      master_and_rest_iselection = master_and_rest_bool_selection.iselection()
+      new_cystein_sulphur_i_seqs = []
+      for reduced_c_iseq in self.cystein_sulphur_i_seqs:
+        master_c_iseq = master_and_rest_iselection[reduced_c_iseq]
+        new_cystein_sulphur_i_seqs.append(master_c_iseq)
         copy_iseqs = nrgl.get_copy_iseqs([master_c_iseq])
         flatten_copies = [item for sublist in copy_iseqs for item in sublist]
         new_cystein_sulphur_i_seqs.extend(flatten_copies)
-      self.cystein_sulphur_i_seqs = flex.size_t(new_cystein_sulphur_i_seqs)
+      self.cystein_sulphur_i_seqs = flex.size_t(
+        sorted(new_cystein_sulphur_i_seqs))
 
       # self.scattering_type_registry._show()
     # STOP()
 
+    # Runs after the NCS expansion so that exclusions are evaluated on the full hierarchy:
+    # Identify disulfide bond exclusions BEGIN
+    self.disulfide_bond_exclusions_selection = flex.size_t()
+    if(self.cystein_sulphur_i_seqs.size()>0):
+      if(params.disulfide_bond_exclusions_selection_string is not None):
+        self.disulfide_bond_exclusions_selection = \
+          self.pdb_hierarchy.atom_selection_cache().selection(
+            params.disulfide_bond_exclusions_selection_string).iselection()
+      else:
+        exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
+        cystein_sulphur_atoms_exclude = []
+        for atom in self.pdb_atoms:
+          e_ = atom.element.strip().upper()
+          e = atom.determine_chemical_element_simple()
+          if(e is not None):
+            e = e.strip().upper()
+            if(e_.strip() != ""):
+              if(e_!=e):
+                raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
+            if(not e in exclusion_list):
+              for cs_i_seq in self.cystein_sulphur_i_seqs:
+                csa = self.pdb_atoms[cs_i_seq]
+                if(csa.distance(atom) < params.exclusion_distance_cutoff):
+                  cystein_sulphur_atoms_exclude.append(csa)
+                  self.disulfide_bond_exclusions_selection.append(csa.i_seq)
+    if(self.disulfide_bond_exclusions_selection.size()>0):
+      if log is not None:
+        print(file=log)
+        print("List of CYS excluded from plausible disulfide bonds:", file=log)
+        print("  (reason: may participate in coordination)", file=log)
+      for i_seq in self.disulfide_bond_exclusions_selection:
+        a = self.pdb_atoms[i_seq]
+        if log is not None: print("  %s"%a.format_atom_record(), file=log)
+        dces = a.determine_chemical_element_simple()
+        if dces is None:
+          raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
+        e = dces.strip().upper()
+        if(e!="S"):
+          raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
+      if log is not None: print(file=log)
+    tmp = flex.size_t()
+    for i_seq in self.cystein_sulphur_i_seqs:
+      if(not i_seq in self.disulfide_bond_exclusions_selection):
+        tmp.append(i_seq)
+    self.cystein_sulphur_i_seqs = tmp
+    # Identify disulfide bond exclusions END
+    #
     for apply in self.apply_cif_links:
       if (not apply.was_used):
         raise RuntimeError(

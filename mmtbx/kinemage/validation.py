@@ -24,7 +24,8 @@ def get_master_phil():
         pdb = None
          .type = path
          .optional = True
-         .help = '''Enter a PDB file name'''
+         .multiple = True
+         .help = '''Enter a PDB file name (exactly one)'''
         cif = None
          .type = path
          .optional = True
@@ -37,6 +38,15 @@ def get_master_phil():
         keep_hydrogens = False
         .type = bool
         .help = '''Keep hydrogens in input file'''
+        vdw_dots = False
+        .type = bool
+        .help = '''Include van der Waals contact dots (off in the viewer until
+                   switched on; they make the file much larger)'''
+        omit_unrestrained_residues = True
+        .type = bool
+        .help = '''Leave residues with missing or incomplete restraints out of
+                   the contact dots, with a warning. False stops instead;
+                   supply their restraints with cif=.'''
         pdb_interpretation
           .short_caption = Model interpretation
         {
@@ -251,22 +261,150 @@ def bond_outlier_as_kinemage(self):
   return kin_text
 
 
-def make_probe_dots(hierarchy, keep_hydrogens=False):
+def _drop_unbonded_for_probe(model_manager, probe2):
+  """Process model_manager with probe2's interpretation parameters and drop
+  what probe2 cannot handle: multi-atom residues with any unbonded heavy atom
+  (missing restraints, so its intra-residue pairs would read as clashes; one
+  covalent link can still bond the rest) and H with no bonded parent (probe2
+  raises on these).  Returns (model, dropped residue ids,
+  whether the returned model is already processed)."""
+  from scitbx.array_family import flex
+  model_manager.get_hierarchy().atoms().reset_i_seq()
+  model_manager.process(make_restraints=True,
+    pdb_interpretation_params=probe2.getPdbInterpretationParams())
+  geometry = model_manager.get_restraints_manager().geometry
+  simple, asu = geometry.get_all_bond_proxies(
+    sites_cart=model_manager.get_sites_cart())
+  n_atoms = model_manager.get_number_of_atoms()
+  bonded = flex.bool(n_atoms, False)
+  for proxy in simple:
+    bonded[proxy.i_seqs[0]] = True
+    bonded[proxy.i_seqs[1]] = True
+  for proxy in asu:
+    bonded[proxy.i_seq] = True
+    bonded[proxy.j_seq] = True
+  hd = model_manager.get_hd_selection()
+  bonded_or_h = bonded | hd
+  keep = bonded | ~hd
+  dropped = []
+  for ag in model_manager.get_hierarchy().atom_groups():
+    i_seqs = ag.atoms().extract_i_seq()
+    whole = len(i_seqs) > 1 and not bonded_or_h.select(i_seqs).all_eq(True)
+    if whole:
+      keep.set_selected(i_seqs, False)
+    if whole or not keep.select(i_seqs).all_eq(True):
+      rg = ag.parent()
+      res_id = "%s %s %s" % (ag.resname.strip(), rg.parent().id.strip(),
+                             rg.resid().strip())
+      if res_id not in dropped:
+        dropped.append(res_id)
+  if keep.all_eq(True):
+    return model_manager, dropped, True
+  # A fresh manager, not model.select(): selected models lose the monomer
+  # mappings probe2's backbone/sidechain selections need.
+  import mmtbx.model
+  from libtbx.utils import null_out
+  trimmed = mmtbx.model.manager(
+    model_input       = None,
+    pdb_hierarchy     = model_manager.get_hierarchy().select(keep),
+    stop_for_unknowns = False,
+    crystal_symmetry  = model_manager.crystal_symmetry(),
+    restraint_objects = model_manager.get_restraint_objects(),
+    log               = null_out())
+  return trimmed, dropped, False
+
+def _probe_dots_note(lines):
+  """Explain missing or partial probe dots in the kinemage and on stderr."""
+  import sys
+  for line in lines:
+    print("Warning: %s" % line, file=sys.stderr)
+  if len(lines) == 0:
+    return ""
+  return "@text\n" + "".join("%s\n" % line for line in lines)
+
+def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
+                         target_selection=None, omit_unrestrained=True,
+                         vdw_dots=False):
+  """Run probe2 on one hydrogenated model; returns kinemage dots text, with an
+  @text note when residues were left out or probe2 failed.  With
+  omit_unrestrained=False, residues lacking restraints raise Sorry instead."""
+  from mmtbx.programs import probe2
+  import iotbx.cli_parser
+  from libtbx.utils import null_out
+  import tempfile
+  notes = []
+  output = ""
+  try:
+    model_manager, dropped, processed = _drop_unbonded_for_probe(
+      model_manager, probe2)
+  except Exception as e:
+    return _probe_dots_note(
+      ["Probe dots could not be computed: %s" % str(e).strip()])
+  if len(dropped) > 0:
+    if not omit_unrestrained:
+      raise Sorry("Missing or incomplete restraints for %s. Supply them with "
+                  "cif=, or set omit_unrestrained_residues=True to leave these "
+                  "residues out of the contact dots." % ", ".join(dropped))
+    notes.append("Probe dots omit residues with missing or incomplete "
+                 "restraints (supply a restraints CIF to include them): %s"
+                 % ", ".join(dropped))
+  try:
+    tempName = tempfile.mktemp()
+    parser = iotbx.cli_parser.CCTBXParser(
+      program_class=probe2.Program, logger=null_out())
+    args = [
+      "approach=%s" % approach,
+      "output.format=kinemage",
+      "output.filename='%s'" % tempName,
+      "output.separate_worse_clashes=True",
+      "output.report_vdws=%s" % bool(vdw_dots),
+      "output.write_files=False",
+      # Dots nest as a @subgroup of the structure's group; master={dots}
+      # on each list keeps an all-dots control.
+      "output.add_group_line=False",
+      "output.add_group_name_master_line=True",
+      "count_dots=False",
+      "ignore_lack_of_explicit_hydrogens=True",
+    ]
+    # Quoted: unquoted, a selection parses as several phil arguments.
+    if source_selection is not None:
+      args.append("source_selection='%s'" % source_selection)
+    if target_selection is not None:
+      args.append("target_selection='%s'" % target_selection)
+    parser.parse_args(args)
+    p2 = probe2.Program(parser.data_manager, parser.working_phil.extract(),
+                        master_phil=parser.master_phil, logger=null_out())
+    p2.overrideModel(model_manager, processed=processed)
+    dots, output = p2.run()
+    if os.path.exists(tempName):
+      os.unlink(tempName)
+  except Exception as e:
+    output = ""
+    notes.append("Probe dots could not be computed: %s" % str(e).strip())
+  # Note after the dots: callers split concatenated sections at "@caption".
+  if output and not output.endswith("\n"):
+    output += "\n"
+  return output + _probe_dots_note(notes)
+
+def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
+                    omit_unrestrained=True, vdw_dots=False, per_model=False):
   """Generate probe dot kinemage output using probe2 Python API.
 
   Uses mmtbx.reduce (reduce2) for hydrogen placement and mmtbx.programs.probe2
   for contact analysis, producing kinemage-format dot output.
+  restraint_objects: [(file name, cif object)] for ligands the monomer library
+  lacks; omit_unrestrained: see _run_probe2_kinemage; vdw_dots: include van
+  der Waals contacts; per_model: return one section per MODEL instead of the
+  joined string.
   """
   try:
-    from mmtbx.hydrogens import place_and_optimize_hydrogens, reduce_hydrogen
-    from mmtbx.programs import probe2
+    from mmtbx.hydrogens import place_and_optimize_hydrogens
     import mmtbx.model
     from libtbx.utils import null_out
-    import tempfile
   except ImportError:
     return ""
 
-  probe_return = ""
+  sections = []
   for i_mod, m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
     mdc = m.detached_copy()
@@ -277,85 +415,57 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       model_input=None,
       pdb_hierarchy=r,
       stop_for_unknowns=False,
+      restraint_objects=restraint_objects,
       log=null_out())
     model_manager.add_crystal_symmetry_if_necessary()
 
     # Add and optimize hydrogens unless the caller asked to keep the input H.
-    # place_and_optimize_hydrogens places H, runs the reduce2 Optimizer (which
-    # now reports the hydrogens to delete rather than deleting them itself),
-    # removes those, and reinterprets the model so it carries the geometry probe2
-    # needs.  raise_on_missing=False keeps this best-effort for the MolProbity
-    # view: residues without restraints simply get no H (and no H-bond dots)
-    # instead of failing the whole kinemage.  use_neutron_distances is left at
-    # the reduce2 default (X-ray) here; the kinemage path does not yet expose a
-    # neutron option.
+    # raise_on_missing=False keeps this best-effort: residues without
+    # restraints get no H instead of failing the whole kinemage.  The kinemage
+    # path does not yet expose a neutron option.
+    h_note = ""
     if not keep_hydrogens:
       try:
         model_manager = place_and_optimize_hydrogens(
           model_manager, do_flips=False, nuclear=False,
           keep_existing_H=False, raise_on_missing=False, log=null_out())
-      except Exception:
-        # If hydrogen placement/optimization fails, fall back to existing atoms.
-        pass
+      except Exception as e:
+        h_note = _probe_dots_note(["Hydrogens could not be added, "
+          "so contact dots use the input atoms: %s" % str(e).strip()])
     else:
-      # Keeping the input hydrogens: still reinterpret so the model carries the
-      # geometry probe2 needs, mirroring reduce2's _ReinterpretModel.
       model_manager.get_hierarchy().sort_atoms_in_place()
       model_manager.get_hierarchy().atoms().reset_serial()
-      interp_params = reduce_hydrogen.get_reduce_pdb_interpretation_params(
-        use_neutron_distances=False)
-      interp_params.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
-      interp_params.pdb_interpretation.flip_symmetric_amino_acids = False
-      model_manager.process(
-        make_restraints=False, pdb_interpretation_params=interp_params)
+    sections.append(_run_probe2_kinemage(model_manager,
+      omit_unrestrained=omit_unrestrained, vdw_dots=vdw_dots) + h_note)
+  if per_model:
+    return sections
+  return "".join(sections)
 
-    # Run probe2 in kinemage output mode
-    try:
-      import iotbx.cli_parser
-
-      tempName = tempfile.mktemp()
-      parser = iotbx.cli_parser.CCTBXParser(
-        program_class=probe2.Program, logger=null_out())
-      args = [
-        "approach=self",
-        "output.format=kinemage",
-        "output.filename='%s'" % tempName,
-        "output.separate_worse_clashes=True",
-        "output.report_vdws=False",
-        "output.write_files=False",
-        "count_dots=False",
-        "ignore_lack_of_explicit_hydrogens=True",
-      ]
-      parser.parse_args(args)
-      dm = parser.data_manager
-      p2 = probe2.Program(dm, parser.working_phil.extract(),
-                          master_phil=parser.master_phil, logger=null_out())
-      p2.overrideModel(model_manager)
-      dots, output = p2.run()
-      probe_return += output
-      if os.path.exists(tempName):
-        os.unlink(tempName)
-    except Exception:
-      # If probe2 fails, return what we have so far
-      pass
-  return probe_return
-
-def make_probe_dots_from_model(model_manager):
+def make_probe_dots_from_model(model_manager, per_model=False,
+                               approach="self", source_selection=None,
+                               target_selection=None, vdw_dots=False):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
   already has hydrogens placed (e.g. from clashscore2).
+
+  per_model=True returns one section per MODEL (labeled plain "self dots",
+  for nesting in per-model groups); False returns the concatenated string
+  with per-model labels ("self dots m1", ...) on multi-model files.
+
+  approach, source_selection and target_selection pass through to probe2 and
+  default to its previous behaviour. They let a caller skip contacts probe
+  cannot interpret: with no restraints for a residue it has no bonds to
+  exclude, so every intra-residue pair reads as a clash.
   """
   try:
-    from mmtbx.programs import probe2
     import mmtbx.model
     from libtbx.utils import null_out
-    import tempfile
   except ImportError:
     return ""
 
   hierarchy = model_manager.get_hierarchy()
-  probe_return = ""
+  sections = []
   for i_mod, m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
     mdc = m.detached_copy()
@@ -372,35 +482,18 @@ def make_probe_dots_from_model(model_manager):
       restraint_objects=model_manager.get_restraint_objects(),
       log=null_out())
 
-    # Run probe2 in kinemage output mode
-    try:
-      import iotbx.cli_parser
-
-      tempName = tempfile.mktemp()
-      parser = iotbx.cli_parser.CCTBXParser(
-        program_class=probe2.Program, logger=null_out())
-      args = [
-        "approach=self",
-        "output.format=kinemage",
-        "output.filename='%s'" % tempName,
-        "output.separate_worse_clashes=True",
-        "output.report_vdws=False",
-        "output.write_files=False",
-        "count_dots=False",
-        "ignore_lack_of_explicit_hydrogens=True",
-      ]
-      parser.parse_args(args)
-      dm = parser.data_manager
-      p2 = probe2.Program(dm, parser.working_phil.extract(),
-                          master_phil=parser.master_phil, logger=null_out())
-      p2.overrideModel(sub_model)
-      dots, output = p2.run()
-      probe_return += output
-      if os.path.exists(tempName):
-        os.unlink(tempName)
-    except Exception:
-      pass
-  return probe_return
+    sections.append(_run_probe2_kinemage(
+      sub_model, approach=approach, source_selection=source_selection,
+      target_selection=target_selection, vdw_dots=vdw_dots))
+  if per_model:
+    return sections
+  if len(sections) > 1:
+    # Distinguish the buttons when all sections share one group.
+    for i_mod, m in enumerate(hierarchy.models()):
+      sections[i_mod] = sections[i_mod].replace(
+        "@subgroup dominant {self dots}",
+        "@subgroup dominant {self dots m%s}" % m.id.strip(), 1)
+  return "".join(sections)
 
 
 def cbeta_dev(outliers, chain_id=None):
@@ -445,78 +538,94 @@ def _get_prev_connection(prev_key_hash, prev_xyz_hash, altloc):
     prev_xyz = prev_xyz_hash.get(' ')
   return prev_key, prev_xyz
 
-def _track_amino_acid_atom(atom, key, altloc, residue_group, prev_resid,
+def backbone_linked_pairs(hierarchy):
+  """Set of (chain memory_id, resid, next resid) for residues joined in the
+  backbone, from the linked-residue generators ramalyze and omegalyze use: by
+  C-N / O3'-P distance, or CA-CA for CA-only chains, never by numbering.
+  Keyed by the conformer's chain: selected hierarchies share atoms with their
+  source, so atom.parent() can point outside this hierarchy."""
+  from mmtbx.conformation_dependent_library import (
+    generate_protein_fragments, generate_dna_rna_fragments)
+  pairs = set()
+  for fragments in [
+      generate_protein_fragments(hierarchy, geometry=None, length=2,
+        backbone_only=False, include_non_standard_peptides=True,
+        include_d_amino_acids=True, allow_poly_ca=True),
+      generate_dna_rna_fragments(hierarchy, geometry=None, length=2,
+        include_non_standard_bases=True)]:
+    for pair in fragments:
+      chain = pair[1].parent().parent()
+      pairs.add((chain.memory_id(), pair[0].resid(), pair[1].resid()))
+  return pairs
+
+def _track_amino_acid_atom(atom, key, altloc, linked,
                            cur_C_xyz, cur_C_key, cur_CA_xyz, cur_CA_key,
                            prev_C_key, prev_C_xyz, prev_CA_key, prev_CA_xyz,
                            mc_parts, ca_parts):
   """Track backbone atoms (C, CA, N) for amino acids and add inter-residue
-  connections to mc_parts and ca_parts lists."""
+  connections to mc_parts and ca_parts lists when linked to the previous
+  residue."""
   if atom.name == ' C  ':
     cur_C_xyz[altloc] = atom.xyz
     cur_C_key[altloc] = key
   if atom.name == ' CA ':
     cur_CA_xyz[altloc] = atom.xyz
     cur_CA_key[altloc] = key
-    if len(prev_CA_key) > 0 and len(prev_CA_xyz) > 0:
-      if prev_resid is not None and \
-         int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-        prev_key, prev_xyz = _get_prev_connection(prev_CA_key, prev_CA_xyz, altloc)
-        if prev_key is not None:
-          ca_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
+    if linked and len(prev_CA_key) > 0 and len(prev_CA_xyz) > 0:
+      prev_key, prev_xyz = _get_prev_connection(prev_CA_key, prev_CA_xyz, altloc)
+      if prev_key is not None:
+        ca_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
   if atom.name == ' N  ':
-    if len(prev_C_key) > 0 and len(prev_C_xyz) > 0:
-      if prev_resid is not None and \
-         int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-        prev_key, prev_xyz = _get_prev_connection(prev_C_key, prev_C_xyz, altloc)
-        if prev_key is not None:
-          mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
+    if linked and len(prev_C_key) > 0 and len(prev_C_xyz) > 0:
+      prev_key, prev_xyz = _get_prev_connection(prev_C_key, prev_C_xyz, altloc)
+      if prev_key is not None:
+        mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
 
-def _track_rna_dna_atom(atom, key, altloc, residue_group, prev_resid,
+def _track_rna_dna_atom(atom, key, altloc, rg_index, linked,
                         cur_O3_xyz, cur_O3_key,
                         prev_O3_key, prev_O3_xyz,
                         p_hash_key, p_hash_xyz,
                         c1_hash_key, c1_hash_xyz,
                         c4_hash_key, c4_hash_xyz,
                         mc_parts):
-  """Track backbone atoms for RNA/DNA and add O3'-P connections."""
+  """Track backbone atoms for RNA/DNA and add O3'-P connections.  The P, C1'
+  and C4' hashes are keyed by rg_index, the residue group's position in the
+  chain (residue numbers repeat across insertion codes)."""
   if atom.name == " O3'":
     cur_O3_xyz[altloc] = atom.xyz
     cur_O3_key[altloc] = key
   elif atom.name == ' P  ':
-    if len(prev_O3_key) > 0 and len(prev_O3_xyz) > 0:
-      if prev_resid is not None and \
-         int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-        prev_key, prev_xyz = _get_prev_connection(prev_O3_key, prev_O3_xyz, altloc)
-        if prev_key is not None:
-          mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
-    resseq = residue_group.resseq_as_int()
-    p_hash_key[resseq] = key
-    p_hash_xyz[resseq] = atom.xyz
+    if linked and len(prev_O3_key) > 0 and len(prev_O3_xyz) > 0:
+      prev_key, prev_xyz = _get_prev_connection(prev_O3_key, prev_O3_xyz, altloc)
+      if prev_key is not None:
+        mc_parts.append(kin_vec(prev_key, prev_xyz, key, atom.xyz))
+    p_hash_key[rg_index] = key
+    p_hash_xyz[rg_index] = atom.xyz
   elif atom.name == " C1'":
-    c1_hash_key[residue_group.resseq_as_int()] = key
-    c1_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+    c1_hash_key[rg_index] = key
+    c1_hash_xyz[rg_index] = atom.xyz
   elif atom.name == " C4'":
-    c4_hash_key[residue_group.resseq_as_int()] = key
-    c4_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+    c4_hash_key[rg_index] = key
+    c4_hash_xyz[rg_index] = atom.xyz
 
-def _draw_rna_virtual_backbone(residue_group, p_hash_key, p_hash_xyz,
+def _draw_rna_virtual_backbone(rg_index, linked, p_hash_key, p_hash_xyz,
                                c1_hash_key, c1_hash_xyz,
                                c4_hash_key, c4_hash_xyz):
   """Generate virtual backbone vectors for RNA/DNA residues (C4'->P->C4'->C1')."""
   vbb = ""
-  resseq = residue_group.resseq_as_int()
+  i = rg_index
   # C4'(prev) -> P(cur)
-  if (resseq - 1) in c4_hash_key and resseq in p_hash_key:
-    vbb += kin_vec(c4_hash_key[resseq-1], c4_hash_xyz[resseq-1],
-                   p_hash_key[resseq], p_hash_xyz[resseq])
+  if linked and (i - 1) in c4_hash_key and i in p_hash_key:
+    vbb += kin_vec(c4_hash_key[i-1], c4_hash_xyz[i-1],
+                   p_hash_key[i], p_hash_xyz[i])
   # P(cur) -> C4'(cur)
-  if resseq in p_hash_key and resseq in c4_hash_key:
-    vbb += kin_vec(p_hash_key[resseq], p_hash_xyz[resseq],
-                   c4_hash_key[resseq], c4_hash_xyz[resseq])
+  if i in p_hash_key and i in c4_hash_key:
+    vbb += kin_vec(p_hash_key[i], p_hash_xyz[i],
+                   c4_hash_key[i], c4_hash_xyz[i])
   # C4'(cur) -> C1'(cur)
-  if resseq in c4_hash_key and resseq in c1_hash_key:
-    vbb += kin_vec(c4_hash_key[resseq], c4_hash_xyz[resseq],
-                   c1_hash_key[resseq], c1_hash_xyz[resseq])
+  if i in c4_hash_key and i in c1_hash_key:
+    vbb += kin_vec(c4_hash_key[i], c4_hash_xyz[i],
+                   c1_hash_key[i], c1_hash_xyz[i])
   return vbb
 
 def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
@@ -583,7 +692,18 @@ def _draw_residue_bonds(residue, bond_hash, i_seq_name_hash, key_hash,
   return result
 
 def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
-                 show_hydrogen=True, ss_bonds=None, sites_cart=None):
+                 show_hydrogen=True, ss_bonds=None, sites_cart=None,
+                 linked_pairs=None):
+  """linked_pairs: backbone_linked_pairs() of the chain's hierarchy, computed
+  here for this chain alone if not given."""
+  if linked_pairs is None:
+    # From a copy re-keyed to this chain: works for a detached chain, and
+    # per-chain callers (cablam) do not rescan the whole structure.
+    root = pdb.hierarchy.root()
+    root.append_model(pdb.hierarchy.model())
+    root.models()[0].append_chain(chain.detached_copy())
+    linked_pairs = set((chain.memory_id(), prev, cur)
+      for _, prev, cur in backbone_linked_pairs(root))
   mc_atoms = ["N", "CA", "C", "O", "OXT",
               "P", "OP1", "OP2", "OP3", "O5'", "C5'", "C4'", "O4'", "C1'",
               "C3'", "O3'", "C2'", "O2'"]
@@ -604,7 +724,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
     sc_h_veclist = \
       "@vectorlist {sc H} color= gray nobutton master= {sidechain} master= {H's}\n"
   ion_list = ""
-  prev_resid = None
+  prev_rg = None
   prev_C_xyz = {}
   prev_C_key = {}
   prev_CA_xyz = {}
@@ -619,7 +739,9 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
   c4_hash_xyz = {}
   drawn_bonds = []
 
-  for residue_group in chain.residue_groups():
+  for rg_index, residue_group in enumerate(chain.residue_groups()):
+    linked = prev_rg is not None and (chain.memory_id(), prev_rg.resid(),
+      residue_group.resid()) in linked_pairs
     altloc_hash = {}
     iseq_altloc = {}
     cur_C_xyz = {}
@@ -635,10 +757,8 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
           altloc_hash[atom.name.strip()] = []
         altloc_hash[atom.name.strip()].append(ag_altloc)
         iseq_altloc[atom.i_seq] = ag_altloc
-    cur_resid = residue_group.resid()
     for conformer in residue_group.conformers():
       for residue in conformer.residues():
-        cur_resid = residue.resid()
         key_hash = {}
         xyz_hash = {}
         het_hash = {}
@@ -668,7 +788,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
             mc_parts = []
             ca_parts = []
             _track_amino_acid_atom(
-              atom, key, altloc, residue_group, prev_resid,
+              atom, key, altloc, linked,
               cur_C_xyz, cur_C_key, cur_CA_xyz, cur_CA_key,
               prev_C_key, prev_C_xyz, prev_CA_key, prev_CA_xyz,
               mc_parts, ca_parts)
@@ -679,7 +799,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
           elif res_class == "common_rna_dna":
             mc_parts = []
             _track_rna_dna_atom(
-              atom, key, altloc, residue_group, prev_resid,
+              atom, key, altloc, rg_index, linked,
               cur_O3_xyz, cur_O3_key,
               prev_O3_key, prev_O3_xyz,
               p_hash_key, p_hash_xyz,
@@ -706,7 +826,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
         # Virtual backbone for RNA/DNA
         if common_residue_names_get_class(residue.resname) == "common_rna_dna":
           virtual_bb += _draw_rna_virtual_backbone(
-            residue_group, p_hash_key, p_hash_xyz,
+            rg_index, linked, p_hash_key, p_hash_xyz,
             c1_hash_key, c1_hash_xyz, c4_hash_key, c4_hash_xyz)
 
         # Draw bonds
@@ -725,7 +845,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0,
     prev_CA_key = cur_CA_key
     prev_C_xyz = cur_C_xyz
     prev_C_key = cur_C_key
-    prev_resid = cur_resid
+    prev_rg = residue_group
     prev_O3_key = cur_O3_key
     prev_O3_xyz = cur_O3_xyz
 
@@ -808,7 +928,8 @@ def get_default_header():
 """
   return header
 
-def get_footer():
+def get_footer(vdw_dots=False):
+  """vdw_dots: the kinemage holds vdW contact dots, to be switched off."""
   footer = """
 @master {mainchain} off
 @master {sidechain} off
@@ -818,17 +939,16 @@ def get_footer():
 @master {Rama outliers} on
 @master {Calphas} on
 @master {Virtual BB} on
-@master {vdw contact} off
 @master {small overlap} off
-@master {H-bonds} off
-@master {length dev} on
+@master {H-bond} off
+%s@master {length dev} on
 @master {angle dev} on
 @master {Cbeta dev} on
 @master {base-P perp} on
 @master {hets} on
 @master {protein ribbon} off
 @master {NA ribbon} off
-"""
+""" % ("@master {vdw contact} off\n" if vdw_dots else "")
   return footer
 
 def get_altid_controls(hierarchy):
@@ -933,9 +1053,43 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
   if altid_controls != "":
     kin_out += altid_controls
   kin_out += "@group {%s} dominant animate\n" % pdbID
+  body, dummy_counter, dummy_ribbon_counter = _build_group_body(
+      hierarchy=hierarchy, bond_hash=bond_hash,
+      i_seq_name_hash=i_seq_name_hash, pdbID=pdbID,
+      rot_outliers=rot_outliers, rama_result=rama_result, cb_result=cb_result,
+      restraints_result=restraints_result, keep_hydrogens=keep_hydrogens,
+      omega_result=omega_result, rna_puckers_result=rna_puckers_result,
+      suite_result=suite_result, cablam_result=cablam_result,
+      probe_dots_kin=probe_dots_kin, ss_bonds=ss_bonds, sites_cart=sites_cart,
+      ss_annotation=ss_annotation,
+      include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils)
+  kin_out += body
+  kin_out += get_footer(vdw_dots="master={vdw contact}" in kin_out)
+  return kin_out
+
+def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
+                      rot_outliers, rama_result, cb_result,
+                      restraints_result, keep_hydrogens,
+                      omega_result=None, rna_puckers_result=None,
+                      suite_result=None,
+                      cablam_result=None,
+                      probe_dots_kin=None,
+                      ss_bonds=None, sites_cart=None,
+                      ss_annotation=None,
+                      include_cablam_wheels=False,
+                      plain_coils=False,
+                      counter_start=0,
+                      ribbon_counter_start=0):
+  """Emit one kinemage group's contents (sticks, markup, ribbons, dots):
+  everything between a "@group" line and the footer.  counter_start /
+  ribbon_counter_start seed the color rotations so per-model groups keep the
+  single-group color progression.  Returns (text, counter, ribbon_counter)."""
+  kin_out = ""
   initiated_chains = []
   validated_chains = []
-  counter = 0
+  counter = counter_start
+  ribbon_counter = ribbon_counter_start
+  linked_pairs = backbone_linked_pairs(hierarchy)
   for model in hierarchy.models():
     for chain in model.chains():
       if chain.id not in initiated_chains:
@@ -949,7 +1103,8 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
                               pdbID=pdbID,
                               index=counter,
                               ss_bonds=ss_bonds,
-                              sites_cart=sites_cart)
+                              sites_cart=sites_cart,
+                              linked_pairs=linked_pairs)
       # Validation overlays filter by chain_id, so they only need to be
       # emitted once per unique chain ID (not once per chain segment).
       if chain.id not in validated_chains:
@@ -992,7 +1147,6 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     consolidate_sheets(ss_map)
 
     ribbon_kin = ""
-    ribbon_counter = 0
     for model in hierarchy.models():
       has_dna = any(chain_has_DNA(c) for c in model.chains())
       has_rna = any(chain_has_RNA(c) for c in model.chains())
@@ -1014,7 +1168,130 @@ def _build_kinemage(hierarchy, bond_hash, i_seq_name_hash, pdbID,
     kin_out += probe_dots_kin
   else:
     kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
-  kin_out += get_footer()
+  return kin_out, counter, ribbon_counter
+
+def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
+                               keep_hydrogens, include_cablam_wheels,
+                               plain_coils, vdw_dots=False):
+  """One animatable group per MODEL ("@group {mN pdbID} dominant animate"),
+  each with that model's sticks, markup, ribbons, and dots.  Each model is
+  interpreted and validated separately (correct for superimposed ensembles,
+  and linear in the model count)."""
+  import mmtbx.model
+  from libtbx.utils import null_out
+  hierarchy = model.get_hierarchy()
+  n_models = len(hierarchy.models())
+
+  # Per-model probe dots sections.
+  if probe_dots_kin is None:
+    dots_sections = make_probe_dots_from_model(model, per_model=True,
+                                               vdw_dots=vdw_dots)
+  elif isinstance(probe_dots_kin, (list, tuple)):
+    dots_sections = list(probe_dots_kin)
+  elif probe_dots_kin == "":
+    dots_sections = [""] * n_models
+  else:
+    # Legacy concatenated string: split at probe2 caption headers and strip
+    # the per-model labels, since sections nest in per-model groups now.
+    import re
+    parts = [s for s in re.split(r'(?m)(?=^@caption)', probe_dots_kin) if s]
+    if len(parts) == n_models:
+      dots_sections = parts
+      for i_mod, m in enumerate(hierarchy.models()):
+        dots_sections[i_mod] = dots_sections[i_mod].replace(
+          "@subgroup dominant {self dots m%s}" % m.id.strip(),
+          "@subgroup dominant {self dots}", 1)
+    else:
+      # Unattributable text: emit groups without dots, append it at the end.
+      dots_sections = None
+  if dots_sections is not None and len(dots_sections) != n_models:
+    dots_sections = None
+
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
+  p.pdb_interpretation.allow_polymer_cross_special_position = True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds = True
+  # Deposited atom names, matching probe2's dot labels.
+  p.pdb_interpretation.flip_symmetric_amino_acids = False
+
+  kin_out = get_default_header()
+  altid_controls = get_altid_controls(hierarchy=hierarchy)
+  if altid_controls != "":
+    kin_out += altid_controls
+  counter = 0
+  ribbon_counter = 0
+  for i_mod, m in enumerate(hierarchy.models()):
+    r = pdb.hierarchy.root()
+    r.append_model(m.detached_copy())
+    sub = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = r,
+      stop_for_unknowns = False,
+      crystal_symmetry  = model.crystal_symmetry(),
+      restraint_objects = model.get_restraint_objects(),
+      log               = null_out())
+    sub.process(make_restraints=True, pdb_interpretation_params=p)
+    sub_h = sub.get_hierarchy()
+    geometry = sub.get_restraints_manager().geometry
+
+    i_seq_name_hash = build_name_hash(pdb_hierarchy=sub_h)
+    sites_cart = sub_h.atoms().extract_xyz()
+    flags = geometry_restraints.flags.flags(default=True, nonbonded=False)
+    pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
+    bond_hash = _build_bond_hash(pair_proxies.bond_proxies, i_seq_name_hash)
+    ss_bonds = _build_ss_bond_list(pair_proxies.bond_proxies, i_seq_name_hash)
+
+    has_protein = any(chain.is_protein()
+                      for mdl in sub_h.models() for chain in mdl.chains())
+    has_rna = any(chain.is_na()
+                  for mdl in sub_h.models() for chain in mdl.chains())
+    rot_outliers = rotalyze(pdb_hierarchy=sub_h, outliers_only=True)
+    rama_result = ramalyze(pdb_hierarchy=sub_h, outliers_only=True)
+    cb_result = cbetadev(pdb_hierarchy=sub_h, outliers_only=True)
+    omega_result = omegalyze.omegalyze(
+        pdb_hierarchy=sub_h, nontrans_only=True, out=None, quiet=True)
+    cablam_result = None
+    if has_protein:
+      from mmtbx.validation.cablam import cablamalyze
+      cablam_result = cablamalyze(
+          pdb_hierarchy=sub_h, outliers_only=True, out=null_out(), quiet=True)
+    rna_puckers_result = None
+    suite_result = None
+    if has_rna:
+      rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=sub_h)
+      from mmtbx.suitename.suitealyze import suitealyze
+      suite_result = suitealyze(pdb_hierarchy=sub_h, outliers_only=True)
+    from mmtbx.validation.restraints import combined as _restraints_combined
+    restraints_result = _restraints_combined(
+        pdb_hierarchy=sub_h,
+        xray_structure=sub.get_xray_structure(),
+        geometry_restraints_manager=geometry,
+        ignore_hd=True,
+        outliers_only=True)
+
+    model_label = m.id.strip()
+    if len(model_label) == 0:
+      model_label = str(i_mod + 1)
+    kin_out += "@group {m%s %s} dominant animate\n" % (model_label, pdbID)
+    dots = dots_sections[i_mod] if dots_sections is not None else ""
+    body, counter, ribbon_counter = _build_group_body(
+        hierarchy=sub_h, bond_hash=bond_hash,
+        i_seq_name_hash=i_seq_name_hash, pdbID=pdbID,
+        rot_outliers=rot_outliers, rama_result=rama_result,
+        cb_result=cb_result, restraints_result=restraints_result,
+        keep_hydrogens=keep_hydrogens, omega_result=omega_result,
+        rna_puckers_result=rna_puckers_result, suite_result=suite_result,
+        cablam_result=cablam_result, probe_dots_kin=dots,
+        ss_bonds=ss_bonds, sites_cart=sites_cart,
+        ss_annotation=ss_annotation,
+        include_cablam_wheels=include_cablam_wheels,
+        plain_coils=plain_coils,
+        counter_start=counter, ribbon_counter_start=ribbon_counter)
+    kin_out += body
+  if dots_sections is None and isinstance(probe_dots_kin, str):
+    kin_out += probe_dots_kin
+  kin_out += get_footer(vdw_dots="master={vdw contact}" in kin_out)
   return kin_out
 
 def build_kinemage_from_model(
@@ -1032,7 +1309,8 @@ def build_kinemage_from_model(
     probe_dots_kin=None,
     keep_hydrogens=False,
     include_cablam_wheels=False,
-    plain_coils=False):
+    plain_coils=False,
+    vdw_dots=False):
   """High-level kinemage builder that takes an mmtbx.model.manager.
 
   Encapsulates the i_seq_name_hash / bond_hash / ss_bonds / sites_cart plumbing
@@ -1058,19 +1336,44 @@ def build_kinemage_from_model(
       to the outlier line markup. Defaults to False for multicrit viewers.
     plain_coils: when True, omit the rear deadblack halo behind coil ribbons.
       Defaults to False.
+    vdw_dots: include van der Waals contact dots when computing probe dots
+      here (switched off in the viewer by the footer). Defaults to False.
 
   Returns:
     The kinemage string.
+
+  Multi-model files get one animatable group per MODEL (injected validator
+  results are ignored and re-run per model; probe_dots_kin may be a per-model
+  list, a concatenated string, or "" to suppress dots).
   """
+  if len(model.get_hierarchy().models()) > 1:
+    return _build_multimodel_kinemage(
+      model=model, pdbID=pdbID, ss_annotation=ss_annotation,
+      probe_dots_kin=probe_dots_kin, keep_hydrogens=keep_hydrogens,
+      include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils,
+      vdw_dots=vdw_dots)
   if model.get_restraints_manager() is None:
-    model.process(make_restraints=True)
+    # Only bonded topology and covalent geometry are consumed here: skip the
+    # plain-pair table (quadratic for superimposed ensemble models) and use
+    # the don't-abort switches (an NMR dummy CRYST1 cell can fail the
+    # volume-vs-atom-count check).
+    import mmtbx.model
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check = True
+    p.pdb_interpretation.allow_polymer_cross_special_position = True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+    p.pdb_interpretation.proceed_with_excessive_length_bonds = True
+    model.process(make_restraints=True, pdb_interpretation_params=p,
+                  plain_pairs_radius=0.01)
 
   hierarchy = model.get_hierarchy()
   geometry = model.get_restraints_manager().geometry
 
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   sites_cart = hierarchy.atoms().extract_xyz()
-  flags = geometry_restraints.flags.flags(default=True)
+  # Only bond proxies are consumed; nonbonded lists would be quadratic on
+  # superimposed ensemble models.
+  flags = geometry_restraints.flags.flags(default=True, nonbonded=False)
   pair_proxies = geometry.pair_proxies(flags=flags, sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
   bond_hash = _build_bond_hash(bond_proxies, i_seq_name_hash)
@@ -1125,7 +1428,7 @@ def build_kinemage_from_model(
 
   if probe_dots_kin is None:
     try:
-      probe_dots_kin = make_probe_dots_from_model(model)
+      probe_dots_kin = make_probe_dots_from_model(model, vdw_dots=vdw_dots)
     except Exception:
       probe_dots_kin = ""
 
@@ -1151,7 +1454,9 @@ def build_kinemage_from_model(
       plain_coils=plain_coils)
 
 def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
-                  include_cablam_wheels=False, plain_coils=False):
+                  include_cablam_wheels=False, plain_coils=False,
+                  restraint_objects=None, omit_unrestrained=True,
+                  vdw_dots=False):
   if pdbID is None:
     pdbID = "PDB"
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -1246,6 +1551,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False,
     ss_bonds=ss_bonds,
     sites_cart=sites_cart,
     ss_annotation=ss_annotation,
+    probe_dots_kin=make_probe_dots(hierarchy=hierarchy,
+      keep_hydrogens=keep_hydrogens, restraint_objects=restraint_objects,
+      omit_unrestrained=omit_unrestrained, vdw_dots=vdw_dots),
     include_cablam_wheels=include_cablam_wheels,
     plain_coils=plain_coils)
 
@@ -1263,11 +1571,37 @@ Options:
   pdb=input_file        input PDB file
   cif=cif_file          input custom definitions (ligands, etc.)
   keep_hydrogens=False  keep input hydrogen files (otherwise regenerate)
+  vdw_dots=False        include van der Waals contact dots (switched off in
+                        the viewer until turned on)
+  omit_unrestrained_residues=True  leave residues without restraints out of
+                        the contact dots (False: stop and ask for cif=)
 
 Example:
 
   phenix.kinemage pdb=1ubq.pdb cif=ligands.cif
 """
+
+def _run_multimodel(pdb_io, outfile, pdbID, restraint_objects, params):
+  """Command-line path for ensembles: one animatable group per MODEL, as
+  build_kinemage_from_model makes, with H placed per model for the dots.
+  Interpretation uses that builder's settings, not kinemage.pdb_interpretation."""
+  import mmtbx.model
+  from libtbx.utils import null_out
+  model = mmtbx.model.manager(
+    model_input       = pdb_io,
+    stop_for_unknowns = False,
+    restraint_objects = restraint_objects or None,
+    log               = null_out())
+  dots = make_probe_dots(model.get_hierarchy(),
+    keep_hydrogens=params.keep_hydrogens,
+    restraint_objects=restraint_objects,
+    omit_unrestrained=params.omit_unrestrained_residues,
+    vdw_dots=params.vdw_dots, per_model=True)
+  kin_out = build_kinemage_from_model(model, pdbID=pdbID, probe_dots_kin=dots,
+    keep_hydrogens=params.keep_hydrogens, vdw_dots=params.vdw_dots)
+  with open(outfile, 'w') as f:
+    f.write(kin_out)
+  return outfile
 
 def run(args, pdb_interpretation_params=None):
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
@@ -1289,32 +1623,45 @@ def run(args, pdb_interpretation_params=None):
   #     break
   # if auto_cdl:
   work_params.kinemage.pdb_interpretation.restraints_library.cdl = Auto
-  if work_params.kinemage.pdb == None:
-    assert len(input_objects["pdb"]) == 1
-    file_obj = input_objects["pdb"][0]
-    file_name = file_obj.file_name
-  else:
-    file_name = work_params.kinemage.pdb
-  if file_name and os.path.exists(file_name):
+  # Multiple so that a second model file, given plainly or as pdb=, is
+  # refused rather than silently replacing the first.
+  model_files = work_params.kinemage.pdb
+  if len(model_files) > 1:
+    raise Sorry("Only one model file can be given, got %d: %s" % (
+      len(model_files), ", ".join(model_files)))
+  if len(model_files) == 0:
+    if len(input_objects.unused_args) > 0:
+      raise Sorry("Model file not found or not readable: %s" %
+                  " ".join(input_objects.unused_args))
+    raise Sorry("No model file given.\n" + usage())
+  file_name = model_files[0]
+  if os.path.exists(file_name):
     pdb_io = pdb.input(file_name)
-    pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
+    pdbID = os.path.basename(file_name)
+    for suffix in (".gz", ".Z"):
+      if pdbID.endswith(suffix):
+        pdbID = pdbID[:-len(suffix)]
+    pdbID = os.path.splitext(pdbID)[0]
   else :
-    raise Sorry("PDB file does not exist")
-  assert pdb_io is not None
-  cif_file = None
-  cif_object = None
-  cif_file = work_params.kinemage.cif
+    raise Sorry("Model file not found: %s" % file_name)
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  if cif_file != None:
-    for cif in cif_file:
-      try:
-        cif_object = monomer_library.server.read_cif(file_name=cif)
-      except Exception:
-        raise Sorry("Unknown file format: %s" % show_string(cif))
-    if cif_object != None:
-      for srv in [mon_lib_srv, ener_lib]:
-        srv.process_cif_object(cif_object=cif_object)
+  restraint_objects = []
+  for cif in work_params.kinemage.cif:
+    try:
+      cif_object = monomer_library.server.read_cif(file_name=cif)
+    except Exception:
+      raise Sorry("Unknown file format: %s" % show_string(cif))
+    for srv in [mon_lib_srv, ener_lib]:
+      srv.process_cif_object(cif_object=cif_object, file_name=cif)
+    restraint_objects.append((cif, cif_object))
+  if work_params.kinemage.out_file is not None:
+    outfile = work_params.kinemage.out_file
+  else :
+    outfile = pdbID+'.kin'
+  if pdb_io.construct_hierarchy().models_size() > 1:
+    return _run_multimodel(pdb_io, outfile, pdbID, restraint_objects,
+                           work_params.kinemage)
   if pdb_interpretation_params is None:
     #pdb_int_work_params = pdb_interpretation.master_params.extract()
     pdb_int_work_params = work_params.kinemage.pdb_interpretation
@@ -1327,14 +1674,14 @@ def run(args, pdb_interpretation_params=None):
         pdb_inp=pdb_io,
         params=pdb_int_work_params,
         substitute_non_crystallographic_unit_cell_if_necessary=True)
-  if work_params.kinemage.out_file is not None:
-    outfile = work_params.kinemage.out_file
-  else :
-    outfile = pdbID+'.kin'
   outfile = make_multikin(f=outfile,
                           processed_pdb_file=processed_pdb_file,
                           pdbID=pdbID,
-                          keep_hydrogens=work_params.kinemage.keep_hydrogens)
+                          keep_hydrogens=work_params.kinemage.keep_hydrogens,
+                          restraint_objects=restraint_objects,
+                          omit_unrestrained=
+                            work_params.kinemage.omit_unrestrained_residues,
+                          vdw_dots=work_params.kinemage.vdw_dots)
   return outfile
 
 def export_molprobity_result_as_kinemage(

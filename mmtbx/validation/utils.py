@@ -166,35 +166,130 @@ def _clash_severity(abs_overlap, num_clashes):
         severity += min(math.log2(num_clashes), 4.0) * 1.0
     return severity
 
+CBETA_THRESHOLD = 0.25          # Angstroms, MolProbity's C-beta outlier cut
+# Anchored so 0.25 A -> 1.0 and 0.50 A -> 4.0, the values the linear form documented.
+CBETA_K = 3.0 / math.log(0.50 / 0.25)
+
+
 def _cbeta_severity(deviation):
     """Map C-beta deviation to a continuous severity.
 
-    Outlier threshold is 0.25 A.  Scales linearly so that:
+    Outlier threshold is 0.25 A.  Logarithmic in the deviation, so severity tracks
+    -log(population frequency):
+
       0.25 A -> 1.0
       0.50 A -> 4.0
-      0.75 A -> 7.0
+      1.00 A -> 7.0
+      2.00 A -> 10.0
+
+    Replaces an uncapped linear form.  Deviations at or below the threshold return 1.0,
+    since the caller only invokes this for residues already flagged as outliers.
     """
-    return max(0.0, (deviation - 0.13) * 12.0)
+    if deviation is None or deviation <= CBETA_THRESHOLD:
+        return 1.0
+    return 1.0 + CBETA_K * math.log(deviation / CBETA_THRESHOLD)
+
+def _omega_twist_severity(omega):
+    """Map a twisted peptide's omega to a continuous severity.
+
+    Follows sin^2 of the twist: a peptide bond resists rotation because the amide is
+    conjugated, and that conjugation is lost as sin^2 of the rotation.
+
+      twist 30 deg (MolProbity's Twisted border) ->  3.0
+      twist 45 deg                               ->  7.0
+      twist 60 deg                               -> 11.0
+      twist 90 deg (perpendicular)               -> 15.0, the old flat value
+
+    Replaces a flat 15.0 for every twisted peptide.  The floor is 3.0 rather than 0.0 so
+    a borderline twist is not scored as harmless.  omega is the dihedral in degrees; if
+    unavailable the old flat 15.0 is returned.
+    """
+    if omega is None:
+        return 15.0
+    twist = min(abs(omega), 180.0 - abs(omega))
+    frac = (math.sin(math.radians(twist)) ** 2 - 0.25) / 0.75   # 0.25 = sin^2(30 deg)
+    return max(3.0, min(15.0, 3.0 + 12.0 * frac))
+
+
+BOND_ANGLE_THRESHOLD = 4.0      # sigma, MolProbity's bond/angle outlier cut
+# Anchored so 4 sigma -> 1.0 and 10 sigma -> 4.0, the values the linear form documented.
+BOND_ANGLE_K = 3.0 / math.log(10.0 / 4.0)
+
 
 def _bond_angle_severity(num_outliers, worst_sigma):
     """Map bond/angle outlier count and worst sigma to a continuous severity.
 
-    Uses worst deviation in sigma units as primary signal.  The 4-sigma
-    outlier threshold is the floor.
+    Logarithmic in the worst deviation, with the 4-sigma outlier threshold as the floor,
+    so severity tracks -log(population frequency):
 
-    Severity scale (approximate):
-      4 sigma  -> 1.0
-      6 sigma  -> 2.0
-      10 sigma -> 4.0
-    Additional outliers beyond the first add 0.5 each.
+      4 sigma   -> 1.0
+      10 sigma  -> 4.0
+      30 sigma  -> 7.6
+      100 sigma -> 11.5
+      164 sigma -> 13.2   (the worst seen in 1.2M bond restraints; still under 15)
+
+    Replaces an uncapped straight line that reached 86.6 and let covalent geometry alone
+    outrank residues carrying five or six independent problems.  Bond and angle share one
+    function because both are anchored to the same two documented points.  The count bonus
+    matches _clash_severity: log2 capped at 4.0.
     """
     if worst_sigma is None or worst_sigma == 0:
-        # Fall back to count-based if no sigma available
-        return 1.0 + max(0, num_outliers - 1) * 0.5
-    severity = max(0.0, (abs(worst_sigma) - 2.0) * 0.5)
+        severity = 1.0                       # sigma unavailable; count is all we have
+    else:
+        s = abs(worst_sigma)
+        severity = 1.0 if s <= BOND_ANGLE_THRESHOLD else \
+            1.0 + BOND_ANGLE_K * math.log(s / BOND_ANGLE_THRESHOLD)
     if num_outliers > 1:
-        severity += (num_outliers - 1) * 0.5
+        severity += min(math.log2(num_outliers), 4.0)
     return severity
+
+def _rna_suite_severity(is_outlier, suiteness):
+    """Map an RNA backbone suite to a graded severity.
+
+    A suite is the backbone unit between two riboses, classified by suitename
+    into named rotamer-like conformers.  A full outlier ("!!") matches no known
+    cluster and is the serious case.  A suite that is assigned a cluster but fits
+    it poorly (low suiteness "wannabe") gets a mild disfavored-tier severity, so
+    the metric has dynamic range instead of a single binary flag.  suiteness is
+    0..1 (higher = better fit).
+
+    Suites are the RNA analogue of protein rotamers (a few % outliers in good
+    structures), so the full-outlier tier sits just below the Ramachandran-
+    equivalent sugar-pucker tier (see _rna_pucker_severity).
+      full outlier             -> 4.0
+      assigned, suiteness < 0.3 -> 1.5   (disfavored-tier "wannabe")
+      otherwise                -> 0.0
+    """
+    if is_outlier:
+        return 4.0
+    if suiteness is not None and suiteness < 0.3:
+        return 1.5
+    return 0.0
+
+def _rna_pucker_severity(is_delta_outlier, is_epsilon_outlier,
+                         is_pucker_outlier=False):
+    """Map an RNA sugar-pucker problem to a graded severity.
+
+    A *delta* outlier means the base-phosphate perpendicular (P-perp) distance
+    and the delta torsion disagree about the sugar pucker (C2'- vs C3'-endo) -- a
+    genuinely wrong, rare, chemically well-defined error, so it sits at the
+    Ramachandran tier.  An *epsilon-only* outlier (epsilon torsion out of the
+    valid range while the sugar pucker itself is consistent) is a milder backbone
+    problem.  Sugar-pucker outliers are rarer than suite outliers, hence weighted
+    above them.
+      delta outlier (wrong sugar pucker) -> 5.0
+      epsilon-only outlier               -> 3.0
+      otherwise                          -> 0.0
+    is_pucker_outlier is a fallback for the (delta OR epsilon) flag when the typed
+    sub-flags are unavailable; treated as the delta (wrong-pucker) tier.
+    """
+    if is_delta_outlier:
+        return 5.0
+    if is_epsilon_outlier:
+        return 3.0
+    if is_pucker_outlier:
+        return 5.0
+    return 0.0
 
 def calculate_overall_residue_quality_score(
     residue_data: Dict[str, Any],
@@ -224,14 +319,16 @@ def calculate_overall_residue_quality_score(
               rotalyze_category (str),
               is_glycine (bool), is_cbeta_outlier (bool), cbeta_deviation (float),
               cablam_outlier_type (str),
-              omega_type (str), is_proline (bool),
+              omega_type (str), omega_dihedral (float, degrees), is_proline (bool),
               num_bond_outliers_res (int), worst_bond_deviation (float, sigma),
               num_angle_outliers_res (int), worst_angle_deviation (float, sigma),
               num_chiral_handedness_res (int), num_chiral_tetrahedral_res (int),
               num_chiral_pseudochiral_res (int),
               num_chiral_outliers_res (int, fallback if typed counts unavailable),
-              is_rna_residue (bool), is_rna_suite_outlier (bool),
-              is_rna_pucker_outlier (bool).
+              is_rna_residue (bool),
+              is_rna_suite_outlier (bool), rna_suite_suiteness (float, 0..1),
+              is_rna_pucker_outlier (bool), is_delta_outlier (bool),
+              is_epsilon_outlier (bool).
 
     Returns:
         The triage score rounded to 1 decimal place (0.0 = no issues,
@@ -265,9 +362,12 @@ def calculate_overall_residue_quality_score(
             severities.append(3.0)
 
     # --- 4. C-beta Deviation ---
+    # Suppressed when a chirality handedness swap is already flagged: the second C-beta
+    # mode at 1.9-2.3 A is almost entirely chirality-flagged D-amino acids, so scoring
+    # both counts one physical fact twice.  Only the typed handedness count suppresses.
     if not get('is_glycine', False):
         has_any_metric = True
-        if get('is_cbeta_outlier'):
+        if get('is_cbeta_outlier') and not get('num_chiral_handedness_res', 0):
             deviation = get('cbeta_deviation', 0.0) or 0.0
             severities.append(_cbeta_severity(deviation))
 
@@ -285,7 +385,7 @@ def calculate_overall_residue_quality_score(
     if omega_type not in ['not_applicable', 'not_evaluated', None]:
         has_any_metric = True
         if omega_type == 'twisted':
-            severities.append(15.0)
+            severities.append(_omega_twist_severity(get('omega_dihedral')))
         elif omega_type == 'cis' and not get('is_proline'):
             severities.append(8.0)
 
@@ -326,17 +426,24 @@ def calculate_overall_residue_quality_score(
         has_any_metric = True
         severities.append(5.0)
 
-    # --- 10. RNA Suite ---
+    # --- 10. RNA Suite (graded: full outlier + low-suiteness wannabe) ---
     if get('is_rna_residue', False):
         has_any_metric = True
-        if get('is_rna_suite_outlier', False):
-            severities.append(3.0)
+        suite_sev = _rna_suite_severity(
+            get('is_rna_suite_outlier', False),
+            get('rna_suite_suiteness'))
+        if suite_sev > 0:
+            severities.append(suite_sev)
 
-    # --- 11. RNA Pucker ---
+    # --- 11. RNA Pucker (graded: wrong-pucker delta outranks epsilon-only) ---
     if get('is_rna_residue', False):
         has_any_metric = True
-        if get('is_rna_pucker_outlier', False):
-            severities.append(3.0)
+        pucker_sev = _rna_pucker_severity(
+            get('is_delta_outlier', False),
+            get('is_epsilon_outlier', False),
+            get('is_rna_pucker_outlier', False))
+        if pucker_sev > 0:
+            severities.append(pucker_sev)
 
     if not has_any_metric:
         return None

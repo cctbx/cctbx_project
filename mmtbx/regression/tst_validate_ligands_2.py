@@ -2,12 +2,15 @@ from __future__ import absolute_import, division, print_function
 import time, traceback, os
 import libtbx.load_env
 from libtbx.utils import null_out
+from six.moves import cStringIO as StringIO
 import mmtbx.model
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
 from mmtbx.regression.tst_validate_ligands import find_lr
+from cctbx.geometry_restraints.tst_process_nonbonded_proxies import \
+  raw_records_hbond
 
 from rdkit import RDLogger
 lg = RDLogger.logger()
@@ -18,6 +21,14 @@ lg.setLevel(RDLogger.CRITICAL) # Only show critical errors
 def run():
   run_test01()
   run_test_get_results_fallback()
+  run_test_hbonds_ligand_acceptor()
+  run_test_show_fragmentation_per_copy()
+  run_test_interactions_off()
+  run_test_interactions_fmn()
+  run_test_interactions_aqs()
+  run_test_interactions_failure()
+  run_test_interactions_no_h()
+  run_test_interactions_expert_level()
 
 # ------------------------------------------------------------------------------
 
@@ -83,7 +94,9 @@ def run_test01():
   overlaps = lr.get_overlaps()
   assert overlaps is not None
   assert overlaps.n_clashes == 9
-  assert overlaps.n_hbonds == 3
+  # 5 of 6 via symmetry: N3A/N3B to DA 4 OP1/OP2 and DG 6 O6, DC 1 H42 to O1S,
+  # DG 6 H22 to O19. Plus N3A-HNA2 ... HOH 25.
+  assert overlaps.n_hbonds == 6
   assert approx_equal(overlaps.clashscore, 40.0, eps=0.5)
 
   # --- EDO A 43 ---
@@ -94,6 +107,229 @@ def run_test01():
   assert approx_equal(occs_edo.occ_mean, 1.0, eps=0.01)
   assert occs_edo.zero_count == 0
   assert occs_edo.negative_count == 0
+
+# ------------------------------------------------------------------------------
+# ligand interaction profile (validate_ligands.interactions)
+
+def _run_vl(pdb_str, fn, extra_args=()):
+  with open(fn, 'w') as f:
+    f.write(pdb_str)
+  for x in (fn.replace('.pdb', '_ligand_interactions.json'),):
+    if os.path.isfile(x):
+      os.remove(x)
+  log = StringIO()
+  result = run_program(program_class=val_lig.Program,
+    args=[fn, 'run_reduce2=False'] + list(extra_args), logger=log)
+  return result, log.getvalue()
+
+def _strip_times(text):
+  return '\n'.join([l for l in text.splitlines() if 'time' not in l.lower()])
+
+def run_test_interactions_off():
+  '''
+  Switch off (the default): no profile is computed or reported, the result and
+  snapshot carry no interactions field, no JSON is written, and the log equals
+  that of interactions=False.
+  '''
+  print('test_interactions_off')
+  fn = 'tst_interactions_off.pdb'
+  json_fn = 'tst_interactions_off_ligand_interactions.json'
+  result, out = _run_vl(raw_records_hbond, fn)
+  assert result.ligand_manager.params.interactions is False
+  assert 'Ligand interactions' not in out
+  assert not os.path.isfile(json_fn)
+  assert not hasattr(result, 'interactions_fn')
+  for lr in result.ligand_manager:
+    assert '_interactions' not in lr._result_attrs
+    assert lr.get_interactions() is None
+  for snap in result.ligand_results:
+    assert not hasattr(snap, 'interactions')
+  # the same log as interactions=False (after the echo of the command line)
+  result2, out2 = _run_vl(raw_records_hbond, fn, ['interactions=False'])
+  after = lambda t: _strip_times(t[t.index('Final processed PHIL parameters'):])
+  assert after(out) == after(out2)
+  print('OK')
+
+def _direct_counts(lr):
+  '''The profile run directly with ligand_interactions on the ligand's working model.'''
+  from mmtbx.validation import ligand_interactions as LI
+  m = LI.manager(lr.model, lr.ligand_isel, lr.sel_str,
+    params=lr.params.ligand_interactions).run()
+  types = {}
+  for e in m.entries:
+    k = e['type'] if e['type'] != 'vdw' else 'vdw_' + e['subtype']
+    types[k] = types.get(k, 0) + 1
+  return m, types
+
+def _check_against_direct(lr):
+  r = lr.get_interactions()
+  assert r['status'] == 'ok', r
+  m, types = _direct_counts(lr)
+  for k in ('hbond', 'salt_bridge', 'clash', 'vdw_so', 'vdw_cc', 'vdw_wc'):
+    assert r['counts'][k] == types.get(k, 0), (k, r['counts'], types)
+  assert r['counts']['possible_salt_bridge'] == len(m.possible_salt_bridges)
+  assert r['counts']['disagreements'] == len(m.disagreements)
+  assert r['counts']['symmetry_contacts'] == len([e for e in m.entries if e['symop']])
+  assert len(r['entries']) == len(m.entries) + len(m.possible_salt_bridges)
+  # counted as validate_ligands counts them: equal to its overlap and H-bond numbers
+  ov = lr.get_overlaps()
+  vc = r['validate_ligands_counts']
+  assert (vc['n_clashes'], vc['n_hbonds'], vc['n_clashes_sym']) == (ov.n_clashes,
+    ov.n_hbonds, ov.n_clashes_sym), (vc, ov.n_clashes, ov.n_hbonds)
+  # plain types only: picklable and JSON-able
+  import pickle, json
+  assert pickle.loads(pickle.dumps(r)) == r
+  json.dumps(r)
+  return r
+
+def run_test_interactions_fmn():
+  '''
+  Switch on, FMN C 301 with Arg 207 (known profile): one H-bond, one salt bridge,
+  three vdW wc; counts equal those of ligand_interactions run directly; the log
+  section, the snapshot field, the JSON file and options passed through.
+  '''
+  import json
+  print('test_interactions_fmn')
+  fn = 'tst_interactions_fmn.pdb'
+  result, out = _run_vl(raw_records_hbond, fn, ['interactions=True',
+    'ligand_interactions.salt_bridge.criterion=charge_centre'])
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  assert lr.params.ligand_interactions.salt_bridge.criterion == 'charge_centre'
+  assert lr.params.ligand_interactions.symmetry is True
+  r = _check_against_direct(lr)
+  c = r['counts']
+  assert (c['hbond'], c['salt_bridge'], c['clash'], c['vdw_so'], c['vdw_cc'],
+    c['vdw_wc']) == (1, 1, 0, 0, 0, 3), c
+  assert r['validate_ligands_counts']['n_hbonds'] == 3   # 2 ligand-internal
+  hb = [e for e in r['entries'] if e['type'] == 'hbond'][0]
+  assert hb['labels'] == ['C ARG 207 NH2', 'C ARG 207 HH21', 'C FMN 301 O1P'], hb
+  assert approx_equal(hb['distance'], 1.94, eps=0.01)
+  # log
+  i = out.index('Ligand interactions (experimental)')
+  section = out[i:]
+  row = [l for l in section.splitlines() if l.startswith('FMN C 301') and '|' in l][0]
+  # H-bonds, salt bridges, possible, metal, pi, clashes, so, cc, wc, symmetry, disagreements
+  assert [x.strip() for x in row.split('|')][1:12] == ['1', '1', '0', '0', '0', '0', '0', '0',
+    '3', '0', '0'], row
+  assert 'gives the same numbers for every ligand' in section
+  assert 'C FMN 301 O1P O2P O3P ... C ARG 207 NE NH1 NH2' in section
+  # JSON, snapshot, get_results
+  assert result.interactions_fn == 'tst_interactions_fmn_ligand_interactions.json'
+  d = json.load(open(result.interactions_fn))
+  assert d['parameters']['salt_bridge.criterion'] == 'charge_centre'
+  assert d['parameters']['symmetry'] is True and d['versions']['cctbx']
+  assert [x['ligand'] for x in d['ligands']] == ['FMN C 301']
+  assert d['ligands'][0]['counts'] == c
+  snap = result.ligand_results[0]
+  assert snap.interactions['counts'] == c and snap.interactions['status'] == 'ok'
+  assert len(snap.interactions['entries']) == 5
+  print('OK')
+
+def run_test_interactions_aqs():
+  '''
+  AQS in 386D (9 clashes, 6 H-bonds, 5 via symmetry): counts equal a direct
+  ligand_interactions run and validate_ligands' overlap numbers, symmetry contacts
+  present, 3 parallel pi stacks (ring systems) with DC 1, DG 2 and a DG 6 symmetry
+  mate; nproc=2 gives the same profiles.
+  '''
+  print('test_interactions_aqs')
+  fn = 'tst_interactions_aqs.pdb'
+  res = {}
+  for nproc in (1, 2):
+    result, out = _run_vl(pdb_str_tst_01, fn, ['interactions=True', 'nproc=%d' % nproc])
+    lr = find_lr(result.ligand_manager, 'chain A and resseq 7 and resname AQS')
+    r = _check_against_direct(lr)
+    assert (r['validate_ligands_counts']['n_clashes'],
+      r['validate_ligands_counts']['n_hbonds']) == (9, 6)
+    assert r['counts']['symmetry_contacts'] > 0
+    assert [e for e in r['entries'] if e['symop']]
+    # intercalated between base pairs: one entry per stacked pair of ring systems
+    # (bases by name; the anthraquinone's outer rings aromatic, its quinone ring
+    # conjugated); ring pairs: DC 1 1, DG 2 3 (one from the quinone ring), DG 6 2
+    pi = sorted([(e['geometry']['pi_stacking']['partner_system']['residue'], e['subtype'],
+      len(e['geometry']['pi_stacking']['ring_pairs'])) for e in
+      r['profile']['entries'] if e['type'] == 'pi_stacking'])
+    assert r['counts']['pi_stacking'] == 3 and pi == [('A DC 1', 'parallel', 1),
+      ('A DG 2', 'parallel', 3), ('A DG 6 (-x+y+1,y,-z+1/2)', 'parallel', 2)], pi
+    res[nproc] = [(x.id_str, x.altloc, x.get_interactions()['counts'],
+      x.get_interactions()['entries']) for x in result.ligand_manager]
+  assert res[1] == res[2]
+  # without symmetry (map input) pnp's symmetry records go: 1 of the 9 clashes, 5 of
+  # the 6 H-bonds
+  from mmtbx.validation import ligand_interactions as LI
+  o = LI.ligand_overlaps(lr.model, lr.sel_str, symmetry=False)
+  assert (o.n_clashes, o.n_clashes_sym, o.n_hbonds) == (8, 0, 1), (o.n_clashes,
+    o.n_clashes_sym, o.n_hbonds)
+  assert [r for r in o.clash_records + o.hbond_records if r['symop']] == []
+  print('OK')
+
+def run_test_interactions_failure():
+  '''
+  A failing profile (forced) leaves validate_ligands intact: the reason is kept per
+  ligand and printed, the rest of the results and the table are as without it.
+  '''
+  print('test_interactions_failure')
+  from mmtbx.validation import validate_ligands as vl_mod
+  fn = 'tst_interactions_failure.pdb'
+  result0, out0 = _run_vl(raw_records_hbond, fn)
+  class failing(object):
+    def __init__(self, *args, **kwargs):
+      pass
+    def run(self):
+      raise RuntimeError('forced failure\nsecond line')
+  saved = vl_mod.ligand_interactions.manager
+  vl_mod.ligand_interactions.manager = failing
+  try:
+    result, out = _run_vl(raw_records_hbond, fn, ['interactions=True'])
+  finally:
+    vl_mod.ligand_interactions.manager = saved
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  r = lr.get_interactions()
+  assert r['status'] == 'failed' and r['reason'] == 'RuntimeError: forced failure', r
+  assert 'FMN C 301         | failed: RuntimeError: forced failure' in out, out
+  lr0 = find_lr(result0.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  assert lr.get_overlaps().n_hbonds == lr0.get_overlaps().n_hbonds == 3
+  assert approx_equal(lr.get_adps().b_mean, lr0.get_adps().b_mean)
+  table = lambda t: t[t.index('RSCC'):t.index('Job complete')].split(
+    'Ligand interactions (experimental)')[0]
+  assert _strip_times(table(out)).split('-' * 20)[0] == _strip_times(table(out0)).split(
+    '-' * 20)[0]
+  assert result.ligand_results[0].interactions['status'] == 'failed'
+  print('OK')
+
+def run_test_interactions_no_h():
+  '''Without H (run_reduce2=False, none in the model): no profile, one reason.'''
+  print('test_interactions_no_h')
+  fn = 'tst_interactions_no_h.pdb'
+  no_h = '\n'.join([l for l in raw_records_hbond.splitlines()
+    if not (l.startswith(('ATOM', 'HETATM')) and l[76:78].strip() == 'H')])
+  result, out = _run_vl(no_h, fn, ['interactions=True'])
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  r = lr.get_interactions()
+  assert r['status'] == 'skipped' and 'no H' in r['reason'], r
+  assert 'skipped: no H in the model' in out
+  print('OK')
+
+def run_test_interactions_expert_level():
+  '''
+  The switch and the ligand_interactions scope are hidden below the Developer
+  level (expert_level 3) in the program's PHIL, as a GUI built from it filters;
+  the rest of validate_ligands is not.
+  '''
+  print('test_interactions_expert_level')
+  import iotbx.phil
+  from mmtbx.validation import validate_ligands as vl_mod
+  mp = iotbx.phil.parse(val_lig.master_phil_str, process_includes=True)
+  level = lambda path: mp.get(path).objects[0].expert_level
+  assert level('validate_ligands.interactions') == 3
+  assert level('validate_ligands.ligand_interactions') == 3
+  assert vl_mod.interactions_expert_level == 3
+  assert level('validate_ligands.ligand_code') is None
+  shown = mp.as_str(expert_level=2)
+  assert 'ligand_interactions' not in shown and '\n  interactions =' not in shown
+  assert 'ligand_interactions' in mp.as_str(expert_level=3)
+  assert mp.extract().validate_ligands.ligand_interactions.symmetry is True
+  print('OK')
 
 # ------------------------------------------------------------------------------
 
@@ -122,6 +358,74 @@ def run_test_get_results_fallback():
   print('OK: get_results fallback to original model when run_reduce2=False')
 
 # ------------------------------------------------------------------------------
+
+def run_test_hbonds_ligand_acceptor():
+  '''
+  H bonds are counted whichever side the ligand is on (FMN C 301 from 7x32):
+    NH2-HH21 (ARG C 207) ... O1P    ligand is the acceptor only
+    O2'-HO2' ... O4', O3'-HO3' ... O3P   intramolecular, not clashes
+  '''
+  print('test_hbonds_ligand_acceptor')
+  model_fn = "tst_hbonds_ligand_acceptor.pdb"
+  with open(model_fn, "w") as f:
+    f.write(raw_records_hbond)
+  result = run_program(program_class=val_lig.Program,
+    args=[model_fn, 'run_reduce2=False'], logger=null_out())
+  lr = find_lr(result.ligand_manager, 'chain C and resseq 301 and resname FMN')
+  overlaps = lr.get_overlaps()
+  assert overlaps.n_hbonds == 3, overlaps.n_hbonds
+  assert overlaps.n_clashes == 0, overlaps.n_clashes
+  print('OK')
+
+# ------------------------------------------------------------------------------
+
+def run_test_show_fragmentation_per_copy():
+  '''
+  Every copy appears in the Fragments section, not just the first of each
+  residue name: copies of one ligand can differ in composition (atoms missing)
+  and in their per-fragment density values, which is the comparison the
+  section exists for. A copy whose fragments are identical to one already
+  shown is listed compactly instead of repeating the atom lists.
+  '''
+  print('test_show_fragmentation_per_copy')
+  model_fn = "tst_show_fragmentation.pdb"
+  with open(model_fn, "w") as f:
+    f.write(pdb_str_fragmentation)
+  result = run_program(program_class=val_lig.Program,
+    args=[model_fn, 'run_reduce2=False'], logger=null_out())
+  sio = StringIO()
+  result.ligand_manager.show_fragmentation()
+  result.ligand_manager.log = sio
+  result.ligand_manager.show_fragmentation()
+  out = sio.getvalue()
+  flat = ' '.join(out.split())          # id_str keeps its pdb padding
+  for id_str in ('GOL A 1', 'GOL A 2', 'GOL A 3'):
+    assert id_str in flat, (id_str, out)
+  # the truncated copy has its own fragment listing
+  assert out.count('fragment 1:') >= 2, out
+
+# ------------------------------------------------------------------------------
+
+# Three glycerols: A 1 and A 2 complete and identical, A 3 missing C3/O3.
+pdb_str_fragmentation = '''
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+HETATM    1  C1  GOL A   1       5.578   9.079   8.959  1.00 20.00           C
+HETATM    2  C2  GOL A   1       5.404  10.193   9.989  1.00 20.00           C
+HETATM    3  C3  GOL A   1       4.003  10.183  10.608  1.00 20.00           C
+HETATM    4  O1  GOL A   1       5.482   7.794   9.563  1.00 20.00           O
+HETATM    5  O2  GOL A   1       5.628  11.463   9.370  1.00 20.00           O
+HETATM    6  O3  GOL A   1       3.905  11.289  11.512  1.00 20.00           O
+HETATM    7  C1  GOL A   2      15.578  19.079  18.959  1.00 20.00           C
+HETATM    8  C2  GOL A   2      15.404  20.193  19.989  1.00 20.00           C
+HETATM    9  C3  GOL A   2      14.003  20.183  20.608  1.00 20.00           C
+HETATM   10  O1  GOL A   2      15.482  17.794  19.563  1.00 20.00           O
+HETATM   11  O2  GOL A   2      15.628  21.463  19.370  1.00 20.00           O
+HETATM   12  O3  GOL A   2      13.905  21.289  21.512  1.00 20.00           O
+HETATM   13  C1  GOL A   3      25.578  29.079  28.959  1.00 20.00           C
+HETATM   14  C2  GOL A   3      25.404  30.193  29.989  1.00 20.00           C
+HETATM   15  O1  GOL A   3      25.482  27.794  29.563  1.00 20.00           O
+HETATM   16  O2  GOL A   3      25.628  31.463  29.370  1.00 20.00           O
+'''
 
 pdb_str_tst_01 = '''
 REMARK from 386D, edited in Coot to add EDO and two HOH to test specific

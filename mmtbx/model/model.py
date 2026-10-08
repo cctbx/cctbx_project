@@ -262,18 +262,37 @@ class restraints_scale_manager(object):
       ots = ots/2
 
       consensus_scale = 1
-      if ots < 0.6: cutoff = 0.02
-      else:         cutoff = 0.03
+
+      OTS_THRESHOLD = 0.5 # 929
+
+      #if ots < 0.6: cutoff = 0.02 # 925a2
+      #else:         cutoff = 0.03 # 925a2
+
+      if ots < OTS_THRESHOLD: cutoff = 0.03 # 926
+      else:                   cutoff = 0.04 # 926
+
       if delta > cutoff:
         if self.scale_counts_bonds[k]==0:
           consensus_scale = factor
           self.scale_counts_bonds[k] += 1
         else:
           consensus_scale = second_factor
-      if delta < 0.01 and ots > 0.6:
-        consensus_scale = 1./second_factor**2
-      if delta < 0.01 and ots <= 0.6:
-        consensus_scale = 1./1.5
+
+      #if delta < 0.01 and ots > 0.6:          # 926
+      #  consensus_scale = 1./second_factor**2 # 926
+      #if delta < 0.01 and ots <= 0.6:         # 926
+      #  consensus_scale = 1./1.5              # 926
+
+      #if delta < 0.015 and ots > 0.6:          # 927
+      #  consensus_scale = 1./second_factor**2  # 927
+      #if delta < 0.015 and ots <= 0.6:         # 927
+      #  consensus_scale = 1./1.5               # 927
+
+      if delta < 0.015 and ots > OTS_THRESHOLD:          # 928
+        consensus_scale = 1./second_factor**2  # 928
+      if delta < 0.010 and ots <= OTS_THRESHOLD:         # 928
+        consensus_scale = 1./1.5               # 928
+
       proxy.weight = proxy.weight * consensus_scale
       self.current_bond_weights[k] = proxy.weight
 
@@ -288,6 +307,8 @@ class restraints_scale_manager(object):
       angle_model = geometry.angle(sites).angle_model
       delta = abs(angle_ideal-angle_model)
 
+      OTS_THRESHOLD = 0.5 # 929
+
       ots = 0
       for it in [one_time_scale[i_seq],
                  one_time_scale[j_seq],
@@ -297,17 +318,17 @@ class restraints_scale_manager(object):
       ots = ots/3
 
       consensus_scale = 1
-      if ots < 0.6: cutoff = 3.0
-      else:         cutoff = 5.0
+      if ots < OTS_THRESHOLD: cutoff = 3.0
+      else:                   cutoff = 5.0
       if delta > cutoff:
         if self.scale_counts_angles[k]==0:
           consensus_scale = factor
           self.scale_counts_angles[k] += 1
         else:
           consensus_scale = second_factor
-      if delta < 1.5 and ots > 0.6:
+      if delta < 1.5 and ots > OTS_THRESHOLD:
         consensus_scale = 1./second_factor**2
-      if delta < 1.5 and ots <= 0.6:
+      if delta < 1.5 and ots <= OTS_THRESHOLD:
         consensus_scale = 1./1.5
       proxy.weight = proxy.weight * consensus_scale
       self.current_angle_weights[k] = proxy.weight
@@ -3195,16 +3216,36 @@ class manager(object):
   def reset_occupancy_for_hydrogens_simple(self):
     """
     Set occupancy of H to be the same as the parent.
+
+    Exception: an H sitting in an alternate-conformation atom group whose
+    parent heavy atom is in the blank-altloc group belongs to that conformer
+    alone. Copying the shared parent's occupancy into every copy would make a
+    single hydrogen exist at a total occupancy of n_altlocs. Such copies take
+    their own conformer's occupancy instead.
     """
     if(self.restraints_manager is None): return
     hd_sel = self.get_hd_selection()
     if(hd_sel.count(True) > 0):
       assert self._xray_structure is not None
-      xh_conn_table = self.xh_connectivity_table()
+      atoms = self.get_hierarchy().atoms()
+      # Representative occupancy of each alternate conformer, taken over its
+      # non-H atoms. H are excluded because they are what is being assigned.
+      conformer_occ = {}
+      for ag in self.get_hierarchy().atom_groups():
+        if(not ag.altloc.strip()): continue
+        values = [a.occ for a in ag.atoms() if not a.element_is_hydrogen()]
+        if(len(values) > 0):
+          conformer_occ[ag.memory_id()] = sum(values)/len(values)
       occ = self.get_occ()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
-        occ[i_h] = occ[i_x]
+        ag_h = atoms[i_h].parent()
+        if(ag_h.altloc.strip()
+           and not atoms[i_x].parent().altloc.strip()
+           and ag_h.memory_id() in conformer_occ):
+          occ[i_h] = conformer_occ[ag_h.memory_id()]
+        else:
+          occ[i_h] = occ[i_x]
       self.set_occupancies(values = occ)
 
   def reset_occupancies_for_hydrogens(self):
@@ -3827,9 +3868,7 @@ class manager(object):
       b_isos                      = bs)
 
   def deep_copy(self):
-    new_model = self.select(selection = flex.bool(self.size(), True))
-    new_model.set_ss_annotation(self.get_ss_annotation())
-    return new_model
+    return self.select(selection = flex.bool(self.size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -4019,6 +4058,119 @@ class manager(object):
     if(sizes.size()==0): return 0
     return sizes.count(1)*100./sizes.size()
 
+  def select_nearby_atoms(self, iselection, r_min, level, passes=1):
+    model = self
+    from collections import deque
+    """
+    Smart (restraints-based) selection of atoms near a starting subset.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+        Model with Cartesian coordinates and, for levels 1-3, a
+        ready-to-use geometry restraints manager.
+    iselection : iterable of int
+        Indices of the starting atoms. These atoms are always included
+        in the returned selection but do not seed restraint or plane
+        expansion.
+    r_min : float
+        Nonnegative Cartesian distance cutoff, inclusive. Ignored at
+        level 0. Symmetry and periodic images are not considered.
+    level : {0, 1, 2, 3}
+        0: return only the starting subset.
+        1: add outside atoms within r_min of the subset.
+        2: also expand through bond and angle restraints.
+        3: also expand through dihedral (torsion) restraints.
+
+        At levels 1-3, complete any plane containing a newly selected
+        atom, continuing through overlapping planes to a fixed point.
+    passes : int, default 1
+        Number of restraint-expansion passes at levels 2 and 3. Each
+        pass expands from the atoms selected at its start; atoms added
+        by restraints or plane completion can seed the next pass.
+        Has no effect at levels 0 and 1.
+
+    Returns
+    -------
+    scitbx.array_family.flex.bool
+        Boolean selection indexed by atom i_seq, including the
+        starting subset.
+    """
+    if level not in (0, 1, 2, 3):
+      raise ValueError("level must be 0, 1, 2, or 3")
+    if not isinstance(passes, int) or passes < 1:
+      raise ValueError("passes must be a positive integer")
+    if r_min < 0:
+      raise ValueError("r_min must be nonnegative")
+    sites = model.get_sites_cart()
+    n_atoms = sites.size()
+    subset = {int(i) for i in iselection}
+    if any(i < 0 or i >= n_atoms for i in subset):
+      raise IndexError("subset contains an invalid atom index")
+    def make_result(selected):
+      result = flex.bool(n_atoms, False)
+      for i in subset | selected:
+        result[i] = True
+      return result
+    if level == 0:
+      return make_result(set())
+    # Keep the subset separate: it is returned, but does not seed
+    # expansion or plane completion.
+    cutoff_sq = r_min * r_min
+    selected = set()
+    for j in range(n_atoms):
+      if j in subset: continue
+      xj = sites[j]
+      for i in subset:
+        xi = sites[i]
+        distance_sq = sum((xj[k] - xi[k]) ** 2 for k in range(3))
+        if distance_sq <= cutoff_sq:
+          selected.add(j)
+          break
+    geometry = model.get_restraints_manager().geometry
+    restraint_groups = []
+    if level >= 2:
+      simple_bonds, asu_bonds = geometry.get_all_bond_proxies(sites_cart=sites)
+      if asu_bonds.size():
+        raise ValueError(
+            "Symmetry-related bond proxies are not handled by this "
+            "Cartesian, no-symmetry selection")
+      restraint_groups.extend((simple_bonds, geometry.angle_proxies))
+    if level >= 3:
+      restraint_groups.append(geometry.dihedral_proxies)
+    planes = [tuple(p.i_seqs) for p in geometry.planarity_proxies]
+    planes_by_atom = {}
+    for plane_id, atoms in enumerate(planes):
+      for i in atoms:
+        planes_by_atom.setdefault(i, []).append(plane_id)
+    def complete_planes():
+      queue = deque(selected)
+      visited_planes = set()
+      while queue:
+        atom = queue.popleft()
+        for plane_id in planes_by_atom.get(atom, ()):
+          if plane_id in visited_planes: continue
+          visited_planes.add(plane_id)
+          for i in planes[plane_id]:
+            if i not in subset and i not in selected:
+              selected.add(i)
+              queue.append(i)
+    if level == 1:
+      complete_planes()
+    else:
+      for _ in range(passes):
+        # Only atoms present at the start of this pass seed
+        # restraint expansion.
+        seeds = selected.copy()
+        for proxies in restraint_groups:
+          if proxies is None: continue
+          for proxy in proxies:
+            atoms = set(proxy.i_seqs)
+            if atoms & seeds:
+              selected.update(atoms - subset)
+        complete_planes()
+    return make_result(selected)
+
   def select(self, selection, exclude_flags=False):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
@@ -4093,6 +4245,12 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
+    if self._ss_annotation is not None:
+      new_ss_annotation = self._ss_annotation.deep_copy()
+      if not selection.all_eq(True):
+        new_ss_annotation.remove_elements_losing_residues(
+          hierarchy=self._pdb_hierarchy, selection=selection)
+      new.set_ss_annotation(new_ss_annotation)
     if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)

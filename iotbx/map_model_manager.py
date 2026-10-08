@@ -5206,12 +5206,26 @@ class map_model_manager(object):
 
   def _get_aniso_before_and_after(self, d_min = None,
     map_id = None, previous_map_id = None):
-    """Calculate anisotropy of map before and after sharpening"""
+    """Calculate anisotropy of map before and after sharpening
+
+    If the anisotropy of either map cannot be determined (the anisotropic
+    scaling fit can fail, in which case _get_aniso_of_map returns None),
+    b_sharpen is returned as None and the summary text states that the
+    effective B-sharpen is not available, instead of the subtraction
+    raising an exception.
+
+    The test that the two b_cart values have equal length is defensive
+    only: _get_aniso_of_map returns either None or six numbers.
+    """
     prev_b_cart = self._get_aniso_of_map(d_min = d_min,
       map_id = previous_map_id)
     new_b_cart = self._get_aniso_of_map(d_min = d_min,
       map_id = map_id)
-    b_sharpen = tuple(flex.double(prev_b_cart) - flex.double(new_b_cart))
+    if (prev_b_cart is not None) and (new_b_cart is not None) and \
+        (len(prev_b_cart) == len(new_b_cart)):
+      b_sharpen = tuple(flex.double(prev_b_cart) - flex.double(new_b_cart))
+    else:  # anisotropy missing for one or both maps, or b_cart lengths differ
+      b_sharpen = None
 
     from six.moves import StringIO
     f = StringIO()
@@ -5228,6 +5242,9 @@ class map_model_manager(object):
        tuple(b_sharpen)), file = f)
       print("Effective average B-sharpen: %.2f A**2" %(
         flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
+    else:
+      print("Effective B-sharpen: not available "+
+        "(anisotropy of one or both maps could not be determined)", file = f)
 
     result = group_args(
      group_args_type = 'aniso_before_and_after for %s' %(previous_map_id),
@@ -5250,6 +5267,32 @@ class map_model_manager(object):
    '''
    Remove anisotropy from map, optionally remove anisotropy specified by
     aniso_b_cart and b_iso
+
+   If remove_from_all_maps is True, anisotropy is removed in place from the
+    maps listed in map_ids (all the maps in this manager if map_ids is None),
+    skipping masks and any model maps listed in model_map_ids_to_leave_as_is,
+    and the overall anisotropy (aniso_b_cart as supplied, or as obtained
+    from the map with id map_id) is returned.  Otherwise no map is modified
+    and the result is returned as a new map_manager; see below for when the
+    correction is actually applied.
+
+   aniso_b_cart (as supplied, or as obtained from the map with id map_id)
+    is always what is removed, as one common correction, and b_iso is the
+    overall B left behind.  b_iso = 0 is used as 0.  If b_iso is None it is
+    estimated once from the reference map coefficients (map_coeffs if
+    supplied, otherwise the map with id map_id) and that one value is used
+    for every map.  If it cannot be estimated, Sorry is raised before any
+    map is modified.
+
+   If the overall anisotropy could not be determined (that is,
+    aniso_b_cart was not supplied and it could not be obtained from the map
+    with id map_id), NO anisotropy is removed from anything and no map is
+    modified.  A note is printed to the log.  If remove_from_all_maps is
+    True, None is returned, and a caller that does not test the returned
+    value has no other way to tell that nothing was done.  Otherwise a new
+    map_manager containing the map with no correction applied is returned:
+    a copy of the map with id map_id, or the map from map_coeffs if
+    map_coeffs was supplied.
    '''
    assert map_coeffs or d_min or map_id
    from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
@@ -5258,11 +5301,11 @@ class map_model_manager(object):
    if not model_map_ids_to_leave_as_is:
      model_map_ids_to_leave_as_is = []
 
+   map_coeffs_supplied = bool(map_coeffs)
    if not map_coeffs:
       assert self.get_map_manager_by_id(map_id)
       map_coeffs = self.get_map_manager_by_id(map_id
         ).map_as_fourier_coefficients(d_min = d_min)
-      f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
    if not d_min:
      d_min = map_coeffs.d_min()
 
@@ -5270,6 +5313,30 @@ class map_model_manager(object):
    if (not aniso_b_cart):
      aniso_b_cart = self._get_aniso_of_map(d_min = d_min, map_id = map_id)
 
+   if not aniso_b_cart:  # could not get it...remove nothing
+     print("Unable to determine overall anisotropy of map '%s'; "%(map_id)+
+       "no anisotropy will be removed", file = self.log)
+     if remove_from_all_maps:
+       return None
+     print("No anisotropy correction applied; returning the map unchanged",
+       file = self.log)
+     if map_coeffs_supplied:
+       return self.map_manager().fourier_coefficients_as_map_manager(
+         map_coeffs)
+     else:
+       return self.get_map_manager_by_id(map_id).deep_copy()
+
+   if b_iso is None:  # estimate once from the reference map, use for all
+     from cctbx.maptbx.segment_and_split_map import get_b_iso
+     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+     b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
+       return_aniso_scale_and_b=True)
+     if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
+       raise Sorry("Unable to estimate b_iso from the reference map; "+
+         "supply b_iso to remove anisotropy")
+     b_iso = b_mean
+     print("b_iso not supplied; estimated from the reference map: %.2f" %(
+       b_iso), file = self.log)
 
    if remove_from_all_maps:  # remove in place from all maps
      print("Removing anisotropy from all maps", file = self.log)
@@ -5305,6 +5372,7 @@ class map_model_manager(object):
           "   %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f  " %(
       tuple(aniso_b_cart)),file = self.log)
 
+     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
      analyze_aniso = analyze_aniso_object()
      analyze_aniso.set_up_aniso_correction(f_array=f_array,
          b_iso = b_iso,
@@ -5314,7 +5382,7 @@ class map_model_manager(object):
 
      return self.map_manager(
         ).fourier_coefficients_as_map_manager(
-         scaled_f_array.phase_transfer(phase_source=f_array_info.phases,
+         scaled_f_array.phase_transfer(phase_source=phases,
          deg=True))
 
   def _get_aniso_of_map(self, d_min = None, map_id = 'map_manager'):

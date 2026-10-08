@@ -256,6 +256,35 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   return ret;
 }
 
+scitbx::af::shared<DotScorer::CheckDotResult> DotScorer::check_dots(
+  iotbx::pdb::hierarchy::atom const &sourceAtom,
+  scitbx::af::shared<Point> const &dots, double probeRadius,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &interacting,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
+  double overlapScale)
+{
+  scitbx::af::shared<CheckDotResult> ret;
+  for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
+    CheckDotResult res = check_dot(sourceAtom, *d, probeRadius, interacting, exclude,
+      overlapScale);
+
+    // Drop the dots that per-dot callers discard: ones that should be ignored and
+    // annular dots that do not overlap.
+    if (res.overlapType == DotScorer::Ignore) {
+      continue;
+    }
+    if ((res.overlapType == DotScorer::NoOverlap) && res.annular) {
+      continue;
+    }
+
+    // Record which dot this result belongs to so that the caller can match the
+    // returned subset back to the input dots.
+    res.dotOffset = *d;
+    ret.push_back(res);
+  }
+  return ret;
+}
+
 DotScorer::InteractionType DotScorer::interaction_type(
   OverlapType overlapType, double gap, bool separateBadBumps) const
 {
@@ -616,6 +645,43 @@ std::string DotScorer::test()
     kept = as.trim_dots(source, ds.dots(), exclude);
     if ((kept.size() == 0) || (kept.size() >= ds.dots().size())) {
       return "DotScorer::test(): Unexpected non-excluded dot count for partially-overlapping case";
+    }
+
+    // Check that check_dots() returns the same results as calling check_dot() on
+    // each dot in turn and discarding ignored dots and non-overlapping annular dots.
+    {
+      double probeRad = 0.25;
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
+      interacting.push_back(a);
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> emptyExclude;
+
+      scitbx::af::shared<CheckDotResult> batched =
+        as.check_dots(source, ds.dots(), probeRad, interacting, emptyExclude);
+      scitbx::af::shared<CheckDotResult> expected;
+      for (scitbx::af::shared<Point>::const_iterator d = ds.dots().begin();
+           d != ds.dots().end(); d++) {
+        CheckDotResult res = as.check_dot(source, *d, probeRad, interacting, emptyExclude);
+        if (res.overlapType == DotScorer::Ignore) { continue; }
+        if ((res.overlapType == DotScorer::NoOverlap) && res.annular) { continue; }
+        res.dotOffset = *d;
+        expected.push_back(res);
+      }
+      if (batched.size() == 0) {
+        return "DotScorer::test(): check_dots() returned no results for overlapping case";
+      }
+      if (batched.size() != expected.size()) {
+        return "DotScorer::test(): check_dots() size mismatch with per-dot check_dot()";
+      }
+      for (size_t i = 0; i < batched.size(); i++) {
+        if ((batched[i].overlapType != expected[i].overlapType)
+            || (batched[i].overlap != expected[i].overlap)
+            || (batched[i].gap != expected[i].gap)
+            || (batched[i].annular != expected[i].annular)
+            || (batched[i].dotOffset != expected[i].dotOffset)
+            || (batched[i].cause.data.get() != expected[i].cause.data.get())) {
+          return "DotScorer::test(): check_dots() result mismatch with per-dot check_dot()";
+        }
+      }
     }
   }
 

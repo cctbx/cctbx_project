@@ -1,6 +1,33 @@
-# Dockerfile for adding sudo to base rockylinux:8 image
+# Dockerfile for adding dependencies to base rockylinux:8 image
 
 FROM rockylinux:9
 
-RUN yum install -y sudo \
+RUN yum groupinstall -y 'Development Tools' \
+    && yum install -y \
+         alsa-lib \
+         firefox \
+         glibc-langpack-en \
+         gtk2 \
+         gtkmm30 \
+         libX11 \
+         libXau \
+         libXcomposite \
+         libXcursor \
+         libXdamage \
+         libXfixes \
+         libXext \
+         libXi \
+         libXrandr \
+         libXrender \
+         libXScrnSaver \
+         libXtst \
+         libXxf86vm \
+         mesa-libGL-devel \
+         mesa-libGLU-devel \
+         pciutils \
+         rsync \
+         sudo \
+         tcsh \
+         wget \
+         xorg-x11-server-Xvfb \
     && yum clean all

@@ -173,21 +173,29 @@ print("  PASS: test_name")
 print("  SKIP (ai_agent.py not found)")
 ```
 
-No `print()` in `agent/` modules.  No `logger` in
-test files.
+No `logger` in test files.
 
-**The rule above is real and it is local to `agent/` + `knowledge/`.
-The rest of `libtbx/langchain` does not follow it.** Surveyed
-2026-08-15 across `analysis/`, `core/`, `rag/`, `strategies/` and
-`utils/`:
+**Observed practice: `agent/` and `knowledge/` use both
+`logging.getLogger` and bare `print()`.** Counted 2026-09-27 (files
+containing each; a file can contain both):
+
+    agent/      64 .py files: getLogger 13, bare print() 31
+    knowledge/  15 .py files: getLogger 4,  bare print() 6
+
+When editing an existing module, match the surrounding code, and do
+not convert existing `print()` calls as a side effect of an unrelated
+change.
+
+The rest of `libtbx/langchain` uses `print()`. Surveyed 2026-08-15
+across `analysis/`, `core/`, `rag/`, `strategies/` and `utils/`:
 
     logging.getLogger            0 occurrences
     bare print()                 ~120 occurrences
     print(..., file=out)         2  (utils/run_utils.py)
     strategies/                  neither -- no output calls at all
 
-So there are **two conventions in this tree, split by package**, and
-this document previously described only one. Related local idioms
+`log_extraction/`, not in that survey, also uses bare `print()`.
+Related local idioms
 worth knowing: `analysis/summarizer.py` defines a `debug_print()`
 helper gated on a debug flag rather than using log levels, and
 `utils/run_utils.py` uses the stream form `print(..., file=out)`.
@@ -467,8 +475,10 @@ fields — `plan_has_pending_stages`, `plan_next_stage_programs`,
 this reason.
 
 **A new `session_info` field requires, at minimum:** an entry in
-`build_session_state()`, an entry in the `build_request_v2()`
-whitelist, and the `run_ai_agent.py` map-back. If it is read in
+`build_session_state()` and the `run_ai_agent.py` map-back — the two
+allow-lists `tests/tst_transport_surfaces.py` checks.
+`build_request_v2()` passes `session_state` through and needs no
+entry. If it is read in
 `graph_nodes.py` via the literal `session_info.get("X")` (not the `_si`
 alias), it must **also** be registered in
 `agent/contract.py::SESSION_INFO_FIELDS`, with
@@ -553,11 +563,11 @@ three checks above.
 
 **Count the cost of a new state field before adding one.** Persisting
 across cycles costs the three places above; if it must also reach
-server-side code, §6a Path 2 adds the `build_request_v2()` whitelist
-and the `run_ai_agent.py` map-back, and `agent/contract.py` may add a
-sixth. Four to six touchpoints, each silent when missed. That is the
-number to weigh — not a reason to avoid persistence, which is what
-session resume is built on.
+server-side code, §6a Path 2 adds the `build_session_state()` entry
+and the `run_ai_agent.py` map-back (`build_request_v2()` needs none),
+and `agent/contract.py` may add a sixth. Four to six touchpoints, each
+silent when missed. That is the number to weigh — not a reason to
+avoid persistence, which is what session resume is built on.
 
 ---
 
@@ -722,9 +732,9 @@ In addition to the CCTBX checklist:
       sampling variance, or by normalising the comparison (§0)
 - [ ] New PHIL parameter mirrored in **both** `master_params`, with a
       round-trip test, in one commit (§6a Path 1)
-- [ ] New `session_info` field present at **every** hop, including the
-      `build_request_v2()` whitelist and the `run_ai_agent.py`
-      map-back (§6a Path 2)
+- [ ] New `session_info` field present at **every** hop, including
+      `build_session_state()` and the `run_ai_agent.py` map-back; no
+      enumeration added to `build_request_v2()` (§6a Path 2)
 - [ ] `agent/contract.py::SESSION_INFO_FIELDS` registered and
       `CURRENT_PROTOCOL_VERSION` bumped if read via a literal
       `session_info.get()` (§6a)
@@ -733,6 +743,8 @@ In addition to the CCTBX checklist:
 
 **Everything else**
 
+- [ ] New AI Agent tests registered in the runner,
+      `libtbx/langchain/tests/run_all_tests.py` (§9)
 - [ ] New strategy flags added to `programs.yaml`
       before use in command-building code (§1)
 - [ ] `programs.yaml` edited in place, never regenerated through a YAML

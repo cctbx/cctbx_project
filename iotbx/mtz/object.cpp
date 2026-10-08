@@ -729,12 +729,19 @@ namespace iotbx { namespace mtz {
         compute(columns, i_refl);
       }
 
+      // Reads the two columns directly: building an af::tiny<column, 2>
+      // here default-constructs two column objects per call, each of
+      // which allocates and frees a CMtz::MTZ header (object::object()),
+      // which made extract_complex ~25x slower than extract_reals.
       nan_and_non_zero_counts(
         column const& column_0,
         column const& column_1,
         int i_refl)
       {
-        compute(af::tiny<column, 2>(column_0, column_1), i_refl);
+        n_nan = 0;
+        n_non_zero = 0;
+        accumulate(column_0, i_refl);
+        accumulate(column_1, i_refl);
       }
 
       template <std::size_t N>
@@ -745,10 +752,14 @@ namespace iotbx { namespace mtz {
       {
         n_nan = 0;
         n_non_zero = 0;
-        for(unsigned i=0;i<N;i++) {
-          if      (columns[i].is_ccp4_nan(i_refl)) n_nan++;
-          else if (columns[i].float_datum(i_refl)) n_non_zero++;
-        }
+        for(unsigned i=0;i<N;i++) accumulate(columns[i], i_refl);
+      }
+
+      void
+      accumulate(column const& c, int i_refl)
+      {
+        if      (c.is_ccp4_nan(i_refl)) n_nan++;
+        else if (c.float_datum(i_refl)) n_non_zero++;
       }
 
       bool

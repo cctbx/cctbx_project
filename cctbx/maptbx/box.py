@@ -1349,6 +1349,9 @@ def shift_and_box_model(model = None,
      restraint_objects = model.get_restraint_objects(),
      monomer_parameters = model.get_monomer_parameters(),
      log = null_out())
+  # same atoms, so the HELIX/SHEET annotation stays valid
+  if model.get_ss_annotation() is not None:
+    mm.set_ss_annotation(model.get_ss_annotation().deep_copy())
   return mm
 
 def get_boxes_to_tile_map(target_for_boxes = 24,

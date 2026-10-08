@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
 from scitbx import matrix
+from mmtbx.ncs.ncs_restraints_group_list import iselection_select
 import iotbx.ncs as ncs
 import iotbx.pdb
 from iotbx.ncs import ncs_group_master_phil
@@ -269,6 +270,27 @@ def test_selection():
   assert c1t == [4, 5, 7], list(c1t)
   assert c2t == [8, 9, 11], list(c2t)
 
+def test_iselection_select():
+  """
+  iselection_select must give identical results whether the selection is
+  a flex.bool or the equivalent sorted flex.size_t iselection
+  """
+  n = 200
+  cases = [
+    ([],         []),
+    ([],         [0, 5]),
+    ([3, 7, 11], []),
+    ([3, 7, 11], [1, 3, 7, 15]),
+    ([0, 1, 2],  [0, 1, 2]),
+    ([5],        [100]),          # nothing in common
+    ([5, 100],   [2, 100, 150]),  # selection extends past max(isel)
+  ]
+  for isel, sel in cases:
+    isel = flex.size_t(isel)
+    from_bool = list(iselection_select(isel, flex.bool(n, flex.size_t(sel))))
+    from_isel = list(iselection_select(isel, flex.size_t(sel)))
+    assert from_bool == from_isel, (list(isel), sel, from_bool, from_isel)
+
 def test_split_by_chain():
   phil_groups = ncs_group_master_phil.fetch(
       iotbx.phil.parse(phil_str2)).extract()
@@ -399,6 +421,7 @@ def run_tests():
   test_ncs_selection()
   test_whole_group_iselection()
   test_selection()
+  test_iselection_select()
   test_split_by_chain()
   test_split_by_chain_2()
 

@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: [3.9, "3.10", 3.11, 3.12, 3.13, "3.14"]
+        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
 
     name: Compiling (Python ${{ matrix.python_version }})
     runs-on: ubuntu-latest
@@ -89,9 +89,19 @@ jobs:
           conda list
 
       - name: Create conda environment
+        if: ${{ matrix.python_version != '3.15' }}
         run: |
           source ${CONDA}/etc/profile.d/conda.sh
           conda create -y -n syntax -c conda-forge python=${{ matrix.python_version }} six future scons setuptools
+          conda activate syntax
+          python --version
+
+      - name: Create conda environment (3.15)
+        if: ${{ matrix.python_version == '3.15' }}
+        run: |
+          source ${CONDA}/etc/profile.d/conda.sh
+          conda create -y -n syntax -c conda-forge -c conda-forge/label/python_rc python=${{ matrix.python_version }} six future scons setuptools
+          conda activate syntax
           python --version
 
       - name: Set up cctbx

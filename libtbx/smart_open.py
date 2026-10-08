@@ -8,6 +8,10 @@ from libtbx import easy_run
 from libtbx.str_utils import show_string
 from six.moves import cStringIO as StringIO
 
+# File name suffixes for_reading() decompresses on the fly; one entry per
+# branch below.
+compressed_suffixes = (".gz", ".Z", ".bz2", ".xz", ".lzma", ".zst", ".zstd")
+
 def for_reading(file_name, mode="r", gzip_mode="rb"):
   assert mode in ["r", "rb"]
   assert gzip_mode in ["r", "rb", "rt"]

@@ -49,6 +49,10 @@ n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
   .help = Mode for placing H3 at terminal nitrogen.
+exclude_water = True
+  .type = bool
+  .short_caption = Add H to water if False
+  .help = Add H to water if False
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
@@ -1042,7 +1046,7 @@ NOTES:
       model = self.model,
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water = True,
+      exclude_water = self.params.exclude_water,
       stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
       keep_existing_H=self.params.keep_existing_H
     )
@@ -1232,7 +1236,12 @@ NOTES:
     self.model = self.model.select(~self.model.selection('element X'))
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
-    self.model.add_crystal_symmetry_if_necessary()
+    # The box is for the calculation only and is not written out. Cushion 5:
+    # H added later overhang the heavy-atom box; 3 left 4.4 A to the nonbonded
+    # cutoff of 3.4 A.
+    self._output_cs = reduce_hydrogen.get_output_crystal_symmetry(
+      self.data_manager.get_model())
+    self.model.add_crystal_symmetry_if_necessary(box_cushion=5)
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
       self.model.process(make_restraints=False)
@@ -1349,10 +1358,13 @@ NOTES:
 
       # Determine whether to write a PDB or CIF file and write the appropriate text output.
       suffix = os.path.splitext(self.params.output.filename)[1]
+      output_cs = self._output_cs is not None
+      if output_cs:
+        self.model.set_unit_cell_crystal_symmetry(self._output_cs)
       if suffix.lower() == ".pdb":
-        txt = self.model.model_as_pdb()
+        txt = self.model.model_as_pdb(output_cs=output_cs)
       else:
-        txt = self.model.model_as_mmcif()
+        txt = self.model.model_as_mmcif(output_cs=output_cs)
       self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',

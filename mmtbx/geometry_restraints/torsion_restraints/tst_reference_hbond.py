@@ -387,11 +387,55 @@ def exercise_integration_via_model_process():
     "expected reference H-bond proxies via model.process(), got %d" % n_ref_hb
 
 
+def _build_helix_plus_ligand_model(strip_h=False):
+  """Working model = poly-Gly helix plus a ligand that is unknown to the
+  monomer library and therefore needs a user-supplied restraints CIF."""
+  import iotbx.cif
+  from mmtbx.geometry_restraints.torsion_restraints import \
+    tst_reference_model_ligands as lig
+  lig_pdb = lig.pdb_str.replace(" LIG A   1 ", " LIG B 201 ")
+  pdb_lines = _pdb_helix_with_h + lig_pdb
+  if strip_h:
+    pdb_lines = _strip_h_from_pdb_lines(pdb_lines)
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_lines)
+  cif_object = iotbx.cif.reader(input_string=lig.restr_string).model()
+  model = mmtbx.model.manager(
+    model_input=pdb_inp,
+    restraint_objects=[("lig.cif", cif_object)],
+    log=null_out())
+  return model
+
+
+def exercise_ligand_cif_reaches_reference_hbond_detection():
+  """A working model carrying a ligand that needs a user-supplied CIF must
+  not fail with 'unknown nonbonded energy type' when reference-model H-bond
+  restraints are requested: the temporary reference model built for H-bond
+  detection must see the same restraint objects as the working model."""
+  model = _build_helix_plus_ligand_model()
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.reference_model.use_starting_model_as_reference = True
+  params.reference_model.hydrogen_bonds.enabled = True
+  params.reference_model.hydrogen_bonds.add_hydrogens_if_missing = False
+  model.process(pdb_interpretation_params=params, make_restraints=True)
+  geometry = model.get_restraints_manager().geometry
+  n_ref_hb = geometry.get_n_reference_hbond_proxies()
+  assert n_ref_hb > 0, n_ref_hb
+  # Same for the add-hydrogens path: placing H on the reference copy of an
+  # H-less working model needs the ligand CIF too. Only completion is
+  # checked here; the H-bond count on an H-augmented self-reference is a
+  # separate question.
+  model = _build_helix_plus_ligand_model(strip_h=True)
+  params.reference_model.hydrogen_bonds.add_hydrogens_if_missing = True
+  model.process(pdb_interpretation_params=params, make_restraints=True)
+  assert model.get_restraints_manager() is not None
+
+
 def _strip_h_from_pdb_lines(pdb_str):
   """Helper: return pdb_str with H/D ATOM lines removed."""
   keep = []
   for line in pdb_str.split("\n"):
-    if line.startswith("ATOM") and line[76:78].strip() in ('H', 'D'):
+    if (line.startswith(("ATOM", "HETATM"))
+        and line[76:78].strip() in ('H', 'D')):
       continue
     keep.append(line)
   return "\n".join(keep)
@@ -955,6 +999,7 @@ def run(args):
   exercise_partner_distance_cutoff_rejects()
   exercise_function_rename_and_dual_dispatch()
   exercise_integration_via_model_process()
+  exercise_ligand_cif_reaches_reference_hbond_detection()
   exercise_geo_output_labels_new_origin_id()
   print("OK")
 

@@ -353,8 +353,9 @@ class block_base(MutableMapping):
   def validate(self, dictionary):
     for key, value in six.iteritems(self._items):
       dictionary.validate_single_item(key, value, self)
+    parent_value_sets = {} # shared by all loops of this block, see validate_loop
     for loop in self.loops.values():
-      dictionary.validate_loop(loop, self)
+      dictionary.validate_loop(loop, self, parent_value_sets=parent_value_sets)
     if isinstance(self, block):
       for value in six.itervalues(self.saves):
         value.validate(dictionary)

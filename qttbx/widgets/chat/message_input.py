@@ -1,6 +1,7 @@
 """Multi-line chat input with attachments, drag-drop, paste, and buttons.
 
-The button row holds Save chat / Auto-approve / search / attach / Send.
+The button row holds Save chat / Auto-approve / thinking / search /
+attach / Send.
 
 The Send button's label flips to 'Stop' when ``set_busy(True)`` is
 called; ``click_send`` emits ``stop`` in that mode. Attachments are
@@ -13,7 +14,7 @@ listens to so it can prompt for a destination and write the
 markdown export.
 """
 
-from qttbx.qt import QtCore, QtGui, QtWidgets
+from qttbx.qt import QtCore, QtGui, QtWidgets, QAction
 
 
 class _DropTextEdit(QtWidgets.QPlainTextEdit):
@@ -125,8 +126,8 @@ class MessageInput(QtWidgets.QWidget):
     layout.addWidget(self._edit)
     # Button row below the edit. Save chat sits on the left; the
     # auto-approve toggle sits in the centre (flanked by stretches so
-    # it stays centred as the row grows); Attach + Send are on the
-    # right.
+    # it stays centred as the row grows); the thinking toggle, search,
+    # Attach and Send are on the right.
     button_row = QtWidgets.QHBoxLayout()
     button_row.setContentsMargins(0, 0, 0, 0)
     self._save_chat_btn = QtWidgets.QPushButton("Save chat", self)
@@ -147,6 +148,22 @@ class MessageInput(QtWidgets.QWidget):
     self._auto_approve_btn.toggled.connect(self._on_auto_approve_toggled)
     button_row.addWidget(self._auto_approve_btn)
     button_row.addStretch(1)
+    # Expand-all / collapse-all switch for the thinking cells: ONE
+    # checkable action the 💭 button wraps and the window adds to its
+    # View menu as well, so Qt keeps every handle in step and the window
+    # only connects toggled(bool) to the conversation view. Checked by
+    # default, matching ConversationView's own default (two owners of
+    # the same value; keep them equal).
+    self.thinking_action = QAction("Show thinking", self)
+    self.thinking_action.setCheckable(True)
+    self.thinking_action.setChecked(True)
+    self.thinking_action.setIconText("💭")       # the button's text
+    self.thinking_action.setToolTip(
+      "Show thinking: expand every thinking cell (on) or collapse them "
+      "all (off)")
+    self._thinking_btn = QtWidgets.QToolButton(self)
+    self._thinking_btn.setDefaultAction(self.thinking_action)
+    button_row.addWidget(self._thinking_btn)
     self._search_btn = QtWidgets.QToolButton(self)
     self._search_btn.setText("🔍")
     self._search_btn.setToolTip("Search conversation (Ctrl+F / ⌘F)")

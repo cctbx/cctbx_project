@@ -119,8 +119,9 @@ def run_test_06():
     residue_name=atom_group.resname, atom_names=atom_group.atoms().extract_name())
 
   cctbx_rigid_components = rdkit_utils.get_cctbx_isel_for_rigid_components(
-    atom_group = atom_group,
-    cif_object = cif_object)
+    model = model,
+    residue_group = atom_group.parent(),
+    altloc = atom_group.altloc.strip())
 
   #print(len(cctbx_rigid_components))
   assert len(cctbx_rigid_components) == 4
@@ -165,8 +166,9 @@ def run_test_10():
     residue_name=atom_group.resname, atom_names=atom_group.atoms().extract_name())
 
   cctbx_rigid_components = rdkit_utils.get_cctbx_isel_for_rigid_components(
-    atom_group = atom_group,
-    cif_object = cif_object)
+    model = model,
+    residue_group = atom_group.parent(),
+    altloc = atom_group.altloc.strip())
 
   #print(len(cctbx_rigid_components))
   assert len(cctbx_rigid_components) == 1
@@ -193,8 +195,9 @@ def run_test_11():
     residue_name=atom_group.resname, atom_names=atom_group.atoms().extract_name())
 
   cctbx_rigid_components = rdkit_utils.get_cctbx_isel_for_rigid_components(
-    atom_group = atom_group,
-    cif_object = cif_object)
+    model = model,
+    residue_group = atom_group.parent(),
+    altloc = atom_group.altloc.strip())
 
   #print(len(cctbx_rigid_components))
   assert len(cctbx_rigid_components) == 3
@@ -245,8 +248,9 @@ def compute_fragments(pdb_str, sel_str, expected, filter_lone_linkers=True):
     )
 
   cctbx_rigid_components = rdkit_utils.get_cctbx_isel_for_rigid_components(
-    atom_group = atom_group,
-    cif_object = cif_object,
+    model = model,
+    residue_group = atom_group.parent(),
+    altloc = atom_group.altloc.strip(),
     filter_lone_linkers = filter_lone_linkers)
 
   #print(len(cctbx_rigid_components))

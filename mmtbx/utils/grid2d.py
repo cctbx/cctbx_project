@@ -78,16 +78,27 @@ class Grid2D(object):
         target_list.append(current_tick)
         current_tick += vstep
 
-    z = np.array(self.g)
-    z = np.swapaxes(z, 0, 1)
-    z = np.pad(z,  pad_width=1, mode='wrap')
+    # z[i][j] belongs to x[i], y[j]; wrap-pad by one cell on each side so
+    # the spline covers [vmin - vstep/2, vmax + vstep/2].
+    z = np.array(self.g, dtype=float)
+    z = np.pad(z, pad_width=1, mode='wrap')
 
-    self.interpolation_f = interpolate.interp2d(x,y,z, kind=interpolation_type)
+    # scipy.interpolate.interp2d was removed in SciPy 1.14. For a regular
+    # grid RectBivariateSpline with s=0 fits the very same FITPACK spline
+    # (regrid_smth), so results are bit-identical to the legacy interp2d.
+    # https://scipy.github.io/devdocs/tutorial/interpolate/interp_transition_guide.html
+    spline_degrees = {'linear': 1, 'cubic': 3, 'quintic': 5}
+    if interpolation_type not in spline_degrees:
+      raise ValueError("Unsupported interpolation type '%s', must be one of %s"
+        % (interpolation_type, ', '.join(sorted(spline_degrees))))
+    k = spline_degrees[interpolation_type]
+    self.interpolation_f = interpolate.RectBivariateSpline(
+      x, y, z, kx=k, ky=k, s=0)
 
   def get_interpolated_score(self, x, y):
     if self.interpolation_f is None:
       raise RuntimeError('function is not set yet')
-    return self.interpolation_f([x],[y])[0]
+    return float(self.interpolation_f(x, y, grid=False))
 
   def plot_distribution(self, fname, title="Default title"):
     npz = np.array(self.g)

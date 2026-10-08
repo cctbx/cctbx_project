@@ -768,11 +768,11 @@ class amber_library_module(SourceModule):
                'https://github.com/phenix-project/amber_library.git',
                ]
 
-class aimnet2calc_module(SourceModule):
-  module = 'aimnet2calc'
+class aimnetcentral_module(SourceModule):
+  module = 'aimnetcentral'
   anonymous = ['git',
-               'git@github.com:zubatyuk/aimnet2calc.git',
-               'https://github.com/zubatyuk/aimnet2calc.git',
+               'git@github.com:isayevlab/aimnetcentral.git',
+               'https://github.com/isayevlab/aimnetcentral.git',
                ]
 
 class qrefine_module(SourceModule):
@@ -1057,17 +1057,17 @@ class xia2_module(SourceModule):
 
 class kokkos_module(SourceModule):
   module = 'kokkos'
-  anonymous = ['git', '-b 4.2.00',
+  anonymous = ['git', '-b 4.7.03',
                'git@github.com:kokkos/kokkos.git',
                'https://github.com/kokkos/kokkos.git',
-               'https://github.com/kokkos/kokkos/archive/refs/tags/4.2.00.zip']
+               'https://github.com/kokkos/kokkos/archive/refs/tags/4.7.03.zip']
 
 class kokkos_kernels_module(SourceModule):
   module = 'kokkos-kernels'
-  anonymous = ['git', '-b 4.2.00',
+  anonymous = ['git', '-b 4.7.03',
                'git@github.com:kokkos/kokkos-kernels.git',
                'https://github.com/kokkos/kokkos-kernels.git',
-               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/4.2.00.zip']
+               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/4.7.03.zip']
 
 # Duke repositories
 class probe_module(SourceModule):

@@ -423,6 +423,12 @@ class relocatable_path(path_mixin):
   def __hash__(self):
     return hash((self._anchor, self.relocatable))
 
+  # Order by absolute path so lists of paths can be sorted on Python 3.
+  def __lt__(self, other):
+    if not isinstance(other, path_mixin):
+      return NotImplemented
+    return abs(self) < abs(other)
+
 class clean_out_directory(object):
   """
   Utility for cleaning out Phenix (etc.) project folders, which tend to

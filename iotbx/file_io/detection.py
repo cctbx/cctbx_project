@@ -165,10 +165,136 @@ def _is_cif(filename):
   return ext.lower() in ('.cif', '.mmcif')
 
 
+_CIF_ENGINES = ('ucif', 'xcif')
+
+# what makes a CIF unreadable, as opposed to readable but of another type:
+# I/O, encoding, decompression and parse failures (RuntimeError is
+# libtbx.smart_open reporting a compressor it could not run). Callers that
+# must never raise map these to None / a Sorry; a bad cif_engine is a
+# ValueError raised up front and deliberately not in this tuple.
+_UNREADABLE = (IOError, OSError, UnicodeDecodeError, RuntimeError,
+               Sorry) + _DECOMPRESS_ERRORS
+
+
+def _check_cif_engine(cif_engine):
+  '''Raise ValueError unless cif_engine names a known iotbx.cif engine.'''
+  if cif_engine not in _CIF_ENGINES:
+    raise ValueError('engine must be one of %s, got %r'
+                     % (_CIF_ENGINES, cif_engine))
+
+
+def _cif_block_datatypes(block_name, block):
+  '''
+  Return the set of DataManager datatypes one CIF data block contains.
+
+  Parameters
+  ----------
+  block_name : str
+      The block name without the data_ prefix
+  block : iotbx.cif.model.block, or any mapping whose keys() are the names
+      the block carries (pair names, loop column names, save-frame names)
+
+  Returns
+  -------
+  set of str
+      A subset of {'model', 'miller_array', 'restraint'}
+  '''
+  types = set()
+  keys = list(block.keys())
+  if any(k.startswith('_atom_site.') or k.startswith('_atom_site_')
+         for k in keys):
+    types.add('model')
+  if any(k.startswith('_refln.') or k.startswith('_refln_') for k in keys):
+    types.add('miller_array')
+  # restraint content is what mmtbx.monomer_library.server consumes: a
+  # comp_/link_/mod_ block (mon_lib_srv dispatches on those prefixes) that
+  # also carries a restraint category, or a comp_list/link_list/mod_list
+  # block, or an energy library (data_energy with _lib_atom/_lib_vdw, which
+  # mmtbx.utils feeds to ener_lib alongside mon_lib_srv). Neither test alone
+  # is a signature: wwPDB model files carry the PDBx _chem_comp_atom/
+  # _chem_comp_bond categories inside the model block, and phenix.refine
+  # names the model block after the output prefix (data_mod_1_refine).
+  restraint_item = any(k.startswith(('_chem_comp_', '_chem_link', '_chem_mod'))
+                       for k in keys)
+  if block_name.startswith(('comp_', 'link_', 'mod_')):
+    if restraint_item or block_name.endswith('_list'):
+      types.add('restraint')
+  elif block_name.endswith('energy'):
+    if any(k.startswith('_lib_') for k in keys):
+      types.add('restraint')
+  return types
+
+
+def _cif_model_datatypes(cif_model):
+  '''
+  Return the set of DataManager datatypes present in a parsed CIF.
+
+  Parameters
+  ----------
+  cif_model : iotbx.cif.model.cif
+      The parsed CIF (e.g. iotbx.cif.reader(...).model())
+
+  Returns
+  -------
+  set of str
+      A subset of {'model', 'miller_array', 'restraint'}
+  '''
+  types = set()
+  for block_name, block in cif_model.items():
+    types |= _cif_block_datatypes(block_name, block)
+  return types
+
+
+
+
+
+def _xcif_block_keys(filename):
+  '''
+  Block names and the names each block carries, read from the xcif Document
+  without materializing any loop column: pair names, loop column names and
+  save-frame names, i.e. what iotbx.cif.model.block.keys() lists for the same
+  file. global_ blocks are skipped as the iotbx.cif reader skips them. The
+  file handling mirrors iotbx.cif.reader: a plain path is memory-mapped, a
+  compressed one is read through smart_open. Raises RuntimeError on input
+  that does not parse as CIF.
+
+  Parameters
+  ----------
+  filename : str
+      The CIF filepath
+
+  Returns
+  -------
+  list of (str, list of str)
+      (block name without the data_ prefix, names) per data block
+  '''
+  import xcif_ext
+  from libtbx import smart_open
+  from iotbx.cif import _xcif_can_use_parse_file
+  if _xcif_can_use_parse_file(filename):
+    doc = xcif_ext.parse_file(os.path.expanduser(filename))
+  else:
+    with smart_open.for_reading(filename) as f:
+      doc = xcif_ext.parse(f.read())
+  blocks = []
+  for i in range(len(doc)):
+    block = doc[i]
+    if block.name.lower() == 'global_':
+      continue
+    keys = list(block.pair_tags)
+    for loop in block.loops:
+      keys.extend(list(loop.tags))
+    for save_frame in block.save_frames:
+      keys.append(save_frame.name)
+    blocks.append((block.name, keys))
+  return blocks
+
+
 def _cif_datatypes(filename, cif_engine='xcif'):
   '''
-  Parse a CIF (fast via xcif at any size) and return the set of DataManager
-  datatypes it contains.
+  Parse a CIF and return the set of DataManager datatypes it contains. With
+  the xcif engine only block and tag names are read from the parsed Document
+  (no loop column is materialized); with ucif the iotbx.cif model is built.
 
   Parameters
   ----------
@@ -179,28 +305,36 @@ def _cif_datatypes(filename, cif_engine='xcif'):
 
   Returns
   -------
-  set of str
-      A subset of {'model', 'miller_array', 'restraint'}; empty if the file
-      cannot be parsed as a CIF
+  set of str or None
+      A subset of {'model', 'miller_array', 'restraint'} -- empty if the file
+      parsed as CIF but contains none of them; None if it could not be read
+      or parsed as CIF (missing, unreadable, undecodable, a corrupt
+      compressor, or not CIF syntax)
+
+  Raises
+  ------
+  ValueError
+      If cif_engine is not a known engine
   '''
   import iotbx.cif
-  types = set()
+  _check_cif_engine(cif_engine)
+  if not os.path.isfile(filename):
+    return None
   try:
-    cif_model = iotbx.cif.reader(file_path=filename, engine=cif_engine).model()
-  except Exception:
-    return types
-  for block_name, block in cif_model.items():
-    keys = list(block.keys())
-    if any(k.startswith('_atom_site.') or k.startswith('_atom_site_')
-           for k in keys):
-      types.add('model')
-    if any(k.startswith('_refln.') or k.startswith('_refln_') for k in keys):
-      types.add('miller_array')
-    if (block_name.startswith('comp_')
-        or any(k.startswith('_chem_comp_atom') or k.startswith('_chem_comp_bond')
-               or k.startswith('_chem_link') for k in keys)):
-      types.add('restraint')
+    if cif_engine == 'xcif':
+      blocks = _xcif_block_keys(filename)
+    else:
+      cif_model = iotbx.cif.reader(file_path=filename, engine=cif_engine).model()
+      return _cif_model_datatypes(cif_model)
+  except _UNREADABLE:
+    return None
+  types = set()
+  for block_name, keys in blocks:
+    # a mapping of the names stands in for the model block
+    types |= _cif_block_datatypes(block_name, dict.fromkeys(keys))
   return types
+
+
 
 
 def _primary_cif_type(types):
@@ -286,7 +420,9 @@ def get_file_type(filename, valid_types=None, verify=True, logger=None,
   filename : str
       The filepath to detect the datatype of
   valid_types : iterable of str, optional
-      The allowed datatypes. If None, any datatype is allowed.
+      The allowed datatypes. If None, any datatype is allowed. For a CIF
+      containing several datatypes the primary (miller_array > model >
+      restraint) is chosen among the allowed ones.
   verify : bool, optional
       If True, confirm the extension-based guess against the file content;
       if False, trust the extension.
@@ -302,6 +438,11 @@ def get_file_type(filename, valid_types=None, verify=True, logger=None,
       The DataManager datatype, or None if unrecognized or not in valid_types
   '''
   try:
+    # a lone datatype string would otherwise be treated as its characters
+    if isinstance(valid_types, str):
+      valid_types = [valid_types]
+    if valid_types is not None:
+      valid_types = set(valid_types)
     clean = strip_shelx_format_extension(filename)
     if not os.path.isfile(clean):
       return None
@@ -322,10 +463,28 @@ def get_file_type(filename, valid_types=None, verify=True, logger=None,
     # a .cif/.mmcif is resolved by an authoritative xcif parse (fast at any
     # size), which also reveals combined CIFs (model + reflections + restraints)
     if candidate == CIF_SENTINEL:
-      primary = _primary_cif_type(_cif_datatypes(filename, cif_engine))
-      if primary is None:
+      types = _cif_datatypes(filename, cif_engine)
+      if types is None:
+        # not readable as CIF. A corrupt compressed stream must not reach
+        # any_file, which does not decompress and can sniff the raw bytes as
+        # a sequence: peek the prefix first so a decompression error maps to
+        # None via the handler below. Otherwise let any_file try (its lenient
+        # CIF parse may still succeed).
+        if (compress_ext is not None) and can_peek:
+          try:
+            _read_prefix(clean)
+          except RuntimeError:
+            return None                # no decompressor available: undecidable
         return _fallback(filename, valid_types)
-      return _filtered(primary, valid_types)
+      # a CIF that parsed but holds none of the three datatypes is None (not
+      # any_file's generic 'cif' -> restraint), matching what read_file(...,
+      # 'restraint') accepts. Otherwise choose the primary among the
+      # datatypes the caller supports, so a combined CIF whose precedence
+      # winner is unsupported still resolves to a supported type it contains
+      # (DataManager.get_file_type then agrees with DataManager.process_file)
+      if valid_types is not None:
+        types = types & set(valid_types)
+      return _primary_cif_type(types)
 
     if candidate is None:
       return _fallback(filename, valid_types)

@@ -16,8 +16,8 @@
 # https://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 #
 # PDBj:
-# ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/vz/pdb2vz8.ent.gz
-# ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
+# https://files.pdbj.org/pub/pdb/data/structures/divided/pdb/vz/pdb2vz8.ent.gz
+# https://files.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
 #
 # PDB-REDO
 # https://pdb-redo.eu/db/1aba/1aba_final.pdb
@@ -46,6 +46,8 @@ all_links_dict = {
         'em_map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
         'em_half_map_1': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
         'em_half_map_2': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        # masks are not compressed, numbered from 1, entry may have several
+        'em_mask': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/masks/emd_{emdb_number}_msk_{mask_number}.map',
         },
     'pdbe': {
         'model_pdb': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
@@ -55,15 +57,17 @@ all_links_dict = {
         'em_map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
         'em_half_map_1': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
         'em_half_map_2': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        'em_mask': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/masks/emd_{emdb_number}_msk_{mask_number}.map',
         },
     'pdbj': {
-        'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
-        'model_cif': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+        'model_pdb': 'https://files.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+        'model_cif': 'https://files.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
         'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
-        'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
-        'em_map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-        'em_half_map_1': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
-        'em_half_map_2': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        'sf': 'https://files.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
+        'em_map': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+        'em_half_map_1': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+        'em_half_map_2': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        'em_mask': 'https://files.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/masks/emd_{emdb_number}_msk_{mask_number}.map',
         },
     # 'pdb-redo': {
     #     'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
@@ -75,38 +79,42 @@ all_links_dict = {
     #     },
 }
 
-def get_link(mirror, entity, pdb_id=None, emdb_number=None, link_templates=all_links_dict):
+def get_link(mirror, entity, pdb_id=None, emdb_number=None, link_templates=all_links_dict, mask_number=1):
   assert mirror in link_templates.keys()
   if entity not in link_templates[mirror].keys():
     return None
-  if entity.find('map') > 0:
+  if entity.find('map') > 0 or entity == 'em_mask':
     assert emdb_number
   else:
     assert pdb_id
   mid_pdb_id = pdb_id[1:3]
-  return link_templates[mirror][entity].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
+  return link_templates[mirror][entity].format(
+      mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number, mask_number=mask_number)
 
 def valid_pdb_id(id):
   return len(id) == 4 and re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)
 
-def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None, link_templates=all_links_dict):
+def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None, link_templates=all_links_dict, mask_number=1):
   """
   Locate and open a data file for the specified PDB ID and format, either in a
   local mirror or online.
 
   :param id: 4-character PDB ID (e.g. '1hbb')
-  :param entity - one of 'model_pdb', 'model_cif', 'sequence', 'sf', 'em_map'
+  :param entity - one of 'model_pdb', 'model_cif', 'sequence', 'sf', 'em_map',
+    'em_half_map_1', 'em_half_map_2', 'em_mask'
   :param mirror: remote site to use, either rcsb, pdbe, pdbj or pdb-redo
+  :param mask_number: which mask to get for entity='em_mask', starts from 1
 
   :returns: a filehandle-like object (with read() method)
   """
-  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map', 'em_half_map_1', 'em_half_map_2']
+  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map', 'em_half_map_1', 'em_half_map_2', 'em_mask']
   assert mirror in ["rcsb", "pdbe", "pdbj"]
   id = id.lower()
   if not valid_pdb_id(id):
     raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % id)
 
-  url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number, link_templates=link_templates)
+  url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number, link_templates=link_templates,
+      mask_number=mask_number)
   need_to_decompress = url.split('.')[-1] == 'gz' and entity.find('map') < 0
 
   try :
@@ -148,6 +156,30 @@ def fetch_and_write(id, entity='model_pdb', mirror='rcsb', emdb_number=None, lin
   write_data_to_disc(file_name, data)
   print("%s saved to %s" % (title, file_name), file=log)
   return file_name
+
+def fetch_and_write_masks(id, mirror='rcsb', emdb_number=None, link_templates=all_links_dict, log=None):
+  """
+  Cryo-EM entry may have several masks or none of them. They are numbered
+  from 1, so fetch and write them one by one until the first missing.
+
+  :returns: list of written file names, empty if there are no masks.
+  """
+  if (log is None) : log = null_out()
+  file_names = []
+  while True:
+    mask_number = len(file_names) + 1
+    try :
+      data = fetch(id, 'em_mask', mirror=mirror, emdb_number=emdb_number,
+          link_templates=link_templates, mask_number=mask_number)
+    except RuntimeError :
+      break
+    file_name = os.path.join(os.getcwd(), "emd_{}_msk_{}.map".format(emdb_number, mask_number))
+    write_data_to_disc(file_name, data)
+    print("Cryo-EM mask %d saved to %s" % (mask_number, file_name), file=log)
+    file_names.append(file_name)
+  if len(file_names) == 0:
+    print("No masks available for EMD-%s" % emdb_number, file=log)
+  return file_names
 
 def get_chemical_components_cif(code, return_none_if_already_present=False):
   assert (code is not None)
