@@ -54,11 +54,13 @@ def _independent_e_scale_quantities(fmodel):
   d_star_sq_np = d_star_sq.as_numpy_array()
   import numpy as np
   bandwidth = (d_star_sq_np.max() - d_star_sq_np.min()) / 15.0
+  intensity_np = intensity.as_numpy_array()
   sigma_p_np = np.empty(d_star_sq_np.size)
-  for i, x0 in enumerate(d_star_sq_np):
-    w = np.exp(-0.5 * ((d_star_sq_np - x0) / bandwidth) ** 2)
-    sigma_p_np[i] = np.sum(w * np.asarray(intensity)) / np.sum(w)
-  sigma_p = flex.double(sigma_p_np.tolist())
+  for i0 in range(0, d_star_sq_np.size, 500):  # blocks of rows, bounded memory
+    x0 = d_star_sq_np[i0:i0 + 500, None]
+    w = np.exp(-0.5 * ((d_star_sq_np[None, :] - x0) / bandwidth) ** 2)
+    sigma_p_np[i0:i0 + 500] = w.dot(intensity_np) / w.sum(axis=1)
+  sigma_p = flex.double(sigma_p_np)
 
   eeff = feff / (flex.sqrt(teps) * resn)
   emodel_abs = flex.abs(fmnas) / flex.sqrt(epsilons * sigma_p)

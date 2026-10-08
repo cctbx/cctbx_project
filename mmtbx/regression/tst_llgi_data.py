@@ -127,22 +127,8 @@ def exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data():
     assert False, "expected Sorry to be raised"
 
 def exercise_llgi_data_survives_select_and_update_all_scales():
-  # Real bug, found running target=llgi against a real (non-synthetic)
-  # dataset for the first time: manager.select() (used internally by
-  # manager.remove_outliers(), itself called from every ordinary
-  # f_model_all_scales.compute() / bulk-solvent-and-scaling pass -- not
-  # a rare code path) constructs a *fresh* manager(...) object directly,
-  # separately from the self.__init__(...) re-init path
-  # set_target_name/_validate_and_set_llgi_data's docstrings already
-  # discuss. Before llgi_data was threaded through select()'s manager(...)
-  # call the same way abcd already was, this silently dropped llgi_data
-  # on the very first bulk-solvent-and-scaling step of a real refinement,
-  # producing a "no LLGI data provided" Sorry despite it having been
-  # attached and even used successfully one step earlier -- a much more
-  # commonly hit path than the low-resolution-outlier self.__init__(...)
-  # branch this test's sibling coverage (implicitly, via
-  # exercise_update_llgi_sigmaa_scatfrac_enables_target_functor) does not
-  # exercise at all.
+  # select() (used by remove_outliers in every bss pass) builds a new
+  # manager; llgi_data, including sigmaa/scatfrac, must come along.
   fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
   llgi_data = make_llgi_arrays(fmodel.f_obs())
   fmodel.set_llgi_data(llgi_data)
@@ -162,6 +148,45 @@ def exercise_llgi_data_survives_select_and_update_all_scales():
   # target_functor() must still succeed on the selected copy without
   # needing update_llgi_sigmaa_scatfrac() to be called again.
   new_fmodel.target_functor()
+
+def exercise_llgi_sigmaa_is_current():
+  # True right after the sigmaA/ScatFrac fit; False without llgi_data,
+  # after a selection (the record is not carried over) and after the model
+  # moves; True again after refitting.
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  assert not build_fmodel(5, 2.5, update_scales=False).llgi_sigmaa_is_current()
+  fmodel = build_llgi_fmodel(30, 2.2, seed=3)
+  assert fmodel.llgi_sigmaa_is_current()
+  selected = fmodel.select(flex.bool(fmodel.f_obs().size(), True))
+  assert not selected.llgi_sigmaa_is_current()
+  xrs = fmodel.xray_structure.deep_copy_scatterers()
+  xrs.shake_sites_in_place(mean_distance=0.2)
+  fmodel.update_xray_structure(xray_structure=xrs, update_f_calc=True)
+  assert not fmodel.llgi_sigmaa_is_current()
+  fmodel.update_llgi_sigmaa_scatfrac()
+  assert fmodel.llgi_sigmaa_is_current()
+
+def exercise_low_resolution_removal_keeps_llgi_target():
+  # update_all_scales removes the lowest-resolution bin when R-work there
+  # exceeds 0.7; the rebuilt manager keeps target llgi and llgi_data on the
+  # remaining reflections.
+  import random
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  fmodel = build_llgi_fmodel(30, 2.0, seed=5)
+  sel = fmodel.bin_selections[0]
+  f_obs = fmodel.f_obs()
+  data = f_obs.data().deep_copy()
+  rnd = random.Random(1)
+  mean_low = flex.mean(data.select(sel))
+  data.set_selected(sel, flex.double(
+    [rnd.choice([0.05, 4.0]) * mean_low for i in range(sel.count(True))]))
+  fmodel.update(f_obs=f_obs.customized_copy(data=data))
+  assert fmodel.r_work_low() > 0.7
+  n_before = fmodel.f_obs().size()
+  fmodel.update_all_scales(remove_outliers=True)
+  assert fmodel.f_obs().size() < n_before
+  assert fmodel.target_name == "llgi" and fmodel.llgi_target_active()
+  assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
 
 def exercise_e_scale_sigmaa_phil_scope_parses():
   # The refinement.llgi_data.e_scale_sigmaa phil scope (phenix/phenix/
@@ -187,6 +212,8 @@ def exercise():
   exercise_update_llgi_sigmaa_scatfrac_enables_target_functor()
   exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data()
   exercise_llgi_data_survives_select_and_update_all_scales()
+  exercise_llgi_sigmaa_is_current()
+  exercise_low_resolution_removal_keeps_llgi_target()
   exercise_e_scale_sigmaa_phil_scope_parses()
   print("OK")
 

@@ -5,7 +5,8 @@ import mmtbx.refinement.llgi_maps as llgi_maps
 import mmtbx.refinement.llgi_phi_table as llgi_phi_table
 import math
 
-# Map-coefficient handoff fixtures (fixtures.py / mfix.py, Oct 2026):
+# Reference values from the map-coefficient handoff, computed independently
+# by numerical quadrature of the posterior:
 # (E_obs^2, sigma, sigmaA, Ec, centric, phi, <E>, M)
 handoff = [
   (5.0, 2.0, 0.6, 1.5, False, 0.047302, 1.32072349, 0.70513705),
