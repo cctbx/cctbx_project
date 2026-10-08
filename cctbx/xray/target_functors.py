@@ -102,6 +102,10 @@ class llgi(object):
   hybrid (optional): an ext.llgi_hybrid indexed like f_eff, selecting the
   reflections evaluated with the exact LLGI (mmtbx.refinement.
   llgi_hybrid).
+
+  tncs_u, tncs_t (optional, flex.double): the tNCS modulations of the
+  error variance and of the expected intensity (llgi.h tncs_frame); f_eff
+  and the hybrid's observations are then normalised by tncs_t.
   """
 
   def __init__(self,
@@ -113,14 +117,16 @@ class llgi(object):
         scale_factor,
         teps,
         resn,
-        hybrid=None):
+        hybrid=None,
+        tncs_u=None,
+        tncs_t=None):
     adopt_init_args(self, locals())
     self.centric_flags = f_eff.centric_flags().data()
 
   def __call__(self, f_calc, compute_gradients):
     assert f_calc.unit_cell().is_similar_to(self.f_eff.unit_cell())
     assert f_calc.space_group() == self.f_eff.space_group()
-    return ext.llgi_target_and_gradients(
+    args = dict(
       f_eff=self.f_eff.data(),
       r_free_flags=self.r_free_flags.data(),
       f_calc=f_calc.data(),
@@ -133,6 +139,9 @@ class llgi(object):
       centric_flags=self.centric_flags,
       compute_gradients=compute_gradients,
       hybrid=self.hybrid)
+    if(self.tncs_u is not None):
+      args.update(tncs_u=self.tncs_u, tncs_t=self.tncs_t)
+    return ext.llgi_target_and_gradients(**args)
 
 class unified_least_squares_residual(object):
   """ A least-square residual functor for refinement against F or F^2. """

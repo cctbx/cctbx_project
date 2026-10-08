@@ -3,7 +3,7 @@ sigmaA(resolution) against the E-scale LLGI on the R-free set, followed
 by the F-scale ScatFrac fit (estimate_sigmaa_e_then_scatfrac_f). """
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx.xray import ext as xray_ext
+import mmtbx.refinement.llgi_tncs as llgi_tncs
 from mmtbx import scaling
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
@@ -273,8 +273,9 @@ class e_sigmaa_target_evaluator(object):
   def __init__(self,
         e_eff, test_selection, e_model, dobs, centric_flags, d_star_sq,
         n_sigmaa_coeffs, spline_degree=3, max_iterations=100,
-        curvature_weight=0.0, hybrid=None):
+        curvature_weight=0.0, hybrid=None, tncs_u=None):
     self.hybrid = hybrid
+    self.tncs_u = tncs_u
     self.e_eff = e_eff
     self.test_selection = test_selection
     self.e_model = e_model
@@ -305,13 +306,14 @@ class e_sigmaa_target_evaluator(object):
 
   def compute_functional_and_gradients(self):
     sigmaa, dsigmaa_dz = self._current_sigmaa()
-    result = xray_ext.llgi_e_sigmaa_target_and_gradients(
+    result = llgi_tncs.e_sigmaa_functor(
       e_eff=self.e_eff,
       selection=self.test_selection,
       e_model=self.e_model,
       dobs=self.dobs,
       sigmaa=flex.double(sigmaa),
-      centric_flags=self.centric_flags, hybrid=self.hybrid)
+      centric_flags=self.centric_flags, hybrid=self.hybrid,
+      tncs_u=self.tncs_u)
     f = result.target()
     d_target_by_dsigmaa = result.d_target_by_dsigmaa().as_numpy_array()
     g = self.sigmaa_design.T.dot(d_target_by_dsigmaa * dsigmaa_dz)
@@ -330,7 +332,7 @@ class e_sigmaa_target_evaluator(object):
 
 def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
       d_star_sq, n_coeffs=8, spline_degree=3, max_iterations=100,
-      curvature_weight=0.0, hybrid=None):
+      curvature_weight=0.0, hybrid=None, tncs_u=None):
   """ Spline fit of sigmaA(d*^2) against the E-scale LLGI on the R-free
   set, with Emodel fixed.
 
@@ -360,17 +362,18 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     spline_degree=spline_degree,
     max_iterations=max_iterations,
     curvature_weight=curvature_weight,
-    hybrid=hybrid)
+    hybrid=hybrid, tncs_u=tncs_u)
   sigmaa = evaluator.sigmaa()
-  final_result = xray_ext.llgi_e_sigmaa_target_and_gradients(
+  final_result = llgi_tncs.e_sigmaa_functor(
     e_eff=e_eff, selection=r_free_flags, e_model=e_model, dobs=dobs,
-    sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid)
+    sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid, tncs_u=tncs_u)
   return group_args(
     sigmaa=sigmaa, target=final_result.target(),
     evaluate_at=evaluator.curve(),
     lbfgs_error=evaluator.minimizer.error)
 
-def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
+def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
+      hybrid=None, tncs_u=None):
   """ Fit sigmaA(resolution) on the E scale against fmodel's current model,
   with bulk solvent as bss left it (fmodel is not modified).
 
@@ -380,6 +383,12 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
   dobs, feff, resn: nacelle DOBS/FEFF/RESN on fmodel.f_obs()'s index set.
 
   params: extracted llgi_e_sigmaa_params, or None for defaults.
+
+  hybrid: the llgi_hybrid to use instead of fmodel's (tNCS: the u-frame
+  data, with dobs and feff in that frame), or None.
+
+  tncs_u: the tNCS error-variance modulation (the fit is in the u-frame:
+  feff/resn and the hybrid's observations normalised by u), or None.
 
   Returns a group_args with .sigmaa (flex.double, every reflection),
   .target (final mean target on the R-free set), .evaluate_at (the fitted
@@ -401,7 +410,8 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
     auto_kernel_number=params.auto_kernel_number).e_model)
   k_sol, b_sol = bss_k_sol_b_sol(fmodel)
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
-  hybrid = llgi_hybrid.get_hybrid(fmodel.llgi_data())
+  if(hybrid is None):
+    hybrid = llgi_hybrid.get_hybrid(fmodel.llgi_data())
   if(hybrid is not None):
     # Exact likelihood wherever possible: a sigmaA-dependent switch would
     # make the fitted objective discontinuous (see llgi_exact.h, hybrid).
@@ -414,14 +424,16 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None):
       n_gaussian_terms=dp.n_gaussian_terms,
       max_iterations=dp.max_iterations,
       b_sol_anchor=b_sol,
-      include_constant_term=dp.include_constant_term, hybrid=hybrid)
+      include_constant_term=dp.include_constant_term, hybrid=hybrid,
+      tncs_u=tncs_u)
   else:
     result = estimate_e_sigmaa(
       e_eff=e_eff, r_free_flags=r_free_flags, e_model=e_model, dobs=dobs,
       centric_flags=centric_flags, d_star_sq=d_star_sq,
       n_coeffs=params.n_sigmaa_coeffs, spline_degree=params.spline_degree,
       max_iterations=params.sigmaa_max_iterations,
-      curvature_weight=params.sigmaa_curvature_weight, hybrid=hybrid)
+      curvature_weight=params.sigmaa_curvature_weight, hybrid=hybrid,
+      tncs_u=tncs_u)
   return group_args(
     sigmaa=result.sigmaa,
     target=result.target,

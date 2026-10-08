@@ -3,11 +3,11 @@ the model, fitted against the F-scale LLGI target with sigmaA fixed (see
 mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f). """
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from cctbx.xray import ext
 import scitbx.lbfgs
 from libtbx import group_args
 import iotbx.phil
 import math
+import mmtbx.refinement.llgi_tncs as llgi_tncs
 
 llgi_scatfrac_params = iotbx.phil.parse("""\
   max_iterations = 100
@@ -99,8 +99,10 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
         b_scatfrac_start,
         restraint_sigma=0.0,
         max_iterations=100,
-        hybrid=None):
+        hybrid=None,
+        tncs_u=None):
     self.hybrid = hybrid
+    self.tncs_u = tncs_u
     self.f_eff = f_eff
     self.selection = selection
     self.f_calc = f_calc
@@ -134,7 +136,8 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
 
   def compute_functional_and_gradients(self):
     scatfrac, dz_eff_dz = self._scatfrac_and_derivative()
-    result = ext.llgi_sigmaa_scatfrac_target_and_gradients(
+    result = llgi_tncs.sigmaa_scatfrac_functor(
+      tncs_u=self.tncs_u,
       f_eff=self.f_eff,
       selection=self.selection,
       f_calc=self.f_calc,
@@ -177,7 +180,8 @@ def estimate_llgi_scatfrac_likelihood(
       d_star_sq,
       scale_factor=1.0,
       params=None,
-      hybrid=None):
+      hybrid=None,
+      tncs_u=None):
   """ Fit ScatFrac = ScatFrac_inf*exp(-B_scatfrac*ss) against the F-scale
   LLGI on working_selection (pass ~r_free_flags), with sigmaA fixed (see
   llgi_scatfrac_b_factor_target_evaluator). Starts from B_scatfrac = 0
@@ -189,6 +193,10 @@ def estimate_llgi_scatfrac_likelihood(
   .target (final mean target on the working set), .scatfrac_inf and
   .b_scatfrac, .n_at_floor (working reflections held at the floor) and
   .lbfgs_error (None, or the message L-BFGS stopped with).
+
+  tncs_u: the tNCS error-variance modulation (the fit is in the u-frame:
+  f_eff = Eeff RESN sqrt(u) and the hybrid's observations normalised by
+  u; teps must then be 1), or None.
   """
   if(hybrid is not None):
     # Exact likelihood wherever possible. On the F scale the exact/Rice
@@ -229,10 +237,10 @@ def estimate_llgi_scatfrac_likelihood(
         ln_scatfrac_floor(sigmaa, scale_factor).select(working_selection)))),
     b_scatfrac_start=0.0,
     restraint_sigma=params.scatfrac_b_factor_restraint_sigma,
-    max_iterations=params.max_iterations, hybrid=hybrid)
+    max_iterations=params.max_iterations, hybrid=hybrid, tncs_u=tncs_u)
   scatfrac_inf, b_scatfrac = evaluator.scatfrac_inf_and_b()
   scatfrac = evaluator.scatfrac()
-  final_result = ext.llgi_sigmaa_scatfrac_target_and_gradients(
+  final_result = llgi_tncs.sigmaa_scatfrac_functor(tncs_u=tncs_u,
     f_eff=f_eff, selection=working_selection, f_calc=f_calc, dobs=dobs,
     sigmaa=sigmaa, scatfrac=scatfrac, scale_factor=scale_factor,
     teps=teps, resn=resn, centric_flags=centric_flags, hybrid=hybrid)

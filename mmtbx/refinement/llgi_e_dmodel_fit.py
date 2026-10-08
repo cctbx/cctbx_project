@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import scitbx.minimizers
 from cctbx.array_family import flex
-from cctbx.xray import ext as xray_ext
 from libtbx import group_args
 import iotbx.phil
 import mmtbx.refinement.llgi_e_dmodel as dmodel
@@ -54,7 +53,7 @@ def default_b_k_grid(k, s2):
   return np.exp(np.linspace(np.log(b_lo), np.log(b_hi), k))
 
 def target_and_gradient(theta, s2, e_eff, e_model, dobs, centric_flags,
-      b_k_grid, hybrid=None):
+      b_k_grid, hybrid=None, tncs_u=None):
   """ Mean E-scale LLGI target (minimize-me) over the given reflections at
   sigmaA = D_model(s2; theta), and its gradient with respect to theta.
   s2 is a numpy array; e_eff, e_model, dobs (flex.double), centric_flags
@@ -62,14 +61,15 @@ def target_and_gradient(theta, s2, e_eff, e_model, dobs, centric_flags,
   cctbx.xray.ext.llgi_e_sigmaa_target_and_gradients, which computes the
   target and its derivative with respect to each reflection's sigmaA.
   """
-  result = xray_ext.llgi_e_sigmaa_target_and_gradients(
+  import mmtbx.refinement.llgi_tncs as llgi_tncs
+  result = llgi_tncs.e_sigmaa_functor(
     e_eff=e_eff,
     selection=flex.bool(e_eff.size(), True),
     e_model=e_model,
     dobs=dobs,
     sigmaa=flex.double(dmodel.d_model(s2, theta, b_k_grid)),
     centric_flags=centric_flags,
-    hybrid=hybrid)
+    hybrid=hybrid, tncs_u=tncs_u)
   gradient = dmodel.d_model_gradient(s2, theta, b_k_grid).dot(
     result.d_target_by_dsigmaa().as_numpy_array())
   return result.target(), gradient
@@ -111,7 +111,7 @@ class d_model_target_evaluator(object):
         n_gaussian_terms=2, max_iterations=200,
         b_sol_anchor=None, b_k_grid=None,
         include_constant_term=True,
-        hybrid=None):
+        hybrid=None, tncs_u=None):
     n_refl = e_eff.size()
     assert r_free_flags.size() == n_refl
     assert e_model.size() == n_refl
@@ -130,6 +130,9 @@ class d_model_target_evaluator(object):
     self.hybrid = None
     if(hybrid is not None):
       self.hybrid = hybrid.select(r_free_flags)
+    self.tncs_u = None
+    if(tncs_u is not None):
+      self.tncs_u = tncs_u.select(r_free_flags)
     if(b_k_grid is None):
       b_k_grid = default_b_k_grid(n_gaussian_terms, self.s2)
       if(include_constant_term):
@@ -178,7 +181,8 @@ class d_model_target_evaluator(object):
     self.x = x
     self._f, g = target_and_gradient(
       self.theta(), self.s2, self.e_eff, self.e_model, self.dobs,
-      self.centric_flags, self.b_k_grid, hybrid=self.hybrid)
+      self.centric_flags, self.b_k_grid, hybrid=self.hybrid,
+      tncs_u=self.tncs_u)
     self._g = g[:self.n_fit]
 
   def target(self):
@@ -202,7 +206,7 @@ class d_model_target_evaluator(object):
 def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
       centric_flags, d_star_sq, n_gaussian_terms=2, max_iterations=200,
       b_sol_anchor=None, b_k_grid=None, include_constant_term=True,
-      hybrid=None):
+      hybrid=None, tncs_u=None):
   """ Fit D_model against the E-scale LLGI on the R-free set (see
   d_model_target_evaluator) and evaluate it at every reflection.
 
@@ -224,7 +228,7 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     b_sol_anchor=b_sol_anchor,
     b_k_grid=b_k_grid,
     include_constant_term=include_constant_term,
-    hybrid=hybrid)
+    hybrid=hybrid, tncs_u=tncs_u)
   curve = d_model_curve(evaluator.theta(), evaluator.b_k_grid)
   return group_args(
     sigmaa=curve(d_star_sq),

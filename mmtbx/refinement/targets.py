@@ -194,6 +194,8 @@ class target_functor(object):
         raise Sorry(
           "llgi target requires sigmaA(resolution) and ScatFrac"
           "(resolution): call update_llgi_sigmaa_scatfrac() first.")
+      import mmtbx.refinement.llgi_tncs as llgi_tncs
+      tncs_u, tncs_t = llgi_tncs.arrays(llgi_data)
       self.core = xray.target_functors.llgi(
         f_eff        = llgi_data.feff,
         r_free_flags = manager.r_free_flags(),
@@ -203,7 +205,9 @@ class target_functor(object):
         scale_factor = manager.scale_ml_wrapper(),
         teps         = llgi_data.teps.data(),
         resn         = llgi_data.resn.data(),
-        hybrid       = llgi_hybrid.get_hybrid(llgi_data))
+        hybrid       = llgi_hybrid.get_hybrid(llgi_data),
+        tncs_u       = tncs_u,
+        tncs_t       = tncs_t)
     else:
       if (attr.pseudo_ml):
         f_obs, weights = manager.f_star_w_star()

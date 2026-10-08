@@ -37,6 +37,7 @@ from cctbx.eltbx import xray_scattering
 from cctbx.xray import ext as xray_ext
 from scitbx.math import superpose
 import iotbx.pdb
+import iotbx.phil
 
 def _polymer_atoms(chain):
   """ {(resseq, icode, atom name): (i_seq, resname)} for the first
@@ -381,3 +382,210 @@ def expected_intensity_modulation(model_fraction, a_eff, a, u):
   of the target. t exceeds (1 - a_eff^2) u wherever m > 0, so the frame
   of the LLGI functors is valid. """
   return model_fraction * (1 + a) + (1 - a_eff * a_eff) * u
+
+# ---------------------------------------------------------------------------
+# Functor calls with or without tNCS
+
+def e_sigmaa_functor(e_eff, selection, e_model, dobs, sigmaa, centric_flags,
+      hybrid=None, tncs_u=None, tncs_t=None):
+  """ cctbx.xray.ext.llgi_e_sigmaa_target_and_gradients, with the tNCS
+  arrays when tncs_u is given (tncs_t defaults to tncs_u: the u-frame) """
+  from cctbx.xray import ext as xray_ext
+  args = dict(e_eff=e_eff, selection=selection, e_model=e_model, dobs=dobs,
+    sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid)
+  if(tncs_u is not None):
+    args.update(tncs_u=tncs_u, tncs_t=tncs_u if tncs_t is None else tncs_t)
+  return xray_ext.llgi_e_sigmaa_target_and_gradients(**args)
+
+def sigmaa_scatfrac_functor(tncs_u=None, tncs_t=None, **args):
+  """ cctbx.xray.ext.llgi_sigmaa_scatfrac_target_and_gradients, with the
+  tNCS arrays when tncs_u is given (tncs_t defaults to tncs_u) """
+  from cctbx.xray import ext as xray_ext
+  if(tncs_u is not None):
+    args.setdefault("hybrid", None)
+    args.update(tncs_u=tncs_u, tncs_t=tncs_u if tncs_t is None else tncs_t)
+  return xray_ext.llgi_sigmaa_scatfrac_target_and_gradients(**args)
+
+def frame(a, u, t):
+  """ llgi.h tncs_frame for arrays: (a', s), with a' = 0 where the frame
+  is invalid (no contribution) """
+  a_p = flex.double(a.size(), 0)
+  s = flex.double(a.size(), 0)
+  a_p_sq = 1 - (1 - a * a) * u / t
+  ok = (a > 0) & (a < 1) & (u > 0) & (t > 0) & (a_p_sq > 0)
+  a_p.set_selected(ok, flex.sqrt(a_p_sq.select(ok)))
+  s.set_selected(ok, a.select(ok) / (flex.sqrt(t.select(ok)) * a_p.select(ok)))
+  return a_p, s
+
+def arrays(llgi_data):
+  """ (u, t) as flex.double from llgi_data, or (None, None) without tNCS """
+  if(llgi_data is None or getattr(llgi_data, "tncs_u", None) is None):
+    return None, None
+  return llgi_data.tncs_u.data(), llgi_data.tncs_t.data()
+
+# ---------------------------------------------------------------------------
+# Setting up and updating the tNCS treatment of fmodel's LLGI data
+
+llgi_tncs_params = iotbx.phil.parse("""\
+  enabled = Auto
+    .type = bool
+    .short_caption = Model translational NCS in the LLGI target
+    .help = "Account for translational NCS (copies of a molecule in nearly " \\
+            "the same orientation) in the LLGI target. Auto: if the model " \\
+            "has groups of chains related by tNCS."
+  angle_max = 10.
+    .type = float
+    .short_caption = Largest rotation between tNCS-related copies (degrees)
+  tau_linear_in_resolution = False
+    .type = bool
+    .short_caption = Let tau vary linearly with d*^2
+    .help = "tau, the correlation of the model errors in tNCS-related " \\
+            "copies, is constant by default."
+  n_cycles = 2
+    .type = int
+    .short_caption = sigmaA/tau fit cycles per update
+""")
+
+def renormalise_e(e_obs_sq_base, sig_e_obs_sq_base, resn, t, centric_flags):
+  """ renormalise for observations already on the E scale without tNCS
+  (I/RESN^2): Feff = Eeff RESN sqrt(t) """
+  one = flex.double(e_obs_sq_base.size(), 1.)
+  d = renormalise(e_obs_sq_base, sig_e_obs_sq_base, one, t, centric_flags)
+  d.feff = d.feff * resn
+  return d
+
+def _hybrid(d, centric_flags, rice_kappa):
+  return xray_ext.llgi_hybrid(e_obs_sq=d.e_obs_sq,
+    sig_e_obs_sq=d.sig_e_obs_sq, force_exact=d.force_exact,
+    centric_flags=centric_flags, rice_kappa=rice_kappa)
+
+def _framed_llgi_data(llgi_data, f_obs, d, u, t, a, **changes):
+  """ llgi_data with the data d (renormalise_e) in the t-frame and the
+  tNCS arrays; the cached hybrid is dropped """
+  return replace_llgi_data(llgi_data,
+    teps=f_obs.array(data=flex.double(f_obs.size(), 1.)),
+    dobs=f_obs.array(data=d.dobs), feff=f_obs.array(data=d.feff),
+    e_obs_sq=f_obs.array(data=d.e_obs_sq),
+    sig_e_obs_sq=f_obs.array(data=d.sig_e_obs_sq),
+    force_exact=f_obs.array(data=d.force_exact),
+    tncs_a=f_obs.array(data=a), tncs_u=f_obs.array(data=u),
+    tncs_t=f_obs.array(data=t), _hybrid_object=None, **changes)
+
+def replace_llgi_data(llgi_data, **changes):
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  return llgi_hybrid.replace_llgi_data(llgi_data, **changes)
+
+def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
+      log=None):
+  """ The tNCS treatment for llgi_data (on f_obs's index set), if the model
+  has groups of chains related by tNCS: the observations are kept on the E
+  scale without tNCS (nacelle's TEPS is not used), and renormalised by
+  t0 = 1 + rho A, rho fitted to the data alone, until sigmaA and tau are
+  first fitted (fit_and_renormalise). Returns the new llgi_data (Feff in
+  it is the new f_obs), or None if there are no tNCS groups or the
+  treatment is switched off. """
+  if(params is None):
+    params = llgi_tncs_params.extract()
+  if(params.enabled is False):
+    return None
+  groups = tncs_groups(pdb_hierarchy, f_obs.crystal_symmetry(),
+    angle_max=params.angle_max)
+  if(log is not None): groups.show(log)
+  if(len(groups) == 0):
+    return None
+  centric = f_obs.centric_flags().data()
+  dss = f_obs.d_star_sq().data()
+  teps = llgi_data.teps.data()
+  e_base = llgi_data.e_obs_sq.data() * teps
+  sig_base = llgi_data.sig_e_obs_sq.data() * teps
+  mod = pair_modulation(f_obs, groups, xray_structure)
+  rho = fit_wilson_modulation(e_base, sig_base, centric, mod.a, dss,
+    mod.f_total, linear=params.tau_linear_in_resolution)
+  t0 = 1 + rho.at(dss) * mod.a
+  d = renormalise_e(e_base, sig_base, llgi_data.resn.data(), t0, centric)
+  if(log is not None):
+    print("tNCS: %.3f of the model's scattering in tNCS groups; data-only "
+      "modulation rho = %.3f%s" % (mod.f_total, rho.p0,
+      "" if rho.p1 == 0 else " + %.3f d*^2/d*^2_max" % rho.p1), file=log)
+  return _framed_llgi_data(llgi_data, f_obs, d, u=t0, t=t0, a=mod.a,
+    e_obs_sq_base=f_obs.array(data=e_base),
+    sig_e_obs_sq_base=f_obs.array(data=sig_base),
+    tncs_state=group_args(groups=groups, tau=rho, rho=rho,
+      f_total=mod.f_total, params=params))
+
+def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
+  """ Per macrocycle, for fmodel's current model and scales: A(h); sigmaA
+  (E scale, R-free set) and tau (all reflections), alternately, in the
+  u-frame; ScatFrac (F scale, working set) in the u-frame; then the data
+  renormalised by t = sigmaA^2 (1 + A) + (1 - a_eff^2) u, with Feff the new
+  f_obs. Returns a group_args like llgi_e_sigmaa.
+  estimate_sigmaa_e_then_scatfrac_f's, plus .tau. """
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
+  llgi_data = fmodel.llgi_data()
+  state = llgi_data.tncs_state
+  params = state.params
+  if(scatfrac_params is None):
+    scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
+  f_obs = fmodel.f_obs()
+  centric = f_obs.centric_flags().data()
+  dss = f_obs.d_star_sq().data()
+  eps = f_obs.epsilons().data().as_double()
+  n = f_obs.size()
+  resn = llgi_data.resn.data()
+  e_base = llgi_data.e_obs_sq_base.data()
+  sig_base = llgi_data.sig_e_obs_sq_base.data()
+  rice_kappa = llgi_data.hybrid_params.rice_kappa \
+    if getattr(llgi_data, "hybrid_params", None) is not None else 0.1
+  a = pair_modulation(f_obs, state.groups, fmodel.xray_structure).a
+  e_model = flex.abs(llgi_e_sigmaa.build_e_model(
+    fmodel.f_model_no_aniso_scale().data(), eps, dss).e_model)
+  tau = state.tau
+  warnings = []
+  for cycle in range(max(1, params.n_cycles)):
+    u = 1 + tau.at(dss) * a
+    d = renormalise_e(e_base, sig_base, resn, u, centric)
+    hybrid_u = _hybrid(d, centric, rice_kappa)
+    sigmaa_result = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
+      dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
+      hybrid=hybrid_u, tncs_u=u)
+    sigmaa = sigmaa_result.sigmaa
+    tau = fit_tau(e_base, sig_base, flex.double(n, 1.), centric, e_model,
+      sigmaa, a, dss, state.f_total, flex.bool(n, True),
+      tau_start=[tau.p0, tau.p1], linear=params.tau_linear_in_resolution)
+  if(sigmaa_result.lbfgs_error is not None):
+    warnings.append("sigmaA fit: L-BFGS stopped early: %s" %
+      sigmaa_result.lbfgs_error)
+  u = 1 + tau.at(dss) * a
+  d = renormalise_e(e_base, sig_base, resn, u, centric)
+  scale_factor = fmodel.scale_ml_wrapper()
+  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac_likelihood(
+    f_eff=d.feff, working_selection=~fmodel.r_free_flags().data(),
+    f_calc=fmodel.f_model().data(), dobs=d.dobs, sigmaa=sigmaa,
+    teps=flex.double(n, 1.), resn=resn, centric_flags=centric,
+    d_star_sq=dss, scale_factor=scale_factor, params=scatfrac_params,
+    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u)
+  if(scatfrac_result.lbfgs_error is not None):
+    warnings.append("ScatFrac fit: L-BFGS stopped early: %s" %
+      scatfrac_result.lbfgs_error)
+  scatfrac = scatfrac_result.scatfrac
+  k = scale_factor if scale_factor > 0 else 1.
+  a_eff = sigmaa * k / flex.sqrt(scatfrac)
+  t = expected_intensity_modulation(sigmaa * sigmaa, a_eff, a, u)
+  d = renormalise_e(e_base, sig_base, resn, t, centric)
+  new = _framed_llgi_data(llgi_data, f_obs, d, u=u, t=t, a=a,
+    sigmaa=f_obs.array(data=sigmaa),
+    sigmaa_curve=sigmaa_result.evaluate_at,
+    scatfrac=f_obs.array(data=scatfrac),
+    tncs_state=group_args(groups=state.groups, tau=tau, rho=state.rho,
+      f_total=state.f_total, params=params),
+    _sigmaa_f_model=fmodel.f_model().data().deep_copy())
+  fmodel.set_llgi_data(new)
+  fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))
+  return group_args(
+    sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
+    scatfrac=scatfrac, target=scatfrac_result.target,
+    scatfrac_inf=scatfrac_result.scatfrac_inf,
+    b_scatfrac=scatfrac_result.b_scatfrac,
+    n_scatfrac_at_floor=scatfrac_result.n_at_floor,
+    warnings=warnings, tau=tau)

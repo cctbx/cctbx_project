@@ -1821,6 +1821,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     a_eff = flex.double(sf.size(), 0)
     a_eff.set_selected(positive, (sigmaa.data() * k).select(positive)
       / flex.sqrt(sf.select(positive)))
+    import mmtbx.refinement.llgi_tncs as llgi_tncs
+    u, t = llgi_tncs.arrays(llgi_data)
+    if(u is not None):
+      # the exact/Rice choice is made with a' in the t-normalised frame
+      a_eff = llgi_tncs.frame(a_eff, u, t)[0]
     exact = hybrid.exact_selection(a_eff)
     return group_args(n=exact.size(), n_exact=exact.count(True),
       n_forced=(exact & hybrid.force_exact).count(True))
@@ -1850,6 +1855,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     if(params is None):
       params = llgi_scatfrac.llgi_scatfrac_params.extract()
+    if(getattr(llgi_data, "tncs_state", None) is not None):
+      # tNCS: also tau, and the data renormalised (f_obs = Feff changes)
+      import mmtbx.refinement.llgi_tncs as llgi_tncs
+      return llgi_tncs.fit_and_renormalise(self, scatfrac_params=params,
+        e_params=e_params)
     f_obs = self.f_obs()
     result = llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f(
       self,
@@ -2663,12 +2673,24 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         teps = llgi_data.teps.data()
         resn = llgi_data.resn.data()
         n = feff.data().size()
+        # F-scale factor for the model coefficient (see the docstring)
+        sqrt_teps = flex.sqrt(teps.deep_copy().set_selected(teps <= 0, 1.0))
+        s_frame = flex.double(n, 1.0)
+        import mmtbx.refinement.llgi_tncs as llgi_tncs
+        tncs_u, tncs_t = llgi_tncs.arrays(llgi_data)
+        if(tncs_u is not None):
+          # tNCS (TEPS = 1): the t-normalised frame of llgi.h's tncs_frame,
+          # sigmaA -> a', Emodel -> s*Emodel, Eeff -> Feff/(RESN sqrt(t)),
+          # and sqrt(t) is the F-scale factor
+          sa, s_frame = llgi_tncs.frame(sa, tncs_u, tncs_t)
+          e_model_abs = e_model_abs * s_frame
+          eeff = eeff / flex.sqrt(tncs_t)
+          sqrt_teps = flex.sqrt(tncs_t)
+          teps = flex.double(n, 1.0)
         valid = (sa > 0) & (dobs > 0)
         d = flex.double(n, 0.0)
         d.set_selected(valid, dobs * sa)
-        # F-scale factor for the model coefficient (see the docstring)
-        sqrt_teps = flex.sqrt(teps.deep_copy().set_selected(teps <= 0, 1.0))
-        inv_sqrt_eps_sigmap = 1.0 / flex.sqrt(epsilons * sigma_p)
+        inv_sqrt_eps_sigmap = s_frame / flex.sqrt(epsilons * sigma_p)
         alpha_data = d * sqrt_teps * resn * inv_sqrt_eps_sigmap
         v = teps - d * d
         valid = valid & (v > 0)

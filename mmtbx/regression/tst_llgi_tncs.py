@@ -180,12 +180,125 @@ def exercise_fits(groups, xrs):
     mod.f_total, flex.bool(n, True))
   assert abs(tau.p0) < 0.25, tau.p0
 
+def synthetic_fmodel(h, xrs, sigma_common=0.6, sigma_indep=0.15, d_min=3.5,
+      seed=11):
+  """ fmodel (target llgi) for the model xrs, with intensities from a
+  "true" structure whose coordinate errors are shared by chains A and B
+  (sigma_common; B's error is A's moved by the inverse of the symmetry
+  operator that relates the copies, as in build_model) plus independent
+  errors (sigma_indep); nacelle-like LLGI data with TEPS = 1 (RESN from
+  binned mean intensities, Dobs/Feff by moment matching). """
+  import mmtbx.f_model
+  rnd = random.Random(seed)
+  uc = CS.unit_cell()
+  o = matrix.sqr(uc.orthogonalization_matrix())
+  f = matrix.sqr(uc.fractionalization_matrix())
+  r_inv = o * matrix.sqr(sgtbx.rt_mx("-x+1/2,-y,z+1/2").inverse().r().as_double()) * f
+  chain_of = [a.chain().id for a in h.atoms()]
+  res_atom = [(a.parent().parent().resseq_as_int(), a.name) for a in h.atoms()]
+  common = {}
+  shifts = flex.vec3_double()
+  for cid, key in zip(chain_of, res_atom):
+    g = lambda s: tuple(rnd.gauss(0, s / math.sqrt(3)) for k in range(3))
+    if cid in "AB":
+      c = common.setdefault(key, g(sigma_common))
+      if cid == "B": c = tuple(r_inv * matrix.col(c))
+    else:
+      c = g(sigma_common)
+    e = g(sigma_indep)
+    shifts.append(tuple(c[k] + e[k] for k in range(3)))
+  truth = xrs.deep_copy_scatterers()
+  truth.set_sites_cart(xrs.sites_cart() + shifts)
+  ms = miller.build_set(CS, anomalous_flag=False, d_min=d_min).resolution_filter(
+    d_max=20).remove_systematic_absences()
+  f_true = abs(ms.structure_factors_from_scatterers(truth,
+    algorithm="direct").f_calc())
+  fmodel = mmtbx.f_model.manager(xray_structure=xrs, f_obs=f_true,
+    r_free_flags=f_true.generate_r_free_flags(fraction=0.1))
+  fmodel.update_all_scales()
+  f_obs = fmodel.f_obs()   # fmodel's order
+  i_true = flex.pow2(f_obs.data())
+  eps = f_obs.epsilons().data().as_double()
+  f_obs.setup_binner(n_bins=8)
+  sigma_n = flex.double(f_obs.size(), 0)
+  for i_bin in f_obs.binner().range_used():
+    sel = f_obs.binner().selection(i_bin)
+    sigma_n.set_selected(sel, flex.mean((i_true / eps).select(sel)))
+  sig = 0.05 * sigma_n * eps + 0.02 * i_true
+  i_obs = i_true + sig * flex.double([rnd.gauss(0, 1) for i in range(f_obs.size())])
+  resn = flex.sqrt(eps * sigma_n)
+  centric = f_obs.centric_flags().data()
+  n = f_obs.size()
+  d = llgi_tncs.renormalise(i_obs, sig, resn, flex.double(n, 1.), centric)
+  from libtbx import group_args
+  params = llgi_hybrid.llgi_hybrid_params.extract()
+  llgi_data = group_args(dobs=f_obs.array(data=d.dobs),
+    feff=f_obs.array(data=d.feff), teps=f_obs.array(data=flex.double(n, 1.)),
+    resn=f_obs.array(data=resn), e_obs_sq=f_obs.array(data=d.e_obs_sq),
+    sig_e_obs_sq=f_obs.array(data=d.sig_e_obs_sq),
+    force_exact=f_obs.array(data=d.force_exact), hybrid_params=params)
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.update(f_obs=llgi_data.feff)
+  fmodel.set_target_name("llgi")
+  return fmodel
+
+def exercise_fmodel_integration(h, xrs):
+  from six.moves import cStringIO as StringIO
+  import mmtbx.refinement.llgi_maps as llgi_maps
+  xrs = xrs.deep_copy_scatterers()
+  xrs.scatterers().flags_set_grads(state=False)
+  xrs.scatterers().flags_set_grad_site(
+    iselection=flex.size_t(range(xrs.scatterers().size())))
+  fmodel = synthetic_fmodel(h, xrs)
+  log = StringIO()
+  new = llgi_tncs.setup(fmodel.llgi_data(), fmodel.f_obs(), h, xrs, log=log)
+  assert new is not None
+  assert "tNCS group: chains A B" in log.getvalue()
+  fmodel.set_llgi_data(new)
+  fmodel.update(f_obs=new.feff)
+  fmodel.update_all_scales()
+  result = fmodel.update_llgi_sigmaa_scatfrac()
+  ld = fmodel.llgi_data()
+  # errors shared by the copies: tau clearly positive
+  assert result.tau.p0 > 0.3, result.tau.p0
+  assert approx_equal(fmodel.f_obs().data(), ld.feff.data())
+  assert flex.min(ld.tncs_t.data()) > 0 and flex.min(ld.tncs_u.data()) > 0
+  u, t, sa = ld.tncs_u.data(), ld.tncs_t.data(), ld.sigmaa.data()
+  # t exceeds (1 - a_eff^2) u: the frame is valid everywhere
+  k = fmodel.scale_ml_wrapper()
+  a_eff = sa * (k if k > 0 else 1.) / flex.sqrt(ld.scatfrac.data())
+  assert flex.min(t - (1 - a_eff * a_eff) * u) > 0
+  assert fmodel.llgi_sigmaa_is_current()
+  # the coordinate target
+  tf = fmodel.target_functor()(compute_gradients=True)
+  assert math.isfinite(tf.target_work())
+  g = tf.gradients_wrt_atomic_parameters(site=True).packed()
+  assert g.size() == 3 * xrs.scatterers().size()
+  # (d target/d Fcalc is checked by finite differences in
+  # cctbx/xray/targets/tst_llgi_tncs.py)
+  assert flex.max(flex.abs(g)) > 0 and all(math.isfinite(x) for x in g)
+  assert fmodel.llgi_hybrid_counts() is not None
+  # statistics/map helper and LLGI maps
+  mch = fmodel.map_calculation_helper_llgi()
+  assert mch.n_exact > 0
+  assert flex.min(mch.fom) >= 0 and flex.max(mch.fom) < 1
+  maps = llgi_maps.compute(fmodel)
+  for label, a in maps.arrays:
+    assert flex.max(flex.abs(a.data())) < 1e10, label
+  # a selection keeps the tNCS arrays aligned
+  sel = fmodel.f_obs().d_spacings().data() > 4.0
+  fs = fmodel.select(sel)
+  assert fs.llgi_data().tncs_u.size() == sel.count(True)
+  tf = fs.target_functor()(compute_gradients=False)
+  assert math.isfinite(tf.target_work())
+
 def run():
   h, xrs = build_model()
   groups = exercise_groups(h)
   exercise_pair_term(groups, xrs)
   exercise_renormalise()
   exercise_fits(groups, xrs)
+  exercise_fmodel_integration(h, xrs)
   print("OK")
 
 if __name__ == "__main__":

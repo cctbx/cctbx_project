@@ -124,6 +124,13 @@ def compute(fmodel, params=None, log=None):
   sigmaa = llgi_data.sigmaa.data().deep_copy()
   sigmaa.set_selected(sigmaa < 0, 0)
   sigmaa.set_selected(sigmaa > SIGMAA_MAX, SIGMAA_MAX)
+  import mmtbx.refinement.llgi_tncs as llgi_tncs
+  tncs_u, tncs_t = llgi_tncs.arrays(llgi_data)
+  if(tncs_u is not None):
+    # tNCS: the t-normalised frame (llgi.h tncs_frame), in which the data
+    # are normalised: sigmaA -> a', Ec -> s*Ec; sqrt(t) in the F scale
+    sigmaa, s_frame = llgi_tncs.frame(sigmaa, tncs_u, tncs_t)
+    e_calc = e_calc * s_frame
   e_obs_sq = llgi_data.e_obs_sq.data()
   sig = llgi_data.sig_e_obs_sq.data()
   e_expected = posterior_mean_e(e_obs_sq, sig, e_calc, sigmaa, centric)
@@ -137,6 +144,8 @@ def compute(fmodel, params=None, log=None):
   if(params.remove_anisotropy and anisobeta is None):
     say("no ANISOBETA column; F-scale maps keep the anisotropy.")
   aniso = anisobeta.data() if remove_aniso else flex.double(resn.size(), 1)
+  if(tncs_u is not None):
+    teps = tncs_t
   f_scale = flex.sqrt(teps) * resn / flex.sqrt(aniso)
   def as_complex(values, scale=None):
     v = values if scale is None else values * scale
