@@ -105,7 +105,8 @@ import os
 from io import StringIO
 
 import iotbx.pdb
-from iotbx.cli_parser import run_program
+from iotbx.cli_parser import CCTBXParser, run_program
+from iotbx.data_manager import DataManager
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry, format_cpu_times, null_out
@@ -127,6 +128,15 @@ END
 # The same, without element columns, as older PDB files are written.
 _NO_ELEMENT_PDB = "\n".join(l[:76].rstrip()
                             for l in _TWO_ACCEPTOR_PDB.split("\n"))
+
+# A water by an unidentified atom in a crystal. The wwPDB writes such an
+# atom as UNX with element X, which has no scattering type.
+_UNKNOWN_ATOM_PDB = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  UNK UNX A   1       5.000   5.000   5.000  1.00 10.00           X
+HETATM    2  O   HOH W   1       7.700   5.000   5.000  1.00 10.00           O
+END
+"""
 
 # Water O coordinating an Mg (2.5 A along +x). The ONLY acceptor sits on
 # the Mg side (30 deg off the O->Mg axis), so acceptor-direction alone
@@ -1025,7 +1035,8 @@ def exercise_missing_elements_rejected():
 
   Runs the placer and the program on a fixture with its element columns
   stripped. The placer must raise an AssertionError and the program a Sorry,
-  both from the missing-element check, instead of skipping every water.
+  both from the missing-element check, instead of skipping every water. The
+  program's checks must accept an unidentified atom written as element X.
   """
   try:
     wp.place_water_hydrogens(_hierarchy(_NO_ELEMENT_PDB), n_refine=0)
@@ -1044,6 +1055,12 @@ def exercise_missing_elements_rejected():
     assert "Uninterpretable elements" in str(e), str(e)
   else:
     raise Exception_expected
+
+  dm = DataManager(["model", "phil"])
+  dm.process_model_str("unknown_atom.pdb", _UNKNOWN_ATOM_PDB)
+  params = CCTBXParser(program_class=wp_program.Program,
+                       logger=null_out()).master_phil.extract()
+  wp_program.Program(dm, params, logger=null_out()).validate()
 
 
 def exercise_multi_model_rejected():

@@ -13,8 +13,9 @@ from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 
+import mmtbx.model
 from mmtbx.hydrogens import water_protonation
 
 _MAX_LISTED_WATERS = 20
@@ -223,8 +224,13 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       self._print_residual_contacts(hier, cs)
     self._print_partial_waters(result.partial_waters)
 
-    self.model = model
     self._write_output(model)
+    # Placement added atoms to the hierarchy in place, past the loaded
+    # model's caches; the result is a model built on it.
+    hier.atoms().reset_i_seq()
+    self.model = mmtbx.model.manager(
+      model_input=None, pdb_hierarchy=hier,
+      crystal_symmetry=model.crystal_symmetry(), log=null_out())
 
   # ----------------------------------------------------------------------------
 
@@ -267,15 +273,12 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     return f"water H/D atoms: {n_before} -> {n_now} (+{added})"
 
   def _warn_if_environment_unprotonated(self, model):
-    """Warn when nothing outside the waters carries a hydrogen.
-
-    ``model.has_hd()`` spans the waters too, so it cannot settle this alone.
-    """
+    """Warn when nothing outside the waters carries a hydrogen."""
     hier = model.get_hierarchy()
     if not any(not water_protonation._is_water(ag.resname)
                for ag in hier.atom_groups()):
       return  # solvent-only model: there is nothing else to protonate
-    if model.has_hd() and water_protonation.count_environment_hydrogens(hier):
+    if water_protonation.count_environment_hydrogens(hier):
       return
     print("warning: the model has no hydrogens outside its waters. Placement "
           "tests candidate positions against the surrounding atoms and reads "
