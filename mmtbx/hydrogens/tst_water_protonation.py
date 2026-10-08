@@ -455,6 +455,50 @@ END
 """
 
 
+# A blank O whose D sit in altlocs A (0.6) and B (0.4), two in each.
+_ALTLOC_D_WATER_PDB = """\
+HETATM    1  O   HOH W   1       5.000   5.000   5.000  1.00 10.00           O
+HETATM    2  D1 AHOH W   1       5.984   5.000   5.000  0.60 10.00           D
+HETATM    3  D2 AHOH W   1       4.754   5.953   5.000  0.60 10.00           D
+HETATM    4  D1 BHOH W   1       5.000   5.000   5.984  0.40 10.00           D
+HETATM    5  D2 BHOH W   1       5.953   5.000   4.754  0.40 10.00           D
+END
+"""
+
+# An O split between altlocs A and B 0.3 A apart, sharing one blank D.
+_ALTLOC_O_WATER_PDB = """\
+HETATM    1  O  AHOH W   1       5.000   5.000   5.000  0.50 10.00           O
+HETATM    2  O  BHOH W   1       5.300   5.000   5.000  0.50 10.00           O
+HETATM    3  D1  HOH W   1       5.150   5.970   5.000  1.00 10.00           D
+END
+"""
+
+# One residue holding a water in altloc A and a sulfate in altloc B.
+_WATER_SO4_ALTLOC_PDB = """\
+HETATM    1  O  AHOH W   1       5.000   5.000   5.000  0.50 10.00           O
+HETATM    2  S  BSO4 W   1       7.000   5.000   5.000  0.50 10.00           S
+HETATM    3  O1 BSO4 W   1       7.000   6.430   5.000  0.50 10.00           O
+END
+"""
+
+# W 2 blank and W 3 split between altlocs A and B 0.6 A apart, all carrying
+# H, in P1: H1 of W 2 lies 1.486 A from the -a translate of W 3's H1 in A
+# and 1.603 A from that of its H1 in B.
+_SPLIT_SYM_CONTACT_PDB = """\
+CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH W   2       1.000   7.500   7.500  1.00 10.00           O
+HETATM    2  H1  HOH W   2       0.043   7.500   7.500  1.00 10.00           H
+HETATM    3  H2  HOH W   2       1.240   8.427   7.500  1.00 10.00           H
+HETATM    4  O  AHOH W   3       7.600   7.500   7.500  0.50 10.00           O
+HETATM    5  H1 AHOH W   3       8.557   7.500   7.500  0.50 10.00           H
+HETATM    6  H2 AHOH W   3       7.360   8.427   7.500  0.50 10.00           H
+HETATM    7  O  BHOH W   3       7.600   7.500   8.100  0.50 10.00           O
+HETATM    8  H1 BHOH W   3       8.557   7.500   8.100  0.50 10.00           H
+HETATM    9  H2 BHOH W   3       7.360   6.573   8.100  0.50 10.00           H
+END
+"""
+
+
 # The same water and acceptor in two models.
 _MULTI_MODEL_PDB = """\
 MODEL        1
@@ -515,13 +559,15 @@ def exercise_cation_repulsion():
 
 
 def exercise_idempotent():
-  """A water that already has two H is left exactly as-is."""
-  hier = _hierarchy(_PROTONATED_WATER_PDB)
-  before = [(a.name.strip(), tuple(a.xyz)) for a in hier.atoms()]
-  wp.place_water_hydrogens(hier)
-  after = [(a.name.strip(), tuple(a.xyz)) for a in hier.atoms()]
-  assert after == before, (
-    f"already-protonated water must be untouched:\n{before}\n{after}")
+  """A water that already has two H is left exactly as-is, as is a blank O
+  carrying two D in each of altlocs A and B."""
+  for pdb_str in (_PROTONATED_WATER_PDB, _ALTLOC_D_WATER_PDB):
+    hier = _hierarchy(pdb_str)
+    before = [(a.name.strip(), tuple(a.xyz)) for a in hier.atoms()]
+    wp.place_water_hydrogens(hier)
+    after = [(a.name.strip(), tuple(a.xyz)) for a in hier.atoms()]
+    assert after == before, (
+      f"already-protonated water must be untouched:\n{before}\n{after}")
 
 
 def exercise_protonated_n_not_acceptor():
@@ -977,7 +1023,9 @@ def exercise_sym_equiv_contacts_counted():
   the counts the placer reports for its state, the counts from the
   hierarchy and the program's contact listing. Each must hold the two
   contacts across symmetry once, at 1.486 and 1.600 A, the second against
-  the water's own equivalent; without a crystal symmetry there are none.
+  the water's own equivalent; without a crystal symmetry there are none. On
+  ``_SPLIT_SYM_CONTACT_PDB`` a water split between altlocs, with an O per
+  conformer, makes two contacts, each counted once.
   """
   hier, cs = _hierarchy_and_symmetry(_SYM_CONTACT_PDB)
   states = []
@@ -991,6 +1039,20 @@ def exercise_sym_equiv_contacts_counted():
   assert [c[1:] for c in listed] == [
     ("HOH W 2 H1", "HOH W 3 H1 (x-1,y,z)"),
     ("HOH W 1 H1", "HOH W 1 H1 (-x,-y+1,-z+1)")], listed
+
+  # A water split between altlocs has an O per conformer, yet each contact
+  # with it counts once.
+  hier, cs = _hierarchy_and_symmetry(_SPLIT_SYM_CONTACT_PDB)
+  states = []
+  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
+                           on_state=lambda label, stats: states.append(stats))
+  assert [s[1] for s in states] == [2], states
+  assert wp._water_clash_stats(hier, crystal_symmetry=cs) == states[0]
+  listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
+  assert approx_equal([c[0] for c in listed], [1.486, 1.603], eps=1e-3)
+  assert [c[1:] for c in listed] == [
+    ("HOH W 2 H1", "HOH W 3 H1 (A) (x-1,y,z)"),
+    ("HOH W 2 H1", "HOH W 3 H1 (B) (x-1,y,z)")], listed
 
 
 def exercise_sym_equiv_on_symmetry_element():
@@ -1009,6 +1071,53 @@ def exercise_sym_equiv_on_symmetry_element():
     [a.name for a in atoms], list(xyz))
   assert approx_equal(xyz[0], (-0.757, 5.586, 0.0))
   assert list(source) == [1], list(source)
+
+
+def exercise_water_conformers():
+  """A water split between altlocs is placed per conformer, its blank atoms
+  plus one altloc's.
+
+  Completes ``_ALTLOC_D_WATER_PDB`` stripped of its D2s: each altloc gains a
+  D2 at its own occupancy. Completes ``_ALTLOC_O_WATER_PDB``: each altloc
+  gains a D2 beside the shared blank D1, the water is reported once as
+  carrying a single H, and its own D count as no clash. Places
+  ``_WATER_SO4_ALTLOC_PDB``: the water's altloc gains two H, the sulfate's
+  none. Reorients ``_ALTLOC_D_WATER_PDB``: each altloc's pair is re-placed
+  at its occupancy.
+  """
+  def hd_by_altloc(hier):
+    return {ag.altloc: sorted((a.name.strip(), a.element.strip(), a.occ)
+                              for a in ag.atoms()
+                              if a.element.strip() in ("H", "D"))
+            for ag in hier.atom_groups()}
+  pairs = {"": [], "A": [("D1", "D", 0.6), ("D2", "D", 0.6)],
+           "B": [("D1", "D", 0.4), ("D2", "D", 0.4)]}
+
+  hier = _hierarchy("\n".join(l for l in _ALTLOC_D_WATER_PDB.split("\n")
+                               if " D2 " not in l))
+  wp.place_water_hydrogens(hier, n_refine=0, existing_h="complete")
+  assert hd_by_altloc(hier) == pairs, hd_by_altloc(hier)
+
+  hier = _hierarchy(_ALTLOC_O_WATER_PDB)
+  states = []
+  res = wp.place_water_hydrogens(
+    hier, n_refine=0, existing_h="complete",
+    on_state=lambda label, stats: states.append(stats[1]))
+  got = hd_by_altloc(hier)
+  assert got == {"": [("D1", "D", 1.0)], "A": [("D2", "D", 0.5)],
+                 "B": [("D2", "D", 0.5)]}, got
+  assert [(p[0], p[2]) for p in res.partial_waters] == [
+    ("HOH W 1", "completed")], res.partial_waters
+  assert states == [0], states
+
+  hier = _hierarchy(_WATER_SO4_ALTLOC_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0)
+  got = {ag.resname: ag.atoms_size() for ag in hier.atom_groups()}
+  assert got == {"HOH": 3, "SO4": 2}, got
+
+  hier = _hierarchy(_ALTLOC_D_WATER_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")
+  assert hd_by_altloc(hier) == pairs, hd_by_altloc(hier)
 
 
 def exercise_altloc_environment():
@@ -1084,8 +1193,10 @@ def exercise_reorient_keeps_isotope():
   protons as the element it carried, not the one its residue name implies.
 
   Reorients D on an HOH and H on a DOD, checking the element, the names and
-  that the protons turned toward the acceptor. Then runs the program on the
-  HOH carrying D at the X-ray O-H length, which must warn about placing D.
+  that the protons turned toward the acceptor, and an O split between
+  altlocs that shares one blank D, whose altlocs each get a D pair. Then
+  runs the program on the HOH carrying D at the X-ray O-H length, which must
+  warn about placing D.
   """
   acc = matrix.col((2.700, 0.000, 0.000))
   for pdb_str, want in ((_BAD_DEUTERATED_PDB, "D"),
@@ -1102,6 +1213,14 @@ def exercise_reorient_keeps_isotope():
     best = max(_unit(h, o).dot((acc - matrix.col(o.xyz)).normalize())
                for h in hs)
     assert best > 0.9, f"{want} not re-placed toward the acceptor ({best:.3f})"
+
+  hier = _hierarchy(_ALTLOC_O_WATER_PDB)
+  wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")
+  for ag in hier.atom_groups():
+    hs = sorted((a.name.strip(), a.element.strip()) for a in ag.atoms()
+                if a.element.strip() in ("H", "D"))
+    assert hs == ([] if not ag.altloc else [("D1", "D"), ("D2", "D")]), (
+      ag.altloc, hs)
 
   file_name = "tst_water_protonation_reorient_d.pdb"
   with open(file_name, "w") as f:
@@ -1219,6 +1338,7 @@ def run():
   exercise_sym_equiv_protons()
   exercise_sym_equiv_contacts_counted()
   exercise_sym_equiv_on_symmetry_element()
+  exercise_water_conformers()
   exercise_altloc_environment()
   exercise_improper_altloc_rejected()
   exercise_electron_microscopy_isolated()
