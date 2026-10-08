@@ -446,38 +446,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       }
   };
 
-  //! cctbx::invert_french_wilson over arrays: (I, sigma_I) from
-  //! French-Wilson amplitudes, given the prior <I> per reflection.
-  class french_wilson_inverse
-  {
-    public:
-      af::shared<double> i_obs, sig_i_obs, h;
-      af::shared<bool> valid, prior_dominated;
-
-      french_wilson_inverse(
-        af::const_ref<double> const& f,
-        af::const_ref<double> const& sigf,
-        af::const_ref<double> const& mean_intensity,
-        af::const_ref<bool> const& centric,
-        double h_min = -6.0)
-      {
-        std::size_t n = f.size();
-        CCTBX_ASSERT(sigf.size() == n && mean_intensity.size() == n);
-        CCTBX_ASSERT(centric.size() == n);
-        for (std::size_t i = 0; i < n; i++) {
-          double io = 0, si = 0, hh = 0;
-          bool prior = false;
-          bool ok = cctbx::invert_french_wilson(f[i], sigf[i],
-            mean_intensity[i], centric[i], io, si, hh, prior, h_min);
-          i_obs.push_back(io);
-          sig_i_obs.push_back(si);
-          h.push_back(hh);
-          valid.push_back(ok);
-          prior_dominated.push_back(prior);
-        }
-      }
-  };
-
   //! cctbx::rice_from_intensity over arrays.
   class rice_moments_many
   {

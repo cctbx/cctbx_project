@@ -4,7 +4,6 @@ from cctbx.xray import ext
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.llgi_hybrid as llgi_hybrid
 import numpy as np
-import random
 
 from mmtbx.regression.llgi_test_utils import (
   build_fmodel, build_llgi_fmodel, synthetic_llgi_data)
@@ -142,49 +141,12 @@ def exercise_k1_scale_carries_feff_and_resn():
     flex.mean(new.feff.data()) / flex.mean(fmodel.f_obs().data()), ratio0)
   assert approx_equal(new.feff.data() / new.resn.data(), eeff0)
 
-def exercise_intensities_from_amplitudes():
-  """ cctbx French-Wilson amplitudes from synthetic intensities, then the
-  reconstruction: close to the original intensities for most reflections;
-  plain amplitudes are recognised as not French-Wilson. """
-  from cctbx import french_wilson
-  import io
-  fmodel = build_fmodel(n_atoms=60, d_min=1.8, seed=7)
-  f_calc = abs(fmodel.f_model())
-  rnd = random.Random(3)
-  i_true = flex.pow2(f_calc.data())
-  mean_i = flex.mean(i_true)
-  sig = flex.double([0.05 * x + 0.02 * mean_i * (1 + rnd.random())
-    for x in i_true])
-  i_obs = f_calc.customized_copy(
-    data=i_true + sig * flex.double([rnd.gauss(0, 1) for x in i_true]),
-    sigmas=sig).set_observation_type_xray_intensity()
-  f_fw = french_wilson.french_wilson_scale(miller_array=i_obs,
-    log=io.StringIO())
-  log = io.StringIO()
-  r = llgi_hybrid.intensities_from_amplitudes(f_obs=f_fw, log=log)
-  assert r.french_wilson
-  assert "WARNING: the LLGI data were derived from amplitudes" in log.getvalue()
-  i_c, rec = i_obs.common_sets(r.i_obs)
-  z = flex.abs(rec.data() - i_c.data()) / i_c.sigmas()
-  zs = sorted(z)
-  assert zs[len(zs)//2] < 0.05, zs[len(zs)//2]
-  assert zs[int(0.95*len(zs))] < 0.5, zs[int(0.95*len(zs))]
-  ratio = rec.sigmas() / i_c.sigmas()
-  assert abs(sorted(ratio)[len(ratio)//2] - 1) < 0.01
-  # plain amplitudes (not French-Wilson): I = F^2, SIGI = 2 F SIGF
-  f_plain = f_calc.customized_copy(data=f_calc.data(),
-    sigmas=f_calc.data() * 0.9)  # SIGF/F above the French-Wilson limit
-  r2 = llgi_hybrid.intensities_from_amplitudes(f_obs=f_plain)
-  assert not r2.french_wilson
-  assert approx_equal(r2.i_obs.data(), flex.pow2(f_calc.data()))
-
 def run():
   exercise_helpers_and_select()
   exercise_map_coefficients_exact_branch()
   exercise_map_coefficients_exact_without_hybrid()
   exercise_d_model_target_with_hybrid()
   exercise_k1_scale_carries_feff_and_resn()
-  exercise_intensities_from_amplitudes()
   print("OK")
 
 if (__name__ == "__main__"):

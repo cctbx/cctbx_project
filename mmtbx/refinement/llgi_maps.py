@@ -171,8 +171,7 @@ def compute(fmodel, params=None, log=None):
     arrays.append((LABELS.difference_e, as_complex(ce.difference)))
   if(getattr(llgi_data, "from_amplitudes", False)):
     say("WARNING: computed from intensities reconstructed from amplitudes "
-      "(approximate). Use a nacelle file made from intensities if at all "
-      "possible.")
+      "(approximate). Use the original intensities if at all possible.")
   say("wrote %s (F scale%s)%s." % (", ".join(a[0] for a in arrays),
     ", anisotropy removed" if remove_aniso else "",
     "; filled map completed with %d unmeasured reflections" % (

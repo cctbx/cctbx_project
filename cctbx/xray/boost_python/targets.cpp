@@ -436,27 +436,6 @@ namespace {
         ;
       }
       {
-        typedef llgi_exact::french_wilson_inverse w_t;
-        class_<w_t>("llgi_french_wilson_inverse", no_init)
-          .def(init<
-            af::const_ref<double> const&,
-            af::const_ref<double> const&,
-            af::const_ref<double> const&,
-            af::const_ref<bool> const&,
-            optional<double> >((
-              arg("f"),
-              arg("sigf"),
-              arg("mean_intensity"),
-              arg("centric_flags"),
-              arg("h_min")=-6.0)))
-          .add_property("i_obs", make_getter(&w_t::i_obs, return_value_policy<return_by_value>()))
-          .add_property("sig_i_obs", make_getter(&w_t::sig_i_obs, return_value_policy<return_by_value>()))
-          .add_property("h", make_getter(&w_t::h, return_value_policy<return_by_value>()))
-          .add_property("valid", make_getter(&w_t::valid, return_value_policy<return_by_value>()))
-          .add_property("prior_dominated", make_getter(&w_t::prior_dominated, return_value_policy<return_by_value>()))
-        ;
-      }
-      {
         typedef llgi_exact::rice_moments_many w_t;
         class_<w_t>("llgi_rice_moments", no_init)
           .def(init<
