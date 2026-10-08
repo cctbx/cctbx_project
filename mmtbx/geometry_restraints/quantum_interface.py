@@ -240,6 +240,9 @@ def electrons(model,
               specific_atom_multiplicities=None,
               return_atom_valences=False,
               log=None):
+  #
+  # needs to be updated to new electrons NWM
+  #
   from libtbx.utils import Sorry
   from mmtbx.ligands import electrons
   atom_valences = electrons.electron_distribution(

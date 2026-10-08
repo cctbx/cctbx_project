@@ -118,110 +118,6 @@ class validate_electron_distribution(dict):
     self.grm = grm
     assert 0
 
-  def validate(self, ignore_water=False, raise_if_error=True):
-    charged_atoms = self.get_charged_atoms()
-    charged_residues = {}
-    rc = {}
-
-    atoms = self.hierarchy.atoms()
-    for key, electrons in self.items():
-      if type(key)==type(tuple([])):
-        if self.is_metal_bond(key): pass
-        elif electrons==0:
-          outl = 'No electrons allocated to bond: %s-%s' % (
-            atoms[key[0]].quote(),
-            atoms[key[1]].quote(),
-          )
-          if raise_if_error: raise Sorry(outl)
-          rc.setdefault(outl, [])
-          rc[outl].append([ atoms[key[0]].quote(),
-                            atoms[key[1]].quote(),
-                            key])
-      else:
-        assert abs(electrons)<10
-        disallowed = disallowed_element_charges.get(atoms[key].element, None)
-        outl = 'Element has strange number of electrons  %s  : %d' % (
-          atoms[key].element,
-          electrons)
-        if electrons!=0 and disallowed is not None:
-          def _comp_disallowed(actual, disallowed):
-            if disallowed<0: return actual<=disallowed
-            elif disallowed>0: return actual>=disallowed
-            assert 0
-          if _comp_disallowed(electrons, disallowed):
-            if raise_if_error: raise Sorry(outl)
-            rc.setdefault(outl, [])
-            rc[outl].append([atoms[key].quote(), key])
-
-    terminals = {}
-    for atom, charge in charged_atoms:
-      if atom.name in [' OXT']: terminals[atom.parent().id_str()]=charge
-      ag = atom.parent()
-      if get_class(ag.resname) in ['common_amino_acid']:
-        base = base_amino_acid_charges.get(ag.resname, 0)
-        tmp = charged_residues.setdefault(ag.id_str(), base)
-        tmp += charge
-        charged_residues[ag.id_str()] = tmp
-
-      if ag.resname in other_charges:
-        if ignore_water and ag.resname in ['HOH']: continue
-        if charge!=other_charges[ag.resname]:
-          outl = '  Residue %s has a problem with the charge : %s!=%s' % (
-            ag.resname,
-            charge,
-            other_charges[ag.resname]
-            )
-        if raise_if_error: raise Sorry(outl)
-        rc.setdefault(outl, [])
-        rc[outl].append(atom.quote())
-
-    for ag in self.hierarchy.atom_groups():
-      delta = 1
-      if ag.resname in ['HIS']: delta=2
-      terminal_adjust = ag.id_str() in terminals
-      charge = charged_residues.get(ag.id_str(), 0)
-      outl = 'Unlikely charge for %s of %s' % (ag.resname, charge)
-      if abs(charge-base_amino_acid_charges.get(ag.resname, 0)-int(terminal_adjust)) > delta:
-        if raise_if_error: raise Sorry(outl)
-        rc.setdefault(outl, [])
-        rc[outl].append('"%s"' % ag.id_str())
-    return rc
-
-  def report(self, ignore_water=False, show_detailed=False):
-    answers = {
-      'Residue HOH has a problem with the charge : 2!=0' : \
-        'Hydrogen atoms not added to water',
-      'Element has strange number of electrons  N  : 1' : \
-        'N terminal (or break) missing hydrogen atoms',
-      'Element has strange number of electrons  O  : -1' : \
-        'C terminal (or break) missing oxygen atoms',
-    }
-    report = self.validate(ignore_water=ignore_water,
-                           raise_if_error=False)
-    outl=''
-    for key, item in sorted(report.items()):
-      outl += '\n  %s\n' % key.strip()
-      for instance in item:
-        i=instance
-        if type(instance)==type([]):
-          i=instance[0]
-        outl += '    %s\n' % i
-      if show_detailed:
-        answer = answers.get(key.strip(), None)
-        if answer:
-          outl += '\n     HINT: %s\n' % answer
-        else:
-          if key.find('Unlikely charge for')>-1 and int(key.split()[-1])>1:
-            outl += '\n     HINT: %s\n' % 'Missing side chain atoms'
-          elif key.find('No electrons allocated to bond:')>-1:
-            outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
-          else:
-            pass
-    if outl:
-      outl = 'Validation report\n%s' % outl
-      print(outl)
-    return report
-
 class electron_distribution(dict):
   def __init__(self,
                hierarchy,
@@ -1087,6 +983,111 @@ class electron_distribution(dict):
       if electrons:
         rc.append([ atoms[key],electrons])
     return rc
+
+  def validate(self, ignore_water=False, raise_if_error=True):
+    charged_atoms = self.get_charged_atoms()
+    charged_residues = {}
+    rc = {}
+
+    atoms = self.hierarchy.atoms()
+    for key, electrons in self.items():
+      if type(key)==type(tuple([])):
+        if self.is_metal_bond(key): pass
+        elif electrons==0:
+          outl = 'No electrons allocated to bond: %s-%s' % (
+            atoms[key[0]].quote(),
+            atoms[key[1]].quote(),
+          )
+          if raise_if_error: raise Sorry(outl)
+          rc.setdefault(outl, [])
+          rc[outl].append([ atoms[key[0]].quote(),
+                            atoms[key[1]].quote(),
+                            key])
+      else:
+        assert abs(electrons)<10
+        disallowed = disallowed_element_charges.get(atoms[key].element, None)
+        outl = 'Element has strange number of electrons  %s  : %d' % (
+          atoms[key].element,
+          electrons)
+        if electrons!=0 and disallowed is not None:
+          def _comp_disallowed(actual, disallowed):
+            if disallowed<0: return actual<=disallowed
+            elif disallowed>0: return actual>=disallowed
+            assert 0
+          if _comp_disallowed(electrons, disallowed):
+            if raise_if_error: raise Sorry(outl)
+            rc.setdefault(outl, [])
+            rc[outl].append([atoms[key].quote(), key])
+
+    terminals = {}
+    for atom, charge in charged_atoms:
+      if atom.name in [' OXT']: terminals[atom.parent().id_str()]=charge
+      ag = atom.parent()
+      if get_class(ag.resname) in ['common_amino_acid']:
+        base = base_amino_acid_charges.get(ag.resname, 0)
+        tmp = charged_residues.setdefault(ag.id_str(), base)
+        tmp += charge
+        charged_residues[ag.id_str()] = tmp
+
+      if ag.resname in other_charges:
+        if ignore_water and ag.resname in ['HOH']: continue
+        if charge!=other_charges[ag.resname]:
+          outl = '  Residue %s has a problem with the charge : %s!=%s' % (
+            ag.resname,
+            charge,
+            other_charges[ag.resname]
+            )
+        if raise_if_error: raise Sorry(outl)
+        rc.setdefault(outl, [])
+        rc[outl].append(atom.quote())
+
+    for ag in self.hierarchy.atom_groups():
+      delta = 1
+      if ag.resname in ['HIS']: delta=2
+      terminal_adjust = ag.id_str() in terminals
+      charge = charged_residues.get(ag.id_str(), 0)
+      outl = 'Unlikely charge for %s of %s' % (ag.resname, charge)
+      if abs(charge-base_amino_acid_charges.get(ag.resname, 0)-int(terminal_adjust)) > delta:
+        if raise_if_error: raise Sorry(outl)
+        rc.setdefault(outl, [])
+        rc[outl].append('"%s"' % ag.id_str())
+    return rc
+
+  def report(self, ignore_water=False, show_detailed=False):
+    answers = {
+      'Residue HOH has a problem with the charge : 2!=0' : \
+        'Hydrogen atoms not added to water',
+      'Element has strange number of electrons  N  : 1' : \
+        'N terminal (or break) missing hydrogen atoms',
+      'Element has strange number of electrons  O  : -1' : \
+        'C terminal (or break) missing oxygen atoms',
+    }
+    report = self.validate(ignore_water=ignore_water,
+                           raise_if_error=False)
+    outl=''
+    for key, item in sorted(report.items()):
+      outl += '\n  %s\n' % key.strip()
+      for instance in item:
+        i=instance
+        if type(instance)==type([]):
+          i=instance[0]
+        outl += '    %s\n' % i
+      if show_detailed:
+        answer = answers.get(key.strip(), None)
+        if answer:
+          outl += '\n     HINT: %s\n' % answer
+        else:
+          if key.find('Unlikely charge for')>-1 and int(key.split()[-1])>1:
+            outl += '\n     HINT: %s\n' % 'Missing side chain atoms'
+          elif key.find('No electrons allocated to bond:')>-1:
+            outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
+          else:
+            pass
+    if outl:
+      outl = 'Validation report\n%s' % outl
+      print(outl)
+    return report
+
 
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import null_out
