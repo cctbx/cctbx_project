@@ -72,6 +72,43 @@ def get_atom_database():
   atom_database['D']=atom_database['H']
   return atom_database
 
+def report(ed_class, ignore_water=False, show_detailed=False):
+  answers = {
+    'Residue HOH has a problem with the charge : 2!=0' : \
+      'Hydrogen atoms not added to water',
+    'Element has strange number of electrons  N  : 1' : \
+      'N terminal (or break) missing hydrogen atoms',
+    'Element has strange number of electrons  O  : -1' : \
+      'C terminal (or break) missing oxygen atoms',
+  }
+  report = ed_class.validate(ignore_water=ignore_water,
+                             raise_if_error=False)
+  outl=''
+  for key, item in sorted(report.items()):
+    outl += '\n  %s\n' % key.strip()
+    for instance in item:
+      i=instance
+      if type(instance)==type([]):
+        i=instance[0]
+      outl += '    %s\n' % i
+    if show_detailed:
+      answer = answers.get(key.strip(), None)
+      if answer:
+        outl += '\n     HINT: %s\n' % answer
+      else:
+        if key.find('Unlikely charge for')>-1 and int(key.split()[-1])>1:
+          outl += '\n     HINT: %s\n' % 'Missing side chain atoms'
+        elif key.find('No electrons allocated to bond:')>-1:
+          outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
+        else:
+          pass
+  if outl:
+    outl = 'Validation report\n%s' % outl
+    print(outl)
+  return report
+
+
+
 class atom_property(dict):
   def __init__(self):
     atom_database = get_atom_database()
@@ -1053,42 +1090,6 @@ class electron_distribution(dict):
         rc[outl].append('"%s"' % ag.id_str())
     return rc
 
-  def report(self, ignore_water=False, show_detailed=False):
-    answers = {
-      'Residue HOH has a problem with the charge : 2!=0' : \
-        'Hydrogen atoms not added to water',
-      'Element has strange number of electrons  N  : 1' : \
-        'N terminal (or break) missing hydrogen atoms',
-      'Element has strange number of electrons  O  : -1' : \
-        'C terminal (or break) missing oxygen atoms',
-    }
-    report = self.validate(ignore_water=ignore_water,
-                           raise_if_error=False)
-    outl=''
-    for key, item in sorted(report.items()):
-      outl += '\n  %s\n' % key.strip()
-      for instance in item:
-        i=instance
-        if type(instance)==type([]):
-          i=instance[0]
-        outl += '    %s\n' % i
-      if show_detailed:
-        answer = answers.get(key.strip(), None)
-        if answer:
-          outl += '\n     HINT: %s\n' % answer
-        else:
-          if key.find('Unlikely charge for')>-1 and int(key.split()[-1])>1:
-            outl += '\n     HINT: %s\n' % 'Missing side chain atoms'
-          elif key.find('No electrons allocated to bond:')>-1:
-            outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
-          else:
-            pass
-    if outl:
-      outl = 'Validation report\n%s' % outl
-      print(outl)
-    return report
-
-
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import null_out
 from libtbx import group_args
@@ -1269,6 +1270,8 @@ Inputs:
                                                              verbose=False)
         print(f"Total formal charge simple: {total_charge_each}\n", file=self.logger)
         molecule_each=molecules[i_mol]
+      else:
+        molecules[i_mol]=molecule_each
 
       #
       # could be the next level of checking
@@ -1282,42 +1285,57 @@ Inputs:
 
       charges.append(total_charge_each)
       total_charge+=total_charge_each
-      ta=models[i_mol].get_hierarchy().atoms()
-      for i, atom in enumerate(molecule_each.GetAtoms()):
-        if atom.GetFormalCharge():
-          outl+=f'  {i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}\n'
+      # ta=models[i_mol].get_hierarchy().atoms()
+      # for i, atom in enumerate(molecule_each.GetAtoms()):
+      #   if atom.GetFormalCharge():
+      #     outl+=f'  {i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}\n'
     if outl:
       print(f'\nNon-zero charged atoms\n{outl}')
     print(f"Total formal charge: {total_charge} \n", file=self.logger)
     print('Distribution time : %01.fms' % ((time.time()-t0)*1000), file=self.logger)
 
-    # if self.params.action.show_formal_charges or self.params.action.show_non_zero_formal_charges:
-    #   if self.params.action.show_formal_charges:
-    #     print('\nFormal charges')
-    #   elif self.params.action.show_non_zero_formal_charges:
-    #     print('\nFormal non-zero charges')
-    #   for i, atom in enumerate(molecule.GetAtoms()):
-    #     show=False
-    #     if self.params.action.show_formal_charges:
-    #       show=True
-    #     elif self.params.action.show_non_zero_formal_charges and atom.GetFormalCharge():
-    #       show=True
-    #     if show:
-    #       print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d}')
+    if self.params.action.show_formal_charges or self.params.action.show_non_zero_formal_charges:
+      outl=''
+      if self.params.action.show_formal_charges:
+        header='\nFormal charges'
+      elif self.params.action.show_non_zero_formal_charges:
+        header='\nFormal non-zero charges'
+      for i_mol, molecule in enumerate(molecules):
+        for i, atom in enumerate(molecule.GetAtoms()):
+          show=False
+          if self.params.action.show_formal_charges:
+            show=True
+          elif self.params.action.show_non_zero_formal_charges and atom.GetFormalCharge():
+            show=True
+          if show:
+            outl+=f'  {i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d}\n'
 
-    # if self.params.action.show_partial_charges:
-    #   print('\nPartial charges')
-    #   molecule.ComputeGasteigerCharges()
-    #   for i, atom in enumerate(molecule.GetAtoms()):
-    #     pc=float(atom.GetProp('_GasteigerCharge'))
-    #     print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
+      if outl:
+        print(f'{header}\n{outl}', file=self.logger)
 
-    # if self.params.action.show_bond_types:
-    #   print('\nBond types')
-    #   for bond in molecule.GetBonds():
-    #     q1=atoms[bond.GetBeginAtomIdx()].quote()
-    #     q2=atoms[bond.GetEndAtomIdx()].quote()
-    #     print(f'{q1} - {q2} : {bond.GetBondType()}')
+    if self.params.action.show_partial_charges:
+      outl=''
+      for i_mol, molecule in enumerate(molecules):
+        try:
+          molecule.ComputeGasteigerCharges()
+        except RuntimeError:
+          outl = '  ComputeGasteigerCharges failed'
+          break
+        for i, atom in enumerate(molecule.GetAtoms()):
+          pc=float(atom.GetProp('_GasteigerCharge'))
+          print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
+      if outl:
+        print(f'\nPartial charges\n{outl}')
+
+    if self.params.action.show_bond_types:
+      outl=''
+      for i_mol, molecule in enumerate(molecules):
+        for bond in molecule.GetBonds():
+          q1=atoms[bond.GetBeginAtomIdx()].quote()
+          q2=atoms[bond.GetEndAtomIdx()].quote()
+          outl+=f'  {q1} - {q2} : {bond.GetBondType()}\n'
+      if outl:
+        print(f'\nBond types\n{outl}')
 
     # t0=time.time()
     # self.atom_valences = electron_distribution(
