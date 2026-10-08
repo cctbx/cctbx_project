@@ -16,7 +16,7 @@ def run():
 
 def test_000():
   '''
-    Run reduce on a single atom model --> no H will be placed
+    Run reduce on a CA-only model --> stops before H placement
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_000.split("\n"), source_info=None)
   # initial model
@@ -37,7 +37,7 @@ def test_000():
   except Sorry as e:
     sorry_msg = str(e)
 
-  assert('Is this a single atom model?' in sorry_msg)
+  assert('The model contains only CA atoms' in sorry_msg), sorry_msg
 
   os.remove(fn)
 

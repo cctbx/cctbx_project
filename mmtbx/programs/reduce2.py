@@ -1234,6 +1234,8 @@ NOTES:
     self.model = self.data_manager.get_model()
 
     self.model = self.model.select(~self.model.selection('element X'))
+    if self.model.is_ca_only():
+      raise Sorry("The model contains only CA atoms (CA trace); H atoms cannot be placed.")
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     # The box is for the calculation only and is not written out. Cushion 5:
