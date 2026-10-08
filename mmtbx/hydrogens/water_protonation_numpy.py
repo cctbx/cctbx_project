@@ -223,16 +223,29 @@ def _free_proton_name(existing_names, element):
   return None
 
 
-def _sp2_plane_normal(atoms, static_tree, c, exclude):
+def _compatible(ca, cb):
+  """Whether atoms of conformer indices ``ca`` and ``cb`` coexist.
+
+  cctbx's rule: atoms in two different altlocs never meet, and a blank atom
+  (index 0) meets every altloc.
+  """
+  return not ca or not cb or ca == cb
+
+
+def _sp2_plane_normal(atoms, static_tree, c, exclude, conf=None, view=0):
   """Unit normal of the sp2 plane around atom ``c``.
 
   Built from ``c``'s heavy substituents other than ``exclude``, the bonded
-  acceptor O that supplies one in-plane vector. None if underdetermined.
+  acceptor O that supplies one in-plane vector, taking only substituents
+  that coexist with conformer ``view`` (any, for view 0; ``conf`` holds the
+  per-atom conformer indices). None if underdetermined.
   """
   C = matrix.col(atoms[c].xyz)
   oc = matrix.col(atoms[exclude].xyz) - C   # C -> O
   for k in static_tree.query_ball_point(atoms[c].xyz, _WATER_BOND_HEAVY):
     if k == c or k == exclude:
+      continue
+    if view and not _compatible(view, conf[k]):
       continue
     if atoms[k].element_is_hydrogen():
       continue
@@ -245,7 +258,29 @@ def _sp2_plane_normal(atoms, static_tree, c, exclude):
   return None
 
 
-def _acceptor_lobes(atoms, static_tree, donor_n, indices):
+def _bond_lobes(atoms, static_tree, i, el, nbrs, conf, view):
+  """Lone-pair lobes of acceptor ``i`` (element ``el``) from its bonded
+  neighbours ``nbrs``, the sp2 plane taken in conformer ``view``; see
+  :func:`_acceptor_lobes`."""
+  A = matrix.col(atoms[i].xyz)
+  bond_dirs = [(matrix.col(atoms[j].xyz) - A).normalize() for j in nbrs]
+  if not bond_dirs:
+    return []
+  if el == "O" and len(nbrs) == 1:
+    away = bond_dirs[0] * -1.0
+    n = _sp2_plane_normal(atoms, static_tree, nbrs[0], i, conf, view)
+    if n is None:
+      return [away]
+    return [
+      away.rotate_around_origin(axis=n, angle=_WATER_SP2_LOBE_DEG, deg=True),
+      away.rotate_around_origin(axis=n, angle=-_WATER_SP2_LOBE_DEG, deg=True)]
+  bsum = matrix.col((0.0, 0.0, 0.0))
+  for b in bond_dirs:
+    bsum = bsum + b
+  return [(bsum * -1.0).normalize()] if bsum.length() > 1e-6 else []
+
+
+def _acceptor_lobes(atoms, static_tree, donor_n, indices, conf=None):
   """Lone-pair lobe unit vectors per acceptor atom among ``indices``, from
   bonded geometry.
 
@@ -255,8 +290,15 @@ def _acceptor_lobes(atoms, static_tree, donor_n, indices):
   - otherwise: one lobe opposite the sum of the bond directions.
 
   ``donor_n`` holds the indices of N that carry an H (donors, not acceptors).
-  Returns acceptor index -> lobe list, empty where the geometry is
-  underdetermined.
+  ``conf`` holds per-atom conformer indices, None for a model without
+  altlocs: a bond joins only atoms that coexist, and a blank acceptor whose
+  bonded neighbours are split between altlocs has one geometry per altloc.
+
+  Returns acceptor index -> ``{view: lobe list}``, a lobe list empty where
+  the geometry is underdetermined. ``view`` is the conformer the lobes were
+  built in: the acceptor's own, unless it is blank with split neighbours,
+  which gives one view per altloc among them and view 0 from its blank
+  neighbours alone. :func:`_view_lobes` picks the lobes a water sees.
   """
   lobes = {}
   for i in indices:
@@ -266,35 +308,42 @@ def _acceptor_lobes(atoms, static_tree, donor_n, indices):
       continue
     if el == "N" and i in donor_n:
       continue  # protonated N is a donor, not an acceptor
+    ci = conf[i] if conf is not None else 0
     A = matrix.col(a.xyz)
     nbrs = []
     for j in static_tree.query_ball_point(a.xyz, _WATER_BOND_HEAVY):
       if j == i:
         continue
+      if conf is not None and not _compatible(ci, conf[j]):
+        continue  # another altloc's copy of a neighbour, or of this atom
       d = (matrix.col(atoms[j].xyz) - A).length()
       lim = (_WATER_NH_BOND if atoms[j].element_is_hydrogen()
              else _WATER_BOND_HEAVY)
       # An atom on top of this one contributes no bond direction.
       if 1e-3 < d <= lim:
         nbrs.append(j)
-    bond_dirs = [(matrix.col(atoms[j].xyz) - A).normalize() for j in nbrs]
-    if not bond_dirs:
-      lobes[i] = []
-    elif el == "O" and len(nbrs) == 1:
-      away = bond_dirs[0] * -1.0
-      n = _sp2_plane_normal(atoms, static_tree, nbrs[0], i)
-      if n is None:
-        lobes[i] = [away]
-      else:
-        lobes[i] = [
-          away.rotate_around_origin(axis=n, angle=_WATER_SP2_LOBE_DEG, deg=True),
-          away.rotate_around_origin(axis=n, angle=-_WATER_SP2_LOBE_DEG, deg=True)]
+    split = ({conf[j] for j in nbrs} - {0}) if conf is not None and not ci \
+        else ()
+    if not split:
+      lobes[i] = {ci: _bond_lobes(atoms, static_tree, i, el, nbrs, conf, ci)}
     else:
-      bsum = matrix.col((0.0, 0.0, 0.0))
-      for b in bond_dirs:
-        bsum = bsum + b
-      lobes[i] = [(bsum * -1.0).normalize()] if bsum.length() > 1e-6 else []
+      lobes[i] = {
+        v: _bond_lobes(atoms, static_tree, i, el,
+                       [j for j in nbrs if conf[j] in (0, v)], conf, v)
+        for v in sorted(split | {0})}
   return lobes
+
+
+def _view_lobes(views, c):
+  """The lobes of ``views`` (see :func:`_acceptor_lobes`) that a water of
+  conformer index ``c`` sees: its own altloc's, else the blank view's; a
+  blank water sees every altloc's."""
+  if not views:
+    return ()
+  if not c:
+    split = [lobe for v in sorted(views) if v for lobe in views[v]]
+    return split or views.get(0, ())
+  return views.get(c, views.get(0, ()))
 
 
 def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
@@ -309,21 +358,23 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   ``min_distance_sym_equiv`` to its own site counts as that same atom, which
   the asymmetric unit already holds.
 
-  Returns ``(hierarchies, atoms, xyz)``: the sub-hierarchies, which own the
-  atom objects and must be kept alive, their atoms in coordinate order, and
-  their sites. All three are empty when symmetry places nothing in range.
+  Returns ``(hierarchies, atoms, xyz, source)``: the sub-hierarchies, which
+  own the atom objects and must be kept alive, their atoms in coordinate
+  order, their sites, and the index of the model atom each was copied from.
+  All four are empty when symmetry places nothing in range.
   """
+  nothing = [], [], flex.vec3_double(), flex.size_t()
   o_sel = flex.size_t([a.i_seq for a in hier.atoms()
                        if _is_water(a.parent().resname)
                        and a.element.strip().upper() == "O"])
   if not o_sel.size():
-    return [], [], flex.vec3_double()
+    return nothing
   siiu, _ = super_cell.get_siiu(
     sites_cart=sites_cart, crystal_symmetry=crystal_symmetry,
     select_within_radius=radius, selection=o_sel, buffer=0,
     min_distance_sym_equiv=min_distance_sym_equiv)
   if not siiu:
-    return [], [], flex.vec3_double()
+    return nothing
   # Group the residue groups by operator, keyed on str(op): get_siiu gives
   # every operator the same denominators, so equal operators print alike.
   hier_atoms = hier.atoms()
@@ -340,6 +391,7 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
   hiers = []
   atoms = []
   xyz = flex.vec3_double()
+  source = flex.size_t()
   for key in sorted(by_op):
     op, grp = by_op[key]
     sel = flex.size_t(sorted(grp))
@@ -356,7 +408,8 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
     hiers.append(sub)
     atoms.extend(list(sub_atoms))
     xyz.extend(sub_atoms.extract_xyz())
-  return hiers, atoms, xyz
+    source.extend(sel.select(keep))
+  return hiers, atoms, xyz, source
 
 
 def _sym_equiv_pairs(sites, crystal_symmetry, radius,
@@ -388,8 +441,12 @@ def _sym_equiv_pairs(sites, crystal_symmetry, radius,
 
 
 def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius,
-                            min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+                            min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL,
+                            conf=None):
   """Symmetry equivalents of ``sites`` that fall within ``radius`` of a site.
+
+  ``conf`` holds per-site conformer indices; a pair whose sites never
+  coexist (see :func:`_compatible`) is dropped. None keeps every pair.
 
   Returns ``(by_site, transforms, own)``: per site, the sorted ``(block, other
   site)`` pairs whose equivalent is in range; per block the cartesian
@@ -405,6 +462,9 @@ def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius,
   transforms = [None]
   found = _sym_equiv_pairs(sites, crystal_symmetry, radius,
                            min_distance_sym_equiv)
+  if conf is not None:
+    found = [(wi, wj, op) for wi, wj, op in found
+             if _compatible(conf[wi], conf[wj])]
   if not found:
     return by_site, transforms, own
   # Number the blocks by operator rather than by discovery order, so the slot
@@ -617,34 +677,41 @@ class _WaterHydrogenPlacer(object):
     if ns:
       X = np.concatenate((self.placed_np[:ns], self.wh_xyz))
       W = np.concatenate((self.slot_wid[:ns], self.wh_wid))
+      C = np.concatenate((self.slot_conf[:ns], self.wh_conf))
     else:
-      X, W = self.wh_xyz, self.wh_wid
-    d = _water_h_contacts(X, W)[2]
+      X, W, C = self.wh_xyz, self.wh_wid, self.wh_conf
+    # Without water H in an altloc every pair coexists.
+    if not C.any():
+      C = None
+    d = _water_h_contacts(X, W, C)[2]
     if self.crystal_symmetry is not None:
       # The slots are final once the greedy pass is done, so one pairing
       # serves every state.
       if self.h_sym_pairs is None:
         self.h_sym_pairs = _water_h_sym_pairs(
           X, W, self.w_o_site, self.crystal_symmetry,
-          self.min_distance_sym_equiv)
+          self.min_distance_sym_equiv, C)
       d = np.concatenate([d] + [d_sym for _op, _i, _j, d_sym in
                                 _water_h_sym_contacts(
                                   X, self.h_sym_pairs,
                                   self.crystal_symmetry.unit_cell())])
     return _contact_stats(len(X), d)
 
-  def _nearest_cation(self, o_xyz, own_idx):
+  def _nearest_cation(self, o_xyz, own_idx, c):
     """Closest metal cation coordinating a water O, if any.
 
     Returns ``(element, distance)`` or None, over
-    ``_WATER_METAL_COORD_RADIUS`` (a first-shell bond) and excluding the
-    water's own atoms ``own_idx``. Reporting only; placement ignores it.
+    ``_WATER_METAL_COORD_RADIUS`` (a first-shell bond), excluding the
+    water's own atoms ``own_idx`` and cations of an altloc other than the
+    water's conformer index ``c``. Reporting only; placement ignores it.
     """
     o = matrix.col(o_xyz)
     best = None
     for i in self.static_tree.query_ball_point(tuple(o_xyz),
                                                _WATER_METAL_COORD_RADIUS):
       if i in own_idx:
+        continue
+      if c and not _compatible(c, self.conf[i]):
         continue
       el = self.atoms[i].element.strip().upper()
       if el not in _WATER_CATION_ELEMENTS:
@@ -697,7 +764,7 @@ class _WaterHydrogenPlacer(object):
       if self.lone_pair_directed:
         toward = (o_xyz - a_xyz).normalize()
         best = None
-        for lobe in self.acc_lobes.get(i, ()):
+        for lobe in _view_lobes(self.acc_lobes.get(i), self.w_conf[wi]):
           if best is None or lobe.dot(toward) > best.dot(toward):
             best = lobe
         if best is not None and best.dot(toward) > 0.0:
@@ -966,6 +1033,13 @@ class _WaterHydrogenPlacer(object):
     if not atoms:
       return None
     sel.reset_i_seq()
+    # Conformer index per atom, 0 for blank; which atoms coexist follows
+    # cctbx's rule (see _compatible). An improper altloc (one atom name both
+    # blank and in an altloc) would read as an altloc of its own.
+    ci = hier.get_conformer_indices()
+    if " " in ci.index_altloc_mapping:
+      hier.overall_counts().raise_improper_alt_conf_if_necessary()
+    conf = ci.conformer_indices.as_numpy_array().astype(np.int64)
 
     # Gather the waters to protonate, in one walk per water residue.
     waters = []
@@ -973,6 +1047,7 @@ class _WaterHydrogenPlacer(object):
     single = []
     wh_xyz = []
     wh_wid = []
+    wh_conf = []
     # Per water residue, its O site, None without one.
     self.w_o_site = []
     for wgid, ag in enumerate(g for g in hier.atom_groups()
@@ -991,6 +1066,7 @@ class _WaterHydrogenPlacer(object):
           existing.append(a)
           wh_xyz.append(a.xyz)
           wh_wid.append(wgid)
+          wh_conf.append(conf[a.i_seq])
         elif o is None and els[k].upper() == "O":
           o = a
       self.w_o_site.append(o.xyz if o is not None else None)
@@ -1014,12 +1090,13 @@ class _WaterHydrogenPlacer(object):
       if is_single:
         action = ("stripped" if self.existing_h == "reorient"
                   else "completed" if fixed_d1 is not None else "kept")
-        single.append((_water_id(ag), o.xyz, own_idx, action))
+        single.append((_water_id(ag), o.xyz, own_idx, conf[o.i_seq], action))
       if skip:
         continue
       waters.append((ag, o, own_idx, fixed_d1, existing, names, wgid))
     self.wh_xyz = np.array(wh_xyz, dtype=float) if wh_xyz else np.zeros((0, 3))
     self.wh_wid = np.array(wh_wid, dtype=np.int64)
+    self.wh_conf = np.array(wh_conf, dtype=np.int64)
     # Water H pairs across symmetry for the clash counts, built by _stats.
     self.h_sym_pairs = None
 
@@ -1031,13 +1108,17 @@ class _WaterHydrogenPlacer(object):
     self.sym_hier = []
     sym_atoms = []
     sym_xyz = flex.vec3_double()
+    sym_src = flex.size_t()
     if self.crystal_symmetry is not None and (waters or single):
-      self.sym_hier, sym_atoms, sym_xyz = _symmetry_environment(
+      self.sym_hier, sym_atoms, sym_xyz, sym_src = _symmetry_environment(
         hier, sel.extract_xyz(), self.crystal_symmetry,
         max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
             _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
     atoms = atoms + sym_atoms
     self.atoms = atoms
+    # A copy keeps its source's altloc, whatever the operator, as in cctbx.
+    self.conf = np.concatenate(
+      (conf, conf[sym_src.as_numpy_array().astype(np.intp)]))
 
     # Static neighbours (protein, ligands, water O, pre-existing H) never
     # move; the placed water H are tracked by slot in placed_coords/placed_np.
@@ -1073,8 +1154,8 @@ class _WaterHydrogenPlacer(object):
 
     # The cation coordinating each single-H water, symmetry copies included.
     self.partial_waters = [
-      (rid, self._nearest_cation(o_xyz, own_idx), action)
-      for rid, o_xyz, own_idx, action in single]
+      (rid, self._nearest_cation(o_xyz, own_idx, c), action)
+      for rid, o_xyz, own_idx, c, action in single]
 
     # Per-water constants: every neighbour list the placement needs, built
     # once here and reused by the greedy pass, every relaxation sweep and
@@ -1097,6 +1178,8 @@ class _WaterHydrogenPlacer(object):
     # own equivalent into range.
     self.w_self_ops = [()] * n
     self.slot_wid = np.zeros(2 * n, dtype=np.int64)
+    self.slot_conf = np.zeros(2 * n, dtype=np.int64)
+    self.w_conf = []
     self.records = []   # (water index, [(atom, slot, di), ...], fixed_d1)
     self.w_wnbr = []
     # Every water is dirty for the first sweep.
@@ -1105,14 +1188,20 @@ class _WaterHydrogenPlacer(object):
     self.tick = 0
     if n:
       o_pts = np.array([w[1].xyz for w in waters], dtype=float)
+      w_conf = [conf[w[1].i_seq] for w in waters]
       # Order most-crowded first. ``crowd`` is the neighbour count within
-      # the clash radius, the water's own atoms excluded.
-      crowd = [sum(1 for j in nb if j not in waters[k][2]) for k, nb in
-               enumerate(self.static_tree.query_ball_point(
+      # the clash radius, the water's own atoms and atoms of other altlocs
+      # excluded.
+      crowd = [sum(1 for j in nb if j not in waters[k][2]
+                   and (not w_conf[k] or _compatible(w_conf[k], self.conf[j])))
+               for k, nb in enumerate(self.static_tree.query_ball_point(
                  o_pts, _WATER_CLEARANCE_RADIUS,
                  return_sorted=False))]
       order = sorted(range(n), key=lambda k: crowd[k], reverse=True)
       waters = [waters[k] for k in order]
+      # Conformer index per water; the filters below run only for the
+      # waters in an altloc, a blank water meeting every atom.
+      self.w_conf = [w_conf[k] for k in order]
       o_pts = o_pts[order]
       self.w_own = [w[2] for w in waters]
       self.w_o_col = [matrix.col(w[1].xyz) for w in waters]
@@ -1122,12 +1211,19 @@ class _WaterHydrogenPlacer(object):
         o_pts, _WATER_ACCEPTOR_RADIUS, return_sorted=False)
       self.w_cat_raw = self.static_tree.query_ball_point(
         o_pts, _WATER_CATION_RADIUS, return_sorted=False)
+      for wi, c in enumerate(self.w_conf):
+        if c:
+          self.w_acc_raw[wi] = [j for j in self.w_acc_raw[wi]
+                                if _compatible(c, self.conf[j])]
+          self.w_cat_raw[wi] = [j for j in self.w_cat_raw[wi]
+                                if _compatible(c, self.conf[j])]
       if self.lone_pair_directed:
         near = set()
         for nb in self.w_acc_raw:
           near.update(nb)
-        self.acc_lobes = _acceptor_lobes(atoms, self.static_tree,
-                                         self.donor_n, near)
+        self.acc_lobes = _acceptor_lobes(
+          atoms, self.static_tree, self.donor_n, near,
+          self.conf if self.conf.any() else None)
       # One static-neighbour block per water: every candidate H lies on the
       # O-H sphere about the O, so a single ball of oh_length + clearance
       # covers every candidate's own clearance ball.
@@ -1138,20 +1234,27 @@ class _WaterHydrogenPlacer(object):
           return_sorted=False)):
         own = self.w_own[wi]
         idx = np.array([j for j in nb if j not in own], dtype=np.intp)
+        c = self.w_conf[wi]
+        if c:
+          cj = self.conf[idx]
+          idx = idx[(cj == 0) | (cj == c)]
         self.w_sxyz.append(self.static_np[idx])
         self.w_sthr.append(self.static_thr[idx])
       # A placed H sits within oh_length of its own O, so only waters whose
       # O lie within clearance + 2 oh_length can hold one near this water's
       # candidates.
       r_wh = _WATER_CLEARANCE_RADIUS + 2.0 * self.oh_length + 0.01
-      self.w_wnbr = [[j for j in nb if j != wi] for wi, nb in
-                     enumerate(KDTree(o_pts).query_ball_point(
+      split = any(self.w_conf)
+      self.w_wnbr = [[j for j in nb if j != wi and (
+                        not split or _compatible(self.w_conf[wi],
+                                                 self.w_conf[j]))]
+                     for wi, nb in enumerate(KDTree(o_pts).query_ball_point(
                        o_pts, r_wh, return_sorted=False))]
       # The same test against the symmetry equivalents of these waters.
       if self.crystal_symmetry is not None:
         self.w_sym_nbr, self.sym_tf, own_blocks = _water_sym_equiv_neighbours(
           flex.vec3_double(o_pts), self.crystal_symmetry, r_wh,
-          self.min_distance_sym_equiv)
+          self.min_distance_sym_equiv, self.w_conf if split else None)
         # matrix_cart's raw tuple is what multiplies a vec3_double array;
         # the matrix.sqr wrapper _pool_write uses does not.
         self.w_self_ops = [
@@ -1207,6 +1310,7 @@ class _WaterHydrogenPlacer(object):
         self.placed_coords.append(xyz)
         self._pool_write(wi, slot, xyz)
         self.slot_wid[slot] = wgid
+        self.slot_conf[slot] = self.w_conf[wi]
       if slots:
         self.records.append((wi, slots, fixed_d1))
         slots_of[wi] = tuple(s for _, s, _ in slots)
@@ -1357,18 +1461,24 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
                     partial_waters=placer.partial_waters)
 
 
-def _water_h_contacts(xyz, wid):
+def _water_h_contacts(xyz, wid, conf=None):
   """Inter-water H-H contacts within 2.0 A.
 
-  ``xyz`` are water H sites, an (n, 3) array, and ``wid`` the water each
-  belongs to. Returns ``(i, j, d)``: the two H of each contact, H on the same
-  water excluded, and their distance.
+  ``xyz`` are water H sites, an (n, 3) array, ``wid`` the water each belongs
+  to and ``conf`` their conformer indices, None when no water H is in an
+  altloc. Returns ``(i, j, d)``: the two H of each contact, H on the same
+  water and H that never coexist (see :func:`_compatible`) excluded, and
+  their distance.
   """
   if len(xyz) < 2:
     return (np.zeros(0, dtype=np.intp), np.zeros(0, dtype=np.intp),
             np.zeros(0))
   pairs = KDTree(xyz).query_pairs(2.0, output_type="ndarray")
-  pairs = pairs[wid[pairs[:, 0]] != wid[pairs[:, 1]]]
+  keep = wid[pairs[:, 0]] != wid[pairs[:, 1]]
+  if conf is not None:
+    ci, cj = conf[pairs[:, 0]], conf[pairs[:, 1]]
+    keep &= (ci == 0) | (cj == 0) | (ci == cj)
+  pairs = pairs[keep]
   i, j = pairs[:, 0], pairs[:, 1]
   D = xyz[i] - xyz[j]
   return i, j, np.sqrt(D[:, 0] * D[:, 0] + D[:, 1] * D[:, 1]
@@ -1376,12 +1486,14 @@ def _water_h_contacts(xyz, wid):
 
 
 def _water_h_sym_pairs(xyz, wid, o_sites, crystal_symmetry,
-                       min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+                       min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL,
+                       conf=None):
   """Water H pairs that crystal symmetry can bring within 2.0 A.
 
   ``xyz`` are water H sites, ``wid`` the water each belongs to and
   ``o_sites`` each water's O site; the H of a water without one are left
-  out. Two waters pair up when an operator brings the equivalent of one O
+  out. ``conf`` holds the H's conformer indices, None when none is in an
+  altloc; H that never coexist (see :func:`_compatible`) are not paired. Two waters pair up when an operator brings the equivalent of one O
   within ``2.0 + 2 * reach`` A of the other, ``reach`` being the longest
   O-H. Each contact is listed once: a pair of waters and its mirror, the
   second against the first under the inverse operator, are one contact seen
@@ -1418,6 +1530,8 @@ def _water_h_sym_pairs(xyz, wid, o_sites, crystal_symmetry,
       for b in h_of[ws[wj]]:
         if own_inverse and b < a:
           continue   # the same contact as (b, a)
+        if conf is not None and not _compatible(conf[a], conf[b]):
+          continue
         i.append(a)
         j.append(b)
   return [(op, np.array(i, dtype=np.intp), np.array(j, dtype=np.intp))
@@ -1456,11 +1570,14 @@ def _contact_stats(n, d):
 
 
 def _water_h_sites(hier):
-  """``(xyz, wid, atoms, o_sites)`` for every water H/D in ``hier``: ``wid``
-  numbers the water each belongs to, and ``o_sites`` holds each water's O
-  site, None for a water without one."""
+  """``(xyz, wid, atoms, o_sites, conf)`` for every water H/D in ``hier``:
+  ``wid`` numbers the water each belongs to, ``o_sites`` holds each water's
+  O site, None for a water without one, and ``conf`` the H's conformer
+  indices, None when none is in an altloc."""
+  altloc_index = hier.get_conformer_indices().index_altloc_mapping
   xyz = []
   wid = []
+  conf = []
   atoms = []
   o_sites = []
   for w, ag in enumerate(g for g in hier.atom_groups()
@@ -1472,12 +1589,15 @@ def _water_h_sites(hier):
       if hd[k]:
         xyz.append(ats[k].xyz)
         wid.append(w)
+        conf.append(altloc_index.get(ag.altloc, 0))
         atoms.append(ats[k])
       elif o is None and els[k].upper() == "O":
         o = ats[k].xyz
     o_sites.append(o)
+  conf = np.array(conf, dtype=np.int64)
   return (np.array(xyz, dtype=float).reshape(-1, 3),
-          np.array(wid, dtype=np.intp), atoms, o_sites)
+          np.array(wid, dtype=np.intp), atoms, o_sites,
+          conf if conf.any() else None)
 
 
 def _all_water_h_contacts(hier, crystal_symmetry, min_distance_sym_equiv):
@@ -1488,12 +1608,12 @@ def _all_water_h_contacts(hier, crystal_symmetry, min_distance_sym_equiv):
   ``op``, None for a contact within the model. Without a crystal symmetry
   the model is isolated.
   """
-  xyz, wid, atoms, o_sites = _water_h_sites(hier)
-  groups = [(None,) + _water_h_contacts(xyz, wid)]
+  xyz, wid, atoms, o_sites, conf = _water_h_sites(hier)
+  groups = [(None,) + _water_h_contacts(xyz, wid, conf)]
   if crystal_symmetry is not None:
     groups.extend(_water_h_sym_contacts(
       xyz, _water_h_sym_pairs(xyz, wid, o_sites, crystal_symmetry,
-                              min_distance_sym_equiv),
+                              min_distance_sym_equiv, conf),
       crystal_symmetry.unit_cell()))
   contacts = [(dk, ik, jk, op) for op, i, j, d in groups
               for ik, jk, dk in zip(i.tolist(), j.tolist(), d.tolist())]
@@ -1525,10 +1645,13 @@ def _clash_row(label, stats, log):
 
 
 def _atom_id(a):
-  """Compact atom identity, e.g. ``"HOH A 863 H2"``."""
+  """Compact atom identity, e.g. ``"HOH A 863 H2"`` (altloc in
+  parentheses)."""
   L = a.fetch_labels()
+  alt = L.altloc.strip()
   return (f"{L.resname.strip()} {L.chain_id.strip()} "
-          f"{L.resseq.strip()} {L.name.strip()}")
+          f"{L.resseq.strip()} {L.name.strip()}"
+          + (f" ({alt})" if alt else ""))
 
 
 def _water_id(ag):

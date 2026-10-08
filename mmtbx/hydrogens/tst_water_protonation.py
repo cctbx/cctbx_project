@@ -435,6 +435,26 @@ END
 """
 
 
+# A water split between altlocs A and B, 1.39 A apart, and a blank acceptor
+# 2.8 A from conformer A along +x. Conformer B's O sits 1.23 A from the H
+# conformer A would aim at the acceptor, but the two conformers never
+# coexist.
+_SPLIT_WATER_PDB = """\
+HETATM    1  O  AHOH W   1       5.000   5.000   5.000  0.50 10.00           O
+HETATM    2  O  BHOH W   1       5.700   6.200   5.000  0.50 10.00           O
+HETATM    3  O   ACA D   1       7.800   5.000   5.000  1.00 10.00           O
+END
+"""
+
+# One H name both blank and in altloc A: an improper altloc.
+_IMPROPER_ALTLOC_PDB = """\
+HETATM    1  O   HOH W   1       5.000   5.000   5.000  1.00 10.00           O
+HETATM    2  H1  HOH W   1       5.957   5.000   5.000  1.00 10.00           H
+HETATM    3  H1 AHOH W   1       5.000   5.957   5.000  0.50 10.00           H
+END
+"""
+
+
 # The same water and acceptor in two models.
 _MULTI_MODEL_PDB = """\
 MODEL        1
@@ -523,22 +543,33 @@ def exercise_protonated_n_not_acceptor():
 
 def exercise_lone_pair_directed():
   """``lone_pair_directed`` aims the O-H at a carbonyl O's sp2 lone-pair
-  lobe (~120 deg from C=O); the default aims at the nucleus (~180 deg)."""
-  o_c = matrix.col((0.0, 0.0, 0.0))    # carbonyl O
-  c = matrix.col((-1.220, 0.0, 0.0))   # its carbon
+  lobe (~120 deg from C=O); the default aims at the nucleus (~180 deg).
+  With the carbonyl O split between altlocs 0.25 A apart, each copy's lobes
+  still come from its C alone, not from a bond to the other copy."""
+  c = matrix.col((-1.220, 0.0, 0.0))   # the carbonyl C
+  split = _CARBONYL_PDB.replace(
+    "HETATM    2  O   ACO A   1       0.000   0.000   0.000  1.00 10.00",
+    "HETATM    2  O  AACO A   1       0.000   0.000   0.000  0.50 10.00").replace(
+    "END", "HETATM    6  O  BACO A   1       0.250   0.000   0.000  0.50 10.00"
+    "           O\nEND")
 
-  def co_h_angle(lone_pair):
-    hier = _hierarchy(_CARBONYL_PDB)
+  def co_h_angle(pdb_str, lone_pair):
+    hier = _hierarchy(pdb_str)
     wp.place_water_hydrogens(hier, n_refine=0, lone_pair_directed=lone_pair)
     _, hs = _water_atoms(hier)
-    h = min(hs.values(), key=lambda a: (matrix.col(a.xyz) - o_c).length())
-    return (c - o_c).angle(matrix.col(h.xyz) - o_c, deg=True)
+    acc = [matrix.col(a.xyz) for a in hier.atoms()
+           if a.parent().resname == "ACO" and a.element.strip() == "O"]
+    h, o_c = min(((matrix.col(a.xyz), o) for a in hs.values() for o in acc),
+                 key=lambda t: (t[0] - t[1]).length())
+    return (c - o_c).angle(h - o_c, deg=True)
 
-  off = co_h_angle(False)
-  on = co_h_angle(True)
+  off = co_h_angle(_CARBONYL_PDB, False)
   assert off > 135.0, f"default should aim near the nucleus (got {off:.1f} deg)"
-  assert abs(on - 120.0) < 15.0, (
-    f"lone-pair placement should give a ~120 deg C=O...H angle (got {on:.1f})")
+  for pdb_str in (_CARBONYL_PDB, split):
+    on = co_h_angle(pdb_str, True)
+    assert abs(on - 120.0) < 15.0, (
+      f"lone-pair placement should give a ~120 deg C=O...H angle "
+      f"(got {on:.1f})")
 
 
 def exercise_reorient_existing():
@@ -877,6 +908,17 @@ def exercise_crystal_symmetry():
   assert isolated < 0.9, (
     f"an isolated water should not find the acceptor (best {isolated:.3f})")
 
+  # A translate keeps its altloc: a water in A reaches an acceptor in A
+  # across the face, but not one in B.
+  for acc_alt, across in (("A", True), ("B", False)):
+    pdb_str = _LATTICE_CONTACT_PDB.replace(" O   HOH", " O  AHOH").replace(
+      " O   ACA", f" O  {acc_alt}ACA")
+    hier, cs = _hierarchy_and_symmetry(pdb_str)
+    wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs)
+    o, hs = _water_atoms(hier)
+    aimed = max(_unit(h, o)[0] for h in hs.values())
+    assert (aimed > 0.99) == across, (acc_alt, aimed)
+
 
 def exercise_crystal_symmetry_leaves_model_fixed():
   """Symmetry equivalents join the environment as copies, so placing with a
@@ -957,15 +999,56 @@ def exercise_sym_equiv_on_symmetry_element():
   Builds the symmetry environment of ``_ON_TWO_FOLD_PDB``. The two-fold
   brings the H's equivalent next to the O, so the water's residue joins the
   environment; the O, which the two-fold maps onto itself, must stay out.
-  The environment holds the H's equivalent alone.
+  The environment holds the H's equivalent alone, traced to the H.
   """
   hier, cs = _hierarchy_and_symmetry(_ON_TWO_FOLD_PDB)
   hier.atoms().reset_i_seq()
-  hiers, atoms, xyz = wp._symmetry_environment(
+  hiers, atoms, xyz, source = wp._symmetry_environment(
     hier, hier.atoms().extract_xyz(), cs, wp._WATER_ACCEPTOR_RADIUS)
   assert [a.name.strip() for a in atoms] == ["H1"], (
     [a.name for a in atoms], list(xyz))
   assert approx_equal(xyz[0], (-0.757, 5.586, 0.0))
+  assert list(source) == [1], list(source)
+
+
+def exercise_altloc_environment():
+  """A water conformer ignores atoms of another altloc, its own other
+  conformer included.
+
+  Places on ``_SPLIT_WATER_PDB``, where conformer B's O blocks, and would
+  itself attract, the H conformer A aims at the acceptor. Conformer A must
+  still aim an H at the acceptor, the clash counts must not count A's H
+  against B's, and the contact listing names an atom's altloc.
+  """
+  hier = _hierarchy(_SPLIT_WATER_PDB)
+  states = []
+  wp.place_water_hydrogens(hier, n_refine=0,
+                           on_state=lambda label, stats: states.append(stats))
+  ag_a = next(ag for ag in hier.atom_groups()
+              if ag.resname == "HOH" and ag.altloc == "A")
+  o = next(a for a in ag_a.atoms() if a.element.strip() == "O")
+  hs = [a for a in ag_a.atoms() if a.element.strip() == "H"]
+  acc = matrix.col((7.8, 5.0, 5.0))
+  aimed = max(_unit(h, o).dot((acc - matrix.col(o.xyz)).normalize())
+              for h in hs)
+  assert aimed > 0.99, f"conformer A should aim at the acceptor ({aimed:.3f})"
+  assert [s[1] for s in states] == [0], states
+  assert wp._water_clash_stats(hier)[1] == 0
+  assert wp._atom_id(hs[0]) == f"HOH W 1 {hs[0].name.strip()} (A)"
+
+
+def exercise_improper_altloc_rejected():
+  """An improper altloc is refused rather than read as an altloc of its own.
+
+  Places on ``_IMPROPER_ALTLOC_PDB``, whose H1 is both blank and in altloc
+  A; the placer must raise cctbx's Sorry for it.
+  """
+  try:
+    wp.place_water_hydrogens(_hierarchy(_IMPROPER_ALTLOC_PDB), n_refine=0)
+  except Sorry as e:
+    assert "improper altloc" in str(e), str(e)
+  else:
+    raise Exception_expected
 
 
 def exercise_electron_microscopy_isolated():
@@ -1136,6 +1219,8 @@ def run():
   exercise_sym_equiv_protons()
   exercise_sym_equiv_contacts_counted()
   exercise_sym_equiv_on_symmetry_element()
+  exercise_altloc_environment()
+  exercise_improper_altloc_rejected()
   exercise_electron_microscopy_isolated()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
