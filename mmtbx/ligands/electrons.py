@@ -349,7 +349,6 @@ class electron_distribution(dict):
       f.node(name, position)
     for e1, e2 in edges:
       f.edge(e1,e2)
-    print(f.source)
     f.render(view=True)
 
   def _generate_atoms(self):
@@ -377,13 +376,15 @@ class electron_distribution(dict):
     if i_seqs not in self:
       tmp = (i_seqs[1], i_seqs[0])
       i_seqs=tmp
-    print(self)
+    if verbose: print(self)
     self[i_seqs]+=1
     self[i_seqs[0]]-=1
     self[i_seqs[1]]-=1
-    print(self)
-    assert self[i_seqs[0]]>=0, self.hierarchy.atoms()[i_seqs[0]].quote()
-    assert self[i_seqs[1]]>=0, self.hierarchy.atoms()[i_seqs[1]].quote()
+    if verbose:
+      print(self)
+      print('i_seqs',i_seqs, self[i_seqs[0]], self[i_seqs[1]])
+    # assert self[i_seqs[0]]>=0, self.hierarchy.atoms()[i_seqs[0]].quote()
+    # assert self[i_seqs[1]]>=0, self.hierarchy.atoms()[i_seqs[1]].quote()
 
   def _subtract_electron_from_bond(self, i_seqs, verbose=False):
     if verbose:
@@ -394,11 +395,9 @@ class electron_distribution(dict):
     if i_seqs not in self:
       tmp = (i_seqs[1], i_seqs[0])
       i_seqs=tmp
-    print(self)
     self[i_seqs]-=1
     self[i_seqs[0]]+=1
     self[i_seqs[1]]+=1
-    print(self)
 
   def set_charges(self):
     atoms = self.hierarchy.atoms()
@@ -763,13 +762,10 @@ class electron_distribution(dict):
         yield j_seq, i_seq
     if self.get_cycle_charge(cycle)!=-1: return
     for i_seq, j_seq in _generate_ij(cycle):
-      print(self.show_atoms(i_seq), self.show_atoms(j_seq))
       if self[i_seq]==1:
         bonds = self.get_bonds_containing_i_seq(i_seq)
         for b_i_seq, b_j_seq in bonds:
-          print('???',b_i_seq,b_j_seq,self.show_atoms(b_i_seq), self.show_atoms(b_j_seq))
           if self._is_bond_frozen(b_i_seq, b_j_seq):
-            print('FROZ',b_i_seq,b_j_seq,self.show_atoms(b_i_seq), self.show_atoms(b_j_seq))
             break
           rc = self._can_denote_electron_to_covalent_bond(b_i_seq, b_j_seq)
           if rc:
@@ -781,7 +777,6 @@ class electron_distribution(dict):
 
   def form_bonds_using_networkx(self, verbose=False):
     import networkx as nx
-    verbose=1
     g = nx.DiGraph()
     #
     def generate_atom_nodes():
@@ -804,7 +799,6 @@ class electron_distribution(dict):
     #
     def generate_atoms_and_data(g):
       if self.first_i_seqs:
-        print(self.first_i_seqs)
         for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
           if i_seq in self.first_i_seqs:
             yield i_seq, node, attrs
@@ -813,7 +807,6 @@ class electron_distribution(dict):
         if i_seq in self.first_i_seqs: continue
         yield i_seq, node, attrs
     def atom_in_ring(cycle_bases, i_seq):
-      print(cycle_bases, i_seq, self.show_atoms(i_seq))
       for cb in cycle_bases:
         if i_seq in cb:
           return True
@@ -823,7 +816,6 @@ class electron_distribution(dict):
     g.add_edges_from(generate_bond_edges(verbose=verbose))
     h = g.to_undirected()
     cycle_bases = nx.cycle_basis(h)
-    print('cycle_bases', cycle_bases)
     if verbose: print('  Created graphs of molecule : %0.1fs' % (time.time()-t0))
     self.process_dangling_heavy_atoms()
 
@@ -832,16 +824,12 @@ class electron_distribution(dict):
     for i_seq, node, attrs in generate_atoms_and_data(g):
       if attrs['element'] in ['H', 'D']: continue
       assert i_seq==node, '%s %s' % (i_seq, node)
-      print(attrs)
-      print(g.edges)
 
       if not atom_in_ring(cycle_bases, i_seq):
         continue
       if attrs['element'] in ['N']:
         bonds=self.get_bonds_containing_i_seq(i_seq)
-        print(bonds)
         if len(bonds)==3:
-          print(self.atoms[i_seq].quote())
           self.frozen_bonds+=bonds
           for i1, i2 in bonds:
             if i1==i_seq: self.first_i_seqs.append(i2)
@@ -850,7 +838,6 @@ class electron_distribution(dict):
           #   if verbose: print('frozen: %s-%s\n' % (self.atoms[i1].quote(),
           #                                          self.atoms[i2].quote(),
           #                                         ))
-          print(self.first_i_seqs)
           continue
         # elif len(bonds)==1:
         #   print(self)
@@ -859,19 +846,15 @@ class electron_distribution(dict):
         #     self._add_electron_to_bond(bonds[0])
         #   print(self)
           # assert 0
-    print(self)
 
     # assert 0
     done_cycles = []
     t0=time.time()
     # for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
     for i_seq, node, attrs in generate_atoms_and_data(g):
-      print('yield',i_seq, node, attrs, self.show_atoms(i_seq), self.first_i_seqs)
       if attrs['element'] in ['H', 'D']: continue
       assert i_seq==node, '%s %s' % (i_seq, node)
       # =O
-      print(h.adj)
-      print('adj',i_seq, h.adj[i_seq])
       if len(h.adj[i_seq])==1:
         j_seq=list(h.adj[i_seq].keys())[0]
         if self._can_denote_electron_to_covalent_bond(i_seq, j_seq):
@@ -879,7 +862,6 @@ class electron_distribution(dict):
           if verbose: print('double: %s-%s\n' % (self.atoms[i_seq].quote(),
                                                  self.atoms[j_seq].quote(),
                                                 ))
-          print(self)
 
       if i_seq not in self.first_i_seqs: break
 
@@ -891,9 +873,6 @@ class electron_distribution(dict):
             if e[0]in cb and e[1] in cb:
               cycle.append(e)
 
-      print(i_seq, self.show_atoms(i_seq), self.first_i_seqs)
-      print(cycle)
-      print(cycle_bases)
       # for i_seqs in cycle:
       #   if i_seq in i_seqs:
       #     i1, i2 = i_seqs
@@ -905,7 +884,6 @@ class electron_distribution(dict):
       #       print(self)
       # assert i_seq!=7
 
-      print(self)
     # assert 0
     # for i_seq, node, attrs in generate_atoms_and_data(g):
     #   print('yield2',i_seq, node, attrs, self.show_atoms(i_seq), self.first_i_seqs)
@@ -924,13 +902,9 @@ class electron_distribution(dict):
       tries=10
       cycle_charge_count=self.get_cycle_charge_count(cycle)
       import itertools
-      print('tries',cycle, cycle_charge_count)
       # random.shuffle(cycle)
-      # print(cycle)
       perms = list(itertools.permutations(cycle))
 
-      # print(perms)
-      print(len(perms))
       subtract=[]
       while cycle_charge_count and tries:
         tries-=1
@@ -958,11 +932,8 @@ class electron_distribution(dict):
           random.shuffle(cycle)
         else:
           cycle=list(perms[tries])
-        print('cycle',cycle)
         # assert 0
     if verbose: print('  Double & rings : %0.1fs' % (time.time()-t0))
-    print(self)
-    # assert 0
     #
     # hyper and triple
     #
@@ -1176,7 +1147,6 @@ Inputs:
       # altloc        = molecule.altloc.strip(),
       )
     if rc.molecule.ok: return rc.molecule.total_charge
-    print(rc)
     return None
 
   def get_charge_of_molecule_simple(self, molecule, model, iterations=1000, verbose=False):
