@@ -452,11 +452,10 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
 
 
 def miller_indices_as_cif_loop(indices, prefix='_refln_'):
-    refln_loop = model.loop(header=(
-      '%sindex_h' %prefix, '%sindex_k' %prefix, '%sindex_l' %prefix))
-    for hkl in indices:
-      refln_loop.add_row(hkl)
-    return refln_loop
+  columns = OrderedDict()
+  for name, part in zip("hkl", indices.as_vec3_double().parts()):
+    columns['%sindex_%s' % (prefix, name)] = part.iround().as_string()
+  return model.loop(data=columns)
 
 
 class miller_arrays_as_cif_block():
