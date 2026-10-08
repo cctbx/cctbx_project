@@ -612,7 +612,7 @@ def exercise_loop_show_quoting():
   # one column per quoting rule of format_value, aligned and unaligned; the
   # printed text is pinned and must read back
   loop = model.loop(data=OrderedDict((
-    ("_t.number", ("1.5", "-2", "0x10", "nan", ".5", "1e5")),
+    ("_t.number", ("1.5", "-2", "1(2)", "nan", ".5", "1e5")),
     ("_t.sparse", ("1", "?", ".", "-0", "?", "22")),
     ("_t.unknown", ("?",) * 6),
     ("_t.text", ("abc", "o", "f", "'quoted'", "a,b", "x")),
@@ -621,7 +621,7 @@ def exercise_loop_show_quoting():
   )))
   def check_read_back(text):
     block = read_back(text)
-    assert list(block["_t.number"]) == ["1.5", "-2", "0x10", "nan", ".5", "1e5"]
+    assert list(block["_t.number"]) == ["1.5", "-2", "1(2)", "nan", ".5", "1e5"]
     assert list(block["_t.sparse"]) == ["1", "?", ".", "-0", "?", "22"]
     assert list(block["_t.text"]) == ["abc", "o", "f", "quoted", "a,b", "x"]
     assert list(block["_t.leader"]) == [
@@ -635,7 +635,7 @@ def exercise_loop_show_quoting():
     "  _t.blank\n"
     "   1.5   1  ?  abc       ''         'a b'\n"
     "    -2   ?  ?  o         '_under'   'tab\tx'\n"
-    "  0x10   .  ?  f         '#hash'    'it's x'\n"
+    "  1(2)   .  ?  f         '#hash'    'it's x'\n"
     "   nan  -0  ?  'quoted'  '$dollar'  'q r'\n"
     "    .5   ?  ?  a,b       '[br'      'x y z'\n"
     "   1e5  22  ?  x         ']br'      q\n")
@@ -647,7 +647,7 @@ def exercise_loop_show_quoting():
     "  _t.blank\n"
     "   1.5 1 ? abc '' 'a b'\n"
     "   -2 ? ? o '_under' 'tab\tx'\n"
-    "   0x10 . ? f '#hash' 'it's x'\n"
+    "   1(2) . ? f '#hash' 'it's x'\n"
     "   nan -0 ? 'quoted' '$dollar' 'q r'\n"
     "   .5 ? ? a,b '[br' 'x y z'\n"
     "   1e5 22 ? x ']br' q\n")
