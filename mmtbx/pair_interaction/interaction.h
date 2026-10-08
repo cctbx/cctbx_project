@@ -244,7 +244,8 @@ class wfc
     double fac1  = prefactor_of_first_derivative;
     double fac2  = prefactor_of_second_derivative;
     double PI = scitbx::constants::pi;
-    af::shared<vec3<double> > rr_array = af::shared<vec3<double> >(ngrid);
+    af::shared<vec3<double> > rr_array = af::shared<vec3<double> >(
+      ngrid, vec3<double>(0,0,0));
     for(std::size_t i=0; i < ngrid; i++) {
        af::shared<double> wfcin_array_flex_i = wfcin_array_flex[i];
        af::shared<double> wfcin_array_flex_i_sq =
