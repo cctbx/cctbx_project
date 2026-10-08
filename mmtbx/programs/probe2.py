@@ -433,6 +433,10 @@ def _condense(dotInfoList, condense):
 
 # ------------------------------------------------------------------------------
 
+# Probe reads only bonds from the restraints. None skips the plain-pair table, which is
+# for ADP restraints only; at the default 5 A it is ~0.6 GB on 1aon.
+PLAIN_PAIRS_RADIUS = None
+
 def getPdbInterpretationParams(useNeutronDistances = False):
   '''
     PDB interpretation parameters probe2 uses to make restraints.  A caller that
@@ -2028,7 +2032,8 @@ Note:
       and (self.model.get_restraints_manager() is not None) )
     try:
       if not alreadyProcessed:
-        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+        self.model.process(make_restraints=True, pdb_interpretation_params=p,
+                           plain_pairs_radius=PLAIN_PAIRS_RADIUS) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
@@ -2039,7 +2044,8 @@ Note:
         self.model.add_crystal_symmetry_if_necessary()
 
         # Retry with the adjusted model
-        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+        self.model.process(make_restraints=True, pdb_interpretation_params=p,
+                           plain_pairs_radius=PLAIN_PAIRS_RADIUS) # make restraints
         geometry = self.model.get_restraints_manager().geometry
         sites_cart = self.model.get_sites_cart() # cartesian coordinates
         bondProxies, asu = \
