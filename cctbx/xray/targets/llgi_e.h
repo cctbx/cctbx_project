@@ -90,6 +90,48 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
         d_target_by_dsigmaa_(e_eff.size(), 0.0),
         n_exact_(0)
       {
+        compute(e_eff, selection, e_model, dobs, sigmaa, centric_flags,
+          hybrid, af::const_ref<double>(0, 0), af::const_ref<double>(0, 0));
+      }
+
+      //! With tNCS (llgi::tncs_frame): mean sigmaa*e_model and error
+      //! variance (1 - sigmaa^2)*tncs_u, with e_eff and the hybrid's
+      //! observations normalised by tncs_t (e_eff = Feff/(RESN*sqrt(t))).
+      sigmaa_target_and_gradients(
+        af::const_ref<double> const& e_eff,
+        af::const_ref<bool> const& selection,
+        af::const_ref<double> const& e_model,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid,
+        af::const_ref<double> const& tncs_u,
+        af::const_ref<double> const& tncs_t)
+      :
+        target_(0),
+        d_target_by_dsigmaa_(e_eff.size(), 0.0),
+        n_exact_(0)
+      {
+        compute(e_eff, selection, e_model, dobs, sigmaa, centric_flags,
+          hybrid, tncs_u, tncs_t);
+      }
+
+    protected:
+      void
+      compute(
+        af::const_ref<double> const& e_eff,
+        af::const_ref<bool> const& selection,
+        af::const_ref<double> const& e_model,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid,
+        af::const_ref<double> const& tncs_u,
+        af::const_ref<double> const& tncs_t)
+      {
+        bool tncs = tncs_u.size() != 0;
+        CCTBX_ASSERT(!tncs || (tncs_u.size() == e_eff.size()
+                            && tncs_t.size() == e_eff.size()));
         CCTBX_ASSERT(hybrid == 0 || hybrid->size() == e_eff.size());
         CCTBX_ASSERT(selection.size() == e_eff.size());
         CCTBX_ASSERT(e_model.size() == e_eff.size());
@@ -105,6 +147,18 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
           double do_ = dobs[i];
           double sa = sigmaa[i];
           bool c = centric_flags[i];
+          if (tncs) {
+            llgi::tncs_frame fr(sa, tncs_u[i], tncs_t[i]);
+            if (!fr.valid) continue;
+            llgi::tncs_evaluation e = llgi::evaluate_tncs(hybrid, i, eeff,
+              fr.s * em, do_, fr.a_p, c, true);
+            target_ += e.target;
+            // d target/d sigmaa through a' and ec' = s*e_model
+            d_target_by_dsigmaa_[i] = e.d_target_d_a * fr.da_p_da
+                                    + e.d_target_d_ec * fr.ds_da * em;
+            if (e.exact) n_exact_++;
+            continue;
+          }
           if (hybrid != 0 && hybrid->use_exact(i, sa)) {
             llgi_exact::result r = hybrid->evaluate_at(i, em, sa, c);
             target_ -= r.ll;

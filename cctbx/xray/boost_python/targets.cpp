@@ -289,6 +289,35 @@ namespace {
             arg("centric_flags"),
             arg("compute_gradients"),
             arg("hybrid")=object())))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          bool,
+          llgi_exact::hybrid const*,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg("f_eff"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("compute_gradients"),
+            arg("hybrid"),
+            arg("tncs_u"),
+            arg("tncs_t"))))
         .def("n_exact", &w_t::n_exact)
       ;
     }
@@ -328,6 +357,33 @@ namespace {
             arg("resn"),
             arg("centric_flags"),
             arg("hybrid")=object())))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          llgi_exact::hybrid const*,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg("f_eff"),
+            arg("selection"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("hybrid"),
+            arg("tncs_u"),
+            arg("tncs_t"))))
         .def("target", &w_t::target)
         .def("n_exact", &w_t::n_exact)
         .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())
@@ -362,6 +418,25 @@ namespace {
             arg("sigmaa"),
             arg("centric_flags"),
             arg("hybrid")=object())))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          llgi_exact::hybrid const*,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg("e_eff"),
+            arg("selection"),
+            arg("e_model"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("centric_flags"),
+            arg("hybrid"),
+            arg("tncs_u"),
+            arg("tncs_t"))))
         .def("target", &w_t::target)
         .def("n_exact", &w_t::n_exact)
         .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())

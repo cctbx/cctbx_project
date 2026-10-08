@@ -285,6 +285,83 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         && hybrid->use_exact(i, a_eff);
   }
 
+  //! Translational NCS (tNCS) on the E scale normalised by RESN (without
+  //! the tNCS modulation): the model term has mean a*ec and the error
+  //! variance is (1 - a^2)*u, where u is the tNCS modulation of the error
+  //! variance; the data are normalised by t, the tNCS modulation of the
+  //! expected intensity, which must exceed (1 - a^2)*u. In the
+  //! t-normalised frame this is the ordinary LLGI (variance 1 - a'^2 about
+  //! a'*ec') with
+  //!   a' = sqrt(1 - (1 - a^2)*u/t),   ec' = s*ec,   s = a/(sqrt(t)*a').
+  //! With u = t = 1, a' = a and s = 1. valid is false (no contribution)
+  //! unless 0 < a < 1, u > 0 and t > (1 - a^2)*u.
+  struct tncs_frame
+  {
+    bool valid;
+    double a_p;      // a'
+    double s;        // ec'/ec
+    double da_p_da;  // da'/da
+    double ds_da;    // ds/da
+
+    tncs_frame(double a, double u, double t)
+    :
+      valid(false), a_p(0), s(0), da_p_da(0), ds_da(0)
+    {
+      if (!(a > 0 && a < 1 && u > 0 && t > 0)) return;
+      double a_p_sq = 1. - (1. - a * a) * u / t;
+      if (!(a_p_sq > 0)) return;
+      a_p = std::sqrt(a_p_sq);
+      double sqrt_t = std::sqrt(t);
+      s = a / (sqrt_t * a_p);
+      da_p_da = a * u / (t * a_p);
+      ds_da = (1. - a * da_p_da / a_p) / (sqrt_t * a_p);
+      valid = true;
+    }
+  };
+
+  //! Target (minimize-me) for one reflection in the t-normalised frame of
+  //! tncs_frame, and its derivatives w.r.t. ec' and a': the exact LLGI
+  //! where the hybrid says so, otherwise the Rice form (target_one_h with
+  //! RESN = TEPS = ScatFrac = k = 1). eeff_t = Feff/(RESN*sqrt(t)).
+  struct tncs_evaluation
+  {
+    double target, d_target_d_ec, d_target_d_a;
+    bool exact;
+  };
+
+  inline
+  tncs_evaluation
+  evaluate_tncs(
+    llgi_exact::hybrid const* hybrid,
+    std::size_t i,
+    double eeff_t,
+    double ec_p,
+    double dobs,
+    double a_p,
+    bool centric,
+    bool need_d_a)
+  {
+    tncs_evaluation e;
+    e.d_target_d_a = 0;
+    if (hybrid != 0 && hybrid->use_exact(i, a_p)) {
+      llgi_exact::result r = hybrid->evaluate_at(i, ec_p, a_p, centric);
+      e.target = -r.ll;
+      e.d_target_d_ec = -r.d_ll_d_ec;
+      e.d_target_d_a = -r.d_ll_d_a;
+      e.exact = true;
+      return e;
+    }
+    e.target = target_one_h(eeff_t, ec_p, dobs, a_p, 1., 1., 1., 1., centric);
+    e.d_target_d_ec = d_target_one_h_over_fc(eeff_t,
+      std::complex<double>(ec_p, 0.), dobs, a_p, 1., 1., 1., 1., centric).real();
+    if (need_d_a) {
+      e.d_target_d_a = d_target_one_h_over_sigmaa_scatfrac(
+        eeff_t, ec_p, dobs, a_p, 1., 1., 1., 1., centric).first;
+    }
+    e.exact = false;
+    return e;
+  }
+
   //! LLGI (log-likelihood-gain-of-intensities) target function and
   //! gradients.
   /*! sigmaA-parameterised alternative to the alpha/beta-based mlf target
@@ -294,6 +371,10 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       precomputed per reflection (phasertng.nacelle), along with the TEPS
       and RESN normalization factors; sigmaA and ScatFrac are smooth
       functions of resolution only, estimated/refined within phenix.refine.
+
+      With tNCS (tncs_u, tncs_t non-empty; teps must then be 1): see
+      tncs_frame. f_eff and the hybrid's observations must be normalised
+      by tncs_t (f_eff = Eeff*RESN*sqrt(t), E_obs^2 = I/(RESN^2*t)).
   */
   class target_and_gradients : public common_results
   {
@@ -315,6 +396,61 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         common_results(f_eff.size()),
         n_exact_(0)
       {
+        compute(f_eff, r_free_flags, f_calc, dobs, sigmaa, scatfrac,
+          scale_factor, teps, resn, centric_flags, compute_gradients, hybrid,
+          af::const_ref<double>(0, 0), af::const_ref<double>(0, 0));
+      }
+
+      target_and_gradients(
+        af::const_ref<double> const& f_eff,
+        af::const_ref<bool> const& r_free_flags,
+        af::const_ref<std::complex<double> > const& f_calc,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<double> const& scatfrac,
+        double scale_factor,
+        af::const_ref<double> const& teps,
+        af::const_ref<double> const& resn,
+        af::const_ref<bool> const& centric_flags,
+        bool compute_gradients,
+        llgi_exact::hybrid const* hybrid,
+        af::const_ref<double> const& tncs_u,
+        af::const_ref<double> const& tncs_t)
+      :
+        common_results(f_eff.size()),
+        n_exact_(0)
+      {
+        compute(f_eff, r_free_flags, f_calc, dobs, sigmaa, scatfrac,
+          scale_factor, teps, resn, centric_flags, compute_gradients, hybrid,
+          tncs_u, tncs_t);
+      }
+
+      //! Number of working-set reflections evaluated with the exact LLGI.
+      std::size_t n_exact() const { return n_exact_; }
+
+    protected:
+      std::size_t n_exact_;
+
+      void
+      compute(
+        af::const_ref<double> const& f_eff,
+        af::const_ref<bool> const& r_free_flags,
+        af::const_ref<std::complex<double> > const& f_calc,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<double> const& scatfrac,
+        double scale_factor,
+        af::const_ref<double> const& teps,
+        af::const_ref<double> const& resn,
+        af::const_ref<bool> const& centric_flags,
+        bool compute_gradients,
+        llgi_exact::hybrid const* hybrid,
+        af::const_ref<double> const& tncs_u,
+        af::const_ref<double> const& tncs_t)
+      {
+        bool tncs = tncs_u.size() != 0;
+        CCTBX_ASSERT(!tncs || (tncs_u.size() == f_eff.size()
+                            && tncs_t.size() == f_eff.size()));
         CCTBX_ASSERT(hybrid == 0 || hybrid->size() == f_eff.size());
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_eff.size());
@@ -343,31 +479,50 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           double tp = teps[i];
           double rn = resn[i];
           bool c = centric_flags[i];
+          bool work = rffs.is_work_refl(i);
           double a_eff = effective_sigmaa(sa, sf, scale_factor);
-          bool exact = use_exact(hybrid, i, a_eff, tp, rn);
-          llgi_exact::result r;
-          double t;
-          if (exact) {
-            r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
-            t = -r.ll;
-            if (rffs.is_work_refl(i)) n_exact_++;
+          double t = 0;
+          std::complex<double> g(0, 0);
+          bool exact = false;
+          if (tncs) {
+            CCTBX_ASSERT(std::abs(tp - 1.0) < 1e-6);
+            tncs_frame fr(a_eff, tncs_u[i], tncs_t[i]);
+            if (fr.valid && rn > 0) {
+              tncs_evaluation e = evaluate_tncs(hybrid, i,
+                feff / (rn * std::sqrt(tncs_t[i])), fr.s * fc / rn, do_,
+                fr.a_p, c, false);
+              t = e.target;
+              exact = e.exact;
+              if (work && compute_gradients && fc > 0) {
+                // ec' = s*fc/resn
+                g = (e.d_target_d_ec * fr.s / rn)
+                  * (std::conj(f_calc[i]) / fc);
+              }
+            }
           }
           else {
-            t = target_one_h(feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
-          }
-          target_per_reflection_[i] = t;
-          if (rffs.is_work_refl(i)) {
-            target_work += t;
-            if (compute_gradients) {
-              std::complex<double> g(0, 0);
-              if (!exact) {
-                g = d_target_one_h_over_fc(
-                  feff, f_calc[i], do_, sa, sf, scale_factor, tp, rn, c);
-              }
-              else if (fc > 0) {
+            exact = use_exact(hybrid, i, a_eff, tp, rn);
+            if (exact) {
+              llgi_exact::result r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
+              t = -r.ll;
+              if (work && compute_gradients && fc > 0) {
                 // d(-LLGI)/dfc = -(dLLGI/dEcalc)/resn along the phase
                 g = (-r.d_ll_d_ec / rn) * (std::conj(f_calc[i]) / fc);
               }
+            }
+            else {
+              t = target_one_h(feff, fc, do_, sa, sf, scale_factor, tp, rn, c);
+              if (work && compute_gradients) {
+                g = d_target_one_h_over_fc(
+                  feff, f_calc[i], do_, sa, sf, scale_factor, tp, rn, c);
+              }
+            }
+          }
+          if (exact && work) n_exact_++;
+          target_per_reflection_[i] = t;
+          if (work) {
+            target_work += t;
+            if (compute_gradients) {
               gradients_work_.push_back(std::conj(g) * one_over_n_work);
             }
           }
@@ -380,12 +535,6 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }
       }
-
-      //! Number of working-set reflections evaluated with the exact LLGI.
-      std::size_t n_exact() const { return n_exact_; }
-
-    protected:
-      std::size_t n_exact_;
   };
 
   //! Mean LLGI target and per-reflection d(target)/d(sigmaa),
@@ -436,6 +585,56 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         d_target_by_dscatfrac_(f_eff.size(), 0.0),
         n_exact_(0)
       {
+        compute(f_eff, selection, f_calc, dobs, sigmaa, scatfrac,
+          scale_factor, teps, resn, centric_flags, hybrid,
+          af::const_ref<double>(0, 0), af::const_ref<double>(0, 0));
+      }
+
+      //! With tNCS: see target_and_gradients.
+      sigmaa_scatfrac_target_and_gradients(
+        af::const_ref<double> const& f_eff,
+        af::const_ref<bool> const& selection,
+        af::const_ref<std::complex<double> > const& f_calc,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<double> const& scatfrac,
+        double scale_factor,
+        af::const_ref<double> const& teps,
+        af::const_ref<double> const& resn,
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid,
+        af::const_ref<double> const& tncs_u,
+        af::const_ref<double> const& tncs_t)
+      :
+        target_(0),
+        d_target_by_dsigmaa_(f_eff.size(), 0.0),
+        d_target_by_dscatfrac_(f_eff.size(), 0.0),
+        n_exact_(0)
+      {
+        compute(f_eff, selection, f_calc, dobs, sigmaa, scatfrac,
+          scale_factor, teps, resn, centric_flags, hybrid, tncs_u, tncs_t);
+      }
+
+    protected:
+      void
+      compute(
+        af::const_ref<double> const& f_eff,
+        af::const_ref<bool> const& selection,
+        af::const_ref<std::complex<double> > const& f_calc,
+        af::const_ref<double> const& dobs,
+        af::const_ref<double> const& sigmaa,
+        af::const_ref<double> const& scatfrac,
+        double scale_factor,
+        af::const_ref<double> const& teps,
+        af::const_ref<double> const& resn,
+        af::const_ref<bool> const& centric_flags,
+        llgi_exact::hybrid const* hybrid,
+        af::const_ref<double> const& tncs_u,
+        af::const_ref<double> const& tncs_t)
+      {
+        bool tncs = tncs_u.size() != 0;
+        CCTBX_ASSERT(!tncs || (tncs_u.size() == f_eff.size()
+                            && tncs_t.size() == f_eff.size()));
         CCTBX_ASSERT(hybrid == 0 || hybrid->size() == f_eff.size());
         CCTBX_ASSERT(selection.size() == f_eff.size());
         CCTBX_ASSERT(f_calc.size() == f_eff.size());
@@ -458,6 +657,24 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           double rn = resn[i];
           bool c = centric_flags[i];
           double a_eff = effective_sigmaa(sa, sf, scale_factor);
+          if (tncs) {
+            CCTBX_ASSERT(std::abs(tp - 1.0) < 1e-6);
+            tncs_frame fr(a_eff, tncs_u[i], tncs_t[i]);
+            if (!fr.valid || !(rn > 0)) continue;
+            double ec = fc / rn;
+            tncs_evaluation e = evaluate_tncs(hybrid, i,
+              feff / (rn * std::sqrt(tncs_t[i])), fr.s * ec, do_, fr.a_p, c,
+              true);
+            target_ += e.target;
+            // d target/d a_eff through a' and ec' = s*ec
+            double d_t_d_a = e.d_target_d_a * fr.da_p_da
+                           + e.d_target_d_ec * fr.ds_da * ec;
+            // a_eff = sigmaa*k/sqrt(scatfrac)
+            d_target_by_dsigmaa_[i] = d_t_d_a * a_eff / sa;
+            d_target_by_dscatfrac_[i] = -d_t_d_a * a_eff / (2. * sf);
+            if (e.exact) n_exact_++;
+            continue;
+          }
           if (use_exact(hybrid, i, a_eff, tp, rn)) {
             llgi_exact::result r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
             target_ -= r.ll;
