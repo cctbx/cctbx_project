@@ -1,5 +1,8 @@
 # Full conda builds
 
+# run manually on pull requests
+pr: none
+
 # no continuous integration builds except for release branches
 trigger:
   batch: true
