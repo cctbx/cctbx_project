@@ -208,6 +208,16 @@ END
 
 _MG_SINGLE_H_FAR_PDB = _MG_SINGLE_H_PDB.replace("-2.100", "-2.900")
 
+# The same water by the -a face of a 10 A cell, the Mg across it: only the
+# Mg's -a translate, 2.1 A from the O, coordinates the water.
+_MG_SINGLE_H_SYM_PDB = """\
+CRYST1   10.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1 MG    MG A   1       8.900  15.000  15.000  1.00 10.00          MG
+HETATM    2  O   HOH W   1       1.000  15.000  15.000  1.00 10.00           O
+HETATM    3  H1  HOH W   1       1.000  15.957  15.000  1.00 10.00           H
+END
+"""
+
 # H1 goes to ACA (+x, nearest). ACB is the next nearest but sits only 30 deg
 # off the O-H1 axis, so no point on the 104.5 deg cone can aim at it. ACC is
 # further away yet lies exactly on the cone, so it is the one H2 can donate to.
@@ -586,7 +596,9 @@ def exercise_single_h_water():
 
 def exercise_single_h_metal_annotation():
   """The single-H report flags a coordinating cation, using a first-shell
-  cutoff rather than the looser proton-repulsion radius."""
+  cutoff rather than the looser proton-repulsion radius, and a cation that
+  only crystal symmetry brings next to the water even when no water is
+  placed."""
   near = wp.place_water_hydrogens(
     _hierarchy(_MG_SINGLE_H_PDB), n_refine=0).partial_waters
   assert len(near) == 1, f"expected one single-H water; got {near}"
@@ -600,6 +612,11 @@ def exercise_single_h_metal_annotation():
     _hierarchy(_MG_SINGLE_H_FAR_PDB), n_refine=0).partial_waters
   assert len(far) == 1 and far[0][1] is None, (
     f"a 2.9 A Mg is inside the repulsion radius but is not a bond; got {far}")
+
+  hier, cs = _hierarchy_and_symmetry(_MG_SINGLE_H_SYM_PDB)
+  sym = wp.place_water_hydrogens(
+    hier, n_refine=0, crystal_symmetry=cs).partial_waters
+  assert sym[0][1] is not None and abs(sym[0][1][1] - 2.100) < 1e-3, sym
 
 
 def exercise_hetatm_flag():

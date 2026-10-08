@@ -844,10 +844,6 @@ class _WaterHydrogenPlacer(object):
     acc_pts = g["acc_pts"]
     cat = g["cat"]
     na = len(acceptors)
-    if na:
-      acc_cl = self._clear(wi, acc_pts, nbr_slots, "acc_static")
-      acc_ok = acc_cl.ok
-      acc_cat = _cat_ok(cat, acc_pts, o)
 
     # H1: nearest acceptor giving a placement that is away from cations and
     # clash-free; else the best direction over the acceptors plus a dense
@@ -865,6 +861,10 @@ class _WaterHydrogenPlacer(object):
           best_align = align
           h1_k = k
     else:
+      if na:
+        acc_cl = self._clear(wi, acc_pts, nbr_slots, "acc_static")
+        acc_ok = acc_cl.ok
+        acc_cat = _cat_ok(cat, acc_pts, o)
       d1 = None
       h1_k = -1
       for k in range(na):
@@ -1085,55 +1085,10 @@ class _WaterHydrogenPlacer(object):
       return None
     sel.reset_i_seq()
 
-    # Neighbouring asymmetric units, as environment atoms appended after the
-    # model's own. They keep the asymmetric unit's indices 0..n-1 valid as
-    # both tree and i_seq, and the water walk below reads the hierarchy, so
-    # only the model's waters are protonated.
-    self.sym_hier = []
-    sym_atoms = []
-    sym_xyz = flex.vec3_double()
-    if self.crystal_symmetry is not None:
-      self.sym_hier, sym_atoms, sym_xyz = _symmetry_environment(
-        hier, sel.extract_xyz(), self.crystal_symmetry,
-        max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
-            _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
-    atoms = atoms + sym_atoms
-    self.atoms = atoms
-
-    # Static neighbours (protein, ligands, water O, pre-existing H) never
-    # move; the placed water H are tracked by slot in placed_coords/placed_xyz.
-    self.static_xyz = sel.extract_xyz()
-    self.static_xyz.extend(sym_xyz)
-    self.static_tree = KDTree(self.static_xyz.as_numpy_array())
-    _el = sel.extract_element(strip=True)
-    _el.extend(flex.std_string([a.element.strip() for a in sym_atoms]))
-    self.static_is_h = (_el == "H") | (_el == "D")
-    self.static_thr = flex.double(len(atoms), _WATER_MIN_CLEARANCE ** 2)
-    self.static_thr.set_selected(self.static_is_h,
-                                 _WATER_MIN_H_CLEARANCE ** 2)
-
-    # N atoms that already carry an H are donors, not acceptors (amide,
-    # ammonium, guanidinium, protonated His ring N, ...). O always accepts,
-    # so only N is filtered.
-    self.donor_n = set()
-    h_idx = self.static_is_h.iselection()
-    if h_idx.size():
-      for i, nbrs in zip(h_idx, self.static_tree.query_ball_point(
-          self.static_xyz.select(h_idx).as_numpy_array(), _WATER_NH_BOND,
-          return_sorted=False)):
-        for j in nbrs:
-          if j != i and atoms[j].element.strip().upper() == "N":
-            self.donor_n.add(j)
-
-    # Lone-pair lobe directions per acceptor (opt-in; empty when off), filled
-    # once the waters' acceptors are known.
-    self.acc_lobes = {}
-
-    self.cos_hoh = math.cos(math.radians(_WATER_HOH_DEG))
-    self.sin_hoh = math.sin(math.radians(_WATER_HOH_DEG))
-
     # Gather the waters to protonate, in one walk per water residue.
     waters = []
+    # Single-H waters to report, annotated once the tree exists.
+    single = []
     wh_xyz = []
     wh_wid = []
     # Per water residue, its O site, None without one.
@@ -1177,8 +1132,7 @@ class _WaterHydrogenPlacer(object):
       if is_single:
         action = ("stripped" if self.existing_h == "reorient"
                   else "completed" if fixed_d1 is not None else "kept")
-        self.partial_waters.append(
-          (_water_id(ag), self._nearest_cation(o.xyz, own_idx), action))
+        single.append((_water_id(ag), o.xyz, own_idx, action))
       if skip:
         continue
       waters.append((ag, o, own_idx, fixed_d1, existing, names, wgid))
@@ -1186,6 +1140,59 @@ class _WaterHydrogenPlacer(object):
     self.wh_wid = flex.size_t(wh_wid) if wh_wid else flex.size_t()
     # Water H pairs across symmetry for the clash counts, built by _stats.
     self.h_sym_pairs = None
+
+    # Neighbouring asymmetric units, as environment atoms appended after the
+    # model's own. They keep the asymmetric unit's indices 0..n-1 valid as
+    # both tree and i_seq, and the waters come from the walk above, so only
+    # the model's waters are protonated. Only placement and the single-H
+    # report read them.
+    self.sym_hier = []
+    sym_atoms = []
+    sym_xyz = flex.vec3_double()
+    if self.crystal_symmetry is not None and (waters or single):
+      self.sym_hier, sym_atoms, sym_xyz = _symmetry_environment(
+        hier, sel.extract_xyz(), self.crystal_symmetry,
+        max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
+            _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
+    atoms = atoms + sym_atoms
+    self.atoms = atoms
+
+    # Static neighbours (protein, ligands, water O, pre-existing H) never
+    # move; the placed water H are tracked by slot in placed_coords/placed_xyz.
+    self.static_xyz = sel.extract_xyz()
+    self.static_xyz.extend(sym_xyz)
+    self.static_tree = KDTree(self.static_xyz.as_numpy_array())
+    _el = sel.extract_element(strip=True)
+    _el.extend(flex.std_string([a.element.strip() for a in sym_atoms]))
+    self.static_is_h = (_el == "H") | (_el == "D")
+    self.static_thr = flex.double(len(atoms), _WATER_MIN_CLEARANCE ** 2)
+    self.static_thr.set_selected(self.static_is_h,
+                                 _WATER_MIN_H_CLEARANCE ** 2)
+
+    # N atoms that already carry an H are donors, not acceptors (amide,
+    # ammonium, guanidinium, protonated His ring N, ...). O always accepts,
+    # so only N is filtered.
+    self.donor_n = set()
+    h_idx = self.static_is_h.iselection()
+    if h_idx.size():
+      for i, nbrs in zip(h_idx, self.static_tree.query_ball_point(
+          self.static_xyz.select(h_idx).as_numpy_array(), _WATER_NH_BOND,
+          return_sorted=False)):
+        for j in nbrs:
+          if j != i and atoms[j].element.strip().upper() == "N":
+            self.donor_n.add(j)
+
+    # Lone-pair lobe directions per acceptor (opt-in; empty when off), filled
+    # once the waters' acceptors are known.
+    self.acc_lobes = {}
+
+    self.cos_hoh = math.cos(math.radians(_WATER_HOH_DEG))
+    self.sin_hoh = math.sin(math.radians(_WATER_HOH_DEG))
+
+    # The cation coordinating each single-H water, symmetry copies included.
+    self.partial_waters = [
+      (rid, self._nearest_cation(o_xyz, own_idx), action)
+      for rid, o_xyz, own_idx, action in single]
 
     # Per-water constants: every neighbour list the placement needs, built
     # once here and reused by the greedy pass, every relaxation sweep and
