@@ -1337,15 +1337,6 @@ Inputs:
       if outl:
         print(f'\nBond types\n{outl}')
 
-    # t0=time.time()
-    # self.atom_valences = electron_distribution(
-    #   model.get_hierarchy(), # needs to be altloc free
-    #   model.get_restraints_manager().geometry,
-    #   verbose=False,
-    # )
-    # print('Distribution time : %01.fs' % (time.time()-t0))
-    # print('='*80)
-    # print(self.atom_valences)
     # self.report = self.atom_valences.report(
     #   ignore_water=self.params.input.ignore_water,
     #   show_detailed=True,
