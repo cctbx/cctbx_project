@@ -146,6 +146,10 @@ class manager_mixin(object):
     return self.target_functor()(compute_gradients=True) \
       .gradients_wrt_atomic_parameters(**keyword_args)
 
+  # The llgi target is only implemented by manager (not twin managers).
+  def llgi_data(self):
+    return None
+
   def llgi_target_active(self):
     return False
 

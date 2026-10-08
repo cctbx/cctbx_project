@@ -95,6 +95,7 @@ def exercise(space_group_info,
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.refinement.targets.target_names:
         if target=="mli": continue
+        if target=="llgi": continue # needs LLGI data; see tst_llgi.py
         if (quick):
           if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
             continue
