@@ -136,7 +136,7 @@ def approximate_residue_molecule(model, residue_group, altloc=""):
   return mol, rdkit_to_iseq
 
 def residue_rigid_components(model, residue_group, altloc="", filter_lone_linkers=True,
-                             filename=None):
+                             filename=None, verbose=False):
   """
   Rigid components of one residue conformer: from residue_molecule's fragment_mol
   (caps as implicit H; the residue's metals; added H have no i_seq and are left out
@@ -156,6 +156,7 @@ def residue_rigid_components(model, residue_group, altloc="", filter_lone_linker
   else:
     mol, rdkit_to_iseq = approximate_residue_molecule(model, residue_group, altloc)
     approximate = "approximate: %s" % r.reason
+    if verbose: print(f'{approximate=}')
   components, mol, frags = get_rigid_components(mol, rdkit_to_iseq,
     filter_lone_linkers, filename)
   return group_args(components=components, mol=mol, frags=frags,

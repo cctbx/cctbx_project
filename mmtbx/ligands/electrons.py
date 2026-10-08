@@ -1136,18 +1136,20 @@ Inputs:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
-  def get_charge_of_molecule(self, molecule, model):
-    return self.get_charge_of_molecule_rigid(molecule, model)
+  def get_charge_of_molecule(self, molecule, model, verbose=False):
+    return self.get_charge_of_molecule_rigid(molecule, model, verbose=verbose)
 
-  def get_charge_of_molecule_rigid(self, molecule, model):
+  def get_charge_of_molecule_rigid(self, molecule, model, verbose=False):
     from mmtbx.ligands import rdkit_utils
     rc = rdkit_utils.residue_rigid_components(
       model         = model,
       residue_group = molecule,
       # altloc        = molecule.altloc.strip(),
+      verbose = verbose,
       )
-    if rc.molecule.ok: return rc.molecule.total_charge
-    return None
+    if verbose: print(rc.molecule)
+    if rc.molecule.ok: return rc.molecule.total_charge, rc.molecule.mol
+    return None, None
 
   def get_charge_of_molecule_simple(self, molecule, model, iterations=1000, verbose=False):
     from rdkit import Chem
@@ -1171,7 +1173,7 @@ Inputs:
         Chem.rdDetermineBonds.DetermineBonds(dcm,
                                              charge=charge,
                                              maxIterations=iterations,
-                                             useHueckel=True,
+                                             # useHueckel=True,
                                              allowChargedFragments=True,
                                              )
       except RuntimeError: # max interations
@@ -1185,7 +1187,8 @@ Inputs:
       if not n in charges:
         charges[n]=charge
       if not (charge or n): break
-      print(f'charge {charge} took {(time.time()-t0)*1000:0.2f}ms')
+      print(f'charge {charge} took {(time.time()-t0)*1000:0.2f}ms',
+            file=self.logger)
     if verbose: print(charges)
     if 0:
       atoms=model.get_hierarchy().atoms()
@@ -1199,16 +1202,18 @@ Inputs:
         q2=atoms[bond.GetEndAtomIdx()].quote()
         print(f'{q1} - {q2} : {bond.GetBondType()}')
 
+    if not charges: return None
     assert charges, 'charge solution not found'
     for n, charge in sorted(charges.items()):
       Chem.rdDetermineBonds.DetermineBonds(molecule,
                                            charge=charge,
                                            maxIterations=iterations,
-                                           useHueckel=True,
+                                           # useHueckel=True,
                                            allowChargedFragments=True,
                                            )
       break
-    print(f'charges {charge} took {(time.time()-t1)*1000:0.2f}ms')
+    print(f'charges {charge} took {(time.time()-t1)*1000:0.2f}ms',
+          file=self.logger)
     # Get the total formal charge of the molecule
     return Chem.GetFormalCharge(molecule)
 
@@ -1248,25 +1253,39 @@ Inputs:
     #                              verbose=1)
     charges=[]
     total_charge=0
+    outl = ''
     for i_mol, residue_group in enumerate(model.get_hierarchy().residue_groups()):
-      total_charge_each = self.get_charge_of_molecule(residue_group, model)
-      # if total_charge_each is None:
-      #   #
-      #   # try old
-      #   #
-      #   total_charge_each=self.get_charge_of_molecule_simple(molecules[i_mol],
-      #                                                        models[i_mol])
-      #   print(f"Total formal charge simple: {total_charge_each}\n")
-      print(f"Total formal charge: {total_charge_each}\n")
+      # for j, atom in enumerate(residue_group.atoms()): print(j,atom.quote())
+      total_charge_each, molecule_each = self.get_charge_of_molecule(residue_group,
+                                                                     model,
+                                                                     verbose=False)
+      if total_charge_each is None:
+        #
+        # try simple non-restraints rdkit
+        #
+        total_charge_each=self.get_charge_of_molecule_simple(molecules[i_mol],
+                                                             models[i_mol],
+                                                             verbose=False)
+        print(f"Total formal charge simple: {total_charge_each}\n", file=self.logger)
+        molecule_each=molecules[i_mol]
+
+      if total_charge_each is None:
+        ed = electron_distribution(models[i_mol].get_hierarchy(),
+                                   models[i_mol].get_restraints_manager().geometry,
+        )
+        total_charge_each=ed.get_total_charge()
+        molecule_each=molecules[i_mol]
 
       charges.append(total_charge_each)
       total_charge+=total_charge_each
-      ta=model.get_hierarchy().atoms()
-      # for i, atom in enumerate(molecule.GetAtoms()):
-      #   if atom.GetFormalCharge():
-      #     print(f'{i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}')
-    print(f"Total formal charge: {time.time()-t0:4.2f}: {total_charge} \n")
-    print('Distribution time : %01.fs' % (time.time()-t0))
+      ta=models[i_mol].get_hierarchy().atoms()
+      for i, atom in enumerate(molecule_each.GetAtoms()):
+        if atom.GetFormalCharge():
+          outl+=f'  {i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}\n'
+    if outl:
+      print(f'\nNon-zero charged atoms\n{outl}')
+    print(f"Total formal charge: {total_charge} \n", file=self.logger)
+    print('Distribution time : %01.fms' % ((time.time()-t0)*1000), file=self.logger)
 
     # if self.params.action.show_formal_charges or self.params.action.show_non_zero_formal_charges:
     #   if self.params.action.show_formal_charges:
