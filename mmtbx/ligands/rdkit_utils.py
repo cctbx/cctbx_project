@@ -979,11 +979,7 @@ def convert_model_to_rdkit(cctbx_model):
   bond_proxies = bonds_simple.get_proxies_with_origin_id()
   for bond_proxy in bond_proxies:
     begin, end = bond_proxy.i_seqs
-    if (atoms[begin].element.strip().upper() in ['H', 'D'] or
-        atoms[end].element.strip().upper() in ['H', 'D']):
-      order = Chem.rdchem.BondType.SINGLE
-    else:
-      order = Chem.rdchem.BondType.UNSPECIFIED
+    order = Chem.rdchem.BondType.UNSPECIFIED
     rwmol.AddBond(int(begin),int(end),order)
 
   rwmol.AddConformer(conformer)
@@ -1038,12 +1034,8 @@ def _generate_models_from_fragments(cctbx_model):
     yield tm
 
 def convert_model_to_rdkit_molecules(cctbx_model):
-  #
-  # would be better if it broke into fragments
-  #
   mols=[]
   mods=[]
-  # for tm in _generate_models_from_fragments(cctbx_model):
   for tm in _generate_models_from_residues(cctbx_model):
     mods.append(tm)
     mol = convert_model_to_rdkit(tm)
@@ -1649,6 +1641,13 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
       if bond is not None and not bond.GetIsAromatic():
         got[(a1, a2)] = rd_order.get(bond.GetBondType(), 0)
     bad = set([p for p in got if got[p] != explicit[p]])
+    # a file double bond drawn by RDKit as a charge-separated single, e.g. a
+    # sulfoxide S=O as [S+]-[O-], is the same structure
+    for p in list(bad):
+      if explicit[p] == 2 and got[p] == 1:
+        q = sorted([m.GetAtomWithIdx(rd_of_name[a]).GetFormalCharge() for a in p])
+        if q == [-1, 1]:
+          bad.discard(p)
     # bonds from one atom to neighbours of one element: orders compared as a set
     sets = {}
     for (a1, a2) in got:
@@ -1675,8 +1674,11 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
         back[i] = k
       m = Chem.RWMol(Chem.RenumberAtoms(m, back))
     return m, None
-  def from_file():
-    """mol with the file's bond orders and formal charges (less the deprotonations); None unless sanitized without radicals."""
+  def file_charge(i):
+    return cif_types.formal_charge_and_problem(getattr(d_atoms[dict_name[i]], "charge",
+      None))[0] if dict_name[i] in d_atoms else None
+  def from_file(total, drop=()):
+    """mol with the file's bond orders and formal charges (less the deprotonations and the charges on drop); None unless sanitized without radicals at total."""
     m = Chem.RWMol(mol)
     kinds = {"sing": Chem.BondType.SINGLE, "doub": Chem.BondType.DOUBLE,
       "trip": Chem.BondType.TRIPLE, "arom": Chem.BondType.AROMATIC}
@@ -1691,8 +1693,7 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
         m.GetAtomWithIdx(idx[i]).SetIsAromatic(True)
         m.GetAtomWithIdx(idx[k]).SetIsAromatic(True)
     for i in present:
-      q = cif_types.formal_charge_and_problem(getattr(d_atoms[dict_name[i]], "charge",
-        None))[0] if dict_name[i] in d_atoms else None
+      q = None if i in drop else file_charge(i)
       m.GetAtomWithIdx(idx[i]).SetFormalCharge((q or 0) - deprotonated.get(i, 0))
     try:
       Chem.SanitizeMol(m)
@@ -1700,22 +1701,21 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
     except Exception:
       return None
     if [a for a in m.GetAtoms() if a.GetNumRadicalElectrons()] or \
-        Chem.GetFormalCharge(m) != formal_total:
+        Chem.GetFormalCharge(m) != total:
       return None
     return m
   result.search = dict(calls=0, seconds=0.0, valid=[], set_aside=[], disagree={},
     order=None)
   heavy_bonds = [frozenset([dict_name[i], dict_name[k]]) for i, k in bonds
     if not is_h(i) and not is_h(k)]
-  m = None
-  if formal_total is not None and not [p for p in heavy_bonds if file_type.get(p) not in
-      ("sing", "doub", "trip", "arom")]:
-    m = from_file()
-    if m is not None:
-      mol, total, source, certain = m, formal_total, "restraint file", True
-  if m is not None:
-    pass
-  elif formal_total is not None:
+  all_explicit = not [p for p in heavy_bonds if file_type.get(p) not in
+    ("sing", "doub", "trip", "arom")]
+  def from_formal(total, drop=()):
+    """(mol, source, None) from the file's charges less drop, or (None, None, reason)."""
+    if all_explicit:
+      m = from_file(total, drop)
+      if m is not None:
+        return m, "restraint file", None
     # the input atom order, RDKit's canonical order, 10 seeded random orders
     import random
     probe = Chem.Mol(mol)
@@ -1730,30 +1730,53 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
     first = None
     for label, order in trials:
       result.search["calls"] += 1
-      m, error = attempt(formal_total, order)
+      m, error = attempt(total, order)
       bad = disagreements(m) if m is not None else None
       if first is None:
         first = (error, bad)
       if m is not None and not bad:
         result.search["order"] = label
-        break
-      m = None
+        return m, "formal charges", None
+    error, bad = first
+    tail = " (also in the canonical and 10 random atom orders)"
+    if error is not None:
+      return None, None, "DetermineBondOrders fails for %s with the formal total %d: " \
+        "%s%s" % (resname, total, error, tail)
+    return None, None, "bond orders disagree with the restraint file for %s at the " \
+      "formal total %d: %s%s" % (resname, total, "; ".join(bad), tail)
+  m = None
+  if formal_total is not None:
+    m, source, formal_failed = from_formal(formal_total)
+    used_total = formal_total
     if m is None:
-      error, bad = first
-      tail = " (also in the canonical and 10 random atom orders)"
-      if error is not None:
-        return fail("DetermineBondOrders fails for %s with the formal total %d: %s%s" % (
-          resname, formal_total, error, tail))
-      return fail("bond orders disagree with the restraint file for %s at the formal "
-        "total %d: %s%s" % (resname, formal_total, "; ".join(bad), tail))
-    if result.search["order"] != "input":
-      result.charge_notes.append("DetermineBondOrders succeeded in the %s atom order" %
-        result.search["order"])
-    mol, total, source, certain = m, formal_total, "formal charges", True
-  else:
+      # a charge on a carbon with four bonds cannot be drawn (e.g. GeoStd's -1 on the
+      # CH2 next to a sulfonium): the file's other charges, without it
+      drop = [i for i in present if el(i) == "C" and file_charge(i) and
+        mol.GetAtomWithIdx(idx[i]).GetDegree() == 4]
+      if drop:
+        used_total = formal_total - sum([file_charge(i) for i in drop])
+        m, source, failed = from_formal(used_total, set(drop))
+        if m is not None:
+          result.charge_notes.append("formal charge ignored on %s (a carbon with four "
+            "bonds): total %d, not %d" % (" ".join(["%s (%+d)" % (dict_name[i],
+            file_charge(i)) for i in drop]), used_total, formal_total))
+    if m is not None:
+      if source == "formal charges" and result.search["order"] != "input":
+        result.charge_notes.append("DetermineBondOrders succeeded in the %s atom order" %
+          result.search["order"])
+      mol, total, certain = m, used_total, True
+    else:
+      # the restraint file's formal charges cannot be built: search the totals as if
+      # there were none
+      result.charge_notes.append("restraint file formal charges inconsistent, total "
+        "searched: %s" % formal_failed)
+  if m is None:
+    no_formal = "no formal charges" if formal_total is None else \
+      "formal charges inconsistent"
     t_search = time.time()
     valid = {}
-    for t in range(-4, 5):
+    totals = range(-10, 11)
+    for t in totals:
       result.search["calls"] += 1
       m, e = attempt(t)
       if m is None:
@@ -1776,12 +1799,12 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
         ["%+d" % t for t in result.search["set_aside"]]))
       valid = plausible
     if len(valid) > 1:
-      return fail("ambiguous total charge for %s (no formal charges): %s" % (resname,
+      return fail("ambiguous total charge for %s (%s): %s" % (resname, no_formal,
         " ".join(["%+d" % t for t in sorted(valid)])))
     if not valid:
       d = result.search["disagree"]
-      return fail("no valid structure for %s with total charges -4..+4 (no formal "
-        "charges)%s" % (resname, (": bond orders disagree with the restraint file at %s"
+      return fail("no valid structure for %s with total charges %+d..%+d (%s)%s" % (
+        resname, totals[0], totals[-1], no_formal, (": bond orders disagree with the restraint file at %s"
         % "; ".join(["%+d (%s)" % (t, ", ".join(d[t])) for t in sorted(d)])) if d else ""))
     total = list(valid)[0]
     mol, source, certain = valid[total], "search", False

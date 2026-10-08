@@ -124,7 +124,7 @@ def get_qm_package_scope(default_package=None, package_auto=False, validate=True
           programs += ' *%s' % package
         else:
           programs += ' %s' % package
-  if verbose or 1:
+  if verbose:
     print(programs)
   if validate:
     assert programs, 'Need to set some parameters for QM programs %s' % program_options

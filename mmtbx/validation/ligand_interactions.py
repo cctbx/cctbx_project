@@ -1096,7 +1096,9 @@ def builder_groups(r, atoms):
       if n.GetIdx() in iseq])
     notes = []
     if not r.charge_certain:
-      notes.append("total charge by search (no formal charges)")
+      notes.append("total charge by search (%s)" % ("formal charges inconsistent"
+        if [n for n in r.charge_notes if n.startswith("restraint file formal charges "
+        "inconsistent")] else "no formal charges"))
     unsure = [] if no_h else sorted(near & uncertain)
     if unsure:
       notes.append("H completed from the restraint file on %s" % " ".join(

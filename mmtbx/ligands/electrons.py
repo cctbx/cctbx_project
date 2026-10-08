@@ -1165,7 +1165,21 @@ Inputs:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
-  def get_charge_of_molecule(self, molecule, model, iterations=1000, verbose=False):
+  def get_charge_of_molecule(self, molecule, model):
+    return self.get_charge_of_molecule_rigid(molecule, model)
+
+  def get_charge_of_molecule_rigid(self, molecule, model):
+    from mmtbx.ligands import rdkit_utils
+    rc = rdkit_utils.residue_rigid_components(
+      model         = model,
+      residue_group = molecule,
+      # altloc        = molecule.altloc.strip(),
+      )
+    if rc.molecule.ok: return rc.molecule.total_charge
+    print(rc)
+    return None
+
+  def get_charge_of_molecule_simple(self, molecule, model, iterations=1000, verbose=False):
     from rdkit import Chem
     from rdkit.Chem import rdDetermineBonds
     from mmtbx.ligands.rdkit_utils import convert_model_to_rdkit
@@ -1178,13 +1192,17 @@ Inputs:
     charges={}
     if verbose:
       for atom in model.get_atoms(): print(atom.quote())
+    t1=time.time()
     for charge in _generate_charges(10):
+      t0=time.time()
       dcm=convert_model_to_rdkit(model)
       if verbose: print(f' trying {charge=}')
       try:
         Chem.rdDetermineBonds.DetermineBonds(dcm,
                                              charge=charge,
                                              maxIterations=iterations,
+                                             useHueckel=True,
+                                             allowChargedFragments=True,
                                              )
       except RuntimeError: # max interations
         continue
@@ -1193,25 +1211,40 @@ Inputs:
       if verbose: print(f'found solution for {charge}')
       n=0
       for atom in dcm.GetAtoms():
-        print(atom.GetFormalCharge())
         if atom.GetFormalCharge():n+=1
       if not n in charges:
         charges[n]=charge
+      if not (charge or n): break
+      print(f'charge {charge} took {(time.time()-t0)*1000:0.2f}ms')
     if verbose: print(charges)
+    if 0:
+      atoms=model.get_hierarchy().atoms()
+      for bond in molecule.GetBonds():
+        q1=atoms[bond.GetBeginAtomIdx()].quote()
+        q2=atoms[bond.GetEndAtomIdx()].quote()
+        print(f'{q1} - {q2} : {bond.GetBondType()}')
+      Chem.rdDetermineBonds.DetermineConnectivity(dcm, charge=0)
+      for bond in molecule.GetBonds():
+        q1=atoms[bond.GetBeginAtomIdx()].quote()
+        q2=atoms[bond.GetEndAtomIdx()].quote()
+        print(f'{q1} - {q2} : {bond.GetBondType()}')
+
     assert charges, 'charge solution not found'
     for n, charge in sorted(charges.items()):
-      print(n, charge)
       Chem.rdDetermineBonds.DetermineBonds(molecule,
                                            charge=charge,
                                            maxIterations=iterations,
+                                           useHueckel=True,
+                                           allowChargedFragments=True,
                                            )
       break
+    print(f'charges {charge} took {(time.time()-t1)*1000:0.2f}ms')
     # Get the total formal charge of the molecule
     return Chem.GetFormalCharge(molecule)
 
   def run(self):
     from mmtbx.ligands.rdkit_utils import convert_model_to_rdkit_molecules
-    from mmtbx.ligands.rdkit_utils import populate_molecule
+    # from mmtbx.ligands.rdkit_utils import populate_molecule
 
     model = self.data_manager.get_model()
     model.set_log(null_out())
@@ -1245,45 +1278,53 @@ Inputs:
     #                              verbose=1)
     charges=[]
     total_charge=0
-    for molecule, model in zip(molecules, models):
-      total_charge_each = self.get_charge_of_molecule(molecule, model)
-      # print(f"Total formal charge: {total_charge_each}\n")
+    for i_mol, residue_group in enumerate(model.get_hierarchy().residue_groups()):
+      total_charge_each = self.get_charge_of_molecule(residue_group, model)
+      # if total_charge_each is None:
+      #   #
+      #   # try old
+      #   #
+      #   total_charge_each=self.get_charge_of_molecule_simple(molecules[i_mol],
+      #                                                        models[i_mol])
+      #   print(f"Total formal charge simple: {total_charge_each}\n")
+      print(f"Total formal charge: {total_charge_each}\n")
+
       charges.append(total_charge_each)
       total_charge+=total_charge_each
       ta=model.get_hierarchy().atoms()
-      for i, atom in enumerate(molecule.GetAtoms()):
-        if atom.GetFormalCharge():
-          print(f'{i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}')
+      # for i, atom in enumerate(molecule.GetAtoms()):
+      #   if atom.GetFormalCharge():
+      #     print(f'{i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}')
     print(f"Total formal charge: {time.time()-t0:4.2f}: {total_charge} \n")
     print('Distribution time : %01.fs' % (time.time()-t0))
 
-    if self.params.action.show_formal_charges or self.params.action.show_non_zero_formal_charges:
-      if self.params.action.show_formal_charges:
-        print('\nFormal charges')
-      elif self.params.action.show_non_zero_formal_charges:
-        print('\nFormal non-zero charges')
-      for i, atom in enumerate(molecule.GetAtoms()):
-        show=False
-        if self.params.action.show_formal_charges:
-          show=True
-        elif self.params.action.show_non_zero_formal_charges and atom.GetFormalCharge():
-          show=True
-        if show:
-          print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d}')
+    # if self.params.action.show_formal_charges or self.params.action.show_non_zero_formal_charges:
+    #   if self.params.action.show_formal_charges:
+    #     print('\nFormal charges')
+    #   elif self.params.action.show_non_zero_formal_charges:
+    #     print('\nFormal non-zero charges')
+    #   for i, atom in enumerate(molecule.GetAtoms()):
+    #     show=False
+    #     if self.params.action.show_formal_charges:
+    #       show=True
+    #     elif self.params.action.show_non_zero_formal_charges and atom.GetFormalCharge():
+    #       show=True
+    #     if show:
+    #       print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d}')
 
-    if self.params.action.show_partial_charges:
-      print('\nPartial charges')
-      molecule.ComputeGasteigerCharges()
-      for i, atom in enumerate(molecule.GetAtoms()):
-        pc=float(atom.GetProp('_GasteigerCharge'))
-        print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
+    # if self.params.action.show_partial_charges:
+    #   print('\nPartial charges')
+    #   molecule.ComputeGasteigerCharges()
+    #   for i, atom in enumerate(molecule.GetAtoms()):
+    #     pc=float(atom.GetProp('_GasteigerCharge'))
+    #     print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
 
-    if self.params.action.show_bond_types:
-      print('\nBond types')
-      for bond in molecule.GetBonds():
-        q1=atoms[bond.GetBeginAtomIdx()].quote()
-        q2=atoms[bond.GetEndAtomIdx()].quote()
-        print(f'{q1} - {q2} : {bond.GetBondType()}')
+    # if self.params.action.show_bond_types:
+    #   print('\nBond types')
+    #   for bond in molecule.GetBonds():
+    #     q1=atoms[bond.GetBeginAtomIdx()].quote()
+    #     q2=atoms[bond.GetEndAtomIdx()].quote()
+    #     print(f'{q1} - {q2} : {bond.GetBondType()}')
 
     # t0=time.time()
     # self.atom_valences = electron_distribution(
