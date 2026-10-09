@@ -1,4 +1,4 @@
-// Copyright(c) 2023, Richardson Lab at Duke
+// Copyright(c) 2023-2026, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -109,13 +109,16 @@ namespace molprobity {
                   index is the number of edges and the second is 2. It stores the index
                   into the movers array of the mover at each end of the edge. This lists
                   the pairs of movers that interact with each other.
+          @param [in] remainingSeconds: The number of seconds remaining for the optimization. If this is
+                  less than or equal to zero, do no optimization.
           @return A tuple, where the first is the score at the best position for all movers
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
       */
       boost::python::tuple OptimizeCliqueCoarse(
         scitbx::af::shared<boost::python::object> movers,
-        scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
+        scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions,
+        double remainingSeconds);
 
       /// @brief Returns the coarse location of the specified mover.
       unsigned GetCoarseLocation(boost::python::object const& mover) {
@@ -295,12 +298,14 @@ namespace molprobity {
       /// @param [in] states: A map from Movers to the potential states for each. This
       ///         holds the result of calling CoarsePositions() on each Mover.
       /// @param [in] clique: The clique graph to optimize.
+      /// @param [in] remainingSeconds: The number of seconds remaining for the optimization. If this is
+      ///         negative or zero, do no optimization.
       /// @return A tuple, where the first is the score at the best position for all movers
       ///         and the second is a string describing what was done, which may be empty
       ///         if verbosity is too small.
       std::pair<double, std::string> OptimizeCliqueCoarseVertexCut(
         std::map<boost::python::object*, molprobity::reduce::PositionReturn> &states,
-        CliqueGraph &clique);
+        CliqueGraph &clique, double remainingSeconds);
     };
 
     //=====================================================================================================
