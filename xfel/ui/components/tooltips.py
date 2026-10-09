@@ -71,6 +71,8 @@ tooltips = {
   'btn_persistent_tags': 'Auto-tag new runs as they arrive',
   'btn_manage_tags': 'Add/rename/delete tags',
   'btn_view_phil': 'View trial parameters',
+  'btn_duplicate_dataset': 'Duplicate this dataset: an inactive copy under a new name, '
+                           'sharing the same tasks, tags and comment',
   'rs_d_min': get_help('d_min', rs_scope),
   'rs_multiples': 'Number of multiple lattices before a hit is counted as a multiple hit',
   'rs_ratio': 'Ratio of 2θ high to 2θ low needed for an image to be a solvent hit',

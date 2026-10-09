@@ -3392,7 +3392,8 @@ class DatasetTab(BaseTab):
   def add_dataset(self, dataset):
     new_dataset = DatasetPanel(self.dataset_panel,
                            db=self.main.db,
-                           dataset=dataset)
+                           dataset=dataset,
+                           tab=self)
     new_dataset.chk_active.SetValue(dataset.active)
     new_dataset.refresh_dataset()
     self.dataset_sizer.Add(new_dataset, flag=wx.EXPAND | wx.ALL, border=10)
@@ -3765,12 +3766,13 @@ class TrialPanel(wx.Panel):
 class DatasetPanel(wx.Panel):
   ''' A scrolled panel that contains dataset and task controls '''
 
-  def __init__(self, parent, db, dataset, box_label=""):
+  def __init__(self, parent, db, dataset, box_label="", tab=None):
     wx.Panel.__init__(self, parent=parent, size=(270, 200))
 
     self.db = db
     self.dataset = dataset
     self.parent = parent
+    self.tab = tab   # owning DatasetTab, refreshed after duplicating
 
     self.dataset_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(self.dataset_box, wx.VERTICAL)
@@ -3784,12 +3786,16 @@ class DatasetPanel(wx.Panel):
     self.add_sizer = wx.BoxSizer(wx.VERTICAL)
     self.add_panel.SetSizer(self.add_sizer)
 
-    # Edit button and active checkbox for the dataset
+    # Edit and duplicate buttons and active checkbox for the dataset
     self.btn_edit_dataset = wx.BitmapButton(self.add_panel,
                                             bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
+    self.btn_duplicate_dataset = gctr.BitmapButton(
+      self.add_panel, name='btn_duplicate_dataset',
+      bitmap=wx.ArtProvider.GetBitmap(wx.ART_COPY, wx.ART_BUTTON, (16, 16)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active Dataset')
-    self.chk_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.chk_sizer = wx.FlexGridSizer(1, 3, 0, 10)
     self.chk_sizer.Add(self.btn_edit_dataset)
+    self.chk_sizer.Add(self.btn_duplicate_dataset)
     self.chk_sizer.Add(self.chk_active, flag=wx.EXPAND)
 
     self.add_sizer.Add(self.chk_sizer,
@@ -3802,6 +3808,7 @@ class DatasetPanel(wx.Panel):
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onEditDataset, self.btn_edit_dataset)
+    self.Bind(wx.EVT_BUTTON, self.onDuplicateDataset, self.btn_duplicate_dataset)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
@@ -3930,6 +3937,53 @@ class DatasetPanel(wx.Panel):
 
     if new_dataset_dlg.ShowModal() == wx.ID_OK:
       self.refresh_dataset()
+
+  def onDuplicateDataset(self, e):
+    ''' Create an inactive copy of this dataset under a new name. The copy
+        shares the original's tasks (the same Task rows, as a linked task would
+        be), in the same pipeline order, and carries over the tags, tag operator
+        and comment. Dataset names are unique in the database, so the name is
+        checked here rather than letting the insert fail. '''
+    existing = set(d.name for d in self.db.get_all_datasets())
+    suggestion = '%s copy' % self.dataset.name
+    n = 2
+    while suggestion in existing:
+      suggestion = '%s copy %d' % (self.dataset.name, n)
+      n += 1
+
+    name = None
+    while name is None:
+      name_dlg = wx.TextEntryDialog(
+        self, 'Name for the copy of dataset "%s":' % self.dataset.name,
+        caption='Duplicate Dataset', value=suggestion)
+      if name_dlg.ShowModal() != wx.ID_OK:
+        name_dlg.Destroy()
+        return
+      candidate = name_dlg.GetValue().strip()
+      name_dlg.Destroy()
+      if not candidate:
+        wx.MessageBox('Enter a name for the new dataset.', 'Duplicate Dataset',
+                      wx.OK | wx.ICON_WARNING, self)
+      elif candidate in existing:
+        wx.MessageBox('A dataset named "%s" already exists. Choose another name.'
+                      % candidate, 'Duplicate Dataset', wx.OK | wx.ICON_WARNING, self)
+        suggestion = candidate
+      else:
+        name = candidate
+
+    new_dataset = self.db.create_dataset(name=name,
+                                         comment=self.dataset.comment,
+                                         active=False,
+                                         tag_operator=self.dataset.tag_operator)
+    for tag in self.dataset.tags:
+      new_dataset.add_tag(tag)
+    for sequence, task in enumerate(self.dataset.tasks):
+      new_dataset.add_task(task, sequence=sequence)
+
+    # Refreshing the tab destroys every DatasetPanel, this one included, so
+    # defer it until this button's event handler has returned.
+    if self.tab is not None:
+      wx.CallAfter(self.tab.refresh_datasets)
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
