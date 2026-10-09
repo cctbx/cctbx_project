@@ -1213,6 +1213,35 @@ class MergingStatsSentinel(Thread):
                                                                                 sizex, sizey, interactive=False)
     self.parent.run_window.mergingstats_tab.redraw_windows = True
 
+# ------------------------------- Online help -------------------------------- #
+
+# Location of the GUI documentation on the cctbx.xfel MediaWiki. HELP_URL is the
+# main page; each tab has its own subpage beneath it, named in HELP_TAB_PAGES, and
+# the Help button opens the page for whichever tab is showing. Until HELP_URL is
+# set to None, the Help button falls back to the published GUI description.
+HELP_URL = 'https://cci.lbl.gov/xfel/index.php/Cctbx.xfel_GUI'
+HELP_FALLBACK_URL = 'http://cci.lbl.gov/publications/download/CCN_2019_p22_Brewster.pdf'
+HELP_TAB_PAGES = {
+  'Runs':          'Runs_tab',
+  'Energy':        'Energy_tab',
+  'Trials':        'Trials_tab',
+  'Jobs':          'Jobs_tab',
+  'Run Stats':     'Run_Stats_tab',
+  'Unit Cell':     'Unit_Cell_tab',
+  'Datasets':      'Datasets_tab',
+  'Merging stats': 'Merging_Stats_tab',
+}
+
+def help_url(tab_name=None):
+  ''' The documentation page to open for the named tab, or the main page when
+      the tab has no page of its own (or no tab is named). '''
+  if HELP_URL is None:
+    return HELP_FALLBACK_URL
+  page = HELP_TAB_PAGES.get(tab_name)
+  if page is None:
+    return HELP_URL
+  return '%s/%s' % (HELP_URL.rstrip('/'), page)
+
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
@@ -1277,6 +1306,13 @@ class MainWindow(wx.Frame):
                                                  bmpDisabled=wx.NullBitmap,
                                                  shortHelp='Change text size',
                                                  longHelp='Change text size for plots')
+    self.toolbar.AddSeparator()
+    self.tb_btn_help = self.toolbar.AddTool(wx.ID_HELP,
+                                            label='Help',
+                                            bitmap=wx.Bitmap('{}/32x32/info.png'.format(icons)),
+                                            bmpDisabled=wx.NullBitmap,
+                                            shortHelp='Help',
+                                            longHelp='Open the online documentation for the current tab')
     self.toolbar.Realize()
 
     # Status bar
@@ -1303,7 +1339,7 @@ class MainWindow(wx.Frame):
 
     # Menubar button bindings
     self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
-    self.Bind(wx.EVT_MENU, self.OnDocs, self.mb_docs)
+    self.Bind(wx.EVT_MENU, self.onHelp, self.mb_docs)
 
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
@@ -1313,6 +1349,7 @@ class MainWindow(wx.Frame):
       #self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
       self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
     self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
+    self.Bind(wx.EVT_TOOL, self.onHelp, self.tb_btn_help)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
               self.run_window.main_nbook)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.onLeavingTab,
@@ -1456,11 +1493,18 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Nicholas Sauter')
     wx.adv.AboutBox(info)
 
-  def OnDocs(self, e):
+  def onHelp(self, e):
+    ''' Open the online documentation in the default web browser, at the page
+        for the tab currently showing. '''
     import webbrowser
-    url = 'http://cci.lbl.gov/publications/download/CCN_2019_p22_Brewster.pdf'
+    nbook = self.run_window.main_nbook
+    selection = nbook.GetSelection()
+    tab_name = nbook.GetPageText(selection) if selection != wx.NOT_FOUND else None
+    url = help_url(tab_name)
     print('Opening', url)
-    webbrowser.open(url)
+    if not webbrowser.open(url):
+      wx.MessageBox('Could not open a web browser. The documentation is at:\n%s' % url,
+                    'Help', wx.OK | wx.ICON_INFORMATION, self)
 
   def onSettings(self, e):
     settings_dlg = dlg.SettingsDialog(self,
