@@ -157,7 +157,8 @@ class clashscore2(validation):
     "condensed_probe",
     "probe_file",
     "probe_clashscore_manager",
-    "hydrogenated_model"
+    "hydrogenated_model",
+    "processed_model"
   ]
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
@@ -192,6 +193,10 @@ class clashscore2(validation):
     self.list_dict = {}
     self.probe_file = None
     self.hydrogenated_model = None
+    # Single-model input: the H-added model processed with probe2's interpretation
+    # parameters and restraints, so later stages need not process it again. It stays
+    # pristine (with waters probe2 runs on a copy). None otherwise.
+    self.processed_model = None
     if verbose:
       if not nuclear:
         print("\nUsing electron cloud x-H distances and vdW radii")
@@ -281,6 +286,8 @@ class clashscore2(validation):
               plain_pairs_radius=probe2.PLAIN_PAIRS_RADIUS)
           if master.get_restraints_manager() is not None:
             processed_master = master
+            if n_models == 1:
+              self.processed_model = processed_master
             master_key_to_index = _atom_index_by_key(master.get_hierarchy())
             master_reusable = not _hierarchy_contains_waters(
               master.get_hierarchy())
