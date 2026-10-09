@@ -4376,31 +4376,72 @@ class DatasetStagePanel(wx.Panel):
     self._do_edit_phil()
 
   def _onEditPhilShared(self):
-    datasets = self.db.get_datasets_for_task(self.task.id)
-    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
-    others = [d for d in datasets if d.id != exclude_id] if exclude_id else datasets
+    result = self._shared_task_prompt(
+      '', labels=('Edit (affects all)', 'Detach && Edit'))
+    if result == wx.ID_CANCEL:
+      return
+    self._apply_shared_choice(result)
+    self._do_edit_phil()
+
+  def _shared_task_prompt(self, intro, labels):
+    ''' Ask how a change to a task shared with other datasets should land.
+        labels are the (apply to all, detach) button labels. Returns wx.ID_YES
+        for apply to every dataset using the task, wx.ID_NO for detach into a
+        private copy for this dataset, or wx.ID_CANCEL. '''
+    others = self._linked_others()
     names = ', '.join(d.name for d in others[:5])
     if len(others) > 5:
       names += ', ...'
-    msg = ("This task is shared with %d other dataset(s): %s.\n\n"
-           "  • Edit (affects all): parameter changes apply to every dataset using this task.\n"
-           "  • Detach & Edit: create a private copy for this dataset only.\n"
-           "  • Cancel: no changes.") % (len(others), names or '(none yet)')
+    all_label, detach_label = (l.replace('&&', '&') for l in labels)
+    msg = ("%sThis task is shared with %d other dataset(s): %s.\n\n"
+           "  • %s: parameter changes apply to every dataset using this task.\n"
+           "  • %s: create a private copy for this dataset only.\n"
+           "  • Cancel: no changes.") % (intro + '\n\n' if intro else '',
+                                         len(others), names or '(none yet)',
+                                         all_label, detach_label)
     dlg = wx.MessageDialog(self.dialog, message=msg, caption='Shared Task',
                            style=wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
-    dlg.SetYesNoCancelLabels('Edit (affects all)', 'Detach && Edit', 'Cancel')
+    dlg.SetYesNoCancelLabels(labels[0], labels[1], 'Cancel')
     result = dlg.ShowModal()
     dlg.Destroy()
+    return result
+
+  def _apply_shared_choice(self, result):
+    ''' Record a _shared_task_prompt answer on this stage: wx.ID_YES marks the
+        shared task as deliberately edited so commit() writes to it; wx.ID_NO
+        detaches so commit() creates a private task instead. '''
     if result == wx.ID_YES:
       self.phil_was_edited = True
-      self._do_edit_phil()
     elif result == wx.ID_NO:
       self._detach_original_task = self.task
       self.task = None
       self.linked = False
       self.is_in_dataset = False
       self._update_link_display()
-      self._do_edit_phil()
+
+  def shared_parameters_changed(self):
+    ''' True if this stage's task is shared with other datasets, the user has
+        not already answered the shared-task prompt, and the parameters now
+        in the dialog differ from what is stored on the task. The shared
+        controls and friendly stage controls change the working scope without
+        going through Edit PHIL, so commit() uses this to know when to ask.
+        Assumes push_scope() has run. '''
+    if self.task is None or not self.linked or self.phil_was_edited:
+      return False
+    if self.task_type == 'indexing':
+      return False
+    current = self.get_parameters()
+    stored = self.task.parameters or ""
+    if self.task_type == 'phenix':
+      return current != stored
+    # Re-emit the stored PHIL the way get_parameters() does, so formatting
+    # differences (wrapping, choice rendering) do not read as changes.
+    try:
+      normalized = self.phil_scope.fetch_diff(
+        self.phil_scope.fetch(parse(stored))).as_str(print_width=100000)
+    except Exception:
+      return True   # unreadable stored parameters: the write is a real change
+    return current != normalized
 
   def _do_edit_phil(self):
     msg = self.push_scope()
@@ -5056,14 +5097,16 @@ class DatasetDialog(BaseDialog):
   def onOK(self, e):
     msg = self.commit()
     if msg is not None:
-      self._warn(msg)
-      return
+      if msg:
+        self._warn(msg)
+      return   # an empty message means the user cancelled; keep the dialog open
     e.Skip()
 
   def commit(self):
     ''' Validate the dialog and create/update the dataset + its tasks. Returns
-        an error message string on failure (nothing written), or None on
-        success. Callable programmatically (e.g. from the new-dataset wizard). '''
+        an error message string on failure (nothing written), an empty string
+        if the user cancelled a prompt (nothing written), or None on success.
+        Callable programmatically (e.g. from the new-dataset wizard). '''
     name = self.name.ctr.GetValue().strip()
     comment = self.comment.ctr.GetValue()
     mode = 'union' if self.selection_type_radio.union.GetValue() == 1 else 'intersection'
@@ -5129,6 +5172,26 @@ class DatasetDialog(BaseDialog):
                 'then postrefines, which needs a reference model to anchor the '
                 'aligned patterns to.\nEither choose a reference model, or remove '
                 'postrefine from the merging step list.')
+
+    # The shared controls and the friendly stage controls change a stage's
+    # scope without going through Edit PHIL, so a task shared with other
+    # datasets could otherwise be rewritten (or, as before, silently left
+    # unchanged) on OK. Ask the same question Edit PHIL asks. All prompts come
+    # before anything is written and are only applied once all are answered,
+    # so Cancel leaves both the database and the dialog state untouched.
+    decisions = []
+    for s in self.stages:
+      if not s.is_enabled() or not s.shared_parameters_changed():
+        continue
+      result = s._shared_task_prompt(
+        'The %s stage parameters have changed.'
+        % DATASET_STAGE_LABELS.get(s.task_type, s.task_type),
+        labels=('Apply to all', 'Detach && apply'))
+      if result == wx.ID_CANCEL:
+        return ''
+      decisions.append((s, result))
+    for s, result in decisions:
+      s._apply_shared_choice(result)
 
     # Identity
     if self.new:
@@ -5520,8 +5583,9 @@ class DatasetWizard(BaseDialog):
     backing.populate_from_wizard(values)
     err = backing.commit()
     backing.Destroy()
-    if err:
-      wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
+    if err is not None:
+      if err:
+        wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
       return
     self.EndModal(wx.ID_OK)
 
