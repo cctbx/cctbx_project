@@ -16,7 +16,7 @@ Guided Coding checks for Claude Code 2.1.281 or newer. In the app, it checks the
 
 ## Using Guided Coding in the cloud or with cctbx_project or PHENIX
 
-A cloud session cannot use the link on your computer. It can obtain its own copy from the [source repository](https://github.com/cctbx/cctbx_project/tree/fc1682a9029dab083f20ded47724831812d406e1/libtbx/guided_coding); this guide does not cover cloud setup.
+A cloud session cannot use the link on your computer. It can obtain its own copy from the [source repository](https://github.com/cctbx/cctbx_project/tree/master/libtbx/guided_coding); this guide does not cover cloud setup.
 
 [cctbx_project](https://github.com/cctbx/cctbx_project) includes the Guided Coding source. If you use your own copy, follow the one-time setup below with the path to its `libtbx/guided_coding` folder instead of downloading the kit.
 
