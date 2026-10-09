@@ -358,6 +358,7 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
       "output.filename='%s'" % tempName,
       "output.separate_worse_clashes=True",
       "output.report_vdws=%s" % bool(vdw_dots),
+      "output.cxx_dots=True",
       "output.write_files=False",
       # Dots nest as a @subgroup of the structure's group; master={dots}
       # on each list keeps an all-dots control.
