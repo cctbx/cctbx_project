@@ -1001,10 +1001,13 @@ class map_model_manager(object):
       assert not model_id in self.model_id_list() # must not duplicate
 
     if model and \
-      self.map_manager() and (
+      self.map_manager() and ((
          not self.map_manager().is_compatible_model(model,
-          require_match_unit_cell_crystal_symmetry=True)):
-      # needs shifting
+          require_match_unit_cell_crystal_symmetry=True)) or (
+         model.shift_cart() is not None and max([abs(a - b) for a, b in zip(
+          model.shift_cart(), self.map_manager().shift_cart())]) > 0.001)):
+      # needs shifting (is_compatible_model ignores shift_cart if map
+      #   shift_cart is zero, so check it here too)
       self.shift_any_model_to_match(model,
          set_unit_cell_crystal_symmetry = True)
     self._model_dict[model_id] = model

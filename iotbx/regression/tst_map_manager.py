@@ -393,6 +393,73 @@ def test_01():
    assert approx_equal(cc,
       mam.map_map_cc(map_id='map_manager',other_map_id=other_id), eps = 0.05 )
 
+def test_add_shifted_model_to_unshifted_map():
+  '''
+    add_model_by_id with a model whose shift_cart differs from the map's
+    must put the model in the map's frame (shift_cart of the map, same
+    absolute coordinates), also when the map's shift_cart is (0,0,0).
+    Models that already match, and shifted maps, are unchanged.
+  '''
+  from iotbx.map_model_manager import map_model_manager
+  from scitbx.matrix import col
+
+  def make(shifted):
+    mmm = map_model_manager()
+    mmm.generate_map(d_min = 3, wrapping = False)
+    if shifted:
+      mmm.map_manager().set_original_origin_and_gridding(
+        original_origin = (2,2,2))
+      mmm.set_model_symmetries_and_shift_cart_to_match_map(mmm.model())
+    return mmm
+
+  def shift_or_zero(model):
+    s = model.shift_cart()
+    return (0,0,0) if s is None else tuple(s)
+
+  def absolute_sites(model):
+    return model.get_sites_cart() - col(shift_or_zero(model))
+
+  def max_diff(a, b):
+    return (a - b).norms().min_max_mean().max
+
+  shifted = make(True)
+  unshifted = make(False)
+  assert max(abs(x) for x in shifted.map_manager().shift_cart()) > 1
+  assert unshifted.map_manager().shift_cart() == (0,0,0)
+
+  # Models that already match the map are not changed (shift_cart None,
+  #   (0,0,0), or equal to the map's)
+  for mmm, shift_cart in ((unshifted, None), (unshifted, (0,0,0)),
+      (shifted, shifted.map_manager().shift_cart())):
+    model = mmm.model().deep_copy()
+    model.set_shift_cart(shift_cart)
+    sites = model.get_sites_cart().deep_copy()
+    mmm.add_model_by_id(model, 'matching')
+    result = mmm.get_model_by_id('matching')
+    assert result.shift_cart() == shift_cart, (result.shift_cart(), shift_cart)
+    assert max_diff(result.get_sites_cart(), sites) < 0.001
+
+  # Unshifted model added to a shifted map: moved into the map's frame
+  model = unshifted.model().deep_copy()
+  absolute = absolute_sites(model)
+  shifted.add_model_by_id(model, 'from_unshifted')
+  result = shifted.get_model_by_id('from_unshifted')
+  assert approx_equal(shift_or_zero(result),
+    shifted.map_manager().shift_cart(), eps = 0.001)
+  assert max_diff(absolute_sites(result), absolute) < 0.001
+
+  # Shifted model added to an unshifted map with the same unit cell
+  model = shifted.model().deep_copy()
+  absolute = absolute_sites(model)
+  unshifted.add_model_by_id(model, 'from_shifted')
+  result = unshifted.get_model_by_id('from_shifted')
+  shift_error = max(abs(x) for x in shift_or_zero(result))
+  position_error = max_diff(absolute_sites(result), absolute)
+  assert shift_error < 0.001 and position_error < 0.001, \
+    "SHIFTED-MODEL-NOT-MOVED: shift_cart %s (map (0,0,0)); " % (
+      str(result.shift_cart())) + \
+    "absolute coordinates moved by %.3f A" % (position_error)
+
 # this test requires the solve_resolve module
 def test_02():
 
@@ -405,7 +472,94 @@ def test_02():
   sites_cart = mm.trace_atoms_in_map(dist_min=1,n_atoms=10)
   assert sites_cart.size() == 10 # Note: zero if not available
 
+def test_03():
+  # set_original_origin_and_gridding keeps the shift_cart of the NCS object
+  #  in step with the map and does not move the NCS operators
+  from cctbx import crystal
+  from scitbx.array_family import flex
+  from mmtbx.ncs.ncs import ncs
+  from iotbx.map_model_manager import map_model_manager
+
+  def ncs_centers(ncs_object):
+    return [x for g in ncs_object.ncs_groups() for c in g.centers()
+       for x in c]
+
+  # map_manager with an NCS object and an origin that is not zero
+  cs = crystal.symmetry((30,40,50,90,90,90), 1)
+  n_grid = (30,40,50)
+  map_data = flex.double(flex.grid(n_grid), 1.0)
+  map_data.reshape(flex.grid((2,3,4),
+    tuple([i+n for i,n in zip((2,3,4),n_grid)])))
+  mm = map_manager(map_data = map_data, unit_cell_grid = n_grid,
+    unit_cell_crystal_symmetry = cs, wrapping = False)
+  ncs_obj = ncs()
+  ncs_obj.set_unit_ncs()
+  mm.set_ncs_object(ncs_obj)
+  mm.shift_origin()
+  assert mm.is_compatible_ncs_object(mm.ncs_object())
+  centers_before = ncs_centers(mm.ncs_object())
+
+  mm.set_original_origin_and_gridding(original_origin = (5,5,5))
+  assert mm.is_compatible_ncs_object(mm.ncs_object()), \
+    "test_03 (a): NCS shift_cart %s does not match map shift_cart %s" %(
+     str(mm.ncs_object().shift_cart()), str(mm.shift_cart()))
+  assert approx_equal(mm.ncs_object().shift_cart(), mm.shift_cart())
+  assert approx_equal(ncs_centers(mm.ncs_object()), centers_before), \
+    "test_03 (b): NCS centers moved"
+
+  # Same through map_model_manager
+  mmm = map_model_manager()
+  mmm.generate_map(d_min = 3, wrapping = False)
+  ncs_obj = ncs()
+  ncs_obj.set_unit_ncs()
+  mmm.set_ncs_object(ncs_obj)
+  box = mmm.extract_all_maps_around_model()
+  assert box.check_consistency(stop_on_errors = False, print_errors = False)
+  centers_before = ncs_centers(box.ncs_object())
+  box.remove_origin_shift_and_unit_cell_crystal_symmetry()
+  assert box.check_consistency(stop_on_errors = False, print_errors = True), \
+    "test_03 (c): map_model_manager not consistent after " + \
+    "remove_origin_shift_and_unit_cell_crystal_symmetry"
+  assert approx_equal(ncs_centers(box.ncs_object()), centers_before), \
+    "test_03 (b): NCS centers moved in map_model_manager"
+def test_gridding_as_list():
+  # set_original_origin_and_gridding: the same gridding given as a list
+  # must be treated like the same gridding given as a tuple
+  from cctbx import crystal
+  from scitbx.array_family import flex
+  cs = crystal.symmetry((30,40,50,90,90,90), 19)
+  mm = map_manager(map_data=flex.double(flex.grid((30,40,50)), 1.0),
+    unit_cell_grid=(30,40,50), unit_cell_crystal_symmetry=cs, wrapping=True)
+  old_grid = mm.unit_cell_grid
+  assert mm.is_full_size() and mm.wrapping()
+  mm.set_original_origin_and_gridding(gridding=list(old_grid))
+  result = (mm.unit_cell_crystal_symmetry().space_group_number(),
+    mm.wrapping(), mm.is_full_size(), type(mm.unit_cell_grid),
+    mm.unit_cell_grid)
+  assert result == (19, True, True, tuple, old_grid), \
+    "GRIDDING_AS_LIST_SAME_VALUES (sg, wrapping, full_size, type, grid): %s" %(
+    str(result))
+
+  # A different gridding still gives P1 and a rescaled cell, as list or tuple
+  cs_big = crystal.symmetry((60,80,100,90,90,90), 19)
+  results = []
+  for gridding in ([30,40,50], (30,40,50)):
+    mm = map_manager(map_data=flex.double(flex.grid((30,40,50)), 1.0),
+      unit_cell_grid=(60,80,100), unit_cell_crystal_symmetry=cs_big,
+      wrapping=False)
+    mm.set_original_origin_and_gridding(gridding=gridding)
+    assert mm.unit_cell_crystal_symmetry().space_group_number() == 1
+    assert tuple(mm.unit_cell_grid) == (30,40,50)
+    assert approx_equal(
+      mm.unit_cell_crystal_symmetry().unit_cell().parameters()[:3],
+      (30,40,50))
+    results.append((mm.is_full_size(), mm.wrapping()))
+  assert results[0] == results[1]
+
 if (__name__  ==  '__main__'):
   test_01()
+  test_add_shifted_model_to_unshifted_map()
   test_02()
+  test_03()
+  test_gridding_as_list()
   print ("OK")
