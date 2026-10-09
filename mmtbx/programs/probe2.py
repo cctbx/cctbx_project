@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import, division, print_function
 import sys
+import collections
 import math
 from datetime import datetime
 from pathlib import Path
@@ -131,7 +132,9 @@ output
     .type = bool
     .short_caption = Generate interaction dots in C++
     .help = Generate the interaction dots with mmtbx/probe/ContactDB instead of the Python \
-            loop: the same dots in the same order, so output is unchanged, about 15x faster.
+            loop: the same dots in the same order, so output is unchanged, about 15x faster. \
+            For kinemage output without count_dots or contact_summary the dots are written \
+            straight from the C++ arrays, and run() returns empty results.
 
   file_name = None
     .type = str
@@ -477,6 +480,10 @@ def _totalInteractionCount(chainCounts):
   return ret
 
 # ------------------------------------------------------------------------------
+
+class _ArrayDot(object):
+  '''The DotInfo fields _writeOutput() reads, made one at a time from ContactDB's dot arrays.'''
+  __slots__ = ('src', 'target', 'gap', 'ptmaster', 'loc', 'spike')
 
 class DotInfo:
   # Dot class storing information about an individual dot.
@@ -1053,12 +1060,24 @@ Note:
     interactionTypes = probeExt.InteractionType.values
     overlapTypes = probeExt.OverlapType.values
     counts = {'M': self._MCMCCount, 'S': self._SCSCCount, 'P': self._MCSCCount, 'O': self._otherCount}
+    for (pm, t), n in collections.Counter(zip(ptmaster, itype)).items():
+      if pm in counts:
+        counts[pm][interactionTypes[t]] += n
+
+    spo = self.params.output
+    if spo.format == 'kinemage' and not spo.count_dots and not spo.contact_summary:
+      # Only _writeOutput() reads these dots: keep the arrays, grouped as _results would be.
+      classOf = [self._atomClasses[s] for s in sources]
+      groups = {}
+      for k, (s, t) in enumerate(zip(src, itype)):
+        groups.setdefault((classOf[s], t), []).append(k)
+      self._cxxDots.append((sources, byIseq, src, cause, gap, loc, spike, ptmaster, groups))
+      return
+
     for k in range(len(src)):
       s = sources[src[k]]
       it = interactionTypes[itype[k]]
       pm = ptmaster[k]
-      if pm in counts:
-        counts[pm][it] += 1
       self._results[self._atomClasses[s]][it].append(DotInfo(
         s, byIseq[cause[k]], tuple(loc[k]), tuple(spike[k]), overlapTypes[overlapType[k]], gap[k], pm, 0))
 
@@ -1468,7 +1487,7 @@ Note:
 
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
-        if (len(self._results[atomClass][interactionType]) > 0 and
+        if (self._dot_count(atomClass, interactionType) > 0 and
               (self.params.probe.allow_weak_hydrogen_bonds or
                   interactionType != probeExt.InteractionType.WeakHydrogenBond
               )
@@ -1503,7 +1522,7 @@ Note:
                     )
 
         # Report all of the dots of this type.
-        for node in self._results[atomClass][interactionType]:
+        for node in self._dots_of(atomClass, interactionType):
           a = node.src
           t = node.target
           if self.params.output.bin_gaps:
@@ -1954,10 +1973,32 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def _dot_count(self, atomClass, interactionType):
+    n = len(self._results[atomClass][interactionType])
+    for chunk in self._cxxDots:
+      n += len(chunk[-1].get((atomClass, int(interactionType)), ()))
+    return n
+
+  def _dots_of(self, atomClass, interactionType):
+    '''Dots of one class and type, in the order the Python loop would have saved them.'''
+    for node in self._results[atomClass][interactionType]:
+      yield node
+    for sources, byIseq, src, cause, gap, loc, spike, ptmaster, groups in self._cxxDots:
+      for k in groups.get((atomClass, int(interactionType)), ()):
+        d = _ArrayDot()
+        d.src = sources[src[k]]
+        d.target = byIseq[cause[k]]
+        d.gap = gap[k]
+        d.ptmaster = ptmaster[k]
+        d.loc = loc[k]
+        d.spike = spike[k]
+        yield d
+
   def _clear_results(self):
     # Initialize the results to empty.
     # The name cache is keyed on memory_id, which a later model can reuse for other atoms.
     DotInfo._nameCache.clear()
+    self._cxxDots = []   # (sources, ..., groups) per _add_cxx_dots() call; see there
     self._results = {}
     for c in _allAtomClasses:
       interactionTypeDicts = {}
