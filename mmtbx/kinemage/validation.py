@@ -261,7 +261,7 @@ def bond_outlier_as_kinemage(self):
   return kin_text
 
 
-def _drop_unbonded_for_probe(model_manager, probe2):
+def _drop_unbonded_for_probe(model_manager, probe2, processed=False):
   """Process model_manager with probe2's interpretation parameters and drop
   what probe2 cannot handle: multi-atom residues with any unbonded heavy atom
   (missing restraints, so its intra-residue pairs would read as clashes; one
@@ -269,9 +269,11 @@ def _drop_unbonded_for_probe(model_manager, probe2):
   raises on these).  Returns (model, dropped residue ids,
   whether the returned model is already processed)."""
   from scitbx.array_family import flex
-  model_manager.get_hierarchy().atoms().reset_i_seq()
-  model_manager.process(make_restraints=True,
-    pdb_interpretation_params=probe2.getPdbInterpretationParams())
+  if not processed:
+    # processed: restraints already made with probe2's parameters; leave the model as is.
+    model_manager.get_hierarchy().atoms().reset_i_seq()
+    model_manager.process(make_restraints=True,
+      pdb_interpretation_params=probe2.getPdbInterpretationParams())
   geometry = model_manager.get_restraints_manager().geometry
   simple, asu = geometry.get_all_bond_proxies(
     sites_cart=model_manager.get_sites_cart())
@@ -324,7 +326,7 @@ def _probe_dots_note(lines):
 
 def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
                          target_selection=None, omit_unrestrained=True,
-                         vdw_dots=False):
+                         vdw_dots=False, processed=False):
   """Run probe2 on one hydrogenated model; returns kinemage dots text, with an
   @text note when residues were left out or probe2 failed.  With
   omit_unrestrained=False, residues lacking restraints raise Sorry instead."""
@@ -336,7 +338,7 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
   output = ""
   try:
     model_manager, dropped, processed = _drop_unbonded_for_probe(
-      model_manager, probe2)
+      model_manager, probe2, processed=processed)
   except Exception as e:
     return _probe_dots_note(
       ["Probe dots could not be computed: %s" % str(e).strip()])
@@ -443,7 +445,8 @@ def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
 
 def make_probe_dots_from_model(model_manager, per_model=False,
                                approach="self", source_selection=None,
-                               target_selection=None, vdw_dots=False):
+                               target_selection=None, vdw_dots=False,
+                               processed=False):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
@@ -457,6 +460,10 @@ def make_probe_dots_from_model(model_manager, per_model=False,
   default to its previous behaviour. They let a caller skip contacts probe
   cannot interpret: with no restraints for a residue it has no bonds to
   exclude, so every intra-residue pair reads as a clash.
+  processed=True says a single-model model_manager already has restraints made
+  with probe2.getPdbInterpretationParams() (as clashscore2.processed_model has),
+  so it is used as is, or copied when it has waters (probe2 adds Phantom
+  Hydrogens to the model it runs on), instead of being interpreted again.
   """
   try:
     import mmtbx.model
@@ -465,6 +472,16 @@ def make_probe_dots_from_model(model_manager, per_model=False,
     return ""
 
   hierarchy = model_manager.get_hierarchy()
+  if processed and len(hierarchy.models()) == 1:
+    from mmtbx.validation.clashscore2 import (
+      _deep_copy_with_selection_support, _hierarchy_contains_waters)
+    work = model_manager
+    if _hierarchy_contains_waters(hierarchy):
+      work = _deep_copy_with_selection_support(model_manager)
+    section = _run_probe2_kinemage(
+      work, approach=approach, source_selection=source_selection,
+      target_selection=target_selection, vdw_dots=vdw_dots, processed=True)
+    return [section] if per_model else section
   sections = []
   for i_mod, m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
