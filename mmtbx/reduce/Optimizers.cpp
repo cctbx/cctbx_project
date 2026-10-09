@@ -586,11 +586,6 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
 
 static bool isTimeRemaining(double& remainingSeconds, std::chrono::steady_clock::time_point& startTime)
 {
-  // When the original time remaining is zero or negative, we don't do any check, so return true.
-  if (remainingSeconds <= 0) {
-    return true;
-  }
-
   // Adjust the time remaining and start time to account for the time spent so far.
   auto currentTime = std::chrono::steady_clock::now();
   std::chrono::duration<double> elapsed = currentTime - startTime;
