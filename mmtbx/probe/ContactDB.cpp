@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 // The distance tests below must round exactly as the probe2.py code they replace.
 #ifdef __clang__
@@ -42,7 +43,7 @@ namespace molprobity {
       , m_probeRadius(0.25), m_maxRadius(0), m_minOccupancy(0), m_overlapScale(0.5)
       , m_excludedBondChainLength(4), m_includeMainchainMainchain(true), m_includeWaterWater(false)
       , m_separateWorseClashes(false), m_reportHBonds(true), m_reportClashes(true)
-      , m_reportVdws(true), m_onlyBadClashes(false)
+      , m_reportVdws(true), m_onlyBadClashes(false), m_keepDots(false)
     {}
 
     void ContactDB::set_atom_data(af::shared<int> flags, af::shared<int> model, af::shared<int> chain,
@@ -78,8 +79,9 @@ namespace molprobity {
     {
       m_sources.assign(sources.begin(), sources.end());
       m_records.assign(m_sources.size(), std::vector<PairRecord>());
+      m_dots.clear();
       for (size_t i = 0; i < m_sources.size(); i++) {
-        score_atom(m_sources[i], m_records[i]);
+        score_atom(m_sources[i], static_cast<unsigned>(i), m_records[i]);
       }
     }
 
@@ -105,6 +107,55 @@ namespace molprobity {
         }
       }
       return boost::python::make_tuple(src, cause, gap, counts, hasBump, bumpGap, bumpLoc, typeGap);
+    }
+
+    boost::python::tuple ContactDB::dots() const
+    {
+      af::shared<int> src, cause, itype, overlapType;
+      af::shared<double> gap;
+      af::shared<Point> loc, spike;
+      std::string ptmaster;
+      ptmaster.reserve(m_dots.size());
+      for (size_t i = 0; i < m_dots.size(); i++) {
+        DotRecord const& d = m_dots[i];
+        src.push_back(static_cast<int>(d.src));
+        cause.push_back(static_cast<int>(d.cause));
+        itype.push_back(d.itype);
+        overlapType.push_back(d.overlapType);
+        gap.push_back(d.gap);
+        loc.push_back(d.loc);
+        spike.push_back(d.spike);
+        ptmaster.push_back(d.ptmaster);
+      }
+      return boost::python::make_tuple(src, cause, itype, overlapType, gap, loc, spike, ptmaster);
+    }
+
+    void ContactDB::keep_dot(unsigned srcIndex, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
+                             int itype, DotScorer::CheckDotResult const& res)
+    {
+      // Same classification and arithmetic as the end of probe2.py's _generate_interaction_dots().
+      int cf = m_flags[ci];
+      bool srcMC = sf & MAINCHAIN, srcSC = sf & SIDECHAIN, causeMC = cf & MAINCHAIN,
+           causeSC = cf & SIDECHAIN, noHet = !(sf & HET) && !(cf & HET);
+      char ptmaster = ' ';
+      if (srcMC && causeMC) { if (noHet) { ptmaster = 'M'; } }
+      else if (srcSC && causeSC) { if (noHet) { ptmaster = 'S'; } }
+      else if ((srcMC && causeSC) || (srcSC && causeMC)) { if (noHet) { ptmaster = 'P'; } }
+      else { ptmaster = 'O'; }
+
+      Point const& d = res.dotOffset;
+      DotRecord rec;
+      rec.src = srcIndex; rec.cause = ci; rec.itype = itype;
+      rec.overlapType = res.overlapType; rec.ptmaster = ptmaster; rec.gap = res.gap;
+      rec.loc = Point(sXYZ[0] + d[0], sXYZ[1] + d[1], sXYZ[2] + d[2]);
+      double dvLen = std::sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
+      if (dvLen > 0) {
+        double spikeScale = (srcVdw - res.overlap) / dvLen;
+        rec.spike = Point(sXYZ[0] + d[0]*spikeScale, sXYZ[1] + d[1]*spikeScale, sXYZ[2] + d[2]*spikeScale);
+      } else {
+        rec.spike = rec.loc;
+      }
+      m_dots.push_back(rec);
     }
 
     unsigned ContactDB::idx(atom const& a) const
@@ -155,7 +206,7 @@ namespace molprobity {
     }
 
     // Port of probe2.Program._generate_interaction_dots for one source atom.
-    void ContactDB::score_atom(atom const& src, std::vector<PairRecord>& out)
+    void ContactDB::score_atom(atom const& src, unsigned srcIndex, std::vector<PairRecord>& out)
     {
       unsigned si = idx(src);
       int sf = m_flags[si];
@@ -230,6 +281,7 @@ namespace molprobity {
           show = m_reportClashes && (itype == DotScorer::Bump || itype == DotScorer::BadBump);
         }
         if (!show) { continue; }
+        if (m_keepDots) { keep_dot(srcIndex, sf, ci, sXYZ, srcVdw, itype, res); }
         PairRecord* rec = 0;
         for (size_t r = 0; r < out.size(); r++) {
           if (out[r].cause == ci) { rec = &out[r]; break; }
