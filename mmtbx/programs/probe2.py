@@ -1027,10 +1027,12 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _build_contact_records(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists):
+  def _build_contact_records(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists,
+                             keep_dots=False):
     '''
       Same contacts as _generate_interaction_dots(), summarized per atom pair in C++.
       Flattens the per-atom state into i_seq-indexed arrays for probeExt.ContactDB.
+      :param keep_dots: Also keep every reported dot, read back with dots().
       :return: The built probeExt.ContactDB.
     '''
     atoms = {a.i_seq: a for a in self._atomClasses}
@@ -1048,6 +1050,7 @@ Note:
       if a in self._atomClasses:
         flags[i] = ((probeExt.ContactDB_IGNORE if self._atomClasses[a] == 'ignore' else 0) |
                     (probeExt.ContactDB_MAINCHAIN if self._inMainChain[a] else 0) |
+                    (probeExt.ContactDB_SIDECHAIN if self._inSideChain[a] else 0) |
                     (probeExt.ContactDB_HET if self._inHet[a] else 0) |
                     (probeExt.ContactDB_WATER if self._inWater[a] else 0) |
                     (probeExt.ContactDB_TARGET if a in targetSet else 0))
@@ -1072,6 +1075,7 @@ Note:
                   params.excluded_bond_chain_length, params.include_mainchain_mainchain,
                   params.include_water_water, params.overlap_scale_factor, spo.separate_worse_clashes,
                   spo.report_hydrogen_bonds, spo.report_clashes, spo.report_vdws, spo.only_report_bad_clashes)
+    db.set_keep_dots(keep_dots)
     db.build(list(sourceAtoms))
     return db
 

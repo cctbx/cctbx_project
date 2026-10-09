@@ -32,7 +32,7 @@ namespace molprobity {
     class ContactDB {
     public:
       enum { N_TYPES = 7 };
-      enum AtomFlag { IGNORE = 1, MAINCHAIN = 2, HET = 4, WATER = 8, TARGET = 16 };
+      enum AtomFlag { IGNORE = 1, MAINCHAIN = 2, HET = 4, WATER = 8, TARGET = 16, SIDECHAIN = 32 };
 
       struct PairRecord {
         unsigned cause;
@@ -42,6 +42,18 @@ namespace molprobity {
         bool hasBump;
         double bumpGap;     ///< Smallest gap among this pair's Bump dots (first one on ties)
         Point bumpLoc;      ///< Location of that dot
+      };
+
+      /// One reported dot, as probe2.py's _save_dot() records it.
+      struct DotRecord {
+        unsigned src;       ///< Index into the build() list
+        unsigned cause;     ///< i_seq
+        int itype;          ///< DotScorer::InteractionType
+        int overlapType;    ///< DotScorer::OverlapType
+        char ptmaster;      ///< ' ', 'M', 'S', 'P' or 'O'
+        double gap;
+        Point loc;
+        Point spike;
       };
 
       /// The grids are referenced, not copied; the Python binding keeps them alive.
@@ -62,6 +74,9 @@ namespace molprobity {
                       bool includeWaterWater, double overlapScale, bool separateWorseClashes,
                       bool reportHBonds, bool reportClashes, bool reportVdws, bool onlyBadClashes);
 
+      /// Also keep every reported dot (off by default; ~70 bytes per dot).
+      void set_keep_dots(bool keep) { m_keepDots = keep; }
+
       /// Score every source atom, in the given order.
       void build(scitbx::af::shared<iotbx::pdb::hierarchy::atom> sources);
 
@@ -70,12 +85,20 @@ namespace molprobity {
       /// Bump location, N_TYPES minimum gaps per pair).
       boost::python::tuple pairs() const;
 
+      /// Flat arrays, one entry per kept dot in the order probe2.py saves them: (source
+      /// index into the build() list, cause i_seq, InteractionType, OverlapType, gap,
+      /// location, spike end, ptmaster characters as one string).
+      boost::python::tuple dots() const;
+
     private:
       unsigned idx(iotbx::pdb::hierarchy::atom const& a) const;
       bool compatible(iotbx::pdb::hierarchy::atom const& a, iotbx::pdb::hierarchy::atom const& b) const;
       std::vector<iotbx::pdb::hierarchy::atom> excluded_for(iotbx::pdb::hierarchy::atom const& a,
                                                             unsigned N, unsigned nonHydrogenN) const;
-      void score_atom(iotbx::pdb::hierarchy::atom const& src, std::vector<PairRecord>& out);
+      void score_atom(iotbx::pdb::hierarchy::atom const& src, unsigned srcIndex,
+                      std::vector<PairRecord>& out);
+      void keep_dot(unsigned srcIndex, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
+                    int itype, DotScorer::CheckDotResult const& res);
 
       ExtraAtomInfoMap m_info;
       DotScorer m_scorer;
@@ -85,10 +108,11 @@ namespace molprobity {
       std::vector<int> m_flags, m_model, m_chain, m_group, m_altloc, m_bondOffsets;
       std::vector<iotbx::pdb::hierarchy::atom> m_bondTargets, m_sources;
       std::vector<std::vector<PairRecord> > m_records;
+      std::vector<DotRecord> m_dots;
       double m_probeRadius, m_maxRadius, m_minOccupancy, m_overlapScale;
       int m_excludedBondChainLength;
       bool m_includeMainchainMainchain, m_includeWaterWater, m_separateWorseClashes,
-           m_reportHBonds, m_reportClashes, m_reportVdws, m_onlyBadClashes;
+           m_reportHBonds, m_reportClashes, m_reportVdws, m_onlyBadClashes, m_keepDots;
     };
 
   }
