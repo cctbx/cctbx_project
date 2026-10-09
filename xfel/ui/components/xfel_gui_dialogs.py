@@ -5064,12 +5064,23 @@ class DatasetDialog(BaseDialog):
     ''' Validate the dialog and create/update the dataset + its tasks. Returns
         an error message string on failure (nothing written), or None on
         success. Callable programmatically (e.g. from the new-dataset wizard). '''
-    name = self.name.ctr.GetValue()
+    name = self.name.ctr.GetValue().strip()
     comment = self.comment.ctr.GetValue()
     mode = 'union' if self.selection_type_radio.union.GetValue() == 1 else 'intersection'
 
     if not self.all_trials:
       return 'No trials exist yet. Create a trial before building a dataset.'
+
+    # Dataset names are unique in the database; report a clash here rather
+    # than letting the insert fail. When editing, the dataset's own name is fine.
+    if not name:
+      return 'Enter a name for the dataset.'
+    own_id = self.dataset.id if self.dataset is not None else None
+    if any(d.name == name and d.id != own_id for d in self.db.get_all_datasets()):
+      return 'A dataset named "%s" already exists. Choose another name.' % name
+    # An existing dataset with no tasks has no trial to pre-select.
+    if self.trial.ctr.GetStringSelection() not in self.all_trial_numbers:
+      return 'Select a trial for the dataset.'
     trial = self.all_trials[self.all_trial_numbers.index(self.trial.ctr.GetStringSelection())]
 
     # Reference model / symmetry: cctbx.xfel.merge requires exactly one of a
