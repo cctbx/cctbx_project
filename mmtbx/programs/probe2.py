@@ -939,7 +939,9 @@ Note:
         # non-overlapping annular dots are dropped); dotOffset identifies each.
         srcDots = self._dots[src]
         scale = self.params.overlap_scale_factor
-        interacting = list(atomSet)
+        # check_dots keeps the first of equally close atoms (alternates at one position),
+        # so order by i_seq: a set's order varies from run to run. ContactDB does the same.
+        interacting = sorted(atomSet, key=lambda a: a.i_seq)
         for res in self._dotScorer.check_dots(src, srcDots, probeRadius, interacting, excluded, scale):
 
           # Classify the interaction and store appropriate results.
