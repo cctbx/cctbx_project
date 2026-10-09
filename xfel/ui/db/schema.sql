@@ -19,13 +19,24 @@ USE `mydb` ;
 
 -- -----------------------------------------------------
 -- Table `mydb`.`run`
+-- Note run_UNIQUE indexes a prefix of the run name rather than the whole
+-- column: under utf8mb4, the default character set from MySQL 8 on, indexing
+-- all 1000 characters would need 4000 bytes and exceed InnoDB's 3072 byte
+-- limit on key length. 768 is the longest prefix that fits (768 x 4 = 3072),
+-- and is comfortably longer than any name the run finders can produce: the
+-- longest is a folder name joined to a file name in standalone composite mode,
+-- and each of those is capped at 255 bytes by the filesystem. Two runs sharing
+-- a prefix this long would be rejected as duplicates, so do not shorten it.
+-- Keep comments out of the statements themselves: the reader in
+-- experiment_manager.create_tables joins each statement onto a single line,
+-- where a trailing comment would swallow the rest of it.
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`run` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `run` VARCHAR(1000) NOT NULL,
   `path` TEXT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `run_UNIQUE` (`run` ASC))
+  UNIQUE INDEX `run_UNIQUE` (`run`(768) ASC))
 ENGINE = InnoDB;
 
 
@@ -534,6 +545,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `mydb`.`dataset_task` (
   `dataset_id` INT NOT NULL,
   `task_id` INT NOT NULL,
+  `sequence` INT NULL,
   PRIMARY KEY (`dataset_id`, `task_id`),
   INDEX `fk_dataset_has_task_task1_idx` (`task_id` ASC),
   INDEX `fk_dataset_has_task_dataset1_idx` (`dataset_id` ASC),
