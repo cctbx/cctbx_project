@@ -1,64 +1,62 @@
-# GuidedCoding verification and limits
+# Guided Coding verification and limits
 
-This file separates three kinds of evidence: what the supplied source
-implements, what earlier execution records report, and what remains
-unestablished. A successful checksum, test suite or client-loading check
-is not approval to integrate or publish.
+Guided Coding gives you checks and a record you can examine. To assess a result, you need to know what each check establishes and where its evidence stops.
 
-## Status and identities
+There are three different questions: What does the code check? What happened when it was run? What remains uncertain? Reading a test tells you what it is intended to check. A captured run tells you what happened for a particular source and environment. Neither alone proves that a later task will behave the same way.
 
-The published implementation baseline is r10 rev16
-`enumcheck-20261002T194333Z`, published on 2026-10-02 as the limited opt-in
-pilot. Its recorded identities are:
+This document starts with those practical limits, then gives the checking steps, a guide to the source and the detailed historical record. For everyday use, read the [User Guide](GUIDED_CODING_USER_GUIDE.md).
 
-| Item | Identity |
-| --- | --- |
-| Published commit | `c36887c7f489018af4f91773246ecde32d1b4e24` |
-| Source archive SHA-256 | `fce3627e46982f3b5fad1baaad7ada538984e9087a84b2147548b4564e844968` |
-| Source manifest SHA-256 | `b86d0490df59f854c214e6771ad8bb44f03069a38612be198edff4ebb11238e0` |
-| Contract version / SHA-256 | `2026-09-17` / `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b` |
-| Publication review bundle SHA-256 | `0e4c112d3726026bd397a4e50ac2a3cff79b146883f8ceab269e3a069bc2c6ca` |
-| Publication packet identity | `9834e7a5bfdf6b8dd8401972265715f527432ba277b63c4ee5c50f130508f44b` |
+## What is checked
 
-The `docs-20261003` revision (published 2026-10-03 as commit
-`b0747a4a55f29db3abe04358480d5867e94cb792`, source manifest SHA-256
-`5edbec14fe45d3538da533fd995a5d59ddaa47df7629daf27321ab2a1134f1be`)
-changed documentation only and kept the literal label `r10 rev16 candidate`.
+The package checks its source files against a manifest—a list of files and checksums. A checksum is a fingerprint calculated from file contents. These checks detect a changed or incomplete kit; they do not establish who supplied it.
 
-This revision, r10 rev17 candidate `followups-20261004`, changes
-`screen_check.py` (the reading's `Scope:` line, `OUTGOING.txt` bindings and
-the `NOT RUN` waiver form), adds `publication_precheck.py` and
-`records_history.py` with their tests, and revises the skill entry,
-Worker, Guide, Setup, defaults, method template, screens, reviewer brief,
-transport, Helper and Roles texts. The contract, the adoption rule and the
-SETUP §5 recipe are unchanged. Its commit, archive, manifest, bundle and
-packet identities are recorded in its task and publication records
-(`phenix/.claude/records/2026-10-04-gc-followups-A/`), not in this file,
-which cannot carry its own hash. Earlier reviews and test runs apply to
-their recorded source; they do not approve this diff. The literal
-release-family check now expects `r10 rev17 candidate`; it does not
-establish an exact revision or approval.
+It can also freeze and verify task evidence, check decision-screen forms, prepare review bundles and compare publication records with Git. A frozen packet is evidence whose contents and inventory have been recorded for later comparison. The [architecture document](GUIDED_CODING_ARCHITECTURE.md) explains how those parts fit together.
 
-A later bounded change (2026-10-06, record
-`phenix/.claude/records/2026-10-06-gc-app-version-check/`) made the version
-check app-aware (`claude_version`, `check_claude_version`,
-`check_app_engine_version` and `APP_ENTRYPOINT` in `screen_check.py`),
-rewrote `ClaudeVersionChecks`, and revised the matching sentences in the
-skill entry, user guide, architecture table and this file. The label,
-contract, adoption rule and setup recipe are unchanged.
+The checks have specific limits:
 
-The October 2–3 publication, client and installation facts below come from
-the supplied controller and outside-review records. The documentation pass
-checked the uploaded baseline against its complete manifest and read the
-implementation and tests; it did not rerun those sessions, inspect live
-remote refs or act as an Outside Reviewer. Raw historical evidence is kept
-in the associated task/review records, not duplicated in the generic package.
+| Check | What it establishes | What still needs examination |
+| --- | --- | --- |
+| Source verification | Listed files and the complete inventory match the supplied manifest, with a narrow exception for recognized Python cache files. | The supplier, correctness of the procedure and contents of permitted caches. |
+| Claude Code version | The relevant client meets the minimum version, or the app branch reports that the version could not be checked. | Which instructions were loaded and whether future clients use the same app marker. |
+| Result screen | Required information, recorded code identities and a passing recorded check are present and match. | Whether the test checks the right thing, actually ran and supports the claimed result. |
+| Outside-review record | The reply identifies the same packet, covers the required decision and says to proceed. | The reviewer's independence, authenticity of the reply and meaning of any condition. |
+| Review bundle | Required files were packaged with checksums in the permitted layout. | Privacy, completeness of the evidence and permission to send or publish it. |
+| Publication checks | The outgoing record passes the repository checks performed; the submitted push command has the permitted form. | Your decision to publish, a later change at the remote and commands run outside the validator. |
+| Task history | Saved summaries were listed without activating a task. | Truth of those summaries and any permission or resource reservation. |
+
+Setup's record, verify and apply sequence is an instruction Claude must follow. It is not a save operation enforced by the client. Verification must succeed before the apply call; a failure after a write can still leave the project partly updated.
+
+A successful check is not permission to apply a change, publish it or update an installation. Those decisions remain separate.
+
+## What the recorded trials support
+
+The records describe tests on disposable configurations and scratch projects, plus some sessions using the developer's normal Mac client. They include successful source checks, command loading and specific refusals. Two Mac Terminal setup trials stopped before applying changes when a recovery record was damaged or missing.
+
+Those observations are useful, but narrow. They do not establish all setup and recovery behavior across clients, operating systems or future sessions. The source-level tests and client observations answer different questions.
+
+The full PHENIX server test suite was **not run** for the earlier Guided Coding-only pilot publication, and its baseline/candidate test comparison was **not produced**. The developer explicitly waived that run for that publication. Local package tests do not replace it, and the waiver does not automatically apply to another change.
+
+We have not established that Guided Coding produces better fixes than ordinary AI coding, how often it fails, or whether every future Guide will follow the instructions reliably.
+
+## Important remaining uncertainty
+
+**Setup and recovery.** Earlier trials omitted complete proposals or approved recovery text. Later trials improved on those failures, but do not erase them. In one trial, the setup record was saved to a different place than proposed and did not match the displayed proposal word for word. The session disclosed this. The two damaged-record trials cover one Mac client, one mode and scratch targets; Claude still determines what happens next in other sessions.
+
+**New conversations.** Earlier clients wrote memory outside the target project. Later sessions using that configuration cannot be described as working only from project records without checking what else was loaded. A new conversation does not necessarily begin with no prior context.
+
+**Missing original log.** An untouched debug log from an earlier trial could not be found in the recorded locations. Transcripts and excerpts remained. The reviewer found no important behavior claim that depended solely on that missing log. We still cannot confirm the complete original or that removing private information was its only alteration. This limits how fully the record can be checked; it does not show another failure in Guided Coding’s behavior.
+
+**Clients and platforms.** A Terminal version check says nothing about the app engine. The app branch uses markers observed on October 6, 2026; their future stability is not established. Earlier interactive Terminal observations had continuation and permission-mode qualifications. Native Windows use, a real csh session and complete setup/recovery behavior across clients have not been established. A Windows skip in a test wrapper is not evidence of Windows support.
+
+**Changes outside the project.** Observations about unchanged files and recorded tool calls apply only to what was examined. They do not establish that every file, operation or login state on the computer stayed the same.
+
+**Independence.** Separate test authorship is recorded, but is not by itself proof of independence. A repeatable test can still check the wrong claim. Records must say who chose the success criteria, wrote the test and ran it.
 
 ## Release and source checks
 
-First compare an archive with the independently supplied SHA-256 in its
-review/publication handoff. From a trusted extraction, replace the path
-below with the canonical source root and run this complete Bash block:
+Before extracting an archive, compare it with the SHA-256 checksum supplied independently in its review or publication handoff. Use a trusted extraction for the next steps.
+
+Replace the path below with the canonical source root—the absolute path after resolving symbolic links—and run this complete Bash block:
 
 ```bash
 cd /absolute/path/to/libtbx/guided_coding &&
@@ -68,204 +66,196 @@ cat payload/RELEASE &&
 grep -Fq 'r10 rev17 candidate' payload/RELEASE
 ```
 
-Every dependency uses `&&`. A failed directory change or listed checksum
-must stop before executing the checker; a failed inventory check must stop
-the later commands. Do not append unguarded preparation or registration.
-After a successful block, separately compare the manifest's SHA-256 and
-full release label with the expected handoff identity. Repeat the guarded
-source check before central tools and consequential work as the skill
-requires.
+Each `&&` makes the next command depend on the previous command succeeding. A failed directory change or checksum must stop the block before the kit's checker runs. A failed inventory check must stop the remaining commands. Do not append unguarded preparation or registration commands.
 
-`verify-source` rejects missing/changed listed bytes, extra files, symlinks
-and multiply linked files. The accepted installer-bytecode pattern is an
-exception, not authentication of bytecode contents. `-I` isolates imports
-from the current directory and `PYTHONPATH`; `-B` suppresses writing caches.
-The tool invocation uses source rather than package caches. These controls
-establish consistency, not supplier identity or model compliance.
+After the block succeeds, separately compare the manifest's own SHA-256 and the full release label with the expected handoff. The final `grep` checks a version-family label; it does not identify an exact revision or establish approval.
 
-## Trace a claim to the source
+Repeat the complete source check before running central tools and before consequential work, as required by `SKILL.md`. If the source changes, stop dependent work until the difference has been resolved.
 
-For example: **registration refuses an existing destination instead of
-creating a nested link.**
+The checker rejects missing or changed listed files, unexpected files, symbolic links and files with more than one hard link. It permits only a recognized installer-generated Python cache pattern. That exception checks the filename and header type, not the cached contents.
 
-1. Open [`register_skill` in `screen_check.py`](../payload/tools/screen_check.py).
-   It computes the single `skills/guided_coding` destination, checks
-   `exists()` or `is_symlink()`, and calls `fail` if occupied. The creation
-   is a direct `os.symlink`, not a recursive `ln -s` command.
-2. Read `SkillRegistrationChecks` in
-   [`tst_screen_check_v20.py`](../tests/tst_screen_check_v20.py). The fresh/
-   second-run case and the other-link/directory/dangling-link case assert
-   refusal and absence of a nested link. Other cases cover version and
-   parent-path refusals.
-3. To establish that those tests ran for a particular revision, inspect
-   its captured command, source identity, stdout/stderr and exit status.
-   Reading the test source alone establishes its intended assertion,
-   not an observed pass.
+The calls use `python3 -I -B`. The `-I` option isolates imports from the current directory and `PYTHONPATH`; `-B` prevents writing caches. The documented tools run from source. These controls check consistency, not supplier identity or Claude's compliance.
 
-Other important mappings:
+## Following a claim back to the code
 
-| Claim | Implementation / test source | What it does not establish |
-| --- | --- | --- |
-| Complete-source consistency | `verify_source`, `regular_files`; `SourceInventoryChecks` | Origin, semantic correctness or authenticated cache contents |
-| Claude Code minimum 2.1.281: the PATH `claude` in a Terminal session; the app engine named by `CLAUDE_CODE_EXECPATH` when `CLAUDE_CODE_ENTRYPOINT=claude-desktop`, NOT CHECKED when that version cannot be read | `MIN_CLAUDE_VERSION`, `APP_ENTRYPOINT`, `claude_version`, `check_claude_version`, `check_app_engine_version`; `ClaudeVersionChecks` | That the app marker stays stable, actual instruction loading, or trustworthy executables |
-| Screen form and result identity | `blocks`, `developer_view`, `code_identity`, `check`; `ScreenChecks` | Correct criterion, true logs, complete tests or Developer authorization |
-| Matching outside reading | `reading_matches`; conditional/waiver/pending controls | Independence or authenticity of the reviewer, satisfaction of a semantic condition |
-| Two-domain review transport | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks` | Privacy, evidence completeness or permission to publish |
-| Reading scope (exactly one `Scope:` line, counted before its value is checked), outgoing bindings (no repeated key within a block), waiver form | `reading_matches`, `parse_outgoing`, `suite_waiver` in `screen_check.py`; the scope, outgoing and waiver cases in `ScreenChecks` | Git state, the reviewer's independence, or that the quoted words authorize anything |
-| Pre-push destinations, settings, bindings, dry run (every Git query's exit checked before its output; a failed configuration or identity query refuses, while Git's no-match answer to the configuration query is accepted), command shape (whitelist of the documented form) | `publication_precheck.py`; `tst_publication_precheck_v20.py` on temporary repositories and with a fake Git on PATH | A decision to push, the remote's later state, settings outside the repository's Git config scopes, any Git command not submitted to the validator, or false acceptances other than the demonstrated ones |
-| Read-only task history | `records_history.py`; `tst_records_history_v20.py` | Truth of a record's contents, or any grant, reservation or scheduling |
-| Checked setup ordering | `SKILL.md`, `SETUP.md` §5 and its embedded recipe | Mechanical enforcement by Claude Code or reliable obedience by every Guide |
-| Test isolation in the repository | [`libtbx/tst_guided_coding.py`](../../tst_guided_coding.py) | Complete source verification of arbitrary unlisted files in the original installation |
+Consider this claim: **registration refuses an occupied destination rather than placing another link inside it.**
 
-There are **118 test methods** in the four shipped package test files
-(63 for the checker, 13 for the review bundle, 27 for the pre-push
-checks, 15 for the history listing). Subtests exercise additional cases;
-a count of 118 is not 118 independent behavioral claims. The checker,
-pre-push and history tests of the rev17 release were written by two separate
-test-writer sessions from the interface specification, without reading
-the implementation; the baseline control (`observations/baseline_control.txt`
-in the release's evidence packet: the final checker test file run against
-the previous published checker) shows which of them fail there; the
-pre-push and history tools have no earlier version to compare with. The
-version-check tests of the 2026-10-06 change (`ClaudeVersionChecks`, the
-app registration case and `VersionGateScopeChecks`) were written by a Worker
-subagent from the Developer's case list in the same session as the
-implementation, which it was allowed to read for exact strings; the control
-run of that test file against the previous checker is in that change's record
-(`evidence-work/base_control.txt`). The setup
-shell recipe and native LLM scenarios are not covered by unit methods;
-their controls are in the task and review records.
+First read [`register_skill` in the checker](../payload/tools/screen_check.py). It constructs one `skills/guided_coding` destination, checks whether it exists or is a symbolic link, and refuses if it is occupied. It creates the link directly with `os.symlink`.
 
-## Recorded checks of the published implementation
+Next read `SkillRegistrationChecks` in [the checker tests](../tests/tst_screen_check_v20.py). The tests cover a second registration attempt and destinations that are directories, other links or dangling links. They check both refusal and the absence of a nested link. Other cases examine version and parent-path refusals.
 
-| Evidence | Recorded result and reach |
-| --- | --- |
-| Enumeration correction and follow-up reading | The two `find` producers' failures, including partial listings, stop verification. A/B/B2 did not print VERIFY_OK; the tested driver held apply; protected files were unchanged. Seven earlier recipe controls retained their results. R-F1 was closed. |
-| Package and repository checks | Controller reported 45 package tests passing on the Mac. The publication reviewer ran the repository harness on Linux: unit success with one case-insensitive-filesystem skip and a libtbx precompile skip. Skips are not passes of those branches. |
-| C1, disposable CLI configuration | Exact enumcheck candidate, CLI 2.1.284: help and status, source guard and command-to-expansion comparison. Reach is CLI loading/help/status, not setup/recovery. |
-| 4b, live CLI | Help loaded the expected source and ran the guard. The successful attempt followed an expired-auth failure and user sign-in. |
-| D1, Desktop Code tab | Help loaded the personal central link and ran the source guard; transcript reported runtime 2.1.286. Reach is **loading/help only**, not Desktop status or full setup/recovery. |
-| Publication r2 | Outside reading: PROCEED for the limited pilot; P-F1/P-F2/P-F3/P-N1 closed, R-F1 retained closed. A clerical description of three test assertions was corrected externally. Genuine publication screen passed; Developer PUBLISH and verified remote pushes were recorded. |
-| Mac and shared Linux installation synchronization | Controller reported clean checkouts at the publication commit on the Mac and on one shared Linux installation, source equality between them and repository harness success on both. Synchronized GC files on that installation are not native Claude Code client validation: no Claude client was installed or run there. This was not a PHENIX full-suite run. |
-| Tag removal, October 3 | Controller reported the pilot tag absent remotely, its local copy removed after preservation, and the published commit still in upstream history. Repository tags are reserved for releases; use the commit/manifest, not the removed tag. |
-| CI for the two published commits (read 2026-10-04) | GitHub Actions `quick` and `clutter_and_syntax` completed with conclusion success for c36887c7 (2026-10-02) and b0747a4a (2026-10-03); the mirror workflow succeeded after each. Read through the public API without authentication; a read, not a rerun, and not a PHENIX suite. |
-| Native checks of this candidate, Mac CLI 2.1.284, `claude -p … --permission-mode auto`, candidate loaded through a project-level skill link in a scratch project (2026-10-04) | Four sessions, each printing the guard result (VERIFIED complete source, `r10 rev17 candidate`) for the worktree path: `status` recovered adoption, method and records from files alone; `history` listed the one record read-only and created no file; a setup save with a truncated approved record stopped at verify (FAIL: approved record does not match) and held apply; a setup save with no prior record or ABSENT marker stopped at verify and held apply; the protected files' hashes were unchanged in every session. The CLI title instruction (`/rename GuidedCoding: <task>`) was printed in three of the four sessions and omitted in one. Reach: one client, one mode, scratch targets; the sessions used the Developer's live login and wrote their own client bookkeeping outside the targets. |
-| Desktop session rename, Guide's own session (2026-10-04) | In the Guide's own Desktop session (which had loaded the published rev16 skill, not this candidate), the client's rename tool replaced an app-generated title without a prompt: the tool's availability, not this candidate's behaviour. |
-| Desktop session titles, pinned snapshot (2026-10-04) | Two Desktop sessions in a scratch project whose project-level skill directory was a byte-identical, read-only copy of an earlier revision of this package (candidate 3 of this release). The skill entry `SKILL.md`, whose session-title instructions these observations exercised, is byte-identical between that revision and the published one; the tools, tests and some texts changed in later revisions, so the observations are of the title behaviour only, not of the package as a whole. Each transcript shows the skill expansion and a passing guard on that snapshot. (a) An app-generated title was replaced by `GuidedCoding: help` through the client's rename tool without a prompt. (b) A title the Developer had set by hand (`KEEP MY TITLE`) was left unchanged: the skill read the session's title, judged it user-set and did not call the rename tool, so the app's approval dialog was not exercised. (d) The Developer reported both titles unchanged after closing the windows. Four earlier Desktop sessions are preserved in the task record and not counted: two met a failed guard because the Guide was editing the worktree, one renamed itself on the previous candidate, one met a failed guard and left a hand-set title untouched. The app's "isn't a command here" notice for a project-level skill appeared each time; it is not evidence either way. Reach: one Desktop client, one snapshot, two sessions. |
-| PHENIX test discovery (A7, 2026-10-04) | `phenix.find_program search_type=tests search_text=<function> tests.search_tests_by=function_called` traced `run_autobuild` to its calling tests; the default mode matched test names; a function newer than the static index (dated 2026-05-06) produced no entry and no message; `git_affected_tests=True` saw only uncommitted modifications in the three module directories. Project guidance, not a package feature. |
-| App-session version check (2026-10-06, record `phenix/.claude/records/2026-10-06-gc-app-version-check/`) | In the Guide's own Claude app (Code tab) session, with the separately installed CLI removed from PATH for each command only: the candidate checker printed `VERIFIED Claude app's Claude Code engine 2.1.288 …` for the engine named by `CLAUDE_CODE_EXECPATH`; with that variable unset it printed one `NOT CHECKED` line and exited 0; with `CLAUDE_CODE_ENTRYPOINT` unset and no `claude` on PATH it failed as a Terminal session; with the marker unset and the CLI on PATH it verified the PATH `claude` (2.1.284). One real Terminal observation: the PATH CLI 2.1.284, run once non-interactively (`claude -p`, scrubbed environment, a one-off session-start hook passed with `--settings`), reported `CLAUDE_CODE_ENTRYPOINT=sdk-cli`, not `claude-desktop`, so it takes the Terminal path; an interactive terminal session was not observed. Reach: one Mac, one app session, one non-interactive CLI run; nothing uninstalled, no settings changed. |
+Finally, to establish that those tests ran for a particular revision, examine the captured command, source identity, output and exit status. The test's source shows its intended check; it is not a record of a passing run.
 
-The full PHENIX server suite and a baseline/candidate roster were **NOT RUN /
-NOT PRODUCED for the GC-only pilot publication**, under the Developer's
-specific waiver. The publication record states this publicly. Local tests
-do not replace that suite, and the waiver does not apply automatically to
-a later change.
+### Running the package tests
 
-## Remaining qualifications
-
-- **Native damaged-record branch:** two non-interactive CLI sessions of this
-  candidate held apply on a damaged and on a missing recovery record (table
-  above). That is one client and one mode on scratch targets; the
-  driver/Guide still determines what gets invoked next in any other session.
-- **Exact proposal and recovery history:** earlier cases omitted complete
-  proposals or approved recovery text. Assisted and later native cases
-  showed improvement; they do not erase those failures. A relocated setup
-  record was disclosed but not wholly literal to its displayed proposal.
-- **Fresh-session context:** disposable auto-memory was written outside the
-  target during earlier trials. Later sessions using that configuration
-  cannot be called memory-free or dependent only on target records without
-  checking those inputs. No broad fresh-recovery guarantee follows.
-- **A1 provenance:** an untouched pre-redaction debug log was not located
-  by the reported bounded search. Other transcripts and partial excerpts
-  remain; the reviewer found no material behavioral claim unsupported solely
-  by that loss. The complete original and “only alteration” claim remain
-  unverified. This is a provenance limit, not proof of another behavioral
-  failure.
-- **Client/platform scope:** a passing Terminal version check says nothing
-  about the app engine, and the app branch rests on the
-  `CLAUDE_CODE_ENTRYPOINT=claude-desktop` marker and `CLAUDE_CODE_EXECPATH`
-  as observed on 2026-10-06, whose future stability is not established.
-  Earlier TUI observations had continuation/permission-mode
-  qualifications. Native Windows, real csh and all-client setup/recovery
-  behavior are not established by the final-candidate observations above.
-  The repository wrapper explicitly limits the tools to macOS and Linux;
-  its Windows skip is not evidence of Windows support.
-- **Isolation:** observed file equality and absence of recorded tool calls
-  have bounded reach. They do not establish whole-machine immutability,
-  all syscalls or unchanged live authentication state.
-- **General effectiveness:** this package does not establish a failure
-  rate, superiority to unstructured LLM use, or reliability for every future
-  Guide. Separate test authorship is recorded, not proof of independence.
-
-## How to check a later documentation or source revision
-
-Keep the previous evidence unchanged and bind the new source separately.
-For a docs-only revision, check the diff against the implementation,
-command syntax and preserved authority boundaries. Record unchanged
-executable/contract bytes explicitly. If instructions or claims change,
-assess those changes; a unit suite cannot establish their behavioral effect.
-
-After the source guard succeeds, package tests can be run from a trusted
-clean, manifest-listed copy with a resolved, symlink-free temporary path:
+Once the source guard succeeds, the four shipped test files can be run on a trusted clean copy containing only the manifest-listed source. Use a resolved temporary directory without symbolic links:
 
 ```bash
 python3 -I -B -m unittest discover -s tests -p 'tst_*.py' -v
 ```
 
-From an appropriate cctbx environment, the repository wrapper is:
+Run this from the top folder of that clean copy. It is a separate authorized checking step, not a command to continue after a failed source guard. Report every skipped case.
+
+The four files contain 118 test methods: 63 for the checker, 13 for the review bundle, 27 for publication checks and 15 for task history. Some methods contain additional cases. The number of methods is not a count of independent claims.
+
+The setup shell recipe and native Claude scenarios are not covered by those unit methods. Their controls and observations are in the task and review records.
+
+### Checking a later revision
+
+Keep earlier evidence unchanged and identify the new source separately. For a documentation-only change, compare the rewritten claims and command syntax with the implementation. Record which executable and contract files are unchanged. If an instruction or claim changes, assess that change; passing unit tests cannot establish its effect on Claude's behavior.
+
+For a native-client check, identify the exact source, client and runtime, selected skill path, loaded project instructions and persistent context. Examine the actual command expansion, operations and resulting files. A version string, registration link, model-reported path or simulated procedure alone is insufficient. Matching decoded transcript text also does not prove which file bytes loaded.
+
+Choose observations relevant to the changed behavior and intended support. Do not describe an earlier candidate's session as a fresh run of the new one.
+
+An Outside Reviewer examines the new source and its evidence. Accepting the work, applying it, starting to use it and publishing it remain separate decisions. A final decision screen must refer to an actual review that covers its exact frozen packet. Any waiver must follow the existing contract and project rules; this document grants none.
+
+## Historical record
+
+The following account preserves the scope of the earlier records. It is not a new run of those sessions or a fresh inspection of live repositories.
+
+The original documentation pass checked the uploaded baseline against its complete manifest and read the implementation and tests. Publication, client and installation facts came from the records of the session that ran and recorded the work and from outside reviews. Raw historical evidence remains in the associated task and review records, rather than being copied into the general package.
+
+### Published pilot and setup corrections: October 2–3, 2026
+
+The published implementation baseline was rev16, identified as `enumcheck-20261002T194333Z`. A documentation-only update followed on October 3. Its label still said `r10 rev16 candidate`; the label alone did not establish publication.
+
+The setup correction checked the exit status of both `find` commands before using their file lists. Failures, including partial lists, stopped verification. Three test cases did not print `VERIFY_OK`; the script running the checks stopped before applying changes, and the protected files were unchanged. Seven earlier test cases retained their results, and the review finding about file listing was closed.
+
+The session that ran and recorded the work reported 45 package tests passing on the Mac. The publication reviewer ran the repository harness on Linux and reported successful unit tests, with one case-insensitive-filesystem skip and a skipped libtbx precompile branch. A skip is not a pass for that branch.
+
+A disposable Mac Terminal configuration using Claude Code 2.1.284 loaded help and status, ran the source guard and compared the command with its expansion. This established those loading/help/status observations, not setup or recovery.
+
+A live Terminal session also loaded help from the expected source and ran the guard. That successful attempt followed an authentication-expiry failure and the user's sign-in.
+
+A Claude app Code-tab session loaded help through the personal link and ran the source guard. Its transcript reported runtime 2.1.286. Its scope was loading and help, not app status or full setup/recovery.
+
+The final publication review said to proceed with the limited pilot. It closed its four findings; the earlier file-listing finding remained closed. A description of three test assertions was corrected outside the frozen packet. The genuine publication screen passed; the record contains the developer's PUBLISH decision and verified remote pushes.
+
+The session that ran and recorded the work reported clean Mac and shared Linux checkouts at the publication commit, matching source files and successful repository-harness checks on both. No Claude client was installed or run on that Linux installation. Matching kit files there did not establish native client support, and those checks were not a full PHENIX suite.
+
+On October 3, the session that ran and recorded the work reported the development tag absent from the remote and its local copy removed after preservation. The published commit remained in history. That removed tag is not an installation target.
+
+### Follow-up revision: October 4, 2026
+
+Rev17, `followups-20261004`, changes the checker to examine review scope, outgoing-commit records and the required form of a waived test suite. It adds publication and history tools and their tests, and updates the associated procedure texts. The contract, project-adoption rule and setup-save recipe are unchanged.
+
+The changes followed three problems in the development project: a development tag sent to a repository that reserves tags for releases, a publication based on an inferred suite waiver, and installation updates planned after the push. The tag was removed on October 3; the developer corrected the waiver on October 4. This revision adds no parallel-job coordinator.
+
+A public API read on October 4 reported successful GitHub Actions `quick` and `clutter_and_syntax` jobs for both published commits, and a successful mirror workflow after each. It was a read of recorded results, not a rerun or a PHENIX suite.
+
+#### Four Mac Terminal sessions
+
+Four non-interactive Claude Code 2.1.284 sessions used Auto mode and a project-level skill link in a scratch project. Each printed the source guard's success for the worktree path and the rev17 candidate label.
+
+In those sessions, status recovered the adoption declaration, method and records from files, and history listed one record without creating a file. A setup save with truncated approved text stopped at verification; another with no prior record or absence marker also stopped there. Apply was held, and the protected files' hashes were unchanged in every session.
+
+The Terminal title instruction was printed in three sessions and omitted in one. These observations cover one client, one mode and scratch targets. They used the developer's live login and wrote client bookkeeping outside the targets, so they do not establish recovery without any other persistent context.
+
+#### Claude app session titles
+
+The Guide is the session that plans and directs the work. In its own app session, the rename tool replaced an app-generated title without a prompt. That session had loaded the published rev16 skill, rather than the candidate. It showed that the client offered the tool, not how the candidate behaved.
+
+Two other app sessions used an exact copy of an earlier candidate, kept read-only in a scratch project. Its `SKILL.md` title instructions matched those in the recorded published revision, but later changes affected the tools, tests and some texts. These observations cover title behavior on that copy.
+
+Both transcripts showed the skill expansion and a passing source guard. One app-generated title became `GuidedCoding: help` through the rename tool without a prompt. A title set by the developer, `KEEP MY TITLE`, was left unchanged. That second case did not exercise an approval dialog. The developer reported both titles unchanged after closing the windows.
+
+Four earlier app sessions remain in the record but were not counted: two met a failed guard while the worktree was being edited, one renamed itself on the preceding candidate, and one met a failed guard and left a hand-set title untouched. A project-skill notice saying the name was not a command appeared each time; it establishes neither success nor failure.
+
+#### Project-specific test discovery
+
+A PHENIX test lookup found tests calling `run_autobuild`. Its default mode matched test names. A function newer than its May 6, 2026 static index produced no entry or explanatory message, and its changed-file mode considered only uncommitted modifications in three module directories. This was a project-specific tool, not a feature shipped in the general kit. The recorded command was `phenix.find_program search_type=tests search_text=<function> tests.search_tests_by=function_called`; the changed-file option was `git_affected_tests=True`.
+
+### App-aware version check: October 6, 2026
+
+This separately recorded change makes the version check use the app's own engine in a recognized app session. It updates the version tests and corresponding documentation. The release label, contract, adoption rule and setup recipe are unchanged.
+
+In the Guide's own Mac app Code-tab session, the separately installed Terminal command was removed from the search path for each checking command only. The checker read the app engine as version 2.1.288. With the engine-path variable unset, it printed one `NOT CHECKED` line and exited successfully.
+
+With the app marker unset and no Terminal `claude` available, it failed as a Terminal session. With the marker unset and the Terminal command available, it verified that command as version 2.1.284.
+
+One real non-interactive Terminal run used a scrubbed environment and a one-off session-start hook supplied with `--settings`. It reported `CLAUDE_CODE_ENTRYPOINT=sdk-cli`, so it selected the Terminal branch. An interactive Terminal session was not observed.
+
+These checks cover one Mac, one app session and one non-interactive Terminal run. Nothing was uninstalled and no settings were changed.
+
+## Technical reference
+
+### Source and test map
+
+| Claim or check | Implementation and test source |
+| --- | --- |
+| Complete source consistency | `verify_source`, `regular_files`; `SourceInventoryChecks`. |
+| Client version and app exception | `MIN_CLAUDE_VERSION`, `APP_ENTRYPOINT`, `claude_version`, `check_claude_version`, `check_app_engine_version`; `ClaudeVersionChecks`. |
+| Source and screen commands without a client on the search path | `VersionGateScopeChecks`. |
+| Screen form and result identity | `blocks`, `developer_view`, `code_identity`, `check`; `ScreenChecks`. |
+| Review identity, conditions and scope | `reading_matches` and the conditional, waived, pending and scope cases in `ScreenChecks`. |
+| Outgoing records and suite-waiver form | `parse_outgoing`, `suite_waiver` and their `ScreenChecks` cases. |
+| Review-bundle layout | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks`. |
+| Publication repository and command checks | `publication_precheck.py`; `tst_publication_precheck_v20.py`. |
+| Read-only history listing | `records_history.py`; `tst_records_history_v20.py`. |
+| Required setup-save ordering | `SKILL.md` and `SETUP.md` section 5, including its shell example. |
+
+The checker requires exactly one `Scope:` line before checking its value. An outgoing repository block may not repeat a key. When the suite is marked `NOT RUN`, its quoted waiver is checked for form, not interpreted as genuine permission.
+
+Publication queries check Git's exit status before using its output. Failed configuration or identity queries refuse, even if their output looks right. Git's documented no-match answer to the configuration query is accepted. The `vet` command accepts only the documented push form; it does not intercept other Git commands. These tests cover the demonstrated cases, rather than every possible false acceptance or every setting outside the checked Git configuration.
+
+### Test authorship and controls
+
+The rev17 checker, publication and history tests were written by two separate test-writer sessions from the interface specification, without reading the implementation. A control ran the final checker tests against the earlier published checker to show which tests failed there. Publication and history had no earlier tool versions for that comparison.
+
+The October 6 version tests were written from the developer's case list by a separate AI worker started within the same conversation as the implementation. It was allowed to read the implementation for exact strings. Its earlier-version control is stored separately.
+
+| Record | Location |
+| --- | --- |
+| Rev17 task and publication evidence | `phenix/.claude/records/2026-10-04-gc-followups-A/` |
+| Earlier-checker control | `observations/baseline_control.txt` in that release's evidence packet |
+| App-version change evidence | `phenix/.claude/records/2026-10-06-gc-app-version-check/` |
+| Earlier version-checker control | `evidence-work/base_control.txt` in that change's record |
+
+These paths identify historical records. They are not additional files included in the general download.
+
+### Repository test wrapper
+
+The source repository has a wrapper, [`libtbx/tst_guided_coding.py`](../../tst_guided_coding.py), which is outside this kit. From a suitable cctbx environment it can be run separately:
 
 ```bash
 libtbx.python /absolute/path/to/cctbx_project/libtbx/tst_guided_coding.py
 ```
 
-These are separate authorized check steps, not commands to continue after
-a failed source guard. The wrapper copies listed files into scratch, uses
-a resolved temporary directory, runs the package tests, and checks that
-listed installed bytes did not change. When libtbx precompilation is
-available it exercises that branch on another copy. It skips Windows and
-Python 2; it can also skip the real precompile branch. Report each skip.
-The wrapper reports existing unlisted files rather than using them for the
-test copy, so retain the complete-source check as a separate requirement.
+It copies manifest-listed files into scratch, resolves the temporary directory, runs the package tests and checks that listed installed files did not change. When libtbx precompilation is available, it checks that branch on another copy.
 
-For native validation, identify the exact source, client/runtime, selected
-skill path, loaded project instructions and persistent context. Inspect
-recorded command-to-expansion linkage, actual operations and resulting
-files. A version string, registration link, model-reported path or procedural
-simulation alone is insufficient. Matching decoded transcript text is not
-proof of file-byte loading. Select observations for the changed behavior
-and intended support scope; do not label an earlier candidate's session as
-a fresh run of the new one.
+The wrapper skips Windows and Python 2, and may skip real precompilation. Report each skip. It reports unlisted files in the original installation without copying them into the test source; that is why the complete-source check remains a separate requirement.
 
-The Outside Reviewer evaluates the new source and bound evidence; the
-Developer's acceptance, integration, activation and publication decisions
-remain distinct. A genuine final screen must cite a qualifying reading of
-its own frozen packet. Use the existing contract/project rules for any
-waiver; do not infer one from this document.
+Download users can run the four shipped test files as described above. They do not need a repository wrapper that their download does not contain.
 
-## Relevant history
+### Historical source identities
 
-Rev10–11 corrected exclusive registration and configuration-path handling.
-Rev12 corrected user guidance from the Mac trial. Rev13 added the narrow
-installer-bytecode exception and source-only tool loading. Rev14 introduced
-recoverable, relevant setup. Failed rev15 parallel-job work was excluded
-from the rev16 lineage.
+The baseline identities below identify the earlier publication, not the current candidate or these rewritten documents.
 
-Rev16 stabilized rev14, then corrected fail-fast checksum instructions,
-approved-text preservation, explicit comparison failure propagation and
-checked file enumeration. A failed `check && echo OK` inside a script was
-not a sufficient stopping rule; unchecked producer exits were also not
-sufficient. The final published implementation is enumcheck, not an earlier
-F1/checked-save/failprop candidate. Earlier reviews belong to those earlier
-identities; frozen packets and errata retain that history.
+| Item | Recorded identity |
+| --- | --- |
+| Published implementation | r10 rev16, `enumcheck-20261002T194333Z`, October 2, 2026 |
+| Published commit | `c36887c7f489018af4f91773246ecde32d1b4e24` |
+| Source archive SHA-256 | `fce3627e46982f3b5fad1baaad7ada538984e9087a84b2147548b4564e844968` |
+| Source manifest SHA-256 | `b86d0490df59f854c214e6771ad8bb44f03069a38612be198edff4ebb11238e0` |
+| Contract version | `2026-09-17` |
+| Contract SHA-256 | `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b` |
+| Publication review bundle SHA-256 | `0e4c112d3726026bd397a4e50ac2a3cff79b146883f8ceab269e3a069bc2c6ca` |
+| Publication packet identity | `9834e7a5bfdf6b8dd8401972265715f527432ba277b63c4ee5c50f130508f44b` |
+| Documentation-only revision | `docs-20261003`, October 3, 2026 |
+| Documentation commit | `b0747a4a55f29db3abe04358480d5867e94cb792` |
+| Documentation source manifest SHA-256 | `5edbec14fe45d3538da533fd995a5d59ddaa47df7629daf27321ab2a1134f1be` |
 
-Rev17 (`followups-20261004`) followed three corrections recorded in the
-PHENIX project during October 2026: a development tag pushed to a
-repository that reserves tags for releases (removed by its maintainer on
-2026-10-03), a publication that proceeded on an inferred suite waiver
-(corrected by the Developer on 2026-10-04), and installation updates that
-were planned after the push rather than with it. It adds no parallel-job
-coordination; that remains a separate planned release.
+The rev17 candidate's commit, archive, manifest, bundle and packet identities belong in its own task and publication records. They cannot be derived from the family label, and this document cannot include its own checksum.
 
-Current client reference material: [skills](https://code.claude.com/docs/en/skills)
-and [instruction loading](https://code.claude.com/docs/en/memory).
-Vendor documentation describes the client; it is not a GC native test run.
+Earlier reviews and tests apply to the source they name. They do not approve a later difference. The October 6 app-version change likewise has its own record, despite keeping the release label.
+
+### Earlier development
+
+Revisions 10–11 corrected exclusive registration and configuration paths. Revision 12 improved the instructions after a Mac trial. Revision 13 added the limited installer-cache exception and source-only loading. Revision 14 introduced recoverable setup. Failed parallel-job work from revision 15 was excluded from the revision 16 lineage.
+
+Revision 16 corrected checksum failures that did not stop later commands, preservation of approved text, propagation of comparison failures and checked file enumeration. A failed `check && echo OK` inside a script was not enough to stop it, and unchecked file-listing commands were not sufficient. The published implementation is the final enumeration correction, not an earlier candidate. Frozen packets and errata preserve those distinctions.
+
+### Client reference material
+
+Anthropic's [skills documentation](https://code.claude.com/docs/en/skills) and [instruction-loading documentation](https://code.claude.com/docs/en/memory) describe the client. They are reference material, not a native Guided Coding test run.

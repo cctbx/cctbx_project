@@ -52,7 +52,7 @@ which skill loaded.
 
 Treat exactly `help`, `status`, `history`, `setup`, `setup <target directory>`,
 and `uninstall` as control requests rather than coding tasks. Read
-`docs/GUIDED_CODING_USER_GUIDE.md` for their exact scope. `help` gives a
+`docs/GUIDED_CODING_COMMAND_REFERENCE.md` for their exact scope. `help` gives a
 short command list; `status` reads the central identity, personal link and
 target adoption and the location/readiness of its declared method without
 changing anything. Report missing, conflicting or deferred settings by
