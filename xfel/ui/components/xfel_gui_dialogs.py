@@ -3862,6 +3862,45 @@ def apply_cosym_to_step_list(task_type, step_list, mark0=True):
   return steps
 
 
+# The cosym settings the worker's README prescribes for stills (xfel/merging/
+# application/modify/README.md), in place of the dials defaults they override.
+# The dials defaults suit rotation data and defeat the stills case: d_min=Auto
+# picks the resolution where pooled I/sigma exceeds 4 and CC1/2 exceeds 0.6,
+# which on sparse stills falls to low resolution and discards most of the
+# reflections two images could have in common, and ml_iso normalisation fits a
+# Wilson scale and B to each image's thousand-odd partial intensities, which is
+# noise. The symptom of either is an embedding plot that is one blob instead of
+# two clusters, after which the composite-tranche consensus vote drops most of
+# the images. min_reflections is the README's per-image floor. The resolution
+# limit itself is the dataset's shared high resolution limit, since the README
+# wants the outermost resolution that still carries real signal and the scaling
+# task has already cut the data there.
+COSYM_STILLS_PHIL = """
+modify.cosym.normalisation = None
+modify.cosym.min_reflections = 15
+"""
+
+
+def scaling_filter_tolerances(phil_scope):
+  ''' Return (relative_length_tolerance, absolute_angle_tolerance) of the unit
+      cell filter in a scaling stage's scope, or (None, None) if unreadable.
+
+      cosym reduces every lattice in a tranche to a common minimum cell, and
+      does so with one shared operator only while every cell is within its own
+      tolerances of the tranche median (dials defaults: 5% in length, 2 degrees
+      in angle). A lattice outside them switches the tranche to per-lattice
+      operators, which can then differ for lattices on either side of a
+      pseudo-symmetric metric, and the merging worker refuses to continue. The
+      scaling stage's unit cell filter is what decides how far from the target
+      cell a lattice may be and still reach merging, so its tolerances are the
+      ones cosym should reduce with. '''
+  try:
+    value = phil_scope.extract().filter.unit_cell.value
+    return value.relative_length_tolerance, value.absolute_angle_tolerance
+  except Exception:
+    return None, None
+
+
 def get_trial_integration_phil(db, trial):
   ''' Return the trial's integration parameters, re-expressed under the
       reintegration scope, or "" if the trial sets none. Ensemble refinement
@@ -4701,15 +4740,35 @@ class DatasetDialog(BaseDialog):
         broken, and merging gains modify_cosym followed by those steps. The cosym
         parameters that follow from the symmetry are filled in too: the symmorphic
         space group, the number of dimensions to embed in (the coset count, as the
-        cosym README prescribes), and whether to anchor the result to the
-        reference model, which is only possible when one was given. Everything
-        lands in the stage scopes, so Edit PHIL shows it all and the user can tune
-        any of it. '''
+        cosym README prescribes), whether to anchor the result to the reference
+        model, which is only possible when one was given, the unit cell
+        tolerances cosym reduces the lattices with, copied from the scaling
+        stage's unit cell filter so that whatever that filter lets through,
+        cosym maps to a common cell with one operator (see
+        scaling_filter_tolerances), and the README's stills settings in place
+        of the dials defaults, with the dataset's high resolution limit as the
+        cosym resolution limit (see COSYM_STILLS_PHIL). Everything lands in the
+        stage scopes, so Edit PHIL shows it all and the user can tune any of
+        it. '''
     if not enabled:
       return
     ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial())
     if ambiguity.n_cosets <= 1:
       return
+    # The filter tolerances come from the scaling stage. Its friendly control for
+    # the length tolerance may hold a value not yet pushed to the scope, so the
+    # control wins where it is set; the angle tolerance has no control.
+    rel_tol = ang_tol = None
+    for stage in self.stages:
+      if stage.task_type == 'scaling' and stage.working_phil_scope is not None:
+        rel_tol, ang_tol = scaling_filter_tolerances(stage.working_phil_scope)
+        try:
+          text = stage.rel_tol.ctr.GetValue().strip()
+          if text:
+            rel_tol = float(text)
+        except Exception:
+          pass
+        break
     # Anchoring flips the mutually aligned patterns to match a reference; without
     # a model there is nothing to anchor to. The cosym README notes this is
     # mandatory for mark0 merging with postrefinement but is not enforced.
@@ -4735,6 +4794,14 @@ class DatasetDialog(BaseDialog):
                      'modify.cosym.dimensions = %d\n'
                      'modify.cosym.anchor = %s\n'
                      % (ambiguity.space_group, ambiguity.n_cosets, anchor))
+        if rel_tol is not None:
+          phil_str += 'modify.cosym.relative_length_tolerance = %s\n' % rel_tol
+        if ang_tol is not None:
+          phil_str += 'modify.cosym.absolute_angle_tolerance = %s\n' % ang_tol
+        phil_str += COSYM_STILLS_PHIL
+        d_min = self.get_shared_values().get('d_min')
+        if d_min:
+          phil_str += 'modify.cosym.d_min = %s\n' % d_min
       try:
         stage.working_phil_scope, _ = stage.working_phil_scope.fetch(
           parse(phil_str), track_unused_definitions=True)
