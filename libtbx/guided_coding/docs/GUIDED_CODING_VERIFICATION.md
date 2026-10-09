@@ -88,10 +88,10 @@ Finally, to establish that those tests ran for a particular revision, examine th
 
 ### Running the package tests
 
-Once the source guard succeeds, the four shipped test files can be run on a trusted clean copy containing only the manifest-listed source. Use a resolved temporary directory without symbolic links:
+Once the source guard succeeds, the four shipped test files can be run on a trusted clean copy containing only the manifest-listed source. Use a resolved temporary directory without symbolic links. On macOS the default temporary directory is under `/var`, which is a symbolic link, so resolve it in the same command:
 
 ```bash
-python3 -I -B -m unittest discover -s tests -p 'tst_*.py' -v
+TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" python3 -I -B -m unittest discover -s tests -p 'tst_*.py' -v
 ```
 
 Run this from the top folder of that clean copy. It is a separate authorized checking step, not a command to continue after a failed source guard. Report every skipped case.

@@ -182,8 +182,8 @@ Before guided work, the project’s current instructions must state that it
 uses Developer–Guide Contract version **2026-09-17**, SHA-256
 `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b`,
 and identify its project method. The contract is unchanged from the
-published pilot. An existing statement naming this exact version can
-suffice. A skill link, release name or command invocation does not record
+published pilot. An existing statement naming this exact version and
+SHA-256 can suffice. A skill link, release name or command invocation does not record
 your agreement to use the contract.
 
 If adoption is missing, setup proposes a small declaration for your
