@@ -182,6 +182,7 @@ def setOptions(optionsIn):
     loadOptions(optionsIn.suitename)
 
 class suitealyze(rna_geometry):
+  __slots__ = rna_geometry.__slots__ + ["model_list", "chain_list"]
   output_header = "#suiteID:suite:suiteness:triaged_angle"
   label = "Backbone torsion suites"
   gui_list_headers = ["Suite ID", "Suite", "Suiteness", "Triaged angles",]
