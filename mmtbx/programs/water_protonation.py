@@ -21,10 +21,10 @@ from mmtbx.hydrogens import water_protonation
 _MAX_LISTED_WATERS = 20
 
 master_phil_str = '''
-oh_distance = *auto neutron xray
+water_geometry = *auto xray neutron gas_phase
   .type = choice(multi=False)
-  .short_caption = O-H bond length
-  .help = "O-H bond length to place: neutron (0.984 A), xray (0.957 A), or auto to pick from the experiment type (neutron diffraction or D atoms present gives neutron, else X-ray)."
+  .short_caption = Water geometry
+  .help = "O-H length and H-O-H angle to place: xray (0.850 A, 103.91 deg) or neutron (0.980 A, 103.91 deg), the cctbx restraint targets; gas_phase (0.957 A, 104.5 deg); or auto to pick xray or neutron from the experiment type (neutron diffraction or D atoms present gives neutron, else X-ray)."
 element = *auto H D
   .type = choice(multi=False)
   .short_caption = Hydrogen element
@@ -130,17 +130,14 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     hier = model.get_hierarchy()
     pdb_in = model.get_model_input()
 
-    # O-H distance: honour an explicit choice, else infer from the structure.
-    if self.params.oh_distance == "auto":
+    # Water geometry: honour an explicit choice, else infer from the structure.
+    geometry = self.params.water_geometry
+    if geometry == "auto":
       neutron, source = water_protonation._detect_neutron(pdb_in, hier)
-      kind = "neutron" if neutron else "X-ray"
-      print(f"O-H distance: {kind} (auto: {source})", file=self.logger)
+      geometry = "neutron" if neutron else "xray"
+      print(f"Water geometry: {geometry} (auto: {source})", file=self.logger)
     else:
-      neutron = self.params.oh_distance == "neutron"
-      print(f"O-H distance: {self.params.oh_distance} (forced)",
-            file=self.logger)
-    oh = water_protonation._WATER_OH_NEUTRON if neutron \
-        else water_protonation._WATER_OH_XRAY
+      print(f"Water geometry: {geometry} (forced)", file=self.logger)
 
     # Element: "auto" leaves the per-water choice (the element it carries,
     # else DOD->D, HOH->H) to the placer (element=None); "H"/"D" force it.
@@ -159,13 +156,14 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
                                 == "D").count(True)
                             for ag in hier.atom_groups()
                             if water_protonation._is_water(ag.resname))))
-    if places_d and not neutron:
-      xray = water_protonation._WATER_OH_XRAY
-      neut = water_protonation._WATER_OH_NEUTRON
+    if places_d and geometry == "xray":
+      xray = water_protonation._WATER_GEOMETRY["xray"][0]
+      neut = water_protonation._WATER_GEOMETRY["neutron"][0]
       print(f"warning: placing D (deuterium) at the X-ray O-H length "
             f"({xray:.3f} A); deuterium is normally neutron-derived and uses "
             f"the longer neutron distance ({neut:.3f} A). Pass "
-            f"oh_distance=neutron for consistent geometry.", file=self.logger)
+            f"water_geometry=neutron for consistent geometry.",
+            file=self.logger)
 
     n_before = self._count_water_h(hier)
     report_stats = self.params.stats
@@ -202,7 +200,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     make_sub_header('Placing water hydrogens', out=self.logger)
     result = water_protonation.place_water_hydrogens(
       hier,
-      oh_length          = oh,
+      geometry           = geometry,
       element            = placer_element,
       n_refine           = self.params.refine.max_sweeps,
       refine_tol         = self.params.refine.tolerance,

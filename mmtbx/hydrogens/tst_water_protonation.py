@@ -104,7 +104,9 @@ import math
 import os
 from io import StringIO
 
+import iotbx.cif
 import iotbx.pdb
+import libtbx.load_env
 from iotbx.cli_parser import CCTBXParser, run_program
 from iotbx.data_manager import DataManager
 from scitbx import matrix
@@ -536,10 +538,11 @@ def exercise_acceptor_directed():
     assert d >= wp._WATER_MIN_CLEARANCE - 1e-6, (
       f"placed H too close to a non-water atom: {d:.3f} A")
 
+  oh_target, hoh_target = wp._WATER_GEOMETRY["xray"]
   oh = (matrix.col(hs["H1"].xyz) - matrix.col(o.xyz)).length()
-  assert abs(oh - wp._WATER_OH_XRAY) < 1e-3, f"O-H length off: {oh:.3f}"
+  assert abs(oh - oh_target) < 1e-3, f"O-H length off: {oh:.3f}"
   ang = math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
-  assert abs(ang - wp._WATER_HOH_DEG) < 1.0, f"H-O-H angle off: {ang:.1f}"
+  assert abs(ang - hoh_target) < 1.0, f"H-O-H angle off: {ang:.1f}"
 
 
 def exercise_cation_repulsion():
@@ -663,11 +666,12 @@ def exercise_single_h_water():
   assert (matrix.col(hs["H1"].xyz) - h1_in).length() < 1e-6, (
     "completing must not move the deposited proton")
   O = matrix.col(o.xyz)
+  oh_target, hoh_target = wp._WATER_GEOMETRY["xray"]
   ang = math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
-  assert abs(ang - wp._WATER_HOH_DEG) < 1e-3, (
+  assert abs(ang - hoh_target) < 1e-3, (
     f"H-O-H must be canonical against the deposited H; got {ang:.2f} deg")
   assert abs((matrix.col(hs["H2"].xyz) - O).length()
-             - wp._WATER_OH_XRAY) < 1e-6, "new O-H length"
+             - oh_target) < 1e-6, "new O-H length"
   assert _unit(hs["H2"], o).dot((acc - O).normalize()) > 0.9, (
     "the new proton should aim at the acceptor")
   assert [r[2] for r in res.partial_waters] == ["completed"]
@@ -751,14 +755,15 @@ def exercise_h2_reachable_acceptor():
 def exercise_h2_after_acceptor_fallback():
   """H2 ignores H1's acceptor when the H1 fallback chose it.
 
-  Places on ``_fallback_cage_pdb``, where every H1 candidate clashes and the
-  fallback settles on the lone acceptor. With no other acceptor, H2 must
-  take the clash-free point of the sampled H-O-H cone with the most
-  clearance; scoring H1's acceptor, which every cone point sees at the same
-  104.5 deg, would leave the choice to rounding noise.
+  Places on ``_fallback_cage_pdb`` with the gas-phase geometry it is
+  built for, where every H1 candidate clashes and the fallback settles on
+  the lone acceptor. With no other acceptor, H2 must take the clash-free
+  point of the sampled H-O-H cone with the most clearance; scoring H1's
+  acceptor, which every cone point sees at the same angle, would leave the
+  choice to rounding noise.
   """
   hier = _hierarchy(_fallback_cage_pdb())
-  wp.place_water_hydrogens(hier, n_refine=0)
+  wp.place_water_hydrogens(hier, n_refine=0, geometry="gas_phase")
   o, hs = _water_atoms(hier)
   acc = next(a for a in hier.atoms() if a.parent().resname == "ACA")
   d1 = _unit(hs["H1"], o)
@@ -767,10 +772,13 @@ def exercise_h2_after_acceptor_fallback():
            if a.parent().resname != "HOH"]
   def clearance(pt):
     return min((pt - x).length() for x in heavy)
+  # H1 clashes, so it came from the fallback.
+  assert clearance(matrix.col(hs["H1"].xyz)) < wp._WATER_MIN_CLEARANCE
   p, q = (matrix.col(v) for v in wp._ortho_frame(d1.elems))
-  hoh = math.radians(wp._WATER_HOH_DEG)
+  oh_gas, hoh_gas = wp._WATER_GEOMETRY["gas_phase"]
+  hoh = math.radians(hoh_gas)
   n = wp._WATER_CONE_SAMPLES
-  cone = [matrix.col(o.xyz) + wp._WATER_OH_XRAY * (
+  cone = [matrix.col(o.xyz) + oh_gas * (
             d1 * math.cos(hoh) + (p * math.cos(2 * math.pi * k / n)
                                   + q * math.sin(2 * math.pi * k / n))
             * math.sin(hoh)) for k in range(n)]
@@ -784,11 +792,13 @@ def exercise_h2_after_acceptor_fallback():
 
 def exercise_refinement_reduces_clashes():
   """Refinement relaxes the water-water H clashes the greedy pass leaves in
-  a tight cluster."""
+  a tight cluster (placed at the 0.984 A O-H and gas-phase H-O-H it is
+  built for)."""
+  geometry = dict(oh_length=0.984, geometry="gas_phase")
   greedy = _hierarchy(_WATER_CLUSTER_PDB)
-  wp.place_water_hydrogens(greedy, n_refine=0, oh_length=wp._WATER_OH_NEUTRON)
+  wp.place_water_hydrogens(greedy, n_refine=0, **geometry)
   refined = _hierarchy(_WATER_CLUSTER_PDB)
-  wp.place_water_hydrogens(refined, n_refine=5, oh_length=wp._WATER_OH_NEUTRON)
+  wp.place_water_hydrogens(refined, n_refine=5, **geometry)
 
   n_greedy = wp._water_clash_stats(greedy)[1]
   n_refined = wp._water_clash_stats(refined)[1]
@@ -817,7 +827,7 @@ def exercise_completed_water_survives_refinement():
   states = []
   res = wp.place_water_hydrogens(
     hier, n_refine=3, n_basin=2, existing_h="complete",
-    oh_length=wp._WATER_OH_NEUTRON,
+    geometry="neutron",
     on_state=lambda label, stats: states.append(stats[1]))
   assert len(res.partial_waters) == 4
   # The point of the fixture: refinement and basin-hopping really do run.
@@ -834,7 +844,7 @@ def exercise_completed_water_survives_refinement():
         moved = (matrix.col(a.xyz) - matrix.col(before[key])).length()
         assert moved < 1e-9, f"deposited {key} moved {moved:.3f} A"
     ang = math.degrees(_unit(hs[0], o).angle(_unit(hs[1], o)))
-    assert abs(ang - wp._WATER_HOH_DEG) < 0.1, (
+    assert abs(ang - wp._WATER_GEOMETRY["neutron"][1]) < 0.1, (
       f"H-O-H {ang:.2f} deg on water {ag.parent().resseq.strip()}")
 
 
@@ -854,9 +864,10 @@ def exercise_element_override():
 
 
 def exercise_oh_length_auto():
-  """With no ``oh_length`` the placer picks the canonical distance from the
-  model: neutron where D is present, X-ray otherwise. An explicit value
-  overrides the choice in either direction."""
+  """With no ``geometry`` the placer picks it from the model: neutron where
+  D is present, X-ray otherwise, both cctbx's restraint targets for HOH,
+  compared with the restraint library when it is installed. An explicit
+  ``geometry`` or ``oh_length`` overrides the choice."""
 
   def oh(hier):
     o, hs = _water_atoms(hier)
@@ -865,26 +876,51 @@ def exercise_oh_length_auto():
     assert max(lengths) - min(lengths) < 1e-6, lengths
     return lengths[0]
 
+  def hoh(hier):
+    o, hs = _water_atoms(hier)
+    return math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
+
+  xray_oh, xray_hoh = wp._WATER_GEOMETRY["xray"]
+  neutron_oh, neutron_hoh = wp._WATER_GEOMETRY["neutron"]
+  path = libtbx.env.find_in_repositories(
+    relative_path="chem_data/geostd/h/data_HOH.cif", test=os.path.isfile)
+  if path is not None:
+    hoh_entry = iotbx.cif.reader(file_path=path).model()["comp_HOH"]
+    for key, value in (("_chem_comp_bond.value_dist", xray_oh),
+                       ("_chem_comp_bond.value_dist_neutron", neutron_oh),
+                       ("_chem_comp_angle.value_angle", xray_hoh),
+                       ("_chem_comp_angle.value_angle", neutron_hoh)):
+      assert [float(v) for v in hoh_entry[key]] == [value] * len(
+        hoh_entry[key]), (key, list(hoh_entry[key]), value)
+
   # Hydrogenous model: X-ray.
   xray = _hierarchy(_TWO_ACCEPTOR_PDB)
   wp.place_water_hydrogens(xray, n_refine=0)
-  assert abs(oh(xray) - wp._WATER_OH_XRAY) < 1e-6, (
+  assert abs(oh(xray) - xray_oh) < 1e-6, (
     f"an H-only model should get the X-ray length; got {oh(xray):.3f}")
+  assert abs(hoh(xray) - xray_hoh) < 1e-6, hoh(xray)
 
   # A D anywhere in the model means neutron, even on another residue.
-  deut = _hierarchy(_TWO_ACCEPTOR_PDB.replace(
+  deut_pdb = _TWO_ACCEPTOR_PDB.replace(
     "HETATM    3  O   ACB D   2       4.299   5.000   7.711  1.00 10.00           O",
-    "HETATM    3  D   ACB D   2       4.299   5.000   7.711  1.00 10.00           D"))
+    "HETATM    3  D   ACB D   2       4.299   5.000   7.711  1.00 10.00           D")
+  deut = _hierarchy(deut_pdb)
   wp.place_water_hydrogens(deut, n_refine=0)
-  assert abs(oh(deut) - wp._WATER_OH_NEUTRON) < 1e-6, (
+  assert abs(oh(deut) - neutron_oh) < 1e-6, (
     f"a model carrying D should get the neutron length; got {oh(deut):.3f}")
 
   # An explicit value wins over the heuristic.
   forced = _hierarchy(_TWO_ACCEPTOR_PDB)
-  wp.place_water_hydrogens(forced, n_refine=0,
-                           oh_length=wp._WATER_OH_NEUTRON)
-  assert abs(oh(forced) - wp._WATER_OH_NEUTRON) < 1e-6, (
+  wp.place_water_hydrogens(forced, n_refine=0, oh_length=neutron_oh)
+  assert abs(oh(forced) - neutron_oh) < 1e-6, (
     "an explicit oh_length must override the heuristic")
+
+  # So does an explicit geometry.
+  gas = _hierarchy(deut_pdb)
+  wp.place_water_hydrogens(gas, n_refine=0, geometry="gas_phase")
+  assert max(abs(oh(gas) - wp._WATER_GEOMETRY["gas_phase"][0]),
+             abs(hoh(gas) - wp._WATER_GEOMETRY["gas_phase"][1])) < 1e-6, (
+    oh(gas), hoh(gas))
 
 
 def exercise_environment_hydrogen_count():
@@ -1227,7 +1263,7 @@ def exercise_reorient_keeps_isotope():
     f.write(_BAD_DEUTERATED_PDB)
   log = StringIO()
   run_program(program_class=wp_program.Program, logger=log,
-              args=[file_name, "existing_h=reorient", "oh_distance=xray",
+              args=[file_name, "existing_h=reorient", "water_geometry=xray",
                     "output.overwrite=True"])
   assert "warning: placing D" in log.getvalue(), log.getvalue()
 

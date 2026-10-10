@@ -4,9 +4,10 @@ For every bare water oxygen (any common water residue: HOH, DOD, H2O, WAT,
 OH2, ...) the two H are placed pointing at H-bond acceptors, clear of the
 whole structure (including H placed on other waters) and out of the
 hemisphere of nearby metal cations. Geometry only: no map, no monomer
-library. O-H is 0.984 A (neutron) or 0.957 A (X-ray) and H-O-H is
-104.5 deg. Given a crystal symmetry, waters at a lattice contact also see
-the neighbouring asymmetric units.
+library. O-H and H-O-H are cctbx's restraint targets for water (0.850 A for
+X-ray, 0.980 A for neutron data, 103.91 deg), or on request the gas-phase
+molecule (0.957 A, 104.5 deg). Given a crystal symmetry, waters at a lattice
+contact also see the neighbouring asymmetric units.
 
 The public entry point :func:`place_water_hydrogens` modifies a hierarchy
 in place; :class:`mmtbx.programs.water_protonation.Program` wraps it as the
@@ -34,9 +35,14 @@ from scipy.spatial import KDTree
 # Constants for the H-bond-aware water-H placer (``place_water_hydrogens``).
 # ---------------------------------------------------------------------------
 
-_WATER_OH_XRAY = 0.957        # canonical X-ray O-H bond length (A)
-_WATER_OH_NEUTRON = 0.984     # canonical neutron O-H bond length (A)
-_WATER_HOH_DEG = 104.5        # canonical H-O-H angle (deg)
+# Water geometry, (O-H in A, H-O-H in deg): cctbx's restraint targets for HOH
+# (chem_data/geostd/h/data_HOH.cif), O-H to the H electron density for X-ray
+# and to the nucleus for neutron data; and the isolated molecule.
+_WATER_GEOMETRY = {
+  "xray":      (0.850, 103.91),
+  "neutron":   (0.980, 103.91),
+  "gas_phase": (0.957, 104.5),
+}
 _WATER_ACCEPTOR_RADIUS = 3.5  # max distance to search for H-bond acceptors (A)
 _WATER_ACCEPTOR_ELEMENTS = frozenset({"O", "N", "F", "S", "CL"})
 _WATER_NH_BOND = 1.3          # max N-H distance for the "N carries an H" test (A)
@@ -671,9 +677,11 @@ class _WaterHydrogenPlacer(object):
                n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
                n_basin=0, existing_h="keep", lone_pair_directed=False,
                on_state=None, crystal_symmetry=None,
-               min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+               min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL,
+               geometry=None):
     self.hier = hier
     self.oh_length = oh_length
+    self.geometry = geometry
     self.element = element
     self.n_refine = n_refine
     self.refine_tol = refine_tol
@@ -1200,9 +1208,11 @@ class _WaterHydrogenPlacer(object):
     # Every test below reads the element column.
     check_for_missing_elements(hier)
     # Resolve before stripping, which would remove the D this keys on.
+    if self.geometry is None:
+      self.geometry = "neutron" if _has_deuterium(hier) else "xray"
+    oh, self.hoh_deg = _WATER_GEOMETRY[self.geometry]
     if self.oh_length is None:
-      self.oh_length = (_WATER_OH_NEUTRON if _has_deuterium(hier)
-                        else _WATER_OH_XRAY)
+      self.oh_length = oh
     # What each water carried is read off the strip; the walk below sees the
     # same protons in every other mode.
     stripped = {}
@@ -1370,8 +1380,8 @@ class _WaterHydrogenPlacer(object):
     # once the waters' acceptors are known.
     self.acc_lobes = {}
 
-    self.cos_hoh = math.cos(math.radians(_WATER_HOH_DEG))
-    self.sin_hoh = math.sin(math.radians(_WATER_HOH_DEG))
+    self.cos_hoh = math.cos(math.radians(self.hoh_deg))
+    self.sin_hoh = math.sin(math.radians(self.hoh_deg))
 
     # The cation coordinating each single-H water, symmetry copies included.
     self.partial_waters = [
@@ -1605,14 +1615,15 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
                           existing_h="keep", lone_pair_directed=False,
                           on_state=None, crystal_symmetry=None,
-                          min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
+                          min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL,
+                          geometry=None):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
   WAT, OH2, ...): H1 along O -> the nearest acceptor giving a clash-free H
   (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, N carrying an H
   excluded as donors), else the max-clearance direction over a dense sphere;
-  H2 on the ``_WATER_HOH_DEG`` cone about O-H1, at a clash-free angle toward
+  H2 on the H-O-H cone about O-H1, at a clash-free angle toward
   a second acceptor when there is one, else the clearest. Candidates are
   scored against every other atom and every other water's placed H; waters go
   most-crowded first and new H inherit the parent O's occupancy and B
@@ -1624,8 +1635,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       Single-model hierarchy; modified in place. Every atom must carry an
       element symbol.
   oh_length : float or None, optional
-      O-H bond length in A, positive. None (default) picks
-      ``_WATER_OH_NEUTRON`` (0.984) if the model contains D, else 0.957.
+      O-H bond length in A, positive, overriding the one ``geometry`` sets.
   element : str or None, optional
       Element of the placed atoms, ``"H"`` or ``"D"``, forced on every water;
       None (default) takes the element of the water's own H/D, those
@@ -1666,6 +1676,11 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       with its own site, and so as that same atom rather than a second copy
       (default 0.5). A water refined a little off a symmetry element needs a
       larger value to be recognised as sitting on it.
+  geometry : str or None, optional
+      O-H length and H-O-H angle, a key of ``_WATER_GEOMETRY``: ``"xray"``
+      (0.850 A, 103.91 deg) or ``"neutron"`` (0.980 A, 103.91 deg), cctbx's
+      restraint targets, or ``"gas_phase"`` (0.957 A, 104.5 deg). None
+      (default) picks neutron if the model contains D, else X-ray.
 
   Returns
   -------
@@ -1683,7 +1698,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
     existing_h=existing_h,
     lone_pair_directed=lone_pair_directed,
     on_state=on_state, crystal_symmetry=crystal_symmetry,
-    min_distance_sym_equiv=min_distance_sym_equiv)
+    min_distance_sym_equiv=min_distance_sym_equiv,
+    geometry=geometry)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters)
