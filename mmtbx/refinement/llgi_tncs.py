@@ -7,14 +7,21 @@ pure translation of the group's reference copy) modulate the intensities.
 With the copies modelled explicitly, the model's expected intensity is
 modulated by
 
-  M(h) = 1 + A(h),  A(h) = 2 sum_g sum_{m<n in g} sqrt(f_m f_n) Re Pbar_mn(h)
+  M(h) = 1 + A(h),
+  A(h) = 2 sum_g sum_{m<n in g} sqrt(f_m(s) f_n(s)) c_mn(s) Re Pbar_mn(h)
 
   Pbar_mn(h) = (1/Nsym) sum_k sum_j w_j exp(2 pi i (T_k^T h).(x_jm - x_jn))
                / sum_j w_j,    w_j = Z_j^2 exp(-(B_jm + B_jn) s^2/4)
 
-(f_m: copy m's fraction of the model's scattering; sum over the atoms
-common to all copies of the group, in the frame of the group's reference
-copy; T_k the rotations of the space group). Pbar is the structure factor
+(f_m(s): copy m's fraction of the model's scattering at resolution s,
+sum_j Z_j^2 exp(-B_j s^2/2) over its atoms over the same sum for all
+atoms, so that copies with different B-factors weigh differently at
+different resolutions; c_mn(s) = sum_j w_j / sqrt(sum_j Z_j^2 exp(-B_jm
+s^2/2) sum_j Z_j^2 exp(-B_jn s^2/2)) <= 1, the loss of coherence from
+B-factor differences between corresponding atoms; sums over j are over
+the atoms common to all copies of the group, in the frame of the group's
+reference copy; T_k the rotations of the space group). Pbar is the
+structure factor
 of pseudo-atoms at the difference vectors, with constant scattering Z^2
 and B = B_m + B_n, in the symmorphic group with the same rotations, so one
 FFT structure-factor calculation per pair gives it (pair_modulation).
@@ -198,17 +205,12 @@ def _pseudo_atom_structure(crystal_symmetry, sites_frac, z_sq, b):
 
 def _weight_sums(d_star_sq, z_sq, b, n_grid=400):
   """ sum_j z_sq_j exp(-b_j s^2/4), tabulated on a grid of s^2 and
-  interpolated """
+  interpolated linearly """
+  import numpy as np
   ss_max = flex.max(d_star_sq) * 1.0001 if d_star_sq.size() else 1.
-  grid = [ss_max * i / (n_grid - 1) for i in range(n_grid)]
+  grid = np.linspace(0, ss_max, n_grid)
   tab = [flex.sum(z_sq * flex.exp(-b * (g / 4.))) for g in grid]
-  out = flex.double(d_star_sq.size())
-  step = grid[1]
-  for i, ss in enumerate(d_star_sq):
-    k = min(int(ss / step), n_grid - 2)
-    w = ss / step - k
-    out[i] = tab[k] * (1 - w) + tab[k + 1] * w
-  return out
+  return flex.double(np.interp(np.array(d_star_sq), grid, tab))
 
 def pair_term(miller_set, sites_frac_m, sites_frac_n, z_sq, b_sum):
   """ Re Pbar_mn(h) on miller_set's indices, by one FFT structure-factor
@@ -230,26 +232,36 @@ def pair_modulation(miller_set, groups, xray_structure):
   """ A(h) for the current coordinates and B-factors: the model's
   expected-intensity modulation is M = 1 + A. Returns group_args(a (flex.
   double on miller_set's indices), fractions (per group, the scattering
-  fraction of each copy), f_total (fraction of the scattering in tNCS
-  groups)). """
+  fraction of each copy at s = 0), f_total (the largest fraction of the
+  scattering in tNCS groups at any resolution)). """
   w_sq = _atomic_weight_sq(xray_structure)
   w_total = flex.sum(w_sq)
   sites_frac = xray_structure.sites_frac()
   b_iso = xray_structure.extract_u_iso_or_u_equiv() * (8 * math.pi ** 2)
-  a = flex.double(miller_set.indices().size(), 0)
+  dss = miller_set.d_star_sq().data()
+  def weights(sel):  # sum_j Z_j^2 exp(-B_j s^2/2) over sel, per reflection
+    return _weight_sums(dss, w_sq.select(sel), 2 * b_iso.select(sel))
+  w_total_s = _weight_sums(dss, w_sq, 2 * b_iso)
+  a = flex.double(dss.size(), 0)
+  f_in_groups = flex.double(dss.size(), 0)
   fractions = []
   for g in groups.groups:
-    f = [flex.sum(w_sq.select(sel)) / w_total for sel in g.chain_i_seqs]
-    fractions.append(f)
+    fractions.append([flex.sum(w_sq.select(sel)) / w_total
+                      for sel in g.chain_i_seqs])
+    f_s = [weights(sel) / w_total_s for sel in g.chain_i_seqs]
+    for f in f_s: f_in_groups += f
+    w_common = [weights(sel) for sel in g.i_seqs]
     placed = [apply_op(op, sites_frac.select(sel))
               for op, sel in zip(g.ops, g.i_seqs)]
     z_sq = w_sq.select(g.i_seqs[0])
     for m, n in itertools.combinations(range(len(g.i_seqs)), 2):
       b_sum = b_iso.select(g.i_seqs[m]) + b_iso.select(g.i_seqs[n])
-      a += 2 * math.sqrt(f[m] * f[n]) * pair_term(miller_set, placed[m],
-        placed[n], z_sq, b_sum)
+      coherence = _weight_sums(dss, z_sq, b_sum) / flex.sqrt(
+        w_common[m] * w_common[n])
+      a += 2 * flex.sqrt(f_s[m] * f_s[n]) * coherence * pair_term(
+        miller_set, placed[m], placed[n], z_sq, b_sum)
   return group_args(a=a, fractions=fractions,
-    f_total=sum(sum(f) for f in fractions))
+    f_total=max(flex.max(f_in_groups), sum(sum(f) for f in fractions)))
 
 # ---------------------------------------------------------------------------
 # Data in a tNCS frame, and the fits
@@ -444,6 +456,12 @@ llgi_tncs_params = iotbx.phil.parse("""\
   n_cycles = 2
     .type = int
     .short_caption = sigmaA/tau fit cycles per update
+  tau_reflections = *all free
+    .type = choice
+    .short_caption = Reflections for the tau fit
+    .help = "all: every reflection (precise, but refinement fits the " \
+            "working set, which can inflate tau); free: the R-free set, as " \
+            "for sigmaA."
 """)
 
 def renormalise_e(e_obs_sq_base, sig_e_obs_sq_base, resn, t, centric_flags):
@@ -515,8 +533,9 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
 
 def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   """ Per macrocycle, for fmodel's current model and scales: A(h); sigmaA
-  (E scale, R-free set) and tau (all reflections), alternately, in the
-  u-frame; ScatFrac (F scale, working set) in the u-frame; then the data
+  (E scale, R-free set) and tau (params.tau_reflections: all reflections,
+  or the R-free set), alternately, in the u-frame; ScatFrac (F scale,
+  working set) in the u-frame; then the data
   renormalised by t = sigmaA^2 (1 + A) + (1 - a_eff^2) u, with Feff the new
   f_obs. Returns a group_args like llgi_e_sigmaa.
   estimate_sigmaa_e_then_scatfrac_f's, plus .tau. """
@@ -550,8 +569,11 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
       dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
       hybrid=hybrid_u, tncs_u=u)
     sigmaa = sigmaa_result.sigmaa
+    tau_selection = flex.bool(n, True)
+    if(getattr(params, "tau_reflections", "all") == "free"):
+      tau_selection = fmodel.r_free_flags().data()
     tau = fit_tau(e_base, sig_base, flex.double(n, 1.), centric, e_model,
-      sigmaa, a, dss, state.f_total, flex.bool(n, True),
+      sigmaa, a, dss, state.f_total, tau_selection,
       tau_start=[tau.p0, tau.p1], linear=params.tau_linear_in_resolution)
   if(sigmaa_result.lbfgs_error is not None):
     warnings.append("sigmaA fit: L-BFGS stopped early: %s" %

@@ -85,6 +85,28 @@ def direct_pair_term(ms, sites_m, sites_n, z_sq, b_sum):
     out.append(tot / (len(rots) * flex.sum(w)))
   return out
 
+def direct_modulation(ms, groups, xrs):
+  """ A(h) as the normalised model-model block: 2 Re sum_{m<n} (1/Nsym)
+  sum_k sum_j Z_j^2 exp(-(B_jm + B_jn) s^2/4) exp(2 pi i (T_k^T h).d_j)
+  over sum_all Z^2 exp(-B s^2/2) (here every chain atom of a copy is a
+  common atom, so no scaling by the copy fractions is needed) """
+  z_all = llgi_tncs._atomic_weight_sq(xrs)
+  b_all = xrs.extract_u_iso_or_u_equiv() * (8 * math.pi ** 2)
+  sf = xrs.sites_frac()
+  out = flex.double(ms.size(), 0)
+  for g in groups.groups:
+    placed = [llgi_tncs.apply_op(op, sf.select(sel)) for op, sel in zip(g.ops, g.i_seqs)]
+    z = z_all.select(g.i_seqs[0])
+    for m in range(len(placed)):
+      for n in range(m + 1, len(placed)):
+        b_sum = b_all.select(g.i_seqs[m]) + b_all.select(g.i_seqs[n])
+        p = direct_pair_term(ms, placed[m], placed[n], z, b_sum)
+        for i, ss in enumerate(ms.d_star_sq().data()):
+          out[i] += 2 * p[i] * flex.sum(z * flex.exp(-b_sum * (ss / 4.)))
+  for i, ss in enumerate(ms.d_star_sq().data()):
+    out[i] /= flex.sum(z_all * flex.exp(-b_all * (ss / 2.)))
+  return out
+
 def exercise_pair_term(groups, xrs):
   ms = miller.build_set(CS, anomalous_flag=False, d_min=6.0)
   g = groups.groups[0]
@@ -101,8 +123,18 @@ def exercise_pair_term(groups, xrs):
   mod = llgi_tncs.pair_modulation(ms, groups, xrs)
   f = mod.fractions[0]
   assert approx_equal(f[0], f[1], eps=1e-6)  # both 300 C/N/O atoms
-  assert approx_equal(mod.f_total, sum(f))
-  assert approx_equal(mod.a, 2 * math.sqrt(f[0] * f[1]) * p_fft, eps=1e-12)
+  assert mod.f_total >= sum(f) - 1e-12
+  assert flex.max(flex.abs(mod.a - direct_modulation(ms, groups, xrs))) < 0.01
+  # copy B with B-factors 60 A^2 higher: it weighs less at high resolution
+  # and the pair modulation falls off as sech((B_B - B_A) s^2/4)
+  x2 = xrs.deep_copy_scatterers()
+  b = x2.extract_u_iso_or_u_equiv()
+  b.set_selected(g.i_seqs[1], b.select(g.i_seqs[1]) + 60 / (8 * math.pi ** 2))
+  x2.set_u_iso(values=b)
+  mod2 = llgi_tncs.pair_modulation(ms, groups, x2)
+  a2 = direct_modulation(ms, groups, x2)
+  assert flex.max(flex.abs(mod2.a - a2)) < 0.01
+  assert flex.max(flex.abs(mod2.a)) < flex.max(flex.abs(mod.a))
 
 def exercise_renormalise():
   n = 50
