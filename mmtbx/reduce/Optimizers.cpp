@@ -1,4 +1,4 @@
-// Copyright(c) 2023, Richardson Lab at Duke
+// Copyright(c) 2023-2026, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,6 +19,7 @@
 #include <map>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/subgraph.hpp>
 
@@ -583,10 +584,33 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   return std::pair<double, std::string>(ret, infoString);
 }
 
+static bool isTimeRemaining(double& remainingSeconds, std::chrono::steady_clock::time_point& startTime)
+{
+  // Adjust the time remaining and start time to account for the time spent so far.
+  auto currentTime = std::chrono::steady_clock::now();
+  std::chrono::duration<double> elapsed = currentTime - startTime;
+  remainingSeconds -= elapsed.count();
+  startTime = currentTime;
+
+  // If we've run out of time, return false. Otherwise, return true.
+  return remainingSeconds > 0;
+}
+
 std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
-  CliqueGraph& clique)
+  CliqueGraph& clique, double remainingSeconds)
 {
+  if (remainingSeconds <= 0.0) {
+    // No time remaining, so we leave the clique in its current state and return a score of 0.
+    if (m_verbosity >= 1) {
+      std::ostringstream oss;
+      oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
+        << " in its current state\n";
+      return std::pair<double, std::string>(0.0, oss.str());
+    }
+  }
+  auto startTime = std::chrono::steady_clock::now();
+
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
 
@@ -687,8 +711,19 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       }
       CliqueGraph subGraph = subsetGraph(cutGraph, subMovers);
 
-      // Recursively call this function to find the best score for this subgraph.
-      std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, subGraph);
+      // See if we've run out of time.  If so, we break out of the loop and stop adjusting the score.
+      if (!isTimeRemaining(remainingSeconds, startTime)) {
+        if (m_verbosity >= 1) {
+          std::ostringstream oss;
+          oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
+            << " in its current state\n";
+          infoString += oss.str();
+        }
+        return std::pair<double, std::string>(0.0, infoString);
+      }
+
+      // Recursively call this function to find the best score for this subgraph
+      std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, subGraph, remainingSeconds);
       score += ret.first;
       infoString += ret.second;
     }
@@ -891,7 +926,8 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
   scitbx::af::shared<boost::python::object> movers,
-  scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions)
+  scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions,
+  double remainingSeconds)
 {
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
@@ -916,7 +952,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
   size_t nInteractions = interactions.accessor().all()[0];
   size_t nIndices = interactions.accessor().all()[1];
   if ((nInteractions > 0) && (nIndices != 2)) {
-    infoString += "ERROR: OptimizeCliqueCoarseVertexCutC(): Internal error: invalid array size\n";
+    infoString += "ERROR: OptimizeCliqueCoarse(): Internal error: invalid array size\n";
     return boost::python::make_tuple(-1e100, infoString);
   }
   CliqueGraph clique;
@@ -931,7 +967,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
   // Construct the ScoreCacheMap for the clique before calling and then remove it when done.
   // This will mean that we only use score caching, and only on our new map, for this clique.
   m_scoreCacheMap = new ScoreCacheMap();
-  std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique);
+  std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique, remainingSeconds);
   delete m_scoreCacheMap;
   m_scoreCacheMap = NULL;
   infoString += ret.second;
@@ -1155,7 +1191,7 @@ std::string OptimizerC::Test()
     }
   }
 
-  // OptimizeCliqueCoarseVertexCutC() is tested by the Python code.
+  // OptimizeCliqueCoarseVertexCut() is tested by the Python code when it calls OptimizeCliqueCoarse().
 
   /// @todo
 

@@ -1,6 +1,6 @@
 """Run reduce (add hydrogens). version 2"""
 ##################################################################################
-# Copyright(c) 2021-2023, Richardson Lab at Duke
+# Copyright(c) 2021-2026, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -34,7 +34,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.1.0"
+version = "3.2.0"
 
 master_phil_str = '''
 approach = *add remove optimize
@@ -109,6 +109,10 @@ ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
   .help = Don't stop if restraints for a residue are missing.
+skip_optimizations_after_seconds = 0.0
+  .type = float
+  .short_caption = Skip optimizations after this many seconds
+  .help = Once the program has run for this many seconds, skip any further coarse optimizations.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.  If this is 0.0, no time limit is imposed.
 output
   .style = menu_item auto_align
 {
@@ -1293,6 +1297,9 @@ NOTES:
       # but the desired model ID structure from the model.
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
+      stopTime = 0.0
+      if self.params.skip_optimizations_after_seconds > 0.0:
+        stopTime = startOpt + self.params.skip_optimizations_after_seconds
       opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
         self.model, altID=self.params.alt_id,
         preferenceMagnitude=self.params.preference_magnitude,
@@ -1302,7 +1309,8 @@ NOTES:
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        fillAtomDump = self.params.output.print_atom_info)
+        fillAtomDump = self.params.output.print_atom_info,
+        stopOptimizingAt = stopTime)
       doneOpt = time.time()
       warnings = opt.getWarnings()
       # Find the lines from warnings that start with "Warning: " and
