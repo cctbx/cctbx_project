@@ -443,15 +443,14 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
 
 def estimate_sigmaa_e_then_scatfrac_f(
       fmodel, dobs, feff, resn, e_params=None, scatfrac_params=None):
-  """ Fit sigmaA on the E scale, then ScatFrac on the F scale with sigmaA
-  fixed. The F-scale target depends on sigmaA and ScatFrac only through
-  D = Dobs*sigmaA/sqrt(ScatFrac), so they cannot be fitted jointly there;
-  the E-scale target has no ScatFrac.
+  """ Fit sigmaA on the E scale, then ScatFrac (the F-scale model's
+  normalisation, which the E-scale target does not need) with sigmaA
+  fixed.
 
   Step 1: estimate_e_sigmaa_for_fmodel (R-free set).
   Step 2: llgi_scatfrac.estimate_llgi_scatfrac (working set), against
   fmodel.f_model(), which includes k_isotropic as Feff does: the
-  likelihood fit, or the moments ScatFrac (scatfrac_params.form).
+  moments ScatFrac or the likelihood fit (scatfrac_params.method).
 
   fmodel: an mmtbx.f_model.manager, already scaled.
 
@@ -464,8 +463,8 @@ def estimate_sigmaa_e_then_scatfrac_f(
   reflection), .sigmaa_curve (the fitted sigmaA as a function of d*^2,
   see estimate_e_sigmaa_for_fmodel's .evaluate_at), .target (final
   ScatFrac target on the working set),
-  .scatfrac_inf/.b_scatfrac (ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss)),
-  .n_scatfrac_at_floor (see llgi_scatfrac) and .warnings (list of
+  .scatfrac_inf/.b_scatfrac (ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss),
+  likelihood method; None for moments) and .warnings (list of
   messages about fits that stopped early).
   """
   import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
@@ -494,11 +493,9 @@ def estimate_sigmaa_e_then_scatfrac_f(
   return group_args(
     sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=scatfrac_result.scatfrac,
-    scatfrac_form=getattr(scatfrac_params, "form", "likelihood"),
     target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac,
-    n_scatfrac_at_floor=scatfrac_result.n_at_floor,
     warnings=[
       "%s fit: L-BFGS stopped early: %s" % (name, error)
       for name, error in (("sigmaA", sigmaa_result.lbfgs_error),

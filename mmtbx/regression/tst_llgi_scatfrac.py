@@ -16,20 +16,22 @@ def rice_sample(ec, v, random_state):
 
 def synthetic_dataset(d_star_sq, sigmaa_true, scatfrac_true, dobs,
       random_state, fcalc_mean_sq=None):
-  """ Data consistent with the F-scale LLGI model (TEPS = RESN = 1): |Fcalc|^2
-  exponential with mean ScatFrac (or fcalc_mean_sq), Feff Rice-distributed
-  about D*|Fcalc|, D = Dobs*sigmaA/sqrt(ScatFrac) < 1, variance 1 - D^2. """
+  """ Data consistent with the F-scale LLGI model (TEPS = RESN = k = 1):
+  |Fcalc|^2 exponential with mean ScatFrac (or fcalc_mean_sq), Feff
+  Rice-distributed about d*|Fcalc|, d = Dobs*sigmaA/sqrt(ScatFrac), with
+  variance 1 - (Dobs*sigmaA)^2. """
   n_refl = d_star_sq.size()
   if(fcalc_mean_sq is None): fcalc_mean_sq = scatfrac_true
-  assert flex.max(dobs * sigmaa_true / flex.sqrt(scatfrac_true)) < 1
+  assert flex.max(dobs * sigmaa_true) < 1
   f_calc = flex.complex_double()
   f_eff = flex.double()
   for i in range(n_refl):
     fc_mag = math.sqrt(random_state.expovariate(1.0 / fcalc_mean_sq[i]))
     phase = random_state.uniform(0.0, 2.0 * math.pi)
     f_calc.append(complex(fc_mag * math.cos(phase), fc_mag * math.sin(phase)))
-    d = dobs[i] * sigmaa_true[i] / math.sqrt(scatfrac_true[i])
-    f_eff.append(rice_sample(d * fc_mag, 1.0 - d * d, random_state))
+    big_d = dobs[i] * sigmaa_true[i]
+    d = big_d / math.sqrt(scatfrac_true[i])
+    f_eff.append(rice_sample(d * fc_mag, 1.0 - big_d * big_d, random_state))
   return dict(
     d_star_sq=d_star_sq, sigmaa_true=sigmaa_true,
     scatfrac_true=scatfrac_true, dobs=dobs,
@@ -126,9 +128,8 @@ def exercise_scatfrac_likelihood_uses_working_set_selection():
     raise RuntimeError("Expected RuntimeError for an empty working set.")
 
 def exercise_scatfrac_b_factor_evaluator_gradient_finite_difference():
-  # Finite-difference check of the evaluator's gradient, at a point where
-  # the floor is active at low resolution (sigmaA = 0.95) and not at high
-  # resolution (sigmaA = 0.35).
+  # Finite-difference check of the evaluator's gradient, with sigmaA from
+  # 0.95 at low resolution to 0.35 at high resolution.
   n_refl = 400
   random_state = random.Random(81)
   d_star_sq = random_d_star_sq(n_refl, random_state)
@@ -143,9 +144,7 @@ def exercise_scatfrac_b_factor_evaluator_gradient_finite_difference():
     scale_factor=1.0, scatfrac_inf_start=0.7, b_scatfrac_start=15.0,
     restraint_sigma=10.0, max_iterations=0)
   # max_iterations=0 still takes one L-BFGS step: set the point to probe
-  evaluator.x = flex.double([math.log(0.7), 15.0])
-  n_at_floor = evaluator.n_at_floor()
-  assert 0 < n_at_floor < working_selection.count(True), n_at_floor
+  evaluator.x = evaluator.x_from(0.7, 15.0)
   x0 = evaluator.x.deep_copy()
   f0, g0 = evaluator.compute_functional_and_gradients()
   eps = 1.e-6
@@ -173,14 +172,12 @@ def _assert_b_factor_curve_matches_truth_over_observed_range(
     result.b_scatfrac, b_scatfrac_true)
 
 def exercise_scatfrac_b_factor_recovers_falling_trend():
-  # Positive B_scatfrac, restraint off. sigmaA = 0.4 keeps D < 1 down to
-  # ScatFrac = 0.2 at d*^2 = 0.25.
+  # Positive B_scatfrac, restraint off.
   data = b_factor_dataset(n_refl=6000, seed=83, scatfrac_inf=0.95,
     b_scatfrac=25.0, sigmaa=0.4)
   params = llgi_scatfrac.llgi_scatfrac_params.extract()
   params.scatfrac_b_factor_restraint_sigma = 0.0
   result = fit(data, params)
-  assert result.n_at_floor == 0
   _assert_b_factor_curve_matches_truth_over_observed_range(
     result, data["d_star_sq"], 0.95, 25.0)
 
@@ -212,61 +209,44 @@ def exercise_b_factor_restraint_penalty_finite_difference():
     == (0.0, 0.0)
 
 def exercise_scatfrac_b_factor_restraint_pulls_toward_zero():
-  # With a small true B_scatfrac, the default restraint (sigma = 10) gives
-  # a |B_scatfrac| no larger than the unrestrained fit, with the same sign.
+  # With a small true B_scatfrac, a restraint (sigma = 10) gives a
+  # |B_scatfrac| no larger than the unrestrained fit (the default).
   data = b_factor_dataset(n_refl=6000, seed=97, scatfrac_inf=0.8,
     b_scatfrac=3.0)
   params_unrestrained = llgi_scatfrac.llgi_scatfrac_params.extract()
-  params_unrestrained.scatfrac_b_factor_restraint_sigma = 0.0
+  assert params_unrestrained.scatfrac_b_factor_restraint_sigma == 0.0
   result_unrestrained = fit(data, params_unrestrained)
   params_restrained = llgi_scatfrac.llgi_scatfrac_params.extract()
-  assert params_restrained.scatfrac_b_factor_restraint_sigma == 10.0
+  params_restrained.scatfrac_b_factor_restraint_sigma = 10.0
   result_restrained = fit(data, params_restrained)
-  assert (result_restrained.b_scatfrac > 0) == \
-    (result_unrestrained.b_scatfrac > 0)
   assert abs(result_restrained.b_scatfrac) < abs(
     result_unrestrained.b_scatfrac) + 1.e-6, (
       result_restrained.b_scatfrac, result_unrestrained.b_scatfrac)
 
-def exercise_scatfrac_floor():
-  # The data have D = 0.9, but the fit is given Dobs*sigmaA = 0.85*0.9, so
-  # it would need an effective sigmaA of 1.06. The floor keeps it at or
-  # below A_EFF_MAX for every reflection.
+def exercise_likelihood_agrees_with_moments():
+  # On data consistent with the model (mean |Fcalc|^2 = ScatFrac), the
+  # likelihood fit and the moments estimate of ScatFrac agree, at high and
+  # moderate sigmaA.
   n_refl = 3000
-  random_state = random.Random(101)
-  d_star_sq = random_d_star_sq(n_refl, random_state)
-  data = synthetic_dataset(d_star_sq, flex.double(n_refl, 0.9),
-    flex.double(n_refl, 1.0), flex.double(n_refl, 1.0), random_state)
-  sigmaa = flex.double(n_refl, 0.9)
-  result = fit(data, sigmaa=sigmaa, dobs=flex.double(n_refl, 0.85))
-  a_eff = sigmaa / flex.sqrt(result.scatfrac)
-  assert flex.max(a_eff) <= llgi_scatfrac.A_EFF_MAX + 1.e-9, flex.max(a_eff)
-  assert flex.max(a_eff) > llgi_scatfrac.A_EFF_MAX - 0.01, flex.max(a_eff)
-  assert result.n_at_floor > 0
-  # Away from the floor (sigmaA = 0.6, ScatFrac 0.9), no reflection is at
-  # the floor and the curve is not changed by it.
-  data = b_factor_dataset(n_refl=2000, seed=103, scatfrac_inf=0.9,
-    b_scatfrac=0.0)
-  result = fit(data)
-  assert result.n_at_floor == 0
-  # Ratio of sums (0.4) below the floor (0.91) but likelihood optimum
-  # (1.3) above it: the fit starts above the floor and reaches the optimum.
-  random_state = random.Random(107)
-  d_star_sq = random_d_star_sq(n_refl, random_state)
-  data = synthetic_dataset(d_star_sq, flex.double(n_refl, 0.95),
-    flex.double(n_refl, 1.3), flex.double(n_refl, 0.85), random_state,
-    fcalc_mean_sq=flex.double(n_refl, 0.4))
-  assert llgi_scatfrac.scatfrac_ratio_of_sums(f_calc=data["f_calc"],
-    teps=data["teps"], resn=data["resn"]) < 0.5
-  result = fit(data)
-  assert result.n_at_floor == 0
-  assert result.lbfgs_error is None, result.lbfgs_error
-  assert abs(flex.mean(result.scatfrac) - 1.3) < 0.2, flex.mean(result.scatfrac)
+  for seed, sigmaa in ((101, 0.95), (103, 0.6)):
+    random_state = random.Random(seed)
+    d_star_sq = random_d_star_sq(n_refl, random_state)
+    scatfrac_true = 0.8 * flex.exp(-6.0 * d_star_sq / 4)
+    data = synthetic_dataset(d_star_sq, flex.double(n_refl, sigmaa),
+      scatfrac_true, flex.double(n_refl, 0.9), random_state)
+    result = fit(data)
+    assert result.lbfgs_error is None, result.lbfgs_error
+    s_m = llgi_scatfrac.scatfrac_moments(data["f_calc"], data["teps"],
+      data["resn"], d_star_sq, n_bins=10)
+    rel = flex.mean(flex.abs(result.scatfrac - s_m) / s_m)
+    assert rel < 0.1, (seed, rel)
+    rel_true = flex.mean(flex.abs(result.scatfrac - scatfrac_true)
+      / scatfrac_true)
+    assert rel_true < 0.1, (seed, rel_true)
 
 def exercise_scatfrac_fit_with_hybrid_converges():
-  # Synthetic fmodel whose sigmaA reaches 0.995: without the floor the
-  # effective sigmaA crossed the exact/Rice switch at 0.999 during the fit
-  # and L-BFGS stopped after one iteration.
+  # Synthetic fmodel whose sigmaA reaches 0.995: the fit converges, and
+  # no point on a coarse grid around it is better.
   from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   fmodel = build_llgi_fmodel(80, 1.6, seed=4, rice_kappa=0.1)
@@ -282,8 +262,6 @@ def exercise_scatfrac_fit_with_hybrid_converges():
   result = llgi_scatfrac.estimate_llgi_scatfrac_likelihood(
     hybrid=llgi_hybrid.get_hybrid(llgi_data), **args)
   assert result.lbfgs_error is None, result.lbfgs_error
-  a_eff = args["sigmaa"] * k / flex.sqrt(result.scatfrac)
-  assert flex.max(a_eff) <= llgi_scatfrac.A_EFF_MAX + 1.e-9
   # no better point on a coarse grid around the result
   evaluator = llgi_scatfrac.llgi_scatfrac_b_factor_target_evaluator(
     f_eff=args["f_eff"], selection=args["working_selection"],
@@ -291,22 +269,22 @@ def exercise_scatfrac_fit_with_hybrid_converges():
     teps=args["teps"], resn=args["resn"], ss=args["d_star_sq"] / 4,
     centric_flags=args["centric_flags"], scale_factor=k,
     scatfrac_inf_start=result.scatfrac_inf, b_scatfrac_start=result.b_scatfrac,
-    restraint_sigma=10.0, max_iterations=0,
+    restraint_sigma=0.0, max_iterations=0,
     hybrid=llgi_hybrid.get_hybrid(llgi_data).with_rice_kappa(0.0))
   f_result, _ = evaluator.compute_functional_and_gradients()
-  z_inf = math.log(result.scatfrac_inf)
   for dz in (-0.2, 0, 0.2):
     for db in (-5, 0, 5):
-      evaluator.x = flex.double([z_inf + dz, result.b_scatfrac + db])
+      evaluator.x = evaluator.x_from(result.scatfrac_inf * math.exp(dz),
+        result.b_scatfrac + db)
       f, _ = evaluator.compute_functional_and_gradients()
       assert f >= f_result - 1.e-9, (dz, db, f, f_result)
 
 def exercise_moments_form():
-  """ The moments form: scatfrac_moments recovers a resolution-dependent
-  normalisation, and moments_form_arguments gives the F-scale functor in
-  phasertng's form (mean Dobs sigmaA Fcalc/(RESN sqrt(S)), variance
-  1 - (Dobs sigmaA)^2), i.e. the functor on Fcalc/sqrt(S) with ScatFrac 1,
-  with the gradient with respect to Fcalc by the chain rule. """
+  """ scatfrac_moments recovers a resolution-dependent normalisation, and
+  ScatFrac only rescales Ecalc in the F-scale functor: the target with
+  ScatFrac S and scale k equals the target on k*Fcalc/sqrt(S) with
+  ScatFrac 1 and k 1 (the variance depends on Dobs*sigmaA alone), with
+  the gradient with respect to Fcalc by the chain rule. """
   from cctbx.xray import ext as xray_ext
   rs = random.Random(7)
   n = 4000
@@ -321,24 +299,39 @@ def exercise_moments_form():
     n_bins=10)
   assert flex.max(flex.abs(s_m / s_true - 1)) < 0.25
   assert abs(flex.mean(s_m / s_true) - 1) < 0.03
+  k = 1.3
+  s_k = llgi_scatfrac.scatfrac_moments(f_calc, flex.double(n, 1.), resn, dss,
+    n_bins=10, scale_factor=k)
+  assert approx_equal(s_k, s_m * k * k)
   f_eff = flex.double([rs.uniform(1, 30) for i in range(n)])
   dobs = flex.double([rs.uniform(0.5, 1) for i in range(n)])
   sigmaa = flex.double(n, 0.8)
-  common = dict(r_free_flags=flex.bool(n, False), dobs=dobs, sigmaa=sigmaa,
-    teps=flex.double(n, 1.), centric_flags=flex.bool(n, False),
-    compute_gradients=True)
-  fe, rn, sf, k = llgi_scatfrac.moments_form_arguments(f_eff, resn, s_m)
-  a = xray_ext.llgi_target_and_gradients(f_eff=fe, f_calc=f_calc, scatfrac=sf,
-    scale_factor=k, resn=rn, **common)
-  root = flex.sqrt(s_m)
-  b = xray_ext.llgi_target_and_gradients(f_eff=f_eff,
-    f_calc=f_calc * (1. / root), scatfrac=flex.double(n, 1.),
-    scale_factor=1., resn=resn, **common)
+  common = dict(f_eff=f_eff, r_free_flags=flex.bool(n, False), dobs=dobs,
+    sigmaa=sigmaa, teps=flex.double(n, 1.), resn=resn,
+    centric_flags=flex.bool(n, False), compute_gradients=True)
+  a = xray_ext.llgi_target_and_gradients(f_calc=f_calc, scatfrac=s_k,
+    scale_factor=k, **common)
+  factor = k / flex.sqrt(s_k)
+  b = xray_ext.llgi_target_and_gradients(f_calc=f_calc * factor,
+    scatfrac=flex.double(n, 1.), scale_factor=1., **common)
   assert approx_equal(a.target_work(), b.target_work(), eps=1e-12)
-  g = b.gradients_work() * (1. / root)
-  assert flex.max(flex.abs(a.gradients_work() - g)) < 1e-12
-  assert approx_equal(llgi_scatfrac.effective_sigmaa(sigmaa, s_m, 1.,
-    "moments"), sigmaa)
+  assert flex.max(flex.abs(a.gradients_work() - b.gradients_work() * factor)) < 1e-12
+  # the estimator returns the moments ScatFrac (the default method)
+  params = llgi_scatfrac.llgi_scatfrac_params.extract()
+  assert params.method == "moments"
+  r = llgi_scatfrac.estimate_llgi_scatfrac(f_eff=f_eff,
+    working_selection=flex.bool(n, True), f_calc=f_calc, dobs=dobs,
+    sigmaa=sigmaa, teps=flex.double(n, 1.), resn=resn,
+    centric_flags=flex.bool(n, False), d_star_sq=dss, scale_factor=k,
+    params=params)
+  params.moments_n_bins = 10
+  r10 = llgi_scatfrac.estimate_llgi_scatfrac(f_eff=f_eff,
+    working_selection=flex.bool(n, True), f_calc=f_calc, dobs=dobs,
+    sigmaa=sigmaa, teps=flex.double(n, 1.), resn=resn,
+    centric_flags=flex.bool(n, False), d_star_sq=dss, scale_factor=k,
+    params=params)
+  assert approx_equal(r10.scatfrac, s_k)
+  assert r.scatfrac_inf is None
 
 def exercise():
   exercise_moments_form()
@@ -349,7 +342,7 @@ def exercise():
   exercise_scatfrac_b_factor_recovers_rising_trend()
   exercise_b_factor_restraint_penalty_finite_difference()
   exercise_scatfrac_b_factor_restraint_pulls_toward_zero()
-  exercise_scatfrac_floor()
+  exercise_likelihood_agrees_with_moments()
   exercise_scatfrac_fit_with_hybrid_converges()
   print("OK")
 

@@ -1813,10 +1813,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     sigmaa = getattr(llgi_data, "sigmaa", None)
     scatfrac = getattr(llgi_data, "scatfrac", None)
     if(sigmaa is None or scatfrac is None): return None
-    import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
-    a_eff = llgi_scatfrac.effective_sigmaa(sigmaa.data(), scatfrac.data(),
-      self.scale_ml_wrapper(),
-      getattr(llgi_data, "scatfrac_form", "likelihood"))
+    # the coefficient of the unit-normalised Ecalc is sigmaA itself
+    a_eff = sigmaa.data()
     import mmtbx.refinement.llgi_tncs as llgi_tncs
     u, t = llgi_tncs.arrays(llgi_data)
     if(u is not None):
@@ -1868,7 +1866,6 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       sigmaa=f_obs.array(data=result.sigmaa),
       sigmaa_curve=result.sigmaa_curve,
       scatfrac=f_obs.array(data=result.scatfrac),
-      scatfrac_form=result.scatfrac_form,
       _sigmaa_f_model=self.f_model().data().deep_copy())
     self.set_llgi_data(updated)
     return result

@@ -1,6 +1,10 @@
-""" ScatFrac(resolution), the fraction of the scattering accounted for by
-the model, fitted against the F-scale LLGI target with sigmaA fixed (see
-mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f). """
+""" ScatFrac(resolution), the model's own normalisation for the F-scale LLGI
+target: the fraction of the expected intensity the model accounts for, so
+that Ecalc = k Fcalc/(sqrt(TEPS ScatFrac) RESN) has unit mean square. It
+enters the target's mean only (the variance is TEPS - (Dobs sigmaA)^2, as
+in phasertng). Estimated from the model's moments (default) or fitted
+against the F-scale target with sigmaA fixed (see mmtbx.refinement.
+llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f). """
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import scitbx.lbfgs
@@ -10,15 +14,12 @@ import math
 import mmtbx.refinement.llgi_tncs as llgi_tncs
 
 llgi_scatfrac_params = iotbx.phil.parse("""\
-  form = *likelihood moments
+  method = *moments likelihood
     .type = choice
-    .short_caption = ScatFrac and F-scale variance form
-    .help = "likelihood: ScatFrac fitted against the F-scale target, whose "\
-            "variance is 1 - (Dobs sigmaA)^2/ScatFrac. moments: ScatFrac "\
-            "is the model's own normalisation, a smoothed "\
-            "<|F_model|^2/(TEPS RESN^2)> by resolution, and the F-scale "\
-            "target has phasertng's variance 1 - (Dobs sigmaA)^2 "\
-            "(Ecalc = F_model/(RESN sqrt(ScatFrac)))."
+    .short_caption = ScatFrac estimate
+    .help = "moments: a smoothed <k^2 |F_model|^2/(TEPS RESN^2)> by "\
+            "resolution. likelihood: ScatFrac_inf exp(-B_scatfrac ss) "\
+            "fitted against the F-scale target on the working set."
   moments_n_bins = 20
     .type = int
     .expert_level = 3
@@ -27,22 +28,15 @@ llgi_scatfrac_params = iotbx.phil.parse("""\
   max_iterations = 100
     .type = int
     .expert_level = 3
-    .help = "Maximum L-BFGS iterations for the ScatFrac fit."
-  scatfrac_b_factor_restraint_sigma = 10.0
+    .help = "Maximum L-BFGS iterations for the likelihood ScatFrac fit."
+  scatfrac_b_factor_restraint_sigma = 0.0
     .type = float
     .short_caption = ScatFrac B-factor restraint sigma (Angstrom^2)
-    .help = "Width of the restraint 0.5*(B_scatfrac/sigma)^2 on the "\
-            "B-factor of ScatFrac = ScatFrac_inf*exp(-B_scatfrac*ss). "\
-            "sigmaA and ScatFrac trade off against each other in the "\
-            "F-scale target, so a weak restraint keeps B_scatfrac near 0 "\
-            "unless the data call for a trend. 0 disables it."
+    .help = "Likelihood ScatFrac fit: width of the restraint "\
+            "0.5*(B_scatfrac/sigma)^2 on the B-factor of ScatFrac = "\
+            "ScatFrac_inf*exp(-B_scatfrac*ss), added to the mean target "\
+            "per reflection. 0 (the default) disables it."
 """)
-
-# The ScatFrac fit keeps the effective F-scale sigmaA, sigmaA*k/
-# sqrt(ScatFrac), below A_EFF_MAX by a smooth floor on ln(ScatFrac) of
-# width FLOOR_WIDTH (see llgi_scatfrac_b_factor_target_evaluator).
-A_EFF_MAX = 0.995
-FLOOR_WIDTH = 0.01
 
 def scatfrac_ratio_of_sums(f_calc, teps, resn, scale_factor=1.0):
   """ Overall ScatFrac as k^2*sum(|Fcalc|^2)/sum(TEPS*RESN^2), the starting
@@ -56,17 +50,6 @@ def scatfrac_ratio_of_sums(f_calc, teps, resn, scale_factor=1.0):
     return 1.0
   return numerator / denominator
 
-def ln_scatfrac_floor(sigmaa, scale_factor):
-  """ ln of the ScatFrac at which sigmaA*k/sqrt(ScatFrac) = A_EFF_MAX, for
-  each reflection; -1000 (no floor) where sigmaA <= 0. """
-  k = scale_factor if scale_factor > 0 else 1.0  # as llgi::effective_sigmaa
-  no_floor = ~(sigmaa > 0)
-  sa = sigmaa.deep_copy()
-  sa.set_selected(no_floor, 1.0)
-  result = 2 * flex.log(sa * (k / A_EFF_MAX))
-  result.set_selected(no_floor, -1.e3)
-  return result
-
 def _b_factor_restraint_penalty_and_gradient(b_scatfrac, sigma):
   """ Restraint 0.5*(b_scatfrac/sigma)^2 toward 0; sigma <= 0 disables it.
   Returns (penalty, d(penalty)/d(b_scatfrac)).
@@ -79,23 +62,16 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
   """ scitbx.lbfgs target evaluator for ScatFrac = ScatFrac_inf*exp(-B*ss)
   (ss = d*^2/4, so B_scatfrac is on the scale of a crystallographic B, and
   may have either sign), against the mean F-scale LLGI over selection,
-  with sigmaA fixed. Parameters x = [ln(ScatFrac_inf), B_scatfrac]. There
-  is no upper bound: Feff need not be on an absolute scale, so ScatFrac can
-  exceed 1. ScatFrac_inf and B_scatfrac are strongly correlated over a
-  finite resolution range (as scale and B are in a Wilson plot), so only
-  the curve over the observed range is well determined. B_scatfrac is
-  restrained toward 0 (restraint_sigma).
-
-  ScatFrac is kept above the floor at which the effective F-scale sigmaA,
-  sigmaA*k/sqrt(ScatFrac), would reach A_EFF_MAX: an effective sigmaA
-  above 1 is unphysical, and at 0.999 the hybrid LLGI switches from the
-  exact to the Rice likelihood, which would make the objective
-  discontinuous. The floor is smooth in z = ln(ScatFrac):
-    z' = z_floor + w*ln(1 + exp((z - z_floor)/w)),  w = FLOOR_WIDTH,
-  and changes ScatFrac by less than 1e-6 (relative) where the curve is
-  more than 10% above the floor. Below the floor the target is flat in
-  the curve, so the fit should start above it (see
-  estimate_llgi_scatfrac_likelihood).
+  with sigmaA fixed. ScatFrac_inf and B_scatfrac are strongly correlated
+  over a finite resolution range (as scale and B are in a Wilson plot), so
+  the parameters are x = [ln ScatFrac(ss_ref), B_scatfrac*ss_sd], with
+  ss_ref and ss_sd the mean and standard deviation of ss over the
+  selected reflections: this removes most of the correlation and puts
+  both parameters on the same scale. Only the curve over the observed
+  range is well determined.
+  There is no upper bound: Feff need not be on an absolute scale, so
+  ScatFrac can exceed 1. B_scatfrac is optionally restrained toward 0
+  (restraint_sigma).
   """
 
   def __init__(self,
@@ -129,27 +105,18 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
     self.restraint_sigma = restraint_sigma
     assert ss.size() == f_eff.size()
     self.ss = ss
-    self.z_floor = ln_scatfrac_floor(sigmaa, scale_factor)
-    self.x = flex.double([math.log(scatfrac_inf_start), b_scatfrac_start])
+    ss_sel = ss.select(selection)
+    self.ss_ref = flex.mean(ss_sel) if ss_sel.size() else 0.
+    self.ss_sd = max(ss_sel.standard_deviation_of_the_sample()
+      if ss_sel.size() > 1 else 0., 1.e-6)
+    self.x = self.x_from(scatfrac_inf_start, b_scatfrac_start)
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=max_iterations))
 
-  def _scatfrac_and_derivative(self):
-    """ ScatFrac with the floor applied, and dz'/dz. """
-    z = self.x[0] - self.x[1] * self.ss
-    u = (z - self.z_floor) * (1. / FLOOR_WIDTH)
-    e = flex.exp(-flex.abs(u))
-    u_pos = u.deep_copy()
-    u_pos.set_selected(u < 0, 0.0)
-    z_eff = self.z_floor + FLOOR_WIDTH * (u_pos + flex.log(1 + e))
-    negative = (u < 0).as_double()
-    dz_eff_dz = (negative * e + (1 - negative)) / (1 + e)
-    return flex.exp(z_eff), dz_eff_dz
-
   def compute_functional_and_gradients(self):
-    scatfrac, dz_eff_dz = self._scatfrac_and_derivative()
+    scatfrac = self.scatfrac()
     result = llgi_tncs.sigmaa_scatfrac_functor(
       tncs_u=self.tncs_u,
       f_eff=self.f_eff,
@@ -162,32 +129,38 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
       teps=self.teps,
       resn=self.resn,
       centric_flags=self.centric_flags, hybrid=self.hybrid)
-    # d(target)/dz for each reflection; dz/d(ln ScatFrac_inf) = 1,
-    # dz/dB = -ss
-    g_z = result.d_target_by_dscatfrac() * scatfrac * dz_eff_dz
+    # d(target)/dz for each reflection, z = ln ScatFrac; dz/dx[0] = 1,
+    # dz/dx[1] = -(ss - ss_ref)/ss_sd
+    g_z = result.d_target_by_dscatfrac() * scatfrac
+    b = self.x[1] / self.ss_sd
     penalty, penalty_grad = _b_factor_restraint_penalty_and_gradient(
-      self.x[1], self.restraint_sigma)
+      b, self.restraint_sigma)
     return result.target() + penalty, flex.double([
-      flex.sum(g_z), -flex.sum(g_z * self.ss) + penalty_grad])
+      flex.sum(g_z),
+      (-flex.sum(g_z * (self.ss - self.ss_ref)) + penalty_grad) / self.ss_sd])
+
+  def x_from(self, scatfrac_inf, b_scatfrac):
+    """ the parameters for ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss) """
+    return flex.double([math.log(scatfrac_inf) - b_scatfrac * self.ss_ref,
+      b_scatfrac * self.ss_sd])
 
   def scatfrac(self):
-    """ The fitted ScatFrac, floor applied, for every reflection. """
-    return self._scatfrac_and_derivative()[0]
-
-  def n_at_floor(self):
-    """ Number of selected reflections whose curve is below the floor. """
-    z = self.x[0] - self.x[1] * self.ss
-    return ((z < self.z_floor) & self.selection).count(True)
+    """ The fitted ScatFrac for every reflection. """
+    b = self.x[1] / self.ss_sd
+    return flex.exp(self.x[0] - b * (self.ss - self.ss_ref))
 
   def scatfrac_inf_and_b(self):
-    return math.exp(self.x[0]), self.x[1]
+    b = self.x[1] / self.ss_sd
+    return math.exp(self.x[0] + b * self.ss_ref), b
 
-def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20):
-  """ ScatFrac as the model's own normalisation: <|F_calc|^2/(TEPS RESN^2)>
-  in n_bins equal-count resolution bins, interpolated linearly in d*^2
-  between bin means (constant beyond the outermost means). """
+def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
+      scale_factor=1.0):
+  """ ScatFrac as the model's own normalisation: <k^2 |F_calc|^2/(TEPS
+  RESN^2)> in n_bins equal-count resolution bins, interpolated linearly
+  in d*^2 between bin means (constant beyond the outermost means). """
   import numpy as np
-  x = np.array(flex.norm(f_calc) / (teps * resn * resn))
+  k = scale_factor if scale_factor > 0 else 1.0
+  x = np.array(flex.norm(f_calc) * (k * k) / (teps * resn * resn))
   dss = np.array(d_star_sq)
   order = np.argsort(dss)
   bins = [c for c in np.array_split(order, max(1, min(n_bins, x.size)))
@@ -195,20 +168,6 @@ def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20):
   x_mean = np.array([x[c].mean() for c in bins])
   d_mean = np.array([dss[c].mean() for c in bins])
   return flex.double(np.interp(dss, d_mean, x_mean))
-
-def moments_form_arguments(f_eff, resn, scatfrac):
-  """ Arguments for the F-scale LLGI functors that give phasertng's form
-  with ScatFrac as the model normalisation: mean Dobs sigmaA F_calc/(RESN
-  sqrt(ScatFrac)) and variance 1 - (Dobs sigmaA)^2. Passing f_eff and
-  resn times sqrt(ScatFrac), with ScatFrac = 1 and scale factor 1, gives
-  exactly that (Eeff = f_eff/resn is unchanged). f_eff: flex.double or a
-  miller array. Returns (f_eff, resn, scatfrac, scale_factor). """
-  root = flex.sqrt(scatfrac)
-  if(hasattr(f_eff, "customized_copy")):
-    f_eff = f_eff.customized_copy(data=f_eff.data() * root)
-  else:
-    f_eff = f_eff * root
-  return f_eff, resn * root, flex.double(scatfrac.size(), 1.), 1.0
 
 def estimate_llgi_scatfrac_moments(
       f_eff,
@@ -220,48 +179,34 @@ def estimate_llgi_scatfrac_moments(
       resn,
       centric_flags,
       d_star_sq,
+      scale_factor=1.0,
       params=None,
       hybrid=None,
       tncs_u=None):
-  """ ScatFrac for the moments form (scatfrac_moments), with the F-scale
-  target on working_selection in that form. Returns a group_args like
-  estimate_llgi_scatfrac_likelihood's (scatfrac_inf and b_scatfrac None,
-  nothing at a floor). """
+  """ ScatFrac from the model's moments (scatfrac_moments), with the
+  F-scale target on working_selection. Returns a group_args like
+  estimate_llgi_scatfrac_likelihood's, with scatfrac_inf and b_scatfrac
+  None. """
   if(params is None):
     params = llgi_scatfrac_params.extract()
   scatfrac = scatfrac_moments(f_calc, teps, resn, d_star_sq,
-    n_bins=params.moments_n_bins)
-  fe, rn, sf, k = moments_form_arguments(f_eff, resn, scatfrac)
+    n_bins=params.moments_n_bins, scale_factor=scale_factor)
   final_result = llgi_tncs.sigmaa_scatfrac_functor(tncs_u=tncs_u,
-    f_eff=fe, selection=working_selection, f_calc=f_calc, dobs=dobs,
-    sigmaa=sigmaa, scatfrac=sf, scale_factor=k, teps=teps, resn=rn,
-    centric_flags=centric_flags, hybrid=hybrid)
+    f_eff=f_eff, selection=working_selection, f_calc=f_calc, dobs=dobs,
+    sigmaa=sigmaa, scatfrac=scatfrac, scale_factor=scale_factor, teps=teps,
+    resn=resn, centric_flags=centric_flags, hybrid=hybrid)
   return group_args(
     scatfrac=scatfrac, target=final_result.target(),
-    scatfrac_inf=None, b_scatfrac=None, n_at_floor=0, lbfgs_error=None)
+    scatfrac_inf=None, b_scatfrac=None, lbfgs_error=None)
 
 def estimate_llgi_scatfrac(params=None, **args):
-  """ estimate_llgi_scatfrac_likelihood or estimate_llgi_scatfrac_moments,
-  as params.form says """
+  """ estimate_llgi_scatfrac_moments or estimate_llgi_scatfrac_likelihood,
+  as params.method says """
   if(params is None):
     params = llgi_scatfrac_params.extract()
-  if(getattr(params, "form", "likelihood") == "moments"):
-    args.pop("scale_factor", None)
+  if(params.method == "moments"):
     return estimate_llgi_scatfrac_moments(params=params, **args)
   return estimate_llgi_scatfrac_likelihood(params=params, **args)
-
-def effective_sigmaa(sigmaa, scatfrac, scale_factor, form):
-  """ The sigmaA the F-scale target uses with Ecalc = F_calc/RESN:
-  sigmaA k/sqrt(ScatFrac) (likelihood form, as llgi.h's effective_sigmaa),
-  or sigmaA (moments form, where Ecalc is normalised by ScatFrac). """
-  if(form == "moments"):
-    return sigmaa.deep_copy()
-  k = scale_factor if scale_factor > 0 else 1.0
-  positive = scatfrac > 0
-  result = flex.double(sigmaa.size(), 0)
-  result.set_selected(positive, (sigmaa * k).select(positive)
-    / flex.sqrt(scatfrac.select(positive)))
-  return result
 
 def estimate_llgi_scatfrac_likelihood(
       f_eff,
@@ -280,25 +225,19 @@ def estimate_llgi_scatfrac_likelihood(
   """ Fit ScatFrac = ScatFrac_inf*exp(-B_scatfrac*ss) against the F-scale
   LLGI on working_selection (pass ~r_free_flags), with sigmaA fixed (see
   llgi_scatfrac_b_factor_target_evaluator). Starts from B_scatfrac = 0
-  and scatfrac_ratio_of_sums, raised if necessary to 1.1 times the highest
-  floor among the working reflections, so that the fit does not start
-  where the target is flat.
+  and scatfrac_ratio_of_sums.
 
   Returns a group_args with .scatfrac (flex.double, every reflection),
   .target (final mean target on the working set), .scatfrac_inf and
-  .b_scatfrac, .n_at_floor (working reflections held at the floor) and
-  .lbfgs_error (None, or the message L-BFGS stopped with).
+  .b_scatfrac, and .lbfgs_error (None, or the message L-BFGS stopped
+  with).
 
   tncs_u: the tNCS error-variance modulation (the fit is in the u-frame:
   f_eff = Eeff RESN sqrt(u) and the hybrid's observations normalised by
   u; teps must then be 1), or None.
   """
   if(hybrid is not None):
-    # Exact likelihood wherever possible. On the F scale the exact/Rice
-    # switch depends on ScatFrac through the effective sigmaA, which would
-    # make the objective discontinuous; with rice_kappa = 0 only the
-    # effective sigmaA < 0.999 limit remains, which the floor in the
-    # evaluator keeps clear of.
+    # Exact likelihood wherever possible, as for the sigmaA fit.
     hybrid = hybrid.with_rice_kappa(0.0)
   if(params is None):
     params = llgi_scatfrac_params.extract()
@@ -325,11 +264,8 @@ def estimate_llgi_scatfrac_likelihood(
     ss=d_star_sq / 4.0,
     centric_flags=centric_flags,
     scale_factor=scale_factor,
-    scatfrac_inf_start=max(
-      scatfrac_ratio_of_sums(
-        f_calc=f_calc, teps=teps, resn=resn, scale_factor=scale_factor),
-      1.1 * math.exp(flex.max(
-        ln_scatfrac_floor(sigmaa, scale_factor).select(working_selection)))),
+    scatfrac_inf_start=scatfrac_ratio_of_sums(
+      f_calc=f_calc, teps=teps, resn=resn, scale_factor=scale_factor),
     b_scatfrac_start=0.0,
     restraint_sigma=params.scatfrac_b_factor_restraint_sigma,
     max_iterations=params.max_iterations, hybrid=hybrid, tncs_u=tncs_u)
@@ -342,5 +278,4 @@ def estimate_llgi_scatfrac_likelihood(
   return group_args(
     scatfrac=scatfrac, target=final_result.target(),
     scatfrac_inf=scatfrac_inf, b_scatfrac=b_scatfrac,
-    n_at_floor=evaluator.n_at_floor(),
     lbfgs_error=evaluator.minimizer.error)

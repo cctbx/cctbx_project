@@ -27,9 +27,9 @@ and B = B_m + B_n, in the symmorphic group with the same rotations, so one
 FFT structure-factor calculation per pair gives it (pair_modulation).
 
 The error variance is modulated by u(h) = 1 + tau(s) A(h) (one tau shared
-by all groups), and the expected intensity by t(h) = m M(h) + (1 - a^2) u(h),
-where a is the target's effective sigmaA and m the fraction of the expected
-intensity explained by the model. The LLGI functors take u and t per
+by all groups), and the expected intensity by t(h) = sigmaA^2 M(h) +
+(1 - sigmaA^2) u(h), sigmaA being the coefficient of the unit-normalised
+model E-value. The LLGI functors take u and t per
 reflection (cctbx/xray/targets/llgi.h, tncs_frame); the data are normalised
 by t (renormalise). Parameter fits use the u-frame (t = u), in which the
 frame is valid for any sigmaA and which, with the exact likelihood, gives
@@ -387,13 +387,13 @@ def fit_tau(i_obs, sig_i_obs, resn, centric_flags, e_model, sigmaa, a,
   p = _fit_strength(f, f_total, x0, linear)
   return linear_in_d_star_sq(ss_max, p[0], p[1])
 
-def expected_intensity_modulation(model_fraction, a_eff, a, u):
-  """ t = m M + (1 - a_eff^2) u, with M = 1 + A: the tNCS modulation of
-  the expected intensity, m the fraction of the expected intensity
-  explained by the model (E-scale sigmaA^2) and a_eff the effective sigmaA
-  of the target. t exceeds (1 - a_eff^2) u wherever m > 0, so the frame
-  of the LLGI functors is valid. """
-  return model_fraction * (1 + a) + (1 - a_eff * a_eff) * u
+def expected_intensity_modulation(sigmaa, a, u):
+  """ t = sigmaA^2 M + (1 - sigmaA^2) u, with M = 1 + A: the tNCS
+  modulation of the expected intensity. t exceeds (1 - sigmaA^2) u
+  wherever sigmaA > 0, so the frame of the LLGI functors is valid, and in
+  that frame the model term's coefficient is the correlation
+  sigmaA sqrt(M/t). """
+  return sigmaa * sigmaa * (1 + a) + (1 - sigmaa * sigmaa) * u
 
 # ---------------------------------------------------------------------------
 # Functor calls with or without tNCS
@@ -591,15 +591,12 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
     warnings.append("ScatFrac fit: L-BFGS stopped early: %s" %
       scatfrac_result.lbfgs_error)
   scatfrac = scatfrac_result.scatfrac
-  form = getattr(scatfrac_params, "form", "likelihood")
-  a_eff = llgi_scatfrac.effective_sigmaa(sigmaa, scatfrac, scale_factor,
-    form)
-  t = expected_intensity_modulation(sigmaa * sigmaa, a_eff, a, u)
+  t = expected_intensity_modulation(sigmaa, a, u)
   d = renormalise_e(e_base, sig_base, resn, t, centric)
   new = _framed_llgi_data(llgi_data, f_obs, d, u=u, t=t, a=a,
     sigmaa=f_obs.array(data=sigmaa),
     sigmaa_curve=sigmaa_result.evaluate_at,
-    scatfrac=f_obs.array(data=scatfrac), scatfrac_form=form,
+    scatfrac=f_obs.array(data=scatfrac),
     tncs_state=group_args(groups=state.groups, tau=tau, rho=state.rho,
       f_total=state.f_total, params=params),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy())
@@ -607,8 +604,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))
   return group_args(
     sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
-    scatfrac=scatfrac, scatfrac_form=form, target=scatfrac_result.target,
+    scatfrac=scatfrac, target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac,
-    n_scatfrac_at_floor=scatfrac_result.n_at_floor,
     warnings=warnings, tau=tau)

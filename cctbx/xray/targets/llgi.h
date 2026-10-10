@@ -23,19 +23,17 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
 
       Change of variables (E-scale quantity -> F-scale quantity used here):
         EOBS = FEFF/(sqrt(TEPS)*RESN)                 -> feff (unnormalized)
-        Ecalc = Fcalc/sqrt(TEPS*RESN^2*ScatFrac)       -> fc   (unnormalized,
+        Ecalc = k*Fcalc/sqrt(TEPS*RESN^2*ScatFrac)     -> fc   (unnormalized,
                                                                  |Fcalc|)
-        alpha-equivalent d_E = Dobs*sigmaA             -> d_F = Dobs*sigmaA
-                                                                 /sqrt(ScatFrac)
-        V_E = TEPS - (Dobs*sigmaA)^2                   -> V_F = TEPS*RESN^2
+        D = Dobs*sigmaA (mean D*Ecalc)                 -> d = D*k/sqrt(
+                                                                 ScatFrac)
+        V_E = TEPS - D^2                               -> V_F = TEPS*RESN^2
                                                                  *V_E
-      ScatFrac is the fraction of the total scattering accounted for by the
-      model as a function of resolution (equivalently, the ratio of mean
-      calculated to mean expected intensity in a resolution shell); it is
-      passed separately from sigmaa because the two are fitted separately
-      (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_
-      scatfrac_f: sigmaA against the E-scale target, then ScatFrac against
-      this target with sigmaA fixed).
+      ScatFrac is the model's own normalisation: the mean of
+      k^2|Fcalc|^2/(TEPS*RESN^2) as a function of resolution (the fraction
+      of the expected intensity the model accounts for), so that Ecalc has
+      unit mean square. It enters the mean only; the variance depends on
+      sigmaA alone, as in phasertng (V = TEPS - DobsSigaSqr).
 
       feff     = effective amplitude (Feff), NOT normalized to the E-value
                  scale. Supplied by phasertng.nacelle as the FEFF column.
@@ -81,13 +79,14 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         || feff <= 0.0 || fc <= 0.0) {
       return 0.0;
     }
-    // F-scale analog of alpha (function.cc's Dobs*sigmaA, here further
-    // divided by sqrt(ScatFrac) to account for the Ecalc->Fcalc rescaling).
-    double d = dobs * (sigmaa / std::sqrt(scatfrac)) * k;
+    // D = Dobs*sigmaA (function.cc's DobsSiga) sets the variance; the mean
+    // of fc is d*fc, d = D*k/sqrt(ScatFrac), from Ecalc's normalisation.
+    double big_d = dobs * sigmaa;
+    double d = big_d * k / std::sqrt(scatfrac);
     double resn_sq = resn * resn;
     // v_e is the E-scale variance, function.cc's V = teps - DobsSigaSqr;
     // v is v_e rescaled to the F-scale, v = teps*resn^2*v_e.
-    double v_e = teps - d * d;
+    double v_e = teps - big_d * big_d;
     if (v_e <= 0.0) {
       // function.cc: negative_variance() guard; no contribution.
       return 0.0;
@@ -103,16 +102,15 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     // as a separate additive wll = EOBS^2/teps = feff^2/(teps^2*resn^2),
     // added after subtracting feff^2/V. Those two feff terms collapse:
     //
-    //   -feff^2/V + feff^2/(teps^2*resn^2) = -(d^2/teps)*feff^2/V
+    //   -feff^2/V + feff^2/(teps^2*resn^2) = -(D^2/teps)*feff^2/V
     //
-    // (using V = teps*resn^2*(teps - d^2)), so the gain follows directly
-    // by scaling feff^2, mirroring how ec_sq = (d*fc)^2 scales fc^2 -- no
-    // separate baseline term to add and subtract.
+    // (using V = teps*resn^2*(teps - D^2)), so the gain follows directly
+    // by scaling feff^2 -- no separate baseline term to add and subtract.
     //
-    // The multiplier is d^2/TEPS, not d^2: the two coincide only at
+    // The multiplier is D^2/TEPS, not D^2: the two coincide only at
     // TEPS == 1 (tst_llgi.py checks the TEPS != 1 case against the
     // three-term form).
-    double ee_sq = (d * d / teps) * feff_sq; // symmetric partner of ec_sq
+    double ee_sq = (big_d * big_d / teps) * feff_sq;
     double ll;
     if(!centric) {
       // function.cc: log(V_E/teps) = log(v/(teps*resn^2)/teps)
@@ -136,7 +134,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
   /* \brief Gradient of the LLGI target for one Miller index w.r.t. Fcalc.
      Ported from function.cc's dLL_by_dEC (with dEC_by_dReEC = ReEC/EC,
      dEC_by_dImEC = ImEC/EC specialised to a real, positive scale term
-     d = dobs*sigmaa/sqrt(scatfrac), so EC = d*fc reduces the chain rule to
+     d = dobs*sigmaa*k/sqrt(scatfrac), so EC = d*fc reduces the chain rule to
      dLL/dfc = dLL/dEC * d, matching mlf.h's treatment of Fcalc as a
      complex number with |Fcalc| entering the real-valued target). Hessian
      and d/dV terms present in phasertng's functor are omitted, since
@@ -166,8 +164,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         || feff <= 0.0 || fc <= 0.0) {
       return d_target_over_fc;
     }
-    double d = dobs * (sigmaa / std::sqrt(scatfrac)) * k;
-    double v_e = teps - d * d;
+    double big_d = dobs * sigmaa;
+    double d = big_d * k / std::sqrt(scatfrac);
+    double v_e = teps - big_d * big_d;
     if (v_e <= 0.0) {
       return d_target_over_fc;
     }
@@ -191,12 +190,12 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
 
   //! Gradient of the LLGI target for one Miller index w.r.t. sigmaA and
   //! ScatFrac, for the sigmaA/ScatFrac fits.
-  /*! Unlike d_target_one_h_over_fc (whose chain rule through EC = D*fc is
-      simple because V does not depend on fc), D = dobs*sigmaa/sqrt(
-      scatfrac) enters both EC = D*fc and V = teps*resn^2*(teps-D^2).
-      Returns (d target/d sigmaa, d target/d scatfrac), both with the sign
-      flip of target_one_h's minimize-me convention (checked by finite
-      differences in tst_llgi.py's
+  /*! sigmaA enters the variance through D = dobs*sigmaa (V = teps*resn^2*
+      (teps - D^2), and the data term (D^2/teps)*feff^2) and the mean
+      through d = D*k/sqrt(scatfrac) (EC = d*fc); ScatFrac enters the mean
+      only. Returns (d target/d sigmaa, d target/d scatfrac), both with the
+      sign flip of target_one_h's minimize-me convention (checked by
+      finite differences in tst_llgi.py's
       exercise_sigmaa_scatfrac_finite_difference_gradients).
   */
   inline
@@ -219,70 +218,70 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         || feff <= 0.0 || fc <= 0.0) {
       return std::make_pair(0.0, 0.0);
     }
-    double d = dobs * (sigmaa / std::sqrt(scatfrac)) * k;
-    double v_e = teps - d * d;
+    double big_d = dobs * sigmaa;
+    double d = big_d * k / std::sqrt(scatfrac);
+    double v_e = teps - big_d * big_d;
     if (v_e <= 0.0) {
       return std::make_pair(0.0, 0.0);
     }
     double resn_sq = resn * resn;
     double v = teps * resn_sq * v_e;
+    double feff_sq = feff * feff;
     double ec = d * fc;
+    double ee_sq = (big_d * big_d / teps) * feff_sq;
     double ec_sq = ec * ec;
-    // dV_by_dD = teps*resn^2 * d(teps - D^2)/dD = -2*D*teps*resn^2
-    double dv_by_dd = -2. * d * teps * resn_sq;
-    // term1 + term2: derivative of ll_core = -(log(V/(teps^2 resn^2))
-    // + (feff^2+EC^2)/V) w.r.t. D.
-    double term1 = -(1. / v) * dv_by_dd;
-    double term2 = -(2. * ec * fc * v - (feff * feff + ec_sq) * dv_by_dd)
-                   / (v * v);
-    double d_ll_core_by_dd = term1 + term2;
-    double dll_by_dd; // d(ll)/dD, ll in gain form (pre sign-flip)
+    double x = 2. * feff * ec / v;
+    // ll_core = -(log(v/(teps^2 resn^2)) + (ee_sq + ec_sq)/v), and the
+    // Bessel (acentric) or log cosh (centric, with ll_core/2) term in x.
+    // Partial derivatives w.r.t. D (through v and ee_sq) and d (ec):
+    double dv_by_dbig_d = -2. * big_d * teps * resn_sq;
+    double dee_by_dbig_d = 2. * big_d * feff_sq / teps;
+    double dcore_by_dbig_d = -dv_by_dbig_d / v
+      - (dee_by_dbig_d * v - (ee_sq + ec_sq) * dv_by_dbig_d) / (v * v);
+    double dx_by_dbig_d = -x * dv_by_dbig_d / v;
+    double dcore_by_dd = -2. * d * fc * fc / v;
+    double dx_by_dd = 2. * feff * fc / v;
+    double dll_by_dbig_d, dll_by_dd; // ll in gain form (pre sign-flip)
     if(!centric) {
-      double x = 2. * feff * ec / v;
       double bess_term = scitbx::math::bessel::i1_over_i0(x);
-      // dX_by_dD = 2*feff*(fc*V - EC*dV_by_dD)/V^2
-      double dx_by_dd = 2. * feff * (fc * v - ec * dv_by_dd) / (v * v);
-      dll_by_dd = d_ll_core_by_dd + bess_term * dx_by_dd;
+      dll_by_dbig_d = dcore_by_dbig_d + bess_term * dx_by_dbig_d;
+      dll_by_dd = dcore_by_dd + bess_term * dx_by_dd;
     }
     else {
-      double x_half = feff * ec / v; // = X/2, matching llgi.h's centric X
-      double bess_term = std::tanh(x_half);
-      // d(x_half)_by_dD = feff*(fc*V - EC*dV_by_dD)/V^2
-      double dxhalf_by_dd = feff * (fc * v - ec * dv_by_dd) / (v * v);
-      dll_by_dd = d_ll_core_by_dd / 2.0 + bess_term * dxhalf_by_dd;
+      double tanh_term = std::tanh(x / 2.0);
+      dll_by_dbig_d = dcore_by_dbig_d / 2.0 + tanh_term * dx_by_dbig_d / 2.0;
+      dll_by_dd = dcore_by_dd / 2.0 + tanh_term * dx_by_dd / 2.0;
     }
-    // Sign-flipped to match target_one_h's minimization convention
-    // (target_one_h returns -ll).
-    double d_target_by_dd = -dll_by_dd;
-    // Chain rule through D = dobs*sigmaa*k/sqrt(scatfrac):
-    double dd_by_dsigmaa = dobs * k / std::sqrt(scatfrac);
-    double dd_by_dscatfrac = -d / (2. * scatfrac);
-    double d_target_by_dsigmaa = d_target_by_dd * dd_by_dsigmaa;
-    double d_target_by_dscatfrac = d_target_by_dd * dd_by_dscatfrac;
-    return std::make_pair(d_target_by_dsigmaa, d_target_by_dscatfrac);
+    // D = dobs*sigmaa, d = dobs*sigmaa*k/sqrt(scatfrac)
+    double dll_by_dsigmaa = dll_by_dbig_d * dobs
+                          + dll_by_dd * dobs * k / std::sqrt(scatfrac);
+    double dll_by_dscatfrac = dll_by_dd * (-d / (2. * scatfrac));
+    // Sign-flipped to match target_one_h's minimization convention.
+    return std::make_pair(-dll_by_dsigmaa, -dll_by_dscatfrac);
   }
 
-  //! Effective (E-scale) sigmaA of the F-scale target, d/(dobs) in
-  //! target_one_h: the exact LLGI is a function of this and Ecalc =
-  //! fc/resn (TEPS == 1).
+  //! Ecalc/|Fcalc| for the exact LLGI and the tNCS frame (TEPS == 1):
+  //! Ecalc = k*|Fcalc|/(RESN*sqrt(ScatFrac)), the unit-normalised model
+  //! amplitude, whose coefficient in the likelihood is sigmaA itself.
+  //! 0 where ScatFrac or RESN is not positive.
   inline
   double
-  effective_sigmaa(double sigmaa, double scatfrac, double k)
+  ecalc_per_fc(double scatfrac, double k, double resn)
   {
-    if (sigmaa <= 0.0 || scatfrac <= 0.0) return 0.0;
+    if (scatfrac <= 0.0 || resn <= 0.0) return 0.0;
     if (k <= 0.0) k = 1.0;
-    return sigmaa * k / std::sqrt(scatfrac);
+    return k / (resn * std::sqrt(scatfrac));
   }
 
   //! Whether the hybrid LLGI uses the exact likelihood for reflection i.
   inline
   bool
   use_exact(
-    llgi_exact::hybrid const* hybrid, std::size_t i, double a_eff,
+    llgi_exact::hybrid const* hybrid, std::size_t i, double sigmaa,
     double teps, double resn)
   {
     return hybrid != 0 && std::abs(teps - 1.0) < 1e-6 && resn > 0
-        && hybrid->use_exact(i, a_eff);
+        && hybrid->use_exact(i, sigmaa);
   }
 
   //! Translational NCS (tNCS) on the E scale normalised by RESN (without
@@ -480,34 +479,35 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           double rn = resn[i];
           bool c = centric_flags[i];
           bool work = rffs.is_work_refl(i);
-          double a_eff = effective_sigmaa(sa, sf, scale_factor);
+          double ec_per_fc = ecalc_per_fc(sf, scale_factor, rn);
           double t = 0;
           std::complex<double> g(0, 0);
           bool exact = false;
           if (tncs) {
             CCTBX_ASSERT(std::abs(tp - 1.0) < 1e-6);
-            tncs_frame fr(a_eff, tncs_u[i], tncs_t[i]);
-            if (fr.valid && rn > 0) {
+            tncs_frame fr(sa, tncs_u[i], tncs_t[i]);
+            if (fr.valid && ec_per_fc > 0) {
               tncs_evaluation e = evaluate_tncs(hybrid, i,
-                feff / (rn * std::sqrt(tncs_t[i])), fr.s * fc / rn, do_,
-                fr.a_p, c, false);
+                feff / (rn * std::sqrt(tncs_t[i])), fr.s * fc * ec_per_fc,
+                do_, fr.a_p, c, false);
               t = e.target;
               exact = e.exact;
               if (work && compute_gradients && fc > 0) {
-                // ec' = s*fc/resn
-                g = (e.d_target_d_ec * fr.s / rn)
+                // ec' = s*Ecalc = s*fc*ec_per_fc
+                g = (e.d_target_d_ec * fr.s * ec_per_fc)
                   * (std::conj(f_calc[i]) / fc);
               }
             }
           }
           else {
-            exact = use_exact(hybrid, i, a_eff, tp, rn);
+            exact = ec_per_fc > 0 && use_exact(hybrid, i, sa, tp, rn);
             if (exact) {
-              llgi_exact::result r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
+              llgi_exact::result r = hybrid->evaluate_at(
+                i, fc * ec_per_fc, sa, c);
               t = -r.ll;
               if (work && compute_gradients && fc > 0) {
-                // d(-LLGI)/dfc = -(dLLGI/dEcalc)/resn along the phase
-                g = (-r.d_ll_d_ec / rn) * (std::conj(f_calc[i]) / fc);
+                // d(-LLGI)/dfc = -(dLLGI/dEcalc)*ec_per_fc along the phase
+                g = (-r.d_ll_d_ec * ec_per_fc) * (std::conj(f_calc[i]) / fc);
               }
             }
             else {
@@ -656,31 +656,30 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
           double tp = teps[i];
           double rn = resn[i];
           bool c = centric_flags[i];
-          double a_eff = effective_sigmaa(sa, sf, scale_factor);
+          double ec_per_fc = ecalc_per_fc(sf, scale_factor, rn);
+          double ec = fc * ec_per_fc; // Ecalc = k*fc/(resn*sqrt(scatfrac))
           if (tncs) {
             CCTBX_ASSERT(std::abs(tp - 1.0) < 1e-6);
-            tncs_frame fr(a_eff, tncs_u[i], tncs_t[i]);
-            if (!fr.valid || !(rn > 0)) continue;
-            double ec = fc / rn;
+            tncs_frame fr(sa, tncs_u[i], tncs_t[i]);
+            if (!fr.valid || !(ec_per_fc > 0)) continue;
             tncs_evaluation e = evaluate_tncs(hybrid, i,
               feff / (rn * std::sqrt(tncs_t[i])), fr.s * ec, do_, fr.a_p, c,
               true);
             target_ += e.target;
-            // d target/d a_eff through a' and ec' = s*ec
-            double d_t_d_a = e.d_target_d_a * fr.da_p_da
-                           + e.d_target_d_ec * fr.ds_da * ec;
-            // a_eff = sigmaa*k/sqrt(scatfrac)
-            d_target_by_dsigmaa_[i] = d_t_d_a * a_eff / sa;
-            d_target_by_dscatfrac_[i] = -d_t_d_a * a_eff / (2. * sf);
+            // sigmaA through a' and ec' = s*Ecalc; ScatFrac through Ecalc
+            d_target_by_dsigmaa_[i] = e.d_target_d_a * fr.da_p_da
+                                    + e.d_target_d_ec * fr.ds_da * ec;
+            d_target_by_dscatfrac_[i] = e.d_target_d_ec * fr.s
+                                      * (-ec / (2. * sf));
             if (e.exact) n_exact_++;
             continue;
           }
-          if (use_exact(hybrid, i, a_eff, tp, rn)) {
-            llgi_exact::result r = hybrid->evaluate_at(i, fc / rn, a_eff, c);
+          if (ec_per_fc > 0 && use_exact(hybrid, i, sa, tp, rn)) {
+            llgi_exact::result r = hybrid->evaluate_at(i, ec, sa, c);
             target_ -= r.ll;
-            // a_eff = sigmaa*k/sqrt(scatfrac)
-            d_target_by_dsigmaa_[i] = -r.d_ll_d_a * a_eff / sa;
-            d_target_by_dscatfrac_[i] = r.d_ll_d_a * a_eff / (2. * sf);
+            d_target_by_dsigmaa_[i] = -r.d_ll_d_a;
+            // dEcalc/dScatFrac = -Ecalc/(2 ScatFrac)
+            d_target_by_dscatfrac_[i] = r.d_ll_d_ec * ec / (2. * sf);
             n_exact_++;
             continue;
           }

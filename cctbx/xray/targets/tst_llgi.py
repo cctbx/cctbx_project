@@ -99,7 +99,7 @@ def exercise_resn_scale_invariance():
   assert approx_equal(base, scaled_val, eps=1.e-9)
 
 def exercise_negative_variance_guard():
-  # When teps is small enough that v_e = teps - (dobs*sigmaa/sqrt(scatfrac))^2
+  # When teps is small enough that v_e = teps - (dobs*sigmaa)^2
   # is <= 0, the target must contribute exactly zero for that reflection
   # rather than producing a NaN/inf or spurious gradient.
   n_refl = 3
@@ -118,7 +118,8 @@ def exercise_negative_variance_guard():
 
 def exercise_scatfrac_sensitivity():
   # Construct f_calc tuned so that d*fc == feff exactly (d = dobs*sigmaa/
-  # sqrt(scatfrac)), i.e. the best possible fit for this scatfrac. Moving
+  # sqrt(scatfrac), the mean's coefficient), i.e. the best possible fit
+  # for this scatfrac. Moving
   # scatfrac away from that tuned value should make the fit worse
   # (target_work, a minimize-me quantity, increases), since fc no longer
   # matches the (now different) effective d.
@@ -185,13 +186,16 @@ def _reference_target_three_term_form(
       f_eff, f_calc, dobs, sigmaa, scatfrac, k, teps, resn, centric):
   """ The LLGI target for one reflection in phasertng's three-term form:
   the Wilson/null-hypothesis term wll = EOBS^2/teps = feff^2/(teps^2*
-  resn^2) added separately after subtracting feff^2/V. llgi.h combines
-  the two feff terms into -(d^2/teps)*feff^2/V; this independent
-  implementation checks that. """
+  resn^2) added separately after subtracting feff^2/V, with V = TEPS -
+  (Dobs sigmaA)^2 and mean Dobs sigmaA Ecalc, Ecalc = k Fcalc/(sqrt(TEPS
+  ScatFrac) RESN). llgi.h combines the two feff terms into -(D^2/teps)*
+  feff^2/V, D = Dobs sigmaA; this independent implementation checks
+  that. """
   from scitbx.math import bessel_ln_of_i0
-  d = dobs * (sigmaa / math.sqrt(scatfrac)) * k
+  big_d = dobs * sigmaa
+  d = big_d * k / math.sqrt(scatfrac)
   resn_sq = resn * resn
-  v_e = teps - d * d
+  v_e = teps - big_d * big_d
   if(v_e <= 0.0):
     return 0.0
   v = teps * resn_sq * v_e
@@ -213,9 +217,10 @@ def _reference_target_three_term_form(
   return -ll
 
 def exercise_target_matches_three_term_form():
-  # llgi.h's target_one_h (symmetric in feff and fc, with the multiplier
-  # d^2/TEPS on feff^2) against phasertng's three-term form, including
-  # TEPS != 1, where d^2/TEPS and d^2 differ.
+  # llgi.h's target_one_h (with the multiplier D^2/TEPS on feff^2)
+  # against phasertng's three-term form, including TEPS != 1, where
+  # D^2/TEPS and D^2 differ, and ScatFrac and k != 1, which enter the mean
+  # only.
   import random
   rnd = random.Random(7)
   n_checked = 0
@@ -252,8 +257,9 @@ def exercise_target_matches_three_term_form():
   assert n_checked == 800, n_checked  # 400 trials x {acentric, centric}
 
 def exercise_target_is_symmetric_in_feff_and_fc():
-  # The target depends on feff and fc through (d^2/teps)*feff^2,
-  # (d*fc)^2 and the Bessel argument, so at teps == 1 and k == 1 swapping
+  # The target depends on feff and fc through (D^2/teps)*feff^2,
+  # (d*fc)^2 and the Bessel argument, so at teps == 1, scatfrac == 1 and
+  # k == 1 (d == D) swapping
   # feff and fc must leave it unchanged.
   import random
   rnd = random.Random(13)

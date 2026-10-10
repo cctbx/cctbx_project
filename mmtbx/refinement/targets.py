@@ -196,23 +196,15 @@ class target_functor(object):
           "(resolution): call update_llgi_sigmaa_scatfrac() first.")
       import mmtbx.refinement.llgi_tncs as llgi_tncs
       tncs_u, tncs_t = llgi_tncs.arrays(llgi_data)
-      f_eff = llgi_data.feff
-      resn = llgi_data.resn.data()
-      scale_factor = manager.scale_ml_wrapper()
-      if (getattr(llgi_data, "scatfrac_form", "likelihood") == "moments"):
-        import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
-        f_eff, resn, sf, scale_factor = llgi_scatfrac.moments_form_arguments(
-          f_eff, resn, scatfrac.data())
-        scatfrac = scatfrac.customized_copy(data=sf)
       self.core = xray.target_functors.llgi(
-        f_eff        = f_eff,
+        f_eff        = llgi_data.feff,
         r_free_flags = manager.r_free_flags(),
         dobs         = llgi_data.dobs,
         sigmaa       = sigmaa,
         scatfrac     = scatfrac,
-        scale_factor = scale_factor,
+        scale_factor = manager.scale_ml_wrapper(),
         teps         = llgi_data.teps.data(),
-        resn         = resn,
+        resn         = llgi_data.resn.data(),
         hybrid       = llgi_hybrid.get_hybrid(llgi_data),
         tncs_u       = tncs_u,
         tncs_t       = tncs_t)
