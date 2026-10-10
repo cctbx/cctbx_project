@@ -229,6 +229,8 @@ def pickle_unpickle(result):
   result.show(out=out1)
   result2.show(out=out2)
   assert (out1.getvalue() == out2.getvalue())
+  # molprobity pickle=True users call as_JSON() on the unpickled object
+  assert json.loads(result2.as_JSON()) == json.loads(result.as_JSON())
 
 def run():
   t0 = time.time()
