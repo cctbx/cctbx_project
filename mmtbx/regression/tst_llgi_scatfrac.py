@@ -301,7 +301,47 @@ def exercise_scatfrac_fit_with_hybrid_converges():
       f, _ = evaluator.compute_functional_and_gradients()
       assert f >= f_result - 1.e-9, (dz, db, f, f_result)
 
+def exercise_moments_form():
+  """ The moments form: scatfrac_moments recovers a resolution-dependent
+  normalisation, and moments_form_arguments gives the F-scale functor in
+  phasertng's form (mean Dobs sigmaA Fcalc/(RESN sqrt(S)), variance
+  1 - (Dobs sigmaA)^2), i.e. the functor on Fcalc/sqrt(S) with ScatFrac 1,
+  with the gradient with respect to Fcalc by the chain rule. """
+  from cctbx.xray import ext as xray_ext
+  rs = random.Random(7)
+  n = 4000
+  dss = random_d_star_sq(n, rs)
+  s_true = 0.6 + 2.0 * dss   # model normalisation rising with resolution
+  resn = flex.double([rs.uniform(5, 15) for i in range(n)])
+  f_calc = flex.complex_double()
+  for i in range(n):
+    sd = resn[i] * math.sqrt(s_true[i] / 2)
+    f_calc.append(complex(rs.gauss(0, sd), rs.gauss(0, sd)))
+  s_m = llgi_scatfrac.scatfrac_moments(f_calc, flex.double(n, 1.), resn, dss,
+    n_bins=10)
+  assert flex.max(flex.abs(s_m / s_true - 1)) < 0.25
+  assert abs(flex.mean(s_m / s_true) - 1) < 0.03
+  f_eff = flex.double([rs.uniform(1, 30) for i in range(n)])
+  dobs = flex.double([rs.uniform(0.5, 1) for i in range(n)])
+  sigmaa = flex.double(n, 0.8)
+  common = dict(r_free_flags=flex.bool(n, False), dobs=dobs, sigmaa=sigmaa,
+    teps=flex.double(n, 1.), centric_flags=flex.bool(n, False),
+    compute_gradients=True)
+  fe, rn, sf, k = llgi_scatfrac.moments_form_arguments(f_eff, resn, s_m)
+  a = xray_ext.llgi_target_and_gradients(f_eff=fe, f_calc=f_calc, scatfrac=sf,
+    scale_factor=k, resn=rn, **common)
+  root = flex.sqrt(s_m)
+  b = xray_ext.llgi_target_and_gradients(f_eff=f_eff,
+    f_calc=f_calc * (1. / root), scatfrac=flex.double(n, 1.),
+    scale_factor=1., resn=resn, **common)
+  assert approx_equal(a.target_work(), b.target_work(), eps=1e-12)
+  g = b.gradients_work() * (1. / root)
+  assert flex.max(flex.abs(a.gradients_work() - g)) < 1e-12
+  assert approx_equal(llgi_scatfrac.effective_sigmaa(sigmaa, s_m, 1.,
+    "moments"), sigmaa)
+
 def exercise():
+  exercise_moments_form()
   exercise_ratio_of_sums_robust_to_single_outlier_reflection()
   exercise_scatfrac_likelihood_uses_working_set_selection()
   exercise_scatfrac_b_factor_evaluator_gradient_finite_difference()

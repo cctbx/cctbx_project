@@ -581,7 +581,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   u = 1 + tau.at(dss) * a
   d = renormalise_e(e_base, sig_base, resn, u, centric)
   scale_factor = fmodel.scale_ml_wrapper()
-  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac_likelihood(
+  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac(
     f_eff=d.feff, working_selection=~fmodel.r_free_flags().data(),
     f_calc=fmodel.f_model().data(), dobs=d.dobs, sigmaa=sigmaa,
     teps=flex.double(n, 1.), resn=resn, centric_flags=centric,
@@ -591,14 +591,15 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
     warnings.append("ScatFrac fit: L-BFGS stopped early: %s" %
       scatfrac_result.lbfgs_error)
   scatfrac = scatfrac_result.scatfrac
-  k = scale_factor if scale_factor > 0 else 1.
-  a_eff = sigmaa * k / flex.sqrt(scatfrac)
+  form = getattr(scatfrac_params, "form", "likelihood")
+  a_eff = llgi_scatfrac.effective_sigmaa(sigmaa, scatfrac, scale_factor,
+    form)
   t = expected_intensity_modulation(sigmaa * sigmaa, a_eff, a, u)
   d = renormalise_e(e_base, sig_base, resn, t, centric)
   new = _framed_llgi_data(llgi_data, f_obs, d, u=u, t=t, a=a,
     sigmaa=f_obs.array(data=sigmaa),
     sigmaa_curve=sigmaa_result.evaluate_at,
-    scatfrac=f_obs.array(data=scatfrac),
+    scatfrac=f_obs.array(data=scatfrac), scatfrac_form=form,
     tncs_state=group_args(groups=state.groups, tau=tau, rho=state.rho,
       f_total=state.f_total, params=params),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy())
@@ -606,7 +607,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))
   return group_args(
     sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
-    scatfrac=scatfrac, target=scatfrac_result.target,
+    scatfrac=scatfrac, scatfrac_form=form, target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac,
     n_scatfrac_at_floor=scatfrac_result.n_at_floor,

@@ -449,8 +449,9 @@ def estimate_sigmaa_e_then_scatfrac_f(
   the E-scale target has no ScatFrac.
 
   Step 1: estimate_e_sigmaa_for_fmodel (R-free set).
-  Step 2: llgi_scatfrac.estimate_llgi_scatfrac_likelihood (working set),
-  against fmodel.f_model(), which includes k_isotropic as Feff does.
+  Step 2: llgi_scatfrac.estimate_llgi_scatfrac (working set), against
+  fmodel.f_model(), which includes k_isotropic as Feff does: the
+  likelihood fit, or the moments ScatFrac (scatfrac_params.form).
 
   fmodel: an mmtbx.f_model.manager, already scaled.
 
@@ -478,7 +479,7 @@ def estimate_sigmaa_e_then_scatfrac_f(
   f_obs = fmodel.f_obs()
   llgi_data = fmodel.llgi_data()
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
-  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac_likelihood(
+  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac(
     f_eff=feff,
     working_selection=~fmodel.r_free_flags().data(),
     f_calc=fmodel.f_model().data(),
@@ -493,6 +494,7 @@ def estimate_sigmaa_e_then_scatfrac_f(
   return group_args(
     sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=scatfrac_result.scatfrac,
+    scatfrac_form=getattr(scatfrac_params, "form", "likelihood"),
     target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac,

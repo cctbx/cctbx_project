@@ -1813,14 +1813,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     sigmaa = getattr(llgi_data, "sigmaa", None)
     scatfrac = getattr(llgi_data, "scatfrac", None)
     if(sigmaa is None or scatfrac is None): return None
-    k = self.scale_ml_wrapper()
-    if(k <= 0): k = 1.0
-    # as llgi.h's effective_sigmaa: sigmaA*k/sqrt(ScatFrac), 0 if ScatFrac <= 0
-    sf = scatfrac.data()
-    positive = sf > 0
-    a_eff = flex.double(sf.size(), 0)
-    a_eff.set_selected(positive, (sigmaa.data() * k).select(positive)
-      / flex.sqrt(sf.select(positive)))
+    import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
+    a_eff = llgi_scatfrac.effective_sigmaa(sigmaa.data(), scatfrac.data(),
+      self.scale_ml_wrapper(),
+      getattr(llgi_data, "scatfrac_form", "likelihood"))
     import mmtbx.refinement.llgi_tncs as llgi_tncs
     u, t = llgi_tncs.arrays(llgi_data)
     if(u is not None):
@@ -1872,6 +1868,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       sigmaa=f_obs.array(data=result.sigmaa),
       sigmaa_curve=result.sigmaa_curve,
       scatfrac=f_obs.array(data=result.scatfrac),
+      scatfrac_form=result.scatfrac_form,
       _sigmaa_f_model=self.f_model().data().deep_copy())
     self.set_llgi_data(updated)
     return result

@@ -10,6 +10,20 @@ import math
 import mmtbx.refinement.llgi_tncs as llgi_tncs
 
 llgi_scatfrac_params = iotbx.phil.parse("""\
+  form = *likelihood moments
+    .type = choice
+    .short_caption = ScatFrac and F-scale variance form
+    .help = "likelihood: ScatFrac fitted against the F-scale target, whose "\
+            "variance is 1 - (Dobs sigmaA)^2/ScatFrac. moments: ScatFrac "\
+            "is the model's own normalisation, a smoothed "\
+            "<|F_model|^2/(TEPS RESN^2)> by resolution, and the F-scale "\
+            "target has phasertng's variance 1 - (Dobs sigmaA)^2 "\
+            "(Ecalc = F_model/(RESN sqrt(ScatFrac)))."
+  moments_n_bins = 20
+    .type = int
+    .expert_level = 3
+    .help = "Resolution bins (equal counts) for the moments ScatFrac, "\
+            "interpolated linearly in d*^2 between bin means."
   max_iterations = 100
     .type = int
     .expert_level = 3
@@ -167,6 +181,87 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
 
   def scatfrac_inf_and_b(self):
     return math.exp(self.x[0]), self.x[1]
+
+def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20):
+  """ ScatFrac as the model's own normalisation: <|F_calc|^2/(TEPS RESN^2)>
+  in n_bins equal-count resolution bins, interpolated linearly in d*^2
+  between bin means (constant beyond the outermost means). """
+  import numpy as np
+  x = np.array(flex.norm(f_calc) / (teps * resn * resn))
+  dss = np.array(d_star_sq)
+  order = np.argsort(dss)
+  bins = [c for c in np.array_split(order, max(1, min(n_bins, x.size)))
+          if c.size > 0]
+  x_mean = np.array([x[c].mean() for c in bins])
+  d_mean = np.array([dss[c].mean() for c in bins])
+  return flex.double(np.interp(dss, d_mean, x_mean))
+
+def moments_form_arguments(f_eff, resn, scatfrac):
+  """ Arguments for the F-scale LLGI functors that give phasertng's form
+  with ScatFrac as the model normalisation: mean Dobs sigmaA F_calc/(RESN
+  sqrt(ScatFrac)) and variance 1 - (Dobs sigmaA)^2. Passing f_eff and
+  resn times sqrt(ScatFrac), with ScatFrac = 1 and scale factor 1, gives
+  exactly that (Eeff = f_eff/resn is unchanged). f_eff: flex.double or a
+  miller array. Returns (f_eff, resn, scatfrac, scale_factor). """
+  root = flex.sqrt(scatfrac)
+  if(hasattr(f_eff, "customized_copy")):
+    f_eff = f_eff.customized_copy(data=f_eff.data() * root)
+  else:
+    f_eff = f_eff * root
+  return f_eff, resn * root, flex.double(scatfrac.size(), 1.), 1.0
+
+def estimate_llgi_scatfrac_moments(
+      f_eff,
+      working_selection,
+      f_calc,
+      dobs,
+      sigmaa,
+      teps,
+      resn,
+      centric_flags,
+      d_star_sq,
+      params=None,
+      hybrid=None,
+      tncs_u=None):
+  """ ScatFrac for the moments form (scatfrac_moments), with the F-scale
+  target on working_selection in that form. Returns a group_args like
+  estimate_llgi_scatfrac_likelihood's (scatfrac_inf and b_scatfrac None,
+  nothing at a floor). """
+  if(params is None):
+    params = llgi_scatfrac_params.extract()
+  scatfrac = scatfrac_moments(f_calc, teps, resn, d_star_sq,
+    n_bins=params.moments_n_bins)
+  fe, rn, sf, k = moments_form_arguments(f_eff, resn, scatfrac)
+  final_result = llgi_tncs.sigmaa_scatfrac_functor(tncs_u=tncs_u,
+    f_eff=fe, selection=working_selection, f_calc=f_calc, dobs=dobs,
+    sigmaa=sigmaa, scatfrac=sf, scale_factor=k, teps=teps, resn=rn,
+    centric_flags=centric_flags, hybrid=hybrid)
+  return group_args(
+    scatfrac=scatfrac, target=final_result.target(),
+    scatfrac_inf=None, b_scatfrac=None, n_at_floor=0, lbfgs_error=None)
+
+def estimate_llgi_scatfrac(params=None, **args):
+  """ estimate_llgi_scatfrac_likelihood or estimate_llgi_scatfrac_moments,
+  as params.form says """
+  if(params is None):
+    params = llgi_scatfrac_params.extract()
+  if(getattr(params, "form", "likelihood") == "moments"):
+    args.pop("scale_factor", None)
+    return estimate_llgi_scatfrac_moments(params=params, **args)
+  return estimate_llgi_scatfrac_likelihood(params=params, **args)
+
+def effective_sigmaa(sigmaa, scatfrac, scale_factor, form):
+  """ The sigmaA the F-scale target uses with Ecalc = F_calc/RESN:
+  sigmaA k/sqrt(ScatFrac) (likelihood form, as llgi.h's effective_sigmaa),
+  or sigmaA (moments form, where Ecalc is normalised by ScatFrac). """
+  if(form == "moments"):
+    return sigmaa.deep_copy()
+  k = scale_factor if scale_factor > 0 else 1.0
+  positive = scatfrac > 0
+  result = flex.double(sigmaa.size(), 0)
+  result.set_selected(positive, (sigmaa * k).select(positive)
+    / flex.sqrt(scatfrac.select(positive)))
+  return result
 
 def estimate_llgi_scatfrac_likelihood(
       f_eff,
